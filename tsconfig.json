@@ -1,0 +1,29 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "packages/create-gluestik"
+    },
+    {
+      "path": "packages/gluestik"
+    },
+    {
+      "path": "packages/@gluestik/api-client"
+    },
+    {
+      "path": "packages/@gluestik/constructs"
+    },
+    {
+      "path": "packages/@gluestik/constructs/tsconfig.dev.json"
+    },
+    {
+      "path": "packages/@gluestik/frontend/tsconfig.src.json"
+    },
+    {
+      "path": "apps/test-app"
+    },
+    {
+      "path": "apps/gluestik-ops"
+    }
+  ]
+}

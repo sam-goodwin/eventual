@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/lerna/schemas/lerna-schema.json",
+  "npmClient": "pnpm",
+  "useWorkspaces": true,
+  "packages": [
+    "packages/create-gluestik",
+    "packages/gluestik",
+    "packages/@gluestik/*"
+  ],
+  "conventionalCommits": true,
+  "commitHooks": false,
+  "private": false,
+  "createRelease": "github",
+  "verifyAccess": false,
+  "command": {
+    "publish": {
+      "allowBranch": ["main"]
+    }
+  },
+  "version": "0.9.1"
+}

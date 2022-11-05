@@ -1,0 +1,6 @@
+# https://pnpm.io/pnpm-workspace_yaml
+packages:
+  - "examples/*"
+  - "packages/*"
+  - "packages/@gluestik/*"
+  - "apps/*"
