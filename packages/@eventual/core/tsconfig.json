@@ -9,10 +9,5 @@
     "allowJs": true
   },
   "include": ["src"],
-  "exclude": ["lib", "node_modules"],
-  "references": [
-    { "path": "../../gluestik" },
-    { "path": "../../@gluestik/api-client" },
-    { "path": "../../@gluestik/frontend/tsconfig.src.json" }
-  ]
+  "exclude": ["lib", "node_modules"]
 }

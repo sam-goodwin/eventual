@@ -2,11 +2,7 @@
   "$schema": "node_modules/lerna/schemas/lerna-schema.json",
   "npmClient": "pnpm",
   "useWorkspaces": true,
-  "packages": [
-    "packages/create-gluestik",
-    "packages/gluestik",
-    "packages/@gluestik/*"
-  ],
+  "packages": ["packages/@eventual/*"],
   "conventionalCommits": true,
   "commitHooks": false,
   "private": false,

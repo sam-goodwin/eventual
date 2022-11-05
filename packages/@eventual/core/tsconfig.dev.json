@@ -1,0 +1,10 @@
+{
+  "extends": "../../../tsconfig-base",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "typeRoots": ["./node_modules/@types"]
+  },
+  "include": ["src", "test"],
+  "exclude": ["lib", "node_modules"]
+}

@@ -44,6 +44,11 @@
     "preset": "ts-jest",
     "transform": {
       "^.+\\.(t|j)sx?$": "ts-jest"
+    },
+    "globals": {
+      "ts-jest": {
+        "tsConfig": "tsconfig.dev.json"
+      }
     }
   },
   "publishConfig": {
