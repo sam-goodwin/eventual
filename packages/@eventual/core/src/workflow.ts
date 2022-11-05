@@ -10,8 +10,8 @@ enum Scope {
 
 let stack: Scope[] = [Scope.System];
 
-function pushScope(state: Scope) {
-  stack.push(state);
+function pushScope(scope: Scope) {
+  stack.push(scope);
 }
 
 function popScope(): Scope | undefined {
@@ -30,31 +30,31 @@ Promise.prototype.then = function (
   this: Promise<any>,
   resolve,
   reject,
-  state = currentScope()
+  scope = currentScope()
 ) {
   return ogThen.bind(this)(
     resolve,
     reject,
     // @ts-ignore - our special context parameter value
-    state
+    scope
   );
 };
 
 // @ts-ignore - state is an implicit parameter added for Eventual
-Promise.prototype.catch = function (reject, state = globalState) {
+Promise.prototype.catch = function (reject, scope = currentScope()) {
   return ogCatch.bind(this)(
     reject,
     // @ts-ignore - our special context parameter value
-    state
+    scope
   );
 };
 
 // @ts-ignore - state is an implicit parameter added for Eventual
-Promise.prototype.finally = function (onFinally, state) {
+Promise.prototype.finally = function (onFinally, scope) {
   return ogFinally.bind(this)(
     onFinally,
     // @ts-ignore - our special context parameter value
-    state
+    scope
   );
 };
 
@@ -70,8 +70,8 @@ export function inActivity<T>(f: () => Promise<T>): Promise<T> {
   return inScope(Scope.Activity, f);
 }
 
-export function inScope<T>(state: Scope, f: () => Promise<T>): Promise<T> {
-  pushScope(state);
+export function inScope<T>(scope: Scope, f: () => Promise<T>): Promise<T> {
+  pushScope(scope);
   const result = f();
   popScope();
   return result;
