@@ -33,11 +33,12 @@
 
 - 👨‍💻&nbsp; **Code-First** - use the full power of your favorite programing language instead of learning DSLs.
 - 🧩&nbsp; **Infrastructure-as-Code** - drops in to any AWS CDK, Pulumi, Terraform CDK or Serverless Framework application.
-- 🌩&nbsp; **Runs in your AWS account** - transparent billing and total ownership over your data and security boundaries.
-- 👮‍♀️&nbsp; **Secure and Compliant** - configurable encryption and auditing all within your own infrastructure.
 - 🚀&nbsp; **Purely Serverless** - load-based pricing, scales to $0 and minimal operational complexity.
 - 📈&nbsp; **Infinitely Scalable** - no hard limit on the number of concurrently running workflows.
+- 🌩&nbsp; **Runs in your AWS account** - transparent billing and total ownership over your data and security boundaries.
+- 👮‍♀️&nbsp; **Secure and Compliant** - configurable encryption and auditing all within your own infrastructure.
 - 💰&nbsp; **Cost Effective** - X times less cost per workflow step than AWS Step Functions.
+- 🔧&nbsp; **Light Weight** - no complicated third-party servers or databases to maintain.
 
 ## Quick Start
 
@@ -78,16 +79,13 @@ npm install @eventual/core @eventual/aws-cdktf
 
 ## Why Eventual?
 
-Services are becoming increasingly decoupled into smaller micro-services which complicates the process of making changes across them.
+Traditional applications rely heavily on centralized databases and transactions to maintain data consistency, but the world is moving towards an increasingly decoupled network of global micro-services that do not share a database. Orchestrating changes across these services without corrupting data is a challenging problem requiring deep understanding of distributed systems which takes time away from business-critical work and often leads to failures and a poor experience for customers.
 
-Eventual provides you with:
+Eventual provides a code-first experience that enables developers to focus on the business logic of an orchestration instead of worrying about low-level system co-ordination.
 
-1. a developer experience for authoring workflows in popular programming languages such as TypeScript, Python, Java, Go and Rust
-2. a workflow service packaged as re-usable AWS CDK, Pulumi and Terraform CDK libraries that can be deployed directly into your own AWS account.
+### 🧑‍💻 Developer-friendly experience
 
-### 🧠 Familiar
-
-Building durable, long-running workflows is almost identical to implementing a Lambda Function - simply wrap SDK clients with the `makeDurable` helper and implement your handler as normal.
+The code for a durable, long-running workflow in Eventual is almost identical to implementing a Lambda Function - simply wrap SDK clients with the `makeDurable` helper and then implement your handler as normal.
 
 ```ts
 const dynamo = makeDurable(DynamoDocumentDBClient.from(new DynamoDBClient()));
@@ -105,21 +103,23 @@ export function handle(id: string) {
 }
 ```
 
-### 🤖 Turing Complete
+### 🤖 Turing complete workflow logic
 
 Eventual allows you to use the constructs of mainstream programming languages to build workflows with unlimited complexity - including operators, for-loops, try-catch, if-else, while, do-while, etc.
 
 ```ts
 try {
-  for (const downStreamService of services) {
-    await downStreamService();
-  }
+  await Promise.all(
+    services.map(async (downStreamService) => {
+      await downStreamService(a + b - c);
+    })
+  );
 } catch (err) {
   console.error(err);
 }
 ```
 
-### 🧩 Extensible
+### 🧩 Extensible and configurable
 
 All of the infrastructure required to run your workflow is packaged as simple, code-first IaC libraries - available on the [AWS CDK](https://aws.amazon.com/cdk/), [Pulumi](https://www.pulumi.com/) and [Terraform CDK](https://developer.hashicorp.com/terraform/cdktf) platforms. Integrating Eventual into an application can be done in minutes without installing complex, third-party software.
 
@@ -131,13 +131,9 @@ new eventual.Workflow(this, "MyWorkflow", {
 });
 ```
 
-### ✅ Built-in Fault Tolerance
+### 🐞 Compatible with your testing tools
 
-Behind the scenes, Eventual leverages AWS's serverless technology to durably orchestrate your code as a long-running workflow such that each step has exactly-once guarantees and automatically recovers from failure without race conditions.
-
-### 🐞 Standard Testing
-
-Use any testing/mocking frameworks and practices to unit test workflows locally or within CI/CD.
+Use your preferred testing practices and frameworks to unit test workflows locally or within CI/CD.
 
 ```ts
 import { handle as myWorkflow } from "../src/my-workflow";
@@ -151,6 +147,28 @@ test("workflow should be OK", async () => {
 });
 ```
 
-### 📊 Observable
+### ✅ Effortless fault tolerance
 
-Each workflow comes with its own built-in, customizable and extensible metrics, dashboards and alarms deployed to AWS CloudWatch. Integrate metrics into third-party metrics products such as DataDog in minutes with a simple configuration change and deployment. Deploy a management console UI into your own AWS account for visualizations and debugging capabilities.s
+Behind the scenes, Eventual leverages AWS's serverless technology to orchestrate your code as a long-running workflow and ensure that each step executes with exactly-once semantics.
+
+```ts
+// execute a failure-sensitive transaction
+await fromAccount.debit(amount);
+await toAccount.credit(amount);
+```
+
+### 📊 Observability out of the box
+
+Each workflow comes with its own built-in, customizable and extensible metrics, dashboards and alarms deployed to AWS CloudWatch. Integrate metrics into third-party metrics products such as DataDog in minutes with a simple configuration change and deployment. Deploy a management console UI into your own AWS account for visualizations and debugging capabilities.
+
+```ts
+const workflow = new eventual.Workflow(..);
+
+// create an AWS CloudWatch alarm to alert when a workflow fails
+new Alarm(this, 'FailedWorkflows', {
+  comparisonOperator: ComparisonOperator.GREATER_THAN_THRESHOLD,
+  threshold: 1,
+  evaluationPeriods: 1,
+  metric: workflow.metricFailures(),
+});
+```
