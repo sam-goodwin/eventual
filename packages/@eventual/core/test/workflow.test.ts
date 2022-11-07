@@ -1,27 +1,41 @@
 import "jest";
-import { currentScope, inActivity, inScope, inSystem } from "../src";
+import {
+  currentScope,
+  inActivity,
+  inOrchestrator,
+  inSystem,
+  Scope,
+} from "../src";
 
 test("test", async () => {
   await foo();
 
   async function foo() {
-    console.log(currentScope());
+    expect(currentScope()).toEqual(Scope.System);
     await inSystem(async () => {
-      console.log(currentScope());
+      expect(currentScope()).toEqual(Scope.System);
     });
-    console.log("===");
     await inActivity(async () => {
-      console.log(currentScope());
+      expect(currentScope()).toEqual(Scope.Activity);
       await (async () => {
-        const nestedScope = currentScope();
-        nestedScope;
+        expect(currentScope()).toEqual(Scope.Activity);
+
+        await new Promise((resolve) => {
+          expect(currentScope()).toEqual(Scope.Activity);
+          resolve(undefined);
+        });
       })();
+
+      await Promise.all(
+        [1, 2].map(async () => {
+          expect(currentScope()).toEqual(Scope.Activity);
+        })
+      );
     });
-    console.log(currentScope());
-    console.log("===");
-    await inSystem(async () => {
-      console.log(currentScope());
+    expect(currentScope()).toEqual(Scope.System);
+    await inOrchestrator(async () => {
+      expect(currentScope()).toEqual(Scope.Orchestrator);
     });
-    console.log(currentScope());
+    expect(currentScope()).toEqual(Scope.System);
   }
 });

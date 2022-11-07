@@ -2,7 +2,7 @@ const ogThen = Promise.prototype.then;
 const ogCatch = Promise.prototype.catch;
 const ogFinally = Promise.prototype.finally;
 
-enum Scope {
+export enum Scope {
   Activity = "Activity",
   Orchestrator = "Orchestrator",
   System = "System",
@@ -32,12 +32,15 @@ Promise.prototype.then = function (
   reject,
   scope = currentScope()
 ) {
-  return ogThen.bind(this)(
+  pushScope(scope);
+  const result = ogThen.bind(this)(
     resolve,
     reject,
     // @ts-ignore - our special context parameter value
     scope
   );
+  popScope();
+  return result;
 };
 
 // @ts-ignore - state is an implicit parameter added for Eventual
