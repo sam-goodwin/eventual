@@ -23,7 +23,7 @@
 
 ---
 
-> 🛠&nbsp; Eventual is in pre-release - come chat to us on Discord!
+> 🛠&nbsp; Eventual is in pre-release - come chat to us on [Discord](https://discord.gg/VRqHbjrbfC)!
 
 ---
 
@@ -33,8 +33,8 @@
 
 - 👨‍💻&nbsp; **Code-First** - use the full power of your favorite programing language instead of learning DSLs.
 - 🧩&nbsp; **Infrastructure-as-Code** - drops in to any AWS CDK, Pulumi, Terraform CDK or Serverless Framework application.
-- 🐞&nbsp; **Standard Testing** - use any testing framework and practices to unit test workflows locally or within CI/CD.
 - 🌩&nbsp; **Runs in your AWS account** - transparent billing and total ownership over your data and security boundaries.
+- 👮‍♀️&nbsp; **Secure and Compliant** - configurable encryption and auditing all within your own infrastructure.
 - 🚀&nbsp; **Purely Serverless** - load-based pricing, scales to $0 and minimal operational complexity.
 - 📈&nbsp; **Infinitely Scalable** - no hard limit on the number of concurrently running workflows.
 - 💰&nbsp; **Cost Effective** - X times less cost per workflow step than AWS Step Functions.
@@ -135,9 +135,21 @@ new eventual.Workflow(this, "MyWorkflow", {
 
 Behind the scenes, Eventual leverages AWS's serverless technology to durably orchestrate your code as a long-running workflow such that each step has exactly-once guarantees and automatically recovers from failure without race conditions.
 
-### 👮‍♀️ Secure and Compliant
+### 🐞 Standard Testing
 
-Eventual deploys directly into your own organization's AWS account and is configurable and extensible. Apply your own security and compliance best practices by configuring encryption and auditing to fit your policies and standards.
+Use any testing/mocking frameworks and practices to unit test workflows locally or within CI/CD.
+
+```ts
+import { handle as myWorkflow } from "../src/my-workflow";
+
+test("workflow should be OK", async () => {
+  const result = await myWorkflow({
+    hello: "world",
+  });
+
+  expect(result).toBe("ok");
+});
+```
 
 ### 📊 Observable
 
