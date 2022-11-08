@@ -1,5 +1,5 @@
 {
-  "name": "@eventual/core",
+  "name": "@eventual/aws-cdk",
   "version": "0.0.0",
   "main": "lib/index.js",
   "types:": "lib/index.d.ts",
@@ -8,10 +8,16 @@
     "cdk": "cdk",
     "build": "tsc -b --force"
   },
-  "dependencies": {},
+  "dependencies": {
+    "aws-cdk-lib": "2.50.0",
+    "constructs": "^10.0.0",
+    "ulid": "^2.3.0",
+    "esbuild": "^0.15.13"
+  },
   "devDependencies": {
     "@types/jest": "^29",
     "@types/node": "^16",
+    "aws-cdk": "2.50.0",
     "jest": "^29",
     "ts-jest": "^29",
     "ts-node": "^10.9.1",
