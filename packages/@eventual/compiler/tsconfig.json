@@ -9,5 +9,8 @@
     "allowJs": true
   },
   "include": ["src"],
-  "exclude": ["lib", "node_modules"]
+  "exclude": ["lib", "node_modules"],
+  "references": [
+    {"path": "../core" }
+  ]
 }
