@@ -7,11 +7,5 @@ const app = new App();
 const stack = new Stack(app, "test-eventual");
 
 new Workflow(stack, "workflow1", {
-  entry: path.resolve(
-    __dirname,
-    "node_modules",
-    "test-app-runtime",
-    "lib",
-    "workflow.js"
-  ),
+  entry: path.resolve("test-app-runtime/lib/workflow.js"),
 });

@@ -8,6 +8,5 @@
     "typeRoots": ["./node_modules/@types"]
   },
   "include": ["src"],
-  "exclude": ["lib", "node_modules"],
-  "references": []
+  "exclude": ["lib", "node_modules"]
 }

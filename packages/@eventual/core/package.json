@@ -4,9 +4,7 @@
   "main": "lib/index.js",
   "types:": "lib/index.d.ts",
   "scripts": {
-    "test": "jest",
-    "cdk": "cdk",
-    "build": "tsc -b --force"
+    "test": "jest"
   },
   "dependencies": {},
   "devDependencies": {
@@ -24,9 +22,6 @@
     }
   },
   "publishConfig": {
-    "command-exists": "^1.2.9",
-    "access": "public",
-    "fs-extra": "^10.1.0",
-    "preferred-pm": "^3.0.3"
+    "access": "public"
   }
 }

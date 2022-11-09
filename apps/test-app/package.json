@@ -4,11 +4,10 @@
   "main": "lib/index.js",
   "scripts": {
     "test": "jest",
-    "cdk": "cdk",
-    "build": "tsc -b --force"
+    "cdk": "cdk"
   },
   "dependencies": {
-    "aws-cdk-lib": "2.50.0",
+    "aws-cdk-lib": "^2.50.0",
     "constructs": "^10.0.0",
     "ulid": "^2.3.0"
   },
@@ -28,11 +27,5 @@
     "transform": {
       "^.+\\.(t|j)sx?$": "ts-jest"
     }
-  },
-  "publishConfig": {
-    "command-exists": "^1.2.9",
-    "access": "public",
-    "fs-extra": "^10.1.0",
-    "preferred-pm": "^3.0.3"
   }
 }

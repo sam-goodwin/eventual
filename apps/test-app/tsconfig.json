@@ -10,5 +10,8 @@
   },
   "include": ["src"],
   "exclude": ["lib", "node_modules"],
-  "references": [{ "path": "../../packages/@eventual/aws-cdk" }, { "path": "../test-app-runtime" }]
+  "references": [
+    { "path": "../../packages/@eventual/aws-cdk" }, 
+    { "path": "../test-app-runtime" }
+  ]
 }
