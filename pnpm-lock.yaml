@@ -28,8 +28,8 @@ importers:
       '@types/jest': ^29
       '@types/node': ^16
       aws-cdk: 2.50.0
-      aws-cdk-lib: 2.50.0
-      constructs: ^10.0.0
+      aws-cdk-lib: ^2.50.0
+      constructs: ^10.1.154
       jest: ^29
       test-app-runtime: workspace:^
       ts-jest: ^29
@@ -37,8 +37,8 @@ importers:
       typescript: ^4.8.4
       ulid: ^2.3.0
     dependencies:
-      aws-cdk-lib: 2.50.0_constructs@10.1.153
-      constructs: 10.1.153
+      aws-cdk-lib: 2.50.0_constructs@10.1.154
+      constructs: 10.1.154
       ulid: 2.3.0
     devDependencies:
       '@eventual/aws-cdk': link:../../packages/@eventual/aws-cdk
@@ -53,26 +53,15 @@ importers:
 
   apps/test-app-runtime:
     specifiers:
-      '@eventual/aws-cdk': workspace:^
       '@types/jest': ^29
       '@types/node': ^16
-      aws-cdk: 2.50.0
-      aws-cdk-lib: 2.50.0
-      constructs: ^10.0.0
       jest: ^29
       ts-jest: ^29
       ts-node: ^10.9.1
       typescript: ^4.8.4
-      ulid: ^2.3.0
-    dependencies:
-      aws-cdk-lib: 2.50.0_constructs@10.1.153
-      constructs: 10.1.153
-      ulid: 2.3.0
     devDependencies:
-      '@eventual/aws-cdk': link:../../packages/@eventual/aws-cdk
       '@types/jest': 29.2.2
       '@types/node': 16.18.3
-      aws-cdk: 2.50.0
       jest: 29.2.1_dnlfjp7n5lpfgnj4digwzn5fhe
       ts-jest: 29.0.3_glf2bimzsqkn7a7xd62cgjrage
       ts-node: 10.9.1_e7yvbkxpwwqnzxz2s2bfjt7zx4
@@ -84,7 +73,7 @@ importers:
       '@types/node': ^16
       aws-cdk: 2.50.0
       aws-cdk-lib: 2.50.0
-      constructs: ^10.0.0
+      constructs: 10.1.154
       esbuild: ^0.15.13
       jest: ^29
       ts-jest: ^29
@@ -92,14 +81,14 @@ importers:
       typescript: ^4.8.4
       ulid: ^2.3.0
     dependencies:
-      aws-cdk-lib: 2.50.0_constructs@10.1.153
-      constructs: 10.1.153
       esbuild: 0.15.13
       ulid: 2.3.0
     devDependencies:
       '@types/jest': 29.2.2
       '@types/node': 16.18.3
       aws-cdk: 2.50.0
+      aws-cdk-lib: 2.50.0_constructs@10.1.154
+      constructs: 10.1.154
       jest: 29.2.1_dnlfjp7n5lpfgnj4digwzn5fhe
       ts-jest: 29.0.3_ylmfhr4wqwog7whrmkebke4l7y
       ts-node: 10.9.1_e7yvbkxpwwqnzxz2s2bfjt7zx4
@@ -109,22 +98,16 @@ importers:
     specifiers:
       '@types/jest': ^29
       '@types/node': ^16
-      aws-cdk: 2.50.0
-      aws-cdk-lib: 2.50.0
-      constructs: ^10.0.0
       jest: ^29
       ts-jest: ^29
       ts-node: ^10.9.1
       typescript: ^4.8.4
       ulid: ^2.3.0
     dependencies:
-      aws-cdk-lib: 2.50.0_constructs@10.1.153
-      constructs: 10.1.153
       ulid: 2.3.0
     devDependencies:
       '@types/jest': 29.2.2
       '@types/node': 16.18.3
-      aws-cdk: 2.50.0
       jest: 29.2.1_dnlfjp7n5lpfgnj4digwzn5fhe
       ts-jest: 29.0.3_glf2bimzsqkn7a7xd62cgjrage
       ts-node: 10.9.1_e7yvbkxpwwqnzxz2s2bfjt7zx4
@@ -485,7 +468,6 @@ packages:
 
   /@balena/dockerignore/1.0.2:
     resolution: {integrity: sha512-wMue2Sy4GAVTk6Ic4tJVcnfdau+gx2EnG7S+uAEe+TWJFqE4YoWN4/H8MSLj4eYJKxGg26lZwboEniNiNwZQ6Q==}
-    dev: false
 
   /@bcoe/v8-coverage/0.2.3:
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
@@ -2239,7 +2221,7 @@ packages:
     resolution: {integrity: sha512-+q/t7Ekv1EDY2l6Gda6LLiX14rU9TV20Wa3ofeQmwPFZbOMo9DXrLbOjFaaclkXKWidIaopwAObQDqwWtGUjqg==}
     engines: {node: '>= 4.0.0'}
 
-  /aws-cdk-lib/2.50.0_constructs@10.1.153:
+  /aws-cdk-lib/2.50.0_constructs@10.1.154:
     resolution: {integrity: sha512-deDbZTI7oyu3rqUyqjwhP6tnUO8MD70lE98yR65xiYty4yXBpsWKbeH3s1wNLpLAWS3hWJYyMtjZ4ZfC35NtVg==}
     engines: {node: '>= 14.15.0'}
     peerDependencies:
@@ -2247,7 +2229,7 @@ packages:
     dependencies:
       '@balena/dockerignore': 1.0.2
       case: 1.6.3
-      constructs: 10.1.153
+      constructs: 10.1.154
       fs-extra: 9.1.0
       ignore: 5.2.0
       jsonschema: 1.4.1
@@ -2255,7 +2237,6 @@ packages:
       punycode: 2.1.1
       semver: 7.3.8
       yaml: 1.10.2
-    dev: false
     bundledDependencies:
       - '@balena/dockerignore'
       - case
@@ -2519,7 +2500,6 @@ packages:
   /case/1.6.3:
     resolution: {integrity: sha512-mzDSXIPaFwVDvZAHqZ9VlbyF4yyXRuX6IvB06WvPYkqJVO24kX1PPhv9bfpKNFZyxYFmmgo03HUiD8iklmJYRQ==}
     engines: {node: '>= 0.8.0'}
-    dev: false
 
   /chalk/2.4.2:
     resolution: {integrity: sha512-Mti+f9lpJNcwF4tWV8/OrTTtF1gZi+f8FqlyAdouralcFWFQWF2+NgCHShjkCb+IFBLq9buZwE1xckQU4peSuQ==}
@@ -2761,10 +2741,9 @@ packages:
     resolution: {integrity: sha512-ty/fTekppD2fIwRvnZAVdeOiGd1c7YXEixbgJTNzqcxJWKQnjJ/V1bNEEE6hygpM3WjwHFUVK6HTjWSzV4a8sQ==}
     dev: true
 
-  /constructs/10.1.153:
-    resolution: {integrity: sha512-FWgBuYWlBlzZWO3uXNBWrA9YuRzG7CkDWcte/BWAQ9zO1wFq71YfgfOYq3PV3J5WtbyJ6jkzRQa877/XXyq/fg==}
+  /constructs/10.1.154:
+    resolution: {integrity: sha512-JStQT84+NhsfamESRExZoGzpq/f/gpq9xpzgtQNOzungs42Gy8kxjfU378MnVoRqwCHwk0vLN37HZjgH5tJo2A==}
     engines: {node: '>= 14.17.0'}
-    dev: false
 
   /conventional-changelog-angular/5.0.13:
     resolution: {integrity: sha512-i/gipMxs7s8L/QeuavPF2hLnJgH6pEZAttySB6aiQLWcX3puWDL3ACVmvBhJGxnAy52Qc15ua26BufY6KpmrVA==}
@@ -4743,7 +4722,6 @@ packages:
 
   /jsonschema/1.4.1:
     resolution: {integrity: sha512-S6cATIPVv1z0IlxdN+zUk5EPjkGCdnhN4wVSBlvoUO1tOLJootbo9CquNJmbIh4yikWHiUedhRYrNPn1arpEmQ==}
-    dev: false
 
   /just-diff-apply/5.4.1:
     resolution: {integrity: sha512-AAV5Jw7tsniWwih8Ly3fXxEZ06y+6p5TwQMsw0dzZ/wPKilzyDgdAnL0Ug4NNIquPUOh1vfFWEHbmXUqM5+o8g==}
@@ -5867,7 +5845,6 @@ packages:
   /punycode/2.1.1:
     resolution: {integrity: sha512-XRsRjdf+j5ml+y/6GKHPZbrF/8p2Yga0JPtdqTIY2Xe5ohJPD9saDJJLPvp9+NSBprVvevdXZybnj2cv8OEd0A==}
     engines: {node: '>=6'}
-    dev: false
 
   /q/1.5.1:
     resolution: {integrity: sha512-kV/CThkXo6xyFEZUugw/+pIOywXcDbFYgSct5cT3gqlbkBE1SJdwy6UQoZvodiWF/ckQLZyDE/Bu1M6gVu5lVw==}
