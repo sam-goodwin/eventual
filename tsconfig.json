@@ -4,5 +4,17 @@
     {
       "path": "packages/@eventual/core"
     },
+    {
+      "path": "packages/@eventual/aws-cdk"
+    },
+    {
+      "path": "packages/@eventual/aws-runtime"
+    },
+    {
+      "path": "apps/test-app"
+    },    
+    {
+      "path": "apps/test-app-runtime"
+    }
   ]
 }

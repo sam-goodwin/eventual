@@ -1,8 +1,8 @@
 {
-  "name": "@eventual/core",
+  "name": "test-app-runtime",
+  "type": "module",
   "version": "0.0.0",
   "main": "lib/index.js",
-  "types:": "lib/index.d.ts",
   "scripts": {
     "test": "jest"
   },
@@ -19,14 +19,6 @@
     "preset": "ts-jest",
     "transform": {
       "^.+\\.(t|j)sx?$": "ts-jest"
-    },
-    "globals": {
-      "ts-jest": {
-        "tsConfig": "tsconfig.dev.json"
-      }
     }
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }
