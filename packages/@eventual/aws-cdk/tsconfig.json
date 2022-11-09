@@ -5,14 +5,8 @@
     "declaration": true,
     "inlineSourceMap": true,
     "rootDir": "src",
-    "typeRoots": ["./node_modules/@types"],
-    "allowJs": true
+    "typeRoots": ["./node_modules/@types"]
   },
   "include": ["src"],
-  "exclude": ["lib", "node_modules"],
-  "references": [
-    {"path": "../aws-runtime" },
-    {"path": "../compiler" },
-    {"path": "../core" },
-  ]
+  "exclude": ["lib", "node_modules"]
 }

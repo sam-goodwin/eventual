@@ -1,3 +1,4 @@
 # https://pnpm.io/pnpm-workspace_yaml
 packages:
   - "packages/@eventual/*"
+  - "apps/*"
