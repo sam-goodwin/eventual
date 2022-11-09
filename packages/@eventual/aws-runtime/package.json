@@ -1,12 +1,14 @@
 {
-  "name": "@eventual/core",
+  "name": "@eventual/aws-runtime",
+  "type": "module",
   "version": "0.0.0",
   "main": "lib/index.js",
-  "types:": "lib/index.d.ts",
   "scripts": {
     "test": "jest"
   },
-  "dependencies": {},
+  "dependencies": {
+    "ulid": "^2.3.0"
+  },
   "devDependencies": {
     "@types/jest": "^29",
     "@types/node": "^16",
