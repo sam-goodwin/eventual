@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "name": "vscode-jest-tests",
+      "request": "launch",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "disableOptimisticBPs": true,
+      "program": "${workspaceRoot}/node_modules/jest/bin/jest.js",
+      "cwd": "${workspaceFolder}",
+      "outFiles": ["${workspaceFolder}/**/*.js", "!**/node_modules/**"],
+      "runtimeArgs": ["--enable-source-maps"],
+      "args": ["--runInBand", "--watchAll=false"]
+    },
+    {
+      "type": "node",
+      "name": "synth test-app",
+      "request": "launch",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--nolazy",
+        "-r",
+        "ts-node/register/transpile-only",
+        "--enable-source-maps"
+      ],
+      "args": ["src/app.ts"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "openOnSessionStart",
+      "cwd": "${workspaceFolder}/apps/test-app/",
+      "outFiles": ["${workspaceFolder}/**/*.js", "!**/node_modules/**"]
+    }
+  ]
+}

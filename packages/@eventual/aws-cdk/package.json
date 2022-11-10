@@ -4,9 +4,10 @@
   "main": "lib/index.js",
   "types:": "lib/index.d.ts",
   "scripts": {
-    "test": "jest"
+    "test": "jest --passWithNoTests"
   },
   "dependencies": {
+    "@eventual/compiler": "workspace:^",
     "ulid": "^2.3.0",
     "esbuild": "^0.15.13"
   },

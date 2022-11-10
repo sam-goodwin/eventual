@@ -2,6 +2,9 @@
   "files": [],
   "references": [
     {
+      "path": "packages/@eventual/compiler"
+    },
+    {
       "path": "packages/@eventual/core"
     },
     {
@@ -12,7 +15,7 @@
     },
     {
       "path": "apps/test-app"
-    },    
+    },
     {
       "path": "apps/test-app-runtime"
     }
