@@ -3,6 +3,13 @@
   "version": "0.0.0",
   "main": "lib/index.js",
   "types:": "lib/index.d.ts",
+  "bin": {
+    "eventual-bundle": "./bin/eventual-bundle.js"
+  },
+  "files": [
+    "bin",
+    "lib"
+  ],
   "scripts": {
     "test": "jest --passWithNoTests"
   },

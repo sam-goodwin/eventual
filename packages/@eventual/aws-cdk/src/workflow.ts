@@ -1,23 +1,32 @@
-import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
-import { Runtime, Architecture } from "aws-cdk-lib/aws-lambda";
+import { execSync } from "child_process";
+
 import { Construct } from "constructs";
+import { aws_lambda } from "aws-cdk-lib";
+import { Architecture, Code, Runtime } from "aws-cdk-lib/aws-lambda";
+import path from "path";
 
 export interface WorkflowProps {
   entry: string;
 }
 
-// placeholder
 export class Workflow extends Construct {
   constructor(scope: Construct, id: string, props: WorkflowProps) {
-    super(scope, id);   
+    super(scope, id);
 
-    new NodejsFunction(this, 'workflowFunction', {
-        entry: props.entry,
-        runtime: Runtime.NODEJS_16_X,
-        architecture: Architecture.ARM_64,
-        bundling: {
-            mainFields: ['module', 'main']
-        }
-    })
+    const outDir = path.join(".eventual", this.node.addr);
+
+    execSync(
+      `node ${require.resolve(
+        "@eventual/compiler/lib/eventual-bundle.js"
+      )} ${outDir} ${props.entry}`
+    );
+
+    new aws_lambda.Function(this, "Worker", {
+      architecture: Architecture.ARM_64,
+      code: Code.fromAsset(outDir),
+      handler: "index.default",
+      runtime: Runtime.NODEJS_16_X,
+      memorySize: 512,
+    });
   }
 }

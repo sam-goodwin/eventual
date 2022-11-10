@@ -10,6 +10,7 @@
     "@eventual/core": "workspace:^"
   },
   "devDependencies": {
+    "@eventual/compiler": "workspace:^",
     "@types/jest": "^29",
     "@types/node": "^16",
     "jest": "^29",

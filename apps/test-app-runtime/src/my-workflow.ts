@@ -1,7 +1,7 @@
 import { activity, eventual } from "@eventual/core";
 
 const hello = activity("hello", async (name: string) => {
-  return `hello  ${name}`;
+  return `hello ${name}`;
 });
 
 export default eventual(async (event: any) => {

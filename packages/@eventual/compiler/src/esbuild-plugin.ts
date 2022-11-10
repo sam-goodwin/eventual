@@ -1,17 +1,22 @@
 import esBuild from "esbuild";
-import swc, {
+import {
   AwaitExpression,
   CallExpression,
+  Expression,
   FunctionExpression,
+  Module,
+  Node,
+  parseFile,
+  print,
 } from "@swc/core";
 import path from "path";
 import Visitor from "@swc/core/Visitor";
 
-export const esBuildPlugin: esBuild.Plugin = {
+export const eventualESPlugin: esBuild.Plugin = {
   name: "Eventual",
   setup(build) {
     build.onLoad({ filter: /\.ts/g }, async (args) => {
-      const sourceModule = await swc.parseFile(args.path, {
+      const sourceModule = await parseFile(args.path, {
         syntax: "typescript",
       });
 
@@ -45,14 +50,14 @@ class EventualVisitor extends Visitor {
     return result;
   }
 
-  public visit(mod: swc.Module): swc.Module;
-  public visit(node: swc.Expression): swc.Expression;
-  public visit(node: swc.Node): swc.Node;
-  public visit(node: swc.Node): swc.Node {
+  public visit(mod: Module): Module;
+  public visit(node: Expression): Expression;
+  public visit(node: Node): Node;
+  public visit(node: Node): Node {
     return (this[`visit${node.type}` as any as keyof this] as any)(node);
   }
 
-  public visitAwaitExpression(awaitExpr: AwaitExpression): swc.Expression {
+  public visitAwaitExpression(awaitExpr: AwaitExpression): Expression {
     if (this.inEventualFunction) {
       return {
         type: "YieldExpression",
@@ -76,7 +81,7 @@ class EventualVisitor extends Visitor {
     }
     return funcExpr;
   }
-  public visitCallExpression(call: CallExpression): swc.Expression {
+  public visitCallExpression(call: CallExpression): Expression {
     if (
       ((call.callee.type === "Identifier" &&
         call.callee.value === "eventual" &&
@@ -104,8 +109,8 @@ class EventualVisitor extends Visitor {
   }
 }
 
-async function printModule(module: swc.Module, filePath: string) {
-  return await swc.print(module, {
+async function printModule(module: Module, filePath: string) {
+  return await print(module, {
     //sourceFileName doesnt set up the sourcemap path the same way as transform does...
     sourceFileName: path.basename(filePath),
     //Instead these two are needed

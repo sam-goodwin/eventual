@@ -10,9 +10,11 @@ const myAction = activity("my-action", async (event: any) => {
 const myAction0 = activity("my-action-0", async (event: any) => {
   return event;
 });
+
 const myAction1 = activity("my-action-1", async (event: any) => {
   return event;
 });
+
 const myAction2 = activity("my-action-2", async (event: any) => {
   return event;
 });
