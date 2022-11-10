@@ -8,7 +8,6 @@ import {
   resetActivityIDCounter,
 } from "./activity";
 import { DeterminismError } from "./error";
-import { reset } from "./eventual";
 import {
   Result,
   isResolved,
@@ -18,8 +17,20 @@ import {
   createResolved,
   Failed,
 } from "./result";
-import { isThread, setCurrentThreadID } from "./thread";
+import {
+  isThread,
+  resetCurrentThreadID,
+  resetThreadIDCounter,
+  setCurrentThreadID,
+} from "./thread";
 import { assertNever, not } from "./util";
+
+function reset() {
+  resetActivities();
+  resetActivityIDCounter();
+  resetThreadIDCounter();
+  resetCurrentThreadID();
+}
 
 export interface State {
   threads: Result[][];

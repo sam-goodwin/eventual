@@ -1,9 +1,4 @@
-import { resetActivities, resetActivityIDCounter } from "./activity";
-import {
-  resetCurrentThreadID,
-  resetThreadIDCounter,
-  scheduleThread,
-} from "./thread";
+import { scheduleThread } from "./thread";
 
 export function eventual<F extends (...args: any[]) => Promise<any>>(
   func: F
@@ -15,11 +10,4 @@ export function eventual<
 
 export function eventual<F extends (...args: any[]) => any>(func: F): F {
   return ((...args: any[]) => scheduleThread(func(...args))) as any;
-}
-
-export function reset() {
-  resetActivities();
-  resetActivityIDCounter();
-  resetThreadIDCounter();
-  resetCurrentThreadID();
 }
