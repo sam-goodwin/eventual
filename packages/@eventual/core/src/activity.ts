@@ -37,13 +37,35 @@ export interface AwaitAll {
 }
 
 export namespace Activity {
-  export function all(...tasks: Activity[]): AwaitAll {
+  export function all(tasks: Activity[]): AwaitAll {
     return {
       [ActivitySymbol]: ActivityKind.AwaitAll,
       activities: tasks,
       id: nextActivityID(),
     };
   }
+}
+
+export function activity<F extends (...args: any[]) => any>(
+  activityID: string,
+  underlying: F
+): (...args: Parameters<F>) => Promise<Awaited<ReturnType<F>>> {
+  if (
+    !underlying ||
+    typeof underlying === "string" ||
+    typeof underlying === "number" ||
+    typeof underlying === "boolean"
+  ) {
+    return underlying;
+  }
+  return new Proxy(
+    {},
+    {
+      apply: (_target, _this, args) => {
+        return scheduleActivity(activityID, args);
+      },
+    }
+  ) as any;
 }
 
 export function scheduleActivity(

@@ -7,9 +7,8 @@
     "test": "jest"
   },
   "dependencies": {
-    "@eventual/core": "workspace:^",
-    "minimatch": "^5.1.0",
-    "ts-patch": "^2.0.2"
+    "@swc/core": "^1.2.245",
+    "esbuild": "^0.15.13"
   },
   "devDependencies": {
     "@types/minimatch": "5.1.2",

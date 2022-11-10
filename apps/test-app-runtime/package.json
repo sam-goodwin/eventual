@@ -6,7 +6,9 @@
   "scripts": {
     "test": "jest"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@eventual/core": "workspace:^"
+  },
   "devDependencies": {
     "@types/jest": "^29",
     "@types/node": "^16",
