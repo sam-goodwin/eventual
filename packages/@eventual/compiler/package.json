@@ -7,9 +7,6 @@
     "test": "jest"
   },
   "dependencies": {
-    "@functionless/ast": "^0.29.0",
-    "@functionless/error-code": "^0.29.0",
-    "@functionless/util": "^0.29.0",
     "@eventual/core": "workspace:^",
     "minimatch": "^5.1.0",
     "ts-patch": "^2.0.2"
