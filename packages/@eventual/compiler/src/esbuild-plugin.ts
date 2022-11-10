@@ -16,7 +16,7 @@ import Visitor from "@swc/core/Visitor";
 export const eventualESPlugin: esBuild.Plugin = {
   name: "eventual",
   setup(build) {
-    build.onLoad({ filter: /\.ts/g }, async (args) => {
+    build.onLoad({ filter: /\.[tj]s/g }, async (args) => {
       const sourceModule = await parseFile(args.path, {
         syntax: "typescript",
       });
