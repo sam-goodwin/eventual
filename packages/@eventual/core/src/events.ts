@@ -9,9 +9,6 @@ export interface BaseEvent {
 export type Event =
   | WorkflowStartedEvent
   | WorkflowTaskStartedEvent
-  | InlineActivityScheduledEvent
-  | InlineActivityCompletedEvent
-  | InlineActivityFailedEvent
   | ActivityScheduledEvent
   | ActivityCompletedEvent
   | ActivityFailedEvent
@@ -25,24 +22,6 @@ export interface WorkflowStartedEvent extends BaseEvent {
 
 export interface WorkflowTaskStartedEvent extends BaseEvent {
   type: "WorkflowTaskStartedEvent";
-}
-
-export interface InlineActivityScheduledEvent extends BaseEvent {
-  type: "InlineActivityScheduledEvent";
-  seq: number;
-}
-
-export interface InlineActivityCompletedEvent extends BaseEvent {
-  type: "InlineActivityCompletedEvent";
-  seq: number;
-  result: any;
-}
-
-export interface InlineActivityFailedEvent extends BaseEvent {
-  type: "InlineActivityFailedEvent";
-  seq: number;
-  error: string;
-  message: string;
 }
 
 export interface ActivityScheduledEvent extends BaseEvent {
