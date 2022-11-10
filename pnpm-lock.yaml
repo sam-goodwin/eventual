@@ -69,6 +69,7 @@ importers:
 
   packages/@eventual/aws-cdk:
     specifiers:
+      '@eventual/aws-runtime': workspace:^
       '@types/jest': ^29
       '@types/node': ^16
       aws-cdk: 2.50.0
@@ -81,6 +82,7 @@ importers:
       typescript: ^4.8.4
       ulid: ^2.3.0
     dependencies:
+      '@eventual/aws-runtime': link:../aws-runtime
       esbuild: 0.15.13
       ulid: 2.3.0
     devDependencies:
