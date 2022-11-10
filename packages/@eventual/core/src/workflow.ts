@@ -17,6 +17,7 @@ import {
   createResolved,
   Failed,
 } from "./result";
+import { State } from "./state";
 import {
   isThread,
   resetCurrentThreadID,
@@ -30,10 +31,6 @@ function reset() {
   resetActivityIDCounter();
   resetThreadIDCounter();
   resetCurrentThreadID();
-}
-
-export interface State {
-  threads: Result[][];
 }
 
 export function executeWorkflow(
