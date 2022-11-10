@@ -2,7 +2,7 @@ import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
   Event,
-  WorkflowEvent as WorkflowTask,
+  WorkflowTask,
   WorkflowStartedEvent,
 } from "@eventual/core";
 import { ulid } from "ulid";

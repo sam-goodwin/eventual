@@ -10,10 +10,11 @@
   "module": "./lib/esm/index.js",
   "version": "0.0.0",
   "scripts": {
-    "test": "jest"
+    "test": "jest --passWithNoTests"
   },
   "dependencies": {
     "ulid": "^2.3.0",
+    "aws-lambda": "^1.0.7",
     "@eventual/core": "workspace:^"
   },
   "peerDependencies": {

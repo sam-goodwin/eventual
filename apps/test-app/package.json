@@ -4,6 +4,7 @@
   "main": "lib/index.js",
   "scripts": {
     "test": "jest",
+    "build": "cdk synth",
     "cdk": "cdk"
   },
   "dependencies": {

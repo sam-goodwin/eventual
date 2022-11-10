@@ -8,6 +8,9 @@
       "path": "packages/@eventual/core/tsconfig.cjs.json"
     },
     {
+      "path": "packages/@eventual/compiler"
+    },
+    {
       "path": "packages/@eventual/aws-cdk"
     },
     {
@@ -18,7 +21,7 @@
     },
     {
       "path": "apps/test-app"
-    },    
+    },
     {
       "path": "apps/test-app-runtime"
     }

@@ -1,5 +1,5 @@
 import { Event } from "./events";
 
-export interface WorkflowEvent {
+export interface WorkflowTask {
   events: Event[];
 }

@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
     "app": "npx ts-node src/app.ts",
     "watch": {
         "include": [
@@ -17,3 +18,7 @@
         ]
     }
 }
+=======
+  "app": "ts-node ./src/app.ts"
+}
+>>>>>>> sam/compiler

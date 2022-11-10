@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "main": "lib/index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest --passWithNoTests"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.204.0",
@@ -16,6 +16,7 @@
     "ulid": "^2.3.0"
   },
   "devDependencies": {
+    "@eventual/compiler": "workspace:^",
     "@types/jest": "^29",
     "@types/node": "^16",
     "@types/aws-lambda": "^8.10.108",

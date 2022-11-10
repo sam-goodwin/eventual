@@ -9,11 +9,14 @@
   },
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
+  "files": [
+    "lib"
+  ],
   "scripts": {
     "test": "jest"
   },
-  "dependencies": {},
   "devDependencies": {
+    "@eventual/compiler": "workspace:^",
     "@types/jest": "^29",
     "@types/node": "^16",
     "jest": "^29",
