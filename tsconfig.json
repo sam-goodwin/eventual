@@ -5,6 +5,9 @@
       "path": "packages/@eventual/compiler"
     },
     {
+      "path": "packages/@eventual/compiler/tsconfig.test.json"
+    },
+    {
       "path": "packages/@eventual/core"
     },
     {
