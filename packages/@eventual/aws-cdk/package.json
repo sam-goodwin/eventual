@@ -8,7 +8,8 @@
   },
   "dependencies": {
     "ulid": "^2.3.0",
-    "esbuild": "^0.15.13"
+    "esbuild": "^0.15.13",
+    "@eventual/aws-runtime": "workspace:^"
   },
   "peerDependencies": {
     "aws-cdk-lib": "^2.50.0",
