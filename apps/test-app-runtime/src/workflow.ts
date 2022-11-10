@@ -160,7 +160,7 @@ async function invokeInlineActivity(
         executionId,
         {
           type: "InlineActivityCompletedEvent",
-          counter: activityCount,
+          seq: activityCount,
           // TODO save to execution data client
           result: activityResult,
         }
@@ -178,7 +178,7 @@ async function invokeInlineActivity(
         executionId,
         {
           type: "InlineActivityFailedEvent",
-          counter: activityCount,
+          seq: activityCount,
           // TODO save to execution data client
           error: (err as Error).name,
           message: (err as Error).message,
@@ -232,7 +232,7 @@ async function handleExecutionEvents(executionId: string, events: Event[]) {
           executionId,
           {
             type: "InlineActivityScheduledEvent",
-            counter: command.counter,
+            seq: command.counter,
           }
         );
 
@@ -403,7 +403,7 @@ class EventualClient {
         "InlineActivityScheduledEvent"
       );
 
-      if (first.counter !== this.activityCounter) {
+      if (first.seq !== this.activityCounter) {
         throw new Error("Non Determinism!");
       }
 
