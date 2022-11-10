@@ -1,12 +1,6 @@
 import "jest";
 
-import {
-  scheduleActivity,
-  executeWorkflow,
-  Activity,
-  eventual,
-  activity,
-} from "../src";
+import { scheduleActivity, executeWorkflow, eventual, activity } from "../src";
 import { createFailed, createPending, createResolved } from "../src/result";
 
 const myAction = activity("my-action", async (event: any) => {
@@ -24,7 +18,7 @@ const myAction2 = activity("my-action-2", async (event: any) => {
 });
 
 const handleError = activity("handle-error", async (err: any) => {
-  return event;
+  return err;
 });
 
 const myWorkflow = eventual(async function (event: any) {
@@ -42,6 +36,7 @@ const myWorkflow = eventual(async function (event: any) {
     return [a, all];
   } catch (err) {
     await handleError(err);
+    return [];
   }
 });
 
@@ -117,7 +112,7 @@ test.skip("should return final result", () => {
 
 const parallelWorkflow = eventual(async (event: any) => {
   await Promise.all(
-    event.map(async (item) => {
+    event.map(async (item: any) => {
       await myAction0(item);
     })
   );

@@ -1,7 +1,11 @@
 import esBuild from "esbuild";
-import swc from "@swc/core";
+import swc, {
+  AwaitExpression,
+  CallExpression,
+  FunctionExpression,
+} from "@swc/core";
 import path from "path";
-import { transformModuleWithVisitor } from "./visitor";
+import Visitor from "@swc/core/Visitor";
 
 export const esBuildPlugin: esBuild.Plugin = {
   name: "Eventual",
@@ -11,71 +15,7 @@ export const esBuildPlugin: esBuild.Plugin = {
         syntax: "typescript",
       });
 
-      let inEventualFunction = false;
-
-      function enterEventual<T>(scope: () => T): T {
-        let prevInEventualFunction = inEventualFunction;
-        inEventualFunction = true;
-        const result = scope();
-        inEventualFunction = prevInEventualFunction;
-        return result;
-      }
-
-      const supportedPromiseFunctions: (keyof PromiseConstructor)[] = [
-        "all",
-        "allSettled",
-        "any",
-        "race",
-      ];
-
-      const transformedModule = transformModuleWithVisitor(sourceModule, {
-        visitAwaitExpression(awaitExpr) {
-          if (inEventualFunction) {
-            return {
-              type: "YieldExpression",
-              delegate: false,
-              span: awaitExpr.span,
-              argument: awaitExpr.argument,
-            };
-          }
-          return awaitExpr;
-        },
-        visitCallExpression(call) {
-          if (
-            ((call.callee.type === "Identifier" &&
-              call.callee.value === "eventual" &&
-              call.arguments.length === 1 &&
-              call.arguments[0]?.expression.type ===
-                "ArrowFunctionExpression") ||
-              call.arguments[0]?.expression.type === "FunctionExpression") &&
-            !call.arguments[0].expression.generator
-          ) {
-            const func = call.arguments[0].expression;
-            return enterEventual(() => {
-              if (func.type === "ArrowFunctionExpression") {
-                return this.visitArrowFunctionExpression?.(func) ?? func;
-              } else {
-                return this.visitFunctionExpression?.(func) ?? func;
-              }
-            });
-          } else if (
-            inEventualFunction &&
-            call.callee.type === "MemberExpression" &&
-            call.callee.object.type === "Identifier" &&
-            call.callee.object.value === "Promise" &&
-            call.callee.property.type === "Identifier"
-          ) {
-            if (
-              supportedPromiseFunctions.includes(
-                call.callee.property.value as any
-              )
-            ) {
-              call.callee.object.value = "Activity";
-            }
-          }
-          return call;
-        },
-      });
+      const transformedModule = new EventualVisitor().visitModule(sourceModule);
 
       const { code } = await printModule(transformedModule, args.path);
 
@@ -86,6 +26,83 @@ export const esBuildPlugin: esBuild.Plugin = {
     });
   },
 };
+
+const supportedPromiseFunctions: (keyof PromiseConstructor)[] = [
+  "all",
+  "allSettled",
+  "any",
+  "race",
+];
+
+class EventualVisitor extends Visitor {
+  private inEventualFunction = false;
+
+  public enterEventual<T>(scope: () => T): T {
+    let prevInEventualFunction = this.inEventualFunction;
+    this.inEventualFunction = true;
+    const result = scope();
+    this.inEventualFunction = prevInEventualFunction;
+    return result;
+  }
+
+  public visit(mod: swc.Module): swc.Module;
+  public visit(node: swc.Expression): swc.Expression;
+  public visit(node: swc.Node): swc.Node;
+  public visit(node: swc.Node): swc.Node {
+    return (this[`visit${node.type}` as any as keyof this] as any)(node);
+  }
+
+  public visitAwaitExpression(awaitExpr: AwaitExpression): swc.Expression {
+    if (this.inEventualFunction) {
+      return {
+        type: "YieldExpression",
+        delegate: false,
+        span: awaitExpr.span,
+        argument: awaitExpr.argument,
+      };
+    }
+    return awaitExpr;
+  }
+
+  public visitFunctionExpression(
+    funcExpr: FunctionExpression
+  ): FunctionExpression {
+    if (this.inEventualFunction && funcExpr.generator) {
+      return {
+        ...funcExpr,
+        async: true,
+        generator: false,
+      };
+    }
+    return funcExpr;
+  }
+  public visitCallExpression(call: CallExpression): swc.Expression {
+    if (
+      ((call.callee.type === "Identifier" &&
+        call.callee.value === "eventual" &&
+        call.arguments.length === 1 &&
+        call.arguments[0]?.expression.type === "ArrowFunctionExpression") ||
+        call.arguments[0]?.expression.type === "FunctionExpression") &&
+      !call.arguments[0].expression.generator
+    ) {
+      const func = call.arguments[0].expression;
+      return this.enterEventual(() => this.visit(func));
+    } else if (
+      this.inEventualFunction &&
+      call.callee.type === "MemberExpression" &&
+      call.callee.object.type === "Identifier" &&
+      call.callee.object.value === "Promise" &&
+      call.callee.property.type === "Identifier"
+    ) {
+      if (
+        supportedPromiseFunctions.includes(call.callee.property.value as any)
+      ) {
+        call.callee.object.value = "Activity";
+      }
+    }
+    return call;
+  }
+}
 
 async function printModule(module: swc.Module, filePath: string) {
   return await swc.print(module, {

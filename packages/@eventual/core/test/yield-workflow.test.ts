@@ -3,7 +3,7 @@ import "jest";
 import { scheduleActivity, executeWorkflow, Activity, eventual } from "../src";
 import { createFailed, createPending, createResolved } from "../src/result";
 
-function* myWorkflow(event: any) {
+function* myWorkflow(event: any): any {
   try {
     const a = yield scheduleActivity("my-action", [event]);
 
@@ -17,6 +17,7 @@ function* myWorkflow(event: any) {
     return [a, all];
   } catch (err) {
     yield scheduleActivity("handle-error", [err]);
+    return [];
   }
 }
 

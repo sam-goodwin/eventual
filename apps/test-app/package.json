@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "main": "lib/index.js",
   "scripts": {
-    "test": "jest",
+    "test": "cdk synth",
     "cdk": "cdk"
   },
   "dependencies": {
