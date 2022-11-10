@@ -1,10 +1,39 @@
-export type Activity = Action | AwaitAll;
+import { currentThreadID, Thread } from "./thread";
 
 export const ActivitySymbol = Symbol.for("eventual:Activity");
 
 export enum ActivityKind {
   AwaitAll = 0,
   Action = 1,
+  Thread = 2,
+}
+
+export function isActivity(a: any): a is Activity {
+  return a && typeof a === "object" && ActivitySymbol in a;
+}
+
+export type Activity = Action | AwaitAll | Thread;
+
+export function isAction(a: any): a is Action {
+  return isActivity(a) && a[ActivitySymbol] === ActivityKind.Action;
+}
+
+export interface Action {
+  [ActivitySymbol]: ActivityKind.Action;
+  threadID: number;
+  id: number;
+  name: string;
+  args: any[];
+}
+
+export function isAwaitAll(a: any): a is AwaitAll {
+  return isActivity(a) && a[ActivitySymbol] === ActivityKind.AwaitAll;
+}
+
+export interface AwaitAll {
+  [ActivitySymbol]: ActivityKind.AwaitAll;
+  activities: Activity[];
+  id: number;
 }
 
 export namespace Activity {
@@ -12,63 +41,26 @@ export namespace Activity {
     return {
       [ActivitySymbol]: ActivityKind.AwaitAll,
       activities: tasks,
-      index: nextIndex(),
+      id: nextActivityID(),
     };
   }
-}
-
-export interface Action {
-  [ActivitySymbol]: ActivityKind.Action;
-  index: number;
-  name: string;
-  args: any[];
-}
-
-export interface AwaitAll {
-  [ActivitySymbol]: ActivityKind.AwaitAll;
-  activities: Activity[];
-  index: number;
-}
-
-export function isActivity(a: any): a is Activity {
-  return a && typeof a === "object" && ActivitySymbol in a;
-}
-
-export function isAction(a: any): a is Action {
-  return isActivity(a) && a[ActivitySymbol] === ActivityKind.Action;
-}
-
-export function isAwaitAll(a: any): a is AwaitAll {
-  return isActivity(a) && a[ActivitySymbol] === ActivityKind.AwaitAll;
 }
 
 export function scheduleActivity(
   name: string,
   args: any[],
-  index?: number
+  props?: {
+    id?: number;
+    threadID?: number;
+  }
 ): Action {
-  return registerActivity({
+  return registerActivity<Action>({
     [ActivitySymbol]: ActivityKind.Action,
-    index: index ?? nextIndex(),
+    id: props?.id ?? nextActivityID(),
+    threadID: props?.threadID ?? currentThreadID(),
     name,
     args,
   });
-}
-
-let indexGlobal = 0;
-let activitiesGlobal: Activity[] = [];
-
-export function reset() {
-  resetActivities();
-  resetIndex();
-}
-
-export function resetActivities() {
-  activitiesGlobal = [];
-}
-
-export function getActivities() {
-  return [...activitiesGlobal];
 }
 
 export function registerActivity<A extends Activity>(activity: A): A {
@@ -76,10 +68,21 @@ export function registerActivity<A extends Activity>(activity: A): A {
   return activity;
 }
 
-export function resetIndex() {
-  indexGlobal = 0;
+let activityIDCounter = 0;
+let activitiesGlobal: Activity[] = [];
+
+export function nextActivityID() {
+  return activityIDCounter++;
 }
 
-export function nextIndex() {
-  return indexGlobal++;
+export function resetActivityIDCounter() {
+  activityIDCounter = 0;
+}
+
+export function resetActivities() {
+  activitiesGlobal = [];
+}
+
+export function getSpawnedActivities() {
+  return [...activitiesGlobal];
 }
