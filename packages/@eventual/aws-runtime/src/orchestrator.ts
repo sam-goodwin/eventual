@@ -39,7 +39,7 @@ export function orchestrator(
     // update history from new commands and events
   };
 
-  async function orchestrateExecution(_executionId: string, _events: Event[]) {
+  async function orchestrateExecution(executionId: string, events: Event[]) {
     const history = await workflowRuntimeClient.getHistory(executionId);
     const allEvents = [...history, ...events];
 
