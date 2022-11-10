@@ -10,6 +10,9 @@ exports[`esbuild-plugin 1`] = `
     yield Activity.all(items.map(eventual(function* (item) {
       yield doWork(item);
     })));
+    yield Activity.all(items.map(eventual(function* (item) {
+      yield doWork(item);
+    })));
     yield Activity.allSettled(items.map(eventual(function* (item) {
       yield doWork(item);
     })));

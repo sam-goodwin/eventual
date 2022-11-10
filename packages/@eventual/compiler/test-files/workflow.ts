@@ -10,6 +10,12 @@ export default eventual(async (input) => {
       await doWork(item);
     })
   );
+  // function expression
+  await Promise.all(
+    items.map(async function (item) {
+      await doWork(item);
+    })
+  );
 
   await Promise.allSettled(
     items.map(async (item) => {
