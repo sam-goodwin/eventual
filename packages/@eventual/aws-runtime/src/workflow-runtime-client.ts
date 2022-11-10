@@ -2,6 +2,7 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   GetObjectCommand,
   GetObjectCommandOutput,
+  NoSuchKey,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -18,15 +19,22 @@ export class WorkflowRuntimeClient {
   constructor(private props: WorkflowRuntimeClientProps) {}
 
   async getHistory(executionId: string) {
-    // get current history from s3
-    const historyObject = await this.props.s3.send(
-      new GetObjectCommand({
-        Key: formatExecutionHistoryKey(executionId),
-        Bucket: this.props.executionHistoryBucket,
-      })
-    );
+    try {
+      // get current history from s3
+      const historyObject = await this.props.s3.send(
+        new GetObjectCommand({
+          Key: formatExecutionHistoryKey(executionId),
+          Bucket: this.props.executionHistoryBucket,
+        })
+      );
 
-    return await historyEntryToEvents(historyObject);
+      return await historyEntryToEvents(historyObject);
+    } catch (err) {
+      if (err instanceof NoSuchKey) {
+        return [];
+      }
+      throw err;
+    }
   }
 
   // TODO: etag

@@ -1,4 +1,4 @@
-import { NodejsFunction, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
+import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Runtime, Architecture } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import { Bucket } from "aws-cdk-lib/aws-s3";
@@ -12,6 +12,7 @@ import { RemovalPolicy } from "aws-cdk-lib";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import path from "path";
+import { Policy, PolicyStatement } from "aws-cdk-lib/aws-iam";
 
 export interface WorkflowProps {
   entry: string;
@@ -54,7 +55,6 @@ export class Workflow extends Construct {
       bundling: {
         // todo, make this configurable by the user to not force esm?
         mainFields: ["module", "main"],
-        format: OutputFormat.ESM,
         esbuildArgs: {
           "--conditions": "module",
         },
@@ -62,13 +62,25 @@ export class Workflow extends Construct {
       environment: {
         [ENV_NAMES.TABLE_NAME]: table.tableName,
         [ENV_NAMES.WORKFLOW_QUEUE_URL]: workflowQueue.queueUrl,
-        [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: executionHistoryBucket.bucketArn,
+        [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: executionHistoryBucket.bucketName,
       },
     });
 
     table.grantReadWriteData(workflowFunction);
     workflowQueue.grantSendMessages(workflowFunction);
     executionHistoryBucket.grantReadWrite(workflowFunction);
+
+    const statement = new PolicyStatement({
+      actions: ["lambda:InvokeFunction"],
+      resources: [
+        workflowFunction.functionArn,
+        `${workflowFunction.functionArn}:*`,
+      ],
+    });
+    const policy = new Policy(this, "myLambda_policy", {
+      statements: [statement],
+    });
+    policy.attachToRole(workflowFunction.role!);
 
     workflowFunction.addEventSource(new SqsEventSource(workflowQueue));
 
@@ -86,11 +98,12 @@ export class Workflow extends Construct {
         architecture: Architecture.ARM_64,
         bundling: {
           // https://github.com/aws/aws-cdk/issues/21329#issuecomment-1212336356
+          // cannot output as .mjs file as ulid does not support it.
           mainFields: ["module", "main"],
-          format: OutputFormat.ESM,
           esbuildArgs: {
             "--conditions": "module",
           },
+          metafile: true,
         },
         environment: {
           [ENV_NAMES.TABLE_NAME]: table.tableName,

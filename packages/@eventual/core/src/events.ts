@@ -40,7 +40,7 @@ export interface InlineActivityFailedEvent extends BaseEvent {
 }
 
 export interface WorkflowTaskCompletedEvent extends BaseEvent {
-  type: "WorkflowTaskEvent";
+  type: "WorkflowTaskCompletedEvent";
 }
 
 export interface WorkflowCompletedEvent extends BaseEvent {

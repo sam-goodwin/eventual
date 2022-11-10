@@ -71,8 +71,9 @@ interface WorkflowFunctionHandler {
 // TODO abstract to a workflow function in aws-runtime.
 export const workflow: WorkflowFunctionHandler = async (event) => {
   if ("Records" in event) {
+    console.debug("Handle workflowQueue records");
     // if a polling request
-    if (event.Records.some((r) => !!r.attributes.MessageGroupId)) {
+    if (event.Records.some((r) => !r.attributes.MessageGroupId)) {
       throw new Error("Expected SQS Records to contain fifo message id");
     }
 
@@ -97,6 +98,10 @@ export const workflow: WorkflowFunctionHandler = async (event) => {
       )
     );
   } else {
+    console.debug(
+      "Invoke Inline Activity: " + event.executionId,
+      event.activityCounter
+    );
     // if a direct async invoke
     await invokeInlineActivity(event.executionId, event.activityCounter);
   }
@@ -118,6 +123,8 @@ async function invokeInlineActivity(
 ) {
   const historyEvents = await workflowRuntimeClient.getHistory(executionId);
 
+  console.debug("Hydrating workflow with events: " + historyEvents.length);
+
   try {
     // call activity
     const activityResult = await new Promise<any>(async (resolve, reject) => {
@@ -132,9 +139,18 @@ async function invokeInlineActivity(
         await actualWorkflow(client.input, client);
         // if the activity was found and run, we the next rejects will do nothing.
         // TODO, throw something?
-        reject("Activity Not Found");
-      } catch {
-        reject("Activity Not Found");
+        reject(
+          new Error(
+            "Activity Not Found, the workflow completed without finding the activity."
+          )
+        );
+      } catch (err) {
+        reject(
+          new Error(
+            "Activity Not Found, the workflow found a new command without finding the activity." +
+              (err as Error).message
+          )
+        );
       }
     });
 
@@ -220,18 +236,7 @@ async function handleExecutionEvents(executionId: string, events: Event[]) {
           }
         );
 
-      const request: InlineActivityRequest = {
-        activityCounter: command.counter,
-        executionId: executionId,
-      };
-
-      await lambda.send(
-        new InvokeCommand({
-          FunctionName: workflowFunctionName,
-          InvocationType: InvocationType.Event,
-          Payload: Buffer.from(JSON.stringify(request)),
-        })
-      );
+      // actually start the execution after the history is updated in s3.
 
       newEvents.push(event);
     }
@@ -241,7 +246,7 @@ async function handleExecutionEvents(executionId: string, events: Event[]) {
     await executionHistoryClient.putEvent<WorkflowTaskCompletedEvent>(
       executionId,
       {
-        type: "WorkflowTaskEvent",
+        type: "WorkflowTaskCompletedEvent",
       }
     )
   );
@@ -263,6 +268,24 @@ async function handleExecutionEvents(executionId: string, events: Event[]) {
     ...events,
     ...newEvents,
   ]);
+
+  // send events that need the history to be updated first.
+  for (const command of commands) {
+    if (command.type === "StartLocalActivityCommand") {
+      const request: InlineActivityRequest = {
+        activityCounter: command.counter,
+        executionId: executionId,
+      };
+
+      await lambda.send(
+        new InvokeCommand({
+          FunctionName: workflowFunctionName,
+          InvocationType: InvocationType.Event,
+          Payload: Buffer.from(JSON.stringify(request)),
+        })
+      );
+    }
+  }
 }
 
 interface TestInput {
@@ -301,7 +324,12 @@ class EventualClient {
 
     this._input = first.input;
 
-    this._events = e;
+    // FIXME: short term solution to iterating over important events
+    this._events = e.filter(
+      (e) =>
+        e.type !== "WorkflowTaskStartedEvent" &&
+        e.type !== "WorkflowTaskCompletedEvent"
+    );
   }
 
   get input(): any | undefined {
@@ -309,38 +337,64 @@ class EventualClient {
   }
 
   async activity<T>(handler: () => Promise<T> | T): Promise<T> {
-    if (this._events.length === 0) {
-      if (this.runTypeConfig.type === "ProgressWorkflow") {
-        if (this.emit) {
-          this.runTypeConfig.commandSink({
-            type: "StartLocalActivityCommand",
-            counter: this.activityCounter++,
-          });
+    console.debug("Enter activity: " + this.activityCounter);
+    console.debug("Events: " + this._events.map((e) => e.type).join(","));
+    if (
+      this._events.length === 0 &&
+      this.runTypeConfig.type === "ProgressWorkflow"
+    ) {
+      console.debug("No events found, create command or ignore");
+      if (this.emit) {
+        console.debug("create command");
+        this.runTypeConfig.commandSink({
+          type: "StartLocalActivityCommand",
+          counter: this.activityCounter++,
+        });
 
-          // TODO - support concurrent, turn off emit once events are consumed.
-          this.emit = false;
-          return Promise.reject(new Error("WAITING"));
+        // TODO - support concurrent, turn off emit once events are consumed.
+        this.emit = false;
+        return Promise.reject(new Error("WAITING"));
 
-          // return new Promise((_, reject) => () => {
-          //   this.rejects.push(reject as typeof Promise["reject"]);
-          // }) as Promise<T>;
-        } else {
-          return Promise.reject(new Error("SKIP"));
-        }
+        // return new Promise((_, reject) => () => {
+        //   this.rejects.push(reject as typeof Promise["reject"]);
+        // }) as Promise<T>;
       } else {
-        if (this.activityCounter === this.runTypeConfig.activityCount) {
-          try {
-            const result = await handler();
-            this.runTypeConfig.activityResultResolve(result);
-          } catch (err) {
-            this.runTypeConfig.activityResultReject(err);
-          }
-          return Promise.reject(new Error("DONE"));
-        } else {
-          return Promise.reject(new Error("SKIP"));
+        console.debug("ignore");
+        return Promise.reject(new Error("SKIP"));
+      }
+    } else if (
+      this._events.length === 1 &&
+      this.runTypeConfig.type === "InvokeActivity"
+    ) {
+      console.debug("one event found, try to invoke");
+      const [first] = this._events;
+
+      // expect the last event to be scheduling this activity
+      assertEventType<InlineActivityScheduledEvent>(
+        first,
+        "InlineActivityScheduledEvent"
+      );
+
+      if (this.activityCounter === this.runTypeConfig.activityCount) {
+        try {
+          const result = await handler();
+          console.debug("invoked with result" + result);
+          this.runTypeConfig.activityResultResolve(result);
+        } catch (err) {
+          console.debug("invoked with error");
+          this.runTypeConfig.activityResultReject(err);
         }
+        return Promise.reject(new Error("DONE"));
+      } else {
+        console.debug(
+          "counters do not match",
+          this.activity,
+          this.runTypeConfig.activityCount
+        );
+        return Promise.reject(new Error("SKIP"));
       }
     } else {
+      console.debug("event found, resolve");
       const [first, second, ...rest] = this._events;
       this._events = rest; // TODO, abstract this away and support parallel cases.
 
@@ -352,6 +406,8 @@ class EventualClient {
       if (first.counter !== this.activityCounter) {
         throw new Error("Non Determinism!");
       }
+
+      // TODO: handle error
 
       assertEventType<InlineActivityCompletedEvent>(
         second,
