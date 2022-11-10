@@ -49,9 +49,7 @@ class OuterVisitor extends Visitor {
         call.arguments[0]?.expression.type === "FunctionExpression") &&
       !call.arguments[0].expression.generator
     ) {
-      const func = call.arguments[0].expression;
-      call.arguments[0].expression = new InnerVisitor().visitExpression(func);
-      return call;
+      return new InnerVisitor().visitExpression(call.arguments[0].expression);
     }
     return super.visitCallExpression(call);
   }

@@ -5,12 +5,21 @@ exports[`esbuild-plugin 1`] = `
 (() => {
   // test-files/workflow.ts
   var doWork = activity("doWork", async (input) => input);
-  var workflow_default = eventual(eventual(function* (input) {
+  var workflow_default = eventual(function* (input) {
     const items = yield doWork(input);
-    yield items.map(eventual(function* (item) {
+    yield Activity.all(items.map(eventual(function* (item) {
       yield doWork(item);
-    }));
-  }));
+    })));
+    yield Activity.allSettled(items.map(eventual(function* (item) {
+      yield doWork(item);
+    })));
+    yield Activity.any(items.map(eventual(function* (item) {
+      yield doWork(item);
+    })));
+    yield Activity.race(items.map(eventual(function* (item) {
+      yield doWork(item);
+    })));
+  });
 })();
 "
 `;
