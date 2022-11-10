@@ -2,11 +2,20 @@ import {
   Activity,
   getActivities,
   isAction,
+  isActivity,
   isAwaitAll,
   reset,
   resetActivities,
 } from "./activity";
-import { Result, isResolved, isFailed, isPending } from "./result";
+import {
+  Result,
+  isResolved,
+  isFailed,
+  isPending,
+  createFailed,
+  createResolved,
+  Failed,
+} from "./result";
 import { assertNever } from "./util";
 
 export class DeterminismError extends Error {}
@@ -22,18 +31,36 @@ export function executeWorkflow(
     const command = yieldResult.value;
 
     if (yieldResult.done) {
+      const dangling = getActivities();
+      if (dangling.length > 0) {
+        debugger;
+      }
+      if (isActivity(command)) {
+        // this is when the Promise is the final returned value
+        if (command.index in state) {
+        }
+      } else {
+        return createResolved(command);
+      }
+    } else {
+      const outcome = step(command);
+      if (outcome) {
+        return outcome;
+      }
     }
+  }
 
-    function next(value: any) {
-      resetActivities();
-      return generator.next(value);
-    }
+  function next(value: any) {
+    resetActivities();
+    return generator.next(value);
+  }
 
-    function fail(err: any) {
-      resetActivities();
-      return generator.throw(err);
-    }
+  function fail(err: any) {
+    resetActivities();
+    return generator.throw(err);
+  }
 
+  function step(command: Activity): Failed | Activity[] | void {
     if (isAction(command)) {
       if (command.index in state) {
         const result = state[command.index]!;
@@ -44,9 +71,7 @@ export function executeWorkflow(
             yieldResult = fail(result.error);
           } catch (error) {
             console.error(`the workflow crashed`);
-            return {
-              error,
-            };
+            return createFailed(error);
           }
         } else if (isPending(result)) {
           // we're still waiting for this value
