@@ -57,7 +57,7 @@ class EventualVisitor extends Visitor {
         type: "YieldExpression",
         delegate: false,
         span: awaitExpr.span,
-        argument: awaitExpr.argument,
+        argument: this.visitExpression(awaitExpr.argument),
       };
     }
     return awaitExpr;
@@ -71,6 +71,10 @@ class EventualVisitor extends Visitor {
         ...funcExpr,
         async: true,
         generator: false,
+        body: funcExpr.body
+          ? this.visitBlockStatement(funcExpr.body)
+          : undefined,
+        params: funcExpr.params.map((param) => this.visitParameter(param)),
       };
     }
     return funcExpr;
@@ -87,7 +91,7 @@ class EventualVisitor extends Visitor {
         generator: true,
         params: funcExpr.params.map((pat) => ({
           type: "Parameter",
-          pat,
+          pat: this.visitPattern(pat),
           span:
             (<any>pat).span ??
             <Span>{
