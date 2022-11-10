@@ -2,7 +2,14 @@ import path from "path";
 
 import { execSync } from "child_process";
 import { Construct } from "constructs";
-import { aws_dynamodb, aws_lambda, aws_sqs } from "aws-cdk-lib";
+import {
+  aws_dynamodb,
+  aws_lambda,
+  aws_lambda_event_sources,
+  aws_s3,
+  aws_sqs,
+  RemovalPolicy,
+} from "aws-cdk-lib";
 import { Architecture, Code, Runtime } from "aws-cdk-lib/aws-lambda";
 import { DeduplicationScope, FifoThroughputLimit } from "aws-cdk-lib/aws-sqs";
 
@@ -11,6 +18,11 @@ export interface WorkflowProps {
 }
 
 export class Workflow extends Construct {
+  /**
+   * A S3 Bucket storing all of the history for workflows.
+   */
+  readonly history: aws_s3.IBucket;
+
   /**
    * A FIFO SQS Queue to store a {@link Workflow}'s event loop.
    */
@@ -34,6 +46,11 @@ export class Workflow extends Construct {
   constructor(scope: Construct, id: string, props: WorkflowProps) {
     super(scope, id);
 
+    this.history = new aws_s3.Bucket(this, "History", {
+      // TODO: remove after testing
+      removalPolicy: RemovalPolicy.DESTROY,
+    });
+
     this.eventLoop = new aws_sqs.Queue(this, "EventLoop", {
       fifo: true,
       fifoThroughputLimit: FifoThroughputLimit.PER_MESSAGE_GROUP_ID,
@@ -46,6 +63,8 @@ export class Workflow extends Construct {
         name: "pk",
         type: aws_dynamodb.AttributeType.STRING,
       },
+      // TODO: remove after testing
+      removalPolicy: RemovalPolicy.DESTROY,
     });
 
     const outDir = path.join(".eventual", this.node.addr);
@@ -56,14 +75,6 @@ export class Workflow extends Construct {
       )} ${outDir} ${props.entry}`
     );
 
-    this.orchestrator = new aws_lambda.Function(this, "Orchestrator", {
-      architecture: Architecture.ARM_64,
-      code: Code.fromAsset(outDir),
-      handler: "orchestrator.default",
-      runtime: Runtime.NODEJS_16_X,
-      memorySize: 512,
-    });
-
     this.worker = new aws_lambda.Function(this, "Worker", {
       architecture: Architecture.ARM_64,
       code: Code.fromAsset(outDir),
@@ -71,5 +82,35 @@ export class Workflow extends Construct {
       runtime: Runtime.NODEJS_16_X,
       memorySize: 512,
     });
+
+    this.orchestrator = new aws_lambda.Function(this, "Orchestrator", {
+      architecture: Architecture.ARM_64,
+      code: Code.fromAsset(outDir),
+      handler: "orchestrator.default",
+      runtime: Runtime.NODEJS_16_X,
+      memorySize: 512,
+      environment: {
+        WORKER_ARN: this.worker.functionArn,
+      },
+    });
+
+    this.orchestrator.addEventSource(
+      new aws_lambda_event_sources.SqsEventSource(this.eventLoop, {
+        batchSize: 10,
+        reportBatchItemFailures: true,
+      })
+    );
+
+    // the orchestrator will accumulate history state in S3
+    this.history.grantReadWrite(this.orchestrator);
+
+    // the worker emits events back to the orchestrator's event loop
+    this.eventLoop.grantSendMessages(this.worker);
+
+    // the orchestrator asynchronously invokes activities
+    this.worker.grantInvoke(this.orchestrator);
+
+    // the worker will issue an UpdateItem command to lock
+    this.locks.grantWriteData(this.worker);
   }
 }
