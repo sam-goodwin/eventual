@@ -1,0 +1,28 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`esbuild-plugin 1`] = `
+""use strict";
+(() => {
+  // test-files/workflow.ts
+  var doWork = activity("doWork", async (input) => input);
+  var workflow_default = eventual(function* (input) {
+    const items = yield doWork(input);
+    yield Activity.all(items.map(eventual(function* (item) {
+      yield doWork(item);
+    })));
+    yield Activity.all(items.map(eventual(function* (item) {
+      yield doWork(item);
+    })));
+    yield Activity.allSettled(items.map(eventual(function* (item) {
+      yield doWork(item);
+    })));
+    yield Activity.any(items.map(eventual(function* (item) {
+      yield doWork(item);
+    })));
+    yield Activity.race(items.map(eventual(function* (item) {
+      yield doWork(item);
+    })));
+  });
+})();
+"
+`;
