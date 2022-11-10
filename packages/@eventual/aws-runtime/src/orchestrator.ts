@@ -5,7 +5,7 @@ import type lambda from "aws-lambda";
 // import { executionHistoryBucket, tableName } from "./env";
 // import { ExecutionHistoryClient } from "./execution-history-client";
 // import { WorkflowRuntimeClient } from "./workflow-runtime-client";
-import { Event } from "@eventual/core";
+import { Event, executeWorkflow } from "@eventual/core";
 
 // const s3 = new S3Client({});
 // const dynamo = new DynamoDBClient({});
@@ -26,10 +26,11 @@ import { Event } from "@eventual/core";
 /**
  * Creates an entrypoint function for orchestrating a workflow.
  */
-export async function orchestrator(
-  _program: (input: any) => Generator<any, any, any>
+export function orchestrator(
+  program: (input: any) => Generator<any, any, any>
 ) {
   return async (_event: lambda.SQSEvent) => {
+    executeWorkflow(program(null), { threads: [] });
     // batch by execution id
     // for each execution id
     // load history

@@ -1,8 +1,8 @@
 {
-  "name": "evenetual-monorepo",
+  "name": "eventual-monorepo",
   "version": "0.0.0",
   "private": true,
-  "repository": "git@github.com:functionless/gluestik",
+  "repository": "git@github.com:functionless/eventual",
   "author": "Functionless Corp.",
   "license": "Apache-2.0",
   "packageManager": "pnpm@7.13.5",
@@ -38,6 +38,17 @@
     ]
   },
   "jest": {
-    "preset": "ts-jest"
+    "roots": [
+      "<rootDir>"
+    ],
+    "preset": "ts-jest",
+    "globals": {
+      "ts-jest": {
+        "useESM": true
+      }
+    },
+    "moduleNameMapper": {
+      "^@eventual/injected/workflow": "<rootDir>/packages/@eventual/aws-runtime/lib/esm/injected/workflow"
+    }
   }
 }

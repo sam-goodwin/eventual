@@ -3,6 +3,7 @@ import { constants } from "fs";
 import path from "path";
 import esbuild from "esbuild";
 import { eventualESPlugin } from "./esbuild-plugin";
+import { esbuildPluginAliasPath } from "esbuild-plugin-alias-path";
 
 main().catch((err) => {
   console.error(err);
@@ -29,9 +30,19 @@ export default orchestrator(app);
     esbuild.build({
       mainFields: ["module", "main"],
       sourcemap: true,
-      plugins: [eventualESPlugin],
+      plugins: [
+        esbuildPluginAliasPath({
+          alias: { "@eventual/injected/workflow": entry },
+        }),
+        eventualESPlugin,
+      ],
       bundle: true,
-      entryPoints: [entry],
+      entryPoints: [
+        path.resolve(
+          __dirname,
+          "../node_modules/@eventual/aws-runtime/lib/esm/entry/orchestrator.js"
+        ),
+      ],
       outfile: path.join(outDir, "app.js"),
     }),
   ]);

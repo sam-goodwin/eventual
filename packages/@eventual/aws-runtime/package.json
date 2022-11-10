@@ -35,9 +35,15 @@
     "typescript": "^4.8.4"
   },
   "jest": {
+    "roots": [
+      "<rootDir>/src/"
+    ],
     "preset": "ts-jest",
     "transform": {
       "^.+\\.(t|j)sx?$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "@eventual/injected/(.*)": "<rootDir>/src/injected/$1"
     }
   },
   "publishConfig": {
