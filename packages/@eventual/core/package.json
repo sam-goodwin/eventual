@@ -1,8 +1,14 @@
 {
   "name": "@eventual/core",
   "version": "0.0.0",
-  "main": "lib/index.js",
-  "types:": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./lib/esm/index.js",
+      "require": "./lib/cjs/index.js"
+    }
+  },
+  "main": "./lib/cjs/index.js",
+  "module": "./lib/esm/index.js",
   "scripts": {
     "test": "jest"
   },

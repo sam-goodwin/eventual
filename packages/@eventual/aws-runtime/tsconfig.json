@@ -2,7 +2,7 @@
   "extends": "../../../tsconfig-base",
   "compilerOptions": {
     "module": "NodeNext",
-    "outDir": "lib",
+    "outDir": "lib/esm",
     "declaration": true,
     "inlineSourceMap": true,
     "rootDir": "src",
@@ -10,5 +10,6 @@
     "allowJs": true
   },
   "include": ["src"],
-  "exclude": ["lib", "node_modules"]
+  "exclude": ["lib", "node_modules"],
+  "references": [{"path": "../core"}]
 }

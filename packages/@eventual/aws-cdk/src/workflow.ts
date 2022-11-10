@@ -1,11 +1,17 @@
-import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
+import { NodejsFunction, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Runtime, Architecture } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import { Bucket } from "aws-cdk-lib/aws-s3";
-import { FifoThroughputLimit, Queue } from "aws-cdk-lib/aws-sqs";
+import {
+  DeduplicationScope,
+  FifoThroughputLimit,
+  Queue,
+} from "aws-cdk-lib/aws-sqs";
 import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
 import { RemovalPolicy } from "aws-cdk-lib";
 import { ENV_NAMES } from "@eventual/aws-runtime";
+import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
+import path from "path";
 
 export interface WorkflowProps {
   entry: string;
@@ -23,6 +29,7 @@ export class Workflow extends Construct {
     const workflowQueue = new Queue(this, "workflowQueue", {
       fifo: true,
       fifoThroughputLimit: FifoThroughputLimit.PER_MESSAGE_GROUP_ID,
+      deduplicationScope: DeduplicationScope.MESSAGE_GROUP,
     });
 
     // Table - History, Execution, ExecutionData
@@ -34,12 +41,14 @@ export class Workflow extends Construct {
     });
 
     // workflow lambda
-    new NodejsFunction(this, "workflowFunction", {
+    // TODO: minify for production
+    const workflowFunction = new NodejsFunction(this, "workflowFunction", {
       entry: props.entry,
       runtime: Runtime.NODEJS_16_X,
       architecture: Architecture.ARM_64,
       bundling: {
         mainFields: ["module", "main"],
+        format: OutputFormat.ESM,
       },
       environment: {
         [ENV_NAMES.TABLE_NAME]: table.tableName,
@@ -47,6 +56,37 @@ export class Workflow extends Construct {
         [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: executionHistoryBucket.bucketArn,
       },
     });
+
+    table.grantReadWriteData(workflowFunction);
+    workflowQueue.grantSendMessages(workflowFunction);
+    executionHistoryBucket.grantReadWrite(workflowFunction);
+
+    workflowFunction.addEventSource(new SqsEventSource(workflowQueue));
+
+    const startWorkflowFunction = new NodejsFunction(
+      this,
+      "startWorkflowFunction",
+      {
+        // cannot require.resolve a esm path
+        entry: path.resolve(
+          __dirname,
+          "../node_modules/@eventual/aws-runtime/lib/esm/functions/start-workflow.js"
+        ),
+        runtime: Runtime.NODEJS_16_X,
+        architecture: Architecture.ARM_64,
+        bundling: {
+          mainFields: ["module", "main"],
+          format: OutputFormat.ESM,
+        },
+        environment: {
+          [ENV_NAMES.TABLE_NAME]: table.tableName,
+          [ENV_NAMES.WORKFLOW_QUEUE_URL]: workflowQueue.queueUrl,
+        },
+      }
+    );
+
+    table.grantReadWriteData(startWorkflowFunction);
+    workflowQueue.grantSendMessages(startWorkflowFunction);
 
     // TODO - timers and retry
   }

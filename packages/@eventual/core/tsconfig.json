@@ -1,7 +1,8 @@
 {
   "extends": "../../../tsconfig-base",
   "compilerOptions": {
-    "outDir": "lib",
+    "module": "NodeNext",
+    "outDir": "lib/esm",
     "declaration": true,
     "inlineSourceMap": true,
     "rootDir": "src",

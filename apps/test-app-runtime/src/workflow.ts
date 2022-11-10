@@ -36,6 +36,7 @@ const s3 = new S3Client({});
 const dynamo = new DynamoDBClient({});
 const lambda = new LambdaClient({});
 const sqs = new SQSClient({});
+
 const workflowRuntimeClient = new WorkflowRuntimeClient({
   dynamo,
   s3,
@@ -50,6 +51,9 @@ const executionHistoryClient = new ExecutionHistoryClient({
 const workflowClient = new WorkflowClient({
   sqs,
   workflowQueueUrl: workflowQueueUrl ?? "",
+  executionHistory: executionHistoryClient,
+  dynamo,
+  tableName: tableName ?? "",
 });
 
 interface InlineActivityRequest {
