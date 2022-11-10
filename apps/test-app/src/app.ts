@@ -7,4 +7,5 @@ const stack = new Stack(app, "test-eventual");
 
 new Workflow(stack, "workflow1", {
   entry: require.resolve("test-app-runtime/lib/workflow.js"),
+  handler: "workflow",
 });

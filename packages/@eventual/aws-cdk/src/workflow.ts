@@ -15,6 +15,10 @@ import path from "path";
 
 export interface WorkflowProps {
   entry: string;
+  /**
+   * default: handler
+   */
+  handler?: string;
 }
 
 // placeholder
@@ -44,11 +48,16 @@ export class Workflow extends Construct {
     // TODO: minify for production
     const workflowFunction = new NodejsFunction(this, "workflowFunction", {
       entry: props.entry,
+      handler: props.handler,
       runtime: Runtime.NODEJS_16_X,
       architecture: Architecture.ARM_64,
       bundling: {
+        // todo, make this configurable by the user to not force esm?
         mainFields: ["module", "main"],
         format: OutputFormat.ESM,
+        esbuildArgs: {
+          "--conditions": "module",
+        },
       },
       environment: {
         [ENV_NAMES.TABLE_NAME]: table.tableName,
@@ -72,11 +81,16 @@ export class Workflow extends Construct {
           __dirname,
           "../node_modules/@eventual/aws-runtime/lib/esm/functions/start-workflow.js"
         ),
+        handler: "handle",
         runtime: Runtime.NODEJS_16_X,
         architecture: Architecture.ARM_64,
         bundling: {
+          // https://github.com/aws/aws-cdk/issues/21329#issuecomment-1212336356
           mainFields: ["module", "main"],
           format: OutputFormat.ESM,
+          esbuildArgs: {
+            "--conditions": "module",
+          },
         },
         environment: {
           [ENV_NAMES.TABLE_NAME]: table.tableName,
