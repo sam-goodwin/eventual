@@ -1,19 +1,20 @@
 import esBuild from "esbuild";
 import {
+  ArrowFunctionExpression,
   AwaitExpression,
   CallExpression,
   Expression,
   FunctionExpression,
   Module,
-  Node,
   parseFile,
   print,
+  Span,
 } from "@swc/core";
 import path from "path";
 import Visitor from "@swc/core/Visitor";
 
 export const eventualESPlugin: esBuild.Plugin = {
-  name: "Eventual",
+  name: "eventual",
   setup(build) {
     build.onLoad({ filter: /\.ts/g }, async (args) => {
       const sourceModule = await parseFile(args.path, {
@@ -50,13 +51,6 @@ class EventualVisitor extends Visitor {
     return result;
   }
 
-  public visit(mod: Module): Module;
-  public visit(node: Expression): Expression;
-  public visit(node: Node): Node;
-  public visit(node: Node): Node {
-    return (this[`visit${node.type}` as any as keyof this] as any)(node);
-  }
-
   public visitAwaitExpression(awaitExpr: AwaitExpression): Expression {
     if (this.inEventualFunction) {
       return {
@@ -72,7 +66,7 @@ class EventualVisitor extends Visitor {
   public visitFunctionExpression(
     funcExpr: FunctionExpression
   ): FunctionExpression {
-    if (this.inEventualFunction && funcExpr.generator) {
+    if (this.inEventualFunction) {
       return {
         ...funcExpr,
         async: true,
@@ -81,17 +75,59 @@ class EventualVisitor extends Visitor {
     }
     return funcExpr;
   }
+
+  public visitArrowFunctionExpression(
+    funcExpr: ArrowFunctionExpression
+  ): ArrowFunctionExpression | FunctionExpression {
+    if (this.inEventualFunction) {
+      return {
+        ...funcExpr,
+        type: "FunctionExpression",
+        async: false,
+        generator: true,
+        params: funcExpr.params.map((pat) => ({
+          type: "Parameter",
+          pat,
+          span:
+            (<any>pat).span ??
+            <Span>{
+              ctxt: 0,
+              end: 0,
+              start: 0,
+            },
+        })),
+        body:
+          funcExpr.body.type === "BlockStatement"
+            ? this.visitBlockStatement(funcExpr.body)
+            : {
+                type: "BlockStatement",
+                span: funcExpr.span,
+                stmts: [
+                  {
+                    type: "ExpressionStatement",
+                    span: funcExpr.span,
+                    expression: this.visitExpression(funcExpr),
+                  },
+                ],
+              },
+      };
+    }
+    return funcExpr;
+  }
+
   public visitCallExpression(call: CallExpression): Expression {
     if (
-      ((call.callee.type === "Identifier" &&
-        call.callee.value === "eventual" &&
+      ((isEventualCallee(call.callee) &&
         call.arguments.length === 1 &&
         call.arguments[0]?.expression.type === "ArrowFunctionExpression") ||
         call.arguments[0]?.expression.type === "FunctionExpression") &&
       !call.arguments[0].expression.generator
     ) {
       const func = call.arguments[0].expression;
-      return this.enterEventual(() => this.visit(func));
+      call.arguments[0].expression = this.enterEventual(() => {
+        return this.visitExpression(func);
+      });
+      return call;
     } else if (
       this.inEventualFunction &&
       call.callee.type === "MemberExpression" &&
@@ -105,8 +141,17 @@ class EventualVisitor extends Visitor {
         call.callee.object.value = "Activity";
       }
     }
-    return call;
+    return super.visitCallExpression(call);
   }
+}
+
+function isEventualCallee(callee: CallExpression["callee"]) {
+  return (
+    (callee.type === "Identifier" && callee.value === "eventual") ||
+    (callee.type === "MemberExpression" &&
+      callee.property.type === "Identifier" &&
+      callee.property.value === "eventual")
+  );
 }
 
 async function printModule(module: Module, filePath: string) {
