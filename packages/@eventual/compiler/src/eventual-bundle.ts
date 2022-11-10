@@ -17,14 +17,24 @@ async function main() {
 
   await prepareOutDir(outDir);
 
-  await esbuild.build({
-    mainFields: ["module", "main"],
-    sourcemap: true,
-    plugins: [eventualESPlugin],
-    bundle: true,
-    entryPoints: [entry],
-    outfile: path.join(outDir, "app.js"),
-  });
+  await Promise.all([
+    fs.writeFile(
+      path.join(outDir, "orchestrator.js"),
+      `import app from "./app";
+import { orchestrator } from "@eventual/aws-runtime";
+
+export default orchestrator(app);
+`
+    ),
+    esbuild.build({
+      mainFields: ["module", "main"],
+      sourcemap: true,
+      plugins: [eventualESPlugin],
+      bundle: true,
+      entryPoints: [entry],
+      outfile: path.join(outDir, "app.js"),
+    }),
+  ]);
 }
 
 async function prepareOutDir(outDir: string) {
