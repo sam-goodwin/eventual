@@ -10,7 +10,5 @@
   },
   "include": ["src"],
   "exclude": ["lib", "node_modules"],
-  "references": [
-    {"path": "../core" }
-  ]
+  "references": [{ "path": "../core/tsconfig.cjs.json" }]
 }

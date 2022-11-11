@@ -7,11 +7,11 @@ import {
   getCallableActionNames,
 } from "@eventual/core";
 import { Handler } from "aws-lambda";
-import { ActionWorkerRequest } from "../action";
-import { activityLockTableName, tableName, workflowQueueUrl } from "../env";
-import { ExecutionHistoryClient } from "../clients/execution-history-client";
-import { WorkflowClient } from "../clients/workflow-client";
-import { ActivityRuntimeClient } from "../clients/activity-runtime-client";
+import { ActionWorkerRequest } from "../action.js";
+import { activityLockTableName, tableName, workflowQueueUrl } from "../env.js";
+import { ExecutionHistoryClient } from "../clients/execution-history-client.js";
+import { WorkflowClient } from "../clients/workflow-client.js";
+import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
 
 const dynamo = new DynamoDBClient({ region: process.env.AWS_REGION });
 

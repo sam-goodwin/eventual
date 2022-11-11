@@ -3,7 +3,7 @@ import {
   ActivitySymbol,
   isActivity,
   registerActivity,
-} from "./activity";
+} from "./activity.js";
 
 let threadIDCounter = 0;
 

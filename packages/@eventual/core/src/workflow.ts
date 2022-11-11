@@ -6,8 +6,8 @@ import {
   isAwaitAll,
   resetActivities,
   resetActivityIDCounter,
-} from "./activity";
-import { DeterminismError } from "./error";
+} from "./activity.js";
+import { DeterminismError } from "./error.js";
 import {
   Result,
   isResolved,
@@ -16,15 +16,15 @@ import {
   createFailed,
   createResolved,
   Failed,
-} from "./result";
-import { State } from "./state";
+} from "./result.js";
+import { State } from "./state.js";
 import {
   isThread,
   resetCurrentThreadID,
   resetThreadIDCounter,
   setCurrentThreadID,
-} from "./thread";
-import { assertNever, not } from "./util";
+} from "./thread.js";
+import { assertNever, not } from "./util.js";
 
 function reset() {
   resetActivities();

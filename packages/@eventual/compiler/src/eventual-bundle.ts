@@ -12,57 +12,78 @@ main().catch((err) => {
 
 async function main() {
   const [, , outDir, entry] = process.argv;
+
+  console.log("hi");
+
   if (!(outDir && entry)) {
     throw new Error(`Usage: eventual-build <out-dir> <entry-point>`);
   }
 
   await prepareOutDir(outDir);
 
+  console.log("hi");
+
   await Promise.all([
-    esbuild.build({
-      mainFields: ["module", "main"],
-      sourcemap: true,
-      plugins: [
-        esbuildPluginAliasPath({
-          alias: { "@eventual/injected/workflow": entry },
-        }),
-        eventualESPlugin,
-      ],
-      conditions: ["module", "import", "require"],
-      target: "node16",
-      platform: "node",
-      format: "cjs",
-      bundle: true,
-      entryPoints: [
-        path.resolve(
-          __dirname,
-          "../node_modules/@eventual/aws-runtime/lib/esm/entry/orchestrator.js"
-        ),
-      ],
-      outfile: path.join(outDir, "orchestrator/index.js"),
-    }),
-    esbuild.build({
-      mainFields: ["module", "main"],
-      sourcemap: true,
-      plugins: [
-        esbuildPluginAliasPath({
-          alias: { "@eventual/injected/actions": entry },
-        }),
-      ],
-      conditions: ["module", "import", "require"],
-      target: "node16",
-      platform: "node",
-      format: "cjs",
-      bundle: true,
-      entryPoints: [
-        path.resolve(
-          __dirname,
-          "../node_modules/@eventual/aws-runtime/lib/esm/entry/action-worker.js"
-        ),
-      ],
-      outfile: path.join(outDir, "action-worker/index.js"),
-    }),
+    esbuild
+      .build({
+        mainFields: ["module", "main"],
+        sourcemap: true,
+        plugins: [
+          esbuildPluginAliasPath({
+            alias: { "@eventual/injected/workflow.js": entry },
+          }),
+          eventualESPlugin,
+        ],
+        conditions: ["module", "import", "require"],
+        platform: "node",
+        format: "cjs",
+        metafile: true,
+        bundle: true,
+        entryPoints: [
+          path.resolve(
+            __dirname,
+            "../node_modules/@eventual/aws-runtime/lib/esm/entry/orchestrator.js"
+          ),
+        ],
+        outfile: path.join(outDir, "orchestrator/index.js"),
+      })
+      .then((r) =>
+        fs.writeFile(
+          path.join(outDir, "orchestrator/meta.json"),
+          JSON.stringify(r.metafile)
+        )
+      ),
+    esbuild
+      .build({
+        mainFields: ["module", "main"],
+        sourcemap: true,
+        plugins: [
+          esbuildPluginAliasPath({
+            alias: { "@eventual/injected/actions.js": entry },
+          }),
+        ],
+        conditions: ["module", "import", "require"],
+        platform: "node",
+        format: "cjs",
+        metafile: true,
+        bundle: true,
+        entryPoints: [
+          path.resolve(
+            __dirname,
+            "../node_modules/@eventual/aws-runtime/lib/esm/entry/action-worker.js"
+          ),
+        ],
+        outfile: path.join(outDir, "action-worker/index.js"),
+      })
+      .then((r) =>
+        fs.writeFile(
+          path.join(outDir, "action-worker/meta.json"),
+          JSON.stringify(r.metafile)
+        )
+      ),
   ]);
+
+  console.log("hi");
 }
 
 async function prepareOutDir(outDir: string) {

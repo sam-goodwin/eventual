@@ -12,8 +12,8 @@ import {
   InvocationType,
 } from "@aws-sdk/client-lambda";
 import { Action, Event, ExecutionStatus } from "@eventual/core";
-import { ExecutionRecord } from "./workflow-client";
-import { ActionWorkerRequest } from "../action";
+import { ExecutionRecord } from "./workflow-client.js";
+import { ActionWorkerRequest } from "../action.js";
 
 export interface WorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;

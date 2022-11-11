@@ -1,4 +1,4 @@
-import { currentThreadID, Thread } from "./thread";
+import { currentThreadID, Thread } from "./thread.js";
 
 export const callableActions: Record<string, Function> = {};
 

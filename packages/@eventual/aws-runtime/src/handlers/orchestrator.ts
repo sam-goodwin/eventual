@@ -4,17 +4,16 @@ import {
   actionWorkerFunctionName,
   executionHistoryBucket,
   tableName,
-} from "../env";
+} from "../env.js";
 import {
   createEvent,
   ExecutionHistoryClient,
-} from "../clients/execution-history-client";
-import { WorkflowRuntimeClient } from "../clients/workflow-runtime-client";
+} from "../clients/execution-history-client.js";
+import { WorkflowRuntimeClient } from "../clients/workflow-runtime-client.js";
 import {
   Activity,
   Event,
   executeWorkflow,
-  getSpawnedActivities,
   isAction,
   isFailed,
   isResolved,
@@ -27,7 +26,7 @@ import {
   WorkflowTaskCompletedEvent,
   WorkflowTaskStartedEvent,
 } from "@eventual/core";
-import { SQSWorkflowTaskMessage } from "../clients/workflow-client";
+import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
 import { SQSHandler, SQSRecord } from "aws-lambda";
 import { LambdaClient } from "@aws-sdk/client-lambda";
 
@@ -133,16 +132,13 @@ export function orchestrator(program: (input: any) => Thread): SQSHandler {
     const result = executeWorkflow(program(startEvent.input).thread, state);
 
     console.debug("Workflow terminated with: " + JSON.stringify(result));
-    // FIXME: this won't work if multiple workflows run in parallel
-    const danglingActivities = getSpawnedActivities();
 
-    const allCommands = [
-      ...danglingActivities,
-      ...(Array.isArray(result) ? result : []),
-    ];
+    const newCommands = Array.isArray(result) ? result : [];
+
+    console.info(`Found ${newCommands.length} new commands.`);
 
     const { events: commandEvents, runDeferredCommands } =
-      processCommands(allCommands);
+      processCommands(newCommands);
 
     newEvents.push(...commandEvents);
 

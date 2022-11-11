@@ -1,4 +1,4 @@
-import { Event } from "./events";
+import { Event } from "./events.js";
 
 /**
  * A task which delivers new {@link Event}s to a workflow execution.

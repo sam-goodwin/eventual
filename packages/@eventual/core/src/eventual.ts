@@ -1,4 +1,4 @@
-import { scheduleThread, Thread } from "./thread";
+import { scheduleThread, Thread } from "./thread.js";
 
 export function eventual<F extends (...args: any[]) => Promise<any>>(
   func: F

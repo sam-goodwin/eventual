@@ -1,11 +1,11 @@
-import { createFailed, createPending, createResolved, Result } from "./result";
+import { createFailed, createPending, createResolved, Result } from "./result.js";
 import {
   Event,
   isActivityCompletedEvent,
   isActivityFailedEvent,
   isActivityScheduledEvent,
   isAwaitableEvent,
-} from "./events";
+} from "./events.js";
 
 export interface State {
   threads: Result[][];
