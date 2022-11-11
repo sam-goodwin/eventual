@@ -3,7 +3,7 @@ export namespace ENV_NAMES {
   export const EXECUTION_HISTORY_BUCKET = "EXECUTION_HISTORY_BUCKET";
   export const WORKFLOW_QUEUE_URL = "WORKFLOW_QUEUE_URL";
   export const WORKFLOW_FUNCTION_NAME = "WORKFLOW_FUNCTION_NAME";
-  export const WORKER_FUNCTION_ARN = "WORKER_FUNCTION_WARN"; 
+  export const ACTION_WORKER_FUNCTION_NAME = "ACTION_WORKER_FUNCTION_NAME";
 }
 
 export const workflowFunctionName =
@@ -12,4 +12,5 @@ export const tableName = process.env[ENV_NAMES.TABLE_NAME];
 export const executionHistoryBucket =
   process.env[ENV_NAMES.EXECUTION_HISTORY_BUCKET];
 export const workflowQueueUrl = process.env[ENV_NAMES.WORKFLOW_QUEUE_URL];
-export const workerFunctionArn = process.env[ENV_NAMES.WORKER_FUNCTION_ARN];
+export const actionWorkerFunctionName =
+  process.env[ENV_NAMES.ACTION_WORKER_FUNCTION_NAME];

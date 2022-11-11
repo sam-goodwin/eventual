@@ -1,12 +1,16 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { S3Client } from "@aws-sdk/client-s3";
 import type lambda from "aws-lambda";
-import { executionHistoryBucket, tableName, workflowFunctionName } from "./env";
+import {
+  actionWorkerFunctionName,
+  executionHistoryBucket,
+  tableName,
+} from "../env";
 import {
   createEvent,
   ExecutionHistoryClient,
-} from "./execution-history-client";
-import { WorkflowRuntimeClient } from "./workflow-runtime-client";
+} from "../clients/execution-history-client";
+import { WorkflowRuntimeClient } from "../clients/workflow-runtime-client";
 import {
   Activity,
   Event,
@@ -25,7 +29,7 @@ import {
   isResult,
   isResolved,
 } from "node_modules/@eventual/core/src/result";
-import { SQSWorkflowTaskMessage } from "./workflow-client";
+import { SQSWorkflowTaskMessage } from "../clients/workflow-client";
 import { SQSRecord } from "aws-lambda";
 import { LambdaClient } from "@aws-sdk/client-lambda";
 
@@ -39,7 +43,7 @@ const workflowRuntimeClient = new WorkflowRuntimeClient({
   executionHistoryBucket: executionHistoryBucket ?? "",
   tableName: tableName ?? "",
   lambda: new LambdaClient({}),
-  actionWorkerFunctionName: workflowFunctionName ?? "",
+  actionWorkerFunctionName: actionWorkerFunctionName ?? "",
 });
 const executionHistoryClient = new ExecutionHistoryClient({
   dynamo,

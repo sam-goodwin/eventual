@@ -13,7 +13,7 @@ import {
 } from "@aws-sdk/client-lambda";
 import { Action, Event, ExecutionStatus } from "@eventual/core";
 import { ExecutionRecord } from "./workflow-client";
-import { ActionWorkerRequest } from "./action";
+import { ActionWorkerRequest } from "../action";
 
 export interface WorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;
@@ -117,7 +117,7 @@ export class WorkflowRuntimeClient {
       executionId,
       action,
     };
-    
+
     await this.props.lambda.send(
       new InvokeCommand({
         FunctionName: this.props.actionWorkerFunctionName,

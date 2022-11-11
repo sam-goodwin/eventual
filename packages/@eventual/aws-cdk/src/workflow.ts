@@ -90,10 +90,11 @@ export class Workflow extends Construct {
       )} ${outDir} ${props.entry}`
     );
 
-    const worker = new Function(this, "Worker", {
+    const actionWorker = new Function(this, "Worker", {
       architecture: Architecture.ARM_64,
-      code: Code.fromAsset(outDir),
-      handler: "worker.default",
+      code: Code.fromAsset(path.join(outDir, "action-worker")),
+      // the bundler outputs action-worker/index.js
+      handler: "index.default",
       runtime: Runtime.NODEJS_16_X,
       memorySize: 512,
       environment: {
@@ -104,12 +105,13 @@ export class Workflow extends Construct {
 
     const orchestrator = new Function(this, "Orchestrator", {
       architecture: Architecture.ARM_64,
-      code: Code.fromAsset(outDir),
-      handler: "orchestrator.default",
+      code: Code.fromAsset(path.join(outDir, "orchestrator")),
+      // the bundler outputs action-worker/index.js
+      handler: "index.default",
       runtime: Runtime.NODEJS_16_X,
       memorySize: 512,
       environment: {
-        [ENV_NAMES.WORKER_FUNCTION_ARN]: worker.functionArn,
+        [ENV_NAMES.ACTION_WORKER_FUNCTION_NAME]: actionWorker.functionName,
         [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: history.bucketName,
         [ENV_NAMES.TABLE_NAME]: table.tableName,
         [ENV_NAMES.WORKFLOW_QUEUE_URL]: workflowQueue.queueUrl,
@@ -139,16 +141,16 @@ export class Workflow extends Construct {
     history.grantReadWrite(orchestrator);
 
     // the worker emits events back to the orchestrator's event loop
-    workflowQueue.grantSendMessages(worker);
+    workflowQueue.grantSendMessages(actionWorker);
 
     // the orchestrator can emit workflow tasks when invoking other workflows or inline activities
     workflowQueue.grantSendMessages(orchestrator);
 
     // the orchestrator asynchronously invokes activities
-    worker.grantInvoke(orchestrator);
+    actionWorker.grantInvoke(orchestrator);
 
     // the worker will issue an UpdateItem command to lock
-    locks.grantWriteData(worker);
+    locks.grantWriteData(actionWorker);
 
     // Enable creating history to start a workflow.
     table.grantReadWriteData(startWorkflowFunction);

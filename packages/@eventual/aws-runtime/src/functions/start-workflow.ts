@@ -2,8 +2,8 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { SQSClient } from "@aws-sdk/client-sqs";
 import { Handler } from "aws-lambda";
 import { tableName, workflowQueueUrl } from "../env.js";
-import { ExecutionHistoryClient } from "../execution-history-client.js";
-import { WorkflowClient } from "../workflow-client.js";
+import { ExecutionHistoryClient } from "../clients/execution-history-client.js";
+import { WorkflowClient } from "../clients/workflow-client.js";
 
 export interface StartWorkflowRequest {
   name: string;

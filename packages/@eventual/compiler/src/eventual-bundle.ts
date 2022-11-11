@@ -19,14 +19,6 @@ async function main() {
   await prepareOutDir(outDir);
 
   await Promise.all([
-    fs.writeFile(
-      path.join(outDir, "orchestrator.js"),
-      `import app from "./app";
-import { orchestrator } from "@eventual/aws-runtime";
-
-export default orchestrator(app);
-`
-    ),
     esbuild.build({
       mainFields: ["module", "main"],
       sourcemap: true,
@@ -43,7 +35,25 @@ export default orchestrator(app);
           "../node_modules/@eventual/aws-runtime/lib/esm/entry/orchestrator.js"
         ),
       ],
-      outfile: path.join(outDir, "app.js"),
+      outfile: path.join(outDir, "orchestrator/index.js"),
+    }),
+    esbuild.build({
+      mainFields: ["module", "main"],
+      sourcemap: true,
+      plugins: [
+        esbuildPluginAliasPath({
+          alias: { "@eventual/injected/actions": entry },
+        }),
+        eventualESPlugin,
+      ],
+      bundle: true,
+      entryPoints: [
+        path.resolve(
+          __dirname,
+          "../node_modules/@eventual/aws-runtime/lib/esm/entry/action-worker.js"
+        ),
+      ],
+      outfile: path.join(outDir, "action-worker/index.js"),
     }),
   ]);
 }

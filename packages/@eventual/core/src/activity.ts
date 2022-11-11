@@ -1,5 +1,7 @@
 import { currentThreadID, Thread } from "./thread";
 
+export const callableActions: Record<string, Function> = {};
+
 export const ActivitySymbol = Symbol.for("eventual:Activity");
 
 export enum ActivityKind {
@@ -58,6 +60,8 @@ export function activity<F extends (...args: any[]) => any>(
   ) {
     return underlying;
   }
+  // register the activity with the module scoped store.
+  callableActions[activityID] = underlying;
   return new Proxy(
     {},
     {
@@ -107,4 +111,15 @@ export function resetActivities() {
 
 export function getSpawnedActivities() {
   return [...activitiesGlobal];
+}
+
+/**
+ * Retrieve an activity function that has been registered in a workflow.
+ */
+export function getCallableAction(activityId: string): Function | undefined {
+  return callableActions[activityId];
+}
+
+export function getCallableActionNames() {
+  return Object.keys(callableActions);
 }
