@@ -1,4 +1,4 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import {
   GetObjectCommand,
   GetObjectCommandOutput,
@@ -6,9 +6,18 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
-import { Event } from "@eventual/core";
+import {
+  LambdaClient,
+  InvokeCommand,
+  InvocationType,
+} from "@aws-sdk/client-lambda";
+import { Action, Event, ExecutionStatus } from "@eventual/core";
+import { ExecutionRecord } from "./workflow-client";
+import { ActionWorkerRequest } from "./action";
 
 export interface WorkflowRuntimeClientProps {
+  readonly lambda: LambdaClient;
+  readonly actionWorkerFunctionName: string;
   readonly dynamo: DynamoDBClient;
   readonly s3: S3Client;
   readonly executionHistoryBucket: string;
@@ -46,6 +55,74 @@ export class WorkflowRuntimeClient {
         Key: formatExecutionHistoryKey(executionId),
         Bucket: this.props.executionHistoryBucket,
         Body: content,
+      })
+    );
+  }
+
+  async completeExecution(executionId: string, result?: any) {
+    await this.props.dynamo.send(
+      new UpdateItemCommand({
+        Key: {
+          pk: { S: ExecutionRecord.PRIMARY_KEY },
+          sk: { S: ExecutionRecord.sortKey(executionId) },
+        },
+        TableName: this.props.tableName,
+        UpdateExpression: result
+          ? "SET :status=#complete, :result=#result, endTime=#endTime"
+          : "SET :status=#complete, endTime=#endTime",
+        ConditionExpression: ":status=#in_progress",
+        ExpressionAttributeNames: {
+          ":status": "status",
+          ...(result ? { ":result": "result" } : {}),
+        },
+        ExpressionAttributeValues: {
+          "#complete": { S: ExecutionStatus.COMPLETE },
+          "#in_progress": { S: ExecutionStatus.IN_PROGRESS },
+          "#endTime": { S: new Date().toISOString() },
+          ...(result ? { "#result": { S: JSON.stringify(result) } } : {}),
+        },
+      })
+    );
+  }
+
+  async failExecution(executionId: string, error: string, message: string) {
+    await this.props.dynamo.send(
+      new UpdateItemCommand({
+        Key: {
+          pk: { S: ExecutionRecord.PRIMARY_KEY },
+          sk: { S: ExecutionRecord.sortKey(executionId) },
+        },
+        TableName: this.props.tableName,
+        UpdateExpression:
+          "SET :status=#complete, :error=#error, :message=#message, endTime=#endTime",
+        ConditionExpression: ":status=#in_progress",
+        ExpressionAttributeNames: {
+          ":status": "status",
+          ":error": "error",
+          ":message": "message",
+        },
+        ExpressionAttributeValues: {
+          "#failed": { S: ExecutionStatus.FAILED },
+          "#in_progress": { S: ExecutionStatus.IN_PROGRESS },
+          "#endTime": { S: new Date().toISOString() },
+          "#error": { S: error },
+          "#message": { S: message },
+        },
+      })
+    );
+  }
+
+  async scheduleAction(executionId: string, action: Action) {
+    const request: ActionWorkerRequest = {
+      executionId,
+      action,
+    };
+    
+    await this.props.lambda.send(
+      new InvokeCommand({
+        FunctionName: this.props.actionWorkerFunctionName,
+        Payload: Buffer.from(JSON.stringify(request)),
+        InvocationType: InvocationType.Event,
       })
     );
   }

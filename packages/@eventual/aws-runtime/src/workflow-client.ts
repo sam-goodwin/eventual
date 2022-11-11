@@ -4,6 +4,8 @@ import {
   Event,
   WorkflowTask,
   WorkflowStartedEvent,
+  Execution,
+  ExecutionStatus,
 } from "@eventual/core";
 import { ulid } from "ulid";
 import { ExecutionHistoryClient } from "./execution-history-client.js";
@@ -25,17 +27,18 @@ export class WorkflowClient {
     await this.props.dynamo.send(
       new PutItemCommand({
         Item: {
-          pk: { S: "Execution" },
-          sk: { S: `Execution$${executionId}` },
+          pk: { S: ExecutionRecord.PRIMARY_KEY },
+          sk: { S: ExecutionRecord.sortKey(executionId) },
           id: { S: executionId },
-          status: { S: "Started" },
+          status: { S: ExecutionStatus.IN_PROGRESS },
+          startTime: { S: new Date().toISOString() },
         },
         TableName: this.props.tableName,
       })
     );
 
     const workflowStartedEvent =
-      await this.props.executionHistory.putEvent<WorkflowStartedEvent>(
+      await this.props.executionHistory.createAndPutEvent<WorkflowStartedEvent>(
         executionId,
         {
           type: "WorkflowStartedEvent",
@@ -51,9 +54,9 @@ export class WorkflowClient {
   public async submitWorkflowTask(executionId: string, ...events: Event[]) {
     // send workflow task to workflow queue
     const workflowTask: SQSWorkflowTaskMessage = {
-      executionId,
       event: {
-        events: events,
+        executionId,
+        events,
       },
     };
 
@@ -70,6 +73,30 @@ export class WorkflowClient {
 }
 
 export interface SQSWorkflowTaskMessage {
-  executionId: string;
   event: WorkflowTask;
+}
+
+export interface ExecutionRecord extends Omit<Execution, "result"> {
+  pk: typeof ExecutionRecord.PRIMARY_KEY;
+  sk: `${typeof ExecutionRecord.SORT_KEY_PREFIX}${string}`;
+  result: string;
+}
+
+export namespace ExecutionRecord {
+  export const PRIMARY_KEY = "Execution";
+  export const SORT_KEY_PREFIX = `Execution$`;
+  export function sortKey(executionId: string) {
+    return `${SORT_KEY_PREFIX}${executionId}`;
+  }
+}
+
+export function createExecutionFromResult(
+  execution: ExecutionRecord
+): Execution {
+  const { result, pk, sk, ...rest } = execution;
+
+  return {
+    ...rest,
+    result: result ? JSON.parse(result) : undefined,
+  };
 }
