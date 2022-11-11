@@ -100,7 +100,10 @@ export class Workflow extends Construct {
       environment: {
         [ENV_NAMES.TABLE_NAME]: table.tableName,
         [ENV_NAMES.WORKFLOW_QUEUE_URL]: workflowQueue.queueUrl,
+        [ENV_NAMES.ACTIVITY_LOCK_TABLE_NAME]: locks.tableName,
       },
+      // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
+      retryAttempts: 0,
     });
 
     const orchestrator = new Function(this, "Orchestrator", {
@@ -116,14 +119,13 @@ export class Workflow extends Construct {
         [ENV_NAMES.TABLE_NAME]: table.tableName,
         [ENV_NAMES.WORKFLOW_QUEUE_URL]: workflowQueue.queueUrl,
       },
+      events: [
+        new SqsEventSource(workflowQueue, {
+          batchSize: 10,
+          reportBatchItemFailures: true,
+        }),
+      ],
     });
-
-    orchestrator.addEventSource(
-      new SqsEventSource(workflowQueue, {
-        batchSize: 10,
-        reportBatchItemFailures: true,
-      })
-    );
 
     const statement = new PolicyStatement({
       actions: ["lambda:InvokeFunction"],

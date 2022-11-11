@@ -116,6 +116,7 @@ export class WorkflowRuntimeClient {
     const request: ActionWorkerRequest = {
       executionId,
       action,
+      retry: 0,
     };
 
     await this.props.lambda.send(

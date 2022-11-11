@@ -4,6 +4,7 @@ export namespace ENV_NAMES {
   export const WORKFLOW_QUEUE_URL = "WORKFLOW_QUEUE_URL";
   export const WORKFLOW_FUNCTION_NAME = "WORKFLOW_FUNCTION_NAME";
   export const ACTION_WORKER_FUNCTION_NAME = "ACTION_WORKER_FUNCTION_NAME";
+  export const ACTIVITY_LOCK_TABLE_NAME = "ACTIVITY_LOCK_TABLE_NAME";
 }
 
 export const workflowFunctionName =
@@ -14,3 +15,5 @@ export const executionHistoryBucket =
 export const workflowQueueUrl = process.env[ENV_NAMES.WORKFLOW_QUEUE_URL];
 export const actionWorkerFunctionName =
   process.env[ENV_NAMES.ACTION_WORKER_FUNCTION_NAME];
+export const activityLockTableName =
+  process.env[ENV_NAMES.ACTIVITY_LOCK_TABLE_NAME];
