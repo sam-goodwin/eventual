@@ -13,15 +13,11 @@ main().catch((err) => {
 async function main() {
   const [, , outDir, entry] = process.argv;
 
-  console.log("hi");
-
   if (!(outDir && entry)) {
     throw new Error(`Usage: eventual-build <out-dir> <entry-point>`);
   }
 
   await prepareOutDir(outDir);
-
-  console.log("hi");
 
   await Promise.all([
     esbuild
@@ -82,8 +78,6 @@ async function main() {
         )
       ),
   ]);
-
-  console.log("hi");
 }
 
 async function prepareOutDir(outDir: string) {
