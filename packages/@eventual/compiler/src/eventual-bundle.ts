@@ -44,7 +44,6 @@ async function main() {
         esbuildPluginAliasPath({
           alias: { "@eventual/injected/actions": entry },
         }),
-        eventualESPlugin,
       ],
       bundle: true,
       entryPoints: [

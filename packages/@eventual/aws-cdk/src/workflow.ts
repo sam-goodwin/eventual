@@ -125,8 +125,6 @@ export class Workflow extends Construct {
       })
     );
 
-    table.grantReadWriteData(orchestrator);
-
     const statement = new PolicyStatement({
       actions: ["lambda:InvokeFunction"],
       resources: [orchestrator.functionArn, `${orchestrator.functionArn}:*`],
@@ -154,6 +152,12 @@ export class Workflow extends Construct {
 
     // Enable creating history to start a workflow.
     table.grantReadWriteData(startWorkflowFunction);
+
+    // Enable creating history related to a workflow.
+    table.grantReadWriteData(actionWorker);
+
+    // Enable creating history and updating executions
+    table.grantReadWriteData(orchestrator);
 
     // Enable sending workflow task
     workflowQueue.grantSendMessages(startWorkflowFunction);

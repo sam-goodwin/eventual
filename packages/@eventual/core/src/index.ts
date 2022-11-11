@@ -8,3 +8,4 @@ export * from "./thread";
 export * from "./workflow";
 export * from "./state";
 export * from "./execution";
+export * from "./result";

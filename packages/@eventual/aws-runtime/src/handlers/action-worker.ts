@@ -35,6 +35,8 @@ export const actionWorker = (): Handler<ActionWorkerRequest, void> => {
         throw new ActionNotFoundError(request.action.name);
       }
 
+      // TODO: lock
+
       const result = await action(request.action.args);
 
       const event =
@@ -70,7 +72,7 @@ export const actionWorker = (): Handler<ActionWorkerRequest, void> => {
         );
 
       await workflowClient.submitWorkflowTask(request.executionId, event);
-      throw new Error("ActionNotFound: " + message);
+      throw err;
     }
   };
 };

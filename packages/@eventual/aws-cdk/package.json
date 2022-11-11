@@ -7,10 +7,9 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
-    "@eventual/compiler": "workspace:^",
-    "ulid": "^2.3.0",
     "@eventual/aws-runtime": "workspace:^",
-    "@eventual/compiler": "workspace:^"
+    "@eventual/compiler": "workspace:^",
+    "ulid": "^2.3.0"
   },
   "peerDependencies": {
     "aws-cdk-lib": "^2.50.0",

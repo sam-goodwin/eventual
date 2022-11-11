@@ -17,6 +17,9 @@ import {
   executeWorkflow,
   getSpawnedActivities,
   isAction,
+  isFailed,
+  isResolved,
+  isResult,
   isWorkflowStartedEvent,
   mergeEventsIntoState,
   WorkflowCompletedEvent,
@@ -24,11 +27,6 @@ import {
   WorkflowTaskCompletedEvent,
   WorkflowTaskStartedEvent,
 } from "@eventual/core";
-import {
-  isFailed,
-  isResult,
-  isResolved,
-} from "node_modules/@eventual/core/src/result";
 import { SQSWorkflowTaskMessage } from "../clients/workflow-client";
 import { SQSRecord } from "aws-lambda";
 import { LambdaClient } from "@aws-sdk/client-lambda";
