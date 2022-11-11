@@ -28,6 +28,10 @@ async function main() {
         }),
         eventualESPlugin,
       ],
+      conditions: ["module", "import", "require"],
+      target: "node16",
+      platform: "node",
+      format: "cjs",
       bundle: true,
       entryPoints: [
         path.resolve(
@@ -45,6 +49,10 @@ async function main() {
           alias: { "@eventual/injected/actions": entry },
         }),
       ],
+      conditions: ["module", "import", "require"],
+      target: "node16",
+      platform: "node",
+      format: "cjs",
       bundle: true,
       entryPoints: [
         path.resolve(

@@ -52,6 +52,7 @@ export function activity<F extends (...args: any[]) => any>(
   activityID: string,
   underlying: F
 ): (...args: Parameters<F>) => Promise<Awaited<ReturnType<F>>> {
+  console.debug("register activity: " + activityID);
   if (
     !underlying ||
     typeof underlying === "string" ||
@@ -62,14 +63,12 @@ export function activity<F extends (...args: any[]) => any>(
   }
   // register the activity with the module scoped store.
   callableActions[activityID] = underlying;
-  return new Proxy(
-    {},
-    {
-      apply: (_target, _this, args) => {
-        return scheduleActivity(activityID, args);
-      },
-    }
-  ) as any;
+  return new Proxy(() => {}, {
+    apply: function (_target, _this, args) {
+      console.debug("trying to invoke activity: " + activityID);
+      return scheduleActivity(activityID, args);
+    },
+  }) as any;
 }
 
 export function scheduleActivity(

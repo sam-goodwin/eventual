@@ -42,10 +42,8 @@
       "<rootDir>"
     ],
     "preset": "ts-jest",
-    "globals": {
-      "ts-jest": {
-        "useESM": true
-      }
+    "transform": {
+      ".tsx?": ["ts-jest"]
     },
     "moduleNameMapper": {
       "^@eventual/injected/workflow": "<rootDir>/packages/@eventual/aws-runtime/lib/esm/injected/workflow"

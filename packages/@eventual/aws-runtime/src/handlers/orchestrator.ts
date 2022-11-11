@@ -1,6 +1,5 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { S3Client } from "@aws-sdk/client-s3";
-import type lambda from "aws-lambda";
 import {
   actionWorkerFunctionName,
   executionHistoryBucket,
@@ -22,17 +21,18 @@ import {
   isResult,
   isWorkflowStartedEvent,
   mergeEventsIntoState,
+  Thread,
   WorkflowCompletedEvent,
   WorkflowFailedEvent,
   WorkflowTaskCompletedEvent,
   WorkflowTaskStartedEvent,
 } from "@eventual/core";
 import { SQSWorkflowTaskMessage } from "../clients/workflow-client";
-import { SQSRecord } from "aws-lambda";
+import { SQSHandler, SQSRecord } from "aws-lambda";
 import { LambdaClient } from "@aws-sdk/client-lambda";
 
-const s3 = new S3Client({});
-const dynamo = new DynamoDBClient({});
+const s3 = new S3Client({ region: process.env.AWS_REGION });
+const dynamo = new DynamoDBClient({ region: process.env.AWS_REGION });
 
 const workflowRuntimeClient = new WorkflowRuntimeClient({
   dynamo,
@@ -51,16 +51,15 @@ const executionHistoryClient = new ExecutionHistoryClient({
 /**
  * Creates an entrypoint function for orchestrating a workflow.
  */
-export function orchestrator(
-  program: (input: any) => Generator<any, any, any>
-) {
-  return async (event: lambda.SQSEvent) => {
+export function orchestrator(program: (input: any) => Thread): SQSHandler {
+  return async (event) => {
     console.debug("Handle workflowQueue records");
     // if a polling request
     if (event.Records.some((r) => !r.attributes.MessageGroupId)) {
       throw new Error("Expected SQS Records to contain fifo message id");
     }
 
+    // batch by execution id
     const eventsByExecutionId = event.Records.reduce(
       (obj: Record<string, SQSRecord[]>, r) => ({
         ...obj,
@@ -78,13 +77,15 @@ export function orchestrator(
 
     // TODO: make workflow engine "threadsafe"
     // TODO: handle errors and partial batch failures
+    // for each execution id
     for (const executionId of Object.keys(eventsByExecutionId)) {
       const records = eventsByExecutionId[executionId]!;
       await orchestrateExecution(executionId, sqsRecordsToEvents(records));
     }
 
-    // batch by execution id
-    // for each execution id
+    return {
+      batchItemFailures: [],
+    };
 
     function sqsRecordsToEvents(sqsRecords: SQSRecord[]): Event[] {
       return sqsRecords.flatMap(sqsRecordToEvents);
@@ -98,6 +99,7 @@ export function orchestrator(
   };
 
   async function orchestrateExecution(executionId: string, events: Event[]) {
+    console.debug("Load history");
     // load history
     const history = await workflowRuntimeClient.getHistory(executionId);
 
@@ -107,6 +109,7 @@ export function orchestrator(
     // generate state
     const state = mergeEventsIntoState(allEvents);
 
+    console.debug("Running workflow with state: " + JSON.stringify(state));
     const startEvent = allEvents.find(isWorkflowStartedEvent);
 
     if (!startEvent) {
@@ -124,9 +127,12 @@ export function orchestrator(
       })
     );
 
-    // execute workflow
-    const result = executeWorkflow(program(startEvent.input), state);
+    console.log("program: " + program);
 
+    // execute workflow
+    const result = executeWorkflow(program(startEvent.input).thread, state);
+
+    console.debug("Workflow terminated with: " + JSON.stringify(result));
     // FIXME: this won't work if multiple workflows run in parallel
     const danglingActivities = getSpawnedActivities();
 

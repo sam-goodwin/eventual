@@ -68,18 +68,18 @@ export class WorkflowRuntimeClient {
         },
         TableName: this.props.tableName,
         UpdateExpression: result
-          ? "SET :status=#complete, :result=#result, endTime=#endTime"
-          : "SET :status=#complete, endTime=#endTime",
-        ConditionExpression: ":status=#in_progress",
+          ? "SET #status=:complete, #result=:result, endTime=:endTime"
+          : "SET #status=:complete, endTime=:endTime",
+        ConditionExpression: "#status=:in_progress",
         ExpressionAttributeNames: {
-          ":status": "status",
-          ...(result ? { ":result": "result" } : {}),
+          "#status": "status",
+          ...(result ? { "#result": "result" } : {}),
         },
         ExpressionAttributeValues: {
-          "#complete": { S: ExecutionStatus.COMPLETE },
-          "#in_progress": { S: ExecutionStatus.IN_PROGRESS },
-          "#endTime": { S: new Date().toISOString() },
-          ...(result ? { "#result": { S: JSON.stringify(result) } } : {}),
+          ":complete": { S: ExecutionStatus.COMPLETE },
+          ":in_progress": { S: ExecutionStatus.IN_PROGRESS },
+          ":endTime": { S: new Date().toISOString() },
+          ...(result ? { ":result": { S: JSON.stringify(result) } } : {}),
         },
       })
     );
@@ -94,19 +94,19 @@ export class WorkflowRuntimeClient {
         },
         TableName: this.props.tableName,
         UpdateExpression:
-          "SET :status=#complete, :error=#error, :message=#message, endTime=#endTime",
-        ConditionExpression: ":status=#in_progress",
+          "SET #status=:complete, #error=:error, #message=:message, endTime=:endTime",
+        ConditionExpression: "#status=:in_progress",
         ExpressionAttributeNames: {
-          ":status": "status",
-          ":error": "error",
-          ":message": "message",
+          "#status": "status",
+          "#error": "error",
+          "#message": "message",
         },
         ExpressionAttributeValues: {
-          "#failed": { S: ExecutionStatus.FAILED },
-          "#in_progress": { S: ExecutionStatus.IN_PROGRESS },
-          "#endTime": { S: new Date().toISOString() },
-          "#error": { S: error },
-          "#message": { S: message },
+          ":failed": { S: ExecutionStatus.FAILED },
+          ":in_progress": { S: ExecutionStatus.IN_PROGRESS },
+          ":endTime": { S: new Date().toISOString() },
+          ":error": { S: error },
+          ":message": { S: message },
         },
       })
     );

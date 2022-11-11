@@ -16,7 +16,7 @@ import Visitor from "@swc/core/Visitor";
 export const eventualESPlugin: esBuild.Plugin = {
   name: "eventual",
   setup(build) {
-    build.onLoad({ filter: /\.[tj]s$/g }, async (args) => {
+    build.onLoad({ filter: /\.[mc]?[tj]s$/g }, async (args) => {
       const sourceModule = await parseFile(args.path, {
         syntax: "typescript",
       });
@@ -43,9 +43,9 @@ const supportedPromiseFunctions: string[] = [
 class OuterVisitor extends Visitor {
   public visitCallExpression(call: CallExpression): Expression {
     if (
-      ((isEventualCallee(call.callee) &&
-        call.arguments.length === 1 &&
-        call.arguments[0]?.expression.type === "ArrowFunctionExpression") ||
+      isEventualCallee(call.callee) &&
+      call.arguments.length === 1 &&
+      (call.arguments[0]?.expression.type === "ArrowFunctionExpression" ||
         call.arguments[0]?.expression.type === "FunctionExpression") &&
       !call.arguments[0].expression.generator
     ) {

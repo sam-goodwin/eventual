@@ -12,7 +12,7 @@ import { tableName, workflowQueueUrl } from "../env";
 import { ExecutionHistoryClient } from "../clients/execution-history-client";
 import { WorkflowClient } from "../clients/workflow-client";
 
-const dynamo = new DynamoDBClient({});
+const dynamo = new DynamoDBClient({ region: process.env.AWS_REGION });
 
 const executionHistoryClient = new ExecutionHistoryClient({
   dynamo,
@@ -24,7 +24,7 @@ const workflowClient = new WorkflowClient({
   executionHistory: executionHistoryClient,
   tableName: tableName ?? "",
   workflowQueueUrl: workflowQueueUrl ?? "",
-  sqs: new SQSClient({}),
+  sqs: new SQSClient({ region: process.env.AWS_REGION }),
 });
 
 export const actionWorker = (): Handler<ActionWorkerRequest, void> => {

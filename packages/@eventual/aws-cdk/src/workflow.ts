@@ -61,7 +61,7 @@ export class Workflow extends Construct {
           // cannot output as .mjs file as ulid does not support it.
           mainFields: ["module", "main"],
           esbuildArgs: {
-            "--conditions": "module",
+            "--conditions": "module,import,require",
           },
           metafile: true,
         },
