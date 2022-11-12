@@ -111,7 +111,6 @@ export interface Thread {
   seq: number;
   generator: EventualGenerator;
   awaiting?: Activity;
-  done?: boolean;
 }
 
 export type EventualGenerator = Generator<Activity>;

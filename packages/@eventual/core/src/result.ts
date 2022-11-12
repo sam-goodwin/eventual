@@ -1,3 +1,5 @@
+import { Activity } from "./activity";
+
 export const ResultSymbol = Symbol.for("eventual:Result");
 
 export type Result<T = any> = Pending | Resolved<T> | Failed;
@@ -17,9 +19,10 @@ export namespace Result {
     };
   }
 
-  export function pending(): Pending {
+  export function pending(activity: Activity): Pending {
     return {
       [ResultSymbol]: ResultKind.Pending,
+      activity,
     };
   }
 }
@@ -32,6 +35,7 @@ export enum ResultKind {
 
 export interface Pending {
   [ResultSymbol]: ResultKind.Pending;
+  activity: Activity;
 }
 
 export interface Resolved<T> {

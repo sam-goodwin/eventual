@@ -27,7 +27,7 @@ function reset() {
   resetActivityIDCounter();
 }
 
-export interface ThreadResult {
+export interface WorkflowResult {
   /**
    * The Result if this thread has terminated.
    */
@@ -48,9 +48,11 @@ export type HistoryEvent =
 export function executeWorkflow(
   generator: Generator<any, any, Activity>,
   history: HistoryEvent[]
-): ThreadResult {
+): WorkflowResult {
   reset();
-  const threads: Thread[] = [createThread(generator)];
+  const threads: Record<number, Thread> = {
+    0: createThread(generator),
+  };
   const results: Record<number, Result> = {};
 
   let i = 0;
@@ -58,11 +60,7 @@ export function executeWorkflow(
     return history[i];
   }
   function pop() {
-    if (i < history.length) {
-      return history[i++]!;
-    } else {
-      throw new Error(`stack underflow`);
-    }
+    return history[i++]!;
   }
   function takeWhile<T>(max: number, guard: (a: any) => a is T): T[] {
     const items: T[] = [];
@@ -71,18 +69,22 @@ export function executeWorkflow(
     }
     return items;
   }
-
-  // run the event loop one event at a time, ensuring deterministic execution.
-  while (peek()) {
-    const event = pop();
-    if (isActivityCompleted(event) || isActivityFailed(event)) {
-      const result = getResult(event.seq);
-      if (result === undefined || !isPending(result)) {
-        throw new DeterminismError();
+  function peekForward<T>(guard: (a: any) => a is T): boolean {
+    for (let j = i; j < history.length; j++) {
+      if (guard(history[j])) {
+        return true;
       }
-      results[event.seq] = isActivityCompleted(event)
-        ? Result.resolved(event.result)
-        : Result.failed(event.error);
+    }
+    return false;
+  }
+
+  let event;
+  // run the event loop one event at a time, ensuring deterministic execution.
+  while ((event = peek()) && peekForward(isActivityScheduled)) {
+    pop();
+
+    if (isActivityCompleted(event) || isActivityFailed(event)) {
+      complete(event, true);
     } else if (isActivityScheduled(event)) {
       const actions = run(true);
       const events = [
@@ -103,24 +105,63 @@ export function executeWorkflow(
     }
   }
 
+  const actions = [];
+
+  // run out the remaining completion events and collect any scheduled actions
+  while ((event = pop())) {
+    if (isActivityScheduled(event)) {
+      throw new Error("illegal state");
+    }
+    complete(event, false);
+    actions.push(...run(false));
+  }
+
   let result;
-  let actions;
   do {
-    // continue progressing the program until we either have:
-    // 1. actions to schedule
-    // 2. a result to return
-    // TODO: once we have actions to schedule, should we continue running until we receive no more actions or is that guaranteed?
-    actions = run(false);
+    // continue progressing the program until all possible progress has been made
+    actions.push(...run(false));
     result = results[0];
-  } while (actions.length === 0 && result === undefined);
+  } while (canMakeProgress());
 
   return {
     result,
     actions,
   };
 
+  function canMakeProgress() {
+    return Object.values(threads).some(
+      (thread) => thread.awaiting === undefined || isReady(thread.awaiting)
+    );
+  }
+
+  function isReady(activity: Activity): boolean {
+    const result = getResult(activity.seq);
+    if (isResolved(result) || isFailed(result)) {
+      return true;
+    } else if (isAwaitAll(activity)) {
+      return activity.activities.every(isReady);
+    } else {
+      return false;
+    }
+  }
+
+  function complete(
+    event: ActivityCompleted | ActivityFailed,
+    isReplay: boolean
+  ) {
+    const result = getResult(event.seq);
+    if (result === undefined || (isReplay && !isPending(result))) {
+      throw new DeterminismError();
+    }
+    results[event.seq] = isActivityCompleted(event)
+      ? Result.resolved(event.result)
+      : Result.failed(event.error);
+  }
+
   function run(replay: boolean): Action[] {
-    return threads.flatMap((thread) => tryMakeProgress(thread, replay));
+    return Object.values(threads).flatMap((thread) =>
+      tryMakeProgress(thread, replay)
+    );
   }
 
   /**
@@ -172,13 +213,11 @@ export function executeWorkflow(
       }
       const iterResult =
         result === undefined || isResolved(result)
-          ? thread.done
-            ? thread.generator.return(result?.value)
-            : thread.generator.next(result?.value)
+          ? thread.generator.next(result?.value)
           : thread.generator.throw(result.error);
 
       if (iterResult.done) {
-        thread.done = true;
+        delete threads[thread.seq];
         if (isActivity(iterResult.value)) {
           thread.awaiting = iterResult.value;
         } else {
@@ -186,13 +225,15 @@ export function executeWorkflow(
         }
       } else {
         thread.awaiting = iterResult.value;
-        results[iterResult.value.seq] = Result.pending();
+        results[iterResult.value.seq] = Result.pending(iterResult.value);
       }
 
       const spawned = getSpawnedActivities();
       const actions = spawned.filter(isAction);
       const newThreads = spawned.filter(isThread);
-      actions.forEach((action) => (results[action.seq] = Result.pending()));
+      actions.forEach(
+        (action) => (results[action.seq] = Result.pending(action))
+      );
       newThreads.forEach((thread) => (threads[thread.seq] = thread));
 
       return [
