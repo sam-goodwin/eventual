@@ -21,6 +21,7 @@ import {
   isActivityScheduled,
 } from "./events";
 import { Result, isResolved, isFailed, isPending } from "./result";
+import { assertNever } from "./util";
 
 function reset() {
   resetActivities();
@@ -123,6 +124,10 @@ export function executeWorkflow(
     result = results[0];
   } while (canMakeProgress());
 
+  if (isPending(result) && isReady(result.activity)) {
+    result = resolveActivityResult(result.activity);
+  }
+
   return {
     result,
     actions,
@@ -142,6 +147,27 @@ export function executeWorkflow(
       return activity.activities.every(isReady);
     } else {
       return false;
+    }
+  }
+
+  function resolveActivityResult(activity: Activity): Result<any> {
+    if (isAction(activity) || isThread(activity)) {
+      return results[activity.seq]!;
+    } else if (isAwaitAll(activity)) {
+      const results = [];
+      for (const a of activity.activities) {
+        const result = resolveActivityResult(a);
+        if (isFailed(result)) {
+          return result;
+        } else if (isResolved(result)) {
+          results.push(result.value);
+        } else {
+          throw new Error(`failed to resolve`);
+        }
+      }
+      return Result.resolved(results);
+    } else {
+      return assertNever(activity);
     }
   }
 
@@ -174,7 +200,13 @@ export function executeWorkflow(
       return wakeUpThread(thread, undefined);
     }
     const result = getResult(thread.awaiting.seq);
-    if (isResolved(result) || isFailed(result)) {
+    if (isPending(result)) {
+      if (isReady(result.activity)) {
+        return wakeUpThread(thread, resolveActivityResult(result.activity));
+      } else {
+        return [];
+      }
+    } else if (isResolved(result) || isFailed(result)) {
       return wakeUpThread(thread, result);
     } else if (isAwaitAll(thread.awaiting)) {
       const results = [];
@@ -219,7 +251,7 @@ export function executeWorkflow(
       if (iterResult.done) {
         delete threads[thread.seq];
         if (isActivity(iterResult.value)) {
-          thread.awaiting = iterResult.value;
+          results[thread.seq] = Result.pending(iterResult.value);
         } else {
           results[thread.seq] = Result.resolved(iterResult.value);
         }
