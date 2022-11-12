@@ -48,14 +48,16 @@ export function isResult(a: any): a is Result {
   return a && typeof a === "object" && ResultSymbol in a;
 }
 
-export function isPending(result: Result): result is Pending {
+export function isPending(result: Result | undefined): result is Pending {
   return isResult(result) && result[ResultSymbol] === ResultKind.Pending;
 }
 
-export function isResolved<T>(result: Result<T>): result is Resolved<T> {
+export function isResolved<T>(
+  result: Result<T> | undefined
+): result is Resolved<T> {
   return isResult(result) && result[ResultSymbol] === ResultKind.Resolved;
 }
 
-export function isFailed(result: Result): result is Failed {
+export function isFailed(result: Result | undefined): result is Failed {
   return isResult(result) && result[ResultSymbol] === ResultKind.Failed;
 }

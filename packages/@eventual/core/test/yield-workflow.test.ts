@@ -98,7 +98,8 @@ test("should return result of inner function", () => {
     const inner = eventual(function* () {
       return "foo";
     });
-    const result = yield* inner();
+    // @ts-ignore
+    const result = yield inner();
     return result;
   };
 

@@ -64,6 +64,13 @@ export function executeWorkflow(
       throw new Error(`stack underflow`);
     }
   }
+  function takeWhile<T>(max: number, guard: (a: any) => a is T): T[] {
+    const items: T[] = [];
+    while (items.length < max && guard(peek())) {
+      items.push(pop() as T);
+    }
+    return items;
+  }
 
   // run the event loop one event at a time, ensuring deterministic execution.
   while (peek()) {
@@ -78,10 +85,20 @@ export function executeWorkflow(
         : Result.failed(event.error);
     } else if (isActivityScheduled(event)) {
       const actions = run(true);
-      const action = actions[i]!;
-
-      if (!isCorresponding(event, action)) {
+      const events = [
+        event,
+        ...takeWhile(actions.length - 1, isActivityScheduled),
+      ];
+      if (events.length !== actions.length) {
         throw new DeterminismError();
+      }
+      for (let i = 0; i < actions.length; i++) {
+        const event = events[i]!;
+        const action = actions[i]!;
+
+        if (!isCorresponding(event, action)) {
+          throw new DeterminismError();
+        }
       }
     }
   }
@@ -116,13 +133,7 @@ export function executeWorkflow(
       return wakeUpThread(thread, undefined);
     }
     const result = getResult(thread.awaiting.seq);
-    if (result === undefined) {
-      if (replay) {
-        throw new DeterminismError();
-      } else {
-        return [];
-      }
-    } else if (isResolved(result) || isFailed(result)) {
+    if (isResolved(result) || isFailed(result)) {
       return wakeUpThread(thread, result);
     } else if (isAwaitAll(thread.awaiting)) {
       const results = [];
@@ -155,41 +166,33 @@ export function executeWorkflow(
       thread: Thread,
       result: Result<any> | undefined
     ): Action[] {
-      let iterResult: IteratorResult<Activity> | undefined;
-      if (result === undefined || isResolved(result)) {
-        if (thread.done) {
-          if (result && isActivity(result.value)) {
-            thread.done = true;
-            thread.awaiting = result.value;
-            results[result.value.seq] = Result.pending();
-          } else {
-            results[thread.seq] = Result.resolved(result?.value);
-            iterResult = thread.generator.return(result?.value);
-          }
-        } else {
-          iterResult = thread.generator.next(result?.value);
-        }
-      } else if (isFailed(result)) {
-        // TODO: pass in better error
-        iterResult = thread.generator.throw(result.error);
-      } else {
+      if (result && isPending(result)) {
         results[thread.seq] = result;
+        return [];
       }
+      const iterResult =
+        result === undefined || isResolved(result)
+          ? thread.done
+            ? thread.generator.return(result?.value)
+            : thread.generator.next(result?.value)
+          : thread.generator.throw(result.error);
 
-      if (iterResult) {
-        if (iterResult.done) {
-          thread.done = true;
+      if (iterResult.done) {
+        thread.done = true;
+        if (isActivity(iterResult.value)) {
           thread.awaiting = iterResult.value;
         } else {
+          results[thread.seq] = Result.resolved(iterResult.value);
         }
+      } else {
+        thread.awaiting = iterResult.value;
+        results[iterResult.value.seq] = Result.pending();
       }
 
       const spawned = getSpawnedActivities();
       const actions = spawned.filter(isAction);
       const newThreads = spawned.filter(isThread);
-      actions.forEach((action) => {
-        results[action.seq] = Result.pending();
-      });
+      actions.forEach((action) => (results[action.seq] = Result.pending()));
       newThreads.forEach((thread) => (threads[thread.seq] = thread));
 
       return [
