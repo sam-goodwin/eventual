@@ -26,7 +26,7 @@ async function main() {
         sourcemap: true,
         plugins: [
           esbuildPluginAliasPath({
-            alias: { "@eventual/injected/workflow.js": entry },
+            alias: { "@eventual/injected/workflow": entry },
           }),
           eventualESPlugin,
         ],
@@ -55,7 +55,7 @@ async function main() {
         sourcemap: true,
         plugins: [
           esbuildPluginAliasPath({
-            alias: { "@eventual/injected/actions.js": entry },
+            alias: { "@eventual/injected/actions": entry },
           }),
         ],
         conditions: ["module", "import", "require"],

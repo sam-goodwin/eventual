@@ -94,7 +94,7 @@ export class WorkflowRuntimeClient {
         },
         TableName: this.props.tableName,
         UpdateExpression:
-          "SET #status=:complete, #error=:error, #message=:message, endTime=:endTime",
+          "SET #status=:failed, #error=:error, #message=:message, endTime=:endTime",
         ConditionExpression: "#status=:in_progress",
         ExpressionAttributeNames: {
           "#status": "status",

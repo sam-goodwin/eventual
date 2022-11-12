@@ -192,10 +192,7 @@ export function orchestrator(program: (input: any) => Thread): SQSHandler {
       }
     }
 
-    await executionHistoryClient.putEvents(executionId, [
-      ...allEvents,
-      ...newEvents,
-    ]);
+    await executionHistoryClient.putEvents(executionId, newEvents);
 
     /**
      * Generate events from commands and create a function which will start the commands.
