@@ -11,7 +11,7 @@ import {
   InvokeCommand,
   InvocationType,
 } from "@aws-sdk/client-lambda";
-import { Action, Event, ExecutionStatus } from "@eventual/core";
+import { Action, WorkflowEvent, ExecutionStatus } from "@eventual/core";
 import { ExecutionRecord } from "./workflow-client.js";
 import { ActionWorkerRequest } from "../action.js";
 
@@ -47,7 +47,7 @@ export class WorkflowRuntimeClient {
   }
 
   // TODO: etag
-  async updateHistory(executionId: string, events: Event[]) {
+  async updateHistory(executionId: string, events: WorkflowEvent[]) {
     const content = events.map((e) => JSON.stringify(e)).join("\n");
     // get current history from s3
     await this.props.s3.send(
@@ -131,11 +131,11 @@ export class WorkflowRuntimeClient {
 
 async function historyEntryToEvents(
   objectOutput: GetObjectCommandOutput
-): Promise<Event[]> {
+): Promise<WorkflowEvent[]> {
   if (objectOutput.Body) {
     return (await objectOutput.Body.transformToString())
       .split("\n")
-      .map((l) => JSON.parse(l)) as Event[];
+      .map((l) => JSON.parse(l)) as WorkflowEvent[];
   }
   return [];
 }

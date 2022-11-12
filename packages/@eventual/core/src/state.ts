@@ -1,9 +1,14 @@
-import { createFailed, createPending, createResolved, Result } from "./result.js";
 import {
-  Event,
-  isActivityCompletedEvent,
-  isActivityFailedEvent,
-  isActivityScheduledEvent,
+  createFailed,
+  createPending,
+  createResolved,
+  Result,
+} from "./result.js";
+import {
+  WorkflowEvent,
+  isActivityCompleted,
+  isActivityFailed,
+  isActivityScheduled,
   isAwaitableEvent,
 } from "./events.js";
 
@@ -14,7 +19,10 @@ export interface State {
 /**
  * Temporary function that digest events to state.
  */
-export function mergeEventsIntoState(events: Event[], state?: State): State {
+export function mergeEventsIntoState(
+  events: WorkflowEvent[],
+  state?: State
+): State {
   const awaitableEvents = events.filter(isAwaitableEvent);
 
   if (!state && awaitableEvents.length === 0) {
@@ -41,19 +49,19 @@ export function mergeEventsIntoState(events: Event[], state?: State): State {
 
         const seqEvents = threadSeqEvents.filter((e) => e.seq === seqIndex);
 
-        const failureEvent = seqEvents.find(isActivityFailedEvent);
+        const failureEvent = seqEvents.find(isActivityFailed);
 
         if (failureEvent) {
           return createFailed(failureEvent.error);
         }
 
-        const completeEvent = seqEvents.find(isActivityCompletedEvent);
+        const completeEvent = seqEvents.find(isActivityCompleted);
 
         if (completeEvent) {
           return createResolved(completeEvent.result);
         }
 
-        const scheduledEvent = seqEvents.find(isActivityScheduledEvent);
+        const scheduledEvent = seqEvents.find(isActivityScheduled);
 
         if (scheduledEvent) {
           return createPending();

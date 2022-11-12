@@ -1,11 +1,12 @@
 import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
-  Event,
+  WorkflowEvent,
   WorkflowTask,
-  WorkflowStartedEvent,
+  WorkflowStarted,
   Execution,
   ExecutionStatus,
+  WorkflowEventType,
 } from "@eventual/core";
 import { ulid } from "ulid";
 import { ExecutionHistoryClient } from "./execution-history-client.js";
@@ -38,10 +39,10 @@ export class WorkflowClient {
     );
 
     const workflowStartedEvent =
-      await this.props.executionHistory.createAndPutEvent<WorkflowStartedEvent>(
+      await this.props.executionHistory.createAndPutEvent<WorkflowStarted>(
         executionId,
         {
-          type: "WorkflowStartedEvent",
+          type: WorkflowEventType.WorkflowStarted,
           input,
         }
       );
@@ -51,7 +52,10 @@ export class WorkflowClient {
     return executionId;
   }
 
-  public async submitWorkflowTask(executionId: string, ...events: Event[]) {
+  public async submitWorkflowTask(
+    executionId: string,
+    ...events: WorkflowEvent[]
+  ) {
     // send workflow task to workflow queue
     const workflowTask: SQSWorkflowTaskMessage = {
       event: {

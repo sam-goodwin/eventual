@@ -3,7 +3,7 @@ import {
   DynamoDBClient,
   PutItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import { Event } from "@eventual/core";
+import { WorkflowEvent } from "@eventual/core";
 import { ulid } from "ulid";
 
 export interface ExecutionHistoryClientProps {
@@ -14,7 +14,7 @@ export interface ExecutionHistoryClientProps {
 export class ExecutionHistoryClient {
   constructor(private props: ExecutionHistoryClientProps) {}
 
-  public async createAndPutEvent<T extends Event>(
+  public async createAndPutEvent<T extends WorkflowEvent>(
     executionId: string,
     event: Omit<T, "id" | "timestamp">
   ): Promise<T> {
@@ -42,8 +42,8 @@ export class ExecutionHistoryClient {
    */
   public async createAndPutEvents(
     executionId: string,
-    events: Omit<Event, "id" | "timestamp">[]
-  ): Promise<Event[]> {
+    events: Omit<WorkflowEvent, "id" | "timestamp">[]
+  ): Promise<WorkflowEvent[]> {
     const resolvedEvents = events.map(createEvent);
 
     await this.putEvents(executionId, resolvedEvents);
@@ -54,7 +54,7 @@ export class ExecutionHistoryClient {
   /**
    * Writes events as a batch into the execution history table.
    */
-  public async putEvents(executionId: string, events: Event[]): Promise<void> {
+  public async putEvents(executionId: string, events: WorkflowEvent[]): Promise<void> {
     // TODO: partition the batches
     await this.props.dynamo.send(
       new BatchWriteItemCommand({
@@ -77,7 +77,7 @@ export class ExecutionHistoryClient {
   }
 }
 
-export interface EventRecord extends Omit<Event, "result"> {
+export interface EventRecord extends Omit<WorkflowEvent, "result"> {
   pk: typeof EventRecord.PRIMARY_KEY;
   sk: `${typeof EventRecord.SORT_KEY_PREFIX}${string}$${string}`;
   result: string;
@@ -91,7 +91,7 @@ export namespace EventRecord {
   }
 }
 
-export function createEvent<T extends Event>(
+export function createEvent<T extends WorkflowEvent>(
   event: Omit<T, "id" | "timestamp">
 ): T {
   const uuid = ulid();

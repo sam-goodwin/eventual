@@ -1,10 +1,11 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { SQSClient } from "@aws-sdk/client-sqs";
 import {
-  ActivityCompletedEvent,
-  ActivityFailedEvent,
+  ActivityCompleted,
+  ActivityFailed,
   getCallableAction,
   getCallableActionNames,
+  WorkflowEventType,
 } from "@eventual/core";
 import { Handler } from "aws-lambda";
 import { ActionWorkerRequest } from "../action.js";
@@ -62,10 +63,10 @@ export const actionWorker = (): Handler<ActionWorkerRequest, void> => {
       );
 
       const event =
-        await executionHistoryClient.createAndPutEvent<ActivityCompletedEvent>(
+        await executionHistoryClient.createAndPutEvent<ActivityCompleted>(
           request.executionId,
           {
-            type: "ActivityCompletedEvent",
+            type: WorkflowEventType.ActivityCompleted,
             name: request.action.name,
             seq: request.action.id,
             threadId: request.action.threadID,
@@ -87,10 +88,10 @@ export const actionWorker = (): Handler<ActionWorkerRequest, void> => {
       );
 
       const event =
-        await executionHistoryClient.createAndPutEvent<ActivityFailedEvent>(
+        await executionHistoryClient.createAndPutEvent<ActivityFailed>(
           request.executionId,
           {
-            type: "ActivityFailedEvent",
+            type: WorkflowEventType.ActivityFailed,
             name: request.action.name,
             seq: request.action.id,
             threadId: request.action.threadID,

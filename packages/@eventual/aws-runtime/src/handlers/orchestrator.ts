@@ -12,19 +12,20 @@ import {
 import { WorkflowRuntimeClient } from "../clients/workflow-runtime-client.js";
 import {
   Activity,
-  Event,
+  WorkflowEvent,
   executeWorkflow,
   isAction,
   isFailed,
   isResolved,
   isResult,
-  isWorkflowStartedEvent,
+  isWorkflowStarted,
   mergeEventsIntoState,
   Thread,
-  WorkflowCompletedEvent,
-  WorkflowFailedEvent,
-  WorkflowTaskCompletedEvent,
-  WorkflowTaskStartedEvent,
+  WorkflowCompleted,
+  WorkflowEventType,
+  WorkflowTaskStarted,
+  WorkflowTaskCompleted,
+  WorkflowFailed,
 } from "@eventual/core";
 import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
 import { SQSHandler, SQSRecord } from "aws-lambda";
@@ -86,18 +87,21 @@ export function orchestrator(program: (input: any) => Thread): SQSHandler {
       batchItemFailures: [],
     };
 
-    function sqsRecordsToEvents(sqsRecords: SQSRecord[]): Event[] {
+    function sqsRecordsToEvents(sqsRecords: SQSRecord[]): WorkflowEvent[] {
       return sqsRecords.flatMap(sqsRecordToEvents);
     }
 
-    function sqsRecordToEvents(sqsRecord: SQSRecord): Event[] {
+    function sqsRecordToEvents(sqsRecord: SQSRecord): WorkflowEvent[] {
       const message = JSON.parse(sqsRecord.body) as SQSWorkflowTaskMessage;
 
       return message.event.events;
     }
   };
 
-  async function orchestrateExecution(executionId: string, events: Event[]) {
+  async function orchestrateExecution(
+    executionId: string,
+    events: WorkflowEvent[]
+  ) {
     console.debug("Load history");
     // load history
     const history = await workflowRuntimeClient.getHistory(executionId);
@@ -109,7 +113,7 @@ export function orchestrator(program: (input: any) => Thread): SQSHandler {
     const state = mergeEventsIntoState(allEvents);
 
     console.debug("Running workflow with state: " + JSON.stringify(state));
-    const startEvent = allEvents.find(isWorkflowStartedEvent);
+    const startEvent = allEvents.find(isWorkflowStarted);
 
     if (!startEvent) {
       throw new Error(
@@ -118,11 +122,11 @@ export function orchestrator(program: (input: any) => Thread): SQSHandler {
     }
 
     /** Events to be written to the history table at the end of the workflow task */
-    const newEvents: Event[] = [];
+    const newEvents: WorkflowEvent[] = [];
 
     newEvents.push(
-      createEvent<WorkflowTaskStartedEvent>({
-        type: "WorkflowTaskStartedEvent",
+      createEvent<WorkflowTaskStarted>({
+        type: WorkflowEventType.WorkflowTaskStarted,
       })
     );
 
@@ -155,8 +159,8 @@ export function orchestrator(program: (input: any) => Thread): SQSHandler {
     await runDeferredCommands();
 
     newEvents.push(
-      createEvent<WorkflowTaskCompletedEvent>({
-        type: "WorkflowTaskCompletedEvent",
+      createEvent<WorkflowTaskCompleted>({
+        type: WorkflowEventType.WorkflowTaskCompleted,
       })
     );
 
@@ -169,8 +173,8 @@ export function orchestrator(program: (input: any) => Thread): SQSHandler {
             : ["Error", JSON.stringify(result.error)];
 
         newEvents.push(
-          createEvent<WorkflowFailedEvent>({
-            type: "WorkflowFailedEvent",
+          createEvent<WorkflowFailed>({
+            type: WorkflowEventType.WorkflowFailed,
             error,
             message,
           })
@@ -179,8 +183,8 @@ export function orchestrator(program: (input: any) => Thread): SQSHandler {
         await workflowRuntimeClient.failExecution(executionId, error, message);
       } else if (isResolved<any>(result)) {
         newEvents.push(
-          createEvent<WorkflowCompletedEvent>({
-            type: "WorkflowCompletedEvent",
+          createEvent<WorkflowCompleted>({
+            type: WorkflowEventType.WorkflowCompleted,
             output: result.value,
           })
         );
@@ -200,18 +204,18 @@ export function orchestrator(program: (input: any) => Thread): SQSHandler {
      * Does not actually write the commands out.
      */
     function processCommands(commands: Activity[]): {
-      events: Event[];
+      events: WorkflowEvent[];
       runDeferredCommands: () => Promise<void>;
     } {
       // register command events
       const commandResults: {
-        event: Omit<Event, "id" | "timestamp">;
+        event: Omit<WorkflowEvent, "id" | "timestamp">;
         deferredCommand: () => Promise<void>;
       }[] = commands.map((command) => {
         if (isAction(command)) {
           return {
             event: {
-              type: "ActivityScheduledEvent",
+              type: WorkflowEventType.ActivityScheduled,
               seq: command.id,
               threadId: command.threadID,
               name: command.name,
