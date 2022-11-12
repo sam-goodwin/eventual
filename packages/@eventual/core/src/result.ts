@@ -2,6 +2,28 @@ export const ResultSymbol = Symbol.for("eventual:Result");
 
 export type Result<T = any> = Pending | Resolved<T> | Failed;
 
+export namespace Result {
+  export function resolved<T>(value: T): Resolved<T> {
+    return {
+      [ResultSymbol]: ResultKind.Resolved,
+      value,
+    };
+  }
+
+  export function failed(error: any): Failed {
+    return {
+      [ResultSymbol]: ResultKind.Failed,
+      error,
+    };
+  }
+
+  export function pending(): Pending {
+    return {
+      [ResultSymbol]: ResultKind.Pending,
+    };
+  }
+}
+
 export enum ResultKind {
   Pending = 0,
   Resolved = 1,
@@ -36,24 +58,4 @@ export function isResolved<T>(result: Result<T>): result is Resolved<T> {
 
 export function isFailed(result: Result): result is Failed {
   return isResult(result) && result[ResultSymbol] === ResultKind.Failed;
-}
-
-export function createPending(): Pending {
-  return {
-    [ResultSymbol]: ResultKind.Pending,
-  };
-}
-
-export function createResolved<T>(value: T): Resolved<T> {
-  return {
-    [ResultSymbol]: ResultKind.Resolved,
-    value,
-  };
-}
-
-export function createFailed(error: any): Failed {
-  return {
-    [ResultSymbol]: ResultKind.Failed,
-    error,
-  };
 }

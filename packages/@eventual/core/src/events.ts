@@ -5,13 +5,13 @@ export interface BaseEvent {
 }
 
 export enum WorkflowEventType {
-  ActivityCompleted,
-  ActivityFailed,
-  ActivityScheduled,
-  TaskCompleted,
-  TaskStarted,
-  WorkflowCompleted,
-  WorkflowStarted,
+  ActivityCompleted = "ActivityCompleted",
+  ActivityFailed = "ActivityFailed",
+  ActivityScheduled = "ActivityScheduled",
+  TaskCompleted = "TaskCompleted",
+  TaskStarted = "TaskStarted",
+  WorkflowCompleted = "WorkflowCompleted",
+  WorkflowStarted = "WorkflowStarted",
 }
 
 /**
@@ -47,8 +47,8 @@ export function isTaskStarted(event: WorkflowEvent): event is TaskStarted {
 
 export interface ActivityScheduled extends BaseEvent {
   type: WorkflowEventType.ActivityScheduled;
+  name: string;
   seq: number;
-  threadId: number;
 }
 
 export function isActivityScheduled(
@@ -60,7 +60,6 @@ export function isActivityScheduled(
 export interface ActivityCompleted extends BaseEvent {
   type: WorkflowEventType.ActivityCompleted;
   seq: number;
-  threadId: number;
   result: any;
 }
 
@@ -73,7 +72,6 @@ export function isActivityCompleted(
 export interface ActivityFailed extends BaseEvent {
   type: WorkflowEventType.ActivityFailed;
   seq: number;
-  threadId: number;
   error: string;
   message: string;
 }

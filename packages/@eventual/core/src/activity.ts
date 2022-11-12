@@ -1,5 +1,3 @@
-import { currentThreadID, Thread } from "./thread";
-
 export const ActivitySymbol = Symbol.for("eventual:Activity");
 
 export enum ActivityKind {
@@ -20,8 +18,7 @@ export function isAction(a: any): a is Action {
 
 export interface Action {
   [ActivitySymbol]: ActivityKind.Action;
-  threadID: number;
-  id: number;
+  seq: number;
   name: string;
   args: any[];
 }
@@ -32,16 +29,16 @@ export function isAwaitAll(a: any): a is AwaitAll {
 
 export interface AwaitAll {
   [ActivitySymbol]: ActivityKind.AwaitAll;
+  seq: number;
   activities: Activity[];
-  id: number;
 }
 
 export namespace Activity {
-  export function all(tasks: Activity[]): AwaitAll {
+  export function all(activities: Activity[]): AwaitAll {
     return {
       [ActivitySymbol]: ActivityKind.AwaitAll,
-      activities: tasks,
-      id: nextActivityID(),
+      seq: nextActivityID(),
+      activities,
     };
   }
 }
@@ -71,15 +68,11 @@ export function activity<F extends (...args: any[]) => any>(
 export function scheduleActivity(
   name: string,
   args: any[],
-  props?: {
-    id?: number;
-    threadID?: number;
-  }
+  id?: number
 ): Action {
   return registerActivity<Action>({
     [ActivitySymbol]: ActivityKind.Action,
-    id: props?.id ?? nextActivityID(),
-    threadID: props?.threadID ?? currentThreadID(),
+    seq: id ?? nextActivityID(),
     name,
     args,
   });
@@ -107,4 +100,29 @@ export function resetActivities() {
 
 export function getSpawnedActivities() {
   return [...activitiesGlobal];
+}
+
+export function isThread(a: any): a is Thread {
+  return isActivity(a) && a[ActivitySymbol] === ActivityKind.Thread;
+}
+
+export interface Thread {
+  [ActivitySymbol]: ActivityKind.Thread;
+  seq: number;
+  generator: EventualGenerator;
+  awaiting?: Activity;
+}
+
+export type EventualGenerator = Generator<Activity>;
+
+export function createThread(generator: EventualGenerator): Thread {
+  return {
+    [ActivitySymbol]: ActivityKind.Thread,
+    seq: nextActivityID(),
+    generator,
+  };
+}
+
+export function scheduleThread(generator: EventualGenerator): Thread {
+  return registerActivity(createThread(generator));
 }

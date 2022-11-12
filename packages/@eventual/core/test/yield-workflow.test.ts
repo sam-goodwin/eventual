@@ -1,7 +1,19 @@
 import "jest";
 
-import { scheduleActivity, executeWorkflow, Activity, eventual } from "../src";
-import { createFailed, createPending, createResolved } from "../src/result";
+import {
+  scheduleActivity,
+  executeWorkflow,
+  Activity,
+  eventual,
+  Result,
+  WorkflowEventType,
+  WorkflowStarted,
+  WorkflowResult,
+  ActivityCompleted,
+  ActivityScheduled,
+  ActivityFailed,
+} from "../src";
+import { DeterminismError } from "../src/error";
 
 function* myWorkflow(event: any): any {
   try {
@@ -24,91 +36,73 @@ function* myWorkflow(event: any): any {
 const event = "hello world";
 
 test("no history", () => {
-  expect(executeWorkflow(myWorkflow(event), { threads: [[]] })).toEqual([
-    scheduleActivity("my-action", [event], { id: 0 }),
-  ]);
+  expect(executeWorkflow(myWorkflow(event), [])).toEqual(<WorkflowResult>{
+    actions: [scheduleActivity("my-action", [event], 1)],
+  });
 });
 
-test("pending activity", () => {
-  expect(
-    executeWorkflow(myWorkflow(event), { threads: [[createPending()]] })
-  ).toEqual([]);
-});
-
-test("continue with result from resolved activity", () => {
-  expect(
-    executeWorkflow(myWorkflow(event), {
-      threads: [[createResolved("activity result")]],
-    })
-  ).toEqual([
-    scheduleActivity("my-action-0", [event], { id: 1 }),
-    scheduleActivity("my-action-1", [event], { id: 2 }),
-    scheduleActivity("my-action-2", [event], { id: 3 }),
-  ]);
-});
-
-test("catch and handle thrown error", () => {
-  const error = new Error("you fucked up");
-  expect(
-    executeWorkflow(myWorkflow(event), { threads: [[createFailed(error)]] })
-  ).toEqual([scheduleActivity("handle-error", [error], { id: 1 })]);
-});
-
-test("should capture dangling activity", () => {
-  expect(
-    executeWorkflow(myWorkflow(event), {
-      threads: [[createResolved("activity result")]],
-    })
-  ).toEqual([
-    scheduleActivity("my-action-0", [event], { id: 1 }),
-    scheduleActivity("my-action-1", [event], { id: 2 }),
-    scheduleActivity("my-action-2", [event], { id: 3 }),
-  ]);
-});
-
-test("should return final result", () => {
-  expect(
-    executeWorkflow(myWorkflow(event), {
-      threads: [
-        [
-          createResolved("activity result"),
-          createResolved("result 0"),
-          createResolved("result 1"),
-          createResolved("result 2"),
-        ],
-      ],
-    })
-  ).toEqual(
-    createResolved([
-      "activity result",
-      [
-        // result 0 is dangling, so it should not be in the final array
-        // "result 0",
-        "result 1",
-        "result 2",
-      ],
+test("determinism error if no corresponding ActivityScheduled", () => {
+  expect(() =>
+    executeWorkflow(myWorkflow(event), [
+      // error: completed event should be after a scheduled event
+      completed("result", 1),
     ])
-  );
+  ).toThrow(expect.any(DeterminismError));
 });
 
-function* parallelWorkflow(event: any) {
-  yield Activity.all(
-    event.map(
-      // registerFunction is an interceptor to scheduled the called function as a thread
-      eventual(function* (item) {
-        yield scheduleActivity("activity-0", [item]);
-      })
-    )
-  );
+test("should continue with result of completed Activity", () => {
+  expect(
+    executeWorkflow(myWorkflow(event), [
+      scheduled("my-action", 1),
+      completed("result", 1),
+    ])
+  ).toEqual(<WorkflowResult>{
+    actions: [
+      scheduleActivity("my-action-0", [event], 2),
+      scheduleActivity("my-action-1", [event], 3),
+      scheduleActivity("my-action-2", [event], 4),
+    ],
+  });
+});
+
+test("should catch error of failed Activity", () => {
+  expect(
+    executeWorkflow(myWorkflow(event), [
+      scheduled("my-action", 1),
+      failed("error", 1),
+    ])
+  ).toEqual(<WorkflowResult>{
+    actions: [scheduleActivity("handle-error", ["error"], 2)],
+  });
+});
+
+function completed(result: any, seq: number): ActivityCompleted {
+  return {
+    type: WorkflowEventType.ActivityCompleted,
+    id: "id",
+    result,
+    seq,
+    timestamp: new Date(0).toISOString(),
+  };
 }
 
-test("isolate function calls into threads", () => {
-  expect(
-    executeWorkflow(parallelWorkflow([1, 2]), {
-      threads: [],
-    })
-  ).toEqual([
-    scheduleActivity("activity-0", [1], { threadID: 1, id: 0 }),
-    scheduleActivity("activity-0", [2], { threadID: 2, id: 0 }),
-  ]);
-});
+function failed(error: any, seq: number): ActivityFailed {
+  return {
+    type: WorkflowEventType.ActivityFailed,
+    id: "id",
+    error,
+    message: "message",
+    seq,
+    timestamp: new Date(0).toISOString(),
+  };
+}
+
+function scheduled(name: string, seq: number): ActivityScheduled {
+  return {
+    type: WorkflowEventType.ActivityScheduled,
+    id: "id",
+    name,
+    seq,
+    timestamp: new Date(0).toISOString(),
+  };
+}
