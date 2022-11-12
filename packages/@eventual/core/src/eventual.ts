@@ -9,5 +9,8 @@ export function eventual<
 >(func: F): F;
 
 export function eventual<F extends (...args: any[]) => any>(func: F): F {
-  return ((...args: any[]) => scheduleThread(func(...args))) as any;
+  return ((...args: any[]) => {
+    const generator = func(...args);
+    return scheduleThread(generator);
+  }) as any;
 }

@@ -1,0 +1,12 @@
+{
+  "files": [],
+  "extends": "./tsconfig-base.json",
+  "references": [
+    {
+      "path": "packages/@eventual/compiler/tsconfig.test.json"
+    },
+    {
+      "path": "packages/@eventual/core/tsconfig.test.json"
+    }
+  ]
+}
