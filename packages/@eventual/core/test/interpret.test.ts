@@ -191,14 +191,11 @@ test("should have left-to-right determinism semantics for Activity.all", () => {
   function* workflow(items: string[]) {
     return Activity.all([
       createCommand("before", ["before"]),
-      // @ts-ignore
       ...items.map(
         eventual(function* (item) {
-          // @ts-ignore
-          return yield createCommand("inside", [item]);
+          yield createCommand("inside", [item]);
         })
       ),
-      // @ts-ignore
       createCommand("after", ["after"]),
     ]);
   }

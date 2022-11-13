@@ -33,13 +33,13 @@ export type HistoryEvent =
   | ActivityCompleted
   | ActivityFailed;
 
-export type Program = Generator<Activity>;
+export type Program<Return = any> = Generator<Activity, Return>;
 
 /**
  * Interprets a workflow program
  */
-export function interpret(
-  program: Program,
+export function interpret<Return>(
+  program: Program<Return>,
   history: HistoryEvent[]
 ): WorkflowResult {
   const commandTable: Record<number, Command> = {};
@@ -214,8 +214,8 @@ export function interpret(
       try {
         const iterResult =
           result === undefined || isResolved(result)
-            ? thread.program.next(result?.value)
-            : thread.program.throw(result.error);
+            ? thread.next(result?.value)
+            : thread.throw(result.error);
         if (iterResult.done) {
           activeThreads.delete(thread);
           if (isActivity(iterResult.value)) {

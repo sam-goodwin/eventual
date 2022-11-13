@@ -7,18 +7,15 @@ export function isThread(a: any): a is Thread {
   return isActivity(a) && a[ActivitySymbol] === ActivityKind.Thread;
 }
 
-export interface Thread<T = any> {
+export interface Thread<T = any> extends Program<T> {
   [ActivitySymbol]: ActivityKind.Thread;
-  program: Program;
   result?: Result<T>;
   awaiting?: Activity;
 }
 
 export function createThread(program: Program): Thread {
-  return {
-    [ActivitySymbol]: ActivityKind.Thread,
-    program,
-  };
+  (program as any)[ActivitySymbol] = ActivityKind.Thread;
+  return program as Thread;
 }
 
 export function scheduleThread(program: Program): Thread {
