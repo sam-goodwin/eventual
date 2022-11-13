@@ -8,7 +8,6 @@ import {
   isAwaitAll,
   isThread,
   resetActivityCollector,
-  resetThreadIDCounter,
   Thread,
 } from "./activity";
 import { DeterminismError } from "./error";
@@ -25,7 +24,6 @@ import { assertNever } from "./util";
 
 function reset() {
   resetActivityCollector();
-  resetThreadIDCounter();
 }
 
 export interface WorkflowResult {
@@ -58,9 +56,7 @@ export function interpret(
   reset();
   const actionTable: Record<number, Action> = {};
   const mainThread = createThread(program);
-  const threadTable: Record<number, Thread> = {
-    0: mainThread,
-  };
+  const threadTable = new Set([mainThread]);
 
   let seq = 0;
   function nextSeq() {
@@ -141,9 +137,7 @@ export function interpret(
   };
 
   function canMakeProgress() {
-    return Object.values(threadTable).some((thread) =>
-      isActivityComplete(thread)
-    );
+    return Array.from(threadTable).some((thread) => isActivityComplete(thread));
   }
 
   function isActivityComplete(activity: Activity): boolean {
@@ -208,7 +202,7 @@ export function interpret(
   }
 
   function run(replay: boolean): Action[] {
-    const actions = Object.values(threadTable).flatMap((thread) =>
+    const actions = Array.from(threadTable).flatMap((thread) =>
       tryMakeProgress(thread, replay)
     );
     actions.forEach((action) => {
@@ -273,7 +267,7 @@ export function interpret(
           : thread.program.throw(result.error);
 
       if (iterResult.done) {
-        delete threadTable[thread.id];
+        threadTable.delete(thread);
         delete thread.awaiting;
         if (isActivity(iterResult.value)) {
           thread.result = Result.pending(iterResult.value);
@@ -285,10 +279,7 @@ export function interpret(
       }
 
       const activities = collectActivities();
-
-      activities
-        .filter(isThread)
-        .forEach((thread) => (threadTable[thread.id] = thread));
+      activities.filter(isThread).forEach((thread) => threadTable.add(thread));
 
       return activities.flatMap((spawned) => {
         if (isAction(spawned)) {

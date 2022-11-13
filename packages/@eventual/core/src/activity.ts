@@ -100,7 +100,9 @@ export function resetActivityCollector() {
 }
 
 export function collectActivities() {
-  return [...activityCollector];
+  const activities = activityCollector;
+  resetActivityCollector();
+  return activities;
 }
 
 export function isThread(a: any): a is Thread {
@@ -112,20 +114,12 @@ export interface Thread<T = any> {
   program: Program;
   result?: Result<T>;
   awaiting?: Activity;
-  id: number;
-}
-
-let threadIDCounter = 0;
-
-export function resetThreadIDCounter() {
-  threadIDCounter = 0;
 }
 
 export function createThread(program: Program): Thread {
   return {
     [ActivitySymbol]: ActivityKind.Thread,
     program,
-    id: threadIDCounter++,
   };
 }
 
