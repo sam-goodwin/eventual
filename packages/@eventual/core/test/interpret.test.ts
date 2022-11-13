@@ -10,18 +10,19 @@ import {
   ActivityCompleted,
   ActivityScheduled,
   ActivityFailed,
+  Program,
 } from "../src";
 import { createCommand } from "../src/command";
 import { DeterminismError } from "../src/error";
 
-function* myWorkflow(event: any): any {
+function* myWorkflow(event: any): Program<any> {
   try {
-    const a = yield createCommand("my-action", [event]);
+    const a: any = yield createCommand("my-action", [event]);
 
     // dangling - it should still be scheduled
     createCommand("my-action-0", [event]);
 
-    const all = yield Activity.all([
+    const all = yield* Activity.all([
       createCommand("my-action-1", [event]),
       createCommand("my-action-2", [event]),
     ]);
@@ -114,9 +115,7 @@ test("should return result of inner function", () => {
     const inner = eventual(function* () {
       return "foo";
     });
-    // @ts-ignore
-    const result = yield inner();
-    return result;
+    return yield* inner();
   }
 
   expect(interpret(workflow() as any, [])).toMatchObject(<WorkflowResult>{
@@ -145,7 +144,6 @@ test("should await an un-awaited returned AwaitAll", () => {
     const inner = eventual(function* () {
       return `foo-${i++}`;
     });
-    // @ts-ignore
     return Activity.all([inner(), inner()]);
   }
 
@@ -158,10 +156,8 @@ test("should await an un-awaited returned AwaitAll", () => {
 test("should support Activity.all of function calls", () => {
   function* workflow(items: string[]) {
     return Activity.all(
-      // @ts-ignore
       items.map(
-        eventual(function* (item) {
-          // @ts-ignore
+        eventual(function* (item): Program {
           return yield createCommand("process-item", [item]);
         })
       )
@@ -253,8 +249,7 @@ test("try-catch-finally with dangling promise in catch", () => {
 test("throw error within nested function", () => {
   function* workflow(items: string[]) {
     try {
-      yield Activity.all(
-        // @ts-ignore
+      yield* Activity.all(
         items.map(
           eventual(function* (item) {
             const result = yield createCommand("inside", [item]);

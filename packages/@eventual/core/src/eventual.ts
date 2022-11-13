@@ -1,3 +1,4 @@
+import { Activity } from "./activity";
 import { Program } from "./interpret";
 import { scheduleThread, Thread } from "./thread";
 
@@ -7,7 +8,7 @@ export function eventual<F extends (...args: any[]) => Promise<any>>(
 
 export function eventual<F extends (...args: any[]) => Program>(
   func: F
-): (...args: Parameters<F>) => Thread<ReturnType<F>>;
+): (...args: Parameters<F>) => Thread<Awaited<ReturnType<F>>>;
 
 export function eventual<F extends (...args: any[]) => any>(func: F): F {
   return ((...args: any[]) => {
@@ -15,3 +16,9 @@ export function eventual<F extends (...args: any[]) => any>(func: F): F {
     return scheduleThread(generator);
   }) as any;
 }
+
+type Awaited<T> = T extends Program<infer U>
+  ? Awaited<U>
+  : T extends Activity<infer U>
+  ? Awaited<U>
+  : T;

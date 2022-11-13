@@ -11,15 +11,22 @@ import {
   isActivityScheduled,
 } from "./events";
 import { collectActivities } from "./global";
-import { Result, isResolved, isFailed, isPending } from "./result";
+import {
+  Result,
+  isResolved,
+  isFailed,
+  isPending,
+  Resolved,
+  Failed,
+} from "./result";
 import { createThread, isThread, Thread } from "./thread";
 import { assertNever } from "./util";
 
-export interface WorkflowResult {
+export interface WorkflowResult<T = any> {
   /**
    * The Result if this thread has terminated.
    */
-  result?: Result;
+  result?: Result<T>;
   /**
    * Any Commands that need to be scheduled.
    *
@@ -41,7 +48,7 @@ export type Program<Return = any> = Generator<Activity, Return>;
 export function interpret<Return>(
   program: Program<Return>,
   history: HistoryEvent[]
-): WorkflowResult {
+): WorkflowResult<Awaited<Return>> {
   const commandTable: Record<number, Command> = {};
   const mainThread = createThread(program);
   const activeThreads = new Set([mainThread]);
@@ -205,12 +212,8 @@ export function interpret<Return>(
      */
     function wakeThread(
       thread: Thread,
-      result: Result<any> | undefined
+      result: Resolved | Failed | undefined
     ): Command[] {
-      if (result && isPending(result)) {
-        return [];
-      }
-
       try {
         const iterResult =
           result === undefined || isResolved(result)
@@ -220,6 +223,10 @@ export function interpret<Return>(
           activeThreads.delete(thread);
           if (isActivity(iterResult.value)) {
             thread.result = Result.pending(iterResult.value);
+          } else if (isGenerator(iterResult.value)) {
+            const childThread = createThread(iterResult.value);
+            activeThreads.add(childThread);
+            thread.result = Result.pending(childThread);
           } else {
             thread.result = Result.resolved(iterResult.value);
           }
@@ -296,5 +303,15 @@ function isCorresponding(event: ActivityScheduled, command: Command) {
   return (
     event.seq === command.seq && event.name === command.name
     // TODO: also validate arguments
+  );
+}
+
+function isGenerator(a: any): a is Program {
+  return (
+    a &&
+    typeof a === "object" &&
+    typeof a.next === "function" &&
+    typeof a.return === "function" &&
+    typeof a.throw === "function"
   );
 }

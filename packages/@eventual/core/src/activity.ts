@@ -1,5 +1,6 @@
 import type { AwaitAll } from "./await-all";
 import { Command, createCommand } from "./command";
+import { Program } from "./interpret";
 import { Thread } from "./thread";
 
 export const ActivitySymbol = Symbol.for("eventual:Activity");
@@ -46,14 +47,20 @@ export namespace Activity {
    *
    * This is the equivalent behavior to Promise.all.
    */
-  export function all<A extends Activity[]>(
+  export function* all<A extends Activity[]>(
     activities: A
-  ): AwaitAll<{
-    [i in keyof A]: A[i] extends Activity<infer T> ? T : A[i];
-  }> {
-    return {
+  ): Program<
+    AwaitAll<{
+      [i in keyof A]: A[i] extends Activity<infer T> ? T : A[i];
+    }>
+  > {
+    return (yield <
+      AwaitAll<{
+        [i in keyof A]: A[i] extends Activity<infer T> ? T : A[i];
+      }>
+    >{
       [ActivitySymbol]: ActivityKind.AwaitAll,
       activities,
-    };
+    }) as any;
   }
 }

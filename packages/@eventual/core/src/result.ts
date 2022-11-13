@@ -19,7 +19,7 @@ export namespace Result {
     };
   }
 
-  export function pending(activity: Activity): Pending {
+  export function pending<A extends Activity>(activity: A): Pending<A> {
     return {
       [ResultSymbol]: ResultKind.Pending,
       activity,
@@ -33,9 +33,9 @@ export enum ResultKind {
   Failed = 2,
 }
 
-export interface Pending {
+export interface Pending<A extends Activity = Activity> {
   [ResultSymbol]: ResultKind.Pending;
-  activity: Activity;
+  activity: A;
 }
 
 export interface Resolved<T = any> {
