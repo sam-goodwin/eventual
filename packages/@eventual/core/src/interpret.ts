@@ -56,7 +56,7 @@ export function interpret(
     return history[historyIndex];
   }
   function pop() {
-    return history[historyIndex++]!;
+    return history[historyIndex++];
   }
   function takeWhile<T>(max: number, guard: (a: any) => a is T): T[] {
     const items: T[] = [];
@@ -160,9 +160,15 @@ export function interpret(
 
   /**
    * Try and make progress in a thread if it can be woken up with a new value.
+   *
+   * Returns an array of Commands if the thread progressed, otherwise `undefined`:
+   * 1. If an empty array of Commands is returned, it indicates that the thread woke up
+   *    but did not emit any new Commands.
+   * 2. An `undefined` return value indicates that the thread did not wake up.
    */
   function runThread(thread: Thread, isReplay: boolean): Command[] | undefined {
     if (thread.awaiting === undefined) {
+      // this is the first time the thread is running, so wake it with an undefined input
       return wakeThread(thread, undefined);
     }
     const result = tryResolveResult(thread.awaiting);

@@ -14,5 +14,14 @@ test("esbuild-plugin", async () => {
     write: false,
   });
 
-  expect(bundle.outputFiles![0]?.text).toMatchSnapshot();
+  expect(
+    bundle
+      .outputFiles![0]?.text.split("\n")
+      // HACK: filter out comment that is breaking the tests when run from VS Code
+      // TODO: figure out why running vs code test is having trouble identifying the right
+      //       tsconfig.test.json without a configuration at the root.
+      // HINT: something to do with `.vscode/launch.json`
+      .filter((line) => !line.includes("test-files/workflow.ts"))
+      .join("\n")
+  ).toMatchSnapshot();
 });
