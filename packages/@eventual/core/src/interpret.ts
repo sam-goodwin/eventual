@@ -9,6 +9,7 @@ import {
   isThread,
   resetActivities,
   resetActivityIDCounter,
+  resetThreadIDCounter,
   Thread,
 } from "./activity";
 import { DeterminismError } from "./error";
@@ -26,6 +27,7 @@ import { assertNever } from "./util";
 function reset() {
   resetActivities();
   resetActivityIDCounter();
+  resetThreadIDCounter();
 }
 
 export interface WorkflowResult {
@@ -50,18 +52,15 @@ export type Program = Generator<Activity>;
 
 /**
  * Interprets a workflow program
- * @param program
- * @param history
- * @returns
  */
 export function interpret(
   program: Generator<any, any, Activity>,
   history: HistoryEvent[]
 ): WorkflowResult {
   reset();
-  const activities: Record<number, Activity> = {};
+  const actionTable: Record<number, Action> = {};
   const mainThread = createThread(program);
-  const threads: Record<number, Thread> = {
+  const threadTable: Record<number, Thread> = {
     0: mainThread,
   };
 
@@ -139,7 +138,7 @@ export function interpret(
   };
 
   function canMakeProgress() {
-    return Object.values(threads).some((thread) => isActivityReady(thread));
+    return Object.values(threadTable).some((thread) => isActivityReady(thread));
   }
 
   function isActivityReady(activity: Activity): boolean {
@@ -204,7 +203,7 @@ export function interpret(
   }
 
   function run(replay: boolean): Action[] {
-    return Object.values(threads).flatMap((thread) =>
+    return Object.values(threadTable).flatMap((thread) =>
       tryMakeProgress(thread, replay)
     );
   }
@@ -263,7 +262,7 @@ export function interpret(
           : thread.program.throw(result.error);
 
       if (iterResult.done) {
-        delete threads[thread.seq];
+        delete threadTable[thread.id];
         delete thread.awaiting;
         if (isActivity(iterResult.value)) {
           thread.result = Result.pending(iterResult.value);
@@ -278,8 +277,8 @@ export function interpret(
       const actions = spawned.filter(isAction);
       const newThreads = spawned.filter(isThread);
 
-      spawned.forEach((spawned) => (activities[spawned.seq] = spawned));
-      newThreads.forEach((thread) => (threads[thread.seq] = thread));
+      actions.forEach((action) => (actionTable[action.seq] = action));
+      newThreads.forEach((thread) => (threadTable[thread.id] = thread));
 
       return [
         ...actions,
@@ -289,7 +288,7 @@ export function interpret(
   }
 
   function getActivity(seq: number): Activity {
-    const activity = activities[seq];
+    const activity = actionTable[seq];
     if (activity === undefined) {
       throw new DeterminismError();
     }

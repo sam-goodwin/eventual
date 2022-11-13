@@ -80,11 +80,11 @@ export function activity<F extends (...args: any[]) => any>(
 export function scheduleActivity(
   name: string,
   args: any[],
-  id?: number
+  seq?: number
 ): Action {
   return registerActivity<Action>({
     [ActivitySymbol]: ActivityKind.Action,
-    seq: id ?? nextActivityID(),
+    seq: seq ?? nextActivityID(),
     name,
     args,
   });
@@ -120,17 +120,23 @@ export function isThread(a: any): a is Thread {
 
 export interface Thread<T = any> {
   [ActivitySymbol]: ActivityKind.Thread;
-  seq: number;
   program: Program;
   result?: Result<T>;
   awaiting?: Activity;
+  id: number;
+}
+
+let threadIDCounter = 0;
+
+export function resetThreadIDCounter() {
+  threadIDCounter = 0;
 }
 
 export function createThread(program: Program): Thread {
   return {
     [ActivitySymbol]: ActivityKind.Thread,
-    seq: nextActivityID(),
     program,
+    id: threadIDCounter++,
   };
 }
 
