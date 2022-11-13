@@ -133,28 +133,32 @@ export function interpret(
   };
 
   function canMakeProgress() {
-    return Array.from(threadTable).some(isAwake);
+    for (const thread of threadTable) {
+      if (isAwake(thread)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   function run(replay: boolean): Command[] {
     const commands: Command[] = [];
     while (canMakeProgress()) {
-      const newCommands = Array.from(threadTable).flatMap((thread) =>
-        runIfAwake(thread, replay)
-      );
-      commands.push(...newCommands);
-      newCommands.forEach((command) => {
-        // assign command sequences in order of when they were spawned
-        command.seq = nextSeq();
-        commandTable[command.seq] = command;
-      });
+      for (const thread of threadTable) {
+        const newCommands = runIfAwake(thread, replay);
+        commands.push(...newCommands);
+        newCommands.forEach((command) => {
+          // assign command sequences in order of when they were spawned
+          command.seq = nextSeq();
+          commandTable[command.seq] = command;
+        });
+      }
     }
     return commands;
   }
 
   /**
-   * Try and make progress in a thread if it can be woken up
-   * with a new value.
+   * Try and make progress in a thread if it can be woken up with a new value.
    */
   function runIfAwake(thread: Thread, replay: boolean): Command[] {
     if (thread.awaiting === undefined) {
