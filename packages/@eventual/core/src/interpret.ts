@@ -143,7 +143,7 @@ export function interpret(
         const producedCommands = runThread(thread, isReplay);
         if (producedCommands !== undefined) {
           madeProgress = true;
-          producedCommands.forEach((command) => {
+          for (const command of producedCommands) {
             if (commands === undefined) {
               commands = [];
             }
@@ -151,7 +151,7 @@ export function interpret(
             // assign command sequences in order of when they were spawned
             command.seq = nextSeq();
             commandTable[command.seq] = command;
-          });
+          }
         }
       }
     } while (madeProgress);
@@ -231,16 +231,12 @@ export function interpret(
         thread.result = Result.failed(err);
       }
 
-      const activities = collectActivities();
-      activities
-        .filter(isThread)
-        .forEach((thread) => activeThreads.add(thread));
-
-      return activities.flatMap((spawned) => {
-        if (isCommand(spawned)) {
-          return [spawned];
-        } else if (isThread(spawned)) {
-          return runThread(spawned, isReplay) ?? [];
+      return collectActivities().flatMap((activity) => {
+        if (isCommand(activity)) {
+          return [activity];
+        } else if (isThread(activity)) {
+          activeThreads.add(activity);
+          return runThread(activity, isReplay) ?? [];
         } else {
           return [];
         }
