@@ -44,7 +44,7 @@ export function interpret(
 ): WorkflowResult {
   const commandTable: Record<number, Command> = {};
   const mainThread = createThread(program);
-  const threadTable = new Set([mainThread]);
+  const activeThreads = new Set([mainThread]);
 
   let seq = 0;
   function nextSeq() {
@@ -82,7 +82,7 @@ export function interpret(
     if (isActivityCompleted(event) || isActivityFailed(event)) {
       commitCompletionEvent(event, true);
     } else if (isActivityScheduled(event)) {
-      const commands = run(true);
+      const commands = run(true) ?? [];
       const events = [
         event,
         ...takeWhile(commands.length - 1, isActivityScheduled),
@@ -117,12 +117,14 @@ export function interpret(
       throw new Error("illegal state");
     }
     commitCompletionEvent(event, false);
-    commands.push(...run(false));
+
+    commands.push(...(run(false) ?? []));
   }
 
-  while (canMakeProgress()) {
+  let newCommands;
+  while ((newCommands = run(false))) {
     // continue progressing the program until all possible progress has been made
-    commands.push(...run(false));
+    commands.push(...newCommands);
   }
 
   const result = tryResolveResult(mainThread);
@@ -132,41 +134,40 @@ export function interpret(
     commands: commands,
   };
 
-  function canMakeProgress() {
-    for (const thread of threadTable) {
-      if (isAwake(thread)) {
-        return true;
+  function run(isReplay: boolean): Command[] | undefined {
+    let commands: Command[] | undefined;
+    let madeProgress: boolean;
+    do {
+      madeProgress = false;
+      for (const thread of activeThreads) {
+        const producedCommands = runThread(thread, isReplay);
+        if (producedCommands !== undefined) {
+          madeProgress = true;
+          producedCommands.forEach((command) => {
+            if (commands === undefined) {
+              commands = [];
+            }
+            commands.push(command);
+            // assign command sequences in order of when they were spawned
+            command.seq = nextSeq();
+            commandTable[command.seq] = command;
+          });
+        }
       }
-    }
-    return false;
-  }
-
-  function run(replay: boolean): Command[] {
-    const commands: Command[] = [];
-    while (canMakeProgress()) {
-      for (const thread of threadTable) {
-        const newCommands = runIfAwake(thread, replay);
-        commands.push(...newCommands);
-        newCommands.forEach((command) => {
-          // assign command sequences in order of when they were spawned
-          command.seq = nextSeq();
-          commandTable[command.seq] = command;
-        });
-      }
-    }
+    } while (madeProgress);
     return commands;
   }
 
   /**
    * Try and make progress in a thread if it can be woken up with a new value.
    */
-  function runIfAwake(thread: Thread, replay: boolean): Command[] {
+  function runThread(thread: Thread, isReplay: boolean): Command[] | undefined {
     if (thread.awaiting === undefined) {
       return wakeThread(thread, undefined);
     }
     const result = tryResolveResult(thread.awaiting);
     if (result === undefined) {
-      return [];
+      return undefined;
     } else if (isResolved(result) || isFailed(result)) {
       return wakeThread(thread, result);
     } else if (isAwaitAll(result.activity)) {
@@ -180,7 +181,7 @@ export function interpret(
           throw new DeterminismError();
         } else if (isPending(result)) {
           // thread cannot wake up because we're waiting on all tasks
-          return [];
+          return undefined;
         } else if (isFailed(result)) {
           // one of the inner activities has failed, the thread should throw
           return wakeThread(thread, result);
@@ -190,7 +191,7 @@ export function interpret(
       }
       return wakeThread(thread, Result.resolved(results));
     } else {
-      return [];
+      return undefined;
     }
 
     /**
@@ -210,7 +211,7 @@ export function interpret(
             ? thread.program.next(result?.value)
             : thread.program.throw(result.error);
         if (iterResult.done) {
-          threadTable.delete(thread);
+          activeThreads.delete(thread);
           if (isActivity(iterResult.value)) {
             thread.result = Result.pending(iterResult.value);
           } else {
@@ -220,37 +221,24 @@ export function interpret(
           thread.awaiting = iterResult.value;
         }
       } catch (err) {
-        threadTable.delete(thread);
+        activeThreads.delete(thread);
         thread.result = Result.failed(err);
       }
 
       const activities = collectActivities();
-      activities.filter(isThread).forEach((thread) => threadTable.add(thread));
+      activities
+        .filter(isThread)
+        .forEach((thread) => activeThreads.add(thread));
 
       return activities.flatMap((spawned) => {
         if (isCommand(spawned)) {
           return [spawned];
         } else if (isThread(spawned)) {
-          return runIfAwake(spawned, replay);
+          return runThread(spawned, isReplay) ?? [];
         } else {
           return [];
         }
       });
-    }
-  }
-
-  function isAwake(thread: Thread): boolean {
-    return thread.awaiting === undefined || isDone(thread.awaiting);
-  }
-
-  function isDone(activity: Activity): boolean {
-    const result = activity.result;
-    if (isResolved(result) || isFailed(result)) {
-      return true;
-    } else if (isAwaitAll(activity)) {
-      return activity.activities.every(isDone);
-    } else {
-      return false;
     }
   }
 
