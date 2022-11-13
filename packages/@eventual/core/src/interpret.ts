@@ -80,7 +80,7 @@ export function interpret(
     pop();
 
     if (isActivityCompleted(event) || isActivityFailed(event)) {
-      commitCompletion(event, true);
+      commitCompletionEvent(event, true);
     } else if (isActivityScheduled(event)) {
       const commands = run(true);
       const events = [
@@ -116,7 +116,7 @@ export function interpret(
       //    -> or else a determinism error would have been thrown
       throw new Error("illegal state");
     }
-    commitCompletion(event, false);
+    commitCompletionEvent(event, false);
     commands.push(...run(false));
   }
 
@@ -133,7 +133,7 @@ export function interpret(
   };
 
   function canMakeProgress() {
-    return Array.from(threadTable).some((thread) => isCompleted(thread));
+    return Array.from(threadTable).some(isAwake);
   }
 
   function run(replay: boolean): Command[] {
@@ -226,18 +226,16 @@ export function interpret(
     }
   }
 
-  function isCompleted(activity: Activity): boolean {
+  function isAwake(thread: Thread): boolean {
+    return thread.awaiting === undefined || isDone(thread.awaiting);
+  }
+
+  function isDone(activity: Activity): boolean {
     const result = activity.result;
     if (isResolved(result) || isFailed(result)) {
       return true;
-    } else if (isThread(activity)) {
-      if (activity.awaiting) {
-        return isCompleted(activity.awaiting);
-      } else {
-        return false;
-      }
     } else if (isAwaitAll(activity)) {
-      return activity.activities.every(isCompleted);
+      return activity.activities.every(isDone);
     } else {
       return false;
     }
@@ -274,7 +272,7 @@ export function interpret(
     }
   }
 
-  function commitCompletion(
+  function commitCompletionEvent(
     event: ActivityCompleted | ActivityFailed,
     isReplay: boolean
   ) {
