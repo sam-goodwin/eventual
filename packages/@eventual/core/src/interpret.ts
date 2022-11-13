@@ -39,7 +39,7 @@ export type Program = Generator<Activity>;
  * Interprets a workflow program
  */
 export function interpret(
-  program: Generator<any, any, Activity>,
+  program: Program,
   history: HistoryEvent[]
 ): WorkflowResult {
   const commandTable: Record<number, Command> = {};

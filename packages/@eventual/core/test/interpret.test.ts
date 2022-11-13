@@ -110,28 +110,28 @@ test("should wait if partial results", () => {
 });
 
 test("should return result of inner function", () => {
-  const workflow = function* () {
+  function* workflow() {
     const inner = eventual(function* () {
       return "foo";
     });
     // @ts-ignore
     const result = yield inner();
     return result;
-  };
+  }
 
-  expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
+  expect(interpret(workflow() as any, [])).toMatchObject(<WorkflowResult>{
     result: Result.resolved("foo"),
     commands: [],
   });
 });
 
 test("should await an un-awaited returned Activity", () => {
-  const workflow = function* () {
+  function* workflow() {
     const inner = eventual(function* () {
       return "foo";
     });
     return inner();
-  };
+  }
 
   expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
     result: Result.resolved("foo"),
@@ -140,14 +140,14 @@ test("should await an un-awaited returned Activity", () => {
 });
 
 test("should await an un-awaited returned AwaitAll", () => {
-  const workflow = function* () {
+  function* workflow() {
     let i = 0;
     const inner = eventual(function* () {
       return `foo-${i++}`;
     });
     // @ts-ignore
     return Activity.all([inner(), inner()]);
-  };
+  }
 
   expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
     result: Result.resolved(["foo-0", "foo-1"]),
@@ -156,7 +156,7 @@ test("should await an un-awaited returned AwaitAll", () => {
 });
 
 test("should support Activity.all of function calls", () => {
-  const workflow = function* (items: string[]) {
+  function* workflow(items: string[]) {
     return Activity.all(
       // @ts-ignore
       items.map(
@@ -166,7 +166,7 @@ test("should support Activity.all of function calls", () => {
         })
       )
     );
-  };
+  }
 
   expect(interpret(workflow(["a", "b"]), [])).toMatchObject(<WorkflowResult>{
     commands: [
@@ -188,7 +188,7 @@ test("should support Activity.all of function calls", () => {
 });
 
 test("should have left-to-right determinism semantics for Activity.all", () => {
-  const workflow = function* (items: string[]) {
+  function* workflow(items: string[]) {
     return Activity.all([
       createCommand("before", ["before"]),
       // @ts-ignore
@@ -201,7 +201,7 @@ test("should have left-to-right determinism semantics for Activity.all", () => {
       // @ts-ignore
       createCommand("after", ["after"]),
     ]);
-  };
+  }
 
   const result = interpret(workflow(["a", "b"]), []);
   expect(result).toMatchObject(<WorkflowResult>{
