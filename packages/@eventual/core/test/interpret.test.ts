@@ -315,6 +315,41 @@ test("throw error within nested function", () => {
   });
 });
 
+test("properly evaluate yield* of sub-programs", () => {
+  function* sub() {
+    const item = yield* Activity.all([
+      createCommand("a", []),
+      createCommand("b", []),
+    ]);
+
+    return item;
+  }
+
+  function* workflow() {
+    return yield* sub();
+  }
+
+  expect(interpret(workflow(), [])).toMatchObject({
+    commands: [
+      //
+      createCommand("a", [], 0),
+      createCommand("b", [], 1),
+    ],
+  });
+
+  expect(
+    interpret(workflow(), [
+      scheduled("a", 0),
+      scheduled("b", 1),
+      completed("a", 0),
+      completed("b", 1),
+    ])
+  ).toMatchObject({
+    result: Result.resolved(["a", "b"]),
+    commands: [],
+  });
+});
+
 function completed(result: any, seq: number): ActivityCompleted {
   return {
     type: WorkflowEventType.ActivityCompleted,
