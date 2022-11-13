@@ -17,18 +17,24 @@ export const eventualESPlugin: esBuild.Plugin = {
   name: "eventual",
   setup(build) {
     build.onLoad({ filter: /\.[mc]?[tj]s$/g }, async (args) => {
+      // FYI: SWC erases comments: https://github.com/swc-project/swc/issues/6403
       const sourceModule = await parseFile(args.path, {
         syntax: "typescript",
       });
 
-      const transformedModule = new OuterVisitor().visitModule(sourceModule);
+      const outerVisitor = new OuterVisitor();
+      const transformedModule = outerVisitor.visitModule(sourceModule);
 
-      const { code } = await printModule(transformedModule, args.path);
+      // only format the module and return it if we found eventual functions to transform.
+      if (outerVisitor.foundEventual) {
+        const { code } = await printModule(transformedModule, args.path);
 
-      return {
-        contents: code,
-        loader: "ts",
-      };
+        return {
+          contents: code,
+          loader: "ts",
+        };
+      }
+      return;
     });
   },
 };
@@ -41,6 +47,7 @@ const supportedPromiseFunctions: string[] = [
 ];
 
 class OuterVisitor extends Visitor {
+  public foundEventual = false;
   public visitCallExpression(call: CallExpression): Expression {
     if (
       isEventualCallee(call.callee) &&
@@ -49,6 +56,7 @@ class OuterVisitor extends Visitor {
         call.arguments[0]?.expression.type === "FunctionExpression") &&
       !call.arguments[0].expression.generator
     ) {
+      this.foundEventual = true;
       return new InnerVisitor().visitExpression(call.arguments[0].expression);
     }
     return super.visitCallExpression(call);

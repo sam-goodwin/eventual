@@ -14,41 +14,69 @@ import { ExecutionHistoryClient } from "./execution-history-client";
 import { WorkflowClient } from "./workflow-client";
 import { WorkflowRuntimeClient } from "./workflow-runtime-client";
 
-const dynamo = new DynamoDBClient({});
-const sqs = new SQSClient({});
-const s3 = new S3Client({ region: process.env.AWS_REGION });
-const lambda = new LambdaClient({});
+/**
+ * Lazily maintain whatever is returned by the create function as a singleton.
+ */
+function memoize<T>(create: () => T) {
+  let t: T;
+  return () => {
+    if (!t) {
+      return (t = create());
+    }
+    return t;
+  };
+}
 
-export const createExecutionHistoryClient = () =>
-  new ExecutionHistoryClient({
-    dynamo,
-    tableName: tableName(),
-  });
+/**
+ * Client creators to be used by the lambda functions.
+ *
+ * Any used clients should be tree shaken by esbuild.
+ * The pure annotations help esbuild determine that theses functions calls have no side effects.
+ */
 
-export const createWorkflowClient = (
-  executionHistoryClient: ExecutionHistoryClient = createExecutionHistoryClient()
-) =>
-  new WorkflowClient({
-    sqs,
-    workflowQueueUrl: workflowQueueUrl(),
-    executionHistory: executionHistoryClient,
-    dynamo,
-    tableName: tableName(),
-  });
+const dynamo = /*@__PURE__*/ memoize(() => new DynamoDBClient({}));
+const sqs = /*@__PURE__*/ memoize(() => new SQSClient({}));
+const s3 = /*@__PURE__*/ memoize(
+  () => new S3Client({ region: process.env.AWS_REGION })
+);
+const lambda = /*@__PURE__*/ memoize(() => new LambdaClient({}));
 
-export const createActivityRuntimeClient = () =>
-  new ActivityRuntimeClient({
-    activityLockTableName: activityLockTableName(),
-    dynamo: dynamo,
-  });
+export const createExecutionHistoryClient = /*@__PURE__*/ memoize(
+  () =>
+    new ExecutionHistoryClient({
+      dynamo: dynamo(),
+      tableName: tableName(),
+    })
+);
 
-export const createWorkflowRuntimeClient = () =>
-  new WorkflowRuntimeClient({
-    dynamo,
-    s3,
-    // todo fail when missing
-    executionHistoryBucket: executionHistoryBucket(),
-    tableName: tableName(),
-    lambda: lambda,
-    actionWorkerFunctionName: actionWorkerFunctionName(),
-  });
+export const createWorkflowClient = /*@__PURE__*/ memoize(
+  () =>
+    new WorkflowClient({
+      sqs: sqs(),
+      workflowQueueUrl: workflowQueueUrl(),
+      executionHistory: createExecutionHistoryClient(),
+      dynamo: dynamo(),
+      tableName: tableName(),
+    })
+);
+
+export const createActivityRuntimeClient = /*@__PURE__*/ memoize(
+  () =>
+    new ActivityRuntimeClient({
+      activityLockTableName: activityLockTableName(),
+      dynamo: dynamo(),
+    })
+);
+
+export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
+  () =>
+    new WorkflowRuntimeClient({
+      dynamo: dynamo(),
+      s3: s3(),
+      // todo fail when missing
+      executionHistoryBucket: executionHistoryBucket(),
+      tableName: tableName(),
+      lambda: lambda(),
+      actionWorkerFunctionName: actionWorkerFunctionName(),
+    })
+);

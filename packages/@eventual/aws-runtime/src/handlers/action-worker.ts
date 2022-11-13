@@ -15,7 +15,7 @@ import {
 
 const activityRuntimeClient = createActivityRuntimeClient();
 const executionHistoryClient = createExecutionHistoryClient();
-const workflowClient = createWorkflowClient(executionHistoryClient);
+const workflowClient = createWorkflowClient();
 
 export const actionWorker = (): Handler<ActionWorkerRequest, void> => {
   return async (request) => {
