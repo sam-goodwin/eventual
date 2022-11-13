@@ -2,8 +2,8 @@ import "jest";
 
 import {
   interpret,
-  Activity,
   eventual,
+  Future,
   Result,
   WorkflowEventType,
   WorkflowResult,
@@ -12,23 +12,23 @@ import {
   ActivityFailed,
   Program,
 } from "../src";
-import { createCommand } from "../src/command";
+import { createActivityCall } from "../src/activity-call";
 import { DeterminismError } from "../src/error";
 
 function* myWorkflow(event: any): Program<any> {
   try {
-    const a: any = yield createCommand("my-action", [event]);
+    const a: any = yield createActivityCall("my-action", [event]);
 
     // dangling - it should still be scheduled
-    createCommand("my-action-0", [event]);
+    createActivityCall("my-action-0", [event]);
 
-    const all = yield* Activity.all([
-      createCommand("my-action-1", [event]),
-      createCommand("my-action-2", [event]),
+    const all = yield* Future.all([
+      createActivityCall("my-action-1", [event]),
+      createActivityCall("my-action-2", [event]),
     ]);
     return [a, all];
   } catch (err) {
-    yield createCommand("handle-error", [err]);
+    yield createActivityCall("handle-error", [err]);
     return [];
   }
 }
@@ -37,7 +37,7 @@ const event = "hello world";
 
 test("no history", () => {
   expect(interpret(myWorkflow(event), [])).toMatchObject(<WorkflowResult>{
-    commands: [createCommand("my-action", [event], 0)],
+    commands: [createActivityCall("my-action", [event], 0)],
   });
 });
 
@@ -58,9 +58,9 @@ test("should continue with result of completed Activity", () => {
     ])
   ).toMatchObject(<WorkflowResult>{
     commands: [
-      createCommand("my-action-0", [event], 1),
-      createCommand("my-action-1", [event], 2),
-      createCommand("my-action-2", [event], 3),
+      createActivityCall("my-action-0", [event], 1),
+      createActivityCall("my-action-1", [event], 2),
+      createActivityCall("my-action-2", [event], 3),
     ],
   });
 });
@@ -72,7 +72,7 @@ test("should catch error of failed Activity", () => {
       failed("error", 0),
     ])
   ).toMatchObject(<WorkflowResult>{
-    commands: [createCommand("handle-error", ["error"], 1)],
+    commands: [createActivityCall("handle-error", ["error"], 1)],
   });
 });
 
@@ -144,7 +144,7 @@ test("should await an un-awaited returned AwaitAll", () => {
     const inner = eventual(function* () {
       return `foo-${i++}`;
     });
-    return Activity.all([inner(), inner()]);
+    return Future.all([inner(), inner()]);
   }
 
   expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
@@ -153,12 +153,12 @@ test("should await an un-awaited returned AwaitAll", () => {
   });
 });
 
-test("should support Activity.all of function calls", () => {
+test("should support Future.all of function calls", () => {
   function* workflow(items: string[]) {
-    return Activity.all(
+    return Future.all(
       items.map(
         eventual(function* (item): Program {
-          return yield createCommand("process-item", [item]);
+          return yield createActivityCall("process-item", [item]);
         })
       )
     );
@@ -166,8 +166,8 @@ test("should support Activity.all of function calls", () => {
 
   expect(interpret(workflow(["a", "b"]), [])).toMatchObject(<WorkflowResult>{
     commands: [
-      createCommand("process-item", ["a"], 0),
-      createCommand("process-item", ["b"], 1),
+      createActivityCall("process-item", ["a"], 0),
+      createActivityCall("process-item", ["b"], 1),
     ],
   });
 
@@ -183,26 +183,26 @@ test("should support Activity.all of function calls", () => {
   });
 });
 
-test("should have left-to-right determinism semantics for Activity.all", () => {
+test("should have left-to-right determinism semantics for Future.all", () => {
   function* workflow(items: string[]) {
-    return Activity.all([
-      createCommand("before", ["before"]),
+    return Future.all([
+      createActivityCall("before", ["before"]),
       ...items.map(
         eventual(function* (item) {
-          yield createCommand("inside", [item]);
+          yield createActivityCall("inside", [item]);
         })
       ),
-      createCommand("after", ["after"]),
+      createActivityCall("after", ["after"]),
     ]);
   }
 
   const result = interpret(workflow(["a", "b"]), []);
   expect(result).toMatchObject(<WorkflowResult>{
     commands: [
-      createCommand("before", ["before"], 0),
-      createCommand("inside", ["a"], 1),
-      createCommand("inside", ["b"], 2),
-      createCommand("after", ["after"], 3),
+      createActivityCall("before", ["before"], 0),
+      createActivityCall("inside", ["a"], 1),
+      createActivityCall("inside", ["b"], 2),
+      createActivityCall("after", ["after"], 3),
     ],
   });
 });
@@ -212,18 +212,18 @@ test("try-catch-finally with yield in catch", () => {
     try {
       throw new Error("error");
     } catch {
-      yield createCommand("catch", []);
+      yield createActivityCall("catch", []);
     } finally {
-      yield createCommand("finally", []);
+      yield createActivityCall("finally", []);
     }
   }
   expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
-    commands: [createCommand("catch", [], 0)],
+    commands: [createActivityCall("catch", [], 0)],
   });
   expect(
     interpret(workflow(), [scheduled("catch", 0), completed(undefined, 0)])
   ).toMatchObject(<WorkflowResult>{
-    commands: [createCommand("finally", [], 1)],
+    commands: [createActivityCall("finally", [], 1)],
   });
 });
 
@@ -234,25 +234,28 @@ test("try-catch-finally with dangling promise in catch", () => {
         try {
           throw new Error("error");
         } catch {
-          createCommand("catch", []);
+          createActivityCall("catch", []);
         } finally {
-          yield createCommand("finally", []);
+          yield createActivityCall("finally", []);
         }
       })(),
       []
     )
   ).toMatchObject(<WorkflowResult>{
-    commands: [createCommand("catch", [], 0), createCommand("finally", [], 1)],
+    commands: [
+      createActivityCall("catch", [], 0),
+      createActivityCall("finally", [], 1),
+    ],
   });
 });
 
 test("throw error within nested function", () => {
   function* workflow(items: string[]) {
     try {
-      yield* Activity.all(
+      yield* Future.all(
         items.map(
           eventual(function* (item) {
-            const result = yield createCommand("inside", [item]);
+            const result = yield createActivityCall("inside", [item]);
 
             if (result === "bad") {
               throw new Error("bad");
@@ -261,10 +264,10 @@ test("throw error within nested function", () => {
         )
       );
     } catch {
-      yield createCommand("catch", []);
+      yield createActivityCall("catch", []);
       return "returned in catch"; // this should be trumped by the finally
     } finally {
-      yield createCommand("finally", []);
+      yield createActivityCall("finally", []);
       return "returned in finally";
     }
   }
@@ -272,8 +275,8 @@ test("throw error within nested function", () => {
     WorkflowResult
   >{
     commands: [
-      createCommand("inside", ["good"], 0),
-      createCommand("inside", ["bad"], 1),
+      createActivityCall("inside", ["good"], 0),
+      createActivityCall("inside", ["bad"], 1),
     ],
   });
   expect(
@@ -284,7 +287,7 @@ test("throw error within nested function", () => {
       completed("bad", 1),
     ])
   ).toMatchObject(<WorkflowResult>{
-    commands: [createCommand("catch", [], 2)],
+    commands: [createActivityCall("catch", [], 2)],
   });
   expect(
     interpret(workflow(["good", "bad"]), [
@@ -296,7 +299,7 @@ test("throw error within nested function", () => {
       completed("catch", 2),
     ])
   ).toMatchObject(<WorkflowResult>{
-    commands: [createCommand("finally", [], 3)],
+    commands: [createActivityCall("finally", [], 3)],
   });
   expect(
     interpret(workflow(["good", "bad"]), [
@@ -317,9 +320,9 @@ test("throw error within nested function", () => {
 
 test("properly evaluate yield* of sub-programs", () => {
   function* sub() {
-    const item = yield* Activity.all([
-      createCommand("a", []),
-      createCommand("b", []),
+    const item = yield* Future.all([
+      createActivityCall("a", []),
+      createActivityCall("b", []),
     ]);
 
     return item;
@@ -332,8 +335,8 @@ test("properly evaluate yield* of sub-programs", () => {
   expect(interpret(workflow(), [])).toMatchObject({
     commands: [
       //
-      createCommand("a", [], 0),
-      createCommand("b", [], 1),
+      createActivityCall("a", [], 0),
+      createActivityCall("b", [], 1),
     ],
   });
 

@@ -1,4 +1,4 @@
-import { Activity } from "./activity";
+import { Future } from "./future";
 
 export const ResultSymbol = Symbol.for("eventual:Result");
 
@@ -19,7 +19,7 @@ export namespace Result {
     };
   }
 
-  export function pending<A extends Activity>(activity: A): Pending<A> {
+  export function pending<A extends Future>(activity: A): Pending<A> {
     return {
       [ResultSymbol]: ResultKind.Pending,
       activity,
@@ -33,7 +33,7 @@ export enum ResultKind {
   Failed = 2,
 }
 
-export interface Pending<A extends Activity = Activity> {
+export interface Pending<A extends Future = Future> {
   [ResultSymbol]: ResultKind.Pending;
   activity: A;
 }

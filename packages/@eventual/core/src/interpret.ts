@@ -1,6 +1,6 @@
-import { Activity, isActivity } from "./activity";
+import { Future, isFuture } from "./future";
 import { isAwaitAll } from "./await-all";
-import { Command, isCommand } from "./command";
+import { ActivityCall, isActivityCall } from "./activity-call";
 import { DeterminismError } from "./error";
 import {
   ActivityCompleted,
@@ -19,18 +19,19 @@ import {
   Resolved,
   Failed,
 } from "./result";
-import { createThread, isThread, Thread } from "./thread";
+import { createChain, isChain, Chain } from "./chain";
 import { assertNever } from "./util";
+import { Command } from "./command";
 
 export interface WorkflowResult<T = any> {
   /**
-   * The Result if this thread has terminated.
+   * The Result if this chain has terminated.
    */
   result?: Result<T>;
   /**
    * Any Commands that need to be scheduled.
    *
-   * This can still be non-empty even if the thread has terminated because of dangling promises.
+   * This can still be non-empty even if the chain has terminated because of dangling promises.
    */
   commands: Command[];
 }
@@ -40,7 +41,7 @@ export type HistoryEvent =
   | ActivityCompleted
   | ActivityFailed;
 
-export type Program<Return = any> = Generator<Activity, Return>;
+export type Program<Return = any> = Generator<Future, Return>;
 
 /**
  * Interprets a workflow program
@@ -49,9 +50,9 @@ export function interpret<Return>(
   program: Program<Return>,
   history: HistoryEvent[]
 ): WorkflowResult<Awaited<Return>> {
-  const commandTable: Record<number, Command> = {};
-  const mainThread = createThread(program);
-  const activeThreads = new Set([mainThread]);
+  const commandTable: Record<number, ActivityCall> = {};
+  const mainChain = createChain(program);
+  const activeChains = new Set([mainChain]);
 
   let seq = 0;
   function nextSeq() {
@@ -89,7 +90,7 @@ export function interpret<Return>(
     if (isActivityCompleted(event) || isActivityFailed(event)) {
       commitCompletionEvent(event, true);
     } else if (isActivityScheduled(event)) {
-      const commands = run(true) ?? [];
+      const commands = advance(true) ?? [];
       const events = [
         event,
         ...takeWhile(commands.length - 1, isActivityScheduled),
@@ -108,13 +109,13 @@ export function interpret<Return>(
     }
   }
 
-  const commands = [];
+  const activityCalls = [];
 
   // run out the remaining completion events and collect any scheduled commands
   // we do this because events come in chunks of Scheduled/Completed
   // [...scheduled, ...completed, ...scheduled]
   // if the history's tail contains completed events, e.g. [...scheduled, ...completed]
-  // then we need to apply the completions, wake threads and schedule any produced commands
+  // then we need to apply the completions, resume chains and schedule any produced commands
   while ((event = pop())) {
     if (isActivityScheduled(event)) {
       // it should be impossible to receive a scheduled event
@@ -125,29 +126,33 @@ export function interpret<Return>(
     }
     commitCompletionEvent(event, false);
 
-    commands.push(...(run(false) ?? []));
+    activityCalls.push(...(advance(false) ?? []));
   }
 
   let newCommands;
-  while ((newCommands = run(false))) {
-    // continue progressing the program until all possible progress has been made
-    commands.push(...newCommands);
+  while ((newCommands = advance(false))) {
+    // continue advancing the program until all possible progress has been made
+    activityCalls.push(...newCommands);
   }
 
-  const result = tryResolveResult(mainThread);
+  const result = tryResolveResult(mainChain);
 
   return {
     result,
-    commands: commands,
+    commands: activityCalls.map((call) => ({
+      args: call.args,
+      name: call.name,
+      seq: call.seq!,
+    })),
   };
 
-  function run(isReplay: boolean): Command[] | undefined {
-    let commands: Command[] | undefined;
+  function advance(isReplay: boolean): ActivityCall[] | undefined {
+    let commands: ActivityCall[] | undefined;
     let madeProgress: boolean;
     do {
       madeProgress = false;
-      for (const thread of activeThreads) {
-        const producedCommands = runThread(thread, isReplay);
+      for (const chain of activeChains) {
+        const producedCommands = tryAdvanceChain(chain, isReplay);
         if (producedCommands !== undefined) {
           madeProgress = true;
           for (const command of producedCommands) {
@@ -166,23 +171,26 @@ export function interpret<Return>(
   }
 
   /**
-   * Try and make progress in a thread if it can be woken up with a new value.
+   * Try and advance chain if it can be resumed up with a new value.
    *
-   * Returns an array of Commands if the thread progressed, otherwise `undefined`:
-   * 1. If an empty array of Commands is returned, it indicates that the thread woke up
+   * Returns an array of Commands if the chain progressed, otherwise `undefined`:
+   * 1. If an empty array of Commands is returned, it indicates that the chain woke up
    *    but did not emit any new Commands.
-   * 2. An `undefined` return value indicates that the thread did not wake up.
+   * 2. An `undefined` return value indicates that the chain did not advance
    */
-  function runThread(thread: Thread, isReplay: boolean): Command[] | undefined {
-    if (thread.awaiting === undefined) {
-      // this is the first time the thread is running, so wake it with an undefined input
-      return wakeThread(thread, undefined);
+  function tryAdvanceChain(
+    chain: Chain,
+    isReplay: boolean
+  ): ActivityCall[] | undefined {
+    if (chain.awaiting === undefined) {
+      // this is the first time the chain is running, so wake it with an undefined input
+      return advanceChain(chain, undefined);
     }
-    const result = tryResolveResult(thread.awaiting);
+    const result = tryResolveResult(chain.awaiting);
     if (result === undefined) {
       return undefined;
     } else if (isResolved(result) || isFailed(result)) {
-      return wakeThread(thread, result);
+      return advanceChain(chain, result);
     } else if (isAwaitAll(result.activity)) {
       const results = [];
       for (const activity of result.activity.activities) {
@@ -193,57 +201,57 @@ export function interpret<Return>(
           //       -> this state should not be possible to get into, even when writing non-deterministic code
           throw new DeterminismError();
         } else if (isPending(result)) {
-          // thread cannot wake up because we're waiting on all tasks
+          // chain cannot wake up because we're waiting on all tasks
           return undefined;
         } else if (isFailed(result)) {
-          // one of the inner activities has failed, the thread should throw
-          return wakeThread(thread, result);
+          // one of the inner activities has failed, the chain should throw
+          return advanceChain(chain, result);
         } else {
           results.push(result.value);
         }
       }
-      return wakeThread(thread, Result.resolved(results));
+      return advanceChain(chain, Result.resolved(results));
     } else {
       return undefined;
     }
 
     /**
-     * Wakes up a thread with a new value and return any newly spawned Commands.
+     * Resumes a {@link Chain} with a new value and return any newly spawned {@link ActivityCall}s.
      */
-    function wakeThread(
-      thread: Thread,
+    function advanceChain(
+      chain: Chain,
       result: Resolved | Failed | undefined
-    ): Command[] {
+    ): ActivityCall[] {
       try {
         const iterResult =
           result === undefined || isResolved(result)
-            ? thread.next(result?.value)
-            : thread.throw(result.error);
+            ? chain.next(result?.value)
+            : chain.throw(result.error);
         if (iterResult.done) {
-          activeThreads.delete(thread);
-          if (isActivity(iterResult.value)) {
-            thread.result = Result.pending(iterResult.value);
+          activeChains.delete(chain);
+          if (isFuture(iterResult.value)) {
+            chain.result = Result.pending(iterResult.value);
           } else if (isGenerator(iterResult.value)) {
-            const childThread = createThread(iterResult.value);
-            activeThreads.add(childThread);
-            thread.result = Result.pending(childThread);
+            const childChain = createChain(iterResult.value);
+            activeChains.add(childChain);
+            chain.result = Result.pending(childChain);
           } else {
-            thread.result = Result.resolved(iterResult.value);
+            chain.result = Result.resolved(iterResult.value);
           }
         } else {
-          thread.awaiting = iterResult.value;
+          chain.awaiting = iterResult.value;
         }
       } catch (err) {
-        activeThreads.delete(thread);
-        thread.result = Result.failed(err);
+        activeChains.delete(chain);
+        chain.result = Result.failed(err);
       }
 
       return collectActivities().flatMap((activity) => {
-        if (isCommand(activity)) {
+        if (isActivityCall(activity)) {
           return [activity];
-        } else if (isThread(activity)) {
-          activeThreads.add(activity);
-          return runThread(activity, isReplay) ?? [];
+        } else if (isChain(activity)) {
+          activeChains.add(activity);
+          return tryAdvanceChain(activity, isReplay) ?? [];
         } else {
           return [];
         }
@@ -251,10 +259,10 @@ export function interpret<Return>(
     }
   }
 
-  function tryResolveResult(activity: Activity): Result | undefined {
-    if (isCommand(activity)) {
+  function tryResolveResult(activity: Future): Result | undefined {
+    if (isActivityCall(activity)) {
       return activity.result;
-    } else if (isThread(activity)) {
+    } else if (isChain(activity)) {
       if (activity.result) {
         if (isPending(activity.result)) {
           return tryResolveResult(activity.result.activity);
@@ -299,7 +307,7 @@ export function interpret<Return>(
   }
 }
 
-function isCorresponding(event: ActivityScheduled, command: Command) {
+function isCorresponding(event: ActivityScheduled, command: ActivityCall) {
   return (
     event.seq === command.seq && event.name === command.name
     // TODO: also validate arguments

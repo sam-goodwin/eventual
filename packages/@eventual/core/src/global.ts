@@ -1,11 +1,11 @@
-import type { Activity } from "./activity";
+import type { Future } from "./future";
 
-export function registerActivity<A extends Activity>(activity: A): A {
+export function registerActivity<A extends Future>(activity: A): A {
   activityCollector.push(activity);
   return activity;
 }
 
-let activityCollector: Activity[] = [];
+let activityCollector: Future[] = [];
 
 export function resetActivityCollector() {
   activityCollector = [];

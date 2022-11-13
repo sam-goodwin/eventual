@@ -1,24 +1,4 @@
-import type { AwaitAll } from "./await-all";
-import { Command, createCommand } from "./command";
-import { Program } from "./interpret";
-import { Thread } from "./thread";
-
-export const ActivitySymbol = Symbol.for("eventual:Activity");
-
-export enum ActivityKind {
-  AwaitAll = 0,
-  Command = 1,
-  Thread = 2,
-}
-
-export function isActivity(a: any): a is Activity {
-  return a && typeof a === "object" && ActivitySymbol in a;
-}
-
-export type Activity<T = any> =
-  | Command<T>
-  | AwaitAll<T extends any[] ? T : never>
-  | Thread<T>;
+import { createActivityCall } from "./activity-call";
 
 /**
  * Registers a function as an Activity.
@@ -36,31 +16,7 @@ export function activity<F extends (...args: any[]) => any>(
       return handler(...args);
     } else {
       // otherwise, return a command to invoke the activity in the worker function
-      return createCommand(activityID, args) as any;
+      return createActivityCall(activityID, args) as any;
     }
   };
-}
-
-export namespace Activity {
-  /**
-   * Wait for all {@link activities} to complete or until at least one throws.
-   *
-   * This is the equivalent behavior to Promise.all.
-   */
-  export function* all<A extends Activity[]>(
-    activities: A
-  ): Program<
-    AwaitAll<{
-      [i in keyof A]: A[i] extends Activity<infer T> ? T : A[i];
-    }>
-  > {
-    return (yield <
-      AwaitAll<{
-        [i in keyof A]: A[i] extends Activity<infer T> ? T : A[i];
-      }>
-    >{
-      [ActivitySymbol]: ActivityKind.AwaitAll,
-      activities,
-    }) as any;
-  }
 }

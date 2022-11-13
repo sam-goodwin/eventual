@@ -1,12 +1,12 @@
-import { Activity, ActivityKind, ActivitySymbol, isActivity } from "./activity";
+import { isFuture, FutureSymbol, Future, FutureKind } from "./future";
 import { Failed, Resolved } from "./result";
 
 export function isAwaitAll(a: any): a is AwaitAll<any> {
-  return isActivity(a) && a[ActivitySymbol] === ActivityKind.AwaitAll;
+  return isFuture(a) && a[FutureSymbol] === FutureKind.AwaitAll;
 }
 
 export interface AwaitAll<T extends any[] = any[]> {
-  [ActivitySymbol]: ActivityKind.AwaitAll;
-  activities: Activity[];
+  [FutureSymbol]: FutureKind.AwaitAll;
+  activities: Future[];
   result?: Resolved<T> | Failed;
 }
