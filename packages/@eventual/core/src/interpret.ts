@@ -208,7 +208,6 @@ export function interpret(
 
       if (iterResult.done) {
         threadTable.delete(thread);
-        delete thread.awaiting;
         if (isActivity(iterResult.value)) {
           thread.result = Result.pending(iterResult.value);
         } else {
