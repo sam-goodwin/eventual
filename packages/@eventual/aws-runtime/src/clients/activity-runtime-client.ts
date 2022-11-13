@@ -3,7 +3,7 @@ import {
   DynamoDBClient,
   PutItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import { Action } from "@eventual/core";
+import { Command } from "@eventual/core";
 
 export interface ActivityRuntimeClientProps {
   dynamo: DynamoDBClient;
@@ -23,7 +23,7 @@ export class ActivityRuntimeClient {
    **/
   async requestExecutionActivityClaim(
     executionId: string,
-    activity: Action,
+    command: Command,
     retry: number,
     claimer?: string
   ) {
@@ -31,7 +31,7 @@ export class ActivityRuntimeClient {
       await this.props.dynamo.send(
         new PutItemCommand({
           Item: {
-            pk: { S: ActivityLockRecord.key(executionId, activity, retry) },
+            pk: { S: ActivityLockRecord.key(executionId, command, retry) },
             reference: { S: claimer ?? "Unknown" },
           },
           TableName: this.props.activityLockTableName,
@@ -56,7 +56,7 @@ export interface ActivityLockRecord {
 
 export namespace ActivityLockRecord {
   export const PARTITION_KEY_PREFIX = `Activity$`;
-  export function key(executionId: string, activity: Action, retry: number) {
-    return `${PARTITION_KEY_PREFIX}$${executionId}$${activity.threadID}$${activity.id}${retry}`;
+  export function key(executionId: string, command: Command, retry: number) {
+    return `${PARTITION_KEY_PREFIX}$${executionId}$${command.seq}${retry}`;
   }
 }

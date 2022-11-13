@@ -1,20 +1,19 @@
 import { createEvent } from "../clients/execution-history-client.js";
 import {
-  Activity,
   WorkflowEvent,
-  executeWorkflow,
-  isAction,
   isFailed,
   isResolved,
   isResult,
   isWorkflowStarted,
-  mergeEventsIntoState,
-  Thread,
   WorkflowCompleted,
   WorkflowEventType,
   WorkflowTaskStarted,
   WorkflowTaskCompleted,
   WorkflowFailed,
+  interpret,
+  isHistoryEvent,
+  Command,
+  Program,
 } from "@eventual/core";
 import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
 import {
@@ -29,7 +28,9 @@ const workflowRuntimeClient = createWorkflowRuntimeClient();
 /**
  * Creates an entrypoint function for orchestrating a workflow.
  */
-export function orchestrator(program: (input: any) => Thread): SQSHandler {
+export function orchestrator(
+  program: (...args: any[]) => Program<any>
+): SQSHandler {
   return async (event) => {
     console.debug("Handle workflowQueue records");
     // if a polling request
@@ -87,10 +88,7 @@ export function orchestrator(program: (input: any) => Thread): SQSHandler {
     // merge history with incoming events
     const allEvents = [...history, ...events];
 
-    // generate state
-    const state = mergeEventsIntoState(allEvents);
-
-    console.debug("Running workflow with state: " + JSON.stringify(state));
+    console.debug("Running workflow with events: " + JSON.stringify(allEvents));
     const startEvent = allEvents.find(isWorkflowStarted);
 
     if (!startEvent) {
@@ -111,7 +109,10 @@ export function orchestrator(program: (input: any) => Thread): SQSHandler {
     console.log("program: " + program);
 
     // execute workflow
-    const result = executeWorkflow(program(startEvent.input).thread, state);
+    const result = interpret(
+      program(startEvent.input),
+      newEvents.filter(isHistoryEvent)
+    );
 
     console.debug("Workflow terminated with: " + JSON.stringify(result));
 
@@ -181,7 +182,7 @@ export function orchestrator(program: (input: any) => Thread): SQSHandler {
      *
      * Does not actually write the commands out.
      */
-    function processCommands(commands: Activity[]): {
+    function processCommands(commands: Command[]): {
       events: WorkflowEvent[];
       runDeferredCommands: () => Promise<void>;
     } {
@@ -190,22 +191,16 @@ export function orchestrator(program: (input: any) => Thread): SQSHandler {
         event: Omit<WorkflowEvent, "id" | "timestamp">;
         deferredCommand: () => Promise<void>;
       }[] = commands.map((command) => {
-        if (isAction(command)) {
-          return {
-            event: {
-              type: WorkflowEventType.ActivityScheduled,
-              seq: command.id,
-              threadId: command.threadID,
-              name: command.name,
-              args: command.args,
-            },
-            deferredCommand: () =>
-              workflowRuntimeClient.scheduleAction(executionId, command),
-          };
-        } else {
-          // TODO: the workflow can return threads and other "activities" too, not sure how to handle that yet.
-          throw new Error("Unhandled command: " + JSON.stringify(command));
-        }
+        return {
+          event: {
+            type: WorkflowEventType.ActivityScheduled,
+            seq: command.seq,
+            name: command.name,
+            args: command.args,
+          },
+          deferredCommand: () =>
+            workflowRuntimeClient.scheduleAction(executionId, command),
+        };
       });
 
       const events = commandResults.map((c) => createEvent(c.event));

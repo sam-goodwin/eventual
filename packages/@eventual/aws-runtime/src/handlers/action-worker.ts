@@ -6,7 +6,7 @@ import {
   WorkflowEventType,
 } from "@eventual/core";
 import { Handler } from "aws-lambda";
-import { ActionWorkerRequest } from "../action.js";
+import { ActivityWorkerRequest } from "../action.js";
 import {
   createActivityRuntimeClient,
   createExecutionHistoryClient,
@@ -17,13 +17,13 @@ const activityRuntimeClient = createActivityRuntimeClient();
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowClient = createWorkflowClient();
 
-export const actionWorker = (): Handler<ActionWorkerRequest, void> => {
+export const actionWorker = (): Handler<ActivityWorkerRequest, void> => {
   return async (request) => {
-    const activityHandle = `${request.action.threadID} ${request.action.id} for execution ${request.executionId} on retry ${request.retry}`;
+    const activityHandle = `${request.command.seq} for execution ${request.executionId} on retry ${request.retry}`;
     if (
       !(await activityRuntimeClient.requestExecutionActivityClaim(
         request.executionId,
-        request.action,
+        request.command,
         request.retry
       ))
     ) {
@@ -33,15 +33,15 @@ export const actionWorker = (): Handler<ActionWorkerRequest, void> => {
 
     console.info(`Processing ${activityHandle}.`);
 
-    const action = getCallableAction(request.action.name);
+    const action = getCallableAction(request.command.name);
     try {
       if (!action) {
-        throw new ActionNotFoundError(request.action.name);
+        throw new ActionNotFoundError(request.command.name);
       }
 
       // TODO: lock
 
-      const result = await action(request.action.args);
+      const result = await action(request.command.args);
 
       console.info(
         `Activity ${activityHandle} succeeded, reporting back to execution.`
@@ -52,9 +52,7 @@ export const actionWorker = (): Handler<ActionWorkerRequest, void> => {
           request.executionId,
           {
             type: WorkflowEventType.ActivityCompleted,
-            name: request.action.name,
-            seq: request.action.id,
-            threadId: request.action.threadID,
+            seq: request.command.seq,
             result,
           }
         );
@@ -77,9 +75,7 @@ export const actionWorker = (): Handler<ActionWorkerRequest, void> => {
           request.executionId,
           {
             type: WorkflowEventType.ActivityFailed,
-            name: request.action.name,
-            seq: request.action.id,
-            threadId: request.action.threadID,
+            seq: request.command.seq,
             error,
             message,
           }

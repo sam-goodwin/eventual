@@ -11,9 +11,9 @@ import {
   InvokeCommand,
   InvocationType,
 } from "@aws-sdk/client-lambda";
-import { Action, WorkflowEvent, ExecutionStatus } from "@eventual/core";
+import { WorkflowEvent, ExecutionStatus, Command } from "@eventual/core";
 import { ExecutionRecord } from "./workflow-client.js";
-import { ActionWorkerRequest } from "../action.js";
+import { ActivityWorkerRequest } from "../action.js";
 
 export interface WorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;
@@ -112,10 +112,10 @@ export class WorkflowRuntimeClient {
     );
   }
 
-  async scheduleAction(executionId: string, action: Action) {
-    const request: ActionWorkerRequest = {
+  async scheduleAction(executionId: string, command: Command) {
+    const request: ActivityWorkerRequest = {
       executionId,
-      action,
+      command,
       retry: 0,
     };
 

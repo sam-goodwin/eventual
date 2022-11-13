@@ -1,7 +1,7 @@
-import { Action } from "@eventual/core";
+import { Command } from "@eventual/core";
 
-export interface ActionWorkerRequest {
+export interface ActivityWorkerRequest {
   executionId: string;
-  action: Action;
+  command: Command;
   retry: number;
 }
