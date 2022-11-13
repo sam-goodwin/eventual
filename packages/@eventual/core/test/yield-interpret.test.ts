@@ -214,6 +214,115 @@ test("should have left-to-right determinism semantics for Activity.all", () => {
   });
 });
 
+test("try-catch-finally with yield in catch", () => {
+  function* workflow() {
+    try {
+      throw new Error("error");
+    } catch {
+      yield createCommand("catch", []);
+    } finally {
+      yield createCommand("finally", []);
+    }
+  }
+  expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
+    commands: [createCommand("catch", [], 0)],
+  });
+  expect(
+    interpret(workflow(), [scheduled("catch", 0), completed(undefined, 0)])
+  ).toMatchObject(<WorkflowResult>{
+    commands: [createCommand("finally", [], 1)],
+  });
+});
+
+test("try-catch-finally with dangling promise in catch", () => {
+  expect(
+    interpret(
+      (function* () {
+        try {
+          throw new Error("error");
+        } catch {
+          createCommand("catch", []);
+        } finally {
+          yield createCommand("finally", []);
+        }
+      })(),
+      []
+    )
+  ).toMatchObject(<WorkflowResult>{
+    commands: [createCommand("catch", [], 0), createCommand("finally", [], 1)],
+  });
+});
+
+test("throw error within nested function", () => {
+  function* workflow(items: string[]) {
+    try {
+      yield Activity.all(
+        // @ts-ignore
+        items.map(
+          eventual(function* (item) {
+            const result = yield createCommand("inside", [item]);
+
+            if (result === "bad") {
+              throw new Error("bad");
+            }
+          })
+        )
+      );
+    } catch {
+      yield createCommand("catch", []);
+      return "returned in catch"; // this should be trumped by the finally
+    } finally {
+      yield createCommand("finally", []);
+      return "returned in finally";
+    }
+  }
+  expect(interpret(workflow(["good", "bad"]), [])).toMatchObject(<
+    WorkflowResult
+  >{
+    commands: [
+      createCommand("inside", ["good"], 0),
+      createCommand("inside", ["bad"], 1),
+    ],
+  });
+  expect(
+    interpret(workflow(["good", "bad"]), [
+      scheduled("inside", 0),
+      scheduled("inside", 1),
+      completed("good", 0),
+      completed("bad", 1),
+    ])
+  ).toMatchObject(<WorkflowResult>{
+    commands: [createCommand("catch", [], 2)],
+  });
+  expect(
+    interpret(workflow(["good", "bad"]), [
+      scheduled("inside", 0),
+      scheduled("inside", 1),
+      completed("good", 0),
+      completed("bad", 1),
+      scheduled("catch", 2),
+      completed("catch", 2),
+    ])
+  ).toMatchObject(<WorkflowResult>{
+    commands: [createCommand("finally", [], 3)],
+  });
+  expect(
+    interpret(workflow(["good", "bad"]), [
+      scheduled("inside", 0),
+      scheduled("inside", 1),
+      completed("good", 0),
+      completed("bad", 1),
+      scheduled("catch", 2),
+      completed("catch", 2),
+      scheduled("finally", 3),
+      completed("finally", 3),
+    ])
+  ).toMatchObject(<WorkflowResult>{
+    result: Result.resolved("returned in finally"),
+    commands: [],
+  });
+});
+
 function completed(result: any, seq: number): ActivityCompleted {
   return {
     type: WorkflowEventType.ActivityCompleted,

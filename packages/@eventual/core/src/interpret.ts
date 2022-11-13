@@ -120,10 +120,10 @@ export function interpret(
     commands.push(...run(false));
   }
 
-  do {
+  while (canMakeProgress()) {
     // continue progressing the program until all possible progress has been made
     commands.push(...run(false));
-  } while (canMakeProgress());
+  }
 
   const result = tryResolveResult(mainThread);
 
@@ -137,14 +137,18 @@ export function interpret(
   }
 
   function run(replay: boolean): Command[] {
-    const commands = Array.from(threadTable).flatMap((thread) =>
-      runIfAwake(thread, replay)
-    );
-    commands.forEach((command) => {
-      // assign command sequences in order of when they were spawned
-      command.seq = nextSeq();
-      commandTable[command.seq] = command;
-    });
+    const commands: Command[] = [];
+    while (canMakeProgress()) {
+      const newCommands = Array.from(threadTable).flatMap((thread) =>
+        runIfAwake(thread, replay)
+      );
+      commands.push(...newCommands);
+      newCommands.forEach((command) => {
+        // assign command sequences in order of when they were spawned
+        command.seq = nextSeq();
+        commandTable[command.seq] = command;
+      });
+    }
     return commands;
   }
 
@@ -195,20 +199,25 @@ export function interpret(
       if (result && isPending(result)) {
         return [];
       }
-      const iterResult =
-        result === undefined || isResolved(result)
-          ? thread.program.next(result?.value)
-          : thread.program.throw(result.error);
 
-      if (iterResult.done) {
-        threadTable.delete(thread);
-        if (isActivity(iterResult.value)) {
-          thread.result = Result.pending(iterResult.value);
+      try {
+        const iterResult =
+          result === undefined || isResolved(result)
+            ? thread.program.next(result?.value)
+            : thread.program.throw(result.error);
+        if (iterResult.done) {
+          threadTable.delete(thread);
+          if (isActivity(iterResult.value)) {
+            thread.result = Result.pending(iterResult.value);
+          } else {
+            thread.result = Result.resolved(iterResult.value);
+          }
         } else {
-          thread.result = Result.resolved(iterResult.value);
+          thread.awaiting = iterResult.value;
         }
-      } else {
-        thread.awaiting = iterResult.value;
+      } catch (err) {
+        threadTable.delete(thread);
+        thread.result = Result.failed(err);
       }
 
       const activities = collectActivities();
