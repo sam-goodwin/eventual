@@ -46,13 +46,21 @@ export type HistoryEvent =
   | ActivityCompleted
   | ActivityFailed;
 
-export function executeWorkflow(
-  generator: Generator<any, any, Activity>,
+export type Program = Generator<Activity>;
+
+/**
+ * Interprets a workflow program
+ * @param program
+ * @param history
+ * @returns
+ */
+export function interpret(
+  program: Generator<any, any, Activity>,
   history: HistoryEvent[]
 ): WorkflowResult {
   reset();
   const threads: Record<number, Thread> = {
-    0: createThread(generator),
+    0: createThread(program),
   };
   const results: Record<number, Result> = {};
 
@@ -245,8 +253,8 @@ export function executeWorkflow(
       }
       const iterResult =
         result === undefined || isResolved(result)
-          ? thread.generator.next(result?.value)
-          : thread.generator.throw(result.error);
+          ? thread.program.next(result?.value)
+          : thread.program.throw(result.error);
 
       if (iterResult.done) {
         delete threads[thread.seq];

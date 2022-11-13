@@ -1,3 +1,5 @@
+import { Program } from "./interpret";
+
 export const ActivitySymbol = Symbol.for("eventual:Activity");
 
 export enum ActivityKind {
@@ -109,20 +111,18 @@ export function isThread(a: any): a is Thread {
 export interface Thread {
   [ActivitySymbol]: ActivityKind.Thread;
   seq: number;
-  generator: EventualGenerator;
+  program: Program;
   awaiting?: Activity;
 }
 
-export type EventualGenerator = Generator<Activity>;
-
-export function createThread(generator: EventualGenerator): Thread {
+export function createThread(program: Program): Thread {
   return {
     [ActivitySymbol]: ActivityKind.Thread,
     seq: nextActivityID(),
-    generator,
+    program,
   };
 }
 
-export function scheduleThread(generator: EventualGenerator): Thread {
-  return registerActivity(createThread(generator));
+export function scheduleThread(program: Program): Thread {
+  return registerActivity(createThread(program));
 }

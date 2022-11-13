@@ -2,7 +2,7 @@ import "jest";
 
 import {
   scheduleActivity,
-  executeWorkflow,
+  interpret,
   Activity,
   eventual,
   Result,
@@ -35,14 +35,14 @@ function* myWorkflow(event: any): any {
 const event = "hello world";
 
 test("no history", () => {
-  expect(executeWorkflow(myWorkflow(event), [])).toEqual(<WorkflowResult>{
+  expect(interpret(myWorkflow(event), [])).toEqual(<WorkflowResult>{
     actions: [scheduleActivity("my-action", [event], 1)],
   });
 });
 
 test("determinism error if no corresponding ActivityScheduled", () => {
   expect(() =>
-    executeWorkflow(myWorkflow(event), [
+    interpret(myWorkflow(event), [
       // error: completed event should be after a scheduled event
       completed("result", 1),
     ])
@@ -51,7 +51,7 @@ test("determinism error if no corresponding ActivityScheduled", () => {
 
 test("should continue with result of completed Activity", () => {
   expect(
-    executeWorkflow(myWorkflow(event), [
+    interpret(myWorkflow(event), [
       scheduled("my-action", 1),
       completed("result", 1),
     ])
@@ -66,7 +66,7 @@ test("should continue with result of completed Activity", () => {
 
 test("should catch error of failed Activity", () => {
   expect(
-    executeWorkflow(myWorkflow(event), [
+    interpret(myWorkflow(event), [
       scheduled("my-action", 1),
       failed("error", 1),
     ])
@@ -77,7 +77,7 @@ test("should catch error of failed Activity", () => {
 
 test("should return final result", () => {
   expect(
-    executeWorkflow(myWorkflow(event), [
+    interpret(myWorkflow(event), [
       scheduled("my-action", 1),
       completed("result", 1),
       scheduled("my-action-0", 2),
@@ -95,7 +95,7 @@ test("should return final result", () => {
 
 test("should wait if partial results", () => {
   expect(
-    executeWorkflow(myWorkflow(event), [
+    interpret(myWorkflow(event), [
       scheduled("my-action", 1),
       completed("result", 1),
       scheduled("my-action-0", 2),
@@ -119,7 +119,7 @@ test("should return result of inner function", () => {
     return result;
   };
 
-  expect(executeWorkflow(workflow(), [])).toEqual(<WorkflowResult>{
+  expect(interpret(workflow(), [])).toEqual(<WorkflowResult>{
     result: Result.resolved("foo"),
     actions: [],
   });
@@ -133,7 +133,7 @@ test("should await an un-awaited returned Activity", () => {
     return inner();
   };
 
-  expect(executeWorkflow(workflow(), [])).toEqual(<WorkflowResult>{
+  expect(interpret(workflow(), [])).toEqual(<WorkflowResult>{
     result: Result.resolved("foo"),
     actions: [],
   });
@@ -149,7 +149,7 @@ test("should await an un-awaited returned AwaitAll", () => {
     return Activity.all([inner(), inner()]);
   };
 
-  expect(executeWorkflow(workflow(), [])).toEqual(<WorkflowResult>{
+  expect(interpret(workflow(), [])).toEqual(<WorkflowResult>{
     result: Result.resolved(["foo-0", "foo-1"]),
     actions: [],
   });

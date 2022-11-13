@@ -5,4 +5,4 @@ export * from "./eventual";
 export * from "./kind";
 export * from "./result";
 export * from "./tasks";
-export * from "./workflow";
+export * from "./interpret";
