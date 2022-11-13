@@ -3,11 +3,11 @@ import { registerActivity } from "./global";
 import { Resolved, Failed } from "./result";
 
 export function isActivityCall(a: any): a is ActivityCall {
-  return isFuture(a) && a[FutureSymbol] === FutureKind.Command;
+  return isFuture(a) && a[FutureSymbol] === FutureKind.ActivityCall;
 }
 
 export interface ActivityCall<T = any> {
-  [FutureSymbol]: FutureKind.Command;
+  [FutureSymbol]: FutureKind.ActivityCall;
   seq?: number;
   name: string;
   args: any[];
@@ -20,7 +20,7 @@ export function createActivityCall(
   seq?: number
 ): ActivityCall {
   const command: ActivityCall = {
-    [FutureSymbol]: FutureKind.Command,
+    [FutureSymbol]: FutureKind.ActivityCall,
     seq,
     name,
     args,

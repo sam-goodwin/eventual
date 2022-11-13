@@ -7,8 +7,8 @@ export const FutureSymbol = Symbol.for("eventual:Future");
 
 export enum FutureKind {
   AwaitAll = 0,
-  Command = 1,
-  Thread = 2,
+  ActivityCall = 1,
+  Chain = 2,
 }
 
 export function isFuture(a: any): a is Future {
