@@ -2,13 +2,12 @@ import {
   Action,
   Activity,
   createThread,
-  getSpawnedActivities,
+  collectActivities,
   isAction,
   isActivity,
   isAwaitAll,
   isThread,
-  resetActivities,
-  resetActivityIDCounter,
+  resetActivityCollector,
   resetThreadIDCounter,
   Thread,
 } from "./activity";
@@ -25,8 +24,7 @@ import { Result, isResolved, isFailed, isPending } from "./result";
 import { assertNever } from "./util";
 
 function reset() {
-  resetActivities();
-  resetActivityIDCounter();
+  resetActivityCollector();
   resetThreadIDCounter();
 }
 
@@ -63,6 +61,11 @@ export function interpret(
   const threadTable: Record<number, Thread> = {
     0: mainThread,
   };
+
+  let seq = 0;
+  function nextSeq() {
+    return seq++;
+  }
 
   let i = 0;
   function peek() {
@@ -138,21 +141,23 @@ export function interpret(
   };
 
   function canMakeProgress() {
-    return Object.values(threadTable).some((thread) => isActivityReady(thread));
+    return Object.values(threadTable).some((thread) =>
+      isActivityComplete(thread)
+    );
   }
 
-  function isActivityReady(activity: Activity): boolean {
+  function isActivityComplete(activity: Activity): boolean {
     const result = activity.result;
     if (isResolved(result) || isFailed(result)) {
       return true;
     } else if (isThread(activity)) {
       if (activity.awaiting) {
-        return isActivityReady(activity.awaiting);
+        return isActivityComplete(activity.awaiting);
       } else {
         return false;
       }
     } else if (isAwaitAll(activity)) {
-      return activity.activities.every(isActivityReady);
+      return activity.activities.every(isActivityComplete);
     } else {
       return false;
     }
@@ -193,7 +198,7 @@ export function interpret(
     event: ActivityCompleted | ActivityFailed,
     isReplay: boolean
   ) {
-    const activity = getActivity(event.seq);
+    const activity = getAction(event.seq);
     if (isReplay && activity.result && !isPending(activity.result)) {
       throw new DeterminismError();
     }
@@ -203,9 +208,15 @@ export function interpret(
   }
 
   function run(replay: boolean): Action[] {
-    return Object.values(threadTable).flatMap((thread) =>
+    const actions = Object.values(threadTable).flatMap((thread) =>
       tryMakeProgress(thread, replay)
     );
+    actions.forEach((action) => {
+      // assign action sequences in order of when they were spawned
+      action.seq = nextSeq();
+      actionTable[action.seq] = action;
+    });
+    return actions;
   }
 
   /**
@@ -213,7 +224,7 @@ export function interpret(
    * with a new value.
    */
   function tryMakeProgress(thread: Thread, replay: boolean): Action[] {
-    resetActivities();
+    resetActivityCollector();
     if (thread.awaiting === undefined) {
       return wakeUpThread(thread, undefined);
     }
@@ -273,26 +284,30 @@ export function interpret(
         thread.awaiting = iterResult.value;
       }
 
-      const spawned = getSpawnedActivities();
-      const actions = spawned.filter(isAction);
-      const newThreads = spawned.filter(isThread);
+      const activities = collectActivities();
 
-      actions.forEach((action) => (actionTable[action.seq] = action));
-      newThreads.forEach((thread) => (threadTable[thread.id] = thread));
+      activities
+        .filter(isThread)
+        .forEach((thread) => (threadTable[thread.id] = thread));
 
-      return [
-        ...actions,
-        ...newThreads.flatMap((thread) => tryMakeProgress(thread, replay)),
-      ];
+      return activities.flatMap((spawned) => {
+        if (isAction(spawned)) {
+          return [spawned];
+        } else if (isThread(spawned)) {
+          return tryMakeProgress(spawned, replay);
+        } else {
+          return [];
+        }
+      });
     }
   }
 
-  function getActivity(seq: number): Activity {
-    const activity = actionTable[seq];
-    if (activity === undefined) {
+  function getAction(seq: number): Action {
+    const action = actionTable[seq];
+    if (action === undefined) {
       throw new DeterminismError();
     }
-    return activity;
+    return action;
   }
 }
 

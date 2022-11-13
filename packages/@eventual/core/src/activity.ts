@@ -24,7 +24,7 @@ export function isAction(a: any): a is Action {
 
 export interface Action<T = any> {
   [ActivitySymbol]: ActivityKind.Action;
-  seq: number;
+  seq?: number;
   name: string;
   args: any[];
   result?: Resolved<T> | Failed;
@@ -36,7 +36,6 @@ export function isAwaitAll(a: any): a is AwaitAll<any> {
 
 export interface AwaitAll<T extends any[] = any[]> {
   [ActivitySymbol]: ActivityKind.AwaitAll;
-  seq: number;
   activities: Activity[];
   result?: Resolved<T> | Failed;
 }
@@ -49,7 +48,6 @@ export namespace Activity {
   }> {
     return {
       [ActivitySymbol]: ActivityKind.AwaitAll,
-      seq: nextActivityID(),
       activities,
     };
   }
@@ -71,47 +69,38 @@ export function activity<F extends (...args: any[]) => any>(
     {},
     {
       apply: (_target, _this, args) => {
-        return scheduleActivity(activityID, args);
+        return scheduleAction(activityID, args);
       },
     }
   ) as any;
 }
 
-export function scheduleActivity(
+export function scheduleAction(
   name: string,
   args: any[],
   seq?: number
 ): Action {
   return registerActivity<Action>({
     [ActivitySymbol]: ActivityKind.Action,
-    seq: seq ?? nextActivityID(),
+    seq,
     name,
     args,
   });
 }
 
 export function registerActivity<A extends Activity>(activity: A): A {
-  activitiesGlobal.push(activity);
+  activityCollector.push(activity);
   return activity;
 }
 
-let activityIDCounter = 0;
-let activitiesGlobal: Activity[] = [];
+let activityCollector: Activity[] = [];
 
-export function nextActivityID() {
-  return activityIDCounter++;
+export function resetActivityCollector() {
+  activityCollector = [];
 }
 
-export function resetActivityIDCounter() {
-  activityIDCounter = 0;
-}
-
-export function resetActivities() {
-  activitiesGlobal = [];
-}
-
-export function getSpawnedActivities() {
-  return [...activitiesGlobal];
+export function collectActivities() {
+  return [...activityCollector];
 }
 
 export function isThread(a: any): a is Thread {
