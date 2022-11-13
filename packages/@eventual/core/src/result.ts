@@ -38,7 +38,7 @@ export interface Pending {
   activity: Activity;
 }
 
-export interface Resolved<T> {
+export interface Resolved<T = any> {
   [ResultSymbol]: ResultKind.Resolved;
   value: T;
 }

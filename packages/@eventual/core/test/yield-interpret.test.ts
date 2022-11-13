@@ -35,7 +35,7 @@ function* myWorkflow(event: any): any {
 const event = "hello world";
 
 test("no history", () => {
-  expect(interpret(myWorkflow(event), [])).toEqual(<WorkflowResult>{
+  expect(interpret(myWorkflow(event), [])).toMatchObject(<WorkflowResult>{
     actions: [scheduleActivity("my-action", [event], 1)],
   });
 });
@@ -55,7 +55,7 @@ test("should continue with result of completed Activity", () => {
       scheduled("my-action", 1),
       completed("result", 1),
     ])
-  ).toEqual(<WorkflowResult>{
+  ).toMatchObject(<WorkflowResult>{
     actions: [
       scheduleActivity("my-action-0", [event], 2),
       scheduleActivity("my-action-1", [event], 3),
@@ -70,7 +70,7 @@ test("should catch error of failed Activity", () => {
       scheduled("my-action", 1),
       failed("error", 1),
     ])
-  ).toEqual(<WorkflowResult>{
+  ).toMatchObject(<WorkflowResult>{
     actions: [scheduleActivity("handle-error", ["error"], 2)],
   });
 });
@@ -87,7 +87,7 @@ test("should return final result", () => {
       completed("result-1", 3),
       completed("result-2", 4),
     ])
-  ).toEqual(<WorkflowResult>{
+  ).toMatchObject(<WorkflowResult>{
     result: Result.resolved(["result", ["result-1", "result-2"]]),
     actions: [],
   });
@@ -104,7 +104,7 @@ test("should wait if partial results", () => {
       completed("result-0", 2),
       completed("result-1", 3),
     ])
-  ).toEqual(<WorkflowResult>{
+  ).toMatchObject(<WorkflowResult>{
     actions: [],
   });
 });
@@ -119,7 +119,7 @@ test("should return result of inner function", () => {
     return result;
   };
 
-  expect(interpret(workflow(), [])).toEqual(<WorkflowResult>{
+  expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
     result: Result.resolved("foo"),
     actions: [],
   });
@@ -133,7 +133,7 @@ test("should await an un-awaited returned Activity", () => {
     return inner();
   };
 
-  expect(interpret(workflow(), [])).toEqual(<WorkflowResult>{
+  expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
     result: Result.resolved("foo"),
     actions: [],
   });
@@ -149,7 +149,7 @@ test("should await an un-awaited returned AwaitAll", () => {
     return Activity.all([inner(), inner()]);
   };
 
-  expect(interpret(workflow(), [])).toEqual(<WorkflowResult>{
+  expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
     result: Result.resolved(["foo-0", "foo-1"]),
     actions: [],
   });
