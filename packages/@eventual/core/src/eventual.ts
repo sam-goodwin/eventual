@@ -8,7 +8,7 @@ export function eventual<F extends (...args: any[]) => Promise<any>>(
 
 export function eventual<F extends (...args: any[]) => Program>(
   func: F
-): (...args: Parameters<F>) => Thread<Awaited<ReturnType<F>>>;
+): (...args: Parameters<F>) => Thread<Resolved<ReturnType<F>>>;
 
 export function eventual<F extends (...args: any[]) => any>(func: F): F {
   return ((...args: any[]) => {
@@ -17,8 +17,8 @@ export function eventual<F extends (...args: any[]) => any>(func: F): F {
   }) as any;
 }
 
-type Awaited<T> = T extends Program<infer U>
-  ? Awaited<U>
+type Resolved<T> = T extends Program<infer U>
+  ? Resolved<U>
   : T extends Activity<infer U>
-  ? Awaited<U>
+  ? Resolved<U>
   : T;
