@@ -1,5 +1,3 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { SQSClient } from "@aws-sdk/client-sqs";
 import {
   ActivityCompleted,
   ActivityFailed,
@@ -9,28 +7,15 @@ import {
 } from "@eventual/core";
 import { Handler } from "aws-lambda";
 import { ActionWorkerRequest } from "../action.js";
-import { activityLockTableName, tableName, workflowQueueUrl } from "../env.js";
-import { ExecutionHistoryClient } from "../clients/execution-history-client.js";
-import { WorkflowClient } from "../clients/workflow-client.js";
-import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
+import {
+  createActivityRuntimeClient,
+  createExecutionHistoryClient,
+  createWorkflowClient,
+} from "../clients/index.js";
 
-const dynamo = new DynamoDBClient({ region: process.env.AWS_REGION });
-
-const executionHistoryClient = new ExecutionHistoryClient({
-  dynamo,
-  tableName: tableName ?? "",
-});
-const workflowClient = new WorkflowClient({
-  dynamo,
-  executionHistory: executionHistoryClient,
-  tableName: tableName ?? "",
-  workflowQueueUrl: workflowQueueUrl ?? "",
-  sqs: new SQSClient({ region: process.env.AWS_REGION }),
-});
-const activityRuntimeClient = new ActivityRuntimeClient({
-  activityLockTableName: activityLockTableName ?? "",
-  dynamo: dynamo,
-});
+const activityRuntimeClient = createActivityRuntimeClient();
+const executionHistoryClient = createExecutionHistoryClient();
+const workflowClient = createWorkflowClient(executionHistoryClient);
 
 export const actionWorker = (): Handler<ActionWorkerRequest, void> => {
   return async (request) => {

@@ -1,15 +1,4 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { S3Client } from "@aws-sdk/client-s3";
-import {
-  actionWorkerFunctionName,
-  executionHistoryBucket,
-  tableName,
-} from "../env.js";
-import {
-  createEvent,
-  ExecutionHistoryClient,
-} from "../clients/execution-history-client.js";
-import { WorkflowRuntimeClient } from "../clients/workflow-runtime-client.js";
+import { createEvent } from "../clients/execution-history-client.js";
 import {
   Activity,
   WorkflowEvent,
@@ -28,25 +17,14 @@ import {
   WorkflowFailed,
 } from "@eventual/core";
 import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
+import {
+  createExecutionHistoryClient,
+  createWorkflowRuntimeClient,
+} from "../clients/index.js";
 import { SQSHandler, SQSRecord } from "aws-lambda";
-import { LambdaClient } from "@aws-sdk/client-lambda";
 
-const s3 = new S3Client({ region: process.env.AWS_REGION });
-const dynamo = new DynamoDBClient({ region: process.env.AWS_REGION });
-
-const workflowRuntimeClient = new WorkflowRuntimeClient({
-  dynamo,
-  s3,
-  // todo fail when missing
-  executionHistoryBucket: executionHistoryBucket ?? "",
-  tableName: tableName ?? "",
-  lambda: new LambdaClient({}),
-  actionWorkerFunctionName: actionWorkerFunctionName ?? "",
-});
-const executionHistoryClient = new ExecutionHistoryClient({
-  dynamo,
-  tableName: tableName ?? "",
-});
+const executionHistoryClient = createExecutionHistoryClient();
+const workflowRuntimeClient = createWorkflowRuntimeClient();
 
 /**
  * Creates an entrypoint function for orchestrating a workflow.
