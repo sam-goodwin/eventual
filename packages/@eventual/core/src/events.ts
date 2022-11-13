@@ -5,13 +5,13 @@ export interface BaseEvent {
 }
 
 export enum WorkflowEventType {
-  ActivityCompleted = "ActivityCompleted",
-  ActivityFailed = "ActivityFailed",
-  ActivityScheduled = "ActivityScheduled",
-  TaskCompleted = "TaskCompleted",
-  TaskStarted = "TaskStarted",
-  WorkflowCompleted = "WorkflowCompleted",
-  WorkflowStarted = "WorkflowStarted",
+  ActivityCompleted,
+  ActivityFailed,
+  ActivityScheduled,
+  TaskCompleted,
+  TaskStarted,
+  WorkflowCompleted,
+  WorkflowStarted,
 }
 
 /**
