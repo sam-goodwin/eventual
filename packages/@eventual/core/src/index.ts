@@ -1,5 +1,5 @@
 export * from "./activity";
-export * from "./commands";
+export * from "./await-all";
 export * from "./events";
 export * from "./eventual";
 export * from "./kind";

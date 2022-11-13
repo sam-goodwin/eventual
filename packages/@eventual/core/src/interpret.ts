@@ -1,14 +1,6 @@
-import {
-  Action,
-  Activity,
-  createThread,
-  collectActivities,
-  isAction,
-  isActivity,
-  isAwaitAll,
-  isThread,
-  Thread,
-} from "./activity";
+import { Activity, isActivity } from "./activity";
+import { isAwaitAll } from "./await-all";
+import { Command, isCommand } from "./command";
 import { DeterminismError } from "./error";
 import {
   ActivityCompleted,
@@ -18,7 +10,9 @@ import {
   isActivityFailed,
   isActivityScheduled,
 } from "./events";
+import { collectActivities } from "./global";
 import { Result, isResolved, isFailed, isPending } from "./result";
+import { createThread, isThread, Thread } from "./thread";
 import { assertNever } from "./util";
 
 export interface WorkflowResult {
@@ -27,11 +21,11 @@ export interface WorkflowResult {
    */
   result?: Result;
   /**
-   * Any Actions that need to be scheduled.
+   * Any Commands that need to be scheduled.
    *
    * This can still be non-empty even if the thread has terminated because of dangling promises.
    */
-  actions: Action[];
+  commands: Command[];
 }
 
 export type HistoryEvent =
@@ -48,7 +42,7 @@ export function interpret(
   program: Generator<any, any, Activity>,
   history: HistoryEvent[]
 ): WorkflowResult {
-  const actionTable: Record<number, Action> = {};
+  const commandTable: Record<number, Command> = {};
   const mainThread = createThread(program);
   const threadTable = new Set([mainThread]);
 
@@ -88,77 +82,77 @@ export function interpret(
     if (isActivityCompleted(event) || isActivityFailed(event)) {
       commitCompletion(event, true);
     } else if (isActivityScheduled(event)) {
-      const actions = run(true);
+      const commands = run(true);
       const events = [
         event,
-        ...takeWhile(actions.length - 1, isActivityScheduled),
+        ...takeWhile(commands.length - 1, isActivityScheduled),
       ];
-      if (events.length !== actions.length) {
+      if (events.length !== commands.length) {
         throw new DeterminismError();
       }
-      for (let i = 0; i < actions.length; i++) {
+      for (let i = 0; i < commands.length; i++) {
         const event = events[i]!;
-        const action = actions[i]!;
+        const command = commands[i]!;
 
-        if (!isCorresponding(event, action)) {
+        if (!isCorresponding(event, command)) {
           throw new DeterminismError();
         }
       }
     }
   }
 
-  const actions = [];
+  const commands = [];
 
-  // run out the remaining completion events and collect any scheduled actions
+  // run out the remaining completion events and collect any scheduled commands
   // we do this because events come in chunks of Scheduled/Completed
   // [...scheduled, ...completed, ...scheduled]
   // if the history's tail contains completed events, e.g. [...scheduled, ...completed]
-  // then we need to apply the completions, wake threads and schedule any produced actions
+  // then we need to apply the completions, wake threads and schedule any produced commands
   while ((event = pop())) {
     if (isActivityScheduled(event)) {
       // it should be impossible to receive a scheduled event
       // -> because the tail of history can only contain completion events
-      // -> scheduled events stored in history should correspond to actions
+      // -> scheduled events stored in history should correspond to commands
       //    -> or else a determinism error would have been thrown
       throw new Error("illegal state");
     }
     commitCompletion(event, false);
-    actions.push(...run(false));
+    commands.push(...run(false));
   }
 
   do {
     // continue progressing the program until all possible progress has been made
-    actions.push(...run(false));
+    commands.push(...run(false));
   } while (canMakeProgress());
 
   const result = tryResolveResult(mainThread);
 
   return {
     result,
-    actions,
+    commands: commands,
   };
 
   function canMakeProgress() {
     return Array.from(threadTable).some((thread) => isCompleted(thread));
   }
 
-  function run(replay: boolean): Action[] {
-    const actions = Array.from(threadTable).flatMap((thread) =>
+  function run(replay: boolean): Command[] {
+    const commands = Array.from(threadTable).flatMap((thread) =>
       runIfAwake(thread, replay)
     );
-    actions.forEach((action) => {
-      // assign action sequences in order of when they were spawned
-      action.seq = nextSeq();
-      actionTable[action.seq] = action;
+    commands.forEach((command) => {
+      // assign command sequences in order of when they were spawned
+      command.seq = nextSeq();
+      commandTable[command.seq] = command;
     });
-    return actions;
+    return commands;
   }
 
   /**
    * Try and make progress in a thread if it can be woken up
    * with a new value.
    */
-  function runIfAwake(thread: Thread, replay: boolean): Action[] {
+  function runIfAwake(thread: Thread, replay: boolean): Command[] {
     if (thread.awaiting === undefined) {
       return wakeThread(thread, undefined);
     }
@@ -192,12 +186,12 @@ export function interpret(
     }
 
     /**
-     * Wakes up a thread with a new value and return any newly spawned Actions.
+     * Wakes up a thread with a new value and return any newly spawned Commands.
      */
     function wakeThread(
       thread: Thread,
       result: Result<any> | undefined
-    ): Action[] {
+    ): Command[] {
       if (result && isPending(result)) {
         return [];
       }
@@ -221,7 +215,7 @@ export function interpret(
       activities.filter(isThread).forEach((thread) => threadTable.add(thread));
 
       return activities.flatMap((spawned) => {
-        if (isAction(spawned)) {
+        if (isCommand(spawned)) {
           return [spawned];
         } else if (isThread(spawned)) {
           return runIfAwake(spawned, replay);
@@ -250,7 +244,7 @@ export function interpret(
   }
 
   function tryResolveResult(activity: Activity): Result | undefined {
-    if (isAction(activity)) {
+    if (isCommand(activity)) {
       return activity.result;
     } else if (isThread(activity)) {
       if (activity.result) {
@@ -284,22 +278,22 @@ export function interpret(
     event: ActivityCompleted | ActivityFailed,
     isReplay: boolean
   ) {
-    const action = actionTable[event.seq];
-    if (action === undefined) {
+    const command = commandTable[event.seq];
+    if (command === undefined) {
       throw new DeterminismError();
     }
-    if (isReplay && action.result && !isPending(action.result)) {
+    if (isReplay && command.result && !isPending(command.result)) {
       throw new DeterminismError();
     }
-    action.result = isActivityCompleted(event)
+    command.result = isActivityCompleted(event)
       ? Result.resolved(event.result)
       : Result.failed(event.error);
   }
 }
 
-function isCorresponding(event: ActivityScheduled, action: Action) {
+function isCorresponding(event: ActivityScheduled, command: Command) {
   return (
-    event.seq === action.seq && event.name === action.name
+    event.seq === command.seq && event.name === command.name
     // TODO: also validate arguments
   );
 }
