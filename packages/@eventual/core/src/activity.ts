@@ -55,24 +55,9 @@ export namespace Activity {
 
 export function activity<F extends (...args: any[]) => any>(
   activityID: string,
-  underlying: F
+  _underlying: F
 ): (...args: Parameters<F>) => Promise<Awaited<ReturnType<F>>> {
-  if (
-    !underlying ||
-    typeof underlying === "string" ||
-    typeof underlying === "number" ||
-    typeof underlying === "boolean"
-  ) {
-    return underlying;
-  }
-  return new Proxy(
-    {},
-    {
-      apply: (_target, _this, args) => {
-        return scheduleAction(activityID, args);
-      },
-    }
-  ) as any;
+  return (...args) => scheduleAction(activityID, args) as any;
 }
 
 export function scheduleAction(
@@ -80,15 +65,22 @@ export function scheduleAction(
   args: any[],
   seq?: number
 ): Action {
-  return registerActivity<Action>({
+  const action: Action = {
     [ActivitySymbol]: ActivityKind.Action,
     seq,
     name,
     args,
-  });
+  };
+  if (seq !== undefined) {
+    // if seq is passed in, this action is assumed to be in a dev environment
+    // so - do not register it
+    return action;
+  } else {
+    return registerActivity<Action>(action);
+  }
 }
 
-export function registerActivity<A extends Activity>(activity: A): A {
+function registerActivity<A extends Activity>(activity: A): A {
   activityCollector.push(activity);
   return activity;
 }

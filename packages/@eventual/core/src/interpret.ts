@@ -7,7 +7,6 @@ import {
   isActivity,
   isAwaitAll,
   isThread,
-  resetActivityCollector,
   Thread,
 } from "./activity";
 import { DeterminismError } from "./error";
@@ -21,10 +20,6 @@ import {
 } from "./events";
 import { Result, isResolved, isFailed, isPending } from "./result";
 import { assertNever } from "./util";
-
-function reset() {
-  resetActivityCollector();
-}
 
 export interface WorkflowResult {
   /**
@@ -53,7 +48,6 @@ export function interpret(
   program: Generator<any, any, Activity>,
   history: HistoryEvent[]
 ): WorkflowResult {
-  reset();
   const actionTable: Record<number, Action> = {};
   const mainThread = createThread(program);
   const threadTable = new Set([mainThread]);
@@ -63,12 +57,12 @@ export function interpret(
     return seq++;
   }
 
-  let i = 0;
+  let historyIndex = 0;
   function peek() {
-    return history[i];
+    return history[historyIndex];
   }
   function pop() {
-    return history[i++]!;
+    return history[historyIndex++]!;
   }
   function takeWhile<T>(max: number, guard: (a: any) => a is T): T[] {
     const items: T[] = [];
@@ -78,8 +72,8 @@ export function interpret(
     return items;
   }
   function peekForward<T>(guard: (a: any) => a is T): boolean {
-    for (let j = i; j < history.length; j++) {
-      if (guard(history[j])) {
+    for (let i = historyIndex; i < history.length; i++) {
+      if (guard(history[i])) {
         return true;
       }
     }
@@ -116,8 +110,16 @@ export function interpret(
   const actions = [];
 
   // run out the remaining completion events and collect any scheduled actions
+  // we do this because events come in chunks of Scheduled/Completed
+  // [...scheduled, ...completed, ...scheduled]
+  // if the history's tail contains completed events, e.g. [...scheduled, ...completed]
+  // then we need to apply the completions, wake threads and schedule any produced actions
   while ((event = pop())) {
     if (isActivityScheduled(event)) {
+      // it should be impossible to receive a scheduled event
+      // -> because the tail of history can only contain completion events
+      // -> scheduled events stored in history should correspond to actions
+      //    -> or else a determinism error would have been thrown
       throw new Error("illegal state");
     }
     commitCompletion(event, false);
@@ -129,7 +131,7 @@ export function interpret(
     actions.push(...run(false));
   } while (canMakeProgress());
 
-  const result = resolveActivityResult(mainThread);
+  const result = tryResolveResult(mainThread);
 
   return {
     result,
@@ -137,73 +139,12 @@ export function interpret(
   };
 
   function canMakeProgress() {
-    return Array.from(threadTable).some((thread) => isActivityComplete(thread));
-  }
-
-  function isActivityComplete(activity: Activity): boolean {
-    const result = activity.result;
-    if (isResolved(result) || isFailed(result)) {
-      return true;
-    } else if (isThread(activity)) {
-      if (activity.awaiting) {
-        return isActivityComplete(activity.awaiting);
-      } else {
-        return false;
-      }
-    } else if (isAwaitAll(activity)) {
-      return activity.activities.every(isActivityComplete);
-    } else {
-      return false;
-    }
-  }
-
-  function resolveActivityResult(activity: Activity): Result | undefined {
-    if (isAction(activity)) {
-      return activity.result;
-    } else if (isThread(activity)) {
-      if (activity.result) {
-        if (isPending(activity.result)) {
-          return resolveActivityResult(activity.result.activity);
-        } else {
-          return activity.result;
-        }
-      } else {
-        return undefined;
-      }
-    } else if (isAwaitAll(activity)) {
-      const results = [];
-      for (const dependentActivity of activity.activities) {
-        const result = resolveActivityResult(dependentActivity);
-        if (isFailed(result)) {
-          return (activity.result = result);
-        } else if (isResolved(result)) {
-          results.push(result.value);
-        } else {
-          return undefined;
-        }
-      }
-      return (activity.result = Result.resolved(results));
-    } else {
-      return assertNever(activity);
-    }
-  }
-
-  function commitCompletion(
-    event: ActivityCompleted | ActivityFailed,
-    isReplay: boolean
-  ) {
-    const activity = getAction(event.seq);
-    if (isReplay && activity.result && !isPending(activity.result)) {
-      throw new DeterminismError();
-    }
-    activity.result = isActivityCompleted(event)
-      ? Result.resolved(event.result)
-      : Result.failed(event.error);
+    return Array.from(threadTable).some((thread) => isCompleted(thread));
   }
 
   function run(replay: boolean): Action[] {
     const actions = Array.from(threadTable).flatMap((thread) =>
-      tryMakeProgress(thread, replay)
+      runIfAwake(thread, replay)
     );
     actions.forEach((action) => {
       // assign action sequences in order of when they were spawned
@@ -217,16 +158,15 @@ export function interpret(
    * Try and make progress in a thread if it can be woken up
    * with a new value.
    */
-  function tryMakeProgress(thread: Thread, replay: boolean): Action[] {
-    resetActivityCollector();
+  function runIfAwake(thread: Thread, replay: boolean): Action[] {
     if (thread.awaiting === undefined) {
-      return wakeUpThread(thread, undefined);
+      return wakeThread(thread, undefined);
     }
-    const result = resolveActivityResult(thread.awaiting);
+    const result = tryResolveResult(thread.awaiting);
     if (result === undefined) {
       return [];
     } else if (isResolved(result) || isFailed(result)) {
-      return wakeUpThread(thread, result);
+      return wakeThread(thread, result);
     } else if (isAwaitAll(result.activity)) {
       const results = [];
       for (const activity of result.activity.activities) {
@@ -241,12 +181,12 @@ export function interpret(
           return [];
         } else if (isFailed(result)) {
           // one of the inner activities has failed, the thread should throw
-          return wakeUpThread(thread, result);
+          return wakeThread(thread, result);
         } else {
           results.push(result.value);
         }
       }
-      return wakeUpThread(thread, Result.resolved(results));
+      return wakeThread(thread, Result.resolved(results));
     } else {
       return [];
     }
@@ -254,7 +194,7 @@ export function interpret(
     /**
      * Wakes up a thread with a new value and return any newly spawned Actions.
      */
-    function wakeUpThread(
+    function wakeThread(
       thread: Thread,
       result: Result<any> | undefined
     ): Action[] {
@@ -285,7 +225,7 @@ export function interpret(
         if (isAction(spawned)) {
           return [spawned];
         } else if (isThread(spawned)) {
-          return tryMakeProgress(spawned, replay);
+          return runIfAwake(spawned, replay);
         } else {
           return [];
         }
@@ -293,12 +233,68 @@ export function interpret(
     }
   }
 
-  function getAction(seq: number): Action {
-    const action = actionTable[seq];
+  function isCompleted(activity: Activity): boolean {
+    const result = activity.result;
+    if (isResolved(result) || isFailed(result)) {
+      return true;
+    } else if (isThread(activity)) {
+      if (activity.awaiting) {
+        return isCompleted(activity.awaiting);
+      } else {
+        return false;
+      }
+    } else if (isAwaitAll(activity)) {
+      return activity.activities.every(isCompleted);
+    } else {
+      return false;
+    }
+  }
+
+  function tryResolveResult(activity: Activity): Result | undefined {
+    if (isAction(activity)) {
+      return activity.result;
+    } else if (isThread(activity)) {
+      if (activity.result) {
+        if (isPending(activity.result)) {
+          return tryResolveResult(activity.result.activity);
+        } else {
+          return activity.result;
+        }
+      } else {
+        return undefined;
+      }
+    } else if (isAwaitAll(activity)) {
+      const results = [];
+      for (const dependentActivity of activity.activities) {
+        const result = tryResolveResult(dependentActivity);
+        if (isFailed(result)) {
+          return (activity.result = result);
+        } else if (isResolved(result)) {
+          results.push(result.value);
+        } else {
+          return undefined;
+        }
+      }
+      return (activity.result = Result.resolved(results));
+    } else {
+      return assertNever(activity);
+    }
+  }
+
+  function commitCompletion(
+    event: ActivityCompleted | ActivityFailed,
+    isReplay: boolean
+  ) {
+    const action = actionTable[event.seq];
     if (action === undefined) {
       throw new DeterminismError();
     }
-    return action;
+    if (isReplay && action.result && !isPending(action.result)) {
+      throw new DeterminismError();
+    }
+    action.result = isActivityCompleted(event)
+      ? Result.resolved(event.result)
+      : Result.failed(event.error);
   }
 }
 
