@@ -20,6 +20,9 @@
       "path": "packages/@eventual/aws-runtime"
     },
     {
+      "path": "packages/@eventual/cli"
+    },
+    {
       "path": "apps/test-app"
     },
     {

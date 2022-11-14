@@ -2,7 +2,8 @@ import { Architecture, Code, Runtime } from "aws-cdk-lib/aws-lambda";
 import * as aws_apigatewayv2 from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpMethod } from "@aws-cdk/aws-apigatewayv2-alpha";
 import * as integrations from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
-import { aws_lambda, CfnOutput } from "aws-cdk-lib";
+import * as authorizers from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
+import { aws_iam, aws_lambda, CfnOutput, Stack } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import path from "path";
 import { Workflow } from "./workflow";
@@ -17,6 +18,9 @@ interface RouteMapping {
 }
 
 export class EventualApi extends Construct {
+  readonly api: aws_apigatewayv2.HttpApi;
+  readonly apiExecuteRole: aws_iam.Role;
+
   constructor(scope: Construct, id: string, props: EventualApiProps) {
     super(scope, id);
 
@@ -28,13 +32,35 @@ export class EventualApi extends Construct {
       ),
     };
 
-    const api = new aws_apigatewayv2.HttpApi(this, "gateway", {
+    this.api = new aws_apigatewayv2.HttpApi(this, "gateway", {
       apiName: "eventual-api",
+      defaultAuthorizer: new authorizers.HttpIamAuthorizer(),
     });
+
+    this.apiExecuteRole = new aws_iam.Role(this, "EventualApiRole", {
+      roleName: "eventual-api",
+      assumedBy: new aws_iam.AccountPrincipal(Stack.of(this).account),
+      inlinePolicies: {
+        execute: new aws_iam.PolicyDocument({
+          statements: [
+            new aws_iam.PolicyStatement({
+              actions: ["execute-api:*"],
+              effect: aws_iam.Effect.ALLOW,
+              resources: [
+                `arn:aws:execute-api:${Stack.of(this).region}:${
+                  Stack.of(this).account
+                }:${this.api.apiId}/*`,
+              ],
+            }),
+          ],
+        }),
+      },
+    });
+
     const route = (mappings: Record<string, RouteMapping[]>) => {
       Object.entries(mappings).forEach(([path, mappings]) => {
         mappings.forEach(({ entry, methods }) => {
-          api.addRoutes({
+          this.api.addRoutes({
             path,
             integration: this.lambda(entry, environment),
             methods,
@@ -62,16 +88,18 @@ export class EventualApi extends Construct {
       ],
     });
 
-    new CfnOutput(this, "api-url", { value: api.url! });
+    new CfnOutput(this, "api-url", {
+      value: this.api.url!,
+      exportName: "eventual-api-url",
+    });
   }
 
-  lambda(
+  public lambda(
     entry: string | string[],
     environment?: Record<string, string>
   ): integrations.HttpLambdaIntegration {
     const resolvedEntry = typeof entry === "string" ? [entry] : entry;
     const id = resolvedEntry.join("-");
-    console.log(path.join(__dirname, "handler", ...entry));
     return new integrations.HttpLambdaIntegration(
       `${id}-integration`,
       new aws_lambda.Function(this, id, {

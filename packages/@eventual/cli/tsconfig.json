@@ -1,0 +1,16 @@
+{
+  "extends": "../../../tsconfig-base",
+  "compilerOptions": {
+    "module": "ES2022",
+    "moduleResolution": "Node",
+    "outDir": "lib/esm",
+    "declaration": true,
+    "inlineSourceMap": true,
+    "rootDir": "src",
+    "typeRoots": ["./node_modules/@types"],
+    "allowJs": true
+  },
+  "include": ["src"],
+  "exclude": ["lib", "node_modules"],
+  "references": []
+}
