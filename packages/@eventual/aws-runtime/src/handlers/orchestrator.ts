@@ -82,22 +82,6 @@ export function orchestrator(
     executionId: string,
     events: HistoryStateEvents[]
   ) {
-    console.debug("Load history");
-    // load history
-    const history = await workflowRuntimeClient.getHistory(executionId);
-
-    // merge history with incoming events
-    const allEvents = [...history, ...events];
-
-    console.debug("Running workflow with events: " + JSON.stringify(allEvents));
-    const startEvent = allEvents.find(isWorkflowStarted);
-
-    if (!startEvent) {
-      throw new Error(
-        "No workflow started event found for execution id: " + executionId
-      );
-    }
-
     /** Events to be written to the history table at the end of the workflow task */
     const newEvents: WorkflowEvent[] = [];
 
@@ -107,12 +91,30 @@ export function orchestrator(
       })
     );
 
+    console.debug("Load history");
+    // load history
+    const history = await workflowRuntimeClient.getHistory(executionId);
+
+    // historical events and incoming events will be fed into the workflow to resume/progress state
+    const inputEvents = [...history, ...events];
+
+    console.debug(
+      "Running workflow with events: " + JSON.stringify(inputEvents)
+    );
+    const startEvent = inputEvents.find(isWorkflowStarted);
+
+    if (!startEvent) {
+      throw new Error(
+        "No workflow started event found for execution id: " + executionId
+      );
+    }
+
     console.log("program: " + program);
 
     // execute workflow
     const { result, commands: newCommands } = interpret(
       program(startEvent.input),
-      allEvents.filter(isHistoryEvent)
+      inputEvents.filter(isHistoryEvent)
     );
 
     console.debug("Workflow terminated with: " + JSON.stringify(result));
@@ -126,7 +128,7 @@ export function orchestrator(
     // update history from new commands and events
     // for now, we'll just write the awaitable command events to s3 as those are the ones needed to reconstruct the workflow.
     await workflowRuntimeClient.updateHistory(executionId, [
-      ...allEvents,
+      ...inputEvents,
       ...commandEvents,
     ]);
 
