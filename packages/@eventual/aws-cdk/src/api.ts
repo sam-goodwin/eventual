@@ -7,8 +7,8 @@ import { Construct } from "constructs";
 import path from "path";
 import { Workflow } from "./workflow";
 
-export interface ApiProps {
-  workflows: Record<string, Workflow>;
+export interface EventualApiProps {
+  workflows: Workflow[];
 }
 
 interface RouteMapping {
@@ -16,17 +16,14 @@ interface RouteMapping {
   methods?: aws_apigatewayv2.HttpMethod[];
 }
 
-export class Api extends Construct {
-  constructor(scope: Construct, id: string, props: ApiProps) {
+export class EventualApi extends Construct {
+  constructor(scope: Construct, id: string, props: EventualApiProps) {
     super(scope, id);
 
     const environment = {
       WORKFLOWS: JSON.stringify(
         Object.fromEntries(
-          Object.entries(props.workflows).map(([id, w]) => [
-            id,
-            w.orchestrator.functionArn,
-          ])
+          props.workflows.map((w) => [w.node.id, w.orchestrator.functionArn])
         )
       ),
     };
@@ -34,18 +31,35 @@ export class Api extends Construct {
     const api = new aws_apigatewayv2.HttpApi(this, "gateway", {
       apiName: "eventual-api",
     });
-    const route = (mappings: Record<string, RouteMapping>) => {
-      Object.entries(mappings).forEach(([path, { entry, methods }]) => {
-        api.addRoutes({
-          path,
-          integration: this.lambda(entry, environment),
-          methods,
+    const route = (mappings: Record<string, RouteMapping[]>) => {
+      Object.entries(mappings).forEach(([path, mappings]) => {
+        mappings.forEach(({ entry, methods }) => {
+          api.addRoutes({
+            path,
+            integration: this.lambda(entry, environment),
+            methods,
+          });
         });
       });
     };
 
     route({
-      "/workflows": { entry: "list-workflows", methods: [HttpMethod.GET] },
+      "/workflows": [
+        {
+          methods: [HttpMethod.GET],
+          entry: "workflows/list",
+        },
+      ],
+      "/workflows/{name}": [
+        {
+          methods: [HttpMethod.POST],
+          entry: "workflows/invoke",
+        },
+        {
+          methods: [HttpMethod.GET],
+          entry: "workflows/status",
+        },
+      ],
     });
 
     new CfnOutput(this, "api-url", { value: api.url! });
