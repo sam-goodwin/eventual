@@ -1,10 +1,10 @@
 import { Command } from "commander";
-import { apiKy } from "../api-ky";
+import { apiKy } from "../api-ky.js";
 
 export const listWorkflowsCommand: Command = new Command("list")
   .description("List Eventual workflows")
   .action(async () => {
     const ky = await apiKy();
-    const workflows = await ky("/workflows").json<string[]>();
+    const workflows = await ky("workflows").json<string[]>();
     workflows.forEach((w) => console.log(w));
   });
