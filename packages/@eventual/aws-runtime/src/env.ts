@@ -7,6 +7,12 @@ export namespace ENV_NAMES {
   export const WORKFLOW_FUNCTION_NAME = "WORKFLOW_FUNCTION_NAME";
   export const ACTIVITY_WORKER_FUNCTION_NAME = "ACTIVITY_WORKER_FUNCTION_NAME";
   export const ACTIVITY_LOCK_TABLE_NAME = "ACTIVITY_LOCK_TABLE_NAME";
+  /**
+   * A flag that determines if a function is an activity worker.
+   *
+   * Activity calls behave different based on their context.
+   */
+  export const EVENTUAL_WORKER = "EVENTUAL_WORKER";
 }
 
 export function tryGetEnv(name: string) {

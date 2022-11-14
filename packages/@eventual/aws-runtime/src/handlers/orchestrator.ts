@@ -110,14 +110,12 @@ export function orchestrator(
     console.log("program: " + program);
 
     // execute workflow
-    const result = interpret(
+    const { result, commands: newCommands } = interpret(
       program(startEvent.input),
-      newEvents.filter(isHistoryEvent)
+      allEvents.filter(isHistoryEvent)
     );
 
     console.debug("Workflow terminated with: " + JSON.stringify(result));
-
-    const newCommands = Array.isArray(result) ? result : [];
 
     console.info(`Found ${newCommands.length} new commands.`);
 
