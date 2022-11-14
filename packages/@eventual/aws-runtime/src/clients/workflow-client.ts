@@ -1,12 +1,12 @@
 import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
-  WorkflowEvent,
   WorkflowTask,
   WorkflowStarted,
   Execution,
   ExecutionStatus,
   WorkflowEventType,
+  HistoryStateEvents,
 } from "@eventual/core";
 import { ulid } from "ulid";
 import { ExecutionHistoryClient } from "./execution-history-client.js";
@@ -54,7 +54,7 @@ export class WorkflowClient {
 
   public async submitWorkflowTask(
     executionId: string,
-    ...events: WorkflowEvent[]
+    ...events: HistoryStateEvents[]
   ) {
     // send workflow task to workflow queue
     const workflowTask: SQSWorkflowTaskMessage = {

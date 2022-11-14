@@ -38,11 +38,18 @@
     ]
   },
   "jest": {
+    "extensionsToTreatAsEsm": [
+      ".ts"
+    ],
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
     "transform": {
       "^.+\\.(t|j)sx?$": [
         "ts-jest",
         {
-          "tsConfig": "tsconfig.test.json"
+          "tsConfig": "tsconfig.test.json",
+          "useESM": true
         }
       ]
     }

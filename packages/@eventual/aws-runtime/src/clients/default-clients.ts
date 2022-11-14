@@ -18,9 +18,11 @@ import { WorkflowRuntimeClient } from "./workflow-runtime-client";
  * Lazily maintain whatever is returned by the create function as a singleton.
  */
 function memoize<T>(create: () => T) {
+  let created = false;
   let t: T;
   return () => {
-    if (!t) {
+    if (!created) {
+      created = true;
       return (t = create());
     }
     return t;

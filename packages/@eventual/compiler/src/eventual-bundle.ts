@@ -43,12 +43,7 @@ async function main() {
         ],
         outfile: path.join(outDir, "orchestrator/index.js"),
       })
-      .then((r) =>
-        fs.writeFile(
-          path.join(outDir, "orchestrator/meta.json"),
-          JSON.stringify(r.metafile)
-        )
-      ),
+      .then(writeEsBuildMetafile(path.join(outDir, "orchestrator/meta.json"))),
     esbuild
       .build({
         mainFields: ["module", "main"],
@@ -71,13 +66,14 @@ async function main() {
         ],
         outfile: path.join(outDir, "action-worker/index.js"),
       })
-      .then((r) =>
-        fs.writeFile(
-          path.join(outDir, "action-worker/meta.json"),
-          JSON.stringify(r.metafile)
-        )
-      ),
+      .then(writeEsBuildMetafile(path.join(outDir, "action-worker/meta.json"))),
   ]);
+}
+
+function writeEsBuildMetafile(path: string) {
+  return (
+    esbuildResult: esbuild.BuildResult & { metafile: esbuild.Metafile }
+  ) => fs.writeFile(path, JSON.stringify(esbuildResult.metafile));
 }
 
 async function prepareOutDir(outDir: string) {

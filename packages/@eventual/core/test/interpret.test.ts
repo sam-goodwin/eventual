@@ -11,9 +11,9 @@ import {
   ActivityScheduled,
   ActivityFailed,
   Program,
-} from "../src";
-import { createActivityCall } from "../src/activity-call";
-import { DeterminismError } from "../src/error";
+} from "../src/index.js";
+import { createActivityCall } from "../src/activity-call.js";
+import { DeterminismError } from "../src/error.js";
 
 function* myWorkflow(event: any): Program<any> {
   try {

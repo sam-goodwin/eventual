@@ -1,4 +1,4 @@
-import { WorkflowEvent } from "./events.js";
+import { HistoryStateEvents, WorkflowEvent } from "./events.js";
 
 /**
  * A task which delivers new {@link WorkflowEvent}s to a workflow execution.
@@ -7,5 +7,5 @@ import { WorkflowEvent } from "./events.js";
  */
 export interface WorkflowTask {
   executionId: string;
-  events: WorkflowEvent[];
+  events: HistoryStateEvents[];
 }

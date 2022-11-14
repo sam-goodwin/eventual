@@ -12,7 +12,6 @@ import { RemovalPolicy } from "aws-cdk-lib";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import path from "path";
-import { Policy, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { execSync } from "child_process";
 
 export interface WorkflowProps {
@@ -48,10 +47,8 @@ export class Workflow extends Construct {
       this,
       "startWorkflowFunction",
       {
-        // cannot require.resolve a esm path
-        entry: path.resolve(
-          __dirname,
-          "../node_modules/@eventual/aws-runtime/lib/esm/functions/start-workflow.js"
+        entry: require.resolve(
+          "@eventual/aws-runtime/lib/esm/functions/start-workflow.js"
         ),
         handler: "handle",
         runtime: Runtime.NODEJS_16_X,
@@ -126,16 +123,6 @@ export class Workflow extends Construct {
         }),
       ],
     });
-
-    const statement = new PolicyStatement({
-      actions: ["lambda:InvokeFunction"],
-      resources: [orchestrator.functionArn, `${orchestrator.functionArn}:*`],
-    });
-    const policy = new Policy(this, "orchestratorSelfInvokePolicy", {
-      statements: [statement],
-    });
-
-    policy.attachToRole(orchestrator.role!);
 
     // the orchestrator will accumulate history state in S3
     history.grantReadWrite(orchestrator);

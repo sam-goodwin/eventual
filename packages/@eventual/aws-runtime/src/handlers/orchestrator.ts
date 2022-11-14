@@ -14,6 +14,8 @@ import {
   isHistoryEvent,
   Command,
   Program,
+  ActivityScheduled,
+  HistoryStateEvents,
 } from "@eventual/core";
 import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
 import {
@@ -54,7 +56,6 @@ export function orchestrator(
 
     console.log("Found execution ids: " + executionIds.join(", "));
 
-    // TODO: make workflow engine "threadsafe"
     // TODO: handle errors and partial batch failures
     // for each execution id
     for (const executionId of Object.keys(eventsByExecutionId)) {
@@ -66,11 +67,11 @@ export function orchestrator(
       batchItemFailures: [],
     };
 
-    function sqsRecordsToEvents(sqsRecords: SQSRecord[]): WorkflowEvent[] {
+    function sqsRecordsToEvents(sqsRecords: SQSRecord[]) {
       return sqsRecords.flatMap(sqsRecordToEvents);
     }
 
-    function sqsRecordToEvents(sqsRecord: SQSRecord): WorkflowEvent[] {
+    function sqsRecordToEvents(sqsRecord: SQSRecord) {
       const message = JSON.parse(sqsRecord.body) as SQSWorkflowTaskMessage;
 
       return message.event.events;
@@ -79,7 +80,7 @@ export function orchestrator(
 
   async function orchestrateExecution(
     executionId: string,
-    events: WorkflowEvent[]
+    events: HistoryStateEvents[]
   ) {
     console.debug("Load history");
     // load history
@@ -120,8 +121,7 @@ export function orchestrator(
 
     console.info(`Found ${newCommands.length} new commands.`);
 
-    const { events: commandEvents, runDeferredCommands } =
-      processCommands(newCommands);
+    const commandEvents = await processCommands(newCommands);
 
     newEvents.push(...commandEvents);
 
@@ -131,11 +131,6 @@ export function orchestrator(
       ...allEvents,
       ...commandEvents,
     ]);
-
-    // execute commands
-    // don't actually send the commands until after we update history.
-    // We don't want to race with the next workflow execution if somehow the command completes before we save.
-    await runDeferredCommands();
 
     newEvents.push(
       createEvent<WorkflowTaskCompleted>({
@@ -182,35 +177,21 @@ export function orchestrator(
      *
      * Does not actually write the commands out.
      */
-    function processCommands(commands: Command[]): {
-      events: WorkflowEvent[];
-      runDeferredCommands: () => Promise<void>;
-    } {
+    async function processCommands(
+      commands: Command[]
+    ): Promise<HistoryStateEvents[]> {
       // register command events
-      const commandResults: {
-        event: Omit<WorkflowEvent, "id" | "timestamp">;
-        deferredCommand: () => Promise<void>;
-      }[] = commands.map((command) => {
-        return {
-          event: {
+      return await Promise.all(
+        commands.map(async (command) => {
+          await workflowRuntimeClient.scheduleAction(executionId, command);
+
+          return createEvent<ActivityScheduled>({
             type: WorkflowEventType.ActivityScheduled,
             seq: command.seq,
             name: command.name,
-            args: command.args,
-          },
-          deferredCommand: () =>
-            workflowRuntimeClient.scheduleAction(executionId, command),
-        };
-      });
-
-      const events = commandResults.map((c) => createEvent(c.event));
-
-      return {
-        events,
-        runDeferredCommands: async () => {
-          await Promise.all(commandResults.map((c) => c.deferredCommand()));
-        },
-      };
+          });
+        })
+      );
     }
   }
 }
