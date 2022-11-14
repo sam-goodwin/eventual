@@ -16,19 +16,25 @@ import Visitor from "@swc/core/Visitor";
 export const eventualESPlugin: esBuild.Plugin = {
   name: "eventual",
   setup(build) {
-    build.onLoad({ filter: /\.[tj]s/g }, async (args) => {
+    build.onLoad({ filter: /\.[mc]?[tj]s$/g }, async (args) => {
+      // FYI: SWC erases comments: https://github.com/swc-project/swc/issues/6403
       const sourceModule = await parseFile(args.path, {
         syntax: "typescript",
       });
 
-      const transformedModule = new OuterVisitor().visitModule(sourceModule);
+      const outerVisitor = new OuterVisitor();
+      const transformedModule = outerVisitor.visitModule(sourceModule);
 
-      const { code } = await printModule(transformedModule, args.path);
+      // only format the module and return it if we found eventual functions to transform.
+      if (outerVisitor.foundEventual) {
+        const { code } = await printModule(transformedModule, args.path);
 
-      return {
-        contents: code,
-        loader: "ts",
-      };
+        return {
+          contents: code,
+          loader: "ts",
+        };
+      }
+      return;
     });
   },
 };
@@ -41,14 +47,16 @@ const supportedPromiseFunctions: string[] = [
 ];
 
 class OuterVisitor extends Visitor {
+  public foundEventual = false;
   public visitCallExpression(call: CallExpression): Expression {
     if (
-      ((isEventualCallee(call.callee) &&
-        call.arguments.length === 1 &&
-        call.arguments[0]?.expression.type === "ArrowFunctionExpression") ||
+      isEventualCallee(call.callee) &&
+      call.arguments.length === 1 &&
+      (call.arguments[0]?.expression.type === "ArrowFunctionExpression" ||
         call.arguments[0]?.expression.type === "FunctionExpression") &&
       !call.arguments[0].expression.generator
     ) {
+      this.foundEventual = true;
       return new InnerVisitor().visitExpression(call.arguments[0].expression);
     }
     return super.visitCallExpression(call);
@@ -75,7 +83,7 @@ export class InnerVisitor extends Visitor {
       if (
         supportedPromiseFunctions.includes(call.callee.property.value as any)
       ) {
-        call.callee.object.value = "Activity";
+        call.callee.object.value = "Future";
       }
     }
     return super.visitCallExpression(call);

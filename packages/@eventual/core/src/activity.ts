@@ -1,5 +1,7 @@
 import { createActivityCall } from "./activity-call";
 
+export const callableActivities: Record<string, Function> = {};
+
 /**
  * Registers a function as an Activity.
  *
@@ -10,13 +12,26 @@ export function activity<F extends (...args: any[]) => any>(
   activityID: string,
   handler: F
 ): (...args: Parameters<F>) => Promise<Awaited<ReturnType<F>>> {
-  return (...args) => {
-    if (process.env.EVENTUAL_WORKER) {
-      // if we're in the eventual worker, actually run the process
-      return handler(...args);
-    } else {
-      // otherwise, return a command to invoke the activity in the worker function
+  if (process.env.EVENTUAL_WORKER) {
+    // if we're in the eventual worker, actually run the process amd register the activity
+    // register the handler to be looked up during execution.
+    callableActivities[activityID] = handler;
+    return (...args) => handler(...args);
+  } else {
+    // otherwise, return a command to invoke the activity in the worker function
+    return (...args) => {
       return createActivityCall(activityID, args) as any;
-    }
-  };
+    };
+  }
+}
+
+/**
+ * Retrieve an activity function that has been registered in a workflow.
+ */
+export function getCallableActivity(activityId: string): Function | undefined {
+  return callableActivities[activityId];
+}
+
+export function getCallableActivityNames() {
+  return Object.keys(callableActivities);
 }

@@ -1,8 +1,8 @@
 {
-  "name": "evenetual-monorepo",
+  "name": "eventual-monorepo",
   "version": "0.0.0",
   "private": true,
-  "repository": "git@github.com:functionless/gluestik",
+  "repository": "git@github.com:functionless/eventual",
   "author": "Functionless Corp.",
   "license": "Apache-2.0",
   "packageManager": "pnpm@7.13.5",
@@ -38,11 +38,18 @@
     ]
   },
   "jest": {
+    "extensionsToTreatAsEsm": [
+      ".ts"
+    ],
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
     "transform": {
       "^.+\\.(t|j)sx?$": [
         "ts-jest",
         {
-          "tsConfig": "tsconfig.test.json"
+          "tsConfig": "tsconfig.test.json",
+          "useESM": true
         }
       ]
     }

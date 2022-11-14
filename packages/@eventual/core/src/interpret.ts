@@ -6,6 +6,7 @@ import {
   ActivityCompleted,
   ActivityFailed,
   ActivityScheduled,
+  HistoryEvent,
   isActivityCompleted,
   isActivityFailed,
   isActivityScheduled,
@@ -35,11 +36,6 @@ export interface WorkflowResult<T = any> {
    */
   commands: Command[];
 }
-
-export type HistoryEvent =
-  | ActivityScheduled
-  | ActivityCompleted
-  | ActivityFailed;
 
 export type Program<Return = any> = Generator<Future, Return>;
 
