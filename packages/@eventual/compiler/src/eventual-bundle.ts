@@ -36,9 +36,9 @@ async function main() {
         metafile: true,
         bundle: true,
         entryPoints: [
-          path.resolve(
-            __dirname,
-            "../node_modules/@eventual/aws-runtime/lib/esm/entry/orchestrator.js"
+          path.join(
+            require.resolve("@eventual/aws-runtime"),
+            "../../esm/entry/orchestrator.js"
           ),
         ],
         outfile: path.join(outDir, "orchestrator/index.js"),
@@ -59,14 +59,16 @@ async function main() {
         metafile: true,
         bundle: true,
         entryPoints: [
-          path.resolve(
-            __dirname,
-            "../node_modules/@eventual/aws-runtime/lib/esm/entry/activity-worker.js"
+          path.join(
+            require.resolve("@eventual/aws-runtime"),
+            "../../esm/entry/activity-worker.js"
           ),
         ],
         outfile: path.join(outDir, "activity-worker/index.js"),
       })
-      .then(writeEsBuildMetafile(path.join(outDir, "activity-worker/meta.json"))),
+      .then(
+        writeEsBuildMetafile(path.join(outDir, "activity-worker/meta.json"))
+      ),
   ]);
 }
 
