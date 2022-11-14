@@ -50,7 +50,7 @@ export function interpret<Return>(
   program: Program<Return>,
   history: HistoryEvent[]
 ): WorkflowResult<Awaited<Return>> {
-  const activityCallTable: Record<number, ActivityCall> = {};
+  const callTable: Record<number, ActivityCall> = {};
   const mainChain = createChain(program);
   const activeChains = new Set([mainChain]);
 
@@ -109,7 +109,7 @@ export function interpret<Return>(
     }
   }
 
-  const activityCalls = [];
+  const calls = [];
 
   // run out the remaining completion events and collect any scheduled activity calls
   // we do this because events come in chunks of Scheduled/Completed
@@ -126,20 +126,20 @@ export function interpret<Return>(
     }
     commitCompletionEvent(event, false);
 
-    activityCalls.push(...(advance(false) ?? []));
+    calls.push(...(advance(false) ?? []));
   }
 
   let newCommands;
   while ((newCommands = advance(false))) {
     // continue advancing the program until all possible progress has been made
-    activityCalls.push(...newCommands);
+    calls.push(...newCommands);
   }
 
   const result = tryResolveResult(mainChain);
 
   return {
     result,
-    commands: activityCalls.map((call) => ({
+    commands: calls.map((call) => ({
       args: call.args,
       name: call.name,
       seq: call.seq!,
@@ -162,7 +162,7 @@ export function interpret<Return>(
             calls.push(call);
             // assign sequences in order of when they were spawned
             call.seq = nextSeq();
-            activityCallTable[call.seq] = call;
+            callTable[call.seq] = call;
           }
         }
       }
@@ -294,14 +294,14 @@ export function interpret<Return>(
     event: ActivityCompleted | ActivityFailed,
     isReplay: boolean
   ) {
-    const activityCall = activityCallTable[event.seq];
-    if (activityCall === undefined) {
+    const call = callTable[event.seq];
+    if (call === undefined) {
       throw new DeterminismError();
     }
-    if (isReplay && activityCall.result && !isPending(activityCall.result)) {
+    if (isReplay && call.result && !isPending(call.result)) {
       throw new DeterminismError();
     }
-    activityCall.result = isActivityCompleted(event)
+    call.result = isActivityCompleted(event)
       ? Result.resolved(event.result)
       : Result.failed(event.error);
   }
