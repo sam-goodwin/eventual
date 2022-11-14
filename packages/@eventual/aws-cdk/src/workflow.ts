@@ -1,13 +1,25 @@
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
-import { Runtime, Architecture, Function, Code } from "aws-cdk-lib/aws-lambda";
+import {
+  Runtime,
+  Architecture,
+  Function,
+  Code,
+  IFunction,
+} from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
-import { Bucket } from "aws-cdk-lib/aws-s3";
+import { Bucket, IBucket } from "aws-cdk-lib/aws-s3";
 import {
   DeduplicationScope,
   FifoThroughputLimit,
+  IQueue,
   Queue,
 } from "aws-cdk-lib/aws-sqs";
-import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
+import {
+  AttributeType,
+  BillingMode,
+  ITable,
+  Table,
+} from "aws-cdk-lib/aws-dynamodb";
 import { RemovalPolicy } from "aws-cdk-lib";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
@@ -19,31 +31,66 @@ export interface WorkflowProps {
 }
 
 export class Workflow extends Construct {
+  /**
+   * S3 bucket that contains events necessary to replay a workflow execution.
+   *
+   * The orchestrator reads from history at the start and updates it at the end.
+   */
+  public readonly history: IBucket;
+  /**
+   * Workflow (fifo) queue which contains events that wake up a workflow execution.
+   *
+   * {@link WorkflowTask} delivery new {@link HistoryEvent}s to the workflow.
+   */
+  public readonly workflowQueue: IQueue;
+  /**
+   * A single-table used for execution data and granular workflow events/
+   */
+  public readonly table: ITable;
+  /**
+   * A lambda function which can start a workflow.
+   *
+   * TODO: Replace with REST API.
+   */
+  public readonly startWorkflowFunction: IFunction;
+  /**
+   * A dynamo table used to lock/claim activities to enforce exactly once execution.
+   */
+  public readonly locksTable: ITable;
+  /**
+   * The lambda function which runs the user's Activities.
+   */
+  public readonly activityWorker: IFunction;
+  /**
+   * The lambda function which runs the user's Workflow.
+   */
+  public readonly orchestrator: IFunction;
+
   constructor(scope: Construct, id: string, props: WorkflowProps) {
     super(scope, id);
 
     // ExecutionHistoryBucket
-    const history = new Bucket(this, "History", {
+    this.history = new Bucket(this, "History", {
       // TODO: remove after testing
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
     // WorkflowQueue
-    const workflowQueue = new Queue(this, "WorkflowQueue", {
+    this.workflowQueue = new Queue(this, "WorkflowQueue", {
       fifo: true,
       fifoThroughputLimit: FifoThroughputLimit.PER_MESSAGE_GROUP_ID,
       deduplicationScope: DeduplicationScope.MESSAGE_GROUP,
     });
 
     // Table - History, Executions, ExecutionData
-    const table = new Table(this, "table", {
+    this.table = new Table(this, "table", {
       partitionKey: { name: "pk", type: AttributeType.STRING },
       sortKey: { name: "sk", type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
-    const startWorkflowFunction = new NodejsFunction(
+    this.startWorkflowFunction = new NodejsFunction(
       this,
       "startWorkflowFunction",
       {
@@ -64,13 +111,13 @@ export class Workflow extends Construct {
           metafile: true,
         },
         environment: {
-          [ENV_NAMES.TABLE_NAME]: table.tableName,
-          [ENV_NAMES.WORKFLOW_QUEUE_URL]: workflowQueue.queueUrl,
+          [ENV_NAMES.TABLE_NAME]: this.table.tableName,
+          [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
         },
       }
     );
 
-    const locks = new Table(this, "Locks", {
+    this.locksTable = new Table(this, "Locks", {
       billingMode: BillingMode.PAY_PER_REQUEST,
       partitionKey: {
         name: "pk",
@@ -88,7 +135,7 @@ export class Workflow extends Construct {
       )} ${outDir} ${props.entry}`
     );
 
-    const activityWorker = new Function(this, "Worker", {
+    this.activityWorker = new Function(this, "Worker", {
       architecture: Architecture.ARM_64,
       code: Code.fromAsset(path.join(outDir, "activity-worker")),
       // the bundler outputs activity-worker/index.js
@@ -96,16 +143,16 @@ export class Workflow extends Construct {
       runtime: Runtime.NODEJS_16_X,
       memorySize: 512,
       environment: {
-        [ENV_NAMES.TABLE_NAME]: table.tableName,
-        [ENV_NAMES.WORKFLOW_QUEUE_URL]: workflowQueue.queueUrl,
-        [ENV_NAMES.ACTIVITY_LOCK_TABLE_NAME]: locks.tableName,
+        [ENV_NAMES.TABLE_NAME]: this.table.tableName,
+        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
+        [ENV_NAMES.ACTIVITY_LOCK_TABLE_NAME]: this.locksTable.tableName,
         [ENV_NAMES.EVENTUAL_WORKER]: "1",
       },
       // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
       retryAttempts: 0,
     });
 
-    const orchestrator = new Function(this, "Orchestrator", {
+    this.orchestrator = new Function(this, "Orchestrator", {
       architecture: Architecture.ARM_64,
       code: Code.fromAsset(path.join(outDir, "orchestrator")),
       // the bundler outputs orchestrator/index.js
@@ -113,13 +160,14 @@ export class Workflow extends Construct {
       runtime: Runtime.NODEJS_16_X,
       memorySize: 512,
       environment: {
-        [ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME]: activityWorker.functionName,
-        [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: history.bucketName,
-        [ENV_NAMES.TABLE_NAME]: table.tableName,
-        [ENV_NAMES.WORKFLOW_QUEUE_URL]: workflowQueue.queueUrl,
+        [ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME]:
+          this.activityWorker.functionName,
+        [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
+        [ENV_NAMES.TABLE_NAME]: this.table.tableName,
+        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
       },
       events: [
-        new SqsEventSource(workflowQueue, {
+        new SqsEventSource(this.workflowQueue, {
           batchSize: 10,
           reportBatchItemFailures: true,
         }),
@@ -127,31 +175,31 @@ export class Workflow extends Construct {
     });
 
     // the orchestrator will accumulate history state in S3
-    history.grantReadWrite(orchestrator);
+    this.history.grantReadWrite(this.orchestrator);
 
     // the worker emits events back to the orchestrator's event loop
-    workflowQueue.grantSendMessages(activityWorker);
+    this.workflowQueue.grantSendMessages(this.activityWorker);
 
     // the orchestrator can emit workflow tasks when invoking other workflows or inline activities
-    workflowQueue.grantSendMessages(orchestrator);
+    this.workflowQueue.grantSendMessages(this.orchestrator);
 
     // the orchestrator asynchronously invokes activities
-    activityWorker.grantInvoke(orchestrator);
+    this.activityWorker.grantInvoke(this.orchestrator);
 
     // the worker will issue an UpdateItem command to lock
-    locks.grantWriteData(activityWorker);
+    this.locksTable.grantWriteData(this.activityWorker);
 
     // Enable creating history to start a workflow.
-    table.grantReadWriteData(startWorkflowFunction);
+    this.table.grantReadWriteData(this.startWorkflowFunction);
 
     // Enable creating history related to a workflow.
-    table.grantReadWriteData(activityWorker);
+    this.table.grantReadWriteData(this.activityWorker);
 
     // Enable creating history and updating executions
-    table.grantReadWriteData(orchestrator);
+    this.table.grantReadWriteData(this.orchestrator);
 
     // Enable sending workflow task
-    workflowQueue.grantSendMessages(startWorkflowFunction);
+    this.workflowQueue.grantSendMessages(this.startWorkflowFunction);
 
     // TODO - timers and retry
   }

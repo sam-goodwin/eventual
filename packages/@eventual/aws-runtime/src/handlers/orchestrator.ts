@@ -58,10 +58,11 @@ export function orchestrator(
 
     // TODO: handle errors and partial batch failures
     // for each execution id
-    for (const executionId of Object.keys(eventsByExecutionId)) {
-      const records = eventsByExecutionId[executionId]!;
-      await orchestrateExecution(executionId, sqsRecordsToEvents(records));
-    }
+    await Promise.all(
+      Object.entries(eventsByExecutionId).map(([executionId, records]) =>
+        orchestrateExecution(executionId, sqsRecordsToEvents(records))
+      )
+    );
 
     return {
       batchItemFailures: [],
@@ -74,7 +75,7 @@ export function orchestrator(
     function sqsRecordToEvents(sqsRecord: SQSRecord) {
       const message = JSON.parse(sqsRecord.body) as SQSWorkflowTaskMessage;
 
-      return message.event.events;
+      return message.task.events;
     }
   };
 
