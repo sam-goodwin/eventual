@@ -50,7 +50,7 @@ export function interpret<Return>(
   program: Program<Return>,
   history: HistoryEvent[]
 ): WorkflowResult<Awaited<Return>> {
-  const commandTable: Record<number, ActivityCall> = {};
+  const callTable: Record<number, ActivityCall> = {};
   const mainChain = createChain(program);
   const activeChains = new Set([mainChain]);
 
@@ -90,56 +90,56 @@ export function interpret<Return>(
     if (isActivityCompleted(event) || isActivityFailed(event)) {
       commitCompletionEvent(event, true);
     } else if (isActivityScheduled(event)) {
-      const commands = advance(true) ?? [];
+      const calls = advance(true) ?? [];
       const events = [
         event,
-        ...takeWhile(commands.length - 1, isActivityScheduled),
+        ...takeWhile(calls.length - 1, isActivityScheduled),
       ];
-      if (events.length !== commands.length) {
+      if (events.length !== calls.length) {
         throw new DeterminismError();
       }
-      for (let i = 0; i < commands.length; i++) {
+      for (let i = 0; i < calls.length; i++) {
         const event = events[i]!;
-        const command = commands[i]!;
+        const call = calls[i]!;
 
-        if (!isCorresponding(event, command)) {
+        if (!isCorresponding(event, call)) {
           throw new DeterminismError();
         }
       }
     }
   }
 
-  const activityCalls = [];
+  const calls = [];
 
-  // run out the remaining completion events and collect any scheduled commands
+  // run out the remaining completion events and collect any scheduled activity calls
   // we do this because events come in chunks of Scheduled/Completed
   // [...scheduled, ...completed, ...scheduled]
   // if the history's tail contains completed events, e.g. [...scheduled, ...completed]
-  // then we need to apply the completions, resume chains and schedule any produced commands
+  // then we need to apply the completions, resume chains and schedule any produced activity calls
   while ((event = pop())) {
     if (isActivityScheduled(event)) {
       // it should be impossible to receive a scheduled event
       // -> because the tail of history can only contain completion events
-      // -> scheduled events stored in history should correspond to commands
+      // -> scheduled events stored in history should correspond to activity calls
       //    -> or else a determinism error would have been thrown
       throw new Error("illegal state");
     }
     commitCompletionEvent(event, false);
 
-    activityCalls.push(...(advance(false) ?? []));
+    calls.push(...(advance(false) ?? []));
   }
 
   let newCommands;
   while ((newCommands = advance(false))) {
     // continue advancing the program until all possible progress has been made
-    activityCalls.push(...newCommands);
+    calls.push(...newCommands);
   }
 
   const result = tryResolveResult(mainChain);
 
   return {
     result,
-    commands: activityCalls.map((call) => ({
+    commands: calls.map((call) => ({
       args: call.args,
       name: call.name,
       seq: call.seq!,
@@ -147,27 +147,27 @@ export function interpret<Return>(
   };
 
   function advance(isReplay: boolean): ActivityCall[] | undefined {
-    let commands: ActivityCall[] | undefined;
+    let calls: ActivityCall[] | undefined;
     let madeProgress: boolean;
     do {
       madeProgress = false;
       for (const chain of activeChains) {
-        const producedCommands = tryAdvanceChain(chain, isReplay);
-        if (producedCommands !== undefined) {
+        const producedCalls = tryAdvanceChain(chain, isReplay);
+        if (producedCalls !== undefined) {
           madeProgress = true;
-          for (const command of producedCommands) {
-            if (commands === undefined) {
-              commands = [];
+          for (const call of producedCalls) {
+            if (calls === undefined) {
+              calls = [];
             }
-            commands.push(command);
-            // assign command sequences in order of when they were spawned
-            command.seq = nextSeq();
-            commandTable[command.seq] = command;
+            calls.push(call);
+            // assign sequences in order of when they were spawned
+            call.seq = nextSeq();
+            callTable[call.seq] = call;
           }
         }
       }
     } while (madeProgress);
-    return commands;
+    return calls;
   }
 
   /**
@@ -294,22 +294,22 @@ export function interpret<Return>(
     event: ActivityCompleted | ActivityFailed,
     isReplay: boolean
   ) {
-    const command = commandTable[event.seq];
-    if (command === undefined) {
+    const call = callTable[event.seq];
+    if (call === undefined) {
       throw new DeterminismError();
     }
-    if (isReplay && command.result && !isPending(command.result)) {
+    if (isReplay && call.result && !isPending(call.result)) {
       throw new DeterminismError();
     }
-    command.result = isActivityCompleted(event)
+    call.result = isActivityCompleted(event)
       ? Result.resolved(event.result)
       : Result.failed(event.error);
   }
 }
 
-function isCorresponding(event: ActivityScheduled, command: ActivityCall) {
+function isCorresponding(event: ActivityScheduled, call: ActivityCall) {
   return (
-    event.seq === command.seq && event.name === command.name
+    event.seq === call.seq && event.name === call.name
     // TODO: also validate arguments
   );
 }
