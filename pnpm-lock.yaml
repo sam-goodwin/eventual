@@ -74,7 +74,10 @@ importers:
 
   packages/@eventual/aws-cdk:
     specifiers:
+      '@aws-cdk/aws-apigatewayv2-alpha': 2.50.0-alpha.0
+      '@aws-cdk/aws-apigatewayv2-integrations-alpha': 2.50.0-alpha.0
       '@eventual/compiler': workspace:^
+      '@types/aws-lambda': 8.10.108
       '@types/jest': ^29
       '@types/node': ^16
       aws-cdk: 2.50.0
@@ -91,6 +94,9 @@ importers:
       esbuild: 0.15.13
       ulid: 2.3.0
     devDependencies:
+      '@aws-cdk/aws-apigatewayv2-alpha': 2.50.0-alpha.0_wfetmkylzcavk2jugrcqqsc5se
+      '@aws-cdk/aws-apigatewayv2-integrations-alpha': 2.50.0-alpha.0_ntleitg5fbqtbxprhns64fsb3a
+      '@types/aws-lambda': 8.10.108
       '@types/jest': 29.2.2
       '@types/node': 16.18.3
       aws-cdk: 2.50.0
@@ -173,6 +179,30 @@ packages:
     dependencies:
       '@jridgewell/gen-mapping': 0.1.1
       '@jridgewell/trace-mapping': 0.3.17
+    dev: true
+
+  /@aws-cdk/aws-apigatewayv2-alpha/2.50.0-alpha.0_wfetmkylzcavk2jugrcqqsc5se:
+    resolution: {integrity: sha512-dttWDqy+nTg/fD9y0egvj7/zdnOVEo0qyGsep1RV+p16R3F4ObMKyPVIg15fz57tK//Gp/i1QgXsZaSqbcWHOg==}
+    engines: {node: '>= 14.15.0'}
+    peerDependencies:
+      aws-cdk-lib: ^2.50.0
+      constructs: ^10.0.0
+    dependencies:
+      aws-cdk-lib: 2.50.0_constructs@10.1.154
+      constructs: 10.1.154
+    dev: true
+
+  /@aws-cdk/aws-apigatewayv2-integrations-alpha/2.50.0-alpha.0_ntleitg5fbqtbxprhns64fsb3a:
+    resolution: {integrity: sha512-XEhz4HsU0HtQJnbs9XSb/yPN/1EEYAOZthWRKyniS9IWeGruVjEhWndoXpu0S7w+M5Bni7D9wrCTkqTgmTEvlw==}
+    engines: {node: '>= 14.15.0'}
+    peerDependencies:
+      '@aws-cdk/aws-apigatewayv2-alpha': 2.50.0-alpha.0
+      aws-cdk-lib: ^2.50.0
+      constructs: ^10.0.0
+    dependencies:
+      '@aws-cdk/aws-apigatewayv2-alpha': 2.50.0-alpha.0_wfetmkylzcavk2jugrcqqsc5se
+      aws-cdk-lib: 2.50.0_constructs@10.1.154
+      constructs: 10.1.154
     dev: true
 
   /@babel/code-frame/7.18.6:
@@ -2059,7 +2089,6 @@ packages:
 
   /@types/aws-lambda/8.10.108:
     resolution: {integrity: sha512-1yh1W1WoqK3lGHy+V/Fi55zobxrDHUUsluCWdMlOXkCvtsCmHPXOG+CQ2STIL4B1g6xi6I6XzxaF8V9+zeIFLA==}
-    dev: false
 
   /@types/babel__core/7.1.20:
     resolution: {integrity: sha512-PVb6Bg2QuscZ30FvOU7z4guG6c926D9YRvOxEaelzndpMsvP+YM74Q/dAFASpg2l6+XLalxSGxcq/lrgYWZtyQ==}
