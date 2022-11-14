@@ -6,7 +6,7 @@ import {
   tableName,
   workflowQueueUrl,
   activityLockTableName,
-  actionWorkerFunctionName,
+  activityWorkerFunctionName,
   executionHistoryBucket,
 } from "../env";
 import { ActivityRuntimeClient } from "./activity-runtime-client";
@@ -79,6 +79,6 @@ export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
       executionHistoryBucket: executionHistoryBucket(),
       tableName: tableName(),
       lambda: lambda(),
-      actionWorkerFunctionName: actionWorkerFunctionName(),
+      activityWorkerFunctionName: activityWorkerFunctionName(),
     })
 );

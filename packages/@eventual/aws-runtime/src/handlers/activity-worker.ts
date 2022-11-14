@@ -1,12 +1,12 @@
 import {
   ActivityCompleted,
   ActivityFailed,
-  getCallableAction,
-  getCallableActionNames,
+  getCallableActivity,
+  getCallableActivityNames,
   WorkflowEventType,
 } from "@eventual/core";
 import { Handler } from "aws-lambda";
-import { ActivityWorkerRequest } from "../action.js";
+import { ActivityWorkerRequest } from "../activity.js";
 import {
   createActivityRuntimeClient,
   createExecutionHistoryClient,
@@ -17,7 +17,7 @@ const activityRuntimeClient = createActivityRuntimeClient();
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowClient = createWorkflowClient();
 
-export const actionWorker = (): Handler<ActivityWorkerRequest, void> => {
+export const activityWorker = (): Handler<ActivityWorkerRequest, void> => {
   return async (request) => {
     const activityHandle = `${request.command.seq} for execution ${request.executionId} on retry ${request.retry}`;
     if (
@@ -33,15 +33,15 @@ export const actionWorker = (): Handler<ActivityWorkerRequest, void> => {
 
     console.info(`Processing ${activityHandle}.`);
 
-    const action = getCallableAction(request.command.name);
+    const activity = getCallableActivity(request.command.name);
     try {
-      if (!action) {
-        throw new ActionNotFoundError(request.command.name);
+      if (!activity) {
+        throw new ActivityNotFoundError(request.command.name);
       }
 
       // TODO: lock
 
-      const result = await action(request.command.args);
+      const result = await activity(request.command.args);
 
       console.info(
         `Activity ${activityHandle} succeeded, reporting back to execution.`
@@ -87,10 +87,10 @@ export const actionWorker = (): Handler<ActivityWorkerRequest, void> => {
   };
 };
 
-class ActionNotFoundError extends Error {
-  constructor(actionName: string) {
+class ActivityNotFoundError extends Error {
+  constructor(activityName: string) {
     super(
-      `Could not find an action with the name ${actionName}, found: ${getCallableActionNames()}`
+      `Could not find an activity with the name ${activityName}, found: ${getCallableActivityNames()}`
     );
   }
 }

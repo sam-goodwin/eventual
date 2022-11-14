@@ -1,6 +1,6 @@
 import { createActivityCall } from "./activity-call";
 
-export const callableActions: Record<string, Function> = {};
+export const callableActivities: Record<string, Function> = {};
 
 /**
  * Registers a function as an Activity.
@@ -15,7 +15,7 @@ export function activity<F extends (...args: any[]) => any>(
   if (process.env.EVENTUAL_WORKER) {
     // if we're in the eventual worker, actually run the process amd register the activity
     // register the handler to be looked up during execution.
-    callableActions[activityID] = handler;
+    callableActivities[activityID] = handler;
     return (...args) => handler(...args);
   } else {
     // otherwise, return a command to invoke the activity in the worker function
@@ -28,10 +28,10 @@ export function activity<F extends (...args: any[]) => any>(
 /**
  * Retrieve an activity function that has been registered in a workflow.
  */
-export function getCallableAction(activityId: string): Function | undefined {
-  return callableActions[activityId];
+export function getCallableActivity(activityId: string): Function | undefined {
+  return callableActivities[activityId];
 }
 
-export function getCallableActionNames() {
-  return Object.keys(callableActions);
+export function getCallableActivityNames() {
+  return Object.keys(callableActivities);
 }

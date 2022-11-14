@@ -16,7 +16,7 @@ export class ActivityRuntimeClient {
   /**
    * Claims a activity for an actor.
    *
-   * Future invocations of the same executionId + action.thread + action.id + retry will fail.
+   * Future invocations of the same executionId + future.seq + retry will fail.
    *
    * @param claimer optional string to correlate the lock to the claimer.
    * @return a boolean determining if the claim was granted to the current actor.

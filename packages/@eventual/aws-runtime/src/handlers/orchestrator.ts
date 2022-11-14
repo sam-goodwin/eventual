@@ -183,7 +183,7 @@ export function orchestrator(
       // register command events
       return await Promise.all(
         commands.map(async (command) => {
-          await workflowRuntimeClient.scheduleAction(executionId, command);
+          await workflowRuntimeClient.scheduleActivity(executionId, command);
 
           return createEvent<ActivityScheduled>({
             type: WorkflowEventType.ActivityScheduled,

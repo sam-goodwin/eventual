@@ -47,8 +47,9 @@ export class Workflow extends Construct {
       this,
       "startWorkflowFunction",
       {
-        entry: require.resolve(
-          "@eventual/aws-runtime/lib/esm/functions/start-workflow.js"
+        entry: path.join(
+          require.resolve("@eventual/aws-runtime"),
+          "../../esm/functions/start-workflow.js"
         ),
         handler: "handle",
         runtime: Runtime.NODEJS_16_X,
@@ -87,10 +88,10 @@ export class Workflow extends Construct {
       )} ${outDir} ${props.entry}`
     );
 
-    const actionWorker = new Function(this, "Worker", {
+    const activityWorker = new Function(this, "Worker", {
       architecture: Architecture.ARM_64,
-      code: Code.fromAsset(path.join(outDir, "action-worker")),
-      // the bundler outputs action-worker/index.js
+      code: Code.fromAsset(path.join(outDir, "activity-worker")),
+      // the bundler outputs activity-worker/index.js
       handler: "index.default",
       runtime: Runtime.NODEJS_16_X,
       memorySize: 512,
@@ -106,12 +107,12 @@ export class Workflow extends Construct {
     const orchestrator = new Function(this, "Orchestrator", {
       architecture: Architecture.ARM_64,
       code: Code.fromAsset(path.join(outDir, "orchestrator")),
-      // the bundler outputs action-worker/index.js
+      // the bundler outputs orchestrator/index.js
       handler: "index.default",
       runtime: Runtime.NODEJS_16_X,
       memorySize: 512,
       environment: {
-        [ENV_NAMES.ACTION_WORKER_FUNCTION_NAME]: actionWorker.functionName,
+        [ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME]: activityWorker.functionName,
         [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: history.bucketName,
         [ENV_NAMES.TABLE_NAME]: table.tableName,
         [ENV_NAMES.WORKFLOW_QUEUE_URL]: workflowQueue.queueUrl,
@@ -128,22 +129,22 @@ export class Workflow extends Construct {
     history.grantReadWrite(orchestrator);
 
     // the worker emits events back to the orchestrator's event loop
-    workflowQueue.grantSendMessages(actionWorker);
+    workflowQueue.grantSendMessages(activityWorker);
 
     // the orchestrator can emit workflow tasks when invoking other workflows or inline activities
     workflowQueue.grantSendMessages(orchestrator);
 
     // the orchestrator asynchronously invokes activities
-    actionWorker.grantInvoke(orchestrator);
+    activityWorker.grantInvoke(orchestrator);
 
     // the worker will issue an UpdateItem command to lock
-    locks.grantWriteData(actionWorker);
+    locks.grantWriteData(activityWorker);
 
     // Enable creating history to start a workflow.
     table.grantReadWriteData(startWorkflowFunction);
 
     // Enable creating history related to a workflow.
-    table.grantReadWriteData(actionWorker);
+    table.grantReadWriteData(activityWorker);
 
     // Enable creating history and updating executions
     table.grantReadWriteData(orchestrator);

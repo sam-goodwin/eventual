@@ -50,7 +50,7 @@ async function main() {
         sourcemap: true,
         plugins: [
           esbuildPluginAliasPath({
-            alias: { "@eventual/injected/actions": entry },
+            alias: { "@eventual/injected/activities": entry },
           }),
         ],
         conditions: ["module", "import", "require"],
@@ -61,12 +61,12 @@ async function main() {
         entryPoints: [
           path.resolve(
             __dirname,
-            "../node_modules/@eventual/aws-runtime/lib/esm/entry/action-worker.js"
+            "../node_modules/@eventual/aws-runtime/lib/esm/entry/activity-worker.js"
           ),
         ],
-        outfile: path.join(outDir, "action-worker/index.js"),
+        outfile: path.join(outDir, "activity-worker/index.js"),
       })
-      .then(writeEsBuildMetafile(path.join(outDir, "action-worker/meta.json"))),
+      .then(writeEsBuildMetafile(path.join(outDir, "activity-worker/meta.json"))),
   ]);
 }
 

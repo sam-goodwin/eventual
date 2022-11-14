@@ -17,14 +17,14 @@ import { DeterminismError } from "../src/error.js";
 
 function* myWorkflow(event: any): Program<any> {
   try {
-    const a: any = yield createActivityCall("my-action", [event]);
+    const a: any = yield createActivityCall("my-activity", [event]);
 
     // dangling - it should still be scheduled
-    createActivityCall("my-action-0", [event]);
+    createActivityCall("my-activity-0", [event]);
 
     const all = yield* Future.all([
-      createActivityCall("my-action-1", [event]),
-      createActivityCall("my-action-2", [event]),
+      createActivityCall("my-activity-1", [event]),
+      createActivityCall("my-activity-2", [event]),
     ]);
     return [a, all];
   } catch (err) {
@@ -37,7 +37,7 @@ const event = "hello world";
 
 test("no history", () => {
   expect(interpret(myWorkflow(event), [])).toMatchObject(<WorkflowResult>{
-    commands: [createActivityCall("my-action", [event], 0)],
+    commands: [createActivityCall("my-activity", [event], 0)],
   });
 });
 
@@ -53,14 +53,14 @@ test("determinism error if no corresponding ActivityScheduled", () => {
 test("should continue with result of completed Activity", () => {
   expect(
     interpret(myWorkflow(event), [
-      scheduled("my-action", 0),
+      scheduled("my-activity", 0),
       completed("result", 0),
     ])
   ).toMatchObject(<WorkflowResult>{
     commands: [
-      createActivityCall("my-action-0", [event], 1),
-      createActivityCall("my-action-1", [event], 2),
-      createActivityCall("my-action-2", [event], 3),
+      createActivityCall("my-activity-0", [event], 1),
+      createActivityCall("my-activity-1", [event], 2),
+      createActivityCall("my-activity-2", [event], 3),
     ],
   });
 });
@@ -68,7 +68,7 @@ test("should continue with result of completed Activity", () => {
 test("should catch error of failed Activity", () => {
   expect(
     interpret(myWorkflow(event), [
-      scheduled("my-action", 0),
+      scheduled("my-activity", 0),
       failed("error", 0),
     ])
   ).toMatchObject(<WorkflowResult>{
@@ -79,11 +79,11 @@ test("should catch error of failed Activity", () => {
 test("should return final result", () => {
   expect(
     interpret(myWorkflow(event), [
-      scheduled("my-action", 0),
+      scheduled("my-activity", 0),
       completed("result", 0),
-      scheduled("my-action-0", 1),
-      scheduled("my-action-1", 2),
-      scheduled("my-action-2", 3),
+      scheduled("my-activity-0", 1),
+      scheduled("my-activity-1", 2),
+      scheduled("my-activity-2", 3),
       completed("result-0", 1),
       completed("result-1", 2),
       completed("result-2", 3),
@@ -97,11 +97,11 @@ test("should return final result", () => {
 test("should wait if partial results", () => {
   expect(
     interpret(myWorkflow(event), [
-      scheduled("my-action", 0),
+      scheduled("my-activity", 0),
       completed("result", 0),
-      scheduled("my-action-0", 1),
-      scheduled("my-action-1", 2),
-      scheduled("my-action-2", 3),
+      scheduled("my-activity-0", 1),
+      scheduled("my-activity-1", 2),
+      scheduled("my-activity-2", 3),
       completed("result-0", 1),
       completed("result-1", 2),
     ])

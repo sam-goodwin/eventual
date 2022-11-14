@@ -13,11 +13,11 @@ import {
 } from "@aws-sdk/client-lambda";
 import { ExecutionStatus, Command, HistoryStateEvents } from "@eventual/core";
 import { ExecutionRecord } from "./workflow-client.js";
-import { ActivityWorkerRequest } from "../action.js";
+import { ActivityWorkerRequest } from "../activity.js";
 
 export interface WorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;
-  readonly actionWorkerFunctionName: string;
+  readonly activityWorkerFunctionName: string;
   readonly dynamo: DynamoDBClient;
   readonly s3: S3Client;
   readonly executionHistoryBucket: string;
@@ -112,7 +112,7 @@ export class WorkflowRuntimeClient {
     );
   }
 
-  async scheduleAction(executionId: string, command: Command) {
+  async scheduleActivity(executionId: string, command: Command) {
     const request: ActivityWorkerRequest = {
       executionId,
       command,
@@ -121,7 +121,7 @@ export class WorkflowRuntimeClient {
 
     await this.props.lambda.send(
       new InvokeCommand({
-        FunctionName: this.props.actionWorkerFunctionName,
+        FunctionName: this.props.activityWorkerFunctionName,
         Payload: Buffer.from(JSON.stringify(request)),
         InvocationType: InvocationType.Event,
       })
