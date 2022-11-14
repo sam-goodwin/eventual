@@ -2,7 +2,7 @@ import { Architecture, Code, Runtime } from "aws-cdk-lib/aws-lambda";
 import * as aws_apigatewayv2 from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpMethod } from "@aws-cdk/aws-apigatewayv2-alpha";
 import * as integrations from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
-import * as authorizers from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
+// import * as authorizers from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { aws_iam, aws_lambda, CfnOutput, Stack } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import path from "path";
@@ -15,6 +15,7 @@ export interface EventualApiProps {
 interface RouteMapping {
   entry: string | string[];
   methods?: aws_apigatewayv2.HttpMethod[];
+  config?: (fn: aws_lambda.IFunction) => void;
 }
 
 export class EventualApi extends Construct {
@@ -34,7 +35,8 @@ export class EventualApi extends Construct {
 
     this.api = new aws_apigatewayv2.HttpApi(this, "gateway", {
       apiName: "eventual-api",
-      defaultAuthorizer: new authorizers.HttpIamAuthorizer(),
+      // Can't get past the authorizer for some reason
+      // defaultAuthorizer: new authorizers.HttpIamAuthorizer(),
     });
 
     this.apiExecuteRole = new aws_iam.Role(this, "EventualApiRole", {
@@ -59,10 +61,10 @@ export class EventualApi extends Construct {
 
     const route = (mappings: Record<string, RouteMapping[]>) => {
       Object.entries(mappings).forEach(([path, mappings]) => {
-        mappings.forEach(({ entry, methods }) => {
+        mappings.forEach(({ entry, methods, config }) => {
           this.api.addRoutes({
             path,
-            integration: this.lambda(entry, environment),
+            integration: this.lambda(entry, environment, config),
             methods,
           });
         });
@@ -79,7 +81,10 @@ export class EventualApi extends Construct {
       "/workflows/{name}": [
         {
           methods: [HttpMethod.POST],
-          entry: "workflows/invoke",
+          entry: "workflows/execute",
+          config: (fn) => {
+            props.workflows.forEach((w) => w.orchestrator.grantInvoke(fn));
+          },
         },
         {
           methods: [HttpMethod.GET],
@@ -96,20 +101,20 @@ export class EventualApi extends Construct {
 
   public lambda(
     entry: string | string[],
-    environment?: Record<string, string>
+    environment?: Record<string, string>,
+    config?: (fn: aws_lambda.IFunction) => void
   ): integrations.HttpLambdaIntegration {
     const resolvedEntry = typeof entry === "string" ? [entry] : entry;
     const id = resolvedEntry.join("-");
-    return new integrations.HttpLambdaIntegration(
-      `${id}-integration`,
-      new aws_lambda.Function(this, id, {
-        architecture: Architecture.ARM_64,
-        code: Code.fromAsset(path.join(__dirname, "handler")),
-        handler: `${path.join(...resolvedEntry)}.handler`,
-        runtime: Runtime.NODEJS_16_X,
-        memorySize: 512,
-        environment,
-      })
-    );
+    const fn = new aws_lambda.Function(this, id, {
+      architecture: Architecture.ARM_64,
+      code: Code.fromAsset(path.join(__dirname, "handler")),
+      handler: `${path.join(...resolvedEntry)}.handler`,
+      runtime: Runtime.NODEJS_16_X,
+      memorySize: 512,
+      environment,
+    });
+    config?.(fn);
+    return new integrations.HttpLambdaIntegration(`${id}-integration`, fn);
   }
 }

@@ -9,25 +9,19 @@ import { parseQueryString } from "@aws-sdk/querystring-parser";
 import { Sha256 } from "@aws-crypto/sha256-js";
 import { styledConsole } from "./styled-console.js";
 
-const iamClient = new iam.IAMClient({});
-const stsClient = new sts.STSClient({});
-const cfnClient = new cfn.CloudFormationClient({});
-
 //Return a ky which signs our requests with our execute role. Code adapted from
 // https://github.com/zirkelc/aws-sigv4-fetch
-export async function apiKy(): Promise<KyInstance> {
+export async function apiKy(region?: string): Promise<KyInstance> {
   return ky.extend({
-    prefixUrl: await getApiUrl(),
+    prefixUrl: await getApiUrl(region),
     hooks: {
       beforeRequest: [
         async (req: Request) => {
-          const signer = await getSigner();
+          const signer = await getSigner(region);
           const url = new URL(req.url);
           const headers = new Map<string, string>();
           // workaround because Headers.entries() is not available in cross-fetch
-          new Headers(req.headers).forEach((value, key) =>
-            headers.set(key, value)
-          );
+          req.headers.forEach((value, key) => headers.set(key, value));
           // host is required by AWS Signature V4: https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
           headers.set("host", url.host);
 
@@ -41,6 +35,7 @@ export async function apiKy(): Promise<KyInstance> {
             headers: Object.fromEntries(headers.entries()),
           });
           const signedRequest = (await signer.sign(request)) as HttpRequest;
+          console.log(signedRequest.headers);
           return {
             ...req,
             headers: new Headers(signedRequest.headers),
@@ -52,7 +47,8 @@ export async function apiKy(): Promise<KyInstance> {
   });
 }
 
-async function getApiUrl() {
+async function getApiUrl(region?: string) {
+  const cfnClient = new cfn.CloudFormationClient({ region });
   const { Exports } = await cfnClient.send(new cfn.ListExportsCommand({}));
   const apiUrl = Exports?.find((v) => v.Name === "eventual-api-url")?.Value;
   if (!apiUrl) {
@@ -64,7 +60,9 @@ async function getApiUrl() {
   return apiUrl;
 }
 
-async function getSigner() {
+async function getSigner(region?: string) {
+  const iamClient = new iam.IAMClient({ region });
+  const stsClient = new sts.STSClient({ region });
   const apiRole = await iamClient.send(
     new iam.GetRoleCommand({ RoleName: "eventual-api" })
   );
@@ -88,8 +86,7 @@ async function getSigner() {
       sessionToken: session.Credentials!.SessionToken,
     },
     service: "execute-api",
-    //TODO is there a way to derive the region?
-    region: "us-east-1",
+    region: region ?? "us-east-1",
     sha256: Sha256,
   });
 }
