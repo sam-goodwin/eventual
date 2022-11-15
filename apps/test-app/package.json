@@ -3,8 +3,8 @@
   "version": "0.0.0",
   "main": "lib/index.js",
   "scripts": {
-    "build": "cdk synth",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "deploy": "cdk deploy --require-approval=never"
   },
   "dependencies": {
     "aws-cdk-lib": "^2.50.0",
