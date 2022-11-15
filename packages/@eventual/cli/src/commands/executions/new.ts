@@ -10,17 +10,27 @@ import {
   WorkflowFailed,
 } from "@eventual/core";
 import { KyInstance } from "../../types.js";
+import fs from "fs/promises";
 
 export const newExecution = apiCommand("new")
   .description("Execute an Eventual workflow")
   .option("-w, --workflow <name>", "Workflow name")
   .option("-t, --tail", "Tail execution")
-  .option("-p, --parameters [parameters...]", "Execution parameters")
+  .option("-i, --input [input]", "Execution parameters input (in json)")
+  .option("-if, --input-file [filename]", "Execution parameters file (in json)")
   .action(
-    apiAction(async (spinner, ky, { workflow, tail, parameters }) => {
+    apiAction(async (spinner, ky, { workflow, tail, input, inputFile }) => {
       spinner.start(`Executing ${workflow}\n`);
+      let inputJSON =
+        JSON.parse(
+          inputFile
+            ? await fs.readFile(inputFile, { encoding: "utf-8" })
+            : input
+        ) ?? [];
       const { executionId } = await ky
-        .post(`workflows/${workflow}/executions`, { json: parameters ?? [] })
+        .post(`workflows/${workflow}/executions`, {
+          json: inputJSON,
+        })
         .json<{ executionId: string }>();
       spinner.succeed(`Execution id: ${executionId}`);
       if (tail) {
@@ -57,7 +67,10 @@ export const newExecution = apiCommand("new")
           );
           if (completedEvent) {
             spinner.succeed("Workflow complete");
-            styledConsole.success((completedEvent as WorkflowCompleted).output);
+            const { output } = completedEvent as WorkflowCompleted;
+            if (output) {
+              styledConsole.success(output);
+            }
           } else if (failedEvent) {
             spinner.fail("Workflow failed");
             styledConsole.error((failedEvent as WorkflowFailed).error);

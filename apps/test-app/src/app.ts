@@ -15,6 +15,7 @@ const accountTable = new aws_dynamodb.Table(stack, "Accounts", {
 
 const openAccount = new Workflow(stack, "OpenAccount", {
   entry: require.resolve("test-app-runtime/lib/open-account.js"),
+  name: "open-account",
   environment: {
     TABLE_NAME: accountTable.tableName,
   },
@@ -28,5 +29,5 @@ const myWorkflow = new Workflow(stack, "workflow1", {
 });
 
 new EventualApi(stack, "api", {
-  workflows: [myWorkflow],
+  workflows: [myWorkflow, openAccount],
 });
