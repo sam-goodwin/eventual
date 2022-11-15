@@ -1,7 +1,8 @@
 {
   "extends": "../../../tsconfig-base",
   "compilerOptions": {
-    "module": "ES2022",
+    "module": "esnext",
+    "target": "esnext",
     "moduleResolution": "Node",
     "outDir": "lib/esm",
     "declaration": true,
