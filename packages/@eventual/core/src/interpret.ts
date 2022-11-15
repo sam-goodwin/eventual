@@ -234,6 +234,13 @@ export function interpret<Return>(
           } else {
             chain.result = Result.resolved(iterResult.value);
           }
+        } else if (
+          !isChain(iterResult.value) &&
+          isGenerator(iterResult.value)
+        ) {
+          const childChain = createChain(iterResult.value);
+          activeChains.add(childChain);
+          chain.awaiting = childChain;
         } else {
           chain.awaiting = iterResult.value;
         }

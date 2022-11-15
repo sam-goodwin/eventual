@@ -36,13 +36,12 @@ export function isEventual(a: any): a is Eventual {
   return a && typeof a === "object" && EventualSymbol in a;
 }
 
-// rename: Future/Eventual/Awaitable
 export type Eventual<T = any> =
   | ActivityCall<T>
   | AwaitAll<T extends any[] ? T : never>
   | Chain<T>;
 
-export namespace Future {
+export namespace Eventual {
   /**
    * Wait for all {@link activities} to complete or until at least one throws.
    *
@@ -65,3 +64,6 @@ export namespace Future {
     }) as any;
   }
 }
+
+// @ts-ignore
+global.Eventual = Eventual;
