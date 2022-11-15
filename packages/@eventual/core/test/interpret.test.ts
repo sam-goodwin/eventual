@@ -353,6 +353,40 @@ test("properly evaluate yield* of sub-programs", () => {
   });
 });
 
+test("properly evaluate yield of Future.all", () => {
+  function* workflow() {
+    // @ts-ignore
+    const item = yield Future.all([
+      createActivityCall("a", []),
+      createActivityCall("b", []),
+    ]);
+
+    return item;
+  }
+
+  // @ts-ignore
+  expect(interpret(workflow(), [])).toMatchObject({
+    commands: [
+      //
+      createActivityCall("a", [], 0),
+      createActivityCall("b", [], 1),
+    ],
+  });
+
+  expect(
+    // @ts-ignore
+    interpret(workflow(), [
+      scheduled("a", 0),
+      scheduled("b", 1),
+      completed("a", 0),
+      completed("b", 1),
+    ])
+  ).toMatchObject({
+    result: Result.resolved(["a", "b"]),
+    commands: [],
+  });
+});
+
 function completed(result: any, seq: number): ActivityCompleted {
   return {
     type: WorkflowEventType.ActivityCompleted,
