@@ -12,12 +12,13 @@ import { styledConsole } from "./styled-console.js";
 //Return a ky which signs our requests with our execute role. Code adapted from
 // https://github.com/zirkelc/aws-sigv4-fetch
 export async function apiKy(region?: string): Promise<KyInstance> {
+  const roleArn = await getApiRoleArn(region);
   return ky.extend({
     prefixUrl: await getApiUrl(region),
     hooks: {
       beforeRequest: [
         async (req: Request) => {
-          const signer = await getSigner(region);
+          const signer = await getSigner(roleArn, region);
           const url = new URL(req.url);
           const headers = new Map<string, string>();
           // workaround because Headers.entries() is not available in cross-fetch
@@ -35,12 +36,9 @@ export async function apiKy(region?: string): Promise<KyInstance> {
             headers: Object.fromEntries(headers.entries()),
           });
           const signedRequest = (await signer.sign(request)) as HttpRequest;
-          console.log(signedRequest.headers);
-          return {
-            ...req,
+          return new Request(req, {
             headers: new Headers(signedRequest.headers),
-            body: signedRequest.body,
-          };
+          });
         },
       ],
     },
@@ -60,9 +58,8 @@ async function getApiUrl(region?: string) {
   return apiUrl;
 }
 
-async function getSigner(region?: string) {
+export async function getApiRoleArn(region?: string): Promise<string> {
   const iamClient = new iam.IAMClient({ region });
-  const stsClient = new sts.STSClient({ region });
   const apiRole = await iamClient.send(
     new iam.GetRoleCommand({ RoleName: "eventual-api" })
   );
@@ -72,9 +69,14 @@ async function getSigner(region?: string) {
     );
     process.exit(1);
   }
+  return apiRole.Role.Arn!;
+}
+
+async function getSigner(roleArn: string, region?: string) {
+  const stsClient = new sts.STSClient({ region });
   const session = await stsClient.send(
     new sts.AssumeRoleCommand({
-      RoleArn: apiRole.Role.Arn,
+      RoleArn: roleArn,
       RoleSessionName: "eventual-cli",
     })
   );

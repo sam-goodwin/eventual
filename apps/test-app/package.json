@@ -13,8 +13,8 @@
     "ulid": "^2.3.0"
   },
   "devDependencies": {
-    "@eventual/cli": "workspace:^",
     "@eventual/aws-cdk": "workspace:^",
+    "@eventual/cli": "workspace:^",
     "@types/jest": "^29",
     "@types/node": "^16",
     "aws-cdk": "2.50.0",

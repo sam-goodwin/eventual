@@ -1,21 +1,13 @@
 import { Command } from "commander";
-import { apiKy } from "../../api-ky.js";
-import { HTTPError } from "ky";
+import { withApiAction } from "../../api-action.js";
 
-export const execute: Command = new Command("execute")
-  .description("Execute workflow")
-  .argument("<name>", "Workflow name")
-  .option("-r, --region <region>", "API region")
-  .action(async (name, options) => {
-    const ky = await apiKy(options.region);
-    console.log(options, name);
-    try {
-      const execution = await ky.post(`workflows/${name}`).json<string[]>();
-      console.log(execution);
-    } catch (e) {
-      console.log(e);
-      if (e instanceof HTTPError) {
-        console.log(await e.response.text());
-      }
-    }
-  });
+const command = new Command("execute")
+  .description("Execute an Eventual workflow")
+  .argument("<name>", "Workflow name");
+
+export const execute = withApiAction(command, async (ky, name) => {
+  const execution = await ky
+    .post(`workflows/${name}`)
+    .json<{ executionId: string }>();
+  console.log(execution);
+});

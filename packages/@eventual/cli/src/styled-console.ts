@@ -1,12 +1,13 @@
 import chalk from "chalk";
 
+const fmt = (msg: any) => (typeof msg === "string" ? msg : JSON.stringify(msg));
 /**
  * Console styles to be used throughout hte cli
  */
 export const consoleStyle = {
-  success: (msg: string) => chalk.bold(chalk.green(msg)),
-  error: (msg: string) => chalk.bold(chalk.redBright(msg)),
-  highlight: (msg: string) => chalk.bold(chalk.blue(msg)),
+  success: (msg: any) => chalk.bold(chalk.green(fmt(msg))),
+  error: (msg: any) => chalk.bold(chalk.redBright(fmt(msg))),
+  highlight: (msg: any) => chalk.bold(chalk.blue(fmt(msg))),
 };
 
 /**
@@ -14,7 +15,7 @@ export const consoleStyle = {
  * @param msg Message to print
  */
 export const styledConsole = {
-  success: (msg: string) => console.log(consoleStyle.success(msg)),
-  error: (msg: string) => console.error(consoleStyle.error(msg)),
-  highlight: (msg: string) => console.log(consoleStyle.highlight(msg)),
+  success: (msg: any) => console.log(consoleStyle.success(msg)),
+  error: (msg: any) => console.error(consoleStyle.error(msg)),
+  highlight: (msg: any) => console.log(consoleStyle.highlight(msg)),
 };

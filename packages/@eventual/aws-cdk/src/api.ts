@@ -2,7 +2,7 @@ import { Architecture, Code, Runtime } from "aws-cdk-lib/aws-lambda";
 import * as aws_apigatewayv2 from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpMethod } from "@aws-cdk/aws-apigatewayv2-alpha";
 import * as integrations from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
-// import * as authorizers from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
+import * as authorizers from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { aws_iam, aws_lambda, CfnOutput, Stack } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import path from "path";
@@ -36,7 +36,7 @@ export class EventualApi extends Construct {
     this.api = new aws_apigatewayv2.HttpApi(this, "gateway", {
       apiName: "eventual-api",
       // Can't get past the authorizer for some reason
-      // defaultAuthorizer: new authorizers.HttpIamAuthorizer(),
+      defaultAuthorizer: new authorizers.HttpIamAuthorizer(),
     });
 
     this.apiExecuteRole = new aws_iam.Role(this, "EventualApiRole", {
@@ -51,7 +51,7 @@ export class EventualApi extends Construct {
               resources: [
                 `arn:aws:execute-api:${Stack.of(this).region}:${
                   Stack.of(this).account
-                }:${this.api.apiId}/*`,
+                }:${this.api.apiId}/*/*/*`,
               ],
             }),
           ],
