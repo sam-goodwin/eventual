@@ -1,9 +1,15 @@
-import { Architecture, Code, Runtime } from "aws-cdk-lib/aws-lambda";
+import { Architecture, Runtime } from "aws-cdk-lib/aws-lambda";
 import * as aws_apigatewayv2 from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpMethod } from "@aws-cdk/aws-apigatewayv2-alpha";
 import * as integrations from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
 import * as authorizers from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
-import { aws_iam, aws_lambda, CfnOutput, Stack } from "aws-cdk-lib";
+import {
+  aws_iam,
+  aws_lambda,
+  aws_lambda_nodejs,
+  CfnOutput,
+  Stack,
+} from "aws-cdk-lib";
 import { Construct } from "constructs";
 import path from "path";
 import { Workflow } from "./workflow";
@@ -13,7 +19,7 @@ export interface EventualApiProps {
 }
 
 interface RouteMapping {
-  entry: string | string[];
+  entry: string;
   methods?: aws_apigatewayv2.HttpMethod[];
   config?: (fn: aws_lambda.IFunction) => void;
 }
@@ -28,7 +34,17 @@ export class EventualApi extends Construct {
     const environment = {
       WORKFLOWS: JSON.stringify(
         Object.fromEntries(
-          props.workflows.map((w) => [w.node.id, w.orchestrator.functionArn])
+          props.workflows.map((w) => [
+            w.node.id,
+            {
+              name: w.node.id,
+              tableName: w.table.tableName,
+              workflowQueueUrl: w.workflowQueue.queueUrl,
+              executionHistoryBucket: w.history.bucketName,
+              orchestratorFunctionName: w.orchestrator.functionName,
+              activityWorkerFunctionName: w.activityWorker.functionName,
+            },
+          ])
         )
       ),
     };
@@ -75,20 +91,23 @@ export class EventualApi extends Construct {
       "/workflows": [
         {
           methods: [HttpMethod.GET],
-          entry: "workflows/list",
+          entry: "workflows/list.js",
         },
       ],
       "/workflows/{name}": [
         {
           methods: [HttpMethod.POST],
-          entry: "workflows/execute",
+          entry: "workflows/execute.js",
           config: (fn) => {
-            props.workflows.forEach((w) => w.orchestrator.grantInvoke(fn));
+            props.workflows.forEach((w) => {
+              w.table.grantReadWriteData(fn);
+              w.workflowQueue.grantSendMessages(fn);
+            });
           },
         },
         {
           methods: [HttpMethod.GET],
-          entry: "workflows/status",
+          entry: "workflows/status.js",
         },
       ],
     });
@@ -100,16 +119,27 @@ export class EventualApi extends Construct {
   }
 
   public lambda(
-    entry: string | string[],
+    entry: string,
     environment?: Record<string, string>,
     config?: (fn: aws_lambda.IFunction) => void
   ): integrations.HttpLambdaIntegration {
-    const resolvedEntry = typeof entry === "string" ? [entry] : entry;
-    const id = resolvedEntry.join("-");
-    const fn = new aws_lambda.Function(this, id, {
+    const id = entry.replace("/", "-").replace(".js", "");
+    const fn = new aws_lambda_nodejs.NodejsFunction(this, id, {
       architecture: Architecture.ARM_64,
-      code: Code.fromAsset(path.join(__dirname, "handler")),
-      handler: `${path.join(...resolvedEntry)}.handler`,
+      entry: path.join(
+        require.resolve("@eventual/aws-runtime"),
+        "../../esm/handlers/api",
+        entry
+      ),
+      bundling: {
+        // https://github.com/aws/aws-cdk/issues/21329#issuecomment-1212336356
+        // cannot output as .mjs file as ulid does not support it.
+        mainFields: ["module", "main"],
+        esbuildArgs: {
+          "--conditions": "module,import,require",
+        },
+        metafile: true,
+      },
       runtime: Runtime.NODEJS_16_X,
       memorySize: 512,
       environment,
