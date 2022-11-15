@@ -6,9 +6,9 @@ import { listWorkflows } from "./commands/workflow/list.js";
 
 const cli = program.name("stik").description("Eventual CLI");
 
+cli.command("workflows").addCommand(listWorkflows);
+
 cli
-  .command("workflows")
-  .addCommand(listWorkflows)
   .command("executions")
   .addCommand(listExecutions)
   .addCommand(newExecution)
