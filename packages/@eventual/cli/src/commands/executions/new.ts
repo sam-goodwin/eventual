@@ -73,7 +73,7 @@ export const newExecution = apiCommand("new")
             }
           } else if (failedEvent) {
             spinner.fail("Workflow failed");
-            styledConsole.error((failedEvent as WorkflowFailed).error);
+            styledConsole.error((failedEvent as WorkflowFailed).message);
           } else {
             setTimeout(pollEvents, 1000);
           }
