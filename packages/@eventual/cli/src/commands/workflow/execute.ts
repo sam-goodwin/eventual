@@ -2,9 +2,9 @@ import { Command } from "commander";
 import { withApiAction } from "../../api-action.js";
 import ora, { Ora } from "ora";
 import cliSpinners from "cli-spinners";
-import { KyInstance } from "ky/distribution/types/ky";
 import { styledConsole } from "../../styled-console.js";
 import { HistoryStateEvents, WorkflowEventType } from "@eventual/core";
+import { KyInstance } from "../../types.js";
 
 const command = new Command("execute")
   .description("Execute an Eventual workflow")

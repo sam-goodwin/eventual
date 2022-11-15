@@ -1,8 +1,8 @@
 import { HTTPError } from "ky";
-import type { KyInstance } from "ky/distribution/types/ky";
 import { apiKy } from "./api-ky.js";
 import { Command } from "commander";
 import { styledConsole } from "./styled-console.js";
+import type { KyInstance } from "./types.js";
 
 export type ApiAction = (ky: KyInstance, ...args: any[]) => Promise<void>;
 

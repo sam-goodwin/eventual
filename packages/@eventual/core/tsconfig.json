@@ -4,7 +4,7 @@
     "module": "esnext",
     "target": "esnext",
     "outDir": "lib/esm",
-    "moduleResolution": "node",
+    "moduleResolution": "NodeNext",
     "declaration": true,
     "inlineSourceMap": true,
     "rootDir": "src",

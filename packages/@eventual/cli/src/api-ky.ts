@@ -3,11 +3,11 @@ import * as iam from "@aws-sdk/client-iam";
 import * as sig from "@aws-sdk/signature-v4";
 import * as cfn from "@aws-sdk/client-cloudformation";
 import ky from "ky-universal";
-import type { KyInstance } from "ky/distribution/types/ky";
 import { HttpRequest } from "@aws-sdk/protocol-http";
 import { parseQueryString } from "@aws-sdk/querystring-parser";
 import { Sha256 } from "@aws-crypto/sha256-js";
 import { styledConsole } from "./styled-console.js";
+import type { KyInstance } from "./types.js";
 
 //Return a ky which signs our requests with our execute role. Code adapted from
 // https://github.com/zirkelc/aws-sigv4-fetch
