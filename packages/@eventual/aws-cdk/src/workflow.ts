@@ -25,12 +25,16 @@ import { ENV_NAMES } from "@eventual/aws-runtime";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import path from "path";
 import { execSync } from "child_process";
+import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
 
 export interface WorkflowProps {
   entry: string;
+  environment?: {
+    [key: string]: string;
+  };
 }
 
-export class Workflow extends Construct {
+export class Workflow extends Construct implements IGrantable {
   /**
    * S3 bucket that contains events necessary to replay a workflow execution.
    *
@@ -65,6 +69,8 @@ export class Workflow extends Construct {
    * The lambda function which runs the user's Workflow.
    */
   public readonly orchestrator: IFunction;
+
+  readonly grantPrincipal: IPrincipal;
 
   constructor(scope: Construct, id: string, props: WorkflowProps) {
     super(scope, id);
@@ -147,10 +153,13 @@ export class Workflow extends Construct {
         [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
         [ENV_NAMES.ACTIVITY_LOCK_TABLE_NAME]: this.locksTable.tableName,
         [ENV_NAMES.EVENTUAL_WORKER]: "1",
+        ...(props.environment ?? {}),
       },
       // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
       retryAttempts: 0,
     });
+    // grant methods on a workflow affect the activity
+    this.grantPrincipal = this.activityWorker.grantPrincipal;
 
     this.orchestrator = new Function(this, "Orchestrator", {
       architecture: Architecture.ARM_64,
