@@ -35,9 +35,9 @@ export class EventualApi extends Construct {
       WORKFLOWS: JSON.stringify(
         Object.fromEntries(
           props.workflows.map((w) => [
-            w.node.id,
+            w.workflowName,
             {
-              name: w.node.id,
+              name: w.workflowName,
               tableName: w.table.tableName,
               workflowQueueUrl: w.workflowQueue.queueUrl,
               executionHistoryBucket: w.history.bucketName,
@@ -118,7 +118,7 @@ export class EventualApi extends Construct {
           entry: "workflows/executions/status.js",
           config: (fn) => {
             props.workflows.forEach((w) => {
-              w.history.grantRead(fn);
+              w.table.grantReadData(fn);
             });
           },
         },

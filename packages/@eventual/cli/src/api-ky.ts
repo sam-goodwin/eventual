@@ -31,13 +31,14 @@ export async function apiKy(region?: string): Promise<KyInstance> {
             path: url.pathname,
             protocol: url.protocol,
             method: req.method.toUpperCase(),
-            body: req.body,
+            body: (await req.body?.getReader().read())?.value,
             query: parseQueryString(url.search),
             headers: Object.fromEntries(headers.entries()),
           });
           const signedRequest = (await signer.sign(request)) as HttpRequest;
           return new Request(req, {
             headers: new Headers(signedRequest.headers),
+            body: signedRequest.body,
           });
         },
       ],

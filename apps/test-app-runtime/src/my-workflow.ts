@@ -5,5 +5,7 @@ const hello = activity("hello", async (name: string) => {
 });
 
 export default eventual(async (event: any) => {
-  console.log(await hello(event));
+  const result = await hello(event);
+  console.log(result);
+  return `you said ${result}`;
 });

@@ -167,7 +167,15 @@ export function orchestrator(
         const { result, commands: newCommands } = timedSync(
           metrics,
           OrchestratorMetrics.AdvanceExecutionDuration,
-          () => interpret(program(startEvent.input), interpretEvents)
+          () => {
+            // If our input is an array, we spread it into the program, allowing multiple parameter programs.
+            // otherwise make it the singleton argument
+            const parameters = JSON.parse(startEvent.input);
+            const output = Array.isArray(parameters)
+              ? program(...parameters)
+              : program(parameters);
+            return interpret(output, interpretEvents);
+          }
         );
         metrics.setProperty(
           OrchestratorMetrics.AdvanceExecutionEvents,

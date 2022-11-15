@@ -1,73 +1,89 @@
-import { Command } from "commander";
-import { withApiAction } from "../../api-action.js";
-import ora, { Ora } from "ora";
-import cliSpinners from "cli-spinners";
+import { apiAction, apiCommand } from "../../api-action.js";
 import { styledConsole } from "../../styled-console.js";
-import { HistoryStateEvents, WorkflowEventType } from "@eventual/core";
+import {
+  isActivityCompleted,
+  isActivityScheduled,
+  isWorkflowStarted,
+  WorkflowCompleted,
+  WorkflowEvent,
+  WorkflowEventType,
+  WorkflowFailed,
+} from "@eventual/core";
 import { KyInstance } from "../../types.js";
 
-const command = new Command("execute")
+export const execute = apiCommand("execute")
   .description("Execute an Eventual workflow")
   .option("-t, --tail", "Tail execution")
   .argument("<name>", "Workflow name")
-  .argument("[parameters...]", "Workflow parameters");
-
-let spinner: Ora;
-let workflowInProgess = true;
-export const execute = withApiAction(
-  command,
-  async (ky, name, parameters, options) => {
-    console.group(name, parameters, options);
-    spinner = ora({
-      text: `Executing ${name}\n`,
-      spinner: cliSpinners.aesthetic,
-    }).start();
-    const { executionId } = await ky
-      .post(`workflows/${name}/executions`)
-      .json<{ executionId: string }>();
-    spinner.succeed(`Execution id: ${executionId}`);
-    if (options.tail) {
-      let events: HistoryStateEvents[] = [];
-      while (workflowInProgess) {
-        spinner.start(`${executionId} in progress\n`);
-        events.push(
-          ...(await logEvents(events, ky, name, executionId, spinner))
-        );
-        //Stop tailing once we detect the workflow has completed
-        if (
-          events.find((ev) =>
-            [
-              WorkflowEventType.WorkflowCompleted,
-              WorkflowEventType.WorkflowFailed,
-            ].includes(ev.type)
-          )
-        ) {
-          workflowInProgess = false;
+  .argument("[parameters...]", "Workflow parameters")
+  .action(
+    apiAction(async (spinner, ky, name, parameters, options) => {
+      spinner.start(`Executing ${name}\n`);
+      const { executionId } = await ky
+        .post(`workflows/${name}/executions`, { json: parameters })
+        .json<{ executionId: string }>();
+      spinner.succeed(`Execution id: ${executionId}`);
+      if (options.tail) {
+        let events: WorkflowEvent[] = [];
+        if (!spinner.isSpinning) {
+          spinner.start(`${executionId} in progress\n`);
         }
+        async function pollEvents() {
+          const newEvents = await getNewEvents(events, ky, name, executionId);
+          newEvents.forEach((ev) => {
+            let meta: string | undefined;
+            if (isActivityCompleted(ev)) {
+              meta = ev.result;
+            } else if (isActivityScheduled(ev)) {
+              meta = ev.name;
+            } else if (isWorkflowStarted(ev)) {
+              meta = ev.input;
+            }
+            spinner.info(
+              ev.timestamp + " - " + ev.type + (meta ? `- ` + meta : "")
+            );
+          });
+          events.push(...newEvents);
+          const completedEvent = events.find(
+            (ev) => ev.type === WorkflowEventType.WorkflowCompleted
+          );
+          const failedEvent = events.find(
+            (ev) => ev.type === WorkflowEventType.WorkflowFailed
+          );
+          if (completedEvent) {
+            spinner.succeed("Workflow complete");
+            styledConsole.success((completedEvent as WorkflowCompleted).output);
+          } else if (failedEvent) {
+            spinner.fail("Workflow failed");
+            styledConsole.error((failedEvent as WorkflowFailed).error);
+          } else {
+            setTimeout(pollEvents, 1000);
+          }
+        }
+        await pollEvents();
+      } else {
+        styledConsole.success({ executionId });
       }
-    } else {
-      styledConsole.success({ executionId });
-    }
-  },
-  () => {
-    workflowInProgess = false;
-    spinner.fail();
-  }
-);
+    })
+  );
 
-async function logEvents(
-  events: HistoryStateEvents[],
+/**
+ * Fetch events, and return ones that we haven't seen already
+ */
+async function getNewEvents(
+  existingEvents: WorkflowEvent[],
   ky: KyInstance,
   workflowName: string,
-  executionId: string,
-  spinner: Ora
+  executionId: string
 ) {
   const updatedEvents = await ky(
     `workflows/${workflowName}/executions/${executionId}`
-  ).json<HistoryStateEvents[]>();
-  const newEvents = updatedEvents.slice(events.length);
-  newEvents.forEach((ev) => {
-    spinner.info(`${ev.timestamp} - ${ev.type}`);
-  });
-  return updatedEvents;
+  ).json<WorkflowEvent[]>();
+  if (updatedEvents.length == 0) {
+    //Unfortunately if the execution id is wrong, our dynamo query is just going to return an empty record set
+    //Not super helpful
+    //So we use this heuristic to give up, since we should at least have a start event.
+    throw new Error("No events at all. Check your execution id");
+  }
+  return updatedEvents.slice(existingEvents.length);
 }

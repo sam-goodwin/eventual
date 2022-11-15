@@ -35,7 +35,6 @@
     "access": "public"
   },
   "dependencies": {
-    "@eventual/core": "workspace:^",
     "@aws-crypto/sha256-js": "^2.0.2",
     "@aws-sdk/client-cloudformation": "^3.209.0",
     "@aws-sdk/client-iam": "^3.209.0",
@@ -43,8 +42,9 @@
     "@aws-sdk/protocol-http": "^3.208.0",
     "@aws-sdk/querystring-parser": "^3.208.0",
     "@aws-sdk/signature-v4": "^3.208.0",
+    "@eventual/aws-runtime": "workspace:^",
+    "@eventual/core": "workspace:^",
     "chalk": "^5.1.2",
-    "cli-spinners": "^2.7.0",
     "commander": "^9.4.1",
     "ky-universal": "^0.11.0",
     "ora": "^6.1.2"

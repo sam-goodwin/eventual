@@ -23,6 +23,7 @@ const openAccount = new Workflow(stack, "OpenAccount", {
 accountTable.grantReadWriteData(openAccount);
 
 const myWorkflow = new Workflow(stack, "workflow1", {
+  name: "my-workflow",
   entry: require.resolve("test-app-runtime/lib/my-workflow.js"),
 });
 

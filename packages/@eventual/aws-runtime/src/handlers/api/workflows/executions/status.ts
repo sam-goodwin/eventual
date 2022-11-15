@@ -1,5 +1,5 @@
 import { APIGatewayProxyEventV2 } from "aws-lambda";
-import { createWorkflowRuntimeClient } from "../../../../clients";
+import { createExecutionHistoryClient } from "../../../../clients";
 import { workflows } from "../../env";
 
 export async function handler(event: APIGatewayProxyEventV2) {
@@ -19,8 +19,7 @@ export async function handler(event: APIGatewayProxyEventV2) {
     };
   }
 
-  const workflowClient = createWorkflowRuntimeClient(workflow);
-  console.log(executionId);
-  const history = await workflowClient.getHistory(executionId);
-  return history;
+  const workflowClient = createExecutionHistoryClient(workflow);
+  const events = await workflowClient.getEvents(executionId);
+  return events.map((item) => JSON.parse(item.event!.S!));
 }

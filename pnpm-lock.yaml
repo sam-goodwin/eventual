@@ -181,11 +181,11 @@ importers:
       '@aws-sdk/protocol-http': ^3.208.0
       '@aws-sdk/querystring-parser': ^3.208.0
       '@aws-sdk/signature-v4': ^3.208.0
+      '@eventual/aws-runtime': workspace:^
       '@eventual/core': workspace:^
       '@types/jest': ^29
       '@types/node': ^16
       chalk: ^5.1.2
-      cli-spinners: ^2.7.0
       commander: ^9.4.1
       jest: ^29
       ky: ^0.32.2
@@ -202,9 +202,9 @@ importers:
       '@aws-sdk/protocol-http': 3.208.0
       '@aws-sdk/querystring-parser': 3.208.0
       '@aws-sdk/signature-v4': 3.208.0
+      '@eventual/aws-runtime': link:../aws-runtime
       '@eventual/core': link:../core
       chalk: 5.1.2
-      cli-spinners: 2.7.0
       commander: 9.4.1
       ky-universal: 0.11.0_ky@0.32.2
       ora: 6.1.2
@@ -7099,6 +7099,7 @@ packages:
   /jest-cli/29.3.1:
     resolution: {integrity: sha512-TO/ewvwyvPOiBBuWZ0gm04z3WWP8TIK8acgPzE4IxgsLKQgb377NYGrQLc3Wl/7ndWzIH2CDNNsUjGxwLL43VQ==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
+    hasBin: true
     peerDependencies:
       node-notifier: ^8.0.1 || ^9.0.0 || ^10.0.0
     peerDependenciesMeta:
@@ -7596,6 +7597,7 @@ packages:
   /jest/29.3.1:
     resolution: {integrity: sha512-6iWfL5DTT0Np6UYs/y5Niu7WIfNv/wRTtN5RSXt2DIEft3dx3zPuw/3WJQBCJfmEzvDiEKwoqMbGD9n49+qLSA==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
+    hasBin: true
     peerDependencies:
       node-notifier: ^8.0.1 || ^9.0.0 || ^10.0.0
     peerDependenciesMeta:
@@ -8457,6 +8459,7 @@ packages:
 
   /nx/15.0.13:
     resolution: {integrity: sha512-5mJGWz91B9/sxzLjXdD+pmZTel54NeNNxFDis8OhtGDn6eRZ25qWsZNDgzqIDtwKn3c9gThAMHU4XH2OTgWUnA==}
+    hasBin: true
     requiresBuild: true
     peerDependencies:
       '@swc-node/register': ^1.4.2
@@ -9635,6 +9638,7 @@ packages:
   /ts-jest/29.0.3_2dxzmrf7nql4vyqthiyhycktzm:
     resolution: {integrity: sha512-Ibygvmuyq1qp/z3yTh9QTwVVAbFdDy/+4BtIQR2sp6baF2SJU/8CKK/hhnGIDY2L90Az2jIqTwZPnN2p+BweiQ==}
     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
+    hasBin: true
     peerDependencies:
       '@babel/core': '>=7.0.0-beta.0 <8'
       '@jest/types': ^29.0.0
@@ -9699,6 +9703,7 @@ packages:
 
   /ts-node/10.9.1_uusaoo756f3l7x5w4ayk4pz43y:
     resolution: {integrity: sha512-NtVysVPkxxrwFGUUxGYhfux8k78pQB3JqYBXlLRZgdGUqTO5wU/UyHop5p70iEbGhB7q5KmiZiU0Y3KlJrScEw==}
+    hasBin: true
     peerDependencies:
       '@swc/core': '>=1.2.50'
       '@swc/wasm': '>=1.2.50'
