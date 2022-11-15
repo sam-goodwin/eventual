@@ -1,11 +1,11 @@
-import type { Future } from "./future";
+import type { Eventual } from "./eventual";
 
-export function registerActivity<A extends Future>(activity: A): A {
+export function registerActivity<A extends Eventual>(activity: A): A {
   activityCollector.push(activity);
   return activity;
 }
 
-let activityCollector: Future[] = [];
+let activityCollector: Eventual[] = [];
 
 export function resetActivityCollector() {
   activityCollector = [];

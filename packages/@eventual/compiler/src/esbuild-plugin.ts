@@ -93,7 +93,7 @@ export class InnerVisitor extends Visitor {
       if (
         supportedPromiseFunctions.includes(call.callee.property.value as any)
       ) {
-        call.callee.object.value = "Future";
+        call.callee.object.value = "Eventual";
       }
     }
     return super.visitCallExpression(call);

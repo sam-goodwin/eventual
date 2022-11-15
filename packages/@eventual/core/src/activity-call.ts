@@ -1,13 +1,13 @@
-import { isFuture, FutureSymbol, FutureKind } from "./future";
+import { isEventual, EventualSymbol, EventualKind } from "./eventual";
 import { registerActivity } from "./global";
 import { Resolved, Failed } from "./result";
 
 export function isActivityCall(a: any): a is ActivityCall {
-  return isFuture(a) && a[FutureSymbol] === FutureKind.ActivityCall;
+  return isEventual(a) && a[EventualSymbol] === EventualKind.ActivityCall;
 }
 
 export interface ActivityCall<T = any> {
-  [FutureSymbol]: FutureKind.ActivityCall;
+  [EventualSymbol]: EventualKind.ActivityCall;
   seq?: number;
   name: string;
   args: any[];
@@ -20,7 +20,7 @@ export function createActivityCall(
   seq?: number
 ): ActivityCall {
   const command: ActivityCall = {
-    [FutureSymbol]: FutureKind.ActivityCall,
+    [EventualSymbol]: EventualKind.ActivityCall,
     seq,
     name,
     args,

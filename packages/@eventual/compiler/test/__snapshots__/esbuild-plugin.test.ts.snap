@@ -15,19 +15,19 @@ exports[`esbuild-plugin mts workflow 1`] = `
   var doWork = activity("doWork", async (input) => input);
   var workflow_default = eventual(function* (input) {
     const items = yield doWork(input);
-    yield Future.all(items.map(eventual(function* (item) {
+    yield Eventual.all(items.map(eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Future.all(items.map(eventual(function* (item) {
+    yield Eventual.all(items.map(eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Future.allSettled(items.map(eventual(function* (item) {
+    yield Eventual.allSettled(items.map(eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Future.any(items.map(eventual(function* (item) {
+    yield Eventual.any(items.map(eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Future.race(items.map(eventual(function* (item) {
+    yield Eventual.race(items.map(eventual(function* (item) {
       yield doWork(item);
     })));
   });
@@ -89,19 +89,19 @@ exports[`esbuild-plugin ts workflow 1`] = `
   var doWork = activity("doWork", async (input) => input);
   var workflow_default = eventual(function* (input) {
     const items = yield doWork(input);
-    yield Future.all(items.map(eventual(function* (item) {
+    yield Eventual.all(items.map(eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Future.all(items.map(eventual(function* (item) {
+    yield Eventual.all(items.map(eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Future.allSettled(items.map(eventual(function* (item) {
+    yield Eventual.allSettled(items.map(eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Future.any(items.map(eventual(function* (item) {
+    yield Eventual.any(items.map(eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Future.race(items.map(eventual(function* (item) {
+    yield Eventual.race(items.map(eventual(function* (item) {
       yield doWork(item);
     })));
   });
