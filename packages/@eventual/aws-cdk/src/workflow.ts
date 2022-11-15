@@ -13,6 +13,7 @@ import {
   FifoThroughputLimit,
   IQueue,
   Queue,
+  QueueEncryption,
 } from "aws-cdk-lib/aws-sqs";
 import {
   AttributeType,

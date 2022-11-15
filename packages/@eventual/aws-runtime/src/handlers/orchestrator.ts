@@ -30,7 +30,7 @@ import { SQSHandler, SQSRecord } from "aws-lambda";
 import { createMetricsLogger, Unit } from "aws-embedded-metrics";
 import { timed, timedSync } from "../metrics/utils.js";
 import { workflowName } from "../env.js";
-import { OrchestratorMetrics } from "src/metrics/constants.js";
+import { MetricsCommon, OrchestratorMetrics } from "src/metrics/constants.js";
 
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowRuntimeClient = createWorkflowRuntimeClient();
@@ -92,9 +92,9 @@ export function orchestrator(
     ) {
       const metrics = createMetricsLogger();
       metrics.resetDimensions(false);
-      metrics.setNamespace(OrchestratorMetrics.Namespace);
+      metrics.setNamespace(MetricsCommon.EventualNamespace);
       metrics.setDimensions({
-        [OrchestratorMetrics.WorkflowNameDimension]: workflowName(),
+        [MetricsCommon.WorkflowNameDimension]: workflowName(),
       });
       const events = sqsRecordsToEvents(records);
       const start = new Date();

@@ -17,6 +17,7 @@ import {
 import { metricScope, Unit } from "aws-embedded-metrics";
 import { timed } from "../metrics/utils.js";
 import { workflowName } from "../env.js";
+import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
 
 const activityRuntimeClient = createActivityRuntimeClient();
 const executionHistoryClient = createExecutionHistoryClient();
@@ -26,7 +27,7 @@ export const activityWorker = (): Handler<ActivityWorkerRequest, void> => {
   return metricScope((metrics) => async (request) => {
     const activityHandle = `${request.command.seq} for execution ${request.executionId} on retry ${request.retry}`;
     metrics.resetDimensions(false);
-    metrics.setNamespace("Eventual");
+    metrics.setNamespace(MetricsCommon.EventualNamespace);
     metrics.putDimensions({
       ActivityName: request.command.name,
       WorkflowName: workflowName(),
@@ -36,9 +37,13 @@ export const activityWorker = (): Handler<ActivityWorkerRequest, void> => {
     const start = new Date();
     const recordAge =
       start.getTime() - new Date(request.scheduledTime).getTime();
-    metrics.putMetric("ActivityRequestAge", recordAge, Unit.Milliseconds);
+    metrics.putMetric(
+      ActivityMetrics.ActivityRequestAge,
+      recordAge,
+      Unit.Milliseconds
+    );
     if (
-      !(await timed(metrics, "ClaimDuration", () =>
+      !(await timed(metrics, ActivityMetrics.ClaimDuration, () =>
         activityRuntimeClient.requestExecutionActivityClaim(
           request.executionId,
           request.command,
@@ -46,33 +51,35 @@ export const activityWorker = (): Handler<ActivityWorkerRequest, void> => {
         )
       ))
     ) {
-      metrics.putMetric("ClaimRejected", 1, Unit.Count);
+      metrics.putMetric(ActivityMetrics.ClaimRejected, 1, Unit.Count);
       console.info(`Activity ${activityHandle} already claimed.`);
       return;
     }
-    metrics.putMetric("ClaimRejected", 0, Unit.Count);
+    metrics.putMetric(ActivityMetrics.ClaimRejected, 0, Unit.Count);
 
     console.info(`Processing ${activityHandle}.`);
 
     const activity = getCallableActivity(request.command.name);
     try {
       if (!activity) {
-        metrics.putMetric("NotFoundError", 1, Unit.Count);
+        metrics.putMetric(ActivityMetrics.NotFoundError, 1, Unit.Count);
         throw new ActivityNotFoundError(request.command.name);
       }
 
-      const result = await timed(metrics, "OperationDuration", () =>
-        activity(...request.command.args)
+      const result = await timed(
+        metrics,
+        ActivityMetrics.OperationDuration,
+        () => activity(...request.command.args)
       );
       if (result) {
-        metrics.setProperty("HasResult", 1);
+        metrics.setProperty(ActivityMetrics.HasResult, 1);
         metrics.putMetric(
-          "ResultBytes",
+          ActivityMetrics.ResultBytes,
           JSON.stringify(result).length,
           Unit.Bytes
         );
       } else {
-        metrics.setProperty("HasResult", 0);
+        metrics.setProperty(ActivityMetrics.HasResult, 0);
       }
 
       console.info(
@@ -120,18 +127,26 @@ export const activityWorker = (): Handler<ActivityWorkerRequest, void> => {
     }
 
     function logActivityCompleteMetrics(failed: boolean, duration: number) {
-      metrics.putMetric("ActivityFailed", failed ? 1 : 0, Unit.Count);
-      metrics.putMetric("ActivityCompleted", failed ? 0 : 1, Unit.Count);
+      metrics.putMetric(
+        ActivityMetrics.ActivityFailed,
+        failed ? 1 : 0,
+        Unit.Count
+      );
+      metrics.putMetric(
+        ActivityMetrics.ActivityCompleted,
+        failed ? 0 : 1,
+        Unit.Count
+      );
       // The total time from the activity being scheduled until it's result is send to the workflow.
-      metrics.putMetric("TotalDuration", duration);
+      metrics.putMetric(ActivityMetrics.TotalDuration, duration);
     }
 
     async function finishActivity(event: ActivityCompleted | ActivityFailed) {
-      await timed(metrics, "EmitEventDuration", () =>
+      await timed(metrics, ActivityMetrics.EmitEventDuration, () =>
         executionHistoryClient.putEvent(request.executionId, event)
       );
 
-      await timed(metrics, "SubmitWorkflowTaskDuration", () =>
+      await timed(metrics, ActivityMetrics.SubmitWorkflowTaskDuration, () =>
         workflowClient.submitWorkflowTask(request.executionId, event)
       );
 
