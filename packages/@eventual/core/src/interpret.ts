@@ -1,4 +1,4 @@
-import { Future, isFuture } from "./future";
+import { Eventual, isEventual } from "./eventual";
 import { isAwaitAll } from "./await-all";
 import { ActivityCall, isActivityCall } from "./activity-call";
 import { DeterminismError } from "./error";
@@ -37,7 +37,7 @@ export interface WorkflowResult<T = any> {
   commands: Command[];
 }
 
-export type Program<Return = any> = Generator<Future, Return>;
+export type Program<Return = any> = Generator<Eventual, Return>;
 
 /**
  * Interprets a workflow program
@@ -225,7 +225,7 @@ export function interpret<Return>(
             : chain.throw(result.error);
         if (iterResult.done) {
           activeChains.delete(chain);
-          if (isFuture(iterResult.value)) {
+          if (isEventual(iterResult.value)) {
             chain.result = Result.pending(iterResult.value);
           } else if (isGenerator(iterResult.value)) {
             const childChain = createChain(iterResult.value);
@@ -262,7 +262,7 @@ export function interpret<Return>(
     }
   }
 
-  function tryResolveResult(activity: Future): Result | undefined {
+  function tryResolveResult(activity: Eventual): Result | undefined {
     if (isActivityCall(activity)) {
       return activity.result;
     } else if (isChain(activity)) {
