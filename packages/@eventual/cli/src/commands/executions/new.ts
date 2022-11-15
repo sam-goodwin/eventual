@@ -11,25 +11,30 @@ import {
 } from "@eventual/core";
 import { KyInstance } from "../../types.js";
 
-export const execute = apiCommand("execute")
+export const newExecution = apiCommand("new")
   .description("Execute an Eventual workflow")
+  .option("-w, --workflow <name>", "Workflow name")
   .option("-t, --tail", "Tail execution")
-  .argument("<name>", "Workflow name")
-  .argument("[parameters...]", "Workflow parameters")
+  .option("-p, --parameters [parameters...]", "Execution parameters")
   .action(
-    apiAction(async (spinner, ky, name, parameters, options) => {
-      spinner.start(`Executing ${name}\n`);
+    apiAction(async (spinner, ky, { workflow, tail, parameters }) => {
+      spinner.start(`Executing ${workflow}\n`);
       const { executionId } = await ky
-        .post(`workflows/${name}/executions`, { json: parameters })
+        .post(`workflows/${workflow}/executions`, { json: parameters ?? [] })
         .json<{ executionId: string }>();
       spinner.succeed(`Execution id: ${executionId}`);
-      if (options.tail) {
+      if (tail) {
         let events: WorkflowEvent[] = [];
         if (!spinner.isSpinning) {
           spinner.start(`${executionId} in progress\n`);
         }
         async function pollEvents() {
-          const newEvents = await getNewEvents(events, ky, name, executionId);
+          const newEvents = await getNewEvents(
+            events,
+            ky,
+            workflow,
+            executionId
+          );
           newEvents.forEach((ev) => {
             let meta: string | undefined;
             if (isActivityCompleted(ev)) {

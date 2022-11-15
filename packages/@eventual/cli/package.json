@@ -39,6 +39,8 @@
     "@aws-sdk/client-cloudformation": "^3.209.0",
     "@aws-sdk/client-iam": "^3.209.0",
     "@aws-sdk/client-sts": "^3.209.0",
+    "@aws-sdk/config-resolver": "^3.209.0",
+    "@aws-sdk/node-config-provider": "^3.209.0",
     "@aws-sdk/protocol-http": "^3.208.0",
     "@aws-sdk/querystring-parser": "^3.208.0",
     "@aws-sdk/signature-v4": "^3.208.0",

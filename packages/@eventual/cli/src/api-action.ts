@@ -53,5 +53,5 @@ export async function styledCatchApiRequestError<T>(
  * @returns the command
  */
 export function apiCommand(name: string): Command {
-  return new Command(name).option("-r, --region <region>", "API region");
+  return new Command(name).option("-r, --region [region]", "API region");
 }

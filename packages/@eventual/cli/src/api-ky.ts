@@ -8,17 +8,28 @@ import { parseQueryString } from "@aws-sdk/querystring-parser";
 import { Sha256 } from "@aws-crypto/sha256-js";
 import { styledConsole } from "./styled-console.js";
 import type { KyInstance } from "./types.js";
+import { loadConfig } from "@aws-sdk/node-config-provider";
+import {
+  NODE_REGION_CONFIG_OPTIONS,
+  NODE_REGION_CONFIG_FILE_OPTIONS,
+} from "@aws-sdk/config-resolver";
 
 //Return a ky which signs our requests with our execute role. Code adapted from
 // https://github.com/zirkelc/aws-sigv4-fetch
 export async function apiKy(region?: string): Promise<KyInstance> {
-  const roleArn = await getApiRoleArn(region);
+  const resolvedRegion =
+    region ??
+    (await loadConfig(
+      NODE_REGION_CONFIG_OPTIONS,
+      NODE_REGION_CONFIG_FILE_OPTIONS
+    )());
+  const roleArn = await getApiRoleArn(resolvedRegion);
   return ky.extend({
-    prefixUrl: await getApiUrl(region),
+    prefixUrl: await getApiUrl(resolvedRegion),
     hooks: {
       beforeRequest: [
         async (req: Request) => {
-          const signer = await getSigner(roleArn, region);
+          const signer = await getSigner(roleArn, resolvedRegion);
           const url = new URL(req.url);
           const headers = new Map<string, string>();
           // workaround because Headers.entries() is not available in cross-fetch

@@ -79,9 +79,9 @@ export class ExecutionHistoryClient {
   }
 
   /**
-   * Read execution events from dynamo
+   * Read an execution's events from the execution history table table
    */
-  public async getEvents(executionId: string): Promise<EventRecord[]> {
+  public async getEvents(executionId: string): Promise<WorkflowEvent[]> {
     const output = await this.props.dynamo.send(
       new QueryCommand({
         TableName: this.props.tableName,
@@ -92,7 +92,7 @@ export class ExecutionHistoryClient {
         },
       })
     );
-    return output.Items as EventRecord[];
+    return output.Items!.map((item) => JSON.parse(item.event!.S!));
   }
 }
 

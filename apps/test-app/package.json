@@ -6,7 +6,8 @@
     "build": "cdk synth",
     "cdk": "cdk",
     "deploy": "cdk deploy --require-approval=never",
-    "eventual": "eventual"
+    "eventual": "eventual",
+    "execute-my-workflow": "eventual executions new --workflow my-workflow --parameters 'world' --tail"
   },
   "dependencies": {
     "aws-cdk-lib": "^2.50.0",

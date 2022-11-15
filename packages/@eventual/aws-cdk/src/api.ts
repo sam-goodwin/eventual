@@ -94,16 +94,20 @@ export class EventualApi extends Construct {
           entry: "workflows/list.js",
         },
       ],
-      "/workflows/{name}": [
-        {
-          methods: [HttpMethod.GET],
-          entry: "workflows/status.js",
-        },
-      ],
       "/workflows/{name}/executions": [
         {
           methods: [HttpMethod.POST],
-          entry: "workflows/execute.js",
+          entry: "executions/new.js",
+          config: (fn) => {
+            props.workflows.forEach((w) => {
+              w.table.grantReadWriteData(fn);
+              w.workflowQueue.grantSendMessages(fn);
+            });
+          },
+        },
+        {
+          methods: [HttpMethod.GET],
+          entry: "executions/list.js",
           config: (fn) => {
             props.workflows.forEach((w) => {
               w.table.grantReadWriteData(fn);
@@ -115,7 +119,7 @@ export class EventualApi extends Construct {
       "/workflows/{name}/executions/{executionId}": [
         {
           methods: [HttpMethod.GET],
-          entry: "workflows/executions/status.js",
+          entry: "executions/events.js",
           config: (fn) => {
             props.workflows.forEach((w) => {
               w.table.grantReadData(fn);
