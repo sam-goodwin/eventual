@@ -61,7 +61,7 @@ exports[`esbuild-plugin open-account 1`] = `
         return removeBankAccount(accountId);
       }));
     } catch (err) {
-      yield Future.all(rollbacks.map(eventual(function* (rollback) {
+      yield Eventual.all(rollbacks.map(eventual(function* (rollback) {
         return rollback();
       })));
     }
