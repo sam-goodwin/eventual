@@ -22,7 +22,16 @@ export interface WorkflowClientProps {
 export class WorkflowClient {
   constructor(private props: WorkflowClientProps) {}
 
-  public async startWorkflow(name: string, input: any) {
+  /**
+   * Start a workflow execution
+   * @param name Suffix of execution id
+   * @param input Workflow parameters
+   * @returns
+   */
+  public async startWorkflow({
+    name,
+    input,
+  }: { name?: string; input?: any } = {}) {
     const executionId = `execution_${name ? name : ulid()}`;
 
     await this.props.dynamo.send(

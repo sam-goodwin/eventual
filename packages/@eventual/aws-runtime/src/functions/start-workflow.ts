@@ -17,9 +17,6 @@ export const handle: Handler<
   StartWorkflowResponse
 > = async (request) => {
   return {
-    executionId: await workflowClient.startWorkflow(
-      request.name,
-      request.input
-    ),
+    executionId: await workflowClient.startWorkflow(request),
   };
 };

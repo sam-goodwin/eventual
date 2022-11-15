@@ -1,11 +1,15 @@
 import { APIGatewayProxyEventV2 } from "aws-lambda";
-import { workflows } from "../env";
-import { createWorkflowClient } from "../../../clients/create";
+import { createWorkflowRuntimeClient } from "../../../../clients";
+import { workflows } from "../../env";
 
 export async function handler(event: APIGatewayProxyEventV2) {
   const workflowName = event.pathParameters?.name;
   if (!workflowName) {
     return { statusCode: 400, body: `Missing workflowName` };
+  }
+  const executionId = event.pathParameters?.executionId;
+  if (!executionId) {
+    return { statusCode: 400, body: `Missing executionId` };
   }
   const workflow = workflows[workflowName];
   if (!workflow) {
@@ -14,9 +18,9 @@ export async function handler(event: APIGatewayProxyEventV2) {
       body: `Workflow ${workflowName} does not exist!`,
     };
   }
-  const workflowClient = createWorkflowClient(workflow);
 
-  return {
-    executionId: await workflowClient.startWorkflow({ input: event.body }),
-  };
+  const workflowClient = createWorkflowRuntimeClient(workflow);
+  console.log(executionId);
+  const history = await workflowClient.getHistory(executionId);
+  return history;
 }

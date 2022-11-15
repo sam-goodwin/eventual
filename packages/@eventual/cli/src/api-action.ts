@@ -11,28 +11,32 @@ export type ApiAction = (ky: KyInstance, ...args: any[]) => Promise<void>;
  * @param action Callback to perform for the action
  */
 export const apiAction =
-  (action: ApiAction) =>
+  (action: ApiAction, onError?: (error: any) => Promise<void> | void) =>
   async (...args: any[]) => {
     //last argument is the command itself, second last is options
     const options = args.at(-2);
     const ky = await apiKy(options.region);
-    return styledCatchApiRequestError(action(ky, ...args));
+    return styledCatchApiRequestError(action(ky, ...args), onError);
   };
 
 /**
  * Catch api errors and print the messages nicely
  * @param req promise to catch
  */
-export function styledCatchApiRequestError<T>(
-  req: Promise<T>
+export async function styledCatchApiRequestError<T>(
+  req: Promise<T>,
+  onError?: (e: any) => Promise<void> | void
 ): Promise<void | T> {
-  return req.catch(async (e) => {
+  try {
+    return await req;
+  } catch (e) {
+    await onError?.(e);
     if (e instanceof HTTPError) {
       styledConsole.error(await e.response.json());
     } else {
       console.log(e);
     }
-  });
+  }
 }
 
 export const regionOption = ["-r, --region <region>", "API region"] as const;
@@ -43,6 +47,10 @@ export const regionOption = ["-r, --region <region>", "API region"] as const;
  * @param action Action to perform
  * @returns Updated command
  */
-export function withApiAction(command: Command, action: ApiAction): Command {
-  return command.option(...regionOption).action(apiAction(action));
+export function withApiAction(
+  command: Command,
+  action: ApiAction,
+  onError?: (e: any) => Promise<void> | void
+): Command {
+  return command.option(...regionOption).action(apiAction(action, onError));
 }
