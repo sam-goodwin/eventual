@@ -131,6 +131,7 @@ importers:
       '@types/aws-lambda': 8.10.108
       '@types/jest': ^29
       '@types/node': ^16
+      aws-embedded-metrics: ^4.0.0
       aws-lambda: ^1.0.7
       jest: ^29
       ts-jest: ^29
@@ -139,6 +140,7 @@ importers:
       ulid: ^2.3.0
     dependencies:
       '@eventual/core': link:../core
+      aws-embedded-metrics: 4.0.0
       aws-lambda: 1.0.7
       ulid: 2.3.0
     devDependencies:
@@ -2599,6 +2601,10 @@ packages:
       '@jridgewell/trace-mapping': 0.3.9
     dev: true
 
+  /@datastructures-js/heap/4.1.2:
+    resolution: {integrity: sha512-Dl6MPPVXxzWsSQxIaV0sOpAx/B8r7RYUO5/GWe7GhG9v9P4QfZ1cgPSq+SoF0QJFhu9G9TmtPfRLHPWzL73GpQ==}
+    dev: false
+
   /@esbuild/android-arm/0.15.13:
     resolution: {integrity: sha512-RY2fVI8O0iFUNvZirXaQ1vMvK0xhCcl0gqRj74Z6yEiO1zAUa7hbsdwZM1kzqbxHK7LFyMizipfXT3JME+12Hw==}
     engines: {node: '>=12'}
@@ -4242,6 +4248,10 @@ packages:
     resolution: {integrity: sha512-Hl219/BT5fLAaz6NDkSuhzasy49dwQS/DSdu4MdggFB8zcXv7vflBI3xp7FEmkmdDkBUI2bPUNeMttp2knYdxw==}
     dev: true
 
+  /@types/validator/13.7.10:
+    resolution: {integrity: sha512-t1yxFAR2n0+VO6hd/FJ9F2uezAZVWHLmpmlJzm1eX03+H7+HsuTAp7L8QJs+2pQCfWkP1+EXsGK9Z9v7o/qPVQ==}
+    dev: false
+
   /@types/yargs-parser/21.0.0:
     resolution: {integrity: sha512-iO9ZQHkZxHn4mSakYV0vFHAVDyEOIJQrV2uZ06HxEPcx+mt8swXoZHIbaaJ2crJYFfErySgktuTZ3BeLz+XmFA==}
     dev: true
@@ -4489,6 +4499,15 @@ packages:
     optionalDependencies:
       fsevents: 2.3.2
     dev: true
+
+  /aws-embedded-metrics/4.0.0:
+    resolution: {integrity: sha512-Bh5A439399uLT1Bed/uvPRc/zdyDg49n8lR6AKCUbb4lSl8t73FksRTsaJOCrnpb13/xhcPbMRYXayeD/oGbhg==}
+    engines: {node: '>=10.0.0'}
+    dependencies:
+      '@datastructures-js/heap': 4.1.2
+      '@types/validator': 13.7.10
+      validator: 13.7.0
+    dev: false
 
   /aws-lambda/1.0.7:
     resolution: {integrity: sha512-9GNFMRrEMG5y3Jvv+V4azWvc+qNWdWLTjDdhf/zgMlz8haaaLWv0xeAIWxz9PuWUBawsVxy0zZotjCdR3Xq+2w==}
@@ -9306,6 +9325,11 @@ packages:
     dependencies:
       builtins: 5.0.1
     dev: true
+
+  /validator/13.7.0:
+    resolution: {integrity: sha512-nYXQLCBkpJ8X6ltALua9dRrZDHVYxjJ1wgskNt1lH9fzGjs3tgojGSCBjmEPwkWS1y29+DrizMTW19Pr9uB2nw==}
+    engines: {node: '>= 0.10'}
+    dev: false
 
   /walk-up-path/1.0.0:
     resolution: {integrity: sha512-hwj/qMDUEjCU5h0xr90KGCf0tg0/LgJbmOWgrWKYlcJZM7XvquvUJZ0G/HMGr7F7OQMOUuPHWP9JpriinkAlkg==}

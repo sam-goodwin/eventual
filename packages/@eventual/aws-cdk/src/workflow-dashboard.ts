@@ -17,7 +17,7 @@ export class WorkflowDashboard extends Construct {
     super(scope, id);
 
     this.dashboard = new aws_cloudwatch.Dashboard(this, "Dashboard", {
-      dashboardName: `Workflow - ${workflow.name}`,
+      dashboardName: `Workflow - ${workflow.workflowName}`,
       widgets: [
         [
           new aws_cloudwatch.GraphWidget({
