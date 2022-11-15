@@ -11,7 +11,7 @@
     "typeRoots": ["./node_modules/@types"],
     "allowJs": true
   },
-  "include": ["src"],
+  "include": ["src", "src/package.json"],
   "exclude": ["lib", "node_modules"],
   "references": []
 }

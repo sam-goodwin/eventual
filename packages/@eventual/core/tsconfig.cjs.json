@@ -10,6 +10,6 @@
     "allowJs": true
   },
   "include": ["src"],
-  "exclude": ["lib", "node_modules"],
+  "exclude": ["lib", "node_modules", "src/package.json"],
   "references": []
 }
