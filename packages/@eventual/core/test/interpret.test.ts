@@ -3,7 +3,7 @@ import "jest";
 import {
   interpret,
   eventual,
-  Future,
+  Eventual,
   Result,
   WorkflowEventType,
   WorkflowResult,
@@ -22,7 +22,7 @@ function* myWorkflow(event: any): Program<any> {
     // dangling - it should still be scheduled
     createActivityCall("my-activity-0", [event]);
 
-    const all = yield* Future.all([
+    const all = yield* Eventual.all([
       createActivityCall("my-activity-1", [event]),
       createActivityCall("my-activity-2", [event]),
     ]);
@@ -144,7 +144,7 @@ test("should await an un-awaited returned AwaitAll", () => {
     const inner = eventual(function* () {
       return `foo-${i++}`;
     });
-    return Future.all([inner(), inner()]);
+    return Eventual.all([inner(), inner()]);
   }
 
   expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
@@ -153,9 +153,9 @@ test("should await an un-awaited returned AwaitAll", () => {
   });
 });
 
-test("should support Future.all of function calls", () => {
+test("should support Eventual.all of function calls", () => {
   function* workflow(items: string[]) {
-    return Future.all(
+    return Eventual.all(
       items.map(
         eventual(function* (item): Program {
           return yield createActivityCall("process-item", [item]);
@@ -183,9 +183,9 @@ test("should support Future.all of function calls", () => {
   });
 });
 
-test("should have left-to-right determinism semantics for Future.all", () => {
+test("should have left-to-right determinism semantics for Eventual.all", () => {
   function* workflow(items: string[]) {
-    return Future.all([
+    return Eventual.all([
       createActivityCall("before", ["before"]),
       ...items.map(
         eventual(function* (item) {
@@ -252,7 +252,7 @@ test("try-catch-finally with dangling promise in catch", () => {
 test("throw error within nested function", () => {
   function* workflow(items: string[]) {
     try {
-      yield* Future.all(
+      yield* Eventual.all(
         items.map(
           eventual(function* (item) {
             const result = yield createActivityCall("inside", [item]);
@@ -320,7 +320,7 @@ test("throw error within nested function", () => {
 
 test("properly evaluate yield* of sub-programs", () => {
   function* sub() {
-    const item = yield* Future.all([
+    const item = yield* Eventual.all([
       createActivityCall("a", []),
       createActivityCall("b", []),
     ]);
@@ -353,10 +353,10 @@ test("properly evaluate yield* of sub-programs", () => {
   });
 });
 
-test("properly evaluate yield of Future.all", () => {
+test("properly evaluate yield of Eventual.all", () => {
   function* workflow() {
     // @ts-ignore
-    const item = yield Future.all([
+    const item = yield Eventual.all([
       createActivityCall("a", []),
       createActivityCall("b", []),
     ]);
