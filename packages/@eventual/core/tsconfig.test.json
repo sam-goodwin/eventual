@@ -1,7 +1,9 @@
 {
   "extends": "../../../tsconfig-base",
   "compilerOptions": {
-    "module": "NodeNext",
+    "module": "esnext",
+    "target": "esnext",
+    "moduleResolution": "node",
     "declaration": true,
     "inlineSourceMap": true,
     "rootDir": ".",

@@ -11,6 +11,12 @@
       "path": "packages/@eventual/core"
     },
     {
+      "path": "packages/@eventual/core/tsconfig.cjs.json"
+    },
+    {
+      "path": "packages/@eventual/compiler"
+    },
+    {
       "path": "packages/@eventual/core/tsconfig.test.json"
     },
     {
@@ -18,6 +24,9 @@
     },
     {
       "path": "packages/@eventual/aws-runtime"
+    },
+    {
+      "path": "packages/@eventual/aws-runtime/tsconfig.cjs.json"
     },
     {
       "path": "packages/@eventual/cli"

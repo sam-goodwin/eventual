@@ -3,6 +3,7 @@ import { constants } from "fs";
 import path from "path";
 import esbuild from "esbuild";
 import { eventualESPlugin } from "./esbuild-plugin";
+import { esbuildPluginAliasPath } from "esbuild-plugin-alias-path";
 
 main().catch((err) => {
   console.error(err);
@@ -11,6 +12,7 @@ main().catch((err) => {
 
 async function main() {
   const [, , outDir, entry] = process.argv;
+
   if (!(outDir && entry)) {
     throw new Error(`Usage: eventual-build <out-dir> <entry-point>`);
   }
@@ -18,23 +20,62 @@ async function main() {
   await prepareOutDir(outDir);
 
   await Promise.all([
-    fs.writeFile(
-      path.join(outDir, "orchestrator.js"),
-      `import app from "./app";
-import { orchestrator } from "@eventual/aws-runtime";
-
-export default orchestrator(app);
-`
-    ),
-    esbuild.build({
-      mainFields: ["module", "main"],
-      sourcemap: true,
-      plugins: [eventualESPlugin],
-      bundle: true,
-      entryPoints: [entry],
-      outfile: path.join(outDir, "app.js"),
-    }),
+    esbuild
+      .build({
+        mainFields: ["module", "main"],
+        sourcemap: true,
+        plugins: [
+          esbuildPluginAliasPath({
+            alias: { "@eventual/injected/workflow": entry },
+          }),
+          eventualESPlugin,
+        ],
+        conditions: ["module", "import", "require"],
+        platform: "node",
+        format: "cjs",
+        metafile: true,
+        bundle: true,
+        entryPoints: [
+          path.join(
+            require.resolve("@eventual/aws-runtime"),
+            "../../esm/entry/orchestrator.js"
+          ),
+        ],
+        outfile: path.join(outDir, "orchestrator/index.js"),
+      })
+      .then(writeEsBuildMetafile(path.join(outDir, "orchestrator/meta.json"))),
+    esbuild
+      .build({
+        mainFields: ["module", "main"],
+        sourcemap: true,
+        plugins: [
+          esbuildPluginAliasPath({
+            alias: { "@eventual/injected/activities": entry },
+          }),
+        ],
+        conditions: ["module", "import", "require"],
+        platform: "node",
+        format: "cjs",
+        metafile: true,
+        bundle: true,
+        entryPoints: [
+          path.join(
+            require.resolve("@eventual/aws-runtime"),
+            "../../esm/entry/activity-worker.js"
+          ),
+        ],
+        outfile: path.join(outDir, "activity-worker/index.js"),
+      })
+      .then(
+        writeEsBuildMetafile(path.join(outDir, "activity-worker/meta.json"))
+      ),
   ]);
+}
+
+function writeEsBuildMetafile(path: string) {
+  return (
+    esbuildResult: esbuild.BuildResult & { metafile: esbuild.Metafile }
+  ) => fs.writeFile(path, JSON.stringify(esbuildResult.metafile));
 }
 
 async function prepareOutDir(outDir: string) {

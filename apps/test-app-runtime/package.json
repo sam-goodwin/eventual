@@ -7,12 +7,19 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
-    "@eventual/core": "workspace:^"
+    "@aws-sdk/client-s3": "^3.204.0",
+    "@aws-sdk/client-dynamodb": "^3.204.0",
+    "@aws-sdk/client-sqs": "^3.204.0",
+    "@aws-sdk/client-lambda": "^3.204.0",
+    "@eventual/aws-runtime": "workspace:^",
+    "@eventual/core": "workspace:^",
+    "ulid": "^2.3.0"
   },
   "devDependencies": {
     "@eventual/compiler": "workspace:^",
     "@types/jest": "^29",
     "@types/node": "^16",
+    "@types/aws-lambda": "^8.10.108",
     "jest": "^29",
     "ts-jest": "^29",
     "ts-node": "^10.9.1",

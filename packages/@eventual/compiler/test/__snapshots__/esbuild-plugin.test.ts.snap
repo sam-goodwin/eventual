@@ -1,24 +1,72 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`esbuild-plugin 1`] = `
+exports[`esbuild-plugin json file 1`] = `
+"(() => {
+  // test-files/json-file.json
+  var json_file_default = {};
+})();
+"
+`;
+
+exports[`esbuild-plugin mts workflow 1`] = `
+""use strict";
+(() => {
+  // test-files/workflow.mts
+  var doWork = activity("doWork", async (input) => input);
+  var workflow_default = eventual(function* (input) {
+    const items = yield doWork(input);
+    yield Eventual.all(items.map(eventual(function* (item) {
+      yield doWork(item);
+    })));
+    yield Eventual.all(items.map(eventual(function* (item) {
+      yield doWork(item);
+    })));
+    yield Eventual.allSettled(items.map(eventual(function* (item) {
+      yield doWork(item);
+    })));
+    yield Eventual.any(items.map(eventual(function* (item) {
+      yield doWork(item);
+    })));
+    yield Eventual.race(items.map(eventual(function* (item) {
+      yield doWork(item);
+    })));
+  });
+})();
+"
+`;
+
+exports[`esbuild-plugin ts not workflow 1`] = `
+""use strict";
+(() => {
+  // test-files/not-workflow.ts
+  var doWork = async () => {
+  };
+  function not_workflow_default() {
+    console.log(doWork);
+  }
+})();
+"
+`;
+
+exports[`esbuild-plugin ts workflow 1`] = `
 ""use strict";
 (() => {
   var doWork = activity("doWork", async (input) => input);
   var workflow_default = eventual(function* (input) {
     const items = yield doWork(input);
-    yield Activity.all(items.map(eventual(function* (item) {
+    yield Eventual.all(items.map(eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Activity.all(items.map(eventual(function* (item) {
+    yield Eventual.all(items.map(eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Activity.allSettled(items.map(eventual(function* (item) {
+    yield Eventual.allSettled(items.map(eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Activity.any(items.map(eventual(function* (item) {
+    yield Eventual.any(items.map(eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Activity.race(items.map(eventual(function* (item) {
+    yield Eventual.race(items.map(eventual(function* (item) {
       yield doWork(item);
     })));
   });

@@ -1,20 +1,20 @@
-import { isFuture, FutureSymbol, FutureKind, Future } from "./future";
+import { isEventual, EventualSymbol, EventualKind, Eventual } from "./eventual";
 import { registerActivity } from "./global";
 import { Program } from "./interpret";
 import { Result } from "./result";
 
 export function isChain(a: any): a is Chain {
-  return isFuture(a) && a[FutureSymbol] === FutureKind.Chain;
+  return isEventual(a) && a[EventualSymbol] === EventualKind.Chain;
 }
 
 export interface Chain<T = any> extends Program<T> {
-  [FutureSymbol]: FutureKind.Chain;
+  [EventualSymbol]: EventualKind.Chain;
   result?: Result<T>;
-  awaiting?: Future;
+  awaiting?: Eventual;
 }
 
 export function createChain(program: Program): Chain {
-  (program as any)[FutureSymbol] = FutureKind.Chain;
+  (program as any)[EventualSymbol] = EventualKind.Chain;
   return program as Chain;
 }
 

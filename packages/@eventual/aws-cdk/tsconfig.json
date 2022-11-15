@@ -8,5 +8,9 @@
     "typeRoots": ["./node_modules/@types"]
   },
   "include": ["src"],
-  "exclude": ["lib", "node_modules"]
+  "exclude": ["lib", "node_modules"],
+  "references": [
+    { "path": "../aws-runtime/tsconfig.cjs.json" },
+    { "path": "../compiler" }
+  ]
 }
