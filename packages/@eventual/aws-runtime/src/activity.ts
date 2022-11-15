@@ -1,7 +1,7 @@
 import { Command } from "@eventual/core";
 
 export interface ActivityWorkerRequest {
-  sentTimestamp: string;
+  scheduledTime: string;
   executionId: string;
   command: Command;
   retry: number;

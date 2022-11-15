@@ -3,17 +3,20 @@ import {
   ActivityFailed,
   getCallableActivity,
   getCallableActivityNames,
+  isWorkflowFailed,
   WorkflowEventType,
 } from "@eventual/core";
 import { Handler } from "aws-lambda";
 import { ActivityWorkerRequest } from "../activity.js";
 import {
   createActivityRuntimeClient,
+  createEvent,
   createExecutionHistoryClient,
   createWorkflowClient,
 } from "../clients/index.js";
 import { metricScope, Unit } from "aws-embedded-metrics";
 import { timed } from "src/metric-utils.js";
+import { workflowName } from "src/env.js";
 
 const activityRuntimeClient = createActivityRuntimeClient();
 const executionHistoryClient = createExecutionHistoryClient();
@@ -22,15 +25,20 @@ const workflowClient = createWorkflowClient();
 export const activityWorker = (): Handler<ActivityWorkerRequest, void> => {
   return metricScope((metrics) => async (request) => {
     const activityHandle = `${request.command.seq} for execution ${request.executionId} on retry ${request.retry}`;
-    metrics.setNamespace("Eventual.Activities");
-    metrics.putDimensions({ "Activity.Name": request.command.name });
-    metrics.putMetric(
-      "Activity.RequestAge",
-      new Date().getTime() - new Date(request.sentTimestamp).getTime(),
-      Unit.Milliseconds
-    );
+    metrics.resetDimensions(false);
+    metrics.setNamespace("Eventual");
+    metrics.putDimensions({
+      ActivityName: request.command.name,
+      WorkflowName: workflowName(),
+    });
+    // the time from the workflow emitting the activity scheduled command
+    // to the request being seen.
+    const start = new Date();
+    const recordAge =
+      start.getTime() - new Date(request.scheduledTime).getTime();
+    metrics.putMetric("ActivityRequestAge", recordAge, Unit.Milliseconds);
     if (
-      !(await timed(metrics, "Activity.ClaimTime", () =>
+      !(await timed(metrics, "ClaimDuration", () =>
         activityRuntimeClient.requestExecutionActivityClaim(
           request.executionId,
           request.command,
@@ -38,33 +46,33 @@ export const activityWorker = (): Handler<ActivityWorkerRequest, void> => {
         )
       ))
     ) {
-      metrics.putMetric("Activity.ClaimRejected", 1, Unit.Count);
+      metrics.putMetric("ClaimRejected", 1, Unit.Count);
       console.info(`Activity ${activityHandle} already claimed.`);
       return;
     }
-    metrics.putMetric("Activity.ClaimRejected", 0, Unit.Count);
+    metrics.putMetric("ClaimRejected", 0, Unit.Count);
 
     console.info(`Processing ${activityHandle}.`);
 
     const activity = getCallableActivity(request.command.name);
     try {
       if (!activity) {
-        metrics.putMetric("Activity.NotFoundError", 1, Unit.Count);
+        metrics.putMetric("NotFoundError", 1, Unit.Count);
         throw new ActivityNotFoundError(request.command.name);
       }
 
-      const result = await timed(metrics, "Activity.OperationTime", () =>
+      const result = await timed(metrics, "OperationDuration", () =>
         activity(...request.command.args)
       );
       if (result) {
-        metrics.putMetric("Activity.HasResult", 1, Unit.Count);
+        metrics.setProperty("HasResult", 1);
         metrics.putMetric(
-          "Activity.ResultBytes",
+          "ResultBytes",
           JSON.stringify(result).length,
           Unit.Bytes
         );
       } else {
-        metrics.putMetric("Activity.HasResult", 0, Unit.Count);
+        metrics.setProperty("HasResult", 0);
       }
 
       console.info(
@@ -72,32 +80,17 @@ export const activityWorker = (): Handler<ActivityWorkerRequest, void> => {
       );
 
       // TODO: do not write event here, write it in the orchestrator.
-      const event = await timed(
-        metrics,
-        "Activity.CreateCompletedEventTime",
-        () =>
-          executionHistoryClient.createAndPutEvent<ActivityCompleted>(
-            request.executionId,
-            {
-              type: WorkflowEventType.ActivityCompleted,
-              seq: request.command.seq,
-              result,
-            }
-          )
-      );
+      const endTime = new Date();
+      const duration = recordAge + (endTime.getTime() - start.getTime());
+      const event = createEvent<ActivityCompleted>({
+        type: WorkflowEventType.ActivityCompleted,
+        seq: request.command.seq,
+        duration,
+        result,
+      });
 
-      await timed(metrics, "Activity.SubmitWorkflowTaskTime", () =>
-        workflowClient.submitWorkflowTask(request.executionId, event)
-      );
-
-      metrics.putMetric("Activity.Failed", 0, Unit.Count);
-      metrics.putMetric("Activity.Completed", 1, Unit.Count);
-
-      console.info(`Workflow task and events sent`);
+      await finishActivity(event);
     } catch (err) {
-      metrics.putMetric("Activity.Failed", 1, Unit.Count);
-      metrics.putMetric("Activity.Completed", 0, Unit.Count);
-
       const [error, message] =
         err instanceof Error
           ? [err.name, err.message]
@@ -108,25 +101,41 @@ export const activityWorker = (): Handler<ActivityWorkerRequest, void> => {
       );
 
       // TODO: do not write event here, write it in the orchestrator.
-      const event = await timed(
-        metrics,
-        "Activity.CreateCompletedEventTime",
-        () =>
-          executionHistoryClient.createAndPutEvent<ActivityFailed>(
-            request.executionId,
-            {
-              type: WorkflowEventType.ActivityFailed,
-              seq: request.command.seq,
-              error,
-              message,
-            }
-          )
+      const endTime = new Date();
+      const duration = recordAge + (endTime.getTime() - start.getTime());
+      const event = createEvent<ActivityFailed>(
+        {
+          type: WorkflowEventType.ActivityFailed,
+          seq: request.command.seq,
+          duration,
+          error,
+          message,
+        },
+        endTime
       );
 
-      await timed(metrics, "Activity.SubmitWorkflowTaskTime", () =>
+      await finishActivity(event);
+
+      throw err;
+    }
+
+    function logActivityCompleteMetrics(failed: boolean, duration: number) {
+      metrics.putMetric("ActivityFailed", failed ? 1 : 0, Unit.Count);
+      metrics.putMetric("ActivityCompleted", failed ? 0 : 1, Unit.Count);
+      // The total time from the activity being scheduled until it's result is send to the workflow.
+      metrics.putMetric("TotalDuration", duration);
+    }
+
+    async function finishActivity(event: ActivityCompleted | ActivityFailed) {
+      await timed(metrics, "EmitEventDuration", () =>
+        executionHistoryClient.putEvent(request.executionId, event)
+      );
+
+      await timed(metrics, "SubmitWorkflowTaskDuration", () =>
         workflowClient.submitWorkflowTask(request.executionId, event)
       );
-      throw err;
+
+      logActivityCompleteMetrics(isWorkflowFailed(event), event.duration);
     }
   });
 };

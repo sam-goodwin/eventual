@@ -29,6 +29,7 @@ import {
 import { SQSHandler, SQSRecord } from "aws-lambda";
 import { createMetricsLogger, Unit } from "aws-embedded-metrics";
 import { timed, timedSync } from "../metric-utils.js";
+import { workflowName } from "../env.js";
 
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowRuntimeClient = createWorkflowRuntimeClient();
@@ -89,10 +90,16 @@ export function orchestrator(
       records: SQSRecord[]
     ) {
       const metrics = createMetricsLogger();
+      metrics.resetDimensions(false);
+      metrics.setNamespace("Eventual");
+      metrics.setDimensions({ WorkflowName: workflowName() });
       const events = sqsRecordsToEvents(records);
+      const start = new Date();
       try {
         // number of events that came from the workflow task
-        metrics.setProperty("request.events", events.length);
+        metrics.setProperty("TaskEvents", events.length);
+        // number of workflow tasks that are being processed in the batch (max: 10)
+        metrics.setProperty("AggregatedTasks", records.length);
 
         /** Events to be written to the history table at the end of the workflow task */
         const newEvents: WorkflowEvent[] = [];
@@ -100,18 +107,20 @@ export function orchestrator(
         metrics.setProperty("ExecutionId", executionId);
         metrics.setProperty("Version", "v1");
         // length of time the oldest SQS record was in the queue.
-        metrics.putMetric(
-          "request.message.maxAge",
-          Math.max(
-            ...records.map(
-              (r) => new Date().getTime() - Number(r.attributes.SentTimestamp)
-            )
-          ),
-          Unit.Milliseconds
+        const maxTaskAge = Math.max(
+          ...records.map(
+            (r) => new Date().getTime() - Number(r.attributes.SentTimestamp)
+          )
         );
+        metrics.putMetric("MaxTaskAge", maxTaskAge, Unit.Milliseconds);
+
         // max number of times the sqs record was received by pollers.
+        // use the max because any subsequent tasks are considered
+        // an aggregation of the oldest task.
+        // Lambda FIFO SQS poller would allow for a max of 10 workflow tasks to be
+        // processed in a batch.
         metrics.setProperty(
-          "request.message.maxReceived",
+          "MaxTaskReceived",
           Math.max(
             ...records.map((r) => Number(r.attributes.ApproximateReceiveCount))
           )
@@ -125,12 +134,11 @@ export function orchestrator(
 
         console.debug("Load history");
         // load history
-        const history = await timed(metrics, "get.history.time", async () =>
+        const history = await timed(metrics, "LoadHistoryDuration", async () =>
           workflowRuntimeClient.getHistory(executionId)
         );
 
-        metrics.setProperty("history.get.count", history.length);
-        metrics.setProperty("request.events", events.length);
+        metrics.setProperty("LoadedHistoryEvents", history.length);
 
         // historical events and incoming events will be fed into the workflow to resume/progress state
         const inputEvents = [...history, ...events];
@@ -152,23 +160,30 @@ export function orchestrator(
         const interpretEvents = inputEvents.filter(isHistoryEvent);
         const { result, commands: newCommands } = timedSync(
           metrics,
-          "interpret.time",
+          "AdvanceExecutionDuration",
           () => interpret(program(startEvent.input), interpretEvents)
         );
-        metrics.setProperty("interpret.events.counts", interpretEvents.length);
+        metrics.setProperty("AdvanceExecutionEvents", interpretEvents.length);
 
         console.debug("Workflow terminated with: " + JSON.stringify(result));
 
         console.info(`Found ${newCommands.length} new commands.`);
 
-        const commandEvents = await timed(metrics, "processCommands.time", () =>
-          processCommands(newCommands)
+        const commandEvents = await timed(
+          metrics,
+          "InvokeCommandsDuration",
+          () => processCommands(newCommands)
         );
 
+        metrics.putMetric("CommandsInvoked", newCommands.length, Unit.Count);
+
+        // tracks the time it takes for a workflow task to be scheduled until new commands could be emitted.
+        // This represent the workflow orchestration time of User Perceived Latency
+        // Average expected time for an activity to be invoked until it is considered complete by the workflow should follow:
+        // AvgActivityDuration(N) = Avg(TimeToCommandsInvoked) + Avg(ActivityDuration(N))
         metrics.putMetric(
-          "processCommands.count",
-          newCommands.length,
-          Unit.Count
+          "TimeToCommandsInvoked",
+          maxTaskAge + (new Date().getTime() - start.getTime())
         );
 
         newEvents.push(...commandEvents);
@@ -179,17 +194,13 @@ export function orchestrator(
         // for now, we'll just write the awaitable command events to s3 as those are the ones needed to reconstruct the workflow.
         const { bytes: historyUpdatedBytes } = await timed(
           metrics,
-          "history.update.time",
+          "SaveHistoryDuration",
           () =>
             workflowRuntimeClient.updateHistory(executionId, newHistoryEvents)
         );
 
-        metrics.setProperty("history.update.count", newHistoryEvents.length);
-        metrics.putMetric(
-          "history.update.bytes",
-          historyUpdatedBytes,
-          Unit.Bytes
-        );
+        metrics.setProperty("SavedHistoryEvents", newHistoryEvents.length);
+        metrics.putMetric("SavedHistoryBytes", historyUpdatedBytes, Unit.Bytes);
 
         newEvents.push(
           createEvent<WorkflowTaskCompleted>({
@@ -213,8 +224,11 @@ export function orchestrator(
               })
             );
 
-            const execution = await timed(metrics, "failExecution.time", () =>
-              workflowRuntimeClient.failExecution(executionId, error, message)
+            const execution = await timed(
+              metrics,
+              "ExecutionStatusUpdateDuration",
+              () =>
+                workflowRuntimeClient.failExecution(executionId, error, message)
             );
 
             logExecutionCompleteMetrics(execution);
@@ -228,7 +242,7 @@ export function orchestrator(
 
             const execution = await timed(
               metrics,
-              "completeExecution.time",
+              "ExecutionStatusUpdateDuration",
               () =>
                 workflowRuntimeClient.completeExecution(
                   executionId,
@@ -239,33 +253,33 @@ export function orchestrator(
           }
         }
 
-        await timed(metrics, "putEvents.time", () =>
+        await timed(metrics, "AddNewExecutionEventsDuration", () =>
           executionHistoryClient.putEvents(executionId, newEvents)
         );
-        metrics.setProperty("putEvents.count", newEvents.length);
+        metrics.setProperty("NewExecutionEvents", newEvents.length);
 
         function logExecutionCompleteMetrics(
           execution: CompleteExecution | FailedExecution
         ) {
           metrics.putMetric(
-            "execution.complete",
+            "ExecutionComplete",
             execution.status === ExecutionStatus.COMPLETE ? 1 : 0,
             Unit.Count
           );
           metrics.putMetric(
-            "execution.failed",
+            "ExecutionFailed",
             execution.status === ExecutionStatus.COMPLETE ? 0 : 1,
             Unit.Count
           );
           console.log("logging for execution" + JSON.stringify(execution));
           metrics.putMetric(
-            "execution.totalTime",
+            "ExecutionTotalDuration",
             new Date(execution.endTime).getTime() -
               new Date(execution.startTime).getTime()
           );
           if (isCompleteExecution(execution)) {
             metrics.putMetric(
-              "execution.resultSize",
+              "ExecutionResultBytes",
               execution.result ? JSON.stringify(execution.result).length : 0,
               Unit.Bytes
             );

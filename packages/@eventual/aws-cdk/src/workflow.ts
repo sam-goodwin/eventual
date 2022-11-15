@@ -20,7 +20,7 @@ import {
   ITable,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
-import { RemovalPolicy } from "aws-cdk-lib";
+import { Names, RemovalPolicy } from "aws-cdk-lib";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import path from "path";
@@ -29,12 +29,14 @@ import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
 
 export interface WorkflowProps {
   entry: string;
+  name?: string;
   environment?: {
     [key: string]: string;
   };
 }
 
 export class Workflow extends Construct implements IGrantable {
+  public readonly workflowName: string;
   /**
    * S3 bucket that contains events necessary to replay a workflow execution.
    *
@@ -74,6 +76,8 @@ export class Workflow extends Construct implements IGrantable {
 
   constructor(scope: Construct, id: string, props: WorkflowProps) {
     super(scope, id);
+
+    this.workflowName = props.name ?? Names.uniqueResourceName(this, {});
 
     // ExecutionHistoryBucket
     this.history = new Bucket(this, "History", {

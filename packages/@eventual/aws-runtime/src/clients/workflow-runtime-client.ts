@@ -144,7 +144,7 @@ export class WorkflowRuntimeClient {
 
   async scheduleActivity(executionId: string, command: Command) {
     const request: ActivityWorkerRequest = {
-      sentTimestamp: new Date().toISOString(),
+      scheduledTime: new Date().toISOString(),
       executionId,
       command,
       retry: 0,

@@ -7,6 +7,7 @@ export namespace ENV_NAMES {
   export const WORKFLOW_FUNCTION_NAME = "WORKFLOW_FUNCTION_NAME";
   export const ACTIVITY_WORKER_FUNCTION_NAME = "ACTIVITY_WORKER_FUNCTION_NAME";
   export const ACTIVITY_LOCK_TABLE_NAME = "ACTIVITY_LOCK_TABLE_NAME";
+  export const WORKFLOW_NAME = "WORKFLOW_NAME";
   /**
    * A flag that determines if a function is an activity worker.
    *
@@ -32,3 +33,4 @@ export const activityWorkerFunctionName = () =>
   tryGetEnv(ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME);
 export const activityLockTableName = () =>
   tryGetEnv(ENV_NAMES.ACTIVITY_LOCK_TABLE_NAME);
+export const workflowName = () => tryGetEnv(ENV_NAMES.WORKFLOW_NAME);
