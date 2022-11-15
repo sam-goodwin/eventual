@@ -1,7 +1,12 @@
-import { isEventual, EventualSymbol, EventualKind, Eventual } from "./eventual";
-import { registerActivity } from "./global";
-import { Program } from "./interpret";
-import { Result } from "./result";
+import {
+  isEventual,
+  EventualSymbol,
+  EventualKind,
+  Eventual,
+} from "./eventual.js";
+import { registerActivity } from "./global.js";
+import { Program } from "./interpret.js";
+import { Result } from "./result.js";
 
 export function isChain(a: any): a is Chain {
   return isEventual(a) && a[EventualSymbol] === EventualKind.Chain;
