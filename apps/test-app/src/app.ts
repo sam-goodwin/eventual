@@ -5,10 +5,6 @@ const app = new App();
 
 const stack = new Stack(app, "test-eventual");
 
-new Workflow(stack, "workflow1", {
-  entry: require.resolve("test-app-runtime/lib/my-workflow.js"),
-});
-
 const accountTable = new aws_dynamodb.Table(stack, "Accounts", {
   partitionKey: {
     name: "pk",

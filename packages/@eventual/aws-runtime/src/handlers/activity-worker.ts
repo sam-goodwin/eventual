@@ -41,7 +41,7 @@ export const activityWorker = (): Handler<ActivityWorkerRequest, void> => {
 
       // TODO: lock
 
-      const result = await activity(request.command.args);
+      const result = await activity(...request.command.args);
 
       console.info(
         `Activity ${activityHandle} succeeded, reporting back to execution.`

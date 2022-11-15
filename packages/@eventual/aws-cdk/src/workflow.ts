@@ -149,6 +149,7 @@ export class Workflow extends Construct implements IGrantable {
       runtime: Runtime.NODEJS_16_X,
       memorySize: 512,
       environment: {
+        NODE_OPTIONS: "--enable-source-maps",
         [ENV_NAMES.TABLE_NAME]: this.table.tableName,
         [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
         [ENV_NAMES.ACTIVITY_LOCK_TABLE_NAME]: this.locksTable.tableName,
@@ -169,6 +170,7 @@ export class Workflow extends Construct implements IGrantable {
       runtime: Runtime.NODEJS_16_X,
       memorySize: 512,
       environment: {
+        NODE_OPTIONS: "--enable-source-maps",
         [ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME]:
           this.activityWorker.functionName,
         [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
