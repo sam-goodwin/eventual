@@ -1,12 +1,14 @@
 import { assertNonNull } from "@eventual/core";
 
 export namespace ENV_NAMES {
-  export const TABLE_NAME = "TABLE_NAME";
-  export const EXECUTION_HISTORY_BUCKET = "EXECUTION_HISTORY_BUCKET";
-  export const WORKFLOW_QUEUE_URL = "WORKFLOW_QUEUE_URL";
-  export const WORKFLOW_FUNCTION_NAME = "WORKFLOW_FUNCTION_NAME";
-  export const ACTIVITY_WORKER_FUNCTION_NAME = "ACTIVITY_WORKER_FUNCTION_NAME";
-  export const ACTIVITY_LOCK_TABLE_NAME = "ACTIVITY_LOCK_TABLE_NAME";
+  export const TABLE_NAME = "EVENTUAL_TABLE_NAME";
+  export const EXECUTION_HISTORY_BUCKET = "EVENTUAL_EXECUTION_HISTORY_BUCKET";
+  export const WORKFLOW_QUEUE_URL = "EVENTUAL_WORKFLOW_QUEUE_URL";
+  export const WORKFLOW_FUNCTION_NAME = "EVENTUAL_WORKFLOW_FUNCTION_NAME";
+  export const ACTIVITY_WORKER_FUNCTION_NAME =
+    "EVENTUAL_ACTIVITY_WORKER_FUNCTION_NAME";
+  export const ACTIVITY_LOCK_TABLE_NAME = "EVENTUAL_ACTIVITY_LOCK_TABLE_NAME";
+  export const WORKFLOW_NAME = "EVENTUAL_WORKFLOW_NAME";
   /**
    * A flag that determines if a function is an activity worker.
    *
@@ -32,3 +34,4 @@ export const activityWorkerFunctionName = () =>
   tryGetEnv(ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME);
 export const activityLockTableName = () =>
   tryGetEnv(ENV_NAMES.ACTIVITY_LOCK_TABLE_NAME);
+export const workflowName = () => tryGetEnv(ENV_NAMES.WORKFLOW_NAME);

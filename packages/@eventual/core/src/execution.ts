@@ -4,13 +4,42 @@ export enum ExecutionStatus {
   FAILED = "FAILED",
 }
 
-export interface Execution {
+interface ExecutionBase {
   id: string;
-  workflowId: string;
   status: ExecutionStatus;
   startTime: string;
-  endTime?: string;
+}
+
+export type Execution =
+  | InProgressExecution
+  | CompleteExecution
+  | FailedExecution;
+
+export interface InProgressExecution extends ExecutionBase {
+  status: ExecutionStatus.IN_PROGRESS;
+}
+
+export interface CompleteExecution extends ExecutionBase {
+  status: ExecutionStatus.COMPLETE;
+  endTime: string;
   result?: any;
-  error?: string;
-  message?: string;
+}
+
+export interface FailedExecution extends ExecutionBase {
+  status: ExecutionStatus.FAILED;
+  endTime: string;
+  error: string;
+  message: string;
+}
+
+export function isFailedExecution(
+  execution: Execution
+): execution is FailedExecution {
+  return execution.status === ExecutionStatus.FAILED;
+}
+
+export function isCompleteExecution(
+  execution: Execution
+): execution is CompleteExecution {
+  return execution.status === ExecutionStatus.COMPLETE;
 }

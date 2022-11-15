@@ -79,6 +79,8 @@ export function isActivityScheduled(
 
 export interface ActivityCompleted extends HistoryEventBase {
   type: WorkflowEventType.ActivityCompleted;
+  // the time from being scheduled until the activity completes.
+  duration: number;
   result: any;
 }
 
@@ -91,6 +93,8 @@ export function isActivityCompleted(
 export interface ActivityFailed extends HistoryEventBase {
   type: WorkflowEventType.ActivityFailed;
   error: string;
+  // the time from being scheduled until the activity completes.
+  duration: number;
   message: string;
 }
 

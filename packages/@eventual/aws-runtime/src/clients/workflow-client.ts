@@ -1,4 +1,8 @@
-import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
+import {
+  AttributeValue,
+  DynamoDBClient,
+  PutItemCommand,
+} from "@aws-sdk/client-dynamodb";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
   WorkflowTask,
@@ -82,10 +86,16 @@ export interface SQSWorkflowTaskMessage {
   task: WorkflowTask;
 }
 
-export interface ExecutionRecord extends Omit<Execution, "result"> {
-  pk: typeof ExecutionRecord.PRIMARY_KEY;
-  sk: `${typeof ExecutionRecord.SORT_KEY_PREFIX}${string}`;
-  result: string;
+export interface ExecutionRecord {
+  pk: { S: typeof ExecutionRecord.PRIMARY_KEY };
+  sk: { S: `${typeof ExecutionRecord.SORT_KEY_PREFIX}${string}` };
+  result?: AttributeValue.SMember;
+  id: AttributeValue.SMember;
+  status: { S: ExecutionStatus };
+  startTime: AttributeValue.SMember;
+  endTime?: AttributeValue.SMember;
+  error?: AttributeValue.SMember;
+  message?: AttributeValue.SMember;
 }
 
 export namespace ExecutionRecord {
@@ -99,10 +109,13 @@ export namespace ExecutionRecord {
 export function createExecutionFromResult(
   execution: ExecutionRecord
 ): Execution {
-  const { result, pk, sk, ...rest } = execution;
-
   return {
-    ...rest,
-    result: result ? JSON.parse(result) : undefined,
-  };
+    id: execution.id.S,
+    endTime: execution.endTime?.S,
+    error: execution.error?.S,
+    message: execution.message?.S,
+    result: execution.result ? JSON.parse(execution.result.S) : undefined,
+    startTime: execution.startTime.S,
+    status: execution.status.S,
+  } as Execution;
 }
