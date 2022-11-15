@@ -15,8 +15,8 @@ import {
   createWorkflowClient,
 } from "../clients/index.js";
 import { metricScope, Unit } from "aws-embedded-metrics";
-import { timed } from "src/metric-utils.js";
-import { workflowName } from "src/env.js";
+import { timed } from "../metrics/utils.js";
+import { workflowName } from "../env.js";
 
 const activityRuntimeClient = createActivityRuntimeClient();
 const executionHistoryClient = createExecutionHistoryClient();

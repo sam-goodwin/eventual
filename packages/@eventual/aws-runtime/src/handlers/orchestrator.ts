@@ -28,8 +28,9 @@ import {
 } from "../clients/index.js";
 import { SQSHandler, SQSRecord } from "aws-lambda";
 import { createMetricsLogger, Unit } from "aws-embedded-metrics";
-import { timed, timedSync } from "../metric-utils.js";
+import { timed, timedSync } from "../metrics/utils.js";
 import { workflowName } from "../env.js";
+import { OrchestratorMetrics } from "src/metrics/constants.js";
 
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowRuntimeClient = createWorkflowRuntimeClient();
@@ -91,39 +92,39 @@ export function orchestrator(
     ) {
       const metrics = createMetricsLogger();
       metrics.resetDimensions(false);
-      metrics.setNamespace("Eventual");
-      metrics.setDimensions({ WorkflowName: workflowName() });
+      metrics.setNamespace(OrchestratorMetrics.Namespace);
+      metrics.setDimensions({
+        [OrchestratorMetrics.WorkflowNameDimension]: workflowName(),
+      });
       const events = sqsRecordsToEvents(records);
       const start = new Date();
       try {
         // number of events that came from the workflow task
-        metrics.setProperty("TaskEvents", events.length);
+        metrics.setProperty(OrchestratorMetrics.TaskEvents, events.length);
         // number of workflow tasks that are being processed in the batch (max: 10)
-        metrics.setProperty("AggregatedTasks", records.length);
+        metrics.setProperty(
+          OrchestratorMetrics.AggregatedTasks,
+          records.length
+        );
 
         /** Events to be written to the history table at the end of the workflow task */
         const newEvents: WorkflowEvent[] = [];
 
-        metrics.setProperty("ExecutionId", executionId);
-        metrics.setProperty("Version", "v1");
+        metrics.setProperty(OrchestratorMetrics.ExecutionId, executionId);
+        metrics.setProperty(
+          OrchestratorMetrics.Version,
+          OrchestratorMetrics.VersionV1
+        );
         // length of time the oldest SQS record was in the queue.
         const maxTaskAge = Math.max(
           ...records.map(
             (r) => new Date().getTime() - Number(r.attributes.SentTimestamp)
           )
         );
-        metrics.putMetric("MaxTaskAge", maxTaskAge, Unit.Milliseconds);
-
-        // max number of times the sqs record was received by pollers.
-        // use the max because any subsequent tasks are considered
-        // an aggregation of the oldest task.
-        // Lambda FIFO SQS poller would allow for a max of 10 workflow tasks to be
-        // processed in a batch.
-        metrics.setProperty(
-          "MaxTaskReceived",
-          Math.max(
-            ...records.map((r) => Number(r.attributes.ApproximateReceiveCount))
-          )
+        metrics.putMetric(
+          OrchestratorMetrics.MaxTaskAge,
+          maxTaskAge,
+          Unit.Milliseconds
         );
 
         newEvents.push(
@@ -134,11 +135,16 @@ export function orchestrator(
 
         console.debug("Load history");
         // load history
-        const history = await timed(metrics, "LoadHistoryDuration", async () =>
-          workflowRuntimeClient.getHistory(executionId)
+        const history = await timed(
+          metrics,
+          OrchestratorMetrics.LoadHistoryDuration,
+          async () => workflowRuntimeClient.getHistory(executionId)
         );
 
-        metrics.setProperty("LoadedHistoryEvents", history.length);
+        metrics.setProperty(
+          OrchestratorMetrics.LoadedHistoryEvents,
+          history.length
+        );
 
         // historical events and incoming events will be fed into the workflow to resume/progress state
         const inputEvents = [...history, ...events];
@@ -160,10 +166,13 @@ export function orchestrator(
         const interpretEvents = inputEvents.filter(isHistoryEvent);
         const { result, commands: newCommands } = timedSync(
           metrics,
-          "AdvanceExecutionDuration",
+          OrchestratorMetrics.AdvanceExecutionDuration,
           () => interpret(program(startEvent.input), interpretEvents)
         );
-        metrics.setProperty("AdvanceExecutionEvents", interpretEvents.length);
+        metrics.setProperty(
+          OrchestratorMetrics.AdvanceExecutionEvents,
+          interpretEvents.length
+        );
 
         console.debug("Workflow terminated with: " + JSON.stringify(result));
 
@@ -171,18 +180,22 @@ export function orchestrator(
 
         const commandEvents = await timed(
           metrics,
-          "InvokeCommandsDuration",
+          OrchestratorMetrics.InvokeCommandsDuration,
           () => processCommands(newCommands)
         );
 
-        metrics.putMetric("CommandsInvoked", newCommands.length, Unit.Count);
+        metrics.putMetric(
+          OrchestratorMetrics.CommandsInvoked,
+          newCommands.length,
+          Unit.Count
+        );
 
         // tracks the time it takes for a workflow task to be scheduled until new commands could be emitted.
         // This represent the workflow orchestration time of User Perceived Latency
         // Average expected time for an activity to be invoked until it is considered complete by the workflow should follow:
         // AvgActivityDuration(N) = Avg(TimeToCommandsInvoked) + Avg(ActivityDuration(N))
         metrics.putMetric(
-          "TimeToCommandsInvoked",
+          OrchestratorMetrics.TimeToCommandsInvoked,
           maxTaskAge + (new Date().getTime() - start.getTime())
         );
 
@@ -194,13 +207,20 @@ export function orchestrator(
         // for now, we'll just write the awaitable command events to s3 as those are the ones needed to reconstruct the workflow.
         const { bytes: historyUpdatedBytes } = await timed(
           metrics,
-          "SaveHistoryDuration",
+          OrchestratorMetrics.SaveHistoryDuration,
           () =>
             workflowRuntimeClient.updateHistory(executionId, newHistoryEvents)
         );
 
-        metrics.setProperty("SavedHistoryEvents", newHistoryEvents.length);
-        metrics.putMetric("SavedHistoryBytes", historyUpdatedBytes, Unit.Bytes);
+        metrics.setProperty(
+          OrchestratorMetrics.SavedHistoryEvents,
+          newHistoryEvents.length
+        );
+        metrics.putMetric(
+          OrchestratorMetrics.SavedHistoryBytes,
+          historyUpdatedBytes,
+          Unit.Bytes
+        );
 
         newEvents.push(
           createEvent<WorkflowTaskCompleted>({
@@ -226,7 +246,7 @@ export function orchestrator(
 
             const execution = await timed(
               metrics,
-              "ExecutionStatusUpdateDuration",
+              OrchestratorMetrics.ExecutionStatusUpdateDuration,
               () =>
                 workflowRuntimeClient.failExecution(executionId, error, message)
             );
@@ -242,7 +262,7 @@ export function orchestrator(
 
             const execution = await timed(
               metrics,
-              "ExecutionStatusUpdateDuration",
+              OrchestratorMetrics.ExecutionStatusUpdateDuration,
               () =>
                 workflowRuntimeClient.completeExecution(
                   executionId,
@@ -253,33 +273,38 @@ export function orchestrator(
           }
         }
 
-        await timed(metrics, "AddNewExecutionEventsDuration", () =>
-          executionHistoryClient.putEvents(executionId, newEvents)
+        await timed(
+          metrics,
+          OrchestratorMetrics.AddNewExecutionEventsDuration,
+          () => executionHistoryClient.putEvents(executionId, newEvents)
         );
-        metrics.setProperty("NewExecutionEvents", newEvents.length);
+        metrics.setProperty(
+          OrchestratorMetrics.NewExecutionEvents,
+          newEvents.length
+        );
 
         function logExecutionCompleteMetrics(
           execution: CompleteExecution | FailedExecution
         ) {
           metrics.putMetric(
-            "ExecutionComplete",
+            OrchestratorMetrics.ExecutionComplete,
             execution.status === ExecutionStatus.COMPLETE ? 1 : 0,
             Unit.Count
           );
           metrics.putMetric(
-            "ExecutionFailed",
+            OrchestratorMetrics.ExecutionFailed,
             execution.status === ExecutionStatus.COMPLETE ? 0 : 1,
             Unit.Count
           );
           console.log("logging for execution" + JSON.stringify(execution));
           metrics.putMetric(
-            "ExecutionTotalDuration",
+            OrchestratorMetrics.ExecutionTotalDuration,
             new Date(execution.endTime).getTime() -
               new Date(execution.startTime).getTime()
           );
           if (isCompleteExecution(execution)) {
             metrics.putMetric(
-              "ExecutionResultBytes",
+              OrchestratorMetrics.ExecutionResultBytes,
               execution.result ? JSON.stringify(execution.result).length : 0,
               Unit.Bytes
             );
