@@ -20,14 +20,16 @@ import {
   ITable,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
-import { RemovalPolicy } from "aws-cdk-lib";
+import { aws_cloudwatch, Names, RemovalPolicy } from "aws-cdk-lib";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import path from "path";
 import { execSync } from "child_process";
 import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
+import { Statistic, Unit } from "aws-cdk-lib/aws-cloudwatch";
 
 export interface WorkflowProps {
+  name?: string;
   entry: string;
   environment?: {
     [key: string]: string;
@@ -69,11 +71,22 @@ export class Workflow extends Construct implements IGrantable {
    * The lambda function which runs the user's Workflow.
    */
   public readonly orchestrator: IFunction;
-
-  readonly grantPrincipal: IPrincipal;
+  /**
+   * The {@link IPrincipal} to grant permissions to.
+   *
+   * This is the {@link activityWorker}'s {@link IPrincipal} since that is the only function
+   * running user-defined code that can interact with an external service.
+   */
+  public readonly grantPrincipal: IPrincipal;
+  /**
+   *
+   */
+  public readonly name: string;
 
   constructor(scope: Construct, id: string, props: WorkflowProps) {
     super(scope, id);
+
+    this.name = props.name ?? Names.uniqueResourceName(this, {});
 
     // ExecutionHistoryBucket
     this.history = new Bucket(this, "History", {
@@ -213,5 +226,152 @@ export class Workflow extends Construct implements IGrantable {
     this.workflowQueue.grantSendMessages(this.startWorkflowFunction);
 
     // TODO - timers and retry
+  }
+
+  /**
+   * The time taken for the {@link orchestrator} function to process a batch of events.
+   */
+  public metricOrchestrateDuration(
+    options?: aws_cloudwatch.MetricOptions
+  ): aws_cloudwatch.Metric {
+    return this.metric({
+      statistic: Statistic.AVERAGE,
+      metricName: "OrchestrateDuration",
+      unit: Unit.MILLISECONDS,
+      ...options,
+    });
+  }
+
+  /**
+   * The time taken to run the workflow's function to advance execution of the workflow.
+   *
+   * This does not include the time taken to invoke commands or save history. It is
+   * purely a metric for how well the workflow's function is performing as history grows.
+   */
+  public metricAdvanceExecutionDuration(
+    options?: aws_cloudwatch.MetricOptions
+  ): aws_cloudwatch.Metric {
+    return this.metric({
+      statistic: Statistic.AVERAGE,
+      metricName: "AdvanceExecutionDuration",
+      unit: Unit.MILLISECONDS,
+      ...options,
+    });
+  }
+
+  /**
+   * The time taken to invoke all Commands emitted by advancing a workflow.
+   */
+  public metricInvokeCommandsDuration(
+    options?: aws_cloudwatch.MetricOptions
+  ): aws_cloudwatch.Metric {
+    return this.metric({
+      statistic: Statistic.AVERAGE,
+      metricName: "InvokeCommandsDuration",
+      unit: Unit.MILLISECONDS,
+      ...options,
+    });
+  }
+
+  /**
+   * The time taken to invoke a single Command - i.e. the time taken to
+   * run the Async Invoke Lambda Function API.
+   */
+  public metricInvokeCommandDuration(
+    options?: aws_cloudwatch.MetricOptions
+  ): aws_cloudwatch.Metric {
+    return this.metric({
+      statistic: Statistic.AVERAGE,
+      metricName: "InvokeCommandDuration",
+      unit: Unit.MILLISECONDS,
+      ...options,
+    });
+  }
+
+  /**
+   * Time taken to download an execution's history from S3.
+   */
+  public metricLoadHistoryDuration(
+    options?: aws_cloudwatch.MetricOptions
+  ): aws_cloudwatch.Metric {
+    return this.metric({
+      statistic: Statistic.AVERAGE,
+      metricName: "LoadHistoryDuration",
+      unit: Unit.MILLISECONDS,
+      ...options,
+    });
+  }
+
+  /**
+   * Time taken to save an execution's history to S3.
+   */
+  public metricSaveHistoryDuration(
+    options?: aws_cloudwatch.MetricOptions
+  ): aws_cloudwatch.Metric {
+    return this.metric({
+      statistic: Statistic.AVERAGE,
+      metricName: "SaveHistoryDuration",
+      unit: Unit.MILLISECONDS,
+      ...options,
+    });
+  }
+
+  /**
+   * Time taken to replay history events through the workflow function.
+   *
+   * I.e. the time taken for the workflow to reach the current point in the execution.
+   */
+  public metricReplayHistoryDuration(
+    options?: aws_cloudwatch.MetricOptions
+  ): aws_cloudwatch.Metric {
+    return this.metric({
+      statistic: Statistic.AVERAGE,
+      metricName: "ReplayHistoryDuration",
+      unit: Unit.MILLISECONDS,
+      ...options,
+    });
+  }
+
+  /**
+   * The size of the history S3 file in bytes.
+   */
+  public metricHistorySizeBytes(
+    options?: aws_cloudwatch.MetricOptions
+  ): aws_cloudwatch.Metric {
+    return this.metric({
+      metricName: "HistorySizeBytes",
+      unit: Unit.BYTES,
+      statistic: Statistic.AVERAGE,
+      ...options,
+    });
+  }
+
+  /**
+   * The number of events stored in the history S3 file.
+   */
+  public metricHistoryNumEvents(
+    options?: aws_cloudwatch.MetricOptions
+  ): aws_cloudwatch.Metric {
+    return this.metric({
+      metricName: "HistoryNumEvents",
+      unit: Unit.COUNT,
+      statistic: Statistic.SUM,
+      ...options,
+    });
+  }
+
+  private metric(
+    options: aws_cloudwatch.MetricOptions & {
+      metricName: string;
+    }
+  ) {
+    return new aws_cloudwatch.Metric({
+      ...options,
+      namespace: "Eventual",
+      dimensionsMap: {
+        ...options?.dimensionsMap,
+        WorkflowName: this.name,
+      },
+    });
   }
 }
