@@ -5,6 +5,7 @@
   "scripts": {
     "build": "cdk synth",
     "cdk": "cdk",
+    "deploy": "cdk deploy --require-approval=never",
     "eventual": "eventual"
   },
   "dependencies": {

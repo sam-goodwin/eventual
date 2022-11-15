@@ -11,8 +11,17 @@ import {
   InvokeCommand,
   InvocationType,
 } from "@aws-sdk/client-lambda";
-import { ExecutionStatus, Command, HistoryStateEvents } from "@eventual/core";
-import { ExecutionRecord } from "./workflow-client.js";
+import {
+  ExecutionStatus,
+  Command,
+  HistoryStateEvents,
+  CompleteExecution,
+  FailedExecution,
+} from "@eventual/core";
+import {
+  createExecutionFromResult,
+  ExecutionRecord,
+} from "./workflow-client.js";
 import { ActivityWorkerRequest } from "../activity.js";
 
 export interface WorkflowRuntimeClientProps {
@@ -47,7 +56,10 @@ export class WorkflowRuntimeClient {
   }
 
   // TODO: etag
-  async updateHistory(executionId: string, events: HistoryStateEvents[]) {
+  async updateHistory(
+    executionId: string,
+    events: HistoryStateEvents[]
+  ): Promise<{ bytes: number }> {
     const content = events.map((e) => JSON.stringify(e)).join("\n");
     // get current history from s3
     await this.props.s3.send(
@@ -57,10 +69,14 @@ export class WorkflowRuntimeClient {
         Body: content,
       })
     );
+    return { bytes: content.length };
   }
 
-  async completeExecution(executionId: string, result?: any) {
-    await this.props.dynamo.send(
+  async completeExecution(
+    executionId: string,
+    result?: any
+  ): Promise<CompleteExecution> {
+    const executionResult = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
           pk: { S: ExecutionRecord.PRIMARY_KEY },
@@ -81,12 +97,21 @@ export class WorkflowRuntimeClient {
           ":endTime": { S: new Date().toISOString() },
           ...(result ? { ":result": { S: JSON.stringify(result) } } : {}),
         },
+        ReturnValues: "ALL_NEW",
       })
     );
+
+    return createExecutionFromResult(
+      executionResult.Attributes as unknown as ExecutionRecord
+    ) as CompleteExecution;
   }
 
-  async failExecution(executionId: string, error: string, message: string) {
-    await this.props.dynamo.send(
+  async failExecution(
+    executionId: string,
+    error: string,
+    message: string
+  ): Promise<FailedExecution> {
+    const executionResult = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
           pk: { S: ExecutionRecord.PRIMARY_KEY },
@@ -108,12 +133,18 @@ export class WorkflowRuntimeClient {
           ":error": { S: error },
           ":message": { S: message },
         },
+        ReturnValues: "ALL_NEW",
       })
     );
+
+    return createExecutionFromResult(
+      executionResult.Attributes as unknown as ExecutionRecord
+    ) as FailedExecution;
   }
 
   async scheduleActivity(executionId: string, command: Command) {
     const request: ActivityWorkerRequest = {
+      scheduledTime: new Date().toISOString(),
       executionId,
       command,
       retry: 0,

@@ -12,9 +12,6 @@ export interface ExecutionHistoryClientProps {
   readonly tableName: string;
 }
 
-/**
- * An event that has not been assigned a timestamp or unique ID yet.
- */
 type UnresolvedEvent<T extends WorkflowEvent> = Omit<T, "id" | "timestamp">;
 
 export class ExecutionHistoryClient {
@@ -22,18 +19,26 @@ export class ExecutionHistoryClient {
 
   public async createAndPutEvent<T extends WorkflowEvent>(
     executionId: string,
-    event: UnresolvedEvent<T>
+    event: UnresolvedEvent<T>,
+    time?: Date
   ): Promise<T> {
-    const resolvedEvent = createEvent(event);
+    const resolvedEvent = createEvent(event, time);
 
+    await this.putEvent(executionId, resolvedEvent);
+
+    return resolvedEvent;
+  }
+
+  public async putEvent<T extends WorkflowEvent>(
+    executionId: string,
+    event: T
+  ): Promise<void> {
     await this.props.dynamo.send(
       new PutItemCommand({
-        Item: createEventRecord(executionId, resolvedEvent),
+        Item: createEventRecord(executionId, event),
         TableName: this.props.tableName,
       })
     );
-
-    return resolvedEvent;
   }
 
   /**
@@ -41,9 +46,10 @@ export class ExecutionHistoryClient {
    */
   public async createAndPutEvents(
     executionId: string,
-    events: UnresolvedEvent<WorkflowEvent>[]
+    events: UnresolvedEvent<WorkflowEvent>[],
+    time?: Date
   ): Promise<WorkflowEvent[]> {
-    const resolvedEvents = events.map(createEvent);
+    const resolvedEvents = events.map((e) => createEvent(e, time));
 
     await this.putEvents(executionId, resolvedEvents);
 
@@ -73,10 +79,11 @@ export class ExecutionHistoryClient {
 }
 
 export function createEvent<T extends WorkflowEvent>(
-  event: UnresolvedEvent<T>
+  event: UnresolvedEvent<T>,
+  time: Date = new Date()
 ): T {
   const uuid = ulid();
-  const timestamp = new Date().toISOString();
+  const timestamp = time.toISOString();
 
   return { ...event, id: uuid, timestamp } as T;
 }

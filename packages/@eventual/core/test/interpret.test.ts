@@ -387,10 +387,31 @@ test("properly evaluate yield of Eventual.all", () => {
   });
 });
 
+test("generator function returns an ActivityCall", () => {
+  function* workflow() {
+    return yield* sub();
+  }
+
+  const sub = eventual(function* () {
+    return createActivityCall("call-a", []);
+  });
+
+  expect(interpret(workflow(), [])).toMatchObject({
+    commands: [createActivityCall("call-a", [], 0)],
+  });
+  expect(
+    interpret(workflow(), [scheduled("call-a", 0), completed("result", 0)])
+  ).toMatchObject({
+    result: Result.resolved("result"),
+    commands: [],
+  });
+});
+
 function completed(result: any, seq: number): ActivityCompleted {
   return {
     type: WorkflowEventType.ActivityCompleted,
     id: "id",
+    duration: 0,
     result,
     seq,
     timestamp: new Date(0).toISOString(),
@@ -401,6 +422,7 @@ function failed(error: any, seq: number): ActivityFailed {
   return {
     type: WorkflowEventType.ActivityFailed,
     id: "id",
+    duration: 0,
     error,
     message: "message",
     seq,
