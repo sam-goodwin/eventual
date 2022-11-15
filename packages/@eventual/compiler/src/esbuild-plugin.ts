@@ -9,6 +9,8 @@ import {
   Param,
   parseFile,
   print,
+  Span,
+  TsType,
 } from "@swc/core";
 import path from "path";
 import Visitor from "@swc/core/Visitor";
@@ -48,6 +50,10 @@ const supportedPromiseFunctions: string[] = [
 
 class OuterVisitor extends Visitor {
   public foundEventual = false;
+  public visitTsType(n: TsType): TsType {
+    return n;
+  }
+
   public visitCallExpression(call: CallExpression): Expression {
     if (
       isEventualCallee(call.callee) &&
@@ -64,6 +70,10 @@ class OuterVisitor extends Visitor {
 }
 
 export class InnerVisitor extends Visitor {
+  public visitTsType(n: TsType): TsType {
+    return n;
+  }
+
   public visitAwaitExpression(awaitExpr: AwaitExpression): Expression {
     return {
       type: "YieldExpression",
@@ -110,7 +120,7 @@ export class InnerVisitor extends Visitor {
   private wrapEventual(
     funcExpr: FunctionExpression | ArrowFunctionExpression
   ): CallExpression {
-    return {
+    const call: CallExpression = {
       type: "CallExpression",
       span: funcExpr.span,
       callee: {
@@ -133,6 +143,18 @@ export class InnerVisitor extends Visitor {
             body:
               funcExpr.body?.type === "BlockStatement"
                 ? this.visitBlockStatement(funcExpr.body)
+                : funcExpr.body
+                ? {
+                    type: "BlockStatement",
+                    span: getSpan(funcExpr.body),
+                    stmts: [
+                      {
+                        type: "ReturnStatement",
+                        span: getSpan(funcExpr.body),
+                        argument: this.visitExpression(funcExpr.body),
+                      },
+                    ],
+                  }
                 : undefined,
             params: funcExpr.params.map((param) =>
               param.type === "Parameter"
@@ -147,6 +169,16 @@ export class InnerVisitor extends Visitor {
         },
       ],
     };
+    return call;
+  }
+}
+
+function getSpan(expr: Expression): Span {
+  if ("span" in expr) {
+    return expr.span;
+  } else {
+    // this is only true for JSXExpressions which we should not encounter
+    throw new Error(`cannot get span of ${expr.type}`);
   }
 }
 
