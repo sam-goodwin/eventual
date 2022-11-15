@@ -24,7 +24,7 @@ interface Owner {
   lastName: string;
 }
 
-interface OpenAccountRequest {
+export interface OpenAccountRequest {
   accountId: string;
   address: PostalAddress;
   email: string;

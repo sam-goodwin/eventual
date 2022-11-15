@@ -1,4 +1,5 @@
 import { App, aws_dynamodb, Stack } from "aws-cdk-lib";
+import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Workflow } from "@eventual/aws-cdk";
 
 const app = new App();
@@ -25,3 +26,12 @@ accountTable.grantReadWriteData(openAccount);
 new Workflow(stack, "workflow1", {
   entry: require.resolve("test-app-runtime/lib/my-workflow.js"),
 });
+
+const testHarness = new NodejsFunction(stack, "testing", {
+  entry: require.resolve("test-app-runtime/lib/test.js"),
+  environment: {
+    WORKFLOW_STARTER: openAccount.startWorkflowFunction.functionName,
+  },
+});
+
+openAccount.startWorkflowFunction.grantInvoke(testHarness);
