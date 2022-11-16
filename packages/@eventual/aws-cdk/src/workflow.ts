@@ -28,6 +28,11 @@ import { execSync } from "child_process";
 import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
 import { Statistic, Unit } from "aws-cdk-lib/aws-cloudwatch";
 
+import {
+  MetricsCommon,
+  OrchestratorMetrics,
+} from "@eventual/aws-runtime/lib/cjs/metrics/constants";
+
 export interface WorkflowProps {
   entry: string;
   name?: string;
@@ -233,20 +238,6 @@ export class Workflow extends Construct implements IGrantable {
   }
 
   /**
-   * The time taken for the {@link orchestrator} function to process a batch of events.
-   */
-  public metricOrchestrateDuration(
-    options?: aws_cloudwatch.MetricOptions
-  ): aws_cloudwatch.Metric {
-    return this.metric({
-      statistic: Statistic.AVERAGE,
-      metricName: "OrchestrateDuration",
-      unit: Unit.MILLISECONDS,
-      ...options,
-    });
-  }
-
-  /**
    * The time taken to run the workflow's function to advance execution of the workflow.
    *
    * This does not include the time taken to invoke commands or save history. It is
@@ -257,8 +248,22 @@ export class Workflow extends Construct implements IGrantable {
   ): aws_cloudwatch.Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
-      metricName: "AdvanceExecutionDuration",
+      metricName: OrchestratorMetrics.AdvanceExecutionDuration,
       unit: Unit.MILLISECONDS,
+      ...options,
+    });
+  }
+
+  /**
+   * The number of commands invoked in a single batch by the orchestrator.
+   */
+  public metricCommandsInvoked(
+    options?: aws_cloudwatch.MetricOptions
+  ): aws_cloudwatch.Metric {
+    return this.metric({
+      statistic: Statistic.AVERAGE,
+      metricName: OrchestratorMetrics.CommandsInvoked,
+      unit: Unit.COUNT,
       ...options,
     });
   }
@@ -271,22 +276,7 @@ export class Workflow extends Construct implements IGrantable {
   ): aws_cloudwatch.Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
-      metricName: "InvokeCommandsDuration",
-      unit: Unit.MILLISECONDS,
-      ...options,
-    });
-  }
-
-  /**
-   * The time taken to invoke a single Command - i.e. the time taken to
-   * run the Async Invoke Lambda Function API.
-   */
-  public metricInvokeCommandDuration(
-    options?: aws_cloudwatch.MetricOptions
-  ): aws_cloudwatch.Metric {
-    return this.metric({
-      statistic: Statistic.AVERAGE,
-      metricName: "InvokeCommandDuration",
+      metricName: OrchestratorMetrics.InvokeCommandsDuration,
       unit: Unit.MILLISECONDS,
       ...options,
     });
@@ -300,7 +290,7 @@ export class Workflow extends Construct implements IGrantable {
   ): aws_cloudwatch.Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
-      metricName: "LoadHistoryDuration",
+      metricName: OrchestratorMetrics.LoadHistoryDuration,
       unit: Unit.MILLISECONDS,
       ...options,
     });
@@ -314,23 +304,7 @@ export class Workflow extends Construct implements IGrantable {
   ): aws_cloudwatch.Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
-      metricName: "SaveHistoryDuration",
-      unit: Unit.MILLISECONDS,
-      ...options,
-    });
-  }
-
-  /**
-   * Time taken to replay history events through the workflow function.
-   *
-   * I.e. the time taken for the workflow to reach the current point in the execution.
-   */
-  public metricReplayHistoryDuration(
-    options?: aws_cloudwatch.MetricOptions
-  ): aws_cloudwatch.Metric {
-    return this.metric({
-      statistic: Statistic.AVERAGE,
-      metricName: "ReplayHistoryDuration",
+      metricName: OrchestratorMetrics.SaveHistoryDuration,
       unit: Unit.MILLISECONDS,
       ...options,
     });
@@ -339,11 +313,11 @@ export class Workflow extends Construct implements IGrantable {
   /**
    * The size of the history S3 file in bytes.
    */
-  public metricHistorySizeBytes(
+  public metricSavedHistoryBytes(
     options?: aws_cloudwatch.MetricOptions
   ): aws_cloudwatch.Metric {
     return this.metric({
-      metricName: "HistorySizeBytes",
+      metricName: OrchestratorMetrics.SavedHistoryBytes,
       unit: Unit.BYTES,
       statistic: Statistic.AVERAGE,
       ...options,
@@ -353,13 +327,27 @@ export class Workflow extends Construct implements IGrantable {
   /**
    * The number of events stored in the history S3 file.
    */
-  public metricHistoryNumEvents(
+  public metricSavedHistoryEvents(
     options?: aws_cloudwatch.MetricOptions
   ): aws_cloudwatch.Metric {
     return this.metric({
-      metricName: "HistoryNumEvents",
+      metricName: OrchestratorMetrics.SavedHistoryEvents,
       unit: Unit.COUNT,
-      statistic: Statistic.SUM,
+      statistic: Statistic.AVERAGE,
+      ...options,
+    });
+  }
+
+  /**
+   * The number of commands invoked in a single batch by the orchestrator.
+   */
+  public metricMaxTaskAge(
+    options?: aws_cloudwatch.MetricOptions
+  ): aws_cloudwatch.Metric {
+    return this.metric({
+      statistic: Statistic.AVERAGE,
+      metricName: OrchestratorMetrics.MaxTaskAge,
+      unit: Unit.MILLISECONDS,
       ...options,
     });
   }
@@ -371,10 +359,10 @@ export class Workflow extends Construct implements IGrantable {
   ) {
     return new aws_cloudwatch.Metric({
       ...options,
-      namespace: "Eventual",
+      namespace: MetricsCommon.EventualNamespace,
       dimensionsMap: {
         ...options?.dimensionsMap,
-        WorkflowName: this.workflowName,
+        [MetricsCommon.WorkflowNameDimension]: this.workflowName,
       },
     });
   }

@@ -6,7 +6,7 @@ import {
   Duration,
   Stack,
 } from "aws-cdk-lib";
-import { Workflow } from "@eventual/aws-cdk";
+import { Workflow, WorkflowDashboard } from "@eventual/aws-cdk";
 
 const app = new App();
 
@@ -14,9 +14,14 @@ const stack = new Stack(app, "test-eventual");
 
 const benchWorkflow = new Workflow(stack, "Benchmark", {
   entry: require.resolve("test-app-runtime/lib/time-benchmark.js"),
-  orchestrator: {
-    reservedConcurrentExecutions: 100,
-  },
+  // TODO: wait for account limits to be raised
+  // orchestrator: {
+  //   reservedConcurrentExecutions: 100,
+  // },
+});
+
+new WorkflowDashboard(stack, "BenchmarkDashboard", {
+  workflow: benchWorkflow,
 });
 
 const bench = new aws_lambda_nodejs.NodejsFunction(stack, "BenchmarkFunc", {
