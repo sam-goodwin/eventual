@@ -66,6 +66,7 @@ importers:
       '@types/aws-lambda': ^8.10.108
       '@types/jest': ^29
       '@types/node': ^16
+      aws-embedded-metrics: 4.0.0
       jest: ^29
       ts-jest: ^29
       ts-node: ^10.9.1
@@ -79,6 +80,7 @@ importers:
       '@aws-sdk/lib-dynamodb': 3.210.0_73bdnjpthx2jju6khjl3jxm5cu
       '@eventual/aws-runtime': link:../../packages/@eventual/aws-runtime
       '@eventual/core': link:../../packages/@eventual/core
+      aws-embedded-metrics: 4.0.0
       ulid: 2.3.0
     devDependencies:
       '@eventual/compiler': link:../../packages/@eventual/compiler

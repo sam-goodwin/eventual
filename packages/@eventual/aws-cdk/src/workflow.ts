@@ -34,6 +34,9 @@ export interface WorkflowProps {
   environment?: {
     [key: string]: string;
   };
+  orchestrator?: {
+    reservedConcurrentExecutions?: number;
+  };
 }
 
 export class Workflow extends Construct implements IGrantable {
@@ -158,6 +161,8 @@ export class Workflow extends Construct implements IGrantable {
       handler: "index.default",
       runtime: Runtime.NODEJS_16_X,
       memorySize: 512,
+      reservedConcurrentExecutions:
+        props.orchestrator?.reservedConcurrentExecutions,
       environment: {
         NODE_OPTIONS: "--enable-source-maps",
         [ENV_NAMES.TABLE_NAME]: this.table.tableName,

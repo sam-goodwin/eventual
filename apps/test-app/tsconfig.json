@@ -5,6 +5,7 @@
     "declaration": true,
     "inlineSourceMap": true,
     "rootDir": "src",
+    "types": ["@types/node"],
     "typeRoots": ["./node_modules/@types"],
     "allowJs": true
   },
