@@ -75,10 +75,10 @@ export class WorkflowDashboard extends Construct {
               workflow.metricAdvanceExecutionDuration(),
             ],
             right: [
-              workflow.metricHistoryNumEvents({
+              workflow.metricSavedHistoryEvents({
                 label: "Average number of events in the History",
               }),
-              workflow.metricHistoryNumEvents({
+              workflow.metricSavedHistoryEvents({
                 label: "Maximum number of events in the History",
                 statistic: Statistic.MAXIMUM,
               }),
