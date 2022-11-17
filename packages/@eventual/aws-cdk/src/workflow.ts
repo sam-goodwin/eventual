@@ -20,7 +20,7 @@ import {
   ITable,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
-import { Names, RemovalPolicy } from "aws-cdk-lib";
+import { CfnOutput, Names, RemovalPolicy } from "aws-cdk-lib";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import path from "path";
@@ -219,5 +219,14 @@ export class Workflow extends Construct implements IGrantable {
     this.workflowQueue.grantSendMessages(this.startWorkflowFunction);
 
     // TODO - timers and retry
+    new CfnOutput(this, "workflow-data", {
+      exportName: `eventual-workflow-data:${this.workflowName}`,
+      value: JSON.stringify({
+        functions: {
+          orchestrator: this.orchestrator.functionName,
+          activityWorker: this.activityWorker.functionName,
+        },
+      }),
+    });
   }
 }

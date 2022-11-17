@@ -38,6 +38,7 @@
   "dependencies": {
     "@aws-crypto/sha256-js": "^2.0.2",
     "@aws-sdk/client-cloudformation": "^3.209.0",
+    "@aws-sdk/client-cloudwatch-logs": "^3.212.0",
     "@aws-sdk/client-iam": "^3.209.0",
     "@aws-sdk/client-sts": "^3.209.0",
     "@aws-sdk/config-resolver": "^3.209.0",
