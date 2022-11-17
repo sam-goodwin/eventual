@@ -4,4 +4,4 @@ import { cli } from "../lib/esm/cli.js";
 //Get rid of experimental fetch warning
 process.removeAllListeners("warning");
 
-cli.parse();
+cli.completion().parse();

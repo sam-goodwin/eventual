@@ -9,27 +9,36 @@ $ eventual workflows list
 ## Start a workflow (asynchronous)
 
 ```shell
-$ eventual executions new --workflow <name> --input [input-json]
+$ eventual start <workflow> [inputFile]
+Input file should be a json file.
 ```
 
-Input should be a json string. If it is an array, each item in the array will be passed to the function as a seperate parameter.
+```shell
+$ eventual start <workflow> --input '{"foo": "bar"}'
+```
 
-Alternatively, use `--input-file` to provide a json file for input
+Provide input as a json string
+
+```shell
+$ eventual start <workflow> <<< cat json-string
+```
+
+If no input is provided, it is read from stdin
 
 ## Start a workflow (tail)
 
 ```shell
-$ eventual executions new --tail --workflow <name> --input [input-json]
+$ eventual start --tail <workflow> [input]
 ```
 
-## Get execution events
+## Get execution history
 
 ```shell
-$ eventual executions events --workflow <name>
+$ eventual history <name> <execution>
 ```
 
 ## List workflow executions
 
 ```shell
-$ eventual executions list --workflow <name> --execution <id>
+$ eventual executions <name> [--sort sortKey]
 ```

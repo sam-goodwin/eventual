@@ -37,6 +37,7 @@ export class WorkflowClient {
     input,
   }: { name?: string; input?: any } = {}) {
     const executionId = `execution_${name ? name : ulid()}`;
+    console.log("execution input:", input);
 
     await this.props.dynamo.send(
       new PutItemCommand({

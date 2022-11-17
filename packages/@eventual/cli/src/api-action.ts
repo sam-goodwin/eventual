@@ -1,14 +1,14 @@
-import { Command } from "commander";
 import { HTTPError } from "ky";
 import ora, { Ora } from "ora";
+import { Arguments } from "yargs";
 import { apiKy } from "./api-ky.js";
 import { styledConsole } from "./styled-console.js";
 import type { KyInstance } from "./types.js";
 
-export type ApiAction = (
+export type ApiAction<T> = (
   spinner: Ora,
   ky: KyInstance,
-  ...args: any[]
+  args: Arguments<T>
 ) => Promise<void>;
 
 /**
@@ -16,14 +16,12 @@ export type ApiAction = (
  * @param action Callback to perform for the action
  */
 export const apiAction =
-  (action: ApiAction, _onError?: (error: any) => Promise<void> | void) =>
-  async (...args: any[]) => {
-    //last argument is the command itself, second last is options
-    const options = args.at(-2);
+  <T>(action: ApiAction<T>, _onError?: (error: any) => Promise<void> | void) =>
+  async (args: Arguments<{ region?: string } & T>) => {
     const spinner = ora().start("Preparing");
     try {
-      const ky = await apiKy(options.region);
-      return await action(spinner, ky, ...args);
+      const ky = await apiKy(args.region);
+      return await action(spinner, ky, args);
     } catch (e: any) {
       spinner.fail(e.message);
     }
@@ -52,6 +50,6 @@ export async function styledCatchApiRequestError<T>(
  * @param name command name
  * @returns the command
  */
-export const apiCommand =
-  (configure: (cmd: Command) => Command) => (command: Command) =>
-    configure(command.option("-r, --region [region]", "API region"));
+export const apiOptions = {
+  region: { alias: "r", string: true },
+} as const;

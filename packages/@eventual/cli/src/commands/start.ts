@@ -1,4 +1,3 @@
-import { apiAction, apiCommand } from "../api-action.js";
 import { styledConsole } from "../styled-console.js";
 import {
   isActivityCompleted,
@@ -11,82 +10,95 @@ import {
 } from "@eventual/core";
 import { KyInstance } from "../types.js";
 import fs from "fs/promises";
-import { Command } from "commander";
-import getStream from "get-stream";
+import getStdin from "get-stdin";
+import { apiAction, apiOptions } from "../api-action.js";
+import { Argv } from "yargs";
 
-export const start = apiCommand((command: Command) =>
-  command
-    .description("Start a workflow")
-    .argument("<name>", "Workflow name")
-    .argument("[file]", "Parameters file. If not specified, reads from stdin")
-    .option("-t, --tail", "Tail execution")
-    .action(
-      apiAction(async (spinner, ky, workflow, inputFile, { tail }) => {
-        spinner.start(`Executing ${workflow}\n`);
-        let inputJSON =
-          JSON.parse(
-            inputFile
-              ? await fs.readFile(inputFile, { encoding: "utf-8" })
-              : await getStream(process.stdin)
-          ) ?? [];
-        const { executionId } = await ky
-          .post(`workflows/${workflow}/executions`, {
-            json: inputJSON,
-          })
-          .json<{ executionId: string }>();
-        spinner.succeed(`Execution id: ${executionId}`);
-        if (tail) {
-          let events: WorkflowEvent[] = [];
-          if (!spinner.isSpinning) {
-            spinner.start(`${executionId} in progress\n`);
-          }
-          async function pollEvents() {
-            const newEvents = await getNewEvents(
-              events,
-              ky,
-              workflow,
-              executionId
-            );
-            newEvents.forEach((ev) => {
-              let meta: string | undefined;
-              if (isActivityCompleted(ev)) {
-                meta = ev.result;
-              } else if (isActivityScheduled(ev)) {
-                meta = ev.name;
-              } else if (isWorkflowStarted(ev)) {
-                meta = ev.input;
-              }
-              spinner.info(
-                ev.timestamp + " - " + ev.type + (meta ? `- ` + meta : "")
-              );
-            });
-            events.push(...newEvents);
-            const completedEvent = events.find(
-              (ev) => ev.type === WorkflowEventType.WorkflowCompleted
-            );
-            const failedEvent = events.find(
-              (ev) => ev.type === WorkflowEventType.WorkflowFailed
-            );
-            if (completedEvent) {
-              spinner.succeed("Workflow complete");
-              const { output } = completedEvent as WorkflowCompleted;
-              if (output) {
-                styledConsole.success(output);
-              }
-            } else if (failedEvent) {
-              spinner.fail("Workflow failed");
-              styledConsole.error((failedEvent as WorkflowFailed).message);
-            } else {
-              setTimeout(pollEvents, 1000);
-            }
-          }
-          await pollEvents();
-        } else {
-          styledConsole.success({ executionId });
+export const start = (yargs: Argv) =>
+  yargs.command(
+    "start <workflow> [inputFile]",
+    "Start an execution",
+    (yargs) =>
+      yargs
+        .options(apiOptions)
+        .option("tail", {
+          alias: "t",
+          describe: "Tail execution",
+          type: "boolean",
+        })
+        .positional("workflow", {
+          describe: "Workflow name",
+          type: "string",
+          demandOption: true,
+        })
+        .positional("inputFile", {
+          describe: "Input file json. If not provided, uses stdin",
+          type: "string",
+        })
+        .option("input", {
+          describe: "Input data as json string",
+          type: "string",
+        }),
+    apiAction(async (spinner, ky, { workflow, input, inputFile, tail }) => {
+      spinner.start(`Executing ${workflow}\n`);
+      let inputJSON = await getInputJson(inputFile, input);
+      const { executionId } = await ky
+        .post(`workflows/${workflow}/executions`, {
+          json: inputJSON,
+        })
+        .json<{ executionId: string }>();
+      spinner.succeed(`Execution id: ${executionId}`);
+      if (tail) {
+        let events: WorkflowEvent[] = [];
+        if (!spinner.isSpinning) {
+          spinner.start(`${executionId} in progress\n`);
         }
-      })
-    )
-);
+        async function pollEvents() {
+          const newEvents = await getNewEvents(
+            events,
+            ky,
+            workflow,
+            executionId
+          );
+          newEvents.forEach((ev) => {
+            let meta: string | undefined;
+            if (isActivityCompleted(ev)) {
+              meta = ev.result;
+            } else if (isActivityScheduled(ev)) {
+              meta = ev.name;
+            } else if (isWorkflowStarted(ev)) {
+              meta = ev.input;
+            }
+            spinner.info(
+              ev.timestamp + " - " + ev.type + (meta ? `- ` + meta : "")
+            );
+          });
+          events.push(...newEvents);
+          const completedEvent = events.find(
+            (ev) => ev.type === WorkflowEventType.WorkflowCompleted
+          );
+          const failedEvent = events.find(
+            (ev) => ev.type === WorkflowEventType.WorkflowFailed
+          );
+          if (completedEvent) {
+            spinner.succeed("Workflow complete");
+            const { output } = completedEvent as WorkflowCompleted;
+            if (output) {
+              styledConsole.success(output);
+            }
+          } else if (failedEvent) {
+            spinner.fail("Workflow failed");
+            styledConsole.error((failedEvent as WorkflowFailed).message);
+          } else {
+            setTimeout(pollEvents, 1000);
+          }
+        }
+        await pollEvents();
+      } else {
+        styledConsole.success({ executionId });
+      }
+    })
+  );
 
 /**
  * Fetch events, and return ones that we haven't seen already
@@ -107,4 +119,23 @@ async function getNewEvents(
     throw new Error("No events at all. Check your execution id");
   }
   return updatedEvents.slice(existingEvents.length);
+}
+
+/**
+ * Get input json from specified file, otherwise stdin
+ * @param inputFile file to read from
+ * @returns parsed json. Will be empty object if no input was given
+ */
+async function getInputJson(
+  inputFile: string | undefined,
+  input: string | undefined
+): Promise<any> {
+  if (inputFile) {
+    return JSON.parse(await fs.readFile(inputFile, { encoding: "utf-8" }));
+  } else if (input) {
+    return JSON.parse(input);
+  } else {
+    const stdin = await getStdin();
+    return stdin.length === 0 ? {} : JSON.parse(stdin);
+  }
 }

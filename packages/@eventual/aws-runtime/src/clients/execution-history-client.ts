@@ -82,6 +82,7 @@ export class ExecutionHistoryClient {
    * Read an execution's events from the execution history table table
    */
   public async getEvents(executionId: string): Promise<WorkflowEvent[]> {
+    console.log(executionId);
     const output = await this.props.dynamo.send(
       new QueryCommand({
         TableName: this.props.tableName,

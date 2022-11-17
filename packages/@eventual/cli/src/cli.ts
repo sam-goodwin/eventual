@@ -1,12 +1,16 @@
-import { program } from "commander";
-import { addCommands } from "./command.js";
 import { executions } from "./commands/executions.js";
-import { status } from "./commands/status.js";
+import { history } from "./commands/history.js";
 import { start } from "./commands/start.js";
 import { workflows } from "./commands/workflows.js";
+import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
 
-const cli = program.name("eventual").description("Eventual CLI");
+const argv = hideBin(process.argv);
+const cli = yargs(argv);
+[workflows, start, executions, history].forEach((cmd) => cmd(cli));
 
-addCommands(cli, { workflows, start, executions, status });
+if (argv.length == 0) {
+  cli.showHelp();
+}
 
 export { cli };
