@@ -1,6 +1,7 @@
 import { App, aws_dynamodb, Stack } from "aws-cdk-lib";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Workflow } from "@eventual/aws-cdk";
+import { Tester } from "./tester";
 
 const app = new App();
 
@@ -35,3 +36,5 @@ const testHarness = new NodejsFunction(stack, "testing", {
 });
 
 openAccount.startWorkflowFunction.grantInvoke(testHarness);
+
+new Tester(stack, "tester");
