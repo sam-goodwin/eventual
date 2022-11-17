@@ -6,6 +6,7 @@ import {
   isReportProgressMessage,
   ProgressState,
 } from "../messages.js";
+import { ProgressBar } from "react-bootstrap";
 
 // [WEBSOCKETURL] will be replaced at deployment time.
 const websocketUrl = "[WEBSOCKETURL]";
@@ -50,8 +51,13 @@ const App = () => {
           {Object.values(progresses)
             .reverse()
             .map((s) => (
-              <div>
-                {s.id}:{s.value}/{s.goal}
+              <div id={s.id}>
+                {s.id}:
+                <ProgressBar
+                  variant={s.done ? "success" : undefined}
+                  animated={!s.done}
+                  now={((s.value * 1.0) / s.goal) * 100}
+                />
               </div>
             ))}
         </div>

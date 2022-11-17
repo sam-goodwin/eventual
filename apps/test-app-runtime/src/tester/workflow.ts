@@ -88,7 +88,7 @@ export default eventual(async (request: Request) => {
     value = value + props.step;
   }
 
-  const progressState = { done: false, goal: props.goal, value, id };
+  const progressState = { done: true, goal: props.goal, value, id };
   await Promise.all([persist(progressState), report(progressState)]);
 
   return "DONE";
