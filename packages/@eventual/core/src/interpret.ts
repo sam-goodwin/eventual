@@ -1,7 +1,7 @@
-import { Eventual, isEventual } from "./eventual";
-import { isAwaitAll } from "./await-all";
-import { ActivityCall, isActivityCall } from "./activity-call";
-import { DeterminismError } from "./error";
+import { Eventual, isEventual } from "./eventual.js";
+import { isAwaitAll } from "./await-all.js";
+import { ActivityCall, isActivityCall } from "./activity-call.js";
+import { DeterminismError } from "./error.js";
 import {
   ActivityCompleted,
   ActivityFailed,
@@ -10,8 +10,8 @@ import {
   isActivityCompleted,
   isActivityFailed,
   isActivityScheduled,
-} from "./events";
-import { collectActivities } from "./global";
+} from "./events.js";
+import { collectActivities } from "./global.js";
 import {
   Result,
   isResolved,
@@ -19,10 +19,10 @@ import {
   isPending,
   Resolved,
   Failed,
-} from "./result";
-import { createChain, isChain, Chain } from "./chain";
-import { assertNever } from "./util";
-import { Command } from "./command";
+} from "./result.js";
+import { createChain, isChain, Chain } from "./chain.js";
+import { assertNever } from "./util.js";
+import { Command } from "./command.js";
 
 export interface WorkflowResult<T = any> {
   /**

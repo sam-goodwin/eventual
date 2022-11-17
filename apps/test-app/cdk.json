@@ -1,3 +1,4 @@
 {
-  "app": "ts-node ./src/app.ts"
+  "app": "ts-node ./src/app.ts",
+  "watch": "."
 }

@@ -1,5 +1,10 @@
-import { isEventual, EventualSymbol, Eventual, EventualKind } from "./eventual";
-import { Failed, Resolved } from "./result";
+import {
+  isEventual,
+  EventualSymbol,
+  Eventual,
+  EventualKind,
+} from "./eventual.js";
+import { Failed, Resolved } from "./result.js";
 
 export function isAwaitAll(a: any): a is AwaitAll<any> {
   return isEventual(a) && a[EventualSymbol] === EventualKind.AwaitAll;

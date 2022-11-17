@@ -1,0 +1,11 @@
+{
+  "accountId": "4",
+  "address": { "address1": "Home" },
+  "email": "test@test.com",
+  "bankDetails": {
+    "accountNumber": "123",
+    "accountType": "savings",
+    "personOwner": { "firstName": "John", "lastName": "Smith" },
+    "routingNumber": "345"
+  }
+}

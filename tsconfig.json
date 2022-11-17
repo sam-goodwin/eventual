@@ -29,6 +29,9 @@
       "path": "packages/@eventual/aws-runtime/tsconfig.cjs.json"
     },
     {
+      "path": "packages/@eventual/cli"
+    },
+    {
       "path": "apps/test-app"
     },
     {

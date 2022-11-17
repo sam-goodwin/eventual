@@ -1,4 +1,4 @@
-import { Eventual } from "./eventual";
+import { Eventual } from "./eventual.js";
 
 export const ResultSymbol = Symbol.for("eventual:Result");
 

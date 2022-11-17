@@ -3,6 +3,7 @@ import {
   BatchWriteItemCommand,
   DynamoDBClient,
   PutItemCommand,
+  QueryCommand,
 } from "@aws-sdk/client-dynamodb";
 import { WorkflowEvent } from "@eventual/core";
 import { ulid } from "ulid";
@@ -75,6 +76,24 @@ export class ExecutionHistoryClient {
         },
       })
     );
+  }
+
+  /**
+   * Read an execution's events from the execution history table table
+   */
+  public async getEvents(executionId: string): Promise<WorkflowEvent[]> {
+    console.log(executionId);
+    const output = await this.props.dynamo.send(
+      new QueryCommand({
+        TableName: this.props.tableName,
+        KeyConditionExpression: "pk = :pk AND begins_with ( sk, :sk )",
+        ExpressionAttributeValues: {
+          ":pk": { S: EventRecord.PRIMARY_KEY },
+          ":sk": { S: EventRecord.sortKey(executionId, "") },
+        },
+      })
+    );
+    return output.Items!.map((item) => JSON.parse(item.event!.S!));
   }
 }
 
