@@ -9,7 +9,9 @@
   "dependencies": {
     "aws-cdk-lib": "^2.50.0",
     "constructs": "^10.1.154",
-    "ulid": "^2.3.0"
+    "ulid": "^2.3.0",
+    "@aws-cdk/aws-apigatewayv2-integrations-alpha": "^2.50.0-alpha.0",
+    "@aws-cdk/aws-apigatewayv2-alpha": "^2.50.0-alpha.0"
   },
   "devDependencies": {
     "@types/jest": "^29",
