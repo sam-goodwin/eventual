@@ -6,12 +6,20 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { ExecutionHistoryClient, WorkflowClient } from "@eventual/aws-runtime";
 import { SQSClient } from "@aws-sdk/client-sqs";
+import {
+  InvocationType,
+  InvokeCommand,
+  LambdaClient,
+} from "@aws-sdk/client-lambda";
+import { InitRequest } from "./init-function.js";
 
 const tableName = process.env.TABLE_NAME ?? "";
 const workflowTable = process.env.WORKFLOW_TABLE ?? "";
 const dynamo = new DynamoDBClient({});
 const sqs = new SQSClient({});
 const workflowQueueUrl = process.env.WORKFLOW_QUEUE_URL ?? "";
+const lambda = new LambdaClient({});
+const initFunctionName = process.env.INIT_FUNCTION_NAME;
 
 const workflowClient = new WorkflowClient({
   dynamo,
@@ -42,7 +50,23 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         TableName: tableName,
       })
     );
-    return { statusCode: 200 };
+
+    const initRequest: InitRequest = {
+      connectionId,
+      url: `https://${event.requestContext.domainName}/${event.requestContext.stage}`,
+    };
+
+    await lambda.send(
+      new InvokeCommand({
+        FunctionName: initFunctionName,
+        InvocationType: InvocationType.Event,
+        Payload: Buffer.from(JSON.stringify(initRequest)),
+      })
+    );
+
+    return {
+      statusCode: 200,
+    };
   } else if (routeKey === "$disconnect") {
     await dynamo.send(
       new DeleteItemCommand({
@@ -71,7 +95,7 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
     const started = await workflowClient.startWorkflow(request);
 
     return {
-      body: JSON.stringify({ executionId: started }),
+      body: JSON.stringify({ id: started }),
       statusCode: 200,
     };
   }

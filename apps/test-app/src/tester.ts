@@ -30,12 +30,15 @@ export class Tester extends Construct {
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
-    const workflow = new Workflow(this, "testWorkflow", {
-      entry: require.resolve("test-app-runtime/lib/tester/workflow.js"),
+    // sends a message to the connected client on connect which contains the current in progress workflows.
+    const wsInit = new NodejsFunction(this, "InitFunction", {
+      entry: require.resolve("test-app-runtime/lib/tester/init-function.js"),
       environment: {
         TABLE_NAME: table.tableName,
       },
     });
+
+    table.grantReadData(wsInit);
 
     const wsHandler = new NodejsFunction(this, "node", {
       entry: require.resolve(
@@ -43,10 +46,11 @@ export class Tester extends Construct {
       ),
       environment: {
         TABLE_NAME: table.tableName,
-        WORKFLOW_TABLE: workflow.table.tableName,
-        WORKFLOW_QUEUE_URL: workflow.workflowQueue.queueUrl,
+        INIT_FUNCTION_NAME: wsInit.functionName,
       },
     });
+
+    wsInit.grantInvoke(wsHandler);
 
     const handlerIntegration = new WebSocketLambdaIntegration(
       "handler",
@@ -58,6 +62,8 @@ export class Tester extends Construct {
       disconnectRouteOptions: { integration: handlerIntegration },
       defaultRouteOptions: { integration: handlerIntegration },
     });
+
+    api.grantManageConnections(wsInit);
 
     // @ts-ignore - integration isn't exposed, but integrationId is needed to create a response.
     const integration = handlerIntegration.integration as WebSocketIntegration;
@@ -117,11 +123,25 @@ export class Tester extends Construct {
       destinationBucket: webBucket,
     });
 
+    const workflow = new Workflow(this, "testWorkflow", {
+      entry: require.resolve("test-app-runtime/lib/tester/workflow.js"),
+      environment: {
+        TABLE_NAME: table.tableName,
+        WEBSOCKET_URL: apiStage.callbackUrl,
+      },
+    });
+
+    wsHandler.addEnvironment("WORKFLOW_TABLE", workflow.table.tableName);
+    wsHandler.addEnvironment(
+      "WORKFLOW_QUEUE_URL",
+      workflow.workflowQueue.queueUrl
+    );
+
     // Grant the worker the ability to send messages to connections.
     api.grantManageConnections(workflow.grantPrincipal);
 
     // Grant the worker the ability to read from dynamo
-    table.grantReadData(workflow.activityWorker);
+    table.grantReadWriteData(workflow.activityWorker);
     table.grantReadWriteData(wsHandler);
 
     // TODO: Support method on Workflow to grant all start workflow permissions

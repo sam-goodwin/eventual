@@ -3,11 +3,17 @@ import {
   ApiGatewayManagementApiClient,
   PostToConnectionCommand,
 } from "@aws-sdk/client-apigatewaymanagementapi";
-import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBClient,
+  PutItemCommand,
+  QueryCommand,
+} from "@aws-sdk/client-dynamodb";
+import { ulid } from "ulid";
+import { ProgressState } from "./messages.js";
 
 const dynamo = new DynamoDBClient({});
 const apig = new ApiGatewayManagementApiClient({
-  endpoint: "https://nklz9hg986.execute-api.us-east-1.amazonaws.com/dev",
+  endpoint: process.env.WEBSOCKET_URL,
 });
 const tableName = process.env.TABLE_NAME;
 
@@ -46,14 +52,17 @@ interface Props {
 
 export type Request = Partial<Props>;
 
+const defaults: Props = {
+  delaySeconds: 1,
+  goal: 100,
+  reportInterval: 1,
+  start: 0,
+  step: 1,
+};
+
 export default eventual(async (request: Request) => {
-  const defaults: Props = {
-    delaySeconds: 1,
-    goal: 100,
-    reportInterval: 1,
-    start: 0,
-    step: 1,
-  };
+  // TODO create random value or reference execution id
+  const id = await getId();
 
   const props: Props = {
     ...defaults,
@@ -63,10 +72,15 @@ export default eventual(async (request: Request) => {
   let value = props.start;
   let nextReportValue = value + props.reportInterval;
 
+  persist({ done: false, goal: props.goal, id, value });
+
   while (value < props.goal) {
     if (value >= nextReportValue) {
       nextReportValue = value + props.reportInterval;
-      report(value / (props.goal * 1.0), value, false);
+      // TODO: get the execution id;
+      const progressState = { done: false, goal: props.goal, value, id };
+      persist(progressState);
+      report(progressState);
     }
 
     await delay(props.delaySeconds);
@@ -74,45 +88,63 @@ export default eventual(async (request: Request) => {
     value = value + props.step;
   }
 
-  await report(1, value, true);
+  const progressState = { done: false, goal: props.goal, value, id };
+  await Promise.all([persist(progressState), report(progressState)]);
 
   return "DONE";
 });
 
-const report = activity(
-  "report",
-  async (progress: number, value: number, done: boolean) => {
-    const connectionsResults = await dynamo.send(
-      new QueryCommand({
-        KeyConditionExpression: "pk=:pk and begins_with(sk,:sk)",
-        ExpressionAttributeValues: {
-          ":pk": { S: "Connection" },
-          ":sk": { S: "C#" },
-        },
-        TableName: tableName,
-      })
-    );
+const report = activity("report", async (progress: ProgressState) => {
+  const connectionsResults = await dynamo.send(
+    new QueryCommand({
+      KeyConditionExpression: "pk=:pk and begins_with(sk,:sk)",
+      ExpressionAttributeValues: {
+        ":pk": { S: "Connection" },
+        ":sk": { S: "C#" },
+      },
+      TableName: tableName,
+    })
+  );
 
-    const connections =
-      connectionsResults.Items?.map((s) => s.connectionId?.S).filter(
-        (s): s is string => !!s
-      ) ?? [];
+  const connections =
+    connectionsResults.Items?.map((s) => s.connectionId?.S).filter(
+      (s): s is string => !!s
+    ) ?? [];
 
-    console.log("Reporting to " + connections.join(","));
+  console.log("Reporting to " + connections.join(","));
 
-    await Promise.allSettled(
-      connections.map((c) =>
-        apig.send(
-          new PostToConnectionCommand({
-            ConnectionId: c,
-            Data: Buffer.from(JSON.stringify({ progress, value, done })),
-          })
-        )
+  await Promise.allSettled(
+    connections.map((c) =>
+      apig.send(
+        new PostToConnectionCommand({
+          ConnectionId: c,
+          Data: Buffer.from(
+            JSON.stringify({ action: "progressUpdate", progress })
+          ),
+        })
       )
-    );
-  }
-);
+    )
+  );
+});
+
+const persist = activity("persist", async (progress: ProgressState) => {
+  await dynamo.send(
+    new PutItemCommand({
+      Item: {
+        pk: { S: "Progress" },
+        sk: { S: `P#${progress.id}` },
+        state: { S: JSON.stringify(progress) },
+        done: { BOOL: progress.done },
+      },
+      TableName: tableName,
+    })
+  );
+});
 
 const delay = activity("delay", async (seconds: number) => {
   return new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+});
+
+const getId = activity("getId", () => {
+  return ulid();
 });
