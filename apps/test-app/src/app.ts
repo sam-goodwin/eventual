@@ -1,5 +1,5 @@
 import { App, aws_dynamodb, Stack } from "aws-cdk-lib";
-import { Workflow } from "@eventual/aws-cdk";
+import { EventualApi, Workflow } from "@eventual/aws-cdk";
 
 const app = new App();
 
@@ -15,6 +15,7 @@ const accountTable = new aws_dynamodb.Table(stack, "Accounts", {
 
 const openAccount = new Workflow(stack, "OpenAccount", {
   entry: require.resolve("test-app-runtime/lib/open-account.js"),
+  name: "open-account",
   environment: {
     TABLE_NAME: accountTable.tableName,
   },
@@ -22,6 +23,11 @@ const openAccount = new Workflow(stack, "OpenAccount", {
 
 accountTable.grantReadWriteData(openAccount);
 
-new Workflow(stack, "workflow1", {
+const myWorkflow = new Workflow(stack, "workflow1", {
+  name: "my-workflow",
   entry: require.resolve("test-app-runtime/lib/my-workflow.js"),
+});
+
+new EventualApi(stack, "api", {
+  workflows: [myWorkflow, openAccount],
 });

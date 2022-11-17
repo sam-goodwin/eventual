@@ -1,4 +1,4 @@
-import type { Eventual } from "./eventual";
+import type { Eventual } from "./eventual.js";
 
 export function registerActivity<A extends Eventual>(activity: A): A {
   activityCollector.push(activity);

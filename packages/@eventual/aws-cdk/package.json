@@ -7,6 +7,7 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
+    "@aws-cdk/aws-apigatewayv2-authorizers-alpha": "2.50.0-alpha.0",
     "@eventual/aws-runtime": "workspace:^",
     "@eventual/compiler": "workspace:^",
     "ulid": "^2.3.0"
@@ -17,6 +18,10 @@
     "esbuild": "^0.15.13"
   },
   "devDependencies": {
+    "@aws-cdk/aws-apigatewayv2-alpha": "2.50.0-alpha.0",
+    "@aws-cdk/aws-apigatewayv2-integrations-alpha": "2.50.0-alpha.0",
+    "@aws-sdk/client-lambda": "^3.209.0",
+    "@types/aws-lambda": "8.10.108",
     "@types/jest": "^29",
     "@types/node": "^16",
     "aws-cdk": "2.50.0",

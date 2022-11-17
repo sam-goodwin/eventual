@@ -39,7 +39,7 @@ const workflowRuntimeClient = createWorkflowRuntimeClient();
  * Creates an entrypoint function for orchestrating a workflow.
  */
 export function orchestrator(
-  program: (...args: any[]) => Program<any>
+  program: (input: any) => Program<any>
 ): SQSHandler {
   return async (event) => {
     console.debug("Handle workflowQueue records");
@@ -167,7 +167,10 @@ export function orchestrator(
         const { result, commands: newCommands } = timedSync(
           metrics,
           OrchestratorMetrics.AdvanceExecutionDuration,
-          () => interpret(program(startEvent.input), interpretEvents)
+          () => {
+            const input = JSON.parse(startEvent.input);
+            return interpret(program(input), interpretEvents);
+          }
         );
         metrics.setProperty(
           OrchestratorMetrics.AdvanceExecutionEvents,

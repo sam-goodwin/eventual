@@ -1,7 +1,7 @@
-import { Program } from "./interpret";
-import { registerChain, Chain } from "./chain";
-import { ActivityCall } from "./activity-call";
-import { AwaitAll } from "./await-all";
+import { Program } from "./interpret.js";
+import { registerChain, Chain } from "./chain.js";
+import { ActivityCall } from "./activity-call.js";
+import { AwaitAll } from "./await-all.js";
 
 export function eventual<F extends (...args: any[]) => Promise<any>>(
   func: F

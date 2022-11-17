@@ -4,14 +4,14 @@
     "module": "esnext",
     "target": "esnext",
     "outDir": "lib/esm",
-    "moduleResolution": "node",
+    "moduleResolution": "NodeNext",
     "declaration": true,
     "inlineSourceMap": true,
     "rootDir": "src",
     "typeRoots": ["./node_modules/@types"],
     "allowJs": true
   },
-  "include": ["src"],
+  "include": ["src", "src/package.json"],
   "exclude": ["lib", "node_modules"],
   "references": []
 }

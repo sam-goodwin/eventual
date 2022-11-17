@@ -1,21 +1,17 @@
 {
   "extends": "../../../tsconfig-base",
   "compilerOptions": {
-    "module": "esnext",
+    "module": "ESNext",
     "target": "esnext",
-    "moduleResolution": "node",
-    "baseUrl": ".",
+    "moduleResolution": "NodeNext",
     "outDir": "lib/esm",
     "declaration": true,
     "inlineSourceMap": true,
     "rootDir": "src",
     "typeRoots": ["./node_modules/@types"],
-    "allowJs": true,
-    "paths": {
-      "@eventual/injected/*": ["./src/injected/*"]
-    }
+    "allowJs": true
   },
-  "include": ["src", "src/package.json"],
+  "include": ["src"],
   "exclude": ["lib", "node_modules"],
-  "references": [{ "path": "../core" }]
+  "references": [{ "path": "../core" }, { "path": "../aws-runtime" }]
 }

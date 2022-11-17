@@ -1,4 +1,4 @@
-import { createActivityCall } from "./activity-call";
+import { createActivityCall } from "./activity-call.js";
 
 export const callableActivities: Record<string, Function> = {};
 

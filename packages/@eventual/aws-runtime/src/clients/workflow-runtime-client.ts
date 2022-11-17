@@ -1,4 +1,8 @@
-import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBClient,
+  QueryCommand,
+  UpdateItemCommand,
+} from "@aws-sdk/client-dynamodb";
 import {
   GetObjectCommand,
   GetObjectCommandOutput,
@@ -17,6 +21,7 @@ import {
   HistoryStateEvents,
   CompleteExecution,
   FailedExecution,
+  Execution,
 } from "@eventual/core";
 import {
   createExecutionFromResult,
@@ -140,6 +145,21 @@ export class WorkflowRuntimeClient {
     return createExecutionFromResult(
       executionResult.Attributes as unknown as ExecutionRecord
     ) as FailedExecution;
+  }
+
+  async getExecutions(): Promise<Execution[]> {
+    const executions = await this.props.dynamo.send(
+      new QueryCommand({
+        TableName: this.props.tableName,
+        KeyConditionExpression: "pk = :pk",
+        ExpressionAttributeValues: {
+          ":pk": { S: ExecutionRecord.PRIMARY_KEY },
+        },
+      })
+    );
+    return executions.Items!.map((execution) =>
+      createExecutionFromResult(execution as ExecutionRecord)
+    );
   }
 
   async scheduleActivity(executionId: string, command: Command) {
