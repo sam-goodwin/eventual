@@ -60,20 +60,39 @@ export function orchestrator(
       {}
     );
 
-    const executionIds = Object.keys(eventsByExecutionId);
+    console.log(
+      "Found execution ids: " + Object.keys(eventsByExecutionId).join(", ")
+    );
 
-    console.log("Found execution ids: " + executionIds.join(", "));
-
-    // TODO: handle errors and partial batch failures
     // for each execution id
-    await Promise.all(
-      Object.entries(eventsByExecutionId).map(([executionId, records]) =>
+    const results = await promiseAllSettledPartitioned(
+      Object.entries(eventsByExecutionId),
+      async ([executionId, records]) =>
         orchestrateExecution(executionId, records)
-      )
+    );
+
+    console.debug(
+      "Executions succeeded: " +
+        results.fulfilled.map(([[executionId]]) => executionId).join(",")
+    );
+
+    if (results.rejected.length > 0) {
+      console.error(
+        "Executions failed: \n" +
+          results.rejected
+            .map(([[executionId], error]) => `${executionId}: ${error}`)
+            .join("\n")
+      );
+    }
+
+    const failedRecords = results.rejected.flatMap(
+      ([[, records]]) => records ?? []
     );
 
     return {
-      batchItemFailures: [],
+      batchItemFailures: failedRecords.map((r) => ({
+        itemIdentifier: r.messageId,
+      })),
     };
 
     function sqsRecordsToEvents(sqsRecords: SQSRecord[]) {
@@ -342,5 +361,31 @@ export function orchestrator(
         await metrics.flush();
       }
     }
+  };
+}
+
+async function promiseAllSettledPartitioned<T, R>(
+  items: T[],
+  op: (item: T) => Promise<R>
+): Promise<{
+  fulfilled: [T, Awaited<R>][];
+  rejected: [T, string][];
+}> {
+  const results = await Promise.allSettled(items.map(op));
+
+  const enumerated = results.map((r, i) => [r, i] as const);
+
+  return {
+    fulfilled: enumerated
+      .filter(
+        (t): t is [PromiseFulfilledResult<Awaited<R>>, number] =>
+          t[0].status === "fulfilled"
+      )
+      .map(([r, i]) => [items[i]!, r.value] as [T, Awaited<R>]),
+    rejected: enumerated
+      .filter(
+        (t): t is [PromiseRejectedResult, number] => t[0].status === "rejected"
+      )
+      .map(([r, i]) => [items[i]!, r.reason] as [T, string]),
   };
 }
