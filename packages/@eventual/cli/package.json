@@ -48,7 +48,9 @@
     "@eventual/core": "workspace:^",
     "chalk": "^5.1.2",
     "commander": "^9.4.1",
+    "get-stream": "^6.0.1",
     "ky-universal": "^0.11.0",
-    "ora": "^6.1.2"
+    "ora": "^6.1.2",
+    "zx": "^7.1.1"
   }
 }

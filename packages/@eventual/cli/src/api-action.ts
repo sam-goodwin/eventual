@@ -52,6 +52,6 @@ export async function styledCatchApiRequestError<T>(
  * @param name command name
  * @returns the command
  */
-export function apiCommand(name: string): Command {
-  return new Command(name).option("-r, --region [region]", "API region");
-}
+export const apiCommand =
+  (configure: (cmd: Command) => Command) => (command: Command) =>
+    configure(command.option("-r, --region [region]", "API region"));

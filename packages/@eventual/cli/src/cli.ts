@@ -1,17 +1,12 @@
 import { program } from "commander";
-import { executionEvents } from "./commands/executions/events.js";
-import { listExecutions } from "./commands/executions/list.js";
-import { newExecution } from "./commands/executions/new.js";
-import { listWorkflows } from "./commands/workflow/list.js";
+import { addCommands } from "./command.js";
+import { executions } from "./commands/executions.js";
+import { status } from "./commands/status.js";
+import { start } from "./commands/start.js";
+import { workflows } from "./commands/workflows.js";
 
-const cli = program.name("stik").description("Eventual CLI");
+const cli = program.name("eventual").description("Eventual CLI");
 
-cli.command("workflows").addCommand(listWorkflows);
-
-cli
-  .command("executions")
-  .addCommand(listExecutions)
-  .addCommand(newExecution)
-  .addCommand(executionEvents);
+addCommands(cli, { workflows, start, executions, status });
 
 export { cli };
