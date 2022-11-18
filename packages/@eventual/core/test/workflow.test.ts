@@ -8,6 +8,7 @@ import {
 } from "../src/events";
 import { progressWorkflow } from "../src/workflow";
 import { DeterminismError } from "../src/error";
+import { WorkflowContext } from "../src/contex";
 
 function* myWorkflow(event: any): Program<any> {
   yield createActivityCall("my-activity", [event]);
@@ -19,6 +20,7 @@ const started1: WorkflowStarted = {
   id: "1",
   input: `""`,
   timestamp: "",
+  context: { name: "" },
 };
 
 const scheduled2: ActivityScheduled = {
@@ -47,14 +49,28 @@ const completed4: ActivityCompleted = {
   timestamp: "",
 };
 
+const context: WorkflowContext = { name: "testWorkflow" };
+
 test("history", () => {
-  const { history } = progressWorkflow(myWorkflow, [started1], []);
+  const { history } = progressWorkflow(
+    myWorkflow,
+    [started1],
+    [],
+    context,
+    "executionId"
+  );
 
   expect(history).toEqual([started1]);
 });
 
 test("start", () => {
-  const { history } = progressWorkflow(myWorkflow, [], [started1]);
+  const { history } = progressWorkflow(
+    myWorkflow,
+    [],
+    [started1],
+    context,
+    "executionId"
+  );
 
   expect(history).toEqual([started1]);
 });
@@ -63,7 +79,9 @@ test("start with tasks", () => {
   const { history } = progressWorkflow(
     myWorkflow,
     [],
-    [started1, scheduled2, completed3]
+    [started1, scheduled2, completed3],
+    context,
+    "executionId"
   );
 
   expect(history).toEqual([started1, scheduled2, completed3]);
@@ -73,7 +91,9 @@ test("start with history", () => {
   const { history } = progressWorkflow(
     myWorkflow,
     [started1, scheduled2],
-    [completed3]
+    [completed3],
+    context,
+    "executionId"
   );
 
   expect(history).toEqual([started1, scheduled2, completed3]);
@@ -83,7 +103,9 @@ test("start with duplicate events", () => {
   const { history } = progressWorkflow(
     myWorkflow,
     [started1, scheduled2, completed3],
-    [completed3]
+    [completed3],
+    context,
+    "executionId"
   );
 
   expect(history).toEqual([started1, scheduled2, completed3]);
@@ -94,7 +116,9 @@ test("start with invalid task events", () => {
     progressWorkflow(
       myWorkflow,
       [started1, scheduled2, completed3],
-      [completed4, completed3]
+      [completed4, completed3],
+      context,
+      "executionId"
     )
   ).toThrow(DeterminismError);
 });
@@ -104,7 +128,9 @@ test("start with invalid workflow events", () => {
     progressWorkflow(
       myWorkflow,
       [started1, scheduled2, completed3, completed4],
-      [completed3]
+      [completed3],
+      context,
+      "executionId"
     )
   ).toThrow(DeterminismError);
 });

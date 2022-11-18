@@ -1,3 +1,4 @@
+import { ExecutionContext } from "./contex.js";
 import { DeterminismError } from "./error.js";
 
 export interface BaseEvent {
@@ -50,6 +51,7 @@ export type WorkflowEvent =
 export interface WorkflowStarted extends BaseEvent {
   type: WorkflowEventType.WorkflowStarted;
   input?: any;
+  context: Omit<ExecutionContext, "id" | "startTime">;
 }
 
 export function isWorkflowStarted(
