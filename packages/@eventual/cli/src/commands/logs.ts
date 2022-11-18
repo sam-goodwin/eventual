@@ -3,6 +3,11 @@ import * as cfn from "@aws-sdk/client-cloudformation";
 import ora from "ora";
 import { Argv } from "yargs";
 import chalk from "chalk";
+import {
+  FunctionLogInput,
+  getInterleavedLogEvents,
+  getNextFunctionLogInputs,
+} from "../logs.js";
 
 export const logs = (yargs: Argv) =>
   yargs.command(
@@ -30,31 +35,23 @@ export const logs = (yargs: Argv) =>
       const { functions } = JSON.parse(workflowData);
       const cloudwatchLogsClient = new cwLogs.CloudWatchLogsClient({});
 
-      async function pollLogs(functions: FunctionLogPollData[]) {
+      async function pollLogs(functions: FunctionLogInput[]) {
         const logs = await Promise.all(
-          functions.map(async ({ friendlyName, functionName, startTime }) => {
-            const { events } = await cloudwatchLogsClient.send(
+          functions.map(async ({ functionName, startTime }) =>
+            cloudwatchLogsClient.send(
               new cwLogs.FilterLogEventsCommand({
                 logGroupName: `/aws/lambda/${functionName}`,
                 startTime: startTime,
               })
-            );
-            const latestEvent = events?.at(-1)?.timestamp;
-            return {
-              functionName,
-              friendlyName,
-              logs: events?.map((ev) => ({ source: friendlyName, ev })) ?? [],
-              startTime: latestEvent ? latestEvent + 1 : startTime,
-            };
-          })
+            )
+          )
         );
-        const allEvents = logs.flatMap(({ logs }) => logs);
-        allEvents.sort((a, b) => a.ev.timestamp! - b.ev.timestamp!);
+        const interleavedEvents = getInterleavedLogEvents(functions, logs);
 
-        if (allEvents.length) {
+        if (interleavedEvents.length) {
           spinner.clear();
 
-          allEvents.forEach(({ source, ev }) =>
+          interleavedEvents.forEach(({ source, ev }) =>
             console.log(
               `[${chalk.blue(source)}] ${chalk.red(
                 new Date(ev.timestamp!).toLocaleString()
@@ -64,7 +61,10 @@ export const logs = (yargs: Argv) =>
 
           spinner.start("Watching logs");
         }
-        setTimeout(() => pollLogs(logs), 1000);
+        setTimeout(
+          () => pollLogs(getNextFunctionLogInputs(functions, logs)),
+          1000
+        );
       }
 
       spinner.start("Watching logs");
@@ -83,9 +83,3 @@ export const logs = (yargs: Argv) =>
       ]);
     }
   );
-
-interface FunctionLogPollData {
-  functionName: string;
-  friendlyName: string;
-  startTime: number;
-}
