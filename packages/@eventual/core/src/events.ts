@@ -49,7 +49,7 @@ export type WorkflowEvent =
 
 export interface WorkflowStarted extends BaseEvent {
   type: WorkflowEventType.WorkflowStarted;
-  input: any;
+  input?: any;
 }
 
 export function isWorkflowStarted(

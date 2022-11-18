@@ -36,9 +36,8 @@ export function progressWorkflow(
 
   // execute workflow
   const interpretEvents = inputEvents.filter(isHistoryEvent);
-  const input = JSON.parse(startEvent.input);
   return {
-    ...interpret(program(input), interpretEvents),
+    ...interpret(program(startEvent.input), interpretEvents),
     history: inputEvents,
   };
 }
