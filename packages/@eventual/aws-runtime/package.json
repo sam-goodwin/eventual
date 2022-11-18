@@ -41,15 +41,27 @@
     "typescript": "^4.8.4"
   },
   "jest": {
+    "extensionsToTreatAsEsm": [
+      ".ts"
+    ],
     "roots": [
       "<rootDir>/src/"
     ],
-    "preset": "ts-jest",
     "transform": {
-      "^.+\\.(t|j)sx?$": "ts-jest"
+      "^.+\\.tsx?$": [
+        "ts-jest",
+        {
+          "tsconfig": "tsconfig.test.json",
+          "useESM": true
+        }
+      ]
     },
+    "modulePathIgnorePatterns": [
+      "/home/sussmans/eventual/packages/@eventual/core/lib/esm/package.json"
+    ],
     "moduleNameMapper": {
-      "@eventual/injected/(.*)": "<rootDir>/src/injected/$1"
+      "@eventual/injected/(.*)": "<rootDir>/src/injected/$1",
+      "^(\\.{1,2}/.*)\\.js$": "$1"
     }
   },
   "publishConfig": {

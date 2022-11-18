@@ -1,3 +1,5 @@
+import { DeterminismError } from "./error.js";
+
 export interface BaseEvent {
   type: WorkflowEventType;
   id: string;
@@ -152,4 +154,63 @@ export function assertEventType<T extends WorkflowEvent>(
   if (!event || event.type !== type) {
     throw new Error(`Expected event of type ${type}`);
   }
+}
+
+/**
+ * Merges two sets of in order events. If the event overlap from events1 to event2, the overlap must be continuos until the end of event1s.
+ *
+ * This method is used to support the orchestrator consuming events from History and WorkflowTask.
+ * When orchestrator invocations fail after history has already been persisted
+ * the orchestrator may try to re-process events in the WorkflowTask, leading to duplicate events.
+ * Intelligently merge the event series together to avoid duplicate events which wil create determinism errors.
+ *
+ * e1: 1,2,3
+ * e2: 4,5,6
+ * result: 1,2,3,4,5,6 - no overlap, concat the arrays
+ *
+ * e1: 1,2,3
+ * e2: 3,4, 5
+ * result: 1,2,3,4,5 - the tail of e1 overlaps with the head of e2, take one of the ID:3 events and concat the rest.
+ *
+ * e1: 1,2,3
+ * e2: 2,4,5
+ * result: ERROR - Events merge failed, the overlapping events are not continuous. Expected 3 to be next in e2.
+ *
+ * e1: 1,2,3
+ * e2: 2
+ * result: ERROR - Events merge failed, the overlapping events are not continuous. Expected 3 to be next in e2.
+ */
+export function tryMergeEvents<T extends WorkflowEvent>(
+  events1: T[],
+  events2: T[]
+): T[] {
+  const trailingIds = new Set(events2.map((e) => e.id));
+  const { leading, trailing } = events1.reduce(
+    ({ leading, trailing, take }, e1) => {
+      const [e2, ...tTail] = trailing;
+      // the next leading event matches the head of the trailing events, take from both. Assume the contents are identical.
+      if (e1.id === e2?.id) {
+        return {
+          leading: [...leading, e1],
+          trailing: tTail,
+          take: true,
+        };
+      } else if (take || trailingIds.has(e1.id)) {
+        // we had started taking from the trailing, but found an event in the leading that was not in the trailing. Events must match continuously.
+        throw new DeterminismError(
+          `Events merge failed, the overlapping events are not continuous, expected ${e1.id} next in the trailing events, found ${e2?.id}.`
+        );
+      } else {
+        // leading event is not in the trailing yet, keep taking from leading.
+        return {
+          leading: [...leading, e1],
+          trailing,
+          take,
+        };
+      }
+    },
+    { leading: [] as typeof events1, trailing: events2, take: false }
+  );
+
+  return [...leading, ...trailing];
 }
