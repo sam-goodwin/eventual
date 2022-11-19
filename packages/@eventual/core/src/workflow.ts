@@ -1,3 +1,4 @@
+import { Context, WorkflowContext } from "./context.js";
 import { DeterminismError } from "./error.js";
 import {
   filterEvents,
@@ -6,6 +7,7 @@ import {
   isWorkflowStarted,
   WorkflowEventType,
 } from "./events.js";
+import { EventualFunction } from "./eventual.js";
 import { interpret, Program, WorkflowResult } from "./interpret.js";
 
 interface ProgressWorkflowResult extends WorkflowResult {
@@ -13,12 +15,19 @@ interface ProgressWorkflowResult extends WorkflowResult {
 }
 
 /**
+ * A function which starts the {@link Program} generator with input and {@link Context}.
+ */
+export type ProgramStarter = EventualFunction<Program<any>>;
+
+/**
  * Progress a workflow using previous history, new events, and a program.
  */
 export function progressWorkflow(
-  program: (input: any) => Program<any>,
+  program: ProgramStarter,
   historyEvents: HistoryStateEvents[],
-  taskEvents: HistoryStateEvents[]
+  taskEvents: HistoryStateEvents[],
+  workflowContext: WorkflowContext,
+  executionId: string
 ): ProgressWorkflowResult {
   // historical events and incoming events will be fed into the workflow to resume/progress state
   const inputEvents = filterEvents<HistoryStateEvents>(
@@ -34,10 +43,19 @@ export function progressWorkflow(
     );
   }
 
+  const context: Context = {
+    workflow: workflowContext,
+    execution: {
+      ...startEvent.context,
+      id: executionId,
+      startTime: startEvent.timestamp,
+    },
+  };
+
   // execute workflow
   const interpretEvents = inputEvents.filter(isHistoryEvent);
   return {
-    ...interpret(program(startEvent.input), interpretEvents),
+    ...interpret(program(startEvent.input, context), interpretEvents),
     history: inputEvents,
   };
 }

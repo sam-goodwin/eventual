@@ -33,10 +33,11 @@ export class WorkflowClient {
    * @returns
    */
   public async startWorkflow({
-    name,
+    name: _name,
     input,
   }: { name?: string; input?: any } = {}) {
-    const executionId = `execution_${name ? name : ulid()}`;
+    const name = _name ?? ulid();
+    const executionId = `execution_${name}`;
     console.log("execution input:", input);
 
     await this.props.dynamo.send(
@@ -45,6 +46,7 @@ export class WorkflowClient {
           pk: { S: ExecutionRecord.PRIMARY_KEY },
           sk: { S: ExecutionRecord.sortKey(executionId) },
           id: { S: executionId },
+          name: { S: name },
           status: { S: ExecutionStatus.IN_PROGRESS },
           startTime: { S: new Date().toISOString() },
         },
@@ -58,6 +60,7 @@ export class WorkflowClient {
         {
           type: WorkflowEventType.WorkflowStarted,
           input,
+          context: { name },
         }
       );
 
