@@ -9,8 +9,7 @@
   "dependencies": {
     "@aws-cdk/aws-apigatewayv2-authorizers-alpha": "2.50.0-alpha.0",
     "@eventual/aws-runtime": "workspace:^",
-    "@eventual/compiler": "workspace:^",
-    "ulid": "^2.3.0"
+    "@eventual/compiler": "workspace:^"
   },
   "peerDependencies": {
     "aws-cdk-lib": "^2.50.0",
