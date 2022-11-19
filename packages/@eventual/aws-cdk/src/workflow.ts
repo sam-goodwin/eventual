@@ -1,6 +1,5 @@
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import {
-  Runtime,
   Architecture,
   Function,
   Code,
