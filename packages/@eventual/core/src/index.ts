@@ -10,3 +10,4 @@ export * from "./interpret.js";
 export * from "./result.js";
 export * from "./tasks.js";
 export * from "./util.js";
+export * from "./workflow.js";

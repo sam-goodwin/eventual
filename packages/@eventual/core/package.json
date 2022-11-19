@@ -13,8 +13,7 @@
     "lib"
   ],
   "scripts": {
-    "test": "jest",
-    "build": "node ./build.mjs"
+    "test": "jest"
   },
   "devDependencies": {
     "@types/jest": "^29",

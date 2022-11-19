@@ -9,7 +9,7 @@
     "lib"
   ],
   "scripts": {
-    "test": "jest"
+    "test": "jest --passWithNoTests"
   },
   "type": "module",
   "devDependencies": {

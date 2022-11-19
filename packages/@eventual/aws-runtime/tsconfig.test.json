@@ -1,0 +1,17 @@
+{
+  "extends": "../../../tsconfig-base",
+  "compilerOptions": {
+    "module": "esnext",
+    "target": "esnext",
+    "moduleResolution": "node",
+    "declaration": true,
+    "inlineSourceMap": true,
+    "rootDir": ".",
+    "typeRoots": ["./node_modules/@types"],
+    "allowJs": true,
+    "noEmit": true
+  },
+  "include": ["src", "test"],
+  "exclude": ["lib", "node_modules"],
+  "references": [{ "path": "../core" }]
+}

@@ -410,7 +410,6 @@ test("generator function returns an ActivityCall", () => {
 function completed(result: any, seq: number): ActivityCompleted {
   return {
     type: WorkflowEventType.ActivityCompleted,
-    id: "id",
     duration: 0,
     result,
     seq,
@@ -421,7 +420,6 @@ function completed(result: any, seq: number): ActivityCompleted {
 function failed(error: any, seq: number): ActivityFailed {
   return {
     type: WorkflowEventType.ActivityFailed,
-    id: "id",
     duration: 0,
     error,
     message: "message",
@@ -433,7 +431,6 @@ function failed(error: any, seq: number): ActivityFailed {
 function scheduled(name: string, seq: number): ActivityScheduled {
   return {
     type: WorkflowEventType.ActivityScheduled,
-    id: "id",
     name,
     seq,
     timestamp: new Date(0).toISOString(),
