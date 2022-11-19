@@ -9,6 +9,7 @@ import { WorkflowClient } from "./workflow-client";
 import { WorkflowRuntimeClient } from "./workflow-runtime-client";
 import memoize from "micro-memoize";
 import { deepEqual } from "fast-equals";
+import { Scheduler, SchedulerClient } from "@aws-sdk/client-scheduler";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -23,6 +24,7 @@ const s3 = /*@__PURE__*/ memoize(
   () => new S3Client({ region: process.env.AWS_REGION })
 );
 const lambda = /*@__PURE__*/ memoize(() => new LambdaClient({}));
+const scheduler = /*@__PURE__*/ memoize(() => new SchedulerClient({}));
 
 export const createExecutionHistoryClient = /*@__PURE__*/ memoize(
   ({ tableName }: { tableName?: string } = {}) =>
@@ -79,5 +81,7 @@ export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
       lambda: lambda(),
       activityWorkerFunctionName:
         activityWorkerFunctionName ?? env.activityWorkerFunctionName(),
+      scheduler: scheduler(),
+      // workflowQueueArn: env.workflowQueueUrl(),
     })
 );

@@ -18,6 +18,8 @@ import {
   isCompleteExecution,
   progressWorkflow,
   ProgramStarter,
+  isStartActivityCommand,
+  assertNever,
 } from "@eventual/core";
 import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
 import {
@@ -319,13 +321,17 @@ async function orchestrateExecution(
       // register command events
       return await Promise.all(
         commands.map(async (command) => {
-          await workflowRuntimeClient.scheduleActivity(executionId, command);
+          if (isStartActivityCommand(command)) {
+            await workflowRuntimeClient.scheduleActivity(executionId, command);
 
-          return createEvent<ActivityScheduled>({
-            type: WorkflowEventType.ActivityScheduled,
-            seq: command.seq,
-            name: command.name,
-          });
+            return createEvent<ActivityScheduled>({
+              type: WorkflowEventType.ActivityScheduled,
+              seq: command.seq,
+              name: command.name,
+            });
+          }
+          // TODO: sleep
+          assertNever(command);
         })
       );
     }

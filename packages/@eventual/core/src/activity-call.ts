@@ -14,22 +14,11 @@ export interface ActivityCall<T = any> {
   result?: Resolved<T> | Failed;
 }
 
-export function createActivityCall(
-  name: string,
-  args: any[],
-  seq?: number
-): ActivityCall {
+export function createActivityCall(name: string, args: any[]): ActivityCall {
   const command: ActivityCall = {
     [EventualSymbol]: EventualKind.ActivityCall,
-    seq,
     name,
     args,
   };
-  if (seq !== undefined) {
-    // if seq is passed in, then this Command is assumed to be in a dev environment
-    // so - do not register it
-    return command;
-  } else {
-    return registerActivity<ActivityCall>(command);
-  }
+  return registerActivity<ActivityCall>(command);
 }

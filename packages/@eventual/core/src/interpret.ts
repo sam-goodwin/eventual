@@ -22,7 +22,7 @@ import {
 } from "./result.js";
 import { createChain, isChain, Chain } from "./chain.js";
 import { assertNever } from "./util.js";
-import { Command } from "./command.js";
+import { Command, CommandType } from "./command.js";
 
 export interface WorkflowResult<T = any> {
   /**
@@ -136,6 +136,8 @@ export function interpret<Return>(
   return {
     result,
     commands: calls.map((call) => ({
+      // TODO: add sleep
+      type: CommandType.StartActivity,
       args: call.args,
       name: call.name,
       seq: call.seq!,

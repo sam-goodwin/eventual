@@ -3,7 +3,7 @@ import {
   DynamoDBClient,
   PutItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import { Command } from "@eventual/core";
+import { StartActivityCommand } from "@eventual/core";
 
 export interface ActivityRuntimeClientProps {
   dynamo: DynamoDBClient;
@@ -23,7 +23,7 @@ export class ActivityRuntimeClient {
    **/
   async requestExecutionActivityClaim(
     executionId: string,
-    command: Command,
+    command: StartActivityCommand,
     retry: number,
     claimer?: string
   ) {
@@ -56,7 +56,11 @@ export interface ActivityLockRecord {
 
 export namespace ActivityLockRecord {
   export const PARTITION_KEY_PREFIX = `Activity$`;
-  export function key(executionId: string, command: Command, retry: number) {
+  export function key(
+    executionId: string,
+    command: StartActivityCommand,
+    retry: number
+  ) {
     return `${PARTITION_KEY_PREFIX}$${executionId}$${command.seq}${retry}`;
   }
 }

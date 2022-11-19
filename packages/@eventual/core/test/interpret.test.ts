@@ -14,6 +14,7 @@ import {
 } from "../src/index.js";
 import { createActivityCall } from "../src/activity-call.js";
 import { DeterminismError } from "../src/error.js";
+import { createStartActivityCommand } from "./command-util.js";
 
 function* myWorkflow(event: any): Program<any> {
   try {
@@ -37,7 +38,7 @@ const event = "hello world";
 
 test("no history", () => {
   expect(interpret(myWorkflow(event), [])).toMatchObject(<WorkflowResult>{
-    commands: [createActivityCall("my-activity", [event], 0)],
+    commands: [createStartActivityCommand("my-activity", [event], 0)],
   });
 });
 
@@ -58,9 +59,9 @@ test("should continue with result of completed Activity", () => {
     ])
   ).toMatchObject(<WorkflowResult>{
     commands: [
-      createActivityCall("my-activity-0", [event], 1),
-      createActivityCall("my-activity-1", [event], 2),
-      createActivityCall("my-activity-2", [event], 3),
+      createStartActivityCommand("my-activity-0", [event], 1),
+      createStartActivityCommand("my-activity-1", [event], 2),
+      createStartActivityCommand("my-activity-2", [event], 3),
     ],
   });
 });
@@ -72,7 +73,7 @@ test("should catch error of failed Activity", () => {
       failed("error", 0),
     ])
   ).toMatchObject(<WorkflowResult>{
-    commands: [createActivityCall("handle-error", ["error"], 1)],
+    commands: [createStartActivityCommand("handle-error", ["error"], 1)],
   });
 });
 
@@ -166,8 +167,8 @@ test("should support Eventual.all of function calls", () => {
 
   expect(interpret(workflow(["a", "b"]), [])).toMatchObject(<WorkflowResult>{
     commands: [
-      createActivityCall("process-item", ["a"], 0),
-      createActivityCall("process-item", ["b"], 1),
+      createStartActivityCommand("process-item", ["a"], 0),
+      createStartActivityCommand("process-item", ["b"], 1),
     ],
   });
 
@@ -199,10 +200,10 @@ test("should have left-to-right determinism semantics for Eventual.all", () => {
   const result = interpret(workflow(["a", "b"]), []);
   expect(result).toMatchObject(<WorkflowResult>{
     commands: [
-      createActivityCall("before", ["before"], 0),
-      createActivityCall("inside", ["a"], 1),
-      createActivityCall("inside", ["b"], 2),
-      createActivityCall("after", ["after"], 3),
+      createStartActivityCommand("before", ["before"], 0),
+      createStartActivityCommand("inside", ["a"], 1),
+      createStartActivityCommand("inside", ["b"], 2),
+      createStartActivityCommand("after", ["after"], 3),
     ],
   });
 });
@@ -218,12 +219,12 @@ test("try-catch-finally with yield in catch", () => {
     }
   }
   expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
-    commands: [createActivityCall("catch", [], 0)],
+    commands: [createStartActivityCommand("catch", [], 0)],
   });
   expect(
     interpret(workflow(), [scheduled("catch", 0), completed(undefined, 0)])
   ).toMatchObject(<WorkflowResult>{
-    commands: [createActivityCall("finally", [], 1)],
+    commands: [createStartActivityCommand("finally", [], 1)],
   });
 });
 
@@ -243,8 +244,8 @@ test("try-catch-finally with dangling promise in catch", () => {
     )
   ).toMatchObject(<WorkflowResult>{
     commands: [
-      createActivityCall("catch", [], 0),
-      createActivityCall("finally", [], 1),
+      createStartActivityCommand("catch", [], 0),
+      createStartActivityCommand("finally", [], 1),
     ],
   });
 });
@@ -275,8 +276,8 @@ test("throw error within nested function", () => {
     WorkflowResult
   >{
     commands: [
-      createActivityCall("inside", ["good"], 0),
-      createActivityCall("inside", ["bad"], 1),
+      createStartActivityCommand("inside", ["good"], 0),
+      createStartActivityCommand("inside", ["bad"], 1),
     ],
   });
   expect(
@@ -287,7 +288,7 @@ test("throw error within nested function", () => {
       completed("bad", 1),
     ])
   ).toMatchObject(<WorkflowResult>{
-    commands: [createActivityCall("catch", [], 2)],
+    commands: [createStartActivityCommand("catch", [], 2)],
   });
   expect(
     interpret(workflow(["good", "bad"]), [
@@ -299,7 +300,7 @@ test("throw error within nested function", () => {
       completed("catch", 2),
     ])
   ).toMatchObject(<WorkflowResult>{
-    commands: [createActivityCall("finally", [], 3)],
+    commands: [createStartActivityCommand("finally", [], 3)],
   });
   expect(
     interpret(workflow(["good", "bad"]), [
@@ -335,8 +336,8 @@ test("properly evaluate yield* of sub-programs", () => {
   expect(interpret(workflow(), [])).toMatchObject({
     commands: [
       //
-      createActivityCall("a", [], 0),
-      createActivityCall("b", [], 1),
+      createStartActivityCommand("a", [], 0),
+      createStartActivityCommand("b", [], 1),
     ],
   });
 
@@ -368,8 +369,8 @@ test("properly evaluate yield of Eventual.all", () => {
   expect(interpret(workflow(), [])).toMatchObject({
     commands: [
       //
-      createActivityCall("a", [], 0),
-      createActivityCall("b", [], 1),
+      createStartActivityCommand("a", [], 0),
+      createStartActivityCommand("b", [], 1),
     ],
   });
 
@@ -397,7 +398,7 @@ test("generator function returns an ActivityCall", () => {
   });
 
   expect(interpret(workflow(), [])).toMatchObject({
-    commands: [createActivityCall("call-a", [], 0)],
+    commands: [createStartActivityCommand("call-a", [], 0)],
   });
   expect(
     interpret(workflow(), [scheduled("call-a", 0), completed("result", 0)])

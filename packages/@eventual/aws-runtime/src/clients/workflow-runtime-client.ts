@@ -16,12 +16,18 @@ import {
   InvocationType,
 } from "@aws-sdk/client-lambda";
 import {
+  CreateScheduleCommand,
+  FlexibleTimeWindowMode,
+  SchedulerClient,
+} from "@aws-sdk/client-scheduler";
+import {
   ExecutionStatus,
   Command,
   HistoryStateEvents,
   CompleteExecution,
   FailedExecution,
   Execution,
+  SleepUntilCommand,
 } from "@eventual/core";
 import {
   createExecutionFromResult,
@@ -36,6 +42,9 @@ export interface WorkflowRuntimeClientProps {
   readonly s3: S3Client;
   readonly executionHistoryBucket: string;
   readonly tableName: string;
+  readonly scheduler: SchedulerClient;
+  readonly schedulerRoleArn: string;
+  readonly workflowQueueArn: string;
 }
 
 export class WorkflowRuntimeClient {
@@ -175,6 +184,17 @@ export class WorkflowRuntimeClient {
         FunctionName: this.props.activityWorkerFunctionName,
         Payload: Buffer.from(JSON.stringify(request)),
         InvocationType: InvocationType.Event,
+      })
+    );
+  }
+
+  async scheduleSleep(_executionId: string, _command: SleepUntilCommand) {
+    this.props.scheduler.send(
+      new CreateScheduleCommand({
+        FlexibleTimeWindow: { Mode: FlexibleTimeWindowMode.OFF },
+        ScheduleExpression: "at()",
+        Name: "",
+        Target: {},
       })
     );
   }

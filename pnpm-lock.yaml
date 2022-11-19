@@ -133,6 +133,7 @@ importers:
       '@aws-sdk/client-dynamodb': 3.214.0
       '@aws-sdk/client-lambda': ^3.213.0
       '@aws-sdk/client-s3': 3.213.0
+      '@aws-sdk/client-scheduler': 3.213.0
       '@aws-sdk/client-sqs': 3.213.0
       '@eventual/core': workspace:^
       '@middy/core': ^3.6.2
@@ -163,6 +164,7 @@ importers:
       '@aws-sdk/client-dynamodb': 3.214.0
       '@aws-sdk/client-lambda': 3.213.0
       '@aws-sdk/client-s3': 3.213.0
+      '@aws-sdk/client-scheduler': 3.213.0
       '@aws-sdk/client-sqs': 3.213.0
       '@types/aws-lambda': 8.10.108
       '@types/jest': 29.2.2
@@ -714,6 +716,50 @@ packages:
     transitivePeerDependencies:
       - '@aws-sdk/signature-v4-crt'
       - aws-crt
+
+  /@aws-sdk/client-scheduler/3.213.0:
+    resolution: {integrity: sha512-GOBG+G0cYN8Xyq+dsy1DtAhHpk3UEWBEJNT0kwVmIhm9WGj/GNvCdUVlnyeacBLuWVwiVIKjUhN6xXx5rKNdtg==}
+    engines: {node: '>=14.0.0'}
+    dependencies:
+      '@aws-crypto/sha256-browser': 2.0.0
+      '@aws-crypto/sha256-js': 2.0.0
+      '@aws-sdk/client-sts': 3.213.0
+      '@aws-sdk/config-resolver': 3.212.0
+      '@aws-sdk/credential-provider-node': 3.212.0
+      '@aws-sdk/fetch-http-handler': 3.212.0
+      '@aws-sdk/hash-node': 3.212.0
+      '@aws-sdk/invalid-dependency': 3.212.0
+      '@aws-sdk/middleware-content-length': 3.212.0
+      '@aws-sdk/middleware-endpoint': 3.212.0
+      '@aws-sdk/middleware-host-header': 3.212.0
+      '@aws-sdk/middleware-logger': 3.212.0
+      '@aws-sdk/middleware-recursion-detection': 3.212.0
+      '@aws-sdk/middleware-retry': 3.212.0
+      '@aws-sdk/middleware-serde': 3.212.0
+      '@aws-sdk/middleware-signing': 3.212.0
+      '@aws-sdk/middleware-stack': 3.212.0
+      '@aws-sdk/middleware-user-agent': 3.212.0
+      '@aws-sdk/node-config-provider': 3.212.0
+      '@aws-sdk/node-http-handler': 3.212.0
+      '@aws-sdk/protocol-http': 3.212.0
+      '@aws-sdk/smithy-client': 3.212.0
+      '@aws-sdk/types': 3.212.0
+      '@aws-sdk/url-parser': 3.212.0
+      '@aws-sdk/util-base64': 3.208.0
+      '@aws-sdk/util-body-length-browser': 3.188.0
+      '@aws-sdk/util-body-length-node': 3.208.0
+      '@aws-sdk/util-defaults-mode-browser': 3.212.0
+      '@aws-sdk/util-defaults-mode-node': 3.212.0
+      '@aws-sdk/util-endpoints': 3.212.0
+      '@aws-sdk/util-user-agent-browser': 3.212.0
+      '@aws-sdk/util-user-agent-node': 3.212.0
+      '@aws-sdk/util-utf8-browser': 3.188.0
+      '@aws-sdk/util-utf8-node': 3.208.0
+      tslib: 2.4.1
+      uuid: 8.3.2
+    transitivePeerDependencies:
+      - aws-crt
+    dev: true
 
   /@aws-sdk/client-sqs/3.213.0:
     resolution: {integrity: sha512-Ew80UhLtudcC4hilK0itEHhnj5Jpl1OpfTxVzm6HkAkSRA+eBq6CXHN46ptEim4Wp5SxXjLc6L2RKpGZxUpfOg==}
@@ -8716,6 +8762,7 @@ packages:
 
   /uuid/8.0.0:
     resolution: {integrity: sha512-jOXGuXZAWdsTH7eZLtyXMqUb9EcWMGZNbL9YcGBJl4MH4nrxHmZJhEHvyLFrkxo+28uLb/NYRcStH48fnD0Vzw==}
+    hasBin: true
     dev: false
 
   /uuid/8.3.2:
