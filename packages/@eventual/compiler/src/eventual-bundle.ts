@@ -31,6 +31,9 @@ async function main() {
           eventualESPlugin,
         ],
         conditions: ["module", "import", "require"],
+        // supported with NODE_18.x runtime
+        // TODO: make this configurable.
+        external: ["@aws-sdk"],
         platform: "node",
         format: "cjs",
         metafile: true,
@@ -54,6 +57,9 @@ async function main() {
           }),
         ],
         conditions: ["module", "import", "require"],
+        // supported with NODE_18.x runtime
+        // TODO: make this configurable.
+        external: ["@aws-sdk"],
         platform: "node",
         format: "cjs",
         metafile: true,
