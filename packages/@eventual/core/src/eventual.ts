@@ -2,16 +2,38 @@ import { Program } from "./interpret.js";
 import { registerChain, Chain } from "./chain.js";
 import { ActivityCall } from "./activity-call.js";
 import { AwaitAll } from "./await-all.js";
+import { Context } from "./context.js";
 
-export function eventual<F extends (...args: any[]) => Promise<any>>(
+export type EventualFunction<Result> = (input: any, context: Context) => Result;
+export type ChainFunction<Result> = (...args: any[]) => Result;
+
+export function eventual<F extends EventualFunction<Promise<any>>>(
   func: F
-): (...args: Parameters<F>) => Program<Awaited<ReturnType<F>>>;
+): EventualFunction<Program<Awaited<ReturnType<F>>>>;
 
-export function eventual<F extends (...args: any[]) => Program>(
+export function eventual<F extends EventualFunction<Program>>(
   func: F
-): (...args: Parameters<F>) => Chain<Resolved<ReturnType<F>>>;
+): EventualFunction<Chain<Resolved<ReturnType<F>>>>;
 
-export function eventual<F extends (...args: any[]) => any>(func: F): F {
+export function eventual<
+  F extends EventualFunction<Program> | EventualFunction<Promise<any>>
+>(func: F): F {
+  return ((input: any, context: Context) => {
+    // TODO: validate that the function was transformed
+    const generator = func(input, context) as Program;
+    return registerChain(generator);
+  }) as any;
+}
+
+export function chain<F extends ChainFunction<Promise<any>>>(
+  func: F
+): ChainFunction<Program<Awaited<ReturnType<F>>>>;
+
+export function chain<F extends ChainFunction<Program>>(
+  func: F
+): ChainFunction<Chain<Resolved<ReturnType<F>>>>;
+
+export function chain<F extends (...args: any[]) => any>(func: F): F {
   return ((...args: any[]) => {
     const generator = func(...args);
     return registerChain(generator);
