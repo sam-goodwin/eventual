@@ -2,7 +2,7 @@ import { Program } from "./interpret.js";
 import { registerChain, Chain } from "./chain.js";
 import { ActivityCall } from "./activity-call.js";
 import { AwaitAll } from "./await-all.js";
-import { Context } from "./contex.js";
+import { Context } from "./context.js";
 
 export type EventualFunction<Result> = (input: any, context: Context) => Result;
 export type ChainFunction<Result> = (...args: any[]) => Result;

@@ -7,8 +7,7 @@ import {
   WorkflowStarted,
 } from "../src/events";
 import { progressWorkflow } from "../src/workflow";
-import { DeterminismError } from "../src/error";
-import { WorkflowContext } from "../src/contex";
+import { WorkflowContext } from "../src/context";
 
 function* myWorkflow(event: any): Program<any> {
   yield createActivityCall("my-activity", [event]);
@@ -25,25 +24,29 @@ const started1: WorkflowStarted = {
 
 const scheduled2: ActivityScheduled = {
   type: WorkflowEventType.ActivityScheduled,
-  id: "2",
   name: "my-activity",
   seq: 0,
   timestamp: "",
 };
 
+const scheduled4: ActivityScheduled = {
+  type: WorkflowEventType.ActivityScheduled,
+  name: "my-activity",
+  seq: 1,
+  timestamp: "",
+};
+
 const completed3: ActivityCompleted = {
   type: WorkflowEventType.ActivityCompleted,
-  id: "3",
   seq: 0,
   duration: 100,
   result: 10,
   timestamp: "",
 };
 
-const completed4: ActivityCompleted = {
+const completed5: ActivityCompleted = {
   type: WorkflowEventType.ActivityCompleted,
-  id: "4",
-  seq: 0,
+  seq: 1,
   duration: 100,
   result: 10,
   timestamp: "",
@@ -111,26 +114,48 @@ test("start with duplicate events", () => {
   expect(history).toEqual([started1, scheduled2, completed3]);
 });
 
-test("start with invalid task events", () => {
-  expect(() =>
-    progressWorkflow(
-      myWorkflow,
-      [started1, scheduled2, completed3],
-      [completed4, completed3],
-      context,
-      "executionId"
-    )
-  ).toThrow(DeterminismError);
+test("start with generated events", () => {
+  const { history } = progressWorkflow(
+    myWorkflow,
+    [started1, scheduled2, completed3, scheduled4],
+    [completed3],
+    context,
+    "execId"
+  );
+
+  expect(history).toEqual([started1, scheduled2, completed3, scheduled4]);
 });
 
-test("start with invalid workflow events", () => {
-  expect(() =>
-    progressWorkflow(
-      myWorkflow,
-      [started1, scheduled2, completed3, completed4],
-      [completed3],
-      context,
-      "executionId"
-    )
-  ).toThrow(DeterminismError);
+test("start with duplicate", () => {
+  const { history } = progressWorkflow(
+    myWorkflow,
+    [started1, scheduled2, completed3],
+    [completed5, completed3],
+    context,
+    "execId"
+  );
+
+  expect(history).toEqual([started1, scheduled2, completed3, completed5]);
+});
+
+test("start with out of order", () => {
+  const { history } = progressWorkflow(
+    myWorkflow,
+    [started1, scheduled2, completed3, completed5],
+    [completed3],
+    context,
+    "execId"
+  );
+  expect(history).toEqual([started1, scheduled2, completed3, completed5]);
+});
+
+test("start with out of order", () => {
+  const { history } = progressWorkflow(
+    myWorkflow,
+    [started1, scheduled2],
+    [completed3, completed3, completed5, completed3, completed3, completed3],
+    context,
+    "execId"
+  );
+  expect(history).toEqual([started1, scheduled2, completed3, completed5]);
 });

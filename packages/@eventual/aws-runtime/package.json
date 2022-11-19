@@ -56,9 +56,6 @@
         }
       ]
     },
-    "modulePathIgnorePatterns": [
-      "/home/sussmans/eventual/packages/@eventual/core/lib/esm/package.json"
-    ],
     "moduleNameMapper": {
       "@eventual/injected/(.*)": "<rootDir>/src/injected/$1",
       "^(\\.{1,2}/.*)\\.js$": "$1"

@@ -1,10 +1,10 @@
-import { Context, WorkflowContext } from "./contex.js";
+import { Context, WorkflowContext } from "./context.js";
 import { DeterminismError } from "./error.js";
 import {
+  filterEvents,
   HistoryStateEvents,
   isHistoryEvent,
   isWorkflowStarted,
-  tryMergeEvents,
   WorkflowEventType,
 } from "./events.js";
 import { EventualFunction } from "./eventual.js";
@@ -30,7 +30,7 @@ export function progressWorkflow(
   executionId: string
 ): ProgressWorkflowResult {
   // historical events and incoming events will be fed into the workflow to resume/progress state
-  const inputEvents = tryMergeEvents<HistoryStateEvents>(
+  const inputEvents = filterEvents<HistoryStateEvents>(
     historyEvents,
     taskEvents
   );

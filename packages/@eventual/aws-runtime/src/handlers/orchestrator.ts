@@ -29,7 +29,7 @@ import { createMetricsLogger, Unit } from "aws-embedded-metrics";
 import { timed, timedSync } from "../metrics/utils.js";
 import { workflowName } from "../env.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
-import { WorkflowContext } from "@eventual/core/lib/cjs/contex.js";
+import { WorkflowContext } from "@eventual/core";
 
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowRuntimeClient = createWorkflowRuntimeClient();
