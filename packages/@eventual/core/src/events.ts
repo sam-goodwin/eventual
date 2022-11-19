@@ -1,5 +1,3 @@
-import { ExecutionContext } from "./context.js";
-
 export interface BaseEvent {
   type: WorkflowEventType;
   id: string;
@@ -50,7 +48,6 @@ export type WorkflowEvent =
 export interface WorkflowStarted extends BaseEvent {
   type: WorkflowEventType.WorkflowStarted;
   input?: any;
-  context: Omit<ExecutionContext, "id" | "startTime">;
 }
 
 export function isWorkflowStarted(

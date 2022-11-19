@@ -1,6 +1,5 @@
 export * from "./activity.js";
 export * from "./await-all.js";
-export * from "./context.js";
 export * from "./chain.js";
 export * from "./command.js";
 export * from "./events.js";
