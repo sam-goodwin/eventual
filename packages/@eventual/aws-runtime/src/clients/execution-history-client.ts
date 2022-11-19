@@ -5,7 +5,12 @@ import {
   PutItemCommand,
   QueryCommand,
 } from "@aws-sdk/client-dynamodb";
-import { WorkflowEvent } from "@eventual/core";
+import {
+  BaseEvent,
+  getEventId,
+  isHistoryEvent,
+  WorkflowEvent,
+} from "@eventual/core";
 import { ulid } from "ulid";
 
 export interface ExecutionHistoryClientProps {
@@ -101,8 +106,14 @@ export function createEvent<T extends WorkflowEvent>(
   event: UnresolvedEvent<T>,
   time: Date = new Date()
 ): T {
-  const uuid = ulid();
   const timestamp = time.toISOString();
+
+  // history events do not have IDs, use getEventId
+  if (isHistoryEvent(event as unknown as WorkflowEvent)) {
+    return { ...(event as any), timestamp };
+  }
+
+  const uuid = ulid();
 
   return { ...event, id: uuid, timestamp } as T;
 }
@@ -111,7 +122,8 @@ interface EventRecord {
   pk: { S: typeof EventRecord.PRIMARY_KEY };
   sk: { S: `${typeof EventRecord.SORT_KEY_PREFIX}${string}$${string}` };
   event: AttributeValue.SMember;
-  id: AttributeValue.SMember;
+  // not all events have an ID to save space. Use getEventId to get a unique ID.
+  id?: AttributeValue.SMember;
   executionId: AttributeValue.SMember;
   time: AttributeValue.SMember;
 }
@@ -131,12 +143,16 @@ function createEventRecord(
   executionId: string,
   workflowEvent: WorkflowEvent
 ): EventRecord {
+  const { id, timestamp, ...event } = workflowEvent as WorkflowEvent &
+    Partial<BaseEvent>;
   return {
     pk: { S: EventRecord.PRIMARY_KEY },
-    sk: { S: EventRecord.sortKey(executionId, workflowEvent.id) },
-    id: { S: workflowEvent.id },
+    sk: { S: EventRecord.sortKey(executionId, getEventId(workflowEvent)) },
+    // do not create an id property if it doesn't exist on the event.
+    ...(id ? { id: { S: id } } : undefined),
     executionId: { S: executionId },
-    event: { S: JSON.stringify(workflowEvent) },
+    // only save the parts of the event not in the record.
+    event: { S: JSON.stringify(event) },
     time: { S: workflowEvent.timestamp },
   };
 }

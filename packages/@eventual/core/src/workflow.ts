@@ -1,9 +1,9 @@
 import { DeterminismError } from "./error.js";
 import {
+  filterEvents,
   HistoryStateEvents,
   isHistoryEvent,
   isWorkflowStarted,
-  tryMergeEvents,
   WorkflowEventType,
 } from "./events.js";
 import { interpret, Program, WorkflowResult } from "./interpret.js";
@@ -21,7 +21,7 @@ export function progressWorkflow(
   taskEvents: HistoryStateEvents[]
 ): ProgressWorkflowResult {
   // historical events and incoming events will be fed into the workflow to resume/progress state
-  const inputEvents = tryMergeEvents<HistoryStateEvents>(
+  const inputEvents = filterEvents<HistoryStateEvents>(
     historyEvents,
     taskEvents
   );
