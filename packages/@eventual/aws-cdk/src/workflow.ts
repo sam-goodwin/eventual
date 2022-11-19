@@ -4,6 +4,7 @@ import {
   Function,
   Code,
   IFunction,
+  Runtime,
 } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import { Bucket, IBucket } from "aws-cdk-lib/aws-s3";
@@ -25,7 +26,6 @@ import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import path from "path";
 import { execSync } from "child_process";
 import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
-import { NODE_18_X } from "./utils";
 
 export interface WorkflowProps {
   entry: string;
@@ -109,7 +109,7 @@ export class Workflow extends Construct implements IGrantable {
           "../../esm/functions/start-workflow.js"
         ),
         handler: "handle",
-        runtime: NODE_18_X,
+        runtime: Runtime.NODEJS_16_X,
         architecture: Architecture.ARM_64,
         bundling: {
           // https://github.com/aws/aws-cdk/issues/21329#issuecomment-1212336356
@@ -151,7 +151,7 @@ export class Workflow extends Construct implements IGrantable {
       code: Code.fromAsset(path.join(outDir, "activity-worker")),
       // the bundler outputs activity-worker/index.js
       handler: "index.default",
-      runtime: NODE_18_X,
+      runtime: Runtime.NODEJS_16_X,
       memorySize: 512,
       environment: {
         NODE_OPTIONS: "--enable-source-maps",
@@ -173,7 +173,7 @@ export class Workflow extends Construct implements IGrantable {
       code: Code.fromAsset(path.join(outDir, "orchestrator")),
       // the bundler outputs orchestrator/index.js
       handler: "index.default",
-      runtime: NODE_18_X,
+      runtime: Runtime.NODEJS_16_X,
       memorySize: 512,
       environment: {
         NODE_OPTIONS: "--enable-source-maps",

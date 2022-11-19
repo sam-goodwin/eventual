@@ -11,7 +11,7 @@ import {
   isHistoryEvent,
   WorkflowEvent,
 } from "@eventual/core";
-import { ulid } from "ulid";
+import { ulid } from "ulidx";
 
 export interface ExecutionHistoryClientProps {
   readonly dynamo: DynamoDBClient;

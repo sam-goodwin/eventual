@@ -12,7 +12,7 @@ import {
   WorkflowEventType,
   HistoryStateEvents,
 } from "@eventual/core";
-import { ulid } from "ulid";
+import { ulid } from "ulidx";
 import { ExecutionHistoryClient } from "./execution-history-client.js";
 
 export interface WorkflowClientProps {

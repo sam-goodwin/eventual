@@ -11,8 +11,7 @@
   },
   "dependencies": {
     "aws-cdk-lib": "^2.50.0",
-    "constructs": "^10.1.154",
-    "ulid": "^2.3.0"
+    "constructs": "^10.1.154"
   },
   "devDependencies": {
     "@eventual/aws-cdk": "workspace:^",

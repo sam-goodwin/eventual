@@ -13,8 +13,7 @@
     "@aws-sdk/client-lambda": "^3.204.0",
     "@aws-sdk/lib-dynamodb": "^3.204.0",
     "@eventual/aws-runtime": "workspace:^",
-    "@eventual/core": "workspace:^",
-    "ulid": "^2.3.0"
+    "@eventual/core": "workspace:^"
   },
   "devDependencies": {
     "@eventual/compiler": "workspace:^",
