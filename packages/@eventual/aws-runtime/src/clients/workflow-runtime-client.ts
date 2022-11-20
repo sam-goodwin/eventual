@@ -225,11 +225,11 @@ export class WorkflowRuntimeClient {
       },
     };
 
-    this.props.scheduler.send(
+    await this.props.scheduler.send(
       new CreateScheduleCommand({
         FlexibleTimeWindow: { Mode: FlexibleTimeWindowMode.OFF },
-        ScheduleExpression: "at()",
-        Name: "",
+        ScheduleExpression: `at(${untilTime})`,
+        Name: `${executionId}_sleep_${command.seq}`,
         // TODO: DQL and retry
         Target: {
           Arn: this.props.workflowQueueArn,
