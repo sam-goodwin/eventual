@@ -325,10 +325,12 @@ export function interpret<Return>(
   ) {
     const call = callTable[event.seq];
     if (call === undefined) {
-      throw new DeterminismError();
+      throw new DeterminismError(`Call for seq ${event.seq} was not emitted.`);
     }
     if (isReplay && call.result && !isPending(call.result)) {
-      throw new DeterminismError();
+      throw new DeterminismError(
+        `Expected call result to not be pending: ${call.seq}.`
+      );
     }
     call.result = isActivityCompleted(event)
       ? Result.resolved(event.result)

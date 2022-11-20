@@ -166,13 +166,19 @@ async function orchestrateExecution(
       commands: newCommands,
       history: updatedHistory,
     } = timedSync(metrics, OrchestratorMetrics.AdvanceExecutionDuration, () => {
-      return progressWorkflow(
-        program,
-        history,
-        events,
-        workflowContext,
-        executionId
-      );
+      try {
+        return progressWorkflow(
+          program,
+          history,
+          events,
+          workflowContext,
+          executionId
+        );
+      } catch (err) {
+        console.log("workflow error");
+        console.error(err);
+        throw err;
+      }
     });
 
     metrics.setProperty(

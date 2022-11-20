@@ -42,6 +42,10 @@ export function progressWorkflow(
   // Generates events that are time sensitive, like sleep completed events.
   const syntheticEvents = generateSyntheticEvents(inputEvents);
 
+  console.debug(JSON.stringify(historyEvents));
+  console.debug(JSON.stringify(taskEvents));
+  console.debug(JSON.stringify(syntheticEvents));
+
   const allEvents = [...inputEvents, ...syntheticEvents];
 
   const startEvent = inputEvents.find(isWorkflowStarted);
@@ -63,6 +67,9 @@ export function progressWorkflow(
 
   // execute workflow
   const interpretEvents = allEvents.filter(isEventualEvent);
+
+  console.debug(JSON.stringify(interpretEvents));
+
   return {
     ...interpret(program(startEvent.input, context), interpretEvents),
     history: allEvents,
