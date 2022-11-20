@@ -2,16 +2,20 @@ import { Context, WorkflowContext } from "./context.js";
 import { DeterminismError } from "./error.js";
 import {
   filterEvents,
-  HistoryStateEvents,
-  isHistoryEvent,
+  HistoryStateEvent,
+  isEventualEvent,
+  isSleepCompleted,
+  isSleepScheduled,
   isWorkflowStarted,
+  SleepCompleted,
+  SleepScheduled,
   WorkflowEventType,
 } from "./events.js";
 import { EventualFunction } from "./eventual.js";
 import { interpret, Program, WorkflowResult } from "./interpret.js";
 
 interface ProgressWorkflowResult extends WorkflowResult {
-  history: HistoryStateEvents[];
+  history: HistoryStateEvent[];
 }
 
 /**
@@ -24,16 +28,21 @@ export type ProgramStarter = EventualFunction<Program<any>>;
  */
 export function progressWorkflow(
   program: ProgramStarter,
-  historyEvents: HistoryStateEvents[],
-  taskEvents: HistoryStateEvents[],
+  historyEvents: HistoryStateEvent[],
+  taskEvents: HistoryStateEvent[],
   workflowContext: WorkflowContext,
   executionId: string
 ): ProgressWorkflowResult {
   // historical events and incoming events will be fed into the workflow to resume/progress state
-  const inputEvents = filterEvents<HistoryStateEvents>(
+  const inputEvents = filterEvents<HistoryStateEvent>(
     historyEvents,
     taskEvents
   );
+
+  // Generates events that are time sensitive, like sleep completed events.
+  const syntheticEvents = generateSyntheticEvents(inputEvents);
+
+  const allEvents = [...inputEvents, ...syntheticEvents];
 
   const startEvent = inputEvents.find(isWorkflowStarted);
 
@@ -53,9 +62,44 @@ export function progressWorkflow(
   };
 
   // execute workflow
-  const interpretEvents = inputEvents.filter(isHistoryEvent);
+  const interpretEvents = allEvents.filter(isEventualEvent);
   return {
     ...interpret(program(startEvent.input, context), interpretEvents),
-    history: inputEvents,
+    history: allEvents,
   };
+}
+
+/**
+ * Generates synthetic events, for example, {@link SleepCompleted} events when the time has passed, but a real completed event has not come in yet.
+ */
+export function generateSyntheticEvents(
+  events: HistoryStateEvent[]
+): SleepCompleted[] {
+  const unresolvedSleep: Record<number, SleepScheduled> = {};
+  const now = new Date();
+
+  const sleepEvents = events.filter(
+    (event): event is SleepScheduled | SleepCompleted =>
+      isSleepScheduled(event) || isSleepCompleted(event)
+  );
+
+  for (const event of sleepEvents) {
+    if (isSleepScheduled(event)) {
+      unresolvedSleep[event.seq] = event;
+    } else {
+      delete unresolvedSleep[event.seq];
+    }
+  }
+
+  const syntheticSleepComplete: SleepCompleted[] = Object.values(
+    unresolvedSleep
+  )
+    .filter((event) => new Date(event.untilTime).getTime() <= now.getTime())
+    .map((e) => ({
+      type: WorkflowEventType.SleepCompleted,
+      seq: e.seq,
+      timestamp: now.toISOString(),
+    }));
+
+  return syntheticSleepComplete;
 }

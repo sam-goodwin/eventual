@@ -8,7 +8,7 @@ import {
 import {
   BaseEvent,
   getEventId,
-  isHistoryEvent,
+  isEventualEvent,
   WorkflowEvent,
 } from "@eventual/core";
 import { ulid } from "ulidx";
@@ -109,7 +109,7 @@ export function createEvent<T extends WorkflowEvent>(
   const timestamp = time.toISOString();
 
   // history events do not have IDs, use getEventId
-  if (isHistoryEvent(event as unknown as WorkflowEvent)) {
+  if (isEventualEvent(event as unknown as WorkflowEvent)) {
     return { ...(event as any), timestamp };
   }
 

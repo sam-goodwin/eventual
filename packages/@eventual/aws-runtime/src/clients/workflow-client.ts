@@ -10,7 +10,7 @@ import {
   Execution,
   ExecutionStatus,
   WorkflowEventType,
-  HistoryStateEvents,
+  HistoryStateEvent,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 import { ExecutionHistoryClient } from "./execution-history-client.js";
@@ -71,7 +71,7 @@ export class WorkflowClient {
 
   public async submitWorkflowTask(
     executionId: string,
-    ...events: HistoryStateEvents[]
+    ...events: HistoryStateEvent[]
   ) {
     const id = ulid();
     // send workflow task to workflow queue

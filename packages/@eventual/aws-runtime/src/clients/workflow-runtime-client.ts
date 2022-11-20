@@ -23,7 +23,7 @@ import {
 import {
   ExecutionStatus,
   Command,
-  HistoryStateEvents,
+  HistoryStateEvent,
   CompleteExecution,
   FailedExecution,
   Execution,
@@ -72,7 +72,7 @@ export class WorkflowRuntimeClient {
   // TODO: etag
   async updateHistory(
     executionId: string,
-    events: HistoryStateEvents[]
+    events: HistoryStateEvent[]
   ): Promise<{ bytes: number }> {
     const content = events.map((e) => JSON.stringify(e)).join("\n");
     // get current history from s3
@@ -202,11 +202,11 @@ export class WorkflowRuntimeClient {
 
 async function historyEntryToEvents(
   objectOutput: GetObjectCommandOutput
-): Promise<HistoryStateEvents[]> {
+): Promise<HistoryStateEvent[]> {
   if (objectOutput.Body) {
     return (await objectOutput.Body.transformToString())
       .split("\n")
-      .map((l) => JSON.parse(l)) as HistoryStateEvents[];
+      .map((l) => JSON.parse(l)) as HistoryStateEvent[];
   }
   return [];
 }

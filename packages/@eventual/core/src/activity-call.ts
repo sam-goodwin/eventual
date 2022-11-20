@@ -1,4 +1,9 @@
-import { isEventual, EventualSymbol, EventualKind } from "./eventual.js";
+import {
+  isEventual,
+  EventualSymbol,
+  EventualKind,
+  EventualBase,
+} from "./eventual.js";
 import { registerActivity } from "./global.js";
 import { Resolved, Failed } from "./result.js";
 
@@ -6,12 +11,12 @@ export function isActivityCall(a: any): a is ActivityCall {
   return isEventual(a) && a[EventualSymbol] === EventualKind.ActivityCall;
 }
 
-export interface ActivityCall<T = any> {
+export interface ActivityCall<T = any>
+  extends EventualBase<Resolved<T> | Failed> {
   [EventualSymbol]: EventualKind.ActivityCall;
   seq?: number;
   name: string;
   args: any[];
-  result?: Resolved<T> | Failed;
 }
 
 export function createActivityCall(name: string, args: any[]): ActivityCall {

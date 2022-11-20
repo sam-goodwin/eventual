@@ -11,7 +11,7 @@ import {
   WorkflowFailed,
   Command,
   ActivityScheduled,
-  HistoryStateEvents,
+  HistoryStateEvent,
   CompleteExecution,
   FailedExecution,
   ExecutionStatus,
@@ -317,7 +317,7 @@ async function orchestrateExecution(
      */
     async function processCommands(
       commands: Command[]
-    ): Promise<HistoryStateEvents[]> {
+    ): Promise<HistoryStateEvent[]> {
       // register command events
       return await Promise.all(
         commands.map(async (command) => {

@@ -1,15 +1,22 @@
-import { Eventual, isEventual } from "./eventual.js";
+import {
+  CommandCall,
+  Eventual,
+  isCommandCall,
+  isEventual,
+} from "./eventual.js";
 import { isAwaitAll } from "./await-all.js";
-import { ActivityCall, isActivityCall } from "./activity-call.js";
+import { isActivityCall } from "./activity-call.js";
 import { DeterminismError } from "./error.js";
 import {
-  ActivityCompleted,
-  ActivityFailed,
-  ActivityScheduled,
-  HistoryEvent,
+  EventualEvent,
+  EventualResultEvent,
+  EventualScheduledEvent,
   isActivityCompleted,
-  isActivityFailed,
   isActivityScheduled,
+  isEventualResultEvent,
+  isEventualScheduledEvent,
+  isSleepCompleted,
+  isSleepScheduled,
 } from "./events.js";
 import { collectActivities } from "./global.js";
 import {
@@ -23,6 +30,7 @@ import {
 import { createChain, isChain, Chain } from "./chain.js";
 import { assertNever } from "./util.js";
 import { Command, CommandType } from "./command.js";
+import { isSleepForCall, isSleepUntilCall } from "./sleep-call.js";
 
 export interface WorkflowResult<T = any> {
   /**
@@ -44,9 +52,9 @@ export type Program<Return = any> = Generator<Eventual, Return>;
  */
 export function interpret<Return>(
   program: Program<Return>,
-  history: HistoryEvent[]
+  history: EventualEvent[]
 ): WorkflowResult<Awaited<Return>> {
-  const callTable: Record<number, ActivityCall> = {};
+  const callTable: Record<number, CommandCall> = {};
   const mainChain = createChain(program);
   const activeChains = new Set([mainChain]);
 
@@ -80,16 +88,16 @@ export function interpret<Return>(
 
   let event;
   // run the event loop one event at a time, ensuring deterministic execution.
-  while ((event = peek()) && peekForward(isActivityScheduled)) {
+  while ((event = peek()) && peekForward(isEventualScheduledEvent)) {
     pop();
 
-    if (isActivityCompleted(event) || isActivityFailed(event)) {
+    if (isEventualResultEvent(event)) {
       commitCompletionEvent(event, true);
-    } else if (isActivityScheduled(event)) {
+    } else if (isEventualScheduledEvent(event)) {
       const calls = advance(true) ?? [];
       const events = [
         event,
-        ...takeWhile(calls.length - 1, isActivityScheduled),
+        ...takeWhile(calls.length - 1, isEventualScheduledEvent),
       ];
       if (events.length !== calls.length) {
         throw new DeterminismError();
@@ -113,7 +121,7 @@ export function interpret<Return>(
   // if the history's tail contains completed events, e.g. [...scheduled, ...completed]
   // then we need to apply the completions, resume chains and schedule any produced activity calls
   while ((event = pop())) {
-    if (isActivityScheduled(event)) {
+    if (isEventualScheduledEvent(event)) {
       // it should be impossible to receive a scheduled event
       // -> because the tail of history can only contain completion events
       // -> scheduled events stored in history should correspond to activity calls
@@ -135,17 +143,31 @@ export function interpret<Return>(
 
   return {
     result,
-    commands: calls.map((call) => ({
-      // TODO: add sleep
-      type: CommandType.StartActivity,
-      args: call.args,
-      name: call.name,
-      seq: call.seq!,
-    })),
+    commands: calls.map((call) =>
+      isActivityCall(call)
+        ? {
+            // TODO: add sleep
+            type: CommandType.StartActivity,
+            args: call.args,
+            name: call.name,
+            seq: call.seq!,
+          }
+        : isSleepUntilCall(call)
+        ? {
+            type: CommandType.SleepUntil,
+            seq: call.seq!,
+            untilTime: call.isoDate,
+          }
+        : {
+            type: CommandType.SleepFor,
+            seq: call.seq!,
+            durationSeconds: call.durationSeconds,
+          }
+    ),
   };
 
-  function advance(isReplay: boolean): ActivityCall[] | undefined {
-    let calls: ActivityCall[] | undefined;
+  function advance(isReplay: boolean): CommandCall[] | undefined {
+    let calls: CommandCall[] | undefined;
     let madeProgress: boolean;
     do {
       madeProgress = false;
@@ -179,7 +201,7 @@ export function interpret<Return>(
   function tryAdvanceChain(
     chain: Chain,
     isReplay: boolean
-  ): ActivityCall[] | undefined {
+  ): CommandCall[] | undefined {
     if (chain.awaiting === undefined) {
       // this is the first time the chain is running, so wake it with an undefined input
       return advanceChain(chain, undefined);
@@ -214,12 +236,12 @@ export function interpret<Return>(
     }
 
     /**
-     * Resumes a {@link Chain} with a new value and return any newly spawned {@link ActivityCall}s.
+     * Resumes a {@link Chain} with a new value and return any newly spawned {@link CommandCall}s.
      */
     function advanceChain(
       chain: Chain,
       result: Resolved | Failed | undefined
-    ): ActivityCall[] {
+    ): CommandCall[] {
       try {
         const iterResult =
           result === undefined || isResolved(result)
@@ -252,20 +274,22 @@ export function interpret<Return>(
       }
 
       return collectActivities().flatMap((activity) => {
-        if (isActivityCall(activity)) {
-          return [activity];
+        if (isCommandCall(activity)) {
+          return activity;
         } else if (isChain(activity)) {
           activeChains.add(activity);
           return tryAdvanceChain(activity, isReplay) ?? [];
-        } else {
+        } else if (isAwaitAll(activity)) {
           return [];
         }
+
+        return assertNever(activity);
       });
     }
   }
 
   function tryResolveResult(activity: Eventual): Result | undefined {
-    if (isActivityCall(activity)) {
+    if (isCommandCall(activity)) {
       return activity.result;
     } else if (isChain(activity)) {
       if (activity.result) {
@@ -296,7 +320,7 @@ export function interpret<Return>(
   }
 
   function commitCompletionEvent(
-    event: ActivityCompleted | ActivityFailed,
+    event: EventualResultEvent,
     isReplay: boolean
   ) {
     const call = callTable[event.seq];
@@ -308,15 +332,21 @@ export function interpret<Return>(
     }
     call.result = isActivityCompleted(event)
       ? Result.resolved(event.result)
+      : isSleepCompleted(event)
+      ? Result.resolved(undefined)
       : Result.failed(event.error);
   }
 }
 
-function isCorresponding(event: ActivityScheduled, call: ActivityCall) {
-  return (
-    event.seq === call.seq && event.name === call.name
-    // TODO: also validate arguments
-  );
+function isCorresponding(event: EventualScheduledEvent, call: CommandCall) {
+  if (event.seq !== call.seq) {
+    return false;
+  } else if (isActivityScheduled(event)) {
+    return isActivityCall(call) && call.name === event.name;
+  } else if (isSleepScheduled(event)) {
+    return isSleepUntilCall(call) || isSleepForCall(call);
+  }
+  return assertNever(event);
 }
 
 function isGenerator(a: any): a is Program {
