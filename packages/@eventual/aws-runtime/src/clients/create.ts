@@ -9,7 +9,7 @@ import { WorkflowClient } from "./workflow-client";
 import { WorkflowRuntimeClient } from "./workflow-runtime-client";
 import memoize from "micro-memoize";
 import { deepEqual } from "fast-equals";
-import { Scheduler, SchedulerClient } from "@aws-sdk/client-scheduler";
+import { SchedulerClient } from "@aws-sdk/client-scheduler";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -82,6 +82,7 @@ export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
       activityWorkerFunctionName:
         activityWorkerFunctionName ?? env.activityWorkerFunctionName(),
       scheduler: scheduler(),
-      // workflowQueueArn: env.workflowQueueUrl(),
+      workflowQueueArn: env.workflowQueueArn(),
+      schedulerRoleArn: env.schedulerRoleArn(),
     })
 );

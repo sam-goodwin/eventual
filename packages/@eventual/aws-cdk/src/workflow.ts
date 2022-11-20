@@ -25,7 +25,13 @@ import { ENV_NAMES } from "@eventual/aws-runtime";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import path from "path";
 import { execSync } from "child_process";
-import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
+import {
+  IGrantable,
+  IPrincipal,
+  PolicyStatement,
+  Role,
+  ServicePrincipal,
+} from "aws-cdk-lib/aws-iam";
 
 export interface WorkflowProps {
   entry: string;
@@ -168,6 +174,10 @@ export class Workflow extends Construct implements IGrantable {
     // grant methods on a workflow affect the activity
     this.grantPrincipal = this.activityWorker.grantPrincipal;
 
+    const schedulerRole = new Role(this, "schedulerRole", {
+      assumedBy: new ServicePrincipal("scheduler.amazonaws.com"),
+    });
+
     this.orchestrator = new Function(this, "Orchestrator", {
       architecture: Architecture.ARM_64,
       code: Code.fromAsset(path.join(outDir, "orchestrator")),
@@ -183,6 +193,8 @@ export class Workflow extends Construct implements IGrantable {
         [ENV_NAMES.TABLE_NAME]: this.table.tableName,
         [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
         [ENV_NAMES.WORKFLOW_NAME]: this.workflowName,
+        [ENV_NAMES.WORKFLOW_QUEUE_ARN]: this.workflowQueue.queueArn,
+        [ENV_NAMES.SCHEDULER_ROLE_ARN]: schedulerRole.roleArn,
       },
       events: [
         new SqsEventSource(this.workflowQueue, {
@@ -218,6 +230,20 @@ export class Workflow extends Construct implements IGrantable {
 
     // Enable sending workflow task
     this.workflowQueue.grantSendMessages(this.startWorkflowFunction);
+
+    // Allow the scheduler to create workflow tasks.
+    this.workflowQueue.grantSendMessages(schedulerRole);
+
+    // grants the orchestrator the permission to create new schedules for sleep.
+    this.orchestrator.addToRolePolicy(
+      new PolicyStatement({
+        actions: ["schedule:CreateSchedule"],
+        resources: ["*"],
+      })
+    );
+
+    // grants the orchestrator the ability to pass the scheduler role to the creates schedules
+    schedulerRole.grantPassRole(this.orchestrator.grantPrincipal);
 
     // TODO - timers and retry
     new CfnOutput(this, "workflow-data", {

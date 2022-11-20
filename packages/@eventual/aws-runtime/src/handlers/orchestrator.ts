@@ -10,7 +10,6 @@ import {
   WorkflowTaskCompleted,
   WorkflowFailed,
   Command,
-  ActivityScheduled,
   HistoryStateEvent,
   CompleteExecution,
   FailedExecution,
@@ -20,6 +19,8 @@ import {
   ProgramStarter,
   isStartActivityCommand,
   assertNever,
+  isSleepForCommand,
+  isSleepUntilCommand,
 } from "@eventual/core";
 import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
 import {
@@ -135,9 +136,12 @@ async function orchestrateExecution(
     );
 
     newEvents.push(
-      createEvent<WorkflowTaskStarted>({
-        type: WorkflowEventType.WorkflowTaskStarted,
-      })
+      createEvent<WorkflowTaskStarted>(
+        {
+          type: WorkflowEventType.WorkflowTaskStarted,
+        },
+        start
+      )
     );
 
     executionLogger.debug("Load history");
@@ -322,15 +326,21 @@ async function orchestrateExecution(
       return await Promise.all(
         commands.map(async (command) => {
           if (isStartActivityCommand(command)) {
-            await workflowRuntimeClient.scheduleActivity(executionId, command);
-
-            return createEvent<ActivityScheduled>({
-              type: WorkflowEventType.ActivityScheduled,
-              seq: command.seq,
-              name: command.name,
-            });
+            return await workflowRuntimeClient.scheduleActivity(
+              executionId,
+              command
+            );
+          } else if (
+            isSleepForCommand(command) ||
+            isSleepUntilCommand(command)
+          ) {
+            // all sleep times are computed using the start time of the WorkflowTaskStarted
+            return await workflowRuntimeClient.scheduleSleep(
+              executionId,
+              command,
+              start
+            );
           }
-          // TODO: sleep
           assertNever(command);
         })
       );

@@ -73,11 +73,9 @@ export class WorkflowClient {
     executionId: string,
     ...events: HistoryStateEvent[]
   ) {
-    const id = ulid();
     // send workflow task to workflow queue
     const workflowTask: SQSWorkflowTaskMessage = {
       task: {
-        id,
         executionId,
         events,
       },
@@ -89,7 +87,7 @@ export class WorkflowClient {
         QueueUrl: this.props.workflowQueueUrl,
         MessageGroupId: executionId,
         // just de-dupe with itself
-        MessageDeduplicationId: `${executionId}_${id}`,
+        MessageDeduplicationId: `${executionId}_${ulid()}`,
       })
     );
   }

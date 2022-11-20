@@ -22,18 +22,25 @@ import {
 } from "@aws-sdk/client-scheduler";
 import {
   ExecutionStatus,
-  Command,
   HistoryStateEvent,
   CompleteExecution,
   FailedExecution,
   Execution,
   SleepUntilCommand,
+  SleepForCommand,
+  SleepScheduled,
+  isSleepUntilCommand,
+  WorkflowEventType,
+  StartActivityCommand,
+  ActivityScheduled,
 } from "@eventual/core";
 import {
   createExecutionFromResult,
   ExecutionRecord,
+  SQSWorkflowTaskMessage,
 } from "./workflow-client.js";
 import { ActivityWorkerRequest } from "../activity.js";
+import { createEvent } from "./execution-history-client.js";
 
 export interface WorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;
@@ -171,7 +178,7 @@ export class WorkflowRuntimeClient {
     );
   }
 
-  async scheduleActivity(executionId: string, command: Command) {
+  async scheduleActivity(executionId: string, command: StartActivityCommand) {
     const request: ActivityWorkerRequest = {
       scheduledTime: new Date().toISOString(),
       executionId,
@@ -186,17 +193,58 @@ export class WorkflowRuntimeClient {
         InvocationType: InvocationType.Event,
       })
     );
+
+    return createEvent<ActivityScheduled>({
+      type: WorkflowEventType.ActivityScheduled,
+      seq: command.seq,
+      name: command.name,
+    });
   }
 
-  async scheduleSleep(_executionId: string, _command: SleepUntilCommand) {
+  async scheduleSleep(
+    executionId: string,
+    command: SleepUntilCommand | SleepForCommand,
+    baseTime: Date
+  ): Promise<SleepScheduled> {
+    const untilTime = isSleepUntilCommand(command)
+      ? command.untilTime
+      : new Date(
+          baseTime.getTime() + command.durationSeconds * 1000
+        ).toISOString();
+
+    const workflowEvent: SQSWorkflowTaskMessage = {
+      task: {
+        events: [
+          {
+            type: WorkflowEventType.SleepCompleted,
+            seq: command.seq,
+            timestamp: untilTime,
+          },
+        ],
+        executionId,
+      },
+    };
+
     this.props.scheduler.send(
       new CreateScheduleCommand({
         FlexibleTimeWindow: { Mode: FlexibleTimeWindowMode.OFF },
         ScheduleExpression: "at()",
         Name: "",
-        Target: {},
+        // TODO: DQL and retry
+        Target: {
+          Arn: this.props.workflowQueueArn,
+          RoleArn: this.props.schedulerRoleArn,
+          Input: JSON.stringify(workflowEvent),
+          SqsParameters: { MessageGroupId: executionId },
+        },
       })
     );
+
+    return createEvent<SleepScheduled>({
+      type: WorkflowEventType.SleepScheduled,
+      seq: command.seq,
+      untilTime,
+    });
   }
 }
 
