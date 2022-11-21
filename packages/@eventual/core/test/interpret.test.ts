@@ -2,7 +2,6 @@ import "jest";
 
 import {
   interpret,
-  eventual,
   Eventual,
   Result,
   WorkflowEventType,
@@ -11,6 +10,7 @@ import {
   ActivityScheduled,
   ActivityFailed,
   Program,
+  chain,
 } from "../src/index.js";
 import { createActivityCall } from "../src/activity-call.js";
 import { DeterminismError } from "../src/error.js";
@@ -112,7 +112,7 @@ test("should wait if partial results", () => {
 
 test("should return result of inner function", () => {
   function* workflow() {
-    const inner = eventual(function* () {
+    const inner = chain(function* () {
       return "foo";
     });
     return yield* inner();
@@ -126,7 +126,7 @@ test("should return result of inner function", () => {
 
 test("should await an un-awaited returned Activity", () => {
   function* workflow() {
-    const inner = eventual(function* () {
+    const inner = chain(function* () {
       return "foo";
     });
     return inner();
@@ -141,7 +141,7 @@ test("should await an un-awaited returned Activity", () => {
 test("should await an un-awaited returned AwaitAll", () => {
   function* workflow() {
     let i = 0;
-    const inner = eventual(function* () {
+    const inner = chain(function* () {
       return `foo-${i++}`;
     });
     return Eventual.all([inner(), inner()]);
@@ -157,7 +157,7 @@ test("should support Eventual.all of function calls", () => {
   function* workflow(items: string[]) {
     return Eventual.all(
       items.map(
-        eventual(function* (item): Program {
+        chain(function* (item): Program {
           return yield createActivityCall("process-item", [item]);
         })
       )
@@ -188,7 +188,7 @@ test("should have left-to-right determinism semantics for Eventual.all", () => {
     return Eventual.all([
       createActivityCall("before", ["before"]),
       ...items.map(
-        eventual(function* (item) {
+        chain(function* (item) {
           yield createActivityCall("inside", [item]);
         })
       ),
@@ -254,7 +254,7 @@ test("throw error within nested function", () => {
     try {
       yield* Eventual.all(
         items.map(
-          eventual(function* (item) {
+          chain(function* (item) {
             const result = yield createActivityCall("inside", [item]);
 
             if (result === "bad") {
@@ -392,7 +392,7 @@ test("generator function returns an ActivityCall", () => {
     return yield* sub();
   }
 
-  const sub = eventual(function* () {
+  const sub = chain(function* () {
     return createActivityCall("call-a", []);
   });
 
@@ -410,7 +410,6 @@ test("generator function returns an ActivityCall", () => {
 function completed(result: any, seq: number): ActivityCompleted {
   return {
     type: WorkflowEventType.ActivityCompleted,
-    id: "id",
     duration: 0,
     result,
     seq,
@@ -421,7 +420,6 @@ function completed(result: any, seq: number): ActivityCompleted {
 function failed(error: any, seq: number): ActivityFailed {
   return {
     type: WorkflowEventType.ActivityFailed,
-    id: "id",
     duration: 0,
     error,
     message: "message",
@@ -433,7 +431,6 @@ function failed(error: any, seq: number): ActivityFailed {
 function scheduled(name: string, seq: number): ActivityScheduled {
   return {
     type: WorkflowEventType.ActivityScheduled,
-    id: "id",
     name,
     seq,
     timestamp: new Date(0).toISOString(),

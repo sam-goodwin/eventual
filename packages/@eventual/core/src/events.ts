@@ -1,10 +1,12 @@
+import { ExecutionContext } from "./context.js";
+
 export interface BaseEvent {
   type: WorkflowEventType;
   id: string;
   timestamp: string;
 }
 
-export interface HistoryEventBase extends BaseEvent {
+export interface HistoryEventBase extends Omit<BaseEvent, "id"> {
   seq: number;
 }
 
@@ -47,7 +49,8 @@ export type WorkflowEvent =
 
 export interface WorkflowStarted extends BaseEvent {
   type: WorkflowEventType.WorkflowStarted;
-  input: any;
+  input?: any;
+  context: Omit<ExecutionContext, "id" | "startTime">;
 }
 
 export function isWorkflowStarted(
@@ -152,4 +155,43 @@ export function assertEventType<T extends WorkflowEvent>(
   if (!event || event.type !== type) {
     throw new Error(`Expected event of type ${type}`);
   }
+}
+
+/**
+ * Compute the ID of an event.
+ *
+ * Some events have a computed ID to save space.
+ */
+export function getEventId(event: WorkflowEvent): string {
+  if (isHistoryEvent(event)) {
+    return `${event.seq}_${event.type}`;
+  } else {
+    return event.id;
+  }
+}
+
+/**
+ * Merges new task events with existing history events.
+ *
+ * We assume that history events are unique.
+ *
+ * Task events are taken only of their ID ({@link getEventId}) is unique across all other events.
+ */
+export function filterEvents<T extends WorkflowEvent>(
+  historyEvents: T[],
+  taskEvents: T[]
+): T[] {
+  const ids = new Set(historyEvents.map(getEventId));
+
+  return [
+    ...historyEvents,
+    ...taskEvents.filter((event) => {
+      const id = getEventId(event);
+      if (ids.has(id)) {
+        return false;
+      }
+      ids.add(id);
+      return true;
+    }),
+  ];
 }

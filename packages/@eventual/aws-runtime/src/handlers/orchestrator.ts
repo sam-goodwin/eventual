@@ -4,22 +4,20 @@ import {
   isFailed,
   isResolved,
   isResult,
-  isWorkflowStarted,
   WorkflowCompleted,
   WorkflowEventType,
   WorkflowTaskStarted,
   WorkflowTaskCompleted,
   WorkflowFailed,
-  interpret,
-  isHistoryEvent,
   Command,
-  Program,
   ActivityScheduled,
   HistoryStateEvents,
   CompleteExecution,
   FailedExecution,
   ExecutionStatus,
   isCompleteExecution,
+  progressWorkflow,
+  ProgramStarter,
 } from "@eventual/core";
 import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
 import {
@@ -30,10 +28,11 @@ import { SQSEvent, SQSHandler, SQSRecord } from "aws-lambda";
 import { createMetricsLogger, Unit } from "aws-embedded-metrics";
 import { timed, timedSync } from "../metrics/utils.js";
 import { workflowName } from "../env.js";
-import { MetricsCommon, OrchestratorMetrics } from "src/metrics/constants.js";
+import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import { Logger } from "@aws-lambda-powertools/logger";
 import middy from "@middy/core";
 import { ExecutionError, logger, loggerMiddlewares } from "../logger.js";
+import { WorkflowContext } from "@eventual/core";
 
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowRuntimeClient = createWorkflowRuntimeClient();
@@ -41,9 +40,7 @@ const workflowRuntimeClient = createWorkflowRuntimeClient();
 /**
  * Creates an entrypoint function for orchestrating a workflow.
  */
-export function orchestrator(
-  program: (input: any) => Program<any>
-): SQSHandler {
+export function orchestrator(program: ProgramStarter): SQSHandler {
   return middy(async (event: SQSEvent) => {
     logger.debug("Handle workflowQueue records");
     // if a polling request
@@ -104,7 +101,7 @@ export function orchestrator(
 }
 
 async function orchestrateExecution(
-  program: (input: any) => Program<any>,
+  program: ProgramStarter,
   executionId: string,
   records: SQSRecord[],
   executionLogger: Logger
@@ -162,36 +159,27 @@ async function orchestrateExecution(
       history.length
     );
 
-    // historical events and incoming events will be fed into the workflow to resume/progress state
-    const inputEvents = [...history, ...events];
+    const workflowContext: WorkflowContext = {
+      name: workflowName(),
+    };
 
-    executionLogger.debug(
-      "Running workflow with events: " + JSON.stringify(inputEvents)
-    );
-    const startEvent = inputEvents.find(isWorkflowStarted);
-
-    if (!startEvent) {
-      throw new ExecutionError(
-        executionLogger,
-        "No workflow started event found for execution id: " + executionId
+    const {
+      result,
+      commands: newCommands,
+      history: updatedHistory,
+    } = timedSync(metrics, OrchestratorMetrics.AdvanceExecutionDuration, () => {
+      return progressWorkflow(
+        program,
+        history,
+        events,
+        workflowContext,
+        executionId
       );
-    }
+    });
 
-    executionLogger.info("program: " + program);
-
-    // execute workflow
-    const interpretEvents = inputEvents.filter(isHistoryEvent);
-    const { result, commands: newCommands } = timedSync(
-      metrics,
-      OrchestratorMetrics.AdvanceExecutionDuration,
-      () => {
-        const input = JSON.parse(startEvent.input);
-        return interpret(program(input), interpretEvents);
-      }
-    );
     metrics.setProperty(
       OrchestratorMetrics.AdvanceExecutionEvents,
-      interpretEvents.length
+      updatedHistory.length
     );
 
     executionLogger.debug(
@@ -223,7 +211,7 @@ async function orchestrateExecution(
 
     newEvents.push(...commandEvents);
 
-    const newHistoryEvents = [...inputEvents, ...commandEvents];
+    const newHistoryEvents = [...updatedHistory, ...commandEvents];
 
     // update history from new commands and events
     // for now, we'll just write the awaitable command events to s3 as those are the ones needed to reconstruct the workflow.

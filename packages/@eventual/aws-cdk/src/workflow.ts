@@ -1,10 +1,10 @@
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import {
-  Runtime,
   Architecture,
   Function,
   Code,
   IFunction,
+  Runtime,
 } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import { Bucket, IBucket } from "aws-cdk-lib/aws-s3";
@@ -119,6 +119,7 @@ export class Workflow extends Construct implements IGrantable {
             "--conditions": "module,import,require",
           },
           metafile: true,
+          externalModules: ["@aws-sdk", "aws-sdk"],
         },
         environment: {
           [ENV_NAMES.TABLE_NAME]: this.table.tableName,

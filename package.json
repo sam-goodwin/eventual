@@ -30,7 +30,7 @@
     "prettier": "^2.7.1",
     "ts-jest": "^29",
     "turbo": "^1.5.5",
-    "typescript": "^4.8.4"
+    "typescript": "^4.9.3"
   },
   "lint-staged": {
     "*.{tsx,jsx,ts,js,md,css,yml,json}": [
@@ -48,7 +48,7 @@
       "^.+\\.(t|j)sx?$": [
         "ts-jest",
         {
-          "tsConfig": "tsconfig.test.json",
+          "tsconfig": "tsconfig.test.json",
           "useESM": true
         }
       ]

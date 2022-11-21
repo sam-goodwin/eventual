@@ -31,8 +31,11 @@ async function main() {
           eventualESPlugin,
         ],
         conditions: ["module", "import", "require"],
+        // supported with NODE_18.x runtime
+        // TODO: make this configurable.
+        // external: ["@aws-sdk"],
         platform: "node",
-        format: "cjs",
+        format: "esm",
         metafile: true,
         bundle: true,
         entryPoints: [
@@ -41,7 +44,9 @@ async function main() {
             "../../esm/entry/orchestrator.js"
           ),
         ],
-        outfile: path.join(outDir, "orchestrator/index.js"),
+        // // ulid
+        banner: esmPolyfillRequireBanner(),
+        outfile: path.join(outDir, "orchestrator/index.mjs"),
       })
       .then(writeEsBuildMetafile(path.join(outDir, "orchestrator/meta.json"))),
     esbuild
@@ -54,8 +59,11 @@ async function main() {
           }),
         ],
         conditions: ["module", "import", "require"],
+        // supported with NODE_18.x runtime
+        // TODO: make this configurable.
+        // external: ["@aws-sdk"],
         platform: "node",
-        format: "cjs",
+        format: "esm",
         metafile: true,
         bundle: true,
         entryPoints: [
@@ -64,12 +72,25 @@ async function main() {
             "../../esm/entry/activity-worker.js"
           ),
         ],
-        outfile: path.join(outDir, "activity-worker/index.js"),
+        banner: esmPolyfillRequireBanner(),
+        outfile: path.join(outDir, "activity-worker/index.mjs"),
       })
       .then(
         writeEsBuildMetafile(path.join(outDir, "activity-worker/meta.json"))
       ),
   ]);
+}
+
+/**
+ * Allows ESM module bundles to support dynamo requires when necessary.
+ */
+function esmPolyfillRequireBanner() {
+  return {
+    js: [
+      `import { createRequire as topLevelCreateRequire } from 'module'`,
+      `const require = topLevelCreateRequire(import.meta.url)`,
+    ].join("\n"),
+  };
 }
 
 function writeEsBuildMetafile(path: string) {
