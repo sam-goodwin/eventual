@@ -7,7 +7,6 @@ import {
 import { registerActivity } from "./global.js";
 import type { Program } from "./interpret.js";
 import type { Result } from "./result.js";
-
 import { Context, WorkflowContext } from "./context.js";
 import { DeterminismError } from "./error.js";
 import {
@@ -53,6 +52,26 @@ export interface Workflow<
   ) => Program<AwaitedEventual<ReturnType<F>>>;
 }
 
+/**
+ * Creates and registers a long-running workflow.
+ *
+ * Example:
+ * ```ts
+ * import { activity, workflow } from "@eventual/core";
+ *
+ * export default workflow("my-workflow", async ({ name }: { name: string }) => {
+ *   const result = await hello(name);
+ *   console.log(result);
+ *   return `you said ${result}`;
+ * });
+ *
+ * const hello = activity("hello", async (name: string) => {
+ *   return `hello ${name}`;
+ * });
+ * ```
+ * @param id a globally unique ID for this workflow.
+ * @param definition the workflow definition.
+ */
 export function workflow<F extends (...args: any[]) => Promise<any> | Program>(
   id: string,
   definition: F
@@ -75,6 +94,9 @@ export function isWorkflowCall<T>(a: Eventual<T>): a is WorkflowCall<T> {
   return a[EventualSymbol] === EventualKind.WorkflowCall;
 }
 
+/**
+ * An {@link Eventual} representing an awaited call to a {@link Workflow}.
+ */
 export interface WorkflowCall<T = any> {
   [EventualSymbol]: EventualKind.WorkflowCall;
   id: string;
@@ -82,7 +104,7 @@ export interface WorkflowCall<T = any> {
   result?: Result<T>;
 }
 
-export interface AdvanceWorkflowResult extends WorkflowResult {
+export interface ProgressWorkflowResult extends WorkflowResult {
   history: HistoryStateEvents[];
 }
 
@@ -95,7 +117,7 @@ export function progressWorkflow(
   taskEvents: HistoryStateEvents[],
   workflowContext: WorkflowContext,
   executionId: string
-): AdvanceWorkflowResult {
+): ProgressWorkflowResult {
   // historical events and incoming events will be fed into the workflow to resume/progress state
   const inputEvents = filterEvents<HistoryStateEvents>(
     historyEvents,

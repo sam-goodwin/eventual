@@ -13,21 +13,21 @@ exports[`esbuild-plugin mts workflow 1`] = `
 (() => {
   // test-files/workflow.mts
   var doWork = activity("doWork", async (input) => input);
-  var workflow_default = eventual(function* (input) {
+  var workflow_default = workflow("workflow", function* (input) {
     const items = yield doWork(input);
-    yield Eventual.all(items.map(eventual(function* (item) {
+    yield $Eventual.all(items.map($eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Eventual.all(items.map(eventual(function* (item) {
+    yield $Eventual.all(items.map($eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Eventual.allSettled(items.map(eventual(function* (item) {
+    yield $Eventual.allSettled(items.map($eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Eventual.any(items.map(eventual(function* (item) {
+    yield $Eventual.any(items.map($eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Eventual.race(items.map(eventual(function* (item) {
+    yield $Eventual.race(items.map($eventual(function* (item) {
       yield doWork(item);
     })));
   });
@@ -39,7 +39,7 @@ exports[`esbuild-plugin open-account 1`] = `
 ""use strict";
 (() => {
   // test-files/open-account.ts
-  var open_account_default = eventual(function* ({ accountId, address, email, bankDetails }) {
+  var open_account_default = workflow("open-account", function* ({ accountId, address, email, bankDetails }) {
     const rollbacks = [];
     try {
       yield createAccount(accountId);
@@ -49,19 +49,19 @@ exports[`esbuild-plugin open-account 1`] = `
     }
     try {
       yield addAddress(accountId, address);
-      rollbacks.push(eventual(function* () {
+      rollbacks.push($eventual(function* () {
         return removeAddress(accountId);
       }));
       yield addEmail(accountId, email);
-      rollbacks.push(eventual(function* () {
+      rollbacks.push($eventual(function* () {
         return removeEmail(accountId);
       }));
       yield addBankAccount(accountId, bankDetails);
-      rollbacks.push(eventual(function* () {
+      rollbacks.push($eventual(function* () {
         return removeBankAccount(accountId);
       }));
     } catch (err) {
-      yield Eventual.all(rollbacks.map(eventual(function* (rollback) {
+      yield $Eventual.all(rollbacks.map($eventual(function* (rollback) {
         return rollback();
       })));
     }
@@ -87,21 +87,21 @@ exports[`esbuild-plugin ts workflow 1`] = `
 ""use strict";
 (() => {
   var doWork = activity("doWork", async (input) => input);
-  var workflow_default = eventual(function* (input) {
+  var workflow_default = workflow("workflow", function* (input) {
     const items = yield doWork(input);
-    yield Eventual.all(items.map(eventual(function* (item) {
+    yield $Eventual.all(items.map($eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Eventual.all(items.map(eventual(function* (item) {
+    yield $Eventual.all(items.map($eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Eventual.allSettled(items.map(eventual(function* (item) {
+    yield $Eventual.allSettled(items.map($eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Eventual.any(items.map(eventual(function* (item) {
+    yield $Eventual.any(items.map($eventual(function* (item) {
       yield doWork(item);
     })));
-    yield Eventual.race(items.map(eventual(function* (item) {
+    yield $Eventual.race(items.map($eventual(function* (item) {
       yield doWork(item);
     })));
   });

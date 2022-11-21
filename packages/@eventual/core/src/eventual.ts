@@ -1,6 +1,6 @@
 import type { ActivityCall } from "./activity-call.js";
 import type { AwaitAll } from "./await-all.js";
-import type { Chain } from "./chain.js";
+import { chain, Chain } from "./chain.js";
 import type { Program } from "./interpret.js";
 import type { WorkflowCall } from "./workflow.js";
 
@@ -55,5 +55,9 @@ export namespace Eventual {
   }
 }
 
+// the below globals are required by the transformer
+
 // @ts-ignore
-global.Eventual = Eventual;
+global.$eventual = chain;
+// @ts-ignore
+global.$Eventual = Eventual;
