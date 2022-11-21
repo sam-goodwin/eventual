@@ -1,9 +1,15 @@
 import * as cwLogs from "@aws-sdk/client-cloudwatch-logs";
+import { FilteredLogEvent } from "@aws-sdk/client-cloudwatch-logs";
 
 export interface FunctionLogInput {
   functionName: string;
   friendlyName: string;
-  startTime: number;
+  startTime?: number;
+}
+
+export interface FunctionLogEvents {
+  fn: FunctionLogInput;
+  events: FilteredLogEvent[];
 }
 
 export interface LogEvent {
@@ -18,26 +24,29 @@ export interface LogEvent {
  * @returns Event log
  */
 export function getInterleavedLogEvents(
-  functions: FunctionLogInput[],
-  logs: cwLogs.FilterLogEventsCommandOutput[]
+  fnEvents: FunctionLogEvents[]
 ): LogEvent[] {
-  const interleaved = zip(functions, logs).flatMap(
-    ([{ friendlyName }, { events }]) =>
-      events?.map((ev) => ({
-        source: friendlyName,
-        ev,
-      })) ?? []
+  const interleaved = fnEvents.flatMap(({ fn, events }) =>
+    events.map((ev) => ({
+      source: fn.friendlyName,
+      ev,
+    }))
   );
-  interleaved.sort((a, b) => a.ev.timestamp! - b.ev.timestamp!);
+  // -1 is optimal placeholder for no timestamp, as we can safely assume cloudwatch will never send a timestamp < 0, and Number.MIN_VALUE will wrap around on subtraction
+  interleaved.sort((a, b) => (a.ev.timestamp ?? -1) - (b.ev.timestamp ?? -1));
   return interleaved;
 }
 
-export function getNextFunctionLogInputs(
-  functions: FunctionLogInput[],
-  logs: cwLogs.FilterLogEventsCommandOutput[]
+/**
+ * Get inputs for fetching function logs following the given events
+ * @param functions List of FunctionLogEvents describing functions to log and existing retrieved events
+ * @returns Event log
+ */
+export function getFollowingFunctionLogInputs(
+  events: FunctionLogEvents[]
 ): FunctionLogInput[] {
-  return zip(functions, logs).flatMap(
-    ([{ functionName, friendlyName, startTime }, { events }]) => {
+  return events.map(
+    ({ fn: { functionName, friendlyName, startTime }, events }) => {
       const latestEvent = events?.at(-1)?.timestamp;
       return {
         functionName,
@@ -46,11 +55,4 @@ export function getNextFunctionLogInputs(
       };
     }
   );
-}
-
-function zip<X, Y>(x: X[], y: Y[]): [X, Y][] {
-  return Array.from({ length: Math.min(x.length, y.length) }, (_, i) => [
-    x[i]!,
-    y[i]!,
-  ]);
 }

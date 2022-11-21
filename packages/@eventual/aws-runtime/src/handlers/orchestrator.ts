@@ -26,11 +26,14 @@ import {
   createExecutionHistoryClient,
   createWorkflowRuntimeClient,
 } from "../clients/index.js";
-import { SQSHandler, SQSRecord } from "aws-lambda";
+import { SQSEvent, SQSHandler, SQSRecord } from "aws-lambda";
 import { createMetricsLogger, Unit } from "aws-embedded-metrics";
 import { timed, timedSync } from "../metrics/utils.js";
 import { workflowName } from "../env.js";
 import { MetricsCommon, OrchestratorMetrics } from "src/metrics/constants.js";
+import { Logger } from "@aws-lambda-powertools/logger";
+import middy from "@middy/core";
+import { ExecutionError, logger, loggerMiddlewares } from "../logger.js";
 
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowRuntimeClient = createWorkflowRuntimeClient();
@@ -41,8 +44,8 @@ const workflowRuntimeClient = createWorkflowRuntimeClient();
 export function orchestrator(
   program: (input: any) => Program<any>
 ): SQSHandler {
-  return async (event) => {
-    console.debug("Handle workflowQueue records");
+  return middy(async (event: SQSEvent) => {
+    logger.debug("Handle workflowQueue records");
     // if a polling request
     if (event.Records.some((r) => !r.attributes.MessageGroupId)) {
       throw new Error("Expected SQS Records to contain fifo message id");
@@ -54,24 +57,33 @@ export function orchestrator(
       (r) => r.attributes.MessageGroupId!
     );
 
-    console.log(
+    logger.info(
       "Found execution ids: " + Object.keys(eventsByExecutionId).join(", ")
     );
 
     // for each execution id
     const results = await promiseAllSettledPartitioned(
       Object.entries(eventsByExecutionId),
-      async ([executionId, records]) =>
-        orchestrateExecution(program, executionId, records)
+      async ([executionId, records]) => {
+        const executionLogger = logger.createChild({
+          persistentLogAttributes: { executionId },
+        });
+        return orchestrateExecution(
+          program,
+          executionId,
+          records,
+          executionLogger
+        );
+      }
     );
 
-    console.debug(
+    logger.debug(
       "Executions succeeded: " +
         results.fulfilled.map(([[executionId]]) => executionId).join(",")
     );
 
     if (results.rejected.length > 0) {
-      console.error(
+      logger.error(
         "Executions failed: \n" +
           results.rejected
             .map(([[executionId], error]) => `${executionId}: ${error}`)
@@ -88,13 +100,14 @@ export function orchestrator(
         itemIdentifier: r,
       })),
     };
-  };
+  }).use(loggerMiddlewares);
 }
 
 async function orchestrateExecution(
   program: (input: any) => Program<any>,
   executionId: string,
-  records: SQSRecord[]
+  records: SQSRecord[],
+  executionLogger: Logger
 ) {
   const metrics = createMetricsLogger();
   metrics.resetDimensions(false);
@@ -136,7 +149,7 @@ async function orchestrateExecution(
       })
     );
 
-    console.debug("Load history");
+    executionLogger.debug("Load history");
     // load history
     const history = await timed(
       metrics,
@@ -152,18 +165,19 @@ async function orchestrateExecution(
     // historical events and incoming events will be fed into the workflow to resume/progress state
     const inputEvents = [...history, ...events];
 
-    console.debug(
+    executionLogger.debug(
       "Running workflow with events: " + JSON.stringify(inputEvents)
     );
     const startEvent = inputEvents.find(isWorkflowStarted);
 
     if (!startEvent) {
-      throw new Error(
+      throw new ExecutionError(
+        executionLogger,
         "No workflow started event found for execution id: " + executionId
       );
     }
 
-    console.log("program: " + program);
+    executionLogger.info("program: " + program);
 
     // execute workflow
     const interpretEvents = inputEvents.filter(isHistoryEvent);
@@ -180,9 +194,11 @@ async function orchestrateExecution(
       interpretEvents.length
     );
 
-    console.debug("Workflow terminated with: " + JSON.stringify(result));
+    executionLogger.debug(
+      "Workflow terminated with: " + JSON.stringify(result)
+    );
 
-    console.info(`Found ${newCommands.length} new commands.`);
+    executionLogger.info(`Found ${newCommands.length} new commands.`);
 
     const commandEvents = await timed(
       metrics,
@@ -297,7 +313,7 @@ async function orchestrateExecution(
         execution.status === ExecutionStatus.COMPLETE ? 0 : 1,
         Unit.Count
       );
-      console.log("logging for execution" + JSON.stringify(execution));
+      executionLogger.info("logging for execution" + JSON.stringify(execution));
       metrics.putMetric(
         OrchestratorMetrics.ExecutionTotalDuration,
         new Date(execution.endTime).getTime() -

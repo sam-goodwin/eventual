@@ -135,11 +135,14 @@ importers:
 
   packages/@eventual/aws-runtime:
     specifiers:
+      '@aws-lambda-powertools/logger': ^1.4.1
       '@aws-sdk/client-dynamodb': 3.208.0
       '@aws-sdk/client-lambda': ^3.208.0
       '@aws-sdk/client-s3': 3.208.0
       '@aws-sdk/client-sqs': 3.208.0
       '@eventual/core': workspace:^
+      '@middy/core': ^3.6.2
+      '@middy/error-logger': ^3.6.2
       '@types/aws-lambda': 8.10.108
       '@types/jest': ^29
       '@types/node': ^16
@@ -153,7 +156,10 @@ importers:
       typescript: ^4.8.4
       ulid: ^2.3.0
     dependencies:
+      '@aws-lambda-powertools/logger': 1.4.1
       '@eventual/core': link:../core
+      '@middy/core': 3.6.2
+      '@middy/error-logger': 3.6.2
       aws-embedded-metrics: 4.0.0
       aws-lambda: 1.0.7
       fast-equals: 4.0.3
@@ -390,6 +396,19 @@ packages:
       '@aws-sdk/types': 3.212.0
       '@aws-sdk/util-utf8-browser': 3.188.0
       tslib: 1.14.1
+
+  /@aws-lambda-powertools/commons/1.4.1:
+    resolution: {integrity: sha512-fGmCIQTG0vC+hllu3Ne1B2fRC3Hl2A0Q7Db7JeCXVsAEUIqzUp7blm1WVmqZsBzJ2T5XvZ3B/xMgc0ci8FGOjQ==}
+    dev: false
+
+  /@aws-lambda-powertools/logger/1.4.1:
+    resolution: {integrity: sha512-T0/bCUFybGSdFxaZEFKm5npz3jexorbPsNyet1WSY0sRubz3JS0o0ppJE3xrVs6t2Lz9LfzFJkFTF/aJKt3McQ==}
+    dependencies:
+      '@aws-lambda-powertools/commons': 1.4.1
+      lodash.clonedeep: 4.5.0
+      lodash.merge: 4.6.2
+      lodash.pickby: 4.6.0
+    dev: false
 
   /@aws-sdk/abort-controller/3.201.0:
     resolution: {integrity: sha512-xJ984k+CKlGjBmvNarzM8Y+b6X4L1Zt0TycQmVBJq7fAr/ju9l13pQIoXR5WlDIW1FkGeVczF5Nu6fN46SCORQ==}
@@ -4765,6 +4784,16 @@ packages:
       write-file-atomic: 4.0.2
     dev: true
 
+  /@middy/core/3.6.2:
+    resolution: {integrity: sha512-/vyvG34RIt7CTmuB/jksGkk9vs6RCoOlRFPfdQq11dHkiKlT2mm8j/jZx7gSpEhXXh9LeaEMuKPnsgWBIlGS1g==}
+    engines: {node: '>=14'}
+    dev: false
+
+  /@middy/error-logger/3.6.2:
+    resolution: {integrity: sha512-7pGHuYWbBHsowtb+s4IDkfackp/kNe/iDTdqMzV8RoFfa+w3Oljre54fVquLVMe9+O98mA/woXYPJtv4MGVnUw==}
+    engines: {node: '>=14'}
+    dev: false
+
   /@nodelib/fs.scandir/2.1.5:
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
     engines: {node: '>= 8'}
@@ -7833,7 +7862,7 @@ packages:
       pretty-format: 29.3.1
       slash: 3.0.0
       strip-json-comments: 3.1.1
-      ts-node: 10.9.1_fvpuwgkpfe3dm3hnpcpbcxmb3y
+      ts-node: 10.9.1_e7yvbkxpwwqnzxz2s2bfjt7zx4
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -7873,7 +7902,7 @@ packages:
       pretty-format: 29.3.1
       slash: 3.0.0
       strip-json-comments: 3.1.1
-      ts-node: 10.9.1_fvpuwgkpfe3dm3hnpcpbcxmb3y
+      ts-node: 10.9.1_e7yvbkxpwwqnzxz2s2bfjt7zx4
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -8472,6 +8501,10 @@ packages:
       p-locate: 5.0.0
     dev: false
 
+  /lodash.clonedeep/4.5.0:
+    resolution: {integrity: sha512-H5ZhCF25riFd9uB5UCkVKo61m3S/xZk1x4wA6yp/L3RFP6Z/eHH1ymQcGLo7J3GMPfm0V/7m1tryHuGVxpqEBQ==}
+    dev: false
+
   /lodash.ismatch/4.4.0:
     resolution: {integrity: sha512-fPMfXjGQEV9Xsq/8MTSgUf255gawYRbjwMyDbcvDhXgV7enSZA0hynz6vMPnpAb5iONEzBHBPsT+0zes5Z301g==}
     dev: true
@@ -8479,6 +8512,14 @@ packages:
   /lodash.memoize/4.1.2:
     resolution: {integrity: sha512-t7j+NzmgnQzTAYXcsHYLgimltOV1MXHtlOWf6GjL9Kj8GK5FInw5JotxvbOs+IvV1/Dzo04/fCGfLVs7aXb4Ag==}
     dev: true
+
+  /lodash.merge/4.6.2:
+    resolution: {integrity: sha512-0KpjqXRVvrYyCsX1swR/XTK0va6VQkQM6MNo7PqW77ByjAhoARA8EfrP1N4+KlKj8YS0ZUCtRT/YUuhyYDujIQ==}
+    dev: false
+
+  /lodash.pickby/4.6.0:
+    resolution: {integrity: sha512-AZV+GsS/6ckvPOVQPXSiFFacKvKB4kOQu6ynt9wz0F3LO4R9Ij4K1ddYsIytDpSgLz88JHd9P+oaLeej5/Sl7Q==}
+    dev: false
 
   /lodash/4.17.21:
     resolution: {integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==}
