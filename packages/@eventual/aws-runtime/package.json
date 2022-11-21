@@ -18,7 +18,6 @@
     "@middy/core": "^3.6.2",
     "@middy/error-logger": "^3.6.2",
     "aws-embedded-metrics": "^4.0.0",
-    "aws-embedded-metrics": "^4.0.0",
     "aws-lambda": "^1.0.7",
     "fast-equals": "^4.0.3",
     "micro-memoize": "^4.0.11",
