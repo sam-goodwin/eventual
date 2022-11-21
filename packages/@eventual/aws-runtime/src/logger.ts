@@ -9,19 +9,7 @@ export const loggerMiddlewares = [
   //as lambdas that operate on a single execution can attach execution id to the global logger
   errorLogger({
     logger: (e) => {
-      const executionLogger =
-        e instanceof ExecutionError ? e.executionLogger : logger;
-      executionLogger.error("Execution error", e);
+      logger.error("Execution error", e);
     },
   }),
 ];
-
-interface IExecutionLogger {
-  executionLogger: Logger;
-}
-
-export class ExecutionError extends Error implements IExecutionLogger {
-  constructor(public readonly executionLogger: Logger, message?: string) {
-    super(message);
-  }
-}
