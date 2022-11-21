@@ -18,21 +18,26 @@ import {
   isCompleteExecution,
   progressWorkflow,
   Workflow,
+  isScheduleActivityCommand,
+  isStartWorkflowCommand,
+  assertNever,
+  ChildWorkflowScheduled,
 } from "@eventual/core";
 import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
 import {
   createExecutionHistoryClient,
+  createWorkflowClient,
   createWorkflowRuntimeClient,
 } from "../clients/index.js";
 import { SQSHandler, SQSRecord } from "aws-lambda";
 import { createMetricsLogger, Unit } from "aws-embedded-metrics";
 import { timed, timedSync } from "../metrics/utils.js";
-import { workflowName } from "../env.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import { WorkflowContext } from "@eventual/core";
 
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowRuntimeClient = createWorkflowRuntimeClient();
+const workflowClient = createWorkflowClient();
 
 /**
  * Creates an entrypoint function for orchestrating a workflow.
@@ -97,7 +102,7 @@ async function orchestrateExecution(
   metrics.resetDimensions(false);
   metrics.setNamespace(MetricsCommon.EventualNamespace);
   metrics.setDimensions({
-    [MetricsCommon.WorkflowNameDimension]: workflowName(),
+    [MetricsCommon.WorkflowNameDimension]: workflow.name,
   });
   const events = sqsRecordsToEvents(records);
   const start = new Date();
@@ -147,7 +152,7 @@ async function orchestrateExecution(
     );
 
     const workflowContext: WorkflowContext = {
-      name: workflowName(),
+      name: workflow.name,
     };
 
     const {
@@ -257,7 +262,10 @@ async function orchestrateExecution(
           metrics,
           OrchestratorMetrics.ExecutionStatusUpdateDuration,
           () =>
-            workflowRuntimeClient.completeExecution(executionId, result.value)
+            workflowRuntimeClient.completeExecution({
+              executionId,
+              result: result.value,
+            })
         );
         logExecutionCompleteMetrics(execution);
       }
@@ -312,13 +320,33 @@ async function orchestrateExecution(
       // register command events
       return await Promise.all(
         commands.map(async (command) => {
-          await workflowRuntimeClient.scheduleActivity(executionId, command);
+          if (isScheduleActivityCommand(command)) {
+            await workflowRuntimeClient.scheduleActivity(
+              workflow.name,
+              executionId,
+              command
+            );
 
-          return createEvent<ActivityScheduled>({
-            type: WorkflowEventType.ActivityScheduled,
-            seq: command.seq,
-            name: command.name,
-          });
+            return createEvent<ActivityScheduled>({
+              type: WorkflowEventType.ActivityScheduled,
+              seq: command.seq,
+              name: command.name,
+            });
+          } else if (isStartWorkflowCommand(command)) {
+            await workflowClient.startWorkflow({
+              name: `${command.name}_${executionId}_${command.seq}`,
+              input: command.input,
+            });
+
+            return createEvent<ChildWorkflowScheduled>({
+              type: WorkflowEventType.ChildWorkflowScheduled,
+              seq: command.seq,
+              name: command.name,
+              input: command.input,
+            });
+          } else {
+            return assertNever(command, `unknown command type`);
+          }
         })
       );
     }

@@ -1,15 +1,19 @@
-import { Eventual, isEventual } from "./eventual.js";
+import { Eventual, EventualSymbol, isEventual } from "./eventual.js";
 import { isAwaitAll } from "./await-all.js";
 import { ActivityCall, isActivityCall } from "./activity-call.js";
 import { DeterminismError } from "./error.js";
 import {
   ActivityCompleted,
   ActivityFailed,
-  ActivityScheduled,
+  ChildWorkflowCompleted,
+  ChildWorkflowFailed,
   HistoryEvent,
-  isActivityCompleted,
-  isActivityFailed,
   isActivityScheduled,
+  isChildWorkflowScheduled,
+  isCompletedEvent,
+  isFailedEvent,
+  isScheduledEvent,
+  ScheduledEvent,
 } from "./events.js";
 import { collectActivities } from "./global.js";
 import {
@@ -81,17 +85,14 @@ export function interpret<Return>(
 
   let event;
   // run the event loop one event at a time, ensuring deterministic execution.
-  while ((event = peek()) && peekForward(isActivityScheduled)) {
+  while ((event = peek()) && peekForward(isScheduledEvent)) {
     pop();
 
-    if (isActivityCompleted(event) || isActivityFailed(event)) {
+    if (isCompletedEvent(event) || isFailedEvent(event)) {
       commitCompletionEvent(event, true);
-    } else if (isActivityScheduled(event)) {
+    } else if (isScheduledEvent(event)) {
       const calls = advance(true) ?? [];
-      const events = [
-        event,
-        ...takeWhile(calls.length - 1, isActivityScheduled),
-      ];
+      const events = [event, ...takeWhile(calls.length - 1, isScheduledEvent)];
       if (events.length !== calls.length) {
         throw new DeterminismError();
       }
@@ -114,7 +115,7 @@ export function interpret<Return>(
   // if the history's tail contains completed events, e.g. [...scheduled, ...completed]
   // then we need to apply the completions, resume chains and schedule any produced activity calls
   while ((event = pop())) {
-    if (isActivityScheduled(event)) {
+    if (isActivityScheduled(event) || isChildWorkflowScheduled(event)) {
       // it should be impossible to receive a scheduled event
       // -> because the tail of history can only contain completion events
       // -> scheduled events stored in history should correspond to activity calls
@@ -137,6 +138,7 @@ export function interpret<Return>(
   return {
     result,
     commands: calls.map((call) => ({
+      kind: call[EventualSymbol],
       args: call.args,
       name: call.name,
       seq: call.seq!,
@@ -295,7 +297,11 @@ export function interpret<Return>(
   }
 
   function commitCompletionEvent(
-    event: ActivityCompleted | ActivityFailed,
+    event:
+      | ActivityCompleted
+      | ActivityFailed
+      | ChildWorkflowCompleted
+      | ChildWorkflowFailed,
     isReplay: boolean
   ) {
     const call = callTable[event.seq];
@@ -305,13 +311,13 @@ export function interpret<Return>(
     if (isReplay && call.result && !isPending(call.result)) {
       throw new DeterminismError();
     }
-    call.result = isActivityCompleted(event)
+    call.result = isCompletedEvent(event)
       ? Result.resolved(event.result)
       : Result.failed(event.error);
   }
 }
 
-function isCorresponding(event: ActivityScheduled, call: ActivityCall) {
+function isCorresponding(event: ScheduledEvent, call: ActivityCall) {
   return (
     event.seq === call.seq && event.name === call.name
     // TODO: also validate arguments

@@ -79,5 +79,7 @@ export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
       lambda: lambda(),
       activityWorkerFunctionName:
         activityWorkerFunctionName ?? env.activityWorkerFunctionName(),
+      sqs: sqs(),
+      workflowQueueUrl: env.workflowQueueUrl(),
     })
 );

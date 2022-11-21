@@ -32,9 +32,18 @@ export interface ExecutionHandle {
 export interface Workflow<
   F extends (...args: any[]) => any = (...args: any[]) => any
 > {
-  id: string;
   /**
-   * Invokes
+   * Globally unique ID of this {@link Workflow}.
+   */
+  name: string;
+  /**
+   * Invokes the {@link Workflow} from within another workflow.
+   *
+   * This can only be called from within another workflow because it's not possible
+   * to wait for completion synchronously - it relies on the event-driven environment
+   * of a workflow execution.
+   *
+   * To start a workflow from another environment, use {@link start}.
    */
   (...args: Parameters<F>): ReturnType<F>;
   /**
@@ -42,8 +51,7 @@ export interface Workflow<
    *
    * @returns a {@link ExecutionHandle} with the `executionId`.
    */
-  startExecution(...args: Parameters<F>): Promise<ExecutionHandle>;
-
+  start(...args: Parameters<F>): Promise<ExecutionHandle>;
   /**
    * @internal - this is the internal DSL representation that produces a {@link Program} instead of a Promise.
    */
@@ -69,23 +77,24 @@ export interface Workflow<
  *   return `hello ${name}`;
  * });
  * ```
- * @param id a globally unique ID for this workflow.
+ * @param name a globally unique ID for this workflow.
  * @param definition the workflow definition.
  */
-export function workflow<F extends (...args: any[]) => Promise<any> | Program>(
-  id: string,
+export function workflow<F extends (input?: any) => Promise<any> | Program>(
+  name: string,
   definition: F
 ): Workflow<F> {
   const workflow: Workflow<F> = ((...args: any[]) =>
     registerActivity({
       [EventualSymbol]: EventualKind.WorkflowCall,
-      id,
+      name,
       args,
     })) as any;
 
-  // TODO:
-  // workflow.start = function start(...args) {};
-
+  workflow.start = async function (..._args: Parameters<F>) {
+    // TODO: get a client and submit execution
+    throw new Error("not implemented");
+  };
   workflow.definition = definition as Workflow<F>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
   return workflow;
 }
@@ -99,7 +108,7 @@ export function isWorkflowCall<T>(a: Eventual<T>): a is WorkflowCall<T> {
  */
 export interface WorkflowCall<T = any> {
   [EventualSymbol]: EventualKind.WorkflowCall;
-  id: string;
+  name: string;
   args: any[];
   result?: Result<T>;
 }

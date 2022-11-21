@@ -12,10 +12,10 @@ import {
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import path from "path";
-import { Workflow } from "./workflow";
+import { Service } from "./service";
 
 export interface EventualApiProps {
-  workflows: Workflow[];
+  workflows: Service[];
 }
 
 interface RouteMapping {
@@ -35,9 +35,9 @@ export class EventualApi extends Construct {
       WORKFLOWS: JSON.stringify(
         Object.fromEntries(
           props.workflows.map((w) => [
-            w.workflowName,
+            w.serviceName,
             {
-              name: w.workflowName,
+              name: w.serviceName,
               tableName: w.table.tableName,
               workflowQueueUrl: w.workflowQueue.queueUrl,
               executionHistoryBucket: w.history.bucketName,

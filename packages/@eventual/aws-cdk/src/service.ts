@@ -35,8 +35,8 @@ export interface WorkflowProps {
   };
 }
 
-export class Workflow extends Construct implements IGrantable {
-  public readonly workflowName: string;
+export class Service extends Construct implements IGrantable {
+  public readonly serviceName: string;
   /**
    * S3 bucket that contains events necessary to replay a workflow execution.
    *
@@ -77,7 +77,7 @@ export class Workflow extends Construct implements IGrantable {
   constructor(scope: Construct, id: string, props: WorkflowProps) {
     super(scope, id);
 
-    this.workflowName = props.name ?? Names.uniqueResourceName(this, {});
+    this.serviceName = props.name ?? Names.uniqueResourceName(this, {});
 
     // ExecutionHistoryBucket
     this.history = new Bucket(this, "History", {
@@ -159,7 +159,6 @@ export class Workflow extends Construct implements IGrantable {
         [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
         [ENV_NAMES.ACTIVITY_LOCK_TABLE_NAME]: this.locksTable.tableName,
         [ENV_NAMES.EVENTUAL_WORKER]: "1",
-        [ENV_NAMES.WORKFLOW_NAME]: this.workflowName,
         ...(props.environment ?? {}),
       },
       // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
@@ -182,7 +181,6 @@ export class Workflow extends Construct implements IGrantable {
         [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
         [ENV_NAMES.TABLE_NAME]: this.table.tableName,
         [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
-        [ENV_NAMES.WORKFLOW_NAME]: this.workflowName,
       },
       events: [
         new SqsEventSource(this.workflowQueue, {

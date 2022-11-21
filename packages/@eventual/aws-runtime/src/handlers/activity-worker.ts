@@ -16,7 +16,6 @@ import {
 } from "../clients/index.js";
 import { metricScope, Unit } from "aws-embedded-metrics";
 import { timed } from "../metrics/utils.js";
-import { workflowName } from "../env.js";
 import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
 
 const activityRuntimeClient = createActivityRuntimeClient();
@@ -30,7 +29,7 @@ export const activityWorker = (): Handler<ActivityWorkerRequest, void> => {
     metrics.setNamespace(MetricsCommon.EventualNamespace);
     metrics.putDimensions({
       ActivityName: request.command.name,
-      WorkflowName: workflowName(),
+      WorkflowName: request.workflowName,
     });
     // the time from the workflow emitting the activity scheduled command
     // to the request being seen.

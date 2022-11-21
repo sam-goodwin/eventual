@@ -15,6 +15,26 @@ import {
 import { ulid } from "ulidx";
 import { ExecutionHistoryClient } from "./execution-history-client.js";
 
+export interface StartWorkflowRequest {
+  /**
+   * Name of the workflow execution.
+   *
+   * Only one workflow can exist for an ID. Requests to start a workflow
+   * with the name of an existing workflow will fail.
+   *
+   * @default - a unique name is generated.
+   */
+  name?: string;
+  /**
+   * Input payload for the workflow function.
+   */
+  input?: any;
+  /**
+   * ID of the parent execution if this is a child workflow
+   */
+  parentId?: string;
+}
+
 export interface WorkflowClientProps {
   readonly dynamo: DynamoDBClient;
   readonly tableName: string;
@@ -35,13 +55,18 @@ export class WorkflowClient {
   public async startWorkflow({
     name: _name,
     input,
-  }: { name?: string; input?: any } = {}) {
+    parentId,
+  }: StartWorkflowRequest = {}) {
     const name = _name ?? ulid();
+    if (name.includes("/")) {
+      throw new Error(`name cannot contains reserved character '/'`);
+    }
     const executionId = `execution_${name}`;
     console.log("execution input:", input);
 
     await this.props.dynamo.send(
       new PutItemCommand({
+        TableName: this.props.tableName,
         Item: {
           pk: { S: ExecutionRecord.PRIMARY_KEY },
           sk: { S: ExecutionRecord.sortKey(executionId) },
@@ -49,8 +74,8 @@ export class WorkflowClient {
           name: { S: name },
           status: { S: ExecutionStatus.IN_PROGRESS },
           startTime: { S: new Date().toISOString() },
+          ...(parentId ? { parentId: { S: parentId } } : {}),
         },
-        TableName: this.props.tableName,
       })
     );
 
@@ -60,7 +85,10 @@ export class WorkflowClient {
         {
           type: WorkflowEventType.WorkflowStarted,
           input,
-          context: { name },
+          context: {
+            name,
+            parentId,
+          },
         }
       );
 
@@ -73,11 +101,9 @@ export class WorkflowClient {
     executionId: string,
     ...events: HistoryStateEvents[]
   ) {
-    const id = ulid();
     // send workflow task to workflow queue
     const workflowTask: SQSWorkflowTaskMessage = {
       task: {
-        id,
         executionId,
         events,
       },
@@ -89,7 +115,7 @@ export class WorkflowClient {
         QueueUrl: this.props.workflowQueueUrl,
         MessageGroupId: executionId,
         // just de-dupe with itself
-        MessageDeduplicationId: `${executionId}_${id}`,
+        MessageDeduplicationId: `${executionId}_${ulid()}`,
       })
     );
   }
