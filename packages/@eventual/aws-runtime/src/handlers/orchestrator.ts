@@ -10,7 +10,6 @@ import {
   WorkflowTaskCompleted,
   WorkflowFailed,
   Command,
-  Program,
   ActivityScheduled,
   HistoryStateEvents,
   CompleteExecution,
@@ -18,6 +17,7 @@ import {
   ExecutionStatus,
   isCompleteExecution,
   progressWorkflow,
+  Workflow,
 } from "@eventual/core";
 import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
 import {
@@ -29,6 +29,7 @@ import { createMetricsLogger, Unit } from "aws-embedded-metrics";
 import { timed, timedSync } from "../metrics/utils.js";
 import { workflowName } from "../env.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
+import { WorkflowContext } from "@eventual/core";
 
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowRuntimeClient = createWorkflowRuntimeClient();
@@ -36,9 +37,7 @@ const workflowRuntimeClient = createWorkflowRuntimeClient();
 /**
  * Creates an entrypoint function for orchestrating a workflow.
  */
-export function orchestrator(
-  program: (input: any) => Program<any>
-): SQSHandler {
+export function orchestrator(workflow: Workflow): SQSHandler {
   return async (event) => {
     console.debug("Handle workflowQueue records");
     // if a polling request
@@ -60,7 +59,7 @@ export function orchestrator(
     const results = await promiseAllSettledPartitioned(
       Object.entries(eventsByExecutionId),
       async ([executionId, records]) =>
-        orchestrateExecution(program, executionId, records)
+        orchestrateExecution(workflow, executionId, records)
     );
 
     console.debug(
@@ -90,7 +89,7 @@ export function orchestrator(
 }
 
 async function orchestrateExecution(
-  program: (input: any) => Program<any>,
+  workflow: Workflow,
   executionId: string,
   records: SQSRecord[]
 ) {
@@ -147,12 +146,22 @@ async function orchestrateExecution(
       history.length
     );
 
+    const workflowContext: WorkflowContext = {
+      name: workflowName(),
+    };
+
     const {
       result,
       commands: newCommands,
       history: updatedHistory,
     } = timedSync(metrics, OrchestratorMetrics.AdvanceExecutionDuration, () => {
-      return progressWorkflow(program, history, events);
+      return progressWorkflow(
+        workflow,
+        history,
+        events,
+        workflowContext,
+        executionId
+      );
     });
 
     metrics.setProperty(

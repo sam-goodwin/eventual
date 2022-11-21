@@ -1,3 +1,3 @@
 import { workflow } from "@eventual/core";
 
-export default workflow(async () => {});
+export default workflow("id", async () => {});

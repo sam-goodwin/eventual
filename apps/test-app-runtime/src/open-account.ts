@@ -1,4 +1,4 @@
-import { activity, eventual } from "@eventual/core";
+import { activity, workflow } from "@eventual/core";
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
@@ -33,7 +33,8 @@ interface OpenAccountRequest {
 
 type RollbackHandler = () => Promise<void>;
 
-export default eventual(
+export default workflow(
+  "open-account",
   async ({ accountId, address, email, bankDetails }: OpenAccountRequest) => {
     const rollbacks: RollbackHandler[] = [];
 

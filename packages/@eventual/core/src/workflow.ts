@@ -8,6 +8,17 @@ import { registerActivity } from "./global.js";
 import type { Program } from "./interpret.js";
 import type { Result } from "./result.js";
 
+import { Context, WorkflowContext } from "./context.js";
+import { DeterminismError } from "./error.js";
+import {
+  filterEvents,
+  HistoryStateEvents,
+  isHistoryEvent,
+  isWorkflowStarted,
+  WorkflowEventType,
+} from "./events.js";
+import { interpret, WorkflowResult } from "./interpret.js";
+
 export interface ExecutionHandle {
   /**
    * ID of the workflow execution.
@@ -19,7 +30,9 @@ export interface ExecutionHandle {
  * A {@link Workflow} is a long-running process that orchestrates calls
  * to other services in a durable and observable way.
  */
-export interface Workflow<F extends (...args: any[]) => any> {
+export interface Workflow<
+  F extends (...args: any[]) => any = (...args: any[]) => any
+> {
   id: string;
   /**
    * Invokes
@@ -67,4 +80,49 @@ export interface WorkflowCall<T = any> {
   id: string;
   args: any[];
   result?: Result<T>;
+}
+
+export interface AdvanceWorkflowResult extends WorkflowResult {
+  history: HistoryStateEvents[];
+}
+
+/**
+ * Advance a workflow using previous history, new events, and a program.
+ */
+export function progressWorkflow(
+  program: (...args: any[]) => Program<any>,
+  historyEvents: HistoryStateEvents[],
+  taskEvents: HistoryStateEvents[],
+  workflowContext: WorkflowContext,
+  executionId: string
+): AdvanceWorkflowResult {
+  // historical events and incoming events will be fed into the workflow to resume/progress state
+  const inputEvents = filterEvents<HistoryStateEvents>(
+    historyEvents,
+    taskEvents
+  );
+
+  const startEvent = inputEvents.find(isWorkflowStarted);
+
+  if (!startEvent) {
+    throw new DeterminismError(
+      `No ${WorkflowEventType.WorkflowStarted} found.`
+    );
+  }
+
+  const context: Context = {
+    workflow: workflowContext,
+    execution: {
+      ...startEvent.context,
+      id: executionId,
+      startTime: startEvent.timestamp,
+    },
+  };
+
+  // execute workflow
+  const interpretEvents = inputEvents.filter(isHistoryEvent);
+  return {
+    ...interpret(program(startEvent.input, context), interpretEvents),
+    history: inputEvents,
+  };
 }

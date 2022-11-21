@@ -3,6 +3,7 @@ import {
   EventualSymbol,
   EventualKind,
   Eventual,
+  AwaitedEventual,
 } from "./eventual.js";
 import { registerActivity } from "./global.js";
 import { Program } from "./interpret.js";
@@ -18,9 +19,13 @@ export interface Chain<T = any> extends Program<T> {
   awaiting?: Eventual;
 }
 
-export function chain<F extends (...args: any[]) => Program>(definition: F): F {
-  return ((...args: Parameters<F>) =>
-    registerChain(definition(...args))) as any;
+export function chain<F extends (...args: any[]) => Program>(
+  func: F
+): (...args: Parameters<F>) => Chain<AwaitedEventual<ReturnType<F>>> {
+  return ((...args: any[]) => {
+    const generator = func(...args);
+    return registerChain(generator);
+  }) as any;
 }
 
 export function createChain(program: Program): Chain {
