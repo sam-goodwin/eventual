@@ -19,7 +19,7 @@ import {
   progressWorkflow,
   Workflow,
   isScheduleActivityCommand,
-  isStartWorkflowCommand,
+  isScheduleWorkflowCommand,
   assertNever,
   ChildWorkflowScheduled,
 } from "@eventual/core";
@@ -332,7 +332,7 @@ async function orchestrateExecution(
               seq: command.seq,
               name: command.name,
             });
-          } else if (isStartWorkflowCommand(command)) {
+          } else if (isScheduleWorkflowCommand(command)) {
             await workflowClient.startWorkflow({
               name: `${command.name}_${executionId}_${command.seq}`,
               input: command.input,

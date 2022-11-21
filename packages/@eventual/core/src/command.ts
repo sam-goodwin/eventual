@@ -6,7 +6,7 @@ import { EventualKind } from "./eventual.js";
  * Current: Schedule Activity
  * Future: Emit Signal, Start Workflow, etc
  */
-export type Command = ScheduleActivityCommand | StartWorkflowCommand;
+export type Command = ScheduleActivityCommand | ScheduleWorkflowCommand;
 
 interface BaseCommand {
   seq: number;
@@ -24,11 +24,13 @@ export interface ScheduleActivityCommand extends BaseCommand {
   args: any[];
 }
 
-export function isStartWorkflowCommand(a: Command): a is StartWorkflowCommand {
+export function isScheduleWorkflowCommand(
+  a: Command
+): a is ScheduleWorkflowCommand {
   return a.kind === EventualKind.WorkflowCall;
 }
 
-export interface StartWorkflowCommand extends BaseCommand {
+export interface ScheduleWorkflowCommand extends BaseCommand {
   kind: EventualKind.WorkflowCall;
   input?: any;
 }
