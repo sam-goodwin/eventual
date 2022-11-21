@@ -12,6 +12,7 @@ import {
   WorkflowEventType,
 } from "./events.js";
 import { EventualFunction } from "./eventual.js";
+import { resetActivityCollector } from "./global.js";
 import { interpret, Program, WorkflowResult } from "./interpret.js";
 
 interface ProgressWorkflowResult extends WorkflowResult {
@@ -70,10 +71,16 @@ export function progressWorkflow(
 
   console.debug(JSON.stringify(interpretEvents));
 
-  return {
-    ...interpret(program(startEvent.input, context), interpretEvents),
-    history: allEvents,
-  };
+  try {
+    return {
+      ...interpret(program(startEvent.input, context), interpretEvents),
+      history: allEvents,
+    };
+  } catch (err) {
+    // temporary fix when the interpreter fails, but the activities are not cleared.
+    resetActivityCollector();
+    throw err;
+  }
 }
 
 /**

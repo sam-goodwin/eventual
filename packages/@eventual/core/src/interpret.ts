@@ -100,7 +100,11 @@ export function interpret<Return>(
         ...takeWhile(calls.length - 1, isEventualScheduledEvent),
       ];
       if (events.length !== calls.length) {
-        throw new DeterminismError();
+        throw new DeterminismError(
+          `Workflow returned ${calls.length} calls however there are ${
+            events.length
+          } events for events: ${events.map((c) => c.seq).join(",")}.`
+        );
       }
       for (let i = 0; i < calls.length; i++) {
         const event = events[i]!;
@@ -274,6 +278,7 @@ export function interpret<Return>(
       }
 
       return collectActivities().flatMap((activity) => {
+        console.log("Activity Collected", JSON.stringify(activity));
         if (isCommandCall(activity)) {
           return activity;
         } else if (isChain(activity)) {
