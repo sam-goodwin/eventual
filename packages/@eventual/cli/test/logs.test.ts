@@ -74,7 +74,7 @@ test("logs without timestamp are sorted to top", () => {
   ]);
 });
 
-test("following log inputs have timestamp incremented by 1 of the latest event", () => {
+test("following log inputs have timestamp incremented by 1 of the latest event when there is no next token", () => {
   const functionEvents: FunctionLogEvents[] = [
     {
       fn: {
@@ -104,5 +104,50 @@ test("following log inputs have timestamp incremented by 1 of the latest event",
   >([
     { friendlyName: "fn1", functionName: "fn1fYn111", startTime: 3 },
     { friendlyName: "fn2", functionName: "fn2fn222", startTime: 4 },
+  ]);
+});
+
+test("following log inputs provide next token and do not increment start time when next token is provided", () => {
+  const functionEvents: FunctionLogEvents[] = [
+    {
+      fn: {
+        friendlyName: "fn1",
+        functionName: "fn1fYn111",
+        startTime: 0,
+        nextToken: "next_123",
+      },
+      events: [
+        { timestamp: 0, message: "fn 1 event 1" },
+        { timestamp: 2, message: "fn 1 event 2" },
+      ],
+    },
+    {
+      fn: {
+        friendlyName: "fn2",
+        functionName: "fn2fn222",
+        startTime: 0,
+        nextToken: "next_456",
+      },
+      events: [
+        { timestamp: 1, message: "fn 2 event 1" },
+        { timestamp: 3, message: "fn 2 event 2" },
+      ],
+    },
+  ];
+  expect(getFollowingFunctionLogInputs(functionEvents)).toMatchObject<
+    FunctionLogInput[]
+  >([
+    {
+      friendlyName: "fn1",
+      functionName: "fn1fYn111",
+      startTime: 0,
+      nextToken: "next_123",
+    },
+    {
+      friendlyName: "fn2",
+      functionName: "fn2fn222",
+      startTime: 0,
+      nextToken: "next_456",
+    },
   ]);
 });

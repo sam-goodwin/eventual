@@ -10,13 +10,15 @@ import {
 } from "../logs.js";
 
 /**
- * List logs for a workflow or execution id
- * @param yargs
+ * Command to list logs for a workflow or execution id
+ * eg $ eventual logs my-workflow
+ * eg $ eventual logs my-workflow execution_123
+ * eg $ eventual logs my-workflow execution_123 --since 12333535
  * @returns
  */
 export const logs = (yargs: Argv) =>
   yargs.command(
-    "logs <workflow>",
+    "logs <workflow> [execution]",
     "Get logs",
     (yargs) =>
       yargs
@@ -25,14 +27,15 @@ export const logs = (yargs: Argv) =>
           type: "string",
           demandOption: true,
         })
-        .option("execution", {
-          alias: "e",
+        .positional("execution", {
           describe: "Execution id",
           type: "string",
         })
         .option("since", {
           describe:
-            "Only show logs from given time. Timestamp in milliseconds, ISO8601, or the value 'now'",
+            "Only show logs from given time. Timestamp in milliseconds, ISO8601",
+          defaultDescription: "Current time",
+          default: Date.now() as string | number,
         }),
     async ({ workflow, execution, since }) => {
       const startTime = getStartTime(since);
@@ -53,17 +56,10 @@ export const logs = (yargs: Argv) =>
 
       async function pollLogs(functions: FunctionLogInput[]) {
         const functionEvents = await Promise.all(
-          functions.map(async (fn) => {
-            const output = await cloudwatchLogsClient.send(
-              new cwLogs.FilterLogEventsCommand({
-                logGroupName: `/aws/lambda/${fn.functionName}`,
-                filterPattern:
-                  execution && `{ $.executionId = "${execution}" }`,
-                startTime: fn.startTime,
-              })
-            );
-            return { fn, events: output.events ?? [] };
-          })
+          functions.map(async (fn) => ({
+            fn,
+            ...(await getLogs(cloudwatchLogsClient, fn)),
+          }))
         );
         const interleavedEvents = getInterleavedLogEvents(functionEvents);
 
@@ -80,9 +76,10 @@ export const logs = (yargs: Argv) =>
 
           spinner.start("Watching logs");
         }
+        //Wait a little while before polling again, to give the servers a break
         setTimeout(
           () => pollLogs(getFollowingFunctionLogInputs(functionEvents)),
-          1000
+          100
         );
       }
 
@@ -91,11 +88,13 @@ export const logs = (yargs: Argv) =>
         {
           functionName: functions.orchestrator,
           friendlyName: "orchestrator",
+          execution,
           startTime,
         },
         {
           functionName: functions.activityWorker,
           friendlyName: "activityWorker",
+          execution,
           startTime,
         },
       ]);
@@ -126,20 +125,36 @@ function extractMessage(ev: cwLogs.FilteredLogEvent): string | undefined {
  * @param since timestamp specifier
  * @returns start time
  */
-function getStartTime(since: any): number | undefined {
-  if (since != null) {
-    if (since === "now") {
-      return Date.now();
-    } else {
-      try {
-        return new Date(since as any).getTime();
-      } catch (e) {
-        throw new Error(
-          "Value provided for since is invalid. Must be a milliseconds timestamp or ISO8601"
-        );
-      }
-    }
-  } else {
-    return undefined;
+function getStartTime(since: string | number): number {
+  if (since == null) {
+    return Date.now();
   }
+  try {
+    return new Date(since).getTime();
+  } catch (e) {
+    throw new Error(
+      "Value provided for since is invalid. Must be a milliseconds timestamp or ISO8601"
+    );
+  }
+}
+
+/**
+ * Return all logs for a given FunctionLogInput. Will recurse until all logs are gathered
+ * @param client Cloudwatch logs client to use
+ * @param fn Function log input object describing logs to retrieve
+ * @returns
+ */
+async function getLogs(
+  client: cwLogs.CloudWatchLogsClient,
+  fn: FunctionLogInput
+): Promise<{ events: cwLogs.FilteredLogEvent[]; nextToken?: string }> {
+  const output = await client.send(
+    new cwLogs.FilterLogEventsCommand({
+      logGroupName: `/aws/lambda/${fn.functionName}`,
+      filterPattern: fn.execution && `{ $.executionId = "${fn.execution}" }`,
+      startTime: fn.startTime,
+      nextToken: fn.nextToken,
+    })
+  );
+  return { events: output.events ?? [], nextToken: output.nextToken };
 }

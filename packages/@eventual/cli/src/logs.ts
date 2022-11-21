@@ -5,6 +5,8 @@ export interface FunctionLogInput {
   functionName: string;
   friendlyName: string;
   startTime?: number;
+  execution?: string;
+  nextToken?: string;
 }
 
 export interface FunctionLogEvents {
@@ -39,20 +41,23 @@ export function getInterleavedLogEvents(
 
 /**
  * Get inputs for fetching function logs following the given events
+ * If there's a next token, we provide that.
+ * If there's no next token, we increment the time from the incoming events
  * @param functions List of FunctionLogEvents describing functions to log and existing retrieved events
  * @returns Event log
  */
 export function getFollowingFunctionLogInputs(
-  events: FunctionLogEvents[]
+  fnEvents: FunctionLogEvents[]
 ): FunctionLogInput[] {
-  return events.map(
-    ({ fn: { functionName, friendlyName, startTime }, events }) => {
+  return fnEvents.map(({ fn, events }) => {
+    if (fn.nextToken) {
+      return fn;
+    } else {
       const latestEvent = events?.at(-1)?.timestamp;
       return {
-        functionName,
-        friendlyName,
-        startTime: latestEvent ? latestEvent + 1 : startTime,
+        ...fn,
+        startTime: latestEvent ? latestEvent + 1 : fn.startTime,
       };
     }
-  );
+  });
 }
