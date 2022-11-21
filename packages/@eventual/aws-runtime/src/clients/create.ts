@@ -19,12 +19,12 @@ import { SchedulerClient } from "@aws-sdk/client-scheduler";
  */
 
 const dynamo = /*@__PURE__*/ memoize(() => new DynamoDBClient({}));
-const sqs = /*@__PURE__*/ memoize(() => new SQSClient({}));
+export const sqs = /*@__PURE__*/ memoize(() => new SQSClient({}));
 const s3 = /*@__PURE__*/ memoize(
   () => new S3Client({ region: process.env.AWS_REGION })
 );
 const lambda = /*@__PURE__*/ memoize(() => new LambdaClient({}));
-const scheduler = /*@__PURE__*/ memoize(() => new SchedulerClient({}));
+export const scheduler = /*@__PURE__*/ memoize(() => new SchedulerClient({}));
 
 export const createExecutionHistoryClient = /*@__PURE__*/ memoize(
   ({ tableName }: { tableName?: string } = {}) =>
@@ -85,5 +85,10 @@ export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
       workflowQueueArn: env.workflowQueueArn(),
       schedulerRoleArn: env.schedulerRoleArn(),
       schedulerDlqArn: env.schedulerDlqArn(),
+      schedulerGroup: env.schedulerGroup(),
+      sleepQueueThresholdMillis: 15 * 60 * 1000,
+      sqs: sqs(),
+      timerQueueUrl: env.timerQueueUrl(),
+      scheduleForwarderArn: env.schedulerForwarderArn(),
     })
 );

@@ -33,14 +33,20 @@ import {
   WorkflowEventType,
   StartActivityCommand,
   ActivityScheduled,
+  SleepCompleted,
 } from "@eventual/core";
 import {
   createExecutionFromResult,
   ExecutionRecord,
-  SQSWorkflowTaskMessage,
 } from "./workflow-client.js";
 import { ActivityWorkerRequest } from "../activity.js";
 import { createEvent } from "./execution-history-client.js";
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import {
+  TimerForwardEventRequest,
+  TimerRequestType,
+} from "src/handlers/timer-handler.js";
+import { ScheduleForwarderRequest } from "src/handlers/schedule-forwarder.js";
 
 export interface WorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;
@@ -49,10 +55,19 @@ export interface WorkflowRuntimeClientProps {
   readonly s3: S3Client;
   readonly executionHistoryBucket: string;
   readonly tableName: string;
+  readonly workflowQueueArn: string;
   readonly scheduler: SchedulerClient;
   readonly schedulerRoleArn: string;
-  readonly workflowQueueArn: string;
   readonly schedulerDlqArn: string;
+  readonly schedulerGroup: string;
+  /**
+   * If a sleep has a longer duration (in millis) than this threshold,
+   * create an Event Bus Scheduler before sending it to the TimerQueue
+   */
+  readonly sleepQueueThresholdMillis: number;
+  readonly timerQueueUrl: string;
+  readonly sqs: SQSClient;
+  readonly scheduleForwarderArn: string;
 }
 
 export class WorkflowRuntimeClient {
@@ -213,39 +228,85 @@ export class WorkflowRuntimeClient {
       : new Date(baseTime.getTime() + command.durationSeconds * 1000);
     const untilTimeIso = untilTime.toISOString();
 
-    const formattedDataTime = untilTime.toISOString().split(".")[0];
+    const sleepDuration = untilTime.getTime() - baseTime.getTime();
 
-    const workflowEvent: SQSWorkflowTaskMessage = {
-      task: {
-        events: [
-          {
-            type: WorkflowEventType.SleepCompleted,
-            seq: command.seq,
-            timestamp: untilTimeIso,
-          },
-        ],
-        executionId,
-      },
+    const sleepCompletedEvent: SleepCompleted = {
+      type: WorkflowEventType.SleepCompleted,
+      seq: command.seq,
+      timestamp: untilTimeIso,
     };
 
-    await this.props.scheduler.send(
-      new CreateScheduleCommand({
-        FlexibleTimeWindow: { Mode: FlexibleTimeWindowMode.OFF },
-        ScheduleExpression: `at(${formattedDataTime})`,
-        Name: `${executionId}_sleep_${command.seq}`,
-        // TODO: DQL and retry
-        Target: {
-          Arn: this.props.workflowQueueArn,
-          RoleArn: this.props.schedulerRoleArn,
-          Input: JSON.stringify(workflowEvent),
-          RetryPolicy: { MaximumRetryAttempts: 1 },
-          SqsParameters: { MessageGroupId: executionId },
-          DeadLetterConfig: {
-            Arn: this.props.schedulerDlqArn,
-          },
+    /**
+     * If the sleep is longer than 15 minutes, create an EventBridge schedule first.
+     * The Schedule will trigger a lambda which will re-compute the delay time and
+     * create a message in the timerQueue.
+     *
+     * The timerQueue ultimately will puck up the event and forward the {@link SleepComplete} to the workflow queue.
+     */
+    if (sleepDuration > this.props.sleepQueueThresholdMillis) {
+      // wait for utilTime - sleepQueueThresholdMillis and then forward the event to
+      // the timerQueue
+      const scheduleTime =
+        untilTime.getTime() - this.props.sleepQueueThresholdMillis;
+      const formattedSchedulerTime = new Date(scheduleTime)
+        .toISOString()
+        .split(".")[0];
+
+      const schedulerForwardEvent: ScheduleForwarderRequest = {
+        clearSchedule: true,
+        scheduleName: "<aws.scheduler.schedule-arn>",
+        timerRequest: {
+          type: TimerRequestType.ForwardEvent,
+          event: sleepCompletedEvent,
+          executionId,
+          untilTime: untilTimeIso,
         },
-      })
-    );
+        forwardTime: "<aws.scheduler.scheduled-time>",
+        untilTime: untilTimeIso,
+      };
+
+      await this.props.scheduler.send(
+        new CreateScheduleCommand({
+          FlexibleTimeWindow: { Mode: FlexibleTimeWindowMode.OFF },
+          ScheduleExpression: `at(${formattedSchedulerTime})`,
+          Name: `${executionId}_sleep_${command.seq}`,
+          Target: {
+            Arn: this.props.scheduleForwarderArn,
+            RoleArn: this.props.schedulerRoleArn,
+            Input: JSON.stringify(schedulerForwardEvent),
+            RetryPolicy: {
+              // send to the DLQ if 15 minutes have passed without forwarding the event.
+              MaximumEventAgeInSeconds: 14 * 60,
+            },
+            DeadLetterConfig: {
+              // TODO: do something with these.
+              Arn: this.props.schedulerDlqArn,
+            },
+          },
+          GroupName: this.props.schedulerGroup,
+        })
+      );
+    } else {
+      /**
+       * When the sleep is less than 15 minutes, send the timer directly to the
+       * timer queue. The timer queue will pass the event on to the workflow queue
+       * once delaySeconds have passed.
+       */
+      const timerRequest: TimerForwardEventRequest = {
+        type: TimerRequestType.ForwardEvent,
+        event: sleepCompletedEvent,
+        executionId,
+        untilTime: untilTimeIso,
+      };
+
+      await this.props.sqs.send(
+        new SendMessageCommand({
+          QueueUrl: this.props.timerQueueUrl,
+          MessageBody: JSON.stringify(timerRequest),
+          DelaySeconds: sleepDuration,
+        })
+      );
+    }
 
     return createEvent<SleepScheduled>({
       type: WorkflowEventType.SleepScheduled,
