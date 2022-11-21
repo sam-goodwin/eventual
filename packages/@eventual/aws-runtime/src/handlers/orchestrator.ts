@@ -31,7 +31,7 @@ import { workflowName } from "../env.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import { Logger } from "@aws-lambda-powertools/logger";
 import middy from "@middy/core";
-import { ExecutionError, logger, loggerMiddlewares } from "../logger.js";
+import { logger, loggerMiddlewares } from "../logger.js";
 import { WorkflowContext } from "@eventual/core";
 
 const executionHistoryClient = createExecutionHistoryClient();
