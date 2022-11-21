@@ -57,13 +57,13 @@ class OuterVisitor extends Visitor {
   public visitCallExpression(call: CallExpression): Expression {
     if (
       isEventualCallee(call.callee) &&
-      call.arguments.length === 1 &&
-      (call.arguments[0]?.expression.type === "ArrowFunctionExpression" ||
-        call.arguments[0]?.expression.type === "FunctionExpression") &&
-      !call.arguments[0].expression.generator
+      call.arguments.length === 2 &&
+      (call.arguments[1]?.expression.type === "ArrowFunctionExpression" ||
+        call.arguments[1]?.expression.type === "FunctionExpression") &&
+      !call.arguments[1].expression.generator
     ) {
       this.foundEventual = true;
-      return new InnerVisitor().visitExpression(call.arguments[0].expression);
+      return new InnerVisitor().visitExpression(call.arguments[1].expression);
     }
     return super.visitCallExpression(call);
   }

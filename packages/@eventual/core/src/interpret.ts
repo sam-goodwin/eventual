@@ -6,10 +6,15 @@ import {
   ActivityCompleted,
   ActivityFailed,
   ActivityScheduled,
+  filterEvents,
   HistoryEvent,
+  HistoryStateEvents,
   isActivityCompleted,
   isActivityFailed,
   isActivityScheduled,
+  isHistoryEvent,
+  isWorkflowStarted,
+  WorkflowEventType,
 } from "./events.js";
 import { collectActivities } from "./global.js";
 import {
@@ -23,6 +28,7 @@ import {
 import { createChain, isChain, Chain } from "./chain.js";
 import { assertNever } from "./util.js";
 import { Command } from "./command.js";
+import { isWorkflowCall } from "./workflow.js";
 
 export interface WorkflowResult<T = any> {
   /**
@@ -38,6 +44,40 @@ export interface WorkflowResult<T = any> {
 }
 
 export type Program<Return = any> = Generator<Eventual, Return>;
+
+export interface AdvanceWorkflowResult extends WorkflowResult {
+  history: HistoryStateEvents[];
+}
+
+/**
+ * Advance a workflow using previous history, new events, and a program.
+ */
+export function advance(
+  program: (input: any) => Program<any>,
+  historyEvents: HistoryStateEvents[],
+  taskEvents: HistoryStateEvents[]
+): AdvanceWorkflowResult {
+  // historical events and incoming events will be fed into the workflow to resume/progress state
+  const inputEvents = filterEvents<HistoryStateEvents>(
+    historyEvents,
+    taskEvents
+  );
+
+  const startEvent = inputEvents.find(isWorkflowStarted);
+
+  if (!startEvent) {
+    throw new DeterminismError(
+      `No ${WorkflowEventType.WorkflowStarted} found.`
+    );
+  }
+
+  // execute workflow
+  const interpretEvents = inputEvents.filter(isHistoryEvent);
+  return {
+    ...interpret(program(startEvent.input), interpretEvents),
+    history: inputEvents,
+  };
+}
 
 /**
  * Interprets a workflow program
@@ -263,7 +303,7 @@ export function interpret<Return>(
   }
 
   function tryResolveResult(activity: Eventual): Result | undefined {
-    if (isActivityCall(activity)) {
+    if (isActivityCall(activity) || isWorkflowCall(activity)) {
       return activity.result;
     } else if (isChain(activity)) {
       if (activity.result) {

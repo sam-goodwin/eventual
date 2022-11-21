@@ -18,6 +18,11 @@ export interface Chain<T = any> extends Program<T> {
   awaiting?: Eventual;
 }
 
+export function chain<F extends (...args: any[]) => Program>(definition: F): F {
+  return ((...args: Parameters<F>) =>
+    registerChain(definition(...args))) as any;
+}
+
 export function createChain(program: Program): Chain {
   (program as any)[EventualSymbol] = EventualKind.Chain;
   return program as Chain;

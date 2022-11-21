@@ -1,43 +1,70 @@
-import { DeterminismError } from "./error.js";
 import {
-  filterEvents,
-  HistoryStateEvents,
-  isHistoryEvent,
-  isWorkflowStarted,
-  WorkflowEventType,
-} from "./events.js";
-import { interpret, Program, WorkflowResult } from "./interpret.js";
+  AwaitedEventual,
+  Eventual,
+  EventualKind,
+  EventualSymbol,
+} from "./eventual.js";
+import { registerActivity } from "./global.js";
+import type { Program } from "./interpret.js";
+import type { Result } from "./result.js";
 
-interface ProgressWorkflowResult extends WorkflowResult {
-  history: HistoryStateEvents[];
+export interface ExecutionHandle {
+  /**
+   * ID of the workflow execution.
+   */
+  executionId: string;
 }
 
 /**
- * Progress a workflow using previous history, new events, and a program.
+ * A {@link Workflow} is a long-running process that orchestrates calls
+ * to other services in a durable and observable way.
  */
-export function progressWorkflow(
-  program: (input: any) => Program<any>,
-  historyEvents: HistoryStateEvents[],
-  taskEvents: HistoryStateEvents[]
-): ProgressWorkflowResult {
-  // historical events and incoming events will be fed into the workflow to resume/progress state
-  const inputEvents = filterEvents<HistoryStateEvents>(
-    historyEvents,
-    taskEvents
-  );
+export interface Workflow<F extends (...args: any[]) => any> {
+  id: string;
+  /**
+   * Invokes
+   */
+  (...args: Parameters<F>): ReturnType<F>;
+  /**
+   * Starts an execution of this {@link Workflow} without waiting for the response.
+   *
+   * @returns a {@link ExecutionHandle} with the `executionId`.
+   */
+  startExecution(...args: Parameters<F>): Promise<ExecutionHandle>;
 
-  const startEvent = inputEvents.find(isWorkflowStarted);
+  /**
+   * @internal - this is the internal DSL representation that produces a {@link Program} instead of a Promise.
+   */
+  definition: (
+    ...args: Parameters<F>
+  ) => Program<AwaitedEventual<ReturnType<F>>>;
+}
 
-  if (!startEvent) {
-    throw new DeterminismError(
-      `No ${WorkflowEventType.WorkflowStarted} found.`
-    );
-  }
+export function workflow<F extends (...args: any[]) => Promise<any> | Program>(
+  id: string,
+  definition: F
+): Workflow<F> {
+  const workflow: Workflow<F> = ((...args: any[]) =>
+    registerActivity({
+      [EventualSymbol]: EventualKind.WorkflowCall,
+      id,
+      args,
+    })) as any;
 
-  // execute workflow
-  const interpretEvents = inputEvents.filter(isHistoryEvent);
-  return {
-    ...interpret(program(startEvent.input), interpretEvents),
-    history: inputEvents,
-  };
+  // TODO:
+  // workflow.start = function start(...args) {};
+
+  workflow.definition = definition as Workflow<F>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
+  return workflow;
+}
+
+export function isWorkflowCall<T>(a: Eventual<T>): a is WorkflowCall<T> {
+  return a[EventualSymbol] === EventualKind.WorkflowCall;
+}
+
+export interface WorkflowCall<T = any> {
+  [EventualSymbol]: EventualKind.WorkflowCall;
+  id: string;
+  args: any[];
+  result?: Result<T>;
 }

@@ -1,27 +1,15 @@
-import { Program } from "./interpret.js";
-import { registerChain, Chain } from "./chain.js";
-import { ActivityCall } from "./activity-call.js";
-import { AwaitAll } from "./await-all.js";
+import type { ActivityCall } from "./activity-call.js";
+import type { AwaitAll } from "./await-all.js";
+import type { Chain } from "./chain.js";
+import type { Program } from "./interpret.js";
+import type { WorkflowCall } from "./workflow.js";
 
-export function eventual<F extends (...args: any[]) => Promise<any>>(
-  func: F
-): (...args: Parameters<F>) => Program<Awaited<ReturnType<F>>>;
-
-export function eventual<F extends (...args: any[]) => Program>(
-  func: F
-): (...args: Parameters<F>) => Chain<Resolved<ReturnType<F>>>;
-
-export function eventual<F extends (...args: any[]) => any>(func: F): F {
-  return ((...args: any[]) => {
-    const generator = func(...args);
-    return registerChain(generator);
-  }) as any;
-}
-
-type Resolved<T> = T extends Program<infer U>
-  ? Resolved<U>
+export type AwaitedEventual<T> = T extends Promise<infer U>
+  ? Awaited<U>
+  : T extends Program<infer U>
+  ? AwaitedEventual<U>
   : T extends Eventual<infer U>
-  ? Resolved<U>
+  ? AwaitedEventual<U>
   : T;
 
 export const EventualSymbol = Symbol.for("eventual:Eventual");
@@ -30,6 +18,7 @@ export enum EventualKind {
   AwaitAll = 0,
   ActivityCall = 1,
   Chain = 2,
+  WorkflowCall = 3,
 }
 
 export function isEventual(a: any): a is Eventual {
@@ -39,7 +28,8 @@ export function isEventual(a: any): a is Eventual {
 export type Eventual<T = any> =
   | ActivityCall<T>
   | AwaitAll<T extends any[] ? T : never>
-  | Chain<T>;
+  | Chain<T>
+  | WorkflowCall<T>;
 
 export namespace Eventual {
   /**
