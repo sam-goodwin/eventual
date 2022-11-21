@@ -4,13 +4,17 @@ import ora from "ora";
 import { Argv } from "yargs";
 import chalk from "chalk";
 import {
+  extractMessage,
   FunctionLogInput,
   getFollowingFunctionLogInputs,
   getInterleavedLogEvents,
+  getLogs,
+  getStartTime,
 } from "../logs.js";
 
 /**
  * Command to list logs for a workflow or execution id
+ * Defaults to showing the last 24 hours of logs (All time logs would take too long to retrieve)
  * eg $ eventual logs my-workflow
  * eg $ eventual logs my-workflow execution_123
  * eg $ eventual logs my-workflow execution_123 --since 12333535
@@ -34,10 +38,14 @@ export const logs = (yargs: Argv) =>
         .option("since", {
           describe:
             "Only show logs from given time. Timestamp in milliseconds, ISO8601",
-          defaultDescription: "Current time",
-          default: Date.now() as string | number,
+          defaultDescription: "24 hours ago",
+        })
+        .option("tail", {
+          describe: "Watch logs indefinitely",
+          default: false,
+          type: "boolean",
         }),
-    async ({ workflow, execution, since }) => {
+    async ({ workflow, execution, since, tail }) => {
       const startTime = getStartTime(since);
       const spinner = ora("Loading logs");
       const cfnClient = new cfn.CloudFormationClient({});
@@ -54,7 +62,7 @@ export const logs = (yargs: Argv) =>
       const { functions } = JSON.parse(workflowData);
       const cloudwatchLogsClient = new cwLogs.CloudWatchLogsClient({});
 
-      async function pollLogs(functions: FunctionLogInput[]) {
+      async function fetchLogs(functions: FunctionLogInput[]) {
         const functionEvents = await Promise.all(
           functions.map(async (fn) => ({
             fn,
@@ -62,10 +70,8 @@ export const logs = (yargs: Argv) =>
           }))
         );
         const interleavedEvents = getInterleavedLogEvents(functionEvents);
-
         if (interleavedEvents.length) {
           spinner.clear();
-
           interleavedEvents.forEach(({ source, ev }) => {
             console.log(
               `[${chalk.blue(source)}] ${chalk.red(
@@ -73,18 +79,26 @@ export const logs = (yargs: Argv) =>
               )} ${extractMessage(ev)}`
             );
           });
-
-          spinner.start("Watching logs");
         }
-        //Wait a little while before polling again, to give the servers a break
-        setTimeout(
-          () => pollLogs(getFollowingFunctionLogInputs(functionEvents)),
-          100
-        );
+        const nextInputs = getFollowingFunctionLogInputs(functionEvents, tail);
+        if (tail) {
+          spinner.start("Watching logs");
+          setTimeout(
+            () => fetchLogs(nextInputs),
+            1000 // Wait a little while before polling again, to give the servers a break
+          );
+        } else {
+          spinner.start("Fetching next batch");
+          if (nextInputs.length) {
+            await fetchLogs(nextInputs);
+          } else {
+            spinner.stop();
+          }
+        }
       }
 
       spinner.start("Watching logs");
-      await pollLogs([
+      await fetchLogs([
         {
           functionName: functions.orchestrator,
           friendlyName: "orchestrator",
@@ -100,61 +114,3 @@ export const logs = (yargs: Argv) =>
       ]);
     }
   );
-
-/**
- * Attempt to return a JSON-encoded message that was encoded using powertools logger
- * If that fails, we just return the raw message
- * @param ev Event to log
- * @returns Decoded message
- */
-function extractMessage(ev: cwLogs.FilteredLogEvent): string | undefined {
-  if (ev.message) {
-    try {
-      return JSON.parse(ev.message).message;
-    } catch (e) {
-      return ev.message;
-    }
-  } else {
-    return undefined;
-  }
-}
-
-/**
- * Return the start time for a given since value.
- * If since is 'now', return the current time. Otherwise expect a ISO8601 or millisecond timestamp
- * @param since timestamp specifier
- * @returns start time
- */
-function getStartTime(since: string | number): number {
-  if (since == null) {
-    return Date.now();
-  }
-  try {
-    return new Date(since).getTime();
-  } catch (e) {
-    throw new Error(
-      "Value provided for since is invalid. Must be a milliseconds timestamp or ISO8601"
-    );
-  }
-}
-
-/**
- * Return all logs for a given FunctionLogInput. Will recurse until all logs are gathered
- * @param client Cloudwatch logs client to use
- * @param fn Function log input object describing logs to retrieve
- * @returns
- */
-async function getLogs(
-  client: cwLogs.CloudWatchLogsClient,
-  fn: FunctionLogInput
-): Promise<{ events: cwLogs.FilteredLogEvent[]; nextToken?: string }> {
-  const output = await client.send(
-    new cwLogs.FilterLogEventsCommand({
-      logGroupName: `/aws/lambda/${fn.functionName}`,
-      filterPattern: fn.execution && `{ $.executionId = "${fn.execution}" }`,
-      startTime: fn.startTime,
-      nextToken: fn.nextToken,
-    })
-  );
-  return { events: output.events ?? [], nextToken: output.nextToken };
-}

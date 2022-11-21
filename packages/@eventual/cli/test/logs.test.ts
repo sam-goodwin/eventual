@@ -99,7 +99,7 @@ test("following log inputs have timestamp incremented by 1 of the latest event w
       ],
     },
   ];
-  expect(getFollowingFunctionLogInputs(functionEvents)).toMatchObject<
+  expect(getFollowingFunctionLogInputs(functionEvents, true)).toMatchObject<
     FunctionLogInput[]
   >([
     { friendlyName: "fn1", functionName: "fn1fYn111", startTime: 3 },
@@ -107,7 +107,7 @@ test("following log inputs have timestamp incremented by 1 of the latest event w
   ]);
 });
 
-test("following log inputs provide next token and do not increment start time when next token is provided", () => {
+test("following log inputs provide next token and still increment start time when next token is provided", () => {
   const functionEvents: FunctionLogEvents[] = [
     {
       fn: {
@@ -134,19 +134,19 @@ test("following log inputs provide next token and do not increment start time wh
       ],
     },
   ];
-  expect(getFollowingFunctionLogInputs(functionEvents)).toMatchObject<
+  expect(getFollowingFunctionLogInputs(functionEvents, true)).toMatchObject<
     FunctionLogInput[]
   >([
     {
       friendlyName: "fn1",
       functionName: "fn1fYn111",
-      startTime: 0,
+      startTime: 3,
       nextToken: "next_123",
     },
     {
       friendlyName: "fn2",
       functionName: "fn2fn222",
-      startTime: 0,
+      startTime: 4,
       nextToken: "next_456",
     },
   ]);
