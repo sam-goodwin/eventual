@@ -24,7 +24,11 @@ export interface StartWorkflowRequest {
    *
    * @default - a unique name is generated.
    */
-  name?: string;
+  executionName?: string;
+  /**
+   * Name of the workflow to execute.
+   */
+  workflowName: string;
   /**
    * Input payload for the workflow function.
    */
@@ -53,15 +57,17 @@ export class WorkflowClient {
    * @returns
    */
   public async startWorkflow({
-    name: _name,
+    executionName = ulid(),
+    workflowName,
     input,
     parentId,
-  }: StartWorkflowRequest = {}) {
-    const name = _name ?? ulid();
-    if (name.includes("/")) {
+  }: StartWorkflowRequest) {
+    if (executionName.includes("/")) {
       throw new Error(`name cannot contains reserved character '/'`);
     }
-    const executionId = `execution_${name}`;
+    // TODO: validate workflowName
+
+    const executionId = `execution_${executionName}`;
     console.log("execution input:", input);
 
     await this.props.dynamo.send(
@@ -71,7 +77,7 @@ export class WorkflowClient {
           pk: { S: ExecutionRecord.PRIMARY_KEY },
           sk: { S: ExecutionRecord.sortKey(executionId) },
           id: { S: executionId },
-          name: { S: name },
+          name: { S: executionName },
           status: { S: ExecutionStatus.IN_PROGRESS },
           startTime: { S: new Date().toISOString() },
           ...(parentId ? { parentId: { S: parentId } } : {}),
@@ -85,8 +91,9 @@ export class WorkflowClient {
         {
           type: WorkflowEventType.WorkflowStarted,
           input,
+          workflowName,
           context: {
-            name,
+            name: executionName,
             parentId,
           },
         }

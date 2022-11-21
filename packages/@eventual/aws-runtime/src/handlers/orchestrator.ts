@@ -334,7 +334,8 @@ async function orchestrateExecution(
             });
           } else if (isScheduleWorkflowCommand(command)) {
             await workflowClient.startWorkflow({
-              name: `${command.name}_${executionId}_${command.seq}`,
+              workflowName: command.name,
+              executionName: `${command.name}_${executionId}_${command.seq}`,
               input: command.input,
             });
 

@@ -67,6 +67,10 @@ export type FailedEvent = ActivityFailed | ChildWorkflowFailed;
 export interface WorkflowStarted extends BaseEvent {
   type: WorkflowEventType.WorkflowStarted;
   /**
+   * Name of the workflow to execute.
+   */
+  workflowName: string;
+  /**
    * Input payload for the workflow function.
    */
   input?: any;

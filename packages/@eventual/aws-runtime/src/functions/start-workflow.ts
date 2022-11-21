@@ -5,6 +5,7 @@ const workflowClient = createWorkflowClient();
 
 export interface StartWorkflowRequest {
   name: string;
+  workflowName: string;
   input: any;
 }
 

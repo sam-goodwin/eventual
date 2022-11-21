@@ -8,20 +8,23 @@ import { createWorkflowClient } from "../../../clients/create";
  * @returns
  */
 export async function handler(event: APIGatewayProxyEventV2) {
-  const name = event.pathParameters?.name;
-  if (!name) {
+  const workflowName = event.pathParameters?.name;
+  if (!workflowName) {
     return { statusCode: 400, body: `Missing workflow name` };
   }
-  const workflow = workflows[name];
+  const workflow = workflows[workflowName];
   if (!workflow) {
     return {
       statusCode: 400,
-      body: `Workflow ${name} does not exist!`,
+      body: `Workflow ${workflowName} does not exist!`,
     };
   }
   const workflowClient = createWorkflowClient(workflow);
 
   return {
-    executionId: await workflowClient.startWorkflow({ input: event.body }),
+    executionId: await workflowClient.startWorkflow({
+      workflowName,
+      input: event.body,
+    }),
   };
 }

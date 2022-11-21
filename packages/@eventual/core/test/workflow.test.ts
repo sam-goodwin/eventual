@@ -16,6 +16,7 @@ function* myWorkflow(event: any): Program<any> {
 
 const started1: WorkflowStarted = {
   type: WorkflowEventType.WorkflowStarted,
+  workflowName: "workflowName",
   id: "1",
   input: `""`,
   timestamp: "",
