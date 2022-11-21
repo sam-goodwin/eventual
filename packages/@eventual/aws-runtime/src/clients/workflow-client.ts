@@ -86,8 +86,6 @@ export class WorkflowClient {
         MessageBody: JSON.stringify(workflowTask),
         QueueUrl: this.props.workflowQueueUrl,
         MessageGroupId: executionId,
-        // just de-dupe with itself
-        MessageDeduplicationId: `${executionId}_${ulid()}`,
       })
     );
   }

@@ -84,5 +84,6 @@ export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
       scheduler: scheduler(),
       workflowQueueArn: env.workflowQueueArn(),
       schedulerRoleArn: env.schedulerRoleArn(),
+      schedulerDlqArn: env.schedulerDlqArn(),
     })
 );

@@ -96,6 +96,7 @@ export class Workflow extends Construct implements IGrantable {
       fifo: true,
       fifoThroughputLimit: FifoThroughputLimit.PER_MESSAGE_GROUP_ID,
       deduplicationScope: DeduplicationScope.MESSAGE_GROUP,
+      contentBasedDeduplication: true,
     });
 
     // Table - History, Executions, ExecutionData
@@ -178,6 +179,10 @@ export class Workflow extends Construct implements IGrantable {
       assumedBy: new ServicePrincipal("scheduler.amazonaws.com"),
     });
 
+    const dlq = new Queue(this, "dlq");
+
+    dlq.grantSendMessages(schedulerRole);
+
     this.orchestrator = new Function(this, "Orchestrator", {
       architecture: Architecture.ARM_64,
       code: Code.fromAsset(path.join(outDir, "orchestrator")),
@@ -195,6 +200,7 @@ export class Workflow extends Construct implements IGrantable {
         [ENV_NAMES.WORKFLOW_NAME]: this.workflowName,
         [ENV_NAMES.WORKFLOW_QUEUE_ARN]: this.workflowQueue.queueArn,
         [ENV_NAMES.SCHEDULER_ROLE_ARN]: schedulerRole.roleArn,
+        [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: dlq.queueArn,
       },
       events: [
         new SqsEventSource(this.workflowQueue, {
@@ -237,7 +243,7 @@ export class Workflow extends Construct implements IGrantable {
     // grants the orchestrator the permission to create new schedules for sleep.
     this.orchestrator.addToRolePolicy(
       new PolicyStatement({
-        actions: ["schedule:CreateSchedule"],
+        actions: ["scheduler:CreateSchedule"],
         resources: ["*"],
       })
     );

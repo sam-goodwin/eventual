@@ -52,6 +52,7 @@ export interface WorkflowRuntimeClientProps {
   readonly scheduler: SchedulerClient;
   readonly schedulerRoleArn: string;
   readonly workflowQueueArn: string;
+  readonly schedulerDlqArn: string;
 }
 
 export class WorkflowRuntimeClient {
@@ -206,11 +207,12 @@ export class WorkflowRuntimeClient {
     command: SleepUntilCommand | SleepForCommand,
     baseTime: Date
   ): Promise<SleepScheduled> {
+    // TODO validate
     const untilTime = isSleepUntilCommand(command)
-      ? command.untilTime
-      : new Date(
-          baseTime.getTime() + command.durationSeconds * 1000
-        ).toISOString();
+      ? new Date(command.untilTime)
+      : new Date(baseTime.getTime() + command.durationSeconds * 1000);
+
+    const formattedDataTime = untilTime.toISOString().split(".")[0];
 
     const workflowEvent: SQSWorkflowTaskMessage = {
       task: {
@@ -218,7 +220,7 @@ export class WorkflowRuntimeClient {
           {
             type: WorkflowEventType.SleepCompleted,
             seq: command.seq,
-            timestamp: untilTime,
+            timestamp: untilTime.toISOString(),
           },
         ],
         executionId,
@@ -228,14 +230,18 @@ export class WorkflowRuntimeClient {
     await this.props.scheduler.send(
       new CreateScheduleCommand({
         FlexibleTimeWindow: { Mode: FlexibleTimeWindowMode.OFF },
-        ScheduleExpression: `at(${untilTime})`,
+        ScheduleExpression: `at(${formattedDataTime})`,
         Name: `${executionId}_sleep_${command.seq}`,
         // TODO: DQL and retry
         Target: {
           Arn: this.props.workflowQueueArn,
           RoleArn: this.props.schedulerRoleArn,
           Input: JSON.stringify(workflowEvent),
+          RetryPolicy: { MaximumRetryAttempts: 1 },
           SqsParameters: { MessageGroupId: executionId },
+          DeadLetterConfig: {
+            Arn: this.props.schedulerDlqArn,
+          },
         },
       })
     );
@@ -243,7 +249,7 @@ export class WorkflowRuntimeClient {
     return createEvent<SleepScheduled>({
       type: WorkflowEventType.SleepScheduled,
       seq: command.seq,
-      untilTime,
+      untilTime: untilTime.toISOString(),
     });
   }
 }

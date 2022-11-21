@@ -351,6 +351,9 @@ async function orchestrateExecution(
         })
       );
     }
+  } catch (err) {
+    console.error(`Error on execution ${executionId}: `, err);
+    throw err;
   } finally {
     await metrics.flush();
   }
