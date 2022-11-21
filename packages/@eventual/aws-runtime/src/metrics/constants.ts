@@ -98,6 +98,10 @@ export namespace OrchestratorMetrics {
    * The size of the workflow result in bytes.
    */
   export const ExecutionResultBytes = "ExecutionResultBytes";
+  /**
+   * Number of milliseconds between the expected sleep wakeup time and the actual incoming {@link SleepCompleted} event.
+   */
+  export const SleepVarianceMillis = "SleepVarianceMillis";
 }
 
 export namespace ActivityMetrics {

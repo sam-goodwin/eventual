@@ -211,6 +211,7 @@ export class WorkflowRuntimeClient {
     const untilTime = isSleepUntilCommand(command)
       ? new Date(command.untilTime)
       : new Date(baseTime.getTime() + command.durationSeconds * 1000);
+    const untilTimeIso = untilTime.toISOString();
 
     const formattedDataTime = untilTime.toISOString().split(".")[0];
 
@@ -220,7 +221,7 @@ export class WorkflowRuntimeClient {
           {
             type: WorkflowEventType.SleepCompleted,
             seq: command.seq,
-            timestamp: untilTime.toISOString(),
+            timestamp: untilTimeIso,
           },
         ],
         executionId,

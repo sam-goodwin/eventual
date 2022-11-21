@@ -113,7 +113,7 @@ export function generateSyntheticEvents(
       type: WorkflowEventType.SleepCompleted,
       seq: e.seq,
       timestamp: now.toISOString(),
-    }));
+    } satisfies SleepCompleted));
 
   return syntheticSleepComplete;
 }

@@ -21,6 +21,7 @@ import {
   assertNever,
   isSleepForCommand,
   isSleepUntilCommand,
+  isSleepCompleted,
 } from "@eventual/core";
 import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
 import {
@@ -28,7 +29,7 @@ import {
   createWorkflowRuntimeClient,
 } from "../clients/index.js";
 import { SQSEvent, SQSHandler, SQSRecord } from "aws-lambda";
-import { createMetricsLogger, Unit } from "aws-embedded-metrics";
+import { createMetricsLogger, MetricsLogger, Unit } from "aws-embedded-metrics";
 import { timed, timedSync } from "../metrics/utils.js";
 import { workflowName } from "../env.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
@@ -292,6 +293,9 @@ async function orchestrateExecution(
       newEvents.length
     );
 
+    // Only log these metrics once the orchestrator has completed successfully.
+    logEventMetrics(metrics, events, start);
+
     function logExecutionCompleteMetrics(
       execution: CompleteExecution | FailedExecution
     ) {
@@ -367,6 +371,24 @@ function sqsRecordToEvents(sqsRecord: SQSRecord) {
   const message = JSON.parse(sqsRecord.body) as SQSWorkflowTaskMessage;
 
   return message.task.events;
+}
+
+/** Logs metrics specific to the incoming events */
+function logEventMetrics(
+  metrics: MetricsLogger,
+  events: WorkflowEvent[],
+  now: Date
+) {
+  const sleepCompletedEvents = events.filter(isSleepCompleted);
+  if (sleepCompletedEvents.length > 0) {
+    const sleepCompletedVariance = sleepCompletedEvents.map(
+      (s) => now.getTime() - new Date(s.timestamp).getTime()
+    );
+    const avg =
+      sleepCompletedVariance.reduce((t, n) => t + n, 0) /
+      sleepCompletedVariance.length;
+    metrics.setProperty(OrchestratorMetrics.SleepVarianceMillis, avg);
+  }
 }
 
 async function promiseAllSettledPartitioned<T, R>(
