@@ -217,6 +217,27 @@ export class Workflow extends Construct implements IGrantable {
 
     this.timerQueue = new Queue(this, "timerQueue");
 
+    this.scheduleForwarder = new NodejsFunction(this, "scheduleForwarder", {
+      entry: path.join(
+        require.resolve("@eventual/aws-runtime"),
+        "../../esm/handlers/schedule-forwarder.js"
+      ),
+      handler: "handle",
+      runtime: Runtime.NODEJS_16_X,
+      architecture: Architecture.ARM_64,
+      bundling: {
+        mainFields: ["module", "main"],
+        esbuildArgs: {
+          "--conditions": "module,import,require",
+        },
+        metafile: true,
+      },
+      environment: {
+        [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
+        [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
+      },
+    });
+
     this.orchestrator = new Function(this, "Orchestrator", {
       architecture: Architecture.ARM_64,
       code: Code.fromAsset(path.join(outDir, "orchestrator")),
@@ -236,6 +257,8 @@ export class Workflow extends Construct implements IGrantable {
         [ENV_NAMES.SCHEDULER_ROLE_ARN]: schedulerRole.roleArn,
         [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: dlq.queueArn,
         [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
+        [ENV_NAMES.TIMER_QUEUE_ARN]: this.timerQueue.queueArn,
+        [ENV_NAMES.SCHEDULE_FORWARDER_ARN]: this.scheduleForwarder.functionArn,
       },
       events: [
         new SqsEventSource(this.workflowQueue, {
@@ -264,27 +287,11 @@ export class Workflow extends Construct implements IGrantable {
         [ENV_NAMES.TABLE_NAME]: this.table.tableName,
         [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
       },
-    });
-
-    this.scheduleForwarder = new NodejsFunction(this, "scheduleForwarder", {
-      entry: path.join(
-        require.resolve("@eventual/aws-runtime"),
-        "../../esm/handlers/schedule-forwarder.js"
-      ),
-      handler: "handle",
-      runtime: Runtime.NODEJS_16_X,
-      architecture: Architecture.ARM_64,
-      bundling: {
-        mainFields: ["module", "main"],
-        esbuildArgs: {
-          "--conditions": "module,import,require",
-        },
-        metafile: true,
-      },
-      environment: {
-        [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
-        [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
-      },
+      events: [
+        new SqsEventSource(this.timerQueue, {
+          reportBatchItemFailures: true,
+        }),
+      ],
     });
 
     this.timerQueue.grantSendMessages(this.scheduleForwarder);
