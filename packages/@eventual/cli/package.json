@@ -25,11 +25,15 @@
   "jest": {
     "transform": {
       "^.+\\.(t|j)sx?$": [
-        "ts-jest",
-        {
-          "tsconfig": "tsconfig.test.json"
-        }
+        "@swc/jest"
       ]
+    },
+    "transformIgnorePatterns": [
+      "<rootDir>/../../../node_modules/"
+    ],
+    "moduleNameMapper": {
+      "#ansi-styles": "ansi-styles/index.js",
+      "#supports-color": "supports-color/index.js"
     }
   },
   "publishConfig": {
