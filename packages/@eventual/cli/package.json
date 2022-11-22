@@ -25,11 +25,15 @@
   "jest": {
     "transform": {
       "^.+\\.(t|j)sx?$": [
-        "ts-jest",
-        {
-          "tsconfig": "tsconfig.test.json"
-        }
+        "@swc/jest"
       ]
+    },
+    "transformIgnorePatterns": [
+      "<rootDir>/../../../node_modules/"
+    ],
+    "moduleNameMapper": {
+      "#ansi-styles": "ansi-styles/index.js",
+      "#supports-color": "supports-color/index.js"
     }
   },
   "publishConfig": {
@@ -37,6 +41,7 @@
   },
   "dependencies": {
     "@aws-crypto/sha256-js": "^2.0.2",
+    "@aws-sdk/client-cloudwatch-logs": "^3.213.0",
     "@aws-sdk/client-cloudformation": "^3.213.0",
     "@aws-sdk/client-iam": "^3.213.0",
     "@aws-sdk/client-sts": "^3.213.0",
