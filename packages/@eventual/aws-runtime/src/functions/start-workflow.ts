@@ -1,12 +1,8 @@
 import { Handler } from "aws-lambda";
+import type { StartWorkflowRequest } from "../types.js";
 import { createWorkflowClient } from "../clients/index.js";
 
 const workflowClient = createWorkflowClient();
-
-export interface StartWorkflowRequest {
-  name: string;
-  input: any;
-}
 
 export interface StartWorkflowResponse {
   executionId: string;
