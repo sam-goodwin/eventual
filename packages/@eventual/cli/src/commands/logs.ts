@@ -39,7 +39,7 @@ export const logs = (yargs: Argv) =>
           type: "boolean",
         }),
     async ({ workflow, execution, since, tail }) => {
-      const startTime = getStartTime(since);
+      const startTime = getStartTime(since as string | number);
       const spinner = ora("Loading logs");
       const cfnClient = new cfn.CloudFormationClient({});
       const { Exports } = await cfnClient.send(new cfn.ListExportsCommand({}));
@@ -223,7 +223,9 @@ export function extractMessage(
  * @param since timestamp specifier
  * @returns start time
  */
-export function getStartTime(since: any): number | undefined {
+export function getStartTime(
+  since: number | string | "now"
+): number | undefined {
   if (since == null) {
     //Now - 24hrs. If we don't provide a start time, it's too slow to page through all the logs
     return Date.now() - 86_400_000;

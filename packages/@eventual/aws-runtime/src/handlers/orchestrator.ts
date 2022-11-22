@@ -29,7 +29,6 @@ import { createMetricsLogger, Unit } from "aws-embedded-metrics";
 import { timed, timedSync } from "../metrics/utils.js";
 import { workflowName } from "../env.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
-import { Logger } from "@aws-lambda-powertools/logger";
 import middy from "@middy/core";
 import { logger, loggerMiddlewares } from "../logger.js";
 import { WorkflowContext } from "@eventual/core";
@@ -61,17 +60,8 @@ export function orchestrator(program: ProgramStarter): SQSHandler {
     // for each execution id
     const results = await promiseAllSettledPartitioned(
       Object.entries(eventsByExecutionId),
-      async ([executionId, records]) => {
-        const executionLogger = logger.createChild({
-          persistentLogAttributes: { executionId },
-        });
-        return orchestrateExecution(
-          program,
-          executionId,
-          records,
-          executionLogger
-        );
-      }
+      async ([executionId, records]) =>
+        orchestrateExecution(program, executionId, records)
     );
 
     logger.debug(
@@ -103,9 +93,11 @@ export function orchestrator(program: ProgramStarter): SQSHandler {
 async function orchestrateExecution(
   program: ProgramStarter,
   executionId: string,
-  records: SQSRecord[],
-  executionLogger: Logger
+  records: SQSRecord[]
 ) {
+  const executionLogger = logger.createChild({
+    persistentLogAttributes: { executionId },
+  });
   const metrics = createMetricsLogger();
   metrics.resetDimensions(false);
   metrics.setNamespace(MetricsCommon.EventualNamespace);
