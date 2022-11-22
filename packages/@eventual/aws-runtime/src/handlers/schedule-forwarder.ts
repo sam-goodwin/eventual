@@ -1,13 +1,10 @@
-import { DeleteScheduleCommand } from "@aws-sdk/client-scheduler";
-import { SendMessageCommand } from "@aws-sdk/client-sqs";
 import { metricScope } from "aws-embedded-metrics";
-import { scheduler, sqs } from "src/clients";
-import { schedulerGroup, timerQueueArn } from "src/env";
+import { createTimerClient } from "../clients/create.js";
 import {
   MetricsCommon,
   SchedulerForwarderMetrics,
-} from "src/metrics/constants";
-import { TimerRequest } from "./timer-handler";
+} from "../metrics/constants.js";
+import { TimerRequest } from "./types.js";
 
 export interface ScheduleForwarderRequest {
   scheduleName: string;
@@ -20,10 +17,9 @@ export interface ScheduleForwarderRequest {
   untilTime: string;
 }
 
-const sqsClient = sqs();
-const schedulerClient = scheduler();
-const timerQueueUrl = timerQueueArn();
-const schedulerGroupName = schedulerGroup();
+const timerClient = createTimerClient({
+  scheduleForwarderArn: "NOT NEEDED",
+});
 
 export const handle = metricScope(
   (metrics) => async (event: ScheduleForwarderRequest) => {
@@ -46,32 +42,16 @@ export const handle = metricScope(
       schedulerTimeDelay
     );
 
-    // should we let the timer handler account for the extra milliseconds?
-    const delaySeconds = Math.ceil(
-      (new Date().getTime() - new Date(event.untilTime).getTime()) / 1000
-    );
+    const delaySeconds = await timerClient.startShortTimer(event.timerRequest);
 
     metrics.setProperty(
       SchedulerForwarderMetrics.TimerQueueDelaySeconds,
       delaySeconds
     );
 
-    await sqsClient.send(
-      new SendMessageCommand({
-        MessageBody: JSON.stringify(event.timerRequest),
-        QueueUrl: timerQueueUrl,
-        DelaySeconds: delaySeconds,
-      })
-    );
-
     if (event.clearSchedule) {
       console.debug("Deleting the schedule: " + event.scheduleName);
-      await schedulerClient.send(
-        new DeleteScheduleCommand({
-          Name: event.scheduleName,
-          GroupName: schedulerGroupName,
-        })
-      );
+      timerClient.clearSchedule(event.scheduleName);
     }
   }
 );

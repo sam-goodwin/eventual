@@ -36,6 +36,7 @@ import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import middy from "@middy/core";
 import { logger, loggerMiddlewares } from "../logger.js";
 import { WorkflowContext } from "@eventual/core";
+import { promiseAllSettledPartitioned } from "../utils.js";
 
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowRuntimeClient = createWorkflowRuntimeClient();

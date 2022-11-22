@@ -1,4 +1,4 @@
-async function promiseAllSettledPartitioned<T, R>(
+export async function promiseAllSettledPartitioned<T, R>(
   items: T[],
   op: (item: T) => Promise<R>
 ): Promise<{

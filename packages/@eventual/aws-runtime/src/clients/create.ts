@@ -10,6 +10,7 @@ import { WorkflowRuntimeClient } from "./workflow-runtime-client";
 import memoize from "micro-memoize";
 import { deepEqual } from "fast-equals";
 import { SchedulerClient } from "@aws-sdk/client-scheduler";
+import { TimerClient, TimerClientProps } from "./timer-client";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -61,6 +62,22 @@ export const createActivityRuntimeClient = /*@__PURE__*/ memoize(
     })
 );
 
+export const createTimerClient = /*@__PURE__*/ memoize(
+  (props: Partial<TimerClientProps> = {}) =>
+    new TimerClient({
+      scheduler: props.scheduler ?? scheduler(),
+      schedulerRoleArn: props.schedulerRoleArn ?? env.schedulerRoleArn(),
+      schedulerDlqArn: props.schedulerDlqArn ?? env.schedulerDlqArn(),
+      schedulerGroup: props.schedulerGroup ?? env.schedulerGroup(),
+      sleepQueueThresholdMillis:
+        props.sleepQueueThresholdMillis ?? 15 * 60 * 1000,
+      sqs: props.sqs ?? sqs(),
+      timerQueueUrl: props.timerQueueUrl ?? env.timerQueueUrl(),
+      scheduleForwarderArn:
+        props.scheduleForwarderArn ?? env.schedulerForwarderArn(),
+    })
+);
+
 export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
   ({
     tableName,
@@ -81,14 +98,6 @@ export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
       lambda: lambda(),
       activityWorkerFunctionName:
         activityWorkerFunctionName ?? env.activityWorkerFunctionName(),
-      scheduler: scheduler(),
-      workflowQueueArn: env.workflowQueueArn(),
-      schedulerRoleArn: env.schedulerRoleArn(),
-      schedulerDlqArn: env.schedulerDlqArn(),
-      schedulerGroup: env.schedulerGroup(),
-      sleepQueueThresholdMillis: 15 * 60 * 1000,
-      sqs: sqs(),
-      timerQueueUrl: env.timerQueueUrl(),
-      scheduleForwarderArn: env.schedulerForwarderArn(),
+      timerClient: createTimerClient(),
     })
 );

@@ -201,12 +201,14 @@ export class Workflow extends Construct implements IGrantable {
     const schedulerRole = new Role(this, "schedulerRole", {
       assumedBy: new ServicePrincipal("scheduler.amazonaws.com", {
         conditions: {
-          "aws:SourceArn": Stack.of(this).formatArn({
-            service: "scheduler",
-            resource: "schedule",
-            arnFormat: ArnFormat.SLASH_RESOURCE_NAME,
-            resourceName: `${this.schedulerGroup.ref}/*`,
-          }),
+          ArnEquals: {
+            "aws:SourceArn": Stack.of(this).formatArn({
+              service: "scheduler",
+              resource: "schedule",
+              arnFormat: ArnFormat.SLASH_RESOURCE_NAME,
+              resourceName: `${this.schedulerGroup.ref}/*`,
+            }),
+          },
         },
       }),
     });
@@ -217,6 +219,7 @@ export class Workflow extends Construct implements IGrantable {
 
     this.timerQueue = new Queue(this, "timerQueue");
 
+    // TODO: handle failures to a DLQ
     this.scheduleForwarder = new NodejsFunction(this, "scheduleForwarder", {
       entry: path.join(
         require.resolve("@eventual/aws-runtime"),
@@ -235,6 +238,10 @@ export class Workflow extends Construct implements IGrantable {
       environment: {
         [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
         [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
+        [ENV_NAMES.SCHEDULER_ROLE_ARN]: schedulerRole.roleArn,
+        [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: dlq.queueArn,
+        [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
+        [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
       },
     });
 
@@ -251,13 +258,11 @@ export class Workflow extends Construct implements IGrantable {
           this.activityWorker.functionName,
         [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
         [ENV_NAMES.TABLE_NAME]: this.table.tableName,
-        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
         [ENV_NAMES.WORKFLOW_NAME]: this.workflowName,
-        [ENV_NAMES.WORKFLOW_QUEUE_ARN]: this.workflowQueue.queueArn,
         [ENV_NAMES.SCHEDULER_ROLE_ARN]: schedulerRole.roleArn,
         [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: dlq.queueArn,
         [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
-        [ENV_NAMES.TIMER_QUEUE_ARN]: this.timerQueue.queueArn,
+        [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
         [ENV_NAMES.SCHEDULE_FORWARDER_ARN]: this.scheduleForwarder.functionArn,
       },
       events: [
@@ -295,6 +300,8 @@ export class Workflow extends Construct implements IGrantable {
     });
 
     this.timerQueue.grantSendMessages(this.scheduleForwarder);
+
+    this.timerQueue.grantSendMessages(this.orchestrator);
 
     // grants the orchestrator the permission to create new schedules for sleep.
     this.scheduleForwarder.addToRolePolicy(
