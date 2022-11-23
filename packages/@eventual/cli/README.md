@@ -34,11 +34,17 @@ $ eventual start --tail <workflow> [input]
 ## Get execution history
 
 ```shell
-$ eventual history <name> <execution>
+$ eventual history <workflow> <execution>
 ```
 
 ## List workflow executions
 
 ```shell
-$ eventual executions <name> [--sort sortKey]
+$ eventual executions <workflow> [--sort sortKey]
+```
+
+## Display logs
+
+```shell
+$ eventual logs <workflow> [execution] [--tail] [--since timestamp]
 ```
