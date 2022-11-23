@@ -10,7 +10,7 @@
     "rootDir": "src",
     "typeRoots": ["./node_modules/@types"],
     "allowJs": true,
-    "lib": ["ES2022.Array", "ES2022", "DOM"]
+    "lib": ["DOM"]
   },
   "include": ["src"],
   "exclude": ["lib", "node_modules"],
