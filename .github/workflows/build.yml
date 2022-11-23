@@ -23,5 +23,7 @@ jobs:
       CI: "true"
       CLEAN_UP_STACK: "1"
     steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/build
       - name: Run tests
         run: pnpm test
