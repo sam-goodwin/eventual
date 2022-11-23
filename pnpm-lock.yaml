@@ -8,7 +8,7 @@ importers:
       jest: ^29
       lerna: ^5.5.4
       lint-staged: ^13.0.3
-      prettier: ^2.7.1
+      prettier: ^2.8.0
       ts-jest: ^29
       turbo: ^1.5.5
       typescript: ^4.9.3
@@ -17,7 +17,7 @@ importers:
       jest: 29.3.1
       lerna: 5.6.2
       lint-staged: 13.0.3
-      prettier: 2.7.1
+      prettier: 2.8.0
       ts-jest: 29.0.3_6crhf7ajeizammv76u753sn6i4
       turbo: 1.6.3
       typescript: 4.9.3
@@ -75,7 +75,7 @@ importers:
       '@aws-sdk/client-lambda': 3.213.0
       '@aws-sdk/client-s3': 3.213.0
       '@aws-sdk/client-sqs': 3.213.0
-      '@aws-sdk/lib-dynamodb': 3.214.0_pkoukrpcioslpyurlirus5tkna
+      '@aws-sdk/lib-dynamodb': 3.214.0_3zbq4agbqjx6q6dwjtp3jwi6pu
       '@eventual/aws-runtime': link:../../packages/@eventual/aws-runtime
       '@eventual/core': link:../../packages/@eventual/core
     devDependencies:
@@ -1059,7 +1059,7 @@ packages:
     dependencies:
       tslib: 2.4.1
 
-  /@aws-sdk/lib-dynamodb/3.214.0_pkoukrpcioslpyurlirus5tkna:
+  /@aws-sdk/lib-dynamodb/3.214.0_3zbq4agbqjx6q6dwjtp3jwi6pu:
     resolution: {integrity: sha512-AZz5LSyKMDMboGHKoQQvqwaiII44+QQgtqIdGWcsemTlH5PMMCgqBJM8B6P/zXcjQKKejjS+dchFdSg920jvew==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
@@ -1068,8 +1068,8 @@ packages:
       '@aws-sdk/types': ^3.0.0
     dependencies:
       '@aws-sdk/client-dynamodb': 3.214.0
-      '@aws-sdk/smithy-client': 3.212.0
-      '@aws-sdk/types': 3.212.0
+      '@aws-sdk/smithy-client': 3.215.0
+      '@aws-sdk/types': 3.215.0
       '@aws-sdk/util-dynamodb': 3.214.0
       tslib: 2.4.1
     dev: false
@@ -1243,6 +1243,13 @@ packages:
     dependencies:
       tslib: 2.4.1
 
+  /@aws-sdk/middleware-stack/3.215.0:
+    resolution: {integrity: sha512-rdSVL7LxRgjlvoluqwODD4ypBy2k/YVl6FrDplyCMSi8m2WHZG99FzdmR9bpnWK+0DGzYZSMRYx6ynJ9N9PsSw==}
+    engines: {node: '>=14.0.0'}
+    dependencies:
+      tslib: 2.4.1
+    dev: false
+
   /@aws-sdk/middleware-user-agent/3.212.0:
     resolution: {integrity: sha512-CVSY2kt+RaP6CVqSKp+1sPUAQFusTLZLFHVK0YPFzcIySJMqJC0l0/BzLhaIf5Bs3JHa/VGym8oDpp881yimHA==}
     engines: {node: '>=14.0.0'}
@@ -1344,6 +1351,15 @@ packages:
       '@aws-sdk/types': 3.212.0
       tslib: 2.4.1
 
+  /@aws-sdk/smithy-client/3.215.0:
+    resolution: {integrity: sha512-PiZfCdZkPohzMPrRmJ46TPOf2Tr/dhKYdwQArRnOOIsJABUGXjlzCUE8vysDN35XZYRx5f9hd+/U7kayhniq2w==}
+    engines: {node: '>=14.0.0'}
+    dependencies:
+      '@aws-sdk/middleware-stack': 3.215.0
+      '@aws-sdk/types': 3.215.0
+      tslib: 2.4.1
+    dev: false
+
   /@aws-sdk/token-providers/3.212.0:
     resolution: {integrity: sha512-pTe4PM14b58nbfvIP9B0zW5dUIxEb/ALVzSLuxpJwJRI51E5QZmXJMT3P77MUd6niqKw0cRrnEHIgznD67JHSg==}
     engines: {node: '>=14.0.0'}
@@ -1359,6 +1375,11 @@ packages:
   /@aws-sdk/types/3.212.0:
     resolution: {integrity: sha512-uXBXB1PBYxfPyIvgmjbGdYBlS7rdeMG58uCaY3Ga5scY2xQnj7HU7knATKuIKk2DH1lLT0inqtsRVJS25zRK5w==}
     engines: {node: '>=14.0.0'}
+
+  /@aws-sdk/types/3.215.0:
+    resolution: {integrity: sha512-eRbCVjwzTYd9C5e2mceScJ6D2kYDDEC3PLkYfJa+1wH9iiF2JlbiYozAokyeYBHQ+AjmD93MK58RBoM8iZfH0Q==}
+    engines: {node: '>=14.0.0'}
+    dev: false
 
   /@aws-sdk/url-parser/3.212.0:
     resolution: {integrity: sha512-mTUQQRcVYqur7aHDuDMDKxN7Yr/5kIZB1RtMjIwtimTcf7TZaskN6sLTPo42YgASM6XQQhJECZaOE7Ow16i6Mg==}
@@ -7612,9 +7633,10 @@ packages:
       find-up: 4.1.0
     dev: true
 
-  /prettier/2.7.1:
-    resolution: {integrity: sha512-ujppO+MkdPqoVINuDFDRLClm7D78qbDt0/NR+wp5FqEZOoTNAjPHWj17QRhu7geIHJfcNhRk1XVQmF8Bp3ye+g==}
+  /prettier/2.8.0:
+    resolution: {integrity: sha512-9Lmg8hTFZKG0Asr/kW9Bp8tJjRVluO8EJQVfY2T7FMw9T5jy4I/Uvx0Rca/XWf50QQ1/SS48+6IJWnrb+2yemA==}
     engines: {node: '>=10.13.0'}
+    hasBin: true
     dev: true
 
   /pretty-format/29.3.1:
