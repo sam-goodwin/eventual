@@ -100,16 +100,14 @@ export class WorkflowRuntimeClient {
         },
         TableName: this.props.tableName,
         UpdateExpression: result
-          ? "SET #status=:complete, #result=:result, endTime=:endTime"
-          : "SET #status=:complete, endTime=:endTime",
-        ConditionExpression: "#status=:in_progress",
+          ? "SET #status=:complete, #result=:result, endTime=if_not_exists(endTime,:endTime)"
+          : "SET #status=:complete, endTime=if_not_exists(endTime,:endTime)",
         ExpressionAttributeNames: {
           "#status": "status",
           ...(result ? { "#result": "result" } : {}),
         },
         ExpressionAttributeValues: {
           ":complete": { S: ExecutionStatus.COMPLETE },
-          ":in_progress": { S: ExecutionStatus.IN_PROGRESS },
           ":endTime": { S: new Date().toISOString() },
           ...(result ? { ":result": { S: JSON.stringify(result) } } : {}),
         },
@@ -142,8 +140,7 @@ export class WorkflowRuntimeClient {
         },
         TableName: this.props.tableName,
         UpdateExpression:
-          "SET #status=:failed, #error=:error, #message=:message, endTime=:endTime",
-        ConditionExpression: "#status=:in_progress",
+          "SET #status=:failed, #error=:error, #message=:message, endTime=if_not_exists(endTime,:endTime)",
         ExpressionAttributeNames: {
           "#status": "status",
           "#error": "error",
@@ -151,7 +148,6 @@ export class WorkflowRuntimeClient {
         },
         ExpressionAttributeValues: {
           ":failed": { S: ExecutionStatus.FAILED },
-          ":in_progress": { S: ExecutionStatus.IN_PROGRESS },
           ":endTime": { S: new Date().toISOString() },
           ":error": { S: error },
           ":message": { S: message },
