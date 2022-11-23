@@ -36,7 +36,11 @@ export interface StartWorkflowRequest {
   /**
    * ID of the parent execution if this is a child workflow
    */
-  parentId?: string;
+  parentExecutionId?: string;
+  /**
+   * Sequence ID of this execution if this is a child workflow
+   */
+  seq?: number;
 }
 
 export interface WorkflowClientProps {
@@ -60,7 +64,8 @@ export class WorkflowClient {
     executionName = ulid(),
     workflowName,
     input,
-    parentId,
+    parentExecutionId,
+    seq,
   }: StartWorkflowRequest) {
     const executionId = executionName;
     console.log("execution input:", input);
@@ -73,9 +78,15 @@ export class WorkflowClient {
           sk: { S: ExecutionRecord.sortKey(executionId) },
           id: { S: executionId },
           name: { S: executionName },
+          workflowName: { S: workflowName },
           status: { S: ExecutionStatus.IN_PROGRESS },
           startTime: { S: new Date().toISOString() },
-          ...(parentId ? { parentId: { S: parentId } } : {}),
+          ...(parentExecutionId
+            ? {
+                parentExecutionId: { S: parentExecutionId },
+                seq: { N: seq!.toString(10) },
+              }
+            : {}),
         },
       })
     );
@@ -89,7 +100,7 @@ export class WorkflowClient {
           workflowName,
           context: {
             name: executionName,
-            parentId,
+            parentId: parentExecutionId,
           },
         }
       );
@@ -116,8 +127,6 @@ export class WorkflowClient {
         MessageBody: JSON.stringify(workflowTask),
         QueueUrl: this.props.workflowQueueUrl,
         MessageGroupId: executionId,
-        // just de-dupe with itself
-        MessageDeduplicationId: `${executionId}_${ulid()}`,
       })
     );
   }
@@ -127,22 +136,36 @@ export interface SQSWorkflowTaskMessage {
   task: WorkflowTask;
 }
 
-export interface ExecutionRecord {
-  pk: { S: typeof ExecutionRecord.PRIMARY_KEY };
-  sk: { S: `${typeof ExecutionRecord.SORT_KEY_PREFIX}${string}` };
-  result?: AttributeValue.SMember;
-  id: AttributeValue.SMember;
-  status: { S: ExecutionStatus };
-  startTime: AttributeValue.SMember;
-  endTime?: AttributeValue.SMember;
-  error?: AttributeValue.SMember;
-  message?: AttributeValue.SMember;
-}
+export type ExecutionRecord =
+  | {
+      pk: { S: typeof ExecutionRecord.PRIMARY_KEY };
+      sk: { S: `${typeof ExecutionRecord.SORT_KEY_PREFIX}${string}` };
+      result?: AttributeValue.SMember;
+      id: AttributeValue.SMember;
+      status: { S: ExecutionStatus };
+      startTime: AttributeValue.SMember;
+      name: AttributeValue.SMember;
+      workflowName: AttributeValue.SMember;
+      endTime?: AttributeValue.SMember;
+      error?: AttributeValue.SMember;
+      message?: AttributeValue.SMember;
+    } & (
+      | {
+          parentExecutionId: AttributeValue.SMember;
+          seq: AttributeValue.NMember;
+        }
+      | {
+          parentExecutionId?: never;
+          seq?: never;
+        }
+    );
 
 export namespace ExecutionRecord {
   export const PRIMARY_KEY = "Execution";
   export const SORT_KEY_PREFIX = `Execution$`;
-  export function sortKey(executionId: string) {
+  export function sortKey(
+    executionId: string
+  ): `${typeof SORT_KEY_PREFIX}${typeof executionId}` {
     return `${SORT_KEY_PREFIX}${executionId}`;
   }
 }

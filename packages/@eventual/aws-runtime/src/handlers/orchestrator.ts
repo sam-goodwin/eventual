@@ -22,6 +22,7 @@ import {
   isScheduleWorkflowCommand,
   assertNever,
   ChildWorkflowScheduled,
+  lookupWorkflow,
 } from "@eventual/core";
 import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
 import {
@@ -44,7 +45,7 @@ const workflowClient = createWorkflowClient();
 /**
  * Creates an entrypoint function for orchestrating a workflow.
  */
-export function orchestrator(workflow: Workflow): SQSHandler {
+export function orchestrator(): SQSHandler {
   return middy(async (event: SQSEvent) => {
     logger.debug("Handle workflowQueue records");
     // if a polling request
@@ -65,8 +66,20 @@ export function orchestrator(workflow: Workflow): SQSHandler {
     // for each execution id
     const results = await promiseAllSettledPartitioned(
       Object.entries(eventsByExecutionId),
-      async ([executionId, records]) =>
-        orchestrateExecution(workflow, executionId, records)
+      async ([executionId, records]) => {
+        const workflowName = await workflowRuntimeClient.getWorkflowName(
+          executionId
+        );
+        if (workflowName === undefined) {
+          throw new Error(`execution ID '${executionId}' does not exist`);
+        }
+        const workflow = lookupWorkflow(workflowName);
+        if (workflow === undefined) {
+          throw new Error(`no such workflow with name '${workflowName}'`);
+        }
+        // TODO: get workflow from execution id
+        return orchestrateExecution(workflow, executionId, records);
+      }
     );
 
     logger.debug(

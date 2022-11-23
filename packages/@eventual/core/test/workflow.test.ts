@@ -6,13 +6,13 @@ import {
   WorkflowEventType,
   WorkflowStarted,
 } from "../src/events";
-import { progressWorkflow } from "../src/workflow";
+import { progressWorkflow, workflow } from "../src/workflow";
 import { WorkflowContext } from "../src/context";
 
-function* myWorkflow(event: any): Program<any> {
+const myWorkflow = workflow("myWorkflow", function* (event: any): Program<any> {
   yield createActivityCall("my-activity", [event]);
   yield createActivityCall("my-activity", [event]);
-}
+});
 
 const started1: WorkflowStarted = {
   type: WorkflowEventType.WorkflowStarted,

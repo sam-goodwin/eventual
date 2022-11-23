@@ -60,6 +60,12 @@ export interface Workflow<
   ) => Program<AwaitedEventual<ReturnType<F>>>;
 }
 
+const workflows = new Map<string, Workflow>();
+
+export function lookupWorkflow(name: string): Workflow | undefined {
+  return workflows.get(name);
+}
+
 /**
  * Creates and registers a long-running workflow.
  *
@@ -84,6 +90,9 @@ export function workflow<F extends (input?: any) => Promise<any> | Program>(
   name: string,
   definition: F
 ): Workflow<F> {
+  if (workflows.has(name)) {
+    throw new Error(`workflow with name '${name}' already exists`);
+  }
   const workflow: Workflow<F> = ((input?: any) =>
     registerActivity({
       [EventualSymbol]: EventualKind.WorkflowCall,
@@ -96,6 +105,7 @@ export function workflow<F extends (input?: any) => Promise<any> | Program>(
     throw new Error("not implemented");
   };
   workflow.definition = definition as Workflow<F>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
+  workflows.set(name, workflow);
   return workflow;
 }
 

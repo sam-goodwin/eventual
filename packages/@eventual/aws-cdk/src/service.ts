@@ -90,6 +90,7 @@ export class Service extends Construct implements IGrantable {
       fifo: true,
       fifoThroughputLimit: FifoThroughputLimit.PER_MESSAGE_GROUP_ID,
       deduplicationScope: DeduplicationScope.MESSAGE_GROUP,
+      contentBasedDeduplication: true,
     });
 
     // Table - History, Executions, ExecutionData
