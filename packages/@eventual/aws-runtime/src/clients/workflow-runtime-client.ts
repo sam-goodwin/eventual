@@ -1,5 +1,4 @@
 import {
-  AttributeValue,
   DynamoDBClient,
   QueryCommand,
   UpdateItemCommand,
@@ -126,9 +125,9 @@ export class WorkflowRuntimeClient {
 
     const record = executionResult.Attributes as unknown as ExecutionRecord;
     if (record.parentExecutionId) {
-      await this.completeChildExecution(
-        record.parentExecutionId,
-        record.seq,
+      await this.reportCompletionToParent(
+        record.parentExecutionId.S,
+        record.seq.N,
         result
       );
     }
@@ -167,9 +166,9 @@ export class WorkflowRuntimeClient {
 
     const record = executionResult.Attributes as unknown as ExecutionRecord;
     if (record.parentExecutionId) {
-      await this.completeChildExecution(
-        record.parentExecutionId,
-        record.seq,
+      await this.reportCompletionToParent(
+        record.parentExecutionId.S,
+        record.seq.N,
         error,
         message
       );
@@ -178,13 +177,13 @@ export class WorkflowRuntimeClient {
     return createExecutionFromResult(record) as FailedExecution;
   }
 
-  private async completeChildExecution(
-    parentExecutionId: AttributeValue.SMember,
-    seq: AttributeValue.NMember,
+  private async reportCompletionToParent(
+    parentExecutionId: string,
+    seq: string,
     ...args: [result: any] | [error: string, message: string]
   ) {
-    await this.props.workflowClient.submitWorkflowTask(parentExecutionId.S, {
-      seq: parseInt(seq.N, 10),
+    await this.props.workflowClient.submitWorkflowTask(parentExecutionId, {
+      seq: parseInt(seq, 10),
       timestamp: new Date().toISOString(),
       ...(args.length === 1
         ? {
