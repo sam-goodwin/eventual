@@ -18,7 +18,7 @@ import { metricScope, Unit } from "aws-embedded-metrics";
 import { timed } from "../metrics/utils.js";
 import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
 import middy from "@middy/core";
-import { logger, loggerMiddlewares } from "src/logger.js";
+import { logger, loggerMiddlewares } from "../logger.js";
 
 const activityRuntimeClient = createActivityRuntimeClient();
 const executionHistoryClient = createExecutionHistoryClient();

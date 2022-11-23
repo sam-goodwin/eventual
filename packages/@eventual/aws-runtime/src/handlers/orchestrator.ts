@@ -37,7 +37,7 @@ import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import middy from "@middy/core";
 import { logger, loggerMiddlewares } from "../logger.js";
 import { WorkflowContext } from "@eventual/core";
-import { isExecutionId, parseWorkflowName } from "src/execution-id.js";
+import { isExecutionId, parseWorkflowName } from "../execution-id.js";
 
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowRuntimeClient = createWorkflowRuntimeClient();

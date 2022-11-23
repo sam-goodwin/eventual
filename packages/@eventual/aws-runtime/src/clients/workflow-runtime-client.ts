@@ -31,14 +31,12 @@ import {
   WorkflowClient,
 } from "./workflow-client.js";
 import { ActivityWorkerRequest } from "../activity.js";
-import { SQSClient } from "@aws-sdk/client-sqs";
 
 export interface WorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;
   readonly activityWorkerFunctionName: string;
   readonly dynamo: DynamoDBClient;
   readonly s3: S3Client;
-  readonly sqs: SQSClient;
   readonly executionHistoryBucket: string;
   readonly tableName: string;
   readonly workflowClient: WorkflowClient;
@@ -166,9 +164,7 @@ export class WorkflowRuntimeClient {
       );
     }
 
-    return createExecutionFromResult(
-      executionResult.Attributes as unknown as ExecutionRecord
-    ) as FailedExecution;
+    return createExecutionFromResult(record) as FailedExecution;
   }
 
   private async completeChildExecution(
