@@ -162,7 +162,7 @@ export function isCompletedEvent(
 }
 
 export function isFailedEvent(event: WorkflowEvent): event is FailedEvent {
-  return isFailedEvent(event);
+  return isActivityFailed(event);
 }
 
 export function isEventualEvent(event: WorkflowEvent): event is EventualEvent {
