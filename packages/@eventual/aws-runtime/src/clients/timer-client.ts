@@ -44,8 +44,15 @@ export class TimerClient {
    * the {@link TimerRequest} provided.
    */
   async startShortTimer(timerRequest: TimerRequest) {
-    const delaySeconds = Math.floor(
-      (new Date(timerRequest.untilTime).getTime() - new Date().getTime()) / 1000
+    const delaySeconds = Math.max(
+      // Compute the number of seconds (floored)
+      // subtract 1 because the maxBatchWindow is set to 1s on the lambda event source.
+      // this allows for more events to be sent at once while not adding extra latency
+      Math.floor(
+        (new Date(timerRequest.untilTime).getTime() - new Date().getTime()) /
+          1000
+      ) - 1,
+      0
     );
 
     if (delaySeconds > 15 * 60) {

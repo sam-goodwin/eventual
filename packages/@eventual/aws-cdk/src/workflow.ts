@@ -20,7 +20,14 @@ import {
   ITable,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
-import { ArnFormat, CfnOutput, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
+import {
+  ArnFormat,
+  CfnOutput,
+  Duration,
+  Names,
+  RemovalPolicy,
+  Stack,
+} from "aws-cdk-lib";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import path from "path";
@@ -301,6 +308,7 @@ export class Workflow extends Construct implements IGrantable {
       events: [
         new SqsEventSource(this.timerQueue, {
           reportBatchItemFailures: true,
+          maxBatchingWindow: Duration.seconds(1),
         }),
       ],
     });
