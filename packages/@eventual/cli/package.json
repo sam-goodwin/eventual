@@ -9,7 +9,7 @@
     "lib"
   ],
   "scripts": {
-    "test": "jest --passWithNoTests"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --passWithNoTests"
   },
   "type": "module",
   "devDependencies": {
@@ -25,15 +25,23 @@
   "jest": {
     "transform": {
       "^.+\\.(t|j)sx?$": [
-        "@swc/jest"
+        "ts-jest",
+        {
+          "useESM": true,
+          "tsconfig": "tsconfig.test.json"
+        }
       ]
     },
     "transformIgnorePatterns": [
-      "<rootDir>/../../../node_modules/"
+      ".*/.pnpm/.*"
+    ],
+    "extensionsToTreatAsEsm": [
+      ".ts"
     ],
     "moduleNameMapper": {
       "#ansi-styles": "ansi-styles/index.js",
-      "#supports-color": "supports-color/index.js"
+      "#supports-color": "supports-color/index.js",
+      "^(\\.{1,2}/.*)\\.js$": "$1"
     }
   },
   "publishConfig": {
