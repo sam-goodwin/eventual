@@ -30,7 +30,10 @@ export interface ExecutionHandle {
  * to other services in a durable and observable way.
  */
 export interface Workflow<
-  F extends (...args: any[]) => any = (...args: any[]) => any
+  F extends (input: any, context: Context) => any = (
+    input: any,
+    context: Context
+  ) => any
 > {
   /**
    * Globally unique ID of this {@link Workflow}.
@@ -45,7 +48,7 @@ export interface Workflow<
    *
    * To start a workflow from another environment, use {@link start}.
    */
-  (...args: Parameters<F>): ReturnType<F>;
+  (input: Parameters<F>[0]): ReturnType<F>;
   /**
    * Starts an execution of this {@link Workflow} without waiting for the response.
    *
