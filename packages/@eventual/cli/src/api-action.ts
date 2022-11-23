@@ -17,13 +17,22 @@ export type ApiAction<T> = (
  */
 export const apiAction =
   <T>(action: ApiAction<T>, _onError?: (error: any) => Promise<void> | void) =>
-  async (args: Arguments<{ region?: string } & T>) => {
+  async (args: Arguments<{ debug: boolean; region?: string } & T>) => {
     const spinner = ora().start("Preparing");
     try {
       const ky = await apiKy(args.region);
       return await action(spinner, ky, args);
     } catch (e: any) {
+      if (args.debug) {
+        if (e instanceof HTTPError) {
+          spinner.clear();
+          styledConsole.error(await e.response.text());
+        } else {
+          styledConsole.error(e);
+        }
+      }
       spinner.fail(e.message);
+      process.exit(1);
     }
   };
 
@@ -52,4 +61,10 @@ export async function styledCatchApiRequestError<T>(
  */
 export const apiOptions = {
   region: { alias: "r", string: true },
+  debug: {
+    alias: "d",
+    describe: "Enable debug output",
+    default: false,
+    boolean: true,
+  },
 } as const;

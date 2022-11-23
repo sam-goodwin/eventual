@@ -7,12 +7,12 @@
     "outDir": "lib/esm",
     "declaration": true,
     "inlineSourceMap": true,
-    "rootDir": "src",
+    "rootDir": ".",
     "typeRoots": ["./node_modules/@types"],
     "allowJs": true,
-    "lib": ["DOM"]
+    "noEmit": true
   },
-  "include": ["src"],
+  "include": ["src", "test"],
   "exclude": ["lib", "node_modules"],
   "references": [{ "path": "../core" }, { "path": "../aws-runtime" }]
 }

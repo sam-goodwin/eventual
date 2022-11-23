@@ -175,7 +175,9 @@ export function getFollowingFunctionLogInputs(
     return fnEvents.map(({ fn, events, nextToken }) => {
       //Its important to increment the start time even if we're just using next token, since once there's no more next token's,
       //we're going to rely on the latest start time value
-      const latestEvent = events?.at(-1)?.timestamp;
+      const latestEvent = (
+        events.length > 0 ? events[events.length - 1] : undefined
+      )?.timestamp;
       const startTime = latestEvent ? latestEvent + 1 : fn.startTime;
       if (nextToken) {
         return { ...fn, startTime, nextToken };
