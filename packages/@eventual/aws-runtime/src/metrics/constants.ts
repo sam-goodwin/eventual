@@ -98,6 +98,10 @@ export namespace OrchestratorMetrics {
    * The size of the workflow result in bytes.
    */
   export const ExecutionResultBytes = "ExecutionResultBytes";
+  /**
+   * Number of milliseconds between the expected sleep wakeup time and the actual incoming {@link SleepCompleted} event.
+   */
+  export const SleepVarianceMillis = "SleepVarianceMillis";
 }
 
 export namespace ActivityMetrics {
@@ -150,4 +154,15 @@ export namespace ActivityMetrics {
    * amount of time it took to submit a workflow task to SQS to resume the workflow.
    */
   export const SubmitWorkflowTaskDuration = "SubmitWorkflowTaskDuration";
+}
+
+export namespace SchedulerForwarderMetrics {
+  /**
+   * The time between the scheduler trigger time and the Scheduler Forwarder seeing the message.
+   */
+  export const SchedulerTimeDelay = "SchedulerTimeDelay";
+  /**
+   * Seconds the timer queue is told to wait until handling the request.
+   */
+  export const TimerQueueDelaySeconds = "TimerQueueDelaySeconds";
 }

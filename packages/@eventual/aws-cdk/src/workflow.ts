@@ -20,12 +20,19 @@ import {
   ITable,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
-import { CfnOutput, Names, RemovalPolicy } from "aws-cdk-lib";
+import { ArnFormat, CfnOutput, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import path from "path";
 import { execSync } from "child_process";
-import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
+import {
+  IGrantable,
+  IPrincipal,
+  PolicyStatement,
+  Role,
+  ServicePrincipal,
+} from "aws-cdk-lib/aws-iam";
+import { CfnScheduleGroup } from "aws-cdk-lib/aws-scheduler";
 
 export interface WorkflowProps {
   entry: string;
@@ -50,6 +57,16 @@ export class Workflow extends Construct implements IGrantable {
    */
   public readonly workflowQueue: IQueue;
   /**
+   * Timer (standard) queue which helps orchestrate scheduled things like sleep and dynamic retries.
+   *
+   * Worths in tandem with the {@link CfnSchedulerGroup} to create millisecond latency, long running timers.
+   */
+  public readonly timerQueue: IQueue;
+  /**
+   * A group in which all of the workflow schedules are created under.
+   */
+  public readonly schedulerGroup: CfnScheduleGroup;
+  /**
    * A single-table used for execution data and granular workflow events/
    */
   public readonly table: ITable;
@@ -71,6 +88,23 @@ export class Workflow extends Construct implements IGrantable {
    * The lambda function which runs the user's Workflow.
    */
   public readonly orchestrator: IFunction;
+  /**
+   * The lambda function which executes timed requests on the timerQueue.
+   */
+  public readonly timerHandler: IFunction;
+  /**
+   * Forwards long running timers from the EventBridge schedules to the timer queue.
+   *
+   * The Timer Queue supports <15m timers at a sub second accuracy, the EventBridge schedule
+   * support arbitrary length events at a sub minute accuracy.
+   */
+  public readonly scheduleForwarder: IFunction;
+  /**
+   * A common Dead Letter Queue to handle failures from various places.
+   *
+   * Timers - When the EventBridge scheduler fails to invoke the Schedule Forwarder Lambda.
+   */
+  public readonly dlq: Queue;
 
   readonly grantPrincipal: IPrincipal;
 
@@ -90,6 +124,7 @@ export class Workflow extends Construct implements IGrantable {
       fifo: true,
       fifoThroughputLimit: FifoThroughputLimit.PER_MESSAGE_GROUP_ID,
       deduplicationScope: DeduplicationScope.MESSAGE_GROUP,
+      contentBasedDeduplication: true,
     });
 
     // Table - History, Executions, ExecutionData
@@ -119,7 +154,6 @@ export class Workflow extends Construct implements IGrantable {
             "--conditions": "module,import,require",
           },
           metafile: true,
-          externalModules: ["@aws-sdk", "aws-sdk"],
         },
         environment: {
           [ENV_NAMES.TABLE_NAME]: this.table.tableName,
@@ -168,6 +202,57 @@ export class Workflow extends Construct implements IGrantable {
     // grant methods on a workflow affect the activity
     this.grantPrincipal = this.activityWorker.grantPrincipal;
 
+    this.schedulerGroup = new CfnScheduleGroup(this, "schedulerGroup");
+
+    const scheduleGroupWildCardArn = Stack.of(this).formatArn({
+      service: "scheduler",
+      resource: "schedule",
+      arnFormat: ArnFormat.SLASH_RESOURCE_NAME,
+      resourceName: `${this.schedulerGroup.ref}/*`,
+    });
+
+    const schedulerRole = new Role(this, "schedulerRole", {
+      assumedBy: new ServicePrincipal("scheduler.amazonaws.com", {
+        conditions: {
+          ArnEquals: {
+            "aws:SourceArn": scheduleGroupWildCardArn,
+          },
+        },
+      }),
+    });
+
+    this.dlq = new Queue(this, "dlq");
+
+    this.dlq.grantSendMessages(schedulerRole);
+
+    this.timerQueue = new Queue(this, "timerQueue");
+
+    // TODO: handle failures to a DLQ - https://github.com/functionless/eventual/issues/40
+    this.scheduleForwarder = new NodejsFunction(this, "scheduleForwarder", {
+      entry: path.join(
+        require.resolve("@eventual/aws-runtime"),
+        "../../esm/handlers/schedule-forwarder.js"
+      ),
+      handler: "handle",
+      runtime: Runtime.NODEJS_16_X,
+      architecture: Architecture.ARM_64,
+      bundling: {
+        mainFields: ["module", "main"],
+        esbuildArgs: {
+          "--conditions": "module,import,require",
+        },
+        metafile: true,
+      },
+      environment: {
+        [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
+        [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
+        [ENV_NAMES.SCHEDULER_ROLE_ARN]: schedulerRole.roleArn,
+        [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: this.dlq.queueArn,
+        [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
+        [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
+      },
+    });
+
     this.orchestrator = new Function(this, "Orchestrator", {
       architecture: Architecture.ARM_64,
       code: Code.fromAsset(path.join(outDir, "orchestrator")),
@@ -181,8 +266,12 @@ export class Workflow extends Construct implements IGrantable {
           this.activityWorker.functionName,
         [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
         [ENV_NAMES.TABLE_NAME]: this.table.tableName,
-        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
         [ENV_NAMES.WORKFLOW_NAME]: this.workflowName,
+        [ENV_NAMES.SCHEDULER_ROLE_ARN]: schedulerRole.roleArn,
+        [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: this.dlq.queueArn,
+        [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
+        [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
+        [ENV_NAMES.SCHEDULE_FORWARDER_ARN]: this.scheduleForwarder.functionArn,
       },
       events: [
         new SqsEventSource(this.workflowQueue, {
@@ -191,6 +280,48 @@ export class Workflow extends Construct implements IGrantable {
         }),
       ],
     });
+
+    this.timerHandler = new NodejsFunction(this, "timerHandlerFunction", {
+      entry: path.join(
+        require.resolve("@eventual/aws-runtime"),
+        "../../esm/handlers/timer-handler.js"
+      ),
+      handler: "handle",
+      runtime: Runtime.NODEJS_16_X,
+      architecture: Architecture.ARM_64,
+      bundling: {
+        mainFields: ["module", "main"],
+        esbuildArgs: {
+          "--conditions": "module,import,require",
+        },
+        metafile: true,
+      },
+      environment: {
+        [ENV_NAMES.TABLE_NAME]: this.table.tableName,
+        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
+      },
+      events: [
+        new SqsEventSource(this.timerQueue, {
+          reportBatchItemFailures: true,
+        }),
+      ],
+    });
+
+    this.timerQueue.grantSendMessages(this.scheduleForwarder);
+
+    this.timerQueue.grantSendMessages(this.orchestrator);
+
+    // grants the orchestrator the permission to create new schedules for sleep.
+    this.scheduleForwarder.addToRolePolicy(
+      new PolicyStatement({
+        actions: ["scheduler:DeleteSchedule"],
+        resources: [scheduleGroupWildCardArn],
+      })
+    );
+
+    this.table.grantReadWriteData(this.timerHandler);
+
+    this.workflowQueue.grantSendMessages(this.timerHandler);
 
     // the orchestrator will accumulate history state in S3
     this.history.grantReadWrite(this.orchestrator);
@@ -218,6 +349,20 @@ export class Workflow extends Construct implements IGrantable {
 
     // Enable sending workflow task
     this.workflowQueue.grantSendMessages(this.startWorkflowFunction);
+
+    // Allow the scheduler to create workflow tasks.
+    this.scheduleForwarder.grantInvoke(schedulerRole);
+
+    // grants the orchestrator the permission to create new schedules for sleep.
+    this.orchestrator.addToRolePolicy(
+      new PolicyStatement({
+        actions: ["scheduler:CreateSchedule"],
+        resources: [scheduleGroupWildCardArn],
+      })
+    );
+
+    // grants the orchestrator the ability to pass the scheduler role to the creates schedules
+    schedulerRole.grantPassRole(this.orchestrator.grantPrincipal);
 
     // TODO - timers and retry
     new CfnOutput(this, "workflow-data", {

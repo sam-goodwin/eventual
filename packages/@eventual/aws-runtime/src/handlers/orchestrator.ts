@@ -10,14 +10,18 @@ import {
   WorkflowTaskCompleted,
   WorkflowFailed,
   Command,
-  ActivityScheduled,
-  HistoryStateEvents,
+  HistoryStateEvent,
   CompleteExecution,
   FailedExecution,
   ExecutionStatus,
   isCompleteExecution,
   progressWorkflow,
   ProgramStarter,
+  isScheduleActivityCommand,
+  assertNever,
+  isSleepForCommand,
+  isSleepUntilCommand,
+  isSleepCompleted,
 } from "@eventual/core";
 import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
 import {
@@ -25,13 +29,15 @@ import {
   createWorkflowRuntimeClient,
 } from "../clients/index.js";
 import { SQSEvent, SQSHandler, SQSRecord } from "aws-lambda";
-import { createMetricsLogger, Unit } from "aws-embedded-metrics";
+import { createMetricsLogger, MetricsLogger, Unit } from "aws-embedded-metrics";
 import { timed, timedSync } from "../metrics/utils.js";
 import { workflowName } from "../env.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import middy from "@middy/core";
 import { logger, loggerMiddlewares } from "../logger.js";
 import { WorkflowContext } from "@eventual/core";
+import { promiseAllSettledPartitioned } from "../utils.js";
+import { inspect } from "util";
 
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowRuntimeClient = createWorkflowRuntimeClient();
@@ -133,9 +139,12 @@ async function orchestrateExecution(
     );
 
     newEvents.push(
-      createEvent<WorkflowTaskStarted>({
-        type: WorkflowEventType.WorkflowTaskStarted,
-      })
+      createEvent<WorkflowTaskStarted>(
+        {
+          type: WorkflowEventType.WorkflowTaskStarted,
+        },
+        start
+      )
     );
 
     executionLogger.debug("Load history");
@@ -160,13 +169,19 @@ async function orchestrateExecution(
       commands: newCommands,
       history: updatedHistory,
     } = timedSync(metrics, OrchestratorMetrics.AdvanceExecutionDuration, () => {
-      return progressWorkflow(
-        program,
-        history,
-        events,
-        workflowContext,
-        executionId
-      );
+      try {
+        return progressWorkflow(
+          program,
+          history,
+          events,
+          workflowContext,
+          executionId
+        );
+      } catch (err) {
+        console.log("workflow error");
+        executionLogger.error(inspect(err));
+        throw err;
+      }
     });
 
     metrics.setProperty(
@@ -179,7 +194,7 @@ async function orchestrateExecution(
     );
 
     executionLogger.info(`Found ${newCommands.length} new commands.`);
-
+    ``;
     const commandEvents = await timed(
       metrics,
       OrchestratorMetrics.InvokeCommandsDuration,
@@ -280,6 +295,9 @@ async function orchestrateExecution(
       newEvents.length
     );
 
+    // Only log these metrics once the orchestrator has completed successfully.
+    logEventMetrics(metrics, events, start);
+
     function logExecutionCompleteMetrics(
       execution: CompleteExecution | FailedExecution
     ) {
@@ -315,20 +333,33 @@ async function orchestrateExecution(
      */
     async function processCommands(
       commands: Command[]
-    ): Promise<HistoryStateEvents[]> {
+    ): Promise<HistoryStateEvent[]> {
       // register command events
       return await Promise.all(
         commands.map(async (command) => {
-          await workflowRuntimeClient.scheduleActivity(executionId, command);
-
-          return createEvent<ActivityScheduled>({
-            type: WorkflowEventType.ActivityScheduled,
-            seq: command.seq,
-            name: command.name,
-          });
+          if (isScheduleActivityCommand(command)) {
+            return await workflowRuntimeClient.scheduleActivity(
+              executionId,
+              command
+            );
+          } else if (
+            isSleepForCommand(command) ||
+            isSleepUntilCommand(command)
+          ) {
+            // all sleep times are computed using the start time of the WorkflowTaskStarted
+            return workflowRuntimeClient.scheduleSleep(
+              executionId,
+              command,
+              start
+            );
+          }
+          return assertNever(command);
         })
       );
     }
+  } catch (err) {
+    executionLogger.error(inspect(err));
+    throw err;
   } finally {
     await metrics.flush();
   }
@@ -344,30 +375,22 @@ function sqsRecordToEvents(sqsRecord: SQSRecord) {
   return message.task.events;
 }
 
-async function promiseAllSettledPartitioned<T, R>(
-  items: T[],
-  op: (item: T) => Promise<R>
-): Promise<{
-  fulfilled: [T, Awaited<R>][];
-  rejected: [T, string][];
-}> {
-  const results = await Promise.allSettled(items.map(op));
-
-  const enumerated = results.map((r, i) => [r, i] as const);
-
-  return {
-    fulfilled: enumerated
-      .filter(
-        (t): t is [PromiseFulfilledResult<Awaited<R>>, number] =>
-          t[0].status === "fulfilled"
-      )
-      .map(([r, i]) => [items[i]!, r.value] as [T, Awaited<R>]),
-    rejected: enumerated
-      .filter(
-        (t): t is [PromiseRejectedResult, number] => t[0].status === "rejected"
-      )
-      .map(([r, i]) => [items[i]!, r.reason] as [T, string]),
-  };
+/** Logs metrics specific to the incoming events */
+function logEventMetrics(
+  metrics: MetricsLogger,
+  events: WorkflowEvent[],
+  now: Date
+) {
+  const sleepCompletedEvents = events.filter(isSleepCompleted);
+  if (sleepCompletedEvents.length > 0) {
+    const sleepCompletedVariance = sleepCompletedEvents.map(
+      (s) => now.getTime() - new Date(s.timestamp).getTime()
+    );
+    const avg =
+      sleepCompletedVariance.reduce((t, n) => t + n, 0) /
+      sleepCompletedVariance.length;
+    metrics.setProperty(OrchestratorMetrics.SleepVarianceMillis, avg);
+  }
 }
 
 function groupBy<T>(
