@@ -48,10 +48,10 @@ export class TimerClient {
       // Compute the number of seconds (floored)
       // subtract 1 because the maxBatchWindow is set to 1s on the lambda event source.
       // this allows for more events to be sent at once while not adding extra latency
-      Math.floor(
+      Math.ceil(
         (new Date(timerRequest.untilTime).getTime() - new Date().getTime()) /
           1000
-      ) - 1,
+      ),
       0
     );
 

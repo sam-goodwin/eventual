@@ -221,7 +221,9 @@ export class Workflow extends Construct implements IGrantable {
     const schedulerRole = new Role(this, "schedulerRole", {
       assumedBy: new ServicePrincipal("scheduler.amazonaws.com", {
         conditions: {
-          ArnEquals: scheduleGroupWildCardArn,
+          ArnEquals: {
+            "aws:SourceArn": scheduleGroupWildCardArn,
+          },
         },
       }),
     });
@@ -308,7 +310,6 @@ export class Workflow extends Construct implements IGrantable {
       events: [
         new SqsEventSource(this.timerQueue, {
           reportBatchItemFailures: true,
-          maxBatchingWindow: Duration.seconds(1),
         }),
       ],
     });
