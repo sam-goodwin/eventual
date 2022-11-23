@@ -66,8 +66,8 @@ export function interpret<Return>(
     return seq++;
   }
 
-  let emittedEvents = new Iterator(history, isScheduledEvent);
-  let resultEvents = new Iterator(
+  let emittedEvents = iterator(history, isScheduledEvent);
+  let resultEvents = iterator(
     history,
     (e): e is CompletedEvent | FailedEvent =>
       isCompletedEvent(e) || isFailedEvent(e)
@@ -84,7 +84,7 @@ export function interpret<Return>(
   let newCalls: Iterator<CommandCall, CommandCall>;
   // iterate until we are no longer finding commands or no longer have completion events to apply
   while (
-    (newCalls = new Iterator(advance(true) ?? [])).hasNext() ||
+    (newCalls = iterator(advance(true) ?? [])).hasNext() ||
     resultEvents.hasNext()
   ) {
     // Match and filter found commands against the given scheduled events.
@@ -353,34 +353,41 @@ function isGenerator(a: any): a is Program {
   );
 }
 
-class Iterator<I, T extends I> {
-  private cursor = 0;
-  constructor(private elms: I[], private predicate?: (elm: I) => elm is T) {}
+interface Iterator<I, T extends I> {
+  hasNext(): boolean;
+  next(): T | undefined;
+  drain(): T[];
+}
 
-  private seek() {
-    if (this.predicate) {
-      while (this.cursor < this.elms.length) {
-        if (this.predicate(this.elms[this.cursor]!)) {
+function iterator<I, T extends I>(
+  elms: I[],
+  predicate?: (elm: I) => elm is T
+): Iterator<I, T> {
+  let cursor = 0;
+  return {
+    hasNext: () => {
+      seek();
+      return cursor < elms.length;
+    },
+    next: (): T => {
+      seek();
+      return elms[cursor++] as T;
+    },
+    drain: (): T[] => {
+      return predicate
+        ? elms.slice(cursor).filter(predicate)
+        : (elms.slice(cursor) as T[]);
+    },
+  };
+
+  function seek() {
+    if (predicate) {
+      while (cursor < elms.length) {
+        if (predicate(elms[cursor]!)) {
           return;
         }
-        this.cursor++;
+        cursor++;
       }
     }
-  }
-
-  hasNext() {
-    this.seek();
-    return this.cursor < this.elms.length;
-  }
-
-  next(): T {
-    this.seek();
-    return this.elms[this.cursor++] as T;
-  }
-
-  drain(): T[] {
-    return this.predicate
-      ? this.elms.slice(this.cursor).filter(this.predicate)
-      : (this.elms.slice(this.cursor) as T[]);
   }
 }
