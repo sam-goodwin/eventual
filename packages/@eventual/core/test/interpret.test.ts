@@ -1,27 +1,34 @@
 import "jest";
 
-import {
-  interpret,
-  Eventual,
-  Result,
-  WorkflowEventType,
-  WorkflowResult,
-  ActivityCompleted,
-  ActivityScheduled,
-  ActivityFailed,
-  Program,
-  ScheduleActivityCommand,
-  EventualKind,
-  workflow,
-  ScheduleWorkflowCommand,
-  ChildWorkflowScheduled,
-  ChildWorkflowCompleted,
-  ChildWorkflowFailed,
-  Context,
-} from "../src/index.js";
-import { DeterminismError } from "../src/error.js";
-import { chain } from "../src/chain.js";
 import { createActivityCall } from "../src/activity-call.js";
+import { chain } from "../src/chain.js";
+import { DeterminismError } from "../src/error.js";
+import {
+  Context,
+  Eventual,
+  interpret,
+  Program,
+  Result,
+  sleepFor,
+  sleepUntil,
+  workflow,
+  WorkflowResult,
+} from "../src/index.js";
+import { createSleepUntilCall } from "../src/sleep-call.js";
+import {
+  activityCompleted,
+  activityFailed,
+  activityScheduled,
+  completedSleep,
+  createScheduledActivityCommand,
+  createScheduledWorkflowCommand,
+  createSleepForCommand,
+  createSleepUntilCommand,
+  scheduledSleep,
+  workflowCompleted,
+  workflowFailed,
+  workflowScheduled,
+} from "./command-util.js";
 
 function* myWorkflow(event: any): Program<any> {
   try {
@@ -31,7 +38,7 @@ function* myWorkflow(event: any): Program<any> {
     createActivityCall("my-activity-0", [event]);
 
     const all = yield* Eventual.all([
-      createActivityCall("my-activity-1", [event]),
+      createSleepUntilCall("then"),
       createActivityCall("my-activity-2", [event]),
     ]);
     return [a, all];
@@ -67,7 +74,7 @@ test("should continue with result of completed Activity", () => {
   ).toMatchObject(<WorkflowResult>{
     commands: [
       createScheduledActivityCommand("my-activity-0", [event], 1),
-      createScheduledActivityCommand("my-activity-1", [event], 2),
+      createSleepUntilCommand("then", 2),
       createScheduledActivityCommand("my-activity-2", [event], 3),
     ],
   });
@@ -90,14 +97,14 @@ test("should return final result", () => {
       activityScheduled("my-activity", 0),
       activityCompleted("result", 0),
       activityScheduled("my-activity-0", 1),
-      activityScheduled("my-activity-1", 2),
+      scheduledSleep("then", 2),
       activityScheduled("my-activity-2", 3),
       activityCompleted("result-0", 1),
-      activityCompleted("result-1", 2),
+      completedSleep(2),
       activityCompleted("result-2", 3),
     ])
   ).toMatchObject(<WorkflowResult>{
-    result: Result.resolved(["result", ["result-1", "result-2"]]),
+    result: Result.resolved(["result", [undefined, "result-2"]]),
     commands: [],
   });
 });
@@ -108,10 +115,10 @@ test("should wait if partial results", () => {
       activityScheduled("my-activity", 0),
       activityCompleted("result", 0),
       activityScheduled("my-activity-0", 1),
-      activityScheduled("my-activity-1", 2),
+      scheduledSleep("then", 2),
       activityScheduled("my-activity-2", 3),
       activityCompleted("result-0", 1),
-      activityCompleted("result-1", 2),
+      completedSleep(2),
     ])
   ).toMatchObject(<WorkflowResult>{
     commands: [],
@@ -128,6 +135,90 @@ test("should return result of inner function", () => {
 
   expect(interpret(workflow() as any, [])).toMatchObject(<WorkflowResult>{
     result: Result.resolved("foo"),
+    commands: [],
+  });
+});
+
+test("should schedule sleep for", () => {
+  function* workflow() {
+    yield sleepFor(10);
+  }
+
+  expect(interpret(workflow() as any, [])).toMatchObject(<WorkflowResult>{
+    commands: [createSleepForCommand(10, 0)],
+  });
+});
+
+test("should not re-schedule sleep for", () => {
+  function* workflow() {
+    yield sleepFor(10);
+  }
+
+  expect(
+    interpret(workflow() as any, [scheduledSleep("anything", 0)])
+  ).toMatchObject(<WorkflowResult>{
+    commands: [],
+  });
+});
+
+test("should complete sleep for", () => {
+  function* workflow() {
+    yield sleepFor(10);
+    return "done";
+  }
+
+  expect(
+    interpret(workflow() as any, [
+      scheduledSleep("anything", 0),
+      completedSleep(0),
+    ])
+  ).toMatchObject(<WorkflowResult>{
+    result: Result.resolved("done"),
+    commands: [],
+  });
+});
+
+test("should schedule sleep until", () => {
+  const now = new Date();
+
+  function* workflow() {
+    yield sleepUntil(now);
+  }
+
+  expect(interpret(workflow() as any, [])).toMatchObject(<WorkflowResult>{
+    commands: [createSleepUntilCommand(now.toISOString(), 0)],
+  });
+});
+
+test("should not re-schedule sleep until", () => {
+  const now = new Date();
+
+  function* workflow() {
+    yield sleepUntil(now);
+  }
+
+  expect(
+    interpret(workflow() as any, [scheduledSleep("anything", 0)])
+  ).toMatchObject(<WorkflowResult>{
+    commands: [],
+  });
+});
+
+test("should complete sleep until", () => {
+  const now = new Date();
+
+  function* workflow() {
+    yield sleepUntil(now);
+    return "done";
+  }
+
+  expect(
+    interpret(workflow() as any, [
+      scheduledSleep("anything", 0),
+      completedSleep(0),
+    ])
+  ).toMatchObject(<WorkflowResult>{
+    result: Result.resolved("done"),
     commands: [],
   });
 });
@@ -495,88 +586,3 @@ test("workflow calling other workflow", () => {
     commands: [],
   });
 });
-
-function createScheduledActivityCommand(
-  name: string,
-  args: any[],
-  seq: number
-): ScheduleActivityCommand {
-  return {
-    kind: EventualKind.ActivityCall,
-    seq,
-    name,
-    args,
-  };
-}
-
-function createScheduledWorkflowCommand(
-  name: string,
-  input: any,
-  seq: number
-): ScheduleWorkflowCommand {
-  return {
-    kind: EventualKind.WorkflowCall,
-    seq,
-    name,
-    input,
-  };
-}
-
-function activityCompleted(result: any, seq: number): ActivityCompleted {
-  return {
-    type: WorkflowEventType.ActivityCompleted,
-    duration: 0,
-    result,
-    seq,
-    timestamp: new Date(0).toISOString(),
-  };
-}
-
-function workflowCompleted(result: any, seq: number): ChildWorkflowCompleted {
-  return {
-    type: WorkflowEventType.ChildWorkflowCompleted,
-    result,
-    seq,
-    timestamp: new Date(0).toISOString(),
-  };
-}
-
-function activityFailed(error: any, seq: number): ActivityFailed {
-  return {
-    type: WorkflowEventType.ActivityFailed,
-    duration: 0,
-    error,
-    message: "message",
-    seq,
-    timestamp: new Date(0).toISOString(),
-  };
-}
-
-function workflowFailed(error: any, seq: number): ChildWorkflowFailed {
-  return {
-    type: WorkflowEventType.ChildWorkflowFailed,
-    error,
-    message: "message",
-    seq,
-    timestamp: new Date(0).toISOString(),
-  };
-}
-
-function activityScheduled(name: string, seq: number): ActivityScheduled {
-  return {
-    type: WorkflowEventType.ActivityScheduled,
-    name,
-    seq,
-    timestamp: new Date(0).toISOString(),
-  };
-}
-
-function workflowScheduled(name: string, seq: number): ChildWorkflowScheduled {
-  return {
-    type: WorkflowEventType.ChildWorkflowScheduled,
-    name,
-    seq,
-    timestamp: new Date(0).toISOString(),
-    input: undefined,
-  };
-}

@@ -1,8 +1,6 @@
 import { Handler } from "aws-lambda";
-import {
-  createWorkflowClient,
-  StartWorkflowRequest,
-} from "../clients/index.js";
+import type { StartWorkflowRequest } from "../types.js";
+import { createWorkflowClient } from "../clients/index.js";
 
 const workflowClient = createWorkflowClient();
 

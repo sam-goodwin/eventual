@@ -4,16 +4,20 @@ import {
   EventualKind,
   EventualSymbol,
 } from "./eventual.js";
-import { registerActivity } from "./global.js";
+import { registerActivity, resetActivityCollector } from "./global.js";
 import type { Program } from "./interpret.js";
 import type { Result } from "./result.js";
 import { Context, WorkflowContext } from "./context.js";
 import { DeterminismError } from "./error.js";
 import {
   filterEvents,
-  HistoryStateEvents,
+  HistoryStateEvent,
   isHistoryEvent,
+  isSleepCompleted,
+  isSleepScheduled,
   isWorkflowStarted,
+  SleepCompleted,
+  SleepScheduled,
   WorkflowEventType,
 } from "./events.js";
 import { interpret, WorkflowResult } from "./interpret.js";
@@ -112,7 +116,7 @@ export interface WorkflowCall<T = any> {
 }
 
 export interface ProgressWorkflowResult extends WorkflowResult {
-  history: HistoryStateEvents[];
+  history: HistoryStateEvent[];
 }
 
 /**
@@ -120,16 +124,21 @@ export interface ProgressWorkflowResult extends WorkflowResult {
  */
 export function progressWorkflow(
   program: Workflow,
-  historyEvents: HistoryStateEvents[],
-  taskEvents: HistoryStateEvents[],
+  historyEvents: HistoryStateEvent[],
+  taskEvents: HistoryStateEvent[],
   workflowContext: WorkflowContext,
   executionId: string
 ): ProgressWorkflowResult {
   // historical events and incoming events will be fed into the workflow to resume/progress state
-  const inputEvents = filterEvents<HistoryStateEvents>(
+  const inputEvents = filterEvents<HistoryStateEvent>(
     historyEvents,
     taskEvents
   );
+
+  // Generates events that are time sensitive, like sleep completed events.
+  const syntheticEvents = generateSyntheticEvents(inputEvents);
+
+  const allEvents = [...inputEvents, ...syntheticEvents];
 
   const startEvent = inputEvents.find(isWorkflowStarted);
 
@@ -149,12 +158,51 @@ export function progressWorkflow(
   };
 
   // execute workflow
-  const interpretEvents = inputEvents.filter(isHistoryEvent);
-  return {
-    ...interpret(
-      program.definition(startEvent.input, context),
-      interpretEvents
-    ),
-    history: inputEvents,
-  };
+  const interpretEvents = allEvents.filter(isHistoryEvent);
+
+  try {
+    return {
+      ...interpret(program.definition(startEvent.input, context), interpretEvents),
+      history: allEvents,
+    };
+  } catch (err) {
+    // temporary fix when the interpreter fails, but the activities are not cleared.
+    resetActivityCollector();
+    throw err;
+  }
+}
+
+/**
+ * Generates synthetic events, for example, {@link SleepCompleted} events when the time has passed, but a real completed event has not come in yet.
+ */
+export function generateSyntheticEvents(
+  events: HistoryStateEvent[]
+): SleepCompleted[] {
+  const unresolvedSleep: Record<number, SleepScheduled> = {};
+  const now = new Date();
+
+  const sleepEvents = events.filter(
+    (event): event is SleepScheduled | SleepCompleted =>
+      isSleepScheduled(event) || isSleepCompleted(event)
+  );
+
+  for (const event of sleepEvents) {
+    if (isSleepScheduled(event)) {
+      unresolvedSleep[event.seq] = event;
+    } else {
+      delete unresolvedSleep[event.seq];
+    }
+  }
+
+  const syntheticSleepComplete: SleepCompleted[] = Object.values(
+    unresolvedSleep
+  )
+    .filter((event) => new Date(event.untilTime).getTime() <= now.getTime())
+    .map((e) => ({
+      type: WorkflowEventType.SleepCompleted,
+      seq: e.seq,
+      timestamp: now.toISOString(),
+    } satisfies SleepCompleted));
+
+  return syntheticSleepComplete;
 }

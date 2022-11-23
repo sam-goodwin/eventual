@@ -18,12 +18,18 @@ import {
 } from "@aws-sdk/client-lambda";
 import {
   ExecutionStatus,
-  HistoryStateEvents,
+  HistoryStateEvent,
   CompleteExecution,
   FailedExecution,
   Execution,
-  ScheduleActivityCommand,
+  SleepUntilCommand,
+  SleepForCommand,
+  SleepScheduled,
+  isSleepUntilCommand,
   WorkflowEventType,
+  ScheduleActivityCommand,
+  ActivityScheduled,
+  SleepCompleted,
 } from "@eventual/core";
 import {
   createExecutionFromResult,
@@ -31,6 +37,9 @@ import {
   WorkflowClient,
 } from "./workflow-client.js";
 import { ActivityWorkerRequest } from "../activity.js";
+import { createEvent } from "./execution-history-client.js";
+import { TimerRequestType } from "../handlers/types.js";
+import { TimerClient } from "./timer-client.js";
 
 export interface WorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;
@@ -40,11 +49,13 @@ export interface WorkflowRuntimeClientProps {
   readonly executionHistoryBucket: string;
   readonly tableName: string;
   readonly workflowClient: WorkflowClient;
+  readonly timerClient: TimerClient;
 }
 
 export interface CompleteExecutionRequest {
   executionId: string;
   result?: any;
+  readonly timerClient: TimerClient;
 }
 
 export class WorkflowRuntimeClient {
@@ -72,7 +83,7 @@ export class WorkflowRuntimeClient {
   // TODO: etag
   async updateHistory(
     executionId: string,
-    events: HistoryStateEvents[]
+    events: HistoryStateEvent[]
   ): Promise<{ bytes: number }> {
     const content = events.map((e) => JSON.stringify(e)).join("\n");
     // get current history from s3
@@ -223,16 +234,53 @@ export class WorkflowRuntimeClient {
         InvocationType: InvocationType.Event,
       })
     );
+
+    return createEvent<ActivityScheduled>({
+      type: WorkflowEventType.ActivityScheduled,
+      seq: command.seq,
+      name: command.name,
+    });
+  }
+
+  async scheduleSleep(
+    executionId: string,
+    command: SleepUntilCommand | SleepForCommand,
+    baseTime: Date
+  ): Promise<SleepScheduled> {
+    // TODO validate
+    const untilTime = isSleepUntilCommand(command)
+      ? new Date(command.untilTime)
+      : new Date(baseTime.getTime() + command.durationSeconds * 1000);
+    const untilTimeIso = untilTime.toISOString();
+
+    const sleepCompletedEvent: SleepCompleted = {
+      type: WorkflowEventType.SleepCompleted,
+      seq: command.seq,
+      timestamp: untilTimeIso,
+    };
+
+    await this.props.timerClient.startTimer({
+      type: TimerRequestType.ForwardEvent,
+      event: sleepCompletedEvent,
+      untilTime: untilTimeIso,
+      executionId,
+    });
+
+    return createEvent<SleepScheduled>({
+      type: WorkflowEventType.SleepScheduled,
+      seq: command.seq,
+      untilTime: untilTime.toISOString(),
+    });
   }
 }
 
 async function historyEntryToEvents(
   objectOutput: GetObjectCommandOutput
-): Promise<HistoryStateEvents[]> {
+): Promise<HistoryStateEvent[]> {
   if (objectOutput.Body) {
     return (await objectOutput.Body.transformToString())
       .split("\n")
-      .map((l) => JSON.parse(l)) as HistoryStateEvents[];
+      .map((l) => JSON.parse(l)) as HistoryStateEvent[];
   }
   return [];
 }

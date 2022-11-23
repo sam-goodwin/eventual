@@ -5,44 +5,17 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
-  WorkflowTask,
-  WorkflowStarted,
   Execution,
   ExecutionStatus,
+  HistoryStateEvent,
   WorkflowEventType,
-  HistoryStateEvents,
+  WorkflowStarted,
+  WorkflowTask,
 } from "@eventual/core";
-import { formatExecutionId } from "../execution-id.js";
+import { StartWorkflowRequest } from "src/types.js";
 import { ulid } from "ulidx";
+import { formatExecutionId } from "../execution-id.js";
 import { ExecutionHistoryClient } from "./execution-history-client.js";
-
-export interface StartWorkflowRequest {
-  /**
-   * Name of the workflow execution.
-   *
-   * Only one workflow can exist for an ID. Requests to start a workflow
-   * with the name of an existing workflow will fail.
-   *
-   * @default - a unique name is generated.
-   */
-  executionName?: string;
-  /**
-   * Name of the workflow to execute.
-   */
-  workflowName: string;
-  /**
-   * Input payload for the workflow function.
-   */
-  input?: any;
-  /**
-   * ID of the parent execution if this is a child workflow
-   */
-  parentExecutionId?: string;
-  /**
-   * Sequence ID of this execution if this is a child workflow
-   */
-  seq?: number;
-}
 
 export interface WorkflowClientProps {
   readonly dynamo: DynamoDBClient;
@@ -113,7 +86,7 @@ export class WorkflowClient {
 
   public async submitWorkflowTask(
     executionId: string,
-    ...events: HistoryStateEvents[]
+    ...events: HistoryStateEvent[]
   ) {
     // send workflow task to workflow queue
     const workflowTask: SQSWorkflowTaskMessage = {

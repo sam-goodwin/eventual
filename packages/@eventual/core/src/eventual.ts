@@ -1,8 +1,15 @@
-import type { ActivityCall } from "./activity-call.js";
+import { ActivityCall, isActivityCall } from "./activity-call.js";
 import type { AwaitAll } from "./await-all.js";
 import { chain, Chain } from "./chain.js";
 import type { Program } from "./interpret.js";
-import type { WorkflowCall } from "./workflow.js";
+import { Result } from "./result.js";
+import {
+  isSleepForCall,
+  isSleepUntilCall,
+  SleepForCall,
+  SleepUntilCall,
+} from "./sleep-call.js";
+import { isWorkflowCall, WorkflowCall } from "./workflow.js";
 
 export type AwaitedEventual<T> = T extends Promise<infer U>
   ? Awaited<U>
@@ -14,11 +21,18 @@ export type AwaitedEventual<T> = T extends Promise<infer U>
 
 export const EventualSymbol = Symbol.for("eventual:Eventual");
 
+export interface EventualBase<R extends Result> {
+  [EventualSymbol]: EventualKind;
+  result?: R;
+}
+
 export enum EventualKind {
   AwaitAll = 0,
   ActivityCall = 1,
   Chain = 2,
-  WorkflowCall = 3,
+  SleepForCall = 3,
+  SleepUntilCall = 4,
+  WorkflowCall = 5,
 }
 
 export function isEventual(a: any): a is Eventual {
@@ -29,7 +43,27 @@ export type Eventual<T = any> =
   | ActivityCall<T>
   | AwaitAll<T extends any[] ? T : never>
   | Chain<T>
-  | WorkflowCall<T>;
+  | WorkflowCall<T>
+  | SleepForCall
+  | SleepUntilCall;
+
+/**
+ * Calls which emit commands.
+ */
+export type CommandCall =
+  | ActivityCall
+  | SleepForCall
+  | SleepUntilCall
+  | WorkflowCall;
+
+export function isCommandCall(call: Eventual): call is CommandCall {
+  return (
+    isActivityCall(call) ||
+    isSleepForCall(call) ||
+    isSleepUntilCall(call) ||
+    isWorkflowCall(call)
+  );
+}
 
 export namespace Eventual {
   /**

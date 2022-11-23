@@ -4,6 +4,7 @@ import {
   EventualKind,
   Eventual,
   AwaitedEventual,
+  EventualBase,
 } from "./eventual.js";
 import { registerActivity } from "./global.js";
 import { Program } from "./interpret.js";
@@ -13,9 +14,8 @@ export function isChain(a: any): a is Chain {
   return isEventual(a) && a[EventualSymbol] === EventualKind.Chain;
 }
 
-export interface Chain<T = any> extends Program<T> {
+export interface Chain<T = any> extends Program<T>, EventualBase<Result<T>> {
   [EventualSymbol]: EventualKind.Chain;
-  result?: Result<T>;
   awaiting?: Eventual;
 }
 
