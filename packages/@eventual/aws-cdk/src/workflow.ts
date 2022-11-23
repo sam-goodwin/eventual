@@ -140,10 +140,22 @@ export class Workflow extends Construct implements IGrantable {
 
     const outDir = path.join(".eventual", this.node.addr);
 
+    const entries = {
+      orchestrator: resolveFromPackage(
+        "@eventual/aws-runtime",
+        "../../esm/entry/orchestrator.js"
+      ),
+      activityWorker: resolveFromPackage(
+        "@eventual/aws-runtime",
+        "../../esm/entry/activity-worker.js"
+      ),
+    };
     execSync(
       `node ${require.resolve(
-        "@eventual/compiler/lib/eventual-bundle.js"
-      )} ${outDir} ${props.entry}`
+        "@eventual/compiler/bin/eventual-bundle.js"
+      )} ${outDir} ${props.entry} ${entries.orchestrator}} ${
+        entries.activityWorker
+      }}`
     );
 
     this.activityWorker = new Function(this, "Worker", {
@@ -230,4 +242,8 @@ export class Workflow extends Construct implements IGrantable {
       }),
     });
   }
+}
+
+function resolveFromPackage(packageSpecifier: string, entry: string) {
+  return path.join(require.resolve(packageSpecifier), entry);
 }

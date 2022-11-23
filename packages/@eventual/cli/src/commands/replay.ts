@@ -1,8 +1,10 @@
 import { HistoryStateEvents } from "@eventual/core";
 import { Argv } from "yargs";
 import { apiAction, apiOptions } from "../api-action.js";
-import { bundle } from "@eventual/compiler";
+import { prepareAndBundleOrchestrator } from "@eventual/compiler";
 import path from "path";
+import type { Orchestrator } from "../local-runner-entry/orchestrator.js";
+
 export const replay = (yargs: Argv) =>
   yargs.command(
     "replay <entry> <workflow> <execution>",
@@ -34,7 +36,22 @@ export const replay = (yargs: Argv) =>
       spinner.succeed();
       spinner.start("Transpiling");
       const outDir = path.join(".eventual", "cli", workflow);
-      const [workflowOutput] = await bundle(outDir, entry);
-      console.log(workflowOutput);
+      const orchestrator = await prepareAndBundleOrchestrator(outDir, {
+        workflow: entry,
+        orchestrator: path.join(
+          new URL(import.meta.url).pathname,
+          "../../local-runner-entry/orchestrator.js"
+        ),
+      });
+      spinner.succeed();
+      spinner.start("Importing program");
+      const { orchestrator: program } = (await import(
+        path.resolve(orchestrator)
+      )) as { orchestrator: Orchestrator };
+      spinner.succeed();
+      spinner.start("Running program");
+      const res = program(events, [], { name: "local" });
+      spinner.succeed();
+      console.log(res);
     })
   );

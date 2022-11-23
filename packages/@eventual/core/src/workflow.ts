@@ -10,7 +10,7 @@ import {
 import { EventualFunction } from "./eventual.js";
 import { interpret, Program, WorkflowResult } from "./interpret.js";
 
-interface ProgressWorkflowResult extends WorkflowResult {
+export interface ProgressWorkflowResult extends WorkflowResult {
   history: HistoryStateEvents[];
 }
 
