@@ -60,12 +60,16 @@ class OuterVisitor extends Visitor {
     if (isWorkflowCall(call)) {
       this.foundEventual = true;
 
+      // workflow("id", async () => { .. })
       return {
         ...call,
         arguments: [
+          // workflow name, e.g. "id"
           call.arguments[0],
           {
             spread: call.arguments[1].spread,
+            // transform the function into a generator
+            // e.g. async () => { .. } becomes function*() { .. }
             expression: this.inner.visitWorkflow(call.arguments[1].expression),
           },
         ],
