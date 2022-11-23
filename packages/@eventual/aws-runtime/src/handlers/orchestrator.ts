@@ -37,6 +37,7 @@ import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import middy from "@middy/core";
 import { logger, loggerMiddlewares } from "../logger.js";
 import { WorkflowContext } from "@eventual/core";
+import { isExecutionId, parseWorkflowName } from "src/execution-id.js";
 
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowRuntimeClient = createWorkflowRuntimeClient();
@@ -67,9 +68,10 @@ export function orchestrator(): SQSHandler {
     const results = await promiseAllSettledPartitioned(
       Object.entries(eventsByExecutionId),
       async ([executionId, records]) => {
-        const workflowName = await workflowRuntimeClient.getWorkflowName(
-          executionId
-        );
+        if (!isExecutionId(executionId)) {
+          throw new Error(`invalid ExecutionID: '${executionId}'`);
+        }
+        const workflowName = parseWorkflowName(executionId);
         if (workflowName === undefined) {
           throw new Error(`execution ID '${executionId}' does not exist`);
         }

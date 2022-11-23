@@ -12,6 +12,7 @@ import {
   WorkflowEventType,
   HistoryStateEvents,
 } from "@eventual/core";
+import { formatExecutionId } from "../execution-id.js";
 import { ulid } from "ulidx";
 import { ExecutionHistoryClient } from "./execution-history-client.js";
 
@@ -67,7 +68,7 @@ export class WorkflowClient {
     parentExecutionId,
     seq,
   }: StartWorkflowRequest) {
-    const executionId = executionName;
+    const executionId = formatExecutionId(workflowName, executionName);
     console.log("execution input:", input);
 
     await this.props.dynamo.send(

@@ -1,7 +1,6 @@
 import {
   AttributeValue,
   DynamoDBClient,
-  GetItemCommand,
   QueryCommand,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
@@ -34,8 +33,6 @@ import {
 import { ActivityWorkerRequest } from "../activity.js";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 
-import LRUCache from "lru-cache";
-
 export interface WorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;
   readonly activityWorkerFunctionName: string;
@@ -53,10 +50,6 @@ export interface CompleteExecutionRequest {
 }
 
 export class WorkflowRuntimeClient {
-  private workflowNameCache = new LRUCache<string, string>({
-    max: 1000,
-  });
-
   constructor(private props: WorkflowRuntimeClientProps) {}
 
   async getHistory(executionId: string) {
@@ -76,31 +69,6 @@ export class WorkflowRuntimeClient {
       }
       throw err;
     }
-  }
-
-  async getWorkflowName(executionId: string): Promise<string | undefined> {
-    let workflowName = this.workflowNameCache.get(executionId);
-    if (workflowName !== undefined) {
-      return workflowName;
-    }
-    const response = await this.props.dynamo.send(
-      new GetItemCommand({
-        TableName: this.props.tableName,
-        Key: {
-          pk: { S: ExecutionRecord.PRIMARY_KEY },
-          sk: { S: ExecutionRecord.sortKey(executionId) },
-        },
-        AttributesToGet: ["workflowName"],
-      })
-    );
-    if (response.Item === undefined) {
-      return undefined;
-    }
-    workflowName = response.Item.workflowName?.S;
-    if (workflowName) {
-      this.workflowNameCache.set(executionId, workflowName);
-    }
-    return workflowName;
   }
 
   // TODO: etag
