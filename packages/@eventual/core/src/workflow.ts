@@ -46,7 +46,8 @@ export interface Workflow<F extends WorkflowHandler = WorkflowHandler> {
    * @internal - this is the internal DSL representation that produces a {@link Program} instead of a Promise.
    */
   definition: (
-    ...args: Parameters<F>
+    input: Parameters<F>[0],
+    context: Context
   ) => Program<AwaitedEventual<ReturnType<F>>>;
 }
 
