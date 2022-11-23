@@ -145,26 +145,27 @@ export function interpret<Return>(
 
   return {
     result,
-    commands: calls.map((call) =>
-      isActivityCall(call)
-        ? {
-            // TODO: add sleep
-            type: CommandType.StartActivity,
-            args: call.args,
-            name: call.name,
-            seq: call.seq!,
-          }
-        : isSleepUntilCall(call)
-        ? {
-            type: CommandType.SleepUntil,
-            seq: call.seq!,
-            untilTime: call.isoDate,
-          }
-        : {
-            type: CommandType.SleepFor,
-            seq: call.seq!,
-            durationSeconds: call.durationSeconds,
-          }
+    commands: calls.map(
+      (call): Command =>
+        isActivityCall(call)
+          ? {
+              // TODO: add sleep
+              kind: CommandType.StartActivity,
+              args: call.args,
+              name: call.name,
+              seq: call.seq!,
+            }
+          : isSleepUntilCall(call)
+          ? {
+              kind: CommandType.SleepUntil,
+              seq: call.seq!,
+              untilTime: call.isoDate,
+            }
+          : {
+              kind: CommandType.SleepFor,
+              seq: call.seq!,
+              durationSeconds: call.durationSeconds,
+            }
     ),
   };
 

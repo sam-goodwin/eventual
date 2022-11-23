@@ -17,7 +17,7 @@ import {
   isCompleteExecution,
   progressWorkflow,
   ProgramStarter,
-  isStartActivityCommand,
+  isScheduleActivityCommand,
   assertNever,
   isSleepForCommand,
   isSleepUntilCommand,
@@ -336,7 +336,7 @@ async function orchestrateExecution(
       // register command events
       return await Promise.all(
         commands.map(async (command) => {
-          if (isStartActivityCommand(command)) {
+          if (isScheduleActivityCommand(command)) {
             return await workflowRuntimeClient.scheduleActivity(
               executionId,
               command

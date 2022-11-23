@@ -2,7 +2,7 @@ import {
   CommandType,
   SleepForCommand,
   SleepUntilCommand,
-  StartActivityCommand,
+  ScheduleActivityCommand,
 } from "../src/command.js";
 import {
   ActivityCompleted,
@@ -17,9 +17,9 @@ export function createStartActivityCommand(
   name: string,
   args: any[],
   seq: number
-): StartActivityCommand {
+): ScheduleActivityCommand {
   return {
-    type: CommandType.StartActivity,
+    kind: CommandType.StartActivity,
     args,
     name,
     seq,
@@ -31,7 +31,7 @@ export function createSleepUntilCommand(
   seq: number
 ): SleepUntilCommand {
   return {
-    type: CommandType.SleepUntil,
+    kind: CommandType.SleepUntil,
     untilTime,
     seq,
   };
@@ -42,7 +42,7 @@ export function createSleepForCommand(
   seq: number
 ): SleepForCommand {
   return {
-    type: CommandType.SleepFor,
+    kind: CommandType.SleepFor,
     durationSeconds: durationSeconds,
     seq,
   };

@@ -26,7 +26,7 @@ import {
   SleepScheduled,
   isSleepUntilCommand,
   WorkflowEventType,
-  StartActivityCommand,
+  ScheduleActivityCommand,
   ActivityScheduled,
   SleepCompleted,
 } from "@eventual/core";
@@ -173,7 +173,10 @@ export class WorkflowRuntimeClient {
     );
   }
 
-  async scheduleActivity(executionId: string, command: StartActivityCommand) {
+  async scheduleActivity(
+    executionId: string,
+    command: ScheduleActivityCommand
+  ) {
     const request: ActivityWorkerRequest = {
       scheduledTime: new Date().toISOString(),
       executionId,
