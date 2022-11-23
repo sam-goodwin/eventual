@@ -17,6 +17,7 @@ import {
   ChildWorkflowScheduled,
   ChildWorkflowCompleted,
   ChildWorkflowFailed,
+  Context,
 } from "../src/index.js";
 import { DeterminismError } from "../src/error.js";
 import { chain } from "../src/chain.js";
@@ -432,18 +433,29 @@ test("workflow calling other workflow", () => {
     return result;
   });
 
-  expect(interpret(wf2.definition(), [])).toMatchObject({
+  const context: Context = {
+    workflow: {
+      name: "wf1",
+    },
+    execution: {
+      id: "123",
+      name: "wf1#123",
+      startTime: "",
+    },
+  };
+
+  expect(interpret(wf2.definition(undefined, context), [])).toMatchObject({
     commands: [createScheduledWorkflowCommand("wf1", undefined, 0)],
   });
 
   expect(
-    interpret(wf2.definition(), [workflowScheduled("wf1", 0)])
+    interpret(wf2.definition(undefined, context), [workflowScheduled("wf1", 0)])
   ).toMatchObject({
     commands: [],
   });
 
   expect(
-    interpret(wf2.definition(), [
+    interpret(wf2.definition(undefined, context), [
       workflowScheduled("wf1", 0),
       workflowCompleted("result", 0),
     ])
@@ -452,7 +464,7 @@ test("workflow calling other workflow", () => {
   });
 
   expect(
-    interpret(wf2.definition(), [
+    interpret(wf2.definition(undefined, context), [
       workflowScheduled("wf1", 0),
       workflowCompleted("result", 0),
       activityScheduled("call-b", 1),
@@ -462,7 +474,7 @@ test("workflow calling other workflow", () => {
   });
 
   expect(
-    interpret(wf2.definition(), [
+    interpret(wf2.definition(undefined, context), [
       workflowScheduled("wf1", 0),
       workflowCompleted("result", 0),
       activityScheduled("call-b", 1),
@@ -474,7 +486,7 @@ test("workflow calling other workflow", () => {
   });
 
   expect(
-    interpret(wf2.definition(), [
+    interpret(wf2.definition(undefined, context), [
       workflowScheduled("wf1", 0),
       workflowFailed("error", 0),
     ])

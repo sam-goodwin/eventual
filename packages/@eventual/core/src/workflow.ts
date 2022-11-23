@@ -18,13 +18,6 @@ import {
 } from "./events.js";
 import { interpret, WorkflowResult } from "./interpret.js";
 
-export interface ExecutionHandle {
-  /**
-   * ID of the workflow execution.
-   */
-  executionId: string;
-}
-
 export type WorkflowHandler = (
   input: any,
   context: Context
@@ -49,12 +42,6 @@ export interface Workflow<F extends WorkflowHandler = WorkflowHandler> {
    * To start a workflow from another environment, use {@link start}.
    */
   (input: Parameters<F>[0]): ReturnType<F>;
-  /**
-   * Starts an execution of this {@link Workflow} without waiting for the response.
-   *
-   * @returns a {@link ExecutionHandle} with the `executionId`.
-   */
-  start(...args: Parameters<F>): Promise<ExecutionHandle>;
   /**
    * @internal - this is the internal DSL representation that produces a {@link Program} instead of a Promise.
    */
@@ -103,10 +90,6 @@ export function workflow<F extends WorkflowHandler>(
       input,
     })) as any;
 
-  workflow.start = async function (..._args: Parameters<F>) {
-    // TODO: get a client and submit execution
-    throw new Error("not implemented");
-  };
   workflow.definition = definition as Workflow<F>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
   workflows.set(name, workflow);
   return workflow;
