@@ -20,14 +20,7 @@ import {
   ITable,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
-import {
-  ArnFormat,
-  CfnOutput,
-  Duration,
-  Names,
-  RemovalPolicy,
-  Stack,
-} from "aws-cdk-lib";
+import { ArnFormat, CfnOutput, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import path from "path";
