@@ -1,26 +1,32 @@
-import {
-  interpret,
-  Eventual,
-  Result,
-  WorkflowResult,
-  Program,
-  chain,
-  sleepFor,
-  sleepUntil,
-} from "../src/index.js";
 import { createActivityCall } from "../src/activity-call.js";
+import { chain } from "../src/chain.js";
 import { DeterminismError } from "../src/error.js";
 import {
-  completedActivity,
+  Context,
+  Eventual,
+  interpret,
+  Program,
+  Result,
+  sleepFor,
+  sleepUntil,
+  workflow,
+  WorkflowResult,
+} from "../src/index.js";
+import { createSleepUntilCall } from "../src/sleep-call.js";
+import {
+  activityCompleted,
+  activityFailed,
+  activityScheduled,
   completedSleep,
+  createScheduledActivityCommand,
+  createScheduledWorkflowCommand,
   createSleepForCommand,
   createSleepUntilCommand,
-  createStartActivityCommand as createScheduleActivityCommand,
-  failedActivity,
-  scheduledActivity,
   scheduledSleep,
+  workflowCompleted,
+  workflowFailed,
+  workflowScheduled,
 } from "./command-util.js";
-import { createSleepUntilCall } from "../src/sleep-call.js";
 
 function* myWorkflow(event: any): Program<any> {
   try {
@@ -44,21 +50,21 @@ const event = "hello world";
 
 test("no history", () => {
   expect(interpret(myWorkflow(event), [])).toMatchObject(<WorkflowResult>{
-    commands: [createScheduleActivityCommand("my-activity", [event], 0)],
+    commands: [createScheduledActivityCommand("my-activity", [event], 0)],
   });
 });
 
 test("should continue with result of completed Activity", () => {
   expect(
     interpret(myWorkflow(event), [
-      scheduledActivity("my-activity", 0),
-      completedActivity("result", 0),
+      activityScheduled("my-activity", 0),
+      activityCompleted("result", 0),
     ])
   ).toMatchObject(<WorkflowResult>{
     commands: [
-      createScheduleActivityCommand("my-activity-0", [event], 1),
+      createScheduledActivityCommand("my-activity-0", [event], 1),
       createSleepUntilCommand("then", 2),
-      createScheduleActivityCommand("my-activity-2", [event], 3),
+      createScheduledActivityCommand("my-activity-2", [event], 3),
     ],
   });
 });
@@ -66,25 +72,25 @@ test("should continue with result of completed Activity", () => {
 test("should catch error of failed Activity", () => {
   expect(
     interpret(myWorkflow(event), [
-      scheduledActivity("my-activity", 0),
-      failedActivity("error", 0),
+      activityScheduled("my-activity", 0),
+      activityFailed("error", 0),
     ])
   ).toMatchObject(<WorkflowResult>{
-    commands: [createScheduleActivityCommand("handle-error", ["error"], 1)],
+    commands: [createScheduledActivityCommand("handle-error", ["error"], 1)],
   });
 });
 
 test("should return final result", () => {
   expect(
     interpret(myWorkflow(event), [
-      scheduledActivity("my-activity", 0),
-      completedActivity("result", 0),
-      scheduledActivity("my-activity-0", 1),
+      activityScheduled("my-activity", 0),
+      activityCompleted("result", 0),
+      activityScheduled("my-activity-0", 1),
       scheduledSleep("then", 2),
-      scheduledActivity("my-activity-2", 3),
-      completedActivity("result-0", 1),
+      activityScheduled("my-activity-2", 3),
+      activityCompleted("result-0", 1),
       completedSleep(2),
-      completedActivity("result-2", 3),
+      activityCompleted("result-2", 3),
     ])
   ).toMatchObject(<WorkflowResult>{
     result: Result.resolved(["result", [undefined, "result-2"]]),
@@ -94,13 +100,13 @@ test("should return final result", () => {
 
 test("should handle missing blocks", () => {
   expect(
-    interpret(myWorkflow(event), [completedActivity("result", 0)])
+    interpret(myWorkflow(event), [activityCompleted("result", 0)])
   ).toMatchObject(<WorkflowResult>{
     commands: [
-      createScheduleActivityCommand("my-activity", [event], 0),
-      createScheduleActivityCommand("my-activity-0", [event], 1),
+      createScheduledActivityCommand("my-activity", [event], 0),
+      createScheduledActivityCommand("my-activity-0", [event], 1),
       createSleepUntilCommand("then", 2),
-      createScheduleActivityCommand("my-activity-2", [event], 3),
+      createScheduledActivityCommand("my-activity-2", [event], 3),
     ],
   });
 });
@@ -108,14 +114,14 @@ test("should handle missing blocks", () => {
 test("should handle partial blocks", () => {
   expect(
     interpret(myWorkflow(event), [
-      scheduledActivity("my-activity", 0),
-      completedActivity("result", 0),
-      scheduledActivity("my-activity-0", 1),
+      activityScheduled("my-activity", 0),
+      activityCompleted("result", 0),
+      activityScheduled("my-activity-0", 1),
     ])
   ).toMatchObject(<WorkflowResult>{
     commands: [
       createSleepUntilCommand("then", 2),
-      createScheduleActivityCommand("my-activity-2", [event], 3),
+      createScheduledActivityCommand("my-activity-2", [event], 3),
     ],
   });
 });
@@ -123,15 +129,15 @@ test("should handle partial blocks", () => {
 test("should handle partial blocks with partial completes", () => {
   expect(
     interpret(myWorkflow(event), [
-      scheduledActivity("my-activity", 0),
-      completedActivity("result", 0),
-      scheduledActivity("my-activity-0", 1),
-      completedActivity("result", 1),
+      activityScheduled("my-activity", 0),
+      activityCompleted("result", 0),
+      activityScheduled("my-activity-0", 1),
+      activityCompleted("result", 1),
     ])
   ).toMatchObject(<WorkflowResult>{
     commands: [
       createSleepUntilCommand("then", 2),
-      createScheduleActivityCommand("my-activity-2", [event], 3),
+      createScheduledActivityCommand("my-activity-2", [event], 3),
     ],
   });
 });
@@ -145,8 +151,8 @@ test("should throw when scheduled does not correspond to call", () => {
 test("should throw when there are more schedules than calls emitted", () => {
   expect(() =>
     interpret(myWorkflow(event), [
-      scheduledActivity("my-activity", 0),
-      scheduledActivity("result", 1),
+      activityScheduled("my-activity", 0),
+      activityScheduled("result", 1),
     ])
   ).toThrow(DeterminismError);
 });
@@ -154,13 +160,13 @@ test("should throw when there are more schedules than calls emitted", () => {
 test("should throw when a completed precedes workflow state", () => {
   expect(() =>
     interpret(myWorkflow(event), [
-      scheduledActivity("my-activity", 0),
-      scheduledActivity("result", 1),
+      activityScheduled("my-activity", 0),
+      activityScheduled("result", 1),
       // the workflow does not return a seq: 2, where does this go?
       // note: a completed event can be accepted without a "scheduled" counterpart,
       // but the workflow must resolve the schedule before the complete
       // is applied.
-      completedActivity("", 2),
+      activityCompleted("", 2),
     ])
   ).toThrow(DeterminismError);
 });
@@ -168,12 +174,12 @@ test("should throw when a completed precedes workflow state", () => {
 test("should wait if partial results", () => {
   expect(
     interpret(myWorkflow(event), [
-      scheduledActivity("my-activity", 0),
-      completedActivity("result", 0),
-      scheduledActivity("my-activity-0", 1),
+      activityScheduled("my-activity", 0),
+      activityCompleted("result", 0),
+      activityScheduled("my-activity-0", 1),
       scheduledSleep("then", 2),
-      scheduledActivity("my-activity-2", 3),
-      completedActivity("result-0", 1),
+      activityScheduled("my-activity-2", 3),
+      activityCompleted("result-0", 1),
       completedSleep(2),
     ])
   ).toMatchObject(<WorkflowResult>{
@@ -332,8 +338,8 @@ describe("temple of doom", () => {
     expect(interpret(workflow() as any, [])).toMatchObject(<WorkflowResult>{
       commands: [
         createSleepUntilCommand("X", 0),
-        createScheduleActivityCommand("jump", [], 1),
-        createScheduleActivityCommand("run", [], 2),
+        createScheduledActivityCommand("jump", [], 1),
+        createScheduledActivityCommand("run", [], 2),
       ],
     });
   });
@@ -342,8 +348,8 @@ describe("temple of doom", () => {
     expect(
       interpret(workflow() as any, [
         scheduledSleep("X", 0),
-        scheduledActivity("jump", 1),
-        scheduledActivity("run", 2),
+        activityScheduled("jump", 1),
+        activityScheduled("run", 2),
       ])
     ).toMatchObject(<WorkflowResult>{
       commands: [],
@@ -355,8 +361,8 @@ describe("temple of doom", () => {
     expect(
       interpret(workflow() as any, [
         scheduledSleep("X", 0),
-        scheduledActivity("jump", 1),
-        scheduledActivity("run", 2),
+        activityScheduled("jump", 1),
+        activityScheduled("run", 2),
         completedSleep(0),
       ])
     ).toMatchObject(<WorkflowResult>{
@@ -369,10 +375,10 @@ describe("temple of doom", () => {
     expect(
       interpret(workflow() as any, [
         scheduledSleep("X", 0),
-        scheduledActivity("jump", 1),
-        scheduledActivity("run", 2),
+        activityScheduled("jump", 1),
+        activityScheduled("run", 2),
         completedSleep(0),
-        completedActivity("anything", 2),
+        activityCompleted("anything", 2),
       ])
     ).toMatchObject(<WorkflowResult>{
       result: Result.resolved("dead: lost your feet"),
@@ -385,10 +391,10 @@ describe("temple of doom", () => {
     expect(
       interpret(workflow() as any, [
         completedSleep(0),
-        completedActivity("anything", 2),
+        activityCompleted("anything", 2),
         scheduledSleep("X", 0),
-        scheduledActivity("jump", 1),
-        scheduledActivity("run", 2),
+        activityScheduled("jump", 1),
+        activityScheduled("run", 2),
       ])
     ).toMatchObject(<WorkflowResult>{
       result: Result.resolved("dead: lost your feet"),
@@ -401,9 +407,9 @@ describe("temple of doom", () => {
     expect(
       interpret(workflow() as any, [
         scheduledSleep("X", 0),
-        scheduledActivity("jump", 1),
-        scheduledActivity("run", 2),
-        completedActivity("anything", 2),
+        activityScheduled("jump", 1),
+        activityScheduled("run", 2),
+        activityCompleted("anything", 2),
       ])
     ).toMatchObject(<WorkflowResult>{
       result: Result.resolved("alive"),
@@ -416,9 +422,9 @@ describe("temple of doom", () => {
     expect(
       interpret(workflow() as any, [
         scheduledSleep("X", 0),
-        completedActivity("anything", 2),
-        scheduledActivity("jump", 1),
-        scheduledActivity("run", 2),
+        activityCompleted("anything", 2),
+        activityScheduled("jump", 1),
+        activityScheduled("run", 2),
       ])
     ).toMatchObject(<WorkflowResult>{
       result: Result.resolved("alive"),
@@ -430,10 +436,10 @@ describe("temple of doom", () => {
     // release the player, not on, alive
     expect(
       interpret(workflow() as any, [
-        completedActivity("anything", 2),
+        activityCompleted("anything", 2),
         scheduledSleep("X", 0),
-        scheduledActivity("jump", 1),
-        scheduledActivity("run", 2),
+        activityScheduled("jump", 1),
+        activityScheduled("run", 2),
       ])
     ).toMatchObject(<WorkflowResult>{
       result: Result.resolved("alive"),
@@ -445,9 +451,9 @@ describe("temple of doom", () => {
     expect(
       interpret(workflow() as any, [
         scheduledSleep("X", 0),
-        scheduledActivity("jump", 1),
-        scheduledActivity("run", 2),
-        completedActivity("anything", 2),
+        activityScheduled("jump", 1),
+        activityScheduled("run", 2),
+        activityCompleted("anything", 2),
         completedSleep(0),
       ])
     ).toMatchObject(<WorkflowResult>{
@@ -499,17 +505,17 @@ test("should support Eventual.all of function calls", () => {
 
   expect(interpret(workflow(["a", "b"]), [])).toMatchObject(<WorkflowResult>{
     commands: [
-      createScheduleActivityCommand("process-item", ["a"], 0),
-      createScheduleActivityCommand("process-item", ["b"], 1),
+      createScheduledActivityCommand("process-item", ["a"], 0),
+      createScheduledActivityCommand("process-item", ["b"], 1),
     ],
   });
 
   expect(
     interpret(workflow(["a", "b"]), [
-      scheduledActivity("process-item", 0),
-      scheduledActivity("process-item", 1),
-      completedActivity("A", 0),
-      completedActivity("B", 1),
+      activityScheduled("process-item", 0),
+      activityScheduled("process-item", 1),
+      activityCompleted("A", 0),
+      activityCompleted("B", 1),
     ])
   ).toMatchObject(<WorkflowResult>{
     result: Result.resolved(["A", "B"]),
@@ -532,10 +538,10 @@ test("should have left-to-right determinism semantics for Eventual.all", () => {
   const result = interpret(workflow(["a", "b"]), []);
   expect(result).toMatchObject(<WorkflowResult>{
     commands: [
-      createScheduleActivityCommand("before", ["before"], 0),
-      createScheduleActivityCommand("inside", ["a"], 1),
-      createScheduleActivityCommand("inside", ["b"], 2),
-      createScheduleActivityCommand("after", ["after"], 3),
+      createScheduledActivityCommand("before", ["before"], 0),
+      createScheduledActivityCommand("inside", ["a"], 1),
+      createScheduledActivityCommand("inside", ["b"], 2),
+      createScheduledActivityCommand("after", ["after"], 3),
     ],
   });
 });
@@ -551,15 +557,15 @@ test("try-catch-finally with yield in catch", () => {
     }
   }
   expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
-    commands: [createScheduleActivityCommand("catch", [], 0)],
+    commands: [createScheduledActivityCommand("catch", [], 0)],
   });
   expect(
     interpret(workflow(), [
-      scheduledActivity("catch", 0),
-      completedActivity(undefined, 0),
+      activityScheduled("catch", 0),
+      activityCompleted(undefined, 0),
     ])
   ).toMatchObject(<WorkflowResult>{
-    commands: [createScheduleActivityCommand("finally", [], 1)],
+    commands: [createScheduledActivityCommand("finally", [], 1)],
   });
 });
 
@@ -579,8 +585,8 @@ test("try-catch-finally with dangling promise in catch", () => {
     )
   ).toMatchObject(<WorkflowResult>{
     commands: [
-      createScheduleActivityCommand("catch", [], 0),
-      createScheduleActivityCommand("finally", [], 1),
+      createScheduledActivityCommand("catch", [], 0),
+      createScheduledActivityCommand("finally", [], 1),
     ],
   });
 });
@@ -611,42 +617,42 @@ test("throw error within nested function", () => {
     WorkflowResult
   >{
     commands: [
-      createScheduleActivityCommand("inside", ["good"], 0),
-      createScheduleActivityCommand("inside", ["bad"], 1),
+      createScheduledActivityCommand("inside", ["good"], 0),
+      createScheduledActivityCommand("inside", ["bad"], 1),
     ],
   });
   expect(
     interpret(workflow(["good", "bad"]), [
-      scheduledActivity("inside", 0),
-      scheduledActivity("inside", 1),
-      completedActivity("good", 0),
-      completedActivity("bad", 1),
+      activityScheduled("inside", 0),
+      activityScheduled("inside", 1),
+      activityCompleted("good", 0),
+      activityCompleted("bad", 1),
     ])
   ).toMatchObject(<WorkflowResult>{
-    commands: [createScheduleActivityCommand("catch", [], 2)],
+    commands: [createScheduledActivityCommand("catch", [], 2)],
   });
   expect(
     interpret(workflow(["good", "bad"]), [
-      scheduledActivity("inside", 0),
-      scheduledActivity("inside", 1),
-      completedActivity("good", 0),
-      completedActivity("bad", 1),
-      scheduledActivity("catch", 2),
-      completedActivity("catch", 2),
+      activityScheduled("inside", 0),
+      activityScheduled("inside", 1),
+      activityCompleted("good", 0),
+      activityCompleted("bad", 1),
+      activityScheduled("catch", 2),
+      activityCompleted("catch", 2),
     ])
   ).toMatchObject(<WorkflowResult>{
-    commands: [createScheduleActivityCommand("finally", [], 3)],
+    commands: [createScheduledActivityCommand("finally", [], 3)],
   });
   expect(
     interpret(workflow(["good", "bad"]), [
-      scheduledActivity("inside", 0),
-      scheduledActivity("inside", 1),
-      completedActivity("good", 0),
-      completedActivity("bad", 1),
-      scheduledActivity("catch", 2),
-      completedActivity("catch", 2),
-      scheduledActivity("finally", 3),
-      completedActivity("finally", 3),
+      activityScheduled("inside", 0),
+      activityScheduled("inside", 1),
+      activityCompleted("good", 0),
+      activityCompleted("bad", 1),
+      activityScheduled("catch", 2),
+      activityCompleted("catch", 2),
+      activityScheduled("finally", 3),
+      activityCompleted("finally", 3),
     ])
   ).toMatchObject(<WorkflowResult>{
     result: Result.resolved("returned in finally"),
@@ -671,17 +677,17 @@ test("properly evaluate yield* of sub-programs", () => {
   expect(interpret(workflow(), [])).toMatchObject({
     commands: [
       //
-      createScheduleActivityCommand("a", [], 0),
-      createScheduleActivityCommand("b", [], 1),
+      createScheduledActivityCommand("a", [], 0),
+      createScheduledActivityCommand("b", [], 1),
     ],
   });
 
   expect(
     interpret(workflow(), [
-      scheduledActivity("a", 0),
-      scheduledActivity("b", 1),
-      completedActivity("a", 0),
-      completedActivity("b", 1),
+      activityScheduled("a", 0),
+      activityScheduled("b", 1),
+      activityCompleted("a", 0),
+      activityCompleted("b", 1),
     ])
   ).toMatchObject({
     result: Result.resolved(["a", "b"]),
@@ -704,18 +710,18 @@ test("properly evaluate yield of Eventual.all", () => {
   expect(interpret(workflow(), [])).toMatchObject({
     commands: [
       //
-      createScheduleActivityCommand("a", [], 0),
-      createScheduleActivityCommand("b", [], 1),
+      createScheduledActivityCommand("a", [], 0),
+      createScheduledActivityCommand("b", [], 1),
     ],
   });
 
   expect(
     // @ts-ignore
     interpret(workflow(), [
-      scheduledActivity("a", 0),
-      scheduledActivity("b", 1),
-      completedActivity("a", 0),
-      completedActivity("b", 1),
+      activityScheduled("a", 0),
+      activityScheduled("b", 1),
+      activityCompleted("a", 0),
+      activityCompleted("b", 1),
     ])
   ).toMatchObject({
     result: Result.resolved(["a", "b"]),
@@ -733,15 +739,90 @@ test("generator function returns an ActivityCall", () => {
   });
 
   expect(interpret(workflow(), [])).toMatchObject({
-    commands: [createScheduleActivityCommand("call-a", [], 0)],
+    commands: [createScheduledActivityCommand("call-a", [], 0)],
   });
   expect(
     interpret(workflow(), [
-      scheduledActivity("call-a", 0),
-      completedActivity("result", 0),
+      activityScheduled("call-a", 0),
+      activityCompleted("result", 0),
     ])
   ).toMatchObject({
     result: Result.resolved("result"),
+    commands: [],
+  });
+});
+
+test("workflow calling other workflow", () => {
+  const wf1 = workflow("wf1", function* () {
+    yield createActivityCall("call-a", []);
+  });
+  // @ts-ignore
+  const wf2 = workflow("wf2", function* () {
+    // @ts-ignore
+    const result = yield wf1();
+    yield createActivityCall("call-b", []);
+    return result;
+  });
+
+  const context: Context = {
+    workflow: {
+      name: "wf1",
+    },
+    execution: {
+      id: "123",
+      name: "wf1#123",
+      startTime: "",
+    },
+  };
+
+  expect(interpret(wf2.definition(undefined, context), [])).toMatchObject({
+    commands: [createScheduledWorkflowCommand("wf1", undefined, 0)],
+  });
+
+  expect(
+    interpret(wf2.definition(undefined, context), [workflowScheduled("wf1", 0)])
+  ).toMatchObject({
+    commands: [],
+  });
+
+  expect(
+    interpret(wf2.definition(undefined, context), [
+      workflowScheduled("wf1", 0),
+      workflowCompleted("result", 0),
+    ])
+  ).toMatchObject({
+    commands: [createScheduledActivityCommand("call-b", [], 1)],
+  });
+
+  expect(
+    interpret(wf2.definition(undefined, context), [
+      workflowScheduled("wf1", 0),
+      workflowCompleted("result", 0),
+      activityScheduled("call-b", 1),
+    ])
+  ).toMatchObject({
+    commands: [],
+  });
+
+  expect(
+    interpret(wf2.definition(undefined, context), [
+      workflowScheduled("wf1", 0),
+      workflowCompleted("result", 0),
+      activityScheduled("call-b", 1),
+      activityCompleted(undefined, 1),
+    ])
+  ).toMatchObject({
+    result: Result.resolved("result"),
+    commands: [],
+  });
+
+  expect(
+    interpret(wf2.definition(undefined, context), [
+      workflowScheduled("wf1", 0),
+      workflowFailed("error", 0),
+    ])
+  ).toMatchObject({
+    result: Result.failed("error"),
     commands: [],
   });
 });

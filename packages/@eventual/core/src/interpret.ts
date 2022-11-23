@@ -1,8 +1,8 @@
 import {
-  CommandCall,
   Eventual,
-  isCommandCall,
   isEventual,
+  CommandCall,
+  isCommandCall,
 } from "./eventual.js";
 import { isAwaitAll } from "./await-all.js";
 import { isActivityCall } from "./activity-call.js";
@@ -11,8 +11,8 @@ import {
   CompletedEvent,
   FailedEvent,
   HistoryEvent,
-  isActivityCompleted,
   isActivityScheduled,
+  isChildWorkflowScheduled,
   isCompletedEvent,
   isFailedEvent,
   isScheduledEvent,
@@ -32,6 +32,7 @@ import {
 import { createChain, isChain, Chain } from "./chain.js";
 import { assertNever } from "./util.js";
 import { Command, CommandType } from "./command.js";
+import { isWorkflowCall } from "./workflow.js";
 import { isSleepForCall, isSleepUntilCall } from "./sleep-call.js";
 
 export interface WorkflowResult<T = any> {
@@ -124,28 +125,34 @@ export function interpret<Return>(
 
   return {
     result,
-    commands: calls.map(
-      (call): Command =>
-        isActivityCall(call)
-          ? {
-              // TODO: add sleep
-              kind: CommandType.StartActivity,
-              args: call.args,
-              name: call.name,
-              seq: call.seq!,
-            }
-          : isSleepUntilCall(call)
-          ? {
-              kind: CommandType.SleepUntil,
-              seq: call.seq!,
-              untilTime: call.isoDate,
-            }
-          : {
-              kind: CommandType.SleepFor,
-              seq: call.seq!,
-              durationSeconds: call.durationSeconds,
-            }
-    ),
+    commands: calls.map((call) => ({
+      ...(isActivityCall(call)
+        ? {
+            // TODO: add sleep
+            kind: CommandType.StartActivity,
+            args: call.args,
+            name: call.name,
+            seq: call.seq!,
+          }
+        : isSleepUntilCall(call)
+        ? {
+            kind: CommandType.SleepUntil,
+            seq: call.seq!,
+            untilTime: call.isoDate,
+          }
+        : isSleepForCall(call)
+        ? {
+            kind: CommandType.SleepFor,
+            seq: call.seq!,
+            durationSeconds: call.durationSeconds,
+          }
+        : {
+            kind: CommandType.StartWorkflow,
+            input: call.input,
+            name: call.name,
+          }),
+      seq: call.seq!,
+    })),
   };
 
   function advance(isReplay: boolean): CommandCall[] | undefined {
@@ -251,12 +258,12 @@ export function interpret<Return>(
           chain.awaiting = iterResult.value;
         }
       } catch (err) {
+        console.error(chain, err);
         activeChains.delete(chain);
         chain.result = Result.failed(err);
       }
 
       return collectActivities().flatMap((activity) => {
-        console.log("Activity Collected", JSON.stringify(activity));
         if (isCommandCall(activity)) {
           return activity;
         } else if (isChain(activity)) {
@@ -315,7 +322,7 @@ export function interpret<Return>(
         `Expected call result to not be pending: ${call.seq}.`
       );
     }
-    call.result = isActivityCompleted(event)
+    call.result = isCompletedEvent(event)
       ? Result.resolved(event.result)
       : isSleepCompleted(event)
       ? Result.resolved(undefined)
@@ -328,6 +335,8 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
     return false;
   } else if (isActivityScheduled(event)) {
     return isActivityCall(call) && call.name === event.name;
+  } else if (isChildWorkflowScheduled(event)) {
+    return isWorkflowCall(call) && call.name === event.name;
   } else if (isSleepScheduled(event)) {
     return isSleepUntilCall(call) || isSleepForCall(call);
   }

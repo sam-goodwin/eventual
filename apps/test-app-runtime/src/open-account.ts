@@ -1,4 +1,4 @@
-import { activity, eventual } from "@eventual/core";
+import { activity, workflow } from "@eventual/core";
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
@@ -33,17 +33,22 @@ interface OpenAccountRequest {
 
 type RollbackHandler = () => Promise<void>;
 
-export default eventual(
+export default workflow("open-account", async (request: OpenAccountRequest) => {
+  try {
+    await createAccount(request.accountId);
+  } catch (err) {
+    console.error(err);
+    throw err;
+  }
+
+  await associateAccountInformation(request);
+});
+
+// sub-workflow for testing purposes
+export const associateAccountInformation = workflow(
+  "associate",
   async ({ accountId, address, email, bankDetails }: OpenAccountRequest) => {
     const rollbacks: RollbackHandler[] = [];
-
-    try {
-      await createAccount(accountId);
-    } catch (err) {
-      console.error(err);
-      throw err;
-    }
-
     try {
       await addAddress(accountId, address);
       rollbacks.push(async () => removeAddress(accountId));
@@ -67,6 +72,7 @@ const dynamo = memoize(() =>
 );
 
 const createAccount = activity("createAccount", async (accountId: string) => {
+  console.log("processing", accountId);
   await dynamo().send(
     new PutCommand({
       TableName,

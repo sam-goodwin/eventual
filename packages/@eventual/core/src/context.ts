@@ -11,6 +11,10 @@ export interface ExecutionContext {
    */
   name: string;
   /**
+   * ID of the parent execution if this is a child workflow
+   */
+  parentId?: string;
+  /**
    * The ISO 8601 UTC time the execution started.
    */
   startTime: string;

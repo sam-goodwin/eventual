@@ -13,6 +13,7 @@
     "clean:deep": "git clean -fqdx .",
     "clean:tsbuildinfo": "find . -name tsconfig.tsbuildinfo -exec rm {} \\;",
     "deploy": "turbo run deploy",
+    "hotswap": "turbo run hotswap",
     "dev": "turbo run dev --parallel",
     "lint": "turbo run lint",
     "prepare": "husky install",

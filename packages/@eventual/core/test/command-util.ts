@@ -3,28 +3,19 @@ import {
   SleepForCommand,
   SleepUntilCommand,
   ScheduleActivityCommand,
+  ScheduleWorkflowCommand,
 } from "../src/command.js";
 import {
   ActivityCompleted,
   ActivityFailed,
   ActivityScheduled,
+  ChildWorkflowCompleted,
+  ChildWorkflowFailed,
+  ChildWorkflowScheduled,
   SleepCompleted,
   SleepScheduled,
   WorkflowEventType,
 } from "../src/events.js";
-
-export function createStartActivityCommand(
-  name: string,
-  args: any[],
-  seq: number
-): ScheduleActivityCommand {
-  return {
-    kind: CommandType.StartActivity,
-    args,
-    name,
-    seq,
-  };
-}
 
 export function createSleepUntilCommand(
   untilTime: string,
@@ -48,7 +39,33 @@ export function createSleepForCommand(
   };
 }
 
-export function completedActivity(result: any, seq: number): ActivityCompleted {
+export function createScheduledActivityCommand(
+  name: string,
+  args: any[],
+  seq: number
+): ScheduleActivityCommand {
+  return {
+    kind: CommandType.StartActivity,
+    seq,
+    name,
+    args,
+  };
+}
+
+export function createScheduledWorkflowCommand(
+  name: string,
+  input: any,
+  seq: number
+): ScheduleWorkflowCommand {
+  return {
+    kind: CommandType.StartWorkflow,
+    seq,
+    name,
+    input,
+  };
+}
+
+export function activityCompleted(result: any, seq: number): ActivityCompleted {
   return {
     type: WorkflowEventType.ActivityCompleted,
     duration: 0,
@@ -58,7 +75,19 @@ export function completedActivity(result: any, seq: number): ActivityCompleted {
   };
 }
 
-export function failedActivity(error: any, seq: number): ActivityFailed {
+export function workflowCompleted(
+  result: any,
+  seq: number
+): ChildWorkflowCompleted {
+  return {
+    type: WorkflowEventType.ChildWorkflowCompleted,
+    result,
+    seq,
+    timestamp: new Date(0).toISOString(),
+  };
+}
+
+export function activityFailed(error: any, seq: number): ActivityFailed {
   return {
     type: WorkflowEventType.ActivityFailed,
     duration: 0,
@@ -69,7 +98,17 @@ export function failedActivity(error: any, seq: number): ActivityFailed {
   };
 }
 
-export function scheduledActivity(
+export function workflowFailed(error: any, seq: number): ChildWorkflowFailed {
+  return {
+    type: WorkflowEventType.ChildWorkflowFailed,
+    error,
+    message: "message",
+    seq,
+    timestamp: new Date(0).toISOString(),
+  };
+}
+
+export function activityScheduled(
   name: string,
   seq: number
 ): ActivityScheduled {
@@ -78,6 +117,19 @@ export function scheduledActivity(
     name,
     seq,
     timestamp: new Date(0).toISOString(),
+  };
+}
+
+export function workflowScheduled(
+  name: string,
+  seq: number
+): ChildWorkflowScheduled {
+  return {
+    type: WorkflowEventType.ChildWorkflowScheduled,
+    name,
+    seq,
+    timestamp: new Date(0).toISOString(),
+    input: undefined,
   };
 }
 

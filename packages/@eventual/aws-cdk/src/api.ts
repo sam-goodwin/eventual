@@ -12,10 +12,10 @@ import {
 } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import path from "path";
-import { Workflow } from "./workflow";
+import { Service } from "./service";
 
 export interface EventualApiProps {
-  workflows: Workflow[];
+  services: Service[];
 }
 
 interface RouteMapping {
@@ -34,10 +34,10 @@ export class EventualApi extends Construct {
     const environment = {
       WORKFLOWS: JSON.stringify(
         Object.fromEntries(
-          props.workflows.map((w) => [
-            w.workflowName,
+          props.services.map((w) => [
+            w.serviceName,
             {
-              name: w.workflowName,
+              name: w.serviceName,
               tableName: w.table.tableName,
               workflowQueueUrl: w.workflowQueue.queueUrl,
               executionHistoryBucket: w.history.bucketName,
@@ -99,7 +99,7 @@ export class EventualApi extends Construct {
           methods: [HttpMethod.POST],
           entry: "executions/new.js",
           config: (fn) => {
-            props.workflows.forEach((w) => {
+            props.services.forEach((w) => {
               w.table.grantReadWriteData(fn);
               w.workflowQueue.grantSendMessages(fn);
             });
@@ -109,7 +109,7 @@ export class EventualApi extends Construct {
           methods: [HttpMethod.GET],
           entry: "executions/list.js",
           config: (fn) => {
-            props.workflows.forEach((w) => {
+            props.services.forEach((w) => {
               w.table.grantReadWriteData(fn);
               w.workflowQueue.grantSendMessages(fn);
             });
@@ -121,7 +121,7 @@ export class EventualApi extends Construct {
           methods: [HttpMethod.GET],
           entry: "executions/history.js",
           config: (fn) => {
-            props.workflows.forEach((w) => {
+            props.services.forEach((w) => {
               w.table.grantReadData(fn);
             });
           },

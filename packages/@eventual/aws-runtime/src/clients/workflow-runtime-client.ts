@@ -33,6 +33,7 @@ import {
 import {
   createExecutionFromResult,
   ExecutionRecord,
+  WorkflowClient,
 } from "./workflow-client.js";
 import { ActivityWorkerRequest } from "../activity.js";
 import { createEvent } from "./execution-history-client.js";
@@ -46,6 +47,13 @@ export interface WorkflowRuntimeClientProps {
   readonly s3: S3Client;
   readonly executionHistoryBucket: string;
   readonly tableName: string;
+  readonly workflowClient: WorkflowClient;
+  readonly timerClient: TimerClient;
+}
+
+export interface CompleteExecutionRequest {
+  executionId: string;
+  result?: any;
   readonly timerClient: TimerClient;
 }
 
@@ -88,10 +96,10 @@ export class WorkflowRuntimeClient {
     return { bytes: content.length };
   }
 
-  async completeExecution(
-    executionId: string,
-    result?: any
-  ): Promise<CompleteExecution> {
+  async completeExecution({
+    executionId,
+    result,
+  }: CompleteExecutionRequest): Promise<CompleteExecution> {
     const executionResult = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
@@ -100,16 +108,14 @@ export class WorkflowRuntimeClient {
         },
         TableName: this.props.tableName,
         UpdateExpression: result
-          ? "SET #status=:complete, #result=:result, endTime=:endTime"
-          : "SET #status=:complete, endTime=:endTime",
-        ConditionExpression: "#status=:in_progress",
+          ? "SET #status=:complete, #result=:result, endTime=if_not_exists(endTime,:endTime)"
+          : "SET #status=:complete, endTime=if_not_exists(endTime,:endTime)",
         ExpressionAttributeNames: {
           "#status": "status",
           ...(result ? { "#result": "result" } : {}),
         },
         ExpressionAttributeValues: {
           ":complete": { S: ExecutionStatus.COMPLETE },
-          ":in_progress": { S: ExecutionStatus.IN_PROGRESS },
           ":endTime": { S: new Date().toISOString() },
           ...(result ? { ":result": { S: JSON.stringify(result) } } : {}),
         },
@@ -117,9 +123,16 @@ export class WorkflowRuntimeClient {
       })
     );
 
-    return createExecutionFromResult(
-      executionResult.Attributes as unknown as ExecutionRecord
-    ) as CompleteExecution;
+    const record = executionResult.Attributes as unknown as ExecutionRecord;
+    if (record.parentExecutionId) {
+      await this.reportCompletionToParent(
+        record.parentExecutionId.S,
+        record.seq.N,
+        result
+      );
+    }
+
+    return createExecutionFromResult(record) as CompleteExecution;
   }
 
   async failExecution(
@@ -135,8 +148,7 @@ export class WorkflowRuntimeClient {
         },
         TableName: this.props.tableName,
         UpdateExpression:
-          "SET #status=:failed, #error=:error, #message=:message, endTime=:endTime",
-        ConditionExpression: "#status=:in_progress",
+          "SET #status=:failed, #error=:error, #message=:message, endTime=if_not_exists(endTime,:endTime)",
         ExpressionAttributeNames: {
           "#status": "status",
           "#error": "error",
@@ -144,7 +156,6 @@ export class WorkflowRuntimeClient {
         },
         ExpressionAttributeValues: {
           ":failed": { S: ExecutionStatus.FAILED },
-          ":in_progress": { S: ExecutionStatus.IN_PROGRESS },
           ":endTime": { S: new Date().toISOString() },
           ":error": { S: error },
           ":message": { S: message },
@@ -153,9 +164,38 @@ export class WorkflowRuntimeClient {
       })
     );
 
-    return createExecutionFromResult(
-      executionResult.Attributes as unknown as ExecutionRecord
-    ) as FailedExecution;
+    const record = executionResult.Attributes as unknown as ExecutionRecord;
+    if (record.parentExecutionId) {
+      await this.reportCompletionToParent(
+        record.parentExecutionId.S,
+        record.seq.N,
+        error,
+        message
+      );
+    }
+
+    return createExecutionFromResult(record) as FailedExecution;
+  }
+
+  private async reportCompletionToParent(
+    parentExecutionId: string,
+    seq: string,
+    ...args: [result: any] | [error: string, message: string]
+  ) {
+    await this.props.workflowClient.submitWorkflowTask(parentExecutionId, {
+      seq: parseInt(seq, 10),
+      timestamp: new Date().toISOString(),
+      ...(args.length === 1
+        ? {
+            type: WorkflowEventType.ChildWorkflowCompleted,
+            result: args[0],
+          }
+        : {
+            type: WorkflowEventType.ChildWorkflowFailed,
+            error: args[0],
+            message: args[1],
+          }),
+    });
   }
 
   async getExecutions(): Promise<Execution[]> {
@@ -174,11 +214,13 @@ export class WorkflowRuntimeClient {
   }
 
   async scheduleActivity(
+    workflowName: string,
     executionId: string,
     command: ScheduleActivityCommand
   ) {
     const request: ActivityWorkerRequest = {
       scheduledTime: new Date().toISOString(),
+      workflowName,
       executionId,
       command,
       retry: 0,

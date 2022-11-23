@@ -9,7 +9,6 @@ export namespace ENV_NAMES {
   export const ACTIVITY_WORKER_FUNCTION_NAME =
     "EVENTUAL_ACTIVITY_WORKER_FUNCTION_NAME";
   export const ACTIVITY_LOCK_TABLE_NAME = "EVENTUAL_ACTIVITY_LOCK_TABLE_NAME";
-  export const WORKFLOW_NAME = "EVENTUAL_WORKFLOW_NAME";
   export const SCHEDULER_ROLE_ARN = "EVENTUAL_SCHEDULER_ROLE_ARN";
   export const SCHEDULER_DLQ_ROLE_ARN = "EVENTUAL_SCHEDULER_DLQ_ROLE_ARN";
   export const SCHEDULER_GROUP = "EVENTUAL_SCHEDULER_GROUP";
@@ -42,7 +41,6 @@ export const activityWorkerFunctionName = () =>
   tryGetEnv(ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME);
 export const activityLockTableName = () =>
   tryGetEnv(ENV_NAMES.ACTIVITY_LOCK_TABLE_NAME);
-export const workflowName = () => tryGetEnv(ENV_NAMES.WORKFLOW_NAME);
 export const schedulerRoleArn = () => tryGetEnv(ENV_NAMES.SCHEDULER_ROLE_ARN);
 export const schedulerDlqArn = () =>
   tryGetEnv(ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN);

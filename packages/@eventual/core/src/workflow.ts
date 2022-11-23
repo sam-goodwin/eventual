@@ -1,3 +1,12 @@
+import {
+  AwaitedEventual,
+  Eventual,
+  EventualKind,
+  EventualSymbol,
+} from "./eventual.js";
+import { registerActivity, resetActivityCollector } from "./global.js";
+import type { Program } from "./interpret.js";
+import type { Result } from "./result.js";
 import { Context, WorkflowContext } from "./context.js";
 import { DeterminismError } from "./error.js";
 import {
@@ -11,24 +20,110 @@ import {
   SleepScheduled,
   WorkflowEventType,
 } from "./events.js";
-import { EventualFunction } from "./eventual.js";
-import { resetActivityCollector } from "./global.js";
-import { interpret, Program, WorkflowResult } from "./interpret.js";
+import { interpret, WorkflowResult } from "./interpret.js";
 
-interface ProgressWorkflowResult extends WorkflowResult {
+export type WorkflowHandler = (
+  input: any,
+  context: Context
+) => Promise<any> | Program;
+
+/**
+ * A {@link Workflow} is a long-running process that orchestrates calls
+ * to other services in a durable and observable way.
+ */
+export interface Workflow<F extends WorkflowHandler = WorkflowHandler> {
+  /**
+   * Globally unique ID of this {@link Workflow}.
+   */
+  name: string;
+  /**
+   * Invokes the {@link Workflow} from within another workflow.
+   *
+   * This can only be called from within another workflow because it's not possible
+   * to wait for completion synchronously - it relies on the event-driven environment
+   * of a workflow execution.
+   *
+   * To start a workflow from another environment, use {@link start}.
+   */
+  (input: Parameters<F>[0]): ReturnType<F>;
+  /**
+   * @internal - this is the internal DSL representation that produces a {@link Program} instead of a Promise.
+   */
+  definition: (
+    input: Parameters<F>[0],
+    context: Context
+  ) => Program<AwaitedEventual<ReturnType<F>>>;
+}
+
+const workflows = new Map<string, Workflow>();
+
+export function lookupWorkflow(name: string): Workflow | undefined {
+  return workflows.get(name);
+}
+
+/**
+ * Creates and registers a long-running workflow.
+ *
+ * Example:
+ * ```ts
+ * import { activity, workflow } from "@eventual/core";
+ *
+ * export default workflow("my-workflow", async ({ name }: { name: string }) => {
+ *   const result = await hello(name);
+ *   console.log(result);
+ *   return `you said ${result}`;
+ * });
+ *
+ * const hello = activity("hello", async (name: string) => {
+ *   return `hello ${name}`;
+ * });
+ * ```
+ * @param name a globally unique ID for this workflow.
+ * @param definition the workflow definition.
+ */
+export function workflow<F extends WorkflowHandler>(
+  name: string,
+  definition: F
+): Workflow<F> {
+  if (workflows.has(name)) {
+    throw new Error(`workflow with name '${name}' already exists`);
+  }
+  const workflow: Workflow<F> = ((input?: any) =>
+    registerActivity({
+      [EventualSymbol]: EventualKind.WorkflowCall,
+      name,
+      input,
+    })) as any;
+
+  workflow.definition = definition as Workflow<F>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
+  workflows.set(name, workflow);
+  return workflow;
+}
+
+export function isWorkflowCall<T>(a: Eventual<T>): a is WorkflowCall<T> {
+  return a[EventualSymbol] === EventualKind.WorkflowCall;
+}
+
+/**
+ * An {@link Eventual} representing an awaited call to a {@link Workflow}.
+ */
+export interface WorkflowCall<T = any> {
+  [EventualSymbol]: EventualKind.WorkflowCall;
+  name: string;
+  input: any;
+  result?: Result<T>;
+  seq?: number;
+}
+
+export interface ProgressWorkflowResult extends WorkflowResult {
   history: HistoryStateEvent[];
 }
 
 /**
- * A function which starts the {@link Program} generator with input and {@link Context}.
- */
-export type ProgramStarter = EventualFunction<Program<any>>;
-
-/**
- * Progress a workflow using previous history, new events, and a program.
+ * Advance a workflow using previous history, new events, and a program.
  */
 export function progressWorkflow(
-  program: ProgramStarter,
+  program: Workflow,
   historyEvents: HistoryStateEvent[],
   taskEvents: HistoryStateEvent[],
   workflowContext: WorkflowContext,
@@ -42,10 +137,6 @@ export function progressWorkflow(
 
   // Generates events that are time sensitive, like sleep completed events.
   const syntheticEvents = generateSyntheticEvents(inputEvents);
-
-  console.debug(JSON.stringify(historyEvents));
-  console.debug(JSON.stringify(taskEvents));
-  console.debug(JSON.stringify(syntheticEvents));
 
   const allEvents = [...inputEvents, ...syntheticEvents];
 
@@ -69,11 +160,9 @@ export function progressWorkflow(
   // execute workflow
   const interpretEvents = allEvents.filter(isHistoryEvent);
 
-  console.debug(JSON.stringify(interpretEvents));
-
   try {
     return {
-      ...interpret(program(startEvent.input, context), interpretEvents),
+      ...interpret(program.definition(startEvent.input, context), interpretEvents),
       history: allEvents,
     };
   } catch (err) {
