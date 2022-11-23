@@ -4,6 +4,7 @@ import {
   FlexibleTimeWindowMode,
   SchedulerClient,
   ResourceNotFoundException,
+  ConflictException,
 } from "@aws-sdk/client-scheduler";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { assertNever, getEventId } from "@eventual/core";
@@ -117,27 +118,34 @@ export class TimerClient {
         untilTime: untilTimeIso,
       };
 
-      await this.props.scheduler.send(
-        new CreateScheduleCommand({
-          GroupName: this.props.schedulerGroup,
-          FlexibleTimeWindow: { Mode: FlexibleTimeWindowMode.OFF },
-          ScheduleExpression: `at(${formattedSchedulerTime})`,
-          Name: scheduleName,
-          Target: {
-            Arn: this.props.scheduleForwarderArn,
-            RoleArn: this.props.schedulerRoleArn,
-            Input: JSON.stringify(schedulerForwardEvent),
-            RetryPolicy: {
-              // send to the DLQ if 14 minutes have passed without forwarding the event.
-              MaximumEventAgeInSeconds: 14 * 60,
+      try {
+        await this.props.scheduler.send(
+          new CreateScheduleCommand({
+            GroupName: this.props.schedulerGroup,
+            FlexibleTimeWindow: { Mode: FlexibleTimeWindowMode.OFF },
+            ScheduleExpression: `at(${formattedSchedulerTime})`,
+            Name: scheduleName,
+            Target: {
+              Arn: this.props.scheduleForwarderArn,
+              RoleArn: this.props.schedulerRoleArn,
+              Input: JSON.stringify(schedulerForwardEvent),
+              RetryPolicy: {
+                // send to the DLQ if 14 minutes have passed without forwarding the event.
+                MaximumEventAgeInSeconds: 14 * 60,
+              },
+              DeadLetterConfig: {
+                // TODO: handle messages in the DLQ - https://github.com/functionless/eventual/issues/39
+                Arn: this.props.schedulerDlqArn,
+              },
             },
-            DeadLetterConfig: {
-              // TODO: handle messages in the DLQ - https://github.com/functionless/eventual/issues/39
-              Arn: this.props.schedulerDlqArn,
-            },
-          },
-        })
-      );
+          })
+        );
+      } catch (err) {
+        // if the schedule already exists, assume it because we created it already.
+        if (!(err instanceof ConflictException)) {
+          throw err;
+        }
+      }
     } else {
       /**
        * When the sleep is less than 15 minutes, send the timer directly to the
