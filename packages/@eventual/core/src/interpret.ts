@@ -65,81 +65,58 @@ export function interpret<Return>(
     return seq++;
   }
 
-  let historyIndex = 0;
-  function peek() {
-    return history[historyIndex];
-  }
-  function pop() {
-    return history[historyIndex++];
-  }
-  function takeWhile<T>(max: number, guard: (a: any) => a is T): T[] {
-    const items: T[] = [];
-    while (items.length < max && guard(peek())) {
-      items.push(pop() as T);
-    }
-    return items;
-  }
-  function peekForward<T>(guard: (a: any) => a is T): boolean {
-    for (let i = historyIndex; i < history.length; i++) {
-      if (guard(history[i])) {
-        return true;
-      }
-    }
-    return false;
-  }
+  let emittedEvents = history.filter(isScheduledEvent);
+  let resultEvents = history.filter(
+    (e): e is CompletedEvent | FailedEvent =>
+      isCompletedEvent(e) || isFailedEvent(e)
+  );
 
-  let event;
-  // run the event loop one event at a time, ensuring deterministic execution.
-  while ((event = peek()) && peekForward(isScheduledEvent)) {
-    pop();
+  /**
+   * Try to advance machine
+   * While we have calls and emitted events, drain the queues.
+   * When we run out of emitted events or calls, try to apply the next result event
+   * advance run again
+   * any calls at the event of all result commands and advances, return
+   */
+  let calls: CommandCall[] = [];
+  let newCalls = [];
+  // iterate until we are no longer finding commands or no longer have completion events to apply
+  while (
+    (newCalls = advance(true) ?? []).length > 0 ||
+    resultEvents.length > 0
+  ) {
+    // Match and filter found commands against the given scheduled events.
+    // scheduled events must be in order or not present.
+    while (newCalls && newCalls.length > 0 && emittedEvents.length > 0) {
+      const call = newCalls.shift()!;
+      const event = emittedEvents.shift()!;
 
-    if (isCompletedEvent(event) || isFailedEvent(event)) {
-      commitCompletionEvent(event, true);
-    } else if (isScheduledEvent(event)) {
-      const calls = advance(true) ?? [];
-      const events = [event, ...takeWhile(calls.length - 1, isScheduledEvent)];
-      if (events.length !== calls.length) {
+      if (!isCorresponding(event, call)) {
         throw new DeterminismError(
-          `Workflow returned ${calls.length} calls however there are ${
-            events.length
-          } events for events: ${events.map((c) => c.seq).join(",")}.`
+          `Workflow returned ${JSON.stringify(call)}, but ${JSON.stringify(
+            event
+          )} was expected at ${event?.seq}`
         );
       }
-      for (let i = 0; i < calls.length; i++) {
-        const event = events[i]!;
-        const call = calls[i]!;
-
-        if (!isCorresponding(event, call)) {
-          throw new DeterminismError();
-        }
-      }
     }
+
+    // if there are result events (compelted or failed), apply it before the next run
+    if (resultEvents.length > 0) {
+      const resultEvent = resultEvents.shift()!;
+
+      commitCompletionEvent(resultEvent, true);
+    }
+
+    // any calls not matched against historical schedule events will be returned to the caller.
+    calls.push(...newCalls);
   }
 
-  const calls = [];
-
-  // run out the remaining completion events and collect any scheduled activity calls
-  // we do this because events come in chunks of Scheduled/Completed
-  // [...scheduled, ...completed, ...scheduled]
-  // if the history's tail contains completed events, e.g. [...scheduled, ...completed]
-  // then we need to apply the completions, resume chains and schedule any produced activity calls
-  while ((event = pop())) {
-    if (isScheduledEvent(event)) {
-      // it should be impossible to receive a scheduled event
-      // -> because the tail of history can only contain completion events
-      // -> scheduled events stored in history should correspond to activity calls
-      //    -> or else a determinism error would have been thrown
-      throw new Error("illegal state");
-    }
-    commitCompletionEvent(event, false);
-
-    calls.push(...(advance(false) ?? []));
-  }
-
-  let newCommands;
-  while ((newCommands = advance(false))) {
-    // continue advancing the program until all possible progress has been made
-    calls.push(...newCommands);
+  // if the history shows events have been scheduled, but we did not find them when running the workflow,
+  // something is wrong, fail
+  if (emittedEvents.length > 0) {
+    throw new DeterminismError(
+      "Work did not return expected commands: " + JSON.stringify(emittedEvents)
+    );
   }
 
   const result = tryResolveResult(mainChain);
