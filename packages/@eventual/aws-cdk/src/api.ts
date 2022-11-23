@@ -116,13 +116,24 @@ export class EventualApi extends Construct {
           },
         },
       ],
-      "/workflows/{name}/executions/{executionId}": [
+      "/workflows/{name}/executions/{executionId}/history": [
         {
           methods: [HttpMethod.GET],
           entry: "executions/history.js",
           config: (fn) => {
             props.workflows.forEach((w) => {
               w.table.grantReadData(fn);
+            });
+          },
+        },
+      ],
+      "/workflows/{name}/executions/{executionId}/workflow-history": [
+        {
+          methods: [HttpMethod.GET],
+          entry: "executions/workflow-history.js",
+          config: (fn) => {
+            props.workflows.forEach((w) => {
+              w.history.grantRead(fn);
             });
           },
         },

@@ -2,24 +2,17 @@ import fs from "fs/promises";
 import { constants } from "fs";
 import path from "path";
 import esbuild from "esbuild";
-import { eventualESPlugin } from "./esbuild-plugin";
+import { eventualESPlugin } from "./esbuild-plugin.js";
 import { esbuildPluginAliasPath } from "esbuild-plugin-alias-path";
+import { resolve } from "import-meta-resolve";
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
-
-async function main() {
-  const [, , outDir, entry] = process.argv;
-
-  if (!(outDir && entry)) {
-    throw new Error(`Usage: eventual-build <out-dir> <entry-point>`);
-  }
-
+export async function bundle(
+  outDir: string,
+  entry: string
+): Promise<[workflow: string, activityWorker: string]> {
   await prepareOutDir(outDir);
 
-  await Promise.all([
+  return await Promise.all([
     esbuild
       .build({
         mainFields: ["module", "main"],
@@ -40,7 +33,7 @@ async function main() {
         bundle: true,
         entryPoints: [
           path.join(
-            require.resolve("@eventual/aws-runtime"),
+            await import.meta.resolve!("@eventual/aws-runtime"),
             "../../esm/entry/orchestrator.js"
           ),
         ],
@@ -48,7 +41,10 @@ async function main() {
         banner: esmPolyfillRequireBanner(),
         outfile: path.join(outDir, "orchestrator/index.mjs"),
       })
-      .then(writeEsBuildMetafile(path.join(outDir, "orchestrator/meta.json"))),
+      .then((result) => {
+        writeEsBuildMetafile(path.join(outDir, "orchestrator/meta.json"));
+        return result.outputFiles![0]!.path;
+      }),
     esbuild
       .build({
         mainFields: ["module", "main"],
@@ -68,16 +64,17 @@ async function main() {
         bundle: true,
         entryPoints: [
           path.join(
-            require.resolve("@eventual/aws-runtime"),
+            await resolve("@eventual/aws-runtime", import.meta.url),
             "../../esm/entry/activity-worker.js"
           ),
         ],
         banner: esmPolyfillRequireBanner(),
         outfile: path.join(outDir, "activity-worker/index.mjs"),
       })
-      .then(
-        writeEsBuildMetafile(path.join(outDir, "activity-worker/meta.json"))
-      ),
+      .then((result) => {
+        writeEsBuildMetafile(path.join(outDir, "activity-worker/meta.json"));
+        return result.outputFiles![0]!.path;
+      }),
   ]);
 }
 

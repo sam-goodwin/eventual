@@ -1,9 +1,9 @@
 {
   "extends": "../../../tsconfig-base",
   "compilerOptions": {
-    "module": "ESNext",
+    "module": "esnext",
     "target": "esnext",
-    "moduleResolution": "NodeNext",
+    "moduleResolution": "nodenext",
     "outDir": "lib/esm",
     "declaration": true,
     "inlineSourceMap": true,
@@ -13,5 +13,9 @@
   },
   "include": ["src"],
   "exclude": ["lib", "node_modules"],
-  "references": [{ "path": "../core" }, { "path": "../aws-runtime" }]
+  "references": [
+    { "path": "../core" },
+    { "path": "../aws-runtime" },
+    { "path": "../compiler" }
+  ]
 }

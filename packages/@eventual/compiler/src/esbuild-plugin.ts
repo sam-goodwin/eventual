@@ -13,7 +13,7 @@ import {
   TsType,
 } from "@swc/core";
 import path from "path";
-import Visitor from "@swc/core/Visitor";
+import { Visitor } from "@swc/core/Visitor.js";
 
 export const eventualESPlugin: esBuild.Plugin = {
   name: "eventual",

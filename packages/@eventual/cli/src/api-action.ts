@@ -4,6 +4,7 @@ import { Arguments } from "yargs";
 import { apiKy } from "./api-ky.js";
 import { styledConsole } from "./styled-console.js";
 import type { KyInstance } from "./types.js";
+import util from "util";
 
 export type ApiAction<T> = (
   spinner: Ora,
@@ -28,7 +29,7 @@ export const apiAction =
           spinner.clear();
           styledConsole.error(await e.response.text());
         } else {
-          styledConsole.error(e);
+          styledConsole.error(util.inspect(e));
         }
       }
       spinner.fail(e.message);

@@ -21,7 +21,7 @@ export const history = (yargs: Argv) =>
     apiAction(async (spinner, ky, { workflow, execution }) => {
       spinner.start("Getting execution history");
       const events = await ky
-        .get(`workflows/${workflow}/executions/${execution}`)
+        .get(`workflows/${workflow}/executions/${execution}/history`)
         .json();
       spinner.succeed();
       console.log(events);

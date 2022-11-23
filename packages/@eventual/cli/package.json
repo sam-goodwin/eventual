@@ -52,6 +52,7 @@
     "@aws-sdk/signature-v4": "^3.212.0",
     "@eventual/aws-runtime": "workspace:^",
     "@eventual/core": "workspace:^",
+    "@eventual/compiler": "workspace:^",
     "chalk": "^5.1.2",
     "commander": "^9.4.1",
     "get-stdin": "^9.0.0",

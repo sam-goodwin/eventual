@@ -6,6 +6,7 @@
   "bin": {
     "eventual-bundle": "./bin/eventual-bundle.js"
   },
+  "type": "module",
   "files": [
     "bin",
     "lib"
@@ -17,7 +18,8 @@
     "@eventual/aws-runtime": "workspace:^",
     "@swc/core": "^1.2.245",
     "esbuild": "^0.15.14",
-    "esbuild-plugin-alias-path": "^1.1.1"
+    "esbuild-plugin-alias-path": "^1.1.1",
+    "import-meta-resolve": "^2.1.0"
   },
   "devDependencies": {
     "@types/jest": "^29",
