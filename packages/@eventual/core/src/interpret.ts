@@ -13,8 +13,9 @@ import {
   EventualScheduledEvent,
   isActivityCompleted,
   isActivityScheduled,
-  isEventualResultEvent,
-  isEventualScheduledEvent,
+  isCompletedEvent,
+  isFailedEvent,
+  isScheduledEvent,
   isSleepCompleted,
   isSleepScheduled,
 } from "./events.js";
@@ -88,17 +89,14 @@ export function interpret<Return>(
 
   let event;
   // run the event loop one event at a time, ensuring deterministic execution.
-  while ((event = peek()) && peekForward(isEventualScheduledEvent)) {
+  while ((event = peek()) && peekForward(isScheduledEvent)) {
     pop();
 
-    if (isEventualResultEvent(event)) {
+    if (isCompletedEvent(event) || isFailedEvent(event)) {
       commitCompletionEvent(event, true);
-    } else if (isEventualScheduledEvent(event)) {
+    } else if (isScheduledEvent(event)) {
       const calls = advance(true) ?? [];
-      const events = [
-        event,
-        ...takeWhile(calls.length - 1, isEventualScheduledEvent),
-      ];
+      const events = [event, ...takeWhile(calls.length - 1, isScheduledEvent)];
       if (events.length !== calls.length) {
         throw new DeterminismError(
           `Workflow returned ${calls.length} calls however there are ${
@@ -125,7 +123,7 @@ export function interpret<Return>(
   // if the history's tail contains completed events, e.g. [...scheduled, ...completed]
   // then we need to apply the completions, resume chains and schedule any produced activity calls
   while ((event = pop())) {
-    if (isEventualScheduledEvent(event)) {
+    if (isScheduledEvent(event)) {
       // it should be impossible to receive a scheduled event
       // -> because the tail of history can only contain completion events
       // -> scheduled events stored in history should correspond to activity calls

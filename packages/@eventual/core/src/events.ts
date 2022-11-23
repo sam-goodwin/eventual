@@ -145,27 +145,29 @@ export function isSleepCompleted(
   return event.type === WorkflowEventType.SleepCompleted;
 }
 
-export function isEventualResultEvent(
+type ScheduledEvent = SleepScheduled | ActivityScheduled;
+type CompletedEvent = SleepCompleted | ActivityCompleted;
+type FailedEvent = ActivityFailed;
+
+export function isScheduledEvent(
   event: WorkflowEvent
-): event is EventualResultEvent {
-  return (
-    isSleepCompleted(event) ||
-    isActivityCompleted(event) ||
-    isActivityFailed(event)
-  );
+): event is ScheduledEvent {
+  return isActivityScheduled(event) || isSleepScheduled(event);
 }
 
-export function isEventualScheduledEvent(
+export function isCompletedEvent(
   event: WorkflowEvent
-): event is EventualScheduledEvent {
-  return isActivityScheduled(event) || isSleepScheduled(event);
+): event is CompletedEvent {
+  return isActivityCompleted(event) || isSleepCompleted(event);
+}
+
+export function isFailedEvent(event: WorkflowEvent): event is FailedEvent {
+  return isFailedEvent(event);
 }
 
 export function isEventualEvent(event: WorkflowEvent): event is EventualEvent {
   return (
-    isEventualResultEvent(event) ||
-    isActivityScheduled(event) ||
-    isSleepScheduled(event)
+    isScheduledEvent(event) || isFailedEvent(event) || isCompletedEvent(event)
   );
 }
 
