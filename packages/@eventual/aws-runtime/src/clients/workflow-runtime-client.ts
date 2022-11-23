@@ -28,10 +28,10 @@ import {
 import {
   createExecutionFromResult,
   ExecutionRecord,
-  SQSWorkflowTaskMessage,
+  WorkflowClient,
 } from "./workflow-client.js";
 import { ActivityWorkerRequest } from "../activity.js";
-import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { SQSClient } from "@aws-sdk/client-sqs";
 
 export interface WorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;
@@ -41,7 +41,7 @@ export interface WorkflowRuntimeClientProps {
   readonly sqs: SQSClient;
   readonly executionHistoryBucket: string;
   readonly tableName: string;
-  readonly workflowQueueUrl: string;
+  readonly workflowClient: WorkflowClient;
 }
 
 export interface CompleteExecutionRequest {
@@ -120,7 +120,6 @@ export class WorkflowRuntimeClient {
     const record = executionResult.Attributes as unknown as ExecutionRecord;
     if (record.parentExecutionId) {
       await this.completeChildExecution(
-        executionId,
         record.parentExecutionId,
         record.seq,
         result
@@ -164,7 +163,6 @@ export class WorkflowRuntimeClient {
     const record = executionResult.Attributes as unknown as ExecutionRecord;
     if (record.parentExecutionId) {
       await this.completeChildExecution(
-        executionId,
         record.parentExecutionId,
         record.seq,
         error,
@@ -178,40 +176,24 @@ export class WorkflowRuntimeClient {
   }
 
   private async completeChildExecution(
-    executionId: string,
     parentExecutionId: AttributeValue.SMember,
     seq: AttributeValue.NMember,
     ...args: [result: any] | [error: string, message: string]
   ) {
-    const workflowTask: SQSWorkflowTaskMessage = {
-      task: {
-        executionId: parentExecutionId.S,
-        events: [
-          {
-            seq: parseInt(seq.N, 10),
-            timestamp: new Date().toISOString(),
-            ...(args.length === 1
-              ? {
-                  type: WorkflowEventType.ChildWorkflowCompleted,
-                  result: args[0],
-                }
-              : {
-                  type: WorkflowEventType.ChildWorkflowFailed,
-                  error: args[0],
-                  message: args[1],
-                }),
-          },
-        ],
-      },
-    };
-    await this.props.sqs.send(
-      new SendMessageCommand({
-        QueueUrl: this.props.workflowQueueUrl,
-        MessageBody: JSON.stringify(workflowTask),
-        MessageGroupId: parentExecutionId.S,
-        MessageDeduplicationId: `${executionId}/complete`,
-      })
-    );
+    await this.props.workflowClient.submitWorkflowTask(parentExecutionId.S, {
+      seq: parseInt(seq.N, 10),
+      timestamp: new Date().toISOString(),
+      ...(args.length === 1
+        ? {
+            type: WorkflowEventType.ChildWorkflowCompleted,
+            result: args[0],
+          }
+        : {
+            type: WorkflowEventType.ChildWorkflowFailed,
+            error: args[0],
+            message: args[1],
+          }),
+    });
   }
 
   async getExecutions(): Promise<Execution[]> {
