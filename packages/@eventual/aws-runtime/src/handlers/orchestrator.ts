@@ -8,6 +8,7 @@ import {
   FailedExecution,
   HistoryStateEvent,
   isCompleteExecution,
+  isExecutionId,
   isFailed,
   isResolved,
   isResult,
@@ -17,6 +18,7 @@ import {
   isSleepForCommand,
   isSleepUntilCommand,
   lookupWorkflow,
+  parseWorkflowName,
   progressWorkflow,
   Workflow,
   WorkflowCompleted,
@@ -39,7 +41,6 @@ import {
   createWorkflowRuntimeClient,
 } from "../clients/index.js";
 import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
-import { isExecutionId, parseWorkflowName } from "../execution-id.js";
 import { logger, loggerMiddlewares } from "../logger.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import { timed, timedSync } from "../metrics/utils.js";
@@ -64,65 +65,71 @@ export function orchestrator(): SQSHandler {
     // batch by execution id
     const eventsByExecutionId = groupBy(
       event.Records,
-      (r) => r.attributes.MessageGroupId!
+      (r) => r.attributes.MessageGroupId!,
+      sqsRecordToEvents
     );
 
-    logger.info(
-      "Found execution ids: " + Object.keys(eventsByExecutionId).join(", ")
-    );
-
-    // for each execution id
-    const results = await promiseAllSettledPartitioned(
-      Object.entries(eventsByExecutionId),
-      async ([executionId, records]) => {
-        if (!isExecutionId(executionId)) {
-          throw new Error(`invalid ExecutionID: '${executionId}'`);
-        }
-        const workflowName = parseWorkflowName(executionId);
-        if (workflowName === undefined) {
-          throw new Error(`execution ID '${executionId}' does not exist`);
-        }
-        const workflow = lookupWorkflow(workflowName);
-        if (workflow === undefined) {
-          throw new Error(`no such workflow with name '${workflowName}'`);
-        }
-        // TODO: get workflow from execution id
-        return orchestrateExecution(workflow, executionId, records);
-      }
-    );
-
-    logger.debug(
-      "Executions succeeded: " +
-        results.fulfilled.map(([[executionId]]) => executionId).join(",")
-    );
-
-    if (results.rejected.length > 0) {
-      logger.error(
-        "Executions failed: \n" +
-          results.rejected
-            .map(([[executionId], error]) => `${executionId}: ${error}`)
-            .join("\n")
-      );
-    }
-
-    const failedMessageIds = results.rejected.flatMap(
-      ([[, records]]) => records.map((r) => r.messageId) ?? []
-    );
-
-    return {
-      batchItemFailures: failedMessageIds.map((r) => ({
-        itemIdentifier: r,
-      })),
-    };
+    orchestrate(eventsByExecutionId);
   }).use(loggerMiddlewares);
+}
+
+async function orchestrate(
+  eventsByExecutionId: Record<string, HistoryStateEvent[]>
+) {
+  logger.info(
+    "Found execution ids: " + Object.keys(eventsByExecutionId).join(", ")
+  );
+
+  // for each execution id
+  const results = await promiseAllSettledPartitioned(
+    Object.entries(eventsByExecutionId),
+    async ([executionId, records]) => {
+      if (!isExecutionId(executionId)) {
+        throw new Error(`invalid ExecutionID: '${executionId}'`);
+      }
+      const workflowName = parseWorkflowName(executionId);
+      if (workflowName === undefined) {
+        throw new Error(`execution ID '${executionId}' does not exist`);
+      }
+      const workflow = lookupWorkflow(workflowName);
+      if (workflow === undefined) {
+        throw new Error(`no such workflow with name '${workflowName}'`);
+      }
+      // TODO: get workflow from execution id
+      return orchestrateExecution(workflow, executionId, records);
+    }
+  );
+
+  logger.debug(
+    "Executions succeeded: " +
+      results.fulfilled.map(([[executionId]]) => executionId).join(",")
+  );
+
+  if (results.rejected.length > 0) {
+    logger.error(
+      "Executions failed: \n" +
+        results.rejected
+          .map(([[executionId], error]) => `${executionId}: ${error}`)
+          .join("\n")
+    );
+  }
+
+  const failedMessageIds = results.rejected.flatMap(
+    ([[, records]]) => records.map((r) => r.messageId) ?? []
+  );
+
+  return {
+    batchItemFailures: failedMessageIds.map((r) => ({
+      itemIdentifier: r,
+    })),
+  };
 }
 
 async function orchestrateExecution(
   workflow: Workflow,
   executionId: string,
-  records: SQSRecord[]
+  events: HistoryStateEvent[]
 ) {
-  console.log(executionId, records);
   const executionLogger = logger.createChild({
     persistentLogAttributes: { executionId },
   });
@@ -132,13 +139,12 @@ async function orchestrateExecution(
   metrics.setDimensions({
     [MetricsCommon.WorkflowNameDimension]: workflow.name,
   });
-  const events = sqsRecordsToEvents(records);
   const start = new Date();
   try {
     // number of events that came from the workflow task
     metrics.setProperty(OrchestratorMetrics.TaskEvents, events.length);
     // number of workflow tasks that are being processed in the batch (max: 10)
-    metrics.setProperty(OrchestratorMetrics.AggregatedTasks, records.length);
+    // metrics.setProperty(OrchestratorMetrics.AggregatedTasks, records.length);
 
     /** Events to be written to the history table at the end of the workflow task */
     const newEvents: WorkflowEvent[] = [];
@@ -150,9 +156,7 @@ async function orchestrateExecution(
     );
     // length of time the oldest SQS record was in the queue.
     const maxTaskAge = Math.max(
-      ...records.map(
-        (r) => new Date().getTime() - Number(r.attributes.SentTimestamp)
-      )
+      ...events.map((r) => new Date().getTime() - Number(r.timestamp))
     );
     metrics.putMetric(
       OrchestratorMetrics.MaxTaskAge,
@@ -413,11 +417,7 @@ async function orchestrateExecution(
   }
 }
 
-function sqsRecordsToEvents(sqsRecords: SQSRecord[]) {
-  return sqsRecords.flatMap(sqsRecordToEvents);
-}
-
-function sqsRecordToEvents(sqsRecord: SQSRecord) {
+function sqsRecordToEvents(sqsRecord: SQSRecord): HistoryStateEvent[] {
   const message = JSON.parse(sqsRecord.body) as SQSWorkflowTaskMessage;
 
   return message.task.events;
@@ -441,15 +441,16 @@ function logEventMetrics(
   }
 }
 
-function groupBy<T>(
+function groupBy<T, U = T>(
   items: T[],
-  extract: (item: T) => string
-): Record<string, T[]> {
-  return items.reduce((obj: Record<string, T[]>, r) => {
+  extract: (item: T) => string,
+  map?: (item: T) => U[]
+): Record<string, U[]> {
+  return items.reduce((obj: Record<string, U[]>, r) => {
     const id = extract(r);
     return {
       ...obj,
-      [id]: [...(obj[id] || []), r],
+      [id]: [...(obj[id] || []), ...(map ? map(r) : [r as any as U])],
     };
   }, {});
 }
