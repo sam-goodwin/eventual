@@ -72,6 +72,7 @@ const dynamo = memoize(() =>
 );
 
 const createAccount = activity("createAccount", async (accountId: string) => {
+  console.log("processing", accountId);
   await dynamo().send(
     new PutCommand({
       TableName,

@@ -84,11 +84,11 @@ export function workflow<F extends (input?: any) => Promise<any> | Program>(
   name: string,
   definition: F
 ): Workflow<F> {
-  const workflow: Workflow<F> = ((...args: any[]) =>
+  const workflow: Workflow<F> = ((input?: any) =>
     registerActivity({
       [EventualSymbol]: EventualKind.WorkflowCall,
       name,
-      args,
+      input,
     })) as any;
 
   workflow.start = async function (..._args: Parameters<F>) {
@@ -109,8 +109,9 @@ export function isWorkflowCall<T>(a: Eventual<T>): a is WorkflowCall<T> {
 export interface WorkflowCall<T = any> {
   [EventualSymbol]: EventualKind.WorkflowCall;
   name: string;
-  args: any[];
+  input: any;
   result?: Result<T>;
+  seq?: number;
 }
 
 export interface ProgressWorkflowResult extends WorkflowResult {
@@ -121,7 +122,7 @@ export interface ProgressWorkflowResult extends WorkflowResult {
  * Advance a workflow using previous history, new events, and a program.
  */
 export function progressWorkflow(
-  program: (...args: any[]) => Program<any>,
+  program: Workflow,
   historyEvents: HistoryStateEvents[],
   taskEvents: HistoryStateEvents[],
   workflowContext: WorkflowContext,
@@ -153,7 +154,10 @@ export function progressWorkflow(
   // execute workflow
   const interpretEvents = inputEvents.filter(isHistoryEvent);
   return {
-    ...interpret(program(startEvent.input, context), interpretEvents),
+    ...interpret(
+      program.definition(startEvent.input, context),
+      interpretEvents
+    ),
     history: inputEvents,
   };
 }

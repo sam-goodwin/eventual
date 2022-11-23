@@ -27,7 +27,7 @@ import {
 import { createChain, isChain, Chain } from "./chain.js";
 import { assertNever } from "./util.js";
 import { Command } from "./command.js";
-import { isWorkflowCall } from "./workflow.js";
+import { isWorkflowCall, WorkflowCall } from "./workflow.js";
 
 export interface WorkflowResult<T = any> {
   /**
@@ -51,7 +51,7 @@ export function interpret<Return>(
   program: Program<Return>,
   history: HistoryEvent[]
 ): WorkflowResult<Awaited<Return>> {
-  const callTable: Record<number, ActivityCall> = {};
+  const callTable: Record<number, ActivityCall | WorkflowCall> = {};
   const mainChain = createChain(program);
   const activeChains = new Set([mainChain]);
 
@@ -138,15 +138,24 @@ export function interpret<Return>(
   return {
     result,
     commands: calls.map((call) => ({
-      kind: call[EventualSymbol],
-      args: call.args,
+      ...(isActivityCall(call)
+        ? {
+            kind: call[EventualSymbol],
+            args: call.args,
+          }
+        : {
+            kind: call[EventualSymbol],
+            input: call.input,
+          }),
       name: call.name,
       seq: call.seq!,
     })),
   };
 
-  function advance(isReplay: boolean): ActivityCall[] | undefined {
-    let calls: ActivityCall[] | undefined;
+  function advance(
+    isReplay: boolean
+  ): (ActivityCall | WorkflowCall)[] | undefined {
+    let calls: (ActivityCall | WorkflowCall)[] | undefined;
     let madeProgress: boolean;
     do {
       madeProgress = false;
@@ -180,7 +189,7 @@ export function interpret<Return>(
   function tryAdvanceChain(
     chain: Chain,
     isReplay: boolean
-  ): ActivityCall[] | undefined {
+  ): (ActivityCall | WorkflowCall)[] | undefined {
     if (chain.awaiting === undefined) {
       // this is the first time the chain is running, so wake it with an undefined input
       return advanceChain(chain, undefined);
@@ -220,7 +229,7 @@ export function interpret<Return>(
     function advanceChain(
       chain: Chain,
       result: Resolved | Failed | undefined
-    ): ActivityCall[] {
+    ): (ActivityCall | WorkflowCall)[] {
       try {
         const iterResult =
           result === undefined || isResolved(result)
@@ -248,12 +257,13 @@ export function interpret<Return>(
           chain.awaiting = iterResult.value;
         }
       } catch (err) {
+        console.error(chain, err);
         activeChains.delete(chain);
         chain.result = Result.failed(err);
       }
 
       return collectActivities().flatMap((activity) => {
-        if (isActivityCall(activity)) {
+        if (isActivityCall(activity) || isWorkflowCall(activity)) {
           return [activity];
         } else if (isChain(activity)) {
           activeChains.add(activity);
@@ -317,7 +327,10 @@ export function interpret<Return>(
   }
 }
 
-function isCorresponding(event: ScheduledEvent, call: ActivityCall) {
+function isCorresponding(
+  event: ScheduledEvent,
+  call: ActivityCall | WorkflowCall
+) {
   return (
     event.seq === call.seq && event.name === call.name
     // TODO: also validate arguments

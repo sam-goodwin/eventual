@@ -62,12 +62,7 @@ export class WorkflowClient {
     input,
     parentId,
   }: StartWorkflowRequest) {
-    if (executionName.includes("/")) {
-      throw new Error(`name cannot contains reserved character '/'`);
-    }
-    // TODO: validate workflowName
-
-    const executionId = `execution_${executionName}`;
+    const executionId = executionName;
     console.log("execution input:", input);
 
     await this.props.dynamo.send(

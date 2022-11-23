@@ -119,7 +119,7 @@ export class Service extends Construct implements IGrantable {
             "--conditions": "module,import,require",
           },
           metafile: true,
-          externalModules: ["@aws-sdk", "aws-sdk"],
+          externalModules: ["aws-sdk"],
         },
         environment: {
           [ENV_NAMES.TABLE_NAME]: this.table.tableName,
