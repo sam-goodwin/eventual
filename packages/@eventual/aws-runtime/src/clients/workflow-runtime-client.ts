@@ -167,17 +167,6 @@ export class WorkflowRuntimeClient {
 
   private async completeChildExecution(
     executionId: ChildExecutionId,
-    result: any
-  ): Promise<void>;
-
-  private async completeChildExecution(
-    executionId: ChildExecutionId,
-    error: string,
-    message: string
-  ): Promise<void>;
-
-  private async completeChildExecution(
-    executionId: ChildExecutionId,
     ...args: [result: any] | [error: string, message: string]
   ) {
     const { parentExecutionId, seq } = parseChildExecutionId(executionId);

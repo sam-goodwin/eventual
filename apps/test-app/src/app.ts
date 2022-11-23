@@ -3,7 +3,7 @@ import * as eventual from "@eventual/aws-cdk";
 
 const app = new App();
 
-const stack = new Stack(app, "test-eventual");
+const stack = new Stack(app, "test-eventual-sam");
 
 const accountTable = new aws_dynamodb.Table(stack, "Accounts", {
   partitionKey: {

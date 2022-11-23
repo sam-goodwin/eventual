@@ -33,18 +33,22 @@ interface OpenAccountRequest {
 
 type RollbackHandler = () => Promise<void>;
 
-export default workflow(
-  "open-account",
+export default workflow("open-account", async (request: OpenAccountRequest) => {
+  try {
+    await createAccount(request.accountId);
+  } catch (err) {
+    console.error(err);
+    throw err;
+  }
+
+  await associateAccountInformation(request);
+});
+
+// sub-workflow for testing purposes
+export const associateAccountInformation = workflow(
+  "associate",
   async ({ accountId, address, email, bankDetails }: OpenAccountRequest) => {
     const rollbacks: RollbackHandler[] = [];
-
-    try {
-      await createAccount(accountId);
-    } catch (err) {
-      console.error(err);
-      throw err;
-    }
-
     try {
       await addAddress(accountId, address);
       rollbacks.push(async () => removeAddress(accountId));
