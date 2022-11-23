@@ -122,6 +122,7 @@ async function orchestrateExecution(
   executionId: string,
   records: SQSRecord[]
 ) {
+  console.log(executionId, records);
   const executionLogger = logger.createChild({
     persistentLogAttributes: { executionId },
   });
