@@ -99,6 +99,12 @@ export class Workflow extends Construct implements IGrantable {
    * support arbitrary length events at a sub minute accuracy.
    */
   public readonly scheduleForwarder: IFunction;
+  /**
+   * A common Dead Letter Queue to handle failures from various places.
+   *
+   * Timers - When the EventBridge scheduler fails to invoke the Schedule Forwarder Lambda.
+   */
+  public readonly dlq: Queue;
 
   readonly grantPrincipal: IPrincipal;
 
@@ -198,28 +204,28 @@ export class Workflow extends Construct implements IGrantable {
 
     this.schedulerGroup = new CfnScheduleGroup(this, "schedulerGroup");
 
+    const scheduleGroupWildCardArn = Stack.of(this).formatArn({
+      service: "scheduler",
+      resource: "schedule",
+      arnFormat: ArnFormat.SLASH_RESOURCE_NAME,
+      resourceName: `${this.schedulerGroup.ref}/*`,
+    });
+
     const schedulerRole = new Role(this, "schedulerRole", {
       assumedBy: new ServicePrincipal("scheduler.amazonaws.com", {
         conditions: {
-          ArnEquals: {
-            "aws:SourceArn": Stack.of(this).formatArn({
-              service: "scheduler",
-              resource: "schedule",
-              arnFormat: ArnFormat.SLASH_RESOURCE_NAME,
-              resourceName: `${this.schedulerGroup.ref}/*`,
-            }),
-          },
+          ArnEquals: scheduleGroupWildCardArn,
         },
       }),
     });
 
-    const dlq = new Queue(this, "dlq");
+    this.dlq = new Queue(this, "dlq");
 
-    dlq.grantSendMessages(schedulerRole);
+    this.dlq.grantSendMessages(schedulerRole);
 
     this.timerQueue = new Queue(this, "timerQueue");
 
-    // TODO: handle failures to a DLQ
+    // TODO: handle failures to a DLQ - https://github.com/functionless/eventual/issues/40
     this.scheduleForwarder = new NodejsFunction(this, "scheduleForwarder", {
       entry: path.join(
         require.resolve("@eventual/aws-runtime"),
@@ -239,7 +245,7 @@ export class Workflow extends Construct implements IGrantable {
         [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
         [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
         [ENV_NAMES.SCHEDULER_ROLE_ARN]: schedulerRole.roleArn,
-        [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: dlq.queueArn,
+        [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: this.dlq.queueArn,
         [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
         [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
       },
@@ -260,7 +266,7 @@ export class Workflow extends Construct implements IGrantable {
         [ENV_NAMES.TABLE_NAME]: this.table.tableName,
         [ENV_NAMES.WORKFLOW_NAME]: this.workflowName,
         [ENV_NAMES.SCHEDULER_ROLE_ARN]: schedulerRole.roleArn,
-        [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: dlq.queueArn,
+        [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: this.dlq.queueArn,
         [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
         [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
         [ENV_NAMES.SCHEDULE_FORWARDER_ARN]: this.scheduleForwarder.functionArn,
@@ -307,7 +313,7 @@ export class Workflow extends Construct implements IGrantable {
     this.scheduleForwarder.addToRolePolicy(
       new PolicyStatement({
         actions: ["scheduler:DeleteSchedule"],
-        resources: ["*"],
+        resources: [scheduleGroupWildCardArn],
       })
     );
 
@@ -349,7 +355,7 @@ export class Workflow extends Construct implements IGrantable {
     this.orchestrator.addToRolePolicy(
       new PolicyStatement({
         actions: ["scheduler:CreateSchedule"],
-        resources: ["*"],
+        resources: [scheduleGroupWildCardArn],
       })
     );
 

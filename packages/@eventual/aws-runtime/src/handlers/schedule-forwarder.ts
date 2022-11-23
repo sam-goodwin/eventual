@@ -1,4 +1,5 @@
 import { metricScope } from "aws-embedded-metrics";
+import { logger } from "../logger.js";
 import { createTimerClient } from "../clients/create.js";
 import {
   MetricsCommon,
@@ -25,7 +26,11 @@ export const handle = metricScope(
   (metrics) => async (event: ScheduleForwarderRequest) => {
     metrics.setNamespace(MetricsCommon.EventualNamespace);
 
-    console.debug(
+    const executionLogger = logger.createChild({
+      persistentLogAttributes: { executionId: event.timerRequest.executionId },
+    });
+
+    executionLogger.debug(
       "Forwarding request to the timer queue: " +
         JSON.stringify(event.timerRequest)
     );
@@ -33,7 +38,7 @@ export const handle = metricScope(
     const schedulerTimeDelay =
       new Date().getTime() - new Date(event.forwardTime).getTime();
 
-    console.log(
+    executionLogger.info(
       `Timer Time: ${event.untilTime}. Forwarded Time: ${event.forwardTime}. ${schedulerTimeDelay} Millisecond delay from scheduler.`
     );
 
@@ -51,7 +56,7 @@ export const handle = metricScope(
 
     if (event.clearSchedule) {
       console.debug("Deleting the schedule: " + event.scheduleName);
-      timerClient.clearSchedule(event.scheduleName);
+      await timerClient.clearSchedule(event.scheduleName);
     }
   }
 );

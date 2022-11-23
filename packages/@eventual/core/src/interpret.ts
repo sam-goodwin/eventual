@@ -8,9 +8,9 @@ import { isAwaitAll } from "./await-all.js";
 import { isActivityCall } from "./activity-call.js";
 import { DeterminismError } from "./error.js";
 import {
-  EventualEvent,
-  EventualResultEvent,
-  EventualScheduledEvent,
+  CompletedEvent,
+  FailedEvent,
+  HistoryEvent,
   isActivityCompleted,
   isActivityScheduled,
   isCompletedEvent,
@@ -18,6 +18,7 @@ import {
   isScheduledEvent,
   isSleepCompleted,
   isSleepScheduled,
+  ScheduledEvent,
 } from "./events.js";
 import { collectActivities } from "./global.js";
 import {
@@ -53,7 +54,7 @@ export type Program<Return = any> = Generator<Eventual, Return>;
  */
 export function interpret<Return>(
   program: Program<Return>,
-  history: EventualEvent[]
+  history: HistoryEvent[]
 ): WorkflowResult<Awaited<Return>> {
   const callTable: Record<number, CommandCall> = {};
   const mainChain = createChain(program);
@@ -324,7 +325,7 @@ export function interpret<Return>(
   }
 
   function commitCompletionEvent(
-    event: EventualResultEvent,
+    event: CompletedEvent | FailedEvent,
     isReplay: boolean
   ) {
     const call = callTable[event.seq];
@@ -344,7 +345,7 @@ export function interpret<Return>(
   }
 }
 
-function isCorresponding(event: EventualScheduledEvent, call: CommandCall) {
+function isCorresponding(event: ScheduledEvent, call: CommandCall) {
   if (event.seq !== call.seq) {
     return false;
   } else if (isActivityScheduled(event)) {

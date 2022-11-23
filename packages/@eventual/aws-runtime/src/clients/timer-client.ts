@@ -3,6 +3,7 @@ import {
   DeleteScheduleCommand,
   FlexibleTimeWindowMode,
   SchedulerClient,
+  ResourceNotFoundException,
 } from "@aws-sdk/client-scheduler";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { assertNever, getEventId } from "@eventual/core";
@@ -87,13 +88,14 @@ export class TimerClient {
      * The Schedule will trigger a lambda which will re-compute the delay time and
      * create a message in the timerQueue.
      *
-     * The timerQueue ultimately will puck up the event and forward the {@link SleepComplete} to the workflow queue.
+     * The timerQueue ultimately will pick up the event and forward the {@link SleepComplete} to the workflow queue.
      */
     if (sleepDuration > this.props.sleepQueueThresholdMillis) {
       // wait for utilTime - sleepQueueThresholdMillis and then forward the event to
       // the timerQueue
       const scheduleTime =
         untilTime.getTime() - this.props.sleepQueueThresholdMillis;
+      // EventBridge Scheduler only supports HH:MM:SS, strip off the milliseconds and `Z`.
       const formattedSchedulerTime = new Date(scheduleTime)
         .toISOString()
         .split(".")[0];
@@ -110,6 +112,7 @@ export class TimerClient {
 
       await this.props.scheduler.send(
         new CreateScheduleCommand({
+          GroupName: this.props.schedulerGroup,
           FlexibleTimeWindow: { Mode: FlexibleTimeWindowMode.OFF },
           ScheduleExpression: `at(${formattedSchedulerTime})`,
           Name: scheduleName,
@@ -118,15 +121,14 @@ export class TimerClient {
             RoleArn: this.props.schedulerRoleArn,
             Input: JSON.stringify(schedulerForwardEvent),
             RetryPolicy: {
-              // send to the DLQ if 15 minutes have passed without forwarding the event.
+              // send to the DLQ if 14 minutes have passed without forwarding the event.
               MaximumEventAgeInSeconds: 14 * 60,
             },
             DeadLetterConfig: {
-              // TODO: do something with these.
+              // TODO: handle messages in the DLQ - https://github.com/functionless/eventual/issues/39
               Arn: this.props.schedulerDlqArn,
             },
           },
-          GroupName: this.props.schedulerGroup,
         })
       );
     } else {
@@ -148,14 +150,21 @@ export class TimerClient {
    * the timer is transferred from EventBridge to SQS at `props.sleepQueueThresholdMillis`.
    */
   async clearSchedule(scheduleName: string) {
-    await this.props.scheduler.send(
-      new DeleteScheduleCommand({
-        Name: scheduleName,
-        GroupName: this.props.schedulerGroup,
-        // the docs say optional, but an error is thrown when not present.
-        ClientToken: scheduleName,
-      })
-    );
+    try {
+      await this.props.scheduler.send(
+        new DeleteScheduleCommand({
+          Name: scheduleName,
+          GroupName: this.props.schedulerGroup,
+          // the docs say optional, but an error is thrown when not present.
+          ClientToken: scheduleName,
+        })
+      );
+    } catch (err) {
+      // if resource is already deleted, ignore
+      if (!(err instanceof ResourceNotFoundException)) {
+        throw err;
+      }
+    }
   }
 }
 

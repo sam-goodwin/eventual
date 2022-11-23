@@ -3,7 +3,7 @@ import { DeterminismError } from "./error.js";
 import {
   filterEvents,
   HistoryStateEvent,
-  isEventualEvent,
+  isHistoryEvent,
   isSleepCompleted,
   isSleepScheduled,
   isWorkflowStarted,
@@ -67,7 +67,7 @@ export function progressWorkflow(
   };
 
   // execute workflow
-  const interpretEvents = allEvents.filter(isEventualEvent);
+  const interpretEvents = allEvents.filter(isHistoryEvent);
 
   console.debug(JSON.stringify(interpretEvents));
 

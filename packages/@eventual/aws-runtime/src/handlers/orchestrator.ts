@@ -37,6 +37,7 @@ import middy from "@middy/core";
 import { logger, loggerMiddlewares } from "../logger.js";
 import { WorkflowContext } from "@eventual/core";
 import { promiseAllSettledPartitioned } from "../utils.js";
+import { inspect } from "util";
 
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowRuntimeClient = createWorkflowRuntimeClient();
@@ -178,7 +179,7 @@ async function orchestrateExecution(
         );
       } catch (err) {
         console.log("workflow error");
-        console.error(err);
+        executionLogger.error(inspect(err));
         throw err;
       }
     });
@@ -193,7 +194,7 @@ async function orchestrateExecution(
     );
 
     executionLogger.info(`Found ${newCommands.length} new commands.`);
-
+    ``;
     const commandEvents = await timed(
       metrics,
       OrchestratorMetrics.InvokeCommandsDuration,
@@ -346,18 +347,18 @@ async function orchestrateExecution(
             isSleepUntilCommand(command)
           ) {
             // all sleep times are computed using the start time of the WorkflowTaskStarted
-            return await workflowRuntimeClient.scheduleSleep(
+            return workflowRuntimeClient.scheduleSleep(
               executionId,
               command,
               start
             );
           }
-          assertNever(command);
+          return assertNever(command);
         })
       );
     }
   } catch (err) {
-    console.error(`Error on execution ${executionId}: `, err);
+    executionLogger.error(inspect(err));
     throw err;
   } finally {
     await metrics.flush();
