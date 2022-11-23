@@ -6,6 +6,7 @@
     "build": "cdk synth",
     "cdk": "cdk",
     "deploy": "cdk deploy --require-approval=never",
+    "hotswap": "cdk deploy --hotswap",
     "eventual": "eventual",
     "start-my-workflow": "eventual start my-workflow --input '{\"name\": \"world\"}' --tail"
   },

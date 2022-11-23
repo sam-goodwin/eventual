@@ -1,5 +1,7 @@
 import esBuild from "esbuild";
 import {
+  Node,
+  Argument,
   ArrowFunctionExpression,
   AwaitExpression,
   CallExpression,
@@ -10,6 +12,7 @@ import {
   parseFile,
   print,
   Span,
+  StringLiteral,
   TsType,
 } from "@swc/core";
 import path from "path";
@@ -49,29 +52,83 @@ const supportedPromiseFunctions: string[] = [
 ];
 
 class OuterVisitor extends Visitor {
+  readonly inner = new InnerVisitor();
+
   public foundEventual = false;
-  public visitTsType(n: TsType): TsType {
-    return n;
-  }
 
   public visitCallExpression(call: CallExpression): Expression {
-    if (
-      isEventualCallee(call.callee) &&
-      call.arguments.length === 1 &&
-      (call.arguments[0]?.expression.type === "ArrowFunctionExpression" ||
-        call.arguments[0]?.expression.type === "FunctionExpression") &&
-      !call.arguments[0].expression.generator
-    ) {
+    if (isWorkflowCall(call)) {
       this.foundEventual = true;
-      return new InnerVisitor().visitExpression(call.arguments[0].expression);
+
+      // workflow("id", async () => { .. })
+      return {
+        ...call,
+        arguments: [
+          // workflow name, e.g. "id"
+          call.arguments[0],
+          {
+            spread: call.arguments[1].spread,
+            // transform the function into a generator
+            // e.g. async () => { .. } becomes function*() { .. }
+            expression: this.inner.visitWorkflow(call.arguments[1].expression),
+          },
+        ],
+      };
     }
     return super.visitCallExpression(call);
+  }
+
+  public visitTsType(n: TsType): TsType {
+    return n;
   }
 }
 
 export class InnerVisitor extends Visitor {
   public visitTsType(n: TsType): TsType {
     return n;
+  }
+
+  public visitWorkflow(
+    workflow: FunctionExpression | ArrowFunctionExpression
+  ): FunctionExpression {
+    return {
+      type: "FunctionExpression",
+      generator: true,
+      span: workflow.span,
+      async: false,
+      identifier:
+        workflow.type === "FunctionExpression"
+          ? workflow.identifier
+          : undefined,
+      decorators:
+        workflow.type === "FunctionExpression"
+          ? workflow.decorators
+          : undefined,
+      body: workflow.body
+        ? workflow.body.type === "BlockStatement"
+          ? this.visitBlockStatement(workflow.body)
+          : {
+              type: "BlockStatement",
+              span: getSpan(workflow.body),
+              stmts: [
+                {
+                  type: "ReturnStatement",
+                  span: getSpan(workflow.body),
+                  argument: this.visitExpression(workflow.body),
+                },
+              ],
+            }
+        : undefined,
+      params: workflow.params.map((p) =>
+        p.type === "Parameter"
+          ? this.visitParameter(p)
+          : {
+              pat: this.visitPattern(p),
+              span: getSpan(p),
+              type: "Parameter",
+            }
+      ),
+    };
   }
 
   public visitAwaitExpression(awaitExpr: AwaitExpression): Expression {
@@ -93,7 +150,7 @@ export class InnerVisitor extends Visitor {
       if (
         supportedPromiseFunctions.includes(call.callee.property.value as any)
       ) {
-        call.callee.object.value = "Eventual";
+        call.callee.object.value = "$Eventual";
       }
     }
     return super.visitCallExpression(call);
@@ -102,7 +159,7 @@ export class InnerVisitor extends Visitor {
   public visitFunctionExpression(
     funcExpr: FunctionExpression
   ): FunctionExpression {
-    return this.wrapEventual({
+    return this.createChain({
       ...funcExpr,
       async: false,
       generator: true,
@@ -114,10 +171,10 @@ export class InnerVisitor extends Visitor {
   public visitArrowFunctionExpression(
     funcExpr: ArrowFunctionExpression
   ): Expression {
-    return this.wrapEventual(funcExpr);
+    return this.createChain(funcExpr);
   }
 
-  private wrapEventual(
+  private createChain(
     funcExpr: FunctionExpression | ArrowFunctionExpression
   ): CallExpression {
     const call: CallExpression = {
@@ -125,7 +182,7 @@ export class InnerVisitor extends Visitor {
       span: funcExpr.span,
       callee: {
         type: "Identifier",
-        value: "eventual",
+        value: "$eventual",
         optional: false,
         span: funcExpr.span,
       },
@@ -173,8 +230,9 @@ export class InnerVisitor extends Visitor {
   }
 }
 
-function getSpan(expr: Expression): Span {
+function getSpan(expr: Node): Span {
   if ("span" in expr) {
+    // @ts-ignore
     return expr.span;
   } else {
     // this is only true for JSXExpressions which we should not encounter
@@ -182,12 +240,37 @@ function getSpan(expr: Expression): Span {
   }
 }
 
-function isEventualCallee(callee: CallExpression["callee"]) {
+/**
+ * A heuristic for identifying a {@link CallExpression} that is a call
+ * to the eventual.workflow utility:
+ *
+ * 1. must be a function call with exactly 2 arguments
+ * 2. first argument is a string literal
+ * 3. second argument is a FunctionExpression or ArrowFunctionExpression
+ * 4. callee is an identifier `"workflow"` or `<identifier>.workflow`
+ */
+function isWorkflowCall(call: CallExpression): call is CallExpression & {
+  arguments: [
+    Argument & { expression: StringLiteral },
+    Argument & { expression: FunctionExpression | ArrowFunctionExpression }
+  ];
+} {
   return (
-    (callee.type === "Identifier" && callee.value === "eventual") ||
+    isWorkflowCallee(call.callee) &&
+    call.arguments.length === 2 &&
+    call.arguments[0]?.expression.type === "StringLiteral" &&
+    (call.arguments[1]?.expression.type === "ArrowFunctionExpression" ||
+      call.arguments[1]?.expression.type === "FunctionExpression") &&
+    !call.arguments[1].expression.generator
+  );
+}
+
+function isWorkflowCallee(callee: CallExpression["callee"]) {
+  return (
+    (callee.type === "Identifier" && callee.value === "workflow") ||
     (callee.type === "MemberExpression" &&
       callee.property.type === "Identifier" &&
-      callee.property.value === "eventual")
+      callee.property.value === "workflow")
   );
 }
 

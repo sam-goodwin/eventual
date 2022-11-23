@@ -1,56 +1,22 @@
-import { Program } from "./interpret.js";
-import { registerChain, Chain } from "./chain.js";
 import { ActivityCall, isActivityCall } from "./activity-call.js";
-import { AwaitAll } from "./await-all.js";
-import { Context } from "./context.js";
+import type { AwaitAll } from "./await-all.js";
+import { chain, Chain } from "./chain.js";
+import type { Program } from "./interpret.js";
+import { Result } from "./result.js";
 import {
   isSleepForCall,
   isSleepUntilCall,
   SleepForCall,
   SleepUntilCall,
 } from "./sleep-call.js";
-import { Result } from "./result.js";
+import { isWorkflowCall, WorkflowCall } from "./workflow.js";
 
-export type EventualFunction<Result> = (input: any, context: Context) => Result;
-export type ChainFunction<Result> = (...args: any[]) => Result;
-
-export function eventual<F extends EventualFunction<Promise<any>>>(
-  func: F
-): EventualFunction<Program<Awaited<ReturnType<F>>>>;
-
-export function eventual<F extends EventualFunction<Program>>(
-  func: F
-): EventualFunction<Chain<Resolved<ReturnType<F>>>>;
-
-export function eventual<
-  F extends EventualFunction<Program> | EventualFunction<Promise<any>>
->(func: F): F {
-  return ((input: any, context: Context) => {
-    // TODO: validate that the function was transformed
-    const generator = func(input, context) as Program;
-    return registerChain(generator);
-  }) as any;
-}
-
-export function chain<F extends ChainFunction<Promise<any>>>(
-  func: F
-): ChainFunction<Program<Awaited<ReturnType<F>>>>;
-
-export function chain<F extends ChainFunction<Program>>(
-  func: F
-): ChainFunction<Chain<Resolved<ReturnType<F>>>>;
-
-export function chain<F extends (...args: any[]) => any>(func: F): F {
-  return ((...args: any[]) => {
-    const generator = func(...args);
-    return registerChain(generator);
-  }) as any;
-}
-
-type Resolved<T> = T extends Program<infer U>
-  ? Resolved<U>
+export type AwaitedEventual<T> = T extends Promise<infer U>
+  ? Awaited<U>
+  : T extends Program<infer U>
+  ? AwaitedEventual<U>
   : T extends Eventual<infer U>
-  ? Resolved<U>
+  ? AwaitedEventual<U>
   : T;
 
 export const EventualSymbol = Symbol.for("eventual:Eventual");
@@ -66,6 +32,7 @@ export enum EventualKind {
   Chain = 2,
   SleepForCall = 3,
   SleepUntilCall = 4,
+  WorkflowCall = 5,
 }
 
 export function isEventual(a: any): a is Eventual {
@@ -76,16 +43,26 @@ export type Eventual<T = any> =
   | ActivityCall<T>
   | AwaitAll<T extends any[] ? T : never>
   | Chain<T>
+  | WorkflowCall<T>
   | SleepForCall
   | SleepUntilCall;
 
 /**
  * Calls which emit commands.
  */
-export type CommandCall = ActivityCall | SleepForCall | SleepUntilCall;
+export type CommandCall =
+  | ActivityCall
+  | SleepForCall
+  | SleepUntilCall
+  | WorkflowCall;
 
 export function isCommandCall(call: Eventual): call is CommandCall {
-  return isActivityCall(call) || isSleepForCall(call) || isSleepUntilCall(call);
+  return (
+    isActivityCall(call) ||
+    isSleepForCall(call) ||
+    isSleepUntilCall(call) ||
+    isWorkflowCall(call)
+  );
 }
 
 export namespace Eventual {
@@ -112,5 +89,9 @@ export namespace Eventual {
   }
 }
 
+// the below globals are required by the transformer
+
 // @ts-ignore
-global.Eventual = Eventual;
+global.$eventual = chain;
+// @ts-ignore
+global.$Eventual = Eventual;

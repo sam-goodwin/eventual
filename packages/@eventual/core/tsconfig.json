@@ -9,7 +9,8 @@
     "inlineSourceMap": true,
     "rootDir": "src",
     "typeRoots": ["./node_modules/@types"],
-    "allowJs": true
+    "allowJs": true,
+    "stripInternal": true
   },
   "include": ["src", "src/package.json"],
   "exclude": ["lib", "node_modules"],

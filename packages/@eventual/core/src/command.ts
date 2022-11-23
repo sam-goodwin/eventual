@@ -1,7 +1,8 @@
 export type Command =
   | SleepUntilCommand
   | SleepForCommand
-  | ScheduleActivityCommand;
+  | ScheduleActivityCommand
+  | ScheduleWorkflowCommand;
 
 interface CommandBase<T extends CommandType> {
   kind: T;
@@ -12,6 +13,7 @@ export enum CommandType {
   StartActivity = "StartActivity",
   SleepUntil = "SleepUntil",
   SleepFor = "SleepFor",
+  StartWorkflow = "StartWorkflow",
 }
 
 /**
@@ -27,9 +29,21 @@ export interface ScheduleActivityCommand
 }
 
 export function isScheduleActivityCommand(
-  command: Command
-): command is ScheduleActivityCommand {
-  return command.kind === CommandType.StartActivity;
+  a: Command
+): a is ScheduleActivityCommand {
+  return a.kind === CommandType.StartActivity;
+}
+
+export interface ScheduleWorkflowCommand
+  extends CommandBase<CommandType.StartWorkflow> {
+  name: string;
+  input?: any;
+}
+
+export function isScheduleWorkflowCommand(
+  a: Command
+): a is ScheduleWorkflowCommand {
+  return a.kind === CommandType.StartWorkflow;
 }
 
 export interface SleepUntilCommand extends CommandBase<CommandType.SleepUntil> {
