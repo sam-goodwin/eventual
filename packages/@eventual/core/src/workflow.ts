@@ -89,10 +89,9 @@ export function lookupWorkflow(name: string): Workflow | undefined {
  * @param name a globally unique ID for this workflow.
  * @param definition the workflow definition.
  */
-export function workflow<F extends (input?: any) => Promise<any> | Program>(
-  name: string,
-  definition: F
-): Workflow<F> {
+export function workflow<
+  F extends (input: any, context: Context) => Promise<any> | Program
+>(name: string, definition: F): Workflow<F> {
   if (workflows.has(name)) {
     throw new Error(`workflow with name '${name}' already exists`);
   }
