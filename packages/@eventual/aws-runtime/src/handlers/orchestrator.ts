@@ -355,8 +355,9 @@ async function orchestrateExecution(
           } else if (isScheduleWorkflowCommand(command)) {
             await workflowClient.startWorkflow({
               workflowName: command.name,
-              executionName: `${executionId}/${command.seq}`,
               input: command.input,
+              parentExecutionId: executionId,
+              seq: command.seq,
             });
 
             return createEvent<ChildWorkflowScheduled>({
