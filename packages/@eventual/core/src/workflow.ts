@@ -25,16 +25,16 @@ export interface ExecutionHandle {
   executionId: string;
 }
 
+export type WorkflowHandler = (
+  input: any,
+  context: Context
+) => Promise<any> | Program;
+
 /**
  * A {@link Workflow} is a long-running process that orchestrates calls
  * to other services in a durable and observable way.
  */
-export interface Workflow<
-  F extends (input: any, context: Context) => any = (
-    input: any,
-    context: Context
-  ) => any
-> {
+export interface Workflow<F extends WorkflowHandler = WorkflowHandler> {
   /**
    * Globally unique ID of this {@link Workflow}.
    */
@@ -89,9 +89,10 @@ export function lookupWorkflow(name: string): Workflow | undefined {
  * @param name a globally unique ID for this workflow.
  * @param definition the workflow definition.
  */
-export function workflow<
-  F extends (input: any, context: Context) => Promise<any> | Program
->(name: string, definition: F): Workflow<F> {
+export function workflow<F extends WorkflowHandler>(
+  name: string,
+  definition: F
+): Workflow<F> {
   if (workflows.has(name)) {
     throw new Error(`workflow with name '${name}' already exists`);
   }
