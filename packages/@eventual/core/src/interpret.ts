@@ -65,8 +65,9 @@ export function interpret<Return>(
     return seq++;
   }
 
-  let emittedEvents = history.filter(isScheduledEvent);
-  let resultEvents = history.filter(
+  let emittedEvents = new Iterator(history, isScheduledEvent);
+  let resultEvents = new Iterator(
+    history,
     (e): e is CompletedEvent | FailedEvent =>
       isCompletedEvent(e) || isFailedEvent(e)
   );
@@ -79,17 +80,17 @@ export function interpret<Return>(
    * any calls at the event of all result commands and advances, return
    */
   let calls: CommandCall[] = [];
-  let newCalls = [];
+  let newCalls: Iterator<CommandCall, CommandCall>;
   // iterate until we are no longer finding commands or no longer have completion events to apply
   while (
-    (newCalls = advance(true) ?? []).length > 0 ||
-    resultEvents.length > 0
+    (newCalls = new Iterator(advance(true) ?? [])).hasNext() ||
+    resultEvents.hasNext()
   ) {
     // Match and filter found commands against the given scheduled events.
     // scheduled events must be in order or not present.
-    while (newCalls && newCalls.length > 0 && emittedEvents.length > 0) {
-      const call = newCalls.shift()!;
-      const event = emittedEvents.shift()!;
+    while (newCalls.hasNext() && emittedEvents.hasNext()) {
+      const call = newCalls.next()!;
+      const event = emittedEvents.next()!;
 
       if (!isCorresponding(event, call)) {
         throw new DeterminismError(
@@ -101,19 +102,19 @@ export function interpret<Return>(
     }
 
     // if there are result events (compelted or failed), apply it before the next run
-    if (resultEvents.length > 0) {
-      const resultEvent = resultEvents.shift()!;
+    if (resultEvents.hasNext()) {
+      const resultEvent = resultEvents.next()!;
 
       commitCompletionEvent(resultEvent, true);
     }
 
     // any calls not matched against historical schedule events will be returned to the caller.
-    calls.push(...newCalls);
+    calls.push(...newCalls.drain());
   }
 
   // if the history shows events have been scheduled, but we did not find them when running the workflow,
   // something is wrong, fail
-  if (emittedEvents.length > 0) {
+  if (emittedEvents.hasNext()) {
     throw new DeterminismError(
       "Work did not return expected commands: " + JSON.stringify(emittedEvents)
     );
@@ -341,4 +342,36 @@ function isGenerator(a: any): a is Program {
     typeof a.return === "function" &&
     typeof a.throw === "function"
   );
+}
+
+class Iterator<I, T extends I> {
+  private cursor = 0;
+  constructor(private elms: I[], private predicate?: (elm: I) => elm is T) {}
+
+  private seek() {
+    if (this.predicate) {
+      while (this.cursor < this.elms.length) {
+        if (this.predicate(this.elms[this.cursor]!)) {
+          return;
+        }
+        this.cursor++;
+      }
+    }
+  }
+
+  hasNext() {
+    this.seek();
+    return this.cursor < this.elms.length;
+  }
+
+  next(): T {
+    this.seek();
+    return this.elms[this.cursor++] as T;
+  }
+
+  drain(): T[] {
+    return this.predicate
+      ? this.elms.slice(this.cursor).filter(this.predicate)
+      : (this.elms.slice(this.cursor) as T[]);
+  }
 }
