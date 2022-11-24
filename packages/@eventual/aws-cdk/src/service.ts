@@ -106,6 +106,11 @@ export class Service extends Construct implements IGrantable {
    */
   public readonly dlq: Queue;
 
+  /**
+   * A Lambda Function URL endpoint for accepting inbound webhook requests.
+   */
+  public readonly webhookEndpoint: IFunction;
+
   readonly grantPrincipal: IPrincipal;
 
   constructor(scope: Construct, id: string, props: WorkflowProps) {
@@ -304,6 +309,28 @@ export class Service extends Construct implements IGrantable {
           reportBatchItemFailures: true,
         }),
       ],
+    });
+
+    this.webhookEndpoint = new NodejsFunction(this, "WebhookEndpoint", {
+      entry: path.join(
+        require.resolve("@eventual/aws-runtime"),
+        "../../esm/handlers/webhook-handler.js"
+      ),
+      handler: "handle",
+      runtime: Runtime.NODEJS_16_X,
+      architecture: Architecture.ARM_64,
+      bundling: {
+        mainFields: ["module", "main"],
+        esbuildArgs: {
+          "--conditions": "module,import,require",
+        },
+        metafile: true,
+      },
+      environment: {
+        [ENV_NAMES.TABLE_NAME]: this.table.tableName,
+        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
+        [ENV_NAMES.EVENTUAL_WEBHOOK]: "1",
+      },
     });
 
     this.timerQueue.grantSendMessages(this.scheduleForwarder);

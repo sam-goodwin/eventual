@@ -21,6 +21,10 @@ export namespace ENV_NAMES {
    * Activity calls behave different based on their context.
    */
   export const EVENTUAL_WORKER = "EVENTUAL_WORKER";
+  /**
+   * A flag that determines if a function is the webhook endpoint.
+   */
+  export const EVENTUAL_WEBHOOK = "EVENTUAL_WEBHOOK";
 }
 
 export function tryGetEnv(name: string) {
