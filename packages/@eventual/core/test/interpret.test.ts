@@ -1,5 +1,3 @@
-import "jest";
-
 import { createActivityCall } from "../src/activity-call.js";
 import { chain } from "../src/chain.js";
 import { DeterminismError } from "../src/error.js";
@@ -56,15 +54,6 @@ test("no history", () => {
   });
 });
 
-test("determinism error if no corresponding ActivityScheduled", () => {
-  expect(() =>
-    interpret(myWorkflow(event), [
-      // error: completed event should be after a scheduled event
-      activityCompleted("result", 0),
-    ])
-  ).toThrow(expect.any(DeterminismError));
-});
-
 test("should continue with result of completed Activity", () => {
   expect(
     interpret(myWorkflow(event), [
@@ -107,6 +96,79 @@ test("should return final result", () => {
     result: Result.resolved(["result", [undefined, "result-2"]]),
     commands: [],
   });
+});
+
+test("should handle missing blocks", () => {
+  expect(
+    interpret(myWorkflow(event), [activityCompleted("result", 0)])
+  ).toMatchObject(<WorkflowResult>{
+    commands: [
+      createScheduledActivityCommand("my-activity", [event], 0),
+      createScheduledActivityCommand("my-activity-0", [event], 1),
+      createSleepUntilCommand("then", 2),
+      createScheduledActivityCommand("my-activity-2", [event], 3),
+    ],
+  });
+});
+
+test("should handle partial blocks", () => {
+  expect(
+    interpret(myWorkflow(event), [
+      activityScheduled("my-activity", 0),
+      activityCompleted("result", 0),
+      activityScheduled("my-activity-0", 1),
+    ])
+  ).toMatchObject(<WorkflowResult>{
+    commands: [
+      createSleepUntilCommand("then", 2),
+      createScheduledActivityCommand("my-activity-2", [event], 3),
+    ],
+  });
+});
+
+test("should handle partial blocks with partial completes", () => {
+  expect(
+    interpret(myWorkflow(event), [
+      activityScheduled("my-activity", 0),
+      activityCompleted("result", 0),
+      activityScheduled("my-activity-0", 1),
+      activityCompleted("result", 1),
+    ])
+  ).toMatchObject(<WorkflowResult>{
+    commands: [
+      createSleepUntilCommand("then", 2),
+      createScheduledActivityCommand("my-activity-2", [event], 3),
+    ],
+  });
+});
+
+test("should throw when scheduled does not correspond to call", () => {
+  expect(() =>
+    interpret(myWorkflow(event), [scheduledSleep("result", 0)])
+  ).toThrow(DeterminismError);
+});
+
+test("should throw when there are more schedules than calls emitted", () => {
+  expect(() =>
+    interpret(myWorkflow(event), [
+      activityScheduled("my-activity", 0),
+      activityScheduled("result", 1),
+    ])
+  ).toThrow(DeterminismError);
+});
+
+test("should throw when a completed precedes workflow state", () => {
+  expect(() =>
+    interpret(myWorkflow(event), [
+      activityScheduled("my-activity", 0),
+      activityScheduled("result", 1),
+      // the workflow does not return a seq: 2, where does this go?
+      // note: a completed event can be accepted without a "scheduled" counterpart,
+      // but the workflow must resolve the schedule before the complete
+      // is applied.
+      activityCompleted("", 2),
+    ])
+  ).toThrow(DeterminismError);
 });
 
 test("should wait if partial results", () => {
@@ -220,6 +282,184 @@ test("should complete sleep until", () => {
   ).toMatchObject(<WorkflowResult>{
     result: Result.resolved("done"),
     commands: [],
+  });
+});
+
+describe("temple of doom", () => {
+  /**
+   * In our game, the player wants to get to the end of a hallway with traps.
+   * The trap starts above the player and moves to a space in front of them
+   * after a sleepUntil("X").
+   *
+   * If the trap has moved (X time), the player may jump to avoid it.
+   * If the player jumps when then trap has not moved, they will beheaded.
+   * If the player runs when the trap has been triggered without jumping, they will have their legs cut off.
+   *
+   * The trap is represented by a sleep command for X time.
+   * The player starts running by returning the "run" activity.
+   * The player jumps be returning the "jump" activity.
+   * (this would be better modeled with signals and conditions, but the effect is the same, wait, complete)
+   *
+   * Jumping after avoid the trap has no effect.
+   */
+  function* workflow() {
+    let trapDown = false;
+    let jump = false;
+
+    const startTrap = chain(function* () {
+      yield createSleepUntilCall("X");
+      trapDown = true;
+    });
+    const waitForJump = chain(function* () {
+      yield createActivityCall("jump", []);
+      jump = true;
+    });
+
+    startTrap();
+    // the player can jump now
+    waitForJump();
+
+    yield createActivityCall("run", []);
+
+    if (jump) {
+      if (!trapDown) {
+        return "dead: beheaded";
+      }
+      return "alive: party";
+    } else {
+      if (trapDown) {
+        return "dead: lost your feet";
+      }
+      return "alive";
+    }
+  }
+
+  test("run until blocked", () => {
+    expect(interpret(workflow() as any, [])).toMatchObject(<WorkflowResult>{
+      commands: [
+        createSleepUntilCommand("X", 0),
+        createScheduledActivityCommand("jump", [], 1),
+        createScheduledActivityCommand("run", [], 2),
+      ],
+    });
+  });
+
+  test("waiting", () => {
+    expect(
+      interpret(workflow() as any, [
+        scheduledSleep("X", 0),
+        activityScheduled("jump", 1),
+        activityScheduled("run", 2),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      commands: [],
+    });
+  });
+
+  test("trap triggers, player has not started, nothing happens", () => {
+    // complete sleep, nothing happens
+    expect(
+      interpret(workflow() as any, [
+        scheduledSleep("X", 0),
+        activityScheduled("jump", 1),
+        activityScheduled("run", 2),
+        completedSleep(0),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      commands: [],
+    });
+  });
+
+  test("trap triggers and then the player starts, player is dead", () => {
+    // complete sleep, turn on, release the player, dead
+    expect(
+      interpret(workflow() as any, [
+        scheduledSleep("X", 0),
+        activityScheduled("jump", 1),
+        activityScheduled("run", 2),
+        completedSleep(0),
+        activityCompleted("anything", 2),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("dead: lost your feet"),
+      commands: [],
+    });
+  });
+
+  test("trap triggers and then the player starts, player is dead, commands are out of order", () => {
+    // complete sleep, turn on, release the player, dead
+    expect(
+      interpret(workflow() as any, [
+        completedSleep(0),
+        activityCompleted("anything", 2),
+        scheduledSleep("X", 0),
+        activityScheduled("jump", 1),
+        activityScheduled("run", 2),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("dead: lost your feet"),
+      commands: [],
+    });
+  });
+
+  test("player starts and the trap has not triggered", () => {
+    // release the player, not on, alive
+    expect(
+      interpret(workflow() as any, [
+        scheduledSleep("X", 0),
+        activityScheduled("jump", 1),
+        activityScheduled("run", 2),
+        activityCompleted("anything", 2),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("alive"),
+      commands: [],
+    });
+  });
+
+  test("player starts and the trap has not triggered, completed before activity", () => {
+    // release the player, not on, alive
+    expect(
+      interpret(workflow() as any, [
+        scheduledSleep("X", 0),
+        activityCompleted("anything", 2),
+        activityScheduled("jump", 1),
+        activityScheduled("run", 2),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("alive"),
+      commands: [],
+    });
+  });
+
+  test("player starts and the trap has not triggered, completed before any command", () => {
+    // release the player, not on, alive
+    expect(
+      interpret(workflow() as any, [
+        activityCompleted("anything", 2),
+        scheduledSleep("X", 0),
+        activityScheduled("jump", 1),
+        activityScheduled("run", 2),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("alive"),
+      commands: [],
+    });
+  });
+
+  test("release the player before the trap triggers, player lives", () => {
+    expect(
+      interpret(workflow() as any, [
+        scheduledSleep("X", 0),
+        activityScheduled("jump", 1),
+        activityScheduled("run", 2),
+        activityCompleted("anything", 2),
+        completedSleep(0),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("alive"),
+      commands: [],
+    });
   });
 });
 
