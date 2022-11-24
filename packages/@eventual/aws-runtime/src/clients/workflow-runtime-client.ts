@@ -100,7 +100,6 @@ export class WorkflowRuntimeClient {
     executionId,
     result,
   }: CompleteExecutionRequest): Promise<CompleteExecution> {
-    console.log("COMPLETE", { executionId, result });
     const executionResult = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {

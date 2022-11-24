@@ -8,7 +8,6 @@ import {
   FailedExecution,
   HistoryStateEvent,
   isCompleteExecution,
-  isExecutionId,
   isFailed,
   isResolved,
   isResult,
@@ -18,7 +17,6 @@ import {
   isSleepForCommand,
   isSleepUntilCommand,
   lookupWorkflow,
-  parseWorkflowName,
   progressWorkflow,
   Workflow,
   WorkflowCompleted,
@@ -41,6 +39,7 @@ import {
   createWorkflowRuntimeClient,
 } from "../clients/index.js";
 import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
+import { isExecutionId, parseWorkflowName } from "../execution-id.js";
 import { logger, loggerMiddlewares } from "../logger.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import { timed, timedSync } from "../metrics/utils.js";
@@ -65,17 +64,18 @@ export function orchestrator(): SQSHandler {
     // batch by execution id
     const eventsByExecutionId = groupBy(
       event.Records,
-      (r) => r.attributes.MessageGroupId!,
-      sqsRecordToEvents
+      (r) => r.attributes.MessageGroupId!
+    );
+
+    logger.info(
+      "Found execution ids: " + Object.keys(eventsByExecutionId).join(", ")
     );
 
     orchestrate(eventsByExecutionId);
   }).use(loggerMiddlewares);
 }
 
-async function orchestrate(
-  eventsByExecutionId: Record<string, HistoryStateEvent[]>
-) {
+async function orchestrate(eventsByExecutionId: Record<string, SQSRecord[]>) {
   logger.info(
     "Found execution ids: " + Object.keys(eventsByExecutionId).join(", ")
   );
@@ -96,7 +96,11 @@ async function orchestrate(
         throw new Error(`no such workflow with name '${workflowName}'`);
       }
       // TODO: get workflow from execution id
-      return orchestrateExecution(workflow, executionId, records);
+      return orchestrateExecution(
+        workflow,
+        executionId,
+        records.flatMap(sqsRecordToEvents)
+      );
     }
   );
 
