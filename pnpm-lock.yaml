@@ -61,6 +61,7 @@ importers:
       '@aws-sdk/client-sqs': ^3.213.0
       '@aws-sdk/lib-dynamodb': ^3.214.0
       '@eventual/aws-runtime': workspace:^
+      '@eventual/cli': workspace:^
       '@eventual/compiler': workspace:^
       '@eventual/core': workspace:^
       '@types/aws-lambda': ^8.10.108
@@ -79,6 +80,7 @@ importers:
       '@eventual/aws-runtime': link:../../packages/@eventual/aws-runtime
       '@eventual/core': link:../../packages/@eventual/core
     devDependencies:
+      '@eventual/cli': link:../../packages/@eventual/cli
       '@eventual/compiler': link:../../packages/@eventual/compiler
       '@types/aws-lambda': 8.10.108
       '@types/jest': 29.2.2
@@ -187,6 +189,7 @@ importers:
       '@eventual/aws-runtime': workspace:^
       '@eventual/compiler': workspace:^
       '@eventual/core': workspace:^
+      '@swc/core': ^1.2.245
       '@types/jest': ^29
       '@types/node': ^16
       '@types/yargs': ^17.0.13
@@ -216,6 +219,7 @@ importers:
       '@eventual/aws-runtime': link:../aws-runtime
       '@eventual/compiler': link:../compiler
       '@eventual/core': link:../core
+      '@swc/core': 1.3.14
       chalk: 5.1.2
       commander: 9.4.1
       get-stdin: 9.0.0
@@ -230,7 +234,7 @@ importers:
       jest: 29.3.1_dnlfjp7n5lpfgnj4digwzn5fhe
       ky: 0.32.2
       ts-jest: 29.0.3_6crhf7ajeizammv76u753sn6i4
-      ts-node: 10.9.1_fvpuwgkpfe3dm3hnpcpbcxmb3y
+      ts-node: 10.9.1_b7y2sroehwdm6smfh4myvg7fsa
       typescript: 4.9.3
 
   packages/@eventual/compiler:
@@ -6023,7 +6027,7 @@ packages:
       pretty-format: 29.3.1
       slash: 3.0.0
       strip-json-comments: 3.1.1
-      ts-node: 10.9.1_b7y2sroehwdm6smfh4myvg7fsa
+      ts-node: 10.9.1_fvpuwgkpfe3dm3hnpcpbcxmb3y
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -6063,7 +6067,7 @@ packages:
       pretty-format: 29.3.1
       slash: 3.0.0
       strip-json-comments: 3.1.1
-      ts-node: 10.9.1_b7y2sroehwdm6smfh4myvg7fsa
+      ts-node: 10.9.1_fvpuwgkpfe3dm3hnpcpbcxmb3y
     transitivePeerDependencies:
       - supports-color
     dev: true

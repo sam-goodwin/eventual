@@ -1,8 +1,6 @@
-//@ts-ignore
-import workflow from "@eventual/injected/workflow";
-
 import {
   HistoryStateEvents,
+  ProgramStarter,
   progressWorkflow,
   ProgressWorkflowResult,
 } from "@eventual/core";
@@ -15,6 +13,7 @@ export type Orchestrator = typeof orchestrator;
  * @returns Workflow progress
  */
 export function orchestrator(
+  workflow: ProgramStarter,
   historyEvents: HistoryStateEvents[]
 ): ProgressWorkflowResult {
   return progressWorkflow(

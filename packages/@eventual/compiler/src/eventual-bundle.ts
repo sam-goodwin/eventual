@@ -61,7 +61,7 @@ async function bundleOrchestrator(
           "@eventual/injected/workflow": path.resolve(entries.workflow),
         },
       }),
-      eventualESPlugin,
+      // eventualESPlugin,
     ],
     conditions: ["module", "import", "require"],
     // supported with NODE_18.x runtime
@@ -131,7 +131,7 @@ function writeEsBuildMetafile(path: string) {
   ) => fs.writeFile(path, JSON.stringify(esbuildResult.metafile));
 }
 
-async function prepareOutDir(outDir: string) {
+export async function prepareOutDir(outDir: string) {
   try {
     await fs.access(outDir, constants.F_OK);
     await cleanDir(outDir);

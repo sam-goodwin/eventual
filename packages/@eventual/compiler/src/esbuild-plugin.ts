@@ -48,7 +48,7 @@ const supportedPromiseFunctions: string[] = [
   "race",
 ];
 
-class OuterVisitor extends Visitor {
+export class OuterVisitor extends Visitor {
   public foundEventual = false;
   public visitTsType(n: TsType): TsType {
     return n;

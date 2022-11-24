@@ -1,9 +1,11 @@
 import { HistoryStateEvents } from "@eventual/core";
 import { Argv } from "yargs";
 import { apiAction, apiOptions } from "../api-action.js";
-import { prepareAndBundleOrchestrator } from "@eventual/compiler";
+import { OuterVisitor, prepareOutDir } from "@eventual/compiler";
 import path from "path";
-import type { Orchestrator } from "../replay/orchestrator.js";
+import { orchestrator } from "../replay/orchestrator.js";
+import * as swc from "@swc/core";
+import fs from "fs/promises";
 
 export const replay = (yargs: Argv) =>
   yargs.command(
@@ -33,24 +35,59 @@ export const replay = (yargs: Argv) =>
         .get(`workflows/${workflow}/executions/${execution}/workflow-history`)
         .json<HistoryStateEvents[]>();
       spinner.succeed();
-      spinner.start("Transpiling");
-      const outDir = path.join(".eventual", "cli", workflow);
-      const orchestrator = await prepareAndBundleOrchestrator(outDir, {
-        workflow: entry,
-        orchestrator: path.join(
-          new URL(import.meta.url).pathname,
-          "../../replay/orchestrator.js"
-        ),
-      });
+      spinner.start("Compiling workflow");
+      const workflowPath = await buildTransformedWorkflow(workflow, entry);
       spinner.succeed();
       spinner.start("Importing program");
-      const { orchestrator: program } = (await import(
-        path.resolve(orchestrator)
-      )) as { orchestrator: Orchestrator };
+      const { default: workflowProgram } = await import(workflowPath);
       spinner.succeed();
       spinner.start("Running program");
-      const res = program(events);
+      //Dodgy, but vscode needs a bit of time to pick up the newly created file and sourcemap
+      await sleep(500);
+      const res = orchestrator(workflowProgram, events);
       spinner.succeed();
       console.log(res);
     })
   );
+
+function sleep(ms: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+/**
+ * Transform the user's workflow code into a generator
+ * @param workflow the workflow name
+ * @param entry workflow entry file
+ */
+async function buildTransformedWorkflow(workflow: string, entry: string) {
+  const outDir = path.join(".eventual", "cli", workflow);
+  const workflowCodePath = path.resolve(outDir, `${workflow}.mjs`);
+  const workflowMapPath = path.resolve(outDir, `${workflow}.mjs.map`);
+  //Don't try changing this to inline source maps, it breaks the program
+  const { code, map } = await swc.transformFile(entry, {
+    plugin: (program) => new OuterVisitor().visitProgram(program),
+    sourceMaps: true,
+    outputPath: path.dirname(workflowCodePath),
+    jsc: {
+      parser: {
+        syntax:
+          entry.endsWith(".ts") || entry.endsWith(".mts")
+            ? "typescript"
+            : "ecmascript",
+      },
+      //To ensure support for node 14
+      target: "es2019",
+    },
+  });
+  await prepareOutDir(outDir);
+  await Promise.all([
+    fs.writeFile(
+      workflowCodePath,
+      `${code}//# sourceMappingURL=${workflow}.mjs.map`
+    ),
+    fs.writeFile(workflowMapPath, map!),
+  ]);
+  return workflowCodePath;
+}
