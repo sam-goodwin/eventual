@@ -7,6 +7,7 @@ import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
   Execution,
   ExecutionStatus,
+  formatExecutionId,
   HistoryStateEvent,
   WorkflowEventType,
   WorkflowStarted,
@@ -14,7 +15,6 @@ import {
 } from "@eventual/core";
 import { StartWorkflowRequest } from "src/types.js";
 import { ulid } from "ulidx";
-import { formatExecutionId } from "../execution-id.js";
 import { ExecutionHistoryClient } from "./execution-history-client.js";
 
 export interface WorkflowClientProps {

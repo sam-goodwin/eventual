@@ -2,6 +2,9 @@
   "files": [],
   "references": [
     {
+      "path": "packages/@eventual/cloudflare-runtime"
+    },
+    {
       "path": "packages/@eventual/compiler"
     },
     {
