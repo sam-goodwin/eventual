@@ -72,7 +72,6 @@ async function bundleOrchestrator(
     metafile: true,
     bundle: true,
     entryPoints: [entries.orchestrator],
-    // // ulid
     banner: esmPolyfillRequireBanner(),
     outfile: getOutFiles(outDir).orchestrator,
   });
@@ -90,14 +89,15 @@ async function bundleActivityWorker(
   const result = await esbuild.build({
     mainFields: ["module", "main"],
     sourcemap: true,
+    conditions: ["module", "import", "require"],
     plugins: [
       esbuildPluginAliasPath({
         alias: {
           "@eventual/injected/activities": path.resolve(entries.workflow),
         },
       }),
+      eventualESPlugin,
     ],
-    conditions: ["module", "import", "require"],
     // supported with NODE_18.x runtime
     // TODO: make this configurable.
     // external: ["@aws-sdk"],
