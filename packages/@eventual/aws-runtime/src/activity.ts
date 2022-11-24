@@ -1,8 +1,9 @@
-import { Command } from "@eventual/core";
+import { ScheduleActivityCommand } from "@eventual/core";
 
 export interface ActivityWorkerRequest {
   scheduledTime: string;
+  workflowName: string;
   executionId: string;
-  command: Command;
+  command: ScheduleActivityCommand;
   retry: number;
 }

@@ -1,9 +1,9 @@
 import { App, aws_dynamodb, Stack } from "aws-cdk-lib";
-import { EventualApi, Workflow } from "@eventual/aws-cdk";
+import * as eventual from "@eventual/aws-cdk";
 
 const app = new App();
 
-const stack = new Stack(app, "test-eventual");
+const stack = new Stack(app, "test-eventual-sam");
 
 const accountTable = new aws_dynamodb.Table(stack, "Accounts", {
   partitionKey: {
@@ -13,7 +13,7 @@ const accountTable = new aws_dynamodb.Table(stack, "Accounts", {
   billingMode: aws_dynamodb.BillingMode.PAY_PER_REQUEST,
 });
 
-const openAccount = new Workflow(stack, "OpenAccount", {
+const openAccount = new eventual.Service(stack, "OpenAccount", {
   entry: require.resolve("test-app-runtime/lib/open-account.js"),
   name: "open-account",
   environment: {
@@ -23,11 +23,11 @@ const openAccount = new Workflow(stack, "OpenAccount", {
 
 accountTable.grantReadWriteData(openAccount);
 
-const myWorkflow = new Workflow(stack, "workflow1", {
+const myWorkflow = new eventual.Service(stack, "workflow1", {
   name: "my-workflow",
   entry: require.resolve("test-app-runtime/lib/my-workflow.js"),
 });
 
-new EventualApi(stack, "api", {
-  workflows: [myWorkflow, openAccount],
+new eventual.EventualApi(stack, "api", {
+  services: [myWorkflow, openAccount],
 });

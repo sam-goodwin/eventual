@@ -2,7 +2,7 @@
 
 const doWork = activity("doWork", async (input: any) => input);
 
-export default eventual(async (input) => {
+export default workflow("workflow", async (input) => {
   const items = await doWork(input);
 
   await Promise.all(

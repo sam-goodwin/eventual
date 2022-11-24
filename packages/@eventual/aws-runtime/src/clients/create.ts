@@ -9,6 +9,8 @@ import { WorkflowClient } from "./workflow-client";
 import { WorkflowRuntimeClient } from "./workflow-runtime-client";
 import memoize from "micro-memoize";
 import { deepEqual } from "fast-equals";
+import { SchedulerClient } from "@aws-sdk/client-scheduler";
+import { TimerClient, TimerClientProps } from "./timer-client";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -18,11 +20,12 @@ import { deepEqual } from "fast-equals";
  */
 
 const dynamo = /*@__PURE__*/ memoize(() => new DynamoDBClient({}));
-const sqs = /*@__PURE__*/ memoize(() => new SQSClient({}));
+export const sqs = /*@__PURE__*/ memoize(() => new SQSClient({}));
 const s3 = /*@__PURE__*/ memoize(
   () => new S3Client({ region: process.env.AWS_REGION })
 );
 const lambda = /*@__PURE__*/ memoize(() => new LambdaClient({}));
+export const scheduler = /*@__PURE__*/ memoize(() => new SchedulerClient({}));
 
 export const createExecutionHistoryClient = /*@__PURE__*/ memoize(
   ({ tableName }: { tableName?: string } = {}) =>
@@ -59,6 +62,22 @@ export const createActivityRuntimeClient = /*@__PURE__*/ memoize(
     })
 );
 
+export const createTimerClient = /*@__PURE__*/ memoize(
+  (props: Partial<TimerClientProps> = {}) =>
+    new TimerClient({
+      scheduler: props.scheduler ?? scheduler(),
+      schedulerRoleArn: props.schedulerRoleArn ?? env.schedulerRoleArn(),
+      schedulerDlqArn: props.schedulerDlqArn ?? env.schedulerDlqArn(),
+      schedulerGroup: props.schedulerGroup ?? env.schedulerGroup(),
+      sleepQueueThresholdMillis:
+        props.sleepQueueThresholdMillis ?? 15 * 60 * 1000,
+      sqs: props.sqs ?? sqs(),
+      timerQueueUrl: props.timerQueueUrl ?? env.timerQueueUrl(),
+      scheduleForwarderArn:
+        props.scheduleForwarderArn ?? env.schedulerForwarderArn(),
+    })
+);
+
 export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
   ({
     tableName,
@@ -79,5 +98,7 @@ export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
       lambda: lambda(),
       activityWorkerFunctionName:
         activityWorkerFunctionName ?? env.activityWorkerFunctionName(),
+      workflowClient: createWorkflowClient(),
+      timerClient: createTimerClient(),
     })
 );

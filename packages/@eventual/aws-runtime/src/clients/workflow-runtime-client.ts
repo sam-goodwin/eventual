@@ -17,17 +17,28 @@ import {
 } from "@aws-sdk/client-lambda";
 import {
   ExecutionStatus,
-  Command,
-  HistoryStateEvents,
+  HistoryStateEvent,
   CompleteExecution,
   FailedExecution,
   Execution,
+  SleepUntilCommand,
+  SleepForCommand,
+  SleepScheduled,
+  isSleepUntilCommand,
+  WorkflowEventType,
+  ScheduleActivityCommand,
+  ActivityScheduled,
+  SleepCompleted,
 } from "@eventual/core";
 import {
   createExecutionFromResult,
   ExecutionRecord,
+  WorkflowClient,
 } from "./workflow-client.js";
 import { ActivityWorkerRequest } from "../activity.js";
+import { createEvent } from "./execution-history-client.js";
+import { TimerRequestType } from "../handlers/types.js";
+import { TimerClient } from "./timer-client.js";
 
 export interface WorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;
@@ -36,6 +47,14 @@ export interface WorkflowRuntimeClientProps {
   readonly s3: S3Client;
   readonly executionHistoryBucket: string;
   readonly tableName: string;
+  readonly workflowClient: WorkflowClient;
+  readonly timerClient: TimerClient;
+}
+
+export interface CompleteExecutionRequest {
+  executionId: string;
+  result?: any;
+  readonly timerClient: TimerClient;
 }
 
 export class WorkflowRuntimeClient {
@@ -63,7 +82,7 @@ export class WorkflowRuntimeClient {
   // TODO: etag
   async updateHistory(
     executionId: string,
-    events: HistoryStateEvents[]
+    events: HistoryStateEvent[]
   ): Promise<{ bytes: number }> {
     const content = events.map((e) => JSON.stringify(e)).join("\n");
     // get current history from s3
@@ -77,10 +96,10 @@ export class WorkflowRuntimeClient {
     return { bytes: content.length };
   }
 
-  async completeExecution(
-    executionId: string,
-    result?: any
-  ): Promise<CompleteExecution> {
+  async completeExecution({
+    executionId,
+    result,
+  }: CompleteExecutionRequest): Promise<CompleteExecution> {
     const executionResult = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
@@ -89,16 +108,14 @@ export class WorkflowRuntimeClient {
         },
         TableName: this.props.tableName,
         UpdateExpression: result
-          ? "SET #status=:complete, #result=:result, endTime=:endTime"
-          : "SET #status=:complete, endTime=:endTime",
-        ConditionExpression: "#status=:in_progress",
+          ? "SET #status=:complete, #result=:result, endTime=if_not_exists(endTime,:endTime)"
+          : "SET #status=:complete, endTime=if_not_exists(endTime,:endTime)",
         ExpressionAttributeNames: {
           "#status": "status",
           ...(result ? { "#result": "result" } : {}),
         },
         ExpressionAttributeValues: {
           ":complete": { S: ExecutionStatus.COMPLETE },
-          ":in_progress": { S: ExecutionStatus.IN_PROGRESS },
           ":endTime": { S: new Date().toISOString() },
           ...(result ? { ":result": { S: JSON.stringify(result) } } : {}),
         },
@@ -106,9 +123,16 @@ export class WorkflowRuntimeClient {
       })
     );
 
-    return createExecutionFromResult(
-      executionResult.Attributes as unknown as ExecutionRecord
-    ) as CompleteExecution;
+    const record = executionResult.Attributes as unknown as ExecutionRecord;
+    if (record.parentExecutionId) {
+      await this.reportCompletionToParent(
+        record.parentExecutionId.S,
+        record.seq.N,
+        result
+      );
+    }
+
+    return createExecutionFromResult(record) as CompleteExecution;
   }
 
   async failExecution(
@@ -124,8 +148,7 @@ export class WorkflowRuntimeClient {
         },
         TableName: this.props.tableName,
         UpdateExpression:
-          "SET #status=:failed, #error=:error, #message=:message, endTime=:endTime",
-        ConditionExpression: "#status=:in_progress",
+          "SET #status=:failed, #error=:error, #message=:message, endTime=if_not_exists(endTime,:endTime)",
         ExpressionAttributeNames: {
           "#status": "status",
           "#error": "error",
@@ -133,7 +156,6 @@ export class WorkflowRuntimeClient {
         },
         ExpressionAttributeValues: {
           ":failed": { S: ExecutionStatus.FAILED },
-          ":in_progress": { S: ExecutionStatus.IN_PROGRESS },
           ":endTime": { S: new Date().toISOString() },
           ":error": { S: error },
           ":message": { S: message },
@@ -142,9 +164,38 @@ export class WorkflowRuntimeClient {
       })
     );
 
-    return createExecutionFromResult(
-      executionResult.Attributes as unknown as ExecutionRecord
-    ) as FailedExecution;
+    const record = executionResult.Attributes as unknown as ExecutionRecord;
+    if (record.parentExecutionId) {
+      await this.reportCompletionToParent(
+        record.parentExecutionId.S,
+        record.seq.N,
+        error,
+        message
+      );
+    }
+
+    return createExecutionFromResult(record) as FailedExecution;
+  }
+
+  private async reportCompletionToParent(
+    parentExecutionId: string,
+    seq: string,
+    ...args: [result: any] | [error: string, message: string]
+  ) {
+    await this.props.workflowClient.submitWorkflowTask(parentExecutionId, {
+      seq: parseInt(seq, 10),
+      timestamp: new Date().toISOString(),
+      ...(args.length === 1
+        ? {
+            type: WorkflowEventType.ChildWorkflowCompleted,
+            result: args[0],
+          }
+        : {
+            type: WorkflowEventType.ChildWorkflowFailed,
+            error: args[0],
+            message: args[1],
+          }),
+    });
   }
 
   async getExecutions(): Promise<Execution[]> {
@@ -162,9 +213,14 @@ export class WorkflowRuntimeClient {
     );
   }
 
-  async scheduleActivity(executionId: string, command: Command) {
+  async scheduleActivity(
+    workflowName: string,
+    executionId: string,
+    command: ScheduleActivityCommand
+  ) {
     const request: ActivityWorkerRequest = {
       scheduledTime: new Date().toISOString(),
+      workflowName,
       executionId,
       command,
       retry: 0,
@@ -177,16 +233,53 @@ export class WorkflowRuntimeClient {
         InvocationType: InvocationType.Event,
       })
     );
+
+    return createEvent<ActivityScheduled>({
+      type: WorkflowEventType.ActivityScheduled,
+      seq: command.seq,
+      name: command.name,
+    });
+  }
+
+  async scheduleSleep(
+    executionId: string,
+    command: SleepUntilCommand | SleepForCommand,
+    baseTime: Date
+  ): Promise<SleepScheduled> {
+    // TODO validate
+    const untilTime = isSleepUntilCommand(command)
+      ? new Date(command.untilTime)
+      : new Date(baseTime.getTime() + command.durationSeconds * 1000);
+    const untilTimeIso = untilTime.toISOString();
+
+    const sleepCompletedEvent: SleepCompleted = {
+      type: WorkflowEventType.SleepCompleted,
+      seq: command.seq,
+      timestamp: untilTimeIso,
+    };
+
+    await this.props.timerClient.startTimer({
+      type: TimerRequestType.ForwardEvent,
+      event: sleepCompletedEvent,
+      untilTime: untilTimeIso,
+      executionId,
+    });
+
+    return createEvent<SleepScheduled>({
+      type: WorkflowEventType.SleepScheduled,
+      seq: command.seq,
+      untilTime: untilTime.toISOString(),
+    });
   }
 }
 
 async function historyEntryToEvents(
   objectOutput: GetObjectCommandOutput
-): Promise<HistoryStateEvents[]> {
+): Promise<HistoryStateEvent[]> {
   if (objectOutput.Body) {
     return (await objectOutput.Body.transformToString())
       .split("\n")
-      .map((l) => JSON.parse(l)) as HistoryStateEvents[];
+      .map((l) => JSON.parse(l)) as HistoryStateEvent[];
   }
   return [];
 }

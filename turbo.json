@@ -34,6 +34,10 @@
       "dependsOn": ["^export", "^build"],
       "cache": false
     },
+    "hotswap": {
+      "dependsOn": ["^export", "^build"],
+      "cache": false
+    },
     "synth": {
       "dependsOn": ["^export"]
     }

@@ -1,45 +1,59 @@
-import { createEvent } from "../clients/execution-history-client.js";
 import {
-  WorkflowEvent,
+  ActivityScheduled,
+  assertNever,
+  ChildWorkflowScheduled,
+  Command,
+  CompleteExecution,
+  ExecutionStatus,
+  FailedExecution,
+  HistoryStateEvent,
+  isCompleteExecution,
   isFailed,
   isResolved,
   isResult,
-  WorkflowCompleted,
-  WorkflowEventType,
-  WorkflowTaskStarted,
-  WorkflowTaskCompleted,
-  WorkflowFailed,
-  Command,
-  ActivityScheduled,
-  HistoryStateEvents,
-  CompleteExecution,
-  FailedExecution,
-  ExecutionStatus,
-  isCompleteExecution,
+  isScheduleActivityCommand,
+  isScheduleWorkflowCommand,
+  isSleepCompleted,
+  isSleepForCommand,
+  isSleepUntilCommand,
+  lookupWorkflow,
   progressWorkflow,
-  ProgramStarter,
+  Workflow,
+  WorkflowCompleted,
+  WorkflowContext,
+  WorkflowEvent,
+  WorkflowEventType,
+  WorkflowFailed,
+  WorkflowTaskCompleted,
+  WorkflowTaskStarted,
 } from "@eventual/core";
-import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
+import middy from "@middy/core";
+import { createMetricsLogger, MetricsLogger, Unit } from "aws-embedded-metrics";
+import { SQSEvent, SQSHandler, SQSRecord } from "aws-lambda";
+import { inspect } from "util";
+import { createEvent } from "../clients/execution-history-client.js";
 import {
   createExecutionHistoryClient,
+  createTimerClient,
+  createWorkflowClient,
   createWorkflowRuntimeClient,
 } from "../clients/index.js";
-import { SQSEvent, SQSHandler, SQSRecord } from "aws-lambda";
-import { createMetricsLogger, Unit } from "aws-embedded-metrics";
-import { timed, timedSync } from "../metrics/utils.js";
-import { workflowName } from "../env.js";
-import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
-import middy from "@middy/core";
+import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
+import { isExecutionId, parseWorkflowName } from "../execution-id.js";
 import { logger, loggerMiddlewares } from "../logger.js";
-import { WorkflowContext } from "@eventual/core";
+import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
+import { timed, timedSync } from "../metrics/utils.js";
+import { promiseAllSettledPartitioned } from "../utils.js";
 
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowRuntimeClient = createWorkflowRuntimeClient();
+const workflowClient = createWorkflowClient();
+const timerClient = createTimerClient();
 
 /**
  * Creates an entrypoint function for orchestrating a workflow.
  */
-export function orchestrator(program: ProgramStarter): SQSHandler {
+export function orchestrator(): SQSHandler {
   return middy(async (event: SQSEvent) => {
     logger.debug("Handle workflowQueue records");
     // if a polling request
@@ -60,8 +74,21 @@ export function orchestrator(program: ProgramStarter): SQSHandler {
     // for each execution id
     const results = await promiseAllSettledPartitioned(
       Object.entries(eventsByExecutionId),
-      async ([executionId, records]) =>
-        orchestrateExecution(program, executionId, records)
+      async ([executionId, records]) => {
+        if (!isExecutionId(executionId)) {
+          throw new Error(`invalid ExecutionID: '${executionId}'`);
+        }
+        const workflowName = parseWorkflowName(executionId);
+        if (workflowName === undefined) {
+          throw new Error(`execution ID '${executionId}' does not exist`);
+        }
+        const workflow = lookupWorkflow(workflowName);
+        if (workflow === undefined) {
+          throw new Error(`no such workflow with name '${workflowName}'`);
+        }
+        // TODO: get workflow from execution id
+        return orchestrateExecution(workflow, executionId, records);
+      }
     );
 
     logger.debug(
@@ -91,10 +118,11 @@ export function orchestrator(program: ProgramStarter): SQSHandler {
 }
 
 async function orchestrateExecution(
-  program: ProgramStarter,
+  workflow: Workflow,
   executionId: string,
   records: SQSRecord[]
 ) {
+  console.log(executionId, records);
   const executionLogger = logger.createChild({
     persistentLogAttributes: { executionId },
   });
@@ -102,7 +130,7 @@ async function orchestrateExecution(
   metrics.resetDimensions(false);
   metrics.setNamespace(MetricsCommon.EventualNamespace);
   metrics.setDimensions({
-    [MetricsCommon.WorkflowNameDimension]: workflowName(),
+    [MetricsCommon.WorkflowNameDimension]: workflow.name,
   });
   const events = sqsRecordsToEvents(records);
   const start = new Date();
@@ -133,9 +161,12 @@ async function orchestrateExecution(
     );
 
     newEvents.push(
-      createEvent<WorkflowTaskStarted>({
-        type: WorkflowEventType.WorkflowTaskStarted,
-      })
+      createEvent<WorkflowTaskStarted>(
+        {
+          type: WorkflowEventType.WorkflowTaskStarted,
+        },
+        start
+      )
     );
 
     executionLogger.debug("Load history");
@@ -152,7 +183,7 @@ async function orchestrateExecution(
     );
 
     const workflowContext: WorkflowContext = {
-      name: workflowName(),
+      name: workflow.name,
     };
 
     const {
@@ -160,13 +191,19 @@ async function orchestrateExecution(
       commands: newCommands,
       history: updatedHistory,
     } = timedSync(metrics, OrchestratorMetrics.AdvanceExecutionDuration, () => {
-      return progressWorkflow(
-        program,
-        history,
-        events,
-        workflowContext,
-        executionId
-      );
+      try {
+        return progressWorkflow(
+          workflow,
+          history,
+          events,
+          workflowContext,
+          executionId
+        );
+      } catch (err) {
+        console.log("workflow error");
+        executionLogger.error(inspect(err));
+        throw err;
+      }
     });
 
     metrics.setProperty(
@@ -179,7 +216,7 @@ async function orchestrateExecution(
     );
 
     executionLogger.info(`Found ${newCommands.length} new commands.`);
-
+    ``;
     const commandEvents = await timed(
       metrics,
       OrchestratorMetrics.InvokeCommandsDuration,
@@ -264,7 +301,11 @@ async function orchestrateExecution(
           metrics,
           OrchestratorMetrics.ExecutionStatusUpdateDuration,
           () =>
-            workflowRuntimeClient.completeExecution(executionId, result.value)
+            workflowRuntimeClient.completeExecution({
+              executionId,
+              result: result.value,
+              timerClient,
+            })
         );
         logExecutionCompleteMetrics(execution);
       }
@@ -279,6 +320,9 @@ async function orchestrateExecution(
       OrchestratorMetrics.NewExecutionEvents,
       newEvents.length
     );
+
+    // Only log these metrics once the orchestrator has completed successfully.
+    logEventMetrics(metrics, events, start);
 
     function logExecutionCompleteMetrics(
       execution: CompleteExecution | FailedExecution
@@ -315,20 +359,55 @@ async function orchestrateExecution(
      */
     async function processCommands(
       commands: Command[]
-    ): Promise<HistoryStateEvents[]> {
+    ): Promise<HistoryStateEvent[]> {
       // register command events
       return await Promise.all(
         commands.map(async (command) => {
-          await workflowRuntimeClient.scheduleActivity(executionId, command);
+          if (isScheduleActivityCommand(command)) {
+            await workflowRuntimeClient.scheduleActivity(
+              workflow.name,
+              executionId,
+              command
+            );
 
-          return createEvent<ActivityScheduled>({
-            type: WorkflowEventType.ActivityScheduled,
-            seq: command.seq,
-            name: command.name,
-          });
+            return createEvent<ActivityScheduled>({
+              type: WorkflowEventType.ActivityScheduled,
+              seq: command.seq,
+              name: command.name,
+            });
+          } else if (isScheduleWorkflowCommand(command)) {
+            await workflowClient.startWorkflow({
+              workflowName: command.name,
+              input: command.input,
+              parentExecutionId: executionId,
+              seq: command.seq,
+            });
+
+            return createEvent<ChildWorkflowScheduled>({
+              type: WorkflowEventType.ChildWorkflowScheduled,
+              seq: command.seq,
+              name: command.name,
+              input: command.input,
+            });
+          } else if (
+            isSleepForCommand(command) ||
+            isSleepUntilCommand(command)
+          ) {
+            // all sleep times are computed using the start time of the WorkflowTaskStarted
+            return workflowRuntimeClient.scheduleSleep(
+              executionId,
+              command,
+              start
+            );
+          } else {
+            return assertNever(command, `unknown command type`);
+          }
         })
       );
     }
+  } catch (err) {
+    executionLogger.error(inspect(err));
+    throw err;
   } finally {
     await metrics.flush();
   }
@@ -344,30 +423,22 @@ function sqsRecordToEvents(sqsRecord: SQSRecord) {
   return message.task.events;
 }
 
-async function promiseAllSettledPartitioned<T, R>(
-  items: T[],
-  op: (item: T) => Promise<R>
-): Promise<{
-  fulfilled: [T, Awaited<R>][];
-  rejected: [T, string][];
-}> {
-  const results = await Promise.allSettled(items.map(op));
-
-  const enumerated = results.map((r, i) => [r, i] as const);
-
-  return {
-    fulfilled: enumerated
-      .filter(
-        (t): t is [PromiseFulfilledResult<Awaited<R>>, number] =>
-          t[0].status === "fulfilled"
-      )
-      .map(([r, i]) => [items[i]!, r.value] as [T, Awaited<R>]),
-    rejected: enumerated
-      .filter(
-        (t): t is [PromiseRejectedResult, number] => t[0].status === "rejected"
-      )
-      .map(([r, i]) => [items[i]!, r.reason] as [T, string]),
-  };
+/** Logs metrics specific to the incoming events */
+function logEventMetrics(
+  metrics: MetricsLogger,
+  events: WorkflowEvent[],
+  now: Date
+) {
+  const sleepCompletedEvents = events.filter(isSleepCompleted);
+  if (sleepCompletedEvents.length > 0) {
+    const sleepCompletedVariance = sleepCompletedEvents.map(
+      (s) => now.getTime() - new Date(s.timestamp).getTime()
+    );
+    const avg =
+      sleepCompletedVariance.reduce((t, n) => t + n, 0) /
+      sleepCompletedVariance.length;
+    metrics.setProperty(OrchestratorMetrics.SleepVarianceMillis, avg);
+  }
 }
 
 function groupBy<T>(

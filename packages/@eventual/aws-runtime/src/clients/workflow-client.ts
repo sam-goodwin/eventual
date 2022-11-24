@@ -5,14 +5,16 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
-  WorkflowTask,
-  WorkflowStarted,
   Execution,
   ExecutionStatus,
+  HistoryStateEvent,
   WorkflowEventType,
-  HistoryStateEvents,
+  WorkflowStarted,
+  WorkflowTask,
 } from "@eventual/core";
+import { StartWorkflowRequest } from "src/types.js";
 import { ulid } from "ulidx";
+import { formatExecutionId } from "../execution-id.js";
 import { ExecutionHistoryClient } from "./execution-history-client.js";
 
 export interface WorkflowClientProps {
@@ -33,24 +35,33 @@ export class WorkflowClient {
    * @returns
    */
   public async startWorkflow({
-    name: _name,
+    executionName = ulid(),
+    workflowName,
     input,
-  }: { name?: string; input?: any } = {}) {
-    const name = _name ?? ulid();
-    const executionId = `execution_${name}`;
+    parentExecutionId,
+    seq,
+  }: StartWorkflowRequest) {
+    const executionId = formatExecutionId(workflowName, executionName);
     console.log("execution input:", input);
 
     await this.props.dynamo.send(
       new PutItemCommand({
+        TableName: this.props.tableName,
         Item: {
           pk: { S: ExecutionRecord.PRIMARY_KEY },
           sk: { S: ExecutionRecord.sortKey(executionId) },
           id: { S: executionId },
-          name: { S: name },
+          name: { S: executionName },
+          workflowName: { S: workflowName },
           status: { S: ExecutionStatus.IN_PROGRESS },
           startTime: { S: new Date().toISOString() },
+          ...(parentExecutionId
+            ? {
+                parentExecutionId: { S: parentExecutionId },
+                seq: { N: seq!.toString(10) },
+              }
+            : {}),
         },
-        TableName: this.props.tableName,
       })
     );
 
@@ -60,7 +71,11 @@ export class WorkflowClient {
         {
           type: WorkflowEventType.WorkflowStarted,
           input,
-          context: { name },
+          workflowName,
+          context: {
+            name: executionName,
+            parentId: parentExecutionId,
+          },
         }
       );
 
@@ -71,13 +86,11 @@ export class WorkflowClient {
 
   public async submitWorkflowTask(
     executionId: string,
-    ...events: HistoryStateEvents[]
+    ...events: HistoryStateEvent[]
   ) {
-    const id = ulid();
     // send workflow task to workflow queue
     const workflowTask: SQSWorkflowTaskMessage = {
       task: {
-        id,
         executionId,
         events,
       },
@@ -88,8 +101,6 @@ export class WorkflowClient {
         MessageBody: JSON.stringify(workflowTask),
         QueueUrl: this.props.workflowQueueUrl,
         MessageGroupId: executionId,
-        // just de-dupe with itself
-        MessageDeduplicationId: `${executionId}_${id}`,
       })
     );
   }
@@ -99,22 +110,36 @@ export interface SQSWorkflowTaskMessage {
   task: WorkflowTask;
 }
 
-export interface ExecutionRecord {
-  pk: { S: typeof ExecutionRecord.PRIMARY_KEY };
-  sk: { S: `${typeof ExecutionRecord.SORT_KEY_PREFIX}${string}` };
-  result?: AttributeValue.SMember;
-  id: AttributeValue.SMember;
-  status: { S: ExecutionStatus };
-  startTime: AttributeValue.SMember;
-  endTime?: AttributeValue.SMember;
-  error?: AttributeValue.SMember;
-  message?: AttributeValue.SMember;
-}
+export type ExecutionRecord =
+  | {
+      pk: { S: typeof ExecutionRecord.PRIMARY_KEY };
+      sk: { S: `${typeof ExecutionRecord.SORT_KEY_PREFIX}${string}` };
+      result?: AttributeValue.SMember;
+      id: AttributeValue.SMember;
+      status: { S: ExecutionStatus };
+      startTime: AttributeValue.SMember;
+      name: AttributeValue.SMember;
+      workflowName: AttributeValue.SMember;
+      endTime?: AttributeValue.SMember;
+      error?: AttributeValue.SMember;
+      message?: AttributeValue.SMember;
+    } & (
+      | {
+          parentExecutionId: AttributeValue.SMember;
+          seq: AttributeValue.NMember;
+        }
+      | {
+          parentExecutionId?: never;
+          seq?: never;
+        }
+    );
 
 export namespace ExecutionRecord {
   export const PRIMARY_KEY = "Execution";
   export const SORT_KEY_PREFIX = `Execution$`;
-  export function sortKey(executionId: string) {
+  export function sortKey(
+    executionId: string
+  ): `${typeof SORT_KEY_PREFIX}${typeof executionId}` {
     return `${SORT_KEY_PREFIX}${executionId}`;
   }
 }

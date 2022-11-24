@@ -1,15 +1,24 @@
-import { Eventual, isEventual } from "./eventual.js";
+import {
+  Eventual,
+  isEventual,
+  CommandCall,
+  isCommandCall,
+} from "./eventual.js";
 import { isAwaitAll } from "./await-all.js";
-import { ActivityCall, isActivityCall } from "./activity-call.js";
+import { isActivityCall } from "./activity-call.js";
 import { DeterminismError } from "./error.js";
 import {
-  ActivityCompleted,
-  ActivityFailed,
-  ActivityScheduled,
+  CompletedEvent,
+  FailedEvent,
   HistoryEvent,
-  isActivityCompleted,
-  isActivityFailed,
   isActivityScheduled,
+  isChildWorkflowScheduled,
+  isCompletedEvent,
+  isFailedEvent,
+  isScheduledEvent,
+  isSleepCompleted,
+  isSleepScheduled,
+  ScheduledEvent,
 } from "./events.js";
 import { collectActivities } from "./global.js";
 import {
@@ -22,7 +31,9 @@ import {
 } from "./result.js";
 import { createChain, isChain, Chain } from "./chain.js";
 import { assertNever } from "./util.js";
-import { Command } from "./command.js";
+import { Command, CommandType } from "./command.js";
+import { isWorkflowCall } from "./workflow.js";
+import { isSleepForCall, isSleepUntilCall } from "./sleep-call.js";
 
 export interface WorkflowResult<T = any> {
   /**
@@ -46,7 +57,7 @@ export function interpret<Return>(
   program: Program<Return>,
   history: HistoryEvent[]
 ): WorkflowResult<Awaited<Return>> {
-  const callTable: Record<number, ActivityCall> = {};
+  const callTable: Record<number, CommandCall> = {};
   const mainChain = createChain(program);
   const activeChains = new Set([mainChain]);
 
@@ -55,80 +66,59 @@ export function interpret<Return>(
     return seq++;
   }
 
-  let historyIndex = 0;
-  function peek() {
-    return history[historyIndex];
-  }
-  function pop() {
-    return history[historyIndex++];
-  }
-  function takeWhile<T>(max: number, guard: (a: any) => a is T): T[] {
-    const items: T[] = [];
-    while (items.length < max && guard(peek())) {
-      items.push(pop() as T);
-    }
-    return items;
-  }
-  function peekForward<T>(guard: (a: any) => a is T): boolean {
-    for (let i = historyIndex; i < history.length; i++) {
-      if (guard(history[i])) {
-        return true;
+  let emittedEvents = iterator(history, isScheduledEvent);
+  let resultEvents = iterator(
+    history,
+    (e): e is CompletedEvent | FailedEvent =>
+      isCompletedEvent(e) || isFailedEvent(e)
+  );
+
+  /**
+   * Try to advance machine
+   * While we have calls and emitted events, drain the queues.
+   * When we run out of emitted events or calls, try to apply the next result event
+   * advance run again
+   * any calls at the event of all result commands and advances, return
+   */
+  let calls: CommandCall[] = [];
+  let newCalls: Iterator<CommandCall, CommandCall>;
+  // iterate until we are no longer finding commands or no longer have completion events to apply
+  while (
+    (newCalls = iterator(advance(true) ?? [])).hasNext() ||
+    resultEvents.hasNext()
+  ) {
+    // Match and filter found commands against the given scheduled events.
+    // scheduled events must be in order or not present.
+    while (newCalls.hasNext() && emittedEvents.hasNext()) {
+      const call = newCalls.next()!;
+      const event = emittedEvents.next()!;
+
+      if (!isCorresponding(event, call)) {
+        throw new DeterminismError(
+          `Workflow returned ${JSON.stringify(call)}, but ${JSON.stringify(
+            event
+          )} was expected at ${event?.seq}`
+        );
       }
     }
-    return false;
-  }
 
-  let event;
-  // run the event loop one event at a time, ensuring deterministic execution.
-  while ((event = peek()) && peekForward(isActivityScheduled)) {
-    pop();
+    // if there are result events (compelted or failed), apply it before the next run
+    if (resultEvents.hasNext()) {
+      const resultEvent = resultEvents.next()!;
 
-    if (isActivityCompleted(event) || isActivityFailed(event)) {
-      commitCompletionEvent(event, true);
-    } else if (isActivityScheduled(event)) {
-      const calls = advance(true) ?? [];
-      const events = [
-        event,
-        ...takeWhile(calls.length - 1, isActivityScheduled),
-      ];
-      if (events.length !== calls.length) {
-        throw new DeterminismError();
-      }
-      for (let i = 0; i < calls.length; i++) {
-        const event = events[i]!;
-        const call = calls[i]!;
-
-        if (!isCorresponding(event, call)) {
-          throw new DeterminismError();
-        }
-      }
+      commitCompletionEvent(resultEvent, true);
     }
+
+    // any calls not matched against historical schedule events will be returned to the caller.
+    calls.push(...newCalls.drain());
   }
 
-  const calls = [];
-
-  // run out the remaining completion events and collect any scheduled activity calls
-  // we do this because events come in chunks of Scheduled/Completed
-  // [...scheduled, ...completed, ...scheduled]
-  // if the history's tail contains completed events, e.g. [...scheduled, ...completed]
-  // then we need to apply the completions, resume chains and schedule any produced activity calls
-  while ((event = pop())) {
-    if (isActivityScheduled(event)) {
-      // it should be impossible to receive a scheduled event
-      // -> because the tail of history can only contain completion events
-      // -> scheduled events stored in history should correspond to activity calls
-      //    -> or else a determinism error would have been thrown
-      throw new Error("illegal state");
-    }
-    commitCompletionEvent(event, false);
-
-    calls.push(...(advance(false) ?? []));
-  }
-
-  let newCommands;
-  while ((newCommands = advance(false))) {
-    // continue advancing the program until all possible progress has been made
-    calls.push(...newCommands);
+  // if the history shows events have been scheduled, but we did not find them when running the workflow,
+  // something is wrong, fail
+  if (emittedEvents.hasNext()) {
+    throw new DeterminismError(
+      "Work did not return expected commands: " + JSON.stringify(emittedEvents)
+    );
   }
 
   const result = tryResolveResult(mainChain);
@@ -136,14 +126,37 @@ export function interpret<Return>(
   return {
     result,
     commands: calls.map((call) => ({
-      args: call.args,
-      name: call.name,
+      ...(isActivityCall(call)
+        ? {
+            // TODO: add sleep
+            kind: CommandType.StartActivity,
+            args: call.args,
+            name: call.name,
+            seq: call.seq!,
+          }
+        : isSleepUntilCall(call)
+        ? {
+            kind: CommandType.SleepUntil,
+            seq: call.seq!,
+            untilTime: call.isoDate,
+          }
+        : isSleepForCall(call)
+        ? {
+            kind: CommandType.SleepFor,
+            seq: call.seq!,
+            durationSeconds: call.durationSeconds,
+          }
+        : {
+            kind: CommandType.StartWorkflow,
+            input: call.input,
+            name: call.name,
+          }),
       seq: call.seq!,
     })),
   };
 
-  function advance(isReplay: boolean): ActivityCall[] | undefined {
-    let calls: ActivityCall[] | undefined;
+  function advance(isReplay: boolean): CommandCall[] | undefined {
+    let calls: CommandCall[] | undefined;
     let madeProgress: boolean;
     do {
       madeProgress = false;
@@ -177,7 +190,7 @@ export function interpret<Return>(
   function tryAdvanceChain(
     chain: Chain,
     isReplay: boolean
-  ): ActivityCall[] | undefined {
+  ): CommandCall[] | undefined {
     if (chain.awaiting === undefined) {
       // this is the first time the chain is running, so wake it with an undefined input
       return advanceChain(chain, undefined);
@@ -212,12 +225,12 @@ export function interpret<Return>(
     }
 
     /**
-     * Resumes a {@link Chain} with a new value and return any newly spawned {@link ActivityCall}s.
+     * Resumes a {@link Chain} with a new value and return any newly spawned {@link CommandCall}s.
      */
     function advanceChain(
       chain: Chain,
       result: Resolved | Failed | undefined
-    ): ActivityCall[] {
+    ): CommandCall[] {
       try {
         const iterResult =
           result === undefined || isResolved(result)
@@ -245,25 +258,28 @@ export function interpret<Return>(
           chain.awaiting = iterResult.value;
         }
       } catch (err) {
+        console.error(chain, err);
         activeChains.delete(chain);
         chain.result = Result.failed(err);
       }
 
       return collectActivities().flatMap((activity) => {
-        if (isActivityCall(activity)) {
-          return [activity];
+        if (isCommandCall(activity)) {
+          return activity;
         } else if (isChain(activity)) {
           activeChains.add(activity);
           return tryAdvanceChain(activity, isReplay) ?? [];
-        } else {
+        } else if (isAwaitAll(activity)) {
           return [];
         }
+
+        return assertNever(activity);
       });
     }
   }
 
   function tryResolveResult(activity: Eventual): Result | undefined {
-    if (isActivityCall(activity)) {
+    if (isCommandCall(activity)) {
       return activity.result;
     } else if (isChain(activity)) {
       if (activity.result) {
@@ -294,27 +310,37 @@ export function interpret<Return>(
   }
 
   function commitCompletionEvent(
-    event: ActivityCompleted | ActivityFailed,
+    event: CompletedEvent | FailedEvent,
     isReplay: boolean
   ) {
     const call = callTable[event.seq];
     if (call === undefined) {
-      throw new DeterminismError();
+      throw new DeterminismError(`Call for seq ${event.seq} was not emitted.`);
     }
     if (isReplay && call.result && !isPending(call.result)) {
-      throw new DeterminismError();
+      throw new DeterminismError(
+        `Expected call result to not be pending: ${call.seq}.`
+      );
     }
-    call.result = isActivityCompleted(event)
+    call.result = isCompletedEvent(event)
       ? Result.resolved(event.result)
+      : isSleepCompleted(event)
+      ? Result.resolved(undefined)
       : Result.failed(event.error);
   }
 }
 
-function isCorresponding(event: ActivityScheduled, call: ActivityCall) {
-  return (
-    event.seq === call.seq && event.name === call.name
-    // TODO: also validate arguments
-  );
+function isCorresponding(event: ScheduledEvent, call: CommandCall) {
+  if (event.seq !== call.seq) {
+    return false;
+  } else if (isActivityScheduled(event)) {
+    return isActivityCall(call) && call.name === event.name;
+  } else if (isChildWorkflowScheduled(event)) {
+    return isWorkflowCall(call) && call.name === event.name;
+  } else if (isSleepScheduled(event)) {
+    return isSleepUntilCall(call) || isSleepForCall(call);
+  }
+  return assertNever(event);
 }
 
 function isGenerator(a: any): a is Program {
@@ -325,4 +351,43 @@ function isGenerator(a: any): a is Program {
     typeof a.return === "function" &&
     typeof a.throw === "function"
   );
+}
+
+interface Iterator<I, T extends I> {
+  hasNext(): boolean;
+  next(): T | undefined;
+  drain(): T[];
+}
+
+function iterator<I, T extends I>(
+  elms: I[],
+  predicate?: (elm: I) => elm is T
+): Iterator<I, T> {
+  let cursor = 0;
+  return {
+    hasNext: () => {
+      seek();
+      return cursor < elms.length;
+    },
+    next: (): T => {
+      seek();
+      return elms[cursor++] as T;
+    },
+    drain: (): T[] => {
+      return predicate
+        ? elms.slice(cursor).filter(predicate)
+        : (elms.slice(cursor) as T[]);
+    },
+  };
+
+  function seek() {
+    if (predicate) {
+      while (cursor < elms.length) {
+        if (predicate(elms[cursor]!)) {
+          return;
+        }
+        cursor++;
+      }
+    }
+  }
 }
