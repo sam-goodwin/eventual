@@ -6,7 +6,6 @@
   "bin": {
     "eventual-bundle": "./bin/eventual-bundle.js"
   },
-  "type": "module",
   "files": [
     "bin",
     "lib"

@@ -6027,7 +6027,7 @@ packages:
       pretty-format: 29.3.1
       slash: 3.0.0
       strip-json-comments: 3.1.1
-      ts-node: 10.9.1_fvpuwgkpfe3dm3hnpcpbcxmb3y
+      ts-node: 10.9.1_b7y2sroehwdm6smfh4myvg7fsa
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -6067,7 +6067,7 @@ packages:
       pretty-format: 29.3.1
       slash: 3.0.0
       strip-json-comments: 3.1.1
-      ts-node: 10.9.1_fvpuwgkpfe3dm3hnpcpbcxmb3y
+      ts-node: 10.9.1_b7y2sroehwdm6smfh4myvg7fsa
     transitivePeerDependencies:
       - supports-color
     dev: true

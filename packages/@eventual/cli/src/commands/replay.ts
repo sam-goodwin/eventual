@@ -35,10 +35,12 @@ export const replay = (yargs: Argv) =>
         .get(`workflows/${workflow}/executions/${execution}/workflow-history`)
         .json<HistoryStateEvents[]>();
       spinner.succeed();
+      console.log(process.env.NODE_PATH);
       spinner.start("Compiling workflow");
       const workflowPath = await buildTransformedWorkflow(workflow, entry);
       spinner.succeed();
       spinner.start("Importing program");
+
       const { default: workflowProgram } = await import(workflowPath);
       spinner.succeed();
       spinner.start("Running program");
