@@ -38,10 +38,7 @@ export async function processWebhook(
       }
     },
   };
-  console.log(request);
   const response: Response = await router.handle(request);
-  console.log(response);
-
   const headers: Record<string, string> = {};
   response.headers.forEach((value, key) => (headers[key] = value));
   return {
