@@ -1,7 +1,6 @@
 import * as sts from "@aws-sdk/client-sts";
 import * as iam from "@aws-sdk/client-iam";
 import * as sig from "@aws-sdk/signature-v4";
-import * as cfn from "@aws-sdk/client-cloudformation";
 import ky from "ky-universal";
 import { HttpRequest } from "@aws-sdk/protocol-http";
 import { parseQueryString } from "@aws-sdk/querystring-parser";
@@ -13,19 +12,23 @@ import {
   NODE_REGION_CONFIG_OPTIONS,
   NODE_REGION_CONFIG_FILE_OPTIONS,
 } from "@aws-sdk/config-resolver";
+import { getServiceData } from "./service-data.js";
 
 //Return a ky which signs our requests with our execute role. Code adapted from
 // https://github.com/zirkelc/aws-sigv4-fetch
-export async function apiKy(region?: string): Promise<KyInstance> {
+export async function apiKy(
+  service: string,
+  region?: string
+): Promise<KyInstance> {
   const resolvedRegion =
     region ??
     (await loadConfig(
       NODE_REGION_CONFIG_OPTIONS,
       NODE_REGION_CONFIG_FILE_OPTIONS
     )());
-  const roleArn = await getApiRoleArn(resolvedRegion);
+  const roleArn = await getApiRoleArn(service, resolvedRegion);
   return ky.extend({
-    prefixUrl: await getApiUrl(resolvedRegion),
+    prefixUrl: (await getServiceData(service, region)).apiEndpoint,
     hooks: {
       beforeRequest: [
         async (req: Request) => {
@@ -57,27 +60,17 @@ export async function apiKy(region?: string): Promise<KyInstance> {
   });
 }
 
-async function getApiUrl(region?: string) {
-  const cfnClient = new cfn.CloudFormationClient({ region });
-  const { Exports } = await cfnClient.send(new cfn.ListExportsCommand({}));
-  const apiUrl = Exports?.find((v) => v.Name === "eventual-api-url")?.Value;
-  if (!apiUrl) {
-    styledConsole.error(
-      "No eventual-api-url cloudformation export! Have you deployed an Eventual Api?"
-    );
-    throw new Error("No api url");
-  }
-  return apiUrl;
-}
-
-export async function getApiRoleArn(region?: string): Promise<string> {
+export async function getApiRoleArn(
+  service: string,
+  region?: string
+): Promise<string> {
   const iamClient = new iam.IAMClient({ region });
   const apiRole = await iamClient.send(
-    new iam.GetRoleCommand({ RoleName: "eventual-api" })
+    new iam.GetRoleCommand({ RoleName: `eventual-api-${service}` })
   );
   if (!apiRole.Role) {
     styledConsole.error(
-      "Couldn't find eventual-api role! Have you deployed an eventual api?"
+      `Couldn't find eventual-api-${service} role! Have you deployed an eventual api?`
     );
     process.exit(1);
   }

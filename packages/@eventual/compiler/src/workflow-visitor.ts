@@ -12,7 +12,7 @@ import {
   StringLiteral,
 } from "@swc/core";
 
-import Visitor from "@swc/core/Visitor";
+import { Visitor } from "@swc/core/Visitor.js";
 
 const supportedPromiseFunctions: string[] = [
   "all",

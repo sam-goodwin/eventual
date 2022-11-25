@@ -1,84 +1,138 @@
 import fs from "fs/promises";
 import path from "path";
 import esbuild from "esbuild";
-import { eventualESPlugin } from "./esbuild-plugin";
+import { eventualESPlugin } from "./esbuild-plugin.js";
 import { esbuildPluginAliasPath } from "esbuild-plugin-alias-path";
-import { prepareOutDir } from "./build";
+import { prepareOutDir } from "./build.js";
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
+const getOutFiles = (outDir: string) => ({
+  orchestrator: path.join(outDir, "orchestrator/index.mjs"),
+  activityWorker: path.join(outDir, "activity-worker/index.mjs"),
+  workflow: path.join(outDir, "workflow/index.mjs"),
 });
 
-async function main() {
-  const [, , outDir, entry] = process.argv;
-
-  if (!(outDir && entry)) {
-    throw new Error(`Usage: eventual-build <out-dir> <entry-point>`);
+/**
+ * Bundle an eventual program
+ * @param outDir Directory to bundle to
+ * @param entry File containing the program, where default export is our workflow
+ * @returns Paths to orchestrator and activtyWorker output files
+ */
+export async function bundle(
+  outDir: string,
+  entries: {
+    workflow: string;
+    orchestrator: string;
+    activityWorker: string;
   }
-
+): Promise<{ orchestrator: string; activityWorker: string }> {
+  console.log("Bundling:", outDir, entries);
   await prepareOutDir(outDir);
 
   await Promise.all([
-    esbuild
-      .build({
-        mainFields: ["module", "main"],
-        sourcemap: true,
-        plugins: [
-          esbuildPluginAliasPath({
-            alias: { "@eventual/injected/workflow": entry },
-          }),
-          eventualESPlugin,
-        ],
-        conditions: ["module", "import", "require"],
-        // supported with NODE_18.x runtime
-        // TODO: make this configurable.
-        // external: ["@aws-sdk"],
-        platform: "node",
-        format: "esm",
-        metafile: true,
-        bundle: true,
-        entryPoints: [
-          path.join(
-            require.resolve("@eventual/aws-runtime"),
-            "../../esm/entry/orchestrator.js"
-          ),
-        ],
-        // // ulid
-        banner: esmPolyfillRequireBanner(),
-        outfile: path.join(outDir, "orchestrator/index.mjs"),
-      })
-      .then(writeEsBuildMetafile(path.join(outDir, "orchestrator/meta.json"))),
-    esbuild
-      .build({
-        mainFields: ["module", "main"],
-        sourcemap: true,
-        plugins: [
-          esbuildPluginAliasPath({
-            alias: { "@eventual/injected/activities": entry },
-          }),
-        ],
-        conditions: ["module", "import", "require"],
-        // supported with NODE_18.x runtime
-        // TODO: make this configurable.
-        // external: ["@aws-sdk"],
-        platform: "node",
-        format: "esm",
-        metafile: true,
-        bundle: true,
-        entryPoints: [
-          path.join(
-            require.resolve("@eventual/aws-runtime"),
-            "../../esm/entry/activity-worker.js"
-          ),
-        ],
-        banner: esmPolyfillRequireBanner(),
-        outfile: path.join(outDir, "activity-worker/index.mjs"),
-      })
-      .then(
-        writeEsBuildMetafile(path.join(outDir, "activity-worker/meta.json"))
-      ),
+    bundleOrchestrator(outDir, entries),
+    bundleActivityWorker(outDir, entries),
   ]);
+
+  console.log("Output: ", getOutFiles(outDir));
+  return getOutFiles(outDir);
+}
+
+export async function bundleWorkflow(outDir: string, entry: string) {
+  await prepareOutDir(outDir);
+  const outfile = getOutFiles(outDir).workflow;
+
+  const result = await esbuild.build({
+    mainFields: ["module", "main"],
+    sourcemap: true,
+    plugins: [eventualESPlugin],
+    conditions: ["module", "import", "require"],
+    // supported with NODE_18.x runtime
+    // TODO: make this configurable.
+    // external: ["@aws-sdk"],
+    platform: "node",
+    format: "esm",
+    metafile: true,
+    bundle: true,
+    entryPoints: [entry],
+    outfile,
+  });
+  await writeEsBuildMetafile(result, path.join(outDir, "workflow/meta.json"));
+
+  return outfile;
+}
+
+async function bundleOrchestrator(
+  outDir: string,
+  entries: {
+    workflow: string;
+    orchestrator: string;
+  }
+) {
+  const result = await esbuild.build({
+    mainFields: ["module", "main"],
+    sourcemap: true,
+    plugins: [
+      esbuildPluginAliasPath({
+        alias: {
+          "@eventual/injected/workflow": path.resolve(entries.workflow),
+        },
+      }),
+      eventualESPlugin,
+    ],
+    conditions: ["module", "import", "require"],
+    // supported with NODE_18.x runtime
+    // TODO: make this configurable.
+    // external: ["@aws-sdk"],
+    platform: "node",
+    format: "esm",
+    metafile: true,
+    bundle: true,
+    entryPoints: [entries.orchestrator],
+    banner: esmPolyfillRequireBanner(),
+    outfile: getOutFiles(outDir).orchestrator,
+  });
+  await writeEsBuildMetafile(
+    result,
+    path.join(outDir, "orchestrator/meta.json")
+  );
+  return result;
+}
+
+async function bundleActivityWorker(
+  outDir: string,
+  entries: {
+    workflow: string;
+    activityWorker: string;
+  }
+) {
+  const result = await esbuild.build({
+    mainFields: ["module", "main"],
+    sourcemap: true,
+    conditions: ["module", "import", "require"],
+    plugins: [
+      esbuildPluginAliasPath({
+        alias: {
+          "@eventual/injected/activities": path.resolve(entries.workflow),
+        },
+      }),
+      eventualESPlugin,
+    ],
+    // supported with NODE_18.x runtime
+    // TODO: make this configurable.
+    // external: ["@aws-sdk"],
+    platform: "node",
+    format: "esm",
+    metafile: true,
+    bundle: true,
+    entryPoints: [entries.activityWorker],
+    banner: esmPolyfillRequireBanner(),
+    outfile: getOutFiles(outDir).activityWorker,
+  });
+  await writeEsBuildMetafile(
+    result,
+    path.join(outDir, "activity-worker/meta.json")
+  );
+  return result;
 }
 
 /**
@@ -93,8 +147,9 @@ function esmPolyfillRequireBanner() {
   };
 }
 
-function writeEsBuildMetafile(path: string) {
-  return (
-    esbuildResult: esbuild.BuildResult & { metafile: esbuild.Metafile }
-  ) => fs.writeFile(path, JSON.stringify(esbuildResult.metafile));
+function writeEsBuildMetafile(
+  esbuildResult: esbuild.BuildResult & { metafile: esbuild.Metafile },
+  path: string
+) {
+  return fs.writeFile(path, JSON.stringify(esbuildResult.metafile));
 }

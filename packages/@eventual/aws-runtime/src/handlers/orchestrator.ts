@@ -124,7 +124,7 @@ async function orchestrateExecution(
 ) {
   console.log(executionId, records);
   const executionLogger = logger.createChild({
-    persistentLogAttributes: { executionId },
+    persistentLogAttributes: { workflowName: workflow.name, executionId },
   });
   const metrics = createMetricsLogger();
   metrics.resetDimensions(false);

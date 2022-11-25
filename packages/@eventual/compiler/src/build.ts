@@ -2,17 +2,18 @@ import { constants } from "fs";
 import fs from "fs/promises";
 import path from "path";
 
-export async function prepareOutDir(outDir: string) {
+export async function prepareOutDir(outDir: string, clean: boolean = true) {
   try {
     await fs.access(outDir, constants.F_OK);
-    await cleanDir(outDir);
+    if (clean) {
+      await cleanDir(outDir);
+    }
   } catch {
     await fs.mkdir(outDir, {
       recursive: true,
     });
   }
 }
-
 export async function rmrf(file: string) {
   const stat = await fs.stat(file);
   if (stat.isDirectory()) {

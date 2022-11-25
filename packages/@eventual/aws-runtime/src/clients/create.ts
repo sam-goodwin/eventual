@@ -2,15 +2,15 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { LambdaClient } from "@aws-sdk/client-lambda";
 import { S3Client } from "@aws-sdk/client-s3";
 import { SQSClient } from "@aws-sdk/client-sqs";
-import * as env from "../env";
-import { ActivityRuntimeClient } from "./activity-runtime-client";
-import { ExecutionHistoryClient } from "./execution-history-client";
-import { WorkflowClient } from "./workflow-client";
-import { WorkflowRuntimeClient } from "./workflow-runtime-client";
+import * as env from "../env.js";
+import { ActivityRuntimeClient } from "./activity-runtime-client.js";
+import { ExecutionHistoryClient } from "./execution-history-client.js";
+import { WorkflowClient } from "./workflow-client.js";
+import { WorkflowRuntimeClient } from "./workflow-runtime-client.js";
 import memoize from "micro-memoize";
 import { deepEqual } from "fast-equals";
 import { SchedulerClient } from "@aws-sdk/client-scheduler";
-import { TimerClient, TimerClientProps } from "./timer-client";
+import { TimerClient, TimerClientProps } from "./timer-client.js";
 
 /**
  * Client creators to be used by the lambda functions.

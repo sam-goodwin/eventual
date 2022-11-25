@@ -60,8 +60,10 @@ export interface CompleteExecutionRequest {
 export class WorkflowRuntimeClient {
   constructor(private props: WorkflowRuntimeClientProps) {}
 
-  async getHistory(executionId: string): Promise<HistoryStateEvents[]> {
+  async getHistory(executionId: string): Promise<HistoryStateEvent[]> {
     try {
+      console.log("history key", formatExecutionHistoryKey(executionId));
+      console.log("bucket", this.props.executionHistoryBucket);
       // get current history from s3
       const historyObject = await this.props.s3.send(
         new GetObjectCommand({

@@ -1,7 +1,7 @@
 import esBuild from "esbuild";
 import { Module, parseFile, print } from "@swc/core";
 import path from "path";
-import { OuterVisitor } from "./workflow-visitor";
+import { OuterVisitor } from "./workflow-visitor.js";
 
 export const eventualESPlugin: esBuild.Plugin = {
   name: "eventual",

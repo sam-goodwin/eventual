@@ -1,8 +1,8 @@
 import { APIGatewayProxyEventV2 } from "aws-lambda";
-import { workflows } from "../env";
 import { createWorkflowClient } from "../../../clients/create";
 import middy from "@middy/core";
 import { errorMiddleware } from "../middleware";
+import { getService } from "../service-properties";
 
 /**
  * Create a new execution (start a workflow)
@@ -14,14 +14,7 @@ async function newExecution(event: APIGatewayProxyEventV2) {
   if (!workflowName) {
     return { statusCode: 400, body: `Missing workflow name` };
   }
-  const workflow = workflows[workflowName];
-  if (!workflow) {
-    return {
-      statusCode: 400,
-      body: `Workflow ${workflowName} does not exist!`,
-    };
-  }
-  const workflowClient = createWorkflowClient(workflow);
+  const workflowClient = createWorkflowClient(getService());
 
   return {
     executionId: await workflowClient.startWorkflow({
