@@ -109,13 +109,12 @@ export function workflow<F extends WorkflowHandler>(
   if (workflows.has(name)) {
     throw new Error(`workflow with name '${name}' already exists`);
   }
-  const workflow: Workflow<F> = ((input?: any) => {
-    return registerActivity({
+  const workflow: Workflow<F> = ((input?: any) =>
+    registerActivity({
       [EventualSymbol]: EventualKind.WorkflowCall,
       name,
       input,
-    });
-  }) as any;
+    })) as any;
 
   workflow.startExecution = async function (input) {
     return {

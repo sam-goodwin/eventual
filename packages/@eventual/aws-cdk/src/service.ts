@@ -188,8 +188,8 @@ export class Service extends Construct implements IGrantable {
 
     this.activityWorker = new Function(this, "Worker", {
       architecture: Architecture.ARM_64,
-      code: Code.fromAsset(path.join(outDir, "activity-worker")),
-      // the bundler outputs activity-worker/index.js
+      code: Code.fromAsset(path.join(outDir, "activity")),
+      // the bundler outputs activity/index.js
       handler: "index.default",
       runtime: Runtime.NODEJS_16_X,
       memorySize: 512,
@@ -380,22 +380,15 @@ export class Service extends Construct implements IGrantable {
       }),
     });
 
-    this.webhookEndpoint = new NodejsFunction(this, "WebhookEndpoint", {
-      entry: path.join(
-        require.resolve("@eventual/aws-runtime"),
-        "../../esm/handlers/webhook-handler.js"
-      ),
-      handler: "handle",
-      runtime: Runtime.NODEJS_16_X,
+    this.webhookEndpoint = new Function(this, "WebhookEndpoint", {
       architecture: Architecture.ARM_64,
-      bundling: {
-        mainFields: ["module", "main"],
-        esbuildArgs: {
-          "--conditions": "module,import,require",
-        },
-        metafile: true,
-      },
+      code: Code.fromAsset(path.join(outDir, "webhook")),
+      // the bundler outputs orchestrator/index.js
+      handler: "index.default",
+      runtime: Runtime.NODEJS_16_X,
+      memorySize: 512,
       environment: {
+        NODE_OPTIONS: "--enable-source-maps",
         [ENV_NAMES.TABLE_NAME]: this.table.tableName,
         [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
         [ENV_NAMES.EVENTUAL_WEBHOOK]: "1",
