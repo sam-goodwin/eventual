@@ -1,0 +1,18 @@
+{
+  "extends": "../../../tsconfig-base",
+  "compilerOptions": {
+    "module": "esnext",
+    "target": "esnext",
+    "outDir": "lib/esm",
+    "moduleResolution": "NodeNext",
+    "declaration": true,
+    "inlineSourceMap": true,
+    "rootDir": "src",
+    "typeRoots": ["./node_modules/@types"],
+    "allowJs": true,
+    "stripInternal": true
+  },
+  "include": ["src", "src/package.json"],
+  "exclude": ["lib", "node_modules"],
+  "references": []
+}

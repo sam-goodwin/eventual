@@ -32,6 +32,9 @@
       "path": "packages/@eventual/cli"
     },
     {
+      "path": "packages/@eventual/integrations"
+    },
+    {
       "path": "apps/test-app"
     },
     {

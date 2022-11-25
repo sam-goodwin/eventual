@@ -1,1 +1,1 @@
-# @eventual/runtime
+# @eventual/core
