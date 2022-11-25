@@ -33,16 +33,19 @@ interface OpenAccountRequest {
 
 type RollbackHandler = () => Promise<void>;
 
-export default workflow("open-account", async (request: OpenAccountRequest) => {
-  try {
-    await createAccount(request.accountId);
-  } catch (err) {
-    console.error(err);
-    throw err;
-  }
+export const openAccount = workflow(
+  "open-account",
+  async (request: OpenAccountRequest) => {
+    try {
+      await createAccount(request.accountId);
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
 
-  await associateAccountInformation(request);
-});
+    await associateAccountInformation(request);
+  }
+);
 
 // sub-workflow for testing purposes
 export const associateAccountInformation = workflow(
@@ -67,8 +70,20 @@ export const associateAccountInformation = workflow(
 
 // register a web hook API route
 hook((api) => {
-  api.get("/hello", async () => {
-    return new Response("hello");
+  api.post("/open-account", async (request) => {
+    console.log(request);
+    const input = await request.json!();
+
+    const response = await openAccount.startExecution({
+      input,
+    });
+
+    return new Response(JSON.stringify(response), {
+      headers: {
+        "Content-Type": "application/json",
+      },
+      status: 200,
+    });
   });
 });
 

@@ -12,10 +12,7 @@ registerWorkflowClient(createWorkflowClient());
 // initialize all web hooks onto the central HTTP router
 const router = itty.Router<itty.Request, itty.IHTTPMethods>({});
 
-getHooks().forEach((hook) => {
-  console.log("registering hook", hook.toString());
-  hook(router);
-});
+getHooks().forEach((hook) => hook(router));
 
 router.all("*", () => new Response("Not Found.", { status: 404 }));
 
@@ -33,6 +30,13 @@ export async function processWebhook(
     url: `http://localhost:3000${event.requestContext.http.path}`,
     params: event.pathParameters as itty.Obj,
     query: event.queryStringParameters as itty.Obj,
+    async json() {
+      if (event.body) {
+        return JSON.parse(event.body!);
+      } else {
+        return undefined;
+      }
+    },
   };
   console.log(request);
   const response: Response = await router.handle(request);
