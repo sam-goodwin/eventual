@@ -43,12 +43,13 @@ export async function bundleWorkflow(outDir: string, entry: string) {
 
   const result = await esbuild.build({
     mainFields: ["module", "main"],
-    sourcemap: true,
+    sourcemap: "inline",
     plugins: [eventualESPlugin],
     conditions: ["module", "import", "require"],
     // supported with NODE_18.x runtime
     // TODO: make this configurable.
     // external: ["@aws-sdk"],
+    external: ["@eventual/core"],
     platform: "node",
     format: "esm",
     metafile: true,
