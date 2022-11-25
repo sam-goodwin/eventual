@@ -13,6 +13,7 @@ import fs from "fs/promises";
 import getStdin from "get-stdin";
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
+import { encodeExecutionId } from "@eventual/aws-runtime";
 
 export const start = (yargs: Argv) =>
   yargs.command(
@@ -53,12 +54,7 @@ export const start = (yargs: Argv) =>
           spinner.start(`${executionId} in progress\n`);
         }
         async function pollEvents() {
-          const newEvents = await getNewEvents(
-            events,
-            ky,
-            workflow,
-            executionId
-          );
+          const newEvents = await getNewEvents(events, ky, executionId);
           newEvents.forEach((ev) => {
             let meta: string | undefined;
             if (isActivityCompleted(ev)) {
@@ -105,11 +101,10 @@ export const start = (yargs: Argv) =>
 async function getNewEvents(
   existingEvents: WorkflowEvent[],
   ky: KyInstance,
-  workflowName: string,
   executionId: string
 ) {
   const updatedEvents = await ky(
-    `workflows/${workflowName}/executions/${executionId}`
+    `executions/${encodeExecutionId(executionId)}/history`
   ).json<WorkflowEvent[]>();
   if (updatedEvents.length == 0) {
     //Unfortunately if the execution id is wrong, our dynamo query is just going to return an empty record set

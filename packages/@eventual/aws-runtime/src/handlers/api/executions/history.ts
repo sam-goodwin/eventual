@@ -3,6 +3,7 @@ import { APIGatewayProxyEventV2 } from "aws-lambda";
 import { createExecutionHistoryClient } from "../../../clients";
 import { getService } from "../service-properties";
 import { errorMiddleware } from "../middleware";
+import { decodeExecutionId } from "src/execution-id";
 
 async function history(event: APIGatewayProxyEventV2) {
   const executionId = event.pathParameters?.executionId;
@@ -11,7 +12,7 @@ async function history(event: APIGatewayProxyEventV2) {
   }
 
   const workflowClient = createExecutionHistoryClient(getService());
-  return workflowClient.getEvents(atob(executionId));
+  return workflowClient.getEvents(decodeExecutionId(executionId));
 }
 
 export const handler = middy(history).use(errorMiddleware);
