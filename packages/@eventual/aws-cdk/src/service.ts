@@ -269,17 +269,17 @@ export class Service extends Construct implements IGrantable {
     //Environment variables required to glue together the service components.
     //Used by the orchestrator and api
     const componentsEnv = {
-        [ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME]:
-          this.activityWorker.functionName,
-        [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
-        [ENV_NAMES.TABLE_NAME]: this.table.tableName,
-        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
-        [ENV_NAMES.SCHEDULER_ROLE_ARN]: schedulerRole.roleArn,
-        [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: this.dlq.queueArn,
-        [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
-        [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
-        [ENV_NAMES.SCHEDULE_FORWARDER_ARN]: this.scheduleForwarder.functionArn,
-    }
+      [ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME]:
+        this.activityWorker.functionName,
+      [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
+      [ENV_NAMES.TABLE_NAME]: this.table.tableName,
+      [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
+      [ENV_NAMES.SCHEDULER_ROLE_ARN]: schedulerRole.roleArn,
+      [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: this.dlq.queueArn,
+      [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
+      [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
+      [ENV_NAMES.SCHEDULE_FORWARDER_ARN]: this.scheduleForwarder.functionArn,
+    };
 
     this.orchestrator = new Function(this, "Orchestrator", {
       architecture: Architecture.ARM_64,
@@ -290,7 +290,7 @@ export class Service extends Construct implements IGrantable {
       memorySize: 512,
       environment: {
         NODE_OPTIONS: "--enable-source-maps",
-        ...componentsEnv
+        ...componentsEnv,
       },
       events: [
         new SqsEventSource(this.workflowQueue, {
@@ -409,7 +409,7 @@ export class Service extends Construct implements IGrantable {
         orchestratorFunctionName: this.orchestrator.functionName,
         activityWorkerFunctionName: this.activityWorker.functionName,
       } satisfies ServiceProperties),
-      ...componentsEnv
+      ...componentsEnv,
     };
 
     const route = (mappings: Record<string, RouteMapping[]>) => {

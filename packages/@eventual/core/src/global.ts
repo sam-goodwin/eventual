@@ -1,18 +1,26 @@
 import type { Eventual } from "./eventual.js";
+import { Workflow } from "./workflow.js";
+
+const activityCollector = (): Eventual[] =>
+  ((globalThis as any).activityCollector ??= []);
+
+export const workflows = (): Map<string, Workflow> =>
+  ((globalThis as any).workflows ??= new Map<string, Workflow>());
+
+export const callableActivities = (): Record<string, Function> =>
+  ((globalThis as any).callableActivities ??= {});
 
 export function registerActivity<A extends Eventual>(activity: A): A {
-  activityCollector.push(activity);
+  activityCollector().push(activity);
   return activity;
 }
 
-let activityCollector: Eventual[] = [];
-
 export function resetActivityCollector() {
-  activityCollector = [];
+  (globalThis as any).activityCollector = [];
 }
 
-export function collectActivities() {
-  const activities = activityCollector;
+export function collectActivities(): Eventual[] {
+  const activities = activityCollector();
   resetActivityCollector();
   return activities;
 }
