@@ -13,6 +13,7 @@ import {
   ScheduleForwarderRequest,
   TimerRequest,
 } from "../handlers/types.js";
+import type eventual from "@eventual/core";
 
 export interface TimerClientProps {
   readonly scheduler: SchedulerClient;
@@ -29,7 +30,7 @@ export interface TimerClientProps {
   readonly scheduleForwarderArn: string;
 }
 
-export class TimerClient {
+export class TimerClient implements eventual.TimerClient {
   constructor(private props: TimerClientProps) {}
 
   /**

@@ -1,15 +1,21 @@
+import { getHooks, registerWorkflowClient } from "@eventual/core";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
-import { getHooks } from "@eventual/core";
 import itty from "itty-router";
 import { createWorkflowClient } from "src/clients";
 
-const router = itty.Router<itty.Request, itty.IHTTPMethods>({});
+// make the workflow client available to web hooks
+registerWorkflowClient(createWorkflowClient());
 
+// initialize all web hooks onto the central HTTP router
+const router = itty.Router<itty.Request, itty.IHTTPMethods>({});
 getHooks().forEach((hook) => hook(router));
 
-// TODO: plu
-const workflowClient = createWorkflowClient();
-
+/**
+ * Handle inbound webhook API requests.
+ *
+ * Each webhook registers routes on the central {@link router} which
+ * then handles the request.
+ */
 export async function handle(
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> {

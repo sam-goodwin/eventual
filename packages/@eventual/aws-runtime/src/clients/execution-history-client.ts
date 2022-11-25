@@ -11,6 +11,8 @@ import {
   isHistoryEvent,
   WorkflowEvent,
 } from "@eventual/core";
+import type eventual from "@eventual/core";
+
 import { ulid } from "ulidx";
 
 export interface ExecutionHistoryClientProps {
@@ -20,7 +22,7 @@ export interface ExecutionHistoryClientProps {
 
 type UnresolvedEvent<T extends WorkflowEvent> = Omit<T, "id" | "timestamp">;
 
-export class ExecutionHistoryClient {
+export class ExecutionHistoryClient implements eventual.ExecutionHistoryClient {
   constructor(private props: ExecutionHistoryClientProps) {}
 
   public async createAndPutEvent<T extends WorkflowEvent>(

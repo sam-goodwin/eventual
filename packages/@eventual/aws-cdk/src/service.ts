@@ -5,6 +5,7 @@ import {
   Code,
   IFunction,
   Runtime,
+  FunctionUrlAuthType,
 } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import { Bucket, IBucket } from "aws-cdk-lib/aws-s3";
@@ -311,28 +312,6 @@ export class Service extends Construct implements IGrantable {
       ],
     });
 
-    this.webhookEndpoint = new NodejsFunction(this, "WebhookEndpoint", {
-      entry: path.join(
-        require.resolve("@eventual/aws-runtime"),
-        "../../esm/handlers/webhook-handler.js"
-      ),
-      handler: "handle",
-      runtime: Runtime.NODEJS_16_X,
-      architecture: Architecture.ARM_64,
-      bundling: {
-        mainFields: ["module", "main"],
-        esbuildArgs: {
-          "--conditions": "module,import,require",
-        },
-        metafile: true,
-      },
-      environment: {
-        [ENV_NAMES.TABLE_NAME]: this.table.tableName,
-        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
-        [ENV_NAMES.EVENTUAL_WEBHOOK]: "1",
-      },
-    });
-
     this.timerQueue.grantSendMessages(this.scheduleForwarder);
 
     this.timerQueue.grantSendMessages(this.orchestrator);
@@ -400,5 +379,36 @@ export class Service extends Construct implements IGrantable {
         },
       }),
     });
+
+    this.webhookEndpoint = new NodejsFunction(this, "WebhookEndpoint", {
+      entry: path.join(
+        require.resolve("@eventual/aws-runtime"),
+        "../../esm/handlers/webhook-handler.js"
+      ),
+      handler: "handle",
+      runtime: Runtime.NODEJS_16_X,
+      architecture: Architecture.ARM_64,
+      bundling: {
+        mainFields: ["module", "main"],
+        esbuildArgs: {
+          "--conditions": "module,import,require",
+        },
+        metafile: true,
+      },
+      environment: {
+        [ENV_NAMES.TABLE_NAME]: this.table.tableName,
+        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
+        [ENV_NAMES.EVENTUAL_WEBHOOK]: "1",
+      },
+    });
+    this.webhookEndpoint.addFunctionUrl({
+      authType: FunctionUrlAuthType.NONE,
+    });
+
+    // the webhook endpoint is allowed to run workflows
+    this.workflowQueue.grantSendMessages(this.webhookEndpoint);
+
+    // Enable creating history to start a workflow.
+    this.table.grantReadWriteData(this.webhookEndpoint);
   }
 }

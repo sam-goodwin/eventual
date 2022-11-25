@@ -47,7 +47,9 @@ export const createWorkflowClient = /*@__PURE__*/ memoize(
     new WorkflowClient({
       sqs: sqs(),
       workflowQueueUrl: workflowQueueUrl ?? env.workflowQueueUrl(),
-      executionHistory: createExecutionHistoryClient({ tableName }),
+      executionHistory: createExecutionHistoryClient({
+        tableName: tableName ?? env.tableName(),
+      }),
       dynamo: dynamo(),
       tableName: tableName ?? env.tableName(),
     }),

@@ -39,6 +39,7 @@ import { ActivityWorkerRequest } from "../activity.js";
 import { createEvent } from "./execution-history-client.js";
 import { TimerRequestType } from "../handlers/types.js";
 import { TimerClient } from "./timer-client.js";
+import type eventual from "@eventual/core";
 
 export interface WorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;
@@ -57,7 +58,7 @@ export interface CompleteExecutionRequest {
   readonly timerClient: TimerClient;
 }
 
-export class WorkflowRuntimeClient {
+export class WorkflowRuntimeClient implements eventual.WorkflowRuntimeClient {
   constructor(private props: WorkflowRuntimeClientProps) {}
 
   async getHistory(executionId: string) {

@@ -1,4 +1,4 @@
-import { activity, workflow } from "@eventual/core";
+import { activity, hook, workflow } from "@eventual/core";
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
@@ -65,6 +65,13 @@ export const associateAccountInformation = workflow(
   }
 );
 
+// register a web hook API route
+hook((api) => {
+  api.get("/hello", async () => {
+    return new Response("hello");
+  });
+});
+
 const TableName = process.env.TABLE_NAME!;
 
 const dynamo = memoize(() =>
@@ -72,7 +79,6 @@ const dynamo = memoize(() =>
 );
 
 const createAccount = activity("createAccount", async (accountId: string) => {
-  console.log("processing", accountId);
   await dynamo().send(
     new PutCommand({
       TableName,

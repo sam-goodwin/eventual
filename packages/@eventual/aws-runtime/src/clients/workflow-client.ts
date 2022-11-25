@@ -12,10 +12,11 @@ import {
   WorkflowStarted,
   WorkflowTask,
 } from "@eventual/core";
-import { StartWorkflowRequest } from "src/types.js";
 import { ulid } from "ulidx";
 import { formatExecutionId } from "../execution-id.js";
 import { ExecutionHistoryClient } from "./execution-history-client.js";
+
+import type eventual from "@eventual/core";
 
 export interface WorkflowClientProps {
   readonly dynamo: DynamoDBClient;
@@ -25,7 +26,7 @@ export interface WorkflowClientProps {
   readonly executionHistory: ExecutionHistoryClient;
 }
 
-export class WorkflowClient {
+export class WorkflowClient implements eventual.WorkflowClient {
   constructor(private props: WorkflowClientProps) {}
 
   /**
@@ -40,7 +41,7 @@ export class WorkflowClient {
     input,
     parentExecutionId,
     seq,
-  }: StartWorkflowRequest) {
+  }: eventual.StartWorkflowRequest) {
     const executionId = formatExecutionId(workflowName, executionName);
     console.log("execution input:", input);
 

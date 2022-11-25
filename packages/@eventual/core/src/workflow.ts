@@ -21,6 +21,10 @@ import {
   WorkflowEventType,
 } from "./events.js";
 import { interpret, WorkflowResult } from "./interpret.js";
+import {
+  getWorkflowClient,
+  StartWorkflowResponse,
+} from "./runtime/workflow-client.js";
 
 export type WorkflowHandler = (
   input: any,
@@ -46,6 +50,23 @@ export interface Workflow<F extends WorkflowHandler = WorkflowHandler> {
    * To start a workflow from another environment, use {@link start}.
    */
   (input: Parameters<F>[0]): ReturnType<F>;
+
+  /**
+   * Starts a workflow execution
+   */
+  startExecution(request: {
+    /**
+     * Input payload for the workflow.
+     */
+    input: Parameters<F>[0];
+    /**
+     * Optional name of the workflow to start - used to determine the unique ID and enforce idempotency.
+     *
+     * @default - a unique ID is generated.
+     */
+    name?: string;
+  }): Promise<StartWorkflowResponse>;
+
   /**
    * @internal - this is the internal DSL representation that produces a {@link Program} instead of a Promise.
    */
@@ -88,12 +109,23 @@ export function workflow<F extends WorkflowHandler>(
   if (workflows.has(name)) {
     throw new Error(`workflow with name '${name}' already exists`);
   }
-  const workflow: Workflow<F> = ((input?: any) =>
-    registerActivity({
+  const workflow: Workflow<F> = ((input?: any) => {
+    return registerActivity({
       [EventualSymbol]: EventualKind.WorkflowCall,
       name,
       input,
-    })) as any;
+    });
+  }) as any;
+
+  workflow.startExecution = async function (input) {
+    return {
+      executionId: await getWorkflowClient().startWorkflow({
+        workflowName: name,
+        executionName: input.name,
+        input: input.input,
+      }),
+    };
+  };
 
   workflow.definition = definition as Workflow<F>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
   workflows.set(name, workflow);
@@ -162,7 +194,10 @@ export function progressWorkflow(
 
   try {
     return {
-      ...interpret(program.definition(startEvent.input, context), interpretEvents),
+      ...interpret(
+        program.definition(startEvent.input, context),
+        interpretEvents
+      ),
       history: allEvents,
     };
   } catch (err) {
@@ -198,11 +233,14 @@ export function generateSyntheticEvents(
     unresolvedSleep
   )
     .filter((event) => new Date(event.untilTime).getTime() <= now.getTime())
-    .map((e) => ({
-      type: WorkflowEventType.SleepCompleted,
-      seq: e.seq,
-      timestamp: now.toISOString(),
-    } satisfies SleepCompleted));
+    .map(
+      (e) =>
+        ({
+          type: WorkflowEventType.SleepCompleted,
+          seq: e.seq,
+          timestamp: now.toISOString(),
+        } satisfies SleepCompleted)
+    );
 
   return syntheticSleepComplete;
 }

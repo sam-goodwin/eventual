@@ -10,6 +10,7 @@ export * from "./execution.js";
 export * from "./hook.js";
 export * from "./interpret.js";
 export * from "./result.js";
+export * from "./runtime/index.js";
 export * from "./sleep.js";
 export * from "./tasks.js";
 export * from "./util.js";
