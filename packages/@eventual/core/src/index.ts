@@ -7,6 +7,7 @@ export * from "./error.js";
 export * from "./events.js";
 export * from "./eventual.js";
 export * from "./execution.js";
+export * from "./global.js";
 export * from "./hook.js";
 export * from "./interpret.js";
 export * from "./result.js";

@@ -4,7 +4,11 @@ import {
   EventualKind,
   EventualSymbol,
 } from "./eventual.js";
-import { registerActivity, resetActivityCollector } from "./global.js";
+import {
+  getWorkflowClient,
+  registerActivity,
+  resetActivityCollector,
+} from "./global.js";
 import type { Program } from "./interpret.js";
 import type { Result } from "./result.js";
 import { Context, WorkflowContext } from "./context.js";
@@ -21,10 +25,7 @@ import {
   WorkflowEventType,
 } from "./events.js";
 import { interpret, WorkflowResult } from "./interpret.js";
-import {
-  getWorkflowClient,
-  StartWorkflowResponse,
-} from "./runtime/workflow-client.js";
+import { StartWorkflowResponse } from "./runtime/workflow-client.js";
 
 export type WorkflowHandler = (
   input: any,
