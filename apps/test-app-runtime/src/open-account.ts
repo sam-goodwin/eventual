@@ -71,7 +71,6 @@ export const associateAccountInformation = workflow(
 // register a web hook API route
 hook((api) => {
   api.post("/open-account", async (request) => {
-    console.log(request);
     const input = await request.json!();
 
     const response = await openAccount.startExecution({
