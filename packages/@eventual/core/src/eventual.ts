@@ -14,6 +14,10 @@ import {
   isWaitForEventCall,
   WaitForEventCall,
 } from "./calls/wait-for-event-call.js";
+import {
+  isRegisterEventHandlerCall,
+  RegisterEventHandlerCall,
+} from "./calls/event-handler-call.js";
 
 export type AwaitedEventual<T> = T extends Promise<infer U>
   ? Awaited<U>
@@ -38,6 +42,7 @@ export enum EventualKind {
   SleepUntilCall = 4,
   WorkflowCall = 5,
   WaitForEventCall = 6,
+  RegisterEventHandlerCall = 7,
 }
 
 export function isEventual(a: any): a is Eventual {
@@ -57,7 +62,8 @@ export type CommandCall<T = any> =
   | SleepForCall
   | SleepUntilCall
   | WorkflowCall<T>
-  | WaitForEventCall<T>;
+  | WaitForEventCall<T>
+  | RegisterEventHandlerCall<T>;
 
 export function isCommandCall(call: Eventual): call is CommandCall {
   return (
@@ -65,7 +71,8 @@ export function isCommandCall(call: Eventual): call is CommandCall {
     isSleepForCall(call) ||
     isSleepUntilCall(call) ||
     isWorkflowCall(call) ||
-    isWaitForEventCall(call)
+    isWaitForEventCall(call) ||
+    isRegisterEventHandlerCall(call)
   );
 }
 

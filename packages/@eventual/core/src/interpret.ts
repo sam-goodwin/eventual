@@ -42,6 +42,10 @@ import {
   isWaitForEventCall,
   WaitForEventCall,
 } from "./calls/wait-for-event-call.js";
+import {
+  isRegisterEventHandlerCall,
+  RegisterEventHandlerCall,
+} from "./calls/event-handler-call.js";
 
 export interface WorkflowResult<T = any> {
   /**
@@ -69,7 +73,10 @@ export function interpret<Return>(
   /**
    * A map of eventId to calls and handlers that are listening for this event.
    */
-  const eventSubscriptions: Record<string, WaitForEventCall[]> = {};
+  const eventSubscriptions: Record<
+    string,
+    (WaitForEventCall | RegisterEventHandlerCall)[]
+  > = {};
   const mainChain = createChain(program);
   const activeChains = new Set([mainChain]);
 
@@ -95,7 +102,7 @@ export function interpret<Return>(
   let newCalls: Iterator<CommandCall, CommandCall>;
   // iterate until we are no longer finding commands or no longer have completion events to apply
   while (
-    (newCalls = iterator(advance(true) ?? [])).hasNext() ||
+    (newCalls = iterator(advance() ?? [])).hasNext() ||
     resultEvents.hasNext()
   ) {
     // Match and filter found commands against the given scheduled events.
@@ -140,10 +147,10 @@ export function interpret<Return>(
 
   return {
     result,
-    commands: calls.map(callToCommand),
+    commands: calls.flatMap(callToCommand),
   };
 
-  function callToCommand(call: CommandCall): Command {
+  function callToCommand(call: CommandCall): Command[] | Command {
     if (isActivityCall(call)) {
       return {
         // TODO: add sleep
@@ -178,18 +185,20 @@ export function interpret<Return>(
         seq: call.seq!,
         timeoutSeconds: call.timeoutSeconds,
       };
+    } else if (isRegisterEventHandlerCall(call)) {
+      return [];
     }
 
     return assertNever(call);
   }
 
-  function advance(isReplay: boolean): CommandCall[] | undefined {
+  function advance(): CommandCall[] | undefined {
     let calls: CommandCall[] | undefined;
     let madeProgress: boolean;
     do {
       madeProgress = false;
       for (const chain of activeChains) {
-        const producedCalls = tryAdvanceChain(chain, isReplay);
+        const producedCalls = tryAdvanceChain(chain);
         if (producedCalls !== undefined) {
           madeProgress = true;
           for (const call of producedCalls) {
@@ -200,9 +209,6 @@ export function interpret<Return>(
             // assign sequences in order of when they were spawned
             call.seq = nextSeq();
             callTable[call.seq] = call;
-            if (isWaitForEventCall(call)) {
-              subscribeToEvent(call.eventId, call);
-            }
           }
         }
       }
@@ -210,7 +216,10 @@ export function interpret<Return>(
     return calls;
   }
 
-  function subscribeToEvent(eventId: string, sub: WaitForEventCall) {
+  function subscribeToEvent(
+    eventId: string,
+    sub: WaitForEventCall | RegisterEventHandlerCall
+  ) {
     if (!(eventId in eventSubscriptions)) {
       eventSubscriptions[eventId] = [];
     }
@@ -225,10 +234,7 @@ export function interpret<Return>(
    *    but did not emit any new Commands.
    * 2. An `undefined` return value indicates that the chain did not advance
    */
-  function tryAdvanceChain(
-    chain: Chain,
-    isReplay: boolean
-  ): CommandCall[] | undefined {
+  function tryAdvanceChain(chain: Chain): CommandCall[] | undefined {
     if (chain.awaiting === undefined) {
       // this is the first time the chain is running, so wake it with an undefined input
       return advanceChain(chain, undefined);
@@ -303,10 +309,17 @@ export function interpret<Return>(
 
       return collectActivities().flatMap((activity) => {
         if (isCommandCall(activity)) {
+          if (isWaitForEventCall(activity)) {
+            subscribeToEvent(activity.eventId, activity);
+          } else if (isRegisterEventHandlerCall(activity)) {
+            subscribeToEvent(activity.eventId, activity);
+            // dispose event handler does not emit a call/command. It is only internal.
+            return [];
+          }
           return activity;
         } else if (isChain(activity)) {
           activeChains.add(activity);
-          return tryAdvanceChain(activity, isReplay) ?? [];
+          return tryAdvanceChain(activity) ?? [];
         } else if (isAwaitAll(activity)) {
           return [];
         }
@@ -357,6 +370,14 @@ export function interpret<Return>(
       if (isWaitForEventCall(sub)) {
         if (!sub.result) {
           sub.result = Result.resolved(event.payload);
+        }
+      } else if (isRegisterEventHandlerCall(sub)) {
+        if (!sub.result) {
+          const output = sub.handler(event.payload);
+          // if the handler is a generator, start a new chain
+          if (isGenerator(output)) {
+            activeChains.add(createChain(output));
+          }
         }
       }
     });

@@ -1,9 +1,14 @@
+import { createRegisterEventHandlerCall } from "./calls/event-handler-call.js";
 import { createWaitForEventCall } from "./calls/wait-for-event-call.js";
 
-class Event<Payload = void> {
+export interface EventHandler {
+  dispose: () => void;
+}
+
+export class Event<Payload = void> {
   constructor(public readonly id: string) {}
-  on(_handler: (payload: Payload) => Promise<void> | void): Promise<void> {
-    throw new Error("Not implemented");
+  on(handler: (payload: Payload) => Promise<void> | void): EventHandler {
+    return createRegisterEventHandlerCall(this.id, handler as any);
   }
 }
 
