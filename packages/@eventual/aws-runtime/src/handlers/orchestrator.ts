@@ -34,7 +34,6 @@ import { inspect } from "util";
 import { createEvent } from "../clients/execution-history-client.js";
 import {
   createExecutionHistoryClient,
-  createTimerClient,
   createWorkflowClient,
   createWorkflowRuntimeClient,
 } from "../clients/index.js";
@@ -48,7 +47,6 @@ import { promiseAllSettledPartitioned } from "../utils.js";
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowRuntimeClient = createWorkflowRuntimeClient();
 const workflowClient = createWorkflowClient();
-const timerClient = createTimerClient();
 
 /**
  * Creates an entrypoint function for orchestrating a workflow.
@@ -255,7 +253,11 @@ async function orchestrateExecution(
     const { bytes: historyUpdatedBytes } = await timed(
       metrics,
       OrchestratorMetrics.SaveHistoryDuration,
-      () => workflowRuntimeClient.updateHistory(executionId, newHistoryEvents)
+      () =>
+        workflowRuntimeClient.updateHistory({
+          executionId,
+          events: newHistoryEvents,
+        })
     );
 
     metrics.setProperty(
@@ -293,7 +295,12 @@ async function orchestrateExecution(
         const execution = await timed(
           metrics,
           OrchestratorMetrics.ExecutionStatusUpdateDuration,
-          () => workflowRuntimeClient.failExecution(executionId, error, message)
+          () =>
+            workflowRuntimeClient.failExecution({
+              executionId,
+              error,
+              message,
+            })
         );
 
         logExecutionCompleteMetrics(execution);
@@ -312,7 +319,6 @@ async function orchestrateExecution(
             workflowRuntimeClient.completeExecution({
               executionId,
               result: result.value,
-              timerClient,
             })
         );
         logExecutionCompleteMetrics(execution);
@@ -372,11 +378,11 @@ async function orchestrateExecution(
       return await Promise.all(
         commands.map(async (command) => {
           if (isScheduleActivityCommand(command)) {
-            await workflowRuntimeClient.scheduleActivity(
-              workflow.name,
+            await workflowRuntimeClient.scheduleActivity({
+              workflowName: workflow.name,
               executionId,
-              command
-            );
+              command,
+            });
 
             return createEvent<ActivityScheduled>({
               type: WorkflowEventType.ActivityScheduled,
@@ -402,11 +408,11 @@ async function orchestrateExecution(
             isSleepUntilCommand(command)
           ) {
             // all sleep times are computed using the start time of the WorkflowTaskStarted
-            return workflowRuntimeClient.scheduleSleep(
+            return workflowRuntimeClient.scheduleSleep({
               executionId,
               command,
-              start
-            );
+              baseTime: start,
+            });
           } else {
             return assertNever(command, `unknown command type`);
           }

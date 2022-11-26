@@ -4,7 +4,11 @@ import {
   EventualKind,
   EventualSymbol,
 } from "./eventual.js";
-import { registerActivity, resetActivityCollector } from "./global.js";
+import {
+  getWorkflowClient,
+  registerActivity,
+  resetActivityCollector,
+} from "./global.js";
 import type { Program } from "./interpret.js";
 import type { Result } from "./result.js";
 import { Context, WorkflowContext } from "./context.js";
@@ -21,11 +25,25 @@ import {
   WorkflowEventType,
 } from "./events.js";
 import { interpret, WorkflowResult } from "./interpret.js";
+import { StartWorkflowResponse } from "./runtime/workflow-client.js";
 
 export type WorkflowHandler = (
   input: any,
   context: Context
 ) => Promise<any> | Program;
+
+export interface StartExecutionRequest<Input> {
+  /**
+   * Input payload for the workflow.
+   */
+  input: Input;
+  /**
+   * Optional name of the workflow to start - used to determine the unique ID and enforce idempotency.
+   *
+   * @default - a unique ID is generated.
+   */
+  name?: string;
+}
 
 /**
  * A {@link Workflow} is a long-running process that orchestrates calls
@@ -46,6 +64,14 @@ export interface Workflow<F extends WorkflowHandler = WorkflowHandler> {
    * To start a workflow from another environment, use {@link start}.
    */
   (input: Parameters<F>[0]): ReturnType<F>;
+
+  /**
+   * Starts a workflow execution
+   */
+  startExecution(
+    request: StartExecutionRequest<Parameters<F>[0]>
+  ): Promise<StartWorkflowResponse>;
+
   /**
    * @internal - this is the internal DSL representation that produces a {@link Program} instead of a Promise.
    */
@@ -94,6 +120,16 @@ export function workflow<F extends WorkflowHandler>(
       name,
       input,
     })) as any;
+
+  workflow.startExecution = async function (input) {
+    return {
+      executionId: await getWorkflowClient().startWorkflow({
+        workflowName: name,
+        executionName: input.name,
+        input: input.input,
+      }),
+    };
+  };
 
   workflow.definition = definition as Workflow<F>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
   workflows.set(name, workflow);
@@ -162,7 +198,10 @@ export function progressWorkflow(
 
   try {
     return {
-      ...interpret(program.definition(startEvent.input, context), interpretEvents),
+      ...interpret(
+        program.definition(startEvent.input, context),
+        interpretEvents
+      ),
       history: allEvents,
     };
   } catch (err) {
@@ -198,11 +237,14 @@ export function generateSyntheticEvents(
     unresolvedSleep
   )
     .filter((event) => new Date(event.untilTime).getTime() <= now.getTime())
-    .map((e) => ({
-      type: WorkflowEventType.SleepCompleted,
-      seq: e.seq,
-      timestamp: now.toISOString(),
-    } satisfies SleepCompleted));
+    .map(
+      (e) =>
+        ({
+          type: WorkflowEventType.SleepCompleted,
+          seq: e.seq,
+          timestamp: now.toISOString(),
+        } satisfies SleepCompleted)
+    );
 
   return syntheticSleepComplete;
 }
