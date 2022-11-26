@@ -26,6 +26,8 @@ import {
   WorkflowFailed,
   WorkflowTaskCompleted,
   WorkflowTaskStarted,
+  isExecutionId,
+  parseWorkflowName,
 } from "@eventual/core";
 import middy from "@middy/core";
 import { createMetricsLogger, MetricsLogger, Unit } from "aws-embedded-metrics";
@@ -38,7 +40,6 @@ import {
   createWorkflowRuntimeClient,
 } from "../clients/index.js";
 import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
-import { isExecutionId, parseWorkflowName } from "../execution-id.js";
 import { logger, loggerMiddlewares } from "../logger.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import { timed, timedSync } from "../metrics/utils.js";

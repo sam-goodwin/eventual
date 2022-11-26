@@ -8,6 +8,8 @@ interface ExecutionBase {
   id: string;
   status: ExecutionStatus;
   startTime: string;
+  name: string;
+  workflowName: string;
 }
 
 export type Execution =

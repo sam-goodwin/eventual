@@ -156,5 +156,7 @@ export function createExecutionFromResult(
     result: execution.result ? JSON.parse(execution.result.S) : undefined,
     startTime: execution.startTime.S,
     status: execution.status.S,
+    name: execution.name.S,
+    workflowName: execution.workflowName.S,
   } as Execution;
 }
