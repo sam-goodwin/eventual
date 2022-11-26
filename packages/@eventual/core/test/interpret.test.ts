@@ -1,4 +1,4 @@
-import { createActivityCall } from "../src/activity-call.js";
+import { createActivityCall } from "../src/calls/activity-call.js";
 import { chain } from "../src/chain.js";
 import { DeterminismError } from "../src/error.js";
 import {
@@ -12,7 +12,7 @@ import {
   workflow,
   WorkflowResult,
 } from "../src/index.js";
-import { createSleepUntilCall } from "../src/sleep-call.js";
+import { createSleepUntilCall } from "../src/calls/sleep-call.js";
 import {
   activityCompleted,
   activityFailed,
@@ -22,11 +22,16 @@ import {
   createScheduledWorkflowCommand,
   createSleepForCommand,
   createSleepUntilCommand,
+  createWaitForEventCommand,
+  externalEvent,
   scheduledSleep,
+  startedWaitForEvent,
+  timedOutWaitForEvent,
   workflowCompleted,
   workflowFailed,
   workflowScheduled,
 } from "./command-util.js";
+import { createWaitForEventCall } from "../src/calls/wait-for-event-call.js";
 
 function* myWorkflow(event: any): Program<any> {
   try {
@@ -47,6 +52,17 @@ function* myWorkflow(event: any): Program<any> {
 }
 
 const event = "hello world";
+
+const context: Context = {
+  workflow: {
+    name: "wf1",
+  },
+  execution: {
+    id: "123",
+    name: "wf1#123",
+    startTime: "",
+  },
+};
 
 test("no history", () => {
   expect(interpret(myWorkflow(event), [])).toMatchObject(<WorkflowResult>{
@@ -764,17 +780,6 @@ test("workflow calling other workflow", () => {
     return result;
   });
 
-  const context: Context = {
-    workflow: {
-      name: "wf1",
-    },
-    execution: {
-      id: "123",
-      name: "wf1#123",
-      startTime: "",
-    },
-  };
-
   expect(interpret(wf2.definition(undefined, context), [])).toMatchObject({
     commands: [createScheduledWorkflowCommand("wf1", undefined, 0)],
   });
@@ -824,5 +829,106 @@ test("workflow calling other workflow", () => {
   ).toMatchObject({
     result: Result.failed("error"),
     commands: [],
+  });
+});
+
+describe("external events", () => {
+  const wf = workflow("wf", function* () {
+    const result = (yield createWaitForEventCall("MyEvent", 100 * 1000)) as any;
+
+    return result ?? "done";
+  });
+
+  test("start wait for event", () => {
+    expect(interpret(wf.definition(undefined, context), [])).toMatchObject(<
+      WorkflowResult
+    >{
+      commands: [createWaitForEventCommand("MyEvent", 0, 100 * 1000)],
+    });
+  });
+
+  test("no event", () => {
+    expect(
+      interpret(wf.definition(undefined, context), [
+        startedWaitForEvent("MyEvent", 0, 100 * 1000),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      commands: [],
+    });
+  });
+
+  test("match event", () => {
+    expect(
+      interpret(wf.definition(undefined, context), [
+        startedWaitForEvent("MyEvent", 0, 100 * 1000),
+        externalEvent("MyEvent"),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("done"),
+      commands: [],
+    });
+  });
+
+  test("match event with payload", () => {
+    expect(
+      interpret(wf.definition(undefined, context), [
+        startedWaitForEvent("MyEvent", 0, 100 * 1000),
+        externalEvent("MyEvent", { done: true }),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved({ done: true }),
+      commands: [],
+    });
+  });
+
+  test("timed out", () => {
+    expect(
+      interpret(wf.definition(undefined, context), [
+        startedWaitForEvent("MyEvent", 0, 100 * 1000),
+        timedOutWaitForEvent("MyEvent", 0),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.failed("Wait For Event Timed Out"),
+      commands: [],
+    });
+  });
+
+  test("timed out then event", () => {
+    expect(
+      interpret(wf.definition(undefined, context), [
+        startedWaitForEvent("MyEvent", 0, 100 * 1000),
+        timedOutWaitForEvent("MyEvent", 0),
+        externalEvent("MyEvent", { done: true }),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.failed("Wait For Event Timed Out"),
+      commands: [],
+    });
+  });
+
+  test("match event then timeout", () => {
+    expect(
+      interpret(wf.definition(undefined, context), [
+        startedWaitForEvent("MyEvent", 0, 100 * 1000),
+        externalEvent("MyEvent"),
+        timedOutWaitForEvent("MyEvent", 0),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("done"),
+      commands: [],
+    });
+  });
+
+  test("match event twice", () => {
+    expect(
+      interpret(wf.definition(undefined, context), [
+        startedWaitForEvent("MyEvent", 0, 100 * 1000),
+        externalEvent("MyEvent"),
+        externalEvent("MyEvent"),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("done"),
+      commands: [],
+    });
   });
 });

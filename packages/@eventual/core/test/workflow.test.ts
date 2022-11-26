@@ -1,5 +1,5 @@
 import { Program } from "../src/interpret";
-import { createActivityCall } from "../src/activity-call";
+import { createActivityCall } from "../src/calls/activity-call";
 import {
   ActivityCompleted,
   ActivityScheduled,

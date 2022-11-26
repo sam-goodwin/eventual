@@ -5,19 +5,23 @@ import {
   isCommandCall,
 } from "./eventual.js";
 import { isAwaitAll } from "./await-all.js";
-import { isActivityCall } from "./activity-call.js";
+import { isActivityCall } from "./calls/activity-call.js";
 import { DeterminismError } from "./error.js";
 import {
   CompletedEvent,
+  ExternalEvent,
   FailedEvent,
   HistoryEvent,
   isActivityScheduled,
   isChildWorkflowScheduled,
   isCompletedEvent,
+  isExternalEvent,
   isFailedEvent,
   isScheduledEvent,
   isSleepCompleted,
   isSleepScheduled,
+  isWaitForEventStarted,
+  isWaitForEventTimedOut,
   ScheduledEvent,
 } from "./events.js";
 import { collectActivities } from "./global.js";
@@ -30,10 +34,14 @@ import {
   Failed,
 } from "./result.js";
 import { createChain, isChain, Chain } from "./chain.js";
-import { assertNever } from "./util.js";
+import { assertNever, or } from "./util.js";
 import { Command, CommandType } from "./command.js";
 import { isWorkflowCall } from "./workflow.js";
-import { isSleepForCall, isSleepUntilCall } from "./sleep-call.js";
+import { isSleepForCall, isSleepUntilCall } from "./calls/sleep-call.js";
+import {
+  isWaitForEventCall,
+  WaitForEventCall,
+} from "./calls/wait-for-event-call.js";
 
 export interface WorkflowResult<T = any> {
   /**
@@ -58,6 +66,10 @@ export function interpret<Return>(
   history: HistoryEvent[]
 ): WorkflowResult<Awaited<Return>> {
   const callTable: Record<number, CommandCall> = {};
+  /**
+   * A map of eventId to calls and handlers that are listening for this event.
+   */
+  const eventSubscriptions: Record<string, WaitForEventCall[]> = {};
   const mainChain = createChain(program);
   const activeChains = new Set([mainChain]);
 
@@ -69,8 +81,7 @@ export function interpret<Return>(
   let emittedEvents = iterator(history, isScheduledEvent);
   let resultEvents = iterator(
     history,
-    (e): e is CompletedEvent | FailedEvent =>
-      isCompletedEvent(e) || isFailedEvent(e)
+    or(isCompletedEvent, isFailedEvent, isExternalEvent)
   );
 
   /**
@@ -102,11 +113,15 @@ export function interpret<Return>(
       }
     }
 
-    // if there are result events (compelted or failed), apply it before the next run
+    // if there are result events (completed or failed), apply it before the next run
     if (resultEvents.hasNext()) {
       const resultEvent = resultEvents.next()!;
 
-      commitCompletionEvent(resultEvent, true);
+      if (isExternalEvent(resultEvent)) {
+        commitExternalEvent(resultEvent);
+      } else {
+        commitCompletionEvent(resultEvent);
+      }
     }
 
     // any calls not matched against historical schedule events will be returned to the caller.
@@ -125,35 +140,48 @@ export function interpret<Return>(
 
   return {
     result,
-    commands: calls.map((call) => ({
-      ...(isActivityCall(call)
-        ? {
-            // TODO: add sleep
-            kind: CommandType.StartActivity,
-            args: call.args,
-            name: call.name,
-            seq: call.seq!,
-          }
-        : isSleepUntilCall(call)
-        ? {
-            kind: CommandType.SleepUntil,
-            seq: call.seq!,
-            untilTime: call.isoDate,
-          }
-        : isSleepForCall(call)
-        ? {
-            kind: CommandType.SleepFor,
-            seq: call.seq!,
-            durationSeconds: call.durationSeconds,
-          }
-        : {
-            kind: CommandType.StartWorkflow,
-            input: call.input,
-            name: call.name,
-          }),
-      seq: call.seq!,
-    })),
+    commands: calls.map(callToCommand),
   };
+
+  function callToCommand(call: CommandCall): Command {
+    if (isActivityCall(call)) {
+      return {
+        // TODO: add sleep
+        kind: CommandType.StartActivity,
+        args: call.args,
+        name: call.name,
+        seq: call.seq!,
+      };
+    } else if (isSleepUntilCall(call)) {
+      return {
+        kind: CommandType.SleepUntil,
+        seq: call.seq!,
+        untilTime: call.isoDate,
+      };
+    } else if (isSleepForCall(call)) {
+      return {
+        kind: CommandType.SleepFor,
+        seq: call.seq!,
+        durationSeconds: call.durationSeconds,
+      };
+    } else if (isWorkflowCall(call)) {
+      return {
+        kind: CommandType.StartWorkflow,
+        seq: call.seq!,
+        input: call.input,
+        name: call.name,
+      };
+    } else if (isWaitForEventCall(call)) {
+      return {
+        kind: CommandType.WaitForEvent,
+        eventId: call.eventId,
+        seq: call.seq!,
+        timeoutSeconds: call.timeoutSeconds,
+      };
+    }
+
+    return assertNever(call);
+  }
 
   function advance(isReplay: boolean): CommandCall[] | undefined {
     let calls: CommandCall[] | undefined;
@@ -172,11 +200,21 @@ export function interpret<Return>(
             // assign sequences in order of when they were spawned
             call.seq = nextSeq();
             callTable[call.seq] = call;
+            if (isWaitForEventCall(call)) {
+              subscribeToEvent(call.eventId, call);
+            }
           }
         }
       }
     } while (madeProgress);
     return calls;
+  }
+
+  function subscribeToEvent(eventId: string, sub: WaitForEventCall) {
+    if (!(eventId in eventSubscriptions)) {
+      eventSubscriptions[eventId] = [];
+    }
+    eventSubscriptions[eventId]!.push(sub);
   }
 
   /**
@@ -309,23 +347,36 @@ export function interpret<Return>(
     }
   }
 
-  function commitCompletionEvent(
-    event: CompletedEvent | FailedEvent,
-    isReplay: boolean
-  ) {
+  /**
+   * Add result to WaitForEvent and call any event handlers.
+   */
+  function commitExternalEvent(event: ExternalEvent) {
+    const subscriptions = eventSubscriptions[event.eventId];
+
+    subscriptions?.forEach((sub) => {
+      if (isWaitForEventCall(sub)) {
+        if (!sub.result) {
+          sub.result = Result.resolved(event.payload);
+        }
+      }
+    });
+  }
+
+  function commitCompletionEvent(event: CompletedEvent | FailedEvent) {
     const call = callTable[event.seq];
     if (call === undefined) {
       throw new DeterminismError(`Call for seq ${event.seq} was not emitted.`);
     }
-    if (isReplay && call.result && !isPending(call.result)) {
-      throw new DeterminismError(
-        `Expected call result to not be pending: ${call.seq}.`
-      );
+    if (call.result && !isPending(call.result)) {
+      return;
     }
     call.result = isCompletedEvent(event)
       ? Result.resolved(event.result)
       : isSleepCompleted(event)
       ? Result.resolved(undefined)
+      : isWaitForEventTimedOut(event)
+      ? // TODO: should this throw a specific error type?
+        Result.failed("Wait For Event Timed Out")
       : Result.failed(event.error);
   }
 }
@@ -339,6 +390,8 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
     return isWorkflowCall(call) && call.name === event.name;
   } else if (isSleepScheduled(event)) {
     return isSleepUntilCall(call) || isSleepForCall(call);
+  } else if (isWaitForEventStarted(event)) {
+    return isWaitForEventCall(call) && call.eventId == call.eventId;
   }
   return assertNever(event);
 }

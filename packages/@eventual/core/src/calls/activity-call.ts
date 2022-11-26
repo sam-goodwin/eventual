@@ -3,9 +3,9 @@ import {
   EventualSymbol,
   EventualKind,
   EventualBase,
-} from "./eventual.js";
-import { registerActivity } from "./global.js";
-import { Resolved, Failed } from "./result.js";
+} from "../eventual.js";
+import { registerActivity } from "../global.js";
+import { Resolved, Failed } from "../result.js";
 
 export function isActivityCall(a: any): a is ActivityCall {
   return isEventual(a) && a[EventualSymbol] === EventualKind.ActivityCall;

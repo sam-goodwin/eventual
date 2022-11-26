@@ -3,9 +3,9 @@ import {
   EventualKind,
   isEventual,
   EventualBase,
-} from "./eventual.js";
-import { registerActivity } from "./global.js";
-import { Resolved } from "./result.js";
+} from "../eventual.js";
+import { registerActivity } from "../global.js";
+import { Resolved } from "../result.js";
 
 export function isSleepForCall(a: any): a is SleepForCall {
   return isEventual(a) && a[EventualSymbol] === EventualKind.SleepForCall;

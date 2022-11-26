@@ -4,6 +4,7 @@ import {
   SleepUntilCommand,
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
+  WaitForEventCommand,
 } from "../src/command.js";
 import {
   ActivityCompleted,
@@ -12,10 +13,14 @@ import {
   ChildWorkflowCompleted,
   ChildWorkflowFailed,
   ChildWorkflowScheduled,
+  ExternalEvent,
   SleepCompleted,
   SleepScheduled,
+  WaitForEventStarted,
+  WaitForEventTimedOut,
   WorkflowEventType,
 } from "../src/events.js";
+import { ulid } from "ulidx";
 
 export function createSleepUntilCommand(
   untilTime: string,
@@ -62,6 +67,19 @@ export function createScheduledWorkflowCommand(
     seq,
     name,
     input,
+  };
+}
+
+export function createWaitForEventCommand(
+  eventId: string,
+  seq: number,
+  timeoutSeconds?: number
+): WaitForEventCommand {
+  return {
+    kind: CommandType.WaitForEvent,
+    eventId,
+    seq,
+    timeoutSeconds,
   };
 }
 
@@ -147,5 +165,41 @@ export function completedSleep(seq: number): SleepCompleted {
     type: WorkflowEventType.SleepCompleted,
     seq,
     timestamp: new Date(0).toISOString(),
+  };
+}
+
+export function timedOutWaitForEvent(
+  eventId: string,
+  seq: number
+): WaitForEventTimedOut {
+  return {
+    type: WorkflowEventType.WaitForEventTimedOut,
+    timestamp: new Date().toISOString(),
+    seq,
+    eventId,
+  };
+}
+
+export function startedWaitForEvent(
+  eventId: string,
+  seq: number,
+  timeoutSeconds?: number
+): WaitForEventStarted {
+  return {
+    type: WorkflowEventType.WaitForEventStarted,
+    eventId,
+    timestamp: new Date().toISOString(),
+    seq,
+    timeoutSeconds,
+  };
+}
+
+export function externalEvent(eventId: string, payload?: any): ExternalEvent {
+  return {
+    type: WorkflowEventType.ExternalEvent,
+    id: ulid(),
+    eventId,
+    payload,
+    timestamp: new Date().toISOString(),
   };
 }
