@@ -15,7 +15,7 @@ import {
 } from "../handlers/types.js";
 import type eventual from "@eventual/core";
 
-export interface TimerClientProps {
+export interface AWSTimerClientProps {
   readonly scheduler: SchedulerClient;
   readonly schedulerRoleArn: string;
   readonly schedulerDlqArn: string;
@@ -30,15 +30,15 @@ export interface TimerClientProps {
   readonly scheduleForwarderArn: string;
 }
 
-export class TimerClient implements eventual.TimerClient {
-  constructor(private props: TimerClientProps) {}
+export class AWSTimerClient implements eventual.TimerClient {
+  constructor(private props: AWSTimerClientProps) {}
 
   /**
    * Starts a timer using SQS's message delay.
    *
    * The timerRequest.untilTime may only be 15 minutes or fewer in the future.
    *
-   * For longer use {@link TimerClient.startTimer}.
+   * For longer use {@link AWSTimerClient.startTimer}.
    *
    * The SQS Queue will delay for floor(untilTime - currentTime) seconds until the timer handler can pick up the message.
    *

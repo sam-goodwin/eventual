@@ -30,33 +30,29 @@ import {
 import {
   createExecutionFromResult,
   ExecutionRecord,
-  WorkflowClient,
+  AWSWorkflowClient,
 } from "./workflow-client.js";
 import { ActivityWorkerRequest } from "../activity.js";
 import { createEvent } from "./execution-history-client.js";
 import { TimerRequestType } from "../handlers/types.js";
-import { TimerClient } from "./timer-client.js";
+import { AWSTimerClient } from "./timer-client.js";
 import eventual from "@eventual/core";
 
-export interface WorkflowRuntimeClientProps {
+export interface AWSWorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;
   readonly activityWorkerFunctionName: string;
   readonly dynamo: DynamoDBClient;
   readonly s3: S3Client;
   readonly executionHistoryBucket: string;
   readonly tableName: string;
-  readonly workflowClient: WorkflowClient;
-  readonly timerClient: TimerClient;
+  readonly workflowClient: AWSWorkflowClient;
+  readonly timerClient: AWSTimerClient;
 }
 
-export interface CompleteExecutionRequest {
-  executionId: string;
-  result?: any;
-  readonly timerClient: TimerClient;
-}
-
-export class WorkflowRuntimeClient implements eventual.WorkflowRuntimeClient {
-  constructor(private props: WorkflowRuntimeClientProps) {}
+export class AWSWorkflowRuntimeClient
+  implements eventual.WorkflowRuntimeClient
+{
+  constructor(private props: AWSWorkflowRuntimeClientProps) {}
 
   async getHistory(executionId: string) {
     try {
@@ -97,7 +93,7 @@ export class WorkflowRuntimeClient implements eventual.WorkflowRuntimeClient {
   async completeExecution({
     executionId,
     result,
-  }: CompleteExecutionRequest): Promise<CompleteExecution> {
+  }: eventual.CompleteExecutionRequest): Promise<CompleteExecution> {
     const executionResult = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {

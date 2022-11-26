@@ -34,7 +34,6 @@ import { inspect } from "util";
 import { createEvent } from "../clients/execution-history-client.js";
 import {
   createExecutionHistoryClient,
-  createTimerClient,
   createWorkflowClient,
   createWorkflowRuntimeClient,
 } from "../clients/index.js";
@@ -48,7 +47,6 @@ import { promiseAllSettledPartitioned } from "../utils.js";
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowRuntimeClient = createWorkflowRuntimeClient();
 const workflowClient = createWorkflowClient();
-const timerClient = createTimerClient();
 
 /**
  * Creates an entrypoint function for orchestrating a workflow.
@@ -313,7 +311,6 @@ async function orchestrateExecution(
             workflowRuntimeClient.completeExecution({
               executionId,
               result: result.value,
-              timerClient,
             })
         );
         logExecutionCompleteMetrics(execution);
