@@ -9,12 +9,10 @@ import {
   SleepScheduled,
 } from "../events.js";
 import { CompleteExecution, Execution, FailedExecution } from "../execution.js";
-import { TimerClient } from "./timer-client.js";
 
 export interface CompleteExecutionRequest {
   executionId: string;
   result?: any;
-  readonly timerClient: TimerClient;
 }
 
 export interface FailExecutionRequest {
