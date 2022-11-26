@@ -6,6 +6,7 @@ import {
   IFunction,
   Runtime,
   FunctionUrlAuthType,
+  FunctionUrl,
 } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import { Bucket, IBucket } from "aws-cdk-lib/aws-s3";
@@ -111,6 +112,11 @@ export class Service extends Construct implements IGrantable {
    * A Lambda Function URL endpoint for accepting inbound webhook requests.
    */
   public readonly webhookEndpoint: IFunction;
+
+  /**
+   * The URL of the webhook endpoint.
+   */
+  public readonly webhookEndpointUrl: FunctionUrl;
 
   readonly grantPrincipal: IPrincipal;
 
@@ -394,7 +400,7 @@ export class Service extends Construct implements IGrantable {
         [ENV_NAMES.EVENTUAL_WEBHOOK]: "1",
       },
     });
-    this.webhookEndpoint.addFunctionUrl({
+    this.webhookEndpointUrl = this.webhookEndpoint.addFunctionUrl({
       authType: FunctionUrlAuthType.NONE,
     });
 
