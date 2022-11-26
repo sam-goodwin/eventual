@@ -14,20 +14,20 @@ import {
 } from "@eventual/core";
 import { ulid } from "ulidx";
 import { formatExecutionId } from "../execution-id.js";
-import { ExecutionHistoryClient } from "./execution-history-client.js";
+import { AWSExecutionHistoryClient } from "./execution-history-client.js";
 
 import type eventual from "@eventual/core";
 
-export interface WorkflowClientProps {
+export interface AWSWorkflowClientProps {
   readonly dynamo: DynamoDBClient;
   readonly tableName: string;
   readonly sqs: SQSClient;
   readonly workflowQueueUrl: string;
-  readonly executionHistory: ExecutionHistoryClient;
+  readonly executionHistory: AWSExecutionHistoryClient;
 }
 
-export class WorkflowClient implements eventual.WorkflowClient {
-  constructor(private props: WorkflowClientProps) {}
+export class AWSWorkflowClient implements eventual.WorkflowClient {
+  constructor(private props: AWSWorkflowClientProps) {}
 
   /**
    * Start a workflow execution

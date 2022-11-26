@@ -45,6 +45,9 @@ export interface WorkflowProps {
 }
 
 export class Service extends Construct implements IGrantable {
+  /**
+   * Name of this Service.
+   */
   public readonly serviceName: string;
   /**
    * S3 bucket that contains events necessary to replay a workflow execution.
@@ -107,11 +110,14 @@ export class Service extends Construct implements IGrantable {
    * Timers - When the EventBridge scheduler fails to invoke the Schedule Forwarder Lambda.
    */
   public readonly dlq: Queue;
-
   /**
-   * A Lambda Function URL endpoint for accepting inbound webhook requests.
+   * A Lambda Function for processing inbound webhook requests.
    */
   public readonly webhookEndpoint: IFunction;
+  /**
+   * The URL of the webhook endpoint.
+   */
+  public readonly webhookEndpointUrl: FunctionUrl;
 
   /**
    * URL of the Webhook Endpoint.

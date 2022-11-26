@@ -21,45 +21,38 @@ import {
   CompleteExecution,
   FailedExecution,
   Execution,
-  SleepUntilCommand,
-  SleepForCommand,
   SleepScheduled,
   isSleepUntilCommand,
   WorkflowEventType,
-  ScheduleActivityCommand,
   ActivityScheduled,
   SleepCompleted,
 } from "@eventual/core";
 import {
   createExecutionFromResult,
   ExecutionRecord,
-  WorkflowClient,
+  AWSWorkflowClient,
 } from "./workflow-client.js";
 import { ActivityWorkerRequest } from "../activity.js";
 import { createEvent } from "./execution-history-client.js";
 import { TimerRequestType } from "../handlers/types.js";
-import { TimerClient } from "./timer-client.js";
-import type eventual from "@eventual/core";
+import { AWSTimerClient } from "./timer-client.js";
+import eventual from "@eventual/core";
 
-export interface WorkflowRuntimeClientProps {
+export interface AWSWorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;
   readonly activityWorkerFunctionName: string;
   readonly dynamo: DynamoDBClient;
   readonly s3: S3Client;
   readonly executionHistoryBucket: string;
   readonly tableName: string;
-  readonly workflowClient: WorkflowClient;
-  readonly timerClient: TimerClient;
+  readonly workflowClient: AWSWorkflowClient;
+  readonly timerClient: AWSTimerClient;
 }
 
-export interface CompleteExecutionRequest {
-  executionId: string;
-  result?: any;
-  readonly timerClient: TimerClient;
-}
-
-export class WorkflowRuntimeClient implements eventual.WorkflowRuntimeClient {
-  constructor(private props: WorkflowRuntimeClientProps) {}
+export class AWSWorkflowRuntimeClient
+  implements eventual.WorkflowRuntimeClient
+{
+  constructor(private props: AWSWorkflowRuntimeClientProps) {}
 
   async getHistory(executionId: string) {
     try {
@@ -81,10 +74,10 @@ export class WorkflowRuntimeClient implements eventual.WorkflowRuntimeClient {
   }
 
   // TODO: etag
-  async updateHistory(
-    executionId: string,
-    events: HistoryStateEvent[]
-  ): Promise<{ bytes: number }> {
+  async updateHistory({
+    executionId,
+    events,
+  }: eventual.UpdateHistoryRequest): Promise<{ bytes: number }> {
     const content = events.map((e) => JSON.stringify(e)).join("\n");
     // get current history from s3
     await this.props.s3.send(
@@ -100,7 +93,7 @@ export class WorkflowRuntimeClient implements eventual.WorkflowRuntimeClient {
   async completeExecution({
     executionId,
     result,
-  }: CompleteExecutionRequest): Promise<CompleteExecution> {
+  }: eventual.CompleteExecutionRequest): Promise<CompleteExecution> {
     const executionResult = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
@@ -136,11 +129,11 @@ export class WorkflowRuntimeClient implements eventual.WorkflowRuntimeClient {
     return createExecutionFromResult(record) as CompleteExecution;
   }
 
-  async failExecution(
-    executionId: string,
-    error: string,
-    message: string
-  ): Promise<FailedExecution> {
+  async failExecution({
+    executionId,
+    error,
+    message,
+  }: eventual.FailExecutionRequest): Promise<FailedExecution> {
     const executionResult = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
@@ -214,11 +207,11 @@ export class WorkflowRuntimeClient implements eventual.WorkflowRuntimeClient {
     );
   }
 
-  async scheduleActivity(
-    workflowName: string,
-    executionId: string,
-    command: ScheduleActivityCommand
-  ) {
+  async scheduleActivity({
+    workflowName,
+    executionId,
+    command,
+  }: eventual.ScheduleActivityRequest) {
     const request: ActivityWorkerRequest = {
       scheduledTime: new Date().toISOString(),
       workflowName,
@@ -242,11 +235,11 @@ export class WorkflowRuntimeClient implements eventual.WorkflowRuntimeClient {
     });
   }
 
-  async scheduleSleep(
-    executionId: string,
-    command: SleepUntilCommand | SleepForCommand,
-    baseTime: Date
-  ): Promise<SleepScheduled> {
+  async scheduleSleep({
+    executionId,
+    command,
+    baseTime,
+  }: eventual.ScheduleSleepRequest): Promise<SleepScheduled> {
     // TODO validate
     const untilTime = isSleepUntilCommand(command)
       ? new Date(command.untilTime)

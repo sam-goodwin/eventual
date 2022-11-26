@@ -32,6 +32,19 @@ export type WorkflowHandler = (
   context: Context
 ) => Promise<any> | Program;
 
+export interface StartExecutionRequest<Input> {
+  /**
+   * Input payload for the workflow.
+   */
+  input: Input;
+  /**
+   * Optional name of the workflow to start - used to determine the unique ID and enforce idempotency.
+   *
+   * @default - a unique ID is generated.
+   */
+  name?: string;
+}
+
 /**
  * A {@link Workflow} is a long-running process that orchestrates calls
  * to other services in a durable and observable way.
@@ -55,18 +68,9 @@ export interface Workflow<F extends WorkflowHandler = WorkflowHandler> {
   /**
    * Starts a workflow execution
    */
-  startExecution(request: {
-    /**
-     * Input payload for the workflow.
-     */
-    input: Parameters<F>[0];
-    /**
-     * Optional name of the workflow to start - used to determine the unique ID and enforce idempotency.
-     *
-     * @default - a unique ID is generated.
-     */
-    name?: string;
-  }): Promise<StartWorkflowResponse>;
+  startExecution(
+    request: StartExecutionRequest<Parameters<F>[0]>
+  ): Promise<StartWorkflowResponse>;
 
   /**
    * @internal - this is the internal DSL representation that produces a {@link Program} instead of a Promise.

@@ -5,13 +5,15 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import type eventual from "@eventual/core";
 
-export interface ActivityRuntimeClientProps {
+export interface AWSActivityRuntimeClientProps {
   dynamo: DynamoDBClient;
   activityLockTableName: string;
 }
 
-export class ActivityRuntimeClient implements eventual.ActivityRuntimeClient {
-  constructor(private props: ActivityRuntimeClientProps) {}
+export class AWSActivityRuntimeClient
+  implements eventual.ActivityRuntimeClient
+{
+  constructor(private props: AWSActivityRuntimeClientProps) {}
 
   /**
    * Claims a activity for an actor.

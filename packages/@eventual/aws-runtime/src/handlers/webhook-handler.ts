@@ -1,7 +1,7 @@
-import { getHooks, registerWorkflowClient } from "@eventual/core";
+import { createRouter, getHooks, registerWorkflowClient } from "@eventual/core";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
 import itty from "itty-router";
-import { createWorkflowClient } from "src/clients";
+import { createWorkflowClient } from "../clients/create";
 
 // TODO: remove once we can upgrade to Node 18
 import "./fetch-polyfill";
@@ -10,7 +10,7 @@ import "./fetch-polyfill";
 registerWorkflowClient(createWorkflowClient());
 
 // initialize all web hooks onto the central HTTP router
-const router = itty.Router<itty.Request, itty.IHTTPMethods>({});
+const router = createRouter();
 
 getHooks().forEach((hook) => hook(router));
 
@@ -38,13 +38,21 @@ export async function processWebhook(
       }
     },
   };
-  const response: Response = await router.handle(request);
-  const headers: Record<string, string> = {};
-  response.headers.forEach((value, key) => (headers[key] = value));
-  return {
-    headers,
-    statusCode: response.status,
-    body: Buffer.from(await response.arrayBuffer()).toString("base64"),
-    isBase64Encoded: true,
-  };
+  try {
+    const response = await router.handle(request);
+    const headers: Record<string, string> = {};
+    response.headers.forEach((value, key) => (headers[key] = value));
+    return {
+      headers,
+      statusCode: response.status,
+      body: Buffer.from(await response.arrayBuffer()).toString("base64"),
+      isBase64Encoded: true,
+    };
+  } catch (err) {
+    console.error(err);
+    return {
+      statusCode: 500,
+      body: `Internal Server Error`,
+    };
+  }
 }
