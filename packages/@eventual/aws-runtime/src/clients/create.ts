@@ -82,9 +82,9 @@ export const createTimerClient = /*@__PURE__*/ memoize(
 
 export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
   ({
-    tableName,
-    executionHistoryBucket,
-    activityWorkerFunctionName,
+    tableName = env.tableName(),
+    executionHistoryBucket = env.executionHistoryBucket(),
+    activityWorkerFunctionName = env.activityWorkerFunctionName(),
   }: {
     tableName?: string;
     executionHistoryBucket?: string;
@@ -94,12 +94,10 @@ export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
       dynamo: dynamo(),
       s3: s3(),
       // todo fail when missing
-      executionHistoryBucket:
-        executionHistoryBucket ?? env.executionHistoryBucket(),
-      tableName: tableName ?? env.tableName(),
+      executionHistoryBucket,
+      tableName,
       lambda: lambda(),
-      activityWorkerFunctionName:
-        activityWorkerFunctionName ?? env.activityWorkerFunctionName(),
+      activityWorkerFunctionName,
       workflowClient: createWorkflowClient(),
       timerClient: createTimerClient(),
     })
