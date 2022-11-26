@@ -1,4 +1,4 @@
 {
-  "app": "ts-node ./src/app.ts",
+  "app": "ts-node ./src/slack-bot.ts",
   "watch": "."
 }

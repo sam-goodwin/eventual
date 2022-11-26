@@ -65,6 +65,7 @@ importers:
       '@eventual/aws-runtime': workspace:^
       '@eventual/compiler': workspace:^
       '@eventual/core': workspace:^
+      '@eventual/integrations': workspace:^
       '@types/aws-lambda': ^8.10.108
       '@types/jest': ^29
       '@types/node': ^16
@@ -80,6 +81,7 @@ importers:
       '@aws-sdk/lib-dynamodb': 3.214.0_3zbq4agbqjx6q6dwjtp3jwi6pu
       '@eventual/aws-runtime': link:../../packages/@eventual/aws-runtime
       '@eventual/core': link:../../packages/@eventual/core
+      '@eventual/integrations': link:../../packages/@eventual/integrations
     devDependencies:
       '@eventual/compiler': link:../../packages/@eventual/compiler
       '@types/aws-lambda': 8.10.108
@@ -294,6 +296,7 @@ importers:
 
   packages/@eventual/integrations:
     specifiers:
+      '@eventual/core': workspace:^
       '@slack/webhook': ^6.1.0
       '@types/jest': ^29
       '@types/node': ^16
@@ -307,6 +310,7 @@ importers:
     dependencies:
       '@slack/webhook': 6.1.0
     devDependencies:
+      '@eventual/core': link:../core
       '@types/jest': 29.2.2
       '@types/node': 16.18.3
       itty-router: 2.6.6

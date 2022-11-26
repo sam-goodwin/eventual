@@ -19,10 +19,12 @@
     "@slack/webhook": "^6.1.0"
   },
   "peerDependencies": {
+    "@eventual/core": "workspace:^",
     "itty-router": "^2.6.6",
     "ulidx": "^0.3.0"
   },
   "devDependencies": {
+    "@eventual/core": "workspace:^",
     "@types/jest": "^29",
     "@types/node": "^16",
     "itty-router": "2.6.6",
