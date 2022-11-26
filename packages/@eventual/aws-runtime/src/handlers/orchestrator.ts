@@ -247,7 +247,11 @@ async function orchestrateExecution(
     const { bytes: historyUpdatedBytes } = await timed(
       metrics,
       OrchestratorMetrics.SaveHistoryDuration,
-      () => workflowRuntimeClient.updateHistory(executionId, newHistoryEvents)
+      () =>
+        workflowRuntimeClient.updateHistory({
+          executionId,
+          events: newHistoryEvents,
+        })
     );
 
     metrics.setProperty(
@@ -285,7 +289,12 @@ async function orchestrateExecution(
         const execution = await timed(
           metrics,
           OrchestratorMetrics.ExecutionStatusUpdateDuration,
-          () => workflowRuntimeClient.failExecution(executionId, error, message)
+          () =>
+            workflowRuntimeClient.failExecution({
+              executionId,
+              error,
+              message,
+            })
         );
 
         logExecutionCompleteMetrics(execution);
@@ -364,11 +373,11 @@ async function orchestrateExecution(
       return await Promise.all(
         commands.map(async (command) => {
           if (isScheduleActivityCommand(command)) {
-            await workflowRuntimeClient.scheduleActivity(
-              workflow.name,
+            await workflowRuntimeClient.scheduleActivity({
+              workflowName: workflow.name,
               executionId,
-              command
-            );
+              command,
+            });
 
             return createEvent<ActivityScheduled>({
               type: WorkflowEventType.ActivityScheduled,
@@ -394,11 +403,11 @@ async function orchestrateExecution(
             isSleepUntilCommand(command)
           ) {
             // all sleep times are computed using the start time of the WorkflowTaskStarted
-            return workflowRuntimeClient.scheduleSleep(
+            return workflowRuntimeClient.scheduleSleep({
               executionId,
               command,
-              start
-            );
+              baseTime: start,
+            });
           } else {
             return assertNever(command, `unknown command type`);
           }

@@ -17,37 +17,46 @@ export interface CompleteExecutionRequest {
   readonly timerClient: TimerClient;
 }
 
+export interface FailExecutionRequest {
+  executionId: string;
+  error: string;
+  message: string;
+}
+
+export interface UpdateHistoryRequest {
+  executionId: string;
+  events: HistoryStateEvent[];
+}
+
+export interface ScheduleActivityRequest {
+  workflowName: string;
+  executionId: string;
+  command: ScheduleActivityCommand;
+}
+
+export interface ScheduleSleepRequest {
+  executionId: string;
+  command: SleepUntilCommand | SleepForCommand;
+  baseTime: Date;
+}
+
 export interface WorkflowRuntimeClient {
   getHistory(executionId: string): Promise<HistoryStateEvent[]>;
 
   // TODO: etag
-  updateHistory(
-    executionId: string,
-    events: HistoryStateEvent[]
-  ): Promise<{ bytes: number }>;
+  updateHistory(request: UpdateHistoryRequest): Promise<{ bytes: number }>;
 
-  completeExecution({
-    executionId,
-    result,
-  }: CompleteExecutionRequest): Promise<CompleteExecution>;
+  completeExecution(
+    request: CompleteExecutionRequest
+  ): Promise<CompleteExecution>;
 
-  failExecution(
-    executionId: string,
-    error: string,
-    message: string
-  ): Promise<FailedExecution>;
+  failExecution(request: FailExecutionRequest): Promise<FailedExecution>;
 
   getExecutions(): Promise<Execution[]>;
 
   scheduleActivity(
-    workflowName: string,
-    executionId: string,
-    command: ScheduleActivityCommand
+    request: ScheduleActivityRequest
   ): Promise<ActivityScheduled>;
 
-  scheduleSleep(
-    executionId: string,
-    command: SleepUntilCommand | SleepForCommand,
-    baseTime: Date
-  ): Promise<SleepScheduled>;
+  scheduleSleep(request: ScheduleSleepRequest): Promise<SleepScheduled>;
 }
