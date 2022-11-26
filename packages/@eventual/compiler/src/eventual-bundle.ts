@@ -2,8 +2,8 @@ import fs from "fs/promises";
 import { constants } from "fs";
 import path from "path";
 import esbuild from "esbuild";
-import { eventualESPlugin } from "./esbuild-plugin";
 import { esbuildPluginAliasPath } from "esbuild-plugin-alias-path";
+import { eventualESPlugin } from "./esbuild-plugin";
 
 main().catch((err) => {
   console.error(err);
@@ -20,65 +20,56 @@ async function main() {
   await prepareOutDir(outDir);
 
   await Promise.all([
-    esbuild
-      .build({
-        mainFields: ["module", "main"],
-        sourcemap: true,
-        plugins: [
-          esbuildPluginAliasPath({
-            alias: { "@eventual/injected/workflow": entry },
-          }),
-          eventualESPlugin,
-        ],
-        conditions: ["module", "import", "require"],
-        // supported with NODE_18.x runtime
-        // TODO: make this configurable.
-        // external: ["@aws-sdk"],
-        platform: "node",
-        format: "esm",
-        metafile: true,
-        bundle: true,
-        entryPoints: [
-          path.join(
-            require.resolve("@eventual/aws-runtime"),
-            "../../esm/entry/orchestrator.js"
-          ),
-        ],
-        // // ulid
-        banner: esmPolyfillRequireBanner(),
-        outfile: path.join(outDir, "orchestrator/index.mjs"),
-      })
-      .then(writeEsBuildMetafile(path.join(outDir, "orchestrator/meta.json"))),
-    esbuild
-      .build({
-        mainFields: ["module", "main"],
-        sourcemap: true,
-        plugins: [
-          esbuildPluginAliasPath({
-            alias: { "@eventual/injected/activities": entry },
-          }),
-        ],
-        conditions: ["module", "import", "require"],
-        // supported with NODE_18.x runtime
-        // TODO: make this configurable.
-        // external: ["@aws-sdk"],
-        platform: "node",
-        format: "esm",
-        metafile: true,
-        bundle: true,
-        entryPoints: [
-          path.join(
-            require.resolve("@eventual/aws-runtime"),
-            "../../esm/entry/activity-worker.js"
-          ),
-        ],
-        banner: esmPolyfillRequireBanner(),
-        outfile: path.join(outDir, "activity-worker/index.mjs"),
-      })
-      .then(
-        writeEsBuildMetafile(path.join(outDir, "activity-worker/meta.json"))
-      ),
+    build({
+      name: "orchestrator",
+      plugins: [eventualESPlugin],
+    }),
+    build({
+      name: "activity",
+    }),
+    build({
+      name: "webhook",
+    }),
   ]);
+
+  async function build({
+    name,
+    plugins,
+  }: {
+    name: string;
+    plugins?: esbuild.Plugin[];
+  }) {
+    const bundle = await esbuild.build({
+      mainFields: ["module", "main"],
+      sourcemap: true,
+      plugins: [
+        esbuildPluginAliasPath({
+          alias: {
+            [`@eventual/entry/injected`]: entry!,
+          },
+        }),
+        ...(plugins ?? []),
+      ],
+      conditions: ["module", "import", "require"],
+      // supported with NODE_18.x runtime
+      // TODO: make this configurable.
+      // external: ["@aws-sdk"],
+      platform: "node",
+      format: "esm",
+      metafile: true,
+      bundle: true,
+      entryPoints: [
+        path.join(
+          require.resolve("@eventual/aws-runtime"),
+          `../../esm/entry/${name}.js`
+        ),
+      ],
+      banner: esmPolyfillRequireBanner(),
+      outfile: path.join(outDir!, `${name}/index.mjs`),
+    });
+
+    await writeEsBuildMetafile(path.join(outDir!, `${name}/meta.json`))(bundle);
+  }
 }
 
 /**

@@ -5,6 +5,8 @@ import {
   Code,
   IFunction,
   Runtime,
+  FunctionUrlAuthType,
+  FunctionUrl,
 } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import { Bucket, IBucket } from "aws-cdk-lib/aws-s3";
@@ -43,6 +45,9 @@ export interface WorkflowProps {
 }
 
 export class Service extends Construct implements IGrantable {
+  /**
+   * Name of this Service.
+   */
   public readonly serviceName: string;
   /**
    * S3 bucket that contains events necessary to replay a workflow execution.
@@ -105,6 +110,14 @@ export class Service extends Construct implements IGrantable {
    * Timers - When the EventBridge scheduler fails to invoke the Schedule Forwarder Lambda.
    */
   public readonly dlq: Queue;
+  /**
+   * A Lambda Function for processing inbound webhook requests.
+   */
+  public readonly webhookEndpoint: IFunction;
+  /**
+   * The URL of the webhook endpoint.
+   */
+  public readonly webhookEndpointUrl: FunctionUrl;
 
   readonly grantPrincipal: IPrincipal;
 
@@ -182,8 +195,8 @@ export class Service extends Construct implements IGrantable {
 
     this.activityWorker = new Function(this, "Worker", {
       architecture: Architecture.ARM_64,
-      code: Code.fromAsset(path.join(outDir, "activity-worker")),
-      // the bundler outputs activity-worker/index.js
+      code: Code.fromAsset(path.join(outDir, "activity")),
+      // the bundler outputs activity/index.js
       handler: "index.default",
       runtime: Runtime.NODEJS_16_X,
       memorySize: 512,
@@ -373,5 +386,29 @@ export class Service extends Construct implements IGrantable {
         },
       }),
     });
+
+    this.webhookEndpoint = new Function(this, "WebhookEndpoint", {
+      architecture: Architecture.ARM_64,
+      code: Code.fromAsset(path.join(outDir, "webhook")),
+      // the bundler outputs orchestrator/index.js
+      handler: "index.default",
+      runtime: Runtime.NODEJS_16_X,
+      memorySize: 512,
+      environment: {
+        NODE_OPTIONS: "--enable-source-maps",
+        [ENV_NAMES.TABLE_NAME]: this.table.tableName,
+        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
+        [ENV_NAMES.EVENTUAL_WEBHOOK]: "1",
+      },
+    });
+    this.webhookEndpointUrl = this.webhookEndpoint.addFunctionUrl({
+      authType: FunctionUrlAuthType.NONE,
+    });
+
+    // the webhook endpoint is allowed to run workflows
+    this.workflowQueue.grantSendMessages(this.webhookEndpoint);
+
+    // Enable creating history to start a workflow.
+    this.table.grantReadWriteData(this.webhookEndpoint);
   }
 }
