@@ -16,6 +16,7 @@ import {
   isSleepCompleted,
   isSleepForCommand,
   isSleepUntilCommand,
+  isWaitForEventCommand,
   lookupWorkflow,
   progressWorkflow,
   Workflow,
@@ -401,6 +402,13 @@ async function orchestrateExecution(
           ) {
             // all sleep times are computed using the start time of the WorkflowTaskStarted
             return workflowRuntimeClient.scheduleSleep({
+              executionId,
+              command,
+              baseTime: start,
+            });
+          } else if (isWaitForEventCommand(command)) {
+            // should the timeout command be generic (ex: StartTimeout) or specific (ex: WaitForEvent)?
+            return workflowRuntimeClient.startWaitForEvent({
               executionId,
               command,
               baseTime: start,

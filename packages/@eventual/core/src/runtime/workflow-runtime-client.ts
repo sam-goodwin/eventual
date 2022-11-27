@@ -2,11 +2,13 @@ import {
   ScheduleActivityCommand,
   SleepForCommand,
   SleepUntilCommand,
+  WaitForEventCommand,
 } from "../command.js";
 import {
   ActivityScheduled,
   HistoryStateEvent,
   SleepScheduled,
+  WaitForEventStarted,
 } from "../events.js";
 import { CompleteExecution, Execution, FailedExecution } from "../execution.js";
 
@@ -38,6 +40,12 @@ export interface ScheduleSleepRequest {
   baseTime: Date;
 }
 
+export interface StartWaitForEventRequest {
+  executionId: string;
+  command: WaitForEventCommand;
+  baseTime: Date;
+}
+
 export interface WorkflowRuntimeClient {
   getHistory(executionId: string): Promise<HistoryStateEvent[]>;
 
@@ -57,4 +65,8 @@ export interface WorkflowRuntimeClient {
   ): Promise<ActivityScheduled>;
 
   scheduleSleep(request: ScheduleSleepRequest): Promise<SleepScheduled>;
+
+  startWaitForEvent(
+    request: StartWaitForEventRequest
+  ): Promise<WaitForEventStarted>;
 }

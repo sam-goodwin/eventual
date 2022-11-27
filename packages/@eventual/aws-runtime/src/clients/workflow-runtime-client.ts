@@ -26,6 +26,8 @@ import {
   WorkflowEventType,
   ActivityScheduled,
   SleepCompleted,
+  WaitForEventStarted,
+  WaitForEventTimedOut,
 } from "@eventual/core";
 import {
   createExecutionFromResult,
@@ -263,6 +265,40 @@ export class AWSWorkflowRuntimeClient
       type: WorkflowEventType.SleepScheduled,
       seq: command.seq,
       untilTime: untilTime.toISOString(),
+    });
+  }
+
+  async startWaitForEvent({
+    executionId,
+    command,
+    baseTime,
+  }: eventual.StartWaitForEventRequest): Promise<WaitForEventStarted> {
+    if (command.timeoutSeconds) {
+      const untilTime = new Date(
+        baseTime.getTime() + command.timeoutSeconds * 1000
+      );
+      const untilTimeIso = untilTime.toISOString();
+
+      const event: WaitForEventTimedOut = {
+        eventId: command.eventId,
+        seq: command.seq,
+        timestamp: untilTimeIso,
+        type: WorkflowEventType.WaitForEventTimedOut,
+      };
+
+      await this.props.timerClient.startTimer({
+        event,
+        executionId,
+        type: TimerRequestType.ForwardEvent,
+        untilTime: untilTimeIso,
+      });
+    }
+
+    return createEvent<WaitForEventStarted>({
+      eventId: command.eventId,
+      seq: command.seq,
+      type: WorkflowEventType.WaitForEventStarted,
+      timeoutSeconds: command.timeoutSeconds,
     });
   }
 }
