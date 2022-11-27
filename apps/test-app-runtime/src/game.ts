@@ -1,16 +1,5 @@
-import { workflow, WorkflowHandler } from "@eventual/core";
+import { workflow, WorkflowHandler, Event, EventPayload } from "@eventual/core";
 
-declare class Event<Payload = void> {
-  constructor(id: string);
-  on(handler: (payload: Payload) => Promise<void> | void): Promise<void>;
-}
-
-type EventPayload<E extends Event<any>> = E extends Event<infer P> ? P : never;
-
-declare function waitForEvent<E extends Event<any>>(
-  event: E,
-  opts?: { timeoutSeconds: number }
-): Promise<EventPayload<E>>;
 declare function condition(
   predicate: () => boolean,
   opts?: { timeoutSeconds: number }
@@ -36,7 +25,7 @@ declare module "@eventual/core" {
 export const workflow1 = workflow("workflow1", async () => {
   const child = await workflow2.startExecution({ name: "child" });
   while (true) {
-    const n = await waitForEvent(event);
+    const n = await event.waitFor();
 
     console.log(n);
 
