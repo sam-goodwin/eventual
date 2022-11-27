@@ -4,18 +4,23 @@ declare function condition(
   predicate: () => boolean,
   opts?: { timeoutSeconds: number }
 ): Promise<void>;
+declare function sendSignal<S extends Signal<any>>(
+  executionId: string,
+  signal: S,
+  payload: SignalPayload<S>
+): void;
 
 const signal = new Signal<number>("event");
 const doneSignal = new Signal("done");
 
 declare module "@eventual/core" {
   interface Workflow<Input = any, Output = any> {
-    ref(executionId: string): ExecutionRef;
-    startExecution(input: Input): Promise<ExecutionRef>;
+    (input: Input): Promise<Output> & ExecutionRef;
   }
 
   interface ExecutionRef {
-    send<E extends Signal<any>>(event: E, payload: SignalPayload<E>): void;
+    executionId: string;
+    sendSignal<E extends Signal<any>>(event: E, payload: SignalPayload<E>): void;
   }
 }
 
@@ -23,19 +28,22 @@ declare module "@eventual/core" {
  * the parent workflow uses thr `waitForSignal` function to block and wait for events from it's child workflow.
  */
 export const workflow1 = workflow("workflow1", async () => {
-  const child = await workflow2.startExecution({ name: "child" });
+  const child = workflow2({ name: "child" });
   while (true) {
     const n = await signal.waitFor();
 
     console.log(n);
 
     if (n > 10) {
-      child.send(doneSignal, undefined);
+      child.sendSignal(doneSignal, undefined);
       break;
     }
 
-    child.send(signal, n + 1);
+    child.sendSignal(signal, n + 1);
   }
+
+  // join with child
+  await child;
 
   return "done";
 });
@@ -55,7 +63,6 @@ export const workflow2 = workflow(
     }
 
     console.log(`Hi, I am ${input.name}`);
-    const parent = workflow1.ref(parentId);
 
     signal.on((n) => {
       last = n;
@@ -67,7 +74,7 @@ export const workflow2 = workflow(
     });
 
     while (!done) {
-      parent.send(signal, last + 1);
+      sendSignal(parentId, signal, last + 1);
       block = true;
       await condition(() => !block);
     }
