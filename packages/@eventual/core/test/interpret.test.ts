@@ -33,6 +33,7 @@ import {
 } from "./command-util.js";
 import { createWaitForSignalCall } from "../src/calls/wait-for-signal-call.js";
 import { createRegisterSignalHandlerCall } from "../src/calls/signal-handler-call.js";
+import { createWorkflowCall } from "../src/calls/workflow-call.js";
 
 function* myWorkflow(event: any): Program<any> {
   try {
@@ -770,13 +771,11 @@ test("generator function returns an ActivityCall", () => {
 });
 
 test("workflow calling other workflow", () => {
-  const wf1 = workflow("wf1", function* () {
+  workflow("wf1", function* () {
     yield createActivityCall("call-a", []);
   });
-  // @ts-ignore
   const wf2 = workflow("wf2", function* () {
-    // @ts-ignore
-    const result = yield wf1();
+    const result = createWorkflowCall("wf1") as any;
     yield createActivityCall("call-b", []);
     return result;
   });

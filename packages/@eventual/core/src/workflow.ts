@@ -1,17 +1,9 @@
 import {
-  AwaitedEventual,
-  Eventual,
-  EventualKind,
-  EventualSymbol,
-} from "./eventual.js";
-import {
   getWorkflowClient,
-  registerActivity,
   resetActivityCollector,
 } from "./global.js";
 import type { Program } from "./interpret.js";
-import type { Result } from "./result.js";
-import { Context, WorkflowContext } from "./context.js";
+import type { Context, WorkflowContext } from "./context.js";
 import { DeterminismError } from "./error.js";
 import {
   filterEvents,
@@ -25,12 +17,13 @@ import {
   WorkflowEventType,
 } from "./events.js";
 import { interpret, WorkflowResult } from "./interpret.js";
-import { StartWorkflowResponse } from "./runtime/workflow-client.js";
+import type { StartWorkflowResponse } from "./runtime/workflow-client.js";
+import { createWorkflowCall } from "./calls/workflow-call.js";
 
-export type WorkflowHandler = (
-  input: any,
+export type WorkflowHandler<Input, Output> = (
+  input: Input,
   context: Context
-) => Promise<any> | Program;
+) => Promise<Output> | Program;
 
 export interface StartExecutionRequest<Input> {
   /**
@@ -49,7 +42,7 @@ export interface StartExecutionRequest<Input> {
  * A {@link Workflow} is a long-running process that orchestrates calls
  * to other services in a durable and observable way.
  */
-export interface Workflow<F extends WorkflowHandler = WorkflowHandler> {
+export interface Workflow<Input = any, Output = any> {
   /**
    * Globally unique ID of this {@link Workflow}.
    */
@@ -63,22 +56,22 @@ export interface Workflow<F extends WorkflowHandler = WorkflowHandler> {
    *
    * To start a workflow from another environment, use {@link start}.
    */
-  (input: Parameters<F>[0]): ReturnType<F>;
+  (input: Input): Promise<Output>;
 
   /**
    * Starts a workflow execution
    */
   startExecution(
-    request: StartExecutionRequest<Parameters<F>[0]>
+    request: StartExecutionRequest<Input>
   ): Promise<StartWorkflowResponse>;
 
   /**
    * @internal - this is the internal DSL representation that produces a {@link Program} instead of a Promise.
    */
   definition: (
-    input: Parameters<F>[0],
+    input: Input,
     context: Context
-  ) => Program<AwaitedEventual<ReturnType<F>>>;
+  ) => Program<Output>;
 }
 
 const workflows = new Map<string, Workflow>();
@@ -107,19 +100,14 @@ export function lookupWorkflow(name: string): Workflow | undefined {
  * @param name a globally unique ID for this workflow.
  * @param definition the workflow definition.
  */
-export function workflow<F extends WorkflowHandler>(
+export function workflow<Input = any, Output = any>(
   name: string,
-  definition: F
-): Workflow<F> {
+  definition: WorkflowHandler<Input, Output>
+): Workflow<Input, Output> {
   if (workflows.has(name)) {
     throw new Error(`workflow with name '${name}' already exists`);
   }
-  const workflow: Workflow<F> = ((input?: any) =>
-    registerActivity({
-      [EventualSymbol]: EventualKind.WorkflowCall,
-      name,
-      input,
-    })) as any;
+  const workflow: Workflow<Input, Output> = ((input?: any) => createWorkflowCall(name, input)) as any
 
   workflow.startExecution = async function (input) {
     return {
@@ -131,24 +119,9 @@ export function workflow<F extends WorkflowHandler>(
     };
   };
 
-  workflow.definition = definition as Workflow<F>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
+  workflow.definition = definition as typeof workflow["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
   workflows.set(name, workflow);
   return workflow;
-}
-
-export function isWorkflowCall<T>(a: Eventual<T>): a is WorkflowCall<T> {
-  return a[EventualSymbol] === EventualKind.WorkflowCall;
-}
-
-/**
- * An {@link Eventual} representing an awaited call to a {@link Workflow}.
- */
-export interface WorkflowCall<T = any> {
-  [EventualSymbol]: EventualKind.WorkflowCall;
-  name: string;
-  input: any;
-  result?: Result<T>;
-  seq?: number;
 }
 
 export interface ProgressWorkflowResult extends WorkflowResult {

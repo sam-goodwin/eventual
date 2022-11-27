@@ -1,4 +1,4 @@
-import { workflow, WorkflowHandler, Signal, SignalPayload } from "@eventual/core";
+import { workflow, Signal, SignalPayload } from "@eventual/core";
 
 declare function condition(
   predicate: () => boolean,
@@ -9,9 +9,9 @@ const signal = new Signal<number>("event");
 const doneSignal = new Signal("done");
 
 declare module "@eventual/core" {
-  interface Workflow<F extends WorkflowHandler = WorkflowHandler> {
+  interface Workflow<Input = any, Output = any> {
     ref(executionId: string): ExecutionRef;
-    startExecution(input: Parameters<F>[0]): Promise<ExecutionRef>;
+    startExecution(input: Input): Promise<ExecutionRef>;
   }
 
   interface ExecutionRef {

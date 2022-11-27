@@ -37,7 +37,6 @@ import {
 import { createChain, isChain, Chain } from "./chain.js";
 import { assertNever, or } from "./util.js";
 import { Command, CommandType } from "./command.js";
-import { isWorkflowCall } from "./workflow.js";
 import { isSleepForCall, isSleepUntilCall } from "./calls/sleep-call.js";
 import {
   isWaitForSignalCall,
@@ -48,6 +47,7 @@ import {
   RegisterSignalHandlerCall,
 } from "./calls/signal-handler-call.js";
 import { isSendSignalCall as isSendSignalCall } from "./calls/send-signal-call.js";
+import { isWorkflowCall } from "./calls/workflow-call.js";
 
 export interface WorkflowResult<T = any> {
   /**

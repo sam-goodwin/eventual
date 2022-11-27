@@ -9,7 +9,6 @@ import {
   SleepForCall,
   SleepUntilCall,
 } from "./calls/sleep-call.js";
-import { isWorkflowCall, WorkflowCall } from "./workflow.js";
 import {
   isWaitForSignalCall,
   WaitForSignalCall,
@@ -19,6 +18,7 @@ import {
   RegisterSignalHandlerCall,
 } from "./calls/signal-handler-call.js";
 import { isSendSignalCall, SendSignalCall } from "./calls/send-signal-call.js";
+import { isWorkflowCall, WorkflowCall } from "./calls/workflow-call.js";
 
 export type AwaitedEventual<T> = T extends Promise<infer U>
   ? Awaited<U>
