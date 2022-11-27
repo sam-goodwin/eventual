@@ -3,6 +3,7 @@
   "compilerOptions": {
     "declaration": true,
     "inlineSourceMap": true,
+    "module": "esnext",
     "rootDir": ".",
     "types": ["@types/node", "@types/jest"],
     "typeRoots": ["./node_modules/@types"],

@@ -1,3 +1,5 @@
+import "./fetch-polyfill.js";
+
 import { services } from "./commands/services.js";
 import { executions } from "./commands/executions.js";
 import { history } from "./commands/history.js";

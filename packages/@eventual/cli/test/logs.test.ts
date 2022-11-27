@@ -1,3 +1,5 @@
+import "../src/fetch-polyfill.js";
+
 import {
   FunctionLogEvents,
   FunctionLogInput,

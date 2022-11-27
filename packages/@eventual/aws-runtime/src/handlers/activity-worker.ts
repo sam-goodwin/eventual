@@ -4,6 +4,7 @@ import {
   getCallableActivity,
   getCallableActivityNames,
   isWorkflowFailed,
+  registerWorkflowClient,
   WorkflowEventType,
 } from "@eventual/core";
 import { Handler } from "aws-lambda";
@@ -23,6 +24,9 @@ import { logger, loggerMiddlewares } from "../logger.js";
 const activityRuntimeClient = createActivityRuntimeClient();
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowClient = createWorkflowClient();
+
+// make the workflow client available to all activity code
+registerWorkflowClient(workflowClient);
 
 export const activityWorker = (): Handler<ActivityWorkerRequest, void> => {
   return middy(

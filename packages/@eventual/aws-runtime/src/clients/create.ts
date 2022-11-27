@@ -2,15 +2,15 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { LambdaClient } from "@aws-sdk/client-lambda";
 import { S3Client } from "@aws-sdk/client-s3";
 import { SQSClient } from "@aws-sdk/client-sqs";
-import * as env from "../env.js";
-import { ActivityRuntimeClient } from "./activity-runtime-client.js";
-import { ExecutionHistoryClient } from "./execution-history-client.js";
-import { WorkflowClient } from "./workflow-client.js";
-import { WorkflowRuntimeClient } from "./workflow-runtime-client.js";
+import * as env from "../env";
+import { AWSActivityRuntimeClient } from "./activity-runtime-client";
+import { AWSExecutionHistoryClient } from "./execution-history-client";
+import { AWSWorkflowClient } from "./workflow-client";
+import { AWSWorkflowRuntimeClient } from "./workflow-runtime-client";
 import memoize from "micro-memoize";
 import { deepEqual } from "fast-equals";
 import { SchedulerClient } from "@aws-sdk/client-scheduler";
-import { TimerClient, TimerClientProps } from "./timer-client.js";
+import { AWSTimerClient, AWSTimerClientProps } from "./timer-client";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -29,7 +29,7 @@ export const scheduler = /*@__PURE__*/ memoize(() => new SchedulerClient({}));
 
 export const createExecutionHistoryClient = /*@__PURE__*/ memoize(
   ({ tableName }: { tableName?: string } = {}) =>
-    new ExecutionHistoryClient({
+    new AWSExecutionHistoryClient({
       dynamo: dynamo(),
       tableName: tableName ?? env.tableName(),
     }),
@@ -44,10 +44,12 @@ export const createWorkflowClient = /*@__PURE__*/ memoize(
     tableName?: string;
     workflowQueueUrl?: string;
   } = {}) =>
-    new WorkflowClient({
+    new AWSWorkflowClient({
       sqs: sqs(),
       workflowQueueUrl: workflowQueueUrl ?? env.workflowQueueUrl(),
-      executionHistory: createExecutionHistoryClient({ tableName }),
+      executionHistory: createExecutionHistoryClient({
+        tableName: tableName ?? env.tableName(),
+      }),
       dynamo: dynamo(),
       tableName: tableName ?? env.tableName(),
     }),
@@ -56,15 +58,15 @@ export const createWorkflowClient = /*@__PURE__*/ memoize(
 
 export const createActivityRuntimeClient = /*@__PURE__*/ memoize(
   () =>
-    new ActivityRuntimeClient({
+    new AWSActivityRuntimeClient({
       activityLockTableName: env.activityLockTableName(),
       dynamo: dynamo(),
     })
 );
 
 export const createTimerClient = /*@__PURE__*/ memoize(
-  (props: Partial<TimerClientProps> = {}) =>
-    new TimerClient({
+  (props: Partial<AWSTimerClientProps> = {}) =>
+    new AWSTimerClient({
       scheduler: props.scheduler ?? scheduler(),
       schedulerRoleArn: props.schedulerRoleArn ?? env.schedulerRoleArn(),
       schedulerDlqArn: props.schedulerDlqArn ?? env.schedulerDlqArn(),
@@ -80,24 +82,22 @@ export const createTimerClient = /*@__PURE__*/ memoize(
 
 export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
   ({
-    tableName,
-    executionHistoryBucket,
-    activityWorkerFunctionName,
+    tableName = env.tableName(),
+    executionHistoryBucket = env.executionHistoryBucket(),
+    activityWorkerFunctionName = env.activityWorkerFunctionName(),
   }: {
     tableName?: string;
     executionHistoryBucket?: string;
     activityWorkerFunctionName?: string;
   } = {}) =>
-    new WorkflowRuntimeClient({
+    new AWSWorkflowRuntimeClient({
       dynamo: dynamo(),
       s3: s3(),
       // todo fail when missing
-      executionHistoryBucket:
-        executionHistoryBucket ?? env.executionHistoryBucket(),
-      tableName: tableName ?? env.tableName(),
+      executionHistoryBucket,
+      tableName,
       lambda: lambda(),
-      activityWorkerFunctionName:
-        activityWorkerFunctionName ?? env.activityWorkerFunctionName(),
+      activityWorkerFunctionName,
       workflowClient: createWorkflowClient(),
       timerClient: createTimerClient(),
     })
