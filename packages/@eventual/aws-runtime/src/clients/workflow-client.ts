@@ -7,6 +7,7 @@ import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
   Execution,
   ExecutionStatus,
+  SignalReceived,
   HistoryStateEvent,
   WorkflowEventType,
   WorkflowStarted,
@@ -14,7 +15,10 @@ import {
 } from "@eventual/core";
 import { ulid } from "ulidx";
 import { formatExecutionId } from "../execution-id.js";
-import { AWSExecutionHistoryClient } from "./execution-history-client.js";
+import {
+  AWSExecutionHistoryClient,
+  createEvent,
+} from "./execution-history-client.js";
 
 import type eventual from "@eventual/core";
 
@@ -103,6 +107,21 @@ export class AWSWorkflowClient implements eventual.WorkflowClient {
         QueueUrl: this.props.workflowQueueUrl,
         MessageGroupId: executionId,
       })
+    );
+  }
+
+  public async sendSignal(request: eventual.SendSignalRequest): Promise<void> {
+    await this.submitWorkflowTask(
+      request.executionId,
+      createEvent<SignalReceived>(
+        {
+          type: WorkflowEventType.SignalReceived,
+          payload: request.payload,
+          signalId: request.signalId,
+        },
+        undefined,
+        request.id
+      )
     );
   }
 }

@@ -9,20 +9,21 @@ import { isActivityCall } from "./calls/activity-call.js";
 import { DeterminismError } from "./error.js";
 import {
   CompletedEvent,
-  ExternalEvent,
+  SignalReceived,
   FailedEvent,
   HistoryEvent,
   isActivityScheduled,
   isChildWorkflowScheduled,
   isCompletedEvent,
-  isExternalEvent,
+  isSignalReceived,
   isFailedEvent,
   isScheduledEvent,
   isSleepCompleted,
   isSleepScheduled,
-  isWaitForEventStarted,
-  isWaitForEventTimedOut,
+  isWaitForSignalStarted,
+  isWaitForSignalTimedOut,
   ScheduledEvent,
+  isSignalSent,
 } from "./events.js";
 import { collectActivities } from "./global.js";
 import {
@@ -39,13 +40,14 @@ import { Command, CommandType } from "./command.js";
 import { isWorkflowCall } from "./workflow.js";
 import { isSleepForCall, isSleepUntilCall } from "./calls/sleep-call.js";
 import {
-  isWaitForEventCall,
-  WaitForEventCall,
-} from "./calls/wait-for-event-call.js";
+  isWaitForSignalCall,
+  WaitForSignalCall,
+} from "./calls/wait-for-signal-call.js";
 import {
-  isRegisterEventHandlerCall,
-  RegisterEventHandlerCall,
-} from "./calls/event-handler-call.js";
+  isRegisterSignalHandlerCall,
+  RegisterSignalHandlerCall,
+} from "./calls/signal-handler-call.js";
+import { isSendSignalCall as isSendSignalCall } from "./calls/send-signal-call.js";
 
 export interface WorkflowResult<T = any> {
   /**
@@ -71,11 +73,11 @@ export function interpret<Return>(
 ): WorkflowResult<Awaited<Return>> {
   const callTable: Record<number, CommandCall> = {};
   /**
-   * A map of eventId to calls and handlers that are listening for this event.
+   * A map of signalIds to calls and handlers that are listening for this signal.
    */
-  const eventSubscriptions: Record<
+  const signalSubscriptions: Record<
     string,
-    (WaitForEventCall | RegisterEventHandlerCall)[]
+    (WaitForSignalCall | RegisterSignalHandlerCall)[]
   > = {};
   const mainChain = createChain(program);
   const activeChains = new Set([mainChain]);
@@ -88,7 +90,7 @@ export function interpret<Return>(
   let emittedEvents = iterator(history, isScheduledEvent);
   let resultEvents = iterator(
     history,
-    or(isCompletedEvent, isFailedEvent, isExternalEvent)
+    or(isCompletedEvent, isFailedEvent, isSignalReceived)
   );
 
   /**
@@ -124,7 +126,7 @@ export function interpret<Return>(
     if (resultEvents.hasNext()) {
       const resultEvent = resultEvents.next()!;
 
-      if (isExternalEvent(resultEvent)) {
+      if (isSignalReceived(resultEvent)) {
         commitExternalEvent(resultEvent);
       } else {
         commitCompletionEvent(resultEvent);
@@ -178,14 +180,22 @@ export function interpret<Return>(
         input: call.input,
         name: call.name,
       };
-    } else if (isWaitForEventCall(call)) {
+    } else if (isWaitForSignalCall(call)) {
       return {
-        kind: CommandType.WaitForEvent,
-        eventId: call.eventId,
+        kind: CommandType.WaitForSignal,
+        signalId: call.signalId,
         seq: call.seq!,
         timeoutSeconds: call.timeoutSeconds,
       };
-    } else if (isRegisterEventHandlerCall(call)) {
+    } else if (isSendSignalCall(call)) {
+      return {
+        kind: CommandType.SendSignal,
+        signalId: call.signalId,
+        executionId: call.executionId,
+        seq: call.seq!,
+        payload: call.payload,
+      };
+    } else if (isRegisterSignalHandlerCall(call)) {
       return [];
     }
 
@@ -216,14 +226,14 @@ export function interpret<Return>(
     return calls;
   }
 
-  function subscribeToEvent(
-    eventId: string,
-    sub: WaitForEventCall | RegisterEventHandlerCall
+  function subscribeToSignal(
+    signalId: string,
+    sub: WaitForSignalCall | RegisterSignalHandlerCall
   ) {
-    if (!(eventId in eventSubscriptions)) {
-      eventSubscriptions[eventId] = [];
+    if (!(signalId in signalSubscriptions)) {
+      signalSubscriptions[signalId] = [];
     }
-    eventSubscriptions[eventId]!.push(sub);
+    signalSubscriptions[signalId]!.push(sub);
   }
 
   /**
@@ -309,10 +319,10 @@ export function interpret<Return>(
 
       return collectActivities().flatMap((activity) => {
         if (isCommandCall(activity)) {
-          if (isWaitForEventCall(activity)) {
-            subscribeToEvent(activity.eventId, activity);
-          } else if (isRegisterEventHandlerCall(activity)) {
-            subscribeToEvent(activity.eventId, activity);
+          if (isWaitForSignalCall(activity)) {
+            subscribeToSignal(activity.signalId, activity);
+          } else if (isRegisterSignalHandlerCall(activity)) {
+            subscribeToSignal(activity.signalId, activity);
             // dispose event handler does not emit a call/command. It is only internal.
             return [];
           }
@@ -361,17 +371,17 @@ export function interpret<Return>(
   }
 
   /**
-   * Add result to WaitForEvent and call any event handlers.
+   * Add result to WaitForSignal and call any event handlers.
    */
-  function commitExternalEvent(event: ExternalEvent) {
-    const subscriptions = eventSubscriptions[event.eventId];
+  function commitExternalEvent(event: SignalReceived) {
+    const subscriptions = signalSubscriptions[event.signalId];
 
     subscriptions?.forEach((sub) => {
-      if (isWaitForEventCall(sub)) {
+      if (isWaitForSignalCall(sub)) {
         if (!sub.result) {
           sub.result = Result.resolved(event.payload);
         }
-      } else if (isRegisterEventHandlerCall(sub)) {
+      } else if (isRegisterSignalHandlerCall(sub)) {
         if (!sub.result) {
           const output = sub.handler(event.payload);
           // if the handler is a generator, start a new chain
@@ -395,7 +405,7 @@ export function interpret<Return>(
       ? Result.resolved(event.result)
       : isSleepCompleted(event)
       ? Result.resolved(undefined)
-      : isWaitForEventTimedOut(event)
+      : isWaitForSignalTimedOut(event)
       ? // TODO: should this throw a specific error type?
         Result.failed("Wait For Event Timed Out")
       : Result.failed(event.error);
@@ -411,8 +421,10 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
     return isWorkflowCall(call) && call.name === event.name;
   } else if (isSleepScheduled(event)) {
     return isSleepUntilCall(call) || isSleepForCall(call);
-  } else if (isWaitForEventStarted(event)) {
-    return isWaitForEventCall(call) && call.eventId == call.eventId;
+  } else if (isWaitForSignalStarted(event)) {
+    return isWaitForSignalCall(call) && event.signalId == call.signalId;
+  } else if (isSignalSent(event)) {
+    return isSendSignalCall(call) && event.signalId === call.signalId;
   }
   return assertNever(event);
 }

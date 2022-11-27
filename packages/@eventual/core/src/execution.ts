@@ -1,3 +1,7 @@
+import { createSendEventCall } from "./calls/send-signal-call.js";
+import { SignalPayload, Signal } from "./signals.js";
+import { Workflow } from "./workflow.js";
+
 export enum ExecutionStatus {
   IN_PROGRESS = "IN_PROGRESS",
   COMPLETE = "COMPLETE",
@@ -8,6 +12,24 @@ interface ExecutionBase {
   id: string;
   status: ExecutionStatus;
   startTime: string;
+}
+
+interface ExecutionReference {
+  id: string;
+  workflow: Workflow;
+  send<E extends Signal<any>>(event: E, payload: SignalPayload<E>): void;
+}
+
+export function createExecutionReference(
+  executionId: string,
+  workflow: Workflow
+): ExecutionReference {
+  return {
+    id: executionId,
+    workflow,
+    send: (event, payload) =>
+      createSendEventCall(executionId, event.id, payload),
+  };
 }
 
 export type Execution =

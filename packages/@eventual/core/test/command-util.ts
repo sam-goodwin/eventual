@@ -4,7 +4,7 @@ import {
   SleepUntilCommand,
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
-  WaitForEventCommand,
+  WaitForSignalCommand,
 } from "../src/command.js";
 import {
   ActivityCompleted,
@@ -13,11 +13,11 @@ import {
   ChildWorkflowCompleted,
   ChildWorkflowFailed,
   ChildWorkflowScheduled,
-  ExternalEvent,
+  SignalReceived,
   SleepCompleted,
   SleepScheduled,
-  WaitForEventStarted,
-  WaitForEventTimedOut,
+  WaitForSignalStarted,
+  WaitForSignalTimedOut,
   WorkflowEventType,
 } from "../src/events.js";
 import { ulid } from "ulidx";
@@ -70,14 +70,14 @@ export function createScheduledWorkflowCommand(
   };
 }
 
-export function createWaitForEventCommand(
-  eventId: string,
+export function createWaitForSignalCommand(
+  signalId: string,
   seq: number,
   timeoutSeconds?: number
-): WaitForEventCommand {
+): WaitForSignalCommand {
   return {
-    kind: CommandType.WaitForEvent,
-    eventId,
+    kind: CommandType.WaitForSignal,
+    signalId,
     seq,
     timeoutSeconds,
   };
@@ -168,37 +168,37 @@ export function completedSleep(seq: number): SleepCompleted {
   };
 }
 
-export function timedOutWaitForEvent(
-  eventId: string,
+export function timedOutWaitForSignal(
+  signalId: string,
   seq: number
-): WaitForEventTimedOut {
+): WaitForSignalTimedOut {
   return {
-    type: WorkflowEventType.WaitForEventTimedOut,
+    type: WorkflowEventType.WaitForSignalTimedOut,
     timestamp: new Date().toISOString(),
     seq,
-    eventId,
+    signalId,
   };
 }
 
-export function startedWaitForEvent(
-  eventId: string,
+export function startedWaitForSignal(
+  signalId: string,
   seq: number,
   timeoutSeconds?: number
-): WaitForEventStarted {
+): WaitForSignalStarted {
   return {
-    type: WorkflowEventType.WaitForEventStarted,
-    eventId,
+    type: WorkflowEventType.WaitForSignalStarted,
+    signalId,
     timestamp: new Date().toISOString(),
     seq,
     timeoutSeconds,
   };
 }
 
-export function externalEvent(eventId: string, payload?: any): ExternalEvent {
+export function externalEvent(signalId: string, payload?: any): SignalReceived {
   return {
-    type: WorkflowEventType.ExternalEvent,
+    type: WorkflowEventType.SignalReceived,
     id: ulid(),
-    eventId,
+    signalId,
     payload,
     timestamp: new Date().toISOString(),
   };

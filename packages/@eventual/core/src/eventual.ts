@@ -11,13 +11,14 @@ import {
 } from "./calls/sleep-call.js";
 import { isWorkflowCall, WorkflowCall } from "./workflow.js";
 import {
-  isWaitForEventCall,
-  WaitForEventCall,
-} from "./calls/wait-for-event-call.js";
+  isWaitForSignalCall,
+  WaitForSignalCall,
+} from "./calls/wait-for-signal-call.js";
 import {
-  isRegisterEventHandlerCall,
-  RegisterEventHandlerCall,
-} from "./calls/event-handler-call.js";
+  isRegisterSignalHandlerCall,
+  RegisterSignalHandlerCall,
+} from "./calls/signal-handler-call.js";
+import { isSendSignalCall, SendSignalCall } from "./calls/send-signal-call.js";
 
 export type AwaitedEventual<T> = T extends Promise<infer U>
   ? Awaited<U>
@@ -41,8 +42,9 @@ export enum EventualKind {
   SleepForCall = 3,
   SleepUntilCall = 4,
   WorkflowCall = 5,
-  WaitForEventCall = 6,
-  RegisterEventHandlerCall = 7,
+  WaitForSignalCall = 6,
+  RegisterSignalHandlerCall = 7,
+  SendSignalCall = 8,
 }
 
 export function isEventual(a: any): a is Eventual {
@@ -62,8 +64,9 @@ export type CommandCall<T = any> =
   | SleepForCall
   | SleepUntilCall
   | WorkflowCall<T>
-  | WaitForEventCall<T>
-  | RegisterEventHandlerCall<T>;
+  | WaitForSignalCall<T>
+  | RegisterSignalHandlerCall<T>
+  | SendSignalCall;
 
 export function isCommandCall(call: Eventual): call is CommandCall {
   return (
@@ -71,8 +74,9 @@ export function isCommandCall(call: Eventual): call is CommandCall {
     isSleepForCall(call) ||
     isSleepUntilCall(call) ||
     isWorkflowCall(call) ||
-    isWaitForEventCall(call) ||
-    isRegisterEventHandlerCall(call)
+    isWaitForSignalCall(call) ||
+    isRegisterSignalHandlerCall(call) ||
+    isSendSignalCall(call)
   );
 }
 

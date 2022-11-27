@@ -13,12 +13,14 @@ import {
   isResult,
   isScheduleActivityCommand,
   isScheduleWorkflowCommand,
+  isSendSignalCommand,
   isSleepCompleted,
   isSleepForCommand,
   isSleepUntilCommand,
-  isWaitForEventCommand,
+  isWaitForSignalCommand,
   lookupWorkflow,
   progressWorkflow,
+  SignalSent,
   Workflow,
   WorkflowCompleted,
   WorkflowContext,
@@ -406,12 +408,27 @@ async function orchestrateExecution(
               command,
               baseTime: start,
             });
-          } else if (isWaitForEventCommand(command)) {
-            // should the timeout command be generic (ex: StartTimeout) or specific (ex: WaitForEvent)?
-            return workflowRuntimeClient.startWaitForEvent({
+          } else if (isWaitForSignalCommand(command)) {
+            // should the timeout command be generic (ex: StartTimeout) or specific (ex: WaitForSignal)?
+            return workflowRuntimeClient.startWaitForSignal({
               executionId,
               command,
               baseTime: start,
+            });
+          } else if (isSendSignalCommand(command)) {
+            await workflowClient.sendSignal({
+              signalId: command.signalId,
+              executionId: command.executionId,
+              id: `${executionId}/${command.seq}`,
+              payload: command.payload,
+            });
+
+            return createEvent<SignalSent>({
+              type: WorkflowEventType.SignalSent,
+              executionId: command.executionId,
+              seq: command.seq,
+              signalId: command.signalId,
+              payload: command.payload,
             });
           } else {
             return assertNever(command, `unknown command type`);

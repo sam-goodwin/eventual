@@ -22,17 +22,17 @@ import {
   createScheduledWorkflowCommand,
   createSleepForCommand,
   createSleepUntilCommand,
-  createWaitForEventCommand,
-  externalEvent,
+  createWaitForSignalCommand as createWaitForSignalCommand,
+  externalEvent as signalReceived,
   scheduledSleep,
-  startedWaitForEvent,
-  timedOutWaitForEvent,
+  startedWaitForSignal as startedWaitForSignal,
+  timedOutWaitForSignal as timedOutWaitForSignal,
   workflowCompleted,
   workflowFailed,
   workflowScheduled,
 } from "./command-util.js";
-import { createWaitForEventCall } from "../src/calls/wait-for-event-call.js";
-import { createRegisterEventHandlerCall } from "../src/calls/event-handler-call.js";
+import { createWaitForSignalCall } from "../src/calls/wait-for-signal-call.js";
+import { createRegisterSignalHandlerCall } from "../src/calls/signal-handler-call.js";
 
 function* myWorkflow(event: any): Program<any> {
   try {
@@ -836,7 +836,7 @@ test("workflow calling other workflow", () => {
 describe("external events", () => {
   describe("wait for event", () => {
     const wf = workflow("wf", function* () {
-      const result = (yield createWaitForEventCall(
+      const result = (yield createWaitForSignalCall(
         "MyEvent",
         100 * 1000
       )) as any;
@@ -848,14 +848,14 @@ describe("external events", () => {
       expect(interpret(wf.definition(undefined, context), [])).toMatchObject(<
         WorkflowResult
       >{
-        commands: [createWaitForEventCommand("MyEvent", 0, 100 * 1000)],
+        commands: [createWaitForSignalCommand("MyEvent", 0, 100 * 1000)],
       });
     });
 
     test("no event", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          startedWaitForEvent("MyEvent", 0, 100 * 1000),
+          startedWaitForSignal("MyEvent", 0, 100 * 1000),
         ])
       ).toMatchObject(<WorkflowResult>{
         commands: [],
@@ -865,8 +865,8 @@ describe("external events", () => {
     test("match event", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          startedWaitForEvent("MyEvent", 0, 100 * 1000),
-          externalEvent("MyEvent"),
+          startedWaitForSignal("MyEvent", 0, 100 * 1000),
+          signalReceived("MyEvent"),
         ])
       ).toMatchObject(<WorkflowResult>{
         result: Result.resolved("done"),
@@ -877,8 +877,8 @@ describe("external events", () => {
     test("match event with payload", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          startedWaitForEvent("MyEvent", 0, 100 * 1000),
-          externalEvent("MyEvent", { done: true }),
+          startedWaitForSignal("MyEvent", 0, 100 * 1000),
+          signalReceived("MyEvent", { done: true }),
         ])
       ).toMatchObject(<WorkflowResult>{
         result: Result.resolved({ done: true }),
@@ -889,8 +889,8 @@ describe("external events", () => {
     test("timed out", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          startedWaitForEvent("MyEvent", 0, 100 * 1000),
-          timedOutWaitForEvent("MyEvent", 0),
+          startedWaitForSignal("MyEvent", 0, 100 * 1000),
+          timedOutWaitForSignal("MyEvent", 0),
         ])
       ).toMatchObject(<WorkflowResult>{
         result: Result.failed("Wait For Event Timed Out"),
@@ -901,9 +901,9 @@ describe("external events", () => {
     test("timed out then event", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          startedWaitForEvent("MyEvent", 0, 100 * 1000),
-          timedOutWaitForEvent("MyEvent", 0),
-          externalEvent("MyEvent", { done: true }),
+          startedWaitForSignal("MyEvent", 0, 100 * 1000),
+          timedOutWaitForSignal("MyEvent", 0),
+          signalReceived("MyEvent", { done: true }),
         ])
       ).toMatchObject(<WorkflowResult>{
         result: Result.failed("Wait For Event Timed Out"),
@@ -914,9 +914,9 @@ describe("external events", () => {
     test("match event then timeout", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          startedWaitForEvent("MyEvent", 0, 100 * 1000),
-          externalEvent("MyEvent"),
-          timedOutWaitForEvent("MyEvent", 0),
+          startedWaitForSignal("MyEvent", 0, 100 * 1000),
+          signalReceived("MyEvent"),
+          timedOutWaitForSignal("MyEvent", 0),
         ])
       ).toMatchObject(<WorkflowResult>{
         result: Result.resolved("done"),
@@ -927,9 +927,9 @@ describe("external events", () => {
     test("match event twice", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          startedWaitForEvent("MyEvent", 0, 100 * 1000),
-          externalEvent("MyEvent"),
-          externalEvent("MyEvent"),
+          startedWaitForSignal("MyEvent", 0, 100 * 1000),
+          signalReceived("MyEvent"),
+          signalReceived("MyEvent"),
         ])
       ).toMatchObject(<WorkflowResult>{
         result: Result.resolved("done"),
@@ -939,17 +939,17 @@ describe("external events", () => {
 
     test("multiple of the same event", () => {
       const wf = workflow("wf3", function* () {
-        const wait1 = createWaitForEventCall("MyEvent", 100 * 1000);
-        const wait2 = createWaitForEventCall("MyEvent", 100 * 1000);
+        const wait1 = createWaitForSignalCall("MyEvent", 100 * 1000);
+        const wait2 = createWaitForSignalCall("MyEvent", 100 * 1000);
 
         return Eventual.all([wait1, wait2]);
       });
 
       expect(
         interpret(wf.definition(undefined, context), [
-          startedWaitForEvent("MyEvent", 0, 100 * 1000),
-          startedWaitForEvent("MyEvent", 1, 100 * 1000),
-          externalEvent("MyEvent", "done!!!"),
+          startedWaitForSignal("MyEvent", 0, 100 * 1000),
+          startedWaitForSignal("MyEvent", 1, 100 * 1000),
+          signalReceived("MyEvent", "done!!!"),
         ])
       ).toMatchObject(<WorkflowResult>{
         result: Result.resolved(["done!!!", "done!!!"]),
@@ -963,10 +963,10 @@ describe("external events", () => {
       let myEventHappened = 0;
       let myOtherEventHappened = 0;
       let myOtherEventCompleted = 0;
-      const myEventHandler = createRegisterEventHandlerCall("MyEvent", () => {
+      const myEventHandler = createRegisterSignalHandlerCall("MyEvent", () => {
         myEventHappened++;
       });
-      const myOtherEventHandler = createRegisterEventHandlerCall(
+      const myOtherEventHandler = createRegisterSignalHandlerCall(
         "MyOtherEvent",
         function* (payload) {
           myOtherEventHappened++;
@@ -995,7 +995,9 @@ describe("external events", () => {
 
     test("send event, do not wake up", () => {
       expect(
-        interpret(wf.definition(undefined, context), [externalEvent("MyEvent")])
+        interpret(wf.definition(undefined, context), [
+          signalReceived("MyEvent"),
+        ])
       ).toMatchObject(<WorkflowResult>{
         commands: [createSleepUntilCommand("", 0)],
       });
@@ -1004,7 +1006,7 @@ describe("external events", () => {
     test("send event, wake up", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          externalEvent("MyEvent"),
+          signalReceived("MyEvent"),
           scheduledSleep("", 0),
           completedSleep(0),
           scheduledSleep("", 1),
@@ -1023,9 +1025,9 @@ describe("external events", () => {
     test("send multiple event, wake up", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          externalEvent("MyEvent"),
-          externalEvent("MyEvent"),
-          externalEvent("MyEvent"),
+          signalReceived("MyEvent"),
+          signalReceived("MyEvent"),
+          signalReceived("MyEvent"),
           scheduledSleep("", 0),
           completedSleep(0),
           scheduledSleep("", 1),
@@ -1046,9 +1048,9 @@ describe("external events", () => {
         interpret(wf.definition(undefined, context), [
           scheduledSleep("", 0),
           completedSleep(0),
-          externalEvent("MyEvent"),
-          externalEvent("MyEvent"),
-          externalEvent("MyEvent"),
+          signalReceived("MyEvent"),
+          signalReceived("MyEvent"),
+          signalReceived("MyEvent"),
           scheduledSleep("", 1),
           completedSleep(1),
         ])
@@ -1065,7 +1067,7 @@ describe("external events", () => {
     test("send other event, do not complete", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          externalEvent("MyOtherEvent", "hi"),
+          signalReceived("MyOtherEvent", "hi"),
         ])
       ).toMatchObject(<WorkflowResult>{
         commands: [
@@ -1078,8 +1080,8 @@ describe("external events", () => {
     test("send multiple other event, do not complete", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          externalEvent("MyOtherEvent", "hi"),
-          externalEvent("MyOtherEvent", "hi2"),
+          signalReceived("MyOtherEvent", "hi"),
+          signalReceived("MyOtherEvent", "hi2"),
         ])
       ).toMatchObject(<WorkflowResult>{
         commands: [
@@ -1093,7 +1095,7 @@ describe("external events", () => {
     test("send other event, wake sleep, with act scheduled", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          externalEvent("MyOtherEvent", "hi"),
+          signalReceived("MyOtherEvent", "hi"),
           scheduledSleep("", 0),
           completedSleep(0),
           activityScheduled("act1", 1),
@@ -1113,7 +1115,7 @@ describe("external events", () => {
     test("send other event, wake sleep, complete activity", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          externalEvent("MyOtherEvent", "hi"),
+          signalReceived("MyOtherEvent", "hi"),
           scheduledSleep("", 0),
           activityScheduled("act1", 1),
           activityCompleted("act1", 1),
@@ -1134,7 +1136,7 @@ describe("external events", () => {
     test("send other event, wake sleep, complete activity after dispose", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          externalEvent("MyOtherEvent", "hi"),
+          signalReceived("MyOtherEvent", "hi"),
           scheduledSleep("", 0),
           completedSleep(0),
           activityScheduled("act1", 1),
@@ -1157,7 +1159,7 @@ describe("external events", () => {
         interpret(wf.definition(undefined, context), [
           scheduledSleep("", 0),
           completedSleep(0),
-          externalEvent("MyOtherEvent", "hi"),
+          signalReceived("MyOtherEvent", "hi"),
           scheduledSleep("", 1),
           completedSleep(1),
         ])

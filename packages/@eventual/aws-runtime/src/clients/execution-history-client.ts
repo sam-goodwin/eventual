@@ -108,7 +108,8 @@ export class AWSExecutionHistoryClient
 
 export function createEvent<T extends WorkflowEvent>(
   event: UnresolvedEvent<T>,
-  time: Date = new Date()
+  time: Date = new Date(),
+  id: string = ulid()
 ): T {
   const timestamp = time.toISOString();
 
@@ -117,9 +118,7 @@ export function createEvent<T extends WorkflowEvent>(
     return { ...(event as any), timestamp };
   }
 
-  const uuid = ulid();
-
-  return { ...event, id: uuid, timestamp } as T;
+  return { ...event, id, timestamp } as T;
 }
 
 interface EventRecord {

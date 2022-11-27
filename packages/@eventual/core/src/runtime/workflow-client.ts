@@ -18,6 +18,18 @@ export interface WorkflowClient {
     executionId: string,
     ...events: HistoryStateEvent[]
   ): Promise<void>;
+
+  sendSignal(request: SendSignalRequest): Promise<void>;
+}
+
+export interface SendSignalRequest {
+  executionId: string;
+  signalId: string;
+  payload?: any;
+  /**
+   * Execution scoped unique event id. Duplicates will be deduplicated.
+   */
+  id: string;
 }
 
 export interface StartWorkflowRequest {

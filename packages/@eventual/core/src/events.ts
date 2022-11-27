@@ -28,12 +28,10 @@ export enum WorkflowEventType {
   ChildWorkflowScheduled = "ChildWorkflowScheduled",
   ChildWorkflowCompleted = "ChildWorkflowCompleted",
   ChildWorkflowFailed = "ChildWorkflowFailed",
-  WaitForEventStarted = "WaitForEventStarted",
-  WaitForEventTimedOut = "WaitForEventTimedOut",
-  ExternalEvent = "ExternalEvent",
-  // TODO: implement these
-  EventHandlerRegistered = "EventHandlerRegistered",
-  EventHandlerDisposed = "EventHandlerDisposed",
+  WaitForSignalStarted = "WaitForSignalStarted",
+  WaitForSignalTimedOut = "WaitForSignalTimedOut",
+  SignalReceived = "SignalReceived",
+  SignalSent = "SignalSent",
 }
 
 /**
@@ -51,7 +49,8 @@ export type ScheduledEvent =
   | ActivityScheduled
   | ChildWorkflowScheduled
   | SleepScheduled
-  | WaitForEventStarted;
+  | WaitForSignalStarted
+  | SignalSent;
 
 export type CompletedEvent =
   | ActivityCompleted
@@ -61,7 +60,7 @@ export type CompletedEvent =
 export type FailedEvent =
   | ActivityFailed
   | ChildWorkflowFailed
-  | WaitForEventTimedOut;
+  | WaitForSignalTimedOut;
 
 /**
  * Events used by the workflow to replay an execution.
@@ -70,7 +69,7 @@ export type HistoryEvent =
   | ScheduledEvent
   | CompletedEvent
   | FailedEvent
-  | ExternalEvent;
+  | SignalReceived;
 
 export function isHistoryEvent(event: WorkflowEvent): event is HistoryEvent {
   return (
@@ -251,44 +250,58 @@ export function isSleepCompleted(
   return event.type === WorkflowEventType.SleepCompleted;
 }
 
-export interface WaitForEventStarted extends HistoryEventBase {
-  type: WorkflowEventType.WaitForEventStarted;
-  eventId: string;
+export interface WaitForSignalStarted extends HistoryEventBase {
+  type: WorkflowEventType.WaitForSignalStarted;
+  signalId: string;
   timeoutSeconds?: number;
 }
 
-export interface WaitForEventTimedOut extends HistoryEventBase {
-  type: WorkflowEventType.WaitForEventTimedOut;
-  eventId: string;
+export interface WaitForSignalTimedOut extends HistoryEventBase {
+  type: WorkflowEventType.WaitForSignalTimedOut;
+  signalId: string;
 }
 
-export interface ExternalEvent<Payload = any> extends BaseEvent {
-  type: WorkflowEventType.ExternalEvent;
-  eventId: string;
-  payload: Payload;
+export interface SignalReceived<Payload = any> extends BaseEvent {
+  type: WorkflowEventType.SignalReceived;
+  signalId: string;
+  payload?: Payload;
 }
 
-export function isWaitForEventStarted(
+export function isWaitForSignalStarted(
   event: WorkflowEvent
-): event is WaitForEventStarted {
-  return event.type === WorkflowEventType.WaitForEventStarted;
+): event is WaitForSignalStarted {
+  return event.type === WorkflowEventType.WaitForSignalStarted;
 }
 
-export function isWaitForEventTimedOut(
+export function isWaitForSignalTimedOut(
   event: WorkflowEvent
-): event is WaitForEventTimedOut {
-  return event.type === WorkflowEventType.WaitForEventTimedOut;
+): event is WaitForSignalTimedOut {
+  return event.type === WorkflowEventType.WaitForSignalTimedOut;
 }
 
-export function isExternalEvent(event: WorkflowEvent): event is ExternalEvent {
-  return event.type === WorkflowEventType.ExternalEvent;
+export function isSignalReceived(
+  event: WorkflowEvent
+): event is SignalReceived {
+  return event.type === WorkflowEventType.SignalReceived;
+}
+
+export interface SignalSent extends HistoryEventBase {
+  type: WorkflowEventType.SignalSent;
+  payload?: any;
+  signalId: string;
+  executionId: string;
+}
+
+export function isSignalSent(event: WorkflowEvent): event is SignalSent {
+  return event.type === WorkflowEventType.SignalSent;
 }
 
 export const isScheduledEvent = or(
   isActivityScheduled,
   isChildWorkflowScheduled,
   isSleepScheduled,
-  isWaitForEventStarted
+  isWaitForSignalStarted,
+  isSignalSent
 );
 
 export const isCompletedEvent = or(
@@ -300,7 +313,7 @@ export const isCompletedEvent = or(
 export const isFailedEvent = or(
   isActivityFailed,
   isChildWorkflowFailed,
-  isWaitForEventTimedOut
+  isWaitForSignalTimedOut
 );
 
 export function assertEventType<T extends WorkflowEvent>(
@@ -318,7 +331,7 @@ export function assertEventType<T extends WorkflowEvent>(
  * Some events have a computed ID to save space.
  */
 export function getEventId(event: WorkflowEvent): string {
-  if (isHistoryEvent(event) && !isExternalEvent(event)) {
+  if (isHistoryEvent(event) && !isSignalReceived(event)) {
     return `${event.seq}_${event.type}`;
   } else {
     return event.id;

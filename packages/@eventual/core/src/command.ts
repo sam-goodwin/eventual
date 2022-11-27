@@ -3,7 +3,8 @@ export type Command =
   | SleepForCommand
   | ScheduleActivityCommand
   | ScheduleWorkflowCommand
-  | WaitForEventCommand;
+  | WaitForSignalCommand
+  | SendSignalCommand;
 
 interface CommandBase<T extends CommandType> {
   kind: T;
@@ -15,7 +16,8 @@ export enum CommandType {
   SleepUntil = "SleepUntil",
   SleepFor = "SleepFor",
   StartWorkflow = "StartWorkflow",
-  WaitForEvent = "WaitForEvent",
+  WaitForSignal = "WaitForSignal",
+  SendSignal = "SendSignal",
 }
 
 /**
@@ -74,14 +76,26 @@ export function isSleepForCommand(
   return command.kind === CommandType.SleepFor;
 }
 
-export interface WaitForEventCommand
-  extends CommandBase<CommandType.WaitForEvent> {
-  eventId: string;
+export interface WaitForSignalCommand
+  extends CommandBase<CommandType.WaitForSignal> {
+  signalId: string;
   timeoutSeconds?: number;
 }
 
-export function isWaitForEventCommand(
+export function isWaitForSignalCommand(
   command: Command
-): command is WaitForEventCommand {
-  return command.kind === CommandType.WaitForEvent;
+): command is WaitForSignalCommand {
+  return command.kind === CommandType.WaitForSignal;
+}
+
+export interface SendSignalCommand extends CommandBase<CommandType.SendSignal> {
+  signalId: string;
+  executionId: string;
+  payload?: any;
+}
+
+export function isSendSignalCommand(
+  command: Command
+): command is SendSignalCommand {
+  return command.kind === CommandType.SendSignal;
 }
