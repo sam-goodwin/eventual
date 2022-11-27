@@ -10,6 +10,8 @@ interface ExecutionBase {
   startTime: string;
   name: string;
   workflowName: string;
+  parentExecutionId?: string;
+  seq?: number;
 }
 
 export type Execution =
