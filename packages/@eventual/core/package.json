@@ -15,9 +15,16 @@
   "scripts": {
     "test": "jest"
   },
+  "dependencies": {
+    "ulidx": "^0.3.0"
+  },
+  "peerDependencies": {
+    "itty-router": "^2.6.6"
+  },
   "devDependencies": {
     "@types/jest": "^29",
     "@types/node": "^16",
+    "itty-router": "2.6.6",
     "jest": "^29",
     "ulidx":"^0.3.0",
     "ts-jest": "^29",
