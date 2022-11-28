@@ -4,7 +4,7 @@ import {
   EventualKind,
   EventualBase,
 } from "../eventual.js";
-import { registerActivity } from "../global.js";
+import { registerEventual } from "../global.js";
 import { Resolved, Failed } from "../result.js";
 
 export function isActivityCall(a: any): a is ActivityCall {
@@ -25,5 +25,5 @@ export function createActivityCall(name: string, args: any[]): ActivityCall {
     name,
     args,
   };
-  return registerActivity<ActivityCall>(command);
+  return registerEventual<ActivityCall>(command);
 }

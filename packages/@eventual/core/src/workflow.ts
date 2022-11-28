@@ -1,6 +1,6 @@
 import {
+  clearEventualCollector,
   getWorkflowClient,
-  resetActivityCollector,
 } from "./global.js";
 import type { Program } from "./interpret.js";
 import type { Context, WorkflowContext } from "./context.js";
@@ -180,7 +180,7 @@ export function progressWorkflow(
     };
   } catch (err) {
     // temporary fix when the interpreter fails, but the activities are not cleared.
-    resetActivityCollector();
+    clearEventualCollector();
     throw err;
   }
 }

@@ -206,11 +206,11 @@ test("should wait if partial results", () => {
 });
 
 test("should return result of inner function", () => {
-  function* workflow() {
+  function* workflow(): any {
     const inner = chain(function* () {
       return "foo";
     });
-    return yield* inner();
+    return yield inner() as any;
   }
 
   expect(interpret(workflow() as any, [])).toMatchObject(<WorkflowResult>{
@@ -748,8 +748,8 @@ test("properly evaluate yield of Eventual.all", () => {
 });
 
 test("generator function returns an ActivityCall", () => {
-  function* workflow() {
-    return yield* sub();
+  function* workflow(): any {
+    return yield sub();
   }
 
   const sub = chain(function* () {
@@ -774,8 +774,8 @@ test("workflow calling other workflow", () => {
   workflow("wf1", function* () {
     yield createActivityCall("call-a", []);
   });
-  const wf2 = workflow("wf2", function* () {
-    const result = createWorkflowCall("wf1") as any;
+  const wf2 = workflow("wf2", function* (): any {
+    const result = yield createWorkflowCall("wf1") as any;
     yield createActivityCall("call-b", []);
     return result;
   });
@@ -834,7 +834,7 @@ test("workflow calling other workflow", () => {
 
 describe("external events", () => {
   describe("wait for event", () => {
-    const wf = workflow("wf", function* () {
+    const wf = workflow("wf", function* (): any {
       const result = yield createWaitForSignalCall("MyEvent", 100 * 1000);
 
       return result ?? "done";

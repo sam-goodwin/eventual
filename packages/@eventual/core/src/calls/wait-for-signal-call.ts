@@ -4,7 +4,7 @@ import {
   EventualKind,
   EventualBase,
 } from "../eventual.js";
-import { registerActivity } from "../global.js";
+import { registerEventual } from "../global.js";
 import { Failed, Resolved } from "../result.js";
 
 export function isWaitForSignalCall(a: any): a is WaitForSignalCall {
@@ -23,7 +23,7 @@ export function createWaitForSignalCall(
   signalId: string,
   timeoutSeconds?: number
 ): WaitForSignalCall {
-  return registerActivity<WaitForSignalCall>({
+  return registerEventual<WaitForSignalCall>({
     [EventualSymbol]: EventualKind.WaitForSignalCall,
     timeoutSeconds,
     signalId: signalId,

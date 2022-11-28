@@ -4,7 +4,7 @@ import {
   EventualKind,
   EventualBase,
 } from "../eventual.js";
-import { registerActivity } from "../global.js";
+import { registerEventual } from "../global.js";
 import { Resolved } from "../result.js";
 
 export function isSendSignalCall(a: any): a is SendSignalCall {
@@ -24,7 +24,7 @@ export function createSendEventCall(
   signalId: string,
   payload?: any
 ): SendSignalCall {
-  return registerActivity<SendSignalCall>({
+  return registerEventual<SendSignalCall>({
     [EventualSymbol]: EventualKind.SendSignalCall,
     payload,
     signalId,

@@ -104,6 +104,10 @@ export namespace Eventual {
   }
 }
 
+export interface EventualCallCollector {
+  pushEventual<E extends Eventual>(activity: E): E;
+}
+
 // the below globals are required by the transformer
 
 // @ts-ignore

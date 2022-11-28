@@ -4,7 +4,7 @@ import {
   EventualSymbol,
   isEventual,
 } from "../eventual.js";
-import { registerActivity } from "../global.js";
+import { registerEventual } from "../global.js";
 import { Result } from "../result.js";
 import { Workflow } from "../workflow.js";
 
@@ -24,7 +24,7 @@ export interface WorkflowCall<T = any> {
 }
 
 export function createWorkflowCall(name: string, input?: any): WorkflowCall {
-  return registerActivity<WorkflowCall>({
+  return registerEventual<WorkflowCall>({
     [EventualSymbol]: EventualKind.WorkflowCall,
     input,
     name,

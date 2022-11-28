@@ -6,7 +6,7 @@ import {
   AwaitedEventual,
   EventualBase,
 } from "./eventual.js";
-import { registerActivity } from "./global.js";
+import { registerEventual } from "./global.js";
 import { Program } from "./interpret.js";
 import { Result } from "./result.js";
 
@@ -34,5 +34,5 @@ export function createChain(program: Program): Chain {
 }
 
 export function registerChain(program: Program): Chain {
-  return registerActivity(createChain(program));
+  return registerEventual(createChain(program));
 }

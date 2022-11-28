@@ -4,7 +4,7 @@ import {
   isEventual,
   EventualBase,
 } from "../eventual.js";
-import { registerActivity } from "../global.js";
+import { registerEventual } from "../global.js";
 import { Resolved } from "../result.js";
 
 export function isSleepForCall(a: any): a is SleepForCall {
@@ -32,7 +32,7 @@ export function createSleepForCall(durationSeconds: number): SleepForCall {
     [EventualSymbol]: EventualKind.SleepForCall,
     durationSeconds,
   };
-  return registerActivity(command);
+  return registerEventual(command);
 }
 
 export function createSleepUntilCall(isoDate: string): SleepUntilCall {
@@ -40,5 +40,5 @@ export function createSleepUntilCall(isoDate: string): SleepUntilCall {
     [EventualSymbol]: EventualKind.SleepUntilCall,
     isoDate,
   };
-  return registerActivity(command);
+  return registerEventual(command);
 }

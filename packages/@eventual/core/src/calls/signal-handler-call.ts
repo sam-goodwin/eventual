@@ -5,7 +5,7 @@ import {
   isEventual,
 } from "../eventual.js";
 import { SignalsHandler } from "../signals.js";
-import { registerActivity } from "../global.js";
+import { registerEventual } from "../global.js";
 import { Program } from "../interpret.js";
 import { Resolved, Result } from "../result.js";
 
@@ -31,7 +31,7 @@ export function createRegisterSignalHandlerCall(
   signalId: string,
   handler: RegisterSignalHandlerCall["handler"]
 ): RegisterSignalHandlerCall {
-  return registerActivity<RegisterSignalHandlerCall>({
+  return registerEventual<RegisterSignalHandlerCall>({
     [EventualSymbol]: EventualKind.RegisterSignalHandlerCall,
     signalId: signalId,
     handler,

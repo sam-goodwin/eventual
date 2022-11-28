@@ -3,6 +3,7 @@ import {
   isEventual,
   CommandCall,
   isCommandCall,
+  EventualCallCollector,
 } from "./eventual.js";
 import { isAwaitAll } from "./await-all.js";
 import { isActivityCall } from "./calls/activity-call.js";
@@ -25,7 +26,6 @@ import {
   ScheduledEvent,
   isSignalSent,
 } from "./events.js";
-import { collectActivities } from "./global.js";
 import {
   Result,
   isResolved,
@@ -48,6 +48,7 @@ import {
 } from "./calls/signal-handler-call.js";
 import { isSendSignalCall } from "./calls/send-signal-call.js";
 import { isWorkflowCall } from "./calls/workflow-call.js";
+import { clearEventualCollector, setEventualCollector } from "./global.js";
 
 export interface WorkflowResult<T = any> {
   /**
@@ -203,26 +204,51 @@ export function interpret<Return>(
   }
 
   function advance(): CommandCall[] | undefined {
-    let calls: CommandCall[] | undefined;
+    let calls: CommandCall[] = [];
     let madeProgress: boolean;
-    do {
-      madeProgress = false;
-      for (const chain of activeChains) {
-        const producedCalls = tryAdvanceChain(chain);
-        if (producedCalls !== undefined) {
-          madeProgress = true;
-          for (const call of producedCalls) {
-            if (calls === undefined) {
-              calls = [];
-            }
-            calls.push(call);
-            // assign sequences in order of when they were spawned
-            call.seq = nextSeq();
-            callTable[call.seq] = call;
+
+    const collector: EventualCallCollector = {
+      /**
+       * The returned activity is available to the workflow and may be yielded later if it was not already.
+       */
+      pushEventual(activity) {
+        madeProgress = true;
+        if (isCommandCall(activity)) {
+          if (isWaitForSignalCall(activity)) {
+            subscribeToSignal(activity.signalId, activity);
+          } else if (isRegisterSignalHandlerCall(activity)) {
+            subscribeToSignal(activity.signalId, activity);
+            // signal handler does not emit a call/command. It is only internal.
+            return activity;
           }
+          activity.seq = nextSeq();
+          callTable[activity.seq!] = activity;
+          calls.push(activity);
+          return activity;
+        } else if (isChain(activity)) {
+          activeChains.add(activity);
+          tryAdvanceChain(activity);
+          return activity;
+        } else if (isAwaitAll(activity)) {
+          return activity;
         }
-      }
-    } while (madeProgress);
+        return assertNever(activity);
+      },
+    };
+
+    try {
+      setEventualCollector(collector);
+
+      do {
+        madeProgress = false;
+        for (const chain of activeChains) {
+          madeProgress ||= tryAdvanceChain(chain);
+        }
+      } while (madeProgress);
+    } finally {
+      clearEventualCollector();
+    }
+
     return calls;
   }
 
@@ -244,16 +270,18 @@ export function interpret<Return>(
    *    but did not emit any new Commands.
    * 2. An `undefined` return value indicates that the chain did not advance
    */
-  function tryAdvanceChain(chain: Chain): CommandCall[] | undefined {
+  function tryAdvanceChain(chain: Chain): boolean {
     if (chain.awaiting === undefined) {
       // this is the first time the chain is running, so wake it with an undefined input
-      return advanceChain(chain, undefined);
+      advanceChain(chain, undefined);
+      return true;
     }
     const result = tryResolveResult(chain.awaiting);
     if (result === undefined) {
-      return undefined;
+      return false;
     } else if (isResolved(result) || isFailed(result)) {
-      return advanceChain(chain, result);
+      advanceChain(chain, result);
+      return true;
     } else if (isAwaitAll(result.activity)) {
       const results = [];
       for (const activity of result.activity.activities) {
@@ -265,17 +293,19 @@ export function interpret<Return>(
           throw new DeterminismError();
         } else if (isPending(result)) {
           // chain cannot wake up because we're waiting on all tasks
-          return undefined;
+          return false;
         } else if (isFailed(result)) {
           // one of the inner activities has failed, the chain should throw
-          return advanceChain(chain, result);
+          advanceChain(chain, result);
+          return true;
         } else {
           results.push(result.value);
         }
       }
-      return advanceChain(chain, Result.resolved(results));
+      advanceChain(chain, Result.resolved(results));
+      return true;
     } else {
-      return undefined;
+      return false;
     }
 
     /**
@@ -284,7 +314,7 @@ export function interpret<Return>(
     function advanceChain(
       chain: Chain,
       result: Resolved | Failed | undefined
-    ): CommandCall[] {
+    ): void {
       try {
         const iterResult =
           result === undefined || isResolved(result)
@@ -316,26 +346,6 @@ export function interpret<Return>(
         activeChains.delete(chain);
         chain.result = Result.failed(err);
       }
-
-      return collectActivities().flatMap((activity) => {
-        if (isCommandCall(activity)) {
-          if (isWaitForSignalCall(activity)) {
-            subscribeToSignal(activity.signalId, activity);
-          } else if (isRegisterSignalHandlerCall(activity)) {
-            subscribeToSignal(activity.signalId, activity);
-            // signal handler does not emit a call/command. It is only internal.
-            return [];
-          }
-          return activity;
-        } else if (isChain(activity)) {
-          activeChains.add(activity);
-          return tryAdvanceChain(activity) ?? [];
-        } else if (isAwaitAll(activity)) {
-          return [];
-        }
-
-        return assertNever(activity);
-      });
     }
   }
 
