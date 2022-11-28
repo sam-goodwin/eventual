@@ -46,7 +46,7 @@ import {
   isRegisterSignalHandlerCall,
   RegisterSignalHandlerCall,
 } from "./calls/signal-handler-call.js";
-import { isSendSignalCall as isSendSignalCall } from "./calls/send-signal-call.js";
+import { isSendSignalCall } from "./calls/send-signal-call.js";
 import { isWorkflowCall } from "./calls/workflow-call.js";
 
 export interface WorkflowResult<T = any> {
@@ -62,7 +62,7 @@ export interface WorkflowResult<T = any> {
   commands: Command[];
 }
 
-export type Program<Return = any> = Generator<Eventual, Return>;
+export type Program<Return = any> = Generator<Eventual, Return, any>;
 
 /**
  * Interprets a workflow program
@@ -323,7 +323,7 @@ export function interpret<Return>(
             subscribeToSignal(activity.signalId, activity);
           } else if (isRegisterSignalHandlerCall(activity)) {
             subscribeToSignal(activity.signalId, activity);
-            // dispose event handler does not emit a call/command. It is only internal.
+            // signal handler does not emit a call/command. It is only internal.
             return [];
           }
           return activity;

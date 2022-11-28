@@ -1,6 +1,5 @@
 import { createSendEventCall } from "./calls/send-signal-call.js";
 import { SignalPayload, Signal } from "./signals.js";
-import { Workflow } from "./workflow.js";
 
 export enum ExecutionStatus {
   IN_PROGRESS = "IN_PROGRESS",
@@ -14,21 +13,18 @@ interface ExecutionBase {
   startTime: string;
 }
 
-interface ExecutionReference {
+export interface ExecutionReference {
   id: string;
-  workflow: Workflow;
-  send<E extends Signal<any>>(event: E, payload: SignalPayload<E>): void;
+  sendSignal<S extends Signal<any>>(signal: S, payload: SignalPayload<S>): void;
 }
 
 export function createExecutionReference(
-  executionId: string,
-  workflow: Workflow
+  executionId: string
 ): ExecutionReference {
   return {
     id: executionId,
-    workflow,
-    send: (event, payload) =>
-      createSendEventCall(executionId, event.id, payload),
+    sendSignal: (signal, payload) =>
+      createSendEventCall(executionId, signal.id, payload),
   };
 }
 

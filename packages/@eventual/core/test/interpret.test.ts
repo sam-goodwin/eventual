@@ -835,10 +835,7 @@ test("workflow calling other workflow", () => {
 describe("external events", () => {
   describe("wait for event", () => {
     const wf = workflow("wf", function* () {
-      const result = (yield createWaitForSignalCall(
-        "MyEvent",
-        100 * 1000
-      )) as any;
+      const result = yield createWaitForSignalCall("MyEvent", 100 * 1000);
 
       return result ?? "done";
     });

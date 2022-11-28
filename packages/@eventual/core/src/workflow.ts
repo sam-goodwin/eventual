@@ -19,6 +19,7 @@ import {
 import { interpret, WorkflowResult } from "./interpret.js";
 import type { StartWorkflowResponse } from "./runtime/workflow-client.js";
 import { createWorkflowCall } from "./calls/workflow-call.js";
+import { createExecutionReference, ExecutionReference } from "./execution.js";
 
 export type WorkflowHandler<Input, Output> = (
   input: Input,
@@ -56,7 +57,7 @@ export interface Workflow<Input = any, Output = any> {
    *
    * To start a workflow from another environment, use {@link start}.
    */
-  (input: Input): Promise<Output>;
+  (input: Input): Promise<Output> & ExecutionReference;
 
   /**
    * Starts a workflow execution
@@ -107,7 +108,7 @@ export function workflow<Input = any, Output = any>(
   if (workflows.has(name)) {
     throw new Error(`workflow with name '${name}' already exists`);
   }
-  const workflow: Workflow<Input, Output> = ((input?: any) => createWorkflowCall(name, input)) as any
+  const workflow: Workflow<Input, Output> = ((input?: any) => ({...createWorkflowCall(name, input), ...createExecutionReference(``)})) as any
 
   workflow.startExecution = async function (input) {
     return {
