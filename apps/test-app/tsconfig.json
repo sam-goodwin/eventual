@@ -2,6 +2,7 @@
   "extends": "../../tsconfig-base",
   "compilerOptions": {
     "module": "CommonJS",
+    "moduleResolution": "Node",
     "outDir": "lib",
     "declaration": true,
     "inlineSourceMap": true,
