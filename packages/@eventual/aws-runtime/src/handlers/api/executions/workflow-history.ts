@@ -1,10 +1,10 @@
 import { HistoryStateEvent } from "@eventual/core";
 import middy from "@middy/core";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
-import { createWorkflowRuntimeClient } from "../../../clients";
-import { getService } from "../service-properties";
-import { errorMiddleware } from "../middleware";
-import { decodeExecutionId } from "src/execution-id";
+import { createWorkflowRuntimeClient } from "../../../clients/index.js";
+import { getService } from "../service-properties.js";
+import { errorMiddleware } from "../middleware.js";
+import { decodeExecutionId } from "src/execution-id.js";
 
 async function workflowHistory(
   event: APIGatewayProxyEventV2

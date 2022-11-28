@@ -2,15 +2,14 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { LambdaClient } from "@aws-sdk/client-lambda";
 import { S3Client } from "@aws-sdk/client-s3";
 import { SQSClient } from "@aws-sdk/client-sqs";
-import * as env from "../env";
-import { AWSActivityRuntimeClient } from "./activity-runtime-client";
-import { AWSExecutionHistoryClient } from "./execution-history-client";
-import { AWSWorkflowClient } from "./workflow-client";
-import { AWSWorkflowRuntimeClient } from "./workflow-runtime-client";
-import memoize from "micro-memoize";
-import { deepEqual } from "fast-equals";
+import * as env from "@eventual/aws-env";
+import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
+import { AWSExecutionHistoryClient } from "./execution-history-client.js";
+import { AWSWorkflowClient } from "./workflow-client.js";
+import { AWSWorkflowRuntimeClient } from "./workflow-runtime-client.js";
+import memoize from "mem";
 import { SchedulerClient } from "@aws-sdk/client-scheduler";
-import { AWSTimerClient, AWSTimerClientProps } from "./timer-client";
+import { AWSTimerClient, AWSTimerClientProps } from "./timer-client.js";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -33,7 +32,7 @@ export const createExecutionHistoryClient = /*@__PURE__*/ memoize(
       dynamo: dynamo(),
       tableName: tableName ?? env.tableName(),
     }),
-  { isEqual: deepEqual }
+  { cacheKey: ([arg]) => arg?.tableName }
 );
 
 export const createWorkflowClient = /*@__PURE__*/ memoize(
@@ -53,7 +52,7 @@ export const createWorkflowClient = /*@__PURE__*/ memoize(
       dynamo: dynamo(),
       tableName: tableName ?? env.tableName(),
     }),
-  { isEqual: deepEqual }
+  { cacheKey: JSON.stringify }
 );
 
 export const createActivityRuntimeClient = /*@__PURE__*/ memoize(
@@ -77,7 +76,8 @@ export const createTimerClient = /*@__PURE__*/ memoize(
       timerQueueUrl: props.timerQueueUrl ?? env.timerQueueUrl(),
       scheduleForwarderArn:
         props.scheduleForwarderArn ?? env.schedulerForwarderArn(),
-    })
+    }),
+  { cacheKey: JSON.stringify }
 );
 
 export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
@@ -100,5 +100,6 @@ export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
       activityWorkerFunctionName,
       workflowClient: createWorkflowClient(),
       timerClient: createTimerClient(),
-    })
+    }),
+  { cacheKey: JSON.stringify }
 );

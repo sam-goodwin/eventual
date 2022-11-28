@@ -1,19 +1,18 @@
 {
   "extends": "../../../tsconfig-base",
   "compilerOptions": {
+    "baseUrl": ".",
     "outDir": "lib/esm",
     "declaration": true,
     "inlineSourceMap": true,
     "rootDir": "src",
     "typeRoots": ["./node_modules/@types"],
     "allowJs": true,
-    "lib": ["DOM"]
+    "paths": {
+      "@eventual/injected/*": ["./src/injected/*"]
+    }
   },
-  "include": ["src"],
+  "include": ["src", "src/package.json"],
   "exclude": ["lib", "node_modules"],
-  "references": [
-    { "path": "../core" },
-    { "path": "../aws-runtime" },
-    { "path": "../compiler" }
-  ]
+  "references": [{ "path": "../core" }]
 }

@@ -6,6 +6,7 @@ import {
   PutCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
+import memoize from "mem";
 
 interface PostalAddress {
   address1: string;
@@ -220,15 +221,3 @@ const removeBankAccount = activity(
     );
   }
 );
-
-function memoize<T>(f: () => T): () => T {
-  let isInit = false;
-  let value: T | undefined;
-  return () => {
-    if (!isInit) {
-      isInit = true;
-      value = f();
-    }
-    return value!;
-  };
-}

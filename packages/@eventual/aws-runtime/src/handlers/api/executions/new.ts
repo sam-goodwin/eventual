@@ -1,8 +1,8 @@
 import { APIGatewayProxyEventV2 } from "aws-lambda";
-import { createWorkflowClient } from "../../../clients/create";
+import { createWorkflowClient } from "../../../clients/create.js";
 import middy from "@middy/core";
-import { errorMiddleware } from "../middleware";
-import { getService } from "../service-properties";
+import { errorMiddleware } from "../middleware.js";
+import { getService } from "../service-properties.js";
 
 /**
  * Create a new execution (start a workflow)

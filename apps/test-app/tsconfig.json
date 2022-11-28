@@ -1,6 +1,7 @@
 {
   "extends": "../../tsconfig-base",
   "compilerOptions": {
+    "module": "CommonJS",
     "outDir": "lib",
     "declaration": true,
     "inlineSourceMap": true,

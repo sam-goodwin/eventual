@@ -13,8 +13,8 @@
     "@aws-sdk/client-s3": "^3.213.0",
     "@aws-sdk/client-sqs": "^3.213.0",
     "@aws-sdk/lib-dynamodb": "^3.214.0",
-    "@eventual/aws-runtime": "workspace:^",
-    "@eventual/core": "workspace:^"
+    "@eventual/core": "workspace:^",
+    "mem": "^9.0.2"
   },
   "devDependencies": {
     "@eventual/cli": "workspace:^",

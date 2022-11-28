@@ -1,9 +1,6 @@
 {
   "extends": "../../../tsconfig-base",
   "compilerOptions": {
-    "module": "esnext",
-    "target": "esnext",
-    "moduleResolution": "node",
     "baseUrl": ".",
     "outDir": "lib/esm",
     "declaration": true,
@@ -15,7 +12,7 @@
       "@eventual/injected/*": ["./src/injected/*"]
     }
   },
-  "include": ["src", "src/package.json"],
+  "include": ["src"],
   "exclude": ["lib", "node_modules"],
-  "references": [{ "path": "../core" }]
+  "references": [{ "path": "../core" }, { "path": "../aws-env" }]
 }
