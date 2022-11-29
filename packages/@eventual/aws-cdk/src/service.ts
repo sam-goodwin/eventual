@@ -416,10 +416,10 @@ export class Service extends Construct implements IGrantable {
 
     const route = (mappings: Record<string, RouteMapping[]>) => {
       Object.entries(mappings).forEach(([path, mappings]) => {
-        mappings.forEach(({ entry, methods, config }) => {
+        mappings.forEach(({ entry, methods, configure }) => {
           this.api.addRoutes({
             path,
-            integration: this.apiLambda(entry, apiLambdaEnvironment, config),
+            integration: this.apiLambda(entry, apiLambdaEnvironment, configure),
             methods,
           });
         });
@@ -431,7 +431,7 @@ export class Service extends Construct implements IGrantable {
         {
           methods: [HttpMethod.POST],
           entry: "executions/new.js",
-          config: (fn) => {
+          configure: (fn) => {
             this.table.grantReadWriteData(fn);
             this.workflowQueue.grantSendMessages(fn);
           },
@@ -439,7 +439,7 @@ export class Service extends Construct implements IGrantable {
         {
           methods: [HttpMethod.GET],
           entry: "executions/list.js",
-          config: (fn) => {
+          configure: (fn) => {
             this.table.grantReadWriteData(fn);
             this.workflowQueue.grantSendMessages(fn);
           },
@@ -449,7 +449,7 @@ export class Service extends Construct implements IGrantable {
         {
           methods: [HttpMethod.GET],
           entry: "executions/history.js",
-          config: (fn) => {
+          configure: (fn) => {
             this.table.grantReadData(fn);
           },
         },
@@ -458,7 +458,7 @@ export class Service extends Construct implements IGrantable {
         {
           methods: [HttpMethod.GET],
           entry: "executions/workflow-history.js",
-          config: (fn) => {
+          configure: (fn) => {
             this.history.grantRead(fn);
           },
         },
@@ -528,5 +528,5 @@ function resolveFromPackage(packageSpecifier: string, entry: string) {
 interface RouteMapping {
   entry: string;
   methods?: HttpMethod[];
-  config?: (fn: IFunction) => void;
+  configure?: (fn: IFunction) => void;
 }

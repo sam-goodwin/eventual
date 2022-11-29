@@ -1,4 +1,5 @@
-import { MiddlewareObj } from "@middy/core";
+import middy, { MiddlewareObj, L } from "@middy/core";
+import { Handler } from "aws-lambda";
 import util from "util";
 
 /**
@@ -13,3 +14,9 @@ export const errorMiddleware: MiddlewareObj = {
     };
   },
 };
+
+export function withErrorMiddleware<TEvent, TResult>(
+  handler: Handler<TEvent, TResult>
+) {
+  return middy(handler).use(errorMiddleware);
+}

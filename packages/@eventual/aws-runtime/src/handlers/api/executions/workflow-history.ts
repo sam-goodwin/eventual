@@ -1,9 +1,8 @@
 import { HistoryStateEvent } from "@eventual/core";
-import middy from "@middy/core";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
 import { createWorkflowRuntimeClient } from "../../../clients/index.js";
 import { getService } from "../service-properties.js";
-import { errorMiddleware } from "../middleware.js";
+import { withErrorMiddleware } from "../middleware.js";
 import { decodeExecutionId } from "src/execution-id.js";
 
 async function workflowHistory(
@@ -18,4 +17,4 @@ async function workflowHistory(
   return workflowClient.getHistory(decodeExecutionId(executionId));
 }
 
-export const handler = middy(workflowHistory).use(errorMiddleware);
+export const handler = withErrorMiddleware(workflowHistory);

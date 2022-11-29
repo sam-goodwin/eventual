@@ -1,7 +1,6 @@
 import { APIGatewayProxyEventV2 } from "aws-lambda";
 import { createWorkflowClient } from "../../../clients/create.js";
-import middy from "@middy/core";
-import { errorMiddleware } from "../middleware.js";
+import { withErrorMiddleware } from "../middleware.js";
 import { getService } from "../service-properties.js";
 
 /**
@@ -24,4 +23,4 @@ async function newExecution(event: APIGatewayProxyEventV2) {
   };
 }
 
-export const handler = middy(newExecution).use(errorMiddleware);
+export const handler = withErrorMiddleware(newExecution);
