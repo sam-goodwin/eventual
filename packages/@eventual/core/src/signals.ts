@@ -1,3 +1,4 @@
+import { createSendSignalCall } from "./calls/send-signal-call.js";
 import { createRegisterSignalHandlerCall } from "./calls/signal-handler-call.js";
 import { createWaitForSignalCall } from "./calls/wait-for-signal-call.js";
 
@@ -85,6 +86,12 @@ export class Signal<Payload = void> {
    */
   waitFor(opts?: WaitForSignalOpts): Promise<Payload> {
     return waitForSignal(this, opts);
+  }
+  /**
+   *
+   */
+  send(executionId: string, ...args: SendSignalProps<Payload>): void {
+    sendSignal<Signal<Payload>>(executionId, this, ...args);
   }
 }
 
@@ -180,4 +187,73 @@ export function onSignal(
     typeof signal === "string" ? signal : signal.id,
     handler as any
   );
+}
+
+export type SendSignalProps<SignalPayload> = [SignalPayload] extends
+  | [undefined]
+  | [void]
+  ? []
+  : [payload: SignalPayload];
+
+/**
+ * Sends a signal to any other execution by executionId.
+ *
+ * ```ts
+ * const mySignal = new Signal<string>("MySignal");
+ * workflow("wf", async () => {
+ *    sendSignal("mySignal", "payload");
+ *    sendSignal(mySignal, "payload");
+ * })
+ * ```
+ */
+export function sendSignal<S extends Signal<any>>(
+  executionId: string,
+  signal: S,
+  ...args: SendSignalProps<SignalPayload<S>>
+): void;
+export function sendSignal<Payload = any>(
+  executionId: string,
+  signalId: string,
+  ...args: SendSignalProps<Payload>
+): void;
+export function sendSignal(
+  executionId: string,
+  signal: string | Signal<any>,
+  payload?: any
+): void {
+  createSendSignalCall(
+    { type: SignalTargetType.Execution, executionId },
+    typeof signal === "string" ? signal : signal.id,
+    payload
+  );
+}
+
+export type SignalTarget = ExecutionTarget | ChildExecutionTarget;
+
+export enum SignalTargetType {
+  Execution,
+  ChildExecution,
+}
+
+export interface ExecutionTarget {
+  type: SignalTargetType.Execution;
+  executionId: string;
+}
+
+export interface ChildExecutionTarget {
+  type: SignalTargetType.ChildExecution;
+  workflowName: string;
+  seq: number;
+}
+
+export function isChildExecutionTarget(
+  target: SignalTarget
+): target is ChildExecutionTarget {
+  return target.type === SignalTargetType.ChildExecution;
+}
+
+export function isExecutionTarget(
+  target: SignalTarget
+): target is ExecutionTarget {
+  return target.type === SignalTargetType.Execution;
 }

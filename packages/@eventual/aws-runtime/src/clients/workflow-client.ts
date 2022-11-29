@@ -14,13 +14,13 @@ import {
   WorkflowTask,
 } from "@eventual/core";
 import { ulid } from "ulidx";
-import { formatExecutionId } from "../execution-id.js";
 import {
   AWSExecutionHistoryClient,
   createEvent,
 } from "./execution-history-client.js";
 
 import type eventual from "@eventual/core";
+import { formatExecutionId } from "../execution-id.js";
 
 export interface AWSWorkflowClientProps {
   readonly dynamo: DynamoDBClient;

@@ -5,6 +5,7 @@ import {
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
   WaitForSignalCommand,
+  SendSignalCommand,
 } from "../src/command.js";
 import {
   ActivityCompleted,
@@ -14,6 +15,7 @@ import {
   ChildWorkflowFailed,
   ChildWorkflowScheduled,
   SignalReceived,
+  SignalSent,
   SleepCompleted,
   SleepScheduled,
   WaitForSignalStarted,
@@ -21,6 +23,7 @@ import {
   WorkflowEventType,
 } from "../src/events.js";
 import { ulid } from "ulidx";
+import { SignalTarget } from "../src/signals.js";
 
 export function createSleepUntilCommand(
   untilTime: string,
@@ -80,6 +83,19 @@ export function createWaitForSignalCommand(
     signalId,
     seq,
     timeoutSeconds,
+  };
+}
+
+export function createSendSignalCommand(
+  target: SignalTarget,
+  signalId: string,
+  seq: number
+): SendSignalCommand {
+  return {
+    kind: CommandType.SendSignal,
+    seq,
+    target,
+    signalId,
   };
 }
 
@@ -194,12 +210,31 @@ export function startedWaitForSignal(
   };
 }
 
-export function externalEvent(signalId: string, payload?: any): SignalReceived {
+export function signalReceived(
+  signalId: string,
+  payload?: any
+): SignalReceived {
   return {
     type: WorkflowEventType.SignalReceived,
     id: ulid(),
     signalId,
     payload,
     timestamp: new Date().toISOString(),
+  };
+}
+
+export function signalSent(
+  executionId: string,
+  signalId: string,
+  seq: number,
+  payload?: any
+): SignalSent {
+  return {
+    type: WorkflowEventType.SignalSent,
+    executionId,
+    seq,
+    signalId,
+    timestamp: new Date().toISOString(),
+    payload,
   };
 }

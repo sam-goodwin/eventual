@@ -13,17 +13,6 @@ declare function sendSignal<S extends Signal<any>>(
 const signal = new Signal<number>("event");
 const doneSignal = new Signal("done");
 
-declare module "@eventual/core" {
-  interface Workflow<Input = any, Output = any> {
-    (input: Input): Promise<Output> & ExecutionRef;
-  }
-
-  interface ExecutionRef {
-    executionId: string;
-    sendSignal<E extends Signal<any>>(event: E, payload: SignalPayload<E>): void;
-  }
-}
-
 /**
  * the parent workflow uses thr `waitForSignal` function to block and wait for events from it's child workflow.
  */

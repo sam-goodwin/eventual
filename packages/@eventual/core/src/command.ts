@@ -1,3 +1,5 @@
+import { SignalTarget } from "./signals.js";
+
 export type Command =
   | SleepUntilCommand
   | SleepForCommand
@@ -90,7 +92,7 @@ export function isWaitForSignalCommand(
 
 export interface SendSignalCommand extends CommandBase<CommandType.SendSignal> {
   signalId: string;
-  executionId: string;
+  target: SignalTarget;
   payload?: any;
 }
 

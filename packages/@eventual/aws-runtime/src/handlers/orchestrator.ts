@@ -7,6 +7,7 @@ import {
   ExecutionStatus,
   FailedExecution,
   HistoryStateEvent,
+  isChildExecutionTarget,
   isCompleteExecution,
   isFailed,
   isResolved,
@@ -41,11 +42,18 @@ import {
   createWorkflowRuntimeClient,
 } from "../clients/index.js";
 import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
-import { isExecutionId, parseWorkflowName } from "../execution-id.js";
+import {
+  formatExecutionId,
+  isExecutionId,
+  parseWorkflowName,
+} from "../execution-id.js";
 import { logger, loggerMiddlewares } from "../logger.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import { timed, timedSync } from "../metrics/utils.js";
-import { promiseAllSettledPartitioned } from "../utils.js";
+import {
+  formatChildExecutionName,
+  promiseAllSettledPartitioned,
+} from "../utils.js";
 
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowRuntimeClient = createWorkflowRuntimeClient();
@@ -389,6 +397,7 @@ async function orchestrateExecution(
               workflowName: command.name,
               input: command.input,
               parentExecutionId: executionId,
+              executionName: formatChildExecutionName(executionId, command.seq),
               seq: command.seq,
             });
 
@@ -416,16 +425,23 @@ async function orchestrateExecution(
               baseTime: start,
             });
           } else if (isSendSignalCommand(command)) {
+            const childExecutionId = isChildExecutionTarget(command.target)
+              ? formatExecutionId(
+                  command.target.workflowName,
+                  formatChildExecutionName(executionId, command.target.seq)
+                )
+              : command.target.executionId;
+
             await workflowClient.sendSignal({
               signalId: command.signalId,
-              executionId: command.executionId,
+              executionId: childExecutionId,
               id: `${executionId}/${command.seq}`,
               payload: command.payload,
             });
 
             return createEvent<SignalSent>({
               type: WorkflowEventType.SignalSent,
-              executionId: command.executionId,
+              executionId: childExecutionId,
               seq: command.seq,
               signalId: command.signalId,
               payload: command.payload,

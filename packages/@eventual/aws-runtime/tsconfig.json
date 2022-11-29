@@ -15,7 +15,7 @@
       "@eventual/injected/*": ["./src/injected/*"]
     }
   },
-  "include": ["src", "src/package.json"],
+  "include": ["src", "src/package.json", "../core/src/execution-id.ts"],
   "exclude": ["lib", "node_modules"],
   "references": [{ "path": "../core" }]
 }

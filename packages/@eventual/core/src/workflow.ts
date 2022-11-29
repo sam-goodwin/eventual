@@ -1,7 +1,4 @@
-import {
-  clearEventualCollector,
-  getWorkflowClient,
-} from "./global.js";
+import { clearEventualCollector, getWorkflowClient } from "./global.js";
 import type { Program } from "./interpret.js";
 import type { Context, WorkflowContext } from "./context.js";
 import { DeterminismError } from "./error.js";
@@ -18,8 +15,9 @@ import {
 } from "./events.js";
 import { interpret, WorkflowResult } from "./interpret.js";
 import type { StartWorkflowResponse } from "./runtime/workflow-client.js";
-import { createWorkflowCall } from "./calls/workflow-call.js";
-import { createExecutionReference, ExecutionReference } from "./execution.js";
+import { ChildExecution, createWorkflowCall } from "./calls/workflow-call.js";
+
+export const INTERNAL_EXECUTION_ID_PREFIX = "##EVENTUAL##";
 
 export type WorkflowHandler<Input, Output> = (
   input: Input,
@@ -57,7 +55,7 @@ export interface Workflow<Input = any, Output = any> {
    *
    * To start a workflow from another environment, use {@link start}.
    */
-  (input: Input): Promise<Output> & ExecutionReference;
+  (input: Input): Promise<Output> & ChildExecution;
 
   /**
    * Starts a workflow execution
@@ -69,10 +67,7 @@ export interface Workflow<Input = any, Output = any> {
   /**
    * @internal - this is the internal DSL representation that produces a {@link Program} instead of a Promise.
    */
-  definition: (
-    input: Input,
-    context: Context
-  ) => Program<Output>;
+  definition: (input: Input, context: Context) => Program<Output>;
 }
 
 const workflows = new Map<string, Workflow>();
@@ -108,7 +103,8 @@ export function workflow<Input = any, Output = any>(
   if (workflows.has(name)) {
     throw new Error(`workflow with name '${name}' already exists`);
   }
-  const workflow: Workflow<Input, Output> = ((input?: any) => ({...createWorkflowCall(name, input), ...createExecutionReference(``)})) as any
+  const workflow: Workflow<Input, Output> = ((input?: any) =>
+    createWorkflowCall(name, input)) as any;
 
   workflow.startExecution = async function (input) {
     return {

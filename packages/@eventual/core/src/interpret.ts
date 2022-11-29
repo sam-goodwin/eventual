@@ -192,7 +192,7 @@ export function interpret<Return>(
       return {
         kind: CommandType.SendSignal,
         signalId: call.signalId,
-        executionId: call.executionId,
+        target: call.target,
         seq: call.seq!,
         payload: call.payload,
       };
@@ -417,7 +417,7 @@ export function interpret<Return>(
       ? Result.resolved(undefined)
       : isWaitForSignalTimedOut(event)
       ? // TODO: should this throw a specific error type?
-        Result.failed("Wait For Event Timed Out")
+        Result.failed("Wait For Signal Timed Out")
       : Result.failed(event.error);
   }
 }
