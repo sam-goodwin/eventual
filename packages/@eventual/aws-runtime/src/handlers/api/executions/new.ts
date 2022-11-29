@@ -1,4 +1,4 @@
-import { APIGatewayProxyEventV2 } from "aws-lambda";
+import { APIGatewayProxyEventV2, Handler } from "aws-lambda";
 import { createWorkflowClient } from "../../../clients/create.js";
 import { withErrorMiddleware } from "../middleware.js";
 import { getService } from "../service-properties.js";
@@ -23,4 +23,4 @@ async function newExecution(event: APIGatewayProxyEventV2) {
   };
 }
 
-export const handler = withErrorMiddleware(newExecution);
+export const handler: Handler = withErrorMiddleware(newExecution);

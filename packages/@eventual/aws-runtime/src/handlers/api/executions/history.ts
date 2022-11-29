@@ -1,4 +1,4 @@
-import { APIGatewayProxyEventV2 } from "aws-lambda";
+import { APIGatewayProxyEventV2, Handler } from "aws-lambda";
 import { createExecutionHistoryClient } from "../../../clients/index.js";
 import { getService } from "../service-properties.js";
 import { withErrorMiddleware } from "../middleware.js";
@@ -14,4 +14,4 @@ async function history(event: APIGatewayProxyEventV2) {
   return workflowClient.getEvents(decodeExecutionId(executionId));
 }
 
-export const handler = withErrorMiddleware(history);
+export const handler: Handler = withErrorMiddleware(history);

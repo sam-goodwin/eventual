@@ -1,11 +1,14 @@
 import { Architecture, Runtime, RuntimeFamily } from "aws-cdk-lib/aws-lambda";
-import { NodejsFunctionProps } from "aws-cdk-lib/aws-lambda-nodejs";
+import {
+  NodejsFunctionProps,
+  OutputFormat,
+} from "aws-cdk-lib/aws-lambda-nodejs";
 
 export const NODE_18_X = new Runtime("nodejs18.x", RuntimeFamily.NODEJS, {
   supportsInlineCode: true,
 });
 
-export const baseNodeFnProps: Partial<NodejsFunctionProps> = {
+export const baseNodeFnProps = {
   runtime: Runtime.NODEJS_16_X,
   architecture: Architecture.ARM_64,
   bundling: {
@@ -16,5 +19,7 @@ export const baseNodeFnProps: Partial<NodejsFunctionProps> = {
       "--conditions": "module,import,require",
     },
     metafile: true,
+    target: "es2020",
+    format: OutputFormat.ESM,
   },
-};
+} satisfies NodejsFunctionProps;

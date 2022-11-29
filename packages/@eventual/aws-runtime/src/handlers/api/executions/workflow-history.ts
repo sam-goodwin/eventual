@@ -1,5 +1,9 @@
 import { HistoryStateEvent } from "@eventual/core";
-import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
+import {
+  APIGatewayProxyEventV2,
+  APIGatewayProxyResultV2,
+  Handler,
+} from "aws-lambda";
 import { createWorkflowRuntimeClient } from "../../../clients/index.js";
 import { getService } from "../service-properties.js";
 import { withErrorMiddleware } from "../middleware.js";
@@ -17,4 +21,4 @@ async function workflowHistory(
   return workflowClient.getHistory(decodeExecutionId(executionId));
 }
 
-export const handler = withErrorMiddleware(workflowHistory);
+export const handler: Handler = withErrorMiddleware(workflowHistory);

@@ -42,6 +42,13 @@ export async function bundle(
       injectedEntry: serviceEntry,
       entry: runtimeEntrypoint("webhook"),
     }),
+    //This one is actually an api function
+    build({
+      name: "list-workflows",
+      outDir,
+      injectedEntry: serviceEntry,
+      entry: runtimeEntrypoint("list-workflows"),
+    }),
   ]);
 }
 
@@ -101,6 +108,7 @@ async function build({
     // external: ["@aws-sdk"],
     platform: "node",
     format: "esm",
+    target: "es2019",
     metafile: true,
     bundle: true,
     entryPoints: [path.resolve(entry)],

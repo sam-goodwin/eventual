@@ -193,23 +193,11 @@ export class Service extends Construct implements IGrantable {
 
     const outDir = path.join(".eventual", this.node.addr);
 
-    const entries = {
-      orchestrator: resolveFromPackage(
-        "@eventual/aws-runtime",
-        "../../esm/entry/orchestrator.js"
-      ),
-      activityWorker: resolveFromPackage(
-        "@eventual/aws-runtime",
-        "../../esm/entry/activity-worker.js"
-      ),
-    };
-
+    console.log(outDir);
     execSync(
       `node ${require.resolve(
         "@eventual/compiler/bin/eventual-bundle.js"
-      )} ${outDir} ${props.entry} ${entries.orchestrator} ${
-        entries.activityWorker
-      }`
+      )} ${outDir} ${props.entry}`
     ).toString("utf-8");
 
     this.activityWorker = new Function(this, "Worker", {
@@ -424,10 +412,19 @@ export class Service extends Construct implements IGrantable {
 
     const route = (mappings: Record<string, RouteMapping[]>) => {
       Object.entries(mappings).forEach(([path, mappings]) => {
-        mappings.forEach(({ entry, methods, configure }) => {
+        mappings.forEach(({ entry, methods, configure, bundle }) => {
           this.api.addRoutes({
             path,
-            integration: this.apiLambda(entry, apiLambdaEnvironment, configure),
+            integration: this.apiLambda(
+              path
+                .slice(1)
+                .replace("/", "-")
+                .replace(/[\{\}]/, "") + methods?.join("-") ?? [],
+              entry,
+              apiLambdaEnvironment,
+              configure,
+              bundle
+            ),
             methods,
           });
         });
@@ -435,6 +432,13 @@ export class Service extends Construct implements IGrantable {
     };
 
     route({
+      "/workflows": [
+        {
+          methods: [HttpMethod.GET],
+          entry: path.resolve(outDir, "list-workflows"),
+          bundle: false,
+        },
+      ],
       "/workflows/{name}/executions": [
         {
           methods: [HttpMethod.POST],
@@ -510,31 +514,40 @@ export class Service extends Construct implements IGrantable {
   }
 
   public apiLambda(
+    id: string,
     entry: string,
     environment?: Record<string, string>,
-    config?: (fn: IFunction) => void
+    configure?: (fn: IFunction) => void,
+    bundle: boolean = true
   ): HttpLambdaIntegration {
-    const id = entry.replace("/", "-").replace(".js", "");
-    const fn = new NodejsFunction(this, id, {
-      entry: path.join(
-        require.resolve("@eventual/aws-runtime"),
-        "../../esm/handlers/api",
-        entry
-      ),
-      ...baseNodeFnProps,
-      environment,
-    });
-    config?.(fn);
+    let fn: IFunction;
+    if (bundle) {
+      fn = new NodejsFunction(this, id, {
+        entry: path.join(
+          require.resolve("@eventual/aws-runtime"),
+          "../../esm/handlers/api",
+          entry
+        ),
+        ...baseNodeFnProps,
+        environment,
+      });
+    } else {
+      fn = new Function(this, id, {
+        code: Code.fromAsset(entry),
+        ...baseNodeFnProps,
+        handler: "index.handler",
+        environment,
+      });
+    }
+    configure?.(fn);
     return new HttpLambdaIntegration(`${id}-integration`, fn);
   }
-}
-
-function resolveFromPackage(packageSpecifier: string, entry: string) {
-  return path.join(require.resolve(packageSpecifier), entry);
 }
 
 interface RouteMapping {
   entry: string;
   methods?: HttpMethod[];
+  service?: string;
   configure?: (fn: IFunction) => void;
+  bundle?: boolean;
 }

@@ -29,7 +29,7 @@ export const executions = (yargs: Argv) =>
         styledConsole.error(`Valid options are: ${sortKeys.join(" | ")}`);
         process.exit(1);
       }
-      spinner.start("Getting workflow executions");
+      spinner.start("Getting executions");
       const executions = await ky
         .get(`workflows/${workflow}/executions`)
         .json<MergedRecord<Execution>[]>();
