@@ -45,7 +45,7 @@ export async function apiKy(
             path: url.pathname,
             protocol: url.protocol,
             method: req.method.toUpperCase(),
-            body: (await req.body?.getReader().read())?.value,
+            body: await req.text(),
             query: parseQueryString(url.search),
             headers: Object.fromEntries(headers.entries()),
           });

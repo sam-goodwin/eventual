@@ -11,17 +11,21 @@ import {
   isHistoryEvent,
   WorkflowEvent,
 } from "@eventual/core";
+import type * as eventual from "@eventual/core";
+
 import { ulid } from "ulidx";
 
-export interface ExecutionHistoryClientProps {
+export interface AWSExecutionHistoryClientProps {
   readonly dynamo: DynamoDBClient;
   readonly tableName: string;
 }
 
 type UnresolvedEvent<T extends WorkflowEvent> = Omit<T, "id" | "timestamp">;
 
-export class ExecutionHistoryClient {
-  constructor(private props: ExecutionHistoryClientProps) {}
+export class AWSExecutionHistoryClient
+  implements eventual.ExecutionHistoryClient
+{
+  constructor(private props: AWSExecutionHistoryClientProps) {}
 
   public async createAndPutEvent<T extends WorkflowEvent>(
     executionId: string,

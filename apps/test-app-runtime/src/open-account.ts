@@ -1,4 +1,4 @@
-import { activity, workflow } from "@eventual/core";
+import { activity, hook, workflow } from "@eventual/core";
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
@@ -6,6 +6,7 @@ import {
   PutCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
+import memoize from "mem";
 
 interface PostalAddress {
   address1: string;
@@ -33,16 +34,19 @@ interface OpenAccountRequest {
 
 type RollbackHandler = () => Promise<void>;
 
-export default workflow("open-account", async (request: OpenAccountRequest) => {
-  try {
-    await createAccount(request.accountId);
-  } catch (err) {
-    console.error(err);
-    throw err;
-  }
+export const openAccount = workflow(
+  "open-account",
+  async (request: OpenAccountRequest) => {
+    try {
+      await createAccount(request.accountId);
+    } catch (err) {
+      console.error(err);
+      throw err;
+    }
 
-  await associateAccountInformation(request);
-});
+    await associateAccountInformation(request);
+  }
+);
 
 // sub-workflow for testing purposes
 export const associateAccountInformation = workflow(
@@ -65,6 +69,24 @@ export const associateAccountInformation = workflow(
   }
 );
 
+// register a web hook API route
+hook((api) => {
+  api.post("/open-account", async (request) => {
+    const input = await request.json!();
+
+    const response = await openAccount.startExecution({
+      input,
+    });
+
+    return new Response(JSON.stringify(response), {
+      headers: {
+        "Content-Type": "application/json",
+      },
+      status: 200,
+    });
+  });
+});
+
 const TableName = process.env.TABLE_NAME!;
 
 const dynamo = memoize(() =>
@@ -72,7 +94,6 @@ const dynamo = memoize(() =>
 );
 
 const createAccount = activity("createAccount", async (accountId: string) => {
-  console.log("processing", accountId);
   await dynamo().send(
     new PutCommand({
       TableName,
@@ -200,15 +221,3 @@ const removeBankAccount = activity(
     );
   }
 );
-
-function memoize<T>(f: () => T): () => T {
-  let isInit = false;
-  let value: T | undefined;
-  return () => {
-    if (!isInit) {
-      isInit = true;
-      value = f();
-    }
-    return value!;
-  };
-}

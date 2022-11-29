@@ -1,4 +1,4 @@
-import { HTTPError } from "ky";
+import { HTTPError } from "ky-universal";
 import ora, { Ora } from "ora";
 import { Arguments, Argv } from "yargs";
 import { apiKy } from "./api-ky.js";

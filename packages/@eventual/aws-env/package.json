@@ -1,19 +1,19 @@
 {
-  "name": "@eventual/aws-runtime",
+  "name": "@eventual/aws-env",
   "exports": {
     ".": {
-      "default": "./lib/esm/index.js"
+      "import": "./lib/esm/index.js",
+      "require": "./lib/cjs/index.js"
     }
   },
   "module": "./lib/esm/index.js",
+  "main": "./lib/cjs/index.js",
   "version": "0.0.0",
-  "type": "module",
   "scripts": {
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
     "@aws-lambda-powertools/logger": "^1.4.1",
-    "@eventual/aws-env": "workspace:^",
     "@eventual/core": "workspace:^",
     "@middy/core": "^3.6.2",
     "@middy/error-logger": "^3.6.2",

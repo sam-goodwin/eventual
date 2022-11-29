@@ -1,9 +1,9 @@
 import middy from "@middy/core";
 import { APIGatewayProxyEventV2 } from "aws-lambda";
-import { createExecutionHistoryClient } from "../../../clients";
-import { getService } from "../service-properties";
-import { errorMiddleware } from "../middleware";
-import { decodeExecutionId } from "src/execution-id";
+import { createExecutionHistoryClient } from "../../../clients/index.js";
+import { getService } from "../service-properties.js";
+import { errorMiddleware } from "../middleware.js";
+import { decodeExecutionId } from "src/execution-id.js";
 
 async function history(event: APIGatewayProxyEventV2) {
   const executionId = event.pathParameters?.executionId;
