@@ -1,14 +1,9 @@
-import { workflow, Signal, SignalPayload } from "@eventual/core";
+import { workflow, Signal, sendSignal } from "@eventual/core";
 
 declare function condition(
   predicate: () => boolean,
   opts?: { timeoutSeconds: number }
 ): Promise<void>;
-declare function sendSignal<S extends Signal<any>>(
-  executionId: string,
-  signal: S,
-  payload: SignalPayload<S>
-): void;
 
 const signal = new Signal<number>("event");
 const doneSignal = new Signal("done");
@@ -24,7 +19,7 @@ export const workflow1 = workflow("workflow1", async () => {
     console.log(n);
 
     if (n > 10) {
-      child.sendSignal(doneSignal, undefined);
+      child.sendSignal(doneSignal);
       break;
     }
 
