@@ -242,7 +242,7 @@ export function interpret<Return>(
       do {
         madeProgress = false;
         for (const chain of activeChains) {
-          madeProgress ||= tryAdvanceChain(chain);
+          madeProgress = madeProgress || tryAdvanceChain(chain);
         }
       } while (madeProgress);
     } finally {
