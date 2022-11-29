@@ -39,11 +39,13 @@ export async function apiKy(
           req.headers.forEach((value, key) => headers.set(key, value));
           // host is required by AWS Signature V4: https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
           headers.set("host", url.host);
+
           const request = new HttpRequest({
             hostname: url.hostname,
             path: url.pathname,
             protocol: url.protocol,
             method: req.method.toUpperCase(),
+            body: req.body && (await streamToString(req.body)),
             query: parseQueryString(url.search),
             headers: Object.fromEntries(headers.entries()),
           });
@@ -94,4 +96,15 @@ async function getSigner(roleArn: string, region?: string) {
     region: region ?? "us-east-1",
     sha256: Sha256,
   });
+}
+
+async function streamToString(stream: any) {
+  // lets have a ReadableStream as a stream variable
+  const chunks = [];
+
+  for await (const chunk of stream) {
+    chunks.push(Buffer.from(chunk));
+  }
+
+  return Buffer.concat(chunks).toString("utf-8");
 }

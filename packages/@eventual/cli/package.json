@@ -69,6 +69,7 @@
     "get-stdin": "^9.0.0",
     "ky-universal": "^0.11.0",
     "ora": "^6.1.2",
+    "web-streams-polyfill": "^3.2.1",
     "yargs": "^17.6.2",
     "zx": "^7.1.1"
   }

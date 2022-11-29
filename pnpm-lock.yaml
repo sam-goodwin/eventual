@@ -263,6 +263,7 @@ importers:
       ts-jest: ^29
       ts-node: ^10.9.1
       typescript: ^4.9.3
+      web-streams-polyfill: ^3.2.1
       yargs: ^17.6.2
       zx: ^7.1.1
     dependencies:
@@ -283,8 +284,9 @@ importers:
       chalk: 5.1.2
       commander: 9.4.1
       get-stdin: 9.0.0
-      ky-universal: 0.11.0_ky@0.32.2
+      ky-universal: 0.11.0_woz7ognosjrry4slsjz2o7peyy
       ora: 6.1.2
+      web-streams-polyfill: 3.2.1
       yargs: 17.6.2
       zx: 7.1.1
     devDependencies:
@@ -7182,7 +7184,7 @@ packages:
     engines: {node: '>=6'}
     dev: true
 
-  /ky-universal/0.11.0_ky@0.32.2:
+  /ky-universal/0.11.0_woz7ognosjrry4slsjz2o7peyy:
     resolution: {integrity: sha512-65KyweaWvk+uKKkCrfAf+xqN2/epw1IJDtlyCPxYffFCMR8u1sp2U65NtWpnozYfZxQ6IUzIlvUcw+hQ82U2Xw==}
     engines: {node: '>=14.16'}
     peerDependencies:
@@ -7195,6 +7197,7 @@ packages:
       abort-controller: 3.0.0
       ky: 0.32.2
       node-fetch: 3.3.0
+      web-streams-polyfill: 3.2.1
     dev: false
 
   /ky/0.32.2:
