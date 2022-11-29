@@ -132,6 +132,7 @@ export function workflow<F extends WorkflowHandler>(
 
   workflow.definition = definition as Workflow<F>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
   workflows().set(name, workflow);
+  Object.defineProperty(workflow, "name", { value: name });
   return workflow;
 }
 
