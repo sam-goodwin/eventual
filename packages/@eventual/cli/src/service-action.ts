@@ -17,10 +17,7 @@ export type ServiceAction<T> = (
  * @param action Callback to perform for the action
  */
 export const serviceAction =
-  <T>(
-    action: ServiceAction<T>,
-    _onError?: (error: any) => Promise<void> | void
-  ) =>
+  <T>(action: ServiceAction<T>) =>
   async (
     args: Arguments<{ debug: boolean; service: string; region?: string } & T>
   ) => {
