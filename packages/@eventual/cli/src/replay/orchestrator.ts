@@ -1,8 +1,8 @@
 import {
+  Workflow,
   HistoryStateEvent,
   progressWorkflow,
   ProgressWorkflowResult,
-  Workflow,
 } from "@eventual/core";
 
 export type Orchestrator = typeof orchestrator;

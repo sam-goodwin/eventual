@@ -39,13 +39,11 @@ export async function apiKy(
           req.headers.forEach((value, key) => headers.set(key, value));
           // host is required by AWS Signature V4: https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
           headers.set("host", url.host);
-
           const request = new HttpRequest({
             hostname: url.hostname,
             path: url.pathname,
             protocol: url.protocol,
             method: req.method.toUpperCase(),
-            body: await req.text(),
             query: parseQueryString(url.search),
             headers: Object.fromEntries(headers.entries()),
           });

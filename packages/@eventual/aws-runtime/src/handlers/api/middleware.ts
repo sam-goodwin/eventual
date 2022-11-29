@@ -1,4 +1,4 @@
-import middy, { MiddlewareObj, L } from "@middy/core";
+import middy, { MiddlewareObj } from "@middy/core";
 import { Handler } from "aws-lambda";
 import util from "util";
 

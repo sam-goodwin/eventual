@@ -204,6 +204,14 @@ export class Service extends Construct implements IGrantable {
       ),
     };
 
+    execSync(
+      `node ${require.resolve(
+        "@eventual/compiler/bin/eventual-bundle.js"
+      )} ${outDir} ${props.entry} ${entries.orchestrator} ${
+        entries.activityWorker
+      }`
+    ).toString("utf-8");
+
     this.activityWorker = new Function(this, "Worker", {
       architecture: Architecture.ARM_64,
       code: Code.fromAsset(path.join(outDir, "activity")),

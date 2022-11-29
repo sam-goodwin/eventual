@@ -12,51 +12,66 @@ const require = createRequire(import.meta.url);
 /**
  * Bundle an eventual program
  * @param outDir Directory to bundle to
- * @param entry File containing the program, where default export is our workflow
+ * @param entry File containing the service
  * @returns Paths to orchestrator and activtyWorker output files
  */
-export async function bundle(outDir: string, entry: string): Promise<void> {
-  console.log("Bundling:", outDir, entry);
+export async function bundle(
+  outDir: string,
+  serviceEntry: string
+): Promise<void> {
+  console.log("Bundling:", outDir, serviceEntry);
   await prepareOutDir(outDir);
 
   await Promise.all([
     build({
-      outDir,
-      entry,
       name: "orchestrator",
+      outDir,
+      injectedEntry: serviceEntry,
+      entry: runtimeEntrypoint("orchestrator"),
       plugins: [eventualESPlugin],
     }),
     build({
-      outDir,
-      entry,
       name: "activity",
+      outDir,
+      injectedEntry: serviceEntry,
+      entry: runtimeEntrypoint("activity"),
     }),
     build({
-      outDir,
-      entry,
       name: "webhook",
+      outDir,
+      injectedEntry: serviceEntry,
+      entry: runtimeEntrypoint("webhook"),
     }),
   ]);
 }
 
-export async function bundleWorkflow(outDir: string, entry: string) {
+export async function bundleService(outDir: string, entry: string) {
   return build({
     outDir,
     entry,
-    name: "orchestrator",
+    name: "service",
     plugins: [eventualESPlugin],
   });
 }
 
+export function runtimeEntrypoint(name: string) {
+  return path.join(
+    require.resolve("@eventual/aws-runtime"),
+    `../../esm/entry/${name}.js`
+  );
+}
+
 async function build({
   outDir,
-  entry,
+  injectedEntry,
   name,
+  entry,
   plugins,
 }: {
-  entry: string;
+  injectedEntry?: string;
   outDir: string;
   name: string;
+  entry: string;
   plugins?: esbuild.Plugin[];
 }) {
   const outfile = path.join(outDir!, `${name}/index.mjs`);
@@ -64,11 +79,15 @@ async function build({
     mainFields: ["module", "main"],
     sourcemap: true,
     plugins: [
-      esbuildPluginAliasPath({
-        alias: {
-          ["@eventual/entry/injected"]: entry!,
-        },
-      }),
+      ...(injectedEntry
+        ? [
+            esbuildPluginAliasPath({
+              alias: {
+                ["@eventual/entry/injected"]: path.resolve(injectedEntry),
+              },
+            }),
+          ]
+        : []),
       ...(plugins ?? []),
     ],
     conditions: ["module", "import", "require"],
@@ -79,12 +98,7 @@ async function build({
     format: "esm",
     metafile: true,
     bundle: true,
-    entryPoints: [
-      path.join(
-        require.resolve("@eventual/aws-runtime"),
-        `../../esm/entry/${name}.js`
-      ),
-    ],
+    entryPoints: [entry],
     banner: esmPolyfillRequireBanner(),
     outfile,
   });
