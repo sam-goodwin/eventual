@@ -63,13 +63,10 @@
     "@eventual/aws-runtime": "workspace:^",
     "@eventual/compiler": "workspace:^",
     "@eventual/core": "workspace:^",
-    "@swc/core": "^1.2.245",
     "chalk": "^5.1.2",
-    "commander": "^9.4.1",
     "get-stdin": "^9.0.0",
     "ky-universal": "^0.11.0",
     "ora": "^6.1.2",
-    "web-streams-polyfill": "^3.2.1",
     "yargs": "^17.6.2",
     "zx": "^7.1.1"
   }
