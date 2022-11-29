@@ -197,9 +197,11 @@ importers:
       '@types/node': ^16
       aws-embedded-metrics: ^4.0.0
       aws-lambda: ^1.0.7
+      fast-equals: ^4.0.3
       itty-router: 2.6.6
       jest: ^29
       mem: ^9.0.2
+      node-fetch: ^3.3.0
       ts-jest: ^29
       ts-node: ^10.9.1
       typescript: ^4.9.3
@@ -212,7 +214,9 @@ importers:
       '@middy/error-logger': 3.6.2
       aws-embedded-metrics: 4.0.0
       aws-lambda: 1.0.7
+      fast-equals: 4.0.3
       mem: 9.0.2
+      node-fetch: 3.3.0
       ulidx: 0.3.0
     devDependencies:
       '@aws-sdk/client-dynamodb': 3.214.0
@@ -5669,6 +5673,10 @@ packages:
       tmp: 0.0.33
     dev: true
 
+  /fast-equals/4.0.3:
+    resolution: {integrity: sha512-G3BSX9cfKttjr+2o1O22tYMLq0DPluZnYtq1rXumE1SpL/F/SLIfHx08WYQoWSIpeMYf8sRbJ8++71+v6Pnxfg==}
+    dev: false
+
   /fast-glob/3.2.12:
     resolution: {integrity: sha512-DVj4CQIYYow0BlaelwK1pHl5n5cRSJfM60UA0zK891sVInoPri2Ekj7+e1CT3/3qxXenpI+nBBmQAcJPJgaj4w==}
     engines: {node: '>=8.6.0'}
@@ -6713,7 +6721,7 @@ packages:
       pretty-format: 29.3.1
       slash: 3.0.0
       strip-json-comments: 3.1.1
-      ts-node: 10.9.1_72os6jwxu2zrt2v7mxnztv2e74
+      ts-node: 10.9.1_fvpuwgkpfe3dm3hnpcpbcxmb3y
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -6753,7 +6761,7 @@ packages:
       pretty-format: 29.3.1
       slash: 3.0.0
       strip-json-comments: 3.1.1
-      ts-node: 10.9.1_72os6jwxu2zrt2v7mxnztv2e74
+      ts-node: 10.9.1_fvpuwgkpfe3dm3hnpcpbcxmb3y
     transitivePeerDependencies:
       - supports-color
     dev: true
