@@ -1,0 +1,26 @@
+export namespace ENV_NAMES {
+  export const TABLE_NAME = "EVENTUAL_TABLE_NAME";
+  export const EXECUTION_HISTORY_BUCKET = "EVENTUAL_EXECUTION_HISTORY_BUCKET";
+  export const WORKFLOW_QUEUE_URL = "EVENTUAL_WORKFLOW_QUEUE_URL";
+  export const WORKFLOW_QUEUE_ARN = "EVENTUAL_WORKFLOW_QUEUE_ARN";
+  export const WORKFLOW_FUNCTION_NAME = "EVENTUAL_WORKFLOW_FUNCTION_NAME";
+  export const ACTIVITY_WORKER_FUNCTION_NAME =
+    "EVENTUAL_ACTIVITY_WORKER_FUNCTION_NAME";
+  export const ACTIVITY_LOCK_TABLE_NAME = "EVENTUAL_ACTIVITY_LOCK_TABLE_NAME";
+  export const SCHEDULER_ROLE_ARN = "EVENTUAL_SCHEDULER_ROLE_ARN";
+  export const SCHEDULER_DLQ_ROLE_ARN = "EVENTUAL_SCHEDULER_DLQ_ROLE_ARN";
+  export const SCHEDULER_GROUP = "EVENTUAL_SCHEDULER_GROUP";
+  export const TIMER_QUEUE_URL = "EVENTUAL_TIMER_QUEUE_URL";
+  export const TIMER_QUEUE_ARN = "EVENTUAL_TIMER_QUEUE_ARN";
+  export const SCHEDULE_FORWARDER_ARN = "EVENTUAL_SCHEDULE_FORWARDER_ARN";
+  /**
+   * A flag that determines if a function is an activity worker.
+   *
+   * Activity calls behave different based on their context.
+   */
+  export const EVENTUAL_WORKER = "EVENTUAL_WORKER";
+  /**
+   * A flag that determines if a function is the webhook endpoint.
+   */
+  export const EVENTUAL_WEBHOOK = "EVENTUAL_WEBHOOK";
+}
