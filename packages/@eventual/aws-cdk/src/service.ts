@@ -203,16 +203,6 @@ export class Service extends Construct implements IGrantable {
         "../../esm/entry/activity-worker.js"
       ),
     };
-    console.log("Bundling...");
-    console.log(
-      execSync(
-        `node ${require.resolve(
-          "@eventual/compiler/bin/eventual-bundle.js"
-        )} ${outDir} ${props.entry} ${entries.orchestrator} ${
-          entries.activityWorker
-        }`
-      ).toString("utf-8")
-    );
 
     this.activityWorker = new Function(this, "Worker", {
       architecture: Architecture.ARM_64,
