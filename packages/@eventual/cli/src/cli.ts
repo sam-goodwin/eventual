@@ -1,4 +1,3 @@
-import "web-streams-polyfill/dist/polyfill.es6.mjs";
 import { services } from "./commands/services.js";
 import { executions } from "./commands/executions.js";
 import { history } from "./commands/history.js";

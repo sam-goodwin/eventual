@@ -45,7 +45,7 @@ export async function apiKy(
             path: url.pathname,
             protocol: url.protocol,
             method: req.method.toUpperCase(),
-            body: await streamToString(req.body),
+            body: await req.text(),
             query: parseQueryString(url.search),
             headers: Object.fromEntries(headers.entries()),
           });
@@ -96,15 +96,4 @@ async function getSigner(roleArn: string, region?: string) {
     region: region ?? "us-east-1",
     sha256: Sha256,
   });
-}
-
-async function streamToString(stream: any) {
-  // lets have a ReadableStream as a stream variable
-  const chunks = [];
-
-  for await (const chunk of stream) {
-    chunks.push(Buffer.from(chunk));
-  }
-
-  return Buffer.concat(chunks).toString("utf-8");
 }

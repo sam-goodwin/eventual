@@ -66,7 +66,7 @@ async function build({
     plugins: [
       esbuildPluginAliasPath({
         alias: {
-          [`@eventual/entry/injected`]: entry!,
+          ["@eventual/entry/injected"]: entry!,
         },
       }),
       ...(plugins ?? []),
