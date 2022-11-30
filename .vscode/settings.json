@@ -39,12 +39,5 @@
   "editor.tabSize": 2,
   "editor.insertSpaces": true,
   "editor.formatOnSave": true,
-  "eslint.format.enable": false,
-  "debug.javascript.terminalOptions": {
-    "outFiles": [
-      "${workspaceRoot}/**/*.mjs",
-      "${workspaceRoot}/**/*.js",
-      "!**/node_modules/**"
-    ]
-  }
+  "eslint.format.enable": false
 }

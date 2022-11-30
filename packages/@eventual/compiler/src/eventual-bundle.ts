@@ -51,6 +51,8 @@ export async function bundleService(outDir: string, entry: string) {
     entry,
     name: "service",
     plugins: [eventualESPlugin],
+    //It's important that we use inline source maps for service, otherwise debugger fails to pick it up
+    sourcemap: "inline",
   });
 }
 
@@ -67,17 +69,19 @@ async function build({
   name,
   entry,
   plugins,
+  sourcemap,
 }: {
   injectedEntry?: string;
   outDir: string;
   name: string;
   entry: string;
   plugins?: esbuild.Plugin[];
+  sourcemap?: boolean | "inline";
 }) {
   const outfile = path.join(outDir!, `${name}/index.mjs`);
   const bundle = await esbuild.build({
     mainFields: ["module", "main"],
-    sourcemap: true,
+    sourcemap: sourcemap ?? true,
     plugins: [
       ...(injectedEntry
         ? [
@@ -98,12 +102,15 @@ async function build({
     format: "esm",
     metafile: true,
     bundle: true,
-    entryPoints: [entry],
+    entryPoints: [path.resolve(entry)],
     banner: esmPolyfillRequireBanner(),
     outfile,
   });
 
-  await writeEsBuildMetafile(bundle, path.join(outDir!, `${name}/meta.json`));
+  await writeEsBuildMetafile(
+    bundle,
+    path.resolve(outDir!, `${name}/meta.json`)
+  );
 
   return outfile;
 }
