@@ -18,7 +18,7 @@ export function formatExecutionId<
   return `${workflowName}/${id}` as ExecutionID<WorkflowName, ID>;
 }
 
-//API Gateway spews on uri encoding in path parameter... so we have these. for now
+//API Gateway doesn't agree with uri encoding in path parameter... so we have these. for now
 export function encodeExecutionId(executionId: string) {
   return Buffer.from(executionId, "utf-8").toString("base64");
 }
