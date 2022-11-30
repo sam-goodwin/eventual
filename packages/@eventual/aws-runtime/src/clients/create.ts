@@ -7,7 +7,6 @@ import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
 import { AWSExecutionHistoryClient } from "./execution-history-client.js";
 import { AWSWorkflowClient } from "./workflow-client.js";
 import { AWSWorkflowRuntimeClient } from "./workflow-runtime-client.js";
-import memoize from "mem";
 import { SchedulerClient } from "@aws-sdk/client-scheduler";
 import { AWSTimerClient, AWSTimerClientProps } from "./timer-client.js";
 
@@ -32,7 +31,7 @@ export const createExecutionHistoryClient = /*@__PURE__*/ memoize(
       dynamo: dynamo(),
       tableName: tableName ?? env.tableName(),
     }),
-  { cacheKey: ([arg]) => arg?.tableName }
+  { cacheKey: (opts) => opts?.tableName ?? env.tableName() }
 );
 
 export const createWorkflowClient = /*@__PURE__*/ memoize(
@@ -103,3 +102,22 @@ export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
     }),
   { cacheKey: JSON.stringify }
 );
+
+function memoize<T extends any[], R>(
+  fn: (...args: T) => R,
+  options?: { cacheKey: (...args: T) => any }
+): (...args: T) => R {
+  //We box our cache in case our fn returns undefined
+  let resMap = new Map<any, { value: R }>();
+  return (...args) => {
+    let key = options?.cacheKey ? options.cacheKey(...args) : args;
+    const cachedResult = resMap.get(key);
+    if (cachedResult) {
+      return cachedResult.value;
+    } else {
+      const result = fn(...args);
+      resMap.set(key, { value: result });
+      return result;
+    }
+  };
+}
