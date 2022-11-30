@@ -10,7 +10,6 @@ import { replay } from "./commands/replay.js";
 const argv = hideBin(process.argv);
 const cli = yargs(argv).strict();
 [services, start, executions, history, logs, replay].forEach((cmd) => cmd(cli));
-cli;
 if (argv.length == 0) {
   cli.showHelp();
 }
