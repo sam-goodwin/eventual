@@ -8,23 +8,19 @@ export async function prepareOutDir(outDir: string, clean: boolean = true) {
     if (clean) {
       await cleanDir(outDir);
     }
-  } catch {
+  } catch (e) {
     await fs.mkdir(outDir, {
       recursive: true,
     });
   }
 }
-export async function rmrf(file: string) {
-  const stat = await fs.stat(file);
-  if (stat.isDirectory()) {
-    await cleanDir(file);
-  } else {
-    await fs.rm(file);
-  }
-}
 
 export async function cleanDir(dir: string) {
   await Promise.all(
-    (await fs.readdir(dir)).map((file) => rmrf(path.join(dir, file)))
+    (
+      await fs.readdir(dir)
+    ).map((file) =>
+      fs.rm(path.join(dir, file), { force: true, recursive: true })
+    )
   );
 }

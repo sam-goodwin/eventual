@@ -46,6 +46,7 @@ export async function bundle(
 }
 
 export async function bundleService(outDir: string, entry: string) {
+  await prepareOutDir(outDir);
   return build({
     outDir,
     entry,
@@ -78,7 +79,7 @@ async function build({
   plugins?: esbuild.Plugin[];
   sourcemap?: boolean | "inline";
 }) {
-  const outfile = path.join(outDir!, `${name}/index.mjs`);
+  const outfile = path.join(outDir, `${name}/index.mjs`);
   const bundle = await esbuild.build({
     mainFields: ["module", "main"],
     sourcemap: sourcemap ?? true,
