@@ -1,16 +1,36 @@
 # Announcing Eventual (Part 2) - deep dive into concepts
 
-In Part 1, we announced our new product Eventual and introduced the high level vision for a framework that enables rapid and sustainable development of distributed systems. In Part 2, we'll dive deeper into the details of how Eventual works, describe each of the concepts and show some basic code samples to give you a better idea of what is possible.
+In Part 1, we announced our new product, Eventual, and introduced its vision for a framework and service that enables rapid and sustainable development of distributed systems. In Part 2, we'll dive deeper into the details of how Eventual works, describe each of the concepts and show some basic code samples to give you a better idea of what is possible.
 
-## The Service Construct
+## The `Service` Construct
 
-An Eventual Service is consumed as an IaC library, e.g. an AWS CDK Construct. This service brings with it an opinionated piece
+Everything in Eventual starts with building a Service. I like to call it "the Box" but you can also refer to it "the Bounded Context" - pick your flavor, they're all the same. Creating a Service is as simple as importing the `@eventual/aws-cdk.Service` Construct and instantiating it within your IaC application:
 
 ```ts
+import eventual from "@eventual/aws-cdk";
+
 new eventual.Service(this, "Service", {
   entry: "./my-service.ts",
 });
 ```
+
+The `entry` property points the service at a file containing the service's application logic - that's about it, Eventual's tooling will introspect your code and deploy all required resource to the cloud automatically.
+
+The mental model should feel eerily similar to creating an AWS Lambda Function:
+
+```ts
+new aws_lambda_nodejs.NodeJSFunction(this, "Function", {
+  entry: "./my-function-handler.ts",
+});
+```
+
+But an `eventual.Service` is quite different to a simple Lambda Function. Instead of creating a single Resource, Eventual creates a whole Service! This includes an API Gateway, Event Bus, API and Event Handlers, and our powerful code-first Workflow Orchestrator service.
+
+This may initially shock or worry you, but you can rest easy as all of these services scale to $0 and are almost entirely self-managed. There is no impact on your cloud bill and minimal impact on your operational responsibility. You should be aware of what's under the covers, but don't be scared off by its significance - Eventual is intentionally designed for efficient operations (it's our whole thing). Most cloud applications require these components anyway, so a full service implementation should actually be comparable in scope and size.
+
+(architecture diagram)
+
+You may have noticed that a particularly famous service is left out from this diagram - AWS Step Functions. Workflow orchestration is a key principle of Eventual but instead of using AWS Step Functions for workflows, Eventual ships with its own custom workflow engine designed to enable a code-first developer experience. Instead of authoring ASL JSON documents, workflows are written using your favorite programming language and executed by the Eventual orchestrator service. We'll get deeper into this later on - but I hope you're excited by the prospect of building entire systems using beautiful, type-safe, testable and debuggable code!
 
 ## The 4 building blocks
 
