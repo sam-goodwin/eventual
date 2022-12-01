@@ -1,3 +1,4 @@
+import { encodeExecutionId } from "@eventual/aws-runtime";
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
 
@@ -14,7 +15,7 @@ export const history = (yargs: Argv) =>
     serviceAction(async (spinner, ky, { execution }) => {
       spinner.start("Getting execution history");
       const events = await ky
-        .get(`executions/${execution.replace("/", "-")}/history`)
+        .get(`executions/${encodeExecutionId(execution)}}/history`)
         .json();
       spinner.succeed();
       console.log(events);
