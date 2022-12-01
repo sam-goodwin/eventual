@@ -139,7 +139,7 @@ async function orchestrateExecution(
   metrics.resetDimensions(false);
   metrics.setNamespace(MetricsCommon.EventualNamespace);
   metrics.setDimensions({
-    [MetricsCommon.WorkflowNameDimension]: workflow.name,
+    [MetricsCommon.WorkflowNameDimension]: workflow.workflowName,
   });
   const events = sqsRecordsToEvents(records);
   const start = new Date();
@@ -192,7 +192,7 @@ async function orchestrateExecution(
     );
 
     const workflowContext: WorkflowContext = {
-      name: workflow.name,
+      name: workflow.workflowName,
     };
 
     const {
@@ -382,7 +382,7 @@ async function orchestrateExecution(
         commands.map(async (command) => {
           if (isScheduleActivityCommand(command)) {
             await workflowRuntimeClient.scheduleActivity({
-              workflowName: workflow.name,
+              workflowName: workflow.workflowName,
               executionId,
               command,
             });

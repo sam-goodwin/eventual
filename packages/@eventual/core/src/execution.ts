@@ -10,19 +10,19 @@ interface ExecutionBase {
   startTime: string;
 }
 
-export type Execution =
+export type Execution<Result = any> =
   | InProgressExecution
-  | CompleteExecution
+  | CompleteExecution<Result>
   | FailedExecution;
 
 export interface InProgressExecution extends ExecutionBase {
   status: ExecutionStatus.IN_PROGRESS;
 }
 
-export interface CompleteExecution extends ExecutionBase {
+export interface CompleteExecution<Result = any> extends ExecutionBase {
   status: ExecutionStatus.COMPLETE;
   endTime: string;
-  result?: any;
+  result?: Result;
 }
 
 export interface FailedExecution extends ExecutionBase {

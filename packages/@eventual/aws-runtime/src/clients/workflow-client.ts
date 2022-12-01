@@ -1,7 +1,9 @@
 import {
   AttributeValue,
   DynamoDBClient,
+  GetItemCommand,
   PutItemCommand,
+  QueryCommand,
 } from "@aws-sdk/client-dynamodb";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
@@ -9,6 +11,7 @@ import {
   ExecutionStatus,
   SignalReceived,
   HistoryStateEvent,
+  Workflow,
   WorkflowEventType,
   WorkflowStarted,
   WorkflowTask,
@@ -39,13 +42,13 @@ export class AWSWorkflowClient implements eventual.WorkflowClient {
    * @param input Workflow parameters
    * @returns
    */
-  public async startWorkflow({
+  public async startWorkflow<W extends Workflow = Workflow>({
     executionName = ulid(),
     workflowName,
     input,
     parentExecutionId,
     seq,
-  }: eventual.StartWorkflowRequest) {
+  }: eventual.StartWorkflowRequest<W>) {
     const executionId = formatExecutionId(workflowName, executionName);
     console.log("execution input:", input);
 
@@ -108,6 +111,38 @@ export class AWSWorkflowClient implements eventual.WorkflowClient {
         MessageGroupId: executionId,
       })
     );
+  }
+
+  async getExecutions(): Promise<Execution[]> {
+    const executions = await this.props.dynamo.send(
+      new QueryCommand({
+        TableName: this.props.tableName,
+        KeyConditionExpression: "pk = :pk and begins_with(sk, :sk)",
+        ExpressionAttributeValues: {
+          ":pk": { S: ExecutionRecord.PRIMARY_KEY },
+          ":sk": { S: ExecutionRecord.SORT_KEY_PREFIX },
+        },
+      })
+    );
+    return executions.Items!.map((execution) =>
+      createExecutionFromResult(execution as ExecutionRecord)
+    );
+  }
+
+  async getExecution(executionId: string): Promise<Execution | undefined> {
+    const executionResult = await this.props.dynamo.send(
+      new GetItemCommand({
+        Key: {
+          pk: { S: ExecutionRecord.PRIMARY_KEY },
+          sk: { S: ExecutionRecord.sortKey(executionId) },
+        },
+        TableName: this.props.tableName,
+      })
+    );
+
+    return executionResult.Item
+      ? createExecutionFromResult(executionResult.Item as ExecutionRecord)
+      : undefined;
   }
 
   public async sendSignal(request: eventual.SendSignalRequest): Promise<void> {

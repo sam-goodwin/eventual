@@ -16,13 +16,14 @@ import {
 import { interpret, WorkflowResult } from "./interpret.js";
 import type { StartWorkflowResponse } from "./runtime/workflow-client.js";
 import { ChildExecution, createWorkflowCall } from "./calls/workflow-call.js";
+import { AwaitedEventual } from "./eventual.js";
 
 export const INTERNAL_EXECUTION_ID_PREFIX = "##EVENTUAL##";
 
-export type WorkflowHandler<Input, Output> = (
+export type WorkflowHandler<Input = any, Output = any> = (
   input: Input,
   context: Context
-) => Promise<Output> | Program;
+) => Promise<Output> | Program<Output>;
 
 export interface StartExecutionRequest<Input> {
   /**
@@ -37,6 +38,20 @@ export interface StartExecutionRequest<Input> {
   name?: string;
 }
 
+export type WorkflowOutput<W extends Workflow<any>> = W extends Workflow<
+  any,
+  infer Out
+>
+  ? Out
+  : never;
+
+export type WorkflowInput<W extends Workflow<any>> = W extends Workflow<
+  infer In,
+  any
+>
+  ? In
+  : never;
+
 /**
  * A {@link Workflow} is a long-running process that orchestrates calls
  * to other services in a durable and observable way.
@@ -45,7 +60,7 @@ export interface Workflow<Input = any, Output = any> {
   /**
    * Globally unique ID of this {@link Workflow}.
    */
-  name: string;
+  workflowName: string;
   /**
    * Invokes the {@link Workflow} from within another workflow.
    *
@@ -67,7 +82,10 @@ export interface Workflow<Input = any, Output = any> {
   /**
    * @internal - this is the internal DSL representation that produces a {@link Program} instead of a Promise.
    */
-  definition: (input: Input, context: Context) => Program<Output>;
+  definition: (
+    input: Input,
+    context: Context
+  ) => Program<AwaitedEventual<Output>>;
 }
 
 const workflows = new Map<string, Workflow>();
@@ -106,6 +124,8 @@ export function workflow<Input = any, Output = any>(
   const workflow: Workflow<Input, Output> = ((input?: any) =>
     createWorkflowCall(name, input)) as any;
 
+  workflow.workflowName = name;
+
   workflow.startExecution = async function (input) {
     return {
       executionId: await getWorkflowClient().startWorkflow({
@@ -116,7 +136,7 @@ export function workflow<Input = any, Output = any>(
     };
   };
 
-  workflow.definition = definition as typeof workflow["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
+  workflow.definition = definition as Workflow<Input, Output>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
   workflows.set(name, workflow);
   return workflow;
 }

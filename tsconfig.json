@@ -36,6 +36,12 @@
     },
     {
       "path": "apps/test-app-runtime"
+    },
+    {
+      "path": "apps/tests/aws-runtime"
+    },
+    {
+      "path": "apps/tests/aws-runtime-cdk"
     }
   ]
 }

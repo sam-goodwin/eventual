@@ -10,7 +10,7 @@ import {
   SleepScheduled,
   WaitForSignalStarted,
 } from "../events.js";
-import { CompleteExecution, Execution, FailedExecution } from "../execution.js";
+import { CompleteExecution, FailedExecution } from "../execution.js";
 
 export interface CompleteExecutionRequest {
   executionId: string;
@@ -57,8 +57,6 @@ export interface WorkflowRuntimeClient {
   ): Promise<CompleteExecution>;
 
   failExecution(request: FailExecutionRequest): Promise<FailedExecution>;
-
-  getExecutions(): Promise<Execution[]>;
 
   scheduleActivity(
     request: ScheduleActivityRequest
