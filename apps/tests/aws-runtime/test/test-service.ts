@@ -48,7 +48,7 @@ export const parentWorkflow = workflow("parentWorkflow", async () => {
     console.log(n);
 
     if (n > 10) {
-      child.sendSignal(childSignal, { done: true, n });
+      child.sendSignal(childSignal, { done: true });
       break;
     }
 

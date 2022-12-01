@@ -186,6 +186,11 @@ export function progressWorkflow(
   // execute workflow
   const interpretEvents = allEvents.filter(isHistoryEvent);
 
+  console.debug("history events", JSON.stringify(historyEvents));
+  console.debug("task events", JSON.stringify(taskEvents));
+  console.debug("synthetic events", JSON.stringify(syntheticEvents));
+  console.debug("interpret events", JSON.stringify(interpretEvents));
+
   try {
     return {
       ...interpret(

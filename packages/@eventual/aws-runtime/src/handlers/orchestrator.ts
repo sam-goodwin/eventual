@@ -251,6 +251,8 @@ async function orchestrateExecution(
 
     const newHistoryEvents = [...updatedHistory, ...commandEvents];
 
+    console.debug("New history to save", JSON.stringify(newHistoryEvents));
+
     // update history from new commands and events
     // for now, we'll just write the awaitable command events to s3 as those are the ones needed to reconstruct the workflow.
     const { bytes: historyUpdatedBytes } = await timed(
@@ -377,6 +379,7 @@ async function orchestrateExecution(
     async function processCommands(
       commands: Command[]
     ): Promise<HistoryStateEvent[]> {
+      console.debug("Commands to send", JSON.stringify(commands));
       // register command events
       return await Promise.all(
         commands.map(async (command) => {

@@ -966,9 +966,10 @@ describe("signals", () => {
       let myOtherSignalCompleted = 0;
       const mySignalHandler = createRegisterSignalHandlerCall(
         "MySignal",
-        () => {
+        // the transformer will turn this closure into a generator wrapped in chain
+        chain(function* () {
           mySignalHappened++;
-        }
+        })
       );
       const myOtherSignalHandler = createRegisterSignalHandlerCall(
         "MyOtherSignal",

@@ -108,6 +108,22 @@ export function interpret<Return>(
     (newCalls = iterator(advance() ?? [])).hasNext() ||
     resultEvents.hasNext()
   ) {
+    // if there are result events (completed or failed), apply it before the next run
+    if (!newCalls.hasNext() && resultEvents.hasNext()) {
+      const resultEvent = resultEvents.next()!;
+
+      // it is possible that committing events
+      newCalls = iterator(
+        collectActivitiesScope(() => {
+          if (isSignalReceived(resultEvent)) {
+            commitSignal(resultEvent);
+          } else {
+            commitCompletionEvent(resultEvent);
+          }
+        })
+      );
+    }
+
     // Match and filter found commands against the given scheduled events.
     // scheduled events must be in order or not present.
     while (newCalls.hasNext() && emittedEvents.hasNext()) {
@@ -120,17 +136,6 @@ export function interpret<Return>(
             event
           )} was expected at ${event?.seq}`
         );
-      }
-    }
-
-    // if there are result events (completed or failed), apply it before the next run
-    if (resultEvents.hasNext()) {
-      const resultEvent = resultEvents.next()!;
-
-      if (isSignalReceived(resultEvent)) {
-        commitExternalEvent(resultEvent);
-      } else {
-        commitCompletionEvent(resultEvent);
       }
     }
 
@@ -204,15 +209,26 @@ export function interpret<Return>(
   }
 
   function advance(): CommandCall[] | undefined {
-    let calls: CommandCall[] = [];
     let madeProgress: boolean;
+
+    return collectActivitiesScope(() => {
+      do {
+        madeProgress = false;
+        for (const chain of activeChains) {
+          madeProgress = madeProgress || tryAdvanceChain(chain);
+        }
+      } while (madeProgress);
+    });
+  }
+
+  function collectActivitiesScope(func: () => void): CommandCall[] {
+    let calls: CommandCall[] = [];
 
     const collector: EventualCallCollector = {
       /**
        * The returned activity is available to the workflow and may be yielded later if it was not already.
        */
       pushEventual(activity) {
-        madeProgress = true;
         if (isCommandCall(activity)) {
           if (isWaitForSignalCall(activity)) {
             subscribeToSignal(activity.signalId, activity);
@@ -239,12 +255,7 @@ export function interpret<Return>(
     try {
       setEventualCollector(collector);
 
-      do {
-        madeProgress = false;
-        for (const chain of activeChains) {
-          madeProgress = madeProgress || tryAdvanceChain(chain);
-        }
-      } while (madeProgress);
+      func();
     } finally {
       clearEventualCollector();
     }
@@ -383,18 +394,20 @@ export function interpret<Return>(
   /**
    * Add result to WaitForSignal and call any event handlers.
    */
-  function commitExternalEvent(event: SignalReceived) {
-    const subscriptions = signalSubscriptions[event.signalId];
+  function commitSignal(signal: SignalReceived) {
+    const subscriptions = signalSubscriptions[signal.signalId];
 
     subscriptions?.forEach((sub) => {
       if (isWaitForSignalCall(sub)) {
         if (!sub.result) {
-          sub.result = Result.resolved(event.payload);
+          sub.result = Result.resolved(signal.payload);
         }
       } else if (isRegisterSignalHandlerCall(sub)) {
         if (!sub.result) {
-          const output = sub.handler(event.payload);
-          // if the handler is a generator, start a new chain
+          // call the handler
+          // the transformer may wrap the handler function as a chain, it will be registered internally
+          const output = sub.handler(signal.payload);
+          // if the handler returns generator instead, start a new chain
           if (isGenerator(output)) {
             activeChains.add(createChain(output));
           }

@@ -73,7 +73,10 @@ export type HistoryEvent =
 
 export function isHistoryEvent(event: WorkflowEvent): event is HistoryEvent {
   return (
-    isScheduledEvent(event) || isFailedEvent(event) || isCompletedEvent(event)
+    isScheduledEvent(event) ||
+    isFailedEvent(event) ||
+    isCompletedEvent(event) ||
+    isSignalReceived(event)
   );
 }
 

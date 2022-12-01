@@ -9,6 +9,7 @@ import {
   BaseEvent,
   getEventId,
   isHistoryEvent,
+  isSignalReceived,
   WorkflowEvent,
 } from "@eventual/core";
 import type eventual from "@eventual/core";
@@ -114,7 +115,10 @@ export function createEvent<T extends WorkflowEvent>(
   const timestamp = time.toISOString();
 
   // history events do not have IDs, use getEventId
-  if (isHistoryEvent(event as unknown as WorkflowEvent)) {
+  if (
+    isHistoryEvent(event as unknown as WorkflowEvent) &&
+    !isSignalReceived(event as unknown as WorkflowEvent)
+  ) {
     return { ...(event as any), timestamp };
   }
 
