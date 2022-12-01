@@ -8,7 +8,10 @@
     "inlineSourceMap": true,
     "rootDir": "src",
     "typeRoots": ["./node_modules/@types"],
-    "allowJs": true
+    "allowJs": true,
+    "paths": {
+      "@eventual/injected/*": ["./src/injected/*"]
+    }
   },
   "include": ["src"],
   "exclude": ["lib", "node_modules"],

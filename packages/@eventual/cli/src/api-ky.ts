@@ -98,7 +98,7 @@ async function getSigner(roleArn: string, region?: string) {
   });
 }
 
-async function streamToString(stream: any) {
+async function streamToString(stream: ReadableStream) {
   // lets have a ReadableStream as a stream variable
   const chunks = [];
 

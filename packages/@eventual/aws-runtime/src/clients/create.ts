@@ -2,7 +2,7 @@ import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { LambdaClient } from "@aws-sdk/client-lambda";
 import { S3Client } from "@aws-sdk/client-s3";
 import { SQSClient } from "@aws-sdk/client-sqs";
-import * as env from "@eventual/aws-env";
+import * as env from "../env.js";
 import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
 import { AWSExecutionHistoryClient } from "./execution-history-client.js";
 import { AWSWorkflowClient } from "./workflow-client.js";

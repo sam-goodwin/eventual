@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@aws-lambda-powertools/logger": "^1.4.1",
-    "@eventual/aws-env": "workspace:^",
     "@eventual/core": "workspace:^",
     "@middy/core": "^3.6.2",
     "@middy/error-logger": "^3.6.2",

@@ -96,7 +96,6 @@ importers:
       '@aws-cdk/aws-apigatewayv2-authorizers-alpha': 2.51.1-alpha.0
       '@aws-cdk/aws-apigatewayv2-integrations-alpha': 2.51.1-alpha.0
       '@aws-sdk/client-lambda': ^3.213.0
-      '@eventual/aws-env': workspace:^
       '@eventual/aws-runtime': workspace:^
       '@eventual/compiler': workspace:^
       '@types/aws-lambda': 8.10.108
@@ -112,7 +111,6 @@ importers:
       typescript: ^4.9.3
     dependencies:
       '@aws-cdk/aws-apigatewayv2-authorizers-alpha': 2.51.1-alpha.0_44gl26v7bwb5bkivnhf3dlzxv4
-      '@eventual/aws-env': link:../aws-env
       '@eventual/aws-runtime': link:../aws-runtime
       '@eventual/compiler': link:../compiler
     devDependencies:
@@ -131,15 +129,6 @@ importers:
       ts-node: 10.9.1_fvpuwgkpfe3dm3hnpcpbcxmb3y
       typescript: 4.9.3
 
-  packages/@eventual/aws-env:
-    specifiers:
-      '@eventual/core': workspace:^
-      '@types/node': ^16
-    dependencies:
-      '@eventual/core': link:../core
-    devDependencies:
-      '@types/node': 16.18.3
-
   packages/@eventual/aws-runtime:
     specifiers:
       '@aws-lambda-powertools/logger': ^1.4.1
@@ -148,7 +137,6 @@ importers:
       '@aws-sdk/client-s3': 3.213.0
       '@aws-sdk/client-scheduler': 3.213.0
       '@aws-sdk/client-sqs': 3.213.0
-      '@eventual/aws-env': workspace:^
       '@eventual/core': workspace:^
       '@middy/core': ^3.6.2
       '@middy/error-logger': ^3.6.2
@@ -166,7 +154,6 @@ importers:
       ulidx: ^0.3.0
     dependencies:
       '@aws-lambda-powertools/logger': 1.4.1
-      '@eventual/aws-env': link:../aws-env
       '@eventual/core': link:../core
       '@middy/core': 3.6.2
       '@middy/error-logger': 3.6.2

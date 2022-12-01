@@ -23,7 +23,7 @@ import {
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
 import { ArnFormat, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
-import { ENV_NAMES, ServiceProperties } from "@eventual/aws-env";
+import { ENV_NAMES, ServiceProperties } from "@eventual/aws-runtime";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import path from "path";
 import { execSync } from "child_process";

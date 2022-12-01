@@ -27,7 +27,7 @@ export const replay = (yargs: Argv) =>
     serviceAction(async (spinner, ky, { entry, service, execution }) => {
       const encodedExecutionId = encodeExecutionId(execution);
       spinner.start("Constructing replay...");
-      const [_, events] = await Promise.all([
+      const [, events] = await Promise.all([
         loadService(service, encodedExecutionId, entry),
         ky
           .get(`executions/${encodedExecutionId}/workflow-history`)
