@@ -96,7 +96,6 @@ importers:
       '@aws-sdk/client-lambda': ^3.213.0
       '@aws-sdk/client-s3': ^3.213.0
       '@aws-sdk/client-sqs': ^3.213.0
-      '@aws-sdk/client-sts': ^3.218.0
       '@aws-sdk/credential-providers': ^3.218.0
       '@aws-sdk/lib-dynamodb': ^3.214.0
       '@eventual/aws-runtime': workspace:^
@@ -115,7 +114,6 @@ importers:
       '@aws-sdk/client-lambda': 3.213.0
       '@aws-sdk/client-s3': 3.213.0
       '@aws-sdk/client-sqs': 3.213.0
-      '@aws-sdk/client-sts': 3.218.0
       '@aws-sdk/credential-providers': 3.218.0
       '@aws-sdk/lib-dynamodb': 3.214.0_3zbq4agbqjx6q6dwjtp3jwi6pu
       '@eventual/aws-runtime': link:../../../packages/@eventual/aws-runtime
