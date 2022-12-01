@@ -4,9 +4,8 @@
   "version": "0.0.0",
   "main": "lib/test-service.js",
   "scripts": {
-    "test:runtime": "pnpm run localstack:start && pnpm run cdk:deploy && jest --passWithNoTests",
-    "localstack:start": "echo hi && ./localstack",
-    "cdk:deploy": "./deploy"
+    "test:runtime": "OUTPUTS_FILE=cdk.out/outputs.json ./scripts/deploy && jest --passWithNoTests",
+    "test:no-deploy": "OUTPUTS_FILE=cdk.out/outputs.json jest --passWithNoTests"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.214.0",
@@ -15,7 +14,8 @@
     "@aws-sdk/client-sqs": "^3.213.0",
     "@aws-sdk/lib-dynamodb": "^3.214.0",
     "@eventual/aws-runtime": "workspace:^",
-    "@eventual/core": "workspace:^"
+    "@eventual/core": "workspace:^",
+    "@aws-sdk/credential-providers": "^3.218.0"
   },
   "devDependencies": {
     "@eventual/compiler": "workspace:^",

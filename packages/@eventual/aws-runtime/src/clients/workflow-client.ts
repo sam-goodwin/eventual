@@ -10,6 +10,7 @@ import {
   Execution,
   ExecutionStatus,
   HistoryStateEvent,
+  Workflow,
   WorkflowEventType,
   WorkflowStarted,
   WorkflowTask,
@@ -37,13 +38,13 @@ export class AWSWorkflowClient implements eventual.WorkflowClient {
    * @param input Workflow parameters
    * @returns
    */
-  public async startWorkflow({
+  public async startWorkflow<W extends Workflow = Workflow>({
     executionName = ulid(),
     workflowName,
     input,
     parentExecutionId,
     seq,
-  }: eventual.StartWorkflowRequest) {
+  }: eventual.StartWorkflowRequest<W>) {
     const executionId = formatExecutionId(workflowName, executionName);
     console.log("execution input:", input);
 

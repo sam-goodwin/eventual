@@ -1,18 +1,11 @@
-import { createWorkflowClient } from "@eventual/aws-runtime";
-import { queueUrl, tableName } from "./env.js";
-import * as testService from "./test-service.js";
-
-const workflowClient = createWorkflowClient({
-  tableName: tableName(),
-  workflowQueueUrl: queueUrl(),
-});
-
-const tests = testService.tests;
+import { workflowClient } from "./client-create.js";
+import "./test-service.js";
+import { tests } from "./runtime-test-harness.js";
 
 jest.setTimeout(100 * 1000);
 
 tests.forEach((_test) => {
-  test(test.name, async () => {
+  test(_test.name, async () => {
     const executionId = await workflowClient.startWorkflow({
       workflowName: _test.workflow.workflowName,
       input: _test.input,

@@ -16,6 +16,9 @@ const testService = new eventual.Service(stack, "testService", {
   entry: require.resolve("tests-runtime"),
 });
 
+testService.grantRead(role);
+testService.grantStartWorkflow(role);
+
 new CfnOutput(stack, "roleArn", {
   value: role.roleArn,
   exportName: "RoleArn",

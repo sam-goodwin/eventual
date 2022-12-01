@@ -1,81 +1,13 @@
-import { createWorkflowClient } from "@eventual/aws-runtime";
+import { activity, sleepFor, sleepUntil, workflow } from "@eventual/core";
 import {
-  activity,
-  CompleteExecution,
-  Execution,
-  ExecutionStatus,
-  Workflow,
-  workflow,
-  WorkflowInput,
-  WorkflowOutput,
-} from "@eventual/core";
-import { queueUrl, tableName } from "./env.js";
+  assertCompleteExecution,
+  waitForWorkflowCompletion,
+  test,
+} from "./runtime-test-harness.js";
 
-const workflowClient = createWorkflowClient({
-  tableName: tableName(),
-  workflowQueueUrl: queueUrl(),
+const hello = activity("hello", async (name: string) => {
+  return `hello ${name}`;
 });
-
-export interface Test<W extends Workflow = Workflow> {
-  name: string;
-  workflow: W;
-  input?: WorkflowInput<W>;
-  test: (executionId: string) => void | Promise<void>;
-}
-
-export const tests: Test[] = [];
-
-function test(name: string, workflow: Workflow, test: Test["test"]): void;
-function test<W extends Workflow = Workflow>(
-  name: string,
-  workflow: W,
-  input: WorkflowInput<W>,
-  test: Test["test"]
-): void;
-function test(
-  name: string,
-  workflow: Workflow,
-  inputOrTest: any | Test["test"],
-  maybeTest?: Test["test"]
-): void {
-  const [input, test] =
-    typeof inputOrTest === "function"
-      ? [undefined, inputOrTest]
-      : [inputOrTest, maybeTest];
-  tests.push({
-    name,
-    workflow,
-    input,
-    test,
-  });
-}
-
-// TODO delay and backoff
-async function waitForWorkflowCompletion<W extends Workflow = Workflow>(
-  executionId: string
-): Promise<Execution<WorkflowOutput<W>>> {
-  let execution: Execution | undefined;
-  do {
-    execution = await workflowClient.getExecution(executionId);
-    if (!execution) {
-      throw new Error("Cannot find execution id: " + executionId);
-    }
-    console.log(execution);
-    await delay(1000);
-  } while (execution.status === ExecutionStatus.IN_PROGRESS);
-
-  return execution;
-}
-
-async function delay(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-function assertCompleteExecution(
-  execution: Execution
-): asserts execution is CompleteExecution {
-  expect(execution.status).toEqual(ExecutionStatus.COMPLETE);
-}
 
 const workflow1 = workflow(
   "my-workflow",
@@ -85,7 +17,7 @@ const workflow1 = workflow(
   }
 );
 
-test("hello", workflow1, { name: "sam" }, async (executionId) => {
+test("call activity", workflow1, { name: "sam" }, async (executionId) => {
   const execution = await waitForWorkflowCompletion<typeof workflow1>(
     executionId
   );
@@ -95,6 +27,47 @@ test("hello", workflow1, { name: "sam" }, async (executionId) => {
   expect(execution.result).toEqual("you said hello sam");
 });
 
-const hello = activity("hello", async (name: string) => {
-  return `hello ${name}`;
+const workflow2 = workflow("my-parent-workflow", async () => {
+  const result = await workflow1({ name: "sam" });
+  return `user: ${result}`;
+});
+
+test("call workflow", workflow2, async (executionId) => {
+  const execution = await waitForWorkflowCompletion<typeof workflow2>(
+    executionId
+  );
+
+  assertCompleteExecution(execution);
+
+  expect(execution.result).toEqual("user: you said hello sam");
+});
+
+const workflow3 = workflow("sleepy", async () => {
+  await sleepFor(2);
+  await sleepUntil(new Date(new Date().getTime() + 1000 * 2));
+  return `done!`;
+});
+
+test("sleep", workflow3, async (executionId) => {
+  const execution = await waitForWorkflowCompletion<typeof workflow3>(
+    executionId
+  );
+
+  assertCompleteExecution(execution);
+
+  expect(execution.result).toEqual("done!");
+});
+
+const workflow4 = workflow("parallel", async () => {
+  return Promise.all([hello("sam"), hello("chris"), hello("sam")]);
+});
+
+test("parallel", workflow4, async (executionId) => {
+  const execution = await waitForWorkflowCompletion<typeof workflow4>(
+    executionId
+  );
+
+  assertCompleteExecution(execution);
+
+  expect(execution.result).toEqual(["hello sam", "hello chris", "hello sam"]);
 });

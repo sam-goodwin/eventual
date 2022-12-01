@@ -77,7 +77,7 @@ export interface Workflow<Input = any, Output = any> {
    *
    * To start a workflow from another environment, use {@link start}.
    */
-  (input: Input): Output;
+  (input: Input): Promise<Output>;
 
   /**
    * Starts a workflow execution

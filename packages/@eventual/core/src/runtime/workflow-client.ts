@@ -1,5 +1,6 @@
 import { HistoryStateEvent } from "../events.js";
 import { Execution, ExecutionStatus } from "../execution.js";
+import { Workflow, WorkflowInput } from "../workflow.js";
 
 export interface WorkflowClient {
   /**
@@ -8,7 +9,9 @@ export interface WorkflowClient {
    * @param input Workflow parameters
    * @returns
    */
-  startWorkflow(request: StartWorkflowRequest): Promise<string>;
+  startWorkflow<W extends Workflow = Workflow>(
+    request: StartWorkflowRequest<W>
+  ): Promise<string>;
   /**
    * Submit events to be processed by a workflow's orchestrator.
    *
@@ -27,7 +30,7 @@ export interface WorkflowClient {
   getExecution(executionId: string): Promise<Execution | undefined>;
 }
 
-export interface StartWorkflowRequest {
+export interface StartWorkflowRequest<W extends Workflow = Workflow> {
   /**
    * Name of the workflow execution.
    *
@@ -44,7 +47,7 @@ export interface StartWorkflowRequest {
   /**
    * Input payload for the workflow function.
    */
-  input?: any;
+  input?: WorkflowInput<W>;
   /**
    * ID of the parent execution if this is a child workflow
    */
