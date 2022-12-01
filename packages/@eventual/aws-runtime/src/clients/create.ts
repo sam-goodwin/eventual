@@ -103,12 +103,14 @@ export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
   { cacheKey: JSON.stringify }
 );
 
-function memoize<T extends any[], R>(
-  fn: (...args: T) => R,
-  options?: { cacheKey: (...args: T) => any }
-): (...args: T) => R {
+function memoize<T extends (...args: any[]) => any>(
+  fn: T,
+  options?: {
+    cacheKey: (...args: Parameters<T>) => any;
+  }
+): (...args: Parameters<T>) => ReturnType<T> {
   //We box our cache in case our fn returns undefined
-  let resMap = new Map<any, { value: R }>();
+  let resMap = new Map<any, { value: ReturnType<T> }>();
   return (...args) => {
     let key = options?.cacheKey ? options.cacheKey(...args) : args;
     const cachedResult = resMap.get(key);
