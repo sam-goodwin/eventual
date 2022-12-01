@@ -1,6 +1,8 @@
 # Announcing Eventual (Part 2) - deep dive into concepts
 
-### The Service Construct
+In Part 1, we announced our new product Eventual and introduced the high level vision for a framework that enables rapid and sustainable development of distributed systems. In Part 2, we'll dive deeper into the details of how Eventual works, describe each of the concepts and show some basic code samples to give you a better idea of what is possible.
+
+## The Service Construct
 
 An Eventual Service is consumed as an IaC library, e.g. an AWS CDK Construct. This service brings with it an opinionated piece
 
