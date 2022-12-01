@@ -1,16 +1,23 @@
-import { workflowClient } from "./client-create.js";
-import "./test-service.js";
-import { tests } from "./runtime-test-harness.js";
+import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
+import { workflow1, workflow2, workflow3, workflow4 } from "./test-service.js";
 
 jest.setTimeout(100 * 1000);
 
-tests.forEach((_test) => {
-  test(_test.name, async () => {
-    const executionId = await workflowClient.startWorkflow({
-      workflowName: _test.workflow.workflowName,
-      input: _test.input,
-    });
+eventualRuntimeTestHarness(({ testCompletion }) => {
+  testCompletion(
+    "call activity",
+    workflow1,
+    { name: "sam" },
+    "you said hello sam"
+  );
 
-    await _test.test(executionId);
-  });
+  testCompletion("call workflow", workflow2, "user: you said hello sam");
+
+  testCompletion("sleep", workflow3, "done!");
+
+  testCompletion("parallel", workflow4, [
+    "hello sam",
+    "hello chris",
+    "hello sam",
+  ]);
 });
