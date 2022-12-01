@@ -46,25 +46,25 @@ class TesterContainer {
 
   public testCompletion<W extends Workflow = Workflow>(
     name: string,
-    workflow: Workflow,
+    workflow: W,
     result: WorkflowOutput<W>
   ): void;
   public testCompletion<W extends Workflow = Workflow>(
     name: string,
-    workflow: Workflow,
+    workflow: W,
     input: WorkflowInput<W>,
     result: WorkflowOutput<W>
   ): void;
   public testCompletion<W extends Workflow = Workflow>(
     name: string,
-    workflow: Workflow,
+    workflow: W,
     ...args:
       | [input: WorkflowInput<W>, output: WorkflowOutput<W>]
       | [output: WorkflowOutput<W>]
   ): void {
     const [input, output] = args.length === 1 ? [undefined, args[0]] : args;
 
-    this.test(name, workflow, input, async (executionId) => {
+    this.test(name, workflow, input as any, async (executionId) => {
       const execution = await waitForWorkflowCompletion<W>(executionId);
 
       assertCompleteExecution(execution);
@@ -75,21 +75,21 @@ class TesterContainer {
 
   public testFailed<W extends Workflow = Workflow>(
     name: string,
-    workflow: Workflow,
+    workflow: W,
     result: WorkflowOutput<W>,
     error: string,
     message: string
   ): void;
   public testFailed<W extends Workflow = Workflow>(
     name: string,
-    workflow: Workflow,
+    workflow: W,
     input: WorkflowInput<W>,
     error: string,
     message: string
   ): void;
   public testFailed<W extends Workflow = Workflow>(
     name: string,
-    workflow: Workflow,
+    workflow: W,
     ...args:
       | [input: WorkflowInput<W>, error: string, message: string]
       | [error: string, message: string]
@@ -97,7 +97,7 @@ class TesterContainer {
     const [input, error, message] =
       args.length === 2 ? [undefined, ...args] : args;
 
-    this.test(name, workflow, input, async (executionId) => {
+    this.test(name, workflow, input as any, async (executionId) => {
       const execution = await waitForWorkflowCompletion<W>(executionId);
 
       assertFailureExecution(execution);

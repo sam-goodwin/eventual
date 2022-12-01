@@ -38,14 +38,14 @@ export interface StartExecutionRequest<Input> {
   name?: string;
 }
 
-export type WorkflowOutput<W extends Workflow<any>> = W extends Workflow<
+export type WorkflowOutput<W extends Workflow<any, any>> = W extends Workflow<
   any,
   infer Out
 >
   ? Out
   : never;
 
-export type WorkflowInput<W extends Workflow<any>> = W extends Workflow<
+export type WorkflowInput<W extends Workflow<any, any>> = W extends Workflow<
   infer In,
   any
 >

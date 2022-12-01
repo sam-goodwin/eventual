@@ -1,5 +1,11 @@
 import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
-import { workflow1, workflow2, workflow3, workflow4 } from "./test-service.js";
+import {
+  parentWorkflow,
+  workflow1,
+  workflow2,
+  workflow3,
+  workflow4,
+} from "./test-service.js";
 
 jest.setTimeout(100 * 1000);
 
@@ -20,4 +26,6 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
     "hello chris",
     "hello sam",
   ]);
+
+  testCompletion("parent-child", parentWorkflow, "done");
 });
