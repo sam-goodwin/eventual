@@ -40,7 +40,12 @@ export async function apiKy(
           // host is required by AWS Signature V4: https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
           headers.set("host", url.host);
 
-          const body = await req.text();
+          //We're cloning the request before reading the body since
+          //node-fetch copies an internal flag marking the body as consumed
+          //into our returned request, making it unreadable
+          //So we use a clone to make sure we don't trip that flag on our request to be copied
+          //Can remove this once we target node 18 minimum and no longer need node-fetch
+          const body = await req.clone().text();
           const request = new HttpRequest({
             hostname: url.hostname,
             path: url.pathname,
@@ -51,8 +56,7 @@ export async function apiKy(
             headers: Object.fromEntries(headers.entries()),
           });
           const signedRequest = (await signer.sign(request)) as HttpRequest;
-          return new Request(req.url, {
-            method: req.method,
+          return new Request(req, {
             headers: new Headers(signedRequest.headers),
             body: signedRequest.body,
           });
