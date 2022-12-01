@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+IDENT=$(aws sts get-caller-identity)
+ARN=$(node -pe "JSON.parse(process.argv[1]).Arn" "$IDENT")
+npx cdk deploy --app "ts-node ../aws-runtime-cdk/src/app.ts" --require-approval never --outputs-file cdk.out/outputs.json --context "assumeRole=$ARN"
+
+OUTPUTS_FILE=cdk.out/outputs.json jest

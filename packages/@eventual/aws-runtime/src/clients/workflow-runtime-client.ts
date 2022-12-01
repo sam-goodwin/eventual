@@ -1,6 +1,5 @@
 import {
   DynamoDBClient,
-  QueryCommand,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import {
@@ -20,7 +19,6 @@ import {
   HistoryStateEvent,
   CompleteExecution,
   FailedExecution,
-  Execution,
   SleepScheduled,
   isSleepUntilCommand,
   WorkflowEventType,
@@ -190,21 +188,6 @@ export class AWSWorkflowRuntimeClient
             message: args[1],
           }),
     });
-  }
-
-  async getExecutions(): Promise<Execution[]> {
-    const executions = await this.props.dynamo.send(
-      new QueryCommand({
-        TableName: this.props.tableName,
-        KeyConditionExpression: "pk = :pk",
-        ExpressionAttributeValues: {
-          ":pk": { S: ExecutionRecord.PRIMARY_KEY },
-        },
-      })
-    );
-    return executions.Items!.map((execution) =>
-      createExecutionFromResult(execution as ExecutionRecord)
-    );
   }
 
   async scheduleActivity({

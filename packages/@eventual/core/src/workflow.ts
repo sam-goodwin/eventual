@@ -27,10 +27,10 @@ import {
 import { interpret, WorkflowResult } from "./interpret.js";
 import { StartWorkflowResponse } from "./runtime/workflow-client.js";
 
-export type WorkflowHandler = (
-  input: any,
+export type WorkflowHandler<Input = any, Output = any> = (
+  input: Input,
   context: Context
-) => Promise<any> | Program;
+) => Promise<Output> | Program<Output>;
 
 export interface StartExecutionRequest<Input> {
   /**
@@ -45,15 +45,29 @@ export interface StartExecutionRequest<Input> {
   name?: string;
 }
 
+export type WorkflowOutput<W extends Workflow<any>> = W extends Workflow<
+  any,
+  infer Out
+>
+  ? Out
+  : never;
+
+export type WorkflowInput<W extends Workflow<any>> = W extends Workflow<
+  infer In,
+  any
+>
+  ? In
+  : never;
+
 /**
  * A {@link Workflow} is a long-running process that orchestrates calls
  * to other services in a durable and observable way.
  */
-export interface Workflow<F extends WorkflowHandler = WorkflowHandler> {
+export interface Workflow<Input = any, Output = any> {
   /**
    * Globally unique ID of this {@link Workflow}.
    */
-  name: string;
+  workflowName: string;
   /**
    * Invokes the {@link Workflow} from within another workflow.
    *
@@ -63,22 +77,22 @@ export interface Workflow<F extends WorkflowHandler = WorkflowHandler> {
    *
    * To start a workflow from another environment, use {@link start}.
    */
-  (input: Parameters<F>[0]): ReturnType<F>;
+  (input: Input): Output;
 
   /**
    * Starts a workflow execution
    */
   startExecution(
-    request: StartExecutionRequest<Parameters<F>[0]>
+    request: StartExecutionRequest<Input>
   ): Promise<StartWorkflowResponse>;
 
   /**
    * @internal - this is the internal DSL representation that produces a {@link Program} instead of a Promise.
    */
   definition: (
-    input: Parameters<F>[0],
+    input: Input,
     context: Context
-  ) => Program<AwaitedEventual<ReturnType<F>>>;
+  ) => Program<AwaitedEventual<Output>>;
 }
 
 const workflows = new Map<string, Workflow>();
@@ -107,19 +121,21 @@ export function lookupWorkflow(name: string): Workflow | undefined {
  * @param name a globally unique ID for this workflow.
  * @param definition the workflow definition.
  */
-export function workflow<F extends WorkflowHandler>(
+export function workflow<Input = any, Output = any>(
   name: string,
-  definition: F
-): Workflow<F> {
+  definition: WorkflowHandler<Input, Output>
+): Workflow<Input, Output> {
   if (workflows.has(name)) {
     throw new Error(`workflow with name '${name}' already exists`);
   }
-  const workflow: Workflow<F> = ((input?: any) =>
+  const workflow: Workflow<Input, Output> = ((input?: any) =>
     registerActivity({
       [EventualSymbol]: EventualKind.WorkflowCall,
       name,
       input,
     })) as any;
+
+  workflow.workflowName = name;
 
   workflow.startExecution = async function (input) {
     return {
@@ -131,7 +147,7 @@ export function workflow<F extends WorkflowHandler>(
     };
   };
 
-  workflow.definition = definition as Workflow<F>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
+  workflow.definition = definition as Workflow<Input, Output>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
   workflows.set(name, workflow);
   return workflow;
 }

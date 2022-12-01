@@ -1,4 +1,5 @@
 import { HistoryStateEvent } from "../events.js";
+import { Execution, ExecutionStatus } from "../execution.js";
 
 export interface WorkflowClient {
   /**
@@ -18,6 +19,12 @@ export interface WorkflowClient {
     executionId: string,
     ...events: HistoryStateEvent[]
   ): Promise<void>;
+
+  getExecutions(props: {
+    statuses?: ExecutionStatus[];
+    workflowName?: string;
+  }): Promise<Execution[]>;
+  getExecution(executionId: string): Promise<Execution | undefined>;
 }
 
 export interface StartWorkflowRequest {
