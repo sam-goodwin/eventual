@@ -22,7 +22,7 @@ Everyone wants to build faster, of course, and Eventual's powerful primitives ce
 
 (idea: asymptote diagram of productivity)
 
-To dive deeper check out the following resources:
+We go in to more detail about how all of this works in [Part 2]() of this blog, so be sure to check that out! You can also get started immediately or learn more by reading the below resources. We'd love to hear from you in our Discord and GitHub, and please don't forget to give us a star ⭐️ on GitHub!
 
 1. [Blog: In-depth overview of Eventual's concepts]()
 2. [Getting Started]()
