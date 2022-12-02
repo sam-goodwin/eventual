@@ -11,16 +11,16 @@ import {
 import { KyInstance } from "../types.js";
 import fs from "fs/promises";
 import getStdin from "get-stdin";
-import { apiAction, apiOptions } from "../api-action.js";
 import { Argv } from "yargs";
+import { serviceAction, setServiceOptions } from "../service-action.js";
+import { encodeExecutionId } from "@eventual/aws-runtime";
 
 export const start = (yargs: Argv) =>
   yargs.command(
-    "start <workflow> [inputFile]",
+    "start <service> <workflow> [inputFile]",
     "Start an execution",
     (yargs) =>
-      yargs
-        .options(apiOptions)
+      setServiceOptions(yargs)
         .option("tail", {
           alias: "t",
           describe: "Tail execution",
@@ -39,7 +39,7 @@ export const start = (yargs: Argv) =>
           describe: "Input data as json string",
           type: "string",
         }),
-    apiAction(async (spinner, ky, { workflow, input, inputFile, tail }) => {
+    serviceAction(async (spinner, ky, { workflow, input, inputFile, tail }) => {
       spinner.start(`Executing ${workflow}\n`);
       let inputJSON = await getInputJson(inputFile, input);
       const { executionId } = await ky
@@ -54,12 +54,7 @@ export const start = (yargs: Argv) =>
           spinner.start(`${executionId} in progress\n`);
         }
         async function pollEvents() {
-          const newEvents = await getNewEvents(
-            events,
-            ky,
-            workflow,
-            executionId
-          );
+          const newEvents = await getNewEvents(events, ky, executionId);
           newEvents.forEach((ev) => {
             let meta: string | undefined;
             if (isActivityCompleted(ev)) {
@@ -106,11 +101,10 @@ export const start = (yargs: Argv) =>
 async function getNewEvents(
   existingEvents: WorkflowEvent[],
   ky: KyInstance,
-  workflowName: string,
   executionId: string
 ) {
   const updatedEvents = await ky(
-    `workflows/${workflowName}/executions/${executionId}`
+    `executions/${encodeExecutionId(executionId)}/history`
   ).json<WorkflowEvent[]>();
   if (updatedEvents.length == 0) {
     //Unfortunately if the execution id is wrong, our dynamo query is just going to return an empty record set

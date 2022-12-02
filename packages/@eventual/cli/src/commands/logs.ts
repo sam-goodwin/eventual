@@ -1,9 +1,10 @@
 import * as cwLogs from "@aws-sdk/client-cloudwatch-logs";
-import * as cfn from "@aws-sdk/client-cloudformation";
 import ora, { Ora } from "ora";
 import { Argv } from "yargs";
 import chalk from "chalk";
 import { FilteredLogEvent } from "@aws-sdk/client-cloudwatch-logs";
+import { getServiceData } from "../service-data.js";
+import { setServiceOptions } from "../service-action.js";
 
 /**
  * Command to list logs for a workflow or execution id
@@ -15,18 +16,21 @@ import { FilteredLogEvent } from "@aws-sdk/client-cloudwatch-logs";
  */
 export const logs = (yargs: Argv) =>
   yargs.command(
-    "logs <workflow> [execution]",
-    "Get logs",
+    "logs <service>",
+    "Get logs for a given service, optionally filtered by a given workflow or execution",
     (yargs) =>
-      yargs
-        .positional("workflow", {
+      setServiceOptions(yargs)
+        .option("workflow", {
+          alias: "w",
           describe: "Workflow name",
           type: "string",
-          demandOption: true,
+          conflicts: "execution",
         })
-        .positional("execution", {
+        .option("execution", {
+          alias: "e",
           describe: "Execution id",
           type: "string",
+          conflicts: "workflow",
         })
         .option("since", {
           describe:
@@ -38,32 +42,23 @@ export const logs = (yargs: Argv) =>
           default: false,
           type: "boolean",
         }),
-    async ({ workflow, execution, since, tail }) => {
+    async ({ service, workflow, execution, region, since, tail }) => {
       const startTime = getStartTime(since as string | number);
       const spinner = ora("Loading logs");
-      const cfnClient = new cfn.CloudFormationClient({});
-      const { Exports } = await cfnClient.send(new cfn.ListExportsCommand({}));
-      const workflowData = Exports?.find(
-        (v) => v.Name === `eventual-workflow-data:${workflow}`
-      )?.Value;
-      if (!workflowData) {
-        spinner.fail(
-          "Couldn't fetch workflow metadata. Have you deployed the workflow?"
-        );
-        process.exit(1);
-      }
+      const { functions } = await getServiceData(service, region);
       const cloudwatchLogsClient = new cwLogs.CloudWatchLogsClient({});
-      const { functions } = JSON.parse(workflowData);
       let nextInputs: FunctionLogInput[] = [
         {
           functionName: functions.orchestrator,
           friendlyName: "orchestrator",
+          workflow,
           execution,
           startTime,
         },
         {
           functionName: functions.activityWorker,
           friendlyName: "activityWorker",
+          workflow,
           execution,
           startTime,
         },
@@ -125,6 +120,7 @@ export interface FunctionLogInput {
   functionName: string;
   friendlyName: string;
   startTime?: number;
+  workflow?: string;
   execution?: string;
   nextToken?: string;
 }
@@ -257,10 +253,23 @@ export async function getLogs(
   const output = await client.send(
     new cwLogs.FilterLogEventsCommand({
       logGroupName: `/aws/lambda/${fn.functionName}`,
-      filterPattern: fn.execution && `{ $.executionId = "${fn.execution}" }`,
+      filterPattern: filterPattern(fn),
       startTime: fn.startTime,
       nextToken: fn.nextToken,
     })
   );
   return { events: output.events ?? [], nextToken: output.nextToken };
+}
+
+function filterPattern({
+  workflow,
+  execution,
+}: FunctionLogInput): string | undefined {
+  if (workflow) {
+    return `{ $.workflowName = "${workflow}" }`;
+  } else if (execution) {
+    return `{ $.executionId = "${execution}" }`;
+  } else {
+    return undefined;
+  }
 }

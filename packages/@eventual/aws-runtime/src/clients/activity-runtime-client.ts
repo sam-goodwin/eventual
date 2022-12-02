@@ -3,7 +3,7 @@ import {
   DynamoDBClient,
   PutItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import type eventual from "@eventual/core";
+import type * as eventual from "@eventual/core";
 
 export interface AWSActivityRuntimeClientProps {
   dynamo: DynamoDBClient;

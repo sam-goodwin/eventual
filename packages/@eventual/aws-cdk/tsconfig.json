@@ -7,7 +7,7 @@
     "rootDir": "src",
     "typeRoots": ["./node_modules/@types"]
   },
-  "include": ["src"],
+  "include": ["src", "src/package.json"],
   "exclude": ["lib", "node_modules"],
   "references": [
     { "path": "../aws-runtime/tsconfig.cjs.json" },

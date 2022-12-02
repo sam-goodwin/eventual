@@ -1,9 +1,6 @@
 {
   "extends": "../../../tsconfig-base",
   "compilerOptions": {
-    "module": "ESNext",
-    "target": "esnext",
-    "moduleResolution": "NodeNext",
     "outDir": "lib/esm",
     "declaration": true,
     "inlineSourceMap": true,

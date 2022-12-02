@@ -36,7 +36,7 @@ import { ActivityWorkerRequest } from "../activity.js";
 import { createEvent } from "./execution-history-client.js";
 import { TimerRequestType } from "../handlers/types.js";
 import { AWSTimerClient } from "./timer-client.js";
-import eventual from "@eventual/core";
+import * as eventual from "@eventual/core";
 
 export interface AWSWorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;
@@ -54,7 +54,7 @@ export class AWSWorkflowRuntimeClient
 {
   constructor(private props: AWSWorkflowRuntimeClientProps) {}
 
-  async getHistory(executionId: string) {
+  async getHistory(executionId: string): Promise<HistoryStateEvent[]> {
     try {
       // get current history from s3
       const historyObject = await this.props.s3.send(

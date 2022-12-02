@@ -1,27 +1,21 @@
-import { apiAction, apiOptions } from "../api-action.js";
+import { encodeExecutionId } from "@eventual/aws-runtime";
 import { Argv } from "yargs";
+import { serviceAction, setServiceOptions } from "../service-action.js";
 
 export const history = (yargs: Argv) =>
   yargs.command(
-    "history <workflow> <execution>",
+    "history <service> <execution>",
     "Get execution history",
     (yargs) =>
-      yargs
-        .options(apiOptions)
-        .positional("workflow", {
-          describe: "Workflow name",
-          type: "string",
-          demandOption: true,
-        })
-        .positional("execution", {
-          describe: "Execution Id",
-          type: "string",
-          demandOption: true,
-        }),
-    apiAction(async (spinner, ky, { workflow, execution }) => {
+      setServiceOptions(yargs).positional("execution", {
+        describe: "Execution Id",
+        type: "string",
+        demandOption: true,
+      }),
+    serviceAction(async (spinner, ky, { execution }) => {
       spinner.start("Getting execution history");
       const events = await ky
-        .get(`workflows/${workflow}/executions/${execution}`)
+        .get(`executions/${encodeExecutionId(execution)}}/history`)
         .json();
       spinner.succeed();
       console.log(events);

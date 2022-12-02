@@ -1,6 +1,6 @@
 import { Execution } from "@eventual/core";
 import { Argv } from "yargs";
-import { apiAction, apiOptions } from "../api-action.js";
+import { serviceAction, setServiceOptions } from "../service-action.js";
 import { styledConsole } from "../styled-console.js";
 
 type KeysOfUnion<T> = T extends T ? keyof T : never;
@@ -10,22 +10,20 @@ const sortKeys = ["id", "endTime", "result", "startTime", "status"] as const;
 
 export const executions = (yargs: Argv) =>
   yargs.command(
-    "executions <workflow>",
-    "List executions of a workflow",
+    "executions <service>",
+    "List executions of a service, or optionally, a workflow",
     (yargs) =>
-      yargs
-        .options(apiOptions)
+      setServiceOptions(yargs)
         .option("sort", {
           alias: "s",
           describe: "Sort by field",
           choices: sortKeys,
         })
-        .positional("workflow", {
+        .option("workflow", {
           describe: "Workflow name",
           type: "string",
-          demandOption: true,
         }),
-    apiAction(async (spinner, ky, { workflow, sort }) => {
+    serviceAction(async (spinner, ky, { workflow, sort }) => {
       if (sort && !sortKeys.includes(sort)) {
         styledConsole.error("Invalid sort");
         styledConsole.error(`Valid options are: ${sortKeys.join(" | ")}`);

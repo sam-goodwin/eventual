@@ -5,6 +5,7 @@ import {
   EventualSymbol,
 } from "./eventual.js";
 import {
+  workflows,
   getWorkflowClient,
   registerActivity,
   resetActivityCollector,
@@ -81,10 +82,8 @@ export interface Workflow<F extends WorkflowHandler = WorkflowHandler> {
   ) => Program<AwaitedEventual<ReturnType<F>>>;
 }
 
-const workflows = new Map<string, Workflow>();
-
 export function lookupWorkflow(name: string): Workflow | undefined {
-  return workflows.get(name);
+  return workflows().get(name);
 }
 
 /**
@@ -111,7 +110,7 @@ export function workflow<F extends WorkflowHandler>(
   name: string,
   definition: F
 ): Workflow<F> {
-  if (workflows.has(name)) {
+  if (workflows().has(name)) {
     throw new Error(`workflow with name '${name}' already exists`);
   }
   const workflow: Workflow<F> = ((input?: any) =>
@@ -132,7 +131,7 @@ export function workflow<F extends WorkflowHandler>(
   };
 
   workflow.definition = definition as Workflow<F>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
-  workflows.set(name, workflow);
+  workflows().set(name, workflow);
   return workflow;
 }
 

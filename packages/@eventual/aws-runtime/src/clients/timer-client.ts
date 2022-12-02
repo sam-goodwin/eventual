@@ -13,7 +13,7 @@ import {
   ScheduleForwarderRequest,
   TimerRequest,
 } from "../handlers/types.js";
-import type eventual from "@eventual/core";
+import type * as eventual from "@eventual/core";
 
 export interface AWSTimerClientProps {
   readonly scheduler: SchedulerClient;
