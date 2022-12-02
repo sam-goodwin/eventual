@@ -108,7 +108,8 @@ async function build({
     // external: ["@aws-sdk"],
     platform: "node",
     format: "esm",
-    target: "es2019",
+    //Target for node 16
+    target: "es2020",
     metafile: true,
     bundle: true,
     entryPoints: [path.resolve(entry)],

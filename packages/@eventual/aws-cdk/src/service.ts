@@ -193,7 +193,6 @@ export class Service extends Construct implements IGrantable {
 
     const outDir = path.join(".eventual", this.node.addr);
 
-    console.log(outDir);
     execSync(
       `node ${require.resolve(
         "@eventual/compiler/bin/eventual-bundle.js"
