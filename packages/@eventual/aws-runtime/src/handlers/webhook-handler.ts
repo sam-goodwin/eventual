@@ -1,7 +1,7 @@
 import { createRouter, getHooks, registerWorkflowClient } from "@eventual/core";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
 import itty from "itty-router";
-import { createWorkflowClient } from "../clients/create";
+import { createWorkflowClient } from "../clients/create.js";
 
 // TODO: remove once we can upgrade to Node 18
 import "./fetch-polyfill";

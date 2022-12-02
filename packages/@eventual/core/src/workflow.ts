@@ -1,4 +1,4 @@
-import { clearEventualCollector, getWorkflowClient } from "./global.js";
+import { workflows, clearEventualCollector, getWorkflowClient } from "./global.js";
 import type { Program } from "./interpret.js";
 import type { Context, WorkflowContext } from "./context.js";
 import { DeterminismError } from "./error.js";
@@ -88,10 +88,8 @@ export interface Workflow<Input = any, Output = any> {
   ) => Program<AwaitedEventual<Output>>;
 }
 
-const workflows = new Map<string, Workflow>();
-
 export function lookupWorkflow(name: string): Workflow | undefined {
-  return workflows.get(name);
+  return workflows().get(name);
 }
 
 /**
@@ -118,7 +116,7 @@ export function workflow<Input = any, Output = any>(
   name: string,
   definition: WorkflowHandler<Input, Output>
 ): Workflow<Input, Output> {
-  if (workflows.has(name)) {
+  if (workflows().has(name)) {
     throw new Error(`workflow with name '${name}' already exists`);
   }
   const workflow: Workflow<Input, Output> = ((input?: any) =>
@@ -137,7 +135,7 @@ export function workflow<Input = any, Output = any>(
   };
 
   workflow.definition = definition as Workflow<Input, Output>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
-  workflows.set(name, workflow);
+  workflows().set(name, workflow);
   return workflow;
 }
 

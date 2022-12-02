@@ -133,7 +133,7 @@ async function orchestrateExecution(
 ) {
   console.log(executionId, records);
   const executionLogger = logger.createChild({
-    persistentLogAttributes: { executionId },
+    persistentLogAttributes: { workflowName: workflow.name, executionId },
   });
   const metrics = createMetricsLogger();
   metrics.resetDimensions(false);
@@ -225,7 +225,7 @@ async function orchestrateExecution(
     );
 
     executionLogger.info(`Found ${newCommands.length} new commands.`);
-    ``;
+
     const commandEvents = await timed(
       metrics,
       OrchestratorMetrics.InvokeCommandsDuration,
@@ -356,7 +356,6 @@ async function orchestrateExecution(
         execution.status === ExecutionStatus.COMPLETE ? 0 : 1,
         Unit.Count
       );
-      executionLogger.info("logging for execution" + JSON.stringify(execution));
       metrics.putMetric(
         OrchestratorMetrics.ExecutionTotalDuration,
         new Date(execution.endTime).getTime() -

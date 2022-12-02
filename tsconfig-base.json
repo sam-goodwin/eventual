@@ -1,5 +1,8 @@
 {
   "compilerOptions": {
+    "module": "esnext",
+    "target": "ES2019",
+    "moduleResolution": "NodeNext",
     "outDir": "lib",
     "baseUrl": ".",
     "composite": true,
@@ -10,7 +13,6 @@
     "inlineSourceMap": true,
     "inlineSources": true,
     "lib": ["dom", "ES2022"],
-    "module": "CommonJS",
     "noEmitOnError": false,
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": true,
@@ -21,7 +23,6 @@
     "strictNullChecks": true,
     "strictPropertyInitialization": true,
     "stripInternal": true,
-    "target": "ES2019",
     "declarationMap": true,
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,

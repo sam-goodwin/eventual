@@ -1,9 +1,7 @@
-export const workflows = JSON.parse(process.env.WORKFLOWS!) as Record<
-  string,
-  WorkflowProperties
->;
+export const getService = () =>
+  JSON.parse(process.env.SERVICE!) as ServiceProperties;
 
-export interface WorkflowProperties {
+export interface ServiceProperties {
   name: string;
   tableName: string;
   workflowQueueUrl: string;

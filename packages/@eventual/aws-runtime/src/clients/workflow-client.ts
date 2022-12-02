@@ -15,14 +15,15 @@ import {
   WorkflowEventType,
   WorkflowStarted,
   WorkflowTask,
+  WorkflowClient,
+  StartWorkflowRequest,
+  SendSignalRequest,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 import {
   AWSExecutionHistoryClient,
   createEvent,
 } from "./execution-history-client.js";
-
-import type eventual from "@eventual/core";
 import { formatExecutionId } from "../execution-id.js";
 
 export interface AWSWorkflowClientProps {
@@ -33,7 +34,7 @@ export interface AWSWorkflowClientProps {
   readonly executionHistory: AWSExecutionHistoryClient;
 }
 
-export class AWSWorkflowClient implements eventual.WorkflowClient {
+export class AWSWorkflowClient implements WorkflowClient {
   constructor(private props: AWSWorkflowClientProps) {}
 
   /**
@@ -48,7 +49,7 @@ export class AWSWorkflowClient implements eventual.WorkflowClient {
     input,
     parentExecutionId,
     seq,
-  }: eventual.StartWorkflowRequest<W>) {
+  }: StartWorkflowRequest<W>) {
     const executionId = formatExecutionId(workflowName, executionName);
     console.log("execution input:", input);
 
@@ -145,7 +146,7 @@ export class AWSWorkflowClient implements eventual.WorkflowClient {
       : undefined;
   }
 
-  public async sendSignal(request: eventual.SendSignalRequest): Promise<void> {
+  public async sendSignal(request: SendSignalRequest): Promise<void> {
     await this.submitWorkflowTask(
       request.executionId,
       createEvent<SignalReceived>(
