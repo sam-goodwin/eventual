@@ -1,8 +1,6 @@
 {
-  "extends": "../../tsconfig-base",
+  "extends": "../../tsconfig-base.cjs",
   "compilerOptions": {
-    "module": "CommonJS",
-    "moduleResolution": "Node",
     "outDir": "lib",
     "declaration": true,
     "inlineSourceMap": true,
