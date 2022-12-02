@@ -12,6 +12,8 @@ export const workflows = (yargs: Argv) =>
       const workflows = await ky.get(`workflows`).json<string[]>();
       spinner.stop();
       styledConsole.success("Workflows");
-      console.log(workflows);
+      workflows.forEach((workflow) => {
+        console.log(workflow);
+      });
     })
   );
