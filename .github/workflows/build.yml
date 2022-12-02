@@ -32,4 +32,4 @@ jobs:
           aws-region: us-east-1
           role-duration-seconds: 3600
       - name: Run Runtime tests
-        run: pnpm -r --filter tests-runtime run test:runtime
+        run: pnpm -r --filter tests-runtime run test:runtime-deploy
