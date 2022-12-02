@@ -4,8 +4,9 @@
   "version": "0.0.0",
   "main": "lib/test-service.js",
   "scripts": {
-    "test:runtime": "OUTPUTS_FILE=cdk.out/outputs.json ./scripts/deploy && jest --passWithNoTests",
-    "test:no-deploy": "OUTPUTS_FILE=cdk.out/outputs.json jest --passWithNoTests"
+    "test:runtime": "OUTPUTS_FILE=cdk.out/outputs.json jest --passWithNoTests",
+    "deploy:runtime": "OUTPUTS_FILE=cdk.out/outputs.json ./scripts/deploy",
+    "test:runtime-deploy": "pnpm deploy && pnpm test:runtime"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.214.0",
