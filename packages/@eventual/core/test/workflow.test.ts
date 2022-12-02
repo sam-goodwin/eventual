@@ -1,13 +1,13 @@
-import { Program } from "../src/interpret";
-import { createActivityCall } from "../src/activity-call";
+import { Program } from "../src/interpret.js";
+import { createActivityCall } from "../src/activity-call.js";
 import {
   ActivityCompleted,
   ActivityScheduled,
   WorkflowEventType,
   WorkflowStarted,
-} from "../src/events";
-import { progressWorkflow, workflow } from "../src/workflow";
-import { WorkflowContext } from "../src/context";
+} from "../src/events.js";
+import { progressWorkflow, workflow } from "../src/workflow.js";
+import { WorkflowContext } from "../src/context.js";
 
 const myWorkflow = workflow("myWorkflow", function* (event: any): Program<any> {
   yield createActivityCall("my-activity", [event]);

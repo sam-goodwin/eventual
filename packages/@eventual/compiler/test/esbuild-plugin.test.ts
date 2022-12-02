@@ -2,7 +2,7 @@ import "jest";
 
 import path from "path";
 import esbuild from "esbuild";
-import { eventualESPlugin } from "../src/esbuild-plugin";
+import { eventualESPlugin } from "../src/esbuild-plugin.js";
 
 describe("esbuild-plugin", () => {
   test("ts workflow", async () => {

@@ -19,7 +19,7 @@ import { ulid } from "ulidx";
 import { formatExecutionId } from "../execution-id.js";
 import { AWSExecutionHistoryClient } from "./execution-history-client.js";
 
-import type eventual from "@eventual/core";
+import type * as eventual from "@eventual/core";
 
 export interface AWSWorkflowClientProps {
   readonly dynamo: DynamoDBClient;

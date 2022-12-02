@@ -11,7 +11,7 @@ import {
   isHistoryEvent,
   WorkflowEvent,
 } from "@eventual/core";
-import type eventual from "@eventual/core";
+import type * as eventual from "@eventual/core";
 
 import { ulid } from "ulidx";
 
