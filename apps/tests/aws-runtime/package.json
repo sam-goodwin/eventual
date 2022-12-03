@@ -6,7 +6,7 @@
   "scripts": {
     "test:runtime": "OUTPUTS_FILE=cdk.out/outputs.json jest --passWithNoTests",
     "deploy:runtime": "OUTPUTS_FILE=cdk.out/outputs.json ./scripts/deploy",
-    "test:runtime-deploy": "pnpm deploy && pnpm test:runtime"
+    "test:runtime-deploy": "pnpm -r --filter tests-runtime run deploy:runtime && pnpm -r --filter tests-runtime run test:runtime"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.214.0",
