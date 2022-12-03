@@ -32,6 +32,8 @@ export enum WorkflowEventType {
   WaitForSignalTimedOut = "WaitForSignalTimedOut",
   SignalReceived = "SignalReceived",
   SignalSent = "SignalSent",
+  ConditionStarted = "ConditionStarted",
+  ConditionTimedOut = "ConditionTimedOut",
 }
 
 /**
@@ -50,7 +52,8 @@ export type ScheduledEvent =
   | ChildWorkflowScheduled
   | SleepScheduled
   | WaitForSignalStarted
-  | SignalSent;
+  | SignalSent
+  | ConditionStarted;
 
 export type CompletedEvent =
   | ActivityCompleted
@@ -60,7 +63,8 @@ export type CompletedEvent =
 export type FailedEvent =
   | ActivityFailed
   | ChildWorkflowFailed
-  | WaitForSignalTimedOut;
+  | WaitForSignalTimedOut
+  | ConditionTimedOut;
 
 /**
  * Events used by the workflow to replay an execution.
@@ -299,12 +303,33 @@ export function isSignalSent(event: WorkflowEvent): event is SignalSent {
   return event.type === WorkflowEventType.SignalSent;
 }
 
+export interface ConditionStarted extends HistoryEventBase {
+  type: WorkflowEventType.ConditionStarted;
+}
+
+export function isConditionStarted(
+  event: WorkflowEvent
+): event is ConditionStarted {
+  return event.type === WorkflowEventType.ConditionStarted;
+}
+
+export interface ConditionTimedOut extends HistoryEventBase {
+  type: WorkflowEventType.ConditionTimedOut;
+}
+
+export function isConditionTimedOut(
+  event: WorkflowEvent
+): event is ConditionTimedOut {
+  return event.type === WorkflowEventType.ConditionTimedOut;
+}
+
 export const isScheduledEvent = or(
   isActivityScheduled,
   isChildWorkflowScheduled,
   isSleepScheduled,
   isWaitForSignalStarted,
-  isSignalSent
+  isSignalSent,
+  isConditionStarted
 );
 
 export const isCompletedEvent = or(
@@ -316,7 +341,8 @@ export const isCompletedEvent = or(
 export const isFailedEvent = or(
   isActivityFailed,
   isChildWorkflowFailed,
-  isWaitForSignalTimedOut
+  isWaitForSignalTimedOut,
+  isConditionTimedOut
 );
 
 export function assertEventType<T extends WorkflowEvent>(

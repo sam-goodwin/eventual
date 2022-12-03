@@ -25,6 +25,8 @@ import {
   isWaitForSignalTimedOut,
   ScheduledEvent,
   isSignalSent,
+  isConditionStarted,
+  isConditionTimedOut,
 } from "./events.js";
 import {
   Result,
@@ -49,6 +51,7 @@ import {
 import { isSendSignalCall } from "./calls/send-signal-call.js";
 import { isWorkflowCall } from "./calls/workflow-call.js";
 import { clearEventualCollector, setEventualCollector } from "./global.js";
+import { isConditionCall } from "./calls/condition-call.js";
 
 export interface WorkflowResult<T = any> {
   /**
@@ -201,6 +204,12 @@ export function interpret<Return>(
         seq: call.seq!,
         payload: call.payload,
       };
+    } else if (isConditionCall(call)) {
+      return {
+        kind: CommandType.StartCondition,
+        seq: call.seq!,
+        timeoutSeconds: call.timeoutSeconds,
+      };
     } else if (isRegisterSignalHandlerCall(call)) {
       return [];
     }
@@ -232,6 +241,12 @@ export function interpret<Return>(
         if (isCommandCall(activity)) {
           if (isWaitForSignalCall(activity)) {
             subscribeToSignal(activity.signalId, activity);
+          } else if (isConditionCall(activity)) {
+            // if the condition is resolvable, don't add it to the calls.
+            const result = tryResolveResult(activity);
+            if (result) {
+              return activity;
+            }
           } else if (isRegisterSignalHandlerCall(activity)) {
             subscribeToSignal(activity.signalId, activity);
             // signal handler does not emit a call/command. It is only internal.
@@ -362,6 +377,15 @@ export function interpret<Return>(
 
   function tryResolveResult(activity: Eventual): Result | undefined {
     if (isCommandCall(activity)) {
+      if (isConditionCall(activity)) {
+        if (activity.result) {
+          return activity.result;
+        } else if (activity.predicate()) {
+          activity.result = Result.resolved(true);
+          return activity.result;
+        }
+        return undefined;
+      }
       return activity.result;
     } else if (isChain(activity)) {
       if (activity.result) {
@@ -431,6 +455,8 @@ export function interpret<Return>(
       : isWaitForSignalTimedOut(event)
       ? // TODO: should this throw a specific error type?
         Result.failed("Wait For Signal Timed Out")
+      : isConditionTimedOut(event)
+      ? Result.failed("Condition Timed Out")
       : Result.failed(event.error);
   }
 }
@@ -448,6 +474,8 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
     return isWaitForSignalCall(call) && event.signalId == call.signalId;
   } else if (isSignalSent(event)) {
     return isSendSignalCall(call) && event.signalId === call.signalId;
+  } else if (isConditionStarted(event)) {
+    return isConditionCall(call);
   }
   return assertNever(event);
 }

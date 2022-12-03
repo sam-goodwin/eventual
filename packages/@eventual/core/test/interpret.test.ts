@@ -11,7 +11,9 @@ import {
   SignalTargetType,
   sleepFor,
   sleepUntil,
-  workflow,
+  Workflow,
+  workflow as _workflow,
+  WorkflowHandler,
   WorkflowResult,
 } from "../src/index.js";
 import { createSleepUntilCall } from "../src/calls/sleep-call.js";
@@ -34,11 +36,15 @@ import {
   workflowScheduled,
   createSendSignalCommand,
   signalSent,
+  conditionStarted,
+  createStartConditionCommand,
+  conditionTimedOut,
 } from "./command-util.js";
 import { createWaitForSignalCall } from "../src/calls/wait-for-signal-call.js";
 import { createRegisterSignalHandlerCall } from "../src/calls/signal-handler-call.js";
 import { createWorkflowCall } from "../src/calls/workflow-call.js";
 import { createSendSignalCall } from "../src/calls/send-signal-call.js";
+import { createConditionCall } from "../src/calls/condition-call.js";
 
 function* myWorkflow(event: any): Program<any> {
   try {
@@ -70,6 +76,15 @@ const context: Context = {
     startTime: "",
   },
 };
+
+const workflow = (() => {
+  let n = 0;
+  return <Input, Output>(
+    handler: WorkflowHandler<Input, Output>
+  ): Workflow<Input, Output> => {
+    return _workflow(`wf${n++}`, handler);
+  };
+})();
 
 test("no history", () => {
   expect(interpret(myWorkflow(event), [])).toMatchObject(<WorkflowResult>{
@@ -776,17 +791,17 @@ test("generator function returns an ActivityCall", () => {
 });
 
 test("workflow calling other workflow", () => {
-  workflow("wf1", function* () {
+  const wf1 = workflow(function* () {
     yield createActivityCall("call-a", []);
   });
-  const wf2 = workflow("wf2", function* (): any {
+  const wf2 = workflow(function* (): any {
     const result = yield createWorkflowCall("wf1") as any;
     yield createActivityCall("call-b", []);
     return result;
   });
 
   expect(interpret(wf2.definition(undefined, context), [])).toMatchObject({
-    commands: [createScheduledWorkflowCommand("wf1", undefined, 0)],
+    commands: [createScheduledWorkflowCommand(wf1.workflowName, undefined, 0)],
   });
 
   expect(
@@ -839,7 +854,7 @@ test("workflow calling other workflow", () => {
 
 describe("signals", () => {
   describe("wait for signal", () => {
-    const wf = workflow("wf", function* (): any {
+    const wf = workflow(function* (): any {
       const result = yield createWaitForSignalCall("MySignal", 100 * 1000);
 
       return result ?? "done";
@@ -939,7 +954,7 @@ describe("signals", () => {
     });
 
     test("multiple of the same signal", () => {
-      const wf = workflow("wf3", function* () {
+      const wf = workflow(function* () {
         const wait1 = createWaitForSignalCall("MySignal", 100 * 1000);
         const wait2 = createWaitForSignalCall("MySignal", 100 * 1000);
 
@@ -960,7 +975,7 @@ describe("signals", () => {
   });
 
   describe("signal handler", () => {
-    const wf = workflow("wf4", function* () {
+    const wf = workflow(function* () {
       let mySignalHappened = 0;
       let myOtherSignalHappened = 0;
       let myOtherSignalCompleted = 0;
@@ -1185,7 +1200,7 @@ describe("signals", () => {
 
   describe("send signal", () => {
     const mySignal = new Signal("MySignal");
-    const wf = workflow("wf6", function* (): any {
+    const wf = workflow(function* (): any {
       createSendSignalCall(
         { type: SignalTargetType.Execution, executionId: "someExecution" },
         mySignal.id
@@ -1270,6 +1285,115 @@ describe("signals", () => {
         result: Result.resolved("done"),
         commands: [],
       });
+    });
+  });
+});
+
+describe("condition", () => {
+  test("already true condition does not emit events", () => {
+    const wf = workflow(function* (): any {
+      yield createConditionCall(() => true);
+    });
+
+    expect(
+      interpret(wf.definition(undefined, context), [])
+    ).toMatchObject<WorkflowResult>({
+      commands: [],
+    });
+  });
+
+  test("false condition emits events", () => {
+    const wf = workflow(function* (): any {
+      yield createConditionCall(() => false);
+    });
+
+    expect(
+      interpret(wf.definition(undefined, context), [])
+    ).toMatchObject<WorkflowResult>({
+      commands: [createStartConditionCommand(0)],
+    });
+  });
+
+  test("false condition emits events with timeout", () => {
+    const wf = workflow(function* (): any {
+      yield createConditionCall(() => false, 100);
+    });
+
+    expect(
+      interpret(wf.definition(undefined, context), [])
+    ).toMatchObject<WorkflowResult>({
+      commands: [createStartConditionCommand(0, 100)],
+    });
+  });
+
+  test("false condition does not remit", () => {
+    const wf = workflow(function* (): any {
+      yield createConditionCall(() => false, 100);
+    });
+
+    expect(
+      interpret(wf.definition(undefined, context), [conditionStarted(0)])
+    ).toMatchObject<WorkflowResult>({
+      commands: [],
+    });
+  });
+
+  const signalConditionFlow = workflow(function* (): any {
+    let yes = false;
+    createRegisterSignalHandlerCall("Yes", () => {
+      yes = true;
+    });
+    yield createConditionCall(() => yes);
+    return "done";
+  });
+
+  test("trigger success", () => {
+    expect(
+      interpret(signalConditionFlow.definition(undefined, context), [
+        conditionStarted(0),
+        signalReceived("Yes"),
+      ])
+    ).toMatchObject<WorkflowResult>({
+      result: Result.resolved("done"),
+      commands: [],
+    });
+  });
+
+  test("trigger timeout", () => {
+    expect(
+      interpret(signalConditionFlow.definition(undefined, context), [
+        conditionStarted(0),
+        conditionTimedOut(0),
+      ])
+    ).toMatchObject<WorkflowResult>({
+      result: Result.failed("Condition Timed Out"),
+      commands: [],
+    });
+  });
+
+  test("trigger success before timeout", () => {
+    expect(
+      interpret(signalConditionFlow.definition(undefined, context), [
+        conditionStarted(0),
+        signalReceived("Yes"),
+        conditionTimedOut(0),
+      ])
+    ).toMatchObject<WorkflowResult>({
+      result: Result.resolved("done"),
+      commands: [],
+    });
+  });
+
+  test("trigger timeout before success", () => {
+    expect(
+      interpret(signalConditionFlow.definition(undefined, context), [
+        conditionStarted(0),
+        conditionTimedOut(0),
+        signalReceived("Yes"),
+      ])
+    ).toMatchObject<WorkflowResult>({
+      result: Result.failed("Condition Timed Out"),
+      commands: [],
     });
   });
 });

@@ -19,6 +19,7 @@ import {
 } from "./calls/signal-handler-call.js";
 import { isSendSignalCall, SendSignalCall } from "./calls/send-signal-call.js";
 import { isWorkflowCall, WorkflowCall } from "./calls/workflow-call.js";
+import { ConditionCall, isConditionCall } from "./calls/condition-call.js";
 
 export type AwaitedEventual<T> = T extends Promise<infer U>
   ? Awaited<U>
@@ -45,6 +46,7 @@ export enum EventualKind {
   WaitForSignalCall = 6,
   RegisterSignalHandlerCall = 7,
   SendSignalCall = 8,
+  ConditionCall = 9,
 }
 
 export function isEventual(a: any): a is Eventual {
@@ -66,7 +68,8 @@ export type CommandCall<T = any> =
   | WorkflowCall<T>
   | WaitForSignalCall<T>
   | RegisterSignalHandlerCall<T>
-  | SendSignalCall;
+  | SendSignalCall
+  | ConditionCall;
 
 export function isCommandCall(call: Eventual): call is CommandCall {
   return (
@@ -76,7 +79,8 @@ export function isCommandCall(call: Eventual): call is CommandCall {
     isWorkflowCall(call) ||
     isWaitForSignalCall(call) ||
     isRegisterSignalHandlerCall(call) ||
-    isSendSignalCall(call)
+    isSendSignalCall(call) ||
+    isConditionCall(call)
   );
 }
 
