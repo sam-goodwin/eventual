@@ -150,7 +150,8 @@ export function interpret<Return>(
   // something is wrong, fail
   if (emittedEvents.hasNext()) {
     throw new DeterminismError(
-      "Work did not return expected commands: " + JSON.stringify(emittedEvents)
+      "Workflow did not return expected commands: " +
+        JSON.stringify(emittedEvents.drain())
     );
   }
 
@@ -380,11 +381,25 @@ export function interpret<Return>(
       if (isConditionCall(activity)) {
         if (activity.result) {
           return activity.result;
-        } else if (activity.predicate()) {
-          activity.result = Result.resolved(true);
-          return activity.result;
         }
-        return undefined;
+        const predicateResult = activity.predicate();
+        const { value, done } =
+          isChain(predicateResult) &&
+          predicateResult.result &&
+          isResolved(predicateResult.result)
+            ? { value: predicateResult.result.value, done: true }
+            : isGenerator(predicateResult)
+            ? predicateResult.next()
+            : { value: predicateResult, done: true };
+        if (!done) {
+          activity.result = Result.failed(
+            "Condition Predicates must be synchronous"
+          );
+        } else if (value) {
+          activity.result = Result.resolved(true);
+        } else {
+          return undefined;
+        }
       }
       return activity.result;
     } else if (isChain(activity)) {

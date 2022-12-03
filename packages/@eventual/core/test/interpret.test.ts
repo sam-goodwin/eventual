@@ -3,6 +3,7 @@ import { chain } from "../src/chain.js";
 import { DeterminismError } from "../src/error.js";
 import {
   Context,
+  createAwaitAll,
   Eventual,
   interpret,
   Program,
@@ -795,7 +796,7 @@ test("workflow calling other workflow", () => {
     yield createActivityCall("call-a", []);
   });
   const wf2 = workflow(function* (): any {
-    const result = yield createWorkflowCall("wf1") as any;
+    const result = yield createWorkflowCall(wf1.workflowName) as any;
     yield createActivityCall("call-b", []);
     return result;
   });
@@ -805,14 +806,16 @@ test("workflow calling other workflow", () => {
   });
 
   expect(
-    interpret(wf2.definition(undefined, context), [workflowScheduled("wf1", 0)])
+    interpret(wf2.definition(undefined, context), [
+      workflowScheduled(wf1.workflowName, 0),
+    ])
   ).toMatchObject({
     commands: [],
   });
 
   expect(
     interpret(wf2.definition(undefined, context), [
-      workflowScheduled("wf1", 0),
+      workflowScheduled(wf1.workflowName, 0),
       workflowCompleted("result", 0),
     ])
   ).toMatchObject({
@@ -821,7 +824,7 @@ test("workflow calling other workflow", () => {
 
   expect(
     interpret(wf2.definition(undefined, context), [
-      workflowScheduled("wf1", 0),
+      workflowScheduled(wf1.workflowName, 0),
       workflowCompleted("result", 0),
       activityScheduled("call-b", 1),
     ])
@@ -831,7 +834,7 @@ test("workflow calling other workflow", () => {
 
   expect(
     interpret(wf2.definition(undefined, context), [
-      workflowScheduled("wf1", 0),
+      workflowScheduled(wf1.workflowName, 0),
       workflowCompleted("result", 0),
       activityScheduled("call-b", 1),
       activityCompleted(undefined, 1),
@@ -843,7 +846,7 @@ test("workflow calling other workflow", () => {
 
   expect(
     interpret(wf2.definition(undefined, context), [
-      workflowScheduled("wf1", 0),
+      workflowScheduled(wf1.workflowName, 0),
       workflowFailed("error", 0),
     ])
   ).toMatchObject({
@@ -1343,7 +1346,11 @@ describe("condition", () => {
     createRegisterSignalHandlerCall("Yes", () => {
       yes = true;
     });
-    yield createConditionCall(() => yes);
+    yield createConditionCall(
+      chain(function* () {
+        return yes;
+      }) as any
+    );
     return "done";
   });
 
@@ -1355,6 +1362,49 @@ describe("condition", () => {
       ])
     ).toMatchObject<WorkflowResult>({
       result: Result.resolved("done"),
+      commands: [],
+    });
+  });
+
+  test("trigger success eventually", () => {
+    expect(
+      interpret(signalConditionFlow.definition(undefined, context), [
+        conditionStarted(0),
+        signalReceived("No"),
+        signalReceived("No"),
+        signalReceived("No"),
+        signalReceived("No"),
+        signalReceived("Yes"),
+      ])
+    ).toMatchObject<WorkflowResult>({
+      result: Result.resolved("done"),
+      commands: [],
+    });
+  });
+
+  test("never trigger when state changes", () => {
+    const signalConditionOnAndOffFlow = workflow(function* (): any {
+      let yes = false;
+      createRegisterSignalHandlerCall("Yes", () => {
+        yes = true;
+      });
+      createRegisterSignalHandlerCall("Yes", () => {
+        yes = false;
+      });
+      yield createConditionCall(
+        chain(function* () {
+          return yes;
+        }) as any
+      );
+      return "done";
+    });
+
+    expect(
+      interpret(signalConditionOnAndOffFlow.definition(undefined, context), [
+        conditionStarted(0),
+        signalReceived("Yes"),
+      ])
+    ).toMatchObject<WorkflowResult>({
       commands: [],
     });
   });
@@ -1395,5 +1445,46 @@ describe("condition", () => {
       result: Result.failed("Condition Timed Out"),
       commands: [],
     });
+  });
+
+  test("condition as simple generator", () => {
+    const wf = workflow(function* (): any {
+      yield createConditionCall(function* () {
+        return false;
+      } as any);
+      return "done";
+    });
+
+    expect(
+      interpret(wf.definition(undefined, context), [])
+    ).toMatchObject<WorkflowResult>({
+      commands: [createStartConditionCommand(0)],
+    });
+  });
+});
+
+test("nestedChains", () => {
+  const wf = workflow(function* () {
+    const funcs = {
+      a: chain(function* () {
+        yield createSleepUntilCall("");
+      }),
+    };
+
+    Object.fromEntries(
+      yield createAwaitAll(
+        Object.entries(funcs).map(
+          chain(function* ([name, func]) {
+            return [name, yield func()];
+          })
+        )
+      )
+    );
+  });
+
+  expect(
+    interpret(wf.definition(undefined, context), [])
+  ).toMatchObject<WorkflowResult>({
+    commands: [createSleepUntilCommand("", 0)],
   });
 });

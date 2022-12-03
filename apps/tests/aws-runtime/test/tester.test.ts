@@ -1,6 +1,7 @@
 import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
 import {
   parentWorkflow,
+  timedOutWorkflow,
   workflow1,
   workflow2,
   workflow3,
@@ -28,4 +29,9 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
   ]);
 
   testCompletion("parent-child", parentWorkflow, "done");
+
+  testCompletion("timeouts", timedOutWorkflow, {
+    condition: true,
+    signal: true,
+  });
 });

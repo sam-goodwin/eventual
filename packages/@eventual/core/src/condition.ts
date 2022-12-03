@@ -2,12 +2,12 @@ import { createConditionCall } from "./calls/condition-call.js";
 
 export type ConditionPredicate = () => boolean;
 
-export async function condition(predicate: ConditionPredicate): Promise<void>;
-export async function condition(
+export function condition(predicate: ConditionPredicate): Promise<void>;
+export function condition(
   opts: { timeoutSeconds: number },
   predicate: ConditionPredicate
 ): Promise<void>;
-export async function condition(
+export function condition(
   ...args:
     | [opts: { timeoutSeconds: number }, predicate: ConditionPredicate]
     | [predicate: ConditionPredicate]

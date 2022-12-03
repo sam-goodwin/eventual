@@ -1,5 +1,6 @@
 import {
   activity,
+  condition,
   sendSignal,
   Signal,
   sleepFor,
@@ -35,7 +36,7 @@ export const workflow4 = workflow("parallel", async () => {
 });
 
 const signal = new Signal<number>("signal");
-const childSignal = new Signal<{ done: boolean } | { n: number }>("done");
+const doneSignal = new Signal("done");
 
 /**
  * the parent workflow uses thr `waitForSignal` function to block and wait for events from it's child workflow.
@@ -43,16 +44,16 @@ const childSignal = new Signal<{ done: boolean } | { n: number }>("done");
 export const parentWorkflow = workflow("parentWorkflow", async () => {
   const child = childWorkflow({ name: "child" });
   while (true) {
-    const n = await signal.waitFor();
+    const n = await signal.waitFor({ timeoutSeconds: 10 });
 
     console.log(n);
 
     if (n > 10) {
-      child.sendSignal(childSignal, { done: true });
+      child.sendSignal(doneSignal);
       break;
     }
 
-    child.sendSignal(childSignal, { n: n + 1 });
+    child.sendSignal(signal, n + 1);
   }
 
   // join with child
@@ -67,7 +68,7 @@ export const parentWorkflow = workflow("parentWorkflow", async () => {
 export const childWorkflow = workflow(
   "childWorkflow",
   async (input: { name: string }, { execution: { parentId } }) => {
-    // let block = false;
+    let block = false;
     let done = false;
     let last = 0;
 
@@ -77,23 +78,49 @@ export const childWorkflow = workflow(
 
     console.log(`Hi, I am ${input.name}`);
 
-    childSignal.on((input) => {
-      if ("n" in input) {
-        last = input.n;
-      } else {
-        done = input.done;
-      }
-      // block = false;
+    signal.on((n) => {
+      last = n;
+      block = false;
+    });
+    doneSignal.on(() => {
+      done = true;
+      block = false;
     });
 
     while (!done) {
       sendSignal(parentId, signal, last + 1);
-      // block = true;
-      await childSignal.waitFor();
-      // TODO: support conditions
-      // await condition(() => !block);
+      block = true;
+      await condition({ timeoutSeconds: 10 }, () => !block);
     }
 
     return "done";
+  }
+);
+
+export const timedOutWorkflow = workflow<undefined, Record<string, boolean>>(
+  "timedOut",
+  async () => {
+    // chains to be able to run in parallel.
+    const timedOutFunctions = {
+      condition: async () => {
+        await condition({ timeoutSeconds: 2 }, () => false);
+      },
+      signal: async () => {
+        await signal.waitFor({ timeoutSeconds: 2 });
+      },
+    };
+
+    return Object.fromEntries(
+      await Promise.all(
+        Object.entries(timedOutFunctions).map(async ([name, func]) => {
+          try {
+            await func();
+            return [name, false];
+          } catch {
+            return [name, true];
+          }
+        })
+      )
+    );
   }
 );

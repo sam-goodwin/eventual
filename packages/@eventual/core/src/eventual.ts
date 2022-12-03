@@ -1,5 +1,5 @@
 import { ActivityCall, isActivityCall } from "./calls/activity-call.js";
-import type { AwaitAll } from "./await-all.js";
+import { AwaitAll, createAwaitAll } from "./await-all.js";
 import { chain, Chain } from "./chain.js";
 import type { Program } from "./interpret.js";
 import { Result } from "./result.js";
@@ -97,14 +97,7 @@ export namespace Eventual {
       [i in keyof A]: A[i] extends Eventual<infer T> ? T : A[i];
     }>
   > {
-    return (yield <
-      AwaitAll<{
-        [i in keyof A]: A[i] extends Eventual<infer T> ? T : A[i];
-      }>
-    >{
-      [EventualSymbol]: EventualKind.AwaitAll,
-      activities,
-    }) as any;
+    return (yield createAwaitAll(activities)) as any;
   }
 }
 
