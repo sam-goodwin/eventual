@@ -4,7 +4,7 @@ export namespace CoreEnvFlags {
    *
    * Activity calls behave different based on their context.
    */
-  export const WORKER_FLAG = "EVENTUAL_WORKER";
+  export const ACTIVITY_WORKER_FLAG = "EVENTUAL_WORKER";
   /**
    * A flag that determines if a function is the webhook endpoint.
    */
@@ -16,7 +16,7 @@ export namespace CoreEnvFlags {
 }
 
 export function isActivityWorker() {
-  return !!process.env[CoreEnvFlags.WORKER_FLAG];
+  return !!process.env[CoreEnvFlags.ACTIVITY_WORKER_FLAG];
 }
 
 export function isWebhookWorker() {

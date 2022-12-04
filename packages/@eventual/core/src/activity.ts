@@ -1,6 +1,6 @@
 import { createActivityCall } from "./calls/activity-call.js";
 import { callableActivities } from "./global.js";
-import { isActivityWorker } from "./runtime/env.js";
+import { isActivityWorker } from "./runtime/flags.js";
 
 /**
  * Registers a function as an Activity.
