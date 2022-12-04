@@ -124,6 +124,8 @@ export function workflow<Input = any, Output = any>(
 
   workflow.workflowName = name;
 
+  workflow.workflowName = name;
+
   workflow.startExecution = async function (input) {
     return {
       executionId: await getWorkflowClient().startWorkflow({
