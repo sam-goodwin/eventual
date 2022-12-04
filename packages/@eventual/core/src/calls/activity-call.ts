@@ -17,13 +17,15 @@ export interface ActivityCall<T = any>
   seq?: number;
   name: string;
   args: any[];
+  timeoutSeconds?: number;
 }
 
-export function createActivityCall(name: string, args: any[]): ActivityCall {
+export function createActivityCall(name: string, args: any[], timeoutSeconds?: number): ActivityCall {
   const command: ActivityCall = {
     [EventualSymbol]: EventualKind.ActivityCall,
     name,
     args,
+    timeoutSeconds,
   };
   return registerEventual<ActivityCall>(command);
 }

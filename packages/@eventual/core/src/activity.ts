@@ -2,6 +2,19 @@ import { createActivityCall } from "./calls/activity-call.js";
 import { callableActivities } from "./global.js";
 import { isActivityWorker } from "./runtime/flags.js";
 
+export interface ActivityOpts {
+  timeoutSeconds?: number;
+}
+
+export interface ActivityFunction<F extends (...args: any[]) => any> {
+  (...args: Parameters<F>): Promise<Awaited<ReturnType<F>>>;
+}
+
+export interface ConfigurableActivityFunction<F extends (...args: any[]) => any>
+  extends ActivityFunction<F> {
+  withOptions(opts: ActivityOpts): ActivityFunction<F>;
+}
+
 /**
  * Registers a function as an Activity.
  *
@@ -11,17 +24,41 @@ import { isActivityWorker } from "./runtime/flags.js";
 export function activity<F extends (...args: any[]) => any>(
   activityID: string,
   handler: F
-): (...args: Parameters<F>) => Promise<Awaited<ReturnType<F>>> {
+): ConfigurableActivityFunction<F>;
+export function activity<F extends (...args: any[]) => any>(
+  activityID: string,
+  opts: ActivityOpts,
+  handler: F
+): ConfigurableActivityFunction<F>;
+export function activity<F extends (...args: any[]) => any>(
+  activityID: string,
+  ...args: [opts: ActivityOpts, handler: F] | [handler: F]
+): ConfigurableActivityFunction<F> {
+  const [definitionOpts, handler] =
+    args.length === 1 ? [undefined, args[0]] : args;
   if (isActivityWorker()) {
     // if we're in the eventual worker, actually run the process amd register the activity
     // register the handler to be looked up during execution.
     callableActivities()[activityID] = handler;
-    return (...args) => handler(...args);
+    return ((...args) => handler(...args)) as ConfigurableActivityFunction<F>;
   } else {
+    const funcCreator = (opts?: ActivityOpts): ActivityFunction<F> =>
+      ((...args: Parameters<ActivityFunction<F>>) => {
+        return createActivityCall(
+          activityID,
+          args,
+          opts?.timeoutSeconds
+        ) as any;
+      }) as ActivityFunction<F>;
     // otherwise, return a command to invoke the activity in the worker function
-    return (...args) => {
-      return createActivityCall(activityID, args) as any;
+    const func = funcCreator(definitionOpts) as ConfigurableActivityFunction<F>;
+    func.withOptions = (opts) => {
+      return funcCreator({
+        ...definitionOpts,
+        ...opts,
+      });
     };
+    return func;
   }
 }
 
