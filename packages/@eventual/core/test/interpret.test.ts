@@ -1443,7 +1443,7 @@ describe("condition", () => {
         conditionTimedOut(0),
       ])
     ).toMatchObject<WorkflowResult>({
-      result: Result.failed("Condition Timed Out"),
+      result: Result.failed(new Timeout("Condition Timed Out")),
       commands: [],
     });
   });
@@ -1469,7 +1469,7 @@ describe("condition", () => {
         signalReceived("Yes"),
       ])
     ).toMatchObject<WorkflowResult>({
-      result: Result.failed("Condition Timed Out"),
+      result: Result.failed(new Timeout("Condition Timed Out")),
       commands: [],
     });
   });
