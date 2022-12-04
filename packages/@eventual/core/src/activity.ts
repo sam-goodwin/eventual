@@ -12,6 +12,18 @@ export interface ActivityFunction<F extends (...args: any[]) => any> {
 
 export interface ConfigurableActivityFunction<F extends (...args: any[]) => any>
   extends ActivityFunction<F> {
+  /**
+   * Immutably overrides the default options provided at activity creation time.
+   *
+   * ```ts
+   * const act = activity("myActivity", { timeoutSeconds: 1000 }, ...);
+   *
+   * workflow("myWorkflow", () => {
+   *    await act.withOptions({ timeoutSeconds: 100 })(); // times out after 100 seconds
+   *    await act(); // times out after 1000 seconds
+   * })
+   * ```
+   */
   withOptions(opts: ActivityOpts): ActivityFunction<F>;
 }
 
@@ -42,7 +54,8 @@ export function activity<F extends (...args: any[]) => any>(
     callableActivities()[activityID] = handler;
     return ((...args) => handler(...args)) as ConfigurableActivityFunction<F>;
   } else {
-    const funcCreator = (opts?: ActivityOpts): ActivityFunction<F> =>
+    // otherwise, return a command to invoke the activity in the worker function
+    const createActivityFunction = (opts?: ActivityOpts): ActivityFunction<F> =>
       ((...args: Parameters<ActivityFunction<F>>) => {
         return createActivityCall(
           activityID,
@@ -50,10 +63,11 @@ export function activity<F extends (...args: any[]) => any>(
           opts?.timeoutSeconds
         ) as any;
       }) as ActivityFunction<F>;
-    // otherwise, return a command to invoke the activity in the worker function
-    const func = funcCreator(definitionOpts) as ConfigurableActivityFunction<F>;
+    const func = createActivityFunction(
+      definitionOpts
+    ) as ConfigurableActivityFunction<F>;
     func.withOptions = (opts) => {
-      return funcCreator({
+      return createActivityFunction({
         ...definitionOpts,
         ...opts,
       });
