@@ -168,6 +168,7 @@ importers:
       '@aws-sdk/client-lambda': ^3.213.0
       '@eventual/aws-runtime': workspace:^
       '@eventual/compiler': workspace:^
+      '@eventual/core': workspace:^
       '@types/aws-lambda': 8.10.108
       '@types/jest': ^29
       '@types/node': ^16
@@ -183,6 +184,7 @@ importers:
       '@aws-cdk/aws-apigatewayv2-authorizers-alpha': 2.51.1-alpha.0_44gl26v7bwb5bkivnhf3dlzxv4
       '@eventual/aws-runtime': link:../aws-runtime
       '@eventual/compiler': link:../compiler
+      '@eventual/core': link:../core
     devDependencies:
       '@aws-cdk/aws-apigatewayv2-alpha': 2.51.1-alpha.0_pgdaumashtvlfyslvnbuzi6ipy
       '@aws-cdk/aws-apigatewayv2-integrations-alpha': 2.51.1-alpha.0_44gl26v7bwb5bkivnhf3dlzxv4

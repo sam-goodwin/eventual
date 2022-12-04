@@ -39,24 +39,40 @@ export function createWorkflowCall(name: string, input?: any): WorkflowCall {
 
   // create a reference to the child workflow started at a sequence in this execution.
   // this reference will be resolved by the runtime.
-  call.sendSignal = function (signal, payload?) {
-    createSendSignalCall(
+  call.signal = function (signal, payload?, id?) {
+    return createSendSignalCall(
       {
         type: SignalTargetType.ChildExecution,
         seq: call.seq!,
         workflowName: call.name,
       },
       signal.id,
-      payload
-    );
+      payload,
+      id
+    ) as unknown as any;
   };
 
   return call;
 }
 
 export interface ChildExecution {
-  sendSignal<S extends Signal<any>>(
+  /**
+   * Allows a {@link workflow} to send a signal to any workflow {@link Execution} by executionId.
+   *
+   * ```ts
+   * const mySignal = new Signal<string>("MySignal");
+   * const childWf = workflow(...);
+   * workflow("wf", async () => {
+   *    const child = childWf();
+   *    child.signal(mySignal);
+   *    await child;
+   * })
+   * ```
+   * 
+   * @param id an optional, execution unique ID, will be used to de-dupe the signal at the target execution.
+   */
+  signal<S extends Signal<any>>(
     signal: S,
     ...args: SendSignalProps<SignalPayload<S>>
-  ): void;
+  ): Promise<void>;
 }

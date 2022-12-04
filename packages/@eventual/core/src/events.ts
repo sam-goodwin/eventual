@@ -28,8 +28,8 @@ export enum WorkflowEventType {
   ChildWorkflowScheduled = "ChildWorkflowScheduled",
   ChildWorkflowCompleted = "ChildWorkflowCompleted",
   ChildWorkflowFailed = "ChildWorkflowFailed",
-  WaitForSignalStarted = "WaitForSignalStarted",
-  WaitForSignalTimedOut = "WaitForSignalTimedOut",
+  ExpectSignalStarted = "ExpectSignalStarted",
+  ExpectSignalTimedOut = "ExpectSignalTimedOut",
   SignalReceived = "SignalReceived",
   SignalSent = "SignalSent",
   ConditionStarted = "ConditionStarted",
@@ -51,7 +51,7 @@ export type ScheduledEvent =
   | ActivityScheduled
   | ChildWorkflowScheduled
   | SleepScheduled
-  | WaitForSignalStarted
+  | ExpectSignalStarted
   | SignalSent
   | ConditionStarted;
 
@@ -63,7 +63,7 @@ export type CompletedEvent =
 export type FailedEvent =
   | ActivityFailed
   | ChildWorkflowFailed
-  | WaitForSignalTimedOut
+  | ExpectSignalTimedOut
   | ConditionTimedOut;
 
 /**
@@ -257,14 +257,14 @@ export function isSleepCompleted(
   return event.type === WorkflowEventType.SleepCompleted;
 }
 
-export interface WaitForSignalStarted extends HistoryEventBase {
-  type: WorkflowEventType.WaitForSignalStarted;
+export interface ExpectSignalStarted extends HistoryEventBase {
+  type: WorkflowEventType.ExpectSignalStarted;
   signalId: string;
   timeoutSeconds?: number;
 }
 
-export interface WaitForSignalTimedOut extends HistoryEventBase {
-  type: WorkflowEventType.WaitForSignalTimedOut;
+export interface ExpectSignalTimedOut extends HistoryEventBase {
+  type: WorkflowEventType.ExpectSignalTimedOut;
   signalId: string;
 }
 
@@ -274,16 +274,16 @@ export interface SignalReceived<Payload = any> extends BaseEvent {
   payload?: Payload;
 }
 
-export function isWaitForSignalStarted(
+export function isExpectSignalStarted(
   event: WorkflowEvent
-): event is WaitForSignalStarted {
-  return event.type === WorkflowEventType.WaitForSignalStarted;
+): event is ExpectSignalStarted {
+  return event.type === WorkflowEventType.ExpectSignalStarted;
 }
 
-export function isWaitForSignalTimedOut(
+export function isExpectSignalTimedOut(
   event: WorkflowEvent
-): event is WaitForSignalTimedOut {
-  return event.type === WorkflowEventType.WaitForSignalTimedOut;
+): event is ExpectSignalTimedOut {
+  return event.type === WorkflowEventType.ExpectSignalTimedOut;
 }
 
 export function isSignalReceived(
@@ -327,7 +327,7 @@ export const isScheduledEvent = or(
   isActivityScheduled,
   isChildWorkflowScheduled,
   isSleepScheduled,
-  isWaitForSignalStarted,
+  isExpectSignalStarted,
   isSignalSent,
   isConditionStarted
 );
@@ -341,7 +341,7 @@ export const isCompletedEvent = or(
 export const isFailedEvent = or(
   isActivityFailed,
   isChildWorkflowFailed,
-  isWaitForSignalTimedOut,
+  isExpectSignalTimedOut,
   isConditionTimedOut
 );
 

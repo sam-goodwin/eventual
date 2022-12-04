@@ -1,6 +1,6 @@
 import { createActivityCall } from "../src/calls/activity-call.js";
 import { chain } from "../src/chain.js";
-import { DeterminismError } from "../src/error.js";
+import { DeterminismError, Timeout } from "../src/error.js";
 import {
   Context,
   createAwaitAll,
@@ -27,11 +27,11 @@ import {
   createScheduledWorkflowCommand,
   createSleepForCommand,
   createSleepUntilCommand,
-  createWaitForSignalCommand,
+  createExpectSignalCommand,
   signalReceived,
   scheduledSleep,
-  startedWaitForSignal,
-  timedOutWaitForSignal,
+  startedExpectSignal,
+  timedOutExpectSignal,
   workflowCompleted,
   workflowFailed,
   workflowScheduled,
@@ -41,7 +41,7 @@ import {
   createStartConditionCommand,
   conditionTimedOut,
 } from "./command-util.js";
-import { createWaitForSignalCall } from "../src/calls/wait-for-signal-call.js";
+import { createExpectSignalCall } from "../src/calls/expect-signal-call.js";
 import { createRegisterSignalHandlerCall } from "../src/calls/signal-handler-call.js";
 import { createWorkflowCall } from "../src/calls/workflow-call.js";
 import { createSendSignalCall } from "../src/calls/send-signal-call.js";
@@ -856,25 +856,25 @@ test("workflow calling other workflow", () => {
 });
 
 describe("signals", () => {
-  describe("wait for signal", () => {
+  describe("expect signal", () => {
     const wf = workflow(function* (): any {
-      const result = yield createWaitForSignalCall("MySignal", 100 * 1000);
+      const result = yield createExpectSignalCall("MySignal", 100 * 1000);
 
       return result ?? "done";
     });
 
-    test("start wait for signal", () => {
+    test("start expect signal", () => {
       expect(interpret(wf.definition(undefined, context), [])).toMatchObject(<
         WorkflowResult
       >{
-        commands: [createWaitForSignalCommand("MySignal", 0, 100 * 1000)],
+        commands: [createExpectSignalCommand("MySignal", 0, 100 * 1000)],
       });
     });
 
     test("no signal", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          startedWaitForSignal("MySignal", 0, 100 * 1000),
+          startedExpectSignal("MySignal", 0, 100 * 1000),
         ])
       ).toMatchObject(<WorkflowResult>{
         commands: [],
@@ -884,7 +884,7 @@ describe("signals", () => {
     test("match signal", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          startedWaitForSignal("MySignal", 0, 100 * 1000),
+          startedExpectSignal("MySignal", 0, 100 * 1000),
           signalReceived("MySignal"),
         ])
       ).toMatchObject(<WorkflowResult>{
@@ -896,7 +896,7 @@ describe("signals", () => {
     test("match signal with payload", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          startedWaitForSignal("MySignal", 0, 100 * 1000),
+          startedExpectSignal("MySignal", 0, 100 * 1000),
           signalReceived("MySignal", { done: true }),
         ])
       ).toMatchObject(<WorkflowResult>{
@@ -908,11 +908,11 @@ describe("signals", () => {
     test("timed out", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          startedWaitForSignal("MySignal", 0, 100 * 1000),
-          timedOutWaitForSignal("MySignal", 0),
+          startedExpectSignal("MySignal", 0, 100 * 1000),
+          timedOutExpectSignal("MySignal", 0),
         ])
       ).toMatchObject(<WorkflowResult>{
-        result: Result.failed("Wait For Signal Timed Out"),
+        result: Result.failed(new Timeout("Expect Signal Timed Out")),
         commands: [],
       });
     });
@@ -920,12 +920,12 @@ describe("signals", () => {
     test("timed out then signal", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          startedWaitForSignal("MySignal", 0, 100 * 1000),
-          timedOutWaitForSignal("MySignal", 0),
+          startedExpectSignal("MySignal", 0, 100 * 1000),
+          timedOutExpectSignal("MySignal", 0),
           signalReceived("MySignal", { done: true }),
         ])
       ).toMatchObject(<WorkflowResult>{
-        result: Result.failed("Wait For Signal Timed Out"),
+        result: Result.failed(new Timeout("Expect Signal Timed Out")),
         commands: [],
       });
     });
@@ -933,9 +933,9 @@ describe("signals", () => {
     test("match signal then timeout", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          startedWaitForSignal("MySignal", 0, 100 * 1000),
+          startedExpectSignal("MySignal", 0, 100 * 1000),
           signalReceived("MySignal"),
-          timedOutWaitForSignal("MySignal", 0),
+          timedOutExpectSignal("MySignal", 0),
         ])
       ).toMatchObject(<WorkflowResult>{
         result: Result.resolved("done"),
@@ -946,7 +946,7 @@ describe("signals", () => {
     test("match signal twice", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          startedWaitForSignal("MySignal", 0, 100 * 1000),
+          startedExpectSignal("MySignal", 0, 100 * 1000),
           signalReceived("MySignal"),
           signalReceived("MySignal"),
         ])
@@ -958,16 +958,16 @@ describe("signals", () => {
 
     test("multiple of the same signal", () => {
       const wf = workflow(function* () {
-        const wait1 = createWaitForSignalCall("MySignal", 100 * 1000);
-        const wait2 = createWaitForSignalCall("MySignal", 100 * 1000);
+        const wait1 = createExpectSignalCall("MySignal", 100 * 1000);
+        const wait2 = createExpectSignalCall("MySignal", 100 * 1000);
 
         return Eventual.all([wait1, wait2]);
       });
 
       expect(
         interpret(wf.definition(undefined, context), [
-          startedWaitForSignal("MySignal", 0, 100 * 1000),
-          startedWaitForSignal("MySignal", 1, 100 * 1000),
+          startedExpectSignal("MySignal", 0, 100 * 1000),
+          startedExpectSignal("MySignal", 1, 100 * 1000),
           signalReceived("MySignal", "done!!!"),
         ])
       ).toMatchObject(<WorkflowResult>{
@@ -1211,7 +1211,7 @@ describe("signals", () => {
 
       const childWorkflow = createWorkflowCall("childWorkflow");
 
-      childWorkflow.sendSignal(mySignal);
+      childWorkflow.signal(mySignal);
 
       return yield childWorkflow;
     });
@@ -1277,6 +1277,33 @@ describe("signals", () => {
     });
 
     test("complete", () => {
+      expect(
+        interpret(wf.definition(undefined, context), [
+          signalSent("someExec", "MySignal", 0),
+          workflowScheduled("childWorkflow", 1),
+          signalSent("someExecution", "MySignal", 2),
+          workflowCompleted("done", 1),
+        ])
+      ).toMatchObject(<WorkflowResult>{
+        result: Result.resolved("done"),
+        commands: [],
+      });
+    });
+
+    test("yielded sendSignal does nothing", () => {
+      const wf = workflow("wf7", function* (): any {
+        yield createSendSignalCall(
+          { type: SignalTargetType.Execution, executionId: "someExecution" },
+          mySignal.id
+        );
+
+        const childWorkflow = createWorkflowCall("childWorkflow");
+
+        yield childWorkflow.signal(mySignal);
+
+        return yield childWorkflow;
+      });
+
       expect(
         interpret(wf.definition(undefined, context), [
           signalSent("someExec", "MySignal", 0),

@@ -1,5 +1,6 @@
 import { createActivityCall } from "./calls/activity-call.js";
 import { callableActivities } from "./global.js";
+import { isActivityWorker } from "./runtime/flags.js";
 
 /**
  * Registers a function as an Activity.
@@ -11,7 +12,7 @@ export function activity<F extends (...args: any[]) => any>(
   activityID: string,
   handler: F
 ): (...args: Parameters<F>) => Promise<Awaited<ReturnType<F>>> {
-  if (process.env.EVENTUAL_WORKER) {
+  if (isActivityWorker()) {
     // if we're in the eventual worker, actually run the process amd register the activity
     // register the handler to be looked up during execution.
     callableActivities()[activityID] = handler;

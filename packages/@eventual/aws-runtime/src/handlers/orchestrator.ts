@@ -21,7 +21,7 @@ import {
   isSleepForCommand,
   isSleepUntilCommand,
   isStartConditionCommand,
-  isWaitForSignalCommand,
+  isExpectSignalCommand,
   lookupWorkflow,
   progressWorkflow,
   SignalSent,
@@ -425,9 +425,9 @@ async function orchestrateExecution(
               command,
               baseTime: start,
             });
-          } else if (isWaitForSignalCommand(command)) {
-            // should the timeout command be generic (ex: StartTimeout) or specific (ex: WaitForSignal)?
-            return workflowRuntimeClient.startWaitForSignal({
+          } else if (isExpectSignalCommand(command)) {
+            // should the timeout command be generic (ex: StartTimeout) or specific (ex: ExpectSignal)?
+            return workflowRuntimeClient.executionExpectSignal({
               executionId,
               command,
               baseTime: start,
@@ -441,7 +441,7 @@ async function orchestrateExecution(
               : command.target.executionId;
 
             await workflowClient.sendSignal({
-              signalId: command.signalId,
+              signal: command.signalId,
               executionId: childExecutionId,
               id: `${executionId}/${command.seq}`,
               payload: command.payload,

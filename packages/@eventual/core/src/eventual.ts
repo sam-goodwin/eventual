@@ -10,9 +10,9 @@ import {
   SleepUntilCall,
 } from "./calls/sleep-call.js";
 import {
-  isWaitForSignalCall,
-  WaitForSignalCall,
-} from "./calls/wait-for-signal-call.js";
+  isExpectSignalCall,
+  ExpectSignalCall,
+} from "./calls/expect-signal-call.js";
 import {
   isRegisterSignalHandlerCall,
   RegisterSignalHandlerCall,
@@ -43,7 +43,7 @@ export enum EventualKind {
   SleepForCall = 3,
   SleepUntilCall = 4,
   WorkflowCall = 5,
-  WaitForSignalCall = 6,
+  ExpectSignalCall = 6,
   RegisterSignalHandlerCall = 7,
   SendSignalCall = 8,
   ConditionCall = 9,
@@ -66,7 +66,7 @@ export type CommandCall<T = any> =
   | SleepForCall
   | SleepUntilCall
   | WorkflowCall<T>
-  | WaitForSignalCall<T>
+  | ExpectSignalCall<T>
   | RegisterSignalHandlerCall<T>
   | SendSignalCall
   | ConditionCall;
@@ -77,7 +77,7 @@ export function isCommandCall(call: Eventual): call is CommandCall {
     isSleepForCall(call) ||
     isSleepUntilCall(call) ||
     isWorkflowCall(call) ||
-    isWaitForSignalCall(call) ||
+    isExpectSignalCall(call) ||
     isRegisterSignalHandlerCall(call) ||
     isSendSignalCall(call) ||
     isConditionCall(call)

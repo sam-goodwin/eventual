@@ -24,6 +24,7 @@ import {
 } from "aws-cdk-lib/aws-dynamodb";
 import { ArnFormat, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
 import { ENV_NAMES, ServiceProperties } from "@eventual/aws-runtime";
+import { CoreEnvFlags } from "@eventual/core";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import path from "path";
 import { execSync } from "child_process";
@@ -224,7 +225,7 @@ export class Service extends Construct implements IGrantable {
         [ENV_NAMES.TABLE_NAME]: this.table.tableName,
         [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
         [ENV_NAMES.ACTIVITY_LOCK_TABLE_NAME]: this.locksTable.tableName,
-        [ENV_NAMES.EVENTUAL_WORKER]: "1",
+        [CoreEnvFlags.ACTIVITY_WORKER_FLAG]: "1",
         ...(props.environment ?? {}),
       },
       // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
@@ -300,6 +301,7 @@ export class Service extends Construct implements IGrantable {
       memorySize: 512,
       environment: {
         NODE_OPTIONS: "--enable-source-maps",
+        [CoreEnvFlags.ORCHESTRATOR_FLAG]: "1",
         ...componentsEnv,
       },
       events: [
@@ -495,7 +497,7 @@ export class Service extends Construct implements IGrantable {
         NODE_OPTIONS: "--enable-source-maps",
         [ENV_NAMES.TABLE_NAME]: this.table.tableName,
         [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
-        [ENV_NAMES.EVENTUAL_WEBHOOK]: "1",
+        [CoreEnvFlags.WEBHOOK_FLAG]: "1",
       },
     });
     this.webhookEndpointUrl = this.webhookEndpoint.addFunctionUrl({

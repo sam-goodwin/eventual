@@ -4,7 +4,7 @@ import {
   SleepUntilCommand,
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
-  WaitForSignalCommand,
+  ExpectSignalCommand as ExpectSignalCommand,
   SendSignalCommand,
   StartConditionCommand,
 } from "../src/command.js";
@@ -21,8 +21,8 @@ import {
   SignalSent,
   SleepCompleted,
   SleepScheduled,
-  WaitForSignalStarted,
-  WaitForSignalTimedOut,
+  ExpectSignalStarted,
+  ExpectSignalTimedOut,
   WorkflowEventType,
 } from "../src/events.js";
 import { ulid } from "ulidx";
@@ -76,13 +76,13 @@ export function createScheduledWorkflowCommand(
   };
 }
 
-export function createWaitForSignalCommand(
+export function createExpectSignalCommand(
   signalId: string,
   seq: number,
   timeoutSeconds?: number
-): WaitForSignalCommand {
+): ExpectSignalCommand {
   return {
-    kind: CommandType.WaitForSignal,
+    kind: CommandType.ExpectSignal,
     signalId,
     seq,
     timeoutSeconds,
@@ -198,25 +198,25 @@ export function completedSleep(seq: number): SleepCompleted {
   };
 }
 
-export function timedOutWaitForSignal(
+export function timedOutExpectSignal(
   signalId: string,
   seq: number
-): WaitForSignalTimedOut {
+): ExpectSignalTimedOut {
   return {
-    type: WorkflowEventType.WaitForSignalTimedOut,
+    type: WorkflowEventType.ExpectSignalTimedOut,
     timestamp: new Date().toISOString(),
     seq,
     signalId,
   };
 }
 
-export function startedWaitForSignal(
+export function startedExpectSignal(
   signalId: string,
   seq: number,
   timeoutSeconds?: number
-): WaitForSignalStarted {
+): ExpectSignalStarted {
   return {
-    type: WorkflowEventType.WaitForSignalStarted,
+    type: WorkflowEventType.ExpectSignalStarted,
     signalId,
     timestamp: new Date().toISOString(),
     seq,

@@ -1,5 +1,6 @@
 import { HistoryStateEvent } from "../events.js";
 import { Execution, ExecutionStatus } from "../execution.js";
+import { Signal } from "../signals.js";
 import { Workflow, WorkflowInput } from "../workflow.js";
 
 export interface WorkflowClient {
@@ -35,7 +36,7 @@ export interface WorkflowClient {
 
 export interface SendSignalRequest {
   executionId: string;
-  signalId: string;
+  signal: string | Signal;
   payload?: any;
   /**
    * Execution scoped unique event id. Duplicates will be deduplicated.

@@ -39,21 +39,21 @@ const signal = new Signal<number>("signal");
 const doneSignal = new Signal("done");
 
 /**
- * the parent workflow uses thr `waitForSignal` function to block and wait for events from it's child workflow.
+ * the parent workflow uses thr `expectSignal` function to block and wait for events from it's child workflow.
  */
 export const parentWorkflow = workflow("parentWorkflow", async () => {
   const child = childWorkflow({ name: "child" });
   while (true) {
-    const n = await signal.waitFor({ timeoutSeconds: 10 });
+    const n = await signal.expect({ timeoutSeconds: 10 });
 
     console.log(n);
 
     if (n > 10) {
-      child.sendSignal(doneSignal);
+      child.signal(doneSignal);
       break;
     }
 
-    child.sendSignal(signal, n + 1);
+    child.signal(signal, n + 1);
   }
 
   // join with child
@@ -106,7 +106,7 @@ export const timedOutWorkflow = workflow<undefined, Record<string, boolean>>(
         await condition({ timeoutSeconds: 2 }, () => false);
       },
       signal: async () => {
-        await signal.waitFor({ timeoutSeconds: 2 });
+        await signal.expect({ timeoutSeconds: 2 });
       },
     };
 

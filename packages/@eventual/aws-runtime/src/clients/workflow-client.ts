@@ -153,7 +153,10 @@ export class AWSWorkflowClient implements WorkflowClient {
         {
           type: WorkflowEventType.SignalReceived,
           payload: request.payload,
-          signalId: request.signalId,
+          signalId:
+            typeof request.signal === "string"
+              ? request.signal
+              : request.signal.id,
         },
         undefined,
         request.id

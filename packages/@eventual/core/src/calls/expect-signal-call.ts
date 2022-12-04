@@ -7,24 +7,24 @@ import {
 import { registerEventual } from "../global.js";
 import { Failed, Resolved } from "../result.js";
 
-export function isWaitForSignalCall(a: any): a is WaitForSignalCall {
-  return isEventual(a) && a[EventualSymbol] === EventualKind.WaitForSignalCall;
+export function isExpectSignalCall(a: any): a is ExpectSignalCall {
+  return isEventual(a) && a[EventualSymbol] === EventualKind.ExpectSignalCall;
 }
 
-export interface WaitForSignalCall<T = any>
+export interface ExpectSignalCall<T = any>
   extends EventualBase<Resolved<T> | Failed> {
-  [EventualSymbol]: EventualKind.WaitForSignalCall;
+  [EventualSymbol]: EventualKind.ExpectSignalCall;
   seq?: number;
   signalId: string;
   timeoutSeconds?: number;
 }
 
-export function createWaitForSignalCall(
+export function createExpectSignalCall(
   signalId: string,
   timeoutSeconds?: number
-): WaitForSignalCall {
-  return registerEventual<WaitForSignalCall>({
-    [EventualSymbol]: EventualKind.WaitForSignalCall,
+): ExpectSignalCall {
+  return registerEventual<ExpectSignalCall>({
+    [EventualSymbol]: EventualKind.ExpectSignalCall,
     timeoutSeconds,
     signalId: signalId,
   });
