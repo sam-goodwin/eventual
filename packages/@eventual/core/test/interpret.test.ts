@@ -1291,7 +1291,7 @@ describe("signals", () => {
     });
 
     test("yielded sendSignal does nothing", () => {
-      const wf = workflow("wf7", function* (): any {
+      const wf = workflow(function* (): any {
         yield createSendSignalCall(
           { type: SignalTargetType.Execution, executionId: "someExecution" },
           mySignal.id
