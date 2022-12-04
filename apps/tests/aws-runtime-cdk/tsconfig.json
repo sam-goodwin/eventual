@@ -1,7 +1,7 @@
 {
   "extends": "../../../tsconfig-base.cjs",
   "compilerOptions": {
-    "outDir": "lib/cjs",
+    "outDir": "lib",
     "declaration": true,
     "inlineSourceMap": true,
     "rootDir": "src",
@@ -9,6 +9,9 @@
     "allowJs": true
   },
   "include": ["src"],
-  "exclude": ["lib", "node_modules", "src/package.json"],
-  "references": []
+  "exclude": ["lib", "node_modules"],
+  "references": [
+    { "path": "../../../packages/@eventual/aws-cdk" },
+    { "path": "../aws-runtime" }
+  ]
 }

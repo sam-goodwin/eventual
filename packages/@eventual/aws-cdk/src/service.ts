@@ -509,6 +509,16 @@ export class Service extends Construct implements IGrantable {
     this.table.grantReadWriteData(this.webhookEndpoint);
   }
 
+  public grantStartWorkflow(grantable: IGrantable) {
+    this.workflowQueue.grantSendMessages(grantable);
+    this.table.grantReadWriteData(grantable);
+  }
+
+  public grantRead(grantable: IGrantable) {
+    this.history.grantRead(grantable);
+    this.table.grantReadData(grantable);
+  }
+
   public apiLambda(
     entry: string,
     environment?: Record<string, string>,
