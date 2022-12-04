@@ -7,7 +7,7 @@ import {
 } from "./eventual.js";
 import { isAwaitAll } from "./await-all.js";
 import { isActivityCall } from "./calls/activity-call.js";
-import { DeterminismError } from "./error.js";
+import { DeterminismError, Timeout } from "./error.js";
 import {
   CompletedEvent,
   SignalReceived,
@@ -21,8 +21,8 @@ import {
   isScheduledEvent,
   isSleepCompleted,
   isSleepScheduled,
-  isWaitForSignalStarted,
-  isWaitForSignalTimedOut,
+  isExpectSignalStarted,
+  isExpectSignalTimedOut,
   ScheduledEvent,
   isSignalSent,
 } from "./events.js";
@@ -39,9 +39,9 @@ import { assertNever, or } from "./util.js";
 import { Command, CommandType } from "./command.js";
 import { isSleepForCall, isSleepUntilCall } from "./calls/sleep-call.js";
 import {
-  isWaitForSignalCall,
-  WaitForSignalCall,
-} from "./calls/wait-for-signal-call.js";
+  isExpectSignalCall,
+  ExpectSignalCall,
+} from "./calls/expect-signal-call.js";
 import {
   isRegisterSignalHandlerCall,
   RegisterSignalHandlerCall,
@@ -78,7 +78,7 @@ export function interpret<Return>(
    */
   const signalSubscriptions: Record<
     string,
-    (WaitForSignalCall | RegisterSignalHandlerCall)[]
+    (ExpectSignalCall | RegisterSignalHandlerCall)[]
   > = {};
   const mainChain = createChain(program);
   const activeChains = new Set([mainChain]);
@@ -186,9 +186,9 @@ export function interpret<Return>(
         input: call.input,
         name: call.name,
       };
-    } else if (isWaitForSignalCall(call)) {
+    } else if (isExpectSignalCall(call)) {
       return {
-        kind: CommandType.WaitForSignal,
+        kind: CommandType.ExpectSignal,
         signalId: call.signalId,
         seq: call.seq!,
         timeoutSeconds: call.timeoutSeconds,
@@ -230,7 +230,7 @@ export function interpret<Return>(
        */
       pushEventual(activity) {
         if (isCommandCall(activity)) {
-          if (isWaitForSignalCall(activity)) {
+          if (isExpectSignalCall(activity)) {
             subscribeToSignal(activity.signalId, activity);
           } else if (isRegisterSignalHandlerCall(activity)) {
             subscribeToSignal(activity.signalId, activity);
@@ -265,7 +265,7 @@ export function interpret<Return>(
 
   function subscribeToSignal(
     signalId: string,
-    sub: WaitForSignalCall | RegisterSignalHandlerCall
+    sub: ExpectSignalCall | RegisterSignalHandlerCall
   ) {
     if (!(signalId in signalSubscriptions)) {
       signalSubscriptions[signalId] = [];
@@ -392,13 +392,13 @@ export function interpret<Return>(
   }
 
   /**
-   * Add result to WaitForSignal and call any event handlers.
+   * Add result to ExpectSignal and call any event handlers.
    */
   function commitSignal(signal: SignalReceived) {
     const subscriptions = signalSubscriptions[signal.signalId];
 
     subscriptions?.forEach((sub) => {
-      if (isWaitForSignalCall(sub)) {
+      if (isExpectSignalCall(sub)) {
         if (!sub.result) {
           sub.result = Result.resolved(signal.payload);
         }
@@ -428,9 +428,9 @@ export function interpret<Return>(
       ? Result.resolved(event.result)
       : isSleepCompleted(event)
       ? Result.resolved(undefined)
-      : isWaitForSignalTimedOut(event)
+      : isExpectSignalTimedOut(event)
       ? // TODO: should this throw a specific error type?
-        Result.failed("Wait For Signal Timed Out")
+        Result.failed(new Timeout("Expect Signal Timed Out"))
       : Result.failed(event.error);
   }
 }
@@ -444,8 +444,8 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
     return isWorkflowCall(call) && call.name === event.name;
   } else if (isSleepScheduled(event)) {
     return isSleepUntilCall(call) || isSleepForCall(call);
-  } else if (isWaitForSignalStarted(event)) {
-    return isWaitForSignalCall(call) && event.signalId == call.signalId;
+  } else if (isExpectSignalStarted(event)) {
+    return isExpectSignalCall(call) && event.signalId == call.signalId;
   } else if (isSignalSent(event)) {
     return isSendSignalCall(call) && event.signalId === call.signalId;
   }

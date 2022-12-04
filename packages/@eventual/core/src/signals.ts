@@ -1,6 +1,9 @@
 import { createSendSignalCall } from "./calls/send-signal-call.js";
 import { createRegisterSignalHandlerCall } from "./calls/signal-handler-call.js";
-import { createWaitForSignalCall } from "./calls/wait-for-signal-call.js";
+import { createExpectSignalCall as createExpectSignalCall } from "./calls/expect-signal-call.js";
+import { isOrchestratorWorker } from "./runtime/env.js";
+import { getWorkflowClient } from "./global.js";
+import { ulid } from "ulidx";
 
 /**
  * A reference to a created signal handler.
@@ -55,14 +58,14 @@ export class Signal<Payload = void> {
     return onSignal(this, handler);
   }
   /**
-   * Waits for an signal to be received by the workflow.
+   * Waits for a signal to be received by the workflow.
    *
    * The first signal received will resolve the Promise with the payload of the promise.
    *
    * ```ts
    * const mySignal = new Signal<string>("MySignal");
    * workflow("wf", async () => {
-   *    const payload = await mySignal.waitFor();
+   *    const payload = await mySignal.expect();
    *
    *    return payload;
    * });
@@ -75,7 +78,7 @@ export class Signal<Payload = void> {
    * const mySignal = new Signal<string>("MySignal");
    * workflow("wf", async () => {
    *    try {
-   *       const payload = await mySignal.waitFor({ timeoutSecond: 10 * 60 });
+   *       const payload = await mySignal.expect({ timeoutSecond: 10 * 60 });
    *
    *       return payload;
    *    } catch {
@@ -84,14 +87,21 @@ export class Signal<Payload = void> {
    * });
    * ```
    */
-  waitFor(opts?: WaitForSignalOpts): Promise<Payload> {
-    return waitForSignal(this, opts);
+  expect(opts?: ExpectSignalOpts): Promise<Payload> {
+    return expectSignal(this, opts);
   }
   /**
+   * Allows a {@link workflow} to send this signal to any workflow {@link Execution} by executionId.
    *
+   * ```ts
+   * const mySignal = new Signal<string>("MySignal");
+   * workflow("wf", async () => {
+   *    mySignal.send("payload");
+   * })
+   * ```
    */
-  send(executionId: string, ...args: SendSignalProps<Payload>): void {
-    sendSignal<Signal<Payload>>(executionId, this, ...args);
+  send(executionId: string, ...args: SendSignalProps<Payload>): Promise<void> {
+    return sendSignal<Signal<Payload>>(executionId, this, ...args);
   }
 }
 
@@ -99,7 +109,7 @@ export type SignalPayload<E extends Signal<any>> = E extends Signal<infer P>
   ? P
   : never;
 
-export interface WaitForSignalOpts {
+export interface ExpectSignalOpts {
   /**
    * Optional. Seconds to wait for the signal to be received.
    *
@@ -109,13 +119,13 @@ export interface WaitForSignalOpts {
 }
 
 /**
- * Waits for an signal to be received by the workflow.
+ * Waits for a signal to be received by the workflow.
  *
  * The first signal received will resolve the Promise with the payload of the promise.
  *
  * ```ts
  * workflow("wf", () => {
- *    const payload = await waitForSignal("MySignal");
+ *    const payload = await expectSignal("MySignal");
  *
  *    return payload;
  * });
@@ -124,26 +134,26 @@ export interface WaitForSignalOpts {
  * Use `opts.timeoutSeconds` to stop waiting after the provided time. The Promise will reject
  * when the provided time has elapsed.
  */
-export function waitForSignal<SignalPayload = any>(
+export function expectSignal<SignalPayload = any>(
   signalId: string,
-  opts?: WaitForSignalOpts
+  opts?: ExpectSignalOpts
 ): Promise<SignalPayload>;
-export function waitForSignal<E extends Signal<any>>(
+export function expectSignal<E extends Signal<any>>(
   signal: E,
-  opts?: WaitForSignalOpts
+  opts?: ExpectSignalOpts
 ): Promise<SignalPayload<E>>;
-export function waitForSignal(
+export function expectSignal(
   signal: Signal<any> | string,
-  opts?: WaitForSignalOpts
+  opts?: ExpectSignalOpts
 ): Promise<SignalPayload<any>> {
-  return createWaitForSignalCall(
+  return createExpectSignalCall(
     typeof signal === "string" ? signal : signal.id,
     opts?.timeoutSeconds
   ) as any;
 }
 
 /**
- * Listens for an signal matching the signalId provided.
+ * Listens for a signal matching the signalId provided.
  *
  * When the signal is received, the handler is invoked.
  * If the handler return a promise, the handler is added as a {@link Chain}
@@ -192,11 +202,11 @@ export function onSignal(
 export type SendSignalProps<SignalPayload> = [SignalPayload] extends
   | [undefined]
   | [void]
-  ? []
-  : [payload: SignalPayload];
+  ? [id?: string]
+  : [payload: SignalPayload, id?: string];
 
 /**
- * Sends a signal to any other execution by executionId.
+ * Allows a {@link workflow} to send a signal to any workflow {@link Execution} by executionId.
  *
  * ```ts
  * const mySignal = new Signal<string>("MySignal");
@@ -205,27 +215,38 @@ export type SendSignalProps<SignalPayload> = [SignalPayload] extends
  *    sendSignal(mySignal, "payload");
  * })
  * ```
+ *
+ * @param id an optional, execution unique ID, will be used to de-dupe the signal at the target execution.
  */
 export function sendSignal<S extends Signal<any>>(
   executionId: string,
   signal: S,
   ...args: SendSignalProps<SignalPayload<S>>
-): void;
+): Promise<void>;
 export function sendSignal<Payload = any>(
   executionId: string,
   signalId: string,
   ...args: SendSignalProps<Payload>
-): void;
+): Promise<void>;
 export function sendSignal(
   executionId: string,
   signal: string | Signal<any>,
-  payload?: any
-): void {
-  createSendSignalCall(
-    { type: SignalTargetType.Execution, executionId },
-    typeof signal === "string" ? signal : signal.id,
-    payload
-  );
+  payload?: any,
+  id?: string
+): Promise<void> {
+  if (isOrchestratorWorker()) {
+    return createSendSignalCall(
+      { type: SignalTargetType.Execution, executionId },
+      typeof signal === "string" ? signal : signal.id,
+      payload
+    ) as unknown as any;
+  } else {
+    return getWorkflowClient().sendSignal({
+      executionId,
+      signal,
+      id: id ?? ulid(),
+    });
+  }
 }
 
 export type SignalTarget = ExecutionTarget | ChildExecutionTarget;
