@@ -34,6 +34,7 @@ export interface ScheduleActivityCommand
   extends CommandBase<CommandType.StartActivity> {
   name: string;
   args: any[];
+  timeoutSeconds?: number;
 }
 
 export function isScheduleActivityCommand(
@@ -46,6 +47,8 @@ export interface ScheduleWorkflowCommand
   extends CommandBase<CommandType.StartWorkflow> {
   name: string;
   input?: any;
+  executionTimeoutSeconds?: number;
+  childTimeoutSeconds?: number;
 }
 
 export function isScheduleWorkflowCommand(

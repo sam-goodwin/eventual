@@ -41,6 +41,26 @@ export interface StartExecutionRequest<Input> {
    * @default - a unique ID is generated.
    */
   name?: string;
+  /**
+   * Options which determine how a workflow operates.
+   *
+   * Can be provided at workflow definition time and/or overridden by the caller of {@link WorkflowClient.startWorkflow}.
+   */
+  opts?: WorkflowOptions;
+}
+
+/**
+ * Options which determine how a workflow operates.
+ *
+ * Can be provided at workflow definition time and/or overridden by the caller of {@link WorkflowClient.startWorkflow}.
+ */
+export interface WorkflowOptions {
+  /**
+   * Number of seconds before execution times out.
+   *
+   * Default: undefined - workflow will never timeout.
+   */
+  timeoutSeconds?: number;
 }
 
 export type WorkflowOutput<W extends Workflow<any, any>> = W extends Workflow<
@@ -66,6 +86,9 @@ export interface Workflow<Input = any, Output = any> {
    * Globally unique ID of this {@link Workflow}.
    */
   workflowName: string;
+
+  options?: WorkflowOptions;
+
   /**
    * Invokes the {@link Workflow} from within another workflow.
    *
@@ -120,10 +143,23 @@ export function lookupWorkflow(name: string): Workflow | undefined {
 export function workflow<Input = any, Output = any>(
   name: string,
   definition: WorkflowHandler<Input, Output>
+): Workflow<Input, Output>;
+export function workflow<Input = any, Output = any>(
+  name: string,
+  opts: WorkflowOptions,
+  definition: WorkflowHandler<Input, Output>
+): Workflow<Input, Output>;
+export function workflow<Input = any, Output = any>(
+  name: string,
+  ...args:
+    | [opts: WorkflowOptions, definition: WorkflowHandler<Input, Output>]
+    | [definition: WorkflowHandler<Input, Output>]
 ): Workflow<Input, Output> {
+  const [opts, definition] = args.length === 1 ? [undefined, args[0]] : args;
   if (workflows().has(name)) {
     throw new Error(`workflow with name '${name}' already exists`);
   }
+
   const workflow: Workflow<Input, Output> = ((input?: any) => {
     if (!isOrchestratorWorker()) {
       throw new Error(
@@ -131,7 +167,7 @@ export function workflow<Input = any, Output = any>(
       );
     }
 
-    return createWorkflowCall(name, input);
+    return createWorkflowCall(name, input, opts?.timeoutSeconds);
   }) as any;
 
   workflow.workflowName = name;

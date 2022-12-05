@@ -393,6 +393,7 @@ async function orchestrateExecution(
               workflowName: workflow.workflowName,
               executionId,
               command,
+              baseTime: start,
             });
 
             return createEvent<ActivityScheduled>({

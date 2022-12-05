@@ -7,7 +7,12 @@ import {
   ConflictException,
 } from "@aws-sdk/client-scheduler";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
-import { assertNever, getEventId } from "@eventual/core";
+import {
+  assertNever,
+  getEventId,
+  HistoryStateEvent,
+  TimerRequestType,
+} from "@eventual/core";
 import {
   isTimerForwardEventRequest,
   ScheduleForwarderRequest,
@@ -28,6 +33,13 @@ export interface AWSTimerClientProps {
   readonly timerQueueUrl: string;
   readonly sqs: SQSClient;
   readonly scheduleForwarderArn: string;
+}
+
+export interface ForwardEventRequest<E extends HistoryStateEvent> {
+  event: Omit<E, "timestamp">;
+  timerSeconds: number;
+  executionId: string;
+  baseTime: Date;
 }
 
 export class AWSTimerClient implements eventual.TimerClient {
@@ -155,6 +167,27 @@ export class AWSTimerClient implements eventual.TimerClient {
        */
       await this.startShortTimer(timerRequest);
     }
+  }
+
+  public async forwardEvent<E extends HistoryStateEvent>(
+    request: ForwardEventRequest<E>
+  ) {
+    const untilTime = new Date(
+      request.baseTime.getTime() + request.timerSeconds * 1000
+    );
+    const untilTimeIso = untilTime.toISOString();
+
+    const event = {
+      ...request.event,
+      timestamp: untilTimeIso,
+    } as E;
+
+    await this.startTimer({
+      event,
+      executionId: request.executionId,
+      type: TimerRequestType.ForwardEvent,
+      untilTime: untilTimeIso,
+    });
   }
 
   /**

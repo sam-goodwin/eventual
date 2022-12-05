@@ -3,12 +3,14 @@ import {
   SleepForCommand,
   SleepUntilCommand,
   ExpectSignalCommand,
+  ScheduleWorkflowCommand,
 } from "../command.js";
 import {
   ActivityScheduled,
   HistoryStateEvent,
   SleepScheduled,
   ExpectSignalStarted,
+  ChildWorkflowScheduled,
 } from "../events.js";
 import { CompleteExecution, FailedExecution } from "../execution.js";
 
@@ -32,6 +34,13 @@ export interface ScheduleActivityRequest {
   workflowName: string;
   executionId: string;
   command: ScheduleActivityCommand;
+  baseTime: Date;
+}
+
+export interface ScheduleWorkflowRequest {
+  executionId: string;
+  command: ScheduleWorkflowCommand;
+  baseTime: Date;
 }
 
 export interface ScheduleSleepRequest {
@@ -57,6 +66,10 @@ export interface WorkflowRuntimeClient {
   ): Promise<CompleteExecution>;
 
   failExecution(request: FailExecutionRequest): Promise<FailedExecution>;
+
+  scheduleChildWorkflow(
+    request: ScheduleWorkflowRequest
+  ): Promise<ChildWorkflowScheduled>;
 
   scheduleActivity(
     request: ScheduleActivityRequest

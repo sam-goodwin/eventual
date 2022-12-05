@@ -28,13 +28,19 @@ export interface WorkflowCall<T = any> extends ChildExecution {
   input?: any;
   result?: Result<T>;
   seq?: number;
+  timeoutSeconds: number;
 }
 
-export function createWorkflowCall(name: string, input?: any): WorkflowCall {
+export function createWorkflowCall(
+  name: string,
+  input?: any,
+  timeoutSeconds?: number
+): WorkflowCall {
   const call = registerEventual<WorkflowCall>({
     [EventualSymbol]: EventualKind.WorkflowCall,
     input,
     name,
+    timeoutSeconds,
   } as WorkflowCall);
 
   // create a reference to the child workflow started at a sequence in this execution.
@@ -68,7 +74,7 @@ export interface ChildExecution {
    *    await child;
    * })
    * ```
-   * 
+   *
    * @param id an optional, execution unique ID, will be used to de-dupe the signal at the target execution.
    */
   signal<S extends Signal<any>>(

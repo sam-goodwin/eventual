@@ -31,6 +31,9 @@ import {
   isSignalSent,
   isConditionStarted,
   isConditionTimedOut,
+  isWorkflowTimedOut,
+  isChildWorkflowTimedOut,
+  isActivityTimedOut,
 } from "./events.js";
 import {
   Result,
@@ -173,6 +176,7 @@ export function interpret<Return>(
         kind: CommandType.StartActivity,
         args: call.args,
         name: call.name,
+        timeoutSeconds: call.timeoutSeconds,
         seq: call.seq!,
       };
     } else if (isSleepUntilCall(call)) {
@@ -471,6 +475,12 @@ export function interpret<Return>(
       : isConditionTimedOut(event)
       ? // a timed out condition returns false
         Result.resolved(false)
+      : isWorkflowTimedOut(event)
+      ? Result.failed(new Timeout("Workflow Timed Out"))
+      : isChildWorkflowTimedOut(event)
+      ? Result.failed(new Timeout("Child Workflow Timed Out"))
+      : isActivityTimedOut(event)
+      ? Result.failed(new Timeout("Activity Timed Out"))
       : Result.failed(event.error);
   }
 }
