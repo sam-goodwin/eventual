@@ -26,7 +26,11 @@ new aws_lambda_nodejs.NodeJSFunction(this, "Function", {
 
 However, an `eventual.Service` is quite different to a simple Lambda Function. Instead of creating a single Resource, Eventual creates a fully functional Service! This includes an API Gateway, Event Bus, API and Event Handlers, and our powerful code-first Workflow Orchestrator service.
 
+// its function full not functionless ;)
+
 This may initially shock or worry you, but you can rest easy as all of these services scale to $0 and are almost entirely self-managed. There is no surprise impact on your cloud bill and minimal impact on your operational responsibility. You should be aware of what's under the covers, but don't be scared off by its significance - Eventual is intentionally designed for efficient operations (it's our whole thing 😉). Most cloud applications require these components anyway, so a full service implementation should actually be comparable in scope and size.
+
+// Rest assured, we will drive deep into the service and how we built it. And its serverless and open-core!!
 
 (architecture diagram)
 

@@ -24,6 +24,7 @@ Everyone wants to build faster, of course, and Eventual's powerful primitives ce
 
 One example of how Eventual approaches these goals is its built-in observability and regression testing features. When a production error occurs, the logs for that data flow are available for download in a form that can be "played back" through the program locally for a natural debugging experience in IDEs such as VS Code. After fixing the problem, it is trivial for an operator to then commit that problematic workflow as a test so that it never reoccurs. Such tests accumulate over time and serve as a mechanism to ensure the service's quality as it evolves. This "playback" feature can also be used within a CI/CD pipeline to detect regressions by running all past data flows through the new code to check if they will still succeed - giving developers the confidence they need to make changes quickly without breaking production.
 
+// diagram of developer workflow
 // visualizations?
 
 We'll go in to more detail about how all of this (and more) in [Part 2](./2022-12-14-eventual-concepts-overview.md) of this blog, so be sure to check that out! You can also get started immediately or learn more by reading the below resources. We'd love to hear from you in our Discord and GitHub, and please don't forget to give us a star ⭐️ on GitHub. Stay tuned ❤️!
