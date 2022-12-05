@@ -32,7 +32,6 @@ import {
   isConditionStarted,
   isConditionTimedOut,
   isWorkflowTimedOut,
-  isChildWorkflowTimedOut,
   isActivityTimedOut,
 } from "./events.js";
 import {
@@ -101,7 +100,7 @@ export function interpret<Return>(
   let emittedEvents = iterator(history, isScheduledEvent);
   let resultEvents = iterator(
     history,
-    or(isCompletedEvent, isFailedEvent, isSignalReceived)
+    or(isCompletedEvent, isFailedEvent, isSignalReceived, isWorkflowTimedOut)
   );
 
   /**
@@ -113,10 +112,11 @@ export function interpret<Return>(
    */
   let calls: CommandCall[] = [];
   let newCalls: Iterator<CommandCall, CommandCall>;
-  // iterate until we are no longer finding commands or no longer have completion events to apply
+  // iterate until we are no longer finding commands, no longer have completion events to apply
+  // or the workflow has a terminal status.
   while (
-    (newCalls = iterator(advance() ?? [])).hasNext() ||
-    resultEvents.hasNext()
+    (!mainChain.result || isPending(mainChain.result)) &&
+    ((newCalls = iterator(advance() ?? [])).hasNext() || resultEvents.hasNext())
   ) {
     // if there are result events (completed or failed), apply it before the next run
     if (!newCalls.hasNext() && resultEvents.hasNext()) {
@@ -127,6 +127,10 @@ export function interpret<Return>(
         collectActivitiesScope(() => {
           if (isSignalReceived(resultEvent)) {
             commitSignal(resultEvent);
+          } else if (isWorkflowTimedOut(resultEvent)) {
+            // will stop the workflow execution as the workflow has failed.
+            mainChain.result = Result.failed(new Timeout("Workflow timed out"));
+            return;
           } else {
             commitCompletionEvent(resultEvent);
           }
@@ -197,6 +201,7 @@ export function interpret<Return>(
         seq: call.seq!,
         input: call.input,
         name: call.name,
+        opts: call.opts,
       };
     } else if (isExpectSignalCall(call)) {
       return {
@@ -475,10 +480,6 @@ export function interpret<Return>(
       : isConditionTimedOut(event)
       ? // a timed out condition returns false
         Result.resolved(false)
-      : isWorkflowTimedOut(event)
-      ? Result.failed(new Timeout("Workflow Timed Out"))
-      : isChildWorkflowTimedOut(event)
-      ? Result.failed(new Timeout("Child Workflow Timed Out"))
       : isActivityTimedOut(event)
       ? Result.failed(new Timeout("Activity Timed Out"))
       : Result.failed(event.error);

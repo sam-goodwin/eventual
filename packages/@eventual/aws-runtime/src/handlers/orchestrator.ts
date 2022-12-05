@@ -33,6 +33,8 @@ import {
   WorkflowFailed,
   WorkflowTaskCompleted,
   WorkflowTaskStarted,
+  isWorkflowStarted,
+  WorkflowTimedOut,
 } from "@eventual/core";
 import middy from "@middy/core";
 import { createMetricsLogger, MetricsLogger, Unit } from "aws-embedded-metrics";
@@ -200,6 +202,31 @@ async function orchestrateExecution(
     const workflowContext: WorkflowContext = {
       name: workflow.workflowName,
     };
+
+    const startEvent = history.find(isWorkflowStarted);
+
+    /**
+     * Check to see if this is the first run of the workflow (or all others have failed).
+     * If so, check to see if the workflow has timeout to start.
+     */
+    if (!startEvent) {
+      const newWorkflowStart = events.find(isWorkflowStarted);
+
+      if (newWorkflowStart?.timeoutTime) {
+        metrics.setProperty(OrchestratorMetrics.TimeoutStarted, 1);
+        await timed(metrics, OrchestratorMetrics.TimeoutStartedDuration, () =>
+          timerClient.forwardEvent({
+            untilTime: newWorkflowStart.timeoutTime!,
+            event: createEvent<WorkflowTimedOut>({
+              type: WorkflowEventType.WorkflowTimedOut,
+            }),
+            executionId,
+          })
+        );
+      } else {
+        metrics.setProperty(OrchestratorMetrics.TimeoutStarted, 0);
+      }
+    }
 
     const {
       result,
@@ -408,6 +435,7 @@ async function orchestrateExecution(
               parentExecutionId: executionId,
               executionName: formatChildExecutionName(executionId, command.seq),
               seq: command.seq,
+              opts: command.opts,
             });
 
             return createEvent<ChildWorkflowScheduled>({

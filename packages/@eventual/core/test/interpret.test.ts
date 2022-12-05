@@ -23,6 +23,7 @@ import {
   activityCompleted,
   activityFailed,
   activityScheduled,
+  activityTimedOut,
   completedSleep,
   conditionStarted,
   conditionTimedOut,
@@ -41,6 +42,7 @@ import {
   workflowCompleted,
   workflowFailed,
   workflowScheduled,
+  workflowTimedOut,
 } from "./command-util.js";
 import { createExpectSignalCall } from "../src/calls/expect-signal-call.js";
 import { createRegisterSignalHandlerCall } from "../src/calls/signal-handler-call.js";
@@ -117,6 +119,31 @@ test("should continue with result of completed Activity", () => {
   });
 });
 
+test("should fail on workflow timeout event", () => {
+  expect(
+    interpret(myWorkflow(event), [
+      activityScheduled("my-activity", 0),
+      workflowTimedOut(),
+    ])
+  ).toMatchObject(<WorkflowResult>{
+    result: Result.failed(new Timeout("Workflow timed out")),
+    commands: [],
+  });
+});
+
+test("should not continue on workflow timeout event", () => {
+  expect(
+    interpret(myWorkflow(event), [
+      activityScheduled("my-activity", 0),
+      workflowTimedOut(),
+      activityCompleted("result", 0),
+    ])
+  ).toMatchObject(<WorkflowResult>{
+    result: Result.failed(new Timeout("Workflow timed out")),
+    commands: [],
+  });
+});
+
 test("should catch error of failed Activity", () => {
   expect(
     interpret(myWorkflow(event), [
@@ -125,6 +152,23 @@ test("should catch error of failed Activity", () => {
     ])
   ).toMatchObject(<WorkflowResult>{
     commands: [createScheduledActivityCommand("handle-error", ["error"], 1)],
+  });
+});
+
+test("should catch error of timing out Activity", () => {
+  expect(
+    interpret(myWorkflow(event), [
+      activityScheduled("my-activity", 0),
+      activityTimedOut(0),
+    ])
+  ).toMatchObject(<WorkflowResult>{
+    commands: [
+      createScheduledActivityCommand(
+        "handle-error",
+        [new Timeout("Activity Timed Out")],
+        1
+      ),
+    ],
   });
 });
 

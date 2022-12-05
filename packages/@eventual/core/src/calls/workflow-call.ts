@@ -12,7 +12,7 @@ import {
   SignalPayload,
   SignalTargetType,
 } from "../signals.js";
-import { Workflow } from "../workflow.js";
+import { Workflow, WorkflowOptions } from "../workflow.js";
 import { createSendSignalCall } from "./send-signal-call.js";
 
 export function isWorkflowCall<T>(a: Eventual<T>): a is WorkflowCall<T> {
@@ -28,19 +28,19 @@ export interface WorkflowCall<T = any> extends ChildExecution {
   input?: any;
   result?: Result<T>;
   seq?: number;
-  timeoutSeconds: number;
+  opts?: WorkflowOptions;
 }
 
 export function createWorkflowCall(
   name: string,
   input?: any,
-  timeoutSeconds?: number
+  opts?: WorkflowOptions
 ): WorkflowCall {
   const call = registerEventual<WorkflowCall>({
     [EventualSymbol]: EventualKind.WorkflowCall,
     input,
     name,
-    timeoutSeconds,
+    opts,
   } as WorkflowCall);
 
   // create a reference to the child workflow started at a sequence in this execution.

@@ -35,12 +35,18 @@ export interface AWSTimerClientProps {
   readonly scheduleForwarderArn: string;
 }
 
-export interface ForwardEventRequest<E extends HistoryStateEvent> {
+export type ForwardEventRequest<E extends HistoryStateEvent> = {
   event: Omit<E, "timestamp">;
-  timerSeconds: number;
   executionId: string;
-  baseTime: Date;
-}
+} & (
+  | {
+      timerSeconds: number;
+      baseTime: Date;
+    }
+  | {
+      untilTime: string;
+    }
+);
 
 export class AWSTimerClient implements eventual.TimerClient {
   constructor(private props: AWSTimerClientProps) {}
@@ -172,21 +178,23 @@ export class AWSTimerClient implements eventual.TimerClient {
   public async forwardEvent<E extends HistoryStateEvent>(
     request: ForwardEventRequest<E>
   ) {
-    const untilTime = new Date(
-      request.baseTime.getTime() + request.timerSeconds * 1000
-    );
-    const untilTimeIso = untilTime.toISOString();
+    const untilTime =
+      "untilTime" in request
+        ? request.untilTime
+        : new Date(
+            request.baseTime.getTime() + request.timerSeconds * 1000
+          ).toISOString();
 
     const event = {
       ...request.event,
-      timestamp: untilTimeIso,
+      timestamp: untilTime,
     } as E;
 
     await this.startTimer({
       event,
       executionId: request.executionId,
       type: TimerRequestType.ForwardEvent,
-      untilTime: untilTimeIso,
+      untilTime: untilTime,
     });
   }
 

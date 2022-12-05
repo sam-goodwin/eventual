@@ -24,7 +24,6 @@ import {
   ExpectSignalStarted,
   ExpectSignalTimedOut,
   ActivityTimedOut,
-  ChildWorkflowTimedOut,
   ChildWorkflowScheduled,
 } from "@eventual/core";
 import {
@@ -236,21 +235,8 @@ export class AWSWorkflowRuntimeClient
 
   public async scheduleChildWorkflow({
     command,
-    baseTime,
     executionId,
   }: eventual.ScheduleWorkflowRequest): Promise<eventual.ChildWorkflowScheduled> {
-    if (command.childTimeoutSeconds) {
-      await this.props.timerClient.forwardEvent<ChildWorkflowTimedOut>({
-        baseTime,
-        event: {
-          type: WorkflowEventType.ChildWorkflowTimedOut,
-          seq: command.seq,
-        },
-        executionId,
-        timerSeconds: command.childTimeoutSeconds,
-      });
-    }
-
     await this.props.workflowClient.startWorkflow({
       workflowName: command.name,
       input: command.input,

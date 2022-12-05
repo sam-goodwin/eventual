@@ -167,10 +167,8 @@ export function workflow<Input = any, Output = any>(
       );
     }
 
-    return createWorkflowCall(name, input, opts?.timeoutSeconds);
+    return createWorkflowCall(name, input, opts);
   }) as any;
-
-  workflow.workflowName = name;
 
   workflow.workflowName = name;
 
@@ -180,6 +178,7 @@ export function workflow<Input = any, Output = any>(
         workflowName: name,
         executionName: input.name,
         input: input.input,
+        opts,
       }),
     };
   };

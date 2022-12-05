@@ -24,7 +24,6 @@ export enum WorkflowEventType {
   ChildWorkflowCompleted = "ChildWorkflowCompleted",
   ChildWorkflowFailed = "ChildWorkflowFailed",
   ChildWorkflowScheduled = "ChildWorkflowScheduled",
-  ChildWorkflowTimedOut = "ChildWorkflowTimedOut",
   ExpectSignalStarted = "ExpectSignalStarted",
   ExpectSignalTimedOut = "ExpectSignalTimedOut",
   SignalReceived = "SignalReceived",
@@ -67,10 +66,8 @@ export type FailedEvent =
   | ActivityFailed
   | ActivityTimedOut
   | ChildWorkflowFailed
-  | ChildWorkflowTimedOut
   | ConditionTimedOut
-  | ExpectSignalTimedOut
-  | WorkflowTimedOut;
+  | ExpectSignalTimedOut;
 
 /**
  * Events used by the workflow to replay an execution.
@@ -79,14 +76,16 @@ export type HistoryEvent =
   | CompletedEvent
   | FailedEvent
   | ScheduledEvent
-  | SignalReceived;
+  | SignalReceived
+  | WorkflowTimedOut;
 
 export function isHistoryEvent(event: WorkflowEvent): event is HistoryEvent {
   return (
     isCompletedEvent(event) ||
     isFailedEvent(event) ||
     isScheduledEvent(event) ||
-    isSignalReceived(event)
+    isSignalReceived(event) ||
+    isWorkflowTimedOut(event)
   );
 }
 
@@ -105,6 +104,10 @@ export interface WorkflowStarted extends BaseEvent {
    * Input payload for the workflow function.
    */
   input?: any;
+  /**
+   * Optional ISO timestamp after which the workflow should timeout.
+   */
+  timeoutTime?: string;
   context: Omit<ExecutionContext, "id" | "startTime">;
 }
 export interface WorkflowTaskStarted extends BaseEvent {
@@ -333,12 +336,8 @@ export interface ActivityTimedOut extends HistoryEventBase {
   type: WorkflowEventType.ActivityTimedOut;
 }
 
-export interface WorkflowTimedOut extends HistoryEventBase {
+export interface WorkflowTimedOut extends BaseEvent {
   type: WorkflowEventType.WorkflowTimedOut;
-}
-
-export interface ChildWorkflowTimedOut extends HistoryEventBase {
-  type: WorkflowEventType.ChildWorkflowTimedOut;
 }
 
 export function isActivityTimedOut(
@@ -351,12 +350,6 @@ export function isWorkflowTimedOut(
   event: WorkflowEvent
 ): event is WorkflowTimedOut {
   return event.type === WorkflowEventType.WorkflowTimedOut;
-}
-
-export function isChildWorkflowTimedOut(
-  event: WorkflowEvent
-): event is ChildWorkflowTimedOut {
-  return event.type === WorkflowEventType.ChildWorkflowTimedOut;
 }
 
 export const isScheduledEvent = or(
@@ -378,7 +371,6 @@ export const isFailedEvent = or(
   isActivityFailed,
   isActivityTimedOut,
   isChildWorkflowFailed,
-  isChildWorkflowTimedOut,
   isConditionTimedOut,
   isExpectSignalTimedOut,
   isWorkflowTimedOut
@@ -399,7 +391,11 @@ export function assertEventType<T extends WorkflowEvent>(
  * Some events have a computed ID to save space.
  */
 export function getEventId(event: WorkflowEvent): string {
-  if (isHistoryEvent(event) && !isSignalReceived(event)) {
+  if (
+    isHistoryEvent(event) &&
+    !isSignalReceived(event) &&
+    !isWorkflowTimedOut(event)
+  ) {
     return `${event.seq}_${event.type}`;
   } else {
     return event.id;

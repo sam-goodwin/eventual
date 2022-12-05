@@ -1,4 +1,5 @@
 import { SignalTarget } from "./signals.js";
+import { WorkflowOptions } from "./workflow.js";
 
 export type Command =
   | SleepUntilCommand
@@ -43,12 +44,12 @@ export function isScheduleActivityCommand(
   return a.kind === CommandType.StartActivity;
 }
 
+// TODO support a timeout at the parent workflow level. The current timeout fails the whole workflow and not just the waiter.
 export interface ScheduleWorkflowCommand
   extends CommandBase<CommandType.StartWorkflow> {
   name: string;
   input?: any;
-  executionTimeoutSeconds?: number;
-  childTimeoutSeconds?: number;
+  opts?: WorkflowOptions;
 }
 
 export function isScheduleWorkflowCommand(

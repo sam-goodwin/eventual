@@ -24,6 +24,8 @@ import {
   ExpectSignalStarted,
   ExpectSignalTimedOut,
   WorkflowEventType,
+  WorkflowTimedOut,
+  ActivityTimedOut,
 } from "../src/events.js";
 import { ulid } from "ulidx";
 import { SignalTarget } from "../src/signals.js";
@@ -146,6 +148,14 @@ export function activityFailed(error: any, seq: number): ActivityFailed {
   };
 }
 
+export function activityTimedOut(seq: number): ActivityTimedOut {
+  return {
+    type: WorkflowEventType.ActivityTimedOut,
+    seq,
+    timestamp: new Date(0).toISOString(),
+  };
+}
+
 export function workflowFailed(error: any, seq: number): ChildWorkflowFailed {
   return {
     type: WorkflowEventType.ChildWorkflowFailed,
@@ -165,6 +175,14 @@ export function activityScheduled(
     name,
     seq,
     timestamp: new Date(0).toISOString(),
+  };
+}
+
+export function workflowTimedOut(): WorkflowTimedOut {
+  return {
+    type: WorkflowEventType.WorkflowTimedOut,
+    id: ulid(),
+    timestamp: new Date().toISOString(),
   };
 }
 

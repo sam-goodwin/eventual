@@ -40,7 +40,6 @@ export interface ScheduleActivityRequest {
 export interface ScheduleWorkflowRequest {
   executionId: string;
   command: ScheduleWorkflowCommand;
-  baseTime: Date;
 }
 
 export interface ScheduleSleepRequest {
