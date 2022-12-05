@@ -1,8 +1,6 @@
 {
-  "extends": "../../../tsconfig-base",
+  "extends": "../../../tsconfig-base.cjs",
   "compilerOptions": {
-    "module": "CommonJS",
-    "target": "ESNext",
     "baseUrl": ".",
     "outDir": "lib/cjs",
     "declaration": true,

@@ -4,6 +4,8 @@ import {
   SleepUntilCommand,
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
+  ExpectSignalCommand as ExpectSignalCommand,
+  SendSignalCommand,
 } from "../src/command.js";
 import {
   ActivityCompleted,
@@ -12,10 +14,16 @@ import {
   ChildWorkflowCompleted,
   ChildWorkflowFailed,
   ChildWorkflowScheduled,
+  SignalReceived,
+  SignalSent,
   SleepCompleted,
   SleepScheduled,
+  ExpectSignalStarted,
+  ExpectSignalTimedOut,
   WorkflowEventType,
 } from "../src/events.js";
+import { ulid } from "ulidx";
+import { SignalTarget } from "../src/signals.js";
 
 export function createSleepUntilCommand(
   untilTime: string,
@@ -62,6 +70,32 @@ export function createScheduledWorkflowCommand(
     seq,
     name,
     input,
+  };
+}
+
+export function createExpectSignalCommand(
+  signalId: string,
+  seq: number,
+  timeoutSeconds?: number
+): ExpectSignalCommand {
+  return {
+    kind: CommandType.ExpectSignal,
+    signalId,
+    seq,
+    timeoutSeconds,
+  };
+}
+
+export function createSendSignalCommand(
+  target: SignalTarget,
+  signalId: string,
+  seq: number
+): SendSignalCommand {
+  return {
+    kind: CommandType.SendSignal,
+    seq,
+    target,
+    signalId,
   };
 }
 
@@ -147,5 +181,60 @@ export function completedSleep(seq: number): SleepCompleted {
     type: WorkflowEventType.SleepCompleted,
     seq,
     timestamp: new Date(0).toISOString(),
+  };
+}
+
+export function timedOutExpectSignal(
+  signalId: string,
+  seq: number
+): ExpectSignalTimedOut {
+  return {
+    type: WorkflowEventType.ExpectSignalTimedOut,
+    timestamp: new Date().toISOString(),
+    seq,
+    signalId,
+  };
+}
+
+export function startedExpectSignal(
+  signalId: string,
+  seq: number,
+  timeoutSeconds?: number
+): ExpectSignalStarted {
+  return {
+    type: WorkflowEventType.ExpectSignalStarted,
+    signalId,
+    timestamp: new Date().toISOString(),
+    seq,
+    timeoutSeconds,
+  };
+}
+
+export function signalReceived(
+  signalId: string,
+  payload?: any
+): SignalReceived {
+  return {
+    type: WorkflowEventType.SignalReceived,
+    id: ulid(),
+    signalId,
+    payload,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+export function signalSent(
+  executionId: string,
+  signalId: string,
+  seq: number,
+  payload?: any
+): SignalSent {
+  return {
+    type: WorkflowEventType.SignalSent,
+    executionId,
+    seq,
+    signalId,
+    timestamp: new Date().toISOString(),
+    payload,
   };
 }

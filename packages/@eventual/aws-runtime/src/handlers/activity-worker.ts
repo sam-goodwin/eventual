@@ -32,6 +32,7 @@ export const activityWorker = (): Handler<ActivityWorkerRequest, void> => {
   return middy(
     metricScope((metrics) => async (request: ActivityWorkerRequest) => {
       logger.addPersistentLogAttributes({
+        workflowName: request.workflowName,
         executionId: request.executionId,
       });
       const activityHandle = `${request.command.seq} for execution ${request.executionId} on retry ${request.retry}`;

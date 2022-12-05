@@ -1,75 +1,128 @@
 import fs from "fs/promises";
-import { constants } from "fs";
 import path from "path";
 import esbuild from "esbuild";
 import { esbuildPluginAliasPath } from "esbuild-plugin-alias-path";
-import { eventualESPlugin } from "./esbuild-plugin";
+import { eventualESPlugin } from "./esbuild-plugin.js";
+import { prepareOutDir } from "./build.js";
+import { createRequire } from "module";
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// @ts-ignore - ts is complaining about not having module:esnext even thought it is in tsconfig.json
+const require = createRequire(import.meta.url);
 
-async function main() {
-  const [, , outDir, entry] = process.argv;
-
-  if (!(outDir && entry)) {
-    throw new Error(`Usage: eventual-build <out-dir> <entry-point>`);
-  }
-
+/**
+ * Bundle an eventual program
+ * @param outDir Directory to bundle to
+ * @param entry File containing the service
+ * @returns Paths to orchestrator and activtyWorker output files
+ */
+export async function bundle(
+  outDir: string,
+  serviceEntry: string
+): Promise<void> {
+  console.log("Bundling:", outDir, serviceEntry);
   await prepareOutDir(outDir);
 
   await Promise.all([
     build({
       name: "orchestrator",
+      outDir,
+      injectedEntry: serviceEntry,
+      entry: runtimeEntrypoint("orchestrator"),
       plugins: [eventualESPlugin],
     }),
     build({
       name: "activity",
+      outDir,
+      injectedEntry: serviceEntry,
+      entry: runtimeEntrypoint("activity"),
     }),
     build({
       name: "webhook",
+      outDir,
+      injectedEntry: serviceEntry,
+      entry: runtimeEntrypoint("webhook"),
+    }),
+    //This one is actually an api function
+    build({
+      name: "list-workflows",
+      outDir,
+      injectedEntry: serviceEntry,
+      entry: runtimeEntrypoint("list-workflows"),
     }),
   ]);
+}
 
-  async function build({
-    name,
-    plugins,
-  }: {
-    name: string;
-    plugins?: esbuild.Plugin[];
-  }) {
-    const bundle = await esbuild.build({
-      mainFields: ["module", "main"],
-      sourcemap: true,
-      plugins: [
-        esbuildPluginAliasPath({
-          alias: {
-            [`@eventual/entry/injected`]: entry!,
-          },
-        }),
-        ...(plugins ?? []),
-      ],
-      conditions: ["module", "import", "require"],
-      // supported with NODE_18.x runtime
-      // TODO: make this configurable.
-      // external: ["@aws-sdk"],
-      platform: "node",
-      format: "esm",
-      metafile: true,
-      bundle: true,
-      entryPoints: [
-        path.join(
-          require.resolve("@eventual/aws-runtime"),
-          `../../esm/entry/${name}.js`
-        ),
-      ],
-      banner: esmPolyfillRequireBanner(),
-      outfile: path.join(outDir!, `${name}/index.mjs`),
-    });
+export async function bundleService(outDir: string, entry: string) {
+  await prepareOutDir(outDir);
+  return build({
+    outDir,
+    entry,
+    name: "service",
+    plugins: [eventualESPlugin],
+    //It's important that we use inline source maps for service, otherwise debugger fails to pick it up
+    sourcemap: "inline",
+  });
+}
 
-    await writeEsBuildMetafile(path.join(outDir!, `${name}/meta.json`))(bundle);
-  }
+export function runtimeEntrypoint(name: string) {
+  return path.join(
+    require.resolve("@eventual/aws-runtime"),
+    `../../esm/entry/${name}.js`
+  );
+}
+
+async function build({
+  outDir,
+  injectedEntry,
+  name,
+  entry,
+  plugins,
+  sourcemap,
+}: {
+  injectedEntry?: string;
+  outDir: string;
+  name: string;
+  entry: string;
+  plugins?: esbuild.Plugin[];
+  sourcemap?: boolean | "inline";
+}) {
+  const outfile = path.join(outDir, `${name}/index.mjs`);
+  const bundle = await esbuild.build({
+    mainFields: ["module", "main"],
+    sourcemap: sourcemap ?? true,
+    plugins: [
+      ...(injectedEntry
+        ? [
+            esbuildPluginAliasPath({
+              alias: {
+                ["@eventual/entry/injected"]: path.resolve(injectedEntry),
+              },
+            }),
+          ]
+        : []),
+      ...(plugins ?? []),
+    ],
+    conditions: ["module", "import", "require"],
+    // supported with NODE_18.x runtime
+    // TODO: make this configurable.
+    // external: ["@aws-sdk"],
+    platform: "node",
+    format: "esm",
+    //Target for node 16
+    target: "es2020",
+    metafile: true,
+    bundle: true,
+    entryPoints: [path.resolve(entry)],
+    banner: esmPolyfillRequireBanner(),
+    outfile,
+  });
+
+  await writeEsBuildMetafile(
+    bundle,
+    path.resolve(outDir!, `${name}/meta.json`)
+  );
+
+  return outfile;
 }
 
 /**
@@ -84,34 +137,9 @@ function esmPolyfillRequireBanner() {
   };
 }
 
-function writeEsBuildMetafile(path: string) {
-  return (
-    esbuildResult: esbuild.BuildResult & { metafile: esbuild.Metafile }
-  ) => fs.writeFile(path, JSON.stringify(esbuildResult.metafile));
-}
-
-async function prepareOutDir(outDir: string) {
-  try {
-    await fs.access(outDir, constants.F_OK);
-    await cleanDir(outDir);
-  } catch {
-    await fs.mkdir(outDir, {
-      recursive: true,
-    });
-  }
-}
-
-async function rmrf(file: string) {
-  const stat = await fs.stat(file);
-  if (stat.isDirectory()) {
-    await cleanDir(file);
-  } else {
-    await fs.rm(file);
-  }
-}
-
-async function cleanDir(dir: string) {
-  await Promise.all(
-    (await fs.readdir(dir)).map((file) => rmrf(path.join(dir, file)))
-  );
+function writeEsBuildMetafile(
+  esbuildResult: esbuild.BuildResult & { metafile: esbuild.Metafile },
+  path: string
+) {
+  return fs.writeFile(path, JSON.stringify(esbuildResult.metafile));
 }

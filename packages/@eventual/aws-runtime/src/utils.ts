@@ -1,3 +1,5 @@
+import { INTERNAL_EXECUTION_ID_PREFIX } from "@eventual/core";
+
 export async function promiseAllSettledPartitioned<T, R>(
   items: T[],
   op: (item: T) => Promise<R>
@@ -22,4 +24,15 @@ export async function promiseAllSettledPartitioned<T, R>(
       )
       .map(([r, i]) => [items[i]!, r.reason] as [T, string]),
   };
+}
+
+/**
+ * @param parentExecutionId id of the caller execution used to compute the child workflow name
+ * @param seq position that started the child workflow
+ */
+export function formatChildExecutionName(
+  parentExecutionId: string,
+  seq: number
+): string {
+  return `${INTERNAL_EXECUTION_ID_PREFIX}${parentExecutionId.replace("/", "-")}-${seq}`;
 }

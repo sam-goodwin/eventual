@@ -7,17 +7,21 @@ import {
   ExecutionStatus,
   FailedExecution,
   HistoryStateEvent,
+  isChildExecutionTarget,
   isCompleteExecution,
   isFailed,
   isResolved,
   isResult,
   isScheduleActivityCommand,
   isScheduleWorkflowCommand,
+  isSendSignalCommand,
   isSleepCompleted,
   isSleepForCommand,
   isSleepUntilCommand,
+  isExpectSignalCommand,
   lookupWorkflow,
   progressWorkflow,
+  SignalSent,
   Workflow,
   WorkflowCompleted,
   WorkflowContext,
@@ -38,11 +42,18 @@ import {
   createWorkflowRuntimeClient,
 } from "../clients/index.js";
 import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
-import { isExecutionId, parseWorkflowName } from "../execution-id.js";
+import {
+  formatExecutionId,
+  isExecutionId,
+  parseWorkflowName,
+} from "../execution-id.js";
 import { logger, loggerMiddlewares } from "../logger.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import { timed, timedSync } from "../metrics/utils.js";
-import { promiseAllSettledPartitioned } from "../utils.js";
+import {
+  formatChildExecutionName,
+  promiseAllSettledPartitioned,
+} from "../utils.js";
 
 const executionHistoryClient = createExecutionHistoryClient();
 const workflowRuntimeClient = createWorkflowRuntimeClient();
@@ -122,13 +133,13 @@ async function orchestrateExecution(
 ) {
   console.log(executionId, records);
   const executionLogger = logger.createChild({
-    persistentLogAttributes: { executionId },
+    persistentLogAttributes: { workflowName: workflow.name, executionId },
   });
   const metrics = createMetricsLogger();
   metrics.resetDimensions(false);
   metrics.setNamespace(MetricsCommon.EventualNamespace);
   metrics.setDimensions({
-    [MetricsCommon.WorkflowNameDimension]: workflow.name,
+    [MetricsCommon.WorkflowNameDimension]: workflow.workflowName,
   });
   const events = sqsRecordsToEvents(records);
   const start = new Date();
@@ -181,7 +192,7 @@ async function orchestrateExecution(
     );
 
     const workflowContext: WorkflowContext = {
-      name: workflow.name,
+      name: workflow.workflowName,
     };
 
     const {
@@ -214,7 +225,7 @@ async function orchestrateExecution(
     );
 
     executionLogger.info(`Found ${newCommands.length} new commands.`);
-    ``;
+
     const commandEvents = await timed(
       metrics,
       OrchestratorMetrics.InvokeCommandsDuration,
@@ -239,6 +250,8 @@ async function orchestrateExecution(
     newEvents.push(...commandEvents);
 
     const newHistoryEvents = [...updatedHistory, ...commandEvents];
+
+    console.debug("New history to save", JSON.stringify(newHistoryEvents));
 
     // update history from new commands and events
     // for now, we'll just write the awaitable command events to s3 as those are the ones needed to reconstruct the workflow.
@@ -343,7 +356,6 @@ async function orchestrateExecution(
         execution.status === ExecutionStatus.COMPLETE ? 0 : 1,
         Unit.Count
       );
-      executionLogger.info("logging for execution" + JSON.stringify(execution));
       metrics.putMetric(
         OrchestratorMetrics.ExecutionTotalDuration,
         new Date(execution.endTime).getTime() -
@@ -366,12 +378,13 @@ async function orchestrateExecution(
     async function processCommands(
       commands: Command[]
     ): Promise<HistoryStateEvent[]> {
+      console.debug("Commands to send", JSON.stringify(commands));
       // register command events
       return await Promise.all(
         commands.map(async (command) => {
           if (isScheduleActivityCommand(command)) {
             await workflowRuntimeClient.scheduleActivity({
-              workflowName: workflow.name,
+              workflowName: workflow.workflowName,
               executionId,
               command,
             });
@@ -386,6 +399,7 @@ async function orchestrateExecution(
               workflowName: command.name,
               input: command.input,
               parentExecutionId: executionId,
+              executionName: formatChildExecutionName(executionId, command.seq),
               seq: command.seq,
             });
 
@@ -404,6 +418,35 @@ async function orchestrateExecution(
               executionId,
               command,
               baseTime: start,
+            });
+          } else if (isExpectSignalCommand(command)) {
+            // should the timeout command be generic (ex: StartTimeout) or specific (ex: ExpectSignal)?
+            return workflowRuntimeClient.executionExpectSignal({
+              executionId,
+              command,
+              baseTime: start,
+            });
+          } else if (isSendSignalCommand(command)) {
+            const childExecutionId = isChildExecutionTarget(command.target)
+              ? formatExecutionId(
+                  command.target.workflowName,
+                  formatChildExecutionName(executionId, command.target.seq)
+                )
+              : command.target.executionId;
+
+            await workflowClient.sendSignal({
+              signal: command.signalId,
+              executionId: childExecutionId,
+              id: `${executionId}/${command.seq}`,
+              payload: command.payload,
+            });
+
+            return createEvent<SignalSent>({
+              type: WorkflowEventType.SignalSent,
+              executionId: childExecutionId,
+              seq: command.seq,
+              signalId: command.signalId,
+              payload: command.payload,
             });
           } else {
             return assertNever(command, `unknown command type`);

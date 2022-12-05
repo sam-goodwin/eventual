@@ -1,4 +1,7 @@
-import { createSleepForCall, createSleepUntilCall } from "./sleep-call.js";
+import {
+  createSleepForCall,
+  createSleepUntilCall,
+} from "./calls/sleep-call.js";
 
 /**
  * ```ts

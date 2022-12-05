@@ -20,5 +20,5 @@ export class Slack extends IncomingWebhook {
     });
   }
 
-  public onEvent(func) {}
+  // public onEvent(_func) {}
 }

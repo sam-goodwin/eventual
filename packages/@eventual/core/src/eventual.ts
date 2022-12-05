@@ -1,4 +1,4 @@
-import { ActivityCall, isActivityCall } from "./activity-call.js";
+import { ActivityCall, isActivityCall } from "./calls/activity-call.js";
 import type { AwaitAll } from "./await-all.js";
 import { chain, Chain } from "./chain.js";
 import type { Program } from "./interpret.js";
@@ -8,8 +8,17 @@ import {
   isSleepUntilCall,
   SleepForCall,
   SleepUntilCall,
-} from "./sleep-call.js";
-import { isWorkflowCall, WorkflowCall } from "./workflow.js";
+} from "./calls/sleep-call.js";
+import {
+  isExpectSignalCall,
+  ExpectSignalCall,
+} from "./calls/expect-signal-call.js";
+import {
+  isRegisterSignalHandlerCall,
+  RegisterSignalHandlerCall,
+} from "./calls/signal-handler-call.js";
+import { isSendSignalCall, SendSignalCall } from "./calls/send-signal-call.js";
+import { isWorkflowCall, WorkflowCall } from "./calls/workflow-call.js";
 
 export type AwaitedEventual<T> = T extends Promise<infer U>
   ? Awaited<U>
@@ -33,6 +42,9 @@ export enum EventualKind {
   SleepForCall = 3,
   SleepUntilCall = 4,
   WorkflowCall = 5,
+  ExpectSignalCall = 6,
+  RegisterSignalHandlerCall = 7,
+  SendSignalCall = 8,
 }
 
 export function isEventual(a: any): a is Eventual {
@@ -40,28 +52,31 @@ export function isEventual(a: any): a is Eventual {
 }
 
 export type Eventual<T = any> =
-  | ActivityCall<T>
   | AwaitAll<T extends any[] ? T : never>
   | Chain<T>
-  | WorkflowCall<T>
-  | SleepForCall
-  | SleepUntilCall;
+  | CommandCall<T>;
 
 /**
  * Calls which emit commands.
  */
-export type CommandCall =
-  | ActivityCall
+export type CommandCall<T = any> =
+  | ActivityCall<T>
   | SleepForCall
   | SleepUntilCall
-  | WorkflowCall;
+  | WorkflowCall<T>
+  | ExpectSignalCall<T>
+  | RegisterSignalHandlerCall<T>
+  | SendSignalCall;
 
 export function isCommandCall(call: Eventual): call is CommandCall {
   return (
     isActivityCall(call) ||
     isSleepForCall(call) ||
     isSleepUntilCall(call) ||
-    isWorkflowCall(call)
+    isWorkflowCall(call) ||
+    isExpectSignalCall(call) ||
+    isRegisterSignalHandlerCall(call) ||
+    isSendSignalCall(call)
   );
 }
 
@@ -87,6 +102,10 @@ export namespace Eventual {
       activities,
     }) as any;
   }
+}
+
+export interface EventualCallCollector {
+  pushEventual<E extends Eventual>(activity: E): E;
 }
 
 // the below globals are required by the transformer

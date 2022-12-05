@@ -1,8 +1,12 @@
+import { SignalTarget } from "./signals.js";
+
 export type Command =
   | SleepUntilCommand
   | SleepForCommand
   | ScheduleActivityCommand
-  | ScheduleWorkflowCommand;
+  | ScheduleWorkflowCommand
+  | ExpectSignalCommand
+  | SendSignalCommand;
 
 interface CommandBase<T extends CommandType> {
   kind: T;
@@ -14,6 +18,8 @@ export enum CommandType {
   SleepUntil = "SleepUntil",
   SleepFor = "SleepFor",
   StartWorkflow = "StartWorkflow",
+  ExpectSignal = "ExpectSignal",
+  SendSignal = "SendSignal",
 }
 
 /**
@@ -70,4 +76,28 @@ export function isSleepForCommand(
   command: Command
 ): command is SleepForCommand {
   return command.kind === CommandType.SleepFor;
+}
+
+export interface ExpectSignalCommand
+  extends CommandBase<CommandType.ExpectSignal> {
+  signalId: string;
+  timeoutSeconds?: number;
+}
+
+export function isExpectSignalCommand(
+  command: Command
+): command is ExpectSignalCommand {
+  return command.kind === CommandType.ExpectSignal;
+}
+
+export interface SendSignalCommand extends CommandBase<CommandType.SendSignal> {
+  signalId: string;
+  target: SignalTarget;
+  payload?: any;
+}
+
+export function isSendSignalCommand(
+  command: Command
+): command is SendSignalCommand {
+  return command.kind === CommandType.SendSignal;
 }

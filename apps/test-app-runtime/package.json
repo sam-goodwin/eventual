@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "main": "lib/index.js",
   "scripts": {
-    "test": "jest --passWithNoTests"
+    "test": "jest --passWithNoTests",
+    "eventual": "eventual"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.214.0",
@@ -17,6 +18,7 @@
     "@eventual/integrations": "workspace:^"
   },
   "devDependencies": {
+    "@eventual/cli": "workspace:^",
     "@eventual/compiler": "workspace:^",
     "@types/aws-lambda": "^8.10.108",
     "@types/jest": "^29",

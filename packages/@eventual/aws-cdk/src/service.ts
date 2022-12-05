@@ -23,20 +23,29 @@ import {
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
 import { ArnFormat, CfnOutput, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
-import { ENV_NAMES } from "@eventual/aws-runtime";
+import { ENV_NAMES, ServiceProperties } from "@eventual/aws-runtime";
+import { CoreEnvFlags } from "@eventual/core";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import path from "path";
 import { execSync } from "child_process";
 import {
+  AccountPrincipal,
+  Effect,
   IGrantable,
   IPrincipal,
+  PolicyDocument,
   PolicyStatement,
   Role,
   ServicePrincipal,
 } from "aws-cdk-lib/aws-iam";
 import { CfnScheduleGroup } from "aws-cdk-lib/aws-scheduler";
+import { HttpApi, HttpMethod } from "@aws-cdk/aws-apigatewayv2-alpha";
+import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
+import { StringParameter } from "aws-cdk-lib/aws-ssm";
+import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
+import { baseNodeFnProps } from "./utils";
 
-export interface WorkflowProps {
+export interface ServiceProps {
   entry: string;
   name?: string;
   environment?: {
@@ -111,6 +120,14 @@ export class Service extends Construct implements IGrantable {
    */
   public readonly dlq: Queue;
   /**
+   * API Gateway for providing service api
+   */
+  public readonly api: HttpApi;
+  /**
+   * Role used to execute api
+   */
+  public readonly apiExecuteRole: Role;
+  /*
    * A Lambda Function for processing inbound webhook requests.
    */
   public readonly webhookEndpoint: IFunction;
@@ -119,14 +136,9 @@ export class Service extends Construct implements IGrantable {
    */
   public readonly webhookEndpointUrl: FunctionUrl;
 
-  /**
-   * URL of the Webhook Endpoint.
-   */
-  public readonly webhookEndpointUrl: FunctionUrl;
-
   readonly grantPrincipal: IPrincipal;
 
-  constructor(scope: Construct, id: string, props: WorkflowProps) {
+  constructor(scope: Construct, id: string, props: ServiceProps) {
     super(scope, id);
 
     this.serviceName = props.name ?? Names.uniqueResourceName(this, {});
@@ -162,17 +174,7 @@ export class Service extends Construct implements IGrantable {
           "../../esm/functions/start-workflow.js"
         ),
         handler: "handle",
-        runtime: Runtime.NODEJS_16_X,
-        architecture: Architecture.ARM_64,
-        bundling: {
-          // https://github.com/aws/aws-cdk/issues/21329#issuecomment-1212336356
-          // cannot output as .mjs file as ulid does not support it.
-          mainFields: ["module", "main"],
-          esbuildArgs: {
-            "--conditions": "module,import,require",
-          },
-          metafile: true,
-        },
+        ...baseNodeFnProps,
         environment: {
           [ENV_NAMES.TABLE_NAME]: this.table.tableName,
           [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
@@ -189,18 +191,15 @@ export class Service extends Construct implements IGrantable {
       // TODO: remove after testing
       removalPolicy: RemovalPolicy.DESTROY,
     });
-
-    const outDir = path.join(".eventual", this.node.addr);
-
     execSync(
       `node ${require.resolve(
-        "@eventual/compiler/lib/eventual-bundle.js"
-      )} ${outDir} ${props.entry}`
-    );
+        "@eventual/compiler/bin/eventual-bundle.js"
+      )} ${this.outDir()} ${props.entry}`
+    ).toString("utf-8");
 
     this.activityWorker = new Function(this, "Worker", {
       architecture: Architecture.ARM_64,
-      code: Code.fromAsset(path.join(outDir, "activity")),
+      code: Code.fromAsset(this.outDir("activity")),
       // the bundler outputs activity/index.js
       handler: "index.default",
       runtime: Runtime.NODEJS_16_X,
@@ -210,7 +209,7 @@ export class Service extends Construct implements IGrantable {
         [ENV_NAMES.TABLE_NAME]: this.table.tableName,
         [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
         [ENV_NAMES.ACTIVITY_LOCK_TABLE_NAME]: this.locksTable.tableName,
-        [ENV_NAMES.EVENTUAL_WORKER]: "1",
+        [CoreEnvFlags.ACTIVITY_WORKER_FLAG]: "1",
         ...(props.environment ?? {}),
       },
       // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
@@ -251,15 +250,7 @@ export class Service extends Construct implements IGrantable {
         "../../esm/handlers/schedule-forwarder.js"
       ),
       handler: "handle",
-      runtime: Runtime.NODEJS_16_X,
-      architecture: Architecture.ARM_64,
-      bundling: {
-        mainFields: ["module", "main"],
-        esbuildArgs: {
-          "--conditions": "module,import,require",
-        },
-        metafile: true,
-      },
+      ...baseNodeFnProps,
       environment: {
         [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
         [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
@@ -270,25 +261,32 @@ export class Service extends Construct implements IGrantable {
       },
     });
 
+    //Environment variables required to glue together the service components.
+    //Used by the orchestrator and api
+    const componentsEnv = {
+      [ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME]:
+        this.activityWorker.functionName,
+      [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
+      [ENV_NAMES.TABLE_NAME]: this.table.tableName,
+      [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
+      [ENV_NAMES.SCHEDULER_ROLE_ARN]: schedulerRole.roleArn,
+      [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: this.dlq.queueArn,
+      [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
+      [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
+      [ENV_NAMES.SCHEDULE_FORWARDER_ARN]: this.scheduleForwarder.functionArn,
+    };
+
     this.orchestrator = new Function(this, "Orchestrator", {
       architecture: Architecture.ARM_64,
-      code: Code.fromAsset(path.join(outDir, "orchestrator")),
+      code: Code.fromAsset(this.outDir("orchestrator")),
       // the bundler outputs orchestrator/index.js
       handler: "index.default",
       runtime: Runtime.NODEJS_16_X,
       memorySize: 512,
       environment: {
         NODE_OPTIONS: "--enable-source-maps",
-        [ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME]:
-          this.activityWorker.functionName,
-        [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
-        [ENV_NAMES.TABLE_NAME]: this.table.tableName,
-        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
-        [ENV_NAMES.SCHEDULER_ROLE_ARN]: schedulerRole.roleArn,
-        [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: this.dlq.queueArn,
-        [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
-        [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
-        [ENV_NAMES.SCHEDULE_FORWARDER_ARN]: this.scheduleForwarder.functionArn,
+        [CoreEnvFlags.ORCHESTRATOR_FLAG]: "1",
+        ...componentsEnv,
       },
       events: [
         new SqsEventSource(this.workflowQueue, {
@@ -304,15 +302,7 @@ export class Service extends Construct implements IGrantable {
         "../../esm/handlers/timer-handler.js"
       ),
       handler: "handle",
-      runtime: Runtime.NODEJS_16_X,
-      architecture: Architecture.ARM_64,
-      bundling: {
-        mainFields: ["module", "main"],
-        esbuildArgs: {
-          "--conditions": "module,import,require",
-        },
-        metafile: true,
-      },
+      ...baseNodeFnProps,
       environment: {
         [ENV_NAMES.TABLE_NAME]: this.table.tableName,
         [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
@@ -381,10 +371,110 @@ export class Service extends Construct implements IGrantable {
     // grants the orchestrator the ability to pass the scheduler role to the creates schedules
     schedulerRole.grantPassRole(this.orchestrator.grantPrincipal);
 
-    // TODO - timers and retry
-    new CfnOutput(this, "workflow-data", {
-      exportName: `eventual-workflow-data:${this.serviceName}`,
-      value: JSON.stringify({
+    this.api = new HttpApi(this, "gateway", {
+      apiName: `eventual-api-${this.serviceName}`,
+      defaultAuthorizer: new HttpIamAuthorizer(),
+    });
+
+    this.apiExecuteRole = new Role(this, "EventualApiRole", {
+      roleName: `eventual-api-${this.serviceName}`,
+      assumedBy: new AccountPrincipal(Stack.of(this).account),
+      inlinePolicies: {
+        execute: new PolicyDocument({
+          statements: [
+            new PolicyStatement({
+              actions: ["execute-api:*"],
+              effect: Effect.ALLOW,
+              resources: [
+                `arn:aws:execute-api:${Stack.of(this).region}:${
+                  Stack.of(this).account
+                }:${this.api.apiId}/*/*/*`,
+              ],
+            }),
+          ],
+        }),
+      },
+    });
+
+    const apiLambdaEnvironment = {
+      SERVICE: JSON.stringify({
+        name: this.serviceName,
+        tableName: this.table.tableName,
+        workflowQueueUrl: this.workflowQueue.queueUrl,
+        executionHistoryBucket: this.history.bucketName,
+        orchestratorFunctionName: this.orchestrator.functionName,
+        activityWorkerFunctionName: this.activityWorker.functionName,
+      } satisfies ServiceProperties),
+      ...componentsEnv,
+    };
+
+    const route = (mappings: Record<string, RouteMapping | RouteMapping[]>) => {
+      Object.entries(mappings).forEach(([path, mappings]) => {
+        const mappingsArray = Array.isArray(mappings) ? mappings : [mappings];
+        mappingsArray.forEach(({ entry, methods, grants }) => {
+          const id =
+            //Generate id for the lambda based on its path and method
+            path
+              .slice(1)
+              .replace("/", "-")
+              .replace(/[\{\}]/, "") + methods?.join("-") ?? [];
+          const fn =
+            "api" in entry
+              ? this.apiLambda(id, entry.api, apiLambdaEnvironment)
+              : this.prebundledLambda(id, entry.bundled, apiLambdaEnvironment);
+          grants?.(fn);
+          const integration = new HttpLambdaIntegration(
+            `${id}-integration`,
+            fn
+          );
+          this.api.addRoutes({
+            path,
+            integration,
+            methods,
+          });
+        });
+      });
+    };
+
+    route({
+      "/workflows": {
+        methods: [HttpMethod.GET],
+        entry: { bundled: "list-workflows" },
+      },
+      "/workflows/{name}/executions": [
+        {
+          methods: [HttpMethod.POST],
+          entry: { api: "executions/new.js" },
+          grants: (fn) => {
+            this.table.grantReadWriteData(fn);
+            this.workflowQueue.grantSendMessages(fn);
+          },
+        },
+        {
+          methods: [HttpMethod.GET],
+          entry: { api: "executions/list.js" },
+          grants: (fn) => {
+            this.table.grantReadWriteData(fn);
+            this.workflowQueue.grantSendMessages(fn);
+          },
+        },
+      ],
+      "/executions/{executionId}/history": {
+        methods: [HttpMethod.GET],
+        entry: { api: "executions/history.js" },
+        grants: (fn) => this.table.grantReadData(fn),
+      },
+      "/executions/{executionId}/workflow-history": {
+        methods: [HttpMethod.GET],
+        entry: { api: "executions/workflow-history.js" },
+        grants: (fn) => this.history.grantRead(fn),
+      },
+    });
+
+    new StringParameter(this, "service-data", {
+      parameterName: `/eventual/services/${this.serviceName}`,
+      stringValue: JSON.stringify({
+        apiEndpoint: this.api.apiEndpoint,
         functions: {
           orchestrator: this.orchestrator.functionName,
           activityWorker: this.activityWorker.functionName,
@@ -394,7 +484,7 @@ export class Service extends Construct implements IGrantable {
 
     this.webhookEndpoint = new Function(this, "WebhookEndpoint", {
       architecture: Architecture.ARM_64,
-      code: Code.fromAsset(path.join(outDir, "webhook")),
+      code: Code.fromAsset(this.outDir("webhook")),
       // the bundler outputs orchestrator/index.js
       handler: "index.default",
       runtime: Runtime.NODEJS_16_X,
@@ -403,7 +493,7 @@ export class Service extends Construct implements IGrantable {
         NODE_OPTIONS: "--enable-source-maps",
         [ENV_NAMES.TABLE_NAME]: this.table.tableName,
         [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
-        [ENV_NAMES.EVENTUAL_WEBHOOK]: "1",
+        [CoreEnvFlags.WEBHOOK_FLAG]: "1",
       },
     });
     this.webhookEndpointUrl = this.webhookEndpoint.addFunctionUrl({
@@ -420,4 +510,53 @@ export class Service extends Construct implements IGrantable {
     // Enable creating history to start a workflow.
     this.table.grantReadWriteData(this.webhookEndpoint);
   }
+
+  public grantStartWorkflow(grantable: IGrantable) {
+    this.workflowQueue.grantSendMessages(grantable);
+    this.table.grantReadWriteData(grantable);
+  }
+
+  public grantRead(grantable: IGrantable) {
+    this.history.grantRead(grantable);
+    this.table.grantReadData(grantable);
+  }
+
+  public apiLambda(
+    id: string,
+    entry: string,
+    environment: Record<string, string>
+  ): NodejsFunction {
+    return new NodejsFunction(this, id, {
+      entry: path.join(
+        require.resolve("@eventual/aws-runtime"),
+        "../../esm/handlers/api",
+        entry
+      ),
+      ...baseNodeFnProps,
+      environment,
+    });
+  }
+
+  public prebundledLambda(
+    id: string,
+    entry: string,
+    environment: Record<string, string>
+  ) {
+    return new Function(this, id, {
+      code: Code.fromAsset(this.outDir(entry)),
+      ...baseNodeFnProps,
+      handler: "index.handler",
+      environment,
+    });
+  }
+
+  private outDir(...paths: string[]): string {
+    return path.join(".eventual", this.node.addr, ...paths);
+  }
+}
+
+interface RouteMapping {
+  methods?: HttpMethod[];
+  entry: { api: string } | { bundled: string };
+  grants?: (grantee: IGrantable) => void;
 }

@@ -4,6 +4,7 @@ export * from "./chain.js";
 export * from "./command.js";
 export * from "./context.js";
 export * from "./error.js";
+export * from "./signals.js";
 export * from "./events.js";
 export * from "./eventual.js";
 export * from "./execution.js";

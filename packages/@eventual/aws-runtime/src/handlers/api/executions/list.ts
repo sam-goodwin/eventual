@@ -1,23 +1,13 @@
-import middy from "@middy/core";
-import { APIGatewayProxyEventV2 } from "aws-lambda";
-import { createWorkflowRuntimeClient } from "../../../clients";
-import { workflows } from "../env";
-import { errorMiddleware } from "../middleware";
+import { createWorkflowClient } from "../../../clients/index.js";
+import { getService } from "../service-properties.js";
+import { withErrorMiddleware } from "../middleware.js";
+import { APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { Execution } from "@eventual/core";
 
-async function list(event: APIGatewayProxyEventV2) {
-  const workflowName = event.pathParameters?.name;
-  if (!workflowName) {
-    return { statusCode: 400, body: `Missing workflowName` };
-  }
-  const workflow = workflows[workflowName];
-  if (!workflow) {
-    return {
-      statusCode: 400,
-      body: `Workflow ${workflowName} does not exist!`,
-    };
-  }
-  const workflowClient = createWorkflowRuntimeClient(workflow);
+async function list() {
+  const workflowClient = createWorkflowClient(getService());
   return workflowClient.getExecutions();
 }
 
-export const handler = middy(list).use(errorMiddleware);
+export const handler: APIGatewayProxyHandlerV2<Execution[]> =
+  withErrorMiddleware(list);
