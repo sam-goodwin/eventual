@@ -190,18 +190,15 @@ export class Service extends Construct implements IGrantable {
       // TODO: remove after testing
       removalPolicy: RemovalPolicy.DESTROY,
     });
-
-    const outDir = path.join(".eventual", this.node.addr);
-
     execSync(
       `node ${require.resolve(
         "@eventual/compiler/bin/eventual-bundle.js"
-      )} ${outDir} ${props.entry}`
+      )} ${this.outDir()} ${props.entry}`
     ).toString("utf-8");
 
     this.activityWorker = new Function(this, "Worker", {
       architecture: Architecture.ARM_64,
-      code: Code.fromAsset(path.join(outDir, "activity")),
+      code: Code.fromAsset(this.outDir("activity")),
       // the bundler outputs activity/index.js
       handler: "index.default",
       runtime: Runtime.NODEJS_16_X,
@@ -280,7 +277,7 @@ export class Service extends Construct implements IGrantable {
 
     this.orchestrator = new Function(this, "Orchestrator", {
       architecture: Architecture.ARM_64,
-      code: Code.fromAsset(path.join(outDir, "orchestrator")),
+      code: Code.fromAsset(this.outDir("orchestrator")),
       // the bundler outputs orchestrator/index.js
       handler: "index.default",
       runtime: Runtime.NODEJS_16_X,
@@ -409,22 +406,28 @@ export class Service extends Construct implements IGrantable {
       ...componentsEnv,
     };
 
-    const route = (mappings: Record<string, RouteMapping[]>) => {
+    const route = (mappings: Record<string, RouteMapping | RouteMapping[]>) => {
       Object.entries(mappings).forEach(([path, mappings]) => {
-        mappings.forEach(({ entry, methods, configure, bundle }) => {
+        const mappingsArray = Array.isArray(mappings) ? mappings : [mappings];
+        mappingsArray.forEach(({ entry, methods, grants }) => {
+          const id =
+            //Generate id for the lambda based on its path and method
+            path
+              .slice(1)
+              .replace("/", "-")
+              .replace(/[\{\}]/, "") + methods?.join("-") ?? [];
+          const fn =
+            "api" in entry
+              ? this.apiLambda(id, entry.api, apiLambdaEnvironment)
+              : this.prebundledLambda(id, entry.bundled, apiLambdaEnvironment);
+          grants?.forEach((grant) => grant(fn));
+          const integration = new HttpLambdaIntegration(
+            `${id}-integration`,
+            fn
+          );
           this.api.addRoutes({
             path,
-            integration: this.apiLambda(
-              //Generate id for the lambda based on its path and method
-              path
-                .slice(1)
-                .replace("/", "-")
-                .replace(/[\{\}]/, "") + methods?.join("-") ?? [],
-              entry,
-              apiLambdaEnvironment,
-              configure,
-              bundle
-            ),
+            integration,
             methods,
           });
         });
@@ -432,49 +435,39 @@ export class Service extends Construct implements IGrantable {
     };
 
     route({
-      "/workflows": [
-        {
-          methods: [HttpMethod.GET],
-          entry: path.resolve(outDir, "list-workflows"),
-          bundle: false,
-        },
-      ],
+      "/workflows": {
+        methods: [HttpMethod.GET],
+        entry: { bundled: "list-workflows" },
+      },
       "/workflows/{name}/executions": [
         {
           methods: [HttpMethod.POST],
-          entry: "executions/new.js",
-          configure: (fn) => {
-            this.table.grantReadWriteData(fn);
-            this.workflowQueue.grantSendMessages(fn);
-          },
+          entry: { api: "executions/new.js" },
+          grants: [
+            this.table.grantReadWriteData,
+            this.workflowQueue.grantSendMessages,
+          ],
         },
         {
           methods: [HttpMethod.GET],
-          entry: "executions/list.js",
-          configure: (fn) => {
-            this.table.grantReadWriteData(fn);
-            this.workflowQueue.grantSendMessages(fn);
-          },
+          entry: { api: "executions/list.js" },
+          grants: [
+            this.table.grantReadWriteData,
+            this.workflowQueue.grantSendMessages,
+          ],
         },
       ],
-      "/executions/{executionId}/history": [
-        {
-          methods: [HttpMethod.GET],
-          entry: "executions/history.js",
-          configure: (fn) => {
-            this.table.grantReadData(fn);
-          },
-        },
-      ],
-      "/executions/{executionId}/workflow-history": [
-        {
-          methods: [HttpMethod.GET],
-          entry: "executions/workflow-history.js",
-          configure: (fn) => {
-            this.history.grantRead(fn);
-          },
-        },
-      ],
+      "/executions/{executionId}/history": {
+        methods: [HttpMethod.GET],
+        entry: { api: "executions/history.js" },
+        grants: [this.table.grantReadData],
+      },
+
+      "/executions/{executionId}/workflow-history": {
+        methods: [HttpMethod.GET],
+        entry: { api: "executions/workflow-history.js" },
+        grants: [this.history.grantRead],
+      },
     });
 
     new StringParameter(this, "service-data", {
@@ -490,7 +483,7 @@ export class Service extends Construct implements IGrantable {
 
     this.webhookEndpoint = new Function(this, "WebhookEndpoint", {
       architecture: Architecture.ARM_64,
-      code: Code.fromAsset(path.join(outDir, "webhook")),
+      code: Code.fromAsset(this.outDir("webhook")),
       // the bundler outputs orchestrator/index.js
       handler: "index.default",
       runtime: Runtime.NODEJS_16_X,
@@ -516,38 +509,39 @@ export class Service extends Construct implements IGrantable {
   public apiLambda(
     id: string,
     entry: string,
-    environment?: Record<string, string>,
-    configure?: (fn: IFunction) => void,
-    bundle: boolean = true
-  ): HttpLambdaIntegration {
-    let fn: IFunction;
-    if (bundle) {
-      fn = new NodejsFunction(this, id, {
-        entry: path.join(
-          require.resolve("@eventual/aws-runtime"),
-          "../../esm/handlers/api",
-          entry
-        ),
-        ...baseNodeFnProps,
-        environment,
-      });
-    } else {
-      fn = new Function(this, id, {
-        code: Code.fromAsset(entry),
-        ...baseNodeFnProps,
-        handler: "index.handler",
-        environment,
-      });
-    }
-    configure?.(fn);
-    return new HttpLambdaIntegration(`${id}-integration`, fn);
+    environment: Record<string, string>
+  ): NodejsFunction {
+    return new NodejsFunction(this, id, {
+      entry: path.join(
+        require.resolve("@eventual/aws-runtime"),
+        "../../esm/handlers/api",
+        entry
+      ),
+      ...baseNodeFnProps,
+      environment,
+    });
+  }
+
+  public prebundledLambda(
+    id: string,
+    entry: string,
+    environment: Record<string, string>
+  ) {
+    return new Function(this, id, {
+      code: Code.fromAsset(this.outDir(entry)),
+      ...baseNodeFnProps,
+      handler: "index.handler",
+      environment,
+    });
+  }
+
+  private outDir(...paths: string[]): string {
+    return path.join(".eventual", this.node.addr, ...paths);
   }
 }
 
 interface RouteMapping {
-  entry: string;
   methods?: HttpMethod[];
-  service?: string;
-  configure?: (fn: IFunction) => void;
-  bundle?: boolean;
+  entry: { api: string } | { bundled: string };
+  grants?: ((grantee: IGrantable) => void)[];
 }
