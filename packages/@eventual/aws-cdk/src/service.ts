@@ -415,6 +415,7 @@ export class Service extends Construct implements IGrantable {
           this.api.addRoutes({
             path,
             integration: this.apiLambda(
+              //Generate id for the lambda based on its path and method
               path
                 .slice(1)
                 .replace("/", "-")
