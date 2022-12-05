@@ -420,7 +420,7 @@ export class Service extends Construct implements IGrantable {
             "api" in entry
               ? this.apiLambda(id, entry.api, apiLambdaEnvironment)
               : this.prebundledLambda(id, entry.bundled, apiLambdaEnvironment);
-          grants?.forEach((grant) => grant(fn));
+          grants?.(fn);
           const integration = new HttpLambdaIntegration(
             `${id}-integration`,
             fn
@@ -443,29 +443,29 @@ export class Service extends Construct implements IGrantable {
         {
           methods: [HttpMethod.POST],
           entry: { api: "executions/new.js" },
-          grants: [
-            this.table.grantReadWriteData,
-            this.workflowQueue.grantSendMessages,
-          ],
+          grants: (fn) => {
+            this.table.grantReadWriteData(fn);
+            this.workflowQueue.grantSendMessages(fn);
+          },
         },
         {
           methods: [HttpMethod.GET],
           entry: { api: "executions/list.js" },
-          grants: [
-            this.table.grantReadWriteData,
-            this.workflowQueue.grantSendMessages,
-          ],
+          grants: (fn) => {
+            this.table.grantReadWriteData(fn);
+            this.workflowQueue.grantSendMessages(fn);
+          },
         },
       ],
       "/executions/{executionId}/history": {
         methods: [HttpMethod.GET],
         entry: { api: "executions/history.js" },
-        grants: [this.table.grantReadData],
+        grants: (fn) => this.table.grantReadData(fn),
       },
       "/executions/{executionId}/workflow-history": {
         methods: [HttpMethod.GET],
         entry: { api: "executions/workflow-history.js" },
-        grants: [this.history.grantRead],
+        grants: (fn) => this.history.grantRead(fn),
       },
     });
 
@@ -542,5 +542,5 @@ export class Service extends Construct implements IGrantable {
 interface RouteMapping {
   methods?: HttpMethod[];
   entry: { api: string } | { bundled: string };
-  grants?: ((grantee: IGrantable) => void)[];
+  grants?: (grantee: IGrantable) => void;
 }
