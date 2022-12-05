@@ -1,9 +1,6 @@
-import type { Eventual } from "./eventual.js";
+import type { Eventual, EventualCallCollector } from "./eventual.js";
 import type { WorkflowClient } from "./runtime/workflow-client.js";
 import type { Workflow } from "./workflow.js";
-
-const activityCollector = (): Eventual[] =>
-  ((globalThis as any).activityCollector ??= []);
 
 export const workflows = (): Map<string, Workflow> =>
   ((globalThis as any).workflows ??= new Map<string, Workflow>());
@@ -11,19 +8,28 @@ export const workflows = (): Map<string, Workflow> =>
 export const callableActivities = (): Record<string, Function> =>
   ((globalThis as any).callableActivities ??= {});
 
-export function registerActivity<A extends Eventual>(activity: A): A {
-  activityCollector().push(activity);
-  return activity;
+const eventualCollector = (): EventualCallCollector => {
+  const collector = (globalThis as any).eventualCollector;
+  if (!collector) {
+    throw new Error("No Eventual Collector Provided");
+  }
+  return collector;
+};
+
+export function registerEventual<A extends Eventual>(eventual: A): A {
+  return eventualCollector().pushEventual(eventual);
+}
+
+export function setEventualCollector(collector: EventualCallCollector) {
+  (globalThis as any).eventualCollector = collector;
+}
+
+export function clearEventualCollector() {
+  (globalThis as any).eventualCollector = undefined;
 }
 
 export function resetActivityCollector() {
   (globalThis as any).activityCollector = [];
-}
-
-export function collectActivities(): Eventual[] {
-  const activities = activityCollector();
-  resetActivityCollector();
-  return activities;
 }
 
 // a global variable for storing the WorkflowClient

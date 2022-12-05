@@ -1,18 +1,6 @@
-import {
-  AwaitedEventual,
-  Eventual,
-  EventualKind,
-  EventualSymbol,
-} from "./eventual.js";
-import {
-  workflows,
-  getWorkflowClient,
-  registerActivity,
-  resetActivityCollector,
-} from "./global.js";
+import { workflows, clearEventualCollector, getWorkflowClient } from "./global.js";
 import type { Program } from "./interpret.js";
-import type { Result } from "./result.js";
-import { Context, WorkflowContext } from "./context.js";
+import type { Context, WorkflowContext } from "./context.js";
 import { DeterminismError } from "./error.js";
 import {
   filterEvents,
@@ -26,7 +14,11 @@ import {
   WorkflowEventType,
 } from "./events.js";
 import { interpret, WorkflowResult } from "./interpret.js";
-import { StartWorkflowResponse } from "./runtime/workflow-client.js";
+import type { StartWorkflowResponse } from "./runtime/workflow-client.js";
+import { ChildExecution, createWorkflowCall } from "./calls/workflow-call.js";
+import { AwaitedEventual } from "./eventual.js";
+
+export const INTERNAL_EXECUTION_ID_PREFIX = "##EVENTUAL##";
 
 export type WorkflowHandler<Input = any, Output = any> = (
   input: Input,
@@ -46,14 +38,14 @@ export interface StartExecutionRequest<Input> {
   name?: string;
 }
 
-export type WorkflowOutput<W extends Workflow<any>> = W extends Workflow<
+export type WorkflowOutput<W extends Workflow<any, any>> = W extends Workflow<
   any,
   infer Out
 >
   ? Out
   : never;
 
-export type WorkflowInput<W extends Workflow<any>> = W extends Workflow<
+export type WorkflowInput<W extends Workflow<any, any>> = W extends Workflow<
   infer In,
   any
 >
@@ -78,7 +70,7 @@ export interface Workflow<Input = any, Output = any> {
    *
    * To start a workflow from another environment, use {@link start}.
    */
-  (input: Input): Promise<Output>;
+  (input: Input): Promise<Output> & ChildExecution;
 
   /**
    * Starts a workflow execution
@@ -128,11 +120,9 @@ export function workflow<Input = any, Output = any>(
     throw new Error(`workflow with name '${name}' already exists`);
   }
   const workflow: Workflow<Input, Output> = ((input?: any) =>
-    registerActivity({
-      [EventualSymbol]: EventualKind.WorkflowCall,
-      name,
-      input,
-    })) as any;
+    createWorkflowCall(name, input)) as any;
+
+  workflow.workflowName = name;
 
   workflow.workflowName = name;
 
@@ -149,21 +139,6 @@ export function workflow<Input = any, Output = any>(
   workflow.definition = definition as Workflow<Input, Output>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
   workflows().set(name, workflow);
   return workflow;
-}
-
-export function isWorkflowCall<T>(a: Eventual<T>): a is WorkflowCall<T> {
-  return a[EventualSymbol] === EventualKind.WorkflowCall;
-}
-
-/**
- * An {@link Eventual} representing an awaited call to a {@link Workflow}.
- */
-export interface WorkflowCall<T = any> {
-  [EventualSymbol]: EventualKind.WorkflowCall;
-  name: string;
-  input: any;
-  result?: Result<T>;
-  seq?: number;
 }
 
 export interface ProgressWorkflowResult extends WorkflowResult {
@@ -211,6 +186,11 @@ export function progressWorkflow(
   // execute workflow
   const interpretEvents = allEvents.filter(isHistoryEvent);
 
+  console.debug("history events", JSON.stringify(historyEvents));
+  console.debug("task events", JSON.stringify(taskEvents));
+  console.debug("synthetic events", JSON.stringify(syntheticEvents));
+  console.debug("interpret events", JSON.stringify(interpretEvents));
+
   try {
     return {
       ...interpret(
@@ -221,7 +201,7 @@ export function progressWorkflow(
     };
   } catch (err) {
     // temporary fix when the interpreter fails, but the activities are not cleared.
-    resetActivityCollector();
+    clearEventualCollector();
     throw err;
   }
 }

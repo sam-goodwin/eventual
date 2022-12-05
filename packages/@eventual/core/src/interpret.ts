@@ -3,24 +3,29 @@ import {
   isEventual,
   CommandCall,
   isCommandCall,
+  EventualCallCollector,
 } from "./eventual.js";
 import { isAwaitAll } from "./await-all.js";
-import { isActivityCall } from "./activity-call.js";
-import { DeterminismError } from "./error.js";
+import { isActivityCall } from "./calls/activity-call.js";
+import { DeterminismError, Timeout } from "./error.js";
 import {
   CompletedEvent,
+  SignalReceived,
   FailedEvent,
   HistoryEvent,
   isActivityScheduled,
   isChildWorkflowScheduled,
   isCompletedEvent,
+  isSignalReceived,
   isFailedEvent,
   isScheduledEvent,
   isSleepCompleted,
   isSleepScheduled,
+  isExpectSignalStarted,
+  isExpectSignalTimedOut,
   ScheduledEvent,
+  isSignalSent,
 } from "./events.js";
-import { collectActivities } from "./global.js";
 import {
   Result,
   isResolved,
@@ -30,10 +35,20 @@ import {
   Failed,
 } from "./result.js";
 import { createChain, isChain, Chain } from "./chain.js";
-import { assertNever } from "./util.js";
+import { assertNever, or } from "./util.js";
 import { Command, CommandType } from "./command.js";
-import { isWorkflowCall } from "./workflow.js";
-import { isSleepForCall, isSleepUntilCall } from "./sleep-call.js";
+import { isSleepForCall, isSleepUntilCall } from "./calls/sleep-call.js";
+import {
+  isExpectSignalCall,
+  ExpectSignalCall,
+} from "./calls/expect-signal-call.js";
+import {
+  isRegisterSignalHandlerCall,
+  RegisterSignalHandlerCall,
+} from "./calls/signal-handler-call.js";
+import { isSendSignalCall } from "./calls/send-signal-call.js";
+import { isWorkflowCall } from "./calls/workflow-call.js";
+import { clearEventualCollector, setEventualCollector } from "./global.js";
 
 export interface WorkflowResult<T = any> {
   /**
@@ -48,7 +63,7 @@ export interface WorkflowResult<T = any> {
   commands: Command[];
 }
 
-export type Program<Return = any> = Generator<Eventual, Return>;
+export type Program<Return = any> = Generator<Eventual, Return, any>;
 
 /**
  * Interprets a workflow program
@@ -58,6 +73,13 @@ export function interpret<Return>(
   history: HistoryEvent[]
 ): WorkflowResult<Awaited<Return>> {
   const callTable: Record<number, CommandCall> = {};
+  /**
+   * A map of signalIds to calls and handlers that are listening for this signal.
+   */
+  const signalSubscriptions: Record<
+    string,
+    (ExpectSignalCall | RegisterSignalHandlerCall)[]
+  > = {};
   const mainChain = createChain(program);
   const activeChains = new Set([mainChain]);
 
@@ -69,8 +91,7 @@ export function interpret<Return>(
   let emittedEvents = iterator(history, isScheduledEvent);
   let resultEvents = iterator(
     history,
-    (e): e is CompletedEvent | FailedEvent =>
-      isCompletedEvent(e) || isFailedEvent(e)
+    or(isCompletedEvent, isFailedEvent, isSignalReceived)
   );
 
   /**
@@ -84,9 +105,25 @@ export function interpret<Return>(
   let newCalls: Iterator<CommandCall, CommandCall>;
   // iterate until we are no longer finding commands or no longer have completion events to apply
   while (
-    (newCalls = iterator(advance(true) ?? [])).hasNext() ||
+    (newCalls = iterator(advance() ?? [])).hasNext() ||
     resultEvents.hasNext()
   ) {
+    // if there are result events (completed or failed), apply it before the next run
+    if (!newCalls.hasNext() && resultEvents.hasNext()) {
+      const resultEvent = resultEvents.next()!;
+
+      // it is possible that committing events
+      newCalls = iterator(
+        collectActivitiesScope(() => {
+          if (isSignalReceived(resultEvent)) {
+            commitSignal(resultEvent);
+          } else {
+            commitCompletionEvent(resultEvent);
+          }
+        })
+      );
+    }
+
     // Match and filter found commands against the given scheduled events.
     // scheduled events must be in order or not present.
     while (newCalls.hasNext() && emittedEvents.hasNext()) {
@@ -100,13 +137,6 @@ export function interpret<Return>(
           )} was expected at ${event?.seq}`
         );
       }
-    }
-
-    // if there are result events (compelted or failed), apply it before the next run
-    if (resultEvents.hasNext()) {
-      const resultEvent = resultEvents.next()!;
-
-      commitCompletionEvent(resultEvent, true);
     }
 
     // any calls not matched against historical schedule events will be returned to the caller.
@@ -125,58 +155,122 @@ export function interpret<Return>(
 
   return {
     result,
-    commands: calls.map((call) => ({
-      ...(isActivityCall(call)
-        ? {
-            // TODO: add sleep
-            kind: CommandType.StartActivity,
-            args: call.args,
-            name: call.name,
-            seq: call.seq!,
-          }
-        : isSleepUntilCall(call)
-        ? {
-            kind: CommandType.SleepUntil,
-            seq: call.seq!,
-            untilTime: call.isoDate,
-          }
-        : isSleepForCall(call)
-        ? {
-            kind: CommandType.SleepFor,
-            seq: call.seq!,
-            durationSeconds: call.durationSeconds,
-          }
-        : {
-            kind: CommandType.StartWorkflow,
-            input: call.input,
-            name: call.name,
-          }),
-      seq: call.seq!,
-    })),
+    commands: calls.flatMap(callToCommand),
   };
 
-  function advance(isReplay: boolean): CommandCall[] | undefined {
-    let calls: CommandCall[] | undefined;
+  function callToCommand(call: CommandCall): Command[] | Command {
+    if (isActivityCall(call)) {
+      return {
+        // TODO: add sleep
+        kind: CommandType.StartActivity,
+        args: call.args,
+        name: call.name,
+        seq: call.seq!,
+      };
+    } else if (isSleepUntilCall(call)) {
+      return {
+        kind: CommandType.SleepUntil,
+        seq: call.seq!,
+        untilTime: call.isoDate,
+      };
+    } else if (isSleepForCall(call)) {
+      return {
+        kind: CommandType.SleepFor,
+        seq: call.seq!,
+        durationSeconds: call.durationSeconds,
+      };
+    } else if (isWorkflowCall(call)) {
+      return {
+        kind: CommandType.StartWorkflow,
+        seq: call.seq!,
+        input: call.input,
+        name: call.name,
+      };
+    } else if (isExpectSignalCall(call)) {
+      return {
+        kind: CommandType.ExpectSignal,
+        signalId: call.signalId,
+        seq: call.seq!,
+        timeoutSeconds: call.timeoutSeconds,
+      };
+    } else if (isSendSignalCall(call)) {
+      return {
+        kind: CommandType.SendSignal,
+        signalId: call.signalId,
+        target: call.target,
+        seq: call.seq!,
+        payload: call.payload,
+      };
+    } else if (isRegisterSignalHandlerCall(call)) {
+      return [];
+    }
+
+    return assertNever(call);
+  }
+
+  function advance(): CommandCall[] | undefined {
     let madeProgress: boolean;
-    do {
-      madeProgress = false;
-      for (const chain of activeChains) {
-        const producedCalls = tryAdvanceChain(chain, isReplay);
-        if (producedCalls !== undefined) {
-          madeProgress = true;
-          for (const call of producedCalls) {
-            if (calls === undefined) {
-              calls = [];
-            }
-            calls.push(call);
-            // assign sequences in order of when they were spawned
-            call.seq = nextSeq();
-            callTable[call.seq] = call;
-          }
+
+    return collectActivitiesScope(() => {
+      do {
+        madeProgress = false;
+        for (const chain of activeChains) {
+          madeProgress = madeProgress || tryAdvanceChain(chain);
         }
-      }
-    } while (madeProgress);
+      } while (madeProgress);
+    });
+  }
+
+  function collectActivitiesScope(func: () => void): CommandCall[] {
+    let calls: CommandCall[] = [];
+
+    const collector: EventualCallCollector = {
+      /**
+       * The returned activity is available to the workflow and may be yielded later if it was not already.
+       */
+      pushEventual(activity) {
+        if (isCommandCall(activity)) {
+          if (isExpectSignalCall(activity)) {
+            subscribeToSignal(activity.signalId, activity);
+          } else if (isRegisterSignalHandlerCall(activity)) {
+            subscribeToSignal(activity.signalId, activity);
+            // signal handler does not emit a call/command. It is only internal.
+            return activity;
+          }
+          activity.seq = nextSeq();
+          callTable[activity.seq!] = activity;
+          calls.push(activity);
+          return activity;
+        } else if (isChain(activity)) {
+          activeChains.add(activity);
+          tryAdvanceChain(activity);
+          return activity;
+        } else if (isAwaitAll(activity)) {
+          return activity;
+        }
+        return assertNever(activity);
+      },
+    };
+
+    try {
+      setEventualCollector(collector);
+
+      func();
+    } finally {
+      clearEventualCollector();
+    }
+
     return calls;
+  }
+
+  function subscribeToSignal(
+    signalId: string,
+    sub: ExpectSignalCall | RegisterSignalHandlerCall
+  ) {
+    if (!(signalId in signalSubscriptions)) {
+      signalSubscriptions[signalId] = [];
+    }
+    signalSubscriptions[signalId]!.push(sub);
   }
 
   /**
@@ -187,19 +281,18 @@ export function interpret<Return>(
    *    but did not emit any new Commands.
    * 2. An `undefined` return value indicates that the chain did not advance
    */
-  function tryAdvanceChain(
-    chain: Chain,
-    isReplay: boolean
-  ): CommandCall[] | undefined {
+  function tryAdvanceChain(chain: Chain): boolean {
     if (chain.awaiting === undefined) {
       // this is the first time the chain is running, so wake it with an undefined input
-      return advanceChain(chain, undefined);
+      advanceChain(chain, undefined);
+      return true;
     }
     const result = tryResolveResult(chain.awaiting);
     if (result === undefined) {
-      return undefined;
+      return false;
     } else if (isResolved(result) || isFailed(result)) {
-      return advanceChain(chain, result);
+      advanceChain(chain, result);
+      return true;
     } else if (isAwaitAll(result.activity)) {
       const results = [];
       for (const activity of result.activity.activities) {
@@ -211,17 +304,19 @@ export function interpret<Return>(
           throw new DeterminismError();
         } else if (isPending(result)) {
           // chain cannot wake up because we're waiting on all tasks
-          return undefined;
+          return false;
         } else if (isFailed(result)) {
           // one of the inner activities has failed, the chain should throw
-          return advanceChain(chain, result);
+          advanceChain(chain, result);
+          return true;
         } else {
           results.push(result.value);
         }
       }
-      return advanceChain(chain, Result.resolved(results));
+      advanceChain(chain, Result.resolved(results));
+      return true;
     } else {
-      return undefined;
+      return false;
     }
 
     /**
@@ -230,7 +325,7 @@ export function interpret<Return>(
     function advanceChain(
       chain: Chain,
       result: Resolved | Failed | undefined
-    ): CommandCall[] {
+    ): void {
       try {
         const iterResult =
           result === undefined || isResolved(result)
@@ -262,19 +357,6 @@ export function interpret<Return>(
         activeChains.delete(chain);
         chain.result = Result.failed(err);
       }
-
-      return collectActivities().flatMap((activity) => {
-        if (isCommandCall(activity)) {
-          return activity;
-        } else if (isChain(activity)) {
-          activeChains.add(activity);
-          return tryAdvanceChain(activity, isReplay) ?? [];
-        } else if (isAwaitAll(activity)) {
-          return [];
-        }
-
-        return assertNever(activity);
-      });
     }
   }
 
@@ -309,23 +391,46 @@ export function interpret<Return>(
     }
   }
 
-  function commitCompletionEvent(
-    event: CompletedEvent | FailedEvent,
-    isReplay: boolean
-  ) {
+  /**
+   * Add result to ExpectSignal and call any event handlers.
+   */
+  function commitSignal(signal: SignalReceived) {
+    const subscriptions = signalSubscriptions[signal.signalId];
+
+    subscriptions?.forEach((sub) => {
+      if (isExpectSignalCall(sub)) {
+        if (!sub.result) {
+          sub.result = Result.resolved(signal.payload);
+        }
+      } else if (isRegisterSignalHandlerCall(sub)) {
+        if (!sub.result) {
+          // call the handler
+          // the transformer may wrap the handler function as a chain, it will be registered internally
+          const output = sub.handler(signal.payload);
+          // if the handler returns generator instead, start a new chain
+          if (isGenerator(output)) {
+            activeChains.add(createChain(output));
+          }
+        }
+      }
+    });
+  }
+
+  function commitCompletionEvent(event: CompletedEvent | FailedEvent) {
     const call = callTable[event.seq];
     if (call === undefined) {
       throw new DeterminismError(`Call for seq ${event.seq} was not emitted.`);
     }
-    if (isReplay && call.result && !isPending(call.result)) {
-      throw new DeterminismError(
-        `Expected call result to not be pending: ${call.seq}.`
-      );
+    if (call.result && !isPending(call.result)) {
+      return;
     }
     call.result = isCompletedEvent(event)
       ? Result.resolved(event.result)
       : isSleepCompleted(event)
       ? Result.resolved(undefined)
+      : isExpectSignalTimedOut(event)
+      ? // TODO: should this throw a specific error type?
+        Result.failed(new Timeout("Expect Signal Timed Out"))
       : Result.failed(event.error);
   }
 }
@@ -339,6 +444,10 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
     return isWorkflowCall(call) && call.name === event.name;
   } else if (isSleepScheduled(event)) {
     return isSleepUntilCall(call) || isSleepForCall(call);
+  } else if (isExpectSignalStarted(event)) {
+    return isExpectSignalCall(call) && event.signalId == call.signalId;
+  } else if (isSignalSent(event)) {
+    return isSendSignalCall(call) && event.signalId === call.signalId;
   }
   return assertNever(event);
 }

@@ -1,5 +1,6 @@
 import { HistoryStateEvent } from "../events.js";
 import { Execution, ExecutionStatus } from "../execution.js";
+import { Signal } from "../signals.js";
 import { Workflow, WorkflowInput } from "../workflow.js";
 
 export interface WorkflowClient {
@@ -27,7 +28,20 @@ export interface WorkflowClient {
     statuses?: ExecutionStatus[];
     workflowName?: string;
   }): Promise<Execution[]>;
+
   getExecution(executionId: string): Promise<Execution | undefined>;
+
+  sendSignal(request: SendSignalRequest): Promise<void>;
+}
+
+export interface SendSignalRequest {
+  executionId: string;
+  signal: string | Signal;
+  payload?: any;
+  /**
+   * Execution scoped unique event id. Duplicates will be deduplicated.
+   */
+  id: string;
 }
 
 export interface StartWorkflowRequest<W extends Workflow = Workflow> {

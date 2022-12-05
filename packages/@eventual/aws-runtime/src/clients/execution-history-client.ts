@@ -9,6 +9,7 @@ import {
   BaseEvent,
   getEventId,
   isHistoryEvent,
+  isSignalReceived,
   WorkflowEvent,
 } from "@eventual/core";
 import type * as eventual from "@eventual/core";
@@ -108,18 +109,20 @@ export class AWSExecutionHistoryClient
 
 export function createEvent<T extends WorkflowEvent>(
   event: UnresolvedEvent<T>,
-  time: Date = new Date()
+  time: Date = new Date(),
+  id: string = ulid()
 ): T {
   const timestamp = time.toISOString();
 
   // history events do not have IDs, use getEventId
-  if (isHistoryEvent(event as unknown as WorkflowEvent)) {
+  if (
+    isHistoryEvent(event as unknown as WorkflowEvent) &&
+    !isSignalReceived(event as unknown as WorkflowEvent)
+  ) {
     return { ...(event as any), timestamp };
   }
 
-  const uuid = ulid();
-
-  return { ...event, id: uuid, timestamp } as T;
+  return { ...event, id, timestamp } as T;
 }
 
 interface EventRecord {

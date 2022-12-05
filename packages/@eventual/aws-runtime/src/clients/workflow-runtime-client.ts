@@ -1,7 +1,4 @@
-import {
-  DynamoDBClient,
-  UpdateItemCommand,
-} from "@aws-sdk/client-dynamodb";
+import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import {
   GetObjectCommand,
   GetObjectCommandOutput,
@@ -24,6 +21,8 @@ import {
   WorkflowEventType,
   ActivityScheduled,
   SleepCompleted,
+  ExpectSignalStarted,
+  ExpectSignalTimedOut,
 } from "@eventual/core";
 import {
   createExecutionFromResult,
@@ -246,6 +245,40 @@ export class AWSWorkflowRuntimeClient
       type: WorkflowEventType.SleepScheduled,
       seq: command.seq,
       untilTime: untilTime.toISOString(),
+    });
+  }
+
+  async executionExpectSignal({
+    executionId,
+    command,
+    baseTime,
+  }: eventual.ExecuteExpectSignalRequest): Promise<ExpectSignalStarted> {
+    if (command.timeoutSeconds) {
+      const untilTime = new Date(
+        baseTime.getTime() + command.timeoutSeconds * 1000
+      );
+      const untilTimeIso = untilTime.toISOString();
+
+      const event: ExpectSignalTimedOut = {
+        signalId: command.signalId,
+        seq: command.seq,
+        timestamp: untilTimeIso,
+        type: WorkflowEventType.ExpectSignalTimedOut,
+      };
+
+      await this.props.timerClient.startTimer({
+        event,
+        executionId,
+        type: TimerRequestType.ForwardEvent,
+        untilTime: untilTimeIso,
+      });
+    }
+
+    return createEvent<ExpectSignalStarted>({
+      signalId: command.signalId,
+      seq: command.seq,
+      type: WorkflowEventType.ExpectSignalStarted,
+      timeoutSeconds: command.timeoutSeconds,
     });
   }
 }

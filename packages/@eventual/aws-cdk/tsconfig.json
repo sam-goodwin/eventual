@@ -1,5 +1,5 @@
 {
-  "extends": "../../../tsconfig-base",
+  "extends": "../../../tsconfig-base.cjs",
   "compilerOptions": {
     "outDir": "lib",
     "declaration": true,
@@ -11,6 +11,7 @@
   "exclude": ["lib", "node_modules"],
   "references": [
     { "path": "../aws-runtime/tsconfig.cjs.json" },
+    { "path": "../core/tsconfig.cjs.json" },
     { "path": "../compiler" }
   ]
 }

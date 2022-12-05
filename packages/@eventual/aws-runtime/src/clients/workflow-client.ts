@@ -9,17 +9,22 @@ import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
   Execution,
   ExecutionStatus,
+  SignalReceived,
   HistoryStateEvent,
   Workflow,
   WorkflowEventType,
   WorkflowStarted,
   WorkflowTask,
+  WorkflowClient,
+  StartWorkflowRequest,
+  SendSignalRequest,
 } from "@eventual/core";
 import { ulid } from "ulidx";
+import {
+  AWSExecutionHistoryClient,
+  createEvent,
+} from "./execution-history-client.js";
 import { formatExecutionId } from "../execution-id.js";
-import { AWSExecutionHistoryClient } from "./execution-history-client.js";
-
-import type * as eventual from "@eventual/core";
 
 export interface AWSWorkflowClientProps {
   readonly dynamo: DynamoDBClient;
@@ -29,7 +34,7 @@ export interface AWSWorkflowClientProps {
   readonly executionHistory: AWSExecutionHistoryClient;
 }
 
-export class AWSWorkflowClient implements eventual.WorkflowClient {
+export class AWSWorkflowClient implements WorkflowClient {
   constructor(private props: AWSWorkflowClientProps) {}
 
   /**
@@ -44,7 +49,7 @@ export class AWSWorkflowClient implements eventual.WorkflowClient {
     input,
     parentExecutionId,
     seq,
-  }: eventual.StartWorkflowRequest<W>) {
+  }: StartWorkflowRequest<W>) {
     const executionId = formatExecutionId(workflowName, executionName);
     console.log("execution input:", input);
 
@@ -139,6 +144,24 @@ export class AWSWorkflowClient implements eventual.WorkflowClient {
     return executionResult.Item
       ? createExecutionFromResult(executionResult.Item as ExecutionRecord)
       : undefined;
+  }
+
+  public async sendSignal(request: SendSignalRequest): Promise<void> {
+    await this.submitWorkflowTask(
+      request.executionId,
+      createEvent<SignalReceived>(
+        {
+          type: WorkflowEventType.SignalReceived,
+          payload: request.payload,
+          signalId:
+            typeof request.signal === "string"
+              ? request.signal
+              : request.signal.id,
+        },
+        undefined,
+        request.id
+      )
+    );
   }
 }
 
