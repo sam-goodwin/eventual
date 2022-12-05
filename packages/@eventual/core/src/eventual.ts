@@ -90,14 +90,12 @@ export namespace Eventual {
    *
    * This is the equivalent behavior to Promise.all.
    */
-  export function* all<A extends Eventual[]>(
+  export function all<A extends Eventual[]>(
     activities: A
-  ): Program<
-    AwaitAll<{
-      [i in keyof A]: A[i] extends Eventual<infer T> ? T : A[i];
-    }>
-  > {
-    return (yield createAwaitAll(activities)) as any;
+  ): AwaitAll<{
+    [i in keyof A]: A[i] extends Eventual<infer T> ? T : A[i];
+  }> {
+    return createAwaitAll(activities) as any;
   }
 }
 

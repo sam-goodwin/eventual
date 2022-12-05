@@ -32,7 +32,15 @@ export const workflow3 = workflow("sleepy", async () => {
 });
 
 export const workflow4 = workflow("parallel", async () => {
-  return Promise.all([hello("sam"), hello("chris"), hello("sam")]);
+  const greetings = Promise.all(["sam", "chris", "sam"].map(hello));
+  const greetings2 = Promise.all(
+    ["sam", "chris", "sam"].map(async (name) => {
+      const greeting = await hello(name);
+      return greeting.toUpperCase();
+    })
+  );
+  const greetings3 = Promise.all([hello("sam"), hello("chris"), hello("sam")]);
+  return Promise.all([greetings, greetings2, greetings3]);
 });
 
 const signal = new Signal<number>("signal");

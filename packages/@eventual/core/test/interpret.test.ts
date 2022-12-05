@@ -54,10 +54,10 @@ function* myWorkflow(event: any): Program<any> {
     // dangling - it should still be scheduled
     createActivityCall("my-activity-0", [event]);
 
-    const all = yield* Eventual.all([
+    const all = yield Eventual.all([
       createSleepUntilCall("then"),
       createActivityCall("my-activity-2", [event]),
-    ]);
+    ]) as any;
     return [a, all];
   } catch (err) {
     yield createActivityCall("handle-error", [err]);
@@ -633,7 +633,7 @@ test("try-catch-finally with dangling promise in catch", () => {
 test("throw error within nested function", () => {
   function* workflow(items: string[]) {
     try {
-      yield* Eventual.all(
+      yield Eventual.all(
         items.map(
           chain(function* (item) {
             const result = yield createActivityCall("inside", [item]);
@@ -700,8 +700,8 @@ test("throw error within nested function", () => {
 });
 
 test("properly evaluate yield* of sub-programs", () => {
-  function* sub() {
-    const item = yield* Eventual.all([
+  function* sub(): any {
+    const item = yield Eventual.all([
       createActivityCall("a", []),
       createActivityCall("b", []),
     ]);
@@ -1517,5 +1517,89 @@ test("nestedChains", () => {
     interpret(wf.definition(undefined, context), [])
   ).toMatchObject<WorkflowResult>({
     commands: [createSleepUntilCommand("", 0)],
+  });
+});
+
+test("mixing closure types", () => {
+  var workflow4 = workflow(function* () {
+    const greetings = Eventual.all(
+      ["sam", "chris", "sam"].map((name) => createActivityCall("hello", [name]))
+    );
+    const greetings2 = Eventual.all(
+      ["sam", "chris", "sam"].map(
+        chain(function* (name) {
+          const greeting = yield createActivityCall("hello", [name]);
+          return greeting * 2;
+        })
+      )
+    );
+    const greetings3 = Eventual.all([
+      createActivityCall("hello", ["sam"]),
+      createActivityCall("hello", ["chris"]),
+      createActivityCall("hello", ["sam"]),
+    ]);
+    return Eventual.all([greetings as any, greetings2, greetings3]);
+  });
+
+  expect(
+    interpret(workflow4.definition(undefined, context), [])
+  ).toEqual<WorkflowResult>({
+    commands: [
+      createScheduledActivityCommand("hello", ["sam"], 0),
+      createScheduledActivityCommand("hello", ["chris"], 1),
+      createScheduledActivityCommand("hello", ["sam"], 2),
+      createScheduledActivityCommand("hello", ["sam"], 3),
+      createScheduledActivityCommand("hello", ["chris"], 4),
+      createScheduledActivityCommand("hello", ["sam"], 5),
+      createScheduledActivityCommand("hello", ["sam"], 6),
+      createScheduledActivityCommand("hello", ["chris"], 7),
+      createScheduledActivityCommand("hello", ["sam"], 8),
+    ],
+  });
+
+  expect(
+    interpret(workflow4.definition(undefined, context), [
+      activityScheduled("hello", 0),
+      activityScheduled("hello", 1),
+      activityScheduled("hello", 2),
+      activityScheduled("hello", 3),
+      activityScheduled("hello", 4),
+      activityScheduled("hello", 5),
+      activityScheduled("hello", 6),
+      activityScheduled("hello", 7),
+      activityScheduled("hello", 8),
+    ])
+  ).toEqual<WorkflowResult>({
+    commands: [],
+  });
+
+  expect(
+    interpret(workflow4.definition(undefined, context), [
+      activityScheduled("hello", 0),
+      activityScheduled("hello", 1),
+      activityScheduled("hello", 2),
+      activityScheduled("hello", 3),
+      activityScheduled("hello", 4),
+      activityScheduled("hello", 5),
+      activityScheduled("hello", 6),
+      activityScheduled("hello", 7),
+      activityScheduled("hello", 8),
+      activityCompleted(1, 0),
+      activityCompleted(2, 1),
+      activityCompleted(3, 2),
+      activityCompleted(4, 3),
+      activityCompleted(5, 4),
+      activityCompleted(6, 5),
+      activityCompleted(7, 6),
+      activityCompleted(8, 7),
+      activityCompleted(9, 8),
+    ])
+  ).toEqual<WorkflowResult>({
+    result: Result.resolved([
+      [1, 2, 3],
+      [8, 10, 12],
+      [7, 8, 9],
+    ]),
+    commands: [],
   });
 });

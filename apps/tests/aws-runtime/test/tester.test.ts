@@ -23,9 +23,9 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
   testCompletion("sleep", workflow3, "done!");
 
   testCompletion("parallel", workflow4, [
-    "hello sam",
-    "hello chris",
-    "hello sam",
+    ["hello sam", "hello chris", "hello sam"],
+    ["HELLO SAM", "HELLO CHRIS", "HELLO SAM"],
+    ["hello sam", "hello chris", "hello sam"],
   ]);
 
   testCompletion("parent-child", parentWorkflow, "done");

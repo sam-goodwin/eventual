@@ -1,6 +1,6 @@
 import { createSendSignalCall } from "./calls/send-signal-call.js";
 import { createRegisterSignalHandlerCall } from "./calls/signal-handler-call.js";
-import { createExpectSignalCall as createExpectSignalCall } from "./calls/expect-signal-call.js";
+import { createExpectSignalCall } from "./calls/expect-signal-call.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
 import { getWorkflowClient } from "./global.js";
 import { ulid } from "ulidx";
