@@ -462,7 +462,6 @@ export class Service extends Construct implements IGrantable {
         entry: { api: "executions/history.js" },
         grants: [this.table.grantReadData],
       },
-
       "/executions/{executionId}/workflow-history": {
         methods: [HttpMethod.GET],
         entry: { api: "executions/workflow-history.js" },
