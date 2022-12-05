@@ -4,7 +4,7 @@ import {
   SleepUntilCommand,
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
-  ExpectSignalCommand as ExpectSignalCommand,
+  ExpectSignalCommand,
   SendSignalCommand,
   StartConditionCommand,
 } from "../src/command.js";
