@@ -1356,7 +1356,7 @@ describe("condition", () => {
     });
   });
 
-  test("false condition does not remit", () => {
+  test("false condition does not re-emit", () => {
     const wf = workflow(function* (): any {
       yield createConditionCall(() => false, 100);
     });

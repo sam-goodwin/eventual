@@ -7,7 +7,11 @@ import {
 } from "./eventual.js";
 import { isAwaitAll } from "./await-all.js";
 import { isActivityCall } from "./calls/activity-call.js";
-import { DeterminismError, Timeout } from "./error.js";
+import {
+  DeterminismError,
+  SynchronousOperationError,
+  Timeout,
+} from "./error.js";
 import {
   CompletedEvent,
   SignalReceived,
@@ -378,10 +382,11 @@ export function interpret<Return>(
 
   function tryResolveResult(activity: Eventual): Result | undefined {
     if (isCommandCall(activity)) {
-      if (isConditionCall(activity)) {
-        if (activity.result) {
-          return activity.result;
-        }
+      // if the call was already resolved, always return the result.
+      if (activity.result) {
+        return activity.result;
+      } else if (isConditionCall(activity)) {
+        // try to evaluate the condition's result.
         const predicateResult = activity.predicate();
         const { value, done } =
           isChain(predicateResult) &&
@@ -393,7 +398,9 @@ export function interpret<Return>(
             : { value: predicateResult, done: true };
         if (!done) {
           activity.result = Result.failed(
-            "Condition Predicates must be synchronous"
+            new SynchronousOperationError(
+              "Condition Predicates must be synchronous"
+            )
           );
         } else if (value) {
           activity.result = Result.resolved(true);
