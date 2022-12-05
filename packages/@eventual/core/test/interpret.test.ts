@@ -1373,11 +1373,15 @@ describe("condition", () => {
     createRegisterSignalHandlerCall("Yes", () => {
       yes = true;
     });
-    yield createConditionCall(
-      chain(function* () {
-        return yes;
-      }) as any
-    );
+    if (
+      !(yield createConditionCall(
+        chain(function* () {
+          return yes;
+        }) as any
+      ))
+    ) {
+      return "timed out";
+    }
     return "done";
   });
 
@@ -1443,7 +1447,7 @@ describe("condition", () => {
         conditionTimedOut(0),
       ])
     ).toMatchObject<WorkflowResult>({
-      result: Result.failed(new Timeout("Condition Timed Out")),
+      result: Result.resolved("timed out"),
       commands: [],
     });
   });
@@ -1469,7 +1473,7 @@ describe("condition", () => {
         signalReceived("Yes"),
       ])
     ).toMatchObject<WorkflowResult>({
-      result: Result.failed(new Timeout("Condition Timed Out")),
+      result: Result.resolved("timed out"),
       commands: [],
     });
   });

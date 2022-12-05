@@ -477,7 +477,8 @@ export function interpret<Return>(
       : isExpectSignalTimedOut(event)
       ? Result.failed(new Timeout("Expect Signal Timed Out"))
       : isConditionTimedOut(event)
-      ? Result.failed(new Timeout("Condition Timed Out"))
+      ? // a timed out condition returns false
+        Result.resolved(false)
       : Result.failed(event.error);
   }
 }

@@ -90,7 +90,9 @@ export const childWorkflow = workflow(
     while (!done) {
       sendSignal(parentId, signal, last + 1);
       block = true;
-      await condition({ timeoutSeconds: 10 }, () => !block);
+      if (!(await condition({ timeoutSeconds: 10 }, () => !block))) {
+        throw new Error("timed out!");
+      }
     }
 
     return "done";
@@ -103,7 +105,9 @@ export const timedOutWorkflow = workflow<undefined, Record<string, boolean>>(
     // chains to be able to run in parallel.
     const timedOutFunctions = {
       condition: async () => {
-        await condition({ timeoutSeconds: 2 }, () => false);
+        if (!(await condition({ timeoutSeconds: 2 }, () => false))) {
+          throw new Error("Timed Out!");
+        }
       },
       signal: async () => {
         await signal.expect({ timeoutSeconds: 2 });

@@ -23,16 +23,15 @@ export interface ConditionOptions {
  * });
  * ```
  *
- * Supports a timeout to avoid running forever.
+ * Supports a timeout to avoid running forever. When the condition times out, it returns false.
  *
  * ```ts
  * workflow(async () => {
  *    let n = 0;
  *    onSignal("incSignal", () => { n++ });
  *
- *    try {
- *       await condition({ timeoutSeconds: 5 * 60 }, () => n === 5); // after 5 incSignals, this promise will be resolved.
- *    } catch {
+ *    // after 5 incSignals, this promise will be resolved.
+ *    if(!(await condition({ timeoutSeconds: 5 * 60 }, () => n === 5))) {
  *       return "did not get 5 in 5 minutes."
  *    }
  *
@@ -40,16 +39,16 @@ export interface ConditionOptions {
  * });
  * ```
  */
-export function condition(predicate: ConditionPredicate): Promise<void>;
+export function condition(predicate: ConditionPredicate): Promise<boolean>;
 export function condition(
   opts: ConditionOptions,
   predicate: ConditionPredicate
-): Promise<void>;
+): Promise<boolean>;
 export function condition(
   ...args:
     | [opts: ConditionOptions, predicate: ConditionPredicate]
     | [predicate: ConditionPredicate]
-): Promise<void> {
+): Promise<boolean> {
   const [opts, predicate] = args.length === 1 ? [undefined, args[0]] : args;
 
   return createConditionCall(predicate, opts?.timeoutSeconds) as any;
