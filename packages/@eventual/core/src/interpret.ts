@@ -388,21 +388,13 @@ export function interpret<Return>(
       } else if (isConditionCall(activity)) {
         // try to evaluate the condition's result.
         const predicateResult = activity.predicate();
-        const { value, done } =
-          isChain(predicateResult) &&
-          predicateResult.result &&
-          isResolved(predicateResult.result)
-            ? { value: predicateResult.result.value, done: true }
-            : isGenerator(predicateResult)
-            ? predicateResult.next()
-            : { value: predicateResult, done: true };
-        if (!done) {
+        if (isGenerator(predicateResult)) {
           activity.result = Result.failed(
             new SynchronousOperationError(
               "Condition Predicates must be synchronous"
             )
           );
-        } else if (value) {
+        } else if (predicateResult) {
           activity.result = Result.resolved(true);
         } else {
           return undefined;

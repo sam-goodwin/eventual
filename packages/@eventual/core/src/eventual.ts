@@ -20,6 +20,7 @@ import {
 import { isSendSignalCall, SendSignalCall } from "./calls/send-signal-call.js";
 import { isWorkflowCall, WorkflowCall } from "./calls/workflow-call.js";
 import { ConditionCall, isConditionCall } from "./calls/condition-call.js";
+import { isOrchestratorWorker } from "./runtime/flags.js";
 
 export type AwaitedEventual<T> = T extends Promise<infer U>
   ? Awaited<U>
@@ -95,6 +96,10 @@ export namespace Eventual {
   ): AwaitAll<{
     [i in keyof A]: A[i] extends Eventual<infer T> ? T : A[i];
   }> {
+    if (!isOrchestratorWorker()) {
+      throw new Error("Eventual.all is only valid in a workflow");
+    }
+
     return createAwaitAll(activities) as any;
   }
 }

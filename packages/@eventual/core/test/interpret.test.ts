@@ -3,6 +3,7 @@ import { chain } from "../src/chain.js";
 import { DeterminismError, Timeout } from "../src/error.js";
 import {
   Context,
+  CoreEnvFlags,
   createAwaitAll,
   Eventual,
   interpret,
@@ -46,6 +47,14 @@ import { createRegisterSignalHandlerCall } from "../src/calls/signal-handler-cal
 import { createWorkflowCall } from "../src/calls/workflow-call.js";
 import { createSendSignalCall } from "../src/calls/send-signal-call.js";
 import { createConditionCall } from "../src/calls/condition-call.js";
+
+beforeAll(() => {
+  process.env[CoreEnvFlags.ORCHESTRATOR_FLAG] = "1";
+});
+
+afterAll(() => {
+  delete process.env[CoreEnvFlags.ORCHESTRATOR_FLAG];
+});
 
 function* myWorkflow(event: any): Program<any> {
   try {
@@ -1373,13 +1382,7 @@ describe("condition", () => {
     createRegisterSignalHandlerCall("Yes", () => {
       yes = true;
     });
-    if (
-      !(yield createConditionCall(
-        chain(function* () {
-          return yes;
-        }) as any
-      ))
-    ) {
+    if (!(yield createConditionCall(() => yes) as any)) {
       return "timed out";
     }
     return "done";
@@ -1422,11 +1425,7 @@ describe("condition", () => {
       createRegisterSignalHandlerCall("Yes", () => {
         yes = false;
       });
-      yield createConditionCall(
-        chain(function* () {
-          return yes;
-        }) as any
-      );
+      yield createConditionCall(() => yes);
       return "done";
     });
 
