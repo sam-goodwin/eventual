@@ -1,5 +1,5 @@
 import middy, { MiddlewareObj } from "@middy/core";
-import { Handler } from "aws-lambda";
+import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import util from "util";
 
 /**
@@ -15,8 +15,8 @@ export const errorMiddleware: MiddlewareObj = {
   },
 };
 
-export function withErrorMiddleware<TEvent, TResult>(
-  handler: Handler<TEvent, TResult>
+export function withErrorMiddleware<TEvent>(
+  handler: APIGatewayProxyHandlerV2<TEvent>
 ) {
   return middy(handler).use(errorMiddleware);
 }

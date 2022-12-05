@@ -1,4 +1,5 @@
 import { services } from "./commands/services.js";
+import { workflows } from "./commands/workflows.js";
 import { executions } from "./commands/executions.js";
 import { history } from "./commands/history.js";
 import { start } from "./commands/start.js";
@@ -9,7 +10,9 @@ import { replay } from "./commands/replay.js";
 
 const argv = hideBin(process.argv);
 const cli = yargs(argv).strict();
-[services, start, executions, history, logs, replay].forEach((cmd) => cmd(cli));
+[services, start, workflows, executions, history, logs, replay].forEach((cmd) =>
+  cmd(cli)
+);
 if (argv.length == 0) {
   cli.showHelp();
 }
