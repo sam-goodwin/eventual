@@ -22,6 +22,7 @@ import type { StartWorkflowResponse } from "./runtime/workflow-client.js";
 import { ChildExecution, createWorkflowCall } from "./calls/workflow-call.js";
 import { AwaitedEventual } from "./eventual.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
+import { isChain } from "./chain.js";
 
 export const INTERNAL_EXECUTION_ID_PREFIX = "##EVENTUAL##";
 
@@ -183,7 +184,13 @@ export function workflow<Input = any, Output = any>(
     };
   };
 
-  workflow.definition = definition as Workflow<Input, Output>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
+  workflow.definition = (
+    isChain(definition)
+      ? definition
+      : function* (input, context): any {
+          return yield definition(input, context);
+        }
+  ) as Workflow<Input, Output>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
   workflows().set(name, workflow);
   return workflow;
 }

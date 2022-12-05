@@ -225,9 +225,18 @@ export class AWSTimerClient implements eventual.TimerClient {
   }
 }
 
+/**
+ * Get the schedule name from the request and filter out any invalid characters.
+ *
+ * ^[0-9a-zA-Z-_.]+$
+ *
+ * https://docs.aws.amazon.com/scheduler/latest/APIReference/API_CreateSchedule.html#API_CreateSchedule_RequestSyntax
+ */
 function getScheduleName(timerRequest: TimerRequest) {
   if (isTimerForwardEventRequest(timerRequest)) {
-    return `${timerRequest.executionId}_${getEventId(timerRequest.event)}`;
+    return `${timerRequest.executionId}_${getEventId(
+      timerRequest.event
+    )}`.replaceAll(/[^0-9a-zA-Z-_.]/g, "");
   }
   return assertNever(timerRequest);
 }

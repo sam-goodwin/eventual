@@ -215,7 +215,7 @@ async function orchestrateExecution(
       if (newWorkflowStart?.timeoutTime) {
         metrics.setProperty(OrchestratorMetrics.TimeoutStarted, 1);
         await timed(metrics, OrchestratorMetrics.TimeoutStartedDuration, () =>
-          timerClient.forwardEvent({
+          timerClient.forwardEvent<WorkflowTimedOut>({
             untilTime: newWorkflowStart.timeoutTime!,
             event: createEvent<WorkflowTimedOut>({
               type: WorkflowEventType.WorkflowTimedOut,

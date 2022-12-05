@@ -109,7 +109,7 @@ export const childWorkflow = workflow(
 
 const slowActivity = activity(
   "slowAct",
-  { timeoutSeconds: 1000 },
+  { timeoutSeconds: 5 },
   () => new Promise((resolve) => setTimeout(resolve, 10 * 1000))
 );
 

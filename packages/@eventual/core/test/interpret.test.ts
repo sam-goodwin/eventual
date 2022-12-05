@@ -1644,3 +1644,25 @@ test("mixing closure types", () => {
     commands: [],
   });
 });
+
+test("workflow with synchronous function", () => {
+  var workflow4 = workflow(function (): any {
+    return createActivityCall("hi", []);
+  });
+
+  expect(
+    interpret(workflow4.definition(undefined, context), [])
+  ).toEqual<WorkflowResult>({
+    commands: [createScheduledActivityCommand("hi", [], 0)],
+  });
+
+  expect(
+    interpret(workflow4.definition(undefined, context), [
+      activityScheduled("hi", 0),
+      activityCompleted("result", 0),
+    ])
+  ).toEqual<WorkflowResult>({
+    result: Result.resolved("result"),
+    commands: [],
+  });
+});
