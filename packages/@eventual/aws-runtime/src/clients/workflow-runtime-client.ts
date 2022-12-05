@@ -37,7 +37,7 @@ import { createEvent } from "./execution-history-client.js";
 import { TimerRequestType } from "../handlers/types.js";
 import { AWSTimerClient } from "./timer-client.js";
 import * as eventual from "@eventual/core";
-import { formatChildExecutionName } from "src/utils.js";
+import { formatChildExecutionName } from "../utils.js";
 
 export interface AWSWorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;

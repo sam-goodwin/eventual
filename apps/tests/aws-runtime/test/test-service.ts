@@ -107,32 +107,41 @@ export const childWorkflow = workflow(
   }
 );
 
-export const timedOutWorkflow = workflow<undefined, Record<string, boolean>>(
-  "timedOut",
-  async () => {
-    // chains to be able to run in parallel.
-    const timedOutFunctions = {
-      condition: async () => {
-        if (!(await condition({ timeoutSeconds: 2 }, () => false))) {
-          throw new Error("Timed Out!");
-        }
-      },
-      signal: async () => {
-        await signal.expect({ timeoutSeconds: 2 });
-      },
-    };
-
-    return Object.fromEntries(
-      await Promise.all(
-        Object.entries(timedOutFunctions).map(async ([name, func]) => {
-          try {
-            await func();
-            return [name, false];
-          } catch {
-            return [name, true];
-          }
-        })
-      )
-    );
-  }
+const slowActivity = activity(
+  "slowAct",
+  { timeoutSeconds: 1000 },
+  () => new Promise((resolve) => setTimeout(resolve, 10 * 1000))
 );
+
+const slowWf = workflow("slowWorkflow", { timeoutSeconds: 5 }, () =>
+  sleepFor(10)
+);
+
+export const timedOutWorkflow = workflow("timedOut", async () => {
+  // chains to be able to run in parallel.
+  const timedOutFunctions = {
+    condition: async () => {
+      if (!(await condition({ timeoutSeconds: 2 }, () => false))) {
+        throw new Error("Timed Out!");
+      }
+    },
+    signal: async () => {
+      await signal.expect({ timeoutSeconds: 2 });
+    },
+    activity: slowActivity,
+    workflow: () => slowWf(undefined),
+  };
+
+  return <Record<keyof typeof timedOutFunctions, boolean>>Object.fromEntries(
+    await Promise.all(
+      Object.entries(timedOutFunctions).map(async ([name, func]) => {
+        try {
+          await func();
+          return [name, false];
+        } catch {
+          return [name, true];
+        }
+      })
+    )
+  );
+});

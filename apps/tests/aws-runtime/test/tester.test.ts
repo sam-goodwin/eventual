@@ -33,5 +33,7 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
   testCompletion("timeouts", timedOutWorkflow, {
     condition: true,
     signal: true,
+    activity: true,
+    workflow: true,
   });
 });

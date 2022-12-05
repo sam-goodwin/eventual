@@ -3,6 +3,11 @@ import { callableActivities } from "./global.js";
 import { isActivityWorker } from "./runtime/flags.js";
 
 export interface ActivityOpts {
+  /**
+   * How long the workflow will wait for the activity to complete or fail.
+   *
+   * Default: undefined - forever.
+   */
   timeoutSeconds?: number;
 }
 
