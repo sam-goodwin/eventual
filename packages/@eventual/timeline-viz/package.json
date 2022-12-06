@@ -1,0 +1,30 @@
+{
+  "name": "@eventual/timeline-viz",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": "./"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build && cp ./index.js lib/",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^4.19.1",
+    "ky": "^0.32.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.24",
+    "@types/react-dom": "^18.0.8",
+    "@vitejs/plugin-react": "^2.2.0",
+    "express": "^4.18.2",
+    "get-port": "^6.1.2",
+    "open": "^8.4.0",
+    "typescript": "^4.6.4",
+    "vite": "^3.2.3"
+  }
+}

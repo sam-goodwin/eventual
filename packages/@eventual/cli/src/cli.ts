@@ -7,12 +7,20 @@ import { logs } from "./commands/logs.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { replay } from "./commands/replay.js";
+import { timeline } from "./commands/timeline.js";
 
 const argv = hideBin(process.argv);
 const cli = yargs(argv).strict();
-[services, start, workflows, executions, history, logs, replay].forEach((cmd) =>
-  cmd(cli)
-);
+[
+  services,
+  start,
+  workflows,
+  executions,
+  history,
+  logs,
+  replay,
+  timeline,
+].forEach((cmd) => cmd(cli));
 if (argv.length == 0) {
   cli.showHelp();
 }
