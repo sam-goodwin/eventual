@@ -21,6 +21,9 @@ import { isSendSignalCall, SendSignalCall } from "./calls/send-signal-call.js";
 import { isWorkflowCall, WorkflowCall } from "./calls/workflow-call.js";
 import { ConditionCall, isConditionCall } from "./calls/condition-call.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
+import { AwaitAny } from "./await-any.js";
+import { AwaitAllSettled } from "./await-all-settled.js";
+import { Race } from "./race.js";
 
 export type AwaitedEventual<T> = T extends Promise<infer U>
   ? Awaited<U>
@@ -48,6 +51,9 @@ export enum EventualKind {
   RegisterSignalHandlerCall = 7,
   SendSignalCall = 8,
   ConditionCall = 9,
+  AwaitAny = 10,
+  Race = 11,
+  AwaitAllSettled = 12,
 }
 
 export function isEventual(a: any): a is Eventual {
@@ -56,6 +62,9 @@ export function isEventual(a: any): a is Eventual {
 
 export type Eventual<T = any> =
   | AwaitAll<T extends any[] ? T : never>
+  | AwaitAny<T extends any[] ? T : never>
+  | Race<T extends any[] ? T : never>
+  | AwaitAllSettled<T extends any[] ? T : never>
   | Chain<T>
   | CommandCall<T>;
 
@@ -93,9 +102,7 @@ export namespace Eventual {
    */
   export function all<A extends Eventual[]>(
     activities: A
-  ): AwaitAll<{
-    [i in keyof A]: A[i] extends Eventual<infer T> ? T : A[i];
-  }> {
+  ): AwaitAll<EventualArrayPositional<A>> {
     if (!isOrchestratorWorker()) {
       throw new Error("Eventual.all is only valid in a workflow");
     }
@@ -107,6 +114,19 @@ export namespace Eventual {
 export interface EventualCallCollector {
   pushEventual<E extends Eventual>(activity: E): E;
 }
+
+export type EventualArrayPositional<A extends Eventual[]> = {
+  [i in keyof A]: A[i] extends Eventual<infer T> ? T : A[i];
+};
+
+export type EventualArrayPromiseResult<A extends Eventual[]> = {
+  [i in keyof A]:
+    | PromiseFulfilledResult<A[i] extends Eventual<infer T> ? T : A[i]>
+    | PromiseRejectedResult;
+};
+
+export type EventualArrayUnion<A extends Eventual<any>[]> =
+  A[number] extends Eventual<infer T> ? T : never;
 
 // the below globals are required by the transformer
 
