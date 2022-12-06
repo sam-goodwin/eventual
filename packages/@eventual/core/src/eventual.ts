@@ -1,5 +1,5 @@
 import { ActivityCall, isActivityCall } from "./calls/activity-call.js";
-import type { AwaitAll } from "./await-all.js";
+import { AwaitAll, createAwaitAll } from "./await-all.js";
 import { chain, Chain } from "./chain.js";
 import type { Program } from "./interpret.js";
 import { Result } from "./result.js";
@@ -19,6 +19,8 @@ import {
 } from "./calls/signal-handler-call.js";
 import { isSendSignalCall, SendSignalCall } from "./calls/send-signal-call.js";
 import { isWorkflowCall, WorkflowCall } from "./calls/workflow-call.js";
+import { ConditionCall, isConditionCall } from "./calls/condition-call.js";
+import { isOrchestratorWorker } from "./runtime/flags.js";
 
 export type AwaitedEventual<T> = T extends Promise<infer U>
   ? Awaited<U>
@@ -45,6 +47,7 @@ export enum EventualKind {
   ExpectSignalCall = 6,
   RegisterSignalHandlerCall = 7,
   SendSignalCall = 8,
+  ConditionCall = 9,
 }
 
 export function isEventual(a: any): a is Eventual {
@@ -66,7 +69,8 @@ export type CommandCall<T = any> =
   | WorkflowCall<T>
   | ExpectSignalCall<T>
   | RegisterSignalHandlerCall<T>
-  | SendSignalCall;
+  | SendSignalCall
+  | ConditionCall;
 
 export function isCommandCall(call: Eventual): call is CommandCall {
   return (
@@ -76,7 +80,8 @@ export function isCommandCall(call: Eventual): call is CommandCall {
     isWorkflowCall(call) ||
     isExpectSignalCall(call) ||
     isRegisterSignalHandlerCall(call) ||
-    isSendSignalCall(call)
+    isSendSignalCall(call) ||
+    isConditionCall(call)
   );
 }
 
@@ -86,21 +91,16 @@ export namespace Eventual {
    *
    * This is the equivalent behavior to Promise.all.
    */
-  export function* all<A extends Eventual[]>(
+  export function all<A extends Eventual[]>(
     activities: A
-  ): Program<
-    AwaitAll<{
-      [i in keyof A]: A[i] extends Eventual<infer T> ? T : A[i];
-    }>
-  > {
-    return (yield <
-      AwaitAll<{
-        [i in keyof A]: A[i] extends Eventual<infer T> ? T : A[i];
-      }>
-    >{
-      [EventualSymbol]: EventualKind.AwaitAll,
-      activities,
-    }) as any;
+  ): AwaitAll<{
+    [i in keyof A]: A[i] extends Eventual<infer T> ? T : A[i];
+  }> {
+    if (!isOrchestratorWorker()) {
+      throw new Error("Eventual.all is only valid in a workflow");
+    }
+
+    return createAwaitAll(activities) as any;
   }
 }
 

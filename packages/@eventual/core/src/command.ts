@@ -6,7 +6,8 @@ export type Command =
   | ScheduleActivityCommand
   | ScheduleWorkflowCommand
   | ExpectSignalCommand
-  | SendSignalCommand;
+  | SendSignalCommand
+  | StartConditionCommand;
 
 interface CommandBase<T extends CommandType> {
   kind: T;
@@ -20,6 +21,7 @@ export enum CommandType {
   StartWorkflow = "StartWorkflow",
   ExpectSignal = "ExpectSignal",
   SendSignal = "SendSignal",
+  StartCondition = "StartCondition",
 }
 
 /**
@@ -100,4 +102,15 @@ export function isSendSignalCommand(
   command: Command
 ): command is SendSignalCommand {
   return command.kind === CommandType.SendSignal;
+}
+
+export interface StartConditionCommand
+  extends CommandBase<CommandType.StartCondition> {
+  timeoutSeconds?: number;
+}
+
+export function isStartConditionCommand(
+  command: Command
+): command is StartConditionCommand {
+  return command.kind === CommandType.StartCondition;
 }

@@ -7,7 +7,11 @@ import {
 } from "./eventual.js";
 import { isAwaitAll } from "./await-all.js";
 import { isActivityCall } from "./calls/activity-call.js";
-import { DeterminismError, Timeout } from "./error.js";
+import {
+  DeterminismError,
+  SynchronousOperationError,
+  Timeout,
+} from "./error.js";
 import {
   CompletedEvent,
   SignalReceived,
@@ -25,6 +29,8 @@ import {
   isExpectSignalTimedOut,
   ScheduledEvent,
   isSignalSent,
+  isConditionStarted,
+  isConditionTimedOut,
 } from "./events.js";
 import {
   Result,
@@ -49,6 +55,7 @@ import {
 import { isSendSignalCall } from "./calls/send-signal-call.js";
 import { isWorkflowCall } from "./calls/workflow-call.js";
 import { clearEventualCollector, setEventualCollector } from "./global.js";
+import { isConditionCall } from "./calls/condition-call.js";
 
 export interface WorkflowResult<T = any> {
   /**
@@ -147,7 +154,8 @@ export function interpret<Return>(
   // something is wrong, fail
   if (emittedEvents.hasNext()) {
     throw new DeterminismError(
-      "Work did not return expected commands: " + JSON.stringify(emittedEvents)
+      "Workflow did not return expected commands: " +
+        JSON.stringify(emittedEvents.drain())
     );
   }
 
@@ -201,6 +209,12 @@ export function interpret<Return>(
         seq: call.seq!,
         payload: call.payload,
       };
+    } else if (isConditionCall(call)) {
+      return {
+        kind: CommandType.StartCondition,
+        seq: call.seq!,
+        timeoutSeconds: call.timeoutSeconds,
+      };
     } else if (isRegisterSignalHandlerCall(call)) {
       return [];
     }
@@ -232,6 +246,12 @@ export function interpret<Return>(
         if (isCommandCall(activity)) {
           if (isExpectSignalCall(activity)) {
             subscribeToSignal(activity.signalId, activity);
+          } else if (isConditionCall(activity)) {
+            // if the condition is resolvable, don't add it to the calls.
+            const result = tryResolveResult(activity);
+            if (result) {
+              return activity;
+            }
           } else if (isRegisterSignalHandlerCall(activity)) {
             subscribeToSignal(activity.signalId, activity);
             // signal handler does not emit a call/command. It is only internal.
@@ -362,6 +382,24 @@ export function interpret<Return>(
 
   function tryResolveResult(activity: Eventual): Result | undefined {
     if (isCommandCall(activity)) {
+      // if the call was already resolved, always return the result.
+      if (activity.result) {
+        return activity.result;
+      } else if (isConditionCall(activity)) {
+        // try to evaluate the condition's result.
+        const predicateResult = activity.predicate();
+        if (isGenerator(predicateResult)) {
+          activity.result = Result.failed(
+            new SynchronousOperationError(
+              "Condition Predicates must be synchronous"
+            )
+          );
+        } else if (predicateResult) {
+          activity.result = Result.resolved(true);
+        } else {
+          return undefined;
+        }
+      }
       return activity.result;
     } else if (isChain(activity)) {
       if (activity.result) {
@@ -429,8 +467,10 @@ export function interpret<Return>(
       : isSleepCompleted(event)
       ? Result.resolved(undefined)
       : isExpectSignalTimedOut(event)
-      ? // TODO: should this throw a specific error type?
-        Result.failed(new Timeout("Expect Signal Timed Out"))
+      ? Result.failed(new Timeout("Expect Signal Timed Out"))
+      : isConditionTimedOut(event)
+      ? // a timed out condition returns false
+        Result.resolved(false)
       : Result.failed(event.error);
   }
 }
@@ -448,6 +488,8 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
     return isExpectSignalCall(call) && event.signalId == call.signalId;
   } else if (isSignalSent(event)) {
     return isSendSignalCall(call) && event.signalId === call.signalId;
+  } else if (isConditionStarted(event)) {
+    return isConditionCall(call);
   }
   return assertNever(event);
 }

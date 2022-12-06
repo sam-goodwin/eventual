@@ -16,3 +16,14 @@ export interface AwaitAll<T extends any[] = any[]>
   [EventualSymbol]: EventualKind.AwaitAll;
   activities: Eventual[];
 }
+
+export function createAwaitAll<A extends Eventual[]>(activities: A) {
+  return <
+    AwaitAll<{
+      [i in keyof A]: A[i] extends Eventual<infer T> ? T : A[i];
+    }>
+  >{
+    [EventualSymbol]: EventualKind.AwaitAll,
+    activities,
+  };
+}

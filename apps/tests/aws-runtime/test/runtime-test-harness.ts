@@ -26,10 +26,10 @@ class TesterContainer {
     input: WorkflowInput<W>,
     test: Test["test"]
   ): void;
-  public test(
+  public test<W extends Workflow = Workflow>(
     name: string,
-    workflow: Workflow,
-    inputOrTest: any | Test["test"],
+    workflow: W,
+    inputOrTest: any | WorkflowInput<W>,
     maybeTest?: Test["test"]
   ): void {
     const [input, test] =
@@ -46,25 +46,25 @@ class TesterContainer {
 
   public testCompletion<W extends Workflow = Workflow>(
     name: string,
-    workflow: Workflow,
+    workflow: W,
     result: WorkflowOutput<W>
   ): void;
   public testCompletion<W extends Workflow = Workflow>(
     name: string,
-    workflow: Workflow,
+    workflow: W,
     input: WorkflowInput<W>,
     result: WorkflowOutput<W>
   ): void;
   public testCompletion<W extends Workflow = Workflow>(
     name: string,
-    workflow: Workflow,
+    workflow: W,
     ...args:
       | [input: WorkflowInput<W>, output: WorkflowOutput<W>]
       | [output: WorkflowOutput<W>]
   ): void {
     const [input, output] = args.length === 1 ? [undefined, args[0]] : args;
 
-    this.test(name, workflow, input, async (executionId) => {
+    this.test(name, workflow, input as unknown as any, async (executionId) => {
       const execution = await waitForWorkflowCompletion<W>(executionId);
 
       assertCompleteExecution(execution);

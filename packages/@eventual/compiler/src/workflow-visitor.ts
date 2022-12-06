@@ -129,19 +129,21 @@ export class InnerVisitor extends Visitor {
   public visitFunctionExpression(
     funcExpr: FunctionExpression
   ): FunctionExpression {
-    return this.createChain({
-      ...funcExpr,
-      async: false,
-      generator: true,
-      body: funcExpr.body ? this.visitBlockStatement(funcExpr.body) : undefined,
-      params: funcExpr.params.map((param) => this.visitParameter(param)),
-    }) as any; // SWC's types are broken, we can return any Expression here
+    return funcExpr.async
+      ? this.createChain({
+          ...super.visitFunctionExpression(funcExpr),
+          async: false,
+          generator: true,
+        })
+      : (this.visitFunctionExpression(funcExpr) as any); // SWC's types are broken, we can return any Expression here
   }
 
   public visitArrowFunctionExpression(
     funcExpr: ArrowFunctionExpression
   ): Expression {
-    return this.createChain(funcExpr);
+    return funcExpr.async
+      ? this.createChain(funcExpr)
+      : super.visitArrowFunctionExpression(funcExpr);
   }
 
   private createChain(
