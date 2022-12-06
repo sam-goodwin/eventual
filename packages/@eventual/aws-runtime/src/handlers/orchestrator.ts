@@ -35,6 +35,7 @@ import {
   WorkflowTaskStarted,
   isWorkflowStarted,
   WorkflowTimedOut,
+  TimerRequestType,
 } from "@eventual/core";
 import middy from "@middy/core";
 import { createMetricsLogger, MetricsLogger, Unit } from "aws-embedded-metrics";
@@ -60,7 +61,6 @@ import {
   formatChildExecutionName,
   promiseAllSettledPartitioned,
 } from "../utils.js";
-import { TimerRequestType } from "./types.js";
 
 const executionHistoryClient = createExecutionHistoryClient();
 const timerClient = createTimerClient();
@@ -215,7 +215,7 @@ async function orchestrateExecution(
       if (newWorkflowStart?.timeoutTime) {
         metrics.setProperty(OrchestratorMetrics.TimeoutStarted, 1);
         await timed(metrics, OrchestratorMetrics.TimeoutStartedDuration, () =>
-          timerClient.forwardEvent<WorkflowTimedOut>({
+          timerClient.scheduleEvent<WorkflowTimedOut>({
             untilTime: newWorkflowStart.timeoutTime!,
             event: createEvent<WorkflowTimedOut>({
               type: WorkflowEventType.WorkflowTimedOut,
@@ -435,7 +435,7 @@ async function orchestrateExecution(
               parentExecutionId: executionId,
               executionName: formatChildExecutionName(executionId, command.seq),
               seq: command.seq,
-              opts: command.opts,
+              ...command.opts,
             });
 
             return createEvent<ChildWorkflowScheduled>({
@@ -486,7 +486,7 @@ async function orchestrateExecution(
           } else if (isStartConditionCommand(command)) {
             if (command.timeoutSeconds) {
               await timerClient.startTimer({
-                type: TimerRequestType.ForwardEvent,
+                type: TimerRequestType.ScheduleEvent,
                 event: createEvent<ConditionTimedOut>({
                   type: WorkflowEventType.ConditionTimedOut,
                   seq: command.seq,

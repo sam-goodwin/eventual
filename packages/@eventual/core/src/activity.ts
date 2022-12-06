@@ -6,7 +6,7 @@ export interface ActivityOpts {
   /**
    * How long the workflow will wait for the activity to complete or fail.
    *
-   * Default: undefined - forever.
+   * @default - workflow will run forever.
    */
   timeoutSeconds?: number;
 }

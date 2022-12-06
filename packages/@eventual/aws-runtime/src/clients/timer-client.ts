@@ -11,13 +11,12 @@ import {
   assertNever,
   getEventId,
   HistoryStateEvent,
-  TimerRequestType,
-} from "@eventual/core";
-import {
-  isTimerForwardEventRequest,
+  isTimerScheduleEventRequest,
+  ScheduleEventRequest,
   ScheduleForwarderRequest,
   TimerRequest,
-} from "../handlers/types.js";
+  TimerRequestType,
+} from "@eventual/core";
 import type * as eventual from "@eventual/core";
 
 export interface AWSTimerClientProps {
@@ -34,19 +33,6 @@ export interface AWSTimerClientProps {
   readonly sqs: SQSClient;
   readonly scheduleForwarderArn: string;
 }
-
-export type ForwardEventRequest<E extends HistoryStateEvent> = {
-  event: Omit<E, "timestamp">;
-  executionId: string;
-} & (
-  | {
-      timerSeconds: number;
-      baseTime: Date;
-    }
-  | {
-      untilTime: string;
-    }
-);
 
 export class AWSTimerClient implements eventual.TimerClient {
   constructor(private props: AWSTimerClientProps) {}
@@ -175,9 +161,9 @@ export class AWSTimerClient implements eventual.TimerClient {
     }
   }
 
-  public async forwardEvent<E extends HistoryStateEvent>(
-    request: ForwardEventRequest<E>
-  ) {
+  public async scheduleEvent<E extends HistoryStateEvent>(
+    request: ScheduleEventRequest<E>
+  ): Promise<void> {
     const untilTime =
       "untilTime" in request
         ? request.untilTime
@@ -193,7 +179,7 @@ export class AWSTimerClient implements eventual.TimerClient {
     await this.startTimer({
       event,
       executionId: request.executionId,
-      type: TimerRequestType.ForwardEvent,
+      type: TimerRequestType.ScheduleEvent,
       untilTime: untilTime,
     });
   }
@@ -233,7 +219,7 @@ export class AWSTimerClient implements eventual.TimerClient {
  * https://docs.aws.amazon.com/scheduler/latest/APIReference/API_CreateSchedule.html#API_CreateSchedule_RequestSyntax
  */
 function getScheduleName(timerRequest: TimerRequest) {
-  if (isTimerForwardEventRequest(timerRequest)) {
+  if (isTimerScheduleEventRequest(timerRequest)) {
     return `${timerRequest.executionId}_${getEventId(
       timerRequest.event
     )}`.replaceAll(/[^0-9a-zA-Z-_.]/g, "");

@@ -5,7 +5,7 @@ import {
   MetricsCommon,
   SchedulerForwarderMetrics,
 } from "../metrics/constants.js";
-import { TimerRequest } from "./types.js";
+import { TimerRequest } from "@eventual/core";
 
 export interface ScheduleForwarderRequest {
   scheduleName: string;

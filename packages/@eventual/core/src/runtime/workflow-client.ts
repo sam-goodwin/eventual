@@ -44,11 +44,12 @@ export interface SendSignalRequest {
   id: string;
 }
 
-export interface StartWorkflowRequest<W extends Workflow = Workflow> {
+export interface StartWorkflowRequest<W extends Workflow = Workflow>
+  extends WorkflowOptions {
   /**
    * Name of the workflow execution.
    *
-   * Only one execution can exist for a name within a workflow. Requests to start a workflow
+   * Only one workflow can exist for an ID. Requests to start a workflow
    * with the name of an existing workflow will fail.
    *
    * @default - a unique name is generated.
@@ -70,12 +71,6 @@ export interface StartWorkflowRequest<W extends Workflow = Workflow> {
    * Sequence ID of this execution if this is a child workflow
    */
   seq?: number;
-  /**
-   * Options which determine how a workflow operates.
-   *
-   * Can be provided at workflow definition time and/or overridden by the caller of {@link WorkflowClient.startWorkflow}.
-   */
-  opts?: WorkflowOptions;
 }
 
 export interface StartWorkflowResponse {

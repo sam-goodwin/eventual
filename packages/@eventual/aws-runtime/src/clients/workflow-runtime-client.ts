@@ -25,6 +25,7 @@ import {
   ExpectSignalTimedOut,
   ActivityTimedOut,
   ChildWorkflowScheduled,
+  TimerRequestType,
 } from "@eventual/core";
 import {
   createExecutionFromResult,
@@ -33,7 +34,6 @@ import {
 } from "./workflow-client.js";
 import { ActivityWorkerRequest } from "../activity.js";
 import { createEvent } from "./execution-history-client.js";
-import { TimerRequestType } from "../handlers/types.js";
 import { AWSTimerClient } from "./timer-client.js";
 import * as eventual from "@eventual/core";
 import { formatChildExecutionName } from "../utils.js";
@@ -207,7 +207,7 @@ export class AWSWorkflowRuntimeClient
     };
 
     if (command.timeoutSeconds) {
-      await this.props.timerClient.forwardEvent<ActivityTimedOut>({
+      await this.props.timerClient.scheduleEvent<ActivityTimedOut>({
         baseTime,
         event: {
           type: WorkflowEventType.ActivityTimedOut,
@@ -271,7 +271,7 @@ export class AWSWorkflowRuntimeClient
     };
 
     await this.props.timerClient.startTimer({
-      type: TimerRequestType.ForwardEvent,
+      type: TimerRequestType.ScheduleEvent,
       event: sleepCompletedEvent,
       untilTime: untilTimeIso,
       executionId,
@@ -290,7 +290,7 @@ export class AWSWorkflowRuntimeClient
     baseTime,
   }: eventual.ExecuteExpectSignalRequest): Promise<ExpectSignalStarted> {
     if (command.timeoutSeconds) {
-      await this.props.timerClient.forwardEvent<ExpectSignalTimedOut>({
+      await this.props.timerClient.scheduleEvent<ExpectSignalTimedOut>({
         event: {
           signalId: command.signalId,
           seq: command.seq,

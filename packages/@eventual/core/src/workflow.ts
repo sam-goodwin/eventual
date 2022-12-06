@@ -59,7 +59,7 @@ export interface WorkflowOptions {
   /**
    * Number of seconds before execution times out.
    *
-   * Default: undefined - workflow will never timeout.
+   * @default - workflow will never timeout.
    */
   timeoutSeconds?: number;
 }
@@ -179,7 +179,7 @@ export function workflow<Input = any, Output = any>(
         workflowName: name,
         executionName: input.name,
         input: input.input,
-        opts,
+        ...opts,
       }),
     };
   };

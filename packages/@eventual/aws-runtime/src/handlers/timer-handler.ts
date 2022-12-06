@@ -1,7 +1,7 @@
 import { SQSHandler } from "aws-lambda";
 import { promiseAllSettledPartitioned } from "../utils.js";
 import { createWorkflowClient } from "../clients/create.js";
-import { isTimerForwardEventRequest, TimerRequest } from "./types.js";
+import { isTimerScheduleEventRequest, TimerRequest } from "@eventual/core";
 
 const workflowClient = createWorkflowClient();
 
@@ -12,7 +12,7 @@ export const handle: SQSHandler = async (event) => {
     async (record) => {
       const request = JSON.parse(record.body) as TimerRequest;
 
-      if (isTimerForwardEventRequest(request)) {
+      if (isTimerScheduleEventRequest(request)) {
         await workflowClient.submitWorkflowTask(
           request.executionId,
           request.event
