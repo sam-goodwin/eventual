@@ -18,7 +18,7 @@ import {
   WorkflowEventType,
 } from "./events.js";
 import { interpret, WorkflowResult } from "./interpret.js";
-import type { StartWorkflowResponse } from "./runtime/workflow-client.js";
+import type { StartWorkflowResponse } from "./runtime/clients/workflow-client.js";
 import { ChildExecution, createWorkflowCall } from "./calls/workflow-call.js";
 import { AwaitedEventual } from "./eventual.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";

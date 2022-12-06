@@ -1,4 +1,4 @@
-import { ScheduleActivityCommand } from "../command.js";
+import { ScheduleActivityCommand } from "../../command.js";
 
 export interface ActivityRuntimeClient {
   /**
