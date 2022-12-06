@@ -39,6 +39,7 @@ import {
   isPending,
   Resolved,
   Failed,
+  isResolvedOrFailed,
 } from "./result.js";
 import { createChain, isChain, Chain } from "./chain.js";
 import { assertNever, or } from "./util.js";
@@ -441,7 +442,7 @@ export function interpret<Return>(
         // try to resolve all of the nested activities
         const results = activity.activities.map(tryResolveResult);
         // if all are resolved or failed, return the Promise Result API
-        if (results.every(or(isResolved, isFailed))) {
+        if (results.every(isResolvedOrFailed)) {
           return Result.resolved(
             results.map(
               (r): PromiseFulfilledResult<any> | PromiseRejectedResult =>
@@ -455,7 +456,7 @@ export function interpret<Return>(
         // try to resolve all of the nested activities
         const results = activity.activities.map(tryResolveResult);
         // if any of the results are complete, return the first one, otherwise continue
-        return results.find(or(isResolved, isFailed));
+        return results.find(isResolvedOrFailed);
       } else {
         return assertNever(activity);
       }

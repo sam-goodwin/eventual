@@ -42,18 +42,18 @@ export interface EventualBase<R extends Result> {
 
 export enum EventualKind {
   AwaitAll = 0,
+  AwaitAllSettled = 12,
+  AwaitAny = 10,
   ActivityCall = 1,
   Chain = 2,
+  ConditionCall = 9,
+  ExpectSignalCall = 6,
+  Race = 11,
+  RegisterSignalHandlerCall = 7,
+  SendSignalCall = 8,
   SleepForCall = 3,
   SleepUntilCall = 4,
   WorkflowCall = 5,
-  ExpectSignalCall = 6,
-  RegisterSignalHandlerCall = 7,
-  SendSignalCall = 8,
-  ConditionCall = 9,
-  AwaitAny = 10,
-  Race = 11,
-  AwaitAllSettled = 12,
 }
 
 export function isEventual(a: any): a is Eventual {
