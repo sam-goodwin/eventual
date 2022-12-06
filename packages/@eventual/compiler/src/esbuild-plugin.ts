@@ -39,7 +39,7 @@ async function printModule(module: Module, filePath: string) {
     //esbuild will extract these out later
     sourceMaps: "inline",
     jsc: {
-      target: "es2022",
+      target: "es2021",
     },
   });
 }
