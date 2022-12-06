@@ -4,15 +4,15 @@ import {
   SleepUntilCommand,
   ExpectSignalCommand,
   ScheduleWorkflowCommand,
-} from "../command.js";
+} from "../../command.js";
 import {
   ActivityScheduled,
   HistoryStateEvent,
   SleepScheduled,
   ExpectSignalStarted,
   ChildWorkflowScheduled,
-} from "../events.js";
-import { CompleteExecution, FailedExecution } from "../execution.js";
+} from "../../events.js";
+import { CompleteExecution, FailedExecution } from "../../execution.js";
 
 export interface CompleteExecutionRequest {
   executionId: string;

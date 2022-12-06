@@ -1,4 +1,4 @@
-import { HistoryStateEvent } from "../events.js";
+import { HistoryStateEvent } from "../../events.js";
 
 export interface TimerClient {
   /**

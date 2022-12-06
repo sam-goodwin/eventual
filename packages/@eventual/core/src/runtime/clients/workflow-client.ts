@@ -1,7 +1,7 @@
-import { HistoryStateEvent } from "../events.js";
-import { Execution, ExecutionStatus } from "../execution.js";
-import { Signal } from "../signals.js";
-import { Workflow, WorkflowInput, WorkflowOptions } from "../workflow.js";
+import { HistoryStateEvent } from "../../events.js";
+import { Execution, ExecutionStatus } from "../../execution.js";
+import { Signal } from "../../signals.js";
+import { Workflow, WorkflowInput, WorkflowOptions } from "../../workflow.js";
 
 export interface WorkflowClient {
   /**
