@@ -1,10 +1,13 @@
 import {
   ActivityCompleted,
   ActivityFailed,
+  createActivityToken,
   getCallableActivity,
   getCallableActivityNames,
+  isMakeAsync,
   isWorkflowFailed,
   registerWorkflowClient,
+  setActivityContext,
   WorkflowEventType,
 } from "@eventual/core";
 import { Handler } from "aws-lambda";
@@ -65,6 +68,16 @@ export const activityWorker = (): Handler<ActivityWorkerRequest, void> => {
         logger.info(`Activity ${activityHandle} already claimed.`);
         return;
       }
+      setActivityContext({
+        activityToken: createActivityToken(
+          request.executionId,
+          request.command.seq,
+          request.scheduledTime
+        ),
+        executionId: request.executionId,
+        scheduledTime: request.scheduledTime,
+        workflowName: request.workflowName,
+      });
       metrics.putMetric(ActivityMetrics.ClaimRejected, 0, Unit.Count);
 
       logger.info(`Processing ${activityHandle}.`);
@@ -81,8 +94,21 @@ export const activityWorker = (): Handler<ActivityWorkerRequest, void> => {
           ActivityMetrics.OperationDuration,
           () => activity(...request.command.args)
         );
-        if (result) {
+
+        if (isMakeAsync(result)) {
+          metrics.setProperty(ActivityMetrics.HasResult, 0);
+          metrics.setProperty(ActivityMetrics.IsAsync, 1);
+
+          // TODO: Send heartbeat on sync activity completion.
+
+          /**
+           * The activity has declared that it is async, other than logging, there is nothing left to do here.
+           * The activity should call {@link WorkflowClient.completeActivity} or {@link WorkflowClient.failActivity} when it is done.
+           */
+          return;
+        } else if (result) {
           metrics.setProperty(ActivityMetrics.HasResult, 1);
+          metrics.setProperty(ActivityMetrics.IsAsync, 0);
           metrics.putMetric(
             ActivityMetrics.ResultBytes,
             JSON.stringify(result).length,
@@ -90,6 +116,7 @@ export const activityWorker = (): Handler<ActivityWorkerRequest, void> => {
           );
         } else {
           metrics.setProperty(ActivityMetrics.HasResult, 0);
+          metrics.setProperty(ActivityMetrics.IsAsync, 0);
         }
 
         logger.info(

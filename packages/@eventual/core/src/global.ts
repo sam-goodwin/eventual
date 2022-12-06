@@ -1,15 +1,40 @@
+import { ActivityContext, ActivityHandler } from "./activity.js";
 import type { Eventual, EventualCallCollector } from "./eventual.js";
 import type { WorkflowClient } from "./runtime/clients/workflow-client.js";
 import type { Workflow } from "./workflow.js";
 
-export const workflows = (): Map<string, Workflow> =>
-  ((globalThis as any).workflows ??= new Map<string, Workflow>());
+declare global {
+  /**
+   * Data about the current activity assigned before running an activity on an the activity worker.
+   */
+  var activityContext: ActivityContext | undefined;
+  /**
+   * An object used by the interpreter to collect {@link Eventual}s while running a workflow code.
+   *
+   * Set by the interpreter only when needed.
+   */
+  var eventualCollector: EventualCallCollector | undefined;
+  /**
+   * Callable activities which register themselves in an activity worker.
+   */
+  var callableActivities: Record<string, ActivityHandler<any>>;
+  /**
+   * Available workflows which have registered themselves.
+   *
+   * Used by the orchestrator, activity worker, and other scopes to interact with workflows in
+   * a service.
+   */
+  var workflows: Map<string, Workflow>;
+}
 
-export const callableActivities = (): Record<string, Function> =>
-  ((globalThis as any).callableActivities ??= {});
+export const workflows = (): Map<string, Workflow> =>
+  (globalThis.workflows ??= new Map<string, Workflow>());
+
+export const callableActivities = (): Record<string, ActivityHandler<any>> =>
+  (globalThis.callableActivities ??= {});
 
 const eventualCollector = (): EventualCallCollector => {
-  const collector = (globalThis as any).eventualCollector;
+  const collector = globalThis.eventualCollector;
   if (!collector) {
     throw new Error("No Eventual Collector Provided");
   }
@@ -21,15 +46,11 @@ export function registerEventual<A extends Eventual>(eventual: A): A {
 }
 
 export function setEventualCollector(collector: EventualCallCollector) {
-  (globalThis as any).eventualCollector = collector;
+  globalThis.eventualCollector = collector;
 }
 
 export function clearEventualCollector() {
-  (globalThis as any).eventualCollector = undefined;
-}
-
-export function resetActivityCollector() {
-  (globalThis as any).activityCollector = [];
+  globalThis.eventualCollector = undefined;
 }
 
 // a global variable for storing the WorkflowClient
@@ -52,4 +73,19 @@ export function getWorkflowClient(): WorkflowClient {
     throw new Error(`WorkflowClient is not registered`);
   }
   return workflowClient;
+}
+
+export function setActivityContext(context: ActivityContext) {
+  globalThis.activityContext = context;
+}
+
+export function getActivityContext(): ActivityContext {
+  const context = globalThis.activityContext;
+
+  if (!context) {
+    throw new Error(
+      "Activity Context has not been registered yet or this is not the activity worker."
+    );
+  }
+  return context;
 }
