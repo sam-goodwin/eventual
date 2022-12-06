@@ -1,4 +1,4 @@
-import { encodeExecutionId } from "@eventual/aws-runtime";
+import { encodeExecutionId } from "@eventual/core";
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
 

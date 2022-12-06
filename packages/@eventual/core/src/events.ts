@@ -1,3 +1,4 @@
+import { ulid } from "ulidx";
 import { ExecutionContext } from "./context.js";
 import { or } from "./util.js";
 
@@ -391,4 +392,24 @@ export function filterEvents<T extends WorkflowEvent>(
       return true;
     }),
   ];
+}
+
+type UnresolvedEvent<T extends WorkflowEvent> = Omit<T, "id" | "timestamp">;
+
+export function createEvent<T extends WorkflowEvent>(
+  event: UnresolvedEvent<T>,
+  time: Date = new Date(),
+  id: string = ulid()
+): T {
+  const timestamp = time.toISOString();
+
+  // history events do not have IDs, use getEventId
+  if (
+    isHistoryEvent(event as unknown as WorkflowEvent) &&
+    !isSignalReceived(event as unknown as WorkflowEvent)
+  ) {
+    return { ...(event as any), timestamp };
+  }
+
+  return { ...event, id, timestamp } as T;
 }

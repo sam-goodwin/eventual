@@ -7,21 +7,17 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import {
   BaseEvent,
+  createEvent,
   getEventId,
-  isHistoryEvent,
-  isSignalReceived,
+  UnresolvedEvent,
   WorkflowEvent,
 } from "@eventual/core";
 import type * as eventual from "@eventual/core";
-
-import { ulid } from "ulidx";
 
 export interface AWSExecutionHistoryClientProps {
   readonly dynamo: DynamoDBClient;
   readonly tableName: string;
 }
-
-type UnresolvedEvent<T extends WorkflowEvent> = Omit<T, "id" | "timestamp">;
 
 export class AWSExecutionHistoryClient
   implements eventual.ExecutionHistoryClient
@@ -105,24 +101,6 @@ export class AWSExecutionHistoryClient
     );
     return output.Items!.map((item) => JSON.parse(item.event!.S!));
   }
-}
-
-export function createEvent<T extends WorkflowEvent>(
-  event: UnresolvedEvent<T>,
-  time: Date = new Date(),
-  id: string = ulid()
-): T {
-  const timestamp = time.toISOString();
-
-  // history events do not have IDs, use getEventId
-  if (
-    isHistoryEvent(event as unknown as WorkflowEvent) &&
-    !isSignalReceived(event as unknown as WorkflowEvent)
-  ) {
-    return { ...(event as any), timestamp };
-  }
-
-  return { ...event, id, timestamp } as T;
 }
 
 interface EventRecord {

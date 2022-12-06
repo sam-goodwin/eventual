@@ -1,5 +1,12 @@
+import { LoggerClient, Logger as EventualLogger } from "@eventual/core";
 import { injectLambdaContext, Logger } from "@aws-lambda-powertools/logger";
 import errorLogger from "@middy/error-logger";
+
+export const AWSLoggerClient: LoggerClient = {
+  getLogger(): EventualLogger {
+    return logger;
+  },
+};
 
 export const logger = new Logger({ serviceName: "eventual" });
 

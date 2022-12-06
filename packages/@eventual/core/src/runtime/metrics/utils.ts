@@ -1,4 +1,5 @@
-import { MetricsLogger, Unit } from "aws-embedded-metrics";
+import { MetricsLogger } from "./metrics-logger.js";
+import { Unit } from "./unit.js";
 
 export async function timed<T>(
   metricLogger: MetricsLogger,

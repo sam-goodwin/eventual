@@ -1,4 +1,4 @@
-import { ScheduleActivityCommand } from "@eventual/core";
+import { ScheduleActivityCommand } from "../command.js";
 
 export interface ActivityWorkerRequest {
   scheduledTime: string;

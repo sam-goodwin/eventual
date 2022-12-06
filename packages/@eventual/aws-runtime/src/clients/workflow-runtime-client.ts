@@ -23,14 +23,14 @@ import {
   SleepCompleted,
   ExpectSignalStarted,
   ExpectSignalTimedOut,
+  ActivityWorkerRequest,
+  createEvent,
 } from "@eventual/core";
 import {
   createExecutionFromResult,
   ExecutionRecord,
   AWSWorkflowClient,
 } from "./workflow-client.js";
-import { ActivityWorkerRequest } from "../activity.js";
-import { createEvent } from "./execution-history-client.js";
 import { TimerRequestType } from "../handlers/types.js";
 import { AWSTimerClient } from "./timer-client.js";
 import * as eventual from "@eventual/core";
