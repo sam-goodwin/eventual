@@ -1479,9 +1479,7 @@ describe("condition", () => {
 
   test("condition as simple generator", () => {
     const wf = workflow(function* (): any {
-      yield createConditionCall(function* () {
-        return false;
-      } as any);
+      yield createConditionCall(() => false);
       return "done";
     });
 
