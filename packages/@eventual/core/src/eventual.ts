@@ -21,9 +21,9 @@ import { isSendSignalCall, SendSignalCall } from "./calls/send-signal-call.js";
 import { isWorkflowCall, WorkflowCall } from "./calls/workflow-call.js";
 import { ConditionCall, isConditionCall } from "./calls/condition-call.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
-import { AwaitAny } from "./await-any.js";
-import { AwaitAllSettled } from "./await-all-settled.js";
-import { Race } from "./race.js";
+import { AwaitAny, createAwaitAny } from "./await-any.js";
+import { AwaitAllSettled, createAwaitAllSettled } from "./await-all-settled.js";
+import { createRace, Race } from "./race.js";
 
 export type AwaitedEventual<T> = T extends Promise<infer U>
   ? Awaited<U>
@@ -108,6 +108,36 @@ export namespace Eventual {
     }
 
     return createAwaitAll(activities) as any;
+  }
+
+  export function any<A extends Eventual[]>(
+    activities: A
+  ): AwaitAny<EventualArrayUnion<A>> {
+    if (!isOrchestratorWorker()) {
+      throw new Error("Eventual.any is only valid in a workflow");
+    }
+
+    return createAwaitAny(activities) as any;
+  }
+
+  export function race<A extends Eventual[]>(
+    activities: A
+  ): Race<EventualArrayUnion<A>> {
+    if (!isOrchestratorWorker()) {
+      throw new Error("Eventual.race is only valid in a workflow");
+    }
+
+    return createRace(activities) as any;
+  }
+
+  export function allSettled<A extends Eventual[]>(
+    activities: A
+  ): AwaitAllSettled<EventualArrayPromiseResult<A>> {
+    if (!isOrchestratorWorker()) {
+      throw new Error("Eventual.allSettled is only valid in a workflow");
+    }
+
+    return createAwaitAllSettled(activities) as any;
   }
 }
 
