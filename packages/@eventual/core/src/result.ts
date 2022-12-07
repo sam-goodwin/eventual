@@ -1,4 +1,5 @@
 import { Eventual } from "./eventual.js";
+import { or } from "./util.js";
 
 export const ResultSymbol = Symbol.for("eventual:Result");
 
@@ -65,3 +66,5 @@ export function isResolved<T>(
 export function isFailed(result: Result | undefined): result is Failed {
   return isResult(result) && result[ResultSymbol] === ResultKind.Failed;
 }
+
+export const isResolvedOrFailed = or(isResolved, isFailed);

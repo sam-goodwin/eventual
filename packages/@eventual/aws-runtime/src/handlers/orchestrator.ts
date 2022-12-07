@@ -4,6 +4,8 @@ import {
   ChildWorkflowScheduled,
   Command,
   CompleteExecution,
+  ConditionStarted,
+  ConditionTimedOut,
   ExecutionStatus,
   FailedExecution,
   HistoryStateEvent,
@@ -18,6 +20,7 @@ import {
   isSleepCompleted,
   isSleepForCommand,
   isSleepUntilCommand,
+  isStartConditionCommand,
   isExpectSignalCommand,
   lookupWorkflow,
   progressWorkflow,
@@ -38,6 +41,7 @@ import { inspect } from "util";
 import { createEvent } from "../clients/execution-history-client.js";
 import {
   createExecutionHistoryClient,
+  createTimerClient,
   createWorkflowClient,
   createWorkflowRuntimeClient,
 } from "../clients/index.js";
@@ -54,8 +58,10 @@ import {
   formatChildExecutionName,
   promiseAllSettledPartitioned,
 } from "../utils.js";
+import { TimerRequestType } from "./types.js";
 
 const executionHistoryClient = createExecutionHistoryClient();
+const timerClient = createTimerClient();
 const workflowRuntimeClient = createWorkflowRuntimeClient();
 const workflowClient = createWorkflowClient();
 
@@ -447,6 +453,25 @@ async function orchestrateExecution(
               seq: command.seq,
               signalId: command.signalId,
               payload: command.payload,
+            });
+          } else if (isStartConditionCommand(command)) {
+            if (command.timeoutSeconds) {
+              await timerClient.startTimer({
+                type: TimerRequestType.ForwardEvent,
+                event: createEvent<ConditionTimedOut>({
+                  type: WorkflowEventType.ConditionTimedOut,
+                  seq: command.seq,
+                }),
+                executionId,
+                untilTime: new Date(
+                  start.getTime() + command.timeoutSeconds * 1000
+                ).toISOString(),
+              });
+            }
+
+            return createEvent<ConditionStarted>({
+              type: WorkflowEventType.ConditionStarted,
+              seq: command.seq!,
             });
           } else {
             return assertNever(command, `unknown command type`);

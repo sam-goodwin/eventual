@@ -4,8 +4,9 @@ import {
   SleepUntilCommand,
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
-  ExpectSignalCommand as ExpectSignalCommand,
+  ExpectSignalCommand,
   SendSignalCommand,
+  StartConditionCommand,
 } from "../src/command.js";
 import {
   ActivityCompleted,
@@ -14,6 +15,8 @@ import {
   ChildWorkflowCompleted,
   ChildWorkflowFailed,
   ChildWorkflowScheduled,
+  ConditionStarted,
+  ConditionTimedOut,
   SignalReceived,
   SignalSent,
   SleepCompleted,
@@ -96,6 +99,17 @@ export function createSendSignalCommand(
     seq,
     target,
     signalId,
+  };
+}
+
+export function createStartConditionCommand(
+  seq: number,
+  timeoutSeconds?: number
+): StartConditionCommand {
+  return {
+    kind: CommandType.StartCondition,
+    seq,
+    timeoutSeconds,
   };
 }
 
@@ -236,5 +250,21 @@ export function signalSent(
     signalId,
     timestamp: new Date().toISOString(),
     payload,
+  };
+}
+
+export function conditionStarted(seq: number): ConditionStarted {
+  return {
+    type: WorkflowEventType.ConditionStarted,
+    seq,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+export function conditionTimedOut(seq: number): ConditionTimedOut {
+  return {
+    type: WorkflowEventType.ConditionTimedOut,
+    timestamp: new Date().toISOString(),
+    seq,
   };
 }

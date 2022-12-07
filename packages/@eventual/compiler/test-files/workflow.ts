@@ -34,4 +34,25 @@ export default workflow("workflow", async (input) => {
       await doWork(item);
     })
   );
+
+  condition(() => true);
+
+  const func = () =>
+    Promise.all(
+      items.map(async (item) => {
+        await doWork(item);
+      })
+    );
+
+  await func();
+
+  const func2 = async () => {
+    await Promise.all(
+      items.map(async (item) => {
+        await doWork(item);
+      })
+    );
+  };
+
+  await func2();
 });

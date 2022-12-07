@@ -7,7 +7,11 @@ import {
 } from "./eventual.js";
 import { isAwaitAll } from "./await-all.js";
 import { isActivityCall } from "./calls/activity-call.js";
-import { DeterminismError, Timeout } from "./error.js";
+import {
+  DeterminismError,
+  SynchronousOperationError,
+  Timeout,
+} from "./error.js";
 import {
   CompletedEvent,
   SignalReceived,
@@ -25,6 +29,8 @@ import {
   isExpectSignalTimedOut,
   ScheduledEvent,
   isSignalSent,
+  isConditionStarted,
+  isConditionTimedOut,
 } from "./events.js";
 import {
   Result,
@@ -33,6 +39,7 @@ import {
   isPending,
   Resolved,
   Failed,
+  isResolvedOrFailed,
 } from "./result.js";
 import { createChain, isChain, Chain } from "./chain.js";
 import { assertNever, or } from "./util.js";
@@ -49,6 +56,10 @@ import {
 import { isSendSignalCall } from "./calls/send-signal-call.js";
 import { isWorkflowCall } from "./calls/workflow-call.js";
 import { clearEventualCollector, setEventualCollector } from "./global.js";
+import { isConditionCall } from "./calls/condition-call.js";
+import { isAwaitAllSettled } from "./await-all-settled.js";
+import { isAwaitAny } from "./await-any.js";
+import { isRace } from "./race.js";
 
 export interface WorkflowResult<T = any> {
   /**
@@ -147,7 +158,8 @@ export function interpret<Return>(
   // something is wrong, fail
   if (emittedEvents.hasNext()) {
     throw new DeterminismError(
-      "Work did not return expected commands: " + JSON.stringify(emittedEvents)
+      "Workflow did not return expected commands: " +
+        JSON.stringify(emittedEvents.drain())
     );
   }
 
@@ -201,6 +213,12 @@ export function interpret<Return>(
         seq: call.seq!,
         payload: call.payload,
       };
+    } else if (isConditionCall(call)) {
+      return {
+        kind: CommandType.StartCondition,
+        seq: call.seq!,
+        timeoutSeconds: call.timeoutSeconds,
+      };
     } else if (isRegisterSignalHandlerCall(call)) {
       return [];
     }
@@ -232,6 +250,12 @@ export function interpret<Return>(
         if (isCommandCall(activity)) {
           if (isExpectSignalCall(activity)) {
             subscribeToSignal(activity.signalId, activity);
+          } else if (isConditionCall(activity)) {
+            // if the condition is resolvable, don't add it to the calls.
+            const result = tryResolveResult(activity);
+            if (result) {
+              return activity;
+            }
           } else if (isRegisterSignalHandlerCall(activity)) {
             subscribeToSignal(activity.signalId, activity);
             // signal handler does not emit a call/command. It is only internal.
@@ -245,7 +269,12 @@ export function interpret<Return>(
           activeChains.add(activity);
           tryAdvanceChain(activity);
           return activity;
-        } else if (isAwaitAll(activity)) {
+        } else if (
+          isAwaitAll(activity) ||
+          isAwaitAllSettled(activity) ||
+          isAwaitAny(activity) ||
+          isRace(activity)
+        ) {
           return activity;
         }
         return assertNever(activity);
@@ -361,33 +390,78 @@ export function interpret<Return>(
   }
 
   function tryResolveResult(activity: Eventual): Result | undefined {
-    if (isCommandCall(activity)) {
+    // check if a result has been stored on the activity before computing
+    if (isResolved(activity.result) || isFailed(activity.result)) {
       return activity.result;
-    } else if (isChain(activity)) {
-      if (activity.result) {
-        if (isPending(activity.result)) {
-          return tryResolveResult(activity.result.activity);
-        } else {
-          return activity.result;
+    } else if (isPending(activity.result)) {
+      // if an activity is marked as pending another activity, defer to the pending activities's result
+      return tryResolveResult(activity.result.activity);
+    }
+    return (activity.result = resolveResult(
+      activity as Eventual<any> & { result: undefined }
+    ));
+
+    /**
+     * When the result has not been cached in the activity, try to compute it.
+     */
+    function resolveResult(activity: Eventual & { result: undefined }) {
+      if (isConditionCall(activity)) {
+        // try to evaluate the condition's result.
+        const predicateResult = activity.predicate();
+        if (isGenerator(predicateResult)) {
+          return Result.failed(
+            new SynchronousOperationError(
+              "Condition Predicates must be synchronous"
+            )
+          );
+        } else if (predicateResult) {
+          return Result.resolved(true);
         }
-      } else {
+      } else if (isChain(activity) || isCommandCall(activity)) {
+        // chain and most commands will be resolved elsewhere (ex: commitCompletionEvent or commitSignal)
         return undefined;
-      }
-    } else if (isAwaitAll(activity)) {
-      const results = [];
-      for (const dependentActivity of activity.activities) {
-        const result = tryResolveResult(dependentActivity);
-        if (isFailed(result)) {
-          return (activity.result = result);
-        } else if (isResolved(result)) {
-          results.push(result.value);
-        } else {
-          return undefined;
+      } else if (isAwaitAll(activity)) {
+        // try to resolve all of the nested activities
+        const results = activity.activities.map(tryResolveResult);
+        // if all results are resolved, return their values as a map
+        if (results.every(isResolved)) {
+          return Result.resolved(results.map((r) => r.value));
         }
+        // if any failed, return the first one, otherwise continue
+        return results.find(isFailed);
+      } else if (isAwaitAny(activity)) {
+        // try to resolve all of the nested activities
+        const results = activity.activities.map(tryResolveResult);
+        // if all are failed, return their errors as an AggregateError
+        if (results.every(isFailed)) {
+          return Result.failed(new AggregateError(results.map((e) => e.error)));
+        }
+        // if any are fulfilled, return it, otherwise continue
+        return results.find(isResolved);
+      } else if (isAwaitAllSettled(activity)) {
+        // try to resolve all of the nested activities
+        const results = activity.activities.map(tryResolveResult);
+        // if all are resolved or failed, return the Promise Result API
+        if (results.every(isResolvedOrFailed)) {
+          return Result.resolved(
+            results.map(
+              (r): PromiseFulfilledResult<any> | PromiseRejectedResult =>
+                isResolved(r)
+                  ? { status: "fulfilled", value: r.value }
+                  : { status: "rejected", reason: r.error }
+            )
+          );
+        }
+      } else if (isRace(activity)) {
+        // try to resolve all of the nested activities
+        const results = activity.activities.map(tryResolveResult);
+        // if any of the results are complete, return the first one, otherwise continue
+        return results.find(isResolvedOrFailed);
+      } else {
+        return assertNever(activity);
       }
-      return (activity.result = Result.resolved(results));
-    } else {
-      return assertNever(activity);
+      // no result was found, continue
+      return undefined;
     }
   }
 
@@ -429,8 +503,10 @@ export function interpret<Return>(
       : isSleepCompleted(event)
       ? Result.resolved(undefined)
       : isExpectSignalTimedOut(event)
-      ? // TODO: should this throw a specific error type?
-        Result.failed(new Timeout("Expect Signal Timed Out"))
+      ? Result.failed(new Timeout("Expect Signal Timed Out"))
+      : isConditionTimedOut(event)
+      ? // a timed out condition returns false
+        Result.resolved(false)
       : Result.failed(event.error);
   }
 }
@@ -448,6 +524,8 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
     return isExpectSignalCall(call) && event.signalId == call.signalId;
   } else if (isSignalSent(event)) {
     return isSendSignalCall(call) && event.signalId === call.signalId;
+  } else if (isConditionStarted(event)) {
+    return isConditionCall(call);
   }
   return assertNever(event);
 }

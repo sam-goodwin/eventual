@@ -1,9 +1,4 @@
-import { workflow, Signal, sendSignal } from "@eventual/core";
-
-declare function condition(
-  predicate: () => boolean,
-  opts?: { timeoutSeconds: number }
-): Promise<void>;
+import { workflow, Signal, sendSignal, condition } from "@eventual/core";
 
 const signal = new Signal<number>("event");
 const doneSignal = new Signal("done");

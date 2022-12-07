@@ -1,4 +1,8 @@
-import { workflows, clearEventualCollector, getWorkflowClient } from "./global.js";
+import {
+  workflows,
+  clearEventualCollector,
+  getWorkflowClient,
+} from "./global.js";
 import type { Program } from "./interpret.js";
 import type { Context, WorkflowContext } from "./context.js";
 import { DeterminismError } from "./error.js";
@@ -14,9 +18,10 @@ import {
   WorkflowEventType,
 } from "./events.js";
 import { interpret, WorkflowResult } from "./interpret.js";
-import type { StartWorkflowResponse } from "./runtime/workflow-client.js";
+import type { StartWorkflowResponse } from "./runtime/clients/workflow-client.js";
 import { ChildExecution, createWorkflowCall } from "./calls/workflow-call.js";
 import { AwaitedEventual } from "./eventual.js";
+import { isOrchestratorWorker } from "./runtime/flags.js";
 
 export const INTERNAL_EXECUTION_ID_PREFIX = "##EVENTUAL##";
 
@@ -119,8 +124,15 @@ export function workflow<Input = any, Output = any>(
   if (workflows().has(name)) {
     throw new Error(`workflow with name '${name}' already exists`);
   }
-  const workflow: Workflow<Input, Output> = ((input?: any) =>
-    createWorkflowCall(name, input)) as any;
+  const workflow: Workflow<Input, Output> = ((input?: any) => {
+    if (!isOrchestratorWorker()) {
+      throw new Error(
+        "Direct workflow invocation is only valid in a workflow, use workflow.startExecution instead."
+      );
+    }
+
+    return createWorkflowCall(name, input);
+  }) as any;
 
   workflow.workflowName = name;
 
