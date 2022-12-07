@@ -7,12 +7,17 @@ import {
   ConflictException,
 } from "@aws-sdk/client-scheduler";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
-import { assertNever, getEventId, TimerClient } from "@eventual/core";
 import {
-  isTimerForwardEventRequest,
+  assertNever,
+  getEventId,
+  TimerClient,
+  HistoryStateEvent,
+  isTimerScheduleEventRequest,
+  ScheduleEventRequest,
   ScheduleForwarderRequest,
   TimerRequest,
-} from "../handlers/types.js";
+  TimerRequestType,
+} from "@eventual/core";
 
 export interface AWSTimerClientProps {
   readonly scheduler: SchedulerClient;
@@ -156,6 +161,29 @@ export class AWSTimerClient implements TimerClient {
     }
   }
 
+  public async scheduleEvent<E extends HistoryStateEvent>(
+    request: ScheduleEventRequest<E>
+  ): Promise<void> {
+    const untilTime =
+      "untilTime" in request
+        ? request.untilTime
+        : new Date(
+            request.baseTime.getTime() + request.timerSeconds * 1000
+          ).toISOString();
+
+    const event = {
+      ...request.event,
+      timestamp: untilTime,
+    } as E;
+
+    await this.startTimer({
+      event,
+      executionId: request.executionId,
+      type: TimerRequestType.ScheduleEvent,
+      untilTime: untilTime,
+    });
+  }
+
   /**
    * When startTimer is used, the EventBridge schedule will not self delete.
    *
@@ -183,9 +211,18 @@ export class AWSTimerClient implements TimerClient {
   }
 }
 
+/**
+ * Get the schedule name from the request and filter out any invalid characters.
+ *
+ * ^[0-9a-zA-Z-_.]+$
+ *
+ * https://docs.aws.amazon.com/scheduler/latest/APIReference/API_CreateSchedule.html#API_CreateSchedule_RequestSyntax
+ */
 function getScheduleName(timerRequest: TimerRequest) {
-  if (isTimerForwardEventRequest(timerRequest)) {
-    return `${timerRequest.executionId}_${getEventId(timerRequest.event)}`;
+  if (isTimerScheduleEventRequest(timerRequest)) {
+    return `${timerRequest.executionId}_${getEventId(
+      timerRequest.event
+    )}`.replaceAll(/[^0-9a-zA-Z-_.]/g, "");
   }
   return assertNever(timerRequest);
 }

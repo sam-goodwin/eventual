@@ -1,7 +1,7 @@
 import { HistoryStateEvent } from "../../events.js";
 import { Execution, ExecutionStatus } from "../../execution.js";
 import { Signal } from "../../signals.js";
-import { Workflow, WorkflowInput } from "../../workflow.js";
+import { Workflow, WorkflowInput, WorkflowOptions } from "../../workflow.js";
 
 export interface WorkflowClient {
   /**
@@ -44,7 +44,8 @@ export interface SendSignalRequest {
   id: string;
 }
 
-export interface StartWorkflowRequest<W extends Workflow = Workflow> {
+export interface StartWorkflowRequest<W extends Workflow = Workflow>
+  extends WorkflowOptions {
   /**
    * Name of the workflow execution.
    *

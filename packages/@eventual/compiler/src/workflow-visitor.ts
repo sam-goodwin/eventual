@@ -30,17 +30,25 @@ export class OuterVisitor extends Visitor {
     if (isWorkflowCall(call)) {
       this.foundEventual = true;
 
+      const [name, options, func] =
+        call.arguments.length === 2
+          ? [call.arguments[0], undefined, call.arguments[1]]
+          : [call.arguments[0], call.arguments[1], call.arguments[2]];
+
       // workflow("id", async () => { .. })
       return {
         ...call,
         arguments: [
           // workflow name, e.g. "id"
-          call.arguments[0],
+          name,
+          ...(options ? [options] : []),
           {
-            spread: call.arguments[1].spread,
+            spread: func!.spread,
             // transform the function into a generator
             // e.g. async () => { .. } becomes function*() { .. }
-            expression: this.inner.visitWorkflow(call.arguments[1].expression),
+            expression: this.inner.visitWorkflow(
+              func!.expression as ArrowFunctionExpression | FunctionExpression
+            ),
           },
         ],
       };
@@ -229,11 +237,21 @@ function isWorkflowCall(call: CallExpression): call is CallExpression & {
 } {
   return (
     isWorkflowCallee(call.callee) &&
-    call.arguments.length === 2 &&
     call.arguments[0]?.expression.type === "StringLiteral" &&
-    (call.arguments[1]?.expression.type === "ArrowFunctionExpression" ||
-      call.arguments[1]?.expression.type === "FunctionExpression") &&
-    !call.arguments[1].expression.generator
+    ((call.arguments.length === 2 &&
+      isNonGeneratorFunction(call.arguments[1]?.expression)) ||
+      (call.arguments.length === 3 &&
+        isNonGeneratorFunction(call.arguments[2]?.expression)))
+  );
+}
+
+function isNonGeneratorFunction(
+  expr?: Expression
+): expr is ArrowFunctionExpression | FunctionExpression {
+  return (
+    (expr?.type === "ArrowFunctionExpression" ||
+      expr?.type === "FunctionExpression") &&
+    !expr.generator
   );
 }
 

@@ -12,7 +12,7 @@ import {
   SignalPayload,
   SignalTargetType,
 } from "../signals.js";
-import { Workflow } from "../workflow.js";
+import { Workflow, WorkflowOptions } from "../workflow.js";
 import { createSendSignalCall } from "./send-signal-call.js";
 
 export function isWorkflowCall<T>(a: Eventual<T>): a is WorkflowCall<T> {
@@ -28,13 +28,19 @@ export interface WorkflowCall<T = any> extends ChildExecution {
   input?: any;
   result?: Result<T>;
   seq?: number;
+  opts?: WorkflowOptions;
 }
 
-export function createWorkflowCall(name: string, input?: any): WorkflowCall {
+export function createWorkflowCall(
+  name: string,
+  input?: any,
+  opts?: WorkflowOptions
+): WorkflowCall {
   const call = registerEventual<WorkflowCall>({
     [EventualSymbol]: EventualKind.WorkflowCall,
     input,
     name,
+    opts,
   } as WorkflowCall);
 
   // create a reference to the child workflow started at a sequence in this execution.
@@ -68,7 +74,7 @@ export interface ChildExecution {
    *    await child;
    * })
    * ```
-   * 
+   *
    * @param id an optional, execution unique ID, will be used to de-dupe the signal at the target execution.
    */
   signal<S extends Signal<any>>(

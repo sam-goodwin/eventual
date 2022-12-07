@@ -22,13 +22,14 @@ import type { StartWorkflowResponse } from "./runtime/clients/workflow-client.js
 import { ChildExecution, createWorkflowCall } from "./calls/workflow-call.js";
 import { AwaitedEventual } from "./eventual.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
+import { isChain } from "./chain.js";
 
 export type WorkflowHandler<Input = any, Output = any> = (
   input: Input,
   context: Context
 ) => Promise<Output> | Program<Output>;
 
-export interface StartExecutionRequest<Input> {
+export interface StartExecutionRequest<Input> extends WorkflowOptions {
   /**
    * Input payload for the workflow.
    */
@@ -39,6 +40,20 @@ export interface StartExecutionRequest<Input> {
    * @default - a unique ID is generated.
    */
   name?: string;
+}
+
+/**
+ * Options which determine how a workflow operates.
+ *
+ * Can be provided at workflow definition time and/or overridden by the caller of {@link WorkflowClient.startWorkflow}.
+ */
+export interface WorkflowOptions {
+  /**
+   * Number of seconds before execution times out.
+   *
+   * @default - workflow will never timeout.
+   */
+  timeoutSeconds?: number;
 }
 
 export type WorkflowOutput<W extends Workflow<any, any>> = W extends Workflow<
@@ -64,6 +79,9 @@ export interface Workflow<Input = any, Output = any> {
    * Globally unique ID of this {@link Workflow}.
    */
   workflowName: string;
+
+  options?: WorkflowOptions;
+
   /**
    * Invokes the {@link Workflow} from within another workflow.
    *
@@ -118,10 +136,23 @@ export function lookupWorkflow(name: string): Workflow | undefined {
 export function workflow<Input = any, Output = any>(
   name: string,
   definition: WorkflowHandler<Input, Output>
+): Workflow<Input, Output>;
+export function workflow<Input = any, Output = any>(
+  name: string,
+  opts: WorkflowOptions,
+  definition: WorkflowHandler<Input, Output>
+): Workflow<Input, Output>;
+export function workflow<Input = any, Output = any>(
+  name: string,
+  ...args:
+    | [opts: WorkflowOptions, definition: WorkflowHandler<Input, Output>]
+    | [definition: WorkflowHandler<Input, Output>]
 ): Workflow<Input, Output> {
+  const [opts, definition] = args.length === 1 ? [undefined, args[0]] : args;
   if (workflows().has(name)) {
     throw new Error(`workflow with name '${name}' already exists`);
   }
+
   const workflow: Workflow<Input, Output> = ((input?: any) => {
     if (!isOrchestratorWorker()) {
       throw new Error(
@@ -129,10 +160,8 @@ export function workflow<Input = any, Output = any>(
       );
     }
 
-    return createWorkflowCall(name, input);
+    return createWorkflowCall(name, input, opts);
   }) as any;
-
-  workflow.workflowName = name;
 
   workflow.workflowName = name;
 
@@ -142,11 +171,19 @@ export function workflow<Input = any, Output = any>(
         workflowName: name,
         executionName: input.name,
         input: input.input,
+        timeoutSeconds: input.timeoutSeconds,
+        ...opts,
       }),
     };
   };
 
-  workflow.definition = definition as Workflow<Input, Output>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
+  workflow.definition = (
+    isChain(definition)
+      ? definition
+      : function* (input, context): any {
+          return yield definition(input, context);
+        }
+  ) as Workflow<Input, Output>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
   workflows().set(name, workflow);
   return workflow;
 }

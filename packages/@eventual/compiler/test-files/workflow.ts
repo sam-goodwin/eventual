@@ -56,3 +56,11 @@ export default workflow("workflow", async (input) => {
 
   await func2();
 });
+
+export const workflow2 = workflow(
+  "timeoutFlow",
+  { timeoutSeconds: 100 },
+  async () => {
+    await doWork("something");
+  }
+);

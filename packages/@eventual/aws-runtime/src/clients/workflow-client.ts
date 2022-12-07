@@ -47,6 +47,7 @@ export class AWSWorkflowClient implements WorkflowClient {
     input,
     parentExecutionId,
     seq,
+    timeoutSeconds,
   }: StartWorkflowRequest<W>) {
     const executionId = formatExecutionId(workflowName, executionName);
     console.log("execution input:", input);
@@ -79,6 +80,13 @@ export class AWSWorkflowClient implements WorkflowClient {
           type: WorkflowEventType.WorkflowStarted,
           input,
           workflowName,
+          // generate the time for the workflow to timeout based on when it was started.
+          // the timer will be started by the orchestrator so the client does not need to have access to the timer client.
+          timeoutTime: timeoutSeconds
+            ? new Date(
+                new Date().getTime() + timeoutSeconds * 1000
+              ).toISOString()
+            : undefined,
           context: {
             name: executionName,
             parentId: parentExecutionId,

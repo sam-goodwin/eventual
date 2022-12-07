@@ -2,6 +2,19 @@ import { createActivityCall } from "./calls/activity-call.js";
 import { callableActivities } from "./global.js";
 import { isActivityWorker } from "./runtime/flags.js";
 
+export interface ActivityOptions {
+  /**
+   * How long the workflow will wait for the activity to complete or fail.
+   *
+   * @default - workflow will run forever.
+   */
+  timeoutSeconds?: number;
+}
+
+export interface ActivityFunction<F extends (...args: any[]) => any> {
+  (...args: Parameters<F>): Promise<Awaited<ReturnType<F>>>;
+}
+
 /**
  * Registers a function as an Activity.
  *
@@ -11,17 +24,27 @@ import { isActivityWorker } from "./runtime/flags.js";
 export function activity<F extends (...args: any[]) => any>(
   activityID: string,
   handler: F
-): (...args: Parameters<F>) => Promise<Awaited<ReturnType<F>>> {
+): ActivityFunction<F>;
+export function activity<F extends (...args: any[]) => any>(
+  activityID: string,
+  options: ActivityOptions,
+  handler: F
+): ActivityFunction<F>;
+export function activity<F extends (...args: any[]) => any>(
+  activityID: string,
+  ...args: [opts: ActivityOptions, handler: F] | [handler: F]
+): ActivityFunction<F> {
+  const [opts, handler] = args.length === 1 ? [undefined, args[0]] : args;
   if (isActivityWorker()) {
     // if we're in the eventual worker, actually run the process amd register the activity
     // register the handler to be looked up during execution.
     callableActivities()[activityID] = handler;
-    return (...args) => handler(...args);
+    return ((...args) => handler(...args)) as ActivityFunction<F>;
   } else {
     // otherwise, return a command to invoke the activity in the worker function
-    return (...args) => {
-      return createActivityCall(activityID, args) as any;
-    };
+    return ((...args: Parameters<ActivityFunction<F>>) => {
+      return createActivityCall(activityID, args, opts?.timeoutSeconds) as any;
+    }) as ActivityFunction<F>;
   }
 }
 

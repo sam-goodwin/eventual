@@ -1,8 +1,7 @@
 import { SQSHandler } from "aws-lambda";
 import { promiseAllSettledPartitioned } from "../utils.js";
 import { createWorkflowClient } from "../clients/create.js";
-import { TimerRequest } from "./types.js";
-import { createTimerHandler } from "@eventual/core";
+import { createTimerHandler, TimerRequest } from "@eventual/core";
 
 const handleTimer = createTimerHandler(createWorkflowClient());
 

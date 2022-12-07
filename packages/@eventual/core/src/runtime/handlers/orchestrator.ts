@@ -18,6 +18,7 @@ import {
   createEvent,
   HistoryStateEvent,
   isSleepCompleted,
+  isWorkflowStarted,
   SignalSent,
   WorkflowCompleted,
   WorkflowEvent,
@@ -25,6 +26,7 @@ import {
   WorkflowFailed,
   WorkflowTaskCompleted,
   WorkflowTaskStarted,
+  WorkflowTimedOut,
 } from "../../events.js";
 import {
   CompleteExecution,
@@ -204,6 +206,31 @@ export function createOrchestrator({
       const workflowContext: WorkflowContext = {
         name: workflow.workflowName,
       };
+
+      const startEvent = history.find(isWorkflowStarted);
+
+      /**
+       * Check to see if this is the first run of the workflow (or all others have failed).
+       * If so, check to see if the workflow has timeout to start.
+       */
+      if (!startEvent) {
+        const newWorkflowStart = events.find(isWorkflowStarted);
+
+        if (newWorkflowStart?.timeoutTime) {
+          metrics.setProperty(OrchestratorMetrics.TimeoutStarted, 1);
+          await timed(metrics, OrchestratorMetrics.TimeoutStartedDuration, () =>
+            timerClient.scheduleEvent<WorkflowTimedOut>({
+              untilTime: newWorkflowStart.timeoutTime!,
+              event: createEvent<WorkflowTimedOut>({
+                type: WorkflowEventType.WorkflowTimedOut,
+              }),
+              executionId,
+            })
+          );
+        } else {
+          metrics.setProperty(OrchestratorMetrics.TimeoutStarted, 0);
+        }
+      }
 
       const {
         result,
@@ -401,6 +428,7 @@ export function createOrchestrator({
                 workflowName: workflow.workflowName,
                 executionId,
                 command,
+                baseTime: start,
               });
 
               return createEvent<ActivityScheduled>({
@@ -418,6 +446,7 @@ export function createOrchestrator({
                   command.seq
                 ),
                 seq: command.seq,
+                ...command.opts,
               });
 
               return createEvent<ChildWorkflowScheduled>({
@@ -468,7 +497,7 @@ export function createOrchestrator({
             } else if (isStartConditionCommand(command)) {
               if (command.timeoutSeconds) {
                 await timerClient.startTimer({
-                  type: TimerRequestType.ForwardEvent,
+                  type: TimerRequestType.ScheduleEvent,
                   event: createEvent<ConditionTimedOut>({
                     type: WorkflowEventType.ConditionTimedOut,
                     seq: command.seq,
