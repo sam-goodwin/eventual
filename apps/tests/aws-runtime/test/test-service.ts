@@ -12,6 +12,10 @@ const hello = activity("hello", async (name: string) => {
   return `hello ${name}`;
 });
 
+const fail = activity("fail", async (value: string) => {
+  throw new Error(value);
+});
+
 export const workflow1 = workflow(
   "my-workflow",
   async ({ name }: { name: string }) => {
@@ -40,7 +44,9 @@ export const workflow4 = workflow("parallel", async () => {
     })
   );
   const greetings3 = Promise.all([hello("sam"), hello("chris"), hello("sam")]);
-  return Promise.all([greetings, greetings2, greetings3]);
+  const any = Promise.any([fail("failed"), hello("sam")]);
+  const race = Promise.race([fail("failed"), hello("sam")]);
+  return Promise.allSettled([greetings, greetings2, greetings3, any, race]);
 });
 
 const signal = new Signal<number>("signal");
