@@ -1,5 +1,8 @@
-import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
-import { ExecutionID } from "../../../execution-id.js";
+import type { ExecutionID } from "@eventual/core";
+import type {
+  APIGatewayProxyEventV2,
+  APIGatewayProxyHandlerV2,
+} from "aws-lambda";
 import { createWorkflowClient } from "../../../clients/create.js";
 import { withErrorMiddleware } from "../middleware.js";
 import { getService } from "../service-properties.js";

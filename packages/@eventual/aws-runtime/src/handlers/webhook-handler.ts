@@ -1,28 +1,22 @@
-import { createRouter, getHooks, registerWorkflowClient } from "@eventual/core";
+import "@eventual/entry/injected";
+
+import { createWebhookProcessor } from "@eventual/core";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
 import itty from "itty-router";
 import { createWorkflowClient } from "../clients/create.js";
 
-// TODO: remove once we can upgrade to Node 18
+// TODO: remove once we can upgrade to Node 18 in AWS Lambda
 import "./fetch-polyfill";
 
-// make the workflow client available to web hooks
-registerWorkflowClient(createWorkflowClient());
-
-// initialize all web hooks onto the central HTTP router
-const router = createRouter();
-
-getHooks().forEach((hook) => hook(router));
-
-router.all("*", () => new Response("Not Found.", { status: 404 }));
+const processWebhook = createWebhookProcessor(createWorkflowClient());
 
 /**
  * Handle inbound webhook API requests.
  *
- * Each webhook registers routes on the central {@link router} which
+ * Each webhook registers routes on the central router that
  * then handles the request.
  */
-export async function processWebhook(
+export default async function (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> {
   const request: itty.Request = {
@@ -38,21 +32,13 @@ export async function processWebhook(
       }
     },
   };
-  try {
-    const response = await router.handle(request);
-    const headers: Record<string, string> = {};
-    response.headers.forEach((value, key) => (headers[key] = value));
-    return {
-      headers,
-      statusCode: response.status,
-      body: Buffer.from(await response.arrayBuffer()).toString("base64"),
-      isBase64Encoded: true,
-    };
-  } catch (err) {
-    console.error(err);
-    return {
-      statusCode: 500,
-      body: `Internal Server Error`,
-    };
-  }
+  const response = await processWebhook(request);
+  const headers: Record<string, string> = {};
+  response.headers.forEach((value, key) => (headers[key] = value));
+  return {
+    headers,
+    statusCode: response.status,
+    body: Buffer.from(await response.arrayBuffer()).toString("base64"),
+    isBase64Encoded: true,
+  };
 }

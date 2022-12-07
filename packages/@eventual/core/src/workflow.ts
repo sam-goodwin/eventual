@@ -24,8 +24,6 @@ import { AwaitedEventual } from "./eventual.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
 import { isChain } from "./chain.js";
 
-export const INTERNAL_EXECUTION_ID_PREFIX = "##EVENTUAL##";
-
 export type WorkflowHandler<Input = any, Output = any> = (
   input: Input,
   context: Context
