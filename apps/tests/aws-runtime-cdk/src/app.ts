@@ -1,6 +1,6 @@
 import * as eventual from "@eventual/aws-cdk";
 import { App, CfnOutput, Stack } from "aws-cdk-lib";
-import { ArnPrincipal, Role } from "aws-cdk-lib/aws-iam";
+import { ArnPrincipal, PolicyStatement, Role } from "aws-cdk-lib/aws-iam";
 
 const app = new App();
 
@@ -20,6 +20,12 @@ const testService = new eventual.Service(stack, "testService", {
 testService.grantRead(role);
 testService.grantStartWorkflow(role);
 testService.serviceDataSSM.grantRead(role);
+role.addToPolicy(
+  new PolicyStatement({
+    actions: ["ssm:DescribeParameters"],
+    resources: ["*"],
+  })
+);
 
 new CfnOutput(stack, "roleArn", {
   value: role.roleArn,
