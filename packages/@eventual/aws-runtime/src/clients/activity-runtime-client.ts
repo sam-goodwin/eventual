@@ -3,16 +3,17 @@ import {
   DynamoDBClient,
   PutItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import type * as eventual from "@eventual/core";
+import type {
+  ActivityRuntimeClient,
+  ScheduleActivityCommand,
+} from "@eventual/core";
 
 export interface AWSActivityRuntimeClientProps {
   dynamo: DynamoDBClient;
   activityLockTableName: string;
 }
 
-export class AWSActivityRuntimeClient
-  implements eventual.ActivityRuntimeClient
-{
+export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
   constructor(private props: AWSActivityRuntimeClientProps) {}
 
   /**
@@ -25,7 +26,7 @@ export class AWSActivityRuntimeClient
    **/
   async requestExecutionActivityClaim(
     executionId: string,
-    command: eventual.ScheduleActivityCommand,
+    command: ScheduleActivityCommand,
     retry: number,
     claimer?: string
   ) {
@@ -60,7 +61,7 @@ export namespace ActivityLockRecord {
   export const PARTITION_KEY_PREFIX = `Activity$`;
   export function key(
     executionId: string,
-    command: eventual.ScheduleActivityCommand,
+    command: ScheduleActivityCommand,
     retry: number
   ) {
     return `${PARTITION_KEY_PREFIX}$${executionId}$${command.seq}${retry}`;

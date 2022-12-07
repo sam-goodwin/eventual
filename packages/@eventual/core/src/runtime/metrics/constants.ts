@@ -1,5 +1,3 @@
-import type { Execution } from "@eventual/core";
-
 export namespace MetricsCommon {
   export const EventualNamespace = "Eventual";
   export const WorkflowNameDimension = "WorkflowName";

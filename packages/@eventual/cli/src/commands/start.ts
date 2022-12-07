@@ -7,13 +7,13 @@ import {
   WorkflowEvent,
   WorkflowEventType,
   WorkflowFailed,
+  encodeExecutionId,
 } from "@eventual/core";
 import { KyInstance } from "../types.js";
 import fs from "fs/promises";
 import getStdin from "get-stdin";
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
-import { encodeExecutionId } from "@eventual/aws-runtime";
 
 export const start = (yargs: Argv) =>
   yargs.command(

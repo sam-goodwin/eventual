@@ -10,6 +10,7 @@ import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
   assertNever,
   getEventId,
+  TimerClient,
   HistoryStateEvent,
   isTimerScheduleEventRequest,
   ScheduleEventRequest,
@@ -17,7 +18,6 @@ import {
   TimerRequest,
   TimerRequestType,
 } from "@eventual/core";
-import type * as eventual from "@eventual/core";
 
 export interface AWSTimerClientProps {
   readonly scheduler: SchedulerClient;
@@ -34,7 +34,7 @@ export interface AWSTimerClientProps {
   readonly scheduleForwarderArn: string;
 }
 
-export class AWSTimerClient implements eventual.TimerClient {
+export class AWSTimerClient implements TimerClient {
   constructor(private props: AWSTimerClientProps) {}
 
   /**

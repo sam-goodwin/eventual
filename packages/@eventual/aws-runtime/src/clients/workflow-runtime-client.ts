@@ -1,5 +1,10 @@
 import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import {
+  InvocationType,
+  InvokeCommand,
+  LambdaClient,
+} from "@aws-sdk/client-lambda";
+import {
   GetObjectCommand,
   GetObjectCommandOutput,
   NoSuchKey,
@@ -7,34 +12,36 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import {
-  LambdaClient,
-  InvokeCommand,
-  InvocationType,
-} from "@aws-sdk/client-lambda";
-import {
-  ExecutionStatus,
-  HistoryStateEvent,
-  CompleteExecution,
-  FailedExecution,
-  SleepScheduled,
-  isSleepUntilCommand,
-  WorkflowEventType,
   ActivityScheduled,
-  SleepCompleted,
+  ActivityWorkerRequest,
+  CompleteExecution,
+  CompleteExecutionRequest,
+  createEvent,
+  ExecuteExpectSignalRequest,
+  ExecutionStatus,
   ExpectSignalStarted,
   ExpectSignalTimedOut,
+  FailedExecution,
+  FailExecutionRequest,
+  HistoryStateEvent,
+  isSleepUntilCommand,
+  ScheduleActivityRequest,
+  ScheduleSleepRequest,
+  SleepCompleted,
   ActivityTimedOut,
   ChildWorkflowScheduled,
   TimerRequestType,
+  SleepScheduled,
+  UpdateHistoryRequest,
+  WorkflowEventType,
+  WorkflowRuntimeClient,
 } from "@eventual/core";
+import { AWSTimerClient } from "./timer-client.js";
 import {
+  AWSWorkflowClient,
   createExecutionFromResult,
   ExecutionRecord,
-  AWSWorkflowClient,
 } from "./workflow-client.js";
-import { ActivityWorkerRequest } from "../activity.js";
-import { createEvent } from "./execution-history-client.js";
-import { AWSTimerClient } from "./timer-client.js";
 import * as eventual from "@eventual/core";
 import { formatChildExecutionName } from "../utils.js";
 
@@ -49,9 +56,7 @@ export interface AWSWorkflowRuntimeClientProps {
   readonly timerClient: AWSTimerClient;
 }
 
-export class AWSWorkflowRuntimeClient
-  implements eventual.WorkflowRuntimeClient
-{
+export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
   constructor(private props: AWSWorkflowRuntimeClientProps) {}
 
   async getHistory(executionId: string): Promise<HistoryStateEvent[]> {
@@ -77,7 +82,7 @@ export class AWSWorkflowRuntimeClient
   async updateHistory({
     executionId,
     events,
-  }: eventual.UpdateHistoryRequest): Promise<{ bytes: number }> {
+  }: UpdateHistoryRequest): Promise<{ bytes: number }> {
     const content = events.map((e) => JSON.stringify(e)).join("\n");
     // get current history from s3
     await this.props.s3.send(
@@ -93,7 +98,7 @@ export class AWSWorkflowRuntimeClient
   async completeExecution({
     executionId,
     result,
-  }: eventual.CompleteExecutionRequest): Promise<CompleteExecution> {
+  }: CompleteExecutionRequest): Promise<CompleteExecution> {
     const executionResult = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
@@ -133,7 +138,7 @@ export class AWSWorkflowRuntimeClient
     executionId,
     error,
     message,
-  }: eventual.FailExecutionRequest): Promise<FailedExecution> {
+  }: FailExecutionRequest): Promise<FailedExecution> {
     const executionResult = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
@@ -197,7 +202,7 @@ export class AWSWorkflowRuntimeClient
     executionId,
     command,
     baseTime,
-  }: eventual.ScheduleActivityRequest) {
+  }: ScheduleActivityRequest) {
     const request: ActivityWorkerRequest = {
       scheduledTime: new Date().toISOString(),
       workflowName,
@@ -257,7 +262,7 @@ export class AWSWorkflowRuntimeClient
     executionId,
     command,
     baseTime,
-  }: eventual.ScheduleSleepRequest): Promise<SleepScheduled> {
+  }: ScheduleSleepRequest): Promise<SleepScheduled> {
     // TODO validate
     const untilTime = isSleepUntilCommand(command)
       ? new Date(command.untilTime)
@@ -288,7 +293,7 @@ export class AWSWorkflowRuntimeClient
     executionId,
     command,
     baseTime,
-  }: eventual.ExecuteExpectSignalRequest): Promise<ExpectSignalStarted> {
+  }: ExecuteExpectSignalRequest): Promise<ExpectSignalStarted> {
     if (command.timeoutSeconds) {
       await this.props.timerClient.scheduleEvent<ExpectSignalTimedOut>({
         event: {

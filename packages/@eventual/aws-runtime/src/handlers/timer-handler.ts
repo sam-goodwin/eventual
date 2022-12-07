@@ -1,24 +1,14 @@
 import { SQSHandler } from "aws-lambda";
 import { promiseAllSettledPartitioned } from "../utils.js";
 import { createWorkflowClient } from "../clients/create.js";
-import { isTimerScheduleEventRequest, TimerRequest } from "@eventual/core";
+import { createTimerHandler, TimerRequest } from "@eventual/core";
 
-const workflowClient = createWorkflowClient();
+const handleTimer = createTimerHandler(createWorkflowClient());
 
 export const handle: SQSHandler = async (event) => {
   console.debug(JSON.stringify(event));
-  const results = await promiseAllSettledPartitioned(
-    event.Records,
-    async (record) => {
-      const request = JSON.parse(record.body) as TimerRequest;
-
-      if (isTimerScheduleEventRequest(request)) {
-        await workflowClient.submitWorkflowTask(
-          request.executionId,
-          request.event
-        );
-      }
-    }
+  const results = await promiseAllSettledPartitioned(event.Records, (record) =>
+    handleTimer(JSON.parse(record.body) as TimerRequest)
   );
 
   if (results.rejected.length > 0) {

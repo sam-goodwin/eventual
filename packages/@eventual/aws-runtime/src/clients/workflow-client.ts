@@ -23,13 +23,11 @@ import {
   ActivityFailed,
   CompleteActivityRequest,
   FailActivityRequest,
+  formatExecutionId,
+  createEvent,
 } from "@eventual/core";
 import { ulid } from "ulidx";
-import {
-  AWSExecutionHistoryClient,
-  createEvent,
-} from "./execution-history-client.js";
-import { formatExecutionId } from "../execution-id.js";
+import { AWSExecutionHistoryClient } from "./execution-history-client.js";
 
 export interface AWSWorkflowClientProps {
   readonly dynamo: DynamoDBClient;
