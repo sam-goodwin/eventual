@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "main": "lib/index.js",
   "scripts": {
-    "build": "cdk synth",
+    "test": "cdk synth",
     "cdk": "cdk",
     "deploy": "cdk deploy --require-approval=never",
     "hotswap": "cdk deploy --hotswap --require-approval=never",

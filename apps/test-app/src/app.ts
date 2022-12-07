@@ -21,8 +21,8 @@ const openAccount = new eventual.Service(stack, "OpenAccount", {
   },
 });
 
-new CfnOutput(stack, "open-account-webhook-url", {
-  value: openAccount.webhookEndpointUrl.url,
+new CfnOutput(stack, "open-account-api-url", {
+  value: openAccount.api.apiEndpoint,
 });
 
 new eventual.Service(stack, "my-service", {

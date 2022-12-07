@@ -1,4 +1,4 @@
-import { activity, hook, workflow } from "@eventual/core";
+import { activity, api, workflow } from "@eventual/core";
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
@@ -69,20 +69,18 @@ export const associateAccountInformation = workflow(
 );
 
 // register a web hook API route
-hook((api) => {
-  api.post("/open-account", async (request) => {
-    const input = await request.json!();
+api.post("/open-account", async (request) => {
+  const input = await request.json!();
 
-    const response = await openAccount.startExecution({
-      input,
-    });
+  const response = await openAccount.startExecution({
+    input,
+  });
 
-    return new Response(JSON.stringify(response), {
-      headers: {
-        "Content-Type": "application/json",
-      },
-      status: 200,
-    });
+  return new Response(JSON.stringify(response), {
+    headers: {
+      "Content-Type": "application/json",
+    },
+    status: 200,
   });
 });
 

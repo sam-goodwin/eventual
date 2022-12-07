@@ -99,6 +99,7 @@ importers:
       '@aws-sdk/credential-providers': ^3.218.0
       '@aws-sdk/lib-dynamodb': ^3.214.0
       '@eventual/aws-runtime': workspace:^
+      '@eventual/cli': workspace:^
       '@eventual/compiler': workspace:^
       '@eventual/core': workspace:^
       '@types/aws-lambda': ^8.10.108
@@ -117,6 +118,7 @@ importers:
       '@aws-sdk/credential-providers': 3.218.0
       '@aws-sdk/lib-dynamodb': 3.214.0_z2tn46tuxbokx4n6p4kgh7la3y
       '@eventual/aws-runtime': link:../../../packages/@eventual/aws-runtime
+      '@eventual/cli': link:../../../packages/@eventual/cli
       '@eventual/core': link:../../../packages/@eventual/core
     devDependencies:
       '@eventual/compiler': link:../../../packages/@eventual/compiler

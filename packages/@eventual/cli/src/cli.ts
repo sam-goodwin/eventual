@@ -9,7 +9,7 @@ import { hideBin } from "yargs/helpers";
 import { replay } from "./commands/replay.js";
 
 const argv = hideBin(process.argv);
-const cli = yargs(argv).strict();
+const cli = yargs(argv).scriptName("eventual").strict();
 [services, start, workflows, executions, history, logs, replay].forEach((cmd) =>
   cmd(cli)
 );

@@ -37,10 +37,10 @@ export async function bundle(
       entry: runtimeEntrypoint("activity-worker"),
     }),
     build({
-      name: "webhook",
+      name: "api",
       outDir,
       injectedEntry: serviceEntry,
-      entry: runtimeEntrypoint("webhook-handler"),
+      entry: runtimeEntrypoint("api-handler"),
     }),
     //This one is actually an api function
     build({
