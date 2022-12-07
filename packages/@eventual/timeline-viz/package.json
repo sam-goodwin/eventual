@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "^4.19.1",
+    "buffer": "^6.0.3",
     "ky": "^0.32.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"

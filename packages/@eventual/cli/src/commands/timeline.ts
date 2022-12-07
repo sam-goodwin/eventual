@@ -9,6 +9,7 @@ import { encodeExecutionId } from "@eventual/aws-runtime";
 import {
   HistoryStateEvent,
   isActivityCompleted,
+  isActivityFailed,
   isActivityScheduled,
 } from "@eventual/core";
 
@@ -26,9 +27,9 @@ export const timeline = (yargs: Argv) =>
       spinner.start("Starting viz server");
       const app = express();
 
-      app.use("/timeline", async (_req, res) => {
+      app.use("/api/timeline/:execution", async (req, res) => {
         const events = await ky
-          .get(`executions/${encodeExecutionId(execution)}}/workflow-history`)
+          .get(`executions/${req.params.execution}}/workflow-history`)
           .json<HistoryStateEvent[]>();
         const timeline = aggregateTimeline(events);
         res.send(timeline);
@@ -51,11 +52,7 @@ export const timeline = (yargs: Argv) =>
       app.listen(port);
       const url = `http://localhost:${port}`;
       spinner.succeed(`Visualiser running on ${url}`);
-      open(url);
-
-      // spinner.start("Getting execution history");
-      // spinner.succeed();
-      // console.log(events);
+      open(`${url}/${encodeExecutionId(execution)}`);
     })
   );
 
@@ -63,8 +60,11 @@ interface TimelineActivity {
   type: "activity";
   seq: number;
   name: string;
-  start: Date;
-  status: { completed: number } | { failed: Date } | { inprogress: true };
+  start: number;
+  state:
+    | { status: "completed"; duration: number }
+    | { status: "failed"; duration: number }
+    | { status: "inprogress" };
 }
 
 function aggregateTimeline(events: HistoryStateEvent[]): TimelineActivity[] {
@@ -75,16 +75,31 @@ function aggregateTimeline(events: HistoryStateEvent[]): TimelineActivity[] {
         type: "activity",
         name: event.name,
         seq: event.seq,
-        start: new Date(event.timestamp),
-        status: { inprogress: true },
+        start: new Date(event.timestamp).getTime(),
+        state: { status: "inprogress" },
       };
     } else if (isActivityCompleted(event)) {
       let existingActivity = activities[event.seq];
       if (existingActivity) {
-        existingActivity.status = { completed: event.duration };
+        existingActivity.state = {
+          status: "completed",
+          duration: event.duration,
+        };
       } else {
         console.log(
           `Warning: Found completion event without matching scheduled event: ${event}`
+        );
+      }
+    } else if (isActivityFailed(event)) {
+      let existingActivity = activities[event.seq];
+      if (existingActivity) {
+        existingActivity.state = {
+          status: "failed",
+          duration: event.duration,
+        };
+      } else {
+        console.log(
+          `Warning: Found failure event without matching scheduled event: ${event}`
         );
       }
     }

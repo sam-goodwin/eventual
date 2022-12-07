@@ -383,6 +383,7 @@ importers:
       '@types/react': ^18.0.24
       '@types/react-dom': ^18.0.8
       '@vitejs/plugin-react': ^2.2.0
+      buffer: ^6.0.3
       express: ^4.18.2
       get-port: ^6.1.2
       ky: ^0.32.2
@@ -393,6 +394,7 @@ importers:
       vite: ^3.2.3
     dependencies:
       '@tanstack/react-query': 4.19.1_biqbaboplfbrettd7655fr4n2y
+      buffer: 6.0.3
       ky: 0.32.2
       react: 18.2.0
       react-dom: 18.2.0_react@18.2.0

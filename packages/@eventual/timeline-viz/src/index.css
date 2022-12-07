@@ -4,7 +4,6 @@
   line-height: 24px;
   font-weight: 400;
 
-  color-scheme: light;
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
 
@@ -13,6 +12,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
+  box-sizing: border-box;
 }
 
 a {
@@ -55,16 +55,15 @@ button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
+.activity {
+  background: rgb(60, 50, 200);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.timeline-container {
+  position: relative;
+  margin: 16px;
 }
