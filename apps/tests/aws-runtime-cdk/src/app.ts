@@ -27,7 +27,7 @@ testService.grantRead(role);
 testService.grantStartWorkflow(role);
 testService.serviceDataSSM.grantRead(role);
 
-// give the CLI permissions
+// give the CLI permissions to list parameters and assume
 new Policy(stack, "CLIPolicy", {
   roles: [Role.fromRoleArn(stack, "AssumeRole", assumeRoleArn)],
   document: new PolicyDocument({
