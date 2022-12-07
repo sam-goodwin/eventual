@@ -43,7 +43,7 @@ export const start = (yargs: Argv) =>
       spinner.start(`Executing ${workflow}\n`);
       let inputJSON = await getInputJson(inputFile, input);
       const { executionId } = await ky
-        .post(`workflows/${workflow}/executions`, {
+        .post(`_eventual/workflows/${workflow}/executions`, {
           json: inputJSON,
         })
         .json<{ executionId: string }>();

@@ -5,8 +5,6 @@ import {
   Code,
   IFunction,
   Runtime,
-  FunctionUrlAuthType,
-  FunctionUrl,
 } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import { Bucket, IBucket } from "aws-cdk-lib/aws-s3";
@@ -128,13 +126,9 @@ export class Service extends Construct implements IGrantable {
    */
   public readonly apiExecuteRole: Role;
   /*
-   * A Lambda Function for processing inbound webhook requests.
+   * The Lambda Function for processing inbound API requests with user defined code.
    */
-  public readonly webhookEndpoint: IFunction;
-  /**
-   * The URL of the webhook endpoint.
-   */
-  public readonly webhookEndpointUrl: FunctionUrl;
+  public readonly apiEndpoint: IFunction;
 
   readonly grantPrincipal: IPrincipal;
 
@@ -371,9 +365,33 @@ export class Service extends Construct implements IGrantable {
     // grants the orchestrator the ability to pass the scheduler role to the creates schedules
     schedulerRole.grantPassRole(this.orchestrator.grantPrincipal);
 
+    this.apiEndpoint = new Function(this, "ApiEndpoint", {
+      architecture: Architecture.ARM_64,
+      code: Code.fromAsset(this.outDir("api")),
+      handler: "index.default",
+      runtime: Runtime.NODEJS_16_X,
+      memorySize: 512,
+      environment: {
+        NODE_OPTIONS: "--enable-source-maps",
+        [ENV_NAMES.TABLE_NAME]: this.table.tableName,
+        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
+        [CoreEnvFlags.WEBHOOK_FLAG]: "1",
+      },
+    });
+
+    // the webhook endpoint is allowed to run workflows
+    this.workflowQueue.grantSendMessages(this.apiEndpoint);
+
+    // Enable creating history to start a workflow.
+    this.table.grantReadWriteData(this.apiEndpoint);
+
     this.api = new HttpApi(this, "gateway", {
       apiName: `eventual-api-${this.serviceName}`,
       defaultAuthorizer: new HttpIamAuthorizer(),
+      defaultIntegration: new HttpLambdaIntegration(
+        "default",
+        this.apiEndpoint
+      ),
     });
 
     this.apiExecuteRole = new Role(this, "EventualApiRole", {
@@ -437,11 +455,11 @@ export class Service extends Construct implements IGrantable {
     };
 
     route({
-      "/workflows": {
+      "/_eventual/workflows": {
         methods: [HttpMethod.GET],
         entry: { bundled: "list-workflows" },
       },
-      "/workflows/{name}/executions": [
+      "/_eventual/workflows/{name}/executions": [
         {
           methods: [HttpMethod.POST],
           entry: { api: "executions/new.js" },
@@ -459,12 +477,12 @@ export class Service extends Construct implements IGrantable {
           },
         },
       ],
-      "/executions/{executionId}/history": {
+      "/_eventual/executions/{executionId}/history": {
         methods: [HttpMethod.GET],
         entry: { api: "executions/history.js" },
         grants: (fn) => this.table.grantReadData(fn),
       },
-      "/executions/{executionId}/workflow-history": {
+      "/_eventual/executions/{executionId}/workflow-history": {
         methods: [HttpMethod.GET],
         entry: { api: "executions/workflow-history.js" },
         grants: (fn) => this.history.grantRead(fn),
@@ -481,30 +499,6 @@ export class Service extends Construct implements IGrantable {
         },
       }),
     });
-
-    this.webhookEndpoint = new Function(this, "WebhookEndpoint", {
-      architecture: Architecture.ARM_64,
-      code: Code.fromAsset(this.outDir("webhook")),
-      // the bundler outputs orchestrator/index.js
-      handler: "index.default",
-      runtime: Runtime.NODEJS_16_X,
-      memorySize: 512,
-      environment: {
-        NODE_OPTIONS: "--enable-source-maps",
-        [ENV_NAMES.TABLE_NAME]: this.table.tableName,
-        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
-        [CoreEnvFlags.WEBHOOK_FLAG]: "1",
-      },
-    });
-    this.webhookEndpointUrl = this.webhookEndpoint.addFunctionUrl({
-      authType: FunctionUrlAuthType.NONE,
-    });
-
-    // the webhook endpoint is allowed to run workflows
-    this.workflowQueue.grantSendMessages(this.webhookEndpoint);
-
-    // Enable creating history to start a workflow.
-    this.table.grantReadWriteData(this.webhookEndpoint);
   }
 
   public grantStartWorkflow(grantable: IGrantable) {
