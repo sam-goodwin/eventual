@@ -366,10 +366,9 @@ export class Service extends Construct implements IGrantable {
     schedulerRole.grantPassRole(this.orchestrator.grantPrincipal);
 
     this.apiEndpoint = new Function(this, "ApiEndpoint", {
-      architecture: Architecture.ARM_64,
+      ...baseNodeFnProps,
       code: Code.fromAsset(this.outDir("api")),
       handler: "index.default",
-      runtime: Runtime.NODEJS_16_X,
       memorySize: 512,
       environment: {
         NODE_OPTIONS: "--enable-source-maps",
