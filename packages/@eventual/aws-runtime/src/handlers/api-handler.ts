@@ -1,14 +1,14 @@
 import "@eventual/entry/injected";
 
-import { createWebhookProcessor } from "@eventual/core";
+import { createApiHandler } from "@eventual/core";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
 import itty from "itty-router";
 import { createWorkflowClient } from "../clients/create.js";
 
 // TODO: remove once we can upgrade to Node 18 in AWS Lambda
-import "./fetch-polyfill";
+import "./fetch-polyfill.js";
 
-const processWebhook = createWebhookProcessor(createWorkflowClient());
+const processRequest = createApiHandler(createWorkflowClient());
 
 /**
  * Handle inbound webhook API requests.
@@ -32,7 +32,7 @@ export default async function (
       }
     },
   };
-  const response = await processWebhook(request);
+  const response = await processRequest(request);
   const headers: Record<string, string> = {};
   response.headers.forEach((value, key) => (headers[key] = value));
   return {

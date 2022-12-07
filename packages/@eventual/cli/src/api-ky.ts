@@ -28,7 +28,9 @@ export async function apiKy(
     )());
   const roleArn = await getApiRoleArn(service, resolvedRegion);
   return ky.extend({
-    prefixUrl: (await getServiceData(service, region)).apiEndpoint,
+    prefixUrl: `${
+      (await getServiceData(service, region)).apiEndpoint
+    }/_eventual`,
     hooks: {
       beforeRequest: [
         async (req: Request) => {
