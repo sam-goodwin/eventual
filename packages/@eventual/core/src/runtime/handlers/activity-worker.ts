@@ -1,14 +1,8 @@
-import { ActivityWorkerRequest } from "../activity-worker-request.js";
-import { timed } from "../metrics/utils.js";
-import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
-import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
-import { ExecutionHistoryClient } from "../clients/execution-history-client.js";
-import { WorkflowClient } from "../clients/workflow-client.js";
-import { registerWorkflowClient } from "../../global.js";
 import {
   getCallableActivity,
   getCallableActivityNames,
 } from "../../activity.js";
+import { ScheduleActivityCommand } from "../../command.js";
 import {
   ActivityCompleted,
   ActivityFailed,
@@ -16,9 +10,15 @@ import {
   isWorkflowFailed,
   WorkflowEventType,
 } from "../../events.js";
-import { MetricsClient } from "../clients/metrics-client.js";
+import { registerWorkflowClient } from "../../global.js";
+import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
+import { ExecutionHistoryClient } from "../clients/execution-history-client.js";
 import { LoggerClient } from "../clients/logger-client.js";
+import { MetricsClient } from "../clients/metrics-client.js";
+import { WorkflowClient } from "../clients/workflow-client.js";
+import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
 import { Unit } from "../metrics/unit.js";
+import { timed } from "../metrics/utils.js";
 
 export interface CreateActivityWorkerProps {
   activityRuntimeClient: ActivityRuntimeClient;
@@ -26,6 +26,14 @@ export interface CreateActivityWorkerProps {
   workflowClient: WorkflowClient;
   metricsClient: MetricsClient;
   logsClient: LoggerClient;
+}
+
+export interface ActivityWorkerRequest {
+  scheduledTime: string;
+  workflowName: string;
+  executionId: string;
+  command: ScheduleActivityCommand;
+  retry: number;
 }
 
 /**
