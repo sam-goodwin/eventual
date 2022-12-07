@@ -25,6 +25,13 @@ import {
   ExpectSignalTimedOut,
   ActivityWorkerRequest,
   createEvent,
+  CompleteExecutionRequest,
+  UpdateHistoryRequest,
+  WorkflowRuntimeClient,
+  FailExecutionRequest,
+  ScheduleActivityRequest,
+  ScheduleSleepRequest,
+  ExecuteExpectSignalRequest,
 } from "@eventual/core";
 import {
   createExecutionFromResult,
@@ -33,7 +40,6 @@ import {
 } from "./workflow-client.js";
 import { TimerRequestType } from "../handlers/types.js";
 import { AWSTimerClient } from "./timer-client.js";
-import * as eventual from "@eventual/core";
 
 export interface AWSWorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;
@@ -46,9 +52,7 @@ export interface AWSWorkflowRuntimeClientProps {
   readonly timerClient: AWSTimerClient;
 }
 
-export class AWSWorkflowRuntimeClient
-  implements eventual.WorkflowRuntimeClient
-{
+export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
   constructor(private props: AWSWorkflowRuntimeClientProps) {}
 
   async getHistory(executionId: string): Promise<HistoryStateEvent[]> {
@@ -74,7 +78,7 @@ export class AWSWorkflowRuntimeClient
   async updateHistory({
     executionId,
     events,
-  }: eventual.UpdateHistoryRequest): Promise<{ bytes: number }> {
+  }: UpdateHistoryRequest): Promise<{ bytes: number }> {
     const content = events.map((e) => JSON.stringify(e)).join("\n");
     // get current history from s3
     await this.props.s3.send(
@@ -90,7 +94,7 @@ export class AWSWorkflowRuntimeClient
   async completeExecution({
     executionId,
     result,
-  }: eventual.CompleteExecutionRequest): Promise<CompleteExecution> {
+  }: CompleteExecutionRequest): Promise<CompleteExecution> {
     const executionResult = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
@@ -130,7 +134,7 @@ export class AWSWorkflowRuntimeClient
     executionId,
     error,
     message,
-  }: eventual.FailExecutionRequest): Promise<FailedExecution> {
+  }: FailExecutionRequest): Promise<FailedExecution> {
     const executionResult = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
@@ -193,7 +197,7 @@ export class AWSWorkflowRuntimeClient
     workflowName,
     executionId,
     command,
-  }: eventual.ScheduleActivityRequest) {
+  }: ScheduleActivityRequest) {
     const request: ActivityWorkerRequest = {
       scheduledTime: new Date().toISOString(),
       workflowName,
@@ -221,7 +225,7 @@ export class AWSWorkflowRuntimeClient
     executionId,
     command,
     baseTime,
-  }: eventual.ScheduleSleepRequest): Promise<SleepScheduled> {
+  }: ScheduleSleepRequest): Promise<SleepScheduled> {
     // TODO validate
     const untilTime = isSleepUntilCommand(command)
       ? new Date(command.untilTime)
@@ -252,7 +256,7 @@ export class AWSWorkflowRuntimeClient
     executionId,
     command,
     baseTime,
-  }: eventual.ExecuteExpectSignalRequest): Promise<ExpectSignalStarted> {
+  }: ExecuteExpectSignalRequest): Promise<ExpectSignalStarted> {
     if (command.timeoutSeconds) {
       const untilTime = new Date(
         baseTime.getTime() + command.timeoutSeconds * 1000
