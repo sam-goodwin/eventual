@@ -19,7 +19,8 @@ export const baseNodeFnProps = {
       "--conditions": "module,import,require",
     },
     metafile: true,
-    target: "es2020",
+    // target node 16+
+    target: "es2021",
     format: OutputFormat.ESM,
   },
 } satisfies NodejsFunctionProps;
