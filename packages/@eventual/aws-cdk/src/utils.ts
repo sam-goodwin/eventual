@@ -18,6 +18,7 @@ export const baseNodeFnProps = {
     esbuildArgs: {
       "--conditions": "module,import,require",
     },
+    banner: `import { createRequire as topLevelCreateRequire } from 'module'; const require = topLevelCreateRequire(import.meta.url);`,
     metafile: true,
     target: "es2020",
     format: OutputFormat.ESM,
