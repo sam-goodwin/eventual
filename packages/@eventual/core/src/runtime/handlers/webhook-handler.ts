@@ -3,6 +3,12 @@ import { registerWorkflowClient } from "../../global.js";
 import { createRouter, getHooks } from "../../hook.js";
 import type { WorkflowClient } from "../clients/workflow-client.js";
 
+/**
+ * Creates a generic function for handling inbound webhook requests
+ * that can be used in runtime implementations. This implementation is
+ * decoupled from a runtime's specifics by the clients. A runtime must
+ * inject its own client implementations designed for that platform.
+ */
 export function createWebhookProcessor(workflowClient: WorkflowClient) {
   // make the workflow client available to web hooks
   registerWorkflowClient(workflowClient);

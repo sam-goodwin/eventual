@@ -9,11 +9,26 @@ import {
   SchedulerForwarderMetrics,
 } from "../metrics/constants.js";
 
-export function createScheduleForwarder(
-  timerClient: TimerClient,
-  metricsClient: MetricsClient,
-  loggerClient: LoggerClient
-) {
+/**
+ * The Schedule Forwarder's dependencies.
+ */
+export interface ScheduleForwarderDependencies {
+  timerClient: TimerClient;
+  metricsClient: MetricsClient;
+  loggerClient: LoggerClient;
+}
+
+/**
+ * Creates a generic function for forwarding scheduled events to a queue
+ * that can be used in runtime implementations. This implementation is
+ * decoupled from a runtime's specifics by the clients. A runtime must
+ * inject its own client implementations designed for that platform.
+ */
+export function createScheduleForwarder({
+  timerClient,
+  metricsClient,
+  loggerClient,
+}: ScheduleForwarderDependencies) {
   const logger = loggerClient.getLogger();
 
   return metricsClient.metricScope(

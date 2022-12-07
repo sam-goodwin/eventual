@@ -16,23 +16,18 @@ import {
   SQSWorkflowTaskMessage,
 } from "../clients/index.js";
 
-const executionHistoryClient = createExecutionHistoryClient();
-const timerClient = createTimerClient();
-const workflowRuntimeClient = createWorkflowRuntimeClient();
-const workflowClient = createWorkflowClient();
-
 /**
  * Creates an entrypoint function for orchestrating a workflow
  * from within an AWS Lambda Function attached to a SQS FIFO queue.
  */
-const orchestrate = createOrchestrator(
-  executionHistoryClient,
-  timerClient,
-  workflowRuntimeClient,
-  workflowClient,
-  AWSMetricsClient,
-  AWSLoggerClient
-);
+const orchestrate = createOrchestrator({
+  executionHistoryClient: createExecutionHistoryClient(),
+  timerClient: createTimerClient(),
+  workflowRuntimeClient: createWorkflowRuntimeClient(),
+  workflowClient: createWorkflowClient(),
+  metricsClient: AWSMetricsClient,
+  loggerClient: AWSLoggerClient,
+});
 
 export default middy(async (event: SQSEvent) => {
   if (event.Records.some((r) => !r.attributes.MessageGroupId)) {

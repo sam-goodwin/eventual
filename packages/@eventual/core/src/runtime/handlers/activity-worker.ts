@@ -37,7 +37,10 @@ export interface ActivityWorkerRequest {
 }
 
 /**
- * Creates a function that handles inbound Activity requests.
+ * Creates a generic function for handling activity worker requests
+ * that can be used in runtime implementations. This implementation is
+ * decoupled from a runtime's specifics by the clients. A runtime must
+ * inject its own client implementations designed for that platform.
  */
 export function createActivityWorker({
   activityRuntimeClient,

@@ -8,7 +8,7 @@ import { createWorkflowClient } from "../clients/create.js";
 // TODO: remove once we can upgrade to Node 18 in AWS Lambda
 import "./fetch-polyfill";
 
-const processWebhookRequest = createWebhookProcessor(createWorkflowClient());
+const processWebhook = createWebhookProcessor(createWorkflowClient());
 
 /**
  * Handle inbound webhook API requests.
@@ -16,7 +16,7 @@ const processWebhookRequest = createWebhookProcessor(createWorkflowClient());
  * Each webhook registers routes on the central router that
  * then handles the request.
  */
-export async function processWebhook(
+export default async function (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> {
   const request: itty.Request = {
@@ -32,7 +32,7 @@ export async function processWebhook(
       }
     },
   };
-  const response = await processWebhookRequest(request);
+  const response = await processWebhook(request);
   const headers: Record<string, string> = {};
   response.headers.forEach((value, key) => (headers[key] = value));
   return {

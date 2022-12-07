@@ -60,18 +60,39 @@ import type {
 } from "../clients/index.js";
 import { TimerRequestType } from "../clients/timer-client.js";
 
+/**
+ * The Orchestrator's client dependencies.
+ */
+export interface OrchestratorDependencies {
+  executionHistoryClient: ExecutionHistoryClient;
+  timerClient: TimerClient;
+  workflowRuntimeClient: WorkflowRuntimeClient;
+  workflowClient: WorkflowClient;
+  metricsClient: MetricsClient;
+  loggerClient: LoggerClient;
+}
+
 export interface OrchestratorResult {
+  /**
+   * IDs of the Executions that failed to orchestrate.
+   */
   failedExecutionIds: string[];
 }
 
-export function createOrchestrator(
-  executionHistoryClient: ExecutionHistoryClient,
-  timerClient: TimerClient,
-  workflowRuntimeClient: WorkflowRuntimeClient,
-  workflowClient: WorkflowClient,
-  metricsClient: MetricsClient,
-  loggerClient: LoggerClient
-): (
+/**
+ * Creates a generic function for orchestrating a batch of executions
+ * that can be used in runtime implementations. This implementation is
+ * decoupled from a runtime's specifics by the clients. A runtime must
+ * inject its own client implementations designed for that platform.
+ */
+export function createOrchestrator({
+  executionHistoryClient,
+  timerClient,
+  workflowRuntimeClient,
+  workflowClient,
+  metricsClient,
+  loggerClient,
+}: OrchestratorDependencies): (
   eventsByExecutionId: Record<string, HistoryStateEvent[]>
 ) => Promise<OrchestratorResult> {
   const logger = loggerClient.getLogger();
