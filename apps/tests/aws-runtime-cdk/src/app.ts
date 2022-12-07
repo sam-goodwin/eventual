@@ -23,6 +23,12 @@ testService.serviceDataSSM.grantRead(role);
 testService.apiExecuteRole.grantAssumeRole(role);
 role.addToPolicy(
   new PolicyStatement({
+    actions: ["iam:GetRole"],
+    resources: [testService.apiExecuteRole.roleArn],
+  })
+);
+role.addToPolicy(
+  new PolicyStatement({
     actions: ["ssm:DescribeParameters"],
     resources: ["*"],
   })
