@@ -132,6 +132,11 @@ export class Service extends Construct implements IGrantable {
 
   readonly grantPrincipal: IPrincipal;
 
+  /**
+   * A SSM parameter containing data about this service.
+   */
+  readonly serviceDataSSM: StringParameter;
+
   constructor(scope: Construct, id: string, props: ServiceProps) {
     super(scope, id);
 
@@ -488,7 +493,7 @@ export class Service extends Construct implements IGrantable {
       },
     });
 
-    new StringParameter(this, "service-data", {
+    this.serviceDataSSM = new StringParameter(this, "service-data", {
       parameterName: `/eventual/services/${this.serviceName}`,
       stringValue: JSON.stringify({
         apiEndpoint: this.api.apiEndpoint,

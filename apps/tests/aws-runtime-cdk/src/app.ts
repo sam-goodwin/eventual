@@ -19,6 +19,7 @@ const testService = new eventual.Service(stack, "testService", {
 
 testService.grantRead(role);
 testService.grantStartWorkflow(role);
+testService.serviceDataSSM.grantRead(role);
 
 new CfnOutput(stack, "roleArn", {
   value: role.roleArn,
