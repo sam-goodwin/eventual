@@ -19,13 +19,13 @@ const workflowClient = new AWSWorkflowClient({
   workflowQueueUrl: process.env.TEST_QUEUE_URL || "",
 });
 
-export interface AsyncWriterFunction {
+export interface AsyncWriterTestEvent {
   type: "complete" | "fail";
   token: string;
   ingestionTime: string;
 }
 
-export const handle: Handler<AsyncWriterFunction[], void> = async (event) => {
+export const handle: Handler<AsyncWriterTestEvent[], void> = async (event) => {
   console.log(event);
   await Promise.allSettled(
     event.map(async (e) => {

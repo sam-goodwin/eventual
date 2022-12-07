@@ -9,7 +9,7 @@ import {
   workflow,
 } from "@eventual/core";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
-import { AsyncWriterFunction } from "./async-writer-handler.js";
+import { AsyncWriterTestEvent } from "./async-writer-handler.js";
 
 const sqs = new SQSClient({});
 
@@ -21,7 +21,7 @@ const hello = activity("hello", async (name: string) => {
 
 const asyncActivity = activity(
   "asyncActivity",
-  async (type: AsyncWriterFunction["type"]) => {
+  async (type: AsyncWriterTestEvent["type"]) => {
     return asyncResult<string>(async (token) => {
       console.log(testQueueUrl);
       await sqs.send(
