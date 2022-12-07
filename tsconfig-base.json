@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "module": "esnext",
-    "target": "ES2019",
+    "target": "ES2021",
     "moduleResolution": "NodeNext",
     "outDir": "lib",
     "baseUrl": ".",
@@ -12,7 +12,7 @@
     "experimentalDecorators": true,
     "inlineSourceMap": true,
     "inlineSources": true,
-    "lib": ["dom", "ES2022"],
+    "lib": ["dom", "ES2021", "ES2021.Promise"],
     "noEmitOnError": false,
     "noFallthroughCasesInSwitch": true,
     "noImplicitAny": true,
