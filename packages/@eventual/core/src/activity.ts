@@ -74,6 +74,15 @@ export interface ActivityContext {
   scheduledTime: string;
 }
 
+export interface ActivityOptions {
+  /**
+   * How long the workflow will wait for the activity to complete or fail.
+   *
+   * @default - workflow will run forever.
+   */
+  timeoutSeconds?: number;
+}
+
 /**
  * Registers a function as an Activity.
  *
