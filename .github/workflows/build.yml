@@ -34,7 +34,7 @@ jobs:
       - name: Deploy Runtime Tests
         run: pnpm -r --filter tests-runtime run deploy:runtime
       - run: |
-          echo 'TEST_ROLE_ARN=$(node -p "JSON.parse(require(\"fs\").readFileSync(\"./apps/tests/aws-runtime/cdk.out/outputs.json\"))[\"eventual-tests\"].roleArn)' >> $GITHUB_ENV
+          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require(\'fs\').readFileSync(\'./apps/tests/aws-runtime/cdk.out/outputs.json\'))[\'eventual-tests\'].roleArn)" >> $GITHUB_ENV
       - name: Configure Test Role Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
