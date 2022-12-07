@@ -1,3 +1,6 @@
+// the user's entry point will register activities as a side effect.
+import "@eventual/entry/injected";
+
 import { createActivityWorker } from "@eventual/core";
 import middy from "@middy/core";
 import {
@@ -11,13 +14,12 @@ import {
   loggerMiddlewares,
 } from "../clients/logger-client.js";
 
-export const activityWorker = () =>
-  middy(
-    createActivityWorker(
-      createActivityRuntimeClient(),
-      createExecutionHistoryClient(),
-      createWorkflowClient(),
-      AWSMetricsClient,
-      AWSLoggerClient
-    )
-  ).use(loggerMiddlewares);
+export default middy(
+  createActivityWorker({
+    activityRuntimeClient: createActivityRuntimeClient(),
+    executionHistoryClient: createExecutionHistoryClient(),
+    workflowClient: createWorkflowClient(),
+    metricsClient: AWSMetricsClient,
+    logsClient: AWSLoggerClient,
+  })
+).use(loggerMiddlewares);

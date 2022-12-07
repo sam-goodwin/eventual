@@ -171,7 +171,7 @@ export class Service extends Construct implements IGrantable {
       {
         entry: path.join(
           require.resolve("@eventual/aws-runtime"),
-          "../../esm/functions/start-workflow.js"
+          "../../esm/handlers/start-workflow.js"
         ),
         handler: "handle",
         ...baseNodeFnProps,

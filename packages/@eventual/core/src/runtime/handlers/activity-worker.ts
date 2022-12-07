@@ -20,15 +20,28 @@ import { MetricsClient } from "../clients/metrics-client.js";
 import { LoggerClient } from "../clients/logger-client.js";
 import { Unit } from "../metrics/unit.js";
 
-// make the workflow client available to all activity code
-export function createActivityWorker(
-  activityRuntimeClient: ActivityRuntimeClient,
-  executionHistoryClient: ExecutionHistoryClient,
-  workflowClient: WorkflowClient,
-  metricsClient: MetricsClient,
-  logsClient: LoggerClient
-): (request: ActivityWorkerRequest) => Promise<void> {
+export interface CreateActivityWorkerProps {
+  activityRuntimeClient: ActivityRuntimeClient;
+  executionHistoryClient: ExecutionHistoryClient;
+  workflowClient: WorkflowClient;
+  metricsClient: MetricsClient;
+  logsClient: LoggerClient;
+}
+
+/**
+ * Creates a function that handles inbound Activity requests.
+ */
+export function createActivityWorker({
+  activityRuntimeClient,
+  executionHistoryClient,
+  workflowClient,
+  metricsClient,
+  logsClient,
+}: CreateActivityWorkerProps): (
+  request: ActivityWorkerRequest
+) => Promise<void> {
   const logger = logsClient.getLogger();
+  // make the workflow client available to all activity code
   registerWorkflowClient(workflowClient);
 
   return metricsClient.metricScope(

@@ -1,6 +1,8 @@
+import "@eventual/entry/injected";
+
 import { createOrchestrator } from "@eventual/core";
 import middy from "@middy/core";
-import type { SQSEvent, SQSHandler, SQSRecord } from "aws-lambda";
+import type { SQSEvent, SQSRecord } from "aws-lambda";
 import {
   AWSLoggerClient,
   loggerMiddlewares,
@@ -23,49 +25,46 @@ const workflowClient = createWorkflowClient();
  * Creates an entrypoint function for orchestrating a workflow
  * from within an AWS Lambda Function attached to a SQS FIFO queue.
  */
-export function orchestrator(): SQSHandler {
-  const orchestrate = createOrchestrator(
-    executionHistoryClient,
-    timerClient,
-    workflowRuntimeClient,
-    workflowClient,
-    AWSMetricsClient,
-    AWSLoggerClient
+const orchestrate = createOrchestrator(
+  executionHistoryClient,
+  timerClient,
+  workflowRuntimeClient,
+  workflowClient,
+  AWSMetricsClient,
+  AWSLoggerClient
+);
+
+export default middy(async (event: SQSEvent) => {
+  if (event.Records.some((r) => !r.attributes.MessageGroupId)) {
+    throw new Error("Expected SQS Records to contain fifo message id");
+  }
+
+  // batch by execution id
+  const recordsByExecutionId = groupBy(
+    event.Records,
+    (r) => r.attributes.MessageGroupId!
   );
 
-  return middy(async (event: SQSEvent) => {
-    if (event.Records.some((r) => !r.attributes.MessageGroupId)) {
-      throw new Error("Expected SQS Records to contain fifo message id");
-    }
+  const eventsByExecutionId = Object.fromEntries(
+    Object.entries(recordsByExecutionId).map(([executionId, records]) => [
+      executionId,
+      sqsRecordsToEvents(records),
+    ])
+  );
 
-    // batch by execution id
-    const recordsByExecutionId = groupBy(
-      event.Records,
-      (r) => r.attributes.MessageGroupId!
-    );
+  const { failedExecutionIds } = await orchestrate(eventsByExecutionId);
 
-    const eventsByExecutionId = Object.fromEntries(
-      Object.entries(recordsByExecutionId).map(([executionId, records]) => [
-        executionId,
-        sqsRecordsToEvents(records),
-      ])
-    );
+  const failedMessageIds = failedExecutionIds.flatMap(
+    (executionId) =>
+      recordsByExecutionId[executionId]?.map((record) => record.messageId) ?? []
+  );
 
-    const { failedExecutionIds } = await orchestrate(eventsByExecutionId);
-
-    const failedMessageIds = failedExecutionIds.flatMap(
-      (executionId) =>
-        recordsByExecutionId[executionId]?.map((record) => record.messageId) ??
-        []
-    );
-
-    return {
-      batchItemFailures: failedMessageIds.map((r) => ({
-        itemIdentifier: r,
-      })),
-    };
-  }).use(loggerMiddlewares);
-}
+  return {
+    batchItemFailures: failedMessageIds.map((r) => ({
+      itemIdentifier: r,
+    })),
+  };
+}).use(loggerMiddlewares);
 
 function sqsRecordsToEvents(sqsRecords: SQSRecord[]) {
   return sqsRecords.flatMap(sqsRecordToEvents);

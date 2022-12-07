@@ -34,13 +34,13 @@ export async function bundle(
       name: "activity",
       outDir,
       injectedEntry: serviceEntry,
-      entry: runtimeEntrypoint("activity"),
+      entry: runtimeEntrypoint("activity-worker"),
     }),
     build({
       name: "webhook",
       outDir,
       injectedEntry: serviceEntry,
-      entry: runtimeEntrypoint("webhook"),
+      entry: runtimeEntrypoint("webhook-handler"),
     }),
     //This one is actually an api function
     build({
@@ -67,7 +67,7 @@ export async function bundleService(outDir: string, entry: string) {
 export function runtimeEntrypoint(name: string) {
   return path.join(
     require.resolve("@eventual/aws-runtime"),
-    `../../esm/entry/${name}.js`
+    `../../esm/handlers/${name}.js`
   );
 }
 

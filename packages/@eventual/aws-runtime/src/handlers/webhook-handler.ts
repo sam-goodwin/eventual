@@ -1,3 +1,5 @@
+import "@eventual/entry/injected";
+
 import { createWebhookProcessor } from "@eventual/core";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
 import itty from "itty-router";
