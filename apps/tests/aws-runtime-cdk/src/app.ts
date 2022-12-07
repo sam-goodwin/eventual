@@ -20,6 +20,7 @@ const testService = new eventual.Service(stack, "testService", {
 testService.grantRead(role);
 testService.grantStartWorkflow(role);
 testService.serviceDataSSM.grantRead(role);
+testService.apiExecuteRole.grantAssumeRole(role);
 role.addToPolicy(
   new PolicyStatement({
     actions: ["ssm:DescribeParameters"],
