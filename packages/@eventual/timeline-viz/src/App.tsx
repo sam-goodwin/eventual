@@ -52,11 +52,10 @@ function App() {
               <div
                 className="activity"
                 style={{
-                  position: "absolute",
+                  position: "relative",
                   left: `${start}%`,
                   width: `${width.toFixed(2)}%`,
                   height: 64,
-                  top: getPreviousOverlapping(activity, activities) * 80,
                 }}
               >
                 <div>{activity.name}</div>
@@ -109,15 +108,6 @@ function endTime(activity: TimelineActivity): number | undefined {
     : isFailed(state)
     ? activity.start + state.duration
     : undefined;
-}
-
-function getPreviousOverlapping(
-  activity: TimelineActivity,
-  activities: TimelineActivity[]
-) {
-  return activities.filter(
-    (a) => a.seq < activity.seq && (endTime(a) ?? Number.MAX_VALUE) >= a.start
-  ).length;
 }
 
 function getWorkflowSpan(activities: TimelineActivity[]) {

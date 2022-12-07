@@ -66,4 +66,7 @@ button:focus-visible {
 .timeline-container {
   position: relative;
   margin: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
