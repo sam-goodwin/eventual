@@ -512,6 +512,10 @@ export class Service extends Construct implements IGrantable {
     this.table.grantReadWriteData(grantable);
   }
 
+  public grantFinishActivity(grantable: IGrantable) {
+    this.workflowQueue.grantSendMessages(grantable);
+  }
+
   public grantRead(grantable: IGrantable) {
     this.history.grantRead(grantable);
     this.table.grantReadData(grantable);

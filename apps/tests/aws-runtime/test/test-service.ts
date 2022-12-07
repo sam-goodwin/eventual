@@ -1,16 +1,41 @@
 import {
   activity,
   condition,
+  makeAsync,
   sendSignal,
   Signal,
   sleepFor,
   sleepUntil,
   workflow,
 } from "@eventual/core";
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { AsyncWriterFunction } from "./async-writer-handler.js";
+
+const sqs = new SQSClient({});
+
+const testQueueUrl = process.env.TEST_QUEUE_URL ?? "";
 
 const hello = activity("hello", async (name: string) => {
   return `hello ${name}`;
 });
+
+const asyncActivity = activity(
+  "asyncActivity",
+  async (type: AsyncWriterFunction["type"]) => {
+    return makeAsync<string>(async (token) => {
+      console.log(testQueueUrl);
+      await sqs.send(
+        new SendMessageCommand({
+          QueueUrl: testQueueUrl,
+          MessageBody: JSON.stringify({
+            type,
+            token,
+          }),
+        })
+      );
+    });
+  }
+);
 
 export const workflow1 = workflow(
   "my-workflow",
@@ -145,3 +170,18 @@ export const timedOutWorkflow = workflow("timedOut", async () => {
     )
   );
 });
+
+export const asyncWorkflow = workflow(
+  "asyncWorkflow",
+  { timeoutSeconds: 100 }, // timeout eventually
+  async () => {
+    const result = await asyncActivity("complete");
+
+    try {
+      await asyncActivity("fail");
+    } catch (err) {
+      return [result, err];
+    }
+    return "I should not get here";
+  }
+);

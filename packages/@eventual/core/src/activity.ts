@@ -11,17 +11,27 @@ export interface ActivityOpts {
   timeoutSeconds?: number;
 }
 
-export interface ActivityFunction<F extends (...args: any[]) => any> {
-  (...args: Parameters<F>): Promise<Awaited<ReturnType<F>>>;
+export interface ActivityFunction<
+  Arguments extends any[],
+  Output extends any = any
+> {
+  (...args: Arguments): Promise<Awaited<UnwrapAsync<Output>>>;
 }
 
-export interface ActivityHandler<F extends (...args: any[]) => any> {
-  (...args: Parameters<F>):
-    | Promise<Awaited<ReturnType<F>>>
-    | ReturnType<F>
-    | MakeAsync
-    | Promise<MakeAsync>;
-}
+export type ActivityHandler<
+  Arguments extends any[],
+  Output extends any = any
+> = (
+  ...args: Arguments
+) =>
+  | Promise<Awaited<Output>>
+  | Output
+  | MakeAsync<Output>
+  | Promise<MakeAsync<Awaited<Output>>>;
+
+export type UnwrapAsync<Output> = Output extends MakeAsync<infer O>
+  ? O
+  : Output;
 
 export const AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
 
@@ -29,17 +39,18 @@ export const AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
  * When returned from an activity, the activity will become async,
  * allowing it to run "forever". The
  */
-export interface MakeAsync {
+export interface MakeAsync<Output = any> {
   [AsyncTokenSymbol]: typeof AsyncTokenSymbol;
+  __outputType: Output;
 }
 
 export function isMakeAsync(obj: any): obj is MakeAsync {
   return !!obj && obj[AsyncTokenSymbol] === AsyncTokenSymbol;
 }
 
-export async function makeAsync(
+export async function makeAsync<Output = any>(
   tokenContext: (token: string) => Promise<void> | void
-): Promise<MakeAsync> {
+): Promise<MakeAsync<Output>> {
   if (!isActivityWorker()) {
     throw new Error("makeAsync can only be called from within an activity.");
   }
@@ -52,6 +63,7 @@ export async function makeAsync(
   await tokenContext(activityContext.activityToken);
   return {
     [AsyncTokenSymbol]: AsyncTokenSymbol,
+    __outputType: undefined as Output,
   };
 }
 
@@ -68,35 +80,37 @@ export interface ActivityContext {
  * @param activityID a string that uniquely identifies the Activity within a single workflow context.
  * @param handler the function that handles the activity
  */
-export function activity<F extends (...args: any[]) => any>(
+export function activity<Arguments extends any[], Output extends any = any>(
   activityID: string,
-  handler: ActivityHandler<F>
-): ActivityFunction<F>;
-export function activity<F extends (...args: any[]) => any>(
+  handler: ActivityHandler<Arguments, Output>
+): ActivityFunction<Arguments, Output>;
+export function activity<Arguments extends any[], Output extends any = any>(
   activityID: string,
   opts: ActivityOpts,
-  handler: ActivityHandler<F>
-): ActivityFunction<F>;
-export function activity<F extends (...args: any[]) => any>(
+  handler: ActivityHandler<Arguments, Output>
+): ActivityFunction<Arguments, Output>;
+export function activity<Arguments extends any[], Output extends any = any>(
   activityID: string,
   ...args:
-    | [opts: ActivityOpts, handler: ActivityHandler<F>]
-    | [handler: ActivityHandler<F>]
-): ActivityFunction<F> {
+    | [opts: ActivityOpts, handler: ActivityHandler<Arguments, Output>]
+    | [handler: ActivityHandler<Arguments, Output>]
+): ActivityFunction<Arguments, Output> {
   const [opts, handler] = args.length === 1 ? [undefined, args[0]] : args;
   if (isActivityWorker()) {
     // if we're in the eventual worker, actually run the process amd register the activity
     // register the handler to be looked up during execution.
     callableActivities()[activityID] = handler;
-    return ((...args) => handler(...args)) as ActivityFunction<F>;
+    return ((...args) => handler(...args)) as ActivityFunction<
+      Arguments,
+      Output
+    >;
   } else if (isOrchestratorWorker()) {
     // otherwise, return a command to invoke the activity in the worker function
-    return ((...args: Parameters<ActivityFunction<F>>) => {
+    return ((...args: Parameters<ActivityFunction<Arguments, Output>>) => {
       return createActivityCall(activityID, args, opts?.timeoutSeconds) as any;
-    }) as ActivityFunction<F>;
-  } else {
-    throw new Error("Activity can only be called from within a workflow.");
+    }) as ActivityFunction<Arguments, Output>;
   }
+  return undefined as any;
 }
 
 /**
