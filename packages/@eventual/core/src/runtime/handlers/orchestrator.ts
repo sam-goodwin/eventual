@@ -1,12 +1,12 @@
 import { inspect } from "util";
 import {
   Command,
+  isExpectSignalCommand,
   isScheduleActivityCommand,
   isScheduleWorkflowCommand,
+  isSendSignalCommand,
   isSleepForCommand,
   isSleepUntilCommand,
-  isExpectSignalCommand,
-  isSendSignalCommand,
   isStartConditionCommand,
 } from "../../command.js";
 import { WorkflowContext } from "../../context.js";
@@ -28,8 +28,8 @@ import {
 } from "../../events.js";
 import {
   CompleteExecution,
-  FailedExecution,
   ExecutionStatus,
+  FailedExecution,
   isCompleteExecution,
 } from "../../execution.js";
 import { isChildExecutionTarget } from "../../index.js";
@@ -37,28 +37,26 @@ import { isFailed, isResolved, isResult } from "../../result.js";
 import { assertNever } from "../../util.js";
 import { lookupWorkflow, progressWorkflow, Workflow } from "../../workflow.js";
 
-import {
-  formatExecutionId,
-  isExecutionId,
-  parseWorkflowName,
-} from "../execution-id.js";
-import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
-import { MetricsLogger } from "../metrics/metrics-logger.js";
-import { Unit } from "../metrics/unit.js";
-import { timed, timedSync } from "../metrics/utils.js";
-import {
-  formatChildExecutionName,
-  promiseAllSettledPartitioned,
-} from "../utils.js";
 import type {
   ExecutionHistoryClient,
-  TimerClient,
   MetricsClient,
+  TimerClient,
   WorkflowClient,
   WorkflowRuntimeClient,
 } from "../clients/index.js";
 import { TimerRequestType } from "../clients/timer-client.js";
+import {
+  formatChildExecutionName,
+  formatExecutionId,
+  isExecutionId,
+  parseWorkflowName,
+} from "../execution-id.js";
 import type { Logger } from "../logger.js";
+import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
+import { MetricsLogger } from "../metrics/metrics-logger.js";
+import { Unit } from "../metrics/unit.js";
+import { timed, timedSync } from "../metrics/utils.js";
+import { promiseAllSettledPartitioned } from "../utils.js";
 /**
  * The Orchestrator's client dependencies.
  */

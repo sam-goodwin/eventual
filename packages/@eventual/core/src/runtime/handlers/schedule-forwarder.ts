@@ -66,7 +66,7 @@ export function createScheduleForwarder({
       );
 
       if (event.clearSchedule) {
-        console.debug("Deleting the schedule: " + event.scheduleName);
+        executionLogger.debug("Deleting the schedule: " + event.scheduleName);
         await timerClient.clearSchedule(event.scheduleName);
       }
     }
