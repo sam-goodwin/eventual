@@ -1,5 +1,10 @@
 import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import {
+  InvocationType,
+  InvokeCommand,
+  LambdaClient,
+} from "@aws-sdk/client-lambda";
+import {
   GetObjectCommand,
   GetObjectCommandOutput,
   NoSuchKey,
@@ -7,39 +12,34 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import {
-  LambdaClient,
-  InvokeCommand,
-  InvocationType,
-} from "@aws-sdk/client-lambda";
-import {
-  ExecutionStatus,
-  HistoryStateEvent,
-  CompleteExecution,
-  FailedExecution,
-  SleepScheduled,
-  isSleepUntilCommand,
-  WorkflowEventType,
   ActivityScheduled,
-  SleepCompleted,
+  ActivityWorkerRequest,
+  CompleteExecution,
+  CompleteExecutionRequest,
+  createEvent,
+  ExecuteExpectSignalRequest,
+  ExecutionStatus,
   ExpectSignalStarted,
   ExpectSignalTimedOut,
-  ActivityWorkerRequest,
-  createEvent,
-  CompleteExecutionRequest,
-  UpdateHistoryRequest,
-  WorkflowRuntimeClient,
+  FailedExecution,
   FailExecutionRequest,
+  HistoryStateEvent,
+  isSleepUntilCommand,
   ScheduleActivityRequest,
   ScheduleSleepRequest,
-  ExecuteExpectSignalRequest,
+  SleepCompleted,
+  SleepScheduled,
+  UpdateHistoryRequest,
+  WorkflowEventType,
+  WorkflowRuntimeClient,
 } from "@eventual/core";
-import {
-  createExecutionFromResult,
-  ExecutionRecord,
-  AWSWorkflowClient,
-} from "./workflow-client.js";
 import { TimerRequestType } from "../handlers/types.js";
 import { AWSTimerClient } from "./timer-client.js";
+import {
+  AWSWorkflowClient,
+  createExecutionFromResult,
+  ExecutionRecord,
+} from "./workflow-client.js";
 
 export interface AWSWorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;
