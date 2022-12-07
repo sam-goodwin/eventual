@@ -13,6 +13,7 @@ const role = new Role(stack, "testRole", {
 });
 
 const testService = new eventual.Service(stack, "testService", {
+  name: "eventual-tests",
   entry: require.resolve("tests-runtime"),
 });
 

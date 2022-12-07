@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "main": "lib/test-service.js",
   "scripts": {
-    "test:runtime": "OUTPUTS_FILE=cdk.out/outputs.json jest --passWithNoTests",
+    "test:runtime": "OUTPUTS_FILE=cdk.out/outputs.json jest --passWithNoTests && ./scripts/test-cli",
     "deploy:runtime": "OUTPUTS_FILE=cdk.out/outputs.json ./scripts/deploy",
     "test:runtime-deploy": "pnpm -r --filter tests-runtime run deploy:runtime && pnpm -r --filter tests-runtime run test:runtime"
   },
@@ -16,6 +16,7 @@
     "@aws-sdk/lib-dynamodb": "^3.214.0",
     "@eventual/aws-runtime": "workspace:^",
     "@eventual/core": "workspace:^",
+    "@eventual/cli": "workspace:^",
     "@aws-sdk/credential-providers": "^3.218.0"
   },
   "devDependencies": {

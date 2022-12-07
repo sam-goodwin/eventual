@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+npx eventual services
+
+npx eventual workflows eventual-tests
+
+npx eventual executions eventual-tests 
+
+npx eventual executions eventual-tests --workflow parallel > .eventual/out.json
+
+execution_id=$(node -p 'JSON.parse(require("fs").readFileSync(".eventual/out.json").toString("utf8"))[0].id')
+
+npx eventual history eventual-tests ${execution_id}
+
+npx eventual logs eventual-tests
+
+npx eventual logs eventual-tests --workflow parallel
+
+npx eventual logs eventual-tests --execution ${execution_id}
+
+npx eventual start eventual-tests sleepy
