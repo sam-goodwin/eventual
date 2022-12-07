@@ -23,8 +23,6 @@ import { ChildExecution, createWorkflowCall } from "./calls/workflow-call.js";
 import { AwaitedEventual } from "./eventual.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
 
-export const INTERNAL_EXECUTION_ID_PREFIX = "##EVENTUAL##";
-
 export type WorkflowHandler<Input = any, Output = any> = (
   input: Input,
   context: Context
