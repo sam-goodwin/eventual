@@ -8,20 +8,18 @@ import {
 import {
   BaseEvent,
   createEvent,
+  ExecutionHistoryClient,
   getEventId,
   UnresolvedEvent,
   WorkflowEvent,
 } from "@eventual/core";
-import type * as eventual from "@eventual/core";
 
 export interface AWSExecutionHistoryClientProps {
   readonly dynamo: DynamoDBClient;
   readonly tableName: string;
 }
 
-export class AWSExecutionHistoryClient
-  implements eventual.ExecutionHistoryClient
-{
+export class AWSExecutionHistoryClient implements ExecutionHistoryClient {
   constructor(private props: AWSExecutionHistoryClientProps) {}
 
   public async createAndPutEvent<T extends WorkflowEvent>(
