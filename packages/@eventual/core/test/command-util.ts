@@ -26,6 +26,8 @@ import {
   WorkflowEventType,
   WorkflowTimedOut,
   ActivityTimedOut,
+  ActivityHeartbeat,
+  ActivityHeartbeatTimedOut,
 } from "../src/events.js";
 import { ulid } from "ulidx";
 import { SignalTarget } from "../src/signals.js";
@@ -175,6 +177,30 @@ export function activityScheduled(
     name,
     seq,
     timestamp: new Date(0).toISOString(),
+  };
+}
+
+export function activityHeartbeat(
+  seq: number,
+  /** Relative seconds from 0 */
+  seconds: number
+): ActivityHeartbeat {
+  return {
+    type: WorkflowEventType.ActivityHeartbeat,
+    seq,
+    timestamp: new Date(seconds * 1000).toISOString(),
+  };
+}
+
+export function activityHeartbeatTimedOut(
+  seq: number,
+  /** Relative seconds from 0 */
+  seconds: number
+): ActivityHeartbeatTimedOut {
+  return {
+    type: WorkflowEventType.ActivityHeartbeatTimedOut,
+    seq,
+    timestamp: new Date(seconds * 1000).toISOString(),
   };
 }
 

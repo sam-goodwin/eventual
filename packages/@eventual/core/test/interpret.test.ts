@@ -1,6 +1,6 @@
 import { createActivityCall } from "../src/calls/activity-call.js";
 import { chain } from "../src/chain.js";
-import { DeterminismError, Timeout } from "../src/error.js";
+import { DeterminismError, HeartbeatTimeout, Timeout } from "../src/error.js";
 import {
   Context,
   CoreEnvFlags,
@@ -22,6 +22,8 @@ import { createSleepUntilCall } from "../src/calls/sleep-call.js";
 import {
   activityCompleted,
   activityFailed,
+  activityHeartbeat,
+  activityHeartbeatTimedOut,
   activityScheduled,
   activityTimedOut,
   completedSleep,
@@ -233,6 +235,190 @@ test("should handle partial blocks with partial completes", () => {
     ],
   });
 });
+
+describe("activity", () =>
+  describe("heartbeat", () => {
+    const wf = workflow(function* () {
+      return createActivityCall("getPumpedUp", [], undefined, 100);
+    });
+
+    test("accept heartbeats", () => {
+      expect(
+        interpret(wf.definition(undefined, context), [
+          activityScheduled("getPumpedUp", 0),
+          activityHeartbeat(0, 0),
+        ])
+      ).toMatchObject<WorkflowResult>({
+        commands: [],
+      });
+    });
+
+    test("accept heartbeats then finish", () => {
+      expect(
+        interpret(wf.definition(undefined, context), [
+          activityScheduled("getPumpedUp", 0),
+          activityHeartbeat(0, 0),
+          activityCompleted("done", 0),
+        ])
+      ).toMatchObject<WorkflowResult>({
+        result: Result.resolved("done"),
+        commands: [],
+      });
+    });
+
+    test("timeout from no heartbeat", () => {
+      expect(
+        interpret(wf.definition(undefined, context), [
+          activityScheduled("getPumpedUp", 0),
+          activityHeartbeatTimedOut(0, 0),
+        ])
+      ).toMatchObject<WorkflowResult>({
+        result: Result.failed(
+          new HeartbeatTimeout(
+            "Activity Heartbeat TimedOut",
+            new Date(0).toISOString()
+          )
+        ),
+        commands: [],
+      });
+    });
+
+    test("timeout from heartbeat seconds", () => {
+      expect(
+        interpret(wf.definition(undefined, context), [
+          activityScheduled("getPumpedUp", 0),
+          activityHeartbeat(0, 0),
+          activityHeartbeatTimedOut(0, 101),
+        ])
+      ).toMatchObject<WorkflowResult>({
+        result: Result.failed(
+          new HeartbeatTimeout(
+            "Activity Heartbeat TimedOut",
+            new Date(101 * 1000).toISOString(),
+            new Date(0).toISOString()
+          )
+        ),
+        commands: [],
+      });
+    });
+
+    test("do not timeout after heartbeat", () => {
+      expect(
+        interpret(wf.definition(undefined, context), [
+          activityScheduled("getPumpedUp", 0),
+          activityHeartbeat(0, 0),
+          activityHeartbeatTimedOut(0, 99),
+        ])
+      ).toMatchObject<WorkflowResult>({
+        commands: [],
+      });
+    });
+
+    test("do not timeout after heartbeat then complete", () => {
+      expect(
+        interpret(wf.definition(undefined, context), [
+          activityScheduled("getPumpedUp", 0),
+          activityHeartbeat(0, 0),
+          activityHeartbeatTimedOut(0, 99),
+          activityCompleted("done", 0),
+        ])
+      ).toMatchObject<WorkflowResult>({
+        result: Result.resolved("done"),
+        commands: [],
+      });
+    });
+
+    test("timeout after complete", () => {
+      expect(
+        interpret(wf.definition(undefined, context), [
+          activityScheduled("getPumpedUp", 0),
+          activityHeartbeat(0, 0),
+          activityCompleted("done", 0),
+          activityHeartbeatTimedOut(0, 1000),
+        ])
+      ).toMatchObject<WorkflowResult>({
+        result: Result.resolved("done"),
+        commands: [],
+      });
+    });
+
+    test("timeout after multiple heartbeats", () => {
+      expect(
+        interpret(wf.definition(undefined, context), [
+          activityScheduled("getPumpedUp", 0),
+          activityHeartbeat(0, 0),
+          activityHeartbeat(0, 50),
+          activityHeartbeatTimedOut(0, 151),
+        ])
+      ).toMatchObject<WorkflowResult>({
+        result: Result.failed(
+          new HeartbeatTimeout(
+            "Activity Heartbeat TimedOut",
+            new Date(151 * 1000).toISOString(),
+            new Date(50 * 1000).toISOString()
+          )
+        ),
+        commands: [],
+      });
+    });
+
+    test("do not timeout after multiple heartbeats", () => {
+      expect(
+        interpret(wf.definition(undefined, context), [
+          activityScheduled("getPumpedUp", 0),
+          activityHeartbeat(0, 0),
+          activityHeartbeat(0, 50),
+          activityHeartbeatTimedOut(0, 101),
+        ])
+      ).toMatchObject<WorkflowResult>({
+        commands: [],
+      });
+    });
+
+    test("do not timeout when no heartbeat timeout is configured", () => {
+      const wf = workflow(function* () {
+        return createActivityCall("getPumpedUp", []);
+      });
+
+      expect(
+        interpret(wf.definition(undefined, context), [
+          activityScheduled("getPumpedUp", 0),
+          activityHeartbeatTimedOut(0, 1),
+        ])
+      ).toMatchObject<WorkflowResult>({
+        commands: [],
+      });
+    });
+
+    test("catch heartbeat timeout", () => {
+      const wf = workflow(function* (): any {
+        try {
+          const result = yield createActivityCall(
+            "getPumpedUp",
+            [],
+            undefined,
+            1
+          );
+          return result;
+        } catch (err) {
+          if (err instanceof HeartbeatTimeout) {
+            return err.heartbeatTimeoutTimestamp;
+          }
+          return "no";
+        }
+      });
+
+      expect(
+        interpret(wf.definition(undefined, context), [
+          activityScheduled("getPumpedUp", 0),
+          activityHeartbeatTimedOut(0, 10),
+        ])
+      ).toMatchObject<WorkflowResult>({
+        result: Result.resolved(new Date(10 * 1000).toISOString()),
+        commands: [],
+      });
+    });
+  }));
 
 test("should throw when scheduled does not correspond to call", () => {
   expect(() =>
