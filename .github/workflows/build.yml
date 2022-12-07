@@ -32,7 +32,7 @@ jobs:
           aws-region: us-east-1
           role-duration-seconds: 3600
       - name: Deploy Runtime Tests
-        run: pnpm -r --filter tests-runtime run test:deploy-runtime
+        run: pnpm -r --filter tests-runtime run deploy:runtime
       - run: |
           echo 'TEST_ROLE_ARN=$(node -p "JSON.parse(require(\"fs\").readFileSync(\"./apps/tests/aws-runtime/cdk.out/outputs.json\"))[\"eventual-tests\"].roleArn)' >> $GITHUB_ENV
       - name: Configure Test Role Credentials
@@ -42,4 +42,4 @@ jobs:
           aws-region: us-east-1
           role-duration-seconds: 3600
       - name: Run Runtime Tests
-        run: pnpm -r --filter tests-runtime run test:test-runtime
+        run: pnpm -r --filter tests-runtime run test:runtime
