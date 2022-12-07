@@ -54,12 +54,11 @@ import type {
   ExecutionHistoryClient,
   TimerClient,
   MetricsClient,
-  LoggerClient,
   WorkflowClient,
   WorkflowRuntimeClient,
 } from "../clients/index.js";
 import { TimerRequestType } from "../clients/timer-client.js";
-
+import type { Logger } from "../logger.js";
 /**
  * The Orchestrator's client dependencies.
  */
@@ -69,7 +68,7 @@ export interface OrchestratorDependencies {
   workflowRuntimeClient: WorkflowRuntimeClient;
   workflowClient: WorkflowClient;
   metricsClient: MetricsClient;
-  loggerClient: LoggerClient;
+  logger: Logger;
 }
 
 export interface OrchestratorResult {
@@ -91,12 +90,10 @@ export function createOrchestrator({
   workflowRuntimeClient,
   workflowClient,
   metricsClient,
-  loggerClient,
+  logger,
 }: OrchestratorDependencies): (
   eventsByExecutionId: Record<string, HistoryStateEvent[]>
 ) => Promise<OrchestratorResult> {
-  const logger = loggerClient.getLogger();
-
   return async (eventsByExecutionId) => {
     logger.debug("Handle workflowQueue records");
 

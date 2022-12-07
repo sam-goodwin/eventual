@@ -1,6 +1,6 @@
 import { createScheduleForwarder } from "@eventual/core";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
-import { AWSLoggerClient } from "../clients/logger-client.js";
+import { logger } from "../logger.js";
 import { createTimerClient } from "../clients/create.js";
 
 export const handle = createScheduleForwarder({
@@ -8,5 +8,5 @@ export const handle = createScheduleForwarder({
     scheduleForwarderArn: "NOT NEEDED",
   }),
   metricsClient: AWSMetricsClient,
-  loggerClient: AWSLoggerClient,
+  logger,
 });

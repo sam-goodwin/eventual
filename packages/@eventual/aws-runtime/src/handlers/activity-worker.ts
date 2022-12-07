@@ -9,10 +9,7 @@ import {
   createWorkflowClient,
 } from "../clients/create.js";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
-import {
-  AWSLoggerClient,
-  loggerMiddlewares,
-} from "../clients/logger-client.js";
+import { logger, loggerMiddlewares } from "../logger.js";
 
 export default middy(
   createActivityWorker({
@@ -20,6 +17,6 @@ export default middy(
     executionHistoryClient: createExecutionHistoryClient(),
     workflowClient: createWorkflowClient(),
     metricsClient: AWSMetricsClient,
-    logsClient: AWSLoggerClient,
+    logger,
   })
 ).use(loggerMiddlewares);

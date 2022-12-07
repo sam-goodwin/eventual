@@ -3,7 +3,7 @@ import type {
   ScheduleForwarderRequest,
   TimerClient,
 } from "../clients/timer-client.js";
-import { LoggerClient } from "../index.js";
+import { Logger } from "../logger.js";
 import {
   MetricsCommon,
   SchedulerForwarderMetrics,
@@ -15,7 +15,7 @@ import {
 export interface ScheduleForwarderDependencies {
   timerClient: TimerClient;
   metricsClient: MetricsClient;
-  loggerClient: LoggerClient;
+  logger: Logger;
 }
 
 /**
@@ -27,10 +27,8 @@ export interface ScheduleForwarderDependencies {
 export function createScheduleForwarder({
   timerClient,
   metricsClient,
-  loggerClient,
+  logger,
 }: ScheduleForwarderDependencies) {
-  const logger = loggerClient.getLogger();
-
   return metricsClient.metricScope(
     (metrics) => async (event: ScheduleForwarderRequest) => {
       metrics.setNamespace(MetricsCommon.EventualNamespace);

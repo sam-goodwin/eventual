@@ -3,10 +3,7 @@ import "@eventual/entry/injected";
 import { createOrchestrator } from "@eventual/core";
 import middy from "@middy/core";
 import type { SQSEvent, SQSRecord } from "aws-lambda";
-import {
-  AWSLoggerClient,
-  loggerMiddlewares,
-} from "../clients/logger-client.js";
+import { logger, loggerMiddlewares } from "../logger.js";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 import {
   createExecutionHistoryClient,
@@ -26,7 +23,7 @@ const orchestrate = createOrchestrator({
   workflowRuntimeClient: createWorkflowRuntimeClient(),
   workflowClient: createWorkflowClient(),
   metricsClient: AWSMetricsClient,
-  loggerClient: AWSLoggerClient,
+  logger,
 });
 
 export default middy(async (event: SQSEvent) => {

@@ -13,9 +13,9 @@ import {
 import { registerWorkflowClient } from "../../global.js";
 import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
 import { ExecutionHistoryClient } from "../clients/execution-history-client.js";
-import { LoggerClient } from "../clients/logger-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
+import { Logger } from "../logger.js";
 import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
 import { Unit } from "../metrics/unit.js";
 import { timed } from "../metrics/utils.js";
@@ -25,7 +25,7 @@ export interface CreateActivityWorkerProps {
   executionHistoryClient: ExecutionHistoryClient;
   workflowClient: WorkflowClient;
   metricsClient: MetricsClient;
-  logsClient: LoggerClient;
+  logger: Logger;
 }
 
 export interface ActivityWorkerRequest {
@@ -47,11 +47,10 @@ export function createActivityWorker({
   executionHistoryClient,
   workflowClient,
   metricsClient,
-  logsClient,
+  logger,
 }: CreateActivityWorkerProps): (
   request: ActivityWorkerRequest
 ) => Promise<void> {
-  const logger = logsClient.getLogger();
   // make the workflow client available to all activity code
   registerWorkflowClient(workflowClient);
 
