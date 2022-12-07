@@ -41,5 +41,8 @@ jobs:
           role-to-assume: ${{ env.TEST_ROLE_ARN }}
           aws-region: us-east-1
           role-duration-seconds: 3600
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ env.AWS_SESSION_TOKEN  }}
       - name: Run Runtime Tests
         run: pnpm -r --filter tests-runtime run test:runtime
