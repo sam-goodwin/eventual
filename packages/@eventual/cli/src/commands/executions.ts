@@ -31,7 +31,7 @@ export const executions = (yargs: Argv) =>
       }
       spinner.start("Getting executions");
       const executions = await ky
-        .get(`_eventual/workflows/${workflow}/executions`)
+        .get(`workflows/${workflow}/executions`)
         .json<MergedRecord<Execution>[]>();
       spinner.stop();
       if (sort) {
