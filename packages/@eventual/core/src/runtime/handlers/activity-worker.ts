@@ -1,7 +1,7 @@
 import {
   getCallableActivity,
   getCallableActivityNames,
-  isMakeAsync,
+  isAsyncResult,
 } from "../../activity.js";
 import { ScheduleActivityCommand } from "../../command.js";
 import {
@@ -118,9 +118,9 @@ export function createActivityWorker({
           ActivityMetrics.OperationDuration,
           () => activity(...request.command.args)
         );
-        if (isMakeAsync(result)) {
+        if (isAsyncResult(result)) {
           metrics.setProperty(ActivityMetrics.HasResult, 0);
-          metrics.setProperty(ActivityMetrics.IsAsync, 1);
+          metrics.setProperty(ActivityMetrics.AsyncResult, 1);
 
           // TODO: Send heartbeat on sync activity completion.
 
@@ -131,7 +131,7 @@ export function createActivityWorker({
           return;
         } else if (result) {
           metrics.setProperty(ActivityMetrics.HasResult, 1);
-          metrics.setProperty(ActivityMetrics.IsAsync, 0);
+          metrics.setProperty(ActivityMetrics.AsyncResult, 0);
           metrics.putMetric(
             ActivityMetrics.ResultBytes,
             JSON.stringify(result).length,
@@ -139,7 +139,7 @@ export function createActivityWorker({
           );
         } else {
           metrics.setProperty(ActivityMetrics.HasResult, 0);
-          metrics.setProperty(ActivityMetrics.IsAsync, 0);
+          metrics.setProperty(ActivityMetrics.AsyncResult, 0);
         }
 
         logger.info(

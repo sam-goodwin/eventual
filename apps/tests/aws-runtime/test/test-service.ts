@@ -1,7 +1,7 @@
 import {
   activity,
   condition,
-  makeAsync,
+  asyncResult,
   sendSignal,
   Signal,
   sleepFor,
@@ -22,7 +22,7 @@ const hello = activity("hello", async (name: string) => {
 const asyncActivity = activity(
   "asyncActivity",
   async (type: AsyncWriterFunction["type"]) => {
-    return makeAsync<string>(async (token) => {
+    return asyncResult<string>(async (token) => {
       console.log(testQueueUrl);
       await sqs.send(
         new SendMessageCommand({

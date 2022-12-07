@@ -26,10 +26,10 @@ export type ActivityHandler<
 ) =>
   | Promise<Awaited<Output>>
   | Output
-  | MakeAsync<Output>
-  | Promise<MakeAsync<Awaited<Output>>>;
+  | AsyncResult<Output>
+  | Promise<AsyncResult<Awaited<Output>>>;
 
-export type UnwrapAsync<Output> = Output extends MakeAsync<infer O>
+export type UnwrapAsync<Output> = Output extends AsyncResult<infer O>
   ? O
   : Output;
 
@@ -39,25 +39,25 @@ export const AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
  * When returned from an activity, the activity will become async,
  * allowing it to run "forever". The
  */
-export interface MakeAsync<Output = any> {
+export interface AsyncResult<Output = any> {
   [AsyncTokenSymbol]: typeof AsyncTokenSymbol;
   __outputType: Output;
 }
 
-export function isMakeAsync(obj: any): obj is MakeAsync {
+export function isAsyncResult(obj: any): obj is AsyncResult {
   return !!obj && obj[AsyncTokenSymbol] === AsyncTokenSymbol;
 }
 
-export async function makeAsync<Output = any>(
+export async function asyncResult<Output = any>(
   tokenContext: (token: string) => Promise<void> | void
-): Promise<MakeAsync<Output>> {
+): Promise<AsyncResult<Output>> {
   if (!isActivityWorker()) {
-    throw new Error("makeAsync can only be called from within an activity.");
+    throw new Error("asyncResult can only be called from within an activity.");
   }
   const activityContext = getActivityContext();
   if (!activityContext) {
     throw new Error(
-      "Activity context has not been set yet, makeAsync can only be used from within an activity."
+      "Activity context has not been set yet, asyncResult can only be used from within an activity."
     );
   }
   await tokenContext(activityContext.activityToken);
