@@ -36,6 +36,9 @@ const asyncActivity = activity(
     });
   }
 );
+const fail = activity("fail", async (value: string) => {
+  throw new Error(value);
+});
 
 export const workflow1 = workflow(
   "my-workflow",
@@ -65,7 +68,15 @@ export const workflow4 = workflow("parallel", async () => {
     })
   );
   const greetings3 = Promise.all([hello("sam"), hello("chris"), hello("sam")]);
-  return Promise.all([greetings, greetings2, greetings3]);
+  const any = Promise.any([fail("failed"), hello("sam")]);
+  const race = Promise.race([
+    fail("failed"),
+    (async () => {
+      await sleepFor(100);
+      return await hello("sam");
+    })(),
+  ]);
+  return Promise.allSettled([greetings, greetings2, greetings3, any, race]);
 });
 
 const signal = new Signal<number>("signal");
@@ -142,34 +153,38 @@ const slowWf = workflow("slowWorkflow", { timeoutSeconds: 5 }, () =>
   sleepFor(10)
 );
 
-export const timedOutWorkflow = workflow("timedOut", async () => {
-  // chains to be able to run in parallel.
-  const timedOutFunctions = {
-    condition: async () => {
-      if (!(await condition({ timeoutSeconds: 2 }, () => false))) {
-        throw new Error("Timed Out!");
-      }
-    },
-    signal: async () => {
-      await signal.expect({ timeoutSeconds: 2 });
-    },
-    activity: slowActivity,
-    workflow: () => slowWf(undefined),
-  };
-
-  return <Record<keyof typeof timedOutFunctions, boolean>>Object.fromEntries(
-    await Promise.all(
-      Object.entries(timedOutFunctions).map(async ([name, func]) => {
-        try {
-          await func();
-          return [name, false];
-        } catch {
-          return [name, true];
+export const timedOutWorkflow = workflow(
+  "timedOut",
+  { timeoutSeconds: 100 },
+  async () => {
+    // chains to be able to run in parallel.
+    const timedOutFunctions = {
+      condition: async () => {
+        if (!(await condition({ timeoutSeconds: 2 }, () => false))) {
+          throw new Error("Timed Out!");
         }
-      })
-    )
-  );
-});
+      },
+      signal: async () => {
+        await signal.expect({ timeoutSeconds: 2 });
+      },
+      activity: slowActivity,
+      workflow: () => slowWf(undefined),
+    };
+
+    return <Record<keyof typeof timedOutFunctions, boolean>>Object.fromEntries(
+      await Promise.all(
+        Object.entries(timedOutFunctions).map(async ([name, func]) => {
+          try {
+            await func();
+            return [name, false];
+          } catch {
+            return [name, true];
+          }
+        })
+      )
+    );
+  }
+);
 
 export const asyncWorkflow = workflow(
   "asyncWorkflow",

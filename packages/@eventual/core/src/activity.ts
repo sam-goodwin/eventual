@@ -2,7 +2,7 @@ import { createActivityCall } from "./calls/activity-call.js";
 import { callableActivities, getActivityContext } from "./global.js";
 import { isActivityWorker, isOrchestratorWorker } from "./runtime/flags.js";
 
-export interface ActivityOpts {
+export interface ActivityOptions {
   /**
    * How long the workflow will wait for the activity to complete or fail.
    *
@@ -86,13 +86,13 @@ export function activity<Arguments extends any[], Output extends any = any>(
 ): ActivityFunction<Arguments, Output>;
 export function activity<Arguments extends any[], Output extends any = any>(
   activityID: string,
-  opts: ActivityOpts,
+  opts: ActivityOptions,
   handler: ActivityHandler<Arguments, Output>
 ): ActivityFunction<Arguments, Output>;
 export function activity<Arguments extends any[], Output extends any = any>(
   activityID: string,
   ...args:
-    | [opts: ActivityOpts, handler: ActivityHandler<Arguments, Output>]
+    | [opts: ActivityOptions, handler: ActivityHandler<Arguments, Output>]
     | [handler: ActivityHandler<Arguments, Output>]
 ): ActivityFunction<Arguments, Output> {
   const [opts, handler] = args.length === 1 ? [undefined, args[0]] : args;

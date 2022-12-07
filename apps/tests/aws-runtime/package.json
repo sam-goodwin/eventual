@@ -37,7 +37,7 @@
       "^(\\.{1,2}/.*)\\.js$": "$1"
     },
     "transform": {
-      "^.+\\.(t|j)sx?$": [
+      "^.+\\.tsx?$": [
         "ts-jest",
         {
           "tsconfig": "tsconfig.json",

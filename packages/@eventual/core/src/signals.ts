@@ -87,7 +87,7 @@ export class Signal<Payload = void> {
    * });
    * ```
    */
-  expect(opts?: ExpectSignalOpts): Promise<Payload> {
+  expect(opts?: ExpectSignalOptions): Promise<Payload> {
     return expectSignal(this, opts);
   }
   /**
@@ -109,7 +109,7 @@ export type SignalPayload<E extends Signal<any>> = E extends Signal<infer P>
   ? P
   : never;
 
-export interface ExpectSignalOpts {
+export interface ExpectSignalOptions {
   /**
    * Optional. Seconds to wait for the signal to be received.
    *
@@ -136,15 +136,15 @@ export interface ExpectSignalOpts {
  */
 export function expectSignal<SignalPayload = any>(
   signalId: string,
-  opts?: ExpectSignalOpts
+  opts?: ExpectSignalOptions
 ): Promise<SignalPayload>;
 export function expectSignal<E extends Signal<any>>(
   signal: E,
-  opts?: ExpectSignalOpts
+  opts?: ExpectSignalOptions
 ): Promise<SignalPayload<E>>;
 export function expectSignal(
   signal: Signal<any> | string,
-  opts?: ExpectSignalOpts
+  opts?: ExpectSignalOptions
 ): Promise<SignalPayload<any>> {
   if (!isOrchestratorWorker()) {
     throw new Error("expectSignal is only valid in a workflow");

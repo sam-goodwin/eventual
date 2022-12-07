@@ -31,7 +31,7 @@ export type WorkflowHandler<Input = any, Output = any> = (
   context: Context
 ) => Promise<Output> | Program<Output>;
 
-export interface StartExecutionRequest<Input> {
+export interface StartExecutionRequest<Input> extends WorkflowOptions {
   /**
    * Input payload for the workflow.
    */
@@ -42,12 +42,6 @@ export interface StartExecutionRequest<Input> {
    * @default - a unique ID is generated.
    */
   name?: string;
-  /**
-   * Options which determine how a workflow operates.
-   *
-   * Can be provided at workflow definition time and/or overridden by the caller of {@link WorkflowClient.startWorkflow}.
-   */
-  opts?: WorkflowOptions;
 }
 
 /**
@@ -179,6 +173,7 @@ export function workflow<Input = any, Output = any>(
         workflowName: name,
         executionName: input.name,
         input: input.input,
+        timeoutSeconds: input.timeoutSeconds,
         ...opts,
       }),
     };
