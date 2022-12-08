@@ -70,6 +70,7 @@ export const start = (yargs: Argv) =>
             );
           });
           events.push(...newEvents);
+          sortEvents(events);
           const completedEvent = events.find(
             (ev) => ev.type === WorkflowEventType.WorkflowCompleted
           );
@@ -116,10 +117,14 @@ async function getNewEvents(
   // The sort is important to ensure we don't chop off new events,
   // as we cannot rely on the event log to be sorted.
   // ie a later event may be be output into the history before events we have previously seen.
-  updatedEvents.sort(
+  sortEvents(updatedEvents);
+  return updatedEvents.slice(existingEvents.length);
+}
+
+function sortEvents(events: WorkflowEvent[]) {
+  return events.sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
-  return updatedEvents.slice(existingEvents.length);
 }
 
 /**
