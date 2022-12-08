@@ -9,11 +9,11 @@
     "test:runtime-deploy": "pnpm -r --filter tests-runtime run deploy:runtime && pnpm -r --filter tests-runtime run test:runtime"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.214.0",
-    "@aws-sdk/client-lambda": "^3.213.0",
-    "@aws-sdk/client-s3": "^3.213.0",
-    "@aws-sdk/client-sqs": "^3.213.0",
-    "@aws-sdk/lib-dynamodb": "^3.214.0",
+    "@aws-sdk/client-dynamodb": "^3.226.0",
+    "@aws-sdk/client-lambda": "^3.226.0",
+    "@aws-sdk/client-s3": "^3.226.0",
+    "@aws-sdk/client-sqs": "^3.226.0",
+    "@aws-sdk/lib-dynamodb": "^3.226.0",
     "@eventual/aws-runtime": "workspace:^",
     "@eventual/core": "workspace:^",
     "@eventual/cli": "workspace:^",

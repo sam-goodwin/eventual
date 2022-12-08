@@ -20,7 +20,7 @@ import {
   ITable,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
-import { ArnFormat, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
+import { Arn, ArnFormat, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
 import { ENV_NAMES, ServiceProperties } from "@eventual/aws-runtime";
 import { CoreEnvFlags } from "@eventual/core";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
@@ -28,6 +28,7 @@ import path from "path";
 import { execSync } from "child_process";
 import {
   AccountPrincipal,
+  AccountRootPrincipal,
   Effect,
   IGrantable,
   IPrincipal,
@@ -125,6 +126,10 @@ export class Service extends Construct implements IGrantable {
    * Role used to execute api
    */
   public readonly apiExecuteRole: Role;
+  /**
+   * Role used by cli
+   */
+  public readonly cliRole: Role;
   /*
    * The Lambda Function for processing inbound API requests with user defined code.
    */
@@ -398,26 +403,6 @@ export class Service extends Construct implements IGrantable {
       ),
     });
 
-    this.apiExecuteRole = new Role(this, "EventualApiRole", {
-      roleName: `eventual-api-${this.serviceName}`,
-      assumedBy: new AccountPrincipal(Stack.of(this).account),
-      inlinePolicies: {
-        execute: new PolicyDocument({
-          statements: [
-            new PolicyStatement({
-              actions: ["execute-api:*"],
-              effect: Effect.ALLOW,
-              resources: [
-                `arn:aws:execute-api:${Stack.of(this).region}:${
-                  Stack.of(this).account
-                }:${this.api.apiId}/*/*/*`,
-              ],
-            }),
-          ],
-        }),
-      },
-    });
-
     const apiLambdaEnvironment = {
       SERVICE: JSON.stringify({
         name: this.serviceName,
@@ -503,6 +488,69 @@ export class Service extends Construct implements IGrantable {
         },
       }),
     });
+
+    const stack = Stack.of(this);
+
+    const apiStatement = new PolicyStatement({
+      actions: ["execute-api:*"],
+      effect: Effect.ALLOW,
+      resources: [
+        Arn.format(
+          {
+            service: "execute-api",
+            resource: this.api.apiId,
+            resourceName: "*/*/*",
+          },
+          stack
+        ),
+      ],
+    });
+
+    this.cliRole = new Role(this, "EventualCliRole", {
+      roleName: `eventual-cli-${this.serviceName}`,
+      assumedBy: new AccountRootPrincipal(),
+      inlinePolicies: {
+        cli: new PolicyDocument({
+          statements: [
+            apiStatement,
+            new PolicyStatement({
+              actions: ["logs:FilterLogEvents"],
+              effect: Effect.ALLOW,
+              resources: [
+                Arn.format(
+                  {
+                    service: "logs",
+                    resource: "/aws/lambda",
+                    resourceName: this.orchestrator.functionName,
+                  },
+                  stack
+                ),
+                Arn.format(
+                  {
+                    service: "logs",
+                    resource: "/aws/lambda",
+                    resourceName: this.activityWorker.functionName,
+                  },
+                  stack
+                ),
+              ],
+            }),
+          ],
+        }),
+      },
+    });
+
+    this.serviceDataSSM.grantRead(this.cliRole);
+
+    this.apiExecuteRole = new Role(this, "EventualApiRole", {
+      roleName: `eventual-api-${this.serviceName}`,
+      assumedBy: new AccountPrincipal(Stack.of(this).account),
+      inlinePolicies: {
+        execute: new PolicyDocument({
+          statements: [apiStatement],
+        }),
+      },
+    });
   }
 
   public grantStartWorkflow(grantable: IGrantable) {
@@ -550,6 +598,28 @@ export class Service extends Construct implements IGrantable {
 
   private outDir(...paths: string[]): string {
     return path.join(".eventual", this.node.addr, ...paths);
+  }
+
+  /**
+   * Describe the policy statement allowing a client to list services from ssm
+   * @param stack Stack from which to draw arn account and region
+   * @returns PolicyStatement
+   */
+  public static listServicesPolicyStatement(stack: Stack) {
+    return new PolicyStatement({
+      actions: ["ssm:DescribeParameters"],
+      effect: Effect.ALLOW,
+      resources: [
+        Arn.format(
+          {
+            service: "ssm",
+            resource: "parameter",
+            resourceName: "/eventual/services",
+          },
+          stack
+        ),
+      ],
+    });
   }
 }
 

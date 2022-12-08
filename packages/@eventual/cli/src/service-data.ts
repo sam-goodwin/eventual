@@ -1,4 +1,5 @@
 import * as ssm from "@aws-sdk/client-ssm";
+import { AwsCredentialIdentity } from "@aws-sdk/types";
 import { styledConsole } from "./styled-console.js";
 
 /**
@@ -19,10 +20,11 @@ export interface ServiceData {
  * @returns service data
  */
 export async function getServiceData(
+  credentials: AwsCredentialIdentity,
   name: string,
   region?: string
 ): Promise<ServiceData> {
-  const ssmClient = new ssm.SSMClient({ region });
+  const ssmClient = new ssm.SSMClient({ region, credentials });
   const serviceParameter = await ssmClient.send(
     new ssm.GetParameterCommand({ Name: `/eventual/services/${name}` })
   );
