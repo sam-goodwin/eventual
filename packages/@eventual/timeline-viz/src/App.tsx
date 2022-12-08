@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Buffer } from "buffer";
 import ky from "ky";
 import { ReactNode } from "react";
+import styles from "./App.module.css";
 
 function Layout({ children }: { children: ReactNode }) {
   const executionId = window.location.href.split("/").at(-1);
@@ -21,7 +22,7 @@ function Layout({ children }: { children: ReactNode }) {
 }
 
 function App() {
-  const { data: activities } = useQuery(
+  const { data: activities, isLoading } = useQuery(
     ["events"],
     () => {
       const executionId = window.location.href.split("/").at(-1);
@@ -30,6 +31,11 @@ function App() {
     { refetchInterval: 5000 }
   );
 
+  if (isLoading) {
+    <Layout>
+      <div>Loading activities...</div>
+    </Layout>;
+  }
   if (!activities) {
     return (
       <Layout>
@@ -40,7 +46,8 @@ function App() {
     const workflowSpan = getWorkflowSpan(activities);
     return (
       <Layout>
-        <div className="timeline-container">
+        <div className={styles["timeeline-container"]}>
+          <div className={styles.scale}></div>
           {activities.map((activity) => {
             const start = percentOffset(activity.start, workflowSpan);
             const width =
@@ -50,7 +57,7 @@ function App() {
               ) - start;
             return (
               <div
-                className="activity"
+                className={styles.activity}
                 style={{
                   position: "relative",
                   left: `${start}%`,

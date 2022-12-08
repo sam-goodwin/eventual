@@ -1,0 +1,19 @@
+.activity {
+  background: rgb(60, 50, 200);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.timeline-container {
+  position: relative;
+  margin: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.scale {
+  background-color: antiquewhite;
+}
