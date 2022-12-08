@@ -10,7 +10,7 @@ import { replay } from "./commands/replay.js";
 import { timeline } from "./commands/timeline.js";
 
 const argv = hideBin(process.argv);
-const cli = yargs(argv).strict();
+const cli = yargs(argv).scriptName("eventual").strict();
 [
   services,
   start,

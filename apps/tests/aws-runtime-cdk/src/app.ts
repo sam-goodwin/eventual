@@ -1,6 +1,6 @@
+import * as eventual from "@eventual/aws-cdk";
 import { App, CfnOutput, Stack } from "aws-cdk-lib";
 import { ArnPrincipal, Role } from "aws-cdk-lib/aws-iam";
-import * as eventual from "@eventual/aws-cdk";
 
 const app = new App();
 
@@ -13,11 +13,14 @@ const role = new Role(stack, "testRole", {
 });
 
 const testService = new eventual.Service(stack, "testService", {
+  name: "eventual-tests",
   entry: require.resolve("tests-runtime"),
 });
 
 testService.grantRead(role);
 testService.grantStartWorkflow(role);
+testService.cliRole.grantAssumeRole(role);
+role.addToPolicy(eventual.Service.listServicesPolicyStatement(stack));
 
 new CfnOutput(stack, "roleArn", {
   value: role.roleArn,

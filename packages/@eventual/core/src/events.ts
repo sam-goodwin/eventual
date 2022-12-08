@@ -1,3 +1,4 @@
+import { ulid } from "ulidx";
 import { ExecutionContext } from "./context.js";
 import { or } from "./util.js";
 
@@ -18,11 +19,12 @@ export enum WorkflowEventType {
   ActivityCompleted = "ActivityCompleted",
   ActivityFailed = "ActivityFailed",
   ActivityScheduled = "ActivityScheduled",
-  ChildWorkflowScheduled = "ChildWorkflowScheduled",
-  ChildWorkflowCompleted = "ChildWorkflowCompleted",
-  ChildWorkflowFailed = "ChildWorkflowFailed",
+  ActivityTimedOut = "ActivityTimedOut",
   ConditionStarted = "ConditionStarted",
   ConditionTimedOut = "ConditionTimedOut",
+  ChildWorkflowCompleted = "ChildWorkflowCompleted",
+  ChildWorkflowFailed = "ChildWorkflowFailed",
+  ChildWorkflowScheduled = "ChildWorkflowScheduled",
   ExpectSignalStarted = "ExpectSignalStarted",
   ExpectSignalTimedOut = "ExpectSignalTimedOut",
   SignalReceived = "SignalReceived",
@@ -34,6 +36,7 @@ export enum WorkflowEventType {
   WorkflowCompleted = "WorkflowCompleted",
   WorkflowFailed = "WorkflowFailed",
   WorkflowStarted = "WorkflowStarted",
+  WorkflowTimedOut = "WorkflowTimedOut",
 }
 
 /**
@@ -62,6 +65,7 @@ export type CompletedEvent =
 
 export type FailedEvent =
   | ActivityFailed
+  | ActivityTimedOut
   | ChildWorkflowFailed
   | ConditionTimedOut
   | ExpectSignalTimedOut;
@@ -73,14 +77,16 @@ export type HistoryEvent =
   | CompletedEvent
   | FailedEvent
   | ScheduledEvent
-  | SignalReceived;
+  | SignalReceived
+  | WorkflowTimedOut;
 
 export function isHistoryEvent(event: WorkflowEvent): event is HistoryEvent {
   return (
     isCompletedEvent(event) ||
     isFailedEvent(event) ||
     isScheduledEvent(event) ||
-    isSignalReceived(event)
+    isSignalReceived(event) ||
+    isWorkflowTimedOut(event)
   );
 }
 
@@ -99,6 +105,10 @@ export interface WorkflowStarted extends BaseEvent {
    * Input payload for the workflow function.
    */
   input?: any;
+  /**
+   * Optional ISO timestamp after which the workflow should timeout.
+   */
+  timeoutTime?: string;
   context: Omit<ExecutionContext, "id" | "startTime">;
 }
 export interface WorkflowTaskStarted extends BaseEvent {
@@ -323,6 +333,26 @@ export function isConditionTimedOut(
   return event.type === WorkflowEventType.ConditionTimedOut;
 }
 
+export interface ActivityTimedOut extends HistoryEventBase {
+  type: WorkflowEventType.ActivityTimedOut;
+}
+
+export interface WorkflowTimedOut extends BaseEvent {
+  type: WorkflowEventType.WorkflowTimedOut;
+}
+
+export function isActivityTimedOut(
+  event: WorkflowEvent
+): event is ActivityTimedOut {
+  return event.type === WorkflowEventType.ActivityTimedOut;
+}
+
+export function isWorkflowTimedOut(
+  event: WorkflowEvent
+): event is WorkflowTimedOut {
+  return event.type === WorkflowEventType.WorkflowTimedOut;
+}
+
 export const isScheduledEvent = or(
   isActivityScheduled,
   isChildWorkflowScheduled,
@@ -340,9 +370,11 @@ export const isCompletedEvent = or(
 
 export const isFailedEvent = or(
   isActivityFailed,
-  isExpectSignalTimedOut,
+  isActivityTimedOut,
   isChildWorkflowFailed,
-  isConditionTimedOut
+  isConditionTimedOut,
+  isExpectSignalTimedOut,
+  isWorkflowTimedOut
 );
 
 export function assertEventType<T extends WorkflowEvent>(
@@ -360,7 +392,11 @@ export function assertEventType<T extends WorkflowEvent>(
  * Some events have a computed ID to save space.
  */
 export function getEventId(event: WorkflowEvent): string {
-  if (isHistoryEvent(event) && !isSignalReceived(event)) {
+  if (
+    isHistoryEvent(event) &&
+    !isSignalReceived(event) &&
+    !isWorkflowTimedOut(event)
+  ) {
     return `${event.seq}_${event.type}`;
   } else {
     return event.id;
@@ -391,4 +427,24 @@ export function filterEvents<T extends WorkflowEvent>(
       return true;
     }),
   ];
+}
+
+type UnresolvedEvent<T extends WorkflowEvent> = Omit<T, "id" | "timestamp">;
+
+export function createEvent<T extends WorkflowEvent>(
+  event: UnresolvedEvent<T>,
+  time: Date = new Date(),
+  id: string = ulid()
+): T {
+  const timestamp = time.toISOString();
+
+  // history events do not have IDs, use getEventId
+  if (
+    isHistoryEvent(event as unknown as WorkflowEvent) &&
+    !isSignalReceived(event as unknown as WorkflowEvent)
+  ) {
+    return { ...(event as any), timestamp };
+  }
+
+  return { ...event, id, timestamp } as T;
 }

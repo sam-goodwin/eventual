@@ -1,21 +1,6 @@
 import itty from "itty-router";
 
-const hooks: Hook[] = ((globalThis as any).hooks =
-  (globalThis as any).hooks ?? []);
-
-export function hook(setup: Hook) {
-  hooks.push(setup);
-}
-
-export function getHooks() {
-  return hooks.slice();
-}
-
-export type Hook = (router: Router) => void;
-
-export function createRouter(): Router {
-  return itty.Router() as any as Router;
-}
+export const api: Router = itty.Router() as any as Router;
 
 export type RouteHandler = (
   request: itty.Request,

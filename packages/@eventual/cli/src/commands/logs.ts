@@ -5,6 +5,7 @@ import chalk from "chalk";
 import { FilteredLogEvent } from "@aws-sdk/client-cloudwatch-logs";
 import { getServiceData } from "../service-data.js";
 import { setServiceOptions } from "../service-action.js";
+import { assumeCliRole } from "../role.js";
 
 /**
  * Command to list logs for a workflow or execution id
@@ -45,7 +46,8 @@ export const logs = (yargs: Argv) =>
     async ({ service, workflow, execution, region, since, tail }) => {
       const startTime = getStartTime(since as string | number);
       const spinner = ora("Loading logs");
-      const { functions } = await getServiceData(service, region);
+      const credentials = await assumeCliRole(service, region);
+      const { functions } = await getServiceData(credentials, service, region);
       const cloudwatchLogsClient = new cwLogs.CloudWatchLogsClient({});
       let nextInputs: FunctionLogInput[] = [
         {

@@ -5,8 +5,6 @@ import {
   Code,
   IFunction,
   Runtime,
-  FunctionUrlAuthType,
-  FunctionUrl,
 } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import { Bucket, IBucket } from "aws-cdk-lib/aws-s3";
@@ -22,7 +20,7 @@ import {
   ITable,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
-import { ArnFormat, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
+import { Arn, ArnFormat, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
 import { ENV_NAMES, ServiceProperties } from "@eventual/aws-runtime";
 import { CoreEnvFlags } from "@eventual/core";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
@@ -30,6 +28,7 @@ import path from "path";
 import { execSync } from "child_process";
 import {
   AccountPrincipal,
+  AccountRootPrincipal,
   Effect,
   IGrantable,
   IPrincipal,
@@ -127,16 +126,21 @@ export class Service extends Construct implements IGrantable {
    * Role used to execute api
    */
   public readonly apiExecuteRole: Role;
-  /*
-   * A Lambda Function for processing inbound webhook requests.
-   */
-  public readonly webhookEndpoint: IFunction;
   /**
-   * The URL of the webhook endpoint.
+   * Role used by cli
    */
-  public readonly webhookEndpointUrl: FunctionUrl;
+  public readonly cliRole: Role;
+  /*
+   * The Lambda Function for processing inbound API requests with user defined code.
+   */
+  public readonly apiEndpoint: IFunction;
 
   readonly grantPrincipal: IPrincipal;
+
+  /**
+   * A SSM parameter containing data about this service.
+   */
+  readonly serviceDataSSM: StringParameter;
 
   constructor(scope: Construct, id: string, props: ServiceProps) {
     super(scope, id);
@@ -171,7 +175,7 @@ export class Service extends Construct implements IGrantable {
       {
         entry: path.join(
           require.resolve("@eventual/aws-runtime"),
-          "../../esm/functions/start-workflow.js"
+          "../../esm/handlers/start-workflow.js"
         ),
         handler: "handle",
         ...baseNodeFnProps,
@@ -371,29 +375,32 @@ export class Service extends Construct implements IGrantable {
     // grants the orchestrator the ability to pass the scheduler role to the creates schedules
     schedulerRole.grantPassRole(this.orchestrator.grantPrincipal);
 
+    this.apiEndpoint = new Function(this, "ApiEndpoint", {
+      ...baseNodeFnProps,
+      code: Code.fromAsset(this.outDir("api")),
+      handler: "index.default",
+      memorySize: 512,
+      environment: {
+        NODE_OPTIONS: "--enable-source-maps",
+        [ENV_NAMES.TABLE_NAME]: this.table.tableName,
+        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
+        [CoreEnvFlags.WEBHOOK_FLAG]: "1",
+      },
+    });
+
+    // the webhook endpoint is allowed to run workflows
+    this.workflowQueue.grantSendMessages(this.apiEndpoint);
+
+    // Enable creating history to start a workflow.
+    this.table.grantReadWriteData(this.apiEndpoint);
+
     this.api = new HttpApi(this, "gateway", {
       apiName: `eventual-api-${this.serviceName}`,
       defaultAuthorizer: new HttpIamAuthorizer(),
-    });
-
-    this.apiExecuteRole = new Role(this, "EventualApiRole", {
-      roleName: `eventual-api-${this.serviceName}`,
-      assumedBy: new AccountPrincipal(Stack.of(this).account),
-      inlinePolicies: {
-        execute: new PolicyDocument({
-          statements: [
-            new PolicyStatement({
-              actions: ["execute-api:*"],
-              effect: Effect.ALLOW,
-              resources: [
-                `arn:aws:execute-api:${Stack.of(this).region}:${
-                  Stack.of(this).account
-                }:${this.api.apiId}/*/*/*`,
-              ],
-            }),
-          ],
-        }),
-      },
+      defaultIntegration: new HttpLambdaIntegration(
+        "default",
+        this.apiEndpoint
+      ),
     });
 
     const apiLambdaEnvironment = {
@@ -437,11 +444,11 @@ export class Service extends Construct implements IGrantable {
     };
 
     route({
-      "/workflows": {
+      "/_eventual/workflows": {
         methods: [HttpMethod.GET],
         entry: { bundled: "list-workflows" },
       },
-      "/workflows/{name}/executions": [
+      "/_eventual/workflows/{name}/executions": [
         {
           methods: [HttpMethod.POST],
           entry: { api: "executions/new.js" },
@@ -459,19 +466,19 @@ export class Service extends Construct implements IGrantable {
           },
         },
       ],
-      "/executions/{executionId}/history": {
+      "/_eventual/executions/{executionId}/history": {
         methods: [HttpMethod.GET],
         entry: { api: "executions/history.js" },
         grants: (fn) => this.table.grantReadData(fn),
       },
-      "/executions/{executionId}/workflow-history": {
+      "/_eventual/executions/{executionId}/workflow-history": {
         methods: [HttpMethod.GET],
         entry: { api: "executions/workflow-history.js" },
         grants: (fn) => this.history.grantRead(fn),
       },
     });
 
-    new StringParameter(this, "service-data", {
+    this.serviceDataSSM = new StringParameter(this, "service-data", {
       parameterName: `/eventual/services/${this.serviceName}`,
       stringValue: JSON.stringify({
         apiEndpoint: this.api.apiEndpoint,
@@ -482,29 +489,68 @@ export class Service extends Construct implements IGrantable {
       }),
     });
 
-    this.webhookEndpoint = new Function(this, "WebhookEndpoint", {
-      architecture: Architecture.ARM_64,
-      code: Code.fromAsset(this.outDir("webhook")),
-      // the bundler outputs orchestrator/index.js
-      handler: "index.default",
-      runtime: Runtime.NODEJS_16_X,
-      memorySize: 512,
-      environment: {
-        NODE_OPTIONS: "--enable-source-maps",
-        [ENV_NAMES.TABLE_NAME]: this.table.tableName,
-        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
-        [CoreEnvFlags.WEBHOOK_FLAG]: "1",
+    const stack = Stack.of(this);
+
+    const apiStatement = new PolicyStatement({
+      actions: ["execute-api:*"],
+      effect: Effect.ALLOW,
+      resources: [
+        Arn.format(
+          {
+            service: "execute-api",
+            resource: this.api.apiId,
+            resourceName: "*/*/*",
+          },
+          stack
+        ),
+      ],
+    });
+
+    this.cliRole = new Role(this, "EventualCliRole", {
+      roleName: `eventual-cli-${this.serviceName}`,
+      assumedBy: new AccountRootPrincipal(),
+      inlinePolicies: {
+        cli: new PolicyDocument({
+          statements: [
+            apiStatement,
+            new PolicyStatement({
+              actions: ["logs:FilterLogEvents"],
+              effect: Effect.ALLOW,
+              resources: [
+                Arn.format(
+                  {
+                    service: "logs",
+                    resource: "/aws/lambda",
+                    resourceName: this.orchestrator.functionName,
+                  },
+                  stack
+                ),
+                Arn.format(
+                  {
+                    service: "logs",
+                    resource: "/aws/lambda",
+                    resourceName: this.activityWorker.functionName,
+                  },
+                  stack
+                ),
+              ],
+            }),
+          ],
+        }),
       },
     });
-    this.webhookEndpointUrl = this.webhookEndpoint.addFunctionUrl({
-      authType: FunctionUrlAuthType.NONE,
+
+    this.serviceDataSSM.grantRead(this.cliRole);
+
+    this.apiExecuteRole = new Role(this, "EventualApiRole", {
+      roleName: `eventual-api-${this.serviceName}`,
+      assumedBy: new AccountPrincipal(Stack.of(this).account),
+      inlinePolicies: {
+        execute: new PolicyDocument({
+          statements: [apiStatement],
+        }),
+      },
     });
-
-    // the webhook endpoint is allowed to run workflows
-    this.workflowQueue.grantSendMessages(this.webhookEndpoint);
-
-    // Enable creating history to start a workflow.
-    this.table.grantReadWriteData(this.webhookEndpoint);
   }
 
   public grantStartWorkflow(grantable: IGrantable) {
@@ -548,6 +594,28 @@ export class Service extends Construct implements IGrantable {
 
   private outDir(...paths: string[]): string {
     return path.join(".eventual", this.node.addr, ...paths);
+  }
+
+  /**
+   * Describe the policy statement allowing a client to list services from ssm
+   * @param stack Stack from which to draw arn account and region
+   * @returns PolicyStatement
+   */
+  public static listServicesPolicyStatement(stack: Stack) {
+    return new PolicyStatement({
+      actions: ["ssm:DescribeParameters"],
+      effect: Effect.ALLOW,
+      resources: [
+        Arn.format(
+          {
+            service: "ssm",
+            resource: "parameter",
+            resourceName: "/eventual/services",
+          },
+          stack
+        ),
+      ],
+    });
   }
 }
 

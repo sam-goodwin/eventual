@@ -45,7 +45,13 @@ export const workflow4 = workflow("parallel", async () => {
   );
   const greetings3 = Promise.all([hello("sam"), hello("chris"), hello("sam")]);
   const any = Promise.any([fail("failed"), hello("sam")]);
-  const race = Promise.race([fail("failed"), hello("sam")]);
+  const race = Promise.race([
+    fail("failed"),
+    (async () => {
+      await sleepFor(100);
+      return await hello("sam");
+    })(),
+  ]);
   return Promise.allSettled([greetings, greetings2, greetings3, any, race]);
 });
 
@@ -113,8 +119,19 @@ export const childWorkflow = workflow(
   }
 );
 
-export const timedOutWorkflow = workflow<undefined, Record<string, boolean>>(
+const slowActivity = activity(
+  "slowAct",
+  { timeoutSeconds: 5 },
+  () => new Promise((resolve) => setTimeout(resolve, 10 * 1000))
+);
+
+const slowWf = workflow("slowWorkflow", { timeoutSeconds: 5 }, () =>
+  sleepFor(10)
+);
+
+export const timedOutWorkflow = workflow(
   "timedOut",
+  { timeoutSeconds: 100 },
   async () => {
     // chains to be able to run in parallel.
     const timedOutFunctions = {
@@ -126,9 +143,11 @@ export const timedOutWorkflow = workflow<undefined, Record<string, boolean>>(
       signal: async () => {
         await signal.expect({ timeoutSeconds: 2 });
       },
+      activity: slowActivity,
+      workflow: () => slowWf(undefined),
     };
 
-    return Object.fromEntries(
+    return <Record<keyof typeof timedOutFunctions, boolean>>Object.fromEntries(
       await Promise.all(
         Object.entries(timedOutFunctions).map(async ([name, func]) => {
           try {

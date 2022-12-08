@@ -7,25 +7,19 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import {
   BaseEvent,
+  createEvent,
+  ExecutionHistoryClient,
   getEventId,
-  isHistoryEvent,
-  isSignalReceived,
+  UnresolvedEvent,
   WorkflowEvent,
 } from "@eventual/core";
-import type * as eventual from "@eventual/core";
-
-import { ulid } from "ulidx";
 
 export interface AWSExecutionHistoryClientProps {
   readonly dynamo: DynamoDBClient;
   readonly tableName: string;
 }
 
-type UnresolvedEvent<T extends WorkflowEvent> = Omit<T, "id" | "timestamp">;
-
-export class AWSExecutionHistoryClient
-  implements eventual.ExecutionHistoryClient
-{
+export class AWSExecutionHistoryClient implements ExecutionHistoryClient {
   constructor(private props: AWSExecutionHistoryClientProps) {}
 
   public async createAndPutEvent<T extends WorkflowEvent>(
@@ -92,7 +86,6 @@ export class AWSExecutionHistoryClient
    * Read an execution's events from the execution history table table
    */
   public async getEvents(executionId: string): Promise<WorkflowEvent[]> {
-    console.log(executionId);
     const output = await this.props.dynamo.send(
       new QueryCommand({
         TableName: this.props.tableName,
@@ -103,26 +96,11 @@ export class AWSExecutionHistoryClient
         },
       })
     );
-    return output.Items!.map((item) => JSON.parse(item.event!.S!));
+    return output.Items!.map(({ event, time }) => ({
+      ...JSON.parse(event!.S!),
+      timestamp: time!.S,
+    }));
   }
-}
-
-export function createEvent<T extends WorkflowEvent>(
-  event: UnresolvedEvent<T>,
-  time: Date = new Date(),
-  id: string = ulid()
-): T {
-  const timestamp = time.toISOString();
-
-  // history events do not have IDs, use getEventId
-  if (
-    isHistoryEvent(event as unknown as WorkflowEvent) &&
-    !isSignalReceived(event as unknown as WorkflowEvent)
-  ) {
-    return { ...(event as any), timestamp };
-  }
-
-  return { ...event, id, timestamp } as T;
 }
 
 interface EventRecord {

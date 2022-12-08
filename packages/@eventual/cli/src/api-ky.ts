@@ -1,11 +1,8 @@
-import * as sts from "@aws-sdk/client-sts";
-import * as iam from "@aws-sdk/client-iam";
 import * as sig from "@aws-sdk/signature-v4";
 import ky from "ky-universal";
 import { HttpRequest } from "@aws-sdk/protocol-http";
 import { parseQueryString } from "@aws-sdk/querystring-parser";
 import { Sha256 } from "@aws-crypto/sha256-js";
-import { styledConsole } from "./styled-console.js";
 import type { KyInstance } from "./types.js";
 import { loadConfig } from "@aws-sdk/node-config-provider";
 import {
@@ -13,6 +10,8 @@ import {
   NODE_REGION_CONFIG_FILE_OPTIONS,
 } from "@aws-sdk/config-resolver";
 import { getServiceData } from "./service-data.js";
+import { assumeCliRole } from "./role.js";
+import { AwsCredentialIdentity } from "@aws-sdk/types";
 
 //Return a ky which signs our requests with our execute role. Code adapted from
 // https://github.com/zirkelc/aws-sigv4-fetch
@@ -26,13 +25,15 @@ export async function apiKy(
       NODE_REGION_CONFIG_OPTIONS,
       NODE_REGION_CONFIG_FILE_OPTIONS
     )());
-  const roleArn = await getApiRoleArn(service, resolvedRegion);
+  const credentials = await assumeCliRole(service, resolvedRegion);
   return ky.extend({
-    prefixUrl: (await getServiceData(service, region)).apiEndpoint,
+    prefixUrl: `${
+      (await getServiceData(credentials, service, region)).apiEndpoint
+    }/_eventual`,
     hooks: {
       beforeRequest: [
         async (req: Request) => {
-          const signer = await getSigner(roleArn, resolvedRegion);
+          const signer = await getSigner(credentials, resolvedRegion);
           const url = new URL(req.url);
           const headers = new Map<string, string>();
           // workaround because Headers.entries() is not available in cross-fetch
@@ -66,38 +67,9 @@ export async function apiKy(
   });
 }
 
-export async function getApiRoleArn(
-  service: string,
-  region?: string
-): Promise<string> {
-  const iamClient = new iam.IAMClient({ region });
-  const apiRole = await iamClient.send(
-    new iam.GetRoleCommand({ RoleName: `eventual-api-${service}` })
-  );
-  if (!apiRole.Role) {
-    styledConsole.error(
-      `Couldn't find eventual-api-${service} role! Have you deployed an eventual api?`
-    );
-    process.exit(1);
-  }
-  return apiRole.Role.Arn!;
-}
-
-async function getSigner(roleArn: string, region?: string) {
-  const stsClient = new sts.STSClient({ region });
-  const session = await stsClient.send(
-    new sts.AssumeRoleCommand({
-      RoleArn: roleArn,
-      RoleSessionName: "eventual-cli",
-    })
-  );
-
+async function getSigner(credentials: AwsCredentialIdentity, region?: string) {
   return new sig.SignatureV4({
-    credentials: {
-      accessKeyId: session.Credentials!.AccessKeyId!,
-      secretAccessKey: session.Credentials!.SecretAccessKey!,
-      sessionToken: session.Credentials!.SessionToken,
-    },
+    credentials,
     service: "execute-api",
     region: region ?? "us-east-1",
     sha256: Sha256,

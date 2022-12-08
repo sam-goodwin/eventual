@@ -37,6 +37,6 @@ export const executions = (yargs: Argv) =>
       if (sort) {
         executions.sort((a, b) => (a[sort] ?? "").localeCompare(b[sort] ?? ""));
       }
-      console.log(executions);
+      console.log(JSON.stringify(executions, null, 2));
     })
   );
