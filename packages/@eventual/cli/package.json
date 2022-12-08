@@ -60,6 +60,7 @@
     "@aws-sdk/protocol-http": "^3.212.0",
     "@aws-sdk/querystring-parser": "^3.212.0",
     "@aws-sdk/signature-v4": "^3.212.0",
+    "@aws-sdk/types": "^3.213.0",
     "@eventual/aws-runtime": "workspace:^",
     "@eventual/compiler": "workspace:^",
     "@eventual/core": "workspace:^",
