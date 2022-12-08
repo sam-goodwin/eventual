@@ -1,4 +1,4 @@
-import { HistoryStateEvent } from "../events.js";
+import { HistoryStateEvent } from "../../events.js";
 
 export interface TimerClient {
   /**
@@ -38,12 +38,21 @@ export interface TimerClient {
    * the timer is transferred from EventBridge to SQS at `props.sleepQueueThresholdMillis`.
    */
   clearSchedule(scheduleName: string): Promise<void>;
+
+  /**
+   * Schedules any event for a workflow at a future time.
+   * 
+   * Helper for using {@link TimerClient.startTimer} with a {@link TimerScheduleEventRequest}.
+   */
+  scheduleEvent<E extends HistoryStateEvent>(
+    request: ScheduleEventRequest<E>
+  ): Promise<void>;
 }
 
-export type TimerRequest = TimerForwardEventRequest;
+export type TimerRequest = TimerScheduleEventRequest;
 
 export enum TimerRequestType {
-  ForwardEvent = "ForwardEvent",
+  ScheduleEvent = "ScheduleEvent",
 }
 
 export interface TimerRequestBase<T extends TimerRequestType> {
@@ -54,16 +63,16 @@ export interface TimerRequestBase<T extends TimerRequestType> {
 /**
  * Forward an event to the Workflow Queue.
  */
-export interface TimerForwardEventRequest
-  extends TimerRequestBase<TimerRequestType.ForwardEvent> {
+export interface TimerScheduleEventRequest
+  extends TimerRequestBase<TimerRequestType.ScheduleEvent> {
   executionId: string;
   event: HistoryStateEvent;
 }
 
-export function isTimerForwardEventRequest(
+export function isTimerScheduleEventRequest(
   timerRequest: TimerRequest
-): timerRequest is TimerForwardEventRequest {
-  return timerRequest && timerRequest.type === TimerRequestType.ForwardEvent;
+): timerRequest is TimerScheduleEventRequest {
+  return timerRequest && timerRequest.type === TimerRequestType.ScheduleEvent;
 }
 
 export interface ScheduleForwarderRequest {
@@ -76,3 +85,16 @@ export interface ScheduleForwarderRequest {
    */
   untilTime: string;
 }
+
+export type ScheduleEventRequest<E extends HistoryStateEvent> = {
+  event: Omit<E, "timestamp">;
+  executionId: string;
+} & (
+  | {
+      timerSeconds: number;
+      baseTime: Date;
+    }
+  | {
+      untilTime: string;
+    }
+);

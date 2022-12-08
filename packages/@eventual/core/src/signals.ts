@@ -1,6 +1,6 @@
 import { createSendSignalCall } from "./calls/send-signal-call.js";
 import { createRegisterSignalHandlerCall } from "./calls/signal-handler-call.js";
-import { createExpectSignalCall as createExpectSignalCall } from "./calls/expect-signal-call.js";
+import { createExpectSignalCall } from "./calls/expect-signal-call.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
 import { getWorkflowClient } from "./global.js";
 import { ulid } from "ulidx";
@@ -87,7 +87,7 @@ export class Signal<Payload = void> {
    * });
    * ```
    */
-  expect(opts?: ExpectSignalOpts): Promise<Payload> {
+  expect(opts?: ExpectSignalOptions): Promise<Payload> {
     return expectSignal(this, opts);
   }
   /**
@@ -109,7 +109,7 @@ export type SignalPayload<E extends Signal<any>> = E extends Signal<infer P>
   ? P
   : never;
 
-export interface ExpectSignalOpts {
+export interface ExpectSignalOptions {
   /**
    * Optional. Seconds to wait for the signal to be received.
    *
@@ -136,16 +136,20 @@ export interface ExpectSignalOpts {
  */
 export function expectSignal<SignalPayload = any>(
   signalId: string,
-  opts?: ExpectSignalOpts
+  opts?: ExpectSignalOptions
 ): Promise<SignalPayload>;
 export function expectSignal<E extends Signal<any>>(
   signal: E,
-  opts?: ExpectSignalOpts
+  opts?: ExpectSignalOptions
 ): Promise<SignalPayload<E>>;
 export function expectSignal(
   signal: Signal<any> | string,
-  opts?: ExpectSignalOpts
+  opts?: ExpectSignalOptions
 ): Promise<SignalPayload<any>> {
+  if (!isOrchestratorWorker()) {
+    throw new Error("expectSignal is only valid in a workflow");
+  }
+
   return createExpectSignalCall(
     typeof signal === "string" ? signal : signal.id,
     opts?.timeoutSeconds
@@ -193,6 +197,10 @@ export function onSignal(
   signal: Signal<any> | string,
   handler: SignalHandlerFunction<any>
 ): SignalsHandler {
+  if (!isOrchestratorWorker()) {
+    throw new Error("onSignal is only valid in a workflow");
+  }
+
   return createRegisterSignalHandlerCall(
     typeof signal === "string" ? signal : signal.id,
     handler as any

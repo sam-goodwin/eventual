@@ -1,12 +1,15 @@
-import { HistoryStateEvent } from "@eventual/core";
+import {
+  encodeExecutionId,
+  ExecutionID,
+  HistoryStateEvent,
+  parseWorkflowName,
+} from "@eventual/core";
 import { Argv } from "yargs";
 import { bundleService } from "@eventual/compiler";
 import path from "path";
 import { orchestrator } from "../replay/orchestrator.js";
 import { serviceAction, setServiceOptions } from "../service-action.js";
-import { encodeExecutionId, parseWorkflowName } from "@eventual/aws-runtime";
 import { workflows } from "@eventual/core";
-import { ExecutionID } from "packages/@eventual/aws-runtime/src/execution-id.js";
 
 export const replay = (yargs: Argv) =>
   yargs.command(

@@ -18,8 +18,10 @@ export const baseNodeFnProps = {
     esbuildArgs: {
       "--conditions": "module,import,require",
     },
+    banner: `import { createRequire as topLevelCreateRequire } from 'module'; const require = topLevelCreateRequire(import.meta.url);`,
     metafile: true,
-    target: "es2020",
+    // target node 16+
+    target: "es2021",
     format: OutputFormat.ESM,
   },
 } satisfies NodejsFunctionProps;

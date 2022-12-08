@@ -1,5 +1,10 @@
 import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import {
+  InvocationType,
+  InvokeCommand,
+  LambdaClient,
+} from "@aws-sdk/client-lambda";
+import {
   GetObjectCommand,
   GetObjectCommandOutput,
   NoSuchKey,
@@ -7,33 +12,38 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import {
-  LambdaClient,
-  InvokeCommand,
-  InvocationType,
-} from "@aws-sdk/client-lambda";
-import {
-  ExecutionStatus,
-  HistoryStateEvent,
-  CompleteExecution,
-  FailedExecution,
-  SleepScheduled,
-  isSleepUntilCommand,
-  WorkflowEventType,
   ActivityScheduled,
-  SleepCompleted,
+  ActivityWorkerRequest,
+  CompleteExecution,
+  CompleteExecutionRequest,
+  createEvent,
+  ExecuteExpectSignalRequest,
+  ExecutionStatus,
   ExpectSignalStarted,
   ExpectSignalTimedOut,
+  FailedExecution,
+  FailExecutionRequest,
+  HistoryStateEvent,
+  isSleepUntilCommand,
+  ScheduleActivityRequest,
+  ScheduleSleepRequest,
+  SleepCompleted,
+  ActivityTimedOut,
+  ChildWorkflowScheduled,
+  TimerRequestType,
+  SleepScheduled,
+  UpdateHistoryRequest,
+  WorkflowEventType,
+  WorkflowRuntimeClient,
 } from "@eventual/core";
+import { AWSTimerClient } from "./timer-client.js";
 import {
+  AWSWorkflowClient,
   createExecutionFromResult,
   ExecutionRecord,
-  AWSWorkflowClient,
 } from "./workflow-client.js";
-import { ActivityWorkerRequest } from "../activity.js";
-import { createEvent } from "./execution-history-client.js";
-import { TimerRequestType } from "../handlers/types.js";
-import { AWSTimerClient } from "./timer-client.js";
 import * as eventual from "@eventual/core";
+import { formatChildExecutionName } from "../utils.js";
 
 export interface AWSWorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;
@@ -46,9 +56,7 @@ export interface AWSWorkflowRuntimeClientProps {
   readonly timerClient: AWSTimerClient;
 }
 
-export class AWSWorkflowRuntimeClient
-  implements eventual.WorkflowRuntimeClient
-{
+export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
   constructor(private props: AWSWorkflowRuntimeClientProps) {}
 
   async getHistory(executionId: string): Promise<HistoryStateEvent[]> {
@@ -74,7 +82,7 @@ export class AWSWorkflowRuntimeClient
   async updateHistory({
     executionId,
     events,
-  }: eventual.UpdateHistoryRequest): Promise<{ bytes: number }> {
+  }: UpdateHistoryRequest): Promise<{ bytes: number }> {
     const content = events.map((e) => JSON.stringify(e)).join("\n");
     // get current history from s3
     await this.props.s3.send(
@@ -90,7 +98,7 @@ export class AWSWorkflowRuntimeClient
   async completeExecution({
     executionId,
     result,
-  }: eventual.CompleteExecutionRequest): Promise<CompleteExecution> {
+  }: CompleteExecutionRequest): Promise<CompleteExecution> {
     const executionResult = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
@@ -130,7 +138,7 @@ export class AWSWorkflowRuntimeClient
     executionId,
     error,
     message,
-  }: eventual.FailExecutionRequest): Promise<FailedExecution> {
+  }: FailExecutionRequest): Promise<FailedExecution> {
     const executionResult = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
@@ -193,7 +201,8 @@ export class AWSWorkflowRuntimeClient
     workflowName,
     executionId,
     command,
-  }: eventual.ScheduleActivityRequest) {
+    baseTime,
+  }: ScheduleActivityRequest) {
     const request: ActivityWorkerRequest = {
       scheduledTime: new Date().toISOString(),
       workflowName,
@@ -201,6 +210,18 @@ export class AWSWorkflowRuntimeClient
       command,
       retry: 0,
     };
+
+    if (command.timeoutSeconds) {
+      await this.props.timerClient.scheduleEvent<ActivityTimedOut>({
+        baseTime,
+        event: {
+          type: WorkflowEventType.ActivityTimedOut,
+          seq: command.seq,
+        },
+        executionId,
+        timerSeconds: command.timeoutSeconds,
+      });
+    }
 
     await this.props.lambda.send(
       new InvokeCommand({
@@ -217,11 +238,31 @@ export class AWSWorkflowRuntimeClient
     });
   }
 
+  public async scheduleChildWorkflow({
+    command,
+    executionId,
+  }: eventual.ScheduleWorkflowRequest): Promise<eventual.ChildWorkflowScheduled> {
+    await this.props.workflowClient.startWorkflow({
+      workflowName: command.name,
+      input: command.input,
+      parentExecutionId: executionId,
+      executionName: formatChildExecutionName(executionId, command.seq),
+      seq: command.seq,
+    });
+
+    return createEvent<ChildWorkflowScheduled>({
+      type: WorkflowEventType.ChildWorkflowScheduled,
+      seq: command.seq,
+      name: command.name,
+      input: command.input,
+    });
+  }
+
   async scheduleSleep({
     executionId,
     command,
     baseTime,
-  }: eventual.ScheduleSleepRequest): Promise<SleepScheduled> {
+  }: ScheduleSleepRequest): Promise<SleepScheduled> {
     // TODO validate
     const untilTime = isSleepUntilCommand(command)
       ? new Date(command.untilTime)
@@ -235,7 +276,7 @@ export class AWSWorkflowRuntimeClient
     };
 
     await this.props.timerClient.startTimer({
-      type: TimerRequestType.ForwardEvent,
+      type: TimerRequestType.ScheduleEvent,
       event: sleepCompletedEvent,
       untilTime: untilTimeIso,
       executionId,
@@ -252,25 +293,17 @@ export class AWSWorkflowRuntimeClient
     executionId,
     command,
     baseTime,
-  }: eventual.ExecuteExpectSignalRequest): Promise<ExpectSignalStarted> {
+  }: ExecuteExpectSignalRequest): Promise<ExpectSignalStarted> {
     if (command.timeoutSeconds) {
-      const untilTime = new Date(
-        baseTime.getTime() + command.timeoutSeconds * 1000
-      );
-      const untilTimeIso = untilTime.toISOString();
-
-      const event: ExpectSignalTimedOut = {
-        signalId: command.signalId,
-        seq: command.seq,
-        timestamp: untilTimeIso,
-        type: WorkflowEventType.ExpectSignalTimedOut,
-      };
-
-      await this.props.timerClient.startTimer({
-        event,
+      await this.props.timerClient.scheduleEvent<ExpectSignalTimedOut>({
+        event: {
+          signalId: command.signalId,
+          seq: command.seq,
+          type: WorkflowEventType.ExpectSignalTimedOut,
+        },
+        timerSeconds: command.timeoutSeconds,
+        baseTime,
         executionId,
-        type: TimerRequestType.ForwardEvent,
-        untilTime: untilTimeIso,
       });
     }
 

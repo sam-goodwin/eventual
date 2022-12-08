@@ -61,9 +61,7 @@ exports[`esbuild-plugin open-account 1`] = `
         return removeBankAccount(accountId);
       }));
     } catch (err) {
-      yield $Eventual.all(rollbacks.map($eventual(function* (rollback) {
-        return rollback();
-      })));
+      yield $Eventual.all(rollbacks.map((rollback) => rollback()));
     }
   });
 })();
@@ -104,6 +102,22 @@ exports[`esbuild-plugin ts workflow 1`] = `
     yield $Eventual.race(items.map($eventual(function* (item) {
       yield doWork(item);
     })));
+    condition(() => true);
+    const func = () => $Eventual.all(items.map($eventual(function* (item) {
+      yield doWork(item);
+    })));
+    yield func();
+    const func2 = $eventual(function* () {
+      yield $Eventual.all(items.map($eventual(function* (item) {
+        yield doWork(item);
+      })));
+    });
+    yield func2();
+  });
+  var workflow2 = workflow("timeoutFlow", {
+    timeoutSeconds: 100
+  }, function* () {
+    yield doWork("something");
   });
 })();
 "

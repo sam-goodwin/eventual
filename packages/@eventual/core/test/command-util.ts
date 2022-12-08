@@ -4,8 +4,9 @@ import {
   SleepUntilCommand,
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
-  ExpectSignalCommand as ExpectSignalCommand,
+  ExpectSignalCommand,
   SendSignalCommand,
+  StartConditionCommand,
 } from "../src/command.js";
 import {
   ActivityCompleted,
@@ -14,6 +15,8 @@ import {
   ChildWorkflowCompleted,
   ChildWorkflowFailed,
   ChildWorkflowScheduled,
+  ConditionStarted,
+  ConditionTimedOut,
   SignalReceived,
   SignalSent,
   SleepCompleted,
@@ -21,6 +24,8 @@ import {
   ExpectSignalStarted,
   ExpectSignalTimedOut,
   WorkflowEventType,
+  WorkflowTimedOut,
+  ActivityTimedOut,
 } from "../src/events.js";
 import { ulid } from "ulidx";
 import { SignalTarget } from "../src/signals.js";
@@ -99,6 +104,17 @@ export function createSendSignalCommand(
   };
 }
 
+export function createStartConditionCommand(
+  seq: number,
+  timeoutSeconds?: number
+): StartConditionCommand {
+  return {
+    kind: CommandType.StartCondition,
+    seq,
+    timeoutSeconds,
+  };
+}
+
 export function activityCompleted(result: any, seq: number): ActivityCompleted {
   return {
     type: WorkflowEventType.ActivityCompleted,
@@ -132,6 +148,14 @@ export function activityFailed(error: any, seq: number): ActivityFailed {
   };
 }
 
+export function activityTimedOut(seq: number): ActivityTimedOut {
+  return {
+    type: WorkflowEventType.ActivityTimedOut,
+    seq,
+    timestamp: new Date(0).toISOString(),
+  };
+}
+
 export function workflowFailed(error: any, seq: number): ChildWorkflowFailed {
   return {
     type: WorkflowEventType.ChildWorkflowFailed,
@@ -151,6 +175,14 @@ export function activityScheduled(
     name,
     seq,
     timestamp: new Date(0).toISOString(),
+  };
+}
+
+export function workflowTimedOut(): WorkflowTimedOut {
+  return {
+    type: WorkflowEventType.WorkflowTimedOut,
+    id: ulid(),
+    timestamp: new Date().toISOString(),
   };
 }
 
@@ -236,5 +268,21 @@ export function signalSent(
     signalId,
     timestamp: new Date().toISOString(),
     payload,
+  };
+}
+
+export function conditionStarted(seq: number): ConditionStarted {
+  return {
+    type: WorkflowEventType.ConditionStarted,
+    seq,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+export function conditionTimedOut(seq: number): ConditionTimedOut {
+  return {
+    type: WorkflowEventType.ConditionTimedOut,
+    timestamp: new Date().toISOString(),
+    seq,
   };
 }

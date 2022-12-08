@@ -3,6 +3,8 @@ import { chain } from "../src/chain.js";
 import { DeterminismError, Timeout } from "../src/error.js";
 import {
   Context,
+  CoreEnvFlags,
+  createAwaitAll,
   Eventual,
   interpret,
   Program,
@@ -11,7 +13,9 @@ import {
   SignalTargetType,
   sleepFor,
   sleepUntil,
-  workflow,
+  Workflow,
+  workflow as _workflow,
+  WorkflowHandler,
   WorkflowResult,
 } from "../src/index.js";
 import { createSleepUntilCall } from "../src/calls/sleep-call.js";
@@ -19,26 +23,40 @@ import {
   activityCompleted,
   activityFailed,
   activityScheduled,
+  activityTimedOut,
   completedSleep,
+  conditionStarted,
+  conditionTimedOut,
+  createExpectSignalCommand,
   createScheduledActivityCommand,
   createScheduledWorkflowCommand,
+  createSendSignalCommand,
   createSleepForCommand,
   createSleepUntilCommand,
-  createExpectSignalCommand,
-  signalReceived,
+  createStartConditionCommand,
   scheduledSleep,
+  signalReceived,
+  signalSent,
   startedExpectSignal,
   timedOutExpectSignal,
   workflowCompleted,
   workflowFailed,
   workflowScheduled,
-  createSendSignalCommand,
-  signalSent,
+  workflowTimedOut,
 } from "./command-util.js";
 import { createExpectSignalCall } from "../src/calls/expect-signal-call.js";
 import { createRegisterSignalHandlerCall } from "../src/calls/signal-handler-call.js";
 import { createWorkflowCall } from "../src/calls/workflow-call.js";
 import { createSendSignalCall } from "../src/calls/send-signal-call.js";
+import { createConditionCall } from "../src/calls/condition-call.js";
+
+beforeAll(() => {
+  process.env[CoreEnvFlags.ORCHESTRATOR_FLAG] = "1";
+});
+
+afterAll(() => {
+  delete process.env[CoreEnvFlags.ORCHESTRATOR_FLAG];
+});
 
 function* myWorkflow(event: any): Program<any> {
   try {
@@ -47,10 +65,10 @@ function* myWorkflow(event: any): Program<any> {
     // dangling - it should still be scheduled
     createActivityCall("my-activity-0", [event]);
 
-    const all = yield* Eventual.all([
+    const all = yield Eventual.all([
       createSleepUntilCall("then"),
       createActivityCall("my-activity-2", [event]),
-    ]);
+    ]) as any;
     return [a, all];
   } catch (err) {
     yield createActivityCall("handle-error", [err]);
@@ -70,6 +88,15 @@ const context: Context = {
     startTime: "",
   },
 };
+
+const workflow = (() => {
+  let n = 0;
+  return <Input, Output>(
+    handler: WorkflowHandler<Input, Output>
+  ): Workflow<Input, Output> => {
+    return _workflow(`wf${n++}`, handler);
+  };
+})();
 
 test("no history", () => {
   expect(interpret(myWorkflow(event), [])).toMatchObject(<WorkflowResult>{
@@ -92,6 +119,31 @@ test("should continue with result of completed Activity", () => {
   });
 });
 
+test("should fail on workflow timeout event", () => {
+  expect(
+    interpret(myWorkflow(event), [
+      activityScheduled("my-activity", 0),
+      workflowTimedOut(),
+    ])
+  ).toMatchObject(<WorkflowResult>{
+    result: Result.failed(new Timeout("Workflow timed out")),
+    commands: [],
+  });
+});
+
+test("should not continue on workflow timeout event", () => {
+  expect(
+    interpret(myWorkflow(event), [
+      activityScheduled("my-activity", 0),
+      workflowTimedOut(),
+      activityCompleted("result", 0),
+    ])
+  ).toMatchObject(<WorkflowResult>{
+    result: Result.failed(new Timeout("Workflow timed out")),
+    commands: [],
+  });
+});
+
 test("should catch error of failed Activity", () => {
   expect(
     interpret(myWorkflow(event), [
@@ -100,6 +152,23 @@ test("should catch error of failed Activity", () => {
     ])
   ).toMatchObject(<WorkflowResult>{
     commands: [createScheduledActivityCommand("handle-error", ["error"], 1)],
+  });
+});
+
+test("should catch error of timing out Activity", () => {
+  expect(
+    interpret(myWorkflow(event), [
+      activityScheduled("my-activity", 0),
+      activityTimedOut(0),
+    ])
+  ).toMatchObject(<WorkflowResult>{
+    commands: [
+      createScheduledActivityCommand(
+        "handle-error",
+        [new Timeout("Activity Timed Out")],
+        1
+      ),
+    ],
   });
 });
 
@@ -500,72 +569,407 @@ test("should await an un-awaited returned Activity", () => {
   });
 });
 
-test("should await an un-awaited returned AwaitAll", () => {
-  function* workflow() {
-    let i = 0;
-    const inner = chain(function* () {
-      return `foo-${i++}`;
+describe("AwaitAll", () => {
+  test("should await an un-awaited returned AwaitAll", () => {
+    function* workflow() {
+      let i = 0;
+      const inner = chain(function* () {
+        return `foo-${i++}`;
+      });
+      return Eventual.all([inner(), inner()]);
+    }
+
+    expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
+      result: Result.resolved(["foo-0", "foo-1"]),
+      commands: [],
     });
-    return Eventual.all([inner(), inner()]);
-  }
+  });
 
-  expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
-    result: Result.resolved(["foo-0", "foo-1"]),
-    commands: [],
+  test("should support Eventual.all of function calls", () => {
+    function* workflow(items: string[]) {
+      return Eventual.all(
+        items.map(
+          chain(function* (item): Program {
+            return yield createActivityCall("process-item", [item]);
+          })
+        )
+      );
+    }
+
+    expect(interpret(workflow(["a", "b"]), [])).toMatchObject(<WorkflowResult>{
+      commands: [
+        createScheduledActivityCommand("process-item", ["a"], 0),
+        createScheduledActivityCommand("process-item", ["b"], 1),
+      ],
+    });
+
+    expect(
+      interpret(workflow(["a", "b"]), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityCompleted("A", 0),
+        activityCompleted("B", 1),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved(["A", "B"]),
+    });
+  });
+
+  test("should have left-to-right determinism semantics for Eventual.all", () => {
+    function* workflow(items: string[]) {
+      return Eventual.all([
+        createActivityCall("before", ["before"]),
+        ...items.map(
+          chain(function* (item) {
+            yield createActivityCall("inside", [item]);
+          })
+        ),
+        createActivityCall("after", ["after"]),
+      ]);
+    }
+
+    const result = interpret(workflow(["a", "b"]), []);
+    expect(result).toMatchObject(<WorkflowResult>{
+      commands: [
+        createScheduledActivityCommand("before", ["before"], 0),
+        createScheduledActivityCommand("inside", ["a"], 1),
+        createScheduledActivityCommand("inside", ["b"], 2),
+        createScheduledActivityCommand("after", ["after"], 3),
+      ],
+    });
   });
 });
 
-test("should support Eventual.all of function calls", () => {
-  function* workflow(items: string[]) {
-    return Eventual.all(
-      items.map(
-        chain(function* (item): Program {
-          return yield createActivityCall("process-item", [item]);
-        })
-      )
-    );
-  }
+describe("AwaitAny", () => {
+  test("should await an un-awaited returned AwaitAny", () => {
+    function* workflow() {
+      let i = 0;
+      const inner = chain(function* () {
+        return `foo-${i++}`;
+      });
+      return Eventual.any([inner(), inner()]);
+    }
 
-  expect(interpret(workflow(["a", "b"]), [])).toMatchObject(<WorkflowResult>{
-    commands: [
-      createScheduledActivityCommand("process-item", ["a"], 0),
-      createScheduledActivityCommand("process-item", ["b"], 1),
-    ],
+    expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("foo-0"),
+      commands: [],
+    });
   });
 
-  expect(
-    interpret(workflow(["a", "b"]), [
-      activityScheduled("process-item", 0),
-      activityScheduled("process-item", 1),
-      activityCompleted("A", 0),
-      activityCompleted("B", 1),
-    ])
-  ).toMatchObject(<WorkflowResult>{
-    result: Result.resolved(["A", "B"]),
+  test("should support Eventual.any of function calls", () => {
+    function* workflow(items: string[]) {
+      return Eventual.any(
+        items.map(
+          chain(function* (item): Program {
+            return yield createActivityCall("process-item", [item]);
+          })
+        )
+      );
+    }
+
+    expect(interpret(workflow(["a", "b"]), [])).toMatchObject(<WorkflowResult>{
+      commands: [
+        createScheduledActivityCommand("process-item", ["a"], 0),
+        createScheduledActivityCommand("process-item", ["b"], 1),
+      ],
+    });
+
+    expect(
+      interpret(workflow(["a", "b"]), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityCompleted("A", 0),
+        activityCompleted("B", 1),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("A"),
+    });
+
+    expect(
+      interpret(workflow(["a", "b"]), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityCompleted("A", 0),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("A"),
+    });
+
+    expect(
+      interpret(workflow(["a", "b"]), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityCompleted("B", 1),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("B"),
+    });
+  });
+
+  test("should ignore failures when one failed", () => {
+    function* workflow(items: string[]) {
+      return Eventual.any(
+        items.map(
+          chain(function* (item): Program {
+            return yield createActivityCall("process-item", [item]);
+          })
+        )
+      );
+    }
+
+    expect(
+      interpret(workflow(["a", "b"]), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityFailed("A", 0),
+        activityCompleted("B", 1),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("B"),
+    });
+
+    expect(
+      interpret(workflow(["a", "b"]), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityCompleted("A", 0),
+        activityFailed("B", 1),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("A"),
+    });
+
+    expect(
+      interpret(workflow(["a", "b"]), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityFailed("B", 1),
+        activityCompleted("A", 0),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("A"),
+    });
+  });
+
+  test("should fail when all fail", () => {
+    function* workflow(items: string[]) {
+      return Eventual.any(
+        items.map(
+          chain(function* (item): Program {
+            return yield createActivityCall("process-item", [item]);
+          })
+        )
+      );
+    }
+
+    expect(
+      interpret(workflow(["a", "b"]), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityFailed("A", 0),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: undefined,
+    });
+
+    expect(
+      interpret(workflow(["a", "b"]), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityFailed("A", 0),
+        activityFailed("B", 1),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.failed(new AggregateError(["A", "B"])),
+    });
   });
 });
 
-test("should have left-to-right determinism semantics for Eventual.all", () => {
-  function* workflow(items: string[]) {
-    return Eventual.all([
-      createActivityCall("before", ["before"]),
-      ...items.map(
-        chain(function* (item) {
-          yield createActivityCall("inside", [item]);
-        })
-      ),
-      createActivityCall("after", ["after"]),
-    ]);
-  }
+describe("Race", () => {
+  test("should await an un-awaited returned Race", () => {
+    function* workflow() {
+      let i = 0;
+      const inner = chain(function* () {
+        return `foo-${i++}`;
+      });
+      return Eventual.race([inner(), inner()]);
+    }
 
-  const result = interpret(workflow(["a", "b"]), []);
-  expect(result).toMatchObject(<WorkflowResult>{
-    commands: [
-      createScheduledActivityCommand("before", ["before"], 0),
-      createScheduledActivityCommand("inside", ["a"], 1),
-      createScheduledActivityCommand("inside", ["b"], 2),
-      createScheduledActivityCommand("after", ["after"], 3),
-    ],
+    expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("foo-0"),
+      commands: [],
+    });
+  });
+
+  test("should support Eventual.race of function calls", () => {
+    function* workflow(items: string[]) {
+      return Eventual.race(
+        items.map(
+          chain(function* (item): Program {
+            return yield createActivityCall("process-item", [item]);
+          })
+        )
+      );
+    }
+
+    expect(interpret(workflow(["a", "b"]), [])).toMatchObject(<WorkflowResult>{
+      commands: [
+        createScheduledActivityCommand("process-item", ["a"], 0),
+        createScheduledActivityCommand("process-item", ["b"], 1),
+      ],
+    });
+
+    expect(
+      interpret(workflow(["a", "b"]), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityCompleted("A", 0),
+        activityCompleted("B", 1),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("A"),
+    });
+
+    expect(
+      interpret(workflow(["a", "b"]), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityCompleted("A", 0),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("A"),
+    });
+
+    expect(
+      interpret(workflow(["a", "b"]), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityCompleted("B", 1),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved("B"),
+    });
+  });
+
+  test("should return any settled call", () => {
+    function* workflow(items: string[]) {
+      return Eventual.race(
+        items.map(
+          chain(function* (item): Program {
+            return yield createActivityCall("process-item", [item]);
+          })
+        )
+      );
+    }
+
+    expect(
+      interpret(workflow(["a", "b"]), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityFailed("A", 0),
+        activityCompleted("B", 1),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.failed("A"),
+    });
+
+    expect(
+      interpret(workflow(["a", "b"]), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityFailed("B", 1),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.failed("B"),
+    });
+  });
+});
+
+describe("AwaitAllSettled", () => {
+  test("should await an un-awaited returned AwaitAllSettled", () => {
+    function* workflow() {
+      let i = 0;
+      const inner = chain(function* () {
+        return `foo-${i++}`;
+      });
+      return Eventual.allSettled([inner(), inner()]);
+    }
+
+    expect(interpret(workflow(), [])).toMatchObject<
+      WorkflowResult<PromiseSettledResult<string>[]>
+    >({
+      result: Result.resolved([
+        { status: "fulfilled", value: "foo-0" },
+        { status: "fulfilled", value: "foo-1" },
+      ]),
+      commands: [],
+    });
+  });
+
+  test("should support Eventual.allSettled of function calls", () => {
+    function* workflow(items: string[]) {
+      return Eventual.allSettled(
+        items.map(
+          chain(function* (item): Program {
+            return yield createActivityCall("process-item", [item]);
+          })
+        )
+      );
+    }
+
+    expect(interpret(workflow(["a", "b"]), [])).toMatchObject<
+      WorkflowResult<PromiseSettledResult<string>[]>
+    >({
+      commands: [
+        createScheduledActivityCommand("process-item", ["a"], 0),
+        createScheduledActivityCommand("process-item", ["b"], 1),
+      ],
+    });
+
+    expect(
+      interpret(workflow(["a", "b"]), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityCompleted("A", 0),
+        activityCompleted("B", 1),
+      ])
+    ).toMatchObject<WorkflowResult<PromiseSettledResult<string>[]>>({
+      result: Result.resolved([
+        { status: "fulfilled", value: "A" },
+        { status: "fulfilled", value: "B" },
+      ]),
+      commands: [],
+    });
+
+    expect(
+      interpret(workflow(["a", "b"]), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityFailed("A", 0),
+        activityFailed("B", 1),
+      ])
+    ).toMatchObject<WorkflowResult<PromiseSettledResult<string>[]>>({
+      result: Result.resolved([
+        { status: "rejected", reason: "A" },
+        { status: "rejected", reason: "B" },
+      ]),
+      commands: [],
+    });
+
+    expect(
+      interpret(workflow(["a", "b"]), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityFailed("A", 0),
+        activityCompleted("B", 1),
+      ])
+    ).toMatchObject<WorkflowResult<PromiseSettledResult<string>[]>>({
+      result: Result.resolved([
+        { status: "rejected", reason: "A" },
+        { status: "fulfilled", value: "B" },
+      ]),
+      commands: [],
+    });
   });
 });
 
@@ -617,7 +1021,7 @@ test("try-catch-finally with dangling promise in catch", () => {
 test("throw error within nested function", () => {
   function* workflow(items: string[]) {
     try {
-      yield* Eventual.all(
+      yield Eventual.all(
         items.map(
           chain(function* (item) {
             const result = yield createActivityCall("inside", [item]);
@@ -684,8 +1088,8 @@ test("throw error within nested function", () => {
 });
 
 test("properly evaluate yield* of sub-programs", () => {
-  function* sub() {
-    const item = yield* Eventual.all([
+  function* sub(): any {
+    const item = yield Eventual.all([
       createActivityCall("a", []),
       createActivityCall("b", []),
     ]);
@@ -776,28 +1180,30 @@ test("generator function returns an ActivityCall", () => {
 });
 
 test("workflow calling other workflow", () => {
-  workflow("wf1", function* () {
+  const wf1 = workflow(function* () {
     yield createActivityCall("call-a", []);
   });
-  const wf2 = workflow("wf2", function* (): any {
-    const result = yield createWorkflowCall("wf1") as any;
+  const wf2 = workflow(function* (): any {
+    const result = yield createWorkflowCall(wf1.workflowName) as any;
     yield createActivityCall("call-b", []);
     return result;
   });
 
   expect(interpret(wf2.definition(undefined, context), [])).toMatchObject({
-    commands: [createScheduledWorkflowCommand("wf1", undefined, 0)],
+    commands: [createScheduledWorkflowCommand(wf1.workflowName, undefined, 0)],
   });
 
   expect(
-    interpret(wf2.definition(undefined, context), [workflowScheduled("wf1", 0)])
+    interpret(wf2.definition(undefined, context), [
+      workflowScheduled(wf1.workflowName, 0),
+    ])
   ).toMatchObject({
     commands: [],
   });
 
   expect(
     interpret(wf2.definition(undefined, context), [
-      workflowScheduled("wf1", 0),
+      workflowScheduled(wf1.workflowName, 0),
       workflowCompleted("result", 0),
     ])
   ).toMatchObject({
@@ -806,7 +1212,7 @@ test("workflow calling other workflow", () => {
 
   expect(
     interpret(wf2.definition(undefined, context), [
-      workflowScheduled("wf1", 0),
+      workflowScheduled(wf1.workflowName, 0),
       workflowCompleted("result", 0),
       activityScheduled("call-b", 1),
     ])
@@ -816,7 +1222,7 @@ test("workflow calling other workflow", () => {
 
   expect(
     interpret(wf2.definition(undefined, context), [
-      workflowScheduled("wf1", 0),
+      workflowScheduled(wf1.workflowName, 0),
       workflowCompleted("result", 0),
       activityScheduled("call-b", 1),
       activityCompleted(undefined, 1),
@@ -828,7 +1234,7 @@ test("workflow calling other workflow", () => {
 
   expect(
     interpret(wf2.definition(undefined, context), [
-      workflowScheduled("wf1", 0),
+      workflowScheduled(wf1.workflowName, 0),
       workflowFailed("error", 0),
     ])
   ).toMatchObject({
@@ -839,7 +1245,7 @@ test("workflow calling other workflow", () => {
 
 describe("signals", () => {
   describe("expect signal", () => {
-    const wf = workflow("wf", function* (): any {
+    const wf = workflow(function* (): any {
       const result = yield createExpectSignalCall("MySignal", 100 * 1000);
 
       return result ?? "done";
@@ -939,7 +1345,7 @@ describe("signals", () => {
     });
 
     test("multiple of the same signal", () => {
-      const wf = workflow("wf3", function* () {
+      const wf = workflow(function* () {
         const wait1 = createExpectSignalCall("MySignal", 100 * 1000);
         const wait2 = createExpectSignalCall("MySignal", 100 * 1000);
 
@@ -960,7 +1366,7 @@ describe("signals", () => {
   });
 
   describe("signal handler", () => {
-    const wf = workflow("wf4", function* () {
+    const wf = workflow(function* () {
       let mySignalHappened = 0;
       let myOtherSignalHappened = 0;
       let myOtherSignalCompleted = 0;
@@ -1185,7 +1591,7 @@ describe("signals", () => {
 
   describe("send signal", () => {
     const mySignal = new Signal("MySignal");
-    const wf = workflow("wf6", function* (): any {
+    const wf = workflow(function* (): any {
       createSendSignalCall(
         { type: SignalTargetType.Execution, executionId: "someExecution" },
         mySignal.id
@@ -1271,9 +1677,9 @@ describe("signals", () => {
         commands: [],
       });
     });
-    
+
     test("yielded sendSignal does nothing", () => {
-      const wf = workflow("wf7", function* (): any {
+      const wf = workflow(function* (): any {
         yield createSendSignalCall(
           { type: SignalTargetType.Execution, executionId: "someExecution" },
           mySignal.id
@@ -1298,5 +1704,300 @@ describe("signals", () => {
         commands: [],
       });
     });
+  });
+});
+
+describe("condition", () => {
+  test("already true condition does not emit events", () => {
+    const wf = workflow(function* (): any {
+      yield createConditionCall(() => true);
+    });
+
+    expect(
+      interpret(wf.definition(undefined, context), [])
+    ).toMatchObject<WorkflowResult>({
+      commands: [],
+    });
+  });
+
+  test("false condition emits events", () => {
+    const wf = workflow(function* (): any {
+      yield createConditionCall(() => false);
+    });
+
+    expect(
+      interpret(wf.definition(undefined, context), [])
+    ).toMatchObject<WorkflowResult>({
+      commands: [createStartConditionCommand(0)],
+    });
+  });
+
+  test("false condition emits events with timeout", () => {
+    const wf = workflow(function* (): any {
+      yield createConditionCall(() => false, 100);
+    });
+
+    expect(
+      interpret(wf.definition(undefined, context), [])
+    ).toMatchObject<WorkflowResult>({
+      commands: [createStartConditionCommand(0, 100)],
+    });
+  });
+
+  test("false condition does not re-emit", () => {
+    const wf = workflow(function* (): any {
+      yield createConditionCall(() => false, 100);
+    });
+
+    expect(
+      interpret(wf.definition(undefined, context), [conditionStarted(0)])
+    ).toMatchObject<WorkflowResult>({
+      commands: [],
+    });
+  });
+
+  const signalConditionFlow = workflow(function* (): any {
+    let yes = false;
+    createRegisterSignalHandlerCall("Yes", () => {
+      yes = true;
+    });
+    if (!(yield createConditionCall(() => yes) as any)) {
+      return "timed out";
+    }
+    return "done";
+  });
+
+  test("trigger success", () => {
+    expect(
+      interpret(signalConditionFlow.definition(undefined, context), [
+        conditionStarted(0),
+        signalReceived("Yes"),
+      ])
+    ).toMatchObject<WorkflowResult>({
+      result: Result.resolved("done"),
+      commands: [],
+    });
+  });
+
+  test("trigger success eventually", () => {
+    expect(
+      interpret(signalConditionFlow.definition(undefined, context), [
+        conditionStarted(0),
+        signalReceived("No"),
+        signalReceived("No"),
+        signalReceived("No"),
+        signalReceived("No"),
+        signalReceived("Yes"),
+      ])
+    ).toMatchObject<WorkflowResult>({
+      result: Result.resolved("done"),
+      commands: [],
+    });
+  });
+
+  test("never trigger when state changes", () => {
+    const signalConditionOnAndOffFlow = workflow(function* (): any {
+      let yes = false;
+      createRegisterSignalHandlerCall("Yes", () => {
+        yes = true;
+      });
+      createRegisterSignalHandlerCall("Yes", () => {
+        yes = false;
+      });
+      yield createConditionCall(() => yes);
+      return "done";
+    });
+
+    expect(
+      interpret(signalConditionOnAndOffFlow.definition(undefined, context), [
+        conditionStarted(0),
+        signalReceived("Yes"),
+      ])
+    ).toMatchObject<WorkflowResult>({
+      commands: [],
+    });
+  });
+
+  test("trigger timeout", () => {
+    expect(
+      interpret(signalConditionFlow.definition(undefined, context), [
+        conditionStarted(0),
+        conditionTimedOut(0),
+      ])
+    ).toMatchObject<WorkflowResult>({
+      result: Result.resolved("timed out"),
+      commands: [],
+    });
+  });
+
+  test("trigger success before timeout", () => {
+    expect(
+      interpret(signalConditionFlow.definition(undefined, context), [
+        conditionStarted(0),
+        signalReceived("Yes"),
+        conditionTimedOut(0),
+      ])
+    ).toMatchObject<WorkflowResult>({
+      result: Result.resolved("done"),
+      commands: [],
+    });
+  });
+
+  test("trigger timeout before success", () => {
+    expect(
+      interpret(signalConditionFlow.definition(undefined, context), [
+        conditionStarted(0),
+        conditionTimedOut(0),
+        signalReceived("Yes"),
+      ])
+    ).toMatchObject<WorkflowResult>({
+      result: Result.resolved("timed out"),
+      commands: [],
+    });
+  });
+
+  test("condition as simple generator", () => {
+    const wf = workflow(function* (): any {
+      yield createConditionCall(() => false);
+      return "done";
+    });
+
+    expect(
+      interpret(wf.definition(undefined, context), [])
+    ).toMatchObject<WorkflowResult>({
+      commands: [createStartConditionCommand(0)],
+    });
+  });
+});
+
+test("nestedChains", () => {
+  const wf = workflow(function* () {
+    const funcs = {
+      a: chain(function* () {
+        yield createSleepUntilCall("");
+      }),
+    };
+
+    Object.fromEntries(
+      yield createAwaitAll(
+        Object.entries(funcs).map(
+          chain(function* ([name, func]) {
+            return [name, yield func()];
+          })
+        )
+      )
+    );
+  });
+
+  expect(
+    interpret(wf.definition(undefined, context), [])
+  ).toMatchObject<WorkflowResult>({
+    commands: [createSleepUntilCommand("", 0)],
+  });
+});
+
+test("mixing closure types", () => {
+  var workflow4 = workflow(function* () {
+    const greetings = Eventual.all(
+      ["sam", "chris", "sam"].map((name) => createActivityCall("hello", [name]))
+    );
+    const greetings2 = Eventual.all(
+      ["sam", "chris", "sam"].map(
+        chain(function* (name) {
+          const greeting = yield createActivityCall("hello", [name]);
+          return greeting * 2;
+        })
+      )
+    );
+    const greetings3 = Eventual.all([
+      createActivityCall("hello", ["sam"]),
+      createActivityCall("hello", ["chris"]),
+      createActivityCall("hello", ["sam"]),
+    ]);
+    return Eventual.all([greetings as any, greetings2, greetings3]);
+  });
+
+  expect(
+    interpret(workflow4.definition(undefined, context), [])
+  ).toEqual<WorkflowResult>({
+    commands: [
+      createScheduledActivityCommand("hello", ["sam"], 0),
+      createScheduledActivityCommand("hello", ["chris"], 1),
+      createScheduledActivityCommand("hello", ["sam"], 2),
+      createScheduledActivityCommand("hello", ["sam"], 3),
+      createScheduledActivityCommand("hello", ["chris"], 4),
+      createScheduledActivityCommand("hello", ["sam"], 5),
+      createScheduledActivityCommand("hello", ["sam"], 6),
+      createScheduledActivityCommand("hello", ["chris"], 7),
+      createScheduledActivityCommand("hello", ["sam"], 8),
+    ],
+  });
+
+  expect(
+    interpret(workflow4.definition(undefined, context), [
+      activityScheduled("hello", 0),
+      activityScheduled("hello", 1),
+      activityScheduled("hello", 2),
+      activityScheduled("hello", 3),
+      activityScheduled("hello", 4),
+      activityScheduled("hello", 5),
+      activityScheduled("hello", 6),
+      activityScheduled("hello", 7),
+      activityScheduled("hello", 8),
+    ])
+  ).toEqual<WorkflowResult>({
+    commands: [],
+  });
+
+  expect(
+    interpret(workflow4.definition(undefined, context), [
+      activityScheduled("hello", 0),
+      activityScheduled("hello", 1),
+      activityScheduled("hello", 2),
+      activityScheduled("hello", 3),
+      activityScheduled("hello", 4),
+      activityScheduled("hello", 5),
+      activityScheduled("hello", 6),
+      activityScheduled("hello", 7),
+      activityScheduled("hello", 8),
+      activityCompleted(1, 0),
+      activityCompleted(2, 1),
+      activityCompleted(3, 2),
+      activityCompleted(4, 3),
+      activityCompleted(5, 4),
+      activityCompleted(6, 5),
+      activityCompleted(7, 6),
+      activityCompleted(8, 7),
+      activityCompleted(9, 8),
+    ])
+  ).toEqual<WorkflowResult>({
+    result: Result.resolved([
+      [1, 2, 3],
+      [8, 10, 12],
+      [7, 8, 9],
+    ]),
+    commands: [],
+  });
+});
+
+test("workflow with synchronous function", () => {
+  var workflow4 = workflow(function (): any {
+    return createActivityCall("hi", []);
+  });
+
+  expect(
+    interpret(workflow4.definition(undefined, context), [])
+  ).toEqual<WorkflowResult>({
+    commands: [createScheduledActivityCommand("hi", [], 0)],
+  });
+
+  expect(
+    interpret(workflow4.definition(undefined, context), [
+      activityScheduled("hi", 0),
+      activityCompleted("result", 0),
+    ])
+  ).toEqual<WorkflowResult>({
+    result: Result.resolved("result"),
+    commands: [],
   });
 });

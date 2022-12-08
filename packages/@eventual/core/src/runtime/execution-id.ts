@@ -26,3 +26,25 @@ export function encodeExecutionId(executionId: string) {
 export function decodeExecutionId(executionId: string) {
   return Buffer.from(executionId, "base64").toString("utf-8");
 }
+
+export const INTERNAL_EXECUTION_ID_PREFIX = "##EVENTUAL##";
+
+/**
+ * Formats an child workflow execution as a unique, deterministic name.
+ * 1. we prefix it with {@link INTERNAL_EXECUTION_ID_PREFIX} to ensure it is impossible for a user to create it.
+ * 2. we construct the name from the parent execution ID and the seq - this ensures uniqueness and is deterministic
+ *
+ * It must be deterministic to ensure idempotency.
+ *
+ * @param parentExecutionId id of the caller execution used to compute the child workflow name
+ * @param seq position that started the child workflow
+ */
+export function formatChildExecutionName(
+  parentExecutionId: string,
+  seq: number
+): string {
+  return `${INTERNAL_EXECUTION_ID_PREFIX}${parentExecutionId.replace(
+    "/",
+    "-"
+  )}-${seq}`;
+}

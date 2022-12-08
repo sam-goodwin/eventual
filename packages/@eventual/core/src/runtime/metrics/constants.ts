@@ -102,6 +102,14 @@ export namespace OrchestratorMetrics {
    * Number of milliseconds between the expected sleep wakeup time and the actual incoming {@link SleepCompleted} event.
    */
   export const SleepVarianceMillis = "SleepVarianceMillis";
+  /**
+   * 1 when a workflow has a timeout and 0 when it does not.
+   */
+  export const TimeoutStarted = "TimeoutStarted";
+  /**
+   * When a workflow has a timeout, measures the time it takes to start the timeout.
+   */
+  export const TimeoutStartedDuration = "TimeoutStartedDuration";
 }
 
 export namespace ActivityMetrics {

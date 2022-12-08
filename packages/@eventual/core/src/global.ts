@@ -1,5 +1,5 @@
 import type { Eventual, EventualCallCollector } from "./eventual.js";
-import type { WorkflowClient } from "./runtime/workflow-client.js";
+import type { WorkflowClient } from "./runtime/clients/workflow-client.js";
 import type { Workflow } from "./workflow.js";
 
 export const workflows = (): Map<string, Workflow> =>

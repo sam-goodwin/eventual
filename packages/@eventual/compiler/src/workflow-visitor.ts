@@ -30,17 +30,25 @@ export class OuterVisitor extends Visitor {
     if (isWorkflowCall(call)) {
       this.foundEventual = true;
 
+      const [name, options, func] =
+        call.arguments.length === 2
+          ? [call.arguments[0], undefined, call.arguments[1]]
+          : [call.arguments[0], call.arguments[1], call.arguments[2]];
+
       // workflow("id", async () => { .. })
       return {
         ...call,
         arguments: [
           // workflow name, e.g. "id"
-          call.arguments[0],
+          name,
+          ...(options ? [options] : []),
           {
-            spread: call.arguments[1].spread,
+            spread: func!.spread,
             // transform the function into a generator
             // e.g. async () => { .. } becomes function*() { .. }
-            expression: this.inner.visitWorkflow(call.arguments[1].expression),
+            expression: this.inner.visitWorkflow(
+              func!.expression as ArrowFunctionExpression | FunctionExpression
+            ),
           },
         ],
       };
@@ -129,19 +137,21 @@ export class InnerVisitor extends Visitor {
   public visitFunctionExpression(
     funcExpr: FunctionExpression
   ): FunctionExpression {
-    return this.createChain({
-      ...funcExpr,
-      async: false,
-      generator: true,
-      body: funcExpr.body ? this.visitBlockStatement(funcExpr.body) : undefined,
-      params: funcExpr.params.map((param) => this.visitParameter(param)),
-    }) as any; // SWC's types are broken, we can return any Expression here
+    return funcExpr.async
+      ? this.createChain({
+          ...super.visitFunctionExpression(funcExpr),
+          async: false,
+          generator: true,
+        })
+      : (this.visitFunctionExpression(funcExpr) as any); // SWC's types are broken, we can return any Expression here
   }
 
   public visitArrowFunctionExpression(
     funcExpr: ArrowFunctionExpression
   ): Expression {
-    return this.createChain(funcExpr);
+    return funcExpr.async
+      ? this.createChain(funcExpr)
+      : super.visitArrowFunctionExpression(funcExpr);
   }
 
   private createChain(
@@ -227,11 +237,21 @@ function isWorkflowCall(call: CallExpression): call is CallExpression & {
 } {
   return (
     isWorkflowCallee(call.callee) &&
-    call.arguments.length === 2 &&
     call.arguments[0]?.expression.type === "StringLiteral" &&
-    (call.arguments[1]?.expression.type === "ArrowFunctionExpression" ||
-      call.arguments[1]?.expression.type === "FunctionExpression") &&
-    !call.arguments[1].expression.generator
+    ((call.arguments.length === 2 &&
+      isNonGeneratorFunction(call.arguments[1]?.expression)) ||
+      (call.arguments.length === 3 &&
+        isNonGeneratorFunction(call.arguments[2]?.expression)))
+  );
+}
+
+function isNonGeneratorFunction(
+  expr?: Expression
+): expr is ArrowFunctionExpression | FunctionExpression {
+  return (
+    (expr?.type === "ArrowFunctionExpression" ||
+      expr?.type === "FunctionExpression") &&
+    !expr.generator
   );
 }
 

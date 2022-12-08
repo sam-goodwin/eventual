@@ -4,6 +4,7 @@ import {
   Eventual,
   EventualKind,
   EventualBase,
+  EventualArrayPositional,
 } from "./eventual.js";
 import { Failed, Resolved } from "./result.js";
 
@@ -15,4 +16,11 @@ export interface AwaitAll<T extends any[] = any[]>
   extends EventualBase<Resolved<T> | Failed> {
   [EventualSymbol]: EventualKind.AwaitAll;
   activities: Eventual[];
+}
+
+export function createAwaitAll<A extends Eventual[]>(activities: A) {
+  return <AwaitAll<EventualArrayPositional<A>>>{
+    [EventualSymbol]: EventualKind.AwaitAll,
+    activities,
+  };
 }

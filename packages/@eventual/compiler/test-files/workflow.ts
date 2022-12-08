@@ -34,4 +34,33 @@ export default workflow("workflow", async (input) => {
       await doWork(item);
     })
   );
+
+  condition(() => true);
+
+  const func = () =>
+    Promise.all(
+      items.map(async (item) => {
+        await doWork(item);
+      })
+    );
+
+  await func();
+
+  const func2 = async () => {
+    await Promise.all(
+      items.map(async (item) => {
+        await doWork(item);
+      })
+    );
+  };
+
+  await func2();
 });
+
+export const workflow2 = workflow(
+  "timeoutFlow",
+  { timeoutSeconds: 100 },
+  async () => {
+    await doWork("something");
+  }
+);
