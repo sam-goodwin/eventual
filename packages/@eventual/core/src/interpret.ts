@@ -33,7 +33,7 @@ import {
   isConditionTimedOut,
   isWorkflowTimedOut,
   isActivityTimedOut,
-} from "./events.js";
+} from "./workflow-events.js";
 import {
   Result,
   isResolved,

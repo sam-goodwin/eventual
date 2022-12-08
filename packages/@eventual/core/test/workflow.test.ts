@@ -5,7 +5,7 @@ import {
   ActivityScheduled,
   WorkflowEventType,
   WorkflowStarted,
-} from "../src/events.js";
+} from "../src/workflow-events.js";
 import { progressWorkflow, workflow } from "../src/workflow.js";
 import { WorkflowContext } from "../src/context.js";
 

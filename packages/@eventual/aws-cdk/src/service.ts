@@ -1,11 +1,5 @@
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
-import {
-  Architecture,
-  Function,
-  Code,
-  IFunction,
-  Runtime,
-} from "aws-cdk-lib/aws-lambda";
+import { Function, Code, IFunction } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import { Bucket, IBucket } from "aws-cdk-lib/aws-s3";
 import {
@@ -22,7 +16,6 @@ import {
 } from "aws-cdk-lib/aws-dynamodb";
 import { ArnFormat, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
 import { ENV_NAMES, ServiceProperties } from "@eventual/aws-runtime";
-import { CoreEnvFlags } from "@eventual/core";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import path from "path";
 import { execSync } from "child_process";
@@ -42,6 +35,9 @@ import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
 import { baseNodeFnProps } from "./utils";
+import { EventBus } from "aws-cdk-lib/aws-events";
+import { ServiceFunction } from "./service-function";
+import { ServiceType } from "@eventual/core";
 
 export interface ServiceProps {
   entry: string;
@@ -56,6 +52,14 @@ export class Service extends Construct implements IGrantable {
    * Name of this Service.
    */
   public readonly serviceName: string;
+  /**
+   * The {@link EventBus} containing all events flowing into and out of this {@link Service}.
+   */
+  public readonly eventBus: EventBus;
+  /**
+   * The Lambda {@link Function} that handles events subscribed to in this service's {@link eventBus}.
+   */
+  public readonly eventHandler: Function;
   /**
    * S3 bucket that contains events necessary to replay a workflow execution.
    *
@@ -129,18 +133,25 @@ export class Service extends Construct implements IGrantable {
    * The Lambda Function for processing inbound API requests with user defined code.
    */
   public readonly apiEndpoint: IFunction;
-
-  readonly grantPrincipal: IPrincipal;
-
   /**
    * A SSM parameter containing data about this service.
    */
   readonly serviceDataSSM: StringParameter;
+  /**
+   * The Scheduler's IAM Role.
+   */
+  readonly schedulerRole: Role;
+
+  readonly grantPrincipal: IPrincipal;
 
   constructor(scope: Construct, id: string, props: ServiceProps) {
     super(scope, id);
 
     this.serviceName = props.name ?? Names.uniqueResourceName(this, {});
+
+    this.eventBus = new EventBus(this, "EventBus", {
+      eventBusName: this.serviceName,
+    });
 
     // ExecutionHistoryBucket
     this.history = new Bucket(this, "History", {
@@ -162,6 +173,35 @@ export class Service extends Construct implements IGrantable {
       sortKey: { name: "sk", type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    this.orchestrator = new ServiceFunction(this, "Orchestrator", {
+      serviceType: ServiceType.OrchestratorWorker,
+      events: [
+        new SqsEventSource(this.workflowQueue, {
+          batchSize: 10,
+          reportBatchItemFailures: true,
+        }),
+      ],
+    });
+
+    this.activityWorker = new ServiceFunction(this, "Worker", {
+      serviceType: ServiceType.ActivityWorker,
+      memorySize: 512,
+      environment: props.environment,
+      // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
+      retryAttempts: 0,
+    });
+
+    this.apiEndpoint = new ServiceFunction(this, "ApiEndpoint", {
+      serviceType: ServiceType.ApiHandler,
+      memorySize: 512,
+      environment: props.environment,
+    });
+
+    this.eventHandler = new ServiceFunction(this, "EventHandler", {
+      serviceType: ServiceType.EventHandler,
+      memorySize: 512,
     });
 
     this.startWorkflowFunction = new NodejsFunction(
@@ -196,24 +236,6 @@ export class Service extends Construct implements IGrantable {
       )} ${this.outDir()} ${props.entry}`
     ).toString("utf-8");
 
-    this.activityWorker = new Function(this, "Worker", {
-      architecture: Architecture.ARM_64,
-      code: Code.fromAsset(this.outDir("activity")),
-      // the bundler outputs activity/index.js
-      handler: "index.default",
-      runtime: Runtime.NODEJS_16_X,
-      memorySize: 512,
-      environment: {
-        NODE_OPTIONS: "--enable-source-maps",
-        [ENV_NAMES.TABLE_NAME]: this.table.tableName,
-        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
-        [ENV_NAMES.ACTIVITY_LOCK_TABLE_NAME]: this.locksTable.tableName,
-        [CoreEnvFlags.ACTIVITY_WORKER_FLAG]: "1",
-        ...(props.environment ?? {}),
-      },
-      // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
-      retryAttempts: 0,
-    });
     // grant methods on a workflow affect the activity
     this.grantPrincipal = this.activityWorker.grantPrincipal;
 
@@ -226,15 +248,19 @@ export class Service extends Construct implements IGrantable {
       resourceName: `${this.schedulerGroup.ref}/*`,
     });
 
-    const schedulerRole = new Role(this, "schedulerRole", {
-      assumedBy: new ServicePrincipal("scheduler.amazonaws.com", {
-        conditions: {
-          ArnEquals: {
-            "aws:SourceArn": scheduleGroupWildCardArn,
+    const schedulerRole = (this.schedulerRole = new Role(
+      this,
+      "schedulerRole",
+      {
+        assumedBy: new ServicePrincipal("scheduler.amazonaws.com", {
+          conditions: {
+            ArnEquals: {
+              "aws:SourceArn": scheduleGroupWildCardArn,
+            },
           },
-        },
-      }),
-    });
+        }),
+      }
+    ));
 
     this.dlq = new Queue(this, "dlq");
 
@@ -260,41 +286,6 @@ export class Service extends Construct implements IGrantable {
       },
     });
 
-    //Environment variables required to glue together the service components.
-    //Used by the orchestrator and api
-    const componentsEnv = {
-      [ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME]:
-        this.activityWorker.functionName,
-      [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
-      [ENV_NAMES.TABLE_NAME]: this.table.tableName,
-      [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
-      [ENV_NAMES.SCHEDULER_ROLE_ARN]: schedulerRole.roleArn,
-      [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: this.dlq.queueArn,
-      [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
-      [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
-      [ENV_NAMES.SCHEDULE_FORWARDER_ARN]: this.scheduleForwarder.functionArn,
-    };
-
-    this.orchestrator = new Function(this, "Orchestrator", {
-      architecture: Architecture.ARM_64,
-      code: Code.fromAsset(this.outDir("orchestrator")),
-      // the bundler outputs orchestrator/index.js
-      handler: "index.default",
-      runtime: Runtime.NODEJS_16_X,
-      memorySize: 512,
-      environment: {
-        NODE_OPTIONS: "--enable-source-maps",
-        [CoreEnvFlags.ORCHESTRATOR_FLAG]: "1",
-        ...componentsEnv,
-      },
-      events: [
-        new SqsEventSource(this.workflowQueue, {
-          batchSize: 10,
-          reportBatchItemFailures: true,
-        }),
-      ],
-    });
-
     this.timerHandler = new NodejsFunction(this, "timerHandlerFunction", {
       entry: path.join(
         require.resolve("@eventual/aws-runtime"),
@@ -315,8 +306,6 @@ export class Service extends Construct implements IGrantable {
 
     this.timerQueue.grantSendMessages(this.scheduleForwarder);
 
-    this.timerQueue.grantSendMessages(this.orchestrator);
-
     // grants the orchestrator the permission to create new schedules for sleep.
     this.scheduleForwarder.addToRolePolicy(
       new PolicyStatement({
@@ -329,29 +318,8 @@ export class Service extends Construct implements IGrantable {
 
     this.workflowQueue.grantSendMessages(this.timerHandler);
 
-    // the orchestrator will accumulate history state in S3
-    this.history.grantReadWrite(this.orchestrator);
-
-    // the worker emits events back to the orchestrator's event loop
-    this.workflowQueue.grantSendMessages(this.activityWorker);
-
-    // the orchestrator can emit workflow tasks when invoking other workflows or inline activities
-    this.workflowQueue.grantSendMessages(this.orchestrator);
-
-    // the orchestrator asynchronously invokes activities
-    this.activityWorker.grantInvoke(this.orchestrator);
-
-    // the worker will issue an UpdateItem command to lock
-    this.locksTable.grantWriteData(this.activityWorker);
-
     // Enable creating history to start a workflow.
     this.table.grantReadWriteData(this.startWorkflowFunction);
-
-    // Enable creating history related to a workflow.
-    this.table.grantReadWriteData(this.activityWorker);
-
-    // Enable creating history and updating executions
-    this.table.grantReadWriteData(this.orchestrator);
 
     // Enable sending workflow task
     this.workflowQueue.grantSendMessages(this.startWorkflowFunction);
@@ -369,25 +337,6 @@ export class Service extends Construct implements IGrantable {
 
     // grants the orchestrator the ability to pass the scheduler role to the creates schedules
     schedulerRole.grantPassRole(this.orchestrator.grantPrincipal);
-
-    this.apiEndpoint = new Function(this, "ApiEndpoint", {
-      ...baseNodeFnProps,
-      code: Code.fromAsset(this.outDir("api")),
-      handler: "index.default",
-      memorySize: 512,
-      environment: {
-        NODE_OPTIONS: "--enable-source-maps",
-        [ENV_NAMES.TABLE_NAME]: this.table.tableName,
-        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
-        [CoreEnvFlags.WEBHOOK_FLAG]: "1",
-      },
-    });
-
-    // the webhook endpoint is allowed to run workflows
-    this.workflowQueue.grantSendMessages(this.apiEndpoint);
-
-    // Enable creating history to start a workflow.
-    this.table.grantReadWriteData(this.apiEndpoint);
 
     this.api = new HttpApi(this, "gateway", {
       apiName: `eventual-api-${this.serviceName}`,
@@ -427,7 +376,16 @@ export class Service extends Construct implements IGrantable {
         orchestratorFunctionName: this.orchestrator.functionName,
         activityWorkerFunctionName: this.activityWorker.functionName,
       } satisfies ServiceProperties),
-      ...componentsEnv,
+      [ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME]:
+        this.activityWorker.functionName,
+      [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
+      [ENV_NAMES.TABLE_NAME]: this.table.tableName,
+      [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
+      [ENV_NAMES.SCHEDULER_ROLE_ARN]: schedulerRole.roleArn,
+      [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: this.dlq.queueArn,
+      [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
+      [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
+      [ENV_NAMES.SCHEDULE_FORWARDER_ARN]: this.scheduleForwarder.functionArn,
     };
 
     const route = (mappings: Record<string, RouteMapping | RouteMapping[]>) => {
@@ -503,6 +461,25 @@ export class Service extends Construct implements IGrantable {
         },
       }),
     });
+
+    this.finalize();
+  }
+
+  private finalizers: (() => void)[] = [];
+
+  public onFinalize(fn: () => void): void {
+    this.finalizers.push(fn);
+  }
+
+  private finalize() {
+    this.finalizers.forEach((finalizer) => finalizer());
+  }
+
+  /**
+   * Grants permission to publish to this {@link Service}'s {@link eventBus}.
+   */
+  public grantPublish(grantable: IGrantable) {
+    this.eventBus.grantPutEventsTo(grantable);
   }
 
   public grantStartWorkflow(grantable: IGrantable) {
@@ -515,7 +492,7 @@ export class Service extends Construct implements IGrantable {
     this.table.grantReadData(grantable);
   }
 
-  public apiLambda(
+  private apiLambda(
     id: string,
     entry: string,
     environment: Record<string, string>
@@ -531,7 +508,7 @@ export class Service extends Construct implements IGrantable {
     });
   }
 
-  public prebundledLambda(
+  private prebundledLambda(
     id: string,
     entry: string,
     environment: Record<string, string>
@@ -544,7 +521,7 @@ export class Service extends Construct implements IGrantable {
     });
   }
 
-  private outDir(...paths: string[]): string {
+  public outDir(...paths: string[]): string {
     return path.join(".eventual", this.node.addr, ...paths);
   }
 }

@@ -1,4 +1,4 @@
-import { HistoryStateEvent } from "../../events.js";
+import { HistoryStateEvent } from "../../workflow-events.js";
 
 export interface TimerClient {
   /**
@@ -41,7 +41,7 @@ export interface TimerClient {
 
   /**
    * Schedules any event for a workflow at a future time.
-   * 
+   *
    * Helper for using {@link TimerClient.startTimer} with a {@link TimerScheduleEventRequest}.
    */
   scheduleEvent<E extends HistoryStateEvent>(

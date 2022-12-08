@@ -9,6 +9,7 @@ import { AWSWorkflowClient } from "./workflow-client.js";
 import { AWSWorkflowRuntimeClient } from "./workflow-runtime-client.js";
 import { SchedulerClient } from "@aws-sdk/client-scheduler";
 import { AWSTimerClient, AWSTimerClientProps } from "./timer-client.js";
+import { AWSEventClient } from "./event-client.js";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -101,6 +102,13 @@ export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
       timerClient: createTimerClient(),
     }),
   { cacheKey: JSON.stringify }
+);
+
+export const createEventClient = /*@__PURE__*/ memoize(
+  () =>
+    new AWSEventClient({
+      eventBusArn: env.eventBusArn(),
+    })
 );
 
 function memoize<T extends (...args: any[]) => any>(

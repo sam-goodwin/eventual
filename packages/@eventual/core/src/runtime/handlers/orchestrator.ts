@@ -27,7 +27,7 @@ import {
   WorkflowTaskCompleted,
   WorkflowTaskStarted,
   WorkflowTimedOut,
-} from "../../events.js";
+} from "../../workflow-events.js";
 import {
   CompleteExecution,
   ExecutionStatus,

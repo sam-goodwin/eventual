@@ -5,6 +5,7 @@ import { createActivityWorker } from "@eventual/core";
 import middy from "@middy/core";
 import {
   createActivityRuntimeClient,
+  createEventClient,
   createExecutionHistoryClient,
   createWorkflowClient,
 } from "../clients/create.js";
@@ -15,6 +16,7 @@ export default middy(
   createActivityWorker({
     activityRuntimeClient: createActivityRuntimeClient(),
     executionHistoryClient: createExecutionHistoryClient(),
+    eventClient: createEventClient(),
     workflowClient: createWorkflowClient(),
     metricsClient: AWSMetricsClient,
     logger,

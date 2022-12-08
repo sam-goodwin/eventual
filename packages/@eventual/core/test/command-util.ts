@@ -26,7 +26,7 @@ import {
   WorkflowEventType,
   WorkflowTimedOut,
   ActivityTimedOut,
-} from "../src/events.js";
+} from "../src/workflow-events.js";
 import { ulid } from "ulidx";
 import { SignalTarget } from "../src/signals.js";
 
