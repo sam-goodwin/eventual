@@ -33,10 +33,10 @@ export type AwaitedEventual<T> = T extends Promise<infer U>
   ? AwaitedEventual<U>
   : T;
 
-export const EventualSymbol = Symbol.for("eventual:Eventual");
+const EventualSymbol = Symbol.for("eventual:Eventual");
 
-export interface EventualBase<R extends Result> {
-  [EventualSymbol]: EventualKind;
+export interface EventualBase<Kind extends EventualKind, R extends Result> {
+  [EventualSymbol]: Kind;
   result?: R;
 }
 
@@ -58,6 +58,21 @@ export enum EventualKind {
 
 export function isEventual(a: any): a is Eventual {
   return a && typeof a === "object" && EventualSymbol in a;
+}
+
+export function isEventualOfKind<E extends Eventual>(
+  kind: E[typeof EventualSymbol],
+  a: any
+): a is E {
+  return isEventual(a) && a[EventualSymbol] === kind;
+}
+
+export function createEventual<E extends Eventual>(
+  kind: E[typeof EventualSymbol],
+  e: Omit<E, typeof EventualSymbol>
+): E {
+  (e as E)[EventualSymbol] = kind;
+  return e as E;
 }
 
 export type Eventual<T = any> =

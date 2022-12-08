@@ -1,21 +1,22 @@
 import {
-  isEventual,
-  EventualSymbol,
   EventualKind,
   Eventual,
   AwaitedEventual,
   EventualBase,
+  isEventualOfKind,
+  createEventual,
 } from "./eventual.js";
 import { registerEventual } from "./global.js";
 import { Program } from "./interpret.js";
 import { Result } from "./result.js";
 
 export function isChain(a: any): a is Chain {
-  return isEventual(a) && a[EventualSymbol] === EventualKind.Chain;
+  return isEventualOfKind(EventualKind.Chain, a);
 }
 
-export interface Chain<T = any> extends Program<T>, EventualBase<Result<T>> {
-  [EventualSymbol]: EventualKind.Chain;
+export interface Chain<T = any>
+  extends Program<T>,
+    EventualBase<EventualKind.Chain, Result<T>> {
   awaiting?: Eventual;
 }
 
@@ -29,8 +30,7 @@ export function chain<F extends (...args: any[]) => Program>(
 }
 
 export function createChain(program: Program): Chain {
-  (program as any)[EventualSymbol] = EventualKind.Chain;
-  return program as Chain;
+  return createEventual(EventualKind.Chain, program);
 }
 
 export function registerChain(program: Program): Chain {

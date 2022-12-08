@@ -1,31 +1,34 @@
 import {
-  isEventual,
-  EventualSymbol,
   EventualKind,
   EventualBase,
+  isEventualOfKind,
+  createEventual,
 } from "../eventual.js";
 import { registerEventual } from "../global.js";
 import { Resolved, Failed } from "../result.js";
 
 export function isActivityCall(a: any): a is ActivityCall {
-  return isEventual(a) && a[EventualSymbol] === EventualKind.ActivityCall;
+  return isEventualOfKind(EventualKind.ActivityCall, a);
 }
 
 export interface ActivityCall<T = any>
-  extends EventualBase<Resolved<T> | Failed> {
-  [EventualSymbol]: EventualKind.ActivityCall;
+  extends EventualBase<EventualKind.ActivityCall, Resolved<T> | Failed> {
   seq?: number;
   name: string;
   args: any[];
   timeoutSeconds?: number;
 }
 
-export function createActivityCall(name: string, args: any[], timeoutSeconds?: number): ActivityCall {
-  const command: ActivityCall = {
-    [EventualSymbol]: EventualKind.ActivityCall,
-    name,
-    args,
-    timeoutSeconds,
-  };
-  return registerEventual<ActivityCall>(command);
+export function createActivityCall(
+  name: string,
+  args: any[],
+  timeoutSeconds?: number
+): ActivityCall {
+  return registerEventual(
+    createEventual(EventualKind.ActivityCall, {
+      name,
+      args,
+      timeoutSeconds,
+    })
+  );
 }

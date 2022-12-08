@@ -18,30 +18,29 @@ export interface ActivityFunction<
   (...args: Arguments): Promise<Awaited<UnwrapAsync<Output>>>;
 }
 
-export type ActivityHandler<
+export interface ActivityHandler<
   Arguments extends any[],
   Output extends any = any
-> = (
-  ...args: Arguments
-) =>
-  | Promise<Awaited<Output>>
-  | Output
-  | AsyncResult<Output>
-  | Promise<AsyncResult<Awaited<Output>>>;
+> {
+  (...args: Arguments):
+    | Promise<Awaited<Output>>
+    | Output
+    | AsyncResult<Output>
+    | Promise<AsyncResult<Awaited<Output>>>;
+}
 
 export type UnwrapAsync<Output> = Output extends AsyncResult<infer O>
   ? O
   : Output;
 
-export const AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
+const AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
 
 /**
  * When returned from an activity, the activity will become async,
  * allowing it to run "forever". The
  */
 export interface AsyncResult<Output = any> {
-  [AsyncTokenSymbol]: typeof AsyncTokenSymbol;
-  __outputType: Output;
+  [AsyncTokenSymbol]: typeof AsyncTokenSymbol & Output;
 }
 
 export function isAsyncResult(obj: any): obj is AsyncResult {
@@ -62,8 +61,7 @@ export async function asyncResult<Output = any>(
   }
   await tokenContext(activityContext.activityToken);
   return {
-    [AsyncTokenSymbol]: AsyncTokenSymbol,
-    __outputType: undefined as Output,
+    [AsyncTokenSymbol]: AsyncTokenSymbol as typeof AsyncTokenSymbol & Output,
   };
 }
 

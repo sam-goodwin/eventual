@@ -197,6 +197,6 @@ export const asyncWorkflow = workflow(
     } catch (err) {
       return [result, err];
     }
-    return "I should not get here";
+    throw new Error("I should not get here");
   }
 );
