@@ -2,7 +2,7 @@ import {
   IncomingWebhook,
   IncomingWebhookDefaultArguments,
 } from "@slack/webhook";
-import { hook, Secret } from "@eventual/core";
+import { api, Secret } from "@eventual/core";
 
 export interface SlackProps extends IncomingWebhookDefaultArguments {
   webhookUrl: string;
@@ -16,6 +16,9 @@ export class Slack extends IncomingWebhook {
     super(props.webhookUrl, {});
     this.webhookUrl = props.webhookUrl;
 
-    hook((api) => {});
+    api.post("/_slack/events", async (request) => {
+      const body = await request.json?.();
+      return new Response("TODO");
+    });
   }
 }
