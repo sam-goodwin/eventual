@@ -77,24 +77,24 @@ export function createEventual<E extends Eventual>(
 
 export type Eventual<T = any> =
   | AwaitAll<T extends any[] ? T : never>
-  | AwaitAny<T extends any[] ? T : never>
-  | Race<T extends any[] ? T : never>
   | AwaitAllSettled<T extends any[] ? T : never>
+  | AwaitAny<T extends any[] ? T : never>
   | Chain<T>
-  | CommandCall<T>;
+  | CommandCall<T>
+  | Race<T extends any[] ? T : never>;
 
 /**
  * Calls which emit commands.
  */
 export type CommandCall<T = any> =
   | ActivityCall<T>
-  | SleepForCall
-  | SleepUntilCall
-  | WorkflowCall<T>
+  | ConditionCall
   | ExpectSignalCall<T>
   | RegisterSignalHandlerCall<T>
   | SendSignalCall
-  | ConditionCall;
+  | SleepForCall
+  | SleepUntilCall
+  | WorkflowCall<T>;
 
 export function isCommandCall(call: Eventual): call is CommandCall {
   return (

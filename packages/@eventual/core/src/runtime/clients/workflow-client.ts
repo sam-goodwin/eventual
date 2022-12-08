@@ -35,6 +35,7 @@ export interface WorkflowClient {
 
   completeActivity(request: CompleteActivityRequest): Promise<void>;
   failActivity(request: FailActivityRequest): Promise<void>;
+  heartbeatActivity(request: HeartbeatRequest): Promise<HeartbeatResponse>;
 }
 
 export interface SendSignalRequest {
@@ -92,4 +93,17 @@ export interface FailActivityRequest {
   activityToken: string;
   error: string;
   message: string;
+}
+
+export interface HeartbeatRequest {
+  activityToken: string;
+}
+
+export interface HeartbeatResponse {
+  /**
+   * True when the activity has been cancelled.
+   *
+   * This is the only way for a long running activity to know it was canelled.
+   */
+  cancelled: boolean;
 }

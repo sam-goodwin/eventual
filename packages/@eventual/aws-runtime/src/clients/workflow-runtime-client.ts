@@ -36,6 +36,7 @@ import {
   WorkflowEventType,
   WorkflowRuntimeClient,
   ScheduleWorkflowRequest,
+  ActivityHeartbeatTimedOut,
 } from "@eventual/core";
 import { AWSTimerClient } from "./timer-client.js";
 import {
@@ -211,25 +212,45 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
       retry: 0,
     };
 
-    if (command.timeoutSeconds) {
-      await this.props.timerClient.scheduleEvent<ActivityTimedOut>({
-        baseTime,
-        event: {
-          type: WorkflowEventType.ActivityTimedOut,
-          seq: command.seq,
-        },
-        executionId,
-        timerSeconds: command.timeoutSeconds,
-      });
-    }
+    await Promise.allSettled([]);
 
-    await this.props.lambda.send(
+    const timeoutStarter = command.timeoutSeconds
+      ? await this.props.timerClient.scheduleEvent<ActivityTimedOut>({
+          baseTime,
+          event: {
+            type: WorkflowEventType.ActivityTimedOut,
+            seq: command.seq,
+          },
+          executionId,
+          timerSeconds: command.timeoutSeconds,
+        })
+      : undefined;
+
+    const heartbeatTimeoutStarter = command.heartbeatSeconds
+      ? await this.props.timerClient.scheduleEvent<ActivityHeartbeatTimedOut>({
+          baseTime,
+          event: {
+            type: WorkflowEventType.ActivityHeartbeatTimedOut,
+            seq: command.seq,
+          },
+          executionId,
+          timerSeconds: command.heartbeatSeconds,
+        })
+      : undefined;
+
+    const activityStarter = this.props.lambda.send(
       new InvokeCommand({
         FunctionName: this.props.activityWorkerFunctionName,
         Payload: Buffer.from(JSON.stringify(request)),
         InvocationType: InvocationType.Event,
       })
     );
+
+    await Promise.all([
+      activityStarter,
+      timeoutStarter,
+      heartbeatTimeoutStarter,
+    ]);
 
     return createEvent<ActivityScheduled>({
       type: WorkflowEventType.ActivityScheduled,

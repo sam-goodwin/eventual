@@ -25,6 +25,10 @@ import {
   FailActivityRequest,
   formatExecutionId,
   createEvent,
+  HeartbeatRequest,
+  HeartbeatResponse,
+  ActivityHeartbeat,
+  ActivityTokenPayload,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 import { AWSExecutionHistoryClient } from "./execution-history-client.js";
@@ -197,20 +201,40 @@ export class AWSWorkflowClient implements WorkflowClient {
     });
   }
 
+  public async heartbeatActivity(
+    request: HeartbeatRequest
+  ): Promise<HeartbeatResponse> {
+    const { executionId } = await this.sendActivityResult(
+      request.activityToken,
+      {
+        type: WorkflowEventType.ActivityHeartbeat,
+      }
+    );
+
+    // TODO be cancelled when the activity has timed out or failed.
+
+    const execution = await this.getExecution(executionId);
+    return { cancelled: execution?.status === ExecutionStatus.IN_PROGRESS };
+  }
+
   private async sendActivityResult<
-    E extends ActivityCompleted | ActivityFailed
-  >(activityToken: string, event: Omit<E, "seq" | "duration" | "timestamp">) {
+    E extends ActivityCompleted | ActivityFailed | ActivityHeartbeat
+  >(
+    activityToken: string,
+    event: Omit<E, "seq" | "duration" | "timestamp">
+  ): Promise<ActivityTokenPayload> {
     const data = decodeActivityToken(activityToken);
     const duration =
       new Date().getTime() - new Date(data.payload.scheduledTime).getTime();
     await this.submitWorkflowTask(
       data.payload.executionId,
-      createEvent<ActivityFailed | ActivityCompleted>({
+      createEvent<ActivityCompleted | ActivityFailed | ActivityHeartbeat>({
         ...event,
         seq: data.payload.seq,
         duration,
       })
     );
+    return data.payload;
   }
 }
 

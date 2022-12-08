@@ -195,11 +195,11 @@ export function interpret<Return>(
   function callToCommand(call: CommandCall): Command[] | Command {
     if (isActivityCall(call)) {
       return {
-        // TODO: add sleep
         kind: CommandType.StartActivity,
         args: call.args,
         name: call.name,
         timeoutSeconds: call.timeoutSeconds,
+        heartbeatSeconds: call.heartbeatSeconds,
         seq: call.seq!,
       };
     } else if (isSleepUntilCall(call)) {
