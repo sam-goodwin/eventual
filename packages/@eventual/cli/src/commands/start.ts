@@ -14,6 +14,7 @@ import fs from "fs/promises";
 import getStdin from "get-stdin";
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
+import util from "util";
 
 export const start = (yargs: Argv) =>
   yargs.command(
@@ -62,13 +63,14 @@ export const start = (yargs: Argv) =>
             } else if (isActivityScheduled(ev)) {
               meta = ev.name;
             } else if (isWorkflowStarted(ev)) {
-              meta = ev.input;
+              meta = util.inspect(ev.input);
             }
             spinner.info(
               ev.timestamp + " - " + ev.type + (meta ? `- ` + meta : "")
             );
           });
           events.push(...newEvents);
+          sortEvents(events);
           const completedEvent = events.find(
             (ev) => ev.type === WorkflowEventType.WorkflowCompleted
           );
@@ -112,7 +114,17 @@ async function getNewEvents(
     //So we use this heuristic to give up, since we should at least have a start event.
     throw new Error("No events at all. Check your execution id");
   }
+  // The sort is important to ensure we don't chop off new events,
+  // as we cannot rely on the event log to be sorted.
+  // ie a later event may be be output into the history before events we have previously seen.
+  sortEvents(updatedEvents);
   return updatedEvents.slice(existingEvents.length);
+}
+
+function sortEvents(events: WorkflowEvent[]) {
+  return events.sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
 }
 
 /**
