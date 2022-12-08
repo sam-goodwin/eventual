@@ -86,7 +86,6 @@ export class AWSExecutionHistoryClient implements ExecutionHistoryClient {
    * Read an execution's events from the execution history table table
    */
   public async getEvents(executionId: string): Promise<WorkflowEvent[]> {
-    console.log(executionId);
     const output = await this.props.dynamo.send(
       new QueryCommand({
         TableName: this.props.tableName,
@@ -97,7 +96,10 @@ export class AWSExecutionHistoryClient implements ExecutionHistoryClient {
         },
       })
     );
-    return output.Items!.map((item) => JSON.parse(item.event!.S!));
+    return output.Items!.map(({ event, time }) => ({
+      ...JSON.parse(event!.S!),
+      timestamp: time!.S,
+    }));
   }
 }
 
