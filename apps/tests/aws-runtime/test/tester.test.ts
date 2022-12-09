@@ -1,8 +1,5 @@
 import { HeartbeatTimeout } from "@eventual/core";
-import {
-  eventualError,
-  eventualRuntimeTestHarness,
-} from "./runtime-test-harness.js";
+import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
 import {
   asyncWorkflow,
   heartbeatWorkflow,
@@ -54,16 +51,12 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
     { status: "fulfilled", value: 10 },
     {
       status: "rejected",
-      reason: eventualError(
-        new HeartbeatTimeout("Activity Heartbeat TimedOut")
-      ),
+      reason: new HeartbeatTimeout("Activity Heartbeat TimedOut").toJSON(),
     },
     { status: "fulfilled", value: "activity did not respond" },
     {
       status: "rejected",
-      reason: eventualError(
-        new HeartbeatTimeout("Activity Heartbeat TimedOut")
-      ),
+      reason: new HeartbeatTimeout("Activity Heartbeat TimedOut").toJSON(),
     },
   ]);
 });
