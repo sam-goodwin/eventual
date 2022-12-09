@@ -80,12 +80,6 @@ export class ServiceApi extends Construct {
    * A SSM parameter containing data about this service.
    */
   readonly serviceDataSSM: StringParameter;
-  /**
-   * A lambda function which can start a workflow.
-   *
-   * TODO: Replace with REST API.
-   */
-  public readonly startWorkflowFunction: Function;
 
   constructor(scope: Construct, id: string, props: ServiceApiProps) {
     super(scope, id);
@@ -101,25 +95,6 @@ export class ServiceApi extends Construct {
       defaultAuthorizer: new HttpIamAuthorizer(),
       defaultIntegration: new HttpLambdaIntegration("default", this.handler),
     });
-
-    this.startWorkflowFunction = new NodejsFunction(this, "StartWorkflow", {
-      entry: path.join(
-        require.resolve("@eventual/aws-runtime"),
-        "../../esm/handlers/start-workflow.js"
-      ),
-      handler: "handle",
-      ...baseNodeFnProps,
-      environment: {
-        [ENV_NAMES.TABLE_NAME]: props.table.tableName,
-        [ENV_NAMES.WORKFLOW_QUEUE_URL]: props.workflowQueue.queueUrl,
-      },
-    });
-
-    // Enable creating history to start a workflow.
-    props.table.grantReadWriteData(this.startWorkflowFunction);
-
-    // Enable sending workflow task
-    props.workflowQueue.grantSendMessages(this.startWorkflowFunction);
 
     const apiLambdaEnvironment = {
       SERVICE: JSON.stringify({
