@@ -1,8 +1,14 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
-import { ServiceType } from "@eventual/core";
-import { Arn, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
+import { AppSpec, ServiceType } from "@eventual/core";
+import {
+  Arn,
+  aws_events_targets,
+  Names,
+  RemovalPolicy,
+  Stack,
+} from "aws-cdk-lib";
 import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
-import { EventBus } from "aws-cdk-lib/aws-events";
+import { EventBus, Rule } from "aws-cdk-lib/aws-events";
 import {
   AccountRootPrincipal,
   CompositePrincipal,
@@ -41,6 +47,10 @@ export class Service extends Construct implements IGrantable {
    * Name of this Service.
    */
   public readonly serviceName: string;
+  /**
+   * The {@link AppSec} inferred from the application code.
+   */
+  readonly appSpec: AppSpec;
   /**
    * This {@link Service}'s API Gateway.
    */
@@ -104,6 +114,14 @@ export class Service extends Construct implements IGrantable {
     super(scope, id);
 
     this.serviceName = props.name ?? Names.uniqueResourceName(this, {});
+
+    this.appSpec = JSON.parse(
+      execSync(
+        `npx ts-node ${require.resolve(
+          "@eventual/compiler/bin/eventual-infer.js"
+        )} ${props.entry}`
+      ).toString("utf-8")
+    );
 
     execSync(
       `node ${require.resolve(
@@ -176,6 +194,22 @@ export class Service extends Construct implements IGrantable {
     this.eventBus = new EventBus(this, "EventBus", {
       eventBusName: this.serviceName,
     });
+    if (this.appSpec.subscriptions.length > 0) {
+      // configure a Rule to route all subscribed events to the eventHandler
+      new Rule(this, "EventBusRule", {
+        eventBus: this.eventBus,
+        eventPattern: {
+          detailType: Array.from(
+            new Set(this.appSpec.subscriptions.map((sub) => sub.name))
+          ),
+        },
+        targets: [
+          new aws_events_targets.LambdaFunction(this.eventHandler, {
+            deadLetterQueue: this.eventHandlerDLQ,
+          }),
+        ],
+      });
+    }
 
     this.api = new ServiceApi(this, "Api", {
       environment: props.environment,
