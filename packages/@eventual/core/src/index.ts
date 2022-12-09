@@ -14,6 +14,7 @@ export * from "./heartbeat.js";
 export * from "./interpret.js";
 export * from "./result.js";
 export * from "./runtime/index.js";
+export * from "./service-type.js";
 export * from "./signals.js";
 export * from "./sleep.js";
 export * from "./tasks.js";

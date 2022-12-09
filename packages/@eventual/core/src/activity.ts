@@ -38,6 +38,27 @@ export function isAsyncResult(obj: any): obj is AsyncResult {
   return !!obj && obj[AsyncTokenSymbol] === AsyncTokenSymbol;
 }
 
+/**
+ * When returned from an {@link activity}, tells the system to make the current
+ * activity async. This allows the activity to defer sending a response from the
+ * current function and instead complete the activity with {@link WorkflowClient.completeActivity}.
+ *
+ * ```ts
+ * const sqs = new SQSClient();
+ * activity("myActivity", () => {
+ *    // tells the system that the completeActivity function will be called later with a string result.
+ *    return asyncResult<string>(async (activityToken) => {
+ *       // before exiting, send the activityToken to a sqs queue to be completed later
+ *       // you could invoke any service here
+ *       await sqs.send(new SendMessageCommand({ ..., message: JSONl.stringify({ activityToken })));
+ *    });
+ * })
+ * ```
+ *
+ * @param tokenContext is a callback which provides the activityToken. The activity token is used
+ *                     to completeActivity and heartbeatActivity from outside of the
+ *                     activity.
+ */
 export async function asyncResult<Output = any>(
   tokenContext: (token: string) => Promise<void> | void
 ): Promise<AsyncResult<Output>> {

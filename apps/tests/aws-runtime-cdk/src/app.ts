@@ -28,7 +28,7 @@ const testService = new eventual.Service(stack, "testService", {
 testService.grantRead(role);
 testService.grantStartWorkflow(role);
 testService.cliRole.grantAssumeRole(role);
-role.addToPolicy(eventual.Service.listServicesPolicyStatement(stack));
+eventual.Service.grantDescribeParameters(stack, role);
 
 const pipeRole = new Role(stack, "pipeRole", {
   assumedBy: new ServicePrincipal("pipes"),

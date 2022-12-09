@@ -110,8 +110,7 @@ export function createActivityWorker({
       setActivityContext({
         activityToken: createActivityToken(
           request.executionId,
-          request.command.seq,
-          request.scheduledTime
+          request.command.seq
         ),
         executionId: request.executionId,
         scheduledTime: request.scheduledTime,
@@ -163,15 +162,19 @@ export function createActivityWorker({
 
         // TODO: do not write event here, write it in the orchestrator.
         const endTime = new Date();
-        const duration = recordAge + (endTime.getTime() - start.getTime());
-        const event = createEvent<ActivityCompleted>({
-          type: WorkflowEventType.ActivityCompleted,
-          seq: request.command.seq,
-          duration,
-          result,
-        });
+        const event = createEvent<ActivityCompleted>(
+          {
+            type: WorkflowEventType.ActivityCompleted,
+            seq: request.command.seq,
+            result,
+          },
+          endTime
+        );
 
-        await finishActivity(event);
+        await finishActivity(
+          event,
+          recordAge + (endTime.getTime() - start.getTime())
+        );
       } catch (err) {
         const [error, message] =
           err instanceof Error
@@ -184,19 +187,20 @@ export function createActivityWorker({
 
         // TODO: do not write event here, write it in the orchestrator.
         const endTime = new Date();
-        const duration = recordAge + (endTime.getTime() - start.getTime());
         const event = createEvent<ActivityFailed>(
           {
             type: WorkflowEventType.ActivityFailed,
             seq: request.command.seq,
-            duration,
             error,
             message,
           },
           endTime
         );
 
-        await finishActivity(event);
+        await finishActivity(
+          event,
+          recordAge + (endTime.getTime() - start.getTime())
+        );
 
         throw err;
       }
@@ -216,7 +220,10 @@ export function createActivityWorker({
         metrics.putMetric(ActivityMetrics.TotalDuration, duration);
       }
 
-      async function finishActivity(event: ActivityCompleted | ActivityFailed) {
+      async function finishActivity(
+        event: ActivityCompleted | ActivityFailed,
+        duration: number
+      ) {
         await timed(metrics, ActivityMetrics.EmitEventDuration, () =>
           executionHistoryClient.putEvent(request.executionId, event)
         );
@@ -225,7 +232,7 @@ export function createActivityWorker({
           workflowClient.submitWorkflowTask(request.executionId, event)
         );
 
-        logActivityCompleteMetrics(isWorkflowFailed(event), event.duration);
+        logActivityCompleteMetrics(isWorkflowFailed(event), duration);
       }
     }
   );

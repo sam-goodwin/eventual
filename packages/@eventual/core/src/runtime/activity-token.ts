@@ -1,7 +1,6 @@
 export interface ActivityTokenPayload {
   seq: number;
   executionId: string;
-  scheduledTime: string;
 }
 
 export interface ActivityTokenWrapper {
@@ -9,16 +8,11 @@ export interface ActivityTokenWrapper {
   payload: ActivityTokenPayload;
 }
 
-export function createActivityToken(
-  executionId: string,
-  seq: number,
-  scheduledTime: string
-): string {
+export function createActivityToken(executionId: string, seq: number): string {
   const tokenWrapper: ActivityTokenWrapper = {
     payload: {
       executionId,
       seq,
-      scheduledTime,
     },
     version: 1,
   };
