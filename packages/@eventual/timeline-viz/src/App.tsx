@@ -4,20 +4,42 @@ import ky from "ky";
 import { ReactNode } from "react";
 import styles from "./App.module.css";
 
+const palette = [
+  "crimson",
+  "portland-orange",
+  "persian-green",
+  "june-bud",
+  "flickr-pink",
+  "canary",
+  "light-salmon",
+];
+
 function Layout({ children }: { children: ReactNode }) {
-  const executionId = window.location.href.split("/").at(-1);
+  const path = window.location.href.split("/");
+  const service = path.at(-2);
+  const executionId = path.at(-1);
+  if (!service) {
+    return <div>No service in path!</div>;
+  }
   if (!executionId) {
-    return <div>No execution id!</div>;
+    return <div>No execution id in path!</div>;
   }
   const decodedExecutionId = Buffer.from(executionId, "base64").toString(
     "utf-8"
   );
   return (
-    <div style={{ width: "100vw", minHeight: "100vh", textAlign: "center" }}>
-      <h1>Timeline</h1>
-      <h2>{decodedExecutionId}</h2>
+    <main className={styles.layout}>
+      <div style={{ textAlign: "center" }}>
+        <h1>Execution timeline</h1>
+      </div>
+      <div className={styles.info}>
+        <h2 className={styles.subtitle}>Service</h2>
+        <div>{service}</div>
+        <h2 className={styles.subtitle}>Execution id</h2>
+        <div>{decodedExecutionId}</div>
+      </div>
       {children}
-    </div>
+    </main>
   );
 }
 
@@ -32,11 +54,12 @@ function App() {
   );
 
   if (isLoading) {
-    <Layout>
-      <div>Loading activities...</div>
-    </Layout>;
-  }
-  if (!activities) {
+    return (
+      <Layout>
+        <div>Loading activities...</div>
+      </Layout>
+    );
+  } else if (!activities?.length) {
     return (
       <Layout>
         <div>No activities</div>
@@ -46,8 +69,23 @@ function App() {
     const workflowSpan = getWorkflowSpan(activities);
     return (
       <Layout>
-        <div className={styles["timeeline-container"]}>
-          <div className={styles.scale}></div>
+        <div className={styles["timeline-container"]}>
+          <div className={styles.scale}>
+            {Array.from({ length: 11 }, (_, i) => (
+              <div
+                className={styles["marker-wrapper"]}
+                style={{
+                  left: `${i * 10}%`,
+                }}
+              >
+                <div>
+                  {Math.floor((i * workflowSpan.duration) / 10)}
+                  ms
+                </div>
+                <div className={styles.marker} />
+              </div>
+            ))}
+          </div>
           {activities.map((activity) => {
             const start = percentOffset(activity.start, workflowSpan);
             const width =
@@ -59,14 +97,15 @@ function App() {
               <div
                 className={styles.activity}
                 style={{
-                  position: "relative",
                   left: `${start}%`,
                   width: `${width.toFixed(2)}%`,
-                  height: 64,
+                  backgroundColor: `var(--${
+                    palette[Math.floor(Math.random() * palette.length)]
+                  })`,
                 }}
               >
-                <div>{activity.name}</div>
-                <div>
+                <div className={styles["activity-name"]}>{activity.name}</div>
+                <div className={styles["activity-duration"]}>
                   {isCompleted(activity.state)
                     ? `${activity.state.duration}ms`
                     : "-"}
@@ -94,7 +133,7 @@ type Completed = { status: "completed"; duration: number };
 type Failed = { status: "failed"; duration: number };
 type InProgress = { status: "inprogress" };
 type ActivityState = Completed | Failed | InProgress;
-type Timespan = { start: number; end: number };
+type Timespan = { start: number; end: number; duration: number };
 
 function isCompleted(state: ActivityState): state is Completed {
   return state.status == "completed";
@@ -105,7 +144,7 @@ function isFailed(state: ActivityState): state is Failed {
 }
 
 function percentOffset(timestamp: number, inSpan: Timespan) {
-  return (100 * (timestamp - inSpan.start)) / (inSpan.end - inSpan.start);
+  return (100 * (timestamp - inSpan.start)) / inSpan.duration;
 }
 
 function endTime(activity: TimelineActivity): number | undefined {
@@ -117,7 +156,7 @@ function endTime(activity: TimelineActivity): number | undefined {
     : undefined;
 }
 
-function getWorkflowSpan(activities: TimelineActivity[]) {
+function getWorkflowSpan(activities: TimelineActivity[]): Timespan {
   const earliestStart = activities.reduce(
     (earliest, activity) => Math.min(earliest, activity.start),
     Number.MAX_VALUE
@@ -126,5 +165,9 @@ function getWorkflowSpan(activities: TimelineActivity[]) {
     (latest, activity) => Math.max(latest, endTime(activity) ?? 0),
     0
   );
-  return { start: earliestStart, end: latestEnd };
+  return {
+    start: earliestStart,
+    end: latestEnd,
+    duration: latestEnd - earliestStart,
+  };
 }

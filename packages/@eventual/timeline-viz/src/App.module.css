@@ -1,9 +1,23 @@
 .activity {
-  background: rgb(60, 50, 200);
-  color: white;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  text-align: center;
+  position: relative;
+  place-content: center;
+  padding: 8px 0;
+  border-radius: 4px;
+}
+
+.activity div {
+  color: #333;
+}
+
+.activity-name {
+  font-weight: 600;
+}
+
+.activity-duration {
+  font-size: 0.9em;
 }
 
 .timeline-container {
@@ -15,5 +29,32 @@
 }
 
 .scale {
-  background-color: antiquewhite;
+  height: 40px;
+}
+
+.marker-wrapper {
+  position: absolute;
+  width: 1px;
+  display: flex;
+  flex-direction: column;
+  place-items: center;
+}
+
+.marker {
+  width: 1px;
+  background: white;
+  height: 4px;
+}
+
+.layout {
+  padding: 32px 64px;
+}
+
+.subtitle {
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+.info {
+  margin: 64px 0;
 }

@@ -5,12 +5,12 @@ import { createServer as createViteServer } from "vite";
 import getPort, { portNumbers } from "get-port";
 import open from "open";
 import { resolve } from "import-meta-resolve";
-import { encodeExecutionId } from "@eventual/aws-runtime";
 import {
   HistoryStateEvent,
   isActivityCompleted,
   isActivityFailed,
   isActivityScheduled,
+  encodeExecutionId,
 } from "@eventual/core";
 
 export const timeline = (yargs: Argv) =>
@@ -23,7 +23,7 @@ export const timeline = (yargs: Argv) =>
         type: "string",
         demandOption: true,
       }),
-    serviceAction(async (spinner, ky, { execution }) => {
+    serviceAction(async (spinner, ky, { execution, service }) => {
       spinner.start("Starting viz server");
       const app = express();
 
@@ -52,7 +52,7 @@ export const timeline = (yargs: Argv) =>
       app.listen(port);
       const url = `http://localhost:${port}`;
       spinner.succeed(`Visualiser running on ${url}`);
-      open(`${url}/${encodeExecutionId(execution)}`);
+      open(`${url}/${service}/${encodeExecutionId(execution)}`);
     })
   );
 

@@ -5,14 +5,22 @@
   font-weight: 400;
 
   color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  --space-cadet: #2e294eff;
+  background-color: var(--space-cadet);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
-  box-sizing: border-box;
+  --crimson: #d7263dff;
+  --portland-orange: #f46036ff;
+  --persian-green: #1b998bff;
+  --june-bud: #c5d86dff;
+  --persian-green: #1b998bff;
+  --flickr-pink: #ed217cff;
+  --canary: #fffd82ff;
+  --light-salmon: #ff9b71ff;
 }
 
 a {
@@ -26,13 +34,9 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
 }
 
 h1 {
-  font-size: 3.2em;
+  font-size: 2.2em;
   line-height: 1.1;
 }
