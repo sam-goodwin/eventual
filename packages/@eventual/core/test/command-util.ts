@@ -118,7 +118,6 @@ export function createStartConditionCommand(
 export function activityCompleted(result: any, seq: number): ActivityCompleted {
   return {
     type: WorkflowEventType.ActivityCompleted,
-    duration: 0,
     result,
     seq,
     timestamp: new Date(0).toISOString(),
@@ -140,7 +139,6 @@ export function workflowCompleted(
 export function activityFailed(error: any, seq: number): ActivityFailed {
   return {
     type: WorkflowEventType.ActivityFailed,
-    duration: 0,
     error,
     message: "message",
     seq,

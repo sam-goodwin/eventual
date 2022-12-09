@@ -32,6 +32,9 @@ export interface WorkflowClient {
   getExecution(executionId: string): Promise<Execution | undefined>;
 
   sendSignal(request: SendSignalRequest): Promise<void>;
+
+  completeActivity(request: CompleteActivityRequest): Promise<void>;
+  failActivity(request: FailActivityRequest): Promise<void>;
 }
 
 export interface SendSignalRequest {
@@ -78,4 +81,15 @@ export interface StartWorkflowResponse {
    * ID of the started workflow execution.
    */
   executionId: string;
+}
+
+export interface CompleteActivityRequest {
+  activityToken: string;
+  result: any;
+}
+
+export interface FailActivityRequest {
+  activityToken: string;
+  error: string;
+  message: string;
 }
