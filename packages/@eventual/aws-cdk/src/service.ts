@@ -221,18 +221,6 @@ export class Service extends Construct implements IGrantable {
     });
   }
 
-  private configureScheduleTimer(func: Function) {
-    this.scheduler.grantCreateSchedule(func);
-    addEnvironment(func, {
-      [ENV_NAMES.SCHEDULE_FORWARDER_ARN]:
-        this.scheduler.scheduleForwarder.functionArn,
-      [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: this.scheduler.dlq.queueArn,
-      [ENV_NAMES.SCHEDULER_GROUP]: this.scheduler.schedulerGroup.ref,
-      [ENV_NAMES.SCHEDULER_ROLE_ARN]: this.scheduler.schedulerRole.roleArn,
-      [ENV_NAMES.TIMER_QUEUE_URL]: this.scheduler.timerQueue.queueUrl,
-    });
-  }
-
   private configureRecordHistory(func: Function) {
     this.history.grantReadWrite(func);
     addEnvironment(func, {
@@ -248,14 +236,13 @@ export class Service extends Construct implements IGrantable {
 
     addEnvironment(this.activityWorker, {
       [ENV_NAMES.ACTIVITY_LOCK_TABLE_NAME]: this.locksTable.tableName,
-      [ENV_NAMES.TIMER_QUEUE_URL]: this.scheduler.timerQueue.queueUrl,
     });
   }
 
   private configureOrchestrator() {
     this.configureRecordHistory(this.orchestrator);
     this.configureScheduleActivity(this.orchestrator);
-    this.configureScheduleTimer(this.orchestrator);
+    this.scheduler.configureScheduleTimer(this.orchestrator);
     this.configureStartWorkflow(this.orchestrator);
   }
 

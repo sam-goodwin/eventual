@@ -14,7 +14,7 @@ import { CfnScheduleGroup } from "aws-cdk-lib/aws-scheduler";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import path from "path";
-import { baseNodeFnProps } from "./utils";
+import { addEnvironment, baseNodeFnProps } from "./utils";
 
 export interface SchedulerProps {
   /**
@@ -139,6 +139,20 @@ export class Scheduler extends Construct {
 
     // grants the orchestrator the ability to pass the scheduler role to the creates schedules
     schedulerRole.grantPassRole(props.orchestrator.grantPrincipal);
+  }
+
+  /**
+   * @internal
+   */
+  public configureScheduleTimer(func: Function) {
+    this.grantCreateSchedule(func);
+    addEnvironment(func, {
+      [ENV_NAMES.SCHEDULE_FORWARDER_ARN]: this.scheduleForwarder.functionArn,
+      [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: this.dlq.queueArn,
+      [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
+      [ENV_NAMES.SCHEDULER_ROLE_ARN]: this.schedulerRole.roleArn,
+      [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
+    });
   }
 
   public grantCreateSchedule(grantable: IGrantable) {
