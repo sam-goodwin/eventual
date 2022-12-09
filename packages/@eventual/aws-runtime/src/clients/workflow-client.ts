@@ -201,14 +201,11 @@ export class AWSWorkflowClient implements WorkflowClient {
     E extends ActivityCompleted | ActivityFailed
   >(activityToken: string, event: Omit<E, "seq" | "duration" | "timestamp">) {
     const data = decodeActivityToken(activityToken);
-    const duration =
-      new Date().getTime() - new Date(data.payload.scheduledTime).getTime();
     await this.submitWorkflowTask(
       data.payload.executionId,
       createEvent<ActivityFailed | ActivityCompleted>({
         ...event,
         seq: data.payload.seq,
-        duration,
       })
     );
   }
