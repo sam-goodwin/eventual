@@ -1,5 +1,6 @@
 import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
 import {
+  eventDrivenWorkflow,
   parentWorkflow,
   timedOutWorkflow,
   workflow1,
@@ -38,4 +39,6 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
     activity: true,
     workflow: true,
   });
+
+  testCompletion("event-driven", eventDrivenWorkflow, "done!");
 });

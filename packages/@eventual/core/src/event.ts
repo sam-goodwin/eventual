@@ -1,13 +1,10 @@
 import { events, eventSubscriptions, getEventClient } from "./global.js";
+import { activity } from "./index.js";
 
 /**
- * An EventPayload is an object containing the event's properties.
- *
- * All Events in Eventual are objects at their base-level.
+ * An EventPayload is the data sent as an event.
  */
-export interface EventPayload {
-  [key: string]: any;
-}
+export type EventPayload = any;
 
 /**
  * An envelope object containing the {@link event} payload associated
@@ -17,7 +14,13 @@ export interface EventPayload {
  * there are no impositions on the structure of an event.
  */
 export interface EventEnvelope<E extends EventPayload = EventPayload> {
+  /**
+   * Unique name identifying the type of the {@link event}.
+   */
   name: string;
+  /**
+   * The {@link EventPayload}.
+   */
   event: E;
 }
 
@@ -66,7 +69,14 @@ export interface Subscription {
  * define which events this {@link handler} should be invoked for.
  */
 export interface EventSubscription<E extends EventPayload = EventPayload> {
+  /**
+   * A list of {@link Subscription}s that should invoke this {@link handler}.
+   */
   subscriptions: Subscription[];
+  /**
+   * The {@link EventHandler} to invoke for any event that matches one of
+   * the {@link subscriptions}.
+   */
   handler: EventHandler<E>;
 }
 
@@ -130,8 +140,11 @@ export function event<E extends EventPayload>(name: string): Event<E> {
       });
     },
     async publish(...events) {
-      await getEventClient().publish(
-        ...events.map((event) => ({
+      // call an activity to publish events to the service's event bus
+      // we use an activity so that it is possible to also publish events
+      // from within a workflow with exactly-once semantics
+      await publishEvents(
+        events.map((event) => ({
           name,
           event,
         }))
@@ -141,3 +154,13 @@ export function event<E extends EventPayload>(name: string): Event<E> {
   events().set(name, event);
   return event;
 }
+
+/**
+ * An activity that publishes events to this service's event bus.
+ */
+export const publishEvents = activity(
+  "eventual::publishEvents",
+  async (events: EventEnvelope[]) => {
+    await getEventClient().publish(...events);
+  }
+);

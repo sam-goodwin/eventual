@@ -1,6 +1,6 @@
 import { createActivityCall } from "./calls/activity-call.js";
 import { callableActivities } from "./global.js";
-import { isActivityWorker } from "./runtime/flags.js";
+import { isOrchestratorWorker } from "./runtime/flags.js";
 
 export interface ActivityOptions {
   /**
@@ -35,16 +35,17 @@ export function activity<F extends (...args: any[]) => any>(
   ...args: [opts: ActivityOptions, handler: F] | [handler: F]
 ): ActivityFunction<F> {
   const [opts, handler] = args.length === 1 ? [undefined, args[0]] : args;
-  if (isActivityWorker()) {
-    // if we're in the eventual worker, actually run the process amd register the activity
-    // register the handler to be looked up during execution.
-    callableActivities()[activityID] = handler;
-    return ((...args) => handler(...args)) as ActivityFunction<F>;
-  } else {
-    // otherwise, return a command to invoke the activity in the worker function
+  if (isOrchestratorWorker()) {
+    // if we're in the orchestrator, return a command to invoke the activity in the worker function
     return ((...args: Parameters<ActivityFunction<F>>) => {
       return createActivityCall(activityID, args, opts?.timeoutSeconds) as any;
     }) as ActivityFunction<F>;
+  } else {
+    // otherwise we must be in an activity, event or api handler
+    // register the handler to be looked up during execution.
+    callableActivities()[activityID] = handler;
+    // calling the activity from outside the orchestrator just calls the handler
+    return ((...args) => handler(...args)) as ActivityFunction<F>;
   }
 }
 
