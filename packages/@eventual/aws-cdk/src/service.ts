@@ -4,10 +4,13 @@ import { Arn, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
 import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
 import { EventBus } from "aws-cdk-lib/aws-events";
 import {
+  AccountRootPrincipal,
+  CompositePrincipal,
   Effect,
   IGrantable,
   IPrincipal,
   PolicyStatement,
+  Role,
 } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
@@ -17,6 +20,7 @@ import {
   FifoThroughputLimit,
   Queue,
 } from "aws-cdk-lib/aws-sqs";
+import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { execSync } from "child_process";
 import { Construct } from "constructs";
 import { Scheduler } from "./scheduler";
@@ -81,6 +85,14 @@ export class Service extends Construct implements IGrantable {
    * The Resources for schedules and sleep timers.
    */
   readonly scheduler: Scheduler;
+  /**
+   * The Resources for schedules and sleep timers.
+   */
+  public readonly cliRole: Role;
+  /**
+   * A SSM parameter containing data about this service.
+   */
+  readonly serviceDataSSM: StringParameter;
 
   readonly grantPrincipal: IPrincipal;
 
@@ -169,18 +181,36 @@ export class Service extends Construct implements IGrantable {
       workflowQueue: this.workflowQueue,
     });
 
-    // grant methods on a workflow affect the activity
-    this.grantPrincipal = this.activityWorker.grantPrincipal;
+    this.grantPrincipal = new CompositePrincipal(
+      // when granting permissions to the service,
+      // propagate them to the following principals
+      this.activityWorker.grantPrincipal,
+      this.api.handler.grantPrincipal
+    );
+
+    this.cliRole = new Role(this, "EventualCliRole", {
+      roleName: `eventual-cli-${this.serviceName}`,
+      assumedBy: new AccountRootPrincipal(),
+    });
+    this.grantFilterLogEvents(this.cliRole);
+    this.api.grantExecute(this.cliRole);
+
+    this.serviceDataSSM = new StringParameter(this, "service-data", {
+      parameterName: `/eventual/services/${this.serviceName}`,
+      stringValue: JSON.stringify({
+        apiEndpoint: this.api.gateway.apiEndpoint,
+        functions: {
+          orchestrator: this.orchestrator.functionName,
+          activityWorker: this.activityWorker.functionName,
+        },
+      }),
+    });
+
+    this.serviceDataSSM.grantRead(this.cliRole);
 
     this.configureActivityWorker();
     this.configureApiHandler();
-    this.configureEventHandler();
     this.configureOrchestrator();
-  }
-
-  public grantRead(grantable: IGrantable) {
-    this.history.grantRead(grantable);
-    this.table.grantReadData(grantable);
   }
 
   /**
@@ -193,6 +223,11 @@ export class Service extends Construct implements IGrantable {
   private configurePublish(func: Function) {
     this.grantPublish(func);
     func.addEnvironment(ENV_NAMES.EVENT_BUS_ARN, this.eventBus.eventBusArn);
+  }
+
+  public grantRead(grantable: IGrantable) {
+    this.history.grantRead(grantable);
+    this.table.grantReadData(grantable);
   }
 
   public grantStartWorkflow(grantable: IGrantable) {
@@ -216,28 +251,6 @@ export class Service extends Construct implements IGrantable {
     });
   }
 
-  private grantScheduleTimer(grantable: IGrantable) {
-    this.scheduler.timerQueue.grantSendMessages(grantable);
-    grantable.grantPrincipal.addToPrincipalPolicy(
-      new PolicyStatement({
-        actions: ["scheduler:CreateSchedule"],
-        resources: [this.scheduler.scheduleGroupWildCardArn],
-      })
-    );
-  }
-
-  private configureScheduleTimer(func: Function) {
-    this.grantScheduleTimer(func);
-    addEnvironment(func, {
-      [ENV_NAMES.SCHEDULE_FORWARDER_ARN]:
-        this.scheduler.scheduleForwarder.functionArn,
-      [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: this.scheduler.dlq.queueArn,
-      [ENV_NAMES.SCHEDULER_GROUP]: this.scheduler.schedulerGroup.ref,
-      [ENV_NAMES.SCHEDULER_ROLE_ARN]: this.scheduler.schedulerRole.roleArn,
-      [ENV_NAMES.TIMER_QUEUE_URL]: this.scheduler.timerQueue.queueUrl,
-    });
-  }
-
   private configureRecordHistory(func: Function) {
     this.history.grantReadWrite(func);
     addEnvironment(func, {
@@ -247,14 +260,12 @@ export class Service extends Construct implements IGrantable {
 
   private configureActivityWorker() {
     this.configureStartWorkflow(this.activityWorker);
-    this.configurePublish(this.activityWorker);
 
     // the worker will issue an UpdateItem command to lock
     this.locksTable.grantWriteData(this.activityWorker);
 
     addEnvironment(this.activityWorker, {
       [ENV_NAMES.ACTIVITY_LOCK_TABLE_NAME]: this.locksTable.tableName,
-      [ENV_NAMES.TIMER_QUEUE_URL]: this.scheduler.timerQueue.queueUrl,
     });
   }
 
@@ -262,39 +273,61 @@ export class Service extends Construct implements IGrantable {
     this.configurePublish(this.orchestrator);
     this.configureRecordHistory(this.orchestrator);
     this.configureScheduleActivity(this.orchestrator);
-    this.configureScheduleTimer(this.orchestrator);
     this.configureStartWorkflow(this.orchestrator);
+    this.scheduler.configureScheduleTimer(this.orchestrator);
   }
 
   private configureApiHandler() {
     this.configureStartWorkflow(this.api.handler);
-    this.configurePublish(this.api.handler);
   }
 
-  private configureEventHandler() {
-    this.configureStartWorkflow(this.eventHandler);
-    this.configurePublish(this.eventHandler);
+  public grantFilterLogEvents(grantable: IGrantable) {
+    const stack = Stack.of(this);
+    grantable.grantPrincipal.addToPrincipalPolicy(
+      new PolicyStatement({
+        actions: ["logs:FilterLogEvents"],
+        effect: Effect.ALLOW,
+        resources: [
+          Arn.format(
+            {
+              service: "logs",
+              resource: "/aws/lambda",
+              resourceName: this.orchestrator.functionName,
+            },
+            stack
+          ),
+          Arn.format(
+            {
+              service: "logs",
+              resource: "/aws/lambda",
+              resourceName: this.activityWorker.functionName,
+            },
+            stack
+          ),
+        ],
+      })
+    );
   }
 
   /**
-   * Describe the policy statement allowing a client to list services from ssm
-   * @param stack Stack from which to draw arn account and region
-   * @returns PolicyStatement
+   * Allow a client to list services from ssm
    */
-  public static listServicesPolicyStatement(stack: Stack) {
-    return new PolicyStatement({
-      actions: ["ssm:DescribeParameters"],
-      effect: Effect.ALLOW,
-      resources: [
-        Arn.format(
-          {
-            service: "ssm",
-            resource: "parameter",
-            resourceName: "/eventual/services",
-          },
-          stack
-        ),
-      ],
-    });
+  public static grantDescribeParameters(stack: Stack, grantable: IGrantable) {
+    grantable.grantPrincipal.addToPrincipalPolicy(
+      new PolicyStatement({
+        actions: ["ssm:DescribeParameters"],
+        effect: Effect.ALLOW,
+        resources: [
+          Arn.format(
+            {
+              service: "ssm",
+              resource: "parameter",
+              resourceName: "/eventual/services",
+            },
+            stack
+          ),
+        ],
+      })
+    );
   }
 }

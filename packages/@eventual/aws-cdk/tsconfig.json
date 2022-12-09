@@ -5,7 +5,8 @@
     "declaration": true,
     "inlineSourceMap": true,
     "rootDir": "src",
-    "typeRoots": ["./node_modules/@types"]
+    "typeRoots": ["./node_modules/@types"],
+    "stripInternal": true
   },
   "include": ["src", "src/package.json"],
   "exclude": ["lib", "node_modules"],

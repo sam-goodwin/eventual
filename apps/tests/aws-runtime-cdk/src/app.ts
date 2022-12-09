@@ -19,8 +19,8 @@ const testService = new eventual.Service(stack, "testService", {
 
 testService.grantRead(role);
 testService.grantStartWorkflow(role);
-testService.api.cliRole.grantAssumeRole(role);
-role.addToPolicy(eventual.Service.listServicesPolicyStatement(stack));
+testService.cliRole.grantAssumeRole(role);
+eventual.Service.grantDescribeParameters(stack, role);
 
 new CfnOutput(stack, "roleArn", {
   value: role.roleArn,

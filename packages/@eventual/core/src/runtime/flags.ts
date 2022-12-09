@@ -1,9 +1,4 @@
-export enum ServiceType {
-  ActivityWorker = "ActivityWorker",
-  ApiHandler = "ApiHandler",
-  EventHandler = "EventHandler",
-  OrchestratorWorker = "OrchestratorWorker",
-}
+import { ServiceType } from "../service-type.js";
 
 export const SERVICE_TYPE_FLAG = "EVENTUAL_SERVICE_TYPE";
 

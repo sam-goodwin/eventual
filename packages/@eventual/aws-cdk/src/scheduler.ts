@@ -1,7 +1,12 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { ArnFormat, Stack } from "aws-cdk-lib";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
-import { PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
+import {
+  IGrantable,
+  PolicyStatement,
+  Role,
+  ServicePrincipal,
+} from "aws-cdk-lib/aws-iam";
 import { Function, IFunction } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
@@ -9,7 +14,7 @@ import { CfnScheduleGroup } from "aws-cdk-lib/aws-scheduler";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import path from "path";
-import { baseNodeFnProps } from "./utils";
+import { addEnvironment, baseNodeFnProps } from "./utils";
 
 export interface SchedulerProps {
   /**
@@ -60,15 +65,6 @@ export class Scheduler extends Construct {
    * Timers - When the EventBridge scheduler fails to invoke the Schedule Forwarder Lambda.
    */
   public readonly dlq: Queue;
-
-  public get scheduleGroupWildCardArn() {
-    return Stack.of(this).formatArn({
-      service: "scheduler",
-      resource: "schedule",
-      arnFormat: ArnFormat.SLASH_RESOURCE_NAME,
-      resourceName: `${this.schedulerGroup.ref}/*`,
-    });
-  }
 
   constructor(scope: Construct, id: string, props: SchedulerProps) {
     super(scope, id);
@@ -132,13 +128,7 @@ export class Scheduler extends Construct {
 
     this.timerQueue.grantSendMessages(this.scheduleForwarder);
 
-    // grants the orchestrator the permission to create new schedules for sleep.
-    this.scheduleForwarder.addToRolePolicy(
-      new PolicyStatement({
-        actions: ["scheduler:DeleteSchedule"],
-        resources: [this.scheduleGroupWildCardArn],
-      })
-    );
+    this.grantDeleteSchedule(this.scheduleForwarder);
 
     props.table.grantReadWriteData(this.timerHandler);
 
@@ -149,5 +139,48 @@ export class Scheduler extends Construct {
 
     // grants the orchestrator the ability to pass the scheduler role to the creates schedules
     schedulerRole.grantPassRole(props.orchestrator.grantPrincipal);
+  }
+
+  /**
+   * @internal
+   */
+  public configureScheduleTimer(func: Function) {
+    this.grantCreateSchedule(func);
+    addEnvironment(func, {
+      [ENV_NAMES.SCHEDULE_FORWARDER_ARN]: this.scheduleForwarder.functionArn,
+      [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: this.dlq.queueArn,
+      [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
+      [ENV_NAMES.SCHEDULER_ROLE_ARN]: this.schedulerRole.roleArn,
+      [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
+    });
+  }
+
+  public grantCreateSchedule(grantable: IGrantable) {
+    this.timerQueue.grantSendMessages(grantable);
+    grantable.grantPrincipal.addToPrincipalPolicy(
+      new PolicyStatement({
+        actions: ["scheduler:CreateSchedule"],
+        resources: [this.scheduleGroupWildCardArn],
+      })
+    );
+  }
+
+  public grantDeleteSchedule(grantable: IGrantable) {
+    this.timerQueue.grantSendMessages(grantable);
+    grantable.grantPrincipal.addToPrincipalPolicy(
+      new PolicyStatement({
+        actions: ["scheduler:DeleteSchedule"],
+        resources: [this.scheduleGroupWildCardArn],
+      })
+    );
+  }
+
+  private get scheduleGroupWildCardArn() {
+    return Stack.of(this).formatArn({
+      service: "scheduler",
+      resource: "schedule",
+      arnFormat: ArnFormat.SLASH_RESOURCE_NAME,
+      resourceName: `${this.schedulerGroup.ref}/*`,
+    });
   }
 }
