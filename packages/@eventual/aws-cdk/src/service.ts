@@ -54,6 +54,10 @@ export class Service extends Construct implements IGrantable {
    */
   public readonly eventHandler: Function;
   /**
+   * A SQS Queue to collect events that failed to be handled.
+   */
+  public readonly eventHandlerDLQ: Queue;
+  /**
    * S3 bucket that contains events necessary to replay a workflow execution.
    *
    * The orchestrator reads from history at the start and updates it at the end.
@@ -107,14 +111,18 @@ export class Service extends Construct implements IGrantable {
       )} ${outDir(this)} ${props.entry}`
     ).toString("utf-8");
 
+    this.eventHandlerDLQ = new Queue(this, "EventHandlerDLQ");
+
     this.eventHandler = new ServiceFunction(this, "EventHandler", {
       serviceType: ServiceType.EventHandler,
-      memorySize: 512,
+      deadLetterQueueEnabled: true,
+      deadLetterQueue: this.eventHandlerDLQ,
+      retryAttempts: 2,
+      environment: props.environment,
     });
 
     this.history = new Bucket(this, "History", {
-      // TODO: remove after testing
-      removalPolicy: RemovalPolicy.DESTROY,
+      removalPolicy: RemovalPolicy.RETAIN,
     });
 
     this.workflowQueue = new Queue(this, "WorkflowQueue", {
@@ -144,7 +152,6 @@ export class Service extends Construct implements IGrantable {
 
     this.activityWorker = new ServiceFunction(this, "Worker", {
       serviceType: ServiceType.ActivityWorker,
-      memorySize: 512,
       environment: props.environment,
       // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
       retryAttempts: 0,
@@ -171,8 +178,8 @@ export class Service extends Construct implements IGrantable {
     });
 
     this.api = new ServiceApi(this, "Api", {
-      serviceName: this.serviceName,
       environment: props.environment,
+      serviceName: this.serviceName,
       activityWorker: this.activityWorker,
       history: this.history,
       orchestrator: this.orchestrator,
@@ -211,6 +218,7 @@ export class Service extends Construct implements IGrantable {
     this.configureActivityWorker();
     this.configureApiHandler();
     this.configureOrchestrator();
+    this.configureEventHandler();
   }
 
   /**
@@ -260,6 +268,7 @@ export class Service extends Construct implements IGrantable {
 
   private configureActivityWorker() {
     this.configureStartWorkflow(this.activityWorker);
+    this.configurePublish(this.activityWorker);
 
     // the worker will issue an UpdateItem command to lock
     this.locksTable.grantWriteData(this.activityWorker);
@@ -279,6 +288,12 @@ export class Service extends Construct implements IGrantable {
 
   private configureApiHandler() {
     this.configureStartWorkflow(this.api.handler);
+    this.configurePublish(this.api.handler);
+  }
+
+  private configureEventHandler() {
+    this.configureStartWorkflow(this.eventHandler);
+    this.configurePublish(this.eventHandler);
   }
 
   public grantFilterLogEvents(grantable: IGrantable) {
