@@ -334,6 +334,7 @@ importers:
   packages/@eventual/compiler:
     specifiers:
       '@eventual/aws-runtime': workspace:^
+      '@eventual/core': workspace:^
       '@swc/core': ^1.2.245
       '@types/jest': ^29
       '@types/minimatch': 5.1.2
@@ -346,6 +347,7 @@ importers:
       typescript: ^4.9.3
     dependencies:
       '@eventual/aws-runtime': link:../aws-runtime
+      '@eventual/core': link:../core
       '@swc/core': 1.3.19
       esbuild: 0.15.14
       esbuild-plugin-alias-path: 1.1.1_esbuild@0.15.14
