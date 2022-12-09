@@ -11,6 +11,8 @@ import {
   isActivityFailed,
   isActivityScheduled,
   encodeExecutionId,
+  isWorkflowStarted,
+  WorkflowStarted,
 } from "@eventual/core";
 
 export const timeline = (yargs: Argv) =>
@@ -28,11 +30,16 @@ export const timeline = (yargs: Argv) =>
       const app = express();
 
       app.use("/api/timeline/:execution", async (req, res) => {
-        const events = await ky
-          .get(`executions/${req.params.execution}}/workflow-history`)
-          .json<HistoryStateEvent[]>();
-        const timeline = aggregateTimeline(events);
-        res.send(timeline);
+        //We forward errors onto our handler for the ui to deal with
+        try {
+          const events = await ky
+            .get(`executions/${req.params.execution}}/workflow-history`)
+            .json<HistoryStateEvent[]>();
+          const timeline = aggregateEvents(events);
+          res.json(timeline);
+        } catch (e: any) {
+          res.status(500).json({ error: e.toString() });
+        }
       });
 
       const timelineVizPath = new URL(
@@ -67,10 +74,16 @@ interface TimelineActivity {
     | { status: "inprogress" };
 }
 
-function aggregateTimeline(events: HistoryStateEvent[]): TimelineActivity[] {
+function aggregateEvents(events: HistoryStateEvent[]): {
+  start: WorkflowStarted;
+  activities: TimelineActivity[];
+} {
+  let start: WorkflowStarted | undefined;
   const activities: Record<number, TimelineActivity> = [];
   events.forEach((event) => {
-    if (isActivityScheduled(event)) {
+    if (isWorkflowStarted(event)) {
+      start = event;
+    } else if (isActivityScheduled(event)) {
       activities[event.seq] = {
         type: "activity",
         name: event.name,
@@ -104,5 +117,8 @@ function aggregateTimeline(events: HistoryStateEvent[]): TimelineActivity[] {
       }
     }
   });
-  return Object.values(activities);
+  if (!start) {
+    throw new Error("Failed to find WorkflowStarted event!");
+  }
+  return { start, activities: Object.values(activities) };
 }

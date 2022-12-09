@@ -1,51 +1,3 @@
-.activity {
-  display: flex;
-  flex-direction: column;
-  text-align: center;
-  position: relative;
-  place-content: center;
-  padding: 8px 0;
-  border-radius: 4px;
-}
-
-.activity div {
-  color: #333;
-}
-
-.activity-name {
-  font-weight: 600;
-}
-
-.activity-duration {
-  font-size: 0.9em;
-}
-
-.timeline-container {
-  position: relative;
-  margin: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.scale {
-  height: 40px;
-}
-
-.marker-wrapper {
-  position: absolute;
-  width: 1px;
-  display: flex;
-  flex-direction: column;
-  place-items: center;
-}
-
-.marker {
-  width: 1px;
-  background: white;
-  height: 4px;
-}
-
 .layout {
   padding: 32px 64px;
 }
@@ -53,8 +5,21 @@
 .subtitle {
   font-size: 1.1em;
   font-weight: 600;
+  margin: 1em 0 0 0;
 }
 
 .info {
   margin: 64px 0;
+}
+
+.input {
+  margin: 0;
+  font-size: 0.9em;
+}
+
+.activity-list-float {
+  margin-top: 32px;
+  border-radius: 4px;
+  background-color: rgb(26, 22, 51, 0.8);
+  backdrop-filter: blur(4px);
 }
