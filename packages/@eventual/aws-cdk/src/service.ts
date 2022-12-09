@@ -302,24 +302,24 @@ export class Service extends Construct implements IGrantable {
   }
 
   /**
-   * Describe the policy statement allowing a client to list services from ssm
-   * @param stack Stack from which to draw arn account and region
-   * @returns PolicyStatement
+   * Allow a client to list services from ssm
    */
-  public static listServicesPolicyStatement(stack: Stack) {
-    return new PolicyStatement({
-      actions: ["ssm:DescribeParameters"],
-      effect: Effect.ALLOW,
-      resources: [
-        Arn.format(
-          {
-            service: "ssm",
-            resource: "parameter",
-            resourceName: "/eventual/services",
-          },
-          stack
-        ),
-      ],
-    });
+  public static grantDescribeParameters(stack: Stack, grantable: IGrantable) {
+    grantable.grantPrincipal.addToPrincipalPolicy(
+      new PolicyStatement({
+        actions: ["ssm:DescribeParameters"],
+        effect: Effect.ALLOW,
+        resources: [
+          Arn.format(
+            {
+              service: "ssm",
+              resource: "parameter",
+              resourceName: "/eventual/services",
+            },
+            stack
+          ),
+        ],
+      })
+    );
   }
 }
