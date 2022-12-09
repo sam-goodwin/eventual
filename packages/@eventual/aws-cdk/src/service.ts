@@ -221,18 +221,8 @@ export class Service extends Construct implements IGrantable {
     });
   }
 
-  private grantScheduleTimer(grantable: IGrantable) {
-    this.scheduler.timerQueue.grantSendMessages(grantable);
-    grantable.grantPrincipal.addToPrincipalPolicy(
-      new PolicyStatement({
-        actions: ["scheduler:CreateSchedule"],
-        resources: [this.scheduler.scheduleGroupWildCardArn],
-      })
-    );
-  }
-
   private configureScheduleTimer(func: Function) {
-    this.grantScheduleTimer(func);
+    this.scheduler.grantCreateSchedule(func);
     addEnvironment(func, {
       [ENV_NAMES.SCHEDULE_FORWARDER_ARN]:
         this.scheduler.scheduleForwarder.functionArn,
