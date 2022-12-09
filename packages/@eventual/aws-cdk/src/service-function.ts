@@ -21,6 +21,7 @@ export class ServiceFunction extends Function {
     super(scope, id, {
       runtime: Runtime.NODEJS_16_X,
       architecture: Architecture.ARM_64,
+      memorySize: 512,
       ...props,
       code: Code.fromAsset(outDir(scope, props.serviceType)),
       handler: props.handler ?? "index.default",
