@@ -27,10 +27,10 @@ import {
   createEvent,
   HeartbeatRequest,
   HeartbeatResponse,
-  ActivityHeartbeat,
   ActivityTokenPayload,
 } from "@eventual/core";
 import { ulid } from "ulidx";
+import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
 import { AWSExecutionHistoryClient } from "./execution-history-client.js";
 
 export interface AWSWorkflowClientProps {
@@ -39,6 +39,7 @@ export interface AWSWorkflowClientProps {
   readonly sqs: SQSClient;
   readonly workflowQueueUrl: string;
   readonly executionHistory: AWSExecutionHistoryClient;
+  readonly activityRuntimeClient: AWSActivityRuntimeClient;
 }
 
 export class AWSWorkflowClient implements WorkflowClient {
@@ -204,21 +205,23 @@ export class AWSWorkflowClient implements WorkflowClient {
   public async heartbeatActivity(
     request: HeartbeatRequest
   ): Promise<HeartbeatResponse> {
-    const { executionId } = await this.sendActivityResult(
-      request.activityToken,
-      {
-        type: WorkflowEventType.ActivityHeartbeat,
-      }
+    const data = decodeActivityToken(request.activityToken);
+
+    const execution = await this.getExecution(data.payload.executionId);
+
+    if (execution?.status !== ExecutionStatus.IN_PROGRESS) {
+      return { cancelled: true };
+    }
+
+    return await this.props.activityRuntimeClient.heartbeatActivity(
+      data.payload.executionId,
+      data.payload.seq,
+      new Date().toISOString()
     );
-
-    // TODO be cancelled when the activity has timed out or failed.
-
-    const execution = await this.getExecution(executionId);
-    return { cancelled: execution?.status === ExecutionStatus.IN_PROGRESS };
   }
 
   private async sendActivityResult<
-    E extends ActivityCompleted | ActivityFailed | ActivityHeartbeat
+    E extends ActivityCompleted | ActivityFailed
   >(
     activityToken: string,
     event: Omit<E, "seq" | "duration" | "timestamp">
@@ -228,7 +231,7 @@ export class AWSWorkflowClient implements WorkflowClient {
       new Date().getTime() - new Date(data.payload.scheduledTime).getTime();
     await this.submitWorkflowTask(
       data.payload.executionId,
-      createEvent<ActivityCompleted | ActivityFailed | ActivityHeartbeat>({
+      createEvent<ActivityCompleted | ActivityFailed>({
         ...event,
         seq: data.payload.seq,
         duration,

@@ -26,7 +26,6 @@ import {
   WorkflowEventType,
   WorkflowTimedOut,
   ActivityTimedOut,
-  ActivityHeartbeat,
   ActivityHeartbeatTimedOut,
 } from "../src/events.js";
 import { ulid } from "ulidx";
@@ -57,7 +56,7 @@ export function createSleepForCommand(
 export function createScheduledActivityCommand(
   name: string,
   args: any[],
-  seq: number
+  seq: number,
 ): ScheduleActivityCommand {
   return {
     kind: CommandType.StartActivity,
@@ -177,18 +176,6 @@ export function activityScheduled(
     name,
     seq,
     timestamp: new Date(0).toISOString(),
-  };
-}
-
-export function activityHeartbeat(
-  seq: number,
-  /** Relative seconds from 0 */
-  seconds: number
-): ActivityHeartbeat {
-  return {
-    type: WorkflowEventType.ActivityHeartbeat,
-    seq,
-    timestamp: new Date(seconds * 1000).toISOString(),
   };
 }
 

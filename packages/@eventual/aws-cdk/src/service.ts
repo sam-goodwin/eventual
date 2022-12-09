@@ -90,9 +90,9 @@ export class Service extends Construct implements IGrantable {
    */
   public readonly startWorkflowFunction: IFunction;
   /**
-   * A dynamo table used to lock/claim activities to enforce exactly once execution.
+   * A dynamo table used to claim, heartbeat, and cancel activities.
    */
-  public readonly locksTable: ITable;
+  public readonly activitiesTable: ITable;
   /**
    * The lambda function which runs the user's Activities.
    */
@@ -186,7 +186,7 @@ export class Service extends Construct implements IGrantable {
       }
     );
 
-    this.locksTable = new Table(this, "Locks", {
+    this.activitiesTable = new Table(this, "Locks", {
       billingMode: BillingMode.PAY_PER_REQUEST,
       partitionKey: {
         name: "pk",
@@ -212,7 +212,7 @@ export class Service extends Construct implements IGrantable {
         NODE_OPTIONS: "--enable-source-maps",
         [ENV_NAMES.TABLE_NAME]: this.table.tableName,
         [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
-        [ENV_NAMES.ACTIVITY_LOCK_TABLE_NAME]: this.locksTable.tableName,
+        [ENV_NAMES.ACTIVITY_TABLE_NAME]: this.activitiesTable.tableName,
         [CoreEnvFlags.ACTIVITY_WORKER_FLAG]: "1",
         ...(props.environment ?? {}),
       },
@@ -290,6 +290,7 @@ export class Service extends Construct implements IGrantable {
       environment: {
         NODE_OPTIONS: "--enable-source-maps",
         [CoreEnvFlags.ORCHESTRATOR_FLAG]: "1",
+        [ENV_NAMES.ACTIVITY_TABLE_NAME]: this.activitiesTable.tableName,
         ...componentsEnv,
       },
       events: [
@@ -347,7 +348,7 @@ export class Service extends Construct implements IGrantable {
     this.activityWorker.grantInvoke(this.orchestrator);
 
     // the worker will issue an UpdateItem command to lock
-    this.locksTable.grantWriteData(this.activityWorker);
+    this.activitiesTable.grantWriteData(this.activityWorker);
 
     // Enable creating history to start a workflow.
     this.table.grantReadWriteData(this.startWorkflowFunction);
@@ -560,6 +561,10 @@ export class Service extends Construct implements IGrantable {
 
   public grantFinishActivity(grantable: IGrantable) {
     this.workflowQueue.grantSendMessages(grantable);
+  }
+
+  public grantHeartbeatActivity(grantable: IGrantable) {
+    this.activitiesTable.grantReadWriteData(grantable);
   }
 
   public grantRead(grantable: IGrantable) {

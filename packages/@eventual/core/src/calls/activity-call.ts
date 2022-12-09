@@ -1,4 +1,3 @@
-import { ActivityHeartbeat } from "../events.js";
 import {
   EventualKind,
   EventualBase,
@@ -17,8 +16,6 @@ export interface ActivityCall<T = any>
   seq?: number;
   name: string;
   args: any[];
-  // the last heartbeat event
-  lastHeartbeat?: ActivityHeartbeat;
   heartbeatSeconds?: number;
   timeoutSeconds?: number;
 }

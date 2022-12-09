@@ -45,6 +45,7 @@ const asyncWriterFunction = new NodejsFunction(stack, "asyncWriterFunction", {
   handler: "handle",
   environment: {
     TEST_TABLE_NAME: testService.table.tableName,
+    TEST_ACTIVITY_TABLE_NAME: testService.activitiesTable.tableName,
     TEST_QUEUE_URL: testService.workflowQueue.queueUrl,
   },
 });
@@ -80,4 +81,9 @@ new CfnOutput(stack, "workflowQueueUrl", {
 new CfnOutput(stack, "serviceTableName", {
   value: testService.table.tableName,
   exportName: "TableName",
+});
+
+new CfnOutput(stack, "activityTableName", {
+  value: testService.activitiesTable.tableName,
+  exportName: "ActivityTableName",
 });

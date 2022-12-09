@@ -18,7 +18,6 @@ export interface HistoryEventBase extends Omit<BaseEvent, "id"> {
 export enum WorkflowEventType {
   ActivityCompleted = "ActivityCompleted",
   ActivityFailed = "ActivityFailed",
-  ActivityHeartbeat = "ActivityHeartbeat",
   ActivityHeartbeatTimedOut = "ActivityHeartbeatTimedOut",
   ActivityScheduled = "ActivityScheduled",
   ActivityTimedOut = "ActivityTimedOut",
@@ -77,7 +76,6 @@ export type FailedEvent =
  * Events used by the workflow to replay an execution.
  */
 export type HistoryEvent =
-  | ActivityHeartbeat
   | CompletedEvent
   | FailedEvent
   | ScheduledEvent
@@ -144,10 +142,6 @@ export interface ActivityFailed extends HistoryEventBase {
   message: string;
 }
 
-export interface ActivityHeartbeat extends HistoryEventBase {
-  type: WorkflowEventType.ActivityHeartbeat;
-}
-
 export interface ActivityHeartbeatTimedOut extends HistoryEventBase {
   type: WorkflowEventType.ActivityHeartbeatTimedOut;
 }
@@ -212,12 +206,6 @@ export function isActivityFailed(
   event: WorkflowEvent
 ): event is ActivityFailed {
   return event.type === WorkflowEventType.ActivityFailed;
-}
-
-export function isActivityHeartbeat(
-  event: WorkflowEvent
-): event is ActivityHeartbeat {
-  return event.type === WorkflowEventType.ActivityHeartbeat;
 }
 
 export function isActivityHeartbeatTimedOut(

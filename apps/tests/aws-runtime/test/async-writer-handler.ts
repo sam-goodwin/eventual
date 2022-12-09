@@ -1,4 +1,5 @@
 import {
+  AWSActivityRuntimeClient,
   AWSExecutionHistoryClient,
   AWSWorkflowClient,
 } from "@eventual/aws-runtime";
@@ -17,6 +18,10 @@ const workflowClient = new AWSWorkflowClient({
   }),
   tableName: process.env.TEST_TABLE_NAME || "",
   workflowQueueUrl: process.env.TEST_QUEUE_URL || "",
+  activityRuntimeClient: new AWSActivityRuntimeClient({
+    activityTableName: process.env.TEST_ACTIVITY_TABLE_NAME || "",
+    dynamo,
+  }),
 });
 
 export interface AsyncWriterTestEvent {

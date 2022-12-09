@@ -83,7 +83,7 @@ export function createActivityWorker({
         !(await timed(metrics, ActivityMetrics.ClaimDuration, () =>
           activityRuntimeClient.requestExecutionActivityClaim(
             request.executionId,
-            request.command,
+            request.command.seq,
             request.retry
           )
         ))

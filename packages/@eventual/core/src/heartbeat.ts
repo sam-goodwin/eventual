@@ -1,9 +1,6 @@
-import {
-  getActivityContext,
-  getWorkflowClient,
-  HeartbeatResponse,
-  isActivityWorker,
-} from "./index";
+import { getActivityContext, getWorkflowClient } from "./global.js";
+import { HeartbeatResponse } from "./runtime/clients/workflow-client.js";
+import { isActivityWorker } from "./runtime/flags.js";
 
 /**
  * Sends a heartbeat for the current activity to it's calling workflow execution.

@@ -6,7 +6,7 @@ import {
   EventualCallCollector,
 } from "./eventual.js";
 import { isAwaitAll } from "./await-all.js";
-import { ActivityCall, isActivityCall } from "./calls/activity-call.js";
+import { isActivityCall } from "./calls/activity-call.js";
 import {
   DeterminismError,
   HeartbeatTimeout,
@@ -35,8 +35,6 @@ import {
   isWorkflowTimedOut,
   isActivityTimedOut,
   isActivityHeartbeatTimedOut,
-  ActivityHeartbeatTimedOut,
-  isActivityHeartbeat,
 } from "./events.js";
 import {
   Result,
@@ -108,13 +106,7 @@ export function interpret<Return>(
   let emittedEvents = iterator(history, isScheduledEvent);
   let resultEvents = iterator(
     history,
-    or(
-      isCompletedEvent,
-      isFailedEvent,
-      isSignalReceived,
-      isWorkflowTimedOut,
-      isActivityHeartbeat
-    )
+    or(isCompletedEvent, isFailedEvent, isSignalReceived, isWorkflowTimedOut)
   );
 
   /**
@@ -145,11 +137,6 @@ export function interpret<Return>(
             // will stop the workflow execution as the workflow has failed.
             mainChain.result = Result.failed(new Timeout("Workflow timed out"));
             return;
-          } else if (isActivityHeartbeat(resultEvent)) {
-            const activity = callTable[resultEvent.seq];
-            if (isActivityCall(activity)) {
-              activity.lastHeartbeat = resultEvent;
-            }
           } else {
             commitCompletionEvent(resultEvent);
           }
@@ -522,20 +509,6 @@ export function interpret<Return>(
     if (call.result && !isPending(call.result)) {
       return;
     }
-    if (isActivityHeartbeatTimedOut(event)) {
-      if (isActivityCall(call)) {
-        if (isHeartbeatElapsed(call, event)) {
-          call.result = Result.failed(
-            new HeartbeatTimeout(
-              "Activity Heartbeat TimedOut",
-              event.timestamp,
-              call.lastHeartbeat?.timestamp
-            )
-          );
-        }
-      }
-      return;
-    }
     call.result = isCompletedEvent(event)
       ? Result.resolved(event.result)
       : isSleepCompleted(event)
@@ -547,31 +520,10 @@ export function interpret<Return>(
         Result.resolved(false)
       : isActivityTimedOut(event)
       ? Result.failed(new Timeout("Activity Timed Out"))
+      : isActivityHeartbeatTimedOut(event)
+      ? Result.failed(new HeartbeatTimeout("Activity Heartbeat TimedOut"))
       : Result.failed(event.error);
   }
-}
-
-/**
- * Returns true when
- * 1. a heartbeat is configured
- * 2. a heartbeat timeout event was received AND
- *    a. than heartbeatSeconds from the last heartbeat OR
- *    b. no heartbeat has ever been received
- */
-function isHeartbeatElapsed(
-  call: ActivityCall,
-  heartbeatTimeout: ActivityHeartbeatTimedOut
-) {
-  return (
-    // if there is no heartbeat configured, ignore.
-    call.heartbeatSeconds &&
-    // if there has never been a heartbeat or the last heartbeat was longer than
-    // heartbeat seconds ago. return true.
-    (!call.lastHeartbeat ||
-      new Date(heartbeatTimeout.timestamp).getTime() -
-        new Date(call.lastHeartbeat.timestamp).getTime() >
-        call.heartbeatSeconds * 1000)
-  );
 }
 
 function isCorresponding(event: ScheduledEvent, call: CommandCall) {

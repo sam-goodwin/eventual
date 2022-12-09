@@ -1,6 +1,7 @@
 import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
 import {
   asyncWorkflow,
+  heartbeatWorkflow,
   parentWorkflow,
   timedOutWorkflow,
   workflow1,
@@ -43,5 +44,26 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
   testCompletion("asyncActivities", asyncWorkflow, [
     "hello from the async writer!",
     "AsyncWriterError",
+  ]);
+
+  testCompletion("heartbeat", heartbeatWorkflow, 5, [
+    { status: "fulfilled", value: 5 },
+    {
+      status: "rejected",
+      reason: {
+        heartbeatTimeoutTimestamp: expect.stringMatching(
+          /\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+/
+        ),
+      },
+    },
+    { status: "fulfilled", value: "activity did not respond" },
+    {
+      status: "rejected",
+      reason: {
+        heartbeatTimeoutTimestamp: expect.stringMatching(
+          /\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+/
+        ),
+      },
+    },
   ]);
 });

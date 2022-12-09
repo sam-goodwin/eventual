@@ -220,7 +220,9 @@ export function createOrchestrator({
           metrics.setProperty(OrchestratorMetrics.TimeoutStarted, 1);
           await timed(metrics, OrchestratorMetrics.TimeoutStartedDuration, () =>
             timerClient.scheduleEvent<WorkflowTimedOut>({
-              untilTime: newWorkflowStart.timeoutTime!,
+              schedule: {
+                untilTime: newWorkflowStart.timeoutTime!,
+              },
               event: createEvent<WorkflowTimedOut>({
                 type: WorkflowEventType.WorkflowTimedOut,
               }),
@@ -503,9 +505,11 @@ export function createOrchestrator({
                     seq: command.seq,
                   }),
                   executionId,
-                  untilTime: new Date(
-                    start.getTime() + command.timeoutSeconds * 1000
-                  ).toISOString(),
+                  schedule: {
+                    untilTime: new Date(
+                      start.getTime() + command.timeoutSeconds * 1000
+                    ).toISOString(),
+                  },
                 });
               }
 

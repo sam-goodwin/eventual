@@ -2,15 +2,6 @@ import { createActivityCall } from "./calls/activity-call.js";
 import { callableActivities, getActivityContext } from "./global.js";
 import { isActivityWorker, isOrchestratorWorker } from "./runtime/flags.js";
 
-export interface ActivityOptions {
-  /**
-   * How long the workflow will wait for the activity to complete or fail.
-   *
-   * @default - workflow will run forever.
-   */
-  timeoutSeconds?: number;
-}
-
 export interface ActivityFunction<
   Arguments extends any[],
   Output extends any = any
@@ -79,6 +70,17 @@ export interface ActivityOptions {
    * @default - workflow will run forever.
    */
   timeoutSeconds?: number;
+  /**
+   * For long running activities, it is suggested that they report back that they
+   * are still in progress to avoid waiting forever or until a long timeout when
+   * something goes wrong.
+   *
+   * When set to a positive number, the activity must call {@link heartbeat} or
+   * {@link WorkflowClient.heartbeatActivity} at least every heartbeatSeconds.
+   *
+   * If it fails to do so, the workflow will cancel the activity and throw an error.
+   */
+  heartbeatSeconds?: number;
 }
 
 /**
@@ -114,7 +116,7 @@ export function activity<Arguments extends any[], Output extends any = any>(
   } else if (isOrchestratorWorker()) {
     // otherwise, return a command to invoke the activity in the worker function
     return ((...args: Parameters<ActivityFunction<Arguments, Output>>) => {
-      return createActivityCall(activityID, args, opts?.timeoutSeconds) as any;
+      return createActivityCall(activityID, args, opts?.timeoutSeconds, opts?.heartbeatSeconds) as any;
     }) as ActivityFunction<Arguments, Output>;
   }
   return undefined as any;

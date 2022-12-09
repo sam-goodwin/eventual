@@ -36,7 +36,6 @@ import {
   WorkflowEventType,
   WorkflowRuntimeClient,
   ScheduleWorkflowRequest,
-  ActivityHeartbeatTimedOut,
 } from "@eventual/core";
 import { AWSTimerClient } from "./timer-client.js";
 import {
@@ -216,25 +215,28 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
 
     const timeoutStarter = command.timeoutSeconds
       ? await this.props.timerClient.scheduleEvent<ActivityTimedOut>({
-          baseTime,
+          schedule: {
+            baseTime,
+            timerSeconds: command.timeoutSeconds,
+          },
           event: {
             type: WorkflowEventType.ActivityTimedOut,
             seq: command.seq,
           },
           executionId,
-          timerSeconds: command.timeoutSeconds,
         })
       : undefined;
 
     const heartbeatTimeoutStarter = command.heartbeatSeconds
-      ? await this.props.timerClient.scheduleEvent<ActivityHeartbeatTimedOut>({
-          baseTime,
-          event: {
-            type: WorkflowEventType.ActivityHeartbeatTimedOut,
-            seq: command.seq,
-          },
+      ? await this.props.timerClient.startTimer({
+          type: TimerRequestType.ActivityHeartbeatMonitor,
+          activitySeq: command.seq,
           executionId,
-          timerSeconds: command.heartbeatSeconds,
+          heartbeatSeconds: command.heartbeatSeconds,
+          schedule: {
+            timerSeconds: command.heartbeatSeconds,
+            baseTime,
+          },
         })
       : undefined;
 
@@ -299,7 +301,9 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
     await this.props.timerClient.startTimer({
       type: TimerRequestType.ScheduleEvent,
       event: sleepCompletedEvent,
-      untilTime: untilTimeIso,
+      schedule: {
+        untilTime: untilTimeIso,
+      },
       executionId,
     });
 
@@ -322,8 +326,10 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
           seq: command.seq,
           type: WorkflowEventType.ExpectSignalTimedOut,
         },
-        timerSeconds: command.timeoutSeconds,
-        baseTime,
+        schedule: {
+          timerSeconds: command.timeoutSeconds,
+          baseTime,
+        },
         executionId,
       });
     }

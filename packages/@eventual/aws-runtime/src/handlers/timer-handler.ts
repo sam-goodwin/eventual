@@ -1,9 +1,17 @@
 import { SQSHandler } from "aws-lambda";
 import { promiseAllSettledPartitioned } from "../utils.js";
-import { createWorkflowClient } from "../clients/create.js";
+import {
+  createActivityRuntimeClient,
+  createTimerClient,
+  createWorkflowClient,
+} from "../clients/create.js";
 import { createTimerHandler, TimerRequest } from "@eventual/core";
 
-const handleTimer = createTimerHandler(createWorkflowClient());
+const handleTimer = createTimerHandler({
+  workflowClient: createWorkflowClient(),
+  activityRuntimeClient: createActivityRuntimeClient(),
+  timerClient: createTimerClient(),
+});
 
 export const handle: SQSHandler = async (event) => {
   console.debug(JSON.stringify(event));

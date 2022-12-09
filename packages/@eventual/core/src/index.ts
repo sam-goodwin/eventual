@@ -10,6 +10,7 @@ export * from "./events.js";
 export * from "./eventual.js";
 export * from "./execution.js";
 export * from "./global.js";
+export * from "./heartbeat.js";
 export * from "./interpret.js";
 export * from "./result.js";
 export * from "./runtime/index.js";
