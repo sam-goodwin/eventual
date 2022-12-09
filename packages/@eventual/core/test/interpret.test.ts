@@ -3,12 +3,13 @@ import { chain } from "../src/chain.js";
 import { DeterminismError, Timeout } from "../src/error.js";
 import {
   Context,
-  CoreEnvFlags,
   createAwaitAll,
   Eventual,
   interpret,
   Program,
   Result,
+  ServiceType,
+  SERVICE_TYPE_FLAG,
   Signal,
   SignalTargetType,
   sleepFor,
@@ -51,11 +52,11 @@ import { createSendSignalCall } from "../src/calls/send-signal-call.js";
 import { createConditionCall } from "../src/calls/condition-call.js";
 
 beforeAll(() => {
-  process.env[CoreEnvFlags.ORCHESTRATOR_FLAG] = "1";
+  process.env[SERVICE_TYPE_FLAG] = ServiceType.OrchestratorWorker;
 });
 
 afterAll(() => {
-  delete process.env[CoreEnvFlags.ORCHESTRATOR_FLAG];
+  delete process.env[SERVICE_TYPE_FLAG];
 });
 
 function* myWorkflow(event: any): Program<any> {
