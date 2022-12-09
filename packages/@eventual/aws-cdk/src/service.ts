@@ -20,7 +20,14 @@ import {
   ITable,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
-import { Arn, ArnFormat, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
+import {
+  Arn,
+  ArnFormat,
+  Duration,
+  Names,
+  RemovalPolicy,
+  Stack,
+} from "aws-cdk-lib";
 import { ENV_NAMES, ServiceProperties } from "@eventual/aws-runtime";
 import { CoreEnvFlags } from "@eventual/core";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
@@ -201,27 +208,6 @@ export class Service extends Construct implements IGrantable {
       )} ${this.outDir()} ${props.entry}`
     ).toString("utf-8");
 
-    this.activityWorker = new Function(this, "Worker", {
-      architecture: Architecture.ARM_64,
-      code: Code.fromAsset(this.outDir("activity")),
-      // the bundler outputs activity/index.js
-      handler: "index.default",
-      runtime: Runtime.NODEJS_16_X,
-      memorySize: 512,
-      environment: {
-        NODE_OPTIONS: "--enable-source-maps",
-        [ENV_NAMES.TABLE_NAME]: this.table.tableName,
-        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
-        [ENV_NAMES.ACTIVITY_TABLE_NAME]: this.activitiesTable.tableName,
-        [CoreEnvFlags.ACTIVITY_WORKER_FLAG]: "1",
-        ...(props.environment ?? {}),
-      },
-      // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
-      retryAttempts: 0,
-    });
-    // grant methods on a workflow affect the activity
-    this.grantPrincipal = this.activityWorker.grantPrincipal;
-
     this.schedulerGroup = new CfnScheduleGroup(this, "schedulerGroup");
 
     const scheduleGroupWildCardArn = Stack.of(this).formatArn({
@@ -256,8 +242,6 @@ export class Service extends Construct implements IGrantable {
       handler: "handle",
       ...baseNodeFnProps,
       environment: {
-        [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
-        [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
         [ENV_NAMES.SCHEDULER_ROLE_ARN]: schedulerRole.roleArn,
         [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: this.dlq.queueArn,
         [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
@@ -265,11 +249,39 @@ export class Service extends Construct implements IGrantable {
       },
     });
 
+    this.activityWorker = new Function(this, "Worker", {
+      architecture: Architecture.ARM_64,
+      code: Code.fromAsset(this.outDir("activity")),
+      // the bundler outputs activity/index.js
+      handler: "index.default",
+      runtime: Runtime.NODEJS_16_X,
+      memorySize: 512,
+      timeout: Duration.minutes(10),
+      environment: {
+        NODE_OPTIONS: "--enable-source-maps",
+        [ENV_NAMES.TABLE_NAME]: this.table.tableName,
+        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
+        [ENV_NAMES.ACTIVITY_TABLE_NAME]: this.activitiesTable.tableName,
+        [CoreEnvFlags.ACTIVITY_WORKER_FLAG]: "1",
+        [ENV_NAMES.SCHEDULER_ROLE_ARN]: schedulerRole.roleArn,
+        [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: this.dlq.queueArn,
+        [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
+        [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
+        [ENV_NAMES.SCHEDULE_FORWARDER_ARN]: this.scheduleForwarder.functionArn,
+        ...(props.environment ?? {}),
+      },
+      // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
+      retryAttempts: 0,
+    });
+    // grant methods on a workflow affect the activity
+    this.grantPrincipal = this.activityWorker.grantPrincipal;
+
     //Environment variables required to glue together the service components.
     //Used by the orchestrator and api
     const componentsEnv = {
       [ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME]:
         this.activityWorker.functionName,
+      [ENV_NAMES.ACTIVITY_TABLE_NAME]: this.activitiesTable.tableName,
       [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
       [ENV_NAMES.TABLE_NAME]: this.table.tableName,
       [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
@@ -290,7 +302,6 @@ export class Service extends Construct implements IGrantable {
       environment: {
         NODE_OPTIONS: "--enable-source-maps",
         [CoreEnvFlags.ORCHESTRATOR_FLAG]: "1",
-        [ENV_NAMES.ACTIVITY_TABLE_NAME]: this.activitiesTable.tableName,
         ...componentsEnv,
       },
       events: [
@@ -309,8 +320,7 @@ export class Service extends Construct implements IGrantable {
       handler: "handle",
       ...baseNodeFnProps,
       environment: {
-        [ENV_NAMES.TABLE_NAME]: this.table.tableName,
-        [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
+        ...componentsEnv,
       },
       events: [
         new SqsEventSource(this.timerQueue, {
@@ -320,8 +330,9 @@ export class Service extends Construct implements IGrantable {
     });
 
     this.timerQueue.grantSendMessages(this.scheduleForwarder);
-
     this.timerQueue.grantSendMessages(this.orchestrator);
+    this.timerQueue.grantSendMessages(this.timerHandler);
+    this.timerQueue.grantSendMessages(this.activityWorker);
 
     // grants the orchestrator the permission to create new schedules for sleep.
     this.scheduleForwarder.addToRolePolicy(
@@ -349,6 +360,7 @@ export class Service extends Construct implements IGrantable {
 
     // the worker will issue an UpdateItem command to lock
     this.activitiesTable.grantWriteData(this.activityWorker);
+    this.activitiesTable.grantReadData(this.timerHandler);
 
     // Enable creating history to start a workflow.
     this.table.grantReadWriteData(this.startWorkflowFunction);
@@ -373,8 +385,25 @@ export class Service extends Construct implements IGrantable {
       })
     );
 
+    // grants the timer handler the permission to create new schedules for sleep.
+    this.timerHandler.addToRolePolicy(
+      new PolicyStatement({
+        actions: ["scheduler:CreateSchedule"],
+        resources: [scheduleGroupWildCardArn],
+      })
+    );
+
+    // grants the timer handler the permission to create new schedules for sleep.
+    this.activityWorker.addToRolePolicy(
+      new PolicyStatement({
+        actions: ["scheduler:CreateSchedule"],
+        resources: [scheduleGroupWildCardArn],
+      })
+    );
+
     // grants the orchestrator the ability to pass the scheduler role to the creates schedules
     schedulerRole.grantPassRole(this.orchestrator.grantPrincipal);
+    schedulerRole.grantPassRole(this.timerHandler.grantPrincipal);
 
     this.apiEndpoint = new Function(this, "ApiEndpoint", {
       ...baseNodeFnProps,

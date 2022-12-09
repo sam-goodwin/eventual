@@ -292,7 +292,7 @@ describe("activity", () =>
           activityHeartbeatTimedOut(0, 10),
         ])
       ).toMatchObject<WorkflowResult>({
-        result: Result.resolved(new Date(10 * 1000).toISOString()),
+        result: Result.resolved("Activity Heartbeat TimedOut"),
         commands: [],
       });
     });

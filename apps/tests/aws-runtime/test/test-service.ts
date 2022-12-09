@@ -205,7 +205,7 @@ export const asyncWorkflow = workflow(
 );
 
 const activityWithHeartbeat = activity(
-  "asyncActivityWithHeartbeat",
+  "activityWithHeartbeat",
   { heartbeatSeconds: 1 },
   async (n: number, type: "success" | "no-heartbeat" | "some-heartbeat") => {
     const delay = (s: number) =>

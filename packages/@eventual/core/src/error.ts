@@ -1,10 +1,38 @@
-export class DeterminismError extends Error {}
-export class Timeout extends Error {}
+export class EventualError extends Error {
+  constructor(name: string, message?: string) {
+    super(message);
+    this.name = name;
+  }
+  toJSON() {
+    return {
+      name: this.name,
+      message: this.message,
+    };
+  }
+}
+export class DeterminismError extends EventualError {
+  constructor(message?: string) {
+    super("DeterminismError", message);
+  }
+}
+export class Timeout extends EventualError {
+  constructor(message?: string) {
+    super("Timeout", message);
+  }
+}
 /**
  * Thrown when an activity fails to send heartbeats.
  */
-export class HeartbeatTimeout extends Error {}
+export class HeartbeatTimeout extends EventualError {
+  constructor(message?: string) {
+    super("HeartbeatTimeout", message);
+  }
+}
 /**
  * Thrown when a particular context only support synchronous operations (ex: condition predicate).
  */
-export class SynchronousOperationError extends Error {}
+export class SynchronousOperationError extends EventualError {
+  constructor(message?: string) {
+    super("SynchronousOperationError", message);
+  }
+}

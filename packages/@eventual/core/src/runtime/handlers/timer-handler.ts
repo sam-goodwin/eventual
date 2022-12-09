@@ -43,6 +43,11 @@ export function createTimerHandler({
         request.activitySeq
       );
 
+      console.log(
+        "checking activity for heartbeat timeout",
+        JSON.stringify(activity)
+      );
+
       // the activity has not sent a heartbeat or the last time was too long ago.
       // Send the timeout event to the workflow.
       if (

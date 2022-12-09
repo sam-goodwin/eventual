@@ -169,3 +169,7 @@ export function assertFailureExecution(
 ): asserts execution is FailedExecution {
   expect(execution.status).toEqual(ExecutionStatus.FAILED);
 }
+
+export function eventualError(error: Error) {
+  return JSON.parse(JSON.stringify(error));
+}

@@ -227,19 +227,6 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
         })
       : undefined;
 
-    const heartbeatTimeoutStarter = command.heartbeatSeconds
-      ? await this.props.timerClient.startTimer({
-          type: TimerRequestType.ActivityHeartbeatMonitor,
-          activitySeq: command.seq,
-          executionId,
-          heartbeatSeconds: command.heartbeatSeconds,
-          schedule: {
-            timerSeconds: command.heartbeatSeconds,
-            baseTime,
-          },
-        })
-      : undefined;
-
     const activityStarter = this.props.lambda.send(
       new InvokeCommand({
         FunctionName: this.props.activityWorkerFunctionName,
@@ -248,11 +235,7 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
       })
     );
 
-    await Promise.all([
-      activityStarter,
-      timeoutStarter,
-      heartbeatTimeoutStarter,
-    ]);
+    await Promise.all([activityStarter, timeoutStarter]);
 
     return createEvent<ActivityScheduled>({
       type: WorkflowEventType.ActivityScheduled,

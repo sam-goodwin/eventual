@@ -35,19 +35,19 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
         new UpdateItemCommand({
           Key: {
             pk: { S: ActivityExecutionRecord.key(executionId, seq) },
-            reference: { S: claimer ?? "Unknown" },
           },
-          UpdateExpression: "SET #claim[:retry]=:claim",
+          UpdateExpression: `SET #claims = :claim, executionId = :executionId, seq = :seq`,
           // Update a new property for each retry.
           ExpressionAttributeNames: {
-            "#claim": `claim`,
+            "#claims": `claims_${retry}`,
           },
           ExpressionAttributeValues: {
-            ":retry": { N: `${retry}` },
             ":claim": { S: claimer ?? "Unknown" },
+            ":executionId": { S: executionId },
+            ":seq": { N: `${seq}` },
           },
           TableName: this.props.activityTableName,
-          ConditionExpression: "attribute_not_exists(#claims[:retry])",
+          ConditionExpression: `attribute_not_exists(#claims)`,
         })
       );
 
@@ -73,9 +73,12 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
         Key: {
           pk: { S: ActivityExecutionRecord.key(executionId, seq) },
         },
-        UpdateExpression: "SET heartbeat=:heartbeat",
+        UpdateExpression:
+          "SET heartbeatTime=:heartbeat, executionId = :executionId, seq = :seq",
         ExpressionAttributeValues: {
           ":heartbeat": { S: heartbeatTime },
+          ":executionId": { S: executionId },
+          ":seq": { N: `${seq}` },
         },
         TableName: this.props.activityTableName,
         ReturnValues: ReturnValue.ALL_NEW,
@@ -94,9 +97,12 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
         Key: {
           pk: { S: ActivityExecutionRecord.key(executionId, seq) },
         },
-        UpdateExpression: "SET cancelled=:cancelled",
+        UpdateExpression:
+          "SET cancelled=:cancelled, executionId = :executionId, seq = :seq",
         ExpressionAttributeValues: {
           ":cancelled": { BOOL: true },
+          ":executionId": { S: executionId },
+          ":seq": { N: `${seq}` },
         },
         TableName: this.props.activityTableName,
       })
@@ -113,6 +119,7 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
           pk: { S: ActivityExecutionRecord.key(executionId, seq) },
         },
         TableName: this.props.activityTableName,
+        ConsistentRead: true,
       })
     );
 

@@ -6,6 +6,7 @@ import middy from "@middy/core";
 import {
   createActivityRuntimeClient,
   createExecutionHistoryClient,
+  createTimerClient,
   createWorkflowClient,
 } from "../clients/create.js";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
@@ -16,6 +17,7 @@ export default middy(
     activityRuntimeClient: createActivityRuntimeClient(),
     executionHistoryClient: createExecutionHistoryClient(),
     workflowClient: createWorkflowClient(),
+    timerClient: createTimerClient(),
     metricsClient: AWSMetricsClient,
     logger,
   })
