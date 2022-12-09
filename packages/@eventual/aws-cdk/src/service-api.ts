@@ -7,7 +7,6 @@ import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { HttpMethod } from "aws-cdk-lib/aws-events";
 import {
   AccountPrincipal,
-  AccountRootPrincipal,
   Effect,
   IGrantable,
   PolicyDocument,
@@ -18,7 +17,6 @@ import { Code, Function } from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { IBucket } from "aws-cdk-lib/aws-s3";
 import { IQueue } from "aws-cdk-lib/aws-sqs";
-import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Arn, Stack } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import path from "path";
@@ -72,14 +70,6 @@ export class ServiceApi extends Construct {
    * Role used to execute api
    */
   public readonly executionRole: Role;
-  /**
-   * Role used by cli
-   */
-  public readonly cliRole: Role;
-  /**
-   * A SSM parameter containing data about this service.
-   */
-  readonly serviceDataSSM: StringParameter;
 
   constructor(scope: Construct, id: string, props: ServiceApiProps) {
     super(scope, id);
@@ -187,20 +177,25 @@ export class ServiceApi extends Construct {
       },
     });
 
-    this.serviceDataSSM = new StringParameter(this, "service-data", {
-      parameterName: `/eventual/services/${props.serviceName}`,
-      stringValue: JSON.stringify({
-        apiEndpoint: this.gateway.apiEndpoint,
-        functions: {
-          orchestrator: props.orchestrator.functionName,
-          activityWorker: props.activityWorker.functionName,
-        },
-      }),
+    this.executionRole = new Role(this, "EventualApiRole", {
+      roleName: `eventual-api-${props.serviceName}`,
+      assumedBy: new AccountPrincipal(Stack.of(this).account),
+      inlinePolicies: {
+        execute: new PolicyDocument({
+          statements: [this.executeApiPolicyStatement()],
+        }),
+      },
     });
+  }
 
-    const stack = Stack.of(this);
+  public grantExecute(grantable: IGrantable) {
+    grantable.grantPrincipal.addToPrincipalPolicy(
+      this.executeApiPolicyStatement()
+    );
+  }
 
-    const apiStatement = new PolicyStatement({
+  private executeApiPolicyStatement() {
+    return new PolicyStatement({
       actions: ["execute-api:*"],
       effect: Effect.ALLOW,
       resources: [
@@ -210,55 +205,9 @@ export class ServiceApi extends Construct {
             resource: this.gateway.apiId,
             resourceName: "*/*/*",
           },
-          stack
+          Stack.of(this)
         ),
       ],
-    });
-
-    this.cliRole = new Role(this, "EventualCliRole", {
-      roleName: `eventual-cli-${props.serviceName}`,
-      assumedBy: new AccountRootPrincipal(),
-      inlinePolicies: {
-        cli: new PolicyDocument({
-          statements: [
-            apiStatement,
-            new PolicyStatement({
-              actions: ["logs:FilterLogEvents"],
-              effect: Effect.ALLOW,
-              resources: [
-                Arn.format(
-                  {
-                    service: "logs",
-                    resource: "/aws/lambda",
-                    resourceName: props.orchestrator.functionName,
-                  },
-                  stack
-                ),
-                Arn.format(
-                  {
-                    service: "logs",
-                    resource: "/aws/lambda",
-                    resourceName: props.activityWorker.functionName,
-                  },
-                  stack
-                ),
-              ],
-            }),
-          ],
-        }),
-      },
-    });
-
-    this.serviceDataSSM.grantRead(this.cliRole);
-
-    this.executionRole = new Role(this, "EventualApiRole", {
-      roleName: `eventual-api-${props.serviceName}`,
-      assumedBy: new AccountPrincipal(Stack.of(this).account),
-      inlinePolicies: {
-        execute: new PolicyDocument({
-          statements: [apiStatement],
-        }),
-      },
     });
   }
 

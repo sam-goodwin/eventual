@@ -3,10 +3,13 @@ import { ServiceType } from "@eventual/core";
 import { Arn, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
 import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
 import {
+  AccountRootPrincipal,
+  CompositePrincipal,
   Effect,
   IGrantable,
   IPrincipal,
   PolicyStatement,
+  Role,
 } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
@@ -16,6 +19,7 @@ import {
   FifoThroughputLimit,
   Queue,
 } from "aws-cdk-lib/aws-sqs";
+import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { execSync } from "child_process";
 import { Construct } from "constructs";
 import { Scheduler } from "./scheduler";
@@ -72,6 +76,14 @@ export class Service extends Construct implements IGrantable {
    * The Resources for schedules and sleep timers.
    */
   readonly scheduler: Scheduler;
+  /**
+   * Role used by cli
+   */
+  public readonly cliRole: Role;
+  /**
+   * A SSM parameter containing data about this service.
+   */
+  readonly serviceDataSSM: StringParameter;
 
   readonly grantPrincipal: IPrincipal;
 
@@ -151,8 +163,32 @@ export class Service extends Construct implements IGrantable {
       workflowQueue: this.workflowQueue,
     });
 
-    // grant methods on a workflow affect the activity
-    this.grantPrincipal = this.activityWorker.grantPrincipal;
+    this.grantPrincipal = new CompositePrincipal(
+      // when granting permissions to the service,
+      // propagate them to the following principals
+      this.activityWorker.grantPrincipal,
+      this.api.handler.grantPrincipal
+    );
+
+    this.cliRole = new Role(this, "EventualCliRole", {
+      roleName: `eventual-cli-${this.serviceName}`,
+      assumedBy: new AccountRootPrincipal(),
+    });
+    this.grantFilterLogEvents(this.cliRole);
+    this.api.grantExecute(this.cliRole);
+
+    this.serviceDataSSM = new StringParameter(this, "service-data", {
+      parameterName: `/eventual/services/${this.serviceName}`,
+      stringValue: JSON.stringify({
+        apiEndpoint: this.api.gateway.apiEndpoint,
+        functions: {
+          orchestrator: this.orchestrator.functionName,
+          activityWorker: this.activityWorker.functionName,
+        },
+      }),
+    });
+
+    this.serviceDataSSM.grantRead(this.cliRole);
 
     this.configureActivityWorker();
     this.configureApiHandler();
@@ -235,6 +271,34 @@ export class Service extends Construct implements IGrantable {
 
   private configureApiHandler() {
     this.configureStartWorkflow(this.api.handler);
+  }
+
+  public grantFilterLogEvents(grantable: IGrantable) {
+    const stack = Stack.of(this);
+    grantable.grantPrincipal.addToPrincipalPolicy(
+      new PolicyStatement({
+        actions: ["logs:FilterLogEvents"],
+        effect: Effect.ALLOW,
+        resources: [
+          Arn.format(
+            {
+              service: "logs",
+              resource: "/aws/lambda",
+              resourceName: this.orchestrator.functionName,
+            },
+            stack
+          ),
+          Arn.format(
+            {
+              service: "logs",
+              resource: "/aws/lambda",
+              resourceName: this.activityWorker.functionName,
+            },
+            stack
+          ),
+        ],
+      })
+    );
   }
 
   /**
