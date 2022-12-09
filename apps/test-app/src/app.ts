@@ -22,7 +22,7 @@ const openAccount = new eventual.Service(stack, "OpenAccount", {
 });
 
 new CfnOutput(stack, "open-account-api-url", {
-  value: openAccount.api.apiEndpoint,
+  value: openAccount.api.gateway.apiEndpoint,
 });
 
 new eventual.Service(stack, "my-service", {
