@@ -1,7 +1,7 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { ServiceType } from "@eventual/core";
-import { Arn, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
-import { AttributeType, BillingMode, ITable, Table } from "aws-cdk-lib/aws-dynamodb";
+import { Arn, Duration, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
+import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
 import {
   AccountRootPrincipal,
   CompositePrincipal,
@@ -13,19 +13,15 @@ import {
 } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
-import { Bucket } from "aws-cdk-lib/aws-s3";
-import {
-  DeduplicationScope,
-  FifoThroughputLimit,
-  Queue,
-} from "aws-cdk-lib/aws-sqs";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { execSync } from "child_process";
 import { Construct } from "constructs";
+import { ActivityController } from "./activity-controller";
 import { Scheduler } from "./scheduler";
 import { ServiceApi } from "./service-api";
 import { ServiceFunction } from "./service-function";
 import { addEnvironment, outDir } from "./utils";
+import { WorkflowController } from "./workflow-controller";
 
 export interface ServiceProps {
   entry: string;
@@ -45,25 +41,17 @@ export class Service extends Construct implements IGrantable {
    */
   readonly api: ServiceApi;
   /**
-   * S3 bucket that contains events necessary to replay a workflow execution.
-   *
-   * The orchestrator reads from history at the start and updates it at the end.
+   * Infrastructure required to manipulate and communicate with a workflow.
    */
-  public readonly history: Bucket;
-  /**
-   * Workflow (fifo) queue which contains events that wake up a workflow execution.
-   *
-   * {@link WorkflowTask} delivery new {@link HistoryEvent}s to the workflow.
-   */
-  public readonly workflowQueue: Queue;
+  public readonly workflowController: WorkflowController;
   /**
    * A single-table used for execution data and granular workflow events/
    */
   public readonly table: Table;
   /**
-   * A dynamo table used to claim, heartbeat, and cancel activities.
+   * Infrastructure required to heartbeat, cancel, finish, and claim activities.
    */
-  public readonly activitiesTable: ITable;
+  public readonly activityController: ActivityController;
   /**
    * The lambda function which runs the user's Activities.
    */
@@ -98,18 +86,6 @@ export class Service extends Construct implements IGrantable {
       )} ${outDir(this)} ${props.entry}`
     ).toString("utf-8");
 
-    this.history = new Bucket(this, "History", {
-      // TODO: remove after testing
-      removalPolicy: RemovalPolicy.DESTROY,
-    });
-
-    this.workflowQueue = new Queue(this, "WorkflowQueue", {
-      fifo: true,
-      fifoThroughputLimit: FifoThroughputLimit.PER_MESSAGE_GROUP_ID,
-      deduplicationScope: DeduplicationScope.MESSAGE_GROUP,
-      contentBasedDeduplication: true,
-    });
-
     // Table - History, Executions, ExecutionData
     this.table = new Table(this, "table", {
       partitionKey: { name: "pk", type: AttributeType.STRING },
@@ -118,10 +94,26 @@ export class Service extends Construct implements IGrantable {
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
+    this.workflowController = new WorkflowController(
+      this,
+      "workflowController",
+      {
+        table: this.table,
+      }
+    );
+
+    this.activityController = new ActivityController(
+      this,
+      "activityController",
+      {
+        workflowController: this.workflowController,
+      }
+    );
+
     this.orchestrator = new ServiceFunction(this, "Orchestrator", {
       serviceType: ServiceType.OrchestratorWorker,
       events: [
-        new SqsEventSource(this.workflowQueue, {
+        new SqsEventSource(this.workflowController.workflowQueue, {
           batchSize: 10,
           reportBatchItemFailures: true,
         }),
@@ -134,33 +126,19 @@ export class Service extends Construct implements IGrantable {
       environment: props.environment,
       // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
       retryAttempts: 0,
-    });
-
-    this.activitiesTable = new Table(this, "Locks", {
-      billingMode: BillingMode.PAY_PER_REQUEST,
-      partitionKey: {
-        name: "pk",
-        type: AttributeType.STRING,
-      },
-      // TODO: remove after testing
-      removalPolicy: RemovalPolicy.DESTROY,
+      // TODO: determine worker timeout strategy
+      timeout: Duration.minutes(1),
     });
 
     this.scheduler = new Scheduler(this, "Scheduler", {
-      orchestrator: this.orchestrator,
-      table: this.table,
-      workflowQueue: this.workflowQueue,
+      workflowController: this.workflowController,
+      activityController: this.activityController,
     });
 
     this.api = new ServiceApi(this, "Api", {
       serviceName: this.serviceName,
       environment: props.environment,
-      activityWorker: this.activityWorker,
-      history: this.history,
-      orchestrator: this.orchestrator,
-      scheduler: this.scheduler,
-      table: this.table,
-      workflowQueue: this.workflowQueue,
+      workflowController: this.workflowController,
     });
 
     this.grantPrincipal = new CompositePrincipal(
@@ -196,29 +174,37 @@ export class Service extends Construct implements IGrantable {
   }
 
   public grantRead(grantable: IGrantable) {
-    this.history.grantRead(grantable);
     this.table.grantReadData(grantable);
   }
 
   public grantFinishActivity(grantable: IGrantable) {
-    this.workflowQueue.grantSendMessages(grantable);
+    this.workflowController.workflowQueue.grantSendMessages(grantable);
   }
 
   public grantStartWorkflow(grantable: IGrantable) {
-    this.workflowQueue.grantSendMessages(grantable);
-    this.table.grantReadWriteData(grantable);
+    this.workflowController.grantWorkflowControl(grantable);
   }
 
-  private configureStartWorkflow(func: Function) {
-    this.grantStartWorkflow(func);
-    addEnvironment(func, {
-      [ENV_NAMES.TABLE_NAME]: this.table.tableName,
-      [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.workflowQueue.queueUrl,
-    });
+  /**
+   * Allows starting workflows, finishing activities, reading workflow status
+   * and sending signals to workflows.
+   */
+  private configureWorkflowControl(func: Function) {
+    this.workflowController.configureWorkflowControl(func);
   }
 
-  public grantHeartbeatActivity(grantable: IGrantable) {
-    this.activitiesTable.grantReadWriteData(grantable);
+  /**
+   * Grants the ability to heartbeat, cancel, finish, and lookup activities.
+   */
+  public grantControlActivities(grantable: IGrantable) {
+    this.activityController.grantControlActivity(grantable);
+  }
+
+  /**
+   * Configure the ability heartbeat, cancel, and finish activities.
+   */
+  public configureActivityControl(func: Function) {
+    this.activityController.configureActivityControl(func);
   }
 
   private configureScheduleActivity(func: Function) {
@@ -229,33 +215,32 @@ export class Service extends Construct implements IGrantable {
     });
   }
 
-  private configureRecordHistory(func: Function) {
-    this.history.grantReadWrite(func);
-    addEnvironment(func, {
-      [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
-    });
-  }
-
   private configureActivityWorker() {
-    this.configureStartWorkflow(this.activityWorker);
-
-    // the worker will issue an UpdateItem command to lock
-    this.activitiesTable.grantWriteData(this.activityWorker);
-
-    addEnvironment(this.activityWorker, {
-      [ENV_NAMES.ACTIVITY_TABLE_NAME]: this.activitiesTable.tableName,
-    });
+    // allows the activity worker to send events to the workflow queue
+    // and lookup the status of the workflow.
+    this.configureWorkflowControl(this.activityWorker);
+    // allows the activity worker to claim activities and check their heartbeat status.
+    this.configureActivityControl(this.activityWorker);
+    // allows the activity worker to start the heartbeat monitor
+    this.scheduler.configureScheduleTimer(this.activityWorker);
   }
 
   private configureOrchestrator() {
-    this.configureRecordHistory(this.orchestrator);
+    // allows the orchestrator to save and load events from the history s3 bucket
+    this.workflowController.configureRecordHistory(this.orchestrator);
+    // allows the orchestrator to directly invoke the activity worker lambda function (async)
     this.configureScheduleActivity(this.orchestrator);
+    // allows allows the orchestrator to start timeout and sleep timers
     this.scheduler.configureScheduleTimer(this.orchestrator);
-    this.configureStartWorkflow(this.orchestrator);
+    // allows the orchestrator to send events to the workflow queue,
+    // write events to the execution table, and start other workflows
+    this.workflowController.configureWorkflowControl(this.orchestrator);
+    // allows the workflow to cancel activities
+    this.activityController.configureActivityControl(this.orchestrator);
   }
 
   private configureApiHandler() {
-    this.configureStartWorkflow(this.api.handler);
+    this.configureWorkflowControl(this.api.handler);
   }
 
   public grantFilterLogEvents(grantable: IGrantable) {

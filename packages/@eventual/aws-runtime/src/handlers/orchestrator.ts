@@ -13,7 +13,6 @@ import {
   SQSWorkflowTaskMessage,
 } from "../clients/index.js";
 
-
 /**
  * Creates an entrypoint function for orchestrating a workflow
  * from within an AWS Lambda Function attached to a SQS FIFO queue.
