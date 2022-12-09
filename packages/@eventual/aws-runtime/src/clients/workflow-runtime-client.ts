@@ -211,8 +211,6 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
       retry: 0,
     };
 
-    await Promise.allSettled([]);
-
     const timeoutStarter = command.timeoutSeconds
       ? await this.props.timerClient.scheduleEvent<ActivityTimedOut>({
           schedule: {

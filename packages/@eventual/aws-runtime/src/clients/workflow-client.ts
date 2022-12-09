@@ -162,6 +162,12 @@ export class AWSWorkflowClient implements WorkflowClient {
       : undefined;
   }
 
+  /**
+   * Sends a signal to the given execution.
+   *
+   * The execution may be waiting on a signal or may have a handler registered
+   * that runs when the signal is received.
+   */
   public async sendSignal(request: SendSignalRequest): Promise<void> {
     await this.submitWorkflowTask(
       request.executionId,
@@ -180,6 +186,9 @@ export class AWSWorkflowClient implements WorkflowClient {
     );
   }
 
+  /**
+   * Completes an async activity causing it to return the given value.
+   */
   public async completeActivity({
     activityToken,
     result,
@@ -190,6 +199,9 @@ export class AWSWorkflowClient implements WorkflowClient {
     });
   }
 
+  /**
+   * Fails an async activity causing it to throw the given error.
+   */
   public async failActivity({
     activityToken,
     error,
@@ -202,6 +214,11 @@ export class AWSWorkflowClient implements WorkflowClient {
     });
   }
 
+  /**
+   * Submits a "heartbeat" for the given activityToken.
+   *
+   * @returns whether the activity has been cancelled by the calling workflow.
+   */
   public async heartbeatActivity(
     request: HeartbeatRequest
   ): Promise<HeartbeatResponse> {
@@ -222,10 +239,7 @@ export class AWSWorkflowClient implements WorkflowClient {
 
   private async sendActivityResult<
     E extends ActivityCompleted | ActivityFailed
-  >(
-    activityToken: string,
-    event: Omit<E, "seq" | "duration" | "timestamp">
-  ): Promise<ActivityTokenPayload> {
+  >(activityToken: string, event: Omit<E, "seq" | "duration" | "timestamp">) {
     const data = decodeActivityToken(activityToken);
     await this.submitWorkflowTask(
       data.payload.executionId,
@@ -234,7 +248,6 @@ export class AWSWorkflowClient implements WorkflowClient {
         seq: data.payload.seq,
       })
     );
-    return data.payload;
   }
 }
 

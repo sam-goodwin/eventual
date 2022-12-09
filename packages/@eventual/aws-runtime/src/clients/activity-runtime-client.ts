@@ -131,7 +131,6 @@ export interface ActivityExecutionRecord {
   pk: { S: `${typeof ActivityExecutionRecord.PARTITION_KEY_PREFIX}$${string}` };
   executionId: AttributeValue.SMember;
   seq: AttributeValue.NMember;
-  claims?: AttributeValue.LMember;
   heartbeatTime?: AttributeValue.SMember;
   cancelled?: AttributeValue.BOOLMember;
 }
@@ -150,7 +149,6 @@ function createActivityFromRecord(
     executionId: activityRecord.executionId.S,
     seq: Number(activityRecord.seq.N),
     cancelled: Boolean(activityRecord.cancelled?.BOOL ?? false),
-    claims: activityRecord.claims?.L.map((s) => s.S ?? "Unknown"),
     heartbeatTime: activityRecord?.heartbeatTime?.S,
   };
 }

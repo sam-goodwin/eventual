@@ -97,12 +97,6 @@ export class Scheduler extends Construct {
         ),
         handler: "handle",
         ...baseNodeFnProps,
-        environment: {
-          [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
-          [ENV_NAMES.SCHEDULER_ROLE_ARN]: schedulerRole.roleArn,
-          [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: this.dlq.queueArn,
-          [ENV_NAMES.TIMER_QUEUE_URL]: this.timerQueue.queueUrl,
-        },
       }
     ));
 
