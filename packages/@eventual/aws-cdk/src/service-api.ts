@@ -5,14 +5,7 @@ import { ENV_NAMES, ServiceProperties } from "@eventual/aws-runtime";
 import { ServiceType } from "@eventual/core";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { HttpMethod } from "aws-cdk-lib/aws-events";
-import {
-  AccountPrincipal,
-  Effect,
-  IGrantable,
-  PolicyDocument,
-  PolicyStatement,
-  Role,
-} from "aws-cdk-lib/aws-iam";
+import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Code, Function } from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { IBucket } from "aws-cdk-lib/aws-s3";
@@ -66,10 +59,6 @@ export class ServiceApi extends Construct {
    * The Lambda Function for processing inbound API requests with user defined code.
    */
   public readonly handler: Function;
-  /**
-   * Role used to execute api
-   */
-  public readonly executionRole: Role;
 
   constructor(scope: Construct, id: string, props: ServiceApiProps) {
     super(scope, id);
@@ -174,16 +163,6 @@ export class ServiceApi extends Construct {
         methods: [HttpMethod.GET],
         entry: { api: "executions/workflow-history.js" },
         grants: (fn) => props.history.grantRead(fn),
-      },
-    });
-
-    this.executionRole = new Role(this, "EventualApiRole", {
-      roleName: `eventual-api-${props.serviceName}`,
-      assumedBy: new AccountPrincipal(Stack.of(this).account),
-      inlinePolicies: {
-        execute: new PolicyDocument({
-          statements: [this.executeApiPolicyStatement()],
-        }),
       },
     });
   }
