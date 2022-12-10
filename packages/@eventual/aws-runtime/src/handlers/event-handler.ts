@@ -10,6 +10,7 @@ export const processEvent = createEventHandler({
 });
 
 export default async function (event: EventBridgeEvent<string, any>) {
+  console.debug("received", event);
   await processEvent([
     {
       name: event["detail-type"],

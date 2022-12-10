@@ -153,6 +153,7 @@ export class AWSWorkflowClient implements WorkflowClient {
   }
 
   public async sendSignal(request: SendSignalRequest): Promise<void> {
+    console.debug("sendSignal", request);
     await this.submitWorkflowTask(
       request.executionId,
       createEvent<SignalReceived>(

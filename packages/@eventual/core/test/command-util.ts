@@ -7,6 +7,7 @@ import {
   ExpectSignalCommand,
   SendSignalCommand,
   StartConditionCommand,
+  PublishEventsCommand,
 } from "../src/command.js";
 import {
   ActivityCompleted,
@@ -29,6 +30,7 @@ import {
 } from "../src/workflow-events.js";
 import { ulid } from "ulidx";
 import { SignalTarget } from "../src/signals.js";
+import { EventEnvelope } from "../src/event.js";
 
 export function createSleepUntilCommand(
   untilTime: string,
@@ -101,6 +103,17 @@ export function createSendSignalCommand(
     seq,
     target,
     signalId,
+  };
+}
+
+export function createPublishEventCommand(
+  events: EventEnvelope[],
+  seq: number
+): PublishEventsCommand {
+  return {
+    kind: CommandType.PublishEvents,
+    seq,
+    events: events,
   };
 }
 

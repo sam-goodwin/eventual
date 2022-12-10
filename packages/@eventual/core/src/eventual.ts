@@ -24,7 +24,10 @@ import { isOrchestratorWorker } from "./runtime/flags.js";
 import { AwaitAny, createAwaitAny } from "./await-any.js";
 import { AwaitAllSettled, createAwaitAllSettled } from "./await-all-settled.js";
 import { createRace, Race } from "./race.js";
-import { PublishEventsCall } from "./calls/send-events-call.js";
+import {
+  isPublishEventsCall,
+  PublishEventsCall,
+} from "./calls/send-events-call.js";
 
 export type AwaitedEventual<T> = T extends Promise<infer U>
   ? Awaited<U>
@@ -42,7 +45,7 @@ export interface EventualBase<R extends Result> {
 }
 
 export enum EventualKind {
-  ActivityCall = 0,
+  ActivityCall = 1,
   AwaitAll = 0,
   AwaitAllSettled = 12,
   AwaitAny = 10,
@@ -87,13 +90,14 @@ export type CommandCall<T = any> =
 export function isCommandCall(call: Eventual): call is CommandCall {
   return (
     isActivityCall(call) ||
-    isSleepForCall(call) ||
-    isSleepUntilCall(call) ||
-    isWorkflowCall(call) ||
+    isConditionCall(call) ||
     isExpectSignalCall(call) ||
+    isPublishEventsCall(call) ||
     isRegisterSignalHandlerCall(call) ||
     isSendSignalCall(call) ||
-    isConditionCall(call)
+    isSleepForCall(call) ||
+    isSleepUntilCall(call) ||
+    isWorkflowCall(call)
   );
 }
 

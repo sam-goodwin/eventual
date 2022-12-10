@@ -42,12 +42,14 @@ export function createEventHandler({
   registerEventClient(eventClient);
 
   const subscriptions = indexEventSubscriptions(eventSubscriptions());
+  console.debug("subscriptions", subscriptions);
 
   return async function (events: EventEnvelope[]) {
     await Promise.allSettled(
       events.map((event) =>
         Promise.allSettled(
-          subscriptions[event.name]?.map((handler) => handler(event)) ?? []
+          subscriptions[event.name]?.map((handler) => handler(event.event)) ??
+            []
         )
       )
     );

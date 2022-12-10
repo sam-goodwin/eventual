@@ -28,8 +28,9 @@ export function createPublishEventsCall(
     events,
     id,
     /**
-     * Send signal is modeled synchronously, but the {@link sendEvents} method
-     * returns a promise. Ensure the PublishEventsCall is always considered to be immediately resolved.
+     * Publish Events is modeled synchronously, but the {@link sendEvents} method
+     * returns a promise. Ensure the PublishEventsCall is always considered to be
+     * immediately resolved.
      */
     result: Result.resolved(undefined),
   });

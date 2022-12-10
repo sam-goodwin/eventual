@@ -130,5 +130,5 @@ export interface PublishEventsCommand
 export function isPublishEventsCommand(
   command: Command
 ): command is PublishEventsCommand {
-  return command.kind === CommandType.SendSignal;
+  return command.kind === CommandType.PublishEvents;
 }

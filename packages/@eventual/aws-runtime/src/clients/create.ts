@@ -107,6 +107,7 @@ export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
 export const createEventClient = /*@__PURE__*/ memoize(
   () =>
     new AWSEventClient({
+      serviceName: env.serviceName(),
       eventBusArn: env.eventBusArn(),
     })
 );

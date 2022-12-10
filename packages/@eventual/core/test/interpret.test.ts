@@ -29,6 +29,7 @@ import {
   conditionStarted,
   conditionTimedOut,
   createExpectSignalCommand,
+  createPublishEventCommand,
   createScheduledActivityCommand,
   createScheduledWorkflowCommand,
   createSendSignalCommand,
@@ -50,6 +51,7 @@ import { createRegisterSignalHandlerCall } from "../src/calls/signal-handler-cal
 import { createWorkflowCall } from "../src/calls/workflow-call.js";
 import { createSendSignalCall } from "../src/calls/send-signal-call.js";
 import { createConditionCall } from "../src/calls/condition-call.js";
+import { createPublishEventsCall } from "../src/calls/send-events-call.js";
 
 beforeAll(() => {
   process.env[SERVICE_TYPE_FLAG] = ServiceType.OrchestratorWorker;
@@ -2000,5 +2002,40 @@ test("workflow with synchronous function", () => {
   ).toEqual<WorkflowResult>({
     result: Result.resolved("result"),
     commands: [],
+  });
+});
+
+test("publish event", () => {
+  const wf = workflow(function* () {
+    yield createPublishEventsCall([
+      {
+        name: "event-type",
+        event: {
+          key: "value",
+        },
+      },
+    ]);
+
+    return "done!";
+  });
+
+  expect(
+    interpret(wf.definition(undefined, context), [])
+  ).toEqual<WorkflowResult>({
+    // promise should be instantly resolved
+    result: Result.resolved("done!"),
+    commands: [
+      createPublishEventCommand(
+        [
+          {
+            name: "event-type",
+            event: {
+              key: "value",
+            },
+          },
+        ],
+        0
+      ),
+    ],
   });
 });

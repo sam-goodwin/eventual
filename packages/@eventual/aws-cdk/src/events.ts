@@ -41,8 +41,12 @@ export class Events extends Construct implements IGrantable {
 
   readonly grantPrincipal: IPrincipal;
 
+  private readonly serviceName: string;
+
   constructor(scope: Construct, id: string, props: BusProps) {
     super(scope, id);
+
+    this.serviceName = props.serviceName;
 
     this.bus = new EventBus(this, "Bus", {
       eventBusName: props.serviceName,
@@ -65,6 +69,7 @@ export class Events extends Construct implements IGrantable {
       new Rule(this, "Rules", {
         eventBus: this.bus,
         eventPattern: {
+          source: [props.serviceName],
           detailType: Array.from(
             new Set(props.appSpec.subscriptions.map((sub) => sub.name))
           ),
@@ -88,5 +93,6 @@ export class Events extends Construct implements IGrantable {
   public configurePublish(func: Function) {
     this.grantPublish(func);
     func.addEnvironment(ENV_NAMES.EVENT_BUS_ARN, this.bus.eventBusArn);
+    func.addEnvironment(ENV_NAMES.SERVICE_NAME, this.serviceName);
   }
 }

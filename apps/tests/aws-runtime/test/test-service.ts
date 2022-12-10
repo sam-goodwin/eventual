@@ -221,6 +221,7 @@ const signalEvent = event<{
 }>("SignalEvent");
 
 signalEvent.subscribe(async ({ executionId, signalId, proxy }) => {
+  console.debug("received signal event", { executionId, signalId, proxy });
   if (proxy) {
     // if configured to proxy, re-route this event through the signalEvent
     // reason: to test that we can publish events from within an event handler

@@ -163,8 +163,8 @@ export function event<E extends EventPayload>(name: string): Event<E> {
 /**
  * An activity that publishes events to this service's event bus.
  */
-export const publishEvents = activity(
-  "eventual::publishEvents",
+export const publish = activity(
+  "eventual::publish",
   async (events: EventEnvelope[]) => {
     await getEventClient().publish(...events);
   }

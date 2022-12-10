@@ -28,8 +28,6 @@ import { Events } from "./events";
 import { ServiceFunction } from "./service-function";
 import { addEnvironment, outDir } from "./utils";
 
-import "./finalizer";
-
 export interface ServiceProps {
   entry: string;
   name?: string;
