@@ -1,10 +1,15 @@
+import { createPublishEventsCall } from "./calls/send-events-call.js";
 import { events, eventSubscriptions, getEventClient } from "./global.js";
-import { activity } from "./index.js";
+import { activity, isOrchestratorWorker } from "./index.js";
 
 /**
  * An EventPayload is the data sent as an event.
+ *
+ * It must be an object. Properties can be any type serializable as JSON.
  */
-export type EventPayload = any;
+export interface EventPayload {
+  [propName: string]: any;
+}
 
 /**
  * An envelope object containing the {@link event} payload associated
@@ -139,16 +144,16 @@ export function event<E extends EventPayload>(name: string): Event<E> {
         handler: handler as EventHandler<EventPayload>,
       });
     },
-    async publish(...events) {
-      // call an activity to publish events to the service's event bus
-      // we use an activity so that it is possible to also publish events
-      // from within a workflow with exactly-once semantics
-      await publishEvents(
-        events.map((event) => ({
-          name,
-          event,
-        }))
-      );
+    publish(...events) {
+      const envelopes = events.map((event) => ({
+        name,
+        event,
+      }));
+      if (isOrchestratorWorker()) {
+        return createPublishEventsCall(envelopes) as any;
+      } else {
+        return getEventClient().publish(...envelopes);
+      }
     },
   };
   events().set(name, event);

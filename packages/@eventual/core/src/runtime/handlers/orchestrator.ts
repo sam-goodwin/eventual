@@ -4,6 +4,7 @@ import {
   isExpectSignalCommand,
   isScheduleActivityCommand,
   isScheduleWorkflowCommand,
+  isPublishEventsCommand,
   isSendSignalCommand,
   isSleepForCommand,
   isSleepUntilCommand,
@@ -16,6 +17,7 @@ import {
   ConditionStarted,
   ConditionTimedOut,
   createEvent,
+  EventsPublished,
   HistoryStateEvent,
   isSleepCompleted,
   isWorkflowStarted,
@@ -40,6 +42,7 @@ import { assertNever } from "../../util.js";
 import { lookupWorkflow, progressWorkflow, Workflow } from "../../workflow.js";
 
 import type {
+  EventClient,
   ExecutionHistoryClient,
   MetricsClient,
   TimerClient,
@@ -68,6 +71,7 @@ export interface OrchestratorDependencies {
   workflowRuntimeClient: WorkflowRuntimeClient;
   workflowClient: WorkflowClient;
   metricsClient: MetricsClient;
+  eventClient: EventClient;
   logger: Logger;
 }
 
@@ -90,6 +94,7 @@ export function createOrchestrator({
   workflowRuntimeClient,
   workflowClient,
   metricsClient,
+  eventClient,
   logger,
 }: OrchestratorDependencies): (
   eventsByExecutionId: Record<string, HistoryStateEvent[]>
@@ -511,6 +516,13 @@ export function createOrchestrator({
 
               return createEvent<ConditionStarted>({
                 type: WorkflowEventType.ConditionStarted,
+                seq: command.seq!,
+              });
+            } else if (isPublishEventsCommand(command)) {
+              await eventClient.publish(...command.events);
+              return createEvent<EventsPublished>({
+                type: WorkflowEventType.EventsPublished,
+                events: command.events,
                 seq: command.seq!,
               });
             } else {

@@ -6,13 +6,13 @@ import type { SQSEvent, SQSRecord } from "aws-lambda";
 import { logger, loggerMiddlewares } from "../logger.js";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 import {
+  createEventClient,
   createExecutionHistoryClient,
   createTimerClient,
   createWorkflowClient,
   createWorkflowRuntimeClient,
   SQSWorkflowTaskMessage,
 } from "../clients/index.js";
-
 
 /**
  * Creates an entrypoint function for orchestrating a workflow
@@ -23,6 +23,7 @@ const orchestrate = createOrchestrator({
   timerClient: createTimerClient(),
   workflowRuntimeClient: createWorkflowRuntimeClient(),
   workflowClient: createWorkflowClient(),
+  eventClient: createEventClient(),
   metricsClient: AWSMetricsClient,
   logger,
 });

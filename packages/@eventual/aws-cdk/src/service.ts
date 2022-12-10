@@ -1,14 +1,7 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { AppSpec, ServiceType } from "@eventual/core";
-import {
-  Arn,
-  aws_events_targets,
-  Names,
-  RemovalPolicy,
-  Stack,
-} from "aws-cdk-lib";
+import { Arn, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
 import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
-import { EventBus, Rule } from "aws-cdk-lib/aws-events";
 import {
   AccountRootPrincipal,
   CompositePrincipal,
@@ -31,8 +24,11 @@ import { execSync } from "child_process";
 import { Construct } from "constructs";
 import { Scheduler } from "./scheduler";
 import { ServiceApi } from "./service-api";
+import { Events } from "./events";
 import { ServiceFunction } from "./service-function";
 import { addEnvironment, outDir } from "./utils";
+
+import "./finalizer";
 
 export interface ServiceProps {
   entry: string;
@@ -55,18 +51,8 @@ export class Service extends Construct implements IGrantable {
    * This {@link Service}'s API Gateway.
    */
   readonly api: ServiceApi;
-  /**
-   * The {@link EventBus} containing all events flowing into and out of this {@link Service}.
-   */
-  public readonly eventBus: EventBus;
-  /**
-   * The Lambda {@link Function} that handles events subscribed to in this service's {@link eventBus}.
-   */
-  public readonly eventHandler: Function;
-  /**
-   * A SQS Queue to collect events that failed to be handled.
-   */
-  public readonly eventHandlerDLQ: Queue;
+
+  readonly events: Events;
   /**
    * S3 bucket that contains events necessary to replay a workflow execution.
    *
@@ -129,18 +115,14 @@ export class Service extends Construct implements IGrantable {
       )} ${outDir(this)} ${props.entry}`
     ).toString("utf-8");
 
-    this.eventHandlerDLQ = new Queue(this, "EventHandlerDLQ");
-
-    this.eventHandler = new ServiceFunction(this, "EventHandler", {
-      serviceType: ServiceType.EventHandler,
-      deadLetterQueueEnabled: true,
-      deadLetterQueue: this.eventHandlerDLQ,
-      retryAttempts: 2,
-      environment: props.environment,
-    });
-
     this.history = new Bucket(this, "History", {
       removalPolicy: RemovalPolicy.RETAIN,
+    });
+
+    this.events = new Events(this, "Events", {
+      appSpec: this.appSpec,
+      serviceName: this.serviceName,
+      environment: props.environment,
     });
 
     this.workflowQueue = new Queue(this, "WorkflowQueue", {
@@ -191,26 +173,6 @@ export class Service extends Construct implements IGrantable {
       workflowQueue: this.workflowQueue,
     });
 
-    this.eventBus = new EventBus(this, "EventBus", {
-      eventBusName: this.serviceName,
-    });
-    if (this.appSpec.subscriptions.length > 0) {
-      // configure a Rule to route all subscribed events to the eventHandler
-      new Rule(this, "EventBusRule", {
-        eventBus: this.eventBus,
-        eventPattern: {
-          detailType: Array.from(
-            new Set(this.appSpec.subscriptions.map((sub) => sub.name))
-          ),
-        },
-        targets: [
-          new aws_events_targets.LambdaFunction(this.eventHandler, {
-            deadLetterQueue: this.eventHandlerDLQ,
-          }),
-        ],
-      });
-    }
-
     this.api = new ServiceApi(this, "Api", {
       environment: props.environment,
       serviceName: this.serviceName,
@@ -255,18 +217,6 @@ export class Service extends Construct implements IGrantable {
     this.configureEventHandler();
   }
 
-  /**
-   * Grants permission to publish to this {@link Service}'s {@link eventBus}.
-   */
-  public grantPublish(grantable: IGrantable) {
-    this.eventBus.grantPutEventsTo(grantable);
-  }
-
-  private configurePublish(func: Function) {
-    this.grantPublish(func);
-    func.addEnvironment(ENV_NAMES.EVENT_BUS_ARN, this.eventBus.eventBusArn);
-  }
-
   public grantRead(grantable: IGrantable) {
     this.history.grantRead(grantable);
     this.table.grantReadData(grantable);
@@ -302,7 +252,7 @@ export class Service extends Construct implements IGrantable {
 
   private configureActivityWorker() {
     this.configureStartWorkflow(this.activityWorker);
-    this.configurePublish(this.activityWorker);
+    this.events.configurePublish(this.activityWorker);
 
     // the worker will issue an UpdateItem command to lock
     this.locksTable.grantWriteData(this.activityWorker);
@@ -313,7 +263,7 @@ export class Service extends Construct implements IGrantable {
   }
 
   private configureOrchestrator() {
-    this.configurePublish(this.orchestrator);
+    this.events.configurePublish(this.orchestrator);
     this.configureRecordHistory(this.orchestrator);
     this.configureScheduleActivity(this.orchestrator);
     this.configureStartWorkflow(this.orchestrator);
@@ -322,12 +272,11 @@ export class Service extends Construct implements IGrantable {
 
   private configureApiHandler() {
     this.configureStartWorkflow(this.api.handler);
-    this.configurePublish(this.api.handler);
+    this.events.configurePublish(this.api.handler);
   }
 
   private configureEventHandler() {
-    this.configureStartWorkflow(this.eventHandler);
-    this.configurePublish(this.eventHandler);
+    this.configureStartWorkflow(this.events.handler as Function);
   }
 
   public grantFilterLogEvents(grantable: IGrantable) {
