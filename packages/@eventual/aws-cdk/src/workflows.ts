@@ -27,21 +27,36 @@ export interface WorkflowsProps {
 export interface IWorkflows {
   configureStartWorkflow(func: Function): void;
   grantStartWorkflowEvent(grantable: IGrantable): void;
+
   configureSendWorkflowEvent(func: Function): void;
   grantSendWorkflowEvent(grantable: IGrantable): void;
-  configureRecordHistory(func: Function): void;
-  configureReadHistory(func: Function): void;
+
   grantWriteExecutionHistory(grantable: IGrantable): void;
+
   configureReadWorkflowData(func: Function): void;
   grantReadWorkflowData(grantable: IGrantable): void;
+
+  configureRecordHistory(func: Function): void;
   grantRecordHistory(grantable: IGrantable): void;
+
+  configureReadHistory(func: Function): void;
   grantReadHistory(grantable: IGrantable): void;
+
+  configureSendSignal(func: Function): void;
+  grantSendSignal(grantable: IGrantable): void;
+
+  grantFilterOrchestratorLogs(grantable: IGrantable): void;
+
+  configureFullControl(func: Function): void;
 }
 
+/**
+ * Subsystem which manages and orchestrates workflows and workflow executions.
+ */
 export class Workflows extends Construct implements IWorkflows, IGrantable {
-  readonly orchestrator: Function;
-  readonly queue: IQueue;
-  readonly history: IBucket;
+  public readonly orchestrator: Function;
+  public readonly queue: IQueue;
+  public readonly history: IBucket;
 
   constructor(scope: Construct, id: string, private props: WorkflowsProps) {
     super(scope, id);
@@ -71,11 +86,11 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.configureOrchestrator();
   }
 
-  get grantPrincipal() {
+  public get grantPrincipal() {
     return this.orchestrator.grantPrincipal;
   }
 
-  configureStartWorkflow(func: Function) {
+  public configureStartWorkflow(func: Function) {
     this.configureSendWorkflowEvent(func);
     this.grantStartWorkflowEvent(func);
     addEnvironment(func, {
@@ -83,70 +98,81 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     });
   }
 
-  grantStartWorkflowEvent(grantable: IGrantable) {
+  public grantStartWorkflowEvent(grantable: IGrantable) {
     this.grantSendWorkflowEvent(grantable);
     this.props.table.grantWriteData(grantable);
   }
 
-  configureSendWorkflowEvent(func: Function) {
+  public configureSendWorkflowEvent(func: Function) {
     this.grantSendWorkflowEvent(func);
     addEnvironment(func, {
       [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.queue.queueUrl,
     });
   }
 
-  grantSendWorkflowEvent(grantable: IGrantable) {
+  public grantSendWorkflowEvent(grantable: IGrantable) {
     this.queue.grantSendMessages(grantable);
   }
 
-  configureRecordHistory(func: Function) {
+  public configureRecordHistory(func: Function) {
     this.grantRecordHistory(func);
     addEnvironment(func, {
       [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
     });
   }
 
-  configureReadHistory(func: Function) {
-    this.grantReadHistory(func);
-    addEnvironment(func, {
-      [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
-    });
-  }
-
-  grantWriteExecutionHistory(grantable: IGrantable) {
+  public grantWriteExecutionHistory(grantable: IGrantable) {
     this.props.table.grantWriteData(grantable);
   }
 
-  configureReadWorkflowData(func: Function) {
+  public configureReadWorkflowData(func: Function) {
     this.grantReadWorkflowData(func);
     addEnvironment(func, {
       [ENV_NAMES.TABLE_NAME]: this.props.table.tableName,
     });
   }
 
-  grantReadWorkflowData(grantable: IGrantable) {
+  public grantReadWorkflowData(grantable: IGrantable) {
     this.props.table.grantReadData(grantable);
   }
 
-  grantRecordHistory(grantable: IGrantable) {
+  public grantRecordHistory(grantable: IGrantable) {
     this.history.grantReadWrite(grantable);
   }
 
-  grantReadHistory(grantable: IGrantable) {
+  public configureReadHistory(func: Function) {
+    this.grantReadHistory(func);
+    addEnvironment(func, {
+      [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
+    });
+  }
+
+  public grantReadHistory(grantable: IGrantable) {
     this.history.grantRead(grantable);
   }
 
-  configureSendSignal(func: Function) {
+  public configureSendSignal(func: Function) {
     this.configureSendWorkflowEvent(func);
   }
 
-  grantSendSignal(grantable: IGrantable) {
+  public grantSendSignal(grantable: IGrantable) {
     this.grantSendWorkflowEvent(grantable);
   }
 
-  configureFullControl(func: Function) {
+  public grantFilterOrchestratorLogs(grantable: IGrantable) {
+    this.orchestrator.logGroup.grant(grantable, "logs:FilterLogEvents");
+  }
+
+  /**
+   * Allows starting workflows, finishing activities, reading workflow status
+   * and sending signals to workflows.
+   */
+  public configureFullControl(func: Function) {
     this.configureStartWorkflow(func);
-    this.grantWriteExecutionHistory(func);
+    this.configureSendWorkflowEvent(func);
+    this.configureReadWorkflowData(func);
+    this.configureSendSignal(func);
+    this.configureReadHistory(func);
   }
 
   private configureOrchestrator() {

@@ -43,7 +43,7 @@ export interface SchedulerProps {
  * Subsystem that orchestrates long running timers. Used to orchestrate timeouts, sleep
  * and heartbeats.
  */
-export class Scheduler extends Construct implements IGrantable {
+export class Scheduler extends Construct implements IScheduler, IGrantable {
   /**
    * The Scheduler's IAM Role.
    */
@@ -68,7 +68,7 @@ export class Scheduler extends Construct implements IGrantable {
    * The Timer Queue supports <15m timers at a sub second accuracy, the EventBridge schedule
    * support arbitrary length events at a sub minute accuracy.
    */
-  public readonly scheduleForwarder: Function;
+  public readonly forwarder: Function;
   /**
    * A common Dead Letter Queue to handle failures from various places.
    *
@@ -96,7 +96,7 @@ export class Scheduler extends Construct implements IGrantable {
     this.queue = new Queue(this, "Queue");
 
     // TODO: handle failures to a DLQ - https://github.com/functionless/eventual/issues/40
-    this.scheduleForwarder = new NodejsFunction(this, "ScheduleForwarder", {
+    this.forwarder = new NodejsFunction(this, "Forwarder", {
       entry: path.join(
         require.resolve("@eventual/aws-runtime"),
         "../../esm/handlers/schedule-forwarder.js"
@@ -106,7 +106,7 @@ export class Scheduler extends Construct implements IGrantable {
     });
 
     // Allow the scheduler to create workflow tasks.
-    this.scheduleForwarder.grantInvoke(this.schedulerRole);
+    this.forwarder.grantInvoke(this.schedulerRole);
 
     this.handler = new NodejsFunction(this, "handler", {
       entry: path.join(
@@ -136,11 +136,10 @@ export class Scheduler extends Construct implements IGrantable {
   public configureScheduleTimer(func: Function) {
     this.grantCreateSchedule(func);
     addEnvironment(func, {
-      ...(func === this.scheduleForwarder
+      ...(func === this.forwarder
         ? {}
         : {
-            [ENV_NAMES.SCHEDULE_FORWARDER_ARN]:
-              this.scheduleForwarder.functionArn,
+            [ENV_NAMES.SCHEDULE_FORWARDER_ARN]: this.forwarder.functionArn,
           }),
       [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: this.dlq.queueArn,
       [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
@@ -186,7 +185,7 @@ export class Scheduler extends Construct implements IGrantable {
   }
 
   private configureScheduleForwarder() {
-    this.configureScheduleTimer(this.scheduleForwarder);
-    this.grantDeleteSchedule(this.scheduleForwarder);
+    this.configureScheduleTimer(this.forwarder);
+    this.grantDeleteSchedule(this.forwarder);
   }
 }

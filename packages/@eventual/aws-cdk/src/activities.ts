@@ -24,12 +24,19 @@ export interface ActivitiesProps {
 export interface IActivities {
   configureCompleteActivity(func: Function): void;
   grantCompleteActivity(grantable: IGrantable): void;
+
   configureUpdateActivity(func: Function): void;
   grantUpdateActivity(grantable: IGrantable): void;
+
   configureRead(func: Function): void;
   grantRead(grantable: IGrantable): void;
+
   configureScheduleActivity(func: Function): void;
   grantScheduleActivity(grantable: IGrantable): void;
+
+  grantFilterWorkerLogs(grantable: IGrantable): void;
+
+  configureFullControl(func: Function): void;
 }
 
 /**
@@ -72,49 +79,61 @@ export class Activities extends Construct implements IActivities, IGrantable {
     this.configureActivityWorker();
   }
 
-  get grantPrincipal() {
+  public get grantPrincipal() {
     return this.worker.grantPrincipal;
   }
 
-  configureCompleteActivity(func: Function) {
+  public configureCompleteActivity(func: Function) {
     this.props.workflows.configureSendWorkflowEvent(func);
   }
 
-  grantCompleteActivity(grantable: IGrantable) {
+  public grantCompleteActivity(grantable: IGrantable) {
     this.props.workflows.grantSendWorkflowEvent(grantable);
   }
 
-  configureUpdateActivity(func: Function) {
+  public configureUpdateActivity(func: Function) {
     this.grantUpdateActivity(func);
     addEnvironment(func, {
       [ENV_NAMES.ACTIVITY_TABLE_NAME]: this.table.tableName,
     });
   }
 
-  grantUpdateActivity(grantable: IGrantable) {
+  public grantUpdateActivity(grantable: IGrantable) {
     this.table.grantReadWriteData(grantable);
   }
 
-  configureRead(func: Function) {
+  public configureRead(func: Function) {
     this.grantRead(func);
     addEnvironment(func, {
       [ENV_NAMES.ACTIVITY_TABLE_NAME]: this.table.tableName,
     });
   }
 
-  grantRead(grantable: IGrantable) {
+  public grantRead(grantable: IGrantable) {
     this.table.grantReadData(grantable);
   }
 
-  configureScheduleActivity(func: Function) {
+  /**
+   * Configure the ability heartbeat, cancel, and finish activities.
+   */
+  public configureFullControl(func: Function) {
+    this.configureRead(func);
+    this.configureUpdateActivity(func);
+  }
+
+  public configureScheduleActivity(func: Function) {
     this.grantScheduleActivity(func);
     addEnvironment(func, {
       [ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME]: this.worker.functionName,
     });
   }
 
-  grantScheduleActivity(grantable: IGrantable) {
+  public grantScheduleActivity(grantable: IGrantable) {
     this.worker.grantInvoke(grantable);
+  }
+
+  public grantFilterWorkerLogs(grantable: IGrantable) {
+    this.worker.logGroup.grant(grantable, "logs:FilterLogEvents");
   }
 
   private configureActivityWorker() {

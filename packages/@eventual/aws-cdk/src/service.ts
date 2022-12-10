@@ -154,62 +154,19 @@ export class Service extends Construct implements IGrantable {
   }
 
   /**
-   * Allows starting workflows, finishing activities, reading workflow status
-   * and sending signals to workflows.
-   */
-  private configureWorkflowControl(func: Function) {
-    this.workflows.configureSendWorkflowEvent(func);
-    this.workflows.configureReadWorkflowData(func);
-    this.workflows.configureSendSignal(func);
-    this.workflows.configureReadHistory(func);
-  }
-
-  /**
-   * Grants the ability to heartbeat, cancel, finish, and lookup activities.
-   */
-  public grantControlActivities(grantable: IGrantable) {
-    this.activities.grantRead(grantable);
-    this.activities.grantUpdateActivity(grantable);
-  }
-
-  /**
    * Configure the ability heartbeat, cancel, and finish activities.
    */
-  public configureActivityControl(func: Function) {
-    this.activities.grantRead(func);
-    this.activities.grantUpdateActivity(func);
+  public configureFullActivityControl(func: Function) {
+    this.activities.configureFullControl(func);
   }
 
   private configureApiHandler() {
-    this.configureWorkflowControl(this.api.handler);
+    this.workflows.configureFullControl(this.api.handler);
   }
 
   public grantFilterLogEvents(grantable: IGrantable) {
-    const stack = Stack.of(this);
-    grantable.grantPrincipal.addToPrincipalPolicy(
-      new PolicyStatement({
-        actions: ["logs:FilterLogEvents"],
-        effect: Effect.ALLOW,
-        resources: [
-          Arn.format(
-            {
-              service: "logs",
-              resource: "/aws/lambda",
-              resourceName: this.workflows.orchestrator.functionName,
-            },
-            stack
-          ),
-          Arn.format(
-            {
-              service: "logs",
-              resource: "/aws/lambda",
-              resourceName: this.activities.worker.functionName,
-            },
-            stack
-          ),
-        ],
-      })
-    );
+    this.workflows.grantFilterOrchestratorLogs(grantable);
+    this.activities.grantFilterWorkerLogs(grantable);
   }
 
   /**
