@@ -1,6 +1,4 @@
-import { ENV_NAMES } from "@eventual/aws-runtime";
-import { ServiceType } from "@eventual/core";
-import { Arn, Duration, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
+import { Arn, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
 import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
 import {
   AccountRootPrincipal,
@@ -12,16 +10,15 @@ import {
   Role,
 } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
-import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { execSync } from "child_process";
 import { Construct } from "constructs";
-import { ActivityController } from "./activity-controller";
-import { Scheduler } from "./scheduler";
-import { ServiceApi } from "./service-api";
-import { ServiceFunction } from "./service-function";
-import { addEnvironment, outDir } from "./utils";
-import { WorkflowController } from "./workflow-controller";
+import { Activities } from "./activities";
+import { proxyConstruct } from "./proxy-construct";
+import { IScheduler, Scheduler } from "./scheduler";
+import { Api } from "./service-api";
+import { outDir } from "./utils";
+import { IWorkflows, Workflows } from "./workflows";
 
 export interface ServiceProps {
   entry: string;
@@ -39,29 +36,21 @@ export class Service extends Construct implements IGrantable {
   /**
    * This {@link Service}'s API Gateway.
    */
-  readonly api: ServiceApi;
-  /**
-   * Infrastructure required to manipulate and communicate with a workflow.
-   */
-  public readonly workflowController: WorkflowController;
+  readonly api: Api;
   /**
    * A single-table used for execution data and granular workflow events/
    */
   public readonly table: Table;
   /**
-   * Infrastructure required to heartbeat, cancel, finish, and claim activities.
+   * The subsystem that controls activities.
    */
-  public readonly activityController: ActivityController;
+  public readonly activities: Activities;
   /**
-   * The lambda function which runs the user's Activities.
+   * The subsystem that controls workflows.
    */
-  public readonly activityWorker: Function;
+  public readonly workflows: Workflows;
   /**
-   * The lambda function which runs the user's Workflow.
-   */
-  public readonly orchestrator: Function;
-  /**
-   * The Resources for schedules and sleep timers.
+   * The subsystem for schedules and sleep timers.
    */
   readonly scheduler: Scheduler;
   /**
@@ -86,65 +75,46 @@ export class Service extends Construct implements IGrantable {
       )} ${outDir(this)} ${props.entry}`
     ).toString("utf-8");
 
-    // Table - History, Executions, ExecutionData
-    this.table = new Table(this, "table", {
+    // Table - History, Executions
+    this.table = new Table(this, "Table", {
       partitionKey: { name: "pk", type: AttributeType.STRING },
       sortKey: { name: "sk", type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
-    this.workflowController = new WorkflowController(
-      this,
-      "workflowController",
-      {
-        table: this.table,
-      }
-    );
+    const proxyScheduler = proxyConstruct<IScheduler>();
+    const proxyWorkflows = proxyConstruct<IWorkflows>();
 
-    this.activityController = new ActivityController(
-      this,
-      "activityController",
-      {
-        workflowController: this.workflowController,
-      }
-    );
-
-    this.orchestrator = new ServiceFunction(this, "Orchestrator", {
-      serviceType: ServiceType.OrchestratorWorker,
-      events: [
-        new SqsEventSource(this.workflowController.workflowQueue, {
-          batchSize: 10,
-          reportBatchItemFailures: true,
-        }),
-      ],
-    });
-
-    this.activityWorker = new ServiceFunction(this, "Worker", {
-      serviceType: ServiceType.ActivityWorker,
-      memorySize: 512,
+    this.activities = new Activities(this, "Activities", {
+      scheduler: proxyScheduler,
+      workflows: proxyWorkflows,
       environment: props.environment,
-      // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
-      retryAttempts: 0,
-      // TODO: determine worker timeout strategy
-      timeout: Duration.minutes(1),
     });
+
+    this.workflows = new Workflows(this, "Workflows", {
+      scheduler: proxyScheduler,
+      activities: this.activities,
+      table: this.table,
+    });
+    proxyWorkflows._bind(this.workflows);
 
     this.scheduler = new Scheduler(this, "Scheduler", {
-      workflowController: this.workflowController,
-      activityController: this.activityController,
+      workflows: this.workflows,
+      activities: this.activities,
     });
+    proxyScheduler._bind(this.scheduler);
 
-    this.api = new ServiceApi(this, "Api", {
+    this.api = new Api(this, "Api", {
       serviceName: this.serviceName,
       environment: props.environment,
-      workflowController: this.workflowController,
+      workflow: this.workflows,
     });
 
     this.grantPrincipal = new CompositePrincipal(
       // when granting permissions to the service,
       // propagate them to the following principals
-      this.activityWorker.grantPrincipal,
+      this.activities.worker.grantPrincipal,
       this.api.handler.grantPrincipal
     );
 
@@ -160,17 +130,15 @@ export class Service extends Construct implements IGrantable {
       stringValue: JSON.stringify({
         apiEndpoint: this.api.gateway.apiEndpoint,
         functions: {
-          orchestrator: this.orchestrator.functionName,
-          activityWorker: this.activityWorker.functionName,
+          orchestrator: this.workflows.orchestrator.functionName,
+          activityWorker: this.activities.worker.functionName,
         },
       }),
     });
 
     this.serviceDataSSM.grantRead(this.cliRole);
 
-    this.configureActivityWorker();
     this.configureApiHandler();
-    this.configureOrchestrator();
   }
 
   public grantRead(grantable: IGrantable) {
@@ -178,11 +146,11 @@ export class Service extends Construct implements IGrantable {
   }
 
   public grantFinishActivity(grantable: IGrantable) {
-    this.workflowController.workflowQueue.grantSendMessages(grantable);
+    this.activities.grantCompleteActivity(grantable);
   }
 
   public grantStartWorkflow(grantable: IGrantable) {
-    this.workflowController.grantWorkflowControl(grantable);
+    this.workflows.grantStartWorkflowEvent(grantable);
   }
 
   /**
@@ -190,53 +158,26 @@ export class Service extends Construct implements IGrantable {
    * and sending signals to workflows.
    */
   private configureWorkflowControl(func: Function) {
-    this.workflowController.configureWorkflowControl(func);
+    this.workflows.configureSendWorkflowEvent(func);
+    this.workflows.configureReadWorkflowData(func);
+    this.workflows.configureSendSignal(func);
+    this.workflows.configureReadHistory(func);
   }
 
   /**
    * Grants the ability to heartbeat, cancel, finish, and lookup activities.
    */
   public grantControlActivities(grantable: IGrantable) {
-    this.activityController.grantControlActivity(grantable);
+    this.activities.grantRead(grantable);
+    this.activities.grantUpdateActivity(grantable);
   }
 
   /**
    * Configure the ability heartbeat, cancel, and finish activities.
    */
   public configureActivityControl(func: Function) {
-    this.activityController.configureActivityControl(func);
-  }
-
-  private configureScheduleActivity(func: Function) {
-    this.activityWorker.grantInvoke(func);
-    addEnvironment(func, {
-      [ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME]:
-        this.activityWorker.functionName,
-    });
-  }
-
-  private configureActivityWorker() {
-    // allows the activity worker to send events to the workflow queue
-    // and lookup the status of the workflow.
-    this.configureWorkflowControl(this.activityWorker);
-    // allows the activity worker to claim activities and check their heartbeat status.
-    this.configureActivityControl(this.activityWorker);
-    // allows the activity worker to start the heartbeat monitor
-    this.scheduler.configureScheduleTimer(this.activityWorker);
-  }
-
-  private configureOrchestrator() {
-    // allows the orchestrator to save and load events from the history s3 bucket
-    this.workflowController.configureRecordHistory(this.orchestrator);
-    // allows the orchestrator to directly invoke the activity worker lambda function (async)
-    this.configureScheduleActivity(this.orchestrator);
-    // allows allows the orchestrator to start timeout and sleep timers
-    this.scheduler.configureScheduleTimer(this.orchestrator);
-    // allows the orchestrator to send events to the workflow queue,
-    // write events to the execution table, and start other workflows
-    this.workflowController.configureWorkflowControl(this.orchestrator);
-    // allows the workflow to cancel activities
-    this.activityController.configureActivityControl(this.orchestrator);
+    this.activities.grantRead(func);
+    this.activities.grantUpdateActivity(func);
   }
 
   private configureApiHandler() {
@@ -254,7 +195,7 @@ export class Service extends Construct implements IGrantable {
             {
               service: "logs",
               resource: "/aws/lambda",
-              resourceName: this.orchestrator.functionName,
+              resourceName: this.workflows.orchestrator.functionName,
             },
             stack
           ),
@@ -262,7 +203,7 @@ export class Service extends Construct implements IGrantable {
             {
               service: "logs",
               resource: "/aws/lambda",
-              resourceName: this.activityWorker.functionName,
+              resourceName: this.activities.worker.functionName,
             },
             stack
           ),

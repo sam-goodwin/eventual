@@ -1428,6 +1428,41 @@ describe("signals", () => {
         commands: [],
       });
     });
+
+    test("expect then timeout", () => {
+      const wf = workflow(function* (): any {
+        yield createExpectSignalCall("MySignal", 100 * 1000);
+        yield createExpectSignalCall("MySignal", 100 * 1000);
+      });
+
+      expect(
+        interpret(wf.definition(undefined, context), [
+          startedExpectSignal("MySignal", 0, 100 * 1000),
+          timedOutExpectSignal("MySignal", 0),
+        ])
+      ).toMatchObject(<WorkflowResult>{
+        result: Result.failed({ name: "Timeout" }),
+        commands: [],
+      });
+    });
+
+    test("expect random signal then timeout", () => {
+      const wf = workflow(function* (): any {
+        yield createExpectSignalCall("MySignal", 100 * 1000);
+        yield createExpectSignalCall("MySignal", 100 * 1000);
+      });
+
+      expect(
+        interpret(wf.definition(undefined, context), [
+          startedExpectSignal("MySignal", 0, 100 * 1000),
+          signalReceived("SomethingElse"),
+          timedOutExpectSignal("MySignal", 0),
+        ])
+      ).toMatchObject(<WorkflowResult>{
+        result: Result.failed({ name: "Timeout" }),
+        commands: [],
+      });
+    });
   });
 
   describe("signal handler", () => {

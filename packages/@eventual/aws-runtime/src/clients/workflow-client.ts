@@ -27,7 +27,6 @@ import {
   createEvent,
   HeartbeatRequest,
   HeartbeatResponse,
-  ActivityTokenPayload,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";

@@ -11,15 +11,15 @@ import { Construct } from "constructs";
 import path from "path";
 import { ServiceFunction } from "./service-function";
 import { baseNodeFnProps, outDir } from "./utils";
-import { WorkflowController } from "./workflow-controller";
+import { Workflows } from "./workflows";
 
-export interface ServiceApiProps {
+export interface ApiProps {
   serviceName: string;
   environment?: Record<string, string>;
-  workflowController: WorkflowController;
+  workflow: Workflows;
 }
 
-export class ServiceApi extends Construct {
+export class Api extends Construct {
   /**
    * API Gateway for providing service api
    */
@@ -29,7 +29,7 @@ export class ServiceApi extends Construct {
    */
   public readonly handler: Function;
 
-  constructor(scope: Construct, id: string, props: ServiceApiProps) {
+  constructor(scope: Construct, id: string, props: ApiProps) {
     super(scope, id);
 
     this.handler = new ServiceFunction(this, "Handler", {
@@ -88,28 +88,28 @@ export class ServiceApi extends Construct {
           methods: [HttpMethod.POST],
           entry: { api: "executions/new.js" },
           grants: (fn) => {
-            props.workflowController.configureWorkflowControl(fn);
+            props.workflow.configureStartWorkflow(fn);
           },
         },
         {
           methods: [HttpMethod.GET],
           entry: { api: "executions/list.js" },
           grants: (fn) => {
-            props.workflowController.configureReadWorkflow(fn);
+            props.workflow.configureReadWorkflowData(fn);
           },
         },
       ],
       "/_eventual/executions/{executionId}/history": {
         methods: [HttpMethod.GET],
         entry: { api: "executions/history.js" },
-        grants: (fn) => props.workflowController.configureReadWorkflow(fn),
+        grants: (fn) => props.workflow.configureReadWorkflowData(fn),
       },
       "/_eventual/executions/{executionId}/workflow-history": {
         methods: [HttpMethod.GET],
         entry: { api: "executions/workflow-history.js" },
         // TODO fix me
         grants: (fn) => {
-          props.workflowController.grantReadHistory(fn);
+          props.workflow.configureReadHistory(fn);
         },
       },
     });

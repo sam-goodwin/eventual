@@ -8,7 +8,9 @@ import {
 import { createTimerHandler, TimerRequest } from "@eventual/core";
 
 const handleTimer = createTimerHandler({
-  workflowClient: createWorkflowClient(),
+  workflowClient: createWorkflowClient({
+    tableName: "NOT_NEEDED",
+  }),
   activityRuntimeClient: createActivityRuntimeClient(),
   timerClient: createTimerClient(),
 });

@@ -45,9 +45,8 @@ const asyncWriterFunction = new NodejsFunction(stack, "asyncWriterFunction", {
   handler: "handle",
   environment: {
     TEST_TABLE_NAME: testService.table.tableName,
-    TEST_ACTIVITY_TABLE_NAME:
-      testService.activityController.activitiesTable.tableName,
-    TEST_QUEUE_URL: testService.workflowController.workflowQueue.queueUrl,
+    TEST_ACTIVITY_TABLE_NAME: testService.activities.table.tableName,
+    TEST_QUEUE_URL: testService.workflows.queue.queueUrl,
   },
 });
 asyncWriterFunction.grantInvoke(pipeRole);
@@ -75,7 +74,7 @@ new CfnOutput(stack, "roleArn", {
 });
 
 new CfnOutput(stack, "workflowQueueUrl", {
-  value: testService.workflowController.workflowQueue.queueUrl,
+  value: testService.workflows.queue.queueUrl,
   exportName: "QueueUrl",
 });
 
@@ -85,6 +84,6 @@ new CfnOutput(stack, "serviceTableName", {
 });
 
 new CfnOutput(stack, "activityTableName", {
-  value: testService.activityController.activitiesTable.tableName,
+  value: testService.activities.table.tableName,
   exportName: "ActivityTableName",
 });

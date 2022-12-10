@@ -32,20 +32,22 @@ export interface AsyncWriterTestEvent {
 
 export const handle: Handler<AsyncWriterTestEvent[], void> = async (event) => {
   console.log(event);
-  await Promise.allSettled(
-    event.map(async (e) => {
-      if (e.type === "complete") {
-        await workflowClient.completeActivity({
-          activityToken: e.token,
-          result: "hello from the async writer!",
-        });
-      } else {
-        await workflowClient.failActivity({
-          activityToken: e.token,
-          error: "AsyncWriterError",
-          message: "I was told to fail this activity, sorry.",
-        });
-      }
-    })
+  console.log(
+    await Promise.allSettled(
+      event.map(async (e) => {
+        if (e.type === "complete") {
+          await workflowClient.completeActivity({
+            activityToken: e.token,
+            result: "hello from the async writer!",
+          });
+        } else {
+          await workflowClient.failActivity({
+            activityToken: e.token,
+            error: "AsyncWriterError",
+            message: "I was told to fail this activity, sorry.",
+          });
+        }
+      })
+    )
   );
 };
