@@ -1,27 +1,28 @@
 import {
-  isEventual,
-  EventualSymbol,
   Eventual,
   EventualKind,
   EventualBase,
+  isEventualOfKind,
+  createEventual,
   EventualArrayPromiseResult,
 } from "./eventual.js";
 import { Resolved } from "./result.js";
 
 export function isAwaitAllSettled(a: any): a is AwaitAllSettled<any> {
-  return isEventual(a) && a[EventualSymbol] === EventualKind.AwaitAllSettled;
+  return isEventualOfKind(EventualKind.AwaitAllSettled, a);
 }
 
 export interface AwaitAllSettled<
   T extends (PromiseFulfilledResult<any> | PromiseRejectedResult)[]
-> extends EventualBase<Resolved<T>> {
-  [EventualSymbol]: EventualKind.AwaitAllSettled;
+> extends EventualBase<EventualKind.AwaitAllSettled, Resolved<T>> {
   activities: Eventual[];
 }
 
 export function createAwaitAllSettled<A extends Eventual[]>(activities: A) {
-  return <AwaitAllSettled<EventualArrayPromiseResult<A>>>{
-    [EventualSymbol]: EventualKind.AwaitAllSettled,
-    activities,
-  };
+  return createEventual<AwaitAllSettled<EventualArrayPromiseResult<A>>>(
+    EventualKind.AwaitAllSettled,
+    {
+      activities,
+    }
+  );
 }

@@ -40,7 +40,6 @@ const scheduled4: ActivityScheduled = {
 const completed3: ActivityCompleted = {
   type: WorkflowEventType.ActivityCompleted,
   seq: 0,
-  duration: 100,
   result: 10,
   timestamp: "",
 };
@@ -48,7 +47,6 @@ const completed3: ActivityCompleted = {
 const completed5: ActivityCompleted = {
   type: WorkflowEventType.ActivityCompleted,
   seq: 1,
-  duration: 100,
   result: 10,
   timestamp: "",
 };

@@ -18,6 +18,11 @@ import {
   WorkflowClient,
   StartWorkflowRequest,
   SendSignalRequest,
+  decodeActivityToken,
+  ActivityCompleted,
+  ActivityFailed,
+  CompleteActivityRequest,
+  FailActivityRequest,
   formatExecutionId,
   createEvent,
 } from "@eventual/core";
@@ -168,6 +173,41 @@ export class AWSWorkflowClient implements WorkflowClient {
         undefined,
         request.id
       )
+    );
+  }
+
+  public async completeActivity({
+    activityToken,
+    result,
+  }: CompleteActivityRequest): Promise<void> {
+    await this.sendActivityResult<ActivityCompleted>(activityToken, {
+      type: WorkflowEventType.ActivityCompleted,
+      result,
+    });
+  }
+
+  public async failActivity({
+    activityToken,
+    error,
+    message,
+  }: FailActivityRequest): Promise<void> {
+    await this.sendActivityResult<ActivityFailed>(activityToken, {
+      type: WorkflowEventType.ActivityFailed,
+      error,
+      message,
+    });
+  }
+
+  private async sendActivityResult<
+    E extends ActivityCompleted | ActivityFailed
+  >(activityToken: string, event: Omit<E, "seq" | "duration" | "timestamp">) {
+    const data = decodeActivityToken(activityToken);
+    await this.submitWorkflowTask(
+      data.payload.executionId,
+      createEvent<ActivityFailed | ActivityCompleted>({
+        ...event,
+        seq: data.payload.seq,
+      })
     );
   }
 }

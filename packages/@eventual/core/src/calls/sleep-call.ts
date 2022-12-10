@@ -1,44 +1,44 @@
 import {
-  EventualSymbol,
   EventualKind,
-  isEventual,
   EventualBase,
+  isEventualOfKind,
+  createEventual,
 } from "../eventual.js";
 import { registerEventual } from "../global.js";
 import { Resolved } from "../result.js";
 
 export function isSleepForCall(a: any): a is SleepForCall {
-  return isEventual(a) && a[EventualSymbol] === EventualKind.SleepForCall;
+  return isEventualOfKind(EventualKind.SleepForCall, a);
 }
 
 export function isSleepUntilCall(a: any): a is SleepUntilCall {
-  return isEventual(a) && a[EventualSymbol] === EventualKind.SleepUntilCall;
+  return isEventualOfKind(EventualKind.SleepUntilCall, a);
 }
 
-export interface SleepForCall extends EventualBase<Resolved<undefined>> {
-  [EventualSymbol]: EventualKind.SleepForCall;
+export interface SleepForCall
+  extends EventualBase<EventualKind.SleepForCall, Resolved<undefined>> {
   seq?: number;
   durationSeconds: number;
 }
 
-export interface SleepUntilCall extends EventualBase<Resolved<undefined>> {
-  [EventualSymbol]: EventualKind.SleepUntilCall;
+export interface SleepUntilCall
+  extends EventualBase<EventualKind.SleepUntilCall, Resolved<undefined>> {
   seq?: number;
   isoDate: string;
 }
 
 export function createSleepForCall(durationSeconds: number): SleepForCall {
-  const command: SleepForCall = {
-    [EventualSymbol]: EventualKind.SleepForCall,
-    durationSeconds,
-  };
-  return registerEventual(command);
+  return registerEventual(
+    createEventual(EventualKind.SleepForCall, {
+      durationSeconds,
+    })
+  );
 }
 
 export function createSleepUntilCall(isoDate: string): SleepUntilCall {
-  const command: SleepUntilCall = {
-    [EventualSymbol]: EventualKind.SleepUntilCall,
-    isoDate,
-  };
-  return registerEventual(command);
+  return registerEventual(
+    createEventual(EventualKind.SleepUntilCall, {
+      isoDate,
+    })
+  );
 }
