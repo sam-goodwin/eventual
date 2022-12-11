@@ -259,7 +259,7 @@ const signalEvent = event<{
   proxy?: true;
 }>("SignalEvent");
 
-signalEvent.subscribe(async ({ executionId, signalId, proxy }) => {
+signalEvent.on(async ({ executionId, signalId, proxy }) => {
   console.debug("received signal event", { executionId, signalId, proxy });
   if (proxy) {
     // if configured to proxy, re-route this event through the signalEvent

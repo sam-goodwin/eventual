@@ -367,9 +367,9 @@ export const isScheduledEvent = or(
   isActivityScheduled,
   isChildWorkflowScheduled,
   isConditionStarted,
+  isEventsPublished,
   isExpectSignalStarted,
   isSignalSent,
-  isEventsPublished,
   isSleepScheduled
 );
 

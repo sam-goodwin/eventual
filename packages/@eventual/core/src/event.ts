@@ -1,6 +1,6 @@
 import { createPublishEventsCall } from "./calls/send-events-call.js";
 import { events, eventSubscriptions, getEventClient } from "./global.js";
-import { activity, isOrchestratorWorker } from "./index.js";
+import { isOrchestratorWorker } from "./index.js";
 
 /**
  * An EventPayload is the data sent as an event.
@@ -32,7 +32,7 @@ export interface EventEnvelope<E extends EventPayload = EventPayload> {
 /**
  * An {@link Event} is an object representing the declaration of an event
  * that belongs within the service. An {@link Event} has a unique {@link name},
- * may be {@link publish}ed and {@link subscribe}d to.
+ * may be {@link publish}ed and {@link on}d to.
  */
 export interface Event<E extends EventPayload = EventPayload> {
   /**
@@ -45,7 +45,7 @@ export interface Event<E extends EventPayload = EventPayload> {
    *
    * @param handler the handler function that will process the event.
    */
-  subscribe(handler: (event: E) => Promise<void>): void;
+  on(handler: (event: E) => Promise<void>): void;
   /**
    * Publish events of this type within the service boundary.
    *
@@ -134,7 +134,7 @@ export function event<E extends EventPayload>(name: string): Event<E> {
   }
   const event: Event<E> = {
     name,
-    subscribe(handler) {
+    on(handler) {
       eventSubscriptions().push({
         subscriptions: [
           {
@@ -159,13 +159,3 @@ export function event<E extends EventPayload>(name: string): Event<E> {
   events().set(name, event);
   return event;
 }
-
-/**
- * An activity that publishes events to this service's event bus.
- */
-export const publish = activity(
-  "eventual::publish",
-  async (events: EventEnvelope[]) => {
-    await getEventClient().publish(...events);
-  }
-);

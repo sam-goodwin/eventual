@@ -36,6 +36,7 @@ import {
   createSleepForCommand,
   createSleepUntilCommand,
   createStartConditionCommand,
+  eventsPublished,
   scheduledSleep,
   signalReceived,
   signalSent,
@@ -2019,23 +2020,28 @@ test("publish event", () => {
     return "done!";
   });
 
+  const events = [
+    {
+      name: "event-type",
+      event: {
+        key: "value",
+      },
+    },
+  ];
+
   expect(
     interpret(wf.definition(undefined, context), [])
   ).toEqual<WorkflowResult>({
     // promise should be instantly resolved
     result: Result.resolved("done!"),
-    commands: [
-      createPublishEventCommand(
-        [
-          {
-            name: "event-type",
-            event: {
-              key: "value",
-            },
-          },
-        ],
-        0
-      ),
-    ],
+    commands: [createPublishEventCommand(events, 0)],
+  });
+
+  expect(
+    interpret(wf.definition(undefined, context), [eventsPublished(events, 0)])
+  ).toEqual<WorkflowResult>({
+    // promise should be instantly resolved
+    result: Result.resolved("done!"),
+    commands: [],
   });
 });

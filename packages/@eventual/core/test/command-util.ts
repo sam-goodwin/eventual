@@ -1,36 +1,37 @@
+import { ulid } from "ulidx";
 import {
   CommandType,
-  SleepForCommand,
-  SleepUntilCommand,
+  ExpectSignalCommand,
+  PublishEventsCommand,
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
-  ExpectSignalCommand,
   SendSignalCommand,
+  SleepForCommand,
+  SleepUntilCommand,
   StartConditionCommand,
-  PublishEventsCommand,
 } from "../src/command.js";
+import { EventEnvelope } from "../src/event.js";
+import { SignalTarget } from "../src/signals.js";
 import {
   ActivityCompleted,
   ActivityFailed,
   ActivityScheduled,
+  ActivityTimedOut,
   ChildWorkflowCompleted,
   ChildWorkflowFailed,
   ChildWorkflowScheduled,
   ConditionStarted,
   ConditionTimedOut,
+  EventsPublished,
+  ExpectSignalStarted,
+  ExpectSignalTimedOut,
   SignalReceived,
   SignalSent,
   SleepCompleted,
   SleepScheduled,
-  ExpectSignalStarted,
-  ExpectSignalTimedOut,
   WorkflowEventType,
   WorkflowTimedOut,
-  ActivityTimedOut,
 } from "../src/workflow-events.js";
-import { ulid } from "ulidx";
-import { SignalTarget } from "../src/signals.js";
-import { EventEnvelope } from "../src/event.js";
 
 export function createSleepUntilCommand(
   untilTime: string,
@@ -295,5 +296,17 @@ export function conditionTimedOut(seq: number): ConditionTimedOut {
     type: WorkflowEventType.ConditionTimedOut,
     timestamp: new Date().toISOString(),
     seq,
+  };
+}
+
+export function eventsPublished(
+  events: EventEnvelope[],
+  seq: number
+): EventsPublished {
+  return {
+    type: WorkflowEventType.EventsPublished,
+    seq,
+    timestamp: new Date().toISOString(),
+    events,
   };
 }

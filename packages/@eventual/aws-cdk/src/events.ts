@@ -3,12 +3,12 @@ import { AppSpec, ServiceType } from "@eventual/core";
 import { aws_events_targets } from "aws-cdk-lib";
 import { EventBus, IEventBus, Rule } from "aws-cdk-lib/aws-events";
 import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
-import { Function, IFunction } from "aws-cdk-lib/aws-lambda";
+import { Function } from "aws-cdk-lib/aws-lambda";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import { ServiceFunction } from "./service-function";
 
-export interface BusProps {
+export interface EventsProps {
   /**
    * The {@link AppSec} describing the event subscriptions within the Service.
    */
@@ -33,7 +33,7 @@ export class Events extends Construct implements IGrantable {
   /**
    * The Lambda {@link Function} that handles events subscribed to in this service's {@link eventBus}.
    */
-  public readonly handler: IFunction;
+  public readonly handler: Function;
   /**
    * A SQS Queue to collect events that failed to be handled.
    */
@@ -43,7 +43,7 @@ export class Events extends Construct implements IGrantable {
 
   private readonly serviceName: string;
 
-  constructor(scope: Construct, id: string, props: BusProps) {
+  constructor(scope: Construct, id: string, props: EventsProps) {
     super(scope, id);
 
     this.serviceName = props.serviceName;
@@ -62,7 +62,7 @@ export class Events extends Construct implements IGrantable {
       environment: props.environment,
     });
     this.grantPrincipal = this.handler.grantPrincipal;
-    this.configurePublish(this.handler as Function);
+    this.configurePublish(this.handler);
 
     if (props.appSpec.subscriptions.length > 0) {
       // configure a Rule to route all subscribed events to the eventHandler

@@ -33,6 +33,23 @@ declare global {
      * this is initialized by Eventual's harness lambda functions
      */
     workflowClient?: WorkflowClient;
+    /**
+     * A global variable storing a map of event name (which is globally unique)
+     * to the {@link Event} declaration instance.
+     */
+    events?: Map<string, Event>;
+    /**
+     * A global variable storing a list of all {@link EventSubscription}s declared
+     * within this application.
+     */
+    eventSubscriptions?: EventSubscription[];
+
+    /**
+     * A global variable for storing the {@link EventClient}
+     *
+     * This is initialized by Eventual's harness functions
+     */
+    eventClient?: EventClient;
   };
 }
 
@@ -42,10 +59,10 @@ export const workflows = (): Map<string, Workflow> =>
   (globalThis._eventual.workflows ??= new Map<string, Workflow>());
 
 export const events = (): Map<string, Event> =>
-  ((globalThis as any).events ??= new Map<string, Event>());
+  (globalThis._eventual.events ??= new Map<string, Event>());
 
 export const eventSubscriptions = (): EventSubscription[] =>
-  ((globalThis as any).eventSubscriptions ??= []);
+  (globalThis._eventual.eventSubscriptions ??= []);
 
 export const callableActivities = (): Record<string, ActivityHandler<any>> =>
   (globalThis._eventual.callableActivities ??= {});
@@ -103,24 +120,20 @@ export function getActivityContext(): ActivityContext {
   return context;
 }
 
-// a global variable for storing the EventClient
-// this is initialized by Eventual's harness functions
-let eventClient: EventClient;
-
 /**
  * Register the global event client sued by the event emit functions
  * to emit events within an eventual-controlled environment.
  */
 export function registerEventClient(client: EventClient) {
-  eventClient = client;
+  globalThis._eventual.eventClient = client;
 }
 
 /**
  * Get the global event client.
  */
 export function getEventClient(): EventClient {
-  if (eventClient === undefined) {
+  if (globalThis._eventual.eventClient === undefined) {
     throw new Error(`EventClient is not registered`);
   }
-  return eventClient;
+  return globalThis._eventual.eventClient;
 }

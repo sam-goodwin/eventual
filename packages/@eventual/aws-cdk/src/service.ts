@@ -114,7 +114,7 @@ export class Service extends Construct implements IGrantable {
     ).toString("utf-8");
 
     this.history = new Bucket(this, "History", {
-      removalPolicy: RemovalPolicy.RETAIN,
+      removalPolicy: RemovalPolicy.DESTROY,
     });
 
     this.events = new Events(this, "Events", {
