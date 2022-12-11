@@ -52,7 +52,7 @@ import { createRegisterSignalHandlerCall } from "../src/calls/signal-handler-cal
 import { createWorkflowCall } from "../src/calls/workflow-call.js";
 import { createSendSignalCall } from "../src/calls/send-signal-call.js";
 import { createConditionCall } from "../src/calls/condition-call.js";
-import { createPublishEventsCall } from "../src/calls/send-events-call.js";
+import { createPublishEventsCall } from "../src/calls/publish-events-call.js";
 
 beforeAll(() => {
   process.env[SERVICE_TYPE_FLAG] = ServiceType.OrchestratorWorker;

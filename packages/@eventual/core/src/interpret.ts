@@ -63,7 +63,7 @@ import { isConditionCall } from "./calls/condition-call.js";
 import { isAwaitAllSettled } from "./await-all-settled.js";
 import { isAwaitAny } from "./await-any.js";
 import { isRace } from "./race.js";
-import { isPublishEventsCall } from "./calls/send-events-call.js";
+import { isPublishEventsCall } from "./calls/publish-events-call.js";
 
 export interface WorkflowResult<T = any> {
   /**
