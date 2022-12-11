@@ -42,15 +42,15 @@ export const timeline = (yargs: Argv) =>
         }
       });
 
-      const timelineVizPath = new URL(
-        await resolve("@eventual/timeline-viz", import.meta.url)
+      const timelinePath = new URL(
+        await resolve("@eventual/timeline", import.meta.url)
       ).pathname;
-      console.log(timelineVizPath);
+      console.log(timelinePath);
 
       const vite = await createViteServer({
         server: { middlewareMode: true },
         appType: "spa",
-        root: timelineVizPath,
+        root: timelinePath,
       });
 
       app.use(vite.middlewares);

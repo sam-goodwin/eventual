@@ -1,5 +1,5 @@
 {
-  "name": "@eventual/timeline-viz",
+  "name": "@eventual/timeline",
   "private": true,
   "version": "0.0.0",
   "type": "module",
