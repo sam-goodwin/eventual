@@ -6,7 +6,9 @@ import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
+import { IActivities } from "./activities";
 import { ServiceFunction } from "./service-function";
+import { IWorkflows } from "./workflows";
 
 export interface EventsProps {
   /**
@@ -23,6 +25,8 @@ export interface EventsProps {
    * @default - no extra environment variables
    */
   readonly environment?: Record<string, string>;
+  readonly workflows: IWorkflows;
+  readonly activities: IActivities;
 }
 
 export class Events extends Construct implements IGrantable {
@@ -43,7 +47,7 @@ export class Events extends Construct implements IGrantable {
 
   private readonly serviceName: string;
 
-  constructor(scope: Construct, id: string, props: EventsProps) {
+  constructor(scope: Construct, id: string, private props: EventsProps) {
     super(scope, id);
 
     this.serviceName = props.serviceName;
@@ -81,6 +85,8 @@ export class Events extends Construct implements IGrantable {
         ],
       });
     }
+
+    this.configureEventHandler();
   }
 
   /**
@@ -94,5 +100,11 @@ export class Events extends Construct implements IGrantable {
     this.grantPublish(func);
     func.addEnvironment(ENV_NAMES.EVENT_BUS_ARN, this.bus.eventBusArn);
     func.addEnvironment(ENV_NAMES.SERVICE_NAME, this.serviceName);
+  }
+
+  private configureEventHandler() {
+    this.props.workflows.configureFullControl(this.handler);
+    // allows the workflow to cancel activities
+    this.props.activities.configureUpdateActivity(this.handler);
   }
 }

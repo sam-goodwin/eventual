@@ -11,7 +11,6 @@ import {
   StartConditionCommand,
 } from "../src/command.js";
 import { EventEnvelope } from "../src/event.js";
-import { SignalTarget } from "../src/signals.js";
 import {
   ActivityCompleted,
   ActivityFailed,
@@ -31,7 +30,9 @@ import {
   SleepScheduled,
   WorkflowEventType,
   WorkflowTimedOut,
+  ActivityHeartbeatTimedOut,
 } from "../src/workflow-events.js";
+import { SignalTarget } from "../src/signals.js";
 
 export function createSleepUntilCommand(
   untilTime: string,
@@ -187,6 +188,18 @@ export function activityScheduled(
     name,
     seq,
     timestamp: new Date(0).toISOString(),
+  };
+}
+
+export function activityHeartbeatTimedOut(
+  seq: number,
+  /** Relative seconds from 0 */
+  seconds: number
+): ActivityHeartbeatTimedOut {
+  return {
+    type: WorkflowEventType.ActivityHeartbeatTimedOut,
+    seq,
+    timestamp: new Date(seconds * 1000).toISOString(),
   };
 }
 

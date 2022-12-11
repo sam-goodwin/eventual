@@ -5,7 +5,10 @@ import type {
 } from "aws-lambda";
 import { createWorkflowClient } from "../../../clients/create.js";
 import { withErrorMiddleware } from "../middleware.js";
-import { getService } from "../service-properties.js";
+
+const workflowClient = createWorkflowClient({
+  activityTableName: "NOT_NEEDED",
+});
 
 /**
  * Create a new execution (start a workflow)
@@ -17,7 +20,6 @@ async function newExecution(event: APIGatewayProxyEventV2) {
   if (!workflowName) {
     return { statusCode: 400, body: `Missing workflow name` };
   }
-  const workflowClient = createWorkflowClient(getService());
 
   return {
     executionId: await workflowClient.startWorkflow({
