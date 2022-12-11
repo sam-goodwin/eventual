@@ -8,48 +8,17 @@ import {
   ReceiverEvent,
   ReceiverMultipleAckError,
 } from "@slack/bolt";
-import type { StringIndexed } from "@slack/bolt/dist/types/helpers";
 import { RouteHandler } from "@eventual/core";
 import type itty from "itty-router";
 
-export interface AwsEvent {
-  body: string | null;
-  headers: any;
-  multiValueHeaders: any;
-  httpMethod: string;
-  isBase64Encoded: boolean;
-  path: string;
-  pathParameters: any | null;
-  queryStringParameters: any | null;
-  multiValueQueryStringParameters: any | null;
-  stageVariables: any | null;
-  requestContext: any;
-  resource: string;
-}
-
-export type AwsCallback = (error?: Error | string | null, result?: any) => void;
-
-export interface AwsResponse {
-  statusCode: number;
-  headers?: {
-    [header: string]: boolean | number | string;
-  };
-  multiValueHeaders?: {
-    [header: string]: Array<boolean | number | string>;
-  };
-  body: string;
-  isBase64Encoded?: boolean;
-}
-
-export interface AwsLambdaReceiverOptions {
+export interface IttyReceiverOptions {
   signingSecret: string;
   logger?: Logger;
   logLevel?: LogLevel;
-  customPropertiesExtractor?: (request: AwsEvent) => StringIndexed;
 }
 
 /**
- * Receiver implementation for AWS API Gateway + Lambda apps
+ * Receiver implementation for itty-router
  *
  * Note that this receiver does not support Slack OAuth flow.
  * For OAuth flow endpoints, deploy another Lambda function built with ExpressReceiver.
@@ -69,7 +38,7 @@ export default class IttyReceiver implements Receiver {
     signingSecret,
     logger = undefined,
     logLevel = LogLevel.INFO,
-  }: AwsLambdaReceiverOptions) {
+  }: IttyReceiverOptions) {
     // Initialize instance variables, substituting defaults for each value
     this.signingSecret = signingSecret;
     this.logger =
