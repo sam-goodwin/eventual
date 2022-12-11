@@ -508,10 +508,7 @@ export function createOrchestrator({
                     seq: command.seq,
                   }),
                   executionId,
-                  schedule: Schedule.relative(
-                    command.timeoutSeconds * 1000,
-                    start
-                  ),
+                  schedule: Schedule.relative(command.timeoutSeconds, start),
                 });
               }
 
