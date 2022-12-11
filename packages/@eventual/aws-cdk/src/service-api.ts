@@ -12,11 +12,13 @@ import path from "path";
 import { ServiceFunction } from "./service-function";
 import { baseNodeFnProps, outDir } from "./utils";
 import { Workflows } from "./workflows";
+import { Events } from "./events";
 
 export interface ApiProps {
   serviceName: string;
   environment?: Record<string, string>;
-  workflow: Workflows;
+  workflows: Workflows;
+  events: Events;
 }
 
 export class Api extends Construct {
@@ -29,7 +31,7 @@ export class Api extends Construct {
    */
   public readonly handler: Function;
 
-  constructor(scope: Construct, id: string, props: ApiProps) {
+  constructor(scope: Construct, id: string, private props: ApiProps) {
     super(scope, id);
 
     this.handler = new ServiceFunction(this, "Handler", {
@@ -88,31 +90,33 @@ export class Api extends Construct {
           methods: [HttpMethod.POST],
           entry: { api: "executions/new.js" },
           grants: (fn) => {
-            props.workflow.configureStartWorkflow(fn);
+            props.workflows.configureStartWorkflow(fn);
           },
         },
         {
           methods: [HttpMethod.GET],
           entry: { api: "executions/list.js" },
           grants: (fn) => {
-            props.workflow.configureReadWorkflowData(fn);
+            props.workflows.configureReadWorkflowData(fn);
           },
         },
       ],
       "/_eventual/executions/{executionId}/history": {
         methods: [HttpMethod.GET],
         entry: { api: "executions/history.js" },
-        grants: (fn) => props.workflow.configureReadWorkflowData(fn),
+        grants: (fn) => props.workflows.configureReadWorkflowData(fn),
       },
       "/_eventual/executions/{executionId}/workflow-history": {
         methods: [HttpMethod.GET],
         entry: { api: "executions/workflow-history.js" },
         // TODO fix me
         grants: (fn) => {
-          props.workflow.configureReadHistory(fn);
+          props.workflows.configureReadHistory(fn);
         },
       },
     });
+
+    this.configureApiHandler();
   }
 
   public grantExecute(grantable: IGrantable) {
@@ -155,5 +159,10 @@ export class Api extends Construct {
       ...baseNodeFnProps,
       handler: "index.handler",
     });
+  }
+
+  private configureApiHandler() {
+    this.props.workflows.configureFullControl(this.handler);
+    this.props.events.configurePublish(this.handler);
   }
 }

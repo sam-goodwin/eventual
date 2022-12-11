@@ -126,16 +126,8 @@ export function activity<Arguments extends any[], Output extends any = any>(
     | [handler: ActivityHandler<Arguments, Output>]
 ): ActivityFunction<Arguments, Output> {
   const [opts, handler] = args.length === 1 ? [undefined, args[0]] : args;
-  if (isActivityWorker()) {
-    // if we're in the eventual worker, actually run the process amd register the activity
-    // register the handler to be looked up during execution.
-    callableActivities()[activityID] = handler;
-    return ((...args) => handler(...args)) as ActivityFunction<
-      Arguments,
-      Output
-    >;
-  } else if (isOrchestratorWorker()) {
-    // otherwise, return a command to invoke the activity in the worker function
+  if (isOrchestratorWorker()) {
+    // if we're in the orchestrator, return a command to invoke the activity in the worker function
     return ((...args: Parameters<ActivityFunction<Arguments, Output>>) => {
       return createActivityCall(
         activityID,
@@ -144,8 +136,16 @@ export function activity<Arguments extends any[], Output extends any = any>(
         opts?.heartbeatSeconds
       ) as any;
     }) as ActivityFunction<Arguments, Output>;
+  } else {
+    // otherwise we must be in an activity, event or api handler
+    // register the handler to be looked up during execution.
+    callableActivities()[activityID] = handler;
+    // calling the activity from outside the orchestrator just calls the handler
+    return ((...args) => handler(...args)) as ActivityFunction<
+      Arguments,
+      Output
+    >;
   }
-  return undefined as any;
 }
 
 /**

@@ -14,6 +14,7 @@ import {
 } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import { IActivities } from "./activities";
+import { Events } from "./events";
 import { IScheduler } from "./scheduler";
 import { ServiceFunction } from "./service-function";
 import { addEnvironment } from "./utils";
@@ -22,6 +23,7 @@ export interface WorkflowsProps {
   scheduler: IScheduler;
   activities: IActivities;
   table: ITable;
+  events: Events;
 }
 
 export interface IWorkflows {
@@ -176,6 +178,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
   }
 
   private configureOrchestrator() {
+    this.props.events.configurePublish(this.orchestrator);
     // allows the orchestrator to save and load events from the history s3 bucket
     this.configureRecordHistory(this.orchestrator);
     // allows the orchestrator to directly invoke the activity worker lambda function (async)

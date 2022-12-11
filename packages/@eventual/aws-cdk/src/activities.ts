@@ -14,11 +14,13 @@ import { Function } from "aws-cdk-lib/aws-lambda";
 import { IScheduler } from "./scheduler";
 import { ServiceType } from "@eventual/core";
 import { ServiceFunction } from "./service-function";
+import { Events } from "./events";
 
 export interface ActivitiesProps {
   workflows: IWorkflows;
   scheduler: IScheduler;
   environment?: Record<string, string>;
+  events: Events;
 }
 
 export interface IActivities {
@@ -137,6 +139,7 @@ export class Activities extends Construct implements IActivities, IGrantable {
   }
 
   private configureActivityWorker() {
+    this.props.events.configurePublish(this.worker);
     if (this.props.environment) {
       addEnvironment(this.worker, this.props.environment);
     }

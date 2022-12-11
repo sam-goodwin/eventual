@@ -1,7 +1,13 @@
 import itty from "itty-router";
 import { api } from "../../api.js";
-import { registerWorkflowClient } from "../../global.js";
+import { registerEventClient, registerWorkflowClient } from "../../global.js";
 import type { WorkflowClient } from "../clients/workflow-client.js";
+import type { EventClient } from "../index.js";
+
+export interface ApiHandlerDependencies {
+  workflowClient: WorkflowClient;
+  eventClient: EventClient;
+}
 
 /**
  * Creates a generic function for handling inbound API requests
@@ -9,9 +15,13 @@ import type { WorkflowClient } from "../clients/workflow-client.js";
  * decoupled from a runtime's specifics by the clients. A runtime must
  * inject its own client implementations designed for that platform.
  */
-export function createApiHandler(workflowClient: WorkflowClient) {
+export function createApiHandler({
+  workflowClient,
+  eventClient,
+}: ApiHandlerDependencies) {
   // make the workflow client available to web hooks
   registerWorkflowClient(workflowClient);
+  registerEventClient(eventClient);
 
   api.all("*", () => new Response("Not Found.", { status: 404 }));
 

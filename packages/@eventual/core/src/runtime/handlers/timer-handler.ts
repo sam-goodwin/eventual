@@ -2,7 +2,7 @@ import {
   ActivityHeartbeatTimedOut,
   createEvent,
   WorkflowEventType,
-} from "../../events.js";
+} from "../../workflow-events.js";
 import { assertNever } from "../../util.js";
 import {
   isActivityHeartbeatMonitorRequest,

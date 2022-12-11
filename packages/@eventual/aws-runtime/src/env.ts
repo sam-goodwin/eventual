@@ -1,8 +1,10 @@
 import { assertNonNull } from "@eventual/core";
 
 export namespace ENV_NAMES {
+  export const SERVICE_NAME = "EVENTUAL_SERVICE_NAME";
   export const TABLE_NAME = "EVENTUAL_TABLE_NAME";
   export const EXECUTION_HISTORY_BUCKET = "EVENTUAL_EXECUTION_HISTORY_BUCKET";
+  export const EVENT_BUS_ARN = "EVENTUAL_EVENT_BUS_ARN";
   export const WORKFLOW_QUEUE_URL = "EVENTUAL_WORKFLOW_QUEUE_URL";
   export const WORKFLOW_QUEUE_ARN = "EVENTUAL_WORKFLOW_QUEUE_ARN";
   export const WORKFLOW_FUNCTION_NAME = "EVENTUAL_WORKFLOW_FUNCTION_NAME";
@@ -26,7 +28,9 @@ export function tryGetEnv(name: string) {
 
 export const workflowFunctionName = () =>
   tryGetEnv(ENV_NAMES.WORKFLOW_FUNCTION_NAME);
+export const serviceName = () => tryGetEnv(ENV_NAMES.SERVICE_NAME);
 export const tableName = () => tryGetEnv(ENV_NAMES.TABLE_NAME);
+export const eventBusArn = () => tryGetEnv(ENV_NAMES.EVENT_BUS_ARN);
 export const executionHistoryBucket = () =>
   tryGetEnv(ENV_NAMES.EXECUTION_HISTORY_BUCKET);
 export const workflowQueueUrl = () => tryGetEnv(ENV_NAMES.WORKFLOW_QUEUE_URL);

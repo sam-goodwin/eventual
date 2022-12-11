@@ -1,13 +1,15 @@
+import { EventEnvelope } from "./event.js";
 import { SignalTarget } from "./signals.js";
 import { WorkflowOptions } from "./workflow.js";
 
 export type Command =
-  | SleepUntilCommand
-  | SleepForCommand
+  | ExpectSignalCommand
   | ScheduleActivityCommand
   | ScheduleWorkflowCommand
-  | ExpectSignalCommand
+  | PublishEventsCommand
   | SendSignalCommand
+  | SleepForCommand
+  | SleepUntilCommand
   | StartConditionCommand;
 
 interface CommandBase<T extends CommandType> {
@@ -16,13 +18,14 @@ interface CommandBase<T extends CommandType> {
 }
 
 export enum CommandType {
-  StartActivity = "StartActivity",
-  SleepUntil = "SleepUntil",
-  SleepFor = "SleepFor",
-  StartWorkflow = "StartWorkflow",
   ExpectSignal = "ExpectSignal",
+  PublishEvents = "PublishEvents",
   SendSignal = "SendSignal",
+  SleepFor = "SleepFor",
+  SleepUntil = "SleepUntil",
+  StartActivity = "StartActivity",
   StartCondition = "StartCondition",
+  StartWorkflow = "StartWorkflow",
 }
 
 /**
@@ -118,4 +121,15 @@ export function isStartConditionCommand(
   command: Command
 ): command is StartConditionCommand {
   return command.kind === CommandType.StartCondition;
+}
+
+export interface PublishEventsCommand
+  extends CommandBase<CommandType.PublishEvents> {
+  events: EventEnvelope[];
+}
+
+export function isPublishEventsCommand(
+  command: Command
+): command is PublishEventsCommand {
+  return command.kind === CommandType.PublishEvents;
 }

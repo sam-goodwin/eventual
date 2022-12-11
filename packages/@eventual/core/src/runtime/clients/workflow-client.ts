@@ -5,7 +5,7 @@ import {
   HistoryStateEvent,
   SignalReceived,
   WorkflowEventType,
-} from "../../events.js";
+} from "../../workflow-events.js";
 import { Execution, ExecutionStatus } from "../../execution.js";
 import { Signal } from "../../signals.js";
 import { Workflow, WorkflowInput, WorkflowOptions } from "../../workflow.js";

@@ -1,5 +1,7 @@
+import { Event, EventSubscription } from "./event.js";
 import { ActivityContext, ActivityHandler } from "./activity.js";
 import type { Eventual, EventualCallCollector } from "./eventual.js";
+import { EventClient } from "./runtime/clients/event-client.js";
 import type { WorkflowClient } from "./runtime/clients/workflow-client.js";
 import type { Workflow } from "./workflow.js";
 
@@ -31,6 +33,23 @@ declare global {
      * this is initialized by Eventual's harness lambda functions
      */
     workflowClient?: WorkflowClient;
+    /**
+     * A global variable storing a map of event name (which is globally unique)
+     * to the {@link Event} declaration instance.
+     */
+    events?: Map<string, Event>;
+    /**
+     * A global variable storing a list of all {@link EventSubscription}s declared
+     * within this application.
+     */
+    eventSubscriptions?: EventSubscription[];
+
+    /**
+     * A global variable for storing the {@link EventClient}
+     *
+     * This is initialized by Eventual's harness functions
+     */
+    eventClient?: EventClient;
   };
 }
 
@@ -38,6 +57,12 @@ globalThis._eventual = {};
 
 export const workflows = (): Map<string, Workflow> =>
   (globalThis._eventual.workflows ??= new Map<string, Workflow>());
+
+export const events = (): Map<string, Event> =>
+  (globalThis._eventual.events ??= new Map<string, Event>());
+
+export const eventSubscriptions = (): EventSubscription[] =>
+  (globalThis._eventual.eventSubscriptions ??= []);
 
 export const callableActivities = (): Record<string, ActivityHandler<any>> =>
   (globalThis._eventual.callableActivities ??= {});
@@ -93,4 +118,22 @@ export function getActivityContext(): ActivityContext {
     );
   }
   return context;
+}
+
+/**
+ * Register the global event client sued by the event emit functions
+ * to emit events within an eventual-controlled environment.
+ */
+export function registerEventClient(client: EventClient) {
+  globalThis._eventual.eventClient = client;
+}
+
+/**
+ * Get the global event client.
+ */
+export function getEventClient(): EventClient {
+  if (globalThis._eventual.eventClient === undefined) {
+    throw new Error(`EventClient is not registered`);
+  }
+  return globalThis._eventual.eventClient;
 }

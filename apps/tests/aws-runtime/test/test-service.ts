@@ -1,6 +1,8 @@
 import {
   activity,
   condition,
+  event,
+  expectSignal,
   asyncResult,
   sendSignal,
   Signal,
@@ -248,3 +250,85 @@ export const heartbeatWorkflow = workflow(
     ]);
   }
 );
+
+/**
+ * A workflow test that tests the {@link event} intrinsic.
+ *
+ * A subscription to {@link signalEvent} is set up to forward events
+ * as signals to the workflow execution.
+ *
+ * First, this workflow publishes an event to the {@link signalEvent}
+ * with a signalId of "start" and then waits for that signal to wake
+ * this workflow.
+ *
+ * Then, the {@link sendFinishEvent} activity is invoked which sends
+ * an event to {@link signalEvent} with signalId of "finish". The workflow
+ * waits for this signal to wake it before returning "done!".
+ *
+ * The final "finish" event is sent to the {@link signalEvent} with a
+ * property of `proxy: true` which instructs the handler to send the event
+ * back through the {@link signalEvent} handler before sending the signal
+ * to the execution.
+ *
+ * This tests the publishes of events from:
+ * 1. workflows
+ * 2. activities.
+ * 3. event handlers
+ *
+ * TODO: add a test for api handlers.
+ */
+export const eventDrivenWorkflow = workflow(
+  "eventDrivenWorkflow",
+  async (_, ctx) => {
+    // publish an event from a workflow (the orchestrator)
+    await signalEvent.publish({
+      executionId: ctx.execution.id,
+      signalId: "start",
+    });
+
+    // wait for the event to come back around and wake this workflow
+    await expectSignal("start", {
+      timeoutSeconds: 30,
+    });
+
+    await sendFinishEvent(ctx.execution.id);
+
+    await expectSignal("finish", {
+      timeoutSeconds: 30,
+    });
+
+    return "done!";
+  }
+);
+
+const signalEvent = event<{
+  executionId: string;
+  signalId: string;
+  proxy?: true;
+}>("SignalEvent");
+
+signalEvent.on(async ({ executionId, signalId, proxy }) => {
+  console.debug("received signal event", { executionId, signalId, proxy });
+  if (proxy) {
+    // if configured to proxy, re-route this event through the signalEvent
+    // reason: to test that we can publish events from within an event handler
+    await signalEvent.publish({
+      executionId,
+      signalId,
+    });
+  } else {
+    // otherwise, send the signal to the workflow
+    await sendSignal(executionId, signalId);
+  }
+});
+
+const sendFinishEvent = activity("sendFinish", async (executionId: string) => {
+  // publish an event from an activity
+  await signalEvent.publish({
+    executionId,
+    signalId: "finish",
+    // set proxy to true so that this event will route through event bridge again
+    // to test that we can publish events from event handlers
+    proxy: true,
+  });
+});

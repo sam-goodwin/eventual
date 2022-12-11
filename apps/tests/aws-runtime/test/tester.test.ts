@@ -1,6 +1,7 @@
 import { HeartbeatTimeout } from "@eventual/core";
 import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
 import {
+  eventDrivenWorkflow,
   asyncWorkflow,
   heartbeatWorkflow,
   parentWorkflow,
@@ -59,4 +60,6 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
       reason: new HeartbeatTimeout("Activity Heartbeat TimedOut").toJSON(),
     },
   ]);
+
+  testCompletion("event-driven", eventDrivenWorkflow, "done!");
 });

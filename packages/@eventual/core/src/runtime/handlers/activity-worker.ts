@@ -10,8 +10,12 @@ import {
   createEvent,
   isWorkflowFailed,
   WorkflowEventType,
-} from "../../events.js";
-import { registerWorkflowClient, setActivityContext } from "../../global.js";
+} from "../../workflow-events.js";
+import {
+  registerEventClient,
+  registerWorkflowClient,
+  setActivityContext,
+} from "../../global.js";
 import { createActivityToken } from "../activity-token.js";
 import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
 import { ExecutionHistoryClient } from "../clients/execution-history-client.js";
@@ -22,6 +26,7 @@ import { Logger } from "../logger.js";
 import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
 import { Unit } from "../metrics/unit.js";
 import { timed } from "../metrics/utils.js";
+import type { EventClient } from "../index.js";
 
 export interface CreateActivityWorkerProps {
   activityRuntimeClient: ActivityRuntimeClient;
@@ -30,6 +35,7 @@ export interface CreateActivityWorkerProps {
   timerClient: TimerClient;
   metricsClient: MetricsClient;
   logger: Logger;
+  eventClient: EventClient;
 }
 
 export interface ActivityWorkerRequest {
@@ -53,11 +59,14 @@ export function createActivityWorker({
   timerClient,
   metricsClient,
   logger,
+  eventClient,
 }: CreateActivityWorkerProps): (
   request: ActivityWorkerRequest
 ) => Promise<void> {
   // make the workflow client available to all activity code
   registerWorkflowClient(workflowClient);
+  // make the event client available to all activity code
+  registerEventClient(eventClient);
 
   return metricsClient.metricScope(
     (metrics) => async (request: ActivityWorkerRequest) => {

@@ -1,3 +1,4 @@
+import { AppSpec } from "@eventual/core";
 import { Arn, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
 import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
 import {
@@ -19,6 +20,7 @@ import { IScheduler, Scheduler } from "./scheduler";
 import { Api } from "./service-api";
 import { outDir } from "./utils";
 import { IWorkflows, Workflows } from "./workflows";
+import { Events } from "./events";
 
 export interface ServiceProps {
   entry: string;
@@ -34,9 +36,15 @@ export class Service extends Construct implements IGrantable {
    */
   public readonly serviceName: string;
   /**
+   * The {@link AppSec} inferred from the application code.
+   */
+  readonly appSpec: AppSpec;
+  /**
    * This {@link Service}'s API Gateway.
    */
   readonly api: Api;
+
+  readonly events: Events;
   /**
    * A single-table used for execution data and granular workflow events/
    */
@@ -54,7 +62,7 @@ export class Service extends Construct implements IGrantable {
    */
   readonly scheduler: Scheduler;
   /**
-   * Role used by cli
+   * The Resources for schedules and sleep timers.
    */
   public readonly cliRole: Role;
   /**
@@ -68,6 +76,14 @@ export class Service extends Construct implements IGrantable {
     super(scope, id);
 
     this.serviceName = props.name ?? Names.uniqueResourceName(this, {});
+
+    this.appSpec = JSON.parse(
+      execSync(
+        `npx ts-node ${require.resolve(
+          "@eventual/compiler/bin/eventual-infer.js"
+        )} ${props.entry}`
+      ).toString("utf-8")
+    );
 
     execSync(
       `node ${require.resolve(
@@ -86,16 +102,25 @@ export class Service extends Construct implements IGrantable {
     const proxyScheduler = lazyInterface<IScheduler>();
     const proxyWorkflows = lazyInterface<IWorkflows>();
 
+    this.events = new Events(this, "Events", {
+      appSpec: this.appSpec,
+      serviceName: this.serviceName,
+      environment: props.environment,
+      workflows: proxyWorkflows,
+    });
+
     this.activities = new Activities(this, "Activities", {
       scheduler: proxyScheduler,
       workflows: proxyWorkflows,
       environment: props.environment,
+      events: this.events,
     });
 
     this.workflows = new Workflows(this, "Workflows", {
       scheduler: proxyScheduler,
       activities: this.activities,
       table: this.table,
+      events: this.events,
     });
     proxyWorkflows._bind(this.workflows);
 
@@ -108,7 +133,8 @@ export class Service extends Construct implements IGrantable {
     this.api = new Api(this, "Api", {
       serviceName: this.serviceName,
       environment: props.environment,
-      workflow: this.workflows,
+      workflows: this.workflows,
+      events: this.events,
     });
 
     this.grantPrincipal = new CompositePrincipal(
@@ -137,8 +163,6 @@ export class Service extends Construct implements IGrantable {
     });
 
     this.serviceDataSSM.grantRead(this.cliRole);
-
-    this.configureApiHandler();
   }
 
   public grantRead(grantable: IGrantable) {
@@ -158,10 +182,6 @@ export class Service extends Construct implements IGrantable {
    */
   public configureFullActivityControl(func: Function) {
     this.activities.configureFullControl(func);
-  }
-
-  private configureApiHandler() {
-    this.workflows.configureFullControl(this.api.handler);
   }
 
   public grantFilterLogEvents(grantable: IGrantable) {
