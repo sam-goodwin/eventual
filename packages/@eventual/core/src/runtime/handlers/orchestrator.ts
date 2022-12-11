@@ -7,6 +7,8 @@ import {
   HistoryStateEvent,
   isHistoryEvent,
   isSleepCompleted,
+  isWorkflowCompleted,
+  isWorkflowFailed,
   isWorkflowStarted,
   WorkflowCompleted,
   WorkflowEvent,
@@ -41,6 +43,7 @@ import { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
 import { timed, timedSync } from "../metrics/utils.js";
 import { promiseAllSettledPartitioned } from "../utils.js";
+
 /**
  * The Orchestrator's client dependencies.
  */
@@ -146,11 +149,11 @@ export function createOrchestrator({
       const history = await loadHistory();
 
       // execute
-      const { updatedHistoryEvents, newEvents } = await executeWorkflow(
-        history
-      );
+      const { updatedHistoryEvents, newEvents, resultEvent } =
+        await executeWorkflow(history);
 
       // persist
+      await persistWorkflowResult(resultEvent);
       await saveNewEventsToExecutionHistory(newEvents);
       await updateHistory(updatedHistoryEvents);
 
@@ -283,8 +286,26 @@ export function createOrchestrator({
           type: WorkflowEventType.WorkflowTaskCompleted,
         });
 
-        // if the workflow is complete, add success and failure to the commands.
-        yield* checkForAndHandleWorkflowCompletion(result);
+        if (isResult(result)) {
+          if (isFailed(result)) {
+            const [error, message] =
+              result.error instanceof Error
+                ? [result.error.name, result.error.message]
+                : ["Error", JSON.stringify(result.error)];
+            yield createEvent<WorkflowFailed>({
+              type: WorkflowEventType.WorkflowFailed,
+              error,
+              message,
+            });
+          } else if (isResolved<any>(result)) {
+            yield createEvent<WorkflowCompleted>({
+              type: WorkflowEventType.WorkflowCompleted,
+              output: result.value,
+            });
+          }
+        }
+
+        return result;
       }
 
       /**
@@ -301,10 +322,12 @@ export function createOrchestrator({
        */
       async function partitionExecutionResults(
         originalHistory: HistoryStateEvent[],
-        executionGenerator: AsyncGenerator<WorkflowEvent, void>
+        executionGenerator: AsyncGenerator<WorkflowEvent, Result | undefined>
       ) {
         const updatedHistoryEvents: HistoryStateEvent[] = [];
         const newWorkflowEvents: WorkflowEvent[] = [];
+        let resultEvent: WorkflowCompleted | WorkflowFailed | undefined =
+          undefined;
         const seenEvents: Set<string> = new Set(
           originalHistory.map(getEventId)
         );
@@ -316,6 +339,9 @@ export function createOrchestrator({
             newWorkflowEvents.push(event);
             seenEvents.add(id);
           }
+          if (isWorkflowCompleted(event) || isWorkflowFailed(event)) {
+            resultEvent = event;
+          }
           // updatedHistoryEvents are all HistoryEvents old and new.
           if (isWorkflowStarted(event) || isHistoryEvent(event)) {
             updatedHistoryEvents.push(event);
@@ -325,56 +351,8 @@ export function createOrchestrator({
         return {
           updatedHistoryEvents,
           newEvents: newWorkflowEvents,
+          resultEvent,
         };
-      }
-
-      async function* checkForAndHandleWorkflowCompletion(
-        result: Result | undefined
-      ) {
-        // if the workflow is complete, add success and failure to the commands.
-        if (isResult(result)) {
-          if (isFailed(result)) {
-            const [error, message] =
-              result.error instanceof Error
-                ? [result.error.name, result.error.message]
-                : ["Error", JSON.stringify(result.error)];
-
-            const execution = await timed(
-              metrics,
-              OrchestratorMetrics.ExecutionStatusUpdateDuration,
-              () =>
-                workflowRuntimeClient.failExecution({
-                  executionId,
-                  error,
-                  message,
-                })
-            );
-
-            logExecutionCompleteMetrics(execution);
-
-            yield createEvent<WorkflowFailed>({
-              type: WorkflowEventType.WorkflowFailed,
-              error,
-              message,
-            });
-          } else if (isResolved<any>(result)) {
-            const execution = await timed(
-              metrics,
-              OrchestratorMetrics.ExecutionStatusUpdateDuration,
-              () =>
-                workflowRuntimeClient.completeExecution({
-                  executionId,
-                  result: result.value,
-                })
-            );
-            logExecutionCompleteMetrics(execution);
-
-            yield createEvent<WorkflowCompleted>({
-              type: WorkflowEventType.WorkflowCompleted,
-              output: result.value,
-            });
-          }
-        }
       }
     }
 
@@ -446,6 +424,39 @@ export function createOrchestrator({
       );
     }
 
+    async function persistWorkflowResult(
+      resultEvent?: WorkflowCompleted | WorkflowFailed
+    ) {
+      // if the workflow is complete, add success and failure to the commands.
+      if (resultEvent) {
+        if (isWorkflowFailed(resultEvent)) {
+          const execution = await timed(
+            metrics,
+            OrchestratorMetrics.ExecutionStatusUpdateDuration,
+            () =>
+              workflowRuntimeClient.failExecution({
+                executionId,
+                error: resultEvent.error,
+                message: resultEvent.message,
+              })
+          );
+
+          logExecutionCompleteMetrics(execution);
+        } else if (isWorkflowCompleted(resultEvent)) {
+          const execution = await timed(
+            metrics,
+            OrchestratorMetrics.ExecutionStatusUpdateDuration,
+            () =>
+              workflowRuntimeClient.completeExecution({
+                executionId,
+                result: resultEvent.output,
+              })
+          );
+          logExecutionCompleteMetrics(execution);
+        }
+      }
+    }
+
     /**
      * Generate events from commands and create a function which will start the commands.
      *
@@ -457,7 +468,7 @@ export function createOrchestrator({
       console.debug("Commands to send", JSON.stringify(commands));
       // register command events
       return await Promise.all(
-        commands.map(async (command) =>
+        commands.map((command) =>
           commandExecutor.executeCommand(workflow, executionId, command, start)
         )
       );
