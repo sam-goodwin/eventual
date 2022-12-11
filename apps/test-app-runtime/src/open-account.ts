@@ -87,7 +87,7 @@ api.post("/open-account", async (request) => {
 
 const openAccountEvent = event<OpenAccountRequest>("OpenAccount");
 
-openAccountEvent.subscribe(async (event) => {
+openAccountEvent.on(async (event) => {
   await openAccount.startExecution({
     input: event,
   });

@@ -116,11 +116,11 @@ export type EventHandler<E extends EventPayload> = (event: E) => Promise<void>;
  * })
  * ```
  *
- * To subscribe to events, call the `subscribe` method. This will register a
+ * To subscribe to events, call the `on` method. This will register a
  * handler that wil lbe invoked for every event of this type that is received.
  *
  * ```ts
- * checkoutEvent.subscribe(async (checkout) => {
+ * checkoutEvent.on(async (checkout) => {
  *   console.log(checkout);
  * });
  * ```
