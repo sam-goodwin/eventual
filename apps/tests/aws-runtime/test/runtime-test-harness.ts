@@ -123,7 +123,15 @@ export function eventualRuntimeTestHarness(
     testFailed: tester.testFailed.bind(tester),
   });
 
-  tester.tests.forEach((_test) => {
+  const executionTests = tester.tests.map((_test) => {
+    execution: workflowClient.startWorkflow({
+      workflowName: _test.workflow.workflowName,
+      input: _test.input,
+    });
+    test: _test;
+  });
+  
+  executionTests.forEach(({ execution, test: _test }) => {
     test(_test.name, async () => {
       const executionId = await workflowClient.startWorkflow({
         workflowName: _test.workflow.workflowName,
