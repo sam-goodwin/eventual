@@ -49,16 +49,52 @@ export interface TimerClient {
   ): Promise<void>;
 }
 
-export type TimerRequest = TimerScheduleEventRequest;
+export type TimerRequest =
+  | TimerScheduleEventRequest
+  | ActivityHeartbeatMonitorRequest;
 
 export enum TimerRequestType {
   ScheduleEvent = "ScheduleEvent",
+  ActivityHeartbeatMonitor = "CheckHeartbeat",
 }
 
-export interface TimerRequestBase<T extends TimerRequestType> {
-  type: T;
+export interface RelativeSchedule {
+  type: "Relative";
+  timerSeconds: number;
+  baseTime: Date;
+}
+
+export interface AbsoluteSchedule {
+  type: "Absolute";
   untilTime: string;
 }
+
+export type Schedule = RelativeSchedule | AbsoluteSchedule;
+
+export namespace Schedule {
+  export function relative(
+    timerSeconds: number,
+    baseTime: Date = new Date()
+  ): RelativeSchedule {
+    return {
+      type: "Relative",
+      timerSeconds,
+      baseTime,
+    };
+  }
+
+  export function absolute(untilTime: string): AbsoluteSchedule {
+    return {
+      type: "Absolute",
+      untilTime,
+    };
+  }
+}
+
+export type TimerRequestBase<T extends TimerRequestType> = {
+  type: T;
+  schedule: Schedule;
+};
 
 /**
  * Forward an event to the Workflow Queue.
@@ -75,6 +111,22 @@ export function isTimerScheduleEventRequest(
   return timerRequest && timerRequest.type === TimerRequestType.ScheduleEvent;
 }
 
+export type ActivityHeartbeatMonitorRequest =
+  TimerRequestBase<TimerRequestType.ActivityHeartbeatMonitor> & {
+    executionId: string;
+    activitySeq: number;
+    heartbeatSeconds: number;
+  };
+
+export function isActivityHeartbeatMonitorRequest(
+  timerRequest: TimerRequest
+): timerRequest is ActivityHeartbeatMonitorRequest {
+  return (
+    timerRequest &&
+    timerRequest.type === TimerRequestType.ActivityHeartbeatMonitor
+  );
+}
+
 export interface ScheduleForwarderRequest {
   scheduleName: string;
   clearSchedule: boolean;
@@ -86,15 +138,7 @@ export interface ScheduleForwarderRequest {
   untilTime: string;
 }
 
-export type ScheduleEventRequest<E extends HistoryStateEvent> = {
+export interface ScheduleEventRequest<E extends HistoryStateEvent>
+  extends Omit<TimerScheduleEventRequest, "event" | "type"> {
   event: Omit<E, "timestamp">;
-  executionId: string;
-} & (
-  | {
-      timerSeconds: number;
-      baseTime: Date;
-    }
-  | {
-      untilTime: string;
-    }
-);
+}

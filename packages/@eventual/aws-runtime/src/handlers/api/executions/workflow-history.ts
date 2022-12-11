@@ -4,8 +4,13 @@ import type {
   APIGatewayProxyHandlerV2,
 } from "aws-lambda";
 import { createWorkflowRuntimeClient } from "../../../clients/index.js";
-import { getService } from "../service-properties.js";
 import { withErrorMiddleware } from "../middleware.js";
+
+const workflowClient = createWorkflowRuntimeClient({
+  // TODO: further decouple the clients
+  activityWorkerFunctionName: "NOT_NEEDED",
+  tableName: "NOT_NEEDED",
+});
 
 async function workflowHistory(event: APIGatewayProxyEventV2) {
   const executionId = event.pathParameters?.executionId;
@@ -13,7 +18,6 @@ async function workflowHistory(event: APIGatewayProxyEventV2) {
     return { statusCode: 400, body: `Missing executionId` };
   }
 
-  const workflowClient = createWorkflowRuntimeClient(getService());
   return workflowClient.getHistory(decodeExecutionId(executionId));
 }
 

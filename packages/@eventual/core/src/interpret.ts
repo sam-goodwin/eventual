@@ -9,6 +9,7 @@ import { isAwaitAll } from "./await-all.js";
 import { isActivityCall } from "./calls/activity-call.js";
 import {
   DeterminismError,
+  HeartbeatTimeout,
   SynchronousOperationError,
   Timeout,
 } from "./error.js";
@@ -33,6 +34,7 @@ import {
   isConditionTimedOut,
   isWorkflowTimedOut,
   isActivityTimedOut,
+  isActivityHeartbeatTimedOut,
   isEventsPublished,
 } from "./workflow-events.js";
 import {
@@ -182,11 +184,11 @@ export function interpret<Return>(
   function callToCommand(call: CommandCall): Command[] | Command {
     if (isActivityCall(call)) {
       return {
-        // TODO: add sleep
         kind: CommandType.StartActivity,
         args: call.args,
         name: call.name,
         timeoutSeconds: call.timeoutSeconds,
+        heartbeatSeconds: call.heartbeatSeconds,
         seq: call.seq!,
       };
     } else if (isSleepUntilCall(call)) {
@@ -526,6 +528,8 @@ export function interpret<Return>(
         Result.resolved(false)
       : isActivityTimedOut(event)
       ? Result.failed(new Timeout("Activity Timed Out"))
+      : isActivityHeartbeatTimedOut(event)
+      ? Result.failed(new HeartbeatTimeout("Activity Heartbeat TimedOut"))
       : Result.failed(event.error);
   }
 }

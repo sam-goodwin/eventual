@@ -39,6 +39,7 @@ export interface ScheduleActivityCommand
   name: string;
   args: any[];
   timeoutSeconds?: number;
+  heartbeatSeconds?: number;
 }
 
 export function isScheduleActivityCommand(

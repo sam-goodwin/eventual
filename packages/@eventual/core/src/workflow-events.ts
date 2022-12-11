@@ -19,6 +19,7 @@ export interface HistoryEventBase extends Omit<BaseEvent, "id"> {
 export enum WorkflowEventType {
   ActivityCompleted = "ActivityCompleted",
   ActivityFailed = "ActivityFailed",
+  ActivityHeartbeatTimedOut = "ActivityHeartbeatTimedOut",
   ActivityScheduled = "ActivityScheduled",
   ActivityTimedOut = "ActivityTimedOut",
   ChildWorkflowCompleted = "ChildWorkflowCompleted",
@@ -68,6 +69,7 @@ export type CompletedEvent =
 
 export type FailedEvent =
   | ActivityFailed
+  | ActivityHeartbeatTimedOut
   | ActivityTimedOut
   | ChildWorkflowFailed
   | ConditionTimedOut
@@ -139,6 +141,10 @@ export interface ActivityFailed extends HistoryEventBase {
   message: string;
 }
 
+export interface ActivityHeartbeatTimedOut extends HistoryEventBase {
+  type: WorkflowEventType.ActivityHeartbeatTimedOut;
+}
+
 export interface WorkflowTaskCompleted extends BaseEvent {
   type: WorkflowEventType.WorkflowTaskCompleted;
 }
@@ -199,6 +205,12 @@ export function isActivityFailed(
   event: WorkflowEvent
 ): event is ActivityFailed {
   return event.type === WorkflowEventType.ActivityFailed;
+}
+
+export function isActivityHeartbeatTimedOut(
+  event: WorkflowEvent
+): event is ActivityHeartbeatTimedOut {
+  return event.type === WorkflowEventType.ActivityHeartbeatTimedOut;
 }
 
 export interface SleepScheduled extends HistoryEventBase {
@@ -382,6 +394,7 @@ export const isCompletedEvent = or(
 export const isFailedEvent = or(
   isActivityFailed,
   isActivityTimedOut,
+  isActivityHeartbeatTimedOut,
   isChildWorkflowFailed,
   isConditionTimedOut,
   isExpectSignalTimedOut,

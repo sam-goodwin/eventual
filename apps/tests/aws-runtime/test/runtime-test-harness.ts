@@ -79,7 +79,9 @@ class TesterContainer {
 
         assertCompleteExecution(execution);
 
-        expect(execution.result).toEqual(output);
+        typeof output === "object"
+          ? expect(execution.result).toMatchObject(output)
+          : expect(execution.result).toEqual(output);
       }
     );
   }

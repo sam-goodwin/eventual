@@ -9,6 +9,8 @@ import {
   sleepFor,
   sleepUntil,
   workflow,
+  heartbeat,
+  HeartbeatTimeout,
 } from "@eventual/core";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -38,6 +40,7 @@ const asyncActivity = activity(
     });
   }
 );
+
 const fail = activity("fail", async (value: string) => {
   throw new Error(value);
 });
@@ -200,6 +203,51 @@ export const asyncWorkflow = workflow(
       return [result, err];
     }
     throw new Error("I should not get here");
+  }
+);
+
+const activityWithHeartbeat = activity(
+  "activityWithHeartbeat",
+  { heartbeatSeconds: 1 },
+  async (n: number, type: "success" | "no-heartbeat" | "some-heartbeat") => {
+    const delay = (s: number) =>
+      new Promise((resolve) => {
+        setTimeout(resolve, s * 1000);
+      });
+
+    let _n = 0;
+    while (_n++ < n) {
+      await delay(0.5);
+      if (type === "success") {
+        await heartbeat();
+      } else if (type === "some-heartbeat" && _n < 4) {
+        await heartbeat();
+      }
+      // no-heartbeat never sends one... woops.
+    }
+    return n;
+  }
+);
+
+export const heartbeatWorkflow = workflow(
+  "heartbeatWorkflow",
+  { timeoutSeconds: 100 }, // timeout eventually
+  async (n: number) => {
+    return await Promise.allSettled([
+      activityWithHeartbeat(n, "success"),
+      activityWithHeartbeat(n, "some-heartbeat"),
+      (async () => {
+        try {
+          return await activityWithHeartbeat(n, "some-heartbeat");
+        } catch (err) {
+          if (err instanceof HeartbeatTimeout) {
+            return "activity did not respond";
+          }
+          throw new Error("I should not get here");
+        }
+      })(),
+      activityWithHeartbeat(n, "no-heartbeat"),
+    ]);
   }
 );
 
