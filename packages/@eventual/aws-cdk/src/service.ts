@@ -14,7 +14,7 @@ import { Function } from "aws-cdk-lib/aws-lambda";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { execSync } from "child_process";
 import { Construct } from "constructs";
-import { Activities } from "./activities";
+import { Activities, IActivities } from "./activities";
 import { lazyInterface } from "./proxy-construct";
 import { IScheduler, Scheduler } from "./scheduler";
 import { Api } from "./service-api";
@@ -101,12 +101,14 @@ export class Service extends Construct implements IGrantable {
 
     const proxyScheduler = lazyInterface<IScheduler>();
     const proxyWorkflows = lazyInterface<IWorkflows>();
+    const proxyActivities = lazyInterface<IActivities>();
 
     this.events = new Events(this, "Events", {
       appSpec: this.appSpec,
       serviceName: this.serviceName,
       environment: props.environment,
       workflows: proxyWorkflows,
+      activities: proxyActivities,
     });
 
     this.activities = new Activities(this, "Activities", {
@@ -115,6 +117,7 @@ export class Service extends Construct implements IGrantable {
       environment: props.environment,
       events: this.events,
     });
+    proxyActivities._bind(this.activities);
 
     this.workflows = new Workflows(this, "Workflows", {
       scheduler: proxyScheduler,

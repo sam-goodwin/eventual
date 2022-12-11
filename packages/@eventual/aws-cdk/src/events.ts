@@ -6,6 +6,7 @@ import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
+import { IActivities } from "./activities";
 import { ServiceFunction } from "./service-function";
 import { IWorkflows } from "./workflows";
 
@@ -25,6 +26,7 @@ export interface EventsProps {
    */
   readonly environment?: Record<string, string>;
   readonly workflows: IWorkflows;
+  readonly activities: IActivities;
 }
 
 export class Events extends Construct implements IGrantable {
@@ -102,5 +104,7 @@ export class Events extends Construct implements IGrantable {
 
   private configureEventHandler() {
     this.props.workflows.configureFullControl(this.handler);
+    // allows the workflow to cancel activities
+    this.props.activities.configureUpdateActivity(this.orchestrator);
   }
 }
