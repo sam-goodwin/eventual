@@ -203,10 +203,12 @@ export function progressWorkflow(
   executionId: string
 ): ProgressWorkflowResult {
   // historical events and incoming events will be fed into the workflow to resume/progress state
-  const inputEvents = filterEvents<HistoryStateEvent>(
+  const uniqueTaskEvents = filterEvents<HistoryStateEvent>(
     historyEvents,
     taskEvents
   );
+
+  const inputEvents = [...historyEvents, ...uniqueTaskEvents];
 
   // Generates events that are time sensitive, like sleep completed events.
   const syntheticEvents = generateSyntheticEvents(inputEvents);

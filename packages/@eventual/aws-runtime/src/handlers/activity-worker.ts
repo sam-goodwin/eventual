@@ -6,7 +6,6 @@ import middy from "@middy/core";
 import {
   createActivityRuntimeClient,
   createEventClient,
-  createExecutionHistoryClient,
   createTimerClient,
   createWorkflowClient,
 } from "../clients/create.js";
@@ -16,7 +15,6 @@ import { logger, loggerMiddlewares } from "../logger.js";
 export default middy(
   createActivityWorker({
     activityRuntimeClient: createActivityRuntimeClient(),
-    executionHistoryClient: createExecutionHistoryClient(),
     eventClient: createEventClient(),
     workflowClient: createWorkflowClient(),
     timerClient: createTimerClient(),
