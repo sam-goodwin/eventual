@@ -27,7 +27,7 @@ import { createRace, Race } from "./race.js";
 import {
   isPublishEventsCall,
   PublishEventsCall,
-} from "./calls/publish-events-call.js";
+} from "./calls/send-events-call.js";
 
 export type AwaitedEventual<T> = T extends Promise<infer U>
   ? Awaited<U>

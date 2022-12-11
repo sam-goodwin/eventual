@@ -1,4 +1,4 @@
-import { createPublishEventsCall } from "./calls/publish-events-call.js";
+import { createPublishEventsCall } from "./calls/send-events-call.js";
 import { events, eventSubscriptions, getEventClient } from "./global.js";
 import { isOrchestratorWorker } from "./index.js";
 

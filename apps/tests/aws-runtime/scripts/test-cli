@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 npx eventual services
 
 npx eventual workflows eventual-tests
