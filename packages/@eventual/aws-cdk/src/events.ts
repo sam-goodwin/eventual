@@ -105,6 +105,6 @@ export class Events extends Construct implements IGrantable {
   private configureEventHandler() {
     this.props.workflows.configureFullControl(this.handler);
     // allows the workflow to cancel activities
-    this.props.activities.configureUpdateActivity(this.orchestrator);
+    this.props.activities.configureUpdateActivity(this.handler);
   }
 }
