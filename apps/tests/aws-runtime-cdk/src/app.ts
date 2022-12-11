@@ -1,11 +1,6 @@
 import { App, CfnOutput, CfnResource, Stack } from "aws-cdk-lib";
 import { Queue } from "aws-cdk-lib/aws-sqs";
-import {
-  ArnPrincipal,
-  PolicyStatement,
-  Role,
-  ServicePrincipal,
-} from "aws-cdk-lib/aws-iam";
+import { ArnPrincipal, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as eventual from "@eventual/aws-cdk";
 import path from "path";
@@ -37,12 +32,6 @@ eventual.Service.grantDescribeParameters(stack, role);
 testService.serviceDataSSM.grantRead(role);
 testService.workflows.grantFilterOrchestratorLogs(role);
 testService.activities.grantFilterWorkerLogs(role);
-role.addToPolicy(
-  new PolicyStatement({
-    actions: ["ssm:DescribeParameters"],
-    resources: ["*"],
-  })
-);
 
 const pipeRole = new Role(stack, "pipeRole", {
   assumedBy: new ServicePrincipal("pipes"),
