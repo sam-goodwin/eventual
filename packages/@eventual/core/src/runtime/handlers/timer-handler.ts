@@ -7,17 +7,19 @@ import { assertNever } from "../../util.js";
 import {
   isActivityHeartbeatMonitorRequest,
   isTimerScheduleEventRequest,
+  Schedule,
   TimerClient,
   TimerRequest,
   TimerRequestType,
 } from "../clients/timer-client.js";
 import type { WorkflowClient } from "../clients/workflow-client.js";
-import { ActivityRuntimeClient } from "../index.js";
+import { ActivityRuntimeClient, Logger } from "../index.js";
 
 interface TimerHandlerProps {
   workflowClient: WorkflowClient;
   activityRuntimeClient: ActivityRuntimeClient;
   timerClient: TimerClient;
+  logger: Logger;
 }
 
 /**
@@ -30,6 +32,7 @@ export function createTimerHandler({
   workflowClient,
   activityRuntimeClient,
   timerClient,
+  logger,
 }: TimerHandlerProps) {
   return async (request: TimerRequest) => {
     if (isTimerScheduleEventRequest(request)) {
@@ -43,9 +46,8 @@ export function createTimerHandler({
         request.activitySeq
       );
 
-      console.log(
-        "checking activity for heartbeat timeout",
-        JSON.stringify(activity)
+      logger.debug(
+        `checking activity for heartbeat timeout: ${JSON.stringify(activity)}`
       );
 
       // the activity has not sent a heartbeat or the last time was too long ago.
@@ -68,10 +70,7 @@ export function createTimerHandler({
           activitySeq: request.activitySeq,
           executionId: request.executionId,
           heartbeatSeconds: request.heartbeatSeconds,
-          schedule: {
-            timerSeconds: request.heartbeatSeconds,
-            baseTime: new Date(),
-          },
+          schedule: Schedule.relative(request.heartbeatSeconds),
         });
       }
     } else {

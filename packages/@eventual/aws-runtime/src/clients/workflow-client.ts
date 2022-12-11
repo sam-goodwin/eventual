@@ -9,7 +9,6 @@ import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
   Execution,
   ExecutionStatus,
-  SignalReceived,
   HistoryStateEvent,
   Workflow,
   WorkflowEventType,
@@ -17,16 +16,7 @@ import {
   WorkflowTask,
   WorkflowClient,
   StartWorkflowRequest,
-  SendSignalRequest,
-  decodeActivityToken,
-  ActivityCompleted,
-  ActivityFailed,
-  CompleteActivityRequest,
-  FailActivityRequest,
   formatExecutionId,
-  createEvent,
-  HeartbeatRequest,
-  HeartbeatResponse,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
@@ -41,8 +31,10 @@ export interface AWSWorkflowClientProps {
   readonly activityRuntimeClient: AWSActivityRuntimeClient;
 }
 
-export class AWSWorkflowClient implements WorkflowClient {
-  constructor(private props: AWSWorkflowClientProps) {}
+export class AWSWorkflowClient extends WorkflowClient {
+  constructor(private props: AWSWorkflowClientProps) {
+    super(props.activityRuntimeClient);
+  }
 
   /**
    * Start a workflow execution
@@ -159,94 +151,6 @@ export class AWSWorkflowClient implements WorkflowClient {
     return executionResult.Item
       ? createExecutionFromResult(executionResult.Item as ExecutionRecord)
       : undefined;
-  }
-
-  /**
-   * Sends a signal to the given execution.
-   *
-   * The execution may be waiting on a signal or may have a handler registered
-   * that runs when the signal is received.
-   */
-  public async sendSignal(request: SendSignalRequest): Promise<void> {
-    await this.submitWorkflowTask(
-      request.executionId,
-      createEvent<SignalReceived>(
-        {
-          type: WorkflowEventType.SignalReceived,
-          payload: request.payload,
-          signalId:
-            typeof request.signal === "string"
-              ? request.signal
-              : request.signal.id,
-        },
-        undefined,
-        request.id
-      )
-    );
-  }
-
-  /**
-   * Completes an async activity causing it to return the given value.
-   */
-  public async completeActivity({
-    activityToken,
-    result,
-  }: CompleteActivityRequest): Promise<void> {
-    await this.sendActivityResult<ActivityCompleted>(activityToken, {
-      type: WorkflowEventType.ActivityCompleted,
-      result,
-    });
-  }
-
-  /**
-   * Fails an async activity causing it to throw the given error.
-   */
-  public async failActivity({
-    activityToken,
-    error,
-    message,
-  }: FailActivityRequest): Promise<void> {
-    await this.sendActivityResult<ActivityFailed>(activityToken, {
-      type: WorkflowEventType.ActivityFailed,
-      error,
-      message,
-    });
-  }
-
-  /**
-   * Submits a "heartbeat" for the given activityToken.
-   *
-   * @returns whether the activity has been cancelled by the calling workflow.
-   */
-  public async heartbeatActivity(
-    request: HeartbeatRequest
-  ): Promise<HeartbeatResponse> {
-    const data = decodeActivityToken(request.activityToken);
-
-    const execution = await this.getExecution(data.payload.executionId);
-
-    if (execution?.status !== ExecutionStatus.IN_PROGRESS) {
-      return { cancelled: true };
-    }
-
-    return await this.props.activityRuntimeClient.heartbeatActivity(
-      data.payload.executionId,
-      data.payload.seq,
-      new Date().toISOString()
-    );
-  }
-
-  private async sendActivityResult<
-    E extends ActivityCompleted | ActivityFailed
-  >(activityToken: string, event: Omit<E, "seq" | "duration" | "timestamp">) {
-    const data = decodeActivityToken(activityToken);
-    await this.submitWorkflowTask(
-      data.payload.executionId,
-      createEvent<ActivityCompleted | ActivityFailed>({
-        ...event,
-        seq: data.payload.seq,
-      })
-    );
   }
 }
 

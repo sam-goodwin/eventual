@@ -1,4 +1,21 @@
-export function proxyConstruct<Iter extends object>(): Iter & {
+/**
+ * A function which allows a one way interface to be lazily applied.
+ *
+ * The interface is lazy in that it's methods can be called before the implementation is available.
+ *
+ * An interface is one way when it consists entirely of methods with no return values (void).
+ *
+ * ```ts
+ * interface OneWay {
+ *    setData(data: string): void;
+ * }
+ *
+ * const lazyOneWay = lazyInterface<OneWay>();
+ * lazyOneWay.setData("something");
+ * lazyOneWay._bind({ setDate: (value) => { console.log(value); } });
+ * ```
+ */
+export function lazyInterface<Iter extends object>(): Iter & {
   _bind: (real: Iter) => void;
 } {
   const calls: [keyof Iter, any[]][] = [];

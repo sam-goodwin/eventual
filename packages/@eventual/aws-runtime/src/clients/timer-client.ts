@@ -18,6 +18,7 @@ import {
   TimerRequest,
   TimerRequestType,
   isActivityHeartbeatMonitorRequest,
+  Schedule,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 
@@ -167,9 +168,7 @@ export class AWSTimerClient implements TimerClient {
       event,
       executionId: request.executionId,
       type: TimerRequestType.ScheduleEvent,
-      schedule: {
-        untilTime: untilTime,
-      },
+      schedule: Schedule.absolute(untilTime),
     });
   }
 

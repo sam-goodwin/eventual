@@ -14,7 +14,7 @@ import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { execSync } from "child_process";
 import { Construct } from "constructs";
 import { Activities } from "./activities";
-import { proxyConstruct } from "./proxy-construct";
+import { lazyInterface } from "./proxy-construct";
 import { IScheduler, Scheduler } from "./scheduler";
 import { Api } from "./service-api";
 import { outDir } from "./utils";
@@ -83,8 +83,8 @@ export class Service extends Construct implements IGrantable {
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
-    const proxyScheduler = proxyConstruct<IScheduler>();
-    const proxyWorkflows = proxyConstruct<IWorkflows>();
+    const proxyScheduler = lazyInterface<IScheduler>();
+    const proxyWorkflows = lazyInterface<IWorkflows>();
 
     this.activities = new Activities(this, "Activities", {
       scheduler: proxyScheduler,

@@ -46,7 +46,7 @@ import type {
   WorkflowClient,
   WorkflowRuntimeClient,
 } from "../clients/index.js";
-import { TimerRequestType } from "../clients/timer-client.js";
+import { Schedule, TimerRequestType } from "../clients/timer-client.js";
 import {
   formatChildExecutionName,
   formatExecutionId,
@@ -220,9 +220,7 @@ export function createOrchestrator({
           metrics.setProperty(OrchestratorMetrics.TimeoutStarted, 1);
           await timed(metrics, OrchestratorMetrics.TimeoutStartedDuration, () =>
             timerClient.scheduleEvent<WorkflowTimedOut>({
-              schedule: {
-                untilTime: newWorkflowStart.timeoutTime!,
-              },
+              schedule: Schedule.absolute(newWorkflowStart.timeoutTime!),
               event: createEvent<WorkflowTimedOut>({
                 type: WorkflowEventType.WorkflowTimedOut,
               }),
@@ -505,11 +503,10 @@ export function createOrchestrator({
                     seq: command.seq,
                   }),
                   executionId,
-                  schedule: {
-                    untilTime: new Date(
-                      start.getTime() + command.timeoutSeconds * 1000
-                    ).toISOString(),
-                  },
+                  schedule: Schedule.relative(
+                    command.timeoutSeconds * 1000,
+                    start
+                  ),
                 });
               }
 

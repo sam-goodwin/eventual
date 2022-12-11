@@ -24,7 +24,7 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
    * @param claimer optional string to correlate the lock to the claimer.
    * @return a boolean determining if the claim was granted to the current actor.
    **/
-  async requestExecutionActivityClaim(
+  async claimActivity(
     executionId: string,
     seq: number,
     retry: number,

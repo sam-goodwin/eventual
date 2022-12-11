@@ -7,7 +7,7 @@ export interface ActivityRuntimeClient {
    * @param claimer optional string to correlate the lock to the claimer.
    * @return a boolean determining if the claim was granted to the current actor.
    **/
-  requestExecutionActivityClaim(
+  claimActivity(
     executionId: string,
     seq: number,
     retry: number,

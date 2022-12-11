@@ -58,16 +58,42 @@ export enum TimerRequestType {
   ActivityHeartbeatMonitor = "CheckHeartbeat",
 }
 
+export interface RelativeSchedule {
+  type: "Relative";
+  timerSeconds: number;
+  baseTime: Date;
+}
+
+export interface AbsoluteSchedule {
+  type: "Absolute";
+  untilTime: string;
+}
+
+export type Schedule = RelativeSchedule | AbsoluteSchedule;
+
+export namespace Schedule {
+  export function relative(
+    timerSeconds: number,
+    baseTime: Date = new Date()
+  ): RelativeSchedule {
+    return {
+      type: "Relative",
+      timerSeconds,
+      baseTime,
+    };
+  }
+
+  export function absolute(untilTime: string): AbsoluteSchedule {
+    return {
+      type: "Absolute",
+      untilTime,
+    };
+  }
+}
+
 export type TimerRequestBase<T extends TimerRequestType> = {
   type: T;
-  schedule:
-    | {
-        timerSeconds: number;
-        baseTime: Date;
-      }
-    | {
-        untilTime: string;
-      };
+  schedule: Schedule;
 };
 
 /**

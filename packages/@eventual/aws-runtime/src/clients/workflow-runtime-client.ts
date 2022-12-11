@@ -36,6 +36,7 @@ import {
   WorkflowEventType,
   WorkflowRuntimeClient,
   ScheduleWorkflowRequest,
+  Schedule,
 } from "@eventual/core";
 import { AWSTimerClient } from "./timer-client.js";
 import {
@@ -213,10 +214,7 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
 
     const timeoutStarter = command.timeoutSeconds
       ? await this.props.timerClient.scheduleEvent<ActivityTimedOut>({
-          schedule: {
-            baseTime,
-            timerSeconds: command.timeoutSeconds,
-          },
+          schedule: Schedule.relative(command.timeoutSeconds, baseTime),
           event: {
             type: WorkflowEventType.ActivityTimedOut,
             seq: command.seq,
@@ -282,9 +280,7 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
     await this.props.timerClient.startTimer({
       type: TimerRequestType.ScheduleEvent,
       event: sleepCompletedEvent,
-      schedule: {
-        untilTime: untilTimeIso,
-      },
+      schedule: Schedule.absolute(untilTimeIso),
       executionId,
     });
 
@@ -307,10 +303,7 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
           seq: command.seq,
           type: WorkflowEventType.ExpectSignalTimedOut,
         },
-        schedule: {
-          timerSeconds: command.timeoutSeconds,
-          baseTime,
-        },
+        schedule: Schedule.relative(command.timeoutSeconds, baseTime),
         executionId,
       });
     }

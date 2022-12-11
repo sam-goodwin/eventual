@@ -17,7 +17,7 @@ import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
 import { ExecutionHistoryClient } from "../clients/execution-history-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
-import { TimerClient, TimerRequestType } from "../index.js";
+import { Schedule, TimerClient, TimerRequestType } from "../index.js";
 import { Logger } from "../logger.js";
 import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
 import { Unit } from "../metrics/unit.js";
@@ -84,7 +84,7 @@ export function createActivityWorker({
       );
       if (
         !(await timed(metrics, ActivityMetrics.ClaimDuration, () =>
-          activityRuntimeClient.requestExecutionActivityClaim(
+          activityRuntimeClient.claimActivity(
             request.executionId,
             request.command.seq,
             request.retry
@@ -101,10 +101,7 @@ export function createActivityWorker({
           type: TimerRequestType.ActivityHeartbeatMonitor,
           executionId: request.executionId,
           heartbeatSeconds: request.command.heartbeatSeconds,
-          schedule: {
-            baseTime: new Date(),
-            timerSeconds: request.command.heartbeatSeconds,
-          },
+          schedule: Schedule.relative(request.command.heartbeatSeconds),
         });
       }
       setActivityContext({
