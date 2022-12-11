@@ -74,3 +74,14 @@ export abstract class BaseCachingSecret<T> implements Secret<T> {
     return this.#value.value;
   }
 }
+
+/**
+ * A {@link Secret} parsed from  JSON.
+ */
+export class JsonSecret<T> implements Secret<T> {
+  constructor(readonly secret: Secret<string>) {}
+
+  public async getSecret(): Promise<T> {
+    return JSON.parse(await this.secret.getSecret());
+  }
+}

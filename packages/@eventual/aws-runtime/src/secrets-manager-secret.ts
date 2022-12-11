@@ -6,7 +6,7 @@ import {
 
 let _defaultClient: SecretsManagerClient;
 
-export interface AWSSecretsManagerSecretProps {
+export interface AWSSecretProps {
   /**
    * The ID of the AWS Secrets Manager that contains the secret
    */
@@ -27,7 +27,7 @@ export interface AWSSecretsManagerSecretProps {
 /**
  * A {@link Secret} stored in an AWS Secrets Manager Secret.
  */
-export class AWSSecretsManagerSecret
+export class AWSSecret
   extends BaseCachingSecret<string>
   implements Secret<string>
 {
@@ -40,7 +40,7 @@ export class AWSSecretsManagerSecret
    */
   readonly client: SecretsManagerClient;
 
-  constructor(props: AWSSecretsManagerSecretProps) {
+  constructor(props: AWSSecretProps) {
     super(props.cacheConfig);
     this.secretId = props.secretId;
     this.client =

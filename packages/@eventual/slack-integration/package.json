@@ -16,14 +16,17 @@
     "test": "jest"
   },
   "dependencies": {
-    "@slack/events-api": "^3.0.1",
-    "@slack/webhook": "^6.1.0"
+    "@slack/bolt": "^3.12.2",
+    "@slack/logger": "^3.0.0",
+    "@slack/web-api": "^6.8.0",
+    "tsscmp": "^1.0.6"
   },
   "peerDependencies": {
     "itty-router": "^2.6.6",
     "@eventual/core": "workspace:^"
   },
   "devDependencies": {
+    "@types/tsscmp": "^1.0.0",
     "@eventual/core": "workspace:^",
     "@types/jest": "^29",
     "@types/node": "^16",

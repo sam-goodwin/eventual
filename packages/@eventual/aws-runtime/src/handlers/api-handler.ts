@@ -1,6 +1,6 @@
 import "@eventual/entry/injected";
 
-import { createApiHandler } from "@eventual/core";
+import { ApiRequest, createApiHandler } from "@eventual/core";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
 import itty from "itty-router";
 import { createEventClient, createWorkflowClient } from "../clients/create.js";
@@ -22,16 +22,41 @@ const processRequest = createApiHandler({
 export default async function (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> {
-  const request: itty.Request = {
+  const body = event.body
+    ? event.isBase64Encoded
+      ? Buffer.from(event.body, "base64")
+      : event.body
+    : undefined;
+
+  const request: ApiRequest = {
     method: event.requestContext.http.method,
+    headers: event.headers,
     url: `http://localhost:3000${event.requestContext.http.path}`,
     params: event.pathParameters as itty.Obj,
     query: event.queryStringParameters as itty.Obj,
-    async json() {
-      if (event.body) {
-        return JSON.parse(event.body!);
-      } else {
+    async blob() {
+      if (body === undefined) {
         return undefined;
+      } else if (Buffer.isBuffer(body)) {
+        return body;
+      } else {
+        return Buffer.from(body, "utf-8");
+      }
+    },
+    async text() {
+      if (body === undefined || typeof body === "string") {
+        return body;
+      } else {
+        return body.toString("utf-8");
+      }
+    },
+    async json() {
+      if (body === undefined) {
+        return undefined;
+      } else if (typeof body === "string") {
+        return JSON.parse(body);
+      } else {
+        return JSON.parse(body.toString("utf-8"));
       }
     },
   };

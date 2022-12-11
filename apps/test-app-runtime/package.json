@@ -13,7 +13,10 @@
     "@aws-sdk/client-s3": "^3.226.0",
     "@aws-sdk/client-sqs": "^3.226.0",
     "@aws-sdk/lib-dynamodb": "^3.226.0",
-    "@eventual/core": "workspace:^"
+    "@eventual/aws-runtime": "workspace:^",
+    "@eventual/core": "workspace:^",
+    "@eventual/slack-integration": "workspace:^",
+    "@slack/bolt": "^3.12.2"
   },
   "devDependencies": {
     "@eventual/cli": "workspace:^",
