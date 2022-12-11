@@ -1,5 +1,5 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
-import { ServiceType } from "@eventual/core";
+import { AppSpec, ServiceType } from "@eventual/core";
 import { Arn, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
 import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
 import {
@@ -24,6 +24,7 @@ import { execSync } from "child_process";
 import { Construct } from "constructs";
 import { Scheduler } from "./scheduler";
 import { ServiceApi } from "./service-api";
+import { Events } from "./events";
 import { ServiceFunction } from "./service-function";
 import { addEnvironment, outDir } from "./utils";
 
@@ -41,9 +42,15 @@ export class Service extends Construct implements IGrantable {
    */
   public readonly serviceName: string;
   /**
+   * The {@link AppSec} inferred from the application code.
+   */
+  readonly appSpec: AppSpec;
+  /**
    * This {@link Service}'s API Gateway.
    */
   readonly api: ServiceApi;
+
+  readonly events: Events;
   /**
    * S3 bucket that contains events necessary to replay a workflow execution.
    *
@@ -77,7 +84,7 @@ export class Service extends Construct implements IGrantable {
    */
   readonly scheduler: Scheduler;
   /**
-   * Role used by cli
+   * The Resources for schedules and sleep timers.
    */
   public readonly cliRole: Role;
   /**
@@ -92,6 +99,14 @@ export class Service extends Construct implements IGrantable {
 
     this.serviceName = props.name ?? Names.uniqueResourceName(this, {});
 
+    this.appSpec = JSON.parse(
+      execSync(
+        `npx ts-node ${require.resolve(
+          "@eventual/compiler/bin/eventual-infer.js"
+        )} ${props.entry}`
+      ).toString("utf-8")
+    );
+
     execSync(
       `node ${require.resolve(
         "@eventual/compiler/bin/eventual-bundle.js"
@@ -99,8 +114,13 @@ export class Service extends Construct implements IGrantable {
     ).toString("utf-8");
 
     this.history = new Bucket(this, "History", {
-      // TODO: remove after testing
       removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    this.events = new Events(this, "Events", {
+      appSpec: this.appSpec,
+      serviceName: this.serviceName,
+      environment: props.environment,
     });
 
     this.workflowQueue = new Queue(this, "WorkflowQueue", {
@@ -130,7 +150,6 @@ export class Service extends Construct implements IGrantable {
 
     this.activityWorker = new ServiceFunction(this, "Worker", {
       serviceType: ServiceType.ActivityWorker,
-      memorySize: 512,
       environment: props.environment,
       // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
       retryAttempts: 0,
@@ -153,8 +172,8 @@ export class Service extends Construct implements IGrantable {
     });
 
     this.api = new ServiceApi(this, "Api", {
-      serviceName: this.serviceName,
       environment: props.environment,
+      serviceName: this.serviceName,
       activityWorker: this.activityWorker,
       history: this.history,
       orchestrator: this.orchestrator,
@@ -193,6 +212,7 @@ export class Service extends Construct implements IGrantable {
     this.configureActivityWorker();
     this.configureApiHandler();
     this.configureOrchestrator();
+    this.configureEventHandler();
   }
 
   public grantRead(grantable: IGrantable) {
@@ -234,6 +254,7 @@ export class Service extends Construct implements IGrantable {
 
   private configureActivityWorker() {
     this.configureStartWorkflow(this.activityWorker);
+    this.events.configurePublish(this.activityWorker);
 
     // the worker will issue an UpdateItem command to lock
     this.locksTable.grantWriteData(this.activityWorker);
@@ -244,14 +265,20 @@ export class Service extends Construct implements IGrantable {
   }
 
   private configureOrchestrator() {
+    this.events.configurePublish(this.orchestrator);
     this.configureRecordHistory(this.orchestrator);
     this.configureScheduleActivity(this.orchestrator);
-    this.scheduler.configureScheduleTimer(this.orchestrator);
     this.configureStartWorkflow(this.orchestrator);
+    this.scheduler.configureScheduleTimer(this.orchestrator);
   }
 
   private configureApiHandler() {
     this.configureStartWorkflow(this.api.handler);
+    this.events.configurePublish(this.api.handler);
+  }
+
+  private configureEventHandler() {
+    this.configureStartWorkflow(this.events.handler as Function);
   }
 
   public grantFilterLogEvents(grantable: IGrantable) {

@@ -33,7 +33,8 @@ import {
   isConditionTimedOut,
   isWorkflowTimedOut,
   isActivityTimedOut,
-} from "./events.js";
+  isEventsPublished,
+} from "./workflow-events.js";
 import {
   Result,
   isResolved,
@@ -62,6 +63,7 @@ import { isConditionCall } from "./calls/condition-call.js";
 import { isAwaitAllSettled } from "./await-all-settled.js";
 import { isAwaitAny } from "./await-any.js";
 import { isRace } from "./race.js";
+import { isPublishEventsCall } from "./calls/publish-events-call.js";
 
 export interface WorkflowResult<T = any> {
   /**
@@ -230,6 +232,12 @@ export function interpret<Return>(
       };
     } else if (isRegisterSignalHandlerCall(call)) {
       return [];
+    } else if (isPublishEventsCall(call)) {
+      return {
+        kind: CommandType.PublishEvents,
+        seq: call.seq!,
+        events: call.events,
+      };
     }
 
     return assertNever(call);
@@ -537,6 +545,8 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
     return isSendSignalCall(call) && event.signalId === call.signalId;
   } else if (isConditionStarted(event)) {
     return isConditionCall(call);
+  } else if (isEventsPublished(event)) {
+    return isPublishEventsCall(call);
   }
   return assertNever(event);
 }

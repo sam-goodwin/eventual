@@ -24,6 +24,10 @@ import { isOrchestratorWorker } from "./runtime/flags.js";
 import { AwaitAny, createAwaitAny } from "./await-any.js";
 import { AwaitAllSettled, createAwaitAllSettled } from "./await-all-settled.js";
 import { createRace, Race } from "./race.js";
+import {
+  isPublishEventsCall,
+  PublishEventsCall,
+} from "./calls/publish-events-call.js";
 
 export type AwaitedEventual<T> = T extends Promise<infer U>
   ? Awaited<U>
@@ -41,13 +45,14 @@ export interface EventualBase<Kind extends EventualKind, R extends Result> {
 }
 
 export enum EventualKind {
+  ActivityCall = 1,
   AwaitAll = 0,
   AwaitAllSettled = 12,
   AwaitAny = 10,
-  ActivityCall = 1,
   Chain = 2,
   ConditionCall = 9,
   ExpectSignalCall = 6,
+  PublishEventsCall = 13,
   Race = 11,
   RegisterSignalHandlerCall = 7,
   SendSignalCall = 8,
@@ -77,35 +82,37 @@ export function createEventual<E extends Eventual>(
 
 export type Eventual<T = any> =
   | AwaitAll<T extends any[] ? T : never>
-  | AwaitAny<T extends any[] ? T : never>
-  | Race<T extends any[] ? T : never>
   | AwaitAllSettled<T extends any[] ? T : never>
+  | AwaitAny<T extends any[] ? T : never>
   | Chain<T>
-  | CommandCall<T>;
+  | CommandCall<T>
+  | Race<T extends any[] ? T : never>;
 
 /**
  * Calls which emit commands.
  */
 export type CommandCall<T = any> =
   | ActivityCall<T>
-  | SleepForCall
-  | SleepUntilCall
-  | WorkflowCall<T>
+  | ConditionCall
   | ExpectSignalCall<T>
   | RegisterSignalHandlerCall<T>
+  | PublishEventsCall
   | SendSignalCall
-  | ConditionCall;
+  | SleepForCall
+  | SleepUntilCall
+  | WorkflowCall<T>;
 
 export function isCommandCall(call: Eventual): call is CommandCall {
   return (
     isActivityCall(call) ||
-    isSleepForCall(call) ||
-    isSleepUntilCall(call) ||
-    isWorkflowCall(call) ||
+    isConditionCall(call) ||
     isExpectSignalCall(call) ||
+    isPublishEventsCall(call) ||
     isRegisterSignalHandlerCall(call) ||
     isSendSignalCall(call) ||
-    isConditionCall(call)
+    isSleepForCall(call) ||
+    isSleepUntilCall(call) ||
+    isWorkflowCall(call)
   );
 }
 

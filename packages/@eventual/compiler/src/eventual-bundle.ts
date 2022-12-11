@@ -43,6 +43,12 @@ export async function bundle(
       injectedEntry: serviceEntry,
       entry: runtimeEntrypoint("api-handler"),
     }),
+    build({
+      name: ServiceType.EventHandler,
+      outDir,
+      injectedEntry: serviceEntry,
+      entry: runtimeEntrypoint("event-handler"),
+    }),
     //This one is actually an api function
     build({
       name: "list-workflows",

@@ -16,7 +16,7 @@ import {
   SleepCompleted,
   SleepScheduled,
   WorkflowEventType,
-} from "./events.js";
+} from "./workflow-events.js";
 import { interpret, WorkflowResult } from "./interpret.js";
 import type { StartWorkflowResponse } from "./runtime/clients/workflow-client.js";
 import { ChildExecution, createWorkflowCall } from "./calls/workflow-call.js";

@@ -1,5 +1,6 @@
 import { ulid } from "ulidx";
 import { ExecutionContext } from "./context.js";
+import { EventEnvelope } from "./event.js";
 import { or } from "./util.js";
 
 export interface BaseEvent {
@@ -20,22 +21,23 @@ export enum WorkflowEventType {
   ActivityFailed = "ActivityFailed",
   ActivityScheduled = "ActivityScheduled",
   ActivityTimedOut = "ActivityTimedOut",
-  ConditionStarted = "ConditionStarted",
-  ConditionTimedOut = "ConditionTimedOut",
   ChildWorkflowCompleted = "ChildWorkflowCompleted",
   ChildWorkflowFailed = "ChildWorkflowFailed",
   ChildWorkflowScheduled = "ChildWorkflowScheduled",
+  ConditionStarted = "ConditionStarted",
+  ConditionTimedOut = "ConditionTimedOut",
+  EventsPublished = "EventsPublished",
   ExpectSignalStarted = "ExpectSignalStarted",
   ExpectSignalTimedOut = "ExpectSignalTimedOut",
   SignalReceived = "SignalReceived",
   SignalSent = "SignalSent",
-  SleepScheduled = "SleepScheduled",
   SleepCompleted = "SleepCompleted",
-  WorkflowTaskCompleted = "TaskCompleted",
-  WorkflowTaskStarted = "TaskStarted",
+  SleepScheduled = "SleepScheduled",
   WorkflowCompleted = "WorkflowCompleted",
   WorkflowFailed = "WorkflowFailed",
   WorkflowStarted = "WorkflowStarted",
+  WorkflowTaskCompleted = "TaskCompleted",
+  WorkflowTaskStarted = "TaskStarted",
   WorkflowTimedOut = "WorkflowTimedOut",
 }
 
@@ -54,9 +56,10 @@ export type ScheduledEvent =
   | ActivityScheduled
   | ChildWorkflowScheduled
   | ConditionStarted
+  | EventsPublished
   | ExpectSignalStarted
-  | SleepScheduled
-  | SignalSent;
+  | SignalSent
+  | SleepScheduled;
 
 export type CompletedEvent =
   | ActivityCompleted
@@ -309,6 +312,17 @@ export function isSignalSent(event: WorkflowEvent): event is SignalSent {
   return event.type === WorkflowEventType.SignalSent;
 }
 
+export interface EventsPublished extends HistoryEventBase {
+  type: WorkflowEventType.EventsPublished;
+  events: EventEnvelope[];
+}
+
+export function isEventsPublished(
+  event: WorkflowEvent
+): event is EventsPublished {
+  return event.type === WorkflowEventType.EventsPublished;
+}
+
 export interface ConditionStarted extends HistoryEventBase {
   type: WorkflowEventType.ConditionStarted;
 }
@@ -353,6 +367,7 @@ export const isScheduledEvent = or(
   isActivityScheduled,
   isChildWorkflowScheduled,
   isConditionStarted,
+  isEventsPublished,
   isExpectSignalStarted,
   isSignalSent,
   isSleepScheduled

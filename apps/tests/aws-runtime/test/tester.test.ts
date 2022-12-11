@@ -1,5 +1,6 @@
 import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
 import {
+  eventDrivenWorkflow,
   asyncWorkflow,
   parentWorkflow,
   timedOutWorkflow,
@@ -44,4 +45,6 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
     "hello from the async writer!",
     "AsyncWriterError",
   ]);
+
+  testCompletion("event-driven", eventDrivenWorkflow, "done!");
 });

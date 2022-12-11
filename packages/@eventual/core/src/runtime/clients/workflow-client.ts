@@ -1,4 +1,4 @@
-import { HistoryStateEvent } from "../../events.js";
+import { HistoryStateEvent } from "../../workflow-events.js";
 import { Execution, ExecutionStatus } from "../../execution.js";
 import { Signal } from "../../signals.js";
 import { Workflow, WorkflowInput, WorkflowOptions } from "../../workflow.js";
