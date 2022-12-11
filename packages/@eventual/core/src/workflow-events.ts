@@ -163,7 +163,7 @@ export interface WorkflowFailed extends BaseEvent {
 export interface ChildWorkflowScheduled extends HistoryEventBase {
   type: WorkflowEventType.ChildWorkflowScheduled;
   name: string;
-  input: any;
+  input?: any;
 }
 
 export interface ChildWorkflowCompleted extends HistoryEventBase {
