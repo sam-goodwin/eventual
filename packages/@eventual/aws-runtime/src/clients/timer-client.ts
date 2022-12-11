@@ -17,7 +17,10 @@ import {
   ScheduleForwarderRequest,
   TimerRequest,
   TimerRequestType,
+  isActivityHeartbeatMonitorRequest,
+  Schedule,
 } from "@eventual/core";
+import { ulid } from "ulidx";
 
 export interface AWSTimerClientProps {
   readonly scheduler: SchedulerClient;
@@ -25,10 +28,10 @@ export interface AWSTimerClientProps {
   readonly schedulerDlqArn: string;
   readonly schedulerGroup: string;
   /**
-   * If a sleep has a longer duration (in millis) than this threshold,
+   * If a sleep has a longer duration (in seconds) than this threshold,
    * create an Event Bus Scheduler before sending it to the TimerQueue
    */
-  readonly sleepQueueThresholdMillis: number;
+  readonly sleepQueueThresholdSeconds: number;
   readonly timerQueueUrl: string;
   readonly sqs: SQSClient;
   readonly scheduleForwarderArn: string;
@@ -50,16 +53,7 @@ export class AWSTimerClient implements TimerClient {
    * the {@link TimerRequest} provided.
    */
   async startShortTimer(timerRequest: TimerRequest) {
-    const delaySeconds = Math.max(
-      // Compute the number of seconds (floored)
-      // subtract 1 because the maxBatchWindow is set to 1s on the lambda event source.
-      // this allows for more events to be sent at once while not adding extra latency
-      Math.ceil(
-        (new Date(timerRequest.untilTime).getTime() - new Date().getTime()) /
-          1000
-      ),
-      0
-    );
+    const delaySeconds = computeTimerSeconds(timerRequest.schedule);
 
     if (delaySeconds > 15 * 60) {
       throw new Error(
@@ -91,10 +85,9 @@ export class AWSTimerClient implements TimerClient {
    * the {@link TimerRequest} provided.
    */
   async startTimer(timerRequest: TimerRequest) {
-    const untilTime = new Date(timerRequest.untilTime);
-    const untilTimeIso = untilTime.toISOString();
-
-    const sleepDuration = untilTime.getTime() - new Date().getTime();
+    const untilTimeIso = computeUntilTime(timerRequest.schedule);
+    const untilTime = new Date(untilTimeIso);
+    const sleepDuration = computeTimerSeconds(timerRequest.schedule);
 
     /**
      * If the sleep is longer than 15 minutes, create an EventBridge schedule first.
@@ -103,11 +96,11 @@ export class AWSTimerClient implements TimerClient {
      *
      * The timerQueue ultimately will pick up the event and forward the {@link SleepComplete} to the workflow queue.
      */
-    if (sleepDuration > this.props.sleepQueueThresholdMillis) {
+    if (sleepDuration > this.props.sleepQueueThresholdSeconds) {
       // wait for utilTime - sleepQueueThresholdMillis and then forward the event to
       // the timerQueue
       const scheduleTime =
-        untilTime.getTime() - this.props.sleepQueueThresholdMillis;
+        untilTime.getTime() - this.props.sleepQueueThresholdSeconds;
       // EventBridge Scheduler only supports HH:MM:SS, strip off the milliseconds and `Z`.
       const formattedSchedulerTime = new Date(scheduleTime)
         .toISOString()
@@ -164,12 +157,7 @@ export class AWSTimerClient implements TimerClient {
   public async scheduleEvent<E extends HistoryStateEvent>(
     request: ScheduleEventRequest<E>
   ): Promise<void> {
-    const untilTime =
-      "untilTime" in request
-        ? request.untilTime
-        : new Date(
-            request.baseTime.getTime() + request.timerSeconds * 1000
-          ).toISOString();
+    const untilTime = computeUntilTime(request.schedule);
 
     const event = {
       ...request.event,
@@ -180,7 +168,7 @@ export class AWSTimerClient implements TimerClient {
       event,
       executionId: request.executionId,
       type: TimerRequestType.ScheduleEvent,
-      untilTime: untilTime,
+      schedule: Schedule.absolute(untilTime),
     });
   }
 
@@ -220,9 +208,38 @@ export class AWSTimerClient implements TimerClient {
  */
 function getScheduleName(timerRequest: TimerRequest) {
   if (isTimerScheduleEventRequest(timerRequest)) {
-    return `${timerRequest.executionId}_${getEventId(
-      timerRequest.event
-    )}`.replaceAll(/[^0-9a-zA-Z-_.]/g, "");
+    return safeScheduleName(
+      `${timerRequest.executionId}_${getEventId(timerRequest.event)}`
+    );
+  } else if (isActivityHeartbeatMonitorRequest(timerRequest)) {
+    // heart beat timers will always be unique. We maybe create any number of them.
+    return safeScheduleName(`heartbeat_${timerRequest.executionId}_${ulid()}`);
   }
   return assertNever(timerRequest);
+}
+
+function safeScheduleName(name: string) {
+  return name.replaceAll(/[^0-9a-zA-Z-_.]/g, "");
+}
+
+function computeUntilTime(schedule: TimerRequest["schedule"]): string {
+  return "untilTime" in schedule
+    ? schedule.untilTime
+    : new Date(
+        schedule.baseTime.getTime() + schedule.timerSeconds * 1000
+      ).toISOString();
+}
+
+function computeTimerSeconds(schedule: TimerRequest["schedule"]) {
+  return "untilTime" in schedule
+    ? Math.max(
+        // Compute the number of seconds (floored)
+        // subtract 1 because the maxBatchWindow is set to 1s on the lambda event source.
+        // this allows for more events to be sent at once while not adding extra latency
+        Math.ceil(
+          (new Date(schedule.untilTime).getTime() - new Date().getTime()) / 1000
+        ),
+        0
+      )
+    : schedule.timerSeconds;
 }

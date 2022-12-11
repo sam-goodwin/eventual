@@ -1,20 +1,19 @@
 import { ConditionPredicate } from "../condition.js";
 import {
+  createEventual,
   EventualBase,
   EventualKind,
-  EventualSymbol,
-  isEventual,
+  isEventualOfKind,
 } from "../eventual.js";
 import { registerEventual } from "../global.js";
 import { Resolved, Failed } from "../result.js";
 
 export function isConditionCall(a: any): a is ConditionCall {
-  return isEventual(a) && a[EventualSymbol] === EventualKind.ConditionCall;
+  return isEventualOfKind(EventualKind.ConditionCall, a);
 }
 
 export interface ConditionCall
-  extends EventualBase<Resolved<boolean> | Failed> {
-  [EventualSymbol]: EventualKind.ConditionCall;
+  extends EventualBase<EventualKind.ConditionCall, Resolved<boolean> | Failed> {
   seq?: number;
   predicate: ConditionPredicate;
   timeoutSeconds?: number;
@@ -24,9 +23,10 @@ export function createConditionCall(
   predicate: ConditionPredicate,
   timeoutSeconds?: number
 ) {
-  return registerEventual<ConditionCall>({
-    [EventualSymbol]: EventualKind.ConditionCall,
-    predicate,
-    timeoutSeconds,
-  });
+  return registerEventual(
+    createEventual<ConditionCall>(EventualKind.ConditionCall, {
+      predicate,
+      timeoutSeconds,
+    })
+  );
 }

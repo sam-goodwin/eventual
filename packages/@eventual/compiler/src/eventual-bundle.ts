@@ -5,6 +5,7 @@ import { esbuildPluginAliasPath } from "esbuild-plugin-alias-path";
 import { eventualESPlugin } from "./esbuild-plugin.js";
 import { prepareOutDir } from "./build.js";
 import { createRequire } from "module";
+import { ServiceType } from "@eventual/core";
 
 // @ts-ignore - ts is complaining about not having module:esnext even thought it is in tsconfig.json
 const require = createRequire(import.meta.url);
@@ -24,23 +25,29 @@ export async function bundle(
 
   await Promise.all([
     build({
-      name: "orchestrator",
+      name: ServiceType.OrchestratorWorker,
       outDir,
       injectedEntry: serviceEntry,
       entry: runtimeEntrypoint("orchestrator"),
       plugins: [eventualESPlugin],
     }),
     build({
-      name: "activity",
+      name: ServiceType.ActivityWorker,
       outDir,
       injectedEntry: serviceEntry,
       entry: runtimeEntrypoint("activity-worker"),
     }),
     build({
-      name: "api",
+      name: ServiceType.ApiHandler,
       outDir,
       injectedEntry: serviceEntry,
       entry: runtimeEntrypoint("api-handler"),
+    }),
+    build({
+      name: ServiceType.EventHandler,
+      outDir,
+      injectedEntry: serviceEntry,
+      entry: runtimeEntrypoint("event-handler"),
     }),
     //This one is actually an api function
     build({

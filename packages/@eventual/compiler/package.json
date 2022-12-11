@@ -4,7 +4,8 @@
   "main": "lib/index.js",
   "types:": "lib/index.d.ts",
   "bin": {
-    "eventual-bundle": "./bin/eventual-bundle.js"
+    "eventual-bundle": "./bin/eventual-bundle.js",
+    "eventual-infer": "./bin/eventual-infer.js"
   },
   "type": "module",
   "files": [
@@ -16,6 +17,7 @@
   },
   "dependencies": {
     "@eventual/aws-runtime": "workspace:^",
+    "@eventual/core": "workspace:^",
     "@swc/core": "^1.2.245",
     "esbuild": "^0.15.14",
     "esbuild-plugin-alias-path": "^1.1.1"

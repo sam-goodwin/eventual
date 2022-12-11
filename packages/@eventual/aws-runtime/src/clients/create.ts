@@ -9,6 +9,7 @@ import { AWSWorkflowClient } from "./workflow-client.js";
 import { AWSWorkflowRuntimeClient } from "./workflow-runtime-client.js";
 import { SchedulerClient } from "@aws-sdk/client-scheduler";
 import { AWSTimerClient, AWSTimerClientProps } from "./timer-client.js";
+import { AWSEventClient } from "./event-client.js";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -38,9 +39,11 @@ export const createWorkflowClient = /*@__PURE__*/ memoize(
   ({
     tableName,
     workflowQueueUrl,
+    activityTableName,
   }: {
     tableName?: string;
     workflowQueueUrl?: string;
+    activityTableName?: string;
   } = {}) =>
     new AWSWorkflowClient({
       sqs: sqs(),
@@ -50,14 +53,15 @@ export const createWorkflowClient = /*@__PURE__*/ memoize(
       }),
       dynamo: dynamo(),
       tableName: tableName ?? env.tableName(),
+      activityRuntimeClient: createActivityRuntimeClient({ activityTableName }),
     }),
   { cacheKey: JSON.stringify }
 );
 
 export const createActivityRuntimeClient = /*@__PURE__*/ memoize(
-  () =>
+  ({ activityTableName }: { activityTableName?: string } = {}) =>
     new AWSActivityRuntimeClient({
-      activityLockTableName: env.activityLockTableName(),
+      activityTableName: activityTableName ?? env.activityTableName(),
       dynamo: dynamo(),
     })
 );
@@ -69,8 +73,7 @@ export const createTimerClient = /*@__PURE__*/ memoize(
       schedulerRoleArn: props.schedulerRoleArn ?? env.schedulerRoleArn(),
       schedulerDlqArn: props.schedulerDlqArn ?? env.schedulerDlqArn(),
       schedulerGroup: props.schedulerGroup ?? env.schedulerGroup(),
-      sleepQueueThresholdMillis:
-        props.sleepQueueThresholdMillis ?? 15 * 60 * 1000,
+      sleepQueueThresholdSeconds: props.sleepQueueThresholdSeconds ?? 15 * 60,
       sqs: props.sqs ?? sqs(),
       timerQueueUrl: props.timerQueueUrl ?? env.timerQueueUrl(),
       scheduleForwarderArn:
@@ -101,6 +104,14 @@ export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
       timerClient: createTimerClient(),
     }),
   { cacheKey: JSON.stringify }
+);
+
+export const createEventClient = /*@__PURE__*/ memoize(
+  () =>
+    new AWSEventClient({
+      serviceName: env.serviceName(),
+      eventBusArn: env.eventBusArn(),
+    })
 );
 
 function memoize<T extends (...args: any[]) => any>(

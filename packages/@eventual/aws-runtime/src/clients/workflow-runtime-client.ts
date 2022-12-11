@@ -35,6 +35,8 @@ import {
   UpdateHistoryRequest,
   WorkflowEventType,
   WorkflowRuntimeClient,
+  ScheduleWorkflowRequest,
+  Schedule,
 } from "@eventual/core";
 import { AWSTimerClient } from "./timer-client.js";
 import {
@@ -42,7 +44,6 @@ import {
   createExecutionFromResult,
   ExecutionRecord,
 } from "./workflow-client.js";
-import * as eventual from "@eventual/core";
 import { formatChildExecutionName } from "../utils.js";
 
 export interface AWSWorkflowRuntimeClientProps {
@@ -211,25 +212,26 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
       retry: 0,
     };
 
-    if (command.timeoutSeconds) {
-      await this.props.timerClient.scheduleEvent<ActivityTimedOut>({
-        baseTime,
-        event: {
-          type: WorkflowEventType.ActivityTimedOut,
-          seq: command.seq,
-        },
-        executionId,
-        timerSeconds: command.timeoutSeconds,
-      });
-    }
+    const timeoutStarter = command.timeoutSeconds
+      ? await this.props.timerClient.scheduleEvent<ActivityTimedOut>({
+          schedule: Schedule.relative(command.timeoutSeconds, baseTime),
+          event: {
+            type: WorkflowEventType.ActivityTimedOut,
+            seq: command.seq,
+          },
+          executionId,
+        })
+      : undefined;
 
-    await this.props.lambda.send(
+    const activityStarter = this.props.lambda.send(
       new InvokeCommand({
         FunctionName: this.props.activityWorkerFunctionName,
         Payload: Buffer.from(JSON.stringify(request)),
         InvocationType: InvocationType.Event,
       })
     );
+
+    await Promise.all([activityStarter, timeoutStarter]);
 
     return createEvent<ActivityScheduled>({
       type: WorkflowEventType.ActivityScheduled,
@@ -241,7 +243,7 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
   public async scheduleChildWorkflow({
     command,
     executionId,
-  }: eventual.ScheduleWorkflowRequest): Promise<eventual.ChildWorkflowScheduled> {
+  }: ScheduleWorkflowRequest): Promise<ChildWorkflowScheduled> {
     await this.props.workflowClient.startWorkflow({
       workflowName: command.name,
       input: command.input,
@@ -278,7 +280,7 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
     await this.props.timerClient.startTimer({
       type: TimerRequestType.ScheduleEvent,
       event: sleepCompletedEvent,
-      untilTime: untilTimeIso,
+      schedule: Schedule.absolute(untilTimeIso),
       executionId,
     });
 
@@ -301,8 +303,7 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
           seq: command.seq,
           type: WorkflowEventType.ExpectSignalTimedOut,
         },
-        timerSeconds: command.timeoutSeconds,
-        baseTime,
+        schedule: Schedule.relative(command.timeoutSeconds, baseTime),
         executionId,
       });
     }

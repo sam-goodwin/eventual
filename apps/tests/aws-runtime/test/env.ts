@@ -9,4 +9,6 @@ const outputs = fs.existsSync(path.resolve(outputsFile))
 
 export const queueUrl = () => outputs?.["eventual-tests"]?.workflowQueueUrl;
 export const tableName = () => outputs?.["eventual-tests"]?.serviceTableName;
+export const activityTableName = () =>
+  outputs?.["eventual-tests"]?.activityTableName;
 export const testArn = () => outputs?.["eventual-tests"]?.roleArn;

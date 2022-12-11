@@ -1,10 +1,11 @@
 import {
+  AWSActivityRuntimeClient,
   AWSExecutionHistoryClient,
   AWSWorkflowClient,
 } from "@eventual/aws-runtime";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { SQSClient } from "@aws-sdk/client-sqs";
-import { queueUrl, tableName } from "./env.js";
+import { activityTableName, queueUrl, tableName } from "./env.js";
 
 const dynamo = new DynamoDBClient({});
 
@@ -17,4 +18,8 @@ export const workflowClient = new AWSWorkflowClient({
   }),
   tableName: tableName(),
   workflowQueueUrl: queueUrl(),
+  activityRuntimeClient: new AWSActivityRuntimeClient({
+    dynamo,
+    activityTableName: activityTableName(),
+  }),
 });

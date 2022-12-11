@@ -9,6 +9,7 @@ import { isAwaitAll } from "./await-all.js";
 import { isActivityCall } from "./calls/activity-call.js";
 import {
   DeterminismError,
+  HeartbeatTimeout,
   SynchronousOperationError,
   Timeout,
 } from "./error.js";
@@ -33,7 +34,9 @@ import {
   isConditionTimedOut,
   isWorkflowTimedOut,
   isActivityTimedOut,
-} from "./events.js";
+  isActivityHeartbeatTimedOut,
+  isEventsPublished,
+} from "./workflow-events.js";
 import {
   Result,
   isResolved,
@@ -62,6 +65,7 @@ import { isConditionCall } from "./calls/condition-call.js";
 import { isAwaitAllSettled } from "./await-all-settled.js";
 import { isAwaitAny } from "./await-any.js";
 import { isRace } from "./race.js";
+import { isPublishEventsCall } from "./calls/send-events-call.js";
 
 export interface WorkflowResult<T = any> {
   /**
@@ -180,11 +184,11 @@ export function interpret<Return>(
   function callToCommand(call: CommandCall): Command[] | Command {
     if (isActivityCall(call)) {
       return {
-        // TODO: add sleep
         kind: CommandType.StartActivity,
         args: call.args,
         name: call.name,
         timeoutSeconds: call.timeoutSeconds,
+        heartbeatSeconds: call.heartbeatSeconds,
         seq: call.seq!,
       };
     } else if (isSleepUntilCall(call)) {
@@ -230,6 +234,12 @@ export function interpret<Return>(
       };
     } else if (isRegisterSignalHandlerCall(call)) {
       return [];
+    } else if (isPublishEventsCall(call)) {
+      return {
+        kind: CommandType.PublishEvents,
+        seq: call.seq!,
+        events: call.events,
+      };
     }
 
     return assertNever(call);
@@ -518,6 +528,8 @@ export function interpret<Return>(
         Result.resolved(false)
       : isActivityTimedOut(event)
       ? Result.failed(new Timeout("Activity Timed Out"))
+      : isActivityHeartbeatTimedOut(event)
+      ? Result.failed(new HeartbeatTimeout("Activity Heartbeat TimedOut"))
       : Result.failed(event.error);
   }
 }
@@ -537,6 +549,8 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
     return isSendSignalCall(call) && event.signalId === call.signalId;
   } else if (isConditionStarted(event)) {
     return isConditionCall(call);
+  } else if (isEventsPublished(event)) {
+    return isPublishEventsCall(call);
   }
   return assertNever(event);
 }

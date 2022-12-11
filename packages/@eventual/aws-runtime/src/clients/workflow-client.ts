@@ -9,7 +9,6 @@ import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
   Execution,
   ExecutionStatus,
-  SignalReceived,
   HistoryStateEvent,
   Workflow,
   WorkflowEventType,
@@ -17,11 +16,10 @@ import {
   WorkflowTask,
   WorkflowClient,
   StartWorkflowRequest,
-  SendSignalRequest,
   formatExecutionId,
-  createEvent,
 } from "@eventual/core";
 import { ulid } from "ulidx";
+import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
 import { AWSExecutionHistoryClient } from "./execution-history-client.js";
 
 export interface AWSWorkflowClientProps {
@@ -30,10 +28,13 @@ export interface AWSWorkflowClientProps {
   readonly sqs: SQSClient;
   readonly workflowQueueUrl: string;
   readonly executionHistory: AWSExecutionHistoryClient;
+  readonly activityRuntimeClient: AWSActivityRuntimeClient;
 }
 
-export class AWSWorkflowClient implements WorkflowClient {
-  constructor(private props: AWSWorkflowClientProps) {}
+export class AWSWorkflowClient extends WorkflowClient {
+  constructor(private props: AWSWorkflowClientProps) {
+    super(props.activityRuntimeClient);
+  }
 
   /**
    * Start a workflow execution
@@ -150,24 +151,6 @@ export class AWSWorkflowClient implements WorkflowClient {
     return executionResult.Item
       ? createExecutionFromResult(executionResult.Item as ExecutionRecord)
       : undefined;
-  }
-
-  public async sendSignal(request: SendSignalRequest): Promise<void> {
-    await this.submitWorkflowTask(
-      request.executionId,
-      createEvent<SignalReceived>(
-        {
-          type: WorkflowEventType.SignalReceived,
-          payload: request.payload,
-          signalId:
-            typeof request.signal === "string"
-              ? request.signal
-              : request.signal.id,
-        },
-        undefined,
-        request.id
-      )
-    );
   }
 }
 
