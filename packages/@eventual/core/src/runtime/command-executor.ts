@@ -89,7 +89,7 @@ export class CommandExecutor {
     async function scheduleActivity(command: ScheduleActivityCommand) {
       const request: ActivityWorkerRequest = {
         scheduledTime: new Date().toISOString(),
-        workflowName: workflow.name,
+        workflowName: workflow.workflowName,
         executionId,
         command,
         retry: 0,

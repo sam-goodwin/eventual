@@ -44,7 +44,7 @@ export interface AWSWorkflowRuntimeClientProps {
 export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
   constructor(private props: AWSWorkflowRuntimeClientProps) {}
 
-  async getHistory(executionId: string): Promise<HistoryStateEvent[]> {
+  public async getHistory(executionId: string): Promise<HistoryStateEvent[]> {
     try {
       // get current history from s3
       const historyObject = await this.props.s3.send(
@@ -80,7 +80,7 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
     return { bytes: content.length };
   }
 
-  async completeExecution({
+  public async completeExecution({
     executionId,
     result,
   }: CompleteExecutionRequest): Promise<CompleteExecution> {
@@ -119,7 +119,7 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
     return createExecutionFromResult(record) as CompleteExecution;
   }
 
-  async failExecution({
+  public async failExecution({
     executionId,
     error,
     message,
