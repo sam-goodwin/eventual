@@ -29,7 +29,10 @@ export default async function (
     : undefined;
 
   const request = new Request(
-    new URL(`http://localhost:3000${event.rawPath}?${event.rawQueryString}`),
+    // TODO: get protocol from header 'x-forwarded-proto'?
+    new URL(
+      `https://${event.requestContext.domainName}${event.rawPath}?${event.rawQueryString}`
+    ),
     {
       body,
       headers: event.headers as Record<string, string>,
