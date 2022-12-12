@@ -1,6 +1,7 @@
 import { WorkflowStarted } from "@eventual/core";
 import {
   endTime,
+  getDuration,
   isCompleted,
   TimelineActivity,
   Timespan,
@@ -37,7 +38,7 @@ export function Timeline({
             }}
           >
             <div>
-              {Math.floor((i * workflowSpan.duration) / 10)}
+              {Math.floor((i * getDuration(workflowSpan)) / 10)}
               ms
             </div>
             <div className={styles.marker} />
@@ -75,7 +76,7 @@ export function Timeline({
 }
 
 function percentOffset(timestamp: number, inSpan: Timespan) {
-  return (100 * (timestamp - inSpan.start)) / inSpan.duration;
+  return (100 * (timestamp - inSpan.start)) / getDuration(inSpan);
 }
 
 function getWorkflowSpan(
@@ -91,6 +92,5 @@ function getWorkflowSpan(
   return {
     start: startTime,
     end: latestEnd,
-    duration: latestEnd - startTime,
   };
 }

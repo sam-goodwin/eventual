@@ -22,10 +22,21 @@ export interface InProgress {
 
 export type ActivityState = Completed | Failed | InProgress;
 
+/**
+ * Start and end are expected to be in ms
+ */
 export interface Timespan {
   start: number;
   end: number;
-  duration: number;
+}
+
+/**
+ * Return ms between start and end of a timespan
+ * @param span The timespan to measure, with start and end in ms
+ * @returns Duration, in ms
+ */
+export function getDuration({ start, end }: Timespan): number {
+  return end - start;
 }
 
 export function isCompleted(state: ActivityState): state is Completed {
