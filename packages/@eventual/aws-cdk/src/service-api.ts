@@ -14,12 +14,14 @@ import { baseNodeFnProps, outDir } from "./utils";
 import type { Workflows } from "./workflows";
 import type { Events } from "./events";
 import type { Activities } from "./activities";
+import type { Scheduler } from "./scheduler";
 
 export interface ApiProps {
   serviceName: string;
   environment?: Record<string, string>;
   workflows: Workflows;
   activities: Activities;
+  scheduler: Scheduler;
   events: Events;
 }
 
@@ -119,7 +121,9 @@ export class Api extends Construct {
         entry: { api: "executions/workflow-history.js" },
         // TODO fix me
         grants: (fn) => {
+          props.activities.configureFullControl(fn);
           props.workflows.configureReadHistory(fn);
+          props.scheduler.configureScheduleTimer(fn);
         },
       },
     });

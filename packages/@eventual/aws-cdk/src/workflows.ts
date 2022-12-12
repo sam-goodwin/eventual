@@ -120,6 +120,9 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.grantRecordHistory(func);
     addEnvironment(func, {
       [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
+      // TODO: we shouldn't need this but all workflow clients need it
+      [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.queue.queueUrl,
+      [ENV_NAMES.TABLE_NAME]: this.props.table.tableName,
     });
   }
 
@@ -131,6 +134,8 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.grantReadWorkflowData(func);
     addEnvironment(func, {
       [ENV_NAMES.TABLE_NAME]: this.props.table.tableName,
+      // TODO: we shouldn't need this but all workflow clients need it
+      [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.queue.queueUrl,
     });
   }
 
@@ -146,6 +151,9 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.grantReadHistory(func);
     addEnvironment(func, {
       [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
+      // TODO: we shouldn't need this but all workflow clients need it
+      [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.queue.queueUrl,
+      [ENV_NAMES.TABLE_NAME]: this.props.table.tableName,
     });
   }
 

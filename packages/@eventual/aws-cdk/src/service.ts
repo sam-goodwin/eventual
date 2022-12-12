@@ -139,6 +139,7 @@ export class Service extends Construct implements IGrantable {
       activities: this.activities,
       workflows: this.workflows,
       events: this.events,
+      scheduler: this.scheduler,
     });
 
     this.grantPrincipal = new CompositePrincipal(
