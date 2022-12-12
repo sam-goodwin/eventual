@@ -11,7 +11,7 @@ import {
 import { RouteHandler } from "@eventual/core";
 import type itty from "itty-router";
 
-export interface IttyReceiverOptions {
+export interface FetchReceiverOptions {
   signingSecret: string;
   logger?: Logger;
   logLevel?: LogLevel;
@@ -38,7 +38,7 @@ export default class FetchReceiver implements Receiver {
     signingSecret,
     logger = undefined,
     logLevel = LogLevel.INFO,
-  }: IttyReceiverOptions) {
+  }: FetchReceiverOptions) {
     // Initialize instance variables, substituting defaults for each value
     this.signingSecret = signingSecret;
     this.logger =

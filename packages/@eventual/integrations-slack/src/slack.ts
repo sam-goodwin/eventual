@@ -38,8 +38,8 @@ export class Slack {
         args: any[];
       }) => {
         // @ts-ignore - client identifier referenced in eval
-        const client = await this.getClient();
-        let f: any = client;
+        this.client = await this.getClient();
+        let f: any = this.client;
         for (const prop of propertyChain) {
           f = f[prop];
         }
@@ -76,36 +76,39 @@ export class Slack {
             }
             return undefined;
           };
-        } else if (prop === "client" && isOrchestratorWorker()) {
-          // if we're in the orchestrator, then we need to proxy all client
-          // operations through a durable activity worker request
-          return (proxyClient ??= proxy(function () {}, []));
+        } else if (prop === "client") {
+          if (this.client === undefined || isOrchestratorWorker()) {
+            // if we're in the orchestrator, then we need to proxy all client
+            // operations through a durable activity worker request
+            return (proxyClient ??= proxy(function () {}, []));
 
-          /**
-           * Recursively creates a {@link Proxy} that accumulates an array
-           * of all properties accessed on the client, e.g.
-           * ```
-           * client.a.b.c => ["a", "b", "c"]
-           * ```
-           *
-           * When the method is finally called, these properties are passed
-           * as request parameters to the {@link slackActivity}.
-           *
-           * That activity then de-references the properties and makes the
-           * call from within the durable activity request.
-           */
-          function proxy(instance: any, propertyChain: string[]): any {
-            return new Proxy(instance, {
-              apply: (_target, _this, args) => {
-                return slackActivity({
-                  propertyChain,
-                  args,
-                });
-              },
-              get: (_, prop: string) => {
-                return proxy(instance, [...propertyChain, prop]);
-              },
-            });
+            /**
+             * Recursively creates a {@link Proxy} that accumulates an array
+             * of all properties accessed on the client, e.g.
+             * ```
+             * client.a.b.c => ["a", "b", "c"]
+             * ```
+             *
+             * When the method is finally called, these properties are passed
+             * as request parameters to the {@link slackActivity}.
+             *
+             * That activity then de-references the properties and makes the
+             * call from within the durable activity request.
+             */
+            function proxy(instance: any, propertyChain: string[]): any {
+              return new Proxy(instance, {
+                apply: (_target, _this, args) =>
+                  slackActivity({
+                    propertyChain,
+                    args,
+                  }),
+                get: (_, prop: string) => {
+                  return proxy(instance, [...propertyChain, prop]);
+                },
+              });
+            }
+          } else {
+            return this.client;
           }
         } else if (this.app === undefined) {
           throw new Error(`cannot access App properties during initialization`);
