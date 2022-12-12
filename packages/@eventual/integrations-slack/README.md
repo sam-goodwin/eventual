@@ -85,7 +85,7 @@ For a list of all available scopes, see: https://api.slack.com/scopes
 
 As an example, an app might need `app_mentions:read` and `chat:write` to list to chat and respond with messages:
 
-![Permission Scopes](./img/scopes.png)
+![Permission Scopes](img/scopes.png)
 
 # OAuth Token and Signing Secret
 
