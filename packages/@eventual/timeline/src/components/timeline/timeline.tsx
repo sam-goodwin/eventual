@@ -5,7 +5,7 @@ import {
   isCompleted,
   TimelineActivity,
   Timespan,
-} from "../../activity.js";
+} from "../../event.js";
 import styles from "./timeline.module.css";
 
 const palette = [

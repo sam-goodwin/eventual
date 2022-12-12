@@ -35,8 +35,7 @@ export const timeline = (yargs: Argv) =>
           const events = await ky
             .get(`executions/${req.params.execution}}/workflow-history`)
             .json<HistoryStateEvent[]>();
-          const timeline = aggregateEvents(events);
-          res.json(timeline);
+          res.json(events);
         } catch (e: any) {
           res.status(500).json({ error: e.toString() });
         }
@@ -73,65 +72,5 @@ export const timeline = (yargs: Argv) =>
     })
   );
 
-interface TimelineActivity {
-  type: "activity";
-  seq: number;
-  name: string;
-  start: number;
-  state:
-    | { status: "completed"; end: number }
-    | { status: "failed"; end: number }
-    | { status: "inprogress" };
-}
-
 const resolveEntry = async (entry: string) =>
   new URL(await resolve(entry, import.meta.url)).pathname;
-
-function aggregateEvents(events: HistoryStateEvent[]): {
-  start: WorkflowStarted;
-  activities: TimelineActivity[];
-} {
-  let start: WorkflowStarted | undefined;
-  const activities: Record<number, TimelineActivity> = [];
-  events.forEach((event) => {
-    if (isWorkflowStarted(event)) {
-      start = event;
-    } else if (isActivityScheduled(event)) {
-      activities[event.seq] = {
-        type: "activity",
-        name: event.name,
-        seq: event.seq,
-        start: new Date(event.timestamp).getTime(),
-        state: { status: "inprogress" },
-      };
-    } else if (isActivityCompleted(event)) {
-      let existingActivity = activities[event.seq];
-      if (existingActivity) {
-        existingActivity.state = {
-          status: "completed",
-          end: new Date(event.timestamp).getTime(),
-        };
-      } else {
-        console.log(
-          `Warning: Found completion event without matching scheduled event: ${event}`
-        );
-      }
-    } else if (isActivityFailed(event)) {
-      let existingActivity = activities[event.seq];
-      if (existingActivity) {
-        existingActivity.state = {
-          status: "failed",
-          end: new Date(event.timestamp).getTime(),
-        };
-      } else {
-        console.log(
-          `Warning: Found failure event without matching scheduled event: ${event}`
-        );
-      }
-    }
-  });
-  if (!start) {
-    throw new Error("Failed to find WorkflowStarted event!");
-  }
-  return { start, activities: Object.values(activities) };
-}

@@ -1,5 +1,5 @@
 import { WorkflowStarted } from "@eventual/core";
-import { endTime, TimelineActivity } from "../../activity.js";
+import { endTime, TimelineActivity } from "../../event.js";
 import styles from "./activity-list.module.css";
 
 export function ActivityList({

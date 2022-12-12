@@ -4,7 +4,7 @@ import ky from "ky";
 import { ReactNode } from "react";
 import { ActivityList } from "./components/activity-list/activity-list.js";
 import styles from "./App.module.css";
-import { TimelineActivity } from "./activity.js";
+import { TimelineActivity } from "./event.js";
 import { Timeline } from "./components/timeline/timeline.js";
 import { WorkflowStarted } from "@eventual/core";
 
