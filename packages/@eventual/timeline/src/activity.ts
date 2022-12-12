@@ -6,11 +6,27 @@ export interface TimelineActivity {
   state: ActivityState;
 }
 
-export type Completed = { status: "completed"; duration: number };
-export type Failed = { status: "failed"; duration: number };
-export type InProgress = { status: "inprogress" };
+export interface Completed {
+  status: "completed";
+  duration: number;
+}
+
+export interface Failed {
+  status: "failed";
+  duration: number;
+}
+
+export interface InProgress {
+  status: "inprogress";
+}
+
 export type ActivityState = Completed | Failed | InProgress;
-export type Timespan = { start: number; end: number; duration: number };
+
+export interface Timespan {
+  start: number;
+  end: number;
+  duration: number;
+}
 
 export function isCompleted(state: ActivityState): state is Completed {
   return state.status == "completed";
