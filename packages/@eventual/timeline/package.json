@@ -4,11 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
-    ".": "./"
+    "./dev": "./",
+    "./dist": "./dist"
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && cp ./index.js lib/",
+    "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {

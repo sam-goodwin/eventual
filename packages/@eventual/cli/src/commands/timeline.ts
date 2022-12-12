@@ -1,7 +1,6 @@
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import getPort, { portNumbers } from "get-port";
 import open from "open";
 import { resolve } from "import-meta-resolve";
@@ -14,6 +13,7 @@ import {
   isWorkflowStarted,
   WorkflowStarted,
 } from "@eventual/core";
+import path from "path";
 
 export const timeline = (yargs: Argv) =>
   yargs.command(
@@ -42,18 +42,28 @@ export const timeline = (yargs: Argv) =>
         }
       });
 
-      const timelinePath = new URL(
-        await resolve("@eventual/timeline", import.meta.url)
-      ).pathname;
-      console.log(timelinePath);
+      const isProduction = process.env.NODE_ENV === "production";
 
-      const vite = await createViteServer({
-        server: { middlewareMode: true },
-        appType: "spa",
-        root: timelinePath,
-      });
-
-      app.use(vite.middlewares);
+      if (isProduction) {
+        //Serve our built site as an spa - serve js and css files out of our dist folder, otherwise just serve index.html
+        app.get("*", async (request, response) => {
+          const basePath = await resolveEntry("@eventual/timeline/dist");
+          if (request.path.endsWith(".js") || request.path.endsWith(".css")) {
+            response.sendFile(path.join(basePath, request.path));
+          } else {
+            response.sendFile(path.join(basePath, "index.html"));
+          }
+        });
+      } else {
+        const { createServer } = await import("vite");
+        spinner.info("Using vite dev server");
+        const vite = await createServer({
+          server: { middlewareMode: true },
+          appType: "spa",
+          root: await resolveEntry("@eventual/timeline/dev"),
+        });
+        app.use(vite.middlewares);
+      }
 
       const port = await getPort({ port: portNumbers(3000, 4000) });
       app.listen(port);
@@ -73,6 +83,9 @@ interface TimelineActivity {
     | { status: "failed"; duration: number }
     | { status: "inprogress" };
 }
+
+const resolveEntry = async (entry: string) =>
+  new URL(await resolve(entry, import.meta.url)).pathname;
 
 function aggregateEvents(events: HistoryStateEvent[]): {
   start: WorkflowStarted;
