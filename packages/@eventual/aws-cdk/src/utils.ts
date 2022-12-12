@@ -8,7 +8,7 @@ import {
   NodejsFunctionProps,
   OutputFormat,
 } from "aws-cdk-lib/aws-lambda-nodejs";
-import { Construct } from "constructs";
+import { IConstruct } from "constructs";
 import path from "path";
 import { Service } from "./service";
 
@@ -43,7 +43,7 @@ export function addEnvironment(
   );
 }
 
-export function outDir(scope: Construct, ...paths: string[]): string {
+export function outDir(scope: IConstruct, ...paths: string[]): string {
   while (!(scope instanceof Service)) {
     if (!scope.node.scope) {
       throw new Error(`cannot find Service`);

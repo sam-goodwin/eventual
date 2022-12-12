@@ -1,6 +1,6 @@
 import { createActivityCall } from "../src/calls/activity-call.js";
 import { chain } from "../src/chain.js";
-import { DeterminismError, Timeout } from "../src/error.js";
+import { DeterminismError, HeartbeatTimeout, Timeout } from "../src/error.js";
 import {
   Context,
   createAwaitAll,
@@ -23,18 +23,21 @@ import { createSleepUntilCall } from "../src/calls/sleep-call.js";
 import {
   activityCompleted,
   activityFailed,
+  activityHeartbeatTimedOut,
   activityScheduled,
   activityTimedOut,
   completedSleep,
   conditionStarted,
   conditionTimedOut,
   createExpectSignalCommand,
+  createPublishEventCommand,
   createScheduledActivityCommand,
   createScheduledWorkflowCommand,
   createSendSignalCommand,
   createSleepForCommand,
   createSleepUntilCommand,
   createStartConditionCommand,
+  eventsPublished,
   scheduledSleep,
   signalReceived,
   signalSent,
@@ -50,6 +53,7 @@ import { createRegisterSignalHandlerCall } from "../src/calls/signal-handler-cal
 import { createWorkflowCall } from "../src/calls/workflow-call.js";
 import { createSendSignalCall } from "../src/calls/send-signal-call.js";
 import { createConditionCall } from "../src/calls/condition-call.js";
+import { createPublishEventsCall } from "../src/calls/send-events-call.js";
 
 beforeAll(() => {
   process.env[SERVICE_TYPE_FLAG] = ServiceType.OrchestratorWorker;
@@ -234,6 +238,69 @@ test("should handle partial blocks with partial completes", () => {
     ],
   });
 });
+
+describe("activity", () =>
+  describe("heartbeat", () => {
+    const wf = workflow(function* () {
+      return createActivityCall("getPumpedUp", [], undefined, 100);
+    });
+
+    test("timeout from heartbeat seconds", () => {
+      expect(
+        interpret(wf.definition(undefined, context), [
+          activityScheduled("getPumpedUp", 0),
+          activityHeartbeatTimedOut(0, 101),
+        ])
+      ).toMatchObject<WorkflowResult>({
+        result: Result.failed(
+          new HeartbeatTimeout("Activity Heartbeat TimedOut")
+        ),
+        commands: [],
+      });
+    });
+
+    test("timeout after complete", () => {
+      expect(
+        interpret(wf.definition(undefined, context), [
+          activityScheduled("getPumpedUp", 0),
+          activityCompleted("done", 0),
+          activityHeartbeatTimedOut(0, 1000),
+        ])
+      ).toMatchObject<WorkflowResult>({
+        result: Result.resolved("done"),
+        commands: [],
+      });
+    });
+
+    test("catch heartbeat timeout", () => {
+      const wf = workflow(function* (): any {
+        try {
+          const result = yield createActivityCall(
+            "getPumpedUp",
+            [],
+            undefined,
+            1
+          );
+          return result;
+        } catch (err) {
+          if (err instanceof HeartbeatTimeout) {
+            return err.message;
+          }
+          return "no";
+        }
+      });
+
+      expect(
+        interpret(wf.definition(undefined, context), [
+          activityScheduled("getPumpedUp", 0),
+          activityHeartbeatTimedOut(0, 10),
+        ])
+      ).toMatchObject<WorkflowResult>({
+        result: Result.resolved("Activity Heartbeat TimedOut"),
+        commands: [],
+      });
+    });
+  }));
 
 test("should throw when scheduled does not correspond to call", () => {
   expect(() =>
@@ -1364,6 +1431,41 @@ describe("signals", () => {
         commands: [],
       });
     });
+
+    test("expect then timeout", () => {
+      const wf = workflow(function* (): any {
+        yield createExpectSignalCall("MySignal", 100 * 1000);
+        yield createExpectSignalCall("MySignal", 100 * 1000);
+      });
+
+      expect(
+        interpret(wf.definition(undefined, context), [
+          startedExpectSignal("MySignal", 0, 100 * 1000),
+          timedOutExpectSignal("MySignal", 0),
+        ])
+      ).toMatchObject(<WorkflowResult>{
+        result: Result.failed({ name: "Timeout" }),
+        commands: [],
+      });
+    });
+
+    test("expect random signal then timeout", () => {
+      const wf = workflow(function* (): any {
+        yield createExpectSignalCall("MySignal", 100 * 1000);
+        yield createExpectSignalCall("MySignal", 100 * 1000);
+      });
+
+      expect(
+        interpret(wf.definition(undefined, context), [
+          startedExpectSignal("MySignal", 0, 100 * 1000),
+          signalReceived("SomethingElse"),
+          timedOutExpectSignal("MySignal", 0),
+        ])
+      ).toMatchObject(<WorkflowResult>{
+        result: Result.failed({ name: "Timeout" }),
+        commands: [],
+      });
+    });
   });
 
   describe("signal handler", () => {
@@ -1999,6 +2101,46 @@ test("workflow with synchronous function", () => {
     ])
   ).toEqual<WorkflowResult>({
     result: Result.resolved("result"),
+    commands: [],
+  });
+});
+
+test("publish event", () => {
+  const wf = workflow(function* () {
+    yield createPublishEventsCall([
+      {
+        name: "event-type",
+        event: {
+          key: "value",
+        },
+      },
+    ]);
+
+    return "done!";
+  });
+
+  const events = [
+    {
+      name: "event-type",
+      event: {
+        key: "value",
+      },
+    },
+  ];
+
+  expect(
+    interpret(wf.definition(undefined, context), [])
+  ).toEqual<WorkflowResult>({
+    // promise should be instantly resolved
+    result: Result.resolved("done!"),
+    commands: [createPublishEventCommand(events, 0)],
+  });
+
+  expect(
+    interpret(wf.definition(undefined, context), [eventsPublished(events, 0)])
+  ).toEqual<WorkflowResult>({
+    // promise should be instantly resolved
+    result: Result.resolved("done!"),
     commands: [],
   });
 });

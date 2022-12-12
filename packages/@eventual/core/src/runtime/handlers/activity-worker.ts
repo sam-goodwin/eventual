@@ -1,6 +1,7 @@
 import {
   getCallableActivity,
   getCallableActivityNames,
+  isAsyncResult,
 } from "../../activity.js";
 import { ScheduleActivityCommand } from "../../command.js";
 import {
@@ -9,23 +10,32 @@ import {
   createEvent,
   isWorkflowFailed,
   WorkflowEventType,
-} from "../../events.js";
-import { registerWorkflowClient } from "../../global.js";
+} from "../../workflow-events.js";
+import {
+  registerEventClient,
+  registerWorkflowClient,
+  setActivityContext,
+} from "../../global.js";
+import { createActivityToken } from "../activity-token.js";
 import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
 import { ExecutionHistoryClient } from "../clients/execution-history-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
+import { Schedule, TimerClient, TimerRequestType } from "../index.js";
 import { Logger } from "../logger.js";
 import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
 import { Unit } from "../metrics/unit.js";
 import { timed } from "../metrics/utils.js";
+import type { EventClient } from "../index.js";
 
 export interface CreateActivityWorkerProps {
   activityRuntimeClient: ActivityRuntimeClient;
   executionHistoryClient: ExecutionHistoryClient;
   workflowClient: WorkflowClient;
+  timerClient: TimerClient;
   metricsClient: MetricsClient;
   logger: Logger;
+  eventClient: EventClient;
 }
 
 export interface ActivityWorkerRequest {
@@ -46,13 +56,17 @@ export function createActivityWorker({
   activityRuntimeClient,
   executionHistoryClient,
   workflowClient,
+  timerClient,
   metricsClient,
   logger,
+  eventClient,
 }: CreateActivityWorkerProps): (
   request: ActivityWorkerRequest
 ) => Promise<void> {
   // make the workflow client available to all activity code
   registerWorkflowClient(workflowClient);
+  // make the event client available to all activity code
+  registerEventClient(eventClient);
 
   return metricsClient.metricScope(
     (metrics) => async (request: ActivityWorkerRequest) => {
@@ -79,9 +93,9 @@ export function createActivityWorker({
       );
       if (
         !(await timed(metrics, ActivityMetrics.ClaimDuration, () =>
-          activityRuntimeClient.requestExecutionActivityClaim(
+          activityRuntimeClient.claimActivity(
             request.executionId,
-            request.command,
+            request.command.seq,
             request.retry
           )
         ))
@@ -90,6 +104,24 @@ export function createActivityWorker({
         logger.info(`Activity ${activityHandle} already claimed.`);
         return;
       }
+      if (request.command.heartbeatSeconds) {
+        await timerClient.startTimer({
+          activitySeq: request.command.seq,
+          type: TimerRequestType.ActivityHeartbeatMonitor,
+          executionId: request.executionId,
+          heartbeatSeconds: request.command.heartbeatSeconds,
+          schedule: Schedule.relative(request.command.heartbeatSeconds),
+        });
+      }
+      setActivityContext({
+        activityToken: createActivityToken(
+          request.executionId,
+          request.command.seq
+        ),
+        executionId: request.executionId,
+        scheduledTime: request.scheduledTime,
+        workflowName: request.workflowName,
+      });
       metrics.putMetric(ActivityMetrics.ClaimRejected, 0, Unit.Count);
 
       logger.info(`Processing ${activityHandle}.`);
@@ -106,8 +138,20 @@ export function createActivityWorker({
           ActivityMetrics.OperationDuration,
           () => activity(...request.command.args)
         );
-        if (result) {
+        if (isAsyncResult(result)) {
+          metrics.setProperty(ActivityMetrics.HasResult, 0);
+          metrics.setProperty(ActivityMetrics.AsyncResult, 1);
+
+          // TODO: Send heartbeat on sync activity completion.
+
+          /**
+           * The activity has declared that it is async, other than logging, there is nothing left to do here.
+           * The activity should call {@link WorkflowClient.completeActivity} or {@link WorkflowClient.failActivity} when it is done.
+           */
+          return;
+        } else if (result) {
           metrics.setProperty(ActivityMetrics.HasResult, 1);
+          metrics.setProperty(ActivityMetrics.AsyncResult, 0);
           metrics.putMetric(
             ActivityMetrics.ResultBytes,
             JSON.stringify(result).length,
@@ -115,6 +159,7 @@ export function createActivityWorker({
           );
         } else {
           metrics.setProperty(ActivityMetrics.HasResult, 0);
+          metrics.setProperty(ActivityMetrics.AsyncResult, 0);
         }
 
         logger.info(
@@ -123,15 +168,19 @@ export function createActivityWorker({
 
         // TODO: do not write event here, write it in the orchestrator.
         const endTime = new Date();
-        const duration = recordAge + (endTime.getTime() - start.getTime());
-        const event = createEvent<ActivityCompleted>({
-          type: WorkflowEventType.ActivityCompleted,
-          seq: request.command.seq,
-          duration,
-          result,
-        });
+        const event = createEvent<ActivityCompleted>(
+          {
+            type: WorkflowEventType.ActivityCompleted,
+            seq: request.command.seq,
+            result,
+          },
+          endTime
+        );
 
-        await finishActivity(event);
+        await finishActivity(
+          event,
+          recordAge + (endTime.getTime() - start.getTime())
+        );
       } catch (err) {
         const [error, message] =
           err instanceof Error
@@ -144,19 +193,20 @@ export function createActivityWorker({
 
         // TODO: do not write event here, write it in the orchestrator.
         const endTime = new Date();
-        const duration = recordAge + (endTime.getTime() - start.getTime());
         const event = createEvent<ActivityFailed>(
           {
             type: WorkflowEventType.ActivityFailed,
             seq: request.command.seq,
-            duration,
             error,
             message,
           },
           endTime
         );
 
-        await finishActivity(event);
+        await finishActivity(
+          event,
+          recordAge + (endTime.getTime() - start.getTime())
+        );
 
         throw err;
       }
@@ -176,7 +226,10 @@ export function createActivityWorker({
         metrics.putMetric(ActivityMetrics.TotalDuration, duration);
       }
 
-      async function finishActivity(event: ActivityCompleted | ActivityFailed) {
+      async function finishActivity(
+        event: ActivityCompleted | ActivityFailed,
+        duration: number
+      ) {
         await timed(metrics, ActivityMetrics.EmitEventDuration, () =>
           executionHistoryClient.putEvent(request.executionId, event)
         );
@@ -185,7 +238,7 @@ export function createActivityWorker({
           workflowClient.submitWorkflowTask(request.executionId, event)
         );
 
-        logActivityCompleteMetrics(isWorkflowFailed(event), event.duration);
+        logActivityCompleteMetrics(isWorkflowFailed(event), duration);
       }
     }
   );

@@ -1,25 +1,27 @@
 import {
-  isEventual,
-  EventualSymbol,
   Eventual,
   EventualKind,
   EventualBase,
   EventualArrayUnion,
+  isEventualOfKind,
+  createEventual,
 } from "./eventual.js";
 import { Failed, Resolved } from "./result.js";
 
 export function isAwaitAny(a: any): a is AwaitAny<any> {
-  return isEventual(a) && a[EventualSymbol] === EventualKind.AwaitAny;
+  return isEventualOfKind(EventualKind.AwaitAny, a);
 }
 
-export interface AwaitAny<T = any> extends EventualBase<Resolved<T> | Failed> {
-  [EventualSymbol]: EventualKind.AwaitAny;
+export interface AwaitAny<T = any>
+  extends EventualBase<EventualKind.AwaitAny, Resolved<T> | Failed> {
   activities: Eventual[];
 }
 
 export function createAwaitAny<A extends Eventual[]>(activities: A) {
-  return <AwaitAny<EventualArrayUnion<A>>>{
-    [EventualSymbol]: EventualKind.AwaitAny,
-    activities,
-  };
+  return createEventual<AwaitAny<EventualArrayUnion<A>>>(
+    EventualKind.AwaitAny,
+    {
+      activities,
+    }
+  );
 }

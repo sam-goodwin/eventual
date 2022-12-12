@@ -4,7 +4,8 @@
   "main": "lib/index.js",
   "types:": "lib/index.d.ts",
   "bin": {
-    "eventual-bundle": "./bin/eventual-bundle.js"
+    "eventual-bundle": "./bin/eventual-bundle.js",
+    "eventual-infer": "./bin/eventual-infer.js"
   },
   "type": "module",
   "files": [

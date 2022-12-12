@@ -11,7 +11,7 @@ import {
   SleepScheduled,
   ExpectSignalStarted,
   ChildWorkflowScheduled,
-} from "../../events.js";
+} from "../../workflow-events.js";
 import { CompleteExecution, FailedExecution } from "../../execution.js";
 
 export interface CompleteExecutionRequest {

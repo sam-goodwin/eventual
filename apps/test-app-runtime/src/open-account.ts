@@ -1,4 +1,4 @@
-import { activity, api, workflow } from "@eventual/core";
+import { activity, api, event, workflow } from "@eventual/core";
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
@@ -6,6 +6,7 @@ import {
   PutCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
+import { memoize } from "./util.js";
 
 interface PostalAddress {
   address1: string;
@@ -84,21 +85,15 @@ api.post("/open-account", async (request) => {
   });
 });
 
-const TableName = process.env.TABLE_NAME!;
+const openAccountEvent = event<OpenAccountRequest>("OpenAccount");
 
-function memoize<T extends any[], R>(fn: (...args: T) => R): (...args: T) => R {
-  //We box our cache in case our fn returns undefined
-  let res: { value: R } | undefined;
-  return (...args) => {
-    if (res) {
-      return res.value;
-    } else {
-      const result = fn(...args);
-      res = { value: result };
-      return result;
-    }
-  };
-}
+openAccountEvent.on(async (event) => {
+  await openAccount.startExecution({
+    input: event,
+  });
+});
+
+const TableName = process.env.TABLE_NAME!;
 
 const dynamo = memoize(() =>
   DynamoDBDocumentClient.from(new DynamoDBClient({}))

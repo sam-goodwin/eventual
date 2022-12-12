@@ -1,5 +1,6 @@
 import { ulid } from "ulidx";
 import { ExecutionContext } from "./context.js";
+import { EventEnvelope } from "./event.js";
 import { or } from "./util.js";
 
 export interface BaseEvent {
@@ -18,24 +19,26 @@ export interface HistoryEventBase extends Omit<BaseEvent, "id"> {
 export enum WorkflowEventType {
   ActivityCompleted = "ActivityCompleted",
   ActivityFailed = "ActivityFailed",
+  ActivityHeartbeatTimedOut = "ActivityHeartbeatTimedOut",
   ActivityScheduled = "ActivityScheduled",
   ActivityTimedOut = "ActivityTimedOut",
-  ConditionStarted = "ConditionStarted",
-  ConditionTimedOut = "ConditionTimedOut",
   ChildWorkflowCompleted = "ChildWorkflowCompleted",
   ChildWorkflowFailed = "ChildWorkflowFailed",
   ChildWorkflowScheduled = "ChildWorkflowScheduled",
+  ConditionStarted = "ConditionStarted",
+  ConditionTimedOut = "ConditionTimedOut",
+  EventsPublished = "EventsPublished",
   ExpectSignalStarted = "ExpectSignalStarted",
   ExpectSignalTimedOut = "ExpectSignalTimedOut",
   SignalReceived = "SignalReceived",
   SignalSent = "SignalSent",
-  SleepScheduled = "SleepScheduled",
   SleepCompleted = "SleepCompleted",
-  WorkflowTaskCompleted = "TaskCompleted",
-  WorkflowTaskStarted = "TaskStarted",
+  SleepScheduled = "SleepScheduled",
   WorkflowCompleted = "WorkflowCompleted",
   WorkflowFailed = "WorkflowFailed",
   WorkflowStarted = "WorkflowStarted",
+  WorkflowTaskCompleted = "TaskCompleted",
+  WorkflowTaskStarted = "TaskStarted",
   WorkflowTimedOut = "WorkflowTimedOut",
 }
 
@@ -54,9 +57,10 @@ export type ScheduledEvent =
   | ActivityScheduled
   | ChildWorkflowScheduled
   | ConditionStarted
+  | EventsPublished
   | ExpectSignalStarted
-  | SleepScheduled
-  | SignalSent;
+  | SignalSent
+  | SleepScheduled;
 
 export type CompletedEvent =
   | ActivityCompleted
@@ -65,6 +69,7 @@ export type CompletedEvent =
 
 export type FailedEvent =
   | ActivityFailed
+  | ActivityHeartbeatTimedOut
   | ActivityTimedOut
   | ChildWorkflowFailed
   | ConditionTimedOut
@@ -127,17 +132,17 @@ export interface ActivityScheduled extends HistoryEventBase {
 
 export interface ActivityCompleted extends HistoryEventBase {
   type: WorkflowEventType.ActivityCompleted;
-  // the time from being scheduled until the activity completes.
-  duration: number;
   result: any;
 }
 
 export interface ActivityFailed extends HistoryEventBase {
   type: WorkflowEventType.ActivityFailed;
   error: string;
-  // the time from being scheduled until the activity completes.
-  duration: number;
   message: string;
+}
+
+export interface ActivityHeartbeatTimedOut extends HistoryEventBase {
+  type: WorkflowEventType.ActivityHeartbeatTimedOut;
 }
 
 export interface WorkflowTaskCompleted extends BaseEvent {
@@ -200,6 +205,12 @@ export function isActivityFailed(
   event: WorkflowEvent
 ): event is ActivityFailed {
   return event.type === WorkflowEventType.ActivityFailed;
+}
+
+export function isActivityHeartbeatTimedOut(
+  event: WorkflowEvent
+): event is ActivityHeartbeatTimedOut {
+  return event.type === WorkflowEventType.ActivityHeartbeatTimedOut;
 }
 
 export interface SleepScheduled extends HistoryEventBase {
@@ -313,6 +324,17 @@ export function isSignalSent(event: WorkflowEvent): event is SignalSent {
   return event.type === WorkflowEventType.SignalSent;
 }
 
+export interface EventsPublished extends HistoryEventBase {
+  type: WorkflowEventType.EventsPublished;
+  events: EventEnvelope[];
+}
+
+export function isEventsPublished(
+  event: WorkflowEvent
+): event is EventsPublished {
+  return event.type === WorkflowEventType.EventsPublished;
+}
+
 export interface ConditionStarted extends HistoryEventBase {
   type: WorkflowEventType.ConditionStarted;
 }
@@ -357,6 +379,7 @@ export const isScheduledEvent = or(
   isActivityScheduled,
   isChildWorkflowScheduled,
   isConditionStarted,
+  isEventsPublished,
   isExpectSignalStarted,
   isSignalSent,
   isSleepScheduled
@@ -371,6 +394,7 @@ export const isCompletedEvent = or(
 export const isFailedEvent = or(
   isActivityFailed,
   isActivityTimedOut,
+  isActivityHeartbeatTimedOut,
   isChildWorkflowFailed,
   isConditionTimedOut,
   isExpectSignalTimedOut,

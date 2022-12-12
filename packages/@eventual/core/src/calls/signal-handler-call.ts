@@ -1,8 +1,8 @@
 import {
+  createEventual,
   EventualBase,
   EventualKind,
-  EventualSymbol,
-  isEventual,
+  isEventualOfKind,
 } from "../eventual.js";
 import { SignalsHandler } from "../signals.js";
 import { registerEventual } from "../global.js";
@@ -12,16 +12,12 @@ import { Resolved, Result } from "../result.js";
 export function isRegisterSignalHandlerCall(
   a: any
 ): a is RegisterSignalHandlerCall {
-  return (
-    isEventual(a) &&
-    a[EventualSymbol] === EventualKind.RegisterSignalHandlerCall
-  );
+  return isEventualOfKind(EventualKind.RegisterSignalHandlerCall, a);
 }
 
 export interface RegisterSignalHandlerCall<T = any>
-  extends EventualBase<Resolved>,
+  extends EventualBase<EventualKind.RegisterSignalHandlerCall, Resolved>,
     SignalsHandler {
-  [EventualSymbol]: EventualKind.RegisterSignalHandlerCall;
   seq?: number;
   signalId: string;
   handler: (input: T) => Program | void;
@@ -31,12 +27,13 @@ export function createRegisterSignalHandlerCall(
   signalId: string,
   handler: RegisterSignalHandlerCall["handler"]
 ): RegisterSignalHandlerCall {
-  return registerEventual<RegisterSignalHandlerCall>({
-    [EventualSymbol]: EventualKind.RegisterSignalHandlerCall,
-    signalId: signalId,
-    handler,
-    dispose: function () {
-      this.result = Result.resolved(undefined);
-    },
-  });
+  return registerEventual(
+    createEventual(EventualKind.RegisterSignalHandlerCall, {
+      signalId: signalId,
+      handler,
+      dispose: function () {
+        this.result = Result.resolved(undefined);
+      },
+    })
+  );
 }

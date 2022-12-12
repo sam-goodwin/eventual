@@ -3,12 +3,15 @@ import "@eventual/entry/injected";
 import { createApiHandler } from "@eventual/core";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
 import itty from "itty-router";
-import { createWorkflowClient } from "../clients/create.js";
+import { createEventClient, createWorkflowClient } from "../clients/create.js";
 
 // TODO: remove once we can upgrade to Node 18 in AWS Lambda
 import "./fetch-polyfill.js";
 
-const processRequest = createApiHandler(createWorkflowClient());
+const processRequest = createApiHandler({
+  workflowClient: createWorkflowClient(),
+  eventClient: createEventClient(),
+});
 
 /**
  * Handle inbound webhook API requests.

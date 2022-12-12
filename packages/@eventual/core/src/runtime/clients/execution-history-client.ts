@@ -1,4 +1,4 @@
-import { WorkflowEvent } from "../../events.js";
+import { WorkflowEvent } from "../../workflow-events.js";
 
 export type UnresolvedEvent<T extends WorkflowEvent> = Omit<
   T,

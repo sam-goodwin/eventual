@@ -1,5 +1,9 @@
+import { HeartbeatTimeout } from "@eventual/core";
 import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
 import {
+  eventDrivenWorkflow,
+  asyncWorkflow,
+  heartbeatWorkflow,
   parentWorkflow,
   timedOutWorkflow,
   workflow1,
@@ -38,4 +42,24 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
     activity: true,
     workflow: true,
   });
+
+  testCompletion("asyncActivities", asyncWorkflow, [
+    "hello from the async writer!",
+    "AsyncWriterError",
+  ]);
+
+  testCompletion("heartbeat", heartbeatWorkflow, 10, [
+    { status: "fulfilled", value: 10 },
+    {
+      status: "rejected",
+      reason: new HeartbeatTimeout("Activity Heartbeat TimedOut").toJSON(),
+    },
+    { status: "fulfilled", value: "activity did not respond" },
+    {
+      status: "rejected",
+      reason: new HeartbeatTimeout("Activity Heartbeat TimedOut").toJSON(),
+    },
+  ]);
+
+  testCompletion("event-driven", eventDrivenWorkflow, "done!");
 });

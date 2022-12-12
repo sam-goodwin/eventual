@@ -4,6 +4,7 @@ import {
   isExpectSignalCommand,
   isScheduleActivityCommand,
   isScheduleWorkflowCommand,
+  isPublishEventsCommand,
   isSendSignalCommand,
   isSleepForCommand,
   isSleepUntilCommand,
@@ -16,6 +17,7 @@ import {
   ConditionStarted,
   ConditionTimedOut,
   createEvent,
+  EventsPublished,
   HistoryStateEvent,
   isSleepCompleted,
   isWorkflowStarted,
@@ -27,7 +29,7 @@ import {
   WorkflowTaskCompleted,
   WorkflowTaskStarted,
   WorkflowTimedOut,
-} from "../../events.js";
+} from "../../workflow-events.js";
 import {
   CompleteExecution,
   ExecutionStatus,
@@ -40,13 +42,14 @@ import { assertNever } from "../../util.js";
 import { lookupWorkflow, progressWorkflow, Workflow } from "../../workflow.js";
 
 import type {
+  EventClient,
   ExecutionHistoryClient,
   MetricsClient,
   TimerClient,
   WorkflowClient,
   WorkflowRuntimeClient,
 } from "../clients/index.js";
-import { TimerRequestType } from "../clients/timer-client.js";
+import { Schedule, TimerRequestType } from "../clients/timer-client.js";
 import {
   formatChildExecutionName,
   formatExecutionId,
@@ -68,6 +71,7 @@ export interface OrchestratorDependencies {
   workflowRuntimeClient: WorkflowRuntimeClient;
   workflowClient: WorkflowClient;
   metricsClient: MetricsClient;
+  eventClient: EventClient;
   logger: Logger;
 }
 
@@ -90,6 +94,7 @@ export function createOrchestrator({
   workflowRuntimeClient,
   workflowClient,
   metricsClient,
+  eventClient,
   logger,
 }: OrchestratorDependencies): (
   eventsByExecutionId: Record<string, HistoryStateEvent[]>
@@ -220,7 +225,7 @@ export function createOrchestrator({
           metrics.setProperty(OrchestratorMetrics.TimeoutStarted, 1);
           await timed(metrics, OrchestratorMetrics.TimeoutStartedDuration, () =>
             timerClient.scheduleEvent<WorkflowTimedOut>({
-              untilTime: newWorkflowStart.timeoutTime!,
+              schedule: Schedule.absolute(newWorkflowStart.timeoutTime!),
               event: createEvent<WorkflowTimedOut>({
                 type: WorkflowEventType.WorkflowTimedOut,
               }),
@@ -503,14 +508,19 @@ export function createOrchestrator({
                     seq: command.seq,
                   }),
                   executionId,
-                  untilTime: new Date(
-                    start.getTime() + command.timeoutSeconds * 1000
-                  ).toISOString(),
+                  schedule: Schedule.relative(command.timeoutSeconds, start),
                 });
               }
 
               return createEvent<ConditionStarted>({
                 type: WorkflowEventType.ConditionStarted,
+                seq: command.seq!,
+              });
+            } else if (isPublishEventsCommand(command)) {
+              await eventClient.publish(...command.events);
+              return createEvent<EventsPublished>({
+                type: WorkflowEventType.EventsPublished,
+                events: command.events,
                 seq: command.seq!,
               });
             } else {
