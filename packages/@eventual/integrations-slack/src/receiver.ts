@@ -66,9 +66,10 @@ export default class FetchReceiver implements Receiver {
   }
   public async handle(request: Request): Promise<Response> {
     this.logger.debug(`Request: ${JSON.stringify(request, null, 2)}`);
+    console.debug("request", request);
 
     const rawBody = await this.getRawBody(request);
-
+    console.log("raw body", rawBody);
     const body: any = this.parseRequestBody(
       rawBody,
       this.getHeaderValue(request.headers, "Content-Type"),
@@ -241,15 +242,7 @@ export default class FetchReceiver implements Receiver {
     return true;
   }
 
-  private getHeaderValue(
-    headers: Record<string, any>,
-    key: string
-  ): string | undefined {
-    const caseInsensitiveKey = Object.keys(headers).find(
-      (it) => key.toLowerCase() === it.toLowerCase()
-    );
-    return caseInsensitiveKey !== undefined
-      ? headers[caseInsensitiveKey]
-      : undefined;
+  private getHeaderValue(headers: Headers, key: string): string | undefined {
+    return headers.get(key) || undefined;
   }
 }

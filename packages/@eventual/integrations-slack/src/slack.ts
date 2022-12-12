@@ -47,7 +47,7 @@ export class Slack {
       }
     );
 
-    api.all(`/_slack/${name}/events`, async (request) => {
+    api.all(`/_slack/${name}`, async (request) => {
       return (await this.getHandler())(request);
     });
 
@@ -76,12 +76,10 @@ export class Slack {
             }
             return undefined;
           };
-        } else if (this.app === undefined) {
-          throw new Error(`cannot access App properties during initialization`);
         } else if (prop === "client" && isOrchestratorWorker()) {
           // if we're in the orchestrator, then we need to proxy all client
           // operations through a durable activity worker request
-          return (proxyClient ??= proxy(this.app.client, []));
+          return (proxyClient ??= proxy({}, []));
 
           /**
            * Recursively creates a {@link Proxy} that accumulates an array
@@ -109,6 +107,8 @@ export class Slack {
               },
             });
           }
+        } else if (this.app === undefined) {
+          throw new Error(`cannot access App properties during initialization`);
         } else {
           const value: any = this.app[prop as keyof typeof this.app];
           if (typeof value === "function") {

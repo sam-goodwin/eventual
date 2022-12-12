@@ -21,6 +21,7 @@ const processRequest = createApiHandler({
 export default async function (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> {
+  console.debug("event", event);
   const body = event.body
     ? event.isBase64Encoded
       ? Buffer.from(event.body, "base64")

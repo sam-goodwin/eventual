@@ -11,13 +11,15 @@ import { Construct } from "constructs";
 import path from "path";
 import { ServiceFunction } from "./service-function";
 import { baseNodeFnProps, outDir } from "./utils";
-import { Workflows } from "./workflows";
-import { Events } from "./events";
+import type { Workflows } from "./workflows";
+import type { Events } from "./events";
+import type { Activities } from "./activities";
 
 export interface ApiProps {
   serviceName: string;
   environment?: Record<string, string>;
   workflows: Workflows;
+  activities: Activities;
   events: Events;
 }
 
@@ -39,10 +41,15 @@ export class Api extends Construct {
       memorySize: 512,
       environment: props.environment,
     });
+    props.activities.configureCompleteActivity(this.handler);
+    props.activities.configureScheduleActivity(this.handler);
+    props.activities.configureUpdateActivity(this.handler);
+    props.workflows.configureSendSignal(this.handler);
+    props.workflows.configureSendWorkflowEvent(this.handler);
+    props.workflows.configureStartWorkflow(this.handler);
 
     this.gateway = new HttpApi(this, "Gateway", {
       apiName: `eventual-api-${props.serviceName}`,
-      defaultAuthorizer: new HttpIamAuthorizer(),
       defaultIntegration: new HttpLambdaIntegration("default", this.handler),
     });
 
@@ -75,6 +82,7 @@ export class Api extends Construct {
             path,
             integration,
             methods,
+            authorizer: new HttpIamAuthorizer(),
           });
         });
       });
