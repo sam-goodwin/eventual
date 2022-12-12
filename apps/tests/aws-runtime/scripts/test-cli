@@ -26,4 +26,4 @@ npx eventual start eventual-tests sleepy
 
 npx eventual start eventual-tests sleepy --tail
 
-npx eventual replay eventual-tests  ${execution_id} '../aws-runtime/test/test-service.ts'
+npx eventual replay eventual-tests  ${execution_id} 'test/test-service.ts'
