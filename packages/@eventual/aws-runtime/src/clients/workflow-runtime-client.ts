@@ -12,31 +12,16 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import {
-  ActivityScheduled,
   ActivityWorkerRequest,
   CompleteExecution,
   CompleteExecutionRequest,
-  createEvent,
-  ExecuteExpectSignalRequest,
   ExecutionStatus,
-  ExpectSignalStarted,
-  ExpectSignalTimedOut,
   FailedExecution,
   FailExecutionRequest,
   HistoryStateEvent,
-  isSleepUntilCommand,
-  ScheduleActivityRequest,
-  ScheduleSleepRequest,
-  SleepCompleted,
-  ActivityTimedOut,
-  ChildWorkflowScheduled,
-  TimerRequestType,
-  SleepScheduled,
   UpdateHistoryRequest,
   WorkflowEventType,
   WorkflowRuntimeClient,
-  ScheduleWorkflowRequest,
-  Schedule,
 } from "@eventual/core";
 import { AWSTimerClient } from "./timer-client.js";
 import {
@@ -44,7 +29,6 @@ import {
   createExecutionFromResult,
   ExecutionRecord,
 } from "./workflow-client.js";
-import { formatChildExecutionName } from "../utils.js";
 
 export interface AWSWorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;
@@ -60,7 +44,7 @@ export interface AWSWorkflowRuntimeClientProps {
 export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
   constructor(private props: AWSWorkflowRuntimeClientProps) {}
 
-  async getHistory(executionId: string): Promise<HistoryStateEvent[]> {
+  public async getHistory(executionId: string): Promise<HistoryStateEvent[]> {
     try {
       // get current history from s3
       const historyObject = await this.props.s3.send(
@@ -96,7 +80,7 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
     return { bytes: content.length };
   }
 
-  async completeExecution({
+  public async completeExecution({
     executionId,
     result,
   }: CompleteExecutionRequest): Promise<CompleteExecution> {
@@ -135,7 +119,7 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
     return createExecutionFromResult(record) as CompleteExecution;
   }
 
-  async failExecution({
+  public async failExecution({
     executionId,
     error,
     message,
@@ -198,122 +182,14 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
     });
   }
 
-  async scheduleActivity({
-    workflowName,
-    executionId,
-    command,
-    baseTime,
-  }: ScheduleActivityRequest) {
-    const request: ActivityWorkerRequest = {
-      scheduledTime: new Date().toISOString(),
-      workflowName,
-      executionId,
-      command,
-      retry: 0,
-    };
-
-    const timeoutStarter = command.timeoutSeconds
-      ? await this.props.timerClient.scheduleEvent<ActivityTimedOut>({
-          schedule: Schedule.relative(command.timeoutSeconds, baseTime),
-          event: {
-            type: WorkflowEventType.ActivityTimedOut,
-            seq: command.seq,
-          },
-          executionId,
-        })
-      : undefined;
-
-    const activityStarter = this.props.lambda.send(
+  public async startActivity(request: ActivityWorkerRequest): Promise<void> {
+    await this.props.lambda.send(
       new InvokeCommand({
         FunctionName: this.props.activityWorkerFunctionName,
         Payload: Buffer.from(JSON.stringify(request)),
         InvocationType: InvocationType.Event,
       })
     );
-
-    await Promise.all([activityStarter, timeoutStarter]);
-
-    return createEvent<ActivityScheduled>({
-      type: WorkflowEventType.ActivityScheduled,
-      seq: command.seq,
-      name: command.name,
-    });
-  }
-
-  public async scheduleChildWorkflow({
-    command,
-    executionId,
-  }: ScheduleWorkflowRequest): Promise<ChildWorkflowScheduled> {
-    await this.props.workflowClient.startWorkflow({
-      workflowName: command.name,
-      input: command.input,
-      parentExecutionId: executionId,
-      executionName: formatChildExecutionName(executionId, command.seq),
-      seq: command.seq,
-    });
-
-    return createEvent<ChildWorkflowScheduled>({
-      type: WorkflowEventType.ChildWorkflowScheduled,
-      seq: command.seq,
-      name: command.name,
-      input: command.input,
-    });
-  }
-
-  async scheduleSleep({
-    executionId,
-    command,
-    baseTime,
-  }: ScheduleSleepRequest): Promise<SleepScheduled> {
-    // TODO validate
-    const untilTime = isSleepUntilCommand(command)
-      ? new Date(command.untilTime)
-      : new Date(baseTime.getTime() + command.durationSeconds * 1000);
-    const untilTimeIso = untilTime.toISOString();
-
-    const sleepCompletedEvent: SleepCompleted = {
-      type: WorkflowEventType.SleepCompleted,
-      seq: command.seq,
-      timestamp: untilTimeIso,
-    };
-
-    await this.props.timerClient.startTimer({
-      type: TimerRequestType.ScheduleEvent,
-      event: sleepCompletedEvent,
-      schedule: Schedule.absolute(untilTimeIso),
-      executionId,
-    });
-
-    return createEvent<SleepScheduled>({
-      type: WorkflowEventType.SleepScheduled,
-      seq: command.seq,
-      untilTime: untilTime.toISOString(),
-    });
-  }
-
-  async executionExpectSignal({
-    executionId,
-    command,
-    baseTime,
-  }: ExecuteExpectSignalRequest): Promise<ExpectSignalStarted> {
-    if (command.timeoutSeconds) {
-      await this.props.timerClient.scheduleEvent<ExpectSignalTimedOut>({
-        event: {
-          signalId: command.signalId,
-          seq: command.seq,
-          type: WorkflowEventType.ExpectSignalTimedOut,
-        },
-        schedule: Schedule.relative(command.timeoutSeconds, baseTime),
-        executionId,
-      });
-    }
-
-    return createEvent<ExpectSignalStarted>({
-      signalId: command.signalId,
-      seq: command.seq,
-      type: WorkflowEventType.ExpectSignalStarted,
-      timeoutSeconds: command.timeoutSeconds,
-    });
   }
 }
 

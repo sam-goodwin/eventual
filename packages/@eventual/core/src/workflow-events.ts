@@ -163,7 +163,7 @@ export interface WorkflowFailed extends BaseEvent {
 export interface ChildWorkflowScheduled extends HistoryEventBase {
   type: WorkflowEventType.ChildWorkflowScheduled;
   name: string;
-  input: any;
+  input?: any;
 }
 
 export interface ChildWorkflowCompleted extends HistoryEventBase {
@@ -428,29 +428,24 @@ export function getEventId(event: WorkflowEvent): string {
 }
 
 /**
- * Merges new task events with existing history events.
+ * Filters out events that are also present in origin events.
  *
- * We assume that history events are unique.
- *
- * Task events are taken only of their ID ({@link getEventId}) is unique across all other events.
+ * Events are taken only if their ID ({@link getEventId}) is unique across all other events.
  */
 export function filterEvents<T extends WorkflowEvent>(
-  historyEvents: T[],
-  taskEvents: T[]
+  originEvents: T[],
+  events: T[]
 ): T[] {
-  const ids = new Set(historyEvents.map(getEventId));
+  const ids = new Set(originEvents.map(getEventId));
 
-  return [
-    ...historyEvents,
-    ...taskEvents.filter((event) => {
-      const id = getEventId(event);
-      if (ids.has(id)) {
-        return false;
-      }
-      ids.add(id);
-      return true;
-    }),
-  ];
+  return events.filter((event) => {
+    const id = getEventId(event);
+    if (ids.has(id)) {
+      return false;
+    }
+    ids.add(id);
+    return true;
+  });
 }
 
 type UnresolvedEvent<T extends WorkflowEvent> = Omit<T, "id" | "timestamp">;
