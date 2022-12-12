@@ -103,7 +103,7 @@ export class Slack {
                 });
               },
               get: (_, prop: string) => {
-                return proxy(instance[prop], [...propertyChain, prop]);
+                return proxy(instance, [...propertyChain, prop]);
               },
             });
           }
