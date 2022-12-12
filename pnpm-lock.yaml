@@ -66,7 +66,7 @@ importers:
       '@eventual/cli': workspace:^
       '@eventual/compiler': workspace:^
       '@eventual/core': workspace:^
-      '@eventual/slack-integration': workspace:^
+      '@eventual/integrations-slack': workspace:^
       '@slack/bolt': ^3.12.2
       '@types/aws-lambda': ^8.10.108
       '@types/jest': ^29
@@ -83,7 +83,7 @@ importers:
       '@aws-sdk/lib-dynamodb': 3.226.0_5xkt5e25fic7b3nr5qwnb2cble
       '@eventual/aws-runtime': link:../../packages/@eventual/aws-runtime
       '@eventual/core': link:../../packages/@eventual/core
-      '@eventual/slack-integration': link:../../packages/@eventual/slack-integration
+      '@eventual/integrations-slack': link:../../packages/@eventual/integrations-slack
       '@slack/bolt': 3.12.2
     devDependencies:
       '@eventual/cli': link:../../packages/@eventual/cli
@@ -379,7 +379,7 @@ importers:
       typescript: 4.9.3
       zx: 7.1.1
 
-  packages/@eventual/slack-integration:
+  packages/@eventual/integrations-slack:
     specifiers:
       '@eventual/core': workspace:^
       '@slack/bolt': ^3.12.2

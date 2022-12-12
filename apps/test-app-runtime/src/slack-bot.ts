@@ -1,7 +1,10 @@
-import { Slack, SlackCredentials } from "@eventual/slack-integration";
+import {
+  Slack,
+  SlackCredentials,
+  MessageEventEnvelope,
+} from "@eventual/integrations-slack";
 import { AWSSecret } from "@eventual/aws-runtime";
 import { event, JsonSecret } from "@eventual/core";
-import type { EnvelopedEvent, KnownEventFromType } from "@slack/bolt";
 
 const slack = new Slack("my-slack-connection", {
   credentials: new JsonSecret<SlackCredentials>(
@@ -11,8 +14,7 @@ const slack = new Slack("my-slack-connection", {
   ),
 });
 
-const slackMessage =
-  event<EnvelopedEvent<KnownEventFromType<"message">>>("message");
+const slackMessage = event<MessageEventEnvelope>("message");
 
 slack.message(async ({ body, say }) => {
   await slackMessage.publish(body);

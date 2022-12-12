@@ -1,5 +1,5 @@
 {
-  "name": "@eventual/slack-integration",
+  "name": "@eventual/integrations-slack",
   "version": "0.0.0",
   "exports": {
     ".": {

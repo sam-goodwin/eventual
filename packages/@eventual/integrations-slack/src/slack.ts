@@ -7,7 +7,7 @@ import {
 } from "@eventual/core";
 import { App, AppOptions } from "@slack/bolt";
 import { WebClient } from "@slack/web-api";
-import IttyReceiver from "./receiver";
+import FetchReceiver from "./receiver";
 
 export interface SlackCredentials {
   token: string;
@@ -22,7 +22,7 @@ export interface SlackProps
 export interface Slack extends App {}
 
 export class Slack {
-  private ittyReceiver: IttyReceiver | undefined;
+  private fetchReceiver: FetchReceiver | undefined;
   private app: App | undefined;
   private handler: RouteHandler | undefined;
   private deferred: [name: string, args: any[]][] = [];
@@ -39,7 +39,11 @@ export class Slack {
       }) => {
         // @ts-ignore - client identifier referenced in eval
         const client = await this.getClient();
-        return eval(`client.${propertyChain.join(".")}`)(...args);
+        let f: any = client;
+        for (const prop of propertyChain) {
+          f = f[prop];
+        }
+        return f(...args);
       }
     );
 
@@ -106,7 +110,7 @@ export class Slack {
             });
           }
         } else {
-          const value = this.app[prop as keyof typeof this.app];
+          const value: any = this.app[prop as keyof typeof this.app];
           if (typeof value === "function") {
             return value.bind(this.app);
           } else {
@@ -130,7 +134,7 @@ export class Slack {
   private async getHandler(): Promise<RouteHandler> {
     if (!this.app) {
       const { token, signingSecret } = await this.props.credentials.getSecret();
-      this.ittyReceiver = new IttyReceiver({
+      this.fetchReceiver = new FetchReceiver({
         signingSecret,
       });
       this.app = new App({
@@ -138,13 +142,13 @@ export class Slack {
         token,
         signingSecret,
         socketMode: false,
-        receiver: this.ittyReceiver,
+        receiver: this.fetchReceiver,
       });
       for (const deferred of this.deferred) {
         // fire off all the deferred methods
         (this.app[deferred[0] as keyof typeof this.app] as any)(...deferred[1]);
       }
-      this.handler = await this.ittyReceiver.start();
+      this.handler = await this.fetchReceiver.start();
     }
     return this.handler!;
   }

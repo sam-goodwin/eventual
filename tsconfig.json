@@ -29,6 +29,12 @@
       "path": "packages/@eventual/aws-runtime/tsconfig.cjs.json"
     },
     {
+      "path": "packages/@eventual/integrations-slack"
+    },
+    {
+      "path": "packages/@eventual/integrations-slack/tsconfig.cjs.json"
+    },
+    {
       "path": "packages/@eventual/cli"
     },
     {

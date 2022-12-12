@@ -13,6 +13,6 @@
   "exclude": ["lib", "node_modules"],
   "references": [
     { "path": "../../packages/@eventual/core" },
-    { "path": "../../packages/@eventual/slack-integration" }
+    { "path": "../../packages/@eventual/integrations-slack" }
   ]
 }

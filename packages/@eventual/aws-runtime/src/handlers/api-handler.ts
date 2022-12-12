@@ -1,8 +1,7 @@
 import "@eventual/entry/injected";
 
-import { ApiRequest, createApiHandler } from "@eventual/core";
+import { createApiHandler } from "@eventual/core";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
-import itty from "itty-router";
 import { createEventClient, createWorkflowClient } from "../clients/create.js";
 
 // TODO: remove once we can upgrade to Node 18 in AWS Lambda
@@ -28,38 +27,15 @@ export default async function (
       : event.body
     : undefined;
 
-  const request: ApiRequest = {
-    method: event.requestContext.http.method,
-    headers: event.headers,
-    url: `http://localhost:3000${event.requestContext.http.path}`,
-    params: event.pathParameters as itty.Obj,
-    query: event.queryStringParameters as itty.Obj,
-    async blob() {
-      if (body === undefined) {
-        return undefined;
-      } else if (Buffer.isBuffer(body)) {
-        return body;
-      } else {
-        return Buffer.from(body, "utf-8");
-      }
-    },
-    async text() {
-      if (body === undefined || typeof body === "string") {
-        return body;
-      } else {
-        return body.toString("utf-8");
-      }
-    },
-    async json() {
-      if (body === undefined) {
-        return undefined;
-      } else if (typeof body === "string") {
-        return JSON.parse(body);
-      } else {
-        return JSON.parse(body.toString("utf-8"));
-      }
-    },
-  };
+  const request = new Request(
+    new URL(`http://localhost:3000${event.rawPath}?${event.rawQueryString}`),
+    {
+      body,
+      headers: event.headers as Record<string, string>,
+      method: event.requestContext.http.method,
+    }
+  );
+
   const response = await processRequest(request);
   const headers: Record<string, string> = {};
   response.headers.forEach((value, key) => (headers[key] = value));
