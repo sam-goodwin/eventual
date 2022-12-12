@@ -79,7 +79,7 @@ export class Slack {
         } else if (prop === "client" && isOrchestratorWorker()) {
           // if we're in the orchestrator, then we need to proxy all client
           // operations through a durable activity worker request
-          return (proxyClient ??= proxy({}, []));
+          return (proxyClient ??= proxy(function () {}, []));
 
           /**
            * Recursively creates a {@link Proxy} that accumulates an array
