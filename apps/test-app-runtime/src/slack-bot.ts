@@ -51,7 +51,6 @@ const remindMe = workflow(
   }) => {
     await sleepFor(request.waitSeconds);
 
-    debugger;
     await slack.client.chat.postMessage({
       channel: request.channel,
       text: request.message,
