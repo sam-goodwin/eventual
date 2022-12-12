@@ -1,10 +1,6 @@
-import {
-  Slack,
-  SlackCredentials,
-  MessageEventEnvelope,
-} from "@eventual/integrations-slack";
+import { Slack, SlackCredentials } from "@eventual/integrations-slack";
 import { AWSSecret } from "@eventual/aws-runtime";
-import { event, JsonSecret } from "@eventual/core";
+import { JsonSecret } from "@eventual/core";
 
 const slack = new Slack("my-slack-connection", {
   credentials: new JsonSecret<SlackCredentials>(
@@ -14,10 +10,6 @@ const slack = new Slack("my-slack-connection", {
   ),
 });
 
-const slackMessage = event<MessageEventEnvelope>("message");
-
-slack.message(async ({ body, say }) => {
-  await slackMessage.publish(body);
-
-  await say("hello world");
+slack.command("/remind-me", async (request) => {
+  console.log(request);
 });

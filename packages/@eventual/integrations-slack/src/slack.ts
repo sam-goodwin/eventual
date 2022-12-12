@@ -5,9 +5,9 @@ import {
   RouteHandler,
   Secret,
 } from "@eventual/core";
-import { App, AppOptions } from "@slack/bolt";
+import slack from "@slack/bolt";
 import { WebClient } from "@slack/web-api";
-import FetchReceiver from "./receiver";
+import FetchReceiver from "./receiver.js";
 
 export interface SlackCredentials {
   token: string;
@@ -15,15 +15,15 @@ export interface SlackCredentials {
 }
 
 export interface SlackProps
-  extends Omit<AppOptions, "token" | "signingSecret"> {
+  extends Omit<slack.AppOptions, "token" | "signingSecret"> {
   credentials: Secret<SlackCredentials>;
 }
 
-export interface Slack extends App {}
+export interface Slack extends slack.App {}
 
 export class Slack {
   private fetchReceiver: FetchReceiver | undefined;
-  private app: App | undefined;
+  private app: slack.App | undefined;
   private handler: RouteHandler | undefined;
   private deferred: [name: string, args: any[]][] = [];
 
@@ -137,7 +137,7 @@ export class Slack {
       this.fetchReceiver = new FetchReceiver({
         signingSecret,
       });
-      this.app = new App({
+      this.app = new slack.App({
         ...this.props,
         token,
         signingSecret,

@@ -61,7 +61,7 @@ const myWorkflow = workflow("my-workflow", async () => {
 });
 ```
 
-Eventual's slack integration is built on top of the official [Bolt-JS framework](https://slack.dev/bolt-js/concepts) provided by Slack. For example, the `slack.message` hook is identical to the `app.message `concept from Bolt. To learn more about the different capabilities, we recommend reviewing their documentation.
+Eventual's slack integration is built on top of the official [Bolt-JS framework](https://slack.dev/bolt-js/concepts) provided by Slack. For example, the `slack.message` hook is identical to the `app.message `concept from Bolt. To learn more about the different capabilities, we recommend reviewing their [Getting Started Guide](https://slack.dev/bolt-js/tutorial/getting-started).
 
 # Setup
 
@@ -85,7 +85,7 @@ For a list of all available scopes, see: https://api.slack.com/scopes
 
 As an example, an app might need `app_mentions:read` and `chat:write` to list to chat and respond with messages:
 
-![Permission Scopes](img/scopes.png)
+![Permission Scopes](./img/scopes.png)
 
 # OAuth Token and Signing Secret
 
