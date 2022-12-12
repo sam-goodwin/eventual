@@ -8,12 +8,12 @@ export interface TimelineActivity {
 
 export interface Completed {
   status: "completed";
-  duration: number;
+  end: number;
 }
 
 export interface Failed {
   status: "failed";
-  duration: number;
+  end: number;
 }
 
 export interface InProgress {
@@ -49,9 +49,5 @@ export function isFailed(state: ActivityState): state is Failed {
 
 export function endTime(activity: TimelineActivity): number | undefined {
   let { state } = activity;
-  return isCompleted(state)
-    ? activity.start + state.duration
-    : isFailed(state)
-    ? activity.start + state.duration
-    : undefined;
+  return isCompleted(state) || isFailed(state) ? state.end : undefined;
 }

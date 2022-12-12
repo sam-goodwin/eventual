@@ -3,13 +3,29 @@
 }
 
 .subtitle {
-  font-size: 1.1em;
+  font-size: 1em;
   font-weight: 600;
-  margin: 1em 0 0 0;
+  margin: 0;
+}
+
+.execution-input {
+  display: flex;
+  align-items: baseline;
+  gap: 1em;
+}
+
+.execution-input pre {
+  font-size: 0.95em;
 }
 
 .info {
-  margin: 64px 0;
+  margin: 16px 0;
+}
+
+.info th,
+.info td {
+  text-align: left;
+  padding-right: 2em;
 }
 
 .input {

@@ -27,50 +27,52 @@ export function Timeline({
 }) {
   const workflowSpan = getWorkflowSpan(start, activities);
   return (
-    <div className={styles["timeline-container"]}>
-      <div className={styles.scale}>
-        {Array.from({ length: 11 }, (_, i) => (
-          <div
-            key={i}
-            className={styles["marker-wrapper"]}
-            style={{
-              left: `${i * 10}%`,
-            }}
-          >
-            <div>
-              {Math.floor((i * getDuration(workflowSpan)) / 10)}
-              ms
+    <div className={styles["timeline-wrapper"]}>
+      <div className={styles["timeline-container"]}>
+        <div className={styles.scale}>
+          {Array.from({ length: 11 }, (_, i) => (
+            <div
+              key={i}
+              className={styles["marker-wrapper"]}
+              style={{
+                left: `${i * 10}%`,
+              }}
+            >
+              <div>
+                {Math.floor((i * getDuration(workflowSpan)) / 10)}
+                ms
+              </div>
+              <div className={styles.marker} />
             </div>
-            <div className={styles.marker} />
-          </div>
-        ))}
+          ))}
+        </div>
+        {activities.map((activity) => {
+          const start = percentOffset(activity.start, workflowSpan);
+          const width =
+            percentOffset(endTime(activity) ?? workflowSpan.end, workflowSpan) -
+            start;
+          return (
+            <div
+              key={activity.seq}
+              className={styles.activity}
+              style={{
+                left: `${start}%`,
+                width: `${width.toFixed(2)}%`,
+                backgroundColor: `var(--${
+                  palette[Math.floor(Math.random() * palette.length)]
+                })`,
+              }}
+            >
+              <div className={styles["activity-name"]}>{activity.name}</div>
+              <div className={styles["activity-duration"]}>
+                {isCompleted(activity.state)
+                  ? `${activity.state.end - activity.start}ms`
+                  : "-"}
+              </div>
+            </div>
+          );
+        })}
       </div>
-      {activities.map((activity) => {
-        const start = percentOffset(activity.start, workflowSpan);
-        const width =
-          percentOffset(endTime(activity) ?? workflowSpan.end, workflowSpan) -
-          start;
-        return (
-          <div
-            key={activity.seq}
-            className={styles.activity}
-            style={{
-              left: `${start}%`,
-              width: `${width.toFixed(2)}%`,
-              backgroundColor: `var(--${
-                palette[Math.floor(Math.random() * palette.length)]
-              })`,
-            }}
-          >
-            <div className={styles["activity-name"]}>{activity.name}</div>
-            <div className={styles["activity-duration"]}>
-              {isCompleted(activity.state)
-                ? `${activity.state.duration}ms`
-                : "-"}
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }

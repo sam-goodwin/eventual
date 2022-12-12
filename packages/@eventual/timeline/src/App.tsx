@@ -32,24 +32,33 @@ function Layout({
       <div style={{ textAlign: "center" }}>
         <h1>Execution timeline</h1>
       </div>
-      <div className={styles.info}>
-        <h2 className={styles.subtitle}>Service</h2>
-        <div>{service}</div>
-        <h2 className={styles.subtitle}>Execution id</h2>
-        <div>{decodedExecutionId}</div>
-        <h2 className={styles.subtitle}>Execution Started</h2>
-        <div>
-          {start?.timestamp != null
-            ? new Date(start.timestamp).toLocaleString(undefined, {
-                dateStyle: "long",
-                timeStyle: "long",
-              })
-            : ""}
-        </div>
-        <h2 className={styles.subtitle}>Execution input</h2>
+      <table className={styles.info}>
+        <thead>
+          <tr>
+            <th>Service</th>
+            <th>Execution Id</th>
+            <th>Execution Started</th>
+          </tr>
+        </thead>
+        <tr>
+          <td>{service}</td>
+          <td>{decodedExecutionId}</td>
+          <td>
+            {" "}
+            {start?.timestamp != null
+              ? new Date(start.timestamp).toLocaleString(undefined, {
+                  dateStyle: "long",
+                  timeStyle: "long",
+                })
+              : ""}
+          </td>
+        </tr>
+      </table>
+      <div className={styles["execution-input"]}>
+        <h2 className={styles.subtitle}>Execution input:</h2>
         <pre className={styles.input}>{JSON.stringify(start?.input)}</pre>
       </div>
-      {children}
+      <div className={styles["timeline-container"]}>{children}</div>
     </main>
   );
 }
