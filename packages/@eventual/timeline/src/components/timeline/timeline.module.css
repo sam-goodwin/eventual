@@ -1,0 +1,53 @@
+.activity {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  position: relative;
+  place-content: center;
+  padding: 8px 0;
+  border-radius: 4px;
+}
+
+.activity div {
+  color: #333;
+}
+
+.activity-name {
+  font-weight: 600;
+}
+
+.activity-duration {
+  font-size: 0.9em;
+}
+
+.timeline-wrapper {
+  margin: 32px 0;
+  padding: 24px 48px 24px 32px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.timeline-container {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  gap: 16px;
+}
+
+.scale {
+  height: 40px;
+}
+
+.marker-wrapper {
+  position: absolute;
+  width: 1px;
+  display: flex;
+  flex-direction: column;
+  place-items: center;
+}
+
+.marker {
+  width: 1px;
+  background: white;
+  height: 4px;
+}
