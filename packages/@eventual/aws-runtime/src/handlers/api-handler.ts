@@ -29,7 +29,9 @@ export default async function (
     : undefined;
 
   const request = new Request(
-    new URL(`http://localhost:3000${event.rawPath}?${event.rawQueryString}`),
+    new URL(
+      `${event.requestContext.http.protocol}://${event.requestContext.domainName}${event.rawPath}?${event.rawQueryString}`
+    ),
     {
       body,
       headers: event.headers as Record<string, string>,

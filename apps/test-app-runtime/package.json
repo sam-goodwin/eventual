@@ -15,6 +15,7 @@
     "@aws-sdk/lib-dynamodb": "^3.226.0",
     "@eventual/aws-runtime": "workspace:^",
     "@eventual/core": "workspace:^",
+    "@eventual/integrations-gitlab": "workspace:^",
     "@eventual/integrations-slack": "workspace:^",
     "@slack/bolt": "^3.12.2",
     "ms": "^2.1.3"
