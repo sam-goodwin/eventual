@@ -5,7 +5,7 @@ import { PipelineEvent } from "packages/@eventual/integrations-gitlab/src/index.
 
 const myWorkflow = workflow(
   "gitlab-notifier",
-  (pipelineEvent: PipelineEvent) => {
+  async (_pipelineEvent: PipelineEvent) => {
     //do stuff here!
   }
 );
@@ -14,8 +14,8 @@ const gitlab = new Gitlab();
 const repo1Events = gitlab.webhook("repo-1-hook", {
   validationToken: new AWSSecret({ secretId: process.env.REPO_1_HOOK_TOKEN! }),
 });
-repo1Events.on((event: GitlabEvent) => {
+repo1Events.on(async (event: GitlabEvent) => {
   if (event.object_kind === "pipeline") {
-    myWorkflow.startExecution({ input: event });
+    await myWorkflow.startExecution({ input: event });
   }
 });
