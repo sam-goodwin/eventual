@@ -1,4 +1,8 @@
-import { ActivityTarget, ActivityTargetType } from "../activity.js";
+import {
+  ActivityExecutionReference,
+  ActivityTarget,
+  ActivityTargetType,
+} from "../activity.js";
 import { ActivityCancelled, EventualError } from "../error.js";
 import {
   EventualKind,
@@ -15,7 +19,7 @@ export function isActivityCall(a: any): a is ActivityCall {
 
 export interface ActivityCall<T = any>
   extends CommandCallBase<EventualKind.ActivityCall, Resolved<T> | Failed>,
-    ActivityExecutionReference {
+    ActivityExecutionReference<T> {
   name: string;
   args: any[];
   heartbeatSeconds?: number;
@@ -59,14 +63,6 @@ export function createActivityCall(
   };
 
   return call;
-}
-
-export interface ActivityExecutionReference<T = any> {
-  cancel: (reason: string) => Promise<void>;
-  fail: (
-    ...args: [error: Error] | [error: string, message: string]
-  ) => Promise<void>;
-  complete: (result: T) => Promise<void>;
 }
 
 export function isOverrideActivityCall(a: any): a is OverrideActivityCall {

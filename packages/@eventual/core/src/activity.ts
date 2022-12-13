@@ -1,5 +1,4 @@
 import {
-  ActivityExecutionReference,
   createActivityCall,
   createOverrideActivityCall,
 } from "./calls/activity-call.js";
@@ -179,6 +178,41 @@ export interface ActivityTokenTarget {
   activityToken: string;
 }
 
+export interface ActivityExecutionReference<T = any> {
+  /**
+   * Cancel this activity.
+   *
+   * The activity will reject with a {@link ActivityCancelled} error.
+   *
+   * If the activity is calling {@link heartbeat}, closed: true will be
+   * return to signal the workflow considers the activity finished.
+   */
+  cancel: (reason: string) => Promise<void>;
+  /**
+   * Causes the activity to reject with the provided value within the workflow.
+   *
+   * If the activity is calling {@link heartbeat}, closed: true will be
+   * return to signal the workflow considers the activity finished.
+   */
+
+  fail: (
+    ...args: [error: Error] | [error: string, message: string]
+  ) => Promise<void>;
+  /**
+   * Causes the activity to resolve the provided value to the workflow.
+   *
+   * If the activity is calling {@link heartbeat}, closed: true will be
+   * return to signal the workflow considers the activity finished.
+   */
+  complete: (result: T) => Promise<void>;
+}
+
+/**
+ * Causes the activity to resolve the provided value to the workflow.
+ *
+ * If the activity is calling {@link heartbeat}, closed: true will be
+ * return to signal the workflow considers the activity finished.
+ */
 export function completeActivity<A extends ActivityFunction<any, any> = any>(
   activityToken: string,
   result: ActivityOutput<A>
@@ -196,6 +230,12 @@ export function completeActivity<A extends ActivityFunction<any, any> = any>(
   }
 }
 
+/**
+ * Causes the activity to reject with the provided value within the workflow.
+ *
+ * If the activity is calling {@link heartbeat}, closed: true will be
+ * return to signal the workflow considers the activity finished.
+ */
 export function failActivity(
   activityToken: string,
   error: Error
@@ -228,6 +268,14 @@ export function failActivity(
   }
 }
 
+/**
+ * Cancel any activity using it's activityToken.
+ *
+ * The activity will reject with a {@link ActivityCancelled} error.
+ *
+ * If the activity is calling {@link heartbeat}, closed: true will be
+ * return to signal the workflow considers the activity finished.
+ */
 export function cancelActivity(
   activityToken: string,
   reason: string
