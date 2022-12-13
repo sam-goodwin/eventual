@@ -4,15 +4,7 @@ import express from "express";
 import getPort, { portNumbers } from "get-port";
 import open from "open";
 import { resolve } from "import-meta-resolve";
-import {
-  HistoryStateEvent,
-  isActivityCompleted,
-  isActivityFailed,
-  isActivityScheduled,
-  encodeExecutionId,
-  isWorkflowStarted,
-  WorkflowStarted,
-} from "@eventual/core";
+import { HistoryStateEvent, encodeExecutionId } from "@eventual/core";
 import path from "path";
 
 export const timeline = (yargs: Argv) =>
@@ -29,17 +21,21 @@ export const timeline = (yargs: Argv) =>
       spinner.start("Starting viz server");
       const app = express();
 
-      app.use("/api/timeline/:execution", async (req, res) => {
-        //We forward errors onto our handler for the ui to deal with
-        try {
-          const events = await ky
-            .get(`executions/${req.params.execution}}/workflow-history`)
-            .json<HistoryStateEvent[]>();
-          res.json(events);
-        } catch (e: any) {
-          res.status(500).json({ error: e.toString() });
+      //Proxy the workflow-history api, without authentication, for hte ui to use
+      app.use(
+        "/api/executions/:execution/workflow-history",
+        async (req, res) => {
+          //We forward errors onto our handler for the ui to deal with
+          try {
+            const events = await ky
+              .get(`executions/${req.params.execution}}/workflow-history`)
+              .json<HistoryStateEvent[]>();
+            res.json(events);
+          } catch (e: any) {
+            res.status(500).json({ error: e.toString() });
+          }
         }
-      });
+      );
 
       const isProduction = process.env.NODE_ENV === "production";
 

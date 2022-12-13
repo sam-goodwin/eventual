@@ -1,15 +1,14 @@
-import { WorkflowStarted } from "@eventual/core";
-import { endTime, TimelineActivity } from "../../event.js";
+import { TimelineEntity } from "../../entity.js";
+import { ExecutionProperties } from "../../execution.js";
 import styles from "./activity-list.module.css";
 
 export function ActivityList({
-  start,
-  activities,
+  entities,
+  executionProperties,
 }: {
-  start: WorkflowStarted;
-  activities: TimelineActivity[];
+  entities: TimelineEntity[];
+  executionProperties: ExecutionProperties;
 }) {
-  const workflowStart = new Date(start.timestamp).getTime();
   return (
     <table className={styles.table}>
       <thead>
@@ -21,15 +20,23 @@ export function ActivityList({
         </tr>
       </thead>
       <tbody>
-        {activities.map((activity) => {
-          const activityStart = activity.start;
-          const activityEnd = endTime(activity);
+        {entities.map((entity) => {
+          const root = entity.rootEvent;
+          const leaf = entity.leafEvents[0];
+          const activityStart = new Date(root.timestamp).getTime();
+          const activityEnd = leaf
+            ? new Date(leaf.timestamp).getTime()
+            : executionProperties.latest.getTime();
           return (
-            <tr key={activity.seq}>
-              <td>{activity.name}</td>
-              <td>{activityStart - workflowStart}ms</td>
-              <td>{activityEnd ? activityEnd - workflowStart : "-"}ms</td>
-              <td>{activityEnd ? activityEnd - activityStart : "-"}ms</td>
+            <tr key={"seq" in root ? root.seq : root.id}>
+              <td>{"name" in root ? root.name : root.type}</td>
+              <td>{activityStart - executionProperties.start.getTime()}ms</td>
+              <td>
+                {activityEnd
+                  ? activityEnd - executionProperties.start.getTime()
+                  : "-"}
+                ms
+              </td>
             </tr>
           );
         })}

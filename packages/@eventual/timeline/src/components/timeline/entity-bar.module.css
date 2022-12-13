@@ -1,0 +1,21 @@
+.entity-bar {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  position: relative;
+  place-content: center;
+  padding: 8px 0;
+  border-radius: 4px;
+}
+
+.entity-bar div {
+  color: #333;
+}
+
+.entity-bar-name {
+  font-weight: 600;
+}
+
+.entity-bar-duration {
+  font-size: 0.9em;
+}
