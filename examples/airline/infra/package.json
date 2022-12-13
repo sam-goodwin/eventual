@@ -1,0 +1,36 @@
+{
+  "name": "@example/airline-infra",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "test": "cdk synth",
+    "synth": "cdk synth",
+    "cdk": "cdk",
+    "deploy": "cdk deploy --require-approval=never",
+    "hotswap": "cdk deploy --hotswap --require-approval=never",
+    "eventual": "eventual"
+  },
+  "dependencies": {
+    "@example/airline": "workspace:^"
+  },
+  "devDependencies": {
+    "aws-cdk-lib": "^2.51.1",
+    "constructs": "^10.1.154",
+    "@eventual/aws-cdk": "workspace:^",
+    "@eventual/cli": "workspace:^",
+    "@types/jest": "^29",
+    "@types/node": "^16",
+    "aws-cdk": "2.51.1",
+    "esbuild": "^0.15.14",
+    "jest": "^29",
+    "ts-jest": "^29",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.9.3"
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "transform": {
+      "^.+\\.(t|j)sx?$": "ts-jest"
+    }
+  }
+}

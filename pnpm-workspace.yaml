@@ -1,5 +1,6 @@
 # https://pnpm.io/pnpm-workspace_yaml
 packages:
   - "packages/@eventual/*"
+  - "examples/**"
   - "apps/*"
   - "apps/tests/*"

@@ -48,6 +48,12 @@
     },
     {
       "path": "apps/tests/aws-runtime-cdk"
+    },
+    {
+      "path": "examples/airline"
+    },
+    {
+      "path": "examples/airline/infra"
     }
   ]
 }

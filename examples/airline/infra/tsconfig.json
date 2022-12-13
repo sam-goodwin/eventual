@@ -1,0 +1,16 @@
+{
+  "extends": "../../../tsconfig-base.cjs",
+  "compilerOptions": {
+    "outDir": "lib",
+    "rootDir": "src",
+    "typeRoots": ["./node_modules/@types"],
+    "allowJs": true,
+    "esModuleInterop": true
+  },
+  "include": ["src"],
+  "exclude": ["lib", "node_modules"],
+  "references": [
+    { "path": "../../../packages/@eventual/aws-cdk" },
+    { "path": "../" }
+  ]
+}

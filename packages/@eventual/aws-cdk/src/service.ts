@@ -79,7 +79,7 @@ export class Service extends Construct implements IGrantable {
 
     this.appSpec = JSON.parse(
       execSync(
-        `npx ts-node ${require.resolve(
+        `npx ts-node-esm ${require.resolve(
           "@eventual/compiler/bin/eventual-infer.js"
         )} ${props.entry}`
       ).toString("utf-8")
