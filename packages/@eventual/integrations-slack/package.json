@@ -12,9 +12,6 @@
   "files": [
     "lib"
   ],
-  "scripts": {
-    "test": "jest"
-  },
   "dependencies": {
     "@slack/bolt": "^3.12.2",
     "@slack/logger": "^3.0.0",

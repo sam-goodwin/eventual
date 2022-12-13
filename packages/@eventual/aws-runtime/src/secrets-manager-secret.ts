@@ -34,11 +34,11 @@ export class AWSSecret
   /**
    * The ID of the AWS Secrets Manager that contains the secret
    */
-  readonly secretId: string;
+  private readonly secretId: string;
   /**
    * The {@link SecretsManagerClient} to use for interacting with the AWS Secrets Manager API.
    */
-  readonly client: SecretsManagerClient;
+  private readonly client: SecretsManagerClient;
 
   constructor(props: AWSSecretProps) {
     super(props.cacheConfig);

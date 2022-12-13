@@ -10,7 +10,17 @@ import { WebClient } from "@slack/web-api";
 import FetchReceiver from "./receiver.js";
 
 export interface SlackCredentials {
+  /**
+   * The bot's token used to authenticate and authorize requests.
+   *
+   * @see https://api.slack.com/authentication/token-types
+   */
   token: string;
+  /**
+   * The Signing Secret used to verify the a request from slack is authentic.
+   *
+   * @see https://api.slack.com/authentication/verifying-requests-from-slack
+   */
   signingSecret: string;
 }
 
@@ -21,6 +31,36 @@ export interface SlackProps
 
 export interface Slack extends slack.App {}
 
+/**
+ * The {@link Slack} class provides an integration into the Slack service.
+ *
+ * It can be used to subscribe to events from a Slack workspace or to
+ * call Slack APIs from within an API, event, workflow or activity.
+ *
+ * ```ts
+ * // ex. subscribe to message events from slack
+ * slack.message(async ({ body, say }) => {
+ *   // do something when a message is sent
+ *   await say("hello world");
+ * });
+ *
+ * // ex. post a message to the slack API from within a workflow
+ * const myWorkflow = workflow("my-workflow", async () => {
+ *   await slack.client.chat.postMessage({
+ *     channel: "channel-name",
+ *     text: "hello world!",
+ *   });
+ * });
+ * ```
+ *
+ * Eventual's slack integration is built on top of the official
+ * [Bolt-JS framework](https://slack.dev/bolt-js/concepts) provided by
+ * Slack. For example, the `slack.message` hook is identical to the
+ * `app.message `concept from Bolt.
+ *
+ * To learn more about the different capabilities, we recommend reviewing
+ * their [Getting Started Guide](https://slack.dev/bolt-js/tutorial/getting-started).
+ */
 export class Slack {
   private fetchReceiver: FetchReceiver | undefined;
   private app: slack.App | undefined;

@@ -1,5 +1,10 @@
 import { createActivityCall } from "./calls/activity-call.js";
-import { callableActivities, getActivityContext } from "./global.js";
+import {
+  callableActivities,
+  getActivityContext,
+  getWorkflowClient,
+} from "./global.js";
+import { CompleteActivityRequest } from "./runtime/clients/workflow-client.js";
 import { isActivityWorker, isOrchestratorWorker } from "./runtime/flags.js";
 
 export interface ActivityOptions {
@@ -27,6 +32,8 @@ export interface ActivityFunction<
   Output extends any = any
 > {
   (...args: Arguments): Promise<Awaited<UnwrapAsync<Output>>>;
+
+  complete(request: CompleteActivityRequest): Promise<void>;
 }
 
 export interface ActivityHandler<
@@ -126,9 +133,10 @@ export function activity<Arguments extends any[], Output extends any = any>(
     | [handler: ActivityHandler<Arguments, Output>]
 ): ActivityFunction<Arguments, Output> {
   const [opts, handler] = args.length === 1 ? [undefined, args[0]] : args;
+  let func: ActivityFunction<Arguments, Output>;
   if (isOrchestratorWorker()) {
     // if we're in the orchestrator, return a command to invoke the activity in the worker function
-    return ((...args: Parameters<ActivityFunction<Arguments, Output>>) => {
+    func = ((...args: Parameters<ActivityFunction<Arguments, Output>>) => {
       return createActivityCall(
         activityID,
         args,
@@ -141,11 +149,15 @@ export function activity<Arguments extends any[], Output extends any = any>(
     // register the handler to be looked up during execution.
     callableActivities()[activityID] = handler;
     // calling the activity from outside the orchestrator just calls the handler
-    return ((...args) => handler(...args)) as ActivityFunction<
+    func = ((...args) => handler(...args)) as ActivityFunction<
       Arguments,
       Output
     >;
   }
+  func.complete = async function (request) {
+    return getWorkflowClient().completeActivity(request);
+  };
+  return func;
 }
 
 /**

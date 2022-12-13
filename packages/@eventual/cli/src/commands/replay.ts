@@ -39,7 +39,6 @@ export const replay = (yargs: Argv) =>
           .get(`executions/${encodedExecutionId}/workflow-history`)
           .json<HistoryStateEvent[]>(),
       ]);
-      // console.log(events);
 
       spinner.succeed();
       const workflowName = parseWorkflowName(execution as ExecutionID);

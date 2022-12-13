@@ -54,25 +54,21 @@ export default class FetchReceiver implements Receiver {
     this.app = app;
   }
 
-  public async start(..._args: any[]): Promise<RouteHandler> {
-    return this.handle.bind(this);
+  public start(): Promise<RouteHandler> {
+    return Promise.resolve(this.handle.bind(this));
   }
 
-  // eslint-disable-next-line class-methods-use-this
-  public stop(..._args: any[]): Promise<void> {
-    return new Promise((resolve, _reject) => {
-      resolve();
-    });
+  public stop(): Promise<void> {
+    return Promise.resolve(undefined);
   }
+
   public async handle(request: Request): Promise<Response> {
     this.logger.debug(`Request: ${JSON.stringify(request, null, 2)}`);
-    console.debug("request", request);
 
     const rawBody = await this.getRawBody(request);
-    console.log("raw body", rawBody);
     const body: any = this.parseRequestBody(
       rawBody,
-      this.getHeaderValue(request.headers, "Content-Type"),
+      request.headers.get("Content-Type") ?? undefined,
       this.logger
     );
 
@@ -87,13 +83,8 @@ export default class FetchReceiver implements Receiver {
     }
 
     // request signature verification
-    const signature = this.getHeaderValue(
-      request.headers,
-      "X-Slack-Signature"
-    ) as string;
-    const ts = Number(
-      this.getHeaderValue(request.headers, "X-Slack-Request-Timestamp")
-    );
+    const signature = request.headers.get("X-Slack-Signature") as string;
+    const ts = Number(request.headers.get("X-Slack-Request-Timestamp"));
     if (
       !this.isValidRequestSignature(this.signingSecret, rawBody, signature, ts)
     ) {
@@ -130,6 +121,7 @@ export default class FetchReceiver implements Receiver {
 
     // Structure the ReceiverEvent
     let storedResponse;
+    const retryNum = request.headers.get("X-Slack-Retry-Num");
     const event: ReceiverEvent = {
       body,
       ack: async (response) => {
@@ -144,10 +136,8 @@ export default class FetchReceiver implements Receiver {
           storedResponse = response;
         }
       },
-      retryNum: this.getHeaderValue(request.headers, "X-Slack-Retry-Num") as
-        | number
-        | undefined,
-      retryReason: this.getHeaderValue(request.headers, "X-Slack-Retry-Reason"),
+      retryNum: retryNum ? Number(retryNum) : undefined,
+      retryReason: request.headers.get("X-Slack-Retry-Reason") ?? undefined,
     };
 
     // Send the event to the app for processing
@@ -240,9 +230,5 @@ export default class FetchReceiver implements Receiver {
     }
 
     return true;
-  }
-
-  private getHeaderValue(headers: Headers, key: string): string | undefined {
-    return headers.get(key) || undefined;
   }
 }
