@@ -3,7 +3,7 @@ import {
   ActivityTarget,
   ActivityTargetType,
 } from "../activity.js";
-import { ActivityCancelled, EventualError } from "../error.js";
+import { ActivityCancelled } from "../error.js";
 import {
   EventualKind,
   isEventualOfKind,
@@ -19,7 +19,7 @@ export function isActivityCall(a: any): a is ActivityCall {
 
 export interface ActivityCall<T = any>
   extends CommandCallBase<EventualKind.ActivityCall, Resolved<T> | Failed>,
-    ActivityExecutionReference<T> {
+    ActivityExecutionReference {
   name: string;
   args: any[];
   heartbeatSeconds?: number;
@@ -41,20 +41,6 @@ export function createActivityCall(
     } as ActivityCall)
   );
 
-  call.complete = function (result) {
-    return createOverrideActivityCall(
-      { type: ActivityTargetType.OwnActivity, seq: this.seq! },
-      Result.resolved(result)
-    ) as unknown as Promise<void>;
-  };
-  call.fail = function (...args) {
-    return createOverrideActivityCall(
-      { type: ActivityTargetType.OwnActivity, seq: this.seq! },
-      Result.failed(
-        args.length === 1 ? args[0] : new EventualError(args[0], args[1])
-      )
-    ) as unknown as Promise<void>;
-  };
   call.cancel = function (reason) {
     return createOverrideActivityCall(
       { type: ActivityTargetType.OwnActivity, seq: this.seq! },

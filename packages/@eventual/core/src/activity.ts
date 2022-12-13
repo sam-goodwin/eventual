@@ -37,7 +37,7 @@ export interface ActivityFunction<
   Output extends any = any
 > {
   (...args: Arguments): Promise<Awaited<UnwrapAsync<Output>>> &
-    ActivityExecutionReference<UnwrapAsync<Output>>;
+    ActivityExecutionReference;
 
   /**
    * Complete an activity request by its {@link CompleteActivityRequest.activityToken}.
@@ -207,7 +207,7 @@ export interface ActivityTokenTarget {
   activityToken: string;
 }
 
-export interface ActivityExecutionReference<T = any> {
+export interface ActivityExecutionReference {
   /**
    * Cancel this activity.
    *
@@ -217,22 +217,6 @@ export interface ActivityExecutionReference<T = any> {
    * return to signal the workflow considers the activity finished.
    */
   cancel: (reason: string) => Promise<void>;
-  /**
-   * Causes the activity to reject with the provided value within the workflow.
-   *
-   * If the activity is calling {@link heartbeat}, closed: true will be
-   * return to signal the workflow considers the activity finished.
-   */
-  fail: (
-    ...args: [error: Error] | [error: string, message: string]
-  ) => Promise<void>;
-  /**
-   * Causes the activity to resolve the provided value to the workflow.
-   *
-   * If the activity is calling {@link heartbeat}, closed: true will be
-   * return to signal the workflow considers the activity finished.
-   */
-  complete: (result: T) => Promise<void>;
 }
 
 /**
@@ -293,26 +277,6 @@ export function failActivity(
       error: error.name,
       message: error.message,
     });
-  }
-}
-
-/**
- * Cancel any activity using it's activityToken.
- *
- * The activity will reject with a {@link ActivityCancelled} error.
- *
- * If the activity is calling {@link heartbeat}, closed: true will be
- * return to signal the workflow considers the activity finished.
- */
-export function cancelActivity(
-  activityToken: string,
-  reason: string
-): Promise<void> {
-  if (isOrchestratorWorker()) {
-    // not a real promise, do not await
-    return failActivity(activityToken, new ActivityCancelled(reason)) as any;
-  } else {
-    return failActivity(activityToken, new ActivityCancelled(reason));
   }
 }
 

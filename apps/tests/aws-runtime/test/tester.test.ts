@@ -72,14 +72,7 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
   testCompletion("event-driven", eventDrivenWorkflow, "done!");
 
   testCompletion("overrideActivities", overrideWorkflow, [
-    [
-      { status: "rejected", reason: new ActivityCancelled("because").toJSON() },
-      {
-        status: "rejected",
-        reason: new EventualError("Error", "ahhh").toJSON(),
-      },
-      { status: "fulfilled", value: "hi!" },
-    ],
+    [{ status: "rejected", reason: new ActivityCancelled("because").toJSON() }],
     [
       { status: "fulfilled", value: "from the event handler!" },
       {

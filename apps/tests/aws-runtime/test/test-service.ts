@@ -337,6 +337,10 @@ const sendFinishEvent = activity("sendFinish", async (executionId: string) => {
   });
 });
 
+/**
+ * An event which is raised by the activityOverrideActivity.
+ * Can provide a value to the activity via activity token or defer the responsibility to the workflow via signal.
+ */
 const activityOverrideEvent = event<{
   executionId: string;
   token: string;
@@ -344,6 +348,9 @@ const activityOverrideEvent = event<{
   type: "complete" | "fail";
 }>("activityOverrideEvent");
 
+/**
+ * An async activity which will be cancelled using it's activity token.
+ */
 const activityOverrideActivity = activity(
   "eventPublish",
   async ({
@@ -367,6 +374,10 @@ const activityOverrideActivity = activity(
   }
 );
 
+/**
+ * A signal called by the activityOverrideEvent handler to pass the activity token to the workflow.
+ * Used to test activity completion from the workflow.
+ */
 const activityOverrideSignal = new Signal<{
   token: string;
   type: "complete" | "fail";
@@ -408,17 +419,20 @@ const activityOverrideAwareActivity = activity(
   }
 );
 
+/**
+ * Activity Override Tests.
+ *
+ * 1. cancel an activity from the workflow and record the result
+ * 2. Use the activity token to cancel, fail, or complete an async token from within an event handler or workflow
+ * 3. Cancel an activity and use a signal to signify that it knows it was cancelled and record the result.
+ */
 export const overrideWorkflow = workflow(
   "override",
   async (_, { execution: { id: executionId } }) => {
     const act = slowActivity();
-    const act2 = slowActivity();
-    const act3 = slowActivity();
     act.cancel("because");
-    act2.fail(new Error("ahhh"));
-    act3.complete("hi!");
 
-    const results1 = await Promise.allSettled([act, act2, act3]);
+    const results1 = await Promise.allSettled([act]);
 
     const signalHandler = activityOverrideSignal.on(async ({ token, type }) => {
       if (type === "complete") {
