@@ -2,7 +2,6 @@ import "@eventual/entry/injected";
 
 import { createApiHandler } from "@eventual/core";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
-import itty from "itty-router";
 import { createEventClient, createWorkflowClient } from "../clients/create.js";
 
 // TODO: remove once we can upgrade to Node 18 in AWS Lambda
@@ -22,19 +21,25 @@ const processRequest = createApiHandler({
 export default async function (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> {
-  const request: itty.Request = {
-    method: event.requestContext.http.method,
-    url: `http://localhost:3000${event.requestContext.http.path}`,
-    params: event.pathParameters as itty.Obj,
-    query: event.queryStringParameters as itty.Obj,
-    async json() {
-      if (event.body) {
-        return JSON.parse(event.body!);
-      } else {
-        return undefined;
-      }
-    },
-  };
+  console.debug("event", event);
+  const body = event.body
+    ? event.isBase64Encoded
+      ? Buffer.from(event.body, "base64")
+      : event.body
+    : undefined;
+
+  const request = new Request(
+    // TODO: get protocol from header 'x-forwarded-proto'?
+    new URL(
+      `https://${event.requestContext.domainName}${event.rawPath}?${event.rawQueryString}`
+    ),
+    {
+      body,
+      headers: event.headers as Record<string, string>,
+      method: event.requestContext.http.method,
+    }
+  );
+
   const response = await processRequest(request);
   const headers: Record<string, string> = {};
   response.headers.forEach((value, key) => (headers[key] = value));
