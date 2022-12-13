@@ -1,4 +1,5 @@
 import {
+  ActivityExecutionReference,
   createActivityCall,
   createOverrideActivityCall,
 } from "./calls/activity-call.js";
@@ -35,7 +36,8 @@ export interface ActivityFunction<
   Arguments extends any[],
   Output extends any = any
 > {
-  (...args: Arguments): Promise<Awaited<UnwrapAsync<Output>>>;
+  (...args: Arguments): Promise<Awaited<UnwrapAsync<Output>>> &
+    ActivityExecutionReference<UnwrapAsync<Output>>;
 }
 
 export interface ActivityHandler<

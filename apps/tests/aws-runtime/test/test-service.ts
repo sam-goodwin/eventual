@@ -11,6 +11,8 @@ import {
   workflow,
   heartbeat,
   HeartbeatTimeout,
+  completeActivity,
+  failActivity,
 } from "@eventual/core";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -148,11 +150,13 @@ export const childWorkflow = workflow(
   }
 );
 
-const slowActivity = activity(
-  "slowAct",
-  { timeoutSeconds: 5 },
-  () => new Promise((resolve) => setTimeout(resolve, 10 * 1000))
-);
+const delay = (seconds: number) =>
+  new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+
+const slowActivity = activity("slowAct", { timeoutSeconds: 5 }, async () => {
+  await delay(10);
+  return "done finally";
+});
 
 const slowWf = workflow("slowWorkflow", { timeoutSeconds: 5 }, () =>
   sleepFor(10)
@@ -332,3 +336,130 @@ const sendFinishEvent = activity("sendFinish", async (executionId: string) => {
     proxy: true,
   });
 });
+
+const activityOverrideEvent = event<{
+  executionId: string;
+  token: string;
+  location: "handler" | "signal";
+  type: "complete" | "fail";
+}>("activityOverrideEvent");
+
+const activityOverrideActivity = activity(
+  "eventPublish",
+  async ({
+    type,
+    location,
+    executionId,
+  }: {
+    executionId: string;
+    location: "handler" | "signal";
+    type: "complete" | "fail";
+  }) => {
+    return asyncResult(
+      async (token) =>
+        await activityOverrideEvent.publish({
+          token,
+          location,
+          type,
+          executionId,
+        })
+    );
+  }
+);
+
+const activityOverrideSignal = new Signal<{
+  token: string;
+  type: "complete" | "fail";
+}>("activityOverrideSignal");
+
+activityOverrideEvent.on(async ({ token, location, type, executionId }) => {
+  if (location === "handler") {
+    if (type === "complete") {
+      await completeActivity(token, "from the event handler!");
+    } else {
+      await failActivity(token, new Error("WHY!!!"));
+    }
+  } else {
+    await activityOverrideSignal.send(executionId, { token, type });
+  }
+});
+
+/**
+ * Activity which waits to be closed/cancelled.
+ * If it is closed, it signals the workflow with "complete", if not it signals with "fail".
+ */
+const activityOverrideAwareActivity = activity(
+  "overrideAware",
+  async ({ executionId }: { executionId: string }) => {
+    let n = 0;
+    while (n < 10) {
+      await delay(1);
+      const { closed } = await heartbeat();
+      if (closed) {
+        await activityOverrideSignal.send(executionId, {
+          token: "",
+          type: "complete",
+        });
+        return;
+      }
+    }
+
+    await activityOverrideSignal.send(executionId, { token: "", type: "fail" });
+  }
+);
+
+export const overrideWorkflow = workflow(
+  "override",
+  async (_, { execution: { id: executionId } }) => {
+    const act = slowActivity();
+    const act2 = slowActivity();
+    const act3 = slowActivity();
+    act.cancel("because");
+    act2.fail(new Error("ahhh"));
+    act3.complete("hi!");
+
+    const results1 = await Promise.allSettled([act, act2, act3]);
+
+    const signalHandler = activityOverrideSignal.on(async ({ token, type }) => {
+      if (type === "complete") {
+        await completeActivity(token, "from the signal handler!");
+      } else {
+        await failActivity(token, new Error("BECAUSE!!!"));
+      }
+    });
+
+    const results2 = await Promise.allSettled([
+      activityOverrideActivity({
+        location: "handler",
+        type: "complete",
+        executionId,
+      }),
+      activityOverrideActivity({
+        location: "handler",
+        type: "fail",
+        executionId,
+      }),
+      activityOverrideActivity({
+        location: "signal",
+        type: "complete",
+        executionId,
+      }),
+      activityOverrideActivity({
+        location: "signal",
+        type: "fail",
+        executionId,
+      }),
+    ]);
+
+    const aware = activityOverrideAwareActivity({ executionId });
+    await sleepFor(1);
+    aware.cancel("because");
+
+    signalHandler.dispose();
+
+    // the override activity SHOULD send a signal when it realizes it is cancelled.
+    const result = await expectSignal(activityOverrideSignal);
+
+    return [results1, results2, result];
+  }
+);

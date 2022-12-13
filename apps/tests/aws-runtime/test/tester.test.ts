@@ -1,4 +1,8 @@
-import { HeartbeatTimeout } from "@eventual/core";
+import {
+  ActivityCancelled,
+  EventualError,
+  HeartbeatTimeout,
+} from "@eventual/core";
 import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
 import {
   eventDrivenWorkflow,
@@ -10,6 +14,7 @@ import {
   workflow2,
   workflow3,
   workflow4,
+  overrideWorkflow,
 } from "./test-service.js";
 
 jest.setTimeout(100 * 1000);
@@ -62,4 +67,19 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
   ]);
 
   testCompletion("event-driven", eventDrivenWorkflow, "done!");
+
+  testCompletion("overrideActivities", overrideWorkflow, [
+    [
+      { status: "rejected", reason: new ActivityCancelled("because") },
+      { status: "rejected", reason: new EventualError("ahhh", "because") },
+      { status: "fulfilled", value: "hi!" },
+    ],
+    [
+      { status: "fulfilled", value: "from the event handler!" },
+      { status: "rejected", reason: new EventualError("Error", "WHY!!!") },
+      { status: "fulfilled", value: "from the signal handler!" },
+      { status: "rejected", reason: new EventualError("Error", "BECAUSE!!!") },
+    ],
+    { token: "", type: "complete" },
+  ]);
 });
