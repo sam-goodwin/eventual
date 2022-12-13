@@ -17,17 +17,16 @@ import {
   WorkflowClient,
   StartWorkflowRequest,
   formatExecutionId,
+  createEvent,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
-import { AWSExecutionHistoryClient } from "./execution-history-client.js";
 
 export interface AWSWorkflowClientProps {
   readonly dynamo: DynamoDBClient;
   readonly tableName: string;
   readonly sqs: SQSClient;
   readonly workflowQueueUrl: string;
-  readonly executionHistory: AWSExecutionHistoryClient;
   readonly activityRuntimeClient: AWSActivityRuntimeClient;
 }
 
@@ -74,26 +73,20 @@ export class AWSWorkflowClient extends WorkflowClient {
       })
     );
 
-    const workflowStartedEvent =
-      await this.props.executionHistory.createAndPutEvent<WorkflowStarted>(
-        executionId,
-        {
-          type: WorkflowEventType.WorkflowStarted,
-          input,
-          workflowName,
-          // generate the time for the workflow to timeout based on when it was started.
-          // the timer will be started by the orchestrator so the client does not need to have access to the timer client.
-          timeoutTime: timeoutSeconds
-            ? new Date(
-                new Date().getTime() + timeoutSeconds * 1000
-              ).toISOString()
-            : undefined,
-          context: {
-            name: executionName,
-            parentId: parentExecutionId,
-          },
-        }
-      );
+    const workflowStartedEvent = createEvent<WorkflowStarted>({
+      type: WorkflowEventType.WorkflowStarted,
+      input,
+      workflowName,
+      // generate the time for the workflow to timeout based on when it was started.
+      // the timer will be started by the orchestrator so the client does not need to have access to the timer client.
+      timeoutTime: timeoutSeconds
+        ? new Date(new Date().getTime() + timeoutSeconds * 1000).toISOString()
+        : undefined,
+      context: {
+        name: executionName,
+        parentId: parentExecutionId,
+      },
+    });
 
     await this.submitWorkflowTask(executionId, workflowStartedEvent);
 

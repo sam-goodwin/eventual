@@ -159,10 +159,6 @@ export namespace ActivityMetrics {
    */
   export const TotalDuration = "TotalDuration";
   /**
-   * Amount of time it took to send workflow events.
-   */
-  export const EmitEventDuration = "EmitEventDuration";
-  /**
    * amount of time it took to submit a workflow task to SQS to resume the workflow.
    */
   export const SubmitWorkflowTaskDuration = "SubmitWorkflowTaskDuration";

@@ -48,9 +48,6 @@ export const createWorkflowClient = /*@__PURE__*/ memoize(
     new AWSWorkflowClient({
       sqs: sqs(),
       workflowQueueUrl: workflowQueueUrl ?? env.workflowQueueUrl(),
-      executionHistory: createExecutionHistoryClient({
-        tableName: tableName ?? env.tableName(),
-      }),
       dynamo: dynamo(),
       tableName: tableName ?? env.tableName(),
       activityRuntimeClient: createActivityRuntimeClient({ activityTableName }),
