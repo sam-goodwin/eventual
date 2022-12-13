@@ -1,9 +1,9 @@
 import {
   Command,
   ExpectSignalCommand,
-  FinishActivityCommand,
+  OverrideActivityCommand,
   isExpectSignalCommand,
-  isFinishActivityCommand,
+  isOverrideActivityCommand,
   isPublishEventsCommand,
   isScheduleActivityCommand,
   isScheduleWorkflowCommand,
@@ -33,7 +33,7 @@ import {
   ConditionStarted,
   ConditionTimedOut,
   SignalSent,
-  ActivityFinished,
+  ActivityOverridden,
   ActivityCompleted,
   ActivityFailed,
 } from "../workflow-events.js";
@@ -94,8 +94,8 @@ export class CommandExecutor {
       return startCondition(command);
     } else if (isPublishEventsCommand(command)) {
       return publishEvents(command);
-    } else if (isFinishActivityCommand(command)) {
-      return finishActivity(command);
+    } else if (isOverrideActivityCommand(command)) {
+      return overrideActivity(command);
     } else {
       return assertNever(command, `unknown command type`);
     }
@@ -251,17 +251,17 @@ export class CommandExecutor {
       });
     }
 
-    async function finishActivity(command: FinishActivityCommand) {
+    async function overrideActivity(command: OverrideActivityCommand) {
       if (command.target.type === ActivityTargetType.OwnActivity) {
         await self.props.activityRuntimeClient.closeActivity(
           executionId,
           command.target.seq
         );
-        return createEvent<ActivityFinished>({
+        return createEvent<ActivityOverridden>({
           executionId,
           activitySeq: command.target.seq,
           seq: command.seq,
-          type: WorkflowEventType.ActivityFinished,
+          type: WorkflowEventType.ActivityOverridden,
         });
       } else {
         const data = decodeActivityToken(command.target.activityToken);
@@ -291,11 +291,11 @@ export class CommandExecutor {
             })
           );
         }
-        return createEvent<ActivityFinished>({
+        return createEvent<ActivityOverridden>({
           executionId: data.payload.executionId,
           activitySeq: data.payload.seq,
           seq: command.seq,
-          type: WorkflowEventType.ActivityFinished,
+          type: WorkflowEventType.ActivityOverridden,
         });
       }
     }

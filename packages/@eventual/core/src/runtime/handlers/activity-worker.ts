@@ -174,7 +174,7 @@ export function createActivityWorker({
           endTime
         );
 
-        await finishActivity(
+        await overrideActivity(
           event,
           recordAge + (endTime.getTime() - start.getTime())
         );
@@ -200,7 +200,7 @@ export function createActivityWorker({
           endTime
         );
 
-        await finishActivity(
+        await overrideActivity(
           event,
           recordAge + (endTime.getTime() - start.getTime())
         );
@@ -223,7 +223,7 @@ export function createActivityWorker({
         metrics.putMetric(ActivityMetrics.TotalDuration, duration);
       }
 
-      async function finishActivity(
+      async function overrideActivity(
         event: ActivityCompleted | ActivityFailed,
         duration: number
       ) {

@@ -2,7 +2,7 @@ import { ulid } from "ulidx";
 import {
   CommandType,
   ExpectSignalCommand,
-  FinishActivityCommand,
+  OverrideActivityCommand,
   PublishEventsCommand,
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
@@ -32,7 +32,7 @@ import {
   WorkflowEventType,
   WorkflowTimedOut,
   ActivityHeartbeatTimedOut,
-  ActivityFinished,
+  ActivityOverridden,
 } from "../src/workflow-events.js";
 import { SignalTarget } from "../src/signals.js";
 import { Failed, Resolved } from "../src/result.js";
@@ -73,13 +73,13 @@ export function createScheduledActivityCommand(
   };
 }
 
-export function createFinishActivityCommand(
+export function createOverrideActivityCommand(
   outcome: Resolved | Failed,
   target: ActivityTarget,
   seq: number
-): FinishActivityCommand {
+): OverrideActivityCommand {
   return {
-    kind: CommandType.FinishActivity,
+    kind: CommandType.OverrideActivity,
     seq,
     outcome,
     target,
@@ -208,13 +208,13 @@ export function activityScheduled(
   };
 }
 
-export function activityFinished(
+export function activityOverridden(
   executionId: string,
   activitySeq: number,
   seq: number
-): ActivityFinished {
+): ActivityOverridden {
   return {
-    type: WorkflowEventType.ActivityFinished,
+    type: WorkflowEventType.ActivityOverridden,
     executionId,
     activitySeq,
     seq,

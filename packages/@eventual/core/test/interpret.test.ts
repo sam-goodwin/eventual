@@ -1,6 +1,6 @@
 import {
   createActivityCall,
-  createFinishActivityCall,
+  createOverrideActivityCall,
 } from "../src/calls/activity-call.js";
 import { chain } from "../src/chain.js";
 import { DeterminismError, HeartbeatTimeout, Timeout } from "../src/error.js";
@@ -31,7 +31,7 @@ import {
 import {
   activityCompleted,
   activityFailed,
-  activityFinished,
+  activityOverridden as activityOverridden,
   activityHeartbeatTimedOut,
   activityScheduled,
   activityTimedOut,
@@ -39,7 +39,7 @@ import {
   conditionStarted,
   conditionTimedOut,
   createExpectSignalCommand,
-  createFinishActivityCommand,
+  createOverrideActivityCommand as createOverrideActivityCommand,
   createPublishEventCommand,
   createScheduledActivityCommand,
   createScheduledWorkflowCommand,
@@ -312,25 +312,25 @@ describe("activity", () => {
     });
   });
 
-  describe("finish activity", () => {
+  describe("override activity", () => {
     describe("complete own activity", () => {
       const wf = workflow(function* () {
         const act = createActivityCall("getPumpedUp", [], undefined, 100);
         yield createSleepForCall(100);
-        yield createFinishActivityCall(
+        yield createOverrideActivityCall(
           { seq: 0, type: ActivityTargetType.OwnActivity },
           Result.resolved("hi")
         );
         return act;
       });
 
-      test("finish first", () => {
+      test("override first", () => {
         expect(
           interpret(wf.definition(undefined, context), [
             activityScheduled("getPumpedUp", 0),
             scheduledSleep("", 1),
             completedSleep(1),
-            activityFinished("", 0, 2),
+            activityOverridden("", 0, 2),
           ])
         ).toMatchObject<WorkflowResult>({
           result: Result.resolved("hi"),
@@ -338,14 +338,14 @@ describe("activity", () => {
         });
       });
 
-      test("complete own after real complete", () => {
+      test("override own after real complete", () => {
         expect(
           interpret(wf.definition(undefined, context), [
             activityScheduled("getPumpedUp", 0),
             scheduledSleep("", 1),
             activityCompleted("bye", 0),
             completedSleep(1),
-            activityFinished("", 0, 2),
+            activityOverridden("", 0, 2),
           ])
         ).toMatchObject<WorkflowResult>({
           result: Result.resolved("bye"),
@@ -354,10 +354,10 @@ describe("activity", () => {
       });
     });
 
-    test("fail own activity", () => {
+    test("override with fail own activity", () => {
       const wf = workflow(function* () {
         const act = createActivityCall("getPumpedUp", [], undefined, 100);
-        yield createFinishActivityCall(
+        yield createOverrideActivityCall(
           { seq: 0, type: ActivityTargetType.OwnActivity },
           Result.failed(new Timeout())
         );
@@ -366,7 +366,7 @@ describe("activity", () => {
       expect(
         interpret(wf.definition(undefined, context), [
           activityScheduled("getPumpedUp", 0),
-          activityFinished("", 0, 1),
+          activityOverridden("", 0, 1),
         ])
       ).toMatchObject<WorkflowResult>({
         result: Result.failed(new Timeout()),
@@ -374,11 +374,11 @@ describe("activity", () => {
       });
     });
 
-    describe("complete external activity", () => {
-      test("finish", () => {
+    describe("override external activity", () => {
+      test("override", () => {
         const wf = workflow(function* () {
           const act = createActivityCall("getPumpedUp", [], undefined, 100);
-          yield createFinishActivityCall(
+          yield createOverrideActivityCall(
             {
               type: ActivityTargetType.ActivityToken,
               activityToken: createActivityToken("exec1", 100),
@@ -390,7 +390,7 @@ describe("activity", () => {
         expect(
           interpret(wf.definition(undefined, context), [
             activityScheduled("getPumpedUp", 0),
-            activityFinished("exec1", 100, 1),
+            activityOverridden("exec1", 100, 1),
           ])
         ).toMatchObject<WorkflowResult>({
           commands: [],
@@ -400,7 +400,7 @@ describe("activity", () => {
       test("command", () => {
         const wf = workflow(function* () {
           const act = createActivityCall("getPumpedUp", [], undefined, 100);
-          yield createFinishActivityCall(
+          yield createOverrideActivityCall(
             {
               type: ActivityTargetType.ActivityToken,
               activityToken: createActivityToken("exec1", 100),
@@ -415,7 +415,7 @@ describe("activity", () => {
           ])
         ).toMatchObject<WorkflowResult>({
           commands: [
-            createFinishActivityCommand(
+            createOverrideActivityCommand(
               Result.failed(new Timeout()),
               {
                 type: ActivityTargetType.ActivityToken,

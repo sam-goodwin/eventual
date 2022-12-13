@@ -1,6 +1,6 @@
 import {
   createActivityCall,
-  createFinishActivityCall,
+  createOverrideActivityCall,
 } from "./calls/activity-call.js";
 import { ActivityCancelled, EventualError } from "./error.js";
 import {
@@ -182,7 +182,7 @@ export function completeActivity<A extends ActivityFunction<any, any> = any>(
   result: ActivityOutput<A>
 ): Promise<void> {
   if (isOrchestratorWorker()) {
-    return createFinishActivityCall(
+    return createOverrideActivityCall(
       {
         type: ActivityTargetType.ActivityToken,
         activityToken,
@@ -210,7 +210,7 @@ export function failActivity(
   const error =
     args.length === 1 ? args[0] : new EventualError(args[0], args[1]);
   if (isOrchestratorWorker()) {
-    return createFinishActivityCall(
+    return createOverrideActivityCall(
       {
         type: ActivityTargetType.ActivityToken,
         activityToken,

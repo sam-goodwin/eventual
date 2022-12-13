@@ -6,7 +6,10 @@ import {
   EventualCallCollector,
 } from "./eventual.js";
 import { isAwaitAll } from "./await-all.js";
-import { isActivityCall, isFinishActivityCall } from "./calls/activity-call.js";
+import {
+  isActivityCall,
+  isOverrideActivityCall,
+} from "./calls/activity-call.js";
 import {
   DeterminismError,
   HeartbeatTimeout,
@@ -36,7 +39,7 @@ import {
   isActivityTimedOut,
   isActivityHeartbeatTimedOut,
   isEventsPublished,
-  isActivityFinished,
+  isActivityOverridden,
 } from "./workflow-events.js";
 import {
   Result,
@@ -242,9 +245,9 @@ export function interpret<Return>(
         seq: call.seq!,
         events: call.events,
       };
-    } else if (isFinishActivityCall(call)) {
+    } else if (isOverrideActivityCall(call)) {
       return {
-        kind: CommandType.FinishActivity,
+        kind: CommandType.OverrideActivity,
         seq: call.seq!,
         outcome: call.outcome,
         target: call.target,
@@ -278,7 +281,7 @@ export function interpret<Return>(
         if (isCommandCall(activity)) {
           if (isExpectSignalCall(activity)) {
             subscribeToSignal(activity.signalId, activity);
-          } else if (isFinishActivityCall(activity)) {
+          } else if (isOverrideActivityCall(activity)) {
             if (activity.target.type === ActivityTargetType.OwnActivity) {
               const act = callTable[activity.target.seq];
               if (act === undefined) {
@@ -572,8 +575,8 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
     return isConditionCall(call);
   } else if (isEventsPublished(event)) {
     return isPublishEventsCall(call);
-  } else if (isActivityFinished(event)) {
-    return isFinishActivityCall(call);
+  } else if (isActivityOverridden(event)) {
+    return isOverrideActivityCall(call);
   }
   return assertNever(event);
 }

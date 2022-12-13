@@ -1,8 +1,8 @@
 import {
   ActivityCall,
-  FinishActivityCall,
+  OverrideActivityCall,
   isActivityCall,
-  isFinishActivityCall,
+  isOverrideActivityCall,
 } from "./calls/activity-call.js";
 import { AwaitAll, createAwaitAll } from "./await-all.js";
 import { chain, Chain } from "./chain.js";
@@ -62,7 +62,7 @@ export enum EventualKind {
   Chain = 2,
   ConditionCall = 9,
   ExpectSignalCall = 6,
-  FinishActivityCall = 14,
+  OverrideActivityCall = 14,
   PublishEventsCall = 13,
   Race = 11,
   RegisterSignalHandlerCall = 7,
@@ -106,7 +106,7 @@ export type CommandCall<T = any> =
   | ActivityCall<T>
   | ConditionCall
   | ExpectSignalCall<T>
-  | FinishActivityCall
+  | OverrideActivityCall
   | RegisterSignalHandlerCall<T>
   | PublishEventsCall
   | SendSignalCall
@@ -119,7 +119,7 @@ export function isCommandCall(call: Eventual): call is CommandCall {
     isActivityCall(call) ||
     isConditionCall(call) ||
     isExpectSignalCall(call) ||
-    isFinishActivityCall(call) ||
+    isOverrideActivityCall(call) ||
     isPublishEventsCall(call) ||
     isRegisterSignalHandlerCall(call) ||
     isSendSignalCall(call) ||

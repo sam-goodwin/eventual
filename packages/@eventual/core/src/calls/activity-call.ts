@@ -38,13 +38,13 @@ export function createActivityCall(
   );
 
   call.complete = function (result) {
-    return createFinishActivityCall(
+    return createOverrideActivityCall(
       { type: ActivityTargetType.OwnActivity, seq: this.seq! },
       Result.resolved(result)
     ) as unknown as Promise<void>;
   };
   call.fail = function (...args) {
-    return createFinishActivityCall(
+    return createOverrideActivityCall(
       { type: ActivityTargetType.OwnActivity, seq: this.seq! },
       Result.failed(
         args.length === 1 ? args[0] : new EventualError(args[0], args[1])
@@ -52,7 +52,7 @@ export function createActivityCall(
     ) as unknown as Promise<void>;
   };
   call.cancel = function (reason) {
-    return createFinishActivityCall(
+    return createOverrideActivityCall(
       { type: ActivityTargetType.OwnActivity, seq: this.seq! },
       Result.failed(new ActivityCancelled(reason))
     ) as unknown as Promise<void>;
@@ -69,22 +69,22 @@ export interface ActivityExecutionReference<T = any> {
   complete: (result: T) => Promise<void>;
 }
 
-export function isFinishActivityCall(a: any): a is FinishActivityCall {
-  return isEventualOfKind(EventualKind.FinishActivityCall, a);
+export function isOverrideActivityCall(a: any): a is OverrideActivityCall {
+  return isEventualOfKind(EventualKind.OverrideActivityCall, a);
 }
 
-export interface FinishActivityCall
-  extends CommandCallBase<EventualKind.FinishActivityCall, Resolved> {
+export interface OverrideActivityCall
+  extends CommandCallBase<EventualKind.OverrideActivityCall, Resolved> {
   target: ActivityTarget;
   outcome: Resolved | Failed;
 }
 
-export function createFinishActivityCall(
+export function createOverrideActivityCall(
   target: ActivityTarget,
   outcome: Resolved | Failed
-): FinishActivityCall {
+): OverrideActivityCall {
   return registerEventual(
-    createEventual<FinishActivityCall>(EventualKind.FinishActivityCall, {
+    createEventual<OverrideActivityCall>(EventualKind.OverrideActivityCall, {
       target,
       outcome,
       result: Result.resolved(undefined),
