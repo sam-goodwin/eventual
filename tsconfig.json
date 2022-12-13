@@ -48,6 +48,12 @@
     },
     {
       "path": "apps/tests/aws-runtime-cdk"
+    },
+    {
+      "path": "examples/lambda-test-runner/runtime"
+    },
+    {
+      "path": "examples/lambda-test-runner/app"
     }
   ]
 }
