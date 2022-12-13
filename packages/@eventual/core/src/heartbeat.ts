@@ -1,5 +1,5 @@
 import { getActivityContext, getWorkflowClient } from "./global.js";
-import { HeartbeatResponse } from "./runtime/clients/workflow-client.js";
+import { HeartbeatResponse } from "./runtime/clients/activity-runtime-client.js";
 import { isActivityWorker, isOrchestratorWorker } from "./runtime/flags.js";
 
 /**

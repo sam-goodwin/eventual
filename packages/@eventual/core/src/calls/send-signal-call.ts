@@ -1,8 +1,8 @@
 import {
   EventualKind,
-  EventualBase,
   isEventualOfKind,
   createEventual,
+  CommandCallBase,
 } from "../eventual.js";
 import { registerEventual } from "../global.js";
 import { Resolved, Result } from "../result.js";
@@ -13,8 +13,7 @@ export function isSendSignalCall(a: any): a is SendSignalCall {
 }
 
 export interface SendSignalCall
-  extends EventualBase<EventualKind.SendSignalCall, Resolved<void>> {
-  seq?: number;
+  extends CommandCallBase<EventualKind.SendSignalCall, Resolved<void>> {
   signalId: string;
   payload?: any;
   target: SignalTarget;

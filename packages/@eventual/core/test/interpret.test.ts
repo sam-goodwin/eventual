@@ -1,8 +1,13 @@
-import { createActivityCall } from "../src/calls/activity-call.js";
+import {
+  createActivityCall,
+  createFinishActivityCall,
+} from "../src/calls/activity-call.js";
 import { chain } from "../src/chain.js";
 import { DeterminismError, HeartbeatTimeout, Timeout } from "../src/error.js";
 import {
+  ActivityTargetType,
   Context,
+  createActivityToken,
   createAwaitAll,
   Eventual,
   interpret,
@@ -19,10 +24,14 @@ import {
   WorkflowHandler,
   WorkflowResult,
 } from "../src/index.js";
-import { createSleepUntilCall } from "../src/calls/sleep-call.js";
+import {
+  createSleepForCall,
+  createSleepUntilCall,
+} from "../src/calls/sleep-call.js";
 import {
   activityCompleted,
   activityFailed,
+  activityFinished,
   activityHeartbeatTimedOut,
   activityScheduled,
   activityTimedOut,
@@ -30,6 +39,7 @@ import {
   conditionStarted,
   conditionTimedOut,
   createExpectSignalCommand,
+  createFinishActivityCommand,
   createPublishEventCommand,
   createScheduledActivityCommand,
   createScheduledWorkflowCommand,
@@ -239,7 +249,7 @@ test("should handle partial blocks with partial completes", () => {
   });
 });
 
-describe("activity", () =>
+describe("activity", () => {
   describe("heartbeat", () => {
     const wf = workflow(function* () {
       return createActivityCall("getPumpedUp", [], undefined, 100);
@@ -300,7 +310,125 @@ describe("activity", () =>
         commands: [],
       });
     });
-  }));
+  });
+
+  describe("finish activity", () => {
+    describe("complete own activity", () => {
+      const wf = workflow(function* () {
+        const act = createActivityCall("getPumpedUp", [], undefined, 100);
+        yield createSleepForCall(100);
+        yield createFinishActivityCall(
+          { seq: 0, type: ActivityTargetType.OwnActivity },
+          Result.resolved("hi")
+        );
+        return act;
+      });
+
+      test("finish first", () => {
+        expect(
+          interpret(wf.definition(undefined, context), [
+            activityScheduled("getPumpedUp", 0),
+            scheduledSleep("", 1),
+            completedSleep(1),
+            activityFinished("", 0, 2),
+          ])
+        ).toMatchObject<WorkflowResult>({
+          result: Result.resolved("hi"),
+          commands: [],
+        });
+      });
+
+      test("complete own after real complete", () => {
+        expect(
+          interpret(wf.definition(undefined, context), [
+            activityScheduled("getPumpedUp", 0),
+            scheduledSleep("", 1),
+            activityCompleted("bye", 0),
+            completedSleep(1),
+            activityFinished("", 0, 2),
+          ])
+        ).toMatchObject<WorkflowResult>({
+          result: Result.resolved("bye"),
+          commands: [],
+        });
+      });
+    });
+
+    test("fail own activity", () => {
+      const wf = workflow(function* () {
+        const act = createActivityCall("getPumpedUp", [], undefined, 100);
+        yield createFinishActivityCall(
+          { seq: 0, type: ActivityTargetType.OwnActivity },
+          Result.failed(new Timeout())
+        );
+        return act;
+      });
+      expect(
+        interpret(wf.definition(undefined, context), [
+          activityScheduled("getPumpedUp", 0),
+          activityFinished("", 0, 1),
+        ])
+      ).toMatchObject<WorkflowResult>({
+        result: Result.failed(new Timeout()),
+        commands: [],
+      });
+    });
+
+    describe("complete external activity", () => {
+      test("finish", () => {
+        const wf = workflow(function* () {
+          const act = createActivityCall("getPumpedUp", [], undefined, 100);
+          yield createFinishActivityCall(
+            {
+              type: ActivityTargetType.ActivityToken,
+              activityToken: createActivityToken("exec1", 100),
+            },
+            Result.failed(new Timeout())
+          );
+          return act;
+        });
+        expect(
+          interpret(wf.definition(undefined, context), [
+            activityScheduled("getPumpedUp", 0),
+            activityFinished("exec1", 100, 1),
+          ])
+        ).toMatchObject<WorkflowResult>({
+          commands: [],
+        });
+      });
+
+      test("command", () => {
+        const wf = workflow(function* () {
+          const act = createActivityCall("getPumpedUp", [], undefined, 100);
+          yield createFinishActivityCall(
+            {
+              type: ActivityTargetType.ActivityToken,
+              activityToken: createActivityToken("exec1", 100),
+            },
+            Result.failed(new Timeout())
+          );
+          return act;
+        });
+        expect(
+          interpret(wf.definition(undefined, context), [
+            activityScheduled("getPumpedUp", 0),
+          ])
+        ).toMatchObject<WorkflowResult>({
+          commands: [
+            createFinishActivityCommand(
+              Result.failed(new Timeout()),
+              {
+                type: ActivityTargetType.ActivityToken,
+                activityToken: createActivityToken("exec1", 100),
+              },
+              1
+            ),
+          ],
+        });
+      });
+    });
+  });
+});
 
 test("should throw when scheduled does not correspond to call", () => {
   expect(() =>

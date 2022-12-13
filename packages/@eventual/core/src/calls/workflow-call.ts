@@ -1,7 +1,7 @@
 import {
+  CommandCallBase,
   createEventual,
   Eventual,
-  EventualBase,
   EventualKind,
   isEventualOfKind,
 } from "../eventual.js";
@@ -24,11 +24,10 @@ export function isWorkflowCall<T>(a: Eventual<T>): a is WorkflowCall<T> {
  * An {@link Eventual} representing an awaited call to a {@link Workflow}.
  */
 export interface WorkflowCall<T = any>
-  extends EventualBase<EventualKind.WorkflowCall, Result<T>>,
+  extends CommandCallBase<EventualKind.WorkflowCall, Result<T>>,
     ChildExecution {
   name: string;
   input?: any;
-  seq?: number;
   opts?: WorkflowOptions;
 }
 

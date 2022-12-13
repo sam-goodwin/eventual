@@ -1,9 +1,11 @@
 import { EventEnvelope } from "./event.js";
+import { ActivityTarget, Failed, Resolved } from "./index.js";
 import { SignalTarget } from "./signals.js";
 import { WorkflowOptions } from "./workflow.js";
 
 export type Command =
   | ExpectSignalCommand
+  | FinishActivityCommand
   | ScheduleActivityCommand
   | ScheduleWorkflowCommand
   | PublishEventsCommand
@@ -19,6 +21,7 @@ interface CommandBase<T extends CommandType> {
 
 export enum CommandType {
   ExpectSignal = "ExpectSignal",
+  FinishActivity = "FinishActivity",
   PublishEvents = "PublishEvents",
   SendSignal = "SendSignal",
   SleepFor = "SleepFor",
@@ -46,6 +49,18 @@ export function isScheduleActivityCommand(
   a: Command
 ): a is ScheduleActivityCommand {
   return a.kind === CommandType.StartActivity;
+}
+
+export interface FinishActivityCommand
+  extends CommandBase<CommandType.FinishActivity> {
+  target: ActivityTarget;
+  outcome: Resolved<any> | Failed;
+}
+
+export function isFinishActivityCommand(
+  a: Command
+): a is FinishActivityCommand {
+  return a.kind === CommandType.FinishActivity;
 }
 
 // TODO support a timeout at the parent workflow level. The current timeout fails the whole workflow and not just the waiter.

@@ -6,7 +6,7 @@ import {
   EventualCallCollector,
 } from "./eventual.js";
 import { isAwaitAll } from "./await-all.js";
-import { isActivityCall } from "./calls/activity-call.js";
+import { isActivityCall, isFinishActivityCall } from "./calls/activity-call.js";
 import {
   DeterminismError,
   HeartbeatTimeout,
@@ -36,6 +36,7 @@ import {
   isActivityTimedOut,
   isActivityHeartbeatTimedOut,
   isEventsPublished,
+  isActivityFinished,
 } from "./workflow-events.js";
 import {
   Result,
@@ -66,6 +67,7 @@ import { isAwaitAllSettled } from "./await-all-settled.js";
 import { isAwaitAny } from "./await-any.js";
 import { isRace } from "./race.js";
 import { isPublishEventsCall } from "./calls/send-events-call.js";
+import { ActivityTargetType } from "./index.js";
 
 export interface WorkflowResult<T = any> {
   /**
@@ -240,6 +242,13 @@ export function interpret<Return>(
         seq: call.seq!,
         events: call.events,
       };
+    } else if (isFinishActivityCall(call)) {
+      return {
+        kind: CommandType.FinishActivity,
+        seq: call.seq!,
+        outcome: call.outcome,
+        target: call.target,
+      };
     }
 
     return assertNever(call);
@@ -269,6 +278,18 @@ export function interpret<Return>(
         if (isCommandCall(activity)) {
           if (isExpectSignalCall(activity)) {
             subscribeToSignal(activity.signalId, activity);
+          } else if (isFinishActivityCall(activity)) {
+            if (activity.target.type === ActivityTargetType.OwnActivity) {
+              const act = callTable[activity.target.seq];
+              if (act === undefined) {
+                throw new DeterminismError(
+                  `Call for seq ${activity.target.seq} was not emitted.`
+                );
+              }
+              if (!act.result) {
+                act.result = activity.outcome;
+              }
+            }
           } else if (isConditionCall(activity)) {
             // if the condition is resolvable, don't add it to the calls.
             const result = tryResolveResult(activity);
@@ -551,6 +572,8 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
     return isConditionCall(call);
   } else if (isEventsPublished(event)) {
     return isPublishEventsCall(call);
+  } else if (isActivityFinished(event)) {
+    return isFinishActivityCall(call);
   }
   return assertNever(event);
 }

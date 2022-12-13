@@ -10,7 +10,7 @@ import { Execution, ExecutionStatus } from "../../execution.js";
 import { Signal } from "../../signals.js";
 import { Workflow, WorkflowInput, WorkflowOptions } from "../../workflow.js";
 import { decodeActivityToken } from "../activity-token.js";
-import { ActivityRuntimeClient } from "./activity-runtime-client.js";
+import { ActivityRuntimeClient, HeartbeatResponse } from "./activity-runtime-client.js";
 
 export abstract class WorkflowClient {
   constructor(private activityRuntimeClient: ActivityRuntimeClient) {}
@@ -107,7 +107,7 @@ export abstract class WorkflowClient {
     const execution = await this.getExecution(data.payload.executionId);
 
     if (execution?.status !== ExecutionStatus.IN_PROGRESS) {
-      return { cancelled: true };
+      return { closed: true };
     }
 
     return await this.activityRuntimeClient.heartbeatActivity(
@@ -121,13 +121,23 @@ export abstract class WorkflowClient {
     E extends ActivityCompleted | ActivityFailed
   >(activityToken: string, event: Omit<E, "seq" | "duration" | "timestamp">) {
     const data = decodeActivityToken(activityToken);
-    await this.submitWorkflowTask(
-      data.payload.executionId,
-      createEvent<ActivityCompleted | ActivityFailed>({
-        ...event,
-        seq: data.payload.seq,
-      })
-    );
+    // mark the activity as cancelled because we are supplying a value
+    const { alreadyClosed: alreadyCancelled } =
+      await this.activityRuntimeClient.closeActivity(
+        data.payload.executionId,
+        data.payload.seq
+      );
+    if (!alreadyCancelled) {
+      await this.submitWorkflowTask(
+        data.payload.executionId,
+        createEvent<ActivityCompleted | ActivityFailed>({
+          ...event,
+          seq: data.payload.seq,
+        })
+      );
+    } else {
+      throw new Error("Activity already completed.");
+    }
   }
 }
 
@@ -192,11 +202,3 @@ export interface HeartbeatRequest {
   activityToken: string;
 }
 
-export interface HeartbeatResponse {
-  /**
-   * True when the activity has been cancelled.
-   *
-   * This is the only way for a long running activity to know it was canelled.
-   */
-  cancelled: boolean;
-}

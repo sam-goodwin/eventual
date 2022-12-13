@@ -1,5 +1,14 @@
-import { createActivityCall } from "./calls/activity-call.js";
-import { callableActivities, getActivityContext } from "./global.js";
+import {
+  createActivityCall,
+  createFinishActivityCall,
+} from "./calls/activity-call.js";
+import { ActivityCancelled, EventualError } from "./error.js";
+import {
+  callableActivities,
+  getActivityContext,
+  getWorkflowClient,
+} from "./global.js";
+import { Result } from "./result.js";
 import { isActivityWorker, isOrchestratorWorker } from "./runtime/flags.js";
 
 export interface ActivityOptions {
@@ -43,6 +52,9 @@ export interface ActivityHandler<
 export type UnwrapAsync<Output> = Output extends AsyncResult<infer O>
   ? O
   : Output;
+
+export type ActivityOutput<A extends ActivityFunction<any, any>> =
+  A extends ActivityFunction<any, infer O> ? UnwrapAsync<O> : never;
 
 const AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
 
@@ -145,6 +157,84 @@ export function activity<Arguments extends any[], Output extends any = any>(
       Arguments,
       Output
     >;
+  }
+}
+
+export type ActivityTarget = OwnActivityTarget | ActivityTokenTarget;
+
+export enum ActivityTargetType {
+  OwnActivity,
+  ActivityToken,
+}
+
+export interface OwnActivityTarget {
+  type: ActivityTargetType.OwnActivity;
+  seq: number;
+}
+
+export interface ActivityTokenTarget {
+  type: ActivityTargetType.ActivityToken;
+  activityToken: string;
+}
+
+export function completeActivity<A extends ActivityFunction<any, any> = any>(
+  activityToken: string,
+  result: ActivityOutput<A>
+): Promise<void> {
+  if (isOrchestratorWorker()) {
+    return createFinishActivityCall(
+      {
+        type: ActivityTargetType.ActivityToken,
+        activityToken,
+      },
+      result
+    ) as any;
+  } else {
+    return getWorkflowClient().completeActivity({ activityToken, result });
+  }
+}
+
+export function failActivity(
+  activityToken: string,
+  error: Error
+): Promise<void>;
+export function failActivity(
+  activityToken: string,
+  error: string,
+  message: string
+): Promise<void>;
+export function failActivity(
+  activityToken: string,
+  ...args: [error: Error] | [error: string, message: string]
+): Promise<void> {
+  const error =
+    args.length === 1 ? args[0] : new EventualError(args[0], args[1]);
+  if (isOrchestratorWorker()) {
+    return createFinishActivityCall(
+      {
+        type: ActivityTargetType.ActivityToken,
+        activityToken,
+      },
+      Result.failed(error)
+    ) as any;
+  } else {
+    return getWorkflowClient().failActivity({
+      activityToken,
+      error: error.name,
+      message: error.message,
+    });
+  }
+}
+
+export function cancelActivity(
+  activityToken: string,
+  reason: string
+): Promise<void> {
+  if (isOrchestratorWorker()) {
+    // not a real promise, do not await
+    return failActivity(activityToken, new ActivityCancelled(reason)) as any;
+  } else {
+    return failActivity(activityToken, new ActivityCancelled(reason));
   }
 }
 

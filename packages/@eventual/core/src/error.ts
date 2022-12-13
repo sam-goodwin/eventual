@@ -66,6 +66,16 @@ export class HeartbeatTimeout extends Timeout {
     this.name = "HeartbeatTimeout";
   }
 }
+
+/**
+ * Thrown when an activity was cancelled by the workflow.
+ */
+export class ActivityCancelled extends EventualError {
+  constructor(reason: string) {
+    super("ActivityCancelled", reason);
+  }
+}
+
 /**
  * Thrown when a particular context only support synchronous operations (ex: condition predicate).
  */

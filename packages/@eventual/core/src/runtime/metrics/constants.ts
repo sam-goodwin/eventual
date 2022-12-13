@@ -162,6 +162,10 @@ export namespace ActivityMetrics {
    * amount of time it took to submit a workflow task to SQS to resume the workflow.
    */
   export const SubmitWorkflowTaskDuration = "SubmitWorkflowTaskDuration";
+  /**
+   * amount of time it took to make the activity as cancelled.
+   */
+  export const CancelActivityDuration = "CancelActivityDuration";
 }
 
 export namespace SchedulerForwarderMetrics {

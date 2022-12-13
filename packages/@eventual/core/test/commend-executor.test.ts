@@ -14,6 +14,7 @@ import {
   WorkflowEventType,
 } from "../src/workflow-events.js";
 import {
+  ActivityRuntimeClient,
   EventClient,
   EventEnvelope,
   formatChildExecutionName,
@@ -45,12 +46,16 @@ const mockWorkflowRuntimeClient = {
 const mockEventClient = {
   publish: jest.fn() as EventClient["publish"],
 } satisfies Partial<EventClient> as EventClient;
+const mockActivityRuntimeClient = {
+  closeActivity: jest.fn() as ActivityRuntimeClient["closeActivity"],
+} satisfies Partial<ActivityRuntimeClient> as ActivityRuntimeClient;
 
 const testExecutor = new CommandExecutor({
   timerClient: mockTimerClient,
   workflowClient: mockWorkflowClient,
   workflowRuntimeClient: mockWorkflowRuntimeClient,
   eventClient: mockEventClient,
+  activityRuntimeClient: mockActivityRuntimeClient,
 });
 
 const workflow = {

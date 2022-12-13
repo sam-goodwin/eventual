@@ -227,9 +227,23 @@ export function createActivityWorker({
         event: ActivityCompleted | ActivityFailed,
         duration: number
       ) {
-        await timed(metrics, ActivityMetrics.SubmitWorkflowTaskDuration, () =>
-          workflowClient.submitWorkflowTask(request.executionId, event)
+        const { alreadyClosed } = await timed(
+          metrics,
+          ActivityMetrics.SubmitWorkflowTaskDuration,
+          () =>
+            activityRuntimeClient.closeActivity(
+              request.executionId,
+              request.command.seq
+            )
         );
+        // if an activity is closed, do not send the result on completion.
+        if (alreadyClosed) {
+          await timed(metrics, ActivityMetrics.SubmitWorkflowTaskDuration, () =>
+            workflowClient.submitWorkflowTask(request.executionId, event)
+          );
+        } else {
+          logger.info("Activity was already closed, do not emit result.");
+        }
 
         logActivityCompleteMetrics(isWorkflowFailed(event), duration);
       }

@@ -67,7 +67,7 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
     executionId: string,
     seq: number,
     heartbeatTime: string
-  ): Promise<{ cancelled: boolean }> {
+  ): Promise<{ closed: boolean }> {
     const item = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
@@ -86,27 +86,36 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
     );
 
     return {
-      cancelled:
-        (item.Attributes as ActivityExecutionRecord).cancelled?.BOOL ?? false,
+      closed:
+        (item.Attributes as ActivityExecutionRecord).closed?.BOOL ?? false,
     };
   }
 
-  async cancelActivity(executionId: string, seq: number) {
-    await this.props.dynamo.send(
+  /**
+   * An activity execution is closed when it already has a result (completed or failed).
+   *
+   * Close the activity to prevent others from emitting events for it and report to the activity worker
+   * that the activity is no longer able to report a result.
+   */
+  async closeActivity(executionId: string, seq: number) {
+    const item = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
           pk: { S: ActivityExecutionRecord.key(executionId, seq) },
         },
         UpdateExpression:
-          "SET cancelled=:cancelled, executionId = :executionId, seq = :seq",
+          "SET closed=:closed, executionId = :executionId, seq = :seq",
         ExpressionAttributeValues: {
-          ":cancelled": { BOOL: true },
+          ":closed": { BOOL: true },
           ":executionId": { S: executionId },
           ":seq": { N: `${seq}` },
         },
         TableName: this.props.activityTableName,
+        ReturnValues: ReturnValue.UPDATED_OLD,
       })
     );
+
+    return { alreadyClosed: item.Attributes?.["closed"]?.BOOL ?? false };
   }
 
   async getActivity(
@@ -132,7 +141,7 @@ export interface ActivityExecutionRecord {
   executionId: AttributeValue.SMember;
   seq: AttributeValue.NMember;
   heartbeatTime?: AttributeValue.SMember;
-  cancelled?: AttributeValue.BOOLMember;
+  closed?: AttributeValue.BOOLMember;
 }
 
 export namespace ActivityExecutionRecord {
@@ -148,7 +157,7 @@ function createActivityFromRecord(
   return {
     executionId: activityRecord.executionId.S,
     seq: Number(activityRecord.seq.N),
-    cancelled: Boolean(activityRecord.cancelled?.BOOL ?? false),
+    closed: Boolean(activityRecord.closed?.BOOL ?? false),
     heartbeatTime: activityRecord?.heartbeatTime?.S,
   };
 }

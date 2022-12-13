@@ -1,6 +1,6 @@
 import {
+  CommandCallBase,
   createEventual,
-  EventualBase,
   EventualKind,
   isEventualOfKind,
 } from "../eventual.js";
@@ -16,9 +16,8 @@ export function isRegisterSignalHandlerCall(
 }
 
 export interface RegisterSignalHandlerCall<T = any>
-  extends EventualBase<EventualKind.RegisterSignalHandlerCall, Resolved>,
+  extends CommandCallBase<EventualKind.RegisterSignalHandlerCall, Resolved>,
     SignalsHandler {
-  seq?: number;
   signalId: string;
   handler: (input: T) => Program | void;
 }

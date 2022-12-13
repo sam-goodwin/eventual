@@ -1,8 +1,8 @@
 import {
   EventualKind,
-  EventualBase,
   isEventualOfKind,
   createEventual,
+  CommandCallBase,
 } from "../eventual.js";
 import { registerEventual } from "../global.js";
 import { EventEnvelope } from "../event.js";
@@ -13,8 +13,7 @@ export function isPublishEventsCall(a: any): a is PublishEventsCall {
 }
 
 export interface PublishEventsCall
-  extends EventualBase<EventualKind.PublishEventsCall, Resolved<void>> {
-  seq?: number;
+  extends CommandCallBase<EventualKind.PublishEventsCall, Resolved<void>> {
   events: EventEnvelope[];
   id?: string;
 }

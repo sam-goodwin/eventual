@@ -1,7 +1,9 @@
 import {
   Command,
   ExpectSignalCommand,
+  FinishActivityCommand,
   isExpectSignalCommand,
+  isFinishActivityCommand,
   isPublishEventsCommand,
   isScheduleActivityCommand,
   isScheduleWorkflowCommand,
@@ -31,13 +33,23 @@ import {
   ConditionStarted,
   ConditionTimedOut,
   SignalSent,
+  ActivityFinished,
+  ActivityCompleted,
+  ActivityFailed,
 } from "../workflow-events.js";
-import { EventsPublished, isChildExecutionTarget } from "../index.js";
+import {
+  ActivityTargetType,
+  EventsPublished,
+  isChildExecutionTarget,
+  isResolved,
+} from "../index.js";
 import { assertNever } from "../util.js";
 import { Workflow } from "../workflow.js";
 import { formatChildExecutionName, formatExecutionId } from "./execution-id.js";
 import { ActivityWorkerRequest } from "./handlers/activity-worker.js";
 import {
+  ActivityRuntimeClient,
+  decodeActivityToken,
   EventClient,
   Schedule,
   TimerClient,
@@ -50,6 +62,7 @@ interface CommandExecutorProps {
   timerClient: TimerClient;
   workflowClient: WorkflowClient;
   eventClient: EventClient;
+  activityRuntimeClient: ActivityRuntimeClient;
 }
 
 /**
@@ -81,6 +94,8 @@ export class CommandExecutor {
       return startCondition(command);
     } else if (isPublishEventsCommand(command)) {
       return publishEvents(command);
+    } else if (isFinishActivityCommand(command)) {
+      return finishActivity(command);
     } else {
       return assertNever(command, `unknown command type`);
     }
@@ -234,6 +249,55 @@ export class CommandExecutor {
         events: command.events,
         seq: command.seq!,
       });
+    }
+
+    async function finishActivity(command: FinishActivityCommand) {
+      if (command.target.type === ActivityTargetType.OwnActivity) {
+        await self.props.activityRuntimeClient.closeActivity(
+          executionId,
+          command.target.seq
+        );
+        return createEvent<ActivityFinished>({
+          executionId,
+          activitySeq: command.target.seq,
+          seq: command.seq,
+          type: WorkflowEventType.ActivityFinished,
+        });
+      } else {
+        const data = decodeActivityToken(command.target.activityToken);
+        if (isResolved(command.outcome)) {
+          await self.props.workflowClient.submitWorkflowTask(
+            data.payload.executionId,
+            createEvent<ActivityCompleted>({
+              type: WorkflowEventType.ActivityCompleted,
+              seq: data.payload.seq,
+              result: command.outcome.value,
+            })
+          );
+        } else {
+          await self.props.workflowClient.submitWorkflowTask(
+            data.payload.executionId,
+            createEvent<ActivityFailed>({
+              type: WorkflowEventType.ActivityFailed,
+              seq: data.payload.seq,
+              error:
+                command.outcome.error instanceof Error
+                  ? command.outcome.error.name
+                  : "Error",
+              message:
+                command.outcome.error instanceof Error
+                  ? command.outcome.error.message
+                  : JSON.stringify(command.outcome.error),
+            })
+          );
+        }
+        return createEvent<ActivityFinished>({
+          executionId: data.payload.executionId,
+          activitySeq: data.payload.seq,
+          seq: command.seq,
+          type: WorkflowEventType.ActivityFinished,
+        });
+      }
     }
   }
 }
