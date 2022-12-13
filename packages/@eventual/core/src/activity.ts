@@ -33,7 +33,28 @@ export interface ActivityFunction<
 > {
   (...args: Arguments): Promise<Awaited<UnwrapAsync<Output>>>;
 
-  complete(request: CompleteActivityRequest): Promise<void>;
+  /**
+   * Complete an activity request by its {@link CompleteActivityRequest.activityToken}.
+   *
+   * This method is used in conjunction with {@link asyncResult} in an activity
+   * to perform asynchronous, long-running computations. For example:
+   *
+   * ```ts
+   * const tokenEvent = event("token");
+   *
+   * const asyncActivity = activity("async", () => {
+   *   return asyncResult<string>(token => tokenEvent.publish({ token }));
+   * });
+   *
+   * tokenEvent.on(async ({token}) => {
+   *   await asyncActivity.complete({
+   *     activityToken: token,
+   *     result: "done"
+   *   });
+   * })
+   * ```
+   */
+  complete(request: CompleteActivityRequest<Awaited<Output>>): Promise<void>;
 }
 
 export interface ActivityHandler<
