@@ -29,3 +29,8 @@ new eventual.Service(stack, "my-service", {
   name: "my-service",
   entry: require.resolve("test-app-runtime/lib/my-workflow.js"),
 });
+
+new eventual.Service(stack, "slack-bot", {
+  name: "slack-bot",
+  entry: require.resolve("test-app-runtime/lib/slack-bot.js"),
+});

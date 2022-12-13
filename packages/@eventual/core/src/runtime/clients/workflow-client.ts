@@ -71,7 +71,7 @@ export abstract class WorkflowClient {
    * Completes an async activity causing it to return the given value.
    */
   public async completeActivity({
-    activityToken,
+    activityToken: activityToken,
     result,
   }: CompleteActivityRequest): Promise<void> {
     await this.sendActivityResult<ActivityCompleted>(activityToken, {
@@ -84,7 +84,7 @@ export abstract class WorkflowClient {
    * Fails an async activity causing it to throw the given error.
    */
   public async failActivity({
-    activityToken,
+    activityToken: activityToken,
     error,
     message,
   }: FailActivityRequest): Promise<void> {
@@ -187,9 +187,9 @@ export interface StartWorkflowResponse {
   executionId: string;
 }
 
-export interface CompleteActivityRequest {
+export interface CompleteActivityRequest<T = any> {
   activityToken: string;
-  result: any;
+  result: T;
 }
 
 export interface FailActivityRequest {

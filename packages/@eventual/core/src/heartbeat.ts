@@ -4,7 +4,7 @@ import { isActivityWorker, isOrchestratorWorker } from "./runtime/flags.js";
 
 /**
  * Sends a heartbeat for the current activity or to the provided activity token.
- * 
+ *
  * If called from outside of an {@link activity}, the activity token must be provided.
  *
  * If the activity has a heartbeatTimeout set and the workflow has not received a heartbeat in heartbeatTimeoutSeconds,
@@ -21,7 +21,7 @@ export async function heartbeat(
     );
   } else if (activityToken) {
     return await getWorkflowClient().heartbeatActivity({
-      activityToken,
+      activityToken: activityToken,
     });
   } else if (isActivityWorker()) {
     const token = getActivityContext().activityToken;

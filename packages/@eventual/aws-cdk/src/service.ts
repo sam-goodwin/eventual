@@ -136,8 +136,10 @@ export class Service extends Construct implements IGrantable {
     this.api = new Api(this, "Api", {
       serviceName: this.serviceName,
       environment: props.environment,
+      activities: this.activities,
       workflows: this.workflows,
       events: this.events,
+      scheduler: this.scheduler,
     });
 
     this.grantPrincipal = new CompositePrincipal(

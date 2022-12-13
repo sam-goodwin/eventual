@@ -6,6 +6,7 @@
     "test": "cdk synth",
     "cdk": "cdk",
     "deploy": "cdk deploy --require-approval=never",
+    "deploy:slack-bot": "cdk deploy --require-approval=never --app 'ts-node ./src/slack-bot.ts'",
     "hotswap": "cdk deploy --hotswap --require-approval=never",
     "eventual": "eventual",
     "start-my-workflow": "eventual start my-service my-workflow --input '{\"name\": \"world\"}' --tail"

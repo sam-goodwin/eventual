@@ -1,7 +1,4 @@
-import {
-  createActivityCall,
-  createOverrideActivityCall,
-} from "./calls/activity-call.js";
+import { createActivityCall, createOverrideActivityCall } from "./calls/activity-call.js";
 import { ActivityCancelled, EventualError } from "./error.js";
 import {
   callableActivities,
@@ -9,6 +6,7 @@ import {
   getWorkflowClient,
 } from "./global.js";
 import { Result } from "./result.js";
+import { CompleteActivityRequest } from "./runtime/clients/workflow-client.js";
 import { isActivityWorker, isOrchestratorWorker } from "./runtime/flags.js";
 
 export interface ActivityOptions {
@@ -37,6 +35,29 @@ export interface ActivityFunction<
 > {
   (...args: Arguments): Promise<Awaited<UnwrapAsync<Output>>> &
     ActivityExecutionReference<UnwrapAsync<Output>>;
+
+  /**
+   * Complete an activity request by its {@link CompleteActivityRequest.activityToken}.
+   *
+   * This method is used in conjunction with {@link asyncResult} in an activity
+   * to perform asynchronous, long-running computations. For example:
+   *
+   * ```ts
+   * const tokenEvent = event("token");
+   *
+   * const asyncActivity = activity("async", () => {
+   *   return asyncResult<string>(token => tokenEvent.publish({ token }));
+   * });
+   *
+   * tokenEvent.on(async ({token}) => {
+   *   await asyncActivity.complete({
+   *     activityToken: token,
+   *     result: "done"
+   *   });
+   * })
+   * ```
+   */
+  complete(request: CompleteActivityRequest<Awaited<Output>>): Promise<void>;
 }
 
 export interface ActivityHandler<
@@ -139,9 +160,10 @@ export function activity<Arguments extends any[], Output extends any = any>(
     | [handler: ActivityHandler<Arguments, Output>]
 ): ActivityFunction<Arguments, Output> {
   const [opts, handler] = args.length === 1 ? [undefined, args[0]] : args;
+  let func: ActivityFunction<Arguments, Output>;
   if (isOrchestratorWorker()) {
     // if we're in the orchestrator, return a command to invoke the activity in the worker function
-    return ((...args: Parameters<ActivityFunction<Arguments, Output>>) => {
+    func = ((...args: Parameters<ActivityFunction<Arguments, Output>>) => {
       return createActivityCall(
         activityID,
         args,
@@ -154,11 +176,15 @@ export function activity<Arguments extends any[], Output extends any = any>(
     // register the handler to be looked up during execution.
     callableActivities()[activityID] = handler;
     // calling the activity from outside the orchestrator just calls the handler
-    return ((...args) => handler(...args)) as ActivityFunction<
+    func = ((...args) => handler(...args)) as ActivityFunction<
       Arguments,
       Output
     >;
   }
+  func.complete = async function (request) {
+    return getWorkflowClient().completeActivity(request);
+  };
+  return func;
 }
 
 export type ActivityTarget = OwnActivityTarget | ActivityTokenTarget;

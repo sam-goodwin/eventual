@@ -3,6 +3,8 @@ import {
   ExecutionID,
   HistoryStateEvent,
   parseWorkflowName,
+  ServiceType,
+  SERVICE_TYPE_FLAG,
 } from "@eventual/core";
 import { Argv } from "yargs";
 import { bundleService } from "@eventual/compiler";
@@ -28,6 +30,7 @@ export const replay = (yargs: Argv) =>
           demandOption: true,
         }),
     serviceAction(async (spinner, ky, { entry, service, execution }) => {
+      process.env[SERVICE_TYPE_FLAG] = ServiceType.OrchestratorWorker;
       const encodedExecutionId = encodeExecutionId(execution);
       spinner.start("Constructing replay...");
       const [, events] = await Promise.all([
@@ -44,6 +47,7 @@ export const replay = (yargs: Argv) =>
         throw new Error(`Workflow ${workflowName} not found!`);
       }
       spinner.start("Running program");
+
       const res = orchestrator(workflow, events);
       spinner.succeed();
       console.log(res);
