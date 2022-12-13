@@ -1,4 +1,7 @@
-import { createActivityCall, createOverrideActivityCall } from "./calls/activity-call.js";
+import {
+  createActivityCall,
+  createOverrideActivityCall,
+} from "./calls/activity-call.js";
 import { ActivityCancelled, EventualError } from "./error.js";
 import {
   callableActivities,
@@ -181,8 +184,8 @@ export function activity<Arguments extends any[], Output extends any = any>(
       Output
     >;
   }
-  func.complete = async function (request) {
-    return getWorkflowClient().completeActivity(request);
+  func.complete = function (request) {
+    return completeActivity(request.activityToken, request.result);
   };
   return func;
 }
