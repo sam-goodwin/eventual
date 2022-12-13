@@ -194,7 +194,6 @@ export interface ActivityExecutionReference<T = any> {
    * If the activity is calling {@link heartbeat}, closed: true will be
    * return to signal the workflow considers the activity finished.
    */
-
   fail: (
     ...args: [error: Error] | [error: string, message: string]
   ) => Promise<void>;
