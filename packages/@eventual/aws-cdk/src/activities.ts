@@ -87,10 +87,12 @@ export class Activities extends Construct implements IActivities, IGrantable {
 
   public configureCompleteActivity(func: Function) {
     this.props.workflows.configureSendWorkflowEvent(func);
+    this.configureUpdateActivity(func);
   }
 
   public grantCompleteActivity(grantable: IGrantable) {
     this.props.workflows.grantSendWorkflowEvent(grantable);
+    this.grantUpdateActivity(grantable);
   }
 
   public configureUpdateActivity(func: Function) {

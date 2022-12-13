@@ -174,7 +174,7 @@ export function createActivityWorker({
           endTime
         );
 
-        await overrideActivity(
+        await finishActivity(
           event,
           recordAge + (endTime.getTime() - start.getTime())
         );
@@ -200,7 +200,7 @@ export function createActivityWorker({
           endTime
         );
 
-        await overrideActivity(
+        await finishActivity(
           event,
           recordAge + (endTime.getTime() - start.getTime())
         );
@@ -223,7 +223,7 @@ export function createActivityWorker({
         metrics.putMetric(ActivityMetrics.TotalDuration, duration);
       }
 
-      async function overrideActivity(
+      async function finishActivity(
         event: ActivityCompleted | ActivityFailed,
         duration: number
       ) {
@@ -237,7 +237,7 @@ export function createActivityWorker({
             )
         );
         // if an activity is closed, do not send the result on completion.
-        if (alreadyClosed) {
+        if (!alreadyClosed) {
           await timed(metrics, ActivityMetrics.SubmitWorkflowTaskDuration, () =>
             workflowClient.submitWorkflowTask(request.executionId, event)
           );

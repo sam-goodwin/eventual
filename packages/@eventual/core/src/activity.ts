@@ -189,7 +189,7 @@ export function completeActivity<A extends ActivityFunction<any, any> = any>(
         type: ActivityTargetType.ActivityToken,
         activityToken,
       },
-      result
+      Result.resolved(result)
     ) as any;
   } else {
     return getWorkflowClient().completeActivity({ activityToken, result });

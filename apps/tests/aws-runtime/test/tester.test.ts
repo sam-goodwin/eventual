@@ -36,7 +36,7 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
     { status: "fulfilled", value: ["HELLO SAM", "HELLO CHRIS", "HELLO SAM"] },
     { status: "fulfilled", value: ["hello sam", "hello chris", "hello sam"] },
     { status: "fulfilled", value: "hello sam" },
-    { status: "rejected", reason: "Error" },
+    { status: "rejected", reason: { name: "Error", message: "failed" } },
   ]);
 
   testCompletion("parent-child", parentWorkflow, "done");
@@ -50,7 +50,10 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
 
   testCompletion("asyncActivities", asyncWorkflow, [
     "hello from the async writer!",
-    "AsyncWriterError",
+    {
+      name: "AsyncWriterError",
+      message: "I was told to fail this activity, sorry.",
+    },
   ]);
 
   testCompletion("heartbeat", heartbeatWorkflow, 10, [
@@ -70,15 +73,24 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
 
   testCompletion("overrideActivities", overrideWorkflow, [
     [
-      { status: "rejected", reason: new ActivityCancelled("because") },
-      { status: "rejected", reason: new EventualError("ahhh", "because") },
+      { status: "rejected", reason: new ActivityCancelled("because").toJSON() },
+      {
+        status: "rejected",
+        reason: new EventualError("Error", "ahhh").toJSON(),
+      },
       { status: "fulfilled", value: "hi!" },
     ],
     [
       { status: "fulfilled", value: "from the event handler!" },
-      { status: "rejected", reason: new EventualError("Error", "WHY!!!") },
+      {
+        status: "rejected",
+        reason: new EventualError("Error", "WHY!!!").toJSON(),
+      },
       { status: "fulfilled", value: "from the signal handler!" },
-      { status: "rejected", reason: new EventualError("Error", "BECAUSE!!!") },
+      {
+        status: "rejected",
+        reason: new EventualError("Error", "BECAUSE!!!").toJSON(),
+      },
     ],
     { token: "", type: "complete" },
   ]);

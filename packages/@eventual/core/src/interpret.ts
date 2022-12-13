@@ -12,6 +12,7 @@ import {
 } from "./calls/activity-call.js";
 import {
   DeterminismError,
+  EventualError,
   HeartbeatTimeout,
   SynchronousOperationError,
   Timeout,
@@ -491,7 +492,13 @@ export function interpret<Return>(
               (r): PromiseFulfilledResult<any> | PromiseRejectedResult =>
                 isResolved(r)
                   ? { status: "fulfilled", value: r.value }
-                  : { status: "rejected", reason: r.error }
+                  : {
+                      status: "rejected",
+                      reason:
+                        r.error instanceof Error
+                          ? new EventualError(r.error.name, r.error.message)
+                          : r.error,
+                    }
             )
           );
         }
@@ -554,7 +561,7 @@ export function interpret<Return>(
       ? Result.failed(new Timeout("Activity Timed Out"))
       : isActivityHeartbeatTimedOut(event)
       ? Result.failed(new HeartbeatTimeout("Activity Heartbeat TimedOut"))
-      : Result.failed(event.error);
+      : Result.failed(new EventualError(event.error, event.message));
   }
 }
 
