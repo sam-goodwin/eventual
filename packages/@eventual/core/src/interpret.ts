@@ -496,7 +496,10 @@ export function interpret<Return>(
                       status: "rejected",
                       reason:
                         r.error instanceof Error
-                          ? new EventualError(r.error.name, r.error.message)
+                          ? new EventualError(
+                              r.error.name,
+                              r.error.message ?? undefined
+                            )
                           : r.error,
                     }
             )

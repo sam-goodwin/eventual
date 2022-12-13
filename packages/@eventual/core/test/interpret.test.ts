@@ -3,7 +3,12 @@ import {
   createOverrideActivityCall,
 } from "../src/calls/activity-call.js";
 import { chain } from "../src/chain.js";
-import { DeterminismError, HeartbeatTimeout, Timeout } from "../src/error.js";
+import {
+  DeterminismError,
+  EventualError,
+  HeartbeatTimeout,
+  Timeout,
+} from "../src/error.js";
 import {
   ActivityTargetType,
   Context,
@@ -166,7 +171,13 @@ test("should catch error of failed Activity", () => {
       activityFailed("error", 0),
     ])
   ).toMatchObject(<WorkflowResult>{
-    commands: [createScheduledActivityCommand("handle-error", ["error"], 1)],
+    commands: [
+      createScheduledActivityCommand(
+        "handle-error",
+        [new EventualError("error").toJSON()],
+        1
+      ),
+    ],
   });
 });
 
@@ -1066,7 +1077,7 @@ describe("Race", () => {
         activityCompleted("B", 1),
       ])
     ).toMatchObject(<WorkflowResult>{
-      result: Result.failed("A"),
+      result: Result.failed(new EventualError("A").toJSON()),
     });
 
     expect(
@@ -1076,7 +1087,7 @@ describe("Race", () => {
         activityFailed("B", 1),
       ])
     ).toMatchObject(<WorkflowResult>{
-      result: Result.failed("B"),
+      result: Result.failed(new EventualError("B").toJSON()),
     });
   });
 });
@@ -1146,8 +1157,8 @@ describe("AwaitAllSettled", () => {
       ])
     ).toMatchObject<WorkflowResult<PromiseSettledResult<string>[]>>({
       result: Result.resolved([
-        { status: "rejected", reason: "A" },
-        { status: "rejected", reason: "B" },
+        { status: "rejected", reason: new EventualError("A").toJSON() },
+        { status: "rejected", reason: new EventualError("B").toJSON() },
       ]),
       commands: [],
     });
@@ -1161,7 +1172,7 @@ describe("AwaitAllSettled", () => {
       ])
     ).toMatchObject<WorkflowResult<PromiseSettledResult<string>[]>>({
       result: Result.resolved([
-        { status: "rejected", reason: "A" },
+        { status: "rejected", reason: new EventualError("A").toJSON() },
         { status: "fulfilled", value: "B" },
       ]),
       commands: [],
@@ -1434,7 +1445,7 @@ test("workflow calling other workflow", () => {
       workflowFailed("error", 0),
     ])
   ).toMatchObject({
-    result: Result.failed("error"),
+    result: Result.failed(new EventualError("error").toJSON()),
     commands: [],
   });
 });

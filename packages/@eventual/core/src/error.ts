@@ -9,7 +9,7 @@ export class EventualError extends Error {
   toJSON() {
     return {
       name: this.name,
-      message: this.message,
+      ...(this.message ? { message: this.message } : {}),
     };
   }
 }
