@@ -1,53 +1,22 @@
 {
   "files": [],
   "references": [
-    {
-      "path": "packages/@eventual/compiler"
-    },
-    {
-      "path": "packages/@eventual/compiler/tsconfig.test.json"
-    },
-    {
-      "path": "packages/@eventual/core"
-    },
-    {
-      "path": "packages/@eventual/core/tsconfig.cjs.json"
-    },
-    {
-      "path": "packages/@eventual/compiler"
-    },
-    {
-      "path": "packages/@eventual/core/tsconfig.test.json"
-    },
-    {
-      "path": "packages/@eventual/aws-cdk"
-    },
-    {
-      "path": "packages/@eventual/aws-runtime"
-    },
-    {
-      "path": "packages/@eventual/aws-runtime/tsconfig.cjs.json"
-    },
-    {
-      "path": "packages/@eventual/integrations-slack"
-    },
-    {
-      "path": "packages/@eventual/integrations-slack/tsconfig.cjs.json"
-    },
-    {
-      "path": "packages/@eventual/cli"
-    },
-    {
-      "path": "apps/test-app"
-    },
-    {
-      "path": "apps/test-app-runtime"
-    },
-    {
-      "path": "apps/tests/aws-runtime"
-    },
-    {
-      "path": "apps/tests/aws-runtime-cdk"
-    }
+    { "path": "apps/test-app-runtime" },
+    { "path": "apps/test-app" },
+    { "path": "apps/tests/aws-runtime-cdk" },
+    { "path": "apps/tests/aws-runtime" },
+    { "path": "packages/@eventual/aws-cdk" },
+    { "path": "packages/@eventual/aws-runtime" },
+    { "path": "packages/@eventual/aws-runtime/tsconfig.cjs.json" },
+    { "path": "packages/@eventual/cli" },
+    { "path": "packages/@eventual/compiler" },
+    { "path": "packages/@eventual/compiler" },
+    { "path": "packages/@eventual/compiler/tsconfig.test.json" },
+    { "path": "packages/@eventual/core" },
+    { "path": "packages/@eventual/core/tsconfig.cjs.json" },
+    { "path": "packages/@eventual/core/tsconfig.test.json" },
+    { "path": "packages/@eventual/integrations-slack" },
+    { "path": "packages/@eventual/integrations-slack/tsconfig.cjs.json" },
+    { "path": "packages/create-eventual" }
   ]
 }
