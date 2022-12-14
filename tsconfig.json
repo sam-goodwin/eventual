@@ -48,6 +48,12 @@
     },
     {
       "path": "apps/tests/aws-runtime-cdk"
+    },
+    {
+      "path": "examples/stock-bot/runtime"
+    },
+    {
+      "path": "examples/stock-bot/infra"
     }
   ]
 }
