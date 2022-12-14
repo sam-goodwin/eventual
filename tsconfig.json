@@ -53,7 +53,7 @@
       "path": "examples/stock-bot/runtime"
     },
     {
-      "path": "examples/stock-bot/app"
+      "path": "examples/stock-bot/infra"
     }
   ]
 }
