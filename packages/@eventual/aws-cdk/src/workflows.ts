@@ -15,6 +15,7 @@ import {
 import { Construct } from "constructs";
 import { IActivities } from "./activities";
 import { Events } from "./events";
+import { OpenTelemetry } from "./opentelemetry";
 import { IScheduler } from "./scheduler";
 import { ServiceFunction } from "./service-function";
 import { addEnvironment } from "./utils";
@@ -24,6 +25,7 @@ export interface WorkflowsProps {
   activities: IActivities;
   table: ITable;
   events: Events;
+  openTelemetry: OpenTelemetry;
 }
 
 export interface IWorkflows {
@@ -198,5 +200,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.configureFullControl(this.orchestrator);
     // allows the workflow to cancel activities
     this.props.activities.configureUpdateActivity(this.orchestrator);
+    //Add opentelemetry to the functino
+    this.props.openTelemetry.configure(this.orchestrator);
   }
 }

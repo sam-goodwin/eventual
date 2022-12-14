@@ -4,7 +4,7 @@ import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-al
 import { ServiceType } from "@eventual/core";
 import { HttpMethod } from "aws-cdk-lib/aws-events";
 import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
-import { Code, Function } from "aws-cdk-lib/aws-lambda";
+import { Code, Function, Tracing } from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Arn, Stack } from "aws-cdk-lib";
 import { Construct } from "constructs";
@@ -161,6 +161,7 @@ export class Api extends Construct {
         "../../esm/handlers/api",
         entry
       ),
+      tracing: Tracing.ACTIVE,
       ...baseNodeFnProps,
     });
   }
@@ -169,6 +170,7 @@ export class Api extends Construct {
     return new Function(this, id, {
       code: Code.fromAsset(outDir(this, entry)),
       ...baseNodeFnProps,
+      tracing: Tracing.ACTIVE,
       handler: "index.handler",
     });
   }
