@@ -15,12 +15,14 @@ import { IScheduler } from "./scheduler";
 import { ServiceType } from "@eventual/core";
 import { ServiceFunction } from "./service-function";
 import { Events } from "./events";
+import { OpenTelemetry } from "./opentelemetry";
 
 export interface ActivitiesProps {
   workflows: IWorkflows;
   scheduler: IScheduler;
   environment?: Record<string, string>;
   events: Events;
+  openTelemetry: OpenTelemetry;
 }
 
 export interface IActivities {
@@ -151,5 +153,7 @@ export class Activities extends Construct implements IActivities, IGrantable {
     this.configureUpdateActivity(this.worker);
     // allows the activity worker to start the heartbeat monitor
     this.props.scheduler.configureScheduleTimer(this.worker);
+
+    this.props.openTelemetry.configure(this.worker);
   }
 }

@@ -21,6 +21,7 @@ import { Api } from "./service-api";
 import { outDir } from "./utils";
 import { IWorkflows, Workflows } from "./workflows";
 import { Events } from "./events";
+import { OpenTelemetry } from "./opentelemetry";
 
 export interface ServiceProps {
   entry: string;
@@ -103,12 +104,15 @@ export class Service extends Construct implements IGrantable {
     const proxyWorkflows = lazyInterface<IWorkflows>();
     const proxyActivities = lazyInterface<IActivities>();
 
+    const openTelemetry = new OpenTelemetry(this, "OpenTelemetry");
+
     this.events = new Events(this, "Events", {
       appSpec: this.appSpec,
       serviceName: this.serviceName,
       environment: props.environment,
       workflows: proxyWorkflows,
       activities: proxyActivities,
+      openTelemetry,
     });
 
     this.activities = new Activities(this, "Activities", {
@@ -116,6 +120,7 @@ export class Service extends Construct implements IGrantable {
       workflows: proxyWorkflows,
       environment: props.environment,
       events: this.events,
+      openTelemetry,
     });
     proxyActivities._bind(this.activities);
 
@@ -124,6 +129,7 @@ export class Service extends Construct implements IGrantable {
       activities: this.activities,
       table: this.table,
       events: this.events,
+      openTelemetry,
     });
     proxyWorkflows._bind(this.workflows);
 
