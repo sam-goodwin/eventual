@@ -54,6 +54,12 @@
     },
     {
       "path": "examples/lambda-test-runner/infra"
+    },
+    {
+      "path": "examples/stock-bot/runtime"
+    },
+    {
+      "path": "examples/stock-bot/infra"
     }
   ]
 }
