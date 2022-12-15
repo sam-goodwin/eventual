@@ -7,8 +7,8 @@ import { Function } from "aws-cdk-lib/aws-lambda";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import { IActivities } from "./activities";
-import { OpenTelemetry } from "./opentelemetry";
 import { ServiceFunction } from "./service-function";
+import { Telemetry } from "./telemetry";
 import { IWorkflows } from "./workflows";
 
 export interface EventsProps {
@@ -28,11 +28,7 @@ export interface EventsProps {
   readonly environment?: Record<string, string>;
   readonly workflows: IWorkflows;
   readonly activities: IActivities;
-
-  /**
-   * Added to the lambdas to supply opentelemetry collector and sdk
-   */
-  readonly openTelemetry: OpenTelemetry;
+  readonly telemetry: Telemetry;
 }
 
 export class Events extends Construct implements IGrantable {
@@ -70,8 +66,8 @@ export class Events extends Construct implements IGrantable {
       deadLetterQueue: this.deadLetterQueue,
       retryAttempts: 2,
       environment: props.environment,
+      telemetryEnv: props.telemetry.env,
     });
-    props.openTelemetry.configure(this.handler);
     this.grantPrincipal = this.handler.grantPrincipal;
     this.configurePublish(this.handler);
 

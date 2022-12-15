@@ -2,9 +2,9 @@ import "@eventual/entry/injected";
 
 import { createOrchestrator } from "@eventual/core";
 import middy from "@middy/core";
+import { SpanKind } from "@opentelemetry/api";
 import type { SQSEvent, SQSRecord } from "aws-lambda";
-import { logger, loggerMiddlewares } from "../logger.js";
-import { AWSMetricsClient } from "../clients/metrics-client.js";
+import { serviceName } from "src/env.js";
 import {
   createEventClient,
   createExecutionHistoryClient,
@@ -13,21 +13,17 @@ import {
   createWorkflowRuntimeClient,
   SQSWorkflowTaskMessage,
 } from "../clients/index.js";
-import { Resource } from "@opentelemetry/resources";
-import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
-import { NodeSDK } from "@opentelemetry/sdk-node";
-import { serviceName } from "src/env.js";
-
-new NodeSDK({
-  resource: new Resource({
-    [SemanticResourceAttributes.SERVICE_NAME]: serviceName(),
-  }),
-});
+import { AWSMetricsClient } from "../clients/metrics-client.js";
+import { logger, loggerMiddlewares } from "../logger.js";
+import { registerTelemetry } from "src/telemetry.js";
 
 /**
  * Creates an entrypoint function for orchestrating a workflow
  * from within an AWS Lambda Function attached to a SQS FIFO queue.
  */
+const traceProvider = registerTelemetry();
+const tracer = traceProvider.getTracer(serviceName());
+
 const orchestrate = createOrchestrator({
   executionHistoryClient: createExecutionHistoryClient(),
   timerClient: createTimerClient(),
@@ -36,9 +32,13 @@ const orchestrate = createOrchestrator({
   eventClient: createEventClient(),
   metricsClient: AWSMetricsClient,
   logger,
+  tracer,
 });
 
 export default middy(async (event: SQSEvent) => {
+  const orchestratorSpan = tracer.startSpan("orchestrator", {
+    kind: SpanKind.PRODUCER,
+  });
   if (event.Records.some((r) => !r.attributes.MessageGroupId)) {
     throw new Error("Expected SQS Records to contain fifo message id");
   }
@@ -63,12 +63,15 @@ export default middy(async (event: SQSEvent) => {
       recordsByExecutionId[executionId]?.map((record) => record.messageId) ?? []
   );
 
+  orchestratorSpan.end();
   return {
     batchItemFailures: failedMessageIds.map((r) => ({
       itemIdentifier: r,
     })),
   };
-}).use(loggerMiddlewares);
+})
+  .use(loggerMiddlewares)
+  .use({ after: () => traceProvider.forceFlush() });
 
 function sqsRecordsToEvents(sqsRecords: SQSRecord[]) {
   return sqsRecords.flatMap(sqsRecordToEvents);

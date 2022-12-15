@@ -43,6 +43,7 @@ import { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
 import { timed, timedSync } from "../metrics/utils.js";
 import { promiseAllSettledPartitioned } from "../utils.js";
+import { Tracer } from "@opentelemetry/api";
 
 /**
  * The Orchestrator's client dependencies.
@@ -55,6 +56,7 @@ export interface OrchestratorDependencies {
   metricsClient: MetricsClient;
   eventClient: EventClient;
   logger: Logger;
+  tracer: Tracer;
 }
 
 export interface OrchestratorResult {
@@ -78,6 +80,7 @@ export function createOrchestrator({
   metricsClient,
   eventClient,
   logger,
+  tracer,
 }: OrchestratorDependencies): (
   eventsByExecutionId: Record<string, HistoryStateEvent[]>
 ) => Promise<OrchestratorResult> {
@@ -111,7 +114,10 @@ export function createOrchestrator({
           throw new Error(`no such workflow with name '${workflowName}'`);
         }
         // TODO: get workflow from execution id
-        return orchestrateExecution(workflow, executionId, records);
+        const orchestrateSpan = tracer.startSpan("orchestrate");
+        const ret = await orchestrateExecution(workflow, executionId, records);
+        orchestrateSpan.end();
+        return ret;
       }
     );
 

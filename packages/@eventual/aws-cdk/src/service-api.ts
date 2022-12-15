@@ -13,12 +13,14 @@ import { ServiceFunction } from "./service-function";
 import { baseNodeFnProps, outDir } from "./utils";
 import { Workflows } from "./workflows";
 import { Events } from "./events";
+import { ITelemetry } from "./telemetry";
 
 export interface ApiProps {
   serviceName: string;
   environment?: Record<string, string>;
   workflows: Workflows;
   events: Events;
+  telemetry: ITelemetry;
 }
 
 export class Api extends Construct {
@@ -38,6 +40,7 @@ export class Api extends Construct {
       serviceType: ServiceType.ApiHandler,
       memorySize: 512,
       environment: props.environment,
+      telemetryEnv: props.telemetry.env,
     });
 
     this.gateway = new HttpApi(this, "Gateway", {

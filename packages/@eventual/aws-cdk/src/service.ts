@@ -21,7 +21,7 @@ import { Api } from "./service-api";
 import { outDir } from "./utils";
 import { IWorkflows, Workflows } from "./workflows";
 import { Events } from "./events";
-import { OpenTelemetry } from "./opentelemetry";
+import { Telemetry } from "./telemetry";
 
 export interface ServiceProps {
   entry: string;
@@ -73,6 +73,8 @@ export class Service extends Construct implements IGrantable {
 
   readonly grantPrincipal: IPrincipal;
 
+  readonly telemetry: Telemetry;
+
   constructor(scope: Construct, id: string, props: ServiceProps) {
     super(scope, id);
 
@@ -100,11 +102,13 @@ export class Service extends Construct implements IGrantable {
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
+    this.telemetry = new Telemetry(this, "Telemetry", {
+      serviceName: this.serviceName,
+    });
+
     const proxyScheduler = lazyInterface<IScheduler>();
     const proxyWorkflows = lazyInterface<IWorkflows>();
     const proxyActivities = lazyInterface<IActivities>();
-
-    const openTelemetry = new OpenTelemetry(this, "OpenTelemetry");
 
     this.events = new Events(this, "Events", {
       appSpec: this.appSpec,
@@ -112,7 +116,7 @@ export class Service extends Construct implements IGrantable {
       environment: props.environment,
       workflows: proxyWorkflows,
       activities: proxyActivities,
-      openTelemetry,
+      telemetry: this.telemetry,
     });
 
     this.activities = new Activities(this, "Activities", {
@@ -120,7 +124,7 @@ export class Service extends Construct implements IGrantable {
       workflows: proxyWorkflows,
       environment: props.environment,
       events: this.events,
-      openTelemetry,
+      telemetry: this.telemetry,
     });
     proxyActivities._bind(this.activities);
 
@@ -129,7 +133,7 @@ export class Service extends Construct implements IGrantable {
       activities: this.activities,
       table: this.table,
       events: this.events,
-      openTelemetry,
+      telemetry: this.telemetry,
     });
     proxyWorkflows._bind(this.workflows);
 
@@ -144,6 +148,7 @@ export class Service extends Construct implements IGrantable {
       environment: props.environment,
       workflows: this.workflows,
       events: this.events,
+      telemetry: this.telemetry,
     });
 
     this.grantPrincipal = new CompositePrincipal(
