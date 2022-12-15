@@ -21,6 +21,7 @@ import {
 } from "@eventual/core";
 import { ulid } from "ulidx";
 import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
+import { SpanKind, trace } from "@opentelemetry/api";
 
 export interface AWSWorkflowClientProps {
   readonly dynamo: DynamoDBClient;
@@ -50,46 +51,57 @@ export class AWSWorkflowClient extends WorkflowClient {
     timeoutSeconds,
   }: StartWorkflowRequest<W>) {
     const executionId = formatExecutionId(workflowName, executionName);
-    console.log("execution input:", input);
-
-    await this.props.dynamo.send(
-      new PutItemCommand({
-        TableName: this.props.tableName,
-        Item: {
-          pk: { S: ExecutionRecord.PRIMARY_KEY },
-          sk: { S: ExecutionRecord.sortKey(executionId) },
-          id: { S: executionId },
-          name: { S: executionName },
-          workflowName: { S: workflowName },
-          status: { S: ExecutionStatus.IN_PROGRESS },
-          startTime: { S: new Date().toISOString() },
-          ...(parentExecutionId
-            ? {
-                parentExecutionId: { S: parentExecutionId },
-                seq: { N: seq!.toString(10) },
-              }
-            : {}),
-        },
-      })
-    );
-
-    const workflowStartedEvent = createEvent<WorkflowStarted>({
-      type: WorkflowEventType.WorkflowStarted,
-      input,
-      workflowName,
-      // generate the time for the workflow to timeout based on when it was started.
-      // the timer will be started by the orchestrator so the client does not need to have access to the timer client.
-      timeoutTime: timeoutSeconds
-        ? new Date(new Date().getTime() + timeoutSeconds * 1000).toISOString()
-        : undefined,
-      context: {
-        name: executionName,
-        parentId: parentExecutionId,
+    const tracer = trace.getTracer(executionId, "0.0.0");
+    await tracer.startActiveSpan(
+      "startWorkflow",
+      {
+        attributes: { workflowName, input },
+        kind: SpanKind.PRODUCER,
       },
-    });
+      async () => {
+        console.log("execution input:", input);
 
-    await this.submitWorkflowTask(executionId, workflowStartedEvent);
+        await this.props.dynamo.send(
+          new PutItemCommand({
+            TableName: this.props.tableName,
+            Item: {
+              pk: { S: ExecutionRecord.PRIMARY_KEY },
+              sk: { S: ExecutionRecord.sortKey(executionId) },
+              id: { S: executionId },
+              name: { S: executionName },
+              workflowName: { S: workflowName },
+              status: { S: ExecutionStatus.IN_PROGRESS },
+              startTime: { S: new Date().toISOString() },
+              ...(parentExecutionId
+                ? {
+                    parentExecutionId: { S: parentExecutionId },
+                    seq: { N: seq!.toString(10) },
+                  }
+                : {}),
+            },
+          })
+        );
 
+        const workflowStartedEvent = createEvent<WorkflowStarted>({
+          type: WorkflowEventType.WorkflowStarted,
+          input,
+          workflowName,
+          // generate the time for the workflow to timeout based on when it was started.
+          // the timer will be started by the orchestrator so the client does not need to have access to the timer client.
+          timeoutTime: timeoutSeconds
+            ? new Date(
+                new Date().getTime() + timeoutSeconds * 1000
+              ).toISOString()
+            : undefined,
+          context: {
+            name: executionName,
+            parentId: parentExecutionId,
+          },
+        });
+
+        await this.submitWorkflowTask(executionId, workflowStartedEvent);
+      }
+    );
     return executionId;
   }
 
@@ -97,21 +109,24 @@ export class AWSWorkflowClient extends WorkflowClient {
     executionId: string,
     ...events: HistoryStateEvent[]
   ) {
-    // send workflow task to workflow queue
-    const workflowTask: SQSWorkflowTaskMessage = {
-      task: {
-        executionId,
-        events,
-      },
-    };
+    const tracer = trace.getTracer(executionId, "0.0.0");
+    await tracer.startActiveSpan("submitWorkflowTask", async () => {
+      // send workflow task to workflow queue
+      const workflowTask: SQSWorkflowTaskMessage = {
+        task: {
+          executionId,
+          events,
+        },
+      };
 
-    await this.props.sqs.send(
-      new SendMessageCommand({
-        MessageBody: JSON.stringify(workflowTask),
-        QueueUrl: this.props.workflowQueueUrl,
-        MessageGroupId: executionId,
-      })
-    );
+      await this.props.sqs.send(
+        new SendMessageCommand({
+          MessageBody: JSON.stringify(workflowTask),
+          QueueUrl: this.props.workflowQueueUrl,
+          MessageGroupId: executionId,
+        })
+      );
+    });
   }
 
   async getExecutions(): Promise<Execution[]> {

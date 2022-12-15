@@ -1,3 +1,4 @@
+import { trace } from "@opentelemetry/api";
 import { ulid } from "ulidx";
 import { ExecutionContext } from "./context.js";
 import { EventEnvelope } from "./event.js";
@@ -455,6 +456,9 @@ export function createEvent<T extends WorkflowEvent>(
   time: Date = new Date(),
   id: string = ulid()
 ): T {
+  trace
+    .getActiveSpan()
+    ?.addEvent(event.type, { event: JSON.stringify(event) }, time);
   const timestamp = time.toISOString();
 
   // history events do not have IDs, use getEventId

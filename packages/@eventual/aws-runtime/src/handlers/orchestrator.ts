@@ -13,6 +13,16 @@ import {
   createWorkflowRuntimeClient,
   SQSWorkflowTaskMessage,
 } from "../clients/index.js";
+import { Resource } from "@opentelemetry/resources";
+import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
+import { NodeSDK } from "@opentelemetry/sdk-node";
+import { serviceName } from "src/env.js";
+
+new NodeSDK({
+  resource: new Resource({
+    [SemanticResourceAttributes.SERVICE_NAME]: serviceName(),
+  }),
+});
 
 /**
  * Creates an entrypoint function for orchestrating a workflow
