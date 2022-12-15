@@ -35,47 +35,50 @@ export interface TestCaseResultError {
   error: string;
 }
 
-export default workflow("test-runner", async (request: TestRunnerRequest) => {
-  const caseBatches = partition(
-    request.maxConcurrency ?? 10,
-    request.testCases
-  );
-
-  const results = [];
-
-  for (const batch of caseBatches) {
-    results.push(
-      ...(await Promise.all(
-        batch.map(async (testCase) => {
-          let result: Awaited<ReturnType<typeof runTestCase>>;
-          try {
-            result = await runTestCase(request.target, testCase.input);
-          } catch (err) {
-            return { status: "error", error: (err as Error).name };
-          }
-          if ("error" in result) {
-            return { status: "error", error: result.error! };
-          } else {
-            const isEqual = equal(testCase.expected, result.result);
-
-            return {
-              status: isEqual ? "pass" : "fail",
-              actual: result.result,
-              expected: testCase.expected,
-            };
-          }
-        })
-      ))
+export const testRunner = workflow(
+  "test-runner",
+  async (request: TestRunnerRequest) => {
+    const caseBatches = partition(
+      request.maxConcurrency ?? 10,
+      request.testCases
     );
-  }
 
-  return {
-    passed: results.filter((r) => r.status === "pass").length,
-    failed: results.filter((r) => r.status === "fail").length,
-    errored: results.filter((r) => r.status === "error").length,
-    results,
-  };
-});
+    const results = [];
+
+    for (const batch of caseBatches) {
+      results.push(
+        ...(await Promise.all(
+          batch.map(async (testCase) => {
+            let result: Awaited<ReturnType<typeof runTestCase>>;
+            try {
+              result = await runTestCase(request.target, testCase.input);
+            } catch (err) {
+              return { status: "error", error: (err as Error).name };
+            }
+            if ("error" in result) {
+              return { status: "error", error: result.error! };
+            } else {
+              const isEqual = equal(testCase.expected, result.result);
+
+              return {
+                status: isEqual ? "pass" : "fail",
+                actual: result.result,
+                expected: testCase.expected,
+              };
+            }
+          })
+        ))
+      );
+    }
+
+    return {
+      passed: results.filter((r) => r.status === "pass").length,
+      failed: results.filter((r) => r.status === "fail").length,
+      errored: results.filter((r) => r.status === "error").length,
+      results,
+    };
+  }
+);
 
 const runTestCase = activity(
   "runTestCase",
