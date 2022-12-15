@@ -53,7 +53,7 @@
       "path": "examples/lambda-test-runner/runtime"
     },
     {
-      "path": "examples/lambda-test-runner/app"
+      "path": "examples/lambda-test-runner/infra"
     }
   ]
 }
