@@ -10,6 +10,10 @@ import {
   TsType,
   Node,
   StringLiteral,
+  FunctionDeclaration,
+  BlockStatement,
+  VariableDeclaration,
+  Statement,
 } from "@swc/core";
 
 import { Visitor } from "@swc/core/Visitor.js";
@@ -154,8 +158,49 @@ export class InnerVisitor extends Visitor {
       : super.visitArrowFunctionExpression(funcExpr);
   }
 
+  /**
+   * Hoist async {@link FunctionDeclaration} as {@link VariableDeclaration} {@link chain}s.
+   */
+  public visitBlockStatement(block: BlockStatement): BlockStatement {
+    const functionStmts = block.stmts.filter(isAsyncFunctionDecl);
+
+    return {
+      ...block,
+      stmts: [
+        // hoist function decls and turn them into chains
+        ...functionStmts.map((stmt) => this.createFunctionDeclChain(stmt)),
+        ...block.stmts
+          .filter((stmt) => !isAsyncFunctionDecl(stmt))
+          .map((stmt) => this.visitStatement(stmt)),
+      ],
+    };
+  }
+
+  /**
+   * Turn a {@link FunctionDeclaration} into a {@link VariableDeclaration} wrapped in {@link chain}.
+   */
+  private createFunctionDeclChain(
+    funcDecl: FunctionDeclaration & { async: true }
+  ): VariableDeclaration {
+    return {
+      type: "VariableDeclaration",
+      span: funcDecl.span,
+      kind: "const",
+      declarations: [
+        {
+          type: "VariableDeclarator",
+          span: funcDecl.span,
+          definite: false,
+          id: funcDecl.identifier,
+          init: this.createChain(funcDecl),
+        },
+      ],
+      declare: false,
+    };
+  }
+
   private createChain(
-    funcExpr: FunctionExpression | ArrowFunctionExpression
+    funcExpr: FunctionExpression | ArrowFunctionExpression | FunctionDeclaration
   ): CallExpression {
     const call: CallExpression = {
       type: "CallExpression",
@@ -262,4 +307,10 @@ function isWorkflowCallee(callee: CallExpression["callee"]) {
       callee.property.type === "Identifier" &&
       callee.property.value === "workflow")
   );
+}
+
+function isAsyncFunctionDecl(
+  stmt: Statement
+): stmt is FunctionDeclaration & { async: true } {
+  return stmt.type === "FunctionDeclaration" && stmt.async;
 }

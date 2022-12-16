@@ -48,8 +48,8 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
     "AsyncWriterError",
   ]);
 
-  testCompletion("heartbeat", heartbeatWorkflow, 10, [
-    { status: "fulfilled", value: 10 },
+  testCompletion("heartbeat", heartbeatWorkflow, 20, [
+    { status: "fulfilled", value: 20 },
     {
       status: "rejected",
       reason: new HeartbeatTimeout("Activity Heartbeat TimedOut").toJSON(),

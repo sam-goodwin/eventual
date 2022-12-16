@@ -74,14 +74,13 @@ export const workflow4 = workflow("parallel", async () => {
   );
   const greetings3 = Promise.all([hello("sam"), hello("chris"), hello("sam")]);
   const any = Promise.any([fail("failed"), hello("sam")]);
-  const race = Promise.race([
-    fail("failed"),
-    (async () => {
-      await sleepFor(100);
-      return await hello("sam");
-    })(),
-  ]);
+  const race = Promise.race([fail("failed"), sayHelloInSeconds(100)]);
   return Promise.allSettled([greetings, greetings2, greetings3, any, race]);
+
+  async function sayHelloInSeconds(seconds: number) {
+    await sleepFor(seconds);
+    return await hello("sam");
+  }
 });
 
 const signal = new Signal<number>("signal");
@@ -208,7 +207,7 @@ export const asyncWorkflow = workflow(
 
 const activityWithHeartbeat = activity(
   "activityWithHeartbeat",
-  { heartbeatSeconds: 1 },
+  { heartbeatSeconds: 2 },
   async (n: number, type: "success" | "no-heartbeat" | "some-heartbeat") => {
     const delay = (s: number) =>
       new Promise((resolve) => {
@@ -220,7 +219,7 @@ const activityWithHeartbeat = activity(
       await delay(0.5);
       if (type === "success") {
         await heartbeat();
-      } else if (type === "some-heartbeat" && _n < 4) {
+      } else if (type === "some-heartbeat" && _n < n * 0.33) {
         await heartbeat();
       }
       // no-heartbeat never sends one... woops.
