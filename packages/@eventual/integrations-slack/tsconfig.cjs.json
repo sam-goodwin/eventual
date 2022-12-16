@@ -1,14 +1,10 @@
 {
   "extends": "../../../tsconfig-base.cjs",
-  "compilerOptions": {
-    "outDir": "lib/cjs",
-    "declaration": true,
-    "inlineSourceMap": true,
-    "rootDir": "src",
-    "typeRoots": ["./node_modules/@types"],
-    "allowJs": true
-  },
   "include": ["src"],
   "exclude": ["lib", "node_modules", "src/package.json"],
+  "compilerOptions": {
+    "outDir": "lib/cjs",
+    "rootDir": "src"
+  },
   "references": []
 }

@@ -2,12 +2,8 @@
   "extends": "../../../tsconfig-base.cjs",
   "compilerOptions": {
     "baseUrl": ".",
-    "outDir": "lib/cjs",
-    "declaration": true,
-    "inlineSourceMap": true,
     "rootDir": "src",
-    "typeRoots": ["./node_modules/@types"],
-    "allowJs": true,
+    "outDir": "lib/cjs",
     "paths": {
       "@eventual/injected/*": ["./src/injected/*"]
     }
