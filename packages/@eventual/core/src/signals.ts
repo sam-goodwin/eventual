@@ -253,6 +253,7 @@ export function sendSignal(
       executionId,
       signal,
       id: id ?? ulid(),
+      payload,
     });
   }
 }
