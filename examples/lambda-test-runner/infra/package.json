@@ -1,5 +1,6 @@
 {
   "name": "example-test-runner",
+  "private": true,
   "version": "0.0.0",
   "main": "lib/index.js",
   "scripts": {
