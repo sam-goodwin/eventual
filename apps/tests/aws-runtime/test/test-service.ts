@@ -287,7 +287,7 @@ export const eventDrivenWorkflow = workflow(
     });
 
     // wait for the event to come back around and wake this workflow
-    await expectSignal("start", {
+    const { value } = await expectSignal("start", {
       timeoutSeconds: 30,
     });
 
@@ -297,7 +297,7 @@ export const eventDrivenWorkflow = workflow(
       timeoutSeconds: 30,
     });
 
-    return "done!";
+    return value;
   }
 );
 
@@ -318,7 +318,7 @@ signalEvent.on(async ({ executionId, signalId, proxy }) => {
     });
   } else {
     // otherwise, send the signal to the workflow
-    await sendSignal(executionId, signalId);
+    await sendSignal(executionId, signalId, { value: "done!" });
   }
 });
 
