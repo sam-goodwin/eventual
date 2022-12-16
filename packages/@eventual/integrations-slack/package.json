@@ -32,7 +32,7 @@
     "ulidx": "^0.3.0",
     "ts-jest": "^29",
     "ts-node": "^10.9.1",
-    "typescript": "^4.9.3",
+    "typescript": "^4.9.4",
     "zx": "^7.1.1"
   },
   "jest": {

@@ -1,6 +1,7 @@
 {
   "extends": "./tsconfig-base.json",
   "compilerOptions": {
+    "outDir": "lib/cjs",
     "module": "CommonJS",
     "moduleResolution": "Node"
   }
