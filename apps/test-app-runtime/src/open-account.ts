@@ -1,4 +1,4 @@
-import { activity, eventual } from "@eventual/core";
+import { activity, api, event, workflow } from "@eventual/core";
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
@@ -6,6 +6,7 @@ import {
   PutCommand,
   UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
+import { memoize } from "./util.js";
 
 interface PostalAddress {
   address1: string;
@@ -33,17 +34,25 @@ interface OpenAccountRequest {
 
 type RollbackHandler = () => Promise<void>;
 
-export default eventual(
-  async ({ accountId, address, email, bankDetails }: OpenAccountRequest) => {
-    const rollbacks: RollbackHandler[] = [];
-
+export const openAccount = workflow(
+  "open-account",
+  async (request: OpenAccountRequest) => {
     try {
-      await createAccount(accountId);
+      await createAccount(request.accountId);
     } catch (err) {
       console.error(err);
       throw err;
     }
 
+    await associateAccountInformation(request);
+  }
+);
+
+// sub-workflow for testing purposes
+export const associateAccountInformation = workflow(
+  "associate",
+  async ({ accountId, address, email, bankDetails }: OpenAccountRequest) => {
+    const rollbacks: RollbackHandler[] = [];
     try {
       await addAddress(accountId, address);
       rollbacks.push(async () => removeAddress(accountId));
@@ -59,6 +68,30 @@ export default eventual(
     }
   }
 );
+
+// register a web hook API route
+api.post("/open-account", async (request) => {
+  const input = await request.json();
+
+  const response = await openAccount.startExecution({
+    input,
+  });
+
+  return new Response(JSON.stringify(response), {
+    headers: {
+      "Content-Type": "application/json",
+    },
+    status: 200,
+  });
+});
+
+const openAccountEvent = event<OpenAccountRequest>("OpenAccount");
+
+openAccountEvent.on(async (event) => {
+  await openAccount.startExecution({
+    input: event,
+  });
+});
 
 const TableName = process.env.TABLE_NAME!;
 
@@ -194,15 +227,3 @@ const removeBankAccount = activity(
     );
   }
 );
-
-function memoize<T>(f: () => T): () => T {
-  let isInit = false;
-  let value: T | undefined;
-  return () => {
-    if (!isInit) {
-      isInit = true;
-      value = f();
-    }
-    return value!;
-  };
-}

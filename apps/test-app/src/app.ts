@@ -3,25 +3,28 @@ import {
   aws_dynamodb,
   aws_lambda,
   aws_lambda_nodejs,
+  CfnOutput,
   Duration,
   Stack,
 } from "aws-cdk-lib";
-import { Workflow, WorkflowDashboard } from "@eventual/aws-cdk";
+import * as eventual from "@eventual/aws-cdk";
+import { ServiceDashboard } from "@eventual/aws-cdk";
 
 const app = new App();
 
 const stack = new Stack(app, "test-eventual");
 
-const benchWorkflow = new Workflow(stack, "Benchmark", {
+const benchService = new eventual.Service(stack, "Benchmark", {
   entry: require.resolve("test-app-runtime/lib/time-benchmark.js"),
-  // TODO: wait for account limits to be raised
-  // orchestrator: {
-  //   reservedConcurrentExecutions: 100,
-  // },
+  workflows: {
+    orchestrator: {
+      reservedConcurrentExecutions: 100,
+    },
+  },
 });
 
-new WorkflowDashboard(stack, "BenchmarkDashboard", {
-  workflow: benchWorkflow,
+new ServiceDashboard(stack, "BenchmarkDashboard", {
+  service: benchService,
 });
 
 const bench = new aws_lambda_nodejs.NodejsFunction(stack, "BenchmarkFunc", {
@@ -38,13 +41,10 @@ const bench = new aws_lambda_nodejs.NodejsFunction(stack, "BenchmarkFunc", {
     },
     metafile: true,
   },
-  environment: {
-    FUNCTION_ARN: benchWorkflow.startWorkflowFunction.functionArn,
-  },
   timeout: Duration.minutes(1),
 });
 
-benchWorkflow.startWorkflowFunction.grantInvoke(bench);
+benchService.workflows.configureStartWorkflow(bench);
 
 const accountTable = new aws_dynamodb.Table(stack, "Accounts", {
   partitionKey: {
@@ -54,15 +54,24 @@ const accountTable = new aws_dynamodb.Table(stack, "Accounts", {
   billingMode: aws_dynamodb.BillingMode.PAY_PER_REQUEST,
 });
 
-const openAccount = new Workflow(stack, "OpenAccount", {
+const openAccount = new eventual.Service(stack, "OpenAccount", {
   entry: require.resolve("test-app-runtime/lib/open-account.js"),
+  name: "open-account",
   environment: {
     TABLE_NAME: accountTable.tableName,
   },
 });
 
-accountTable.grantReadWriteData(openAccount);
+new CfnOutput(stack, "open-account-api-url", {
+  value: openAccount.api.gateway.apiEndpoint,
+});
 
-new Workflow(stack, "workflow1", {
+new eventual.Service(stack, "my-service", {
+  name: "my-service",
   entry: require.resolve("test-app-runtime/lib/my-workflow.js"),
+});
+
+new eventual.Service(stack, "slack-bot", {
+  name: "slack-bot",
+  entry: require.resolve("test-app-runtime/lib/slack-bot.js"),
 });

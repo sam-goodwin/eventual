@@ -1,16 +1,14 @@
 {
-  "extends": "../../../tsconfig-base",
-  "compilerOptions": {
-    "outDir": "lib",
-    "declaration": true,
-    "inlineSourceMap": true,
-    "rootDir": "src",
-    "typeRoots": ["./node_modules/@types"]
-  },
-  "include": ["src"],
+  "extends": "../../../tsconfig-base.cjs",
+  "include": ["src", "src/package.json"],
   "exclude": ["lib", "node_modules"],
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib"
+  },
   "references": [
     { "path": "../aws-runtime/tsconfig.cjs.json" },
+    { "path": "../core/tsconfig.cjs.json" },
     { "path": "../compiler" }
   ]
 }

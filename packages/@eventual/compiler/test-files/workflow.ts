@@ -2,7 +2,7 @@
 
 const doWork = activity("doWork", async (input: any) => input);
 
-export default eventual(async (input) => {
+export default workflow("workflow", async (input) => {
   const items = await doWork(input);
 
   await Promise.all(
@@ -34,4 +34,33 @@ export default eventual(async (input) => {
       await doWork(item);
     })
   );
+
+  condition(() => true);
+
+  const func = () =>
+    Promise.all(
+      items.map(async (item) => {
+        await doWork(item);
+      })
+    );
+
+  await func();
+
+  const func2 = async () => {
+    await Promise.all(
+      items.map(async (item) => {
+        await doWork(item);
+      })
+    );
+  };
+
+  await func2();
 });
+
+export const workflow2 = workflow(
+  "timeoutFlow",
+  { timeoutSeconds: 100 },
+  async () => {
+    await doWork("something");
+  }
+);

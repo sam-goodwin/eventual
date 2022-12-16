@@ -1,5 +1,10 @@
 import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import {
+  InvocationType,
+  InvokeCommand,
+  LambdaClient,
+} from "@aws-sdk/client-lambda";
+import {
   GetObjectCommand,
   GetObjectCommandOutput,
   NoSuchKey,
@@ -7,36 +12,39 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import {
-  LambdaClient,
-  InvokeCommand,
-  InvocationType,
-} from "@aws-sdk/client-lambda";
-import {
-  ExecutionStatus,
-  Command,
-  HistoryStateEvents,
+  ActivityWorkerRequest,
   CompleteExecution,
+  CompleteExecutionRequest,
+  ExecutionStatus,
   FailedExecution,
+  FailExecutionRequest,
+  HistoryStateEvent,
+  UpdateHistoryRequest,
+  WorkflowEventType,
+  WorkflowRuntimeClient,
 } from "@eventual/core";
+import { AWSTimerClient } from "./timer-client.js";
 import {
+  AWSWorkflowClient,
   createExecutionFromResult,
   ExecutionRecord,
 } from "./workflow-client.js";
-import { ActivityWorkerRequest } from "../activity.js";
 
-export interface WorkflowRuntimeClientProps {
+export interface AWSWorkflowRuntimeClientProps {
   readonly lambda: LambdaClient;
   readonly activityWorkerFunctionName: string;
   readonly dynamo: DynamoDBClient;
   readonly s3: S3Client;
   readonly executionHistoryBucket: string;
   readonly tableName: string;
+  readonly workflowClient: AWSWorkflowClient;
+  readonly timerClient: AWSTimerClient;
 }
 
-export class WorkflowRuntimeClient {
-  constructor(private props: WorkflowRuntimeClientProps) {}
+export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
+  constructor(private props: AWSWorkflowRuntimeClientProps) {}
 
-  async getHistory(executionId: string) {
+  public async getHistory(executionId: string): Promise<HistoryStateEvent[]> {
     try {
       // get current history from s3
       const historyObject = await this.props.s3.send(
@@ -56,10 +64,10 @@ export class WorkflowRuntimeClient {
   }
 
   // TODO: etag
-  async updateHistory(
-    executionId: string,
-    events: HistoryStateEvents[]
-  ): Promise<{ bytes: number }> {
+  async updateHistory({
+    executionId,
+    events,
+  }: UpdateHistoryRequest): Promise<{ bytes: number }> {
     const content = events.map((e) => JSON.stringify(e)).join("\n");
     // get current history from s3
     await this.props.s3.send(
@@ -72,10 +80,10 @@ export class WorkflowRuntimeClient {
     return { bytes: content.length };
   }
 
-  async completeExecution(
-    executionId: string,
-    result?: any
-  ): Promise<CompleteExecution> {
+  public async completeExecution({
+    executionId,
+    result,
+  }: CompleteExecutionRequest): Promise<CompleteExecution> {
     const executionResult = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
@@ -84,16 +92,14 @@ export class WorkflowRuntimeClient {
         },
         TableName: this.props.tableName,
         UpdateExpression: result
-          ? "SET #status=:complete, #result=:result, endTime=:endTime"
-          : "SET #status=:complete, endTime=:endTime",
-        ConditionExpression: "#status=:in_progress",
+          ? "SET #status=:complete, #result=:result, endTime=if_not_exists(endTime,:endTime)"
+          : "SET #status=:complete, endTime=if_not_exists(endTime,:endTime)",
         ExpressionAttributeNames: {
           "#status": "status",
           ...(result ? { "#result": "result" } : {}),
         },
         ExpressionAttributeValues: {
           ":complete": { S: ExecutionStatus.COMPLETE },
-          ":in_progress": { S: ExecutionStatus.IN_PROGRESS },
           ":endTime": { S: new Date().toISOString() },
           ...(result ? { ":result": { S: JSON.stringify(result) } } : {}),
         },
@@ -101,16 +107,23 @@ export class WorkflowRuntimeClient {
       })
     );
 
-    return createExecutionFromResult(
-      executionResult.Attributes as unknown as ExecutionRecord
-    ) as CompleteExecution;
+    const record = executionResult.Attributes as unknown as ExecutionRecord;
+    if (record.parentExecutionId) {
+      await this.reportCompletionToParent(
+        record.parentExecutionId.S,
+        record.seq.N,
+        result
+      );
+    }
+
+    return createExecutionFromResult(record) as CompleteExecution;
   }
 
-  async failExecution(
-    executionId: string,
-    error: string,
-    message: string
-  ): Promise<FailedExecution> {
+  public async failExecution({
+    executionId,
+    error,
+    message,
+  }: FailExecutionRequest): Promise<FailedExecution> {
     const executionResult = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
@@ -119,8 +132,7 @@ export class WorkflowRuntimeClient {
         },
         TableName: this.props.tableName,
         UpdateExpression:
-          "SET #status=:failed, #error=:error, #message=:message, endTime=:endTime",
-        ConditionExpression: "#status=:in_progress",
+          "SET #status=:failed, #error=:error, #message=:message, endTime=if_not_exists(endTime,:endTime)",
         ExpressionAttributeNames: {
           "#status": "status",
           "#error": "error",
@@ -128,7 +140,6 @@ export class WorkflowRuntimeClient {
         },
         ExpressionAttributeValues: {
           ":failed": { S: ExecutionStatus.FAILED },
-          ":in_progress": { S: ExecutionStatus.IN_PROGRESS },
           ":endTime": { S: new Date().toISOString() },
           ":error": { S: error },
           ":message": { S: message },
@@ -137,19 +148,41 @@ export class WorkflowRuntimeClient {
       })
     );
 
-    return createExecutionFromResult(
-      executionResult.Attributes as unknown as ExecutionRecord
-    ) as FailedExecution;
+    const record = executionResult.Attributes as unknown as ExecutionRecord;
+    if (record.parentExecutionId) {
+      await this.reportCompletionToParent(
+        record.parentExecutionId.S,
+        record.seq.N,
+        error,
+        message
+      );
+    }
+
+    return createExecutionFromResult(record) as FailedExecution;
   }
 
-  async scheduleActivity(executionId: string, command: Command) {
-    const request: ActivityWorkerRequest = {
-      scheduledTime: new Date().toISOString(),
-      executionId,
-      command,
-      retry: 0,
-    };
+  private async reportCompletionToParent(
+    parentExecutionId: string,
+    seq: string,
+    ...args: [result: any] | [error: string, message: string]
+  ) {
+    await this.props.workflowClient.submitWorkflowTask(parentExecutionId, {
+      seq: parseInt(seq, 10),
+      timestamp: new Date().toISOString(),
+      ...(args.length === 1
+        ? {
+            type: WorkflowEventType.ChildWorkflowCompleted,
+            result: args[0],
+          }
+        : {
+            type: WorkflowEventType.ChildWorkflowFailed,
+            error: args[0],
+            message: args[1],
+          }),
+    });
+  }
 
+  public async startActivity(request: ActivityWorkerRequest): Promise<void> {
     await this.props.lambda.send(
       new InvokeCommand({
         FunctionName: this.props.activityWorkerFunctionName,
@@ -162,11 +195,11 @@ export class WorkflowRuntimeClient {
 
 async function historyEntryToEvents(
   objectOutput: GetObjectCommandOutput
-): Promise<HistoryStateEvents[]> {
+): Promise<HistoryStateEvent[]> {
   if (objectOutput.Body) {
     return (await objectOutput.Body.transformToString())
       .split("\n")
-      .map((l) => JSON.parse(l)) as HistoryStateEvents[];
+      .map((l) => JSON.parse(l)) as HistoryStateEvent[];
   }
   return [];
 }

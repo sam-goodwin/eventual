@@ -1,55 +1,92 @@
 import {
   AttributeValue,
   DynamoDBClient,
+  GetItemCommand,
   PutItemCommand,
+  QueryCommand,
 } from "@aws-sdk/client-dynamodb";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
-  WorkflowTask,
-  WorkflowStarted,
   Execution,
   ExecutionStatus,
+  HistoryStateEvent,
+  Workflow,
   WorkflowEventType,
-  HistoryStateEvents,
+  WorkflowStarted,
+  WorkflowTask,
+  WorkflowClient,
+  StartWorkflowRequest,
+  formatExecutionId,
+  createEvent,
 } from "@eventual/core";
-import { ulid } from "ulid";
-import { ExecutionHistoryClient } from "./execution-history-client.js";
+import { ulid } from "ulidx";
+import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
 
-export interface WorkflowClientProps {
+export interface AWSWorkflowClientProps {
   readonly dynamo: DynamoDBClient;
   readonly tableName: string;
   readonly sqs: SQSClient;
   readonly workflowQueueUrl: string;
-  readonly executionHistory: ExecutionHistoryClient;
+  readonly activityRuntimeClient: AWSActivityRuntimeClient;
 }
 
-export class WorkflowClient {
-  constructor(private props: WorkflowClientProps) {}
+export class AWSWorkflowClient extends WorkflowClient {
+  constructor(private props: AWSWorkflowClientProps) {
+    super(props.activityRuntimeClient);
+  }
 
-  public async startWorkflow(name: string, input: any) {
-    const executionId = `execution_${name ? name : ulid()}`;
+  /**
+   * Start a workflow execution
+   * @param name Suffix of execution id
+   * @param input Workflow parameters
+   * @returns
+   */
+  public async startWorkflow<W extends Workflow = Workflow>({
+    executionName = ulid(),
+    workflowName,
+    input,
+    parentExecutionId,
+    seq,
+    timeoutSeconds,
+  }: StartWorkflowRequest<W>) {
+    const executionId = formatExecutionId(workflowName, executionName);
+    console.log("execution input:", input);
 
     await this.props.dynamo.send(
       new PutItemCommand({
+        TableName: this.props.tableName,
         Item: {
           pk: { S: ExecutionRecord.PRIMARY_KEY },
           sk: { S: ExecutionRecord.sortKey(executionId) },
           id: { S: executionId },
+          name: { S: executionName },
+          workflowName: { S: workflowName },
           status: { S: ExecutionStatus.IN_PROGRESS },
           startTime: { S: new Date().toISOString() },
+          ...(parentExecutionId
+            ? {
+                parentExecutionId: { S: parentExecutionId },
+                seq: { N: seq!.toString(10) },
+              }
+            : {}),
         },
-        TableName: this.props.tableName,
       })
     );
 
-    const workflowStartedEvent =
-      await this.props.executionHistory.createAndPutEvent<WorkflowStarted>(
-        executionId,
-        {
-          type: WorkflowEventType.WorkflowStarted,
-          input,
-        }
-      );
+    const workflowStartedEvent = createEvent<WorkflowStarted>({
+      type: WorkflowEventType.WorkflowStarted,
+      input,
+      workflowName,
+      // generate the time for the workflow to timeout based on when it was started.
+      // the timer will be started by the orchestrator so the client does not need to have access to the timer client.
+      timeoutTime: timeoutSeconds
+        ? new Date(new Date().getTime() + timeoutSeconds * 1000).toISOString()
+        : undefined,
+      context: {
+        name: executionName,
+        parentId: parentExecutionId,
+      },
+    });
 
     await this.submitWorkflowTask(executionId, workflowStartedEvent);
 
@@ -58,13 +95,11 @@ export class WorkflowClient {
 
   public async submitWorkflowTask(
     executionId: string,
-    ...events: HistoryStateEvents[]
+    ...events: HistoryStateEvent[]
   ) {
-    const id = ulid();
     // send workflow task to workflow queue
     const workflowTask: SQSWorkflowTaskMessage = {
       task: {
-        id,
         executionId,
         events,
       },
@@ -75,10 +110,40 @@ export class WorkflowClient {
         MessageBody: JSON.stringify(workflowTask),
         QueueUrl: this.props.workflowQueueUrl,
         MessageGroupId: executionId,
-        // just de-dupe with itself
-        MessageDeduplicationId: `${executionId}_${id}`,
       })
     );
+  }
+
+  async getExecutions(): Promise<Execution[]> {
+    const executions = await this.props.dynamo.send(
+      new QueryCommand({
+        TableName: this.props.tableName,
+        KeyConditionExpression: "pk = :pk and begins_with(sk, :sk)",
+        ExpressionAttributeValues: {
+          ":pk": { S: ExecutionRecord.PRIMARY_KEY },
+          ":sk": { S: ExecutionRecord.SORT_KEY_PREFIX },
+        },
+      })
+    );
+    return executions.Items!.map((execution) =>
+      createExecutionFromResult(execution as ExecutionRecord)
+    );
+  }
+
+  async getExecution(executionId: string): Promise<Execution | undefined> {
+    const executionResult = await this.props.dynamo.send(
+      new GetItemCommand({
+        Key: {
+          pk: { S: ExecutionRecord.PRIMARY_KEY },
+          sk: { S: ExecutionRecord.sortKey(executionId) },
+        },
+        TableName: this.props.tableName,
+      })
+    );
+
+    return executionResult.Item
+      ? createExecutionFromResult(executionResult.Item as ExecutionRecord)
+      : undefined;
   }
 }
 
@@ -86,22 +151,36 @@ export interface SQSWorkflowTaskMessage {
   task: WorkflowTask;
 }
 
-export interface ExecutionRecord {
-  pk: { S: typeof ExecutionRecord.PRIMARY_KEY };
-  sk: { S: `${typeof ExecutionRecord.SORT_KEY_PREFIX}${string}` };
-  result?: AttributeValue.SMember;
-  id: AttributeValue.SMember;
-  status: { S: ExecutionStatus };
-  startTime: AttributeValue.SMember;
-  endTime?: AttributeValue.SMember;
-  error?: AttributeValue.SMember;
-  message?: AttributeValue.SMember;
-}
+export type ExecutionRecord =
+  | {
+      pk: { S: typeof ExecutionRecord.PRIMARY_KEY };
+      sk: { S: `${typeof ExecutionRecord.SORT_KEY_PREFIX}${string}` };
+      result?: AttributeValue.SMember;
+      id: AttributeValue.SMember;
+      status: { S: ExecutionStatus };
+      startTime: AttributeValue.SMember;
+      name: AttributeValue.SMember;
+      workflowName: AttributeValue.SMember;
+      endTime?: AttributeValue.SMember;
+      error?: AttributeValue.SMember;
+      message?: AttributeValue.SMember;
+    } & (
+      | {
+          parentExecutionId: AttributeValue.SMember;
+          seq: AttributeValue.NMember;
+        }
+      | {
+          parentExecutionId?: never;
+          seq?: never;
+        }
+    );
 
 export namespace ExecutionRecord {
   export const PRIMARY_KEY = "Execution";
   export const SORT_KEY_PREFIX = `Execution$`;
-  export function sortKey(executionId: string) {
+  export function sortKey(
+    executionId: string
+  ): `${typeof SORT_KEY_PREFIX}${typeof executionId}` {
     return `${SORT_KEY_PREFIX}${executionId}`;
   }
 }

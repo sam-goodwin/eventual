@@ -3,19 +3,24 @@ import {
   BatchWriteItemCommand,
   DynamoDBClient,
   PutItemCommand,
+  QueryCommand,
 } from "@aws-sdk/client-dynamodb";
-import { WorkflowEvent } from "@eventual/core";
-import { ulid } from "ulid";
+import {
+  BaseEvent,
+  createEvent,
+  ExecutionHistoryClient,
+  getEventId,
+  UnresolvedEvent,
+  WorkflowEvent,
+} from "@eventual/core";
 
-export interface ExecutionHistoryClientProps {
+export interface AWSExecutionHistoryClientProps {
   readonly dynamo: DynamoDBClient;
   readonly tableName: string;
 }
 
-type UnresolvedEvent<T extends WorkflowEvent> = Omit<T, "id" | "timestamp">;
-
-export class ExecutionHistoryClient {
-  constructor(private props: ExecutionHistoryClientProps) {}
+export class AWSExecutionHistoryClient implements ExecutionHistoryClient {
+  constructor(private props: AWSExecutionHistoryClientProps) {}
 
   public async createAndPutEvent<T extends WorkflowEvent>(
     executionId: string,
@@ -76,23 +81,34 @@ export class ExecutionHistoryClient {
       })
     );
   }
-}
 
-export function createEvent<T extends WorkflowEvent>(
-  event: UnresolvedEvent<T>,
-  time: Date = new Date()
-): T {
-  const uuid = ulid();
-  const timestamp = time.toISOString();
-
-  return { ...event, id: uuid, timestamp } as T;
+  /**
+   * Read an execution's events from the execution history table table
+   */
+  public async getEvents(executionId: string): Promise<WorkflowEvent[]> {
+    const output = await this.props.dynamo.send(
+      new QueryCommand({
+        TableName: this.props.tableName,
+        KeyConditionExpression: "pk = :pk AND begins_with ( sk, :sk )",
+        ExpressionAttributeValues: {
+          ":pk": { S: EventRecord.PRIMARY_KEY },
+          ":sk": { S: EventRecord.sortKey(executionId, "") },
+        },
+      })
+    );
+    return output.Items!.map(({ event, time }) => ({
+      ...JSON.parse(event!.S!),
+      timestamp: time!.S,
+    }));
+  }
 }
 
 interface EventRecord {
   pk: { S: typeof EventRecord.PRIMARY_KEY };
   sk: { S: `${typeof EventRecord.SORT_KEY_PREFIX}${string}$${string}` };
   event: AttributeValue.SMember;
-  id: AttributeValue.SMember;
+  // not all events have an ID to save space. Use getEventId to get a unique ID.
+  id?: AttributeValue.SMember;
   executionId: AttributeValue.SMember;
   time: AttributeValue.SMember;
 }
@@ -112,12 +128,16 @@ function createEventRecord(
   executionId: string,
   workflowEvent: WorkflowEvent
 ): EventRecord {
+  const { id, timestamp, ...event } = workflowEvent as WorkflowEvent &
+    Partial<BaseEvent>;
   return {
     pk: { S: EventRecord.PRIMARY_KEY },
-    sk: { S: EventRecord.sortKey(executionId, workflowEvent.id) },
-    id: { S: workflowEvent.id },
+    sk: { S: EventRecord.sortKey(executionId, getEventId(workflowEvent)) },
+    // do not create an id property if it doesn't exist on the event.
+    ...(id ? { id: { S: id } } : undefined),
     executionId: { S: executionId },
-    event: { S: JSON.stringify(workflowEvent) },
+    // only save the parts of the event not in the record.
+    event: { S: JSON.stringify(event) },
     time: { S: workflowEvent.timestamp },
   };
 }

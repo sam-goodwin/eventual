@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig-base",
+  "include": ["test"],
+  "exclude": ["lib", "node_modules"],
+  "compilerOptions": {
+    "rootDir": "test",
+    "outDir": "lib"
+  },
+  "references": [
+    { "path": "../../../packages/@eventual/aws-cdk" },
+    { "path": "../../../packages/@eventual/aws-runtime" }
+  ]
+}

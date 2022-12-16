@@ -1,15 +1,10 @@
 {
-  "extends": "../../../tsconfig-base",
+  "extends": "../../../tsconfig-base.cjs",
   "compilerOptions": {
-    "module": "commonjs",
-    "outDir": "lib/cjs",
-    "declaration": true,
-    "inlineSourceMap": true,
     "rootDir": "src",
-    "typeRoots": ["./node_modules/@types"],
-    "allowJs": true
+    "outDir": "lib/cjs"
   },
   "include": ["src"],
-  "exclude": ["lib", "node_modules"],
+  "exclude": ["lib", "node_modules", "src/package.json"],
   "references": []
 }

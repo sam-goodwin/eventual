@@ -6,7 +6,7 @@ export function assertNonNull<T>(value?: T, msg?: string): NonNullable<T> {
   if (!value) {
     throw new Error(msg ?? "expected value to be defined and not null.");
   }
-  return value;
+  return value!;
 }
 
 export function not<T, U extends T>(
@@ -17,6 +17,6 @@ export function not<T, U extends T>(
 
 export function or<F extends ((a: any) => a is any)[]>(
   ...conditions: F
-): (a: any) => a is F extends (a: any) => a is infer T ? T : never {
+): (a: any) => a is F[number] extends (a: any) => a is infer T ? T : never {
   return ((a: any) => conditions.some((cond) => cond(a))) as any;
 }

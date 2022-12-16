@@ -2,3 +2,5 @@
 packages:
   - "packages/@eventual/*"
   - "apps/*"
+  - "apps/tests/*"
+  - "examples/**/*"

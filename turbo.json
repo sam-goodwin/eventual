@@ -16,10 +16,6 @@
       "dependsOn": ["^build"],
       "outputs": ["lib/**"]
     },
-    "@gluestik/frontend#build": {
-      "dependsOn": ["^build", "build:src"],
-      "outputs": [".next/**"]
-    },
     "build:src": {
       "outputs": ["lib/**"]
     },
@@ -31,6 +27,10 @@
       "dependsOn": ["^build"]
     },
     "deploy": {
+      "dependsOn": ["^export", "^build"],
+      "cache": false
+    },
+    "hotswap": {
       "dependsOn": ["^export", "^build"],
       "cache": false
     },

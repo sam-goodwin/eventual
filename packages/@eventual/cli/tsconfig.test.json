@@ -1,0 +1,10 @@
+{
+  "extends": "../../../tsconfig-base",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true
+  },
+  "include": ["src", "test"],
+  "exclude": ["lib", "node_modules"],
+  "references": [{ "path": "../core" }, { "path": "../aws-runtime" }]
+}

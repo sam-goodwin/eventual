@@ -1,0 +1,49 @@
+name: build
+on:
+  pull_request: {}
+  workflow_call: {}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      CI: "true"
+      CLEAN_UP_STACK: "1"
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/build
+      - name: Run tests
+        run: pnpm test
+  test-runtime:
+    needs: [build]
+    concurrency: pr-test-runtime
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/build
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::593491530938:role/githubActionStack-githubactionroleA106E4DC-14SHKLVA61IN4
+          aws-region: us-east-1
+          role-duration-seconds: 3600
+      - name: Deploy Runtime Tests
+        run: pnpm -r --filter tests-runtime run deploy:runtime
+      - run: |
+          echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./apps/tests/aws-runtime/cdk.out/outputs.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
+      - name: Configure Test Role Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ env.TEST_ROLE_ARN }}
+          aws-region: us-east-1
+          role-duration-seconds: 3600
+          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ env.AWS_SESSION_TOKEN  }}
+          role-skip-session-tagging: true
+      - name: Run Runtime Tests
+        run: pnpm -r --filter tests-runtime run test:runtime

@@ -1,16 +1,11 @@
 {
-  "extends": "../../tsconfig-base",
-  "compilerOptions": {
-    "outDir": "lib",
-    "declaration": true,
-    "inlineSourceMap": true,
-    "rootDir": "src",
-    "types": ["@types/node"],
-    "typeRoots": ["./node_modules/@types"],
-    "allowJs": true
-  },
+  "extends": "../../tsconfig-base.cjs",
   "include": ["src"],
   "exclude": ["lib", "node_modules"],
+  "compilerOptions": {
+    "outDir": "lib",
+    "rootDir": "src"
+  },
   "references": [
     { "path": "../../packages/@eventual/aws-cdk" },
     { "path": "../test-app-runtime" }

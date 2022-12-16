@@ -1,6 +1,7 @@
 // @ts-nocheck
 
-export default eventual(
+export default workflow(
+  "open-account",
   async ({ accountId, address, email, bankDetails }: OpenAccountRequest) => {
     const rollbacks: RollbackHandler[] = [];
 

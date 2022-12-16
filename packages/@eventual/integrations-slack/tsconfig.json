@@ -1,0 +1,10 @@
+{
+  "extends": "../../../tsconfig-base",
+  "include": ["src", "src/package.json"],
+  "exclude": ["lib", "node_modules"],
+  "compilerOptions": {
+    "outDir": "lib/esm",
+    "rootDir": "src"
+  },
+  "references": [{ "path": "../core" }]
+}

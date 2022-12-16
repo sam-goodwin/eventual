@@ -1,0 +1,46 @@
+name: Setup
+description: "Setup Project"
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v3
+
+    - uses: pnpm/action-setup@v2
+      with:
+        version: 6.32.9
+
+    - uses: actions/setup-node@v3
+      with:
+        node-version: "16"
+        cache: "pnpm"
+
+    - uses: pnpm/action-setup@v2.2.4
+      with:
+        version: 7.13.5
+
+    - run: pnpm install --frozen-lockfile
+      shell: bash
+
+    - name: Ensure no changes
+      run: git diff --exit-code
+      shell: bash
+
+    # Load turbo cache after pnpm install so ./node_modules/.cache doesn't get blown away.
+    - uses: actions/cache@v3
+      id: turbo-cache
+      with:
+        path: ./node_modules/.cache/turbo
+        key: turbo-${{ github.job }}-${{ github.sha }}
+        # - Check the test cache first since it also contains the build cache.
+        # - Fallback to the build cache if no test cache has been generated yet.
+        # - If neither is found, fall back to whatever is available.
+        restore-keys: |
+          turbo-test-
+          turbo-build-
+          turbo-
+
+    - name: Build
+      run: pnpm build
+      env:
+        NODE_OPTIONS: --max-old-space-size=6144
+      shell: bash

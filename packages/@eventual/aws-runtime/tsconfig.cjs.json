@@ -1,20 +1,14 @@
 {
-  "extends": "../../../tsconfig-base",
+  "extends": "../../../tsconfig-base.cjs",
   "compilerOptions": {
-    "module": "CommonJS",
-    "target": "ESNext",
     "baseUrl": ".",
-    "outDir": "lib/cjs",
-    "declaration": true,
-    "inlineSourceMap": true,
     "rootDir": "src",
-    "typeRoots": ["./node_modules/@types"],
-    "allowJs": true,
+    "outDir": "lib/cjs",
     "paths": {
       "@eventual/injected/*": ["./src/injected/*"]
     }
   },
   "include": ["src"],
-  "exclude": ["lib", "node_modules"],
+  "exclude": ["lib", "node_modules", "src/package.json"],
   "references": [{ "path": "../core/tsconfig.cjs.json" }]
 }
