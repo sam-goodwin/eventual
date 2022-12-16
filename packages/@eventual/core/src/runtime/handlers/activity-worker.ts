@@ -18,7 +18,6 @@ import {
 } from "../../global.js";
 import { createActivityToken } from "../activity-token.js";
 import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
-import { ExecutionHistoryClient } from "../clients/execution-history-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
 import { Schedule, TimerClient, TimerRequestType } from "../index.js";
@@ -30,7 +29,6 @@ import type { EventClient } from "../index.js";
 
 export interface CreateActivityWorkerProps {
   activityRuntimeClient: ActivityRuntimeClient;
-  executionHistoryClient: ExecutionHistoryClient;
   workflowClient: WorkflowClient;
   timerClient: TimerClient;
   metricsClient: MetricsClient;
@@ -54,7 +52,6 @@ export interface ActivityWorkerRequest {
  */
 export function createActivityWorker({
   activityRuntimeClient,
-  executionHistoryClient,
   workflowClient,
   timerClient,
   metricsClient,
@@ -230,10 +227,6 @@ export function createActivityWorker({
         event: ActivityCompleted | ActivityFailed,
         duration: number
       ) {
-        await timed(metrics, ActivityMetrics.EmitEventDuration, () =>
-          executionHistoryClient.putEvent(request.executionId, event)
-        );
-
         await timed(metrics, ActivityMetrics.SubmitWorkflowTaskDuration, () =>
           workflowClient.submitWorkflowTask(request.executionId, event)
         );

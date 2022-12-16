@@ -1,6 +1,5 @@
 import {
   AWSActivityRuntimeClient,
-  AWSExecutionHistoryClient,
   AWSWorkflowClient,
 } from "@eventual/aws-runtime";
 import { Handler } from "aws-lambda";
@@ -12,10 +11,6 @@ const dynamo = new DynamoDBClient({});
 const workflowClient = new AWSWorkflowClient({
   dynamo,
   sqs: new SQSClient({}),
-  executionHistory: new AWSExecutionHistoryClient({
-    dynamo,
-    tableName: process.env.TEST_TABLE_NAME || "",
-  }),
   tableName: process.env.TEST_TABLE_NAME || "",
   workflowQueueUrl: process.env.TEST_QUEUE_URL || "",
   activityRuntimeClient: new AWSActivityRuntimeClient({

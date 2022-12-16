@@ -1,18 +1,6 @@
-import {
-  ScheduleActivityCommand,
-  SleepForCommand,
-  SleepUntilCommand,
-  ExpectSignalCommand,
-  ScheduleWorkflowCommand,
-} from "../../command.js";
-import {
-  ActivityScheduled,
-  HistoryStateEvent,
-  SleepScheduled,
-  ExpectSignalStarted,
-  ChildWorkflowScheduled,
-} from "../../workflow-events.js";
+import { HistoryStateEvent } from "../../workflow-events.js";
 import { CompleteExecution, FailedExecution } from "../../execution.js";
+import { ActivityWorkerRequest } from "../handlers/activity-worker.js";
 
 export interface CompleteExecutionRequest {
   executionId: string;
@@ -30,30 +18,6 @@ export interface UpdateHistoryRequest {
   events: HistoryStateEvent[];
 }
 
-export interface ScheduleActivityRequest {
-  workflowName: string;
-  executionId: string;
-  command: ScheduleActivityCommand;
-  baseTime: Date;
-}
-
-export interface ScheduleWorkflowRequest {
-  executionId: string;
-  command: ScheduleWorkflowCommand;
-}
-
-export interface ScheduleSleepRequest {
-  executionId: string;
-  command: SleepUntilCommand | SleepForCommand;
-  baseTime: Date;
-}
-
-export interface ExecuteExpectSignalRequest {
-  executionId: string;
-  command: ExpectSignalCommand;
-  baseTime: Date;
-}
-
 export interface WorkflowRuntimeClient {
   getHistory(executionId: string): Promise<HistoryStateEvent[]>;
 
@@ -66,17 +30,5 @@ export interface WorkflowRuntimeClient {
 
   failExecution(request: FailExecutionRequest): Promise<FailedExecution>;
 
-  scheduleChildWorkflow(
-    request: ScheduleWorkflowRequest
-  ): Promise<ChildWorkflowScheduled>;
-
-  scheduleActivity(
-    request: ScheduleActivityRequest
-  ): Promise<ActivityScheduled>;
-
-  scheduleSleep(request: ScheduleSleepRequest): Promise<SleepScheduled>;
-
-  executionExpectSignal(
-    request: ExecuteExpectSignalRequest
-  ): Promise<ExpectSignalStarted>;
+  startActivity(request: ActivityWorkerRequest): Promise<void>;
 }

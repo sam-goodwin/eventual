@@ -1,27 +1,15 @@
 import { inspect } from "util";
-import {
-  Command,
-  isExpectSignalCommand,
-  isScheduleActivityCommand,
-  isScheduleWorkflowCommand,
-  isPublishEventsCommand,
-  isSendSignalCommand,
-  isSleepForCommand,
-  isSleepUntilCommand,
-  isStartConditionCommand,
-} from "../../command.js";
+import { Command } from "../../command.js";
 import { WorkflowContext } from "../../context.js";
 import {
-  ActivityScheduled,
-  ChildWorkflowScheduled,
-  ConditionStarted,
-  ConditionTimedOut,
   createEvent,
-  EventsPublished,
+  getEventId,
   HistoryStateEvent,
+  isHistoryEvent,
   isSleepCompleted,
+  isWorkflowCompleted,
+  isWorkflowFailed,
   isWorkflowStarted,
-  SignalSent,
   WorkflowCompleted,
   WorkflowEvent,
   WorkflowEventType,
@@ -36,32 +24,26 @@ import {
   FailedExecution,
   isCompleteExecution,
 } from "../../execution.js";
-import { isChildExecutionTarget } from "../../index.js";
-import { isFailed, isResolved, isResult } from "../../result.js";
-import { assertNever } from "../../util.js";
+import { isFailed, isResolved, isResult, Result } from "../../result.js";
 import { lookupWorkflow, progressWorkflow, Workflow } from "../../workflow.js";
-
-import type {
+import {
   EventClient,
   ExecutionHistoryClient,
   MetricsClient,
+  Schedule,
   TimerClient,
   WorkflowClient,
   WorkflowRuntimeClient,
 } from "../clients/index.js";
-import { Schedule, TimerRequestType } from "../clients/timer-client.js";
-import {
-  formatChildExecutionName,
-  formatExecutionId,
-  isExecutionId,
-  parseWorkflowName,
-} from "../execution-id.js";
+import { CommandExecutor } from "../command-executor.js";
+import { isExecutionId, parseWorkflowName } from "../execution-id.js";
 import type { Logger } from "../logger.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
 import { timed, timedSync } from "../metrics/utils.js";
 import { promiseAllSettledPartitioned } from "../utils.js";
+
 /**
  * The Orchestrator's client dependencies.
  */
@@ -99,6 +81,13 @@ export function createOrchestrator({
 }: OrchestratorDependencies): (
   eventsByExecutionId: Record<string, HistoryStateEvent[]>
 ) => Promise<OrchestratorResult> {
+  const commandExecutor = new CommandExecutor({
+    timerClient,
+    workflowClient,
+    workflowRuntimeClient,
+    eventClient,
+  });
+
   return async (eventsByExecutionId) => {
     logger.debug("Handle workflowQueue records");
 
@@ -153,27 +142,34 @@ export function createOrchestrator({
     const executionLogger = logger.createChild({
       persistentLogAttributes: { workflowName: workflow.name, executionId },
     });
-    const metrics = metricsClient.createMetricsLogger();
-    metrics.resetDimensions(false);
-    metrics.setNamespace(MetricsCommon.EventualNamespace);
-    metrics.setDimensions({
-      [MetricsCommon.WorkflowNameDimension]: workflow.workflowName,
-    });
+    const metrics = initializeMetrics();
     const start = new Date();
     try {
-      // number of events that came from the workflow task
-      metrics.setProperty(OrchestratorMetrics.TaskEvents, events.length);
-      // number of workflow tasks that are being processed in the batch (max: 10)
-      metrics.setProperty(OrchestratorMetrics.AggregatedTasks, events.length);
+      // load
+      const history = await loadHistory();
 
-      /** Events to be written to the history table at the end of the workflow task */
-      const newEvents: WorkflowEvent[] = [];
+      // execute
+      const { updatedHistoryEvents, newEvents, resultEvent } =
+        await executeWorkflow(history);
 
-      metrics.setProperty(OrchestratorMetrics.ExecutionId, executionId);
-      metrics.setProperty(
-        OrchestratorMetrics.Version,
-        OrchestratorMetrics.VersionV1
-      );
+      // persist
+      await persistWorkflowResult(resultEvent);
+      await saveNewEventsToExecutionHistory(newEvents);
+      await updateHistory(updatedHistoryEvents);
+
+      // Only log these metrics once the orchestrator has completed successfully.
+      logEventMetrics(metrics, events, start);
+    } catch (err) {
+      executionLogger.error(inspect(err));
+      throw err;
+    } finally {
+      await metrics.flush();
+    }
+
+    /**
+     * Executes the workflow and returns the history and events to persist.
+     */
+    async function executeWorkflow(history: HistoryStateEvent[]) {
       // length of time the oldest event in the queue.
       const maxTaskAge = Math.max(
         ...events.map(
@@ -186,15 +182,181 @@ export function createOrchestrator({
         Unit.Milliseconds
       );
 
-      newEvents.push(
-        createEvent<WorkflowTaskStarted>(
+      return partitionExecutionResults(history, executeWorkflowGenerator());
+
+      async function* executeWorkflowGenerator() {
+        yield createEvent<WorkflowTaskStarted>(
           {
             type: WorkflowEventType.WorkflowTaskStarted,
           },
           start
-        )
-      );
+        );
 
+        const workflowContext: WorkflowContext = {
+          name: workflow.workflowName,
+        };
+
+        const startEvent = history.find(isWorkflowStarted);
+
+        /**
+         * Check to see if this is the first run of the workflow (or all others have failed).
+         * If so, check to see if the workflow has timeout to start.
+         */
+        if (!startEvent) {
+          const newWorkflowStart = events.find(isWorkflowStarted);
+
+          if (newWorkflowStart?.timeoutTime) {
+            metrics.setProperty(OrchestratorMetrics.TimeoutStarted, 1);
+            await timed(
+              metrics,
+              OrchestratorMetrics.TimeoutStartedDuration,
+              () =>
+                timerClient.scheduleEvent<WorkflowTimedOut>({
+                  schedule: Schedule.absolute(newWorkflowStart.timeoutTime!),
+                  event: createEvent<WorkflowTimedOut>({
+                    type: WorkflowEventType.WorkflowTimedOut,
+                  }),
+                  executionId,
+                })
+            );
+          } else {
+            metrics.setProperty(OrchestratorMetrics.TimeoutStarted, 0);
+          }
+        }
+
+        const {
+          result,
+          commands: newCommands,
+          history: updatedHistoryEvents,
+        } = timedSync(
+          metrics,
+          OrchestratorMetrics.AdvanceExecutionDuration,
+          () => {
+            try {
+              return progressWorkflow(
+                workflow,
+                history,
+                events,
+                workflowContext,
+                executionId
+              );
+            } catch (err) {
+              console.log("workflow error");
+              executionLogger.error(inspect(err));
+              throw err;
+            }
+          }
+        );
+
+        metrics.setProperty(
+          OrchestratorMetrics.AdvanceExecutionEvents,
+          updatedHistoryEvents.length
+        );
+
+        yield* updatedHistoryEvents;
+
+        executionLogger.debug(
+          "Workflow terminated with: " + JSON.stringify(result)
+        );
+
+        executionLogger.info(`Found ${newCommands.length} new commands.`);
+
+        yield* await timed(
+          metrics,
+          OrchestratorMetrics.InvokeCommandsDuration,
+          () => processCommands(newCommands)
+        );
+
+        metrics.putMetric(
+          OrchestratorMetrics.CommandsInvoked,
+          newCommands.length,
+          Unit.Count
+        );
+
+        // tracks the time it takes for a workflow task to be scheduled until new commands could be emitted.
+        // This represent the workflow orchestration time of User Perceived Latency
+        // Average expected time for an activity to be invoked until it is considered complete by the workflow should follow:
+        // AvgActivityDuration(N) = Avg(TimeToCommandsInvoked) + Avg(ActivityDuration(N))
+        metrics.putMetric(
+          OrchestratorMetrics.TimeToCommandsInvoked,
+          maxTaskAge + (new Date().getTime() - start.getTime())
+        );
+
+        yield createEvent<WorkflowTaskCompleted>({
+          type: WorkflowEventType.WorkflowTaskCompleted,
+        });
+
+        if (isResult(result)) {
+          if (isFailed(result)) {
+            const [error, message] =
+              result.error instanceof Error
+                ? [result.error.name, result.error.message]
+                : ["Error", JSON.stringify(result.error)];
+            yield createEvent<WorkflowFailed>({
+              type: WorkflowEventType.WorkflowFailed,
+              error,
+              message,
+            });
+          } else if (isResolved<any>(result)) {
+            yield createEvent<WorkflowCompleted>({
+              type: WorkflowEventType.WorkflowCompleted,
+              output: result.value,
+            });
+          }
+        }
+
+        return result;
+      }
+
+      /**
+       * Partitions the events output by the workflow.
+       *
+       * We need two different collection of events.
+       *
+       * History Events - these are the events that workflow uses to maintain state.
+       *                  each run of the workflow we may filter or add events to this collection.
+       *                  these events will be persisted for the next run.
+       * Workflow Events - these are fined grained events emitted by the workflow. They drive UIs,
+       *                   visualization and debugging. They may not be used in the interpreter.
+       *                   The new ones will be persisted after each run.
+       */
+      async function partitionExecutionResults(
+        originalHistory: HistoryStateEvent[],
+        executionGenerator: AsyncGenerator<WorkflowEvent, Result | undefined>
+      ) {
+        const updatedHistoryEvents: HistoryStateEvent[] = [];
+        const newWorkflowEvents: WorkflowEvent[] = [];
+        let resultEvent: WorkflowCompleted | WorkflowFailed | undefined =
+          undefined;
+        const seenEvents: Set<string> = new Set(
+          originalHistory.map(getEventId)
+        );
+
+        for await (const event of executionGenerator) {
+          const id = getEventId(event);
+          // newWorkflowEvents are the unique new events generated by this workflow execution.
+          if (!seenEvents.has(id)) {
+            newWorkflowEvents.push(event);
+            seenEvents.add(id);
+          }
+          if (isWorkflowCompleted(event) || isWorkflowFailed(event)) {
+            resultEvent = event;
+          }
+          // updatedHistoryEvents are all HistoryEvents old and new.
+          if (isWorkflowStarted(event) || isHistoryEvent(event)) {
+            updatedHistoryEvents.push(event);
+          }
+        }
+
+        return {
+          updatedHistoryEvents,
+          newEvents: newWorkflowEvents,
+          resultEvent,
+        };
+      }
+    }
+
+    async function loadHistory(): Promise<HistoryStateEvent[]> {
       executionLogger.debug("Load history");
       // load history
       const history = await timed(
@@ -208,96 +370,36 @@ export function createOrchestrator({
         history.length
       );
 
-      const workflowContext: WorkflowContext = {
-        name: workflow.workflowName,
-      };
+      return history;
+    }
 
-      const startEvent = history.find(isWorkflowStarted);
-
-      /**
-       * Check to see if this is the first run of the workflow (or all others have failed).
-       * If so, check to see if the workflow has timeout to start.
-       */
-      if (!startEvent) {
-        const newWorkflowStart = events.find(isWorkflowStarted);
-
-        if (newWorkflowStart?.timeoutTime) {
-          metrics.setProperty(OrchestratorMetrics.TimeoutStarted, 1);
-          await timed(metrics, OrchestratorMetrics.TimeoutStartedDuration, () =>
-            timerClient.scheduleEvent<WorkflowTimedOut>({
-              schedule: Schedule.absolute(newWorkflowStart.timeoutTime!),
-              event: createEvent<WorkflowTimedOut>({
-                type: WorkflowEventType.WorkflowTimedOut,
-              }),
-              executionId,
-            })
-          );
-        } else {
-          metrics.setProperty(OrchestratorMetrics.TimeoutStarted, 0);
-        }
-      }
-
-      const {
-        result,
-        commands: newCommands,
-        history: updatedHistory,
-      } = timedSync(
+    /**
+     * Saves all new events generated by this execution to the {@link ExecutionHistoryClient}.
+     */
+    async function saveNewEventsToExecutionHistory(newEvents: WorkflowEvent[]) {
+      await timed(
         metrics,
-        OrchestratorMetrics.AdvanceExecutionDuration,
-        () => {
-          try {
-            return progressWorkflow(
-              workflow,
-              history,
-              events,
-              workflowContext,
-              executionId
-            );
-          } catch (err) {
-            console.log("workflow error");
-            executionLogger.error(inspect(err));
-            throw err;
-          }
-        }
+        OrchestratorMetrics.AddNewExecutionEventsDuration,
+        () => executionHistoryClient.putEvents(executionId, newEvents)
       );
 
       metrics.setProperty(
-        OrchestratorMetrics.AdvanceExecutionEvents,
-        updatedHistory.length
+        OrchestratorMetrics.NewExecutionEvents,
+        newEvents.length
       );
+    }
 
-      executionLogger.debug(
-        "Workflow terminated with: " + JSON.stringify(result)
+    /**
+     * Saves all of the History Events (the ones the workflow uses) to s3.
+     *
+     * @param updatedHistoryEvents - The previous history plus task events minus any filtered events plus synthetic events.
+     * @param commandEvents - events produced by the commands run.
+     */
+    async function updateHistory(updatedHistoryEvents: HistoryStateEvent[]) {
+      console.debug(
+        "New history to save",
+        JSON.stringify(updatedHistoryEvents)
       );
-
-      executionLogger.info(`Found ${newCommands.length} new commands.`);
-
-      const commandEvents = await timed(
-        metrics,
-        OrchestratorMetrics.InvokeCommandsDuration,
-        () => processCommands(newCommands)
-      );
-
-      metrics.putMetric(
-        OrchestratorMetrics.CommandsInvoked,
-        newCommands.length,
-        Unit.Count
-      );
-
-      // tracks the time it takes for a workflow task to be scheduled until new commands could be emitted.
-      // This represent the workflow orchestration time of User Perceived Latency
-      // Average expected time for an activity to be invoked until it is considered complete by the workflow should follow:
-      // AvgActivityDuration(N) = Avg(TimeToCommandsInvoked) + Avg(ActivityDuration(N))
-      metrics.putMetric(
-        OrchestratorMetrics.TimeToCommandsInvoked,
-        maxTaskAge + (new Date().getTime() - start.getTime())
-      );
-
-      newEvents.push(...commandEvents);
-
-      const newHistoryEvents = [...updatedHistory, ...commandEvents];
-
-      console.debug("New history to save", JSON.stringify(newHistoryEvents));
 
       // update history from new commands and events
       // for now, we'll just write the awaitable command events to s3 as those are the ones needed to reconstruct the workflow.
@@ -307,233 +409,117 @@ export function createOrchestrator({
         () =>
           workflowRuntimeClient.updateHistory({
             executionId,
-            events: newHistoryEvents,
+            events: updatedHistoryEvents,
           })
       );
 
       metrics.setProperty(
         OrchestratorMetrics.SavedHistoryEvents,
-        newHistoryEvents.length
+        updatedHistoryEvents.length
       );
       metrics.putMetric(
         OrchestratorMetrics.SavedHistoryBytes,
         historyUpdatedBytes,
         Unit.Bytes
       );
+    }
 
-      newEvents.push(
-        createEvent<WorkflowTaskCompleted>({
-          type: WorkflowEventType.WorkflowTaskCompleted,
-        })
-      );
-
+    async function persistWorkflowResult(
+      resultEvent?: WorkflowCompleted | WorkflowFailed
+    ) {
       // if the workflow is complete, add success and failure to the commands.
-      if (isResult(result)) {
-        if (isFailed(result)) {
-          const [error, message] =
-            result.error instanceof Error
-              ? [result.error.name, result.error.message]
-              : ["Error", JSON.stringify(result.error)];
-
-          newEvents.push(
-            createEvent<WorkflowFailed>({
-              type: WorkflowEventType.WorkflowFailed,
-              error,
-              message,
-            })
-          );
-
+      if (resultEvent) {
+        if (isWorkflowFailed(resultEvent)) {
           const execution = await timed(
             metrics,
             OrchestratorMetrics.ExecutionStatusUpdateDuration,
             () =>
               workflowRuntimeClient.failExecution({
                 executionId,
-                error,
-                message,
+                error: resultEvent.error,
+                message: resultEvent.message,
               })
           );
 
           logExecutionCompleteMetrics(execution);
-        } else if (isResolved<any>(result)) {
-          newEvents.push(
-            createEvent<WorkflowCompleted>({
-              type: WorkflowEventType.WorkflowCompleted,
-              output: result.value,
-            })
-          );
-
+        } else if (isWorkflowCompleted(resultEvent)) {
           const execution = await timed(
             metrics,
             OrchestratorMetrics.ExecutionStatusUpdateDuration,
             () =>
               workflowRuntimeClient.completeExecution({
                 executionId,
-                result: result.value,
+                result: resultEvent.output,
               })
           );
           logExecutionCompleteMetrics(execution);
         }
       }
+    }
 
-      await timed(
-        metrics,
-        OrchestratorMetrics.AddNewExecutionEventsDuration,
-        () => executionHistoryClient.putEvents(executionId, newEvents)
+    /**
+     * Generate events from commands and create a function which will start the commands.
+     *
+     * Does not actually write the commands out.
+     */
+    async function processCommands(
+      commands: Command[]
+    ): Promise<HistoryStateEvent[]> {
+      console.debug("Commands to send", JSON.stringify(commands));
+      // register command events
+      return await Promise.all(
+        commands.map((command) =>
+          commandExecutor.executeCommand(workflow, executionId, command, start)
+        )
       );
+    }
+
+    function initializeMetrics() {
+      const metrics = metricsClient.createMetricsLogger();
+      metricsClient.createMetricsLogger();
+      metrics.resetDimensions(false);
+      metrics.setNamespace(MetricsCommon.EventualNamespace);
+      metrics.setDimensions({
+        [MetricsCommon.WorkflowNameDimension]: workflow.workflowName,
+      });
+      // number of events that came from the workflow task
+      metrics.setProperty(OrchestratorMetrics.TaskEvents, events.length);
+      // number of workflow tasks that are being processed in the batch (max: 10)
+      metrics.setProperty(OrchestratorMetrics.AggregatedTasks, events.length);
+
+      metrics.setProperty(OrchestratorMetrics.ExecutionId, executionId);
       metrics.setProperty(
-        OrchestratorMetrics.NewExecutionEvents,
-        newEvents.length
+        OrchestratorMetrics.Version,
+        OrchestratorMetrics.VersionV1
       );
+      return metrics;
+    }
 
-      // Only log these metrics once the orchestrator has completed successfully.
-      logEventMetrics(metrics, events, start);
-
-      function logExecutionCompleteMetrics(
-        execution: CompleteExecution | FailedExecution
-      ) {
+    function logExecutionCompleteMetrics(
+      execution: CompleteExecution | FailedExecution
+    ) {
+      metrics.putMetric(
+        OrchestratorMetrics.ExecutionComplete,
+        execution.status === ExecutionStatus.COMPLETE ? 1 : 0,
+        Unit.Count
+      );
+      metrics.putMetric(
+        OrchestratorMetrics.ExecutionFailed,
+        execution.status === ExecutionStatus.COMPLETE ? 0 : 1,
+        Unit.Count
+      );
+      metrics.putMetric(
+        OrchestratorMetrics.ExecutionTotalDuration,
+        new Date(execution.endTime).getTime() -
+          new Date(execution.startTime).getTime()
+      );
+      if (isCompleteExecution(execution)) {
         metrics.putMetric(
-          OrchestratorMetrics.ExecutionComplete,
-          execution.status === ExecutionStatus.COMPLETE ? 1 : 0,
-          Unit.Count
-        );
-        metrics.putMetric(
-          OrchestratorMetrics.ExecutionFailed,
-          execution.status === ExecutionStatus.COMPLETE ? 0 : 1,
-          Unit.Count
-        );
-        metrics.putMetric(
-          OrchestratorMetrics.ExecutionTotalDuration,
-          new Date(execution.endTime).getTime() -
-            new Date(execution.startTime).getTime()
-        );
-        if (isCompleteExecution(execution)) {
-          metrics.putMetric(
-            OrchestratorMetrics.ExecutionResultBytes,
-            execution.result ? JSON.stringify(execution.result).length : 0,
-            Unit.Bytes
-          );
-        }
-      }
-
-      /**
-       * Generate events from commands and create a function which will start the commands.
-       *
-       * Does not actually write the commands out.
-       */
-      async function processCommands(
-        commands: Command[]
-      ): Promise<HistoryStateEvent[]> {
-        console.debug("Commands to send", JSON.stringify(commands));
-        // register command events
-        return await Promise.all(
-          commands.map(async (command) => {
-            if (isScheduleActivityCommand(command)) {
-              await workflowRuntimeClient.scheduleActivity({
-                workflowName: workflow.workflowName,
-                executionId,
-                command,
-                baseTime: start,
-              });
-
-              return createEvent<ActivityScheduled>({
-                type: WorkflowEventType.ActivityScheduled,
-                seq: command.seq,
-                name: command.name,
-              });
-            } else if (isScheduleWorkflowCommand(command)) {
-              await workflowClient.startWorkflow({
-                workflowName: command.name,
-                input: command.input,
-                parentExecutionId: executionId,
-                executionName: formatChildExecutionName(
-                  executionId,
-                  command.seq
-                ),
-                seq: command.seq,
-                ...command.opts,
-              });
-
-              return createEvent<ChildWorkflowScheduled>({
-                type: WorkflowEventType.ChildWorkflowScheduled,
-                seq: command.seq,
-                name: command.name,
-                input: command.input,
-              });
-            } else if (
-              isSleepForCommand(command) ||
-              isSleepUntilCommand(command)
-            ) {
-              // all sleep times are computed using the start time of the WorkflowTaskStarted
-              return workflowRuntimeClient.scheduleSleep({
-                executionId,
-                command,
-                baseTime: start,
-              });
-            } else if (isExpectSignalCommand(command)) {
-              // should the timeout command be generic (ex: StartTimeout) or specific (ex: ExpectSignal)?
-              return workflowRuntimeClient.executionExpectSignal({
-                executionId,
-                command,
-                baseTime: start,
-              });
-            } else if (isSendSignalCommand(command)) {
-              const childExecutionId = isChildExecutionTarget(command.target)
-                ? formatExecutionId(
-                    command.target.workflowName,
-                    formatChildExecutionName(executionId, command.target.seq)
-                  )
-                : command.target.executionId;
-
-              await workflowClient.sendSignal({
-                signal: command.signalId,
-                executionId: childExecutionId,
-                id: `${executionId}/${command.seq}`,
-                payload: command.payload,
-              });
-
-              return createEvent<SignalSent>({
-                type: WorkflowEventType.SignalSent,
-                executionId: childExecutionId,
-                seq: command.seq,
-                signalId: command.signalId,
-                payload: command.payload,
-              });
-            } else if (isStartConditionCommand(command)) {
-              if (command.timeoutSeconds) {
-                await timerClient.startTimer({
-                  type: TimerRequestType.ScheduleEvent,
-                  event: createEvent<ConditionTimedOut>({
-                    type: WorkflowEventType.ConditionTimedOut,
-                    seq: command.seq,
-                  }),
-                  executionId,
-                  schedule: Schedule.relative(command.timeoutSeconds, start),
-                });
-              }
-
-              return createEvent<ConditionStarted>({
-                type: WorkflowEventType.ConditionStarted,
-                seq: command.seq!,
-              });
-            } else if (isPublishEventsCommand(command)) {
-              await eventClient.publish(...command.events);
-              return createEvent<EventsPublished>({
-                type: WorkflowEventType.EventsPublished,
-                events: command.events,
-                seq: command.seq!,
-              });
-            } else {
-              return assertNever(command, `unknown command type`);
-            }
-          })
+          OrchestratorMetrics.ExecutionResultBytes,
+          execution.result ? JSON.stringify(execution.result).length : 0,
+          Unit.Bytes
         );
       }
-    } catch (err) {
-      executionLogger.error(inspect(err));
-      throw err;
-    } finally {
-      await metrics.flush();
     }
   }
 }

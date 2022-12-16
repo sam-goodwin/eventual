@@ -66,8 +66,8 @@ export async function bundleService(outDir: string, entry: string) {
     entry,
     name: "service",
     plugins: [eventualESPlugin],
-    //It's important that we use inline source maps for service, otherwise debugger fails to pick it up
-    sourcemap: "inline",
+    //It's important that we DONT use inline source maps for service, otherwise debugger fails to pick it up
+    // sourcemap: "inline",
   });
 }
 

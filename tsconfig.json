@@ -29,6 +29,12 @@
       "path": "packages/@eventual/aws-runtime/tsconfig.cjs.json"
     },
     {
+      "path": "packages/@eventual/integrations-slack"
+    },
+    {
+      "path": "packages/@eventual/integrations-slack/tsconfig.cjs.json"
+    },
+    {
       "path": "packages/@eventual/cli"
     },
     {
@@ -42,6 +48,18 @@
     },
     {
       "path": "apps/tests/aws-runtime-cdk"
+    },
+    {
+      "path": "examples/lambda-test-runner/runtime"
+    },
+    {
+      "path": "examples/lambda-test-runner/infra"
+    },
+    {
+      "path": "examples/stock-bot/runtime"
+    },
+    {
+      "path": "examples/stock-bot/infra"
     }
   ]
 }

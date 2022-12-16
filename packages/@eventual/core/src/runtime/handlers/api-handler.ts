@@ -1,4 +1,3 @@
-import itty from "itty-router";
 import { api } from "../../api.js";
 import { registerEventClient, registerWorkflowClient } from "../../global.js";
 import type { WorkflowClient } from "../clients/workflow-client.js";
@@ -31,9 +30,7 @@ export function createApiHandler({
    * Each webhook registers routes on the central {@link router} which
    * then handles the request.
    */
-  return async function processRequest(
-    request: itty.Request
-  ): Promise<Response> {
+  return async function processRequest(request: Request): Promise<Response> {
     try {
       return api.handle(request);
     } catch (err) {
