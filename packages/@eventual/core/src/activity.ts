@@ -54,7 +54,9 @@ export interface ActivityFunction<
    * })
    * ```
    */
-  complete(request: CompleteActivityRequest<Awaited<Output>>): Promise<void>;
+  complete(
+    request: CompleteActivityRequest<UnwrapAsync<Awaited<Output>>>
+  ): Promise<void>;
 }
 
 export interface ActivityHandler<

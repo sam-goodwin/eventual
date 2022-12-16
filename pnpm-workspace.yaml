@@ -5,3 +5,4 @@ packages:
   - "examples/**"
   - "apps/*"
   - "apps/tests/*"
+  - "examples/**/*"
