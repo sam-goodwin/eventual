@@ -208,7 +208,7 @@ export const asyncWorkflow = workflow(
 
 const activityWithHeartbeat = activity(
   "activityWithHeartbeat",
-  { heartbeatSeconds: 1 },
+  { heartbeatSeconds: 2 },
   async (n: number, type: "success" | "no-heartbeat" | "some-heartbeat") => {
     const delay = (s: number) =>
       new Promise((resolve) => {
@@ -220,7 +220,7 @@ const activityWithHeartbeat = activity(
       await delay(0.5);
       if (type === "success") {
         await heartbeat();
-      } else if (type === "some-heartbeat" && _n < 4) {
+      } else if (type === "some-heartbeat" && _n < n * 0.33) {
         await heartbeat();
       }
       // no-heartbeat never sends one... woops.
