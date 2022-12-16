@@ -24,6 +24,7 @@
     "export": "turbo run export"
   },
   "devDependencies": {
+    "@types/jest": "^29",
     "@types/node": "^16",
     "husky": "^8.0.1",
     "jest": "^29",
