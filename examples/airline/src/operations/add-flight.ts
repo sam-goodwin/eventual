@@ -1,5 +1,5 @@
 import { PutCommand } from "@aws-sdk/lib-dynamodb";
-import { activity, api, event, workflow } from "@eventual/core";
+import { activity, api, event } from "@eventual/core";
 import { dynamo, tableName } from "../dynamodb.js";
 import { FlightAdded, FlightEventType } from "./flight-event.js";
 
@@ -21,17 +21,18 @@ interface AddFlightResponse {
 export const flightAdded = event<FlightAdded>(FlightEventType.FlightAdded);
 
 api.post("/flights", async (request) => {
-  const addFlight: AddFlightRequest = await request.json();
+  const payload: AddFlightRequest = await request.json();
 
-  const { executionId } = await addFlightWorkflow.startExecution({
-    // use flightNo for idempotency
-    name: addFlight.flightNo,
-    input: addFlight,
+  await addFlight(payload);
+
+  await flightAdded.publish({
+    type: FlightEventType.FlightAdded,
+    ...payload,
   });
 
   return new Response(
     JSON.stringify({
-      flightId: executionId,
+      flightId: payload.flightId,
     } satisfies AddFlightResponse),
     {
       // request is accepted and is being processed
@@ -42,22 +43,6 @@ api.post("/flights", async (request) => {
     }
   );
 });
-
-const addFlightWorkflow = workflow(
-  "addFlight",
-  async (request: AddFlightRequest) => {
-    try {
-      await addFlight(request);
-
-      await flightAdded.publish({
-        type: FlightEventType.FlightAdded,
-        ...request,
-      });
-    } catch (err) {
-      console.error(err);
-    }
-  }
-);
 
 const addFlight = activity("addFlight", async (request: AddFlightRequest) => {
   await dynamo.send(

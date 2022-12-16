@@ -1,8 +1,8 @@
 import { UpdateCommand } from "@aws-sdk/lib-dynamodb";
-import { activity, api, event, workflow } from "@eventual/core";
 import { dynamo, tableName } from "../dynamodb.js";
 import { FlightCancelled, FlightEventType } from "./flight-event.js";
 import { CancelledFlightRecord, FlightStatus } from "./flight-record.js";
+import { activity, api, event } from "@eventual/core";
 
 interface CancelFlightRequest {
   flightId: string;
@@ -11,10 +11,6 @@ interface CancelFlightRequest {
   origin: string;
   destination: string;
   cancelledAt: string;
-}
-
-interface CancelFlightResponse {
-  progressToken: string;
 }
 
 export const flightCancelled = event<FlightCancelled>(
@@ -28,36 +24,22 @@ api.post("/flight/:flightId/cancellation", async (request) => {
       status: 400,
     });
   }
-  const cancelFlight: CancelFlightRequest = await request.json();
+  const payload: CancelFlightRequest = await request.json();
 
-  const { executionId } = await cancelFlightWorkflow.startExecution({
-    name: flightId,
-    input: cancelFlight,
+  const flight = await cancelFlight(payload);
+
+  await flightCancelled.publish({
+    type: FlightEventType.FlightCancelled,
+    cancelledAt: flight.cancelledAt,
+    day: flight.day,
+    destination: flight.destination,
+    flightNo: flight.flightNo,
+    origin: flight.origin,
+    route: flight.route,
   });
 
-  return new Response(
-    JSON.stringify({
-      progressToken: executionId,
-    } satisfies CancelFlightResponse)
-  );
+  return new Response(JSON.stringify(flight));
 });
-
-const cancelFlightWorkflow = workflow(
-  "cancelFlight",
-  async (request: CancelFlightRequest) => {
-    const flight = await cancelFlight(request);
-
-    await flightCancelled.publish({
-      type: FlightEventType.FlightCancelled,
-      cancelledAt: flight.cancelledAt,
-      day: flight.day,
-      destination: flight.destination,
-      flightNo: flight.flightNo,
-      origin: flight.origin,
-      route: flight.route,
-    });
-  }
-);
 
 const cancelFlight = activity(
   "cancelFlight",
