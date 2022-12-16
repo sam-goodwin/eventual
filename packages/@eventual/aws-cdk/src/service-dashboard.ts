@@ -1,5 +1,5 @@
 import { aws_cloudwatch } from "aws-cdk-lib";
-import { Statistic, Unit } from "aws-cdk-lib/aws-cloudwatch";
+import { Statistic } from "aws-cdk-lib/aws-cloudwatch";
 import { Construct } from "constructs";
 import { Service } from "./service";
 
@@ -18,7 +18,7 @@ export class ServiceDashboard extends Construct {
     super(scope, id);
 
     this.dashboard = new aws_cloudwatch.Dashboard(this, "Dashboard", {
-      dashboardName: `Workflow-${service.serviceName.replace(
+      dashboardName: `Service-${service.serviceName.replace(
         /[^A-Za-z0-9_-]/g,
         ""
       )}`,
@@ -44,13 +44,10 @@ export class ServiceDashboard extends Construct {
               service.metricMaxTaskAge({
                 label:
                   "Average age of the oldest Task in a single SQS batch to the Orchestrator",
-                statistic: Statistic.MAXIMUM,
-                unit: Unit.COUNT,
               }),
               service.metricMaxTaskAge({
                 label: "Maximum age of any Task processed by the Orchestrator",
                 statistic: Statistic.MAXIMUM,
-                unit: Unit.COUNT,
               }),
             ],
             width: 12,
