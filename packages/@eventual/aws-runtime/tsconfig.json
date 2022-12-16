@@ -2,12 +2,8 @@
   "extends": "../../../tsconfig-base",
   "compilerOptions": {
     "baseUrl": ".",
-    "outDir": "lib/esm",
-    "declaration": true,
-    "inlineSourceMap": true,
     "rootDir": "src",
-    "typeRoots": ["./node_modules/@types"],
-    "allowJs": true,
+    "outDir": "lib/esm",
     "paths": {
       "@eventual/injected/*": ["./src/injected/*"]
     }

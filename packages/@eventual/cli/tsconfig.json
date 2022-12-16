@@ -1,16 +1,11 @@
 {
   "extends": "../../../tsconfig-base",
-  "compilerOptions": {
-    "outDir": "lib/esm",
-    "declaration": true,
-    "inlineSourceMap": true,
-    "rootDir": "src",
-    "typeRoots": ["./node_modules/@types"],
-    "allowJs": true,
-    "lib": ["DOM"]
-  },
   "include": ["src"],
   "exclude": ["lib", "node_modules"],
+  "compilerOptions": {
+    "outDir": "lib/esm",
+    "rootDir": "src"
+  },
   "references": [
     { "path": "../core" },
     { "path": "../aws-runtime" },

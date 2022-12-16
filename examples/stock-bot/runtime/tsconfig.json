@@ -1,13 +1,8 @@
 {
   "extends": "../../../tsconfig-base",
   "compilerOptions": {
-    "module": "NodeNext",
     "outDir": "lib",
-    "declaration": true,
-    "inlineSourceMap": true,
-    "rootDir": "src",
-    "typeRoots": ["./node_modules/@types"],
-    "allowJs": true
+    "rootDir": "src"
   },
   "include": ["src"],
   "exclude": ["lib", "node_modules"],
