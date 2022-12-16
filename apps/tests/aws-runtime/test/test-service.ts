@@ -74,14 +74,13 @@ export const workflow4 = workflow("parallel", async () => {
   );
   const greetings3 = Promise.all([hello("sam"), hello("chris"), hello("sam")]);
   const any = Promise.any([fail("failed"), hello("sam")]);
-  const race = Promise.race([
-    fail("failed"),
-    (async () => {
-      await sleepFor(100);
-      return await hello("sam");
-    })(),
-  ]);
+  const race = Promise.race([fail("failed"), sayHelloInSeconds(100)]);
   return Promise.allSettled([greetings, greetings2, greetings3, any, race]);
+
+  async function sayHelloInSeconds(seconds: number) {
+    await sleepFor(seconds);
+    return await hello("sam");
+  }
 });
 
 const signal = new Signal<number>("signal");
