@@ -1,5 +1,5 @@
 {
-  "extends": "../../../tsconfig-base.esm",
+  "extends": "../../../tsconfig-base",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "lib/esm"
