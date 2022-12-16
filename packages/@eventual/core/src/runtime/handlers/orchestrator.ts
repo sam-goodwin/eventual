@@ -27,6 +27,7 @@ import {
 import { isFailed, isResolved, isResult, Result } from "../../result.js";
 import { lookupWorkflow, progressWorkflow, Workflow } from "../../workflow.js";
 import {
+  ActivityRuntimeClient,
   EventClient,
   ExecutionHistoryClient,
   MetricsClient,
@@ -48,6 +49,7 @@ import { promiseAllSettledPartitioned } from "../utils.js";
  * The Orchestrator's client dependencies.
  */
 export interface OrchestratorDependencies {
+  activityRuntimeClient: ActivityRuntimeClient;
   executionHistoryClient: ExecutionHistoryClient;
   timerClient: TimerClient;
   workflowRuntimeClient: WorkflowRuntimeClient;
@@ -71,6 +73,7 @@ export interface OrchestratorResult {
  * inject its own client implementations designed for that platform.
  */
 export function createOrchestrator({
+  activityRuntimeClient,
   executionHistoryClient,
   timerClient,
   workflowRuntimeClient,
@@ -86,6 +89,7 @@ export function createOrchestrator({
     workflowClient,
     workflowRuntimeClient,
     eventClient,
+    activityRuntimeClient,
   });
 
   return async (eventsByExecutionId) => {

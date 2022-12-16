@@ -1,4 +1,8 @@
-import { HeartbeatTimeout } from "@eventual/core";
+import {
+  ActivityCancelled,
+  EventualError,
+  HeartbeatTimeout,
+} from "@eventual/core";
 import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
 import {
   eventDrivenWorkflow,
@@ -10,6 +14,7 @@ import {
   workflow2,
   workflow3,
   workflow4,
+  overrideWorkflow,
 } from "./test-service.js";
 
 jest.setTimeout(100 * 1000);
@@ -31,7 +36,7 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
     { status: "fulfilled", value: ["HELLO SAM", "HELLO CHRIS", "HELLO SAM"] },
     { status: "fulfilled", value: ["hello sam", "hello chris", "hello sam"] },
     { status: "fulfilled", value: "hello sam" },
-    { status: "rejected", reason: "Error" },
+    { status: "rejected", reason: { name: "Error", message: "failed" } },
   ]);
 
   testCompletion("parent-child", parentWorkflow, "done");
@@ -45,7 +50,10 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
 
   testCompletion("asyncActivities", asyncWorkflow, [
     "hello from the async writer!",
-    "AsyncWriterError",
+    {
+      name: "AsyncWriterError",
+      message: "I was told to fail this activity, sorry.",
+    },
   ]);
 
   testCompletion("heartbeat", heartbeatWorkflow, 20, [
@@ -62,4 +70,21 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
   ]);
 
   testCompletion("event-driven", eventDrivenWorkflow, "done!");
+
+  testCompletion("overrideActivities", overrideWorkflow, [
+    [{ status: "rejected", reason: new ActivityCancelled("because").toJSON() }],
+    [
+      { status: "fulfilled", value: "from the event handler!" },
+      {
+        status: "rejected",
+        reason: new EventualError("Error", "WHY!!!").toJSON(),
+      },
+      { status: "fulfilled", value: "from the signal handler!" },
+      {
+        status: "rejected",
+        reason: new EventualError("Error", "BECAUSE!!!").toJSON(),
+      },
+    ],
+    { token: "", type: "complete" },
+  ]);
 });

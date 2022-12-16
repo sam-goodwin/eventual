@@ -21,13 +21,16 @@ export interface ActivityRuntimeClient {
     executionId: string,
     seq: number,
     heartbeatTime: string
-  ): Promise<{ cancelled: boolean }>;
+  ): Promise<HeartbeatResponse>;
 
   /**
-   * Marks an activity as cancelled. An activity can use the {@link heartbeat} call
+   * Marks an activity as closed. An activity can use the {@link heartbeat} call
    * to retrieve this value.
    */
-  cancelActivity(executionId: string, seq: number): Promise<void>;
+  closeActivity(
+    executionId: string,
+    seq: number
+  ): Promise<{ alreadyClosed: boolean }>;
 
   /**
    * Retrieves the activity to check the cancellation status, heartbeat, or other properties.
@@ -43,5 +46,15 @@ export interface ActivityExecution {
   seq: number;
   claims?: string[];
   heartbeatTime?: string;
-  cancelled?: boolean;
+  closed?: boolean;
+}
+
+export interface HeartbeatResponse {
+  /**
+   * True when the activity has already completed elsewhere.
+   *
+   * This is the only way for a long running activity to know that the activity
+   * is no longer looking for a result.
+   */
+  closed: boolean;
 }

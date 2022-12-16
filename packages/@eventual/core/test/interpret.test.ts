@@ -1,8 +1,18 @@
-import { createActivityCall } from "../src/calls/activity-call.js";
-import { chain } from "../src/chain.js";
-import { DeterminismError, HeartbeatTimeout, Timeout } from "../src/error.js";
 import {
+  createActivityCall,
+  createOverrideActivityCall,
+} from "../src/calls/activity-call.js";
+import { chain } from "../src/chain.js";
+import {
+  DeterminismError,
+  EventualError,
+  HeartbeatTimeout,
+  Timeout,
+} from "../src/error.js";
+import {
+  ActivityTargetType,
   Context,
+  createActivityToken,
   createAwaitAll,
   Eventual,
   interpret,
@@ -19,10 +29,14 @@ import {
   WorkflowHandler,
   WorkflowResult,
 } from "../src/index.js";
-import { createSleepUntilCall } from "../src/calls/sleep-call.js";
+import {
+  createSleepForCall,
+  createSleepUntilCall,
+} from "../src/calls/sleep-call.js";
 import {
   activityCompleted,
   activityFailed,
+  activityOverridden as activityOverridden,
   activityHeartbeatTimedOut,
   activityScheduled,
   activityTimedOut,
@@ -30,6 +44,7 @@ import {
   conditionStarted,
   conditionTimedOut,
   createExpectSignalCommand,
+  createOverrideActivityCommand as createOverrideActivityCommand,
   createPublishEventCommand,
   createScheduledActivityCommand,
   createScheduledWorkflowCommand,
@@ -156,7 +171,13 @@ test("should catch error of failed Activity", () => {
       activityFailed("error", 0),
     ])
   ).toMatchObject(<WorkflowResult>{
-    commands: [createScheduledActivityCommand("handle-error", ["error"], 1)],
+    commands: [
+      createScheduledActivityCommand(
+        "handle-error",
+        [new EventualError("error").toJSON()],
+        1
+      ),
+    ],
   });
 });
 
@@ -239,7 +260,7 @@ test("should handle partial blocks with partial completes", () => {
   });
 });
 
-describe("activity", () =>
+describe("activity", () => {
   describe("heartbeat", () => {
     const wf = workflow(function* () {
       return createActivityCall("getPumpedUp", [], undefined, 100);
@@ -300,7 +321,125 @@ describe("activity", () =>
         commands: [],
       });
     });
-  }));
+  });
+
+  describe("override activity", () => {
+    describe("complete own activity", () => {
+      const wf = workflow(function* () {
+        const act = createActivityCall("getPumpedUp", [], undefined, 100);
+        yield createSleepForCall(100);
+        yield createOverrideActivityCall(
+          { seq: 0, type: ActivityTargetType.OwnActivity },
+          Result.resolved("hi")
+        );
+        return act;
+      });
+
+      test("override first", () => {
+        expect(
+          interpret(wf.definition(undefined, context), [
+            activityScheduled("getPumpedUp", 0),
+            scheduledSleep("", 1),
+            completedSleep(1),
+            activityOverridden("", 0, 2),
+          ])
+        ).toMatchObject<WorkflowResult>({
+          result: Result.resolved("hi"),
+          commands: [],
+        });
+      });
+
+      test("override own after real complete", () => {
+        expect(
+          interpret(wf.definition(undefined, context), [
+            activityScheduled("getPumpedUp", 0),
+            scheduledSleep("", 1),
+            activityCompleted("bye", 0),
+            completedSleep(1),
+            activityOverridden("", 0, 2),
+          ])
+        ).toMatchObject<WorkflowResult>({
+          result: Result.resolved("bye"),
+          commands: [],
+        });
+      });
+    });
+
+    test("override with fail own activity", () => {
+      const wf = workflow(function* () {
+        const act = createActivityCall("getPumpedUp", [], undefined, 100);
+        yield createOverrideActivityCall(
+          { seq: 0, type: ActivityTargetType.OwnActivity },
+          Result.failed(new Timeout())
+        );
+        return act;
+      });
+      expect(
+        interpret(wf.definition(undefined, context), [
+          activityScheduled("getPumpedUp", 0),
+          activityOverridden("", 0, 1),
+        ])
+      ).toMatchObject<WorkflowResult>({
+        result: Result.failed(new Timeout()),
+        commands: [],
+      });
+    });
+
+    describe("override external activity", () => {
+      test("override", () => {
+        const wf = workflow(function* () {
+          const act = createActivityCall("getPumpedUp", [], undefined, 100);
+          yield createOverrideActivityCall(
+            {
+              type: ActivityTargetType.ActivityToken,
+              activityToken: createActivityToken("exec1", 100),
+            },
+            Result.failed(new Timeout())
+          );
+          return act;
+        });
+        expect(
+          interpret(wf.definition(undefined, context), [
+            activityScheduled("getPumpedUp", 0),
+            activityOverridden("exec1", 100, 1),
+          ])
+        ).toMatchObject<WorkflowResult>({
+          commands: [],
+        });
+      });
+
+      test("command", () => {
+        const wf = workflow(function* () {
+          const act = createActivityCall("getPumpedUp", [], undefined, 100);
+          yield createOverrideActivityCall(
+            {
+              type: ActivityTargetType.ActivityToken,
+              activityToken: createActivityToken("exec1", 100),
+            },
+            Result.failed(new Timeout())
+          );
+          return act;
+        });
+        expect(
+          interpret(wf.definition(undefined, context), [
+            activityScheduled("getPumpedUp", 0),
+          ])
+        ).toMatchObject<WorkflowResult>({
+          commands: [
+            createOverrideActivityCommand(
+              Result.failed(new Timeout()),
+              {
+                type: ActivityTargetType.ActivityToken,
+                activityToken: createActivityToken("exec1", 100),
+              },
+              1
+            ),
+          ],
+        });
+      });
+    });
+  });
+});
 
 test("should throw when scheduled does not correspond to call", () => {
   expect(() =>
@@ -938,7 +1077,7 @@ describe("Race", () => {
         activityCompleted("B", 1),
       ])
     ).toMatchObject(<WorkflowResult>{
-      result: Result.failed("A"),
+      result: Result.failed(new EventualError("A").toJSON()),
     });
 
     expect(
@@ -948,7 +1087,7 @@ describe("Race", () => {
         activityFailed("B", 1),
       ])
     ).toMatchObject(<WorkflowResult>{
-      result: Result.failed("B"),
+      result: Result.failed(new EventualError("B").toJSON()),
     });
   });
 });
@@ -1018,8 +1157,8 @@ describe("AwaitAllSettled", () => {
       ])
     ).toMatchObject<WorkflowResult<PromiseSettledResult<string>[]>>({
       result: Result.resolved([
-        { status: "rejected", reason: "A" },
-        { status: "rejected", reason: "B" },
+        { status: "rejected", reason: new EventualError("A").toJSON() },
+        { status: "rejected", reason: new EventualError("B").toJSON() },
       ]),
       commands: [],
     });
@@ -1033,7 +1172,7 @@ describe("AwaitAllSettled", () => {
       ])
     ).toMatchObject<WorkflowResult<PromiseSettledResult<string>[]>>({
       result: Result.resolved([
-        { status: "rejected", reason: "A" },
+        { status: "rejected", reason: new EventualError("A").toJSON() },
         { status: "fulfilled", value: "B" },
       ]),
       commands: [],
@@ -1306,7 +1445,7 @@ test("workflow calling other workflow", () => {
       workflowFailed("error", 0),
     ])
   ).toMatchObject({
-    result: Result.failed("error"),
+    result: Result.failed(new EventualError("error").toJSON()),
     commands: [],
   });
 });

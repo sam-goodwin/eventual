@@ -1,7 +1,7 @@
 import { ConditionPredicate } from "../condition.js";
 import {
+  CommandCallBase,
   createEventual,
-  EventualBase,
   EventualKind,
   isEventualOfKind,
 } from "../eventual.js";
@@ -13,8 +13,7 @@ export function isConditionCall(a: any): a is ConditionCall {
 }
 
 export interface ConditionCall
-  extends EventualBase<EventualKind.ConditionCall, Resolved<boolean> | Failed> {
-  seq?: number;
+  extends CommandCallBase<EventualKind.ConditionCall, Resolved<boolean> | Failed> {
   predicate: ConditionPredicate;
   timeoutSeconds?: number;
 }

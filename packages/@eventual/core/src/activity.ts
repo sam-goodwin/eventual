@@ -1,9 +1,14 @@
-import { createActivityCall } from "./calls/activity-call.js";
+import {
+  createActivityCall,
+  createOverrideActivityCall,
+} from "./calls/activity-call.js";
+import { ActivityCancelled, EventualError } from "./error.js";
 import {
   callableActivities,
   getActivityContext,
   getWorkflowClient,
 } from "./global.js";
+import { Result } from "./result.js";
 import { CompleteActivityRequest } from "./runtime/clients/workflow-client.js";
 import { isActivityWorker, isOrchestratorWorker } from "./runtime/flags.js";
 
@@ -31,7 +36,8 @@ export interface ActivityFunction<
   Arguments extends any[],
   Output extends any = any
 > {
-  (...args: Arguments): Promise<Awaited<UnwrapAsync<Output>>>;
+  (...args: Arguments): Promise<Awaited<UnwrapAsync<Output>>> &
+    ActivityExecutionReference;
 
   /**
    * Complete an activity request by its {@link CompleteActivityRequest.activityToken}.
@@ -73,6 +79,9 @@ export interface ActivityHandler<
 export type UnwrapAsync<Output> = Output extends AsyncResult<infer O>
   ? O
   : Output;
+
+export type ActivityOutput<A extends ActivityFunction<any, any>> =
+  A extends ActivityFunction<any, infer O> ? UnwrapAsync<O> : never;
 
 const AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
 
@@ -177,10 +186,100 @@ export function activity<Arguments extends any[], Output extends any = any>(
       Output
     >;
   }
-  func.complete = async function (request) {
-    return getWorkflowClient().completeActivity(request);
+  func.complete = function (request) {
+    return completeActivity(request.activityToken, request.result);
   };
   return func;
+}
+
+export type ActivityTarget = OwnActivityTarget | ActivityTokenTarget;
+
+export enum ActivityTargetType {
+  OwnActivity,
+  ActivityToken,
+}
+
+export interface OwnActivityTarget {
+  type: ActivityTargetType.OwnActivity;
+  seq: number;
+}
+
+export interface ActivityTokenTarget {
+  type: ActivityTargetType.ActivityToken;
+  activityToken: string;
+}
+
+export interface ActivityExecutionReference {
+  /**
+   * Cancel this activity.
+   *
+   * The activity will reject with a {@link ActivityCancelled} error.
+   *
+   * If the activity is calling {@link heartbeat}, closed: true will be
+   * return to signal the workflow considers the activity finished.
+   */
+  cancel: (reason: string) => Promise<void>;
+}
+
+/**
+ * Causes the activity to resolve the provided value to the workflow.
+ *
+ * If the activity is calling {@link heartbeat}, closed: true will be
+ * return to signal the workflow considers the activity finished.
+ */
+export function completeActivity<A extends ActivityFunction<any, any> = any>(
+  activityToken: string,
+  result: ActivityOutput<A>
+): Promise<void> {
+  if (isOrchestratorWorker()) {
+    return createOverrideActivityCall(
+      {
+        type: ActivityTargetType.ActivityToken,
+        activityToken,
+      },
+      Result.resolved(result)
+    ) as any;
+  } else {
+    return getWorkflowClient().completeActivity({ activityToken, result });
+  }
+}
+
+/**
+ * Causes the activity to reject with the provided value within the workflow.
+ *
+ * If the activity is calling {@link heartbeat}, closed: true will be
+ * return to signal the workflow considers the activity finished.
+ */
+export function failActivity(
+  activityToken: string,
+  error: Error
+): Promise<void>;
+export function failActivity(
+  activityToken: string,
+  error: string,
+  message: string
+): Promise<void>;
+export function failActivity(
+  activityToken: string,
+  ...args: [error: Error] | [error: string, message: string]
+): Promise<void> {
+  const error =
+    args.length === 1 ? args[0] : new EventualError(args[0], args[1]);
+  if (isOrchestratorWorker()) {
+    return createOverrideActivityCall(
+      {
+        type: ActivityTargetType.ActivityToken,
+        activityToken,
+      },
+      Result.failed(error)
+    ) as any;
+  } else {
+    return getWorkflowClient().failActivity({
+      activityToken,
+      error: error.name,
+      message: error.message,
+    });
+  }
 }
 
 /**

@@ -252,6 +252,7 @@ export function sendSignal(
     return getWorkflowClient().sendSignal({
       executionId,
       signal,
+      payload,
       id: id ?? ulid(),
       payload,
     });

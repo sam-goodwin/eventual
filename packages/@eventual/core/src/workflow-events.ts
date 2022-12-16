@@ -19,6 +19,7 @@ export interface HistoryEventBase extends Omit<BaseEvent, "id"> {
 export enum WorkflowEventType {
   ActivityCompleted = "ActivityCompleted",
   ActivityFailed = "ActivityFailed",
+  ActivityOverridden = "ActivityOverridden",
   ActivityHeartbeatTimedOut = "ActivityHeartbeatTimedOut",
   ActivityScheduled = "ActivityScheduled",
   ActivityTimedOut = "ActivityTimedOut",
@@ -55,6 +56,7 @@ export type WorkflowEvent =
 
 export type ScheduledEvent =
   | ActivityScheduled
+  | ActivityOverridden
   | ChildWorkflowScheduled
   | ConditionStarted
   | EventsPublished
@@ -135,6 +137,16 @@ export interface ActivityCompleted extends HistoryEventBase {
   result: any;
 }
 
+/**
+ * Event generated when the workflow calls complete, fail,
+ * or cancel on it's activity or the activity of another execution.
+ */
+export interface ActivityOverridden extends HistoryEventBase {
+  type: WorkflowEventType.ActivityOverridden;
+  executionId: string;
+  activitySeq: number;
+}
+
 export interface ActivityFailed extends HistoryEventBase {
   type: WorkflowEventType.ActivityFailed;
   error: string;
@@ -199,6 +211,12 @@ export function isActivityCompleted(
   event: WorkflowEvent
 ): event is ActivityCompleted {
   return event.type === WorkflowEventType.ActivityCompleted;
+}
+
+export function isActivityOverridden(
+  event: WorkflowEvent
+): event is ActivityOverridden {
+  return event.type === WorkflowEventType.ActivityOverridden;
 }
 
 export function isActivityFailed(
@@ -377,6 +395,7 @@ export function isWorkflowTimedOut(
 
 export const isScheduledEvent = or(
   isActivityScheduled,
+  isActivityOverridden,
   isChildWorkflowScheduled,
   isConditionStarted,
   isEventsPublished,

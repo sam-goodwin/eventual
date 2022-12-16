@@ -1,4 +1,9 @@
-import { ActivityCall, isActivityCall } from "./calls/activity-call.js";
+import {
+  ActivityCall,
+  OverrideActivityCall,
+  isActivityCall,
+  isOverrideActivityCall,
+} from "./calls/activity-call.js";
 import { AwaitAll, createAwaitAll } from "./await-all.js";
 import { chain, Chain } from "./chain.js";
 import type { Program } from "./interpret.js";
@@ -44,6 +49,11 @@ export interface EventualBase<Kind extends EventualKind, R extends Result> {
   result?: R;
 }
 
+export interface CommandCallBase<Kind extends EventualKind, R extends Result>
+  extends EventualBase<Kind, R> {
+  seq?: number;
+}
+
 export enum EventualKind {
   ActivityCall = 1,
   AwaitAll = 0,
@@ -52,6 +62,7 @@ export enum EventualKind {
   Chain = 2,
   ConditionCall = 9,
   ExpectSignalCall = 6,
+  OverrideActivityCall = 14,
   PublishEventsCall = 13,
   Race = 11,
   RegisterSignalHandlerCall = 7,
@@ -95,6 +106,7 @@ export type CommandCall<T = any> =
   | ActivityCall<T>
   | ConditionCall
   | ExpectSignalCall<T>
+  | OverrideActivityCall
   | RegisterSignalHandlerCall<T>
   | PublishEventsCall
   | SendSignalCall
@@ -107,6 +119,7 @@ export function isCommandCall(call: Eventual): call is CommandCall {
     isActivityCall(call) ||
     isConditionCall(call) ||
     isExpectSignalCall(call) ||
+    isOverrideActivityCall(call) ||
     isPublishEventsCall(call) ||
     isRegisterSignalHandlerCall(call) ||
     isSendSignalCall(call) ||

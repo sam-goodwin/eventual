@@ -1,8 +1,8 @@
 import {
   EventualKind,
-  EventualBase,
   isEventualOfKind,
   createEventual,
+  CommandCallBase,
 } from "../eventual.js";
 import { registerEventual } from "../global.js";
 import { Resolved } from "../result.js";
@@ -16,14 +16,12 @@ export function isSleepUntilCall(a: any): a is SleepUntilCall {
 }
 
 export interface SleepForCall
-  extends EventualBase<EventualKind.SleepForCall, Resolved<undefined>> {
-  seq?: number;
+  extends CommandCallBase<EventualKind.SleepForCall, Resolved<undefined>> {
   durationSeconds: number;
 }
 
 export interface SleepUntilCall
-  extends EventualBase<EventualKind.SleepUntilCall, Resolved<undefined>> {
-  seq?: number;
+  extends CommandCallBase<EventualKind.SleepUntilCall, Resolved<undefined>> {
   isoDate: string;
 }
 

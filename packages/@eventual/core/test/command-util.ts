@@ -2,6 +2,7 @@ import { ulid } from "ulidx";
 import {
   CommandType,
   ExpectSignalCommand,
+  OverrideActivityCommand,
   PublishEventsCommand,
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
@@ -31,8 +32,11 @@ import {
   WorkflowEventType,
   WorkflowTimedOut,
   ActivityHeartbeatTimedOut,
+  ActivityOverridden,
 } from "../src/workflow-events.js";
 import { SignalTarget } from "../src/signals.js";
+import { Failed, Resolved } from "../src/result.js";
+import { ActivityTarget } from "../src/index.js";
 
 export function createSleepUntilCommand(
   untilTime: string,
@@ -66,6 +70,19 @@ export function createScheduledActivityCommand(
     seq,
     name,
     args,
+  };
+}
+
+export function createOverrideActivityCommand(
+  outcome: Resolved | Failed,
+  target: ActivityTarget,
+  seq: number
+): OverrideActivityCommand {
+  return {
+    kind: CommandType.OverrideActivity,
+    seq,
+    outcome,
+    target,
   };
 }
 
@@ -186,6 +203,20 @@ export function activityScheduled(
   return {
     type: WorkflowEventType.ActivityScheduled,
     name,
+    seq,
+    timestamp: new Date(0).toISOString(),
+  };
+}
+
+export function activityOverridden(
+  executionId: string,
+  activitySeq: number,
+  seq: number
+): ActivityOverridden {
+  return {
+    type: WorkflowEventType.ActivityOverridden,
+    executionId,
+    activitySeq,
     seq,
     timestamp: new Date(0).toISOString(),
   };
