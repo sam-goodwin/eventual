@@ -11,6 +11,7 @@ import {
   workflow,
   heartbeat,
   HeartbeatTimeout,
+  EventualError,
 } from "@eventual/core";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -343,4 +344,8 @@ export const failedWorkflow = workflow(
   }
 );
 
-class MyError extends Error {}
+class MyError extends EventualError {
+  constructor(message: string) {
+    super("MyError", message);
+  }
+}

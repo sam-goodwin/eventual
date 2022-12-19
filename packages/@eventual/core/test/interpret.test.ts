@@ -364,7 +364,7 @@ test("should fail the workflow on uncaught user error of random type", () => {
   });
 });
 
-test("should fail the workflow on uncaught user error of random type", () => {
+test("should fail the workflow on uncaught thrown value", () => {
   const wf = workflow(function* () {
     throw "hi";
   });

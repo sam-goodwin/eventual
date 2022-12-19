@@ -9,7 +9,6 @@ import { isAwaitAll } from "./await-all.js";
 import { isActivityCall } from "./calls/activity-call.js";
 import {
   DeterminismError,
-  EventualError,
   HeartbeatTimeout,
   SynchronousOperationError,
   Timeout,
@@ -48,7 +47,7 @@ import {
   isResolvedOrFailed,
 } from "./result.js";
 import { createChain, isChain, Chain } from "./chain.js";
-import { assertNever, extendsError, or } from "./util.js";
+import { assertNever, or } from "./util.js";
 import { Command, CommandType } from "./command.js";
 import { isSleepForCall, isSleepUntilCall } from "./calls/sleep-call.js";
 import {
@@ -189,9 +188,7 @@ export function interpret<Return>(
     return {
       commands: [],
       // errors thrown by the workflow (and interpreter) are considered fatal workflow events unless caught by the workflow code.
-      result: Result.failed(
-        extendsError(err) ? new EventualError(err.name, err.message) : err
-      ),
+      result: Result.failed(err),
     };
   }
 
