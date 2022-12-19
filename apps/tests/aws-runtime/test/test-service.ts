@@ -11,6 +11,7 @@ import {
   workflow,
   heartbeat,
   HeartbeatTimeout,
+  EventualError,
 } from "@eventual/core";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -331,3 +332,20 @@ const sendFinishEvent = activity("sendFinish", async (executionId: string) => {
     proxy: true,
   });
 });
+
+export const failedWorkflow = workflow(
+  "failedWorkflow",
+  async (wrapError: boolean) => {
+    if (wrapError) {
+      throw new MyError("I am useless");
+    } else {
+      throw "I am useless";
+    }
+  }
+);
+
+class MyError extends EventualError {
+  constructor(message: string) {
+    super("MyError", message);
+  }
+}

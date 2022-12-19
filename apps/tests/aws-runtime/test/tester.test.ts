@@ -10,11 +10,12 @@ import {
   workflow2,
   workflow3,
   workflow4,
+  failedWorkflow,
 } from "./test-service.js";
 
 jest.setTimeout(100 * 1000);
 
-eventualRuntimeTestHarness(({ testCompletion }) => {
+eventualRuntimeTestHarness(({ testCompletion, testFailed }) => {
   testCompletion(
     "call activity",
     workflow1,
@@ -62,4 +63,19 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
   ]);
 
   testCompletion("event-driven", eventDrivenWorkflow, "done!");
+
+  testFailed(
+    "catch thrown error",
+    failedWorkflow,
+    true,
+    "MyError",
+    "I am useless"
+  );
+  testFailed(
+    "catch thrown value",
+    failedWorkflow,
+    false,
+    "Error",
+    `"I am useless"`
+  );
 });
