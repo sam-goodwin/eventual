@@ -331,3 +331,7 @@ const sendFinishEvent = activity("sendFinish", async (executionId: string) => {
     proxy: true,
   });
 });
+
+export const failedWorkflow = workflow("failedWorkflow", async () => {
+  throw new Error("I am useless");
+});

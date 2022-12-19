@@ -20,3 +20,7 @@ export function or<F extends ((a: any) => a is any)[]>(
 ): (a: any) => a is F[number] extends (a: any) => a is infer T ? T : never {
   return ((a: any) => conditions.some((cond) => cond(a))) as any;
 }
+
+export function extendsError(err: any): Error {
+  return err instanceof Error || (<any>err).prototype.isPrototypeOf(Error);
+}
