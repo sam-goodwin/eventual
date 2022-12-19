@@ -1,6 +1,6 @@
 import { createActivityCall } from "../src/calls/activity-call.js";
 import { chain } from "../src/chain.js";
-import { DeterminismError, HeartbeatTimeout, Timeout } from "../src/error.js";
+import { HeartbeatTimeout, Timeout } from "../src/error.js";
 import {
   Context,
   createAwaitAll,
@@ -303,22 +303,28 @@ describe("activity", () =>
   }));
 
 test("should throw when scheduled does not correspond to call", () => {
-  expect(() =>
+  expect(
     interpret(myWorkflow(event), [scheduledSleep("result", 0)])
-  ).toThrow(DeterminismError);
+  ).toMatchObject<WorkflowResult>({
+    result: Result.failed({ name: "DeterminismError" }),
+    commands: [],
+  });
 });
 
 test("should throw when there are more schedules than calls emitted", () => {
-  expect(() =>
+  expect(
     interpret(myWorkflow(event), [
       activityScheduled("my-activity", 0),
       activityScheduled("result", 1),
     ])
-  ).toThrow(DeterminismError);
+  ).toMatchObject<WorkflowResult>({
+    result: Result.failed({ name: "DeterminismError" }),
+    commands: [],
+  });
 });
 
 test("should throw when a completed precedes workflow state", () => {
-  expect(() =>
+  expect(
     interpret(myWorkflow(event), [
       activityScheduled("my-activity", 0),
       activityScheduled("result", 1),
@@ -328,7 +334,46 @@ test("should throw when a completed precedes workflow state", () => {
       // is applied.
       activityCompleted("", 2),
     ])
-  ).toThrow(DeterminismError);
+  ).toMatchObject<WorkflowResult>({
+    result: Result.failed({ name: "DeterminismError" }),
+    commands: [],
+  });
+});
+
+test("should fail the workflow on uncaught user error", () => {
+  const wf = workflow(function* () {
+    throw new Error("Hi");
+  });
+  expect(
+    interpret(wf.definition(undefined, context), [])
+  ).toMatchObject<WorkflowResult>({
+    result: Result.failed({ name: "Error", message: "Hi" }),
+    commands: [],
+  });
+});
+
+test("should fail the workflow on uncaught user error of random type", () => {
+  const wf = workflow(function* () {
+    throw new TypeError("Hi");
+  });
+  expect(
+    interpret(wf.definition(undefined, context), [])
+  ).toMatchObject<WorkflowResult>({
+    result: Result.failed({ name: "TypeError", message: "Hi" }),
+    commands: [],
+  });
+});
+
+test("should fail the workflow on uncaught thrown value", () => {
+  const wf = workflow(function* () {
+    throw "hi";
+  });
+  expect(
+    interpret(wf.definition(undefined, context), [])
+  ).toMatchObject<WorkflowResult>({
+    result: Result.failed("hi"),
+    commands: [],
+  });
 });
 
 test("should wait if partial results", () => {
