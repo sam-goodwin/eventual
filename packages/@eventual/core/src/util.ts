@@ -22,5 +22,11 @@ export function or<F extends ((a: any) => a is any)[]>(
 }
 
 export function extendsError(err: any): err is Error {
-  return err instanceof Error || (<any>err).prototype.isPrototypeOf(Error);
+  return (
+    err &&
+    (err instanceof Error ||
+      ("prototype" in err &&
+        err.prototype &&
+        err.prototype.isPrototypeOf(Error)))
+  );
 }
