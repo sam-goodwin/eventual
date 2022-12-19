@@ -5,3 +5,4 @@ export * from "./activity-token.js";
 export * from "./handlers/index.js";
 export * from "./logger.js";
 export * from "./command-executor.js";
+export * from "./metrics/index.js";
