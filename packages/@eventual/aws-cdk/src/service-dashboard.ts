@@ -41,13 +41,22 @@ export class ServiceDashboard extends Construct {
                 label:
                   "Approximate age of oldest message in the Orchestrator's SQS FIFO Queue",
               }),
-              service.metricMaxTaskAge({
+              new aws_cloudwatch.MathExpression({
+                expression: "age / 1000",
+                usingMetrics: {
+                  age: service.metricMaxTaskAge(),
+                },
                 label:
                   "Average age of the oldest Task in a single SQS batch to the Orchestrator",
               }),
-              service.metricMaxTaskAge({
+              new aws_cloudwatch.MathExpression({
+                expression: "max_age / 1000",
+                usingMetrics: {
+                  max_age: service.metricMaxTaskAge({
+                    statistic: Statistic.MAXIMUM,
+                  }),
+                },
                 label: "Maximum age of any Task processed by the Orchestrator",
-                statistic: Statistic.MAXIMUM,
               }),
             ],
             width: 12,
