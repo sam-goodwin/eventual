@@ -64,3 +64,11 @@ export const workflow2 = workflow(
     await doWork("something");
   }
 );
+
+export const workflow3 = workflow("timeoutFlow", async () => {
+  await callMe();
+
+  async function callMe() {
+    await sleepFor(20);
+  }
+});

@@ -24,6 +24,9 @@ export interface WorkflowsProps {
   activities: IActivities;
   table: ITable;
   events: Events;
+  orchestrator?: {
+    reservedConcurrentExecutions?: number;
+  };
 }
 
 export interface IWorkflows {

@@ -89,7 +89,6 @@ class TesterContainer {
   public testFailed<W extends Workflow = Workflow>(
     name: string,
     workflow: Workflow,
-    result: WorkflowOutput<W>,
     error: string,
     message: string
   ): void;

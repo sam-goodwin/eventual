@@ -43,6 +43,7 @@ import { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
 import { timed, timedSync } from "../metrics/utils.js";
 import { promiseAllSettledPartitioned } from "../utils.js";
+import { extendsError } from "../../util.js";
 
 /**
  * The Orchestrator's client dependencies.
@@ -288,10 +289,9 @@ export function createOrchestrator({
 
         if (isResult(result)) {
           if (isFailed(result)) {
-            const [error, message] =
-              result.error instanceof Error
-                ? [result.error.name, result.error.message]
-                : ["Error", JSON.stringify(result.error)];
+            const [error, message] = extendsError(result.error)
+              ? [result.error.name, result.error.message]
+              : ["Error", JSON.stringify(result.error)];
             yield createEvent<WorkflowFailed>({
               type: WorkflowEventType.WorkflowFailed,
               error,

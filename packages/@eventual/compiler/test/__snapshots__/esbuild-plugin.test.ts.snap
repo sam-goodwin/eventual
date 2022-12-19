@@ -119,6 +119,12 @@ exports[`esbuild-plugin ts workflow 1`] = `
   }, function* () {
     yield doWork("something");
   });
+  var workflow3 = workflow("timeoutFlow", function* () {
+    const callMe = $eventual(function* () {
+      yield sleepFor(20);
+    });
+    yield callMe();
+  });
 })();
 "
 `;

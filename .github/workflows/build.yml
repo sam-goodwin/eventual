@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/build
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v1-node16
         with:
           role-to-assume: arn:aws:iam::593491530938:role/githubActionStack-githubactionroleA106E4DC-14SHKLVA61IN4
           aws-region: us-east-1
@@ -36,7 +36,7 @@ jobs:
       - run: |
           echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./apps/tests/aws-runtime/cdk.out/outputs.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
       - name: Configure Test Role Credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v1-node16
         with:
           role-to-assume: ${{ env.TEST_ROLE_ARN }}
           aws-region: us-east-1
