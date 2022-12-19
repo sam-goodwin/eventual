@@ -6,8 +6,8 @@
     "create-eventual": "./bin/index.js"
   },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --outfile=bin/index.js --platform=node",
-    "watch": "esbuild src/index.ts --bundle --outfile=bin/index.js --platform=node --watch"
+    "build": "esbuild src/index.ts --bundle --outfile=bin/bundle.js --platform=node",
+    "watch": "esbuild src/index.ts --bundle --outfile=bin/bundle.js --platform=node --watch"
   },
   "dependencies": {
     "create-sst": "latest"

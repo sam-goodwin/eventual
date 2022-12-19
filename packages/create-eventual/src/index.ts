@@ -14,30 +14,32 @@ export type PackageManager = "npm" | "yarn" | "pnpm";
     : "npm";
 
   await yargs(hideBin(process.argv))
-    .option("target", {
-      type: "string",
-    })
+    .demandCommand(1, "you must specify a project name")
     .command(
-      "$0 [projectName]",
+      "$0 <projectName>",
       "",
-      (yarg) =>
-        yarg.positional("projectName", {
-          type: "string",
-          description: "Name of the project to create",
-          demandOption: true,
-        }),
-      async (argv) => {
+      (yargs) =>
+        yargs
+          .positional("projectName", {
+            type: "string",
+            description: "Name of the project to create",
+          })
+          .option("target", {
+            type: "string",
+          }),
+      async (args) => {
         const props = {
           pkgManager,
-          projectName: argv.projectName,
+          projectName: args.projectName!,
         };
-        if (argv.target === "aws-sst") {
+        if (args.target === "aws-sst") {
           await createAwsSst(props);
         } else {
           await createAwsCdk(props);
         }
       }
-    ).argv;
+    )
+    .parse();
 })().catch((err) => {
   console.error(err);
   process.exit(1);
