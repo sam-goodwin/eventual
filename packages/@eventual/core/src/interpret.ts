@@ -190,9 +190,7 @@ export function interpret<Return>(
       commands: [],
       // errors thrown by the workflow (and interpreter) are considered fatal workflow events unless caught by the workflow code.
       result: Result.failed(
-        extendsError(err)
-          ? new EventualError((<Error>err).name, (<Error>err).message)
-          : err
+        extendsError(err) ? new EventualError(err.name, err.message) : err
       ),
     };
   }

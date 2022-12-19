@@ -332,6 +332,15 @@ const sendFinishEvent = activity("sendFinish", async (executionId: string) => {
   });
 });
 
-export const failedWorkflow = workflow("failedWorkflow", async () => {
-  throw new Error("I am useless");
-});
+export const failedWorkflow = workflow(
+  "failedWorkflow",
+  async (wrapError: boolean) => {
+    if (wrapError) {
+      throw new MyError("I am useless");
+    } else {
+      throw "I am useless";
+    }
+  }
+);
+
+class MyError extends Error {}

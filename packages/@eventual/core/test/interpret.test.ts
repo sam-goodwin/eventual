@@ -364,6 +364,18 @@ test("should fail the workflow on uncaught user error of random type", () => {
   });
 });
 
+test("should fail the workflow on uncaught user error of random type", () => {
+  const wf = workflow(function* () {
+    throw "hi";
+  });
+  expect(
+    interpret(wf.definition(undefined, context), [])
+  ).toMatchObject<WorkflowResult>({
+    result: Result.failed("hi"),
+    commands: [],
+  });
+});
+
 test("should wait if partial results", () => {
   expect(
     interpret(myWorkflow(event), [

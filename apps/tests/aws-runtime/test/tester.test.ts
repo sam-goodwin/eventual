@@ -64,5 +64,18 @@ eventualRuntimeTestHarness(({ testCompletion, testFailed }) => {
 
   testCompletion("event-driven", eventDrivenWorkflow, "done!");
 
-  testFailed("catch error", failedWorkflow, "Error", "I am useless");
+  testFailed(
+    "catch thrown error",
+    failedWorkflow,
+    true,
+    "MyError",
+    "I am useless"
+  );
+  testFailed(
+    "catch thrown value",
+    failedWorkflow,
+    false,
+    "Error",
+    "I am useless"
+  );
 });
