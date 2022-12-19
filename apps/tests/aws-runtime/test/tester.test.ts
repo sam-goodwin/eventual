@@ -76,6 +76,6 @@ eventualRuntimeTestHarness(({ testCompletion, testFailed }) => {
     failedWorkflow,
     false,
     "Error",
-    "I am useless"
+    `"I am useless"`
   );
 });
