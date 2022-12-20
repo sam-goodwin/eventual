@@ -23,7 +23,7 @@ test("start workflow", async () => {
   const r1 = await result.tryGetResult();
   expect(r1).toEqual({ status: ExecutionStatus.IN_PROGRESS });
 
-  env.tick();
+  await env.tick();
 
   const r2 = await result.tryGetResult();
   expect(r2).toEqual({ status: ExecutionStatus.COMPLETE, result: "hi" });

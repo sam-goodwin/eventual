@@ -36,6 +36,7 @@ import { TestActivityRuntimeClient } from "./clients/activity-runtime-client.js"
 import { TestTimerClient } from "./clients/timer-client.js";
 import { TimeController } from "./time-controller.js";
 import { InProgressError } from "./error.js";
+import { ExecutionStore } from "./execution-store.js";
 
 export interface TestEnvironmentProps {
   entry: string;
@@ -82,12 +83,17 @@ export class TestEnvironment {
       pushEvent: (task) => this.timeController.addEventAtNext(task),
       time: this.time,
     };
+    const executionStore = new ExecutionStore();
     this.executionHistoryClient = new TestExecutionHistoryClient();
-    this.workflowRuntimeClient = new TestWorkflowRuntimeClient();
+    this.workflowRuntimeClient = new TestWorkflowRuntimeClient(
+      executionStore,
+      timeConnector
+    );
     this.eventClient = new TestEventClient();
     this.workflowClient = new TestWorkflowClient(
       timeConnector,
-      new TestActivityRuntimeClient()
+      new TestActivityRuntimeClient(),
+      executionStore
     );
     this.timerClient = new TestTimerClient();
   }

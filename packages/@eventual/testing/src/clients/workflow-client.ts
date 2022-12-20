@@ -11,13 +11,15 @@ import {
   WorkflowEventType,
   WorkflowStarted,
 } from "@eventual/core";
+import { ExecutionStore } from "../execution-store.js";
 import { ulid } from "ulidx";
 import { TimeConnector } from "../environment.js";
 
 export class TestWorkflowClient extends WorkflowClient {
   constructor(
     private time: TimeConnector,
-    activityRuntimeClient: ActivityRuntimeClient
+    activityRuntimeClient: ActivityRuntimeClient,
+    private executionStore: ExecutionStore
   ) {
     super(activityRuntimeClient);
   }
@@ -31,6 +33,13 @@ export class TestWorkflowClient extends WorkflowClient {
       request.workflowName,
       request.executionName ?? ulid()
     );
+
+    // TODO validate that the executionId and name are unique
+    this.executionStore.put({
+      status: ExecutionStatus.IN_PROGRESS,
+      id: executionId,
+      startTime: this.time.time.toISOString(),
+    });
 
     await this.submitWorkflowTask(
       executionId,
@@ -61,12 +70,12 @@ export class TestWorkflowClient extends WorkflowClient {
     statuses?: ExecutionStatus[] | undefined;
     workflowName?: string | undefined;
   }): Promise<Execution<any>[]> {
-    throw new Error("Method not implemented.");
+    return this.executionStore.list();
   }
 
-  public getExecution(
-    _executionId: string
+  public async getExecution(
+    executionId: string
   ): Promise<Execution<any> | undefined> {
-    throw new Error("Method not implemented.");
+    return this.executionStore.get(executionId);
   }
 }
