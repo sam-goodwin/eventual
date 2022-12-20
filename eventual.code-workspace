@@ -1,0 +1,43 @@
+{
+  "folders": [
+    {
+      "name": "_root",
+      "path": "."
+    },
+    {
+      "name": "Test Apps",
+      "path": "apps"
+    },
+    {
+      "path": "examples"
+    },
+    {
+      "path": "packages/@eventual/aws-cdk"
+    },
+    {
+      "path": "packages/@eventual/aws-runtime"
+    },
+    {
+      "path": "packages/@eventual/cli"
+    },
+    {
+      "path": "packages/@eventual/compiler"
+    },
+    {
+      "path": "packages/@eventual/testing"
+    },
+    {
+      "path": "packages/@eventual/core"
+    },
+    {
+      "path": "packages/@eventual/integrations-slack"
+    },
+    {
+      "path": "packages/@eventual/timeline"
+    }
+  ],
+  "settings": {
+    "typescript.tsdk": "node_modules/typescript/lib",
+    "jest.disabledWorkspaceFolders": []
+  }
+}

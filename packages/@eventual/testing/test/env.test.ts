@@ -17,6 +17,8 @@ test("start workflow", async () => {
 
   await env.start();
 
+  debugger;
+
   const result = await env.startExecution(workflow3, undefined);
 
   console.log(result);
