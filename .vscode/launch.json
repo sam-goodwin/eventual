@@ -12,7 +12,8 @@
       "cwd": "${workspaceFolder}",
       "outFiles": ["${workspaceFolder}/**/*.js", "!**/node_modules/**"],
       "runtimeArgs": ["--enable-source-maps"],
-      "args": ["--runInBand", "--watchAll=false"]
+      "env": { "NODE_OPTIONS": "--experimental-vm-modules" },
+      "args": ["--runInBand", "--watchAll=false", "--experimental-vm-modules"]
     },
     {
       "type": "node",

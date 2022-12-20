@@ -17,7 +17,7 @@
     "dev": "turbo run dev --parallel",
     "lint": "turbo run lint",
     "prepare": "husky install",
-    "test": "turbo run test",
+    "test": "NODE_OPTIONS=--experimental-vm-modules turbo run test",
     "test:smoke": "./scripts/smoke-test",
     "typecheck": "tsc -b",
     "watch": "tsc -b -w",
