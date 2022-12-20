@@ -9,11 +9,10 @@
       "internalConsoleOptions": "neverOpen",
       "disableOptimisticBPs": true,
       "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
-      "cwd": "${workspaceFolder}",
       "outFiles": ["${workspaceFolder}/**/*.js", "!**/node_modules/**"],
       "runtimeArgs": ["--enable-source-maps"],
       "env": { "NODE_OPTIONS": "--experimental-vm-modules" },
-      "args": ["--runInBand", "--watchAll=false", "--experimental-vm-modules"]
+      "args": ["--runInBand", "--watchAll=false"]
     },
     {
       "type": "node",
