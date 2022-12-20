@@ -14,12 +14,14 @@
     { "path": "packages/@eventual/aws-runtime/tsconfig.cjs.json" },
     { "path": "packages/@eventual/cli" },
     { "path": "packages/@eventual/compiler" },
-    { "path": "packages/@eventual/compiler" },
     { "path": "packages/@eventual/compiler/tsconfig.test.json" },
     { "path": "packages/@eventual/core" },
     { "path": "packages/@eventual/core/tsconfig.cjs.json" },
     { "path": "packages/@eventual/core/tsconfig.test.json" },
     { "path": "packages/@eventual/integrations-slack" },
-    { "path": "packages/@eventual/integrations-slack/tsconfig.cjs.json" }
+    { "path": "packages/@eventual/integrations-slack/tsconfig.cjs.json" },
+    { "path": "packages/@eventual/testing" },
+    { "path": "packages/@eventual/testing/tsconfig.cjs.json" },
+    { "path": "packages/@eventual/testing/tsconfig.test.json" }
   ]
 }

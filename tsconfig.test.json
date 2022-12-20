@@ -2,10 +2,12 @@
   "files": [],
   "extends": "./tsconfig-base.json",
   "compilerOptions": {
-    "typeRoots": ["./node_modules/@types"]
+    "typeRoots": ["./node_modules/@types"],
+    "allowJs": true
   },
   "references": [
     { "path": "packages/@eventual/compiler/tsconfig.test.json" },
-    { "path": "packages/@eventual/core/tsconfig.test.json" }
+    { "path": "packages/@eventual/core/tsconfig.test.json" },
+    { "path": "packages/@eventual/testing/tsconfig.test.json" }
   ]
 }

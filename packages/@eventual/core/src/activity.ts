@@ -57,6 +57,8 @@ export interface ActivityFunction<
   complete(
     request: CompleteActivityRequest<UnwrapAsync<Awaited<Output>>>
   ): Promise<void>;
+
+  activityID: string;
 }
 
 export interface ActivityHandler<
@@ -73,6 +75,12 @@ export interface ActivityHandler<
 export type UnwrapAsync<Output> = Output extends AsyncResult<infer O>
   ? O
   : Output;
+
+export type ActivityArguments<A extends ActivityFunction<any, any>> =
+  A extends ActivityFunction<infer Arguments> ? Arguments : never;
+
+export type ActivityOutput<A extends ActivityFunction<any, any>> =
+  A extends ActivityFunction<any, infer Output> ? Output : never;
 
 const AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
 
@@ -180,6 +188,7 @@ export function activity<Arguments extends any[], Output extends any = any>(
   func.complete = async function (request) {
     return getWorkflowClient().completeActivity(request);
   };
+  func.activityID = activityID;
   return func;
 }
 

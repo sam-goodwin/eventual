@@ -2,6 +2,7 @@
   "name": "@eventual/compiler",
   "version": "0.0.0",
   "main": "lib/index.js",
+  "module": "lib/index.js",
   "types:": "lib/index.d.ts",
   "bin": {
     "eventual-bundle": "./bin/eventual-bundle.js",
