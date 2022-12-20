@@ -18,13 +18,20 @@ test("start workflow", async () => {
 
   await env.start();
 
+  // execution starts
   const result = await env.startExecution(workflow3, undefined);
 
+  // see if the execution has completed
   const r1 = await result.tryGetResult();
+  // we expect it to still be in progress
   expect(r1).toEqual({ status: ExecutionStatus.IN_PROGRESS });
 
+  // progress time, the activity should be done now.
+  // note: running real activities uses an async function and may not be done by the next tick
   await env.tick();
 
+  // the workflow should be done now, the activity completed event should have been processed in the `tick`
   const r2 = await result.tryGetResult();
+  // and the execution updated to a completed state
   expect(r2).toEqual({ status: ExecutionStatus.COMPLETE, result: "hi" });
 });
