@@ -1,32 +1,19 @@
+import { expect, jest, test } from "@jest/globals";
 import { CommandType } from "../src/command.js";
 import {
-  ActivityScheduled,
-  ActivityTimedOut,
-  ChildWorkflowScheduled,
-  ConditionStarted,
-  ConditionTimedOut,
-  EventsPublished,
-  ExpectSignalStarted,
-  ExpectSignalTimedOut,
-  SignalSent,
-  SleepCompleted,
-  SleepScheduled,
   WorkflowEventType,
 } from "../src/workflow-events.js";
 import {
   EventClient,
-  EventEnvelope,
   formatChildExecutionName,
   formatExecutionId,
   INTERNAL_EXECUTION_ID_PREFIX,
-  SendSignalRequest,
   SignalTargetType,
   WorkflowClient,
   WorkflowRuntimeClient,
 } from "../src/index.js";
 import {
   Schedule,
-  ScheduleEventRequest,
   TimerClient,
 } from "../src/runtime/clients/timer-client.js";
 import { CommandExecutor } from "../src/runtime/command-executor.js";
@@ -79,9 +66,7 @@ describe("sleep", () => {
 
     const untilTime = new Date(baseTime.getTime() + 10 * 1000).toISOString();
 
-    expect(mockTimerClient.scheduleEvent).toHaveBeenCalledWith<
-      [ScheduleEventRequest<SleepCompleted>]
-    >({
+    expect(mockTimerClient.scheduleEvent).toHaveBeenCalledWith({
       event: {
         type: WorkflowEventType.SleepCompleted,
         seq: 0,
@@ -90,7 +75,7 @@ describe("sleep", () => {
       executionId,
     });
 
-    expect(event).toMatchObject<SleepScheduled>({
+    expect(event).toMatchObject({
       seq: 0,
       timestamp: expect.stringContaining("Z"),
       type: WorkflowEventType.SleepScheduled,
@@ -110,9 +95,7 @@ describe("sleep", () => {
       baseTime
     );
 
-    expect(mockTimerClient.scheduleEvent).toHaveBeenCalledWith<
-      [ScheduleEventRequest<SleepCompleted>]
-    >({
+    expect(mockTimerClient.scheduleEvent).toHaveBeenCalledWith({
       event: {
         type: WorkflowEventType.SleepCompleted,
         seq: 0,
@@ -121,7 +104,7 @@ describe("sleep", () => {
       executionId,
     });
 
-    expect(event).toMatchObject<SleepScheduled>({
+    expect(event).toMatchObject({
       seq: 0,
       timestamp: expect.stringContaining("Z"),
       type: WorkflowEventType.SleepScheduled,
@@ -148,7 +131,7 @@ describe("activity", () => {
 
     expect(mockWorkflowRuntimeClient.startActivity).toHaveBeenCalledTimes(1);
 
-    expect(event).toMatchObject<ActivityScheduled>({
+    expect(event).toMatchObject({
       seq: 0,
       timestamp: expect.stringContaining("Z"),
       type: WorkflowEventType.ActivityScheduled,
@@ -170,9 +153,7 @@ describe("activity", () => {
       baseTime
     );
 
-    expect(mockTimerClient.scheduleEvent).toHaveBeenCalledWith<
-      [ScheduleEventRequest<ActivityTimedOut>]
-    >({
+    expect(mockTimerClient.scheduleEvent).toHaveBeenCalledWith({
       event: {
         type: WorkflowEventType.ActivityTimedOut,
         seq: 0,
@@ -183,7 +164,7 @@ describe("activity", () => {
 
     expect(mockWorkflowRuntimeClient.startActivity).toHaveBeenCalledTimes(1);
 
-    expect(event).toMatchObject<ActivityScheduled>({
+    expect(event).toMatchObject({
       seq: 0,
       timestamp: expect.stringContaining("Z"),
       type: WorkflowEventType.ActivityScheduled,
@@ -214,7 +195,7 @@ describe("workflow", () => {
       seq: 0,
     });
 
-    expect(event).toMatchObject<ChildWorkflowScheduled>({
+    expect(event).toMatchObject({
       seq: 0,
       timestamp: expect.stringContaining("Z"),
       type: WorkflowEventType.ChildWorkflowScheduled,
@@ -238,7 +219,7 @@ describe("expect signal", () => {
 
     expect(mockTimerClient.scheduleEvent).not.toHaveBeenCalled();
 
-    expect(event).toMatchObject<ExpectSignalStarted>({
+    expect(event).toMatchObject({
       seq: 0,
       timestamp: expect.stringContaining("Z"),
       type: WorkflowEventType.ExpectSignalStarted,
@@ -259,9 +240,7 @@ describe("expect signal", () => {
       baseTime
     );
 
-    expect(mockTimerClient.scheduleEvent).toHaveBeenCalledWith<
-      [ScheduleEventRequest<ExpectSignalTimedOut>]
-    >({
+    expect(mockTimerClient.scheduleEvent).toHaveBeenCalledWith({
       event: {
         signalId: "signal",
         seq: 0,
@@ -271,7 +250,7 @@ describe("expect signal", () => {
       executionId,
     });
 
-    expect(event).toMatchObject<ExpectSignalStarted>({
+    expect(event).toMatchObject({
       seq: 0,
       timestamp: expect.stringContaining("Z"),
       type: WorkflowEventType.ExpectSignalStarted,
@@ -295,15 +274,13 @@ describe("send signal", () => {
       baseTime
     );
 
-    expect(mockWorkflowClient.sendSignal).toHaveBeenCalledWith<
-      [SendSignalRequest]
-    >({
+    expect(mockWorkflowClient.sendSignal).toHaveBeenCalledWith({
       signal: "signal",
       executionId: "exec1",
       id: `${executionId}/${0}`,
     });
 
-    expect(event).toMatchObject<SignalSent>({
+    expect(event).toMatchObject({
       seq: 0,
       executionId: "exec1",
       type: WorkflowEventType.SignalSent,
@@ -334,16 +311,14 @@ describe("send signal", () => {
       formatChildExecutionName(executionId, 0)
     );
 
-    expect(mockWorkflowClient.sendSignal).toHaveBeenCalledWith<
-      [SendSignalRequest]
-    >({
+    expect(mockWorkflowClient.sendSignal).toHaveBeenCalledWith({
       signal: "signal",
       executionId: childExecId,
       id: `${executionId}/${1}`,
       payload: undefined,
     });
 
-    expect(event).toMatchObject<SignalSent>({
+    expect(event).toMatchObject({
       seq: 1,
       executionId: childExecId,
       type: WorkflowEventType.SignalSent,
@@ -367,7 +342,7 @@ describe("condition", () => {
 
     expect(mockTimerClient.scheduleEvent).not.toHaveBeenCalled();
 
-    expect(event).toMatchObject<ConditionStarted>({
+    expect(event).toMatchObject({
       seq: 0,
       type: WorkflowEventType.ConditionStarted,
       timestamp: expect.stringContaining("Z"),
@@ -386,9 +361,7 @@ describe("condition", () => {
       baseTime
     );
 
-    expect(mockTimerClient.scheduleEvent).toHaveBeenCalledWith<
-      [ScheduleEventRequest<ConditionTimedOut>]
-    >({
+    expect(mockTimerClient.scheduleEvent).toHaveBeenCalledWith({
       event: {
         type: WorkflowEventType.ConditionTimedOut,
         seq: 0,
@@ -397,7 +370,7 @@ describe("condition", () => {
       schedule: Schedule.relative(100, baseTime),
     });
 
-    expect(event).toMatchObject<ConditionStarted>({
+    expect(event).toMatchObject({
       seq: 0,
       type: WorkflowEventType.ConditionStarted,
       timestamp: expect.stringContaining("Z"),
@@ -418,12 +391,12 @@ describe("public events", () => {
       baseTime
     );
 
-    expect(mockEventClient.publish).toHaveBeenCalledWith<[EventEnvelope]>({
+    expect(mockEventClient.publish).toHaveBeenCalledWith({
       event: {},
       name: "myEvent",
     });
 
-    expect(event).toMatchObject<EventsPublished>({
+    expect(event).toMatchObject({
       seq: 0,
       type: WorkflowEventType.EventsPublished,
       timestamp: expect.stringContaining("Z"),

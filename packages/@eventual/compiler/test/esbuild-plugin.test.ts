@@ -3,6 +3,9 @@ import "jest";
 import path from "path";
 import esbuild from "esbuild";
 import { eventualESPlugin } from "../src/esbuild-plugin.js";
+import url from "url";
+
+const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
 describe("esbuild-plugin", () => {
   test("ts workflow", async () => {
