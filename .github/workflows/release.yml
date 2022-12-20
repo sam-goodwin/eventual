@@ -1,0 +1,59 @@
+name: release
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: {}
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+
+  release:
+    needs: [build]
+    # We should only be running one release task at a time to prevent conflicts.
+    # Setting concurrency to a static key ensures we only ever have one release
+    # task running.
+    concurrency: release
+    runs-on: ubuntu-latest
+    outputs:
+      gs-version: ${{ steps.export-version.outputs.GS_VERSION }}
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      CI: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/build
+
+      - name: Set git identity
+        run: |-
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+      - run: echo //registry.npmjs.org/:_authToken=${NPM_TOKEN} > ~/.npmrc
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Version packages
+        run: pnpm lerna version --yes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish packages
+        run: pnpm -r publish
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Export version
+        id: export-version
+        run: echo GS_VERSION=$(node -p 'require("./lerna.json").version') >> $GITHUB_OUTPUT
+
+  # smoke-test:
+  #   needs: [release]
+  #   uses: ./.github/workflows/smoke-test.yml
+  #   with:
+  #     gs-version: ${{ needs.release.outputs.gs-version }}
