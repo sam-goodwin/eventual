@@ -2,17 +2,15 @@ import {
   ActivityArguments,
   ActivityFunction,
   ActivityOutput,
-  createEvent,
   createOrchestrator,
   EventClient,
   EventualError,
   ExecutionHistoryClient,
-  ExecutionID,
+  ExecutionStatus,
+  extendsError,
   Failed,
-  formatExecutionId,
+  groupBy,
   HeartbeatTimeout,
-  HistoryStateEvent,
-  parseWorkflowName,
   Resolved,
   Result,
   ServiceType,
@@ -21,13 +19,11 @@ import {
   TimerClient,
   Workflow,
   WorkflowClient,
-  WorkflowEvent,
-  WorkflowEventType,
   WorkflowInput,
   WorkflowOutput,
   WorkflowRuntimeClient,
   workflows,
-  WorkflowStarted,
+  WorkflowTask,
 } from "@eventual/core";
 import { bundleService } from "@eventual/compiler";
 import { TestMetricsClient } from "./clients/metrics-client.js";
@@ -38,10 +34,17 @@ import { TestEventClient } from "./clients/event-client.js";
 import { TestWorkflowClient } from "./clients/workflow-client.js";
 import { TestActivityRuntimeClient } from "./clients/activity-runtime-client.js";
 import { TestTimerClient } from "./clients/timer-client.js";
+import { TimeController } from "./time-controller.js";
+import { InProgressError } from "./error.js";
 
 export interface TestEnvironmentProps {
   entry: string;
   outDir: string;
+  /**
+   * Start time, starting at the nearest second (rounded down).
+   *
+   * @default Date(0)
+   */
   start?: Date;
 }
 
@@ -49,13 +52,13 @@ export class TestEnvironment {
   private serviceFile: Promise<string>;
 
   private timerClient: TimerClient;
-  private workflowClient: WorkflowClient;
+  public workflowClient: WorkflowClient;
   private workflowRuntimeClient: WorkflowRuntimeClient;
   private executionHistoryClient: ExecutionHistoryClient;
   private eventClient: EventClient;
 
   private started: boolean = false;
-  private time: Date;
+  private timeController: TimeController<WorkflowTask>;
 
   public executions: Record<string, Execution<any>> = {};
 
@@ -66,15 +69,27 @@ export class TestEnvironment {
       ServiceType.OrchestratorWorker,
       ["@eventual/core"]
     );
+    const start = props.start
+      ? new Date(props.start.getTime() - props.start.getMilliseconds())
+      : new Date(0);
+    this.timeController = new TimeController([], {
+      // start the time controller at the given start time or Date(0)
+      start: start.getTime(),
+      // increment by seconds
+      increment: 1000,
+    });
+    const timeConnector: TimeConnector = {
+      pushEvent: (task) => this.timeController.addEventAtNext(task),
+      time: this.time,
+    };
     this.executionHistoryClient = new TestExecutionHistoryClient();
     this.workflowRuntimeClient = new TestWorkflowRuntimeClient();
     this.eventClient = new TestEventClient();
     this.workflowClient = new TestWorkflowClient(
-      this,
+      timeConnector,
       new TestActivityRuntimeClient()
     );
     this.timerClient = new TestTimerClient();
-    this.time = props.start ?? new Date(0);
   }
 
   async start() {
@@ -85,18 +100,6 @@ export class TestEnvironment {
       await import(await this.serviceFile);
       this.started = true;
     }
-  }
-
-  private getWorkflow(workflowName: string): Workflow {
-    if (!this.started) {
-      throw new Error("Test Environment is not yet started.");
-    }
-    const workflow = workflows().get(workflowName);
-    if (!workflow) {
-      throw new Error("Workflow does not exist");
-    }
-    // TODO validate that the workflow is transpiled.
-    return workflow;
   }
 
   mockActivity<A extends ActivityFunction<any, any>>(activity: A) {
@@ -117,41 +120,69 @@ export class TestEnvironment {
   ): Promise<Execution<W>> {
     const workflowName =
       typeof workflow === "string" ? workflow : workflow.workflowName;
-    const executionId = formatExecutionId(workflowName, "test");
-    await this.progressWorkflow(
-      executionId,
-      createEvent<WorkflowStarted>(
-        {
-          type: WorkflowEventType.WorkflowStarted,
-          context: {
-            name: "test",
-          },
-          workflowName,
-          input,
-        },
-        this.time
-      )
-    );
 
-    const execution = {
-      id: executionId,
-      history: () => this.workflowRuntimeClient.getHistory(executionId),
-    };
+    const executionId = await this.workflowClient.startWorkflow({
+      workflowName: workflowName,
+      input,
+    });
+
+    // tick forward on explicit user action (triggering the workflow to start running)
+    await this.tick();
+
+    const execution = new Execution(
+      executionId,
+      this,
+      this.workflowRuntimeClient
+    );
 
     this.executions[executionId] = execution;
 
     return execution;
   }
 
-  async progressWorkflow(executionId: string, event: HistoryStateEvent) {
+  get time() {
+    return new Date(this.timeController.time);
+  }
+
+  /**
+   * TODO: Support ticking more than 1 step at a time, in batches.
+   */
+  async tick() {
+    const events = this.timeController.tick();
+    await this.processTickEvents(events);
+  }
+
+  /**
+   * Process the events from a single tick/second.
+   */
+  private async processTickEvents(
+    events: ReturnType<typeof this.timeController.tick>
+  ) {
+    const workflowTasks = events.filter(
+      (event): event is WorkflowTask =>
+        "events" in event && "executionId" in event
+    );
+    if (workflowTasks.length !== events.length) {
+      // TODO: support other event types.
+      throw new Error("Unknown event types in the TimerController.");
+    }
     const orchestrator = this.createOrchestrator();
 
-    const workflowName = parseWorkflowName(executionId as ExecutionID);
-    const workflow = this.getWorkflow(workflowName);
+    const tasksByExecutionId = groupBy(
+      workflowTasks,
+      (task) => task.executionId
+    );
+
+    const eventsByExecutionId = Object.fromEntries(
+      Object.entries(tasksByExecutionId).map(([executionId, records]) => [
+        executionId,
+        records.flatMap((e) => e.events),
+      ])
+    );
 
     const back = process.env[SERVICE_TYPE_FLAG];
     process.env[SERVICE_TYPE_FLAG] = ServiceType.OrchestratorWorker;
-    await orchestrator.orchestrateExecution(workflow, executionId, [event]);
+    await orchestrator.orchestrateExecutions(eventsByExecutionId);
     process.env[SERVICE_TYPE_FLAG] = back;
   }
 
@@ -166,6 +197,14 @@ export class TestEnvironment {
       logger: new TestLogger(),
     });
   }
+}
+
+/**
+ * Proxy for write only interaction with the time controller.
+ */
+export interface TimeConnector {
+  pushEvent(task: WorkflowTask): void;
+  get time(): Date;
 }
 
 export interface IMockActivity<
@@ -194,10 +233,55 @@ export interface IMockActivity<
   invokeRealOnce(): IMockActivity<Arguments, Output>;
 }
 
-export interface Execution<W extends Workflow<any, any>> {
-  id: string;
-  history: () => Promise<WorkflowEvent[]>;
-  result?: Promise<WorkflowOutput<W>>;
+export class Execution<W extends Workflow<any, any>> {
+  constructor(
+    public id: string,
+    private environment: TestEnvironment,
+    private workflowRuntimeClient: WorkflowRuntimeClient
+  ) {}
+  // TODO: remove this?
+  history() {
+    this.workflowRuntimeClient.getHistory(this.id);
+  }
+  async status() {
+    return (await this.environment.workflowClient.getExecution(this.id))!
+      .status;
+  }
+  async result() {
+    const execution = await this.environment.workflowClient.getExecution(
+      this.id
+    );
+    if (execution?.status === ExecutionStatus.IN_PROGRESS) {
+      throw new InProgressError("Workflow is still in progress");
+    } else if (execution?.status === ExecutionStatus.FAILED) {
+      throw new EventualError(execution.error, execution.message);
+    } else {
+      return execution?.result;
+    }
+  }
+  async tryGetResult(): Promise<
+    | { status: ExecutionStatus.IN_PROGRESS }
+    | { status: ExecutionStatus.COMPLETE; result: WorkflowOutput<W> }
+    | { status: ExecutionStatus.FAILED; error: string; message?: string }
+  > {
+    try {
+      const result = await this.result();
+      return { status: ExecutionStatus.COMPLETE, result };
+    } catch (err) {
+      if (err instanceof InProgressError) {
+        return {
+          status: ExecutionStatus.IN_PROGRESS,
+        };
+      } else if (extendsError(err)) {
+        return {
+          status: ExecutionStatus.FAILED,
+          error: err.name,
+          message: err.message,
+        };
+      }
+    }
+    return { status: ExecutionStatus.FAILED, error: "Error" };
+  }
 }
 
 type ActivityResolution<

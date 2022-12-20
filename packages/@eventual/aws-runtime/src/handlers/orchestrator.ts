@@ -1,6 +1,6 @@
 import "@eventual/entry/injected";
 
-import { createOrchestrator } from "@eventual/core";
+import { createOrchestrator, groupBy } from "@eventual/core";
 import middy from "@middy/core";
 import type { SQSEvent, SQSRecord } from "aws-lambda";
 import { logger, loggerMiddlewares } from "../logger.js";
@@ -70,17 +70,4 @@ function sqsRecordToEvents(sqsRecord: SQSRecord) {
   const message = JSON.parse(sqsRecord.body) as SQSWorkflowTaskMessage;
 
   return message.task.events;
-}
-
-function groupBy<T>(
-  items: T[],
-  extract: (item: T) => string
-): Record<string, T[]> {
-  return items.reduce((obj: Record<string, T[]>, r) => {
-    const id = extract(r);
-    return {
-      ...obj,
-      [id]: [...(obj[id] || []), r],
-    };
-  }, {});
 }

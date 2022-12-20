@@ -1,3 +1,4 @@
+import { ExecutionStatus } from "@eventual/core";
 import path from "path";
 import * as url from "url";
 import { TestEnvironment } from "../src/environment.js";
@@ -17,13 +18,13 @@ test("start workflow", async () => {
 
   await env.start();
 
-  debugger;
-
   const result = await env.startExecution(workflow3, undefined);
 
-  console.log(result);
+  const r1 = await result.tryGetResult();
+  expect(r1).toEqual({ status: ExecutionStatus.IN_PROGRESS });
 
-  expect(await result.history()).toMatchObject({
-    commands: [],
-  });
+  env.tick();
+
+  const r2 = await result.tryGetResult();
+  expect(r2).toEqual({ status: ExecutionStatus.COMPLETE, result: "hi" });
 });

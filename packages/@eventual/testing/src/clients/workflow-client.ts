@@ -1,17 +1,22 @@
 import {
   ActivityRuntimeClient,
+  createEvent,
   Execution,
   ExecutionStatus,
+  formatExecutionId,
   HistoryStateEvent,
   StartWorkflowRequest,
   Workflow,
   WorkflowClient,
+  WorkflowEventType,
+  WorkflowStarted,
 } from "@eventual/core";
-import { TestEnvironment } from "../environment.js";
+import { ulid } from "ulidx";
+import { TimeConnector } from "../environment.js";
 
 export class TestWorkflowClient extends WorkflowClient {
   constructor(
-    private env: TestEnvironment,
+    private time: TimeConnector,
     activityRuntimeClient: ActivityRuntimeClient
   ) {
     super(activityRuntimeClient);
@@ -20,20 +25,36 @@ export class TestWorkflowClient extends WorkflowClient {
   public async startWorkflow<W extends Workflow<any, any> = Workflow<any, any>>(
     request: StartWorkflowRequest<W>
   ): Promise<string> {
-    const execution = await this.env.startExecution(
+    // TODO maintain a store of executions
+    const name = request.executionName ?? ulid();
+    const executionId = formatExecutionId(
       request.workflowName,
-      request.input
+      request.executionName ?? ulid()
     );
-    return execution.id;
+
+    await this.submitWorkflowTask(
+      executionId,
+      createEvent<WorkflowStarted>({
+        type: WorkflowEventType.WorkflowStarted,
+        context: { name, parentId: request.parentExecutionId },
+        workflowName: request.workflowName,
+        input: request.input,
+        timeoutTime: request.timeoutSeconds
+          ? new Date(
+              this.time.time.getTime() + request.timeoutSeconds * 1000
+            ).toISOString()
+          : undefined,
+      })
+    );
+
+    return executionId;
   }
 
   public async submitWorkflowTask(
     executionId: string,
     ...events: HistoryStateEvent[]
   ): Promise<void> {
-    for (const event of events) {
-      await this.env.progressWorkflow(executionId, event);
-    }
+    this.time.pushEvent({ executionId, events });
   }
 
   public async getExecutions(_props: {

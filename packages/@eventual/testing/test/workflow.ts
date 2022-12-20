@@ -8,8 +8,8 @@ export const workflow2 = workflow("workflow2", async () => {
   await sleepFor(10);
 });
 
-export const activity1 = activity("", async () => "hi");
+export const activity1 = activity("act1", async () => "hi");
 
 export const workflow3 = workflow("workflow3", async () => {
-  await activity1();
+  return await activity1();
 });

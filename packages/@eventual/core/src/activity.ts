@@ -165,26 +165,22 @@ export function activity<Arguments extends any[], Output extends any = any>(
 ): ActivityFunction<Arguments, Output> {
   const [opts, handler] = args.length === 1 ? [undefined, args[0]] : args;
   let func: ActivityFunction<Arguments, Output>;
-  if (isOrchestratorWorker()) {
-    // if we're in the orchestrator, return a command to invoke the activity in the worker function
-    func = ((...args: Parameters<ActivityFunction<Arguments, Output>>) => {
+  // register the handler to be looked up during execution.
+  callableActivities()[activityID] = handler;
+  func = ((...args: Parameters<ActivityFunction<Arguments, Output>>) => {
+    if (isOrchestratorWorker()) {
+      // if we're in the orchestrator, return a command to invoke the activity in the worker function
       return createActivityCall(
         activityID,
         args,
         opts?.timeoutSeconds,
         opts?.heartbeatSeconds
       ) as any;
-    }) as ActivityFunction<Arguments, Output>;
-  } else {
-    // otherwise we must be in an activity, event or api handler
-    // register the handler to be looked up during execution.
-    callableActivities()[activityID] = handler;
-    // calling the activity from outside the orchestrator just calls the handler
-    func = ((...args) => handler(...args)) as ActivityFunction<
-      Arguments,
-      Output
-    >;
-  }
+    } else {
+      // calling the activity from outside the orchestrator just calls the handler
+      return handler(...args);
+    }
+  }) as ActivityFunction<Arguments, Output>;
   func.complete = async function (request) {
     return getWorkflowClient().completeActivity(request);
   };

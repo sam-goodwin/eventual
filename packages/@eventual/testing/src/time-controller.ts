@@ -70,6 +70,20 @@ export class TimeController<E = any> {
   }
 
   /**
+   * Returns the current time, an increment of props.increment from the props.start.
+   */
+  get nextTime() {
+    return this.#current + this.#increment;
+  }
+
+  /**
+   * Returns the timestamp on the next event which exists.
+   */
+  get nextEventTime(): number | undefined {
+    return this.#timeHeap.peek()?.timestamp;
+  }
+
+  /**
    * Returns any events at or before the current time.
    *
    * Only possible when events are added that are in the past.
@@ -91,6 +105,13 @@ export class TimeController<E = any> {
    */
   addEvent(timestamp: number, event: E): void {
     this.#timeHeap.add({ timestamp, event });
+  }
+
+  /**
+   * Add an event to the {@link TimeController}.
+   */
+  addEventAtNext(event: E): void {
+    this.#timeHeap.add({ timestamp: this.nextTime, event });
   }
 
   /**
