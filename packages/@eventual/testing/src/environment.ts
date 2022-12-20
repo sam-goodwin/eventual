@@ -2,24 +2,42 @@ import {
   ActivityArguments,
   ActivityFunction,
   ActivityOutput,
-  Command,
+  createEvent,
+  createOrchestrator,
+  EventClient,
   EventualError,
-  ExecutionStatus,
+  ExecutionHistoryClient,
+  ExecutionID,
   Failed,
+  formatExecutionId,
   HeartbeatTimeout,
   HistoryStateEvent,
-  interpret,
+  parseWorkflowName,
   Resolved,
   Result,
   ServiceType,
   SERVICE_TYPE_FLAG,
   Timeout,
+  TimerClient,
   Workflow,
+  WorkflowClient,
+  WorkflowEvent,
+  WorkflowEventType,
   WorkflowInput,
   WorkflowOutput,
+  WorkflowRuntimeClient,
   workflows,
+  WorkflowStarted,
 } from "@eventual/core";
 import { bundleService } from "@eventual/compiler";
+import { TestMetricsClient } from "./clients/metrics-client.js";
+import { TestLogger } from "./clients/logger.js";
+import { TestExecutionHistoryClient } from "./clients/execution-history-client.js";
+import { TestWorkflowRuntimeClient } from "./clients/workflow-runtime-client.js";
+import { TestEventClient } from "./clients/event-client.js";
+import { TestWorkflowClient } from "./clients/workflow-client.js";
+import { TestActivityRuntimeClient } from "./clients/activity-runtime-client.js";
+import { TestTimerClient } from "./clients/timer-client.js";
 
 export interface TestEnvironmentProps {
   entry: string;
@@ -30,6 +48,17 @@ export interface TestEnvironmentProps {
 export class TestEnvironment {
   private serviceFile: Promise<string>;
 
+  private timerClient: TimerClient;
+  private workflowClient: WorkflowClient;
+  private workflowRuntimeClient: WorkflowRuntimeClient;
+  private executionHistoryClient: ExecutionHistoryClient;
+  private eventClient: EventClient;
+
+  private started: boolean = false;
+  private time: Date;
+
+  public executions: Record<string, Execution<any>> = {};
+
   constructor(props: TestEnvironmentProps) {
     this.serviceFile = bundleService(
       props.outDir,
@@ -37,36 +66,105 @@ export class TestEnvironment {
       ServiceType.OrchestratorWorker,
       ["@eventual/core"]
     );
+    this.executionHistoryClient = new TestExecutionHistoryClient();
+    this.workflowRuntimeClient = new TestWorkflowRuntimeClient();
+    this.eventClient = new TestEventClient();
+    this.workflowClient = new TestWorkflowClient(
+      this,
+      new TestActivityRuntimeClient()
+    );
+    this.timerClient = new TestTimerClient();
+    this.time = props.start ?? new Date(0);
+  }
+
+  async start() {
+    if (!this.started) {
+      const _workflows = workflows();
+      _workflows.clear();
+      // run the service to re-import the workflows, but transformed
+      await import(await this.serviceFile);
+      this.started = true;
+    }
+  }
+
+  private getWorkflow(workflowName: string): Workflow {
+    if (!this.started) {
+      throw new Error("Test Environment is not yet started.");
+    }
+    const workflow = workflows().get(workflowName);
+    if (!workflow) {
+      throw new Error("Workflow does not exist");
+    }
+    // TODO validate that the workflow is transpiled.
+    return workflow;
   }
 
   mockActivity<A extends ActivityFunction<any, any>>(activity: A) {
     return new MockActivity<A>(activity);
   }
 
+  async startExecution<W extends Workflow<any, any> = any>(
+    workflowName: string,
+    input: WorkflowInput<W>
+  ): Promise<Execution<W>>;
   async startExecution<W extends Workflow<any, any> = Workflow<any, any>>(
     workflow: W,
     input: WorkflowInput<W>
+  ): Promise<Execution<W>>;
+  async startExecution<W extends Workflow<any, any> = Workflow<any, any>>(
+    workflow: W | string,
+    input: WorkflowInput<W>
   ): Promise<Execution<W>> {
-    // clear any registed workflows
-    const _workflows = workflows();
-    _workflows.clear();
-    // run the service to re-import the workflows, but transformed
-    await import(await this.serviceFile);
-    // get the same workflow from the updated workflows.
-    const updatedWorkflow = _workflows.get(workflow.workflowName);
-    // definition is internal only
+    const workflowName =
+      typeof workflow === "string" ? workflow : workflow.workflowName;
+    const executionId = formatExecutionId(workflowName, "test");
+    await this.progressWorkflow(
+      executionId,
+      createEvent<WorkflowStarted>(
+        {
+          type: WorkflowEventType.WorkflowStarted,
+          context: {
+            name: "test",
+          },
+          workflowName,
+          input,
+        },
+        this.time
+      )
+    );
+
+    const execution = {
+      id: executionId,
+      history: () => this.workflowRuntimeClient.getHistory(executionId),
+    };
+
+    this.executions[executionId] = execution;
+
+    return execution;
+  }
+
+  async progressWorkflow(executionId: string, event: HistoryStateEvent) {
+    const orchestrator = this.createOrchestrator();
+
+    const workflowName = parseWorkflowName(executionId as ExecutionID);
+    const workflow = this.getWorkflow(workflowName);
+
     const back = process.env[SERVICE_TYPE_FLAG];
     process.env[SERVICE_TYPE_FLAG] = ServiceType.OrchestratorWorker;
-    const start = interpret((<any>updatedWorkflow).definition(input, {}), []);
+    await orchestrator.orchestrateExecution(workflow, executionId, [event]);
     process.env[SERVICE_TYPE_FLAG] = back;
+  }
 
-    console.log(start);
-
-    return {
-      history: [],
-      commands: start.commands,
-      status: ExecutionStatus.IN_PROGRESS,
-    };
+  private createOrchestrator() {
+    return createOrchestrator({
+      timerClient: this.timerClient,
+      eventClient: this.eventClient,
+      workflowClient: this.workflowClient,
+      workflowRuntimeClient: this.workflowRuntimeClient,
+      executionHistoryClient: this.executionHistoryClient,
+      metricsClient: new TestMetricsClient(),
+      logger: new TestLogger(),
+    });
   }
 }
 
@@ -97,10 +195,9 @@ export interface IMockActivity<
 }
 
 export interface Execution<W extends Workflow<any, any>> {
-  history: HistoryStateEvent[];
-  commands: Command[];
-  status: ExecutionStatus;
-  result?: WorkflowOutput<W>;
+  id: string;
+  history: () => Promise<WorkflowEvent[]>;
+  result?: Promise<WorkflowOutput<W>>;
 }
 
 type ActivityResolution<

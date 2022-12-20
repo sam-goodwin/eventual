@@ -1,7 +1,7 @@
 import path from "path";
 import * as url from "url";
 import { TestEnvironment } from "../src/environment.js";
-import { workflow2 } from "./workflow.js";
+import { workflow3 } from "./workflow.js";
 
 test("start workflow", async () => {
   const env = new TestEnvironment({
@@ -15,11 +15,13 @@ test("start workflow", async () => {
     ),
   });
 
-  const result = await env.startExecution(workflow2, undefined);
+  await env.start();
+
+  const result = await env.startExecution(workflow3, undefined);
 
   console.log(result);
 
-  expect(result).toMatchObject({
+  expect(await result.history()).toMatchObject({
     commands: [],
   });
 });

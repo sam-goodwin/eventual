@@ -65,6 +65,18 @@ export interface OrchestratorResult {
   failedExecutionIds: string[];
 }
 
+export interface Orchestrator {
+  orchestrateExecutions(
+    eventsByExecutionId: Record<string, HistoryStateEvent[]>
+  ): Promise<OrchestratorResult>;
+
+  orchestrateExecution(
+    workflow: Workflow,
+    executionId: string,
+    events: HistoryStateEvent[]
+  ): Promise<void>;
+}
+
 /**
  * Creates a generic function for orchestrating a batch of executions
  * that can be used in runtime implementations. This implementation is
@@ -79,9 +91,7 @@ export function createOrchestrator({
   metricsClient,
   eventClient,
   logger,
-}: OrchestratorDependencies): (
-  eventsByExecutionId: Record<string, HistoryStateEvent[]>
-) => Promise<OrchestratorResult> {
+}: OrchestratorDependencies): Orchestrator {
   const commandExecutor = new CommandExecutor({
     timerClient,
     workflowClient,
@@ -89,50 +99,53 @@ export function createOrchestrator({
     eventClient,
   });
 
-  return async (eventsByExecutionId) => {
-    logger.debug("Handle workflowQueue records");
+  return {
+    orchestrateExecutions: async (eventsByExecutionId) => {
+      logger.debug("Handle workflowQueue records");
 
-    logger.info(
-      "Found execution ids: " + Object.keys(eventsByExecutionId).join(", ")
-    );
-
-    // for each execution id
-    const results = await promiseAllSettledPartitioned(
-      Object.entries(eventsByExecutionId),
-      async ([executionId, records]) => {
-        if (!isExecutionId(executionId)) {
-          throw new Error(`invalid ExecutionID: '${executionId}'`);
-        }
-        const workflowName = parseWorkflowName(executionId);
-        if (workflowName === undefined) {
-          throw new Error(`execution ID '${executionId}' does not exist`);
-        }
-        const workflow = lookupWorkflow(workflowName);
-        if (workflow === undefined) {
-          throw new Error(`no such workflow with name '${workflowName}'`);
-        }
-        // TODO: get workflow from execution id
-        return orchestrateExecution(workflow, executionId, records);
-      }
-    );
-
-    logger.debug(
-      "Executions succeeded: " +
-        results.fulfilled.map(([[executionId]]) => executionId).join(",")
-    );
-
-    if (results.rejected.length > 0) {
-      logger.error(
-        "Executions failed: \n" +
-          results.rejected
-            .map(([[executionId], error]) => `${executionId}: ${error}`)
-            .join("\n")
+      logger.info(
+        "Found execution ids: " + Object.keys(eventsByExecutionId).join(", ")
       );
-    }
 
-    return {
-      failedExecutionIds: results.rejected.map((rejected) => rejected[0][0]),
-    };
+      // for each execution id
+      const results = await promiseAllSettledPartitioned(
+        Object.entries(eventsByExecutionId),
+        async ([executionId, records]) => {
+          if (!isExecutionId(executionId)) {
+            throw new Error(`invalid ExecutionID: '${executionId}'`);
+          }
+          const workflowName = parseWorkflowName(executionId);
+          if (workflowName === undefined) {
+            throw new Error(`execution ID '${executionId}' does not exist`);
+          }
+          const workflow = lookupWorkflow(workflowName);
+          if (workflow === undefined) {
+            throw new Error(`no such workflow with name '${workflowName}'`);
+          }
+          // TODO: get workflow from execution id
+          return orchestrateExecution(workflow, executionId, records);
+        }
+      );
+
+      logger.debug(
+        "Executions succeeded: " +
+          results.fulfilled.map(([[executionId]]) => executionId).join(",")
+      );
+
+      if (results.rejected.length > 0) {
+        logger.error(
+          "Executions failed: \n" +
+            results.rejected
+              .map(([[executionId], error]) => `${executionId}: ${error}`)
+              .join("\n")
+        );
+      }
+
+      return {
+        failedExecutionIds: results.rejected.map((rejected) => rejected[0][0]),
+      };
+    },
+    orchestrateExecution,
   };
 
   async function orchestrateExecution(
