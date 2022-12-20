@@ -1,5 +1,5 @@
 {
-  "jest.jestCommandLine": "jest  --clearCache; NODE_OPTIONS=--experimental-vm-modules node_modules/.bin/jest",
+  "jest.jestCommandLine": "NODE_OPTIONS=--experimental-vm-modules node_modules/.bin/jest",
   "jest.autoRun": "off",
   "[javascript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode",
