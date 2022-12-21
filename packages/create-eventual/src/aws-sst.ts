@@ -1,5 +1,5 @@
 import type { PackageManager } from "./index";
-import { addDeps, addDevDeps, exec } from "./util";
+import { addDeps, addDevDeps, addTsLib, exec } from "./util";
 import path from "path";
 
 export async function createAwsSst({
@@ -21,4 +21,7 @@ export async function createAwsSst({
 
   process.chdir("services");
   await addDeps(pkgManager, "@eventual/core");
+
+  // Our API relies on the DOM types for node
+  await addTsLib(path.resolve("tsconfig.json"), "DOM");
 }

@@ -1,3 +1,4 @@
+import fs from "fs/promises";
 import { spawn } from "child_process";
 import { PackageManager } from "./index";
 
@@ -39,4 +40,20 @@ export function _addDeps(
       : []),
     ...pkgs
   );
+}
+
+export async function addTsLib(file: string, ...libs: string[]) {
+  const tsConfig = JSON.parse((await fs.readFile(file)).toString("utf-8"));
+  tsConfig.compilerOptions ??= {};
+  const lib: string[] = (tsConfig.lib ??= []);
+  for (const newLib of libs) {
+    if (
+      lib.find(
+        (existingLib) => existingLib.toLowerCase() === newLib.toLowerCase()
+      ) !== undefined
+    ) {
+      lib.push(newLib);
+    }
+  }
+  await fs.writeFile(file, JSON.stringify(tsConfig));
 }
