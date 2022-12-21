@@ -1,5 +1,5 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
-import { ArnFormat, Stack } from "aws-cdk-lib";
+import { ArnFormat, CfnResource, Resource, Stack } from "aws-cdk-lib";
 import {
   IGrantable,
   IRole,
@@ -10,7 +10,6 @@ import {
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
-import { CfnScheduleGroup } from "aws-cdk-lib/aws-scheduler";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import path from "path";
@@ -57,7 +56,7 @@ export class Scheduler extends Construct implements IScheduler, IGrantable {
   /**
    * A group in which all of the workflow schedules are created under.
    */
-  public readonly schedulerGroup: CfnScheduleGroup;
+  public readonly schedulerGroup: ScheduleGroup;
   /**
    * The lambda function which executes timed requests on the timerQueue.
    */
@@ -78,7 +77,7 @@ export class Scheduler extends Construct implements IScheduler, IGrantable {
 
   constructor(scope: Construct, id: string, private props: SchedulerProps) {
     super(scope, id);
-    this.schedulerGroup = new CfnScheduleGroup(this, "ScheduleGroup");
+    this.schedulerGroup = new ScheduleGroup(this, "ScheduleGroup");
 
     this.schedulerRole = new Role(this, "SchedulerRole", {
       assumedBy: new ServicePrincipal("scheduler.amazonaws.com", {
@@ -187,5 +186,21 @@ export class Scheduler extends Construct implements IScheduler, IGrantable {
   private configureScheduleForwarder() {
     this.configureScheduleTimer(this.forwarder);
     this.grantDeleteSchedule(this.forwarder);
+  }
+}
+
+class ScheduleGroup extends Resource {
+  readonly resource: CfnResource;
+  constructor(scope: Construct, id: string) {
+    super(scope, id);
+
+    this.resource = new CfnResource(this, "Resource", {
+      type: "AWS::Scheduler::ScheduleGroup",
+      properties: {},
+    });
+  }
+
+  public get ref() {
+    return this.resource.ref;
   }
 }
