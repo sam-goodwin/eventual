@@ -106,7 +106,7 @@ importers:
 
   apps/test-app-sst:
     specifiers:
-      '@eventual/aws-cdk': ^0.1.1
+      '@eventual/aws-cdk': workspace:^
       '@serverless-stack/cli': ^1.18.4
       '@serverless-stack/core': ^1.18.4
       '@serverless-stack/node': ^1.18.4
@@ -133,7 +133,7 @@ importers:
 
   apps/test-app-sst/services:
     specifiers:
-      '@eventual/core': ^0.1.1
+      '@eventual/core': workspace:^
       '@types/aws-lambda': ^8.10.109
       aws-sdk: ^2.1280.0
     dependencies:
