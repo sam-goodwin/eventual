@@ -1,0 +1,13 @@
+{
+  "name": "@test-project-sst/services",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {},
+  "dependencies": {
+    "@eventual/core": "workspace:^",
+    "aws-sdk": "^2.1280.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.109"
+  }
+}
