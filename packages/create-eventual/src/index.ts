@@ -32,10 +32,10 @@ export type PackageManager = "npm" | "yarn" | "pnpm";
           pkgManager,
           projectName: args.projectName!,
         };
-        if (args.target === "aws-sst") {
-          await createAwsSst(props);
-        } else {
+        if (args.target === "aws-cdk") {
           await createAwsCdk(props);
+        } else {
+          await createAwsSst(props);
         }
       }
     )

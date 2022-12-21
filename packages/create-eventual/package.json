@@ -10,7 +10,8 @@
     "watch": "esbuild src/index.ts --bundle --outfile=bin/bundle.js --platform=node --watch"
   },
   "dependencies": {
-    "create-sst": "latest"
+    "create-sst": "latest",
+    "aws-cdk": "^2.50.0"
   },
   "devDependencies": {
     "@types/node": "^16",

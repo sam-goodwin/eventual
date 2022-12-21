@@ -603,10 +603,12 @@ importers:
     specifiers:
       '@types/node': ^16
       '@types/yargs': ^17.0.17
+      aws-cdk: ^2.50.0
       create-sst: latest
       esbuild: ^0.16.6
       yargs: ^17.6.2
     dependencies:
+      aws-cdk: 2.51.1
       create-sst: 1.18.4
     devDependencies:
       '@types/node': 16.18.3
@@ -6275,7 +6277,6 @@ packages:
     hasBin: true
     optionalDependencies:
       fsevents: 2.3.2
-    dev: true
 
   /aws-embedded-metrics/4.0.0:
     resolution: {integrity: sha512-Bh5A439399uLT1Bed/uvPRc/zdyDg49n8lR6AKCUbb4lSl8t73FksRTsaJOCrnpb13/xhcPbMRYXayeD/oGbhg==}

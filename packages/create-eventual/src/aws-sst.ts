@@ -1,5 +1,6 @@
 import type { PackageManager } from "./index";
 import { addDeps, addDevDeps, exec } from "./util";
+import path from "path";
 
 export async function createAwsSst({
   projectName,
@@ -15,8 +16,9 @@ export async function createAwsSst({
     "--template=minimal/typescript-starter"
   );
 
-  process.chdir(`./${projectName}`);
-
-  await addDeps(pkgManager, "@eventual/core", "@eventual/aws-runtime");
+  process.chdir(path.join(".", projectName));
   await addDevDeps(pkgManager, "@eventual/aws-cdk");
+
+  process.chdir("services");
+  await addDeps(pkgManager, "@eventual/core");
 }
