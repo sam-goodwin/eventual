@@ -21,6 +21,10 @@ export type SignalHandlerFunction<Payload = void> = (
   payload: Payload
 ) => Promise<void> | void;
 
+export function signal<Payload = void>(name: string): Signal<Payload> {
+  return new Signal(name);
+}
+
 export class Signal<Payload = void> {
   constructor(public readonly id: string) {}
   /**
