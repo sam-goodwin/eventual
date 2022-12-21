@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.1.1 (2022-12-21)
+
+### Bug Fixes
+
+- take peer on ^2.50.0 or AWS CDK ([#126](https://github.com/functionless/eventual/issues/126)) ([fe850bb](https://github.com/functionless/eventual/commit/fe850bb180bb7e599fae91346b244cd0e50cbbe3))
+
 # 0.1.0 (2022-12-21)
 
 ### Features
