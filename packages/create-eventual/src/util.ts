@@ -55,5 +55,5 @@ export async function addTsLib(file: string, ...libs: string[]) {
       lib.push(newLib);
     }
   }
-  await fs.writeFile(file, JSON.stringify(tsConfig));
+  await fs.writeFile(file, JSON.stringify(tsConfig, null, 2));
 }
