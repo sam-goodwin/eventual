@@ -40,7 +40,24 @@ export class TimeController<E = any> {
    */
   tick(n: number = 1): E[] {
     this.#current += this.#increment * n;
-    return this.getPastEvents();
+    return this.drainPastEvents();
+  }
+
+  /**
+   * Creates a generator which returns events grouped by tick number.
+   *
+   * More efficient than passing in each tick number because it only requests tick numbers which have value.
+   */
+  public *tickIncremental(n: number) {
+    const goal = this.#current + this.#increment * n;
+    while (this.#current < goal) {
+      // only get the next there are events
+      const next = this.nextEventTime;
+      if (next === undefined) {
+        return;
+      }
+      yield this.tickUntil(next);
+    }
   }
 
   /**
@@ -55,9 +72,7 @@ export class TimeController<E = any> {
    */
   tickUntil(goal: number): E[] {
     if (goal < this.#current) {
-      throw new Error(
-        "Cannot travel into the past. Use TimeController.time to get the current time."
-      );
+      return this.drainPastEvents();
     }
     return this.tick(Math.floor((goal - this.#current) / this.#increment));
   }
@@ -88,8 +103,8 @@ export class TimeController<E = any> {
    *
    * Only possible when events are added that are in the past.
    */
-  getPastEvents() {
-    return [...this.pastEvents()];
+  drainPastEvents() {
+    return [...this.drainEvents()];
   }
 
   /**
@@ -131,7 +146,7 @@ export class TimeController<E = any> {
     this.#timeHeap.clear();
   }
 
-  private *pastEvents() {
+  private *drainEvents() {
     while (this.hasCurrentOrPastEvents()) {
       yield this.#timeHeap.pop()!.event;
     }

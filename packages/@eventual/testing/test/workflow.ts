@@ -6,6 +6,7 @@ export const workflow1 = workflow("workflow1", async () => {
 
 export const workflow2 = workflow("workflow2", async () => {
   await sleepFor(10);
+  return "hello";
 });
 
 export const activity1 = activity("act1", async () => "hi");

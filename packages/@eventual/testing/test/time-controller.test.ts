@@ -66,7 +66,7 @@ test("push past", () => {
 
   controller.addEvent(1, event(1));
 
-  expect(controller.getPastEvents()).toMatchObject([event(1)]);
+  expect(controller.drainPastEvents()).toMatchObject([event(1)]);
 });
 
 test("push past and future", () => {
@@ -167,7 +167,7 @@ test("tick until", () => {
 test("zero time is immediately available", () => {
   const controller = new TimeController<{ id: number }>([eventWithTime(0, 1)]);
 
-  expect(controller.getPastEvents()).toEqual([event(1)]);
+  expect(controller.drainPastEvents()).toEqual([event(1)]);
 });
 
 test("start from arbitrary time", () => {
@@ -181,7 +181,7 @@ test("start from arbitrary time", () => {
     { start: 10000 }
   );
 
-  expect(controller.getPastEvents()).toEqual([
+  expect(controller.drainPastEvents()).toEqual([
     event(1),
     event(2),
     event(3),
@@ -266,7 +266,7 @@ test("tick until partial increment", () => {
   expect(controller.tickUntil(45)).toEqual([event(3), event(4)]);
 });
 
-test("tick until past fails", () => {
+test("tick until past returns only past events", () => {
   const controller = new TimeController<{ id: number }>([
     eventWithTime(1, 1),
     eventWithTime(2, 2),
@@ -276,7 +276,35 @@ test("tick until past fails", () => {
 
   controller.tick(10);
 
-  expect(() => controller.tickUntil(5)).toThrow();
+  controller.addEvent(5, event(5));
+
+  expect(controller.tickUntil(5)).toEqual([event(5)]);
+});
+
+test("tick incremental", () => {
+  const controller = new TimeController<{ id: number }>([
+    eventWithTime(10, 1),
+    eventWithTime(11, 2),
+    eventWithTime(23, 3),
+    eventWithTime(23, 4),
+    eventWithTime(105, 5),
+    eventWithTime(115, 6),
+  ]);
+
+  controller.tick(5);
+
+  controller.addEvent(3, event(0));
+
+  expect([...controller.tickIncremental(100)]).toEqual([
+    [event(0)],
+    // grab event at location 1
+    [event(1)],
+    // grab event at location 2
+    [event(2)],
+    // the order of same time events are undefined
+    expect.arrayContaining([event(3), event(4)]),
+    [event(5)],
+  ]);
 });
 
 function eventWithTime(time: number, id: number): TimeEvent<{ id: number }> {

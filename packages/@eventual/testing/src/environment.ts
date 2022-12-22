@@ -153,9 +153,18 @@ export class TestEnvironment {
   /**
    * TODO: Support ticking more than 1 step at a time, in batches.
    */
-  async tick() {
-    const events = this.timeController.tick();
-    await this.processTickEvents(events);
+  async tick(n?: number) {
+    if (n === undefined || n === 1) {
+      const events = this.timeController.tick();
+      await this.processTickEvents(events);
+    } else {
+      // process each batch of event for n ticks.
+      // note: we may get back fewer than n groups if there are not events for each tick.
+      const eventGenerator = this.timeController.tickIncremental(n);
+      for (const events of eventGenerator) {
+        await this.processTickEvents(events);
+      }
+    }
   }
 
   /**
