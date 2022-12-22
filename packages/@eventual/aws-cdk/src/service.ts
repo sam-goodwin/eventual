@@ -147,12 +147,13 @@ export class Service extends Construct implements IGrantable {
       events: this.events,
     });
 
-    this.telemetry.configureFunctions(
-      this.events.handler,
-      this.activities.worker,
+    this.telemetry.attachToFunction(this.events.handler, "handler");
+    this.telemetry.attachToFunction(this.activities.worker, "worker");
+    this.telemetry.attachToFunction(
       this.workflows.orchestrator,
-      this.scheduler.forwarder
+      "orchestrator"
     );
+    this.telemetry.attachToFunction(this.scheduler.forwarder, "forwarder");
 
     this.grantPrincipal = new CompositePrincipal(
       // when granting permissions to the service,

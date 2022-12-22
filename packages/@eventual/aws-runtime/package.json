@@ -5,7 +5,7 @@
       "import": "./lib/esm/index.js",
       "require": "./lib/cjs/index.js"
     },
-    "./collector": "./collector/otel-collector-lite.zip"
+    "./mini-collector-cloudwatch": "./mini-collector-cloudwatch.zip"
   },
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",

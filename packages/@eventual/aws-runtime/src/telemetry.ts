@@ -16,6 +16,7 @@ import {
   context,
 } from "@opentelemetry/api";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
+import { serviceName, telemetryComponentName } from "./env.js";
 
 let telemetryProvider: BasicTracerProvider | undefined;
 
@@ -27,7 +28,8 @@ export function registerTelemetryApi(): BasicTracerProvider {
   diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ALL);
   const provider = new BasicTracerProvider({
     resource: new Resource({
-      [SemanticResourceAttributes.SERVICE_NAME]: "basic-service",
+      [SemanticResourceAttributes.SERVICE_NAMESPACE]: serviceName(),
+      [SemanticResourceAttributes.SERVICE_NAME]: telemetryComponentName(),
     }),
   });
   provider.addSpanProcessor(

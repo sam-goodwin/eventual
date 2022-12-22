@@ -108,12 +108,6 @@ async function getNewEvents(
   const updatedEvents = await ky(
     `executions/${encodeExecutionId(executionId)}/history`
   ).json<WorkflowEvent[]>();
-  if (updatedEvents.length == 0) {
-    //Unfortunately if the execution id is wrong, our dynamo query is just going to return an empty record set
-    //Not super helpful
-    //So we use this heuristic to give up, since we should at least have a start event.
-    throw new Error("No events at all. Check your execution id");
-  }
   // The sort is important to ensure we don't chop off new events,
   // as we cannot rely on the event log to be sorted.
   // ie a later event may be be output into the history before events we have previously seen.

@@ -18,6 +18,8 @@ export namespace ENV_NAMES {
   export const TIMER_QUEUE_ARN = "EVENTUAL_TIMER_QUEUE_ARN";
   export const SCHEDULE_FORWARDER_ARN = "EVENTUAL_SCHEDULE_FORWARDER_ARN";
   export const TELEMETRY_LOG_GROUP_NAME = "EVENTUAL_TELEMETRY_LOG_GROUP_NAME";
+  export const TELEMETRY_LOG_STREAM_NAME = "EVENTUAL_TELEMETRY_LOG_STREAM_NAME";
+  export const TELEMETRY_COMPONENT_NAME = "EVENTUAL_TELEMETRY_COMPONENT_NAME";
 }
 
 export function tryGetEnv(name: string) {
@@ -49,3 +51,7 @@ export const schedulerForwarderArn = () =>
   tryGetEnv(ENV_NAMES.SCHEDULE_FORWARDER_ARN);
 export const telemetryLogGroupName = () =>
   tryGetEnv(ENV_NAMES.TELEMETRY_LOG_GROUP_NAME);
+export const telemetryLogStreamName = () =>
+  tryGetEnv(ENV_NAMES.TELEMETRY_LOG_STREAM_NAME);
+export const telemetryComponentName = () =>
+  tryGetEnv(ENV_NAMES.TELEMETRY_COMPONENT_NAME);
