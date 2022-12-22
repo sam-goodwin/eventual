@@ -35,7 +35,7 @@ export interface WorkDoneEvent {
 export const workDone = event<WorkDoneEvent>("WorkDone");
 `;
 
-export const sampleCDKCode = `import { StackContext } from "@serverless-stack/resources";
+export const sampleSSTCode = `import { StackContext } from "@serverless-stack/resources";
 import { Service } from "@eventual/aws-cdk";
 import path from "path";
 
@@ -47,5 +47,34 @@ export function MyStack({ stack }: StackContext) {
   stack.addOutputs({
     ApiEndpoint: service.api.gateway.url!,
   });
+}
+`;
+
+export const sampleCDKApp = `import { App, Stack } from "aws-cdk-lib";
+import path from "path";
+import { MyStack } from "./my-stack";
+
+const app = new App();
+
+new MyStack(app, "my-stack");
+`;
+
+export const sampleCDKStack = `import { Construct } from "constructs";
+import { Stack, StackProps } from "aws-cdk-lib";
+import { Service } from "@eventual/aws-cdk";
+
+export interface MyStackProps extends StackProps {}
+
+export class MyStack extends Stack {
+  public readonly service: Service;
+
+  constructor(scope: Construct, id: string, props?: MyStackProps) {
+    super(scope, id, props);
+
+    this.service = new Service(this, "Service", {
+      name: "my-service",
+      entry: path.join(__dirname, "services", "src", "my-service.ts")
+    });
+  }
 }
 `;

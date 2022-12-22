@@ -2,7 +2,7 @@ import type { PackageManager } from "./index";
 import { addDeps, addDevDeps, addTsLib, exec } from "./util";
 import path from "path";
 import fs from "fs/promises";
-import { sampleCDKCode, sampleServiceCode } from "./sample-code";
+import { sampleSSTCode, sampleServiceCode } from "./sample-code";
 
 export async function createAwsSst({
   projectName,
@@ -29,6 +29,6 @@ export async function createAwsSst({
     addTsLib(path.join(".", "tsconfig.json"), "DOM"),
     fs.rm(path.join(".", "functions", "lambda.ts")),
     fs.writeFile(path.join(".", "functions", "service.ts"), sampleServiceCode),
-    fs.writeFile(path.join(".", "stacks", "MyStack.ts"), sampleCDKCode),
+    fs.writeFile(path.join(".", "stacks", "MyStack.ts"), sampleSSTCode),
   ]);
 }

@@ -42,6 +42,14 @@ export function _addDeps(
   );
 }
 
+export async function install(pkgManager: PackageManager) {
+  if (pkgManager === "yarn") {
+    await exec("yarn");
+  } else {
+    await exec(pkgManager, "i");
+  }
+}
+
 export async function addTsLib(file: string, ...libs: string[]) {
   const tsConfig = JSON.parse((await fs.readFile(file)).toString("utf-8"));
   tsConfig.compilerOptions ??= {};
