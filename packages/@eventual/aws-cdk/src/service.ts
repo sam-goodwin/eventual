@@ -116,7 +116,6 @@ export class Service extends Construct implements IGrantable {
       environment: props.environment,
       workflows: proxyWorkflows,
       activities: proxyActivities,
-      telemetry: this.telemetry,
     });
 
     this.activities = new Activities(this, "Activities", {
@@ -124,7 +123,6 @@ export class Service extends Construct implements IGrantable {
       workflows: proxyWorkflows,
       environment: props.environment,
       events: this.events,
-      telemetry: this.telemetry,
     });
     proxyActivities._bind(this.activities);
 
@@ -133,7 +131,6 @@ export class Service extends Construct implements IGrantable {
       activities: this.activities,
       table: this.table,
       events: this.events,
-      telemetry: this.telemetry,
     });
     proxyWorkflows._bind(this.workflows);
 
@@ -148,8 +145,14 @@ export class Service extends Construct implements IGrantable {
       environment: props.environment,
       workflows: this.workflows,
       events: this.events,
-      telemetry: this.telemetry,
     });
+
+    this.telemetry.configureFunctions(
+      this.events.handler,
+      this.activities.worker,
+      this.workflows.orchestrator,
+      this.scheduler.forwarder
+    );
 
     this.grantPrincipal = new CompositePrincipal(
       // when granting permissions to the service,

@@ -12,7 +12,7 @@
       "@eventual/injected/*": ["./src/injected/*"]
     }
   },
-  "include": ["src", "src/package.json"],
+  "include": ["src", "src/package.json", "collector/ote-collector-lite.zip"],
   "exclude": ["lib", "node_modules"],
   "references": [{ "path": "../core" }]
 }

@@ -8,8 +8,6 @@ import {
   Runtime,
 } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
-import { ENV_NAMES } from "../../aws-runtime/";
-import { ITelemetryEnv } from "./telemetry";
 import { outDir } from "./utils";
 
 export interface ServiceFunctionProps
@@ -17,7 +15,6 @@ export interface ServiceFunctionProps
   serviceType: ServiceType;
   handler?: string;
   runtime?: Runtime;
-  telemetryEnv: ITelemetryEnv;
 }
 
 export class ServiceFunction extends Function {
@@ -34,8 +31,6 @@ export class ServiceFunction extends Function {
         ...props.environment,
         NODE_OPTIONS: "--enable-source-maps",
         [SERVICE_TYPE_FLAG]: props.serviceType,
-        [ENV_NAMES.TELEMETRY_LOG_GROUP]: props.telemetryEnv.logGroupName,
-        [ENV_NAMES.TELEMETRY_LOG_STREAM]: props.telemetryEnv.logStreamName,
       },
     });
   }

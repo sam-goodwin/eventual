@@ -15,13 +15,13 @@ import {
 } from "../clients/index.js";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 import { logger, loggerMiddlewares } from "../logger.js";
-import { registerTelemetry } from "src/telemetry.js";
+import { registerTelemetryApi } from "src/telemetry.js";
 
 /**
  * Creates an entrypoint function for orchestrating a workflow
  * from within an AWS Lambda Function attached to a SQS FIFO queue.
  */
-const traceProvider = registerTelemetry();
+const traceProvider = registerTelemetryApi();
 const tracer = traceProvider.getTracer(serviceName());
 
 const orchestrate = createOrchestrator({

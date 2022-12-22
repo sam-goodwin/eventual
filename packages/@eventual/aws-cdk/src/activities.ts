@@ -15,14 +15,12 @@ import { IScheduler } from "./scheduler";
 import { ServiceType } from "@eventual/core";
 import { ServiceFunction } from "./service-function";
 import { Events } from "./events";
-import { ITelemetry } from "./telemetry";
 
 export interface ActivitiesProps {
   workflows: IWorkflows;
   scheduler: IScheduler;
   environment?: Record<string, string>;
   events: Events;
-  telemetry: ITelemetry;
 }
 
 export interface IActivities {
@@ -78,7 +76,6 @@ export class Activities extends Construct implements IActivities, IGrantable {
       retryAttempts: 0,
       // TODO: determine worker timeout strategy
       timeout: Duration.minutes(1),
-      telemetryEnv: props.telemetry.env,
     });
 
     this.configureActivityWorker();

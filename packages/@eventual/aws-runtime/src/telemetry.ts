@@ -5,9 +5,9 @@ import {
   ConsoleSpanExporter,
 } from "@opentelemetry/sdk-trace-base";
 import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
-import { CloudWatchSpanExporter } from "src/cloudwatch-span-exporter.js";
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks";
 import { Resource } from "@opentelemetry/resources";
+import "./fetch-polyfill.js";
 
 import {
   diag,
@@ -15,9 +15,15 @@ import {
   DiagLogLevel,
   context,
 } from "@opentelemetry/api";
-import { telemetryLogGroup, telemetryLogStream } from "./env.js";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
 
-export function registerTelemetry(): BasicTracerProvider {
+let telemetryProvider: BasicTracerProvider | undefined;
+
+export function registerTelemetryApi(): BasicTracerProvider {
+  if (telemetryProvider) {
+    return telemetryProvider;
+  }
+
   diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.ALL);
   const provider = new BasicTracerProvider({
     resource: new Resource({
@@ -25,15 +31,17 @@ export function registerTelemetry(): BasicTracerProvider {
     }),
   });
   provider.addSpanProcessor(
-    new BatchSpanProcessor(
-      new CloudWatchSpanExporter(telemetryLogGroup(), telemetryLogStream())
-    )
+    new BatchSpanProcessor(new OTLPTraceExporter({ hostname: "127.0.0.1" }))
   );
   provider.addSpanProcessor(new SimpleSpanProcessor(new ConsoleSpanExporter()));
   provider.register();
+  ["SIGINT", "SIGTERM"].forEach((signal) => {
+    process.on(signal, () => provider.shutdown().catch(console.error));
+  });
   const contextManager = new AsyncHooksContextManager();
   contextManager.enable();
   context.setGlobalContextManager(contextManager);
-  console.log("Registered telemetry");
-  return provider;
+  console.log("Registered telemetry api");
+  telemetryProvider = provider;
+  return telemetryProvider;
 }

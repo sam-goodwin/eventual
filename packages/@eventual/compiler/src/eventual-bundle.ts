@@ -6,6 +6,8 @@ import { eventualESPlugin } from "./esbuild-plugin.js";
 import { prepareOutDir } from "./build.js";
 import { createRequire } from "module";
 import { ServiceType } from "@eventual/core";
+import child_process from "child_process";
+import util from "node:util";
 
 // @ts-ignore - ts is complaining about not having module:esnext even thought it is in tsconfig.json
 const require = createRequire(import.meta.url);
@@ -78,6 +80,8 @@ export function runtimeEntrypoint(name: string) {
   );
 }
 
+const nonBundledDeps = { "@opentelemetry/exporter-trace-otlp-grpc": "^0.34.0" };
+
 async function build({
   outDir,
   injectedEntry,
@@ -93,7 +97,7 @@ async function build({
   plugins?: esbuild.Plugin[];
   sourcemap?: boolean | "inline";
 }) {
-  const outfile = path.join(outDir, `${name}/index.mjs`);
+  const outfile = path.join(outDir, name, "index.mjs");
   const bundle = await esbuild.build({
     mainFields: ["module", "main"],
     sourcemap: sourcemap ?? true,
@@ -121,25 +125,27 @@ async function build({
     bundle: true,
     entryPoints: [path.resolve(entry)],
     banner: esmPolyfillRequireBanner(),
+    external: Object.keys(nonBundledDeps),
     outfile,
   });
 
-  await writeEsBuildMetafile(
-    bundle,
-    path.resolve(outDir!, `${name}/meta.json`)
-  );
+  await writeEsBuildMetafile(bundle, path.resolve(outDir, name, "meta.json"));
+
+  await installNonbundledDeps(path.resolve(outDir, name));
 
   return outfile;
 }
 
 /**
  * Allows ESM module bundles to support dynamo requires when necessary.
+ * __dirname polyfill is necessary for @opentelemetry/otlp-grpc-exporter-base
  */
 function esmPolyfillRequireBanner() {
   return {
     js: [
       `import { createRequire as topLevelCreateRequire } from 'module'`,
       `const require = topLevelCreateRequire(import.meta.url)`,
+      // `const __dirname = url.fileURLToPath(new URL('.', import.meta.url));`,
     ].join("\n"),
   };
 }
@@ -149,4 +155,16 @@ function writeEsBuildMetafile(
   path: string
 ) {
   return fs.writeFile(path, JSON.stringify(esbuildResult.metafile));
+}
+
+async function installNonbundledDeps(outPath: string) {
+  await fs.writeFile(
+    path.resolve(outPath, "package.json"),
+    JSON.stringify({
+      dependencies: nonBundledDeps,
+    })
+  );
+  const exec = util.promisify(child_process.exec);
+  const res = await exec("npm install", { cwd: outPath });
+  console.log(res.stdout);
 }

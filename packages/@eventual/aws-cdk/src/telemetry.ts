@@ -1,9 +1,11 @@
-import {
-  ILogGroup,
-  ILogStream,
-  LogGroup,
-  LogStream,
-} from "aws-cdk-lib/aws-logs";
+import { ENV_NAMES } from "@eventual/aws-runtime";
+import lambda, {
+  Architecture,
+  Code,
+  ILayerVersion,
+  LayerVersion,
+} from "aws-cdk-lib/aws-lambda";
+import { ILogGroup, LogGroup } from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
 
 interface TelemetryProps {
@@ -12,19 +14,12 @@ interface TelemetryProps {
 
 export interface ITelemetry {
   logGroup: ILogGroup;
-  logStream: ILogStream;
-
-  env: ITelemetryEnv;
-}
-
-export interface ITelemetryEnv {
-  logGroupName: string;
-  logStreamName: string;
+  collectorLayer: ILayerVersion;
 }
 
 export class Telemetry extends Construct {
   logGroup: LogGroup;
-  logStream: LogStream;
+  collectorLayer: ILayerVersion;
 
   constructor(scope: Construct, id: string, props: TelemetryProps) {
     super(scope, id);
@@ -32,15 +27,22 @@ export class Telemetry extends Construct {
     this.logGroup = new LogGroup(this, "LogGroup", {
       logGroupName: `${props.serviceName}-opentelemetry-data`,
     });
-    this.logStream = this.logGroup.addStream("LogStream", {
-      logStreamName: "traces",
+
+    this.collectorLayer = new LayerVersion(this, "telemetry-collector", {
+      code: Code.fromAsset(require.resolve("@eventual/aws-runtime/collector")),
+      compatibleArchitectures: [Architecture.ARM_64],
     });
   }
 
-  get env(): ITelemetryEnv {
-    return {
-      logGroupName: this.logGroup.logGroupName,
-      logStreamName: this.logStream.logStreamName,
-    };
+  configureFunctions(...fns: lambda.Function[]) {
+    for (const fn of fns) {
+      fn.addEnvironment(
+        ENV_NAMES.TELEMETRY_LOG_GROUP_NAME,
+        this.logGroup.logGroupName
+      );
+      fn.addEnvironment("GRPC_TRACE", "all");
+      fn.addEnvironment("GRPC_VERBOSITY", "DEBUG");
+      fn.addLayers(this.collectorLayer);
+    }
   }
 }

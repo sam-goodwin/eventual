@@ -17,7 +17,6 @@ import { IActivities } from "./activities";
 import { Events } from "./events";
 import { IScheduler } from "./scheduler";
 import { ServiceFunction } from "./service-function";
-import { ITelemetry } from "./telemetry";
 import { addEnvironment } from "./utils";
 
 export interface WorkflowsProps {
@@ -25,7 +24,6 @@ export interface WorkflowsProps {
   activities: IActivities;
   table: ITable;
   events: Events;
-  telemetry: ITelemetry;
 }
 
 export interface IWorkflows {
@@ -85,7 +83,6 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
           reportBatchItemFailures: true,
         }),
       ],
-      telemetryEnv: props.telemetry.env,
     });
 
     this.configureOrchestrator();

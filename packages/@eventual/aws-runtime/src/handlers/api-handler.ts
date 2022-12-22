@@ -6,7 +6,7 @@ import itty from "itty-router";
 import { createEventClient, createWorkflowClient } from "../clients/create.js";
 
 // TODO: remove once we can upgrade to Node 18 in AWS Lambda
-import "./fetch-polyfill.js";
+import "../fetch-polyfill.js";
 
 const processRequest = createApiHandler({
   workflowClient: createWorkflowClient(),
