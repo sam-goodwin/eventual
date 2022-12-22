@@ -1,6 +1,6 @@
 import { createActivityCall } from "../src/calls/activity-call.js";
 import { chain } from "../src/chain.js";
-import { HeartbeatTimeout, Timeout } from "../src/error.js";
+import { EventualError, HeartbeatTimeout, Timeout } from "../src/error.js";
 import {
   Context,
   createAwaitAll,
@@ -156,7 +156,13 @@ test("should catch error of failed Activity", () => {
       activityFailed("error", 0),
     ])
   ).toMatchObject(<WorkflowResult>{
-    commands: [createScheduledActivityCommand("handle-error", ["error"], 1)],
+    commands: [
+      createScheduledActivityCommand(
+        "handle-error",
+        [new EventualError("error").toJSON()],
+        1
+      ),
+    ],
   });
 });
 
@@ -239,7 +245,7 @@ test("should handle partial blocks with partial completes", () => {
   });
 });
 
-describe("activity", () =>
+describe("activity", () => {
   describe("heartbeat", () => {
     const wf = workflow(function* () {
       return createActivityCall("getPumpedUp", [], undefined, 100);
@@ -300,7 +306,8 @@ describe("activity", () =>
         commands: [],
       });
     });
-  }));
+  });
+});
 
 test("should throw when scheduled does not correspond to call", () => {
   expect(
@@ -336,42 +343,6 @@ test("should throw when a completed precedes workflow state", () => {
     ])
   ).toMatchObject<WorkflowResult>({
     result: Result.failed({ name: "DeterminismError" }),
-    commands: [],
-  });
-});
-
-test("should fail the workflow on uncaught user error", () => {
-  const wf = workflow(function* () {
-    throw new Error("Hi");
-  });
-  expect(
-    interpret(wf.definition(undefined, context), [])
-  ).toMatchObject<WorkflowResult>({
-    result: Result.failed({ name: "Error", message: "Hi" }),
-    commands: [],
-  });
-});
-
-test("should fail the workflow on uncaught user error of random type", () => {
-  const wf = workflow(function* () {
-    throw new TypeError("Hi");
-  });
-  expect(
-    interpret(wf.definition(undefined, context), [])
-  ).toMatchObject<WorkflowResult>({
-    result: Result.failed({ name: "TypeError", message: "Hi" }),
-    commands: [],
-  });
-});
-
-test("should fail the workflow on uncaught thrown value", () => {
-  const wf = workflow(function* () {
-    throw "hi";
-  });
-  expect(
-    interpret(wf.definition(undefined, context), [])
-  ).toMatchObject<WorkflowResult>({
-    result: Result.failed("hi"),
     commands: [],
   });
 });
@@ -983,7 +954,7 @@ describe("Race", () => {
         activityCompleted("B", 1),
       ])
     ).toMatchObject(<WorkflowResult>{
-      result: Result.failed("A"),
+      result: Result.failed(new EventualError("A").toJSON()),
     });
 
     expect(
@@ -993,7 +964,7 @@ describe("Race", () => {
         activityFailed("B", 1),
       ])
     ).toMatchObject(<WorkflowResult>{
-      result: Result.failed("B"),
+      result: Result.failed(new EventualError("B").toJSON()),
     });
   });
 });
@@ -1063,8 +1034,8 @@ describe("AwaitAllSettled", () => {
       ])
     ).toMatchObject<WorkflowResult<PromiseSettledResult<string>[]>>({
       result: Result.resolved([
-        { status: "rejected", reason: "A" },
-        { status: "rejected", reason: "B" },
+        { status: "rejected", reason: new EventualError("A").toJSON() },
+        { status: "rejected", reason: new EventualError("B").toJSON() },
       ]),
       commands: [],
     });
@@ -1078,7 +1049,7 @@ describe("AwaitAllSettled", () => {
       ])
     ).toMatchObject<WorkflowResult<PromiseSettledResult<string>[]>>({
       result: Result.resolved([
-        { status: "rejected", reason: "A" },
+        { status: "rejected", reason: new EventualError("A").toJSON() },
         { status: "fulfilled", value: "B" },
       ]),
       commands: [],
@@ -1351,7 +1322,7 @@ test("workflow calling other workflow", () => {
       workflowFailed("error", 0),
     ])
   ).toMatchObject({
-    result: Result.failed("error"),
+    result: Result.failed(new EventualError("error").toJSON()),
     commands: [],
   });
 });

@@ -1,10 +1,12 @@
 import {
   ActivityCompleted,
+  ActivityFailed,
   ActivityWorkerRequest,
   CompleteExecution,
   CompleteExecutionRequest,
   createEvent,
   ExecutionStatus,
+  extendsError,
   FailedExecution,
   FailExecutionRequest,
   HistoryStateEvent,
@@ -69,21 +71,40 @@ export class TestWorkflowRuntimeClient implements WorkflowRuntimeClient {
   }
 
   async startActivity(request: ActivityWorkerRequest): Promise<void> {
-    const result = await this.activitiesController.invokeActivity(
-      request.command.name,
-      ...request.command.args
-    );
+    try {
+      const result = await this.activitiesController.invokeActivity(
+        request.command.name,
+        ...request.command.args
+      );
 
-    // if it is an async result... do nothing
-    if (!isAsyncResult(result)) {
+      // if it is an async result... do nothing
+      if (!isAsyncResult(result)) {
+        this.timeConnector.pushEvent({
+          executionId: request.executionId,
+          events: [
+            createEvent<ActivityCompleted>(
+              {
+                type: WorkflowEventType.ActivityCompleted,
+                result: result,
+                seq: request.command.seq,
+              },
+              this.timeConnector.time
+            ),
+          ],
+        });
+        return;
+      }
+    } catch (err) {
       this.timeConnector.pushEvent({
         executionId: request.executionId,
         events: [
-          createEvent<ActivityCompleted>(
+          createEvent<ActivityFailed>(
             {
-              type: WorkflowEventType.ActivityCompleted,
-              result: result,
+              type: WorkflowEventType.ActivityFailed,
               seq: request.command.seq,
+              // TODO: this logic is duplicated between AWS runtime and here, centralize
+              error: extendsError(err) ? err.name : "Error",
+              message: extendsError(err) ? err.message : JSON.stringify(err),
             },
             this.timeConnector.time
           ),

@@ -3,9 +3,9 @@ import {
   createOrchestrator,
   EventClient,
   EventualError,
+  Execution,
   ExecutionHistoryClient,
   ExecutionStatus,
-  extendsError,
   groupBy,
   ServiceType,
   SERVICE_TYPE_FLAG,
@@ -57,7 +57,7 @@ export class TestEnvironment {
   private started: boolean = false;
   private timeController: TimeController<WorkflowTask>;
 
-  public executions: Record<string, Execution<any>> = {};
+  public executions: Record<string, ExecutionHandle<any>> = {};
 
   constructor(props: TestEnvironmentProps) {
     this.serviceFile = bundleService(
@@ -79,10 +79,7 @@ export class TestEnvironment {
     const timeConnector: TimeConnector = {
       pushEvent: (task) => this.timeController.addEventAtNext(task),
       scheduleEvent: (time, task) =>
-        this.timeController.addEvent(
-          time.getTime() - this.time.getTime(),
-          task
-        ),
+        this.timeController.addEvent(time.getTime(), task),
       time: this.time,
     };
     const executionStore = new ExecutionStore();
@@ -126,15 +123,15 @@ export class TestEnvironment {
   async startExecution<W extends Workflow<any, any> = any>(
     workflowName: string,
     input: WorkflowInput<W>
-  ): Promise<Execution<W>>;
+  ): Promise<ExecutionHandle<W>>;
   async startExecution<W extends Workflow<any, any> = Workflow<any, any>>(
     workflow: W,
     input: WorkflowInput<W>
-  ): Promise<Execution<W>>;
+  ): Promise<ExecutionHandle<W>>;
   async startExecution<W extends Workflow<any, any> = Workflow<any, any>>(
     workflow: W | string,
     input: WorkflowInput<W>
-  ): Promise<Execution<W>> {
+  ): Promise<ExecutionHandle<W>> {
     const workflowName =
       typeof workflow === "string" ? workflow : workflow.workflowName;
 
@@ -146,7 +143,7 @@ export class TestEnvironment {
     // tick forward on explicit user action (triggering the workflow to start running)
     await this.tick();
 
-    const execution = new Execution(
+    const execution = new ExecutionHandle(
       executionId,
       this,
       this.workflowRuntimeClient
@@ -257,7 +254,7 @@ export interface TimeConnector {
   get time(): Date;
 }
 
-export class Execution<W extends Workflow<any, any>> {
+export class ExecutionHandle<W extends Workflow<any, any>> {
   constructor(
     public id: string,
     private environment: TestEnvironment,
@@ -272,38 +269,18 @@ export class Execution<W extends Workflow<any, any>> {
       .status;
   }
   async result() {
-    const execution = await this.environment.workflowClient.getExecution(
-      this.id
-    );
-    if (execution?.status === ExecutionStatus.IN_PROGRESS) {
+    const execution = await this.getExecution();
+    if (execution.status === ExecutionStatus.IN_PROGRESS) {
       throw new InProgressError("Workflow is still in progress");
-    } else if (execution?.status === ExecutionStatus.FAILED) {
+    } else if (execution.status === ExecutionStatus.FAILED) {
       throw new EventualError(execution.error, execution.message);
     } else {
-      return execution?.result;
+      return execution.result;
     }
   }
-  async tryGetResult(): Promise<
-    | { status: ExecutionStatus.IN_PROGRESS }
-    | { status: ExecutionStatus.COMPLETE; result: WorkflowOutput<W> }
-    | { status: ExecutionStatus.FAILED; error: string; message?: string }
-  > {
-    try {
-      const result = await this.result();
-      return { status: ExecutionStatus.COMPLETE, result };
-    } catch (err) {
-      if (err instanceof InProgressError) {
-        return {
-          status: ExecutionStatus.IN_PROGRESS,
-        };
-      } else if (extendsError(err)) {
-        return {
-          status: ExecutionStatus.FAILED,
-          error: err.name,
-          message: err.message,
-        };
-      }
-    }
-    return { status: ExecutionStatus.FAILED, error: "Error" };
+  async getExecution(): Promise<Execution<WorkflowOutput<W>>> {
+    return (await this.environment.workflowClient.getExecution(
+      this.id
+    )) as Execution<WorkflowOutput<W>>;
   }
 }

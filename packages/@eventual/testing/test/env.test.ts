@@ -33,18 +33,23 @@ describe("activity", () => {
     const result = await env.startExecution(workflow3, undefined);
 
     // see if the execution has completed
-    const r1 = await result.tryGetResult();
+    const r1 = await result.getExecution();
     // we expect it to still be in progress
-    expect(r1).toEqual({ status: ExecutionStatus.IN_PROGRESS });
+    expect(r1).toMatchObject<Partial<typeof r1>>({
+      status: ExecutionStatus.IN_PROGRESS,
+    });
 
     // progress time, the activity should be done now.
     // note: running real activities uses an async function and may not be done by the next tick
     await env.tick();
 
     // the workflow should be done now, the activity completed event should have been processed in the `tick`
-    const r2 = await result.tryGetResult();
+    const r2 = await result.getExecution();
     // and the execution updated to a completed state
-    expect(r2).toEqual({ status: ExecutionStatus.COMPLETE, result: "hi" });
+    expect(r2).toMatchObject<Partial<typeof r2>>({
+      status: ExecutionStatus.COMPLETE,
+      result: [[{ status: "fulfilled", value: "hi" }]],
+    });
   });
 
   describe("mocked", () => {
@@ -59,33 +64,81 @@ describe("activity", () => {
       await env.tick();
 
       // the workflow should be done now, the activity completed event should have been processed in the `tick`
-      const r2 = await execution.tryGetResult();
+      const r2 = await execution.getExecution();
       // and the execution updated to a completed state
-      expect(r2).toEqual({
+      expect(r2).toMatchObject<Partial<typeof r2>>({
         status: ExecutionStatus.COMPLETE,
-        result: "hello from the mock",
+        result: [[{ status: "fulfilled", value: "hello from the mock" }]],
       });
     });
 
-    test("complete many with always", async () => {
+    test("complete many always", async () => {
       mockActivity.complete("hello from the mock");
       // execution starts
       const execution = await env.startExecution(workflow3, { parallel: 3 });
       await env.tick();
 
       // the workflow should be done now, the activity completed event should have been processed in the `tick`
-      const r2 = await execution.tryGetResult();
+      const r2 = await execution.getExecution();
       // and the execution updated to a completed state
-      expect(r2).toEqual({
+      expect(r2).toMatchObject<Partial<typeof r2>>({
         status: ExecutionStatus.COMPLETE,
-        result: "hello from the mock|hello from the mock|hello from the mock",
+        result: [
+          [
+            { status: "fulfilled", value: "hello from the mock" },
+            { status: "fulfilled", value: "hello from the mock" },
+            { status: "fulfilled", value: "hello from the mock" },
+          ],
+        ],
+      });
+    });
+
+    test("fail many", async () => {
+      mockActivity.fail(new Error("Ahhh"));
+      // execution starts
+      const execution = await env.startExecution(workflow3, { parallel: 3 });
+      await env.tick();
+
+      // the workflow should be done now, the activity completed event should have been processed in the `tick`
+      const r2 = await execution.getExecution();
+      // and the execution updated to a completed state
+      expect(r2).toMatchObject<Partial<typeof r2>>({
+        status: ExecutionStatus.COMPLETE,
+        result: [
+          [
+            { status: "rejected", reason: new Error("Ahhh") },
+            { status: "rejected", reason: new Error("Ahhh") },
+            { status: "rejected", reason: new Error("Ahhh") },
+          ],
+        ],
+      });
+    });
+
+    test("fail once", async () => {
+      mockActivity.failOnce(new Error("Ahhh")).complete("not a failure");
+      // execution starts
+      const execution = await env.startExecution(workflow3, { parallel: 3 });
+      await env.tick();
+
+      // the workflow should be done now, the activity completed event should have been processed in the `tick`
+      const r2 = await execution.getExecution();
+      // and the execution updated to a completed state
+      expect(r2).toMatchObject<Partial<typeof r2>>({
+        status: ExecutionStatus.COMPLETE,
+        result: [
+          [
+            { status: "rejected", reason: new Error("Ahhh") },
+            { status: "fulfilled", value: "not a failure" },
+            { status: "fulfilled", value: "not a failure" },
+          ],
+        ],
       });
     });
 
     test("complete, changing during workflow", async () => {
       mockActivity.complete("hello from the mock");
       // execution starts
-      const result = await env.startExecution(workflow3, { series: 3 });
+      const execution = await env.startExecution(workflow3, { series: 3 });
       // while activity call 1 completes, update the mock result
       mockActivity.complete("new mock result");
       await env.tick();
@@ -97,26 +150,36 @@ describe("activity", () => {
       await env.tick(2);
 
       // the workflow should be done now, the activity completed event should have been processed in the `tick`
-      const r2 = await result.tryGetResult();
+      const r2 = await execution.getExecution();
       // and the execution updated to a completed state
-      expect(r2).toEqual({
+      expect(r2).toMatchObject<Partial<typeof r2>>({
         status: ExecutionStatus.COMPLETE,
-        result: "hello from the mock#new mock result#another new mock result",
+        result: [
+          [{ status: "fulfilled", value: "hello from the mock" }],
+          [{ status: "fulfilled", value: "new mock result" }],
+          [{ status: "fulfilled", value: "another new mock result" }],
+        ],
       });
     });
 
     test("complete once and then always", async () => {
       mockActivity.completeOnce("first!").complete("hello from the mock");
       // execution starts
-      const result = await env.startExecution(workflow3, { parallel: 3 });
+      const execution = await env.startExecution(workflow3, { parallel: 3 });
       await env.tick();
 
       // the workflow should be done now, the activity completed event should have been processed in the `tick`
-      const r2 = await result.tryGetResult();
+      const r2 = await execution.getExecution();
       // and the execution updated to a completed state
-      expect(r2).toEqual({
+      expect(r2).toMatchObject<Partial<typeof r2>>({
         status: ExecutionStatus.COMPLETE,
-        result: "first!|hello from the mock|hello from the mock",
+        result: [
+          [
+            { status: "fulfilled", value: "first!" },
+            { status: "fulfilled", value: "hello from the mock" },
+            { status: "fulfilled", value: "hello from the mock" },
+          ],
+        ],
       });
     });
   });
@@ -128,22 +191,31 @@ describe("sleep", () => {
     const result = await env.startExecution(sleepWorkflow, true);
 
     // see if the execution has completed
-    const r1 = await result.tryGetResult();
+    const r1 = await result.getExecution();
     // we expect it to still be in progress
-    expect(r1).toEqual({ status: ExecutionStatus.IN_PROGRESS });
+    expect(r1).toMatchObject<Partial<typeof r1>>({
+      status: ExecutionStatus.IN_PROGRESS,
+    });
 
     // progress time, the sleep is for 10 seconds and should not be done
     await env.tick();
 
+    console.log(env.time);
+
     // the workflow still not be done, have 9 more seconds left on the sleep
-    const r2 = await result.tryGetResult();
-    expect(r2).toEqual({ status: ExecutionStatus.IN_PROGRESS });
+    const r2 = await result.getExecution();
+    expect(r2).toMatchObject<Partial<typeof r2>>({
+      status: ExecutionStatus.IN_PROGRESS,
+    });
 
     // advance 9 seconds, the sleep time (minus 1)
     await env.tick(9);
 
-    const r3 = await result.tryGetResult();
-    expect(r3).toEqual({ status: ExecutionStatus.COMPLETE, result: "hello" });
+    const r3 = await result.getExecution();
+    expect(r3).toMatchObject<Partial<typeof r3>>({
+      status: ExecutionStatus.COMPLETE,
+      result: "hello",
+    });
   });
 
   test("sleep absolute", async () => {
@@ -153,41 +225,55 @@ describe("sleep", () => {
     const result = await env.startExecution(sleepWorkflow, false);
 
     // see if the execution has completed
-    const r1 = await result.tryGetResult();
+    const r1 = await result.getExecution();
     // we expect it to still be in progress
-    expect(r1).toEqual({ status: ExecutionStatus.IN_PROGRESS });
+    expect(r1).toMatchObject<Partial<typeof r1>>({
+      status: ExecutionStatus.IN_PROGRESS,
+    });
 
     // progress time,
     await env.tick();
 
+    console.log("time", env.time);
+
     // the workflow still not be done, have 9 more seconds left on the sleep
-    const r2 = await result.tryGetResult();
-    expect(r2).toEqual({ status: ExecutionStatus.IN_PROGRESS });
+    const r2 = await result.getExecution();
+    expect(r2).toMatchObject<Partial<typeof r2>>({
+      status: ExecutionStatus.IN_PROGRESS,
+    });
 
     // the sleep should end now
     await env.tickUntil("2022-01-02T12:00:00Z");
 
-    const r3 = await result.tryGetResult();
-    expect(r3).toEqual({ status: ExecutionStatus.COMPLETE, result: "hello" });
+    const r3 = await result.getExecution();
+    expect(r3).toMatchObject<Partial<typeof r3>>({
+      status: ExecutionStatus.COMPLETE,
+      result: "hello",
+    });
   });
 
   test("sleep absolute past", async () => {
     // start at this date
-    env.tickUntil("2022-01-03T12:00:00Z");
+    await env.tickUntil("2022-01-03T12:00:00Z");
     // execution starts
     const result = await env.startExecution(sleepWorkflow, false);
 
     // see if the execution has completed
-    const r1 = await result.tryGetResult();
+    const r1 = await result.getExecution();
     // we expect it to still be in progress
-    expect(r1).toEqual({ status: ExecutionStatus.IN_PROGRESS });
+    expect(r1).toMatchObject<Partial<typeof r1>>({
+      status: ExecutionStatus.IN_PROGRESS,
+    });
 
     // progress time, the sleep is triggered
     // note: still need to progress once for the event to be processed
     await env.tick();
 
     // the workflow still not be done, have 9 more seconds left on the sleep
-    const r3 = await result.tryGetResult();
-    expect(r3).toEqual({ status: ExecutionStatus.COMPLETE, result: "hello" });
+    const r3 = await result.getExecution();
+    expect(r3).toMatchObject<Partial<typeof r3>>({
+      status: ExecutionStatus.COMPLETE,
+      result: "hello",
+    });
   });
 });

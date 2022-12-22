@@ -24,7 +24,10 @@ export class TimeController<E = any> {
   #increment: number;
   #timeHeap: Heap<TimeEvent<E>>;
 
-  constructor(initialEvents: TimeEvent<E>[], props?: TimeControllerProps) {
+  constructor(
+    initialEvents: TimeEvent<E>[],
+    private props?: TimeControllerProps
+  ) {
     this.#current = props?.start ?? 0;
     this.#increment = props?.increment ?? 1;
     this.#timeHeap = new Heap<TimeEvent<E>>(
@@ -54,6 +57,7 @@ export class TimeController<E = any> {
       // only get the next there are events
       const next = this.nextEventTime;
       if (next === undefined) {
+        this.#current = goal;
         return;
       }
       yield this.tickUntil(next);
@@ -142,7 +146,7 @@ export class TimeController<E = any> {
    * @param current - the timestamp to set as the new start time, when not provided, does not reset the current time.
    */
   reset(current?: number) {
-    this.#current = current ?? this.#current;
+    this.#current = current ?? this.props?.start ?? 0;
     this.#timeHeap.clear();
   }
 

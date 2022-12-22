@@ -21,12 +21,10 @@ export const activity1 = activity("act1", async () => "hi");
 /**
  * Runs activities in parallel and in series based on the parameters.
  *
- * Parallel results are separated by | and series by #
- *
- * ex: p: 1, s: 1 => "activity result"
- * ex: p: 2, s: 1 => "activity result|activity result"
- * ex: p: 1, s: 2 => "activity result#activity result"
- * ex: p: 2, s: 2 => "activity result|activity result#activity result|activity result"
+ * ex: p: 1, s: 1 => [["activity result"]]
+ * ex: p: 2, s: 1 => [["activity result","activity result"]]
+ * ex: p: 1, s: 2 => [["activity result"],["activity result"]]
+ * ex: p: 2, s: 2 => [["activity result","activity result"],["activity result","activity result"]]
  */
 export const workflow3 = workflow(
   "workflow3",
@@ -37,14 +35,14 @@ export const workflow3 = workflow(
     parallel?: number;
     series?: number;
   } = {}) => {
-    const result: string[] = [];
+    const result: PromiseSettledResult<string>[][] = [];
     do {
-      const r = await Promise.all(
+      const r = await Promise.allSettled(
         [...Array(parallel).keys()].map(() => activity1())
       );
-      result.push(r.join("|"));
+      result.push(r);
     } while (--series > 0);
 
-    return result.join("#");
+    return result;
   }
 );

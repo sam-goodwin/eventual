@@ -9,6 +9,7 @@ import { isAwaitAll } from "./await-all.js";
 import { isActivityCall } from "./calls/activity-call.js";
 import {
   DeterminismError,
+  EventualError,
   HeartbeatTimeout,
   SynchronousOperationError,
   Timeout,
@@ -541,7 +542,7 @@ export function interpret<Return>(
       ? Result.failed(new Timeout("Activity Timed Out"))
       : isActivityHeartbeatTimedOut(event)
       ? Result.failed(new HeartbeatTimeout("Activity Heartbeat TimedOut"))
-      : Result.failed(event.error);
+      : Result.failed(new EventualError(event.error, event.message));
   }
 }
 
