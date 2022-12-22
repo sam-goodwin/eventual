@@ -1,4 +1,11 @@
-import { activity, sleepFor, sleepUntil, workflow } from "@eventual/core";
+import {
+  activity,
+  sendSignal,
+  signal,
+  sleepFor,
+  sleepUntil,
+  workflow,
+} from "@eventual/core";
 
 export const workflow1 = workflow("workflow1", async () => {
   return "hi";
@@ -44,5 +51,35 @@ export const workflow3 = workflow(
     } while (--series > 0);
 
     return result;
+  }
+);
+
+export const continueSignal = signal("continue");
+export const dataSignal = signal<string>("data");
+export const dataDoneSignal = signal("dataDone");
+
+export const signalWorkflow = workflow("signalFlow", async () => {
+  let data = "done!";
+  const dataSignalHandle = dataSignal.on((d) => {
+    data = d;
+  });
+  dataDoneSignal.on(() => {
+    dataSignalHandle.dispose();
+  });
+  await continueSignal.expect();
+  return data;
+});
+
+export const orchestrate = workflow(
+  "orchestrate",
+  async ({ targetExecutionId }: { targetExecutionId: string }) => {
+    await sendSignal(
+      targetExecutionId,
+      dataSignal,
+      "hello from the orchestrator workflow!"
+    );
+    await sendSignal(targetExecutionId, dataDoneSignal);
+    await sendSignal(targetExecutionId, continueSignal);
+    return "nothing to see here";
   }
 );

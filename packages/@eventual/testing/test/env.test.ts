@@ -1,9 +1,18 @@
-import { ExecutionStatus } from "@eventual/core";
+import { Execution, ExecutionStatus } from "@eventual/core";
 import path from "path";
 import * as url from "url";
 import { MockActivity } from "../src/activities-controller.js";
 import { TestEnvironment } from "../src/environment.js";
-import { activity1, sleepWorkflow, workflow3 } from "./workflow.js";
+import {
+  activity1,
+  continueSignal,
+  dataDoneSignal,
+  dataSignal,
+  orchestrate,
+  signalWorkflow,
+  sleepWorkflow,
+  workflow3,
+} from "./workflow.js";
 
 let env: TestEnvironment;
 
@@ -274,6 +283,75 @@ describe("sleep", () => {
     expect(r3).toMatchObject<Partial<typeof r3>>({
       status: ExecutionStatus.COMPLETE,
       result: "hello",
+    });
+  });
+});
+
+describe("signal", () => {
+  test("wait on signal", async () => {
+    const execution = await env.startExecution(signalWorkflow, undefined);
+
+    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      status: ExecutionStatus.IN_PROGRESS,
+    });
+  });
+
+  test("send signal", async () => {
+    const execution = await env.startExecution(signalWorkflow, undefined);
+
+    await execution.signal(continueSignal, undefined);
+
+    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      status: ExecutionStatus.COMPLETE,
+      result: "done!",
+    });
+  });
+
+  test("signal handler", async () => {
+    const execution = await env.startExecution(signalWorkflow, undefined);
+
+    await execution.signal(dataSignal, "override!");
+
+    await execution.signal(continueSignal, undefined);
+
+    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      status: ExecutionStatus.COMPLETE,
+      result: "override!",
+    });
+  });
+
+  test("signal handler dispose", async () => {
+    const execution = await env.startExecution(signalWorkflow, undefined);
+
+    await execution.signal(dataDoneSignal, undefined);
+
+    await execution.signal(dataSignal, "muahahahaha");
+
+    await execution.signal(continueSignal, undefined);
+
+    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      status: ExecutionStatus.COMPLETE,
+      result: "done!",
+    });
+  });
+
+  test("workflow send signal", async () => {
+    const execution = await env.startExecution(signalWorkflow, undefined);
+    const orchestratorExecution = await env.startExecution(orchestrate, {
+      targetExecutionId: execution.id,
+    });
+
+    await env.tick(3);
+
+    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      status: ExecutionStatus.COMPLETE,
+      result: "hello from the orchestrator workflow!",
+    });
+    expect(await orchestratorExecution.getExecution()).toMatchObject<
+      Partial<Execution>
+    >({
+      status: ExecutionStatus.COMPLETE,
+      result: "nothing to see here",
     });
   });
 });

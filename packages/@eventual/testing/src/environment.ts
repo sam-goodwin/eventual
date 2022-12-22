@@ -1,5 +1,6 @@
 import {
   ActivityFunction,
+  createEvent,
   createOrchestrator,
   EventClient,
   EventualError,
@@ -9,9 +10,13 @@ import {
   groupBy,
   ServiceType,
   SERVICE_TYPE_FLAG,
+  Signal,
+  SignalPayload,
+  SignalReceived,
   TimerClient,
   Workflow,
   WorkflowClient,
+  WorkflowEventType,
   WorkflowInput,
   WorkflowOutput,
   WorkflowRuntimeClient,
@@ -118,6 +123,45 @@ export class TestEnvironment {
   mockActivity(activityId: string): MockActivity<any>;
   mockActivity<A extends ActivityFunction<any, any>>(activity: A | string) {
     return this.activitiesController.mockActivity(activity as any);
+  }
+
+  async sendSignal<S extends Signal<any>>(
+    execution: ExecutionHandle<any>,
+    signal: S,
+    payload: SignalPayload<S>
+  ): Promise<void>;
+  async sendSignal<S extends Signal<any>>(
+    executionId: string,
+    signal: S,
+    payload: SignalPayload<S>
+  ): Promise<void>;
+  async sendSignal(
+    execution: ExecutionHandle<any>,
+    signalId: string,
+    payload: any
+  ): Promise<void>;
+  async sendSignal<S extends Signal<any>>(
+    executionId: string,
+    signalId: string,
+    payload: SignalPayload<S>
+  ): Promise<void>;
+  async sendSignal<S extends Signal = Signal<any>>(
+    execution: ExecutionHandle<any> | string,
+    signal: S | string,
+    payload: SignalPayload<S>
+  ) {
+    // add a signal received event, mirroring sendSignal
+    this.timeController.addEventAtNext({
+      executionId: typeof execution === "string" ? execution : execution.id,
+      events: [
+        createEvent<SignalReceived>({
+          type: WorkflowEventType.SignalReceived,
+          signalId: typeof signal === "string" ? signal : signal.id,
+          payload,
+        }),
+      ],
+    });
+    return this.tick();
   }
 
   async startExecution<W extends Workflow<any, any> = any>(
@@ -282,5 +326,8 @@ export class ExecutionHandle<W extends Workflow<any, any>> {
     return (await this.environment.workflowClient.getExecution(
       this.id
     )) as Execution<WorkflowOutput<W>>;
+  }
+  async signal<S extends Signal<any>>(signal: S, payload: SignalPayload<S>) {
+    return this.environment.sendSignal(this, signal, payload);
   }
 }
