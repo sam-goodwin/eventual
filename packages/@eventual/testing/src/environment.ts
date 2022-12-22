@@ -81,6 +81,11 @@ export class TestEnvironment {
     });
     const timeConnector: TimeConnector = {
       pushEvent: (task) => this.timeController.addEventAtNext(task),
+      scheduleEvent: (time, task) =>
+        this.timeController.addEvent(
+          time.getTime() - this.time.getTime(),
+          task
+        ),
       time: this.time,
     };
     const executionStore = new ExecutionStore();
@@ -95,7 +100,7 @@ export class TestEnvironment {
       new TestActivityRuntimeClient(),
       executionStore
     );
-    this.timerClient = new TestTimerClient();
+    this.timerClient = new TestTimerClient(timeConnector);
   }
 
   async start() {
@@ -106,6 +111,10 @@ export class TestEnvironment {
       await import(await this.serviceFile);
       this.started = true;
     }
+  }
+
+  reset() {
+    this.timeController.reset();
   }
 
   mockActivity<A extends ActivityFunction<any, any>>(activity: A) {
@@ -197,7 +206,7 @@ export class TestEnvironment {
 
     const back = process.env[SERVICE_TYPE_FLAG];
     process.env[SERVICE_TYPE_FLAG] = ServiceType.OrchestratorWorker;
-    await orchestrator.orchestrateExecutions(eventsByExecutionId);
+    await orchestrator.orchestrateExecutions(eventsByExecutionId, this.time);
     process.env[SERVICE_TYPE_FLAG] = back;
   }
 
@@ -219,6 +228,7 @@ export class TestEnvironment {
  */
 export interface TimeConnector {
   pushEvent(task: WorkflowTask): void;
+  scheduleEvent(time: Date, task: WorkflowTask): void;
   get time(): Date;
 }
 

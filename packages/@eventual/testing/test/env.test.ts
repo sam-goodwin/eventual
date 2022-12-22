@@ -6,6 +6,7 @@ import { workflow2, workflow3 } from "./workflow.js";
 
 let env: TestEnvironment;
 
+// if there is pollution between tests, call reset()
 beforeAll(async () => {
   env = new TestEnvironment({
     entry: path.resolve(
@@ -19,6 +20,10 @@ beforeAll(async () => {
   });
 
   await env.start();
+});
+
+afterEach(() => {
+  env.reset();
 });
 
 test("start workflow", async () => {
@@ -61,5 +66,5 @@ test("workflow sleep", async () => {
 
   // the workflow still not be done, have 9 more seconds left on the sleep
   const r3 = await result.tryGetResult();
-  expect(r3).toEqual({ status: ExecutionStatus.COMPLETE, result: "hi" });
+  expect(r3).toEqual({ status: ExecutionStatus.COMPLETE, result: "hello" });
 });

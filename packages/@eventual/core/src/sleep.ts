@@ -13,7 +13,6 @@ import { isOrchestratorWorker } from "./runtime/flags.js";
  * ```
  */
 export function sleepFor(seconds: number): Promise<void> {
-  debugger;
   if (!isOrchestratorWorker()) {
     throw new Error("sleepFor is only valid in a workflow");
   }

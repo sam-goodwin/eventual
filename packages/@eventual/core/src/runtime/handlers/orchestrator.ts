@@ -67,13 +67,15 @@ export interface OrchestratorResult {
 
 export interface Orchestrator {
   orchestrateExecutions(
-    eventsByExecutionId: Record<string, HistoryStateEvent[]>
+    eventsByExecutionId: Record<string, HistoryStateEvent[]>,
+    baseTime?: Date
   ): Promise<OrchestratorResult>;
 
   orchestrateExecution(
     workflow: Workflow,
     executionId: string,
-    events: HistoryStateEvent[]
+    events: HistoryStateEvent[],
+    baseTime: Date
   ): Promise<void>;
 }
 
@@ -100,7 +102,10 @@ export function createOrchestrator({
   });
 
   return {
-    orchestrateExecutions: async (eventsByExecutionId) => {
+    orchestrateExecutions: async (
+      eventsByExecutionId,
+      baseTime = new Date()
+    ) => {
       logger.debug("Handle workflowQueue records");
 
       logger.info(
@@ -123,7 +128,7 @@ export function createOrchestrator({
             throw new Error(`no such workflow with name '${workflowName}'`);
           }
           // TODO: get workflow from execution id
-          return orchestrateExecution(workflow, executionId, records);
+          return orchestrateExecution(workflow, executionId, records, baseTime);
         }
       );
 
@@ -151,13 +156,14 @@ export function createOrchestrator({
   async function orchestrateExecution(
     workflow: Workflow,
     executionId: string,
-    events: HistoryStateEvent[]
+    events: HistoryStateEvent[],
+    baseTime: Date
   ) {
     const executionLogger = logger.createChild({
       persistentLogAttributes: { workflowName: workflow.name, executionId },
     });
     const metrics = initializeMetrics();
-    const start = new Date();
+    const start = baseTime;
     try {
       // load
       const history = await loadHistory();
