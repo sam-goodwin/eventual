@@ -12,15 +12,15 @@
     "start-my-workflow": "eventual start my-service my-workflow --input '{\"name\": \"world\"}' --tail"
   },
   "dependencies": {
-    "aws-cdk-lib": "^2.51.1",
+    "@eventual/aws-cdk": "workspace:^",
+    "aws-cdk-lib": "2.50.0",
     "constructs": "^10.1.154"
   },
   "devDependencies": {
-    "@eventual/aws-cdk": "workspace:^",
     "@eventual/cli": "workspace:^",
     "@types/jest": "^29",
     "@types/node": "^16",
-    "aws-cdk": "2.51.1",
+    "aws-cdk": "2.50.0",
     "esbuild": "^0.15.14",
     "example-test-runner-runtime": "workspace:^",
     "jest": "^29",

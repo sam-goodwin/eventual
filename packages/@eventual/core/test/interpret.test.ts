@@ -10,7 +10,7 @@ import {
   Result,
   ServiceType,
   SERVICE_TYPE_FLAG,
-  Signal,
+  signal,
   SignalTargetType,
   sleepFor,
   sleepUntil,
@@ -1709,7 +1709,7 @@ describe("signals", () => {
   });
 
   describe("send signal", () => {
-    const mySignal = new Signal("MySignal");
+    const mySignal = signal("MySignal");
     const wf = workflow(function* (): any {
       createSendSignalCall(
         { type: SignalTargetType.Execution, executionId: "someExecution" },

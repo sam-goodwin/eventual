@@ -68,7 +68,7 @@ export interface ChildExecution {
    * Allows a {@link workflow} to send a signal to any workflow {@link Execution} by executionId.
    *
    * ```ts
-   * const mySignal = new Signal<string>("MySignal");
+   * const mySignal = signal<string>("MySignal");
    * const childWf = workflow(...);
    * workflow("wf", async () => {
    *    const child = childWf();

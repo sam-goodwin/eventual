@@ -23,7 +23,7 @@ export interface CompleteExecution<Result = any> extends ExecutionBase {
   status: ExecutionStatus.COMPLETE;
   endTime: string;
   result?: Result;
-}k
+}
 
 export interface FailedExecution extends ExecutionBase {
   status: ExecutionStatus.FAILED;
