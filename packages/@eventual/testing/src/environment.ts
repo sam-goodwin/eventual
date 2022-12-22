@@ -160,12 +160,17 @@ export class TestEnvironment {
   }
 
   /**
-   * TODO: Support ticking more than 1 step at a time, in batches.
+   * Progresses time by n seconds.
+   *
+   * @param n - number of seconds to progress time.
+   * @default progresses time by one second.
    */
   async tick(n?: number) {
     if (n === undefined || n === 1) {
       const events = this.timeController.tick();
       await this.processTickEvents(events);
+    } else if (n < 1) {
+      return;
     } else {
       // process each batch of event for n ticks.
       // note: we may get back fewer than n groups if there are not events for each tick.
@@ -173,6 +178,24 @@ export class TestEnvironment {
       for (const events of eventGenerator) {
         await this.processTickEvents(events);
       }
+    }
+  }
+
+  /**
+   * Progresses time to a point in time.
+   *
+   * If the time is in the past nothing happens.
+   * Milliseconds are ignored.
+   */
+  async tickUntil(time: string) {
+    // compute the ticks instead of using tickUntil in order to use tickIncremental
+    // and share the tick logic.
+    // consider adding a tickUntilIncremental
+    const ticks = Math.floor(
+      (new Date(time).getTime() - this.time.getTime()) / 1000
+    );
+    if (ticks > 0) {
+      await this.tick(ticks);
     }
   }
 

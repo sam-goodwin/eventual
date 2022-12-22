@@ -1,13 +1,20 @@
-import { activity, sleepFor, workflow } from "@eventual/core";
+import { activity, sleepFor, sleepUntil, workflow } from "@eventual/core";
 
 export const workflow1 = workflow("workflow1", async () => {
   return "hi";
 });
 
-export const workflow2 = workflow("workflow2", async () => {
-  await sleepFor(10);
-  return "hello";
-});
+export const sleepWorkflow = workflow(
+  "sleepWorkflow",
+  async (relative: boolean) => {
+    if (relative) {
+      await sleepFor(10);
+    } else {
+      await sleepUntil("2022-01-02T12:00:00Z");
+    }
+    return "hello";
+  }
+);
 
 export const activity1 = activity("act1", async () => "hi");
 

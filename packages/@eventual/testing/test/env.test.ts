@@ -2,7 +2,7 @@ import { ExecutionStatus } from "@eventual/core";
 import path from "path";
 import * as url from "url";
 import { TestEnvironment } from "../src/environment.js";
-import { workflow2, workflow3 } from "./workflow.js";
+import { sleepWorkflow, workflow3 } from "./workflow.js";
 
 let env: TestEnvironment;
 
@@ -47,7 +47,7 @@ test("start workflow", async () => {
 
 test("workflow sleep", async () => {
   // execution starts
-  const result = await env.startExecution(workflow2, undefined);
+  const result = await env.startExecution(sleepWorkflow, true);
 
   // see if the execution has completed
   const r1 = await result.tryGetResult();
@@ -63,6 +63,50 @@ test("workflow sleep", async () => {
 
   // advance 9 seconds, the sleep time (minus 1)
   await env.tick(9);
+
+  const r3 = await result.tryGetResult();
+  expect(r3).toEqual({ status: ExecutionStatus.COMPLETE, result: "hello" });
+});
+
+test("workflow sleep absolute", async () => {
+  // start at this date
+  env.tickUntil("2022-01-01T12:00:00Z");
+  // execution starts
+  const result = await env.startExecution(sleepWorkflow, false);
+
+  // see if the execution has completed
+  const r1 = await result.tryGetResult();
+  // we expect it to still be in progress
+  expect(r1).toEqual({ status: ExecutionStatus.IN_PROGRESS });
+
+  // progress time,
+  await env.tick();
+
+  // the workflow still not be done, have 9 more seconds left on the sleep
+  const r2 = await result.tryGetResult();
+  expect(r2).toEqual({ status: ExecutionStatus.IN_PROGRESS });
+
+  // the sleep should end now
+  await env.tickUntil("2022-01-02T12:00:00Z");
+
+  const r3 = await result.tryGetResult();
+  expect(r3).toEqual({ status: ExecutionStatus.COMPLETE, result: "hello" });
+});
+
+test("workflow sleep absolute past", async () => {
+  // start at this date
+  env.tickUntil("2022-01-03T12:00:00Z");
+  // execution starts
+  const result = await env.startExecution(sleepWorkflow, false);
+
+  // see if the execution has completed
+  const r1 = await result.tryGetResult();
+  // we expect it to still be in progress
+  expect(r1).toEqual({ status: ExecutionStatus.IN_PROGRESS });
+
+  // progress time, the sleep is triggered
+  // note: still need to progress once for the event to be processed
+  await env.tick();
 
   // the workflow still not be done, have 9 more seconds left on the sleep
   const r3 = await result.tryGetResult();
