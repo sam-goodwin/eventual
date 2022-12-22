@@ -1,7 +1,6 @@
 import {
   ActivityCompleted,
   ActivityWorkerRequest,
-  callableActivities,
   CompleteExecution,
   CompleteExecutionRequest,
   createEvent,
@@ -9,10 +8,12 @@ import {
   FailedExecution,
   FailExecutionRequest,
   HistoryStateEvent,
+  isAsyncResult,
   UpdateHistoryRequest,
   WorkflowEventType,
   WorkflowRuntimeClient,
 } from "@eventual/core";
+import { ActivitiesController } from "../activities-controller.js";
 import { TimeConnector } from "../environment.js";
 import { ExecutionStore } from "../execution-store.js";
 
@@ -21,7 +22,8 @@ export class TestWorkflowRuntimeClient implements WorkflowRuntimeClient {
 
   constructor(
     private executionStore: ExecutionStore,
-    private timeConnector: TimeConnector
+    private timeConnector: TimeConnector,
+    private activitiesController: ActivitiesController
   ) {}
 
   async getHistory(executionId: string): Promise<HistoryStateEvent[]> {
@@ -66,26 +68,28 @@ export class TestWorkflowRuntimeClient implements WorkflowRuntimeClient {
     return execution;
   }
 
-  async startActivity(_request: ActivityWorkerRequest): Promise<void> {
-    const activity = callableActivities()[_request.command.name];
-    if (!activity) {
-      throw new Error("Activity not found " + _request.command.name);
+  async startActivity(request: ActivityWorkerRequest): Promise<void> {
+    const result = await this.activitiesController.invokeActivity(
+      request.command.name,
+      ...request.command.args
+    );
+
+    // if it is an async result... do nothing
+    if (!isAsyncResult(result)) {
+      this.timeConnector.pushEvent({
+        executionId: request.executionId,
+        events: [
+          createEvent<ActivityCompleted>(
+            {
+              type: WorkflowEventType.ActivityCompleted,
+              result: result,
+              seq: request.command.seq,
+            },
+            this.timeConnector.time
+          ),
+        ],
+      });
+      return;
     }
-    // TODO: support mocks
-    const result = await activity(..._request.command.args);
-    this.timeConnector.pushEvent({
-      executionId: _request.executionId,
-      events: [
-        createEvent<ActivityCompleted>(
-          {
-            type: WorkflowEventType.ActivityCompleted,
-            result: result,
-            seq: _request.command.seq,
-          },
-          this.timeConnector.time
-        ),
-      ],
-    });
-    return;
   }
 }

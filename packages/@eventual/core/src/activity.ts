@@ -77,7 +77,7 @@ export type UnwrapAsync<Output> = Output extends AsyncResult<infer O>
   : Output;
 
 export type ActivityArguments<A extends ActivityFunction<any, any>> =
-  A extends ActivityFunction<infer Arguments> ? Arguments : never;
+  A extends ActivityFunction<infer Arguments extends any[]> ? Arguments : never;
 
 export type ActivityOutput<A extends ActivityFunction<any, any>> =
   A extends ActivityFunction<any, infer Output> ? Output : never;
@@ -164,10 +164,9 @@ export function activity<Arguments extends any[], Output extends any = any>(
     | [handler: ActivityHandler<Arguments, Output>]
 ): ActivityFunction<Arguments, Output> {
   const [opts, handler] = args.length === 1 ? [undefined, args[0]] : args;
-  let func: ActivityFunction<Arguments, Output>;
   // register the handler to be looked up during execution.
   callableActivities()[activityID] = handler;
-  func = ((...args: Parameters<ActivityFunction<Arguments, Output>>) => {
+  const func = ((...args: Parameters<ActivityFunction<Arguments, Output>>) => {
     if (isOrchestratorWorker()) {
       // if we're in the orchestrator, return a command to invoke the activity in the worker function
       return createActivityCall(

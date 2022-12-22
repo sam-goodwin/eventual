@@ -18,6 +18,33 @@ export const sleepWorkflow = workflow(
 
 export const activity1 = activity("act1", async () => "hi");
 
-export const workflow3 = workflow("workflow3", async () => {
-  return await activity1();
-});
+/**
+ * Runs activities in parallel and in series based on the parameters.
+ *
+ * Parallel results are separated by | and series by #
+ *
+ * ex: p: 1, s: 1 => "activity result"
+ * ex: p: 2, s: 1 => "activity result|activity result"
+ * ex: p: 1, s: 2 => "activity result#activity result"
+ * ex: p: 2, s: 2 => "activity result|activity result#activity result|activity result"
+ */
+export const workflow3 = workflow(
+  "workflow3",
+  async ({
+    parallel = 1,
+    series = 1,
+  }: {
+    parallel?: number;
+    series?: number;
+  } = {}) => {
+    const result: string[] = [];
+    do {
+      const r = await Promise.all(
+        [...Array(parallel).keys()].map(() => activity1())
+      );
+      result.push(r.join("|"));
+    } while (--series > 0);
+
+    return result.join("#");
+  }
+);
