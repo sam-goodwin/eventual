@@ -164,17 +164,3 @@ export function computeUntilTime(schedule: TimerRequest["schedule"]): string {
         schedule.baseTime.getTime() + schedule.timerSeconds * 1000
       ).toISOString();
 }
-
-export function computeTimerSeconds(schedule: TimerRequest["schedule"]) {
-  return "untilTime" in schedule
-    ? Math.max(
-        // Compute the number of seconds (floored)
-        // subtract 1 because the maxBatchWindow is set to 1s on the lambda event source.
-        // this allows for more events to be sent at once while not adding extra latency
-        Math.ceil(
-          (new Date(schedule.untilTime).getTime() - new Date().getTime()) / 1000
-        ),
-        0
-      )
-    : schedule.timerSeconds;
-}

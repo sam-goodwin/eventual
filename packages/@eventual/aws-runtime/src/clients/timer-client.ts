@@ -15,7 +15,6 @@ import {
   ScheduleForwarderRequest,
   TimerRequest,
   isActivityHeartbeatMonitorRequest,
-  computeTimerSeconds,
   computeUntilTime,
 } from "@eventual/core";
 import { ulid } from "ulidx";
@@ -202,4 +201,18 @@ function getScheduleName(timerRequest: TimerRequest) {
 
 function safeScheduleName(name: string) {
   return name.replaceAll(/[^0-9a-zA-Z-_.]/g, "");
+}
+
+export function computeTimerSeconds(schedule: TimerRequest["schedule"]) {
+  return "untilTime" in schedule
+    ? Math.max(
+        // Compute the number of seconds (floored)
+        // subtract 1 because the maxBatchWindow is set to 1s on the lambda event source.
+        // this allows for more events to be sent at once while not adding extra latency
+        Math.ceil(
+          (new Date(schedule.untilTime).getTime() - new Date().getTime()) / 1000
+        ),
+        0
+      )
+    : schedule.timerSeconds;
 }

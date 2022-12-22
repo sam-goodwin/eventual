@@ -227,9 +227,78 @@ describe("sleep", () => {
     });
   });
 
+  test("sleep relative in the future", async () => {
+    await env.tickUntil("2022-01-01T12:00:00Z");
+    // execution starts
+    const result = await env.startExecution(sleepWorkflow, true);
+
+    // see if the execution has completed
+    const r1 = await result.getExecution();
+    // we expect it to still be in progress
+    expect(r1).toMatchObject<Partial<typeof r1>>({
+      status: ExecutionStatus.IN_PROGRESS,
+    });
+
+    // progress time, the sleep is for 10 seconds and should not be done
+    await env.tick();
+
+    console.log(env.time);
+
+    // the workflow still not be done, have 9 more seconds left on the sleep
+    const r2 = await result.getExecution();
+    expect(r2).toMatchObject<Partial<typeof r2>>({
+      status: ExecutionStatus.IN_PROGRESS,
+    });
+
+    // advance 9 seconds, the sleep time (minus 1)
+    await env.tick(9);
+
+    const r3 = await result.getExecution();
+    expect(r3).toMatchObject<Partial<typeof r3>>({
+      status: ExecutionStatus.COMPLETE,
+      result: "hello",
+    });
+  });
+
+  /**
+   * This test is to check for a bug where synthetic events were being
+   * generated based on the real time and not the TestEnv time.
+   */
+  test("sleep and then send random signal", async () => {
+    const execution = await env.startExecution(sleepWorkflow, true);
+
+    // see if the execution has completed
+    const r1 = await execution.getExecution();
+    // we expect it to still be in progress
+    expect(r1).toMatchObject<Partial<typeof r1>>({
+      status: ExecutionStatus.IN_PROGRESS,
+    });
+
+    // progress time, the sleep is for 10 seconds and should not be done
+    await env.tick();
+    await execution.signal("anySignal", undefined);
+
+    console.log(env.time);
+
+    // the workflow still not be done, have 9 more seconds left on the sleep
+    const r2 = await execution.getExecution();
+    expect(r2).toMatchObject<Partial<typeof r2>>({
+      status: ExecutionStatus.IN_PROGRESS,
+    });
+
+    // advance 9 seconds, the sleep time (minus 1)
+    await env.tick(9);
+
+    const r3 = await execution.getExecution();
+    expect(r3).toMatchObject<Partial<typeof r3>>({
+      status: ExecutionStatus.COMPLETE,
+      result: "hello",
+    });
+  });
+
   test("sleep absolute", async () => {
     // start at this date
-    env.tickUntil("2022-01-01T12:00:00Z");
+    await env.tickUntil("2022-01-01T12:00:00Z");
     // execution starts
     const result = await env.startExecution(sleepWorkflow, false);
 

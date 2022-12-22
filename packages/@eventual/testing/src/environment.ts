@@ -85,8 +85,11 @@ export class TestEnvironment {
       pushEvent: (task) => this.timeController.addEventAtNext(task),
       scheduleEvent: (time, task) =>
         this.timeController.addEvent(time.getTime(), task),
-      time: this.time,
+      time: undefined as any,
     };
+    Object.defineProperty(timeConnector, "time", {
+      get: () => this.time,
+    });
     const executionStore = new ExecutionStore();
     this.executionHistoryClient = new TestExecutionHistoryClient();
     this.workflowRuntimeClient = new TestWorkflowRuntimeClient(
@@ -154,11 +157,14 @@ export class TestEnvironment {
     this.timeController.addEventAtNext({
       executionId: typeof execution === "string" ? execution : execution.id,
       events: [
-        createEvent<SignalReceived>({
-          type: WorkflowEventType.SignalReceived,
-          signalId: typeof signal === "string" ? signal : signal.id,
-          payload,
-        }),
+        createEvent<SignalReceived>(
+          {
+            type: WorkflowEventType.SignalReceived,
+            signalId: typeof signal === "string" ? signal : signal.id,
+            payload,
+          },
+          this.time
+        ),
       ],
     });
     return this.tick();
@@ -295,7 +301,7 @@ export class TestEnvironment {
 export interface TimeConnector {
   pushEvent(task: WorkflowTask): void;
   scheduleEvent(time: Date, task: WorkflowTask): void;
-  get time(): Date;
+  time: Date;
 }
 
 export class ExecutionHandle<W extends Workflow<any, any>> {
@@ -327,7 +333,17 @@ export class ExecutionHandle<W extends Workflow<any, any>> {
       this.id
     )) as Execution<WorkflowOutput<W>>;
   }
-  async signal<S extends Signal<any>>(signal: S, payload: SignalPayload<S>) {
-    return this.environment.sendSignal(this, signal, payload);
+
+  async signal(signalId: string, payload: any): Promise<void>;
+  async signal<S extends Signal<any>>(signal: S, payload: any): Promise<void>;
+  async signal<S extends Signal<any> = any>(
+    signal: string | S,
+    payload: SignalPayload<S>
+  ): Promise<void> {
+    return this.environment.sendSignal(
+      this as any,
+      typeof signal === "string" ? signal : signal.id,
+      payload
+    );
   }
 }

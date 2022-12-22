@@ -110,11 +110,14 @@ export class CommandExecutor {
 
       await Promise.all([activityStarter, timeoutStarter]);
 
-      return createEvent<ActivityScheduled>({
-        type: WorkflowEventType.ActivityScheduled,
-        seq: command.seq,
-        name: command.name,
-      });
+      return createEvent<ActivityScheduled>(
+        {
+          type: WorkflowEventType.ActivityScheduled,
+          seq: command.seq,
+          name: command.name,
+        },
+        baseTime
+      );
     }
 
     async function scheduleChildWorkflow(
@@ -129,12 +132,15 @@ export class CommandExecutor {
         ...command.opts,
       });
 
-      return createEvent<ChildWorkflowScheduled>({
-        type: WorkflowEventType.ChildWorkflowScheduled,
-        seq: command.seq,
-        name: command.name,
-        input: command.input,
-      });
+      return createEvent<ChildWorkflowScheduled>(
+        {
+          type: WorkflowEventType.ChildWorkflowScheduled,
+          seq: command.seq,
+          name: command.name,
+          input: command.input,
+        },
+        baseTime
+      );
     }
 
     async function scheduleSleep(
@@ -155,11 +161,14 @@ export class CommandExecutor {
         executionId,
       });
 
-      return createEvent<SleepScheduled>({
-        type: WorkflowEventType.SleepScheduled,
-        seq: command.seq,
-        untilTime: untilTime.toISOString(),
-      });
+      return createEvent<SleepScheduled>(
+        {
+          type: WorkflowEventType.SleepScheduled,
+          seq: command.seq,
+          untilTime: untilTime.toISOString(),
+        },
+        baseTime
+      );
     }
 
     async function executeExpectSignal(
@@ -177,12 +186,15 @@ export class CommandExecutor {
         });
       }
 
-      return createEvent<ExpectSignalStarted>({
-        signalId: command.signalId,
-        seq: command.seq,
-        type: WorkflowEventType.ExpectSignalStarted,
-        timeoutSeconds: command.timeoutSeconds,
-      });
+      return createEvent<ExpectSignalStarted>(
+        {
+          signalId: command.signalId,
+          seq: command.seq,
+          type: WorkflowEventType.ExpectSignalStarted,
+          timeoutSeconds: command.timeoutSeconds,
+        },
+        baseTime
+      );
     }
 
     async function sendSignal(command: SendSignalCommand) {
@@ -200,13 +212,16 @@ export class CommandExecutor {
         payload: command.payload,
       });
 
-      return createEvent<SignalSent>({
-        type: WorkflowEventType.SignalSent,
-        executionId: childExecutionId,
-        seq: command.seq,
-        signalId: command.signalId,
-        payload: command.payload,
-      });
+      return createEvent<SignalSent>(
+        {
+          type: WorkflowEventType.SignalSent,
+          executionId: childExecutionId,
+          seq: command.seq,
+          signalId: command.signalId,
+          payload: command.payload,
+        },
+        baseTime
+      );
     }
 
     async function startCondition(command: StartConditionCommand) {
@@ -221,19 +236,25 @@ export class CommandExecutor {
         });
       }
 
-      return createEvent<ConditionStarted>({
-        type: WorkflowEventType.ConditionStarted,
-        seq: command.seq!,
-      });
+      return createEvent<ConditionStarted>(
+        {
+          type: WorkflowEventType.ConditionStarted,
+          seq: command.seq!,
+        },
+        baseTime
+      );
     }
 
     async function publishEvents(command: PublishEventsCommand) {
       await self.props.eventClient.publish(...command.events);
-      return createEvent<EventsPublished>({
-        type: WorkflowEventType.EventsPublished,
-        events: command.events,
-        seq: command.seq!,
-      });
+      return createEvent<EventsPublished>(
+        {
+          type: WorkflowEventType.EventsPublished,
+          events: command.events,
+          seq: command.seq!,
+        },
+        baseTime
+      );
     }
   }
 }

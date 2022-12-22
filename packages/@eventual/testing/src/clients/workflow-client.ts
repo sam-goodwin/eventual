@@ -21,7 +21,7 @@ export class TestWorkflowClient extends WorkflowClient {
     activityRuntimeClient: ActivityRuntimeClient,
     private executionStore: ExecutionStore
   ) {
-    super(activityRuntimeClient);
+    super(activityRuntimeClient, () => time.time);
   }
 
   public async startWorkflow<W extends Workflow<any, any> = Workflow<any, any>>(
@@ -43,17 +43,20 @@ export class TestWorkflowClient extends WorkflowClient {
 
     await this.submitWorkflowTask(
       executionId,
-      createEvent<WorkflowStarted>({
-        type: WorkflowEventType.WorkflowStarted,
-        context: { name, parentId: request.parentExecutionId },
-        workflowName: request.workflowName,
-        input: request.input,
-        timeoutTime: request.timeoutSeconds
-          ? new Date(
-              this.time.time.getTime() + request.timeoutSeconds * 1000
-            ).toISOString()
-          : undefined,
-      })
+      createEvent<WorkflowStarted>(
+        {
+          type: WorkflowEventType.WorkflowStarted,
+          context: { name, parentId: request.parentExecutionId },
+          workflowName: request.workflowName,
+          input: request.input,
+          timeoutTime: request.timeoutSeconds
+            ? new Date(
+                this.time.time.getTime() + request.timeoutSeconds * 1000
+              ).toISOString()
+            : undefined,
+        },
+        this.time.time
+      )
     );
 
     return executionId;

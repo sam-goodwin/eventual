@@ -32,7 +32,7 @@ export interface AWSWorkflowClientProps {
 
 export class AWSWorkflowClient extends WorkflowClient {
   constructor(private props: AWSWorkflowClientProps) {
-    super(props.activityRuntimeClient);
+    super(props.activityRuntimeClient, () => new Date());
   }
 
   /**
@@ -73,20 +73,23 @@ export class AWSWorkflowClient extends WorkflowClient {
       })
     );
 
-    const workflowStartedEvent = createEvent<WorkflowStarted>({
-      type: WorkflowEventType.WorkflowStarted,
-      input,
-      workflowName,
-      // generate the time for the workflow to timeout based on when it was started.
-      // the timer will be started by the orchestrator so the client does not need to have access to the timer client.
-      timeoutTime: timeoutSeconds
-        ? new Date(new Date().getTime() + timeoutSeconds * 1000).toISOString()
-        : undefined,
-      context: {
-        name: executionName,
-        parentId: parentExecutionId,
+    const workflowStartedEvent = createEvent<WorkflowStarted>(
+      {
+        type: WorkflowEventType.WorkflowStarted,
+        input,
+        workflowName,
+        // generate the time for the workflow to timeout based on when it was started.
+        // the timer will be started by the orchestrator so the client does not need to have access to the timer client.
+        timeoutTime: timeoutSeconds
+          ? new Date(new Date().getTime() + timeoutSeconds * 1000).toISOString()
+          : undefined,
+        context: {
+          name: executionName,
+          parentId: parentExecutionId,
+        },
       },
-    });
+      new Date()
+    );
 
     await this.submitWorkflowTask(executionId, workflowStartedEvent);
 

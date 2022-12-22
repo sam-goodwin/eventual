@@ -233,9 +233,12 @@ export function createOrchestrator({
               () =>
                 timerClient.scheduleEvent<WorkflowTimedOut>({
                   schedule: Schedule.absolute(newWorkflowStart.timeoutTime!),
-                  event: createEvent<WorkflowTimedOut>({
-                    type: WorkflowEventType.WorkflowTimedOut,
-                  }),
+                  event: createEvent<WorkflowTimedOut>(
+                    {
+                      type: WorkflowEventType.WorkflowTimedOut,
+                    },
+                    start
+                  ),
                   executionId,
                 })
             );
@@ -258,7 +261,8 @@ export function createOrchestrator({
                 history,
                 events,
                 workflowContext,
-                executionId
+                executionId,
+                baseTime
               );
             } catch (err) {
               console.log("workflow error");
@@ -302,25 +306,34 @@ export function createOrchestrator({
           maxTaskAge + (new Date().getTime() - start.getTime())
         );
 
-        yield createEvent<WorkflowTaskCompleted>({
-          type: WorkflowEventType.WorkflowTaskCompleted,
-        });
+        yield createEvent<WorkflowTaskCompleted>(
+          {
+            type: WorkflowEventType.WorkflowTaskCompleted,
+          },
+          start
+        );
 
         if (isResult(result)) {
           if (isFailed(result)) {
             const [error, message] = extendsError(result.error)
               ? [result.error.name, result.error.message]
               : ["Error", JSON.stringify(result.error)];
-            yield createEvent<WorkflowFailed>({
-              type: WorkflowEventType.WorkflowFailed,
-              error,
-              message,
-            });
+            yield createEvent<WorkflowFailed>(
+              {
+                type: WorkflowEventType.WorkflowFailed,
+                error,
+                message,
+              },
+              start
+            );
           } else if (isResolved<any>(result)) {
-            yield createEvent<WorkflowCompleted>({
-              type: WorkflowEventType.WorkflowCompleted,
-              output: result.value,
-            });
+            yield createEvent<WorkflowCompleted>(
+              {
+                type: WorkflowEventType.WorkflowCompleted,
+                output: result.value,
+              },
+              start
+            );
           }
         }
 

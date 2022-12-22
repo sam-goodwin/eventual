@@ -452,7 +452,7 @@ type UnresolvedEvent<T extends WorkflowEvent> = Omit<T, "id" | "timestamp">;
 
 export function createEvent<T extends WorkflowEvent>(
   event: UnresolvedEvent<T>,
-  time: Date = new Date(),
+  time: Date,
   id: string = ulid()
 ): T {
   const timestamp = time.toISOString();

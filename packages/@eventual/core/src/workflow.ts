@@ -200,7 +200,8 @@ export function progressWorkflow(
   historyEvents: HistoryStateEvent[],
   taskEvents: HistoryStateEvent[],
   workflowContext: WorkflowContext,
-  executionId: string
+  executionId: string,
+  baseTime: Date = new Date()
 ): ProgressWorkflowResult {
   // historical events and incoming events will be fed into the workflow to resume/progress state
   const uniqueTaskEvents = filterEvents<HistoryStateEvent>(
@@ -211,7 +212,7 @@ export function progressWorkflow(
   const inputEvents = [...historyEvents, ...uniqueTaskEvents];
 
   // Generates events that are time sensitive, like sleep completed events.
-  const syntheticEvents = generateSyntheticEvents(inputEvents);
+  const syntheticEvents = generateSyntheticEvents(inputEvents, baseTime);
 
   const allEvents = [...inputEvents, ...syntheticEvents];
 
@@ -259,10 +260,10 @@ export function progressWorkflow(
  * Generates synthetic events, for example, {@link SleepCompleted} events when the time has passed, but a real completed event has not come in yet.
  */
 export function generateSyntheticEvents(
-  events: HistoryStateEvent[]
+  events: HistoryStateEvent[],
+  baseTime: Date
 ): SleepCompleted[] {
   const unresolvedSleep: Record<number, SleepScheduled> = {};
-  const now = new Date();
 
   const sleepEvents = events.filter(
     (event): event is SleepScheduled | SleepCompleted =>
@@ -280,13 +281,15 @@ export function generateSyntheticEvents(
   const syntheticSleepComplete: SleepCompleted[] = Object.values(
     unresolvedSleep
   )
-    .filter((event) => new Date(event.untilTime).getTime() <= now.getTime())
+    .filter(
+      (event) => new Date(event.untilTime).getTime() <= baseTime.getTime()
+    )
     .map(
       (e) =>
         ({
           type: WorkflowEventType.SleepCompleted,
           seq: e.seq,
-          timestamp: now.toISOString(),
+          timestamp: baseTime.toISOString(),
         } satisfies SleepCompleted)
     );
 
