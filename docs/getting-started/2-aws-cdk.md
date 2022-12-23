@@ -6,31 +6,122 @@ To create a new AWS CDK project with Eventual, run the below command:
 npm create eventual <project-name> --target aws-cdk
 ```
 
-## Overview of the Project
+## Overview of the Template
 
-A SST project structure contains two NPM packages:
+An AWS CDK project structure contains two NPM packages:
 
-1. the Stacks package
-2. the Services package nested within the Stacks package
+1. the Stacks package (for your infrastructure configuration)
+2. the Services package (for your application code)
+
+### Stacks package
+
+The Stacks package is where you configure your infrastructure.
 
 ```sh
 package.json
 tsconfig.json
-stacks/
-  MyStack.ts # your service's Stack
+cdk.json
+src/
+  app.ts # the CDK application entrypoint
+  my-stack.ts # your service's Stack
+```
 
+The template creates an initial file, `stack.ts`, which provides a class, `MyStack` that extends `Stack` and instantiates a single Eventual `Service`.
+
+```ts
+import { Construct } from "constructs";
+import { Stack, StackProps } from "aws-cdk-lib";
+import { Service } from "@eventual/aws-cdk";
+
+export interface MyStackProps extends StackProps {}
+
+export class MyStack extends Stack {
+  constructor(scope: Construct, id: string, props?: MyStackProps) {
+    super(scope, id, props);
+
+    const service = new Service(this, "Service", {
+      name: "my-service",
+      entry: path.join(__dirname, "services", "src", "my-service.ts"),
+    });
+  }
+}
+```
+
+`MyStack` is then instantiated within `app.ts` which is your application's entrypoint:
+
+```ts
+import { App, Stack } from "aws-cdk-lib";
+import path from "path";
+import { MyStack } from "./my-stack";
+
+const app = new App();
+
+new MyStack(app, "my-stack");
+```
+
+When you run `cdk deploy`, the CDK will run your program starting with `app.ts` as configured in `cdk.json`:
+
+```json
+{
+  "app": "ts-node ./src/app.ts"
+}
+```
+
+### Services package
+
+The Services package is nested within the Stacks package in the folder, `services`. It contains the application logic for your Service.
+
+```sh
 # nested services packages
 services/
   package.json
-  functions/
-    my-service.mts # the sample Eventual service code
+  src/
+    index.ts # the Eventual service entrypoint
+```
+
+The template creates an initial file, `src/index.ts`, that contains a basic example application touching on each of the 4 Eventual primitives, `api`, `event`, `workflow` and `activity`. For a walk-through of how to build applications with Eventual, see the [Tutorial](../tutorial/0-hello-world.md).
+
+```ts
+import { api, event, workflow, activity } from "@eventual/core";
+
+api.post("/work", async (request) => {
+  const items: string[] = await request.json();
+
+  const { executionId } = await myWorkflow.startExecution({
+    input: items,
+  });
+
+  return new Response(JSON.stringify({ executionId }), {
+    status: 200,
+  });
+});
+
+export const myWorkflow = workflow("myWorkflow", async (items: string[]) => {
+  const results = await Promise.all(items.map(doWork));
+
+  await workDone.publish({
+    outputs: results,
+  });
+
+  return results;
+});
+
+export const doWork = activity("work", async (work: string) => {
+  console.log("Doing Work", work);
+
+  return work.length;
+});
+
+export interface WorkDoneEvent {
+  outputs: number[];
+}
+
+export const workDone = event<WorkDoneEvent>("WorkDone");
 ```
 
 ## Drop in to existing Project
 
-If you're already a user of SST and wish to begin using Eventual as a part of an existing project, you can import the `Service` Construct directly from `@eventual/aws-cdk` and incorporate it into your Stacks.
-
-To drop Eventual into an existing AWS CDK project, import the `Service` Construct from `@eventual/aws-cdk`.
+If you're already a user of the AWS CDK and wish to begin using Eventual as a part of an existing project, you can import the `Service` Construct directly from `@eventual/aws-cdk` and incorporate it into your Stacks.
 
 ```ts
 import { Service } from "@eventual/aws-cdk";
@@ -44,7 +135,14 @@ class MyStack extends Stack {
     super(scope, id);
 
     new Service(this, "MyService", {
-      entry: path.resolve(__dirname),
+      // resolve the path of the .ts (or .js) file containing your service code
+      entry: path.resolve(
+        __dirname,
+        "..",
+        "services",
+        "functions",
+        "service.ts"
+      ),
     });
   }
 }
