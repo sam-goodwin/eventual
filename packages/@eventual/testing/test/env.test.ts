@@ -33,7 +33,7 @@ beforeAll(async () => {
 });
 
 afterEach(() => {
-  env.reset();
+  env.resetTime();
 });
 
 describe("activity", () => {

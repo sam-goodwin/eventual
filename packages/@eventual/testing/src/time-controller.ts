@@ -56,8 +56,8 @@ export class TimeController<E = any> {
     while (this.#current < goal) {
       // only get the next there are events
       const next = this.nextEventTime;
-      if (next === undefined) {
-        this.#current = goal;
+      if (next === undefined || next >= goal) {
+        yield this.tickUntil(goal);
         return;
       }
       yield this.tickUntil(next);

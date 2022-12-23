@@ -116,8 +116,23 @@ export class TestEnvironment {
     }
   }
 
-  reset() {
-    this.timeController.reset();
+  /**
+   * Resets all mocks (@see resetMocks) and resets time {@see resetTime}.
+   */
+  reset(time?: Date) {
+    this.resetTime(time);
+    this.resetMocks();
+  }
+
+  resetTime(time?: Date) {
+    this.timeController.reset(time?.getTime());
+  }
+
+  /**
+   * Removes all mocks, reverting to their default behavior.
+   */
+  resetMocks() {
+    this.activitiesController.clearMocks();
   }
 
   mockActivity<A extends ActivityFunction<any, any>>(

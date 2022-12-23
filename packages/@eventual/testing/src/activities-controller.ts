@@ -47,6 +47,10 @@ export class ActivitiesController {
     delete this.mockedActivities[id];
   }
 
+  clearMocks() {
+    this.mockedActivities = {};
+  }
+
   async invokeActivity(activityId: string, ...args: any[]) {
     if (activityId in this.mockedActivities) {
       const mock = this.mockedActivities[activityId]!;
