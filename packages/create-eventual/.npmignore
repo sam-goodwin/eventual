@@ -1,0 +1,5 @@
+lib/
+src/
+tsconfig.*
+*.tgz
+.turbo

@@ -1,0 +1,22 @@
+{
+  "name": "create-eventual",
+  "version": "0.0.0",
+  "type": "commonjs",
+  "bin": {
+    "create-eventual": "./bin/index.js"
+  },
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --outfile=bin/bundle.js --platform=node",
+    "watch": "esbuild src/index.ts --bundle --outfile=bin/bundle.js --platform=node --watch"
+  },
+  "dependencies": {
+    "create-sst": "latest",
+    "aws-cdk": "^2.50.0"
+  },
+  "devDependencies": {
+    "@types/node": "^16",
+    "@types/yargs": "^17.0.17",
+    "yargs": "^17.6.2",
+    "esbuild": "^0.16.6"
+  }
+}
