@@ -45,9 +45,15 @@ export function MyStack({ stack }: StackContext) {
 }
 ```
 
+The `entry` property points at the `index.ts` in the [Services package](#services-package)
+
+```ts
+entry: path.resolve("services", "functions", "index.ts"),
+```
+
 ### Services package
 
-The Services package is nested within the Stacks package inside the `services` folder. It contains the application logic for your Service.
+The Services package is nested within the Stacks package under the `services` folder. It contains the application logic for your Service.
 
 ```sh
 # nested services packages
