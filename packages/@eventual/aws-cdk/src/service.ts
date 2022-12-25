@@ -21,7 +21,12 @@ import { Api } from "./service-api";
 import { outDir } from "./utils";
 import { IWorkflows, Workflows, WorkflowsProps } from "./workflows";
 import { Events } from "./events";
-import { Metric, MetricOptions, Statistic, Unit } from "aws-cdk-lib/aws-cloudwatch";
+import {
+  Metric,
+  MetricOptions,
+  Statistic,
+  Unit,
+} from "aws-cdk-lib/aws-cloudwatch";
 
 export interface ServiceProps {
   entry: string;
@@ -225,9 +230,7 @@ export class Service extends Construct implements IGrantable {
    * This does not include the time taken to invoke commands or save history. It is
    * purely a metric for how well the workflow's function is performing as history grows.
    */
-  public metricAdvanceExecutionDuration(
-    options?: MetricOptions
-  ): Metric {
+  public metricAdvanceExecutionDuration(options?: MetricOptions): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
       metricName: OrchestratorMetrics.AdvanceExecutionDuration,
@@ -239,9 +242,7 @@ export class Service extends Construct implements IGrantable {
   /**
    * The number of commands invoked in a single batch by the orchestrator.
    */
-  public metricCommandsInvoked(
-    options?: MetricOptions
-  ): Metric {
+  public metricCommandsInvoked(options?: MetricOptions): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
       metricName: OrchestratorMetrics.CommandsInvoked,
@@ -253,9 +254,7 @@ export class Service extends Construct implements IGrantable {
   /**
    * The time taken to invoke all Commands emitted by advancing a workflow.
    */
-  public metricInvokeCommandsDuration(
-    options?: MetricOptions
-  ): Metric {
+  public metricInvokeCommandsDuration(options?: MetricOptions): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
       metricName: OrchestratorMetrics.InvokeCommandsDuration,
@@ -267,9 +266,7 @@ export class Service extends Construct implements IGrantable {
   /**
    * Time taken to download an execution's history from S3.
    */
-  public metricLoadHistoryDuration(
-    options?: MetricOptions
-  ): Metric {
+  public metricLoadHistoryDuration(options?: MetricOptions): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
       metricName: OrchestratorMetrics.LoadHistoryDuration,
@@ -281,9 +278,7 @@ export class Service extends Construct implements IGrantable {
   /**
    * Time taken to save an execution's history to S3.
    */
-  public metricSaveHistoryDuration(
-    options?: MetricOptions
-  ): Metric {
+  public metricSaveHistoryDuration(options?: MetricOptions): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
       metricName: OrchestratorMetrics.SaveHistoryDuration,
@@ -295,9 +290,7 @@ export class Service extends Construct implements IGrantable {
   /**
    * The size of the history S3 file in bytes.
    */
-  public metricSavedHistoryBytes(
-    options?: MetricOptions
-  ): Metric {
+  public metricSavedHistoryBytes(options?: MetricOptions): Metric {
     return this.metric({
       metricName: OrchestratorMetrics.SavedHistoryBytes,
       unit: Unit.BYTES,
@@ -309,9 +302,7 @@ export class Service extends Construct implements IGrantable {
   /**
    * The number of events stored in the history S3 file.
    */
-  public metricSavedHistoryEvents(
-    options?: MetricOptions
-  ): Metric {
+  public metricSavedHistoryEvents(options?: MetricOptions): Metric {
     return this.metric({
       metricName: OrchestratorMetrics.SavedHistoryEvents,
       unit: Unit.COUNT,
@@ -323,9 +314,7 @@ export class Service extends Construct implements IGrantable {
   /**
    * The number of commands invoked in a single batch by the orchestrator.
    */
-  public metricMaxTaskAge(
-    options?: MetricOptions
-  ): Metric {
+  public metricMaxTaskAge(options?: MetricOptions): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
       metricName: OrchestratorMetrics.MaxTaskAge,
