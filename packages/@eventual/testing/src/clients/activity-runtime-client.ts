@@ -1,6 +1,6 @@
 import { ActivityExecution, ActivityRuntimeClient } from "@eventual/core";
 
-// TODO: does this need to be implemented?
+// TODO: implement activity heartbeat.
 export class TestActivityRuntimeClient implements ActivityRuntimeClient {
   async claimActivity(): Promise<boolean> {
     return true;

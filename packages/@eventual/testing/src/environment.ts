@@ -62,7 +62,7 @@ export class TestEnvironment {
   private serviceFile: Promise<string>;
 
   private timerClient: TimerClient;
-  public workflowClient: WorkflowClient;
+  private workflowClient: WorkflowClient;
   private workflowRuntimeClient: WorkflowRuntimeClient;
   private executionHistoryClient: ExecutionHistoryClient;
   private eventClient: EventClient;
@@ -74,7 +74,7 @@ export class TestEnvironment {
   private timeController: TimeController<WorkflowTask>;
   private orchestrator: Orchestrator;
 
-  public executions: Record<string, ExecutionHandle<any>> = {};
+  private executions: Record<string, ExecutionHandle<any>> = {};
 
   constructor(props: TestEnvironmentProps) {
     this.serviceFile = bundleService(
@@ -134,6 +134,8 @@ export class TestEnvironment {
       clearEventSubscriptions();
       // run the service to re-import the workflows, but transformed
       await import(await this.serviceFile);
+      registerWorkflowClient(this.workflowClient);
+      registerEventClient(this.eventClient);
       this.started = true;
     }
   }
@@ -245,9 +247,6 @@ export class TestEnvironment {
     event: string | E,
     ...payloads: EventPayloadType<E>[]
   ) {
-    // TODO unregister.
-    registerWorkflowClient(this.workflowClient);
-    registerEventClient(this.eventClient);
     await this.eventClient.publish(
       ...payloads.map(
         (p): EventEnvelope<EventPayloadType<E>> => ({
@@ -296,6 +295,16 @@ export class TestEnvironment {
     return execution;
   }
 
+  /**
+   * Retrieves an execution by execution id.
+   */
+  async getExecution(executionId: string) {
+    return this.workflowClient.getExecution(executionId);
+  }
+
+  /**
+   * The current environment time, which starts at `Date(0)` or props.start.
+   */
   get time() {
     return new Date(this.timeController.currentTick);
   }
@@ -382,8 +391,7 @@ export interface TimeConnector {
 export class ExecutionHandle<W extends Workflow<any, any>> {
   constructor(public id: string, private environment: TestEnvironment) {}
   async status() {
-    return (await this.environment.workflowClient.getExecution(this.id))!
-      .status;
+    return (await this.environment.getExecution(this.id))!.status;
   }
   async result() {
     const execution = await this.getExecution();
@@ -396,9 +404,9 @@ export class ExecutionHandle<W extends Workflow<any, any>> {
     }
   }
   async getExecution(): Promise<Execution<WorkflowOutput<W>>> {
-    return (await this.environment.workflowClient.getExecution(
-      this.id
-    )) as Execution<WorkflowOutput<W>>;
+    return (await this.environment.getExecution(this.id)) as Execution<
+      WorkflowOutput<W>
+    >;
   }
 
   async signal(signalId: string, payload: any): Promise<void>;
