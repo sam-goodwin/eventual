@@ -23,7 +23,7 @@ Great, we've defined our first API route. When a user makes a `POST /accounts` r
 
 Next, we need to implement the logic for this API. It'll need to generate an ID for the account and store a record of it in a database. This is a great use-case for AWS DynamoDB so let's take a short detour to show how to integrate an AWS Resource such as DynamoDB into a Service. Eventual is designed to work with any database of your choosing - we'll demo DynamoDB but this procedure is compatible with any cloud resource or service (whether AWS or external, e.g. Planetscale).
 
-If you followed one of the [getting started guides](../getting-started/0-create-new-project.md) then you'll have a `Service` defined in your infrastructure stack. Something like the following:
+If you followed one of the [getting started guides](../getting-started/0-create-new-project.md) then you'll have a `Service` defined in your infrastructure stack. S1 omething like the following:
 
 ```ts
 const service = new Service(stack, "Service", {
