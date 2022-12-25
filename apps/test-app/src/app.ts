@@ -1,4 +1,3 @@
-/* eslint-disable camelcase, no-new */
 import {
   App,
   aws_dynamodb,

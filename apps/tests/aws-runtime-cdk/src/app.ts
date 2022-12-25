@@ -1,4 +1,3 @@
-/* eslint-disable no-new */
 import { App, CfnOutput, CfnResource, Stack } from "aws-cdk-lib";
 import { Queue } from "aws-cdk-lib/aws-sqs";
 import {

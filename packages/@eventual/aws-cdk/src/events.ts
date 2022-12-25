@@ -70,7 +70,6 @@ export class Events extends Construct implements IGrantable {
 
     if (props.appSpec.subscriptions.length > 0) {
       // configure a Rule to route all subscribed events to the eventHandler
-      // eslint-disable-next-line no-new
       new Rule(this, "Rules", {
         eventBus: this.bus,
         eventPattern: {

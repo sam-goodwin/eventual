@@ -1,4 +1,3 @@
-/* eslint-disable camelcase, no-new */
 import { App, CfnOutput, Stack, aws_secretsmanager } from "aws-cdk-lib";
 import * as eventual from "@eventual/aws-cdk";
 
