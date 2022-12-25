@@ -114,7 +114,7 @@ export class AWSWorkflowClient extends WorkflowClient {
     );
   }
 
-  async getExecutions(): Promise<Execution[]> {
+  public async getExecutions(): Promise<Execution[]> {
     const executions = await this.props.dynamo.send(
       new QueryCommand({
         TableName: this.props.tableName,
@@ -130,7 +130,9 @@ export class AWSWorkflowClient extends WorkflowClient {
     );
   }
 
-  async getExecution(executionId: string): Promise<Execution | undefined> {
+  public async getExecution(
+    executionId: string
+  ): Promise<Execution | undefined> {
     const executionResult = await this.props.dynamo.send(
       new GetItemCommand({
         Key: {

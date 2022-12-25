@@ -34,7 +34,7 @@ export default class FetchReceiver implements Receiver {
 
   private logger: Logger;
 
-  public constructor({
+  constructor({
     signingSecret,
     logger = undefined,
     logLevel = LogLevel.INFO,
@@ -46,7 +46,7 @@ export default class FetchReceiver implements Receiver {
       (() => {
         const defaultLogger = new ConsoleLogger();
         defaultLogger.setLevel(logLevel);
-        
+
         return defaultLogger;
       })();
   }

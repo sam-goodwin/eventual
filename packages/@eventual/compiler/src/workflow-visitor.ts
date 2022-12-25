@@ -27,7 +27,7 @@ const supportedPromiseFunctions: string[] = [
 ];
 
 export class OuterVisitor extends Visitor {
-  readonly inner = new InnerVisitor();
+  private readonly inner = new InnerVisitor();
 
   public foundEventual = false;
 

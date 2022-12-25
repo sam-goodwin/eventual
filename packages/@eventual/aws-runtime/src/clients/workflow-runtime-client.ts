@@ -64,7 +64,7 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
   }
 
   // TODO: etag
-  async updateHistory({
+  public async updateHistory({
     executionId,
     events,
   }: UpdateHistoryRequest): Promise<{ bytes: number }> {

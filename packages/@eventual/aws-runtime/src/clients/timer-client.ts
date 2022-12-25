@@ -52,7 +52,7 @@ export class AWSTimerClient implements TimerClient {
    * Finally the timer handler waits the remaining (untilTime - currentTime) milliseconds if necessary and then sends
    * the {@link TimerRequest} provided.
    */
-  async startShortTimer(timerRequest: TimerRequest) {
+  public async startShortTimer(timerRequest: TimerRequest) {
     const delaySeconds = computeTimerSeconds(timerRequest.schedule);
 
     if (delaySeconds > 15 * 60) {
@@ -84,7 +84,7 @@ export class AWSTimerClient implements TimerClient {
    * Finally the timer handler waits the remaining (untilTime - currentTime) milliseconds if necessary and then sends
    * the {@link TimerRequest} provided.
    */
-  async startTimer(timerRequest: TimerRequest) {
+  public async startTimer(timerRequest: TimerRequest) {
     const untilTimeIso = computeUntilTime(timerRequest.schedule);
     const untilTime = new Date(untilTimeIso);
     const sleepDuration = computeTimerSeconds(timerRequest.schedule);
@@ -180,7 +180,7 @@ export class AWSTimerClient implements TimerClient {
    * The provided schedule-forwarder function will call this method in Eventual when
    * the timer is transferred from EventBridge to SQS at `props.sleepQueueThresholdMillis`.
    */
-  async clearSchedule(scheduleName: string) {
+  public async clearSchedule(scheduleName: string) {
     try {
       await this.props.scheduler.send(
         new DeleteScheduleCommand({

@@ -58,7 +58,7 @@ interface CommandExecutorProps {
 export class CommandExecutor {
   constructor(private props: CommandExecutorProps) {}
 
-  async executeCommand(
+  public async executeCommand(
     workflow: Workflow,
     executionId: string,
     command: Command,

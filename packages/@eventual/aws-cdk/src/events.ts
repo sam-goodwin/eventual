@@ -43,7 +43,7 @@ export class Events extends Construct implements IGrantable {
    */
   public readonly deadLetterQueue: IQueue;
 
-  readonly grantPrincipal: IPrincipal;
+  public readonly grantPrincipal: IPrincipal;
 
   private readonly serviceName: string;
 

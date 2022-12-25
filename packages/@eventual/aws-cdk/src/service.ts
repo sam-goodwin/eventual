@@ -45,13 +45,13 @@ export class Service extends Construct implements IGrantable {
   /**
    * The {@link AppSec} inferred from the application code.
    */
-  readonly appSpec: AppSpec;
+  public readonly appSpec: AppSpec;
   /**
    * This {@link Service}'s API Gateway.
    */
-  readonly api: Api;
+  public readonly api: Api;
 
-  readonly events: Events;
+  public readonly events: Events;
   /**
    * A single-table used for execution data and granular workflow events/
    */
@@ -67,7 +67,7 @@ export class Service extends Construct implements IGrantable {
   /**
    * The subsystem for schedules and sleep timers.
    */
-  readonly scheduler: Scheduler;
+  public readonly scheduler: Scheduler;
   /**
    * The Resources for schedules and sleep timers.
    */
@@ -75,9 +75,9 @@ export class Service extends Construct implements IGrantable {
   /**
    * A SSM parameter containing data about this service.
    */
-  readonly serviceDataSSM: StringParameter;
+  public readonly serviceDataSSM: StringParameter;
 
-  readonly grantPrincipal: IPrincipal;
+  public readonly grantPrincipal: IPrincipal;
 
   constructor(scope: Construct, id: string, props: ServiceProps) {
     super(scope, id);

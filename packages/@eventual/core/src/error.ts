@@ -7,7 +7,7 @@ export class EventualError extends Error {
   /**
    * Provides a reasonable form when running JSON.stringify.
    */
-  toJSON() {
+  public toJSON() {
     return {
       name: this.name,
       message: this.message,
