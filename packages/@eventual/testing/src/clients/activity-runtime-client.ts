@@ -2,10 +2,11 @@ import { ActivityExecution, ActivityRuntimeClient } from "@eventual/core";
 
 // TODO: implement activity heartbeat.
 export class TestActivityRuntimeClient implements ActivityRuntimeClient {
-  async claimActivity(): Promise<boolean> {
+  public async claimActivity(): Promise<boolean> {
     return true;
   }
-  async heartbeatActivity(
+
+  public async heartbeatActivity(
     _executionId: string,
     _seq: number,
     _heartbeatTime: string
@@ -14,10 +15,12 @@ export class TestActivityRuntimeClient implements ActivityRuntimeClient {
       cancelled: false,
     };
   }
-  async cancelActivity(): Promise<void> {
-    return;
+
+  public cancelActivity(): Promise<void> {
+    return Promise.resolve();
   }
-  async getActivity(
+
+  public async getActivity(
     executionId: string,
     seq: number
   ): Promise<ActivityExecution | undefined> {

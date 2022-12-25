@@ -70,7 +70,7 @@ export class TestEnvironment {
   private activitiesController: ActivitiesController;
   private eventHandlerController: EventHandlerController;
 
-  private started: boolean = false;
+  private started = false;
   private timeController: TimeController<WorkflowTask>;
   private orchestrator: Orchestrator;
 
@@ -125,7 +125,7 @@ export class TestEnvironment {
     });
   }
 
-  async start() {
+  public async start() {
     if (!this.started) {
       const _workflows = workflows();
       _workflows.clear();
@@ -144,34 +144,34 @@ export class TestEnvironment {
    * Resets all mocks (@see resetMocks) and test subscriptions {@see resetTestSubscriptions},
    * resets time {@see resetTime}.
    */
-  reset(time?: Date) {
+  public reset(time?: Date) {
     this.resetTime(time);
     this.resetMocks();
     this.resetTestSubscriptions();
   }
 
-  resetTime(time?: Date) {
+  public resetTime(time?: Date) {
     this.timeController.reset(time?.getTime());
   }
 
   /**
    * Removes all mocks, reverting to their default behavior.
    */
-  resetMocks() {
+  public resetMocks() {
     this.activitiesController.clearMocks();
   }
 
-  resetTestSubscriptions() {
+  public resetTestSubscriptions() {
     this.eventHandlerController.clearTestHandlers();
   }
 
-  mockActivity<A extends ActivityFunction<any, any>>(
+  public mockActivity<A extends ActivityFunction<any, any>>(
     activity: A | string
   ): MockActivity<A> {
     return this.activitiesController.mockActivity(activity as any);
   }
 
-  subscribeEvent<E extends Event<any>>(
+  public subscribeEvent<E extends Event<any>>(
     event: E,
     handler: EventHandler<EventPayloadType<E>>
   ) {
@@ -181,38 +181,42 @@ export class TestEnvironment {
   /**
    * Turn off all of the event handlers registered by the service.
    */
-  disableServiceSubscriptions() {
+  public disableServiceSubscriptions() {
     this.eventHandlerController.disableDefaultSubscriptions();
   }
 
   /**
    * Turn on all of the event handlers in the service.
    */
-  enableServiceSubscriptions() {
+  public enableServiceSubscriptions() {
     this.eventHandlerController.enableDefaultSubscriptions();
   }
 
-  async sendSignal<Payload extends any>(
+  public async sendSignal<Payload>(
     execution: ExecutionHandle<any>,
     signal: Signal<Payload>,
     payload: Payload
   ): Promise<void>;
-  async sendSignal<Payload extends any>(
+
+  public async sendSignal<Payload>(
     executionId: string,
     signal: Signal<Payload>,
     payload: Payload
   ): Promise<void>;
-  async sendSignal(
+
+  public async sendSignal(
     execution: ExecutionHandle<any>,
     signalId: string,
     payload: any
   ): Promise<void>;
-  async sendSignal<Payload extends any>(
+
+  public async sendSignal<Payload>(
     executionId: string,
     signalId: string,
     payload: Payload
   ): Promise<void>;
-  async sendSignal<Payload>(
+
+  public async sendSignal<Payload>(
     execution: ExecutionHandle<any> | string,
     signal: Signal<Payload> | string,
     payload: Payload
@@ -235,15 +239,17 @@ export class TestEnvironment {
   /**
    * Publishes one or more events of a type into the {@link TestEnvironment}.
    */
-  async publishEvent(
+  public async publishEvent(
     eventId: string,
     ...payloads: EventPayload[]
   ): Promise<void>;
-  async publishEvent<E extends Event<any>>(
+
+  public async publishEvent<E extends Event<any>>(
     event: E,
     ...payloads: EventPayloadType<E>[]
   ): Promise<void>;
-  async publishEvent<E extends Event<any>>(
+
+  public async publishEvent<E extends Event<any>>(
     event: string | E,
     ...payloads: EventPayloadType<E>[]
   ) {
@@ -261,19 +267,22 @@ export class TestEnvironment {
   /**
    * Publishes one or more events into the {@link TestEnvironment}.
    */
-  async publishEvents(...events: EventEnvelope<EventPayload>[]) {
+  public async publishEvents(...events: EventEnvelope<EventPayload>[]) {
     await this.eventClient.publish(...events);
   }
 
-  async startExecution<W extends Workflow<any, any> = any>(
+  public async startExecution<W extends Workflow<any, any> = any>(
     workflowName: string,
     input: WorkflowInput<W>
   ): Promise<ExecutionHandle<W>>;
-  async startExecution<W extends Workflow<any, any> = Workflow<any, any>>(
-    workflow: W,
-    input: WorkflowInput<W>
-  ): Promise<ExecutionHandle<W>>;
-  async startExecution<W extends Workflow<any, any> = Workflow<any, any>>(
+
+  public async startExecution<
+    W extends Workflow<any, any> = Workflow<any, any>
+  >(workflow: W, input: WorkflowInput<W>): Promise<ExecutionHandle<W>>;
+
+  public async startExecution<
+    W extends Workflow<any, any> = Workflow<any, any>
+  >(
     workflow: W | string,
     input: WorkflowInput<W>
   ): Promise<ExecutionHandle<W>> {
@@ -281,7 +290,7 @@ export class TestEnvironment {
       typeof workflow === "string" ? workflow : workflow.workflowName;
 
     const executionId = await this.workflowClient.startWorkflow({
-      workflowName: workflowName,
+      workflowName,
       input,
     });
 
@@ -298,14 +307,14 @@ export class TestEnvironment {
   /**
    * Retrieves an execution by execution id.
    */
-  async getExecution(executionId: string) {
+  public async getExecution(executionId: string) {
     return this.workflowClient.getExecution(executionId);
   }
 
   /**
    * The current environment time, which starts at `Date(0)` or props.start.
    */
-  get time() {
+  public get time() {
     return new Date(this.timeController.currentTick);
   }
 
@@ -315,7 +324,7 @@ export class TestEnvironment {
    * @param n - number of seconds to progress time.
    * @default progresses time by one second.
    */
-  async tick(n?: number) {
+  public async tick(n?: number) {
     if (n === undefined || n === 1) {
       const events = this.timeController.tick();
       await this.processTickEvents(events);
@@ -337,7 +346,7 @@ export class TestEnvironment {
    * If the time is in the past nothing happens.
    * Milliseconds are ignored.
    */
-  async tickUntil(time: string) {
+  public async tickUntil(time: string) {
     // compute the ticks instead of using tickUntil in order to use tickIncremental
     // and share the tick logic.
     // consider adding a tickUntilIncremental
@@ -390,10 +399,11 @@ export interface TimeConnector {
 
 export class ExecutionHandle<W extends Workflow<any, any>> {
   constructor(public id: string, private environment: TestEnvironment) {}
-  async status() {
+  public async status() {
     return (await this.environment.getExecution(this.id))!.status;
   }
-  async result() {
+
+  public async result() {
     const execution = await this.getExecution();
     if (execution.status === ExecutionStatus.IN_PROGRESS) {
       throw new InProgressError("Workflow is still in progress");
@@ -403,18 +413,20 @@ export class ExecutionHandle<W extends Workflow<any, any>> {
       return execution.result;
     }
   }
-  async getExecution(): Promise<Execution<WorkflowOutput<W>>> {
+
+  public async getExecution(): Promise<Execution<WorkflowOutput<W>>> {
     return (await this.environment.getExecution(this.id)) as Execution<
       WorkflowOutput<W>
     >;
   }
 
-  async signal(signalId: string, payload: any): Promise<void>;
-  async signal<Payload extends any>(
+  public async signal(signalId: string, payload: any): Promise<void>;
+  public async signal<Payload>(
     signal: Signal<Payload>,
     payload: any
   ): Promise<void>;
-  async signal<Payload extends any = any>(
+
+  public async signal<Payload = any>(
     signal: string | Signal<Payload>,
     payload: Payload
   ): Promise<void> {

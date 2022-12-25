@@ -15,7 +15,7 @@ import { serviceTypeScope } from "./utils.js";
  * of the test environment.
  */
 export class EventHandlerController {
-  private defaultHandlersDisabled: boolean = false;
+  private defaultHandlersDisabled = false;
   private testHandlers: Record<string, EventHandler<any>[]> = {};
   private readonly defaultHandlers: Record<string, EventHandler<any>[]>;
 
@@ -33,25 +33,26 @@ export class EventHandlerController {
       {}
     );
   }
+
   /**
    * Disables all subscribes made on the service outside of the test environment.
    */
-  disableDefaultSubscriptions() {
+  public disableDefaultSubscriptions() {
     this.defaultHandlersDisabled = true;
   }
 
   /**
    * Turns on all subscriptions mde on the service outside of the test environment.
    */
-  enableDefaultSubscriptions() {
+  public enableDefaultSubscriptions() {
     this.defaultHandlersDisabled = false;
   }
 
-  clearTestHandlers() {
+  public clearTestHandlers() {
     this.testHandlers = {};
   }
 
-  subscribeEvent<E extends Event>(
+  public subscribeEvent<E extends Event>(
     event: E,
     handler: EventHandler<EventPayloadType<E>>
   ) {
@@ -61,7 +62,7 @@ export class EventHandlerController {
     this.testHandlers[event.name]?.push(handler);
   }
 
-  async receiveEvent(event: EventEnvelope<EventPayload>) {
+  public async receiveEvent(event: EventEnvelope<EventPayload>) {
     const defaultHandlers = this.defaultHandlersDisabled
       ? []
       : this.defaultHandlers[event.name] ?? [];

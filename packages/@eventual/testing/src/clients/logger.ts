@@ -1,26 +1,29 @@
 import { Logger } from "@eventual/core";
 
 export class TestLogger implements Logger {
-  constructor() {}
-
-  createChild(_options: {
+  public createChild(_options: {
     persistentLogAttributes: Record<string, any>;
   }): Logger {
     return this;
   }
-  addPersistentLogAttributes(_attribute: Record<string, any>): void {
-    return;
+
+  public addPersistentLogAttributes(_attribute: Record<string, any>): void {
+    return undefined;
   }
-  debug(message: string): void {
+
+  public debug(message: string): void {
     console.debug(message);
   }
-  error(message: string): void {
+
+  public error(message: string): void {
     console.error(message);
   }
-  info(message: string): void {
+
+  public info(message: string): void {
     console.info(message);
   }
-  warn(message: string): void {
+
+  public warn(message: string): void {
     console.warn(message);
   }
 }

@@ -1,10 +1,10 @@
 import { MetricsClient, MetricsLogger } from "@eventual/core";
 
 export class TestMetricsClient implements MetricsClient {
-  createMetricsLogger() {
+  public createMetricsLogger() {
     const logger: MetricsLogger = {
       setTimestamp: () => logger,
-      flush: async () => {},
+      flush: () => Promise.resolve(),
       putDimensions: () => logger,
       putMetric: () => logger,
       resetDimensions: () => logger,
@@ -14,7 +14,8 @@ export class TestMetricsClient implements MetricsClient {
     };
     return logger;
   }
-  metricScope<T, U extends readonly unknown[]>(
+
+  public metricScope<T, U extends readonly unknown[]>(
     handler: (m: MetricsLogger) => (...args: U) => T | Promise<T>
   ): (...args: U) => Promise<T> {
     const logger = this.createMetricsLogger();

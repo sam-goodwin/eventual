@@ -20,7 +20,7 @@ export interface TimeEvent<E = any> {
  */
 export class TimeController<E = any> {
   // current millisecond time
-  #current: number = 0;
+  #current = 0;
   #increment: number;
   #timeHeap: Heap<TimeEvent<E>>;
 
@@ -41,7 +41,7 @@ export class TimeController<E = any> {
    *
    * @param n - number of increments to progress time.
    */
-  tick(n: number = 1): E[] {
+  public tick(n = 1): E[] {
     this.#current += this.#increment * n;
     return this.drainPastEvents();
   }
@@ -74,7 +74,7 @@ export class TimeController<E = any> {
    *             the new time will reduced. (`floor((goal - current) / increment))`).
    * @returns All events between current and current + goal.
    */
-  tickUntil(goal: number): E[] {
+  public tickUntil(goal: number): E[] {
     if (goal < this.#current) {
       return this.drainPastEvents();
     }
@@ -84,21 +84,21 @@ export class TimeController<E = any> {
   /**
    * Returns the current tick, an increment of props.increment from the props.start.
    */
-  get currentTick() {
+  public get currentTick() {
     return this.#current;
   }
 
   /**
    * Returns the next tick, an increment of props.increment from the props.start.
    */
-  get nextTick() {
+  public get nextTick() {
     return this.#current + this.#increment;
   }
 
   /**
    * Returns the timestamp on the next event which exists.
    */
-  get nextEventTick(): number | undefined {
+  public get nextEventTick(): number | undefined {
     return this.#timeHeap.peek()?.timestamp;
   }
 
@@ -107,7 +107,7 @@ export class TimeController<E = any> {
    *
    * Only possible when events are added that are in the past.
    */
-  drainPastEvents() {
+  public drainPastEvents() {
     return [...this.drainEvents()];
   }
 
@@ -115,28 +115,28 @@ export class TimeController<E = any> {
    * @returns true when there are events prior to the current time.
    *          only possible when events are added that are in the past.
    */
-  hasPastEvents() {
+  public hasPastEvents() {
     return this.hasCurrentOrPastEvents();
   }
 
   /**
    * Add an event to the {@link TimeController}.
    */
-  addEvent(timestamp: number, event: E): void {
+  public addEvent(timestamp: number, event: E): void {
     this.#timeHeap.add({ timestamp, event });
   }
 
   /**
    * Add an event to the {@link TimeController}.
    */
-  addEventAtNextTick(event: E): void {
+  public addEventAtNextTick(event: E): void {
     this.#timeHeap.add({ timestamp: this.nextTick, event });
   }
 
   /**
    * Add events to the {@link TimeController}.
    */
-  addEvents(timeEvents: TimeEvent<E>[]): void {
+  public addEvents(timeEvents: TimeEvent<E>[]): void {
     this.#timeHeap.addAll(timeEvents);
   }
 
@@ -145,7 +145,7 @@ export class TimeController<E = any> {
    *
    * @param current - the timestamp to set as the new start time, when not provided, does not reset the current time.
    */
-  reset(current?: number) {
+  public reset(current?: number) {
     this.#current = current ?? this.props?.start ?? 0;
     this.#timeHeap.clear();
   }

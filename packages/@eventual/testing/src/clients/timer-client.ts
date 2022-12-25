@@ -12,7 +12,7 @@ export class TestTimerClient extends TimerClient {
     super();
   }
 
-  async startShortTimer(timerRequest: TimerRequest): Promise<number> {
+  public async startShortTimer(timerRequest: TimerRequest): Promise<number> {
     const time =
       timerRequest.schedule.type === "Absolute"
         ? new Date(timerRequest.schedule.untilTime)
@@ -39,11 +39,13 @@ export class TestTimerClient extends TimerClient {
 
     return seconds;
   }
-  async startTimer(timerRequest: TimerRequest): Promise<void> {
+
+  public async startTimer(timerRequest: TimerRequest): Promise<void> {
     await this.startShortTimer(timerRequest);
   }
+
   // not needed for now
-  clearSchedule(_scheduleName: string): Promise<void> {
+  public clearSchedule(_scheduleName: string): Promise<void> {
     throw new Error("Method not implemented.");
   }
 }

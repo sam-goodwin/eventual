@@ -28,18 +28,18 @@ export class TestWorkflowRuntimeClient implements WorkflowRuntimeClient {
     private activitiesController: ActivitiesController
   ) {}
 
-  async getHistory(executionId: string): Promise<HistoryStateEvent[]> {
+  public async getHistory(executionId: string): Promise<HistoryStateEvent[]> {
     return this.executionHistory[executionId] ?? [];
   }
 
-  async updateHistory(
+  public async updateHistory(
     request: UpdateHistoryRequest
   ): Promise<{ bytes: number }> {
     this.executionHistory[request.executionId] = request.events;
     return { bytes: 0 };
   }
 
-  async completeExecution(
+  public async completeExecution(
     request: CompleteExecutionRequest
   ): Promise<CompleteExecution<any>> {
     const execution = this.executionStore.get(request.executionId);
@@ -65,7 +65,9 @@ export class TestWorkflowRuntimeClient implements WorkflowRuntimeClient {
     return updatedExecution;
   }
 
-  async failExecution(request: FailExecutionRequest): Promise<FailedExecution> {
+  public async failExecution(
+    request: FailExecutionRequest
+  ): Promise<FailedExecution> {
     const execution = this.executionStore.get(request.executionId);
 
     if (!execution) {
@@ -90,7 +92,7 @@ export class TestWorkflowRuntimeClient implements WorkflowRuntimeClient {
     return updatedExecution;
   }
 
-  async startActivity(request: ActivityWorkerRequest): Promise<void> {
+  public async startActivity(request: ActivityWorkerRequest): Promise<void> {
     try {
       const result = await this.activitiesController.invokeActivity(
         request.command.name,
@@ -105,7 +107,7 @@ export class TestWorkflowRuntimeClient implements WorkflowRuntimeClient {
             createEvent<ActivityCompleted>(
               {
                 type: WorkflowEventType.ActivityCompleted,
-                result: result,
+                result,
                 seq: request.command.seq,
               },
               this.timeConnector.getTime()

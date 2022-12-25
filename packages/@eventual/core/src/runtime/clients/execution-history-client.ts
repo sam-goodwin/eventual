@@ -6,7 +6,7 @@ export type UnresolvedEvent<T extends WorkflowEvent> = Omit<
 >;
 
 export abstract class ExecutionHistoryClient {
-  abstract putEvent<T extends WorkflowEvent>(
+  public abstract putEvent<T extends WorkflowEvent>(
     executionId: string,
     event: T
   ): Promise<void>;
@@ -14,7 +14,7 @@ export abstract class ExecutionHistoryClient {
   /**
    * Writes events as a batch into the execution history table.
    */
-  abstract putEvents(
+  public abstract putEvents(
     executionId: string,
     events: WorkflowEvent[]
   ): Promise<void>;
@@ -22,5 +22,5 @@ export abstract class ExecutionHistoryClient {
   /**
    * Read an execution's events from the execution history table table
    */
-  abstract getEvents(executionId: string): Promise<WorkflowEvent[]>;
+  public abstract getEvents(executionId: string): Promise<WorkflowEvent[]>;
 }
