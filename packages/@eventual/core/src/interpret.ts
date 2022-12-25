@@ -106,8 +106,8 @@ export function interpret<Return>(
     return seq++;
   }
 
-  let emittedEvents = iterator(history, isScheduledEvent);
-  let resultEvents = iterator(
+  const emittedEvents = iterator(history, isScheduledEvent);
+  const resultEvents = iterator(
     history,
     or(isCompletedEvent, isFailedEvent, isSignalReceived, isWorkflowTimedOut)
   );
@@ -120,7 +120,7 @@ export function interpret<Return>(
      * advance run again
      * any calls at the event of all result commands and advances, return
      */
-    let calls: CommandCall[] = [];
+    const calls: CommandCall[] = [];
     let newCalls: Iterator<CommandCall, CommandCall>;
     // iterate until we are no longer finding commands, no longer have completion events to apply
     // or the workflow has a terminal status.
@@ -143,7 +143,6 @@ export function interpret<Return>(
               mainChain.result = Result.failed(
                 new Timeout("Workflow timed out")
               );
-              return;
             } else {
               commitCompletionEvent(resultEvent);
             }
@@ -271,7 +270,7 @@ export function interpret<Return>(
   }
 
   function collectActivitiesScope(func: () => void): CommandCall[] {
-    let calls: CommandCall[] = [];
+    const calls: CommandCall[] = [];
 
     const collector: EventualCallCollector = {
       /**
@@ -556,7 +555,7 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
   } else if (isSleepScheduled(event)) {
     return isSleepUntilCall(call) || isSleepForCall(call);
   } else if (isExpectSignalStarted(event)) {
-    return isExpectSignalCall(call) && event.signalId == call.signalId;
+    return isExpectSignalCall(call) && event.signalId === call.signalId;
   } else if (isSignalSent(event)) {
     return isSendSignalCall(call) && event.signalId === call.signalId;
   } else if (isConditionStarted(event)) {

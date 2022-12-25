@@ -13,7 +13,7 @@ import { getServiceData } from "./service-data.js";
 import { assumeCliRole } from "./role.js";
 import { AwsCredentialIdentity } from "@aws-sdk/types";
 
-//Return a ky which signs our requests with our execute role. Code adapted from
+// Return a ky which signs our requests with our execute role. Code adapted from
 // https://github.com/zirkelc/aws-sigv4-fetch
 export async function apiKy(
   service: string,
@@ -41,11 +41,11 @@ export async function apiKy(
           // host is required by AWS Signature V4: https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
           headers.set("host", url.host);
 
-          //We're cloning the request before reading the body since
-          //node-fetch copies an internal flag marking the body as consumed
-          //into our returned request, making it unreadable
-          //So we use a clone to make sure we don't trip that flag on our request to be copied
-          //Can remove this once we target node 18 minimum and no longer need node-fetch
+          // We're cloning the request before reading the body since
+          // node-fetch copies an internal flag marking the body as consumed
+          // into our returned request, making it unreadable
+          // So we use a clone to make sure we don't trip that flag on our request to be copied
+          // Can remove this once we target node 18 minimum and no longer need node-fetch
           const body = await req.clone().text();
           const request = new HttpRequest({
             hostname: url.hostname,

@@ -58,203 +58,228 @@ interface CommandExecutorProps {
 export class CommandExecutor {
   constructor(private props: CommandExecutorProps) {}
 
-  async executeCommand(
+  public async executeCommand(
     workflow: Workflow,
     executionId: string,
     command: Command,
     baseTime: Date
   ): Promise<HistoryStateEvent> {
-    const self = this;
     if (isScheduleActivityCommand(command)) {
-      return await scheduleActivity(command);
+      return await this.scheduleActivity(
+        workflow,
+        executionId,
+        command,
+        baseTime
+      );
     } else if (isScheduleWorkflowCommand(command)) {
-      return scheduleChildWorkflow(command);
+      return this.scheduleChildWorkflow(executionId, command, baseTime);
     } else if (isSleepForCommand(command) || isSleepUntilCommand(command)) {
       // all sleep times are computed using the start time of the WorkflowTaskStarted
-      return scheduleSleep(command);
+      return this.scheduleSleep(executionId, command, baseTime);
     } else if (isExpectSignalCommand(command)) {
       // should the timeout command be generic (ex: StartTimeout) or specific (ex: ExpectSignal)?
-      return executeExpectSignal(command);
+      return this.executeExpectSignal(executionId, command, baseTime);
     } else if (isSendSignalCommand(command)) {
-      return sendSignal(command);
+      return this.sendSignal(executionId, command, baseTime);
     } else if (isStartConditionCommand(command)) {
-      return startCondition(command);
+      return this.startCondition(executionId, command, baseTime);
     } else if (isPublishEventsCommand(command)) {
-      return publishEvents(command);
+      return this.publishEvents(command, baseTime);
     } else {
       return assertNever(command, `unknown command type`);
     }
+  }
 
-    async function scheduleActivity(command: ScheduleActivityCommand) {
-      const request: ActivityWorkerRequest = {
-        scheduledTime: new Date().toISOString(),
-        workflowName: workflow.workflowName,
-        executionId,
-        command,
-        retry: 0,
-      };
+  private async scheduleActivity(
+    workflow: Workflow,
+    executionId: string,
+    command: ScheduleActivityCommand,
+    baseTime: Date
+  ) {
+    const request: ActivityWorkerRequest = {
+      scheduledTime: new Date().toISOString(),
+      workflowName: workflow.workflowName,
+      executionId,
+      command,
+      retry: 0,
+    };
 
-      const timeoutStarter = command.timeoutSeconds
-        ? await self.props.timerClient.scheduleEvent<ActivityTimedOut>({
-            schedule: Schedule.relative(command.timeoutSeconds, baseTime),
-            event: {
-              type: WorkflowEventType.ActivityTimedOut,
-              seq: command.seq,
-            },
-            executionId,
-          })
-        : undefined;
+    const timeoutStarter = command.timeoutSeconds
+      ? await this.props.timerClient.scheduleEvent<ActivityTimedOut>({
+          schedule: Schedule.relative(command.timeoutSeconds, baseTime),
+          event: {
+            type: WorkflowEventType.ActivityTimedOut,
+            seq: command.seq,
+          },
+          executionId,
+        })
+      : undefined;
 
-      const activityStarter =
-        self.props.workflowRuntimeClient.startActivity(request);
+    const activityStarter =
+      this.props.workflowRuntimeClient.startActivity(request);
 
-      await Promise.all([activityStarter, timeoutStarter]);
+    await Promise.all([activityStarter, timeoutStarter]);
 
-      return createEvent<ActivityScheduled>(
-        {
-          type: WorkflowEventType.ActivityScheduled,
-          seq: command.seq,
-          name: command.name,
-        },
-        baseTime
-      );
-    }
-
-    async function scheduleChildWorkflow(
-      command: ScheduleWorkflowCommand
-    ): Promise<ChildWorkflowScheduled> {
-      await self.props.workflowClient.startWorkflow({
-        workflowName: command.name,
-        input: command.input,
-        parentExecutionId: executionId,
-        executionName: formatChildExecutionName(executionId, command.seq),
+    return createEvent<ActivityScheduled>(
+      {
+        type: WorkflowEventType.ActivityScheduled,
         seq: command.seq,
-        ...command.opts,
-      });
+        name: command.name,
+      },
+      baseTime
+    );
+  }
 
-      return createEvent<ChildWorkflowScheduled>(
-        {
-          type: WorkflowEventType.ChildWorkflowScheduled,
-          seq: command.seq,
-          name: command.name,
-          input: command.input,
-        },
-        baseTime
-      );
-    }
+  private async scheduleChildWorkflow(
+    executionId: string,
+    command: ScheduleWorkflowCommand,
+    baseTime: Date
+  ): Promise<ChildWorkflowScheduled> {
+    await this.props.workflowClient.startWorkflow({
+      workflowName: command.name,
+      input: command.input,
+      parentExecutionId: executionId,
+      executionName: formatChildExecutionName(executionId, command.seq),
+      seq: command.seq,
+      ...command.opts,
+    });
 
-    async function scheduleSleep(
-      command: SleepForCommand | SleepUntilCommand
-    ): Promise<SleepScheduled> {
-      // TODO validate
-      const untilTime = isSleepUntilCommand(command)
-        ? new Date(command.untilTime)
-        : new Date(baseTime.getTime() + command.durationSeconds * 1000);
-      const untilTimeIso = untilTime.toISOString();
+    return createEvent<ChildWorkflowScheduled>(
+      {
+        type: WorkflowEventType.ChildWorkflowScheduled,
+        seq: command.seq,
+        name: command.name,
+        input: command.input,
+      },
+      baseTime
+    );
+  }
 
-      await self.props.timerClient.scheduleEvent<SleepCompleted>({
+  private async scheduleSleep(
+    executionId: string,
+
+    command: SleepForCommand | SleepUntilCommand,
+    baseTime: Date
+  ): Promise<SleepScheduled> {
+    // TODO validate
+    const untilTime = isSleepUntilCommand(command)
+      ? new Date(command.untilTime)
+      : new Date(baseTime.getTime() + command.durationSeconds * 1000);
+    const untilTimeIso = untilTime.toISOString();
+
+    await this.props.timerClient.scheduleEvent<SleepCompleted>({
+      event: {
+        type: WorkflowEventType.SleepCompleted,
+        seq: command.seq,
+      },
+      schedule: Schedule.absolute(untilTimeIso),
+      executionId,
+    });
+
+    return createEvent<SleepScheduled>(
+      {
+        type: WorkflowEventType.SleepScheduled,
+        seq: command.seq,
+        untilTime: untilTime.toISOString(),
+      },
+      baseTime
+    );
+  }
+
+  private async executeExpectSignal(
+    executionId: string,
+
+    command: ExpectSignalCommand,
+    baseTime: Date
+  ): Promise<ExpectSignalStarted> {
+    if (command.timeoutSeconds) {
+      await this.props.timerClient.scheduleEvent<ExpectSignalTimedOut>({
         event: {
-          type: WorkflowEventType.SleepCompleted,
+          signalId: command.signalId,
           seq: command.seq,
+          type: WorkflowEventType.ExpectSignalTimedOut,
         },
-        schedule: Schedule.absolute(untilTimeIso),
+        schedule: Schedule.relative(command.timeoutSeconds, baseTime),
         executionId,
       });
-
-      return createEvent<SleepScheduled>(
-        {
-          type: WorkflowEventType.SleepScheduled,
-          seq: command.seq,
-          untilTime: untilTime.toISOString(),
-        },
-        baseTime
-      );
     }
 
-    async function executeExpectSignal(
-      command: ExpectSignalCommand
-    ): Promise<ExpectSignalStarted> {
-      if (command.timeoutSeconds) {
-        await self.props.timerClient.scheduleEvent<ExpectSignalTimedOut>({
-          event: {
-            signalId: command.signalId,
-            seq: command.seq,
-            type: WorkflowEventType.ExpectSignalTimedOut,
-          },
-          schedule: Schedule.relative(command.timeoutSeconds, baseTime),
-          executionId,
-        });
-      }
+    return createEvent<ExpectSignalStarted>(
+      {
+        signalId: command.signalId,
+        seq: command.seq,
+        type: WorkflowEventType.ExpectSignalStarted,
+        timeoutSeconds: command.timeoutSeconds,
+      },
+      baseTime
+    );
+  }
 
-      return createEvent<ExpectSignalStarted>(
-        {
-          signalId: command.signalId,
-          seq: command.seq,
-          type: WorkflowEventType.ExpectSignalStarted,
-          timeoutSeconds: command.timeoutSeconds,
-        },
-        baseTime
-      );
-    }
+  private async sendSignal(
+    executionId: string,
+    command: SendSignalCommand,
+    baseTime: Date
+  ) {
+    const childExecutionId = isChildExecutionTarget(command.target)
+      ? formatExecutionId(
+          command.target.workflowName,
+          formatChildExecutionName(executionId, command.target.seq)
+        )
+      : command.target.executionId;
 
-    async function sendSignal(command: SendSignalCommand) {
-      const childExecutionId = isChildExecutionTarget(command.target)
-        ? formatExecutionId(
-            command.target.workflowName,
-            formatChildExecutionName(executionId, command.target.seq)
-          )
-        : command.target.executionId;
+    await this.props.workflowClient.sendSignal({
+      signal: command.signalId,
+      executionId: childExecutionId,
+      id: `${executionId}/${command.seq}`,
+      payload: command.payload,
+    });
 
-      await self.props.workflowClient.sendSignal({
-        signal: command.signalId,
+    return createEvent<SignalSent>(
+      {
+        type: WorkflowEventType.SignalSent,
         executionId: childExecutionId,
-        id: `${executionId}/${command.seq}`,
+        seq: command.seq,
+        signalId: command.signalId,
         payload: command.payload,
-      });
+      },
+      baseTime
+    );
+  }
 
-      return createEvent<SignalSent>(
-        {
-          type: WorkflowEventType.SignalSent,
-          executionId: childExecutionId,
+  private async startCondition(
+    executionId: string,
+    command: StartConditionCommand,
+    baseTime: Date
+  ) {
+    if (command.timeoutSeconds) {
+      await this.props.timerClient.scheduleEvent<ConditionTimedOut>({
+        event: {
+          type: WorkflowEventType.ConditionTimedOut,
           seq: command.seq,
-          signalId: command.signalId,
-          payload: command.payload,
         },
-        baseTime
-      );
+        executionId,
+        schedule: Schedule.relative(command.timeoutSeconds, baseTime),
+      });
     }
 
-    async function startCondition(command: StartConditionCommand) {
-      if (command.timeoutSeconds) {
-        await self.props.timerClient.scheduleEvent<ConditionTimedOut>({
-          event: {
-            type: WorkflowEventType.ConditionTimedOut,
-            seq: command.seq,
-          },
-          executionId,
-          schedule: Schedule.relative(command.timeoutSeconds, baseTime),
-        });
-      }
+    return createEvent<ConditionStarted>(
+      {
+        type: WorkflowEventType.ConditionStarted,
+        seq: command.seq!,
+      },
+      baseTime
+    );
+  }
 
-      return createEvent<ConditionStarted>(
-        {
-          type: WorkflowEventType.ConditionStarted,
-          seq: command.seq!,
-        },
-        baseTime
-      );
-    }
-
-    async function publishEvents(command: PublishEventsCommand) {
-      await self.props.eventClient.publish(...command.events);
-      return createEvent<EventsPublished>(
-        {
-          type: WorkflowEventType.EventsPublished,
-          events: command.events,
-          seq: command.seq!,
-        },
-        baseTime
-      );
-    }
+  private async publishEvents(command: PublishEventsCommand, baseTime: Date) {
+    await this.props.eventClient.publish(...command.events);
+    return createEvent<EventsPublished>(
+      {
+        type: WorkflowEventType.EventsPublished,
+        events: command.events,
+        seq: command.seq!,
+      },
+      baseTime
+    );
   }
 }

@@ -229,19 +229,10 @@ export interface SleepCompleted extends HistoryEventBase {
   result?: undefined;
 }
 
-export interface WorkflowTaskCompleted extends BaseEvent {
-  type: WorkflowEventType.WorkflowTaskCompleted;
-}
-
 export function isTaskCompleted(
   event: WorkflowEvent
 ): event is WorkflowTaskCompleted {
   return event.type === WorkflowEventType.WorkflowTaskCompleted;
-}
-
-export interface WorkflowCompleted extends BaseEvent {
-  type: WorkflowEventType.WorkflowCompleted;
-  output: any;
 }
 
 export function isWorkflowCompleted(

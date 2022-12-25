@@ -30,7 +30,7 @@ export const timeline = (yargs: Argv) =>
       const app = express();
 
       app.use("/api/timeline/:execution", async (req, res) => {
-        //We forward errors onto our handler for the ui to deal with
+        // We forward errors onto our handler for the ui to deal with
         try {
           const events = await ky
             .get(`executions/${req.params.execution}}/workflow-history`)
@@ -45,7 +45,7 @@ export const timeline = (yargs: Argv) =>
       const isProduction = process.env.NODE_ENV === "production";
 
       if (isProduction) {
-        //Serve our built site as an spa - serve js and css files out of our dist folder, otherwise just serve index.html
+        // Serve our built site as an spa - serve js and css files out of our dist folder, otherwise just serve index.html
         app.get("*", async (request, response) => {
           const basePath = await resolveEntry("@eventual/timeline/dist");
           if (request.path.endsWith(".js") || request.path.endsWith(".css")) {
@@ -105,7 +105,7 @@ function aggregateEvents(events: HistoryStateEvent[]): {
         state: { status: "inprogress" },
       };
     } else if (isActivityCompleted(event)) {
-      let existingActivity = activities[event.seq];
+      const existingActivity = activities[event.seq];
       if (existingActivity) {
         existingActivity.state = {
           status: "completed",
@@ -117,7 +117,7 @@ function aggregateEvents(events: HistoryStateEvent[]): {
         );
       }
     } else if (isActivityFailed(event)) {
-      let existingActivity = activities[event.seq];
+      const existingActivity = activities[event.seq];
       if (existingActivity) {
         existingActivity.state = {
           status: "failed",

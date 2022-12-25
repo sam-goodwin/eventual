@@ -1,3 +1,4 @@
+/* eslint-disable require-yield, no-throw-literal */
 import { createActivityCall } from "../src/calls/activity-call.js";
 import { chain } from "../src/chain.js";
 import { EventualError, HeartbeatTimeout, Timeout } from "../src/error.js";
@@ -1121,6 +1122,7 @@ test("throw error within nested function", () => {
       return "returned in catch"; // this should be trumped by the finally
     } finally {
       yield createActivityCall("finally", []);
+      // eslint-disable-next-line no-unsafe-finally
       return "returned in finally";
     }
   }
@@ -1207,8 +1209,7 @@ test("properly evaluate yield* of sub-programs", () => {
 });
 
 test("properly evaluate yield of Eventual.all", () => {
-  function* workflow() {
-    // @ts-ignore
+  function* workflow(): any {
     const item = yield Eventual.all([
       createActivityCall("a", []),
       createActivityCall("b", []),
@@ -1217,7 +1218,6 @@ test("properly evaluate yield of Eventual.all", () => {
     return item;
   }
 
-  // @ts-ignore
   expect(interpret(workflow(), [])).toMatchObject({
     commands: [
       //
@@ -1227,7 +1227,6 @@ test("properly evaluate yield of Eventual.all", () => {
   });
 
   expect(
-    // @ts-ignore
     interpret(workflow(), [
       activityScheduled("a", 0),
       activityScheduled("b", 1),
@@ -2016,7 +2015,7 @@ test("nestedChains", () => {
 });
 
 test("mixing closure types", () => {
-  var workflow4 = workflow(function* () {
+  const workflow4 = workflow(function* () {
     const greetings = Eventual.all(
       ["sam", "chris", "sam"].map((name) => createActivityCall("hello", [name]))
     );
@@ -2100,7 +2099,7 @@ test("mixing closure types", () => {
 });
 
 test("workflow with synchronous function", () => {
-  var workflow4 = workflow(function (): any {
+  const workflow4 = workflow(function (): any {
     return createActivityCall("hi", []);
   });
 

@@ -86,21 +86,21 @@ interface EventRecord {
   time: AttributeValue.SMember;
 }
 
-namespace EventRecord {
-  export const PRIMARY_KEY = "ExecutionHistory";
-  export const SORT_KEY_PREFIX = `Event$`;
-  export function sortKey(
+const EventRecord = {
+  PRIMARY_KEY: "ExecutionHistory",
+  SORT_KEY_PREFIX: `Event$`,
+  sortKey(
     executionId: string,
     id: string
-  ): EventRecord["sk"]["S"] {
-    return `${SORT_KEY_PREFIX}${executionId}$${id}`;
-  }
-}
+  ): `${typeof this.SORT_KEY_PREFIX}${string}$${string}` {
+    return `${this.SORT_KEY_PREFIX}${executionId}$${id}`;
+  },
+};
 
 function createEventRecord(
   executionId: string,
   workflowEvent: WorkflowEvent
-): EventRecord {
+): EventRecord & Record<string, AttributeValue> {
   const { id, timestamp, ...event } = workflowEvent as WorkflowEvent &
     Partial<BaseEvent>;
   return {

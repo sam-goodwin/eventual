@@ -21,7 +21,7 @@ export async function heartbeat(
     );
   } else if (activityToken) {
     return await getWorkflowClient().heartbeatActivity({
-      activityToken: activityToken,
+      activityToken,
     });
   } else if (isActivityWorker()) {
     const token = getActivityContext().activityToken;

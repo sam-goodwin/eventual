@@ -13,7 +13,7 @@ export abstract class TimerClient {
    * Finally the timer handler waits the remaining (untilTime - currentTime) milliseconds if necessary and then sends
    * the {@link TimerRequest} provided.
    */
-  abstract startShortTimer(timerRequest: TimerRequest): Promise<number>;
+  public abstract startShortTimer(timerRequest: TimerRequest): Promise<number>;
 
   /**
    * Starts a timer of any (positive) length.
@@ -27,7 +27,7 @@ export abstract class TimerClient {
    * Finally the timer handler waits the remaining (untilTime - currentTime) milliseconds if necessary and then sends
    * the {@link TimerRequest} provided.
    */
-  abstract startTimer(timerRequest: TimerRequest): Promise<void>;
+  public abstract startTimer(timerRequest: TimerRequest): Promise<void>;
 
   /**
    * When startTimer is used, the EventBridge schedule will not self delete.
@@ -37,7 +37,7 @@ export abstract class TimerClient {
    * The provided schedule-forwarder function will call this method in Eventual when
    * the timer is transferred from EventBridge to SQS at `props.sleepQueueThresholdMillis`.
    */
-  abstract clearSchedule(scheduleName: string): Promise<void>;
+  public abstract clearSchedule(scheduleName: string): Promise<void>;
 
   /**
    * Schedules any event for a workflow at a future time.
@@ -85,8 +85,8 @@ export interface AbsoluteSchedule {
 
 export type Schedule = RelativeSchedule | AbsoluteSchedule;
 
-export namespace Schedule {
-  export function relative(
+export const Schedule = {
+  relative(
     timerSeconds: number,
     baseTime: Date = new Date()
   ): RelativeSchedule {
@@ -95,15 +95,14 @@ export namespace Schedule {
       timerSeconds,
       baseTime,
     };
-  }
-
-  export function absolute(untilTime: string): AbsoluteSchedule {
+  },
+  absolute(untilTime: string): AbsoluteSchedule {
     return {
       type: "Absolute",
       untilTime,
     };
-  }
-}
+  },
+};
 
 export type TimerRequestBase<T extends TimerRequestType> = {
   type: T;

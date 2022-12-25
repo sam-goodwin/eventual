@@ -136,6 +136,7 @@ export const childWorkflow = workflow(
       block = false;
     });
 
+    // eslint-disable-next-line no-unmodified-loop-condition
     while (!done) {
       sendSignal(parentId, mySignal, last + 1);
       block = true;
@@ -339,6 +340,7 @@ export const failedWorkflow = workflow(
     if (wrapError) {
       throw new MyError("I am useless");
     } else {
+      // eslint-disable-next-line no-throw-literal
       throw "I am useless";
     }
   }

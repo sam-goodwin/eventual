@@ -46,7 +46,7 @@ export class Scheduler extends Construct implements IScheduler, IGrantable {
   /**
    * The Scheduler's IAM Role.
    */
-  readonly schedulerRole: IRole;
+  public readonly schedulerRole: IRole;
   /**
    * Timer (standard) queue which helps orchestrate scheduled things like sleep and dynamic retries.
    *
@@ -125,7 +125,7 @@ export class Scheduler extends Construct implements IScheduler, IGrantable {
     this.configureHandler();
   }
 
-  get grantPrincipal() {
+  public get grantPrincipal() {
     return this.handler.grantPrincipal;
   }
 
@@ -190,7 +190,7 @@ export class Scheduler extends Construct implements IScheduler, IGrantable {
 }
 
 class ScheduleGroup extends Resource {
-  readonly resource: CfnResource;
+  public readonly resource: CfnResource;
   constructor(scope: Construct, id: string) {
     super(scope, id);
 

@@ -7,7 +7,7 @@ import { prepareOutDir } from "./build.js";
 import { createRequire } from "module";
 import { ServiceType, SERVICE_TYPE_FLAG } from "@eventual/core";
 
-var require = createRequire(import.meta.url);
+const require = createRequire(import.meta.url);
 
 /**
  * Bundle an eventual program
@@ -52,7 +52,7 @@ export async function bundle(
       entry: runtimeEntrypoint("event-handler"),
       serviceType: ServiceType.EventHandler,
     }),
-    //This one is actually an api function
+    // This one is actually an api function
     build({
       name: "list-workflows",
       outDir,
@@ -76,7 +76,7 @@ export async function bundleService(
     plugins: [eventualESPlugin],
     serviceType,
     external,
-    //It's important that we DONT use inline source maps for service, otherwise debugger fails to pick it up
+    // It's important that we DONT use inline source maps for service, otherwise debugger fails to pick it up
     // sourcemap: "inline",
   });
 }
@@ -116,7 +116,7 @@ async function build({
         ? [
             esbuildPluginAliasPath({
               alias: {
-                ["@eventual/entry/injected"]: path.resolve(injectedEntry),
+                "@eventual/entry/injected": path.resolve(injectedEntry),
               },
             }),
           ]
@@ -130,7 +130,7 @@ async function build({
     external,
     platform: "node",
     format: "esm",
-    //Target for node 16
+    // Target for node 16
     target: "es2021",
     metafile: true,
     bundle: true,

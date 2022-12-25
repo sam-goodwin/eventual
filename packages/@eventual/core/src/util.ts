@@ -28,6 +28,6 @@ export function extendsError(err: unknown): err is Error {
     (err instanceof Error ||
       ("prototype" in err &&
         !!err.prototype &&
-        err.prototype.isPrototypeOf(Error)))
+        Object.prototype.isPrototypeOf.call(err.prototype, Error)))
   );
 }

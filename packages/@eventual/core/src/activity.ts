@@ -27,10 +27,7 @@ export interface ActivityOptions {
   heartbeatSeconds?: number;
 }
 
-export interface ActivityFunction<
-  Arguments extends any[],
-  Output extends any = any
-> {
+export interface ActivityFunction<Arguments extends any[], Output = any> {
   (...args: Arguments): Promise<Awaited<UnwrapAsync<Output>>>;
 
   /**
@@ -61,10 +58,7 @@ export interface ActivityFunction<
   activityID: string;
 }
 
-export interface ActivityHandler<
-  Arguments extends any[],
-  Output extends any = any
-> {
+export interface ActivityHandler<Arguments extends any[], Output = any> {
   (...args: Arguments):
     | Promise<Awaited<Output>>
     | Output
@@ -148,16 +142,16 @@ export interface ActivityContext {
  * @param activityID a string that uniquely identifies the Activity within a single workflow context.
  * @param handler the function that handles the activity
  */
-export function activity<Arguments extends any[], Output extends any = any>(
+export function activity<Arguments extends any[], Output = any>(
   activityID: string,
   handler: ActivityHandler<Arguments, Output>
 ): ActivityFunction<Arguments, Output>;
-export function activity<Arguments extends any[], Output extends any = any>(
+export function activity<Arguments extends any[], Output = any>(
   activityID: string,
   opts: ActivityOptions,
   handler: ActivityHandler<Arguments, Output>
 ): ActivityFunction<Arguments, Output>;
-export function activity<Arguments extends any[], Output extends any = any>(
+export function activity<Arguments extends any[], Output = any>(
   activityID: string,
   ...args:
     | [opts: ActivityOptions, handler: ActivityHandler<Arguments, Output>]

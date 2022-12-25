@@ -6,6 +6,7 @@ import type { WorkflowClient } from "./runtime/clients/workflow-client.js";
 import type { Workflow } from "./workflow.js";
 
 declare global {
+  // eslint-disable-next-line no-var
   var _eventual: {
     /**
      * Data about the current activity assigned before running an activity on an the activity worker.
