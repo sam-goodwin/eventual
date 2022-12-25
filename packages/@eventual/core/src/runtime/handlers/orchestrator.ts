@@ -66,17 +66,10 @@ export interface OrchestratorResult {
 }
 
 export interface Orchestrator {
-  orchestrateExecutions(
+  (
     eventsByExecutionId: Record<string, HistoryStateEvent[]>,
     baseTime?: Date
   ): Promise<OrchestratorResult>;
-
-  orchestrateExecution(
-    workflow: Workflow,
-    executionId: string,
-    events: HistoryStateEvent[],
-    baseTime: Date
-  ): Promise<void>;
 }
 
 /**
@@ -101,56 +94,50 @@ export function createOrchestrator({
     eventClient,
   });
 
-  return {
-    orchestrateExecutions: async (
-      eventsByExecutionId,
-      baseTime = new Date()
-    ) => {
-      logger.debug("Handle workflowQueue records");
+  return async (eventsByExecutionId, baseTime = new Date()) => {
+    logger.debug("Handle workflowQueue records");
 
-      logger.info(
-        "Found execution ids: " + Object.keys(eventsByExecutionId).join(", ")
-      );
+    logger.info(
+      "Found execution ids: " + Object.keys(eventsByExecutionId).join(", ")
+    );
 
-      // for each execution id
-      const results = await promiseAllSettledPartitioned(
-        Object.entries(eventsByExecutionId),
-        async ([executionId, records]) => {
-          if (!isExecutionId(executionId)) {
-            throw new Error(`invalid ExecutionID: '${executionId}'`);
-          }
-          const workflowName = parseWorkflowName(executionId);
-          if (workflowName === undefined) {
-            throw new Error(`execution ID '${executionId}' does not exist`);
-          }
-          const workflow = lookupWorkflow(workflowName);
-          if (workflow === undefined) {
-            throw new Error(`no such workflow with name '${workflowName}'`);
-          }
-          // TODO: get workflow from execution id
-          return orchestrateExecution(workflow, executionId, records, baseTime);
+    // for each execution id
+    const results = await promiseAllSettledPartitioned(
+      Object.entries(eventsByExecutionId),
+      async ([executionId, records]) => {
+        if (!isExecutionId(executionId)) {
+          throw new Error(`invalid ExecutionID: '${executionId}'`);
         }
-      );
-
-      logger.debug(
-        "Executions succeeded: " +
-          results.fulfilled.map(([[executionId]]) => executionId).join(",")
-      );
-
-      if (results.rejected.length > 0) {
-        logger.error(
-          "Executions failed: \n" +
-            results.rejected
-              .map(([[executionId], error]) => `${executionId}: ${error}`)
-              .join("\n")
-        );
+        const workflowName = parseWorkflowName(executionId);
+        if (workflowName === undefined) {
+          throw new Error(`execution ID '${executionId}' does not exist`);
+        }
+        const workflow = lookupWorkflow(workflowName);
+        if (workflow === undefined) {
+          throw new Error(`no such workflow with name '${workflowName}'`);
+        }
+        // TODO: get workflow from execution id
+        return orchestrateExecution(workflow, executionId, records, baseTime);
       }
+    );
 
-      return {
-        failedExecutionIds: results.rejected.map((rejected) => rejected[0][0]),
-      };
-    },
-    orchestrateExecution,
+    logger.debug(
+      "Executions succeeded: " +
+        results.fulfilled.map(([[executionId]]) => executionId).join(",")
+    );
+
+    if (results.rejected.length > 0) {
+      logger.error(
+        "Executions failed: \n" +
+          results.rejected
+            .map(([[executionId], error]) => `${executionId}: ${error}`)
+            .join("\n")
+      );
+    }
+
+    return {
+      failedExecutionIds: results.rejected.map((rejected) => rejected[0][0]),
+    };
   };
 
   async function orchestrateExecution(

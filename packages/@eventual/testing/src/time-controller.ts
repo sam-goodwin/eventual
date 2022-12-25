@@ -49,13 +49,13 @@ export class TimeController<E = any> {
   /**
    * Creates a generator which returns events grouped by tick number.
    *
-   * More efficient than passing in each tick number because it only requests tick numbers which have value.
+   * More efficient than passing in each tick number because it only requests tick numbers which have values.
    */
   public *tickIncremental(n: number) {
     const goal = this.#current + this.#increment * n;
     while (this.#current < goal) {
       // only get the next there are events
-      const next = this.nextEventTime;
+      const next = this.nextEventTick;
       if (next === undefined || next >= goal) {
         yield this.tickUntil(goal);
         return;
@@ -82,23 +82,23 @@ export class TimeController<E = any> {
   }
 
   /**
-   * Returns the current time, an increment of props.increment from the props.start.
+   * Returns the current tick, an increment of props.increment from the props.start.
    */
-  get time() {
+  get currentTick() {
     return this.#current;
   }
 
   /**
-   * Returns the current time, an increment of props.increment from the props.start.
+   * Returns the next tick, an increment of props.increment from the props.start.
    */
-  get nextTime() {
+  get nextTick() {
     return this.#current + this.#increment;
   }
 
   /**
    * Returns the timestamp on the next event which exists.
    */
-  get nextEventTime(): number | undefined {
+  get nextEventTick(): number | undefined {
     return this.#timeHeap.peek()?.timestamp;
   }
 
@@ -129,8 +129,8 @@ export class TimeController<E = any> {
   /**
    * Add an event to the {@link TimeController}.
    */
-  addEventAtNext(event: E): void {
-    this.#timeHeap.add({ timestamp: this.nextTime, event });
+  addEventAtNextTick(event: E): void {
+    this.#timeHeap.add({ timestamp: this.nextTick, event });
   }
 
   /**

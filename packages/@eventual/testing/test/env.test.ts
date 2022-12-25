@@ -17,9 +17,11 @@ import {
   dataDoneSignal,
   dataEvent,
   dataSignal,
+  errorWorkflow,
   orchestrate,
   signalWorkflow,
   sleepWorkflow,
+  workflow1,
   workflow3,
 } from "./workflow.js";
 
@@ -579,6 +581,68 @@ describe("events", () => {
         data: "event data",
       });
       expect(dataEventMock).toBeCalledTimes(1);
+    });
+  });
+});
+
+describe("completing executions", () => {
+  test("complete", async () => {
+    const execution = await env.startExecution(workflow1, undefined);
+
+    const executionResult = await execution.getExecution();
+
+    expect(executionResult).toMatchObject<Execution>({
+      endTime: env.time.toISOString(),
+      id: execution.id,
+      status: ExecutionStatus.COMPLETE,
+      result: "hi",
+      startTime: new Date(env.time.getTime() - 1000).toISOString(),
+    });
+  });
+
+  test("complete future", async () => {
+    await env.tickUntil("2022-01-01");
+    const execution = await env.startExecution(workflow1, undefined);
+
+    const executionResult = await execution.getExecution();
+
+    expect(executionResult).toMatchObject<Execution>({
+      endTime: env.time.toISOString(),
+      id: execution.id,
+      status: ExecutionStatus.COMPLETE,
+      result: "hi",
+      startTime: new Date(env.time.getTime() - 1000).toISOString(),
+    });
+  });
+
+  test("fail", async () => {
+    const execution = await env.startExecution(errorWorkflow, undefined);
+
+    const executionResult = await execution.getExecution();
+
+    expect(executionResult).toMatchObject<Execution>({
+      endTime: env.time.toISOString(),
+      id: execution.id,
+      status: ExecutionStatus.FAILED,
+      error: "Error",
+      message: "failed!",
+      startTime: new Date(env.time.getTime() - 1000).toISOString(),
+    });
+  });
+
+  test("complete future", async () => {
+    await env.tickUntil("2022-01-01");
+    const execution = await env.startExecution(errorWorkflow, undefined);
+
+    const executionResult = await execution.getExecution();
+
+    expect(executionResult).toMatchObject<Execution>({
+      endTime: env.time.toISOString(),
+      id: execution.id,
+      status: ExecutionStatus.FAILED,
+      error: "Error",
+      message: "failed!",
+      startTime: new Date(env.time.getTime() - 1000).toISOString(),
     });
   });
 });

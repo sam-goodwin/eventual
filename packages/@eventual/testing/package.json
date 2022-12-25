@@ -1,5 +1,6 @@
 {
   "name": "@eventual/testing",
+  "version": "0.0.0",
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",
@@ -8,7 +9,6 @@
   },
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
-  "version": "0.0.0",
   "scripts": {
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --passWithNoTests"
   },

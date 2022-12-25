@@ -12,6 +12,10 @@ export const workflow1 = workflow("workflow1", async () => {
   return "hi";
 });
 
+export const errorWorkflow = workflow("errorWorkflow", async () => {
+  throw new Error("failed!");
+});
+
 export const sleepWorkflow = workflow(
   "sleepWorkflow",
   async (relative: boolean) => {

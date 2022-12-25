@@ -17,11 +17,11 @@ import { TimeConnector } from "../environment.js";
 
 export class TestWorkflowClient extends WorkflowClient {
   constructor(
-    private time: TimeConnector,
+    private timeConnector: TimeConnector,
     activityRuntimeClient: ActivityRuntimeClient,
     private executionStore: ExecutionStore
   ) {
-    super(activityRuntimeClient, () => time.time);
+    super(activityRuntimeClient, () => timeConnector.getTime());
   }
 
   public async startWorkflow<W extends Workflow<any, any> = Workflow<any, any>>(
@@ -34,11 +34,13 @@ export class TestWorkflowClient extends WorkflowClient {
       request.executionName ?? ulid()
     );
 
+    const baseTime = this.baseTime();
+
     // TODO validate that the executionId and name are unique
     this.executionStore.put({
       status: ExecutionStatus.IN_PROGRESS,
       id: executionId,
-      startTime: this.time.time.toISOString(),
+      startTime: baseTime.toISOString(),
     });
 
     await this.submitWorkflowTask(
@@ -51,11 +53,11 @@ export class TestWorkflowClient extends WorkflowClient {
           input: request.input,
           timeoutTime: request.timeoutSeconds
             ? new Date(
-                this.time.time.getTime() + request.timeoutSeconds * 1000
+              baseTime.getTime() + request.timeoutSeconds * 1000
               ).toISOString()
             : undefined,
         },
-        this.time.time
+        baseTime
       )
     );
 
@@ -66,7 +68,7 @@ export class TestWorkflowClient extends WorkflowClient {
     executionId: string,
     ...events: HistoryStateEvent[]
   ): Promise<void> {
-    this.time.pushEvent({ executionId, events });
+    this.timeConnector.pushEvent({ executionId, events });
   }
 
   public async getExecutions(_props: {

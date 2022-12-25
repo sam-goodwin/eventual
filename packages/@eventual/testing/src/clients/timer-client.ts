@@ -21,7 +21,8 @@ export class TestTimerClient extends TimerClient {
               timerRequest.schedule.timerSeconds * 1000
           );
 
-    const seconds = (time.getTime() - this.timeConnector.time.getTime()) / 1000;
+    const seconds =
+      (time.getTime() - this.timeConnector.getTime().getTime()) / 1000;
 
     if (isTimerScheduleEventRequest(timerRequest)) {
       this.timeConnector.scheduleEvent(time, {

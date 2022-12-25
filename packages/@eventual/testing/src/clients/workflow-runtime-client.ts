@@ -42,32 +42,52 @@ export class TestWorkflowRuntimeClient implements WorkflowRuntimeClient {
   async completeExecution(
     request: CompleteExecutionRequest
   ): Promise<CompleteExecution<any>> {
-    const execution: CompleteExecution = {
-      id: request.executionId,
-      endTime: new Date(0).toISOString(),
-      startTime: new Date(0).toISOString(),
+    const execution = this.executionStore.get(request.executionId);
+
+    if (!execution) {
+      throw new Error(
+        `Execution ${request.executionId} is missing from the store.`
+      );
+    } else if (execution.status !== ExecutionStatus.IN_PROGRESS) {
+      // mirror how the AWS complete function does not write over completed executions.
+      return execution as CompleteExecution;
+    }
+
+    const updatedExecution: CompleteExecution = {
+      ...execution,
+      endTime: this.timeConnector.getTime().toISOString(),
       status: ExecutionStatus.COMPLETE,
       result: request.result,
     };
 
-    this.executionStore.put(execution);
+    this.executionStore.put(updatedExecution);
 
-    return execution;
+    return updatedExecution;
   }
 
   async failExecution(request: FailExecutionRequest): Promise<FailedExecution> {
-    const execution: FailedExecution = {
-      id: request.executionId,
-      endTime: new Date(0).toISOString(),
-      startTime: new Date(0).toISOString(),
+    const execution = this.executionStore.get(request.executionId);
+
+    if (!execution) {
+      throw new Error(
+        `Execution ${request.executionId} is missing from the store.`
+      );
+    } else if (execution.status !== ExecutionStatus.IN_PROGRESS) {
+      // mirror how the AWS complete function does not write over completed executions.
+      return execution as FailedExecution;
+    }
+
+    const updatedExecution: FailedExecution = {
+      ...execution,
+      endTime: this.timeConnector.getTime().toISOString(),
       status: ExecutionStatus.FAILED,
       error: request.error,
       message: request.message,
     };
 
-    this.executionStore.put(execution);
+    this.executionStore.put(updatedExecution);
 
-    return execution;
+    return updatedExecution;
   }
 
   async startActivity(request: ActivityWorkerRequest): Promise<void> {
@@ -88,11 +108,10 @@ export class TestWorkflowRuntimeClient implements WorkflowRuntimeClient {
                 result: result,
                 seq: request.command.seq,
               },
-              this.timeConnector.time
+              this.timeConnector.getTime()
             ),
           ],
         });
-        return;
       }
     } catch (err) {
       this.timeConnector.pushEvent({
@@ -106,11 +125,10 @@ export class TestWorkflowRuntimeClient implements WorkflowRuntimeClient {
               error: extendsError(err) ? err.name : "Error",
               message: extendsError(err) ? err.message : JSON.stringify(err),
             },
-            this.timeConnector.time
+            this.timeConnector.getTime()
           ),
         ],
       });
-      return;
     }
   }
 }

@@ -15,11 +15,11 @@ import {
   ExecutionHistoryClient,
   ExecutionStatus,
   groupBy,
+  Orchestrator,
   registerEventClient,
   registerWorkflowClient,
   ServiceType,
   Signal,
-  SignalPayload,
   SignalReceived,
   TimerClient,
   Workflow,
@@ -72,6 +72,7 @@ export class TestEnvironment {
 
   private started: boolean = false;
   private timeController: TimeController<WorkflowTask>;
+  private orchestrator: Orchestrator;
 
   public executions: Record<string, ExecutionHandle<any>> = {};
 
@@ -94,14 +95,11 @@ export class TestEnvironment {
     this.activitiesController = new ActivitiesController();
     this.eventHandlerController = new EventHandlerController();
     const timeConnector: TimeConnector = {
-      pushEvent: (task) => this.timeController.addEventAtNext(task),
+      pushEvent: (task) => this.timeController.addEventAtNextTick(task),
       scheduleEvent: (time, task) =>
         this.timeController.addEvent(time.getTime(), task),
-      time: undefined as any,
+      getTime: () => this.time,
     };
-    Object.defineProperty(timeConnector, "time", {
-      get: () => this.time,
-    });
     const executionStore = new ExecutionStore();
     this.executionHistoryClient = new TestExecutionHistoryClient();
     this.workflowRuntimeClient = new TestWorkflowRuntimeClient(
@@ -116,6 +114,15 @@ export class TestEnvironment {
       executionStore
     );
     this.timerClient = new TestTimerClient(timeConnector);
+    this.orchestrator = createOrchestrator({
+      timerClient: this.timerClient,
+      eventClient: this.eventClient,
+      workflowClient: this.workflowClient,
+      workflowRuntimeClient: this.workflowRuntimeClient,
+      executionHistoryClient: this.executionHistoryClient,
+      metricsClient: new TestMetricsClient(),
+      logger: new TestLogger(),
+    });
   }
 
   async start() {
@@ -157,10 +164,8 @@ export class TestEnvironment {
   }
 
   mockActivity<A extends ActivityFunction<any, any>>(
-    activity: A
-  ): MockActivity<A>;
-  mockActivity(activityId: string): MockActivity<any>;
-  mockActivity<A extends ActivityFunction<any, any>>(activity: A | string) {
+    activity: A | string
+  ): MockActivity<A> {
     return this.activitiesController.mockActivity(activity as any);
   }
 
@@ -185,33 +190,33 @@ export class TestEnvironment {
     this.eventHandlerController.enableDefaultSubscriptions();
   }
 
-  async sendSignal<S extends Signal<any>>(
+  async sendSignal<Payload extends any>(
     execution: ExecutionHandle<any>,
-    signal: S,
-    payload: SignalPayload<S>
+    signal: Signal<Payload>,
+    payload: Payload
   ): Promise<void>;
-  async sendSignal<S extends Signal<any>>(
+  async sendSignal<Payload extends any>(
     executionId: string,
-    signal: S,
-    payload: SignalPayload<S>
+    signal: Signal<Payload>,
+    payload: Payload
   ): Promise<void>;
   async sendSignal(
     execution: ExecutionHandle<any>,
     signalId: string,
     payload: any
   ): Promise<void>;
-  async sendSignal<S extends Signal<any>>(
+  async sendSignal<Payload extends any>(
     executionId: string,
     signalId: string,
-    payload: SignalPayload<S>
+    payload: Payload
   ): Promise<void>;
-  async sendSignal<S extends Signal = Signal<any>>(
+  async sendSignal<Payload>(
     execution: ExecutionHandle<any> | string,
-    signal: S | string,
-    payload: SignalPayload<S>
+    signal: Signal<Payload> | string,
+    payload: Payload
   ) {
     // add a signal received event, mirroring sendSignal
-    this.timeController.addEventAtNext({
+    this.timeController.addEventAtNextTick({
       executionId: typeof execution === "string" ? execution : execution.id,
       events: [
         createEvent<SignalReceived>(
@@ -298,7 +303,7 @@ export class TestEnvironment {
   }
 
   get time() {
-    return new Date(this.timeController.time);
+    return new Date(this.timeController.currentTick);
   }
 
   /**
@@ -312,7 +317,7 @@ export class TestEnvironment {
       const events = this.timeController.tick();
       await this.processTickEvents(events);
     } else if (n < 1) {
-      return;
+      throw new Error("Must provide a positive number of seconds to tick");
     } else {
       // process each batch of event for n ticks.
       // note: we may get back fewer than n groups if there are not events for each tick.
@@ -344,9 +349,7 @@ export class TestEnvironment {
   /**
    * Process the events from a single tick/second.
    */
-  private async processTickEvents(
-    events: ReturnType<typeof this.timeController.tick>
-  ) {
+  private async processTickEvents(events: WorkflowTask[]) {
     const workflowTasks = events.filter(
       (event): event is WorkflowTask =>
         "events" in event && "executionId" in event
@@ -355,8 +358,6 @@ export class TestEnvironment {
       // TODO: support other event types.
       throw new Error("Unknown event types in the TimerController.");
     }
-    const orchestrator = this.createOrchestrator();
-
     const tasksByExecutionId = groupBy(
       workflowTasks,
       (task) => task.executionId
@@ -370,20 +371,8 @@ export class TestEnvironment {
     );
 
     await serviceTypeScope(ServiceType.OrchestratorWorker, () =>
-      orchestrator.orchestrateExecutions(eventsByExecutionId, this.time)
+      this.orchestrator(eventsByExecutionId, this.time)
     );
-  }
-
-  private createOrchestrator() {
-    return createOrchestrator({
-      timerClient: this.timerClient,
-      eventClient: this.eventClient,
-      workflowClient: this.workflowClient,
-      workflowRuntimeClient: this.workflowRuntimeClient,
-      executionHistoryClient: this.executionHistoryClient,
-      metricsClient: new TestMetricsClient(),
-      logger: new TestLogger(),
-    });
   }
 }
 
@@ -393,7 +382,7 @@ export class TestEnvironment {
 export interface TimeConnector {
   pushEvent(task: WorkflowTask): void;
   scheduleEvent(time: Date, task: WorkflowTask): void;
-  time: Date;
+  getTime: () => Date;
 }
 
 export class ExecutionHandle<W extends Workflow<any, any>> {
@@ -427,10 +416,13 @@ export class ExecutionHandle<W extends Workflow<any, any>> {
   }
 
   async signal(signalId: string, payload: any): Promise<void>;
-  async signal<S extends Signal<any>>(signal: S, payload: any): Promise<void>;
-  async signal<S extends Signal<any> = any>(
-    signal: string | S,
-    payload: SignalPayload<S>
+  async signal<Payload extends any>(
+    signal: Signal<Payload>,
+    payload: any
+  ): Promise<void>;
+  async signal<Payload extends any = any>(
+    signal: string | Signal<Payload>,
+    payload: Payload
   ): Promise<void> {
     return this.environment.sendSignal(
       this as any,

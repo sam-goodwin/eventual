@@ -46,9 +46,7 @@ export default middy(async (event: SQSEvent) => {
     ])
   );
 
-  const { failedExecutionIds } = await orchestrator.orchestrateExecutions(
-    eventsByExecutionId
-  );
+  const { failedExecutionIds } = await orchestrator(eventsByExecutionId);
 
   const failedMessageIds = failedExecutionIds.flatMap(
     (executionId) =>

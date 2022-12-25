@@ -7,8 +7,7 @@ import { prepareOutDir } from "./build.js";
 import { createRequire } from "module";
 import { ServiceType, SERVICE_TYPE_FLAG } from "@eventual/core";
 
-// @ts-ignore - ts is complaining about not having module:esnext even thought it is in tsconfig.json
-var require = require || createRequire(import.meta.url);
+var require = createRequire(import.meta.url);
 
 /**
  * Bundle an eventual program

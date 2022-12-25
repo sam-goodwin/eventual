@@ -15,7 +15,7 @@ import { ActivityRuntimeClient } from "./activity-runtime-client.js";
 export abstract class WorkflowClient {
   constructor(
     private activityRuntimeClient: ActivityRuntimeClient,
-    private baseTime: () => Date
+    protected baseTime: () => Date
   ) {}
   /**
    * Start a workflow execution

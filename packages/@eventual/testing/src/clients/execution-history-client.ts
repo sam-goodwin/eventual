@@ -10,10 +10,7 @@ export class TestExecutionHistoryClient extends ExecutionHistoryClient {
     this.putEvents(executionId, [event]);
   }
   async putEvents(executionId: string, events: WorkflowEvent[]): Promise<void> {
-    if (!(executionId in this.eventStore)) {
-      this.eventStore[executionId] = [];
-    }
-    this.eventStore[executionId]!.push(...events);
+    (this.eventStore[executionId] ??= []).push(...events);
   }
   async getEvents(executionId: string): Promise<WorkflowEvent[]> {
     return this.eventStore[executionId] ?? [];

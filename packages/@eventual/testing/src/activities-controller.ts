@@ -21,10 +21,6 @@ import { serviceTypeScope } from "./utils.js";
 export class ActivitiesController {
   private mockedActivities: Record<string, MockActivity<any>> = {};
 
-  mockActivity<A extends ActivityFunction<any, any>>(
-    activity: A
-  ): MockActivity<A>;
-  mockActivity(activityId: string): MockActivity<any>;
   mockActivity<A extends ActivityFunction<any, any>>(activity: A | string) {
     const id = typeof activity === "string" ? activity : activity.activityID;
     const realActivity =
@@ -42,8 +38,6 @@ export class ActivitiesController {
     return mock;
   }
 
-  clearMock(activity: ActivityFunction<any, any>): void;
-  clearMock(activityId: string): void;
   clearMock(activity: ActivityFunction<any, any> | string) {
     const id = typeof activity === "string" ? activity : activity.activityID;
     delete this.mockedActivities[id];
@@ -123,7 +117,7 @@ export interface BlockResolution {
 export class MockActivity<A extends ActivityFunction<any, any>>
   implements IMockActivity<ActivityArguments<A>, ActivityOutput<A>>
 {
-  private resolutionsBefore: ActivityResolution<
+  private onceResolutions: ActivityResolution<
     ActivityArguments<A>,
     ActivityOutput<A>
   >[] = [];
@@ -134,9 +128,8 @@ export class MockActivity<A extends ActivityFunction<any, any>>
   // TODO: should this be the ActivityFunction or the ActivityHandler?
   constructor(private activity: A) {}
 
-  // TODO move and rename and finish
   public call(...args: ActivityArguments<A>) {
-    const before = this.resolutionsBefore.pop();
+    const before = this.onceResolutions.pop();
     if (before) {
       return this.resolve(before, args);
     } else if (this.resolution) {
@@ -234,7 +227,7 @@ export class MockActivity<A extends ActivityFunction<any, any>>
   private addOnceResolution(
     resolution: ActivityResolution<ActivityArguments<A>, ActivityOutput<A>>
   ) {
-    this.resolutionsBefore.push(resolution);
+    this.onceResolutions.push(resolution);
     return this;
   }
 }
