@@ -27,7 +27,6 @@ export class TestWorkflowClient extends WorkflowClient {
   public async startWorkflow<W extends Workflow<any, any> = Workflow<any, any>>(
     request: StartWorkflowRequest<W>
   ): Promise<string> {
-    // TODO maintain a store of executions
     const name = request.executionName ?? ulid();
     const executionId = formatExecutionId(
       request.workflowName,

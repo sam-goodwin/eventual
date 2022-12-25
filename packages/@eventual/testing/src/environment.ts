@@ -216,19 +216,17 @@ export class TestEnvironment {
     payload: Payload
   ) {
     // add a signal received event, mirroring sendSignal
-    this.timeController.addEventAtNextTick({
-      executionId: typeof execution === "string" ? execution : execution.id,
-      events: [
-        createEvent<SignalReceived>(
-          {
-            type: WorkflowEventType.SignalReceived,
-            signalId: typeof signal === "string" ? signal : signal.id,
-            payload,
-          },
-          this.time
-        ),
-      ],
-    });
+    await this.workflowClient.submitWorkflowTask(
+      typeof execution === "string" ? execution : execution.id,
+      createEvent<SignalReceived>(
+        {
+          type: WorkflowEventType.SignalReceived,
+          signalId: typeof signal === "string" ? signal : signal.id,
+          payload,
+        },
+        this.time
+      )
+    );
     return this.tick();
   }
 
@@ -291,11 +289,7 @@ export class TestEnvironment {
     // tick forward on explicit user action (triggering the workflow to start running)
     await this.tick();
 
-    const execution = new ExecutionHandle(
-      executionId,
-      this,
-      this.workflowRuntimeClient
-    );
+    const execution = new ExecutionHandle(executionId, this);
 
     this.executions[executionId] = execution;
 
@@ -386,15 +380,7 @@ export interface TimeConnector {
 }
 
 export class ExecutionHandle<W extends Workflow<any, any>> {
-  constructor(
-    public id: string,
-    private environment: TestEnvironment,
-    private workflowRuntimeClient: WorkflowRuntimeClient
-  ) {}
-  // TODO: remove this?
-  history() {
-    this.workflowRuntimeClient.getHistory(this.id);
-  }
+  constructor(public id: string, private environment: TestEnvironment) {}
   async status() {
     return (await this.environment.workflowClient.getExecution(this.id))!
       .status;
