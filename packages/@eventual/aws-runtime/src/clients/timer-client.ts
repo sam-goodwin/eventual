@@ -110,7 +110,7 @@ export class AWSTimerClient implements TimerClient {
 
       const schedulerForwardEvent: ScheduleForwarderRequest = {
         clearSchedule: true,
-        scheduleName: scheduleName,
+        scheduleName,
         timerRequest,
         forwardTime: "<aws.scheduler.scheduled-time>",
         untilTime: untilTimeIso,

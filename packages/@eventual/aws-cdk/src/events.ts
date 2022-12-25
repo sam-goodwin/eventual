@@ -1,7 +1,7 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { AppSpec, ServiceType } from "@eventual/core";
-import { aws_events_targets } from "aws-cdk-lib";
 import { EventBus, IEventBus, Rule } from "aws-cdk-lib/aws-events";
+import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";
 import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
@@ -70,6 +70,7 @@ export class Events extends Construct implements IGrantable {
 
     if (props.appSpec.subscriptions.length > 0) {
       // configure a Rule to route all subscribed events to the eventHandler
+      // eslint-disable-next-line no-new
       new Rule(this, "Rules", {
         eventBus: this.bus,
         eventPattern: {
@@ -79,7 +80,7 @@ export class Events extends Construct implements IGrantable {
           ),
         },
         targets: [
-          new aws_events_targets.LambdaFunction(this.handler, {
+          new LambdaFunction(this.handler, {
             deadLetterQueue: this.deadLetterQueue,
           }),
         ],

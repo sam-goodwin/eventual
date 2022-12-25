@@ -175,15 +175,15 @@ export type ExecutionRecord =
         }
     );
 
-export namespace ExecutionRecord {
-  export const PRIMARY_KEY = "Execution";
-  export const SORT_KEY_PREFIX = `Execution$`;
-  export function sortKey(
+export const ExecutionRecord = {
+  PRIMARY_KEY: "Execution",
+  SORT_KEY_PREFIX: `Execution$`,
+  sortKey(
     executionId: string
-  ): `${typeof SORT_KEY_PREFIX}${typeof executionId}` {
-    return `${SORT_KEY_PREFIX}${executionId}`;
-  }
-}
+  ): `${typeof this.SORT_KEY_PREFIX}${typeof executionId}` {
+    return `${this.SORT_KEY_PREFIX}${executionId}`;
+  },
+};
 
 export function createExecutionFromResult(
   execution: ExecutionRecord

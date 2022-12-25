@@ -127,7 +127,8 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
   }
 }
 
-export interface ActivityExecutionRecord {
+export interface ActivityExecutionRecord
+  extends Record<string, AttributeValue | undefined> {
   pk: { S: `${typeof ActivityExecutionRecord.PARTITION_KEY_PREFIX}$${string}` };
   executionId: AttributeValue.SMember;
   seq: AttributeValue.NMember;
@@ -135,12 +136,12 @@ export interface ActivityExecutionRecord {
   cancelled?: AttributeValue.BOOLMember;
 }
 
-export namespace ActivityExecutionRecord {
-  export const PARTITION_KEY_PREFIX = `Activity$`;
-  export function key(executionId: string, seq: number) {
-    return `${PARTITION_KEY_PREFIX}$${executionId}$${seq}`;
-  }
-}
+export const ActivityExecutionRecord = {
+  PARTITION_KEY_PREFIX: `Activity$`,
+  key(executionId: string, seq: number) {
+    return `${this.PARTITION_KEY_PREFIX}$${executionId}$${seq}`;
+  },
+};
 
 function createActivityFromRecord(
   activityRecord: ActivityExecutionRecord

@@ -61,6 +61,7 @@ export class Signal<Payload = void> {
   on(handler: SignalHandlerFunction<Payload>): SignalsHandler {
     return onSignal(this, handler);
   }
+
   /**
    * Waits for a signal to be received by the workflow.
    *
@@ -94,6 +95,7 @@ export class Signal<Payload = void> {
   expect(opts?: ExpectSignalOptions): Promise<Payload> {
     return expectSignal(this, opts);
   }
+
   /**
    * Allows a {@link workflow} to send this signal to any workflow {@link Execution} by executionId.
    *

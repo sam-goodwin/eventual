@@ -1,5 +1,5 @@
 import { AppSpec, MetricsCommon, OrchestratorMetrics } from "@eventual/core";
-import { Arn, aws_cloudwatch, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
+import { Arn, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
 import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
 import {
   AccountRootPrincipal,
@@ -21,7 +21,7 @@ import { Api } from "./service-api";
 import { outDir } from "./utils";
 import { IWorkflows, Workflows, WorkflowsProps } from "./workflows";
 import { Events } from "./events";
-import { Statistic, Unit } from "aws-cdk-lib/aws-cloudwatch";
+import { Metric, MetricOptions, Statistic, Unit } from "aws-cdk-lib/aws-cloudwatch";
 
 export interface ServiceProps {
   entry: string;
@@ -226,8 +226,8 @@ export class Service extends Construct implements IGrantable {
    * purely a metric for how well the workflow's function is performing as history grows.
    */
   public metricAdvanceExecutionDuration(
-    options?: aws_cloudwatch.MetricOptions
-  ): aws_cloudwatch.Metric {
+    options?: MetricOptions
+  ): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
       metricName: OrchestratorMetrics.AdvanceExecutionDuration,
@@ -240,8 +240,8 @@ export class Service extends Construct implements IGrantable {
    * The number of commands invoked in a single batch by the orchestrator.
    */
   public metricCommandsInvoked(
-    options?: aws_cloudwatch.MetricOptions
-  ): aws_cloudwatch.Metric {
+    options?: MetricOptions
+  ): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
       metricName: OrchestratorMetrics.CommandsInvoked,
@@ -254,8 +254,8 @@ export class Service extends Construct implements IGrantable {
    * The time taken to invoke all Commands emitted by advancing a workflow.
    */
   public metricInvokeCommandsDuration(
-    options?: aws_cloudwatch.MetricOptions
-  ): aws_cloudwatch.Metric {
+    options?: MetricOptions
+  ): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
       metricName: OrchestratorMetrics.InvokeCommandsDuration,
@@ -268,8 +268,8 @@ export class Service extends Construct implements IGrantable {
    * Time taken to download an execution's history from S3.
    */
   public metricLoadHistoryDuration(
-    options?: aws_cloudwatch.MetricOptions
-  ): aws_cloudwatch.Metric {
+    options?: MetricOptions
+  ): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
       metricName: OrchestratorMetrics.LoadHistoryDuration,
@@ -282,8 +282,8 @@ export class Service extends Construct implements IGrantable {
    * Time taken to save an execution's history to S3.
    */
   public metricSaveHistoryDuration(
-    options?: aws_cloudwatch.MetricOptions
-  ): aws_cloudwatch.Metric {
+    options?: MetricOptions
+  ): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
       metricName: OrchestratorMetrics.SaveHistoryDuration,
@@ -296,8 +296,8 @@ export class Service extends Construct implements IGrantable {
    * The size of the history S3 file in bytes.
    */
   public metricSavedHistoryBytes(
-    options?: aws_cloudwatch.MetricOptions
-  ): aws_cloudwatch.Metric {
+    options?: MetricOptions
+  ): Metric {
     return this.metric({
       metricName: OrchestratorMetrics.SavedHistoryBytes,
       unit: Unit.BYTES,
@@ -310,8 +310,8 @@ export class Service extends Construct implements IGrantable {
    * The number of events stored in the history S3 file.
    */
   public metricSavedHistoryEvents(
-    options?: aws_cloudwatch.MetricOptions
-  ): aws_cloudwatch.Metric {
+    options?: MetricOptions
+  ): Metric {
     return this.metric({
       metricName: OrchestratorMetrics.SavedHistoryEvents,
       unit: Unit.COUNT,
@@ -324,8 +324,8 @@ export class Service extends Construct implements IGrantable {
    * The number of commands invoked in a single batch by the orchestrator.
    */
   public metricMaxTaskAge(
-    options?: aws_cloudwatch.MetricOptions
-  ): aws_cloudwatch.Metric {
+    options?: MetricOptions
+  ): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
       metricName: OrchestratorMetrics.MaxTaskAge,
@@ -335,11 +335,11 @@ export class Service extends Construct implements IGrantable {
   }
 
   private metric(
-    options: aws_cloudwatch.MetricOptions & {
+    options: MetricOptions & {
       metricName: string;
     }
   ) {
-    return new aws_cloudwatch.Metric({
+    return new Metric({
       ...options,
       namespace: MetricsCommon.EventualNamespace,
       dimensionsMap: {

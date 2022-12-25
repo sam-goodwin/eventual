@@ -3,6 +3,7 @@ export class EventualError extends Error {
     super(message);
     this.name = name;
   }
+
   /**
    * Provides a reasonable form when running JSON.stringify.
    */

@@ -29,7 +29,7 @@ export async function infer() {
       platform: "node",
     });
 
-    const script = bundle.outputFiles[0]?.text!;
+    const script = bundle.outputFiles[0]!.text;
     const hash = crypto.createHash("md5").update(script).digest("hex");
     scriptName = path.join(tmp, `${hash}.js`);
     await fs.writeFile(scriptName, script);

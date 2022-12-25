@@ -116,13 +116,13 @@ export function isCommandCall(call: Eventual): call is CommandCall {
   );
 }
 
-export namespace Eventual {
+export const Eventual = {
   /**
    * Wait for all {@link activities} to complete or until at least one throws.
    *
    * This is the equivalent behavior to Promise.all.
    */
-  export function all<A extends Eventual[]>(
+  all<A extends Eventual[]>(
     activities: A
   ): AwaitAll<EventualArrayPositional<A>> {
     if (!isOrchestratorWorker()) {
@@ -130,29 +130,22 @@ export namespace Eventual {
     }
 
     return createAwaitAll(activities) as any;
-  }
-
-  export function any<A extends Eventual[]>(
-    activities: A
-  ): AwaitAny<EventualArrayUnion<A>> {
+  },
+  any<A extends Eventual[]>(activities: A): AwaitAny<EventualArrayUnion<A>> {
     if (!isOrchestratorWorker()) {
       throw new Error("Eventual.any is only valid in a workflow");
     }
 
     return createAwaitAny(activities) as any;
-  }
-
-  export function race<A extends Eventual[]>(
-    activities: A
-  ): Race<EventualArrayUnion<A>> {
+  },
+  race<A extends Eventual[]>(activities: A): Race<EventualArrayUnion<A>> {
     if (!isOrchestratorWorker()) {
       throw new Error("Eventual.race is only valid in a workflow");
     }
 
     return createRace(activities) as any;
-  }
-
-  export function allSettled<A extends Eventual[]>(
+  },
+  allSettled<A extends Eventual[]>(
     activities: A
   ): AwaitAllSettled<EventualArrayPromiseResult<A>> {
     if (!isOrchestratorWorker()) {
@@ -160,8 +153,8 @@ export namespace Eventual {
     }
 
     return createAwaitAllSettled(activities) as any;
-  }
-}
+  },
+};
 
 export interface EventualCallCollector {
   pushEventual<E extends Eventual>(activity: E): E;
@@ -182,7 +175,12 @@ export type EventualArrayUnion<A extends Eventual<any>[]> =
 
 // the below globals are required by the transformer
 
-// @ts-ignore
+declare global {
+  // eslint-disable-next-line no-var
+  var $eventual: typeof chain;
+  // eslint-disable-next-line no-var
+  var $Eventual: typeof Eventual;
+}
+
 global.$eventual = chain;
-// @ts-ignore
 global.$Eventual = Eventual;

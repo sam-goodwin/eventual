@@ -326,8 +326,7 @@ export function createOrchestrator({
       ) {
         const updatedHistoryEvents: HistoryStateEvent[] = [];
         const newWorkflowEvents: WorkflowEvent[] = [];
-        let resultEvent: WorkflowCompleted | WorkflowFailed | undefined =
-          undefined;
+        let resultEvent: WorkflowCompleted | WorkflowFailed | undefined;
         const seenEvents: Set<string> = new Set(
           originalHistory.map(getEventId)
         );

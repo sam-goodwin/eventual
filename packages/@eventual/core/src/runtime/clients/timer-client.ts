@@ -71,8 +71,8 @@ export interface AbsoluteSchedule {
 
 export type Schedule = RelativeSchedule | AbsoluteSchedule;
 
-export namespace Schedule {
-  export function relative(
+export const Schedule = {
+  relative(
     timerSeconds: number,
     baseTime: Date = new Date()
   ): RelativeSchedule {
@@ -81,15 +81,14 @@ export namespace Schedule {
       timerSeconds,
       baseTime,
     };
-  }
-
-  export function absolute(untilTime: string): AbsoluteSchedule {
+  },
+  absolute(untilTime: string): AbsoluteSchedule {
     return {
       type: "Absolute",
       untilTime,
     };
-  }
-}
+  },
+};
 
 export type TimerRequestBase<T extends TimerRequestType> = {
   type: T;
