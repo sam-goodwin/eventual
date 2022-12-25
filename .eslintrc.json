@@ -53,7 +53,9 @@
           "parameterProperties": "no-public"
         }
       }
-    ]
+    ],
+    "camelcase": "off",
+    "no-new": "off"
   },
   "settings": {
     "react": {

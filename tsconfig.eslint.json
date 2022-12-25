@@ -1,12 +1,10 @@
 {
   "extends": "./tsconfig-base.json",
   "compilerOptions": {
-    // ensure that nobody can accidentally use this config for a build
     "noEmit": true,
     "jsx": "react-jsx"
   },
   "include": [
-    // whatever paths you intend to lint
     "**/src/*",
     "**/src/**/*",
     "**/test/*",
