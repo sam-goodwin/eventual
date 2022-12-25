@@ -46,6 +46,7 @@ export default class FetchReceiver implements Receiver {
       (() => {
         const defaultLogger = new ConsoleLogger();
         defaultLogger.setLevel(logLevel);
+        
         return defaultLogger;
       })();
   }
