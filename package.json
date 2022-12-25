@@ -15,6 +15,7 @@
     "deploy": "turbo run deploy",
     "hotswap": "turbo run hotswap",
     "dev": "turbo run dev --parallel",
+    "prettier": "prettier .",
     "lint": "eslint . --fix",
     "prepare": "husky install",
     "test": "turbo run test",

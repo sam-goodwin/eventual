@@ -1,1 +1,4 @@
 pnpm-lock.yaml
+cdk.out
+.eventual
+**/node_modules
