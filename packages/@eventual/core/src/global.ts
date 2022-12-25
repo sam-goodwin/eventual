@@ -64,6 +64,10 @@ export const events = (): Map<string, Event> =>
 export const eventSubscriptions = (): EventSubscription[] =>
   (globalThis._eventual.eventSubscriptions ??= []);
 
+export function clearEventSubscriptions() {
+  globalThis._eventual.eventSubscriptions = [];
+}
+
 export const callableActivities = (): Record<string, ActivityHandler<any>> =>
   (globalThis._eventual.callableActivities ??= {});
 

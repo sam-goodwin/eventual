@@ -1,15 +1,23 @@
 import {
   ActivityFunction,
+  clearEventSubscriptions,
   createEvent,
   createOrchestrator,
+  Event,
   EventClient,
+  EventEnvelope,
+  EventHandler,
+  EventPayload,
+  EventPayloadType,
+  events,
   EventualError,
   Execution,
   ExecutionHistoryClient,
   ExecutionStatus,
   groupBy,
+  registerEventClient,
+  registerWorkflowClient,
   ServiceType,
-  SERVICE_TYPE_FLAG,
   Signal,
   SignalPayload,
   SignalReceived,
@@ -36,6 +44,8 @@ import { TimeController } from "./time-controller.js";
 import { InProgressError } from "./error.js";
 import { ExecutionStore } from "./execution-store.js";
 import { ActivitiesController, MockActivity } from "./activities-controller.js";
+import { EventHandlerController } from "./event-handler-controller.js";
+import { serviceTypeScope } from "./utils.js";
 
 export interface TestEnvironmentProps {
   entry: string;
@@ -58,6 +68,7 @@ export class TestEnvironment {
   private eventClient: EventClient;
 
   private activitiesController: ActivitiesController;
+  private eventHandlerController: EventHandlerController;
 
   private started: boolean = false;
   private timeController: TimeController<WorkflowTask>;
@@ -81,6 +92,7 @@ export class TestEnvironment {
       increment: 1000,
     });
     this.activitiesController = new ActivitiesController();
+    this.eventHandlerController = new EventHandlerController();
     const timeConnector: TimeConnector = {
       pushEvent: (task) => this.timeController.addEventAtNext(task),
       scheduleEvent: (time, task) =>
@@ -97,7 +109,7 @@ export class TestEnvironment {
       timeConnector,
       this.activitiesController
     );
-    this.eventClient = new TestEventClient();
+    this.eventClient = new TestEventClient(this.eventHandlerController);
     this.workflowClient = new TestWorkflowClient(
       timeConnector,
       new TestActivityRuntimeClient(),
@@ -110,6 +122,9 @@ export class TestEnvironment {
     if (!this.started) {
       const _workflows = workflows();
       _workflows.clear();
+      const _events = events();
+      _events.clear();
+      clearEventSubscriptions();
       // run the service to re-import the workflows, but transformed
       await import(await this.serviceFile);
       this.started = true;
@@ -117,11 +132,13 @@ export class TestEnvironment {
   }
 
   /**
-   * Resets all mocks (@see resetMocks) and resets time {@see resetTime}.
+   * Resets all mocks (@see resetMocks) and test subscriptions {@see resetTestSubscriptions},
+   * resets time {@see resetTime}.
    */
   reset(time?: Date) {
     this.resetTime(time);
     this.resetMocks();
+    this.resetTestSubscriptions();
   }
 
   resetTime(time?: Date) {
@@ -135,12 +152,37 @@ export class TestEnvironment {
     this.activitiesController.clearMocks();
   }
 
+  resetTestSubscriptions() {
+    this.eventHandlerController.clearTestHandlers();
+  }
+
   mockActivity<A extends ActivityFunction<any, any>>(
     activity: A
   ): MockActivity<A>;
   mockActivity(activityId: string): MockActivity<any>;
   mockActivity<A extends ActivityFunction<any, any>>(activity: A | string) {
     return this.activitiesController.mockActivity(activity as any);
+  }
+
+  subscribeEvent<E extends Event<any>>(
+    event: E,
+    handler: EventHandler<EventPayloadType<E>>
+  ) {
+    return this.eventHandlerController.subscribeEvent(event, handler);
+  }
+
+  /**
+   * Turn off all of the event handlers registered by the service.
+   */
+  disableServiceSubscriptions() {
+    this.eventHandlerController.disableDefaultSubscriptions();
+  }
+
+  /**
+   * Turn on all of the event handlers in the service.
+   */
+  enableServiceSubscriptions() {
+    this.eventHandlerController.enableDefaultSubscriptions();
   }
 
   async sendSignal<S extends Signal<any>>(
@@ -183,6 +225,42 @@ export class TestEnvironment {
       ],
     });
     return this.tick();
+  }
+
+  /**
+   * Publishes one or more events of a type into the {@link TestEnvironment}.
+   */
+  async publishEvent(
+    eventId: string,
+    ...payloads: EventPayload[]
+  ): Promise<void>;
+  async publishEvent<E extends Event<any>>(
+    event: E,
+    ...payloads: EventPayloadType<E>[]
+  ): Promise<void>;
+  async publishEvent<E extends Event<any>>(
+    event: string | E,
+    ...payloads: EventPayloadType<E>[]
+  ) {
+    // TODO unregister.
+    registerWorkflowClient(this.workflowClient);
+    registerEventClient(this.eventClient);
+    await this.eventClient.publish(
+      ...payloads.map(
+        (p): EventEnvelope<EventPayloadType<E>> => ({
+          name: typeof event === "string" ? event : event.name,
+          event: p,
+        })
+      )
+    );
+    return this.tick();
+  }
+
+  /**
+   * Publishes one or more events into the {@link TestEnvironment}.
+   */
+  async publishEvents(...events: EventEnvelope<EventPayload>[]) {
+    await this.eventClient.publish(...events);
   }
 
   async startExecution<W extends Workflow<any, any> = any>(
@@ -291,10 +369,9 @@ export class TestEnvironment {
       ])
     );
 
-    const back = process.env[SERVICE_TYPE_FLAG];
-    process.env[SERVICE_TYPE_FLAG] = ServiceType.OrchestratorWorker;
-    await orchestrator.orchestrateExecutions(eventsByExecutionId, this.time);
-    process.env[SERVICE_TYPE_FLAG] = back;
+    await serviceTypeScope(ServiceType.OrchestratorWorker, () =>
+      orchestrator.orchestrateExecutions(eventsByExecutionId, this.time)
+    );
   }
 
   private createOrchestrator() {

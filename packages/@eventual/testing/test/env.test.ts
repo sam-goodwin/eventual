@@ -1,12 +1,21 @@
-import { Execution, ExecutionStatus } from "@eventual/core";
+import { jest } from "@jest/globals";
+import {
+  EventPayloadType,
+  Execution,
+  ExecutionStatus,
+  EventHandler,
+} from "@eventual/core";
 import path from "path";
 import * as url from "url";
 import { MockActivity } from "../src/activities-controller.js";
 import { TestEnvironment } from "../src/environment.js";
 import {
   activity1,
+  continueEvent,
   continueSignal,
+  dataDoneEvent,
   dataDoneSignal,
+  dataEvent,
   dataSignal,
   orchestrate,
   signalWorkflow,
@@ -421,6 +430,155 @@ describe("signal", () => {
     >({
       status: ExecutionStatus.COMPLETE,
       result: "nothing to see here",
+    });
+  });
+});
+
+describe("events", () => {
+  describe("publishEvent", () => {
+    test("using service handlers", async () => {
+      const dataEventMock =
+        jest.fn<EventHandler<EventPayloadType<typeof dataEvent>>>();
+      env.subscribeEvent(dataEvent, dataEventMock);
+      const execution = await env.startExecution(signalWorkflow, undefined);
+      await env.publishEvent(dataEvent, {
+        executionId: execution.id,
+        data: "event data",
+      });
+      await env.publishEvent(dataDoneEvent, {
+        executionId: execution.id,
+      });
+      await env.publishEvent(continueEvent, {
+        executionId: execution.id,
+      });
+      expect(dataEventMock).toBeCalledWith({
+        executionId: execution.id,
+        data: "event data",
+      });
+      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+        status: ExecutionStatus.COMPLETE,
+        result: "event data",
+      });
+    });
+
+    test("workflow send events", async () => {
+      const dataEventMock =
+        jest.fn<EventHandler<EventPayloadType<typeof dataEvent>>>();
+      env.subscribeEvent(dataEvent, dataEventMock);
+
+      const execution = await env.startExecution(signalWorkflow, undefined);
+      const orchestratorExecution = await env.startExecution(orchestrate, {
+        targetExecutionId: execution.id,
+        events: true,
+      });
+
+      await env.tick(100);
+
+      expect(dataEventMock).toHaveBeenCalled();
+
+      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+        status: ExecutionStatus.COMPLETE,
+        result: "hello from the orchestrator workflow!",
+      });
+      expect(await orchestratorExecution.getExecution()).toMatchObject<
+        Partial<Execution>
+      >({
+        status: ExecutionStatus.COMPLETE,
+        result: "nothing to see here",
+      });
+    });
+  });
+
+  describe("handle event", () => {
+    test("using service handlers", async () => {
+      const dataEventMock =
+        jest.fn<EventHandler<EventPayloadType<typeof dataEvent>>>();
+      env.subscribeEvent(dataEvent, dataEventMock);
+      const execution = await env.startExecution(signalWorkflow, undefined);
+      await env.publishEvent(dataEvent, {
+        executionId: execution.id,
+        data: "event data",
+      });
+      await env.publishEvent(dataDoneEvent, {
+        executionId: execution.id,
+      });
+      await env.publishEvent(continueEvent, {
+        executionId: execution.id,
+      });
+      expect(dataEventMock).toBeCalledWith({
+        executionId: execution.id,
+        data: "event data",
+      });
+      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+        status: ExecutionStatus.COMPLETE,
+        result: "event data",
+      });
+    });
+  });
+
+  describe("toggle event handler", () => {
+    test("disable and enable", async () => {
+      env.disableServiceSubscriptions();
+
+      const dataEventMock =
+        jest.fn<EventHandler<EventPayloadType<typeof dataEvent>>>();
+      env.subscribeEvent(dataEvent, dataEventMock);
+      const execution = await env.startExecution(signalWorkflow, undefined);
+      await env.publishEvent(dataEvent, {
+        executionId: execution.id,
+        data: "event data",
+      });
+      await env.publishEvent(dataDoneEvent, {
+        executionId: execution.id,
+      });
+      await env.publishEvent(continueEvent, {
+        executionId: execution.id,
+      });
+      // the test env handler was called
+      expect(dataEventMock).toBeCalledWith({
+        executionId: execution.id,
+        data: "event data",
+      });
+
+      // but the workflow was not progressed by the default subscriptions.
+      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+        status: ExecutionStatus.IN_PROGRESS,
+      });
+
+      // enable and try again, the subscriptions should be working now.
+      env.enableServiceSubscriptions();
+      await env.publishEvent(dataEvent, {
+        executionId: execution.id,
+        data: "event data",
+      });
+      await env.publishEvent(dataDoneEvent, {
+        executionId: execution.id,
+      });
+      await env.publishEvent(continueEvent, {
+        executionId: execution.id,
+      });
+      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+        status: ExecutionStatus.COMPLETE,
+        result: "event data",
+      });
+
+      expect(dataEventMock).toBeCalledTimes(2);
+    });
+
+    test("reset subscriptions", async () => {
+      const dataEventMock =
+        jest.fn<EventHandler<EventPayloadType<typeof dataEvent>>>();
+      env.subscribeEvent(dataEvent, dataEventMock);
+      await env.publishEvent(dataEvent, {
+        executionId: "dummy",
+        data: "event data",
+      });
+      env.resetTestSubscriptions();
+      await env.publishEvent(dataEvent, {
+        executionId: "dummy",
+        data: "event data",
+      });
+      expect(dataEventMock).toBeCalledTimes(1);
     });
   });
 });

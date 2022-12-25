@@ -1,8 +1,12 @@
 import { EventClient, EventEnvelope, EventPayload } from "@eventual/core";
+import { EventHandlerController } from "../event-handler-controller.js";
 
 export class TestEventClient implements EventClient {
-  publish(..._event: EventEnvelope<EventPayload>[]): Promise<void> {
-    // TODO: implement me
-    throw new Error("Method not implemented.");
+  constructor(private eventHandlerController: EventHandlerController) {}
+
+  async publish(...event: EventEnvelope<EventPayload>[]): Promise<void> {
+    await Promise.allSettled(
+      event.map((e) => this.eventHandlerController.receiveEvent(e))
+    );
   }
 }

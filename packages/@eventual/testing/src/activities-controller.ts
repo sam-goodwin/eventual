@@ -13,8 +13,10 @@ import {
   isResult,
   Resolved,
   Result,
+  ServiceType,
   Timeout,
 } from "@eventual/core";
+import { serviceTypeScope } from "./utils.js";
 
 export class ActivitiesController {
   private mockedActivities: Record<string, MockActivity<any>> = {};
@@ -52,16 +54,18 @@ export class ActivitiesController {
   }
 
   async invokeActivity(activityId: string, ...args: any[]) {
-    if (activityId in this.mockedActivities) {
-      const mock = this.mockedActivities[activityId]!;
-      return await mock.call(...args);
-    } else {
-      const activity = callableActivities()[activityId];
-      if (!activity) {
-        throw new Error("Activity not found: " + activityId);
+    return serviceTypeScope(ServiceType.ActivityWorker, () => {
+      if (activityId in this.mockedActivities) {
+        const mock = this.mockedActivities[activityId]!;
+        return mock.call(...args);
+      } else {
+        const activity = callableActivities()[activityId];
+        if (!activity) {
+          throw new Error("Activity not found: " + activityId);
+        }
+        return activity(...args);
       }
-      return await activity(...args);
-    }
+    });
   }
 }
 
