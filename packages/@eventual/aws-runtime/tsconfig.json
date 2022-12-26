@@ -14,9 +14,7 @@
   },
   "include": [
     "src",
-    "src/package.json",
-    "collector/ote-collector-lite.zip",
-    "lib/esm/test-telemetry.js"
+    "src/package.json"
   ],
   "exclude": ["lib", "node_modules"],
   "references": [{ "path": "../core" }]

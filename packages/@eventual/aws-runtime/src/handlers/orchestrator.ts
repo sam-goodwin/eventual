@@ -63,7 +63,9 @@ export default middy(async (event: SQSEvent) => {
       recordsByExecutionId[executionId]?.map((record) => record.messageId) ?? []
   );
 
+  console.log(orchestratorSpan);
   orchestratorSpan.end();
+
   return {
     batchItemFailures: failedMessageIds.map((r) => ({
       itemIdentifier: r,

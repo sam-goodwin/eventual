@@ -31,13 +31,13 @@ export class Telemetry extends Construct {
       timeout: Duration.seconds(10),
       handler: "bootstrap",
       code: Code.fromAsset(
-        require.resolve("@eventual/aws-runtime/collector/lambda-collector.zip")
+        require.resolve("@eventual/aws-runtime/lambda-collector/bootstrap.zip")
       ),
       layers: [
         new LayerVersion(this, "otel-collector-extension", {
           code: Code.fromAsset(
             require.resolve(
-              "@eventual/aws-runtime/collector/collector-extension.zip"
+              "@eventual/aws-runtime/lambda-collector/collector-extension.zip"
             )
           ),
         }),
@@ -50,10 +50,9 @@ export class Telemetry extends Construct {
 
   configureFunction(fn: Function, componentName: string) {
     fn.addEnvironment(
-      ENV_NAMES.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
+      ENV_NAMES.OTEL_EXPORTER_OTLP_ENDPOINT,
       this.collectorFnUrl.url
     );
     fn.addEnvironment(ENV_NAMES.TELEMETRY_COMPONENT_NAME, componentName);
-    fn.addEnvironment();
   }
 }
