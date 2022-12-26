@@ -102,10 +102,6 @@ export class Service extends Construct implements IGrantable {
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
-    this.telemetry = new Telemetry(this, "Telemetry", {
-      serviceName: this.serviceName,
-    });
-
     const proxyScheduler = lazyInterface<IScheduler>();
     const proxyWorkflows = lazyInterface<IWorkflows>();
     const proxyActivities = lazyInterface<IActivities>();
@@ -147,13 +143,12 @@ export class Service extends Construct implements IGrantable {
       events: this.events,
     });
 
-    this.telemetry.attachToFunction(this.events.handler, "handler");
-    this.telemetry.attachToFunction(this.activities.worker, "worker");
-    this.telemetry.attachToFunction(
+    this.telemetry = new Telemetry(this, "Telemetry");
+    this.telemetry.configureFunction(this.activities.worker, "worker");
+    this.telemetry.configureFunction(
       this.workflows.orchestrator,
       "orchestrator"
     );
-    this.telemetry.attachToFunction(this.scheduler.forwarder, "forwarder");
 
     this.grantPrincipal = new CompositePrincipal(
       // when granting permissions to the service,

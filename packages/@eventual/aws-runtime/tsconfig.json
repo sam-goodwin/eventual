@@ -12,7 +12,12 @@
       "@eventual/injected/*": ["./src/injected/*"]
     }
   },
-  "include": ["src", "src/package.json", "collector/ote-collector-lite.zip"],
+  "include": [
+    "src",
+    "src/package.json",
+    "collector/ote-collector-lite.zip",
+    "lib/esm/test-telemetry.js"
+  ],
   "exclude": ["lib", "node_modules"],
   "references": [{ "path": "../core" }]
 }

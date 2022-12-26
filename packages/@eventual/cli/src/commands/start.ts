@@ -87,7 +87,7 @@ export const start = (yargs: Argv) =>
             spinner.fail("Workflow failed");
             styledConsole.error((failedEvent as WorkflowFailed).message);
           } else {
-            setTimeout(pollEvents, 1000);
+            setTimeout(pollEvents, 200);
           }
         }
         await pollEvents();

@@ -2,9 +2,9 @@ import "@eventual/entry/injected";
 
 import { createOrchestrator } from "@eventual/core";
 import middy from "@middy/core";
-import { SpanKind } from "@opentelemetry/api";
+import { SpanKind, trace } from "@opentelemetry/api";
 import type { SQSEvent, SQSRecord } from "aws-lambda";
-import { serviceName } from "src/env.js";
+import { serviceName } from "../env.js";
 import {
   createEventClient,
   createExecutionHistoryClient,
@@ -15,14 +15,14 @@ import {
 } from "../clients/index.js";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 import { logger, loggerMiddlewares } from "../logger.js";
-import { registerTelemetryApi } from "src/telemetry.js";
+import { registerTelemetryApi } from "../telemetry.js";
 
 /**
  * Creates an entrypoint function for orchestrating a workflow
  * from within an AWS Lambda Function attached to a SQS FIFO queue.
  */
-const traceProvider = registerTelemetryApi();
-const tracer = traceProvider.getTracer(serviceName());
+registerTelemetryApi();
+const tracer = trace.getTracer(serviceName());
 
 const orchestrate = createOrchestrator({
   executionHistoryClient: createExecutionHistoryClient(),
@@ -69,9 +69,7 @@ export default middy(async (event: SQSEvent) => {
       itemIdentifier: r,
     })),
   };
-})
-  .use(loggerMiddlewares)
-  .use({ after: () => traceProvider.forceFlush() });
+}).use(loggerMiddlewares);
 
 function sqsRecordsToEvents(sqsRecords: SQSRecord[]) {
   return sqsRecords.flatMap(sqsRecordToEvents);

@@ -1,63 +1,59 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
-import lambda, {
+import { Duration } from "aws-cdk-lib";
+import {
   Architecture,
   Code,
-  ILayerVersion,
+  FunctionUrl,
+  IFunction,
+  Runtime,
+  Function,
+  FunctionUrlAuthType,
   LayerVersion,
 } from "aws-cdk-lib/aws-lambda";
-import {
-  ILogGroup,
-  ILogStream,
-  LogGroup,
-  LogStream,
-} from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
 
-interface TelemetryProps {
-  serviceName: string;
-}
-
 export interface ITelemetry {
-  logGroup: ILogGroup;
-  logStreams: ILogStream[];
-  collectorLayer: ILayerVersion;
+  collectorFn: IFunction;
+  collectorFnUrl: FunctionUrl;
 }
 
 export class Telemetry extends Construct {
-  logGroup: LogGroup;
-  logStreams: ILogStream[] = [];
-  collectorLayer: ILayerVersion;
+  collectorFn: IFunction;
+  collectorFnUrl: FunctionUrl;
 
-  constructor(scope: Construct, id: string, props: TelemetryProps) {
+  constructor(scope: Construct, id: string) {
     super(scope, id);
 
-    this.logGroup = new LogGroup(this, "LogGroup", {
-      logGroupName: `${props.serviceName}-telemetry`,
-    });
-
-    this.collectorLayer = new LayerVersion(this, "telemetry-collector", {
+    this.collectorFn = new Function(this, "collector", {
+      runtime: Runtime.PROVIDED_AL2,
+      architecture: Architecture.ARM_64,
+      memorySize: 512,
+      timeout: Duration.seconds(10),
+      handler: "bootstrap",
       code: Code.fromAsset(
-        require.resolve("@eventual/aws-runtime/mini-collector-cloudwatch")
+        require.resolve("@eventual/aws-runtime/collector/lambda-collector.zip")
       ),
-      compatibleArchitectures: [Architecture.ARM_64],
+      layers: [
+        new LayerVersion(this, "otel-collector-extension", {
+          code: Code.fromAsset(
+            require.resolve(
+              "@eventual/aws-runtime/collector/collector-extension.zip"
+            )
+          ),
+        }),
+      ],
+    });
+    this.collectorFnUrl = this.collectorFn.addFunctionUrl({
+      authType: FunctionUrlAuthType.NONE,
     });
   }
 
-  attachToFunction(fn: lambda.Function, componentName: string) {
-    const logStream = new LogStream(this, `LogStream${componentName}`, {
-      logGroup: this.logGroup,
-      logStreamName: componentName,
-    });
+  configureFunction(fn: Function, componentName: string) {
     fn.addEnvironment(
-      ENV_NAMES.TELEMETRY_LOG_GROUP_NAME,
-      this.logGroup.logGroupName
-    );
-    fn.addEnvironment(
-      ENV_NAMES.TELEMETRY_LOG_STREAM_NAME,
-      logStream.logStreamName
+      ENV_NAMES.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
+      this.collectorFnUrl.url
     );
     fn.addEnvironment(ENV_NAMES.TELEMETRY_COMPONENT_NAME, componentName);
-    fn.addLayers(this.collectorLayer);
-    this.logStreams.push(logStream);
+    fn.addEnvironment();
   }
 }
