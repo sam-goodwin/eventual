@@ -114,7 +114,7 @@ export class AWSWorkflowClient extends WorkflowClient {
     );
   }
 
-  async getExecutions(): Promise<Execution[]> {
+  public async getExecutions(): Promise<Execution[]> {
     const executions = await this.props.dynamo.send(
       new QueryCommand({
         TableName: this.props.tableName,
@@ -130,7 +130,9 @@ export class AWSWorkflowClient extends WorkflowClient {
     );
   }
 
-  async getExecution(executionId: string): Promise<Execution | undefined> {
+  public async getExecution(
+    executionId: string
+  ): Promise<Execution | undefined> {
     const executionResult = await this.props.dynamo.send(
       new GetItemCommand({
         Key: {
@@ -175,15 +177,15 @@ export type ExecutionRecord =
         }
     );
 
-export namespace ExecutionRecord {
-  export const PRIMARY_KEY = "Execution";
-  export const SORT_KEY_PREFIX = `Execution$`;
-  export function sortKey(
+export const ExecutionRecord = {
+  PRIMARY_KEY: "Execution",
+  SORT_KEY_PREFIX: `Execution$`,
+  sortKey(
     executionId: string
-  ): `${typeof SORT_KEY_PREFIX}${typeof executionId}` {
-    return `${SORT_KEY_PREFIX}${executionId}`;
-  }
-}
+  ): `${typeof this.SORT_KEY_PREFIX}${typeof executionId}` {
+    return `${this.SORT_KEY_PREFIX}${executionId}`;
+  },
+};
 
 export function createExecutionFromResult(
   execution: ExecutionRecord

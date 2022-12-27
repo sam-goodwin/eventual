@@ -52,6 +52,7 @@ export const workflow2 = workflow(
       block = false;
     });
 
+    // eslint-disable-next-line no-unmodified-loop-condition
     while (!done) {
       sendSignal(parentId, signal, last + 1);
       block = true;

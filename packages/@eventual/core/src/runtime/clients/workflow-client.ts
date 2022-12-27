@@ -23,6 +23,7 @@ export abstract class WorkflowClient {
   public abstract startWorkflow<W extends Workflow = Workflow>(
     request: StartWorkflowRequest<W>
   ): Promise<string>;
+
   /**
    * Submit events to be processed by a workflow's orchestrator.
    *
@@ -71,7 +72,7 @@ export abstract class WorkflowClient {
    * Completes an async activity causing it to return the given value.
    */
   public async completeActivity({
-    activityToken: activityToken,
+    activityToken,
     result,
   }: CompleteActivityRequest): Promise<void> {
     await this.sendActivityResult<ActivityCompleted>(activityToken, {
@@ -84,7 +85,7 @@ export abstract class WorkflowClient {
    * Fails an async activity causing it to throw the given error.
    */
   public async failActivity({
-    activityToken: activityToken,
+    activityToken,
     error,
     message,
   }: FailActivityRequest): Promise<void> {
@@ -94,6 +95,7 @@ export abstract class WorkflowClient {
       message,
     });
   }
+
   /**
    * Submits a "heartbeat" for the given activityToken.
    *

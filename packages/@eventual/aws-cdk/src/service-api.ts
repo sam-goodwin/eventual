@@ -66,11 +66,9 @@ export class Api extends Construct {
         const mappingsArray = Array.isArray(mappings) ? mappings : [mappings];
         mappingsArray.forEach(({ entry, methods, grants }) => {
           const id =
-            //Generate id for the lambda based on its path and method
-            path
-              .slice(1)
-              .replace("/", "-")
-              .replace(/[\{\}]/, "") + methods?.join("-") ?? [];
+            // Generate id for the lambda based on its path and method
+            path.slice(1).replace("/", "-").replace(/[{}]/, "") +
+              methods?.join("-") ?? [];
           const fn =
             "api" in entry
               ? this.apiLambda(id, entry.api)

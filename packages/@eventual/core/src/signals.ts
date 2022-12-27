@@ -26,7 +26,7 @@ export function signal<Payload = void>(name: string): Signal<Payload> {
 }
 
 export class Signal<Payload = void> {
-  constructor(public readonly id: string) {}
+  constructor(readonly id: string) {}
   /**
    * Listens for signals sent to the current workflow.
    *
@@ -58,9 +58,10 @@ export class Signal<Payload = void> {
    * handler.dispose();
    * ```
    */
-  on(handler: SignalHandlerFunction<Payload>): SignalsHandler {
+  public on(handler: SignalHandlerFunction<Payload>): SignalsHandler {
     return onSignal(this, handler);
   }
+
   /**
    * Waits for a signal to be received by the workflow.
    *
@@ -91,9 +92,10 @@ export class Signal<Payload = void> {
    * });
    * ```
    */
-  expect(opts?: ExpectSignalOptions): Promise<Payload> {
+  public expect(opts?: ExpectSignalOptions): Promise<Payload> {
     return expectSignal(this, opts);
   }
+
   /**
    * Allows a {@link workflow} to send this signal to any workflow {@link Execution} by executionId.
    *
@@ -104,7 +106,10 @@ export class Signal<Payload = void> {
    * })
    * ```
    */
-  send(executionId: string, ...args: SendSignalProps<Payload>): Promise<void> {
+  public send(
+    executionId: string,
+    ...args: SendSignalProps<Payload>
+  ): Promise<void> {
     return sendSignal<Signal<Payload>>(executionId, this, ...args);
   }
 }

@@ -29,7 +29,7 @@ export function createRegisterSignalHandlerCall(
 ): RegisterSignalHandlerCall {
   return registerEventual(
     createEventual(EventualKind.RegisterSignalHandlerCall, {
-      signalId: signalId,
+      signalId,
       handler,
       dispose: function () {
         this.result = Result.resolved(undefined);

@@ -94,7 +94,7 @@ describe("sleep", () => {
       seq: 0,
       timestamp: expect.stringContaining("Z"),
       type: WorkflowEventType.SleepScheduled,
-      untilTime: untilTime,
+      untilTime,
     });
   });
 
