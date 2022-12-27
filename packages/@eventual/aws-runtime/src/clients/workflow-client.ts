@@ -201,5 +201,12 @@ export function createExecutionFromResult(
     result: execution.result ? JSON.parse(execution.result.S) : undefined,
     startTime: execution.startTime.S,
     status: execution.status.S,
+    parent:
+      execution.parentExecutionId !== undefined && execution.seq !== undefined
+        ? {
+            executionId: execution.parentExecutionId.S,
+            seq: parseInt(execution.seq.N, 10),
+          }
+        : {},
   } as Execution;
 }

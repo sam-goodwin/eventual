@@ -35,12 +35,19 @@ export class TestWorkflowClient extends WorkflowClient {
 
     const baseTime = this.baseTime();
 
-    // TODO validate that the executionId and name are unique
-    this.executionStore.put({
+    const execution: Execution = {
       status: ExecutionStatus.IN_PROGRESS,
       id: executionId,
       startTime: baseTime.toISOString(),
-    });
+      parent:
+        request.parentExecutionId !== undefined && request.seq !== undefined
+          ? { executionId: request.parentExecutionId, seq: request.seq }
+          : undefined,
+    };
+
+    // TODO validate that the executionId and name are unique
+    // TODO move more of this logic to a common place
+    this.executionStore.put(execution);
 
     await this.submitWorkflowTask(
       executionId,
@@ -52,7 +59,7 @@ export class TestWorkflowClient extends WorkflowClient {
           input: request.input,
           timeoutTime: request.timeoutSeconds
             ? new Date(
-              baseTime.getTime() + request.timeoutSeconds * 1000
+                baseTime.getTime() + request.timeoutSeconds * 1000
               ).toISOString()
             : undefined,
         },

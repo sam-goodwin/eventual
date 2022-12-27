@@ -1,6 +1,7 @@
-import { HistoryStateEvent } from "../../workflow-events.js";
+import { HistoryStateEvent, WorkflowEventType } from "../../workflow-events.js";
 import { CompleteExecution, FailedExecution } from "../../execution.js";
 import { ActivityWorkerRequest } from "../handlers/activity-worker.js";
+import { WorkflowClient } from "./workflow-client.js";
 
 export interface CompleteExecutionRequest {
   executionId: string;
@@ -18,17 +19,70 @@ export interface UpdateHistoryRequest {
   events: HistoryStateEvent[];
 }
 
-export interface WorkflowRuntimeClient {
-  getHistory(executionId: string): Promise<HistoryStateEvent[]>;
+export abstract class WorkflowRuntimeClient {
+  constructor(private workflowClient: WorkflowClient) {}
+  public abstract getHistory(executionId: string): Promise<HistoryStateEvent[]>;
 
   // TODO: etag
-  updateHistory(request: UpdateHistoryRequest): Promise<{ bytes: number }>;
+  public abstract updateHistory(
+    request: UpdateHistoryRequest
+  ): Promise<{ bytes: number }>;
 
-  completeExecution(
+  public abstract startActivity(request: ActivityWorkerRequest): Promise<void>;
+
+  public async completeExecution(
     request: CompleteExecutionRequest
-  ): Promise<CompleteExecution>;
+  ): Promise<CompleteExecution> {
+    const execution = await this.updateExecution(request);
+    if (execution.parent) {
+      await this.reportCompletionToParent(
+        execution.parent.executionId,
+        execution.parent.seq,
+        request.result
+      );
+    }
 
-  failExecution(request: FailExecutionRequest): Promise<FailedExecution>;
+    return execution as CompleteExecution;
+  }
 
-  startActivity(request: ActivityWorkerRequest): Promise<void>;
+  public async failExecution(
+    request: FailExecutionRequest
+  ): Promise<FailedExecution> {
+    const execution = await this.updateExecution(request);
+    if (execution.parent) {
+      await this.reportCompletionToParent(
+        execution.parent.executionId,
+        execution.parent.seq,
+        request.error,
+        request.message
+      );
+    }
+
+    return execution as FailedExecution;
+  }
+
+  protected abstract updateExecution(
+    request: FailExecutionRequest | CompleteExecutionRequest
+  ): Promise<CompleteExecution | FailedExecution>;
+
+  private async reportCompletionToParent(
+    parentExecutionId: string,
+    seq: number,
+    ...args: [result: any] | [error: string, message: string]
+  ) {
+    await this.workflowClient.submitWorkflowTask(parentExecutionId, {
+      seq,
+      timestamp: new Date().toISOString(),
+      ...(args.length === 1
+        ? {
+            type: WorkflowEventType.ChildWorkflowCompleted,
+            result: args[0],
+          }
+        : {
+            type: WorkflowEventType.ChildWorkflowFailed,
+            error: args[0],
+            message: args[1],
+          }),
+    });
+  }
 }

@@ -8,6 +8,16 @@ interface ExecutionBase {
   id: string;
   status: ExecutionStatus;
   startTime: string;
+  parent?: {
+    /**
+     * Seq number when this execution is the child of another workflow.
+     */
+    seq: number;
+    /**
+     * Id of the parent workflow, while present.
+     */
+    executionId: string;
+  };
 }
 
 export type Execution<Result = any> =

@@ -12,6 +12,7 @@ import {
   HistoryStateEvent,
   isAsyncResult,
   UpdateHistoryRequest,
+  WorkflowClient,
   WorkflowEventType,
   WorkflowRuntimeClient,
 } from "@eventual/core";
@@ -19,14 +20,17 @@ import { ActivitiesController } from "../activities-controller.js";
 import { TimeConnector } from "../environment.js";
 import { ExecutionStore } from "../execution-store.js";
 
-export class TestWorkflowRuntimeClient implements WorkflowRuntimeClient {
+export class TestWorkflowRuntimeClient extends WorkflowRuntimeClient {
   private executionHistory: Record<string, HistoryStateEvent[]> = {};
 
   constructor(
     private executionStore: ExecutionStore,
     private timeConnector: TimeConnector,
-    private activitiesController: ActivitiesController
-  ) {}
+    private activitiesController: ActivitiesController,
+    workflowClient: WorkflowClient
+  ) {
+    super(workflowClient);
+  }
 
   public async getHistory(executionId: string): Promise<HistoryStateEvent[]> {
     return this.executionHistory[executionId] ?? [];
@@ -39,9 +43,9 @@ export class TestWorkflowRuntimeClient implements WorkflowRuntimeClient {
     return { bytes: 0 };
   }
 
-  public async completeExecution(
-    request: CompleteExecutionRequest
-  ): Promise<CompleteExecution<any>> {
+  protected async updateExecution(
+    request: FailExecutionRequest | CompleteExecutionRequest
+  ) {
     const execution = this.executionStore.get(request.executionId);
 
     if (!execution) {
@@ -50,42 +54,26 @@ export class TestWorkflowRuntimeClient implements WorkflowRuntimeClient {
       );
     } else if (execution.status !== ExecutionStatus.IN_PROGRESS) {
       // mirror how the AWS complete function does not write over completed executions.
-      return execution as CompleteExecution;
+      return execution;
     }
 
-    const updatedExecution: CompleteExecution = {
-      ...execution,
-      endTime: this.timeConnector.getTime().toISOString(),
-      status: ExecutionStatus.COMPLETE,
-      result: request.result,
-    };
+    const endTime = this.timeConnector.getTime().toISOString();
 
-    this.executionStore.put(updatedExecution);
-
-    return updatedExecution;
-  }
-
-  public async failExecution(
-    request: FailExecutionRequest
-  ): Promise<FailedExecution> {
-    const execution = this.executionStore.get(request.executionId);
-
-    if (!execution) {
-      throw new Error(
-        `Execution ${request.executionId} is missing from the store.`
-      );
-    } else if (execution.status !== ExecutionStatus.IN_PROGRESS) {
-      // mirror how the AWS complete function does not write over completed executions.
-      return execution as FailedExecution;
-    }
-
-    const updatedExecution: FailedExecution = {
-      ...execution,
-      endTime: this.timeConnector.getTime().toISOString(),
-      status: ExecutionStatus.FAILED,
-      error: request.error,
-      message: request.message,
-    };
+    const updatedExecution =
+      "error" in request
+        ? ({
+            ...execution,
+            endTime,
+            status: ExecutionStatus.FAILED,
+            error: request.error,
+            message: request.message,
+          } satisfies FailedExecution)
+        : ({
+            ...execution,
+            endTime,
+            status: ExecutionStatus.COMPLETE,
+            result: request.result,
+          } satisfies CompleteExecution);
 
     this.executionStore.put(updatedExecution);
 

@@ -125,6 +125,12 @@ dataDoneEvent.on(async ({ executionId }) => {
   await sendSignal(executionId, dataDoneSignal);
 });
 
-export const orchestrateWorkflow = workflow("orchestrate", async () => {
-  const execution = signalWorkflow();
+export const orchestrateWorkflow = workflow("orchestrateWorkflow", async () => {
+  const execution = signalWorkflow(undefined);
+  await sleepFor(1);
+  await execution.signal(dataSignal, "hello from a workflow");
+  await execution.signal(dataDoneSignal);
+  await execution.signal(continueSignal);
+
+  return await execution;
 });

@@ -19,6 +19,7 @@ import {
   dataSignal,
   errorWorkflow,
   orchestrate,
+  orchestrateWorkflow,
   signalWorkflow,
   sleepWorkflow,
   workflow1,
@@ -643,6 +644,19 @@ describe("completing executions", () => {
       error: "Error",
       message: "failed!",
       startTime: new Date(env.time.getTime() - 1000).toISOString(),
+    });
+  });
+});
+
+describe("invoke workflow", () => {
+  test("call real child", async () => {
+    const execution = await env.startExecution(orchestrateWorkflow, undefined);
+
+    await env.tick(100);
+
+    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      status: ExecutionStatus.COMPLETE,
+      result: "hello from a workflow",
     });
   });
 });

@@ -102,17 +102,18 @@ export class TestEnvironment {
     };
     const executionStore = new ExecutionStore();
     this.executionHistoryClient = new TestExecutionHistoryClient();
-    this.workflowRuntimeClient = new TestWorkflowRuntimeClient(
-      executionStore,
-      timeConnector,
-      this.activitiesController
-    );
-    this.eventClient = new TestEventClient(this.eventHandlerController);
     this.workflowClient = new TestWorkflowClient(
       timeConnector,
       new TestActivityRuntimeClient(),
       executionStore
     );
+    this.workflowRuntimeClient = new TestWorkflowRuntimeClient(
+      executionStore,
+      timeConnector,
+      this.activitiesController,
+      this.workflowClient
+    );
+    this.eventClient = new TestEventClient(this.eventHandlerController);
     this.timerClient = new TestTimerClient(timeConnector);
     this.orchestrator = createOrchestrator({
       timerClient: this.timerClient,
