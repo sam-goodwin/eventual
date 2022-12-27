@@ -1,10 +1,7 @@
 # Service
 
-The `Service` class is an AWS CDK Construct that will deploy a service built with Eventual. It provisions the following AWS Resources:
+The `Service` class is an AWS CDK Construct that will deploy a service built with Eventual.
 
-1. an AWS API Gateway V2
-2. an AWS Event Bridge
+A Service consists of an API, an Event Bus and Workflows.
 
-```ts
-api.post("/", async () => {});
-```
+![Service Architecture](./0-service.png)
