@@ -50,6 +50,7 @@ Any HTTP headers are available on the `headers` property:
 api.get("/hello/:name", async (request) => {
   if (request.headers.get("Content-Type"))
     return new Response(`hello ${request.params.name}`);
+  }
 });
 ```
 
@@ -59,7 +60,7 @@ Routes are evaluated in the order in which they are registered and the first rou
 
 ## Http Methods
 
-### all
+### `all`
 
 Registers a route that will match any HTTP method (GET, POST, etc.).
 
@@ -67,7 +68,7 @@ Registers a route that will match any HTTP method (GET, POST, etc.).
 api.all("/hello", (request) => { .. });
 ```
 
-### get
+### `get`
 
 Registers a route that only matches a GET HTTP method.
 
@@ -75,7 +76,7 @@ Registers a route that only matches a GET HTTP method.
 api.get("/hello", (request) => { .. });
 ```
 
-### post
+### `post`
 
 Registers a route that only matches a POST HTTP method.
 
@@ -83,7 +84,7 @@ Registers a route that only matches a POST HTTP method.
 api.post("/hello", (request) => { .. });
 ```
 
-### put
+### `put`
 
 Registers a route that only matches a PUT HTTP method.
 
@@ -91,7 +92,7 @@ Registers a route that only matches a PUT HTTP method.
 api.put("/hello", (request) => { .. });
 ```
 
-### delete
+### `delete`
 
 Registers a route that only matches a DELETE HTTP method.
 
@@ -99,7 +100,7 @@ Registers a route that only matches a DELETE HTTP method.
 api.delete("/hello", (request) => { .. });
 ```
 
-### options
+### `options`
 
 Registers a route that only matches an OPTIONS HTTP method.
 
@@ -107,7 +108,7 @@ Registers a route that only matches an OPTIONS HTTP method.
 api.options("/hello", (request) => { .. });
 ```
 
-### patch
+### `patch`
 
 Registers a route that only matches a PATCH HTTP method.
 

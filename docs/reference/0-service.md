@@ -14,7 +14,12 @@ const service = new Service(stack, "Service", {
 });
 ```
 
-The only required property is `entry`, which points at the entrypoint `.ts` or `.js` file that contains the application logic for your service.
+The only required property is `entry`, which points at the entrypoint `.ts` or `.js` file that contains the application logic for your service. A service's application logic is implemented using the 4 building blocks:
+
+1. [API](./1-api.md)
+2. [Events](./2-event.md)
+3. [Workflows](./3-workflow.md)
+4. [Activity](./4-activity.md)
 
 ## Service Name
 

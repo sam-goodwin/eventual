@@ -18,19 +18,9 @@ const hello = activity("hello", async (name: string) => {
 });
 ```
 
-## Call an Activity
-
-An Activity can be called from an API/event handler or within a workflow:
+## Call an Activity from within a Workflow
 
 ```ts
-api.post("/hello/:name", async (request) => {
-  await hello(request.params.name);
-});
-
-myEvent.on(async (event) => {
-  await hello(event.name);
-});
-
 workflow("my-workflow", async (name: string) => {
   const message = await hello(name);
 });
