@@ -132,7 +132,6 @@ const addAddress = activity(
     );
   }
 );
-
 const removeAddress = activity("removeAddress", async (accountId: string) => {
   await dynamo().send(
     new UpdateCommand({

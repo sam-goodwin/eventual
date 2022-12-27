@@ -136,7 +136,7 @@ The `DetailType` property must be the name of the event, e.g. `MyEvents`:
 const myEvent = event("MyEvent"); // <-- this is the DetailType
 ```
 
-The `Detail` property must be a stringified JSON payload of the event's data;.
+The `Detail` property must be a stringified JSON payload of the event's data.
 
 ### Forward Events between different Services
 
