@@ -18,15 +18,15 @@ import { AWSEventClient } from "./event-client.js";
  * The pure annotations help esbuild determine that theses functions calls have no side effects.
  */
 
-const dynamo = /*@__PURE__*/ memoize(() => new DynamoDBClient({}));
-export const sqs = /*@__PURE__*/ memoize(() => new SQSClient({}));
-const s3 = /*@__PURE__*/ memoize(
+const dynamo = /* @__PURE__ */ memoize(() => new DynamoDBClient({}));
+export const sqs = /* @__PURE__ */ memoize(() => new SQSClient({}));
+const s3 = /* @__PURE__ */ memoize(
   () => new S3Client({ region: process.env.AWS_REGION })
 );
-const lambda = /*@__PURE__*/ memoize(() => new LambdaClient({}));
-export const scheduler = /*@__PURE__*/ memoize(() => new SchedulerClient({}));
+const lambda = /* @__PURE__ */ memoize(() => new LambdaClient({}));
+export const scheduler = /* @__PURE__ */ memoize(() => new SchedulerClient({}));
 
-export const createExecutionHistoryClient = /*@__PURE__*/ memoize(
+export const createExecutionHistoryClient = /* @__PURE__ */ memoize(
   ({ tableName }: { tableName?: string } = {}) =>
     new AWSExecutionHistoryClient({
       dynamo: dynamo(),
@@ -35,7 +35,7 @@ export const createExecutionHistoryClient = /*@__PURE__*/ memoize(
   { cacheKey: (opts) => opts?.tableName ?? env.tableName() }
 );
 
-export const createWorkflowClient = /*@__PURE__*/ memoize(
+export const createWorkflowClient = /* @__PURE__ */ memoize(
   ({
     tableName,
     workflowQueueUrl,
@@ -55,7 +55,7 @@ export const createWorkflowClient = /*@__PURE__*/ memoize(
   { cacheKey: JSON.stringify }
 );
 
-export const createActivityRuntimeClient = /*@__PURE__*/ memoize(
+export const createActivityRuntimeClient = /* @__PURE__ */ memoize(
   ({ activityTableName }: { activityTableName?: string } = {}) =>
     new AWSActivityRuntimeClient({
       activityTableName: activityTableName ?? env.activityTableName(),
@@ -63,7 +63,7 @@ export const createActivityRuntimeClient = /*@__PURE__*/ memoize(
     })
 );
 
-export const createTimerClient = /*@__PURE__*/ memoize(
+export const createTimerClient = /* @__PURE__ */ memoize(
   (props: Partial<AWSTimerClientProps> = {}) =>
     new AWSTimerClient({
       scheduler: props.scheduler ?? scheduler(),
@@ -79,7 +79,7 @@ export const createTimerClient = /*@__PURE__*/ memoize(
   { cacheKey: JSON.stringify }
 );
 
-export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
+export const createWorkflowRuntimeClient = /* @__PURE__ */ memoize(
   ({
     tableName = env.tableName(),
     executionHistoryBucket = env.executionHistoryBucket(),
@@ -103,7 +103,7 @@ export const createWorkflowRuntimeClient = /*@__PURE__*/ memoize(
   { cacheKey: JSON.stringify }
 );
 
-export const createEventClient = /*@__PURE__*/ memoize(
+export const createEventClient = /* @__PURE__ */ memoize(
   () =>
     new AWSEventClient({
       serviceName: env.serviceName(),
@@ -117,10 +117,10 @@ function memoize<T extends (...args: any[]) => any>(
     cacheKey: (...args: Parameters<T>) => any;
   }
 ): (...args: Parameters<T>) => ReturnType<T> {
-  //We box our cache in case our fn returns undefined
-  let resMap = new Map<any, { value: ReturnType<T> }>();
+  // We box our cache in case our fn returns undefined
+  const resMap = new Map<any, { value: ReturnType<T> }>();
   return (...args) => {
-    let key = options?.cacheKey ? options.cacheKey(...args) : args;
+    const key = options?.cacheKey ? options.cacheKey(...args) : args;
     const cachedResult = resMap.get(key);
     if (cachedResult) {
       return cachedResult.value;

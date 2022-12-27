@@ -14,6 +14,7 @@ import {
   BlockStatement,
   VariableDeclaration,
   Statement,
+  HasSpan,
 } from "@swc/core";
 
 import { Visitor } from "@swc/core/Visitor.js";
@@ -26,7 +27,7 @@ const supportedPromiseFunctions: string[] = [
 ];
 
 export class OuterVisitor extends Visitor {
-  readonly inner = new InnerVisitor();
+  private readonly inner = new InnerVisitor();
 
   public foundEventual = false;
 
@@ -255,9 +256,12 @@ export class InnerVisitor extends Visitor {
   }
 }
 
+function hasSpan(expr: Node): expr is Node & HasSpan {
+  return "span" in expr;
+}
+
 function getSpan(expr: Node): Span {
-  if ("span" in expr) {
-    // @ts-ignore
+  if (hasSpan(expr)) {
     return expr.span;
   } else {
     // this is only true for JSXExpressions which we should not encounter

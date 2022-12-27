@@ -11,9 +11,9 @@ export interface AWSEventClientProps {
 }
 
 export class AWSEventClient implements EventClient {
-  readonly eventBusArn: string;
-  readonly eventBridgeClient: EventBridgeClient;
-  readonly serviceName: string;
+  public readonly eventBusArn: string;
+  public readonly eventBridgeClient: EventBridgeClient;
+  public readonly serviceName: string;
 
   constructor(props: AWSEventClientProps) {
     this.serviceName = props.serviceName;
@@ -22,7 +22,9 @@ export class AWSEventClient implements EventClient {
       props.eventBridgeClient ?? new EventBridgeClient({});
   }
 
-  async publish(...events: EventEnvelope<EventPayload>[]): Promise<void> {
+  public async publish(
+    ...events: EventEnvelope<EventPayload>[]
+  ): Promise<void> {
     console.debug("publish", events);
     await this.eventBridgeClient.send(
       new PutEventsCommand({

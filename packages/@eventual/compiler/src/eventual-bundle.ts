@@ -7,7 +7,6 @@ import { prepareOutDir } from "./build.js";
 import { createRequire } from "module";
 import { ServiceType } from "@eventual/core";
 
-// @ts-ignore - ts is complaining about not having module:esnext even thought it is in tsconfig.json
 const require = createRequire(import.meta.url);
 
 /**
@@ -49,7 +48,7 @@ export async function bundle(
       injectedEntry: serviceEntry,
       entry: runtimeEntrypoint("event-handler"),
     }),
-    //This one is actually an api function
+    // This one is actually an api function
     build({
       name: "list-workflows",
       outDir,
@@ -66,7 +65,7 @@ export async function bundleService(outDir: string, entry: string) {
     entry,
     name: "service",
     plugins: [eventualESPlugin],
-    //It's important that we DONT use inline source maps for service, otherwise debugger fails to pick it up
+    // It's important that we DONT use inline source maps for service, otherwise debugger fails to pick it up
     // sourcemap: "inline",
   });
 }
@@ -102,7 +101,7 @@ async function build({
         ? [
             esbuildPluginAliasPath({
               alias: {
-                ["@eventual/entry/injected"]: path.resolve(injectedEntry),
+                "@eventual/entry/injected": path.resolve(injectedEntry),
               },
             }),
           ]
@@ -115,7 +114,7 @@ async function build({
     // external: ["@aws-sdk"],
     platform: "node",
     format: "esm",
-    //Target for node 16
+    // Target for node 16
     target: "es2021",
     metafile: true,
     bundle: true,

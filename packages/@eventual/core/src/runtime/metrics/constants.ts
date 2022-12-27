@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-namespace */
 export namespace MetricsCommon {
   export const EventualNamespace = "Eventual";
   export const WorkflowNameDimension = "WorkflowName";

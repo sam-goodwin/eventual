@@ -24,7 +24,7 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
    * @param claimer optional string to correlate the lock to the claimer.
    * @return a boolean determining if the claim was granted to the current actor.
    **/
-  async claimActivity(
+  public async claimActivity(
     executionId: string,
     seq: number,
     retry: number,
@@ -63,7 +63,7 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
   /*
    * Heartbeat an activity.
    **/
-  async heartbeatActivity(
+  public async heartbeatActivity(
     executionId: string,
     seq: number,
     heartbeatTime: string
@@ -91,7 +91,7 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
     };
   }
 
-  async cancelActivity(executionId: string, seq: number) {
+  public async cancelActivity(executionId: string, seq: number) {
     await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
@@ -109,7 +109,7 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
     );
   }
 
-  async getActivity(
+  public async getActivity(
     executionId: string,
     seq: number
   ): Promise<ActivityExecution | undefined> {
@@ -127,7 +127,8 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
   }
 }
 
-export interface ActivityExecutionRecord {
+export interface ActivityExecutionRecord
+  extends Record<string, AttributeValue | undefined> {
   pk: { S: `${typeof ActivityExecutionRecord.PARTITION_KEY_PREFIX}$${string}` };
   executionId: AttributeValue.SMember;
   seq: AttributeValue.NMember;
@@ -135,12 +136,12 @@ export interface ActivityExecutionRecord {
   cancelled?: AttributeValue.BOOLMember;
 }
 
-export namespace ActivityExecutionRecord {
-  export const PARTITION_KEY_PREFIX = `Activity$`;
-  export function key(executionId: string, seq: number) {
-    return `${PARTITION_KEY_PREFIX}$${executionId}$${seq}`;
-  }
-}
+export const ActivityExecutionRecord = {
+  PARTITION_KEY_PREFIX: `Activity$`,
+  key(executionId: string, seq: number) {
+    return `${this.PARTITION_KEY_PREFIX}$${executionId}$${seq}`;
+  },
+};
 
 function createActivityFromRecord(
   activityRecord: ActivityExecutionRecord

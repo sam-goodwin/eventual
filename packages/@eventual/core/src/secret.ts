@@ -35,7 +35,7 @@ export interface CachingConfig {
  * A base implementation of a {@link Secret} that supports caching.
  */
 export abstract class BaseCachingSecret<T> implements Secret<T> {
-  readonly cachingConfig: CachingConfig;
+  private readonly cachingConfig: CachingConfig;
 
   #value:
     | {
