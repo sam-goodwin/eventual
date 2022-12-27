@@ -81,44 +81,6 @@ services/
 
 The template creates an initial file, `src/index.ts`, that contains a basic example application touching on each of the 4 Eventual primitives, `api`, `event`, `workflow` and `activity`. For a walk-through of how to build applications with Eventual, see the [Tutorial](../tutorial/0-hello-world.md).
 
-```ts
-import { api, event, workflow, activity } from "@eventual/core";
-
-api.post("/work", async (request) => {
-  const items: string[] = await request.json();
-
-  const { executionId } = await myWorkflow.startExecution({
-    input: items,
-  });
-
-  return new Response(JSON.stringify({ executionId }), {
-    status: 200,
-  });
-});
-
-export const myWorkflow = workflow("myWorkflow", async (items: string[]) => {
-  const results = await Promise.all(items.map(doWork));
-
-  await workDone.publish({
-    outputs: results,
-  });
-
-  return results;
-});
-
-export const doWork = activity("work", async (work: string) => {
-  console.log("Doing Work", work);
-
-  return work.length;
-});
-
-export interface WorkDoneEvent {
-  outputs: number[];
-}
-
-export const workDone = event<WorkDoneEvent>("WorkDone");
-```
-
 ## Drop in to existing Project
 
 If you're already a user of the AWS CDK and wish to begin using Eventual as a part of an existing project, you can import the `Service` Construct directly from `@eventual/aws-cdk` and incorporate it into your Stacks.

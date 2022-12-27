@@ -32,6 +32,8 @@ export type PackageManager = "npm" | "yarn" | "pnpm";
           pkgManager,
           projectName: args.projectName!,
         };
+        if (args.target === undefined) {
+        }
         if (args.target === "aws-cdk") {
           await createAwsCdk(props);
         } else {

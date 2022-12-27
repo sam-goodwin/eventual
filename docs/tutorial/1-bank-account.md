@@ -5,25 +5,44 @@ In this tutorial, we'll create a basic bank application that supports the follow
 1. create an account with an initial balance
 2. transfer money between accounts
 
-We'll create two APIs, `POST /accounts` and `POST /account/:accountId/transfers`. To define these routes we first need to import `api` from `@eventual/core`.
+## Pre-requisites
+
+You must have an AWS account and either an AWS CDK or SST project. You can use the [getting started guide](../getting-started/0-create-new-project.md) to create a new project quickly or manually configure an existing one.
+
+For this example, you'll need the following runtime dependencies:
+
+```
+npm install --save uuid
+npm install --save @aws-sdk/client-dynamodb
+npm install --save @aws-sdk/lib-dynamodb
+npm install --save @eventual/core
+```
+
+And the following infrastructure dependencies:
+
+```
+npm install --save-dev @eventual/aws-cdk
+```
+
+## Step 1 - create an API
+
+First, import the `api` object from `@eventual/core` and add a stub for the `POST /accounts` API:
 
 ```ts
 import { api } from "@eventual/core";
-```
 
-We can then use this object to register API routes - let's start with the route for creating an account.
-
-```ts
 api.post("/accounts", async (request) => {
   // todo
 });
 ```
 
-Great, we've defined our first API route. When a user makes a `POST /accounts` request, this function will be triggered.
+This will define a new API route that will be triggered when a user makes a POST /accounts request.
 
-Next, we need to implement the logic for this API. It'll need to generate an ID for the account and store a record of it in a database. This is a great use-case for AWS DynamoDB so let's take a short detour to show how to integrate an AWS Resource such as DynamoDB into a Service. Eventual is designed to work with any database of your choosing - we'll demo DynamoDB but this procedure is compatible with any cloud resource or service (whether AWS or external, e.g. Planetscale).
+## Step 2 - configure an AWS DynamoDB Table
 
-If you followed one of the [getting started guides](../getting-started/0-create-new-project.md) then you'll have a `Service` defined in your infrastructure stack. S1 omething like the following:
+To implement the logic for the API, we will generate an ID for the account and store a record of it in a database. We will use AWS DynamoDB as an example, but this process is compatible with any cloud resource or service.
+
+First, create a `Service` in your infrastructure stack. If you followed the [getting started guide](../getting-started/0-create-new-project.md), this will already exist.
 
 ```ts
 const service = new Service(stack, "Service", {
@@ -32,7 +51,7 @@ const service = new Service(stack, "Service", {
 });
 ```
 
-This is where we create and configure infrastructure needed by our application. To create an AWS DynamoDB Table, import the `Table` Construct from `aws-cdk-lib/aws-dynamodb` and instantiate it along-side our service.
+Next, import and instantiate a `Table` from `aws-cdk-lib/aws-dynamodb`:
 
 ```ts
 import { AttributeType, Table } from "aws-cdk-lib/aws-dynamodb";
@@ -45,7 +64,7 @@ const accounts = new Table(stack, "Accounts", {
 });
 ```
 
-Next, add the new Table's ARN as an environment variable in the Service and grant read/write permissions. We add the environment variable so that we can discover the table in our code and we need read/write permissions or else storing data in the table would be impossible.
+Add the table's ARN as an environment variable in the `Service` and grant read/write permissions:
 
 ```ts
 service.addEnvironment("TABLE_ARN", accounts.tableArn);
@@ -53,9 +72,7 @@ service.addEnvironment("TABLE_ARN", accounts.tableArn);
 accounts.grantReadWriteData(service);
 ```
 
-Our infrastructure now contains a DynamoDB Table for storing account information and our service has permission to read and write to it - awesome! Let's go back to our application code and update it to insert a record into this table.
-
-First, import `@aws-sdk/client-dynamodb`, `@aws-sdk/lib-dynamodb` and initialize a client - we'll need these for making requests against our new Table.
+Now, import and initialize the DynamoDB client into your file containing the `/accounts` API:
 
 ```ts
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
@@ -64,33 +81,11 @@ import { DocumentDBClient } from "@aws-sdk/lib-dynamodb";
 const client = DocumentDBClient.from(new DynamoDBClient({}));
 ```
 
-Note: These are the official clients for DynamoDB maintained by AWS. Depending on what service you're integrating with, these clients might be different.
-
-Next, update the API to generate an account ID and store a record in the Table. We'll use the famous `uuid` package for generating unique IDs and AWS's `PutCommand` to insert data.
+Now we can finally implement the API. Use the `uuid` package to generate an ID for the account and send a `PutCommand` to insert a record into the table:
 
 ```ts
 import uuid from "uuid";
 
-api.post("/accounts", async (request) => {
-  const accountId = uuid.v4();
-
-  await client.send(
-    new PutCommand({
-      TableName: process.env.TABLE_ARN!,
-      Item: {
-        accountId,
-        balance: 0, // initial balance will be 0
-      },
-    })
-  );
-});
-```
-
-This API is now capable of inserting data into a dynamodb table, but if you try to compile and deploy, you'll get a type error! Oops, we've forgotten to return a HTTP Response.
-
-An API's handler must always return a Response object containing information such as the payload, status code, headers. To fix our code, we only need to return a new Response at the end of the function.
-
-```ts
 api.post("/accounts", async (request) => {
   const accountId = uuid.v4();
 
@@ -109,15 +104,7 @@ api.post("/accounts", async (request) => {
 });
 ```
 
-Note: Eventual builds on top of the Node Fetch API. If you're getting an error that `Response` cannot be found, make sure to include `DOM` in your `tsconfig.json`'s `lib` configuration.
-
-```json
-{
-  "compilerOptions": {
-    "lib": ["DOM"]
-  }
-}
-```
+## Step 3 - update our API to accept an initial balance
 
 We now have accounts, but those accounts always have a balance of `0` (which is not very useful). Let's update our API to allow for an initial balance to be set - it will now accept a JSON object containing a `balance` property.
 
@@ -150,13 +137,11 @@ await client.send(
 );
 ```
 
-Now our accounts have money it - woohoo! We can now move on to the more interesting part of this tutorial - transfers. We'll implement an API for transferring money between two accounts and we'll use a workflow to reliably orchestrate the operation.
+## Step 4 - implement the /transfers API
 
-Before that though, we need to implement two capabilities needed by every bank account (that I know of, at least) - `debit` and `credit`. `debit` will increase an account's balance and `credit` will decrease it. (TODO: i'm not sure if I have these round the wrong way).
+Now that our accounts have money it, we can move on to the more interesting part of this tutorial - transfers. We'll implement an API for transferring money between two accounts and we'll use a workflow to prevent corruption.
 
-We'll use the `activity` primitive from Eventual to implement two functions, `debit` and `credit`.
-
-Note: I'm going to skip over the implementation details as the AWS DynamoDB API is outside the scope of this tutorial. In brief, we'll use an UpdateCommand to modify the balance accordingly and ensure the account exists (or else fail the operation). For more information on how to interact with DynamoDB, see the official docs. You may also want to consider using a higher level library such as ElectroDB or DynamoDB Toolbox instead of the low level API which is known for being quite verbose.
+Before that though, we need the ability to `debit` and `credit` accounts - let's quickly add them as a way to introduce the concept of an `activity`:
 
 ```ts
 const debit = activity("debit", async (accountId: string, amount: number) => {
@@ -192,11 +177,9 @@ const credit = activity("credit", async (accountId: string, amount: number) => {
 });
 ```
 
-You may be wondering why the extra ceremony of wrapping these functions in an `activity`. I don't blame you, at first glance it does seem unnecessary. But the reason why we wrap them in activities is because we are going to use Eventual's most powerful primitive, `workflow`, to reliably orchestrate the transfer process.
+The purpose of this wrapping is to allow the use of Eventual's `workflow` primitive to reliably orchestrate the transfer process. Since workflows cannot directly interact with databases, the activity wrapper enables the workflow to indirectly access the database through these functions.
 
-Transferring money between two accounts is one of those scenarios in business where it's really important that it's done right. We're talking about people's money here so any mistakes have very real world impact.
-
-To illustrate the power of a workflow, let's first consider what might happen if we were to implement the transfer process directly within an API handler.
+To illustrate the necessity a workflow, let's first consider what might happen if we were to implement the transfer process directly within the API handler.
 
 ```ts
 api.post("/transfers", async (request) => {
@@ -207,7 +190,7 @@ api.post("/transfers", async (request) => {
 });
 ```
 
-At first glance, this might look correct - and in many cases it would behave totally fine. But what if we fail to credit the to-account after already debiting the from account? If it fails then we end up in a corrupted state where one account has been modified but the other hasn't - uh oh, infinite money glitch!
+At first glance, this might look correct - and in many cases it would behave totally fine. But what if we fail to credit the to-account after already debiting the from account? If it fails then we end up in a corrupted state where one account has been modified but the other hasn't - uh oh, we may gave created an infinite money glitch!
 
 To fix this, you might think to add a try-catch and reverse the transaction if the credit fails.
 
