@@ -75,3 +75,13 @@ export class SynchronousOperationError extends EventualError {
     super("SynchronousOperationError", message);
   }
 }
+
+export class ActivityNotFoundError extends Error {
+  constructor(activityName: string, availableNames: string[]) {
+    super(
+      `Could not find an activity with the name ${activityName}, found: ${availableNames.join(
+        ","
+      )}`
+    );
+  }
+}

@@ -1,27 +1,24 @@
 import {
   ActivityArguments,
-  ActivityContext,
   ActivityFunction,
+  ActivityHandler,
   ActivityOutput,
   assertNever,
   asyncResult,
   callableActivities,
-  clearActivityContext,
   EventualError,
   Failed,
+  GlobalActivityProvider,
   HeartbeatTimeout,
   isFailed,
   isResolved,
   isResult,
   Resolved,
   Result,
-  ServiceType,
-  setActivityContext,
   Timeout,
 } from "@eventual/core";
-import { serviceTypeScope } from "./utils.js";
 
-export class ActivitiesController {
+export class MockableActivityProvider extends GlobalActivityProvider {
   private mockedActivities: Record<string, MockActivity<any>> = {};
 
   public mockActivity<A extends ActivityFunction<any, any>>(
@@ -29,7 +26,7 @@ export class ActivitiesController {
   ) {
     const id = typeof activity === "string" ? activity : activity.activityID;
     const realActivity =
-      typeof activity === "string" ? callableActivities()[id] : activity;
+      typeof activity === "string" ? super.getActivityHandler(id) : activity;
     if (!realActivity) {
       throw new Error("Activity being mocked does not exist. " + id);
     }
@@ -52,28 +49,18 @@ export class ActivitiesController {
     this.mockedActivities = {};
   }
 
-  public async invokeActivity(
-    activityContext: ActivityContext,
-    activityId: string,
-    ...args: any[]
-  ) {
-    return serviceTypeScope(ServiceType.ActivityWorker, () => {
-      setActivityContext(activityContext);
-      try {
-        if (activityId in this.mockedActivities) {
-          const mock = this.mockedActivities[activityId]!;
-          return mock.call(...args);
-        } else {
-          const activity = callableActivities()[activityId];
-          if (!activity) {
-            throw new Error("Activity not found: " + activityId);
-          }
-          return activity(...args);
-        }
-      } finally {
-        clearActivityContext();
-      }
-    });
+  public override getActivityHandler(
+    activityId: string
+  ): ActivityHandler<any, any> | undefined {
+    if (activityId in this.mockedActivities) {
+      const mock = this.mockedActivities[activityId]!;
+      return (...args) => mock.call(...args);
+    }
+    const activity = callableActivities()[activityId];
+    if (!activity) {
+      throw new Error("Activity not found: " + activityId);
+    }
+    return activity;
   }
 }
 

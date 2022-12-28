@@ -1,23 +1,18 @@
 import {
-  ActivityCompleted,
-  ActivityFailed,
+  ActivityWorker,
   ActivityWorkerRequest,
   CompleteExecution,
   CompleteExecutionRequest,
-  createActivityToken,
-  createEvent,
   ExecutionStatus,
-  extendsError,
   FailedExecution,
   FailExecutionRequest,
   HistoryStateEvent,
-  isAsyncResult,
+  ServiceType,
   UpdateHistoryRequest,
   WorkflowClient,
-  WorkflowEventType,
   WorkflowRuntimeClient,
 } from "@eventual/core";
-import { ActivitiesController } from "../activities-controller.js";
+import { serviceTypeScope } from "../utils.js";
 import { TimeConnector } from "../environment.js";
 import { ExecutionStore } from "../execution-store.js";
 
@@ -27,8 +22,8 @@ export class TestWorkflowRuntimeClient extends WorkflowRuntimeClient {
   constructor(
     private executionStore: ExecutionStore,
     private timeConnector: TimeConnector,
-    private activitiesController: ActivitiesController,
-    workflowClient: WorkflowClient
+    workflowClient: WorkflowClient,
+    private activityWorker: ActivityWorker
   ) {
     super(workflowClient);
   }
@@ -82,58 +77,13 @@ export class TestWorkflowRuntimeClient extends WorkflowRuntimeClient {
   }
 
   public async startActivity(request: ActivityWorkerRequest): Promise<void> {
-    try {
-      // TODO how should activities work with time
-      //      right now, if an activity is "long running", we wait for it before continuing the test, putting it one tick (second)
-      //      into the future
-      //      an alternative (or option) would be to start a dangling promise that adds the activity result
-      //      to the environment at the finish time rounded (ceil) to the next second.
-      const result = await this.activitiesController.invokeActivity(
-        {
-          activityToken: createActivityToken(
-            request.executionId,
-            request.command.seq
-          ),
-          executionId: request.executionId,
-          workflowName: request.workflowName,
-          scheduledTime: this.timeConnector.getTime().toISOString(),
-        },
-        request.command.name,
-        ...request.command.args
-      );
-
-      // if it is an async result... do nothing
-      if (!isAsyncResult(result)) {
-        this.timeConnector.pushEvent({
-          executionId: request.executionId,
-          events: [
-            createEvent<ActivityCompleted>(
-              {
-                type: WorkflowEventType.ActivityCompleted,
-                result,
-                seq: request.command.seq,
-              },
-              this.timeConnector.getTime()
-            ),
-          ],
-        });
-      }
-    } catch (err) {
-      this.timeConnector.pushEvent({
-        executionId: request.executionId,
-        events: [
-          createEvent<ActivityFailed>(
-            {
-              type: WorkflowEventType.ActivityFailed,
-              seq: request.command.seq,
-              // TODO: this logic is duplicated between AWS runtime and here, centralize
-              error: extendsError(err) ? err.name : "Error",
-              message: extendsError(err) ? err.message : JSON.stringify(err),
-            },
-            this.timeConnector.getTime()
-          ),
-        ],
-      });
-    }
+    return serviceTypeScope(ServiceType.ActivityWorker, () =>
+      this.activityWorker(
+        request,
+        this.timeConnector.getTime(),
+        // end time is the start time plus one second
+        (start) => new Date(start.getTime() + 1000)
+      )
+    );
   }
 }

@@ -1,7 +1,9 @@
 import {
   ActivityFunction,
   ActivityOutput,
+  ActivityWorker,
   clearEventSubscriptions,
+  createActivityWorker,
   createEvent,
   createOrchestrator,
   Event,
@@ -17,8 +19,6 @@ import {
   ExecutionStatus,
   groupBy,
   Orchestrator,
-  registerEventClient,
-  registerWorkflowClient,
   ServiceType,
   Signal,
   SignalReceived,
@@ -44,9 +44,12 @@ import { TestTimerClient } from "./clients/timer-client.js";
 import { TimeController } from "./time-controller.js";
 import { InProgressError } from "./error.js";
 import { ExecutionStore } from "./execution-store.js";
-import { ActivitiesController, MockActivity } from "./activities-controller.js";
 import { EventHandlerController } from "./event-handler-controller.js";
 import { serviceTypeScope } from "./utils.js";
+import {
+  MockableActivityProvider,
+  MockActivity,
+} from "./providers/activity-provider.js";
 
 export interface TestEnvironmentProps {
   entry: string;
@@ -59,6 +62,8 @@ export interface TestEnvironmentProps {
   start?: Date;
 }
 
+type NewType<A extends ActivityFunction<any, any>> = MockActivity<A>;
+
 export class TestEnvironment {
   private serviceFile: Promise<string>;
 
@@ -68,12 +73,13 @@ export class TestEnvironment {
   private executionHistoryClient: ExecutionHistoryClient;
   private eventClient: EventClient;
 
-  private activitiesController: ActivitiesController;
+  private activityProvider: MockableActivityProvider;
   private eventHandlerController: EventHandlerController;
 
   private started = false;
   private timeController: TimeController<WorkflowTask>;
   private orchestrator: Orchestrator;
+  private activityWorker: ActivityWorker;
 
   private executions: Record<string, ExecutionHandle<any>> = {};
 
@@ -94,7 +100,6 @@ export class TestEnvironment {
       // increment by seconds
       increment: 1000,
     });
-    this.activitiesController = new ActivitiesController();
     this.eventHandlerController = new EventHandlerController();
     const timeConnector: TimeConnector = {
       pushEvent: (task) => this.timeController.addEventAtNextTick(task),
@@ -104,19 +109,30 @@ export class TestEnvironment {
     };
     const executionStore = new ExecutionStore();
     this.executionHistoryClient = new TestExecutionHistoryClient();
+    const activityRuntimeClient = new TestActivityRuntimeClient();
     this.workflowClient = new TestWorkflowClient(
       timeConnector,
-      new TestActivityRuntimeClient(),
+      activityRuntimeClient,
       executionStore
-    );
-    this.workflowRuntimeClient = new TestWorkflowRuntimeClient(
-      executionStore,
-      timeConnector,
-      this.activitiesController,
-      this.workflowClient
     );
     this.eventClient = new TestEventClient(this.eventHandlerController);
     this.timerClient = new TestTimerClient(timeConnector);
+    this.activityProvider = new MockableActivityProvider();
+    this.activityWorker = createActivityWorker({
+      activityRuntimeClient,
+      eventClient: this.eventClient,
+      timerClient: this.timerClient,
+      logger: new TestLogger(),
+      metricsClient: new TestMetricsClient(),
+      workflowClient: this.workflowClient,
+      activityProvider: this.activityProvider,
+    });
+    this.workflowRuntimeClient = new TestWorkflowRuntimeClient(
+      executionStore,
+      timeConnector,
+      this.workflowClient,
+      this.activityWorker
+    );
     this.orchestrator = createOrchestrator({
       timerClient: this.timerClient,
       eventClient: this.eventClient,
@@ -137,8 +153,6 @@ export class TestEnvironment {
       clearEventSubscriptions();
       // run the service to re-import the workflows, but transformed
       await import(await this.serviceFile);
-      registerWorkflowClient(this.workflowClient);
-      registerEventClient(this.eventClient);
       this.started = true;
     }
   }
@@ -161,7 +175,7 @@ export class TestEnvironment {
    * Removes all mocks, reverting to their default behavior.
    */
   public resetMocks() {
-    this.activitiesController.clearMocks();
+    this.activityProvider.clearMocks();
   }
 
   public resetTestSubscriptions() {
@@ -170,8 +184,8 @@ export class TestEnvironment {
 
   public mockActivity<A extends ActivityFunction<any, any>>(
     activity: A | string
-  ): MockActivity<A> {
-    return this.activitiesController.mockActivity(activity as any);
+  ): NewType<A> {
+    return this.activityProvider.mockActivity(activity as any);
   }
 
   public subscribeEvent<E extends Event<any>>(

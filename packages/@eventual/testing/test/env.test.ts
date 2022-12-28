@@ -8,7 +8,6 @@ import {
 } from "@eventual/core";
 import path from "path";
 import * as url from "url";
-import { MockActivity } from "../src/activities-controller.js";
 import { TestEnvironment } from "../src/environment.js";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
@@ -31,6 +30,7 @@ import {
   workflow3,
   workflowWithTimeouts,
 } from "./workflow.js";
+import { MockActivity } from "../src/providers/activity-provider.js";
 const fakeSqsClientSend = jest.fn<SQSClient["send"]>();
 jest.mock("@aws-sdk/client-sqs", () => {
   return {
