@@ -34,6 +34,7 @@ export abstract class WorkflowRuntimeClient {
     request: CompleteExecutionRequest
   ): Promise<CompleteExecution> {
     const execution = await this.updateExecution(request);
+    console.log("execution", execution);
     if (execution.parent) {
       await this.reportCompletionToParent(
         execution.parent.executionId,

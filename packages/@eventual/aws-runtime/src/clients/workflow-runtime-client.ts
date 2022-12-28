@@ -89,7 +89,7 @@ export class AWSWorkflowRuntimeClient extends WorkflowRuntimeClient {
         ? await this.props.dynamo.send(
             new UpdateItemCommand({
               Key: {
-                pk: { S: ExecutionRecord.PRIMARY_KEY },
+                pk: { S: ExecutionRecord.PARTITION_KEY },
                 sk: { S: ExecutionRecord.sortKey(request.executionId) },
               },
               TableName: this.props.tableName,
@@ -112,7 +112,7 @@ export class AWSWorkflowRuntimeClient extends WorkflowRuntimeClient {
         : await this.props.dynamo.send(
             new UpdateItemCommand({
               Key: {
-                pk: { S: ExecutionRecord.PRIMARY_KEY },
+                pk: { S: ExecutionRecord.PARTITION_KEY },
                 sk: { S: ExecutionRecord.sortKey(request.executionId) },
               },
               TableName: this.props.tableName,

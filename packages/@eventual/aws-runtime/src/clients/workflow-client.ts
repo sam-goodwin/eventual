@@ -56,7 +56,7 @@ export class AWSWorkflowClient extends WorkflowClient {
       new PutItemCommand({
         TableName: this.props.tableName,
         Item: {
-          pk: { S: ExecutionRecord.PRIMARY_KEY },
+          pk: { S: ExecutionRecord.PARTITION_KEY },
           sk: { S: ExecutionRecord.sortKey(executionId) },
           id: { S: executionId },
           name: { S: executionName },
@@ -123,7 +123,7 @@ export class AWSWorkflowClient extends WorkflowClient {
         TableName: this.props.tableName,
         KeyConditionExpression: "pk = :pk and begins_with(sk, :sk)",
         ExpressionAttributeValues: {
-          ":pk": { S: ExecutionRecord.PRIMARY_KEY },
+          ":pk": { S: ExecutionRecord.PARTITION_KEY },
           ":sk": { S: ExecutionRecord.SORT_KEY_PREFIX },
         },
       })
@@ -139,7 +139,7 @@ export class AWSWorkflowClient extends WorkflowClient {
     const executionResult = await this.props.dynamo.send(
       new GetItemCommand({
         Key: {
-          pk: { S: ExecutionRecord.PRIMARY_KEY },
+          pk: { S: ExecutionRecord.PARTITION_KEY },
           sk: { S: ExecutionRecord.sortKey(executionId) },
         },
         TableName: this.props.tableName,
@@ -158,7 +158,7 @@ export interface SQSWorkflowTaskMessage {
 
 export type ExecutionRecord =
   | {
-      pk: { S: typeof ExecutionRecord.PRIMARY_KEY };
+      pk: { S: typeof ExecutionRecord.PARTITION_KEY };
       sk: { S: `${typeof ExecutionRecord.SORT_KEY_PREFIX}${string}` };
       result?: AttributeValue.SMember;
       id: AttributeValue.SMember;
@@ -181,7 +181,7 @@ export type ExecutionRecord =
     );
 
 export const ExecutionRecord = {
-  PRIMARY_KEY: "Execution",
+  PARTITION_KEY: "Execution",
   SORT_KEY_PREFIX: `Execution$`,
   sortKey(
     executionId: string
@@ -195,9 +195,9 @@ export function createExecutionFromResult(
 ): Execution {
   return {
     id: execution.id.S,
-    endTime: execution.endTime?.S,
-    error: execution.error?.S,
-    message: execution.message?.S,
+    endTime: execution.endTime?.S as string,
+    error: execution.error?.S as string,
+    message: execution.message?.S as string,
     result: execution.result ? JSON.parse(execution.result.S) : undefined,
     startTime: execution.startTime.S,
     status: execution.status.S,
@@ -207,6 +207,6 @@ export function createExecutionFromResult(
             executionId: execution.parentExecutionId.S,
             seq: parseInt(execution.seq.N, 10),
           }
-        : {},
-  } as Execution;
+        : undefined,
+  };
 }
