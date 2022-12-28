@@ -74,7 +74,7 @@ export type ActivityArguments<A extends ActivityFunction<any, any>> =
   A extends ActivityFunction<infer Arguments extends any[]> ? Arguments : never;
 
 export type ActivityOutput<A extends ActivityFunction<any, any>> =
-  A extends ActivityFunction<any, infer Output> ? Output : never;
+  A extends ActivityFunction<any, infer Output> ? UnwrapAsync<Output> : never;
 
 const AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
 

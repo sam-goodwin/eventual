@@ -10,6 +10,7 @@ import path from "path";
 import * as url from "url";
 import { MockActivity } from "../src/activities-controller.js";
 import { TestEnvironment } from "../src/environment.js";
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
   activity1,
   actWithTimeout,
@@ -20,6 +21,8 @@ import {
   dataEvent,
   dataSignal,
   errorWorkflow,
+  longRunningAct,
+  longRunningWorkflow,
   orchestrate,
   orchestrateWorkflow,
   signalWorkflow,
@@ -28,6 +31,15 @@ import {
   workflow3,
   workflowWithTimeouts,
 } from "./workflow.js";
+const fakeSqsClientSend = jest.fn<SQSClient["send"]>();
+jest.mock("@aws-sdk/client-sqs", () => {
+  return {
+    ...(jest.requireActual("@aws-sdk/client-sqs") as any),
+    SQSClient: jest
+      .fn()
+      .mockImplementation(() => ({ send: fakeSqsClientSend })),
+  };
+});
 
 let env: TestEnvironment;
 
@@ -720,7 +732,7 @@ describe("timeouts", () => {
   });
 
   test("implicit timeout", async () => {
-    mockActivity.block();
+    mockActivity.asyncResult();
 
     const execution = await env.startExecution(workflowWithTimeouts, undefined);
 
@@ -735,6 +747,222 @@ describe("timeouts", () => {
         { status: "rejected", reason: new Timeout().toJSON() },
         { status: "rejected", reason: new Timeout().toJSON() },
       ],
+    });
+  });
+});
+
+describe("long running activities", () => {
+  let activityToken: string | undefined;
+
+  beforeEach(() => {
+    fakeSqsClientSend.mockImplementation(async (command) => {
+      if (command instanceof SendMessageCommand) {
+        activityToken = command.input.MessageBody;
+      } else {
+        throw new Error("Expected send message");
+      }
+    });
+  });
+
+  afterEach(() => {
+    fakeSqsClientSend.mockReset();
+    activityToken = undefined;
+  });
+
+  test("async activity completion", async () => {
+    const execution = await env.startExecution(longRunningWorkflow, undefined);
+
+    if (!activityToken) {
+      throw new Error("Expected activity token to be set");
+    }
+
+    await longRunningAct.complete({ activityToken, result: { value: "hi" } });
+    await env.tick();
+
+    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      status: ExecutionStatus.COMPLETE,
+      result: { value: "hi" },
+    });
+  });
+
+  test("async activity env completion", async () => {
+    const execution = await env.startExecution(longRunningWorkflow, undefined);
+
+    if (!activityToken) {
+      throw new Error("Expected activity token to be set");
+    }
+
+    await env.completeActivity<typeof longRunningAct>(activityToken, {
+      value: "hi",
+    });
+
+    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      status: ExecutionStatus.COMPLETE,
+      result: { value: "hi" },
+    });
+  });
+
+  test("async activity env fail", async () => {
+    const execution = await env.startExecution(longRunningWorkflow, undefined);
+
+    if (!activityToken) {
+      throw new Error("Expected activity token to be set");
+    }
+
+    await env.failActivity(activityToken, "SomeError", "SomeMessage");
+
+    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      status: ExecutionStatus.FAILED,
+      error: "SomeError",
+      message: "SomeMessage",
+    });
+  });
+
+  test("async activity env fail no message", async () => {
+    const execution = await env.startExecution(longRunningWorkflow, undefined);
+
+    if (!activityToken) {
+      throw new Error("Expected activity token to be set");
+    }
+
+    await env.failActivity(activityToken, "SomeError");
+
+    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      status: ExecutionStatus.FAILED,
+      error: "SomeError",
+    });
+  });
+
+  describe("mock", () => {
+    let mockActivity: MockActivity<typeof longRunningAct>;
+    beforeEach(() => {
+      mockActivity = env.mockActivity(longRunningAct);
+    });
+
+    test("complete async immediately", async () => {
+      mockActivity.complete({ value: "i am a mock" });
+      const execution = await env.startExecution(
+        longRunningWorkflow,
+        undefined
+      );
+
+      await env.tick();
+
+      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+        status: ExecutionStatus.COMPLETE,
+        result: { value: "i am a mock" },
+      });
+    });
+
+    test("block", async () => {
+      mockActivity.asyncResult();
+      const execution = await env.startExecution(
+        longRunningWorkflow,
+        undefined
+      );
+
+      await env.tick(60 * 60);
+
+      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+        status: ExecutionStatus.COMPLETE,
+        result: "sleep",
+      });
+    });
+
+    test("block and complete", async () => {
+      let activityToken;
+      mockActivity.asyncResult((token) => {
+        activityToken = token;
+      });
+      const execution = await env.startExecution(
+        longRunningWorkflow,
+        undefined
+      );
+
+      await env.tick(60 * 30);
+
+      if (!activityToken) {
+        throw new Error("Expected activity token to be set");
+      }
+
+      await env.completeActivity(activityToken, {
+        value: "hello from the async mock",
+      });
+
+      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+        status: ExecutionStatus.COMPLETE,
+        result: {
+          value: "hello from the async mock",
+        },
+      });
+    });
+
+    test("block and complete once", async () => {
+      let activityToken;
+      mockActivity
+        .asyncResultOnce((token) => {
+          activityToken = token;
+        })
+        .complete({ value: "not async" });
+      const execution = await env.startExecution(
+        longRunningWorkflow,
+        undefined
+      );
+      const execution2 = await env.startExecution(
+        longRunningWorkflow,
+        undefined
+      );
+
+      await env.tick(60 * 30);
+
+      if (!activityToken) {
+        throw new Error("Expected activity token to be set");
+      }
+
+      await env.completeActivity(activityToken, {
+        value: "hello from the async mock",
+      });
+
+      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+        status: ExecutionStatus.COMPLETE,
+        result: {
+          value: "hello from the async mock",
+        },
+      });
+      expect(await execution2.getExecution()).toMatchObject<Partial<Execution>>(
+        {
+          status: ExecutionStatus.COMPLETE,
+          result: {
+            value: "not async",
+          },
+        }
+      );
+    });
+
+    test("block and complete after sleep time", async () => {
+      let activityToken;
+      mockActivity.asyncResult((token) => {
+        activityToken = token;
+      });
+      const execution = await env.startExecution(
+        longRunningWorkflow,
+        undefined
+      );
+
+      await env.tick(60 * 60);
+
+      if (!activityToken) {
+        throw new Error("Expected activity token to be set");
+      }
+
+      await env.completeActivity(activityToken, {
+        value: "hello from the async mock",
+      });
+
+      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+        status: ExecutionStatus.COMPLETE,
+        result: "sleep",
+      });
     });
   });
 });

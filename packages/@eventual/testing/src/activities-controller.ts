@@ -77,9 +77,15 @@ export class ActivitiesController {
   }
 }
 
+export type AsyncResultTokenCallback = (token: string) => void;
+
 export interface IMockActivity<Arguments extends any[] = any[], Output = any> {
-  block(): IMockActivity<Arguments, Output>;
-  blockOnce(): IMockActivity<Arguments, Output>;
+  asyncResult(
+    tokenCallback?: AsyncResultTokenCallback
+  ): IMockActivity<Arguments, Output>;
+  asyncResultOnce(
+    tokenCallback?: AsyncResultTokenCallback
+  ): IMockActivity<Arguments, Output>;
   complete(output: Output): IMockActivity<Arguments, Output>;
   completeOnce(output: Output): IMockActivity<Arguments, Output>;
   fail(error: Error): IMockActivity<Arguments, Output>;
@@ -120,6 +126,7 @@ export interface InvokeRealResolution {
 
 export interface BlockResolution {
   block: true;
+  tokenCallback?: AsyncResultTokenCallback;
 }
 
 export class MockActivity<A extends ActivityFunction<any, any>>
@@ -162,9 +169,13 @@ export class MockActivity<A extends ActivityFunction<any, any>>
     } else if ("handler" in resolution) {
       return resolution.handler(...args);
     } else if ("block" in resolution) {
-      return asyncResult(() => {
-        return undefined;
-      });
+      return asyncResult(
+        resolution.tokenCallback
+          ? resolution.tokenCallback
+          : () => {
+              return undefined;
+            }
+      );
     }
     return assertNever(resolution);
   }
@@ -233,12 +244,12 @@ export class MockActivity<A extends ActivityFunction<any, any>>
     return this.addOnceResolution({ real: true });
   }
 
-  public block() {
-    return this.setResolution({ block: true });
+  public asyncResult(tokenCallback?: AsyncResultTokenCallback) {
+    return this.setResolution({ block: true, tokenCallback });
   }
 
-  public blockOnce() {
-    return this.addOnceResolution({ block: true });
+  public asyncResultOnce(tokenCallback?: AsyncResultTokenCallback) {
+    return this.addOnceResolution({ block: true, tokenCallback });
   }
 
   private setResolution(

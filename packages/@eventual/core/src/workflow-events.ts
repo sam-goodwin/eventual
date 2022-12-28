@@ -138,7 +138,7 @@ export interface ActivityCompleted extends HistoryEventBase {
 export interface ActivityFailed extends HistoryEventBase {
   type: WorkflowEventType.ActivityFailed;
   error: string;
-  message: string;
+  message?: string;
 }
 
 export interface ActivityHeartbeatTimedOut extends HistoryEventBase {

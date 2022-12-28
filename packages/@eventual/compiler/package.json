@@ -20,7 +20,7 @@
     "@eventual/aws-runtime": "workspace:^",
     "@eventual/core": "workspace:^",
     "@swc/core": "^1.2.245",
-    "esbuild": "^0.15.14",
+    "esbuild": "0.16",
     "esbuild-plugin-alias-path": "^1.1.1"
   },
   "devDependencies": {

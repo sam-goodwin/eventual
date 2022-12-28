@@ -1,5 +1,6 @@
 import {
   activity,
+  asyncResult,
   event,
   sendSignal,
   signal,
@@ -7,6 +8,9 @@ import {
   sleepUntil,
   workflow,
 } from "@eventual/core";
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+
+const sqs = new SQSClient({});
 
 export const workflow1 = workflow("workflow1", async () => {
   return "hi";
@@ -169,3 +173,32 @@ export const workflowWithTimeouts = workflow(
     ]);
   }
 );
+
+export const longRunningAct = activity("longRunningAct", async () => {
+  return asyncResult<{ value: string }>(async (token) => {
+    await sqs.send(
+      new SendMessageCommand({
+        MessageBody: token,
+        QueueUrl: "fake queue",
+      })
+    );
+  });
+});
+
+/**
+ * Start a "long running activity", return the first to return,
+ * a hour sleep or the activity.
+ */
+export const longRunningWorkflow = workflow("longRunningWf", async () => {
+  const act = longRunningAct();
+
+  const result = Promise.race([
+    act,
+    (async () => {
+      await sleepFor(60 * 60);
+      return "sleep";
+    })(),
+  ]);
+
+  return await result;
+});

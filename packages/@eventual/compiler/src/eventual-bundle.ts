@@ -66,7 +66,8 @@ export async function bundleService(
   outDir: string,
   entry: string,
   serviceType?: ServiceType,
-  external?: string[]
+  external?: string[],
+  allPackagesExternal?: boolean
 ) {
   await prepareOutDir(outDir);
   return build({
@@ -76,6 +77,7 @@ export async function bundleService(
     plugins: [eventualESPlugin],
     serviceType,
     external,
+    allPackagesExternal,
     // It's important that we DONT use inline source maps for service, otherwise debugger fails to pick it up
     // sourcemap: "inline",
   });
@@ -97,6 +99,7 @@ async function build({
   sourcemap,
   serviceType,
   external,
+  allPackagesExternal,
 }: {
   injectedEntry?: string;
   outDir: string;
@@ -106,6 +109,7 @@ async function build({
   sourcemap?: boolean | "inline";
   serviceType?: ServiceType;
   external?: string[];
+  allPackagesExternal?: boolean;
 }) {
   const outfile = path.join(outDir, `${name}/index.mjs`);
   const bundle = await esbuild.build({
@@ -128,6 +132,8 @@ async function build({
     // TODO: make this configurable.
     // external: ["@aws-sdk"],
     external,
+    // does not include any node modules packages in the bundle
+    packages: allPackagesExternal ? "external" : undefined,
     platform: "node",
     format: "esm",
     // Target for node 16

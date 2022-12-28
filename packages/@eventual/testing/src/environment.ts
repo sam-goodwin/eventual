@@ -1,5 +1,6 @@
 import {
   ActivityFunction,
+  ActivityOutput,
   clearEventSubscriptions,
   createEvent,
   createOrchestrator,
@@ -81,7 +82,8 @@ export class TestEnvironment {
       props.outDir,
       props.entry,
       ServiceType.OrchestratorWorker,
-      ["@eventual/core"]
+      undefined,
+      true
     );
     const start = props.start
       ? new Date(props.start.getTime() - props.start.getMilliseconds())
@@ -310,6 +312,23 @@ export class TestEnvironment {
    */
   public async getExecution(executionId: string) {
     return this.workflowClient.getExecution(executionId);
+  }
+
+  public async completeActivity<A extends ActivityFunction<any, any> = any>(
+    activityToken: string,
+    result: ActivityOutput<A>
+  ) {
+    await this.workflowClient.completeActivity({ activityToken, result });
+    await this.tick();
+  }
+
+  public async failActivity(
+    activityToken: string,
+    error: string,
+    message?: string
+  ) {
+    await this.workflowClient.failActivity({ activityToken, error, message });
+    await this.tick();
   }
 
   /**

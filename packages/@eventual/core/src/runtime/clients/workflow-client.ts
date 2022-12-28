@@ -194,7 +194,7 @@ export interface CompleteActivityRequest<T = any> {
 export interface FailActivityRequest {
   activityToken: string;
   error: string;
-  message: string;
+  message?: string;
 }
 
 export interface HeartbeatRequest {
