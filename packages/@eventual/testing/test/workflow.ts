@@ -125,12 +125,47 @@ dataDoneEvent.on(async ({ executionId }) => {
   await sendSignal(executionId, dataDoneSignal);
 });
 
-export const orchestrateWorkflow = workflow("orchestrateWorkflow", async () => {
-  const execution = signalWorkflow(undefined);
-  await sleepFor(1);
-  await execution.signal(dataSignal, "hello from a workflow");
-  await execution.signal(dataDoneSignal);
-  await execution.signal(continueSignal);
-
-  return await execution;
+export const throwWorkflow = workflow("throwWorkflow", async () => {
+  throw new Error("Ahh");
 });
+
+export const orchestrateWorkflow = workflow(
+  "orchestrateWorkflow",
+  async (thr = false) => {
+    if (thr) {
+      await throwWorkflow(undefined);
+    }
+    const execution = signalWorkflow(undefined);
+    await sleepFor(1);
+    await execution.signal(dataSignal, "hello from a workflow");
+    await execution.signal(dataDoneSignal);
+    await execution.signal(continueSignal);
+
+    return await execution;
+  }
+);
+
+export const actWithTimeout = activity(
+  "actWithTimeout",
+  { timeoutSeconds: 30 },
+  async () => {
+    return "hi";
+  }
+);
+
+export const workflow2WithTimeouts = workflow(
+  "wf2",
+  { timeoutSeconds: 50 },
+  async () => actWithTimeout()
+);
+export const workflowWithTimeouts = workflow(
+  "wf1",
+  { timeoutSeconds: 100 },
+  async () => {
+    return Promise.allSettled([
+      actWithTimeout(),
+      workflow2WithTimeouts(undefined),
+      dataSignal.expect({ timeoutSeconds: 30 }),
+    ]);
+  }
+);

@@ -1,10 +1,12 @@
 import {
   ActivityArguments,
+  ActivityContext,
   ActivityFunction,
   ActivityOutput,
   assertNever,
   asyncResult,
   callableActivities,
+  clearActivityContext,
   EventualError,
   Failed,
   HeartbeatTimeout,
@@ -14,6 +16,7 @@ import {
   Resolved,
   Result,
   ServiceType,
+  setActivityContext,
   Timeout,
 } from "@eventual/core";
 import { serviceTypeScope } from "./utils.js";
@@ -49,17 +52,26 @@ export class ActivitiesController {
     this.mockedActivities = {};
   }
 
-  public async invokeActivity(activityId: string, ...args: any[]) {
+  public async invokeActivity(
+    activityContext: ActivityContext,
+    activityId: string,
+    ...args: any[]
+  ) {
     return serviceTypeScope(ServiceType.ActivityWorker, () => {
-      if (activityId in this.mockedActivities) {
-        const mock = this.mockedActivities[activityId]!;
-        return mock.call(...args);
-      } else {
-        const activity = callableActivities()[activityId];
-        if (!activity) {
-          throw new Error("Activity not found: " + activityId);
+      setActivityContext(activityContext);
+      try {
+        if (activityId in this.mockedActivities) {
+          const mock = this.mockedActivities[activityId]!;
+          return mock.call(...args);
+        } else {
+          const activity = callableActivities()[activityId];
+          if (!activity) {
+            throw new Error("Activity not found: " + activityId);
+          }
+          return activity(...args);
         }
-        return activity(...args);
+      } finally {
+        clearActivityContext();
       }
     });
   }
@@ -160,7 +172,7 @@ export class MockActivity<A extends ActivityFunction<any, any>>
   public complete(
     output: ActivityOutput<A>
   ): IMockActivity<ActivityArguments<A>, ActivityOutput<A>> {
-    return this.addResolution(Result.resolved(output));
+    return this.setResolution(Result.resolved(output));
   }
 
   public completeOnce(
@@ -172,7 +184,7 @@ export class MockActivity<A extends ActivityFunction<any, any>>
   public fail(...args: [error: Error] | [error: string, message: string]) {
     const error =
       args.length === 1 ? args[0] : new EventualError(args[0], args[1]);
-    return this.addResolution(Result.failed(error));
+    return this.setResolution(Result.failed(error));
   }
 
   public failOnce(...args: [error: Error] | [error: string, message: string]) {
@@ -182,7 +194,7 @@ export class MockActivity<A extends ActivityFunction<any, any>>
   }
 
   public timeout() {
-    return this.addResolution(Result.failed(new Timeout()));
+    return this.setResolution(Result.failed(new Timeout()));
   }
 
   public timeoutOnce() {
@@ -190,7 +202,7 @@ export class MockActivity<A extends ActivityFunction<any, any>>
   }
 
   public heartbeatTimeout() {
-    return this.addResolution(Result.failed(new Timeout()));
+    return this.setResolution(Result.failed(new Timeout()));
   }
 
   public heartbeatTimeoutOnce() {
@@ -202,7 +214,7 @@ export class MockActivity<A extends ActivityFunction<any, any>>
       ...args: ActivityArguments<A>
     ) => ActivityOutput<A> | Promise<ActivityOutput<A>>
   ): IMockActivity<ActivityArguments<A>, ActivityOutput<A>> {
-    return this.addResolution({ handler });
+    return this.setResolution({ handler });
   }
 
   public invokeOnce(
@@ -214,7 +226,7 @@ export class MockActivity<A extends ActivityFunction<any, any>>
   }
 
   public invokeReal() {
-    return this.addResolution({ real: true });
+    return this.setResolution({ real: true });
   }
 
   public invokeRealOnce() {
@@ -222,14 +234,14 @@ export class MockActivity<A extends ActivityFunction<any, any>>
   }
 
   public block() {
-    return this.addResolution({ block: true });
+    return this.setResolution({ block: true });
   }
 
   public blockOnce() {
     return this.addOnceResolution({ block: true });
   }
 
-  private addResolution(
+  private setResolution(
     resolution: ActivityResolution<ActivityArguments<A>, ActivityOutput<A>>
   ) {
     this.resolution = resolution;

@@ -114,6 +114,10 @@ export function setActivityContext(context: ActivityContext) {
   globalThis._eventual.activityContext = context;
 }
 
+export function clearActivityContext() {
+  globalThis._eventual.activityContext = undefined;
+}
+
 export function getActivityContext(): ActivityContext {
   const context = globalThis._eventual.activityContext;
 

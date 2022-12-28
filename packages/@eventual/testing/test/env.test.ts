@@ -4,6 +4,7 @@ import {
   Execution,
   ExecutionStatus,
   EventHandler,
+  Timeout,
 } from "@eventual/core";
 import path from "path";
 import * as url from "url";
@@ -11,6 +12,7 @@ import { MockActivity } from "../src/activities-controller.js";
 import { TestEnvironment } from "../src/environment.js";
 import {
   activity1,
+  actWithTimeout,
   continueEvent,
   continueSignal,
   dataDoneEvent,
@@ -24,6 +26,7 @@ import {
   sleepWorkflow,
   workflow1,
   workflow3,
+  workflowWithTimeouts,
 } from "./workflow.js";
 
 let env: TestEnvironment;
@@ -657,6 +660,81 @@ describe("invoke workflow", () => {
     expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
       status: ExecutionStatus.COMPLETE,
       result: "hello from a workflow",
+    });
+  });
+
+  test("call real child that throws", async () => {
+    const execution = await env.startExecution(orchestrateWorkflow, true);
+
+    await env.tick(100);
+
+    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      status: ExecutionStatus.FAILED,
+      error: "Error",
+      message: "Ahh",
+    });
+  });
+});
+
+describe("timeouts", () => {
+  let mockActivity: MockActivity<typeof actWithTimeout>;
+  beforeAll(() => {
+    mockActivity = env.mockActivity(actWithTimeout);
+  });
+  test("everyone is happy", async () => {
+    mockActivity.complete("hello");
+    const execution = await env.startExecution(workflowWithTimeouts, undefined);
+
+    await execution.signal(dataSignal, "woo");
+    await env.tick(2);
+
+    expect(await execution.getExecution()).toMatchObject<
+      Partial<Awaited<ReturnType<typeof execution.getExecution>>>
+    >({
+      status: ExecutionStatus.COMPLETE,
+      result: [
+        { status: "fulfilled", value: "hello" },
+        { status: "fulfilled", value: "hello" },
+        { status: "fulfilled", value: "woo" },
+      ],
+    });
+  });
+
+  test("explicit timeout", async () => {
+    mockActivity.timeout();
+
+    const execution = await env.startExecution(workflowWithTimeouts, undefined);
+    await execution.signal(dataSignal, "woo");
+    await env.tick(4);
+
+    expect(await execution.getExecution()).toMatchObject<
+      Partial<Awaited<ReturnType<typeof execution.getExecution>>>
+    >({
+      status: ExecutionStatus.COMPLETE,
+      result: [
+        { status: "rejected", reason: new Timeout().toJSON() },
+        { status: "rejected", reason: new Timeout().toJSON() },
+        { status: "fulfilled", value: "woo" },
+      ],
+    });
+  });
+
+  test("implicit timeout", async () => {
+    mockActivity.block();
+
+    const execution = await env.startExecution(workflowWithTimeouts, undefined);
+
+    await env.tick(70);
+
+    expect(await execution.getExecution()).toMatchObject<
+      Partial<Awaited<ReturnType<typeof execution.getExecution>>>
+    >({
+      status: ExecutionStatus.COMPLETE,
+      result: [
+        { status: "rejected", reason: new Timeout().toJSON() },
+        { status: "rejected", reason: new Timeout().toJSON() },
+        { status: "rejected", reason: new Timeout().toJSON() },
+      ],
     });
   });
 });

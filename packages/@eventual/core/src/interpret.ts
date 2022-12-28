@@ -419,9 +419,13 @@ export function interpret<Return>(
     }
   }
 
-  function tryResolveResult(activity: Eventual): Result | undefined {
+  function tryResolveResult(activity: any): Result | undefined {
+    // it is possible that a non-eventual is yielded or passed to an all settled, send the value through.
+    if (!isEventual(activity)) {
+      return Result.resolved(activity);
+    }
     // check if a result has been stored on the activity before computing
-    if (isResolved(activity.result) || isFailed(activity.result)) {
+    else if (isResolved(activity.result) || isFailed(activity.result)) {
       return activity.result;
     } else if (isPending(activity.result)) {
       // if an activity is marked as pending another activity, defer to the pending activities's result
