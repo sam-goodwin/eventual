@@ -176,9 +176,9 @@ export class TestEnvironment {
   }
 
   /**
-   * Resets all mocks (@see resetMocks), test subscriptions {@see resetTestSubscriptions},
-   * resets time {@see resetTime}, and re-enables service event subscriptions
-   * (if disabled; {@see enableServiceSubscriptions}).
+   * Resets all mocks ({@link resetMocks}), test subscriptions ({@link resetTestSubscriptions}),
+   * resets time ({@link resetTime}), and re-enables service event subscriptions
+   * (if disabled; {@link enableServiceSubscriptions}).
    */
   public reset(time?: Date) {
     this.resetTime(time);
@@ -222,6 +222,14 @@ export class TestEnvironment {
     return this.activityProvider.mockActivity(activity as any);
   }
 
+  /**
+   * Provides an environment local handler for an event.
+   *
+   * Note: this does not override other handlers for the same event.
+   *       use {@link disableServiceSubscriptions} to turn off handlers
+   *       included with the service or {@link resetTestSubscriptions}
+   *       to clear handlers added via this method.
+   */
   public subscribeEvent<E extends Event<any>>(
     event: E,
     handler: EventHandler<EventPayloadType<E>>
@@ -243,6 +251,10 @@ export class TestEnvironment {
     this.eventHandlerController.enableDefaultSubscriptions();
   }
 
+  /**
+   * Sends a {@link signal} to a workflow execution
+   * and progressed time by one second ({@link tick})
+   */
   public async sendSignal<Payload>(
     execution: ExecutionHandle<any> | string,
     signal: Signal<Payload> | string,
@@ -265,6 +277,7 @@ export class TestEnvironment {
 
   /**
    * Publishes one or more events of a type into the {@link TestEnvironment}.
+   * and progresses time by one second ({@link tick})
    */
   public async publishEvent<Payload extends EventPayload = EventPayload>(
     event: string | Event<Payload>,
@@ -282,12 +295,18 @@ export class TestEnvironment {
   }
 
   /**
-   * Publishes one or more events into the {@link TestEnvironment}.
+   * Publishes one or more events into the {@link TestEnvironment}
+   * and progresses time by one second ({@link tick})
    */
   public async publishEvents(...events: EventEnvelope<EventPayload>[]) {
     await this.eventClient.publish(...events);
+    return this.tick();
   }
 
+  /**
+   * Starts a workflow execution and
+   * progresses time by one second ({@link tick})
+   */
   public async startExecution<
     W extends Workflow<any, any> = Workflow<any, any>
   >(
@@ -319,21 +338,47 @@ export class TestEnvironment {
     return this.workflowClient.getExecution(executionId);
   }
 
+  /**
+   * Completes an activity with a result value
+   * and progressed time by one second ({@link tick}).
+   *
+   * Get the activity token by intercepting the token from {@link asyncResult}.
+   *
+   * ```ts
+   * let activityToken;
+   * mockActivity.asyncResult(token => activityToken);
+   * // start workflow
+   * env.completeActivity(activityToken, "value");
+   * ```
+   */
   public async completeActivity<A extends ActivityFunction<any, any> = any>(
     activityToken: string,
     result: ActivityOutput<A>
   ) {
     await this.workflowClient.completeActivity({ activityToken, result });
-    await this.tick();
+    return this.tick();
   }
 
+  /**
+   * Fails an activity with a result value
+   * and progressed time by one second ({@link tick}).
+   *
+   * Get the activity token by intercepting the token from {@link asyncResult}.
+   *
+   * ```ts
+   * let activityToken;
+   * mockActivity.asyncResult(token => activityToken);
+   * // start workflow
+   * env.failActivity(activityToken, "value");
+   * ```
+   */
   public async failActivity(
     activityToken: string,
     error: string,
     message?: string
   ) {
     await this.workflowClient.failActivity({ activityToken, error, message });
-    await this.tick();
+    return this.tick();
   }
 
   /**
@@ -424,10 +469,20 @@ export interface TimeConnector {
 
 export class ExecutionHandle<W extends Workflow<any, any>> {
   constructor(public id: string, private environment: TestEnvironment) {}
+
+  /**
+   * @return the current status of the execution.
+   */
   public async status() {
     return (await this.environment.getExecution(this.id))!.status;
   }
 
+  /**
+   * @return the result of a workflow.
+   *
+   * If the workflow is in progress {@link InProgressError} will be thrown.
+   * If the workflow has failed, {@link EventualError} will be thrown with the error and message.
+   */
   public async result() {
     const execution = await this.getExecution();
     if (execution.status === ExecutionStatus.IN_PROGRESS) {
@@ -439,12 +494,18 @@ export class ExecutionHandle<W extends Workflow<any, any>> {
     }
   }
 
+  /**
+   * @return the {@link Execution} with the status, result, error, and other data based on the current status.
+   */
   public async getExecution(): Promise<Execution<WorkflowOutput<W>>> {
     return (await this.environment.getExecution(this.id)) as Execution<
       WorkflowOutput<W>
     >;
   }
 
+  /**
+   * Send a {@link signal} to this execution and progresses time by one second ({@link TestEnvironment.tick}).
+   */
   public async signal<Payload = any>(
     signal: string | Signal<Payload>,
     payload: Payload
