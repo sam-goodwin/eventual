@@ -14,9 +14,11 @@
     "aws-cdk": "^2.50.0"
   },
   "devDependencies": {
+    "@types/inquirer": "^8",
     "@types/node": "^16",
     "@types/yargs": "^17.0.17",
-    "yargs": "^17.6.2",
-    "esbuild": "^0.16.6"
+    "esbuild": "^0.16.6",
+    "inquirer": "^8",
+    "yargs": "^17.6.2"
   }
 }
