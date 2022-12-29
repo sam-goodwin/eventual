@@ -2,6 +2,9 @@
   "name": "create-eventual",
   "version": "0.3.0",
   "type": "commonjs",
+  "files": [
+    "bin"
+  ],
   "bin": {
     "create-eventual": "./bin/index.js"
   },
