@@ -1,6 +1,7 @@
 # https://pnpm.io/pnpm-workspace_yaml
 packages:
   - "packages/@eventual/*"
+  - "packages/create-eventual"
   - "apps/*"
   - "apps/tests/*"
   - "apps/test-app-sst/services"
