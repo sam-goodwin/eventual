@@ -64,6 +64,38 @@ api.post("/fail/:token", async (request) => {
 });
 ```
 
+### Explicit Return Type
+
+The `asyncResult` function allows you to specify the expected return type of an async activity. This can be helpful for ensuring type safety and avoiding runtime errors.
+
+To specify the return type of an async activity, provide a type parameter to `asyncResult`:
+
+```ts
+return asyncResult<string>((token) => {
+  // do something with the token, such as storing it in a database
+});
+```
+
+The return type of the activity function will be `Promise<string>`. This means that, when calling the `complete` function, the `result` field must be of type `string`.
+
+```ts
+const myActivity = activity("myActivity", async () => {
+  return asyncResult<string>((token) => {
+    // do something with the token
+  });
+});
+
+myActivity.complete({
+  result: "hello world", // valid
+});
+
+myActivity.complete({
+  result: 123, // invalid, number is not a string
+});
+```
+
+If you do not specify the return type of an async activity, it will be inferred as `any`. This means that the return type of the activity function will be `Promise<any>`, and there will be no type checking when calling complete. It is generally a good idea to specify the return type of an async activity to ensure type safety and avoid potential runtime errors.
+
 ### Complete an Activity from outside Eventual
 
 TODO
