@@ -6,9 +6,9 @@ import { createAwsSst } from "./aws-sst.js";
 
 export type PackageManager = "npm" | "yarn" | "pnpm";
 
-const projectNameRegex = /^[A-Za-z_0-9]+$/g;
+const projectNameRegex = /^[A-Za-z-_0-9]+$/g;
 
-const targetChoices = ["aws-sst", "aws-cdk"] as const;
+const targetChoices = ["aws-cdk", "aws-sst"].sort();
 
 (async function () {
   const pkgManager: PackageManager = process.execPath.includes("npm")
