@@ -9,3 +9,7 @@ export interface WorkflowTask {
   executionId: string;
   events: HistoryStateEvent[];
 }
+
+export function isWorkflowTask(obj: any): obj is WorkflowTask {
+  return "events" in obj && "executionId" in obj;
+}

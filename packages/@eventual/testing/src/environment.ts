@@ -16,6 +16,7 @@ import {
   events,
   ExecutionHandle,
   ExecutionHistoryClient,
+  isWorkflowTask,
   Orchestrator,
   ServiceType,
   Signal,
@@ -57,7 +58,7 @@ export interface TestEnvironmentProps {
 }
 
 /**
- * A locally simulated workflow environnement designed for unit testing.
+ * A locally simulated workflow environment designed for unit testing.
  * Supports providing mock implementations of activities and workflow,
  * manually progressing time, and more.
  *
@@ -388,8 +389,10 @@ export class TestEnvironment {
     if (n === undefined || n === 1) {
       const events = this.timeController.tick();
       await this.processTickEvents(events);
-    } else if (n < 1) {
-      throw new Error("Must provide a positive number of seconds to tick");
+    } else if (n < 1 || !Number.isInteger(n)) {
+      throw new Error(
+        "Must provide a positive integer number of seconds to tick"
+      );
     } else {
       // process each batch of event for n ticks.
       // note: we may get back fewer than n groups if there are not events for each tick.
@@ -403,10 +406,11 @@ export class TestEnvironment {
   /**
    * Progresses time to a point in time.
    *
-   * If the time is in the past nothing happens.
-   * Milliseconds are ignored.
+   * @param time ISO8601 timestamp or {@link Date} object.
+   *             If the time is in the past nothing happens.
+   *             Milliseconds are ignored.
    */
-  public async tickUntil(time: string) {
+  public async tickUntil(time: string | Date) {
     // compute the ticks instead of using tickUntil in order to use tickIncremental
     // and share the tick logic.
     // consider adding a tickUntilIncremental
@@ -422,17 +426,13 @@ export class TestEnvironment {
    * Process the events from a single tick/second.
    */
   private async processTickEvents(events: WorkflowTask[]) {
-    const workflowTasks = events.filter(
-      (event): event is WorkflowTask =>
-        "events" in event && "executionId" in event
-    );
-    if (workflowTasks.length !== events.length) {
+    if (!events.every(isWorkflowTask)) {
       // TODO: support other event types.
       throw new Error("Unknown event types in the TimerController.");
     }
 
     await serviceTypeScope(ServiceType.OrchestratorWorker, () =>
-      this.orchestrator(workflowTasks, this.time)
+      this.orchestrator(events, this.time)
     );
   }
 }

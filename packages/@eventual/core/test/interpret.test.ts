@@ -358,6 +358,42 @@ test("should throw when a completed precedes workflow state", () => {
   });
 });
 
+test("should fail the workflow on uncaught user error", () => {
+  const wf = workflow(function* () {
+    throw new Error("Hi");
+  });
+  expect(
+    interpret(wf.definition(undefined, context), [])
+  ).toMatchObject<WorkflowResult>({
+    result: Result.failed({ name: "Error", message: "Hi" }),
+    commands: [],
+  });
+});
+
+test("should fail the workflow on uncaught user error of random type", () => {
+  const wf = workflow(function* () {
+    throw new TypeError("Hi");
+  });
+  expect(
+    interpret(wf.definition(undefined, context), [])
+  ).toMatchObject<WorkflowResult>({
+    result: Result.failed({ name: "TypeError", message: "Hi" }),
+    commands: [],
+  });
+});
+
+test("should fail the workflow on uncaught thrown value", () => {
+  const wf = workflow(function* () {
+    throw "hi";
+  });
+  expect(
+    interpret(wf.definition(undefined, context), [])
+  ).toMatchObject<WorkflowResult>({
+    result: Result.failed("hi"),
+    commands: [],
+  });
+});
+
 test("should wait if partial results", () => {
   expect(
     interpret(myWorkflow(event), [

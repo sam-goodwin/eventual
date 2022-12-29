@@ -66,38 +66,186 @@ export class MockableActivityProvider extends GlobalActivityProvider {
 
 export type AsyncResultTokenCallback = (token: string) => void;
 
+/**
+ * A mock activity which provides fine grained control over the results of the activity when
+ * called by the workflow within a {@link TestEnvironment}.
+ */
 export interface IMockActivity<Arguments extends any[] = any[], Output = any> {
   /**
+   * Imitates the {@link asyncResult} behavior of an activity.
    *
+   * A token is generated and the activity must be completed or failed using the token.
+   *
+   * To get the token, use the tokenCallback argument.
+   *
+   * ```ts
+   * let activityToken;
+   * mockActivity.asyncResult(token => { activityToken = token; });
+   * // start workflow
+   * await env.completeActivity(activityToken, "some result");
+   * ```
+   *
+   * The activity will use this resolution after all once resolutions are
+   * consumed and until another resolution is given.
    */
   asyncResult(
     tokenCallback?: AsyncResultTokenCallback
   ): IMockActivity<Arguments, Output>;
+  /**
+   * Imitates the {@link asyncResult} behavior of an activity for one invocation.
+   *
+   * A token is generated and the activity must be completed or failed using the token.
+   *
+   * To get the token, use the tokenCallback argument.
+   *
+   * ```ts
+   * let activityToken;
+   * mockActivity.asyncResultOnce(token => { activityToken = token; });
+   * // start workflow
+   * await env.completeActivity(activityToken, "some result");
+   * ```
+   *
+   * The activity will use this resolution once all previous once resolutions are consumed.
+   */
   asyncResultOnce(
     tokenCallback?: AsyncResultTokenCallback
   ): IMockActivity<Arguments, Output>;
+  /**
+   * Completes the activity with a given value.
+   *
+   * The activity will use this resolution after all once resolutions are
+   * consumed and until another resolution is given.
+   */
   complete(output: Output): IMockActivity<Arguments, Output>;
+  /**
+   * Completes the activity once with a given value.
+   *
+   * The activity will use this resolution once all previous once resolutions are consumed.
+   */
   completeOnce(output: Output): IMockActivity<Arguments, Output>;
+  /**
+   * Fails the activity with a given error.
+   *
+   * The activity will use this resolution after all once resolutions are
+   * consumed and until another resolution is given.
+   */
   fail(error: Error): IMockActivity<Arguments, Output>;
   fail(error: string, message: string): IMockActivity<Arguments, Output>;
+  /**
+   * Fails the activity once with a given error.
+   *
+   * The activity will use this resolution once all previous once resolutions are consumed.
+   */
   failOnce(error: Error): IMockActivity<Arguments, Output>;
   failOnce(error: string, message: string): IMockActivity<Arguments, Output>;
+  /**
+   * When the activity is invoked, the given callback will be called with the values given.
+   *
+   * The callback can return values, throw errors, or return {@link asyncResult}.
+   *
+   * ```ts
+   * mockActivity.invoke(async (arg1, arg2) => { return arg1 + arg2; });
+   * ```
+   *
+   * This method could be used with a mocks library like `jest` to provide invocation metrics and matchers.
+   *
+   * ```
+   * const mockActivity = env.mockActivity(myActivity);
+   * const mockActivityHandler = jest.fn<myActivity>();
+   * mockActivity.invoke(mockActivityHandler);
+   * // start workflow
+   * expect(mockActivityHandler).toBeCalledTimes(10);
+   * ```
+   *
+   * The activity will use this resolution after all once resolutions are
+   * consumed and until another resolution is given.
+   */
   invoke(
-    handler: (...args: Arguments) => Promise<Output> | Output
+    handler: ActivityHandler<Arguments, Output>
   ): IMockActivity<Arguments, Output>;
+  /**
+   * When the activity is invoked, the given callback will be called once with the values given.
+   *
+   * The callback can return values, throw errors, or return {@link asyncResult}.
+   *
+   * ```ts
+   * mockActivity.invoke(async (arg1, arg2) => { return arg1 + arg2; });
+   * ```
+   *
+   * This method could be used with a mocks library like `jest` to provide invocation metrics and matchers.
+   *
+   * ```
+   * const mockActivity = env.mockActivity(myActivity);
+   * const mockActivityHandler = jest.fn<myActivity>();
+   * mockActivity.invoke(mockActivityHandler);
+   * // start workflow
+   * expect(mockActivityHandler).toBeCalledTimes(10);
+   * ```
+   *
+   * The activity will use this resolution once all previous once resolutions are consumed.
+   */
   invokeOnce(
-    handler: (...args: Arguments) => Promise<Output> | Output
+    handler: ActivityHandler<Arguments, Output>
   ): IMockActivity<Arguments, Output>;
+  /**
+   * Fails the activity with a {@link Timeout} error.
+   *
+   * The activity will use this resolution after all once resolutions are
+   * consumed and until another resolution is given.
+   */
   timeout(): IMockActivity<Arguments, Output>;
+  /**
+   * Fails the activity once with a {@link Timeout} error.
+   *
+   * The activity will use this resolution once all previous once resolutions are consumed.
+   */
   timeoutOnce(): IMockActivity<Arguments, Output>;
+  /**
+   * Fails the activity with a {@link HeartbeatTimeout} error.
+   *
+   * The activity will use this resolution after all once resolutions are
+   * consumed and until another resolution is given.
+   */
   heartbeatTimeout(): IMockActivity<Arguments, Output>;
+  /**
+   * Fails the activity once with a {@link HeartbeatTimeout} error.
+   *
+   * The activity will use this resolution once all previous once resolutions are consumed.
+   */
   heartbeatTimeoutOnce(): IMockActivity<Arguments, Output>;
+  /**
+   * Invokes the real handler, this can be used to revert back to the real activity handler without
+   * using {@link TestEnvironment.restMocks()} or to maintain the current once resolutions while still
+   * invoking the real function.
+   *
+   * ```ts
+   * const mockActivity = env.mockActivity(myActivity);
+   * // fail on the first invocation and then call the real handler for all future invocations.
+   * mockActivity.failOnce(new Error()).invokeReal();
+   * ```
+   *
+   * The activity will use this resolution after all once resolutions are
+   * consumed and until another resolution is given.
+   */
   invokeReal(): IMockActivity<Arguments, Output>;
+  /**
+   * Invokes the real handler once, this can be used to revert back to the real activity handler without
+   * using {@link TestEnvironment.restMocks()} or to maintain the current once resolutions while still
+   * invoking the real function.
+   *
+   * ```ts
+   * const mockActivity = env.mockActivity(myActivity);
+   * // fail on the first invocation, then invoke the real handler, then complete all future calls.
+   * mockActivity.failOnce(new Error()).invokeRealOnce().complete("test result!");
+   * ```
+   *
+   * The activity will use this resolution once all previous once resolutions are consumed.
+   */
   invokeRealOnce(): IMockActivity<Arguments, Output>;
 }
 
 export type ActivityResolution<Arguments extends any[] = any[], Output = any> =
-  | BlockResolution
+  | AsyncResultResolution
   | Failed
   | InvokeRealResolution
   | InvokeResolution<Arguments, Output>
@@ -107,15 +255,15 @@ export interface InvokeResolution<
   Arguments extends any[] = any[],
   Output = any
 > {
-  handler: (...args: Arguments) => Promise<Output> | Output;
+  handler: ActivityHandler<Arguments, Output>;
 }
 
 export interface InvokeRealResolution {
   real: true;
 }
 
-export interface BlockResolution {
-  block: true;
+export interface AsyncResultResolution {
+  asyncResult: true;
   tokenCallback?: AsyncResultTokenCallback;
 }
 
@@ -158,7 +306,7 @@ export class MockActivity<A extends ActivityFunction<any, any>>
       }
     } else if ("handler" in resolution) {
       return resolution.handler(...args);
-    } else if ("block" in resolution) {
+    } else if ("asyncResult" in resolution) {
       return asyncResult(
         resolution.tokenCallback
           ? resolution.tokenCallback
@@ -211,17 +359,13 @@ export class MockActivity<A extends ActivityFunction<any, any>>
   }
 
   public invoke(
-    handler: (
-      ...args: ActivityArguments<A>
-    ) => ActivityOutput<A> | Promise<ActivityOutput<A>>
+    handler: ActivityHandler<ActivityArguments<A>, ActivityOutput<A>>
   ): IMockActivity<ActivityArguments<A>, ActivityOutput<A>> {
     return this.setResolution({ handler });
   }
 
   public invokeOnce(
-    handler: (
-      ...args: ActivityArguments<A>
-    ) => ActivityOutput<A> | Promise<ActivityOutput<A>>
+    handler: ActivityHandler<ActivityArguments<A>, ActivityOutput<A>>
   ): IMockActivity<ActivityArguments<A>, ActivityOutput<A>> {
     return this.addOnceResolution({ handler });
   }
@@ -235,11 +379,11 @@ export class MockActivity<A extends ActivityFunction<any, any>>
   }
 
   public asyncResult(tokenCallback?: AsyncResultTokenCallback) {
-    return this.setResolution({ block: true, tokenCallback });
+    return this.setResolution({ asyncResult: true, tokenCallback });
   }
 
   public asyncResultOnce(tokenCallback?: AsyncResultTokenCallback) {
-    return this.addOnceResolution({ block: true, tokenCallback });
+    return this.addOnceResolution({ asyncResult: true, tokenCallback });
   }
 
   private setResolution(

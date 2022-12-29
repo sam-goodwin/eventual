@@ -20,20 +20,18 @@ export interface TimeEvent<E = any> {
  */
 export class TimeController<E = any> {
   // current millisecond time
-  #current = 0;
-  #increment: number;
-  #timeHeap: Heap<TimeEvent<E>>;
+  private current = 0;
+  private increment: number;
+  private timeHeap: Heap<TimeEvent<E>>;
 
   constructor(
     initialEvents: TimeEvent<E>[],
     private props?: TimeControllerProps
   ) {
-    this.#current = props?.start ?? 0;
-    this.#increment = props?.increment ?? 1;
-    this.#timeHeap = new Heap<TimeEvent<E>>(
-      (a, b) => a.timestamp - b.timestamp
-    );
-    this.#timeHeap.init(initialEvents);
+    this.current = props?.start ?? 0;
+    this.increment = props?.increment ?? 1;
+    this.timeHeap = new Heap<TimeEvent<E>>((a, b) => a.timestamp - b.timestamp);
+    this.timeHeap.init(initialEvents);
   }
 
   /**
@@ -42,7 +40,7 @@ export class TimeController<E = any> {
    * @param n - number of increments to progress time.
    */
   public tick(n = 1): E[] {
-    this.#current += this.#increment * n;
+    this.current += this.increment * n;
     return this.drainPastEvents();
   }
 
@@ -52,8 +50,8 @@ export class TimeController<E = any> {
    * More efficient than passing in each tick number because it only requests tick numbers which have values.
    */
   public *tickIncremental(n: number) {
-    const goal = this.#current + this.#increment * n;
-    while (this.#current < goal) {
+    const goal = this.current + this.increment * n;
+    while (this.current < goal) {
       // only get the next there are events
       const next = this.nextEventTick;
       if (next === undefined || next >= goal) {
@@ -75,31 +73,31 @@ export class TimeController<E = any> {
    * @returns All events between current and current + goal.
    */
   public tickUntil(goal: number): E[] {
-    if (goal < this.#current) {
+    if (goal < this.current) {
       return this.drainPastEvents();
     }
-    return this.tick(Math.floor((goal - this.#current) / this.#increment));
+    return this.tick(Math.floor((goal - this.current) / this.increment));
   }
 
   /**
    * Returns the current tick, an increment of props.increment from the props.start.
    */
   public get currentTick() {
-    return this.#current;
+    return this.current;
   }
 
   /**
    * Returns the next tick, an increment of props.increment from the props.start.
    */
   public get nextTick() {
-    return this.#current + this.#increment;
+    return this.current + this.increment;
   }
 
   /**
    * Returns the timestamp on the next event which exists.
    */
   public get nextEventTick(): number | undefined {
-    return this.#timeHeap.peek()?.timestamp;
+    return this.timeHeap.peek()?.timestamp;
   }
 
   /**
@@ -123,21 +121,21 @@ export class TimeController<E = any> {
    * Add an event to the {@link TimeController}.
    */
   public addEvent(timestamp: number, event: E): void {
-    this.#timeHeap.add({ timestamp, event });
+    this.timeHeap.add({ timestamp, event });
   }
 
   /**
    * Add an event to the {@link TimeController}.
    */
   public addEventAtNextTick(event: E): void {
-    this.#timeHeap.add({ timestamp: this.nextTick, event });
+    this.timeHeap.add({ timestamp: this.nextTick, event });
   }
 
   /**
    * Add events to the {@link TimeController}.
    */
   public addEvents(timeEvents: TimeEvent<E>[]): void {
-    this.#timeHeap.addAll(timeEvents);
+    this.timeHeap.addAll(timeEvents);
   }
 
   /**
@@ -146,18 +144,18 @@ export class TimeController<E = any> {
    * @param current - the timestamp to set as the new start time, when not provided, does not reset the current time.
    */
   public reset(current?: number) {
-    this.#current = current ?? this.props?.start ?? 0;
-    this.#timeHeap.clear();
+    this.current = current ?? this.props?.start ?? 0;
+    this.timeHeap.clear();
   }
 
   private *drainEvents() {
     while (this.hasCurrentOrPastEvents()) {
-      yield this.#timeHeap.pop()!.event;
+      yield this.timeHeap.pop()!.event;
     }
   }
 
   private hasCurrentOrPastEvents() {
-    const next = this.#timeHeap.peek();
-    return next && next.timestamp <= this.#current;
+    const next = this.timeHeap.peek();
+    return next && next.timestamp <= this.current;
   }
 }
