@@ -5,11 +5,13 @@ import {
   clearEventSubscriptions,
   createActivityWorker,
   createEvent,
+  createEventHandlerWorker,
   createOrchestrator,
   Event,
   EventClient,
   EventEnvelope,
   EventHandler,
+  EventHandlerWorker,
   EventPayload,
   EventPayloadType,
   events,
@@ -44,12 +46,12 @@ import { TestTimerClient } from "./clients/timer-client.js";
 import { TimeController } from "./time-controller.js";
 import { InProgressError } from "./error.js";
 import { ExecutionStore } from "./execution-store.js";
-import { EventHandlerController } from "./event-handler-controller.js";
 import { serviceTypeScope } from "./utils.js";
 import {
   MockableActivityProvider,
   MockActivity,
 } from "./providers/activity-provider.js";
+import { TestEventHandlerProvider } from "./providers/event-handler-provider.js";
 
 export interface TestEnvironmentProps {
   entry: string;
@@ -88,12 +90,13 @@ export class TestEnvironment {
   private eventClient: EventClient;
 
   private activityProvider: MockableActivityProvider;
-  private eventHandlerController: EventHandlerController;
+  private eventHandlerProvider: TestEventHandlerProvider;
 
   private initialized = false;
   private timeController: TimeController<WorkflowTask>;
   private orchestrator: Orchestrator;
   private activityWorker: ActivityWorker;
+  private eventHandlerWorker: EventHandlerWorker;
 
   private executions: Record<string, ExecutionHandle<any>> = {};
 
@@ -114,7 +117,6 @@ export class TestEnvironment {
       // increment by seconds
       increment: 1000,
     });
-    this.eventHandlerController = new EventHandlerController();
     const timeConnector: TimeConnector = {
       pushEvent: (task) => this.timeController.addEventAtNextTick(task),
       scheduleEvent: (time, task) =>
@@ -129,7 +131,14 @@ export class TestEnvironment {
       activityRuntimeClient,
       executionStore
     );
-    this.eventClient = new TestEventClient(this.eventHandlerController);
+    this.eventHandlerProvider = new TestEventHandlerProvider();
+    this.eventHandlerWorker = createEventHandlerWorker({
+      // break the circular dependence on the worker and client by making the client optional in the worker
+      // need to call registerEventClient before calling the handler.
+      workflowClient: this.workflowClient,
+      eventHandlerProvider: this.eventHandlerProvider,
+    });
+    this.eventClient = new TestEventClient(this.eventHandlerWorker);
     this.timerClient = new TestTimerClient(timeConnector);
     this.activityProvider = new MockableActivityProvider();
     this.activityWorker = createActivityWorker({
@@ -205,7 +214,7 @@ export class TestEnvironment {
    * Removes all test event subscriptions.
    */
   public resetTestSubscriptions() {
-    this.eventHandlerController.clearTestHandlers();
+    this.eventHandlerProvider.clearTestHandlers();
   }
 
   /**
@@ -234,21 +243,21 @@ export class TestEnvironment {
     event: E,
     handler: EventHandler<EventPayloadType<E>>
   ) {
-    return this.eventHandlerController.subscribeEvent(event, handler);
+    return this.eventHandlerProvider.subscribeEvent(event, handler);
   }
 
   /**
    * Turn off all of the event handlers registered by the service.
    */
   public disableServiceSubscriptions() {
-    this.eventHandlerController.disableDefaultSubscriptions();
+    this.eventHandlerProvider.disableDefaultSubscriptions();
   }
 
   /**
    * Turn on all of the event handlers in the service.
    */
   public enableServiceSubscriptions() {
-    this.eventHandlerController.enableDefaultSubscriptions();
+    this.eventHandlerProvider.enableDefaultSubscriptions();
   }
 
   /**

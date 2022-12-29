@@ -67,6 +67,9 @@ export class MockableActivityProvider extends GlobalActivityProvider {
 export type AsyncResultTokenCallback = (token: string) => void;
 
 export interface IMockActivity<Arguments extends any[] = any[], Output = any> {
+  /**
+   *
+   */
   asyncResult(
     tokenCallback?: AsyncResultTokenCallback
   ): IMockActivity<Arguments, Output>;

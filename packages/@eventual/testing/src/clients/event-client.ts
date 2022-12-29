@@ -1,12 +1,21 @@
-import { EventClient, EventEnvelope, EventPayload } from "@eventual/core";
-import { EventHandlerController } from "../event-handler-controller.js";
+import {
+  EventClient,
+  EventEnvelope,
+  EventHandlerWorker,
+  EventPayload,
+  registerEventClient,
+  ServiceType,
+} from "@eventual/core";
+import { serviceTypeScope } from "../utils.js";
 
 export class TestEventClient implements EventClient {
-  constructor(private eventHandlerController: EventHandlerController) {}
+  constructor(private eventHandlerWorker: EventHandlerWorker) {}
 
   public async publish(...event: EventEnvelope<EventPayload>[]): Promise<void> {
-    await Promise.allSettled(
-      event.map((e) => this.eventHandlerController.receiveEvent(e))
-    );
+    return serviceTypeScope(ServiceType.EventHandler, async () => {
+      // TODO: unregister - can we do better than this global.
+      registerEventClient(this);
+      await this.eventHandlerWorker(event);
+    });
   }
 }
