@@ -25,6 +25,7 @@ import { timed } from "../metrics/utils.js";
 import type { EventClient } from "../index.js";
 import { ActivityProvider } from "../providers/activity-provider.js";
 import { ActivityNotFoundError } from "../../error.js";
+import { extendsError } from "../../util.js";
 
 export interface CreateActivityWorkerProps {
   activityRuntimeClient: ActivityRuntimeClient;
@@ -198,10 +199,9 @@ export function createActivityWorker({
             recordAge + (endTime.getTime() - start.getTime())
           );
         } catch (err) {
-          const [error, message] =
-            err instanceof Error
-              ? [err.name, err.message]
-              : ["Error", JSON.stringify(err)];
+          const [error, message] = extendsError(err)
+            ? [err.name, err.message]
+            : ["Error", JSON.stringify(err)];
 
           logger.info(
             `Activity ${activityHandle} failed, reporting failure back to execution: ${error}: ${message}`

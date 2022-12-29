@@ -14,6 +14,12 @@ export interface FailExecutionRequest {
   message: string;
 }
 
+export function isFailedExecutionRequest(
+  executionRequest: CompleteExecutionRequest | FailExecutionRequest
+): executionRequest is FailExecutionRequest {
+  return "error" in executionRequest;
+}
+
 export interface UpdateHistoryRequest {
   executionId: string;
   events: HistoryStateEvent[];

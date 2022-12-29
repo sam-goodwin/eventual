@@ -19,6 +19,7 @@ import {
   FailedExecution,
   FailExecutionRequest,
   HistoryStateEvent,
+  isFailedExecutionRequest,
   UpdateHistoryRequest,
   WorkflowRuntimeClient,
 } from "@eventual/core";
@@ -84,55 +85,54 @@ export class AWSWorkflowRuntimeClient extends WorkflowRuntimeClient {
   protected async updateExecution(
     request: FailExecutionRequest | CompleteExecutionRequest
   ) {
-    const executionResult =
-      "error" in request
-        ? await this.props.dynamo.send(
-            new UpdateItemCommand({
-              Key: {
-                pk: { S: ExecutionRecord.PARTITION_KEY },
-                sk: { S: ExecutionRecord.sortKey(request.executionId) },
-              },
-              TableName: this.props.tableName,
-              UpdateExpression:
-                "SET #status=:failed, #error=:error, #message=:message, endTime=if_not_exists(endTime,:endTime)",
-              ExpressionAttributeNames: {
-                "#status": "status",
-                "#error": "error",
-                "#message": "message",
-              },
-              ExpressionAttributeValues: {
-                ":failed": { S: ExecutionStatus.FAILED },
-                ":endTime": { S: new Date().toISOString() },
-                ":error": { S: request.error },
-                ":message": { S: request.message },
-              },
-              ReturnValues: "ALL_NEW",
-            })
-          )
-        : await this.props.dynamo.send(
-            new UpdateItemCommand({
-              Key: {
-                pk: { S: ExecutionRecord.PARTITION_KEY },
-                sk: { S: ExecutionRecord.sortKey(request.executionId) },
-              },
-              TableName: this.props.tableName,
-              UpdateExpression: request.result
-                ? "SET #status=:complete, #result=:result, endTime=if_not_exists(endTime,:endTime)"
-                : "SET #status=:complete, endTime=if_not_exists(endTime,:endTime)",
-              ExpressionAttributeNames: {
-                "#status": "status",
-                ...(request.result ? { "#result": "result" } : {}),
-              },
-              ExpressionAttributeValues: {
-                ":complete": { S: ExecutionStatus.COMPLETE },
-                ":endTime": { S: new Date().toISOString() },
-                ...(request.result
-                  ? { ":result": { S: JSON.stringify(request.result) } }
-                  : {}),
-              },
-              ReturnValues: "ALL_NEW",
-            })
-          );
+    const executionResult = isFailedExecutionRequest(request)
+      ? await this.props.dynamo.send(
+          new UpdateItemCommand({
+            Key: {
+              pk: { S: ExecutionRecord.PARTITION_KEY },
+              sk: { S: ExecutionRecord.sortKey(request.executionId) },
+            },
+            TableName: this.props.tableName,
+            UpdateExpression:
+              "SET #status=:failed, #error=:error, #message=:message, endTime=if_not_exists(endTime,:endTime)",
+            ExpressionAttributeNames: {
+              "#status": "status",
+              "#error": "error",
+              "#message": "message",
+            },
+            ExpressionAttributeValues: {
+              ":failed": { S: ExecutionStatus.FAILED },
+              ":endTime": { S: new Date().toISOString() },
+              ":error": { S: request.error },
+              ":message": { S: request.message },
+            },
+            ReturnValues: "ALL_NEW",
+          })
+        )
+      : await this.props.dynamo.send(
+          new UpdateItemCommand({
+            Key: {
+              pk: { S: ExecutionRecord.PARTITION_KEY },
+              sk: { S: ExecutionRecord.sortKey(request.executionId) },
+            },
+            TableName: this.props.tableName,
+            UpdateExpression: request.result
+              ? "SET #status=:complete, #result=:result, endTime=if_not_exists(endTime,:endTime)"
+              : "SET #status=:complete, endTime=if_not_exists(endTime,:endTime)",
+            ExpressionAttributeNames: {
+              "#status": "status",
+              ...(request.result ? { "#result": "result" } : {}),
+            },
+            ExpressionAttributeValues: {
+              ":complete": { S: ExecutionStatus.COMPLETE },
+              ":endTime": { S: new Date().toISOString() },
+              ...(request.result
+                ? { ":result": { S: JSON.stringify(request.result) } }
+                : {}),
+            },
+            ReturnValues: "ALL_NEW",
+          })
+        );
 
     return createExecutionFromResult(
       executionResult.Attributes as ExecutionRecord

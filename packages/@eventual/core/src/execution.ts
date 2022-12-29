@@ -1,7 +1,7 @@
 import {
-  EventualError,
-  InProgressError,
+  SendSignalProps,
   Signal,
+  SignalPayload,
   Workflow,
   WorkflowClient,
   WorkflowOutput,
@@ -63,6 +63,9 @@ export function isCompleteExecution(
   return execution.status === ExecutionStatus.COMPLETE;
 }
 
+/**
+ * A reference to a running execution.
+ */
 export class ExecutionHandle<W extends Workflow<any, any>> {
   constructor(
     public executionId: string,
@@ -70,33 +73,9 @@ export class ExecutionHandle<W extends Workflow<any, any>> {
   ) {}
 
   /**
-   * @return the current status of the execution.
-   */
-  public async status() {
-    return (await this.getExecution()).status;
-  }
-
-  /**
-   * @return the result of a workflow.
-   *
-   * If the workflow is in progress {@link InProgressError} will be thrown.
-   * If the workflow has failed, {@link EventualError} will be thrown with the error and message.
-   */
-  public async result(): Promise<WorkflowOutput<Workflow>> {
-    const execution = await this.getExecution();
-    if (execution.status === ExecutionStatus.IN_PROGRESS) {
-      throw new InProgressError("Workflow is still in progress");
-    } else if (execution.status === ExecutionStatus.FAILED) {
-      throw new EventualError(execution.error, execution.message);
-    } else {
-      return execution.result;
-    }
-  }
-
-  /**
    * @return the {@link Execution} with the status, result, error, and other data based on the current status.
    */
-  public async getExecution(): Promise<Execution<WorkflowOutput<W>>> {
+  public async getStatus(): Promise<Execution<WorkflowOutput<W>>> {
     return (await this.workflowClient.getExecution(
       this.executionId
     )) as Execution<WorkflowOutput<W>>;
@@ -115,4 +94,29 @@ export class ExecutionHandle<W extends Workflow<any, any>> {
       payload,
     });
   }
+}
+
+/**
+ * A reference to an execution started by another workflow.
+ */
+export interface ChildExecution {
+  /**
+   * Allows a {@link workflow} to send a signal to the workflow {@link Execution}.
+   *
+   * ```ts
+   * const mySignal = signal<string>("MySignal");
+   * const childWf = workflow(...);
+   * workflow("wf", async () => {
+   *    const child = childWf();
+   *    child.signal(mySignal);
+   *    await child;
+   * })
+   * ```
+   *
+   * @param id an optional, execution unique ID, will be used to de-dupe the signal at the target execution.
+   */
+  signal<S extends Signal<any>>(
+    signal: S,
+    ...args: SendSignalProps<SignalPayload<S>>
+  ): Promise<void>;
 }

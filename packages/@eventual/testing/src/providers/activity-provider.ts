@@ -135,7 +135,7 @@ export class MockActivity<A extends ActivityFunction<any, any>>
   constructor(private activity: A) {}
 
   public call(...args: ActivityArguments<A>) {
-    const before = this.onceResolutions.pop();
+    const before = this.onceResolutions.shift();
     if (before) {
       return this.resolve(before, args);
     } else if (this.resolution) {

@@ -5,14 +5,10 @@ import {
   EventualKind,
   isEventualOfKind,
 } from "../eventual.js";
+import { ChildExecution } from "../execution.js";
 import { registerEventual } from "../global.js";
 import { Result } from "../result.js";
-import {
-  SendSignalProps,
-  Signal,
-  SignalPayload,
-  SignalTargetType,
-} from "../signals.js";
+import { SignalTargetType } from "../signals.js";
 import { Workflow, WorkflowOptions } from "../workflow.js";
 import { createSendSignalCall } from "./send-signal-call.js";
 
@@ -61,26 +57,4 @@ export function createWorkflowCall(
   };
 
   return call;
-}
-
-export interface ChildExecution {
-  /**
-   * Allows a {@link workflow} to send a signal to any workflow {@link Execution} by executionId.
-   *
-   * ```ts
-   * const mySignal = signal<string>("MySignal");
-   * const childWf = workflow(...);
-   * workflow("wf", async () => {
-   *    const child = childWf();
-   *    child.signal(mySignal);
-   *    await child;
-   * })
-   * ```
-   *
-   * @param id an optional, execution unique ID, will be used to de-dupe the signal at the target execution.
-   */
-  signal<S extends Signal<any>>(
-    signal: S,
-    ...args: SendSignalProps<SignalPayload<S>>
-  ): Promise<void>;
 }

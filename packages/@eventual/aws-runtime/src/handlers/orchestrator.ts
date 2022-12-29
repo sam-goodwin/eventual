@@ -18,7 +18,7 @@ import {
  * Creates an entrypoint function for orchestrating a workflow
  * from within an AWS Lambda Function attached to a SQS FIFO queue.
  */
-const orchestrator = createOrchestrator({
+const orchestrate = createOrchestrator({
   executionHistoryClient: createExecutionHistoryClient(),
   timerClient: createTimerClient(),
   workflowRuntimeClient: createWorkflowRuntimeClient(),
@@ -35,7 +35,7 @@ export default middy(async (event: SQSEvent) => {
 
   const workflowTasks = event.Records.map(sqsRecordToTask);
 
-  const { failedExecutionIds } = await orchestrator(workflowTasks);
+  const { failedExecutionIds } = await orchestrate(workflowTasks);
 
   const failedMessageIds = failedExecutionIds.flatMap(
     (executionId) =>

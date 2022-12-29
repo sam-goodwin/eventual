@@ -18,11 +18,11 @@ import {
   WorkflowEventType,
 } from "./workflow-events.js";
 import { interpret, WorkflowResult } from "./interpret.js";
-import { ChildExecution, createWorkflowCall } from "./calls/workflow-call.js";
+import { createWorkflowCall } from "./calls/workflow-call.js";
 import { AwaitedEventual } from "./eventual.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
 import { isChain } from "./chain.js";
-import { ExecutionHandle } from "./execution.js";
+import { ChildExecution, ExecutionHandle } from "./execution.js";
 
 export type WorkflowHandler<Input = any, Output = any> = (
   input: Input,

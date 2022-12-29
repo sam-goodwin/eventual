@@ -76,6 +76,9 @@ export class SynchronousOperationError extends EventualError {
   }
 }
 
+/**
+ * Thrown when an activity id is not found in the service.
+ */
 export class ActivityNotFoundError extends Error {
   constructor(activityName: string, availableNames: string[]) {
     super(
@@ -83,14 +86,5 @@ export class ActivityNotFoundError extends Error {
         ","
       )}`
     );
-  }
-}
-
-/**
- * Thrown when there is an attempt to retrieve the result of an in progress workflow.
- */
-export class InProgressError extends EventualError {
-  constructor(message: string) {
-    super("InProgressError", message);
   }
 }

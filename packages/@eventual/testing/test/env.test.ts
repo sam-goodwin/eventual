@@ -5,6 +5,7 @@ import {
   ExecutionStatus,
   EventHandler,
   Timeout,
+  EventualError,
 } from "@eventual/core";
 import path from "path";
 import * as url from "url";
@@ -69,7 +70,7 @@ describe("activity", () => {
     const result = await env.startExecution(workflow3, undefined);
 
     // see if the execution has completed
-    const r1 = await result.getExecution();
+    const r1 = await result.getStatus();
     // we expect it to still be in progress
     expect(r1).toMatchObject<Partial<typeof r1>>({
       status: ExecutionStatus.IN_PROGRESS,
@@ -80,7 +81,7 @@ describe("activity", () => {
     await env.tick();
 
     // the workflow should be done now, the activity completed event should have been processed in the `tick`
-    const r2 = await result.getExecution();
+    const r2 = await result.getStatus();
     // and the execution updated to a completed state
     expect(r2).toMatchObject<Partial<typeof r2>>({
       status: ExecutionStatus.COMPLETE,
@@ -100,7 +101,7 @@ describe("activity", () => {
       await env.tick();
 
       // the workflow should be done now, the activity completed event should have been processed in the `tick`
-      const r2 = await execution.getExecution();
+      const r2 = await execution.getStatus();
       // and the execution updated to a completed state
       expect(r2).toMatchObject<Partial<typeof r2>>({
         status: ExecutionStatus.COMPLETE,
@@ -115,7 +116,7 @@ describe("activity", () => {
       await env.tick();
 
       // the workflow should be done now, the activity completed event should have been processed in the `tick`
-      const r2 = await execution.getExecution();
+      const r2 = await execution.getStatus();
       // and the execution updated to a completed state
       expect(r2).toMatchObject<Partial<typeof r2>>({
         status: ExecutionStatus.COMPLETE,
@@ -136,7 +137,7 @@ describe("activity", () => {
       await env.tick();
 
       // the workflow should be done now, the activity completed event should have been processed in the `tick`
-      const r2 = await execution.getExecution();
+      const r2 = await execution.getStatus();
       // and the execution updated to a completed state
       expect(r2).toMatchObject<Partial<typeof r2>>({
         status: ExecutionStatus.COMPLETE,
@@ -157,7 +158,7 @@ describe("activity", () => {
       await env.tick();
 
       // the workflow should be done now, the activity completed event should have been processed in the `tick`
-      const r2 = await execution.getExecution();
+      const r2 = await execution.getStatus();
       // and the execution updated to a completed state
       expect(r2).toMatchObject<Partial<typeof r2>>({
         status: ExecutionStatus.COMPLETE,
@@ -166,6 +167,56 @@ describe("activity", () => {
             { status: "rejected", reason: new Error("Ahhh") },
             { status: "fulfilled", value: "not a failure" },
             { status: "fulfilled", value: "not a failure" },
+          ],
+        ],
+      });
+    });
+
+    class MyError extends Error {}
+    class MyEventualError extends EventualError {}
+
+    test("fail with custom errors", async () => {
+      mockActivity
+        .failOnce(new MyError("Ahhh"))
+        .failOnce(new MyEventualError("aHHH"));
+      // execution starts
+      const execution = await env.startExecution(workflow3, { parallel: 2 });
+      await env.tick();
+
+      // the workflow should be done now, the activity completed event should have been processed in the `tick`
+      const r2 = await execution.getStatus();
+      // and the execution updated to a completed state
+      expect(r2).toMatchObject<Partial<typeof r2>>({
+        status: ExecutionStatus.COMPLETE,
+        result: [
+          [
+            {
+              status: "rejected",
+              reason: new EventualError("Error", "Ahhh"),
+            },
+            { status: "rejected", reason: new MyEventualError("aHHH") },
+          ],
+        ],
+      });
+    });
+
+    test("fail with constant", async () => {
+      mockActivity.failOnce("hello?" as any);
+      // execution starts
+      const execution = await env.startExecution(workflow3, { parallel: 1 });
+      await env.tick();
+
+      // the workflow should be done now, the activity completed event should have been processed in the `tick`
+      const r2 = await execution.getStatus();
+      // and the execution updated to a completed state
+      expect(r2).toMatchObject<Partial<typeof r2>>({
+        status: ExecutionStatus.COMPLETE,
+        result: [
+          [
+            {
+              status: "rejected",
+              reason: new EventualError("Error", '"hello?"'),
+            },
           ],
         ],
       });
@@ -186,7 +237,7 @@ describe("activity", () => {
       await env.tick(2);
 
       // the workflow should be done now, the activity completed event should have been processed in the `tick`
-      const r2 = await execution.getExecution();
+      const r2 = await execution.getStatus();
       // and the execution updated to a completed state
       expect(r2).toMatchObject<Partial<typeof r2>>({
         status: ExecutionStatus.COMPLETE,
@@ -205,7 +256,7 @@ describe("activity", () => {
       await env.tick();
 
       // the workflow should be done now, the activity completed event should have been processed in the `tick`
-      const r2 = await execution.getExecution();
+      const r2 = await execution.getStatus();
       // and the execution updated to a completed state
       expect(r2).toMatchObject<Partial<typeof r2>>({
         status: ExecutionStatus.COMPLETE,
@@ -227,7 +278,7 @@ describe("sleep", () => {
     const result = await env.startExecution(sleepWorkflow, true);
 
     // see if the execution has completed
-    const r1 = await result.getExecution();
+    const r1 = await result.getStatus();
     // we expect it to still be in progress
     expect(r1).toMatchObject<Partial<typeof r1>>({
       status: ExecutionStatus.IN_PROGRESS,
@@ -239,7 +290,7 @@ describe("sleep", () => {
     console.log(env.time);
 
     // the workflow still not be done, have 9 more seconds left on the sleep
-    const r2 = await result.getExecution();
+    const r2 = await result.getStatus();
     expect(r2).toMatchObject<Partial<typeof r2>>({
       status: ExecutionStatus.IN_PROGRESS,
     });
@@ -247,7 +298,7 @@ describe("sleep", () => {
     // advance 9 seconds, the sleep time (minus 1)
     await env.tick(9);
 
-    const r3 = await result.getExecution();
+    const r3 = await result.getStatus();
     expect(r3).toMatchObject<Partial<typeof r3>>({
       status: ExecutionStatus.COMPLETE,
       result: "hello",
@@ -260,7 +311,7 @@ describe("sleep", () => {
     const result = await env.startExecution(sleepWorkflow, true);
 
     // see if the execution has completed
-    const r1 = await result.getExecution();
+    const r1 = await result.getStatus();
     // we expect it to still be in progress
     expect(r1).toMatchObject<Partial<typeof r1>>({
       status: ExecutionStatus.IN_PROGRESS,
@@ -272,7 +323,7 @@ describe("sleep", () => {
     console.log(env.time);
 
     // the workflow still not be done, have 9 more seconds left on the sleep
-    const r2 = await result.getExecution();
+    const r2 = await result.getStatus();
     expect(r2).toMatchObject<Partial<typeof r2>>({
       status: ExecutionStatus.IN_PROGRESS,
     });
@@ -280,7 +331,7 @@ describe("sleep", () => {
     // advance 9 seconds, the sleep time (minus 1)
     await env.tick(9);
 
-    const r3 = await result.getExecution();
+    const r3 = await result.getStatus();
     expect(r3).toMatchObject<Partial<typeof r3>>({
       status: ExecutionStatus.COMPLETE,
       result: "hello",
@@ -295,7 +346,7 @@ describe("sleep", () => {
     const execution = await env.startExecution(sleepWorkflow, true);
 
     // see if the execution has completed
-    const r1 = await execution.getExecution();
+    const r1 = await execution.getStatus();
     // we expect it to still be in progress
     expect(r1).toMatchObject<Partial<typeof r1>>({
       status: ExecutionStatus.IN_PROGRESS,
@@ -308,7 +359,7 @@ describe("sleep", () => {
     console.log(env.time);
 
     // the workflow still not be done, have 9 more seconds left on the sleep
-    const r2 = await execution.getExecution();
+    const r2 = await execution.getStatus();
     expect(r2).toMatchObject<Partial<typeof r2>>({
       status: ExecutionStatus.IN_PROGRESS,
     });
@@ -316,7 +367,7 @@ describe("sleep", () => {
     // advance 9 seconds, the sleep time (minus 1)
     await env.tick(9);
 
-    const r3 = await execution.getExecution();
+    const r3 = await execution.getStatus();
     expect(r3).toMatchObject<Partial<typeof r3>>({
       status: ExecutionStatus.COMPLETE,
       result: "hello",
@@ -330,7 +381,7 @@ describe("sleep", () => {
     const result = await env.startExecution(sleepWorkflow, false);
 
     // see if the execution has completed
-    const r1 = await result.getExecution();
+    const r1 = await result.getStatus();
     // we expect it to still be in progress
     expect(r1).toMatchObject<Partial<typeof r1>>({
       status: ExecutionStatus.IN_PROGRESS,
@@ -342,7 +393,7 @@ describe("sleep", () => {
     console.log("time", env.time);
 
     // the workflow still not be done, have 9 more seconds left on the sleep
-    const r2 = await result.getExecution();
+    const r2 = await result.getStatus();
     expect(r2).toMatchObject<Partial<typeof r2>>({
       status: ExecutionStatus.IN_PROGRESS,
     });
@@ -350,7 +401,7 @@ describe("sleep", () => {
     // the sleep should end now
     await env.tickUntil("2022-01-02T12:00:00Z");
 
-    const r3 = await result.getExecution();
+    const r3 = await result.getStatus();
     expect(r3).toMatchObject<Partial<typeof r3>>({
       status: ExecutionStatus.COMPLETE,
       result: "hello",
@@ -364,7 +415,7 @@ describe("sleep", () => {
     const result = await env.startExecution(sleepWorkflow, false);
 
     // see if the execution has completed
-    const r1 = await result.getExecution();
+    const r1 = await result.getStatus();
     // we expect it to still be in progress
     expect(r1).toMatchObject<Partial<typeof r1>>({
       status: ExecutionStatus.IN_PROGRESS,
@@ -375,7 +426,7 @@ describe("sleep", () => {
     await env.tick();
 
     // the workflow still not be done, have 9 more seconds left on the sleep
-    const r3 = await result.getExecution();
+    const r3 = await result.getStatus();
     expect(r3).toMatchObject<Partial<typeof r3>>({
       status: ExecutionStatus.COMPLETE,
       result: "hello",
@@ -387,7 +438,7 @@ describe("signal", () => {
   test("wait on signal", async () => {
     const execution = await env.startExecution(signalWorkflow, undefined);
 
-    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+    expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
       status: ExecutionStatus.IN_PROGRESS,
     });
   });
@@ -398,7 +449,7 @@ describe("signal", () => {
     await execution.signal(continueSignal, undefined);
     await env.tick();
 
-    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+    expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
       status: ExecutionStatus.COMPLETE,
       result: "done!",
     });
@@ -413,7 +464,7 @@ describe("signal", () => {
     await execution.signal(continueSignal, undefined);
     await env.tick();
 
-    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+    expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
       status: ExecutionStatus.COMPLETE,
       result: "override!",
     });
@@ -431,7 +482,7 @@ describe("signal", () => {
     await execution.signal(continueSignal, undefined);
     await env.tick();
 
-    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+    expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
       status: ExecutionStatus.COMPLETE,
       result: "done!",
     });
@@ -445,11 +496,11 @@ describe("signal", () => {
 
     await env.tick(3);
 
-    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+    expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
       status: ExecutionStatus.COMPLETE,
       result: "hello from the orchestrator workflow!",
     });
-    expect(await orchestratorExecution.getExecution()).toMatchObject<
+    expect(await orchestratorExecution.getStatus()).toMatchObject<
       Partial<Execution>
     >({
       status: ExecutionStatus.COMPLETE,
@@ -479,7 +530,7 @@ describe("events", () => {
         executionId: execution.executionId,
         data: "event data",
       });
-      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
         status: ExecutionStatus.COMPLETE,
         result: "event data",
       });
@@ -500,11 +551,11 @@ describe("events", () => {
 
       expect(dataEventMock).toHaveBeenCalled();
 
-      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
         status: ExecutionStatus.COMPLETE,
         result: "hello from the orchestrator workflow!",
       });
-      expect(await orchestratorExecution.getExecution()).toMatchObject<
+      expect(await orchestratorExecution.getStatus()).toMatchObject<
         Partial<Execution>
       >({
         status: ExecutionStatus.COMPLETE,
@@ -533,7 +584,7 @@ describe("events", () => {
         executionId: execution.executionId,
         data: "event data",
       });
-      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
         status: ExecutionStatus.COMPLETE,
         result: "event data",
       });
@@ -565,7 +616,7 @@ describe("events", () => {
       });
 
       // but the workflow was not progressed by the default subscriptions.
-      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
         status: ExecutionStatus.IN_PROGRESS,
       });
 
@@ -581,7 +632,7 @@ describe("events", () => {
       await env.publishEvent(continueEvent, {
         executionId: execution.executionId,
       });
-      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
         status: ExecutionStatus.COMPLETE,
         result: "event data",
       });
@@ -611,7 +662,7 @@ describe("completing executions", () => {
   test("complete", async () => {
     const execution = await env.startExecution(workflow1, undefined);
 
-    const executionResult = await execution.getExecution();
+    const executionResult = await execution.getStatus();
 
     expect(executionResult).toMatchObject<Execution>({
       endTime: env.time.toISOString(),
@@ -626,7 +677,7 @@ describe("completing executions", () => {
     await env.tickUntil("2022-01-01");
     const execution = await env.startExecution(workflow1, undefined);
 
-    const executionResult = await execution.getExecution();
+    const executionResult = await execution.getStatus();
 
     expect(executionResult).toMatchObject<Execution>({
       endTime: env.time.toISOString(),
@@ -640,7 +691,7 @@ describe("completing executions", () => {
   test("fail", async () => {
     const execution = await env.startExecution(errorWorkflow, undefined);
 
-    const executionResult = await execution.getExecution();
+    const executionResult = await execution.getStatus();
 
     expect(executionResult).toMatchObject<Execution>({
       endTime: env.time.toISOString(),
@@ -656,7 +707,7 @@ describe("completing executions", () => {
     await env.tickUntil("2022-01-01");
     const execution = await env.startExecution(errorWorkflow, undefined);
 
-    const executionResult = await execution.getExecution();
+    const executionResult = await execution.getStatus();
 
     expect(executionResult).toMatchObject<Execution>({
       endTime: env.time.toISOString(),
@@ -675,7 +726,7 @@ describe("invoke workflow", () => {
 
     await env.tick(100);
 
-    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+    expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
       status: ExecutionStatus.COMPLETE,
       result: "hello from a workflow",
     });
@@ -686,7 +737,7 @@ describe("invoke workflow", () => {
 
     await env.tick(100);
 
-    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+    expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
       status: ExecutionStatus.FAILED,
       error: "Error",
       message: "Ahh",
@@ -706,8 +757,8 @@ describe("timeouts", () => {
     await execution.signal(dataSignal, "woo");
     await env.tick(3);
 
-    expect(await execution.getExecution()).toMatchObject<
-      Partial<Awaited<ReturnType<typeof execution.getExecution>>>
+    expect(await execution.getStatus()).toMatchObject<
+      Partial<Awaited<ReturnType<typeof execution.getStatus>>>
     >({
       status: ExecutionStatus.COMPLETE,
       result: [
@@ -725,8 +776,8 @@ describe("timeouts", () => {
     await execution.signal(dataSignal, "woo");
     await env.tick(4);
 
-    expect(await execution.getExecution()).toMatchObject<
-      Partial<Awaited<ReturnType<typeof execution.getExecution>>>
+    expect(await execution.getStatus()).toMatchObject<
+      Partial<Awaited<ReturnType<typeof execution.getStatus>>>
     >({
       status: ExecutionStatus.COMPLETE,
       result: [
@@ -744,8 +795,8 @@ describe("timeouts", () => {
 
     await env.tick(70);
 
-    expect(await execution.getExecution()).toMatchObject<
-      Partial<Awaited<ReturnType<typeof execution.getExecution>>>
+    expect(await execution.getStatus()).toMatchObject<
+      Partial<Awaited<ReturnType<typeof execution.getStatus>>>
     >({
       status: ExecutionStatus.COMPLETE,
       result: [
@@ -785,7 +836,7 @@ describe("long running activities", () => {
     await longRunningAct.complete({ activityToken, result: { value: "hi" } });
     await env.tick();
 
-    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+    expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
       status: ExecutionStatus.COMPLETE,
       result: { value: "hi" },
     });
@@ -802,7 +853,7 @@ describe("long running activities", () => {
       value: "hi",
     });
 
-    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+    expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
       status: ExecutionStatus.COMPLETE,
       result: { value: "hi" },
     });
@@ -817,7 +868,7 @@ describe("long running activities", () => {
 
     await env.failActivity(activityToken, "SomeError", "SomeMessage");
 
-    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+    expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
       status: ExecutionStatus.FAILED,
       error: "SomeError",
       message: "SomeMessage",
@@ -833,7 +884,7 @@ describe("long running activities", () => {
 
     await env.failActivity(activityToken, "SomeError");
 
-    expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+    expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
       status: ExecutionStatus.FAILED,
       error: "SomeError",
     });
@@ -854,7 +905,7 @@ describe("long running activities", () => {
 
       await env.tick();
 
-      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
         status: ExecutionStatus.COMPLETE,
         result: { value: "i am a mock" },
       });
@@ -869,7 +920,7 @@ describe("long running activities", () => {
 
       await env.tick(60 * 60);
 
-      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
         status: ExecutionStatus.COMPLETE,
         result: "sleep",
       });
@@ -895,7 +946,7 @@ describe("long running activities", () => {
         value: "hello from the async mock",
       });
 
-      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
         status: ExecutionStatus.COMPLETE,
         result: {
           value: "hello from the async mock",
@@ -929,20 +980,18 @@ describe("long running activities", () => {
         value: "hello from the async mock",
       });
 
-      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
         status: ExecutionStatus.COMPLETE,
         result: {
           value: "hello from the async mock",
         },
       });
-      expect(await execution2.getExecution()).toMatchObject<Partial<Execution>>(
-        {
-          status: ExecutionStatus.COMPLETE,
-          result: {
-            value: "not async",
-          },
-        }
-      );
+      expect(await execution2.getStatus()).toMatchObject<Partial<Execution>>({
+        status: ExecutionStatus.COMPLETE,
+        result: {
+          value: "not async",
+        },
+      });
     });
 
     test("block and complete after sleep time", async () => {
@@ -965,7 +1014,7 @@ describe("long running activities", () => {
         value: "hello from the async mock",
       });
 
-      expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
+      expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
         status: ExecutionStatus.COMPLETE,
         result: "sleep",
       });

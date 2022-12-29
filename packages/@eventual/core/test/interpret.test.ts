@@ -246,6 +246,16 @@ test("should handle partial blocks with partial completes", () => {
   });
 });
 
+test("yield constant", () => {
+  function* workflow(): any {
+    return yield 1;
+  }
+
+  expect(interpret(workflow() as any, [])).toMatchObject(<WorkflowResult>{
+    result: Result.resolved(1),
+  });
+});
+
 describe("activity", () => {
   describe("heartbeat", () => {
     const wf = workflow(function* () {
@@ -666,6 +676,38 @@ describe("AwaitAll", () => {
 
     expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
       result: Result.resolved(["foo-0", "foo-1"]),
+      commands: [],
+    });
+  });
+
+  test("should return constants", () => {
+    function* workflow() {
+      return Eventual.all([1 as any, 1 as any]);
+    }
+
+    expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
+      result: Result.resolved([1, 1]),
+      commands: [],
+    });
+  });
+
+  test("should support already awaited or yielded eventuals ", () => {
+    function* workflow(): any {
+      return Eventual.all([
+        yield createActivityCall("process-item", []),
+        yield createActivityCall("process-item", []),
+      ]);
+    }
+
+    expect(
+      interpret(workflow(), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityCompleted(1, 0),
+        activityCompleted(1, 1),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved([1, 1]),
       commands: [],
     });
   });
