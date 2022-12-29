@@ -147,7 +147,7 @@ export interface SendSignalRequest {
   /**
    * Execution scoped unique event id. Duplicates will be deduplicated.
    */
-  id: string;
+  id?: string;
 }
 
 export interface StartWorkflowRequest<W extends Workflow = Workflow>

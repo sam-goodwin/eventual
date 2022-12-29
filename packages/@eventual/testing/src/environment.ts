@@ -4,7 +4,6 @@ import {
   ActivityWorker,
   clearEventSubscriptions,
   createActivityWorker,
-  createEvent,
   createEventHandlerWorker,
   createOrchestrator,
   Event,
@@ -19,15 +18,12 @@ import {
   Execution,
   ExecutionHistoryClient,
   ExecutionStatus,
-  groupBy,
   Orchestrator,
   ServiceType,
   Signal,
-  SignalReceived,
   TimerClient,
   Workflow,
   WorkflowClient,
-  WorkflowEventType,
   WorkflowInput,
   WorkflowOutput,
   WorkflowRuntimeClient,
@@ -270,17 +266,11 @@ export class TestEnvironment {
     payload: Payload
   ) {
     // add a signal received event, mirroring sendSignal
-    await this.workflowClient.submitWorkflowTask(
-      typeof execution === "string" ? execution : execution.id,
-      createEvent<SignalReceived>(
-        {
-          type: WorkflowEventType.SignalReceived,
-          signalId: typeof signal === "string" ? signal : signal.id,
-          payload,
-        },
-        this.time
-      )
-    );
+    await this.workflowClient.sendSignal({
+      executionId: typeof execution === "string" ? execution : execution.id,
+      signal: typeof signal === "string" ? signal : signal.id,
+      payload,
+    });
     return this.tick();
   }
 
@@ -449,20 +439,9 @@ export class TestEnvironment {
       // TODO: support other event types.
       throw new Error("Unknown event types in the TimerController.");
     }
-    const tasksByExecutionId = groupBy(
-      workflowTasks,
-      (task) => task.executionId
-    );
-
-    const eventsByExecutionId = Object.fromEntries(
-      Object.entries(tasksByExecutionId).map(([executionId, records]) => [
-        executionId,
-        records.flatMap((e) => e.events),
-      ])
-    );
 
     await serviceTypeScope(ServiceType.OrchestratorWorker, () =>
-      this.orchestrator(eventsByExecutionId, this.time)
+      this.orchestrator(workflowTasks, this.time)
     );
   }
 }

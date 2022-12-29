@@ -42,8 +42,9 @@ import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
 import { timed, timedSync } from "../metrics/utils.js";
-import { promiseAllSettledPartitioned } from "../utils.js";
+import { groupBy, promiseAllSettledPartitioned } from "../utils.js";
 import { extendsError } from "../../util.js";
+import { WorkflowTask } from "../../tasks.js";
 
 /**
  * The Orchestrator's client dependencies.
@@ -66,10 +67,7 @@ export interface OrchestratorResult {
 }
 
 export interface Orchestrator {
-  (
-    eventsByExecutionId: Record<string, HistoryStateEvent[]>,
-    baseTime?: Date
-  ): Promise<OrchestratorResult>;
+  (workflowTasks: WorkflowTask[], baseTime?: Date): Promise<OrchestratorResult>;
 }
 
 /**
@@ -94,8 +92,18 @@ export function createOrchestrator({
     eventClient,
   });
 
-  return async (eventsByExecutionId, baseTime = new Date()) => {
-    logger.debug("Handle workflowQueue records");
+  return async (workflowTasks, baseTime = new Date()) => {
+    const tasksByExecutionId = groupBy(
+      workflowTasks,
+      (task) => task.executionId
+    );
+
+    const eventsByExecutionId = Object.fromEntries(
+      Object.entries(tasksByExecutionId).map(([executionId, records]) => [
+        executionId,
+        records.flatMap((e) => e.events),
+      ])
+    );
 
     logger.info(
       "Found execution ids: " + Object.keys(eventsByExecutionId).join(", ")
