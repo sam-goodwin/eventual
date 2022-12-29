@@ -1,8 +1,14 @@
 import yargs from "yargs";
+import inquirer from "inquirer";
 import { hideBin } from "yargs/helpers";
 import { createAwsCdk } from "./aws-cdk.js";
 import { createAwsSst } from "./aws-sst.js";
+
 export type PackageManager = "npm" | "yarn" | "pnpm";
+
+const projectNameRegex = /^[A-Za-z_0-9]+$/g;
+
+const targetChoices = ["aws-sst", "aws-cdk"] as const;
 
 (async function () {
   const pkgManager: PackageManager = process.execPath.includes("npm")
@@ -14,9 +20,9 @@ export type PackageManager = "npm" | "yarn" | "pnpm";
     : "npm";
 
   await yargs(hideBin(process.argv))
-    .demandCommand(1, "you must specify a project name")
+    .scriptName("create-eventual")
     .command(
-      "$0 <projectName>",
+      "$0 [projectName]",
       "",
       (yargs) =>
         yargs
@@ -26,13 +32,44 @@ export type PackageManager = "npm" | "yarn" | "pnpm";
           })
           .option("target", {
             type: "string",
+            choices: targetChoices,
+          })
+          .check(({ projectName }) => {
+            if (projectName !== undefined) {
+              if (!projectName.match(projectNameRegex)) {
+                throw new Error(`project name must match ${projectNameRegex}`);
+              }
+            }
+            return true;
           }),
       async (args) => {
+        const {
+          target = args.target!,
+          projectName = args.projectName!,
+        }: { target: string; projectName: string } = await inquirer.prompt([
+          {
+            type: "input",
+            name: "projectName",
+            when: !args.projectName,
+            message: `project name`,
+            validate: (projectName: string) =>
+              projectName.match(projectNameRegex) !== null ||
+              `project name must match ${projectNameRegex}`,
+          },
+          {
+            type: "list",
+            name: "target",
+            choices: targetChoices,
+            when: !args.target,
+          },
+        ]);
+
         const props = {
           pkgManager,
-          projectName: args.projectName!,
+          projectName: projectName!,
         };
-        if (args.target === "aws-cdk") {
+
+        if (target === "aws-cdk") {
           await createAwsCdk(props);
         } else {
           await createAwsSst(props);
