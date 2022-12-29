@@ -56,7 +56,7 @@ beforeAll(async () => {
     ),
   });
 
-  await env.start();
+  await env.initialize();
 });
 
 afterEach(() => {

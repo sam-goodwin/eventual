@@ -62,8 +62,22 @@ export interface TestEnvironmentProps {
   start?: Date;
 }
 
-type NewType<A extends ActivityFunction<any, any>> = MockActivity<A>;
-
+/**
+ * A locally simulated workflow environnement designed for unit testing.
+ * Supports providing mock implementations of activities and workflow,
+ * manually progressing time, and more.
+ *
+ * ```ts
+ * const env = new TestEnvironment(...);
+ * await env.initialize();
+ *
+ * // start a workflow
+ * await env.startExecution(workflow, input);
+ *
+ * // manually progress time
+ * await env.tick();
+ * ```
+ */
 export class TestEnvironment {
   private serviceFile: Promise<string>;
 
@@ -76,7 +90,7 @@ export class TestEnvironment {
   private activityProvider: MockableActivityProvider;
   private eventHandlerController: EventHandlerController;
 
-  private started = false;
+  private initialized = false;
   private timeController: TimeController<WorkflowTask>;
   private orchestrator: Orchestrator;
   private activityWorker: ActivityWorker;
@@ -144,8 +158,12 @@ export class TestEnvironment {
     });
   }
 
-  public async start() {
-    if (!this.started) {
+  /**
+   * Initializes a {@link TestEnvironment}, bootstrapping the workflows and event handlers
+   * in the provided service entry point file.
+   */
+  public async initialize() {
+    if (!this.initialized) {
       const _workflows = workflows();
       _workflows.clear();
       const _events = events();
@@ -153,20 +171,25 @@ export class TestEnvironment {
       clearEventSubscriptions();
       // run the service to re-import the workflows, but transformed
       await import(await this.serviceFile);
-      this.started = true;
+      this.initialized = true;
     }
   }
 
   /**
-   * Resets all mocks (@see resetMocks) and test subscriptions {@see resetTestSubscriptions},
-   * resets time {@see resetTime}.
+   * Resets all mocks (@see resetMocks), test subscriptions {@see resetTestSubscriptions},
+   * resets time {@see resetTime}, and re-enables service event subscriptions
+   * (if disabled; {@see enableServiceSubscriptions}).
    */
   public reset(time?: Date) {
     this.resetTime(time);
     this.resetMocks();
     this.resetTestSubscriptions();
+    this.enableServiceSubscriptions();
   }
 
+  /**
+   * Resets time and clears any in flight events to the given time or to the provided start time.
+   */
   public resetTime(time?: Date) {
     this.timeController.reset(time?.getTime());
   }
@@ -178,13 +201,24 @@ export class TestEnvironment {
     this.activityProvider.clearMocks();
   }
 
+  /**
+   * Removes all test event subscriptions.
+   */
   public resetTestSubscriptions() {
     this.eventHandlerController.clearTestHandlers();
   }
 
+  /**
+   * Overrides the implementation of an activity with a mock.
+   *
+   * ```ts
+   * const mockActivity = env.mockActivity(myActivity);
+   * mockActivity.complete("hello"); // myActivity will return "hello" when invoked until the mock is reset or a new resolution is given.
+   * ```
+   */
   public mockActivity<A extends ActivityFunction<any, any>>(
     activity: A | string
-  ): NewType<A> {
+  ): MockActivity<A> {
     return this.activityProvider.mockActivity(activity as any);
   }
 
@@ -210,30 +244,6 @@ export class TestEnvironment {
   }
 
   public async sendSignal<Payload>(
-    execution: ExecutionHandle<any>,
-    signal: Signal<Payload>,
-    payload: Payload
-  ): Promise<void>;
-
-  public async sendSignal<Payload>(
-    executionId: string,
-    signal: Signal<Payload>,
-    payload: Payload
-  ): Promise<void>;
-
-  public async sendSignal(
-    execution: ExecutionHandle<any>,
-    signalId: string,
-    payload: any
-  ): Promise<void>;
-
-  public async sendSignal<Payload>(
-    executionId: string,
-    signalId: string,
-    payload: Payload
-  ): Promise<void>;
-
-  public async sendSignal<Payload>(
     execution: ExecutionHandle<any> | string,
     signal: Signal<Payload> | string,
     payload: Payload
@@ -256,23 +266,13 @@ export class TestEnvironment {
   /**
    * Publishes one or more events of a type into the {@link TestEnvironment}.
    */
-  public async publishEvent(
-    eventId: string,
-    ...payloads: EventPayload[]
-  ): Promise<void>;
-
-  public async publishEvent<E extends Event<any>>(
-    event: E,
-    ...payloads: EventPayloadType<E>[]
-  ): Promise<void>;
-
-  public async publishEvent<E extends Event<any>>(
-    event: string | E,
-    ...payloads: EventPayloadType<E>[]
+  public async publishEvent<Payload extends EventPayload = EventPayload>(
+    event: string | Event<Payload>,
+    ...payloads: Payload[]
   ) {
     await this.eventClient.publish(
       ...payloads.map(
-        (p): EventEnvelope<EventPayloadType<E>> => ({
+        (p): EventEnvelope<Payload> => ({
           name: typeof event === "string" ? event : event.name,
           event: p,
         })
@@ -287,15 +287,6 @@ export class TestEnvironment {
   public async publishEvents(...events: EventEnvelope<EventPayload>[]) {
     await this.eventClient.publish(...events);
   }
-
-  public async startExecution<W extends Workflow<any, any> = any>(
-    workflowName: string,
-    input: WorkflowInput<W>
-  ): Promise<ExecutionHandle<W>>;
-
-  public async startExecution<
-    W extends Workflow<any, any> = Workflow<any, any>
-  >(workflow: W, input: WorkflowInput<W>): Promise<ExecutionHandle<W>>;
 
   public async startExecution<
     W extends Workflow<any, any> = Workflow<any, any>
@@ -453,12 +444,6 @@ export class ExecutionHandle<W extends Workflow<any, any>> {
       WorkflowOutput<W>
     >;
   }
-
-  public async signal(signalId: string, payload: any): Promise<void>;
-  public async signal<Payload>(
-    signal: Signal<Payload>,
-    payload: any
-  ): Promise<void>;
 
   public async signal<Payload = any>(
     signal: string | Signal<Payload>,
