@@ -13,7 +13,9 @@ Eventual is a collection of NPM packages that provide primitives for building mi
 npm create eventual my-eventual-app
 ```
 
-## Choose your preferred IaC platform
+## 2. Choose your preferred IaC platform
+
+You will be prompted to choose between the
 
 Next, choose the platform on which you wish to develop and proceed to the relevant guide:
 
