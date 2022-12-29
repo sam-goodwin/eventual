@@ -1,12 +1,14 @@
 # API
 
-Each [Service](./0-service.md) has its own API Gateway that you can register routes onto using the `api` object available in `@eventual/core`.
+The API for each Eventual service is a REST API that is exposed through an API Gateway. This allows external systems to interact with the service by making HTTP requests to specific endpoints. The API can be used to trigger workflows, complete async activities, and retrieve the results of completed workflows. In this documentation, we will explain how to use the api object provided by Eventual to register routes and handle incoming requests.
+
+## Router
+
+Each Service has its own API Gateway that you can register routes onto using the api object available in `@eventual/core`
 
 ```ts
 import { api } from "@eventual/core";
 ```
-
-## Router
 
 The default router provided by Eventual is built with [`itty-router`](https://github.com/kwhitley/itty-router) and uses the Node [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)'s [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) and [Response](https://developer.mozilla.org/en-US/docs/Web/API/Response) types.
 
@@ -20,11 +22,11 @@ Your `tsconfig.json` must contain the DOM lib or else the `Request` and `Respons
 }
 ```
 
-You may also need to polyfill with [`node-fetch`](https://www.npmjs.com/package/node-fetch).
+Unless you're using Node 18+, you will need to polyfill with [`node-fetch`](https://www.npmjs.com/package/node-fetch).
 
 ## Routes and Handlers
 
-All [Http Methods](#http-methods) follow the same pattern of taking in a string representing the route and a handler function that accepts a Request and returns a `Promise<Response>`.
+To register a route and handler function, you can use one of the HTTP method functions provided by the `api` object, such as `api.get`, `api.post`, `api.put`, `api.delete`, etc. These functions take in a string representing the route and a handler function that accepts a `Request` object and returns a `Promise<Response>`.
 
 ```ts
 api.post("/echo", async (request) => {
@@ -96,9 +98,11 @@ Routes are evaluated in the order in which they are registered and the first rou
 
 ## Http Methods
 
+In a REST API, HTTP methods are used to specify the type of action being performed on a resource. In Eventual, you can register routes for specific HTTP methods using the following functions:
+
 ### `all`
 
-Registers a route that will match any HTTP method (GET, POST, etc.).
+Use all to register a route that will match any HTTP method (GET, POST, etc.). This can be useful if you want to handle all requests to a specific route in the same way, regardless of the method being used.
 
 ```ts
 api.all("/hello", (request) => { .. });
@@ -106,7 +110,7 @@ api.all("/hello", (request) => { .. });
 
 ### `get`
 
-Registers a route that only matches a GET HTTP method.
+Use `get` to register a route that only matches a GET HTTP method. This method is typically used to retrieve a resource.
 
 ```ts
 api.get("/hello", (request) => { .. });
@@ -114,7 +118,7 @@ api.get("/hello", (request) => { .. });
 
 ### `post`
 
-Registers a route that only matches a POST HTTP method.
+Use `post` to register a route that only matches a POST HTTP method. This method is typically used to create a new resource.
 
 ```ts
 api.post("/hello", (request) => { .. });
@@ -122,7 +126,7 @@ api.post("/hello", (request) => { .. });
 
 ### `put`
 
-Registers a route that only matches a PUT HTTP method.
+Use the `put` method to register a route that only matches a PUT HTTP method. PUT requests are used to send data to a server to create or update a resource. PUT requests are similar to POST requests, but they should replace the existing resource with the new data.
 
 ```ts
 api.put("/hello", (request) => { .. });
@@ -130,7 +134,7 @@ api.put("/hello", (request) => { .. });
 
 ### `delete`
 
-Registers a route that only matches a DELETE HTTP method.
+Use `delete` to register a route that only matches a DELETE HTTP method. This method is typically used to delete a resource.
 
 ```ts
 api.delete("/hello", (request) => { .. });
@@ -138,7 +142,7 @@ api.delete("/hello", (request) => { .. });
 
 ### `options`
 
-Registers a route that only matches an OPTIONS HTTP method.
+Use `options` to register a route that only matches an OPTIONS HTTP method. This method is typically used to retrieve information about the options available for a resource.
 
 ```ts
 api.options("/hello", (request) => { .. });
@@ -146,7 +150,7 @@ api.options("/hello", (request) => { .. });
 
 ### `patch`
 
-Registers a route that only matches a PATCH HTTP method.
+The `patch` method registers a route that only matches a PATCH HTTP method. It is used to apply partial modifications to a resource.
 
 ```ts
 api.patch("/hello", (request) => { .. });

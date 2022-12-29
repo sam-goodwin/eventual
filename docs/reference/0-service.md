@@ -1,6 +1,6 @@
 # Service
 
-A Service consists of an API, an Event Bus and Workflows.
+A Service consists of an API Gateway, an Event Bus and Workflows. It is the main building block of Eventual and is responsible for hosting your business logic and exposing it through an HTTP REST API.
 
 ![Service Architecture](./0-service.png)
 
@@ -14,7 +14,7 @@ const service = new Service(stack, "Service", {
 });
 ```
 
-The only required property is `entry`, which points at the entrypoint `.ts` or `.js` file that contains the application logic for your service. A service's application logic is implemented using the 4 building blocks:
+The `entry` property points to the entrypoint `.ts` or `.js` file that contains the application logic for your service. A service's application logic is implemented using the 4 building blocks:
 
 1. [API](./1-api.md)
 2. [Events](./2-event.md)
@@ -23,7 +23,7 @@ The only required property is `entry`, which points at the entrypoint `.ts` or `
 
 ## Service Name
 
-Services are named. By default, a service's name is the CDK Construct's address which is not particularly friendly but is guaranteed to be unique within a single AWS account and region. We recommend naming your services in a consistent way that aligns with your organization.
+Services are named to make them easier to identify and reference. By default, a service's name is the CDK Construct's address, which is unique within a single AWS account and region, but may not be very user-friendly. We recommend naming your services in a consistent way that aligns with your organization.
 
 ```ts
 const service = new Service(stack, "Service", {
@@ -50,7 +50,7 @@ For more information on how to use the CLI, see the [docs](./5-cli.md).
 
 ## Environment Variables
 
-You can set environment variables on the Service using the `environment` property. For example, making a DynamoDB Table's ARN available
+You can set environment variables on the Service using the environment property. These variables will be available to the `api`, `event`, `activity` and `workflow` handlers. For example, you can make a DynamoDB Table's ARN available like this:
 
 ```ts
 const service = new Service(stack, "Service", {
@@ -60,8 +60,6 @@ const service = new Service(stack, "Service", {
   },
 });
 ```
-
-These environment variables will then be available to the `api`, `event`, `activity` and `workflow` handlers.
 
 ## Grant Permissions
 

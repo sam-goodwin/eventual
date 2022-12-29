@@ -8,14 +8,11 @@ npm create eventual my-eventual-sst-app --target aws-sst
 
 ## Overview of the Template
 
-The SST project structure contains two NPM packages:
-
-1. the Stacks package (for your infrastructure configuration)
-2. the Services package (for your business logic)
+This will create a new project with two npm packages: a "Stacks" package for your infrastructure configuration, and a "Services" package for your business logic.
 
 ### Stacks package
 
-The Stacks package is where you configure your infrastructure.
+The Stacks package contains a file called "MyStack.ts" which instantiates an Eventual Service and points to the entry point of the Services package.
 
 ```sh
 package.json
@@ -24,7 +21,7 @@ stacks/
   MyStack.ts # your service's Stack
 ```
 
-The template creates an initial file, `MyStack.ts`, which instantiates a single Eventual `Service`.
+The file "MyStack.ts" creates a new Service with the following code:
 
 ```ts
 import { StackContext } from "@serverless-stack/resources";
@@ -45,15 +42,11 @@ export function MyStack({ stack }: StackContext) {
 }
 ```
 
-The `entry` property points at the `index.ts` in the [Services package](#services-package)
-
-```ts
-entry: path.resolve("services", "functions", "index.ts"),
-```
+Note that the `entry` property points to a file, `index.ts`, located within the ["Services" package](#services-package) in the `services/functions` folder provided by SST. This is typically where Lambda Functions and other business logic code is stored in an SST project.
 
 ### Services package
 
-The Services package is nested within the Stacks package under the `services` folder. It contains the application logic for your Service.
+The Services package, located in the "services" folder, contains an "index.ts" file with a basic example application demonstrating the use of the Eventual primitives "api," "event," "workflow," and "activity."
 
 ```sh
 # nested services packages
@@ -63,8 +56,6 @@ services/
     index.ts # the Eventual service entrypoint
 ```
 
-The template creates an initial file, `functions/index.ts`, containing a basic example application that touches on each of the 4 Eventual primitives, `api`, `event`, `workflow` and `activity`. For a walk-through of how to build applications with Eventual, see the [Tutorial](../tutorial/0-hello-world.md).
-
 ## Drop in to existing Project
 
 If you're already a user of SST and wish to begin using Eventual as a part of an existing project, you can import the `Service` Construct directly from `@eventual/aws-cdk` and incorporate it into your Stacks.
@@ -73,7 +64,7 @@ If you're already a user of SST and wish to begin using Eventual as a part of an
 import { Service } from "@eventual/aws-cdk";
 ```
 
-Then, instantiate the `Service` within a Stack and point it at the file containing your application code.
+Then, within your Stack, instantiate a `Service` and specify the file containing your application code as the `entry` property. For example:
 
 ```ts
 import { StackContext } from "@serverless-stack/resources";
@@ -88,3 +79,5 @@ export function MyStack({ stack }: StackContext) {
   });
 }
 ```
+
+Once you have added the Service Construct and specified your application code, you can deploy your updated stack using the `sst deploy` command.

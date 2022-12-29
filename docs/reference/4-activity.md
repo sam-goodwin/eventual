@@ -30,7 +30,7 @@ workflow("send-email-workflow", async (input: { to: string; body: string }) => {
 
 ## Async Activity
 
-Async activities are a way to perform work that takes longer than the maximum 15 minute runtime of an AWS Lambda function. They allow you to return a "token" from the activity function, which can be used to complete or fail the activity at a later time. This is useful when you need to wait for a human to complete a task or for an expensive process to run on a cluster.
+Async activities are a way to perform work that takes longer than the maximum 15 minute runtime of an AWS Lambda function. They allow you to return a `token` from the activity function, which can be used to complete or fail the activity at a later time. This is useful when you need to wait for a human to complete a task or for an expensive process to run on a cluster.
 
 To create an async activity, you will need to import the `asyncResult` function from the `@eventual/core` library and return its result as the activity's result:
 
