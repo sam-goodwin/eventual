@@ -396,6 +396,7 @@ describe("signal", () => {
     const execution = await env.startExecution(signalWorkflow, undefined);
 
     await execution.signal(continueSignal, undefined);
+    await env.tick();
 
     expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
       status: ExecutionStatus.COMPLETE,
@@ -407,8 +408,10 @@ describe("signal", () => {
     const execution = await env.startExecution(signalWorkflow, undefined);
 
     await execution.signal(dataSignal, "override!");
+    await env.tick();
 
     await execution.signal(continueSignal, undefined);
+    await env.tick();
 
     expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
       status: ExecutionStatus.COMPLETE,
@@ -420,10 +423,13 @@ describe("signal", () => {
     const execution = await env.startExecution(signalWorkflow, undefined);
 
     await execution.signal(dataDoneSignal, undefined);
+    await env.tick();
 
     await execution.signal(dataSignal, "muahahahaha");
+    await env.tick();
 
     await execution.signal(continueSignal, undefined);
+    await env.tick();
 
     expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
       status: ExecutionStatus.COMPLETE,
@@ -434,7 +440,7 @@ describe("signal", () => {
   test("workflow send signal", async () => {
     const execution = await env.startExecution(signalWorkflow, undefined);
     const orchestratorExecution = await env.startExecution(orchestrate, {
-      targetExecutionId: execution.id,
+      targetExecutionId: execution.executionId,
     });
 
     await env.tick(3);
@@ -460,17 +466,17 @@ describe("events", () => {
       env.subscribeEvent(dataEvent, dataEventMock);
       const execution = await env.startExecution(signalWorkflow, undefined);
       await env.publishEvent(dataEvent, {
-        executionId: execution.id,
+        executionId: execution.executionId,
         data: "event data",
       });
       await env.publishEvent(dataDoneEvent, {
-        executionId: execution.id,
+        executionId: execution.executionId,
       });
       await env.publishEvent(continueEvent, {
-        executionId: execution.id,
+        executionId: execution.executionId,
       });
       expect(dataEventMock).toBeCalledWith({
-        executionId: execution.id,
+        executionId: execution.executionId,
         data: "event data",
       });
       expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
@@ -486,7 +492,7 @@ describe("events", () => {
 
       const execution = await env.startExecution(signalWorkflow, undefined);
       const orchestratorExecution = await env.startExecution(orchestrate, {
-        targetExecutionId: execution.id,
+        targetExecutionId: execution.executionId,
         events: true,
       });
 
@@ -514,17 +520,17 @@ describe("events", () => {
       env.subscribeEvent(dataEvent, dataEventMock);
       const execution = await env.startExecution(signalWorkflow, undefined);
       await env.publishEvent(dataEvent, {
-        executionId: execution.id,
+        executionId: execution.executionId,
         data: "event data",
       });
       await env.publishEvent(dataDoneEvent, {
-        executionId: execution.id,
+        executionId: execution.executionId,
       });
       await env.publishEvent(continueEvent, {
-        executionId: execution.id,
+        executionId: execution.executionId,
       });
       expect(dataEventMock).toBeCalledWith({
-        executionId: execution.id,
+        executionId: execution.executionId,
         data: "event data",
       });
       expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
@@ -543,18 +549,18 @@ describe("events", () => {
       env.subscribeEvent(dataEvent, dataEventMock);
       const execution = await env.startExecution(signalWorkflow, undefined);
       await env.publishEvent(dataEvent, {
-        executionId: execution.id,
+        executionId: execution.executionId,
         data: "event data",
       });
       await env.publishEvent(dataDoneEvent, {
-        executionId: execution.id,
+        executionId: execution.executionId,
       });
       await env.publishEvent(continueEvent, {
-        executionId: execution.id,
+        executionId: execution.executionId,
       });
       // the test env handler was called
       expect(dataEventMock).toBeCalledWith({
-        executionId: execution.id,
+        executionId: execution.executionId,
         data: "event data",
       });
 
@@ -566,14 +572,14 @@ describe("events", () => {
       // enable and try again, the subscriptions should be working now.
       env.enableServiceSubscriptions();
       await env.publishEvent(dataEvent, {
-        executionId: execution.id,
+        executionId: execution.executionId,
         data: "event data",
       });
       await env.publishEvent(dataDoneEvent, {
-        executionId: execution.id,
+        executionId: execution.executionId,
       });
       await env.publishEvent(continueEvent, {
-        executionId: execution.id,
+        executionId: execution.executionId,
       });
       expect(await execution.getExecution()).toMatchObject<Partial<Execution>>({
         status: ExecutionStatus.COMPLETE,
@@ -609,7 +615,7 @@ describe("completing executions", () => {
 
     expect(executionResult).toMatchObject<Execution>({
       endTime: env.time.toISOString(),
-      id: execution.id,
+      id: execution.executionId,
       status: ExecutionStatus.COMPLETE,
       result: "hi",
       startTime: new Date(env.time.getTime() - 1000).toISOString(),
@@ -624,7 +630,7 @@ describe("completing executions", () => {
 
     expect(executionResult).toMatchObject<Execution>({
       endTime: env.time.toISOString(),
-      id: execution.id,
+      id: execution.executionId,
       status: ExecutionStatus.COMPLETE,
       result: "hi",
       startTime: new Date(env.time.getTime() - 1000).toISOString(),
@@ -638,7 +644,7 @@ describe("completing executions", () => {
 
     expect(executionResult).toMatchObject<Execution>({
       endTime: env.time.toISOString(),
-      id: execution.id,
+      id: execution.executionId,
       status: ExecutionStatus.FAILED,
       error: "Error",
       message: "failed!",
@@ -654,7 +660,7 @@ describe("completing executions", () => {
 
     expect(executionResult).toMatchObject<Execution>({
       endTime: env.time.toISOString(),
-      id: execution.id,
+      id: execution.executionId,
       status: ExecutionStatus.FAILED,
       error: "Error",
       message: "failed!",
@@ -698,7 +704,7 @@ describe("timeouts", () => {
     const execution = await env.startExecution(workflowWithTimeouts, undefined);
 
     await execution.signal(dataSignal, "woo");
-    await env.tick(2);
+    await env.tick(3);
 
     expect(await execution.getExecution()).toMatchObject<
       Partial<Awaited<ReturnType<typeof execution.getExecution>>>

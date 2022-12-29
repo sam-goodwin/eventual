@@ -85,3 +85,12 @@ export class ActivityNotFoundError extends Error {
     );
   }
 }
+
+/**
+ * Thrown when there is an attempt to retrieve the result of an in progress workflow.
+ */
+export class InProgressError extends EventualError {
+  constructor(message: string) {
+    super("InProgressError", message);
+  }
+}

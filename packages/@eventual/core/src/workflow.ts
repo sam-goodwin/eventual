@@ -18,11 +18,11 @@ import {
   WorkflowEventType,
 } from "./workflow-events.js";
 import { interpret, WorkflowResult } from "./interpret.js";
-import type { StartWorkflowResponse } from "./runtime/clients/workflow-client.js";
 import { ChildExecution, createWorkflowCall } from "./calls/workflow-call.js";
 import { AwaitedEventual } from "./eventual.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
 import { isChain } from "./chain.js";
+import { ExecutionHandle } from "./execution.js";
 
 export type WorkflowHandler<Input = any, Output = any> = (
   input: Input,
@@ -98,7 +98,7 @@ export interface Workflow<Input = any, Output = any> {
    */
   startExecution(
     request: StartExecutionRequest<Input>
-  ): Promise<StartWorkflowResponse>;
+  ): Promise<ExecutionHandle<Workflow<Input, Output>>>;
 
   /**
    * @internal - this is the internal DSL representation that produces a {@link Program} instead of a Promise.
@@ -166,15 +166,16 @@ export function workflow<Input = any, Output = any>(
   workflow.workflowName = name;
 
   workflow.startExecution = async function (input) {
-    return {
-      executionId: await getWorkflowClient().startWorkflow({
-        workflowName: name,
-        executionName: input.name,
-        input: input.input,
-        timeoutSeconds: input.timeoutSeconds,
-        ...opts,
-      }),
-    };
+    const workflowClient = getWorkflowClient();
+    const executionId = await workflowClient.startWorkflow({
+      workflowName: name,
+      executionName: input.name,
+      input: input.input,
+      timeoutSeconds: input.timeoutSeconds,
+      ...opts,
+    });
+
+    return new ExecutionHandle(executionId, workflowClient);
   };
 
   workflow.definition = (

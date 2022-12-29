@@ -14,10 +14,8 @@ import {
   EventPayload,
   EventPayloadType,
   events,
-  EventualError,
-  Execution,
+  ExecutionHandle,
   ExecutionHistoryClient,
-  ExecutionStatus,
   Orchestrator,
   ServiceType,
   Signal,
@@ -25,7 +23,6 @@ import {
   Workflow,
   WorkflowClient,
   WorkflowInput,
-  WorkflowOutput,
   WorkflowRuntimeClient,
   workflows,
   WorkflowTask,
@@ -40,7 +37,6 @@ import { TestWorkflowClient } from "./clients/workflow-client.js";
 import { TestActivityRuntimeClient } from "./clients/activity-runtime-client.js";
 import { TestTimerClient } from "./clients/timer-client.js";
 import { TimeController } from "./time-controller.js";
-import { InProgressError } from "./error.js";
 import { ExecutionStore } from "./execution-store.js";
 import { serviceTypeScope } from "./utils.js";
 import {
@@ -93,8 +89,6 @@ export class TestEnvironment {
   private orchestrator: Orchestrator;
   private activityWorker: ActivityWorker;
   private eventHandlerWorker: EventHandlerWorker;
-
-  private executions: Record<string, ExecutionHandle<any>> = {};
 
   constructor(props: TestEnvironmentProps) {
     this.serviceFile = bundleService(
@@ -267,7 +261,8 @@ export class TestEnvironment {
   ) {
     // add a signal received event, mirroring sendSignal
     await this.workflowClient.sendSignal({
-      executionId: typeof execution === "string" ? execution : execution.id,
+      executionId:
+        typeof execution === "string" ? execution : execution.executionId,
       signal: typeof signal === "string" ? signal : signal.id,
       payload,
     });
@@ -323,11 +318,7 @@ export class TestEnvironment {
     // tick forward on explicit user action (triggering the workflow to start running)
     await this.tick();
 
-    const execution = new ExecutionHandle(executionId, this);
-
-    this.executions[executionId] = execution;
-
-    return execution;
+    return new ExecutionHandle(executionId, this.workflowClient);
   }
 
   /**
@@ -453,55 +444,4 @@ export interface TimeConnector {
   pushEvent(task: WorkflowTask): void;
   scheduleEvent(time: Date, task: WorkflowTask): void;
   getTime: () => Date;
-}
-
-export class ExecutionHandle<W extends Workflow<any, any>> {
-  constructor(public id: string, private environment: TestEnvironment) {}
-
-  /**
-   * @return the current status of the execution.
-   */
-  public async status() {
-    return (await this.environment.getExecution(this.id))!.status;
-  }
-
-  /**
-   * @return the result of a workflow.
-   *
-   * If the workflow is in progress {@link InProgressError} will be thrown.
-   * If the workflow has failed, {@link EventualError} will be thrown with the error and message.
-   */
-  public async result() {
-    const execution = await this.getExecution();
-    if (execution.status === ExecutionStatus.IN_PROGRESS) {
-      throw new InProgressError("Workflow is still in progress");
-    } else if (execution.status === ExecutionStatus.FAILED) {
-      throw new EventualError(execution.error, execution.message);
-    } else {
-      return execution.result;
-    }
-  }
-
-  /**
-   * @return the {@link Execution} with the status, result, error, and other data based on the current status.
-   */
-  public async getExecution(): Promise<Execution<WorkflowOutput<W>>> {
-    return (await this.environment.getExecution(this.id)) as Execution<
-      WorkflowOutput<W>
-    >;
-  }
-
-  /**
-   * Send a {@link signal} to this execution and progresses time by one second ({@link TestEnvironment.tick}).
-   */
-  public async signal<Payload = any>(
-    signal: string | Signal<Payload>,
-    payload: Payload
-  ): Promise<void> {
-    return this.environment.sendSignal(
-      this as any,
-      typeof signal === "string" ? signal : signal.id,
-      payload
-    );
-  }
 }
