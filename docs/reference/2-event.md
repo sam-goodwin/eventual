@@ -12,7 +12,7 @@ import { event } from "@eventual/core";
 export const myEvent = event("MyEvent");
 ```
 
-This registers an event with the name MyEvent on the Event Bus.
+This registers an event with the name `"MyEvent"` on the Event Bus.
 
 ## Publish an Event
 
@@ -37,7 +37,7 @@ await myEvent.publish(
 
 ## Subscribe to an Event
 
-You can also subscribe to events by calling the `on` function on the event object and passing it a callback function that will be called every time the event is published:
+You can subscribe to events by calling the `on` function on the event object and passing it a callback function that will be called every time the event is published:
 
 ```ts
 myEvent.on(async (event) => {
@@ -47,7 +47,7 @@ myEvent.on(async (event) => {
 
 ### Supported Intrinsic Functions
 
-The following intrinsic functions can be called within an API handler:
+The following intrinsic functions can be called within an event subscription handler:
 
 - [`publish`](./2-event.md#publish-to-an-event)
 
@@ -83,7 +83,7 @@ await myActivity.fail({
 
 ## Defining the type of an Event
 
-By default, an event's type is any. This is easy and flexible, but also unsafe. To associate a type with an event, you can use the `<Type>` syntax when creating the event. For example:
+By default, an event's type is `any`. This is easy and flexible, but also unsafe. To associate a type with an event, you can use the `<Type>` syntax when creating the event. For example:
 
 ```ts
 export interface MyEvent {
@@ -113,7 +113,7 @@ By defining the type of an event, you can improve the safety and reliability of 
 
 ### Publish an Event from outside Eventual
 
-To publish an event to a Service's Event Bus from outside Eventual, you will first need to obtain the Event Bus's ARN. This can be done by accessing the `events.bus` property of the `Service` Construct, which represents the Event Bus for the given Service. For example, given a `Service` named `myService`:
+To publish an event to a Service's Event Bus from outside Eventual, you will need to obtain the Event Bus's ARN. You can do this by accessing the `events.bus` property of the Service `Construct`, which is the Event Bus for the Service. For example, if you have a Service named `myService`:
 
 ```ts
 const myService = new Service(..);
@@ -136,7 +136,7 @@ Next, you will need to grant the external service permissions to publish events 
 myService.events.grantPublish(myFunction);
 ```
 
-With the necessary permissions and ARN in place, you can now use the [`PutEvents` API, provided by the AWS SDK v3 for JavaScript EventBridge Client]([AWS SDK v3 for JavaScript EventBridge Client](https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-eventbridge/classes/puteventscommand.html)), to publish events to the Event Bus. For example:
+With the necessary permissions and ARN in place, you can now use the [`PutEvents` API, provided by the AWS SDK v3 for JavaScript EventBridge Client](https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-eventbridge/classes/puteventscommand.html)), to publish events to the Event Bus. For example:
 
 ```ts
 import {
