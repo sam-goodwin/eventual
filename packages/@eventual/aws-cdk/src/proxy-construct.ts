@@ -19,7 +19,7 @@ export function lazyInterface<Iter extends object>(): Iter & {
   _bind: (real: Iter) => void;
 } {
   const calls: [keyof Iter, any[]][] = [];
-  let real: Iter | undefined = undefined;
+  let real: Iter | undefined;
 
   const bind = (obj: Iter) => {
     real = obj;
@@ -37,6 +37,7 @@ export function lazyInterface<Iter extends object>(): Iter & {
         } else if (real) {
           return (real[prop as keyof Iter] as Function).bind(real);
         }
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
         return new Proxy(() => {}, {
           apply: (_target, _this, args) => {
             calls.push([prop as keyof Iter, args]);
@@ -44,5 +45,5 @@ export function lazyInterface<Iter extends object>(): Iter & {
         });
       },
     }
-  ) as Iter & { _bind: () => {} };
+  ) as Iter & { _bind: () => void };
 }

@@ -2,7 +2,7 @@ import { constants } from "fs";
 import fs from "fs/promises";
 import path from "path";
 
-export async function prepareOutDir(outDir: string, clean: boolean = true) {
+export async function prepareOutDir(outDir: string, clean = true) {
   try {
     await fs.access(outDir, constants.F_OK);
     if (clean) {

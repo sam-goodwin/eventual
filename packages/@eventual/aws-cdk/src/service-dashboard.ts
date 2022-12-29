@@ -1,5 +1,9 @@
-import { aws_cloudwatch } from "aws-cdk-lib";
-import { Statistic } from "aws-cdk-lib/aws-cloudwatch";
+import {
+  Dashboard,
+  GraphWidget,
+  MathExpression,
+  Statistic,
+} from "aws-cdk-lib/aws-cloudwatch";
 import { Construct } from "constructs";
 import { Service } from "./service";
 
@@ -8,7 +12,7 @@ export interface ServiceDashboardProps {
 }
 
 export class ServiceDashboard extends Construct {
-  public readonly dashboard: aws_cloudwatch.Dashboard;
+  public readonly dashboard: Dashboard;
 
   constructor(
     scope: Construct,
@@ -17,14 +21,14 @@ export class ServiceDashboard extends Construct {
   ) {
     super(scope, id);
 
-    this.dashboard = new aws_cloudwatch.Dashboard(this, "Dashboard", {
+    this.dashboard = new Dashboard(this, "Dashboard", {
       dashboardName: `Service-${service.serviceName.replace(
         /[^A-Za-z0-9_-]/g,
         ""
       )}`,
       widgets: [
         [
-          new aws_cloudwatch.GraphWidget({
+          new GraphWidget({
             title: `Health of the Orchestrator's Lambda Function`,
             left: [
               service.workflows.orchestrator.metricInvocations(),
@@ -34,14 +38,14 @@ export class ServiceDashboard extends Construct {
             right: [service.workflows.orchestrator.metricDuration()],
             width: 12,
           }),
-          new aws_cloudwatch.GraphWidget({
+          new GraphWidget({
             title: `How well the Orchestrator FIFO Queue is keeping up`,
             left: [
               service.workflows.queue.metricApproximateAgeOfOldestMessage({
                 label:
                   "Approximate age of oldest message in the Orchestrator's SQS FIFO Queue",
               }),
-              new aws_cloudwatch.MathExpression({
+              new MathExpression({
                 expression: "age / 1000",
                 usingMetrics: {
                   age: service.metricMaxTaskAge(),
@@ -49,7 +53,7 @@ export class ServiceDashboard extends Construct {
                 label:
                   "Average age of the oldest Task in a single SQS batch to the Orchestrator",
               }),
-              new aws_cloudwatch.MathExpression({
+              new MathExpression({
                 expression: "max_age / 1000",
                 usingMetrics: {
                   max_age: service.metricMaxTaskAge({
@@ -63,7 +67,7 @@ export class ServiceDashboard extends Construct {
           }),
         ],
         [
-          new aws_cloudwatch.GraphWidget({
+          new GraphWidget({
             title: `Size and timing impact of the History S3 Object on the Orchestrator`,
             left: [
               service.workflows.orchestrator.metricDuration({
@@ -91,7 +95,7 @@ export class ServiceDashboard extends Construct {
             ],
             width: 12,
           }),
-          new aws_cloudwatch.GraphWidget({
+          new GraphWidget({
             title: `Command invoked by the Orchestrator`,
             left: [
               service.metricInvokeCommandsDuration({

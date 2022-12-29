@@ -5,13 +5,13 @@ import {
   parseWorkflowName,
   ServiceType,
   SERVICE_TYPE_FLAG,
+  workflows,
 } from "@eventual/core";
 import { Argv } from "yargs";
 import { bundleService } from "@eventual/compiler";
 import path from "path";
 import { orchestrator } from "../replay/orchestrator.js";
 import { serviceAction, setServiceOptions } from "../service-action.js";
-import { workflows } from "@eventual/core";
 
 export const replay = (yargs: Argv) =>
   yargs.command(

@@ -79,6 +79,7 @@ export const logs = (yargs: Argv) =>
         } else if (nextInputs.length) {
           spinner.start("Loading more");
         }
+        // eslint-disable-next-line no-unmodified-loop-condition
       } while (tail || nextInputs.length);
       spinner.stop();
     }
@@ -95,16 +96,16 @@ async function fetchLogs(
   cloudwatchLogsClient: cwLogs.CloudWatchLogsClient,
   functions: FunctionLogInput[]
 ): Promise<FunctionLogEvents[]> {
-  //Get a batch of logs for each of our runctions
+  // Get a batch of logs for each of our runctions
   const functionEvents = await Promise.all(
     functions.map(async (fn) => ({
       fn,
       ...(await getLogs(cloudwatchLogsClient, fn)),
     }))
   );
-  //Interleave the logs by timestamp
+  // Interleave the logs by timestamp
   const interleavedEvents = getInterleavedLogEvents(functionEvents);
-  //Print out the interleaved logs
+  // Print out the interleaved logs
   if (interleavedEvents.length) {
     spinner.stop();
     interleavedEvents.forEach(({ source, ev }) => {
@@ -171,8 +172,8 @@ export function getFollowingFunctionLogInputs(
 ): FunctionLogInput[] {
   if (tail) {
     return fnEvents.map(({ fn, events, nextToken }) => {
-      //Its important to increment the start time even if we're just using next token, since once there's no more next token's,
-      //we're going to rely on the latest start time value
+      // Its important to increment the start time even if we're just using next token, since once there's no more next token's,
+      // we're going to rely on the latest start time value
       const latestEvent = (
         events.length > 0 ? events[events.length - 1] : undefined
       )?.timestamp;
@@ -227,7 +228,7 @@ export function getStartTime(
   since: number | string | "now"
 ): number | undefined {
   if (since == null) {
-    //Now - 24hrs. If we don't provide a start time, it's too slow to page through all the logs
+    // Now - 24hrs. If we don't provide a start time, it's too slow to page through all the logs
     return Date.now() - 86_400_000;
   } else if (since === "now") {
     return Date.now();
