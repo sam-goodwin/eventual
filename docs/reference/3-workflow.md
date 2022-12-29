@@ -1,22 +1,34 @@
 # Workflow
 
-Workflows are used to orchestrate business logic by calling APIs, coordinating time and interacting with humans and other services. They are they glue that connects APIs, events, time and integrations.
+Workflows are programs that coordinate complex business processes, including calling APIs, coordinating time-based actions, and interacting with humans. They are designed to be reliable and durable, allowing them to execute over long periods of time and recover from failures. Workflows are particularly useful for orchestrating the interactions between various systems and components, serving as the "glue" that holds everything together.
 
 ## Create a `workflow`
 
-To create a workflow, import and call the `workflow` function from `@eventual/core`. Each workflow is given a name that must be unique within the service and an implementation as an asynchronous function.
+To create a workflow, you can use the `workflow` function from the `@eventual/core` library. This function takes two arguments: a unique name for the workflow, and an implementation function that contains the logic of the workflow. The implementation function should be asynchronous, as it may involve waiting for external events or operations to complete.
+
+Here is an example of how to create a workflow using the workflow function:
 
 ```ts
 import { workflow } from "@eventual/core";
 
 const myWorkflow = workflow("myWorkflow", async (input: any) => {
-  // implementation
+  // implementation of the workflow goes here
 });
 ```
 
+Once you have created a workflow using the workflow function, you can execute it by calling the `startExecution` method on the returned object. The `startExecution` method takes an input argument and returns a promise that resolves to the output of the workflow.
+
+```ts
+const output = await myWorkflow.startExecution(input);
+```
+
+This is the basic process for creating and executing a workflow using the @eventual/core library. You can then add additional logic and functionality to the workflow implementation function to define the specific actions and interactions that you want the workflow to perform.
+
 ## Call an Activity
 
-A workflow can call activities directly:
+A workflow can perform work by calling activities, which are functions that perform specific tasks such as calling APIs, interacting with databases, or executing complex computations. To call an activity from within a workflow, you can simply invoke the activity function as you would any other function.
+
+Here is an example of a workflow that calls an activity:
 
 ```ts
 const myWorkflow = workflow("myWorkflow", async (input: any) => {
@@ -28,25 +40,105 @@ const myActivity = activity("myActivity", async () => {
 });
 ```
 
-Activities are how workflow perform work
+In this example, the workflow calls the `myActivity` function and waits for the result before continuing. The `myActivity` function, in turn, performs some work and returns a value to the workflow.
+
+Activities are a key component of workflows, as they allow the workflow to perform complex tasks and interact with external systems. When you want a workflow to perform specific work, you can define an activity to handle that work and call it from within the workflow.
+
+## Wait for a `signal`
+
+Sometimes it may be necessary for a workflow to wait for external input from another system before continuing. In Eventual, this type of input is called a **Signal**.
+
+To define a signal, you can use the `signal` function from the `@eventual/core` library. This function takes a unique name for the signal and an optional type argument defining the schema of the signal payload. The name of the signal must be unique within the service.
+
+Here is an example of how to define a signal:
+
+```ts
+import { signal } from "@eventual/core";
+
+const mySignal = signal<string>("mySignal");
+```
+
+A workflow can use the `expect` method on the signal object, e.g. `mySignal.expect()`, to pause execution until the signal is received for the current execution.
+
+```ts
+workflow("myWorkflow", async () => {
+  const signalPayload = await mySignal.expect();
+});
+```
+
+You can specify a timeout in seconds when calling expect. If the signal is not received within the specified time, the method will throw a `TimeoutException`.
+
+```ts
+try {
+  const signalPayload = await mySignal.expect({
+    timeoutSeconds: 10,
+  });
+  // signal was received
+} catch (err) {
+  // timed out
+}
+```
+
+## Sleep
+
+The `@eventual/core` library provides three methods for pausing an execution:
+
+### `sleepFor` X seconds
+
+The `sleepFor` function allows you to pause the execution of a workflow for a specified number of seconds. For example:
+
+```ts
+import { sleepFor } from "@eventual/core";
+
+await sleepFor(10);
+```
+
+### `sleepUntil` a specific ISO timestamp
+
+The `sleepUntil` function allows you to pause the execution of a workflow until a specific time, specified as an ISO8601 formatted string. For example:
+
+```ts
+await sleepUntil("2013-01-01T00:00:00.000Z");
+```
+
+### `sleepWhile` a condition is true
+
+The `sleepWhile` function will pause execution until a predicate function returns `true`.
+
+```ts
+let isCancelled = false;
+
+await sleepWhile(() => !isCancelled);
+```
+
+The predicate is evaluated whenever the workflow progresses, such as when an event is received. For example, in the previous example, a signal could be used to set `isCancelled` to `true`. When that signal is received, the condition will be re-evaluated as `false`, allowing the function to continue.
+
+```ts
+cancelSignal.on(() => (isCancelled = true));
+
+await sleepWhile(() => !isCancelled);
+// execution will proceed after the signal is received
+```
+
+## Patterns
+
+See the [Workflow Patterns](./3.1-workflow-patterns.md) for a cheatsheet of patterns for controlling concurrency.
 
 ## Runtime Semantics
 
 A workflow function is a program that executes in a durable, long-running manner. It differs from API/event/activity handlers, which are invoked for a single execution and do not have the same runtime guarantees.
 
-To carry out an activity, the workflow function enqueues a message on an internal message bus. A worker listening to that queue then performs the activity and sends a message back to the workflow function with the result. This process, known as the actor pattern, allows the workflow to execute operations in a reliable manner, as each operation is guaranteed to be executed exactly once, even in the event of intermittent failures.
+To carry out an activity, the workflow function enqueues a message on an internal message bus. A worker listening to that queue then performs the activity and sends a message back to the workflow function with the result. This process allows the workflow to execute operations in a reliable manner, as each operation is guaranteed to be executed exactly once, even in the event of intermittent failures.
 
-The use of an internal message bus and worker process helps to eliminate the risk of failure inherent in single-invocation runtimes such as Lambda functions or containers, which can crash, time out, or reboot at any time. By contrast, a workflow function is able to continue executing and resuming even in the face of such failures, making it a more durable and reliable runtime for long-running processes.
+The use of an internal message bus and worker process helps to eliminate the risk of failure inherent in single-invocation runtimes such as Lambda functions or containers, which can crash, timeout, or reboot at any time. By contrast, a workflow function is able to continue executing and resuming even in the face of such failures, making it a more durable and reliable runtime for long-running or business-critical processes.
 
-## Event Sourcing and Re-entrancy
+## Durable Execution with Event Sourcing and Re-entrancy
 
-Event sourcing and re-entrancy are two techniques that allow a workflow function to execute in a durable, long-running manner.
+Event sourcing and re-entrancy allow a workflow function to execute in a durable, long-running manner.
 
-Event sourcing involves recording every action taken within a workflow, such as executing an activity or waiting for a signal, as an event in the workflow's event log. This log is then used to replay the workflow's execution whenever a decision needs to be made, a process known as re-entrancy.
+Event sourcing involves recording every action taken within a workflow as an event in the workflow's event log. This log is then used to replay the workflow's execution whenever a decision needs to be made, a process known as re-entrancy. During replay, the workflow function processes each event in the log in order. If an event has already been recorded in the log, it is considered to have already been performed and is skipped over. If an event has not been recorded, it is enqueued for execution and the workflow function suspends until it is completed.
 
-During replay, the workflow function processes each event in the log in order. If an event has already been recorded in the log, it is skipped over as it is considered to have already been performed. If an event has not been recorded, it is enqueued for execution and the workflow function suspends until it is completed. This ensures that each action taken by the workflow is performed exactly once, even in the face of intermittent failures.
-
-By using event sourcing and re-entrancy, a workflow function is able to provide strong runtime guarantees and execute in a reliable manner, making it a suitable runtime for long-running processes.
+This ensures that each action taken by the workflow is performed exactly once, even in the face of intermittent failures. By using event sourcing and re-entrancy, a workflow function is able to provide strong runtime guarantees and execute in a reliable manner, making it suitable for long-running and failure-sensitive processes. Actions that are recorded in the event log include executing an activity or another workflow, waiting for a signal, publishing events, etc.
 
 ## Deterministic Constraints
 
