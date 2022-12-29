@@ -3,7 +3,7 @@
 To create a new [SST](https://sst.dev) project with Eventual, run the below command:
 
 ```sh
-npm create eventual <project-name> --target aws-sst
+npm create eventual my-eventual-sst-app --target aws-sst
 ```
 
 ## Overview of the Template
@@ -11,7 +11,7 @@ npm create eventual <project-name> --target aws-sst
 The SST project structure contains two NPM packages:
 
 1. the Stacks package (for your infrastructure configuration)
-2. the Services package (for your application code)
+2. the Services package (for your business logic)
 
 ### Stacks package
 

@@ -30,63 +30,37 @@ workflow("send-email-workflow", async (input: { to: string; body: string }) => {
 
 ## Async Activity
 
-Async activities allow you to perform work that takes longer than the maximum 15 minute runtime of an AWS Lambda function. They work by returning a "token" from the activity function, which can be used to complete or fail the activity at a later time. This is useful for situations where you need to wait for a human to complete a task or for an expensive process to run on a cluster.
+Async activities are a way to perform work that takes longer than the maximum 15 minute runtime of an AWS Lambda function. They allow you to return a "token" from the activity function, which can be used to complete or fail the activity at a later time. This is useful when you need to wait for a human to complete a task or for an expensive process to run on a cluster.
 
-To create an async activity, import and call the `asyncResult` function from `@eventual/core` within your activity and return its result as the activity's result:
+To create an async activity, you will need to import the `asyncResult` function from the `@eventual/core` library and return its result as the activity's result:
 
 ```ts
 import { asyncResult } from "@eventual/core";
 
 const asyncHello = activity("hello", async (name: string) => {
   return asyncResult((token) => {
-    // TODO
+    // do something with the token, such as storing it in a database
   });
 });
 ```
 
-By returning the result of an `asyncResult` call, a workflow will no longer consider the activity complete until the `token` is reported on.
+This will cause the workflow to wait for the token to be completed or failed before moving on to the next step.
 
-The `asyncResult` function accepts a callback which it passes a `token` to. You can then do what you want with this token, such as storing it in a database:
-
-```ts
-const asyncHello = activity("hello", async (name: string) => {
-  return asyncResult((token) => {
-    await ddb.send(
-      new PutCommand({
-        TABLE_NAME: process.TABLE_NAME,
-        Item: {
-          id: uuid(),
-          token,
-        },
-      })
-    );
-  });
-});
-```
-
-### Complete an Activity
-
-Elsewhere in your application code (for example an API) you can complete the activity using the `complete` API:
+To complete or fail an async activity, you can use the `complete` and `fail` methods, respectively, on your activity function. For example:
 
 ```ts
 api.post("/ack/:token", async (request) => {
   await asyncHello.complete({
     activityToken: token,
-    result: `hello world`
-  };
+    result: `hello world`,
+  });
 });
-```
 
-### Fail an Activity
-
-Elsewhere in your application code (for example an API) you can fail the activity using the `fail` API:
-
-```ts
-api.post("/ack/:token", async (request) => {
+api.post("/fail/:token", async (request) => {
   await asyncHello.fail({
     activityToken: token,
-    result: new Error("failure")
-  };
+    error: new Error("failure"),
+  });
 });
 ```
 
@@ -95,3 +69,113 @@ api.post("/ack/:token", async (request) => {
 TODO
 
 Tracking: https://github.com/functionless/eventual/issues/137
+
+## Timeout
+
+An Activity can be configured to fail if it does not complete within a specified time frame. To do this, use the `timeoutSeconds` property when defining the activity.
+
+For example, the following activity will fail if it does not complete within 100 seconds:
+
+```ts
+export const timedOutWorkflow = workflow(
+  "timedOut",
+  { timeoutSeconds: 100 },
+  async () => {
+    await new Promise((resolve) => setTimeout(resolve, 101 * 1000));
+  }
+);
+```
+
+You can then handle a timeout error within a workflow by catching the `Timeout` error.
+
+```ts
+try {
+  await timedOutWorkflow();
+} catch (err) {
+  if (err instanceof Timeout) {
+    // the activity timed out
+  }
+}
+```
+
+## Heartbeat
+
+The Heartbeat feature in Eventual allows you to configure an Activity to report its progress at regular intervals while it is executing. This can be useful in cases where an Activity is performing a long-running task and you want to ensure that it is still making progress and has not gotten stuck.
+
+To use the Heartbeat feature, you can specify the `heartbeatSeconds` property when defining your Activity. This property specifies the interval, in seconds, at which the Activity is required to report a heartbeat. If the Activity does not report a heartbeat within this interval, it will be considered failed and a `HeartbeatTimeout` exception will be thrown.
+
+Here is an example of how to define an Activity with a heartbeat interval of 10 seconds:
+
+```ts
+const activityWithHeartbeat = activity(
+  "activityWithHeartbeat",
+  {
+    // configure this activity to be required to report a heartbeat every 10 seconds
+    heartbeatSeconds: 10,
+  },
+  async (workItems: string[]) => {
+    for (const item of workItems) {
+      // perform some work
+      await processItem(item);
+      // report a heartbeat back
+      await heartbeat();
+    }
+  }
+);
+```
+
+To report a heartbeat from within your Activity, you can call the `heartbeat` function included in the `@eventual/core` library. This function should be called at regular intervals to ensure that the required heartbeat interval is met.
+
+```ts
+import { heartbeat } from "@eventual/core";
+
+await heartbeat();
+```
+
+When calling an Activity with the Heartbeat feature from within a Workflow, you can catch the `HeartbeatTimeout` exception to handle cases where the Activity has failed due to a heartbeat timeout:
+
+```ts
+try {
+  await activityWithHeartbeat();
+} catch (err) {
+  if (err instanceof HeartbeatTimeout) {
+    // the activity did not report heartbeat in time
+  }
+}
+```
+
+## Supported Intrinsic Functions
+
+Alongside the activity-specific intrinsics already mentioned, the following intrinsic functions can also be called within an activity handler:
+
+- [`publish`](./2-event.md#publish-to-an-event)
+
+```ts
+await myEvent.publish({ .. });
+```
+
+- [`startExecution`](./3-workflow.md#start-execution)
+
+```ts
+await myWorkflow.startExecution({
+  input: <input payload>
+})
+```
+
+- [`complete`](./4-activity.md#complete-an-activity)
+
+```ts
+await myActivity.complete({
+  token: <token>,
+  result: <result>
+})
+```
+
+- [`fail`](./4-activity.md#fail-an-activity)
+
+```ts
+await myActivity.fail({
+  token: <token>,
+  error: <error>
+})
+```

@@ -11,7 +11,7 @@ npm create eventual <project-name> --target aws-cdk
 An AWS CDK project structure contains two NPM packages:
 
 1. the Stacks package (for your infrastructure configuration)
-2. the Services package (for your application code)
+2. the Services package (for your business logic)
 
 ### Stacks package
 

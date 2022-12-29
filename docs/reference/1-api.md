@@ -32,7 +32,7 @@ api.post("/echo", async (request) => {
 });
 ```
 
-## Path Parameters
+### Path Parameters
 
 Path parameters are registered in routes using the syntax `:paramName` and are available as the `Request.params` property.
 
@@ -42,7 +42,7 @@ api.get("/hello/:name", async (request) => {
 });
 ```
 
-## Headers
+### Headers
 
 Any HTTP headers are available on the `headers` property:
 
@@ -52,6 +52,42 @@ api.get("/hello/:name", async (request) => {
     return new Response(`hello ${request.params.name}`);
   }
 });
+```
+
+### Supported Intrinsic Functions
+
+The following intrinsic functions can be called within an API handler:
+
+- [`publish`](./2-event.md#publish-to-an-event)
+
+```ts
+await myEvent.publish({ .. });
+```
+
+- [`startExecution`](./3-workflow.md#start-execution)
+
+```ts
+await myWorkflow.startExecution({
+  input: <input payload>
+})
+```
+
+- [`complete`](./4-activity.md#complete-an-activity)
+
+```ts
+await myActivity.complete({
+  token: <token>,
+  result: <result>
+})
+```
+
+- [`fail`](./4-activity.md#fail-an-activity)
+
+```ts
+await myActivity.fail({
+  token: <token>,
+  error: <error>
+})
 ```
 
 ## Order of precedence

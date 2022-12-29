@@ -40,6 +40,42 @@ myEvent.on(async (event) => {
 
 This handler will then be invoked whenever an event is published to this Service's Event Bus with the name, `MyEvent`.
 
+### Supported Intrinsic Functions
+
+The following intrinsic functions can be called within an API handler:
+
+- [`publish`](./2-event.md#publish-to-an-event)
+
+```ts
+await myEvent.publish({ .. });
+```
+
+- [`startExecution`](./3-workflow.md#start-execution)
+
+```ts
+await myWorkflow.startExecution({
+  input: <input payload>
+})
+```
+
+- [`complete`](./4-activity.md#complete-an-activity)
+
+```ts
+await myActivity.complete({
+  token: <token>,
+  result: <result>
+})
+```
+
+- [`fail`](./4-activity.md#fail-an-activity)
+
+```ts
+await myActivity.fail({
+  token: <token>,
+  error: <error>
+})
+```
+
 ## Publish to an Event
 
 You can publish an event to the Service's event bus using the `.publish` method:

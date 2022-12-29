@@ -16,6 +16,8 @@ const myWorkflow = workflow("myWorkflow", async (input: any) => {
 });
 ```
 
+## Start Execution
+
 Once you have created a workflow using the workflow function, you can execute it by calling the `startExecution` method on the returned object. The `startExecution` method takes an input argument and returns a promise that resolves to the output of the workflow.
 
 ```ts

@@ -15,9 +15,29 @@ npm create eventual my-eventual-app
 
 ## 2. Choose your preferred IaC platform
 
-You will be prompted to choose between the
+You will be prompted to choose between the `aws-cdk` or `aws-sst`
 
-Next, choose the platform on which you wish to develop and proceed to the relevant guide:
+```
+? target: (Use arrow keys)
+❯ aws-cdk
+  aws-sst
+```
 
-1. [AWS SST](./1-aws-sst.md) - an AWS developer experience optimized for serverless
-2. [AWS Cloud Development Kit (CDK)](./2-aws-cdk.md) - an AWS developer experience
+For the next steps, proceed to the corresponding documentation for your choice:
+
+1. [AWS Cloud Development Kit (CDK)](./2-aws-cdk.md) - an AWS developer experience
+2. [AWS SST](./1-aws-sst.md) - an AWS developer experience optimized for serverless
+
+## 3. Deploy
+
+For CDK users:
+
+```
+npx cdk deploy
+```
+
+For SST users:
+
+```
+npx sst deploy
+```
