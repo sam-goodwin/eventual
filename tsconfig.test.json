@@ -5,11 +5,8 @@
     "typeRoots": ["./node_modules/@types"]
   },
   "references": [
-    {
-      "path": "packages/@eventual/compiler/tsconfig.test.json"
-    },
-    {
-      "path": "packages/@eventual/core/tsconfig.test.json"
-    }
+    { "path": "packages/@eventual/compiler/tsconfig.test.json" },
+    { "path": "packages/@eventual/core/tsconfig.test.json" },
+    { "path": "packages/@eventual/testing/tsconfig.test.json" }
   ]
 }

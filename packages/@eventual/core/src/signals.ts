@@ -21,8 +21,12 @@ export type SignalHandlerFunction<Payload = void> = (
   payload: Payload
 ) => Promise<void> | void;
 
+export function signal<Payload = void>(name: string): Signal<Payload> {
+  return new Signal(name);
+}
+
 export class Signal<Payload = void> {
-  constructor(public readonly id: string) {}
+  constructor(readonly id: string) {}
   /**
    * Listens for signals sent to the current workflow.
    *
@@ -31,7 +35,7 @@ export class Signal<Payload = void> {
    * and progressed until completion.
    *
    * ```ts
-   * const mySignal = new Signal("MySignal");
+   * const mySignal = signal("MySignal");
    *
    * workflow("wf", () => {
    *    let done = false;
@@ -54,16 +58,17 @@ export class Signal<Payload = void> {
    * handler.dispose();
    * ```
    */
-  on(handler: SignalHandlerFunction<Payload>): SignalsHandler {
+  public on(handler: SignalHandlerFunction<Payload>): SignalsHandler {
     return onSignal(this, handler);
   }
+
   /**
    * Waits for a signal to be received by the workflow.
    *
    * The first signal received will resolve the Promise with the payload of the promise.
    *
    * ```ts
-   * const mySignal = new Signal<string>("MySignal");
+   * const mySignal = signal<string>("MySignal");
    * workflow("wf", async () => {
    *    const payload = await mySignal.expect();
    *
@@ -75,7 +80,7 @@ export class Signal<Payload = void> {
    * when the provided time has elapsed.
    *
    * ```ts
-   * const mySignal = new Signal<string>("MySignal");
+   * const mySignal = signal<string>("MySignal");
    * workflow("wf", async () => {
    *    try {
    *       const payload = await mySignal.expect({ timeoutSecond: 10 * 60 });
@@ -87,20 +92,24 @@ export class Signal<Payload = void> {
    * });
    * ```
    */
-  expect(opts?: ExpectSignalOptions): Promise<Payload> {
+  public expect(opts?: ExpectSignalOptions): Promise<Payload> {
     return expectSignal(this, opts);
   }
+
   /**
    * Allows a {@link workflow} to send this signal to any workflow {@link Execution} by executionId.
    *
    * ```ts
-   * const mySignal = new Signal<string>("MySignal");
+   * const mySignal = signal<string>("MySignal");
    * workflow("wf", async () => {
    *    mySignal.send("payload");
    * })
    * ```
    */
-  send(executionId: string, ...args: SendSignalProps<Payload>): Promise<void> {
+  public send(
+    executionId: string,
+    ...args: SendSignalProps<Payload>
+  ): Promise<void> {
     return sendSignal<Signal<Payload>>(executionId, this, ...args);
   }
 }
@@ -217,7 +226,7 @@ export type SendSignalProps<SignalPayload> = [SignalPayload] extends
  * Allows a {@link workflow} to send a signal to any workflow {@link Execution} by executionId.
  *
  * ```ts
- * const mySignal = new Signal<string>("MySignal");
+ * const mySignal = signal<string>("MySignal");
  * workflow("wf", async () => {
  *    sendSignal("mySignal", "payload");
  *    sendSignal(mySignal, "payload");
@@ -253,6 +262,7 @@ export function sendSignal(
       executionId,
       signal,
       id: id ?? ulid(),
+      payload,
     });
   }
 }

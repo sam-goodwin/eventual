@@ -1,7 +1,7 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { AppSpec, ServiceType } from "@eventual/core";
-import { aws_events_targets } from "aws-cdk-lib";
 import { EventBus, IEventBus, Rule } from "aws-cdk-lib/aws-events";
+import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";
 import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
@@ -43,7 +43,7 @@ export class Events extends Construct implements IGrantable {
    */
   public readonly deadLetterQueue: IQueue;
 
-  readonly grantPrincipal: IPrincipal;
+  public readonly grantPrincipal: IPrincipal;
 
   private readonly serviceName: string;
 
@@ -79,7 +79,7 @@ export class Events extends Construct implements IGrantable {
           ),
         },
         targets: [
-          new aws_events_targets.LambdaFunction(this.handler, {
+          new LambdaFunction(this.handler, {
             deadLetterQueue: this.deadLetterQueue,
           }),
         ],

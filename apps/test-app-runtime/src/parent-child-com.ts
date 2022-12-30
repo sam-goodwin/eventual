@@ -1,7 +1,7 @@
-import { workflow, Signal, sendSignal, condition } from "@eventual/core";
+import { workflow, sendSignal, condition, signal } from "@eventual/core";
 
-const signal = new Signal<number>("event");
-const doneSignal = new Signal("done");
+const mySignal = signal<number>("mySignal");
+const doneSignal = signal("done");
 
 /**
  * the parent workflow uses the `expectSignal` function to block and wait for events from it's child workflow.
@@ -9,7 +9,7 @@ const doneSignal = new Signal("done");
 export const workflow1 = workflow("workflow1", async () => {
   const child = workflow2({ name: "child" });
   while (true) {
-    const n = await signal.expect();
+    const n = await mySignal.expect();
 
     console.log(n);
 
@@ -18,7 +18,7 @@ export const workflow1 = workflow("workflow1", async () => {
       break;
     }
 
-    child.signal(signal, n + 1);
+    child.signal(mySignal, n + 1);
   }
 
   // join with child
@@ -43,7 +43,7 @@ export const workflow2 = workflow(
 
     console.log(`Hi, I am ${input.name}`);
 
-    signal.on((n) => {
+    mySignal.on((n) => {
       last = n;
       block = false;
     });
@@ -52,8 +52,9 @@ export const workflow2 = workflow(
       block = false;
     });
 
+    // eslint-disable-next-line no-unmodified-loop-condition
     while (!done) {
-      sendSignal(parentId, signal, last + 1);
+      sendSignal(parentId, mySignal, last + 1);
       block = true;
       await condition(() => !block);
     }

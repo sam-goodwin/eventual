@@ -5,9 +5,8 @@ import { esbuildPluginAliasPath } from "esbuild-plugin-alias-path";
 import { eventualESPlugin } from "./esbuild-plugin.js";
 import { prepareOutDir } from "./build.js";
 import { createRequire } from "module";
-import { ServiceType } from "@eventual/core";
+import { ServiceType, SERVICE_TYPE_FLAG } from "@eventual/core";
 
-// @ts-ignore - ts is complaining about not having module:esnext even thought it is in tsconfig.json
 const require = createRequire(import.meta.url);
 
 /**
@@ -30,26 +29,30 @@ export async function bundle(
       injectedEntry: serviceEntry,
       entry: runtimeEntrypoint("orchestrator"),
       plugins: [eventualESPlugin],
+      serviceType: ServiceType.OrchestratorWorker,
     }),
     build({
       name: ServiceType.ActivityWorker,
       outDir,
       injectedEntry: serviceEntry,
       entry: runtimeEntrypoint("activity-worker"),
+      serviceType: ServiceType.ActivityWorker,
     }),
     build({
       name: ServiceType.ApiHandler,
       outDir,
       injectedEntry: serviceEntry,
       entry: runtimeEntrypoint("api-handler"),
+      serviceType: ServiceType.ApiHandler,
     }),
     build({
       name: ServiceType.EventHandler,
       outDir,
       injectedEntry: serviceEntry,
       entry: runtimeEntrypoint("event-handler"),
+      serviceType: ServiceType.EventHandler,
     }),
-    //This one is actually an api function
+    // This one is actually an api function
     build({
       name: "list-workflows",
       outDir,
@@ -59,14 +62,23 @@ export async function bundle(
   ]);
 }
 
-export async function bundleService(outDir: string, entry: string) {
+export async function bundleService(
+  outDir: string,
+  entry: string,
+  serviceType?: ServiceType,
+  external?: string[],
+  allPackagesExternal?: boolean
+) {
   await prepareOutDir(outDir);
   return build({
     outDir,
     entry,
     name: "service",
     plugins: [eventualESPlugin],
-    //It's important that we DONT use inline source maps for service, otherwise debugger fails to pick it up
+    serviceType,
+    external,
+    allPackagesExternal,
+    // It's important that we DONT use inline source maps for service, otherwise debugger fails to pick it up
     // sourcemap: "inline",
   });
 }
@@ -85,6 +97,9 @@ async function build({
   entry,
   plugins,
   sourcemap,
+  serviceType,
+  external,
+  allPackagesExternal,
 }: {
   injectedEntry?: string;
   outDir: string;
@@ -92,6 +107,9 @@ async function build({
   entry: string;
   plugins?: esbuild.Plugin[];
   sourcemap?: boolean | "inline";
+  serviceType?: ServiceType;
+  external?: string[];
+  allPackagesExternal?: boolean;
 }) {
   const outfile = path.join(outDir, `${name}/index.mjs`);
   const bundle = await esbuild.build({
@@ -102,7 +120,7 @@ async function build({
         ? [
             esbuildPluginAliasPath({
               alias: {
-                ["@eventual/entry/injected"]: path.resolve(injectedEntry),
+                "@eventual/entry/injected": path.resolve(injectedEntry),
               },
             }),
           ]
@@ -113,15 +131,23 @@ async function build({
     // supported with NODE_18.x runtime
     // TODO: make this configurable.
     // external: ["@aws-sdk"],
+    external,
+    // does not include any node modules packages in the bundle
+    packages: allPackagesExternal ? "external" : undefined,
     platform: "node",
     format: "esm",
-    //Target for node 16
+    // Target for node 16
     target: "es2021",
     metafile: true,
     bundle: true,
     entryPoints: [path.resolve(entry)],
     banner: esmPolyfillRequireBanner(),
     outfile,
+    define: serviceType
+      ? {
+          [`process.env.${SERVICE_TYPE_FLAG}`]: serviceType,
+        }
+      : undefined,
   });
 
   await writeEsBuildMetafile(

@@ -8,6 +8,7 @@ export type RouteHandler = (
 ) => Response | Promise<Response>;
 
 export interface ApiRequest extends Request {
+  query?: Record<string, string>;
   params?: Record<string, string>;
 }
 

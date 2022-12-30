@@ -5,12 +5,13 @@ import {
   expectSignal,
   asyncResult,
   sendSignal,
-  Signal,
   sleepFor,
   sleepUntil,
   workflow,
   heartbeat,
   HeartbeatTimeout,
+  EventualError,
+  signal,
 } from "@eventual/core";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -74,18 +75,17 @@ export const workflow4 = workflow("parallel", async () => {
   );
   const greetings3 = Promise.all([hello("sam"), hello("chris"), hello("sam")]);
   const any = Promise.any([fail("failed"), hello("sam")]);
-  const race = Promise.race([
-    fail("failed"),
-    (async () => {
-      await sleepFor(100);
-      return await hello("sam");
-    })(),
-  ]);
+  const race = Promise.race([fail("failed"), sayHelloInSeconds(100)]);
   return Promise.allSettled([greetings, greetings2, greetings3, any, race]);
+
+  async function sayHelloInSeconds(seconds: number) {
+    await sleepFor(seconds);
+    return await hello("sam");
+  }
 });
 
-const signal = new Signal<number>("signal");
-const doneSignal = new Signal("done");
+const mySignal = signal<number>("signal");
+const doneSignal = signal("done");
 
 /**
  * the parent workflow uses thr `expectSignal` function to block and wait for events from it's child workflow.
@@ -93,7 +93,7 @@ const doneSignal = new Signal("done");
 export const parentWorkflow = workflow("parentWorkflow", async () => {
   const child = childWorkflow({ name: "child" });
   while (true) {
-    const n = await signal.expect({ timeoutSeconds: 10 });
+    const n = await mySignal.expect({ timeoutSeconds: 10 });
 
     console.log(n);
 
@@ -102,7 +102,7 @@ export const parentWorkflow = workflow("parentWorkflow", async () => {
       break;
     }
 
-    child.signal(signal, n + 1);
+    child.signal(mySignal, n + 1);
   }
 
   // join with child
@@ -127,7 +127,7 @@ export const childWorkflow = workflow(
 
     console.log(`Hi, I am ${input.name}`);
 
-    signal.on((n) => {
+    mySignal.on((n) => {
       last = n;
       block = false;
     });
@@ -136,8 +136,9 @@ export const childWorkflow = workflow(
       block = false;
     });
 
+    // eslint-disable-next-line no-unmodified-loop-condition
     while (!done) {
-      sendSignal(parentId, signal, last + 1);
+      sendSignal(parentId, mySignal, last + 1);
       block = true;
       if (!(await condition({ timeoutSeconds: 10 }, () => !block))) {
         throw new Error("timed out!");
@@ -170,7 +171,7 @@ export const timedOutWorkflow = workflow(
         }
       },
       signal: async () => {
-        await signal.expect({ timeoutSeconds: 2 });
+        await mySignal.expect({ timeoutSeconds: 2 });
       },
       activity: slowActivity,
       workflow: () => slowWf(undefined),
@@ -208,7 +209,7 @@ export const asyncWorkflow = workflow(
 
 const activityWithHeartbeat = activity(
   "activityWithHeartbeat",
-  { heartbeatSeconds: 1 },
+  { heartbeatSeconds: 2 },
   async (n: number, type: "success" | "no-heartbeat" | "some-heartbeat") => {
     const delay = (s: number) =>
       new Promise((resolve) => {
@@ -220,7 +221,7 @@ const activityWithHeartbeat = activity(
       await delay(0.5);
       if (type === "success") {
         await heartbeat();
-      } else if (type === "some-heartbeat" && _n < 4) {
+      } else if (type === "some-heartbeat" && _n < n * 0.33) {
         await heartbeat();
       }
       // no-heartbeat never sends one... woops.
@@ -287,7 +288,7 @@ export const eventDrivenWorkflow = workflow(
     });
 
     // wait for the event to come back around and wake this workflow
-    await expectSignal("start", {
+    const { value } = await expectSignal("start", {
       timeoutSeconds: 30,
     });
 
@@ -297,7 +298,7 @@ export const eventDrivenWorkflow = workflow(
       timeoutSeconds: 30,
     });
 
-    return "done!";
+    return value;
   }
 );
 
@@ -318,7 +319,7 @@ signalEvent.on(async ({ executionId, signalId, proxy }) => {
     });
   } else {
     // otherwise, send the signal to the workflow
-    await sendSignal(executionId, signalId);
+    await sendSignal(executionId, signalId, { value: "done!" });
   }
 });
 
@@ -332,3 +333,21 @@ const sendFinishEvent = activity("sendFinish", async (executionId: string) => {
     proxy: true,
   });
 });
+
+export const failedWorkflow = workflow(
+  "failedWorkflow",
+  async (wrapError: boolean) => {
+    if (wrapError) {
+      throw new MyError("I am useless");
+    } else {
+      // eslint-disable-next-line no-throw-literal
+      throw "I am useless";
+    }
+  }
+);
+
+class MyError extends EventualError {
+  constructor(message: string) {
+    super("MyError", message);
+  }
+}

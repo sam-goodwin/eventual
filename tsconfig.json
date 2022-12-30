@@ -1,59 +1,30 @@
 {
   "files": [],
   "references": [
-    {
-      "path": "packages/@eventual/compiler"
-    },
-    {
-      "path": "packages/@eventual/compiler/tsconfig.test.json"
-    },
-    {
-      "path": "packages/@eventual/core"
-    },
-    {
-      "path": "packages/@eventual/core/tsconfig.cjs.json"
-    },
-    {
-      "path": "packages/@eventual/compiler"
-    },
-    {
-      "path": "packages/@eventual/core/tsconfig.test.json"
-    },
-    {
-      "path": "packages/@eventual/aws-cdk"
-    },
-    {
-      "path": "packages/@eventual/aws-runtime"
-    },
-    {
-      "path": "packages/@eventual/aws-runtime/tsconfig.cjs.json"
-    },
-    {
-      "path": "packages/@eventual/integrations-slack"
-    },
-    {
-      "path": "packages/@eventual/integrations-slack/tsconfig.cjs.json"
-    },
-    {
-      "path": "packages/@eventual/cli"
-    },
-    {
-      "path": "apps/test-app"
-    },
-    {
-      "path": "apps/test-app-runtime"
-    },
-    {
-      "path": "apps/tests/aws-runtime"
-    },
-    {
-      "path": "apps/tests/aws-runtime-cdk"
-    },
-    {
-      "path": "examples/airline"
-    },
-    {
-      "path": "examples/airline/infra"
-    }
+    { "path": "apps/test-app-runtime" },
+    { "path": "apps/test-app" },
+    { "path": "apps/tests/aws-runtime-cdk" },
+    { "path": "apps/tests/aws-runtime" },
+    { "path": "examples/airline/infra" },
+    { "path": "examples/airline" },
+    { "path": "examples/lambda-test-runner/infra" },
+    { "path": "examples/lambda-test-runner/runtime" },
+    { "path": "examples/stock-bot/infra" },
+    { "path": "examples/stock-bot/runtime" },
+    { "path": "packages/@eventual/aws-cdk" },
+    { "path": "packages/@eventual/aws-runtime" },
+    { "path": "packages/@eventual/aws-runtime/tsconfig.cjs.json" },
+    { "path": "packages/@eventual/cli" },
+    { "path": "packages/@eventual/compiler" },
+    { "path": "packages/@eventual/compiler/tsconfig.test.json" },
+    { "path": "packages/@eventual/core" },
+    { "path": "packages/@eventual/core/tsconfig.cjs.json" },
+    { "path": "packages/@eventual/core/tsconfig.test.json" },
+    { "path": "packages/@eventual/integrations-slack" },
+    { "path": "packages/@eventual/integrations-slack/tsconfig.cjs.json" },
+    { "path": "packages/@eventual/testing" },
+    { "path": "packages/@eventual/testing/tsconfig.cjs.json" },
+    { "path": "packages/@eventual/testing/tsconfig.test.json" },
+    { "path": "packages/create-eventual" }
   ]
 }

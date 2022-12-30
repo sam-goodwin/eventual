@@ -6,6 +6,7 @@ import type { WorkflowClient } from "./runtime/clients/workflow-client.js";
 import type { Workflow } from "./workflow.js";
 
 declare global {
+  // eslint-disable-next-line no-var
   var _eventual: {
     /**
      * Data about the current activity assigned before running an activity on an the activity worker.
@@ -64,6 +65,10 @@ export const events = (): Map<string, Event> =>
 export const eventSubscriptions = (): EventSubscription[] =>
   (globalThis._eventual.eventSubscriptions ??= []);
 
+export function clearEventSubscriptions() {
+  globalThis._eventual.eventSubscriptions = [];
+}
+
 export const callableActivities = (): Record<string, ActivityHandler<any>> =>
   (globalThis._eventual.callableActivities ??= {});
 
@@ -107,6 +112,10 @@ export function getWorkflowClient(): WorkflowClient {
 
 export function setActivityContext(context: ActivityContext) {
   globalThis._eventual.activityContext = context;
+}
+
+export function clearActivityContext() {
+  globalThis._eventual.activityContext = undefined;
 }
 
 export function getActivityContext(): ActivityContext {

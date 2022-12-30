@@ -5,28 +5,26 @@ export const ResultSymbol = Symbol.for("eventual:Result");
 
 export type Result<T = any> = Pending | Resolved<T> | Failed;
 
-export namespace Result {
-  export function resolved<T>(value: T): Resolved<T> {
+export const Result = {
+  resolved<T>(value: T): Resolved<T> {
     return {
       [ResultSymbol]: ResultKind.Resolved,
       value,
     };
-  }
-
-  export function failed(error: any): Failed {
+  },
+  failed(error: any): Failed {
     return {
       [ResultSymbol]: ResultKind.Failed,
       error,
     };
-  }
-
-  export function pending<A extends Eventual>(activity: A): Pending<A> {
+  },
+  pending<A extends Eventual>(activity: A): Pending<A> {
     return {
       [ResultSymbol]: ResultKind.Pending,
       activity,
     };
-  }
-}
+  },
+};
 
 export enum ResultKind {
   Pending = 0,

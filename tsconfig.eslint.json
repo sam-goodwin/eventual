@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig-base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  "include": [
+    "**/src/*",
+    "**/src/**/*",
+    "**/test/*",
+    "**/test/**/*",
+    "**/functions/*",
+    "**/functions/**/*",
+    "**/stacks/*",
+    "**/stacks/**/*"
+  ]
+}

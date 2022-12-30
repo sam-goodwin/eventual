@@ -138,7 +138,7 @@ export interface ActivityCompleted extends HistoryEventBase {
 export interface ActivityFailed extends HistoryEventBase {
   type: WorkflowEventType.ActivityFailed;
   error: string;
-  message: string;
+  message?: string;
 }
 
 export interface ActivityHeartbeatTimedOut extends HistoryEventBase {
@@ -229,19 +229,10 @@ export interface SleepCompleted extends HistoryEventBase {
   result?: undefined;
 }
 
-export interface WorkflowTaskCompleted extends BaseEvent {
-  type: WorkflowEventType.WorkflowTaskCompleted;
-}
-
 export function isTaskCompleted(
   event: WorkflowEvent
 ): event is WorkflowTaskCompleted {
   return event.type === WorkflowEventType.WorkflowTaskCompleted;
-}
-
-export interface WorkflowCompleted extends BaseEvent {
-  type: WorkflowEventType.WorkflowCompleted;
-  output: any;
 }
 
 export function isWorkflowCompleted(
@@ -452,7 +443,7 @@ type UnresolvedEvent<T extends WorkflowEvent> = Omit<T, "id" | "timestamp">;
 
 export function createEvent<T extends WorkflowEvent>(
   event: UnresolvedEvent<T>,
-  time: Date = new Date(),
+  time: Date,
   id: string = ulid()
 ): T {
   const timestamp = time.toISOString();

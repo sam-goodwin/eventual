@@ -29,6 +29,7 @@ class TesterContainer {
     input: WorkflowInput<W>,
     test: Test["test"]
   ): void;
+
   public test<W extends Workflow = Workflow>(
     name: string,
     workflow: W,
@@ -52,12 +53,14 @@ class TesterContainer {
     workflow: W,
     result: WorkflowOutput<W>
   ): void;
+
   public testCompletion<W extends Workflow = Workflow>(
     name: string,
     workflow: W,
     input: WorkflowInput<W>,
     result: WorkflowOutput<W>
   ): void;
+
   public testCompletion<W extends Workflow = Workflow>(
     name: string,
     workflow: W,
@@ -89,10 +92,10 @@ class TesterContainer {
   public testFailed<W extends Workflow = Workflow>(
     name: string,
     workflow: Workflow,
-    result: WorkflowOutput<W>,
     error: string,
     message: string
   ): void;
+
   public testFailed<W extends Workflow = Workflow>(
     name: string,
     workflow: Workflow,
@@ -100,6 +103,7 @@ class TesterContainer {
     error: string,
     message: string
   ): void;
+
   public testFailed<W extends Workflow = Workflow>(
     name: string,
     workflow: Workflow,
@@ -184,14 +188,14 @@ export async function waitForWorkflowCompletion<W extends Workflow = Workflow>(
     await delay(1000);
   } while (
     execution.status === ExecutionStatus.IN_PROGRESS &&
-    (!cancelCallback || !cancelCallback())
+    !(cancelCallback?.() ?? false)
   );
 
   return execution;
 }
 
 export async function delay(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export function assertCompleteExecution(

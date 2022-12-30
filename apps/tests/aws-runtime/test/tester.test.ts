@@ -1,4 +1,4 @@
-import { HeartbeatTimeout } from "@eventual/core";
+import { EventualError, HeartbeatTimeout } from "@eventual/core";
 import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
 import {
   eventDrivenWorkflow,
@@ -10,11 +10,12 @@ import {
   workflow2,
   workflow3,
   workflow4,
+  failedWorkflow,
 } from "./test-service.js";
 
 jest.setTimeout(100 * 1000);
 
-eventualRuntimeTestHarness(({ testCompletion }) => {
+eventualRuntimeTestHarness(({ testCompletion, testFailed }) => {
   testCompletion(
     "call activity",
     workflow1,
@@ -31,7 +32,10 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
     { status: "fulfilled", value: ["HELLO SAM", "HELLO CHRIS", "HELLO SAM"] },
     { status: "fulfilled", value: ["hello sam", "hello chris", "hello sam"] },
     { status: "fulfilled", value: "hello sam" },
-    { status: "rejected", reason: "Error" },
+    {
+      status: "rejected",
+      reason: new EventualError("Error", "failed").toJSON(),
+    },
   ]);
 
   testCompletion("parent-child", parentWorkflow, "done");
@@ -45,11 +49,14 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
 
   testCompletion("asyncActivities", asyncWorkflow, [
     "hello from the async writer!",
-    "AsyncWriterError",
+    new EventualError(
+      "AsyncWriterError",
+      "I was told to fail this activity, sorry."
+    ).toJSON(),
   ]);
 
-  testCompletion("heartbeat", heartbeatWorkflow, 10, [
-    { status: "fulfilled", value: 10 },
+  testCompletion("heartbeat", heartbeatWorkflow, 20, [
+    { status: "fulfilled", value: 20 },
     {
       status: "rejected",
       reason: new HeartbeatTimeout("Activity Heartbeat TimedOut").toJSON(),
@@ -62,4 +69,19 @@ eventualRuntimeTestHarness(({ testCompletion }) => {
   ]);
 
   testCompletion("event-driven", eventDrivenWorkflow, "done!");
+
+  testFailed(
+    "catch thrown error",
+    failedWorkflow,
+    true,
+    "MyError",
+    "I am useless"
+  );
+  testFailed(
+    "catch thrown value",
+    failedWorkflow,
+    false,
+    "Error",
+    `"I am useless"`
+  );
 });

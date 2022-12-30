@@ -10,6 +10,11 @@ import {
   TsType,
   Node,
   StringLiteral,
+  FunctionDeclaration,
+  BlockStatement,
+  VariableDeclaration,
+  Statement,
+  HasSpan,
 } from "@swc/core";
 
 import { Visitor } from "@swc/core/Visitor.js";
@@ -22,7 +27,7 @@ const supportedPromiseFunctions: string[] = [
 ];
 
 export class OuterVisitor extends Visitor {
-  readonly inner = new InnerVisitor();
+  private readonly inner = new InnerVisitor();
 
   public foundEventual = false;
 
@@ -154,8 +159,49 @@ export class InnerVisitor extends Visitor {
       : super.visitArrowFunctionExpression(funcExpr);
   }
 
+  /**
+   * Hoist async {@link FunctionDeclaration} as {@link VariableDeclaration} {@link chain}s.
+   */
+  public visitBlockStatement(block: BlockStatement): BlockStatement {
+    const functionStmts = block.stmts.filter(isAsyncFunctionDecl);
+
+    return {
+      ...block,
+      stmts: [
+        // hoist function decls and turn them into chains
+        ...functionStmts.map((stmt) => this.createFunctionDeclChain(stmt)),
+        ...block.stmts
+          .filter((stmt) => !isAsyncFunctionDecl(stmt))
+          .map((stmt) => this.visitStatement(stmt)),
+      ],
+    };
+  }
+
+  /**
+   * Turn a {@link FunctionDeclaration} into a {@link VariableDeclaration} wrapped in {@link chain}.
+   */
+  private createFunctionDeclChain(
+    funcDecl: FunctionDeclaration & { async: true }
+  ): VariableDeclaration {
+    return {
+      type: "VariableDeclaration",
+      span: funcDecl.span,
+      kind: "const",
+      declarations: [
+        {
+          type: "VariableDeclarator",
+          span: funcDecl.span,
+          definite: false,
+          id: funcDecl.identifier,
+          init: this.createChain(funcDecl),
+        },
+      ],
+      declare: false,
+    };
+  }
+
   private createChain(
-    funcExpr: FunctionExpression | ArrowFunctionExpression
+    funcExpr: FunctionExpression | ArrowFunctionExpression | FunctionDeclaration
   ): CallExpression {
     const call: CallExpression = {
       type: "CallExpression",
@@ -210,9 +256,12 @@ export class InnerVisitor extends Visitor {
   }
 }
 
+function hasSpan(expr: Node): expr is Node & HasSpan {
+  return "span" in expr;
+}
+
 function getSpan(expr: Node): Span {
-  if ("span" in expr) {
-    // @ts-ignore
+  if (hasSpan(expr)) {
     return expr.span;
   } else {
     // this is only true for JSXExpressions which we should not encounter
@@ -262,4 +311,10 @@ function isWorkflowCallee(callee: CallExpression["callee"]) {
       callee.property.type === "Identifier" &&
       callee.property.value === "workflow")
   );
+}
+
+function isAsyncFunctionDecl(
+  stmt: Statement
+): stmt is FunctionDeclaration & { async: true } {
+  return stmt.type === "FunctionDeclaration" && stmt.async;
 }

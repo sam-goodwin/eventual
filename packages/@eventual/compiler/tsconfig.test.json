@@ -1,12 +1,8 @@
 {
   "extends": "../../../tsconfig-base",
   "compilerOptions": {
-    "declaration": true,
-    "inlineSourceMap": true,
     "rootDir": ".",
     "types": ["@types/node", "@types/jest"],
-    "typeRoots": ["./node_modules/@types"],
-    "allowJs": true,
     "noEmit": true
   },
   "include": ["src", "test"],

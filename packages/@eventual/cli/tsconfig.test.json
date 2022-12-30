@@ -1,12 +1,7 @@
 {
   "extends": "../../../tsconfig-base",
   "compilerOptions": {
-    "outDir": "lib/esm",
-    "declaration": true,
-    "inlineSourceMap": true,
     "rootDir": ".",
-    "typeRoots": ["./node_modules/@types"],
-    "allowJs": true,
     "noEmit": true
   },
   "include": ["src", "test"],

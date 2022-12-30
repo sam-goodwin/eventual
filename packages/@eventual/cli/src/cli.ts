@@ -21,7 +21,7 @@ const cli = yargs(argv).scriptName("eventual").strict();
   replay,
   timeline,
 ].forEach((cmd) => cmd(cli));
-if (argv.length == 0) {
+if (argv.length === 0) {
   cli.showHelp();
 }
 

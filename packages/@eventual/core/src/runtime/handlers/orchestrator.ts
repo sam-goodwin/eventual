@@ -42,7 +42,9 @@ import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
 import { timed, timedSync } from "../metrics/utils.js";
-import { promiseAllSettledPartitioned } from "../utils.js";
+import { groupBy, promiseAllSettledPartitioned } from "../utils.js";
+import { extendsError } from "../../util.js";
+import { WorkflowTask } from "../../tasks.js";
 
 /**
  * The Orchestrator's client dependencies.
@@ -64,6 +66,10 @@ export interface OrchestratorResult {
   failedExecutionIds: string[];
 }
 
+export interface Orchestrator {
+  (workflowTasks: WorkflowTask[], baseTime?: Date): Promise<OrchestratorResult>;
+}
+
 /**
  * Creates a generic function for orchestrating a batch of executions
  * that can be used in runtime implementations. This implementation is
@@ -78,9 +84,7 @@ export function createOrchestrator({
   metricsClient,
   eventClient,
   logger,
-}: OrchestratorDependencies): (
-  eventsByExecutionId: Record<string, HistoryStateEvent[]>
-) => Promise<OrchestratorResult> {
+}: OrchestratorDependencies): Orchestrator {
   const commandExecutor = new CommandExecutor({
     timerClient,
     workflowClient,
@@ -88,8 +92,18 @@ export function createOrchestrator({
     eventClient,
   });
 
-  return async (eventsByExecutionId) => {
-    logger.debug("Handle workflowQueue records");
+  return async (workflowTasks, baseTime = new Date()) => {
+    const tasksByExecutionId = groupBy(
+      workflowTasks,
+      (task) => task.executionId
+    );
+
+    const eventsByExecutionId = Object.fromEntries(
+      Object.entries(tasksByExecutionId).map(([executionId, records]) => [
+        executionId,
+        records.flatMap((e) => e.events),
+      ])
+    );
 
     logger.info(
       "Found execution ids: " + Object.keys(eventsByExecutionId).join(", ")
@@ -111,7 +125,7 @@ export function createOrchestrator({
           throw new Error(`no such workflow with name '${workflowName}'`);
         }
         // TODO: get workflow from execution id
-        return orchestrateExecution(workflow, executionId, records);
+        return orchestrateExecution(workflow, executionId, records, baseTime);
       }
     );
 
@@ -137,13 +151,14 @@ export function createOrchestrator({
   async function orchestrateExecution(
     workflow: Workflow,
     executionId: string,
-    events: HistoryStateEvent[]
+    events: HistoryStateEvent[],
+    baseTime: Date
   ) {
     const executionLogger = logger.createChild({
       persistentLogAttributes: { workflowName: workflow.name, executionId },
     });
     const metrics = initializeMetrics();
-    const start = new Date();
+    const start = baseTime;
     try {
       // load
       const history = await loadHistory();
@@ -213,9 +228,12 @@ export function createOrchestrator({
               () =>
                 timerClient.scheduleEvent<WorkflowTimedOut>({
                   schedule: Schedule.absolute(newWorkflowStart.timeoutTime!),
-                  event: createEvent<WorkflowTimedOut>({
-                    type: WorkflowEventType.WorkflowTimedOut,
-                  }),
+                  event: createEvent<WorkflowTimedOut>(
+                    {
+                      type: WorkflowEventType.WorkflowTimedOut,
+                    },
+                    start
+                  ),
                   executionId,
                 })
             );
@@ -238,7 +256,8 @@ export function createOrchestrator({
                 history,
                 events,
                 workflowContext,
-                executionId
+                executionId,
+                baseTime
               );
             } catch (err) {
               console.log("workflow error");
@@ -282,26 +301,34 @@ export function createOrchestrator({
           maxTaskAge + (new Date().getTime() - start.getTime())
         );
 
-        yield createEvent<WorkflowTaskCompleted>({
-          type: WorkflowEventType.WorkflowTaskCompleted,
-        });
+        yield createEvent<WorkflowTaskCompleted>(
+          {
+            type: WorkflowEventType.WorkflowTaskCompleted,
+          },
+          start
+        );
 
         if (isResult(result)) {
           if (isFailed(result)) {
-            const [error, message] =
-              result.error instanceof Error
-                ? [result.error.name, result.error.message]
-                : ["Error", JSON.stringify(result.error)];
-            yield createEvent<WorkflowFailed>({
-              type: WorkflowEventType.WorkflowFailed,
-              error,
-              message,
-            });
+            const [error, message] = extendsError(result.error)
+              ? [result.error.name, result.error.message]
+              : ["Error", JSON.stringify(result.error)];
+            yield createEvent<WorkflowFailed>(
+              {
+                type: WorkflowEventType.WorkflowFailed,
+                error,
+                message,
+              },
+              start
+            );
           } else if (isResolved<any>(result)) {
-            yield createEvent<WorkflowCompleted>({
-              type: WorkflowEventType.WorkflowCompleted,
-              output: result.value,
-            });
+            yield createEvent<WorkflowCompleted>(
+              {
+                type: WorkflowEventType.WorkflowCompleted,
+                output: result.value,
+              },
+              start
+            );
           }
         }
 
@@ -326,8 +353,7 @@ export function createOrchestrator({
       ) {
         const updatedHistoryEvents: HistoryStateEvent[] = [];
         const newWorkflowEvents: WorkflowEvent[] = [];
-        let resultEvent: WorkflowCompleted | WorkflowFailed | undefined =
-          undefined;
+        let resultEvent: WorkflowCompleted | WorkflowFailed | undefined;
         const seenEvents: Set<string> = new Set(
           originalHistory.map(getEventId)
         );

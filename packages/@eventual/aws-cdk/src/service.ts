@@ -1,4 +1,4 @@
-import { AppSpec } from "@eventual/core";
+import { AppSpec, MetricsCommon, OrchestratorMetrics } from "@eventual/core";
 import { Arn, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
 import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
 import {
@@ -19,8 +19,14 @@ import { lazyInterface } from "./proxy-construct";
 import { IScheduler, Scheduler } from "./scheduler";
 import { Api } from "./service-api";
 import { outDir } from "./utils";
-import { IWorkflows, Workflows } from "./workflows";
+import { IWorkflows, Workflows, WorkflowsProps } from "./workflows";
 import { Events } from "./events";
+import {
+  Metric,
+  MetricOptions,
+  Statistic,
+  Unit,
+} from "aws-cdk-lib/aws-cloudwatch";
 
 export interface ServiceProps {
   entry: string;
@@ -28,6 +34,7 @@ export interface ServiceProps {
   environment?: {
     [key: string]: string;
   };
+  workflows?: Pick<WorkflowsProps, "orchestrator">;
 }
 
 export class Service extends Construct implements IGrantable {
@@ -38,13 +45,13 @@ export class Service extends Construct implements IGrantable {
   /**
    * The {@link AppSec} inferred from the application code.
    */
-  readonly appSpec: AppSpec;
+  public readonly appSpec: AppSpec;
   /**
    * This {@link Service}'s API Gateway.
    */
-  readonly api: Api;
+  public readonly api: Api;
 
-  readonly events: Events;
+  public readonly events: Events;
   /**
    * A single-table used for execution data and granular workflow events/
    */
@@ -60,7 +67,7 @@ export class Service extends Construct implements IGrantable {
   /**
    * The subsystem for schedules and sleep timers.
    */
-  readonly scheduler: Scheduler;
+  public readonly scheduler: Scheduler;
   /**
    * The Resources for schedules and sleep timers.
    */
@@ -68,9 +75,9 @@ export class Service extends Construct implements IGrantable {
   /**
    * A SSM parameter containing data about this service.
    */
-  readonly serviceDataSSM: StringParameter;
+  public readonly serviceDataSSM: StringParameter;
 
-  readonly grantPrincipal: IPrincipal;
+  public readonly grantPrincipal: IPrincipal;
 
   constructor(scope: Construct, id: string, props: ServiceProps) {
     super(scope, id);
@@ -124,6 +131,7 @@ export class Service extends Construct implements IGrantable {
       activities: this.activities,
       table: this.table,
       events: this.events,
+      ...props.workflows,
     });
     proxyWorkflows._bind(this.workflows);
 
@@ -214,5 +222,119 @@ export class Service extends Construct implements IGrantable {
         ],
       })
     );
+  }
+
+  /**
+   * The time taken to run the workflow's function to advance execution of the workflow.
+   *
+   * This does not include the time taken to invoke commands or save history. It is
+   * purely a metric for how well the workflow's function is performing as history grows.
+   */
+  public metricAdvanceExecutionDuration(options?: MetricOptions): Metric {
+    return this.metric({
+      statistic: Statistic.AVERAGE,
+      metricName: OrchestratorMetrics.AdvanceExecutionDuration,
+      unit: Unit.MILLISECONDS,
+      ...options,
+    });
+  }
+
+  /**
+   * The number of commands invoked in a single batch by the orchestrator.
+   */
+  public metricCommandsInvoked(options?: MetricOptions): Metric {
+    return this.metric({
+      statistic: Statistic.AVERAGE,
+      metricName: OrchestratorMetrics.CommandsInvoked,
+      unit: Unit.COUNT,
+      ...options,
+    });
+  }
+
+  /**
+   * The time taken to invoke all Commands emitted by advancing a workflow.
+   */
+  public metricInvokeCommandsDuration(options?: MetricOptions): Metric {
+    return this.metric({
+      statistic: Statistic.AVERAGE,
+      metricName: OrchestratorMetrics.InvokeCommandsDuration,
+      unit: Unit.MILLISECONDS,
+      ...options,
+    });
+  }
+
+  /**
+   * Time taken to download an execution's history from S3.
+   */
+  public metricLoadHistoryDuration(options?: MetricOptions): Metric {
+    return this.metric({
+      statistic: Statistic.AVERAGE,
+      metricName: OrchestratorMetrics.LoadHistoryDuration,
+      unit: Unit.MILLISECONDS,
+      ...options,
+    });
+  }
+
+  /**
+   * Time taken to save an execution's history to S3.
+   */
+  public metricSaveHistoryDuration(options?: MetricOptions): Metric {
+    return this.metric({
+      statistic: Statistic.AVERAGE,
+      metricName: OrchestratorMetrics.SaveHistoryDuration,
+      unit: Unit.MILLISECONDS,
+      ...options,
+    });
+  }
+
+  /**
+   * The size of the history S3 file in bytes.
+   */
+  public metricSavedHistoryBytes(options?: MetricOptions): Metric {
+    return this.metric({
+      metricName: OrchestratorMetrics.SavedHistoryBytes,
+      unit: Unit.BYTES,
+      statistic: Statistic.AVERAGE,
+      ...options,
+    });
+  }
+
+  /**
+   * The number of events stored in the history S3 file.
+   */
+  public metricSavedHistoryEvents(options?: MetricOptions): Metric {
+    return this.metric({
+      metricName: OrchestratorMetrics.SavedHistoryEvents,
+      unit: Unit.COUNT,
+      statistic: Statistic.AVERAGE,
+      ...options,
+    });
+  }
+
+  /**
+   * The number of commands invoked in a single batch by the orchestrator.
+   */
+  public metricMaxTaskAge(options?: MetricOptions): Metric {
+    return this.metric({
+      statistic: Statistic.AVERAGE,
+      metricName: OrchestratorMetrics.MaxTaskAge,
+      unit: Unit.MILLISECONDS,
+      ...options,
+    });
+  }
+
+  private metric(
+    options: MetricOptions & {
+      metricName: string;
+    }
+  ) {
+    return new Metric({
+      ...options,
+      namespace: MetricsCommon.EventualNamespace,
+      dimensionsMap: {
+        ...options?.dimensionsMap,
+        [MetricsCommon.WorkflowNameDimension]: this.serviceName,
+      },
+    });
   }
 }

@@ -1,11 +1,3 @@
-export interface TimelineActivity {
-  type: "activity";
-  seq: number;
-  name: string;
-  start: number;
-  state: ActivityState;
-}
-
 export interface Completed {
   status: "completed";
   end: number;
@@ -40,14 +32,22 @@ export function getDuration({ start, end }: Timespan): number {
 }
 
 export function isCompleted(state: ActivityState): state is Completed {
-  return state.status == "completed";
+  return state.status === "completed";
 }
 
 export function isFailed(state: ActivityState): state is Failed {
-  return state.status == "failed";
+  return state.status === "failed";
+}
+
+export interface TimelineActivity {
+  type: "activity";
+  seq: number;
+  name: string;
+  start: number;
+  state: ActivityState;
 }
 
 export function endTime(activity: TimelineActivity): number | undefined {
-  let { state } = activity;
+  const { state } = activity;
   return isCompleted(state) || isFailed(state) ? state.end : undefined;
 }

@@ -7,10 +7,8 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import {
   BaseEvent,
-  createEvent,
   ExecutionHistoryClient,
   getEventId,
-  UnresolvedEvent,
   WorkflowEvent,
 } from "@eventual/core";
 
@@ -19,19 +17,9 @@ export interface AWSExecutionHistoryClientProps {
   readonly tableName: string;
 }
 
-export class AWSExecutionHistoryClient implements ExecutionHistoryClient {
-  constructor(private props: AWSExecutionHistoryClientProps) {}
-
-  public async createAndPutEvent<T extends WorkflowEvent>(
-    executionId: string,
-    event: UnresolvedEvent<T>,
-    time?: Date
-  ): Promise<T> {
-    const resolvedEvent = createEvent(event, time);
-
-    await this.putEvent(executionId, resolvedEvent);
-
-    return resolvedEvent;
+export class AWSExecutionHistoryClient extends ExecutionHistoryClient {
+  constructor(private props: AWSExecutionHistoryClientProps) {
+    super();
   }
 
   public async putEvent<T extends WorkflowEvent>(
@@ -44,21 +32,6 @@ export class AWSExecutionHistoryClient implements ExecutionHistoryClient {
         TableName: this.props.tableName,
       })
     );
-  }
-
-  /**
-   * Writes events as a batch into the history table, assigning IDs and timestamp first.
-   */
-  public async createAndPutEvents(
-    executionId: string,
-    events: UnresolvedEvent<WorkflowEvent>[],
-    time?: Date
-  ): Promise<WorkflowEvent[]> {
-    const resolvedEvents = events.map((e) => createEvent(e, time));
-
-    await this.putEvents(executionId, resolvedEvents);
-
-    return resolvedEvents;
   }
 
   /**
@@ -113,21 +86,21 @@ interface EventRecord {
   time: AttributeValue.SMember;
 }
 
-namespace EventRecord {
-  export const PRIMARY_KEY = "ExecutionHistory";
-  export const SORT_KEY_PREFIX = `Event$`;
-  export function sortKey(
+const EventRecord = {
+  PRIMARY_KEY: "ExecutionHistory",
+  SORT_KEY_PREFIX: `Event$`,
+  sortKey(
     executionId: string,
     id: string
-  ): EventRecord["sk"]["S"] {
-    return `${SORT_KEY_PREFIX}${executionId}$${id}`;
-  }
-}
+  ): `${typeof this.SORT_KEY_PREFIX}${string}$${string}` {
+    return `${this.SORT_KEY_PREFIX}${executionId}$${id}`;
+  },
+};
 
 function createEventRecord(
   executionId: string,
   workflowEvent: WorkflowEvent
-): EventRecord {
+): EventRecord & Record<string, AttributeValue> {
   const { id, timestamp, ...event } = workflowEvent as WorkflowEvent &
     Partial<BaseEvent>;
   return {

@@ -23,3 +23,16 @@ export async function promiseAllSettledPartitioned<T, R>(
       .map(([r, i]) => [items[i]!, r.reason] as [T, string]),
   };
 }
+
+export function groupBy<T>(
+  items: T[],
+  extract: (item: T) => string
+): Record<string, T[]> {
+  return items.reduce((obj: Record<string, T[]>, r) => {
+    const id = extract(r);
+    return {
+      ...obj,
+      [id]: [...(obj[id] || []), r],
+    };
+  }, {});
+}

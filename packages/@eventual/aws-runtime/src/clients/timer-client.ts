@@ -11,14 +11,11 @@ import {
   assertNever,
   getEventId,
   TimerClient,
-  HistoryStateEvent,
   isTimerScheduleEventRequest,
-  ScheduleEventRequest,
   ScheduleForwarderRequest,
   TimerRequest,
-  TimerRequestType,
   isActivityHeartbeatMonitorRequest,
-  Schedule,
+  computeUntilTime,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 
@@ -37,22 +34,24 @@ export interface AWSTimerClientProps {
   readonly scheduleForwarderArn: string;
 }
 
-export class AWSTimerClient implements TimerClient {
-  constructor(private props: AWSTimerClientProps) {}
+export class AWSTimerClient extends TimerClient {
+  constructor(private props: AWSTimerClientProps) {
+    super();
+  }
 
   /**
    * Starts a timer using SQS's message delay.
    *
    * The timerRequest.untilTime may only be 15 minutes or fewer in the future.
    *
-   * For longer use {@link AWSTimerClient.startTimer}.
+   * For longer use {@link TimerClient.startTimer}.
    *
    * The SQS Queue will delay for floor(untilTime - currentTime) seconds until the timer handler can pick up the message.
    *
    * Finally the timer handler waits the remaining (untilTime - currentTime) milliseconds if necessary and then sends
    * the {@link TimerRequest} provided.
    */
-  async startShortTimer(timerRequest: TimerRequest) {
+  public async startShortTimer(timerRequest: TimerRequest) {
     const delaySeconds = computeTimerSeconds(timerRequest.schedule);
 
     if (delaySeconds > 15 * 60) {
@@ -84,7 +83,7 @@ export class AWSTimerClient implements TimerClient {
    * Finally the timer handler waits the remaining (untilTime - currentTime) milliseconds if necessary and then sends
    * the {@link TimerRequest} provided.
    */
-  async startTimer(timerRequest: TimerRequest) {
+  public async startTimer(timerRequest: TimerRequest) {
     const untilTimeIso = computeUntilTime(timerRequest.schedule);
     const untilTime = new Date(untilTimeIso);
     const sleepDuration = computeTimerSeconds(timerRequest.schedule);
@@ -110,7 +109,7 @@ export class AWSTimerClient implements TimerClient {
 
       const schedulerForwardEvent: ScheduleForwarderRequest = {
         clearSchedule: true,
-        scheduleName: scheduleName,
+        scheduleName,
         timerRequest,
         forwardTime: "<aws.scheduler.scheduled-time>",
         untilTime: untilTimeIso,
@@ -154,24 +153,6 @@ export class AWSTimerClient implements TimerClient {
     }
   }
 
-  public async scheduleEvent<E extends HistoryStateEvent>(
-    request: ScheduleEventRequest<E>
-  ): Promise<void> {
-    const untilTime = computeUntilTime(request.schedule);
-
-    const event = {
-      ...request.event,
-      timestamp: untilTime,
-    } as E;
-
-    await this.startTimer({
-      event,
-      executionId: request.executionId,
-      type: TimerRequestType.ScheduleEvent,
-      schedule: Schedule.absolute(untilTime),
-    });
-  }
-
   /**
    * When startTimer is used, the EventBridge schedule will not self delete.
    *
@@ -180,7 +161,7 @@ export class AWSTimerClient implements TimerClient {
    * The provided schedule-forwarder function will call this method in Eventual when
    * the timer is transferred from EventBridge to SQS at `props.sleepQueueThresholdMillis`.
    */
-  async clearSchedule(scheduleName: string) {
+  public async clearSchedule(scheduleName: string) {
     try {
       await this.props.scheduler.send(
         new DeleteScheduleCommand({
@@ -222,15 +203,7 @@ function safeScheduleName(name: string) {
   return name.replaceAll(/[^0-9a-zA-Z-_.]/g, "");
 }
 
-function computeUntilTime(schedule: TimerRequest["schedule"]): string {
-  return "untilTime" in schedule
-    ? schedule.untilTime
-    : new Date(
-        schedule.baseTime.getTime() + schedule.timerSeconds * 1000
-      ).toISOString();
-}
-
-function computeTimerSeconds(schedule: TimerRequest["schedule"]) {
+export function computeTimerSeconds(schedule: TimerRequest["schedule"]) {
   return "untilTime" in schedule
     ? Math.max(
         // Compute the number of seconds (floored)

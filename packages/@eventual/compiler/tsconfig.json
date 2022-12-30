@@ -1,14 +1,10 @@
 {
   "extends": "../../../tsconfig-base",
-  "compilerOptions": {
-    "outDir": "lib",
-    "declaration": true,
-    "inlineSourceMap": true,
-    "rootDir": "src",
-    "typeRoots": ["./node_modules/@types"],
-    "allowJs": true
-  },
-  "include": ["src"],
+  "include": ["src", "src/package.json"],
   "exclude": ["lib", "node_modules"],
-  "references": [{ "path": "../core" }]
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib"
+  },
+  "references": [{ "path": "../core" }, { "path": "../aws-runtime" }]
 }

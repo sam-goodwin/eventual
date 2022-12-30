@@ -32,7 +32,7 @@ export interface AWSWorkflowClientProps {
 
 export class AWSWorkflowClient extends WorkflowClient {
   constructor(private props: AWSWorkflowClientProps) {
-    super(props.activityRuntimeClient);
+    super(props.activityRuntimeClient, () => new Date());
   }
 
   /**
@@ -56,7 +56,7 @@ export class AWSWorkflowClient extends WorkflowClient {
       new PutItemCommand({
         TableName: this.props.tableName,
         Item: {
-          pk: { S: ExecutionRecord.PRIMARY_KEY },
+          pk: { S: ExecutionRecord.PARTITION_KEY },
           sk: { S: ExecutionRecord.sortKey(executionId) },
           id: { S: executionId },
           name: { S: executionName },
@@ -73,20 +73,23 @@ export class AWSWorkflowClient extends WorkflowClient {
       })
     );
 
-    const workflowStartedEvent = createEvent<WorkflowStarted>({
-      type: WorkflowEventType.WorkflowStarted,
-      input,
-      workflowName,
-      // generate the time for the workflow to timeout based on when it was started.
-      // the timer will be started by the orchestrator so the client does not need to have access to the timer client.
-      timeoutTime: timeoutSeconds
-        ? new Date(new Date().getTime() + timeoutSeconds * 1000).toISOString()
-        : undefined,
-      context: {
-        name: executionName,
-        parentId: parentExecutionId,
+    const workflowStartedEvent = createEvent<WorkflowStarted>(
+      {
+        type: WorkflowEventType.WorkflowStarted,
+        input,
+        workflowName,
+        // generate the time for the workflow to timeout based on when it was started.
+        // the timer will be started by the orchestrator so the client does not need to have access to the timer client.
+        timeoutTime: timeoutSeconds
+          ? new Date(new Date().getTime() + timeoutSeconds * 1000).toISOString()
+          : undefined,
+        context: {
+          name: executionName,
+          parentId: parentExecutionId,
+        },
       },
-    });
+      new Date()
+    );
 
     await this.submitWorkflowTask(executionId, workflowStartedEvent);
 
@@ -114,13 +117,13 @@ export class AWSWorkflowClient extends WorkflowClient {
     );
   }
 
-  async getExecutions(): Promise<Execution[]> {
+  public async getExecutions(): Promise<Execution[]> {
     const executions = await this.props.dynamo.send(
       new QueryCommand({
         TableName: this.props.tableName,
         KeyConditionExpression: "pk = :pk and begins_with(sk, :sk)",
         ExpressionAttributeValues: {
-          ":pk": { S: ExecutionRecord.PRIMARY_KEY },
+          ":pk": { S: ExecutionRecord.PARTITION_KEY },
           ":sk": { S: ExecutionRecord.SORT_KEY_PREFIX },
         },
       })
@@ -130,11 +133,13 @@ export class AWSWorkflowClient extends WorkflowClient {
     );
   }
 
-  async getExecution(executionId: string): Promise<Execution | undefined> {
+  public async getExecution(
+    executionId: string
+  ): Promise<Execution | undefined> {
     const executionResult = await this.props.dynamo.send(
       new GetItemCommand({
         Key: {
-          pk: { S: ExecutionRecord.PRIMARY_KEY },
+          pk: { S: ExecutionRecord.PARTITION_KEY },
           sk: { S: ExecutionRecord.sortKey(executionId) },
         },
         TableName: this.props.tableName,
@@ -153,7 +158,7 @@ export interface SQSWorkflowTaskMessage {
 
 export type ExecutionRecord =
   | {
-      pk: { S: typeof ExecutionRecord.PRIMARY_KEY };
+      pk: { S: typeof ExecutionRecord.PARTITION_KEY };
       sk: { S: `${typeof ExecutionRecord.SORT_KEY_PREFIX}${string}` };
       result?: AttributeValue.SMember;
       id: AttributeValue.SMember;
@@ -175,26 +180,33 @@ export type ExecutionRecord =
         }
     );
 
-export namespace ExecutionRecord {
-  export const PRIMARY_KEY = "Execution";
-  export const SORT_KEY_PREFIX = `Execution$`;
-  export function sortKey(
+export const ExecutionRecord = {
+  PARTITION_KEY: "Execution",
+  SORT_KEY_PREFIX: `Execution$`,
+  sortKey(
     executionId: string
-  ): `${typeof SORT_KEY_PREFIX}${typeof executionId}` {
-    return `${SORT_KEY_PREFIX}${executionId}`;
-  }
-}
+  ): `${typeof this.SORT_KEY_PREFIX}${typeof executionId}` {
+    return `${this.SORT_KEY_PREFIX}${executionId}`;
+  },
+};
 
 export function createExecutionFromResult(
   execution: ExecutionRecord
 ): Execution {
   return {
     id: execution.id.S,
-    endTime: execution.endTime?.S,
-    error: execution.error?.S,
-    message: execution.message?.S,
+    endTime: execution.endTime?.S as string,
+    error: execution.error?.S as string,
+    message: execution.message?.S as string,
     result: execution.result ? JSON.parse(execution.result.S) : undefined,
     startTime: execution.startTime.S,
     status: execution.status.S,
-  } as Execution;
+    parent:
+      execution.parentExecutionId !== undefined && execution.seq !== undefined
+        ? {
+            executionId: execution.parentExecutionId.S,
+            seq: parseInt(execution.seq.N, 10),
+          }
+        : undefined,
+  };
 }

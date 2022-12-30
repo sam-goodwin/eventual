@@ -51,7 +51,7 @@ export function createSleepForCommand(
 ): SleepForCommand {
   return {
     kind: CommandType.SleepFor,
-    durationSeconds: durationSeconds,
+    durationSeconds,
     seq,
   };
 }
@@ -115,7 +115,7 @@ export function createPublishEventCommand(
   return {
     kind: CommandType.PublishEvents,
     seq,
-    events: events,
+    events,
   };
 }
 

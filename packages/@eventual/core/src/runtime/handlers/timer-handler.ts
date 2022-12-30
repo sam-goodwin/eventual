@@ -58,10 +58,13 @@ export function createTimerHandler({
       ) {
         return workflowClient.submitWorkflowTask(
           request.executionId,
-          createEvent<ActivityHeartbeatTimedOut>({
-            type: WorkflowEventType.ActivityHeartbeatTimedOut,
-            seq: request.activitySeq,
-          })
+          createEvent<ActivityHeartbeatTimedOut>(
+            {
+              type: WorkflowEventType.ActivityHeartbeatTimedOut,
+              seq: request.activitySeq,
+            },
+            new Date()
+          )
         );
       } else {
         // activity heartbeat has not timed out, start a new monitor instance

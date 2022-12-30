@@ -42,7 +42,7 @@ export const start = (yargs: Argv) =>
         }),
     serviceAction(async (spinner, ky, { workflow, input, inputFile, tail }) => {
       spinner.start(`Executing ${workflow}\n`);
-      let inputJSON = await getInputJson(inputFile, input);
+      const inputJSON = await getInputJson(inputFile, input);
       const { executionId } = await ky
         .post(`workflows/${workflow}/executions`, {
           json: inputJSON,
@@ -50,10 +50,11 @@ export const start = (yargs: Argv) =>
         .json<{ executionId: string }>();
       spinner.succeed(`Execution id: ${executionId}`);
       if (tail) {
-        let events: WorkflowEvent[] = [];
+        const events: WorkflowEvent[] = [];
         if (!spinner.isSpinning) {
           spinner.start(`${executionId} in progress\n`);
         }
+        // eslint-disable-next-line no-inner-declarations
         async function pollEvents() {
           const newEvents = await getNewEvents(events, ky, executionId);
           newEvents.forEach((ev) => {
@@ -108,10 +109,10 @@ async function getNewEvents(
   const updatedEvents = await ky(
     `executions/${encodeExecutionId(executionId)}/history`
   ).json<WorkflowEvent[]>();
-  if (updatedEvents.length == 0) {
-    //Unfortunately if the execution id is wrong, our dynamo query is just going to return an empty record set
-    //Not super helpful
-    //So we use this heuristic to give up, since we should at least have a start event.
+  if (updatedEvents.length === 0) {
+    // Unfortunately if the execution id is wrong, our dynamo query is just going to return an empty record set
+    // Not super helpful
+    // So we use this heuristic to give up, since we should at least have a start event.
     throw new Error("No events at all. Check your execution id");
   }
   // The sort is important to ensure we don't chop off new events,

@@ -9,6 +9,7 @@ import { isAwaitAll } from "./await-all.js";
 import { isActivityCall } from "./calls/activity-call.js";
 import {
   DeterminismError,
+  EventualError,
   HeartbeatTimeout,
   SynchronousOperationError,
   Timeout,
@@ -105,81 +106,91 @@ export function interpret<Return>(
     return seq++;
   }
 
-  let emittedEvents = iterator(history, isScheduledEvent);
-  let resultEvents = iterator(
+  const emittedEvents = iterator(history, isScheduledEvent);
+  const resultEvents = iterator(
     history,
     or(isCompletedEvent, isFailedEvent, isSignalReceived, isWorkflowTimedOut)
   );
 
-  /**
-   * Try to advance machine
-   * While we have calls and emitted events, drain the queues.
-   * When we run out of emitted events or calls, try to apply the next result event
-   * advance run again
-   * any calls at the event of all result commands and advances, return
-   */
-  let calls: CommandCall[] = [];
-  let newCalls: Iterator<CommandCall, CommandCall>;
-  // iterate until we are no longer finding commands, no longer have completion events to apply
-  // or the workflow has a terminal status.
-  while (
-    (!mainChain.result || isPending(mainChain.result)) &&
-    ((newCalls = iterator(advance() ?? [])).hasNext() || resultEvents.hasNext())
-  ) {
-    // if there are result events (completed or failed), apply it before the next run
-    if (!newCalls.hasNext() && resultEvents.hasNext()) {
-      const resultEvent = resultEvents.next()!;
+  try {
+    /**
+     * Try to advance machine
+     * While we have calls and emitted events, drain the queues.
+     * When we run out of emitted events or calls, try to apply the next result event
+     * advance run again
+     * any calls at the event of all result commands and advances, return
+     */
+    const calls: CommandCall[] = [];
+    let newCalls: Iterator<CommandCall, CommandCall>;
+    // iterate until we are no longer finding commands, no longer have completion events to apply
+    // or the workflow has a terminal status.
+    while (
+      (!mainChain.result || isPending(mainChain.result)) &&
+      ((newCalls = iterator(advance() ?? [])).hasNext() ||
+        resultEvents.hasNext())
+    ) {
+      // if there are result events (completed or failed), apply it before the next run
+      if (!newCalls.hasNext() && resultEvents.hasNext()) {
+        const resultEvent = resultEvents.next()!;
 
-      // it is possible that committing events
-      newCalls = iterator(
-        collectActivitiesScope(() => {
-          if (isSignalReceived(resultEvent)) {
-            commitSignal(resultEvent);
-          } else if (isWorkflowTimedOut(resultEvent)) {
-            // will stop the workflow execution as the workflow has failed.
-            mainChain.result = Result.failed(new Timeout("Workflow timed out"));
-            return;
-          } else {
-            commitCompletionEvent(resultEvent);
-          }
-        })
+        // it is possible that committing events
+        newCalls = iterator(
+          collectActivitiesScope(() => {
+            if (isSignalReceived(resultEvent)) {
+              commitSignal(resultEvent);
+            } else if (isWorkflowTimedOut(resultEvent)) {
+              // will stop the workflow execution as the workflow has failed.
+              mainChain.result = Result.failed(
+                new Timeout("Workflow timed out")
+              );
+            } else {
+              commitCompletionEvent(resultEvent);
+            }
+          })
+        );
+      }
+
+      // Match and filter found commands against the given scheduled events.
+      // scheduled events must be in order or not present.
+      while (newCalls.hasNext() && emittedEvents.hasNext()) {
+        const call = newCalls.next()!;
+        const event = emittedEvents.next()!;
+
+        if (!isCorresponding(event, call)) {
+          throw new DeterminismError(
+            `Workflow returned ${JSON.stringify(call)}, but ${JSON.stringify(
+              event
+            )} was expected at ${event?.seq}`
+          );
+        }
+      }
+
+      // any calls not matched against historical schedule events will be returned to the caller.
+      calls.push(...newCalls.drain());
+    }
+
+    // if the history shows events have been scheduled, but we did not find them when running the workflow,
+    // something is wrong, fail
+    if (emittedEvents.hasNext()) {
+      throw new DeterminismError(
+        "Workflow did not return expected commands: " +
+          JSON.stringify(emittedEvents.drain())
       );
     }
 
-    // Match and filter found commands against the given scheduled events.
-    // scheduled events must be in order or not present.
-    while (newCalls.hasNext() && emittedEvents.hasNext()) {
-      const call = newCalls.next()!;
-      const event = emittedEvents.next()!;
+    const result = tryResolveResult(mainChain);
 
-      if (!isCorresponding(event, call)) {
-        throw new DeterminismError(
-          `Workflow returned ${JSON.stringify(call)}, but ${JSON.stringify(
-            event
-          )} was expected at ${event?.seq}`
-        );
-      }
-    }
-
-    // any calls not matched against historical schedule events will be returned to the caller.
-    calls.push(...newCalls.drain());
+    return {
+      result,
+      commands: calls.flatMap(callToCommand),
+    };
+  } catch (err) {
+    return {
+      commands: [],
+      // errors thrown by the workflow (and interpreter) are considered fatal workflow events unless caught by the workflow code.
+      result: Result.failed(err),
+    };
   }
-
-  // if the history shows events have been scheduled, but we did not find them when running the workflow,
-  // something is wrong, fail
-  if (emittedEvents.hasNext()) {
-    throw new DeterminismError(
-      "Workflow did not return expected commands: " +
-        JSON.stringify(emittedEvents.drain())
-    );
-  }
-
-  const result = tryResolveResult(mainChain);
-
-  return {
-    result,
-    commands: calls.flatMap(callToCommand),
-  };
 
   function callToCommand(call: CommandCall): Command[] | Command {
     if (isActivityCall(call)) {
@@ -259,7 +270,7 @@ export function interpret<Return>(
   }
 
   function collectActivitiesScope(func: () => void): CommandCall[] {
-    let calls: CommandCall[] = [];
+    const calls: CommandCall[] = [];
 
     const collector: EventualCallCollector = {
       /**
@@ -408,9 +419,13 @@ export function interpret<Return>(
     }
   }
 
-  function tryResolveResult(activity: Eventual): Result | undefined {
+  function tryResolveResult(activity: any): Result | undefined {
+    // it is possible that a non-eventual is yielded or passed to an all settled, send the value through.
+    if (!isEventual(activity)) {
+      return Result.resolved(activity);
+    }
     // check if a result has been stored on the activity before computing
-    if (isResolved(activity.result) || isFailed(activity.result)) {
+    else if (isResolved(activity.result) || isFailed(activity.result)) {
       return activity.result;
     } else if (isPending(activity.result)) {
       // if an activity is marked as pending another activity, defer to the pending activities's result
@@ -530,7 +545,7 @@ export function interpret<Return>(
       ? Result.failed(new Timeout("Activity Timed Out"))
       : isActivityHeartbeatTimedOut(event)
       ? Result.failed(new HeartbeatTimeout("Activity Heartbeat TimedOut"))
-      : Result.failed(event.error);
+      : Result.failed(new EventualError(event.error, event.message));
   }
 }
 
@@ -544,7 +559,7 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
   } else if (isSleepScheduled(event)) {
     return isSleepUntilCall(call) || isSleepForCall(call);
   } else if (isExpectSignalStarted(event)) {
-    return isExpectSignalCall(call) && event.signalId == call.signalId;
+    return isExpectSignalCall(call) && event.signalId === call.signalId;
   } else if (isSignalSent(event)) {
     return isSendSignalCall(call) && event.signalId === call.signalId;
   } else if (isConditionStarted(event)) {

@@ -34,5 +34,8 @@ export function formatChildExecutionName(
   parentExecutionId: string,
   seq: number
 ): string {
-  return `${INTERNAL_EXECUTION_ID_PREFIX}${parentExecutionId.replace("/", "-")}-${seq}`;
+  return `${INTERNAL_EXECUTION_ID_PREFIX}${parentExecutionId.replace(
+    "/",
+    "-"
+  )}-${seq}`;
 }

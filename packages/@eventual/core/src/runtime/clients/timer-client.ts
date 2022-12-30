@@ -1,6 +1,6 @@
 import { HistoryStateEvent } from "../../workflow-events.js";
 
-export interface TimerClient {
+export abstract class TimerClient {
   /**
    * Starts a timer using SQS's message delay.
    *
@@ -13,7 +13,7 @@ export interface TimerClient {
    * Finally the timer handler waits the remaining (untilTime - currentTime) milliseconds if necessary and then sends
    * the {@link TimerRequest} provided.
    */
-  startShortTimer(timerRequest: TimerRequest): Promise<number>;
+  public abstract startShortTimer(timerRequest: TimerRequest): Promise<number>;
 
   /**
    * Starts a timer of any (positive) length.
@@ -27,7 +27,7 @@ export interface TimerClient {
    * Finally the timer handler waits the remaining (untilTime - currentTime) milliseconds if necessary and then sends
    * the {@link TimerRequest} provided.
    */
-  startTimer(timerRequest: TimerRequest): Promise<void>;
+  public abstract startTimer(timerRequest: TimerRequest): Promise<void>;
 
   /**
    * When startTimer is used, the EventBridge schedule will not self delete.
@@ -37,16 +37,30 @@ export interface TimerClient {
    * The provided schedule-forwarder function will call this method in Eventual when
    * the timer is transferred from EventBridge to SQS at `props.sleepQueueThresholdMillis`.
    */
-  clearSchedule(scheduleName: string): Promise<void>;
+  public abstract clearSchedule(scheduleName: string): Promise<void>;
 
   /**
    * Schedules any event for a workflow at a future time.
    *
    * Helper for using {@link TimerClient.startTimer} with a {@link TimerScheduleEventRequest}.
    */
-  scheduleEvent<E extends HistoryStateEvent>(
+  public async scheduleEvent<E extends HistoryStateEvent>(
     request: ScheduleEventRequest<E>
-  ): Promise<void>;
+  ): Promise<void> {
+    const untilTime = computeUntilTime(request.schedule);
+
+    const event = {
+      ...request.event,
+      timestamp: untilTime,
+    } as E;
+
+    await this.startTimer({
+      event,
+      executionId: request.executionId,
+      type: TimerRequestType.ScheduleEvent,
+      schedule: Schedule.absolute(untilTime),
+    });
+  }
 }
 
 export type TimerRequest =
@@ -71,8 +85,8 @@ export interface AbsoluteSchedule {
 
 export type Schedule = RelativeSchedule | AbsoluteSchedule;
 
-export namespace Schedule {
-  export function relative(
+export const Schedule = {
+  relative(
     timerSeconds: number,
     baseTime: Date = new Date()
   ): RelativeSchedule {
@@ -81,15 +95,14 @@ export namespace Schedule {
       timerSeconds,
       baseTime,
     };
-  }
-
-  export function absolute(untilTime: string): AbsoluteSchedule {
+  },
+  absolute(untilTime: string): AbsoluteSchedule {
     return {
       type: "Absolute",
       untilTime,
     };
-  }
-}
+  },
+};
 
 export type TimerRequestBase<T extends TimerRequestType> = {
   type: T;
@@ -141,4 +154,12 @@ export interface ScheduleForwarderRequest {
 export interface ScheduleEventRequest<E extends HistoryStateEvent>
   extends Omit<TimerScheduleEventRequest, "event" | "type"> {
   event: Omit<E, "timestamp">;
+}
+
+export function computeUntilTime(schedule: TimerRequest["schedule"]): string {
+  return "untilTime" in schedule
+    ? schedule.untilTime
+    : new Date(
+        schedule.baseTime.getTime() + schedule.timerSeconds * 1000
+      ).toISOString();
 }

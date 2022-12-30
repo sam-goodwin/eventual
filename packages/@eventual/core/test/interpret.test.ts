@@ -1,6 +1,7 @@
+/* eslint-disable require-yield, no-throw-literal */
 import { createActivityCall } from "../src/calls/activity-call.js";
 import { chain } from "../src/chain.js";
-import { DeterminismError, HeartbeatTimeout, Timeout } from "../src/error.js";
+import { EventualError, HeartbeatTimeout, Timeout } from "../src/error.js";
 import {
   Context,
   createAwaitAll,
@@ -10,7 +11,7 @@ import {
   Result,
   ServiceType,
   SERVICE_TYPE_FLAG,
-  Signal,
+  signal,
   SignalTargetType,
   sleepFor,
   sleepUntil,
@@ -156,7 +157,13 @@ test("should catch error of failed Activity", () => {
       activityFailed("error", 0),
     ])
   ).toMatchObject(<WorkflowResult>{
-    commands: [createScheduledActivityCommand("handle-error", ["error"], 1)],
+    commands: [
+      createScheduledActivityCommand(
+        "handle-error",
+        [new EventualError("error").toJSON()],
+        1
+      ),
+    ],
   });
 });
 
@@ -239,7 +246,17 @@ test("should handle partial blocks with partial completes", () => {
   });
 });
 
-describe("activity", () =>
+test("yield constant", () => {
+  function* workflow(): any {
+    return yield 1;
+  }
+
+  expect(interpret(workflow() as any, [])).toMatchObject(<WorkflowResult>{
+    result: Result.resolved(1),
+  });
+});
+
+describe("activity", () => {
   describe("heartbeat", () => {
     const wf = workflow(function* () {
       return createActivityCall("getPumpedUp", [], undefined, 100);
@@ -300,25 +317,32 @@ describe("activity", () =>
         commands: [],
       });
     });
-  }));
+  });
+});
 
 test("should throw when scheduled does not correspond to call", () => {
-  expect(() =>
+  expect(
     interpret(myWorkflow(event), [scheduledSleep("result", 0)])
-  ).toThrow(DeterminismError);
+  ).toMatchObject<WorkflowResult>({
+    result: Result.failed({ name: "DeterminismError" }),
+    commands: [],
+  });
 });
 
 test("should throw when there are more schedules than calls emitted", () => {
-  expect(() =>
+  expect(
     interpret(myWorkflow(event), [
       activityScheduled("my-activity", 0),
       activityScheduled("result", 1),
     ])
-  ).toThrow(DeterminismError);
+  ).toMatchObject<WorkflowResult>({
+    result: Result.failed({ name: "DeterminismError" }),
+    commands: [],
+  });
 });
 
 test("should throw when a completed precedes workflow state", () => {
-  expect(() =>
+  expect(
     interpret(myWorkflow(event), [
       activityScheduled("my-activity", 0),
       activityScheduled("result", 1),
@@ -328,7 +352,46 @@ test("should throw when a completed precedes workflow state", () => {
       // is applied.
       activityCompleted("", 2),
     ])
-  ).toThrow(DeterminismError);
+  ).toMatchObject<WorkflowResult>({
+    result: Result.failed({ name: "DeterminismError" }),
+    commands: [],
+  });
+});
+
+test("should fail the workflow on uncaught user error", () => {
+  const wf = workflow(function* () {
+    throw new Error("Hi");
+  });
+  expect(
+    interpret(wf.definition(undefined, context), [])
+  ).toMatchObject<WorkflowResult>({
+    result: Result.failed({ name: "Error", message: "Hi" }),
+    commands: [],
+  });
+});
+
+test("should fail the workflow on uncaught user error of random type", () => {
+  const wf = workflow(function* () {
+    throw new TypeError("Hi");
+  });
+  expect(
+    interpret(wf.definition(undefined, context), [])
+  ).toMatchObject<WorkflowResult>({
+    result: Result.failed({ name: "TypeError", message: "Hi" }),
+    commands: [],
+  });
+});
+
+test("should fail the workflow on uncaught thrown value", () => {
+  const wf = workflow(function* () {
+    throw "hi";
+  });
+  expect(
+    interpret(wf.definition(undefined, context), [])
+  ).toMatchObject<WorkflowResult>({
+    result: Result.failed("hi"),
+    commands: [],
+  });
 });
 
 test("should wait if partial results", () => {
@@ -653,6 +716,38 @@ describe("AwaitAll", () => {
     });
   });
 
+  test("should return constants", () => {
+    function* workflow() {
+      return Eventual.all([1 as any, 1 as any]);
+    }
+
+    expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
+      result: Result.resolved([1, 1]),
+      commands: [],
+    });
+  });
+
+  test("should support already awaited or yielded eventuals ", () => {
+    function* workflow(): any {
+      return Eventual.all([
+        yield createActivityCall("process-item", []),
+        yield createActivityCall("process-item", []),
+      ]);
+    }
+
+    expect(
+      interpret(workflow(), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityCompleted(1, 0),
+        activityCompleted(1, 1),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved([1, 1]),
+      commands: [],
+    });
+  });
+
   test("should support Eventual.all of function calls", () => {
     function* workflow(items: string[]) {
       return Eventual.all(
@@ -938,7 +1033,7 @@ describe("Race", () => {
         activityCompleted("B", 1),
       ])
     ).toMatchObject(<WorkflowResult>{
-      result: Result.failed("A"),
+      result: Result.failed(new EventualError("A").toJSON()),
     });
 
     expect(
@@ -948,7 +1043,7 @@ describe("Race", () => {
         activityFailed("B", 1),
       ])
     ).toMatchObject(<WorkflowResult>{
-      result: Result.failed("B"),
+      result: Result.failed(new EventualError("B").toJSON()),
     });
   });
 });
@@ -1018,8 +1113,8 @@ describe("AwaitAllSettled", () => {
       ])
     ).toMatchObject<WorkflowResult<PromiseSettledResult<string>[]>>({
       result: Result.resolved([
-        { status: "rejected", reason: "A" },
-        { status: "rejected", reason: "B" },
+        { status: "rejected", reason: new EventualError("A").toJSON() },
+        { status: "rejected", reason: new EventualError("B").toJSON() },
       ]),
       commands: [],
     });
@@ -1033,7 +1128,7 @@ describe("AwaitAllSettled", () => {
       ])
     ).toMatchObject<WorkflowResult<PromiseSettledResult<string>[]>>({
       result: Result.resolved([
-        { status: "rejected", reason: "A" },
+        { status: "rejected", reason: new EventualError("A").toJSON() },
         { status: "fulfilled", value: "B" },
       ]),
       commands: [],
@@ -1105,6 +1200,7 @@ test("throw error within nested function", () => {
       return "returned in catch"; // this should be trumped by the finally
     } finally {
       yield createActivityCall("finally", []);
+      // eslint-disable-next-line no-unsafe-finally
       return "returned in finally";
     }
   }
@@ -1191,8 +1287,7 @@ test("properly evaluate yield* of sub-programs", () => {
 });
 
 test("properly evaluate yield of Eventual.all", () => {
-  function* workflow() {
-    // @ts-ignore
+  function* workflow(): any {
     const item = yield Eventual.all([
       createActivityCall("a", []),
       createActivityCall("b", []),
@@ -1201,7 +1296,6 @@ test("properly evaluate yield of Eventual.all", () => {
     return item;
   }
 
-  // @ts-ignore
   expect(interpret(workflow(), [])).toMatchObject({
     commands: [
       //
@@ -1211,7 +1305,6 @@ test("properly evaluate yield of Eventual.all", () => {
   });
 
   expect(
-    // @ts-ignore
     interpret(workflow(), [
       activityScheduled("a", 0),
       activityScheduled("b", 1),
@@ -1306,7 +1399,7 @@ test("workflow calling other workflow", () => {
       workflowFailed("error", 0),
     ])
   ).toMatchObject({
-    result: Result.failed("error"),
+    result: Result.failed(new EventualError("error").toJSON()),
     commands: [],
   });
 });
@@ -1693,7 +1786,7 @@ describe("signals", () => {
   });
 
   describe("send signal", () => {
-    const mySignal = new Signal("MySignal");
+    const mySignal = signal("MySignal");
     const wf = workflow(function* (): any {
       createSendSignalCall(
         { type: SignalTargetType.Execution, executionId: "someExecution" },
@@ -2000,7 +2093,7 @@ test("nestedChains", () => {
 });
 
 test("mixing closure types", () => {
-  var workflow4 = workflow(function* () {
+  const workflow4 = workflow(function* () {
     const greetings = Eventual.all(
       ["sam", "chris", "sam"].map((name) => createActivityCall("hello", [name]))
     );
@@ -2084,7 +2177,7 @@ test("mixing closure types", () => {
 });
 
 test("workflow with synchronous function", () => {
-  var workflow4 = workflow(function (): any {
+  const workflow4 = workflow(function (): any {
     return createActivityCall("hi", []);
   });
 
