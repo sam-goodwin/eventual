@@ -208,11 +208,14 @@ describe("workflow", () => {
 
     expect(mockTimerClient.scheduleEvent).not.toHaveBeenCalled();
 
-    expect(mockWorkflowClient.startWorkflow).toHaveBeenCalledWith({
-      workflowName: "workflow",
+    expect(mockWorkflowClient.startWorkflow).toHaveBeenCalledWith<
+      Parameters<typeof mockWorkflowClient.startWorkflow>
+    >({
+      workflow: "workflow",
       parentExecutionId: executionId,
       executionName: expect.stringContaining(INTERNAL_EXECUTION_ID_PREFIX),
       seq: 0,
+      input: undefined,
     });
 
     expect(event).toMatchObject<ChildWorkflowScheduled>({
