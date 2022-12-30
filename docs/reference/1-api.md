@@ -102,7 +102,7 @@ In a REST API, HTTP methods are used to specify the type of action being perform
 
 ### `all`
 
-Use all to register a route that will match any HTTP method (GET, POST, etc.). This can be useful if you want to handle all requests to a specific route in the same way, regardless of the method being used.
+Use `all` to register a route that will match any HTTP method (GET, POST, etc.). This can be useful if you want to handle all requests to a specific route in the same way, regardless of the method being used.
 
 ```ts
 api.all("/hello", (request) => { .. });
