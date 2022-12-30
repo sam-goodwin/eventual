@@ -41,7 +41,8 @@ eventualRuntimeTestHarness(({ testCompletion, testFailed }) => {
   testCompletion("parent-child", parentWorkflow, "done");
 
   testCompletion("timeouts", timedOutWorkflow, {
-    condition: true,
+    sleepWhile: true,
+    sleepWhileNot: true,
     signal: true,
     activity: true,
     workflow: true,

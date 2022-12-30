@@ -98,7 +98,7 @@ exports[`esbuild-plugin ts workflow 1`] = `
     yield $Eventual.race(items.map($eventual(function* (item) {
       yield doWork(item);
     })));
-    condition(() => true);
+    sleepWhileNot(() => true);
     const func = () => $Eventual.all(items.map($eventual(function* (item) {
       yield doWork(item);
     })));

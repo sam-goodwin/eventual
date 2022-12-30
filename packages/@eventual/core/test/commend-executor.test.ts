@@ -4,14 +4,14 @@ import {
   ActivityScheduled,
   ActivityTimedOut,
   ChildWorkflowScheduled,
-  ConditionStarted,
-  ConditionTimedOut,
   EventsPublished,
   ExpectSignalStarted,
   ExpectSignalTimedOut,
   SignalSent,
   SleepCompleted,
   SleepScheduled,
+  SleepWhileStarted,
+  SleepWhileTimedOut,
   WorkflowEventType,
 } from "../src/workflow-events.js";
 import {
@@ -350,13 +350,13 @@ describe("send signal", () => {
   });
 });
 
-describe("condition", () => {
+describe("sleepWhile", () => {
   test("send", async () => {
     const event = await testExecutor.executeCommand(
       workflow,
       executionId,
       {
-        kind: CommandType.StartCondition,
+        kind: CommandType.SleepWhile,
         seq: 0,
       },
       baseTime
@@ -364,9 +364,9 @@ describe("condition", () => {
 
     expect(mockTimerClient.scheduleEvent).not.toHaveBeenCalled();
 
-    expect(event).toMatchObject<ConditionStarted>({
+    expect(event).toMatchObject<SleepWhileStarted>({
       seq: 0,
-      type: WorkflowEventType.ConditionStarted,
+      type: WorkflowEventType.SleepWhileStarted,
       timestamp: expect.stringContaining("Z"),
     });
   });
@@ -376,7 +376,7 @@ describe("condition", () => {
       workflow,
       executionId,
       {
-        kind: CommandType.StartCondition,
+        kind: CommandType.SleepWhile,
         seq: 0,
         timeoutSeconds: 100,
       },
@@ -384,19 +384,19 @@ describe("condition", () => {
     );
 
     expect(mockTimerClient.scheduleEvent).toHaveBeenCalledWith<
-      [ScheduleEventRequest<ConditionTimedOut>]
+      [ScheduleEventRequest<SleepWhileTimedOut>]
     >({
       event: {
-        type: WorkflowEventType.ConditionTimedOut,
+        type: WorkflowEventType.SleepWhileTimedOut,
         seq: 0,
       },
       executionId,
       schedule: Schedule.relative(100, baseTime),
     });
 
-    expect(event).toMatchObject<ConditionStarted>({
+    expect(event).toMatchObject<SleepWhileStarted>({
       seq: 0,
-      type: WorkflowEventType.ConditionStarted,
+      type: WorkflowEventType.SleepWhileStarted,
       timestamp: expect.stringContaining("Z"),
     });
   });

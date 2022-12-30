@@ -8,14 +8,14 @@ import {
   isSendSignalCommand,
   isSleepForCommand,
   isSleepUntilCommand,
-  isStartConditionCommand,
+  isSleepWhileCommand,
   PublishEventsCommand,
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
   SendSignalCommand,
   SleepForCommand,
   SleepUntilCommand,
-  StartConditionCommand,
+  SleepWhileCommand,
 } from "../command.js";
 import {
   ActivityTimedOut,
@@ -28,8 +28,8 @@ import {
   ExpectSignalStarted,
   ExpectSignalTimedOut,
   HistoryStateEvent,
-  ConditionStarted,
-  ConditionTimedOut,
+  SleepWhileStarted,
+  SleepWhileTimedOut,
   SignalSent,
 } from "../workflow-events.js";
 import { EventsPublished, isChildExecutionTarget } from "../index.js";
@@ -81,8 +81,8 @@ export class CommandExecutor {
       return this.executeExpectSignal(executionId, command, baseTime);
     } else if (isSendSignalCommand(command)) {
       return this.sendSignal(executionId, command, baseTime);
-    } else if (isStartConditionCommand(command)) {
-      return this.startCondition(executionId, command, baseTime);
+    } else if (isSleepWhileCommand(command)) {
+      return this.startSleepWhile(executionId, command, baseTime);
     } else if (isPublishEventsCommand(command)) {
       return this.publishEvents(command, baseTime);
     } else {
@@ -246,15 +246,15 @@ export class CommandExecutor {
     );
   }
 
-  private async startCondition(
+  private async startSleepWhile(
     executionId: string,
-    command: StartConditionCommand,
+    command: SleepWhileCommand,
     baseTime: Date
   ) {
     if (command.timeoutSeconds) {
-      await this.props.timerClient.scheduleEvent<ConditionTimedOut>({
+      await this.props.timerClient.scheduleEvent<SleepWhileTimedOut>({
         event: {
-          type: WorkflowEventType.ConditionTimedOut,
+          type: WorkflowEventType.SleepWhileTimedOut,
           seq: command.seq,
         },
         executionId,
@@ -262,9 +262,9 @@ export class CommandExecutor {
       });
     }
 
-    return createEvent<ConditionStarted>(
+    return createEvent<SleepWhileStarted>(
       {
-        type: WorkflowEventType.ConditionStarted,
+        type: WorkflowEventType.SleepWhileStarted,
         seq: command.seq!,
       },
       baseTime

@@ -6,8 +6,10 @@ import { Result } from "./result.js";
 import {
   isSleepForCall,
   isSleepUntilCall,
+  isSleepWhileCall,
   SleepForCall,
   SleepUntilCall,
+  SleepWhileCall,
 } from "./calls/sleep-call.js";
 import {
   isExpectSignalCall,
@@ -19,7 +21,6 @@ import {
 } from "./calls/signal-handler-call.js";
 import { isSendSignalCall, SendSignalCall } from "./calls/send-signal-call.js";
 import { isWorkflowCall, WorkflowCall } from "./calls/workflow-call.js";
-import { ConditionCall, isConditionCall } from "./calls/condition-call.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
 import { AwaitAny, createAwaitAny } from "./await-any.js";
 import { AwaitAllSettled, createAwaitAllSettled } from "./await-all-settled.js";
@@ -50,7 +51,6 @@ export enum EventualKind {
   AwaitAllSettled = 12,
   AwaitAny = 10,
   Chain = 2,
-  ConditionCall = 9,
   ExpectSignalCall = 6,
   PublishEventsCall = 13,
   Race = 11,
@@ -58,6 +58,7 @@ export enum EventualKind {
   SendSignalCall = 8,
   SleepForCall = 3,
   SleepUntilCall = 4,
+  SleepWhileCall = 9,
   WorkflowCall = 5,
 }
 
@@ -93,25 +94,25 @@ export type Eventual<T = any> =
  */
 export type CommandCall<T = any> =
   | ActivityCall<T>
-  | ConditionCall
   | ExpectSignalCall<T>
   | RegisterSignalHandlerCall<T>
   | PublishEventsCall
   | SendSignalCall
   | SleepForCall
   | SleepUntilCall
+  | SleepWhileCall
   | WorkflowCall<T>;
 
 export function isCommandCall(call: Eventual): call is CommandCall {
   return (
     isActivityCall(call) ||
-    isConditionCall(call) ||
     isExpectSignalCall(call) ||
     isPublishEventsCall(call) ||
     isRegisterSignalHandlerCall(call) ||
     isSendSignalCall(call) ||
     isSleepForCall(call) ||
     isSleepUntilCall(call) ||
+    isSleepWhileCall(call) ||
     isWorkflowCall(call)
   );
 }

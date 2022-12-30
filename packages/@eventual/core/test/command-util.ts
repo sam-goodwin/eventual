@@ -8,7 +8,7 @@ import {
   SendSignalCommand,
   SleepForCommand,
   SleepUntilCommand,
-  StartConditionCommand,
+  SleepWhileCommand,
 } from "../src/command.js";
 import { EventEnvelope } from "../src/event.js";
 import {
@@ -19,8 +19,8 @@ import {
   ChildWorkflowCompleted,
   ChildWorkflowFailed,
   ChildWorkflowScheduled,
-  ConditionStarted,
-  ConditionTimedOut,
+  SleepWhileStarted,
+  SleepWhileTimedOut,
   EventsPublished,
   ExpectSignalStarted,
   ExpectSignalTimedOut,
@@ -119,12 +119,12 @@ export function createPublishEventCommand(
   };
 }
 
-export function createStartConditionCommand(
+export function createSleepWhileCommand(
   seq: number,
   timeoutSeconds?: number
-): StartConditionCommand {
+): SleepWhileCommand {
   return {
-    kind: CommandType.StartCondition,
+    kind: CommandType.SleepWhile,
     seq,
     timeoutSeconds,
   };
@@ -296,17 +296,17 @@ export function signalSent(
   };
 }
 
-export function conditionStarted(seq: number): ConditionStarted {
+export function sleepWhileStarted(seq: number): SleepWhileStarted {
   return {
-    type: WorkflowEventType.ConditionStarted,
+    type: WorkflowEventType.SleepWhileStarted,
     seq,
     timestamp: new Date().toISOString(),
   };
 }
 
-export function conditionTimedOut(seq: number): ConditionTimedOut {
+export function sleepWhileTimedOut(seq: number): SleepWhileTimedOut {
   return {
-    type: WorkflowEventType.ConditionTimedOut,
+    type: WorkflowEventType.SleepWhileTimedOut,
     timestamp: new Date().toISOString(),
     seq,
   };

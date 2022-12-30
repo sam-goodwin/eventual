@@ -1,4 +1,4 @@
-import { workflow, sendSignal, condition, signal } from "@eventual/core";
+import { workflow, sendSignal, signal, sleepWhile } from "@eventual/core";
 
 const mySignal = signal<number>("mySignal");
 const doneSignal = signal("done");
@@ -56,7 +56,7 @@ export const workflow2 = workflow(
     while (!done) {
       sendSignal(parentId, mySignal, last + 1);
       block = true;
-      await condition(() => !block);
+      await sleepWhile(() => block);
     }
 
     return "done";

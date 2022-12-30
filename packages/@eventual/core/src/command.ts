@@ -10,7 +10,7 @@ export type Command =
   | SendSignalCommand
   | SleepForCommand
   | SleepUntilCommand
-  | StartConditionCommand;
+  | SleepWhileCommand;
 
 interface CommandBase<T extends CommandType> {
   kind: T;
@@ -23,8 +23,8 @@ export enum CommandType {
   SendSignal = "SendSignal",
   SleepFor = "SleepFor",
   SleepUntil = "SleepUntil",
+  SleepWhile = "SleepWhile",
   StartActivity = "StartActivity",
-  StartCondition = "StartCondition",
   StartWorkflow = "StartWorkflow",
 }
 
@@ -112,15 +112,14 @@ export function isSendSignalCommand(
   return command.kind === CommandType.SendSignal;
 }
 
-export interface StartConditionCommand
-  extends CommandBase<CommandType.StartCondition> {
+export interface SleepWhileCommand extends CommandBase<CommandType.SleepWhile> {
   timeoutSeconds?: number;
 }
 
-export function isStartConditionCommand(
+export function isSleepWhileCommand(
   command: Command
-): command is StartConditionCommand {
-  return command.kind === CommandType.StartCondition;
+): command is SleepWhileCommand {
+  return command.kind === CommandType.SleepWhile;
 }
 
 export interface PublishEventsCommand

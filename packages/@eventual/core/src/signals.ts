@@ -44,7 +44,7 @@ export class Signal<Payload = void> {
    *       done = true;
    *    });
    *
-   *    await condition(() => done);
+   *    await sleepWhileNot(() => done);
    * });
    * ```
    *
@@ -180,7 +180,7 @@ export function expectSignal(
  *       done = true;
  *    });
  *
- *    await condition(() => done);
+ *    await sleepWhileNot(() => done);
  * });
  * ```
  *

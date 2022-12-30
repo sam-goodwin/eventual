@@ -31,8 +31,8 @@ import {
   isExpectSignalTimedOut,
   ScheduledEvent,
   isSignalSent,
-  isConditionStarted,
-  isConditionTimedOut,
+  isSleepWhileStarted,
+  isSleepWhileTimedOut,
   isWorkflowTimedOut,
   isActivityTimedOut,
   isActivityHeartbeatTimedOut,
@@ -50,7 +50,11 @@ import {
 import { createChain, isChain, Chain } from "./chain.js";
 import { assertNever, or } from "./util.js";
 import { Command, CommandType } from "./command.js";
-import { isSleepForCall, isSleepUntilCall } from "./calls/sleep-call.js";
+import {
+  isSleepForCall,
+  isSleepUntilCall,
+  isSleepWhileCall,
+} from "./calls/sleep-call.js";
 import {
   isExpectSignalCall,
   ExpectSignalCall,
@@ -62,7 +66,6 @@ import {
 import { isSendSignalCall } from "./calls/send-signal-call.js";
 import { isWorkflowCall } from "./calls/workflow-call.js";
 import { clearEventualCollector, setEventualCollector } from "./global.js";
-import { isConditionCall } from "./calls/condition-call.js";
 import { isAwaitAllSettled } from "./await-all-settled.js";
 import { isAwaitAny } from "./await-any.js";
 import { isRace } from "./race.js";
@@ -237,9 +240,9 @@ export function interpret<Return>(
         seq: call.seq!,
         payload: call.payload,
       };
-    } else if (isConditionCall(call)) {
+    } else if (isSleepWhileCall(call)) {
       return {
-        kind: CommandType.StartCondition,
+        kind: CommandType.SleepWhile,
         seq: call.seq!,
         timeoutSeconds: call.timeoutSeconds,
       };
@@ -280,7 +283,7 @@ export function interpret<Return>(
         if (isCommandCall(activity)) {
           if (isExpectSignalCall(activity)) {
             subscribeToSignal(activity.signalId, activity);
-          } else if (isConditionCall(activity)) {
+          } else if (isSleepWhileCall(activity)) {
             // if the condition is resolvable, don't add it to the calls.
             const result = tryResolveResult(activity);
             if (result) {
@@ -439,7 +442,7 @@ export function interpret<Return>(
      * When the result has not been cached in the activity, try to compute it.
      */
     function resolveResult(activity: Eventual & { result: undefined }) {
-      if (isConditionCall(activity)) {
+      if (isSleepWhileCall(activity)) {
         // try to evaluate the condition's result.
         const predicateResult = activity.predicate();
         if (isGenerator(predicateResult)) {
@@ -448,8 +451,8 @@ export function interpret<Return>(
               "Condition Predicates must be synchronous"
             )
           );
-        } else if (predicateResult) {
-          return Result.resolved(true);
+        } else if (activity.not === !!predicateResult) {
+          return Result.resolved(predicateResult);
         }
       } else if (isChain(activity) || isCommandCall(activity)) {
         // chain and most commands will be resolved elsewhere (ex: commitCompletionEvent or commitSignal)
@@ -538,9 +541,8 @@ export function interpret<Return>(
       ? Result.resolved(undefined)
       : isExpectSignalTimedOut(event)
       ? Result.failed(new Timeout("Expect Signal Timed Out"))
-      : isConditionTimedOut(event)
-      ? // a timed out condition returns false
-        Result.resolved(false)
+      : isSleepWhileTimedOut(event)
+      ? Result.failed(new Timeout("Sleep While Timed Out"))
       : isActivityTimedOut(event)
       ? Result.failed(new Timeout("Activity Timed Out"))
       : isActivityHeartbeatTimedOut(event)
@@ -562,8 +564,8 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
     return isExpectSignalCall(call) && event.signalId === call.signalId;
   } else if (isSignalSent(event)) {
     return isSendSignalCall(call) && event.signalId === call.signalId;
-  } else if (isConditionStarted(event)) {
-    return isConditionCall(call);
+  } else if (isSleepWhileStarted(event)) {
+    return isSleepWhileCall(call);
   } else if (isEventsPublished(event)) {
     return isPublishEventsCall(call);
   }

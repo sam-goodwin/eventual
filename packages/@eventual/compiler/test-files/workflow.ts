@@ -35,7 +35,7 @@ export default workflow("workflow", async (input) => {
     })
   );
 
-  condition(() => true);
+  sleepWhileNot(() => true);
 
   const func = () =>
     Promise.all(

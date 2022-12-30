@@ -1,6 +1,5 @@
 import {
   activity,
-  condition,
   event,
   expectSignal,
   asyncResult,
@@ -12,6 +11,8 @@ import {
   HeartbeatTimeout,
   EventualError,
   signal,
+  sleepWhile,
+  sleepWhileNot,
 } from "@eventual/core";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -140,9 +141,7 @@ export const childWorkflow = workflow(
     while (!done) {
       sendSignal(parentId, mySignal, last + 1);
       block = true;
-      if (!(await condition({ timeoutSeconds: 10 }, () => !block))) {
-        throw new Error("timed out!");
-      }
+      await sleepWhile({ timeoutSeconds: 10 }, () => block);
     }
 
     return "done";
@@ -165,10 +164,11 @@ export const timedOutWorkflow = workflow(
   async () => {
     // chains to be able to run in parallel.
     const timedOutFunctions = {
-      condition: async () => {
-        if (!(await condition({ timeoutSeconds: 2 }, () => false))) {
-          throw new Error("Timed Out!");
-        }
+      sleepWhile: async () => {
+        await sleepWhile({ timeoutSeconds: 2 }, () => true);
+      },
+      sleepWhileNot: async () => {
+        await sleepWhileNot({ timeoutSeconds: 2 }, () => false);
       },
       signal: async () => {
         await mySignal.expect({ timeoutSeconds: 2 });
