@@ -3,3 +3,4 @@ src/
 tsconfig.*
 *.tgz
 .turbo
+!bin/
