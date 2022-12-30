@@ -11,6 +11,10 @@ import { Signal } from "../../signals.js";
 import { Workflow, WorkflowInput, WorkflowOptions } from "../../workflow.js";
 import { decodeActivityToken } from "../activity-token.js";
 import { ActivityRuntimeClient } from "./activity-runtime-client.js";
+import {
+  GetExecutionsRequest,
+  GetExecutionsResponse,
+} from "../../service-client.js";
 
 export abstract class WorkflowClient {
   constructor(
@@ -39,10 +43,9 @@ export abstract class WorkflowClient {
     ...events: HistoryStateEvent[]
   ): Promise<void>;
 
-  public abstract getExecutions(props: {
-    statuses?: ExecutionStatus[];
-    workflowName?: string;
-  }): Promise<Execution[]>;
+  public abstract getExecutions(
+    props: GetExecutionsRequest
+  ): Promise<GetExecutionsResponse>;
 
   public abstract getExecution(
     executionId: string

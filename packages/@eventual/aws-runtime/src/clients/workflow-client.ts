@@ -3,7 +3,6 @@ import {
   DynamoDBClient,
   GetItemCommand,
   PutItemCommand,
-  QueryCommand,
 } from "@aws-sdk/client-dynamodb";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
@@ -18,9 +17,12 @@ import {
   StartWorkflowRequest,
   formatExecutionId,
   createEvent,
+  GetExecutionsResponse,
+  GetExecutionsRequest,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
+import { queryPageWithToken } from "./utils.js";
 
 export interface AWSWorkflowClientProps {
   readonly dynamo: DynamoDBClient;
@@ -117,20 +119,52 @@ export class AWSWorkflowClient extends WorkflowClient {
     );
   }
 
-  public async getExecutions(): Promise<Execution[]> {
-    const executions = await this.props.dynamo.send(
-      new QueryCommand({
+  public async getExecutions(
+    request?: GetExecutionsRequest
+  ): Promise<GetExecutionsResponse> {
+    const filters = [
+      request?.statuses
+        ? `#status IN (${request.statuses
+            // for safety, filter out execution statuses that are unknown
+            .filter((s) => Object.values(ExecutionStatus).includes(s))
+            .map((s) => `"${s}"`)
+            .join(",")})`
+        : undefined,
+      request?.workflowName ? `workflowName = ` : undefined,
+    ]
+      .filter((f) => !!f)
+      .join(" AND ");
+
+    const result = await queryPageWithToken<ExecutionRecord>(
+      {
+        dynamoClient: this.props.dynamo,
+        pageSize: request?.maxResults ?? 100,
+        keys: ["pk", "sk"],
+        nextToken: request?.nextToken,
+      },
+      {
         TableName: this.props.tableName,
         KeyConditionExpression: "pk = :pk and begins_with(sk, :sk)",
+        ScanIndexForward: request?.sortDirection !== "Desc",
+        FilterExpression: filters || undefined,
         ExpressionAttributeValues: {
           ":pk": { S: ExecutionRecord.PARTITION_KEY },
           ":sk": { S: ExecutionRecord.SORT_KEY_PREFIX },
         },
-      })
+        ExpressionAttributeNames: {
+          ...(request?.statuses ? { "#status": "status" } : undefined),
+        },
+      }
     );
-    return executions.Items!.map((execution) =>
+
+    const executions = result.records.map((execution) =>
       createExecutionFromResult(execution as ExecutionRecord)
     );
+
+    return {
+      executions,
+      nextToken: result.nextToken,
+    };
   }
 
   public async getExecution(
@@ -201,6 +235,7 @@ export function createExecutionFromResult(
     result: execution.result ? JSON.parse(execution.result.S) : undefined,
     startTime: execution.startTime.S,
     status: execution.status.S,
+    workflowName: execution.workflowName.S,
     parent:
       execution.parentExecutionId !== undefined && execution.seq !== undefined
         ? {

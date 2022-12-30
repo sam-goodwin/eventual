@@ -1,11 +1,6 @@
-import {
-  SendSignalProps,
-  Signal,
-  SignalPayload,
-  Workflow,
-  WorkflowClient,
-  WorkflowOutput,
-} from "./index.js";
+import { WorkflowClient } from "./runtime/clients/workflow-client.js";
+import { Signal, SendSignalProps, SignalPayload } from "./signals.js";
+import { Workflow, WorkflowOutput } from "./workflow.js";
 
 export enum ExecutionStatus {
   IN_PROGRESS = "IN_PROGRESS",
@@ -17,6 +12,7 @@ interface ExecutionBase {
   id: string;
   status: ExecutionStatus;
   startTime: string;
+  workflowName: string;
   parent?: {
     /**
      * Seq number when this execution is the child of another workflow.

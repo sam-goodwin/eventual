@@ -1,0 +1,14 @@
+{
+  "extends": "../../../tsconfig-base",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "rootDir": "src",
+    "outDir": "lib/esm",
+    "paths": {
+      "@eventual/injected/*": ["./src/injected/*"]
+    }
+  },
+  "include": ["src", "src/package.json"],
+  "exclude": ["lib", "node_modules"],
+  "references": [{ "path": "../core" }]
+}

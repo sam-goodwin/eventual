@@ -668,6 +668,7 @@ describe("completing executions", () => {
       endTime: env.time.toISOString(),
       id: execution.executionId,
       status: ExecutionStatus.COMPLETE,
+      workflowName: workflow1.workflowName,
       result: "hi",
       startTime: new Date(env.time.getTime() - 1000).toISOString(),
     });
@@ -683,6 +684,7 @@ describe("completing executions", () => {
       endTime: env.time.toISOString(),
       id: execution.executionId,
       status: ExecutionStatus.COMPLETE,
+      workflowName: workflow1.workflowName,
       result: "hi",
       startTime: new Date(env.time.getTime() - 1000).toISOString(),
     });
@@ -697,6 +699,7 @@ describe("completing executions", () => {
       endTime: env.time.toISOString(),
       id: execution.executionId,
       status: ExecutionStatus.FAILED,
+      workflowName: workflow1.workflowName,
       error: "Error",
       message: "failed!",
       startTime: new Date(env.time.getTime() - 1000).toISOString(),
@@ -713,6 +716,7 @@ describe("completing executions", () => {
       endTime: env.time.toISOString(),
       id: execution.executionId,
       status: ExecutionStatus.FAILED,
+      workflowName: workflow1.workflowName,
       error: "Error",
       message: "failed!",
       startTime: new Date(env.time.getTime() - 1000).toISOString(),

@@ -10,7 +10,8 @@ const workflowClient = createWorkflowClient({
 });
 
 async function list() {
-  return workflowClient.getExecutions();
+  // TODO: support pagination
+  return (await workflowClient.getExecutions({})).executions;
 }
 
 export const handler: APIGatewayProxyHandlerV2<Execution[]> =
