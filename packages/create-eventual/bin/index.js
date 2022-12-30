@@ -1,3 +1,3 @@
 #!/usr/bin/env node
 
-require("./bundle");
+require("../lib/cli");
