@@ -247,6 +247,17 @@ workflow("myWorkflow", async () => {
   await foo();
 });
 
-// to call this from a workflow, it must be
-async function foo() {}
+// invalid: to call this from a workflow, it must be defined within the `workflow` closure
+async function foo() {
+  // ..
+}
+
+workflow("myWorkflow", async () => {
+  await foo();
+
+  // valid: defined inside the workflow closure
+  async function foo() {
+    // ..
+  }
+});
 ```
