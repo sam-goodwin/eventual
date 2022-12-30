@@ -1,6 +1,6 @@
 {
   "name": "@eventual/aws-cdk",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "main": "lib/index.js",
   "types:": "lib/index.d.ts",
   "scripts": {
@@ -17,20 +17,20 @@
     "@aws-cdk/aws-apigatewayv2-integrations-alpha": "^2.50.0-alpha.0",
     "aws-cdk-lib": "^2.50.0",
     "constructs": "^10.0.0",
-    "esbuild": "^0.15.13"
+    "esbuild": ">=0.15.x <1.0.0"
   },
   "devDependencies": {
     "@aws-cdk/aws-apigatewayv2-alpha": "2.50.0-alpha.0",
     "@aws-cdk/aws-apigatewayv2-authorizers-alpha": "2.50.0-alpha.0",
     "@aws-cdk/aws-apigatewayv2-integrations-alpha": "2.50.0-alpha.0",
-    "@aws-sdk/client-lambda": "^3.213.0",
+    "@aws-sdk/client-lambda": "^3.241.0",
     "@types/aws-lambda": "8.10.108",
     "@types/jest": "^29",
     "@types/node": "^16",
     "aws-cdk": "2.50.0",
     "aws-cdk-lib": "2.50.0",
     "constructs": "10.1.154",
-    "esbuild": "^0.15.14",
+    "esbuild": "^0.x",
     "jest": "^29",
     "ts-jest": "^29",
     "ts-node": "^10.9.1",

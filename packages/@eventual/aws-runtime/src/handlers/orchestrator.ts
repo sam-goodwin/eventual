@@ -33,24 +33,15 @@ export default middy(async (event: SQSEvent) => {
     throw new Error("Expected SQS Records to contain fifo message id");
   }
 
-  // batch by execution id
-  const recordsByExecutionId = groupBy(
-    event.Records,
-    (r) => r.attributes.MessageGroupId!
-  );
+  const workflowTasks = event.Records.map(sqsRecordToTask);
 
-  const eventsByExecutionId = Object.fromEntries(
-    Object.entries(recordsByExecutionId).map(([executionId, records]) => [
-      executionId,
-      sqsRecordsToEvents(records),
-    ])
-  );
-
-  const { failedExecutionIds } = await orchestrate(eventsByExecutionId);
+  const { failedExecutionIds } = await orchestrate(workflowTasks);
 
   const failedMessageIds = failedExecutionIds.flatMap(
     (executionId) =>
-      recordsByExecutionId[executionId]?.map((record) => record.messageId) ?? []
+      event.Records.filter(
+        (r) => r.attributes.MessageGroupId === executionId
+      ).map((record) => record.messageId) ?? []
   );
 
   return {
@@ -60,25 +51,8 @@ export default middy(async (event: SQSEvent) => {
   };
 }).use(loggerMiddlewares);
 
-function sqsRecordsToEvents(sqsRecords: SQSRecord[]) {
-  return sqsRecords.flatMap(sqsRecordToEvents);
-}
-
-function sqsRecordToEvents(sqsRecord: SQSRecord) {
+function sqsRecordToTask(sqsRecord: SQSRecord) {
   const message = JSON.parse(sqsRecord.body) as SQSWorkflowTaskMessage;
 
-  return message.task.events;
-}
-
-function groupBy<T>(
-  items: T[],
-  extract: (item: T) => string
-): Record<string, T[]> {
-  return items.reduce((obj: Record<string, T[]>, r) => {
-    const id = extract(r);
-    return {
-      ...obj,
-      [id]: [...(obj[id] || []), r],
-    };
-  }, {});
+  return message.task;
 }

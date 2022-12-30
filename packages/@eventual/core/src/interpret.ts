@@ -9,6 +9,7 @@ import { isAwaitAll } from "./await-all.js";
 import { isActivityCall } from "./calls/activity-call.js";
 import {
   DeterminismError,
+  EventualError,
   HeartbeatTimeout,
   SynchronousOperationError,
   Timeout,
@@ -418,9 +419,13 @@ export function interpret<Return>(
     }
   }
 
-  function tryResolveResult(activity: Eventual): Result | undefined {
+  function tryResolveResult(activity: any): Result | undefined {
+    // it is possible that a non-eventual is yielded or passed to an all settled, send the value through.
+    if (!isEventual(activity)) {
+      return Result.resolved(activity);
+    }
     // check if a result has been stored on the activity before computing
-    if (isResolved(activity.result) || isFailed(activity.result)) {
+    else if (isResolved(activity.result) || isFailed(activity.result)) {
       return activity.result;
     } else if (isPending(activity.result)) {
       // if an activity is marked as pending another activity, defer to the pending activities's result
@@ -540,7 +545,7 @@ export function interpret<Return>(
       ? Result.failed(new Timeout("Activity Timed Out"))
       : isActivityHeartbeatTimedOut(event)
       ? Result.failed(new HeartbeatTimeout("Activity Heartbeat TimedOut"))
-      : Result.failed(event.error);
+      : Result.failed(new EventualError(event.error, event.message));
   }
 }
 

@@ -72,7 +72,7 @@ export class CommandExecutor {
         baseTime
       );
     } else if (isScheduleWorkflowCommand(command)) {
-      return this.scheduleChildWorkflow(executionId, command);
+      return this.scheduleChildWorkflow(executionId, command, baseTime);
     } else if (isSleepForCommand(command) || isSleepUntilCommand(command)) {
       // all sleep times are computed using the start time of the WorkflowTaskStarted
       return this.scheduleSleep(executionId, command, baseTime);
@@ -80,11 +80,11 @@ export class CommandExecutor {
       // should the timeout command be generic (ex: StartTimeout) or specific (ex: ExpectSignal)?
       return this.executeExpectSignal(executionId, command, baseTime);
     } else if (isSendSignalCommand(command)) {
-      return this.sendSignal(executionId, command);
+      return this.sendSignal(executionId, command, baseTime);
     } else if (isStartConditionCommand(command)) {
       return this.startCondition(executionId, command, baseTime);
     } else if (isPublishEventsCommand(command)) {
-      return this.publishEvents(command);
+      return this.publishEvents(command, baseTime);
     } else {
       return assertNever(command, `unknown command type`);
     }
@@ -120,16 +120,20 @@ export class CommandExecutor {
 
     await Promise.all([activityStarter, timeoutStarter]);
 
-    return createEvent<ActivityScheduled>({
-      type: WorkflowEventType.ActivityScheduled,
-      seq: command.seq,
-      name: command.name,
-    });
+    return createEvent<ActivityScheduled>(
+      {
+        type: WorkflowEventType.ActivityScheduled,
+        seq: command.seq,
+        name: command.name,
+      },
+      baseTime
+    );
   }
 
   private async scheduleChildWorkflow(
     executionId: string,
-    command: ScheduleWorkflowCommand
+    command: ScheduleWorkflowCommand,
+    baseTime: Date
   ): Promise<ChildWorkflowScheduled> {
     await this.props.workflowClient.startWorkflow({
       workflowName: command.name,
@@ -140,12 +144,15 @@ export class CommandExecutor {
       ...command.opts,
     });
 
-    return createEvent<ChildWorkflowScheduled>({
-      type: WorkflowEventType.ChildWorkflowScheduled,
-      seq: command.seq,
-      name: command.name,
-      input: command.input,
-    });
+    return createEvent<ChildWorkflowScheduled>(
+      {
+        type: WorkflowEventType.ChildWorkflowScheduled,
+        seq: command.seq,
+        name: command.name,
+        input: command.input,
+      },
+      baseTime
+    );
   }
 
   private async scheduleSleep(
@@ -169,11 +176,14 @@ export class CommandExecutor {
       executionId,
     });
 
-    return createEvent<SleepScheduled>({
-      type: WorkflowEventType.SleepScheduled,
-      seq: command.seq,
-      untilTime: untilTime.toISOString(),
-    });
+    return createEvent<SleepScheduled>(
+      {
+        type: WorkflowEventType.SleepScheduled,
+        seq: command.seq,
+        untilTime: untilTime.toISOString(),
+      },
+      baseTime
+    );
   }
 
   private async executeExpectSignal(
@@ -194,15 +204,22 @@ export class CommandExecutor {
       });
     }
 
-    return createEvent<ExpectSignalStarted>({
-      signalId: command.signalId,
-      seq: command.seq,
-      type: WorkflowEventType.ExpectSignalStarted,
-      timeoutSeconds: command.timeoutSeconds,
-    });
+    return createEvent<ExpectSignalStarted>(
+      {
+        signalId: command.signalId,
+        seq: command.seq,
+        type: WorkflowEventType.ExpectSignalStarted,
+        timeoutSeconds: command.timeoutSeconds,
+      },
+      baseTime
+    );
   }
 
-  private async sendSignal(executionId: string, command: SendSignalCommand) {
+  private async sendSignal(
+    executionId: string,
+    command: SendSignalCommand,
+    baseTime: Date
+  ) {
     const childExecutionId = isChildExecutionTarget(command.target)
       ? formatExecutionId(
           command.target.workflowName,
@@ -217,13 +234,16 @@ export class CommandExecutor {
       payload: command.payload,
     });
 
-    return createEvent<SignalSent>({
-      type: WorkflowEventType.SignalSent,
-      executionId: childExecutionId,
-      seq: command.seq,
-      signalId: command.signalId,
-      payload: command.payload,
-    });
+    return createEvent<SignalSent>(
+      {
+        type: WorkflowEventType.SignalSent,
+        executionId: childExecutionId,
+        seq: command.seq,
+        signalId: command.signalId,
+        payload: command.payload,
+      },
+      baseTime
+    );
   }
 
   private async startCondition(
@@ -242,18 +262,24 @@ export class CommandExecutor {
       });
     }
 
-    return createEvent<ConditionStarted>({
-      type: WorkflowEventType.ConditionStarted,
-      seq: command.seq!,
-    });
+    return createEvent<ConditionStarted>(
+      {
+        type: WorkflowEventType.ConditionStarted,
+        seq: command.seq!,
+      },
+      baseTime
+    );
   }
 
-  private async publishEvents(command: PublishEventsCommand) {
+  private async publishEvents(command: PublishEventsCommand, baseTime: Date) {
     await this.props.eventClient.publish(...command.events);
-    return createEvent<EventsPublished>({
-      type: WorkflowEventType.EventsPublished,
-      events: command.events,
-      seq: command.seq!,
-    });
+    return createEvent<EventsPublished>(
+      {
+        type: WorkflowEventType.EventsPublished,
+        events: command.events,
+        seq: command.seq!,
+      },
+      baseTime
+    );
   }
 }

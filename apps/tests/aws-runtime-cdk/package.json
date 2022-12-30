@@ -16,7 +16,7 @@
     "@types/jest": "^29",
     "@types/node": "^16",
     "aws-cdk": "2.50.0",
-    "esbuild": "^0.15.14",
+    "esbuild": "^0.x",
     "jest": "^29",
     "tests-runtime": "workspace:^",
     "ts-jest": "^29",

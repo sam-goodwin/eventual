@@ -1,7 +1,7 @@
 /* eslint-disable require-yield, no-throw-literal */
 import { createActivityCall } from "../src/calls/activity-call.js";
 import { chain } from "../src/chain.js";
-import { HeartbeatTimeout, Timeout } from "../src/error.js";
+import { EventualError, HeartbeatTimeout, Timeout } from "../src/error.js";
 import {
   Context,
   createAwaitAll,
@@ -11,7 +11,7 @@ import {
   Result,
   ServiceType,
   SERVICE_TYPE_FLAG,
-  Signal,
+  signal,
   SignalTargetType,
   sleepFor,
   sleepUntil,
@@ -157,7 +157,13 @@ test("should catch error of failed Activity", () => {
       activityFailed("error", 0),
     ])
   ).toMatchObject(<WorkflowResult>{
-    commands: [createScheduledActivityCommand("handle-error", ["error"], 1)],
+    commands: [
+      createScheduledActivityCommand(
+        "handle-error",
+        [new EventualError("error").toJSON()],
+        1
+      ),
+    ],
   });
 });
 
@@ -240,7 +246,17 @@ test("should handle partial blocks with partial completes", () => {
   });
 });
 
-describe("activity", () =>
+test("yield constant", () => {
+  function* workflow(): any {
+    return yield 1;
+  }
+
+  expect(interpret(workflow() as any, [])).toMatchObject(<WorkflowResult>{
+    result: Result.resolved(1),
+  });
+});
+
+describe("activity", () => {
   describe("heartbeat", () => {
     const wf = workflow(function* () {
       return createActivityCall("getPumpedUp", [], undefined, 100);
@@ -301,7 +317,8 @@ describe("activity", () =>
         commands: [],
       });
     });
-  }));
+  });
+});
 
 test("should throw when scheduled does not correspond to call", () => {
   expect(
@@ -699,6 +716,38 @@ describe("AwaitAll", () => {
     });
   });
 
+  test("should return constants", () => {
+    function* workflow() {
+      return Eventual.all([1 as any, 1 as any]);
+    }
+
+    expect(interpret(workflow(), [])).toMatchObject(<WorkflowResult>{
+      result: Result.resolved([1, 1]),
+      commands: [],
+    });
+  });
+
+  test("should support already awaited or yielded eventuals ", () => {
+    function* workflow(): any {
+      return Eventual.all([
+        yield createActivityCall("process-item", []),
+        yield createActivityCall("process-item", []),
+      ]);
+    }
+
+    expect(
+      interpret(workflow(), [
+        activityScheduled("process-item", 0),
+        activityScheduled("process-item", 1),
+        activityCompleted(1, 0),
+        activityCompleted(1, 1),
+      ])
+    ).toMatchObject(<WorkflowResult>{
+      result: Result.resolved([1, 1]),
+      commands: [],
+    });
+  });
+
   test("should support Eventual.all of function calls", () => {
     function* workflow(items: string[]) {
       return Eventual.all(
@@ -984,7 +1033,7 @@ describe("Race", () => {
         activityCompleted("B", 1),
       ])
     ).toMatchObject(<WorkflowResult>{
-      result: Result.failed("A"),
+      result: Result.failed(new EventualError("A").toJSON()),
     });
 
     expect(
@@ -994,7 +1043,7 @@ describe("Race", () => {
         activityFailed("B", 1),
       ])
     ).toMatchObject(<WorkflowResult>{
-      result: Result.failed("B"),
+      result: Result.failed(new EventualError("B").toJSON()),
     });
   });
 });
@@ -1064,8 +1113,8 @@ describe("AwaitAllSettled", () => {
       ])
     ).toMatchObject<WorkflowResult<PromiseSettledResult<string>[]>>({
       result: Result.resolved([
-        { status: "rejected", reason: "A" },
-        { status: "rejected", reason: "B" },
+        { status: "rejected", reason: new EventualError("A").toJSON() },
+        { status: "rejected", reason: new EventualError("B").toJSON() },
       ]),
       commands: [],
     });
@@ -1079,7 +1128,7 @@ describe("AwaitAllSettled", () => {
       ])
     ).toMatchObject<WorkflowResult<PromiseSettledResult<string>[]>>({
       result: Result.resolved([
-        { status: "rejected", reason: "A" },
+        { status: "rejected", reason: new EventualError("A").toJSON() },
         { status: "fulfilled", value: "B" },
       ]),
       commands: [],
@@ -1350,7 +1399,7 @@ test("workflow calling other workflow", () => {
       workflowFailed("error", 0),
     ])
   ).toMatchObject({
-    result: Result.failed("error"),
+    result: Result.failed(new EventualError("error").toJSON()),
     commands: [],
   });
 });
@@ -1737,7 +1786,7 @@ describe("signals", () => {
   });
 
   describe("send signal", () => {
-    const mySignal = new Signal("MySignal");
+    const mySignal = signal("MySignal");
     const wf = workflow(function* (): any {
       createSendSignalCall(
         { type: SignalTargetType.Execution, executionId: "someExecution" },

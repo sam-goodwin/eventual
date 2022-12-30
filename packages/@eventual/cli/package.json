@@ -1,6 +1,6 @@
 {
   "name": "@eventual/cli",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "bin": {
     "eventual": "bin/eventual.js"
   },
@@ -52,11 +52,11 @@
   },
   "dependencies": {
     "@aws-crypto/sha256-js": "^2.0.2",
-    "@aws-sdk/client-cloudwatch-logs": "^3.226.0",
-    "@aws-sdk/client-iam": "^3.226.0",
-    "@aws-sdk/client-ssm": "^3.226.0",
-    "@aws-sdk/client-sts": "^3.226.0",
-    "@aws-sdk/config-resolver": "^3.226.0",
+    "@aws-sdk/client-cloudwatch-logs": "^3.241.0",
+    "@aws-sdk/client-iam": "^3.241.0",
+    "@aws-sdk/client-ssm": "^3.241.0",
+    "@aws-sdk/client-sts": "^3.241.0",
+    "@aws-sdk/config-resolver": "^3.234.0",
     "@aws-sdk/node-config-provider": "^3.226.0",
     "@aws-sdk/protocol-http": "^3.226.0",
     "@aws-sdk/querystring-parser": "^3.226.0",

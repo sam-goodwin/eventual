@@ -19,8 +19,8 @@ import {
   FailedExecution,
   FailExecutionRequest,
   HistoryStateEvent,
+  isFailedExecutionRequest,
   UpdateHistoryRequest,
-  WorkflowEventType,
   WorkflowRuntimeClient,
 } from "@eventual/core";
 import { AWSTimerClient } from "./timer-client.js";
@@ -41,8 +41,10 @@ export interface AWSWorkflowRuntimeClientProps {
   readonly timerClient: AWSTimerClient;
 }
 
-export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
-  constructor(private props: AWSWorkflowRuntimeClientProps) {}
+export class AWSWorkflowRuntimeClient extends WorkflowRuntimeClient {
+  constructor(private props: AWSWorkflowRuntimeClientProps) {
+    super(props.workflowClient);
+  }
 
   public async getHistory(executionId: string): Promise<HistoryStateEvent[]> {
     try {
@@ -80,106 +82,61 @@ export class AWSWorkflowRuntimeClient implements WorkflowRuntimeClient {
     return { bytes: content.length };
   }
 
-  public async completeExecution({
-    executionId,
-    result,
-  }: CompleteExecutionRequest): Promise<CompleteExecution> {
-    const executionResult = await this.props.dynamo.send(
-      new UpdateItemCommand({
-        Key: {
-          pk: { S: ExecutionRecord.PRIMARY_KEY },
-          sk: { S: ExecutionRecord.sortKey(executionId) },
-        },
-        TableName: this.props.tableName,
-        UpdateExpression: result
-          ? "SET #status=:complete, #result=:result, endTime=if_not_exists(endTime,:endTime)"
-          : "SET #status=:complete, endTime=if_not_exists(endTime,:endTime)",
-        ExpressionAttributeNames: {
-          "#status": "status",
-          ...(result ? { "#result": "result" } : {}),
-        },
-        ExpressionAttributeValues: {
-          ":complete": { S: ExecutionStatus.COMPLETE },
-          ":endTime": { S: new Date().toISOString() },
-          ...(result ? { ":result": { S: JSON.stringify(result) } } : {}),
-        },
-        ReturnValues: "ALL_NEW",
-      })
-    );
-
-    const record = executionResult.Attributes as unknown as ExecutionRecord;
-    if (record.parentExecutionId) {
-      await this.reportCompletionToParent(
-        record.parentExecutionId.S,
-        record.seq.N,
-        result
-      );
-    }
-
-    return createExecutionFromResult(record) as CompleteExecution;
-  }
-
-  public async failExecution({
-    executionId,
-    error,
-    message,
-  }: FailExecutionRequest): Promise<FailedExecution> {
-    const executionResult = await this.props.dynamo.send(
-      new UpdateItemCommand({
-        Key: {
-          pk: { S: ExecutionRecord.PRIMARY_KEY },
-          sk: { S: ExecutionRecord.sortKey(executionId) },
-        },
-        TableName: this.props.tableName,
-        UpdateExpression:
-          "SET #status=:failed, #error=:error, #message=:message, endTime=if_not_exists(endTime,:endTime)",
-        ExpressionAttributeNames: {
-          "#status": "status",
-          "#error": "error",
-          "#message": "message",
-        },
-        ExpressionAttributeValues: {
-          ":failed": { S: ExecutionStatus.FAILED },
-          ":endTime": { S: new Date().toISOString() },
-          ":error": { S: error },
-          ":message": { S: message },
-        },
-        ReturnValues: "ALL_NEW",
-      })
-    );
-
-    const record = executionResult.Attributes as unknown as ExecutionRecord;
-    if (record.parentExecutionId) {
-      await this.reportCompletionToParent(
-        record.parentExecutionId.S,
-        record.seq.N,
-        error,
-        message
-      );
-    }
-
-    return createExecutionFromResult(record) as FailedExecution;
-  }
-
-  private async reportCompletionToParent(
-    parentExecutionId: string,
-    seq: string,
-    ...args: [result: any] | [error: string, message: string]
+  protected async updateExecution(
+    request: FailExecutionRequest | CompleteExecutionRequest
   ) {
-    await this.props.workflowClient.submitWorkflowTask(parentExecutionId, {
-      seq: parseInt(seq, 10),
-      timestamp: new Date().toISOString(),
-      ...(args.length === 1
-        ? {
-            type: WorkflowEventType.ChildWorkflowCompleted,
-            result: args[0],
-          }
-        : {
-            type: WorkflowEventType.ChildWorkflowFailed,
-            error: args[0],
-            message: args[1],
-          }),
-    });
+    const executionResult = isFailedExecutionRequest(request)
+      ? await this.props.dynamo.send(
+          new UpdateItemCommand({
+            Key: {
+              pk: { S: ExecutionRecord.PARTITION_KEY },
+              sk: { S: ExecutionRecord.sortKey(request.executionId) },
+            },
+            TableName: this.props.tableName,
+            UpdateExpression:
+              "SET #status=:failed, #error=:error, #message=:message, endTime=if_not_exists(endTime,:endTime)",
+            ExpressionAttributeNames: {
+              "#status": "status",
+              "#error": "error",
+              "#message": "message",
+            },
+            ExpressionAttributeValues: {
+              ":failed": { S: ExecutionStatus.FAILED },
+              ":endTime": { S: new Date().toISOString() },
+              ":error": { S: request.error },
+              ":message": { S: request.message },
+            },
+            ReturnValues: "ALL_NEW",
+          })
+        )
+      : await this.props.dynamo.send(
+          new UpdateItemCommand({
+            Key: {
+              pk: { S: ExecutionRecord.PARTITION_KEY },
+              sk: { S: ExecutionRecord.sortKey(request.executionId) },
+            },
+            TableName: this.props.tableName,
+            UpdateExpression: request.result
+              ? "SET #status=:complete, #result=:result, endTime=if_not_exists(endTime,:endTime)"
+              : "SET #status=:complete, endTime=if_not_exists(endTime,:endTime)",
+            ExpressionAttributeNames: {
+              "#status": "status",
+              ...(request.result ? { "#result": "result" } : {}),
+            },
+            ExpressionAttributeValues: {
+              ":complete": { S: ExecutionStatus.COMPLETE },
+              ":endTime": { S: new Date().toISOString() },
+              ...(request.result
+                ? { ":result": { S: JSON.stringify(request.result) } }
+                : {}),
+            },
+            ReturnValues: "ALL_NEW",
+          })
+        );
+
+    return createExecutionFromResult(
+      executionResult.Attributes as ExecutionRecord
+    ) as CompleteExecution | FailedExecution;
   }
 
   public async startActivity(request: ActivityWorkerRequest): Promise<void> {

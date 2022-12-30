@@ -11,6 +11,12 @@ export interface EventPayload {
   [propName: string]: any;
 }
 
+export type EventPayloadType<E extends Event<any>> = E extends Event<
+  infer Payload
+>
+  ? Payload
+  : never;
+
 /**
  * An envelope object containing the {@link event} payload associated
  * with its unique {@link name}.

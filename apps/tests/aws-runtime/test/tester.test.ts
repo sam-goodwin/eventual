@@ -1,4 +1,4 @@
-import { HeartbeatTimeout } from "@eventual/core";
+import { EventualError, HeartbeatTimeout } from "@eventual/core";
 import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
 import {
   eventDrivenWorkflow,
@@ -32,7 +32,10 @@ eventualRuntimeTestHarness(({ testCompletion, testFailed }) => {
     { status: "fulfilled", value: ["HELLO SAM", "HELLO CHRIS", "HELLO SAM"] },
     { status: "fulfilled", value: ["hello sam", "hello chris", "hello sam"] },
     { status: "fulfilled", value: "hello sam" },
-    { status: "rejected", reason: "Error" },
+    {
+      status: "rejected",
+      reason: new EventualError("Error", "failed").toJSON(),
+    },
   ]);
 
   testCompletion("parent-child", parentWorkflow, "done");
@@ -46,7 +49,10 @@ eventualRuntimeTestHarness(({ testCompletion, testFailed }) => {
 
   testCompletion("asyncActivities", asyncWorkflow, [
     "hello from the async writer!",
-    "AsyncWriterError",
+    new EventualError(
+      "AsyncWriterError",
+      "I was told to fail this activity, sorry."
+    ).toJSON(),
   ]);
 
   testCompletion("heartbeat", heartbeatWorkflow, 20, [

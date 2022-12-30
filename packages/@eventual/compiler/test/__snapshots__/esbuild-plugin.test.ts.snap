@@ -2,7 +2,6 @@
 
 exports[`esbuild-plugin json file 1`] = `
 "(() => {
-  // test-files/json-file.json
   var json_file_default = {};
 })();
 "
@@ -11,7 +10,6 @@ exports[`esbuild-plugin json file 1`] = `
 exports[`esbuild-plugin mts workflow 1`] = `
 ""use strict";
 (() => {
-  // test-files/workflow.mts
   var doWork = activity("doWork", async (input) => input);
   var workflow_default = workflow("workflow", function* (input) {
     const items = yield doWork(input);
@@ -38,7 +36,6 @@ exports[`esbuild-plugin mts workflow 1`] = `
 exports[`esbuild-plugin open-account 1`] = `
 ""use strict";
 (() => {
-  // test-files/open-account.ts
   var open_account_default = workflow("open-account", function* ({ accountId, address, email, bankDetails }) {
     const rollbacks = [];
     try {
@@ -71,7 +68,6 @@ exports[`esbuild-plugin open-account 1`] = `
 exports[`esbuild-plugin ts not workflow 1`] = `
 ""use strict";
 (() => {
-  // test-files/not-workflow.ts
   var doWork = async () => {
   };
   function not_workflow_default() {

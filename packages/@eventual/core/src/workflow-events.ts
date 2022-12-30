@@ -138,7 +138,7 @@ export interface ActivityCompleted extends HistoryEventBase {
 export interface ActivityFailed extends HistoryEventBase {
   type: WorkflowEventType.ActivityFailed;
   error: string;
-  message: string;
+  message?: string;
 }
 
 export interface ActivityHeartbeatTimedOut extends HistoryEventBase {
@@ -443,7 +443,7 @@ type UnresolvedEvent<T extends WorkflowEvent> = Omit<T, "id" | "timestamp">;
 
 export function createEvent<T extends WorkflowEvent>(
   event: UnresolvedEvent<T>,
-  time: Date = new Date(),
+  time: Date,
   id: string = ulid()
 ): T {
   const timestamp = time.toISOString();

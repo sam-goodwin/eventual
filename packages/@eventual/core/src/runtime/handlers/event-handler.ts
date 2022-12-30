@@ -1,30 +1,30 @@
-import {
-  registerWorkflowClient,
-  registerEventClient,
-  eventSubscriptions,
-} from "../../global.js";
+import { registerWorkflowClient, registerEventClient } from "../../global.js";
 import type { WorkflowClient } from "../clients/workflow-client.js";
 import type { EventClient } from "../clients/event-client.js";
-import type {
-  EventEnvelope,
-  EventHandler,
-  EventPayload,
-  EventSubscription,
-} from "../../event.js";
+import type { EventEnvelope } from "../../event.js";
+import { EventHandlerProvider } from "../providers/event-handler-provider.js";
 
 /**
- * The dependencies of {@link createEventHandler}.
+ * The dependencies of {@link createEventHandlerWorker}.
  */
 export interface EventHandlerDependencies {
   /**
    * The {@link WorkflowClient} for interacting with workflows contained
    * within the service boundary.
    */
-  workflowClient: WorkflowClient;
+  workflowClient?: WorkflowClient;
   /**
    * The {@link EventClient} for publishing events to the service's event bus.
    */
-  eventClient: EventClient;
+  eventClient?: EventClient;
+  /**
+   * Returns event handlers
+   */
+  eventHandlerProvider: EventHandlerProvider;
+}
+
+export interface EventHandlerWorker {
+  (events: EventEnvelope[]): Promise<void>;
 }
 
 /**
@@ -33,51 +33,28 @@ export interface EventHandlerDependencies {
  * decoupled from a runtime's specifics by the clients. A runtime must
  * inject its own client implementations designed for that platform.
  */
-export function createEventHandler({
+export function createEventHandlerWorker({
   workflowClient,
   eventClient,
-}: EventHandlerDependencies) {
+  eventHandlerProvider,
+}: EventHandlerDependencies): EventHandlerWorker {
   // make the workflow client available to web hooks
-  registerWorkflowClient(workflowClient);
-  registerEventClient(eventClient);
+  if (workflowClient) {
+    registerWorkflowClient(workflowClient);
+  }
+  if (eventClient) {
+    registerEventClient(eventClient);
+  }
 
-  const subscriptions = indexEventSubscriptions(eventSubscriptions());
-  console.debug("subscriptions", subscriptions);
-
-  return async function (events: EventEnvelope[]) {
+  return async function (events) {
     await Promise.allSettled(
       events.map((event) =>
         Promise.allSettled(
-          subscriptions[event.name]?.map((handler) => handler(event.event)) ??
-            []
+          eventHandlerProvider
+            .getEventHandlersForEvent(event.name)
+            .map((handler) => handler(event.event))
         )
       )
     );
   };
-}
-
-/**
- * Create an index of Event Name to a list of all handler functions
- * subscribed to that event.
- */
-function indexEventSubscriptions(
-  subscriptions: EventSubscription<EventPayload>[]
-) {
-  return subscriptions
-    .flatMap((e) =>
-      e.subscriptions.map((sub) => [sub.name, e.handler] as const)
-    )
-    .reduce<Record<string, EventHandler<EventPayload>[]>>(
-      (index, [name, handler]) => ({
-        ...index,
-        ...(name in index
-          ? {
-              [name]: [...index[name]!, handler],
-            }
-          : {
-              [name]: [handler],
-            }),
-      }),
-      {}
-    );
 }
