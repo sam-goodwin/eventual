@@ -46,6 +46,7 @@ export async function createAwsCdk({
     "typescript",
     "@eventual/aws-cdk",
     "@eventual/aws-runtime",
+    "@eventual/cli",
     "aws-cdk-lib",
     "@tsconfig/node16"
   );
