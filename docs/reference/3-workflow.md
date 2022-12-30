@@ -18,13 +18,35 @@ const myWorkflow = workflow("myWorkflow", async (input: any) => {
 
 ## Start Execution
 
-Once you have created a workflow using the workflow function, you can execute it by calling the `startExecution` method on the returned object. The `startExecution` method takes an input argument and returns a promise that resolves to the output of the workflow.
+To start an execution of a workflow, you can call the `startExecution` method on the workflow object, passing it an input argument. This will return an `ExecutionHandle`, which is a reference to the running workflow execution.
 
 ```ts
-const output = await myWorkflow.startExecution(input);
+const execution = await myWorkflow.startExecution(input);
 ```
 
-This is the basic process for creating and executing a workflow using the @eventual/core library. You can then add additional logic and functionality to the workflow implementation function to define the specific actions and interactions that you want the workflow to perform.
+## Execution Handle
+
+The ExecutionHandle allows you to get the current status of the execution and send signals to it.
+
+### Get the status of an Execution
+
+You can use the `getStatus` method to get the current status:
+
+```ts
+const status = await execution.getStatus();
+```
+
+### Send a signal to a running Execution
+
+The `sendSignal` method is used to send a signal to the execution:
+
+```ts
+// using a signal's name
+await execution.sendSignal("mySignal", "data");
+
+// using a reference to a signal object
+await execution.sendSignal(mySignal, "data");
+```
 
 ## Call an Activity
 
