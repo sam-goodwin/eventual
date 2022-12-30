@@ -11,7 +11,7 @@ Here is an example of how to create a workflow using the workflow function:
 ```ts
 import { workflow } from "@eventual/core";
 
-const myWorkflow = workflow("myWorkflow", async (input: any) => {
+const myWorkflow = workflow("myWorkflow", async () => {
   // implementation of the workflow goes here
 });
 ```
@@ -57,6 +57,7 @@ Here is an example of a workflow that calls an activity:
 ```ts
 const myWorkflow = workflow("myWorkflow", async (input: any) => {
   const message = await myActivity();
+  return message;
 });
 
 const myActivity = activity("myActivity", async () => {
@@ -103,6 +104,19 @@ try {
 }
 ```
 
+## Handle a `signal`
+
+To handle a signal within a workflow, you can use the `on` method, which takes a function that will be called every time the signal is received. You can then use the `dispose` method to disable the signal handler when it is no longer needed.
+
+```ts
+const mySignalHandler = mySignal.on((signalPayload) => {
+  // Handle the signal
+});
+
+// Disable the signal handler
+mySignalHandler.dispose();
+```
+
 ## Sleep
 
 The `@eventual/core` library provides three methods for pausing an execution:
@@ -146,7 +160,7 @@ await sleepWhile(() => !isCancelled);
 
 ## Patterns
 
-See the [Workflow Patterns](./3.1-workflow-patterns.md) for a cheatsheet of patterns for controlling concurrency.
+See the [Workflow Patterns](./3.1-workflow-patterns.md) for a cheatsheet of patterns for building workflows.
 
 ## Runtime Semantics
 
