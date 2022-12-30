@@ -11,14 +11,11 @@ import {
   assertNever,
   getEventId,
   TimerClient,
-  HistoryStateEvent,
   isTimerScheduleEventRequest,
-  ScheduleEventRequest,
   ScheduleForwarderRequest,
   TimerRequest,
-  TimerRequestType,
   isActivityHeartbeatMonitorRequest,
-  Schedule,
+  computeUntilTime,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 
@@ -37,15 +34,17 @@ export interface AWSTimerClientProps {
   readonly scheduleForwarderArn: string;
 }
 
-export class AWSTimerClient implements TimerClient {
-  constructor(private props: AWSTimerClientProps) {}
+export class AWSTimerClient extends TimerClient {
+  constructor(private props: AWSTimerClientProps) {
+    super();
+  }
 
   /**
    * Starts a timer using SQS's message delay.
    *
    * The timerRequest.untilTime may only be 15 minutes or fewer in the future.
    *
-   * For longer use {@link AWSTimerClient.startTimer}.
+   * For longer use {@link TimerClient.startTimer}.
    *
    * The SQS Queue will delay for floor(untilTime - currentTime) seconds until the timer handler can pick up the message.
    *
@@ -154,24 +153,6 @@ export class AWSTimerClient implements TimerClient {
     }
   }
 
-  public async scheduleEvent<E extends HistoryStateEvent>(
-    request: ScheduleEventRequest<E>
-  ): Promise<void> {
-    const untilTime = computeUntilTime(request.schedule);
-
-    const event = {
-      ...request.event,
-      timestamp: untilTime,
-    } as E;
-
-    await this.startTimer({
-      event,
-      executionId: request.executionId,
-      type: TimerRequestType.ScheduleEvent,
-      schedule: Schedule.absolute(untilTime),
-    });
-  }
-
   /**
    * When startTimer is used, the EventBridge schedule will not self delete.
    *
@@ -222,15 +203,7 @@ function safeScheduleName(name: string) {
   return name.replaceAll(/[^0-9a-zA-Z-_.]/g, "");
 }
 
-function computeUntilTime(schedule: TimerRequest["schedule"]): string {
-  return "untilTime" in schedule
-    ? schedule.untilTime
-    : new Date(
-        schedule.baseTime.getTime() + schedule.timerSeconds * 1000
-      ).toISOString();
-}
-
-function computeTimerSeconds(schedule: TimerRequest["schedule"]) {
+export function computeTimerSeconds(schedule: TimerRequest["schedule"]) {
   return "untilTime" in schedule
     ? Math.max(
         // Compute the number of seconds (floored)

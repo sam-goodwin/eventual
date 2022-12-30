@@ -10,7 +10,7 @@ export class EventualError extends Error {
   public toJSON() {
     return {
       name: this.name,
-      message: this.message,
+      ...(this.message ? { message: this.message } : {}),
     };
   }
 }
@@ -73,5 +73,18 @@ export class HeartbeatTimeout extends Timeout {
 export class SynchronousOperationError extends EventualError {
   constructor(message?: string) {
     super("SynchronousOperationError", message);
+  }
+}
+
+/**
+ * Thrown when an activity id is not found in the service.
+ */
+export class ActivityNotFoundError extends Error {
+  constructor(activityName: string, availableNames: string[]) {
+    super(
+      `Could not find an activity with the name ${activityName}, found: ${availableNames.join(
+        ","
+      )}`
+    );
   }
 }

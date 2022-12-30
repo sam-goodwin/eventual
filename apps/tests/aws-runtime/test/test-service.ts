@@ -5,13 +5,13 @@ import {
   expectSignal,
   asyncResult,
   sendSignal,
-  Signal,
   sleepFor,
   sleepUntil,
   workflow,
   heartbeat,
   HeartbeatTimeout,
   EventualError,
+  signal,
 } from "@eventual/core";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -84,8 +84,8 @@ export const workflow4 = workflow("parallel", async () => {
   }
 });
 
-const signal = new Signal<number>("signal");
-const doneSignal = new Signal("done");
+const mySignal = signal<number>("signal");
+const doneSignal = signal("done");
 
 /**
  * the parent workflow uses thr `expectSignal` function to block and wait for events from it's child workflow.
@@ -93,7 +93,7 @@ const doneSignal = new Signal("done");
 export const parentWorkflow = workflow("parentWorkflow", async () => {
   const child = childWorkflow({ name: "child" });
   while (true) {
-    const n = await signal.expect({ timeoutSeconds: 10 });
+    const n = await mySignal.expect({ timeoutSeconds: 10 });
 
     console.log(n);
 
@@ -102,7 +102,7 @@ export const parentWorkflow = workflow("parentWorkflow", async () => {
       break;
     }
 
-    child.signal(signal, n + 1);
+    child.signal(mySignal, n + 1);
   }
 
   // join with child
@@ -127,7 +127,7 @@ export const childWorkflow = workflow(
 
     console.log(`Hi, I am ${input.name}`);
 
-    signal.on((n) => {
+    mySignal.on((n) => {
       last = n;
       block = false;
     });
@@ -138,7 +138,7 @@ export const childWorkflow = workflow(
 
     // eslint-disable-next-line no-unmodified-loop-condition
     while (!done) {
-      sendSignal(parentId, signal, last + 1);
+      sendSignal(parentId, mySignal, last + 1);
       block = true;
       if (!(await condition({ timeoutSeconds: 10 }, () => !block))) {
         throw new Error("timed out!");
@@ -171,7 +171,7 @@ export const timedOutWorkflow = workflow(
         }
       },
       signal: async () => {
-        await signal.expect({ timeoutSeconds: 2 });
+        await mySignal.expect({ timeoutSeconds: 2 });
       },
       activity: slowActivity,
       workflow: () => slowWf(undefined),

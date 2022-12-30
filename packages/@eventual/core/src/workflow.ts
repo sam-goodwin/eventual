@@ -18,11 +18,11 @@ import {
   WorkflowEventType,
 } from "./workflow-events.js";
 import { interpret, WorkflowResult } from "./interpret.js";
-import type { StartWorkflowResponse } from "./runtime/clients/workflow-client.js";
-import { ChildExecution, createWorkflowCall } from "./calls/workflow-call.js";
+import { createWorkflowCall } from "./calls/workflow-call.js";
 import { AwaitedEventual } from "./eventual.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
 import { isChain } from "./chain.js";
+import { ChildExecution, ExecutionHandle } from "./execution.js";
 
 export type WorkflowHandler<Input = any, Output = any> = (
   input: Input,
@@ -98,7 +98,7 @@ export interface Workflow<Input = any, Output = any> {
    */
   startExecution(
     request: StartExecutionRequest<Input>
-  ): Promise<StartWorkflowResponse>;
+  ): Promise<ExecutionHandle<Workflow<Input, Output>>>;
 
   /**
    * @internal - this is the internal DSL representation that produces a {@link Program} instead of a Promise.
@@ -166,15 +166,16 @@ export function workflow<Input = any, Output = any>(
   workflow.workflowName = name;
 
   workflow.startExecution = async function (input) {
-    return {
-      executionId: await getWorkflowClient().startWorkflow({
-        workflowName: name,
-        executionName: input.name,
-        input: input.input,
-        timeoutSeconds: input.timeoutSeconds,
-        ...opts,
-      }),
-    };
+    const workflowClient = getWorkflowClient();
+    const executionId = await workflowClient.startWorkflow({
+      workflowName: name,
+      executionName: input.name,
+      input: input.input,
+      timeoutSeconds: input.timeoutSeconds,
+      ...opts,
+    });
+
+    return new ExecutionHandle(executionId, workflowClient);
   };
 
   workflow.definition = (
@@ -200,7 +201,8 @@ export function progressWorkflow(
   historyEvents: HistoryStateEvent[],
   taskEvents: HistoryStateEvent[],
   workflowContext: WorkflowContext,
-  executionId: string
+  executionId: string,
+  baseTime: Date = new Date()
 ): ProgressWorkflowResult {
   // historical events and incoming events will be fed into the workflow to resume/progress state
   const uniqueTaskEvents = filterEvents<HistoryStateEvent>(
@@ -211,7 +213,7 @@ export function progressWorkflow(
   const inputEvents = [...historyEvents, ...uniqueTaskEvents];
 
   // Generates events that are time sensitive, like sleep completed events.
-  const syntheticEvents = generateSyntheticEvents(inputEvents);
+  const syntheticEvents = generateSyntheticEvents(inputEvents, baseTime);
 
   const allEvents = [...inputEvents, ...syntheticEvents];
 
@@ -259,10 +261,10 @@ export function progressWorkflow(
  * Generates synthetic events, for example, {@link SleepCompleted} events when the time has passed, but a real completed event has not come in yet.
  */
 export function generateSyntheticEvents(
-  events: HistoryStateEvent[]
+  events: HistoryStateEvent[],
+  baseTime: Date
 ): SleepCompleted[] {
   const unresolvedSleep: Record<number, SleepScheduled> = {};
-  const now = new Date();
 
   const sleepEvents = events.filter(
     (event): event is SleepScheduled | SleepCompleted =>
@@ -280,13 +282,15 @@ export function generateSyntheticEvents(
   const syntheticSleepComplete: SleepCompleted[] = Object.values(
     unresolvedSleep
   )
-    .filter((event) => new Date(event.untilTime).getTime() <= now.getTime())
+    .filter(
+      (event) => new Date(event.untilTime).getTime() <= baseTime.getTime()
+    )
     .map(
       (e) =>
         ({
           type: WorkflowEventType.SleepCompleted,
           seq: e.seq,
-          timestamp: now.toISOString(),
+          timestamp: baseTime.toISOString(),
         } satisfies SleepCompleted)
     );
 

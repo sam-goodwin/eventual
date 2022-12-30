@@ -1,0 +1,12 @@
+{
+  "extends": "../../../tsconfig-base",
+  "compilerOptions": {
+    "rootDir": ".",
+    "types": ["@types/node", "@types/jest"],
+    "noEmit": true,
+    "allowJs": true
+  },
+  "include": ["src", "test"],
+  "exclude": ["lib", "node_modules"],
+  "references": [{ "path": "../core" }, { "path": "../compiler" }]
+}

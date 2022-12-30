@@ -3,6 +3,9 @@ import "jest";
 import path from "path";
 import esbuild from "esbuild";
 import { eventualESPlugin } from "../src/esbuild-plugin.js";
+import url from "url";
+
+const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
 describe("esbuild-plugin", () => {
   test("ts workflow", async () => {
@@ -15,16 +18,7 @@ describe("esbuild-plugin", () => {
       write: false,
     });
 
-    expect(
-      bundle
-        .outputFiles![0]?.text.split("\n")
-        // HACK: filter out comment that is breaking the tests when run from VS Code
-        // TODO: figure out why running vs code test is having trouble identifying the right
-        //       tsconfig.test.json without a configuration at the root.
-        // HINT: something to do with `.vscode/launch.json`
-        .filter((line) => !line.includes("test-files/workflow.ts"))
-        .join("\n")
-    ).toMatchSnapshot();
+    expect(sanitizeBundle(bundle)).toMatchSnapshot();
   });
 
   test("ts not workflow", async () => {
@@ -39,7 +33,7 @@ describe("esbuild-plugin", () => {
       write: false,
     });
 
-    expect(bundle.outputFiles![0]?.text).toMatchSnapshot();
+    expect(sanitizeBundle(bundle)).toMatchSnapshot();
   });
 
   test("mts workflow", async () => {
@@ -54,7 +48,7 @@ describe("esbuild-plugin", () => {
       write: false,
     });
 
-    expect(bundle.outputFiles![0]?.text).toMatchSnapshot();
+    expect(sanitizeBundle(bundle)).toMatchSnapshot();
   });
 
   test("json file", async () => {
@@ -69,7 +63,7 @@ describe("esbuild-plugin", () => {
       write: false,
     });
 
-    expect(bundle.outputFiles![0]?.text).toMatchSnapshot();
+    expect(sanitizeBundle(bundle)).toMatchSnapshot();
   });
 
   test("open-account", async () => {
@@ -84,15 +78,23 @@ describe("esbuild-plugin", () => {
       write: false,
     });
 
-    expect(
-      bundle
-        .outputFiles![0]?.text.split("\n")
-        // HACK: filter out comment that is breaking the tests when run from VS Code
-        // TODO: figure out why running vs code test is having trouble identifying the right
-        //       tsconfig.test.json without a configuration at the root.
-        // HINT: something to do with `.vscode/launch.json`
-        .filter((line) => !line.includes("test-files/workflow.ts"))
-        .join("\n")
-    ).toMatchSnapshot();
+    expect(sanitizeBundle(bundle)).toMatchSnapshot();
   });
 });
+
+function sanitizeBundle(
+  bundle: esbuild.BuildResult & {
+    outputFiles: esbuild.OutputFile[];
+  }
+) {
+  return (
+    bundle
+      .outputFiles![0]?.text.split("\n")
+      // HACK: filter out comment that is breaking the tests when run from VS Code
+      // TODO: figure out why running vs code test is having trouble identifying the right
+      //       tsconfig.test.json without a configuration at the root.
+      // HINT: something to do with `.vscode/launch.json`
+      .filter((line) => !line.includes("test-files/"))
+      .join("\n")
+  );
+}

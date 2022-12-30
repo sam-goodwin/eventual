@@ -1,12 +1,16 @@
 import "@eventual/entry/injected";
 
 import type { EventBridgeEvent } from "aws-lambda";
-import { createEventHandler } from "@eventual/core";
+import {
+  createEventHandlerWorker,
+  GlobalEventHandlerProvider,
+} from "@eventual/core";
 import { createEventClient, createWorkflowClient } from "../clients/create.js";
 
-export const processEvent = createEventHandler({
+export const processEvent = createEventHandlerWorker({
   workflowClient: createWorkflowClient(),
   eventClient: createEventClient(),
+  eventHandlerProvider: new GlobalEventHandlerProvider(),
 });
 
 export default async function (event: EventBridgeEvent<string, any>) {

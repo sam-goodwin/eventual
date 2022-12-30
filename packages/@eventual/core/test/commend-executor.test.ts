@@ -1,3 +1,4 @@
+import { jest } from "@jest/globals";
 import { CommandType } from "../src/command.js";
 import {
   ActivityScheduled,
@@ -297,11 +298,7 @@ describe("send signal", () => {
 
     expect(mockWorkflowClient.sendSignal).toHaveBeenCalledWith<
       [SendSignalRequest]
-    >({
-      signal: "signal",
-      executionId: "exec1",
-      id: `${executionId}/${0}`,
-    });
+    >({ signal: "signal", executionId: "exec1", id: `${executionId}/${0}` });
 
     expect(event).toMatchObject<SignalSent>({
       seq: 0,

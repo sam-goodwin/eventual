@@ -13,7 +13,11 @@ import { decodeActivityToken } from "../activity-token.js";
 import { ActivityRuntimeClient } from "./activity-runtime-client.js";
 
 export abstract class WorkflowClient {
-  constructor(private activityRuntimeClient: ActivityRuntimeClient) {}
+  constructor(
+    private activityRuntimeClient: ActivityRuntimeClient,
+    protected baseTime: () => Date
+  ) {}
+
   /**
    * Start a workflow execution
    * @param name Suffix of execution id
@@ -62,7 +66,7 @@ export abstract class WorkflowClient {
               ? request.signal
               : request.signal.id,
         },
-        undefined,
+        this.baseTime(),
         request.id
       )
     );
@@ -115,7 +119,7 @@ export abstract class WorkflowClient {
     return await this.activityRuntimeClient.heartbeatActivity(
       data.payload.executionId,
       data.payload.seq,
-      new Date().toISOString()
+      this.baseTime().toISOString()
     );
   }
 
@@ -125,10 +129,13 @@ export abstract class WorkflowClient {
     const data = decodeActivityToken(activityToken);
     await this.submitWorkflowTask(
       data.payload.executionId,
-      createEvent<ActivityCompleted | ActivityFailed>({
-        ...event,
-        seq: data.payload.seq,
-      })
+      createEvent<ActivityCompleted | ActivityFailed>(
+        {
+          ...event,
+          seq: data.payload.seq,
+        },
+        this.baseTime()
+      )
     );
   }
 }
@@ -140,7 +147,7 @@ export interface SendSignalRequest {
   /**
    * Execution scoped unique event id. Duplicates will be deduplicated.
    */
-  id: string;
+  id?: string;
 }
 
 export interface StartWorkflowRequest<W extends Workflow = Workflow>
@@ -187,7 +194,7 @@ export interface CompleteActivityRequest<T = any> {
 export interface FailActivityRequest {
   activityToken: string;
   error: string;
-  message: string;
+  message?: string;
 }
 
 export interface HeartbeatRequest {
