@@ -1,6 +1,4 @@
-lib/
 src/
 tsconfig.*
 *.tgz
 .turbo
-!bin/

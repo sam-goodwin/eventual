@@ -3,14 +3,15 @@
   "version": "0.4.1",
   "type": "commonjs",
   "files": [
-    "bin"
+    "bin",
+    "lib"
   ],
   "bin": {
     "create-eventual": "./bin/index.js"
   },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --outfile=bin/index.js --platform=node",
-    "watch": "esbuild src/index.ts --bundle --outfile=bin/index.js --platform=node --watch"
+    "build": "esbuild src/index.ts --bundle --outfile=lib/cli.js --platform=node",
+    "watch": "esbuild src/index.ts --bundle --outfile=lib/cli.js --platform=node --watch"
   },
   "dependencies": {
     "aws-cdk": "^2.50.0",
