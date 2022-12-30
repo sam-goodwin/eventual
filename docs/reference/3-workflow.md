@@ -91,7 +91,7 @@ workflow("myWorkflow", async () => {
 });
 ```
 
-You can specify a timeout in seconds when calling expect. If the signal is not received within the specified time, the method will throw a `TimeoutException`.
+You can specify a timeout in seconds when calling expect. If the signal is not received within the specified time, the method will throw a `Timeout` error.
 
 ```ts
 try {
@@ -133,10 +133,12 @@ await sleepFor(10);
 
 ### `sleepUntil` a specific ISO timestamp
 
-The `sleepUntil` function allows you to pause the execution of a workflow until a specific time, specified as an ISO8601 formatted string. For example:
+The `sleepUntil` function allows you to pause the execution of a workflow until a specific time, specified as an ISO8601 formatted string or as a `Date` object. For example:
 
 ```ts
 await sleepUntil("2013-01-01T00:00:00.000Z");
+
+await sleepUntil(new Date(epochMilliseconds));
 ```
 
 ### `sleepWhile` a condition is true
@@ -168,7 +170,11 @@ A workflow function is a program that executes in a durable, long-running manner
 
 To carry out an activity, the workflow function enqueues a message on an internal message bus. A worker listening to that queue then performs the activity and sends a message back to the workflow function with the result. This process allows the workflow to execute operations in a reliable manner, as each operation is guaranteed to be executed exactly once, even in the event of intermittent failures.
 
+![Activity Queue](./3-workflow-arch.png)
+
 The use of an internal message bus and worker process helps to eliminate the risk of failure inherent in single-invocation runtimes such as Lambda functions or containers, which can crash, timeout, or reboot at any time. By contrast, a workflow function is able to continue executing and resuming even in the face of such failures, making it a more durable and reliable runtime for long-running or business-critical processes.
+
+![Retry Crashed Workflow](./3-workflow-retry.png)
 
 ## Durable Execution with Event Sourcing and Re-entrancy
 
