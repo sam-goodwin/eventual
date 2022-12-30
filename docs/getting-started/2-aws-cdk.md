@@ -89,7 +89,7 @@ If you're already a user of the AWS CDK and wish to begin using Eventual as a pa
 import { Service } from "@eventual/aws-cdk";
 ```
 
-Then, instantiate the `Service` within a Stack and point it at the file containing your application code.
+Then, instantiate the `Service` within a Stack and point it at the file containing your business logic.
 
 ```ts
 class MyStack extends Stack {
@@ -109,3 +109,46 @@ class MyStack extends Stack {
   }
 }
 ```
+
+### Services Package Configuration
+
+The `services` package is where you should store your business logic code. It is recommended to create a nested package within the infrastructure package, as shown below:
+
+```
+services/
+  src/
+    service.ts // your service's entrypoint
+  package.json
+  tsconfig.json
+```
+
+To take advantage of ESM modules and tree-shaking, make sure to set `type: "module"` in the `package.json` file. This will result in smaller cold starts and lower memory usage.
+
+```json
+{
+  "type": "module",
+  "dependencies": {
+    "@eventual/aws-runtime": "*",
+    "@eventual/core": "*"
+  }
+}
+```
+
+In the `tsconfig.json` file, the following configurations are recommended to ensure that all of Eventual's features work properly:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2021",
+    "lib": ["DOM"],
+    "module": "esnext",
+    "moduleResolution": "NodeNext"
+  }
+}
+```
+
+The `"DOM"` lib is required for Eventual's API (see: [Docs](../reference/1-api.md#router)).
+
+`"esnext"` and `"NodeNext"` configure TypeScript to emit ESM-optimized code.
+
+The `"ES2021"` target configures TypeScript to emit an efficient form of EcmaScript compatible with Node 16+.

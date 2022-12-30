@@ -64,7 +64,7 @@ If you're already a user of SST and wish to begin using Eventual as a part of an
 import { Service } from "@eventual/aws-cdk";
 ```
 
-Then, within your Stack, instantiate a `Service` and specify the file containing your application code as the `entry` property. For example:
+Then, within your Stack, instantiate a `Service` and specify the file containing your business logic as the `entry` property. For example:
 
 ```ts
 import { StackContext } from "@serverless-stack/resources";
