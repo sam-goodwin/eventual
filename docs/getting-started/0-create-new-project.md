@@ -64,6 +64,8 @@ Event Bus ARN:  arn:aws:events:us-west-2:<account-id>:event-bus/my-service
 
 ## 7. Make an API HTTP request
 
+Trigger the `POST /work` API to see how workflows work:
+
 ```
 > curl -X POST https://<uuid>.execute-api.us-west-2.amazonaws.com/work\
   -d '["item1", "item2"]'\
@@ -77,9 +79,17 @@ Event Bus ARN:  arn:aws:events:us-west-2:<account-id>:event-bus/my-service
 > npx eventual logs --execution <execution-id>
 ```
 
-## X. Next Steps
+## 9. Tail the logs of an execution
 
-Once you've deployed your Eventual project, you can proceed to the corresponding documentation for your chosen IaC platform:
+```
+> npx eventual logs --execution <execution-id> --tail
+```
 
-1. [AWS Cloud Development Kit (CDK)](./2-aws-cdk.md) - an AWS developer experience
-2. [AWS SST](./1-aws-sst.md) - an AWS developer experience optimized for serverless
+## Next Steps
+
+Now that you have a basic understanding of Eventual's concepts, you can continue learning by:
+
+- Reading the [Reference Docs](../reference/0-service.md) for a more in-depth understanding of Eventual's components and how to use them.
+- Checking out the [cheat sheet](../reference/3.1-workflow-patterns.md) for an overview of patterns you can apply to your own projects.
+- Doing the [Bank Account Tutorial](../tutorial/1-bank-account.md) to practice using Eventual in a real-world scenario.
+- Exploring the project template for your chosen infrastructure-as-code (IaC) platform: [AWS Cloud Development Kit (CDK)](./2-aws-cdk.md) or [AWS SST](./1-aws-sst.md).
