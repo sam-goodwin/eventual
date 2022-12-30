@@ -1,0 +1,18 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+      http:
+
+exporters:
+  logging:
+    loglevel: debug
+  awsxray:
+    index_all_attributes: true
+
+#enables output for traces to xray
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [logging, awsxray]

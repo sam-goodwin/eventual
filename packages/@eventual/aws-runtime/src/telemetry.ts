@@ -10,6 +10,7 @@ import "./fetch-polyfill.js";
 import { diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
 import { serviceName, telemetryComponentName } from "./env.js";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
+import { AWSXRayIdGenerator } from "@opentelemetry/id-generator-aws-xray";
 
 /**
  * Register the openetelemetry provider with the api.
@@ -24,6 +25,8 @@ export function registerTelemetryApi(): BasicTracerProvider {
       [SemanticResourceAttributes.SERVICE_NAMESPACE]: serviceName(),
       [SemanticResourceAttributes.SERVICE_NAME]: telemetryComponentName(),
     }),
+    //Important for traces to show up on xray
+    idGenerator: new AWSXRayIdGenerator(),
   });
   provider.addSpanProcessor(new SimpleSpanProcessor(new OTLPTraceExporter()));
   provider.register({ contextManager: new AsyncHooksContextManager() });

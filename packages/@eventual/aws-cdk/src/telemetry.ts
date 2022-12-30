@@ -1,5 +1,5 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
-import { Duration } from "aws-cdk-lib";
+import { DockerImage, Duration } from "aws-cdk-lib";
 import {
   Architecture,
   Code,
@@ -11,6 +11,13 @@ import {
   LayerVersion,
 } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
+import path from "path";
+import fs from "fs";
+import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
+
+export interface TelemetryProps {
+  collectorConfigPath?: string;
+}
 
 export interface ITelemetry {
   collectorFn: IFunction;
@@ -20,9 +27,16 @@ export interface ITelemetry {
 export class Telemetry extends Construct {
   collectorFn: IFunction;
   collectorFnUrl: FunctionUrl;
+  collectorConfigPath?: string;
 
-  constructor(scope: Construct, id: string) {
+  constructor(scope: Construct, id: string, props?: TelemetryProps) {
     super(scope, id);
+
+    let collectorConfigPath =
+      props?.collectorConfigPath ??
+      require.resolve(
+        "@eventual/aws-runtime/otlp-proxy-lamdba/otel-config.yaml"
+      );
 
     this.collectorFn = new Function(this, "collector", {
       runtime: Runtime.PROVIDED_AL2,
@@ -31,18 +45,54 @@ export class Telemetry extends Construct {
       timeout: Duration.seconds(10),
       handler: "bootstrap",
       code: Code.fromAsset(
-        require.resolve("@eventual/aws-runtime/lambda-collector/bootstrap.zip")
+        require.resolve("@eventual/aws-runtime/otlp-proxy-lambda/bootstrap.zip")
       ),
       layers: [
         new LayerVersion(this, "otel-collector-extension", {
           code: Code.fromAsset(
             require.resolve(
-              "@eventual/aws-runtime/lambda-collector/collector-extension.zip"
+              "@eventual/aws-runtime/otlp-proxy-lambda/collector-extension.zip"
             )
           ),
         }),
+        new LayerVersion(this, "otel-config", {
+          code: Code.fromAsset(path.dirname(collectorConfigPath), {
+            bundling: {
+              image: new DockerImage(""),
+              local: {
+                tryBundle(outputDir, _options) {
+                  fs.copyFileSync(
+                    collectorConfigPath!,
+                    path.join(outputDir, path.basename(collectorConfigPath)),
+                    fs.constants.COPYFILE_FICLONE
+                  );
+                  return true;
+                },
+              },
+            },
+          }),
+        }),
+      ],
+      environment: {
+        OPENTELEMETRY_COLLECTOR_CONFIG_FILE: `/opt/${path.basename(
+          collectorConfigPath
+        )}`,
+      },
+      initialPolicy: [
+        new PolicyStatement({
+          actions: [
+            "xray:PutTraceSegments",
+            "xray:PutTelemetryRecords",
+            "xray:GetSamplingRules",
+            "xray:GetSamplingTargets",
+            "xray:GetSamplingStatisticSummaries",
+          ],
+          resources: ["*"],
+          effect: Effect.ALLOW,
+        }),
       ],
     });
+    this.collectorFn;
     this.collectorFnUrl = this.collectorFn.addFunctionUrl({
       authType: FunctionUrlAuthType.NONE,
     });

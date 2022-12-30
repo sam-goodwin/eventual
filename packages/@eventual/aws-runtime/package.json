@@ -5,7 +5,7 @@
       "import": "./lib/esm/index.js",
       "require": "./lib/cjs/index.js"
     },
-    "./lambda-collector/*": "./lambda-collector/*"
+    "./otlp-proxy-lambda/*": "./otlp-proxy-lambda/*"
   },
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
@@ -23,6 +23,7 @@
     "@opentelemetry/context-async-hooks": "^1.8.0",
     "@opentelemetry/core": "^1.8.0",
     "@opentelemetry/exporter-trace-otlp-proto": "^0.34.0",
+    "@opentelemetry/id-generator-aws-xray": "^1.1.1",
     "@opentelemetry/resources": "^1.8.0",
     "@opentelemetry/sdk-trace-base": "^1.8.0",
     "@opentelemetry/semantic-conventions": "^1.8.0",

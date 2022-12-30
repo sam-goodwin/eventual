@@ -114,7 +114,11 @@ export function createOrchestrator({
           throw new Error(`no such workflow with name '${workflowName}'`);
         }
         // TODO: get workflow from execution id
-        const orchestrateSpan = tracer.startSpan("orchestrate");
+        const orchestrateSpan = tracer.startSpan("orchestrateExecution", {
+          attributes: {
+            executionId,
+          },
+        });
         const ret = await orchestrateExecution(workflow, executionId, records);
         orchestrateSpan.end();
         return ret;

@@ -29,6 +29,7 @@ export interface ServiceProps {
   environment?: {
     [key: string]: string;
   };
+  telemetryCollectorConfigPath?: string;
 }
 
 export class Service extends Construct implements IGrantable {
@@ -143,7 +144,9 @@ export class Service extends Construct implements IGrantable {
       events: this.events,
     });
 
-    this.telemetry = new Telemetry(this, "Telemetry");
+    this.telemetry = new Telemetry(this, "Telemetry", {
+      collectorConfigPath: props.telemetryCollectorConfigPath,
+    });
     this.telemetry.configureFunction(this.activities.worker, "worker");
     this.telemetry.configureFunction(
       this.workflows.orchestrator,
