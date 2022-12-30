@@ -298,7 +298,7 @@ describe("send signal", () => {
 
     expect(mockWorkflowClient.sendSignal).toHaveBeenCalledWith<
       [SendSignalRequest]
-    >({ signal: "signal", executionId: "exec1", id: `${executionId}/${0}` });
+    >({ signal: "signal", execution: "exec1", id: `${executionId}/${0}` });
 
     expect(event).toMatchObject<SignalSent>({
       seq: 0,
@@ -335,7 +335,7 @@ describe("send signal", () => {
       [SendSignalRequest]
     >({
       signal: "signal",
-      executionId: childExecId,
+      execution: childExecId,
       id: `${executionId}/${1}`,
       payload: undefined,
     });

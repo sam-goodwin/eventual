@@ -5,9 +5,8 @@ import {
   GetExecutionsRequest,
   GetExecutionsResponse,
   PublishEventsRequest,
-  StartExecutionResponse,
 } from "../../service-client.js";
-import { Execution } from "../../execution.js";
+import { Execution, ExecutionHandle } from "../../execution.js";
 import { Workflow } from "../../workflow.js";
 import { EventClient } from "./event-client.js";
 import { ExecutionHistoryClient } from "./execution-history-client.js";
@@ -24,7 +23,7 @@ import {
 export interface RuntimeServiceClientProps {
   workflowClient: WorkflowClient;
   executionHistoryClient: ExecutionHistoryClient;
-  eventClients: EventClient;
+  eventClient: EventClient;
 }
 
 /**
@@ -35,11 +34,13 @@ export interface RuntimeServiceClientProps {
 export class RuntimeServiceClient implements EventualServiceClient {
   constructor(private props: RuntimeServiceClientProps) {}
 
-  public async startExecution<
-    W extends Workflow<any, any> = Workflow<any, any>
-  >(request: StartWorkflowRequest<W>): Promise<StartExecutionResponse> {
-    const executionId = await this.props.workflowClient.startWorkflow(request);
-    return { executionId };
+  public async startExecution<W extends Workflow = Workflow>(
+    request: StartWorkflowRequest<W>
+  ): Promise<ExecutionHandle<W>> {
+    const executionId = await this.props.workflowClient.startWorkflow<W>(
+      request
+    );
+    return new ExecutionHandle(executionId, this);
   }
 
   public async getExecutions(
@@ -65,7 +66,7 @@ export class RuntimeServiceClient implements EventualServiceClient {
   }
 
   public publishEvents(request: PublishEventsRequest): Promise<void> {
-    return this.props.eventClients.publish(...request.events);
+    return this.props.eventClient.publish(...request.events);
   }
 
   public sendActivitySuccess(

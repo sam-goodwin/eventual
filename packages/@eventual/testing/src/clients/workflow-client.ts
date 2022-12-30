@@ -26,12 +26,16 @@ export class TestWorkflowClient extends WorkflowClient {
     super(activityRuntimeClient, () => timeConnector.getTime());
   }
 
-  public async startWorkflow<W extends Workflow<any, any> = Workflow<any, any>>(
+  public async startWorkflow<W extends Workflow = Workflow>(
     request: StartWorkflowRequest<W>
   ): Promise<string> {
     const name = request.executionName ?? ulid();
+    const workflowName =
+      typeof request.workflow === "string"
+        ? request.workflow
+        : request.workflow.workflowName;
     const executionId = formatExecutionId(
-      request.workflowName,
+      workflowName,
       request.executionName ?? ulid()
     );
 
@@ -41,7 +45,7 @@ export class TestWorkflowClient extends WorkflowClient {
       status: ExecutionStatus.IN_PROGRESS,
       id: executionId,
       startTime: baseTime.toISOString(),
-      workflowName: request.workflowName,
+      workflowName,
       parent:
         request.parentExecutionId !== undefined && request.seq !== undefined
           ? { executionId: request.parentExecutionId, seq: request.seq }
@@ -58,7 +62,7 @@ export class TestWorkflowClient extends WorkflowClient {
         {
           type: WorkflowEventType.WorkflowStarted,
           context: { name, parentId: request.parentExecutionId },
-          workflowName: request.workflowName,
+          workflowName,
           input: request.input,
           timeoutTime: request.timeoutSeconds
             ? new Date(

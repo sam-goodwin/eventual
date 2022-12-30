@@ -14,11 +14,11 @@ import {
   WorkflowStarted,
   WorkflowTask,
   WorkflowClient,
-  StartWorkflowRequest,
   formatExecutionId,
   createEvent,
   GetExecutionsResponse,
   GetExecutionsRequest,
+  StartWorkflowRequest,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
@@ -45,12 +45,14 @@ export class AWSWorkflowClient extends WorkflowClient {
    */
   public async startWorkflow<W extends Workflow = Workflow>({
     executionName = ulid(),
-    workflowName,
+    workflow,
     input,
     parentExecutionId,
     seq,
     timeoutSeconds,
   }: StartWorkflowRequest<W>) {
+    const workflowName =
+      typeof workflow === "string" ? workflow : workflow.workflowName;
     const executionId = formatExecutionId(workflowName, executionName);
     console.log("execution input:", input);
 

@@ -6,14 +6,19 @@ import {
   SignalReceived,
   WorkflowEventType,
 } from "../../workflow-events.js";
-import { Execution, ExecutionStatus } from "../../execution.js";
+import {
+  Execution,
+  ExecutionHandle,
+  ExecutionStatus,
+} from "../../execution.js";
 import { Signal } from "../../signals.js";
-import { Workflow, WorkflowInput, WorkflowOptions } from "../../workflow.js";
+import { Workflow, WorkflowOptions } from "../../workflow.js";
 import { decodeActivityToken } from "../activity-token.js";
 import { ActivityRuntimeClient } from "./activity-runtime-client.js";
 import {
   GetExecutionsRequest,
   GetExecutionsResponse,
+  StartExecutionRequest,
 } from "../../service-client.js";
 
 export abstract class WorkflowClient {
@@ -58,8 +63,12 @@ export abstract class WorkflowClient {
    * that runs when the signal is received.
    */
   public async sendSignal(request: SendSignalRequest): Promise<void> {
+    const executionId =
+      typeof request.execution === "string"
+        ? request.execution
+        : request.execution.executionId;
     await this.submitWorkflowTask(
-      request.executionId,
+      executionId,
       createEvent<SignalReceived>(
         {
           type: WorkflowEventType.SignalReceived,
@@ -143,10 +152,10 @@ export abstract class WorkflowClient {
   }
 }
 
-export interface SendSignalRequest {
-  executionId: string;
-  signal: string | Signal;
-  payload?: any;
+export interface SendSignalRequest<Payload = any> {
+  execution: ExecutionHandle<any> | string;
+  signal: string | Signal<Payload>;
+  payload?: Payload;
   /**
    * Execution scoped unique event id. Duplicates will be deduplicated.
    */
@@ -154,27 +163,8 @@ export interface SendSignalRequest {
 }
 
 export interface StartWorkflowRequest<W extends Workflow = Workflow>
-  extends WorkflowOptions {
-  /**
-   * Name of the workflow execution.
-   *
-   * Only one workflow can exist for an ID. Requests to start a workflow
-   * with the name of an existing workflow will fail.
-   *
-   * @default - a unique name is generated.
-   */
-  executionName?: string;
-  /**
-   * Name of the workflow to execute.
-   */
-  workflowName: string;
-  /**
-   * Input payload for the workflow function.
-   */
-  input?: WorkflowInput<W>;
-  /**
-   * ID of the parent execution if this is a child workflow
-   */
+  extends StartExecutionRequest<W>,
+    WorkflowOptions {
   parentExecutionId?: string;
   /**
    * Sequence ID of this execution if this is a child workflow

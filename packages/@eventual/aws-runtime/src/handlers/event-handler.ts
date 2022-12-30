@@ -5,11 +5,10 @@ import {
   createEventHandlerWorker,
   GlobalEventHandlerProvider,
 } from "@eventual/core";
-import { createEventClient, createWorkflowClient } from "../clients/create.js";
+import { createServiceClient } from "../clients/create.js";
 
 export const processEvent = createEventHandlerWorker({
-  workflowClient: createWorkflowClient(),
-  eventClient: createEventClient(),
+  serviceClient: createServiceClient(),
   eventHandlerProvider: new GlobalEventHandlerProvider(),
 });
 

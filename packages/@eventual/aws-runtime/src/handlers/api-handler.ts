@@ -2,14 +2,13 @@ import "@eventual/entry/injected";
 
 import { createApiHandler } from "@eventual/core";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
-import { createEventClient, createWorkflowClient } from "../clients/create.js";
+import { createServiceClient } from "../clients/create.js";
 
 // TODO: remove once we can upgrade to Node 18 in AWS Lambda
 import "./fetch-polyfill.js";
 
 const processRequest = createApiHandler({
-  workflowClient: createWorkflowClient(),
-  eventClient: createEventClient(),
+  serviceClient: createServiceClient(),
 });
 
 /**

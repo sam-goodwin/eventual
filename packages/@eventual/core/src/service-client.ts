@@ -1,15 +1,14 @@
 import { EventEnvelope } from "./event.js";
-import { Execution, ExecutionStatus } from "./execution.js";
+import { Execution, ExecutionHandle, ExecutionStatus } from "./execution.js";
 import {
   CompleteActivityRequest,
   FailActivityRequest,
   HeartbeatRequest,
   HeartbeatResponse,
   SendSignalRequest,
-  StartWorkflowRequest,
 } from "./runtime/clients/workflow-client.js";
 import { WorkflowEvent } from "./workflow-events.js";
-import { Workflow } from "./workflow.js";
+import { Workflow, WorkflowInput, WorkflowOptions } from "./workflow.js";
 
 /**
  * Top level Eventual Client used by systems outside of an Eventual Service to interact with it.
@@ -20,9 +19,9 @@ export interface EventualServiceClient {
    * @param name Suffix of execution id
    * @param input Workflow parameters
    */
-  startExecution<W extends Workflow = Workflow>(
-    request: StartWorkflowRequest<W>
-  ): Promise<StartExecutionResponse>;
+  startExecution<W extends Workflow>(
+    request: StartExecutionRequest<W>
+  ): Promise<ExecutionHandle<W>>;
 
   /**
    * Retrieves one or more workflow execution.
@@ -121,3 +120,24 @@ export interface ExecutionEventsResponse {
 }
 
 export type SortOrder = "Asc" | "Desc";
+
+export interface StartExecutionRequest<W extends Workflow = Workflow>
+  extends WorkflowOptions {
+  /**
+   * Name of the workflow execution.
+   *
+   * Only one workflow can exist for an ID. Requests to start a workflow
+   * with the name of an existing workflow will fail.
+   *
+   * @default - a unique name is generated.
+   */
+  executionName?: string;
+  /**
+   * Name of the workflow to execute.
+   */
+  workflow: string | W;
+  /**
+   * Input payload for the workflow function.
+   */
+  input: WorkflowInput<W>;
+}

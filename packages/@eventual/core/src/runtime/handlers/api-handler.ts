@@ -1,11 +1,9 @@
 import { api } from "../../api.js";
-import { registerEventClient, registerWorkflowClient } from "../../global.js";
-import type { WorkflowClient } from "../clients/workflow-client.js";
-import type { EventClient } from "../index.js";
+import { registerServiceClient } from "../../global.js";
+import { EventualServiceClient } from "../../service-client.js";
 
 export interface ApiHandlerDependencies {
-  workflowClient: WorkflowClient;
-  eventClient: EventClient;
+  serviceClient: EventualServiceClient;
 }
 
 /**
@@ -14,13 +12,9 @@ export interface ApiHandlerDependencies {
  * decoupled from a runtime's specifics by the clients. A runtime must
  * inject its own client implementations designed for that platform.
  */
-export function createApiHandler({
-  workflowClient,
-  eventClient,
-}: ApiHandlerDependencies) {
-  // make the workflow client available to web hooks
-  registerWorkflowClient(workflowClient);
-  registerEventClient(eventClient);
+export function createApiHandler({ serviceClient }: ApiHandlerDependencies) {
+  // make the service client available to web hooks
+  registerServiceClient(serviceClient);
 
   api.all("*", () => new Response("Not Found.", { status: 404 }));
 

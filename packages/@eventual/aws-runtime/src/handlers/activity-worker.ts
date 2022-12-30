@@ -10,6 +10,7 @@ import middy from "@middy/core";
 import {
   createActivityRuntimeClient,
   createEventClient,
+  createServiceClient,
   createTimerClient,
   createWorkflowClient,
 } from "../clients/create.js";
@@ -25,5 +26,6 @@ export default middy<ActivityWorkerRequest>((request) =>
     metricsClient: AWSMetricsClient,
     logger,
     activityProvider: new GlobalActivityProvider(),
+    serviceClient: createServiceClient(),
   })(request, new Date())
 ).use(loggerMiddlewares);

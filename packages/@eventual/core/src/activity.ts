@@ -2,7 +2,7 @@ import { createActivityCall } from "./calls/activity-call.js";
 import {
   callableActivities,
   getActivityContext,
-  getWorkflowClient,
+  getServiceClient,
 } from "./global.js";
 import { CompleteActivityRequest } from "./runtime/clients/workflow-client.js";
 import { isActivityWorker, isOrchestratorWorker } from "./runtime/flags.js";
@@ -175,7 +175,7 @@ export function activity<Arguments extends any[], Output = any>(
     }
   }) as ActivityFunction<Arguments, Output>;
   func.complete = async function (request) {
-    return getWorkflowClient().completeActivity(request);
+    return getServiceClient().sendActivitySuccess(request);
   };
   func.activityID = activityID;
   return func;

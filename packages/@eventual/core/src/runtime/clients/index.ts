@@ -5,3 +5,4 @@ export * from "./metrics-client.js";
 export * from "./timer-client.js";
 export * from "./workflow-client.js";
 export * from "./workflow-runtime-client.js";
+export * from "./runtime-service-clients.js";

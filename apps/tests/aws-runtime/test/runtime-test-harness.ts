@@ -151,7 +151,7 @@ export function eventualRuntimeTestHarness(
   // start all of the workflow immediately, the tests can wait for them.
   const executionTests = tester.tests.map((_test) => ({
     execution: workflowClient.startWorkflow({
-      workflowName: _test.workflow.workflowName,
+      workflow: _test.workflow,
       input: _test.input,
     }),
     test: _test,

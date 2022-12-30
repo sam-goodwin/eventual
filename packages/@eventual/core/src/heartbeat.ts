@@ -1,4 +1,4 @@
-import { getActivityContext, getWorkflowClient } from "./global.js";
+import { getActivityContext, getServiceClient } from "./global.js";
 import { HeartbeatResponse } from "./runtime/clients/workflow-client.js";
 import { isActivityWorker, isOrchestratorWorker } from "./runtime/flags.js";
 
@@ -20,12 +20,12 @@ export async function heartbeat(
       "Heartbeat is not currently supported from within a workflow. Use an activity with `heartbeat()`."
     );
   } else if (activityToken) {
-    return await getWorkflowClient().heartbeatActivity({
+    return await getServiceClient().sendActivityHeartbeat({
       activityToken,
     });
   } else if (isActivityWorker()) {
     const token = getActivityContext().activityToken;
-    return await getWorkflowClient().heartbeatActivity({
+    return await getServiceClient().sendActivityHeartbeat({
       activityToken: token,
     });
   } else {
