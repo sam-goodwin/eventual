@@ -1,12 +1,17 @@
-import { bundle } from "./eventual-bundle.js";
+import { BuildSource, bundleSources } from "./eventual-bundle.js";
 
 export async function cli() {
   try {
-    const [, , outDir, entry] = process.argv;
-    if (!(outDir && entry)) {
-      throw new Error(`Usage: eventual-build <out-dir> <entry-point>`);
+    const [, , outDir, serviceEntry, sources] = process.argv;
+    if (!(outDir && serviceEntry && sources)) {
+      throw new Error(
+        `Usage: eventual-build <out-dir> <entry-point> <sources>`
+      );
     }
-    await bundle(outDir, entry);
+    const sourceEntries = JSON.parse(
+      Buffer.from(sources, "base64").toString("utf-8")
+    ) as BuildSource[];
+    await bundleSources(outDir, serviceEntry, sourceEntries);
   } catch (err) {
     console.error(err);
     process.exit(1);
