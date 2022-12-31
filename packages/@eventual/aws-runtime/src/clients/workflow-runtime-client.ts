@@ -20,12 +20,12 @@ import {
   FailExecutionRequest,
   HistoryStateEvent,
   isFailedExecutionRequest,
+  TimerClient,
   UpdateHistoryRequest,
+  WorkflowClient,
   WorkflowRuntimeClient,
 } from "@eventual/core";
-import { AWSTimerClient } from "./timer-client.js";
 import {
-  AWSWorkflowClient,
   createExecutionFromResult,
   ExecutionRecord,
 } from "./workflow-client.js";
@@ -37,8 +37,8 @@ export interface AWSWorkflowRuntimeClientProps {
   readonly s3: S3Client;
   readonly executionHistoryBucket: string;
   readonly tableName: string;
-  readonly workflowClient: AWSWorkflowClient;
-  readonly timerClient: AWSTimerClient;
+  readonly workflowClient: WorkflowClient;
+  readonly timerClient: TimerClient;
 }
 
 export class AWSWorkflowRuntimeClient extends WorkflowRuntimeClient {

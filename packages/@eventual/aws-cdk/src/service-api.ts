@@ -101,14 +101,14 @@ export class Api extends Construct {
             props.workflows.configureStartWorkflow(fn);
           },
         },
-        {
-          methods: [HttpMethod.GET],
-          entry: { api: "executions/list.js" },
-          grants: (fn) => {
-            props.workflows.configureReadWorkflowData(fn);
-          },
-        },
       ],
+      "/_eventual/executions": {
+        methods: [HttpMethod.GET],
+        entry: { api: "executions/list.js" },
+        grants: (fn) => {
+          props.workflows.configureReadWorkflowData(fn);
+        },
+      },
       "/_eventual/executions/{executionId}/history": {
         methods: [HttpMethod.GET],
         entry: { api: "executions/history.js" },

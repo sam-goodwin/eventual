@@ -1,6 +1,6 @@
 import { createWorkflowClient } from "../../../clients/index.js";
 import { withErrorMiddleware } from "../middleware.js";
-import { APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { Execution } from "@eventual/core";
 
 const workflowClient = createWorkflowClient({
@@ -9,9 +9,14 @@ const workflowClient = createWorkflowClient({
   workflowQueueUrl: "NOT_NEEDED",
 });
 
-async function list() {
+async function list(event: APIGatewayProxyEventV2) {
+  const workflow = event.queryStringParameters?.workflow;
   // TODO: support pagination
-  return (await workflowClient.getExecutions({})).executions;
+  return (
+    await workflowClient.getExecutions({
+      workflowName: workflow,
+    })
+  ).executions;
 }
 
 export const handler: APIGatewayProxyHandlerV2<Execution[]> =

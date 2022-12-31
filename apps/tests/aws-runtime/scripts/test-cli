@@ -20,8 +20,6 @@ npx eventual logs eventual-tests --workflow parallel
 
 npx eventual logs eventual-tests --execution ${execution_id}
 
-npx eventual logs eventual-tests --execution ${execution_id}
-
 npx eventual start eventual-tests sleepy
 
 npx eventual start eventual-tests sleepy --tail

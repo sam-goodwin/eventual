@@ -31,8 +31,8 @@ export class AwsHttpServiceClient extends HttpServiceClient {
       const _request = new HttpRequest({
         hostname: url.hostname,
         path: url.pathname,
-        body: request.text(),
-        method: updatedRequest.method,
+        body: updatedRequest.body ? await updatedRequest.text() : undefined,
+        method: updatedRequest.method.toUpperCase(),
         headers: Object.fromEntries(_headers),
         protocol: url.protocol,
         query: parseQueryString(url.search),
@@ -41,7 +41,7 @@ export class AwsHttpServiceClient extends HttpServiceClient {
       // create a signer object with the credentials, the service name and the region
       const signer = new SignatureV4({
         credentials: props.credentials,
-        service: "invoke-url",
+        service: "execute-api",
         region: props.region,
         sha256: Sha256,
       });

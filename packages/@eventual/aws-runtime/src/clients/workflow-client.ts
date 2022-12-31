@@ -132,7 +132,7 @@ export class AWSWorkflowClient extends WorkflowClient {
             .map((s) => `"${s}"`)
             .join(",")})`
         : undefined,
-      request?.workflowName ? `workflowName = ` : undefined,
+      request?.workflowName ? `workflowName=:workflowName` : undefined,
     ]
       .filter((f) => !!f)
       .join(" AND ");
@@ -152,6 +152,9 @@ export class AWSWorkflowClient extends WorkflowClient {
         ExpressionAttributeValues: {
           ":pk": { S: ExecutionRecord.PARTITION_KEY },
           ":sk": { S: ExecutionRecord.SORT_KEY_PREFIX },
+          ...(request?.workflowName
+            ? { ":workflowName": { S: request?.workflowName } }
+            : {}),
         },
         ExpressionAttributeNames: {
           "#sk": "sk",

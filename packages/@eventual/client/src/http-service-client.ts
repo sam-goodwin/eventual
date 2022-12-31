@@ -21,6 +21,7 @@ import {
   WorkflowEvent,
   WorkflowInput,
 } from "@eventual/core";
+import path from "path";
 import "./fetch-polyfill.js";
 
 export interface HttpServiceClientProps {
@@ -33,12 +34,16 @@ export interface BeforeRequest {
 }
 
 export class HttpServiceClient implements EventualServiceClient {
-  constructor(private props: HttpServiceClientProps) {}
+  private readonly baseUrl: string;
+
+  constructor(private props: HttpServiceClientProps) {
+    this.baseUrl = path.join(props.serviceUrl, "_eventual");
+  }
 
   public async getWorkflows(): Promise<GetWorkflowResponse> {
     const workflowNames = await this.request<void, string[]>(
       "GET",
-      `workflows`
+      "workflows"
     );
 
     return { workflows: workflowNames.map((n) => ({ name: n })) };
@@ -72,8 +77,8 @@ export class HttpServiceClient implements EventualServiceClient {
     const response = await this.request<void, Execution[]>(
       "GET",
       request.workflowName
-        ? `workflows/${request.workflowName}/executions`
-        : `workflows/executions`
+        ? `executions?workflow=${request.workflowName}`
+        : "executions"
     );
 
     return {
@@ -146,9 +151,9 @@ export class HttpServiceClient implements EventualServiceClient {
     suffix: string,
     body?: Body
   ) {
-    const initRequest = new Request(new URL(suffix, this.props.serviceUrl), {
+    const initRequest = new Request(new URL(path.join(this.baseUrl, suffix)), {
       method,
-      body: Buffer.from(JSON.stringify(body)),
+      body: body ? JSON.stringify(body) : undefined,
       headers: {
         "Content-Type": "application/json",
       },
@@ -160,6 +165,10 @@ export class HttpServiceClient implements EventualServiceClient {
 
     const resp = await fetch(request);
 
-    return resp.json() as Resp;
+    if (resp.ok) {
+      return resp.json() as Resp;
+    } else {
+      throw new Error(resp.body ? await resp.text() : resp.statusText);
+    }
   }
 }

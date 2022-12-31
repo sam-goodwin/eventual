@@ -13,6 +13,7 @@ import {
   createServiceClient,
   createTimerClient,
   createWorkflowClient,
+  createWorkflowRuntimeClient,
 } from "../clients/create.js";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 import { logger, loggerMiddlewares } from "../logger.js";
@@ -26,6 +27,12 @@ export default middy<ActivityWorkerRequest>((request) =>
     metricsClient: AWSMetricsClient,
     logger,
     activityProvider: new GlobalActivityProvider(),
-    serviceClient: createServiceClient(),
+    serviceClient: createServiceClient(
+      createWorkflowRuntimeClient({
+        executionHistoryBucket: "NOT_NEEDED",
+        activityWorkerFunctionName: "NOT_NEEDED",
+        tableName: "NOT_NEEDED",
+      })
+    ),
   })(request, new Date())
 ).use(loggerMiddlewares);
