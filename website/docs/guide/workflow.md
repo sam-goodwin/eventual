@@ -114,7 +114,7 @@ Workflows can publish events to the Service's Event Bus by calling [`publishEven
 const myEvent = event("myEvent");
 
 const myWorkflow = workflow("myWorkflow", async () => {
-  await myEvent.publish({
+  await myEvent.publishEvent({
     key: "value",
   });
 });
@@ -124,10 +124,10 @@ Keep in mind that the publish method returns a `Promise` that resolves once the 
 
 ```ts
 // pause execution until the event has been sent
-await myEvent.publish( .. )
+await myEvent.publishEvent( .. )
 
 // publish but don't wait
-myEvent.publish( .. )
+myEvent.publishEvent( .. )
 ```
 
 ## Wait for a `signal`
@@ -144,11 +144,11 @@ import { signal } from "@eventual/core";
 const mySignal = signal<string>("mySignal");
 ```
 
-A workflow can use the `expect` method on the signal object, e.g. `mySignal.expect()`, to pause execution until the signal is received for the current execution.
+A workflow can use the `expectSignal` method on the signal object, e.g. `mySignal.expectSignal()`, to pause execution until the signal is received for the current execution.
 
 ```ts
 workflow("myWorkflow", async () => {
-  const signalPayload = await mySignal.expect();
+  const signalPayload = await mySignal.expectSignal();
 });
 ```
 
@@ -156,7 +156,7 @@ You can specify a timeout in seconds when calling expect. If the signal is not r
 
 ```ts
 try {
-  const signalPayload = await mySignal.expect({
+  const signalPayload = await mySignal.expectSignal({
     timeoutSeconds: 10,
   });
   // signal was received
@@ -170,7 +170,7 @@ try {
 To handle a signal within a workflow, you can use the `on` method, which takes a function that will be called every time the signal is received. You can then use the `dispose` method to disable the signal handler when it is no longer needed.
 
 ```ts
-const mySignalHandler = mySignal.on((signalPayload) => {
+const mySignalHandler = mySignal.onSignal((signalPayload) => {
   // Handle the signal
 });
 
@@ -215,7 +215,7 @@ await sleepWhile(() => !isCancelled);
 The predicate is evaluated whenever the workflow progresses, such as when an event is received. For example, in the previous example, a signal could be used to set `isCancelled` to `true`. When that signal is received, the condition will be re-evaluated as `false`, allowing the function to continue.
 
 ```ts
-cancelSignal.on(() => (isCancelled = true));
+cancelSignal.onSignal(() => (isCancelled = true));
 
 await sleepWhile(() => !isCancelled);
 // execution will proceed after the signal is received

@@ -50,18 +50,18 @@ const asyncHello = activity("hello", async (name: string) => {
 
 This will cause the workflow to wait for the token to be completed or failed before moving on to the next step.
 
-To complete or fail an async activity, you can use the `complete` and `fail` methods, respectively, on your activity function. For example:
+To complete or fail an async activity, you can use the `sendActivitySuccess` and `sendActivityFailure` methods, respectively, on your activity function. For example:
 
 ```ts
 api.post("/ack/:token", async (request) => {
-  await asyncHello.complete({
+  await asyncHello.sendActivitySuccess({
     activityToken: token,
     result: `hello world`,
   });
 });
 
 api.post("/fail/:token", async (request) => {
-  await asyncHello.fail({
+  await asyncHello.sendActivityFailure({
     activityToken: token,
     error: new Error("failure"),
   });
@@ -80,7 +80,7 @@ return asyncResult<string>((token) => {
 });
 ```
 
-The return type of the activity function will be `Promise<string>`. This means that, when calling the `complete` function, the `result` field must be of type `string`.
+The return type of the activity function will be `Promise<string>`. This means that, when calling the `sendActivitySuccess` function, the `result` field must be of type `string`.
 
 ```ts
 const myActivity = activity("myActivity", async () => {
@@ -89,11 +89,11 @@ const myActivity = activity("myActivity", async () => {
   });
 });
 
-myActivity.complete({
+myActivity.sendActivitySuccess({
   result: "hello world", // valid
 });
 
-myActivity.complete({
+myActivity.sendActivitySuccess({
   result: 123, // invalid, number is not a string
 });
 ```
@@ -184,10 +184,10 @@ try {
 
 Alongside the activity-specific intrinsics already mentioned, the following intrinsic functions can also be called within an activity handler:
 
-- [`publish`](./event.md#publish-to-an-event)
+- [`publishEvent`](./event.md#publish-to-an-event)
 
 ```ts
-await myEvent.publish({ .. });
+await myEvent.publishEvent({ .. });
 ```
 
 - [`startExecution`](./workflow.md#start-execution)
@@ -198,19 +198,19 @@ await myWorkflow.startExecution({
 })
 ```
 
-- [`complete`](./activity.md#complete-an-activity)
+- [`sendActivitySuccess`](./activity.md#complete-an-activity)
 
 ```ts
-await myActivity.complete({
+await myActivity.sendActivitySuccess({
   token: <token>,
   result: <result>
 })
 ```
 
-- [`fail`](./activity.md#fail-an-activity)
+- [`sendActivityFailure`](./activity.md#fail-an-activity)
 
 ```ts
-await myActivity.fail({
+await myActivity.sendActivityFailure({
   token: <token>,
   error: <error>
 })

@@ -23,13 +23,13 @@ This registers an event with the name `"MyEvent"` on the Event Bus.
 You can then publish data to this event by calling the publish function on the event object and passing it the data you want to send:
 
 ```ts
-await myEvent.publish({ message: "hello world" });
+await myEvent.publishEvent({ message: "hello world" });
 ```
 
 The function accepts multiple arguments for batch sending events.
 
 ```ts
-await myEvent.publish(
+await myEvent.publishEvent(
   {
     prop: "value 1",
   },
@@ -41,10 +41,10 @@ await myEvent.publish(
 
 ## Subscribe to an Event
 
-You can subscribe to events by calling the `on` function on the event object and passing it a callback function that will be called every time the event is published:
+You can subscribe to events by calling the `onEvent` function on the event object and passing it a callback function that will be called every time the event is published:
 
 ```ts
-myEvent.on(async (event) => {
+myEvent.onEvent(async (event) => {
   console.log(event);
 });
 ```
@@ -56,7 +56,7 @@ The following intrinsic functions can be called within an event subscription han
 - [`publish`](./event.md#publish-to-an-event)
 
 ```ts
-await myEvent.publish({ .. });
+await myEvent.publishEvent({ .. });
 ```
 
 - [`startExecution`](./workflow.md#start-execution)
@@ -67,19 +67,19 @@ await myWorkflow.startExecution({
 })
 ```
 
-- [`complete`](./activity.md#complete-an-activity)
+- [`sendActivitySuccess`](./activity.md#complete-an-activity)
 
 ```ts
-await myActivity.complete({
+await myActivity.sendActivitySuccess({
   token: <token>,
   result: <result>
 })
 ```
 
-- [`fail`](./activity.md#fail-an-activity)
+- [`sendActivityFailure`](./activity.md#fail-an-activity)
 
 ```ts
-await myActivity.fail({
+await myActivity.sendActivityFailure({
   token: <token>,
   error: <error>
 })
@@ -100,15 +100,15 @@ export const myEvent = event<MyEvent>("MyEvent");
 This creates an event called `"MyEvent"` with a type of `MyEvent`. This ensures that when the event is published or subscribed to, the data adheres to the `MyEvent` interface.
 
 ```ts
-await myEvent.publish({
+await myEvent.publishEvent({
   prop: "my value", // okay
 });
 
-await myEvent.publish({
+await myEvent.publishEvent({
   prop: 123, // error, prop must be a string
 });
 
-myEvent.on((event) => {
+myEvent.onEvent((event) => {
   event.key; // error, 'key' property does not exist
 });
 ```

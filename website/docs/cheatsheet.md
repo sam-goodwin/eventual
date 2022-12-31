@@ -139,7 +139,7 @@ workflow("a and b", async () => {
 ```ts
 let isCancelled = false;
 
-cancelSignal.on(() => (isCancelled = true));
+cancelSignal.onSignal(() => (isCancelled = true));
 
 await Promise.race([
   // sleep while some condition is true
@@ -154,7 +154,7 @@ await Promise.race([
 ```ts
 let isCancelled = false;
 
-cancelSignal.on(() => (isCancelled = true));
+cancelSignal.onSignal(() => (isCancelled = true));
 
 await Promise.race([
   // sleep while some condition is true
