@@ -5,7 +5,7 @@
   <br />
   <h1>Eventual</h1>
   <h3>
-  An open source, code-first, infinitely scalable serverless workflow platform built with (and distributed as) modern Infrastructure-as-Code libraries.
+  A set of tools for building and deploying microservices in the cloud.
   </h3>
   <a href="https://badge.fury.io/js/@eventual%2Fcore.svg">
     <img src="https://badge.fury.io/js/@eventual%2Fcore.svg" />

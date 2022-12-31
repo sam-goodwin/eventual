@@ -1,3 +1,7 @@
+---
+title: AWS CDK Project
+---
+
 # Get Started with the AWS Cloud Development Kit
 
 To create a new AWS CDK project with Eventual, run the below command:
@@ -79,7 +83,7 @@ services/
     index.ts # the Eventual service entrypoint
 ```
 
-The template creates an initial file, `src/index.ts`, that contains a basic example application touching on each of the 4 Eventual primitives, `api`, `event`, `workflow` and `activity`. For a walk-through of how to build applications with Eventual, see the [Tutorial](../tutorial/0-hello-world.md).
+The template creates an initial file, `src/index.ts`, that contains a basic example application touching on each of the 4 Eventual primitives, `api`, `event`, `workflow` and `activity`.
 
 ## Drop in to existing Project
 

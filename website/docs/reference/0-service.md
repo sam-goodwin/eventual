@@ -46,7 +46,7 @@ Or when invoking a workflow:
 > eventual start cart-service-prod checkout ./input.json
 ```
 
-For more information on how to use the CLI, see the [docs](./5-cli.md).
+For more information on how to use the CLI, see the [docs](./6-cli.md).
 
 ## Environment Variables
 

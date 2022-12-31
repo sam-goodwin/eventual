@@ -1,3 +1,7 @@
+---
+title: Getting Started
+---
+
 # Getting Started
 
 Eventual is a set of NPM packages and a CDK Construct that helps you build microservices and provision corresponding AWS resources.
