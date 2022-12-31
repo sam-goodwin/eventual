@@ -73,6 +73,63 @@ In this example, the workflow calls the `myActivity` function and waits for the 
 
 Activities are a key component of workflows, as they allow the workflow to perform complex tasks and interact with external systems. When you want a workflow to perform specific work, you can define an activity to handle that work and call it from within the workflow.
 
+## Call another Workflow
+
+Workflows can call other workflows as a part of their execution, sometimes referred to as "starting a child workflow". The call will return a Promise that will resolve once the workflow completes.
+
+```ts
+const workflowA = workflow("workflowA", async () => {
+  // call the child workflow
+  const result = workflowB(["hello", "world"]);
+
+  // ..
+});
+
+const workflowB = workflow("workflowB", async (items: string[]) => {
+  return Promise.all(items.map(myActivity));
+});
+```
+
+To wait for the result of the child workflow, you can use the await keyword:
+
+```ts
+const result = await workflowB(["hello", "world"]);
+```
+
+If the child workflow fails, an Error is thrown. You can catch this error with a try-catch block:
+
+```ts
+try {
+  await workflowB(["hello", "world"]);
+} catch (err) {
+  // handle error
+}
+```
+
+## Publish an Event
+
+Workflows can publish events to the Service's Event Bus by calling [`publishEvent`](./event.md#publish-an-event).
+
+```ts
+const myEvent = event("myEvent");
+
+const myWorkflow = workflow("myWorkflow", async () => {
+  await myEvent.publish({
+    key: "value",
+  });
+});
+```
+
+Keep in mind that the publish method returns a `Promise` that resolves once the event has been published. You can use the `await` keyword to wait for the event to be published before continuing with the rest of the workflow's execution - or leave it as dangling as an optimization:
+
+```ts
+// pause execution until the event has been sent
+await myEvent.publish( .. )
+
+// publish but don't wait
+myEvent.publish( .. )
+```
+
 ## Wait for a `signal`
 
 Sometimes it may be necessary for a workflow to wait for external input from another system before continuing. In Eventual, this type of input is called a **Signal**.
@@ -198,10 +255,9 @@ This means that any operation that could produce different results each time it 
 
 ```ts
 workflow("foo", async () => {
-  // the following operations are not deterministic and should be instead wrapped in an activity
-  const id = uuid();
-  const time = new Date();
-  await fetch("http://google.com");
+  const id = uuid(); // not allowed - not deterministic
+  const time = new Date(); // not allowed - not deterministic
+  await fetch("http://google.com"); // not allowed - not deterministic
 });
 ```
 

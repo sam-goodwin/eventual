@@ -24,7 +24,7 @@ npm create eventual my-eventual-app
 
 ## 2. Choose your preferred IaC platform
 
-Eventual supports two IaC platforms: AWS CDK and AWS SST. You'll be prompted to choose between them when you create a new project. Select `aws-cdk` or `aws-sst` as appropriate.
+Eventual supports two IaC platforms: AWS CDK and AWS SST. You'll be prompted to choose between them when you create a new project. Select [`aws-cdk`](https://docs.aws.amazon.com/cdk/v2/guide/home.html) or [`aws-sst`](https://docs.sst.dev) as appropriate.
 
 ```
 ? target: (Use arrow keys)
@@ -61,10 +61,10 @@ myWorkflow
 
 ## 6. List the endpoints in `my-service`
 
-To view the API Gateway URL and Event Bus ARN for a service, use the `eventual endpoints` command followed by the service name:
+To view the API Gateway URL and Event Bus ARN for a service, use the `eventual info` command followed by the service name:
 
 ```ts
-> npx eventual endpoints my-service
+> npx eventual info my-service
 API Gateway: 	  https://<uuid>.execute-api.us-west-2.amazonaws.com
 Event Bus ARN:  arn:aws:events:us-west-2:<account-id>:event-bus/my-service
 ```
@@ -105,7 +105,7 @@ You could instead choose to tail the logs by appending the `--tail` argument:
 
 To clean up, destroy the application:
 
-- For CDK Users: `npx cdk deploy`.
+- For CDK Users: `npx cdk destroy`.
 - For SST Users: `npx sst destroy`.
 
 ## Next Steps

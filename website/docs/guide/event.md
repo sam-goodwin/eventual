@@ -23,7 +23,7 @@ This registers an event with the name `"MyEvent"` on the Event Bus.
 You can then publish data to this event by calling the publish function on the event object and passing it the data you want to send:
 
 ```ts
-myEvent.publish({ message: "hello world" });
+await myEvent.publish({ message: "hello world" });
 ```
 
 The function accepts multiple arguments for batch sending events.
@@ -100,11 +100,11 @@ export const myEvent = event<MyEvent>("MyEvent");
 This creates an event called `"MyEvent"` with a type of `MyEvent`. This ensures that when the event is published or subscribed to, the data adheres to the `MyEvent` interface.
 
 ```ts
-myEvent.publish({
+await myEvent.publish({
   prop: "my value", // okay
 });
 
-myEvent.publish({
+await myEvent.publish({
   prop: 123, // error, prop must be a string
 });
 
@@ -158,7 +158,7 @@ export async function handler() {
           DetailType: "MyEvents",
           Detail: `{ "prop": "value" }`,
           // the ARN of the Event Bus that belongs to `myService`
-          EventBusName: process.MY_SERVICE_BUS_ARN,
+          EventBusName: process.env.MY_SERVICE_BUS_ARN,
         },
       ],
     })
@@ -195,12 +195,12 @@ The value of `Detail` must be a stringified JSON object with a single `prop` pro
 To forward events between different services using Eventual, you will need to create a new AWS CloudWatch Events Rule. This rule will specify the source Event Bus (the one you want to send events from) and the target Event Bus (the one you want to send events to). You can then specify the `detailType` of the events you want to send, using an array of event names.
 
 ```ts
-import { aws_events_targets } from "aws-cdk-lib";
+import { aws_events, aws_events_targets } from "aws-cdk-lib";
 
 const A = new Service(..);
 const B = new Service(..);
 
-new aws_events.Rule(this, "Rule", {
+new aws_events.Rule(stack, "Rule", {
   // send from service A
   eventBus: A.events.bus,
   eventPattern: {
@@ -209,7 +209,7 @@ new aws_events.Rule(this, "Rule", {
   },
   targets: [
     // send to service B
-    B.events.bus
+    new aws_events_targets.EventBus(B.events.bus)
   ]
 })
 ```
