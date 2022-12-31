@@ -6,3 +6,4 @@ node_modules
 *.tgz
 cdk.out
 .eventual
+.DS_Store
