@@ -194,14 +194,14 @@ const mockedActivity = env.mockActivity(myActivity);
 
 The `mockActivity` provides the following utility functions that can be used to mock its behavior in tests:
 
-| Resolution                               | Description                                           |
-| ---------------------------------------- | ----------------------------------------------------- |
-| `sendActivitySuccess` and `completeOnce` | Activity returns a result                             |
-| `sendActivityFailure` and `failOnce`     | Activity fails with an error                          |
-| `timeout` and `timeoutOnce`              | Activity fails with a Timeout error                   |
-| `invoke` and `invokeOnce`                | Activity will call your delegate function             |
-| `invokeReal` and `invokeRealOnce`        | Activity will call the real underlying implementation |
-| `asyncResult` and `asyncResultOnce`      | Activity will return an async result token            |
+| Resolution                                                              | Description                                           |
+| ----------------------------------------------------------------------- | ----------------------------------------------------- |
+| [`complete`](#complete) and [`completeOnce`](#completeonce)             | Activity returns a result                             |
+| [`fail`](#fail) and [`failOnce`](#failonce)                             | Activity fails with an error                          |
+| [`timeout`](#timeout) and [`timeoutOnce`](#timeoutonce)                 | Activity fails with a Timeout error                   |
+| [`invoke`](#invoke) and [`invokeOnce`](#invokeonce)                     | Activity will call your delegate function             |
+| [`invokeReal`](#invokereal) and [`invokeRealOnce`](#invokerealonce)     | Activity will call the real underlying implementation |
+| [`asyncResult`](#asyncresult) and [`asyncResultOnce`](#asyncresultonce) | Activity will return an async result token            |
 
 ### `complete`
 
@@ -221,9 +221,9 @@ mockedActivity.completeOnce("once").complete("value");
 
 For example, in the above code, the first time this mocked activity is called, it will complete with the value `"once"`. All subsequent calls will then complete with `"value"`.
 
-### `sendActivityFailure`
+### `fail`
 
-Use the `sendActivityFailure` method to set up a mocked activity to always fail with a specified error:
+Use the `fail` method to set up a mocked activity to always fail with a specified error:
 
 ```ts
 mockedActivity.fail(new Error("oops"));
