@@ -351,3 +351,12 @@ class MyError extends EventualError {
     super("MyError", message);
   }
 }
+
+export const signalWorkflow = workflow("signalWorkflow", async () => {
+  let n = 0;
+  mySignal.on(() => {
+    n++;
+  });
+  await doneSignal.expect();
+  return n;
+});

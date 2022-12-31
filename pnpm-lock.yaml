@@ -465,7 +465,6 @@ importers:
       '@aws-sdk/querystring-parser': ^3.226.0
       '@aws-sdk/signature-v4': ^3.226.0
       '@aws-sdk/types': ^3.226.0
-      '@eventual/aws-runtime': workspace:^
       '@eventual/client': workspace:^
       '@eventual/compiler': workspace:^
       '@eventual/core': workspace:^
@@ -504,7 +503,6 @@ importers:
       '@aws-sdk/querystring-parser': 3.226.0
       '@aws-sdk/signature-v4': 3.226.0
       '@aws-sdk/types': 3.226.0
-      '@eventual/aws-runtime': link:../aws-runtime
       '@eventual/client': link:../client
       '@eventual/compiler': link:../compiler
       '@eventual/core': link:../core

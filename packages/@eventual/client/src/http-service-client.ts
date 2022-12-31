@@ -117,9 +117,19 @@ export class HttpServiceClient implements EventualServiceClient {
     return { events: resp };
   }
 
-  public sendSignal(_request: SendSignalRequest<any>): Promise<void> {
-    // TODO: implement
-    throw new Error("Method not implemented.");
+  public async sendSignal(request: SendSignalRequest<any>): Promise<void> {
+    const { execution, signal, ...rest } = request;
+    const executionId =
+      typeof execution === "string" ? execution : execution.executionId;
+    const signalId = typeof signal === "string" ? signal : signal.id;
+    return await this.request<Omit<SendSignalRequest, "execution">, void>(
+      "PUT",
+      `executions/${encodeExecutionId(executionId)}}/signals`,
+      {
+        ...rest,
+        signal: signalId,
+      }
+    );
   }
 
   public publishEvents(_request: PublishEventsRequest): Promise<void> {
@@ -147,7 +157,7 @@ export class HttpServiceClient implements EventualServiceClient {
   }
 
   private async request<Body = any, Resp = any>(
-    method: "POST" | "GET",
+    method: "POST" | "GET" | "PUT",
     suffix: string,
     body?: Body
   ) {

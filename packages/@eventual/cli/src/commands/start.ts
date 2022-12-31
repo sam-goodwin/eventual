@@ -9,11 +9,10 @@ import {
   WorkflowFailed,
   EventualServiceClient,
 } from "@eventual/core";
-import fs from "fs/promises";
-import getStdin from "get-stdin";
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
 import util from "util";
+import { getInputJson } from "./utils.js";
 
 export const start = (yargs: Argv) =>
   yargs.command(
@@ -132,23 +131,4 @@ function sortEvents(events: WorkflowEvent[]) {
   return events.sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
-}
-
-/**
- * Get input json from specified file, otherwise stdin
- * @param inputFile file to read from
- * @returns parsed json. Will be empty object if no input was given
- */
-async function getInputJson(
-  inputFile: string | undefined,
-  input: string | undefined
-): Promise<any> {
-  if (inputFile) {
-    return JSON.parse(await fs.readFile(inputFile, { encoding: "utf-8" }));
-  } else if (input) {
-    return JSON.parse(input);
-  } else {
-    const stdin = await getStdin();
-    return stdin.length === 0 ? {} : JSON.parse(stdin);
-  }
 }

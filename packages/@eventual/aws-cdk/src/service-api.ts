@@ -97,6 +97,17 @@ export class Api extends Construct {
         },
         grants: (fn) => props.workflows.configureReadWorkflowData(fn),
       },
+      "/_eventual/executions/{executionId}/signals": {
+        methods: [HttpMethod.PUT],
+        entry: {
+          name: "send-signal",
+          entry: runtimeEntrypoint("api/executions/signals/send"),
+        },
+        grants: (fn) => {
+          props.workflows.configureReadWorkflowData(fn);
+          props.workflows.grantSendSignal(fn);
+        },
+      },
       "/_eventual/executions/{executionId}/history": {
         methods: [HttpMethod.GET],
         entry: {
@@ -147,10 +158,7 @@ export class Api extends Construct {
     Object.entries(mappings).forEach(([path, mappings]) => {
       const mappingsArray = Array.isArray(mappings) ? mappings : [mappings];
       mappingsArray.forEach(({ entry, methods, grants }) => {
-        const id =
-          // Generate id for the lambda based on its path and method
-          path.slice(1).replace("/", "-").replace(/[{}]/, "") +
-            methods?.join("-") ?? [];
+        const id = entry.name;
         // register the bundles we need to make
         bundles.push(entry);
         // create a closure that creates the gateway route.

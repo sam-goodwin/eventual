@@ -8,18 +8,20 @@ import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { replay } from "./commands/replay.js";
 import { timeline } from "./commands/timeline.js";
+import { sendSignal } from "./commands/send-signal.js";
 
 const argv = hideBin(process.argv);
 const cli = yargs(argv).scriptName("eventual").strict();
 [
-  services,
-  start,
-  workflows,
   executions,
   history,
   logs,
   replay,
+  sendSignal,
+  services,
+  start,
   timeline,
+  workflows,
 ].forEach((cmd) => cmd(cli));
 if (argv.length === 0) {
   cli.showHelp();
