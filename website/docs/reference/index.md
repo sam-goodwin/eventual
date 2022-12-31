@@ -1,4 +1,4 @@
-# Eventual Concepts
+# Concepts
 
 Welcome to the Eventual Concepts documentation! This guide provides an overview of the key concepts and components of Eventual, a set of tools for building and deploying microservices on AWS.
 
