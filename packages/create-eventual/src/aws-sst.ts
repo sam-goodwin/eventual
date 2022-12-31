@@ -19,7 +19,7 @@ export async function createAwsSst({
   );
 
   process.chdir(path.join(".", projectName));
-  await addDevDeps(pkgManager, "@eventual/aws-cdk");
+  await addDevDeps(pkgManager, "@eventual/aws-cdk", "@eventual/cli");
 
   process.chdir("services");
   await addDeps(pkgManager, "@eventual/core");
