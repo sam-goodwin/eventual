@@ -146,7 +146,7 @@ export class AWSWorkflowClient extends WorkflowClient {
       },
       {
         TableName: this.props.tableName,
-        KeyConditionExpression: "pk = :pk and begins_with(sk, :sk)",
+        KeyConditionExpression: "pk = :pk and begins_with(#sk, :sk)",
         ScanIndexForward: request?.sortDirection !== "Desc",
         FilterExpression: filters || undefined,
         ExpressionAttributeValues: {
@@ -154,6 +154,7 @@ export class AWSWorkflowClient extends WorkflowClient {
           ":sk": { S: ExecutionRecord.SORT_KEY_PREFIX },
         },
         ExpressionAttributeNames: {
+          "#sk": "sk",
           ...(request?.statuses ? { "#status": "status" } : undefined),
         },
       }
