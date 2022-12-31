@@ -2,7 +2,7 @@
 title: AWS CDK Project
 ---
 
-# Get Started with the AWS Cloud Development Kit
+# AWS CDK Project Overview
 
 To create a new AWS CDK project with Eventual, run the below command:
 

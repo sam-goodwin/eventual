@@ -1,6 +1,6 @@
-# Eventual API Reference
+# Eventual Concepts
 
-Welcome to the Eventual API reference! This guide provides an overview of the key concepts and components of Eventual, a set of tools for building and deploying microservices on AWS.
+Welcome to the Eventual Concepts documentation! This guide provides an overview of the key concepts and components of Eventual, a set of tools for building and deploying microservices on AWS.
 
 ## Building Blocks
 
