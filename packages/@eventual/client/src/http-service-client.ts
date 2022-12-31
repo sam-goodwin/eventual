@@ -99,7 +99,7 @@ export class HttpServiceClient implements EventualServiceClient {
     // TODO: support pagination
     const resp = await this.request<void, WorkflowEvent[]>(
       "GET",
-      `executions/${encodeExecutionId(request.executionId)}}/history`
+      `executions/${encodeExecutionId(request.executionId)}}/events`
     );
 
     return { events: resp };
@@ -111,7 +111,7 @@ export class HttpServiceClient implements EventualServiceClient {
     // TODO: support pagination
     const resp = await this.request<void, HistoryStateEvent[]>(
       "GET",
-      `executions/${encodeExecutionId(executionId)}}/workflow-history`
+      `executions/${encodeExecutionId(executionId)}}/history`
     );
 
     return { events: resp };

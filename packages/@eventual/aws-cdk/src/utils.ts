@@ -1,6 +1,7 @@
 import {
   Architecture,
   Function,
+  FunctionProps,
   Runtime,
   RuntimeFamily,
 } from "aws-cdk-lib/aws-lambda";
@@ -16,9 +17,13 @@ export const NODE_18_X = new Runtime("nodejs18.x", RuntimeFamily.NODEJS, {
   supportsInlineCode: true,
 });
 
-export const baseNodeFnProps = {
+export const baseFnProps: Pick<FunctionProps, "runtime" | "architecture"> = {
   runtime: Runtime.NODEJS_16_X,
   architecture: Architecture.ARM_64,
+};
+
+export const baseNodeFnProps: NodejsFunctionProps = {
+  ...baseFnProps,
   bundling: {
     // https://github.com/aws/aws-cdk/issues/21329#issuecomment-1212336356
     // cannot output as .mjs file as ulid does not support it.
@@ -32,7 +37,7 @@ export const baseNodeFnProps = {
     target: "es2021",
     format: OutputFormat.ESM,
   },
-} satisfies NodejsFunctionProps;
+};
 
 export function addEnvironment(
   func: Function,
