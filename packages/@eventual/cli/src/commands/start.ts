@@ -7,9 +7,8 @@ import {
   WorkflowEvent,
   WorkflowEventType,
   WorkflowFailed,
-  encodeExecutionId,
+  EventualServiceClient,
 } from "@eventual/core";
-import { KyInstance } from "../types.js";
 import fs from "fs/promises";
 import getStdin from "get-stdin";
 import { Argv } from "yargs";
@@ -40,62 +39,68 @@ export const start = (yargs: Argv) =>
           describe: "Input data as json string",
           type: "string",
         }),
-    serviceAction(async (spinner, ky, { workflow, input, inputFile, tail }) => {
-      spinner.start(`Executing ${workflow}\n`);
-      const inputJSON = await getInputJson(inputFile, input);
-      const { executionId } = await ky
-        .post(`workflows/${workflow}/executions`, {
-          json: inputJSON,
-        })
-        .json<{ executionId: string }>();
-      spinner.succeed(`Execution id: ${executionId}`);
-      if (tail) {
-        const events: WorkflowEvent[] = [];
-        if (!spinner.isSpinning) {
-          spinner.start(`${executionId} in progress\n`);
-        }
-        // eslint-disable-next-line no-inner-declarations
-        async function pollEvents() {
-          const newEvents = await getNewEvents(events, ky, executionId);
-          newEvents.forEach((ev) => {
-            let meta: string | undefined;
-            if (isActivityCompleted(ev)) {
-              meta = ev.result;
-            } else if (isActivityScheduled(ev)) {
-              meta = ev.name;
-            } else if (isWorkflowStarted(ev)) {
-              meta = util.inspect(ev.input);
-            }
-            spinner.info(
-              ev.timestamp + " - " + ev.type + (meta ? `- ` + meta : "")
-            );
-          });
-          events.push(...newEvents);
-          sortEvents(events);
-          const completedEvent = events.find(
-            (ev) => ev.type === WorkflowEventType.WorkflowCompleted
-          );
-          const failedEvent = events.find(
-            (ev) => ev.type === WorkflowEventType.WorkflowFailed
-          );
-          if (completedEvent) {
-            spinner.succeed("Workflow complete");
-            const { output } = completedEvent as WorkflowCompleted;
-            if (output) {
-              styledConsole.success(output);
-            }
-          } else if (failedEvent) {
-            spinner.fail("Workflow failed");
-            styledConsole.error((failedEvent as WorkflowFailed).message);
-          } else {
-            setTimeout(pollEvents, 1000);
+    serviceAction(
+      async (spinner, serviceClient, { workflow, input, inputFile, tail }) => {
+        spinner.start(`Executing ${workflow}\n`);
+        const inputJSON = await getInputJson(inputFile, input);
+        // TODO: support timeout and executionName
+        const { executionId } = await serviceClient.startExecution({
+          workflow: workflow as string,
+          input: inputJSON,
+        });
+        spinner.succeed(`Execution id: ${executionId}`);
+        if (tail) {
+          const events: WorkflowEvent[] = [];
+          if (!spinner.isSpinning) {
+            spinner.start(`${executionId} in progress\n`);
           }
+          // eslint-disable-next-line no-inner-declarations
+          async function pollEvents() {
+            const newEvents = await getNewEvents(
+              events,
+              serviceClient,
+              executionId
+            );
+            newEvents.forEach((ev) => {
+              let meta: string | undefined;
+              if (isActivityCompleted(ev)) {
+                meta = ev.result;
+              } else if (isActivityScheduled(ev)) {
+                meta = ev.name;
+              } else if (isWorkflowStarted(ev)) {
+                meta = util.inspect(ev.input);
+              }
+              spinner.info(
+                ev.timestamp + " - " + ev.type + (meta ? `- ` + meta : "")
+              );
+            });
+            events.push(...newEvents);
+            sortEvents(events);
+            const completedEvent = events.find(
+              (ev) => ev.type === WorkflowEventType.WorkflowCompleted
+            );
+            const failedEvent = events.find(
+              (ev) => ev.type === WorkflowEventType.WorkflowFailed
+            );
+            if (completedEvent) {
+              spinner.succeed("Workflow complete");
+              const { output } = completedEvent as WorkflowCompleted;
+              if (output) {
+                styledConsole.success(output);
+              }
+            } else if (failedEvent) {
+              spinner.fail("Workflow failed");
+              styledConsole.error((failedEvent as WorkflowFailed).message);
+            } else {
+              setTimeout(pollEvents, 1000);
+            }
+          }
+          await pollEvents();
+        } else {
+          styledConsole.success({ executionId });
         }
-        await pollEvents();
-      } else {
-        styledConsole.success({ executionId });
       }
-    })
+    )
   );
 
 /**
@@ -103,12 +108,13 @@ export const start = (yargs: Argv) =>
  */
 async function getNewEvents(
   existingEvents: WorkflowEvent[],
-  ky: KyInstance,
+  serviceClient: EventualServiceClient,
   executionId: string
 ) {
-  const updatedEvents = await ky(
-    `executions/${encodeExecutionId(executionId)}/history`
-  ).json<WorkflowEvent[]>();
+  // TODO: make this work with pagination instead of pulling all of the events.
+  const { events: updatedEvents } = await serviceClient.getExecutionEvents({
+    executionId,
+  });
   if (updatedEvents.length === 0) {
     // Unfortunately if the execution id is wrong, our dynamo query is just going to return an empty record set
     // Not super helpful

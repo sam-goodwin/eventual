@@ -1,4 +1,3 @@
-import { encodeExecutionId } from "@eventual/core";
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
 
@@ -12,11 +11,12 @@ export const history = (yargs: Argv) =>
         type: "string",
         demandOption: true,
       }),
-    serviceAction(async (spinner, ky, { execution }) => {
+    serviceAction(async (spinner, serviceClient, { execution }) => {
       spinner.start("Getting execution history");
-      const events = await ky
-        .get(`executions/${encodeExecutionId(execution)}}/history`)
-        .json();
+      // TODO: support pagination and sort direction
+      const { events } = await serviceClient.getExecutionEvents({
+        executionId: execution,
+      });
       spinner.succeed();
       console.log(events);
     })

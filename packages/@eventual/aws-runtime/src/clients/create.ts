@@ -118,6 +118,7 @@ export const createServiceClient = memoize(
       eventClient: createEventClient(),
       executionHistoryClient: createExecutionHistoryClient(),
       workflowClient: createWorkflowClient(),
+      workflowRuntimeClient: createWorkflowRuntimeClient(),
     })
 );
 

@@ -7,13 +7,15 @@ import {
   HeartbeatResponse,
   SendSignalRequest,
 } from "./runtime/clients/workflow-client.js";
-import { WorkflowEvent } from "./workflow-events.js";
+import { HistoryStateEvent, WorkflowEvent } from "./workflow-events.js";
 import { Workflow, WorkflowInput, WorkflowOptions } from "./workflow.js";
 
 /**
  * Top level Eventual Client used by systems outside of an Eventual Service to interact with it.
  */
 export interface EventualServiceClient {
+  getWorkflows(): Promise<GetWorkflowResponse>;
+
   /**
    * Start a workflow execution
    * @param name Suffix of execution id
@@ -39,6 +41,16 @@ export interface EventualServiceClient {
   getExecutionEvents(
     request: ExecutionEventsRequest
   ): Promise<ExecutionEventsResponse>;
+
+  /**
+   * Retrieves the workflow history events for an execution.
+   *
+   * @deprecated use {@link EventualServiceClient.getExecutionEvents}. This API will be removed in the future.
+   *
+   * TODO: Support the mixed use case of retrieving events and history events from
+   *       the {@link EventualServiceClient.getExecutionEvents} API.
+   */
+  getExecutionHistory(executionId: string): Promise<ExecutionHistoryResponse>;
 
   /**
    * Sends a signal to the given execution.
@@ -119,6 +131,10 @@ export interface ExecutionEventsResponse {
   nextToken?: string;
 }
 
+export interface ExecutionHistoryResponse {
+  events: HistoryStateEvent[];
+}
+
 export type SortOrder = "Asc" | "Desc";
 
 export interface StartExecutionRequest<W extends Workflow = Workflow>
@@ -140,4 +156,12 @@ export interface StartExecutionRequest<W extends Workflow = Workflow>
    * Input payload for the workflow function.
    */
   input: WorkflowInput<W>;
+}
+
+export interface WorkflowReference {
+  name: string;
+}
+
+export interface GetWorkflowResponse {
+  workflows: WorkflowReference[];
 }

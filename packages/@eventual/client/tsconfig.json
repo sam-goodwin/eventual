@@ -4,9 +4,8 @@
     "baseUrl": ".",
     "rootDir": "src",
     "outDir": "lib/esm",
-    "paths": {
-      "@eventual/injected/*": ["./src/injected/*"]
-    }
+    "lib": ["DOM", "ES2022"],
+    "types": ["node"]
   },
   "include": ["src", "src/package.json"],
   "exclude": ["lib", "node_modules"],

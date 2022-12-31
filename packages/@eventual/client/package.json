@@ -1,5 +1,5 @@
 {
-  "name": "@eventual/aws-client",
+  "name": "@eventual/client",
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",

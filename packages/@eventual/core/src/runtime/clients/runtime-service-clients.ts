@@ -2,16 +2,18 @@ import {
   EventualServiceClient,
   ExecutionEventsRequest,
   ExecutionEventsResponse,
+  ExecutionHistoryResponse,
   GetExecutionsRequest,
   GetExecutionsResponse,
+  GetWorkflowResponse,
   PublishEventsRequest,
+  StartExecutionRequest,
 } from "../../service-client.js";
 import { Execution, ExecutionHandle } from "../../execution.js";
 import { Workflow } from "../../workflow.js";
 import { EventClient } from "./event-client.js";
 import { ExecutionHistoryClient } from "./execution-history-client.js";
 import {
-  StartWorkflowRequest,
   SendSignalRequest,
   CompleteActivityRequest,
   FailActivityRequest,
@@ -19,11 +21,13 @@ import {
   HeartbeatResponse,
   WorkflowClient,
 } from "./workflow-client.js";
+import { WorkflowRuntimeClient, workflows } from "../../index.js";
 
 export interface RuntimeServiceClientProps {
   workflowClient: WorkflowClient;
   executionHistoryClient: ExecutionHistoryClient;
   eventClient: EventClient;
+  workflowRuntimeClient: WorkflowRuntimeClient;
 }
 
 /**
@@ -34,8 +38,14 @@ export interface RuntimeServiceClientProps {
 export class RuntimeServiceClient implements EventualServiceClient {
   constructor(private props: RuntimeServiceClientProps) {}
 
+  public async getWorkflows(): Promise<GetWorkflowResponse> {
+    return {
+      workflows: Array.from(workflows().keys()).map((k) => ({ name: k })),
+    };
+  }
+
   public async startExecution<W extends Workflow = Workflow>(
-    request: StartWorkflowRequest<W>
+    request: StartExecutionRequest<W>
   ): Promise<ExecutionHandle<W>> {
     const executionId = await this.props.workflowClient.startWorkflow<W>(
       request
@@ -59,6 +69,17 @@ export class RuntimeServiceClient implements EventualServiceClient {
     request: ExecutionEventsRequest
   ): Promise<ExecutionEventsResponse> {
     return this.props.executionHistoryClient.getEvents(request);
+  }
+
+  public async getExecutionHistory(
+    executionId: string
+  ): Promise<ExecutionHistoryResponse> {
+    const events = await this.props.workflowRuntimeClient.getHistory(
+      executionId
+    );
+    return {
+      events,
+    };
   }
 
   public async sendSignal(request: SendSignalRequest): Promise<void> {

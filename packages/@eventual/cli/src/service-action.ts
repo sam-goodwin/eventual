@@ -1,14 +1,15 @@
-import { HTTPError } from "ky-universal";
 import ora, { Ora } from "ora";
 import { Arguments, Argv } from "yargs";
-import { apiKy } from "./api-ky.js";
 import { styledConsole } from "./styled-console.js";
-import type { KyInstance } from "./types.js";
 import util from "util";
+import { AwsHttpServiceClient } from "./aws-service-client.js";
+import { EventualServiceClient } from "@eventual/core";
+import { assumeCliRole } from "./role.js";
+import { getServiceData, resolveRegion } from "./service-data.js";
 
 export type ServiceAction<T> = (
   spinner: Ora,
-  ky: KyInstance,
+  serviceClient: EventualServiceClient,
   args: Arguments<T>
 ) => Promise<void>;
 
@@ -23,17 +24,23 @@ export const serviceAction =
   ) => {
     const spinner = ora().start("Preparing");
     try {
-      const ky = await apiKy(args.service, args.region);
-      return await action(spinner, ky, args);
+      // TODO: completely refactor out ky client.
+      const region = args.region ?? (await resolveRegion());
+      const credentials = await assumeCliRole(args.service, region);
+      const serviceData = await getServiceData(
+        credentials,
+        args.service,
+        region
+      );
+      const serviceClient = new AwsHttpServiceClient({
+        credentials,
+        serviceUrl: serviceData.apiEndpoint,
+        region,
+      });
+      return await action(spinner, serviceClient, args);
     } catch (e: any) {
       if (args.debug) {
-        if (e instanceof HTTPError) {
-          spinner.clear();
-          styledConsole.error(`Request: ${util.inspect(e.request)}`);
-          styledConsole.error(`Response: ${await e.response.text()}`);
-        } else {
-          styledConsole.error(util.inspect(e));
-        }
+        styledConsole.error(util.inspect(e));
       }
       spinner.fail(e.message);
       process.exit(1);

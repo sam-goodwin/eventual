@@ -39,7 +39,7 @@ export interface CreateActivityWorkerProps {
   logger: Logger;
   eventClient: EventClient;
   activityProvider: ActivityProvider;
-  serviceClient: RuntimeServiceClient;
+  serviceClient?: RuntimeServiceClient;
 }
 
 export interface ActivityWorkerRequest {
@@ -77,7 +77,9 @@ export function createActivityWorker({
   serviceClient,
 }: CreateActivityWorkerProps): ActivityWorker {
   // make the service client available to all activity code
-  registerServiceClient(serviceClient);
+  if (serviceClient) {
+    registerServiceClient(serviceClient);
+  }
 
   return metricsClient.metricScope(
     (metrics) =>

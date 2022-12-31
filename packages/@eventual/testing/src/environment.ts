@@ -1,7 +1,6 @@
 import {
   ActivityFunction,
   ActivityOutput,
-  ActivityWorker,
   clearEventSubscriptions,
   createActivityWorker,
   createEventHandlerWorker,
@@ -18,6 +17,7 @@ import {
   isWorkflowTask,
   Orchestrator,
   PublishEventsRequest,
+  registerServiceClient,
   RuntimeServiceClient,
   SendSignalRequest,
   ServiceType,
@@ -89,7 +89,6 @@ export class TestEnvironment extends RuntimeServiceClient {
   private initialized = false;
   private timeController: TimeController<WorkflowTask>;
   private orchestrator: Orchestrator;
-  private activityWorker: ActivityWorker;
 
   constructor(props: TestEnvironmentProps) {
     const start = props.start
@@ -110,11 +109,8 @@ export class TestEnvironment extends RuntimeServiceClient {
         timeController.addEvent(time.getTime(), task),
       getTime: () => this.time,
     };
-    const workflowClient = new TestWorkflowClient(
-      timeConnector,
-      activityRuntimeClient,
-      executionStore
-    );
+    const timerClient = new TestTimerClient(timeConnector);
+    const activityProvider = new MockableActivityProvider();
     const eventHandlerProvider = new TestEventHandlerProvider();
     const eventHandlerWorker = createEventHandlerWorker({
       // break the circular dependence on the worker and client by making the client optional in the worker
@@ -122,10 +118,32 @@ export class TestEnvironment extends RuntimeServiceClient {
       eventHandlerProvider,
     });
     const eventClient = new TestEventClient(eventHandlerWorker);
+    const workflowClient = new TestWorkflowClient(
+      timeConnector,
+      activityRuntimeClient,
+      executionStore
+    );
+    const activityWorker = createActivityWorker({
+      activityRuntimeClient,
+      eventClient,
+      timerClient,
+      logger: new TestLogger(),
+      metricsClient: new TestMetricsClient(),
+      workflowClient,
+      activityProvider,
+    });
+    const workflowRuntimeClient = new TestWorkflowRuntimeClient(
+      executionStore,
+      timeConnector,
+      workflowClient,
+      activityWorker
+    );
+
     super({
       eventClient,
       executionHistoryClient,
       workflowClient,
+      workflowRuntimeClient,
     });
 
     this.serviceFile = bundleService(
@@ -141,24 +159,10 @@ export class TestEnvironment extends RuntimeServiceClient {
     this.workflowClient = workflowClient;
     this.eventHandlerProvider = eventHandlerProvider;
     this.eventClient = eventClient;
-    this.timerClient = new TestTimerClient(timeConnector);
-    this.activityProvider = new MockableActivityProvider();
-    this.activityWorker = createActivityWorker({
-      activityRuntimeClient,
-      eventClient: this.eventClient,
-      timerClient: this.timerClient,
-      logger: new TestLogger(),
-      metricsClient: new TestMetricsClient(),
-      workflowClient: this.workflowClient,
-      activityProvider: this.activityProvider,
-      serviceClient: this,
-    });
-    this.workflowRuntimeClient = new TestWorkflowRuntimeClient(
-      executionStore,
-      timeConnector,
-      this.workflowClient,
-      this.activityWorker
-    );
+    this.timerClient = timerClient;
+    this.workflowRuntimeClient = workflowRuntimeClient;
+    this.activityProvider = activityProvider;
+
     this.orchestrator = createOrchestrator({
       timerClient: this.timerClient,
       eventClient: this.eventClient,
@@ -176,6 +180,7 @@ export class TestEnvironment extends RuntimeServiceClient {
    */
   public async initialize() {
     if (!this.initialized) {
+      registerServiceClient(this);
       const _workflows = workflows();
       _workflows.clear();
       const _events = events();
