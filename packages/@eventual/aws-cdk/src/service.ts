@@ -1,4 +1,9 @@
-import { AppSpec, MetricsCommon, OrchestratorMetrics } from "@eventual/core";
+import {
+  AppSpec,
+  MetricsCommon,
+  OrchestratorMetrics,
+  ServiceType,
+} from "@eventual/core";
 import { Arn, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
 import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
 import {
@@ -12,7 +17,6 @@ import {
 } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
-import { execSync } from "child_process";
 import { Construct } from "constructs";
 import { Activities, IActivities } from "./activities";
 import { lazyInterface } from "./proxy-construct";
@@ -27,6 +31,8 @@ import {
   Statistic,
   Unit,
 } from "aws-cdk-lib/aws-cloudwatch";
+import { bundleSourcesSync, inferSync } from "./compile-client";
+import path from "path";
 
 export interface ServiceProps {
   entry: string;
@@ -84,19 +90,38 @@ export class Service extends Construct implements IGrantable {
 
     this.serviceName = props.name ?? Names.uniqueResourceName(this, {});
 
-    this.appSpec = JSON.parse(
-      execSync(
-        `npx ts-node ${require.resolve(
-          "@eventual/compiler/bin/eventual-infer.js"
-        )} ${props.entry}`
-      ).toString("utf-8")
-    );
+    this.appSpec = inferSync(props.entry);
+    // bundleSync(outDir(this), props.entry);
 
-    execSync(
-      `node ${require.resolve(
-        "@eventual/compiler/bin/eventual-bundle.js"
-      )} ${outDir(this)} ${props.entry}`
-    ).toString("utf-8");
+    bundleSourcesSync(
+      outDir(this),
+      props.entry,
+      {
+        name: ServiceType.OrchestratorWorker,
+        entry: runtimeEntrypoint("orchestrator"),
+        eventualTransform: true,
+        serviceType: ServiceType.OrchestratorWorker,
+      },
+      {
+        name: ServiceType.ActivityWorker,
+        entry: runtimeEntrypoint("activity-worker"),
+        serviceType: ServiceType.ActivityWorker,
+      },
+      {
+        name: ServiceType.ApiHandler,
+        entry: runtimeEntrypoint("api-handler"),
+        serviceType: ServiceType.ApiHandler,
+      },
+      {
+        name: ServiceType.EventHandler,
+        entry: runtimeEntrypoint("event-handler"),
+        serviceType: ServiceType.EventHandler,
+      },
+      {
+        name: "list-workflows",
+        entry: runtimeEntrypoint("list-workflows"),
+      }
+    );
 
     // Table - History, Executions
     this.table = new Table(this, "Table", {
@@ -337,4 +362,11 @@ export class Service extends Construct implements IGrantable {
       },
     });
   }
+}
+
+export function runtimeEntrypoint(name: string) {
+  return path.join(
+    require.resolve("@eventual/aws-runtime"),
+    `../../esm/handlers/${name}.js`
+  );
 }
