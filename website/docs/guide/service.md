@@ -6,8 +6,6 @@ sidebar_position: 0
 
 A Service consists of an API Gateway, an Event Bus and Workflows. It is the main building block of Eventual and is responsible for hosting your business logic and exposing it through an HTTP REST API.
 
-![Service Architecture](./service.png)
-
 ## Service Construct
 
 A `Service` can be created with the AWS CDK Construct available in [`@eventual/aws-cdk`](https://www.npmjs.com/package/@eventual/aws-cdk).
@@ -17,6 +15,8 @@ const service = new Service(stack, "Service", {
   entry: path.resolve("services", "functions", "my-service.ts"),
 });
 ```
+
+## Business Logic
 
 The `entry` property points to the entrypoint `.ts` or `.js` file that contains the application logic for your service. A service's application logic is implemented using the 4 building blocks:
 
@@ -74,3 +74,9 @@ table.grantReadWriteData(service);
 ```
 
 The `api`, `event` and `activity` handler's IAM Roles will now have access to read/write to that DynamoDB Table.
+
+## System Architecture
+
+An Eventual Service provisions a fully serverless architecture that includes an API Gateway, an Event Bus, and a Workflow Engine made up of a SQS FIFO Queue, an S3 Bucket, a DynamoDB Table, and a Scheduler API. These components are connected and managed by Lambda Functions that contain your business logic and are bundled with the `@eventual/aws-runtime` library, which controls execution and provides services to your code. These Lambda Functions use managed event source subscriptions to trigger and orchestrate the various pieces of the architecture, making it easy to maintain and operate.
+
+![Service Architecture](./service.png)
