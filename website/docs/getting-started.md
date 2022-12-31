@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-slug: /
+sidebar_position: 2
 ---
 
 # Getting Started
@@ -112,7 +112,7 @@ To clean up, destroy the application:
 
 Now that you have a basic understanding of Eventual's concepts, you can continue learning by:
 
-- Reading the [Reference Docs](./reference/index.md) for a more in-depth understanding of Eventual's components and how to use them.
-- Checking out the [cheat sheet](./reference/3.1-workflow-patterns.md) for an overview of patterns you can apply to your own projects.
-- Doing the [Bank Account Tutorial](./tutorial/1-bank-account.md) to practice using Eventual in a real-world scenario.
-- Exploring the project template for your chosen infrastructure-as-code (IaC) platform: [AWS Cloud Development Kit (CDK)](./overview/2-aws-cdk.md) or [AWS SST](./overview/1-aws-sst.md).
+- Reading the [Reference Docs](./guide/service.md) for a more in-depth understanding of Eventual's components and how to use them.
+- Checking out the [cheat sheet](./cheatsheet.md) for an overview of patterns you can apply to your own projects.
+- Doing the [Bank Account Tutorial](./tutorial/bank-account.md) to practice using Eventual in a real-world scenario.
+- Exploring the project template for your chosen infrastructure-as-code (IaC) platform: [AWS Cloud Development Kit (CDK)](./overview/aws-cdk.md) or [AWS SST](./overview/aws-sst.md).

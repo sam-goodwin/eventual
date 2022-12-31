@@ -1,6 +1,10 @@
+---
+sidebar_position: 5
+---
+
 # Activity
 
-An Activity is a function that can be called from within a [Workflow](./3-workflow.md). Its purpose is to encapsulate integration logic such as database calls, API calls, or waiting for humans/other long-running operations to complete from within a workflow. Activities provide a way to abstract away the implementation details of these integrations and allow them to be reused across different workflows.
+An Activity is a function that can be called from within a [Workflow](./workflow.md). Its purpose is to encapsulate integration logic such as database calls, API calls, or waiting for humans/other long-running operations to complete from within a workflow. Activities provide a way to abstract away the implementation details of these integrations and allow them to be reused across different workflows.
 
 ## Create an Activity
 
@@ -180,13 +184,13 @@ try {
 
 Alongside the activity-specific intrinsics already mentioned, the following intrinsic functions can also be called within an activity handler:
 
-- [`publish`](./2-event.md#publish-to-an-event)
+- [`publish`](./event.md#publish-to-an-event)
 
 ```ts
 await myEvent.publish({ .. });
 ```
 
-- [`startExecution`](./3-workflow.md#start-execution)
+- [`startExecution`](./workflow.md#start-execution)
 
 ```ts
 await myWorkflow.startExecution({
@@ -194,7 +198,7 @@ await myWorkflow.startExecution({
 })
 ```
 
-- [`complete`](./4-activity.md#complete-an-activity)
+- [`complete`](./activity.md#complete-an-activity)
 
 ```ts
 await myActivity.complete({
@@ -203,7 +207,7 @@ await myActivity.complete({
 })
 ```
 
-- [`fail`](./4-activity.md#fail-an-activity)
+- [`fail`](./activity.md#fail-an-activity)
 
 ```ts
 await myActivity.fail({

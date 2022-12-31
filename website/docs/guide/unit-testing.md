@@ -1,3 +1,7 @@
+---
+sidebar_position: 6
+---
+
 # Unit Testing
 
 Eventual provides a built-in library, `@eventual/testing`, for mocking and testing applications locally.
@@ -132,7 +136,7 @@ await env.startExecution(myWorkflow, "input string");
 
 ### Get Workflow Status
 
-The `startExecution` method returns an [`ExecutionHandle`](./3-workflow.md#execution-handle), which is a reference to a running workflow execution. You can use the [`getStatus`](./3-workflow.md#get-the-status-of-an-execution) method to retrieve the current status of the execution:
+The `startExecution` method returns an [`ExecutionHandle`](./workflow.md#execution-handle), which is a reference to a running workflow execution. You can use the [`getStatus`](./workflow.md#get-the-status-of-an-execution) method to retrieve the current status of the execution:
 
 For example, to start a workflow, advance time and then assert the status is `FAILED`, you can run the following code:
 
@@ -148,7 +152,7 @@ expect(status).toMatchObject({
 
 ### Send Signal
 
-The `sendSignal` method sends a signal to the [`ExecutionHandle`](./3-workflow.md#send-a-signal-to-a-running-execution).
+The `sendSignal` method sends a signal to the [`ExecutionHandle`](./workflow.md#send-a-signal-to-a-running-execution).
 
 For example, to start a workflow, send a signal, advance time and then assert the status is `COMPLETE`, you can run the following code:
 

@@ -1,8 +1,12 @@
+---
+sidebar_position: 0
+---
+
 # Service
 
 A Service consists of an API Gateway, an Event Bus and Workflows. It is the main building block of Eventual and is responsible for hosting your business logic and exposing it through an HTTP REST API.
 
-![Service Architecture](./0-service.png)
+![Service Architecture](./service.png)
 
 ## Service Construct
 
@@ -16,10 +20,10 @@ const service = new Service(stack, "Service", {
 
 The `entry` property points to the entrypoint `.ts` or `.js` file that contains the application logic for your service. A service's application logic is implemented using the 4 building blocks:
 
-1. [API](./1-api.md)
-2. [Events](./2-event.md)
-3. [Workflows](./3-workflow.md)
-4. [Activity](./4-activity.md)
+1. [API](./api.md)
+2. [Events](./event.md)
+3. [Workflows](./workflow.md)
+4. [Activity](./activity.md)
 
 ## Service Name
 
@@ -46,7 +50,7 @@ Or when invoking a workflow:
 > eventual start cart-service-prod checkout ./input.json
 ```
 
-For more information on how to use the CLI, see the [docs](./6-cli.md).
+For more information on how to use the CLI, see the [docs](./cli.md).
 
 ## Environment Variables
 

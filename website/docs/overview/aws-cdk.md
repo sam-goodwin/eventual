@@ -1,5 +1,5 @@
 ---
-title: AWS CDK Project
+title: AWS CDK
 ---
 
 # AWS CDK Project Overview
@@ -151,7 +151,7 @@ In the `tsconfig.json` file, the following configurations are recommended to ens
 }
 ```
 
-The `"DOM"` lib is required for Eventual's API (see: [Docs](../reference/1-api.md#router)).
+The `"DOM"` lib is required for Eventual's API (see: [Docs](../guide/api.md#router)).
 
 `"esnext"` and `"NodeNext"` configure TypeScript to emit ESM-optimized code.
 

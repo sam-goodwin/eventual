@@ -1,5 +1,5 @@
 ---
-title: AWS SST Project
+title: AWS SST
 ---
 
 # AWS SST Project Overview

@@ -1,3 +1,7 @@
+---
+sidebar_position: 4
+---
+
 # Workflow
 
 Workflows are programs that coordinate complex business processes, including calling APIs, coordinating time-based actions, and interacting with humans. They are designed to be reliable and durable, allowing them to execute over long periods of time and recover from failures. Workflows are particularly useful for orchestrating the interactions between various systems and components, serving as the "glue" that holds everything together.
@@ -162,7 +166,7 @@ await sleepWhile(() => !isCancelled);
 
 ## Patterns
 
-See the [Workflow Patterns](./3.1-workflow-patterns.md) for a cheatsheet of patterns for building workflows.
+See the [Workflow Patterns](../cheatsheet.md) for a cheatsheet of patterns for building workflows.
 
 ## Runtime Semantics
 
@@ -170,11 +174,11 @@ A workflow function is a program that executes in a durable, long-running manner
 
 To carry out an activity, the workflow function enqueues a message on an internal message bus. A worker listening to that queue then performs the activity and sends a message back to the workflow function with the result. This process allows the workflow to execute operations in a reliable manner, as each operation is guaranteed to be executed exactly once, even in the event of intermittent failures.
 
-![Activity Queue](./3-workflow-arch.png)
+![Activity Queue](./workflow-arch.png)
 
 The use of an internal message bus and worker process helps to eliminate the risk of failure inherent in single-invocation runtimes such as Lambda functions or containers, which can crash, timeout, or reboot at any time. By contrast, a workflow function is able to continue executing and resuming even in the face of such failures, making it a more durable and reliable runtime for long-running or business-critical processes.
 
-![Retry Crashed Workflow](./3-workflow-retry.png)
+![Retry Crashed Workflow](./workflow-retry.png)
 
 ## Durable Execution with Event Sourcing and Re-entrancy
 
@@ -182,7 +186,7 @@ Event sourcing and re-entrancy allow a workflow function to execute in a durable
 
 Event sourcing involves recording every action taken within a workflow as an event in the workflow's event log. This log is then used to replay the workflow's execution whenever a decision needs to be made, a process known as re-entrancy. During replay, the workflow function processes each event in the log in order. If an event has already been recorded in the log, it is considered to have already been performed and is skipped over. If an event has not been recorded, it is enqueued for execution and the workflow function suspends until it is completed.
 
-![Replay Idempotency](./3-workflow-idempotent-replay.png)
+![Replay Idempotency](./workflow-idempotent-replay.png)
 
 This ensures that each action taken by the workflow is performed exactly once, even in the face of intermittent failures. By using event sourcing and re-entrancy, a workflow function is able to provide strong runtime guarantees and execute in a reliable manner, making it suitable for long-running and failure-sensitive processes. Actions that are recorded in the event log include executing an activity or another workflow, waiting for a signal, publishing events, etc.
 

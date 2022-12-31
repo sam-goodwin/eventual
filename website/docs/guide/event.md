@@ -1,3 +1,7 @@
+---
+sidebar_position: 2
+---
+
 # Event
 
 An Event Bus is a messaging system within an Eventual Service that allows you to publish events to and subscribe to events from. Events are records of data that have a unique name and an optional type that describes the schema of the event's data. This allows you to send and receive data between different parts of your application or even between different applications.
@@ -49,13 +53,13 @@ myEvent.on(async (event) => {
 
 The following intrinsic functions can be called within an event subscription handler:
 
-- [`publish`](./2-event.md#publish-to-an-event)
+- [`publish`](./event.md#publish-to-an-event)
 
 ```ts
 await myEvent.publish({ .. });
 ```
 
-- [`startExecution`](./3-workflow.md#start-execution)
+- [`startExecution`](./workflow.md#start-execution)
 
 ```ts
 await myWorkflow.startExecution({
@@ -63,7 +67,7 @@ await myWorkflow.startExecution({
 })
 ```
 
-- [`complete`](./4-activity.md#complete-an-activity)
+- [`complete`](./activity.md#complete-an-activity)
 
 ```ts
 await myActivity.complete({
@@ -72,7 +76,7 @@ await myActivity.complete({
 })
 ```
 
-- [`fail`](./4-activity.md#fail-an-activity)
+- [`fail`](./activity.md#fail-an-activity)
 
 ```ts
 await myActivity.fail({

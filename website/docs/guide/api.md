@@ -1,3 +1,7 @@
+---
+sidebar_position: 1
+---
+
 # API
 
 The API for each Eventual service is a REST API that is exposed through an API Gateway. This allows external systems to interact with the service by making HTTP requests to specific endpoints. The API can be used to trigger workflows, complete async activities, and retrieve the results of completed workflows. In this documentation, we will explain how to use the api object provided by Eventual to register routes and handle incoming requests.
@@ -60,13 +64,13 @@ api.get("/hello/:name", async (request) => {
 
 The following intrinsic functions can be called within an API handler:
 
-- [`publish`](./2-event.md#publish-to-an-event)
+- [`publish`](./event.md#publish-to-an-event)
 
 ```ts
 await myEvent.publish({ .. });
 ```
 
-- [`startExecution`](./3-workflow.md#start-execution)
+- [`startExecution`](./workflow.md#start-execution)
 
 ```ts
 await myWorkflow.startExecution({
@@ -74,7 +78,7 @@ await myWorkflow.startExecution({
 })
 ```
 
-- [`complete`](./4-activity.md#complete-an-activity)
+- [`complete`](./activity.md#complete-an-activity)
 
 ```ts
 await myActivity.complete({
@@ -83,7 +87,7 @@ await myActivity.complete({
 })
 ```
 
-- [`fail`](./4-activity.md#fail-an-activity)
+- [`fail`](./activity.md#fail-an-activity)
 
 ```ts
 await myActivity.fail({
