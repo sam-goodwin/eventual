@@ -35,7 +35,7 @@ export class Telemetry extends Construct {
     let collectorConfigPath =
       props?.collectorConfigPath ??
       require.resolve(
-        "@eventual/aws-runtime/otlp-proxy-lamdba/otel-config.yaml"
+        "@eventual/aws-runtime/otlp-proxy-lambda/otel-config.yaml"
       );
 
     this.collectorFn = new Function(this, "collector", {

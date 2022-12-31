@@ -24,6 +24,7 @@
     "@opentelemetry/core": "^1.8.0",
     "@opentelemetry/exporter-trace-otlp-proto": "^0.34.0",
     "@opentelemetry/id-generator-aws-xray": "^1.1.1",
+    "@opentelemetry/propagator-aws-xray": "^1.1.1",
     "@opentelemetry/resources": "^1.8.0",
     "@opentelemetry/sdk-trace-base": "^1.8.0",
     "@opentelemetry/semantic-conventions": "^1.8.0",

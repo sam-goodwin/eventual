@@ -11,6 +11,7 @@ import { diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
 import { serviceName, telemetryComponentName } from "./env.js";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { AWSXRayIdGenerator } from "@opentelemetry/id-generator-aws-xray";
+import { AWSXRayPropagator } from "@opentelemetry/propagator-aws-xray";
 
 /**
  * Register the openetelemetry provider with the api.
@@ -29,7 +30,9 @@ export function registerTelemetryApi(): BasicTracerProvider {
     idGenerator: new AWSXRayIdGenerator(),
   });
   provider.addSpanProcessor(new SimpleSpanProcessor(new OTLPTraceExporter()));
-  provider.register({ contextManager: new AsyncHooksContextManager() });
-  console.log("Registered telemetry api");
+  provider.register({
+    contextManager: new AsyncHooksContextManager(),
+    propagator: new AWSXRayPropagator(),
+  });
   return provider;
 }

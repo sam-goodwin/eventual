@@ -2,7 +2,7 @@ import "@eventual/entry/injected";
 
 import { createOrchestrator } from "@eventual/core";
 import middy from "@middy/core";
-import { SpanKind, trace } from "@opentelemetry/api";
+import { SpanKind } from "@opentelemetry/api";
 import type { SQSEvent, SQSRecord } from "aws-lambda";
 import { serviceName } from "../env.js";
 import {
@@ -21,8 +21,7 @@ import { registerTelemetryApi } from "../telemetry.js";
  * Creates an entrypoint function for orchestrating a workflow
  * from within an AWS Lambda Function attached to a SQS FIFO queue.
  */
-registerTelemetryApi();
-const tracer = trace.getTracer(serviceName());
+const tracer = registerTelemetryApi().getTracer(serviceName());
 
 const orchestrate = createOrchestrator({
   executionHistoryClient: createExecutionHistoryClient(),
