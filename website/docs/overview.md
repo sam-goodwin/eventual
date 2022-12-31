@@ -3,7 +3,7 @@ slug: /
 sidebar_position: 1
 ---
 
-# Intro
+# Overview
 
 Welcome to the Eventual Concepts documentation!
 

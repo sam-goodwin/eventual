@@ -8,25 +8,15 @@ The API for each Eventual service is a REST API that is exposed through an API G
 
 ## Router
 
-Each Service has its own API Gateway that you can register routes onto using the api object available in `@eventual/core`
+To add routes to your service's API Gateway, you can use the api object provided in the `@eventual/core` package.
 
 ```ts
 import { api } from "@eventual/core";
+
+api.post("/echo", async (request) => {
+  return new Response(await request.text());
+});
 ```
-
-The default router provided by Eventual is built with [`itty-router`](https://github.com/kwhitley/itty-router) and uses the Node [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)'s [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) and [Response](https://developer.mozilla.org/en-US/docs/Web/API/Response) types.
-
-Your `tsconfig.json` must contain the DOM lib or else the `Request` and `Response` types will not be available.
-
-```json
-{
-  "compilerOptions": {
-    "lib": ["DOM"]
-  }
-}
-```
-
-Unless you're using Node 18+, you will need to polyfill with [`node-fetch`](https://www.npmjs.com/package/node-fetch).
 
 ## Routes and Handlers
 
@@ -159,3 +149,19 @@ The `patch` method registers a route that only matches a PATCH HTTP method. It i
 ```ts
 api.patch("/hello", (request) => { .. });
 ```
+
+## Node Fetch API
+
+The default router provided by Eventual is built with [`itty-router`](https://github.com/kwhitley/itty-router) and uses the Node [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)'s [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) and [Response](https://developer.mozilla.org/en-US/docs/Web/API/Response) types.
+
+Your `tsconfig.json` must contain the DOM lib or else the `Request` and `Response` types will not be available.
+
+```json
+{
+  "compilerOptions": {
+    "lib": ["DOM"]
+  }
+}
+```
+
+Unless you're using Node 18+, you will need to polyfill with [`node-fetch`](https://www.npmjs.com/package/node-fetch).
