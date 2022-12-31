@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.4.3 (2022-12-31)
+
+**Note:** Version bump only for package @eventual/compiler
+
 ## 0.4.2 (2022-12-30)
 
 ### Bug Fixes
