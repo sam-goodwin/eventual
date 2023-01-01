@@ -30,8 +30,7 @@ const testService = new eventual.Service(stack, "testService", {
   },
 });
 
-testService.grantRead(role);
-testService.grantStartWorkflow(role);
+testService.api.grantExecute(role);
 testService.cliRole.grantAssumeRole(role);
 eventual.Service.grantDescribeParameters(stack, role);
 testService.serviceDataSSM.grantRead(role);
@@ -58,14 +57,11 @@ const asyncWriterFunction = new NodejsFunction(stack, "asyncWriterFunction", {
   ),
   handler: "handle",
   environment: {
-    TEST_TABLE_NAME: testService.table.tableName,
-    TEST_ACTIVITY_TABLE_NAME: testService.activities.table.tableName,
-    TEST_QUEUE_URL: testService.workflows.queue.queueUrl,
+    TEST_SERVICE_URL: testService.api.gateway.apiEndpoint,
   },
 });
 asyncWriterFunction.grantInvoke(pipeRole);
-
-testService.grantFinishActivity(asyncWriterFunction);
+testService.api.grantExecute(asyncWriterFunction);
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-pipes-pipe.html
 new CfnResource(stack, "pipe", {
@@ -87,17 +83,7 @@ new CfnOutput(stack, "roleArn", {
   exportName: "RoleArn",
 });
 
-new CfnOutput(stack, "workflowQueueUrl", {
-  value: testService.workflows.queue.queueUrl,
-  exportName: "QueueUrl",
-});
-
-new CfnOutput(stack, "serviceTableName", {
-  value: testService.table.tableName,
-  exportName: "TableName",
-});
-
-new CfnOutput(stack, "activityTableName", {
-  value: testService.activities.table.tableName,
-  exportName: "ActivityTableName",
+new CfnOutput(stack, "serviceUrl", {
+  value: testService.api.gateway.apiEndpoint,
+  exportName: "ServiceUrl",
 });

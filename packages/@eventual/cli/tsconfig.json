@@ -7,8 +7,8 @@
     "rootDir": "src"
   },
   "references": [
-    { "path": "../core" },
-    { "path": "../aws-runtime" },
-    { "path": "../compiler" }
+    { "path": "../aws-client" },
+    { "path": "../compiler" },
+    { "path": "../core" }
   ]
 }

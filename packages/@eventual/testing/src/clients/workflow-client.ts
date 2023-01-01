@@ -4,6 +4,8 @@ import {
   Execution,
   ExecutionStatus,
   formatExecutionId,
+  GetExecutionsRequest,
+  GetExecutionsResponse,
   HistoryStateEvent,
   StartWorkflowRequest,
   Workflow,
@@ -24,12 +26,16 @@ export class TestWorkflowClient extends WorkflowClient {
     super(activityRuntimeClient, () => timeConnector.getTime());
   }
 
-  public async startWorkflow<W extends Workflow<any, any> = Workflow<any, any>>(
+  public async startWorkflow<W extends Workflow = Workflow>(
     request: StartWorkflowRequest<W>
   ): Promise<string> {
     const name = request.executionName ?? ulid();
+    const workflowName =
+      typeof request.workflow === "string"
+        ? request.workflow
+        : request.workflow.workflowName;
     const executionId = formatExecutionId(
-      request.workflowName,
+      workflowName,
       request.executionName ?? ulid()
     );
 
@@ -39,6 +45,7 @@ export class TestWorkflowClient extends WorkflowClient {
       status: ExecutionStatus.IN_PROGRESS,
       id: executionId,
       startTime: baseTime.toISOString(),
+      workflowName,
       parent:
         request.parentExecutionId !== undefined && request.seq !== undefined
           ? { executionId: request.parentExecutionId, seq: request.seq }
@@ -55,7 +62,7 @@ export class TestWorkflowClient extends WorkflowClient {
         {
           type: WorkflowEventType.WorkflowStarted,
           context: { name, parentId: request.parentExecutionId },
-          workflowName: request.workflowName,
+          workflowName,
           input: request.input,
           timeoutTime: request.timeoutSeconds
             ? new Date(
@@ -77,11 +84,10 @@ export class TestWorkflowClient extends WorkflowClient {
     this.timeConnector.pushEvent({ executionId, events });
   }
 
-  public async getExecutions(_props: {
-    statuses?: ExecutionStatus[] | undefined;
-    workflowName?: string | undefined;
-  }): Promise<Execution<any>[]> {
-    return this.executionStore.list();
+  public async getExecutions(
+    request: GetExecutionsRequest
+  ): Promise<GetExecutionsResponse> {
+    return this.executionStore.list(request);
   }
 
   public async getExecution(

@@ -5,11 +5,27 @@ import {
   createEventHandlerWorker,
   GlobalEventHandlerProvider,
 } from "@eventual/core";
-import { createEventClient, createWorkflowClient } from "../clients/create.js";
+import {
+  createServiceClient,
+  createTimerClient,
+  createWorkflowRuntimeClient,
+} from "../clients/create.js";
 
 export const processEvent = createEventHandlerWorker({
-  workflowClient: createWorkflowClient(),
-  eventClient: createEventClient(),
+  serviceClient: createServiceClient(
+    createWorkflowRuntimeClient({
+      executionHistoryBucket: "NOT_NEEDED",
+      activityWorkerFunctionName: "NOT_NEEDED",
+      tableName: "NOT_NEEDED",
+      timerClient: createTimerClient({
+        scheduleForwarderArn: "NOT_NEEDED",
+        schedulerDlqArn: "NOT_NEEDED",
+        schedulerGroup: "NOT_NEEDED",
+        schedulerRoleArn: "NOT_NEEDED",
+        timerQueueUrl: "NOT_NEEDED",
+      }),
+    })
+  ),
   eventHandlerProvider: new GlobalEventHandlerProvider(),
 });
 

@@ -136,7 +136,7 @@ export class CommandExecutor {
     baseTime: Date
   ): Promise<ChildWorkflowScheduled> {
     await this.props.workflowClient.startWorkflow({
-      workflowName: command.name,
+      workflow: command.name,
       input: command.input,
       parentExecutionId: executionId,
       executionName: formatChildExecutionName(executionId, command.seq),
@@ -229,7 +229,7 @@ export class CommandExecutor {
 
     await this.props.workflowClient.sendSignal({
       signal: command.signalId,
-      executionId: childExecutionId,
+      execution: childExecutionId,
       id: `${executionId}/${command.seq}`,
       payload: command.payload,
     });

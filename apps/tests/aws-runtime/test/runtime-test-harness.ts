@@ -7,7 +7,13 @@ import {
   WorkflowInput,
   WorkflowOutput,
 } from "@eventual/core";
-import { workflowClient } from "./client-create.js";
+import { AwsHttpServiceClient } from "@eventual/aws-client";
+import { serviceUrl } from "./env.js";
+
+const serviceClient = new AwsHttpServiceClient({
+  serviceUrl: serviceUrl(),
+  region: "us-east-1",
+});
 
 export interface Test<W extends Workflow = Workflow> {
   name: string;
@@ -150,8 +156,8 @@ export function eventualRuntimeTestHarness(
 
   // start all of the workflow immediately, the tests can wait for them.
   const executionTests = tester.tests.map((_test) => ({
-    execution: workflowClient.startWorkflow({
-      workflowName: _test.workflow.workflowName,
+    execution: serviceClient.startExecution({
+      workflow: _test.workflow,
       input: _test.input,
     }),
     test: _test,
@@ -165,7 +171,7 @@ export function eventualRuntimeTestHarness(
         done = true;
       });
       test("test", async () => {
-        const executionId = await execution;
+        const { executionId } = await execution;
 
         await _test.test(executionId, { cancelCallback });
       });
@@ -180,7 +186,7 @@ export async function waitForWorkflowCompletion<W extends Workflow = Workflow>(
 ): Promise<Execution<WorkflowOutput<W>>> {
   let execution: Execution | undefined;
   do {
-    execution = await workflowClient.getExecution(executionId);
+    execution = await serviceClient.getExecution(executionId);
     if (!execution) {
       throw new Error("Cannot find execution id: " + executionId);
     }

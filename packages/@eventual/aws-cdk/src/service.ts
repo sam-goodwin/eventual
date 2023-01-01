@@ -91,7 +91,6 @@ export class Service extends Construct implements IGrantable {
     this.serviceName = props.name ?? Names.uniqueResourceName(this, {});
 
     this.appSpec = inferSync(props.entry);
-    // bundleSync(outDir(this), props.entry);
 
     bundleSourcesSync(
       outDir(this),
@@ -116,10 +115,6 @@ export class Service extends Construct implements IGrantable {
         name: ServiceType.EventHandler,
         entry: runtimeEntrypoint("event-handler"),
         serviceType: ServiceType.EventHandler,
-      },
-      {
-        name: "list-workflows",
-        entry: runtimeEntrypoint("list-workflows"),
       }
     );
 
@@ -173,6 +168,7 @@ export class Service extends Construct implements IGrantable {
       workflows: this.workflows,
       events: this.events,
       scheduler: this.scheduler,
+      entry: props.entry,
     });
 
     this.grantPrincipal = new CompositePrincipal(

@@ -3,7 +3,6 @@ import {
   DynamoDBClient,
   GetItemCommand,
   PutItemCommand,
-  QueryCommand,
 } from "@aws-sdk/client-dynamodb";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
@@ -15,12 +14,15 @@ import {
   WorkflowStarted,
   WorkflowTask,
   WorkflowClient,
-  StartWorkflowRequest,
   formatExecutionId,
   createEvent,
+  GetExecutionsResponse,
+  GetExecutionsRequest,
+  StartWorkflowRequest,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
+import { queryPageWithToken } from "./utils.js";
 
 export interface AWSWorkflowClientProps {
   readonly dynamo: DynamoDBClient;
@@ -43,12 +45,14 @@ export class AWSWorkflowClient extends WorkflowClient {
    */
   public async startWorkflow<W extends Workflow = Workflow>({
     executionName = ulid(),
-    workflowName,
+    workflow,
     input,
     parentExecutionId,
     seq,
     timeoutSeconds,
   }: StartWorkflowRequest<W>) {
+    const workflowName =
+      typeof workflow === "string" ? workflow : workflow.workflowName;
     const executionId = formatExecutionId(workflowName, executionName);
     console.log("execution input:", input);
 
@@ -117,20 +121,56 @@ export class AWSWorkflowClient extends WorkflowClient {
     );
   }
 
-  public async getExecutions(): Promise<Execution[]> {
-    const executions = await this.props.dynamo.send(
-      new QueryCommand({
+  public async getExecutions(
+    request?: GetExecutionsRequest
+  ): Promise<GetExecutionsResponse> {
+    const filters = [
+      request?.statuses
+        ? `#status IN (${request.statuses
+            // for safety, filter out execution statuses that are unknown
+            .filter((s) => Object.values(ExecutionStatus).includes(s))
+            .map((s) => `"${s}"`)
+            .join(",")})`
+        : undefined,
+      request?.workflowName ? `workflowName=:workflowName` : undefined,
+    ]
+      .filter((f) => !!f)
+      .join(" AND ");
+
+    const result = await queryPageWithToken<ExecutionRecord>(
+      {
+        dynamoClient: this.props.dynamo,
+        pageSize: request?.maxResults ?? 100,
+        keys: ["pk", "sk"],
+        nextToken: request?.nextToken,
+      },
+      {
         TableName: this.props.tableName,
-        KeyConditionExpression: "pk = :pk and begins_with(sk, :sk)",
+        KeyConditionExpression: "pk = :pk and begins_with(#sk, :sk)",
+        ScanIndexForward: request?.sortDirection !== "Desc",
+        FilterExpression: filters || undefined,
         ExpressionAttributeValues: {
           ":pk": { S: ExecutionRecord.PARTITION_KEY },
           ":sk": { S: ExecutionRecord.SORT_KEY_PREFIX },
+          ...(request?.workflowName
+            ? { ":workflowName": { S: request?.workflowName } }
+            : {}),
         },
-      })
+        ExpressionAttributeNames: {
+          "#sk": "sk",
+          ...(request?.statuses ? { "#status": "status" } : undefined),
+        },
+      }
     );
-    return executions.Items!.map((execution) =>
+
+    const executions = result.records.map((execution) =>
       createExecutionFromResult(execution as ExecutionRecord)
     );
+
+    return {
+      executions,
+      nextToken: result.nextToken,
+    };
   }
 
   public async getExecution(
@@ -201,6 +241,7 @@ export function createExecutionFromResult(
     result: execution.result ? JSON.parse(execution.result.S) : undefined,
     startTime: execution.startTime.S,
     status: execution.status.S,
+    workflowName: execution.workflowName.S,
     parent:
       execution.parentExecutionId !== undefined && execution.seq !== undefined
         ? {

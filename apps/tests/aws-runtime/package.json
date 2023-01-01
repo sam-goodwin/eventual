@@ -10,18 +10,12 @@
     "test:runtime-deploy": "pnpm -r --filter tests-runtime run deploy:runtime && pnpm -r --filter tests-runtime run test:runtime"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.241.0",
-    "@aws-sdk/client-lambda": "^3.241.0",
-    "@aws-sdk/client-s3": "^3.241.0",
     "@aws-sdk/client-sqs": "^3.241.0",
-    "@aws-sdk/credential-providers": "^3.241.0",
-    "@aws-sdk/lib-dynamodb": "^3.241.0",
-    "@eventual/aws-runtime": "workspace:^",
+    "@eventual/aws-client": "workspace:^",
     "@eventual/cli": "workspace:^",
     "@eventual/core": "workspace:^"
   },
   "devDependencies": {
-    "@eventual/compiler": "workspace:^",
     "@types/aws-lambda": "^8.10.108",
     "@types/jest": "^29",
     "@types/node": "^16",

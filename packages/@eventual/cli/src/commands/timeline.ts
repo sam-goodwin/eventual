@@ -25,16 +25,16 @@ export const timeline = (yargs: Argv) =>
         type: "string",
         demandOption: true,
       }),
-    serviceAction(async (spinner, ky, { execution, service }) => {
+    serviceAction(async (spinner, serviceClient, { execution, service }) => {
       spinner.start("Starting viz server");
       const app = express();
 
       app.use("/api/timeline/:execution", async (req, res) => {
         // We forward errors onto our handler for the ui to deal with
         try {
-          const events = await ky
-            .get(`executions/${req.params.execution}}/workflow-history`)
-            .json<HistoryStateEvent[]>();
+          const { events } = await serviceClient.getExecutionWorkflowHistory(
+            req.params.execution
+          );
           const timeline = aggregateEvents(events);
           res.json(timeline);
         } catch (e: any) {

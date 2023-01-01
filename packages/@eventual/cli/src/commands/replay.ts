@@ -1,7 +1,6 @@
 import {
   encodeExecutionId,
   ExecutionID,
-  HistoryStateEvent,
   parseWorkflowName,
   ServiceType,
   SERVICE_TYPE_FLAG,
@@ -29,29 +28,28 @@ export const replay = (yargs: Argv) =>
           type: "string",
           demandOption: true,
         }),
-    serviceAction(async (spinner, ky, { entry, service, execution }) => {
-      process.env[SERVICE_TYPE_FLAG] = ServiceType.OrchestratorWorker;
-      const encodedExecutionId = encodeExecutionId(execution);
-      spinner.start("Constructing replay...");
-      const [, events] = await Promise.all([
-        loadService(service, encodedExecutionId, entry),
-        ky
-          .get(`executions/${encodedExecutionId}/workflow-history`)
-          .json<HistoryStateEvent[]>(),
-      ]);
+    serviceAction(
+      async (spinner, serviceClient, { entry, service, execution }) => {
+        process.env[SERVICE_TYPE_FLAG] = ServiceType.OrchestratorWorker;
+        spinner.start("Constructing replay...");
+        const [, { events }] = await Promise.all([
+          loadService(service, encodeExecutionId(execution), entry),
+          serviceClient.getExecutionWorkflowHistory(execution),
+        ]);
 
-      spinner.succeed();
-      const workflowName = parseWorkflowName(execution as ExecutionID);
-      const workflow = workflows().get(workflowName);
-      if (!workflow) {
-        throw new Error(`Workflow ${workflowName} not found!`);
+        spinner.succeed();
+        const workflowName = parseWorkflowName(execution as ExecutionID);
+        const workflow = workflows().get(workflowName);
+        if (!workflow) {
+          throw new Error(`Workflow ${workflowName} not found!`);
+        }
+        spinner.start("Running program");
+
+        const res = orchestrator(workflow, events);
+        spinner.succeed();
+        console.log(res);
       }
-      spinner.start("Running program");
-
-      const res = orchestrator(workflow, events);
-      spinner.succeed();
-      console.log(res);
-    })
+    )
   );
 
 async function loadService(

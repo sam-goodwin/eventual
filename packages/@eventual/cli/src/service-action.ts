@@ -1,14 +1,20 @@
-import { HTTPError } from "ky-universal";
 import ora, { Ora } from "ora";
 import { Arguments, Argv } from "yargs";
-import { apiKy } from "./api-ky.js";
 import { styledConsole } from "./styled-console.js";
-import type { KyInstance } from "./types.js";
 import util from "util";
+import { AwsHttpServiceClient } from "@eventual/aws-client";
+import { EventualServiceClient } from "@eventual/core";
+import { assumeCliRole } from "./role.js";
+import { getServiceData, resolveRegion } from "./service-data.js";
 
 export type ServiceAction<T> = (
   spinner: Ora,
-  ky: KyInstance,
+  serviceClient: EventualServiceClient,
+  args: Arguments<T>
+) => Promise<void>;
+
+export type ServiceJsonAction<T> = (
+  serviceClient: EventualServiceClient,
   args: Arguments<T>
 ) => Promise<void>;
 
@@ -17,25 +23,38 @@ export type ServiceAction<T> = (
  * @param action Callback to perform for the action
  */
 export const serviceAction =
-  <T>(action: ServiceAction<T>) =>
+  <T>(action: ServiceAction<T>, jsonAction?: ServiceJsonAction<T>) =>
   async (
-    args: Arguments<{ debug: boolean; service: string; region?: string } & T>
+    args: Arguments<
+      { debug: boolean; service: string; region?: string; json?: boolean } & T
+    >
   ) => {
-    const spinner = ora().start("Preparing");
+    const spinner = args.json ? undefined : ora().start("Preparing");
     try {
-      const ky = await apiKy(args.service, args.region);
-      return await action(spinner, ky, args);
+      const region = args.region ?? (await resolveRegion());
+      const credentials = await assumeCliRole(args.service, region);
+      const serviceData = await getServiceData(
+        credentials,
+        args.service,
+        region
+      );
+      const serviceClient = new AwsHttpServiceClient({
+        credentials,
+        serviceUrl: serviceData.apiEndpoint,
+        region,
+      });
+      if (!spinner) {
+        if (!jsonAction) {
+          throw new Error("Operation does not support --json.");
+        }
+        return jsonAction(serviceClient, args);
+      }
+      return await action(spinner, serviceClient, args);
     } catch (e: any) {
       if (args.debug) {
-        if (e instanceof HTTPError) {
-          spinner.clear();
-          styledConsole.error(`Request: ${util.inspect(e.request)}`);
-          styledConsole.error(`Response: ${await e.response.text()}`);
-        } else {
-          styledConsole.error(util.inspect(e));
-        }
+        styledConsole.error(util.inspect(e));
       }
-      spinner.fail(e.message);
+      spinner?.fail(e.message);
       process.exit(1);
     }
   };
@@ -45,8 +64,16 @@ export const serviceAction =
  * @param name command name
  * @returns the command
  */
-export const setServiceOptions = (yargs: Argv) =>
-  yargs
+export const setServiceOptions = (
+  yargs: Argv,
+  jsonMode = false
+): Argv<{
+  debug: boolean;
+  service: string;
+  region: string | undefined;
+  json?: boolean;
+}> => {
+  const opts = yargs
     .positional("service", {
       type: "string",
       description: "Name of service to operate on",
@@ -59,3 +86,14 @@ export const setServiceOptions = (yargs: Argv) =>
       default: false,
       boolean: true,
     });
+
+  if (jsonMode) {
+    return opts.option("json", {
+      describe: "Return json instead of formatted output",
+      boolean: true,
+      default: false,
+    });
+  }
+
+  return opts;
+};

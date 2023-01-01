@@ -1,11 +1,6 @@
-import {
-  SendSignalProps,
-  Signal,
-  SignalPayload,
-  Workflow,
-  WorkflowClient,
-  WorkflowOutput,
-} from "./index.js";
+import { EventualServiceClient } from "./service-client.js";
+import { Signal, SendSignalProps, SignalPayload } from "./signals.js";
+import { Workflow, WorkflowOutput } from "./workflow.js";
 
 export enum ExecutionStatus {
   IN_PROGRESS = "IN_PROGRESS",
@@ -17,6 +12,7 @@ interface ExecutionBase {
   id: string;
   status: ExecutionStatus;
   startTime: string;
+  workflowName: string;
   parent?: {
     /**
      * Seq number when this execution is the child of another workflow.
@@ -66,17 +62,17 @@ export function isCompleteExecution(
 /**
  * A reference to a running execution.
  */
-export class ExecutionHandle<W extends Workflow<any, any>> {
+export class ExecutionHandle<W extends Workflow> {
   constructor(
     public executionId: string,
-    private workflowClient: WorkflowClient
+    private serviceClient: EventualServiceClient
   ) {}
 
   /**
    * @return the {@link Execution} with the status, result, error, and other data based on the current status.
    */
   public async getStatus(): Promise<Execution<WorkflowOutput<W>>> {
-    return (await this.workflowClient.getExecution(
+    return (await this.serviceClient.getExecution(
       this.executionId
     )) as Execution<WorkflowOutput<W>>;
   }
@@ -88,8 +84,8 @@ export class ExecutionHandle<W extends Workflow<any, any>> {
     signal: string | Signal<Payload>,
     payload: Payload
   ): Promise<void> {
-    return this.workflowClient.sendSignal({
-      executionId: this.executionId,
+    return this.serviceClient.sendSignal({
+      execution: this.executionId,
       signal: typeof signal === "string" ? signal : signal.id,
       payload,
     });

@@ -9,15 +9,19 @@ import {
 } from "../../workflow-events.js";
 import {
   clearActivityContext,
-  registerEventClient,
-  registerWorkflowClient,
+  registerServiceClient,
   setActivityContext,
 } from "../../global.js";
 import { createActivityToken } from "../activity-token.js";
 import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
-import { Schedule, TimerClient, TimerRequestType } from "../index.js";
+import {
+  RuntimeServiceClient,
+  Schedule,
+  TimerClient,
+  TimerRequestType,
+} from "../index.js";
 import { Logger } from "../logger.js";
 import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
 import { Unit } from "../metrics/unit.js";
@@ -35,6 +39,7 @@ export interface CreateActivityWorkerProps {
   logger: Logger;
   eventClient: EventClient;
   activityProvider: ActivityProvider;
+  serviceClient?: RuntimeServiceClient;
 }
 
 export interface ActivityWorkerRequest {
@@ -68,13 +73,13 @@ export function createActivityWorker({
   timerClient,
   metricsClient,
   logger,
-  eventClient,
   activityProvider,
+  serviceClient,
 }: CreateActivityWorkerProps): ActivityWorker {
-  // make the workflow client available to all activity code
-  registerWorkflowClient(workflowClient);
-  // make the event client available to all activity code
-  registerEventClient(eventClient);
+  // make the service client available to all activity code
+  if (serviceClient) {
+    registerServiceClient(serviceClient);
+  }
 
   return metricsClient.metricScope(
     (metrics) =>

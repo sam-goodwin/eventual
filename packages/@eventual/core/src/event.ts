@@ -1,6 +1,6 @@
 import { createPublishEventsCall } from "./calls/send-events-call.js";
-import { events, eventSubscriptions, getEventClient } from "./global.js";
-import { isOrchestratorWorker } from "./index.js";
+import { events, eventSubscriptions } from "./global.js";
+import { getServiceClient, isOrchestratorWorker } from "./index.js";
 
 /**
  * An EventPayload is the data sent as an event.
@@ -158,7 +158,7 @@ export function event<E extends EventPayload>(name: string): Event<E> {
       if (isOrchestratorWorker()) {
         return createPublishEventsCall(envelopes) as any;
       } else {
-        return getEventClient().publish(...envelopes);
+        return getServiceClient().publishEvents({ events: envelopes });
       }
     },
   };
