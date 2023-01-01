@@ -23,7 +23,6 @@
     "@eventual/core": "workspace:^",
     "node-fetch": "^2.6.7"
   },
-  "peerDependencies": {},
   "devDependencies": {
     "@types/node": "^16",
     "@types/node-fetch": "^2.6.2",

@@ -7,5 +7,8 @@
   },
   "include": ["src"],
   "exclude": ["lib", "node_modules", "src/package.json"],
-  "references": [{ "path": "../core/tsconfig.cjs.json" }]
+  "references": [
+    { "path": "../client/tsconfig.cjs.json" },
+    { "path": "../core/tsconfig.cjs.json" }
+  ]
 }

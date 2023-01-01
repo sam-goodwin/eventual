@@ -479,7 +479,6 @@ importers:
       '@aws-sdk/config-resolver': ^3.234.0
       '@aws-sdk/types': ^3.226.0
       '@eventual/aws-client': workspace:^
-      '@eventual/client': workspace:^
       '@eventual/compiler': workspace:^
       '@eventual/core': workspace:^
       '@eventual/timeline': workspace:^
@@ -513,7 +512,6 @@ importers:
       '@aws-sdk/config-resolver': 3.234.0
       '@aws-sdk/types': 3.226.0
       '@eventual/aws-client': link:../aws-client
-      '@eventual/client': link:../client
       '@eventual/compiler': link:../compiler
       '@eventual/core': link:../core
       '@eventual/timeline': link:../timeline

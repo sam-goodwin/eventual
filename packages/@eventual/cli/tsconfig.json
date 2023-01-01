@@ -8,8 +8,7 @@
   },
   "references": [
     { "path": "../aws-runtime" },
-    { "path": "../core" },
     { "path": "../compiler" },
-    { "path": "../client" }
+    { "path": "../core" }
   ]
 }

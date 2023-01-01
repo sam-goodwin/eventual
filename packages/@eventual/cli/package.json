@@ -59,7 +59,6 @@
     "@eventual/aws-client": "workspace:^",
     "@eventual/compiler": "workspace:^",
     "@eventual/core": "workspace:^",
-    "@eventual/client": "workspace:^",
     "@eventual/timeline": "workspace:^",
     "chalk": "^5.1.2",
     "cli-table3": "^0.6.3",
