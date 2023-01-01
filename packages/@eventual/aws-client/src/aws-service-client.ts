@@ -2,15 +2,17 @@ import { Sha256 } from "@aws-crypto/sha256-js";
 import { HttpRequest } from "@aws-sdk/protocol-http";
 import { parseQueryString } from "@aws-sdk/querystring-parser";
 import { SignatureV4, SignatureV4Init } from "@aws-sdk/signature-v4";
+import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import {
   BeforeRequest,
   HttpServiceClient,
   HttpServiceClientProps,
 } from "@eventual/client";
+import { resolveRegionConfig } from "@aws-sdk/config-resolver";
 
 export interface AwsHttpServiceClientProps extends HttpServiceClientProps {
-  credentials: SignatureV4Init["credentials"];
-  region: string;
+  credentials?: SignatureV4Init["credentials"];
+  region?: string;
   /**
    * Optional hook to mutate the request before the request is signed.
    *
@@ -52,9 +54,9 @@ export class AwsHttpServiceClient extends HttpServiceClient {
 
       // create a signer object with the credentials, the service name and the region
       const signer = new SignatureV4({
-        credentials: props.credentials,
+        credentials: props.credentials ?? defaultProvider(),
         service: "execute-api",
-        region: props.region,
+        region: resolveRegionConfig({ region: props.region }).region,
         sha256: Sha256,
       });
 

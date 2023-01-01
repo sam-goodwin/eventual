@@ -2,10 +2,11 @@ import ora, { Ora } from "ora";
 import { Arguments, Argv } from "yargs";
 import { styledConsole } from "./styled-console.js";
 import util from "util";
-import { AwsHttpServiceClient } from "./aws-service-client.js";
+import { AwsHttpServiceClient } from "@eventual/aws-client";
 import { EventualServiceClient } from "@eventual/core";
 import { assumeCliRole } from "./role.js";
-import { getServiceData, resolveRegion } from "./service-data.js";
+import { getServiceData } from "./service-data.js";
+import { resolveRegionConfig } from "@aws-sdk/config-resolver";
 
 export type ServiceAction<T> = (
   spinner: Ora,
@@ -31,7 +32,7 @@ export const serviceAction =
   ) => {
     const spinner = args.json ? undefined : ora().start("Preparing");
     try {
-      const region = args.region ?? (await resolveRegion());
+      const region = resolveRegionConfig({ region: args.region }).region;
       const credentials = await assumeCliRole(args.service, region);
       const serviceData = await getServiceData(
         credentials,

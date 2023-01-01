@@ -1,9 +1,4 @@
 import * as ssm from "@aws-sdk/client-ssm";
-import {
-  NODE_REGION_CONFIG_OPTIONS,
-  NODE_REGION_CONFIG_FILE_OPTIONS,
-} from "@aws-sdk/config-resolver";
-import { loadConfig } from "@aws-sdk/node-config-provider";
 import { AwsCredentialIdentity } from "@aws-sdk/types";
 import { styledConsole } from "./styled-console.js";
 
@@ -41,11 +36,4 @@ export async function getServiceData(
     throw new Error("No ssm parameter");
   }
   return JSON.parse(serviceData);
-}
-
-export async function resolveRegion() {
-  return await loadConfig(
-    NODE_REGION_CONFIG_OPTIONS,
-    NODE_REGION_CONFIG_FILE_OPTIONS
-  )();
 }
