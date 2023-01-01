@@ -7,7 +7,9 @@ import {
   GetExecutionsRequest,
   GetExecutionsResponse,
   HistoryStateEvent,
-  StartWorkflowRequest,
+  StartChildExecutionRequest,
+  StartExecutionRequest,
+  StartExecutionResponse,
   Workflow,
   WorkflowClient,
   WorkflowEventType,
@@ -26,9 +28,9 @@ export class TestWorkflowClient extends WorkflowClient {
     super(activityRuntimeClient, () => timeConnector.getTime());
   }
 
-  public async startWorkflow<W extends Workflow = Workflow>(
-    request: StartWorkflowRequest<W>
-  ): Promise<string> {
+  public async startExecution<W extends Workflow = Workflow>(
+    request: StartChildExecutionRequest<W> | StartExecutionRequest<W>
+  ): Promise<StartExecutionResponse> {
     const name = request.executionName ?? ulid();
     const workflowName =
       typeof request.workflow === "string"
@@ -47,7 +49,7 @@ export class TestWorkflowClient extends WorkflowClient {
       startTime: baseTime.toISOString(),
       workflowName,
       parent:
-        request.parentExecutionId !== undefined && request.seq !== undefined
+        "parentExecutionId" in request
           ? { executionId: request.parentExecutionId, seq: request.seq }
           : undefined,
     };
@@ -61,7 +63,13 @@ export class TestWorkflowClient extends WorkflowClient {
       createEvent<WorkflowStarted>(
         {
           type: WorkflowEventType.WorkflowStarted,
-          context: { name, parentId: request.parentExecutionId },
+          context: {
+            name,
+            parentId:
+              "parentExecutionId" in request
+                ? request.parentExecutionId
+                : undefined,
+          },
           workflowName,
           input: request.input,
           timeoutTime: request.timeoutSeconds
@@ -74,7 +82,7 @@ export class TestWorkflowClient extends WorkflowClient {
       )
     );
 
-    return executionId;
+    return { executionId };
   }
 
   public async submitWorkflowTask(

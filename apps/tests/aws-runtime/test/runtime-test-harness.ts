@@ -1,5 +1,5 @@
 import {
-  CompleteExecution,
+  SucceededExecution,
   Execution,
   ExecutionStatus,
   FailedExecution,
@@ -206,8 +206,8 @@ export async function delay(ms: number) {
 
 export function assertCompleteExecution(
   execution: Execution
-): asserts execution is CompleteExecution {
-  expect(execution.status).toEqual(ExecutionStatus.COMPLETE);
+): asserts execution is SucceededExecution {
+  expect(execution.status).toEqual(ExecutionStatus.SUCCEEDED);
 }
 
 export function assertFailureExecution(

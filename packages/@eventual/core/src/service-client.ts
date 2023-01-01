@@ -62,7 +62,7 @@ export interface EventualServiceClient {
   publishEvents(request: PublishEventsRequest): Promise<void>;
 
   /**
-   * Successfully Completes an async activity with the given value.
+   * Succeeds an async activity with the given value.
    */
   sendActivitySuccess(
     request: Omit<SendActivitySuccessRequest, "type">
@@ -86,6 +86,9 @@ export interface EventualServiceClient {
 }
 
 export interface StartExecutionResponse {
+  /**
+   * ID of the started workflow execution.
+   */
   executionId: string;
 }
 

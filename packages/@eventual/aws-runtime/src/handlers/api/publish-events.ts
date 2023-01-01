@@ -13,5 +13,5 @@ export const handler = withErrorMiddleware(async (request) => {
   }
   const eventsRequest = JSON.parse(body) as PublishEventsRequest;
 
-  return eventClient.publish(...eventsRequest.events);
+  return eventClient.publishEvents(...eventsRequest.events);
 });

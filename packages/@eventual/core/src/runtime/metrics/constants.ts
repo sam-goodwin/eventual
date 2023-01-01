@@ -153,7 +153,7 @@ export namespace ActivityMetrics {
   /**
    * Whether the activity completed without error.
    */
-  export const ActivityCompleted = "ActivityCompleted";
+  export const ActivitySucceeded = "ActivitySucceeded";
   /**
    * The total duration of the activity after being scheduled, including the time
    * waiting to be executed.

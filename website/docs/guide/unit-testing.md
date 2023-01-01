@@ -333,8 +333,11 @@ if (!activityToken) {
 }
 
 // mock the token being completed
-await env.completeActivity(activityToken, {
-  value: "hello from the async mock",
+await env.sendActivitySuccess({
+  activityToken,
+  result: {
+    value: "hello from the async mock",
+  },
 });
 ```
 
@@ -368,8 +371,11 @@ if (!activityToken) {
 }
 
 // mock the token being completed
-await env.completeActivity(activityToken, {
-  value: "hello from the async mock",
+await env.sendActivitySuccess({
+  activityToken,
+  result: {
+    value: "hello from the async mock",
+  },
 });
 ```
 

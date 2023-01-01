@@ -44,7 +44,7 @@ export class RuntimeServiceClient implements EventualServiceClient {
   public async startExecution<W extends Workflow = Workflow>(
     request: StartExecutionRequest<W>
   ): Promise<ExecutionHandle<W>> {
-    const executionId = await this.props.workflowClient.startWorkflow<W>(
+    const { executionId } = await this.props.workflowClient.startExecution<W>(
       request
     );
     return new ExecutionHandle(executionId, this);
@@ -84,24 +84,24 @@ export class RuntimeServiceClient implements EventualServiceClient {
   }
 
   public publishEvents(request: PublishEventsRequest): Promise<void> {
-    return this.props.eventClient.publish(...request.events);
+    return this.props.eventClient.publishEvents(...request.events);
   }
 
   public sendActivitySuccess(
     request: Omit<SendActivitySuccessRequest<any>, "type">
   ): Promise<void> {
-    return this.props.workflowClient.completeActivity(request);
+    return this.props.workflowClient.sendActivitySuccess(request);
   }
 
   public sendActivityFailure(
     request: Omit<SendActivityFailureRequest, "type">
   ): Promise<void> {
-    return this.props.workflowClient.failActivity(request);
+    return this.props.workflowClient.sendActivityFailure(request);
   }
 
   public sendActivityHeartbeat(
     request: Omit<SendActivityHeartbeatRequest, "type">
   ): Promise<SendActivityHeartbeatResponse> {
-    return this.props.workflowClient.heartbeatActivity(request);
+    return this.props.workflowClient.sendActivityHeartbeat(request);
   }
 }

@@ -19,6 +19,8 @@ import {
   PublishEventsRequest,
   registerServiceClient,
   RuntimeServiceClient,
+  SendActivityFailureRequest,
+  SendActivitySuccessRequest,
   SendSignalRequest,
   ServiceType,
   StartExecutionRequest,
@@ -287,7 +289,7 @@ export class TestEnvironment extends RuntimeServiceClient {
     event: string | Event<Payload>,
     ...payloads: Payload[]
   ) {
-    await this.eventClient.publish(
+    await this.eventClient.publishEvents(
       ...payloads.map(
         (p): EventEnvelope<Payload> => ({
           name: typeof event === "string" ? event : event.name,
@@ -329,7 +331,7 @@ export class TestEnvironment extends RuntimeServiceClient {
   }
 
   /**
-   * Completes an activity with a result value
+   * Succeeds an activity with a result value
    * and progressed time by one second ({@link tick}).
    *
    * Get the activity token by intercepting the token from {@link asyncResult}.
@@ -338,17 +340,13 @@ export class TestEnvironment extends RuntimeServiceClient {
    * let activityToken;
    * mockActivity.asyncResult(token => activityToken);
    * // start workflow
-   * env.completeActivity(activityToken, "value");
+   * env.sendActivitySuccess(activityToken, "value");
    * ```
    */
-  public async completeActivity<A extends ActivityFunction<any, any> = any>(
-    activityToken: string,
-    result: ActivityOutput<A>
+  public async sendActivitySuccess<A extends ActivityFunction<any, any> = any>(
+    request: Omit<SendActivitySuccessRequest<ActivityOutput<A>>, "type">
   ) {
-    await this.workflowClient.completeActivity({
-      activityToken,
-      result,
-    });
+    await super.sendActivitySuccess(request);
     return this.tick();
   }
 
@@ -362,19 +360,13 @@ export class TestEnvironment extends RuntimeServiceClient {
    * let activityToken;
    * mockActivity.asyncResult(token => activityToken);
    * // start workflow
-   * env.failActivity(activityToken, "value");
+   * env.sendActivityFailure(activityToken, "value");
    * ```
    */
-  public async failActivity(
-    activityToken: string,
-    error: string,
-    message?: string
+  public async sendActivityFailure(
+    request: Omit<SendActivityFailureRequest, "type">
   ) {
-    await this.workflowClient.failActivity({
-      activityToken,
-      error,
-      message,
-    });
+    await this.workflowClient.sendActivityFailure(request);
     return this.tick();
   }
 

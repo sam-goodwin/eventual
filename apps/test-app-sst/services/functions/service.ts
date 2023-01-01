@@ -15,7 +15,7 @@ api.post("/work", async (request) => {
 export const myWorkflow = workflow("myWorkflow", async (items: string[]) => {
   const results = await Promise.all(items.map(doWork));
 
-  await workDone.publish({
+  await workDone.publishEvents({
     outputs: results,
   });
 

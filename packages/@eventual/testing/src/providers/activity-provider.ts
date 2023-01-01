@@ -82,7 +82,7 @@ export interface IMockActivity<Arguments extends any[] = any[], Output = any> {
    * let activityToken;
    * mockActivity.asyncResult(token => { activityToken = token; });
    * // start workflow
-   * await env.completeActivity(activityToken, "some result");
+   * await env.sendActivitySuccess({ activityToken, result: "some result" });
    * ```
    *
    * The activity will use this resolution after all once resolutions are
@@ -102,7 +102,7 @@ export interface IMockActivity<Arguments extends any[] = any[], Output = any> {
    * let activityToken;
    * mockActivity.asyncResultOnce(token => { activityToken = token; });
    * // start workflow
-   * await env.completeActivity(activityToken, "some result");
+   * await env.sendActivitySuccess({ activityToken, result: "some result" });
    * ```
    *
    * The activity will use this resolution once all previous once resolutions are consumed.

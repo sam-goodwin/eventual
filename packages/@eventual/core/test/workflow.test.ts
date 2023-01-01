@@ -1,8 +1,8 @@
 import { Program } from "../src/interpret.js";
 import { createActivityCall } from "../src/calls/activity-call.js";
 import {
-  ActivityCompleted,
   ActivityScheduled,
+  ActivitySucceeded,
   WorkflowEventType,
   WorkflowStarted,
 } from "../src/workflow-events.js";
@@ -37,15 +37,15 @@ const scheduled4: ActivityScheduled = {
   timestamp: "",
 };
 
-const completed3: ActivityCompleted = {
-  type: WorkflowEventType.ActivityCompleted,
+const completed3: ActivitySucceeded = {
+  type: WorkflowEventType.ActivitySucceeded,
   seq: 0,
   result: 10,
   timestamp: "",
 };
 
-const completed5: ActivityCompleted = {
-  type: WorkflowEventType.ActivityCompleted,
+const completed5: ActivitySucceeded = {
+  type: WorkflowEventType.ActivitySucceeded,
   seq: 1,
   result: 10,
   timestamp: "",

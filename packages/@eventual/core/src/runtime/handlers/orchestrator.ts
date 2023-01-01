@@ -7,22 +7,22 @@ import {
   HistoryStateEvent,
   isHistoryEvent,
   isSleepCompleted,
-  isWorkflowCompleted,
+  isWorkflowSucceeded,
   isWorkflowFailed,
   isWorkflowStarted,
-  WorkflowCompleted,
+  WorkflowSucceeded,
   WorkflowEvent,
   WorkflowEventType,
   WorkflowFailed,
-  WorkflowTaskCompleted,
-  WorkflowTaskStarted,
+  WorkflowRunCompleted,
+  WorkflowRunStarted,
   WorkflowTimedOut,
 } from "../../workflow-events.js";
 import {
-  CompleteExecution,
+  SucceededExecution,
   ExecutionStatus,
   FailedExecution,
-  isCompleteExecution,
+  isSucceededExecution,
 } from "../../execution.js";
 import { isFailed, isResolved, isResult, Result } from "../../result.js";
 import { lookupWorkflow, progressWorkflow, Workflow } from "../../workflow.js";
@@ -200,9 +200,9 @@ export function createOrchestrator({
       return partitionExecutionResults(history, executeWorkflowGenerator());
 
       async function* executeWorkflowGenerator() {
-        yield createEvent<WorkflowTaskStarted>(
+        yield createEvent<WorkflowRunStarted>(
           {
-            type: WorkflowEventType.WorkflowTaskStarted,
+            type: WorkflowEventType.WorkflowRunStarted,
           },
           start
         );
@@ -301,9 +301,9 @@ export function createOrchestrator({
           maxTaskAge + (new Date().getTime() - start.getTime())
         );
 
-        yield createEvent<WorkflowTaskCompleted>(
+        yield createEvent<WorkflowRunCompleted>(
           {
-            type: WorkflowEventType.WorkflowTaskCompleted,
+            type: WorkflowEventType.WorkflowRunCompleted,
           },
           start
         );
@@ -322,9 +322,9 @@ export function createOrchestrator({
               start
             );
           } else if (isResolved<any>(result)) {
-            yield createEvent<WorkflowCompleted>(
+            yield createEvent<WorkflowSucceeded>(
               {
-                type: WorkflowEventType.WorkflowCompleted,
+                type: WorkflowEventType.WorkflowSucceeded,
                 output: result.value,
               },
               start
@@ -353,7 +353,7 @@ export function createOrchestrator({
       ) {
         const updatedHistoryEvents: HistoryStateEvent[] = [];
         const newWorkflowEvents: WorkflowEvent[] = [];
-        let resultEvent: WorkflowCompleted | WorkflowFailed | undefined;
+        let resultEvent: WorkflowSucceeded | WorkflowFailed | undefined;
         const seenEvents: Set<string> = new Set(
           originalHistory.map(getEventId)
         );
@@ -365,7 +365,7 @@ export function createOrchestrator({
             newWorkflowEvents.push(event);
             seenEvents.add(id);
           }
-          if (isWorkflowCompleted(event) || isWorkflowFailed(event)) {
+          if (isWorkflowSucceeded(event) || isWorkflowFailed(event)) {
             resultEvent = event;
           }
           // updatedHistoryEvents are all HistoryEvents old and new.
@@ -451,7 +451,7 @@ export function createOrchestrator({
     }
 
     async function persistWorkflowResult(
-      resultEvent?: WorkflowCompleted | WorkflowFailed
+      resultEvent?: WorkflowSucceeded | WorkflowFailed
     ) {
       // if the workflow is complete, add success and failure to the commands.
       if (resultEvent) {
@@ -468,12 +468,12 @@ export function createOrchestrator({
           );
 
           logExecutionCompleteMetrics(execution);
-        } else if (isWorkflowCompleted(resultEvent)) {
+        } else if (isWorkflowSucceeded(resultEvent)) {
           const execution = await timed(
             metrics,
             OrchestratorMetrics.ExecutionStatusUpdateDuration,
             () =>
-              workflowRuntimeClient.completeExecution({
+              workflowRuntimeClient.succeedExecution({
                 executionId,
                 result: resultEvent.output,
               })
@@ -522,16 +522,16 @@ export function createOrchestrator({
     }
 
     function logExecutionCompleteMetrics(
-      execution: CompleteExecution | FailedExecution
+      execution: SucceededExecution | FailedExecution
     ) {
       metrics.putMetric(
         OrchestratorMetrics.ExecutionComplete,
-        execution.status === ExecutionStatus.COMPLETE ? 1 : 0,
+        execution.status === ExecutionStatus.SUCCEEDED ? 1 : 0,
         Unit.Count
       );
       metrics.putMetric(
         OrchestratorMetrics.ExecutionFailed,
-        execution.status === ExecutionStatus.COMPLETE ? 0 : 1,
+        execution.status === ExecutionStatus.SUCCEEDED ? 0 : 1,
         Unit.Count
       );
       metrics.putMetric(
@@ -539,7 +539,7 @@ export function createOrchestrator({
         new Date(execution.endTime).getTime() -
           new Date(execution.startTime).getTime()
       );
-      if (isCompleteExecution(execution)) {
+      if (isSucceededExecution(execution)) {
         metrics.putMetric(
           OrchestratorMetrics.ExecutionResultBytes,
           execution.result ? JSON.stringify(execution.result).length : 0,

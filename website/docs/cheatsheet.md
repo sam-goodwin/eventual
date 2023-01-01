@@ -85,7 +85,7 @@ const gameEvent = signal<GameEvent>("GameEvent");
 const game = workflow("game", async () => {
   let position = 0;
   while (true) {
-    const event = await gameEvent.expect();
+    const event = await gameEvent.expectSignal();
     if (event.type === "Done") {
       break;
     } else if (event.type === "MoveLeft") {

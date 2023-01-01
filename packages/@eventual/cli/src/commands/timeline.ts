@@ -6,7 +6,7 @@ import open from "open";
 import { resolve } from "import-meta-resolve";
 import {
   HistoryStateEvent,
-  isActivityCompleted,
+  isActivitySucceeded,
   isActivityFailed,
   isActivityScheduled,
   encodeExecutionId,
@@ -104,7 +104,7 @@ function aggregateEvents(events: HistoryStateEvent[]): {
         start: new Date(event.timestamp).getTime(),
         state: { status: "inprogress" },
       };
-    } else if (isActivityCompleted(event)) {
+    } else if (isActivitySucceeded(event)) {
       const existingActivity = activities[event.seq];
       if (existingActivity) {
         existingActivity.state = {

@@ -18,7 +18,8 @@ import {
   createEvent,
   GetExecutionsResponse,
   GetExecutionsRequest,
-  StartWorkflowRequest,
+  StartExecutionRequest,
+  StartChildExecutionRequest,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
@@ -43,14 +44,13 @@ export class AWSWorkflowClient extends WorkflowClient {
    * @param input Workflow parameters
    * @returns
    */
-  public async startWorkflow<W extends Workflow = Workflow>({
+  public async startExecution<W extends Workflow = Workflow>({
     executionName = ulid(),
     workflow,
     input,
-    parentExecutionId,
-    seq,
     timeoutSeconds,
-  }: StartWorkflowRequest<W>) {
+    ...request
+  }: StartExecutionRequest<W> | StartChildExecutionRequest<W>) {
     const workflowName =
       typeof workflow === "string" ? workflow : workflow.workflowName;
     const executionId = formatExecutionId(workflowName, executionName);
@@ -67,10 +67,10 @@ export class AWSWorkflowClient extends WorkflowClient {
           workflowName: { S: workflowName },
           status: { S: ExecutionStatus.IN_PROGRESS },
           startTime: { S: new Date().toISOString() },
-          ...(parentExecutionId
+          ...("parentExecutionId" in request
             ? {
-                parentExecutionId: { S: parentExecutionId },
-                seq: { N: seq!.toString(10) },
+                parentExecutionId: { S: request.parentExecutionId },
+                seq: { N: request.seq.toString(10) },
               }
             : {}),
         },
@@ -89,7 +89,10 @@ export class AWSWorkflowClient extends WorkflowClient {
           : undefined,
         context: {
           name: executionName,
-          parentId: parentExecutionId,
+          parentId:
+            "parentExecutionId" in request
+              ? request.parentExecutionId
+              : undefined,
         },
       },
       new Date()
@@ -97,7 +100,7 @@ export class AWSWorkflowClient extends WorkflowClient {
 
     await this.submitWorkflowTask(executionId, workflowStartedEvent);
 
-    return executionId;
+    return { executionId };
   }
 
   public async submitWorkflowTask(

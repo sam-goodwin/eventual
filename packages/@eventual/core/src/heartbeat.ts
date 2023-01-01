@@ -12,7 +12,7 @@ import { SendActivityHeartbeatResponse } from "./service-client.js";
  *
  * @returns {@link HeartbeatResponse} which has response.cancelled if the activity was cancelled for any reason (ex: workflow completed, failed, or the activity timed out).
  */
-export async function heartbeat(
+export async function sendActivityHeartbeat(
   activityToken?: string
 ): Promise<SendActivityHeartbeatResponse> {
   if (isOrchestratorWorker()) {

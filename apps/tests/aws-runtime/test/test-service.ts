@@ -8,7 +8,7 @@ import {
   sleepFor,
   sleepUntil,
   workflow,
-  heartbeat,
+  sendActivityHeartbeat,
   HeartbeatTimeout,
   EventualError,
   signal,
@@ -93,16 +93,16 @@ const doneSignal = signal("done");
 export const parentWorkflow = workflow("parentWorkflow", async () => {
   const child = childWorkflow({ name: "child" });
   while (true) {
-    const n = await mySignal.expect({ timeoutSeconds: 10 });
+    const n = await mySignal.expectSignal({ timeoutSeconds: 10 });
 
     console.log(n);
 
     if (n > 10) {
-      child.signal(doneSignal);
+      child.sendSignal(doneSignal);
       break;
     }
 
-    child.signal(mySignal, n + 1);
+    child.sendSignal(mySignal, n + 1);
   }
 
   // join with child
@@ -127,11 +127,11 @@ export const childWorkflow = workflow(
 
     console.log(`Hi, I am ${input.name}`);
 
-    mySignal.on((n) => {
+    mySignal.onSignal((n) => {
       last = n;
       block = false;
     });
-    doneSignal.on(() => {
+    doneSignal.onSignal(() => {
       done = true;
       block = false;
     });
@@ -171,7 +171,7 @@ export const timedOutWorkflow = workflow(
         }
       },
       signal: async () => {
-        await mySignal.expect({ timeoutSeconds: 2 });
+        await mySignal.expectSignal({ timeoutSeconds: 2 });
       },
       activity: slowActivity,
       workflow: () => slowWf(undefined),
@@ -220,9 +220,9 @@ const activityWithHeartbeat = activity(
     while (_n++ < n) {
       await delay(0.5);
       if (type === "success") {
-        await heartbeat();
+        await sendActivityHeartbeat();
       } else if (type === "some-heartbeat" && _n < n * 0.33) {
-        await heartbeat();
+        await sendActivityHeartbeat();
       }
       // no-heartbeat never sends one... woops.
     }
@@ -282,7 +282,7 @@ export const eventDrivenWorkflow = workflow(
   "eventDrivenWorkflow",
   async (_, ctx) => {
     // publish an event from a workflow (the orchestrator)
-    await signalEvent.publish({
+    await signalEvent.publishEvents({
       executionId: ctx.execution.id,
       signalId: "start",
     });
@@ -308,12 +308,12 @@ const signalEvent = event<{
   proxy?: true;
 }>("SignalEvent");
 
-signalEvent.on(async ({ executionId, signalId, proxy }) => {
+signalEvent.onEvent(async ({ executionId, signalId, proxy }) => {
   console.debug("received signal event", { executionId, signalId, proxy });
   if (proxy) {
     // if configured to proxy, re-route this event through the signalEvent
     // reason: to test that we can publish events from within an event handler
-    await signalEvent.publish({
+    await signalEvent.publishEvents({
       executionId,
       signalId,
     });
@@ -325,7 +325,7 @@ signalEvent.on(async ({ executionId, signalId, proxy }) => {
 
 const sendFinishEvent = activity("sendFinish", async (executionId: string) => {
   // publish an event from an activity
-  await signalEvent.publish({
+  await signalEvent.publishEvents({
     executionId,
     signalId: "finish",
     // set proxy to true so that this event will route through event bridge again
@@ -354,9 +354,9 @@ class MyError extends EventualError {
 
 export const signalWorkflow = workflow("signalWorkflow", async () => {
   let n = 0;
-  mySignal.on(() => {
+  mySignal.onSignal(() => {
     n++;
   });
-  await doneSignal.expect();
+  await doneSignal.expectSignal();
   return n;
 });

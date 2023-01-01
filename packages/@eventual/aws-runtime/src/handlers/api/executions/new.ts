@@ -22,7 +22,7 @@ async function newExecution(event: APIGatewayProxyEventV2) {
   }
 
   return {
-    executionId: await workflowClient.startWorkflow({
+    executionId: await workflowClient.startExecution({
       workflow: workflowName,
       input: event.body && JSON.parse(event.body),
     }),

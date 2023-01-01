@@ -19,8 +19,8 @@ const RequestApprovalEvent =
   event<RequestApprovalEventPayload>("RequestApproval");
 
 // auto approval for the human request approval event.
-RequestApprovalEvent.on(async (event) => {
-  await requestApproval.complete({
+RequestApprovalEvent.onEvent(async (event) => {
+  await requestApproval.sendActivitySuccess({
     activityToken: event.token,
     result: { approve: true },
   });
@@ -46,7 +46,7 @@ export const stockBot = workflow("stock-bot", async () => {
         : await sellStock({ symbol });
 
     // report
-    await StockActionResultEvent.publish({
+    await StockActionResultEvent.publishEvents({
       symbol,
       action: decision,
       price,
@@ -83,7 +83,7 @@ const requestApproval = activity(
   "requestApproval",
   async (event: Omit<RequestApprovalEventPayload, "token">) => {
     return asyncResult<{ approve: boolean }>(async (token) => {
-      await RequestApprovalEvent.publish({ ...event, token });
+      await RequestApprovalEvent.publishEvents({ ...event, token });
     });
   }
 );

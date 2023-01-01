@@ -7,5 +7,5 @@ export interface EventClient {
   /**
    * Emit multiple events into the Eventual Service's event bus.
    */
-  publish(...event: EventEnvelope[]): Promise<void>;
+  publishEvents(...event: EventEnvelope[]): Promise<void>;
 }
