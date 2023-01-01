@@ -43,7 +43,7 @@ import { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
 import { timed, timedSync } from "../metrics/utils.js";
 import { promiseAllSettledPartitioned } from "../utils.js";
-import { trace } from "@opentelemetry/api";
+import { metrics, trace } from "@opentelemetry/api";
 
 /**
  * The Orchestrator's client dependencies.
@@ -91,6 +91,10 @@ export function createOrchestrator({
 
   return async (eventsByExecutionId) => {
     const tracer = trace.getTracer("orchestrator");
+    const metric = metrics.getMeter("orchestrator");
+    const invokesCounter = metric.createCounter("invocations");
+    invokesCounter.add(1);
+
     logger.debug("Handle workflowQueue records");
 
     logger.info(

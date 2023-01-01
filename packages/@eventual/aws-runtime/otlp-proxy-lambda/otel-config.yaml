@@ -9,10 +9,20 @@ exporters:
     loglevel: debug
   awsxray:
     index_all_attributes: true
+  awsemf:
+
+processors:
+  batch:
+    timeout: 1s
 
 #enables output for traces to xray
 service:
   pipelines:
     traces:
       receivers: [otlp]
+      processors: [batch]
       exporters: [logging, awsxray]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [awsemf]
