@@ -65,13 +65,13 @@ export class RuntimeServiceClient implements EventualServiceClient {
     return this.props.workflowClient.getExecution(executionId);
   }
 
-  public getExecutionEvents(
+  public getExecutionHistory(
     request: ExecutionEventsRequest
   ): Promise<ExecutionEventsResponse> {
     return this.props.executionHistoryClient.getEvents(request);
   }
 
-  public async getExecutionHistory(
+  public async getExecutionWorkflowHistory(
     executionId: string
   ): Promise<ExecutionHistoryResponse> {
     const events = await this.props.workflowRuntimeClient.getHistory(

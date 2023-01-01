@@ -10,6 +10,7 @@ import { replay } from "./commands/replay.js";
 import { timeline } from "./commands/timeline.js";
 import { sendSignal } from "./commands/send-signal.js";
 import { execution } from "./commands/execution.js";
+import { publishEvents } from "./commands/publish-events.js";
 
 const argv = hideBin(process.argv);
 const cli = yargs(argv).scriptName("eventual").strict();
@@ -18,6 +19,7 @@ const cli = yargs(argv).scriptName("eventual").strict();
   executions,
   history,
   logs,
+  publishEvents,
   replay,
   sendSignal,
   services,

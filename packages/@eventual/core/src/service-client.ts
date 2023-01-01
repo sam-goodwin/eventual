@@ -38,19 +38,21 @@ export interface EventualServiceClient {
   /**
    * Retrieves the workflow events for an execution.
    */
-  getExecutionEvents(
+  getExecutionHistory(
     request: ExecutionEventsRequest
   ): Promise<ExecutionEventsResponse>;
 
   /**
    * Retrieves the workflow history events for an execution.
    *
-   * @deprecated use {@link EventualServiceClient.getExecutionEvents}. This API will be removed in the future.
+   * @deprecated use {@link EventualServiceClient.getExecutionHistory}. This API will be removed in the future.
    *
    * TODO: Support the mixed use case of retrieving events and history events from
-   *       the {@link EventualServiceClient.getExecutionEvents} API.
+   *       the {@link EventualServiceClient.getExecutionHistory} API.
    */
-  getExecutionHistory(executionId: string): Promise<ExecutionHistoryResponse>;
+  getExecutionWorkflowHistory(
+    executionId: string
+  ): Promise<ExecutionHistoryResponse>;
 
   /**
    * Sends a signal to the given execution.

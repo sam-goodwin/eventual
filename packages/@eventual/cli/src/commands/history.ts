@@ -14,7 +14,7 @@ export const history = (yargs: Argv) =>
     serviceAction(async (spinner, serviceClient, { execution }) => {
       spinner.start("Getting execution history");
       // TODO: support pagination and sort direction
-      const { events } = await serviceClient.getExecutionEvents({
+      const { events } = await serviceClient.getExecutionHistory({
         executionId: execution,
       });
       spinner.succeed();

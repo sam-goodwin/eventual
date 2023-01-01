@@ -111,7 +111,7 @@ async function getNewEvents(
   executionId: string
 ) {
   // TODO: make this work with pagination instead of pulling all of the events.
-  const { events: updatedEvents } = await serviceClient.getExecutionEvents({
+  const { events: updatedEvents } = await serviceClient.getExecutionHistory({
     executionId,
   });
   if (updatedEvents.length === 0) {

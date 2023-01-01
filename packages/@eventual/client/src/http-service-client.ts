@@ -102,25 +102,25 @@ export class HttpServiceClient implements EventualServiceClient {
     }
   }
 
-  public async getExecutionEvents(
+  public async getExecutionHistory(
     request: ExecutionEventsRequest
   ): Promise<ExecutionEventsResponse> {
     // TODO: support pagination
     const resp = await this.request<void, WorkflowEvent[]>(
       "GET",
-      `executions/${encodeExecutionId(request.executionId)}/events`
+      `executions/${encodeExecutionId(request.executionId)}/history`
     );
 
     return { events: resp };
   }
 
-  public async getExecutionHistory(
+  public async getExecutionWorkflowHistory(
     executionId: string
   ): Promise<ExecutionHistoryResponse> {
     // TODO: support pagination
     const resp = await this.request<void, HistoryStateEvent[]>(
       "GET",
-      `executions/${encodeExecutionId(executionId)}}/history`
+      `executions/${encodeExecutionId(executionId)}}/workflow-history`
     );
 
     return { events: resp };
@@ -141,9 +141,8 @@ export class HttpServiceClient implements EventualServiceClient {
     );
   }
 
-  public publishEvents(_request: PublishEventsRequest): Promise<void> {
-    // TODO implement
-    throw new Error("Method not implemented.");
+  public publishEvents(request: PublishEventsRequest): Promise<void> {
+    return this.request<PublishEventsRequest, void>("PUT", `events`, request);
   }
 
   public sendActivitySuccess(

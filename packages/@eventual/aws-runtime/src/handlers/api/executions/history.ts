@@ -1,25 +1,23 @@
-import { decodeExecutionId, HistoryStateEvent } from "@eventual/core";
-import type {
-  APIGatewayProxyEventV2,
-  APIGatewayProxyHandlerV2,
-} from "aws-lambda";
-import { createWorkflowRuntimeClient } from "../../../clients/index.js";
+import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { createExecutionHistoryClient } from "../../../clients/index.js";
 import { withErrorMiddleware } from "../middleware.js";
+import { decodeExecutionId, WorkflowEvent } from "@eventual/core";
 
-const workflowClient = createWorkflowRuntimeClient({
-  // TODO: further decouple the clients
-  activityWorkerFunctionName: "NOT_NEEDED",
-  tableName: "NOT_NEEDED",
-});
+const workflowClient = createExecutionHistoryClient();
 
-async function workflowHistory(event: APIGatewayProxyEventV2) {
+async function history(event: APIGatewayProxyEventV2) {
   const executionId = event.pathParameters?.executionId;
   if (!executionId) {
     return { statusCode: 400, body: `Missing executionId` };
   }
 
-  return workflowClient.getHistory(decodeExecutionId(executionId));
+  // TODO pagination
+  return (
+    await workflowClient.getEvents({
+      executionId: decodeExecutionId(executionId),
+    })
+  ).events;
 }
 
-export const handler: APIGatewayProxyHandlerV2<HistoryStateEvent[]> =
-  withErrorMiddleware(workflowHistory);
+export const handler: APIGatewayProxyHandlerV2<WorkflowEvent[]> =
+  withErrorMiddleware(history);

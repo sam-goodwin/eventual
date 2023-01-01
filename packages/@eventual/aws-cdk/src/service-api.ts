@@ -97,11 +97,11 @@ export class Api extends Construct {
         },
         grants: (fn) => props.workflows.configureReadWorkflowData(fn),
       },
-      "/_eventual/executions/{executionId}/events": {
+      "/_eventual/executions/{executionId}/history": {
         methods: [HttpMethod.GET],
         entry: {
           name: "executions-events",
-          entry: runtimeEntrypoint("api/executions/events"),
+          entry: runtimeEntrypoint("api/executions/history"),
         },
         grants: (fn) => props.workflows.configureReadWorkflowData(fn),
       },
@@ -116,17 +116,27 @@ export class Api extends Construct {
           props.workflows.grantSendSignal(fn);
         },
       },
-      "/_eventual/executions/{executionId}/history": {
+      "/_eventual/executions/{executionId}/workflow-history": {
         methods: [HttpMethod.GET],
         entry: {
           name: "executions-history",
-          entry: runtimeEntrypoint("api/executions/history"),
+          entry: runtimeEntrypoint("api/executions/workflow-history"),
         },
         // TODO fix me
         grants: (fn) => {
           props.activities.configureFullControl(fn);
           props.workflows.configureReadHistory(fn);
           props.scheduler.configureScheduleTimer(fn);
+        },
+      },
+      "/_eventual/events": {
+        methods: [HttpMethod.PUT],
+        entry: {
+          name: "publish-events",
+          entry: runtimeEntrypoint("api/publish-events"),
+        },
+        grants: (fn) => {
+          props.events.configurePublish(fn);
         },
       },
     });

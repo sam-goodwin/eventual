@@ -32,7 +32,7 @@ export const timeline = (yargs: Argv) =>
       app.use("/api/timeline/:execution", async (req, res) => {
         // We forward errors onto our handler for the ui to deal with
         try {
-          const { events } = await serviceClient.getExecutionHistory(
+          const { events } = await serviceClient.getExecutionWorkflowHistory(
             req.params.execution
           );
           const timeline = aggregateEvents(events);

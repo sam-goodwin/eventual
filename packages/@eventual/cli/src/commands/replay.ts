@@ -34,7 +34,7 @@ export const replay = (yargs: Argv) =>
         spinner.start("Constructing replay...");
         const [, { events }] = await Promise.all([
           loadService(service, encodeExecutionId(execution), entry),
-          serviceClient.getExecutionHistory(execution),
+          serviceClient.getExecutionWorkflowHistory(execution),
         ]);
 
         spinner.succeed();
