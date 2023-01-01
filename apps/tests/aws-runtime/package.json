@@ -16,7 +16,6 @@
     "@eventual/core": "workspace:^"
   },
   "devDependencies": {
-    "@eventual/compiler": "workspace:^",
     "@types/aws-lambda": "^8.10.108",
     "@types/jest": "^29",
     "@types/node": "^16",
