@@ -9,10 +9,12 @@ import { hideBin } from "yargs/helpers";
 import { replay } from "./commands/replay.js";
 import { timeline } from "./commands/timeline.js";
 import { sendSignal } from "./commands/send-signal.js";
+import { execution } from "./commands/execution.js";
 
 const argv = hideBin(process.argv);
 const cli = yargs(argv).scriptName("eventual").strict();
 [
+  execution,
   executions,
   history,
   logs,

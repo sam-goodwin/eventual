@@ -477,6 +477,7 @@ importers:
       '@types/serve-static': ^1.15.0
       '@types/yargs': ^17.0.13
       chalk: ^5.1.2
+      cli-table3: ^0.6.3
       express: ^4.18.2
       get-port: ^6.1.2
       get-stdin: ^9.0.0
@@ -508,6 +509,7 @@ importers:
       '@eventual/core': link:../core
       '@eventual/timeline': link:../timeline
       chalk: 5.1.2
+      cli-table3: 0.6.3
       express: 4.18.2
       get-port: 6.1.2
       get-stdin: 9.0.0

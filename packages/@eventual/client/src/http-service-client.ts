@@ -86,11 +86,20 @@ export class HttpServiceClient implements EventualServiceClient {
     };
   }
 
-  public getExecution(
-    _executionId: string
+  public async getExecution(
+    executionId: string
   ): Promise<Execution<any> | undefined> {
-    // TODO implement api
-    throw new Error("Method not implemented.");
+    try {
+      return await this.request<void, Execution>(
+        "GET",
+        `executions/${encodeExecutionId(executionId)}`
+      );
+    } catch (err) {
+      if (err instanceof HttpError && err.status === 404) {
+        return undefined;
+      }
+      throw err;
+    }
   }
 
   public async getExecutionEvents(
@@ -99,7 +108,7 @@ export class HttpServiceClient implements EventualServiceClient {
     // TODO: support pagination
     const resp = await this.request<void, WorkflowEvent[]>(
       "GET",
-      `executions/${encodeExecutionId(request.executionId)}}/events`
+      `executions/${encodeExecutionId(request.executionId)}/events`
     );
 
     return { events: resp };
@@ -178,7 +187,21 @@ export class HttpServiceClient implements EventualServiceClient {
     if (resp.ok) {
       return resp.json() as Resp;
     } else {
-      throw new Error(resp.body ? await resp.text() : resp.statusText);
+      throw new HttpError(
+        resp.status,
+        resp.statusText,
+        resp.body ? await resp.text() : undefined
+      );
     }
+  }
+}
+
+export class HttpError extends Error {
+  constructor(
+    public status: number,
+    public statusText: string,
+    public body?: string
+  ) {
+    super(body || statusText);
   }
 }

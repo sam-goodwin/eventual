@@ -89,6 +89,14 @@ export class Api extends Construct {
           props.workflows.configureReadWorkflowData(fn);
         },
       },
+      "/_eventual/executions/{executionId}": {
+        methods: [HttpMethod.GET],
+        entry: {
+          name: "get-execution",
+          entry: runtimeEntrypoint("api/executions/get"),
+        },
+        grants: (fn) => props.workflows.configureReadWorkflowData(fn),
+      },
       "/_eventual/executions/{executionId}/events": {
         methods: [HttpMethod.GET],
         entry: {
