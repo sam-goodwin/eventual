@@ -9,6 +9,7 @@ import {
   Function,
   FunctionUrlAuthType,
   LayerVersion,
+  Tracing,
 } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import path from "path";
@@ -91,6 +92,7 @@ export class Telemetry extends Construct {
           effect: Effect.ALLOW,
         }),
       ],
+      tracing: Tracing.ACTIVE
     });
     this.collectorFn;
     this.collectorFnUrl = this.collectorFn.addFunctionUrl({

@@ -2,9 +2,8 @@ import "@eventual/entry/injected";
 
 import { createOrchestrator } from "@eventual/core";
 import middy from "@middy/core";
-import { SpanKind } from "@opentelemetry/api";
+import { SpanKind, trace } from "@opentelemetry/api";
 import type { SQSEvent, SQSRecord } from "aws-lambda";
-import { serviceName } from "../env.js";
 import {
   createEventClient,
   createExecutionHistoryClient,
@@ -21,7 +20,7 @@ import { registerTelemetryApi } from "../telemetry.js";
  * Creates an entrypoint function for orchestrating a workflow
  * from within an AWS Lambda Function attached to a SQS FIFO queue.
  */
-const tracer = registerTelemetryApi().getTracer(serviceName());
+registerTelemetryApi();
 
 const orchestrate = createOrchestrator({
   executionHistoryClient: createExecutionHistoryClient(),
@@ -31,10 +30,10 @@ const orchestrate = createOrchestrator({
   eventClient: createEventClient(),
   metricsClient: AWSMetricsClient,
   logger,
-  tracer,
 });
 
 export default middy(async (event: SQSEvent) => {
+  const tracer = trace.getTracer("orchestrator");
   const orchestratorSpan = tracer.startSpan("orchestrator", {
     kind: SpanKind.PRODUCER,
   });
