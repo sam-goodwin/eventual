@@ -942,7 +942,10 @@ describe("long running activities", () => {
       throw new Error("Expected activity token to be set");
     }
 
-    await longRunningAct.complete({ activityToken, result: { value: "hi" } });
+    await longRunningAct.complete({
+      activityToken,
+      result: { value: "hi" },
+    });
     await env.tick();
 
     expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({

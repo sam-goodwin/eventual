@@ -139,6 +139,17 @@ export class Api extends Construct {
           props.events.configurePublish(fn);
         },
       },
+      "/_eventual/activities": {
+        methods: [HttpMethod.POST],
+        entry: {
+          name: "update-activity",
+          entry: runtimeEntrypoint("api/update-activity"),
+        },
+        grants: (fn) => {
+          props.activities.configureUpdateActivity(fn);
+          props.activities.configureCompleteActivity(fn);
+        },
+      },
     });
 
     this.configureApiHandler();

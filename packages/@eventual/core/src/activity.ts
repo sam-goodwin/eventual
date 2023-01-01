@@ -4,8 +4,8 @@ import {
   getActivityContext,
   getServiceClient,
 } from "./global.js";
-import { CompleteActivityRequest } from "./runtime/clients/workflow-client.js";
 import { isActivityWorker, isOrchestratorWorker } from "./runtime/flags.js";
+import { SendActivitySuccessRequest } from "./service-client.js";
 
 export interface ActivityOptions {
   /**
@@ -31,7 +31,7 @@ export interface ActivityFunction<Arguments extends any[], Output = any> {
   (...args: Arguments): Promise<Awaited<UnwrapAsync<Output>>>;
 
   /**
-   * Complete an activity request by its {@link CompleteActivityRequest.activityToken}.
+   * Complete an activity request by its {@link SendActivitySuccessRequest.activityToken}.
    *
    * This method is used in conjunction with {@link asyncResult} in an activity
    * to perform asynchronous, long-running computations. For example:
@@ -52,7 +52,10 @@ export interface ActivityFunction<Arguments extends any[], Output = any> {
    * ```
    */
   complete(
-    request: CompleteActivityRequest<UnwrapAsync<Awaited<Output>>>
+    request: Omit<
+      SendActivitySuccessRequest<UnwrapAsync<Awaited<Output>>>,
+      "type"
+    >
   ): Promise<void>;
 
   activityID: string;

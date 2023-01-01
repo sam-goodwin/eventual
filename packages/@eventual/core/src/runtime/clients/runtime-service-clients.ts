@@ -1,26 +1,23 @@
 import {
+  SendActivitySuccessRequest,
   EventualServiceClient,
   ExecutionEventsRequest,
   ExecutionEventsResponse,
   ExecutionHistoryResponse,
+  SendActivityFailureRequest,
   GetExecutionsRequest,
   GetExecutionsResponse,
   GetWorkflowResponse,
+  SendActivityHeartbeatRequest,
   PublishEventsRequest,
   StartExecutionRequest,
+  SendActivityHeartbeatResponse,
 } from "../../service-client.js";
 import { Execution, ExecutionHandle } from "../../execution.js";
 import { Workflow } from "../../workflow.js";
 import { EventClient } from "./event-client.js";
 import { ExecutionHistoryClient } from "./execution-history-client.js";
-import {
-  SendSignalRequest,
-  CompleteActivityRequest,
-  FailActivityRequest,
-  HeartbeatRequest,
-  HeartbeatResponse,
-  WorkflowClient,
-} from "./workflow-client.js";
+import { SendSignalRequest, WorkflowClient } from "./workflow-client.js";
 import { WorkflowRuntimeClient, workflows } from "../../index.js";
 
 export interface RuntimeServiceClientProps {
@@ -91,18 +88,20 @@ export class RuntimeServiceClient implements EventualServiceClient {
   }
 
   public sendActivitySuccess(
-    request: CompleteActivityRequest<any>
+    request: Omit<SendActivitySuccessRequest<any>, "type">
   ): Promise<void> {
     return this.props.workflowClient.completeActivity(request);
   }
 
-  public sendActivityFailure(request: FailActivityRequest): Promise<void> {
+  public sendActivityFailure(
+    request: Omit<SendActivityFailureRequest, "type">
+  ): Promise<void> {
     return this.props.workflowClient.failActivity(request);
   }
 
   public sendActivityHeartbeat(
-    request: HeartbeatRequest
-  ): Promise<HeartbeatResponse> {
+    request: Omit<SendActivityHeartbeatRequest, "type">
+  ): Promise<SendActivityHeartbeatResponse> {
     return this.props.workflowClient.heartbeatActivity(request);
   }
 }

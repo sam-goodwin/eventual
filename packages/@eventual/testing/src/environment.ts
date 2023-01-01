@@ -345,7 +345,10 @@ export class TestEnvironment extends RuntimeServiceClient {
     activityToken: string,
     result: ActivityOutput<A>
   ) {
-    await this.workflowClient.completeActivity({ activityToken, result });
+    await this.workflowClient.completeActivity({
+      activityToken,
+      result,
+    });
     return this.tick();
   }
 
@@ -367,7 +370,11 @@ export class TestEnvironment extends RuntimeServiceClient {
     error: string,
     message?: string
   ) {
-    await this.workflowClient.failActivity({ activityToken, error, message });
+    await this.workflowClient.failActivity({
+      activityToken,
+      error,
+      message,
+    });
     return this.tick();
   }
 

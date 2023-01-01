@@ -1,12 +1,6 @@
 import { EventEnvelope } from "./event.js";
 import { Execution, ExecutionHandle, ExecutionStatus } from "./execution.js";
-import {
-  CompleteActivityRequest,
-  FailActivityRequest,
-  HeartbeatRequest,
-  HeartbeatResponse,
-  SendSignalRequest,
-} from "./runtime/clients/workflow-client.js";
+import { SendSignalRequest } from "./runtime/clients/workflow-client.js";
 import { HistoryStateEvent, WorkflowEvent } from "./workflow-events.js";
 import { Workflow, WorkflowInput, WorkflowOptions } from "./workflow.js";
 
@@ -70,19 +64,25 @@ export interface EventualServiceClient {
   /**
    * Successfully Completes an async activity with the given value.
    */
-  sendActivitySuccess(request: CompleteActivityRequest): Promise<void>;
+  sendActivitySuccess(
+    request: Omit<SendActivitySuccessRequest, "type">
+  ): Promise<void>;
 
   /**
    * Fails an async activity causing it to throw the given error.
    */
-  sendActivityFailure(request: FailActivityRequest): Promise<void>;
+  sendActivityFailure(
+    request: Omit<SendActivityFailureRequest, "type">
+  ): Promise<void>;
 
   /**
    * Submits a "heartbeat" for the given activityToken.
    *
    * @returns whether the activity has been cancelled by the calling workflow.
    */
-  sendActivityHeartbeat(request: HeartbeatRequest): Promise<HeartbeatResponse>;
+  sendActivityHeartbeat(
+    request: Omit<SendActivityHeartbeatRequest, "type">
+  ): Promise<SendActivityHeartbeatResponse>;
 }
 
 export interface StartExecutionResponse {
@@ -166,4 +166,62 @@ export interface WorkflowReference {
 
 export interface GetWorkflowResponse {
   workflows: WorkflowReference[];
+}
+
+export enum ActivityUpdateType {
+  Success = "Success",
+  Failure = "Failure",
+  Heartbeat = "Heartbeat",
+}
+
+export type SendActivityUpdate<T = any> =
+  | SendActivitySuccessRequest<T>
+  | SendActivityFailureRequest
+  | SendActivityHeartbeatRequest;
+
+export interface SendActivitySuccessRequest<T = any> {
+  type: ActivityUpdateType.Success;
+  activityToken: string;
+  result: T;
+}
+
+export interface SendActivityFailureRequest {
+  type: ActivityUpdateType.Failure;
+  activityToken: string;
+  error: string;
+  message?: string;
+}
+
+export interface SendActivityHeartbeatRequest {
+  type: ActivityUpdateType.Heartbeat;
+  activityToken: string;
+}
+
+export function isSendActivitySuccessRequest<T = any>(
+  request: SendActivityUpdate<T>
+): request is SendActivitySuccessRequest<T> {
+  return request.type === ActivityUpdateType.Success;
+}
+
+export function isSendActivityFailureRequest(
+  request: SendActivityUpdate
+): request is SendActivityFailureRequest {
+  return request.type === ActivityUpdateType.Failure;
+}
+
+export function isSendActivityHeartbeatRequest(
+  request: SendActivityUpdate
+): request is SendActivityHeartbeatRequest {
+  return request.type === ActivityUpdateType.Heartbeat;
+}
+
+export type SendActivityUpdateResponse = SendActivityHeartbeatResponse | void;
+
+export interface SendActivityHeartbeatResponse {
+  /**
+   * True when the activity has been cancelled.
+   *
+   * This is the only way for a long running activity to know it was cancelled.
+   */
+  cancelled: boolean;
 }

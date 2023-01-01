@@ -16,9 +16,13 @@ import { Workflow, WorkflowOptions } from "../../workflow.js";
 import { decodeActivityToken } from "../activity-token.js";
 import { ActivityRuntimeClient } from "./activity-runtime-client.js";
 import {
+  SendActivitySuccessRequest,
+  SendActivityFailureRequest,
   GetExecutionsRequest,
   GetExecutionsResponse,
+  SendActivityHeartbeatRequest,
   StartExecutionRequest,
+  SendActivityHeartbeatResponse,
 } from "../../service-client.js";
 
 export abstract class WorkflowClient {
@@ -90,7 +94,7 @@ export abstract class WorkflowClient {
   public async completeActivity({
     activityToken,
     result,
-  }: CompleteActivityRequest): Promise<void> {
+  }: Omit<SendActivitySuccessRequest, "type">): Promise<void> {
     await this.sendActivityResult<ActivityCompleted>(activityToken, {
       type: WorkflowEventType.ActivityCompleted,
       result,
@@ -104,7 +108,7 @@ export abstract class WorkflowClient {
     activityToken,
     error,
     message,
-  }: FailActivityRequest): Promise<void> {
+  }: Omit<SendActivityFailureRequest, "type">): Promise<void> {
     await this.sendActivityResult<ActivityFailed>(activityToken, {
       type: WorkflowEventType.ActivityFailed,
       error,
@@ -118,8 +122,8 @@ export abstract class WorkflowClient {
    * @returns whether the activity has been cancelled by the calling workflow.
    */
   public async heartbeatActivity(
-    request: HeartbeatRequest
-  ): Promise<HeartbeatResponse> {
+    request: Omit<SendActivityHeartbeatRequest, "type">
+  ): Promise<SendActivityHeartbeatResponse> {
     const data = decodeActivityToken(request.activityToken);
 
     const execution = await this.getExecution(data.payload.executionId);
@@ -177,28 +181,4 @@ export interface StartWorkflowResponse {
    * ID of the started workflow execution.
    */
   executionId: string;
-}
-
-export interface CompleteActivityRequest<T = any> {
-  activityToken: string;
-  result: T;
-}
-
-export interface FailActivityRequest {
-  activityToken: string;
-  error: string;
-  message?: string;
-}
-
-export interface HeartbeatRequest {
-  activityToken: string;
-}
-
-export interface HeartbeatResponse {
-  /**
-   * True when the activity has been cancelled.
-   *
-   * This is the only way for a long running activity to know it was canelled.
-   */
-  cancelled: boolean;
 }

@@ -1,6 +1,6 @@
 import { getActivityContext, getServiceClient } from "./global.js";
-import { HeartbeatResponse } from "./runtime/clients/workflow-client.js";
 import { isActivityWorker, isOrchestratorWorker } from "./runtime/flags.js";
+import { SendActivityHeartbeatResponse } from "./service-client.js";
 
 /**
  * Sends a heartbeat for the current activity or to the provided activity token.
@@ -14,7 +14,7 @@ import { isActivityWorker, isOrchestratorWorker } from "./runtime/flags.js";
  */
 export async function heartbeat(
   activityToken?: string
-): Promise<HeartbeatResponse> {
+): Promise<SendActivityHeartbeatResponse> {
   if (isOrchestratorWorker()) {
     throw new Error(
       "Heartbeat is not currently supported from within a workflow. Use an activity with `heartbeat()`."

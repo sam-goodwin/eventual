@@ -1,5 +1,5 @@
 import {
-  CompleteActivityRequest,
+  SendActivitySuccessRequest,
   encodeExecutionId,
   EventualServiceClient,
   Execution,
@@ -7,12 +7,12 @@ import {
   ExecutionEventsResponse,
   ExecutionHandle,
   ExecutionHistoryResponse,
-  FailActivityRequest,
+  SendActivityFailureRequest,
   GetExecutionsRequest,
   GetExecutionsResponse,
   GetWorkflowResponse,
-  HeartbeatRequest,
-  HeartbeatResponse,
+  SendActivityHeartbeatRequest,
+  SendActivityHeartbeatResponse,
   HistoryStateEvent,
   PublishEventsRequest,
   SendSignalRequest,
@@ -20,6 +20,7 @@ import {
   Workflow,
   WorkflowEvent,
   WorkflowInput,
+  ActivityUpdateType,
 } from "@eventual/core";
 import path from "path";
 import "./fetch-polyfill.js";
@@ -163,22 +164,32 @@ export class HttpServiceClient implements EventualServiceClient {
   }
 
   public sendActivitySuccess(
-    _request: CompleteActivityRequest<any>
+    request: Omit<SendActivitySuccessRequest<any>, "type">
   ): Promise<void> {
-    // TODO implement
-    throw new Error("Method not implemented.");
+    return this.request<SendActivitySuccessRequest, void>(
+      "POST",
+      `activities`,
+      { ...request, type: ActivityUpdateType.Success }
+    );
   }
 
-  public sendActivityFailure(_request: FailActivityRequest): Promise<void> {
-    // TODO implement
-    throw new Error("Method not implemented.");
+  public sendActivityFailure(
+    request: Omit<SendActivityFailureRequest, "type">
+  ): Promise<void> {
+    return this.request<SendActivityFailureRequest, void>(
+      "POST",
+      `activities`,
+      { ...request, type: ActivityUpdateType.Failure }
+    );
   }
 
   public sendActivityHeartbeat(
-    _request: HeartbeatRequest
-  ): Promise<HeartbeatResponse> {
-    // TODO implement
-    throw new Error("Method not implemented.");
+    request: Omit<SendActivityHeartbeatRequest, "type">
+  ): Promise<SendActivityHeartbeatResponse> {
+    return this.request<
+      SendActivityHeartbeatRequest,
+      SendActivityHeartbeatResponse
+    >("POST", `activities`, { ...request, type: ActivityUpdateType.Heartbeat });
   }
 
   private async request<Body = any, Resp = any>(
