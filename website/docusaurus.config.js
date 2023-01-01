@@ -65,6 +65,7 @@ const config = {
         logo: {
           alt: "eventual",
           src: "img/logo.svg",
+          href: "https://eventual.net",
         },
         items: [
           {

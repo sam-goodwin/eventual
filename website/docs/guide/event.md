@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Event
 
-An Event Bus is a messaging system within an Eventual Service that allows you to publish events to and subscribe to events from. Events are records of data that have a unique name and an optional type that describes the schema of the event's data. This allows you to send and receive data between different parts of your application or even between different applications.
+The Event Bus is a component within each Eventual Service that enables the decoupling of services through the use of events. Services can publish and subscribe to events without directly interacting with each other, allowing for asynchronous processing, error isolation and recovery via replay. This decoupling also enables the easy addition of new services without making changes to existing ones, helping to evolve your system over time.
 
 ## Creating an Event
 
