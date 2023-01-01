@@ -79,7 +79,7 @@ interface TimelineActivity {
   name: string;
   start: number;
   state:
-    | { status: "completed"; end: number }
+    | { status: "succeeded"; end: number }
     | { status: "failed"; end: number }
     | { status: "inprogress" };
 }
@@ -108,7 +108,7 @@ function aggregateEvents(events: HistoryStateEvent[]): {
       const existingActivity = activities[event.seq];
       if (existingActivity) {
         existingActivity.state = {
-          status: "completed",
+          status: "succeeded",
           end: new Date(event.timestamp).getTime(),
         };
       } else {

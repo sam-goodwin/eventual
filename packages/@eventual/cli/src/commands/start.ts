@@ -74,15 +74,15 @@ export const start = (yargs: Argv) =>
             });
             events.push(...newEvents);
             sortEvents(events);
-            const completedEvent = events.find(
+            const succeededEvent = events.find(
               (ev) => ev.type === WorkflowEventType.WorkflowSucceeded
             );
             const failedEvent = events.find(
               (ev) => ev.type === WorkflowEventType.WorkflowFailed
             );
-            if (completedEvent) {
-              spinner.succeed("Workflow complete");
-              const { output } = completedEvent as WorkflowSucceeded;
+            if (succeededEvent) {
+              spinner.succeed("Workflow succeeded");
+              const { output } = succeededEvent as WorkflowSucceeded;
               if (output) {
                 styledConsole.success(output);
               }

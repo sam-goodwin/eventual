@@ -72,7 +72,7 @@ describe("activity", () => {
       input: undefined,
     });
 
-    // see if the execution has completed
+    // see if the execution has succeeded
     const r1 = await result.getStatus();
     // we expect it to still be in progress
     expect(r1).toMatchObject<Partial<typeof r1>>({
@@ -83,9 +83,9 @@ describe("activity", () => {
     // note: running real activities uses an async function and may not be done by the next tick
     await env.tick();
 
-    // the workflow should be done now, the activity completed event should have been processed in the `tick`
+    // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
     const r2 = await result.getStatus();
-    // and the execution updated to a completed state
+    // and the execution updated to a succeeded state
     expect(r2).toMatchObject<Partial<typeof r2>>({
       status: ExecutionStatus.SUCCEEDED,
       result: [[{ status: "fulfilled", value: "hi" }]],
@@ -97,8 +97,8 @@ describe("activity", () => {
     beforeAll(() => {
       mockActivity = env.mockActivity(activity1);
     });
-    test("complete once with always", async () => {
-      mockActivity.complete("hello from the mock");
+    test("succeed once with always", async () => {
+      mockActivity.succeed("hello from the mock");
       // execution starts
       const execution = await env.startExecution({
         workflow: workflow3,
@@ -106,17 +106,17 @@ describe("activity", () => {
       });
       await env.tick();
 
-      // the workflow should be done now, the activity completed event should have been processed in the `tick`
+      // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
       const r2 = await execution.getStatus();
-      // and the execution updated to a completed state
+      // and the execution updated to a succeeded state
       expect(r2).toMatchObject<Partial<typeof r2>>({
         status: ExecutionStatus.SUCCEEDED,
         result: [[{ status: "fulfilled", value: "hello from the mock" }]],
       });
     });
 
-    test("complete many always", async () => {
-      mockActivity.complete("hello from the mock");
+    test("succeed many always", async () => {
+      mockActivity.succeed("hello from the mock");
       // execution starts
       const execution = await env.startExecution({
         workflow: workflow3,
@@ -124,9 +124,9 @@ describe("activity", () => {
       });
       await env.tick();
 
-      // the workflow should be done now, the activity completed event should have been processed in the `tick`
+      // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
       const r2 = await execution.getStatus();
-      // and the execution updated to a completed state
+      // and the execution updated to a succeeded state
       expect(r2).toMatchObject<Partial<typeof r2>>({
         status: ExecutionStatus.SUCCEEDED,
         result: [
@@ -148,9 +148,9 @@ describe("activity", () => {
       });
       await env.tick();
 
-      // the workflow should be done now, the activity completed event should have been processed in the `tick`
+      // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
       const r2 = await execution.getStatus();
-      // and the execution updated to a completed state
+      // and the execution updated to a succeeded state
       expect(r2).toMatchObject<Partial<typeof r2>>({
         status: ExecutionStatus.SUCCEEDED,
         result: [
@@ -164,7 +164,7 @@ describe("activity", () => {
     });
 
     test("fail once", async () => {
-      mockActivity.failOnce(new Error("Ahhh")).complete("not a failure");
+      mockActivity.failOnce(new Error("Ahhh")).succeed("not a failure");
       // execution starts
       const execution = await env.startExecution({
         workflow: workflow3,
@@ -172,9 +172,9 @@ describe("activity", () => {
       });
       await env.tick();
 
-      // the workflow should be done now, the activity completed event should have been processed in the `tick`
+      // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
       const r2 = await execution.getStatus();
-      // and the execution updated to a completed state
+      // and the execution updated to a succeeded state
       expect(r2).toMatchObject<Partial<typeof r2>>({
         status: ExecutionStatus.SUCCEEDED,
         result: [
@@ -201,9 +201,9 @@ describe("activity", () => {
       });
       await env.tick();
 
-      // the workflow should be done now, the activity completed event should have been processed in the `tick`
+      // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
       const r2 = await execution.getStatus();
-      // and the execution updated to a completed state
+      // and the execution updated to a succeeded state
       expect(r2).toMatchObject<Partial<typeof r2>>({
         status: ExecutionStatus.SUCCEEDED,
         result: [
@@ -227,9 +227,9 @@ describe("activity", () => {
       });
       await env.tick();
 
-      // the workflow should be done now, the activity completed event should have been processed in the `tick`
+      // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
       const r2 = await execution.getStatus();
-      // and the execution updated to a completed state
+      // and the execution updated to a succeeded state
       expect(r2).toMatchObject<Partial<typeof r2>>({
         status: ExecutionStatus.SUCCEEDED,
         result: [
@@ -243,26 +243,26 @@ describe("activity", () => {
       });
     });
 
-    test("complete, changing during workflow", async () => {
-      mockActivity.complete("hello from the mock");
+    test("succeeded, changing during workflow", async () => {
+      mockActivity.succeed("hello from the mock");
       // execution starts
       const execution = await env.startExecution({
         workflow: workflow3,
         input: { series: 3 },
       });
-      // while activity call 1 completes, update the mock result
-      mockActivity.complete("new mock result");
+      // while activity call 1 succeeds, update the mock result
+      mockActivity.succeed("new mock result");
       await env.tick();
 
-      // while activity call 2 completes, update the mock result
-      mockActivity.complete("another new mock result");
-      // activity call 2 completes at tick 1, starting activity call 3
-      // activity call 3 completes at tick 2
+      // while activity call 2 succeeds, update the mock result
+      mockActivity.succeed("another new mock result");
+      // activity call 2 succeeds at tick 1, starting activity call 3
+      // activity call 3 succeeds at tick 2
       await env.tick(2);
 
-      // the workflow should be done now, the activity completed event should have been processed in the `tick`
+      // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
       const r2 = await execution.getStatus();
-      // and the execution updated to a completed state
+      // and the execution updated to a succeeded state
       expect(r2).toMatchObject<Partial<typeof r2>>({
         status: ExecutionStatus.SUCCEEDED,
         result: [
@@ -273,8 +273,8 @@ describe("activity", () => {
       });
     });
 
-    test("complete once and then always", async () => {
-      mockActivity.completeOnce("first!").complete("hello from the mock");
+    test("succeed once and then always", async () => {
+      mockActivity.succeedOnce("first!").succeed("hello from the mock");
       // execution starts
       const execution = await env.startExecution({
         workflow: workflow3,
@@ -282,9 +282,9 @@ describe("activity", () => {
       });
       await env.tick();
 
-      // the workflow should be done now, the activity completed event should have been processed in the `tick`
+      // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
       const r2 = await execution.getStatus();
-      // and the execution updated to a completed state
+      // and the execution updated to a succeeded state
       expect(r2).toMatchObject<Partial<typeof r2>>({
         status: ExecutionStatus.SUCCEEDED,
         result: [
@@ -307,7 +307,7 @@ describe("sleep", () => {
       input: true,
     });
 
-    // see if the execution has completed
+    // see if the execution has succeeded
     const r1 = await result.getStatus();
     // we expect it to still be in progress
     expect(r1).toMatchObject<Partial<typeof r1>>({
@@ -343,7 +343,7 @@ describe("sleep", () => {
       input: true,
     });
 
-    // see if the execution has completed
+    // see if the execution has succeeded
     const r1 = await result.getStatus();
     // we expect it to still be in progress
     expect(r1).toMatchObject<Partial<typeof r1>>({
@@ -381,7 +381,7 @@ describe("sleep", () => {
       input: true,
     });
 
-    // see if the execution has completed
+    // see if the execution has succeeded
     const r1 = await execution.getStatus();
     // we expect it to still be in progress
     expect(r1).toMatchObject<Partial<typeof r1>>({
@@ -419,7 +419,7 @@ describe("sleep", () => {
       input: false,
     });
 
-    // see if the execution has completed
+    // see if the execution has succeeded
     const r1 = await result.getStatus();
     // we expect it to still be in progress
     expect(r1).toMatchObject<Partial<typeof r1>>({
@@ -456,7 +456,7 @@ describe("sleep", () => {
       input: false,
     });
 
-    // see if the execution has completed
+    // see if the execution has succeeded
     const r1 = await result.getStatus();
     // we expect it to still be in progress
     expect(r1).toMatchObject<Partial<typeof r1>>({
@@ -734,7 +734,7 @@ describe("events", () => {
 });
 
 describe("completing executions", () => {
-  test("complete", async () => {
+  test("succeed", async () => {
     const execution = await env.startExecution({
       workflow: workflow1,
       input: undefined,
@@ -752,7 +752,7 @@ describe("completing executions", () => {
     });
   });
 
-  test("complete future", async () => {
+  test("succeed future", async () => {
     await env.tickUntil("2022-01-01");
     const execution = await env.startExecution({
       workflow: workflow1,
@@ -790,7 +790,7 @@ describe("completing executions", () => {
     });
   });
 
-  test("complete future", async () => {
+  test("succeed future", async () => {
     await env.tickUntil("2022-01-01");
     const execution = await env.startExecution({
       workflow: errorWorkflow,
@@ -848,7 +848,7 @@ describe("timeouts", () => {
     mockActivity = env.mockActivity(actWithTimeout);
   });
   test("everyone is happy", async () => {
-    mockActivity.complete("hello");
+    mockActivity.succeed("hello");
     const execution = await env.startExecution({
       workflow: workflowWithTimeouts,
       input: undefined,
@@ -1024,8 +1024,8 @@ describe("long running activities", () => {
       mockActivity = env.mockActivity(longRunningAct);
     });
 
-    test("complete async immediately", async () => {
-      mockActivity.complete({ value: "i am a mock" });
+    test("succeed async immediately", async () => {
+      mockActivity.succeed({ value: "i am a mock" });
       const execution = await env.startExecution({
         workflow: longRunningWorkflow,
         input: undefined,
@@ -1054,8 +1054,8 @@ describe("long running activities", () => {
       });
     });
 
-    test("block and complete", async () => {
-      let activityToken;
+    test("block and succeed", async () => {
+      let activityToken: string | undefined;
       mockActivity.asyncResult((token) => {
         activityToken = token;
       });
@@ -1085,13 +1085,13 @@ describe("long running activities", () => {
       });
     });
 
-    test("block and complete once", async () => {
-      let activityToken;
+    test("block and succeed once", async () => {
+      let activityToken: string | undefined;
       mockActivity
         .asyncResultOnce((token) => {
           activityToken = token;
         })
-        .complete({ value: "not async" });
+        .succeed({ value: "not async" });
       const execution = await env.startExecution({
         workflow: longRunningWorkflow,
         input: undefined,
@@ -1128,8 +1128,8 @@ describe("long running activities", () => {
       });
     });
 
-    test("block and complete after sleep time", async () => {
-      let activityToken;
+    test("block and succeed after sleep time", async () => {
+      let activityToken: string | undefined;
       mockActivity.asyncResult((token) => {
         activityToken = token;
       });

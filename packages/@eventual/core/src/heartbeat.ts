@@ -10,7 +10,7 @@ import { SendActivityHeartbeatResponse } from "./service-client.js";
  * If the activity has a heartbeatTimeout set and the workflow has not received a heartbeat in heartbeatTimeoutSeconds,
  * the workflow will throw a {@link HeartbeatTimeout} and cancel the activity.
  *
- * @returns {@link HeartbeatResponse} which has response.cancelled if the activity was cancelled for any reason (ex: workflow completed, failed, or the activity timed out).
+ * @returns {@link HeartbeatResponse} which has response.cancelled if the activity was cancelled for any reason (ex: workflow succeeded, failed, or the activity timed out).
  */
 export async function sendActivityHeartbeat(
   activityToken?: string

@@ -1,5 +1,5 @@
-export interface Completed {
-  status: "completed";
+export interface Succeeded {
+  status: "succeeded";
   end: number;
 }
 
@@ -12,7 +12,7 @@ export interface InProgress {
   status: "inprogress";
 }
 
-export type ActivityState = Completed | Failed | InProgress;
+export type ActivityState = Succeeded | Failed | InProgress;
 
 /**
  * Start and end are expected to be in ms
@@ -31,8 +31,8 @@ export function getDuration({ start, end }: Timespan): number {
   return end - start;
 }
 
-export function isCompleted(state: ActivityState): state is Completed {
-  return state.status === "completed";
+export function isCompleted(state: ActivityState): state is Succeeded {
+  return state.status === "succeeded";
 }
 
 export function isFailed(state: ActivityState): state is Failed {

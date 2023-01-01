@@ -196,30 +196,30 @@ The `mockActivity` provides the following utility functions that can be used to 
 
 | Resolution                                                              | Description                                           |
 | ----------------------------------------------------------------------- | ----------------------------------------------------- |
-| [`complete`](#complete) and [`completeOnce`](#completeonce)             | Activity returns a result                             |
+| [`succeed`](#succeed) and [`succeedOnce`](#succeedonce)             | Activity returns a result                             |
 | [`fail`](#fail) and [`failOnce`](#failonce)                             | Activity fails with an error                          |
 | [`timeout`](#timeout) and [`timeoutOnce`](#timeoutonce)                 | Activity fails with a Timeout error                   |
 | [`invoke`](#invoke) and [`invokeOnce`](#invokeonce)                     | Activity will call your delegate function             |
 | [`invokeReal`](#invokereal) and [`invokeRealOnce`](#invokerealonce)     | Activity will call the real underlying implementation |
 | [`asyncResult`](#asyncresult) and [`asyncResultOnce`](#asyncresultonce) | Activity will return an async result token            |
 
-### `complete`
+### `succeed`
 
-Use the `complete` method to set up a mocked activity to always complete with a specified value:
-
-```ts
-mockedActivity.complete("value");
-```
-
-### `completeOnce`
-
-Use the `completeOnce` method to set up a mocked activity to complete once with a specific value, and then behave differently on subsequent invocations.
+Use the `succeed` method to set up a mocked activity to always succeed with a specified value:
 
 ```ts
-mockedActivity.completeOnce("once").complete("value");
+mockedActivity.succeed("value");
 ```
 
-For example, in the above code, the first time this mocked activity is called, it will complete with the value `"once"`. All subsequent calls will then complete with `"value"`.
+### `succeedOnce`
+
+Use the `succeedOnce` method to set up a mocked activity to succeed once with a specific value, and then behave differently on subsequent invocations.
+
+```ts
+mockedActivity.succeedOnce("once").succeed("value");
+```
+
+For example, in the above code, the first time this mocked activity is called, it will succeed with the value `"once"`. All subsequent calls will then succeed with `"value"`.
 
 ### `fail`
 

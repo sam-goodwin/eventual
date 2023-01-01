@@ -232,7 +232,7 @@ export class TestEnvironment extends RuntimeServiceClient {
    *
    * ```ts
    * const mockActivity = env.mockActivity(myActivity);
-   * mockActivity.complete("hello"); // myActivity will return "hello" when invoked until the mock is reset or a new resolution is given.
+   * mockActivity.succeed("hello"); // myActivity will return "hello" when invoked until the mock is reset or a new resolution is given.
    * ```
    */
   public mockActivity<A extends ActivityFunction<any, any>>(
