@@ -8,7 +8,11 @@ import {
   HttpServiceClient,
   HttpServiceClientProps,
 } from "@eventual/client";
-import { resolveRegionConfig } from "@aws-sdk/config-resolver";
+import {
+  NODE_REGION_CONFIG_FILE_OPTIONS,
+  NODE_REGION_CONFIG_OPTIONS,
+} from "@aws-sdk/config-resolver";
+import { loadConfig } from "@aws-sdk/node-config-provider";
 
 export interface AwsHttpServiceClientProps extends HttpServiceClientProps {
   credentials?: SignatureV4Init["credentials"];
@@ -56,7 +60,7 @@ export class AwsHttpServiceClient extends HttpServiceClient {
       const signer = new SignatureV4({
         credentials: props.credentials ?? defaultProvider(),
         service: "execute-api",
-        region: resolveRegionConfig({ region: props.region }).region,
+        region: props.region ?? (await resolveRegion()),
         sha256: Sha256,
       });
 
@@ -76,4 +80,11 @@ export class AwsHttpServiceClient extends HttpServiceClient {
 
     super({ ...props, beforeRequest: signRequest });
   }
+}
+
+export async function resolveRegion() {
+  return await loadConfig(
+    NODE_REGION_CONFIG_OPTIONS,
+    NODE_REGION_CONFIG_FILE_OPTIONS
+  )();
 }

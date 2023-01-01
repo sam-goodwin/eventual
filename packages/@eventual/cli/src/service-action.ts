@@ -5,8 +5,7 @@ import util from "util";
 import { AwsHttpServiceClient } from "@eventual/aws-client";
 import { EventualServiceClient } from "@eventual/core";
 import { assumeCliRole } from "./role.js";
-import { getServiceData } from "./service-data.js";
-import { resolveRegionConfig } from "@aws-sdk/config-resolver";
+import { getServiceData, resolveRegion } from "./service-data.js";
 
 export type ServiceAction<T> = (
   spinner: Ora,
@@ -32,7 +31,7 @@ export const serviceAction =
   ) => {
     const spinner = args.json ? undefined : ora().start("Preparing");
     try {
-      const region = resolveRegionConfig({ region: args.region }).region;
+      const region = args.region ?? (await resolveRegion());
       const credentials = await assumeCliRole(args.service, region);
       const serviceData = await getServiceData(
         credentials,

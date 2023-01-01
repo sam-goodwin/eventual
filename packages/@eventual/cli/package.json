@@ -55,6 +55,7 @@
     "@aws-sdk/client-ssm": "^3.241.0",
     "@aws-sdk/client-sts": "^3.241.0",
     "@aws-sdk/config-resolver": "^3.234.0",
+    "@aws-sdk/node-config-provider": "^3.226.0",
     "@aws-sdk/types": "^3.226.0",
     "@eventual/aws-client": "workspace:^",
     "@eventual/compiler": "workspace:^",

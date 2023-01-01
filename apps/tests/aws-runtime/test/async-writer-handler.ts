@@ -3,7 +3,6 @@ import { AwsHttpServiceClient } from "@eventual/aws-client";
 
 const serviceClient = new AwsHttpServiceClient({
   serviceUrl: process.env.TEST_SERVICE_URL ?? "",
-  region: "us-east-1",
 });
 
 export interface AsyncWriterTestEvent {
