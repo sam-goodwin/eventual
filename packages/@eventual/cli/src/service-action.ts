@@ -31,7 +31,6 @@ export const serviceAction =
   ) => {
     const spinner = args.json ? undefined : ora().start("Preparing");
     try {
-      // TODO: completely refactor out ky client.
       const region = args.region ?? (await resolveRegion());
       const credentials = await assumeCliRole(args.service, region);
       const serviceData = await getServiceData(

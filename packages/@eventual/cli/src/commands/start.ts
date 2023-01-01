@@ -53,7 +53,6 @@ export const start = (yargs: Argv) =>
           if (!spinner.isSpinning) {
             spinner.start(`${executionId} in progress\n`);
           }
-          // eslint-disable-next-line no-inner-declarations
           async function pollEvents() {
             const newEvents = await getNewEvents(
               events,

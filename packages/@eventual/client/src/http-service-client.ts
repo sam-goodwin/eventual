@@ -25,7 +25,15 @@ import path from "path";
 import "./fetch-polyfill.js";
 
 export interface HttpServiceClientProps {
+  /**
+   * Https URL provided by the eventual service on deployment.
+   */
   serviceUrl: string;
+  /**
+   * Optional hook which allows the mutation of a request before being sent.
+   *
+   * Can be used to provide authorization, common headers, or signing requests.
+   */
   beforeRequest?: BeforeRequest;
 }
 
@@ -33,6 +41,15 @@ export interface BeforeRequest {
   (request: Request): Promise<Request>;
 }
 
+/**
+ * Http implementation of the {@link EventualServiceClient} to hit the API deployed
+ * with an eventual service.
+ *
+ * Makes unauthenticated and unsigned requests using fetch to the http endpoint.
+ *
+ * To authorize and/or sign requests, use the beforeRequest hook or
+ * an existing platform specific client. (ex: {@link AwsHttpServiceClient} in @eventual/aws-client)
+ */
 export class HttpServiceClient implements EventualServiceClient {
   private readonly baseUrl: string;
 

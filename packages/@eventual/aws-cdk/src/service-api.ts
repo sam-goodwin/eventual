@@ -113,7 +113,7 @@ export class Api extends Construct {
         },
         grants: (fn) => {
           props.workflows.configureReadWorkflowData(fn);
-          props.workflows.grantSendSignal(fn);
+          props.workflows.configureSendSignal(fn);
         },
       },
       "/_eventual/executions/{executionId}/workflow-history": {

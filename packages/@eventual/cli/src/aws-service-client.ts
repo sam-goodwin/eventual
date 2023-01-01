@@ -11,19 +11,31 @@ import {
 export interface AwsHttpServiceClientProps extends HttpServiceClientProps {
   credentials: SignatureV4Init["credentials"];
   region: string;
+  /**
+   * Optional hook to mutate the request before the request is signed.
+   *
+   * `beforeRequest` is invoked after signing the request and may invalidate the signature.
+   */
+  beforeRequestSigning?: BeforeRequest;
 }
 
+/**
+ * AWS specific Http implementation of the {@link EventualServiceClient} to hit the API deployed
+ * with an eventual service.
+ *
+ * Makes authorized and signed requests to API Gateway using the credentials provided on construction.
+ */
 export class AwsHttpServiceClient extends HttpServiceClient {
   constructor(props: AwsHttpServiceClientProps) {
     const signRequest: BeforeRequest = async (request: Request) => {
-      const updatedRequest = props.beforeRequest
-        ? await props.beforeRequest(request)
+      const updatedRequest = props.beforeRequestSigning
+        ? await props.beforeRequestSigning(request)
         : request;
 
       const url = new URL(updatedRequest.url);
 
       const _headers: [string, string][] = [["host", url.hostname]];
-      // workaround because Headers.entries() is not available in cross-fetch
+      // workaround because Headers.entries() is not available in node-fetch
       new Headers(updatedRequest!.headers).forEach((value, key) =>
         _headers.push([key, value])
       );
@@ -49,11 +61,15 @@ export class AwsHttpServiceClient extends HttpServiceClient {
       // sign the request and extract the signed headers, body and method
       const { headers, body, method } = await signer.sign(_request);
 
-      return new Request(url, {
+      const authorizedRequest = new Request(url, {
         headers: new Headers(headers),
         body,
         method,
       });
+
+      return props.beforeRequest
+        ? await props.beforeRequest(authorizedRequest)
+        : authorizedRequest;
     };
 
     super({ ...props, beforeRequest: signRequest });
