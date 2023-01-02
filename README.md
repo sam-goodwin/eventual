@@ -56,7 +56,7 @@ npx cdk deploy
 
 ## What is Eventual?
 
-Eventual is a code-first service and software development kit (SDK) that helps developers build and evolve distributed systems using modern infrastructure-as-code. Its composable service model is designed for building and evolving microservice architectures, simplifying the process of building, deploying, and maintaining these systems by providing a set of libraries and APIs that abstract away the complexities of distributed systems.
+Eventual is a code-first service and software development kit (SDK) that helps developers create event-driven systems using modern infrastructure-as-code. Its composable service model is designed for building and evolving microservice architectures, providing a set of libraries and APIs that abstract away the complexities of distributed systems, allowing developers to focus on the business logic of their services.
 
 We highly recommend checking out [Werner Vogel's 2022 AWS RE:Invent Keynote](https://www.youtube.com/watch?v=RfvL_423a-I&t=328s).
 
@@ -159,7 +159,18 @@ const slack = new Slack("my-slack-connection", {
 });
 
 // register a webhook for a slack command
-slack.command("/echo", (request) => {
-  request.ack(request.body.text);
+slack.command("/ack", async (request) => {
+  await sendSignal(request.text, "ack");
+  request.ack();
+});
+
+export const task = workflow("task", async (request) => {
+  await expectSignal("ack");
+
+  // publish a message to slack from a workflow
+  await slack.client.chat.postMessage({
+    channel: request.channel,
+    text: `Complete: ${request.task}`,
+  });
 });
 ```

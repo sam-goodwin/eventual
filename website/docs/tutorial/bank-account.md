@@ -4,6 +4,8 @@ title: Bank Account - Part 1
 
 # Tutorial - create bank account and transfer money
 
+Note: this tutorial is a WIP. We recommend starting with the [getting started guide](../getting-started.md) or [examples](https://github.com/functionless/eventual/tree/main/examples).
+
 In this tutorial, we'll create a basic bank application that supports the following operations:
 
 1. create an account with an initial balance
@@ -12,21 +14,6 @@ In this tutorial, we'll create a basic bank application that supports the follow
 ## Pre-requisites
 
 You must have an AWS account and either an AWS CDK or SST project. You can use the [getting started guide](../getting-started.md) to create a new project quickly or manually configure an existing one.
-
-For this example, you'll need the following runtime dependencies:
-
-```
-npm install --save uuid
-npm install --save @aws-sdk/client-dynamodb
-npm install --save @aws-sdk/lib-dynamodb
-npm install --save @eventual/core
-```
-
-And the following infrastructure dependencies:
-
-```
-npm install --save-dev @eventual/aws-cdk
-```
 
 ## Step 1 - create an API
 
