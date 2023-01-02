@@ -4,7 +4,7 @@ import { getInputJson } from "./utils.js";
 
 export const sendSignal = (yargs: Argv) =>
   yargs.command(
-    "send-signal <service> <execution> <signal> [payloadFile]",
+    "send-signal <execution> <signal> [payloadFile]",
     "Send a signal to a running execution",
     (yargs) =>
       setServiceOptions(yargs)

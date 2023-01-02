@@ -3,24 +3,24 @@
 ## List workflows
 
 ```shell
-$ eventual workflows list
+$ eventual workflows
 ```
 
 ## Start a workflow (asynchronous)
 
 ```shell
-$ eventual start <service> <workflow> [inputFile]
+$ eventual start <workflow> [inputFile]
 Input file should be a json file.
 ```
 
 ```shell
-$ eventual start <service> <workflow> --input '{"foo": "bar"}'
+$ eventual start <workflow> --input '{"foo": "bar"}'
 ```
 
 Provide input as a json string
 
 ```shell
-$ eventual start <service> <workflow> <<< cat json-string
+$ eventual start <workflow> <<< cat json-string
 ```
 
 If no input is provided, it is read from stdin
@@ -28,26 +28,26 @@ If no input is provided, it is read from stdin
 ## Start a workflow (tail)
 
 ```shell
-$ eventual start --tail <service> <workflow> [input]
+$ eventual start --tail <workflow> [input]
 ```
 
 ## Get execution history
 
 ```shell
-$ eventual history <service> <execution>
+$ eventual history <execution>
 ```
 
 ## List executions
 
 ```shell
-$ eventual executions <service> [--workflow workflow] [--sort sortKey]
+$ eventual executions [--workflow workflow]
 
 ```
 
 ## Display logs
 
 ```shell
-$ eventual logs <service> [--workflow workflowName | --execution executionId] [--tail] [--since timestamp]
+$ eventual logs [--workflow workflowName | --execution executionId] [--tail] [--since timestamp]
 
 Default shows all logs for a service. Provide workflow or execution to filter respectively.
 ```
@@ -55,7 +55,7 @@ Default shows all logs for a service. Provide workflow or execution to filter re
 ## Replay event history
 
 ````shell
-$ eventual replay <service> <executionId> <entryFile>
+$ eventual replay <executionId> <entryFile>
 
 eg.
 

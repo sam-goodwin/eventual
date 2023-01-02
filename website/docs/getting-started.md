@@ -50,21 +50,23 @@ my-service
 
 As you can see, we have a single service, `my-service` that was just deployed.
 
-## 5. List workflows in `my-service`
+## 5. List workflows
 
-To list the workflows available in our new service, use the `eventual workflows` command followed by the service name. For example:
+To list the workflows available in our new service, use the `eventual workflows` command. For example:
 
 ```ts
-> npx eventual workflows my-service
+> npx eventual workflows
 myWorkflow
 ```
 
-## 6. List the endpoints in `my-service`
+> If you have multiple services deployed, use the `--service` flag to select a service. `npx eventual workflows --service my-service`
 
-To view the API Gateway URL and Event Bus ARN for a service, use the `eventual info` command followed by the service name:
+## 6. List the endpoints
+
+To view the API Gateway URL and Event Bus ARN for a service, use the `eventual info` command:
 
 ```ts
-> npx eventual info my-service
+> npx eventual info
 API Gateway: 	  https://<uuid>.execute-api.us-west-2.amazonaws.com
 Event Bus ARN:  arn:aws:events:us-west-2:<account-id>:event-bus/my-service
 ```

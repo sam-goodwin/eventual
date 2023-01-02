@@ -3,7 +3,7 @@ import ora, { Ora } from "ora";
 import { Argv } from "yargs";
 import chalk from "chalk";
 import { FilteredLogEvent } from "@aws-sdk/client-cloudwatch-logs";
-import { getServiceData } from "../service-data.js";
+import { getServiceData, tryResolveDefaultService } from "../service-data.js";
 import { setServiceOptions } from "../service-action.js";
 import { assumeCliRole } from "../role.js";
 
@@ -17,7 +17,7 @@ import { assumeCliRole } from "../role.js";
  */
 export const logs = (yargs: Argv) =>
   yargs.command(
-    "logs <service>",
+    "logs",
     "Get logs for a given service, optionally filtered by a given workflow or execution",
     (yargs) =>
       setServiceOptions(yargs)
@@ -43,9 +43,15 @@ export const logs = (yargs: Argv) =>
           default: false,
           type: "boolean",
         }),
-    async ({ service, workflow, execution, region, since, tail }) => {
+    async ({ service: _service, workflow, execution, region, since, tail }) => {
       const startTime = getStartTime(since as string | number);
       const spinner = ora("Loading logs");
+      const service = await tryResolveDefaultService(_service);
+      if (!service) {
+        throw new Error(
+          "Service must be set using --service or EVENTUAL_DEFAULT_SERVICE."
+        );
+      }
       const credentials = await assumeCliRole(service, region);
       const { functions } = await getServiceData(credentials, service, region);
       const cloudwatchLogsClient = new cwLogs.CloudWatchLogsClient({});

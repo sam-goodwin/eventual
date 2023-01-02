@@ -17,7 +17,7 @@ import path from "path";
 
 export const timeline = (yargs: Argv) =>
   yargs.command(
-    "timeline <service> <execution>",
+    "timeline <execution>",
     "Visualise execution history",
     (yargs) =>
       setServiceOptions(yargs).positional("execution", {
