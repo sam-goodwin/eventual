@@ -37,7 +37,7 @@
 - 🌀&nbsp; **Event-driven** - Asynchronous communication between services leads to more resilient and scalable systems.
 - 📈&nbsp; **Scalable** - Purely serverless, load-based pricing that scales to $0 and minimal operational complexity.
 - 🧩&nbsp; **Composable** - Combine building blocks to create scalable, serverless APIs and event-driven workflows.
-- 🌱&nbsp; **Evolvable** - Decoupled architecture makes it easy to add new services and evolve your system over time.
+- 🌱&nbsp; **Evolvable** - Loosely coupled architectures makes it easy to add new services and evolve your system over time.
 
 ## Quick Start
 
@@ -54,13 +54,13 @@ cd <project-name>
 npx cdk deploy
 ```
 
-## Why Eventual?
+## What is Eventual?
 
-Traditional applications rely heavily on centralized databases and transactions to maintain data consistency, but the world is moving towards an increasingly decoupled network of global micro-services that do not share a database. Orchestrating changes across these services without corrupting data is a challenging problem requiring deep understanding of distributed systems which takes time away from business-critical work and often leads to failures and a poor experience for customers.
-
-Eventual simplifies the process of building, deploying, and maintaining distributed systems by providing a set of libraries and APIs that abstract away the complexities of distributed systems and enable developers to focus on the business logic of their services.
+Eventual is a code-first service and software development kit (SDK) that helps developers build and evolve distributed systems using modern infrastructure-as-code. Its composable service model is designed for building and evolving microservice architectures, simplifying the process of building, deploying, and maintaining these systems by providing a set of libraries and APIs that abstract away the complexities of distributed systems.
 
 We highly recommend checking out [Werner Vogel's 2022 AWS RE:Invent Keynote](https://www.youtube.com/watch?v=RfvL_423a-I&t=328s).
+
+With our plug-and-play foundation blocks, you can use as much or as little as needed to build your distributed system. These building blocks include:
 
 ### 🌐 Serverless REST APIs
 
@@ -92,7 +92,7 @@ myEvent.onEvent((e) => {
 
 ### 🤖 Turing complete, imperative workflows
 
-Eventual allows you to use the full power of ECMAScript to build long-running, durable workflows with unlimited complexity - including operators, for-loops, try-catch, if-else, while, do-while, etc.
+Eventual allows you to use the full power of TypeScript to build long-running, durable workflows with unlimited complexity - including operators, for-loops, try-catch, if-else, while, do-while, etc.
 
 ```ts
 export const myWorkflow = workflow("myWorkflow", async (items: string[]) => {
