@@ -66,11 +66,23 @@ const config = {
         logo: {
           alt: "eventual",
           src: "img/logo.svg",
+          href: "https://eventual.net",
+          target: "_self",
         },
         items: [
           {
+            href: "/",
+            label: "Home",
+            position: "left",
+          },
+          {
             href: "https://github.com/functionless/eventual",
             label: "GitHub",
+            position: "right",
+          },
+          {
+            href: "https://discord.gg/8hfnTn3QDT",
+            label: "Discord",
             position: "right",
           },
         ],
@@ -92,7 +104,7 @@ const config = {
             items: [
               {
                 label: "Discord",
-                href: "https://discord.gg/FqWF3ub6",
+                href: "https://discord.gg/8hfnTn3QDT",
               },
               {
                 label: "Twitter",

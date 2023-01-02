@@ -4,7 +4,7 @@ sidebar_position: 0
 
 # Service
 
-A Service consists of an API Gateway, an Event Bus and Workflows. It is the main building block of Eventual and is responsible for hosting your business logic and exposing it through an HTTP REST API.
+An Eventual Service is a composable and evolvable building block that is fundamentally asynchronous and event-driven. It consists of an API Gateway, an Event Bus, and Workflows. The API Gateway is responsible for exposing your business logic through an HTTP REST API, while the Event Bus enables the decoupling of services through the publication and subscription of events. The Workflows execute your business logic and can be triggered by events or API requests. Together, these components enable you to build and deploy scalable, maintainable, and resilient distributed systems in the cloud.
 
 ## Service Construct
 

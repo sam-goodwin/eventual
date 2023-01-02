@@ -5,11 +5,15 @@ sidebar_position: 1
 
 # Overview
 
-Welcome to the Eventual Concepts documentation!
+Welcome to Eventual!
+
+## Introduction
+
+Eventual is a code-first service and software development kit (SDK) that helps developers build and evolve event-driven architectures using modern infrastructure-as-code. Its composable service model is designed for building and evolving microservice architectures, simplifying the process of building, deploying, and maintaining these systems by providing a set of libraries and APIs that abstract away the complexities of distributed systems.
 
 ## Getting Started
 
-- [Getting Started](./getting-started.md) - set up a new project with a new project
+- [Getting Started](./getting-started.md) - set up a new project, deploy it to the cloud and test it out.
 
 ## Building Blocks
 

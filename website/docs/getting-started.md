@@ -24,7 +24,7 @@ npm create eventual my-eventual-app
 
 ## 2. Choose your preferred IaC platform
 
-Eventual supports two IaC platforms: AWS CDK and AWS SST. You'll be prompted to choose between them when you create a new project. Select [`aws-cdk`](https://docs.aws.amazon.com/cdk/v2/guide/home.html) or [`aws-sst`](https://docs.sst.dev) as appropriate.
+Eventual currently supports two IaC platforms: AWS CDK and AWS SST. You'll be prompted to choose between them when you create a new project. Select [`aws-cdk`](https://docs.aws.amazon.com/cdk/v2/guide/home.html) or [`aws-sst`](https://docs.sst.dev) as appropriate.
 
 ```
 ? target: (Use arrow keys)
