@@ -370,6 +370,14 @@ const client = new AwsHttpServiceClient({
 
 The `RuntimeServiceClient` available in `@eventual/core` is an implementation that uses the Eventual runtime clients. It is intended to be used when there is direct access to the internals of an Eventual Service - this is true only when inside API, event or activity handler functions. This client has the advantaged of being more performant by avoiding the hop over HTTP but requires privileged access to service internals.
 
+To get an instance of this client, call the global `getServiceClient` from `@eventual/core` when within an API, event or activity handler function.
+
+```ts
+import { getServiceClient } from "@eventual/core";
+
+const client = getServiceClient();
+```
+
 ### `TestEnvironment`
 
 The `TestEnvironment` is a locally simulated workflow environment designed for unit testing, available in the `@eventual/testing` package. It implements a local and mockable version of the EventualServiceClient interface, allowing you to provide mock implementations of activities and workflows, manually progress time, and more.
