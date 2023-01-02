@@ -9,18 +9,18 @@ $ eventual workflows
 ## Start a workflow (asynchronous)
 
 ```shell
-$ eventual start <workflow> [inputFile]
+$ eventual start --workflow <workflow> [--input input | --inputFile filePath]
 Input file should be a json file.
 ```
 
 ```shell
-$ eventual start <workflow> --input '{"foo": "bar"}'
+$ eventual start --workflow <workflow> --input '{"foo": "bar"}'
 ```
 
 Provide input as a json string
 
 ```shell
-$ eventual start <workflow> <<< cat json-string
+$ eventual start --workflow <workflow> <<< cat json-string
 ```
 
 If no input is provided, it is read from stdin
@@ -28,13 +28,13 @@ If no input is provided, it is read from stdin
 ## Start a workflow (tail)
 
 ```shell
-$ eventual start --tail <workflow> [input]
+$ eventual start --tail --workflow <workflow> [--input input | --inputFile filePath]
 ```
 
 ## Get execution history
 
 ```shell
-$ eventual history <execution>
+$ eventual history --execution <execution>
 ```
 
 ## List executions
@@ -55,10 +55,10 @@ Default shows all logs for a service. Provide workflow or execution to filter re
 ## Replay event history
 
 ````shell
-$ eventual replay <executionId> <entryFile>
+$ eventual replay --execution <executionId> --entry <entryFile>
 
 eg.
 
 ```shell
-$ pnpm eventual replay my-service my-workflow/01GJQ1WH741VB5ZYZ079RRJF4X ../test-app-runtime/src/my-workflow.ts
+$ pnpm eventual replay --execution my-workflow/01GJQ1WH741VB5ZYZ079RRJF4X --entry ../test-app-runtime/src/my-workflow.ts
 ````

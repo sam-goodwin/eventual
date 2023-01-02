@@ -144,23 +144,23 @@ export class AWSWorkflowClient extends WorkflowClient {
       {
         dynamoClient: this.props.dynamo,
         pageSize: request?.maxResults ?? 100,
-        keys: ["pk", "sk"],
+        keys: ["pk"],
         nextToken: request?.nextToken,
       },
       {
         TableName: this.props.tableName,
-        KeyConditionExpression: "pk = :pk and begins_with(#sk, :sk)",
+        IndexName: ExecutionRecord.START_TIME_SORTED_INDEX,
+        KeyConditionExpression: "#pk = :pk",
         ScanIndexForward: request?.sortDirection !== "Desc",
         FilterExpression: filters || undefined,
         ExpressionAttributeValues: {
           ":pk": { S: ExecutionRecord.PARTITION_KEY },
-          ":sk": { S: ExecutionRecord.SORT_KEY_PREFIX },
           ...(request?.workflowName
             ? { ":workflowName": { S: request?.workflowName } }
             : {}),
         },
         ExpressionAttributeNames: {
-          "#sk": "sk",
+          "#pk": "pk",
           ...(request?.statuses ? { "#status": "status" } : undefined),
         },
       }
@@ -226,6 +226,8 @@ export type ExecutionRecord =
 export const ExecutionRecord = {
   PARTITION_KEY: "Execution",
   SORT_KEY_PREFIX: `Execution$`,
+  START_TIME_SORTED_INDEX: "startTime-order",
+  START_TIME: "startTime",
   sortKey(
     executionId: string
   ): `${typeof this.SORT_KEY_PREFIX}${typeof executionId}` {

@@ -5,7 +5,12 @@ import {
   ServiceType,
 } from "@eventual/core";
 import { Arn, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
-import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
+import {
+  AttributeType,
+  BillingMode,
+  ProjectionType,
+  Table,
+} from "aws-cdk-lib/aws-dynamodb";
 import {
   AccountRootPrincipal,
   CompositePrincipal,
@@ -33,6 +38,7 @@ import {
 } from "aws-cdk-lib/aws-cloudwatch";
 import { bundleSourcesSync, inferSync } from "./compile-client";
 import path from "path";
+import { ExecutionRecord } from "@eventual/aws-runtime";
 
 export interface ServiceProps {
   entry: string;
@@ -124,6 +130,15 @@ export class Service extends Construct implements IGrantable {
       sortKey: { name: "sk", type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    this.table.addLocalSecondaryIndex({
+      indexName: ExecutionRecord.START_TIME_SORTED_INDEX,
+      sortKey: {
+        name: ExecutionRecord.START_TIME,
+        type: AttributeType.STRING,
+      },
+      projectionType: ProjectionType.ALL,
     });
 
     const proxyScheduler = lazyInterface<IScheduler>();
