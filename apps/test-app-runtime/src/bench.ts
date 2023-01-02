@@ -1,7 +1,7 @@
-import { createWorkflowClient } from "@eventual/aws-runtime";
+import { AwsHttpServiceClient } from "@eventual/aws-client";
 
-const workflowClient = createWorkflowClient({
-  activityTableName: "NOT_NEEDED",
+const workflowClient = new AwsHttpServiceClient({
+  serviceUrl: process.env.EVENTUAL_SERVICE_URL ?? "",
 });
 
 export async function handle(input: { name: string; executions: number }) {
