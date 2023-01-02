@@ -8,9 +8,9 @@ npx eventual services
 
 npx eventual workflows
 
-npx eventual -e executions 
+npx eventual executions 
 
-npx eventual -e executions --workflow parallel --json > .eventual/out.json
+npx eventual executions --workflow parallel --json > .eventual/out.json
 
 execution_id=$(node -p 'JSON.parse(require("fs").readFileSync(".eventual/out.json").toString("utf8"))[0].id')
 
