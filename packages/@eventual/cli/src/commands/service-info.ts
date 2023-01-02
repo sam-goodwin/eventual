@@ -16,6 +16,7 @@ export const serviceInfo = (yargs: Argv) =>
             `Event Bus Arn: ${serviceData.eventBusArn}`,
           ].join("\n")
         );
+        process.stdout.write("\n");
       },
       async (_service, _, serviceData) => {
         process.stdout.write(
