@@ -25,11 +25,23 @@ export async function createAwsCdk({
         deploy: "cdk deploy",
       },
     }),
+    writeJsonFile("cdk.json", {
+      app: "ts-node ./src/app.ts",
+    }),
     writeJsonFile("tsconfig.json", {
       extends: "@tsconfig/node16/tsconfig.json",
       include: ["src"],
+      compilerOptions: {
+        outDir: "lib",
+        declaration: true,
+      },
       references: [{ path: "./services/tsconfig.json" }],
     }),
+    fs.writeFile(
+      ".gitignore",
+      `lib
+node_modules`
+    ),
     fs
       .mkdir("src")
       .then(() =>
@@ -42,13 +54,15 @@ export async function createAwsCdk({
 
   await addDevDeps(
     pkgManager,
-    "constructs@^10",
-    "typescript",
     "@eventual/aws-cdk",
     "@eventual/aws-runtime",
     "@eventual/cli",
+    "@tsconfig/node16",
     "aws-cdk-lib",
-    "@tsconfig/node16"
+    "constructs@^10",
+    "esbuild@^16",
+    "ts-node",
+    "typescript"
   );
   await install(pkgManager);
 
@@ -68,13 +82,14 @@ export async function createAwsCdk({
       extends: "../tsconfig.json",
       include: ["src"],
       compilerOptions: {
-        module: "esnext",
-        target: "ES2021",
-        moduleResolution: "node",
         baseUrl: ".",
+        composite: true,
+        lib: ["DOM"],
+        module: "esnext",
+        moduleResolution: "node",
         outDir: "lib",
+        target: "ES2021",
       },
-      lib: ["DOM"],
     }),
   ]);
   await addDeps(pkgManager, "@eventual/core");

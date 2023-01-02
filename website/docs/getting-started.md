@@ -34,10 +34,11 @@ Eventual currently supports two IaC platforms: AWS CDK and AWS SST. You'll be pr
 
 ## 3. Deploy the application
 
-To deploy your Eventual project, run the appropriate command for your chosen IaC platform:
+Use the `deploy` script to deploy your application to AWS.
 
-- For CDK: `npx cdk deploy`
-- For SST: `npx sst deploy`
+```
+npm run deploy
+```
 
 ## 4. List services in your AWS account
 
