@@ -37,14 +37,14 @@ const mockTimerClient = {
   scheduleEvent: jest.fn() as TimerClient["scheduleEvent"],
 } satisfies Partial<TimerClient> as TimerClient;
 const mockWorkflowClient = {
-  startWorkflow: jest.fn() as WorkflowClient["startWorkflow"],
+  startExecution: jest.fn() as WorkflowClient["startExecution"],
   sendSignal: jest.fn() as WorkflowClient["sendSignal"],
 } satisfies Partial<WorkflowClient> as WorkflowClient;
 const mockWorkflowRuntimeClient = {
   startActivity: jest.fn() as WorkflowRuntimeClient["startActivity"],
 } satisfies Partial<WorkflowRuntimeClient> as WorkflowRuntimeClient;
 const mockEventClient = {
-  publish: jest.fn() as EventClient["publish"],
+  publishEvents: jest.fn() as EventClient["publishEvents"],
 } satisfies Partial<EventClient> as EventClient;
 
 const testExecutor = new CommandExecutor({
@@ -208,8 +208,8 @@ describe("workflow", () => {
 
     expect(mockTimerClient.scheduleEvent).not.toHaveBeenCalled();
 
-    expect(mockWorkflowClient.startWorkflow).toHaveBeenCalledWith<
-      Parameters<typeof mockWorkflowClient.startWorkflow>
+    expect(mockWorkflowClient.startExecution).toHaveBeenCalledWith<
+      Parameters<typeof mockWorkflowClient.startExecution>
     >({
       workflow: "workflow",
       parentExecutionId: executionId,
@@ -418,10 +418,12 @@ describe("public events", () => {
       baseTime
     );
 
-    expect(mockEventClient.publish).toHaveBeenCalledWith<[EventEnvelope]>({
-      event: {},
-      name: "myEvent",
-    });
+    expect(mockEventClient.publishEvents).toHaveBeenCalledWith<[EventEnvelope]>(
+      {
+        event: {},
+        name: "myEvent",
+      }
+    );
 
     expect(event).toMatchObject<EventsPublished>({
       seq: 0,

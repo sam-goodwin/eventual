@@ -9,16 +9,16 @@ const doneSignal = signal("done");
 export const workflow1 = workflow("workflow1", async () => {
   const child = workflow2({ name: "child" });
   while (true) {
-    const n = await mySignal.expect();
+    const n = await mySignal.expectSignal();
 
     console.log(n);
 
     if (n > 10) {
-      child.signal(doneSignal);
+      child.sendSignal(doneSignal);
       break;
     }
 
-    child.signal(mySignal, n + 1);
+    child.sendSignal(mySignal, n + 1);
   }
 
   // join with child
@@ -43,11 +43,11 @@ export const workflow2 = workflow(
 
     console.log(`Hi, I am ${input.name}`);
 
-    mySignal.on((n) => {
+    mySignal.onSignal((n) => {
       last = n;
       block = false;
     });
-    doneSignal.on(() => {
+    doneSignal.onSignal(() => {
       done = true;
       block = false;
     });

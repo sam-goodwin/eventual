@@ -50,7 +50,7 @@ export class Api extends Construct {
     props.activities.configureUpdateActivity(this.handler);
     props.workflows.configureSendSignal(this.handler);
     props.workflows.configureSendWorkflowEvent(this.handler);
-    props.workflows.configureStartWorkflow(this.handler);
+    props.workflows.configureStartExecution(this.handler);
 
     this.gateway = new HttpApi(this, "Gateway", {
       apiName: `eventual-api-${props.serviceName}`,
@@ -75,7 +75,7 @@ export class Api extends Construct {
             entry: runtimeEntrypoint("api/executions/new"),
           },
           grants: (fn) => {
-            props.workflows.configureStartWorkflow(fn);
+            props.workflows.configureStartExecution(fn);
           },
         },
       ],

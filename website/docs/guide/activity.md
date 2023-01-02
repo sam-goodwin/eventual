@@ -34,7 +34,7 @@ workflow("send-email-workflow", async (input: { to: string; body: string }) => {
 
 ## Async Activity
 
-Async activities are a way to perform work that takes longer than the maximum 15 minute runtime of an AWS Lambda function. They allow you to return a `token` from the activity function, which can be used to complete or fail the activity at a later time. This is useful when you need to wait for a human to complete a task or for an expensive process to run on a cluster.
+Async activities are a way to perform work that takes longer than the maximum 15 minute runtime of an AWS Lambda function. They allow you to return a `token` from the activity function, which can be used to succeed or fail the activity at a later time. This is useful when you need to wait for a human to complete a task or for an expensive process to run on a cluster.
 
 To create an async activity, you will need to import the `asyncResult` function from the `@eventual/core` library and return its result as the activity's result:
 
@@ -48,7 +48,7 @@ const asyncHello = activity("hello", async (name: string) => {
 });
 ```
 
-This will cause the workflow to wait for the token to be completed or failed before moving on to the next step.
+This will cause the workflow to wait for the token to be succeeded or failed before moving on to the next step.
 
 ### `sendActivitySuccess`
 
@@ -108,7 +108,7 @@ await myActivity.sendActivitySuccess({
 
 If you do not specify the return type of an async activity, it will be inferred as `any`. This means that the return type of the activity function will be `Promise<any>`, and there will be no type checking when calling complete. It is generally a good idea to specify the return type of an async activity to ensure type safety and avoid potential runtime errors.
 
-### Complete an Activity from outside Eventual
+### Succeed an Activity from outside Eventual
 
 TODO
 
@@ -116,9 +116,9 @@ Tracking: https://github.com/functionless/eventual/issues/137
 
 ## Timeout
 
-An Activity can be configured to fail if it does not complete within a specified time frame. To do this, use the `timeoutSeconds` property when defining the activity.
+An Activity can be configured to fail if it does not succeed within a specified time frame. To do this, use the `timeoutSeconds` property when defining the activity.
 
-For example, the following activity will fail if it does not complete within 100 seconds:
+For example, the following activity will fail if it does not succeed within 100 seconds:
 
 ```ts
 export const timedOutWorkflow = workflow(

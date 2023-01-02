@@ -76,13 +76,13 @@ export const dataDoneEvent = event<{ executionId: string }>("dataDone");
 
 export const signalWorkflow = workflow("signalFlow", async () => {
   let data = "done!";
-  const dataSignalHandle = dataSignal.on((d) => {
+  const dataSignalHandle = dataSignal.onSignal((d) => {
     data = d;
   });
-  dataDoneSignal.on(() => {
+  dataDoneSignal.onSignal(() => {
     dataSignalHandle.dispose();
   });
-  await continueSignal.expect();
+  await continueSignal.expectSignal();
   return data;
 });
 
@@ -106,26 +106,26 @@ export const orchestrate = workflow(
     } else {
       // the events parameter sends events instead of signals
       // event handlers turn them into signals.
-      await dataEvent.publish({
+      await dataEvent.publishEvents({
         data: "hello from the orchestrator workflow!",
         executionId: targetExecutionId,
       });
-      await dataDoneEvent.publish({ executionId: targetExecutionId });
-      await continueEvent.publish({ executionId: targetExecutionId });
+      await dataDoneEvent.publishEvents({ executionId: targetExecutionId });
+      await continueEvent.publishEvents({ executionId: targetExecutionId });
     }
     return "nothing to see here";
   }
 );
 
-continueEvent.on(async ({ executionId }) => {
+continueEvent.onEvent(async ({ executionId }) => {
   await sendSignal(executionId, continueSignal);
 });
 
-dataEvent.on(async ({ executionId, data }) => {
+dataEvent.onEvent(async ({ executionId, data }) => {
   await sendSignal(executionId, dataSignal, data);
 });
 
-dataDoneEvent.on(async ({ executionId }) => {
+dataDoneEvent.onEvent(async ({ executionId }) => {
   await sendSignal(executionId, dataDoneSignal);
 });
 
@@ -141,9 +141,9 @@ export const orchestrateWorkflow = workflow(
     }
     const execution = signalWorkflow(undefined);
     await sleepFor(1);
-    await execution.signal(dataSignal, "hello from a workflow");
-    await execution.signal(dataDoneSignal);
-    await execution.signal(continueSignal);
+    await execution.sendSignal(dataSignal, "hello from a workflow");
+    await execution.sendSignal(dataDoneSignal);
+    await execution.sendSignal(continueSignal);
 
     return await execution;
   }
@@ -169,7 +169,7 @@ export const workflowWithTimeouts = workflow(
     return Promise.allSettled([
       actWithTimeout(),
       workflow2WithTimeouts(undefined),
-      dataSignal.expect({ timeoutSeconds: 30 }),
+      dataSignal.expectSignal({ timeoutSeconds: 30 }),
     ]);
   }
 );

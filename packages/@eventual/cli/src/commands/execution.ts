@@ -32,7 +32,7 @@ export const execution = (yargs: Argv) =>
           execution.status === ExecutionStatus.IN_PROGRESS
             ? undefined
             : execution.endTime,
-          execution.status === ExecutionStatus.COMPLETE
+          execution.status === ExecutionStatus.SUCCEEDED
             ? execution.result
             : execution.status === ExecutionStatus.FAILED
             ? `${execution.error}: ${execution.message}`

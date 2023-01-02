@@ -44,7 +44,7 @@ const bench = new aws_lambda_nodejs.NodejsFunction(stack, "BenchmarkFunc", {
   timeout: Duration.minutes(1),
 });
 
-benchService.workflows.configureStartWorkflow(bench);
+benchService.workflows.configureStartExecution(bench);
 
 const accountTable = new aws_dynamodb.Table(stack, "Accounts", {
   partitionKey: {

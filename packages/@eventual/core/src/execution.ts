@@ -1,10 +1,11 @@
+import { ulid } from "ulidx";
 import { EventualServiceClient } from "./service-client.js";
-import { Signal, SendSignalProps, SignalPayload } from "./signals.js";
+import { Signal, SendSignalProps } from "./signals.js";
 import { Workflow, WorkflowOutput } from "./workflow.js";
 
 export enum ExecutionStatus {
   IN_PROGRESS = "IN_PROGRESS",
-  COMPLETE = "COMPLETE",
+  SUCCEEDED = "SUCCEEDED",
   FAILED = "FAILED",
 }
 
@@ -27,15 +28,15 @@ interface ExecutionBase {
 
 export type Execution<Result = any> =
   | InProgressExecution
-  | CompleteExecution<Result>
+  | SucceededExecution<Result>
   | FailedExecution;
 
 export interface InProgressExecution extends ExecutionBase {
   status: ExecutionStatus.IN_PROGRESS;
 }
 
-export interface CompleteExecution<Result = any> extends ExecutionBase {
-  status: ExecutionStatus.COMPLETE;
+export interface SucceededExecution<Result = any> extends ExecutionBase {
+  status: ExecutionStatus.SUCCEEDED;
   endTime: string;
   result?: Result;
 }
@@ -53,16 +54,16 @@ export function isFailedExecution(
   return execution.status === ExecutionStatus.FAILED;
 }
 
-export function isCompleteExecution(
+export function isSucceededExecution(
   execution: Execution
-): execution is CompleteExecution {
-  return execution.status === ExecutionStatus.COMPLETE;
+): execution is SucceededExecution {
+  return execution.status === ExecutionStatus.SUCCEEDED;
 }
 
 /**
  * A reference to a running execution.
  */
-export class ExecutionHandle<W extends Workflow> {
+export class ExecutionHandle<W extends Workflow> implements ChildExecution {
   constructor(
     public executionId: string,
     private serviceClient: EventualServiceClient
@@ -80,14 +81,16 @@ export class ExecutionHandle<W extends Workflow> {
   /**
    * Send a {@link signal} to this execution.
    */
-  public async signal<Payload = any>(
+  public async sendSignal<Payload = any>(
     signal: string | Signal<Payload>,
-    payload: Payload
+    ...args: SendSignalProps<Payload>
   ): Promise<void> {
+    const [payload] = args;
     return this.serviceClient.sendSignal({
       execution: this.executionId,
       signal: typeof signal === "string" ? signal : signal.id,
       payload,
+      id: ulid(),
     });
   }
 }
@@ -104,15 +107,15 @@ export interface ChildExecution {
    * const childWf = workflow(...);
    * workflow("wf", async () => {
    *    const child = childWf();
-   *    child.signal(mySignal);
+   *    child.sendSignal(mySignal);
    *    await child;
    * })
    * ```
    *
    * @param id an optional, execution unique ID, will be used to de-dupe the signal at the target execution.
    */
-  signal<S extends Signal<any>>(
-    signal: S,
-    ...args: SendSignalProps<SignalPayload<S>>
+  sendSignal<Payload = any>(
+    signal: string | Signal<Payload>,
+    ...args: SendSignalProps<Payload>
   ): Promise<void>;
 }

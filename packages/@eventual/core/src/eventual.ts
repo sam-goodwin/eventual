@@ -118,7 +118,7 @@ export function isCommandCall(call: Eventual): call is CommandCall {
 
 export const Eventual = {
   /**
-   * Wait for all {@link activities} to complete or until at least one throws.
+   * Wait for all {@link activities} to succeed or until at least one throws.
    *
    * This is the equivalent behavior to Promise.all.
    */

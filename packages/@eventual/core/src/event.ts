@@ -38,7 +38,7 @@ export interface EventEnvelope<E extends EventPayload = EventPayload> {
 /**
  * An {@link Event} is an object representing the declaration of an event
  * that belongs within the service. An {@link Event} has a unique {@link name},
- * may be {@link publish}ed and {@link on}d to.
+ * may be {@link publishEvents}ed and {@link onEvent}d to.
  */
 export interface Event<E extends EventPayload = EventPayload> {
   /**
@@ -51,13 +51,13 @@ export interface Event<E extends EventPayload = EventPayload> {
    *
    * @param handler the handler function that will process the event.
    */
-  on(handler: (event: E) => Promise<void>): void;
+  onEvent(handler: (event: E) => Promise<void>): void;
   /**
    * Publish events of this type within the service boundary.
    *
    * @param events a list of events to publish.
    */
-  publish(...events: E[]): Promise<void>;
+  publishEvents(...events: E[]): Promise<void>;
 }
 
 /**
@@ -114,7 +114,7 @@ export type EventHandler<E extends EventPayload> = (event: E) => Promise<void>;
  * To publish events, call the `publish` method:
  * ```ts
  * const checkoutWorkflow = workflow("checkoutWorkflow", async (request) => {
- *   await checkoutEvent.publish({
+ *   await checkoutEvent.publishEvents({
  *     customerId: request.customerId,
  *     cartId: request.cartId,
  *     timestamp: new Date().toTimeString()
@@ -126,7 +126,7 @@ export type EventHandler<E extends EventPayload> = (event: E) => Promise<void>;
  * handler that wil lbe invoked for every event of this type that is received.
  *
  * ```ts
- * checkoutEvent.on(async (checkout) => {
+ * checkoutEvent.onEvent(async (checkout) => {
  *   console.log(checkout);
  * });
  * ```
@@ -140,7 +140,7 @@ export function event<E extends EventPayload>(name: string): Event<E> {
   }
   const event: Event<E> = {
     name,
-    on(handler) {
+    onEvent(handler) {
       eventSubscriptions().push({
         subscriptions: [
           {
@@ -150,7 +150,7 @@ export function event<E extends EventPayload>(name: string): Event<E> {
         handler: handler as EventHandler<EventPayload>,
       });
     },
-    publish(...events) {
+    publishEvents(...events) {
       const envelopes = events.map((event) => ({
         name,
         event,

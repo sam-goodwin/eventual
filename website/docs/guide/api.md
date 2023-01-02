@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # API
 
-The API for each Eventual service is a REST API that is exposed through an API Gateway. This allows external systems to interact with the service by making HTTP requests to specific endpoints. The API can be used to trigger workflows, complete async activities, and retrieve the results of completed workflows. In this documentation, we will explain how to use the api object provided by Eventual to register routes and handle incoming requests.
+The API for each Eventual service is a REST API that is exposed through an API Gateway. This allows external systems to interact with the service by making HTTP requests to specific endpoints. The API can be used to trigger workflows, complete async activities, and retrieve the results of succeeded workflows. In this documentation, we will explain how to use the api object provided by Eventual to register routes and handle incoming requests.
 
 ## Router
 

@@ -43,16 +43,16 @@ export function createWorkflowCall(
 
   // create a reference to the child workflow started at a sequence in this execution.
   // this reference will be resolved by the runtime.
-  call.signal = function (signal, payload?, id?) {
+  call.sendSignal = function (signal, payload?) {
+    const signalId = typeof signal === "string" ? signal : signal.id;
     return createSendSignalCall(
       {
         type: SignalTargetType.ChildExecution,
         seq: call.seq!,
         workflowName: call.name,
       },
-      signal.id,
-      payload,
-      id
+      signalId,
+      payload
     ) as unknown as any;
   };
 

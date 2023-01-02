@@ -20,11 +20,11 @@ export const handler: APIGatewayProxyHandlerV2<SendActivityUpdateResponse> =
     }
     const activityRequest = JSON.parse(body) as SendActivityUpdate;
     if (isSendActivitySuccessRequest(activityRequest)) {
-      return workflowClient.completeActivity(activityRequest);
+      return workflowClient.sendActivitySuccess(activityRequest);
     } else if (isSendActivityFailureRequest(activityRequest)) {
-      return workflowClient.failActivity(activityRequest);
+      return workflowClient.sendActivityFailure(activityRequest);
     } else if (isSendActivityHeartbeatRequest(activityRequest)) {
-      return workflowClient.heartbeatActivity(activityRequest);
+      return workflowClient.sendActivityHeartbeat(activityRequest);
     }
 
     try {

@@ -1,9 +1,9 @@
 import { HistoryStateEvent, WorkflowEventType } from "../../workflow-events.js";
-import { CompleteExecution, FailedExecution } from "../../execution.js";
+import { SucceededExecution, FailedExecution } from "../../execution.js";
 import { ActivityWorkerRequest } from "../handlers/activity-worker.js";
 import { WorkflowClient } from "./workflow-client.js";
 
-export interface CompleteExecutionRequest {
+export interface SucceedExecutionRequest {
   executionId: string;
   result?: any;
 }
@@ -15,7 +15,7 @@ export interface FailExecutionRequest {
 }
 
 export function isFailedExecutionRequest(
-  executionRequest: CompleteExecutionRequest | FailExecutionRequest
+  executionRequest: SucceedExecutionRequest | FailExecutionRequest
 ): executionRequest is FailExecutionRequest {
   return "error" in executionRequest;
 }
@@ -36,9 +36,9 @@ export abstract class WorkflowRuntimeClient {
 
   public abstract startActivity(request: ActivityWorkerRequest): Promise<void>;
 
-  public async completeExecution(
-    request: CompleteExecutionRequest
-  ): Promise<CompleteExecution> {
+  public async succeedExecution(
+    request: SucceedExecutionRequest
+  ): Promise<SucceededExecution> {
     const execution = await this.updateExecution(request);
     console.log("execution", execution);
     if (execution.parent) {
@@ -49,7 +49,7 @@ export abstract class WorkflowRuntimeClient {
       );
     }
 
-    return execution as CompleteExecution;
+    return execution as SucceededExecution;
   }
 
   public async failExecution(
@@ -69,8 +69,8 @@ export abstract class WorkflowRuntimeClient {
   }
 
   protected abstract updateExecution(
-    request: FailExecutionRequest | CompleteExecutionRequest
-  ): Promise<CompleteExecution | FailedExecution>;
+    request: FailExecutionRequest | SucceedExecutionRequest
+  ): Promise<SucceededExecution | FailedExecution>;
 
   private async reportCompletionToParent(
     parentExecutionId: string,
@@ -82,7 +82,7 @@ export abstract class WorkflowRuntimeClient {
       timestamp: new Date().toISOString(),
       ...(args.length === 1
         ? {
-            type: WorkflowEventType.ChildWorkflowCompleted,
+            type: WorkflowEventType.ChildWorkflowSucceeded,
             result: args[0],
           }
         : {

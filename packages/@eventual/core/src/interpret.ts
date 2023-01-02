@@ -15,13 +15,13 @@ import {
   Timeout,
 } from "./error.js";
 import {
-  CompletedEvent,
+  SucceededEvent,
   SignalReceived,
   FailedEvent,
   HistoryEvent,
   isActivityScheduled,
   isChildWorkflowScheduled,
-  isCompletedEvent,
+  isSucceededEvent,
   isSignalReceived,
   isFailedEvent,
   isScheduledEvent,
@@ -109,7 +109,7 @@ export function interpret<Return>(
   const emittedEvents = iterator(history, isScheduledEvent);
   const resultEvents = iterator(
     history,
-    or(isCompletedEvent, isFailedEvent, isSignalReceived, isWorkflowTimedOut)
+    or(isSucceededEvent, isFailedEvent, isSignalReceived, isWorkflowTimedOut)
   );
 
   try {
@@ -524,7 +524,7 @@ export function interpret<Return>(
     });
   }
 
-  function commitCompletionEvent(event: CompletedEvent | FailedEvent) {
+  function commitCompletionEvent(event: SucceededEvent | FailedEvent) {
     const call = callTable[event.seq];
     if (call === undefined) {
       throw new DeterminismError(`Call for seq ${event.seq} was not emitted.`);
@@ -532,7 +532,7 @@ export function interpret<Return>(
     if (call.result && !isPending(call.result)) {
       return;
     }
-    call.result = isCompletedEvent(event)
+    call.result = isSucceededEvent(event)
       ? Result.resolved(event.result)
       : isSleepCompleted(event)
       ? Result.resolved(undefined)

@@ -85,7 +85,7 @@ const gameEvent = signal<GameEvent>("GameEvent");
 const game = workflow("game", async () => {
   let position = 0;
   while (true) {
-    const event = await gameEvent.expect();
+    const event = await gameEvent.expectSignal();
     if (event.type === "Done") {
       break;
     } else if (event.type === "MoveLeft") {
@@ -101,20 +101,20 @@ const game = workflow("game", async () => {
 
 The [`Promise`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) utility functions in Node.js allow you to concurrently run multiple tasks in your workflow. You can use these functions to structure your workflow in order to achieve specific concurrent behaviors.
 
-- [`Promise.all`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all) waits for all the tasks to complete before continuing. If any of the Promises reject, the whole Promise will also reject with the error.
+- [`Promise.all`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all) waits for all the tasks to succeed before continuing. If any of the Promises reject, the whole Promise will also reject with the error.
 - [`Promise.allSettled`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/allSettled) waits for all the tasks to either resolve or reject, and then continues.
 - [`Promise.any`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/any) waits for the first of the tasks to resolve, and then continues. If none resolve then an [AggregateError](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/AggregateError) is thrown containing a list of all the errors.
 - [`Promise.race`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/race) waits for the first of the tasks to either resolve or reject, and then continues.
 
 Here are some examples of how you can use these functions in your workflow to:
 
-### Run two activities in parallel and wait for both to complete
+### Run two activities in parallel and wait for both to succeed
 
 ```ts
 const [a, b] = await Promise.all([activityA(), activityB()]);
 ```
 
-### Run two sub-procedures in parallel and wait for both to complete
+### Run two sub-procedures in parallel and wait for both to succeed
 
 ```ts
 workflow("a and b", async () => {

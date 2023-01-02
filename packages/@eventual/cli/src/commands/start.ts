@@ -1,9 +1,9 @@
 import { styledConsole } from "../styled-console.js";
 import {
-  isActivityCompleted,
+  isActivitySucceeded,
   isActivityScheduled,
   isWorkflowStarted,
-  WorkflowCompleted,
+  WorkflowSucceeded,
   WorkflowEvent,
   WorkflowEventType,
   WorkflowFailed,
@@ -61,7 +61,7 @@ export const start = (yargs: Argv) =>
             );
             newEvents.forEach((ev) => {
               let meta: string | undefined;
-              if (isActivityCompleted(ev)) {
+              if (isActivitySucceeded(ev)) {
                 meta = ev.result;
               } else if (isActivityScheduled(ev)) {
                 meta = ev.name;
@@ -74,15 +74,15 @@ export const start = (yargs: Argv) =>
             });
             events.push(...newEvents);
             sortEvents(events);
-            const completedEvent = events.find(
-              (ev) => ev.type === WorkflowEventType.WorkflowCompleted
+            const succeededEvent = events.find(
+              (ev) => ev.type === WorkflowEventType.WorkflowSucceeded
             );
             const failedEvent = events.find(
               (ev) => ev.type === WorkflowEventType.WorkflowFailed
             );
-            if (completedEvent) {
-              spinner.succeed("Workflow complete");
-              const { output } = completedEvent as WorkflowCompleted;
+            if (succeededEvent) {
+              spinner.succeed("Workflow succeeded");
+              const { output } = succeededEvent as WorkflowSucceeded;
               if (output) {
                 styledConsole.success(output);
               }

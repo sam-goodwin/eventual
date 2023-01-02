@@ -6,7 +6,7 @@ import open from "open";
 import { resolve } from "import-meta-resolve";
 import {
   HistoryStateEvent,
-  isActivityCompleted,
+  isActivitySucceeded,
   isActivityFailed,
   isActivityScheduled,
   encodeExecutionId,
@@ -79,7 +79,7 @@ interface TimelineActivity {
   name: string;
   start: number;
   state:
-    | { status: "completed"; end: number }
+    | { status: "succeeded"; end: number }
     | { status: "failed"; end: number }
     | { status: "inprogress" };
 }
@@ -104,11 +104,11 @@ function aggregateEvents(events: HistoryStateEvent[]): {
         start: new Date(event.timestamp).getTime(),
         state: { status: "inprogress" },
       };
-    } else if (isActivityCompleted(event)) {
+    } else if (isActivitySucceeded(event)) {
       const existingActivity = activities[event.seq];
       if (existingActivity) {
         existingActivity.state = {
-          status: "completed",
+          status: "succeeded",
           end: new Date(event.timestamp).getTime(),
         };
       } else {

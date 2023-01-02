@@ -1,7 +1,7 @@
 import { isAsyncResult } from "../../activity.js";
 import { ScheduleActivityCommand } from "../../command.js";
 import {
-  ActivityCompleted,
+  ActivitySucceeded,
   ActivityFailed,
   createEvent,
   isWorkflowFailed,
@@ -169,7 +169,7 @@ export function createActivityWorker({
 
             /**
              * The activity has declared that it is async, other than logging, there is nothing left to do here.
-             * The activity should call {@link WorkflowClient.completeActivity} or {@link WorkflowClient.failActivity} when it is done.
+             * The activity should call {@link WorkflowClient.sendActivitySuccess} or {@link WorkflowClient.sendActivityFailure} when it is done.
              */
             return;
           } else if (result) {
@@ -190,9 +190,9 @@ export function createActivityWorker({
           );
 
           const endTime = getEndTime(start);
-          const event = createEvent<ActivityCompleted>(
+          const event = createEvent<ActivitySucceeded>(
             {
-              type: WorkflowEventType.ActivityCompleted,
+              type: WorkflowEventType.ActivitySucceeded,
               seq: request.command.seq,
               result,
             },
@@ -238,7 +238,7 @@ export function createActivityWorker({
             Unit.Count
           );
           metrics.putMetric(
-            ActivityMetrics.ActivityCompleted,
+            ActivityMetrics.ActivitySucceeded,
             failed ? 0 : 1,
             Unit.Count
           );
@@ -247,7 +247,7 @@ export function createActivityWorker({
         }
 
         async function finishActivity(
-          event: ActivityCompleted | ActivityFailed,
+          event: ActivitySucceeded | ActivityFailed,
           duration: number
         ) {
           await timed(metrics, ActivityMetrics.SubmitWorkflowTaskDuration, () =>

@@ -1,4 +1,4 @@
-import type { ExecutionID } from "@eventual/core";
+import type { StartExecutionResponse } from "@eventual/core";
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyHandlerV2,
@@ -12,23 +12,16 @@ const workflowClient = createWorkflowClient({
 
 /**
  * Create a new execution (start a workflow)
- * @param event
- * @returns
  */
-async function newExecution(event: APIGatewayProxyEventV2) {
-  const workflowName = event.pathParameters?.name;
-  if (!workflowName) {
-    return { statusCode: 400, body: `Missing workflow name` };
-  }
+export const handler: APIGatewayProxyHandlerV2<StartExecutionResponse> =
+  withErrorMiddleware(async (event: APIGatewayProxyEventV2) => {
+    const workflowName = event.pathParameters?.name;
+    if (!workflowName) {
+      return { statusCode: 400, body: `Missing workflow name` };
+    }
 
-  return {
-    executionId: await workflowClient.startWorkflow({
+    return await workflowClient.startExecution({
       workflow: workflowName,
       input: event.body && JSON.parse(event.body),
-    }),
-  };
-}
-
-export const handler: APIGatewayProxyHandlerV2<{
-  executionId: ExecutionID<string, string>;
-}> = withErrorMiddleware(newExecution);
+    });
+  });
