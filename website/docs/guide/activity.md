@@ -24,7 +24,7 @@ const sendEmail = activity("sendEmail", async (to: string, body: string) => {
 
 ## Call an Activity from within a Workflow
 
-o call an activity from within a workflow, you can simply await the activity function like you would any other asynchronous function:
+To call an activity from within a workflow, you can simply await the activity function like you would any other asynchronous function:
 
 ```ts
 workflow("send-email-workflow", async (input: { to: string; body: string }) => {
@@ -50,7 +50,9 @@ const asyncHello = activity("hello", async (name: string) => {
 
 This will cause the workflow to wait for the token to be succeeded or failed before moving on to the next step.
 
-To succeed or fail an async activity, you can use the `sendActivitySuccess` and `sendActivityFailure` methods, respectively, on your activity function. For example:
+### `sendActivitySuccess`
+
+The `sendActivitySuccess` method is used to mark an asynchronous activity as successfully completed. This is done by providing the activity's token and the result of the activity. This method is typically called after the activity has been performed and the result has been computed.
 
 ```ts
 api.post("/ack/:token", async (request) => {
@@ -59,7 +61,13 @@ api.post("/ack/:token", async (request) => {
     result: `hello world`,
   });
 });
+```
 
+### `sendActivityFailure`
+
+The `sendActivityFailure` method is used to mark an asynchronous activity as failed. This is done by providing the activity's token and the error that caused the failure. This method is typically called when an error occurs during the performance of the activity.
+
+```ts
 api.post("/fail/:token", async (request) => {
   await asyncHello.sendActivityFailure({
     activityToken: token,
@@ -89,11 +97,11 @@ const myActivity = activity("myActivity", async () => {
   });
 });
 
-myActivity.sendActivitySuccess({
+await myActivity.sendActivitySuccess({
   result: "hello world", // valid
 });
 
-myActivity.sendActivitySuccess({
+await myActivity.sendActivitySuccess({
   result: 123, // invalid, number is not a string
 });
 ```
@@ -198,7 +206,7 @@ await myWorkflow.startExecution({
 })
 ```
 
-- [`sendActivitySuccess`](./activity.md#complete-an-activity-from-outside-eventual)
+- [`sendActivitySuccess`](#sendactivitysuccess)
 
 ```ts
 await myActivity.sendActivitySuccess({
@@ -207,7 +215,7 @@ await myActivity.sendActivitySuccess({
 })
 ```
 
-- [`sendActivityFailure`](./activity.md#fail-an-activity)
+- [`sendActivityFailure`](#sendactivityfailure)
 
 ```ts
 await myActivity.sendActivityFailure({
