@@ -162,13 +162,13 @@ const activityWithHeartbeat = activity(
       // perform some work
       await processItem(item);
       // report a heartbeat back
-      await heartbeat();
+      await sendActivityHeartbeat();
     }
   }
 );
 ```
 
-To report a heartbeat from within your Activity, you can call the `heartbeat` function included in the `@eventual/core` library. This function should be called at regular intervals to ensure that the required heartbeat interval is met.
+To report a heartbeat from within your Activity, you can call the `sendActivityHeartbeat` function included in the `@eventual/core` library. This function should be called at regular intervals to ensure that the required heartbeat interval is met.
 
 ```ts
 import { heartbeat } from "@eventual/core";

@@ -9,7 +9,7 @@ Welcome to Eventual!
 
 ## Introduction
 
-Eventual is a code-first service and software development kit (SDK) that helps developers build and evolve event-driven architectures using modern infrastructure-as-code. Its composable service model is designed for building and evolving microservice architectures, simplifying the process of building, deploying, and maintaining these systems by providing a set of libraries and APIs that abstract away the complexities of distributed systems.
+Eventual is a code-first service and software development kit (SDK) that helps developers create event-driven systems using modern infrastructure-as-code. Its composable service model is designed for building and evolving microservice architectures, providing a set of libraries and APIs that abstract away the complexities of distributed systems, allowing developers to focus on the business logic of their services.
 
 ## Getting Started
 
