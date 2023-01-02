@@ -13,7 +13,7 @@
   <a href="https://github.com/eventual/eventual/blob/main/LICENSE">
     <img alt="MIT License" src="https://img.shields.io/github/license/functionless/eventual" />
   </a>
-  <a href="https://discord.gg/VRqHbjrbfC">
+  <a href="https://discord.gg/8hfnTn3QDT">
     <img alt="Discord" src="https://img.shields.io/discord/985291961885949973?color=7389D8&label&logo=discord&logoColor=ffffff" />
   </a>
   <a href="https://twitter.com/eventual_cloud">
@@ -23,7 +23,7 @@
 
 ---
 
-> 🛠&nbsp; Eventual is in pre-release - come chat to us on [Discord](https://discord.gg/VRqHbjrbfC)!
+> 🛠&nbsp; Eventual is in pre-release - come chat to us on [Discord](https://discord.gg/8hfnTn3QDT)!
 
 ---
 
