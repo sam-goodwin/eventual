@@ -204,6 +204,7 @@ export class Service extends Construct implements IGrantable {
       parameterName: `/eventual/services/${this.serviceName}`,
       stringValue: JSON.stringify({
         apiEndpoint: this.api.gateway.apiEndpoint,
+        eventBusArn: this.events.bus.eventBusArn,
         functions: {
           orchestrator: this.workflows.orchestrator.functionName,
           activityWorker: this.activities.worker.functionName,
