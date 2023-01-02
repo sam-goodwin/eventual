@@ -67,7 +67,7 @@ await myWorkflow.startExecution({
 })
 ```
 
-- [`sendActivitySuccess`](./activity.md#complete-an-activity)
+- [`sendActivitySuccess`](./activity.md#sendactivitysuccess)
 
 ```ts
 await myActivity.sendActivitySuccess({
@@ -76,7 +76,7 @@ await myActivity.sendActivitySuccess({
 })
 ```
 
-- [`sendActivityFailure`](./activity.md#fail-an-activity)
+- [`sendActivityFailure`](./activity.md#sendactivityfailure)
 
 ```ts
 await myActivity.sendActivityFailure({
