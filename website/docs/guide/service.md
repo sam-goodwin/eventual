@@ -47,7 +47,7 @@ payment-service-prod
 Or when invoking a workflow:
 
 ```
-> eventual start cart-service-prod checkout ./input.json
+> eventual start -workflow checkout -inputFile ./input.json
 ```
 
 For more information on how to use the CLI, see the [docs](./cli.md).

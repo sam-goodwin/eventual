@@ -142,7 +142,7 @@ Replay problematic workflows in production locally and use your IDE's debugger t
 ![Debug Production](./assets/debug-1.gif)
 
 ```
-eventual replay <service-name> <execution-id> ./src/index.ts
+eventual replay --execution <execution-id> --entry ./src/index.ts
 ```
 
 ### 🔌 Integrate with Cloud Resources and Services
