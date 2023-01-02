@@ -5,17 +5,21 @@ import util from "util";
 import { AwsHttpServiceClient } from "@eventual/aws-client";
 import { EventualServiceClient } from "@eventual/core";
 import { assumeCliRole } from "./role.js";
-import { getServiceData, resolveRegion } from "./service-data.js";
+import {
+  getServiceData,
+  resolveRegion,
+  tryResolveDefaultService,
+} from "./service-data.js";
 
 export type ServiceAction<T> = (
   spinner: Ora,
   serviceClient: EventualServiceClient,
-  args: Arguments<T>
+  args: Arguments<T & { service: string }>
 ) => Promise<void>;
 
 export type ServiceJsonAction<T> = (
   serviceClient: EventualServiceClient,
-  args: Arguments<T>
+  args: Arguments<T & { service: string }>
 ) => Promise<void>;
 
 /**
@@ -26,16 +30,17 @@ export const serviceAction =
   <T>(action: ServiceAction<T>, jsonAction?: ServiceJsonAction<T>) =>
   async (
     args: Arguments<
-      { debug: boolean; service: string; region?: string; json?: boolean } & T
+      { debug: boolean; service?: string; region?: string; json?: boolean } & T
     >
   ) => {
     const spinner = args.json ? undefined : ora().start("Preparing");
     try {
       const region = args.region ?? (await resolveRegion());
-      const credentials = await assumeCliRole(args.service, region);
+      const serviceName = await tryResolveDefaultService(args.service, region);
+      const credentials = await assumeCliRole(serviceName, region);
       const serviceData = await getServiceData(
         credentials,
-        args.service,
+        serviceName,
         region
       );
       const serviceClient = new AwsHttpServiceClient({
@@ -47,9 +52,12 @@ export const serviceAction =
         if (!jsonAction) {
           throw new Error("Operation does not support --json.");
         }
-        return jsonAction(serviceClient, args);
+        return jsonAction(serviceClient, { ...args, service: serviceName });
       }
-      return await action(spinner, serviceClient, args);
+      return await action(spinner, serviceClient, {
+        ...args,
+        service: serviceName,
+      });
     } catch (e: any) {
       if (args.debug) {
         styledConsole.error(util.inspect(e));
@@ -69,15 +77,14 @@ export const setServiceOptions = (
   jsonMode = false
 ): Argv<{
   debug: boolean;
-  service: string;
+  service?: string;
   region: string | undefined;
   json?: boolean;
 }> => {
   const opts = yargs
-    .positional("service", {
+    .option("service", {
       type: "string",
       description: "Name of service to operate on",
-      demandOption: true,
     })
     .option("region", { alias: "r", type: "string" })
     .option("debug", {

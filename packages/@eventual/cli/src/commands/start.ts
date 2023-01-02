@@ -16,7 +16,7 @@ import { getInputJson } from "./utils.js";
 
 export const start = (yargs: Argv) =>
   yargs.command(
-    "start <service> <workflow> [inputFile]",
+    "start <workflow> [inputFile]",
     "Start an execution",
     (yargs) =>
       setServiceOptions(yargs)

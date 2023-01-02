@@ -5,7 +5,7 @@ import { ExecutionStatus } from "@eventual/core";
 
 export const execution = (yargs: Argv) =>
   yargs.command(
-    "execution <service> <execution>",
+    "execution <execution>",
     "Get data about an execution",
     (yargs) =>
       setServiceOptions(yargs, true).positional("execution", {

@@ -11,10 +11,12 @@ import { timeline } from "./commands/timeline.js";
 import { sendSignal } from "./commands/send-signal.js";
 import { execution } from "./commands/execution.js";
 import { publishEvents } from "./commands/publish-events.js";
+import { configure } from "./commands/configure.js";
 
 const argv = hideBin(process.argv);
 const cli = yargs(argv).scriptName("eventual").strict();
 [
+  configure,
   execution,
   executions,
   history,

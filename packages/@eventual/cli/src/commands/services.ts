@@ -1,35 +1,35 @@
 import { Argv } from "yargs";
-import * as ssm from "@aws-sdk/client-ssm";
 import ora from "ora";
 import { styledConsole } from "../styled-console.js";
+import { getServices } from "../service-data.js";
 
 export const services = (yargs: Argv) =>
   yargs.command(
     ["services"],
     "List Eventual services",
     (yargs) =>
-      yargs.option("region", {
-        alias: "r",
-        describe: "Region to query",
-        type: "string",
-      }),
-    async ({ region }) => {
-      const spinner = ora("Getting services").start();
-      const ssmClient = new ssm.SSMClient({ region });
-      const serviceParameters = await ssmClient.send(
-        new ssm.DescribeParametersCommand({
-          ParameterFilters: [
-            {
-              Key: "Path",
-              Values: ["/eventual/services/"],
-            },
-          ],
+      yargs
+        .option("region", {
+          alias: "r",
+          describe: "Region to query",
+          type: "string",
         })
-      );
-      spinner.stop();
-      styledConsole.success("Services");
-      serviceParameters.Parameters?.forEach((p) =>
-        console.log(p.Name?.split("/eventual/services/")[1])
-      );
+        .option("json", {
+          describe: "Return json instead of formatted output",
+          boolean: true,
+          default: false,
+        }),
+    async ({ region, json }) => {
+      if (json) {
+        process.stdout.write(JSON.stringify(await getServices(region)));
+        process.stdout.write("\n");
+      } else {
+        const spinner = ora("Getting services").start();
+        const services = await getServices(region);
+        spinner.stop();
+        styledConsole.success("Services");
+        process.stdout.write(services.join("\n"));
+        process.stdout.write("\n");
+      }
     }
   );

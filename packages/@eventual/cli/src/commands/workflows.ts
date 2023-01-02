@@ -4,7 +4,7 @@ import { styledConsole } from "../styled-console.js";
 
 export const workflows = (yargs: Argv) =>
   yargs.command(
-    "workflows <service>",
+    "workflows",
     "List workflows of a service",
     setServiceOptions,
     serviceAction(async (spinner, serviceClient) => {
