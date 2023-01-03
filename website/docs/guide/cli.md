@@ -100,7 +100,7 @@ eventual logs --execution myExecutionId
 
 ### `events`
 
-The `events` command allows you to publish events to the service. You can pass the event ID as the `--event` flag and specify the event payload as a string or file with the `--payload` flag or `--payloadFile` flag. Alternatively, you can use the `<<<` operator and the cat command to pass the payload as a file.
+The `events` command allows you to publish events to the service. You can pass the event ID as the `--event` flag and specify the event payload as a string or file with the `--payload` flag or `--payloadFile` flag. Alternatively, you can pipe STDIN with the `<<<` operator.
 
 Examples:
 
