@@ -4,7 +4,7 @@ import { getInputJsonArray } from "./utils.js";
 
 export const publishEvents = (yargs: Argv) =>
   yargs.command(
-    "events",
+    "publish-events",
     "Send one or more events to the service",
     (yargs) =>
       setServiceOptions(yargs)
