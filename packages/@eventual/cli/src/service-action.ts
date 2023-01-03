@@ -29,9 +29,11 @@ export type ServiceJsonAction<T> = (
  * Designed to be used in command.action. Injects a usable api ky instance and wraps errors nicely
  * @param action Callback to perform for the action
  */
-export const serviceAction =
-  <T>(action: ServiceAction<T>, jsonAction?: ServiceJsonAction<T>) =>
-  async (
+export function serviceAction<T>(
+  action: ServiceAction<T>,
+  jsonAction?: ServiceJsonAction<T>
+) {
+  return async (
     args: Arguments<
       { debug: boolean; service?: string; region?: string; json?: boolean } & T
     >
@@ -78,6 +80,7 @@ export const serviceAction =
       process.exit(1);
     }
   };
+}
 
 /**
  * Adding options for service commands

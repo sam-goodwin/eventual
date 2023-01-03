@@ -14,7 +14,7 @@ import { serviceAction, setServiceOptions } from "../service-action.js";
 
 export const replay = (yargs: Argv) =>
   yargs.command(
-    "replay",
+    ["$0", "execution"],
     "Replays a workflow from the events of another execution",
     (yargs) =>
       setServiceOptions(yargs)
