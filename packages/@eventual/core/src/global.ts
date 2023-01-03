@@ -46,7 +46,7 @@ declare global {
   };
 }
 
-globalThis._eventual = {};
+globalThis._eventual ??= {};
 
 export const workflows = (): Map<string, Workflow> =>
   (globalThis._eventual.workflows ??= new Map<string, Workflow>());

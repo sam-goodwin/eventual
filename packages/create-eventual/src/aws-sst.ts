@@ -19,7 +19,10 @@ export async function createAwsSst({
   );
 
   process.chdir(path.join(".", projectName));
-  await addDevDeps(pkgManager, "@eventual/aws-cdk", "@eventual/cli");
+  await Promise.all([
+    addDevDeps(pkgManager, "@eventual/aws-cdk", "@eventual/cli"),
+    fs.writeFile(path.join(".", "stacks", "MyStack.ts"), sampleSSTCode),
+  ]);
 
   process.chdir("services");
   await addDeps(pkgManager, "@eventual/core");
@@ -29,6 +32,5 @@ export async function createAwsSst({
     addTsLib(path.join(".", "tsconfig.json"), "DOM"),
     fs.rm(path.join(".", "functions", "lambda.ts")),
     fs.writeFile(path.join(".", "functions", "service.ts"), sampleServiceCode),
-    fs.writeFile(path.join(".", "stacks", "MyStack.ts"), sampleSSTCode),
   ]);
 }

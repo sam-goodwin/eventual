@@ -12,6 +12,7 @@ Eventual is a set of NPM packages and a CDK Construct that helps you build micro
 Before getting started with Eventual, you'll need:
 
 - [Node JS 16+](https://nodejs.org/en/)
+- NPM 7+ or Yarn 1+ or PNPM
 - An [AWS Account](https://aws.amazon.com/)
 
 ## 1. Create a new project
@@ -34,10 +35,11 @@ Eventual currently supports two IaC platforms: AWS CDK and AWS SST. You'll be pr
 
 ## 3. Deploy the application
 
-To deploy your Eventual project, run the appropriate command for your chosen IaC platform:
+Use the `deploy` script to deploy your application to AWS.
 
-- For CDK: `npx cdk deploy`
-- For SST: `npx sst deploy`
+```
+npm run deploy
+```
 
 ## 4. List services in your AWS account
 
@@ -94,21 +96,6 @@ To view the logs for the workflow execution we just started, use the `eventual l
 ```
 > npx eventual logs --execution <execution-id>
 ```
-
-## 9. Tail the logs of the execution
-
-You could instead choose to tail the logs by appending the `--tail` argument:
-
-```
-> npx eventual logs --execution <execution-id> --tail
-```
-
-## 10. Destroy the application
-
-To clean up, destroy the application:
-
-- For CDK Users: `npx cdk destroy`.
-- For SST Users: `npx sst destroy`.
 
 ## Next Steps
 
