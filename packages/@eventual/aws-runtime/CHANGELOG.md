@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.7.3 (2023-01-03)
+
+### Bug Fixes
+
+- don't overwrite \_eventual ([#193](https://github.com/functionless/eventual/issues/193)) ([582bc87](https://github.com/functionless/eventual/commit/582bc872d7c6cf1b7828a8751d9c5ea207d528fb))
+
 ## 0.7.2 (2023-01-03)
 
 ### Bug Fixes
