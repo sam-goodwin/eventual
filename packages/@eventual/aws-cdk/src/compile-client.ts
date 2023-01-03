@@ -23,7 +23,7 @@ export function bundleSourcesSync(
 export function inferSync(serviceEntry: string): AppSpec {
   return JSON.parse(
     execSync(
-      `npx ts-node "${require.resolve(
+      `node "${require.resolve(
         "@eventual/compiler/bin/eventual-infer.js"
       )}" "${serviceEntry}"`
     ).toString("utf-8")
