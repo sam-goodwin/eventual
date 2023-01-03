@@ -17,12 +17,12 @@
     "test": "jest --passWithNoTests"
   },
   "peerDependencies": {
-    "esbuild": ">=0.16.x <1.0.0",
-    "esbuild-plugin-alias-path": "^1.1.1"
+    "esbuild": ">=0.16.x <1.0.0"
   },
   "dependencies": {
     "@eventual/core": "workspace:^",
-    "@swc/core": "^1.2.245"
+    "@swc/core": "^1.2.245",
+    "esbuild-plugin-alias-path": "^1.1.1"
   },
   "devDependencies": {
     "esbuild": "^0.x",
