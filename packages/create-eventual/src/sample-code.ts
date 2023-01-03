@@ -73,7 +73,7 @@ export class MyStack extends Stack {
   constructor(scope: Construct, id: string, props?: MyStackProps) {
     super(scope, id, props);
 
-    this.service = new Service(this, "Service", {
+    this.service = new Service(this, "my-service", {
       name: "my-service",
       entry: path.join(__dirname, "..", "services", "src", "my-service.ts")
     });
