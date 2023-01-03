@@ -60,7 +60,7 @@ node_modules`
     "@tsconfig/node16",
     "aws-cdk-lib",
     "constructs@^10",
-    "esbuild@^16",
+    "esbuild",
     "ts-node",
     "typescript"
   );
