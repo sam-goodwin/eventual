@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.7.2 (2023-01-03)
+
+### Bug Fixes
+
+- create-eventual aws-cdk and getting started ([#189](https://github.com/functionless/eventual/issues/189)) ([4e6d707](https://github.com/functionless/eventual/commit/4e6d7073c115a3836c2f30dfd02fa12dab597e35))
+
 ## 0.7.1 (2023-01-03)
 
 ### Bug Fixes
