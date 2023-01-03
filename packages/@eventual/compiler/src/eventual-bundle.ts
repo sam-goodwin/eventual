@@ -1,7 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import esbuild from "esbuild";
-import { esbuildPluginAliasPath } from "esbuild-plugin-alias-path";
+import { aliasPath } from "esbuild-plugin-alias-path";
 import { eventualESPlugin } from "./esbuild-plugin.js";
 import { prepareOutDir } from "./build.js";
 import { ServiceType, SERVICE_TYPE_FLAG } from "@eventual/core";
@@ -72,7 +72,7 @@ async function build({
     plugins: [
       ...(injectedEntry
         ? [
-            esbuildPluginAliasPath({
+            aliasPath({
               alias: {
                 "@eventual/entry/injected": path.resolve(injectedEntry),
               },
