@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.7.4 (2023-01-03)
+
+### Bug Fixes
+
+- use npm or pnpm workspaces to avoid duplicate packages ([#194](https://github.com/functionless/eventual/issues/194)) ([46d9e7b](https://github.com/functionless/eventual/commit/46d9e7be01b331b97543cc709ab5f87c29313bf5))
+
 ## 0.7.3 (2023-01-03)
 
 ### Bug Fixes
