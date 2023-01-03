@@ -1,14 +1,14 @@
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
-import Table from "cli-table3";
-import { ExecutionStatus } from "@eventual/core";
+import { displayExecution } from "../display/execution.js";
 
 export const execution = (yargs: Argv) =>
   yargs.command(
-    "execution <execution>",
+    "execution",
     "Get data about an execution",
     (yargs) =>
-      setServiceOptions(yargs, true).positional("execution", {
+      setServiceOptions(yargs, true).option("execution", {
+        alias: "e",
         describe: "Execution id",
         type: "string",
         demandOption: true,
@@ -22,24 +22,10 @@ export const execution = (yargs: Argv) =>
           spinner.fail(`Execution ${executionId} was not found.`);
           return;
         }
-        const table = new Table({
-          head: ["Workflow", "Status", "StartTime", "EndTime", "Result"],
-        });
-        table.push([
-          execution.workflowName,
-          execution.status,
-          execution.startTime,
-          execution.status === ExecutionStatus.IN_PROGRESS
-            ? undefined
-            : execution.endTime,
-          execution.status === ExecutionStatus.SUCCEEDED
-            ? execution.result
-            : execution.status === ExecutionStatus.FAILED
-            ? `${execution.error}: ${execution.message}`
-            : undefined,
-        ]);
         spinner.stop();
-        process.stdout.write(table.toString() + "\n");
+        process.stdout.write(
+          displayExecution(execution, { results: true, workflow: true }) + "\n"
+        );
       },
       async (service, { execution: executionId }) => {
         const execution = await service.getExecution(executionId);

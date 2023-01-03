@@ -3,11 +3,12 @@ import { serviceAction, setServiceOptions } from "../service-action.js";
 
 export const history = (yargs: Argv) =>
   yargs.command(
-    "history <execution>",
+    "history",
     "Get execution history",
     (yargs) =>
-      setServiceOptions(yargs).positional("execution", {
-        describe: "Execution Id",
+      setServiceOptions(yargs).option("execution", {
+        alias: "e",
+        describe: "Execution id",
         type: "string",
         demandOption: true,
       }),

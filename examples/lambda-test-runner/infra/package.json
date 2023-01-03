@@ -9,7 +9,7 @@
     "deploy": "cdk deploy --require-approval=never",
     "hotswap": "cdk deploy --hotswap --require-approval=never",
     "eventual": "eventual",
-    "start-my-workflow": "eventual start my-service my-workflow --input '{\"name\": \"world\"}' --tail"
+    "start-my-workflow": "eventual start --service my-service --workflow my-workflow --input '{\"name\": \"world\"}' --tail"
   },
   "dependencies": {
     "@eventual/aws-cdk": "workspace:^",

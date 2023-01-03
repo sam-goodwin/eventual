@@ -16,7 +16,7 @@ import { getInputJson } from "./utils.js";
 
 export const start = (yargs: Argv) =>
   yargs.command(
-    "start <workflow> [inputFile]",
+    "start",
     "Start an execution",
     (yargs) =>
       setServiceOptions(yargs)
@@ -25,12 +25,14 @@ export const start = (yargs: Argv) =>
           describe: "Tail execution",
           type: "boolean",
         })
-        .positional("workflow", {
+        .option("workflow", {
+          alias: "w",
           describe: "Workflow name",
           type: "string",
           demandOption: true,
         })
-        .positional("inputFile", {
+        .option("inputFile", {
+          alias: "f",
           describe: "Input file json. If not provided, uses stdin",
           type: "string",
         })

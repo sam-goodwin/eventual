@@ -17,10 +17,11 @@ import path from "path";
 
 export const timeline = (yargs: Argv) =>
   yargs.command(
-    "timeline <execution>",
-    "Visualise execution history",
+    "timeline",
+    "Visualize execution history",
     (yargs) =>
-      setServiceOptions(yargs).positional("execution", {
+      setServiceOptions(yargs).option("execution", {
+        alias: "e",
         describe: "Execution Id",
         type: "string",
         demandOption: true,

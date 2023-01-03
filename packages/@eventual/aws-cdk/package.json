@@ -1,6 +1,6 @@
 {
   "name": "@eventual/aws-cdk",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "main": "lib/index.js",
   "types:": "lib/index.d.ts",
   "scripts": {
@@ -17,7 +17,7 @@
     "@aws-cdk/aws-apigatewayv2-integrations-alpha": "^2.50.0-alpha.0",
     "aws-cdk-lib": "^2.50.0",
     "constructs": "^10.0.0",
-    "esbuild": ">=0.15.x <1.0.0"
+    "esbuild": ">=0.16.x <1.0.0"
   },
   "devDependencies": {
     "@aws-cdk/aws-apigatewayv2-alpha": "2.50.0-alpha.0",

@@ -3,7 +3,7 @@ import Table from "cli-table3";
 import { defaultService } from "../env.js";
 
 export const configure = (yargs: Argv) =>
-  yargs.command("configure", "Get data about an execution", (yargs) =>
+  yargs.command("configure", "Get Eventual CLI configuration", (yargs) =>
     yargs.command(
       "list",
       "Returns all properties and their values",
