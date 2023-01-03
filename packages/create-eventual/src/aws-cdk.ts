@@ -40,7 +40,9 @@ export async function createAwsCdk({
     fs.writeFile(
       ".gitignore",
       `lib
-node_modules`
+node_modules
+cdk.out
+.eventual`
     ),
     fs
       .mkdir("src")
