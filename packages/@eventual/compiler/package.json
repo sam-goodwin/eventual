@@ -22,7 +22,7 @@
   "dependencies": {
     "@eventual/core": "workspace:^",
     "@swc/core": "^1.2.245",
-    "esbuild-plugin-alias-path": "^1.1.1"
+    "esbuild-plugin-alias-path": "^2.0.2"
   },
   "devDependencies": {
     "@types/jest": "^29",
