@@ -12,6 +12,7 @@ Eventual is a set of NPM packages and a CDK Construct that helps you build micro
 Before getting started with Eventual, you'll need:
 
 - [Node JS 16+](https://nodejs.org/en/)
+- NPM 7+ or Yarn 1+ or PNPM
 - An [AWS Account](https://aws.amazon.com/)
 
 ## 1. Create a new project
@@ -95,21 +96,6 @@ To view the logs for the workflow execution we just started, use the `eventual l
 ```
 > npx eventual logs --execution <execution-id>
 ```
-
-## 9. Tail the logs of the execution
-
-You could instead choose to tail the logs by appending the `--tail` argument:
-
-```
-> npx eventual logs --execution <execution-id> --tail
-```
-
-## 10. Destroy the application
-
-To clean up, destroy the application:
-
-- For CDK Users: `npx cdk destroy`.
-- For SST Users: `npx sst destroy`.
 
 ## Next Steps
 

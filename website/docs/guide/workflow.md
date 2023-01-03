@@ -202,14 +202,14 @@ await sleepUntil("2013-01-01T00:00:00.000Z");
 await sleepUntil(new Date(epochMilliseconds));
 ```
 
-### `sleepWhile` a condition is true
+### `condition` a condition is true
 
-The `sleepWhile` function will pause execution until a predicate function returns `true`.
+The `condition` function will pause execution until a predicate function returns `true`.
 
 ```ts
 let isCancelled = false;
 
-await sleepWhile(() => !isCancelled);
+await condition(() => !isCancelled);
 ```
 
 The predicate is evaluated whenever the workflow progresses, such as when an event is received. For example, in the previous example, a signal could be used to set `isCancelled` to `true`. When that signal is received, the condition will be re-evaluated as `false`, allowing the function to continue.
@@ -217,7 +217,7 @@ The predicate is evaluated whenever the workflow progresses, such as when an eve
 ```ts
 cancelSignal.onSignal(() => (isCancelled = true));
 
-await sleepWhile(() => !isCancelled);
+await condition(() => !isCancelled);
 // execution will proceed after the signal is received
 ```
 

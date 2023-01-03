@@ -38,11 +38,14 @@ export const workDone = event<WorkDoneEvent>("WorkDone");
 export const sampleSSTCode = `import { StackContext } from "@serverless-stack/resources";
 import { Service } from "@eventual/aws-cdk";
 import path from "path";
+import url from "url";
+
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
 export function MyStack({ stack }: StackContext) {
   const service = new Service(stack, "Service", {
     // this path is relative to .build/ where SST puts the CDK bundle
-    entry: path.resolve(__dirname, "..", ".., "services", "functions", "service.ts"),
+    entry: path.resolve(__dirname, "..", "..", "services", "functions", "service.ts"),
     name: "my-service",
   });
   stack.addOutputs({
@@ -51,13 +54,12 @@ export function MyStack({ stack }: StackContext) {
 }
 `;
 
-export const sampleCDKApp = `import { App, Stack } from "aws-cdk-lib";
-import path from "path";
-import { MyStack } from "./my-stack";
+export const sampleCDKApp = `import { App } from "aws-cdk-lib";
+import { MyServiceStack } from "./my-service-stack";
 
 const app = new App();
 
-new MyStack(app, "my-stack");
+new MyServiceStack(app, "my-service");
 `;
 
 export const sampleCDKStack = `import { Construct } from "constructs";
@@ -65,17 +67,17 @@ import { Stack, StackProps } from "aws-cdk-lib";
 import { Service } from "@eventual/aws-cdk";
 import path from "path";
 
-export interface MyStackProps extends StackProps {}
+export interface MyServiceStackProps extends StackProps {}
 
-export class MyStack extends Stack {
+export class MyServiceStack extends Stack {
   public readonly service: Service;
 
-  constructor(scope: Construct, id: string, props?: MyStackProps) {
+  constructor(scope: Construct, id: string, props?: MyServiceStackProps) {
     super(scope, id, props);
 
     this.service = new Service(this, "my-service", {
       name: "my-service",
-      entry: path.join(__dirname, "..", "services", "src", "my-service.ts")
+      entry: path.join(__dirname, "..", "..", "services", "src", "index.ts")
     });
   }
 }
