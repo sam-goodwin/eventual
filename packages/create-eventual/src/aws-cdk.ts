@@ -24,6 +24,7 @@ export async function createAwsCdk({
         synth: "cdk synth",
         deploy: "cdk deploy",
       },
+      workspaces: ["services"],
     }),
     writeJsonFile("cdk.json", {
       app: "ts-node ./src/app.ts",
@@ -54,6 +55,16 @@ cdk.out
       ),
   ]);
 
+  if (pkgManager === "pnpm") {
+    await fs.writeFile(
+      "pnpm-workspace.yaml",
+      `# https://pnpm.io/pnpm-workspace_yaml
+packages:
+  - "services"
+`
+    );
+  }
+
   await addDevDeps(
     pkgManager,
     "@eventual/aws-cdk",
@@ -66,7 +77,6 @@ cdk.out
     "ts-node",
     "typescript"
   );
-  await install(pkgManager);
 
   await fs.mkdir("services");
   process.chdir("services");
@@ -95,8 +105,8 @@ cdk.out
     }),
   ]);
   await addDeps(pkgManager, "@eventual/core");
-  await install(pkgManager);
   process.chdir("..");
+  await install(pkgManager);
 }
 
 async function writeJsonFile(file: string, obj: any) {

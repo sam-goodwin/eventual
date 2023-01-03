@@ -51,8 +51,7 @@ export function MyStack({ stack }: StackContext) {
 }
 `;
 
-export const sampleCDKApp = `import { App, Stack } from "aws-cdk-lib";
-import path from "path";
+export const sampleCDKApp = `import { App } from "aws-cdk-lib";
 import { MyStack } from "./my-stack";
 
 const app = new App();
