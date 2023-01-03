@@ -150,10 +150,11 @@ eventual send-signal --signal mySignal --execution myExecutionId <<< cat "path/t
 
 ### `services`
 
-The `services` command allows you to view a list of all the services that are deployed in your AWS account.
+The `services` command is an easy way to view all of the services that are deployed in your AWS account. It provides a list of service names, which can be useful if you have multiple services in your account and need to determine which one you want to use for a particular command.
 
 ```sh
 eventual services
+
 ```
 
 ### `start`
