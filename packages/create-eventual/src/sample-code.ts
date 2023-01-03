@@ -52,11 +52,11 @@ export function MyStack({ stack }: StackContext) {
 `;
 
 export const sampleCDKApp = `import { App } from "aws-cdk-lib";
-import { MyStack } from "./my-stack";
+import { MyServiceStack } from "./my-stack";
 
 const app = new App();
 
-new MyStack(app, "my-stack");
+new MyServiceStack(app, "my-service");
 `;
 
 export const sampleCDKStack = `import { Construct } from "constructs";
@@ -64,17 +64,17 @@ import { Stack, StackProps } from "aws-cdk-lib";
 import { Service } from "@eventual/aws-cdk";
 import path from "path";
 
-export interface MyStackProps extends StackProps {}
+export interface MyServiceStackProps extends StackProps {}
 
-export class MyStack extends Stack {
+export class MyServiceStack extends Stack {
   public readonly service: Service;
 
-  constructor(scope: Construct, id: string, props?: MyStackProps) {
+  constructor(scope: Construct, id: string, props?: MyServiceStackProps) {
     super(scope, id, props);
 
     this.service = new Service(this, "my-service", {
       name: "my-service",
-      entry: path.join(__dirname, "..", "services", "src", "my-service.ts")
+      entry: path.join(__dirname, "..", "..", "services", "src", "my-service.ts")
     });
   }
 }

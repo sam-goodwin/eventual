@@ -12,6 +12,7 @@ Eventual is a set of NPM packages and a CDK Construct that helps you build micro
 Before getting started with Eventual, you'll need:
 
 - [Node JS 16+](https://nodejs.org/en/)
+- NPM 7+ or Yarn 1+ or PNPM
 - An [AWS Account](https://aws.amazon.com/)
 
 ## 1. Create a new project
