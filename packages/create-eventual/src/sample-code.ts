@@ -52,7 +52,7 @@ export function MyStack({ stack }: StackContext) {
 `;
 
 export const sampleCDKApp = `import { App } from "aws-cdk-lib";
-import { MyServiceStack } from "./my-stack";
+import { MyServiceStack } from "./my-service-stack";
 
 const app = new App();
 
@@ -74,7 +74,7 @@ export class MyServiceStack extends Stack {
 
     this.service = new Service(this, "my-service", {
       name: "my-service",
-      entry: path.join(__dirname, "..", "..", "services", "src", "my-service.ts")
+      entry: path.join(__dirname, "..", "..", "services", "src", "index.ts")
     });
   }
 }

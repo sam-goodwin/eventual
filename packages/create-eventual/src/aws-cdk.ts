@@ -15,9 +15,9 @@ export async function createAwsCdk({
   process.chdir(projectName);
 
   const pkgJson = JSON.parse(
-    await (
-      await fs.readFile(path.join(__dirname, "..", "package.json"))
-    ).toString("utf-8")
+    (await fs.readFile(path.join(__dirname, "..", "package.json"))).toString(
+      "utf-8"
+    )
   );
   const version = pkgJson.version as number;
 
@@ -41,7 +41,7 @@ export async function createAwsCdk({
         private: true,
         scripts: {
           build: "tsc -b",
-          watch: "tsc -w",
+          watch: "tsc -b -w",
           synth: run("synth"),
           deploy: run("deploy"),
         },
@@ -64,7 +64,6 @@ export async function createAwsCdk({
           inlineSourceMap: true,
           inlineSources: true,
         },
-        references: [{ path: "./services/tsconfig.json" }],
       }),
       writeJsonFile("tsconfig.json", {
         files: [],
@@ -134,7 +133,7 @@ packages:
         include: ["src"],
         compilerOptions: {
           outDir: "lib",
-          declaration: true,
+          rootDir: "src",
         },
       }),
       fs
@@ -142,7 +141,10 @@ packages:
         .then(() =>
           Promise.all([
             fs.writeFile(path.join("src", "app.ts"), sampleCDKApp),
-            fs.writeFile(path.join("src", "my-stack.ts"), sampleCDKStack),
+            fs.writeFile(
+              path.join("src", "my-service-stack.ts"),
+              sampleCDKStack
+            ),
           ])
         ),
     ]);
@@ -163,17 +165,17 @@ packages:
       fs
         .mkdir("src")
         .then(() =>
-          fs.writeFile(path.join("src", "my-service.ts"), sampleServiceCode)
+          fs.writeFile(path.join("src", "index.ts"), sampleServiceCode)
         ),
       writeJsonFile("tsconfig.json", {
         extends: "../tsconfig.base.json",
         include: ["src"],
         compilerOptions: {
-          baseUrl: ".",
           lib: ["DOM"],
           module: "esnext",
           moduleResolution: "node",
           outDir: "lib",
+          rootDir: "src",
           target: "ES2021",
         },
       }),
