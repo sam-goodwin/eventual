@@ -97,21 +97,6 @@ To view the logs for the workflow execution we just started, use the `eventual l
 > npx eventual logs --execution <execution-id>
 ```
 
-## 9. Tail the logs of the execution
-
-You could instead choose to tail the logs by appending the `--tail` argument:
-
-```
-> npx eventual logs --execution <execution-id> --tail
-```
-
-## 10. Destroy the application
-
-To clean up, destroy the application:
-
-- For CDK Users: `npx cdk destroy`.
-- For SST Users: `npx sst destroy`.
-
 ## Next Steps
 
 Now that you have a basic understanding of Eventual's concepts, you can continue learning by:

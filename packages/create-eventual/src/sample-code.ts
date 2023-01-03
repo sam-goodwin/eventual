@@ -38,11 +38,14 @@ export const workDone = event<WorkDoneEvent>("WorkDone");
 export const sampleSSTCode = `import { StackContext } from "@serverless-stack/resources";
 import { Service } from "@eventual/aws-cdk";
 import path from "path";
+import url from "url";
+
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
 export function MyStack({ stack }: StackContext) {
   const service = new Service(stack, "Service", {
     // this path is relative to .build/ where SST puts the CDK bundle
-    entry: path.resolve(__dirname, "..", ".., "services", "functions", "service.ts"),
+    entry: path.resolve(__dirname, "..", "..", "services", "functions", "service.ts"),
     name: "my-service",
   });
   stack.addOutputs({
