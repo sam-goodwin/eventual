@@ -133,9 +133,7 @@ eventual replay --execution myExecutionId --entry ./src/my-service.ts
 
 ### `send-signal`
 
-The `send-signal` command allows you to send a signal to a running execution. The signal is a way for you to communicate with the execution and trigger certain actions or transitions in the workflow.
-
-You need to specify the signal to send using the `--signal` flag and the execution to send it to using the `--execution` flag. You can also provide an optional payload with the signal using the `--payload` flag and pass in a string containing a JSON object, the `--payloadFile` flag and pass in the path to a file containing the payload data, or via STDIN. Here's an example:
+To send a signal to a running execution, use the send-signal command and specify the signal to send using the `--signal` flag, and the execution to send it to using the `--execution` flag. You can also provide an optional payload with the signal with the `--payload` or `--payloadFile` flags, or by piping STDIN.
 
 Here are some examples of how to use the `send-signal` command:
 
