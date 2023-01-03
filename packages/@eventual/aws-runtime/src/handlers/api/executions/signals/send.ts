@@ -1,7 +1,7 @@
 import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { withErrorMiddleware } from "../../middleware.js";
 import { decodeExecutionId, SendSignalRequest } from "@eventual/core";
-import { createWorkflowClient } from "src/index.js";
+import { createWorkflowClient } from "../../../../clients/create.js";
 
 const workflowClient = createWorkflowClient({
   activityTableName: "NOT_NEEDED",
