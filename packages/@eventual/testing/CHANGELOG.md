@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.7.1 (2023-01-03)
+
+### Bug Fixes
+
+- import issues ([#191](https://github.com/functionless/eventual/issues/191)) ([fee79d4](https://github.com/functionless/eventual/commit/fee79d45da9b13e49ce4cb61d6d8ce7d2bc8647e))
+
 # 0.7.0 (2023-01-03)
 
 ### Features
