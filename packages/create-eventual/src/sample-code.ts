@@ -41,7 +41,8 @@ import path from "path";
 
 export function MyStack({ stack }: StackContext) {
   const service = new Service(stack, "Service", {
-    entry: path.resolve(__dirname, "services", "functions", "service.ts"),
+    // this path is relative to .build/ where SST puts the CDK bundle
+    entry: path.resolve(__dirname, "..", ".., "services", "functions", "service.ts"),
     name: "my-service",
   });
   stack.addOutputs({
@@ -62,6 +63,7 @@ new MyStack(app, "my-stack");
 export const sampleCDKStack = `import { Construct } from "constructs";
 import { Stack, StackProps } from "aws-cdk-lib";
 import { Service } from "@eventual/aws-cdk";
+import path from "path";
 
 export interface MyStackProps extends StackProps {}
 
@@ -73,7 +75,7 @@ export class MyStack extends Stack {
 
     this.service = new Service(this, "Service", {
       name: "my-service",
-      entry: path.join(__dirname, "services", "src", "my-service.ts")
+      entry: path.join(__dirname, "..", "services", "src", "my-service.ts")
     });
   }
 }
