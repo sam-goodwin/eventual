@@ -8,18 +8,21 @@ import { assumeCliRole } from "./role.js";
 import {
   getServiceData,
   resolveRegion,
+  ServiceData,
   tryResolveDefaultService,
 } from "./service-data.js";
 
 export type ServiceAction<T> = (
   spinner: Ora,
   serviceClient: EventualServiceClient,
-  args: Arguments<T & { service: string }>
+  args: Arguments<T & { service: string }>,
+  serviceData: ServiceData
 ) => Promise<void>;
 
 export type ServiceJsonAction<T> = (
   serviceClient: EventualServiceClient,
-  args: Arguments<T & { service: string }>
+  args: Arguments<T & { service: string }>,
+  serviceData: ServiceData
 ) => Promise<void>;
 
 /**
@@ -52,12 +55,21 @@ export const serviceAction =
         if (!jsonAction) {
           throw new Error("Operation does not support --json.");
         }
-        return jsonAction(serviceClient, { ...args, service: serviceName });
+        return jsonAction(
+          serviceClient,
+          { ...args, service: serviceName },
+          serviceData
+        );
       }
-      return await action(spinner, serviceClient, {
-        ...args,
-        service: serviceName,
-      });
+      return await action(
+        spinner,
+        serviceClient,
+        {
+          ...args,
+          service: serviceName,
+        },
+        serviceData
+      );
     } catch (e: any) {
       if (args.debug) {
         styledConsole.error(util.inspect(e));

@@ -5,7 +5,12 @@ import {
   ServiceType,
 } from "@eventual/core";
 import { Arn, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
-import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
+import {
+  AttributeType,
+  BillingMode,
+  ProjectionType,
+  Table,
+} from "aws-cdk-lib/aws-dynamodb";
 import {
   AccountRootPrincipal,
   CompositePrincipal,
@@ -33,6 +38,7 @@ import {
 } from "aws-cdk-lib/aws-cloudwatch";
 import { bundleSourcesSync, inferSync } from "./compile-client";
 import path from "path";
+import { ExecutionRecord } from "@eventual/aws-runtime";
 
 export interface ServiceProps {
   entry: string;
@@ -126,6 +132,15 @@ export class Service extends Construct implements IGrantable {
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
+    this.table.addLocalSecondaryIndex({
+      indexName: ExecutionRecord.START_TIME_SORTED_INDEX,
+      sortKey: {
+        name: ExecutionRecord.START_TIME,
+        type: AttributeType.STRING,
+      },
+      projectionType: ProjectionType.ALL,
+    });
+
     const proxyScheduler = lazyInterface<IScheduler>();
     const proxyWorkflows = lazyInterface<IWorkflows>();
     const proxyActivities = lazyInterface<IActivities>();
@@ -189,6 +204,7 @@ export class Service extends Construct implements IGrantable {
       parameterName: `/eventual/services/${this.serviceName}`,
       stringValue: JSON.stringify({
         apiEndpoint: this.api.gateway.apiEndpoint,
+        eventBusArn: this.events.bus.eventBusArn,
         functions: {
           orchestrator: this.workflows.orchestrator.functionName,
           activityWorker: this.activities.worker.functionName,

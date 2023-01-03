@@ -12,6 +12,7 @@ import { sendSignal } from "./commands/send-signal.js";
 import { execution } from "./commands/execution.js";
 import { publishEvents } from "./commands/publish-events.js";
 import { configure } from "./commands/configure.js";
+import { serviceInfo } from "./commands/service-info.js";
 
 const argv = hideBin(process.argv);
 const cli = yargs(argv).scriptName("eventual").strict();
@@ -24,6 +25,7 @@ const cli = yargs(argv).scriptName("eventual").strict();
   publishEvents,
   replay,
   sendSignal,
+  serviceInfo,
   services,
   start,
   timeline,
