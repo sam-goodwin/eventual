@@ -16,13 +16,16 @@
   "scripts": {
     "test": "jest --passWithNoTests"
   },
-  "dependencies": {
-    "@eventual/core": "workspace:^",
-    "@swc/core": "^1.2.245",
-    "esbuild": "^0.x",
+  "peerDependencies": {
+    "esbuild": ">=0.16.x <1.0.0",
     "esbuild-plugin-alias-path": "^1.1.1"
   },
+  "dependencies": {
+    "@eventual/core": "workspace:^",
+    "@swc/core": "^1.2.245"
+  },
   "devDependencies": {
+    "esbuild": "^0.x",
     "@types/jest": "^29",
     "@types/minimatch": "5.1.2",
     "@types/node": "^16",
