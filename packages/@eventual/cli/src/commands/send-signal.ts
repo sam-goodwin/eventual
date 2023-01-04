@@ -4,18 +4,18 @@ import { getInputJson } from "./utils.js";
 
 export const sendSignal = (yargs: Argv) =>
   yargs.command(
-    "signal",
+    "signal <signal>",
     "Send a signal to a running execution",
     (yargs) =>
       setServiceOptions(yargs)
-        .option("execution", {
-          alias: "e",
-          describe: "Execution id",
+        .positional("signal", {
+          describe: "Signal Id",
           type: "string",
           demandOption: true,
         })
-        .option("signal", {
-          describe: "Signal Id",
+        .option("execution", {
+          alias: "e",
+          describe: "Execution id",
           type: "string",
           demandOption: true,
         })

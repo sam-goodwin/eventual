@@ -38,12 +38,20 @@ export const logs = (yargs: Argv) =>
             "Only show logs from given time. Timestamp in milliseconds, ISO8601",
           defaultDescription: "24 hours ago",
         })
-        .option("tail", {
+        .option("follow", {
+          alias: "f",
           describe: "Watch logs indefinitely",
           default: false,
           type: "boolean",
         }),
-    async ({ service: _service, workflow, execution, region, since, tail }) => {
+    async ({
+      service: _service,
+      workflow,
+      execution,
+      region,
+      since,
+      follow,
+    }) => {
       const startTime = getStartTime(since as string | number);
       const spinner = ora("Loading logs");
       const service = await tryResolveDefaultService(_service);
@@ -78,15 +86,15 @@ export const logs = (yargs: Argv) =>
           cloudwatchLogsClient,
           nextInputs
         );
-        nextInputs = getFollowingFunctionLogInputs(functionEvents, tail);
-        if (tail) {
+        nextInputs = getFollowingFunctionLogInputs(functionEvents, follow);
+        if (follow) {
           spinner.start("Watching logs");
           await sleep(1000);
         } else if (nextInputs.length) {
           spinner.start("Loading more");
         }
         // eslint-disable-next-line no-unmodified-loop-condition
-      } while (tail || nextInputs.length);
+      } while (follow || nextInputs.length);
       spinner.stop();
     }
   );
@@ -174,9 +182,9 @@ export function getInterleavedLogEvents(
  */
 export function getFollowingFunctionLogInputs(
   fnEvents: FunctionLogEvents[],
-  tail: boolean
+  follow: boolean
 ): FunctionLogInput[] {
-  if (tail) {
+  if (follow) {
     return fnEvents.map(({ fn, events, nextToken }) => {
       // Its important to increment the start time even if we're just using next token, since once there's no more next token's,
       // we're going to rely on the latest start time value

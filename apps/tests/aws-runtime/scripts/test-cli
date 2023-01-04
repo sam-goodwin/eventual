@@ -24,6 +24,6 @@ npx eventual logs --execution ${execution_id}
 
 npx eventual start -w sleepy
 
-npx eventual start -w sleepy --tail
+npx eventual start -w sleepy -f
 
 npx eventual replay --execution ${execution_id} --entry 'test/test-service.ts'

@@ -16,6 +16,18 @@ import { serviceInfo } from "./commands/service-info.js";
 
 const argv = hideBin(process.argv);
 
+/**
+ * CLI
+ *
+ * <verb> <resource> [resourceId] [args]
+ *
+ * * the first value MUST be a **verb**
+ * * the second value MUST be a singular or plural **resource** name (workflow, execution, event, signal, service)
+ * * when the **resource** is singular and one of the arguments is the ID or name of the resource
+ *      the 3rd positional argument MUST be the ID/name.
+ * * if the **resource** is a sub-property of another resource (ex: execution history), the resource ID SHOULD be a flag
+ */
+
 export const listOperation = (yargs: Argv) =>
   yargs.command(
     "list",
@@ -23,12 +35,14 @@ export const listOperation = (yargs: Argv) =>
     addSubCommands(listExecutions, workflows, services)
   );
 
-// default is `eventual show service => eventual show`
 export const getOperation = (yargs: Argv) =>
   yargs.command(
     ["get", "show"],
     "Get or show an execution, service, timeline, history, logs, or the cli configuration.",
-    addSubCommands(execution, history, logs, serviceInfo, configure, timeline)
+    addSubCommands(execution, history, logs, serviceInfo, configure, timeline),
+    () => {
+      yargs.showHelp();
+    }
   );
 
 export const sendOperation = (yargs: Argv) =>
@@ -38,15 +52,14 @@ export const sendOperation = (yargs: Argv) =>
     addSubCommands(publishEvents, sendSignal)
   );
 
-// default is `eventual replay execution => eventual replay`
 export const replayOperation = (yargs: Argv) =>
   yargs.command("replay", "Replay executions", addSubCommands(replay));
 
-// default is `eventual start workflow => eventual start`
 export const startOperation = (yargs: Argv) =>
   yargs.command("start", "Start a workflow", addSubCommands(start));
 
-const cli = yargs(argv).scriptName("eventual").strict().showHelpOnFail(true);
+const cli = yargs(argv).scriptName("eventual").strict();
+
 addSubCommands(
   listOperation,
   getOperation,

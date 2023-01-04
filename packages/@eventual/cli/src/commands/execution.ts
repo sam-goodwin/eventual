@@ -4,11 +4,10 @@ import { displayExecution } from "../display/execution.js";
 
 export const execution = (yargs: Argv) =>
   yargs.command(
-    "execution",
+    "execution <execution>",
     "Get data about an execution",
     (yargs) =>
-      setServiceOptions(yargs, true).option("execution", {
-        alias: "e",
+      setServiceOptions(yargs, true).positional("execution", {
         describe: "Execution id",
         type: "string",
         demandOption: true,

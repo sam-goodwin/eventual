@@ -25,10 +25,10 @@ $ eventual start --workflow <workflow> <<< cat json-string
 
 If no input is provided, it is read from stdin
 
-## Start a workflow (tail)
+## Start a workflow (follow)
 
 ```shell
-$ eventual start --tail --workflow <workflow> [--input input | --inputFile filePath]
+$ eventual start --follow --workflow <workflow> [--input input | --inputFile filePath]
 ```
 
 ## Get execution history
@@ -47,7 +47,7 @@ $ eventual executions [--workflow workflow]
 ## Display logs
 
 ```shell
-$ eventual logs [--workflow workflowName | --execution executionId] [--tail] [--since timestamp]
+$ eventual logs [--workflow workflowName | --execution executionId] [--follow] [--since timestamp]
 
 Default shows all logs for a service. Provide workflow or execution to filter respectively.
 ```

@@ -3,9 +3,13 @@ import { serviceAction, setServiceOptions } from "../service-action.js";
 
 export const serviceInfo = (yargs: Argv) =>
   yargs.command(
-    ["*", "info"],
+    "service [service]",
     "Get data about your service",
-    (yargs) => setServiceOptions(yargs, true),
+    (yargs) =>
+      setServiceOptions(yargs, true).option("service", {
+        type: "string",
+        description: "Name of service to operate on",
+      }),
     serviceAction(
       async (spinner, _service, _, serviceData) => {
         spinner.start("Getting executions");

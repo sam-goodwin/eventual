@@ -157,57 +157,57 @@ eventual services
 
 ```
 
-### `start`
+### `start workflow`
 
 The `start` command allows you to start a workflow execution. You need to specify the workflow to start using the `--workflow` flag and an optional input with `--input`, `--inputFile` or via STDIN.
 
 ```sh
 # Start a workflow execution and pass in the input data as an argument to the workflow function
-eventual start --workflow myWorkflow --input '{ myValue: "value" }'
+eventual start workflow myWorkflow --input '{ myValue: "value" }'
 
 # Alternatively, you can specify the input data using a file path
-eventual start --workflow myWorkflow --inputFile "path/to/file.json"
+eventual start workflow myWorkflow --inputFile "path/to/file.json"
 
 # Or use STDIN redirection to pass in the input data from a file
-eventual start --workflow myWorkflow <<< cat "path/to/file.json"
+eventual start workflow myWorkflow <<< cat "path/to/file.json"
 ```
 
-Use `--tail` to watch a workflow while it runs.
+Use `--follow` to watch a workflow while it runs.
 
 ```sh
-eventual start --workflow myWorkflow --tail
+eventual start --workflow myWorkflow --follow
 ```
 
-### `timeline`
+### `show timeline`
 
 Launches a timeline UI showing events in the workflow execution while running or on completion.
 
 ```sh
-eventual timeline --execution myExecutionId
+eventual show timeline --execution myExecutionId
 ```
 
-### `workflows`
+### `list workflows`
 
 To list the `workflows` in a service, you can use the workflows command. It takes no additional arguments and simply prints a list of the workflows in the current service. Here's an example of how to use it:
 
 ```sh
-eventual workflows
+eventual list workflows
 ```
 
 This command is useful for quickly finding the names of the workflows that you can use with other commands, such as start or executions. It can also be used to get a general overview of the workflows in your service.
 
-### `configure list`
+### `show config`
 
-Lists current environment configurations.
+Shows current environment configurations.
 
 ```sh
-$ eventual configure list
-┌────────────────────┬────────────────────┬──────────────────────────────────────────────────┬────────────────────┐
-│ Property           │ Env                │ Description                                      │ Value              │
-├────────────────────┼────────────────────┼──────────────────────────────────────────────────┼────────────────────┤
-│ default-service    │ EVENTUAL_DEFAULT_… │ Default Service used for eventual commands when  │                    │
-│                    │                    │ --service is not provided.                       │                    │
-└────────────────────┴────────────────────┴──────────────────────────────────────────────────┴────────────────────┘
+$ eventual show config
+┌────────────────────────────────────────┬──────────────────────────────────────────────────┬────────────────────┐
+│ Env                                    │ Description                                      │ Value              │
+├────────────────────────────────────────┼──────────────────────────────────────────────────┼────────────────────┤
+│ EVENTUAL_DEFAULT_SERVICE               │ Default Service used for eventual commands when  │                    │
+│                                        │ --service is not provided.                       │                    │
+└────────────────────────────────────────┴──────────────────────────────────────────────────┴────────────────────┘
 ```
 
 > Use EVENTUAL_DEFAULT_SERVICE to set a default service when there are multiple in the current AWS account.

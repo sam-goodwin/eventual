@@ -16,41 +16,45 @@ import { getInputJson } from "./utils.js";
 
 export const start = (yargs: Argv) =>
   yargs.command(
-    ["workflow"],
-    "Start an execution",
+    "workflow <workflow>",
+    "Start an workflow",
     (yargs) =>
       setServiceOptions(yargs)
-        .option("tail", {
-          alias: "t",
-          describe: "Tail execution",
-          type: "boolean",
-        })
-        .option("workflow", {
-          alias: "w",
+        .positional("workflow", {
           describe: "Workflow name",
           type: "string",
           demandOption: true,
         })
-        .option("inputFile", {
+        .option("follow", {
           alias: "f",
+          describe: "Follow an execution",
+          type: "boolean",
+        })
+        .option("inputFile", {
+          alias: "x",
           describe: "Input file json. If not provided, uses stdin",
           type: "string",
         })
         .option("input", {
+          alias: "i",
           describe: "Input data as json string",
           type: "string",
         }),
     serviceAction(
-      async (spinner, serviceClient, { workflow, input, inputFile, tail }) => {
+      async (
+        spinner,
+        serviceClient,
+        { workflow, input, inputFile, follow }
+      ) => {
         spinner.start(`Executing ${workflow}\n`);
         const inputJSON = await getInputJson(inputFile, input);
         // TODO: support timeout and executionName
         const { executionId } = await serviceClient.startExecution({
-          workflow: workflow as string,
+          workflow,
           input: inputJSON,
         });
         spinner.succeed(`Execution id: ${executionId}`);
-        if (tail) {
+        if (follow) {
           const events: WorkflowEvent[] = [];
           if (!spinner.isSpinning) {
             spinner.start(`${executionId} in progress\n`);
