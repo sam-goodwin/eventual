@@ -54,7 +54,7 @@ export async function install(pkgManager: PackageManager) {
 export async function addTsLib(file: string, ...libs: string[]) {
   const tsConfig = JSON.parse((await fs.readFile(file)).toString("utf-8"));
   tsConfig.compilerOptions ??= {};
-  const lib: string[] = (tsConfig.lib ??= []);
+  const lib: string[] = (tsConfig.compilerOptions.lib ??= []);
   for (const newLib of libs) {
     if (
       lib.find(
