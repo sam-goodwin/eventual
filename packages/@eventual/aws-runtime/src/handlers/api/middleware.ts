@@ -1,3 +1,4 @@
+import { extendsError } from "@eventual/core";
 import middy, { MiddlewareObj } from "@middy/core";
 import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import util from "util";
@@ -10,7 +11,17 @@ export const errorMiddleware: MiddlewareObj = {
   onError: (req) => {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: util.inspect(req.error) }, undefined, 2),
+      body: JSON.stringify(
+        extendsError(req.error)
+          ? {
+              error: req.error.name,
+              message: req.error.message,
+              stack: req.error.stack,
+            }
+          : { error: util.inspect(req.error) },
+        undefined,
+        2
+      ),
     };
   },
 };
