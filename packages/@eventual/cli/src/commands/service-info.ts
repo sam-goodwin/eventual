@@ -3,7 +3,7 @@ import { serviceAction, setServiceOptions } from "../service-action.js";
 
 export const serviceInfo = (yargs: Argv) =>
   yargs.command(
-    ["info", "$0"],
+    ["*", "info"],
     "Get data about your service",
     (yargs) => setServiceOptions(yargs, true),
     serviceAction(
