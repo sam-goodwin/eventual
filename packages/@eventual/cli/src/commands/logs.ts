@@ -10,9 +10,9 @@ import { assumeCliRole } from "../role.js";
 /**
  * Command to list logs for a workflow or execution id
  * Defaults to showing the last 24 hours of logs (All time logs would take too long to retrieve)
- * eg $ eventual logs --workflow my-workflow
- * eg $ eventual logs --workflow my-workflow --execution execution_123
- * eg $ eventual logs --workflow my-workflow --execution execution_123 --since 12333535
+ * eg $ eventual get logs --workflow my-workflow
+ * eg $ eventual get logs --workflow my-workflow --execution execution_123
+ * eg $ eventual get logs --workflow my-workflow --execution execution_123 --since 12333535
  * @returns
  */
 export const logs = (yargs: Argv) =>

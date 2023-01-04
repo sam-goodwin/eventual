@@ -45,10 +45,17 @@ export const getOperation = (yargs: Argv) =>
     }
   );
 
+export const publishOperation = (yargs: Argv) =>
+  yargs.command(
+    "publish",
+    "Publish events",
+    addSubCommands(publishEvents, sendSignal)
+  );
+
 export const sendOperation = (yargs: Argv) =>
   yargs.command(
-    ["send", "publish"],
-    "Send or Publish events and signals",
+    "send",
+    "Send signals",
     addSubCommands(publishEvents, sendSignal)
   );
 
@@ -64,6 +71,7 @@ addSubCommands(
   listOperation,
   getOperation,
   sendOperation,
+  publishOperation,
   replayOperation,
   startOperation
 )(cli);

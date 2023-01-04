@@ -4,11 +4,11 @@ import { getInputJsonArray } from "./utils.js";
 
 export const publishEvents = (yargs: Argv) =>
   yargs.command(
-    "events",
+    "events <event>",
     "Send one or more events to the service",
     (yargs) =>
       setServiceOptions(yargs)
-        .option("event", {
+        .positional("event", {
           describe: "Event Id",
           type: "string",
           demandOption: true,

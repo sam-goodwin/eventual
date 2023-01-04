@@ -46,7 +46,7 @@ npm run deploy
 After deploying, let's now list the Eventual services we just deployed to our AWS account:
 
 ```ts
-> npx eventual services
+> npx eventual list services
 my-service
 ```
 
@@ -54,21 +54,21 @@ As you can see, we have a single service, `my-service` that was just deployed.
 
 ## 5. List workflows
 
-To list the workflows available in our new service, use the `eventual workflows` command. For example:
+To list the workflows available in our new service, use the `eventual list workflows` command. For example:
 
 ```ts
-> npx eventual workflows
+> npx eventual list workflows
 myWorkflow
 ```
 
-> If you have multiple services deployed, use the `--service` flag to select a service. `npx eventual workflows --service my-service`
+> If you have multiple services deployed, use the `--service` flag to select a service. `npx eventual list workflows --service my-service`
 
 ## 6. List the endpoints
 
-To view the API Gateway URL and Event Bus ARN for a service, use the `eventual info` command:
+To view the API Gateway URL and Event Bus ARN for a service, use the `eventual get service` command:
 
 ```ts
-> npx eventual info
+> npx eventual get service
 API Gateway: 	  https://<uuid>.execute-api.us-west-2.amazonaws.com
 Event Bus ARN:  arn:aws:events:us-west-2:<account-id>:event-bus/my-service
 ```
@@ -91,10 +91,10 @@ This will return a JSON object containing the execution ID for the triggered wor
 
 ## 8. Get the logs for the execution
 
-To view the logs for the workflow execution we just started, use the `eventual logs` command followed by the `--execution` flag and the execution ID:
+To view the logs for the workflow execution we just started, use the `eventual get logs` command followed by the `--execution` flag and the execution ID:
 
 ```
-> npx eventual logs --execution <execution-id>
+> npx eventual get logs --execution <execution-id>
 ```
 
 ## Next Steps

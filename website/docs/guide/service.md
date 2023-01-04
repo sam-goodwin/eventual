@@ -39,7 +39,7 @@ const service = new Service(stack, "Service", {
 The names of your service are important when using the `eventual` CLI, for example when listing the services in an AWS account:
 
 ```
-> eventual services
+> eventual list services
 cart-service-prod
 payment-service-prod
 ```
@@ -47,7 +47,7 @@ payment-service-prod
 Or when invoking a workflow:
 
 ```
-> eventual start -workflow checkout -inputFile ./input.json
+> eventual start workflow checkout --inputFile ./input.json
 ```
 
 For more information on how to use the CLI, see the [docs](./cli.md).
