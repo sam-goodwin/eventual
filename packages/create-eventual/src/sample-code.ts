@@ -35,7 +35,8 @@ export interface WorkDoneEvent {
 export const workDone = event<WorkDoneEvent>("WorkDone");
 `;
 
-export const sampleSSTCode = `import { StackContext } from "@serverless-stack/resources";
+export function sampleSSTCode(projectName: string) {
+  return `import { StackContext } from "@serverless-stack/resources";
 import { Service } from "@eventual/aws-cdk";
 import path from "path";
 import url from "url";
@@ -46,23 +47,27 @@ export function MyStack({ stack }: StackContext) {
   const service = new Service(stack, "Service", {
     // this path is relative to .build/ where SST puts the CDK bundle
     entry: path.resolve(__dirname, "..", "..", "services", "functions", "service.ts"),
-    name: "my-service",
+    name: "${projectName}",
   });
   stack.addOutputs({
     ApiEndpoint: service.api.gateway.url!,
   });
 }
 `;
+}
 
-export const sampleCDKApp = `import { App } from "aws-cdk-lib";
-import { MyServiceStack } from "./my-service-stack";
+export function sampleCDKApp(projectName: string) {
+  return `import { App } from "aws-cdk-lib";
+import { MyServiceStack } from "./${projectName}-stack";
 
 const app = new App();
 
-new MyServiceStack(app, "my-service");
+new MyServiceStack(app, "${projectName}");
 `;
+}
 
-export const sampleCDKStack = `import { Construct } from "constructs";
+export function sampleCDKStack(projectName: string) {
+  return `import { Construct } from "constructs";
 import { Stack, StackProps } from "aws-cdk-lib";
 import { Service } from "@eventual/aws-cdk";
 import path from "path";
@@ -75,10 +80,11 @@ export class MyServiceStack extends Stack {
   constructor(scope: Construct, id: string, props?: MyServiceStackProps) {
     super(scope, id, props);
 
-    this.service = new Service(this, "my-service", {
-      name: "my-service",
+    this.service = new Service(this, "${projectName}", {
+      name: "${projectName}",
       entry: path.join(__dirname, "..", "..", "services", "src", "index.ts")
     });
   }
 }
 `;
+}
