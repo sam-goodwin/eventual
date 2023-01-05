@@ -113,11 +113,24 @@ packages:
           deploy: "cdk deploy",
         },
         dependencies: {
+          "@aws-cdk/aws-apigatewayv2-alpha": "^2.50.0-alpha.0",
+          "@aws-cdk/aws-apigatewayv2-authorizers-alpha": "^2.50.0-alpha.0",
+          "@aws-cdk/aws-apigatewayv2-integrations-alpha": "^2.50.0-alpha.0",
+          "@aws-sdk/client-dynamodb": "^3.226.0",
+          "@aws-sdk/client-eventbridge": "^3.226.0",
+          "@aws-sdk/client-lambda": "^3.226.0",
+          "@aws-sdk/client-s3": "^3.226.0",
+          "@aws-sdk/client-scheduler": "^3.226.0",
+          "@aws-sdk/client-secrets-manager": "^3.226.0",
+          "@aws-sdk/client-sqs": "^3.226.0",
           "@eventual/aws-cdk": `^${version}`,
           "@eventual/aws-runtime": `^${version}`,
+          "@types/aws-lambda": "8.10.108",
           "aws-cdk-lib": "^2.50.0",
           constructs: "^10",
-          esbuild: "^0.16.13",
+          esbuild: ">=0.16.x <1.0.0",
+          "itty-router": "^2.6.6",
+          "node-fetch": ">= 2.x",
         },
         devDependencies: {
           "@eventual/cli": `^${version}`,
@@ -161,6 +174,7 @@ packages:
         version: "0.0.0",
         dependencies: {
           "@eventual/core": `^${version}`,
+          "itty-router": "^2.6.6",
         },
       }),
       fs
