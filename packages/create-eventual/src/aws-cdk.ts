@@ -1,16 +1,9 @@
 import fs from "fs/promises";
 import path from "path";
-import type { PackageManager } from "./index";
 import { sampleCDKApp, sampleCDKStack, sampleServiceCode } from "./sample-code";
-import { install } from "./util";
+import { CreateProps, install } from "./util";
 
-export async function createAwsCdk({
-  projectName,
-  pkgManager,
-}: {
-  projectName: string;
-  pkgManager: PackageManager;
-}) {
+export async function createAwsCdk({ projectName, pkgManager }: CreateProps) {
   await fs.mkdir(projectName);
   process.chdir(projectName);
 
@@ -116,6 +109,7 @@ packages:
           "@eventual/aws-cdk": `^${version}`,
           "@eventual/aws-runtime": `^${version}`,
           "aws-cdk-lib": "^2.50.0",
+          "aws-cdk": "^2.50.0",
           constructs: "^10",
           esbuild: "^0.16.13",
         },

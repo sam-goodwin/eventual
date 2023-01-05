@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+set -e
+
+npm cache clear --force
+pnpm -r --filter @eventual/* exec npm link 
+
+cd ./.eventual
+
+##CDK
+echo "Testing Create-Eventual with AWS CDK"
+
+rm -rf testme
+../../../../packages/create-eventual/bin/index.js testme --target aws-cdk 
+cd testme
+
+# CDK doesn't like mis-matched versions...
+cd ./stacks
+npm install aws-cdk@2.50 aws-cdk-lib@2.50 constructs@10.1.154
+
+cd ..
+npm link @eventual/core @eventual/aws-client @eventual/cli @eventual/client @eventual/aws-runtime @eventual/testing @eventual/compiler @eventual/integrations-slack @eventual/aws-cdk @eventual/timeline
+
+npm run synth
+
+cd ../
+
+## SST
+echo "Testing Create-Eventual with AWS SST"
+
+rm -rf testme
+../../../../packages/create-eventual/bin/index.js testme --target aws-sst 
+cd testme
+
+# CDK doesn't like mis-matched versions...
+npm install aws-cdk@2.50.0 --save-exact
+npm install aws-cdk-lib@2.50.0 --save-dev --save-exact constructs@10.1.154 chalk@4
+
+npm link @eventual/core @eventual/aws-client @eventual/cli @eventual/client @eventual/aws-runtime @eventual/testing @eventual/compiler @eventual/integrations-slack @eventual/aws-cdk @eventual/timeline
+
+npm run build -- --stage test
+
+cd ../

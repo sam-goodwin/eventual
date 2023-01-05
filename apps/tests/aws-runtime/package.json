@@ -5,7 +5,7 @@
   "version": "0.0.0",
   "main": "lib/test-service.js",
   "scripts": {
-    "test:runtime": "OUTPUTS_FILE=cdk.out/outputs.json jest --passWithNoTests && ./scripts/test-cli",
+    "test:runtime": "OUTPUTS_FILE=cdk.out/outputs.json jest --passWithNoTests && ./scripts/test-cli && ./scripts/test-create",
     "deploy:runtime": "OUTPUTS_FILE=cdk.out/outputs.json ./scripts/deploy",
     "test:runtime-deploy": "pnpm -r --filter tests-runtime run deploy:runtime && pnpm -r --filter tests-runtime run test:runtime"
   },
@@ -43,6 +43,10 @@
     },
     "testMatch": [
       "**/test/?(*.)+(spec|test).[jt]s?(x)"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/.eventual/"
     ]
   }
 }
