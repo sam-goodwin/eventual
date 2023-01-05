@@ -121,6 +121,7 @@ packages:
         },
         devDependencies: {
           "@eventual/cli": `^${version}`,
+          "aws-cdk": "^2.50.0",
           "ts-node": "^10.9.1",
           typescript: "^4.9.4",
         },
