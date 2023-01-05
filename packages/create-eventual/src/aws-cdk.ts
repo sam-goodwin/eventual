@@ -140,10 +140,10 @@ packages:
         .mkdir("src")
         .then(() =>
           Promise.all([
-            fs.writeFile(path.join("src", "app.ts"), sampleCDKApp),
+            fs.writeFile(path.join("src", "app.ts"), sampleCDKApp(projectName)),
             fs.writeFile(
-              path.join("src", "my-service-stack.ts"),
-              sampleCDKStack
+              path.join("src", `${projectName}-stack.ts`),
+              sampleCDKStack(projectName)
             ),
           ])
         ),
