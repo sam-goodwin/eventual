@@ -15,7 +15,6 @@
     "@aws-sdk/client-sqs": "^3.241.0",
     "@aws-sdk/lib-dynamodb": "^3.241.0",
     "@eventual/aws-client": "workspace:^",
-    "@eventual/aws-runtime": "workspace:^",
     "@eventual/core": "workspace:^",
     "@eventual/integrations-slack": "workspace:^",
     "@slack/bolt": "^3.12.2",
@@ -23,7 +22,6 @@
   },
   "devDependencies": {
     "@eventual/cli": "workspace:^",
-    "@eventual/compiler": "workspace:^",
     "@types/aws-lambda": "^8.10.108",
     "@types/jest": "^29",
     "@types/ms": "^0.7.31",

@@ -23,6 +23,9 @@ const myWorkflow = workflow("my-workflow", async () => {
 The `@eventual/integrations-slack` package provides a class called `Slack` that can be used within your Eventual application. To use it, you must first instantiate it with a unique name and Slack credentials:
 
 ```ts
+import { Slack, SlackCredentials } from "@eventual/integrations-slack";
+import { AWSSecret } from "@eventual/aws-client";
+
 const slack = new Slack("my-slack-connection", {
   credentials: new JsonSecret<SlackCredentials>(
     new AWSSecret({

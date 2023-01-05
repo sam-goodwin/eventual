@@ -149,6 +149,7 @@ eventual replay --execution <execution-id> --entry ./src/index.ts
 
 ```ts
 import { Slack, SlackCredentials } from "@eventual/integrations-slack";
+import { AWSSecret } from "@eventual/aws-client";
 
 const slack = new Slack("my-slack-connection", {
   credentials: new JsonSecret<SlackCredentials>(
