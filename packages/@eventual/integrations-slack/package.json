@@ -1,6 +1,6 @@
 {
   "name": "@eventual/integrations-slack",
-  "version": "0.7.8",
+  "version": "0.7.9",
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",

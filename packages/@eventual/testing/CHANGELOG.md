@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.7.9 (2023-01-06)
+
+### Bug Fixes
+
+- fail the workflow when the workflow name does not exist. ([#198](https://github.com/functionless/eventual/issues/198)) ([8775780](https://github.com/functionless/eventual/commit/87757801ac23902b6babf3986df86722d1e3cdbe))
+
 ## 0.7.8 (2023-01-06)
 
 **Note:** Version bump only for package @eventual/testing

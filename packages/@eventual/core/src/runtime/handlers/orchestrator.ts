@@ -120,12 +120,13 @@ export function createOrchestrator({
         if (workflowName === undefined) {
           throw new Error(`execution ID '${executionId}' does not exist`);
         }
-        const workflow = lookupWorkflow(workflowName);
-        if (workflow === undefined) {
-          throw new Error(`no such workflow with name '${workflowName}'`);
-        }
         // TODO: get workflow from execution id
-        return orchestrateExecution(workflow, executionId, records, baseTime);
+        return orchestrateExecution(
+          workflowName,
+          executionId,
+          records,
+          baseTime
+        );
       }
     );
 
@@ -149,13 +150,13 @@ export function createOrchestrator({
   };
 
   async function orchestrateExecution(
-    workflow: Workflow,
+    workflowName: string,
     executionId: string,
     events: HistoryStateEvent[],
     baseTime: Date
   ) {
     const executionLogger = logger.createChild({
-      persistentLogAttributes: { workflowName: workflow.name, executionId },
+      persistentLogAttributes: { workflowName, executionId },
     });
     const metrics = initializeMetrics();
     const start = baseTime;
@@ -207,8 +208,21 @@ export function createOrchestrator({
           start
         );
 
+        const workflow = lookupWorkflow(workflowName);
+        if (workflow === undefined) {
+          yield createEvent<WorkflowFailed>(
+            {
+              type: WorkflowEventType.WorkflowFailed,
+              error: "WorkflowNotFound",
+              message: `Workflow name ${workflowName} does not exist.`,
+            },
+            start
+          );
+          return;
+        }
+
         const workflowContext: WorkflowContext = {
-          name: workflow.workflowName,
+          name: workflow!.workflowName,
         };
 
         const startEvent = history.find(isWorkflowStarted);
@@ -283,7 +297,7 @@ export function createOrchestrator({
         yield* await timed(
           metrics,
           OrchestratorMetrics.InvokeCommandsDuration,
-          () => processCommands(newCommands)
+          () => processCommands(workflow, newCommands)
         );
 
         metrics.putMetric(
@@ -489,6 +503,7 @@ export function createOrchestrator({
      * Does not actually write the commands out.
      */
     async function processCommands(
+      workflow: Workflow,
       commands: Command[]
     ): Promise<HistoryStateEvent[]> {
       console.debug("Commands to send", JSON.stringify(commands));
@@ -506,7 +521,7 @@ export function createOrchestrator({
       metrics.resetDimensions(false);
       metrics.setNamespace(MetricsCommon.EventualNamespace);
       metrics.setDimensions({
-        [MetricsCommon.WorkflowNameDimension]: workflow.workflowName,
+        [MetricsCommon.WorkflowNameDimension]: workflowName,
       });
       // number of events that came from the workflow task
       metrics.setProperty(OrchestratorMetrics.TaskEvents, events.length);

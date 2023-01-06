@@ -1,3 +1,6 @@
+// startWorkflow uses the global workflows() to validate the workflow name.
+import "@eventual/entry/injected";
+
 import type { StartExecutionResponse } from "@eventual/core";
 import type {
   APIGatewayProxyEventV2,
