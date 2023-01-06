@@ -74,7 +74,16 @@ export const serviceAction =
       if (args.debug) {
         styledConsole.error(util.inspect(e));
       }
-      spinner?.fail(e.message);
+      try {
+        // if the service returns an error object, parse and display it.
+        const errorObj = JSON.parse(e.message);
+        if ("error" in errorObj) {
+          spinner?.fail(`${errorObj.error}: ${errorObj.message}`);
+          process.exit(1);
+        }
+      } catch {
+        spinner?.fail(e.message);
+      }
       process.exit(1);
     }
   };
