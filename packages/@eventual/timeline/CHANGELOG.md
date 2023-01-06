@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.8.1 (2023-01-06)
+
+### Bug Fixes
+
+- add missing peer dependencies on infra package ([#201](https://github.com/functionless/eventual/issues/201)) ([803bf90](https://github.com/functionless/eventual/commit/803bf904a94c06be19bb6758d17553e16ffaf9e4))
+
 # 0.8.0 (2023-01-06)
 
 ### Features
