@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.8.0 (2023-01-06)
+
+### Features
+
+- use verb resource pattern in the cli ([#197](https://github.com/functionless/eventual/issues/197)) ([6f542f7](https://github.com/functionless/eventual/commit/6f542f7f5cba5450408bbfddc9b4c01754b20df9))
+
 ## 0.7.9 (2023-01-06)
 
 ### Bug Fixes
