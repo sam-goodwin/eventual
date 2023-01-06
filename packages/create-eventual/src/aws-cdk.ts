@@ -118,8 +118,6 @@ packages:
           "@aws-cdk/aws-apigatewayv2-authorizers-alpha": "^2.50.0-alpha.0",
           "@aws-cdk/aws-apigatewayv2-integrations-alpha": "^2.50.0-alpha.0",
           "@eventual/aws-cdk": `^${version}`,
-          "@eventual/aws-runtime": `^${version}`,
-          "@types/aws-lambda": "8.10.108",
           "aws-cdk-lib": "^2.50.0",
           constructs: "^10",
           esbuild: "^0.16.14",
