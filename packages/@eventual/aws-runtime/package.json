@@ -13,12 +13,12 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "3.241.0",
-    "@aws-sdk/client-eventbridge": "3.241.0",
-    "@aws-sdk/client-lambda": "3.241.0",
-    "@aws-sdk/client-s3": "3.241.0",
-    "@aws-sdk/client-scheduler": "3.241.0",
-    "@aws-sdk/client-sqs": "3.241.0",
+    "@aws-sdk/client-dynamodb": "^3.241.0",
+    "@aws-sdk/client-eventbridge": "^3.241.0",
+    "@aws-sdk/client-lambda": "^3.241.0",
+    "@aws-sdk/client-s3": "^3.241.0",
+    "@aws-sdk/client-scheduler": "^3.241.0",
+    "@aws-sdk/client-sqs": "^3.241.0",
     "@aws-lambda-powertools/logger": "^1.4.1",
     "@eventual/core": "workspace:^",
     "@middy/core": "^3.6.2",
