@@ -22,10 +22,10 @@ rm -rf $PROJECT_NAME
 cd $PROJECT_NAME
 
 # CDK doesn't like mis-matched versions...
-cd ./stacks
-npm install aws-cdk@2.50 aws-cdk-lib@2.50 constructs@10.1.154
+# cd ./stacks
+# npm install aws-cdk@2.50 aws-cdk-lib@2.50 constructs@10.1.154
 
-cd ..
+# cd ..
 npm link ${EVENTUAL_PACKAGES[@]}
 
 npm run synth
@@ -36,12 +36,12 @@ cd ../
 echo "Testing Create-Eventual with AWS SST"
 
 rm -rf $PROJECT_NAME
-../../../../packages/create-eventual/bin/index.js $PROJECT_NAME --target aws-sst 
+../../../../packages/create-eventual/bin/index.js $PROJECT_NAME --target aws-sst  
 cd $PROJECT_NAME
 
 # CDK doesn't like mis-matched versions...
-npm install aws-cdk@2.50.0 --save-exact
-npm install aws-cdk-lib@2.50.0 --save-dev --save-exact constructs@10.1.154 chalk@4
+# npm install aws-cdk@2.50.0 --save-exact
+# npm install aws-cdk-lib@2.50.0 --save-dev --save-exact constructs@10.1.154 chalk@4
 
 npm link ${EVENTUAL_PACKAGES[@]}
 
