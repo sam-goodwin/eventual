@@ -38,6 +38,8 @@ npm install aws-cdk-lib@2.50.0 --save-dev --save-exact constructs@10.1.154 chalk
 
 npm link @eventual/core @eventual/aws-client @eventual/cli @eventual/client @eventual/aws-runtime @eventual/testing @eventual/compiler @eventual/integrations-slack @eventual/aws-cdk @eventual/timeline
 
-npm run build -- --stage test
+# sst's "build" also bootstraps and needs permissions to get parameters.
+# There seems to be no good way to test the build/synth without network/account access :(.
+# npm run build -- --stage test
 
 cd ../
