@@ -107,7 +107,6 @@ packages:
         },
         dependencies: {
           "@eventual/aws-cdk": `^${version}`,
-          "@eventual/aws-runtime": `^${version}`,
           "aws-cdk-lib": "^2.50.0",
           "aws-cdk": "^2.50.0",
           constructs: "^10",

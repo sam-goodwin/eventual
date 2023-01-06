@@ -20,6 +20,7 @@ import {
   GetExecutionsRequest,
   StartExecutionRequest,
   StartChildExecutionRequest,
+  lookupWorkflow,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
@@ -40,9 +41,11 @@ export class AWSWorkflowClient extends WorkflowClient {
 
   /**
    * Start a workflow execution
+   *
+   * NOTE: the service entry point is required to access {@link workflows()}.
+   *
    * @param name Suffix of execution id
    * @param input Workflow parameters
-   * @returns
    */
   public async startExecution<W extends Workflow = Workflow>({
     executionName = ulid(),
@@ -51,6 +54,10 @@ export class AWSWorkflowClient extends WorkflowClient {
     timeoutSeconds,
     ...request
   }: StartExecutionRequest<W> | StartChildExecutionRequest<W>) {
+    if (typeof workflow === "string" && !lookupWorkflow(workflow)) {
+      throw new Error(`Workflow ${workflow} does not exist in the service.`);
+    }
+
     const workflowName =
       typeof workflow === "string" ? workflow : workflow.workflowName;
     const executionId = formatExecutionId(workflowName, executionName);

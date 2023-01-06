@@ -8,7 +8,6 @@
   },
   "references": [
     { "path": "../../packages/@eventual/aws-client" },
-    { "path": "../../packages/@eventual/aws-runtime" },
     { "path": "../../packages/@eventual/core" },
     { "path": "../../packages/@eventual/integrations-slack" }
   ]

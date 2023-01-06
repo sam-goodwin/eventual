@@ -8,12 +8,13 @@
   },
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
-  "version": "0.7.7",
+  "version": "0.7.9",
   "scripts": {
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
     "@aws-crypto/sha256-js": "^2.0.2",
+    "@aws-sdk/client-secrets-manager": "^3.241.0",
     "@aws-sdk/config-resolver": "^3.234.0",
     "@aws-sdk/credential-provider-node": "^3.241.0",
     "@aws-sdk/node-config-provider": "^3.226.0",
