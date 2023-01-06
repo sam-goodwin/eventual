@@ -14,16 +14,19 @@ cd ./.eventual
 ##CDK
 echo "Testing Create-Eventual with AWS CDK"
 
-rm -rf testme
-../../../../packages/create-eventual/bin/index.js testme --target aws-cdk 
-cd testme
+PROJECT_NAME="testme"
+EVENTUAL_PACKAGES=("@eventual/core" "@eventual/aws-client" "@eventual/cli" "@eventual/client" "@eventual/aws-runtime" "@eventual/testing" "@eventual/compiler" "@eventual/integrations-slack" "@eventual/aws-cdk" "@eventual/timeline")
+
+rm -rf $PROJECT_NAME
+../../../../packages/create-eventual/bin/index.js $PROJECT_NAME --target aws-cdk 
+cd $PROJECT_NAME
 
 # CDK doesn't like mis-matched versions...
 cd ./stacks
 npm install aws-cdk@2.50 aws-cdk-lib@2.50 constructs@10.1.154
 
 cd ..
-npm link @eventual/core @eventual/aws-client @eventual/cli @eventual/client @eventual/aws-runtime @eventual/testing @eventual/compiler @eventual/integrations-slack @eventual/aws-cdk @eventual/timeline
+npm link ${EVENTUAL_PACKAGES[@]}
 
 npm run synth
 
@@ -32,15 +35,15 @@ cd ../
 ## SST
 echo "Testing Create-Eventual with AWS SST"
 
-rm -rf testme
-../../../../packages/create-eventual/bin/index.js testme --target aws-sst 
-cd testme
+rm -rf $PROJECT_NAME
+../../../../packages/create-eventual/bin/index.js $PROJECT_NAME --target aws-sst 
+cd $PROJECT_NAME
 
 # CDK doesn't like mis-matched versions...
 npm install aws-cdk@2.50.0 --save-exact
 npm install aws-cdk-lib@2.50.0 --save-dev --save-exact constructs@10.1.154 chalk@4
 
-npm link @eventual/core @eventual/aws-client @eventual/cli @eventual/client @eventual/aws-runtime @eventual/testing @eventual/compiler @eventual/integrations-slack @eventual/aws-cdk @eventual/timeline
+npm link ${EVENTUAL_PACKAGES[@]}
 
 # sst's "build" also bootstraps and needs permissions to get parameters.
 # There seems to be no good way to test the build/synth without network/account access :(.
