@@ -16,6 +16,7 @@ export const ENV_NAMES = {
   TIMER_QUEUE_URL: "EVENTUAL_TIMER_QUEUE_URL",
   TIMER_QUEUE_ARN: "EVENTUAL_TIMER_QUEUE_ARN",
   SCHEDULE_FORWARDER_ARN: "EVENTUAL_SCHEDULE_FORWARDER_ARN",
+  SERVICE_LOG_GROUP_NAME: "EVENTUAL_SERVICE_LOG_GROUP_NAME",
 };
 
 export function tryGetEnv(name: string) {
@@ -45,3 +46,5 @@ export const timerQueueArn = () => tryGetEnv(ENV_NAMES.TIMER_QUEUE_ARN);
 export const timerQueueUrl = () => tryGetEnv(ENV_NAMES.TIMER_QUEUE_URL);
 export const schedulerForwarderArn = () =>
   tryGetEnv(ENV_NAMES.SCHEDULE_FORWARDER_ARN);
+export const serviceLogGroupName = () =>
+  tryGetEnv(ENV_NAMES.SERVICE_LOG_GROUP_NAME);

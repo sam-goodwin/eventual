@@ -1,4 +1,8 @@
 import {
+  CloudWatchLogsClient,
+  CreateLogStreamCommand,
+} from "@aws-sdk/client-cloudwatch-logs";
+import {
   AttributeValue,
   DynamoDBClient,
   GetItemCommand,
@@ -22,6 +26,7 @@ import {
   StartChildExecutionRequest,
   lookupWorkflow,
 } from "@eventual/core";
+import { formatWorkflowExecutionStreamName } from "../utils.js";
 import { ulid } from "ulidx";
 import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
 import { queryPageWithToken } from "./utils.js";
@@ -32,6 +37,8 @@ export interface AWSWorkflowClientProps {
   readonly sqs: SQSClient;
   readonly workflowQueueUrl: string;
   readonly activityRuntimeClient: AWSActivityRuntimeClient;
+  readonly serviceLogGroup: string;
+  readonly cloudwatchLogsClient: CloudWatchLogsClient;
 }
 
 export class AWSWorkflowClient extends WorkflowClient {
@@ -63,7 +70,17 @@ export class AWSWorkflowClient extends WorkflowClient {
     const executionId = formatExecutionId(workflowName, executionName);
     console.log("execution input:", input);
 
-    await this.props.dynamo.send(
+    const workflowStreamName = formatWorkflowExecutionStreamName(executionId);
+
+    // TODO: handle throttle errors and retry at > 50TPS
+    const createLogStream = this.props.cloudwatchLogsClient.send(
+      new CreateLogStreamCommand({
+        logGroupName: this.props.serviceLogGroup,
+        logStreamName: workflowStreamName,
+      })
+    );
+
+    const addExecutionEntry = await this.props.dynamo.send(
       new PutItemCommand({
         TableName: this.props.tableName,
         Item: {
@@ -83,6 +100,8 @@ export class AWSWorkflowClient extends WorkflowClient {
         },
       })
     );
+
+    await Promise.allSettled([createLogStream, addExecutionEntry]);
 
     const workflowStartedEvent = createEvent<WorkflowStarted>(
       {

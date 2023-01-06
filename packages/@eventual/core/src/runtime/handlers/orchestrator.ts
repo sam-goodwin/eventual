@@ -45,6 +45,8 @@ import { timed, timedSync } from "../metrics/utils.js";
 import { groupBy, promiseAllSettledPartitioned } from "../utils.js";
 import { extendsError } from "../../util.js";
 import { WorkflowTask } from "../../tasks.js";
+import { consoleInjectContext, restoreConsole } from "../console-hook.js";
+import { LogContextType } from "../log-payloads.js";
 
 /**
  * The Orchestrator's client dependencies.
@@ -265,6 +267,11 @@ export function createOrchestrator({
           OrchestratorMetrics.AdvanceExecutionDuration,
           () => {
             try {
+              // updates the console to inject the eventual context.
+              consoleInjectContext({
+                type: LogContextType.Execution,
+                executionId,
+              });
               return progressWorkflow(
                 workflow,
                 history,
@@ -277,6 +284,8 @@ export function createOrchestrator({
               console.log("workflow error");
               executionLogger.error(inspect(err));
               throw err;
+            } finally {
+              restoreConsole();
             }
           }
         );

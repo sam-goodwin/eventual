@@ -15,6 +15,7 @@ import {
   TimerClient,
   WorkflowRuntimeClient,
 } from "@eventual/core";
+import { CloudWatchLogsClient } from "@aws-sdk/client-cloudwatch-logs";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -24,12 +25,15 @@ import {
  */
 
 const dynamo = /* @__PURE__ */ memoize(() => new DynamoDBClient({}));
-export const sqs = /* @__PURE__ */ memoize(() => new SQSClient({}));
+const sqs = /* @__PURE__ */ memoize(() => new SQSClient({}));
 const s3 = /* @__PURE__ */ memoize(
   () => new S3Client({ region: process.env.AWS_REGION })
 );
 const lambda = /* @__PURE__ */ memoize(() => new LambdaClient({}));
-export const scheduler = /* @__PURE__ */ memoize(() => new SchedulerClient({}));
+const cloudwatchLogs = /* @__PURE__ */ memoize(
+  () => new CloudWatchLogsClient({})
+);
+const scheduler = /* @__PURE__ */ memoize(() => new SchedulerClient({}));
 
 export const createExecutionHistoryClient = /* @__PURE__ */ memoize(
   ({ tableName }: { tableName?: string } = {}) =>
@@ -56,6 +60,8 @@ export const createWorkflowClient = /* @__PURE__ */ memoize(
       dynamo: dynamo(),
       tableName: tableName ?? env.tableName(),
       activityRuntimeClient: createActivityRuntimeClient({ activityTableName }),
+      cloudwatchLogsClient: cloudwatchLogs(),
+      serviceLogGroup: env.serviceLogGroupName(),
     }),
   { cacheKey: JSON.stringify }
 );

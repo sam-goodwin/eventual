@@ -8,3 +8,5 @@ export * from "./command-executor.js";
 export * from "./metrics/index.js";
 export * from "./utils.js";
 export * from "./providers/index.js";
+export * from "./log-payloads.js";
+export * from "./console-hook.js";

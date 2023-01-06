@@ -39,3 +39,7 @@ export function formatChildExecutionName(
     "-"
   )}-${seq}`;
 }
+
+export function formatWorkflowExecutionStreamName(executionName: string) {
+  return executionName;
+}

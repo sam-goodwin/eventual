@@ -31,3 +31,42 @@ export function extendsError(err: unknown): err is Error {
         Object.prototype.isPrototypeOf.call(err.prototype, Error)))
   );
 }
+
+export interface Iterator<I, T extends I> {
+  hasNext(): boolean;
+  next(): T | undefined;
+  drain(): T[];
+}
+
+export function iterator<I, T extends I>(
+  elms: I[],
+  predicate?: (elm: I) => elm is T
+): Iterator<I, T> {
+  let cursor = 0;
+  return {
+    hasNext: () => {
+      seek();
+      return cursor < elms.length;
+    },
+    next: (): T => {
+      seek();
+      return elms[cursor++] as T;
+    },
+    drain: (): T[] => {
+      return predicate
+        ? elms.slice(cursor).filter(predicate)
+        : (elms.slice(cursor) as T[]);
+    },
+  };
+
+  function seek() {
+    if (predicate) {
+      while (cursor < elms.length) {
+        if (predicate(elms[cursor]!)) {
+          return;
+        }
+        cursor++;
+      }
+    }
+  }
+}

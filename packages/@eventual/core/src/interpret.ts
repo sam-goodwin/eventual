@@ -48,7 +48,7 @@ import {
   isResolvedOrFailed,
 } from "./result.js";
 import { createChain, isChain, Chain } from "./chain.js";
-import { assertNever, or } from "./util.js";
+import { assertNever, Iterator, iterator, or } from "./util.js";
 import { Command, CommandType } from "./command.js";
 import { isSleepForCall, isSleepUntilCall } from "./calls/sleep-call.js";
 import {
@@ -578,43 +578,4 @@ function isGenerator(a: any): a is Program {
     typeof a.return === "function" &&
     typeof a.throw === "function"
   );
-}
-
-interface Iterator<I, T extends I> {
-  hasNext(): boolean;
-  next(): T | undefined;
-  drain(): T[];
-}
-
-function iterator<I, T extends I>(
-  elms: I[],
-  predicate?: (elm: I) => elm is T
-): Iterator<I, T> {
-  let cursor = 0;
-  return {
-    hasNext: () => {
-      seek();
-      return cursor < elms.length;
-    },
-    next: (): T => {
-      seek();
-      return elms[cursor++] as T;
-    },
-    drain: (): T[] => {
-      return predicate
-        ? elms.slice(cursor).filter(predicate)
-        : (elms.slice(cursor) as T[]);
-    },
-  };
-
-  function seek() {
-    if (predicate) {
-      while (cursor < elms.length) {
-        if (predicate(elms[cursor]!)) {
-          return;
-        }
-        cursor++;
-      }
-    }
-  }
 }
