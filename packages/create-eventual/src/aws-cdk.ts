@@ -122,7 +122,7 @@ packages:
           "@types/aws-lambda": "8.10.108",
           "aws-cdk-lib": "^2.50.0",
           constructs: "^10",
-          esbuild: ">=0.16.x <1.0.0",
+          esbuild: "^0.16.14",
         },
         devDependencies: {
           "@eventual/cli": `^${version}`,
