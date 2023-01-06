@@ -3,6 +3,7 @@ import inquirer from "inquirer";
 import { hideBin } from "yargs/helpers";
 import { createAwsCdk } from "./aws-cdk.js";
 import { createAwsSst } from "./aws-sst.js";
+import { CreateProps } from "./util.js";
 
 export type PackageManager = "npm" | "yarn" | "pnpm";
 
@@ -64,7 +65,7 @@ const targetChoices = ["aws-cdk", "aws-sst"].sort();
           },
         ]);
 
-        const props = {
+        const props: CreateProps = {
           pkgManager,
           projectName: projectName!,
         };
