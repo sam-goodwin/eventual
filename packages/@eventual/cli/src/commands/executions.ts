@@ -3,7 +3,7 @@ import { serviceAction, setServiceOptions } from "../service-action.js";
 import { EventualServiceClient } from "@eventual/core";
 import { displayExecution } from "../display/execution.js";
 
-export const executions = (yargs: Argv) =>
+export const listExecutions = (yargs: Argv) =>
   yargs.command(
     "executions",
     "List executions of a service, or optionally, a workflow",

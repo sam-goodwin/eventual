@@ -4,26 +4,26 @@ set -e
 
 export EVENTUAL_DEFAULT_SERVICE=eventual-tests
 
-npx eventual services
+npx eventual list services
 
-npx eventual workflows
+npx eventual list workflows
 
-npx eventual executions 
+npx eventual list executions 
 
-npx eventual executions --workflow parallel --json > .eventual/out.json
+npx eventual list executions --workflow parallel --json > .eventual/out.json
 
 execution_id=$(node -p 'JSON.parse(require("fs").readFileSync(".eventual/out.json").toString("utf8"))[0].id')
 
-npx eventual history -e ${execution_id}
+npx eventual get history -e ${execution_id}
 
-npx eventual logs
+npx eventual get logs
 
-npx eventual logs --workflow parallel
+npx eventual get logs --workflow parallel
 
-npx eventual logs --execution ${execution_id}
+npx eventual get logs --execution ${execution_id}
 
-npx eventual start -w sleepy
+npx eventual start workflow sleepy
 
-npx eventual start -w sleepy --tail
+npx eventual start workflow sleepy -f
 
-npx eventual replay --execution ${execution_id} --entry 'test/test-service.ts'
+npx eventual replay execution ${execution_id} --entry 'test/test-service.ts'

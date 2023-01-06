@@ -5,7 +5,7 @@ import { getServices } from "../service-data.js";
 
 export const services = (yargs: Argv) =>
   yargs.command(
-    ["services"],
+    "services",
     "List Eventual services",
     (yargs) =>
       yargs

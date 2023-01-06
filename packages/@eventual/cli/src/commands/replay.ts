@@ -14,12 +14,11 @@ import { serviceAction, setServiceOptions } from "../service-action.js";
 
 export const replay = (yargs: Argv) =>
   yargs.command(
-    "replay",
+    "execution <execution>",
     "Replays a workflow from the events of another execution",
     (yargs) =>
       setServiceOptions(yargs)
-        .option("execution", {
-          alias: "e",
+        .positional("execution", {
           describe: "Execution id",
           type: "string",
           demandOption: true,
