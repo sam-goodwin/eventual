@@ -1,6 +1,6 @@
 {
   "name": "@eventual/core",
-  "version": "0.7.7",
+  "version": "0.7.8",
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",
@@ -16,16 +16,13 @@
     "test": "jest"
   },
   "dependencies": {
+    "itty-router": "^2.6.6",
     "ulidx": "^0.3.0"
-  },
-  "peerDependencies": {
-    "itty-router": "^2.6.6"
   },
   "devDependencies": {
     "@jest/globals": "^29.3.1",
     "@types/jest": "^29",
     "@types/node": "^16",
-    "itty-router": "2.6.6",
     "jest": "^29",
     "ts-jest": "^29",
     "ts-node": "^10.9.1",

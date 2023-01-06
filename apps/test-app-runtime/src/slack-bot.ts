@@ -1,5 +1,5 @@
 import { Slack, SlackCredentials } from "@eventual/integrations-slack";
-import { AWSSecret } from "@eventual/aws-runtime";
+import { AWSSecret } from "@eventual/aws-client";
 import {
   expectSignal,
   JsonSecret,
