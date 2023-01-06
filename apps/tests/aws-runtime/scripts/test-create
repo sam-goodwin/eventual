@@ -5,6 +5,7 @@ set -e
 npm cache clear --force
 pnpm -r --filter @eventual/* exec npm link 
 
+mkdir -p ./.eventual
 cd ./.eventual
 
 ##CDK
