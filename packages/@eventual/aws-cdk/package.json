@@ -30,7 +30,7 @@
     "aws-cdk": "2.50.0",
     "aws-cdk-lib": "2.50.0",
     "constructs": "10.1.154",
-    "esbuild": "^0.x",
+    "esbuild": "^0.16.14",
     "jest": "^29",
     "ts-jest": "^29",
     "ts-node": "^10.9.1",

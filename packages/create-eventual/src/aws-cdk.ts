@@ -37,7 +37,8 @@ export async function createAwsCdk({
       fs.mkdir(infraDir),
       fs.mkdir(servicesDir),
       writeJsonFile("package.json", {
-        name: `${projectName}-monorepo`,
+        name: `${projectName}`,
+        version: "0.0.0",
         private: true,
         scripts: {
           build: "tsc -b",
@@ -113,13 +114,17 @@ packages:
           deploy: "cdk deploy",
         },
         dependencies: {
+          "@aws-cdk/aws-apigatewayv2-alpha": "^2.50.0-alpha.0",
+          "@aws-cdk/aws-apigatewayv2-authorizers-alpha": "^2.50.0-alpha.0",
+          "@aws-cdk/aws-apigatewayv2-integrations-alpha": "^2.50.0-alpha.0",
           "@eventual/aws-cdk": `^${version}`,
           "aws-cdk-lib": "^2.50.0",
           constructs: "^10",
-          esbuild: "^0.16.13",
+          esbuild: "^0.16.14",
         },
         devDependencies: {
           "@eventual/cli": `^${version}`,
+          "aws-cdk": "^2.50.0",
           "ts-node": "^10.9.1",
           typescript: "^4.9.4",
         },
