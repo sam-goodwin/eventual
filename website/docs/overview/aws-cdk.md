@@ -183,7 +183,6 @@ To take advantage of ESM modules and tree-shaking, make sure to set `type: "modu
 {
   "type": "module",
   "dependencies": {
-    "@eventual/aws-runtime": "*",
     "@eventual/core": "*"
   }
 }

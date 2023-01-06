@@ -114,7 +114,6 @@ packages:
         },
         dependencies: {
           "@eventual/aws-cdk": `^${version}`,
-          "@eventual/aws-runtime": `^${version}`,
           "aws-cdk-lib": "^2.50.0",
           constructs: "^10",
           esbuild: "^0.16.13",

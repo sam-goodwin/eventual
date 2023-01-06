@@ -20,6 +20,7 @@
     "@aws-sdk/protocol-http": "^3.226.0",
     "@aws-sdk/querystring-parser": "^3.226.0",
     "@aws-sdk/signature-v4": "^3.226.0",
+    "@aws-sdk/client-secrets-manager": "^3.241.0",
     "@eventual/client": "workspace:^",
     "@eventual/core": "workspace:^",
     "node-fetch": "^2.6.7"
