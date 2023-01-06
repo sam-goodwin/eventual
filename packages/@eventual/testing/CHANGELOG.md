@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.8.2 (2023-01-06)
+
+**Note:** Version bump only for package @eventual/testing
+
 ## 0.8.1 (2023-01-06)
 
 ### Bug Fixes
