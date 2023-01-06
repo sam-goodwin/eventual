@@ -2,6 +2,9 @@
 
 set -e
 
+## start at the root of tests/aws-runtime
+cd "$(dirname $0)/.."
+
 npm cache clear --force
 pnpm -r --filter @eventual/* exec npm link 
 
@@ -42,5 +45,3 @@ npm link @eventual/core @eventual/aws-client @eventual/cli @eventual/client @eve
 # sst's "build" also bootstraps and needs permissions to get parameters.
 # There seems to be no good way to test the build/synth without network/account access :(.
 # npm run build -- --stage test
-
-cd ../
