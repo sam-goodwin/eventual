@@ -13,6 +13,7 @@ import { AWSEventClient } from "./event-client.js";
 import {
   RuntimeServiceClient,
   TimerClient,
+  WorkflowClient,
   WorkflowRuntimeClient,
 } from "@eventual/core";
 import { CloudWatchLogsClient } from "@aws-sdk/client-cloudwatch-logs";
@@ -98,11 +99,13 @@ export const createWorkflowRuntimeClient = /* @__PURE__ */ memoize(
     executionHistoryBucket = env.executionHistoryBucket(),
     activityWorkerFunctionName = env.activityWorkerFunctionName(),
     timerClient,
+    workflowClient,
   }: {
     tableName?: string;
     executionHistoryBucket?: string;
     activityWorkerFunctionName?: string;
     timerClient?: TimerClient;
+    workflowClient?: WorkflowClient;
   } = {}) =>
     new AWSWorkflowRuntimeClient({
       dynamo: dynamo(),
@@ -112,7 +115,7 @@ export const createWorkflowRuntimeClient = /* @__PURE__ */ memoize(
       tableName,
       lambda: lambda(),
       activityWorkerFunctionName,
-      workflowClient: createWorkflowClient(),
+      workflowClient: workflowClient ?? createWorkflowClient(),
       timerClient: timerClient ?? createTimerClient(),
     }),
   { cacheKey: JSON.stringify }

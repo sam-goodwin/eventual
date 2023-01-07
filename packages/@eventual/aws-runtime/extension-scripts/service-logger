@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+echo "[extension:node] launching service-logger"
+node /opt/service-logger/index.mjs
