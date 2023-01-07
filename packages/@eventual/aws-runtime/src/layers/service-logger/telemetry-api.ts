@@ -18,7 +18,7 @@ export async function subscribe(extensionId: string, listenerUri: string) {
       protocol: "HTTP",
       URI: listenerUri,
     },
-    types: ["platform", "function"], // 'function', 'extension'
+    types: ["function"], // 'platform', 'function', 'extension'
     buffering: {
       timeoutMs: TIMEOUT_MS,
       maxBytes: MAX_BYTES,

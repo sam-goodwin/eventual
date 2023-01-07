@@ -53,9 +53,11 @@ export function iterator<I, T extends I>(
       return elms[cursor++] as T;
     },
     drain: (): T[] => {
-      return predicate
+      const events = predicate
         ? elms.slice(cursor).filter(predicate)
         : (elms.slice(cursor) as T[]);
+      cursor = elms.length;
+      return events;
     },
   };
 

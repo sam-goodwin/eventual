@@ -40,6 +40,6 @@ export function formatChildExecutionName(
   )}-${seq}`;
 }
 
-export function formatWorkflowExecutionStreamName(executionName: string) {
-  return executionName;
+export function formatWorkflowExecutionStreamName(executionId: string) {
+  return executionId;
 }

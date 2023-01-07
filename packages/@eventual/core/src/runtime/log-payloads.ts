@@ -67,7 +67,7 @@ export function serializeEventualLogContext(logContext: LogContext) {
  * Expected lambda log format: [LEVEL] [EVTL] {}
  */
 export function isSerializedEventualLogContext(message: string) {
-  return message.split(" ")[1] === EventualLogContextPrefix;
+  return message.split("\t")[3]?.startsWith(EventualLogContextPrefix);
 }
 
 export type LogLevel = "INFO" | "DEBUG" | "ERROR" | "WARN";
@@ -82,8 +82,19 @@ export interface EventualLog<
 
 export function tryParseEventualLog(message: string): EventualLog {
   if (isSerializedEventualLogContext(message)) {
-    const [level, context, mess] =
-      /(.*) \[EVTL\] \{(.*)\} (.*)/g.exec(message) ?? [];
+    const [_, level, context, mess] =
+      /.*\t(.*)\t\[EVTL\] (\{.*\}) (.*)/gs.exec(message) ?? [];
+
+    console.log(
+      "test message",
+      message,
+      "level",
+      level,
+      "context",
+      context,
+      "parsed message",
+      mess
+    );
 
     return {
       level: level as LogLevel,

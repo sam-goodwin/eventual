@@ -1,5 +1,6 @@
 import { iterator } from "@eventual/core";
 import express, { Request } from "express";
+import { dispatch } from "./logs-dispatcher.js";
 
 const LISTENER_HOST = "sandbox.localdomain";
 const LISTENER_PORT = 4243;
@@ -17,7 +18,7 @@ export function start() {
   // Logging or printing besides handling error cases below is not recommended
   // if you have subscribed to receive extension logs. Otherwise, logging here will
   // cause Telemetry API to send new entries for the printed lines which might create a loop
-  server.post("/", (req: Request<any, any, TelemetryRequest[]>, res) => {
+  server.post("/", async (req: Request<any, any, TelemetryRequest[]>, res) => {
     if (req.body.length && req.body.length > 0) {
       _eventsQueue.push(...req.body);
     }
@@ -27,6 +28,9 @@ export function start() {
       "total",
       _eventsQueue.length
     );
+
+    await dispatch(eventsQueue);
+
     res.send("OK");
   });
 

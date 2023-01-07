@@ -1,4 +1,3 @@
-import { LogLevel } from "@aws-lambda-powertools/logger/lib/types/Log.js";
 import {
   CloudWatchLogsClient,
   PutLogEventsCommand,
@@ -9,12 +8,16 @@ import {
   groupBy,
   isExecutionLogContext,
   isSerializedEventualLogContext,
+  LogLevel,
+  promiseAllSettledPartitioned,
   tryParseEventualLog,
 } from "@eventual/core";
-import { formatWorkflowExecutionStreamName } from "src/utils.js";
+import { serviceLogGroupName } from "../../env.js";
+import { formatWorkflowExecutionStreamName } from "../../utils.js";
+import { inspect } from "util";
 import { eventsQueue } from "./listener.js";
 
-const logGroup = process.env.SERVICE_LOG_GROUP;
+const logGroup = serviceLogGroupName();
 const LOG_LEVELS = ["DEBUG", "INFO", "WARN", "ERROR"];
 const logLevel = "DEBUG";
 const logLevelIndex = LOG_LEVELS.indexOf(logLevel);
@@ -27,7 +30,8 @@ export async function dispatch(queue: typeof eventsQueue) {
     console.log(
       "[telementry-dispatcher:dispatch] Dispatching",
       events.length,
-      "telemetry events"
+      "telemetry events",
+      JSON.stringify(events)
     );
 
     const functionEvents = events.filter((e) => e.type === "function");
@@ -36,11 +40,14 @@ export async function dispatch(queue: typeof eventsQueue) {
         typeof e.record === "string" && isSerializedEventualLogContext(e.record)
     );
 
-    const executionLogs = serializedEventualEvents
-      .map((event) => ({
-        time: event.time,
-        log: tryParseEventualLog(event.record as unknown as string),
-      }))
+    const executionLogs = serializedEventualEvents.map((event) => ({
+      time: event.time,
+      log: tryParseEventualLog(event.record as unknown as string),
+    }));
+
+    console.log("logs before filter", JSON.stringify(executionLogs));
+
+    const logsToSend = executionLogs
       .filter((e) => e.log.level && isSufficientLogLevel(e.log.level))
       .filter(
         (e): e is typeof e & { log: EventualLog<ExecutionLogContext> } =>
@@ -48,16 +55,19 @@ export async function dispatch(queue: typeof eventsQueue) {
       );
 
     const executionEvents = groupBy(
-      executionLogs,
+      logsToSend,
       (e) => e.log.context.executionId
     );
 
+    console.log("events to log", JSON.stringify(executionEvents));
+
     // send a batch for each execution
-    await Promise.allSettled(
-      Object.entries(executionEvents).map(([execution, es]) =>
-        putExecutionLogs(execution, es)
-      )
+    const result = await promiseAllSettledPartitioned(
+      Object.entries(executionEvents),
+      ([execution, es]) => putExecutionLogs(execution, es)
     );
+
+    console.log("failed", JSON.stringify(result.rejected));
   }
 }
 
@@ -65,16 +75,23 @@ function putExecutionLogs(
   executionId: string,
   events: { time: string; log: EventualLog }[]
 ) {
-  return cwl.send(
-    new PutLogEventsCommand({
-      logGroupName: logGroup,
-      logStreamName: formatWorkflowExecutionStreamName(executionId),
-      logEvents: events.map((e) => ({
-        message: `${e.log.level} ${e.log.message}`,
-        timestamp: new Date(e.time).getTime(),
-      })),
-    })
-  );
+  const request = {
+    logGroupName: logGroup,
+    logStreamName: formatWorkflowExecutionStreamName(executionId),
+    logEvents: events.map((e) => ({
+      message: `${e.log.level} ${e.log.message}`,
+      timestamp: new Date(e.time).getTime(),
+    })),
+  };
+
+  console.log("putLogs", JSON.stringify(request));
+
+  try {
+    return cwl.send(new PutLogEventsCommand(request));
+  } catch (err) {
+    console.error("put logs err", inspect(err));
+    throw err;
+  }
 }
 
 async function isSufficientLogLevel(level: LogLevel) {

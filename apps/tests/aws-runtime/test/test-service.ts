@@ -49,6 +49,7 @@ const fail = activity("fail", async (value: string) => {
 export const workflow1 = workflow(
   "my-workflow",
   async ({ name }: { name: string }) => {
+    console.log("Hello?");
     const result = await hello(name);
     return `you said ${result}`;
   }
