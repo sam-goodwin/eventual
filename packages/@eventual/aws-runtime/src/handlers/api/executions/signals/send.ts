@@ -5,6 +5,7 @@ import { createWorkflowClient } from "../../../../clients/create.js";
 
 const workflowClient = createWorkflowClient({
   activityTableName: "NOT_NEEDED",
+  serviceLogGroup: "NOT_NEEDED",
 });
 
 async function sendSignal(event: APIGatewayProxyEventV2) {

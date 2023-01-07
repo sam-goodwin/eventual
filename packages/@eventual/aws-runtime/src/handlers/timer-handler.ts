@@ -11,6 +11,7 @@ import { createLogger } from "@aws-lambda-powertools/logger";
 const handleTimer = createTimerHandler({
   workflowClient: createWorkflowClient({
     tableName: "NOT_NEEDED",
+    serviceLogGroup: "NOT_NEEDED",
   }),
   activityRuntimeClient: createActivityRuntimeClient(),
   timerClient: createTimerClient(),

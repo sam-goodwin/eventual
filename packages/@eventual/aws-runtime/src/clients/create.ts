@@ -49,10 +49,12 @@ export const createWorkflowClient = /* @__PURE__ */ memoize(
     tableName,
     workflowQueueUrl,
     activityTableName,
+    serviceLogGroup,
   }: {
     tableName?: string;
     workflowQueueUrl?: string;
     activityTableName?: string;
+    serviceLogGroup?: string;
   } = {}) =>
     new AWSWorkflowClient({
       sqs: sqs(),
@@ -61,7 +63,7 @@ export const createWorkflowClient = /* @__PURE__ */ memoize(
       tableName: tableName ?? env.tableName(),
       activityRuntimeClient: createActivityRuntimeClient({ activityTableName }),
       cloudwatchLogsClient: cloudwatchLogs(),
-      serviceLogGroup: env.serviceLogGroupName(),
+      serviceLogGroup: serviceLogGroup ?? env.serviceLogGroupName(),
     }),
   { cacheKey: JSON.stringify }
 );

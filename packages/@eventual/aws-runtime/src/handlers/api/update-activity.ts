@@ -10,7 +10,10 @@ import {
   SendActivityUpdateResponse,
 } from "@eventual/core";
 
-const workflowClient = createWorkflowClient({ tableName: "NOT_NEEDED" });
+const workflowClient = createWorkflowClient({
+  tableName: "NOT_NEEDED",
+  serviceLogGroup: "NOT_NEEDED",
+});
 
 export const handler: APIGatewayProxyHandlerV2<SendActivityUpdateResponse> =
   withErrorMiddleware(async (event: APIGatewayProxyEventV2) => {

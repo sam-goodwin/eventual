@@ -7,6 +7,7 @@ const workflowClient = createWorkflowClient({
   // TODO: further decouple the clients
   activityTableName: "NOT_NEEDED",
   workflowQueueUrl: "NOT_NEEDED",
+  serviceLogGroup: "NOT_NEEDED",
 });
 
 async function list(event: APIGatewayProxyEventV2) {

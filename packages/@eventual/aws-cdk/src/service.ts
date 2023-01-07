@@ -39,6 +39,7 @@ import {
 import { bundleSourcesSync, inferSync } from "./compile-client";
 import path from "path";
 import { ExecutionRecord } from "@eventual/aws-runtime";
+import { Logging } from "./logging";
 
 export interface ServiceProps {
   entry: string;
@@ -88,6 +89,10 @@ export class Service extends Construct implements IGrantable {
    * A SSM parameter containing data about this service.
    */
   public readonly serviceDataSSM: StringParameter;
+  /**
+   * The resources used to facilitate service logging.
+   */
+  public readonly logging: Logging;
 
   public readonly grantPrincipal: IPrincipal;
 
@@ -103,24 +108,28 @@ export class Service extends Construct implements IGrantable {
       props.entry,
       {
         name: ServiceType.OrchestratorWorker,
-        entry: runtimeEntrypoint("orchestrator"),
+        entry: runtimeHandlersEntrypoint("orchestrator"),
         eventualTransform: true,
         serviceType: ServiceType.OrchestratorWorker,
       },
       {
         name: ServiceType.ActivityWorker,
-        entry: runtimeEntrypoint("activity-worker"),
+        entry: runtimeHandlersEntrypoint("activity-worker"),
         serviceType: ServiceType.ActivityWorker,
       },
       {
         name: ServiceType.ApiHandler,
-        entry: runtimeEntrypoint("api-handler"),
+        entry: runtimeHandlersEntrypoint("api-handler"),
         serviceType: ServiceType.ApiHandler,
       },
       {
         name: ServiceType.EventHandler,
-        entry: runtimeEntrypoint("event-handler"),
+        entry: runtimeHandlersEntrypoint("event-handler"),
         serviceType: ServiceType.EventHandler,
+      },
+      {
+        name: "service-logger",
+        entry: path.join(runtimeEntrypoint(), "layers/service-logger/index.js"),
       }
     );
 
@@ -145,6 +154,8 @@ export class Service extends Construct implements IGrantable {
     const proxyWorkflows = lazyInterface<IWorkflows>();
     const proxyActivities = lazyInterface<IActivities>();
 
+    this.logging = new Logging(this, "logging");
+
     this.events = new Events(this, "Events", {
       appSpec: this.appSpec,
       serviceName: this.serviceName,
@@ -166,6 +177,7 @@ export class Service extends Construct implements IGrantable {
       activities: this.activities,
       table: this.table,
       events: this.events,
+      logging: this.logging,
       ...props.workflows,
     });
     proxyWorkflows._bind(this.workflows);
@@ -376,9 +388,10 @@ export class Service extends Construct implements IGrantable {
   }
 }
 
-export function runtimeEntrypoint(name: string) {
-  return path.join(
-    require.resolve("@eventual/aws-runtime"),
-    `../../esm/handlers/${name}.js`
-  );
+export function runtimeHandlersEntrypoint(name: string) {
+  return path.join(runtimeEntrypoint(), `/handlers/${name}.js`);
+}
+
+export function runtimeEntrypoint() {
+  return path.join(require.resolve("@eventual/aws-runtime"), `../../esm`);
 }

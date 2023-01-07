@@ -345,7 +345,6 @@ importers:
       '@aws-cdk/aws-apigatewayv2-alpha': 2.50.0-alpha.0
       '@aws-cdk/aws-apigatewayv2-authorizers-alpha': 2.50.0-alpha.0
       '@aws-cdk/aws-apigatewayv2-integrations-alpha': 2.50.0-alpha.0
-      '@aws-sdk/client-lambda': ^3.245.0
       '@eventual/aws-runtime': workspace:^
       '@eventual/compiler': workspace:^
       '@eventual/core': workspace:^
@@ -355,7 +354,7 @@ importers:
       aws-cdk: 2.50.0
       aws-cdk-lib: 2.50.0
       constructs: 10.1.154
-      esbuild: ^0.16.14
+      esbuild: ^0.x
       jest: ^29
       ts-jest: ^29
       ts-node: ^10.9.1
@@ -368,7 +367,6 @@ importers:
       '@aws-cdk/aws-apigatewayv2-alpha': 2.50.0-alpha.0_wfetmkylzcavk2jugrcqqsc5se
       '@aws-cdk/aws-apigatewayv2-authorizers-alpha': 2.50.0-alpha.0_ntleitg5fbqtbxprhns64fsb3a
       '@aws-cdk/aws-apigatewayv2-integrations-alpha': 2.50.0-alpha.0_ntleitg5fbqtbxprhns64fsb3a
-      '@aws-sdk/client-lambda': 3.245.0
       '@types/aws-lambda': 8.10.108
       '@types/jest': 29.2.2
       '@types/node': 16.18.3
@@ -1280,6 +1278,7 @@ packages:
       tslib: 2.4.1
     transitivePeerDependencies:
       - aws-crt
+    dev: false
 
   /@aws-sdk/client-lambda/3.43.0:
     resolution: {integrity: sha512-6FuZfBJ40KlolUkjaz2WTtfQgvT5HigoV5O/VLqM3qFUpUsyQ+zjmm0y0QmfndAlK+8sI53yiKhBp/PMkAQgWw==}
@@ -2878,6 +2877,7 @@ packages:
       '@aws-sdk/abort-controller': 3.226.0
       '@aws-sdk/types': 3.226.0
       tslib: 2.4.1
+    dev: false
 
   /@aws-sdk/util-waiter/3.40.0:
     resolution: {integrity: sha512-jdxwNEZdID49ZvyAnxaeNm5w2moIfMLOwj/q6TxKlxYoXMs16FQWkhyfGue0vEASzchS49ewbyt+KBqpT31Ebg==}
