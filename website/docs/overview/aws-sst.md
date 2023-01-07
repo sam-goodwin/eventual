@@ -1,8 +1,8 @@
 ---
-title: AWS SST
+title: SST for AWS
 ---
 
-# AWS SST Project Overview
+# SST for AWS Project Overview
 
 To create a new [SST](https://sst.dev) project with Eventual, run the below command:
 

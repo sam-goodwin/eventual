@@ -3,11 +3,9 @@ slug: /
 sidebar_position: 1
 ---
 
-# Overview
+# Introduction
 
 Welcome to Eventual!
-
-## Introduction
 
 Eventual is a code-first service and software development kit (SDK) that helps developers create event-driven systems using modern infrastructure-as-code. Its composable service model is designed for building and evolving microservice architectures, providing a set of libraries and APIs that abstract away the complexities of distributed systems, allowing developers to focus on the business logic of their services.
 
@@ -17,16 +15,19 @@ Eventual is a code-first service and software development kit (SDK) that helps d
 
 ## Building Blocks
 
-- [Service](./guide/service.md) - a collection of workflows, activities, and event handlers that represent a business domain or capability.
-- [API (Request/Response)](./guide/api.md) - a REST API Gateway that enables clients to interact with your service's workflows and activities.
-- [Events (Pub/Sub)](./guide/event.md) - an Event Bus that enables your service to publish and subscribe to events.
-- [Workflows](./guide/workflow.md) - a set of orchestrated activities that represent a long-running process or business logic.
-- [Activities](./guide/activity.md) - a set of functions that represent a single unit of work.
-- [Unit Testing](./guide/unit-testing.md) - API reference, guidelines and best practices for writing unit tests for your Eventual service.
-- [CLI](./guide/cli.md) - the Eventual command-line interface (CLI) provides tools for interacting with your service from the terminal.
+- [Service](./guide/service.md) - a collection of APIs, Events, Workflows, and Activities that represent a business domain or capability. Can be composed with other services via APIs and Event subscriptions.
+  ![Service Building Blocks](./service-diagram.png)
+- [REST API](./guide/api.md) - create and your own REST APIs and serve them over HTTPS via a managed API Gateway. Each Service also includes internal API routes (see: [Eventual Service Client](./guide/client.md)).
+- [Event](./guide/event.md) - publish and subscribe Events to your Service's Event Bus. Process events internally or route them to other Services.
+- [Workflow](./guide/workflow.md) - a set of orchestrated Activities that implements business logic with asynchronous, durable long-running processes.
+- [Activity](./guide/activity.md) - functions that encapsulate a single unit of work in a workflow. Integrate with cloud resources and SaaS.
+- [Signal](./guide/signal.md) - a message that can be sent to a workflow execution to affect its behavior. Have workflows wait for external input and orchestrate their effect.
 
 ## Helpful Resources
 
+- [Eventual Service Client](./guide/client.md) - a client for interacting with an Eventual Service, such as listing and starting workflows, viewing logs, etc.
+- [CLI Guide](./guide/cli.md) - the Eventual command-line interface (CLI) provides tools for interacting with your service from the terminal.
+- [Unit Testing](./guide/unit-testing.md) - API reference, guidelines and best practices for writing unit tests for your Eventual service.
 - [Cheatsheet](./cheatsheet.md) - a list of helpful patterns for solving common problems using Eventual
 
 ## Tutorials
