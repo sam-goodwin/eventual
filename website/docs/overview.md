@@ -21,7 +21,7 @@ Eventual is a code-first service and software development kit (SDK) that helps d
 - [Event](./guide/event.md) - publish and subscribe Events to your Service's Event Bus. Process events internally or route them to other Services.
 - [Workflow](./guide/workflow.md) - a set of orchestrated Activities that implements business logic with asynchronous, durable long-running processes.
 - [Activity](./guide/activity.md) - functions that encapsulate a single unit of work in a workflow. Integrate with cloud resources and SaaS.
-- [Signal](./guide/signal.md) - a message that can be sent to a workflow execution. Workflows can wait for external input as a Signal and modify its behavior. Signals are communicated point-to-point as opposed to Events which are broadcasted to all subscribers.
+- [Signal](./guide/signal.md) - a message that can be sent to a workflow execution. Workflows can wait for external input as a Signal and modify its behavior. Signals are communicated point-to-point in contrast to Events which are broadcast to all subscribers.
 
 ## Helpful Resources
 
