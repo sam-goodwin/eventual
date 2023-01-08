@@ -172,13 +172,13 @@ export function createOrchestrator({
         await executeWorkflow(history);
 
       // persist
+      await persistWorkflowResult(resultEvent);
       const logFlush = timed(
         metrics,
         OrchestratorMetrics.ExecutionLogWriteTime,
         // write any collected logs to cloudwatch
         () => logAgent.flush()
       );
-      await persistWorkflowResult(resultEvent);
       await saveNewEventsToExecutionHistory(newEvents);
       await updateHistory(updatedHistoryEvents);
       await logFlush;
@@ -496,6 +496,13 @@ export function createOrchestrator({
               })
           );
 
+          logAgent.logWithContext(
+            { executionId, type: LogContextType.Execution },
+            "INFO",
+            "Workflow Failed",
+            `${resultEvent.error}: ${resultEvent.message}`
+          );
+
           logExecutionCompleteMetrics(execution);
         } else if (isWorkflowSucceeded(resultEvent)) {
           const execution = await timed(
@@ -507,6 +514,14 @@ export function createOrchestrator({
                 result: resultEvent.output,
               })
           );
+
+          logAgent.logWithContext(
+            { executionId, type: LogContextType.Execution },
+            "INFO",
+            "Workflow Succeeded",
+            resultEvent.output
+          );
+
           logExecutionCompleteMetrics(execution);
         }
       }

@@ -65,8 +65,13 @@ export class AWSWorkflowClient extends WorkflowClient {
     const executionId = formatExecutionId(workflowName, executionName);
     console.log("execution input:", input);
 
-    const createLogStream =
-      this.props.logsClient.initializeExecutionLog(executionId);
+    const createLogStream = async () => {
+      await this.props.logsClient.initializeExecutionLog(executionId);
+      await this.props.logsClient.putExecutionLogs(executionId, {
+        time: new Date().getTime(),
+        message: "Workflow Started",
+      });
+    };
 
     const addExecutionEntry = await this.props.dynamo.send(
       new PutItemCommand({
@@ -89,7 +94,7 @@ export class AWSWorkflowClient extends WorkflowClient {
       })
     );
 
-    await Promise.allSettled([createLogStream, addExecutionEntry]);
+    await Promise.allSettled([createLogStream(), addExecutionEntry]);
 
     const workflowStartedEvent = createEvent<WorkflowStarted>(
       {
