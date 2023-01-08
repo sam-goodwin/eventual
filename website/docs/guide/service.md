@@ -27,6 +27,10 @@ The `entry` property points to the entrypoint `.ts` or `.js` file that contains 
 3. [Workflows](./workflow.md)
 4. [Activity](./activity.md)
 
+## Scaling Limits
+
+For information on how to scale a Service in AWS, see [Service Scaling Limits](./service-scaling-limits.md).
+
 ## Service Name
 
 Services are named to make them easier to identify and reference. By default, a service's name is the CDK Construct's address, which is unique within a single AWS account and region, but may not be very user-friendly. We recommend naming your services in a consistent way that aligns with your organization.

@@ -50,7 +50,8 @@ export function MyStack({ stack }: StackContext) {
     name: "${projectName}",
   });
   stack.addOutputs({
-    ApiEndpoint: service.api.gateway.url!,
+    ServiceApiEndpoint: service.api.gateway.url!,
+    ServiceEventBusArn: service.events.bus.eventBusArn
   });
 }
 `;
@@ -68,7 +69,7 @@ new MyServiceStack(app, "${projectName}");
 
 export function sampleCDKStack(projectName: string) {
   return `import { Construct } from "constructs";
-import { Stack, StackProps } from "aws-cdk-lib";
+import { CfnOutput, Stack, StackProps } from "aws-cdk-lib";
 import { Service } from "@eventual/aws-cdk";
 import path from "path";
 
@@ -83,6 +84,16 @@ export class MyServiceStack extends Stack {
     this.service = new Service(this, "${projectName}", {
       name: "${projectName}",
       entry: path.join(__dirname, "..", "..", "services", "src", "index.ts")
+    });
+
+    new CfnOutput(this, "my-service-api-endpoint", {
+      exportName: "my-service-api-endpoint",
+      value: this.service.api.gateway.url!,
+    });
+
+    new CfnOutput(this, "my-service-event-bus-arn", {
+      exportName: "my-service-api-endpoint",
+      value: this.service.events.bus.eventBusArn,
     });
   }
 }
