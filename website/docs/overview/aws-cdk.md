@@ -1,5 +1,5 @@
 ---
-title: AWS CDK
+title: AWS Cloud Development Kit
 ---
 
 # AWS CDK Project Overview
