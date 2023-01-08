@@ -11,12 +11,14 @@ import { SchedulerClient } from "@aws-sdk/client-scheduler";
 import { AWSTimerClient, AWSTimerClientProps } from "./timer-client.js";
 import { AWSEventClient } from "./event-client.js";
 import {
+  LogsClient,
   RuntimeServiceClient,
   TimerClient,
   WorkflowClient,
   WorkflowRuntimeClient,
 } from "@eventual/core";
 import { CloudWatchLogsClient } from "@aws-sdk/client-cloudwatch-logs";
+import { AWSLogsClient } from "./log-client.js";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -50,12 +52,12 @@ export const createWorkflowClient = /* @__PURE__ */ memoize(
     tableName,
     workflowQueueUrl,
     activityTableName,
-    serviceLogGroup,
+    logsClient,
   }: {
     tableName?: string;
     workflowQueueUrl?: string;
     activityTableName?: string;
-    serviceLogGroup?: string;
+    logsClient?: LogsClient;
   } = {}) =>
     new AWSWorkflowClient({
       sqs: sqs(),
@@ -63,10 +65,17 @@ export const createWorkflowClient = /* @__PURE__ */ memoize(
       dynamo: dynamo(),
       tableName: tableName ?? env.tableName(),
       activityRuntimeClient: createActivityRuntimeClient({ activityTableName }),
-      cloudwatchLogsClient: cloudwatchLogs(),
-      serviceLogGroup: serviceLogGroup ?? env.serviceLogGroupName(),
+      logsClient: logsClient ?? createLogsClient(),
     }),
   { cacheKey: JSON.stringify }
+);
+
+export const createLogsClient = /* @__PURE__ */ memoize(
+  ({ serviceLogGroup }: { serviceLogGroup?: string } = {}) =>
+    new AWSLogsClient({
+      cloudwatchLogsClient: cloudwatchLogs(),
+      serviceLogGroup: serviceLogGroup ?? env.serviceLogGroupName(),
+    })
 );
 
 export const createActivityRuntimeClient = /* @__PURE__ */ memoize(

@@ -4,6 +4,7 @@ import type {
   APIGatewayProxyHandlerV2,
 } from "aws-lambda";
 import {
+  createLogsClient,
   createWorkflowClient,
   createWorkflowRuntimeClient,
 } from "../../../clients/index.js";
@@ -13,7 +14,9 @@ const workflowClient = createWorkflowRuntimeClient({
   // TODO: further decouple the clients
   activityWorkerFunctionName: "NOT_NEEDED",
   tableName: "NOT_NEEDED",
-  workflowClient: createWorkflowClient({ serviceLogGroup: "NOT_NEEDED" }),
+  workflowClient: createWorkflowClient({
+    logsClient: createLogsClient({ serviceLogGroup: "NOT_NEEDED" }),
+  }),
 });
 
 async function workflowHistory(event: APIGatewayProxyEventV2) {

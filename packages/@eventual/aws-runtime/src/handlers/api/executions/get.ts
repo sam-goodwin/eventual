@@ -1,4 +1,7 @@
-import { createWorkflowClient } from "../../../clients/index.js";
+import {
+  createLogsClient,
+  createWorkflowClient,
+} from "../../../clients/index.js";
 import { withErrorMiddleware } from "../middleware.js";
 import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { decodeExecutionId, Execution } from "@eventual/core";
@@ -7,7 +10,7 @@ const workflowClient = createWorkflowClient({
   // TODO: further decouple the clients
   activityTableName: "NOT_NEEDED",
   workflowQueueUrl: "NOT_NEEDED",
-  serviceLogGroup: "NOT_NEEDED",
+  logsClient: createLogsClient({ serviceLogGroup: "NOT_NEEDED" }),
 });
 
 async function get(event: APIGatewayProxyEventV2) {

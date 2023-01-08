@@ -1,4 +1,4 @@
-import { createWorkflowClient } from "../../clients/index.js";
+import { createLogsClient, createWorkflowClient } from "../../clients/index.js";
 import { withErrorMiddleware } from "./middleware.js";
 import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
 import {
@@ -12,7 +12,7 @@ import {
 
 const workflowClient = createWorkflowClient({
   tableName: "NOT_NEEDED",
-  serviceLogGroup: "NOT_NEEDED",
+  logsClient: createLogsClient({ serviceLogGroup: "NOT_NEEDED" }),
 });
 
 export const handler: APIGatewayProxyHandlerV2<SendActivityUpdateResponse> =

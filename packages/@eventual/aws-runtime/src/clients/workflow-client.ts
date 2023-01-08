@@ -1,8 +1,4 @@
 import {
-  CloudWatchLogsClient,
-  CreateLogStreamCommand,
-} from "@aws-sdk/client-cloudwatch-logs";
-import {
   AttributeValue,
   DynamoDBClient,
   GetItemCommand,
@@ -10,9 +6,11 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
+  ActivityRuntimeClient,
   Execution,
   ExecutionStatus,
   HistoryStateEvent,
+  LogsClient,
   Workflow,
   WorkflowEventType,
   WorkflowStarted,
@@ -26,9 +24,7 @@ import {
   StartChildExecutionRequest,
   lookupWorkflow,
 } from "@eventual/core";
-import { formatWorkflowExecutionStreamName } from "../utils.js";
 import { ulid } from "ulidx";
-import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
 import { queryPageWithToken } from "./utils.js";
 
 export interface AWSWorkflowClientProps {
@@ -36,9 +32,8 @@ export interface AWSWorkflowClientProps {
   readonly tableName: string;
   readonly sqs: SQSClient;
   readonly workflowQueueUrl: string;
-  readonly activityRuntimeClient: AWSActivityRuntimeClient;
-  readonly serviceLogGroup: string;
-  readonly cloudwatchLogsClient: CloudWatchLogsClient;
+  readonly activityRuntimeClient: ActivityRuntimeClient;
+  readonly logsClient: LogsClient;
 }
 
 export class AWSWorkflowClient extends WorkflowClient {
@@ -70,15 +65,8 @@ export class AWSWorkflowClient extends WorkflowClient {
     const executionId = formatExecutionId(workflowName, executionName);
     console.log("execution input:", input);
 
-    const workflowStreamName = formatWorkflowExecutionStreamName(executionId);
-
-    // TODO: handle throttle errors and retry at > 50TPS
-    const createLogStream = this.props.cloudwatchLogsClient.send(
-      new CreateLogStreamCommand({
-        logGroupName: this.props.serviceLogGroup,
-        logStreamName: workflowStreamName,
-      })
-    );
+    const createLogStream =
+      this.props.logsClient.initializeExecutionLog(executionId);
 
     const addExecutionEntry = await this.props.dynamo.send(
       new PutItemCommand({
