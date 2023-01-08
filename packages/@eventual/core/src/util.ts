@@ -36,6 +36,7 @@ export interface Iterator<I, T extends I> {
   hasNext(): boolean;
   next(): T | undefined;
   drain(): T[];
+  size(): number;
 }
 
 export function iterator<I, T extends I>(
@@ -58,6 +59,11 @@ export function iterator<I, T extends I>(
         : (elms.slice(cursor) as T[]);
       cursor = elms.length;
       return events;
+    },
+    size: (): number => {
+      return predicate
+        ? elms.filter(predicate).length - cursor
+        : elms.length - cursor;
     },
   };
 

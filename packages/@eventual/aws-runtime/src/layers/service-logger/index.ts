@@ -1,6 +1,7 @@
 import { next, register } from "./extensions-api.js";
 import { subscribe } from "./telemetry-api.js";
-import { start } from "./listener.js";
+import { eventsQueue, start } from "./listener.js";
+import { dispatch } from "./logs-dispatcher.js";
 
 (async function main() {
   process.on("SIGINT", () => handleShutdown("SIGINT"));
@@ -32,10 +33,13 @@ import { start } from "./listener.js";
     const event = await next(extensionId);
 
     switch (event.eventType) {
-      // case "INVOKE":
-      //   handleInvoke(event);
-      //   await dispatch(eventsQueue);
-      //   break;
+      case "INVOKE":
+        await new Promise((resolve) => {
+          setTimeout(resolve, 200);
+        });
+        handleInvoke(event);
+        // await dispatch(eventsQueue);
+        break;
       case "SHUTDOWN":
         // Wait for 1 sec to receive remaining events
         await new Promise((resolve) => {
@@ -43,7 +47,7 @@ import { start } from "./listener.js";
         });
 
         // Dispatch queued telemetry prior to handling the shutdown event
-        // await dispatch(eventsQueue);
+        await dispatch(eventsQueue);
         handleShutdown(event);
         break;
       default:
@@ -57,6 +61,6 @@ function handleShutdown(_event: string) {
   process.exit(0);
 }
 
-// function handleInvoke(_event: string) {
-//   console.log("[index:handleInvoke]");
-// }
+function handleInvoke(_event: string) {
+  console.log("[index:handleInvoke]");
+}

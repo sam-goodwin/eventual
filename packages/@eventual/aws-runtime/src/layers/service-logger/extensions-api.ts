@@ -7,10 +7,7 @@ export async function register() {
   const res = await fetch(`${baseUrl}/register`, {
     method: "post",
     body: JSON.stringify({
-      events: [
-        // "INVOKE",
-        "SHUTDOWN",
-      ],
+      events: ["INVOKE", "SHUTDOWN"],
     }),
     headers: {
       "Content-Type": "application/json",

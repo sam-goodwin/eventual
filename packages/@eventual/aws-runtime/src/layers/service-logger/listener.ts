@@ -19,17 +19,44 @@ export function start() {
   // if you have subscribed to receive extension logs. Otherwise, logging here will
   // cause Telemetry API to send new entries for the printed lines which might create a loop
   server.post("/", async (req: Request<any, any, TelemetryRequest[]>, res) => {
-    if (req.body.length && req.body.length > 0) {
-      _eventsQueue.push(...req.body);
+    const events = req.body;
+    const functionEvents = req.body.length
+      ? events.filter((e) => e.type === "function")
+      : [];
+
+    if (functionEvents.length > 0) {
+      // only add function logs
+      _eventsQueue.push(...events.filter((e) => e.type === "function"));
     }
+
+    const queueSize = eventsQueue.size();
+
     console.log(
       "[telemetry-listener:post] received",
       req.body.length,
-      "total",
-      _eventsQueue.length
+      "function events",
+      functionEvents.length,
+      "queue total",
+      queueSize
     );
 
-    await dispatch(eventsQueue);
+    const hasRuntimeDone = events.some(
+      (e) => e.type === "platform.runtimeDone"
+    );
+
+    console.log("[telemetry-listener:post] runtime done", hasRuntimeDone);
+
+    if (hasRuntimeDone || queueSize >= 100) {
+      await dispatch(eventsQueue);
+    } else if (queueSize > 0) {
+      setTimeout(() => {
+        const queueSize = eventsQueue.size();
+        if (queueSize > 0) {
+          console.log("[telemetry-listener:post] timed dispatch", queueSize);
+          dispatch(eventsQueue);
+        }
+      }, 1000);
+    }
 
     res.send("OK");
   });
