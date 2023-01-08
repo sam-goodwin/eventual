@@ -38,57 +38,7 @@ export function isActivityLogContext(
   return context.type === LogContextType.Activity;
 }
 
-export const EventualLogContextPrefix = "[EVTL]";
-
-export function serializeEventualLogContext(logContext: LogContext) {
-  return `${EventualLogContextPrefix} ${JSON.stringify(logContext)}`;
-}
-
-/**
- * Expected lambda log format: [LEVEL] [EVTL] {}
- */
-export function isSerializedEventualLogContext(message: string) {
-  return message.split("\t")[3]?.startsWith(EventualLogContextPrefix);
-}
-
 export type LogLevel = "INFO" | "DEBUG" | "ERROR" | "WARN" | "TRACE";
-
-export interface EventualLog<
-  Context extends LogContext | undefined = LogContext | undefined
-> {
-  context: Context;
-  level?: LogLevel;
-  message?: string;
-}
-
-export function tryParseEventualLog(message: string): EventualLog {
-  if (isSerializedEventualLogContext(message)) {
-    const [_, level, context, mess] =
-      /.*\t(.*)\t\[EVTL\] (\{.*\}) (.*)/gs.exec(message) ?? [];
-
-    console.log(
-      "test message",
-      message,
-      "level",
-      level,
-      "context",
-      context,
-      "parsed message",
-      mess
-    );
-
-    return {
-      level: level as LogLevel,
-      message: mess,
-      context: context ? JSON.parse(context) : context,
-    };
-  } else {
-    return {
-      message,
-      context: undefined,
-    };
-  }
-}
 
 export interface LogAgentProps {
   logClient: LogsClient;

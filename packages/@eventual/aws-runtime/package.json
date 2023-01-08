@@ -26,7 +26,6 @@
     "@middy/error-logger": "^3.6.2",
     "aws-embedded-metrics": "^4.0.0",
     "aws-lambda": "^1.0.7",
-    "express": "^4.18.2",
     "node-fetch": "^2.6.7",
     "ulidx": "^0.3.0"
   },
