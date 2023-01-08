@@ -1,45 +1,61 @@
-import { LogContext, serializeEventualLogContext } from "./log-payloads.js";
+import { LogLevel } from "./log-agent.js";
 
 const originalConsole = globalThis.console;
+const HOOKED_SYMBOL = Symbol.for("eventual-hooked-console");
 
-export function consoleInjectContext(context: LogContext) {
-  const consoleProxy: typeof console = {
+/**
+ * Call a callback when
+ */
+export function hookConsole(
+  hook: (logLevel: LogLevel, ...data: any[]) => any[] | undefined
+) {
+  const consoleProxy: typeof console & {
+    [HOOKED_SYMBOL]: typeof HOOKED_SYMBOL;
+  } = {
     ...originalConsole,
+    [HOOKED_SYMBOL]: HOOKED_SYMBOL,
     info: (...data: any[]) => {
-      return originalConsole.info(
-        serializeEventualLogContext(context),
-        ...data
-      );
+      const newData = hook("INFO", data);
+      if (newData) {
+        originalConsole.info(...newData);
+      }
     },
     log: (...data: any[]) => {
-      return originalConsole.log(serializeEventualLogContext(context), ...data);
+      const newData = hook("INFO", data);
+      if (newData) {
+        originalConsole.log(...newData);
+      }
     },
     debug: (...data: any[]) => {
-      return originalConsole.debug(
-        serializeEventualLogContext(context),
-        ...data
-      );
+      const newData = hook("DEBUG", data);
+      if (newData) {
+        originalConsole.log(...newData);
+      }
     },
     error: (...data: any[]) => {
-      return originalConsole.error(
-        serializeEventualLogContext(context),
-        ...data
-      );
+      const newData = hook("ERROR", data);
+      if (newData) {
+        originalConsole.log(...newData);
+      }
     },
     warn: (...data: any[]) => {
-      return originalConsole.warn(
-        serializeEventualLogContext(context),
-        ...data
-      );
+      const newData = hook("WARN", data);
+      if (newData) {
+        originalConsole.log(...newData);
+      }
     },
     trace: (...data: any[]) => {
-      return originalConsole.trace(
-        serializeEventualLogContext(context),
-        ...data
-      );
+      const newData = hook("TRACE", data);
+      if (newData) {
+        originalConsole.log(...newData);
+      }
     },
   };
   globalThis.console = consoleProxy;
+}
+
+export function isConsoleHooked() {
+  return HOOKED_SYMBOL in globalThis.console;
 }
 
 export function restoreConsole() {

@@ -15,6 +15,7 @@ import {
   ExecutionHandle,
   ExecutionHistoryClient,
   isWorkflowTask,
+  LogAgent,
   Orchestrator,
   PublishEventsRequest,
   registerServiceClient,
@@ -48,6 +49,7 @@ import {
   MockActivity,
 } from "./providers/activity-provider.js";
 import { TestEventHandlerProvider } from "./providers/event-handler-provider.js";
+import { TestLogsClient } from "./clients/logs-client.js";
 
 export interface TestEnvironmentProps {
   entry: string;
@@ -173,6 +175,10 @@ export class TestEnvironment extends RuntimeServiceClient {
       executionHistoryClient: this.executionHistoryClient,
       metricsClient: new TestMetricsClient(),
       logger: new TestLogger(),
+      logAgent: new LogAgent({
+        logClient: new TestLogsClient(),
+        getTime: () => this.time,
+      }),
     });
   }
 

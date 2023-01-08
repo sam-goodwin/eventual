@@ -104,6 +104,10 @@ export namespace OrchestratorMetrics {
    */
   export const SleepVarianceMillis = "SleepVarianceMillis";
   /**
+   * Number of milliseconds it takes to send execution logs to where ever they are persisted.
+   */
+  export const ExecutionLogWriteTime = "ExecutionLogWriteMillis";
+  /**
    * 1 when a workflow has a timeout and 0 when it does not.
    */
   export const TimeoutStarted = "TimeoutStarted";

@@ -45,8 +45,7 @@ import { timed, timedSync } from "../metrics/utils.js";
 import { groupBy, promiseAllSettledPartitioned } from "../utils.js";
 import { extendsError } from "../../util.js";
 import { WorkflowTask } from "../../tasks.js";
-import { consoleInjectContext, restoreConsole } from "../console-hook.js";
-import { LogContextType } from "../log-payloads.js";
+import { LogAgent, LogContextType } from "../log-agent.js";
 
 /**
  * The Orchestrator's client dependencies.
@@ -59,6 +58,7 @@ export interface OrchestratorDependencies {
   metricsClient: MetricsClient;
   eventClient: EventClient;
   logger: Logger;
+  logAgent: LogAgent;
 }
 
 export interface OrchestratorResult {
@@ -86,6 +86,7 @@ export function createOrchestrator({
   metricsClient,
   eventClient,
   logger,
+  logAgent,
 }: OrchestratorDependencies): Orchestrator {
   const commandExecutor = new CommandExecutor({
     timerClient,
@@ -171,9 +172,16 @@ export function createOrchestrator({
         await executeWorkflow(history);
 
       // persist
+      const logFlush = timed(
+        metrics,
+        OrchestratorMetrics.ExecutionLogWriteTime,
+        // write any collected logs to cloudwatch
+        () => logAgent.flush()
+      );
       await persistWorkflowResult(resultEvent);
       await saveNewEventsToExecutionHistory(newEvents);
       await updateHistory(updatedHistoryEvents);
+      await logFlush;
 
       // Only log these metrics once the orchestrator has completed successfully.
       logEventMetrics(metrics, events, start);
@@ -266,27 +274,25 @@ export function createOrchestrator({
           metrics,
           OrchestratorMetrics.AdvanceExecutionDuration,
           () => {
-            try {
-              // updates the console to inject the eventual context.
-              consoleInjectContext({
-                type: LogContextType.Execution,
-                executionId,
-              });
-              return progressWorkflow(
-                workflow,
-                history,
-                events,
-                workflowContext,
-                executionId,
-                baseTime
-              );
-            } catch (err) {
-              console.log("workflow error");
-              executionLogger.error(inspect(err));
-              throw err;
-            } finally {
-              restoreConsole();
-            }
+            return logAgent.logContextScope(
+              { type: LogContextType.Execution, executionId },
+              () => {
+                try {
+                  return progressWorkflow(
+                    workflow,
+                    history,
+                    events,
+                    workflowContext,
+                    executionId,
+                    baseTime
+                  );
+                } catch (err) {
+                  console.error("workflow error");
+                  executionLogger.error(inspect(err));
+                  throw err;
+                }
+              }
+            );
           }
         );
 

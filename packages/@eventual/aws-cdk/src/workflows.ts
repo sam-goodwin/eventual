@@ -206,6 +206,6 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     // allows the workflow to cancel activities
     this.props.activities.configureUpdateActivity(this.orchestrator);
     // adds the logging extension (via a layer) to the orchestrator
-    this.props.logging.configureLoggingExtension(this.orchestrator);
+    this.props.logging.configurePutServiceLogs(this.orchestrator);
   }
 }
