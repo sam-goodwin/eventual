@@ -11,7 +11,7 @@ Eventual is a code-first service and software development kit (SDK) that helps d
 
 ## Getting Started
 
-- [Getting Started](./getting-started.md) - set up a new project, deploy it to the cloud and test it out.
+- [Getting Started](./getting-started.mdx) - set up a new project, deploy it to the cloud and test it out.
 
 ## Building Blocks
 

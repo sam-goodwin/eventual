@@ -4,7 +4,7 @@ title: Bank Account - Part 1
 
 # Tutorial - create bank account and transfer money
 
-Note: this tutorial is a WIP. We recommend starting with the [getting started guide](../getting-started.md) or [examples](https://github.com/functionless/eventual/tree/main/examples).
+Note: this tutorial is a WIP. We recommend starting with the [getting started guide](../getting-started.mdx) or [examples](https://github.com/functionless/eventual/tree/main/examples).
 
 In this tutorial, we'll create a basic bank application that supports the following operations:
 
@@ -13,7 +13,7 @@ In this tutorial, we'll create a basic bank application that supports the follow
 
 ## Pre-requisites
 
-You must have an AWS account and either an AWS CDK or SST project. You can use the [getting started guide](../getting-started.md) to create a new project quickly or manually configure an existing one.
+You must have an AWS account and either an AWS CDK or SST project. You can use the [getting started guide](../getting-started.mdx) to create a new project quickly or manually configure an existing one.
 
 ## Step 1 - create an API
 
@@ -33,7 +33,7 @@ This will define a new API route that will be triggered when a user makes a POST
 
 To implement the logic for the API, we will generate an ID for the account and store a record of it in a database. We will use AWS DynamoDB as an example, but this process is compatible with any cloud resource or service.
 
-First, create a `Service` in your infrastructure stack. If you followed the [getting started guide](../getting-started.md), this will already exist.
+First, create a `Service` in your infrastructure stack. If you followed the [getting started guide](../getting-started.mdx), this will already exist.
 
 ```ts
 const service = new Service(stack, "Service", {

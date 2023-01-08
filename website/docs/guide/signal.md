@@ -39,7 +39,7 @@ await mySignal.sendSignal({
 });
 ```
 
-Also see the [ExecutionHandle.sendSignal](./workflow.md#send-a-signal-to-a-running-execution) and [EventualServiceClient.sendSignal](./client#sendsignal) documentation for alternative methods of sending a signal.
+Also see the [ExecutionHandle.sendSignal](./workflow.md#send-a-signal-to-a-running-execution) and [EventualServiceClient.sendSignal](./service-client#sendsignal) documentation for alternative methods of sending a signal.
 
 ## Wait for a Signal in a Workflow
 
