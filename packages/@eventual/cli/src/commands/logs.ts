@@ -40,7 +40,7 @@ export const logs = (yargs: Argv) =>
         .option("since", {
           describe:
             "Only show logs from given time. Timestamp in milliseconds, ISO8601",
-          defaultDescription: "24 hours ago",
+          defaultDescription: "10 Minutes",
         })
         .option("follow", {
           alias: "f",
@@ -159,6 +159,7 @@ async function fetchLogs(
 
   return {
     latestEvent: Math.max(
+      logCursor.startTime ?? 0,
       ...functionEvents.map((e) => e.timestamp).filter((t): t is number => !!t)
     ),
     nextToken: output.nextToken,
@@ -203,8 +204,11 @@ export function updateLogCursor(
 
 /**
  * Return the start time for a given since value.
- * If since is not specified, return timestamp for 24hrs ago.
+ * If since is not specified, return timestamp for 10m ago.
  * If it is 'now', return the current time. Otherwise expect a ISO8601 or millisecond timestamp
+ *
+ * TODO: support durations like awscli's log tail
+ *
  * @param since timestamp specifier
  * @returns start time
  */
@@ -212,8 +216,8 @@ export function getStartTime(
   since: number | string | "now"
 ): number | undefined {
   if (since == null) {
-    // Now - 24hrs. If we don't provide a start time, it's too slow to page through all the logs
-    return Date.now() - 86_400_000;
+    // Now - 10m. If we don't provide a start time, it's too slow to page through all the logs
+    return Date.now() - 10 * 60 * 1000;
   } else if (since === "now") {
     return Date.now();
   } else {
