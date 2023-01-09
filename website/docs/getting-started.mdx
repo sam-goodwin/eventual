@@ -19,9 +19,21 @@ Before getting started with Eventual, you'll need:
 
 To create a new Eventual project, run:
 
-```
-npm create eventual my-eventual-app
-```
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+import CodeBlock from "@theme/CodeBlock";
+
+<Tabs groupId="npm">
+  <TabItem value="apple" label="npm" default>
+    <CodeBlock>npm create eventual@latest</CodeBlock>
+  </TabItem>
+  <TabItem value="orange" label="yarn">
+    <CodeBlock>yarn create eventual@latest</CodeBlock>
+  </TabItem>
+  <TabItem value="banana" label="pnpm">
+    <CodeBlock>pnpm create eventual@latest</CodeBlock>
+  </TabItem>
+</Tabs>
 
 ## 2. Choose your preferred IaC platform
 
@@ -40,6 +52,18 @@ Use the `deploy` script to deploy your application to AWS.
 ```
 npm run deploy
 ```
+
+<Tabs groupId="npm">
+  <TabItem value="apple" label="npm" default>
+    <CodeBlock>npm run deploy</CodeBlock>
+  </TabItem>
+  <TabItem value="orange" label="yarn">
+    <CodeBlock>yarn deploy</CodeBlock>
+  </TabItem>
+  <TabItem value="banana" label="pnpm">
+    <CodeBlock>pnpm run deploy</CodeBlock>
+  </TabItem>
+</Tabs>
 
 ## 4. List services in your AWS account
 

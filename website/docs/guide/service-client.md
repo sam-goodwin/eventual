@@ -1,5 +1,5 @@
 ---
-sidebar_position: 0.1
+sidebar_position: 0.2
 ---
 
 # Service Client
