@@ -13,13 +13,14 @@ import {
   TimerRequestType,
 } from "../clients/timer-client.js";
 import type { WorkflowClient } from "../clients/workflow-client.js";
-import { ActivityRuntimeClient, Logger } from "../index.js";
+import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
+import { LogAgent, LogContextType } from "../log-agent.js";
 
 interface TimerHandlerProps {
   workflowClient: WorkflowClient;
   activityRuntimeClient: ActivityRuntimeClient;
   timerClient: TimerClient;
-  logger: Logger;
+  logAgent: LogAgent;
 }
 
 /**
@@ -32,7 +33,7 @@ export function createTimerHandler({
   workflowClient,
   activityRuntimeClient,
   timerClient,
-  logger,
+  logAgent,
 }: TimerHandlerProps) {
   return async (request: TimerRequest) => {
     if (isTimerScheduleEventRequest(request)) {
@@ -46,7 +47,9 @@ export function createTimerHandler({
         request.activitySeq
       );
 
-      logger.debug(
+      logAgent.logWithContext(
+        { type: LogContextType.Execution, executionId: request.executionId },
+        "DEBUG",
         `checking activity for heartbeat timeout: ${JSON.stringify(activity)}`
       );
 

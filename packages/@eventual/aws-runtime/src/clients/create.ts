@@ -11,6 +11,8 @@ import { SchedulerClient } from "@aws-sdk/client-scheduler";
 import { AWSTimerClient, AWSTimerClientProps } from "./timer-client.js";
 import { AWSEventClient } from "./event-client.js";
 import {
+  LogAgent,
+  LogLevel,
   LogsClient,
   RuntimeServiceClient,
   TimerClient,
@@ -76,6 +78,28 @@ export const createLogsClient = /* @__PURE__ */ memoize(
       cloudwatchLogsClient: cloudwatchLogs(),
       serviceLogGroup: serviceLogGroup ?? env.serviceLogGroupName(),
     })
+);
+
+export const createLogAgent = /* @__PURE__ */ memoize(
+  ({
+    logsClient,
+    defaultLogLevel,
+  }: {
+    logsClient?: LogsClient;
+    defaultLogLevel?: LogLevel;
+  } = {}) => {
+    return new LogAgent({
+      logsClient: logsClient ?? createLogsClient(),
+      logLevel: {
+        default:
+          defaultLogLevel ??
+          (process.env[env.ENV_NAMES.DEFAULT_LOG_LEVEL] as
+            | LogLevel
+            | undefined) ??
+          "INFO",
+      },
+    });
+  }
 );
 
 export const createActivityRuntimeClient = /* @__PURE__ */ memoize(

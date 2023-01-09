@@ -17,6 +17,7 @@ import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
 import {
+  ActivityLogContext,
   LogAgent,
   LogContextType,
   RuntimeServiceClient,
@@ -24,7 +25,6 @@ import {
   TimerClient,
   TimerRequestType,
 } from "../index.js";
-import { Logger } from "../logger.js";
 import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
 import { Unit } from "../metrics/unit.js";
 import { timed } from "../metrics/utils.js";
@@ -38,7 +38,6 @@ export interface CreateActivityWorkerProps {
   workflowClient: WorkflowClient;
   timerClient: TimerClient;
   metricsClient: MetricsClient;
-  logger: Logger;
   eventClient: EventClient;
   activityProvider: ActivityProvider;
   serviceClient?: RuntimeServiceClient;
@@ -56,7 +55,7 @@ export interface ActivityWorkerRequest {
 export interface ActivityWorker {
   (
     request: ActivityWorkerRequest,
-    baseTime: Date,
+    baseTime?: Date,
     /**
      * Allows for a computed end time, for case like the test environment when the end time should be controlled.
      */
@@ -75,7 +74,6 @@ export function createActivityWorker({
   workflowClient,
   timerClient,
   metricsClient,
-  logger,
   activityProvider,
   serviceClient,
   logAgent,
@@ -89,13 +87,9 @@ export function createActivityWorker({
     (metrics) =>
       async (
         request: ActivityWorkerRequest,
-        baseTime: Date,
+        baseTime: Date = new Date(),
         getEndTime = () => new Date()
       ) => {
-        logger.addPersistentLogAttributes({
-          workflowName: request.workflowName,
-          executionId: request.executionId,
-        });
         const activityHandle = `${request.command.seq} for execution ${request.executionId} on retry ${request.retry}`;
         metrics.resetDimensions(false);
         metrics.setNamespace(MetricsCommon.EventualNamespace);
@@ -105,6 +99,12 @@ export function createActivityWorker({
         });
         // the time from the workflow emitting the activity scheduled command
         // to the request being seen.
+        const activityLogContext: ActivityLogContext = {
+          type: LogContextType.Activity,
+          activityName: request.command.name,
+          executionId: request.executionId,
+          seq: request.command.seq,
+        };
         const start = baseTime;
         const recordAge =
           start.getTime() - new Date(request.scheduledTime).getTime();
@@ -123,7 +123,7 @@ export function createActivityWorker({
           ))
         ) {
           metrics.putMetric(ActivityMetrics.ClaimRejected, 1, Unit.Count);
-          logger.info(`Activity ${activityHandle} already claimed.`);
+          console.info(`Activity ${activityHandle} already claimed.`);
           return;
         }
         if (request.command.heartbeatSeconds) {
@@ -146,7 +146,7 @@ export function createActivityWorker({
         });
         metrics.putMetric(ActivityMetrics.ClaimRejected, 0, Unit.Count);
 
-        logger.info(`Processing ${activityHandle}.`);
+        console.info(`Processing ${activityHandle}.`);
 
         const activity = activityProvider.getActivityHandler(
           request.command.name
@@ -161,12 +161,7 @@ export function createActivityWorker({
           }
 
           const result = await logAgent.logContextScope(
-            {
-              type: LogContextType.Activity,
-              activityName: request.command.name,
-              executionId: request.executionId,
-              seq: request.command.seq,
-            },
+            activityLogContext,
             async () => {
               return await timed(
                 metrics,
@@ -200,7 +195,9 @@ export function createActivityWorker({
             metrics.setProperty(ActivityMetrics.AsyncResult, 0);
           }
 
-          logger.info(
+          logAgent.logWithContext(
+            activityLogContext,
+            "INFO",
             `Activity ${activityHandle} succeeded, reporting back to execution.`
           );
 
@@ -223,7 +220,9 @@ export function createActivityWorker({
             ? [err.name, err.message]
             : ["Error", JSON.stringify(err)];
 
-          logger.info(
+          logAgent.logWithContext(
+            activityLogContext,
+            "DEBUG",
             `Activity ${activityHandle} failed, reporting failure back to execution: ${error}: ${message}`
           );
 

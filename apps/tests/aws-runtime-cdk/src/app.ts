@@ -29,7 +29,7 @@ const testService = new eventual.Service(stack, "testService", {
     TEST_QUEUE_URL: testQueue.queueUrl,
   },
   logging: {
-    logLevel: "INFO",
+    logLevel: "DEBUG",
   },
 });
 

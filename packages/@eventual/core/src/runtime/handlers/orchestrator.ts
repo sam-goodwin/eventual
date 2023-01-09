@@ -47,7 +47,6 @@ import {
 } from "../clients/index.js";
 import { CommandExecutor } from "../command-executor.js";
 import { isExecutionId, parseWorkflowName } from "../execution-id.js";
-import type { Logger } from "../logger.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
@@ -55,7 +54,7 @@ import { timed, timedSync } from "../metrics/utils.js";
 import { groupBy, promiseAllSettledPartitioned } from "../utils.js";
 import { extendsError } from "../../util.js";
 import { WorkflowTask } from "../../tasks.js";
-import { LogAgent, LogContextType } from "../log-agent.js";
+import { ExecutionLogContext, LogAgent, LogContextType } from "../log-agent.js";
 import { interpret } from "../../interpret.js";
 import { clearEventualCollector } from "../../global.js";
 import { DeterminismError } from "../../error.js";
@@ -70,7 +69,6 @@ export interface OrchestratorDependencies {
   workflowClient: WorkflowClient;
   metricsClient: MetricsClient;
   eventClient: EventClient;
-  logger: Logger;
   logAgent: LogAgent;
 }
 
@@ -98,7 +96,6 @@ export function createOrchestrator({
   workflowClient,
   metricsClient,
   eventClient,
-  logger,
   logAgent,
 }: OrchestratorDependencies): Orchestrator {
   const commandExecutor = new CommandExecutor({
@@ -121,7 +118,7 @@ export function createOrchestrator({
       ])
     );
 
-    logger.info(
+    console.info(
       "Found execution ids: " + Object.keys(eventsByExecutionId).join(", ")
     );
 
@@ -146,13 +143,13 @@ export function createOrchestrator({
       }
     );
 
-    logger.debug(
+    console.debug(
       "Executions succeeded: " +
         results.fulfilled.map(([[executionId]]) => executionId).join(",")
     );
 
     if (results.rejected.length > 0) {
-      logger.error(
+      console.error(
         "Executions failed: \n" +
           results.rejected
             .map(([[executionId], error]) => `${executionId}: ${error}`)
@@ -171,11 +168,14 @@ export function createOrchestrator({
     events: HistoryStateEvent[],
     baseTime: Date
   ) {
-    const executionLogger = logger.createChild({
-      persistentLogAttributes: { workflowName, executionId },
-    });
     const metrics = initializeMetrics();
     const start = baseTime;
+
+    const executionLogContext: ExecutionLogContext = {
+      type: LogContextType.Execution,
+      executionId,
+    };
+
     try {
       // load
       const history = await loadHistory();
@@ -205,7 +205,13 @@ export function createOrchestrator({
       // Only log these metrics once the orchestrator has completed successfully.
       logEventMetrics(metrics, events, start);
     } catch (err) {
-      executionLogger.error(inspect(err));
+      console.error(inspect(err));
+      logAgent.logWithContext(
+        { type: LogContextType.Execution, executionId },
+        "DEBUG",
+        "orchestrator error",
+        inspect(err)
+      );
       throw err;
     } finally {
       await metrics.flush();
@@ -307,10 +313,7 @@ export function createOrchestrator({
         };
 
         const { result, commands: newCommands } = logAgent.logContextScopeSync(
-          {
-            type: LogContextType.Execution,
-            executionId,
-          },
+          executionLogContext,
           () => {
             console.debug("history events", JSON.stringify(history));
             console.debug("task events", JSON.stringify(events));
@@ -341,8 +344,7 @@ export function createOrchestrator({
                 } catch (err) {
                   // temporary fix when the interpreter fails, but the activities are not cleared.
                   clearEventualCollector();
-                  console.error("workflow error");
-                  executionLogger.error(inspect(err));
+                  console.debug("workflow error", inspect(err));
                   throw err;
                 } finally {
                   // re-enable sending logs, any generated logs are new.
@@ -360,11 +362,16 @@ export function createOrchestrator({
 
         yield* allEvents;
 
-        executionLogger.debug(
+        logAgent.logWithContext(
+          executionLogContext,
+          "DEBUG",
           "Workflow terminated with: " + JSON.stringify(result)
         );
-
-        executionLogger.info(`Found ${newCommands.length} new commands.`);
+        logAgent.logWithContext(
+          executionLogContext,
+          "DEBUG",
+          `Found ${newCommands.length} new commands.`
+        );
 
         yield* await timed(
           metrics,
@@ -515,7 +522,7 @@ export function createOrchestrator({
     }
 
     async function loadHistory(): Promise<HistoryStateEvent[]> {
-      executionLogger.debug("Load history");
+      logAgent.logWithContext(executionLogContext, "DEBUG", "Load history");
       // load history
       const history = await timed(
         metrics,

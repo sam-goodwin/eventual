@@ -13,7 +13,6 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
-    "@aws-lambda-powertools/logger": "^1.4.1",
     "@aws-sdk/client-cloudwatch-logs": "^3.245.0",
     "@aws-sdk/client-dynamodb": "^3.245.0",
     "@aws-sdk/client-eventbridge": "^3.245.0",
@@ -23,7 +22,6 @@
     "@aws-sdk/client-sqs": "^3.245.0",
     "@eventual/core": "workspace:^",
     "@middy/core": "^3.6.2",
-    "@middy/error-logger": "^3.6.2",
     "aws-embedded-metrics": "^4.0.0",
     "aws-lambda": "^1.0.7",
     "node-fetch": "^2.6.7",

@@ -3,7 +3,7 @@ import type {
   ScheduleForwarderRequest,
   TimerClient,
 } from "../clients/timer-client.js";
-import { Logger } from "../logger.js";
+import { ExecutionLogContext, LogAgent, LogContextType } from "../log-agent.js";
 import {
   MetricsCommon,
   SchedulerForwarderMetrics,
@@ -15,7 +15,7 @@ import {
 export interface ScheduleForwarderDependencies {
   timerClient: TimerClient;
   metricsClient: MetricsClient;
-  logger: Logger;
+  logAgent: LogAgent;
 }
 
 /**
@@ -27,19 +27,21 @@ export interface ScheduleForwarderDependencies {
 export function createScheduleForwarder({
   timerClient,
   metricsClient,
-  logger,
+  logAgent,
 }: ScheduleForwarderDependencies) {
   return metricsClient.metricScope(
     (metrics) => async (event: ScheduleForwarderRequest) => {
       metrics.setNamespace(MetricsCommon.EventualNamespace);
 
-      const executionLogger = logger.createChild({
-        persistentLogAttributes: {
-          executionId: event.timerRequest.executionId,
-        },
-      });
+      // log on behalf of the execution.
+      const executionLogContext: ExecutionLogContext = {
+        type: LogContextType.Execution,
+        executionId: event.timerRequest.executionId,
+      };
 
-      executionLogger.debug(
+      logAgent.logWithContext(
+        executionLogContext,
+        "DEBUG",
         "Forwarding request to the timer queue: " +
           JSON.stringify(event.timerRequest)
       );
@@ -47,7 +49,9 @@ export function createScheduleForwarder({
       const schedulerTimeDelay =
         new Date().getTime() - new Date(event.forwardTime).getTime();
 
-      executionLogger.info(
+      logAgent.logWithContext(
+        executionLogContext,
+        "DEBUG",
         `Timer Time: ${event.untilTime}. Forwarded Time: ${event.forwardTime}. ${schedulerTimeDelay} Millisecond delay from scheduler.`
       );
 
@@ -66,7 +70,11 @@ export function createScheduleForwarder({
       );
 
       if (event.clearSchedule) {
-        executionLogger.debug("Deleting the schedule: " + event.scheduleName);
+        logAgent.logWithContext(
+          executionLogContext,
+          "DEBUG",
+          "Deleting the schedule: " + event.scheduleName
+        );
         await timerClient.clearSchedule(event.scheduleName);
       }
     }

@@ -2,21 +2,19 @@ import { SQSHandler } from "aws-lambda";
 import { promiseAllSettledPartitioned } from "../utils.js";
 import {
   createActivityRuntimeClient,
-  createLogsClient,
+  createLogAgent,
   createTimerClient,
   createWorkflowClient,
 } from "../clients/create.js";
 import { createTimerHandler, TimerRequest } from "@eventual/core";
-import { createLogger } from "@aws-lambda-powertools/logger";
 
 const handleTimer = createTimerHandler({
   workflowClient: createWorkflowClient({
     tableName: "NOT_NEEDED",
-    logsClient: createLogsClient({ serviceLogGroup: "NOT_NEEDED" }),
   }),
   activityRuntimeClient: createActivityRuntimeClient(),
   timerClient: createTimerClient(),
-  logger: createLogger(),
+  logAgent: createLogAgent(),
 });
 
 export const handle: SQSHandler = async (event) => {

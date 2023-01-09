@@ -44,7 +44,7 @@ const LOG_LEVELS = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"] as const;
 export type LogLevel = typeof LOG_LEVELS[number];
 
 export interface LogAgentProps {
-  logClient: LogsClient;
+  logsClient: LogsClient;
   logFormatter?: LogFormatter;
   getTime?: () => Date;
   /**
@@ -204,7 +204,7 @@ export class LogAgent {
       // TODO retry
       const results = await Promise.allSettled(
         Object.entries(executions).map(([execution, entries]) => {
-          return this.props.logClient.putExecutionLogs(
+          return this.props.logsClient.putExecutionLogs(
             execution,
             ...entries.map((e) => ({
               time: e.time,
