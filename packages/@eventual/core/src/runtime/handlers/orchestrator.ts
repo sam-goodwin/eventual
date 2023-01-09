@@ -18,6 +18,10 @@ import {
   WorkflowRunStarted,
   WorkflowTimedOut,
   filterEvents,
+  isHistoryStateEvent,
+  HistoryEvent,
+  WorkflowStarted,
+  isWorkflowCompletedEvent,
 } from "../../workflow-events.js";
 import {
   SucceededExecution,
@@ -52,7 +56,7 @@ import { groupBy, promiseAllSettledPartitioned } from "../utils.js";
 import { extendsError } from "../../util.js";
 import { WorkflowTask } from "../../tasks.js";
 import { LogAgent, LogContextType } from "../log-agent.js";
-import { interpret, WorkflowResult } from "../../interpret.js";
+import { interpret } from "../../interpret.js";
 import { clearEventualCollector } from "../../global.js";
 import { DeterminismError } from "../../error.js";
 
@@ -177,11 +181,17 @@ export function createOrchestrator({
       const history = await loadHistory();
 
       // execute
-      const { updatedHistoryEvents, newEvents, resultEvent } =
-        await executeWorkflow(history);
+      const {
+        updatedHistoryEvents,
+        newEvents,
+        resultEvent,
+        executionCompletedDuringRun,
+      } = await executeWorkflow(history);
 
       // persist
-      await persistWorkflowResult(resultEvent);
+      if (executionCompletedDuringRun && resultEvent) {
+        await persistWorkflowResult(resultEvent);
+      }
       const logFlush = timed(
         metrics,
         OrchestratorMetrics.ExecutionLogWriteDuration,
@@ -217,7 +227,15 @@ export function createOrchestrator({
         Unit.Milliseconds
       );
 
-      return partitionExecutionResults(history, executeWorkflowGenerator());
+      let executionCompletedDuringRun = false;
+
+      return {
+        ...(await partitionExecutionResults(
+          history,
+          executeWorkflowGenerator()
+        )),
+        executionCompletedDuringRun,
+      };
 
       async function* executeWorkflowGenerator() {
         yield createEvent<WorkflowRunStarted>(
@@ -240,13 +258,19 @@ export function createOrchestrator({
           return;
         }
 
-        const startEvent = history.find(isWorkflowStarted);
+        const {
+          isStartRun,
+          interpretEvents,
+          startEvent,
+          syntheticEvents,
+          completedEvent,
+          allEvents,
+        } = processEvents(history, events);
 
         /**
-         * Check to see if this is the first run of the workflow (or all others have failed).
-         * If so, check to see if the workflow has timeout to start.
+         * I*f this is the first run check to see if the workflow has timeout to start.
          */
-        if (!startEvent) {
+        if (!isStartRun) {
           const newWorkflowStart = events.find(isWorkflowStarted);
 
           if (newWorkflowStart?.timeoutTime) {
@@ -271,24 +295,70 @@ export function createOrchestrator({
           }
         }
 
-        const {
-          result,
-          commands: newCommands,
-          history: updatedHistoryEvents,
-        } = logAgent.logContextScopeSync(
+        const context: Context = {
+          workflow: {
+            name: workflow.workflowName,
+          },
+          execution: {
+            ...startEvent.context,
+            id: executionId,
+            startTime: startEvent.timestamp,
+          },
+        };
+
+        const { result, commands: newCommands } = logAgent.logContextScopeSync(
           {
             type: LogContextType.Execution,
             executionId,
           },
-          () => progressWorkflow(workflow, history, events)
+          () => {
+            console.debug("history events", JSON.stringify(history));
+            console.debug("task events", JSON.stringify(events));
+            console.debug("synthetic events", JSON.stringify(syntheticEvents));
+            console.debug("interpret events", JSON.stringify(interpretEvents));
+
+            // flush any logs generated to this point
+            const logCheckpoint = logAgent.getCheckpoint();
+
+            // buffer logs until interpret is complete - don't want to send logs we might clear
+            logAgent.disableSendingLogs();
+
+            return timedSync(
+              metrics,
+              OrchestratorMetrics.AdvanceExecutionDuration,
+              () => {
+                try {
+                  return interpret(
+                    runWorkflowDefinition(workflow, startEvent.input, context),
+                    interpretEvents,
+                    {
+                      // when an event is matched, that means all the work to this point has been completed, clear the logs collected.
+                      // this implements "exactly once" logs with the workflow semantics.
+                      historicalEventMatched: () =>
+                        logAgent.clearLogs(logCheckpoint),
+                    }
+                  );
+                } catch (err) {
+                  // temporary fix when the interpreter fails, but the activities are not cleared.
+                  clearEventualCollector();
+                  console.error("workflow error");
+                  executionLogger.error(inspect(err));
+                  throw err;
+                } finally {
+                  // re-enable sending logs, any generated logs are new.
+                  logAgent.enableSendingLogs();
+                }
+              }
+            );
+          }
         );
 
         metrics.setProperty(
           OrchestratorMetrics.AdvanceExecutionEvents,
-          updatedHistoryEvents.length
+          allEvents.length
         );
 
-        yield* updatedHistoryEvents;
+        yield* allEvents;
 
         executionLogger.debug(
           "Workflow terminated with: " + JSON.stringify(result)
@@ -324,7 +394,7 @@ export function createOrchestrator({
           start
         );
 
-        if (isResult(result)) {
+        if (!completedEvent && isResult(result)) {
           if (isFailed(result)) {
             const [error, message] = extendsError(result.error)
               ? [result.error.name, result.error.message]
@@ -337,6 +407,7 @@ export function createOrchestrator({
               },
               start
             );
+            executionCompletedDuringRun = true;
           } else if (isResolved<any>(result)) {
             yield createEvent<WorkflowSucceeded>(
               {
@@ -345,20 +416,24 @@ export function createOrchestrator({
               },
               start
             );
+            executionCompletedDuringRun = true;
           }
         }
 
         return result;
       }
 
-      /**
-       * Advance a workflow using previous history, new events, and a program.
-       */
-      function progressWorkflow(
-        workflow: Workflow,
+      function processEvents(
         historyEvents: HistoryStateEvent[],
         taskEvents: HistoryStateEvent[]
-      ): ProgressWorkflowResult {
+      ): {
+        syntheticEvents: HistoryStateEvent[];
+        interpretEvents: HistoryEvent[];
+        allEvents: HistoryStateEvent[];
+        startEvent: WorkflowStarted;
+        completedEvent?: WorkflowSucceeded | WorkflowFailed;
+        isStartRun: boolean;
+      } {
         // historical events and incoming events will be fed into the workflow to resume/progress state
         const uniqueTaskEvents = filterEvents<HistoryStateEvent>(
           historyEvents,
@@ -372,7 +447,9 @@ export function createOrchestrator({
 
         const allEvents = [...inputEvents, ...syntheticEvents];
 
-        const startEvent = inputEvents.find(isWorkflowStarted);
+        const historicalStartEvent = historyEvents.find(isWorkflowStarted);
+        const startEvent =
+          historicalStartEvent ?? uniqueTaskEvents.find(isWorkflowStarted);
 
         if (!startEvent) {
           throw new DeterminismError(
@@ -380,61 +457,14 @@ export function createOrchestrator({
           );
         }
 
-        const context: Context = {
-          workflow: {
-            name: workflow.workflowName,
-          },
-          execution: {
-            ...startEvent.context,
-            id: executionId,
-            startTime: startEvent.timestamp,
-          },
+        return {
+          interpretEvents: allEvents.filter(isHistoryEvent),
+          startEvent,
+          isStartRun: !!historicalStartEvent,
+          completedEvent: allEvents.find(isWorkflowCompletedEvent),
+          syntheticEvents,
+          allEvents,
         };
-
-        // execute workflow
-        const interpretEvents = allEvents.filter(isHistoryEvent);
-
-        console.debug("history events", JSON.stringify(historyEvents));
-        console.debug("task events", JSON.stringify(taskEvents));
-        console.debug("synthetic events", JSON.stringify(syntheticEvents));
-        console.debug("interpret events", JSON.stringify(interpretEvents));
-
-        // flush any logs generated to this point
-        const logCheckpoint = logAgent.getCheckpoint();
-
-        // buffer logs until interpret is complete - don't want to send logs we might clear
-        logAgent.disableSendingLogs();
-
-        return timedSync(
-          metrics,
-          OrchestratorMetrics.AdvanceExecutionDuration,
-          () => {
-            try {
-              return {
-                ...interpret(
-                  runWorkflowDefinition(workflow, startEvent.input, context),
-                  interpretEvents,
-                  {
-                    // when an event is matched, that means all the work to this point has been completed, clear the logs collected.
-                    // this implements "exactly once" logs with the workflow semantics.
-                    historicalEventMatched: () =>
-                      logAgent.clearLogs(logCheckpoint),
-                  }
-                ),
-                history: allEvents,
-              };
-            } catch (err) {
-              // temporary fix when the interpreter fails, but the activities are not cleared.
-              clearEventualCollector();
-              console.error("workflow error");
-              executionLogger.error(inspect(err));
-              throw err;
-            } finally {
-              // re-enable sending logs, any generated logs are new.
-              logAgent.enableSendingLogs();
-            }
-          }
-        );
       }
 
       /**
@@ -467,11 +497,11 @@ export function createOrchestrator({
             newWorkflowEvents.push(event);
             seenEvents.add(id);
           }
-          if (isWorkflowSucceeded(event) || isWorkflowFailed(event)) {
+          if (isWorkflowCompletedEvent(event)) {
             resultEvent = event;
           }
           // updatedHistoryEvents are all HistoryEvents old and new.
-          if (isWorkflowStarted(event) || isHistoryEvent(event)) {
+          if (isHistoryStateEvent(event)) {
             updatedHistoryEvents.push(event);
           }
         }
@@ -553,50 +583,48 @@ export function createOrchestrator({
     }
 
     async function persistWorkflowResult(
-      resultEvent?: WorkflowSucceeded | WorkflowFailed
+      resultEvent: WorkflowSucceeded | WorkflowFailed
     ) {
       // if the workflow is complete, add success and failure to the commands.
-      if (resultEvent) {
-        if (isWorkflowFailed(resultEvent)) {
-          const execution = await timed(
-            metrics,
-            OrchestratorMetrics.ExecutionStatusUpdateDuration,
-            () =>
-              workflowRuntimeClient.failExecution({
-                executionId,
-                error: resultEvent.error,
-                message: resultEvent.message,
-              })
-          );
+      if (isWorkflowFailed(resultEvent)) {
+        const execution = await timed(
+          metrics,
+          OrchestratorMetrics.ExecutionStatusUpdateDuration,
+          () =>
+            workflowRuntimeClient.failExecution({
+              executionId,
+              error: resultEvent.error,
+              message: resultEvent.message,
+            })
+        );
 
-          logAgent.logWithContext(
-            { executionId, type: LogContextType.Execution },
-            "INFO",
-            "Workflow Failed",
-            `${resultEvent.error}: ${resultEvent.message}`
-          );
+        logAgent.logWithContext(
+          { executionId, type: LogContextType.Execution },
+          "INFO",
+          "Workflow Failed",
+          `${resultEvent.error}: ${resultEvent.message}`
+        );
 
-          logExecutionCompleteMetrics(execution);
-        } else if (isWorkflowSucceeded(resultEvent)) {
-          const execution = await timed(
-            metrics,
-            OrchestratorMetrics.ExecutionStatusUpdateDuration,
-            () =>
-              workflowRuntimeClient.succeedExecution({
-                executionId,
-                result: resultEvent.output,
-              })
-          );
+        logExecutionCompleteMetrics(execution);
+      } else if (isWorkflowSucceeded(resultEvent)) {
+        const execution = await timed(
+          metrics,
+          OrchestratorMetrics.ExecutionStatusUpdateDuration,
+          () =>
+            workflowRuntimeClient.succeedExecution({
+              executionId,
+              result: resultEvent.output,
+            })
+        );
 
-          logAgent.logWithContext(
-            { executionId, type: LogContextType.Execution },
-            "INFO",
-            "Workflow Succeeded",
-            resultEvent.output
-          );
+        logAgent.logWithContext(
+          { executionId, type: LogContextType.Execution },
+          "INFO",
+          "Workflow Succeeded",
+          resultEvent.output
+        );
 
-          logExecutionCompleteMetrics(execution);
-        }
+        logExecutionCompleteMetrics(execution);
       }
     }
 
@@ -684,7 +712,4 @@ function logEventMetrics(
       sleepCompletedVariance.length;
     metrics.setProperty(OrchestratorMetrics.SleepVarianceMillis, avg);
   }
-}
-interface ProgressWorkflowResult extends WorkflowResult {
-  history: HistoryStateEvent[];
 }
