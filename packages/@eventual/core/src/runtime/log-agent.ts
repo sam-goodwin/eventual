@@ -44,6 +44,12 @@ export interface LogAgentProps {
   logClient: LogsClient;
   logFormatter?: LogFormatter;
   getTime?: () => Date;
+  /**
+   * When false, logs are buffered.
+   *
+   * @default true
+   */
+  sendingLogsEnabled?: boolean;
 }
 
 export class LogAgent {
@@ -58,15 +64,38 @@ export class LogAgent {
   private readonly logFormatter: LogFormatter;
   private readonly getTime: () => Date;
   public logsSeenCount = 0;
+  private sendingLogsEnabled: boolean;
 
   constructor(private props: LogAgentProps) {
+    this.sendingLogsEnabled = props.sendingLogsEnabled ?? true;
     this.logFormatter = props.logFormatter ?? new DefaultLogFormatter();
     this.getTime = props.getTime ?? (() => new Date());
   }
 
-  public clear() {
+  /**
+   * Enable the sending of logs (based on configuration or flush).
+   */
+  public enableSendingLogs() {
+    this.sendingLogsEnabled = true;
+  }
+
+  /**
+   * Disable the sending of logs (based on configuration or flush).
+   */
+  public disableSendingLogs() {
+    this.sendingLogsEnabled = false;
+  }
+
+  public clearContext() {
     this.contextStack = [];
     restoreConsole();
+  }
+
+  /**
+   * Clear all buffered logs.
+   */
+  public clearLogs() {
+    this.logs.splice(0);
   }
 
   public pushContext(context: LogContext) {
@@ -120,36 +149,38 @@ export class LogAgent {
   }
 
   public async flush() {
-    const logsToSend = this.logs.splice(0);
+    if (this.sendingLogsEnabled) {
+      const logsToSend = this.logs.splice(0);
 
-    const executions = groupBy(logsToSend, (l) => l.context.executionId);
+      const executions = groupBy(logsToSend, (l) => l.context.executionId);
 
-    console.log(
-      `Sending ${logsToSend.length} logs for ${
-        Object.keys(executions).length
-      } executions`
-    );
+      console.log(
+        `Sending ${logsToSend.length} logs for ${
+          Object.keys(executions).length
+        } executions`
+      );
 
-    // TODO retry
-    const results = await Promise.allSettled(
-      Object.entries(executions).map(([execution, entries]) => {
-        return this.props.logClient.putExecutionLogs(
-          execution,
-          ...entries.map((e) => ({
-            time: e.time,
-            message: this.logFormatter.format(
-              e.context,
-              e.level,
-              e.data,
-              e.time
-            ),
-          }))
-        );
-      })
-    );
+      // TODO retry
+      const results = await Promise.allSettled(
+        Object.entries(executions).map(([execution, entries]) => {
+          return this.props.logClient.putExecutionLogs(
+            execution,
+            ...entries.map((e) => ({
+              time: e.time,
+              message: this.logFormatter.format(
+                e.context,
+                e.level,
+                e.data,
+                e.time
+              ),
+            }))
+          );
+        })
+      );
 
-    if (results.some((r) => r.status === "rejected")) {
-      throw new Error("Logs failed to send");
+      if (results.some((r) => r.status === "rejected")) {
+        throw new Error("Logs failed to send");
+      }
     }
   }
 

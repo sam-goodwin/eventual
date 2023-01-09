@@ -182,6 +182,7 @@ export class AWSWorkflowClient extends WorkflowClient {
           "#pk": "pk",
           ...(request?.statuses ? { "#status": "status" } : undefined),
         },
+        ConsistentRead: true,
       }
     );
 

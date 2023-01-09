@@ -126,10 +126,6 @@ export class Service extends Construct implements IGrantable {
         name: ServiceType.EventHandler,
         entry: runtimeHandlersEntrypoint("event-handler"),
         serviceType: ServiceType.EventHandler,
-      },
-      {
-        name: "service-logger",
-        entry: path.join(runtimeEntrypoint(), "layers/service-logger/index.js"),
       }
     );
 

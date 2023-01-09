@@ -78,6 +78,7 @@ export class AWSExecutionHistoryClient extends ExecutionHistoryClient {
           ":pk": { S: EventRecord.PARTITION_KEY },
           ":sk": { S: EventRecord.sortKey(request.executionId, "") },
         },
+        ConsistentRead: true,
       }
     );
     const events = output.records.map(({ event, time }) => ({

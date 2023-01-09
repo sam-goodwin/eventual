@@ -37,6 +37,7 @@ import {
   isActivityTimedOut,
   isActivityHeartbeatTimedOut,
   isEventsPublished,
+  WorkflowEvent,
 } from "./workflow-events.js";
 import {
   Result,
@@ -83,12 +84,22 @@ export interface WorkflowResult<T = any> {
 
 export type Program<Return = any> = Generator<Eventual, Return, any>;
 
+export interface InterpretProps {
+  /**
+   * Callback called when a returned call matches an input event.
+   *
+   * This call will be ignored.
+   */
+  historicalEventMatched?: (event: WorkflowEvent, call: CommandCall) => void;
+}
+
 /**
  * Interprets a workflow program
  */
 export function interpret<Return>(
   program: Program<Return>,
-  history: HistoryEvent[]
+  history: HistoryEvent[],
+  props?: InterpretProps
 ): WorkflowResult<Awaited<Return>> {
   const callTable: Record<number, CommandCall> = {};
   /**
@@ -155,6 +166,8 @@ export function interpret<Return>(
       while (newCalls.hasNext() && emittedEvents.hasNext()) {
         const call = newCalls.next()!;
         const event = emittedEvents.next()!;
+
+        props?.historicalEventMatched?.(event, call);
 
         if (!isCorresponding(event, call)) {
           throw new DeterminismError(
