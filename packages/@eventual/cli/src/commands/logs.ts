@@ -2,7 +2,6 @@ import * as cwLogs from "@aws-sdk/client-cloudwatch-logs";
 import ora, { Ora } from "ora";
 import { Argv } from "yargs";
 import chalk from "chalk";
-import { FilteredLogEvent } from "@aws-sdk/client-cloudwatch-logs";
 import { getServiceData, tryResolveDefaultService } from "../service-data.js";
 import { setServiceOptions } from "../service-action.js";
 import { assumeCliRole } from "../role.js";
@@ -25,13 +24,18 @@ export const logs = (yargs: Argv) =>
           alias: "w",
           describe: "Workflow name",
           type: "string",
-          conflicts: "execution",
+          conflicts: ["execution", "all"],
         })
         .option("execution", {
           alias: "e",
           describe: "Execution id",
           type: "string",
-          conflicts: "workflow",
+          conflicts: ["workflow", "all"],
+        })
+        .option("all", {
+          describe: "Get all workflow logs for the service",
+          type: "boolean",
+          conflicts: ["workflow", "execution"],
         })
         .option("since", {
           describe:
@@ -43,6 +47,14 @@ export const logs = (yargs: Argv) =>
           describe: "Watch logs indefinitely",
           default: false,
           type: "boolean",
+        })
+        .check((args) => {
+          if (!(args.all || args.execution || args.workflow)) {
+            throw new Error(
+              "One of: all, execution, or workflow must be provided"
+            );
+          }
+          return true;
         }),
     async ({
       service: _service,
@@ -61,40 +73,40 @@ export const logs = (yargs: Argv) =>
         );
       }
       const credentials = await assumeCliRole(service, region);
-      const { functions } = await getServiceData(credentials, service, region);
+      const { logGroupName } = await getServiceData(
+        credentials,
+        service,
+        region
+      );
       const cloudwatchLogsClient = new cwLogs.CloudWatchLogsClient({});
-      let nextInputs: FunctionLogInput[] = [
-        {
-          functionName: functions.orchestrator,
-          friendlyName: "orchestrator",
-          workflow,
-          execution,
-          startTime,
-        },
-        {
-          functionName: functions.activityWorker,
-          friendlyName: "activityWorker",
-          workflow,
-          execution,
-          startTime,
-        },
-      ];
+
+      const logFilter: LogFilter = {
+        executionId: execution,
+        workflowName: workflow,
+      };
+
+      let logCursor: LogCursor = {
+        startTime,
+      };
 
       do {
-        const functionEvents = await fetchLogs(
+        const fetchResult = await fetchLogs(
           spinner,
           cloudwatchLogsClient,
-          nextInputs
+          logGroupName,
+          logFilter,
+          logCursor
         );
-        nextInputs = getFollowingFunctionLogInputs(functionEvents, follow);
+        logCursor = updateLogCursor(logCursor, fetchResult, follow);
+
         if (follow) {
           spinner.start("Watching logs");
           await sleep(1000);
-        } else if (nextInputs.length) {
+        } else if (logCursor.nextToken) {
           spinner.start("Loading more");
         }
         // eslint-disable-next-line no-unmodified-loop-condition
-      } while (follow || nextInputs.length);
+      } while (follow || logCursor.nextToken);
       spinner.stop();
     }
   );
@@ -105,72 +117,62 @@ function sleep(ms: number): Promise<void> {
   });
 }
 
+interface GetLogResult {
+  nextToken?: string;
+  latestEvent?: number;
+}
+
 async function fetchLogs(
   spinner: Ora,
   cloudwatchLogsClient: cwLogs.CloudWatchLogsClient,
-  functions: FunctionLogInput[]
-): Promise<FunctionLogEvents[]> {
-  // Get a batch of logs for each of our runctions
-  const functionEvents = await Promise.all(
-    functions.map(async (fn) => ({
-      fn,
-      ...(await getLogs(cloudwatchLogsClient, fn)),
-    }))
+  logGroupName: string,
+  logFilter: LogFilter,
+  logCursor: LogCursor
+): Promise<GetLogResult> {
+  const output = await cloudwatchLogsClient.send(
+    new cwLogs.FilterLogEventsCommand({
+      logGroupName,
+      ...(logFilter.workflowName
+        ? { logStreamNamePrefix: logFilter.workflowName }
+        : {}),
+      ...(logFilter.executionId
+        ? { logStreamNames: [logFilter.executionId] }
+        : {}),
+      startTime: logCursor.startTime,
+      nextToken: logCursor.nextToken,
+    })
   );
-  // Interleave the logs by timestamp
-  const interleavedEvents = getInterleavedLogEvents(functionEvents);
+
+  const functionEvents = output.events ?? [];
+
   // Print out the interleaved logs
-  if (interleavedEvents.length) {
+  if (functionEvents.length) {
     spinner.stop();
-    interleavedEvents.forEach(({ source, ev }) => {
+    functionEvents.forEach((ev) => {
       console.log(
-        `[${chalk.blue(source)}] ${chalk.red(
-          new Date(ev.timestamp!).toLocaleString()
-        )} ${extractMessage(ev)}`
+        `${
+          logFilter.executionId ? "" : `[${chalk.blue(ev.logStreamName)}] `
+        }${chalk.red(new Date(ev.timestamp!).toLocaleString())} ${ev.message}`
       );
     });
   }
-  return functionEvents;
+
+  return {
+    latestEvent: Math.max(
+      ...functionEvents.map((e) => e.timestamp).filter((t): t is number => !!t)
+    ),
+    nextToken: output.nextToken,
+  };
 }
 
-export interface FunctionLogInput {
-  functionName: string;
-  friendlyName: string;
+interface LogFilter {
+  executionId?: string;
+  workflowName?: string;
+}
+
+interface LogCursor {
   startTime?: number;
-  workflow?: string;
-  execution?: string;
   nextToken?: string;
-}
-
-export interface FunctionLogEvents {
-  fn: FunctionLogInput;
-  events: FilteredLogEvent[];
-  nextToken?: string;
-}
-
-export interface LogEvent {
-  source: string;
-  ev: cwLogs.FilteredLogEvent;
-}
-
-/**
- * Get events from a list of function specs and interleave the results by timestamp
- * @param functions List of FunctionLogData describing functions to log
- * @param logs logs from associated functions
- * @returns Event log
- */
-export function getInterleavedLogEvents(
-  fnEvents: FunctionLogEvents[]
-): LogEvent[] {
-  const interleaved = fnEvents.flatMap(({ fn, events }) =>
-    events.map((ev) => ({
-      source: fn.friendlyName,
-      ev,
-    }))
-  );
-  // -1 is optimal placeholder for no timestamp, as we can safely assume cloudwatch will never send a timestamp < 0, and Number.MIN_VALUE will wrap around on subtraction
-  interleaved.sort((a, b) => (a.ev.timestamp ?? -1) - (b.ev.timestamp ?? -1));
-  return interleaved;
 }
 
 /**
@@ -180,54 +182,22 @@ export function getInterleavedLogEvents(
  * @param functions List of FunctionLogEvents describing functions to log and existing retrieved events
  * @returns Event log
  */
-export function getFollowingFunctionLogInputs(
-  fnEvents: FunctionLogEvents[],
+export function updateLogCursor(
+  logFilter: LogCursor,
+  getLogResult: GetLogResult,
   follow: boolean
-): FunctionLogInput[] {
+): LogCursor {
   if (follow) {
-    return fnEvents.map(({ fn, events, nextToken }) => {
-      // Its important to increment the start time even if we're just using next token, since once there's no more next token's,
-      // we're going to rely on the latest start time value
-      const latestEvent = (
-        events.length > 0 ? events[events.length - 1] : undefined
-      )?.timestamp;
-      const startTime = latestEvent ? latestEvent + 1 : fn.startTime;
-      if (nextToken) {
-        return { ...fn, startTime, nextToken };
-      } else {
-        return {
-          ...fn,
-          nextToken: undefined,
-          startTime,
-        };
-      }
-    });
+    return {
+      startTime: getLogResult.latestEvent
+        ? getLogResult.latestEvent + 1
+        : logFilter.startTime,
+      nextToken: getLogResult.nextToken,
+    };
   } else {
-    return fnEvents.flatMap(({ fn, nextToken }) =>
-      nextToken != null && fn.nextToken !== nextToken
-        ? [{ ...fn, nextToken }]
-        : []
-    );
-  }
-}
-
-/**
- * Attempt to return a JSON-encoded message that was encoded using powertools logger
- * If that fails, we just return the raw message
- * @param ev Event to log
- * @returns Decoded message
- */
-export function extractMessage(
-  ev: cwLogs.FilteredLogEvent
-): string | undefined {
-  if (ev.message) {
-    try {
-      return JSON.parse(ev.message).message;
-    } catch (e) {
-      return ev.message;
-    }
-  } else {
-    return undefined;
+    return {
+      nextToken: getLogResult.nextToken,
+    };
   }
 }
 
@@ -254,39 +224,5 @@ export function getStartTime(
         "Value provided for since is invalid. Must be a milliseconds timestamp or ISO8601"
       );
     }
-  }
-}
-
-/**
- * Return all logs for a given FunctionLogInput. Will recurse until all logs are gathered
- * @param client Cloudwatch logs client to use
- * @param fn Function log input object describing logs to retrieve
- * @returns
- */
-export async function getLogs(
-  client: cwLogs.CloudWatchLogsClient,
-  fn: FunctionLogInput
-): Promise<{ events: cwLogs.FilteredLogEvent[]; nextToken?: string }> {
-  const output = await client.send(
-    new cwLogs.FilterLogEventsCommand({
-      logGroupName: `/aws/lambda/${fn.functionName}`,
-      filterPattern: filterPattern(fn),
-      startTime: fn.startTime,
-      nextToken: fn.nextToken,
-    })
-  );
-  return { events: output.events ?? [], nextToken: output.nextToken };
-}
-
-function filterPattern({
-  workflow,
-  execution,
-}: FunctionLogInput): string | undefined {
-  if (workflow) {
-    return `{ $.workflowName = "${workflow}" }`;
-  } else if (execution) {
-    return `{ $.executionId = "${execution}" }`;
-  } else {
-    return undefined;
   }
 }

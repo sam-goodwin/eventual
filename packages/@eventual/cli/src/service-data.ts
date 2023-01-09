@@ -15,10 +15,7 @@ import { styledConsole } from "./styled-console.js";
 export interface ServiceData {
   apiEndpoint: string;
   eventBusArn: string;
-  functions: {
-    orchestrator: string;
-    activityWorker: string;
-  };
+  logGroupName: string;
 }
 
 /**

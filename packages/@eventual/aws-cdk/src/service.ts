@@ -230,10 +230,7 @@ export class Service extends Construct implements IGrantable {
       stringValue: JSON.stringify({
         apiEndpoint: this.api.gateway.apiEndpoint,
         eventBusArn: this.events.bus.eventBusArn,
-        functions: {
-          orchestrator: this.workflows.orchestrator.functionName,
-          activityWorker: this.activities.worker.functionName,
-        },
+        logGroupName: this.logging.logGroup.logGroupName,
       }),
     });
 
