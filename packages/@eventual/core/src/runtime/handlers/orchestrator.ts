@@ -51,7 +51,7 @@ import { timed, timedSync } from "../metrics/utils.js";
 import { groupBy, promiseAllSettledPartitioned } from "../utils.js";
 import { extendsError } from "../../util.js";
 import { WorkflowTask } from "../../tasks.js";
-import { ExecutionLogContext, LogAgent, LogContextType } from "../log-agent.js";
+import { LogAgent, LogContextType } from "../log-agent.js";
 import { interpret, WorkflowResult } from "../../interpret.js";
 import { clearEventualCollector } from "../../global.js";
 import { DeterminismError } from "../../error.js";
@@ -275,7 +275,13 @@ export function createOrchestrator({
           result,
           commands: newCommands,
           history: updatedHistoryEvents,
-        } = await progressWorkflow(workflow, history, events);
+        } = logAgent.logContextScope(
+          {
+            type: LogContextType.Execution,
+            executionId,
+          },
+          () => progressWorkflow(workflow, history, events)
+        );
 
         metrics.setProperty(
           OrchestratorMetrics.AdvanceExecutionEvents,
@@ -348,11 +354,11 @@ export function createOrchestrator({
       /**
        * Advance a workflow using previous history, new events, and a program.
        */
-      async function progressWorkflow(
+      function progressWorkflow(
         workflow: Workflow,
         historyEvents: HistoryStateEvent[],
         taskEvents: HistoryStateEvent[]
-      ): Promise<ProgressWorkflowResult> {
+      ): ProgressWorkflowResult {
         // historical events and incoming events will be fed into the workflow to resume/progress state
         const uniqueTaskEvents = filterEvents<HistoryStateEvent>(
           historyEvents,
@@ -388,74 +394,47 @@ export function createOrchestrator({
         // execute workflow
         const interpretEvents = allEvents.filter(isHistoryEvent);
 
-        const logContext: ExecutionLogContext = {
-          type: LogContextType.Execution,
-          executionId,
-        };
-
-        logAgent.logWithContext(
-          logContext,
-          "DEBUG",
-          "history events",
-          JSON.stringify(historyEvents)
-        );
-        logAgent.logWithContext(
-          logContext,
-          "DEBUG",
-          "task events",
-          JSON.stringify(taskEvents)
-        );
-        logAgent.logWithContext(
-          logContext,
-          "DEBUG",
-          "synthetic events",
-          JSON.stringify(syntheticEvents)
-        );
-        logAgent.logWithContext(
-          logContext,
-          "DEBUG",
-          "interpret events",
-          JSON.stringify(interpretEvents)
-        );
+        console.debug("history events", JSON.stringify(historyEvents));
+        console.debug("task events", JSON.stringify(taskEvents));
+        console.debug("synthetic events", JSON.stringify(syntheticEvents));
+        console.debug("interpret events", JSON.stringify(interpretEvents));
 
         // flush any logs generated to this point
-        await logAgent.flush();
+        const logCheckpoint = logAgent.getCheckpoint();
 
-        // buffer logs until interpret is complete
+        // buffer logs until interpret is complete - don't want to send logs we might clear
         logAgent.disableSendingLogs();
 
-        const result = logAgent.logContextScope(logContext, () =>
-          timedSync(
-            metrics,
-            OrchestratorMetrics.AdvanceExecutionDuration,
-            () => {
-              try {
-                return {
-                  ...interpret(
-                    runWorkflowDefinition(workflow, startEvent.input, context),
-                    interpretEvents,
-                    {
-                      // when an event is matched, that means all the work to this point has been completed, clear the logs collected.
-                      historicalEventMatched: () => logAgent.clearLogs(),
-                    }
-                  ),
-                  history: allEvents,
-                };
-              } catch (err) {
-                // temporary fix when the interpreter fails, but the activities are not cleared.
-                clearEventualCollector();
-                console.error("workflow error");
-                executionLogger.error(inspect(err));
-                throw err;
-              }
+        return timedSync(
+          metrics,
+          OrchestratorMetrics.AdvanceExecutionDuration,
+          () => {
+            try {
+              return {
+                ...interpret(
+                  runWorkflowDefinition(workflow, startEvent.input, context),
+                  interpretEvents,
+                  {
+                    // when an event is matched, that means all the work to this point has been completed, clear the logs collected.
+                    // this implements "exactly once" logs with the workflow semantics.
+                    historicalEventMatched: () =>
+                      logAgent.clearLogs(logCheckpoint),
+                  }
+                ),
+                history: allEvents,
+              };
+            } catch (err) {
+              // temporary fix when the interpreter fails, but the activities are not cleared.
+              clearEventualCollector();
+              console.error("workflow error");
+              executionLogger.error(inspect(err));
+              throw err;
+            } finally {
+              // re-enable sending logs, any generated logs are new.
+              logAgent.enableSendingLogs();
             }
-          )
+          }
         );
-
-        // re-enable sending logs, any generated logs are new.
-        logAgent.enableSendingLogs();
-
-        return result;
       }
 
       /**

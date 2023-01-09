@@ -52,6 +52,17 @@ export interface LogAgentProps {
   sendingLogsEnabled?: boolean;
 }
 
+export interface Checkpoint {
+  lastLogEntry?: LogEntry;
+}
+
+interface LogEntry {
+  context: LogContext;
+  level: LogLevel;
+  data: any[];
+  time: number;
+}
+
 export class LogAgent {
   private contextStack: LogContext[] = [];
   private readonly logs: {
@@ -93,9 +104,25 @@ export class LogAgent {
 
   /**
    * Clear all buffered logs.
+   *
+   * @param checkpoint - if provided, clears log up to and not including the checkpoint position.
    */
-  public clearLogs() {
-    this.logs.splice(0);
+  public clearLogs(checkpoint?: Checkpoint) {
+    const clearIndex = checkpoint?.lastLogEntry
+      ? this.logs.findIndex((l) => l === checkpoint.lastLogEntry) ?? 0
+      : 0;
+
+    this.logs.splice(clearIndex + 1);
+  }
+
+  /**
+   * Retrieve a pointer to the newest log item. Used to clear only to this point.
+   */
+  public getCheckpoint(): Checkpoint {
+    return {
+      lastLogEntry:
+        this.logs.length > 0 ? this.logs[this.logs.length - 1] : undefined,
+    };
   }
 
   public pushContext(context: LogContext) {
