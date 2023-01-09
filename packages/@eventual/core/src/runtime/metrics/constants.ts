@@ -106,7 +106,7 @@ export namespace OrchestratorMetrics {
   /**
    * Number of milliseconds it takes to send execution logs to where ever they are persisted.
    */
-  export const ExecutionLogWriteTime = "ExecutionLogWriteMillis";
+  export const ExecutionLogWriteDuration = "ExecutionLogWriteMillis";
   /**
    * 1 when a workflow has a timeout and 0 when it does not.
    */
@@ -167,6 +167,10 @@ export namespace ActivityMetrics {
    * amount of time it took to submit a workflow task to SQS to resume the workflow.
    */
   export const SubmitWorkflowTaskDuration = "SubmitWorkflowTaskDuration";
+  /**
+   * Number of milliseconds it takes to send execution logs to where ever they are persisted.
+   */
+  export const ActivityLogWriteDuration = "ActivityLogWriteMillis";
 }
 
 export namespace SchedulerForwarderMetrics {

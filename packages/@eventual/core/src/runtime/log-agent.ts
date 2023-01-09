@@ -228,7 +228,22 @@ export class LogAgent {
   /**
    * Sets the log context for the duration of the provided handler.
    */
-  public logContextScope<T>(context: LogContext, scopeHandler: () => T): T {
+  public async logContextScope<T>(
+    context: LogContext,
+    scopeHandler: () => T
+  ): Promise<T> {
+    try {
+      this.pushContext(context);
+      return await scopeHandler();
+    } finally {
+      this.popContext();
+    }
+  }
+
+  /**
+   * Sets the log context for the duration of the provided handler.
+   */
+  public logContextScopeSync<T>(context: LogContext, scopeHandler: () => T): T {
     try {
       this.pushContext(context);
       return scopeHandler();
@@ -257,7 +272,7 @@ export class DefaultLogFormatter implements LogFormatter {
     if (isExecutionLogContext(context)) {
       return `${new Date(time).toISOString()}\t${logLevel}\t${data.join(" ")}`;
     } else if (isActivityLogContext(context)) {
-      return `${new Date(time).toISOString()}${logLevel}\t${
+      return `${new Date(time).toISOString()}\t${logLevel}\t${
         context.activityName
       }:${context.seq}\t${data.join(" ")}`;
     }

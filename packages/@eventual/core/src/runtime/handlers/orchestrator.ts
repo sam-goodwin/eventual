@@ -184,7 +184,7 @@ export function createOrchestrator({
       await persistWorkflowResult(resultEvent);
       const logFlush = timed(
         metrics,
-        OrchestratorMetrics.ExecutionLogWriteTime,
+        OrchestratorMetrics.ExecutionLogWriteDuration,
         // write any collected logs to cloudwatch
         () => logAgent.flush()
       );
@@ -275,7 +275,7 @@ export function createOrchestrator({
           result,
           commands: newCommands,
           history: updatedHistoryEvents,
-        } = logAgent.logContextScope(
+        } = logAgent.logContextScopeSync(
           {
             type: LogContextType.Execution,
             executionId,

@@ -181,6 +181,7 @@ export class Service extends Construct implements IGrantable {
       workflows: proxyWorkflows,
       environment: props.environment,
       events: this.events,
+      logging: this.logging,
     });
     proxyActivities._bind(this.activities);
 

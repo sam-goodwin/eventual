@@ -17,6 +17,8 @@ import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
 import {
+  LogAgent,
+  LogContextType,
   RuntimeServiceClient,
   Schedule,
   TimerClient,
@@ -40,6 +42,7 @@ export interface CreateActivityWorkerProps {
   eventClient: EventClient;
   activityProvider: ActivityProvider;
   serviceClient?: RuntimeServiceClient;
+  logAgent: LogAgent;
 }
 
 export interface ActivityWorkerRequest {
@@ -75,6 +78,7 @@ export function createActivityWorker({
   logger,
   activityProvider,
   serviceClient,
+  logAgent,
 }: CreateActivityWorkerProps): ActivityWorker {
   // make the service client available to all activity code
   if (serviceClient) {
@@ -156,11 +160,22 @@ export function createActivityWorker({
             );
           }
 
-          const result = await timed(
-            metrics,
-            ActivityMetrics.OperationDuration,
-            () => activity(...request.command.args)
+          const result = await logAgent.logContextScope(
+            {
+              type: LogContextType.Activity,
+              activityName: request.command.name,
+              executionId: request.executionId,
+              seq: request.command.seq,
+            },
+            async () => {
+              return await timed(
+                metrics,
+                ActivityMetrics.OperationDuration,
+                () => activity(...request.command.args)
+              );
+            }
           );
+
           if (isAsyncResult(result)) {
             metrics.setProperty(ActivityMetrics.HasResult, 0);
             metrics.setProperty(ActivityMetrics.AsyncResult, 1);
@@ -171,7 +186,7 @@ export function createActivityWorker({
              * The activity has declared that it is async, other than logging, there is nothing left to do here.
              * The activity should call {@link WorkflowClient.sendActivitySuccess} or {@link WorkflowClient.sendActivityFailure} when it is done.
              */
-            return;
+            return logAgent.flush();
           } else if (result) {
             metrics.setProperty(ActivityMetrics.HasResult, 1);
             metrics.setProperty(ActivityMetrics.AsyncResult, 0);
@@ -250,9 +265,15 @@ export function createActivityWorker({
           event: ActivitySucceeded | ActivityFailed,
           duration: number
         ) {
+          const logFlush = timed(
+            metrics,
+            ActivityMetrics.ActivityLogWriteDuration,
+            () => logAgent.flush()
+          );
           await timed(metrics, ActivityMetrics.SubmitWorkflowTaskDuration, () =>
             workflowClient.submitWorkflowTask(request.executionId, event)
           );
+          await logFlush;
 
           logActivityCompleteMetrics(isWorkflowFailed(event), duration);
         }

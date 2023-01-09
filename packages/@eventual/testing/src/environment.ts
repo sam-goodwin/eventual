@@ -127,6 +127,11 @@ export class TestEnvironment extends RuntimeServiceClient {
       activityRuntimeClient,
       executionStore
     );
+    const testLogAgent = new LogAgent({
+      logClient: new TestLogsClient(),
+      getTime: () => this.time,
+      logLevel: { default: "DEBUG" },
+    });
     const activityWorker = createActivityWorker({
       activityRuntimeClient,
       eventClient,
@@ -135,6 +140,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       metricsClient: new TestMetricsClient(),
       workflowClient,
       activityProvider,
+      logAgent: testLogAgent,
     });
     const workflowRuntimeClient = new TestWorkflowRuntimeClient(
       executionStore,
@@ -175,11 +181,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       executionHistoryClient: this.executionHistoryClient,
       metricsClient: new TestMetricsClient(),
       logger: new TestLogger(),
-      logAgent: new LogAgent({
-        logClient: new TestLogsClient(),
-        getTime: () => this.time,
-        logLevel: { default: "DEBUG" },
-      }),
+      logAgent: testLogAgent,
     });
   }
 

@@ -5,11 +5,14 @@ import {
   ActivityWorkerRequest,
   createActivityWorker,
   GlobalActivityProvider,
+  LogAgent,
+  LogLevel,
 } from "@eventual/core";
 import middy from "@middy/core";
 import {
   createActivityRuntimeClient,
   createEventClient,
+  createLogsClient,
   createServiceClient,
   createTimerClient,
   createWorkflowClient,
@@ -17,6 +20,7 @@ import {
 } from "../clients/create.js";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 import { logger, loggerMiddlewares } from "../logger.js";
+import { ENV_NAMES } from "src/env.js";
 
 export default middy<ActivityWorkerRequest>((request) =>
   createActivityWorker({
@@ -34,5 +38,13 @@ export default middy<ActivityWorkerRequest>((request) =>
         tableName: "NOT_NEEDED",
       })
     ),
+    logAgent: new LogAgent({
+      logClient: createLogsClient(),
+      logLevel: {
+        default:
+          (process.env[ENV_NAMES.DEFAULT_LOG_LEVEL] as LogLevel | undefined) ??
+          "INFO",
+      },
+    }),
   })(request, new Date())
 ).use(loggerMiddlewares);
