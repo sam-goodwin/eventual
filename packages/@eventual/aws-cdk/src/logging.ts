@@ -1,9 +1,25 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
+import { LogLevel } from "@eventual/core";
 import { RemovalPolicy } from "aws-cdk-lib";
 import { IGrantable } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
+
+export interface LoggingProps {
+  /**
+   * Optionally provide a log group.
+   *
+   * @default one will be created
+   */
+  logGroup?: LogGroup;
+  /**
+   * Log level to put into the workflow logs.
+   *
+   * @default INFO
+   */
+  logLevel?: LogLevel;
+}
 
 /**
  * Resources used to facilitate service logging.
@@ -14,12 +30,14 @@ export class Logging extends Construct {
    */
   public readonly logGroup: LogGroup;
 
-  constructor(scope: Construct, id: string) {
+  constructor(scope: Construct, id: string, private props: LoggingProps) {
     super(scope, id);
 
-    this.logGroup = new LogGroup(this, "group", {
-      removalPolicy: RemovalPolicy.DESTROY,
-    });
+    this.logGroup =
+      props.logGroup ??
+      new LogGroup(this, "group", {
+        removalPolicy: RemovalPolicy.DESTROY,
+      });
   }
 
   public grantPutServiceLogs(grantable: IGrantable) {
@@ -34,6 +52,10 @@ export class Logging extends Construct {
     func.addEnvironment(
       ENV_NAMES.SERVICE_LOG_GROUP_NAME,
       this.logGroup.logGroupName
+    );
+    func.addEnvironment(
+      ENV_NAMES.DEFAULT_LOG_LEVEL,
+      this.props.logLevel ?? "INFO"
     );
   }
 }

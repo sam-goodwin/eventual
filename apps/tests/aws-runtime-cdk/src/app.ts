@@ -28,6 +28,9 @@ const testService = new eventual.Service(stack, "testService", {
   environment: {
     TEST_QUEUE_URL: testQueue.queueUrl,
   },
+  logging: {
+    logLevel: "INFO",
+  },
 });
 
 testService.api.grantExecute(role);

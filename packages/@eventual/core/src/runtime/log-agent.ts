@@ -7,6 +7,8 @@ import {
   isConsoleHooked,
 } from "./index.js";
 
+export const LOG_LEVEL_ENV = "EVENTUAL_LOG_LEVEL";
+
 export type LogContext = ExecutionLogContext | ActivityLogContext;
 
 export enum LogContextType {
@@ -38,7 +40,8 @@ export function isActivityLogContext(
   return context.type === LogContextType.Activity;
 }
 
-export type LogLevel = "INFO" | "DEBUG" | "ERROR" | "WARN" | "TRACE";
+const LOG_LEVELS = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"] as const;
+export type LogLevel = typeof LOG_LEVELS[number];
 
 export interface LogAgentProps {
   logClient: LogsClient;
@@ -50,6 +53,9 @@ export interface LogAgentProps {
    * @default true
    */
   sendingLogsEnabled?: boolean;
+  logLevel: {
+    default: LogLevel;
+  };
 }
 
 export interface Checkpoint {
@@ -76,11 +82,13 @@ export class LogAgent {
   private readonly getTime: () => Date;
   public logsSeenCount = 0;
   private sendingLogsEnabled: boolean;
+  private logLevelIndex: number;
 
   constructor(private props: LogAgentProps) {
     this.sendingLogsEnabled = props.sendingLogsEnabled ?? true;
     this.logFormatter = props.logFormatter ?? new DefaultLogFormatter();
     this.getTime = props.getTime ?? (() => new Date());
+    this.logLevelIndex = LOG_LEVELS.indexOf(props.logLevel.default);
   }
 
   /**
@@ -109,8 +117,8 @@ export class LogAgent {
    */
   public clearLogs(checkpoint?: Checkpoint) {
     const clearIndex = checkpoint?.lastLogEntry
-      ? this.logs.findIndex((l) => l === checkpoint.lastLogEntry) ?? 0
-      : 0;
+      ? this.logs.findIndex((l) => l === checkpoint.lastLogEntry) ?? -1
+      : -1;
 
     this.logs.splice(clearIndex + 1);
   }
@@ -166,13 +174,19 @@ export class LogAgent {
     logLevel: LogLevel,
     ...data: any[]
   ) {
-    this.logsSeenCount++;
-    this.logs.push({
-      context,
-      level: logLevel,
-      data,
-      time: this.getTime().getTime(),
-    });
+    if (this.isLogLevelSatisfied(logLevel)) {
+      this.logsSeenCount++;
+      this.logs.push({
+        context,
+        level: logLevel,
+        data,
+        time: this.getTime().getTime(),
+      });
+    }
+  }
+
+  private isLogLevelSatisfied(entry: LogLevel): boolean {
+    return LOG_LEVELS.indexOf(entry) >= this.logLevelIndex;
   }
 
   public async flush() {

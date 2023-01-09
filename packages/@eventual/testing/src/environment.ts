@@ -178,6 +178,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       logAgent: new LogAgent({
         logClient: new TestLogsClient(),
         getTime: () => this.time,
+        logLevel: { default: "DEBUG" },
       }),
     });
   }

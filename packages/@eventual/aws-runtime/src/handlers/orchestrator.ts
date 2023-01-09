@@ -1,6 +1,6 @@
 import "@eventual/entry/injected";
 
-import { createOrchestrator, LogAgent } from "@eventual/core";
+import { createOrchestrator, LogAgent, LogLevel } from "@eventual/core";
 import middy from "@middy/core";
 import type { SQSEvent, SQSRecord } from "aws-lambda";
 import { logger, loggerMiddlewares } from "../logger.js";
@@ -14,6 +14,7 @@ import {
   createWorkflowRuntimeClient,
   SQSWorkflowTaskMessage,
 } from "../clients/index.js";
+import { ENV_NAMES } from "src/env.js";
 
 /**
  * Creates an entrypoint function for orchestrating a workflow
@@ -27,7 +28,14 @@ const orchestrate = createOrchestrator({
   eventClient: createEventClient(),
   metricsClient: AWSMetricsClient,
   logger,
-  logAgent: new LogAgent({ logClient: createLogsClient() }),
+  logAgent: new LogAgent({
+    logClient: createLogsClient(),
+    logLevel: {
+      default:
+        (process.env[ENV_NAMES.DEFAULT_LOG_LEVEL] as LogLevel | undefined) ??
+        "INFO",
+    },
+  }),
 });
 
 export default middy(async (event: SQSEvent) => {

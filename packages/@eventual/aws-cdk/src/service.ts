@@ -1,5 +1,6 @@
 import {
   AppSpec,
+  LogLevel,
   MetricsCommon,
   OrchestratorMetrics,
   ServiceType,
@@ -40,6 +41,7 @@ import { bundleSourcesSync, inferSync } from "./compile-client";
 import path from "path";
 import { ExecutionRecord } from "@eventual/aws-runtime";
 import { Logging } from "./logging";
+import { LogGroup } from "aws-cdk-lib/aws-logs";
 
 export interface ServiceProps {
   entry: string;
@@ -48,6 +50,20 @@ export interface ServiceProps {
     [key: string]: string;
   };
   workflows?: Pick<WorkflowsProps, "orchestrator">;
+  logging?: {
+    /**
+     * Optionally provide a log group.
+     *
+     * @default one will be created
+     */
+    logGroup?: LogGroup;
+    /**
+     * Log level to put into the workflow logs.
+     *
+     * @default INFO
+     */
+    logLevel?: LogLevel;
+  };
 }
 
 export class Service extends Construct implements IGrantable {
@@ -150,7 +166,7 @@ export class Service extends Construct implements IGrantable {
     const proxyWorkflows = lazyInterface<IWorkflows>();
     const proxyActivities = lazyInterface<IActivities>();
 
-    this.logging = new Logging(this, "logging");
+    this.logging = new Logging(this, "logging", props.logging ?? {});
 
     this.events = new Events(this, "Events", {
       appSpec: this.appSpec,
