@@ -1,6 +1,6 @@
 {
   "name": "@eventual/compiler",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "main": "lib/index.js",
   "module": "lib/index.js",
   "types:": "lib/index.d.ts",
