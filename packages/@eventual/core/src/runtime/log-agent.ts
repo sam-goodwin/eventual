@@ -208,12 +208,7 @@ export class LogAgent {
             execution,
             ...entries.map((e) => ({
               time: e.time,
-              message: this.logFormatter.format(
-                e.context,
-                e.level,
-                e.data,
-                e.time
-              ),
+              message: this.logFormatter.format(e),
             }))
           );
         })
@@ -254,28 +249,18 @@ export class LogAgent {
 }
 
 export interface LogFormatter {
-  format(
-    context: LogContext,
-    logLevel: LogLevel,
-    data: any[],
-    time: number
-  ): string;
+  format(entry: LogEntry): string;
 }
 
 export class DefaultLogFormatter implements LogFormatter {
-  public format(
-    context: LogContext,
-    logLevel: LogLevel,
-    data: any[],
-    time: number
-  ): string {
-    if (isExecutionLogContext(context)) {
-      return `${new Date(time).toISOString()}\t${logLevel}\t${data.join(" ")}`;
-    } else if (isActivityLogContext(context)) {
-      return `${new Date(time).toISOString()}\t${logLevel}\t${
-        context.activityName
-      }:${context.seq}\t${data.join(" ")}`;
+  public format(entry: LogEntry): string {
+    if (isExecutionLogContext(entry.context)) {
+      return `${entry.level}\t${entry.data.join(" ")}`;
+    } else if (isActivityLogContext(entry.context)) {
+      return `${entry.level}\t${entry.context.activityName}:${
+        entry.context.seq
+      }\t${entry.data.join(" ")}`;
     }
-    return assertNever(context);
+    return assertNever(entry.context);
   }
 }
