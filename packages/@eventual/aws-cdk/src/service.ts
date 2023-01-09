@@ -145,6 +145,7 @@ export class Service extends Construct implements IGrantable {
     });
 
     this.telemetry = new Telemetry(this, "Telemetry", {
+      serviceName: this.serviceName,
       collectorConfigPath: props.telemetryCollectorConfigPath,
     });
     this.telemetry.configureFunction(this.activities.worker, "worker");

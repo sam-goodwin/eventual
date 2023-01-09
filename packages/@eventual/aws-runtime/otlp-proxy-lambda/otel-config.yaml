@@ -2,7 +2,10 @@ receivers:
   otlp:
     protocols:
       grpc:
-      http:
+
+processors:
+  batch:
+    timeout: 25ms
 
 exporters:
   logging:
@@ -10,10 +13,8 @@ exporters:
   awsxray:
     index_all_attributes: true
   awsemf:
-
-processors:
-  batch:
-    timeout: 1s
+    log_group_name: /metrics/eventual
+    log_stream_name: "{SERVICE_NAME}"
 
 #enables output for traces to xray
 service:
@@ -25,4 +26,4 @@ service:
     metrics:
       receivers: [otlp]
       processors: [batch]
-      exporters: [awsemf]
+      exporters: [logging, awsemf]

@@ -17,6 +17,7 @@ import fs from "fs";
 import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
 
 export interface TelemetryProps {
+  serviceName: string;
   collectorConfigPath?: string;
 }
 
@@ -30,7 +31,7 @@ export class Telemetry extends Construct {
   collectorFnUrl: FunctionUrl;
   collectorConfigPath?: string;
 
-  constructor(scope: Construct, id: string, props?: TelemetryProps) {
+  constructor(scope: Construct, id: string, props: TelemetryProps) {
     super(scope, id);
 
     let collectorConfigPath =
@@ -56,16 +57,18 @@ export class Telemetry extends Construct {
             )
           ),
         }),
-        new LayerVersion(this, "otel-config", {
+        new LayerVersion(this, "otel-config-file", {
           code: Code.fromAsset(path.dirname(collectorConfigPath), {
             bundling: {
               image: new DockerImage(""),
               local: {
                 tryBundle(outputDir, _options) {
-                  fs.copyFileSync(
-                    collectorConfigPath!,
+                  const config = fs
+                    .readFileSync(collectorConfigPath, "utf-8")
+                    .replace("{SERVICE_NAME}", props.serviceName);
+                  fs.writeFileSync(
                     path.join(outputDir, path.basename(collectorConfigPath)),
-                    fs.constants.COPYFILE_FICLONE
+                    config
                   );
                   return true;
                 },
@@ -87,12 +90,15 @@ export class Telemetry extends Construct {
             "xray:GetSamplingRules",
             "xray:GetSamplingTargets",
             "xray:GetSamplingStatisticSummaries",
+            "cloudwatch:PutMetricData",
+            "cloudwatch:PutMetricStream",
+            "cloudwatch:StartMetricStreams",
           ],
           resources: ["*"],
           effect: Effect.ALLOW,
         }),
       ],
-      tracing: Tracing.ACTIVE
+      tracing: Tracing.ACTIVE,
     });
     this.collectorFn;
     this.collectorFnUrl = this.collectorFn.addFunctionUrl({

@@ -20,7 +20,7 @@ import { registerTelemetryApi } from "../telemetry.js";
  * Creates an entrypoint function for orchestrating a workflow
  * from within an AWS Lambda Function attached to a SQS FIFO queue.
  */
-registerTelemetryApi();
+const telemetry = registerTelemetryApi();
 
 const orchestrate = createOrchestrator({
   executionHistoryClient: createExecutionHistoryClient(),
@@ -68,7 +68,9 @@ export default middy(async (event: SQSEvent) => {
       itemIdentifier: r,
     })),
   };
-}).use(loggerMiddlewares);
+})
+  .use(loggerMiddlewares)
+  .after(telemetry.flush);
 
 function sqsRecordsToEvents(sqsRecords: SQSRecord[]) {
   return sqsRecords.flatMap(sqsRecordToEvents);

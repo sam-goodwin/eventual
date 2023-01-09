@@ -4,13 +4,19 @@ import {
 } from "@opentelemetry/core";
 import {
   BasicTracerProvider,
-  SimpleSpanProcessor,
+  BatchSpanProcessor,
 } from "@opentelemetry/sdk-trace-base";
 import { B3InjectEncoding, B3Propagator } from "@opentelemetry/propagator-b3";
 import { SemanticResourceAttributes } from "@opentelemetry/semantic-conventions";
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks";
 import { Resource } from "@opentelemetry/resources";
-import { trace, metrics } from "@opentelemetry/api";
+import {
+  trace,
+  metrics,
+  diag,
+  DiagConsoleLogger,
+  TracerProvider,
+} from "@opentelemetry/api";
 import { serviceName, telemetryComponentName } from "./env.js";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-proto";
@@ -27,9 +33,26 @@ import { AWSXRayPropagator } from "@opentelemetry/propagator-aws-xray";
  * This function will fail if run more than once, and we won't try to save it
  * Ensure that its run during the init phase of the lambda (ie global scope)
  */
-export function registerTelemetryApi() {
-  registerTracerProvider();
-  registerMetricsProvider();
+
+export interface Telemetry {
+  tracerProvider: TracerProvider;
+  meterProvider: MeterProvider;
+  flush: () => Promise<void>;
+}
+
+//Set up tracing and metrics provider, and supply a hook to flush, ensuring pending requests are sent
+export function registerTelemetryApi(): Telemetry {
+  const tracerProvider = registerTracerProvider();
+  const meterProvider = registerMeterProvider();
+  diag.setLogger(new DiagConsoleLogger());
+  return {
+    tracerProvider,
+    meterProvider,
+    flush: async () => {
+      await tracerProvider.forceFlush();
+      await meterProvider.forceFlush();
+    },
+  };
 }
 
 function registerTracerProvider() {
@@ -41,7 +64,11 @@ function registerTracerProvider() {
     //Important for traces to show up on xray
     idGenerator: new AWSXRayIdGenerator(),
   });
-  provider.addSpanProcessor(new SimpleSpanProcessor(new OTLPTraceExporter()));
+  provider.addSpanProcessor(
+    new BatchSpanProcessor(new OTLPTraceExporter(), {
+      scheduledDelayMillis: 25,
+    })
+  );
   const contextManager = new AsyncHooksContextManager();
   provider.register({
     contextManager,
@@ -56,16 +83,23 @@ function registerTracerProvider() {
   });
   contextManager.enable();
   trace.setGlobalTracerProvider(provider);
+  return provider;
 }
 
-function registerMetricsProvider() {
+function registerMeterProvider() {
   const metricExporter = new OTLPMetricExporter();
-  const meterProvider = new MeterProvider({});
+  const meterProvider = new MeterProvider({
+    resource: new Resource({
+      [SemanticResourceAttributes.SERVICE_NAMESPACE]: serviceName(),
+      [SemanticResourceAttributes.SERVICE_NAME]: telemetryComponentName(),
+    }),
+  });
   meterProvider.addMetricReader(
     new PeriodicExportingMetricReader({
       exporter: metricExporter,
-      exportIntervalMillis: 1000,
+      exportIntervalMillis: 250,
     })
   );
   metrics.setGlobalMeterProvider(meterProvider);
+  return meterProvider;
 }
