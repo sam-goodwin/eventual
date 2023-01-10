@@ -9,7 +9,6 @@
   "scripts": {
     "build": "tsc -b && turbo run build",
     "build:clean": "git clean -fqdx . && pnpm i && pnpm build",
-    "build:website": "pnpm --filter=@eventual/website build:website",
     "clean:build": "turbo run clean:build",
     "clean:deep": "git clean -fqdx .",
     "clean:tsbuildinfo": "find . -name tsconfig.tsbuildinfo -exec rm {} \\;",

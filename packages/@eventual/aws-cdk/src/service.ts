@@ -79,7 +79,9 @@ export class Service extends Construct implements IGrantable {
    * This {@link Service}'s API Gateway.
    */
   public readonly api: Api;
-
+  /**
+   * This {@link Service}'s {@link Events} that can be published and subscribed to.
+   */
   public readonly events: Events;
   /**
    * A single-table used for execution data and granular workflow events/
@@ -237,6 +239,19 @@ export class Service extends Construct implements IGrantable {
     });
 
     this.serviceDataSSM.grantRead(this.cliRole);
+  }
+
+  /**
+   * Add an environment variable to the Activity, API, Event and Workflow handler Functions.
+   *
+   * @param key The environment variable key.
+   * @param value The environment variable's value.
+   */
+  public addEnvironment(key: string, value: string): void {
+    this.activities.worker.addEnvironment(key, value);
+    this.api.handler.addEnvironment(key, value);
+    this.events.handler.addEnvironment(key, value);
+    this.workflows.orchestrator.addEnvironment(key, value);
   }
 
   public grantRead(grantable: IGrantable) {
