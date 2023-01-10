@@ -6,4 +6,3 @@ packages:
   - "apps/tests/*"
   - "apps/test-app-sst/services"
   - "examples/**/*"
-  - "website"
