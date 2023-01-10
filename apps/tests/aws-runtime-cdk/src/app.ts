@@ -9,6 +9,7 @@ import {
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as eventual from "@eventual/aws-cdk";
 import path from "path";
+import { ServiceDashboard } from "@eventual/aws-cdk";
 
 const app = new App();
 
@@ -65,6 +66,10 @@ const asyncWriterFunction = new NodejsFunction(stack, "asyncWriterFunction", {
 });
 asyncWriterFunction.grantInvoke(pipeRole);
 testService.api.grantExecute(asyncWriterFunction);
+
+new ServiceDashboard(stack, "dashboard", {
+  service: testService,
+});
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-pipes-pipe.html
 new CfnResource(stack, "pipe", {
