@@ -88,20 +88,18 @@ export class HttpServiceClient implements EventualServiceClient {
   public async getExecutions(
     request: GetExecutionsRequest
   ): Promise<GetExecutionsResponse> {
-    // TODO support status filtering
-    // TODO Switch the API to focus on executions, accept workflow, statuses, etc as params
-    // TODO don't return an array from the API
-    // TODO support pagination
-    const response = await this.request<void, Execution[]>(
-      "GET",
-      request.workflowName
-        ? `executions?workflow=${request.workflowName}`
-        : "executions"
-    );
+    const queryStrings = formatQueryString({
+      maxResults: request.maxResults,
+      nextToken: request.nextToken,
+      sortDirection: request.sortDirection,
+      statuses: request.statuses,
+      workflow: request.workflowName,
+    });
 
-    return {
-      executions: response,
-    };
+    return this.request<void, GetExecutionsResponse>(
+      "GET",
+      `executions?${queryStrings}`
+    );
   }
 
   public async getExecution(
@@ -123,10 +121,17 @@ export class HttpServiceClient implements EventualServiceClient {
   public async getExecutionHistory(
     request: ExecutionEventsRequest
   ): Promise<ExecutionEventsResponse> {
+    const queryString = formatQueryString({
+      maxResults: request.maxResults,
+      nextToken: request.nextToken,
+      sortDirection: request.sortDirection,
+    });
     // TODO: support pagination
     const resp = await this.request<void, WorkflowEvent[]>(
       "GET",
-      `executions/${encodeExecutionId(request.executionId)}/history`
+      `executions/${encodeExecutionId(
+        request.executionId
+      )}/history?${queryString}`
     );
 
     return { events: resp };
@@ -135,7 +140,6 @@ export class HttpServiceClient implements EventualServiceClient {
   public async getExecutionWorkflowHistory(
     executionId: string
   ): Promise<ExecutionHistoryResponse> {
-    // TODO: support pagination
     const resp = await this.request<void, HistoryStateEvent[]>(
       "GET",
       `executions/${encodeExecutionId(executionId)}}/workflow-history`
@@ -231,4 +235,24 @@ export class HttpError extends Error {
   ) {
     super(body || statusText);
   }
+}
+
+/**
+ * Formats a query string, filtering undefined values and empty arrays.
+ *
+ * name=value&name2=value2
+ */
+function formatQueryString(
+  entries: Record<string, undefined | string | number | (string | number)[]>
+) {
+  return Object.entries(entries)
+    .filter(
+      ([, value]) =>
+        value !== undefined && (!Array.isArray(value) || value.length > 0)
+    )
+    .map(
+      ([name, value]) =>
+        `${name}=${Array.isArray(value) ? value.join(",") : value}`
+    )
+    .join("&");
 }

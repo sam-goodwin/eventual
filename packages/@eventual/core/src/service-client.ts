@@ -140,7 +140,10 @@ export interface ExecutionHistoryResponse {
   events: HistoryStateEvent[];
 }
 
-export type SortOrder = "Asc" | "Desc";
+export enum SortOrder {
+  Asc = "ASC",
+  Desc = "DESC",
+}
 
 export interface StartExecutionRequest<W extends Workflow = Workflow>
   extends WorkflowOptions {

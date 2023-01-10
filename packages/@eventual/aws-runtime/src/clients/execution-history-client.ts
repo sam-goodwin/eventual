@@ -10,6 +10,7 @@ import {
   ExecutionEventsResponse,
   ExecutionHistoryClient,
   getEventId,
+  SortOrder,
   WorkflowEvent,
 } from "@eventual/core";
 import { queryPageWithToken } from "./utils.js";
@@ -73,7 +74,7 @@ export class AWSExecutionHistoryClient extends ExecutionHistoryClient {
       {
         TableName: this.props.tableName,
         KeyConditionExpression: "pk = :pk AND begins_with ( sk, :sk )",
-        ScanIndexForward: request.sortDirection !== "Desc",
+        ScanIndexForward: request.sortDirection !== SortOrder.Desc,
         ExpressionAttributeValues: {
           ":pk": { S: EventRecord.PARTITION_KEY },
           ":sk": { S: EventRecord.sortKey(request.executionId, "") },

@@ -1,6 +1,6 @@
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
-import { EventualServiceClient } from "@eventual/core";
+import { EventualServiceClient, SortOrder } from "@eventual/core";
 import { displayExecution } from "../display/execution.js";
 
 export const listExecutions = (yargs: Argv) =>
@@ -8,11 +8,27 @@ export const listExecutions = (yargs: Argv) =>
     "executions",
     "List executions of a service, or optionally, a workflow",
     (yargs) =>
-      setServiceOptions(yargs, true).option("workflow", {
-        alias: "w",
-        describe: "Workflow name",
-        type: "string",
-      }),
+      setServiceOptions(yargs, true)
+        .option("workflow", {
+          alias: "w",
+          describe: "Workflow name",
+          type: "string",
+        })
+        .option("in-progress", {
+          describe:
+            "Return in progress workflows. When provided only explicitly provided status will be returned.",
+          type: "boolean",
+        })
+        .option("succeeded", {
+          describe:
+            "Return succeeded executions. When provided only explicitly provided status will be returned.",
+          type: "boolean",
+        })
+        .option("failed", {
+          describe:
+            "Return failed executions. When provided only explicitly provided status will be returned.",
+          type: "boolean",
+        }),
     serviceAction(
       async (spinner, service, { workflow }) => {
         spinner.start("Getting executions");
@@ -43,7 +59,7 @@ async function getExecutions(
 ) {
   const { executions } = await service.getExecutions({
     workflowName,
-    sortDirection: "Desc",
+    sortDirection: SortOrder.Asc,
     maxResults: 100,
   });
 

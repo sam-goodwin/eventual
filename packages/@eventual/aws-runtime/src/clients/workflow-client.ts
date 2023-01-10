@@ -21,6 +21,7 @@ import {
   StartExecutionRequest,
   StartChildExecutionRequest,
   lookupWorkflow,
+  SortOrder,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
@@ -158,7 +159,7 @@ export class AWSWorkflowClient extends WorkflowClient {
         TableName: this.props.tableName,
         IndexName: ExecutionRecord.START_TIME_SORTED_INDEX,
         KeyConditionExpression: "#pk = :pk",
-        ScanIndexForward: request?.sortDirection !== "Desc",
+        ScanIndexForward: request?.sortDirection !== SortOrder.Desc,
         FilterExpression: filters || undefined,
         ExpressionAttributeValues: {
           ":pk": { S: ExecutionRecord.PARTITION_KEY },

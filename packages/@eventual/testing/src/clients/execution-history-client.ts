@@ -2,6 +2,7 @@ import {
   ExecutionEventsRequest,
   ExecutionEventsResponse,
   ExecutionHistoryClient,
+  SortOrder,
   WorkflowEvent,
 } from "@eventual/core";
 
@@ -27,7 +28,7 @@ export class TestExecutionHistoryClient extends ExecutionHistoryClient {
   ): Promise<ExecutionEventsResponse> {
     const sortedEvents = (this.eventStore[request.executionId] ?? []).sort(
       (a, b) =>
-        request.sortDirection === "Asc"
+        request.sortDirection === SortOrder.Asc
           ? new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
           : new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );

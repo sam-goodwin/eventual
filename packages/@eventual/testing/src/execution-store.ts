@@ -2,6 +2,7 @@ import {
   Execution,
   GetExecutionsRequest,
   GetExecutionsResponse,
+  SortOrder,
 } from "@eventual/core";
 
 export class ExecutionStore {
@@ -17,7 +18,7 @@ export class ExecutionStore {
 
   public list(request: GetExecutionsRequest): GetExecutionsResponse {
     const executions = Object.values(this.executionStore).sort((a, b) =>
-      request.sortDirection === "Asc"
+      request.sortDirection === SortOrder.Asc
         ? new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
         : new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
     );
