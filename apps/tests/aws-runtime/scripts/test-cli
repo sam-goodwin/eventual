@@ -16,7 +16,7 @@ execution_id=$(node -p 'JSON.parse(require("fs").readFileSync(".eventual/out.jso
 
 npx eventual get history -e ${execution_id}
 
-npx eventual get logs
+npx eventual get logs --all
 
 npx eventual get logs --workflow parallel
 
