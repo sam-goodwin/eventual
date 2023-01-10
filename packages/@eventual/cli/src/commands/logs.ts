@@ -1,10 +1,9 @@
 import * as cwLogs from "@aws-sdk/client-cloudwatch-logs";
-import ora, { Ora } from "ora";
+import type { Ora } from "ora";
 import { Argv } from "yargs";
 import chalk from "chalk";
-import { getServiceData, tryResolveDefaultService } from "../service-data.js";
-import { setServiceOptions } from "../service-action.js";
-import { assumeCliRole } from "../role.js";
+import { serviceAction, setServiceOptions } from "../service-action.js";
+import { EventualServiceClient } from "@eventual/core";
 
 /**
  * Command to list logs for a workflow or execution id
@@ -40,7 +39,8 @@ export const logs = (yargs: Argv) =>
         .option("since", {
           describe:
             "Only show logs from given time. Timestamp in milliseconds, ISO8601",
-          defaultDescription: "10 Minutes",
+          defaultDescription:
+            "10 Minutes for --all or --workflow. The execution start time for an execution.",
         })
         .option("follow", {
           alias: "f",
@@ -56,59 +56,58 @@ export const logs = (yargs: Argv) =>
           }
           return true;
         }),
-    async ({
-      service: _service,
-      workflow,
-      execution,
-      region,
-      since,
-      follow,
-    }) => {
-      const startTime = getStartTime(since as string | number);
-      const spinner = ora("Loading logs");
-      const service = await tryResolveDefaultService(_service);
-      if (!service) {
-        throw new Error(
-          "Service must be set using --service or EVENTUAL_DEFAULT_SERVICE."
-        );
-      }
-      const credentials = await assumeCliRole(service, region);
-      const { logGroupName } = await getServiceData(
-        credentials,
-        service,
-        region
-      );
-      const cloudwatchLogsClient = new cwLogs.CloudWatchLogsClient({});
-
-      const logFilter: LogFilter = {
-        executionId: execution,
-        workflowName: workflow,
-      };
-
-      let logCursor: LogCursor = {
-        startTime,
-      };
-
-      do {
-        const fetchResult = await fetchLogs(
-          spinner,
-          cloudwatchLogsClient,
-          logGroupName,
-          logFilter,
-          logCursor
-        );
-        logCursor = updateLogCursor(logCursor, fetchResult, follow);
-
-        if (follow) {
-          spinner.start("Watching logs");
-          await sleep(1000);
-        } else if (logCursor.nextToken) {
-          spinner.start("Loading more");
+    serviceAction(
+      async (
+        spinner,
+        serviceClient,
+        { service: _service, workflow, execution, since, follow },
+        { credentials, serviceData }
+      ) => {
+        if (
+          !(
+            since === undefined ||
+            typeof since === "string" ||
+            typeof since === "number"
+          )
+        ) {
+          throw new Error("since parameter must be a string or number");
         }
-        // eslint-disable-next-line no-unmodified-loop-condition
-      } while (follow || logCursor.nextToken);
-      spinner.stop();
-    }
+        const startTime = await getStartTime(serviceClient, since, execution);
+        const { logGroupName } = serviceData;
+        const cloudwatchLogsClient = new cwLogs.CloudWatchLogsClient({
+          credentials,
+        });
+
+        const logFilter: LogFilter = {
+          executionId: execution,
+          workflowName: workflow,
+        };
+
+        let logCursor: LogCursor = {
+          startTime,
+        };
+
+        do {
+          const fetchResult = await fetchLogs(
+            spinner,
+            cloudwatchLogsClient,
+            logGroupName,
+            logFilter,
+            logCursor
+          );
+          logCursor = updateLogCursor(logCursor, fetchResult, follow);
+
+          if (follow) {
+            spinner.start("Watching logs");
+            await sleep(1000);
+          } else if (logCursor.nextToken) {
+            spinner.start("Loading more");
+          }
+          // eslint-disable-next-line no-unmodified-loop-condition
+        } while (follow || logCursor.nextToken);
+        spinner.stop();
+      }
+    )
   );
 
 function sleep(ms: number): Promise<void> {
@@ -212,17 +211,26 @@ export function updateLogCursor(
  * @param since timestamp specifier
  * @returns start time
  */
-export function getStartTime(
-  since: number | string | "now"
-): number | undefined {
-  if (since == null) {
-    // Now - 10m. If we don't provide a start time, it's too slow to page through all the logs
-    return Date.now() - 10 * 60 * 1000;
-  } else if (since === "now") {
+export async function getStartTime(
+  serviceClient: EventualServiceClient,
+  since?: number | string | "now" | "start",
+  executionId?: string
+): Promise<number | undefined> {
+  const _since = since ?? (executionId ? "start" : Date.now() - 10 * 60 * 1000);
+  if (_since === "now") {
     return Date.now();
+  } else if (_since === "start") {
+    if (executionId) {
+      const execution = await serviceClient.getExecution(executionId);
+      if (!execution) {
+        throw new Error("Execution was not found.");
+      }
+      return new Date(execution.startTime).getTime();
+    }
+    throw new Error("Since start is only valid for retrieving execution logs");
   } else {
     try {
-      return new Date(since).getTime();
+      return new Date(_since).getTime();
     } catch (e) {
       throw new Error(
         "Value provided for since is invalid. Must be a milliseconds timestamp or ISO8601"

@@ -40,6 +40,10 @@ export class Logging extends Construct {
       });
   }
 
+  public grantFilterLogEvents(grantable: IGrantable) {
+    this.logGroup.grant(grantable, "logs:FilterLogEvents");
+  }
+
   public grantPutServiceLogs(grantable: IGrantable) {
     this.logGroup.grantWrite(grantable);
   }

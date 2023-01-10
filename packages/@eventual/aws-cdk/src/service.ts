@@ -198,6 +198,7 @@ export class Service extends Construct implements IGrantable {
     this.scheduler = new Scheduler(this, "Scheduler", {
       workflows: this.workflows,
       activities: this.activities,
+      logging: this.logging,
     });
     proxyScheduler._bind(this.scheduler);
 
@@ -224,6 +225,7 @@ export class Service extends Construct implements IGrantable {
     });
     this.grantFilterLogEvents(this.cliRole);
     this.api.grantExecute(this.cliRole);
+    this.logging.grantFilterLogEvents(this.cliRole);
 
     this.serviceDataSSM = new StringParameter(this, "service-data", {
       parameterName: `/eventual/services/${this.serviceName}`,
