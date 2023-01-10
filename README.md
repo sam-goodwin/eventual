@@ -29,19 +29,21 @@
 
 ## Overview
 
-**[Website](https://eventual.net/) • [API Docs](https://docs.eventual.net) • [Getting Started](https://docs.eventual.net/getting-started)**
+**[Website](https://eventual.net/) • [API Docs](https://docs.eventual.net) • [Quick Start](https://docs.eventual.net/getting-started)**
 
-- 🧑‍💻&nbsp; **Code-first** - Use the full power of TypeScript to build and orchestrate distributed systems.
-- 🌩&nbsp; **Cloud-based** - Run in your own cloud infrastructure, with transparent billing and total control over data and security.
-- 🛠&nbsp; **IaC-native**: Integrates with popular Infrastructure-as-Code (IaC) tools such as the AWS CDK and SST.
-- 🌀&nbsp; **Event-driven** - Asynchronous communication between services leads to more resilient and scalable systems.
-- 📈&nbsp; **Scalable** - Purely serverless, load-based pricing that scales to $0 and minimal operational complexity.
-- 🧩&nbsp; **Composable** - Combine building blocks to create scalable, serverless APIs and event-driven workflows.
-- 🌱&nbsp; **Evolvable** - Loosely coupled architectures makes it easy to add new services and evolve your system over time.
+Eventual makes building and operating resilient event-driven applications easy at any scale.
+
+- 💪&nbsp; **Powerful orchestration and choreography** - build durable, long-running Workflows, scale APIs, publish and subscribe to Events, and connect to SaaS via Integrations.
+- 🌀&nbsp; **Event-driven** - build asynchronous systems that are more resilient, scalable and evolvable.
+- 📈&nbsp; **Serverless** - fully serverless, load-based pricing that scales to $0 and minimal operational complexity.
+- 🧩&nbsp; **Composable and Evolvable** - loosely coupled architectures make it easy to add new services and evolve your system over time.
+- 🧑‍💻&nbsp; **Code-first** - end-to-end type safety that spans across service boundaries, from APIs to Events to long-running Workflows.
+- 🌩&nbsp; **Your cloud, your security boundaries** - runs on your cloud infrastructure, with transparent billing and total control over data and security.
+- 🛠&nbsp; **Distributed as IaC** - integrates with your favorite Infrastructure-as-Code (IaC) frameworks such as the AWS CDK and SST.
 
 ## Quick Start
 
-Start a new project with Eventual or drop-in to an existing AWS CDK or SST application by visiting the [Getting Started Guide](https://docs.eventual.net/getting-started).
+Start a new project with Eventual or drop-in to an existing AWS CDK or SST application by visiting the [Quick Start](https://docs.eventual.net/getting-started).
 
 ```sh
 # create a new project
@@ -56,7 +58,7 @@ npx cdk deploy
 
 ## What is Eventual?
 
-Eventual is a code-first service and software development kit (SDK) that helps developers create event-driven systems using modern infrastructure-as-code. Its composable service model is designed for building and evolving microservice architectures, providing a set of libraries and APIs that abstract away the complexities of distributed systems, allowing developers to focus on the business logic of their services.
+Eventual makes building and operating resilient event-driven applications easy at any scale. Its code-first workflow engine and event-driven primitives simplify and standardize how teams solve complex business orchestration problems and evolve system architectures over time. Leverages Serverless to scale from 0 to any sized workload and your favorite Infrastructure-as-Code framework to drop directly in to your stack without getting in your way.
 
 We highly recommend checking out [Werner Vogel's 2022 AWS RE:Invent Keynote](https://www.youtube.com/watch?v=RfvL_423a-I&t=328s).
 
