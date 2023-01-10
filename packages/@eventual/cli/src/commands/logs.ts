@@ -60,7 +60,7 @@ export const logs = (yargs: Argv) =>
       async (
         spinner,
         serviceClient,
-        { service: _service, workflow, execution, since, follow },
+        { workflow, execution, since, follow },
         { credentials, serviceData }
       ) => {
         if (
