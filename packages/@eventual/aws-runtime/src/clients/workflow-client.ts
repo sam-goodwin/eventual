@@ -25,6 +25,7 @@ import {
   lookupWorkflow,
 } from "@eventual/core";
 import { ulid } from "ulidx";
+import { inspect } from "util";
 import { queryPageWithToken } from "./utils.js";
 
 export interface AWSWorkflowClientProps {
@@ -94,32 +95,41 @@ export class AWSWorkflowClient extends WorkflowClient {
       })
     );
 
-    await Promise.allSettled([createLogStream(), addExecutionEntry]);
+    try {
+      await Promise.all([createLogStream(), addExecutionEntry]);
 
-    const workflowStartedEvent = createEvent<WorkflowStarted>(
-      {
-        type: WorkflowEventType.WorkflowStarted,
-        input,
-        workflowName,
-        // generate the time for the workflow to timeout based on when it was started.
-        // the timer will be started by the orchestrator so the client does not need to have access to the timer client.
-        timeoutTime: timeoutSeconds
-          ? new Date(new Date().getTime() + timeoutSeconds * 1000).toISOString()
-          : undefined,
-        context: {
-          name: executionName,
-          parentId:
-            "parentExecutionId" in request
-              ? request.parentExecutionId
-              : undefined,
+      const workflowStartedEvent = createEvent<WorkflowStarted>(
+        {
+          type: WorkflowEventType.WorkflowStarted,
+          input,
+          workflowName,
+          // generate the time for the workflow to timeout based on when it was started.
+          // the timer will be started by the orchestrator so the client does not need to have access to the timer client.
+          timeoutTime: timeoutSeconds
+            ? new Date(
+                new Date().getTime() + timeoutSeconds * 1000
+              ).toISOString()
+            : undefined,
+          context: {
+            name: executionName,
+            parentId:
+              "parentExecutionId" in request
+                ? request.parentExecutionId
+                : undefined,
+          },
         },
-      },
-      new Date()
-    );
+        new Date()
+      );
 
-    await this.submitWorkflowTask(executionId, workflowStartedEvent);
+      await this.submitWorkflowTask(executionId, workflowStartedEvent);
 
-    return { executionId };
+      return { executionId };
+    } catch (err) {
+      console.log(err);
+      throw new Error(
+        "Something went wrong starting a workflow: " + inspect(err)
+      );
+    }
   }
 
   public async submitWorkflowTask(
