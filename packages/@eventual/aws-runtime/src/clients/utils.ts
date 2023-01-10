@@ -3,18 +3,24 @@ import {
   QueryCommand,
   QueryCommandInput,
 } from "@aws-sdk/client-dynamodb";
+import { deflate, unzip } from "zlib";
+import { promisify } from "util";
+const do_deflate = promisify(deflate);
+const do_unzip = promisify(unzip);
 
-export interface NextTokenWrapper<Type, Payload, Version extends number = 1> {
-  type: Type;
-  version: Version;
-  payload: Payload;
+export type NextTokenWrapper<Type, Payload, Version extends number = 1> = [
+  type: Type,
+  version: Version,
+  payload: Payload
+];
+
+export enum DynamoPageType {
+  DynamoPage = 0,
 }
 
 export type DynamoPageNextTokenV1 = NextTokenWrapper<
-  "DynamoPage",
-  {
-    lastEvaluatedKey: Record<string, any>;
-  },
+  DynamoPageType.DynamoPage,
+  Record<string, any>,
   1
 >;
 
@@ -36,33 +42,31 @@ export async function queryPageWithToken<Item>(
   options: QueryPageWithTokenOptions,
   query: Omit<QueryCommandInput, "Limit" | "ExclusiveStartKey">
 ) {
-  const previousNextToken = options.nextToken
+  const [, , payload] = options.nextToken
     ? (JSON.parse(
-        Buffer.from(options.nextToken, "base64").toString("utf-8")
+        (await do_unzip(Buffer.from(options.nextToken, "base64"))).toString(
+          "utf-8"
+        )
       ) as DynamoPageNextTokenV1)
-    : undefined;
+    : [];
 
   const result = await queryPage<Item>(
     {
       ...options,
-      exclusiveStartKey: previousNextToken?.payload.lastEvaluatedKey,
+      exclusiveStartKey: payload,
     },
     query
   );
 
   const nextTokenObj: DynamoPageNextTokenV1 | undefined =
     result.lastEvaluatedKey
-      ? {
-          version: 1,
-          type: "DynamoPage",
-          payload: {
-            lastEvaluatedKey: result.lastEvaluatedKey,
-          },
-        }
+      ? [DynamoPageType.DynamoPage, 1, result.lastEvaluatedKey]
       : undefined;
 
   const newNextToken = nextTokenObj
-    ? Buffer.from(JSON.stringify(nextTokenObj)).toString("base64")
+    ? (await do_deflate(Buffer.from(JSON.stringify(nextTokenObj)))).toString(
+        "base64"
+      )
     : undefined;
 
   return { records: result.items, nextToken: newNextToken };

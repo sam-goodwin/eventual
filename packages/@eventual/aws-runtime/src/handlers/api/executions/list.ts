@@ -57,7 +57,10 @@ export const handler: APIGatewayProxyHandlerV2<GetExecutionsResponse> =
     }
 
     const sortDirection = rawSortDirection?.toUpperCase();
-    if (sortDirection && !(sortDirection in Object.values(SortOrder))) {
+    if (
+      sortDirection &&
+      !Object.values(SortOrder).includes(sortDirection as SortOrder)
+    ) {
       return {
         statusCode: 400,
         body: `Expected optional parameter sortDirection to be one of ${Object.values(

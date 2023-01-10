@@ -247,12 +247,16 @@ function formatQueryString(
 ) {
   return Object.entries(entries)
     .filter(
-      ([, value]) =>
-        value !== undefined && (!Array.isArray(value) || value.length > 0)
+      (e): e is [string, string | number | (string | number)[]] =>
+        e[1] !== undefined && (!Array.isArray(e[1]) || e[1].length > 0)
     )
     .map(
       ([name, value]) =>
-        `${name}=${Array.isArray(value) ? value.join(",") : value}`
+        `${name}=${
+          Array.isArray(value)
+            ? value.map((v) => encodeURIComponent(v.toString())).join(",")
+            : encodeURIComponent(value.toString())
+        }`
     )
     .join("&");
 }

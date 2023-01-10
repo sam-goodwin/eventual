@@ -1,4 +1,5 @@
 import { Argv } from "yargs";
+import { displayEvent } from "../display/execution.js";
 import { serviceAction, setServiceOptions } from "../service-action.js";
 
 export const history = (yargs: Argv) =>
@@ -19,6 +20,9 @@ export const history = (yargs: Argv) =>
         executionId: execution,
       });
       spinner.succeed();
-      console.log(events);
+      events.forEach((e) => {
+        process.stdout.write(displayEvent(e));
+        process.stdout.write("\n");
+      });
     })
   );

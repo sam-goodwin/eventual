@@ -136,13 +136,7 @@ export class AWSWorkflowClient extends WorkflowClient {
     request?: GetExecutionsRequest
   ): Promise<GetExecutionsResponse> {
     const filters = [
-      request?.statuses
-        ? `#status IN (${request.statuses
-            // for safety, filter out execution statuses that are unknown
-            .filter((s) => Object.values(ExecutionStatus).includes(s))
-            .map((s) => `"${s}"`)
-            .join(",")})`
-        : undefined,
+      request?.statuses ? `contains(:statuses, #status)` : undefined,
       request?.workflowName ? `workflowName=:workflowName` : undefined,
     ]
       .filter((f) => !!f)
@@ -152,7 +146,8 @@ export class AWSWorkflowClient extends WorkflowClient {
       {
         dynamoClient: this.props.dynamo,
         pageSize: request?.maxResults ?? 100,
-        keys: ["pk"],
+        // must take all keys from both LSI and GSI
+        keys: ["pk", "startTime", "sk"],
         nextToken: request?.nextToken,
       },
       {
@@ -165,6 +160,16 @@ export class AWSWorkflowClient extends WorkflowClient {
           ":pk": { S: ExecutionRecord.PARTITION_KEY },
           ...(request?.workflowName
             ? { ":workflowName": { S: request?.workflowName } }
+            : {}),
+          ...(request?.statuses
+            ? {
+                ":statuses": {
+                  L: request.statuses
+                    // for safety, filter out execution statuses that are unknown
+                    .filter((s) => Object.values(ExecutionStatus).includes(s))
+                    .map((s) => ({ S: s })),
+                },
+              }
             : {}),
         },
         ExpressionAttributeNames: {
