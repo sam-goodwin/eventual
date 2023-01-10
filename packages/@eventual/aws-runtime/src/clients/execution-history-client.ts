@@ -77,7 +77,7 @@ export class AWSExecutionHistoryClient extends ExecutionHistoryClient {
         ScanIndexForward: request.sortDirection !== SortOrder.Desc,
         ExpressionAttributeValues: {
           ":pk": { S: EventRecord.PARTITION_KEY },
-          ":sk": { S: EventRecord.sortKey(request.executionId, "") },
+          ":sk": { S: EventRecord.sortKey(request.executionId, "", "") },
         },
       }
     );
@@ -108,9 +108,10 @@ const EventRecord = {
   SORT_KEY_PREFIX: `Event$`,
   sortKey(
     executionId: string,
+    timestamp: string,
     id: string
   ): `${typeof this.SORT_KEY_PREFIX}${string}$${string}` {
-    return `${this.SORT_KEY_PREFIX}${executionId}$${id}`;
+    return `${this.SORT_KEY_PREFIX}${executionId}$${timestamp}${id}`;
   },
 };
 
@@ -122,7 +123,13 @@ function createEventRecord(
     Partial<BaseEvent>;
   return {
     pk: { S: EventRecord.PARTITION_KEY },
-    sk: { S: EventRecord.sortKey(executionId, getEventId(workflowEvent)) },
+    sk: {
+      S: EventRecord.sortKey(
+        executionId,
+        workflowEvent.timestamp,
+        getEventId(workflowEvent)
+      ),
+    },
     // do not create an id property if it doesn't exist on the event.
     ...(id ? { id: { S: id } } : undefined),
     executionId: { S: executionId },
