@@ -32,7 +32,7 @@ export const handler: APIGatewayProxyHandlerV2<StartExecutionResponse> =
       ? parseInt(timeoutSecondsString)
       : undefined;
 
-    if (timeoutSeconds && isNaN(timeoutSeconds)) {
+    if (timeoutSeconds !== undefined && isNaN(timeoutSeconds)) {
       throw new Error(
         "Expected optional parameter timeoutSeconds to be a valid number"
       );

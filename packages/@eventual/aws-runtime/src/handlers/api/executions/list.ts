@@ -4,6 +4,7 @@ import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
 import {
   ExecutionStatus,
   GetExecutionsResponse,
+  isExecutionStatus,
   SortOrder,
 } from "@eventual/core";
 
@@ -32,7 +33,7 @@ export const handler: APIGatewayProxyHandlerV2<GetExecutionsResponse> =
     } = event.queryStringParameters ?? {};
 
     const maxResults = maxResultString ? parseInt(maxResultString) : undefined;
-    if (maxResults && isNaN(maxResults)) {
+    if (maxResults !== undefined && isNaN(maxResults)) {
       return {
         statusCode: 400,
         body: "Expected optional parameter maxResults to be a number",
@@ -42,12 +43,7 @@ export const handler: APIGatewayProxyHandlerV2<GetExecutionsResponse> =
       ? rawStatuses.split(",").map((s) => s.toUpperCase())
       : undefined;
 
-    if (
-      statusStrings &&
-      !statusStrings.every((s): s is ExecutionStatus =>
-        Object.values(ExecutionStatus).includes(s as ExecutionStatus)
-      )
-    ) {
+    if (statusStrings && !statusStrings.every(isExecutionStatus)) {
       return {
         statusCode: 400,
         body: `Expected optional parameter statuses to be one or more of ${Object.values(

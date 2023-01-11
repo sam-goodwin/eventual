@@ -22,6 +22,7 @@ import {
   StartChildExecutionRequest,
   lookupWorkflow,
   SortOrder,
+  isExecutionStatus,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
@@ -166,7 +167,7 @@ export class AWSWorkflowClient extends WorkflowClient {
                 ":statuses": {
                   L: request.statuses
                     // for safety, filter out execution statuses that are unknown
-                    .filter((s) => Object.values(ExecutionStatus).includes(s))
+                    .filter(isExecutionStatus)
                     .map((s) => ({ S: s })),
                 },
               }

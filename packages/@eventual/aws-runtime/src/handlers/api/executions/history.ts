@@ -31,7 +31,7 @@ export const handler: APIGatewayProxyHandlerV2<ExecutionEventsResponse> =
     } = event.queryStringParameters ?? {};
 
     const maxResults = maxResultString ? parseInt(maxResultString) : undefined;
-    if (maxResults && isNaN(maxResults)) {
+    if (maxResults !== undefined && isNaN(maxResults)) {
       return {
         statusCode: 400,
         body: "Expected optional parameter maxResults to be a number",

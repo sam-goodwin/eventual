@@ -43,11 +43,7 @@ export async function queryPageWithToken<Item>(
   query: Omit<QueryCommandInput, "Limit" | "ExclusiveStartKey">
 ) {
   const [, , payload] = options.nextToken
-    ? (JSON.parse(
-        (await do_unzip(Buffer.from(options.nextToken, "base64"))).toString(
-          "utf-8"
-        )
-      ) as DynamoPageNextTokenV1)
+    ? await deserializeToken<DynamoPageNextTokenV1>(options.nextToken)
     : [];
 
   const result = await queryPage<Item>(
@@ -63,11 +59,7 @@ export async function queryPageWithToken<Item>(
       ? [DynamoPageType.DynamoPage, 1, result.lastEvaluatedKey]
       : undefined;
 
-  const newNextToken = nextTokenObj
-    ? (await do_deflate(Buffer.from(JSON.stringify(nextTokenObj)))).toString(
-        "base64"
-      )
-    : undefined;
+  const newNextToken = nextTokenObj ? serializeToken(nextTokenObj) : undefined;
 
   return { records: result.items, nextToken: newNextToken };
 }
@@ -124,4 +116,18 @@ export async function queryPage<Item>(
       lastEvaluatedKey = result.LastEvaluatedKey;
     }
   } while (true);
+}
+
+async function serializeToken(
+  token: NextTokenWrapper<any, any, any>
+): Promise<string> {
+  return Buffer.from(JSON.stringify(token)).toString("base64");
+}
+
+async function deserializeToken<T extends NextTokenWrapper<any, any, any>>(
+  str: string
+): Promise<T> {
+  return JSON.parse(
+    (await do_unzip(Buffer.from(str, "base64"))).toString("utf-8")
+  ) as T;
 }
