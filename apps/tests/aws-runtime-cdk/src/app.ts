@@ -10,6 +10,7 @@ import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as eventual from "@eventual/aws-cdk";
 import path from "path";
 import { ServiceDashboard } from "@eventual/aws-cdk";
+import { LogLevel } from "packages/@eventual/core/src";
 
 const app = new App();
 
@@ -30,7 +31,7 @@ const testService = new eventual.Service(stack, "testService", {
     TEST_QUEUE_URL: testQueue.queueUrl,
   },
   logging: {
-    logLevel: "DEBUG",
+    logLevel: LogLevel.DEBUG,
   },
 });
 

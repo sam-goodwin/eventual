@@ -14,7 +14,7 @@ import {
 } from "../clients/timer-client.js";
 import type { WorkflowClient } from "../clients/workflow-client.js";
 import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
-import { LogAgent, LogContextType } from "../log-agent.js";
+import { LogAgent, LogContextType, LogLevel } from "../log-agent.js";
 
 interface TimerHandlerProps {
   workflowClient: WorkflowClient;
@@ -49,7 +49,7 @@ export function createTimerHandler({
 
       logAgent.logWithContext(
         { type: LogContextType.Execution, executionId: request.executionId },
-        "DEBUG",
+        LogLevel.DEBUG,
         `checking activity for heartbeat timeout: ${JSON.stringify(activity)}`
       );
 

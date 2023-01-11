@@ -16,6 +16,7 @@ import {
   ExecutionHistoryClient,
   isWorkflowTask,
   LogAgent,
+  LogLevel,
   Orchestrator,
   PublishEventsRequest,
   registerServiceClient,
@@ -129,7 +130,7 @@ export class TestEnvironment extends RuntimeServiceClient {
     const testLogAgent = new LogAgent({
       logsClient: new TestLogsClient(),
       getTime: () => this.time,
-      logLevel: { default: "DEBUG" },
+      logLevel: { default: LogLevel.DEBUG },
     });
     const activityWorker = createActivityWorker({
       activityRuntimeClient,

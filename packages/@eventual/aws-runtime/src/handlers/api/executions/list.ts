@@ -1,8 +1,8 @@
+import { withErrorMiddleware } from "../middleware.js";
 import {
   createLogsClient,
   createWorkflowClient,
-} from "../../../clients/index.js";
-import { withErrorMiddleware } from "../middleware.js";
+} from "../../../clients/create.js";
 import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { Execution } from "@eventual/core";
 

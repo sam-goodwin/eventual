@@ -1,4 +1,7 @@
-import { createLogsClient, createWorkflowClient } from "../../clients/index.js";
+import {
+  createLogsClient,
+  createWorkflowClient,
+} from "../../clients/create.js";
 import { withErrorMiddleware } from "./middleware.js";
 import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
 import {

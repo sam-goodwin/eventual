@@ -3,7 +3,12 @@ import type {
   ScheduleForwarderRequest,
   TimerClient,
 } from "../clients/timer-client.js";
-import { ExecutionLogContext, LogAgent, LogContextType } from "../log-agent.js";
+import {
+  ExecutionLogContext,
+  LogAgent,
+  LogContextType,
+  LogLevel,
+} from "../log-agent.js";
 import {
   MetricsCommon,
   SchedulerForwarderMetrics,
@@ -41,7 +46,7 @@ export function createScheduleForwarder({
 
       logAgent.logWithContext(
         executionLogContext,
-        "DEBUG",
+        LogLevel.DEBUG,
         "Forwarding request to the timer queue: " +
           JSON.stringify(event.timerRequest)
       );
@@ -51,7 +56,7 @@ export function createScheduleForwarder({
 
       logAgent.logWithContext(
         executionLogContext,
-        "DEBUG",
+        LogLevel.DEBUG,
         `Timer Time: ${event.untilTime}. Forwarded Time: ${event.forwardTime}. ${schedulerTimeDelay} Millisecond delay from scheduler.`
       );
 
@@ -72,7 +77,7 @@ export function createScheduleForwarder({
       if (event.clearSchedule) {
         logAgent.logWithContext(
           executionLogContext,
-          "DEBUG",
+          LogLevel.DEBUG,
           "Deleting the schedule: " + event.scheduleName
         );
         await timerClient.clearSchedule(event.scheduleName);

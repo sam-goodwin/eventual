@@ -96,7 +96,7 @@ export const createLogAgent = /* @__PURE__ */ memoize(
           (process.env[env.ENV_NAMES.DEFAULT_LOG_LEVEL] as
             | LogLevel
             | undefined) ??
-          "INFO",
+          LogLevel.INFO,
       },
     });
   }

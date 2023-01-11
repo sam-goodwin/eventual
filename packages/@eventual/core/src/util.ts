@@ -32,7 +32,7 @@ export function extendsError(err: unknown): err is Error {
   );
 }
 
-export interface Iterator<I, T extends I> {
+export interface _Iterator<I, T extends I> {
   hasNext(): boolean;
   next(): T | undefined;
   drain(): T[];
@@ -42,7 +42,7 @@ export interface Iterator<I, T extends I> {
 export function iterator<I, T extends I>(
   elms: I[],
   predicate?: (elm: I) => elm is T
-): Iterator<I, T> {
+): _Iterator<I, T> {
   let cursor = 0;
   return {
     hasNext: () => {

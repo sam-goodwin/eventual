@@ -49,7 +49,7 @@ import {
   isResolvedOrFailed,
 } from "./result.js";
 import { createChain, isChain, Chain } from "./chain.js";
-import { assertNever, Iterator, iterator, or } from "./util.js";
+import { assertNever, _Iterator, iterator, or } from "./util.js";
 import { Command, CommandType } from "./command.js";
 import { isSleepForCall, isSleepUntilCall } from "./calls/sleep-call.js";
 import {
@@ -132,7 +132,7 @@ export function interpret<Return>(
      * any calls at the event of all result commands and advances, return
      */
     const calls: CommandCall[] = [];
-    let newCalls: Iterator<CommandCall, CommandCall>;
+    let newCalls: _Iterator<CommandCall, CommandCall>;
     // iterate until we are no longer finding commands, no longer have completion events to apply
     // or the workflow has a terminal status.
     while (

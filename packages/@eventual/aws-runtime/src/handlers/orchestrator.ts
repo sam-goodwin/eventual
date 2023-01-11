@@ -10,8 +10,8 @@ import {
   createTimerClient,
   createWorkflowClient,
   createWorkflowRuntimeClient,
-  SQSWorkflowTaskMessage,
-} from "../clients/index.js";
+} from "../clients/create.js";
+import { SQSWorkflowTaskMessage } from "src/clients/workflow-client.js";
 
 /**
  * Creates an entrypoint function for orchestrating a workflow

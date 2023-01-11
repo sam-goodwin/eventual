@@ -16,22 +16,25 @@ import { createActivityToken } from "../activity-token.js";
 import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
+import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
+import { Unit } from "../metrics/unit.js";
+import { timed } from "../metrics/utils.js";
+import { ActivityProvider } from "../providers/activity-provider.js";
+import { ActivityNotFoundError } from "../../error.js";
+import { extendsError } from "../../util.js";
+import {
+  Schedule,
+  TimerClient,
+  TimerRequestType,
+} from "../clients/timer-client.js";
+import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
 import {
   ActivityLogContext,
   LogAgent,
   LogContextType,
-  RuntimeServiceClient,
-  Schedule,
-  TimerClient,
-  TimerRequestType,
-} from "../index.js";
-import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
-import { Unit } from "../metrics/unit.js";
-import { timed } from "../metrics/utils.js";
-import type { EventClient } from "../index.js";
-import { ActivityProvider } from "../providers/activity-provider.js";
-import { ActivityNotFoundError } from "../../error.js";
-import { extendsError } from "../../util.js";
+  LogLevel,
+} from "../log-agent.js";
+import { EventClient } from "../clients/event-client.js";
 
 export interface CreateActivityWorkerProps {
   activityRuntimeClient: ActivityRuntimeClient;
@@ -181,7 +184,11 @@ export function createActivityWorker({
              * The activity has declared that it is async, other than logging, there is nothing left to do here.
              * The activity should call {@link WorkflowClient.sendActivitySuccess} or {@link WorkflowClient.sendActivityFailure} when it is done.
              */
-            return logAgent.flush();
+            return timed(
+              metrics,
+              ActivityMetrics.ActivityLogWriteDuration,
+              () => logAgent.flush()
+            );
           } else if (result) {
             metrics.setProperty(ActivityMetrics.HasResult, 1);
             metrics.setProperty(ActivityMetrics.AsyncResult, 0);
@@ -197,7 +204,7 @@ export function createActivityWorker({
 
           logAgent.logWithContext(
             activityLogContext,
-            "INFO",
+            LogLevel.INFO,
             `Activity ${activityHandle} succeeded, reporting back to execution.`
           );
 
@@ -222,7 +229,7 @@ export function createActivityWorker({
 
           logAgent.logWithContext(
             activityLogContext,
-            "DEBUG",
+            LogLevel.DEBUG,
             `Activity ${activityHandle} failed, reporting failure back to execution: ${error}: ${message}`
           );
 

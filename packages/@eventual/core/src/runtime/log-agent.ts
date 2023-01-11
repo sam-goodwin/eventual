@@ -38,8 +38,14 @@ export function isActivityLogContext(
   return context.type === LogContextType.Activity;
 }
 
-const LOG_LEVELS = ["TRACE", "DEBUG", "INFO", "WARN", "ERROR"] as const;
-export type LogLevel = typeof LOG_LEVELS[number];
+export enum LogLevel {
+  TRACE = "TRACE",
+  DEBUG = "DEBUG",
+  INFO = "INFO",
+  WARN = "WARN",
+  ERROR = "ERROR",
+}
+export const LOG_LEVELS = Object.values(LogLevel);
 
 export interface LogAgentProps {
   logsClient: LogsClient;
