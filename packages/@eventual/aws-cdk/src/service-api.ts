@@ -5,20 +5,22 @@ import { ServiceType } from "@eventual/core";
 import { HttpMethod } from "aws-cdk-lib/aws-events";
 import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Code, Function } from "aws-cdk-lib/aws-lambda";
-import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Arn, Stack } from "aws-cdk-lib";
 import { Construct } from "constructs";
-import path from "path";
 import { ServiceFunction } from "./service-function";
-import { baseNodeFnProps, outDir } from "./utils";
+import { baseFnProps, outDir } from "./utils";
 import type { Workflows } from "./workflows";
 import type { Events } from "./events";
 import type { Activities } from "./activities";
 import type { Scheduler } from "./scheduler";
+import { bundleSourcesSync } from "./compile-client";
+import { runtimeEntrypoint } from "./service";
+import { BuildSource } from "@eventual/compiler";
 
 export interface ApiProps {
   serviceName: string;
   environment?: Record<string, string>;
+  entry: string;
   workflows: Workflows;
   activities: Activities;
   scheduler: Scheduler;
@@ -48,80 +50,104 @@ export class Api extends Construct {
     props.activities.configureUpdateActivity(this.handler);
     props.workflows.configureSendSignal(this.handler);
     props.workflows.configureSendWorkflowEvent(this.handler);
-    props.workflows.configureStartWorkflow(this.handler);
+    props.workflows.configureStartExecution(this.handler);
 
     this.gateway = new HttpApi(this, "Gateway", {
       apiName: `eventual-api-${props.serviceName}`,
       defaultIntegration: new HttpLambdaIntegration("default", this.handler),
     });
 
-    interface RouteMapping {
-      methods?: HttpMethod[];
-      entry: { api: string } | { bundled: string };
-      grants?: (grantee: Function) => void;
-    }
-
-    const route = (mappings: Record<string, RouteMapping | RouteMapping[]>) => {
-      Object.entries(mappings).forEach(([path, mappings]) => {
-        const mappingsArray = Array.isArray(mappings) ? mappings : [mappings];
-        mappingsArray.forEach(({ entry, methods, grants }) => {
-          const id =
-            // Generate id for the lambda based on its path and method
-            path.slice(1).replace("/", "-").replace(/[{}]/, "") +
-              methods?.join("-") ?? [];
-          const fn =
-            "api" in entry
-              ? this.apiLambda(id, entry.api)
-              : this.prebundledLambda(id, entry.bundled);
-          grants?.(fn);
-          const integration = new HttpLambdaIntegration(
-            `${id}-integration`,
-            fn
-          );
-          this.gateway.addRoutes({
-            path,
-            integration,
-            methods,
-            authorizer: new HttpIamAuthorizer(),
-          });
-        });
-      });
-    };
-
-    route({
+    // TODO move the API definition to the aws-runtime or core-runtime
+    //      https://github.com/functionless/eventual/issues/173
+    this.applyRouteMappings({
       "/_eventual/workflows": {
         methods: [HttpMethod.GET],
-        entry: { bundled: "list-workflows" },
+        entry: {
+          name: "list-workflows",
+          entry: runtimeEntrypoint("api/list-workflows"),
+        },
       },
       "/_eventual/workflows/{name}/executions": [
         {
           methods: [HttpMethod.POST],
-          entry: { api: "executions/new.js" },
-          grants: (fn) => {
-            props.workflows.configureStartWorkflow(fn);
+          entry: {
+            name: "start-execution",
+            entry: runtimeEntrypoint("api/executions/new"),
           },
-        },
-        {
-          methods: [HttpMethod.GET],
-          entry: { api: "executions/list.js" },
           grants: (fn) => {
-            props.workflows.configureReadWorkflowData(fn);
+            props.workflows.configureStartExecution(fn);
           },
         },
       ],
+      "/_eventual/executions": {
+        methods: [HttpMethod.GET],
+        entry: {
+          name: "list-executions",
+          entry: runtimeEntrypoint("api/executions/list"),
+        },
+        grants: (fn) => {
+          props.workflows.configureReadWorkflowData(fn);
+        },
+      },
+      "/_eventual/executions/{executionId}": {
+        methods: [HttpMethod.GET],
+        entry: {
+          name: "get-execution",
+          entry: runtimeEntrypoint("api/executions/get"),
+        },
+        grants: (fn) => props.workflows.configureReadWorkflowData(fn),
+      },
       "/_eventual/executions/{executionId}/history": {
         methods: [HttpMethod.GET],
-        entry: { api: "executions/history.js" },
+        entry: {
+          name: "executions-events",
+          entry: runtimeEntrypoint("api/executions/history"),
+        },
         grants: (fn) => props.workflows.configureReadWorkflowData(fn),
+      },
+      "/_eventual/executions/{executionId}/signals": {
+        methods: [HttpMethod.PUT],
+        entry: {
+          name: "send-signal",
+          entry: runtimeEntrypoint("api/executions/signals/send"),
+        },
+        grants: (fn) => {
+          props.workflows.configureReadWorkflowData(fn);
+          props.workflows.configureSendSignal(fn);
+        },
       },
       "/_eventual/executions/{executionId}/workflow-history": {
         methods: [HttpMethod.GET],
-        entry: { api: "executions/workflow-history.js" },
+        entry: {
+          name: "executions-history",
+          entry: runtimeEntrypoint("api/executions/workflow-history"),
+        },
         // TODO fix me
         grants: (fn) => {
           props.activities.configureFullControl(fn);
           props.workflows.configureReadHistory(fn);
           props.scheduler.configureScheduleTimer(fn);
+        },
+      },
+      "/_eventual/events": {
+        methods: [HttpMethod.PUT],
+        entry: {
+          name: "publish-events",
+          entry: runtimeEntrypoint("api/publish-events"),
+        },
+        grants: (fn) => {
+          props.events.configurePublish(fn);
+        },
+      },
+      "/_eventual/activities": {
+        methods: [HttpMethod.POST],
+        entry: {
+          name: "update-activity",
+          entry: runtimeEntrypoint("api/update-activity"),
+        },
+        grants: (fn) => {
+          props.activities.configureUpdateActivity(fn);
+          props.activities.configureCompleteActivity(fn);
         },
       },
     });
@@ -152,21 +178,48 @@ export class Api extends Construct {
     });
   }
 
-  private apiLambda(id: string, entry: string): NodejsFunction {
-    return new NodejsFunction(this, id, {
-      entry: path.join(
-        require.resolve("@eventual/aws-runtime"),
-        "../../esm/handlers/api",
-        entry
-      ),
-      ...baseNodeFnProps,
+  private applyRouteMappings(
+    mappings: Record<string, RouteMapping | RouteMapping[]>
+  ) {
+    const bundles: Omit<BuildSource, "outDir" | "injectedEntry">[] = [];
+    const deferredAddRoutes: (() => void)[] = [];
+
+    Object.entries(mappings).forEach(([path, mappings]) => {
+      const mappingsArray = Array.isArray(mappings) ? mappings : [mappings];
+      mappingsArray.forEach(({ entry, methods, grants }) => {
+        const id = entry.name;
+        // register the bundles we need to make
+        bundles.push(entry);
+        // create a closure that creates the gateway route.
+        // lambda validates the code bundle immediately so we need to bundle
+        // before creating the lambda.
+        deferredAddRoutes.push(() => {
+          const fn = this.prebundledLambda(id, entry.name);
+          grants?.(fn);
+          const integration = new HttpLambdaIntegration(
+            `${id}-integration`,
+            fn
+          );
+          this.gateway.addRoutes({
+            path,
+            integration,
+            methods,
+            authorizer: new HttpIamAuthorizer(),
+          });
+        });
+      });
     });
+
+    // bundle the functions found
+    bundleSourcesSync(outDir(this), this.props.entry, ...bundles);
+    // actually create the lambda and routes.
+    deferredAddRoutes.forEach((a) => a());
   }
 
   private prebundledLambda(id: string, entry: string) {
     return new Function(this, id, {
       code: Code.fromAsset(outDir(this, entry)),
-      ...baseNodeFnProps,
+      ...baseFnProps,
       handler: "index.handler",
     });
   }
@@ -175,4 +228,10 @@ export class Api extends Construct {
     this.props.workflows.configureFullControl(this.handler);
     this.props.events.configurePublish(this.handler);
   }
+}
+
+interface RouteMapping {
+  methods?: HttpMethod[];
+  entry: Omit<BuildSource, "outDir" | "injectedEntry">;
+  grants?: (grantee: Function) => void;
 }

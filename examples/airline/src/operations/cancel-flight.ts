@@ -28,7 +28,7 @@ api.post("/flight/:flightId/cancellation", async (request) => {
 
   const flight = await cancelFlight(payload);
 
-  await flightCancelled.publish({
+  await flightCancelled.publishEvents({
     type: FlightEventType.FlightCancelled,
     cancelledAt: flight.cancelledAt,
     day: flight.day,

@@ -145,7 +145,7 @@ export class Activities extends Construct implements IActivities, IGrantable {
     }
     // allows the activity worker to send events to the workflow queue
     // and lookup the status of the workflow.
-    this.props.workflows.configureStartWorkflow(this.worker);
+    this.props.workflows.configureStartExecution(this.worker);
     this.props.workflows.configureReadWorkflowData(this.worker);
     // allows the activity worker to claim activities and check their heartbeat status.
     this.configureUpdateActivity(this.worker);

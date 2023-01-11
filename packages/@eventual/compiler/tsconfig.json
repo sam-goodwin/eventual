@@ -6,5 +6,5 @@
     "rootDir": "src",
     "outDir": "lib"
   },
-  "references": [{ "path": "../core" }, { "path": "../aws-runtime" }]
+  "references": [{ "path": "../core" }]
 }

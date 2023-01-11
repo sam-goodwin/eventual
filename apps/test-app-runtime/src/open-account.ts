@@ -87,7 +87,7 @@ api.post("/open-account", async (request) => {
 
 const openAccountEvent = event<OpenAccountRequest>("OpenAccount");
 
-openAccountEvent.on(async (event) => {
+openAccountEvent.onEvent(async (event) => {
   await openAccount.startExecution({
     input: event,
   });
@@ -132,7 +132,6 @@ const addAddress = activity(
     );
   }
 );
-
 const removeAddress = activity("removeAddress", async (accountId: string) => {
   await dynamo().send(
     new UpdateCommand({

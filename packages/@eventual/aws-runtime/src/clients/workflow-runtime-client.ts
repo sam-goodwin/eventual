@@ -13,19 +13,19 @@ import {
 } from "@aws-sdk/client-s3";
 import {
   ActivityWorkerRequest,
-  CompleteExecution,
-  CompleteExecutionRequest,
+  SucceededExecution,
+  SucceedExecutionRequest,
   ExecutionStatus,
   FailedExecution,
   FailExecutionRequest,
   HistoryStateEvent,
   isFailedExecutionRequest,
+  TimerClient,
   UpdateHistoryRequest,
+  WorkflowClient,
   WorkflowRuntimeClient,
 } from "@eventual/core";
-import { AWSTimerClient } from "./timer-client.js";
 import {
-  AWSWorkflowClient,
   createExecutionFromResult,
   ExecutionRecord,
 } from "./workflow-client.js";
@@ -37,8 +37,8 @@ export interface AWSWorkflowRuntimeClientProps {
   readonly s3: S3Client;
   readonly executionHistoryBucket: string;
   readonly tableName: string;
-  readonly workflowClient: AWSWorkflowClient;
-  readonly timerClient: AWSTimerClient;
+  readonly workflowClient: WorkflowClient;
+  readonly timerClient: TimerClient;
 }
 
 export class AWSWorkflowRuntimeClient extends WorkflowRuntimeClient {
@@ -83,7 +83,7 @@ export class AWSWorkflowRuntimeClient extends WorkflowRuntimeClient {
   }
 
   protected async updateExecution(
-    request: FailExecutionRequest | CompleteExecutionRequest
+    request: FailExecutionRequest | SucceedExecutionRequest
   ) {
     const executionResult = isFailedExecutionRequest(request)
       ? await this.props.dynamo.send(
@@ -124,7 +124,7 @@ export class AWSWorkflowRuntimeClient extends WorkflowRuntimeClient {
               ...(request.result ? { "#result": "result" } : {}),
             },
             ExpressionAttributeValues: {
-              ":complete": { S: ExecutionStatus.COMPLETE },
+              ":complete": { S: ExecutionStatus.SUCCEEDED },
               ":endTime": { S: new Date().toISOString() },
               ...(request.result
                 ? { ":result": { S: JSON.stringify(request.result) } }
@@ -136,7 +136,7 @@ export class AWSWorkflowRuntimeClient extends WorkflowRuntimeClient {
 
     return createExecutionFromResult(
       executionResult.Attributes as ExecutionRecord
-    ) as CompleteExecution | FailedExecution;
+    ) as SucceededExecution | FailedExecution;
   }
 
   public async startActivity(request: ActivityWorkerRequest): Promise<void> {

@@ -22,7 +22,7 @@ export class AWSEventClient implements EventClient {
       props.eventBridgeClient ?? new EventBridgeClient({});
   }
 
-  public async publish(
+  public async publishEvents(
     ...events: EventEnvelope<EventPayload>[]
   ): Promise<void> {
     console.debug("publish", events);

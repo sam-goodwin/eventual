@@ -135,8 +135,8 @@ export class CommandExecutor {
     command: ScheduleWorkflowCommand,
     baseTime: Date
   ): Promise<ChildWorkflowScheduled> {
-    await this.props.workflowClient.startWorkflow({
-      workflowName: command.name,
+    await this.props.workflowClient.startExecution({
+      workflow: command.name,
       input: command.input,
       parentExecutionId: executionId,
       executionName: formatChildExecutionName(executionId, command.seq),
@@ -229,7 +229,7 @@ export class CommandExecutor {
 
     await this.props.workflowClient.sendSignal({
       signal: command.signalId,
-      executionId: childExecutionId,
+      execution: childExecutionId,
       id: `${executionId}/${command.seq}`,
       payload: command.payload,
     });
@@ -272,7 +272,7 @@ export class CommandExecutor {
   }
 
   private async publishEvents(command: PublishEventsCommand, baseTime: Date) {
-    await this.props.eventClient.publish(...command.events);
+    await this.props.eventClient.publishEvents(...command.events);
     return createEvent<EventsPublished>(
       {
         type: WorkflowEventType.EventsPublished,

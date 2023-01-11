@@ -1,22 +1,8 @@
-import {
-  AWSActivityRuntimeClient,
-  AWSWorkflowClient,
-} from "@eventual/aws-runtime";
 import { Handler } from "aws-lambda";
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { SQSClient } from "@aws-sdk/client-sqs";
+import { AwsHttpServiceClient } from "@eventual/aws-client";
 
-const dynamo = new DynamoDBClient({});
-
-const workflowClient = new AWSWorkflowClient({
-  dynamo,
-  sqs: new SQSClient({}),
-  tableName: process.env.TEST_TABLE_NAME || "",
-  workflowQueueUrl: process.env.TEST_QUEUE_URL || "",
-  activityRuntimeClient: new AWSActivityRuntimeClient({
-    activityTableName: process.env.TEST_ACTIVITY_TABLE_NAME || "",
-    dynamo,
-  }),
+const serviceClient = new AwsHttpServiceClient({
+  serviceUrl: process.env.TEST_SERVICE_URL ?? "",
 });
 
 export interface AsyncWriterTestEvent {
@@ -31,12 +17,12 @@ export const handle: Handler<AsyncWriterTestEvent[], void> = async (event) => {
     await Promise.allSettled(
       event.map(async (e) => {
         if (e.type === "complete") {
-          await workflowClient.completeActivity({
+          await serviceClient.sendActivitySuccess({
             activityToken: e.token,
             result: "hello from the async writer!",
           });
         } else {
-          await workflowClient.failActivity({
+          await serviceClient.sendActivityFailure({
             activityToken: e.token,
             error: "AsyncWriterError",
             message: "I was told to fail this activity, sorry.",

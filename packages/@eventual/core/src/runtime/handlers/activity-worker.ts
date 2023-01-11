@@ -1,7 +1,7 @@
 import { isAsyncResult } from "../../activity.js";
 import { ScheduleActivityCommand } from "../../command.js";
 import {
-  ActivityCompleted,
+  ActivitySucceeded,
   ActivityFailed,
   createEvent,
   isWorkflowFailed,
@@ -9,15 +9,19 @@ import {
 } from "../../workflow-events.js";
 import {
   clearActivityContext,
-  registerEventClient,
-  registerWorkflowClient,
+  registerServiceClient,
   setActivityContext,
 } from "../../global.js";
 import { createActivityToken } from "../activity-token.js";
 import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
-import { Schedule, TimerClient, TimerRequestType } from "../index.js";
+import {
+  RuntimeServiceClient,
+  Schedule,
+  TimerClient,
+  TimerRequestType,
+} from "../index.js";
 import { Logger } from "../logger.js";
 import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
 import { Unit } from "../metrics/unit.js";
@@ -35,6 +39,7 @@ export interface CreateActivityWorkerProps {
   logger: Logger;
   eventClient: EventClient;
   activityProvider: ActivityProvider;
+  serviceClient?: RuntimeServiceClient;
 }
 
 export interface ActivityWorkerRequest {
@@ -68,13 +73,13 @@ export function createActivityWorker({
   timerClient,
   metricsClient,
   logger,
-  eventClient,
   activityProvider,
+  serviceClient,
 }: CreateActivityWorkerProps): ActivityWorker {
-  // make the workflow client available to all activity code
-  registerWorkflowClient(workflowClient);
-  // make the event client available to all activity code
-  registerEventClient(eventClient);
+  // make the service client available to all activity code
+  if (serviceClient) {
+    registerServiceClient(serviceClient);
+  }
 
   return metricsClient.metricScope(
     (metrics) =>
@@ -164,7 +169,7 @@ export function createActivityWorker({
 
             /**
              * The activity has declared that it is async, other than logging, there is nothing left to do here.
-             * The activity should call {@link WorkflowClient.completeActivity} or {@link WorkflowClient.failActivity} when it is done.
+             * The activity should call {@link WorkflowClient.sendActivitySuccess} or {@link WorkflowClient.sendActivityFailure} when it is done.
              */
             return;
           } else if (result) {
@@ -185,9 +190,9 @@ export function createActivityWorker({
           );
 
           const endTime = getEndTime(start);
-          const event = createEvent<ActivityCompleted>(
+          const event = createEvent<ActivitySucceeded>(
             {
-              type: WorkflowEventType.ActivityCompleted,
+              type: WorkflowEventType.ActivitySucceeded,
               seq: request.command.seq,
               result,
             },
@@ -233,7 +238,7 @@ export function createActivityWorker({
             Unit.Count
           );
           metrics.putMetric(
-            ActivityMetrics.ActivityCompleted,
+            ActivityMetrics.ActivitySucceeded,
             failed ? 0 : 1,
             Unit.Count
           );
@@ -242,7 +247,7 @@ export function createActivityWorker({
         }
 
         async function finishActivity(
-          event: ActivityCompleted | ActivityFailed,
+          event: ActivitySucceeded | ActivityFailed,
           duration: number
         ) {
           await timed(metrics, ActivityMetrics.SubmitWorkflowTaskDuration, () =>

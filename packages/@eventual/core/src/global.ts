@@ -1,9 +1,8 @@
 import { Event, EventSubscription } from "./event.js";
 import { ActivityContext, ActivityHandler } from "./activity.js";
 import type { Eventual, EventualCallCollector } from "./eventual.js";
-import { EventClient } from "./runtime/clients/event-client.js";
-import type { WorkflowClient } from "./runtime/clients/workflow-client.js";
 import type { Workflow } from "./workflow.js";
+import { EventualServiceClient } from "./service-client.js";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -33,7 +32,7 @@ declare global {
      * A global variable for storing the WorkflowClient
      * this is initialized by Eventual's harness lambda functions
      */
-    workflowClient?: WorkflowClient;
+    serviceClient?: EventualServiceClient;
     /**
      * A global variable storing a map of event name (which is globally unique)
      * to the {@link Event} declaration instance.
@@ -44,17 +43,10 @@ declare global {
      * within this application.
      */
     eventSubscriptions?: EventSubscription[];
-
-    /**
-     * A global variable for storing the {@link EventClient}
-     *
-     * This is initialized by Eventual's harness functions
-     */
-    eventClient?: EventClient;
   };
 }
 
-globalThis._eventual = {};
+globalThis._eventual ??= {};
 
 export const workflows = (): Map<string, Workflow> =>
   (globalThis._eventual.workflows ??= new Map<string, Workflow>());
@@ -93,21 +85,21 @@ export function clearEventualCollector() {
 }
 
 /**
- * Register the global workflow client used by workflow functions
+ * Register the global service client used by workflow functions
  * to start workflows within an eventual-controlled environment.
  */
-export function registerWorkflowClient(client: WorkflowClient) {
-  globalThis._eventual.workflowClient = client;
+export function registerServiceClient(client: EventualServiceClient) {
+  globalThis._eventual.serviceClient = client;
 }
 
 /**
- * Get the global workflow client.
+ * Get the global service client.
  */
-export function getWorkflowClient(): WorkflowClient {
-  if (globalThis._eventual.workflowClient === undefined) {
+export function getServiceClient(): EventualServiceClient {
+  if (globalThis._eventual.serviceClient === undefined) {
     throw new Error(`WorkflowClient is not registered`);
   }
-  return globalThis._eventual.workflowClient;
+  return globalThis._eventual.serviceClient;
 }
 
 export function setActivityContext(context: ActivityContext) {
@@ -127,22 +119,4 @@ export function getActivityContext(): ActivityContext {
     );
   }
   return context;
-}
-
-/**
- * Register the global event client sued by the event emit functions
- * to emit events within an eventual-controlled environment.
- */
-export function registerEventClient(client: EventClient) {
-  globalThis._eventual.eventClient = client;
-}
-
-/**
- * Get the global event client.
- */
-export function getEventClient(): EventClient {
-  if (globalThis._eventual.eventClient === undefined) {
-    throw new Error(`EventClient is not registered`);
-  }
-  return globalThis._eventual.eventClient;
 }

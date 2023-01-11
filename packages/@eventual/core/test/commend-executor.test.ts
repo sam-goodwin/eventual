@@ -37,14 +37,14 @@ const mockTimerClient = {
   scheduleEvent: jest.fn() as TimerClient["scheduleEvent"],
 } satisfies Partial<TimerClient> as TimerClient;
 const mockWorkflowClient = {
-  startWorkflow: jest.fn() as WorkflowClient["startWorkflow"],
+  startExecution: jest.fn() as WorkflowClient["startExecution"],
   sendSignal: jest.fn() as WorkflowClient["sendSignal"],
 } satisfies Partial<WorkflowClient> as WorkflowClient;
 const mockWorkflowRuntimeClient = {
   startActivity: jest.fn() as WorkflowRuntimeClient["startActivity"],
 } satisfies Partial<WorkflowRuntimeClient> as WorkflowRuntimeClient;
 const mockEventClient = {
-  publish: jest.fn() as EventClient["publish"],
+  publishEvents: jest.fn() as EventClient["publishEvents"],
 } satisfies Partial<EventClient> as EventClient;
 
 const testExecutor = new CommandExecutor({
@@ -208,11 +208,14 @@ describe("workflow", () => {
 
     expect(mockTimerClient.scheduleEvent).not.toHaveBeenCalled();
 
-    expect(mockWorkflowClient.startWorkflow).toHaveBeenCalledWith({
-      workflowName: "workflow",
+    expect(mockWorkflowClient.startExecution).toHaveBeenCalledWith<
+      Parameters<typeof mockWorkflowClient.startExecution>
+    >({
+      workflow: "workflow",
       parentExecutionId: executionId,
       executionName: expect.stringContaining(INTERNAL_EXECUTION_ID_PREFIX),
       seq: 0,
+      input: undefined,
     });
 
     expect(event).toMatchObject<ChildWorkflowScheduled>({
@@ -298,7 +301,7 @@ describe("send signal", () => {
 
     expect(mockWorkflowClient.sendSignal).toHaveBeenCalledWith<
       [SendSignalRequest]
-    >({ signal: "signal", executionId: "exec1", id: `${executionId}/${0}` });
+    >({ signal: "signal", execution: "exec1", id: `${executionId}/${0}` });
 
     expect(event).toMatchObject<SignalSent>({
       seq: 0,
@@ -335,7 +338,7 @@ describe("send signal", () => {
       [SendSignalRequest]
     >({
       signal: "signal",
-      executionId: childExecId,
+      execution: childExecId,
       id: `${executionId}/${1}`,
       payload: undefined,
     });
@@ -415,10 +418,12 @@ describe("public events", () => {
       baseTime
     );
 
-    expect(mockEventClient.publish).toHaveBeenCalledWith<[EventEnvelope]>({
-      event: {},
-      name: "myEvent",
-    });
+    expect(mockEventClient.publishEvents).toHaveBeenCalledWith<[EventEnvelope]>(
+      {
+        event: {},
+        name: "myEvent",
+      }
+    );
 
     expect(event).toMatchObject<EventsPublished>({
       seq: 0,

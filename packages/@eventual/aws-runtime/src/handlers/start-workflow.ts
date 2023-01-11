@@ -1,17 +1,15 @@
 import { Handler } from "aws-lambda";
 import type {
-  StartWorkflowRequest,
-  StartWorkflowResponse,
+  StartExecutionRequest,
+  StartExecutionResponse,
 } from "@eventual/core";
 import { createWorkflowClient } from "../clients/index.js";
 
 const workflowClient = createWorkflowClient();
 
 export const handle: Handler<
-  StartWorkflowRequest,
-  StartWorkflowResponse
+  StartExecutionRequest,
+  StartExecutionResponse
 > = async (request) => {
-  return {
-    executionId: await workflowClient.startWorkflow(request),
-  };
+  return workflowClient.startExecution(request);
 };

@@ -11,7 +11,12 @@ async function history(event: APIGatewayProxyEventV2) {
     return { statusCode: 400, body: `Missing executionId` };
   }
 
-  return workflowClient.getEvents(decodeExecutionId(executionId));
+  // TODO pagination
+  return (
+    await workflowClient.getEvents({
+      executionId: decodeExecutionId(executionId),
+    })
+  ).events;
 }
 
 export const handler: APIGatewayProxyHandlerV2<WorkflowEvent[]> =

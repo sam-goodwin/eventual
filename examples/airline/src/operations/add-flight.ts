@@ -25,7 +25,7 @@ api.post("/flights", async (request) => {
 
   await addFlight(payload);
 
-  await flightAdded.publish({
+  await flightAdded.publishEvents({
     type: FlightEventType.FlightAdded,
     ...payload,
   });

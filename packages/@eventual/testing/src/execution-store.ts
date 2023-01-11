@@ -1,4 +1,8 @@
-import { Execution } from "@eventual/core";
+import {
+  Execution,
+  GetExecutionsRequest,
+  GetExecutionsResponse,
+} from "@eventual/core";
 
 export class ExecutionStore {
   private executionStore: Record<string, Execution<any>> = {};
@@ -11,10 +15,21 @@ export class ExecutionStore {
     return this.executionStore[executionId];
   }
 
-  public list(): Execution<any>[] {
-    return Object.values(this.executionStore).sort(
-      (a, b) =>
-        new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+  public list(request: GetExecutionsRequest): GetExecutionsResponse {
+    const executions = Object.values(this.executionStore).sort((a, b) =>
+      request.sortDirection === "Asc"
+        ? new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+        : new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
     );
+
+    const filteredExecutions = executions.filter(
+      (e) =>
+        (!request.statuses || e.status in request.statuses) &&
+        (!request.workflowName || request.workflowName === e.workflowName)
+    );
+
+    return {
+      executions: filteredExecutions,
+    };
   }
 }

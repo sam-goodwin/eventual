@@ -15,7 +15,7 @@ api.post("/work", async (request) => {
 export const myWorkflow = workflow("myWorkflow", async (items: string[]) => {
   const results = await Promise.all(items.map(doWork));
 
-  await workDone.publish({
+  await workDone.publishEvents({
     outputs: results,
   });
 
@@ -35,46 +35,67 @@ export interface WorkDoneEvent {
 export const workDone = event<WorkDoneEvent>("WorkDone");
 `;
 
-export const sampleSSTCode = `import { StackContext } from "@serverless-stack/resources";
+export function sampleSSTCode(projectName: string) {
+  return `import { StackContext } from "@serverless-stack/resources";
 import { Service } from "@eventual/aws-cdk";
 import path from "path";
+import url from "url";
+
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 
 export function MyStack({ stack }: StackContext) {
   const service = new Service(stack, "Service", {
-    entry: path.resolve(__dirname, "services", "functions", "service.ts"),
-    name: "my-service",
+    // this path is relative to .build/ where SST puts the CDK bundle
+    entry: path.resolve(__dirname, "..", "..", "services", "functions", "service.ts"),
+    name: "${projectName}",
   });
   stack.addOutputs({
-    ApiEndpoint: service.api.gateway.url!,
+    ServiceApiEndpoint: service.api.gateway.url!,
+    ServiceEventBusArn: service.events.bus.eventBusArn
   });
 }
 `;
+}
 
-export const sampleCDKApp = `import { App, Stack } from "aws-cdk-lib";
-import path from "path";
-import { MyStack } from "./my-stack";
+export function sampleCDKApp(projectName: string) {
+  return `import { App } from "aws-cdk-lib";
+import { MyServiceStack } from "./${projectName}-stack";
 
 const app = new App();
 
-new MyStack(app, "my-stack");
+new MyServiceStack(app, "${projectName}");
 `;
+}
 
-export const sampleCDKStack = `import { Construct } from "constructs";
-import { Stack, StackProps } from "aws-cdk-lib";
+export function sampleCDKStack(projectName: string) {
+  return `import { Construct } from "constructs";
+import { CfnOutput, Stack, StackProps } from "aws-cdk-lib";
 import { Service } from "@eventual/aws-cdk";
+import path from "path";
 
-export interface MyStackProps extends StackProps {}
+export interface MyServiceStackProps extends StackProps {}
 
-export class MyStack extends Stack {
+export class MyServiceStack extends Stack {
   public readonly service: Service;
 
-  constructor(scope: Construct, id: string, props?: MyStackProps) {
+  constructor(scope: Construct, id: string, props?: MyServiceStackProps) {
     super(scope, id, props);
 
-    this.service = new Service(this, "Service", {
-      name: "my-service",
-      entry: path.join(__dirname, "services", "src", "my-service.ts")
+    this.service = new Service(this, "${projectName}", {
+      name: "${projectName}",
+      entry: path.join(__dirname, "..", "..", "services", "src", "index.ts")
+    });
+
+    new CfnOutput(this, "my-service-api-endpoint", {
+      exportName: "my-service-api-endpoint",
+      value: this.service.api.gateway.url!,
+    });
+
+    new CfnOutput(this, "my-service-event-bus-arn", {
+      exportName: "my-service-api-endpoint",
+      value: this.service.events.bus.eventBusArn,
     });
   }
 }
 `;
+}

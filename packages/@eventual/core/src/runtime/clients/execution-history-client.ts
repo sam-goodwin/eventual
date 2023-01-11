@@ -1,3 +1,7 @@
+import {
+  ExecutionEventsRequest,
+  ExecutionEventsResponse,
+} from "../../service-client.js";
 import { WorkflowEvent } from "../../workflow-events.js";
 
 export type UnresolvedEvent<T extends WorkflowEvent> = Omit<
@@ -22,5 +26,7 @@ export abstract class ExecutionHistoryClient {
   /**
    * Read an execution's events from the execution history table table
    */
-  public abstract getEvents(executionId: string): Promise<WorkflowEvent[]>;
+  public abstract getEvents(
+    request: ExecutionEventsRequest
+  ): Promise<ExecutionEventsResponse>;
 }

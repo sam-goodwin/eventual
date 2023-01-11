@@ -1,4 +1,9 @@
-import { ExecutionHistoryClient, WorkflowEvent } from "@eventual/core";
+import {
+  ExecutionEventsRequest,
+  ExecutionEventsResponse,
+  ExecutionHistoryClient,
+  WorkflowEvent,
+} from "@eventual/core";
 
 export class TestExecutionHistoryClient extends ExecutionHistoryClient {
   private eventStore: Record<string, WorkflowEvent[]> = {};
@@ -17,7 +22,15 @@ export class TestExecutionHistoryClient extends ExecutionHistoryClient {
     (this.eventStore[executionId] ??= []).push(...events);
   }
 
-  public async getEvents(executionId: string): Promise<WorkflowEvent[]> {
-    return this.eventStore[executionId] ?? [];
+  public async getEvents(
+    request: ExecutionEventsRequest
+  ): Promise<ExecutionEventsResponse> {
+    const sortedEvents = (this.eventStore[request.executionId] ?? []).sort(
+      (a, b) =>
+        request.sortDirection === "Asc"
+          ? new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          : new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+    return { events: sortedEvents };
   }
 }

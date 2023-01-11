@@ -1,7 +1,7 @@
 import {
   workflows,
   clearEventualCollector,
-  getWorkflowClient,
+  getServiceClient,
 } from "./global.js";
 import type { Program } from "./interpret.js";
 import type { Context, WorkflowContext } from "./context.js";
@@ -23,24 +23,12 @@ import { AwaitedEventual } from "./eventual.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
 import { isChain } from "./chain.js";
 import { ChildExecution, ExecutionHandle } from "./execution.js";
+import { StartExecutionRequest } from "./service-client.js";
 
 export type WorkflowHandler<Input = any, Output = any> = (
   input: Input,
   context: Context
 ) => Promise<Output> | Program<Output>;
-
-export interface StartExecutionRequest<Input> extends WorkflowOptions {
-  /**
-   * Input payload for the workflow.
-   */
-  input: Input;
-  /**
-   * Optional name of the workflow to start - used to determine the unique ID and enforce idempotency.
-   *
-   * @default - a unique ID is generated.
-   */
-  name?: string;
-}
 
 /**
  * Options which determine how a workflow operates.
@@ -56,25 +44,25 @@ export interface WorkflowOptions {
   timeoutSeconds?: number;
 }
 
-export type WorkflowOutput<W extends Workflow<any, any>> = W extends Workflow<
+export type WorkflowOutput<W extends Workflow> = W extends Workflow<
   any,
   infer Out
 >
   ? Out
   : never;
 
-export type WorkflowInput<W extends Workflow<any, any>> = W extends Workflow<
+export type WorkflowInput<W extends Workflow> = W extends Workflow<
   infer In,
   any
 >
   ? In
-  : never;
+  : undefined;
 
 /**
  * A {@link Workflow} is a long-running process that orchestrates calls
  * to other services in a durable and observable way.
  */
-export interface Workflow<Input = any, Output = any> {
+export interface Workflow<in Input = any, Output = any> {
   /**
    * Globally unique ID of this {@link Workflow}.
    */
@@ -97,7 +85,7 @@ export interface Workflow<Input = any, Output = any> {
    * Starts a workflow execution
    */
   startExecution(
-    request: StartExecutionRequest<Input>
+    request: Omit<StartExecutionRequest<Workflow<Input, Output>>, "workflow">
   ): Promise<ExecutionHandle<Workflow<Input, Output>>>;
 
   /**
@@ -166,16 +154,14 @@ export function workflow<Input = any, Output = any>(
   workflow.workflowName = name;
 
   workflow.startExecution = async function (input) {
-    const workflowClient = getWorkflowClient();
-    const executionId = await workflowClient.startWorkflow({
-      workflowName: name,
-      executionName: input.name,
+    const serviceClient = getServiceClient();
+    return await serviceClient.startExecution<Workflow<Input, Output>>({
+      workflow: name,
+      executionName: input.executionName,
       input: input.input,
       timeoutSeconds: input.timeoutSeconds,
       ...opts,
     });
-
-    return new ExecutionHandle(executionId, workflowClient);
   };
 
   workflow.definition = (

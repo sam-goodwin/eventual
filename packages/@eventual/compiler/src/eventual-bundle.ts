@@ -1,65 +1,24 @@
 import fs from "fs/promises";
 import path from "path";
 import esbuild from "esbuild";
-import { esbuildPluginAliasPath } from "esbuild-plugin-alias-path";
+import { aliasPath } from "esbuild-plugin-alias-path";
 import { eventualESPlugin } from "./esbuild-plugin.js";
 import { prepareOutDir } from "./build.js";
-import { createRequire } from "module";
 import { ServiceType, SERVICE_TYPE_FLAG } from "@eventual/core";
 
-const require = createRequire(import.meta.url);
-
-/**
- * Bundle an eventual program
- * @param outDir Directory to bundle to
- * @param entry File containing the service
- * @returns Paths to orchestrator and activtyWorker output files
- */
-export async function bundle(
+export async function bundleSources(
   outDir: string,
-  serviceEntry: string
-): Promise<void> {
+  serviceEntry: string,
+  entries: Omit<BuildSource, "outDir" | "injectedEntry">[],
+  cleanOutput = false
+) {
   console.log("Bundling:", outDir, serviceEntry);
-  await prepareOutDir(outDir);
-
-  await Promise.all([
-    build({
-      name: ServiceType.OrchestratorWorker,
-      outDir,
-      injectedEntry: serviceEntry,
-      entry: runtimeEntrypoint("orchestrator"),
-      plugins: [eventualESPlugin],
-      serviceType: ServiceType.OrchestratorWorker,
-    }),
-    build({
-      name: ServiceType.ActivityWorker,
-      outDir,
-      injectedEntry: serviceEntry,
-      entry: runtimeEntrypoint("activity-worker"),
-      serviceType: ServiceType.ActivityWorker,
-    }),
-    build({
-      name: ServiceType.ApiHandler,
-      outDir,
-      injectedEntry: serviceEntry,
-      entry: runtimeEntrypoint("api-handler"),
-      serviceType: ServiceType.ApiHandler,
-    }),
-    build({
-      name: ServiceType.EventHandler,
-      outDir,
-      injectedEntry: serviceEntry,
-      entry: runtimeEntrypoint("event-handler"),
-      serviceType: ServiceType.EventHandler,
-    }),
-    // This one is actually an api function
-    build({
-      name: "list-workflows",
-      outDir,
-      injectedEntry: serviceEntry,
-      entry: runtimeEntrypoint("list-workflows"),
-    }),
-  ]);
+  await prepareOutDir(outDir, cleanOutput);
+  await Promise.all(
+    entries
+      .map((s) => ({ ...s, outDir, injectedEntry: serviceEntry }))
+      .map(build)
+  );
 }
 
 export async function bundleService(
@@ -74,7 +33,7 @@ export async function bundleService(
     outDir,
     entry,
     name: "service",
-    plugins: [eventualESPlugin],
+    eventualTransform: true,
     serviceType,
     external,
     allPackagesExternal,
@@ -83,11 +42,16 @@ export async function bundleService(
   });
 }
 
-export function runtimeEntrypoint(name: string) {
-  return path.join(
-    require.resolve("@eventual/aws-runtime"),
-    `../../esm/handlers/${name}.js`
-  );
+export interface BuildSource {
+  injectedEntry?: string;
+  eventualTransform?: boolean;
+  outDir: string;
+  name: string;
+  entry: string;
+  sourcemap?: boolean | "inline";
+  serviceType?: ServiceType;
+  external?: string[];
+  allPackagesExternal?: boolean;
 }
 
 async function build({
@@ -95,22 +59,12 @@ async function build({
   injectedEntry,
   name,
   entry,
-  plugins,
+  eventualTransform = false,
   sourcemap,
   serviceType,
   external,
   allPackagesExternal,
-}: {
-  injectedEntry?: string;
-  outDir: string;
-  name: string;
-  entry: string;
-  plugins?: esbuild.Plugin[];
-  sourcemap?: boolean | "inline";
-  serviceType?: ServiceType;
-  external?: string[];
-  allPackagesExternal?: boolean;
-}) {
+}: BuildSource) {
   const outfile = path.join(outDir, `${name}/index.mjs`);
   const bundle = await esbuild.build({
     mainFields: ["module", "main"],
@@ -118,14 +72,14 @@ async function build({
     plugins: [
       ...(injectedEntry
         ? [
-            esbuildPluginAliasPath({
+            aliasPath({
               alias: {
                 "@eventual/entry/injected": path.resolve(injectedEntry),
               },
             }),
           ]
         : []),
-      ...(plugins ?? []),
+      ...(eventualTransform ? [eventualESPlugin] : []),
     ],
     conditions: ["module", "import", "require"],
     // supported with NODE_18.x runtime

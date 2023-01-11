@@ -74,7 +74,7 @@ export interface IMockActivity<Arguments extends any[] = any[], Output = any> {
   /**
    * Imitates the {@link asyncResult} behavior of an activity.
    *
-   * A token is generated and the activity must be completed or failed using the token.
+   * A token is generated and the activity must be succeeded or failed using the token.
    *
    * To get the token, use the tokenCallback argument.
    *
@@ -82,7 +82,7 @@ export interface IMockActivity<Arguments extends any[] = any[], Output = any> {
    * let activityToken;
    * mockActivity.asyncResult(token => { activityToken = token; });
    * // start workflow
-   * await env.completeActivity(activityToken, "some result");
+   * await env.sendActivitySuccess({ activityToken, result: "some result" });
    * ```
    *
    * The activity will use this resolution after all once resolutions are
@@ -94,7 +94,7 @@ export interface IMockActivity<Arguments extends any[] = any[], Output = any> {
   /**
    * Imitates the {@link asyncResult} behavior of an activity for one invocation.
    *
-   * A token is generated and the activity must be completed or failed using the token.
+   * A token is generated and the activity must be succeeded or failed using the token.
    *
    * To get the token, use the tokenCallback argument.
    *
@@ -102,7 +102,7 @@ export interface IMockActivity<Arguments extends any[] = any[], Output = any> {
    * let activityToken;
    * mockActivity.asyncResultOnce(token => { activityToken = token; });
    * // start workflow
-   * await env.completeActivity(activityToken, "some result");
+   * await env.sendActivitySuccess({ activityToken, result: "some result" });
    * ```
    *
    * The activity will use this resolution once all previous once resolutions are consumed.
@@ -111,18 +111,18 @@ export interface IMockActivity<Arguments extends any[] = any[], Output = any> {
     tokenCallback?: AsyncResultTokenCallback
   ): IMockActivity<Arguments, Output>;
   /**
-   * Completes the activity with a given value.
+   * Succeeds the activity with a given value.
    *
    * The activity will use this resolution after all once resolutions are
    * consumed and until another resolution is given.
    */
-  complete(output: Output): IMockActivity<Arguments, Output>;
+  succeed(output: Output): IMockActivity<Arguments, Output>;
   /**
-   * Completes the activity once with a given value.
+   * Succeeds the activity once with a given value.
    *
    * The activity will use this resolution once all previous once resolutions are consumed.
    */
-  completeOnce(output: Output): IMockActivity<Arguments, Output>;
+  succeedOnce(output: Output): IMockActivity<Arguments, Output>;
   /**
    * Fails the activity with a given error.
    *
@@ -235,8 +235,8 @@ export interface IMockActivity<Arguments extends any[] = any[], Output = any> {
    *
    * ```ts
    * const mockActivity = env.mockActivity(myActivity);
-   * // fail on the first invocation, then invoke the real handler, then complete all future calls.
-   * mockActivity.failOnce(new Error()).invokeRealOnce().complete("test result!");
+   * // fail on the first invocation, then invoke the real handler, then succeed all future calls.
+   * mockActivity.failOnce(new Error()).invokeRealOnce().succeed("test result!");
    * ```
    *
    * The activity will use this resolution once all previous once resolutions are consumed.
@@ -318,13 +318,13 @@ export class MockActivity<A extends ActivityFunction<any, any>>
     return assertNever(resolution);
   }
 
-  public complete(
+  public succeed(
     output: ActivityOutput<A>
   ): IMockActivity<ActivityArguments<A>, ActivityOutput<A>> {
     return this.setResolution(Result.resolved(output));
   }
 
-  public completeOnce(
+  public succeedOnce(
     output: ActivityOutput<A>
   ): IMockActivity<ActivityArguments<A>, ActivityOutput<A>> {
     return this.addOnceResolution(Result.resolved(output));

@@ -1,6 +1,6 @@
 {
   "name": "@eventual/compiler",
-  "version": "0.4.2",
+  "version": "0.8.6",
   "main": "lib/index.js",
   "module": "lib/index.js",
   "types:": "lib/index.d.ts",
@@ -16,17 +16,19 @@
   "scripts": {
     "test": "jest --passWithNoTests"
   },
+  "peerDependencies": {
+    "esbuild": ">=0.16.x <1.0.0"
+  },
   "dependencies": {
-    "@eventual/aws-runtime": "workspace:^",
     "@eventual/core": "workspace:^",
     "@swc/core": "^1.2.245",
-    "esbuild": "^0.x",
-    "esbuild-plugin-alias-path": "^1.1.1"
+    "esbuild-plugin-alias-path": "^2.0.2"
   },
   "devDependencies": {
     "@types/jest": "^29",
     "@types/minimatch": "5.1.2",
     "@types/node": "^16",
+    "esbuild": "^0.x",
     "jest": "^29",
     "ts-jest": "^29",
     "ts-node": "^10.9.1",

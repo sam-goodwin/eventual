@@ -55,7 +55,9 @@
       }
     ],
     "camelcase": "off",
-    "no-new": "off"
+    "no-new": "off",
+    "react/prop-types": "off",
+    "no-inner-declarations": "off"
   },
   "settings": {
     "react": {

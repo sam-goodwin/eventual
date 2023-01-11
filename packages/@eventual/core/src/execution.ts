@@ -1,15 +1,11 @@
-import {
-  SendSignalProps,
-  Signal,
-  SignalPayload,
-  Workflow,
-  WorkflowClient,
-  WorkflowOutput,
-} from "./index.js";
+import { ulid } from "ulidx";
+import { EventualServiceClient } from "./service-client.js";
+import { Signal, SendSignalProps } from "./signals.js";
+import { Workflow, WorkflowOutput } from "./workflow.js";
 
 export enum ExecutionStatus {
   IN_PROGRESS = "IN_PROGRESS",
-  COMPLETE = "COMPLETE",
+  SUCCEEDED = "SUCCEEDED",
   FAILED = "FAILED",
 }
 
@@ -17,6 +13,7 @@ interface ExecutionBase {
   id: string;
   status: ExecutionStatus;
   startTime: string;
+  workflowName: string;
   parent?: {
     /**
      * Seq number when this execution is the child of another workflow.
@@ -31,15 +28,15 @@ interface ExecutionBase {
 
 export type Execution<Result = any> =
   | InProgressExecution
-  | CompleteExecution<Result>
+  | SucceededExecution<Result>
   | FailedExecution;
 
 export interface InProgressExecution extends ExecutionBase {
   status: ExecutionStatus.IN_PROGRESS;
 }
 
-export interface CompleteExecution<Result = any> extends ExecutionBase {
-  status: ExecutionStatus.COMPLETE;
+export interface SucceededExecution<Result = any> extends ExecutionBase {
+  status: ExecutionStatus.SUCCEEDED;
   endTime: string;
   result?: Result;
 }
@@ -57,26 +54,26 @@ export function isFailedExecution(
   return execution.status === ExecutionStatus.FAILED;
 }
 
-export function isCompleteExecution(
+export function isSucceededExecution(
   execution: Execution
-): execution is CompleteExecution {
-  return execution.status === ExecutionStatus.COMPLETE;
+): execution is SucceededExecution {
+  return execution.status === ExecutionStatus.SUCCEEDED;
 }
 
 /**
  * A reference to a running execution.
  */
-export class ExecutionHandle<W extends Workflow<any, any>> {
+export class ExecutionHandle<W extends Workflow> implements ChildExecution {
   constructor(
     public executionId: string,
-    private workflowClient: WorkflowClient
+    private serviceClient: EventualServiceClient
   ) {}
 
   /**
    * @return the {@link Execution} with the status, result, error, and other data based on the current status.
    */
   public async getStatus(): Promise<Execution<WorkflowOutput<W>>> {
-    return (await this.workflowClient.getExecution(
+    return (await this.serviceClient.getExecution(
       this.executionId
     )) as Execution<WorkflowOutput<W>>;
   }
@@ -84,14 +81,16 @@ export class ExecutionHandle<W extends Workflow<any, any>> {
   /**
    * Send a {@link signal} to this execution.
    */
-  public async signal<Payload = any>(
+  public async sendSignal<Payload = any>(
     signal: string | Signal<Payload>,
-    payload: Payload
+    ...args: SendSignalProps<Payload>
   ): Promise<void> {
-    return this.workflowClient.sendSignal({
-      executionId: this.executionId,
+    const [payload] = args;
+    return this.serviceClient.sendSignal({
+      execution: this.executionId,
       signal: typeof signal === "string" ? signal : signal.id,
       payload,
+      id: ulid(),
     });
   }
 }
@@ -108,15 +107,15 @@ export interface ChildExecution {
    * const childWf = workflow(...);
    * workflow("wf", async () => {
    *    const child = childWf();
-   *    child.signal(mySignal);
+   *    child.sendSignal(mySignal);
    *    await child;
    * })
    * ```
    *
    * @param id an optional, execution unique ID, will be used to de-dupe the signal at the target execution.
    */
-  signal<S extends Signal<any>>(
-    signal: S,
-    ...args: SendSignalProps<SignalPayload<S>>
+  sendSignal<Payload = any>(
+    signal: string | Signal<Payload>,
+    ...args: SendSignalProps<Payload>
   ): Promise<void>;
 }

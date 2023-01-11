@@ -1,6 +1,6 @@
 {
   "name": "@eventual/cli",
-  "version": "0.4.2",
+  "version": "0.8.6",
   "bin": {
     "eventual": "bin/eventual.js"
   },
@@ -51,28 +51,22 @@
     "access": "public"
   },
   "dependencies": {
-    "@aws-crypto/sha256-js": "^2.0.2",
     "@aws-sdk/client-cloudwatch-logs": "^3.241.0",
-    "@aws-sdk/client-iam": "^3.241.0",
     "@aws-sdk/client-ssm": "^3.241.0",
     "@aws-sdk/client-sts": "^3.241.0",
     "@aws-sdk/config-resolver": "^3.234.0",
     "@aws-sdk/node-config-provider": "^3.226.0",
-    "@aws-sdk/protocol-http": "^3.226.0",
-    "@aws-sdk/querystring-parser": "^3.226.0",
-    "@aws-sdk/signature-v4": "^3.226.0",
     "@aws-sdk/types": "^3.226.0",
-    "@eventual/aws-runtime": "workspace:^",
+    "@eventual/aws-client": "workspace:^",
     "@eventual/compiler": "workspace:^",
     "@eventual/core": "workspace:^",
     "@eventual/timeline": "workspace:^",
     "chalk": "^5.1.2",
+    "cli-table3": "^0.6.3",
     "express": "^4.18.2",
     "get-port": "^6.1.2",
     "get-stdin": "^9.0.0",
     "import-meta-resolve": "^2.2.0",
-    "ky": "^0.32.2",
-    "ky-universal": "^0.11.0",
     "open": "^8.4.0",
     "ora": "^6.1.2",
     "serve-static": "^1.15.0",

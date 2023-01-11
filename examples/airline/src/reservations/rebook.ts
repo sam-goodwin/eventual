@@ -13,9 +13,9 @@ import {
   Passenger,
 } from "./booking-record.js";
 
-flightCancelled.on(async (event) => {
+flightCancelled.onEvent(async (event) => {
   await rebookFlight.startExecution({
-    name: event.flightNo, // only ever start one rebook workflow for a flightNo
+    executionName: event.flightNo, // only ever start one rebook workflow for a flightNo
     input: event,
   });
 });
@@ -82,9 +82,15 @@ const rebookPassenger = workflow(
     });
 
     try {
-      await confirmRebooking.expect({
+      const isConfirmed = await confirmRebooking.expectSignal({
         timeoutSeconds: ms("1 hour") / 1000,
       });
+
+      if (isConfirmed) {
+        // yay
+      } else {
+        // nay
+      }
     } catch {
       // passenger did not rebook within an hour, move them to deferred booking
       // this will give passengers waiting on this passenger a change to rebook
@@ -99,7 +105,7 @@ const rebookPassenger = workflow(
 const initiateRebooking = new Signal("InitiateRebooking");
 
 const deferRebooking = workflow("DeferRebooking", async (_input: Passenger) => {
-  await initiateRebooking.expect();
+  await initiateRebooking.expectSignal();
 
   // proceed to rebook
 });

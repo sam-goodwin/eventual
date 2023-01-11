@@ -17,12 +17,12 @@ export interface HistoryEventBase extends Omit<BaseEvent, "id"> {
 }
 
 export enum WorkflowEventType {
-  ActivityCompleted = "ActivityCompleted",
+  ActivitySucceeded = "ActivitySucceeded",
   ActivityFailed = "ActivityFailed",
   ActivityHeartbeatTimedOut = "ActivityHeartbeatTimedOut",
   ActivityScheduled = "ActivityScheduled",
   ActivityTimedOut = "ActivityTimedOut",
-  ChildWorkflowCompleted = "ChildWorkflowCompleted",
+  ChildWorkflowSucceeded = "ChildWorkflowSucceeded",
   ChildWorkflowFailed = "ChildWorkflowFailed",
   ChildWorkflowScheduled = "ChildWorkflowScheduled",
   ConditionStarted = "ConditionStarted",
@@ -34,11 +34,11 @@ export enum WorkflowEventType {
   SignalSent = "SignalSent",
   SleepCompleted = "SleepCompleted",
   SleepScheduled = "SleepScheduled",
-  WorkflowCompleted = "WorkflowCompleted",
+  WorkflowSucceeded = "WorkflowSucceeded",
   WorkflowFailed = "WorkflowFailed",
   WorkflowStarted = "WorkflowStarted",
-  WorkflowTaskCompleted = "TaskCompleted",
-  WorkflowTaskStarted = "TaskStarted",
+  WorkflowRunCompleted = "WorkflowRunCompleted",
+  WorkflowRunStarted = "WorkflowRunStarted",
   WorkflowTimedOut = "WorkflowTimedOut",
 }
 
@@ -47,9 +47,9 @@ export enum WorkflowEventType {
  */
 export type WorkflowEvent =
   | HistoryEvent
-  | WorkflowTaskCompleted
-  | WorkflowTaskStarted
-  | WorkflowCompleted
+  | WorkflowRunCompleted
+  | WorkflowRunStarted
+  | WorkflowSucceeded
   | WorkflowFailed
   | WorkflowStarted;
 
@@ -62,9 +62,9 @@ export type ScheduledEvent =
   | SignalSent
   | SleepScheduled;
 
-export type CompletedEvent =
-  | ActivityCompleted
-  | ChildWorkflowCompleted
+export type SucceededEvent =
+  | ActivitySucceeded
+  | ChildWorkflowSucceeded
   | SleepCompleted;
 
 export type FailedEvent =
@@ -79,7 +79,7 @@ export type FailedEvent =
  * Events used by the workflow to replay an execution.
  */
 export type HistoryEvent =
-  | CompletedEvent
+  | SucceededEvent
   | FailedEvent
   | ScheduledEvent
   | SignalReceived
@@ -87,7 +87,7 @@ export type HistoryEvent =
 
 export function isHistoryEvent(event: WorkflowEvent): event is HistoryEvent {
   return (
-    isCompletedEvent(event) ||
+    isSucceededEvent(event) ||
     isFailedEvent(event) ||
     isScheduledEvent(event) ||
     isSignalReceived(event) ||
@@ -116,8 +116,8 @@ export interface WorkflowStarted extends BaseEvent {
   timeoutTime?: string;
   context: Omit<ExecutionContext, "id" | "startTime">;
 }
-export interface WorkflowTaskStarted extends BaseEvent {
-  type: WorkflowEventType.WorkflowTaskStarted;
+export interface WorkflowRunStarted extends BaseEvent {
+  type: WorkflowEventType.WorkflowRunStarted;
   /**
    * An execution ID of the parent workflow execution that
    * started this workflow if this is a child workflow.
@@ -130,8 +130,8 @@ export interface ActivityScheduled extends HistoryEventBase {
   name: string;
 }
 
-export interface ActivityCompleted extends HistoryEventBase {
-  type: WorkflowEventType.ActivityCompleted;
+export interface ActivitySucceeded extends HistoryEventBase {
+  type: WorkflowEventType.ActivitySucceeded;
   result: any;
 }
 
@@ -145,12 +145,12 @@ export interface ActivityHeartbeatTimedOut extends HistoryEventBase {
   type: WorkflowEventType.ActivityHeartbeatTimedOut;
 }
 
-export interface WorkflowTaskCompleted extends BaseEvent {
-  type: WorkflowEventType.WorkflowTaskCompleted;
+export interface WorkflowRunCompleted extends BaseEvent {
+  type: WorkflowEventType.WorkflowRunCompleted;
 }
 
-export interface WorkflowCompleted extends BaseEvent {
-  type: WorkflowEventType.WorkflowCompleted;
+export interface WorkflowSucceeded extends BaseEvent {
+  type: WorkflowEventType.WorkflowSucceeded;
   output: any;
 }
 
@@ -166,8 +166,8 @@ export interface ChildWorkflowScheduled extends HistoryEventBase {
   input?: any;
 }
 
-export interface ChildWorkflowCompleted extends HistoryEventBase {
-  type: WorkflowEventType.ChildWorkflowCompleted;
+export interface ChildWorkflowSucceeded extends HistoryEventBase {
+  type: WorkflowEventType.ChildWorkflowSucceeded;
   result: any;
 }
 
@@ -183,10 +183,10 @@ export function isWorkflowStarted(
   return event.type === WorkflowEventType.WorkflowStarted;
 }
 
-export function isTaskStarted(
+export function isWorkflowRunStarted(
   event: WorkflowEvent
-): event is WorkflowTaskStarted {
-  return event.type === WorkflowEventType.WorkflowTaskStarted;
+): event is WorkflowRunStarted {
+  return event.type === WorkflowEventType.WorkflowRunStarted;
 }
 
 export function isActivityScheduled(
@@ -195,10 +195,10 @@ export function isActivityScheduled(
   return event.type === WorkflowEventType.ActivityScheduled;
 }
 
-export function isActivityCompleted(
+export function isActivitySucceeded(
   event: WorkflowEvent
-): event is ActivityCompleted {
-  return event.type === WorkflowEventType.ActivityCompleted;
+): event is ActivitySucceeded {
+  return event.type === WorkflowEventType.ActivitySucceeded;
 }
 
 export function isActivityFailed(
@@ -229,16 +229,16 @@ export interface SleepCompleted extends HistoryEventBase {
   result?: undefined;
 }
 
-export function isTaskCompleted(
+export function isWorkflowRunCompleted(
   event: WorkflowEvent
-): event is WorkflowTaskCompleted {
-  return event.type === WorkflowEventType.WorkflowTaskCompleted;
+): event is WorkflowRunCompleted {
+  return event.type === WorkflowEventType.WorkflowRunCompleted;
 }
 
-export function isWorkflowCompleted(
+export function isWorkflowSucceeded(
   event: WorkflowEvent
-): event is WorkflowCompleted {
-  return event.type === WorkflowEventType.WorkflowCompleted;
+): event is WorkflowSucceeded {
+  return event.type === WorkflowEventType.WorkflowSucceeded;
 }
 
 export function isWorkflowFailed(
@@ -252,10 +252,10 @@ export function isChildWorkflowScheduled(
 ): event is ChildWorkflowScheduled {
   return event.type === WorkflowEventType.ChildWorkflowScheduled;
 }
-export function isChildWorkflowCompleted(
+export function isChildWorkflowSucceeded(
   event: WorkflowEvent
-): event is ChildWorkflowCompleted {
-  return event.type === WorkflowEventType.ChildWorkflowCompleted;
+): event is ChildWorkflowSucceeded {
+  return event.type === WorkflowEventType.ChildWorkflowSucceeded;
 }
 export function isChildWorkflowFailed(
   event: WorkflowEvent
@@ -376,9 +376,9 @@ export const isScheduledEvent = or(
   isSleepScheduled
 );
 
-export const isCompletedEvent = or(
-  isActivityCompleted,
-  isChildWorkflowCompleted,
+export const isSucceededEvent = or(
+  isActivitySucceeded,
+  isChildWorkflowSucceeded,
   isSleepCompleted
 );
 

@@ -10,7 +10,7 @@
     "deploy:slack-bot": "cdk deploy --require-approval=never --app 'ts-node ./src/slack-bot.ts'",
     "hotswap": "cdk deploy --hotswap --require-approval=never",
     "eventual": "eventual",
-    "start-my-workflow": "eventual start my-service my-workflow --input '{\"name\": \"world\"}' --tail"
+    "start-my-workflow": "eventual start workflow my-workflow --service my-service --input '{\"name\": \"world\"}' --follow"
   },
   "dependencies": {
     "@eventual/aws-cdk": "workspace:^",

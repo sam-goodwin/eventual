@@ -1,16 +1,30 @@
 import {
-  ActivityCompleted,
+  ActivitySucceeded,
   ActivityFailed,
   createEvent,
   HistoryStateEvent,
   SignalReceived,
   WorkflowEventType,
 } from "../../workflow-events.js";
-import { Execution, ExecutionStatus } from "../../execution.js";
+import {
+  Execution,
+  ExecutionHandle,
+  ExecutionStatus,
+} from "../../execution.js";
 import { Signal } from "../../signals.js";
-import { Workflow, WorkflowInput, WorkflowOptions } from "../../workflow.js";
+import { Workflow, WorkflowOptions } from "../../workflow.js";
 import { decodeActivityToken } from "../activity-token.js";
 import { ActivityRuntimeClient } from "./activity-runtime-client.js";
+import {
+  SendActivitySuccessRequest,
+  SendActivityFailureRequest,
+  GetExecutionsRequest,
+  GetExecutionsResponse,
+  SendActivityHeartbeatRequest,
+  StartExecutionRequest,
+  SendActivityHeartbeatResponse,
+  StartExecutionResponse,
+} from "../../service-client.js";
 
 export abstract class WorkflowClient {
   constructor(
@@ -24,9 +38,9 @@ export abstract class WorkflowClient {
    * @param input Workflow parameters
    * @returns
    */
-  public abstract startWorkflow<W extends Workflow = Workflow>(
-    request: StartWorkflowRequest<W>
-  ): Promise<string>;
+  public abstract startExecution<W extends Workflow = Workflow>(
+    request: StartChildExecutionRequest<W> | StartExecutionRequest<W>
+  ): Promise<StartExecutionResponse>;
 
   /**
    * Submit events to be processed by a workflow's orchestrator.
@@ -39,10 +53,9 @@ export abstract class WorkflowClient {
     ...events: HistoryStateEvent[]
   ): Promise<void>;
 
-  public abstract getExecutions(props: {
-    statuses?: ExecutionStatus[];
-    workflowName?: string;
-  }): Promise<Execution[]>;
+  public abstract getExecutions(
+    props: GetExecutionsRequest
+  ): Promise<GetExecutionsResponse>;
 
   public abstract getExecution(
     executionId: string
@@ -55,8 +68,12 @@ export abstract class WorkflowClient {
    * that runs when the signal is received.
    */
   public async sendSignal(request: SendSignalRequest): Promise<void> {
+    const executionId =
+      typeof request.execution === "string"
+        ? request.execution
+        : request.execution.executionId;
     await this.submitWorkflowTask(
-      request.executionId,
+      executionId,
       createEvent<SignalReceived>(
         {
           type: WorkflowEventType.SignalReceived,
@@ -73,14 +90,14 @@ export abstract class WorkflowClient {
   }
 
   /**
-   * Completes an async activity causing it to return the given value.
+   * Succeeds an async activity causing it to return the given value.
    */
-  public async completeActivity({
+  public async sendActivitySuccess({
     activityToken,
     result,
-  }: CompleteActivityRequest): Promise<void> {
-    await this.sendActivityResult<ActivityCompleted>(activityToken, {
-      type: WorkflowEventType.ActivityCompleted,
+  }: Omit<SendActivitySuccessRequest, "type">): Promise<void> {
+    await this.sendActivityResult<ActivitySucceeded>(activityToken, {
+      type: WorkflowEventType.ActivitySucceeded,
       result,
     });
   }
@@ -88,11 +105,11 @@ export abstract class WorkflowClient {
   /**
    * Fails an async activity causing it to throw the given error.
    */
-  public async failActivity({
+  public async sendActivityFailure({
     activityToken,
     error,
     message,
-  }: FailActivityRequest): Promise<void> {
+  }: Omit<SendActivityFailureRequest, "type">): Promise<void> {
     await this.sendActivityResult<ActivityFailed>(activityToken, {
       type: WorkflowEventType.ActivityFailed,
       error,
@@ -105,9 +122,9 @@ export abstract class WorkflowClient {
    *
    * @returns whether the activity has been cancelled by the calling workflow.
    */
-  public async heartbeatActivity(
-    request: HeartbeatRequest
-  ): Promise<HeartbeatResponse> {
+  public async sendActivityHeartbeat(
+    request: Omit<SendActivityHeartbeatRequest, "type">
+  ): Promise<SendActivityHeartbeatResponse> {
     const data = decodeActivityToken(request.activityToken);
 
     const execution = await this.getExecution(data.payload.executionId);
@@ -124,12 +141,12 @@ export abstract class WorkflowClient {
   }
 
   private async sendActivityResult<
-    E extends ActivityCompleted | ActivityFailed
+    E extends ActivitySucceeded | ActivityFailed
   >(activityToken: string, event: Omit<E, "seq" | "duration" | "timestamp">) {
     const data = decodeActivityToken(activityToken);
     await this.submitWorkflowTask(
       data.payload.executionId,
-      createEvent<ActivityCompleted | ActivityFailed>(
+      createEvent<ActivitySucceeded | ActivityFailed>(
         {
           ...event,
           seq: data.payload.seq,
@@ -140,72 +157,22 @@ export abstract class WorkflowClient {
   }
 }
 
-export interface SendSignalRequest {
-  executionId: string;
-  signal: string | Signal;
-  payload?: any;
+export interface SendSignalRequest<Payload = any> {
+  execution: ExecutionHandle<any> | string;
+  signal: string | Signal<Payload>;
+  payload?: Payload;
   /**
    * Execution scoped unique event id. Duplicates will be deduplicated.
    */
   id?: string;
 }
 
-export interface StartWorkflowRequest<W extends Workflow = Workflow>
-  extends WorkflowOptions {
-  /**
-   * Name of the workflow execution.
-   *
-   * Only one workflow can exist for an ID. Requests to start a workflow
-   * with the name of an existing workflow will fail.
-   *
-   * @default - a unique name is generated.
-   */
-  executionName?: string;
-  /**
-   * Name of the workflow to execute.
-   */
-  workflowName: string;
-  /**
-   * Input payload for the workflow function.
-   */
-  input?: WorkflowInput<W>;
-  /**
-   * ID of the parent execution if this is a child workflow
-   */
-  parentExecutionId?: string;
+export interface StartChildExecutionRequest<W extends Workflow = Workflow>
+  extends StartExecutionRequest<W>,
+    WorkflowOptions {
+  parentExecutionId: string;
   /**
    * Sequence ID of this execution if this is a child workflow
    */
-  seq?: number;
-}
-
-export interface StartWorkflowResponse {
-  /**
-   * ID of the started workflow execution.
-   */
-  executionId: string;
-}
-
-export interface CompleteActivityRequest<T = any> {
-  activityToken: string;
-  result: T;
-}
-
-export interface FailActivityRequest {
-  activityToken: string;
-  error: string;
-  message?: string;
-}
-
-export interface HeartbeatRequest {
-  activityToken: string;
-}
-
-export interface HeartbeatResponse {
-  /**
-   * True when the activity has been cancelled.
-   *
-   * This is the only way for a long running activity to know it was canelled.
-   */
-  cancelled: boolean;
+  seq: number;
 }

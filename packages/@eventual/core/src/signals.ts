@@ -2,7 +2,7 @@ import { createSendSignalCall } from "./calls/send-signal-call.js";
 import { createRegisterSignalHandlerCall } from "./calls/signal-handler-call.js";
 import { createExpectSignalCall } from "./calls/expect-signal-call.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
-import { getWorkflowClient } from "./global.js";
+import { getServiceClient } from "./global.js";
 import { ulid } from "ulidx";
 
 /**
@@ -39,7 +39,7 @@ export class Signal<Payload = void> {
    *
    * workflow("wf", () => {
    *    let done = false;
-   *    mySignal.on(async () => {
+   *    mySignal.onSignal(async () => {
    *       await sleepFor(10);
    *       done = true;
    *    });
@@ -51,14 +51,14 @@ export class Signal<Payload = void> {
    * To remove the handler, call the dispose method.
    *
    * ```ts
-   * const handler = mySignal.on(() => {});
+   * const handler = mySignal.onSignal(() => {});
    *
    * await sleepFor(10);
    *
    * handler.dispose();
    * ```
    */
-  public on(handler: SignalHandlerFunction<Payload>): SignalsHandler {
+  public onSignal(handler: SignalHandlerFunction<Payload>): SignalsHandler {
     return onSignal(this, handler);
   }
 
@@ -70,7 +70,7 @@ export class Signal<Payload = void> {
    * ```ts
    * const mySignal = signal<string>("MySignal");
    * workflow("wf", async () => {
-   *    const payload = await mySignal.expect();
+   *    const payload = await mySignal.expectSignal();
    *
    *    return payload;
    * });
@@ -83,7 +83,7 @@ export class Signal<Payload = void> {
    * const mySignal = signal<string>("MySignal");
    * workflow("wf", async () => {
    *    try {
-   *       const payload = await mySignal.expect({ timeoutSecond: 10 * 60 });
+   *       const payload = await mySignal.expectSignal({ timeoutSecond: 10 * 60 });
    *
    *       return payload;
    *    } catch {
@@ -92,7 +92,7 @@ export class Signal<Payload = void> {
    * });
    * ```
    */
-  public expect(opts?: ExpectSignalOptions): Promise<Payload> {
+  public expectSignal(opts?: ExpectSignalOptions): Promise<Payload> {
     return expectSignal(this, opts);
   }
 
@@ -102,15 +102,15 @@ export class Signal<Payload = void> {
    * ```ts
    * const mySignal = signal<string>("MySignal");
    * workflow("wf", async () => {
-   *    mySignal.send("payload");
+   *    mySignal.sendSignal("payload");
    * })
    * ```
    */
-  public send(
+  public sendSignal(
     executionId: string,
     ...args: SendSignalProps<Payload>
   ): Promise<void> {
-    return sendSignal<Signal<Payload>>(executionId, this, ...args);
+    return sendSignal(executionId, this, ...args);
   }
 }
 
@@ -144,17 +144,9 @@ export interface ExpectSignalOptions {
  * when the provided time has elapsed.
  */
 export function expectSignal<SignalPayload = any>(
-  signalId: string,
+  signal: Signal<SignalPayload> | string,
   opts?: ExpectSignalOptions
-): Promise<SignalPayload>;
-export function expectSignal<E extends Signal<any>>(
-  signal: E,
-  opts?: ExpectSignalOptions
-): Promise<SignalPayload<E>>;
-export function expectSignal(
-  signal: Signal<any> | string,
-  opts?: ExpectSignalOptions
-): Promise<SignalPayload<any>> {
+): Promise<SignalPayload> {
   if (!isOrchestratorWorker()) {
     throw new Error("expectSignal is only valid in a workflow");
   }
@@ -194,17 +186,9 @@ export function expectSignal(
  * handler.dispose();
  * ```
  */
-export function onSignal<E extends Signal<any>>(
-  signal: E,
-  handler: SignalHandlerFunction<SignalPayload<E>>
-): SignalsHandler;
-export function onSignal<Payload = void>(
-  signalId: string,
+export function onSignal<Payload>(
+  signal: Signal<Payload> | string,
   handler: SignalHandlerFunction<Payload>
-): SignalsHandler;
-export function onSignal(
-  signal: Signal<any> | string,
-  handler: SignalHandlerFunction<any>
 ): SignalsHandler {
   if (!isOrchestratorWorker()) {
     throw new Error("onSignal is only valid in a workflow");
@@ -219,8 +203,8 @@ export function onSignal(
 export type SendSignalProps<SignalPayload> = [SignalPayload] extends
   | [undefined]
   | [void]
-  ? [id?: string]
-  : [payload: SignalPayload, id?: string];
+  ? []
+  : [payload: SignalPayload];
 
 /**
  * Allows a {@link workflow} to send a signal to any workflow {@link Execution} by executionId.
@@ -235,22 +219,12 @@ export type SendSignalProps<SignalPayload> = [SignalPayload] extends
  *
  * @param id an optional, execution unique ID, will be used to de-dupe the signal at the target execution.
  */
-export function sendSignal<S extends Signal<any>>(
-  executionId: string,
-  signal: S,
-  ...args: SendSignalProps<SignalPayload<S>>
-): Promise<void>;
 export function sendSignal<Payload = any>(
   executionId: string,
-  signalId: string,
+  signal: string | Signal<Payload>,
   ...args: SendSignalProps<Payload>
-): Promise<void>;
-export function sendSignal(
-  executionId: string,
-  signal: string | Signal<any>,
-  payload?: any,
-  id?: string
 ): Promise<void> {
+  const [payload] = args;
   if (isOrchestratorWorker()) {
     return createSendSignalCall(
       { type: SignalTargetType.Execution, executionId },
@@ -258,10 +232,10 @@ export function sendSignal(
       payload
     ) as unknown as any;
   } else {
-    return getWorkflowClient().sendSignal({
-      executionId,
+    return getServiceClient().sendSignal({
+      execution: executionId,
       signal,
-      id: id ?? ulid(),
+      id: ulid(),
       payload,
     });
   }

@@ -2,10 +2,16 @@ import { createActivityCall } from "./calls/activity-call.js";
 import {
   callableActivities,
   getActivityContext,
-  getWorkflowClient,
+  getServiceClient,
 } from "./global.js";
-import { CompleteActivityRequest } from "./runtime/clients/workflow-client.js";
 import { isActivityWorker, isOrchestratorWorker } from "./runtime/flags.js";
+import {
+  EventualServiceClient,
+  SendActivityFailureRequest,
+  SendActivityHeartbeatRequest,
+  SendActivityHeartbeatResponse,
+  SendActivitySuccessRequest,
+} from "./service-client.js";
 
 export interface ActivityOptions {
   /**
@@ -20,7 +26,7 @@ export interface ActivityOptions {
    * something goes wrong.
    *
    * When set to a positive number, the activity must call {@link heartbeat} or
-   * {@link WorkflowClient.heartbeatActivity} at least every heartbeatSeconds.
+   * {@link EventualServiceClient.sendActivityHeartbeat} at least every heartbeatSeconds.
    *
    * If it fails to do so, the workflow will cancel the activity and throw an error.
    */
@@ -31,7 +37,7 @@ export interface ActivityFunction<Arguments extends any[], Output = any> {
   (...args: Arguments): Promise<Awaited<UnwrapAsync<Output>>>;
 
   /**
-   * Complete an activity request by its {@link CompleteActivityRequest.activityToken}.
+   * Complete an activity request by its {@link SendActivitySuccessRequest.activityToken}.
    *
    * This method is used in conjunction with {@link asyncResult} in an activity
    * to perform asynchronous, long-running computations. For example:
@@ -40,20 +46,73 @@ export interface ActivityFunction<Arguments extends any[], Output = any> {
    * const tokenEvent = event("token");
    *
    * const asyncActivity = activity("async", () => {
-   *   return asyncResult<string>(token => tokenEvent.publish({ token }));
+   *   return asyncResult<string>(token => tokenEvent.publishEvents({ token }));
    * });
    *
-   * tokenEvent.on(async ({token}) => {
-   *   await asyncActivity.complete({
+   * tokenEvent.onEvent(async ({token}) => {
+   *   await asyncActivity.sendActivitySuccess({
    *     activityToken: token,
    *     result: "done"
    *   });
    * })
    * ```
    */
-  complete(
-    request: CompleteActivityRequest<UnwrapAsync<Awaited<Output>>>
+  sendActivitySuccess(
+    request: Omit<
+      SendActivitySuccessRequest<Awaited<UnwrapAsync<Output>>>,
+      "type"
+    >
   ): Promise<void>;
+
+  /**
+   * Fail an activity request by its {@link SendActivityFailureRequest.activityToken}.
+   *
+   * This method is used in conjunction with {@link asyncResult} in an activity
+   * to perform asynchronous, long-running computations. For example:
+   *
+   * ```ts
+   * const tokenEvent = event("token");
+   *
+   * const asyncActivity = activity("async", () => {
+   *   return asyncResult<string>(token => tokenEvent.publishEvents({ token }));
+   * });
+   *
+   * tokenEvent.onEvent(async ({token}) => {
+   *   await asyncActivity.sendActivityFailure({
+   *     activityToken: token,
+   *     error: "MyError",
+   *     message: "Something went wrong"
+   *   });
+   * })
+   * ```
+   */
+  sendActivityFailure(
+    request: Omit<SendActivityFailureRequest, "type">
+  ): Promise<void>;
+
+  /**
+   * Heartbeat an activity request by its {@link SendActivityHeartbeatRequest.activityToken}.
+   *
+   * This method is used in conjunction with {@link asyncResult} in an activity
+   * to perform asynchronous, long-running computations. For example:
+   *
+   * ```ts
+   * const tokenEvent = event("token");
+   *
+   * const asyncActivity = activity("async", () => {
+   *   return asyncResult<string>(token => tokenEvent.publishEvents({ token }));
+   * });
+   *
+   * tokenEvent.onEvent(async ({token}) => {
+   *   await asyncActivity.sendActivityFailure({
+   *     activityToken: token
+   *   });
+   * })
+   * ```
+   */
+  sendActivityHeartbeat(
+    request: Omit<SendActivityHeartbeatRequest, "type">
+  ): Promise<SendActivityHeartbeatResponse>;
 
   activityID: string;
 }
@@ -93,12 +152,12 @@ export function isAsyncResult(obj: any): obj is AsyncResult {
 /**
  * When returned from an {@link activity}, tells the system to make the current
  * activity async. This allows the activity to defer sending a response from the
- * current function and instead complete the activity with {@link WorkflowClient.completeActivity}.
+ * current function and instead complete the activity with {@link WorkflowClient.sendActivitySuccess}.
  *
  * ```ts
  * const sqs = new SQSClient();
  * activity("myActivity", () => {
- *    // tells the system that the completeActivity function will be called later with a string result.
+ *    // tells the system that the sendActivitySuccess function will be called later with a string result.
  *    return asyncResult<string>(async (activityToken) => {
  *       // before exiting, send the activityToken to a sqs queue to be completed later
  *       // you could invoke any service here
@@ -108,7 +167,7 @@ export function isAsyncResult(obj: any): obj is AsyncResult {
  * ```
  *
  * @param tokenContext is a callback which provides the activityToken. The activity token is used
- *                     to completeActivity and heartbeatActivity from outside of the
+ *                     to sendActivitySuccess and sendActivityHeartbeat from outside of the
  *                     activity.
  */
 export async function asyncResult<Output = any>(
@@ -174,8 +233,14 @@ export function activity<Arguments extends any[], Output = any>(
       return handler(...args);
     }
   }) as ActivityFunction<Arguments, Output>;
-  func.complete = async function (request) {
-    return getWorkflowClient().completeActivity(request);
+  func.sendActivitySuccess = async function (request) {
+    return getServiceClient().sendActivitySuccess(request);
+  };
+  func.sendActivityFailure = async function (request) {
+    return getServiceClient().sendActivityFailure(request);
+  };
+  func.sendActivityHeartbeat = async function (request) {
+    return getServiceClient().sendActivityHeartbeat(request);
   };
   func.activityID = activityID;
   return func;

@@ -1,101 +1,110 @@
 import { styledConsole } from "../styled-console.js";
 import {
-  isActivityCompleted,
+  isActivitySucceeded,
   isActivityScheduled,
   isWorkflowStarted,
-  WorkflowCompleted,
+  WorkflowSucceeded,
   WorkflowEvent,
   WorkflowEventType,
   WorkflowFailed,
-  encodeExecutionId,
+  EventualServiceClient,
 } from "@eventual/core";
-import { KyInstance } from "../types.js";
-import fs from "fs/promises";
-import getStdin from "get-stdin";
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
 import util from "util";
+import { getInputJson } from "./utils.js";
 
 export const start = (yargs: Argv) =>
   yargs.command(
-    "start <service> <workflow> [inputFile]",
-    "Start an execution",
+    "workflow <workflow>",
+    "Start an workflow",
     (yargs) =>
       setServiceOptions(yargs)
-        .option("tail", {
-          alias: "t",
-          describe: "Tail execution",
-          type: "boolean",
-        })
         .positional("workflow", {
           describe: "Workflow name",
           type: "string",
           demandOption: true,
         })
-        .positional("inputFile", {
+        .option("follow", {
+          alias: "f",
+          describe: "Follow an execution",
+          type: "boolean",
+        })
+        .option("inputFile", {
+          alias: "x",
           describe: "Input file json. If not provided, uses stdin",
           type: "string",
         })
         .option("input", {
+          alias: "i",
           describe: "Input data as json string",
           type: "string",
         }),
-    serviceAction(async (spinner, ky, { workflow, input, inputFile, tail }) => {
-      spinner.start(`Executing ${workflow}\n`);
-      const inputJSON = await getInputJson(inputFile, input);
-      const { executionId } = await ky
-        .post(`workflows/${workflow}/executions`, {
-          json: inputJSON,
-        })
-        .json<{ executionId: string }>();
-      spinner.succeed(`Execution id: ${executionId}`);
-      if (tail) {
-        const events: WorkflowEvent[] = [];
-        if (!spinner.isSpinning) {
-          spinner.start(`${executionId} in progress\n`);
-        }
-        // eslint-disable-next-line no-inner-declarations
-        async function pollEvents() {
-          const newEvents = await getNewEvents(events, ky, executionId);
-          newEvents.forEach((ev) => {
-            let meta: string | undefined;
-            if (isActivityCompleted(ev)) {
-              meta = ev.result;
-            } else if (isActivityScheduled(ev)) {
-              meta = ev.name;
-            } else if (isWorkflowStarted(ev)) {
-              meta = util.inspect(ev.input);
-            }
-            spinner.info(
-              ev.timestamp + " - " + ev.type + (meta ? `- ` + meta : "")
-            );
-          });
-          events.push(...newEvents);
-          sortEvents(events);
-          const completedEvent = events.find(
-            (ev) => ev.type === WorkflowEventType.WorkflowCompleted
-          );
-          const failedEvent = events.find(
-            (ev) => ev.type === WorkflowEventType.WorkflowFailed
-          );
-          if (completedEvent) {
-            spinner.succeed("Workflow complete");
-            const { output } = completedEvent as WorkflowCompleted;
-            if (output) {
-              styledConsole.success(output);
-            }
-          } else if (failedEvent) {
-            spinner.fail("Workflow failed");
-            styledConsole.error((failedEvent as WorkflowFailed).message);
-          } else {
-            setTimeout(pollEvents, 1000);
+    serviceAction(
+      async (
+        spinner,
+        serviceClient,
+        { workflow, input, inputFile, follow }
+      ) => {
+        spinner.start(`Executing ${workflow}\n`);
+        const inputJSON = await getInputJson(inputFile, input);
+        // TODO: support timeout and executionName
+        const { executionId } = await serviceClient.startExecution({
+          workflow,
+          input: inputJSON,
+        });
+        spinner.succeed(`Execution id: ${executionId}`);
+        if (follow) {
+          const events: WorkflowEvent[] = [];
+          if (!spinner.isSpinning) {
+            spinner.start(`${executionId} in progress\n`);
           }
+          async function pollEvents() {
+            const newEvents = await getNewEvents(
+              events,
+              serviceClient,
+              executionId
+            );
+            newEvents.forEach((ev) => {
+              let meta: string | undefined;
+              if (isActivitySucceeded(ev)) {
+                meta = ev.result;
+              } else if (isActivityScheduled(ev)) {
+                meta = ev.name;
+              } else if (isWorkflowStarted(ev)) {
+                meta = util.inspect(ev.input);
+              }
+              spinner.info(
+                ev.timestamp + " - " + ev.type + (meta ? `- ` + meta : "")
+              );
+            });
+            events.push(...newEvents);
+            sortEvents(events);
+            const succeededEvent = events.find(
+              (ev) => ev.type === WorkflowEventType.WorkflowSucceeded
+            );
+            const failedEvent = events.find(
+              (ev) => ev.type === WorkflowEventType.WorkflowFailed
+            );
+            if (succeededEvent) {
+              spinner.succeed("Workflow succeeded");
+              const { output } = succeededEvent as WorkflowSucceeded;
+              if (output) {
+                styledConsole.success(output);
+              }
+            } else if (failedEvent) {
+              spinner.fail("Workflow failed");
+              styledConsole.error((failedEvent as WorkflowFailed).message);
+            } else {
+              setTimeout(pollEvents, 1000);
+            }
+          }
+          await pollEvents();
+        } else {
+          styledConsole.success({ executionId });
         }
-        await pollEvents();
-      } else {
-        styledConsole.success({ executionId });
       }
-    })
+    )
   );
 
 /**
@@ -103,12 +112,13 @@ export const start = (yargs: Argv) =>
  */
 async function getNewEvents(
   existingEvents: WorkflowEvent[],
-  ky: KyInstance,
+  serviceClient: EventualServiceClient,
   executionId: string
 ) {
-  const updatedEvents = await ky(
-    `executions/${encodeExecutionId(executionId)}/history`
-  ).json<WorkflowEvent[]>();
+  // TODO: make this work with pagination instead of pulling all of the events.
+  const { events: updatedEvents } = await serviceClient.getExecutionHistory({
+    executionId,
+  });
   if (updatedEvents.length === 0) {
     // Unfortunately if the execution id is wrong, our dynamo query is just going to return an empty record set
     // Not super helpful
@@ -126,23 +136,4 @@ function sortEvents(events: WorkflowEvent[]) {
   return events.sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
-}
-
-/**
- * Get input json from specified file, otherwise stdin
- * @param inputFile file to read from
- * @returns parsed json. Will be empty object if no input was given
- */
-async function getInputJson(
-  inputFile: string | undefined,
-  input: string | undefined
-): Promise<any> {
-  if (inputFile) {
-    return JSON.parse(await fs.readFile(inputFile, { encoding: "utf-8" }));
-  } else if (input) {
-    return JSON.parse(input);
-  } else {
-    const stdin = await getStdin();
-    return stdin.length === 0 ? {} : JSON.parse(stdin);
-  }
 }

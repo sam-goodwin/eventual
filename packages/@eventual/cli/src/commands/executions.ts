@@ -1,42 +1,51 @@
-import { Execution } from "@eventual/core";
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
-import { styledConsole } from "../styled-console.js";
+import { EventualServiceClient } from "@eventual/core";
+import { displayExecution } from "../display/execution.js";
 
-type KeysOfUnion<T> = T extends T ? keyof T : never;
-type MergedRecord<T> = Record<KeysOfUnion<T>, any>;
-
-const sortKeys = ["id", "endTime", "result", "startTime", "status"] as const;
-
-export const executions = (yargs: Argv) =>
+export const listExecutions = (yargs: Argv) =>
   yargs.command(
-    "executions <service>",
+    "executions",
     "List executions of a service, or optionally, a workflow",
     (yargs) =>
-      setServiceOptions(yargs)
-        .option("sort", {
-          alias: "s",
-          describe: "Sort by field",
-          choices: sortKeys,
-        })
-        .option("workflow", {
-          describe: "Workflow name",
-          type: "string",
-        }),
-    serviceAction(async (spinner, ky, { workflow, sort }) => {
-      if (sort && !sortKeys.includes(sort)) {
-        styledConsole.error("Invalid sort");
-        styledConsole.error(`Valid options are: ${sortKeys.join(" | ")}`);
-        process.exit(1);
+      setServiceOptions(yargs, true).option("workflow", {
+        alias: "w",
+        describe: "Workflow name",
+        type: "string",
+      }),
+    serviceAction(
+      async (spinner, service, { workflow }) => {
+        spinner.start("Getting executions");
+        // TODO: support pagination, sort order, status filtering
+        const executions = await getExecutions(service, workflow);
+        spinner.stop();
+        executions.forEach((execution) => {
+          process.stdout.write(
+            `${displayExecution(execution, {
+              results: false,
+              workflow: false,
+            })}\n\n`
+          );
+        });
+      },
+      async (service, { workflow }) => {
+        const executions = await getExecutions(service, workflow);
+
+        process.stdout.write(JSON.stringify(executions));
+        process.stdout.write("\n");
       }
-      spinner.start("Getting executions");
-      const executions = await ky
-        .get(`workflows/${workflow}/executions`)
-        .json<MergedRecord<Execution>[]>();
-      spinner.stop();
-      if (sort) {
-        executions.sort((a, b) => (a[sort] ?? "").localeCompare(b[sort] ?? ""));
-      }
-      console.log(JSON.stringify(executions, null, 2));
-    })
+    )
   );
+
+async function getExecutions(
+  service: EventualServiceClient,
+  workflowName?: string
+) {
+  const { executions } = await service.getExecutions({
+    workflowName,
+    sortDirection: "Desc",
+    maxResults: 100,
+  });
+
+  return executions;
+}

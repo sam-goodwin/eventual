@@ -30,8 +30,8 @@ export interface WorkflowsProps {
 }
 
 export interface IWorkflows {
-  configureStartWorkflow(func: Function): void;
-  grantStartWorkflowEvent(grantable: IGrantable): void;
+  configureStartExecution(func: Function): void;
+  grantSubmitWorkflowEvent(grantable: IGrantable): void;
 
   configureSendWorkflowEvent(func: Function): void;
   grantSendWorkflowEvent(grantable: IGrantable): void;
@@ -95,15 +95,15 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     return this.orchestrator.grantPrincipal;
   }
 
-  public configureStartWorkflow(func: Function) {
+  public configureStartExecution(func: Function) {
     this.configureSendWorkflowEvent(func);
-    this.grantStartWorkflowEvent(func);
+    this.grantSubmitWorkflowEvent(func);
     addEnvironment(func, {
       [ENV_NAMES.TABLE_NAME]: this.props.table.tableName,
     });
   }
 
-  public grantStartWorkflowEvent(grantable: IGrantable) {
+  public grantSubmitWorkflowEvent(grantable: IGrantable) {
     this.grantSendWorkflowEvent(grantable);
     this.props.table.grantWriteData(grantable);
   }
@@ -181,7 +181,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
    * and sending signals to workflows.
    */
   public configureFullControl(func: Function) {
-    this.configureStartWorkflow(func);
+    this.configureStartExecution(func);
     this.configureSendWorkflowEvent(func);
     this.configureReadWorkflowData(func);
     this.configureSendSignal(func);

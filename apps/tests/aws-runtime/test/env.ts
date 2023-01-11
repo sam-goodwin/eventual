@@ -7,8 +7,5 @@ const outputs = fs.existsSync(path.resolve(outputsFile))
   ? JSON.parse(fs.readFileSync(path.resolve(outputsFile)).toString("utf-8"))
   : undefined;
 
-export const queueUrl = () => outputs?.["eventual-tests"]?.workflowQueueUrl;
-export const tableName = () => outputs?.["eventual-tests"]?.serviceTableName;
-export const activityTableName = () =>
-  outputs?.["eventual-tests"]?.activityTableName;
+export const serviceUrl = () => outputs?.["eventual-tests"]?.serviceUrl;
 export const testArn = () => outputs?.["eventual-tests"]?.roleArn;

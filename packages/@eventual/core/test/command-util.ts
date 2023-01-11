@@ -12,11 +12,11 @@ import {
 } from "../src/command.js";
 import { EventEnvelope } from "../src/event.js";
 import {
-  ActivityCompleted,
+  ActivitySucceeded,
   ActivityFailed,
   ActivityScheduled,
   ActivityTimedOut,
-  ChildWorkflowCompleted,
+  ChildWorkflowSucceeded,
   ChildWorkflowFailed,
   ChildWorkflowScheduled,
   ConditionStarted,
@@ -130,21 +130,21 @@ export function createStartConditionCommand(
   };
 }
 
-export function activityCompleted(result: any, seq: number): ActivityCompleted {
+export function activitySucceeded(result: any, seq: number): ActivitySucceeded {
   return {
-    type: WorkflowEventType.ActivityCompleted,
+    type: WorkflowEventType.ActivitySucceeded,
     result,
     seq,
     timestamp: new Date(0).toISOString(),
   };
 }
 
-export function workflowCompleted(
+export function workflowSucceeded(
   result: any,
   seq: number
-): ChildWorkflowCompleted {
+): ChildWorkflowSucceeded {
   return {
-    type: WorkflowEventType.ChildWorkflowCompleted,
+    type: WorkflowEventType.ChildWorkflowSucceeded,
     result,
     seq,
     timestamp: new Date(0).toISOString(),

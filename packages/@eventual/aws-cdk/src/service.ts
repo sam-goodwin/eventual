@@ -1,6 +1,16 @@
-import { AppSpec, MetricsCommon, OrchestratorMetrics } from "@eventual/core";
+import {
+  AppSpec,
+  MetricsCommon,
+  OrchestratorMetrics,
+  ServiceType,
+} from "@eventual/core";
 import { Arn, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
-import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
+import {
+  AttributeType,
+  BillingMode,
+  ProjectionType,
+  Table,
+} from "aws-cdk-lib/aws-dynamodb";
 import {
   AccountRootPrincipal,
   CompositePrincipal,
@@ -12,7 +22,6 @@ import {
 } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
-import { execSync } from "child_process";
 import { Construct } from "constructs";
 import { Activities, IActivities } from "./activities";
 import { lazyInterface } from "./proxy-construct";
@@ -27,6 +36,9 @@ import {
   Statistic,
   Unit,
 } from "aws-cdk-lib/aws-cloudwatch";
+import { bundleSourcesSync, inferSync } from "./compile-client";
+import path from "path";
+import { ExecutionRecord } from "@eventual/aws-runtime";
 
 export interface ServiceProps {
   entry: string;
@@ -50,7 +62,9 @@ export class Service extends Construct implements IGrantable {
    * This {@link Service}'s API Gateway.
    */
   public readonly api: Api;
-
+  /**
+   * This {@link Service}'s {@link Events} that can be published and subscribed to.
+   */
   public readonly events: Events;
   /**
    * A single-table used for execution data and granular workflow events/
@@ -84,19 +98,33 @@ export class Service extends Construct implements IGrantable {
 
     this.serviceName = props.name ?? Names.uniqueResourceName(this, {});
 
-    this.appSpec = JSON.parse(
-      execSync(
-        `npx ts-node-esm ${require.resolve(
-          "@eventual/compiler/bin/eventual-infer.js"
-        )} ${props.entry}`
-      ).toString("utf-8")
-    );
+    this.appSpec = inferSync(props.entry);
 
-    execSync(
-      `node ${require.resolve(
-        "@eventual/compiler/bin/eventual-bundle.js"
-      )} ${outDir(this)} ${props.entry}`
-    ).toString("utf-8");
+    bundleSourcesSync(
+      outDir(this),
+      props.entry,
+      {
+        name: ServiceType.OrchestratorWorker,
+        entry: runtimeEntrypoint("orchestrator"),
+        eventualTransform: true,
+        serviceType: ServiceType.OrchestratorWorker,
+      },
+      {
+        name: ServiceType.ActivityWorker,
+        entry: runtimeEntrypoint("activity-worker"),
+        serviceType: ServiceType.ActivityWorker,
+      },
+      {
+        name: ServiceType.ApiHandler,
+        entry: runtimeEntrypoint("api-handler"),
+        serviceType: ServiceType.ApiHandler,
+      },
+      {
+        name: ServiceType.EventHandler,
+        entry: runtimeEntrypoint("event-handler"),
+        serviceType: ServiceType.EventHandler,
+      }
+    );
 
     // Table - History, Executions
     this.table = new Table(this, "Table", {
@@ -104,6 +132,15 @@ export class Service extends Construct implements IGrantable {
       sortKey: { name: "sk", type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY,
+    });
+
+    this.table.addLocalSecondaryIndex({
+      indexName: ExecutionRecord.START_TIME_SORTED_INDEX,
+      sortKey: {
+        name: ExecutionRecord.START_TIME,
+        type: AttributeType.STRING,
+      },
+      projectionType: ProjectionType.ALL,
     });
 
     const proxyScheduler = lazyInterface<IScheduler>();
@@ -148,6 +185,7 @@ export class Service extends Construct implements IGrantable {
       workflows: this.workflows,
       events: this.events,
       scheduler: this.scheduler,
+      entry: props.entry,
     });
 
     this.grantPrincipal = new CompositePrincipal(
@@ -168,6 +206,7 @@ export class Service extends Construct implements IGrantable {
       parameterName: `/eventual/services/${this.serviceName}`,
       stringValue: JSON.stringify({
         apiEndpoint: this.api.gateway.apiEndpoint,
+        eventBusArn: this.events.bus.eventBusArn,
         functions: {
           orchestrator: this.workflows.orchestrator.functionName,
           activityWorker: this.activities.worker.functionName,
@@ -178,6 +217,19 @@ export class Service extends Construct implements IGrantable {
     this.serviceDataSSM.grantRead(this.cliRole);
   }
 
+  /**
+   * Add an environment variable to the Activity, API, Event and Workflow handler Functions.
+   *
+   * @param key The environment variable key.
+   * @param value The environment variable's value.
+   */
+  public addEnvironment(key: string, value: string): void {
+    this.activities.worker.addEnvironment(key, value);
+    this.api.handler.addEnvironment(key, value);
+    this.events.handler.addEnvironment(key, value);
+    this.workflows.orchestrator.addEnvironment(key, value);
+  }
+
   public grantRead(grantable: IGrantable) {
     this.table.grantReadData(grantable);
   }
@@ -186,8 +238,8 @@ export class Service extends Construct implements IGrantable {
     this.activities.grantCompleteActivity(grantable);
   }
 
-  public grantStartWorkflow(grantable: IGrantable) {
-    this.workflows.grantStartWorkflowEvent(grantable);
+  public grantStartExecution(grantable: IGrantable) {
+    this.workflows.grantSubmitWorkflowEvent(grantable);
   }
 
   /**
@@ -337,4 +389,11 @@ export class Service extends Construct implements IGrantable {
       },
     });
   }
+}
+
+export function runtimeEntrypoint(name: string) {
+  return path.join(
+    require.resolve("@eventual/aws-runtime"),
+    `../../esm/handlers/${name}.js`
+  );
 }

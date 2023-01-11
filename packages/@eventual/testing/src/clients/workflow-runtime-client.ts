@@ -1,8 +1,8 @@
 import {
   ActivityWorker,
   ActivityWorkerRequest,
-  CompleteExecution,
-  CompleteExecutionRequest,
+  SucceededExecution,
+  SucceedExecutionRequest,
   ExecutionStatus,
   FailedExecution,
   FailExecutionRequest,
@@ -40,7 +40,7 @@ export class TestWorkflowRuntimeClient extends WorkflowRuntimeClient {
   }
 
   protected async updateExecution(
-    request: FailExecutionRequest | CompleteExecutionRequest
+    request: FailExecutionRequest | SucceedExecutionRequest
   ) {
     const execution = this.executionStore.get(request.executionId);
 
@@ -67,9 +67,9 @@ export class TestWorkflowRuntimeClient extends WorkflowRuntimeClient {
         : ({
             ...execution,
             endTime,
-            status: ExecutionStatus.COMPLETE,
+            status: ExecutionStatus.SUCCEEDED,
             result: request.result,
-          } satisfies CompleteExecution);
+          } satisfies SucceededExecution);
 
     this.executionStore.put(updatedExecution);
 

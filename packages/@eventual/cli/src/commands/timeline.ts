@@ -6,7 +6,7 @@ import open from "open";
 import { resolve } from "import-meta-resolve";
 import {
   HistoryStateEvent,
-  isActivityCompleted,
+  isActivitySucceeded,
   isActivityFailed,
   isActivityScheduled,
   encodeExecutionId,
@@ -17,24 +17,25 @@ import path from "path";
 
 export const timeline = (yargs: Argv) =>
   yargs.command(
-    "timeline <service> <execution>",
-    "Visualise execution history",
+    "timeline",
+    "Visualize execution history",
     (yargs) =>
-      setServiceOptions(yargs).positional("execution", {
+      setServiceOptions(yargs).option("execution", {
+        alias: "e",
         describe: "Execution Id",
         type: "string",
         demandOption: true,
       }),
-    serviceAction(async (spinner, ky, { execution, service }) => {
+    serviceAction(async (spinner, serviceClient, { execution, service }) => {
       spinner.start("Starting viz server");
       const app = express();
 
       app.use("/api/timeline/:execution", async (req, res) => {
         // We forward errors onto our handler for the ui to deal with
         try {
-          const events = await ky
-            .get(`executions/${req.params.execution}}/workflow-history`)
-            .json<HistoryStateEvent[]>();
+          const { events } = await serviceClient.getExecutionWorkflowHistory(
+            req.params.execution
+          );
           const timeline = aggregateEvents(events);
           res.json(timeline);
         } catch (e: any) {
@@ -79,7 +80,7 @@ interface TimelineActivity {
   name: string;
   start: number;
   state:
-    | { status: "completed"; end: number }
+    | { status: "succeeded"; end: number }
     | { status: "failed"; end: number }
     | { status: "inprogress" };
 }
@@ -104,11 +105,11 @@ function aggregateEvents(events: HistoryStateEvent[]): {
         start: new Date(event.timestamp).getTime(),
         state: { status: "inprogress" },
       };
-    } else if (isActivityCompleted(event)) {
+    } else if (isActivitySucceeded(event)) {
       const existingActivity = activities[event.seq];
       if (existingActivity) {
         existingActivity.state = {
-          status: "completed",
+          status: "succeeded",
           end: new Date(event.timestamp).getTime(),
         };
       } else {
