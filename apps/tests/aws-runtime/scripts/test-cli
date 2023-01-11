@@ -1,40 +1,29 @@
 #!/usr/bin/env bash
 
-set -e
+set -ex
 
 export EVENTUAL_DEFAULT_SERVICE=eventual-tests
 
-echo "RUNNING: eventual list services"
 npx eventual list services
 
-echo "RUNNING: eventual list workflows"
 npx eventual list workflows
 
-echo "RUNNING: eventual list executions"
 npx eventual list executions 
 
-echo "RUNNING: eventual list executions --workflow parallel --json > .eventual/out.json"
 npx eventual list executions --workflow parallel --json > .eventual/out.json
 
 execution_id=$(node -p 'JSON.parse(require("fs").readFileSync(".eventual/out.json").toString("utf8")).executions[0].id')
 
-echo "RUNNING: eventual get history -e ${execution_id}"
 npx eventual get history -e ${execution_id}
 
-echo "RUNNING: eventual get logs --all"
 npx eventual get logs --all
 
-echo "RUNNING: eventual get logs --workflow parallel"
 npx eventual get logs --workflow parallel
 
-echo "RUNNING: eventual get logs --execution ${execution_id}"
 npx eventual get logs --execution ${execution_id}
 
-echo "RUNNING: eventual start workflow sleepy"
 npx eventual start workflow sleepy
 
-echo "RUNNING: eventual start workflow sleepy -f"
 npx eventual start workflow sleepy -f
 
-echo "RUNNING: eventual replay execution ${execution_id} --entry 'test/test-service.ts'"
 npx eventual replay execution ${execution_id} --entry 'test/test-service.ts'
