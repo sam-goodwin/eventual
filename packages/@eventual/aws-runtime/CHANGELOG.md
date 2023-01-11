@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.9.0 (2023-01-11)
+
+### Features
+
+- cli and api improvements ([#213](https://github.com/functionless/eventual/issues/213)) ([5c5c6f0](https://github.com/functionless/eventual/commit/5c5c6f01abbe73fe9a960e645e4ba3dff034d71b))
+
 ## 0.8.7 (2023-01-11)
 
 ### Bug Fixes
