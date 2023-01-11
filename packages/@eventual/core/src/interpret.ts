@@ -50,7 +50,10 @@ import {
 import { createChain, isChain, Chain } from "./chain.js";
 import { assertNever, or } from "./util.js";
 import { Command, CommandType } from "./command.js";
-import { isSleepForCall, isSleepUntilCall } from "./calls/sleep-call.js";
+import {
+  isAwaitDurationCall,
+  isAwaitTimeCall,
+} from "./calls/await-time-call.js";
 import {
   isExpectSignalCall,
   ExpectSignalCall,
@@ -202,17 +205,18 @@ export function interpret<Return>(
         heartbeatSeconds: call.heartbeatSeconds,
         seq: call.seq!,
       };
-    } else if (isSleepUntilCall(call)) {
+    } else if (isAwaitTimeCall(call)) {
       return {
-        kind: CommandType.SleepUntil,
+        kind: CommandType.AwaitTime,
         seq: call.seq!,
         untilTime: call.isoDate,
       };
-    } else if (isSleepForCall(call)) {
+    } else if (isAwaitDurationCall(call)) {
       return {
-        kind: CommandType.SleepFor,
+        kind: CommandType.AwaitDuration,
         seq: call.seq!,
-        durationSeconds: call.durationSeconds,
+        dur: call.dur,
+        unit: call.unit,
       };
     } else if (isWorkflowCall(call)) {
       return {
@@ -557,7 +561,7 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
   } else if (isChildWorkflowScheduled(event)) {
     return isWorkflowCall(call) && call.name === event.name;
   } else if (isSleepScheduled(event)) {
-    return isSleepUntilCall(call) || isSleepForCall(call);
+    return isAwaitTimeCall(call) || isAwaitDurationCall(call);
   } else if (isExpectSignalStarted(event)) {
     return isExpectSignalCall(call) && event.signalId === call.signalId;
   } else if (isSignalSent(event)) {

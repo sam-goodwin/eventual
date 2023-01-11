@@ -1,13 +1,13 @@
 import { ulid } from "ulidx";
 import {
+  AwaitDurationCommand,
+  AwaitTimeCommand,
   CommandType,
   ExpectSignalCommand,
   PublishEventsCommand,
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
   SendSignalCommand,
-  SleepForCommand,
-  SleepUntilCommand,
   StartConditionCommand,
 } from "../src/command.js";
 import { EventEnvelope } from "../src/event.js";
@@ -33,25 +33,28 @@ import {
   ActivityHeartbeatTimedOut,
 } from "../src/workflow-events.js";
 import { SignalTarget } from "../src/signals.js";
+import { DurationUnit } from "../src/await-time.js";
 
-export function createSleepUntilCommand(
+export function createAwaitTimeCommand(
   untilTime: string,
   seq: number
-): SleepUntilCommand {
+): AwaitTimeCommand {
   return {
-    kind: CommandType.SleepUntil,
+    kind: CommandType.AwaitTime,
     untilTime,
     seq,
   };
 }
 
-export function createSleepForCommand(
-  durationSeconds: number,
+export function createAwaitDurationCommand(
+  dur: number,
+  unit: DurationUnit,
   seq: number
-): SleepForCommand {
+): AwaitDurationCommand {
   return {
-    kind: CommandType.SleepFor,
-    durationSeconds,
+    kind: CommandType.AwaitDuration,
+    dur,
+    unit,
     seq,
   };
 }

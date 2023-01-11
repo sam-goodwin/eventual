@@ -117,7 +117,7 @@ exports[`esbuild-plugin ts workflow 1`] = `
   });
   var workflow3 = workflow("timeoutFlow", function* () {
     const callMe = $eventual(function* () {
-      yield sleepFor(20);
+      yield duration(20, "seconds");
     });
     yield callMe();
   });

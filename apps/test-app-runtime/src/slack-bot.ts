@@ -1,10 +1,10 @@
 import { Slack, SlackCredentials } from "@eventual/integrations-slack";
 import { AWSSecret } from "@eventual/aws-client";
 import {
+  duration,
   expectSignal,
   JsonSecret,
   sendSignal,
-  sleepFor,
   workflow,
 } from "@eventual/core";
 import ms from "ms";
@@ -47,7 +47,7 @@ const remindMe = workflow(
     message: string;
     waitSeconds: number;
   }) => {
-    await sleepFor(request.waitSeconds);
+    await duration(request.waitSeconds);
 
     await slack.client.chat.postMessage({
       channel: request.channel,

@@ -5,6 +5,7 @@ import { EventualError, HeartbeatTimeout, Timeout } from "../src/error.js";
 import {
   Context,
   createAwaitAll,
+  duration,
   Eventual,
   interpret,
   Program,
@@ -13,14 +14,13 @@ import {
   SERVICE_TYPE_FLAG,
   signal,
   SignalTargetType,
-  sleepFor,
-  sleepUntil,
+  time,
   Workflow,
   workflow as _workflow,
   WorkflowHandler,
   WorkflowResult,
 } from "../src/index.js";
-import { createSleepUntilCall } from "../src/calls/sleep-call.js";
+import { createAwaitTimeCall } from "../src/calls/await-time-call.js";
 import {
   activitySucceeded,
   activityFailed,
@@ -35,8 +35,8 @@ import {
   createScheduledActivityCommand,
   createScheduledWorkflowCommand,
   createSendSignalCommand,
-  createSleepForCommand,
-  createSleepUntilCommand,
+  createAwaitDurationCommand,
+  createAwaitTimeCommand,
   createStartConditionCommand,
   eventsPublished,
   scheduledSleep,
@@ -72,7 +72,7 @@ function* myWorkflow(event: any): Program<any> {
     createActivityCall("my-activity-0", [event]);
 
     const all = yield Eventual.all([
-      createSleepUntilCall("then"),
+      createAwaitTimeCall("then"),
       createActivityCall("my-activity-2", [event]),
     ]) as any;
     return [a, all];
@@ -119,7 +119,7 @@ test("should continue with result of completed Activity", () => {
   ).toMatchObject(<WorkflowResult>{
     commands: [
       createScheduledActivityCommand("my-activity-0", [event], 1),
-      createSleepUntilCommand("then", 2),
+      createAwaitTimeCommand("then", 2),
       createScheduledActivityCommand("my-activity-2", [event], 3),
     ],
   });
@@ -209,7 +209,7 @@ test("should handle missing blocks", () => {
     commands: [
       createScheduledActivityCommand("my-activity", [event], 0),
       createScheduledActivityCommand("my-activity-0", [event], 1),
-      createSleepUntilCommand("then", 2),
+      createAwaitTimeCommand("then", 2),
       createScheduledActivityCommand("my-activity-2", [event], 3),
     ],
   });
@@ -224,7 +224,7 @@ test("should handle partial blocks", () => {
     ])
   ).toMatchObject(<WorkflowResult>{
     commands: [
-      createSleepUntilCommand("then", 2),
+      createAwaitTimeCommand("then", 2),
       createScheduledActivityCommand("my-activity-2", [event], 3),
     ],
   });
@@ -240,7 +240,7 @@ test("should handle partial blocks with partial completes", () => {
     ])
   ).toMatchObject(<WorkflowResult>{
     commands: [
-      createSleepUntilCommand("then", 2),
+      createAwaitTimeCommand("then", 2),
       createScheduledActivityCommand("my-activity-2", [event], 3),
     ],
   });
@@ -426,17 +426,17 @@ test("should return result of inner function", () => {
 
 test("should schedule sleep for", () => {
   function* workflow() {
-    yield sleepFor(10);
+    yield duration(10);
   }
 
   expect(interpret(workflow() as any, [])).toMatchObject(<WorkflowResult>{
-    commands: [createSleepForCommand(10, 0)],
+    commands: [createAwaitDurationCommand(10, "seconds", 0)],
   });
 });
 
 test("should not re-schedule sleep for", () => {
   function* workflow() {
-    yield sleepFor(10);
+    yield duration(10);
   }
 
   expect(
@@ -448,7 +448,7 @@ test("should not re-schedule sleep for", () => {
 
 test("should complete sleep for", () => {
   function* workflow() {
-    yield sleepFor(10);
+    yield duration(10);
     return "done";
   }
 
@@ -467,11 +467,11 @@ test("should schedule sleep until", () => {
   const now = new Date();
 
   function* workflow() {
-    yield sleepUntil(now);
+    yield time(now);
   }
 
   expect(interpret(workflow() as any, [])).toMatchObject(<WorkflowResult>{
-    commands: [createSleepUntilCommand(now.toISOString(), 0)],
+    commands: [createAwaitTimeCommand(now.toISOString(), 0)],
   });
 });
 
@@ -479,7 +479,7 @@ test("should not re-schedule sleep until", () => {
   const now = new Date();
 
   function* workflow() {
-    yield sleepUntil(now);
+    yield time(now);
   }
 
   expect(
@@ -493,7 +493,7 @@ test("should complete sleep until", () => {
   const now = new Date();
 
   function* workflow() {
-    yield sleepUntil(now);
+    yield time(now);
     return "done";
   }
 
@@ -530,7 +530,7 @@ describe("temple of doom", () => {
     let jump = false;
 
     const startTrap = chain(function* () {
-      yield createSleepUntilCall("X");
+      yield createAwaitTimeCall("X");
       trapDown = true;
     });
     const waitForJump = chain(function* () {
@@ -560,7 +560,7 @@ describe("temple of doom", () => {
   test("run until blocked", () => {
     expect(interpret(workflow() as any, [])).toMatchObject(<WorkflowResult>{
       commands: [
-        createSleepUntilCommand("X", 0),
+        createAwaitTimeCommand("X", 0),
         createScheduledActivityCommand("jump", [], 1),
         createScheduledActivityCommand("run", [], 2),
       ],
@@ -1582,12 +1582,12 @@ describe("signals", () => {
         }
       );
 
-      yield createSleepUntilCall("");
+      yield createAwaitTimeCall("");
 
       mySignalHandler.dispose();
       myOtherSignalHandler.dispose();
 
-      yield createSleepUntilCall("");
+      yield createAwaitTimeCall("");
 
       return {
         mySignalHappened,
@@ -1600,7 +1600,7 @@ describe("signals", () => {
       expect(interpret(wf.definition(undefined, context), [])).toMatchObject(<
         WorkflowResult
       >{
-        commands: [createSleepUntilCommand("", 0)],
+        commands: [createAwaitTimeCommand("", 0)],
       });
     });
 
@@ -1610,7 +1610,7 @@ describe("signals", () => {
           signalReceived("MySignal"),
         ])
       ).toMatchObject(<WorkflowResult>{
-        commands: [createSleepUntilCommand("", 0)],
+        commands: [createAwaitTimeCommand("", 0)],
       });
     });
 
@@ -1682,7 +1682,7 @@ describe("signals", () => {
         ])
       ).toMatchObject(<WorkflowResult>{
         commands: [
-          createSleepUntilCommand("", 0),
+          createAwaitTimeCommand("", 0),
           createScheduledActivityCommand("act1", ["hi"], 1),
         ],
       });
@@ -1696,7 +1696,7 @@ describe("signals", () => {
         ])
       ).toMatchObject(<WorkflowResult>{
         commands: [
-          createSleepUntilCommand("", 0),
+          createAwaitTimeCommand("", 0),
           createScheduledActivityCommand("act1", ["hi"], 1),
           createScheduledActivityCommand("act1", ["hi2"], 2),
         ],
@@ -2070,7 +2070,7 @@ test("nestedChains", () => {
   const wf = workflow(function* () {
     const funcs = {
       a: chain(function* () {
-        yield createSleepUntilCall("");
+        yield createAwaitTimeCall("");
       }),
     };
 
@@ -2088,7 +2088,7 @@ test("nestedChains", () => {
   expect(
     interpret(wf.definition(undefined, context), [])
   ).toMatchObject<WorkflowResult>({
-    commands: [createSleepUntilCommand("", 0)],
+    commands: [createAwaitTimeCommand("", 0)],
   });
 });
 

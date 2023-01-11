@@ -5,13 +5,13 @@ import {
   expectSignal,
   asyncResult,
   sendSignal,
-  sleepFor,
-  sleepUntil,
+  time,
   workflow,
   sendActivityHeartbeat,
   HeartbeatTimeout,
   EventualError,
   signal,
+  duration,
 } from "@eventual/core";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -60,8 +60,8 @@ export const workflow2 = workflow("my-parent-workflow", async () => {
 });
 
 export const workflow3 = workflow("sleepy", async () => {
-  await sleepFor(2);
-  await sleepUntil(new Date(new Date().getTime() + 1000 * 2));
+  await duration(2);
+  await time(new Date(new Date().getTime() + 1000 * 2));
   return `done!`;
 });
 
@@ -79,7 +79,7 @@ export const workflow4 = workflow("parallel", async () => {
   return Promise.allSettled([greetings, greetings2, greetings3, any, race]);
 
   async function sayHelloInSeconds(seconds: number) {
-    await sleepFor(seconds);
+    await duration(seconds);
     return await hello("sam");
   }
 });
@@ -156,7 +156,7 @@ const slowActivity = activity(
 );
 
 const slowWf = workflow("slowWorkflow", { timeoutSeconds: 5 }, () =>
-  sleepFor(10)
+  duration(10)
 );
 
 export const timedOutWorkflow = workflow(

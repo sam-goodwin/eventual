@@ -6,15 +6,15 @@ import {
   isScheduleActivityCommand,
   isScheduleWorkflowCommand,
   isSendSignalCommand,
-  isSleepForCommand,
-  isSleepUntilCommand,
+  isAwaitDurationCommand,
+  isAwaitTimeCommand,
   isStartConditionCommand,
   PublishEventsCommand,
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
   SendSignalCommand,
-  SleepForCommand,
-  SleepUntilCommand,
+  AwaitDurationCommand,
+  AwaitTimeCommand,
   StartConditionCommand,
 } from "../command.js";
 import {
@@ -32,7 +32,11 @@ import {
   ConditionTimedOut,
   SignalSent,
 } from "../workflow-events.js";
-import { EventsPublished, isChildExecutionTarget } from "../index.js";
+import {
+  DurationUnit,
+  EventsPublished,
+  isChildExecutionTarget,
+} from "../index.js";
 import { assertNever } from "../util.js";
 import { Workflow } from "../workflow.js";
 import { formatChildExecutionName, formatExecutionId } from "./execution-id.js";
@@ -73,7 +77,7 @@ export class CommandExecutor {
       );
     } else if (isScheduleWorkflowCommand(command)) {
       return this.scheduleChildWorkflow(executionId, command, baseTime);
-    } else if (isSleepForCommand(command) || isSleepUntilCommand(command)) {
+    } else if (isAwaitDurationCommand(command) || isAwaitTimeCommand(command)) {
       // all sleep times are computed using the start time of the WorkflowTaskStarted
       return this.scheduleSleep(executionId, command, baseTime);
     } else if (isExpectSignalCommand(command)) {
@@ -158,13 +162,13 @@ export class CommandExecutor {
   private async scheduleSleep(
     executionId: string,
 
-    command: SleepForCommand | SleepUntilCommand,
+    command: AwaitDurationCommand | AwaitTimeCommand,
     baseTime: Date
   ): Promise<SleepScheduled> {
     // TODO validate
-    const untilTime = isSleepUntilCommand(command)
+    const untilTime = isAwaitTimeCommand(command)
       ? new Date(command.untilTime)
-      : new Date(baseTime.getTime() + command.durationSeconds * 1000);
+      : computeDurationDate(baseTime, command.dur, command.unit);
     const untilTimeIso = untilTime.toISOString();
 
     await this.props.timerClient.scheduleEvent<SleepCompleted>({
@@ -282,4 +286,25 @@ export class CommandExecutor {
       baseTime
     );
   }
+}
+
+export function computeDurationDate(
+  now: Date,
+  dur: number,
+  unit: DurationUnit
+) {
+  const milliseconds =
+    unit === "seconds" || unit === "second"
+      ? dur * 1000
+      : unit === "minutes" || unit === "minute"
+      ? dur * 1000 * 60
+      : unit === "hours" || unit === "hour"
+      ? dur * 1000 * 60 * 60
+      : unit === "days" || unit === "day"
+      ? dur * 1000 * 60 * 60 * 24
+      : unit === "years" || unit === "year"
+      ? dur * 1000 * 60 * 60 * 24 * 365.25
+      : assertNever(unit);
+
+  return new Date(now.getTime() + milliseconds);
 }

@@ -19,7 +19,7 @@ export * from "./secret.js";
 export * from "./service-client.js";
 export * from "./service-type.js";
 export * from "./signals.js";
-export * from "./sleep.js";
+export * from "./await-time.js";
 export * from "./tasks.js";
 export * from "./util.js";
 export * from "./workflow-events.js";

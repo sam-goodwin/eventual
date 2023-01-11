@@ -40,7 +40,7 @@ export class Signal<Payload = void> {
    * workflow("wf", () => {
    *    let done = false;
    *    mySignal.onSignal(async () => {
-   *       await sleepFor(10);
+   *       await duration(10, "seconds");
    *       done = true;
    *    });
    *
@@ -53,7 +53,7 @@ export class Signal<Payload = void> {
    * ```ts
    * const handler = mySignal.onSignal(() => {});
    *
-   * await sleepFor(10);
+   * await duration(10, "seconds");
    *
    * handler.dispose();
    * ```
@@ -168,7 +168,7 @@ export function expectSignal<SignalPayload = any>(
  * workflow("wf", () => {
  *    let done = false;
  *    onSignal("MySignal", async () => {
- *       await sleepFor(10);
+ *       await duration(10, "seconds");
  *       done = true;
  *    });
  *
@@ -181,7 +181,7 @@ export function expectSignal<SignalPayload = any>(
  * ```ts
  * const handler = onSignal("MySignal", () => {});
  *
- * await sleepFor(10);
+ * await duration(10, "seconds");
  *
  * handler.dispose();
  * ```

@@ -65,14 +65,15 @@ afterEach(() => {
   jest.resetAllMocks();
 });
 
-describe("sleep", () => {
-  test("sleep for", async () => {
+describe("await times", () => {
+  test("await duration", async () => {
     const event = await testExecutor.executeCommand(
       workflow,
       executionId,
       {
-        kind: CommandType.SleepFor,
-        durationSeconds: 10,
+        kind: CommandType.AwaitDuration,
+        dur: 10,
+        unit: "seconds",
         seq: 0,
       },
       baseTime
@@ -99,12 +100,12 @@ describe("sleep", () => {
     });
   });
 
-  test("sleep until", async () => {
+  test("await time", async () => {
     const event = await testExecutor.executeCommand(
       workflow,
       executionId,
       {
-        kind: CommandType.SleepUntil,
+        kind: CommandType.AwaitTime,
         untilTime: baseTime.toISOString(),
         seq: 0,
       },

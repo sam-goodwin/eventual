@@ -69,6 +69,6 @@ export const workflow3 = workflow("timeoutFlow", async () => {
   await callMe();
 
   async function callMe() {
-    await sleepFor(20);
+    await duration(20, "seconds");
   }
 });

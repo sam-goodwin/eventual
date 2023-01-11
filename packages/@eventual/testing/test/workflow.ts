@@ -1,11 +1,11 @@
 import {
   activity,
   asyncResult,
+  duration,
   event,
   sendSignal,
   signal,
-  sleepFor,
-  sleepUntil,
+  time,
   workflow,
 } from "@eventual/core";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
@@ -24,9 +24,9 @@ export const sleepWorkflow = workflow(
   "sleepWorkflow",
   async (relative: boolean) => {
     if (relative) {
-      await sleepFor(10);
+      await duration(10);
     } else {
-      await sleepUntil("2022-01-02T12:00:00Z");
+      await time("2022-01-02T12:00:00Z");
     }
     return "hello";
   }
@@ -140,7 +140,7 @@ export const orchestrateWorkflow = workflow(
       await throwWorkflow(undefined);
     }
     const execution = signalWorkflow(undefined);
-    await sleepFor(1);
+    await duration(1);
     await execution.sendSignal(dataSignal, "hello from a workflow");
     await execution.sendSignal(dataDoneSignal);
     await execution.sendSignal(continueSignal);
@@ -195,7 +195,7 @@ export const longRunningWorkflow = workflow("longRunningWf", async () => {
   const result = Promise.race([
     act,
     (async () => {
-      await sleepFor(60 * 60);
+      await duration(60 * 60);
       return "sleep";
     })(),
   ]);

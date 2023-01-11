@@ -1,3 +1,4 @@
+import { DurationUnit } from "./await-time.js";
 import { EventEnvelope } from "./event.js";
 import { SignalTarget } from "./signals.js";
 import { WorkflowOptions } from "./workflow.js";
@@ -8,8 +9,8 @@ export type Command =
   | ScheduleWorkflowCommand
   | PublishEventsCommand
   | SendSignalCommand
-  | SleepForCommand
-  | SleepUntilCommand
+  | AwaitDurationCommand
+  | AwaitTimeCommand
   | StartConditionCommand;
 
 interface CommandBase<T extends CommandType> {
@@ -18,11 +19,11 @@ interface CommandBase<T extends CommandType> {
 }
 
 export enum CommandType {
+  AwaitDuration = "AwaitDuration",
+  AwaitTime = "AwaitTime",
   ExpectSignal = "ExpectSignal",
   PublishEvents = "PublishEvents",
   SendSignal = "SendSignal",
-  SleepFor = "SleepFor",
-  SleepUntil = "SleepUntil",
   StartActivity = "StartActivity",
   StartCondition = "StartCondition",
   StartWorkflow = "StartWorkflow",
@@ -62,30 +63,32 @@ export function isScheduleWorkflowCommand(
   return a.kind === CommandType.StartWorkflow;
 }
 
-export interface SleepUntilCommand extends CommandBase<CommandType.SleepUntil> {
+export interface AwaitTimeCommand extends CommandBase<CommandType.AwaitTime> {
   /**
    * Minimum time (in ISO 8601) where the machine should wake up.
    */
   untilTime: string;
 }
 
-export function isSleepUntilCommand(
+export function isAwaitTimeCommand(
   command: Command
-): command is SleepUntilCommand {
-  return command.kind === CommandType.SleepUntil;
+): command is AwaitTimeCommand {
+  return command.kind === CommandType.AwaitTime;
 }
 
-export interface SleepForCommand extends CommandBase<CommandType.SleepFor> {
+export interface AwaitDurationCommand
+  extends CommandBase<CommandType.AwaitDuration> {
   /**
    * Number of seconds from the time the command is executed until the machine should wake up.
    */
-  durationSeconds: number;
+  dur: number;
+  unit: DurationUnit;
 }
 
-export function isSleepForCommand(
+export function isAwaitDurationCommand(
   command: Command
-): command is SleepForCommand {
-  return command.kind === CommandType.SleepFor;
+): command is AwaitDurationCommand {
+  return command.kind === CommandType.AwaitDuration;
 }
 
 export interface ExpectSignalCommand
