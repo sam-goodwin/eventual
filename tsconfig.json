@@ -5,6 +5,8 @@
     { "path": "apps/test-app" },
     { "path": "apps/tests/aws-runtime-cdk" },
     { "path": "apps/tests/aws-runtime" },
+    { "path": "examples/airline/infra" },
+    { "path": "examples/airline" },
     { "path": "examples/lambda-test-runner/infra" },
     { "path": "examples/lambda-test-runner/runtime" },
     { "path": "examples/stock-bot/infra" },
