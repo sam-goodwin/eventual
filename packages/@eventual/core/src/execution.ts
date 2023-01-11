@@ -8,6 +8,10 @@ export enum ExecutionStatus {
   SUCCEEDED = "SUCCEEDED",
   FAILED = "FAILED",
 }
+const ExecutionStatuses = new Set(Object.values(ExecutionStatus));
+export function isExecutionStatus(s: string): s is ExecutionStatus {
+  return ExecutionStatuses.has(s as ExecutionStatus);
+}
 
 interface ExecutionBase {
   id: string;

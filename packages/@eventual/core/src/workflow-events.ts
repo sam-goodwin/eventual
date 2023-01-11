@@ -269,6 +269,8 @@ export function isSleepCompleted(
   return event.type === WorkflowEventType.SleepCompleted;
 }
 
+export const isWorkflowCompleted = or(isWorkflowSucceeded, isWorkflowFailed);
+
 export interface ExpectSignalStarted extends HistoryEventBase {
   type: WorkflowEventType.ExpectSignalStarted;
   signalId: string;
