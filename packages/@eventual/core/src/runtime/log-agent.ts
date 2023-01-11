@@ -1,13 +1,11 @@
 import { assertNever } from "../util.js";
+import { LogsClient } from "./clients/logs-client.js";
 import {
   hookConsole,
-  groupBy,
-  LogsClient,
-  restoreConsole,
   isConsoleHooked,
-} from "./index.js";
-
-export const LOG_LEVEL_ENV = "EVENTUAL_LOG_LEVEL";
+  restoreConsole,
+} from "./console-hook.js";
+import { groupBy } from "./utils.js";
 
 export type LogContext = ExecutionLogContext | ActivityLogContext;
 
