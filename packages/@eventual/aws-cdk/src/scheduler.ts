@@ -7,14 +7,12 @@ import {
   Role,
   ServicePrincipal,
 } from "aws-cdk-lib/aws-iam";
-import { Function } from "aws-cdk-lib/aws-lambda";
+import { Code, Function } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
-import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
-import path from "path";
 import { IActivities } from "./activities";
-import { addEnvironment, baseNodeFnProps } from "./utils";
+import { addEnvironment, baseFnProps, outDir } from "./utils";
 import { IWorkflows } from "./workflows";
 
 export interface IScheduler {
@@ -95,25 +93,19 @@ export class Scheduler extends Construct implements IScheduler, IGrantable {
     this.queue = new Queue(this, "Queue");
 
     // TODO: handle failures to a DLQ - https://github.com/functionless/eventual/issues/40
-    this.forwarder = new NodejsFunction(this, "Forwarder", {
-      entry: path.join(
-        require.resolve("@eventual/aws-runtime"),
-        "../../esm/handlers/schedule-forwarder.js"
-      ),
+    this.forwarder = new Function(this, "Forwarder", {
+      code: Code.fromAsset(outDir(this, "SchedulerForwarder")),
+      ...baseFnProps,
       handler: "handle",
-      ...baseNodeFnProps,
     });
 
     // Allow the scheduler to create workflow tasks.
     this.forwarder.grantInvoke(this.schedulerRole);
 
-    this.handler = new NodejsFunction(this, "handler", {
-      entry: path.join(
-        require.resolve("@eventual/aws-runtime"),
-        "../../esm/handlers/timer-handler.js"
-      ),
+    this.handler = new Function(this, "handler", {
+      code: Code.fromAsset(outDir(this, "SchedulerHandler")),
+      ...baseFnProps,
       handler: "handle",
-      ...baseNodeFnProps,
       events: [
         new SqsEventSource(this.queue, {
           reportBatchItemFailures: true,
