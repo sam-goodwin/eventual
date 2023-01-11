@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.8.7 (2023-01-11)
+
+### Bug Fixes
+
+- create-eventual creates a project with the user's choice of package manager based on npm_config_user_agent ([#214](https://github.com/functionless/eventual/issues/214)) ([afea433](https://github.com/functionless/eventual/commit/afea433c243a3e24b7eaee29d1a4b5e9e6cc5542))
+
 ## 0.8.6 (2023-01-10)
 
 **Note:** Version bump only for package @eventual/compiler

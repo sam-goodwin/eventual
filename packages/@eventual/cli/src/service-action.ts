@@ -131,7 +131,6 @@ export const setServiceOptions = (
     return opts.option("json", {
       describe: "Return json instead of formatted output",
       boolean: true,
-      default: false,
     });
   }
 

@@ -16,7 +16,7 @@ npx eventual list executions
 echo "RUNNING: eventual list executions --workflow parallel --json > .eventual/out.json"
 npx eventual list executions --workflow parallel --json > .eventual/out.json
 
-execution_id=$(node -p 'JSON.parse(require("fs").readFileSync(".eventual/out.json").toString("utf8"))[0].id')
+execution_id=$(node -p 'JSON.parse(require("fs").readFileSync(".eventual/out.json").toString("utf8")).executions[0].id')
 
 echo "RUNNING: eventual get history -e ${execution_id}"
 npx eventual get history -e ${execution_id}

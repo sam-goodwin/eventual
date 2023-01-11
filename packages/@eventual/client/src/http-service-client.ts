@@ -18,7 +18,6 @@ import {
   SendSignalRequest,
   StartExecutionRequest,
   Workflow,
-  WorkflowEvent,
   WorkflowInput,
   ActivityUpdateType,
 } from "@eventual/core";
@@ -75,12 +74,15 @@ export class HttpServiceClient implements EventualServiceClient {
         ? request.workflow
         : request.workflow.workflowName;
 
-    // TODO support timeout and execution name via api
+    const queryString = formatQueryString({
+      timeoutSeconds: request.timeoutSeconds,
+      executionName: request.executionName,
+    });
 
     const { executionId } = await this.request<
       WorkflowInput<W>,
       { executionId: string }
-    >("POST", `workflows/${workflow}/executions`, request.input);
+    >("POST", `workflows/${workflow}/executions?${queryString}`, request.input);
 
     return new ExecutionHandle(executionId, this);
   }
@@ -88,20 +90,18 @@ export class HttpServiceClient implements EventualServiceClient {
   public async getExecutions(
     request: GetExecutionsRequest
   ): Promise<GetExecutionsResponse> {
-    // TODO support status filtering
-    // TODO Switch the API to focus on executions, accept workflow, statuses, etc as params
-    // TODO don't return an array from the API
-    // TODO support pagination
-    const response = await this.request<void, Execution[]>(
-      "GET",
-      request.workflowName
-        ? `executions?workflow=${request.workflowName}`
-        : "executions"
-    );
+    const queryStrings = formatQueryString({
+      maxResults: request.maxResults,
+      nextToken: request.nextToken,
+      sortDirection: request.sortDirection,
+      statuses: request.statuses,
+      workflow: request.workflowName,
+    });
 
-    return {
-      executions: response,
-    };
+    return this.request<void, GetExecutionsResponse>(
+      "GET",
+      `executions?${queryStrings}`
+    );
   }
 
   public async getExecution(
@@ -123,19 +123,23 @@ export class HttpServiceClient implements EventualServiceClient {
   public async getExecutionHistory(
     request: ExecutionEventsRequest
   ): Promise<ExecutionEventsResponse> {
-    // TODO: support pagination
-    const resp = await this.request<void, WorkflowEvent[]>(
+    const queryString = formatQueryString({
+      maxResults: request.maxResults,
+      nextToken: request.nextToken,
+      sortDirection: request.sortDirection,
+      after: request.after,
+    });
+    return await this.request<void, ExecutionEventsResponse>(
       "GET",
-      `executions/${encodeExecutionId(request.executionId)}/history`
+      `executions/${encodeExecutionId(
+        request.executionId
+      )}/history?${queryString}`
     );
-
-    return { events: resp };
   }
 
   public async getExecutionWorkflowHistory(
     executionId: string
   ): Promise<ExecutionHistoryResponse> {
-    // TODO: support pagination
     const resp = await this.request<void, HistoryStateEvent[]>(
       "GET",
       `executions/${encodeExecutionId(executionId)}}/workflow-history`
@@ -231,4 +235,28 @@ export class HttpError extends Error {
   ) {
     super(body || statusText);
   }
+}
+
+/**
+ * Formats a query string, filtering undefined values and empty arrays.
+ *
+ * name=value&name2=value2
+ */
+function formatQueryString(
+  entries: Record<string, undefined | string | number | (string | number)[]>
+) {
+  return Object.entries(entries)
+    .filter(
+      (e): e is [string, string | number | (string | number)[]] =>
+        e[1] !== undefined && (!Array.isArray(e[1]) || e[1].length > 0)
+    )
+    .map(
+      ([name, value]) =>
+        `${name}=${
+          Array.isArray(value)
+            ? value.map((v) => encodeURIComponent(v.toString())).join(",")
+            : encodeURIComponent(value.toString())
+        }`
+    )
+    .join("&");
 }

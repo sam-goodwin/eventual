@@ -81,6 +81,7 @@ cdk.out
             `# https://pnpm.io/pnpm-workspace_yaml
 packages:
   - "services"
+  - "stacks"
 `
           )
         : Promise.resolve(),
