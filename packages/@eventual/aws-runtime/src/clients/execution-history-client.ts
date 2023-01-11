@@ -64,6 +64,8 @@ export class AWSExecutionHistoryClient extends ExecutionHistoryClient {
   public async getEvents(
     request: ExecutionEventsRequest
   ): Promise<ExecutionEventsResponse> {
+    // normalize the date given and ensure it is a valid date.
+    const after = request.after ? new Date(request.after) : undefined;
     const output = await queryPageWithToken<EventRecord>(
       {
         dynamoClient: this.props.dynamo,
@@ -74,11 +76,24 @@ export class AWSExecutionHistoryClient extends ExecutionHistoryClient {
       {
         TableName: this.props.tableName,
         KeyConditionExpression: "pk = :pk AND begins_with ( sk, :sk )",
+        FilterExpression: after ? "#ts > :tsUpper" : undefined,
         ScanIndexForward: request.sortDirection !== SortOrder.Desc,
         ExpressionAttributeValues: {
           ":pk": { S: EventRecord.PARTITION_KEY },
-          ":sk": { S: EventRecord.sortKey(request.executionId, "", "") },
+          ":sk": {
+            S: EventRecord.sortKey(request.executionId, "", ""),
+          },
+          ...(after
+            ? {
+                ":tsUpper": {
+                  S: after.toISOString(),
+                },
+              }
+            : {}),
         },
+        ExpressionAttributeNames: after
+          ? { "#ts": "time" satisfies keyof EventRecord }
+          : undefined,
       }
     );
     const events = output.records.map(({ event, time }) => ({

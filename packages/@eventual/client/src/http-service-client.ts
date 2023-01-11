@@ -127,6 +127,7 @@ export class HttpServiceClient implements EventualServiceClient {
       maxResults: request.maxResults,
       nextToken: request.nextToken,
       sortDirection: request.sortDirection,
+      after: request.after,
     });
     return await this.request<void, ExecutionEventsResponse>(
       "GET",

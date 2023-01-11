@@ -129,6 +129,10 @@ export interface ExecutionEventsRequest {
    * @default: 100
    */
   maxResults?: number;
+  /**
+   * Start returning results after a date.
+   */
+  after?: string;
 }
 
 export interface ExecutionEventsResponse {

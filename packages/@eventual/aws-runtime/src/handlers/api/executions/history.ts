@@ -19,6 +19,7 @@ const workflowClient = createExecutionHistoryClient();
  * * sortDirection - Asc | Desc - Direction to sort the result by start time. Default: Asc
  * * maxResult - maximum number of results to return. Default: 100
  * * nextToken - continue a previous request
+ * * after - a ISO 8601 timestamp which all events should be after
  */
 export const handler: APIGatewayProxyHandlerV2<ExecutionEventsResponse> =
   withErrorMiddleware(async (event: APIGatewayProxyEventV2) => {
@@ -26,6 +27,7 @@ export const handler: APIGatewayProxyHandlerV2<ExecutionEventsResponse> =
       nextToken,
       maxResults: maxResultString,
       sortDirection: rawSortDirection,
+      after,
     } = event.queryStringParameters ?? {};
 
     const maxResults = maxResultString ? parseInt(maxResultString) : undefined;
@@ -58,6 +60,7 @@ export const handler: APIGatewayProxyHandlerV2<ExecutionEventsResponse> =
       executionId: decodeExecutionId(executionId),
       maxResults,
       nextToken,
+      after,
       sortDirection: sortDirection as SortOrder | undefined,
     });
   });

@@ -1,6 +1,6 @@
 import { EventualServiceClient, SortOrder } from "@eventual/core";
 import { Argv } from "yargs";
-import { displayEvent } from "../display/execution.js";
+import { displayEvent } from "../display/event.js";
 import { serviceAction, setServiceOptions } from "../service-action.js";
 
 export const history = (yargs: Argv) =>
@@ -31,6 +31,11 @@ export const history = (yargs: Argv) =>
           describe: "Number of items to return",
           type: "number",
           default: 1000,
+        })
+        .option("after", {
+          describe:
+            "ISO 8601 date or numeric timestamp after which all events should have happened.",
+          type: "string",
         }),
     (args) => {
       return serviceAction(
@@ -59,6 +64,7 @@ export const history = (yargs: Argv) =>
           nextToken: args.nextToken,
           maxResults: args.maxResults,
           sortDirection: args.desc ? SortOrder.Desc : SortOrder.Asc,
+          after: args.after,
         });
       }
     }

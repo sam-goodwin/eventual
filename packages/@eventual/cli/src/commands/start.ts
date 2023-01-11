@@ -1,17 +1,14 @@
 import { styledConsole } from "../styled-console.js";
 import {
-  WorkflowSucceeded,
-  WorkflowEvent,
-  WorkflowFailed,
   EventualServiceClient,
   isWorkflowSucceeded,
   isWorkflowFailed,
-  isWorkflowCompleted,
+  ExecutionEventsResponse,
 } from "@eventual/core";
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
 import { getInputJson } from "./utils.js";
-import { displayEvent } from "../display/execution.js";
+import { displayEvent } from "../display/event.js";
 
 export const start = (yargs: Argv) =>
   yargs.command(
@@ -60,40 +57,27 @@ export const start = (yargs: Argv) =>
           const { executionId } = await startExecution(serviceClient);
           spinner.succeed(`Execution id: ${executionId}`);
           if (args.follow) {
-            const events: WorkflowEvent[] = [];
             if (!spinner.isSpinning) {
               spinner.start(`${executionId} in progress\n`);
             }
-            async function pollEvents() {
-              const newEvents = await getNewEvents(
-                events,
-                serviceClient,
-                executionId
-              );
-              newEvents.forEach((ev) => {
-                spinner.info(displayEvent(ev));
-              });
-              events.push(...newEvents);
-              sortEvents(events);
-              const completedEvent = events.find(isWorkflowCompleted);
-              if (completedEvent) {
-                if (isWorkflowSucceeded(completedEvent)) {
-                  spinner.succeed("Workflow succeeded");
-                  const { output } = completedEvent as WorkflowSucceeded;
-                  if (output) {
-                    styledConsole.success(output);
-                  }
-                } else if (isWorkflowFailed(completedEvent)) {
-                  spinner.fail("Workflow failed");
-                  styledConsole.error(
-                    (completedEvent as WorkflowFailed).message
-                  );
+            for await (const event of streamEvents(
+              serviceClient,
+              executionId
+            )) {
+              spinner.info(displayEvent(event));
+              if (isWorkflowSucceeded(event)) {
+                spinner.succeed("Workflow succeeded");
+                const { output } = event;
+                if (output) {
+                  styledConsole.success(output);
                 }
-              } else {
-                setTimeout(pollEvents, 1000);
+                break;
+              } else if (isWorkflowFailed(event)) {
+                spinner.fail("Workflow failed");
+                styledConsole.error(`${event.error}: ${event.message}`);
+                break;
               }
             }
-            await pollEvents();
           }
         },
         async (serviceClient) => {
@@ -116,33 +100,31 @@ export const start = (yargs: Argv) =>
     }
   );
 
-/**
- * Fetch events, and return ones that we haven't seen already
- */
-async function getNewEvents(
-  existingEvents: WorkflowEvent[],
+async function* streamEvents(
   serviceClient: EventualServiceClient,
   executionId: string
 ) {
-  // TODO: make this work with pagination instead of pulling all of the events.
-  const { events: updatedEvents } = await serviceClient.getExecutionHistory({
-    executionId,
-  });
-  if (updatedEvents.length === 0) {
-    // Unfortunately if the execution id is wrong, our dynamo query is just going to return an empty record set
-    // Not super helpful
-    // So we use this heuristic to give up, since we should at least have a start event.
-    throw new Error("No events at all. Check your execution id");
-  }
-  // The sort is important to ensure we don't chop off new events,
-  // as we cannot rely on the event log to be sorted.
-  // ie a later event may be be output into the history before events we have previously seen.
-  sortEvents(updatedEvents);
-  return updatedEvents.slice(existingEvents.length);
-}
+  let maxTime: string | undefined;
+  let nextToken: string | undefined;
 
-function sortEvents(events: WorkflowEvent[]) {
-  return events.sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-  );
+  do {
+    const res: ExecutionEventsResponse =
+      await serviceClient.getExecutionHistory({
+        executionId,
+        // if there is a next token, continue, or else ask for events after the last one we saw
+        ...(nextToken ? { nextToken } : { after: maxTime }),
+      });
+    yield* res.events;
+    // track the max time of events we have seen so the next request can start there.
+    maxTime =
+      res.events.length > 0
+        ? res.events[res.events.length - 1]!.timestamp
+        : maxTime;
+    nextToken = res.nextToken;
+    // if there are more events to retrieve, do not wait
+    if (!nextToken) {
+      // between batches, wait 1 second for new events
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  } while (true);
 }
