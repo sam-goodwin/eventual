@@ -14,13 +14,6 @@ const targetChoices = ["aws-cdk", "aws-sst"].sort();
 (async function () {
   const pkgManager = discoverPackageManager();
 
-  console.log(
-    pkgManager,
-    process.execPath,
-    process.execArgv,
-    process.env.npm_execpath
-  );
-
   await yargs(hideBin(process.argv))
     .scriptName("create-eventual")
     .command(
