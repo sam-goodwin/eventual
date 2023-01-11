@@ -51,7 +51,7 @@ export const listExecutions = (yargs: Argv) =>
           type: "number",
           default: 100,
         }),
-    function action(args) {
+    (args) => {
       return serviceAction(
         // FORMATTED
         async (spinner, service) => {

@@ -18,7 +18,6 @@ import {
   SendSignalRequest,
   StartExecutionRequest,
   Workflow,
-  WorkflowEvent,
   WorkflowInput,
   ActivityUpdateType,
 } from "@eventual/core";
@@ -126,15 +125,12 @@ export class HttpServiceClient implements EventualServiceClient {
       nextToken: request.nextToken,
       sortDirection: request.sortDirection,
     });
-    // TODO: support pagination
-    const resp = await this.request<void, WorkflowEvent[]>(
+    return await this.request<void, ExecutionEventsResponse>(
       "GET",
       `executions/${encodeExecutionId(
         request.executionId
       )}/history?${queryString}`
     );
-
-    return { events: resp };
   }
 
   public async getExecutionWorkflowHistory(
