@@ -10,7 +10,7 @@ import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as eventual from "@eventual/aws-cdk";
 import path from "path";
 import { ServiceDashboard } from "@eventual/aws-cdk";
-import { LogLevel } from "packages/@eventual/core/src";
+import { LogLevel } from "@eventual/core";
 
 const app = new App();
 

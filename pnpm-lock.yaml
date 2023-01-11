@@ -191,6 +191,7 @@ importers:
     specifiers:
       '@eventual/aws-cdk': workspace:^
       '@eventual/cli': workspace:^
+      '@eventual/core': workspace:^
       '@types/jest': ^29
       '@types/node': ^16
       aws-cdk: 2.50.0
@@ -208,6 +209,7 @@ importers:
     devDependencies:
       '@eventual/aws-cdk': link:../../../packages/@eventual/aws-cdk
       '@eventual/cli': link:../../../packages/@eventual/cli
+      '@eventual/core': link:../../../packages/@eventual/core
       '@types/jest': 29.2.2
       '@types/node': 16.18.3
       aws-cdk: 2.50.0

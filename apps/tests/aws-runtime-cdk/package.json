@@ -13,6 +13,7 @@
   "devDependencies": {
     "@eventual/aws-cdk": "workspace:^",
     "@eventual/cli": "workspace:^",
+    "@eventual/core": "workspace:^",
     "@types/jest": "^29",
     "@types/node": "^16",
     "aws-cdk": "2.50.0",
