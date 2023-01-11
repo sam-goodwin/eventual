@@ -1,9 +1,20 @@
 import fs from "fs/promises";
 import path from "path";
-import { sampleCDKApp, sampleCDKStack, sampleServiceCode } from "./sample-code";
-import { CreateProps, install } from "./util";
+import { PackageManager } from "./package-manager";
+import { sampleCDKApp } from "./sample-code";
+import { install } from "./util";
 
-export async function createAwsCdk({ projectName, pkgManager }: CreateProps) {
+export interface CreateAwsCdkProps {
+  projectName: string;
+  pkgManager: PackageManager;
+  serviceName: string;
+}
+
+export async function createAwsCdk({
+  projectName,
+  pkgManager,
+  serviceName,
+}: CreateAwsCdkProps) {
   await fs.mkdir(projectName);
   process.chdir(projectName);
 
@@ -14,23 +25,36 @@ export async function createAwsCdk({ projectName, pkgManager }: CreateProps) {
   );
   const version = pkgJson.version as number;
 
-  const servicesDirName = `services`;
-  const servicesPkgName = `@${projectName}/services`;
-  const stacksDirName = `stacks`;
-  const stacksPkgName = `@${projectName}/stacks`;
-  const servicesDir = path.resolve(process.cwd(), servicesDirName);
-  const infraDir = path.resolve(process.cwd(), stacksDirName);
+  const appsDirName = `apps`;
+  const appsDir = path.resolve(process.cwd(), appsDirName);
+  const serviceDir = path.resolve(appsDir, serviceName);
+  const packagesDirName = `packages`;
+  const infraDirName = `infra`;
+  const infraPkgName = `infra`;
+  const infraDir = path.resolve(process.cwd(), infraDirName);
+  const eventsDir = path.resolve(process.cwd(), packagesDirName, "events");
+
+  const workspaceVersion = pkgManager === "pnpm" ? "workspace:^" : "*";
 
   await createRoot();
-  await createServices();
+  await createService();
   await createInfra();
+  await createEvents();
 
   async function createRoot() {
     await Promise.all([
       fs.mkdir(infraDir),
-      fs.mkdir(servicesDir),
+      fs.mkdir(serviceDir, {
+        recursive: true,
+      }),
+      fs.mkdir(eventsDir, {
+        recursive: true,
+      }),
+      writeJsonFile("eventual.json", {
+        projectType: "aws-cdk",
+      }),
       writeJsonFile("package.json", {
-        name: `${projectName}`,
+        name: projectName,
         version: "0.0.0",
         private: true,
         scripts: {
@@ -45,7 +69,11 @@ export async function createAwsCdk({ projectName, pkgManager }: CreateProps) {
         },
         ...(pkgManager !== "pnpm"
           ? {
-              workspaces: [servicesDirName, stacksDirName],
+              workspaces: [
+                infraDirName,
+                `${appsDirName}/*`,
+                `${packagesDirName}/*`,
+              ],
             }
           : {}),
       }),
@@ -57,14 +85,15 @@ export async function createAwsCdk({ projectName, pkgManager }: CreateProps) {
           declarationMap: true,
           inlineSourceMap: true,
           inlineSources: true,
+          resolveJsonModule: true,
         },
       }),
       writeJsonFile("tsconfig.json", {
         files: [],
         references: [
-          //
-          { path: servicesDirName },
-          { path: stacksDirName },
+          { path: infraDirName },
+          { path: `${appsDirName}/${serviceName}` },
+          { path: `${packagesDirName}/events` },
         ],
       }),
 
@@ -80,8 +109,9 @@ cdk.out
             "pnpm-workspace.yaml",
             `# https://pnpm.io/pnpm-workspace_yaml
 packages:
-  - "services"
-  - "stacks"
+  - "${infraDirName}"
+  - "${appsDirName}/*"
+  - "${packagesDirName}/*"
 `
           )
         : Promise.resolve(),
@@ -91,17 +121,17 @@ packages:
   // creates a run script that is package aware
   function run(script: string) {
     return pkgManager === "npm"
-      ? `npm run ${script} --workspace=${stacksDirName}`
+      ? `npm run ${script} --workspace=${infraDirName}`
       : pkgManager === "yarn"
-      ? `yarn workspace ${stacksPkgName} ${script}`
-      : `pnpm run ${script} --filter ${stacksPkgName}`;
+      ? `yarn workspace ${infraPkgName} ${script}`
+      : `pnpm run ${script} --filter ${infraPkgName}`;
   }
 
   async function createInfra() {
     process.chdir(infraDir);
     await Promise.all([
       writeJsonFile("package.json", {
-        name: stacksPkgName,
+        name: infraPkgName,
         version: "0.0.0",
         scripts: {
           synth: "cdk synth",
@@ -116,6 +146,7 @@ packages:
           "aws-cdk": "^2.50.0",
           constructs: "^10",
           esbuild: "^0.16.14",
+          [serviceName]: workspaceVersion,
         },
         devDependencies: {
           "@eventual/cli": `^${version}`,
@@ -135,44 +166,162 @@ packages:
           rootDir: "src",
         },
       }),
-      fs
-        .mkdir("src")
-        .then(() =>
-          Promise.all([
-            fs.writeFile(path.join("src", "app.ts"), sampleCDKApp(projectName)),
-            fs.writeFile(
-              path.join("src", `${projectName}-stack.ts`),
-              sampleCDKStack(projectName)
-            ),
-          ])
-        ),
+      fs.mkdir("src").then(() =>
+        Promise.all([
+          fs.writeFile(path.join("src", "app.ts"), sampleCDKApp(projectName)),
+          fs.writeFile(
+            path.join("src", `${projectName}-stack.ts`),
+            `import { Construct } from "constructs";
+import { CfnOutput, Stack, StackProps } from "aws-cdk-lib";
+import { Service } from "@eventual/aws-cdk";
+
+export interface MyServiceStackProps extends StackProps {}
+
+export class MyServiceStack extends Stack {
+  public readonly service: Service;
+
+  constructor(scope: Construct, id: string, props?: MyServiceStackProps) {
+    super(scope, id, props);
+
+    this.service = new Service(this, "${serviceName}", {
+      name: "${serviceName}",
+      entry: require.resolve("${serviceName}")
+    });
+
+    new CfnOutput(this, "${serviceName}-api-endpoint", {
+      exportName: "${serviceName}-api-endpoint",
+      value: this.service.api.gateway.url!,
+    });
+
+    new CfnOutput(this, "${serviceName}-event-bus-arn", {
+      exportName: "${serviceName}-event-bus-arn",
+      value: this.service.events.bus.eventBusArn,
+    });
+  }
+}
+`
+          ),
+        ])
+      ),
     ]);
     process.chdir("..");
   }
 
-  async function createServices() {
-    process.chdir(servicesDir);
+  async function createService() {
+    process.chdir(serviceDir);
     await Promise.all([
-      writeJsonFile(path.join(servicesDir, "package.json"), {
-        name: servicesPkgName,
+      writeJsonFile("package.json", {
+        name: serviceName,
         type: "module",
+        main: "lib/index.js",
+        module: "lib/index.js",
+        types: "lib/index.d.ts",
         version: "0.0.0",
         dependencies: {
           "@eventual/core": `^${version}`,
+          [`@${projectName}/events`]: workspaceVersion,
         },
       }),
-      fs
-        .mkdir("src")
-        .then(() =>
-          fs.writeFile(path.join("src", "index.ts"), sampleServiceCode)
-        ),
       writeJsonFile("tsconfig.json", {
-        extends: "../tsconfig.base.json",
+        extends: "../../tsconfig.base.json",
+        include: ["src"],
+        references: [{ path: "../../packages/events" }],
+        compilerOptions: {
+          lib: ["DOM"],
+          module: "esnext",
+          moduleResolution: "NodeNext",
+          outDir: "lib",
+          rootDir: "src",
+          target: "ES2021",
+        },
+      }),
+      fs.mkdir("src").then(() =>
+        fs.writeFile(
+          path.join("src", "index.ts"),
+          `import { activity, api, workflow } from "@eventual/core";
+
+// import a shared definition of the helloEvent
+import { helloEvent } from "@${projectName}/events";
+
+// create a REST API for: POST /hello <name>
+api.post("/hello", async (request) => {
+  const name = await request.text();
+
+  const { executionId } = await helloWorkflow.startExecution({
+    input: name,
+  });
+
+  return new Response(JSON.stringify({ executionId }));
+});
+
+export const helloWorkflow = workflow("helloWorkflow", async (name: string) => {
+  // call an activity to format the message
+  const message = await formatMessage(name);
+
+  // publish the message to the helloEvent
+  await helloEvent.publishEvents({
+    message
+  });
+
+  // return the message we created
+  return message;
+});
+
+// an activity that does the work of formatting the message
+export const formatMessage = activity("formatName", async (name: string) => {
+  return \`hello \${name}\`;
+});
+`
+        )
+      ),
+    ]);
+    process.chdir("..");
+  }
+
+  async function createEvents() {
+    process.chdir(eventsDir);
+    await Promise.all([
+      fs.mkdir("src").then(() =>
+        Promise.all([
+          fs.writeFile(
+            path.join("src", "index.ts"),
+            `export * from "./hello-event.js"\n`
+          ),
+          fs.writeFile(
+            path.join("src", "hello-event.ts"),
+            `import { event } from "@eventual/core";
+
+export interface HelloEvent {
+  message: string;
+}
+
+export const helloEvent = event<HelloEvent>("HelloEvent");
+`
+          ),
+        ])
+      ),
+      writeJsonFile("package.json", {
+        name: `@${projectName}/events`,
+        version: "0.0.0",
+        private: true,
+        type: "module",
+        main: "lib/index.js",
+        types: "lib/index.d.ts",
+        module: "lib/index.js",
+        peerDependencies: {
+          "@eventual/core": `^${version}`,
+        },
+        devDependencies: {
+          "@eventual/core": version,
+        },
+      }),
+      writeJsonFile("tsconfig.json", {
+        extends: "../../tsconfig.base.json",
         include: ["src"],
         compilerOptions: {
           lib: ["DOM"],
           module: "esnext",
-          moduleResolution: "node",
+          moduleResolution: "NodeNext",
           outDir: "lib",
           rootDir: "src",
           target: "ES2021",

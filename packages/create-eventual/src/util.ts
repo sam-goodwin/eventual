@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import { spawn } from "child_process";
-import { PackageManager } from "./index";
+import { PackageManager } from "./package-manager";
 
 export function isUsingYarn() {
   return isUsing("yarn");
@@ -101,9 +101,4 @@ export async function overrideTsCompilerOptions(
   options: Record<string, string>
 ) {
   tsConfig.compilerOptions = { ...tsConfig.compilerOptions, ...options };
-}
-
-export interface CreateProps {
-  projectName: string;
-  pkgManager: PackageManager;
 }

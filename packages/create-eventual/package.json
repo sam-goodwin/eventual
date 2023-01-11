@@ -10,8 +10,8 @@
     "create-eventual": "./bin/index.js"
   },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --outfile=lib/cli.js --platform=node",
-    "watch": "esbuild src/index.ts --bundle --outfile=lib/cli.js --platform=node --watch"
+    "build": "esbuild src/index.ts --bundle --outfile=lib/cli.js --platform=node --sourcemap=inline",
+    "watch": "esbuild src/index.ts --bundle --outfile=lib/cli.js --platform=node --watch --sourcemap=inline"
   },
   "dependencies": {
     "aws-cdk": "^2.50.0",

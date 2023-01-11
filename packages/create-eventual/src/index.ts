@@ -3,13 +3,9 @@ import inquirer from "inquirer";
 import { hideBin } from "yargs/helpers";
 import { createAwsCdk } from "./aws-cdk.js";
 import { createAwsSst } from "./aws-sst.js";
-import { CreateProps, discoverPackageManager } from "./util.js";
+import { discoverPackageManager } from "./util.js";
 
-export type PackageManager = "npm" | "yarn" | "pnpm";
-
-const projectNameRegex = /^[A-Za-z-_0-9]+$/g;
-
-const targetChoices = ["aws-cdk", "aws-sst"].sort();
+const targetChoices = ["aws-cdk", "sst"].sort();
 
 (async function () {
   const pkgManager = discoverPackageManager();
@@ -29,45 +25,55 @@ const targetChoices = ["aws-cdk", "aws-sst"].sort();
             type: "string",
             choices: targetChoices,
           })
-          .check(({ projectName }) => {
-            if (projectName !== undefined) {
-              if (!projectName.match(projectNameRegex)) {
-                throw new Error(`project name must match ${projectNameRegex}`);
-              }
+          .option("serviceName", {
+            type: "string",
+            description: "Name of the service to create",
+          })
+          .check(({ projectName, serviceName }) => {
+            if (projectName) {
+              assertName("project", projectName);
+            }
+            if (serviceName) {
+              assertName("service", serviceName);
             }
             return true;
           }),
       async (args) => {
-        const {
-          target = args.target!,
-          projectName = args.projectName!,
-        }: { target: string; projectName: string } = await inquirer.prompt([
-          {
-            type: "input",
-            name: "projectName",
-            when: !args.projectName,
-            message: `project name`,
-            validate: (projectName: string) =>
-              projectName.match(projectNameRegex) !== null ||
-              `project name must match ${projectNameRegex}`,
-          },
-          {
-            type: "list",
-            name: "target",
-            choices: targetChoices,
-            when: !args.target,
-          },
-        ]);
-
-        const props: CreateProps = {
-          pkgManager,
-          projectName: projectName!,
-        };
+        const target = args.target ?? "aws-cdk";
+        const { projectName = args.projectName! }: { projectName: string } =
+          await inquirer.prompt([
+            {
+              type: "input",
+              name: "projectName",
+              when: !args.projectName,
+              message: `project name`,
+              validate: validateProjectName,
+            },
+          ]);
 
         if (target === "aws-cdk") {
-          await createAwsCdk(props);
+          const { serviceName = args.serviceName! }: { serviceName: string } =
+            await inquirer.prompt([
+              {
+                type: "input",
+                name: "serviceName",
+                message: "service name",
+                when: !args.serviceName,
+                default: args.projectName,
+                validate: validateServiceName,
+              },
+            ]);
+
+          await createAwsCdk({
+            pkgManager,
+            projectName: projectName!,
+            serviceName,
+          });
         } else {
-          await createAwsSst(props);
+          await createAwsSst({
+            pkgManager,
+            projectName: projectName!,
+          });
         }
       }
     )
@@ -76,3 +82,21 @@ const targetChoices = ["aws-cdk", "aws-sst"].sort();
   console.error(err);
   process.exit(1);
 });
+
+const projectNameRegex = /^[A-Za-z-_0-9]+$/g;
+
+const validateProjectName = validateName("project");
+const validateServiceName = validateName("service");
+
+function validateName(type: string) {
+  return (name: string): true | string =>
+    name.match(projectNameRegex) !== null ||
+    `${type} name must match ${projectNameRegex}`;
+}
+
+function assertName(type: string, name: string) {
+  const result = validateName(type)(name);
+  if (typeof result === "string") {
+    throw new Error(result);
+  }
+}
