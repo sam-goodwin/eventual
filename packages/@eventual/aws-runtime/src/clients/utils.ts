@@ -121,3 +121,18 @@ export async function queryPage<Item>(
     }
   } while (true);
 }
+
+/**
+ * Chinks an array of {@link items} into arrays of maximum size {@link batchSize}
+ */
+export function chunkArray<T>(batchSize: number, items: T[]): T[][] {
+  return items.reduceRight(([current, ...batches]: T[][], item) => {
+    if (!current) {
+      return [[item], ...(batches ?? [])];
+    } else if (current?.length < batchSize) {
+      return [[item, ...current], ...(batches ?? [])];
+    } else {
+      return [[item], current, ...(batches ?? [])];
+    }
+  }, []);
+}
