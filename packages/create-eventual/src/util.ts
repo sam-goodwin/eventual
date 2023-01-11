@@ -2,6 +2,21 @@ import fs from "fs/promises";
 import { spawn } from "child_process";
 import { PackageManager } from "./index";
 
+// taken from create-react-app
+// https://github.com/facebook/create-react-app/blob/d960b9e38c062584ff6cfb1a70e1512509a966e7/packages/create-react-app/createReactApp.js#L52
+export function isUsingYarn() {
+  return (process.env.npm_config_user_agent || "").indexOf("yarn") === 0;
+}
+
+// verified PNPM also sets it: https://github.com/pnpm/pnpm/pull/4317
+export function isUsingPnpm() {
+  return (process.env.npm_config_user_agent || "").indexOf("pnpm") === 0;
+}
+
+export function discoverPackageManager(): PackageManager {
+  return isUsingYarn() ? "yarn" : isUsingPnpm() ? "pnpm" : "npm";
+}
+
 export async function exec(command: string, ...args: string[]) {
   console.log(process.cwd(), [command, ...args].join(" "));
   return new Promise((resolve, reject) => {
