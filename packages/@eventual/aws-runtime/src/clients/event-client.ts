@@ -57,7 +57,7 @@ export class AWSEventClient implements EventClient {
           new PutEventsCommand({
             Entries: events.map(([eventName, eventJson]) => ({
               DetailType: eventName,
-              Detail: JSON.stringify(eventJson),
+              Detail: eventJson,
               EventBusName: this.eventBusArn,
               Source: this.serviceName,
             })),
