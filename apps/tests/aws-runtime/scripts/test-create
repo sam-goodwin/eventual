@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 
-set -e
+set -ex
 
 ## start at the root of tests/aws-runtime
 cd "$(dirname $0)/.."
 
 npm cache clear --force
 pnpm -r --filter @eventual/* exec npm link 
+
+# npm link wigs out when this is pnpm
+unset npm_config_user_agent
 
 mkdir -p ./.eventual
 cd ./.eventual
