@@ -16,12 +16,12 @@ const workflowClient = createWorkflowClient({
 /**
  * Create a new execution (start a workflow)
  *
+ * Path Parameters;
+ * * workflowName - name of the workflow to start
+ *
  * Query Parameters:
- * * sortDirection - Asc | Desc - Direction to sort the result by start time. Default: Asc
- * * workflow - workflow name filter
- * * maxResult - maximum number of results to return. Default: 100
- * * nextToken - continue a previous request
- * * statuses - IN_PROGRESS | SUCCEEDED | FAILED - One or more comma delimited statuses to return. Default: all statuses
+ * * timeoutSeconds - Number of seconds the workflow should run before it times out. Default: use the configured timeout or no timeout.
+ * * executionName - name to give the workflow. Default: auto generated UUID.
  */
 export const handler: APIGatewayProxyHandlerV2<StartExecutionResponse> =
   withErrorMiddleware(async (event: APIGatewayProxyEventV2) => {

@@ -1,25 +1,24 @@
 import { styledConsole } from "../styled-console.js";
 import {
-  isActivitySucceeded,
-  isActivityScheduled,
-  isWorkflowStarted,
   WorkflowSucceeded,
   WorkflowEvent,
-  WorkflowEventType,
   WorkflowFailed,
   EventualServiceClient,
+  isWorkflowSucceeded,
+  isWorkflowFailed,
+  isWorkflowCompleted,
 } from "@eventual/core";
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
-import util from "util";
 import { getInputJson } from "./utils.js";
+import { displayEvent } from "../display/execution.js";
 
 export const start = (yargs: Argv) =>
   yargs.command(
     "workflow <workflow>",
     "Start an workflow",
     (yargs) =>
-      setServiceOptions(yargs)
+      setServiceOptions(yargs, true)
         .positional("workflow", {
           describe: "Workflow name",
           type: "string",
@@ -29,6 +28,7 @@ export const start = (yargs: Argv) =>
           alias: "f",
           describe: "Follow an execution",
           type: "boolean",
+          conflicts: "json",
         })
         .option("inputFile", {
           alias: "x",
@@ -39,72 +39,81 @@ export const start = (yargs: Argv) =>
           alias: "i",
           describe: "Input data as json string",
           type: "string",
+        })
+        .option("name", {
+          alias: "n",
+          describe:
+            "Unique name of the execution. Must be unique for all executions of the workflow.",
+          type: "string",
+          defaultDescription: "An auto generated UUID",
+        })
+        .option("timeout", {
+          describe: "Number of seconds until the execution times out.",
+          type: "number",
+          defaultDescription:
+            "Configured on the workflow definition or no timeout.",
         }),
-    serviceAction(
-      async (
-        spinner,
-        serviceClient,
-        { workflow, input, inputFile, follow }
-      ) => {
-        spinner.start(`Executing ${workflow}\n`);
-        const inputJSON = await getInputJson(inputFile, input);
-        // TODO: support timeout and executionName
-        const { executionId } = await serviceClient.startExecution({
-          workflow,
-          input: inputJSON,
-        });
-        spinner.succeed(`Execution id: ${executionId}`);
-        if (follow) {
-          const events: WorkflowEvent[] = [];
-          if (!spinner.isSpinning) {
-            spinner.start(`${executionId} in progress\n`);
-          }
-          async function pollEvents() {
-            const newEvents = await getNewEvents(
-              events,
-              serviceClient,
-              executionId
-            );
-            newEvents.forEach((ev) => {
-              let meta: string | undefined;
-              if (isActivitySucceeded(ev)) {
-                meta = ev.result;
-              } else if (isActivityScheduled(ev)) {
-                meta = ev.name;
-              } else if (isWorkflowStarted(ev)) {
-                meta = util.inspect(ev.input);
-              }
-              spinner.info(
-                ev.timestamp + " - " + ev.type + (meta ? `- ` + meta : "")
-              );
-            });
-            events.push(...newEvents);
-            sortEvents(events);
-            const succeededEvent = events.find(
-              (ev) => ev.type === WorkflowEventType.WorkflowSucceeded
-            );
-            const failedEvent = events.find(
-              (ev) => ev.type === WorkflowEventType.WorkflowFailed
-            );
-            if (succeededEvent) {
-              spinner.succeed("Workflow succeeded");
-              const { output } = succeededEvent as WorkflowSucceeded;
-              if (output) {
-                styledConsole.success(output);
-              }
-            } else if (failedEvent) {
-              spinner.fail("Workflow failed");
-              styledConsole.error((failedEvent as WorkflowFailed).message);
-            } else {
-              setTimeout(pollEvents, 1000);
+    (args) => {
+      return serviceAction(
+        async (spinner, serviceClient) => {
+          spinner.start(`Executing ${args.workflow}\n`);
+          const { executionId } = await startExecution(serviceClient);
+          spinner.succeed(`Execution id: ${executionId}`);
+          if (args.follow) {
+            const events: WorkflowEvent[] = [];
+            if (!spinner.isSpinning) {
+              spinner.start(`${executionId} in progress\n`);
             }
+            async function pollEvents() {
+              const newEvents = await getNewEvents(
+                events,
+                serviceClient,
+                executionId
+              );
+              newEvents.forEach((ev) => {
+                spinner.info(displayEvent(ev));
+              });
+              events.push(...newEvents);
+              sortEvents(events);
+              const completedEvent = events.find(isWorkflowCompleted);
+              if (completedEvent) {
+                if (isWorkflowSucceeded(completedEvent)) {
+                  spinner.succeed("Workflow succeeded");
+                  const { output } = completedEvent as WorkflowSucceeded;
+                  if (output) {
+                    styledConsole.success(output);
+                  }
+                } else if (isWorkflowFailed(completedEvent)) {
+                  spinner.fail("Workflow failed");
+                  styledConsole.error(
+                    (completedEvent as WorkflowFailed).message
+                  );
+                }
+              } else {
+                setTimeout(pollEvents, 1000);
+              }
+            }
+            await pollEvents();
           }
-          await pollEvents();
-        } else {
-          styledConsole.success({ executionId });
+        },
+        async (serviceClient) => {
+          const { executionId } = await startExecution(serviceClient);
+
+          process.stdout.write(JSON.stringify({ executionId }));
+          process.stdout.write("\n");
         }
+      )(args);
+
+      async function startExecution(serviceClient: EventualServiceClient) {
+        const inputJSON = await getInputJson(args.inputFile, args.input);
+        return await serviceClient.startExecution({
+          workflow: args.workflow,
+          input: inputJSON,
+          executionName: args.name,
+          timeoutSeconds: args.timeout,
+        });
       }
-    )
+    }
   );
 
 /**

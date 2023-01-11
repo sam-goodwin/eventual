@@ -74,12 +74,15 @@ export class HttpServiceClient implements EventualServiceClient {
         ? request.workflow
         : request.workflow.workflowName;
 
-    // TODO support timeout and execution name via api
+    const queryString = formatQueryString({
+      timeoutSeconds: request.timeoutSeconds,
+      executionName: request.executionName,
+    });
 
     const { executionId } = await this.request<
       WorkflowInput<W>,
       { executionId: string }
-    >("POST", `workflows/${workflow}/executions`, request.input);
+    >("POST", `workflows/${workflow}/executions?${queryString}`, request.input);
 
     return new ExecutionHandle(executionId, this);
   }
