@@ -3,10 +3,6 @@ import {
   QueryCommand,
   QueryCommandInput,
 } from "@aws-sdk/client-dynamodb";
-import { deflate, unzip } from "zlib";
-import { promisify } from "util";
-const do_deflate = promisify(deflate);
-const do_unzip = promisify(unzip);
 
 export type NextTokenWrapper<Type, Payload, Version extends number = 1> = [
   type: Type,
@@ -59,7 +55,9 @@ export async function queryPageWithToken<Item>(
       ? [DynamoPageType.DynamoPage, 1, result.lastEvaluatedKey]
       : undefined;
 
-  const newNextToken = nextTokenObj ? serializeToken(nextTokenObj) : undefined;
+  const newNextToken = nextTokenObj
+    ? await serializeToken(nextTokenObj)
+    : undefined;
 
   return { records: result.items, nextToken: newNextToken };
 }
@@ -127,7 +125,5 @@ async function serializeToken(
 async function deserializeToken<T extends NextTokenWrapper<any, any, any>>(
   str: string
 ): Promise<T> {
-  return JSON.parse(
-    (await do_unzip(Buffer.from(str, "base64"))).toString("utf-8")
-  ) as T;
+  return JSON.parse(Buffer.from(str, "base64").toString("utf-8")) as T;
 }
