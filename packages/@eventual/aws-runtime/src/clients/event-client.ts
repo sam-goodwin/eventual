@@ -28,16 +28,18 @@ export class AWSEventClient implements EventClient {
   public async publishEvents(
     ...events: EventEnvelope<EventPayload>[]
   ): Promise<void> {
+    const self = this;
+
     console.debug("publish", events);
 
-    const batches = chunkArray(
+    const eventBatches = chunkArray(
       10,
       events.map((event) => [event.name, JSON.stringify(event.event)] as const)
     );
 
     await Promise.all(
-      batches.map((batch) =>
-        this._publishEvents(batch, {
+      eventBatches.map((batch) =>
+        publishEvents(batch, {
           delayMs: 100,
           delayCoefficient: 2,
           remainingAttempts: 3,
@@ -45,56 +47,49 @@ export class AWSEventClient implements EventClient {
         })
       )
     );
-  }
 
-  private async _publishEvents(
-    events: Array<EventTuple> | ReadonlyArray<EventTuple>,
-    retryConfig: RetryConfig
-  ) {
-    if (events.length > 0) {
-      try {
-        const response = await this.eventBridgeClient.send(
-          new PutEventsCommand({
-            Entries: events.map(([eventName, eventJson]) => ({
-              DetailType: eventName,
-              Detail: eventJson,
-              EventBusName: this.eventBusArn,
-              Source: this.serviceName,
-            })),
-          })
-        );
-        if (response.FailedEntryCount) {
-          await sleep();
-
-          const retryEvents =
-            response.Entries?.flatMap((entry, i) =>
-              entry.ErrorCode ? [events[i]!] : []
-            ) ?? [];
-
-          await this._publishEvents(retryEvents, backoff());
+    async function publishEvents(
+      events: Array<EventTuple> | ReadonlyArray<EventTuple>,
+      retryConfig: RetryConfig
+    ) {
+      if (events.length > 0) {
+        try {
+          const response = await self.eventBridgeClient.send(
+            new PutEventsCommand({
+              Entries: events.map(([eventName, eventJson]) => ({
+                DetailType: eventName,
+                Detail: eventJson,
+                EventBusName: self.eventBusArn,
+                Source: self.serviceName,
+              })),
+            })
+          );
+          if (response.FailedEntryCount) {
+            await retry(
+              response.Entries?.flatMap((entry, i) =>
+                entry.ErrorCode ? [events[i]!] : []
+              ) ?? []
+            );
+          }
+        } catch (err) {
+          console.error(err);
+          await retry(events);
         }
-      } catch (err) {
-        await sleep();
-
-        await this._publishEvents(events, backoff());
       }
 
-      function sleep() {
-        return new Promise((resolve) =>
+      async function retry(events: EventTuple[] | readonly EventTuple[]) {
+        await new Promise((resolve) =>
           setTimeout(
             resolve,
             Math.min(retryConfig.maxDelay, retryConfig.delayMs)
           )
         );
-      }
 
-      // increment the retry config by one attempt, cu
-      function backoff() {
-        return {
+        return publishEvents(events, {
           ...retryConfig,
           remainingAttempts: retryConfig.remainingAttempts - 1,
           delayMs: retryConfig.delayMs & retryConfig.delayCoefficient,
-        };
+        });
       }
     }
   }
