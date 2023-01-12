@@ -1,5 +1,5 @@
 import fs from "fs/promises";
-import { updateJsonFile } from "./json-file";
+import { updateJsonFile } from "./json-file.js";
 
 export async function addTsReferences(
   file: string,

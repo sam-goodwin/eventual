@@ -1,10 +1,10 @@
 import fs from "fs/promises";
 import path from "path";
 import inquirer from "inquirer";
-import { validateServiceName } from "./validate";
-import { version } from "./version";
-import { addTsReferences } from "./tsconfig-file";
-import { updateJsonFile, writeJsonFile } from "./json-file";
+import { validateServiceName } from "./validate.js";
+import { version } from "./version.js";
+import { addTsReferences } from "./tsconfig-file.js";
+import { updateJsonFile, writeJsonFile } from "./json-file.js";
 
 /**
  * Creates a new Service in an Eventual-managed project.

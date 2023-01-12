@@ -1,4 +1,4 @@
-import { readJsonFile } from "./json-file";
+import { readJsonFile } from "./json-file.js";
 import path from "path";
 
 export interface EventualManifest {

@@ -25,6 +25,7 @@
     { "path": "packages/@eventual/integrations-slack" },
     { "path": "packages/@eventual/integrations-slack/tsconfig.cjs.json" },
     { "path": "packages/@eventual/project" },
+    { "path": "packages/@eventual/project/tsconfig.cjs.json" },
     { "path": "packages/@eventual/testing" },
     { "path": "packages/@eventual/testing/tsconfig.cjs.json" },
     { "path": "packages/@eventual/testing/tsconfig.test.json" },

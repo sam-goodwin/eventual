@@ -1,3 +1,3 @@
-const pkgJson = require("../package.json");
+import pkgJson from "../package.json";
 
-export const version = pkgJson.version as number;
+export const version = pkgJson.version;
