@@ -14,6 +14,7 @@ import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import path from "path";
 import { IActivities } from "./activities";
+import { Logging } from "./logging";
 import { addEnvironment, baseNodeFnProps } from "./utils";
 import { IWorkflows } from "./workflows";
 
@@ -36,6 +37,7 @@ export interface SchedulerProps {
    * Used by the activity heartbeat monitor to retrieve heartbeat data.
    */
   activities: IActivities;
+  logging: Logging;
 }
 
 /**
@@ -181,11 +183,13 @@ export class Scheduler extends Construct implements IScheduler, IGrantable {
     this.props.workflows.configureSendWorkflowEvent(this.handler);
     this.props.activities.configureRead(this.handler);
     this.configureScheduleTimer(this.handler);
+    this.props.logging.configurePutServiceLogs(this.handler);
   }
 
   private configureScheduleForwarder() {
     this.configureScheduleTimer(this.forwarder);
     this.grantDeleteSchedule(this.forwarder);
+    this.props.logging.configurePutServiceLogs(this.forwarder);
   }
 }
 

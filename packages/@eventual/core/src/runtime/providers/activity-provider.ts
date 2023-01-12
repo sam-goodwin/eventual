@@ -1,8 +1,5 @@
-import {
-  ActivityHandler,
-  callableActivities,
-  getCallableActivityNames,
-} from "../../index.js";
+import { ActivityHandler, getCallableActivityNames } from "../../activity.js";
+import { callableActivities } from "../../global.js";
 
 export interface ActivityProvider {
   getActivityHandler(activityId: string): ActivityHandler<any> | undefined;

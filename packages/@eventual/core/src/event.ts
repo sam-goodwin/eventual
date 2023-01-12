@@ -1,6 +1,6 @@
 import { createPublishEventsCall } from "./calls/send-events-call.js";
-import { events, eventSubscriptions } from "./global.js";
-import { getServiceClient, isOrchestratorWorker } from "./index.js";
+import { events, eventSubscriptions, getServiceClient } from "./global.js";
+import { isOrchestratorWorker } from "./runtime/flags.js";
 
 /**
  * An EventPayload is the data sent as an event.

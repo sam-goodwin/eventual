@@ -1,6 +1,6 @@
 {
   "name": "@eventual/cli",
-  "version": "0.8.6",
+  "version": "0.9.0",
   "bin": {
     "eventual": "bin/eventual.js"
   },
@@ -51,9 +51,9 @@
     "access": "public"
   },
   "dependencies": {
-    "@aws-sdk/client-cloudwatch-logs": "^3.241.0",
-    "@aws-sdk/client-ssm": "^3.241.0",
-    "@aws-sdk/client-sts": "^3.241.0",
+    "@aws-sdk/client-cloudwatch-logs": "^3.245.0",
+    "@aws-sdk/client-ssm": "^3.245.0",
+    "@aws-sdk/client-sts": "^3.245.0",
     "@aws-sdk/config-resolver": "^3.234.0",
     "@aws-sdk/node-config-provider": "^3.226.0",
     "@aws-sdk/types": "^3.226.0",

@@ -6,26 +6,24 @@ import {
   createActivityWorker,
   GlobalActivityProvider,
 } from "@eventual/core";
-import middy from "@middy/core";
 import {
   createActivityRuntimeClient,
   createEventClient,
+  createLogAgent,
   createServiceClient,
   createTimerClient,
   createWorkflowClient,
   createWorkflowRuntimeClient,
 } from "../clients/create.js";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
-import { logger, loggerMiddlewares } from "../logger.js";
 
-export default middy<ActivityWorkerRequest>((request) =>
+export default (request: ActivityWorkerRequest) =>
   createActivityWorker({
     activityRuntimeClient: createActivityRuntimeClient(),
     eventClient: createEventClient(),
     workflowClient: createWorkflowClient(),
     timerClient: createTimerClient(),
     metricsClient: AWSMetricsClient,
-    logger,
     activityProvider: new GlobalActivityProvider(),
     serviceClient: createServiceClient(
       createWorkflowRuntimeClient({
@@ -34,5 +32,5 @@ export default middy<ActivityWorkerRequest>((request) =>
         tableName: "NOT_NEEDED",
       })
     ),
-  })(request, new Date())
-).use(loggerMiddlewares);
+    logAgent: createLogAgent(),
+  })(request);

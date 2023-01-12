@@ -10,6 +10,7 @@ import {
   ExecutionEventsResponse,
   ExecutionHistoryClient,
   getEventId,
+  SortOrder,
   WorkflowEvent,
 } from "@eventual/core";
 import { queryPageWithToken } from "./utils.js";
@@ -63,6 +64,8 @@ export class AWSExecutionHistoryClient extends ExecutionHistoryClient {
   public async getEvents(
     request: ExecutionEventsRequest
   ): Promise<ExecutionEventsResponse> {
+    // normalize the date given and ensure it is a valid date.
+    const after = request.after ? new Date(request.after) : undefined;
     const output = await queryPageWithToken<EventRecord>(
       {
         dynamoClient: this.props.dynamo,
@@ -73,11 +76,25 @@ export class AWSExecutionHistoryClient extends ExecutionHistoryClient {
       {
         TableName: this.props.tableName,
         KeyConditionExpression: "pk = :pk AND begins_with ( sk, :sk )",
-        ScanIndexForward: request.sortDirection !== "Desc",
+        FilterExpression: after ? "#ts > :tsUpper" : undefined,
+        ScanIndexForward: request.sortDirection !== SortOrder.Desc,
         ExpressionAttributeValues: {
           ":pk": { S: EventRecord.PARTITION_KEY },
-          ":sk": { S: EventRecord.sortKey(request.executionId, "") },
+          ":sk": {
+            S: EventRecord.sortKey(request.executionId, "", ""),
+          },
+          ...(after
+            ? {
+                ":tsUpper": {
+                  S: after.toISOString(),
+                },
+              }
+            : {}),
         },
+        ExpressionAttributeNames: after
+          ? { "#ts": "time" satisfies keyof EventRecord }
+          : undefined,
+        ConsistentRead: true,
       }
     );
     const events = output.records.map(({ event, time }) => ({
@@ -107,9 +124,10 @@ const EventRecord = {
   SORT_KEY_PREFIX: `Event$`,
   sortKey(
     executionId: string,
+    timestamp: string,
     id: string
   ): `${typeof this.SORT_KEY_PREFIX}${string}$${string}` {
-    return `${this.SORT_KEY_PREFIX}${executionId}$${id}`;
+    return `${this.SORT_KEY_PREFIX}${executionId}$${timestamp}${id}`;
   },
 };
 
@@ -121,7 +139,13 @@ function createEventRecord(
     Partial<BaseEvent>;
   return {
     pk: { S: EventRecord.PARTITION_KEY },
-    sk: { S: EventRecord.sortKey(executionId, getEventId(workflowEvent)) },
+    sk: {
+      S: EventRecord.sortKey(
+        executionId,
+        workflowEvent.timestamp,
+        getEventId(workflowEvent)
+      ),
+    },
     // do not create an id property if it doesn't exist on the event.
     ...(id ? { id: { S: id } } : undefined),
     executionId: { S: executionId },

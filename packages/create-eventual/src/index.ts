@@ -3,7 +3,7 @@ import inquirer from "inquirer";
 import { hideBin } from "yargs/helpers";
 import { createAwsCdk } from "./aws-cdk.js";
 import { createAwsSst } from "./aws-sst.js";
-import { CreateProps } from "./util.js";
+import { CreateProps, discoverPackageManager } from "./util.js";
 
 export type PackageManager = "npm" | "yarn" | "pnpm";
 
@@ -12,13 +12,7 @@ const projectNameRegex = /^[A-Za-z-_0-9]+$/g;
 const targetChoices = ["aws-cdk", "aws-sst"].sort();
 
 (async function () {
-  const pkgManager: PackageManager = process.execPath.includes("npm")
-    ? "npm"
-    : process.execPath.includes("yarn")
-    ? "yarn"
-    : process.execPath.includes("pnpm")
-    ? "pnpm"
-    : "npm";
+  const pkgManager = discoverPackageManager();
 
   await yargs(hideBin(process.argv))
     .scriptName("create-eventual")
