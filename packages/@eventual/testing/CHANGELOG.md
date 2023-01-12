@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.9.2 (2023-01-12)
+
+### Bug Fixes
+
+- relative imports ([#222](https://github.com/functionless/eventual/issues/222)) ([fb0d28c](https://github.com/functionless/eventual/commit/fb0d28c4d50603c0682e7fecfc420ffb6ed843ab))
+
 ## 0.9.1 (2023-01-12)
 
 **Note:** Version bump only for package @eventual/testing
