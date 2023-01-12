@@ -40,5 +40,6 @@
   "editor.insertSpaces": true,
   "editor.formatOnSave": true,
   "eslint.format.enable": false,
-  "typescript.tsdk": "node_modules/typescript/lib"
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.preferences.importModuleSpecifier": "relative"
 }
