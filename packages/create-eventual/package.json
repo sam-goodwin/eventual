@@ -10,14 +10,15 @@
     "create-eventual": "./bin/index.js"
   },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --outfile=lib/cli.js --platform=node",
-    "watch": "esbuild src/index.ts --bundle --outfile=lib/cli.js --platform=node --watch"
+    "build": "esbuild src/index.ts --bundle --outfile=lib/cli.js --platform=node --sourcemap=inline",
+    "watch": "esbuild src/index.ts --bundle --outfile=lib/cli.js --platform=node --watch --sourcemap=inline"
   },
   "dependencies": {
     "aws-cdk": "^2.50.0",
     "create-sst": "latest"
   },
   "devDependencies": {
+    "@eventual/project": "workspace:^",
     "@types/inquirer": "^8",
     "@types/node": "^16",
     "@types/yargs": "^17.0.17",

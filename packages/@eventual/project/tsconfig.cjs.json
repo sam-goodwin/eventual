@@ -1,0 +1,10 @@
+{
+  "extends": "../../../tsconfig-base.cjs",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "lib/cjs"
+  },
+  "include": ["src", "package.json"],
+  "exclude": ["lib", "node_modules", "src/package.json"],
+  "references": []
+}
