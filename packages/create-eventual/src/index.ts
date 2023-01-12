@@ -4,8 +4,14 @@ import { hideBin } from "yargs/helpers";
 import { createAwsCdk } from "./aws-cdk.js";
 import { createAwsSst } from "./aws-sst.js";
 import { discoverPackageManager } from "./util.js";
+import {
+  assertName,
+  validateProjectName,
+  validateServiceName,
+} from "./validate.js";
+import { createNewService } from "./new-service.js";
 
-const targetChoices = ["aws-cdk", "sst"].sort();
+const targetChoices = ["aws-cdk", "aws-cdk-service", "sst"].sort();
 
 (async function () {
   const pkgManager = discoverPackageManager();
@@ -39,9 +45,31 @@ const targetChoices = ["aws-cdk", "sst"].sort();
             return true;
           }),
       async (args) => {
-        const target = args.target ?? "aws-cdk";
-        const { projectName = args.projectName! }: { projectName: string } =
-          await inquirer.prompt([
+        const { type = args.target! }: { type: string } = await inquirer.prompt(
+          [
+            {
+              type: "list",
+              name: "type",
+              choices: [
+                {
+                  name: "create a new project",
+                  value: "aws-cdk",
+                },
+                {
+                  name: "add a new service",
+                  value: "aws-cdk-service",
+                },
+              ],
+            },
+          ]
+        );
+
+        if (type === "aws-cdk-service") {
+          await createNewService(args.serviceName);
+        } else {
+          const {
+            projectName = args.projectName!,
+          }: { type: string; projectName: string } = await inquirer.prompt([
             {
               type: "input",
               name: "projectName",
@@ -50,30 +78,30 @@ const targetChoices = ["aws-cdk", "sst"].sort();
               validate: validateProjectName,
             },
           ]);
+          if (type === "aws-cdk") {
+            const { serviceName = args.serviceName! }: { serviceName: string } =
+              await inquirer.prompt([
+                {
+                  type: "input",
+                  name: "serviceName",
+                  message: "service name",
+                  when: !args.serviceName,
+                  default: args.projectName,
+                  validate: validateServiceName,
+                },
+              ]);
 
-        if (target === "aws-cdk") {
-          const { serviceName = args.serviceName! }: { serviceName: string } =
-            await inquirer.prompt([
-              {
-                type: "input",
-                name: "serviceName",
-                message: "service name",
-                when: !args.serviceName,
-                default: args.projectName,
-                validate: validateServiceName,
-              },
-            ]);
-
-          await createAwsCdk({
-            pkgManager,
-            projectName: projectName!,
-            serviceName,
-          });
-        } else {
-          await createAwsSst({
-            pkgManager,
-            projectName: projectName!,
-          });
+            await createAwsCdk({
+              pkgManager,
+              projectName: projectName!,
+              serviceName,
+            });
+          } else {
+            await createAwsSst({
+              pkgManager,
+              projectName: projectName!,
+            });
+          }
         }
       }
     )
@@ -82,21 +110,3 @@ const targetChoices = ["aws-cdk", "sst"].sort();
   console.error(err);
   process.exit(1);
 });
-
-const projectNameRegex = /^[A-Za-z-_0-9]+$/g;
-
-const validateProjectName = validateName("project");
-const validateServiceName = validateName("service");
-
-function validateName(type: string) {
-  return (name: string): true | string =>
-    name.match(projectNameRegex) !== null ||
-    `${type} name must match ${projectNameRegex}`;
-}
-
-function assertName(type: string, name: string) {
-  const result = validateName(type)(name);
-  if (typeof result === "string") {
-    throw new Error(result);
-  }
-}

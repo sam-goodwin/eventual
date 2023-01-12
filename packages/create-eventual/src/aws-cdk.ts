@@ -1,8 +1,10 @@
 import fs from "fs/promises";
 import path from "path";
+import { createServicePackage } from "./new-service";
 import { PackageManager } from "./package-manager";
 import { sampleCDKApp } from "./sample-code";
-import { install } from "./util";
+import { exec, install, writeJsonFile } from "./util";
+import { version } from "./version";
 
 export interface CreateAwsCdkProps {
   projectName: string;
@@ -17,13 +19,7 @@ export async function createAwsCdk({
 }: CreateAwsCdkProps) {
   await fs.mkdir(projectName);
   process.chdir(projectName);
-
-  const pkgJson = JSON.parse(
-    (await fs.readFile(path.join(__dirname, "..", "package.json"))).toString(
-      "utf-8"
-    )
-  );
-  const version = pkgJson.version as number;
+  await exec("git", "init");
 
   const appsDirName = `apps`;
   const appsDir = path.resolve(process.cwd(), appsDirName);
@@ -91,8 +87,8 @@ export async function createAwsCdk({
       writeJsonFile("tsconfig.json", {
         files: [],
         references: [
-          { path: infraDirName },
           { path: `${appsDirName}/${serviceName}` },
+          { path: infraDirName },
           { path: `${packagesDirName}/events` },
         ],
       }),
@@ -109,8 +105,8 @@ cdk.out
             "pnpm-workspace.yaml",
             `# https://pnpm.io/pnpm-workspace_yaml
 packages:
-  - "${infraDirName}"
   - "${appsDirName}/*"
+  - "${infraDirName}"
   - "${packagesDirName}/*"
 `
           )
@@ -130,6 +126,19 @@ packages:
   async function createInfra() {
     process.chdir(infraDir);
     await Promise.all([
+      writeJsonFile("tsconfig.json", {
+        extends: "../tsconfig.base.json",
+        include: ["src"],
+        compilerOptions: {
+          outDir: "lib",
+          rootDir: "src",
+        },
+        references: [
+          {
+            path: `../apps/${serviceName}`,
+          },
+        ],
+      }),
       writeJsonFile("package.json", {
         name: infraPkgName,
         version: "0.0.0",
@@ -158,14 +167,7 @@ packages:
       writeJsonFile("cdk.json", {
         app: "ts-node ./src/app.ts",
       }),
-      writeJsonFile("tsconfig.json", {
-        extends: "../tsconfig.base.json",
-        include: ["src"],
-        compilerOptions: {
-          outDir: "lib",
-          rootDir: "src",
-        },
-      }),
+
       fs.mkdir("src").then(() =>
         Promise.all([
           fs.writeFile(path.join("src", "app.ts"), sampleCDKApp(projectName)),
@@ -208,37 +210,13 @@ export class MyServiceStack extends Stack {
   }
 
   async function createService() {
-    process.chdir(serviceDir);
-    await Promise.all([
-      writeJsonFile("package.json", {
-        name: serviceName,
-        type: "module",
-        main: "lib/index.js",
-        module: "lib/index.js",
-        types: "lib/index.d.ts",
-        version: "0.0.0",
-        dependencies: {
-          "@eventual/core": `^${version}`,
-          [`@${projectName}/events`]: workspaceVersion,
-        },
-      }),
-      writeJsonFile("tsconfig.json", {
-        extends: "../../tsconfig.base.json",
-        include: ["src"],
-        references: [{ path: "../../packages/events" }],
-        compilerOptions: {
-          lib: ["DOM"],
-          module: "esnext",
-          moduleResolution: "NodeNext",
-          outDir: "lib",
-          rootDir: "src",
-          target: "ES2021",
-        },
-      }),
-      fs.mkdir("src").then(() =>
-        fs.writeFile(
-          path.join("src", "index.ts"),
-          `import { activity, api, workflow } from "@eventual/core";
+    await createServicePackage(path.resolve(serviceDir), {
+      packageName: serviceName,
+      references: ["../../packages/events"],
+      dependencies: {
+        [`@${projectName}/events`]: workspaceVersion,
+      },
+      code: `import { activity, api, workflow } from "@eventual/core";
 
 // import a shared definition of the helloEvent
 import { helloEvent } from "@${projectName}/events";
@@ -271,11 +249,8 @@ export const helloWorkflow = workflow("helloWorkflow", async (name: string) => {
 export const formatMessage = activity("formatName", async (name: string) => {
   return \`hello \${name}\`;
 });
-`
-        )
-      ),
-    ]);
-    process.chdir("..");
+`,
+    });
   }
 
   async function createEvents() {
@@ -332,8 +307,4 @@ export const helloEvent = event<HelloEvent>("HelloEvent");
   }
 
   await install(pkgManager);
-}
-
-async function writeJsonFile(file: string, obj: any) {
-  await fs.writeFile(file, JSON.stringify(obj, null, 2));
 }
