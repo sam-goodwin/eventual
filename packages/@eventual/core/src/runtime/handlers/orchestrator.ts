@@ -1,6 +1,6 @@
 import { inspect } from "util";
 import { Command } from "../../command.js";
-import { WorkflowContext } from "../../context.js";
+import { Context } from "../../context.js";
 import {
   createEvent,
   getEventId,
@@ -17,6 +17,11 @@ import {
   WorkflowRunCompleted,
   WorkflowRunStarted,
   WorkflowTimedOut,
+  filterEvents,
+  isHistoryStateEvent,
+  HistoryEvent,
+  WorkflowStarted,
+  isWorkflowCompletedEvent,
 } from "../../workflow-events.js";
 import {
   SucceededExecution,
@@ -25,19 +30,14 @@ import {
   isSucceededExecution,
 } from "../../execution.js";
 import { isFailed, isResolved, isResult, Result } from "../../result.js";
-import { lookupWorkflow, progressWorkflow, Workflow } from "../../workflow.js";
 import {
-  EventClient,
-  ExecutionHistoryClient,
-  MetricsClient,
-  Schedule,
-  TimerClient,
-  WorkflowClient,
-  WorkflowRuntimeClient,
-} from "../clients/index.js";
+  generateSyntheticEvents,
+  lookupWorkflow,
+  runWorkflowDefinition,
+  Workflow,
+} from "../../workflow.js";
 import { CommandExecutor } from "../command-executor.js";
 import { isExecutionId, parseWorkflowName } from "../execution-id.js";
-import type { Logger } from "../logger.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
@@ -45,6 +45,21 @@ import { timed, timedSync } from "../metrics/utils.js";
 import { groupBy, promiseAllSettledPartitioned } from "../utils.js";
 import { extendsError } from "../../util.js";
 import { WorkflowTask } from "../../tasks.js";
+import {
+  ExecutionLogContext,
+  LogAgent,
+  LogContextType,
+  LogLevel,
+} from "../log-agent.js";
+import { interpret } from "../../interpret.js";
+import { clearEventualCollector } from "../../global.js";
+import { DeterminismError } from "../../error.js";
+import { ExecutionHistoryClient } from "../clients/execution-history-client.js";
+import { Schedule, TimerClient } from "../clients/timer-client.js";
+import { WorkflowRuntimeClient } from "../clients/workflow-runtime-client.js";
+import { WorkflowClient } from "../clients/workflow-client.js";
+import { MetricsClient } from "../clients/metrics-client.js";
+import { EventClient } from "../clients/event-client.js";
 
 /**
  * The Orchestrator's client dependencies.
@@ -56,7 +71,7 @@ export interface OrchestratorDependencies {
   workflowClient: WorkflowClient;
   metricsClient: MetricsClient;
   eventClient: EventClient;
-  logger: Logger;
+  logAgent: LogAgent;
 }
 
 export interface OrchestratorResult {
@@ -83,7 +98,7 @@ export function createOrchestrator({
   workflowClient,
   metricsClient,
   eventClient,
-  logger,
+  logAgent,
 }: OrchestratorDependencies): Orchestrator {
   const commandExecutor = new CommandExecutor({
     timerClient,
@@ -105,7 +120,7 @@ export function createOrchestrator({
       ])
     );
 
-    logger.info(
+    console.info(
       "Found execution ids: " + Object.keys(eventsByExecutionId).join(", ")
     );
 
@@ -130,13 +145,13 @@ export function createOrchestrator({
       }
     );
 
-    logger.debug(
+    console.debug(
       "Executions succeeded: " +
         results.fulfilled.map(([[executionId]]) => executionId).join(",")
     );
 
     if (results.rejected.length > 0) {
-      logger.error(
+      console.error(
         "Executions failed: \n" +
           results.rejected
             .map(([[executionId], error]) => `${executionId}: ${error}`)
@@ -155,28 +170,52 @@ export function createOrchestrator({
     events: HistoryStateEvent[],
     baseTime: Date
   ) {
-    const executionLogger = logger.createChild({
-      persistentLogAttributes: { workflowName, executionId },
-    });
     const metrics = initializeMetrics();
     const start = baseTime;
+
+    const executionLogContext: ExecutionLogContext = {
+      type: LogContextType.Execution,
+      executionId,
+    };
+
     try {
       // load
       const history = await loadHistory();
 
       // execute
-      const { updatedHistoryEvents, newEvents, resultEvent } =
-        await executeWorkflow(history);
+      const {
+        updatedHistoryEvents,
+        newEvents,
+        resultEvent,
+        executionCompletedDuringRun,
+      } = await executeWorkflow(history);
 
       // persist
-      await persistWorkflowResult(resultEvent);
+      if (executionCompletedDuringRun && resultEvent) {
+        await persistWorkflowResult(resultEvent);
+      }
+      const logFlush = timed(
+        metrics,
+        OrchestratorMetrics.ExecutionLogWriteDuration,
+        // write any collected logs to cloudwatch
+        () => logAgent.flush()
+      );
+      // We must save events to the events table and then s3 in sequence.
+      // If the event write fails, but s3 succeeds, the events will never be re-generated.
       await saveNewEventsToExecutionHistory(newEvents);
       await updateHistory(updatedHistoryEvents);
+      await logFlush;
 
       // Only log these metrics once the orchestrator has completed successfully.
       logEventMetrics(metrics, events, start);
     } catch (err) {
-      executionLogger.error(inspect(err));
+      console.error(inspect(err));
+      logAgent.logWithContext(
+        { type: LogContextType.Execution, executionId },
+        LogLevel.DEBUG,
+        "orchestrator error",
+        inspect(err)
+      );
       throw err;
     } finally {
       await metrics.flush();
@@ -198,7 +237,15 @@ export function createOrchestrator({
         Unit.Milliseconds
       );
 
-      return partitionExecutionResults(history, executeWorkflowGenerator());
+      let executionCompletedDuringRun = false;
+
+      return {
+        ...(await partitionExecutionResults(
+          history,
+          executeWorkflowGenerator()
+        )),
+        executionCompletedDuringRun,
+      };
 
       async function* executeWorkflowGenerator() {
         yield createEvent<WorkflowRunStarted>(
@@ -221,17 +268,19 @@ export function createOrchestrator({
           return;
         }
 
-        const workflowContext: WorkflowContext = {
-          name: workflow!.workflowName,
-        };
-
-        const startEvent = history.find(isWorkflowStarted);
+        const {
+          isStartRun,
+          interpretEvents,
+          startEvent,
+          syntheticEvents,
+          completedEvent,
+          allEvents,
+        } = processEvents(history, events);
 
         /**
-         * Check to see if this is the first run of the workflow (or all others have failed).
-         * If so, check to see if the workflow has timeout to start.
+         * I*f this is the first run check to see if the workflow has timeout to start.
          */
-        if (!startEvent) {
+        if (!isStartRun) {
           const newWorkflowStart = events.find(isWorkflowStarted);
 
           if (newWorkflowStart?.timeoutTime) {
@@ -256,43 +305,77 @@ export function createOrchestrator({
           }
         }
 
-        const {
-          result,
-          commands: newCommands,
-          history: updatedHistoryEvents,
-        } = timedSync(
-          metrics,
-          OrchestratorMetrics.AdvanceExecutionDuration,
+        const context: Context = {
+          workflow: {
+            name: workflow.workflowName,
+          },
+          execution: {
+            ...startEvent.context,
+            id: executionId,
+            startTime: startEvent.timestamp,
+          },
+        };
+
+        const { result, commands: newCommands } = logAgent.logContextScopeSync(
+          executionLogContext,
           () => {
-            try {
-              return progressWorkflow(
-                workflow,
-                history,
-                events,
-                workflowContext,
-                executionId,
-                baseTime
-              );
-            } catch (err) {
-              console.log("workflow error");
-              executionLogger.error(inspect(err));
-              throw err;
-            }
+            console.debug("history events", JSON.stringify(history));
+            console.debug("task events", JSON.stringify(events));
+            console.debug("synthetic events", JSON.stringify(syntheticEvents));
+            console.debug("interpret events", JSON.stringify(interpretEvents));
+
+            // flush any logs generated to this point
+            const logCheckpoint = logAgent.getCheckpoint();
+
+            // buffer logs until interpret is complete - don't want to send logs we might clear
+            logAgent.disableSendingLogs();
+
+            return timedSync(
+              metrics,
+              OrchestratorMetrics.AdvanceExecutionDuration,
+              () => {
+                try {
+                  return interpret(
+                    runWorkflowDefinition(workflow, startEvent.input, context),
+                    interpretEvents,
+                    {
+                      // when an event is matched, that means all the work to this point has been completed, clear the logs collected.
+                      // this implements "exactly once" logs with the workflow semantics.
+                      historicalEventMatched: () =>
+                        logAgent.clearLogs(logCheckpoint),
+                    }
+                  );
+                } catch (err) {
+                  // temporary fix when the interpreter fails, but the activities are not cleared.
+                  clearEventualCollector();
+                  console.debug("workflow error", inspect(err));
+                  throw err;
+                } finally {
+                  // re-enable sending logs, any generated logs are new.
+                  logAgent.enableSendingLogs();
+                }
+              }
+            );
           }
         );
 
         metrics.setProperty(
           OrchestratorMetrics.AdvanceExecutionEvents,
-          updatedHistoryEvents.length
+          allEvents.length
         );
 
-        yield* updatedHistoryEvents;
+        yield* allEvents;
 
-        executionLogger.debug(
+        logAgent.logWithContext(
+          executionLogContext,
+          LogLevel.DEBUG,
           "Workflow terminated with: " + JSON.stringify(result)
         );
-
-        executionLogger.info(`Found ${newCommands.length} new commands.`);
+        logAgent.logWithContext(
+          executionLogContext,
+          LogLevel.DEBUG,
+          `Found ${newCommands.length} new commands.`
+        );
 
         yield* await timed(
           metrics,
@@ -322,7 +405,7 @@ export function createOrchestrator({
           start
         );
 
-        if (isResult(result)) {
+        if (!completedEvent && isResult(result)) {
           if (isFailed(result)) {
             const [error, message] = extendsError(result.error)
               ? [result.error.name, result.error.message]
@@ -335,6 +418,7 @@ export function createOrchestrator({
               },
               start
             );
+            executionCompletedDuringRun = true;
           } else if (isResolved<any>(result)) {
             yield createEvent<WorkflowSucceeded>(
               {
@@ -343,10 +427,55 @@ export function createOrchestrator({
               },
               start
             );
+            executionCompletedDuringRun = true;
           }
         }
 
         return result;
+      }
+
+      function processEvents(
+        historyEvents: HistoryStateEvent[],
+        taskEvents: HistoryStateEvent[]
+      ): {
+        syntheticEvents: HistoryStateEvent[];
+        interpretEvents: HistoryEvent[];
+        allEvents: HistoryStateEvent[];
+        startEvent: WorkflowStarted;
+        completedEvent?: WorkflowSucceeded | WorkflowFailed;
+        isStartRun: boolean;
+      } {
+        // historical events and incoming events will be fed into the workflow to resume/progress state
+        const uniqueTaskEvents = filterEvents<HistoryStateEvent>(
+          historyEvents,
+          taskEvents
+        );
+
+        const inputEvents = [...historyEvents, ...uniqueTaskEvents];
+
+        // Generates events that are time sensitive, like sleep completed events.
+        const syntheticEvents = generateSyntheticEvents(inputEvents, baseTime);
+
+        const allEvents = [...inputEvents, ...syntheticEvents];
+
+        const historicalStartEvent = historyEvents.find(isWorkflowStarted);
+        const startEvent =
+          historicalStartEvent ?? uniqueTaskEvents.find(isWorkflowStarted);
+
+        if (!startEvent) {
+          throw new DeterminismError(
+            `No ${WorkflowEventType.WorkflowStarted} found.`
+          );
+        }
+
+        return {
+          interpretEvents: allEvents.filter(isHistoryEvent),
+          startEvent,
+          isStartRun: !!historicalStartEvent,
+          completedEvent: allEvents.find(isWorkflowCompletedEvent),
+          syntheticEvents,
+          allEvents,
+        };
       }
 
       /**
@@ -379,11 +508,11 @@ export function createOrchestrator({
             newWorkflowEvents.push(event);
             seenEvents.add(id);
           }
-          if (isWorkflowSucceeded(event) || isWorkflowFailed(event)) {
+          if (isWorkflowCompletedEvent(event)) {
             resultEvent = event;
           }
           // updatedHistoryEvents are all HistoryEvents old and new.
-          if (isWorkflowStarted(event) || isHistoryEvent(event)) {
+          if (isHistoryStateEvent(event)) {
             updatedHistoryEvents.push(event);
           }
         }
@@ -397,7 +526,11 @@ export function createOrchestrator({
     }
 
     async function loadHistory(): Promise<HistoryStateEvent[]> {
-      executionLogger.debug("Load history");
+      logAgent.logWithContext(
+        executionLogContext,
+        LogLevel.DEBUG,
+        "Load history"
+      );
       // load history
       const history = await timed(
         metrics,
@@ -465,35 +598,48 @@ export function createOrchestrator({
     }
 
     async function persistWorkflowResult(
-      resultEvent?: WorkflowSucceeded | WorkflowFailed
+      resultEvent: WorkflowSucceeded | WorkflowFailed
     ) {
       // if the workflow is complete, add success and failure to the commands.
-      if (resultEvent) {
-        if (isWorkflowFailed(resultEvent)) {
-          const execution = await timed(
-            metrics,
-            OrchestratorMetrics.ExecutionStatusUpdateDuration,
-            () =>
-              workflowRuntimeClient.failExecution({
-                executionId,
-                error: resultEvent.error,
-                message: resultEvent.message,
-              })
-          );
+      if (isWorkflowFailed(resultEvent)) {
+        const execution = await timed(
+          metrics,
+          OrchestratorMetrics.ExecutionStatusUpdateDuration,
+          () =>
+            workflowRuntimeClient.failExecution({
+              executionId,
+              error: resultEvent.error,
+              message: resultEvent.message,
+            })
+        );
 
-          logExecutionCompleteMetrics(execution);
-        } else if (isWorkflowSucceeded(resultEvent)) {
-          const execution = await timed(
-            metrics,
-            OrchestratorMetrics.ExecutionStatusUpdateDuration,
-            () =>
-              workflowRuntimeClient.succeedExecution({
-                executionId,
-                result: resultEvent.output,
-              })
-          );
-          logExecutionCompleteMetrics(execution);
-        }
+        logAgent.logWithContext(
+          { executionId, type: LogContextType.Execution },
+          LogLevel.INFO,
+          "Workflow Failed",
+          `${resultEvent.error}: ${resultEvent.message}`
+        );
+
+        logExecutionCompleteMetrics(execution);
+      } else if (isWorkflowSucceeded(resultEvent)) {
+        const execution = await timed(
+          metrics,
+          OrchestratorMetrics.ExecutionStatusUpdateDuration,
+          () =>
+            workflowRuntimeClient.succeedExecution({
+              executionId,
+              result: resultEvent.output,
+            })
+        );
+
+        logAgent.logWithContext(
+          { executionId, type: LogContextType.Execution },
+          LogLevel.INFO,
+          "Workflow Succeeded",
+          resultEvent.output
+        );
+
+        logExecutionCompleteMetrics(execution);
       }
     }
 

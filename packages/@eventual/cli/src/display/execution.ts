@@ -1,5 +1,6 @@
 import { Execution, ExecutionStatus } from "@eventual/core";
 import chalk from "chalk";
+import { formatTime } from "./time.js";
 
 export function displayExecution(
   execution: Execution,
@@ -12,9 +13,9 @@ export function displayExecution(
       ? chalk.green(execution.id)
       : chalk.blue(execution.id),
     `Status: ${execution.status}`,
-    `StartTime: ${execution.startTime}`,
+    `StartTime: ${formatTime(execution.startTime)}`,
     ...(execution.status !== ExecutionStatus.IN_PROGRESS
-      ? [`EndTime: ${execution.endTime}`]
+      ? [`EndTime: ${formatTime(execution.endTime)}`]
       : []),
     ...(options?.results && execution.status === ExecutionStatus.SUCCEEDED
       ? [`Result:\n${execution.result}`]

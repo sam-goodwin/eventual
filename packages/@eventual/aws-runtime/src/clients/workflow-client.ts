@@ -6,9 +6,11 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
+  ActivityRuntimeClient,
   Execution,
   ExecutionStatus,
   HistoryStateEvent,
+  LogsClient,
   Workflow,
   WorkflowEventType,
   WorkflowStarted,
@@ -21,9 +23,11 @@ import {
   StartExecutionRequest,
   StartChildExecutionRequest,
   lookupWorkflow,
+  SortOrder,
+  isExecutionStatus,
 } from "@eventual/core";
 import { ulid } from "ulidx";
-import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
+import { inspect } from "util";
 import { queryPageWithToken } from "./utils.js";
 
 export interface AWSWorkflowClientProps {
@@ -31,7 +35,8 @@ export interface AWSWorkflowClientProps {
   readonly tableName: string;
   readonly sqs: SQSClient;
   readonly workflowQueueUrl: string;
-  readonly activityRuntimeClient: AWSActivityRuntimeClient;
+  readonly activityRuntimeClient: ActivityRuntimeClient;
+  readonly logsClient: LogsClient;
 }
 
 export class AWSWorkflowClient extends WorkflowClient {
@@ -63,7 +68,15 @@ export class AWSWorkflowClient extends WorkflowClient {
     const executionId = formatExecutionId(workflowName, executionName);
     console.log("execution input:", input);
 
-    await this.props.dynamo.send(
+    const createLogStream = async () => {
+      await this.props.logsClient.initializeExecutionLog(executionId);
+      await this.props.logsClient.putExecutionLogs(executionId, {
+        time: new Date().getTime(),
+        message: "Workflow Started",
+      });
+    };
+
+    const addExecutionEntry = await this.props.dynamo.send(
       new PutItemCommand({
         TableName: this.props.tableName,
         Item: {
@@ -84,30 +97,41 @@ export class AWSWorkflowClient extends WorkflowClient {
       })
     );
 
-    const workflowStartedEvent = createEvent<WorkflowStarted>(
-      {
-        type: WorkflowEventType.WorkflowStarted,
-        input,
-        workflowName,
-        // generate the time for the workflow to timeout based on when it was started.
-        // the timer will be started by the orchestrator so the client does not need to have access to the timer client.
-        timeoutTime: timeoutSeconds
-          ? new Date(new Date().getTime() + timeoutSeconds * 1000).toISOString()
-          : undefined,
-        context: {
-          name: executionName,
-          parentId:
-            "parentExecutionId" in request
-              ? request.parentExecutionId
-              : undefined,
+    try {
+      await Promise.all([createLogStream(), addExecutionEntry]);
+
+      const workflowStartedEvent = createEvent<WorkflowStarted>(
+        {
+          type: WorkflowEventType.WorkflowStarted,
+          input,
+          workflowName,
+          // generate the time for the workflow to timeout based on when it was started.
+          // the timer will be started by the orchestrator so the client does not need to have access to the timer client.
+          timeoutTime: timeoutSeconds
+            ? new Date(
+                new Date().getTime() + timeoutSeconds * 1000
+              ).toISOString()
+            : undefined,
+          context: {
+            name: executionName,
+            parentId:
+              "parentExecutionId" in request
+                ? request.parentExecutionId
+                : undefined,
+          },
         },
-      },
-      new Date()
-    );
+        new Date()
+      );
 
-    await this.submitWorkflowTask(executionId, workflowStartedEvent);
+      await this.submitWorkflowTask(executionId, workflowStartedEvent);
 
-    return { executionId };
+      return { executionId };
+    } catch (err) {
+      console.log(err);
+      throw new Error(
+        "Something went wrong starting a workflow: " + inspect(err)
+      );
+    }
   }
 
   public async submitWorkflowTask(
@@ -135,13 +159,7 @@ export class AWSWorkflowClient extends WorkflowClient {
     request?: GetExecutionsRequest
   ): Promise<GetExecutionsResponse> {
     const filters = [
-      request?.statuses
-        ? `#status IN (${request.statuses
-            // for safety, filter out execution statuses that are unknown
-            .filter((s) => Object.values(ExecutionStatus).includes(s))
-            .map((s) => `"${s}"`)
-            .join(",")})`
-        : undefined,
+      request?.statuses ? `contains(:statuses, #status)` : undefined,
       request?.workflowName ? `workflowName=:workflowName` : undefined,
     ]
       .filter((f) => !!f)
@@ -151,25 +169,37 @@ export class AWSWorkflowClient extends WorkflowClient {
       {
         dynamoClient: this.props.dynamo,
         pageSize: request?.maxResults ?? 100,
-        keys: ["pk"],
+        // must take all keys from both LSI and GSI
+        keys: ["pk", "startTime", "sk"],
         nextToken: request?.nextToken,
       },
       {
         TableName: this.props.tableName,
         IndexName: ExecutionRecord.START_TIME_SORTED_INDEX,
         KeyConditionExpression: "#pk = :pk",
-        ScanIndexForward: request?.sortDirection !== "Desc",
+        ScanIndexForward: request?.sortDirection !== SortOrder.Desc,
         FilterExpression: filters || undefined,
         ExpressionAttributeValues: {
           ":pk": { S: ExecutionRecord.PARTITION_KEY },
           ...(request?.workflowName
             ? { ":workflowName": { S: request?.workflowName } }
             : {}),
+          ...(request?.statuses
+            ? {
+                ":statuses": {
+                  L: request.statuses
+                    // for safety, filter out execution statuses that are unknown
+                    .filter(isExecutionStatus)
+                    .map((s) => ({ S: s })),
+                },
+              }
+            : {}),
         },
         ExpressionAttributeNames: {
           "#pk": "pk",
           ...(request?.statuses ? { "#status": "status" } : undefined),
         },
+        ConsistentRead: true,
       }
     );
 

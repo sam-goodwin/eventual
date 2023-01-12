@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -ex
 
 export EVENTUAL_DEFAULT_SERVICE=eventual-tests
 
@@ -12,11 +12,11 @@ npx eventual list executions
 
 npx eventual list executions --workflow parallel --json > .eventual/out.json
 
-execution_id=$(node -p 'JSON.parse(require("fs").readFileSync(".eventual/out.json").toString("utf8"))[0].id')
+execution_id=$(node -p 'JSON.parse(require("fs").readFileSync(".eventual/out.json").toString("utf8")).executions[0].id')
 
 npx eventual get history -e ${execution_id}
 
-npx eventual get logs
+npx eventual get logs --all
 
 npx eventual get logs --workflow parallel
 

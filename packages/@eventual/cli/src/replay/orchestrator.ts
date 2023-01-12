@@ -1,8 +1,10 @@
 import {
   Workflow,
   HistoryStateEvent,
-  progressWorkflow,
-  ProgressWorkflowResult,
+  interpret,
+  isWorkflowStarted,
+  isHistoryEvent,
+  runWorkflowDefinition,
 } from "@eventual/core";
 
 export type Orchestrator = typeof orchestrator;
@@ -13,14 +15,24 @@ export type Orchestrator = typeof orchestrator;
  * @returns Workflow progress
  */
 export function orchestrator(
+  executionId: string,
   workflow: Workflow,
   historyEvents: HistoryStateEvent[]
-): ProgressWorkflowResult {
-  return progressWorkflow(
-    workflow,
-    historyEvents,
-    [],
-    { name: "local" },
-    "local"
+) {
+  const startEvent = historyEvents.find(isWorkflowStarted);
+  if (!startEvent) {
+    throw new Error("Missing start event");
+  }
+  const interpretEvents = historyEvents.filter(isHistoryEvent);
+  return interpret(
+    runWorkflowDefinition(workflow, startEvent.input, {
+      workflow: { name: workflow.name },
+      execution: {
+        ...startEvent.context,
+        startTime: startEvent.timestamp,
+        id: executionId,
+      },
+    }),
+    interpretEvents
   );
 }

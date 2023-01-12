@@ -1,6 +1,6 @@
 {
   "name": "@eventual/project",
-  "version": "0.8.6",
+  "version": "0.9.1",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "dependencies": {

@@ -129,6 +129,10 @@ export interface ExecutionEventsRequest {
    * @default: 100
    */
   maxResults?: number;
+  /**
+   * Start returning results after a date.
+   */
+  after?: string;
 }
 
 export interface ExecutionEventsResponse {
@@ -140,7 +144,10 @@ export interface ExecutionHistoryResponse {
   events: HistoryStateEvent[];
 }
 
-export type SortOrder = "Asc" | "Desc";
+export enum SortOrder {
+  Asc = "ASC",
+  Desc = "DESC",
+}
 
 export interface StartExecutionRequest<W extends Workflow = Workflow>
   extends WorkflowOptions {

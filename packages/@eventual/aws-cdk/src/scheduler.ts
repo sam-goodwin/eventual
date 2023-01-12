@@ -7,14 +7,13 @@ import {
   Role,
   ServicePrincipal,
 } from "aws-cdk-lib/aws-iam";
-import { Function } from "aws-cdk-lib/aws-lambda";
+import { Code, Function } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
-import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
-import path from "path";
 import { IActivities } from "./activities";
-import { addEnvironment, baseNodeFnProps } from "./utils";
+import { Logging } from "./logging";
+import { addEnvironment, baseFnProps, outDir } from "./utils";
 import { IWorkflows } from "./workflows";
 
 export interface IScheduler {
@@ -36,6 +35,7 @@ export interface SchedulerProps {
    * Used by the activity heartbeat monitor to retrieve heartbeat data.
    */
   activities: IActivities;
+  logging: Logging;
 }
 
 /**
@@ -95,25 +95,19 @@ export class Scheduler extends Construct implements IScheduler, IGrantable {
     this.queue = new Queue(this, "Queue");
 
     // TODO: handle failures to a DLQ - https://github.com/functionless/eventual/issues/40
-    this.forwarder = new NodejsFunction(this, "Forwarder", {
-      entry: path.join(
-        require.resolve("@eventual/aws-runtime"),
-        "../../esm/handlers/schedule-forwarder.js"
-      ),
-      handler: "handle",
-      ...baseNodeFnProps,
+    this.forwarder = new Function(this, "Forwarder", {
+      code: Code.fromAsset(outDir(this, "SchedulerForwarder")),
+      ...baseFnProps,
+      handler: "index.handle",
     });
 
     // Allow the scheduler to create workflow tasks.
     this.forwarder.grantInvoke(this.schedulerRole);
 
-    this.handler = new NodejsFunction(this, "handler", {
-      entry: path.join(
-        require.resolve("@eventual/aws-runtime"),
-        "../../esm/handlers/timer-handler.js"
-      ),
-      handler: "handle",
-      ...baseNodeFnProps,
+    this.handler = new Function(this, "handler", {
+      code: Code.fromAsset(outDir(this, "SchedulerHandler")),
+      ...baseFnProps,
+      handler: "index.handle",
       events: [
         new SqsEventSource(this.queue, {
           reportBatchItemFailures: true,
@@ -181,11 +175,13 @@ export class Scheduler extends Construct implements IScheduler, IGrantable {
     this.props.workflows.configureSendWorkflowEvent(this.handler);
     this.props.activities.configureRead(this.handler);
     this.configureScheduleTimer(this.handler);
+    this.props.logging.configurePutServiceLogs(this.handler);
   }
 
   private configureScheduleForwarder() {
     this.configureScheduleTimer(this.forwarder);
     this.grantDeleteSchedule(this.forwarder);
+    this.props.logging.configurePutServiceLogs(this.forwarder);
   }
 }
 
