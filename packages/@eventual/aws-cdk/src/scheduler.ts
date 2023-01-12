@@ -96,7 +96,7 @@ export class Scheduler extends Construct implements IScheduler, IGrantable {
     this.forwarder = new Function(this, "Forwarder", {
       code: Code.fromAsset(outDir(this, "SchedulerForwarder")),
       ...baseFnProps,
-      handler: "handle",
+      handler: "index.handle",
     });
 
     // Allow the scheduler to create workflow tasks.
@@ -105,7 +105,7 @@ export class Scheduler extends Construct implements IScheduler, IGrantable {
     this.handler = new Function(this, "handler", {
       code: Code.fromAsset(outDir(this, "SchedulerHandler")),
       ...baseFnProps,
-      handler: "handle",
+      handler: "index.handle",
       events: [
         new SqsEventSource(this.queue, {
           reportBatchItemFailures: true,
