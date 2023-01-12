@@ -9,14 +9,10 @@ import {
   AwaitDurationCall,
   AwaitTimeCall,
 } from "./calls/await-time-call.js";
-import {
-  isExpectSignalCall,
-  ExpectSignalCall,
-} from "./calls/expect-signal-call.js";
 import { RegisterSignalHandlerCall } from "./calls/signal-handler-call.js";
 import { isSendSignalCall, SendSignalCall } from "./calls/send-signal-call.js";
 import { isWorkflowCall, WorkflowCall } from "./calls/workflow-call.js";
-import { ConditionCall, isConditionCall } from "./calls/condition-call.js";
+import { ConditionCall } from "./calls/condition-call.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
 import { AwaitAny, createAwaitAny } from "./await-any.js";
 import { AwaitAllSettled, createAwaitAllSettled } from "./await-all-settled.js";
@@ -25,6 +21,7 @@ import {
   isPublishEventsCall,
   PublishEventsCall,
 } from "./calls/send-events-call.js";
+import { ExpectSignalCall } from "./calls/expect-signal-call.js";
 
 export type AwaitedEventual<T> = T extends Promise<infer U>
   ? Awaited<U>
@@ -83,6 +80,8 @@ export type Eventual<T = any> =
   | AwaitAny<T extends any[] ? T : never>
   | Chain<T>
   | CommandCall<T>
+  | ConditionCall
+  | ExpectSignalCall
   | Race<T extends any[] ? T : never>
   | RegisterSignalHandlerCall<T>;
 
@@ -91,19 +90,15 @@ export type Eventual<T = any> =
  */
 export type CommandCall<T = any> =
   | ActivityCall<T>
-  | ConditionCall
-  | ExpectSignalCall<T>
-  | PublishEventsCall
-  | SendSignalCall
   | AwaitDurationCall
   | AwaitTimeCall
+  | PublishEventsCall
+  | SendSignalCall
   | WorkflowCall<T>;
 
 export function isCommandCall(call: Eventual): call is CommandCall {
   return (
     isActivityCall(call) ||
-    isConditionCall(call) ||
-    isExpectSignalCall(call) ||
     isPublishEventsCall(call) ||
     isSendSignalCall(call) ||
     isAwaitDurationCall(call) ||

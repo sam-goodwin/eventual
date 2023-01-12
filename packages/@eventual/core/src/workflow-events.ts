@@ -26,11 +26,7 @@ export enum WorkflowEventType {
   ChildWorkflowSucceeded = "ChildWorkflowSucceeded",
   ChildWorkflowFailed = "ChildWorkflowFailed",
   ChildWorkflowScheduled = "ChildWorkflowScheduled",
-  ConditionStarted = "ConditionStarted",
-  ConditionTimedOut = "ConditionTimedOut",
   EventsPublished = "EventsPublished",
-  ExpectSignalStarted = "ExpectSignalStarted",
-  ExpectSignalTimedOut = "ExpectSignalTimedOut",
   SignalReceived = "SignalReceived",
   SignalSent = "SignalSent",
   WorkflowSucceeded = "WorkflowSucceeded",
@@ -56,9 +52,7 @@ export type ScheduledEvent =
   | ActivityScheduled
   | AlarmScheduled
   | ChildWorkflowScheduled
-  | ConditionStarted
   | EventsPublished
-  | ExpectSignalStarted
   | SignalSent;
 
 export type SucceededEvent =
@@ -285,21 +279,10 @@ export const isWorkflowCompletedEvent = or(
   isWorkflowSucceeded
 );
 
-export interface ExpectSignalStarted extends HistoryEventBase {
-  type: WorkflowEventType.ExpectSignalStarted;
-  signalId: string;
-}
-
 export interface SignalReceived<Payload = any> extends BaseEvent {
   type: WorkflowEventType.SignalReceived;
   signalId: string;
   payload?: Payload;
-}
-
-export function isExpectSignalStarted(
-  event: WorkflowEvent
-): event is ExpectSignalStarted {
-  return event.type === WorkflowEventType.ExpectSignalStarted;
 }
 
 export function isSignalReceived(
@@ -330,16 +313,6 @@ export function isEventsPublished(
   return event.type === WorkflowEventType.EventsPublished;
 }
 
-export interface ConditionStarted extends HistoryEventBase {
-  type: WorkflowEventType.ConditionStarted;
-}
-
-export function isConditionStarted(
-  event: WorkflowEvent
-): event is ConditionStarted {
-  return event.type === WorkflowEventType.ConditionStarted;
-}
-
 export interface WorkflowTimedOut extends BaseEvent {
   type: WorkflowEventType.WorkflowTimedOut;
 }
@@ -353,9 +326,7 @@ export function isWorkflowTimedOut(
 export const isScheduledEvent = or(
   isActivityScheduled,
   isChildWorkflowScheduled,
-  isConditionStarted,
   isEventsPublished,
-  isExpectSignalStarted,
   isSignalSent,
   isAlarmScheduled
 );

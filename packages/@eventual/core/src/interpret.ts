@@ -27,10 +27,8 @@ import {
   isScheduledEvent,
   isAlarmCompleted,
   isAlarmScheduled,
-  isExpectSignalStarted,
   ScheduledEvent,
   isSignalSent,
-  isConditionStarted,
   isWorkflowTimedOut,
   isActivityHeartbeatTimedOut,
   isEventsPublished,
@@ -235,12 +233,6 @@ export function interpret<Return>(
         name: call.name,
         opts: call.opts,
       };
-    } else if (isExpectSignalCall(call)) {
-      return {
-        kind: CommandType.ExpectSignal,
-        signalId: call.signalId,
-        seq: call.seq!,
-      };
     } else if (isSendSignalCall(call)) {
       return {
         kind: CommandType.SendSignal,
@@ -248,11 +240,6 @@ export function interpret<Return>(
         target: call.target,
         seq: call.seq!,
         payload: call.payload,
-      };
-    } else if (isConditionCall(call)) {
-      return {
-        kind: CommandType.StartCondition,
-        seq: call.seq!,
       };
     } else if (isRegisterSignalHandlerCall(call)) {
       return [];
@@ -289,15 +276,6 @@ export function interpret<Return>(
        */
       pushEventual(activity) {
         if (isCommandCall(activity)) {
-          if (isExpectSignalCall(activity)) {
-            subscribeToSignal(activity.signalId, activity);
-          } else if (isConditionCall(activity)) {
-            // if the condition is resolvable, don't add it to the calls.
-            const result = tryResolveResult(activity);
-            if (result) {
-              return activity;
-            }
-          }
           activity.seq = nextSeq();
           callTable[activity.seq!] = activity;
           calls.push(activity);
@@ -310,12 +288,16 @@ export function interpret<Return>(
           isAwaitAll(activity) ||
           isAwaitAllSettled(activity) ||
           isAwaitAny(activity) ||
+          isConditionCall(activity) ||
           isRace(activity)
         ) {
           return activity;
         } else if (isRegisterSignalHandlerCall(activity)) {
           subscribeToSignal(activity.signalId, activity);
           // signal handler does not emit a call/command. It is only internal.
+          return activity;
+        } else if (isExpectSignalCall(activity)) {
+          subscribeToSignal(activity.signalId, activity);
           return activity;
         }
 
@@ -590,12 +572,8 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
     return isWorkflowCall(call) && call.name === event.name;
   } else if (isAlarmScheduled(event)) {
     return isAwaitTimeCall(call) || isAwaitDurationCall(call);
-  } else if (isExpectSignalStarted(event)) {
-    return isExpectSignalCall(call) && event.signalId === call.signalId;
   } else if (isSignalSent(event)) {
     return isSendSignalCall(call) && event.signalId === call.signalId;
-  } else if (isConditionStarted(event)) {
-    return isConditionCall(call);
   } else if (isEventsPublished(event)) {
     return isPublishEventsCall(call);
   }

@@ -30,20 +30,16 @@ import {
   activityHeartbeatTimedOut,
   activityScheduled,
   completedAlarm,
-  conditionStarted,
-  createExpectSignalCommand,
   createPublishEventCommand,
   createScheduledActivityCommand,
   createScheduledWorkflowCommand,
   createSendSignalCommand,
   createAwaitDurationCommand,
   createAwaitTimeCommand,
-  createStartConditionCommand,
   eventsPublished,
   scheduledAlarm,
   signalReceived,
   signalSent,
-  startedExpectSignal,
   workflowSucceeded,
   workflowFailed,
   workflowScheduled,
@@ -1518,19 +1514,13 @@ describe("signals", () => {
       expect(interpret(wf.definition(undefined, context), [])).toMatchObject(<
         WorkflowResult
       >{
-        commands: [
-          createAwaitDurationCommand(100 * 1000, "seconds", 0),
-          createExpectSignalCommand("MySignal", 1),
-        ],
+        commands: [createAwaitDurationCommand(100 * 1000, "seconds", 0)],
       });
     });
 
     test("no signal", () => {
       expect(
-        interpret(wf.definition(undefined, context), [
-          scheduledAlarm("", 0),
-          startedExpectSignal("MySignal", 1),
-        ])
+        interpret(wf.definition(undefined, context), [scheduledAlarm("", 0)])
       ).toMatchObject(<WorkflowResult>{
         commands: [],
       });
@@ -1540,7 +1530,6 @@ describe("signals", () => {
       expect(
         interpret(wf.definition(undefined, context), [
           scheduledAlarm("", 0),
-          startedExpectSignal("MySignal", 1),
           signalReceived("MySignal"),
         ])
       ).toMatchObject(<WorkflowResult>{
@@ -1553,7 +1542,6 @@ describe("signals", () => {
       expect(
         interpret(wf.definition(undefined, context), [
           scheduledAlarm("", 0),
-          startedExpectSignal("MySignal", 1),
           signalReceived("MySignal", { done: true }),
         ])
       ).toMatchObject(<WorkflowResult>{
@@ -1566,7 +1554,6 @@ describe("signals", () => {
       expect(
         interpret(wf.definition(undefined, context), [
           scheduledAlarm("", 0),
-          startedExpectSignal("MySignal", 1),
           completedAlarm(0),
         ])
       ).toMatchObject(<WorkflowResult>{
@@ -1579,7 +1566,6 @@ describe("signals", () => {
       expect(
         interpret(wf.definition(undefined, context), [
           scheduledAlarm("", 0),
-          startedExpectSignal("MySignal", 1),
           completedAlarm(0),
           signalReceived("MySignal", { done: true }),
         ])
@@ -1593,7 +1579,6 @@ describe("signals", () => {
       expect(
         interpret(wf.definition(undefined, context), [
           scheduledAlarm("", 0),
-          startedExpectSignal("MySignal", 1),
           signalReceived("MySignal"),
           completedAlarm(0),
         ])
@@ -1607,7 +1592,6 @@ describe("signals", () => {
       expect(
         interpret(wf.definition(undefined, context), [
           scheduledAlarm("", 0),
-          startedExpectSignal("MySignal", 1),
           signalReceived("MySignal"),
           signalReceived("MySignal"),
         ])
@@ -1634,9 +1618,7 @@ describe("signals", () => {
       expect(
         interpret(wf.definition(undefined, context), [
           scheduledAlarm("", 0),
-          startedExpectSignal("MySignal", 1),
-          scheduledAlarm("", 2),
-          startedExpectSignal("MySignal", 3),
+          scheduledAlarm("", 1),
           signalReceived("MySignal", "done!!!"),
         ])
       ).toMatchObject(<WorkflowResult>{
@@ -1660,7 +1642,6 @@ describe("signals", () => {
       expect(
         interpret(wf.definition(undefined, context), [
           scheduledAlarm("", 0),
-          startedExpectSignal("MySignal", 1),
           completedAlarm(0),
         ])
       ).toMatchObject(<WorkflowResult>{
@@ -1684,7 +1665,6 @@ describe("signals", () => {
       expect(
         interpret(wf.definition(undefined, context), [
           scheduledAlarm("", 0),
-          startedExpectSignal("MySignal", 1),
           signalReceived("SomethingElse"),
           completedAlarm(0),
         ])
@@ -2058,7 +2038,7 @@ describe("condition", () => {
     expect(
       interpret(wf.definition(undefined, context), [])
     ).toMatchObject<WorkflowResult>({
-      commands: [createStartConditionCommand(0)],
+      commands: [],
     });
   });
 
@@ -2073,10 +2053,7 @@ describe("condition", () => {
     expect(
       interpret(wf.definition(undefined, context), [])
     ).toMatchObject<WorkflowResult>({
-      commands: [
-        createAwaitDurationCommand(100, "seconds", 0),
-        createStartConditionCommand(1),
-      ],
+      commands: [createAwaitDurationCommand(100, "seconds", 0)],
     });
   });
 
@@ -2089,10 +2066,7 @@ describe("condition", () => {
     });
 
     expect(
-      interpret(wf.definition(undefined, context), [
-        scheduledAlarm("", 0),
-        conditionStarted(1),
-      ])
+      interpret(wf.definition(undefined, context), [scheduledAlarm("", 0)])
     ).toMatchObject<WorkflowResult>({
       commands: [],
     });
@@ -2118,7 +2092,6 @@ describe("condition", () => {
     expect(
       interpret(signalConditionFlow.definition(undefined, context), [
         scheduledAlarm("", 0),
-        conditionStarted(1),
         signalReceived("Yes"),
       ])
     ).toMatchObject<WorkflowResult>({
@@ -2131,7 +2104,6 @@ describe("condition", () => {
     expect(
       interpret(signalConditionFlow.definition(undefined, context), [
         scheduledAlarm("", 0),
-        conditionStarted(1),
         signalReceived("No"),
         signalReceived("No"),
         signalReceived("No"),
@@ -2159,7 +2131,6 @@ describe("condition", () => {
 
     expect(
       interpret(signalConditionOnAndOffFlow.definition(undefined, context), [
-        conditionStarted(0),
         signalReceived("Yes"),
       ])
     ).toMatchObject<WorkflowResult>({
@@ -2171,7 +2142,6 @@ describe("condition", () => {
     expect(
       interpret(signalConditionFlow.definition(undefined, context), [
         scheduledAlarm("", 0),
-        conditionStarted(1),
         completedAlarm(0),
       ])
     ).toMatchObject<WorkflowResult>({
@@ -2184,7 +2154,6 @@ describe("condition", () => {
     expect(
       interpret(signalConditionFlow.definition(undefined, context), [
         scheduledAlarm("", 0),
-        conditionStarted(1),
         signalReceived("Yes"),
         completedAlarm(0),
       ])
@@ -2198,7 +2167,6 @@ describe("condition", () => {
     expect(
       interpret(signalConditionFlow.definition(undefined, context), [
         scheduledAlarm("", 0),
-        conditionStarted(1),
         completedAlarm(0),
         signalReceived("Yes"),
       ])
@@ -2217,7 +2185,7 @@ describe("condition", () => {
     expect(
       interpret(wf.definition(undefined, context), [])
     ).toMatchObject<WorkflowResult>({
-      commands: [createStartConditionCommand(0)],
+      commands: [],
     });
   });
 });

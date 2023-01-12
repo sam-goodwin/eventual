@@ -3,12 +3,10 @@ import {
   AwaitDurationCommand,
   AwaitTimeCommand,
   CommandType,
-  ExpectSignalCommand,
   PublishEventsCommand,
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
   SendSignalCommand,
-  StartConditionCommand,
 } from "../src/command.js";
 import { EventEnvelope } from "../src/event.js";
 import {
@@ -18,9 +16,7 @@ import {
   ChildWorkflowSucceeded,
   ChildWorkflowFailed,
   ChildWorkflowScheduled,
-  ConditionStarted,
   EventsPublished,
-  ExpectSignalStarted,
   SignalReceived,
   SignalSent,
   AlarmCompleted,
@@ -82,17 +78,6 @@ export function createScheduledWorkflowCommand(
   };
 }
 
-export function createExpectSignalCommand(
-  signalId: string,
-  seq: number
-): ExpectSignalCommand {
-  return {
-    kind: CommandType.ExpectSignal,
-    signalId,
-    seq,
-  };
-}
-
 export function createSendSignalCommand(
   target: SignalTarget,
   signalId: string,
@@ -114,15 +99,6 @@ export function createPublishEventCommand(
     kind: CommandType.PublishEvents,
     seq,
     events,
-  };
-}
-
-export function createStartConditionCommand(
-  seq: number
-): StartConditionCommand {
-  return {
-    kind: CommandType.StartCondition,
-    seq,
   };
 }
 
@@ -229,18 +205,6 @@ export function completedAlarm(seq: number): AlarmCompleted {
   };
 }
 
-export function startedExpectSignal(
-  signalId: string,
-  seq: number
-): ExpectSignalStarted {
-  return {
-    type: WorkflowEventType.ExpectSignalStarted,
-    signalId,
-    timestamp: new Date().toISOString(),
-    seq,
-  };
-}
-
 export function signalReceived(
   signalId: string,
   payload?: any
@@ -267,14 +231,6 @@ export function signalSent(
     signalId,
     timestamp: new Date().toISOString(),
     payload,
-  };
-}
-
-export function conditionStarted(seq: number): ConditionStarted {
-  return {
-    type: WorkflowEventType.ConditionStarted,
-    seq,
-    timestamp: new Date().toISOString(),
   };
 }
 

@@ -3,9 +3,7 @@ import { CommandType } from "../src/command.js";
 import {
   ActivityScheduled,
   ChildWorkflowScheduled,
-  ConditionStarted,
   EventsPublished,
-  ExpectSignalStarted,
   SignalSent,
   AlarmCompleted,
   AlarmScheduled,
@@ -190,50 +188,6 @@ describe("workflow", () => {
   });
 });
 
-describe("expect signal", () => {
-  test("start", async () => {
-    const event = await testExecutor.executeCommand(
-      workflow,
-      executionId,
-      {
-        kind: CommandType.ExpectSignal,
-        signalId: "signal",
-        seq: 0,
-      },
-      baseTime
-    );
-
-    expect(mockTimerClient.scheduleEvent).not.toHaveBeenCalled();
-
-    expect(event).toMatchObject<ExpectSignalStarted>({
-      seq: 0,
-      timestamp: expect.stringContaining("Z"),
-      type: WorkflowEventType.ExpectSignalStarted,
-      signalId: "signal",
-    });
-  });
-
-  test("start", async () => {
-    const event = await testExecutor.executeCommand(
-      workflow,
-      executionId,
-      {
-        kind: CommandType.ExpectSignal,
-        signalId: "signal",
-        seq: 0,
-      },
-      baseTime
-    );
-
-    expect(event).toMatchObject<ExpectSignalStarted>({
-      seq: 0,
-      timestamp: expect.stringContaining("Z"),
-      type: WorkflowEventType.ExpectSignalStarted,
-      signalId: "signal",
-    });
-  });
-});
-
 describe("send signal", () => {
   test("send", async () => {
     const event = await testExecutor.executeCommand(
@@ -298,46 +252,6 @@ describe("send signal", () => {
       type: WorkflowEventType.SignalSent,
       timestamp: expect.stringContaining("Z"),
       signalId: "signal",
-    });
-  });
-});
-
-describe("condition", () => {
-  test("send", async () => {
-    const event = await testExecutor.executeCommand(
-      workflow,
-      executionId,
-      {
-        kind: CommandType.StartCondition,
-        seq: 0,
-      },
-      baseTime
-    );
-
-    expect(mockTimerClient.scheduleEvent).not.toHaveBeenCalled();
-
-    expect(event).toMatchObject<ConditionStarted>({
-      seq: 0,
-      type: WorkflowEventType.ConditionStarted,
-      timestamp: expect.stringContaining("Z"),
-    });
-  });
-
-  test("send with timeout", async () => {
-    const event = await testExecutor.executeCommand(
-      workflow,
-      executionId,
-      {
-        kind: CommandType.StartCondition,
-        seq: 0,
-      },
-      baseTime
-    );
-
-    expect(event).toMatchObject<ConditionStarted>({
-      seq: 0,
-      type: WorkflowEventType.ConditionStarted,
-      timestamp: expect.stringContaining("Z"),
     });
   });
 });

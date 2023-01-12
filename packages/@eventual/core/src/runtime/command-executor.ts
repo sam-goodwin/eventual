@@ -1,21 +1,17 @@
 import {
   Command,
-  ExpectSignalCommand,
-  isExpectSignalCommand,
   isPublishEventsCommand,
   isScheduleActivityCommand,
   isScheduleWorkflowCommand,
   isSendSignalCommand,
   isAwaitDurationCommand,
   isAwaitTimeCommand,
-  isStartConditionCommand,
   PublishEventsCommand,
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
   SendSignalCommand,
   AwaitDurationCommand,
   AwaitTimeCommand,
-  StartConditionCommand,
 } from "../command.js";
 import {
   WorkflowEventType,
@@ -24,9 +20,7 @@ import {
   ChildWorkflowScheduled,
   AlarmScheduled,
   AlarmCompleted,
-  ExpectSignalStarted,
   HistoryStateEvent,
-  ConditionStarted,
   SignalSent,
   EventsPublished,
 } from "../workflow-events.js";
@@ -71,13 +65,8 @@ export class CommandExecutor {
     } else if (isAwaitDurationCommand(command) || isAwaitTimeCommand(command)) {
       // all sleep times are computed using the start time of the WorkflowTaskStarted
       return this.scheduleSleep(executionId, command, baseTime);
-    } else if (isExpectSignalCommand(command)) {
-      // should the timeout command be generic (ex: StartTimeout) or specific (ex: ExpectSignal)?
-      return this.executeExpectSignal(command, baseTime);
     } else if (isSendSignalCommand(command)) {
       return this.sendSignal(executionId, command, baseTime);
-    } else if (isStartConditionCommand(command)) {
-      return this.startCondition(command, baseTime);
     } else if (isPublishEventsCommand(command)) {
       return this.publishEvents(command, baseTime);
     } else {
@@ -167,20 +156,6 @@ export class CommandExecutor {
     );
   }
 
-  private async executeExpectSignal(
-    command: ExpectSignalCommand,
-    baseTime: Date
-  ): Promise<ExpectSignalStarted> {
-    return createEvent<ExpectSignalStarted>(
-      {
-        signalId: command.signalId,
-        seq: command.seq,
-        type: WorkflowEventType.ExpectSignalStarted,
-      },
-      baseTime
-    );
-  }
-
   private async sendSignal(
     executionId: string,
     command: SendSignalCommand,
@@ -207,16 +182,6 @@ export class CommandExecutor {
         seq: command.seq,
         signalId: command.signalId,
         payload: command.payload,
-      },
-      baseTime
-    );
-  }
-
-  private async startCondition(command: StartConditionCommand, baseTime: Date) {
-    return createEvent<ConditionStarted>(
-      {
-        type: WorkflowEventType.ConditionStarted,
-        seq: command.seq!,
       },
       baseTime
     );

@@ -4,14 +4,12 @@ import { SignalTarget } from "./signals.js";
 import { WorkflowOptions } from "./workflow.js";
 
 export type Command =
-  | ExpectSignalCommand
+  | AwaitDurationCommand
+  | AwaitTimeCommand
   | ScheduleActivityCommand
   | ScheduleWorkflowCommand
   | PublishEventsCommand
-  | SendSignalCommand
-  | AwaitDurationCommand
-  | AwaitTimeCommand
-  | StartConditionCommand;
+  | SendSignalCommand;
 
 interface CommandBase<T extends CommandType> {
   kind: T;
@@ -21,11 +19,9 @@ interface CommandBase<T extends CommandType> {
 export enum CommandType {
   AwaitDuration = "AwaitDuration",
   AwaitTime = "AwaitTime",
-  ExpectSignal = "ExpectSignal",
   PublishEvents = "PublishEvents",
   SendSignal = "SendSignal",
   StartActivity = "StartActivity",
-  StartCondition = "StartCondition",
   StartWorkflow = "StartWorkflow",
 }
 
@@ -90,17 +86,6 @@ export function isAwaitDurationCommand(
   return command.kind === CommandType.AwaitDuration;
 }
 
-export interface ExpectSignalCommand
-  extends CommandBase<CommandType.ExpectSignal> {
-  signalId: string;
-}
-
-export function isExpectSignalCommand(
-  command: Command
-): command is ExpectSignalCommand {
-  return command.kind === CommandType.ExpectSignal;
-}
-
 export interface SendSignalCommand extends CommandBase<CommandType.SendSignal> {
   signalId: string;
   target: SignalTarget;
@@ -111,14 +96,6 @@ export function isSendSignalCommand(
   command: Command
 ): command is SendSignalCommand {
   return command.kind === CommandType.SendSignal;
-}
-
-export type StartConditionCommand = CommandBase<CommandType.StartCondition>;
-
-export function isStartConditionCommand(
-  command: Command
-): command is StartConditionCommand {
-  return command.kind === CommandType.StartCondition;
 }
 
 export interface PublishEventsCommand
