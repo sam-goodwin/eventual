@@ -1,5 +1,5 @@
 import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
-import { createExecutionHistoryClient } from "../../../clients/index.js";
+import { createExecutionHistoryClient } from "../../../clients/create.js";
 import { withErrorMiddleware } from "../middleware.js";
 import {
   decodeExecutionId,

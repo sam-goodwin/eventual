@@ -11,7 +11,7 @@ export const serviceInfo = (yargs: Argv) =>
         description: "Name of service to operate on",
       }),
     serviceAction(
-      async (spinner, _service, _, serviceData) => {
+      async (spinner, _service, _, { serviceData }) => {
         spinner.start("Getting executions");
         spinner.stop();
         process.stdout.write(
@@ -22,7 +22,7 @@ export const serviceInfo = (yargs: Argv) =>
         );
         process.stdout.write("\n");
       },
-      async (_service, _, serviceData) => {
+      async (_service, _, { serviceData }) => {
         process.stdout.write(
           JSON.stringify({
             apiEndpoint: serviceData.apiEndpoint,

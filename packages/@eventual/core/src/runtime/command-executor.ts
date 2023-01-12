@@ -31,23 +31,18 @@ import {
   ConditionStarted,
   ConditionTimedOut,
   SignalSent,
-} from "../workflow-events.js";
-import {
-  DurationUnit,
   EventsPublished,
-  isChildExecutionTarget,
-} from "../index.js";
+} from "../workflow-events.js";
 import { assertNever } from "../util.js";
 import { Workflow } from "../workflow.js";
 import { formatChildExecutionName, formatExecutionId } from "./execution-id.js";
 import { ActivityWorkerRequest } from "./handlers/activity-worker.js";
-import {
-  EventClient,
-  Schedule,
-  TimerClient,
-  WorkflowClient,
-  WorkflowRuntimeClient,
-} from "./index.js";
+import { Schedule, TimerClient } from "./clients/timer-client.js";
+import { WorkflowRuntimeClient } from "./clients/workflow-runtime-client.js";
+import { WorkflowClient } from "./clients/workflow-client.js";
+import { EventClient } from "./clients/event-client.js";
+import { isChildExecutionTarget } from "../signals.js";
+import { DurationUnit } from "../await-time.js";
 
 interface CommandExecutorProps {
   workflowRuntimeClient: WorkflowRuntimeClient;

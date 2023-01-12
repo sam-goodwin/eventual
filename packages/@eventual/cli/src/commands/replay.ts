@@ -45,7 +45,7 @@ export const replay = (yargs: Argv) =>
         }
         spinner.start("Running program");
 
-        const res = orchestrator(workflow, events);
+        const res = orchestrator(execution, workflow, events);
         spinner.succeed();
         console.log(res);
       }

@@ -3,7 +3,7 @@ import type {
   StartExecutionRequest,
   StartExecutionResponse,
 } from "@eventual/core";
-import { createWorkflowClient } from "../clients/index.js";
+import { createWorkflowClient } from "../clients/create.js";
 
 const workflowClient = createWorkflowClient();
 

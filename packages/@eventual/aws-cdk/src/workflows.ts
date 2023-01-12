@@ -15,6 +15,7 @@ import {
 import { Construct } from "constructs";
 import { IActivities } from "./activities";
 import { Events } from "./events";
+import { Logging } from "./logging";
 import { IScheduler } from "./scheduler";
 import { ServiceFunction } from "./service-function";
 import { addEnvironment } from "./utils";
@@ -24,6 +25,7 @@ export interface WorkflowsProps {
   activities: IActivities;
   table: ITable;
   events: Events;
+  logging: Logging;
   orchestrator?: {
     reservedConcurrentExecutions?: number;
   };
@@ -97,6 +99,8 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
 
   public configureStartExecution(func: Function) {
     this.configureSendWorkflowEvent(func);
+    // when we start a workflow, we create the log stream it will use.
+    this.props.logging.configurePutServiceLogs(func);
     this.grantSubmitWorkflowEvent(func);
     addEnvironment(func, {
       [ENV_NAMES.TABLE_NAME]: this.props.table.tableName,
@@ -201,5 +205,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.configureFullControl(this.orchestrator);
     // allows the workflow to cancel activities
     this.props.activities.configureUpdateActivity(this.orchestrator);
+    // adds the logging extension (via a layer) to the orchestrator
+    this.props.logging.configurePutServiceLogs(this.orchestrator);
   }
 }

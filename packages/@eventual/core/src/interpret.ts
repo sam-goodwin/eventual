@@ -37,6 +37,7 @@ import {
   isActivityTimedOut,
   isActivityHeartbeatTimedOut,
   isEventsPublished,
+  WorkflowEvent,
 } from "./workflow-events.js";
 import {
   Result,
@@ -48,7 +49,7 @@ import {
   isResolvedOrFailed,
 } from "./result.js";
 import { createChain, isChain, Chain } from "./chain.js";
-import { assertNever, or } from "./util.js";
+import { assertNever, _Iterator, iterator, or } from "./util.js";
 import { Command, CommandType } from "./command.js";
 import {
   isAwaitDurationCall,
@@ -86,12 +87,22 @@ export interface WorkflowResult<T = any> {
 
 export type Program<Return = any> = Generator<Eventual, Return, any>;
 
+export interface InterpretProps {
+  /**
+   * Callback called when a returned call matches an input event.
+   *
+   * This call will be ignored.
+   */
+  historicalEventMatched?: (event: WorkflowEvent, call: CommandCall) => void;
+}
+
 /**
  * Interprets a workflow program
  */
 export function interpret<Return>(
   program: Program<Return>,
-  history: HistoryEvent[]
+  history: HistoryEvent[],
+  props?: InterpretProps
 ): WorkflowResult<Awaited<Return>> {
   const callTable: Record<number, CommandCall> = {};
   /**
@@ -124,7 +135,7 @@ export function interpret<Return>(
      * any calls at the event of all result commands and advances, return
      */
     const calls: CommandCall[] = [];
-    let newCalls: Iterator<CommandCall, CommandCall>;
+    let newCalls: _Iterator<CommandCall, CommandCall>;
     // iterate until we are no longer finding commands, no longer have completion events to apply
     // or the workflow has a terminal status.
     while (
@@ -158,6 +169,8 @@ export function interpret<Return>(
       while (newCalls.hasNext() && emittedEvents.hasNext()) {
         const call = newCalls.next()!;
         const event = emittedEvents.next()!;
+
+        props?.historicalEventMatched?.(event, call);
 
         if (!isCorresponding(event, call)) {
           throw new DeterminismError(
@@ -582,43 +595,4 @@ function isGenerator(a: any): a is Program {
     typeof a.return === "function" &&
     typeof a.throw === "function"
   );
-}
-
-interface Iterator<I, T extends I> {
-  hasNext(): boolean;
-  next(): T | undefined;
-  drain(): T[];
-}
-
-function iterator<I, T extends I>(
-  elms: I[],
-  predicate?: (elm: I) => elm is T
-): Iterator<I, T> {
-  let cursor = 0;
-  return {
-    hasNext: () => {
-      seek();
-      return cursor < elms.length;
-    },
-    next: (): T => {
-      seek();
-      return elms[cursor++] as T;
-    },
-    drain: (): T[] => {
-      return predicate
-        ? elms.slice(cursor).filter(predicate)
-        : (elms.slice(cursor) as T[]);
-    },
-  };
-
-  function seek() {
-    if (predicate) {
-      while (cursor < elms.length) {
-        if (predicate(elms[cursor]!)) {
-          return;
-        }
-        cursor++;
-      }
-    }
-  }
 }

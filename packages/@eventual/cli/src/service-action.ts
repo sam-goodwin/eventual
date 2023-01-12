@@ -11,18 +11,27 @@ import {
   ServiceData,
   tryResolveDefaultService,
 } from "./service-data.js";
+import { AwsCredentialIdentity } from "@aws-sdk/types";
 
 export type ServiceAction<T> = (
   spinner: Ora,
   serviceClient: EventualServiceClient,
   args: Arguments<T & { service: string }>,
-  serviceData: ServiceData
+  resolved: {
+    credentials: AwsCredentialIdentity;
+    serviceName: string;
+    serviceData: ServiceData;
+  }
 ) => Promise<void>;
 
 export type ServiceJsonAction<T> = (
   serviceClient: EventualServiceClient,
   args: Arguments<T & { service: string }>,
-  serviceData: ServiceData
+  resolved: {
+    credentials: AwsCredentialIdentity;
+    serviceName: string;
+    serviceData: ServiceData;
+  }
 ) => Promise<void>;
 
 /**
@@ -60,7 +69,7 @@ export function serviceAction<T>(
         return jsonAction(
           serviceClient,
           { ...args, service: serviceName },
-          serviceData
+          { serviceData, serviceName, credentials }
         );
       }
       return await action(
@@ -70,7 +79,7 @@ export function serviceAction<T>(
           ...args,
           service: serviceName,
         },
-        serviceData
+        { serviceData, serviceName, credentials }
       );
     } catch (e: any) {
       if (args.debug) {

@@ -1,18 +1,11 @@
-import { Program } from "../src/interpret.js";
-import { createActivityCall } from "../src/calls/activity-call.js";
 import {
   ActivityScheduled,
   ActivitySucceeded,
+  filterEvents,
+  WorkflowEvent,
   WorkflowEventType,
   WorkflowStarted,
 } from "../src/workflow-events.js";
-import { progressWorkflow, workflow } from "../src/workflow.js";
-import { WorkflowContext } from "../src/context.js";
-
-const myWorkflow = workflow("myWorkflow", function* (event: any): Program<any> {
-  yield createActivityCall("my-activity", [event]);
-  yield createActivityCall("my-activity", [event]);
-});
 
 const started1: WorkflowStarted = {
   type: WorkflowEventType.WorkflowStarted,
@@ -51,110 +44,69 @@ const completed5: ActivitySucceeded = {
   timestamp: "",
 };
 
-const context: WorkflowContext = { name: "testWorkflow" };
-
 test("history", () => {
-  const { history } = progressWorkflow(
-    myWorkflow,
-    [started1],
-    [],
-    context,
-    "executionId"
-  );
-
-  expect(history).toEqual([started1]);
+  expect(filterEvents([started1], [])).toEqual([]);
 });
 
 test("start", () => {
-  const { history } = progressWorkflow(
-    myWorkflow,
-    [],
-    [started1],
-    context,
-    "executionId"
-  );
-
-  expect(history).toEqual([started1]);
+  expect(filterEvents([], [started1])).toEqual([started1]);
 });
 
 test("start with tasks", () => {
-  const { history } = progressWorkflow(
-    myWorkflow,
-    [],
-    [started1, scheduled2, completed3],
-    context,
-    "executionId"
-  );
-
-  expect(history).toEqual([started1, scheduled2, completed3]);
+  expect(filterEvents([], [started1, scheduled2, completed3])).toEqual([
+    started1,
+    scheduled2,
+    completed3,
+  ]);
 });
 
 test("start with history", () => {
-  const { history } = progressWorkflow(
-    myWorkflow,
-    [started1, scheduled2],
-    [completed3],
-    context,
-    "executionId"
-  );
-
-  expect(history).toEqual([started1, scheduled2, completed3]);
+  expect(
+    filterEvents<WorkflowEvent>([started1, scheduled2], [completed3])
+  ).toEqual([completed3]);
 });
 
 test("start with duplicate events", () => {
-  const { history } = progressWorkflow(
-    myWorkflow,
-    [started1, scheduled2, completed3],
-    [completed3],
-    context,
-    "executionId"
-  );
-
-  expect(history).toEqual([started1, scheduled2, completed3]);
+  expect(
+    filterEvents<WorkflowEvent>(
+      [started1, scheduled2, completed3],
+      [completed3]
+    )
+  ).toEqual([]);
 });
 
 test("start with generated events", () => {
-  const { history } = progressWorkflow(
-    myWorkflow,
-    [started1, scheduled2, completed3, scheduled4],
-    [completed3],
-    context,
-    "execId"
-  );
-
-  expect(history).toEqual([started1, scheduled2, completed3, scheduled4]);
+  expect(
+    filterEvents<WorkflowEvent>(
+      [started1, scheduled2, completed3, scheduled4],
+      [completed3]
+    )
+  ).toEqual([]);
 });
 
 test("start with duplicate", () => {
-  const { history } = progressWorkflow(
-    myWorkflow,
-    [started1, scheduled2, completed3],
-    [completed5, completed3],
-    context,
-    "execId"
-  );
-
-  expect(history).toEqual([started1, scheduled2, completed3, completed5]);
+  expect(
+    filterEvents<WorkflowEvent>(
+      [started1, scheduled2, completed3],
+      [completed5, completed3]
+    )
+  ).toEqual([completed5]);
 });
 
 test("start with out of order", () => {
-  const { history } = progressWorkflow(
-    myWorkflow,
-    [started1, scheduled2, completed3, completed5],
-    [completed3],
-    context,
-    "execId"
-  );
-  expect(history).toEqual([started1, scheduled2, completed3, completed5]);
+  expect(
+    filterEvents<WorkflowEvent>(
+      [started1, scheduled2, completed3, completed5],
+      [completed5, completed3]
+    )
+  ).toEqual([]);
 });
 
 test("start with out of order", () => {
-  const { history } = progressWorkflow(
-    myWorkflow,
-    [started1, scheduled2],
-    [completed3, completed3, completed5, completed3, completed3, completed3],
-    context,
-    "execId"
-  );
-  expect(history).toEqual([started1, scheduled2, completed3, completed5]);
+  expect(
+    filterEvents<WorkflowEvent>(
+      [started1, scheduled2],
+      [completed3, completed3, completed5, completed3, completed3, completed3]
+    )
+  ).toEqual([completed3, completed5]);
 });

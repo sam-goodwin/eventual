@@ -18,7 +18,8 @@ import { Workflow } from "../../workflow.js";
 import { EventClient } from "./event-client.js";
 import { ExecutionHistoryClient } from "./execution-history-client.js";
 import { SendSignalRequest, WorkflowClient } from "./workflow-client.js";
-import { WorkflowRuntimeClient, workflows } from "../../index.js";
+import { WorkflowRuntimeClient } from "./workflow-runtime-client.js";
+import { workflows } from "../../global.js";
 
 export interface RuntimeServiceClientProps {
   workflowClient: WorkflowClient;
