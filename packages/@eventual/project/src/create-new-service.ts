@@ -5,20 +5,20 @@ import { validateServiceName } from "./validate.js";
 import { version } from "./version.js";
 import { addTsReferences } from "./tsconfig-file.js";
 import { updateJsonFile, writeJsonFile } from "./json-file.js";
+import { discoverEventualManifest } from "./eventual-manifest.js";
 
 /**
  * Creates a new Service in an Eventual-managed project.
  */
 export async function createNewService(serviceName?: string) {
-  let eventualJsonFile: string;
-  try {
-    eventualJsonFile = (await fs.readFile("eventual.json")).toString("utf-8");
-  } catch {
+  const eventualJsonFile = await discoverEventualManifest(process.cwd());
+  if (eventualJsonFile === undefined) {
     console.error(
       "This is not a valid eventual project. You can only add a new service into an existing eventual project."
     );
     process.exit(1);
   }
+
   // @ts-ignore
   const eventualJson = JSON.parse(eventualJsonFile);
 
@@ -41,7 +41,7 @@ export async function createNewService(serviceName?: string) {
     code: `import { api } from "@eventual/core"
             
 api.get("/echo", async (request) => {
-  return new Response(await request.text())
+  return new Response(await request.text());
 });
 `,
   });

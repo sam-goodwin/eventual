@@ -2,6 +2,9 @@ const projectNameRegex = /^[A-Za-z-_0-9]+$/g;
 
 export const validateServiceName = validateName("service");
 
+/**
+ * The name must be an alphanumeric string that is a valid file/folder name.
+ */
 export function validateName(type: string) {
   return (name: string): true | string =>
     name.match(projectNameRegex) !== null ||

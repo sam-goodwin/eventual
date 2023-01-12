@@ -1,7 +1,10 @@
 import { spawn } from "child_process";
 
+/**
+ * A simple wrapper of {@link spawn} to execute a script as a Promise
+ * and pipe stdio.
+ */
 export async function exec(command: string, ...args: string[]) {
-  console.log(process.cwd(), [command, ...args].join(" "));
   return new Promise((resolve, reject) => {
     const proc = spawn(command, args, {
       stdio: "inherit",
