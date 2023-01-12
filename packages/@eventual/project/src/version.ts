@@ -1,3 +1,3 @@
-import pkgJson from "../package.json";
+import pkgJson from "../package.json" assert { type: "json" };
 
 export const version = pkgJson.version;
