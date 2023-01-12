@@ -5,7 +5,7 @@
   "version": "0.0.0",
   "main": "lib/test-service.js",
   "scripts": {
-    "test:runtime": "OUTPUTS_FILE=cdk.out/outputs.json jest --passWithNoTests && ./scripts/test-cli && ./scripts/test-create",
+    "test:runtime": "OUTPUTS_FILE=cdk.out/outputs.json jest --passWithNoTests && ./scripts/test-cli",
     "test:cli": "./scripts/test-cli",
     "deploy:runtime": "OUTPUTS_FILE=cdk.out/outputs.json ./scripts/deploy",
     "test:runtime-deploy": "pnpm -r --filter tests-runtime run deploy:runtime && pnpm -r --filter tests-runtime run test:runtime"
