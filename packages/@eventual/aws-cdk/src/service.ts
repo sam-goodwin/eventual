@@ -129,6 +129,14 @@ export class Service extends Construct implements IGrantable {
         name: ServiceType.EventHandler,
         entry: runtimeHandlersEntrypoint("event-handler"),
         serviceType: ServiceType.EventHandler,
+      },
+      {
+        name: "SchedulerForwarder",
+        entry: runtimeHandlersEntrypoint("schedule-forwarder"),
+      },
+      {
+        name: "SchedulerHandler",
+        entry: runtimeHandlersEntrypoint("timer-handler"),
       }
     );
 
