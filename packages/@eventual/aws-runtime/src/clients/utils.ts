@@ -127,3 +127,18 @@ async function deserializeToken<T extends NextTokenWrapper<any, any, any>>(
 ): Promise<T> {
   return JSON.parse(Buffer.from(str, "base64").toString("utf-8")) as T;
 }
+
+/**
+ * Chunks an array of {@link items} into arrays of maximum size {@link batchSize}
+ */
+export function chunkArray<T>(batchSize: number, items: T[]): T[][] {
+  return items.reduceRight(([current, ...batches]: T[][], item) => {
+    if (!current) {
+      return [[item], ...(batches ?? [])];
+    } else if (current?.length < batchSize) {
+      return [[item, ...current], ...(batches ?? [])];
+    } else {
+      return [[item], current, ...(batches ?? [])];
+    }
+  }, []);
+}
