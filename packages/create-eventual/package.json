@@ -18,6 +18,7 @@
     "create-sst": "latest"
   },
   "devDependencies": {
+    "@eventual/project": "workspace:^",
     "@types/inquirer": "^8",
     "@types/node": "^16",
     "@types/yargs": "^17.0.17",

@@ -1,22 +1,40 @@
+import {
+  createServicePackage,
+  exec,
+  install,
+  PackageManager,
+  validateServiceName,
+  version,
+  writeJsonFile,
+} from "@eventual/project";
 import fs from "fs/promises";
+import inquirer from "inquirer";
 import path from "path";
-import { createServicePackage } from "./new-service";
-import { PackageManager } from "./package-manager";
 import { sampleCDKApp } from "./sample-code";
-import { exec, install, writeJsonFile } from "./util";
-import { version } from "./version";
 
 export interface CreateAwsCdkProps {
   projectName: string;
   pkgManager: PackageManager;
-  serviceName: string;
+  serviceName: string | undefined;
 }
 
-export async function createAwsCdk({
+export async function createAwsCdkProject({
   projectName,
   pkgManager,
   serviceName,
 }: CreateAwsCdkProps) {
+  if (serviceName === undefined) {
+    const response = await inquirer.prompt([
+      {
+        type: "input",
+        name: "serviceName",
+        message: "service name",
+        validate: validateServiceName,
+      },
+    ]);
+    serviceName = response.serviceName! as string;
+  }
+
   await fs.mkdir(projectName);
   process.chdir(projectName);
   await exec("git", "init");
@@ -155,7 +173,7 @@ packages:
           "aws-cdk": "^2.50.0",
           constructs: "^10",
           esbuild: "^0.16.14",
-          [serviceName]: workspaceVersion,
+          [serviceName!]: workspaceVersion,
         },
         devDependencies: {
           "@eventual/cli": `^${version}`,
@@ -211,7 +229,7 @@ export class MyServiceStack extends Stack {
 
   async function createService() {
     await createServicePackage(path.resolve(serviceDir), {
-      packageName: serviceName,
+      packageName: serviceName!,
       references: ["../../packages/events"],
       dependencies: {
         [`@${projectName}/events`]: workspaceVersion,

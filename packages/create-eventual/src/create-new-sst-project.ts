@@ -5,11 +5,11 @@ import {
   exec,
   modifyTsConfig,
   overrideTsCompilerOptions,
-} from "./util";
-import path from "path";
+  PackageManager,
+} from "@eventual/project";
 import fs from "fs/promises";
-import { sampleSSTCode, sampleServiceCode } from "./sample-code";
-import { PackageManager } from "./package-manager";
+import path from "path";
+import { sampleServiceCode, sampleSSTCode } from "./sample-code";
 
 export interface CreateSSTProps {
   projectName: string;
@@ -17,7 +17,7 @@ export interface CreateSSTProps {
 }
 
 // TODO support overrides for SST
-export async function createAwsSst({
+export async function createSSTProject({
   projectName,
   pkgManager,
 }: CreateSSTProps) {

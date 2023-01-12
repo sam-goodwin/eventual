@@ -2,9 +2,13 @@ import fs from "fs/promises";
 import path from "path";
 import inquirer from "inquirer";
 import { validateServiceName } from "./validate";
-import { addTsReferences, updateJsonFile, writeJsonFile } from "./util";
 import { version } from "./version";
+import { addTsReferences } from "./tsconfig-file";
+import { updateJsonFile, writeJsonFile } from "./json-file";
 
+/**
+ * Creates a new Service in an Eventual-managed project.
+ */
 export async function createNewService(serviceName?: string) {
   let eventualJsonFile: string;
   try {

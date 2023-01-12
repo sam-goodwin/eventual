@@ -1,6 +1,5 @@
 const projectNameRegex = /^[A-Za-z-_0-9]+$/g;
 
-export const validateProjectName = validateName("project");
 export const validateServiceName = validateName("service");
 
 export function validateName(type: string) {
