@@ -38,7 +38,6 @@ export async function createAwsCdkProject({
 
   await fs.mkdir(projectName);
   process.chdir(projectName);
-  await exec("git", "init");
 
   const appsDirName = `apps`;
   const appsDir = path.resolve(process.cwd(), appsDirName);
