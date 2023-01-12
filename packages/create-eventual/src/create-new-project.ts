@@ -31,7 +31,7 @@ export function validateProjectName(name: string) {
 export async function createNewProject(args: CreateNewProjectProps) {
   const pkgManager = discoverPackageManager();
 
-  const { projectName } = await inquirer.prompt<{
+  const { projectName = args.projectName! } = await inquirer.prompt<{
     projectName: string;
   }>([
     {
