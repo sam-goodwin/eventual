@@ -21,7 +21,7 @@
     "@types/inquirer": "^8",
     "@types/node": "^16",
     "@types/yargs": "^17.0.17",
-    "esbuild": "^0.x",
+    "esbuild": "^0.16.16",
     "inquirer": "^8",
     "yargs": "^17.6.2"
   }

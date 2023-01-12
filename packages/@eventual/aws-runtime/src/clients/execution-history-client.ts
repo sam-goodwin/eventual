@@ -94,6 +94,7 @@ export class AWSExecutionHistoryClient extends ExecutionHistoryClient {
         ExpressionAttributeNames: after
           ? { "#ts": "time" satisfies keyof EventRecord }
           : undefined,
+        ConsistentRead: true,
       }
     );
     const events = output.records.map(({ event, time }) => ({

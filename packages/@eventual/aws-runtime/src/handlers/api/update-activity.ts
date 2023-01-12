@@ -1,4 +1,7 @@
-import { createWorkflowClient } from "../../clients/index.js";
+import {
+  createLogsClient,
+  createWorkflowClient,
+} from "../../clients/create.js";
 import { withErrorMiddleware } from "./middleware.js";
 import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
 import {
@@ -10,7 +13,10 @@ import {
   SendActivityUpdateResponse,
 } from "@eventual/core";
 
-const workflowClient = createWorkflowClient({ tableName: "NOT_NEEDED" });
+const workflowClient = createWorkflowClient({
+  tableName: "NOT_NEEDED",
+  logsClient: createLogsClient({ serviceLogGroup: "NOT_NEEDED" }),
+});
 
 export const handler: APIGatewayProxyHandlerV2<SendActivityUpdateResponse> =
   withErrorMiddleware(async (event: APIGatewayProxyEventV2) => {

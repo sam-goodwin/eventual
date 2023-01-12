@@ -1,18 +1,17 @@
 import "@eventual/entry/injected";
 
 import { createOrchestrator } from "@eventual/core";
-import middy from "@middy/core";
 import type { SQSEvent, SQSRecord } from "aws-lambda";
-import { logger, loggerMiddlewares } from "../logger.js";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 import {
   createEventClient,
   createExecutionHistoryClient,
+  createLogAgent,
   createTimerClient,
   createWorkflowClient,
   createWorkflowRuntimeClient,
-  SQSWorkflowTaskMessage,
-} from "../clients/index.js";
+} from "../clients/create.js";
+import { SQSWorkflowTaskMessage } from "src/clients/workflow-client.js";
 
 /**
  * Creates an entrypoint function for orchestrating a workflow
@@ -25,10 +24,10 @@ const orchestrate = createOrchestrator({
   workflowClient: createWorkflowClient(),
   eventClient: createEventClient(),
   metricsClient: AWSMetricsClient,
-  logger,
+  logAgent: createLogAgent(),
 });
 
-export default middy(async (event: SQSEvent) => {
+export default async (event: SQSEvent) => {
   if (event.Records.some((r) => !r.attributes.MessageGroupId)) {
     throw new Error("Expected SQS Records to contain fifo message id");
   }
@@ -49,7 +48,7 @@ export default middy(async (event: SQSEvent) => {
       itemIdentifier: r,
     })),
   };
-}).use(loggerMiddlewares);
+};
 
 function sqsRecordToTask(sqsRecord: SQSRecord) {
   const message = JSON.parse(sqsRecord.body) as SQSWorkflowTaskMessage;

@@ -98,7 +98,22 @@ export function isHistoryEvent(event: WorkflowEvent): event is HistoryEvent {
 /**
  * Events that we save into history.
  */
-export type HistoryStateEvent = HistoryEvent | WorkflowStarted;
+export type HistoryStateEvent =
+  | HistoryEvent
+  | WorkflowStarted
+  | WorkflowSucceeded
+  | WorkflowFailed;
+
+export function isHistoryStateEvent(
+  event: WorkflowEvent
+): event is HistoryStateEvent {
+  return (
+    isHistoryEvent(event) ||
+    isWorkflowStarted(event) ||
+    isWorkflowSucceeded(event) ||
+    isWorkflowFailed(event)
+  );
+}
 
 export interface WorkflowStarted extends BaseEvent {
   type: WorkflowEventType.WorkflowStarted;
@@ -269,7 +284,10 @@ export function isSleepCompleted(
   return event.type === WorkflowEventType.SleepCompleted;
 }
 
-export const isWorkflowCompleted = or(isWorkflowSucceeded, isWorkflowFailed);
+export const isWorkflowCompletedEvent = or(
+  isWorkflowFailed,
+  isWorkflowSucceeded
+);
 
 export interface ExpectSignalStarted extends HistoryEventBase {
   type: WorkflowEventType.ExpectSignalStarted;
