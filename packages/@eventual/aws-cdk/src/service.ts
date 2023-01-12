@@ -3,8 +3,16 @@ import {
   MetricsCommon,
   OrchestratorMetrics,
   ServiceType,
+  Event,
 } from "@eventual/core";
-import { Arn, Names, RemovalPolicy, Stack } from "aws-cdk-lib";
+import {
+  Arn,
+  aws_events,
+  aws_events_targets,
+  Names,
+  RemovalPolicy,
+  Stack,
+} from "aws-cdk-lib";
 import {
   AttributeType,
   BillingMode,
@@ -41,12 +49,45 @@ import path from "path";
 import { ExecutionRecord } from "@eventual/aws-runtime";
 import { Logging, LoggingProps } from "./logging";
 
+/**
+ * The properties for subscribing a Service to another Service's events.
+ *
+ * @see Service.subscribe
+ */
+export interface SubscribeProps extends aws_events_targets.EventBusProps {
+  /**
+   * The {@link Service} to subscribe to.
+   */
+  service: Service;
+  /**
+   * The events to subscribe to. Can specify a string or a reference to an {@link Event}.
+   */
+  events: (Event | string)[];
+}
+
 export interface ServiceProps {
+  /**
+   * The path of the `.ts` or `.js` file that is the entrypoint to the Service's logic.
+   */
   entry: string;
+  /**
+   * Name of the {@link Service}. This is the name that will be
+   *
+   * @default - the {@link Service}'s {@link Construct.node} address.
+   */
   name?: string;
+  /**
+   * Environment variables to include in all API, Event and Activity handler Functions.
+   */
   environment?: {
     [key: string]: string;
   };
+  /**
+   * Override the workflow dependencies of a Service {@link WorkflowsProps}
+   *
+   * @default - the dependencies are created.
+   * @see WorkflowsProps
+   */
   workflows?: Pick<WorkflowsProps, "orchestrator">;
   logging?: LoggingProps;
 }
@@ -232,6 +273,30 @@ export class Service extends Construct implements IGrantable {
     });
 
     this.serviceDataSSM.grantRead(this.cliRole);
+  }
+
+  /**
+   * Subscribe this {@link Service} to another {@link Service}'s events.
+   *
+   * An Event Bridge {@link aws_events.Rule} will be created to route all events
+   * that match the {@link SubscribeProps.events}.
+   *
+   * @param props the {@link SubscribeProps} specifying the service and events to subscribe to
+   */
+  public subscribe(
+    scope: Construct,
+    id: string,
+    props: SubscribeProps
+  ): aws_events.Rule {
+    return new aws_events.Rule(scope, id, {
+      eventBus: props.service.events.bus,
+      eventPattern: {
+        detailType: props.events.map((event) =>
+          typeof event === "string" ? event : event.name
+        ),
+      },
+      targets: [new aws_events_targets.EventBus(this.events.bus)],
+    });
   }
 
   /**

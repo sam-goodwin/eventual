@@ -268,7 +268,7 @@ export const helloWorkflow = workflow("helloWorkflow", async (name: string) => {
 
   // publish the message to the helloEvent
   await helloEvent.publishEvents({
-    message
+    message,
   });
 
   // return the message we created
