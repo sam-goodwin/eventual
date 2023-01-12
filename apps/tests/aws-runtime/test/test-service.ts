@@ -157,13 +157,15 @@ const slowActivity = activity(
   () => new Promise((resolve) => setTimeout(resolve, 10 * 1000))
 );
 
-const slowWf = workflow("slowWorkflow", { timeoutSeconds: 5 }, () =>
-  duration(10)
+const slowWf = workflow(
+  "slowWorkflow",
+  { timeout: duration(5, "seconds") },
+  () => duration(10)
 );
 
 export const timedOutWorkflow = workflow(
   "timedOut",
-  { timeoutSeconds: 100 },
+  { timeout: duration(100, "seconds") },
   async () => {
     // chains to be able to run in parallel.
     const timedOutFunctions = {
@@ -196,7 +198,7 @@ export const timedOutWorkflow = workflow(
 
 export const asyncWorkflow = workflow(
   "asyncWorkflow",
-  { timeoutSeconds: 100 }, // timeout eventually
+  { timeout: duration(100, "seconds") }, // timeout eventually
   async () => {
     const result = await asyncActivity("complete");
 
@@ -234,7 +236,7 @@ const activityWithHeartbeat = activity(
 
 export const heartbeatWorkflow = workflow(
   "heartbeatWorkflow",
-  { timeoutSeconds: 100 }, // timeout eventually
+  { timeout: duration(100, "seconds") }, // timeout eventually
   async (n: number) => {
     return await Promise.allSettled([
       activityWithHeartbeat(n, "success"),

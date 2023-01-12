@@ -1,5 +1,6 @@
 import {
   ActivityRuntimeClient,
+  computeDurationDate,
   createEvent,
   Execution,
   ExecutionStatus,
@@ -72,9 +73,11 @@ export class TestWorkflowClient extends WorkflowClient {
           },
           workflowName,
           input: request.input,
-          timeoutTime: request.timeoutSeconds
-            ? new Date(
-                baseTime.getTime() + request.timeoutSeconds * 1000
+          timeoutTime: request.timeout
+            ? computeDurationDate(
+                baseTime,
+                request.timeout.dur,
+                request.timeout.unit
               ).toISOString()
             : undefined,
         },

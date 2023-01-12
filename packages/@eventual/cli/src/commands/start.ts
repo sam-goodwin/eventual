@@ -4,6 +4,8 @@ import {
   isWorkflowSucceeded,
   isWorkflowFailed,
   ExecutionEventsResponse,
+  DURATION_UNITS,
+  DurationUnit,
 } from "@eventual/core";
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
@@ -49,6 +51,12 @@ export const start = (yargs: Argv) =>
           type: "number",
           defaultDescription:
             "Configured on the workflow definition or no timeout.",
+        })
+        .option("timeoutUnit", {
+          describe: "Number of seconds until the execution times out.",
+          type: "string",
+          choices: DURATION_UNITS,
+          default: "seconds",
         }),
     (args) => {
       return serviceAction(
@@ -94,7 +102,12 @@ export const start = (yargs: Argv) =>
           workflow: args.workflow,
           input: inputJSON,
           executionName: args.name,
-          timeoutSeconds: args.timeout,
+          timeout: args.timeout
+            ? {
+                dur: args.timeout,
+                unit: args.timeoutUnit as DurationUnit,
+              }
+            : undefined,
         });
       }
     }

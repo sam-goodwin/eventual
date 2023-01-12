@@ -159,12 +159,12 @@ export const actWithTimeout = activity(
 
 export const workflow2WithTimeouts = workflow(
   "wf2",
-  { timeoutSeconds: 50 },
+  { timeout: duration(50, "seconds") },
   async () => actWithTimeout()
 );
 export const workflowWithTimeouts = workflow(
   "wf1",
-  { timeoutSeconds: 100 },
+  { timeout: duration(100, "seconds") },
   async () => {
     return Promise.allSettled([
       actWithTimeout(),

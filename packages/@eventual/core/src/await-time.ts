@@ -1,19 +1,34 @@
 import {
-  AwaitDurationCall,
-  AwaitTimeCall,
   createAwaitDurationCall,
   createAwaitTimeCall,
 } from "./calls/await-time-call.js";
-import { createEventual, EventualKind } from "./eventual.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
 
-export type DurationUnit = `${"second" | "minute" | "hour" | "day" | "year"}${
-  | "s"
-  | ""}`;
+export const DURATION_UNITS = [
+  "second",
+  "seconds",
+  "minute",
+  "minutes",
+  "hour",
+  "hours",
+  "day",
+  "days",
+  "year",
+  "years",
+] as const;
+export type DurationUnit = typeof DURATION_UNITS[number];
 
-// TODO revisit these interfaces
-export type TimeReference = Pick<AwaitTimeCall, "isoDate">;
-export type DurationReference = Pick<AwaitDurationCall, "seq" | "dur" | "unit">;
+export function isDurationUnit(u: string): u is DurationUnit {
+  return DURATION_UNITS.includes(u as any);
+}
+
+export interface TimeSpec {
+  isoDate: string;
+}
+export interface DurationSpec {
+  dur: number;
+  unit: DurationUnit;
+}
 
 /**
  * ```ts
@@ -26,10 +41,9 @@ export type DurationReference = Pick<AwaitDurationCall, "seq" | "dur" | "unit">;
 export function duration(
   dur: number,
   unit: DurationUnit = "seconds"
-): Promise<void> & DurationReference {
+): Promise<void> & DurationSpec {
   if (!isOrchestratorWorker()) {
-    // TODO: remove this limit
-    throw new Error("duration is only valid in a workflow");
+    return { dur, unit } as Promise<void> & DurationSpec;
   }
 
   // register a sleep command and return it (to be yielded)
@@ -44,30 +58,16 @@ export function duration(
  * })
  * ```
  */
-export function time(isoDate: string): Promise<void> & TimeReference;
-export function time(date: Date): Promise<void> & TimeReference;
-export function time(date: Date | string): Promise<void> & TimeReference {
+export function time(isoDate: string): Promise<void> & TimeSpec;
+export function time(date: Date): Promise<void> & TimeSpec;
+export function time(date: Date | string): Promise<void> & TimeSpec {
+  const d = new Date(date);
+  const iso = d.toISOString();
+
   if (!isOrchestratorWorker()) {
-    throw new Error("time is only valid in a workflow");
+    return { isoDate: iso } as Promise<void> & TimeSpec;
   }
 
-  const d = new Date(date);
   // register a sleep command and return it (to be yielded)
-  return createAwaitTimeCall(d.toISOString()) as any;
-}
-
-export function createTimeReference(iso: string): TimeReference {
-  return createEventual<AwaitTimeCall>(EventualKind.AwaitTimeCall, {
-    isoDate: iso,
-  });
-}
-
-export function createDurationReference(
-  dur: number,
-  unit: DurationUnit
-): DurationReference {
-  return createEventual<AwaitDurationCall>(EventualKind.AwaitDurationCall, {
-    dur,
-    unit,
-  });
+  return createAwaitTimeCall(iso) as any;
 }

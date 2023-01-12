@@ -64,11 +64,7 @@ import {
 } from "./calls/signal-handler-call.js";
 import { isSendSignalCall } from "./calls/send-signal-call.js";
 import { isWorkflowCall } from "./calls/workflow-call.js";
-import {
-  clearEventualCollector,
-  registerEventual,
-  setEventualCollector,
-} from "./global.js";
+import { clearEventualCollector, setEventualCollector } from "./global.js";
 import { isConditionCall } from "./calls/condition-call.js";
 import { isAwaitAllSettled } from "./await-all-settled.js";
 import { isAwaitAny } from "./await-any.js";
@@ -309,24 +305,6 @@ export function interpret<Return>(
             subscribeToSignal(activity.signalId, activity);
             // signal handler does not emit a call/command. It is only internal.
             return activity;
-          } else if (isActivityCall(activity)) {
-            if (activity?.timeout) {
-              if (isEventual(activity?.timeout)) {
-                // if the eventual is not started yet, start it
-                if (
-                  !("seq" in activity.timeout) ||
-                  activity.timeout === undefined
-                ) {
-                  registerEventual(activity.timeout);
-                }
-              } else {
-                activity.result = Result.failed(
-                  new Timeout(
-                    "Activity immediately timed out, timeout was not awaitable."
-                  )
-                );
-              }
-            }
           }
           activity.seq = nextSeq();
           callTable[activity.seq!] = activity;

@@ -15,6 +15,7 @@ import { isOrchestratorWorker } from "./runtime/flags.js";
 import { isChain } from "./chain.js";
 import { ChildExecution, ExecutionHandle } from "./execution.js";
 import { StartExecutionRequest } from "./service-client.js";
+import { DurationSpec } from "./await-time.js";
 
 export type WorkflowHandler<Input = any, Output = any> = (
   input: Input,
@@ -32,7 +33,7 @@ export interface WorkflowOptions {
    *
    * @default - workflow will never timeout.
    */
-  timeoutSeconds?: number;
+  timeout?: DurationSpec;
 }
 
 export type WorkflowOutput<W extends Workflow> = W extends Workflow<
@@ -150,7 +151,7 @@ export function workflow<Input = any, Output = any>(
       workflow: name,
       executionName: input.executionName,
       input: input.input,
-      timeoutSeconds: input.timeoutSeconds,
+      timeout: input.timeout,
       ...opts,
     });
   };

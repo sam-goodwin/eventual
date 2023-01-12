@@ -1,6 +1,8 @@
 import { api } from "../../api.js";
 import { registerServiceClient } from "../../global.js";
 import { EventualServiceClient } from "../../service-client.js";
+import { ServiceType } from "../../service-type.js";
+import { serviceTypeScope } from "../flags.js";
 
 export interface ApiHandlerDependencies {
   serviceClient: EventualServiceClient;
@@ -25,13 +27,15 @@ export function createApiHandler({ serviceClient }: ApiHandlerDependencies) {
    * then handles the request.
    */
   return async function processRequest(request: Request): Promise<Response> {
-    try {
-      return api.handle(request);
-    } catch (err) {
-      console.error(err);
-      return new Response("Internal Server Error", {
-        status: 500,
-      });
-    }
+    return await serviceTypeScope(ServiceType.ApiHandler, async () => {
+      try {
+        return api.handle(request);
+      } catch (err) {
+        console.error(err);
+        return new Response("Internal Server Error", {
+          status: 500,
+        });
+      }
+    });
   };
 }

@@ -43,7 +43,6 @@ import { TestActivityRuntimeClient } from "./clients/activity-runtime-client.js"
 import { TestTimerClient } from "./clients/timer-client.js";
 import { TimeController } from "./time-controller.js";
 import { ExecutionStore } from "./execution-store.js";
-import { serviceTypeScope } from "./utils.js";
 import {
   MockableActivityProvider,
   MockActivity,
@@ -436,9 +435,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       throw new Error("Unknown event types in the TimerController.");
     }
 
-    await serviceTypeScope(ServiceType.OrchestratorWorker, () =>
-      this.orchestrator(events, this.time)
-    );
+    await this.orchestrator(events, this.time);
   }
 }
 

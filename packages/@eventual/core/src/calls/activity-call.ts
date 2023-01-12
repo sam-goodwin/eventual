@@ -3,6 +3,7 @@ import {
   EventualBase,
   isEventualOfKind,
   createEventual,
+  Eventual,
 } from "../eventual.js";
 import { registerEventual } from "../global.js";
 import { Resolved, Failed } from "../result.js";
@@ -26,7 +27,7 @@ export interface ActivityCall<T = any>
 export function createActivityCall(
   name: string,
   args: any[],
-  timeout?: any,
+  timeout?: Eventual,
   heartbeatSeconds?: number
 ): ActivityCall {
   return registerEventual(

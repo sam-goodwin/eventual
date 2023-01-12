@@ -5,7 +5,6 @@ import { EventualError, HeartbeatTimeout, Timeout } from "../src/error.js";
 import {
   Context,
   createAwaitAll,
-  createTimeReference,
   duration,
   Eventual,
   interpret,
@@ -201,42 +200,13 @@ test("should catch error of timing out Activity", () => {
   });
 });
 
-test("should schedule timeout alarm when not started", () => {
-  function* myWorkflow(event: any): Program<any> {
-    try {
-      const a: any = yield createActivityCall(
-        "my-activity",
-        [event],
-        createTimeReference("")
-      );
-
-      return a;
-    } catch (err) {
-      yield createActivityCall("handle-error", [err]);
-      return [];
-    }
-  }
-
-  expect(
-    interpret(myWorkflow(event), [
-      scheduledAlarm("", 0),
-      activityScheduled("my-activity", 1),
-      completedAlarm(0),
-    ])
-  ).toMatchObject(<WorkflowResult>{
-    commands: [
-      createScheduledActivityCommand(
-        "handle-error",
-        [new Timeout("Activity Timed Out")],
-        2
-      ),
-    ],
-  });
-});
-
 test("immediately abort activity on invalid timeout", () => {
   function* myWorkflow(event: any): Program<any> {
-    return createActivityCall("my-activity", [event], "not an awaitable");
+    return createActivityCall(
+      "my-activity",
+      [event],
+      "not an awaitable" as any
+    );
   }
 
   expect(

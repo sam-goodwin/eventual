@@ -1,4 +1,4 @@
-import { ServiceType, SERVICE_TYPE_FLAG } from "@eventual/core";
+import { ServiceType } from "@eventual/core";
 import {
   Architecture,
   Code,
@@ -28,7 +28,6 @@ export class ServiceFunction extends Function {
       environment: {
         ...props.environment,
         NODE_OPTIONS: "--enable-source-maps",
-        [SERVICE_TYPE_FLAG]: props.serviceType,
       },
     });
   }
