@@ -2,10 +2,10 @@ import fs from "fs/promises";
 import path from "path";
 import inquirer from "inquirer";
 import { validateServiceName } from "./validate.js";
-import { version } from "./version.js";
 import { addTsReferences } from "./tsconfig-file.js";
 import { updateJsonFile, writeJsonFile } from "./json-file.js";
 import { discoverEventualManifest } from "./eventual-manifest.js";
+import { discoverEventualVersion } from "./version.js";
 
 /**
  * Creates a new Service in an Eventual-managed project.
@@ -18,6 +18,7 @@ export async function createNewService(serviceName?: string) {
     );
     process.exit(1);
   }
+  const eventualVersion = await discoverEventualVersion();
 
   // @ts-ignore
   const eventualJson = JSON.parse(eventualJsonFile);
@@ -38,6 +39,7 @@ export async function createNewService(serviceName?: string) {
 
   await createServicePackage(path.resolve(process.cwd(), "apps", serviceName), {
     packageName: serviceName,
+    eventualVersion,
     code: `import { api } from "@eventual/core"
             
 api.get("/echo", async (request) => {
@@ -67,6 +69,7 @@ export async function createServicePackage(
     code: string;
     dependencies?: Record<string, string>;
     references?: string[];
+    eventualVersion: string;
   }
 ) {
   const cwd = process.cwd();
@@ -84,7 +87,7 @@ export async function createServicePackage(
         types: "lib/index.d.ts",
         version: "0.0.0",
         dependencies: {
-          "@eventual/core": `^${version}`,
+          "@eventual/core": `^${props.eventualVersion}`,
           ...props.dependencies,
         },
       }),

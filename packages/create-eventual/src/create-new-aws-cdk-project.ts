@@ -4,13 +4,14 @@ import {
   install,
   PackageManager,
   validateServiceName,
-  version,
   writeJsonFile,
 } from "@eventual/project";
 import fs from "fs/promises";
 import inquirer from "inquirer";
 import path from "path";
 import { sampleCDKApp } from "./sample-code";
+
+const version: string = require("../package.json").version;
 
 export interface CreateAwsCdkProps {
   projectName: string;
@@ -242,6 +243,7 @@ export class MyServiceStack extends Stack {
   async function createService() {
     await createServicePackage(path.resolve(serviceDir), {
       packageName: serviceName!,
+      eventualVersion: version,
       references: ["../../packages/events"],
       dependencies: {
         [`@${projectName}/events`]: workspaceVersion,
