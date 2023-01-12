@@ -53,6 +53,11 @@ export class AWSEventClient implements EventClient {
       retryConfig: RetryConfig
     ) {
       if (events.length > 0) {
+        if (retryConfig.remainingAttempts === 0) {
+          throw new Error(
+            `failed to publish events to Event Bridge after exhausting all retries`
+          );
+        }
         try {
           const response = await self.eventBridgeClient.send(
             new PutEventsCommand({
@@ -65,6 +70,16 @@ export class AWSEventClient implements EventClient {
             })
           );
           if (response.FailedEntryCount) {
+            console.error(
+              `${
+                response.FailedEntryCount
+              } entries in PutEvents failed to publish to Event Bridge:\n${response.Entries?.flatMap(
+                (entry) =>
+                  entry.ErrorCode
+                    ? [`${entry.ErrorCode}: ${entry.ErrorMessage}`]
+                    : []
+              ).join("\n")}`
+            );
             await retry(
               response.Entries?.flatMap((entry, i) =>
                 entry.ErrorCode ? [events[i]!] : []
@@ -72,18 +87,16 @@ export class AWSEventClient implements EventClient {
             );
           }
         } catch (err) {
-          console.error(err);
+          console.error("PutEvents to EventBridge failed with error:", err);
           await retry(events);
         }
       }
 
       async function retry(events: EventTuple[] | readonly EventTuple[]) {
-        await new Promise((resolve) =>
-          setTimeout(
-            resolve,
-            Math.min(retryConfig.maxDelay, retryConfig.delayMs)
-          )
-        );
+        const delayTime = Math.min(retryConfig.maxDelay, retryConfig.delayMs);
+        console.debug(`Retrying after waiting ${delayTime}ms`);
+
+        await new Promise((resolve) => setTimeout(resolve, delayTime));
 
         return publishEvents(events, {
           ...retryConfig,

@@ -123,7 +123,7 @@ export async function queryPage<Item>(
 }
 
 /**
- * Chinks an array of {@link items} into arrays of maximum size {@link batchSize}
+ * Chunks an array of {@link items} into arrays of maximum size {@link batchSize}
  */
 export function chunkArray<T>(batchSize: number, items: T[]): T[][] {
   return items.reduceRight(([current, ...batches]: T[][], item) => {
