@@ -297,10 +297,6 @@ export function interpret<Return>(
             if (result) {
               return activity;
             }
-          } else if (isRegisterSignalHandlerCall(activity)) {
-            subscribeToSignal(activity.signalId, activity);
-            // signal handler does not emit a call/command. It is only internal.
-            return activity;
           }
           activity.seq = nextSeq();
           callTable[activity.seq!] = activity;
@@ -317,7 +313,12 @@ export function interpret<Return>(
           isRace(activity)
         ) {
           return activity;
+        } else if (isRegisterSignalHandlerCall(activity)) {
+          subscribeToSignal(activity.signalId, activity);
+          // signal handler does not emit a call/command. It is only internal.
+          return activity;
         }
+
         return assertNever(activity);
       },
     };
@@ -485,7 +486,11 @@ export function interpret<Return>(
           }
         }
         return undefined;
-      } else if (isChain(activity) || isCommandCall(activity)) {
+      } else if (
+        isChain(activity) ||
+        isCommandCall(activity) ||
+        isRegisterSignalHandlerCall(activity)
+      ) {
         // chain and most commands will be resolved elsewhere (ex: commitCompletionEvent or commitSignal)
         return undefined;
       } else if (isAwaitAll(activity)) {

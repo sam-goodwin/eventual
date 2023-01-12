@@ -13,10 +13,7 @@ import {
   isExpectSignalCall,
   ExpectSignalCall,
 } from "./calls/expect-signal-call.js";
-import {
-  isRegisterSignalHandlerCall,
-  RegisterSignalHandlerCall,
-} from "./calls/signal-handler-call.js";
+import { RegisterSignalHandlerCall } from "./calls/signal-handler-call.js";
 import { isSendSignalCall, SendSignalCall } from "./calls/send-signal-call.js";
 import { isWorkflowCall, WorkflowCall } from "./calls/workflow-call.js";
 import { ConditionCall, isConditionCall } from "./calls/condition-call.js";
@@ -86,7 +83,8 @@ export type Eventual<T = any> =
   | AwaitAny<T extends any[] ? T : never>
   | Chain<T>
   | CommandCall<T>
-  | Race<T extends any[] ? T : never>;
+  | Race<T extends any[] ? T : never>
+  | RegisterSignalHandlerCall<T>;
 
 /**
  * Calls which emit commands.
@@ -95,7 +93,6 @@ export type CommandCall<T = any> =
   | ActivityCall<T>
   | ConditionCall
   | ExpectSignalCall<T>
-  | RegisterSignalHandlerCall<T>
   | PublishEventsCall
   | SendSignalCall
   | AwaitDurationCall
@@ -108,7 +105,6 @@ export function isCommandCall(call: Eventual): call is CommandCall {
     isConditionCall(call) ||
     isExpectSignalCall(call) ||
     isPublishEventsCall(call) ||
-    isRegisterSignalHandlerCall(call) ||
     isSendSignalCall(call) ||
     isAwaitDurationCall(call) ||
     isAwaitTimeCall(call) ||
