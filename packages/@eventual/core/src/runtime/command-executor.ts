@@ -18,13 +18,12 @@ import {
   StartConditionCommand,
 } from "../command.js";
 import {
-  ActivityTimedOut,
   WorkflowEventType,
   createEvent,
   ActivityScheduled,
   ChildWorkflowScheduled,
-  SleepScheduled,
-  SleepCompleted,
+  AlarmScheduled,
+  AlarmCompleted,
   ExpectSignalStarted,
   ExpectSignalTimedOut,
   HistoryStateEvent,
@@ -33,7 +32,7 @@ import {
   SignalSent,
   EventsPublished,
 } from "../workflow-events.js";
-import { assertNever } from "../util.js";
+import { assertNever, computeDurationDate } from "../util.js";
 import { Workflow } from "../workflow.js";
 import { formatChildExecutionName, formatExecutionId } from "./execution-id.js";
 import { ActivityWorkerRequest } from "./handlers/activity-worker.js";
@@ -42,7 +41,6 @@ import { WorkflowRuntimeClient } from "./clients/workflow-runtime-client.js";
 import { WorkflowClient } from "./clients/workflow-client.js";
 import { EventClient } from "./clients/event-client.js";
 import { isChildExecutionTarget } from "../signals.js";
-import { DurationUnit } from "../await-time.js";
 
 interface CommandExecutorProps {
   workflowRuntimeClient: WorkflowRuntimeClient;
@@ -103,21 +101,7 @@ export class CommandExecutor {
       retry: 0,
     };
 
-    const timeoutStarter = command.timeoutSeconds
-      ? await this.props.timerClient.scheduleEvent<ActivityTimedOut>({
-          schedule: Schedule.relative(command.timeoutSeconds, baseTime),
-          event: {
-            type: WorkflowEventType.ActivityTimedOut,
-            seq: command.seq,
-          },
-          executionId,
-        })
-      : undefined;
-
-    const activityStarter =
-      this.props.workflowRuntimeClient.startActivity(request);
-
-    await Promise.all([activityStarter, timeoutStarter]);
+    await this.props.workflowRuntimeClient.startActivity(request);
 
     return createEvent<ActivityScheduled>(
       {
@@ -159,25 +143,25 @@ export class CommandExecutor {
 
     command: AwaitDurationCommand | AwaitTimeCommand,
     baseTime: Date
-  ): Promise<SleepScheduled> {
+  ): Promise<AlarmScheduled> {
     // TODO validate
     const untilTime = isAwaitTimeCommand(command)
       ? new Date(command.untilTime)
       : computeDurationDate(baseTime, command.dur, command.unit);
     const untilTimeIso = untilTime.toISOString();
 
-    await this.props.timerClient.scheduleEvent<SleepCompleted>({
+    await this.props.timerClient.scheduleEvent<AlarmCompleted>({
       event: {
-        type: WorkflowEventType.SleepCompleted,
+        type: WorkflowEventType.AlarmCompleted,
         seq: command.seq,
       },
       schedule: Schedule.absolute(untilTimeIso),
       executionId,
     });
 
-    return createEvent<SleepScheduled>(
+    return createEvent<AlarmScheduled>(
       {
-        type: WorkflowEventType.SleepScheduled,
+        type: WorkflowEventType.AlarmScheduled,
         seq: command.seq,
         untilTime: untilTime.toISOString(),
       },
@@ -281,25 +265,4 @@ export class CommandExecutor {
       baseTime
     );
   }
-}
-
-export function computeDurationDate(
-  now: Date,
-  dur: number,
-  unit: DurationUnit
-) {
-  const milliseconds =
-    unit === "seconds" || unit === "second"
-      ? dur * 1000
-      : unit === "minutes" || unit === "minute"
-      ? dur * 1000 * 60
-      : unit === "hours" || unit === "hour"
-      ? dur * 1000 * 60 * 60
-      : unit === "days" || unit === "day"
-      ? dur * 1000 * 60 * 60 * 24
-      : unit === "years" || unit === "year"
-      ? dur * 1000 * 60 * 60 * 24 * 365.25
-      : assertNever(unit);
-
-  return new Date(now.getTime() + milliseconds);
 }

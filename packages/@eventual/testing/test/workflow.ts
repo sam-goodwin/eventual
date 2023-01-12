@@ -151,7 +151,7 @@ export const orchestrateWorkflow = workflow(
 
 export const actWithTimeout = activity(
   "actWithTimeout",
-  { timeoutSeconds: 30 },
+  { timeout: duration(30, "seconds") },
   async () => {
     return "hi";
   }

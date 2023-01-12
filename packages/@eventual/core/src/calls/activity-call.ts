@@ -17,20 +17,23 @@ export interface ActivityCall<T = any>
   name: string;
   args: any[];
   heartbeatSeconds?: number;
-  timeoutSeconds?: number;
+  /**
+   * Timeout can be any Eventual (promise). When the promise resolves, the activity is considered to be timed out.
+   */
+  timeout?: any;
 }
 
 export function createActivityCall(
   name: string,
   args: any[],
-  timeoutSeconds?: number,
+  timeout?: any,
   heartbeatSeconds?: number
 ): ActivityCall {
   return registerEventual(
     createEventual(EventualKind.ActivityCall, {
       name,
       args,
-      timeoutSeconds,
+      timeout,
       heartbeatSeconds,
     })
   );

@@ -153,7 +153,7 @@ export const childWorkflow = workflow(
 
 const slowActivity = activity(
   "slowAct",
-  { timeoutSeconds: 5 },
+  { timeout: duration(5, "seconds") },
   () => new Promise((resolve) => setTimeout(resolve, 10 * 1000))
 );
 
@@ -211,7 +211,7 @@ export const asyncWorkflow = workflow(
 
 const activityWithHeartbeat = activity(
   "activityWithHeartbeat",
-  { heartbeatSeconds: 2 },
+  { heartbeatTimeout: duration(2, "seconds") },
   async (n: number, type: "success" | "no-heartbeat" | "some-heartbeat") => {
     const delay = (s: number) =>
       new Promise((resolve) => {

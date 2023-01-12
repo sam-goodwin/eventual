@@ -39,7 +39,6 @@ export interface ScheduleActivityCommand
   extends CommandBase<CommandType.StartActivity> {
   name: string;
   args: any[];
-  timeoutSeconds?: number;
   heartbeatSeconds?: number;
 }
 

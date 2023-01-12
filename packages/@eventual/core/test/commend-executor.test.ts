@@ -2,7 +2,6 @@ import { jest } from "@jest/globals";
 import { CommandType } from "../src/command.js";
 import {
   ActivityScheduled,
-  ActivityTimedOut,
   ChildWorkflowScheduled,
   ConditionStarted,
   ConditionTimedOut,
@@ -10,8 +9,8 @@ import {
   ExpectSignalStarted,
   ExpectSignalTimedOut,
   SignalSent,
-  SleepCompleted,
-  SleepScheduled,
+  AlarmCompleted,
+  AlarmScheduled,
   WorkflowEventType,
 } from "../src/workflow-events.js";
 import {
@@ -82,20 +81,20 @@ describe("await times", () => {
     const untilTime = new Date(baseTime.getTime() + 10 * 1000).toISOString();
 
     expect(mockTimerClient.scheduleEvent).toHaveBeenCalledWith<
-      [ScheduleEventRequest<SleepCompleted>]
+      [ScheduleEventRequest<AlarmCompleted>]
     >({
       event: {
-        type: WorkflowEventType.SleepCompleted,
+        type: WorkflowEventType.AlarmCompleted,
         seq: 0,
       },
       schedule: Schedule.absolute(untilTime),
       executionId,
     });
 
-    expect(event).toMatchObject<SleepScheduled>({
+    expect(event).toMatchObject<AlarmScheduled>({
       seq: 0,
       timestamp: expect.stringContaining("Z"),
-      type: WorkflowEventType.SleepScheduled,
+      type: WorkflowEventType.AlarmScheduled,
       untilTime,
     });
   });
@@ -113,20 +112,20 @@ describe("await times", () => {
     );
 
     expect(mockTimerClient.scheduleEvent).toHaveBeenCalledWith<
-      [ScheduleEventRequest<SleepCompleted>]
+      [ScheduleEventRequest<AlarmCompleted>]
     >({
       event: {
-        type: WorkflowEventType.SleepCompleted,
+        type: WorkflowEventType.AlarmCompleted,
         seq: 0,
       },
       schedule: Schedule.absolute(baseTime.toISOString()),
       executionId,
     });
 
-    expect(event).toMatchObject<SleepScheduled>({
+    expect(event).toMatchObject<AlarmScheduled>({
       seq: 0,
       timestamp: expect.stringContaining("Z"),
-      type: WorkflowEventType.SleepScheduled,
+      type: WorkflowEventType.AlarmScheduled,
       untilTime: baseTime.toISOString(),
     });
   });
@@ -147,41 +146,6 @@ describe("activity", () => {
     );
 
     expect(mockTimerClient.scheduleEvent).not.toHaveBeenCalled();
-
-    expect(mockWorkflowRuntimeClient.startActivity).toHaveBeenCalledTimes(1);
-
-    expect(event).toMatchObject<ActivityScheduled>({
-      seq: 0,
-      timestamp: expect.stringContaining("Z"),
-      type: WorkflowEventType.ActivityScheduled,
-      name: "activity",
-    });
-  });
-
-  test("start with timeout", async () => {
-    const event = await testExecutor.executeCommand(
-      workflow,
-      executionId,
-      {
-        kind: CommandType.StartActivity,
-        args: [],
-        name: "activity",
-        seq: 0,
-        timeoutSeconds: 100,
-      },
-      baseTime
-    );
-
-    expect(mockTimerClient.scheduleEvent).toHaveBeenCalledWith<
-      [ScheduleEventRequest<ActivityTimedOut>]
-    >({
-      event: {
-        type: WorkflowEventType.ActivityTimedOut,
-        seq: 0,
-      },
-      schedule: Schedule.relative(100, baseTime),
-      executionId,
-    });
 
     expect(mockWorkflowRuntimeClient.startActivity).toHaveBeenCalledTimes(1);
 

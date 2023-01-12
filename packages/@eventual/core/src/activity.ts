@@ -1,9 +1,11 @@
+import { DurationReference } from "./await-time.js";
 import { createActivityCall } from "./calls/activity-call.js";
 import {
   callableActivities,
   getActivityContext,
   getServiceClient,
 } from "./global.js";
+import { computeDurationSeconds } from "./index.js";
 import { isActivityWorker, isOrchestratorWorker } from "./runtime/flags.js";
 import {
   EventualServiceClient,
@@ -19,7 +21,7 @@ export interface ActivityOptions {
    *
    * @default - workflow will run forever.
    */
-  timeoutSeconds?: number;
+  timeout?: DurationReference;
   /**
    * For long running activities, it is suggested that they report back that they
    * are still in progress to avoid waiting forever or until a long timeout when
@@ -30,7 +32,7 @@ export interface ActivityOptions {
    *
    * If it fails to do so, the workflow will cancel the activity and throw an error.
    */
-  heartbeatSeconds?: number;
+  heartbeatTimeout?: DurationReference;
 }
 
 export interface ActivityFunction<Arguments extends any[], Output = any> {
@@ -225,8 +227,13 @@ export function activity<Arguments extends any[], Output = any>(
       return createActivityCall(
         activityID,
         args,
-        opts?.timeoutSeconds,
-        opts?.heartbeatSeconds
+        opts?.timeout,
+        opts?.heartbeatTimeout
+          ? computeDurationSeconds(
+              opts.heartbeatTimeout.dur,
+              opts.heartbeatTimeout.unit
+            ) / 1000
+          : undefined
       ) as any;
     } else {
       // calling the activity from outside the orchestrator just calls the handler

@@ -3,10 +3,10 @@ import type { Program } from "./interpret.js";
 import type { Context } from "./context.js";
 import {
   HistoryStateEvent,
-  isSleepCompleted,
-  isSleepScheduled,
-  SleepCompleted,
-  SleepScheduled,
+  isAlarmCompleted,
+  isAlarmScheduled,
+  AlarmCompleted,
+  AlarmScheduled,
   WorkflowEventType,
 } from "./workflow-events.js";
 import { createWorkflowCall } from "./calls/workflow-call.js";
@@ -175,28 +175,28 @@ export function runWorkflowDefinition(
 }
 
 /**
- * Generates synthetic events, for example, {@link SleepCompleted} events when the time has passed, but a real completed event has not come in yet.
+ * Generates synthetic events, for example, {@link AlarmCompleted} events when the time has passed, but a real completed event has not come in yet.
  */
 export function generateSyntheticEvents(
   events: HistoryStateEvent[],
   baseTime: Date
-): SleepCompleted[] {
-  const unresolvedSleep: Record<number, SleepScheduled> = {};
+): AlarmCompleted[] {
+  const unresolvedSleep: Record<number, AlarmScheduled> = {};
 
   const sleepEvents = events.filter(
-    (event): event is SleepScheduled | SleepCompleted =>
-      isSleepScheduled(event) || isSleepCompleted(event)
+    (event): event is AlarmScheduled | AlarmCompleted =>
+      isAlarmScheduled(event) || isAlarmCompleted(event)
   );
 
   for (const event of sleepEvents) {
-    if (isSleepScheduled(event)) {
+    if (isAlarmScheduled(event)) {
       unresolvedSleep[event.seq] = event;
     } else {
       delete unresolvedSleep[event.seq];
     }
   }
 
-  const syntheticSleepComplete: SleepCompleted[] = Object.values(
+  const syntheticSleepComplete: AlarmCompleted[] = Object.values(
     unresolvedSleep
   )
     .filter(
@@ -205,10 +205,10 @@ export function generateSyntheticEvents(
     .map(
       (e) =>
         ({
-          type: WorkflowEventType.SleepCompleted,
+          type: WorkflowEventType.AlarmCompleted,
           seq: e.seq,
           timestamp: baseTime.toISOString(),
-        } satisfies SleepCompleted)
+        } satisfies AlarmCompleted)
     );
 
   return syntheticSleepComplete;

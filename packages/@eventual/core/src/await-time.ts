@@ -4,6 +4,7 @@ import {
   createAwaitDurationCall,
   createAwaitTimeCall,
 } from "./calls/await-time-call.js";
+import { createEventual, EventualKind } from "./eventual.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
 
 export type DurationUnit = `${"second" | "minute" | "hour" | "day" | "year"}${
@@ -16,7 +17,7 @@ export type DurationReference = Pick<AwaitDurationCall, "seq" | "dur" | "unit">;
 
 /**
  * ```ts
- * eventual(async () => {
+ * workflow(async () => {
  *   await duration(10, "minutes"); // sleep for 10 minutes
  *   return "DONE!";
  * })
@@ -37,7 +38,7 @@ export function duration(
 
 /**
  * ```ts
- * eventual(async () => {
+ * workflow(async () => {
  *   await time("2024-01-03T12:00:00Z"); // wait until this date
  *   return "DONE!";
  * })
@@ -53,4 +54,20 @@ export function time(date: Date | string): Promise<void> & TimeReference {
   const d = new Date(date);
   // register a sleep command and return it (to be yielded)
   return createAwaitTimeCall(d.toISOString()) as any;
+}
+
+export function createTimeReference(iso: string): TimeReference {
+  return createEventual<AwaitTimeCall>(EventualKind.AwaitTimeCall, {
+    isoDate: iso,
+  });
+}
+
+export function createDurationReference(
+  dur: number,
+  unit: DurationUnit
+): DurationReference {
+  return createEventual<AwaitDurationCall>(EventualKind.AwaitDurationCall, {
+    dur,
+    unit,
+  });
 }

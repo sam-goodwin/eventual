@@ -15,7 +15,6 @@ import {
   ActivitySucceeded,
   ActivityFailed,
   ActivityScheduled,
-  ActivityTimedOut,
   ChildWorkflowSucceeded,
   ChildWorkflowFailed,
   ChildWorkflowScheduled,
@@ -26,8 +25,8 @@ import {
   ExpectSignalTimedOut,
   SignalReceived,
   SignalSent,
-  SleepCompleted,
-  SleepScheduled,
+  AlarmCompleted,
+  AlarmScheduled,
   WorkflowEventType,
   WorkflowTimedOut,
   ActivityHeartbeatTimedOut,
@@ -164,14 +163,6 @@ export function activityFailed(error: any, seq: number): ActivityFailed {
   };
 }
 
-export function activityTimedOut(seq: number): ActivityTimedOut {
-  return {
-    type: WorkflowEventType.ActivityTimedOut,
-    seq,
-    timestamp: new Date(0).toISOString(),
-  };
-}
-
 export function workflowFailed(error: any, seq: number): ChildWorkflowFailed {
   return {
     type: WorkflowEventType.ChildWorkflowFailed,
@@ -227,18 +218,18 @@ export function workflowScheduled(
   };
 }
 
-export function scheduledSleep(untilTime: string, seq: number): SleepScheduled {
+export function scheduledAlarm(untilTime: string, seq: number): AlarmScheduled {
   return {
-    type: WorkflowEventType.SleepScheduled,
+    type: WorkflowEventType.AlarmScheduled,
     untilTime,
     seq,
     timestamp: new Date(0).toISOString(),
   };
 }
 
-export function completedSleep(seq: number): SleepCompleted {
+export function completedAlarm(seq: number): AlarmCompleted {
   return {
-    type: WorkflowEventType.SleepCompleted,
+    type: WorkflowEventType.AlarmCompleted,
     seq,
     timestamp: new Date(0).toISOString(),
   };

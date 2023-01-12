@@ -25,8 +25,8 @@ import {
   isSignalReceived,
   isFailedEvent,
   isScheduledEvent,
-  isSleepCompleted,
-  isSleepScheduled,
+  isAlarmCompleted,
+  isAlarmScheduled,
   isExpectSignalStarted,
   isExpectSignalTimedOut,
   ScheduledEvent,
@@ -34,7 +34,6 @@ import {
   isConditionStarted,
   isConditionTimedOut,
   isWorkflowTimedOut,
-  isActivityTimedOut,
   isActivityHeartbeatTimedOut,
   isEventsPublished,
   WorkflowEvent,
@@ -65,7 +64,11 @@ import {
 } from "./calls/signal-handler-call.js";
 import { isSendSignalCall } from "./calls/send-signal-call.js";
 import { isWorkflowCall } from "./calls/workflow-call.js";
-import { clearEventualCollector, setEventualCollector } from "./global.js";
+import {
+  clearEventualCollector,
+  registerEventual,
+  setEventualCollector,
+} from "./global.js";
 import { isConditionCall } from "./calls/condition-call.js";
 import { isAwaitAllSettled } from "./await-all-settled.js";
 import { isAwaitAny } from "./await-any.js";
@@ -214,7 +217,6 @@ export function interpret<Return>(
         kind: CommandType.StartActivity,
         args: call.args,
         name: call.name,
-        timeoutSeconds: call.timeoutSeconds,
         heartbeatSeconds: call.heartbeatSeconds,
         seq: call.seq!,
       };
@@ -307,6 +309,24 @@ export function interpret<Return>(
             subscribeToSignal(activity.signalId, activity);
             // signal handler does not emit a call/command. It is only internal.
             return activity;
+          } else if (isActivityCall(activity)) {
+            if (activity?.timeout) {
+              if (isEventual(activity?.timeout)) {
+                // if the eventual is not started yet, start it
+                if (
+                  !("seq" in activity.timeout) ||
+                  activity.timeout === undefined
+                ) {
+                  registerEventual(activity.timeout);
+                }
+              } else {
+                activity.result = Result.failed(
+                  new Timeout(
+                    "Activity immediately timed out, timeout was not awaitable."
+                  )
+                );
+              }
+            }
           }
           activity.seq = nextSeq();
           callTable[activity.seq!] = activity;
@@ -468,6 +488,14 @@ export function interpret<Return>(
         } else if (predicateResult) {
           return Result.resolved(true);
         }
+      } else if (isActivityCall(activity)) {
+        if (activity.timeout) {
+          const timeoutResult = tryResolveResult(activity.timeout);
+          if (isResolved(timeoutResult) || isFailed(timeoutResult)) {
+            return Result.failed(new Timeout("Activity Timed Out"));
+          }
+        }
+        return undefined;
       } else if (isChain(activity) || isCommandCall(activity)) {
         // chain and most commands will be resolved elsewhere (ex: commitCompletionEvent or commitSignal)
         return undefined;
@@ -551,15 +579,13 @@ export function interpret<Return>(
     }
     call.result = isSucceededEvent(event)
       ? Result.resolved(event.result)
-      : isSleepCompleted(event)
+      : isAlarmCompleted(event)
       ? Result.resolved(undefined)
       : isExpectSignalTimedOut(event)
       ? Result.failed(new Timeout("Expect Signal Timed Out"))
       : isConditionTimedOut(event)
       ? // a timed out condition returns false
         Result.resolved(false)
-      : isActivityTimedOut(event)
-      ? Result.failed(new Timeout("Activity Timed Out"))
       : isActivityHeartbeatTimedOut(event)
       ? Result.failed(new HeartbeatTimeout("Activity Heartbeat TimedOut"))
       : Result.failed(new EventualError(event.error, event.message));
@@ -573,7 +599,7 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
     return isActivityCall(call) && call.name === event.name;
   } else if (isChildWorkflowScheduled(event)) {
     return isWorkflowCall(call) && call.name === event.name;
-  } else if (isSleepScheduled(event)) {
+  } else if (isAlarmScheduled(event)) {
     return isAwaitTimeCall(call) || isAwaitDurationCall(call);
   } else if (isExpectSignalStarted(event)) {
     return isExpectSignalCall(call) && event.signalId === call.signalId;

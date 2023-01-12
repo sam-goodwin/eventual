@@ -6,7 +6,7 @@ import {
   getEventId,
   HistoryStateEvent,
   isHistoryEvent,
-  isSleepCompleted,
+  isAlarmCompleted,
   isWorkflowSucceeded,
   isWorkflowFailed,
   isWorkflowStarted,
@@ -717,7 +717,7 @@ function logEventMetrics(
   events: WorkflowEvent[],
   now: Date
 ) {
-  const sleepCompletedEvents = events.filter(isSleepCompleted);
+  const sleepCompletedEvents = events.filter(isAlarmCompleted);
   if (sleepCompletedEvents.length > 0) {
     const sleepCompletedVariance = sleepCompletedEvents.map(
       (s) => now.getTime() - new Date(s.timestamp).getTime()
