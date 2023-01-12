@@ -66,8 +66,8 @@ export async function createAwsCdk({
         ...(pkgManager !== "pnpm"
           ? {
               workspaces: [
-                infraDirName,
                 `${appsDirName}/*`,
+                infraDirName,
                 `${packagesDirName}/*`,
               ],
             }
