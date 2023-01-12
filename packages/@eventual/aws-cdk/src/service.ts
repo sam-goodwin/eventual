@@ -132,11 +132,11 @@ export class Service extends Construct implements IGrantable {
       },
       {
         name: "SchedulerForwarder",
-        entry: runtimeEntrypoint("schedule-forwarder"),
+        entry: runtimeHandlersEntrypoint("schedule-forwarder"),
       },
       {
         name: "SchedulerHandler",
-        entry: runtimeEntrypoint("timer-handler"),
+        entry: runtimeHandlersEntrypoint("timer-handler"),
       }
     );
 
