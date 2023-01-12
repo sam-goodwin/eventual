@@ -1,4 +1,4 @@
-import { createNewService } from "packages/@eventual/project/src/create-new-service.js";
+import { createNewService } from "@eventual/project";
 import { Argv } from "yargs";
 
 /**
