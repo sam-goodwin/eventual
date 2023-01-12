@@ -28,11 +28,9 @@ import {
   isAlarmCompleted,
   isAlarmScheduled,
   isExpectSignalStarted,
-  isExpectSignalTimedOut,
   ScheduledEvent,
   isSignalSent,
   isConditionStarted,
-  isConditionTimedOut,
   isWorkflowTimedOut,
   isActivityHeartbeatTimedOut,
   isEventsPublished,
@@ -242,7 +240,6 @@ export function interpret<Return>(
         kind: CommandType.ExpectSignal,
         signalId: call.signalId,
         seq: call.seq!,
-        timeoutSeconds: call.timeoutSeconds,
       };
     } else if (isSendSignalCall(call)) {
       return {
@@ -256,7 +253,6 @@ export function interpret<Return>(
       return {
         kind: CommandType.StartCondition,
         seq: call.seq!,
-        timeoutSeconds: call.timeoutSeconds,
       };
     } else if (isRegisterSignalHandlerCall(call)) {
       return [];
@@ -455,6 +451,13 @@ export function interpret<Return>(
      */
     function resolveResult(activity: Eventual & { result: undefined }) {
       if (isConditionCall(activity)) {
+        // first check the state of the condition's timeout
+        if (activity.timeout) {
+          const timeoutResult = tryResolveResult(activity.timeout);
+          if (isResolved(timeoutResult) || isFailed(timeoutResult)) {
+            return Result.resolved(false);
+          }
+        }
         // try to evaluate the condition's result.
         const predicateResult = activity.predicate();
         if (isGenerator(predicateResult)) {
@@ -466,11 +469,19 @@ export function interpret<Return>(
         } else if (predicateResult) {
           return Result.resolved(true);
         }
-      } else if (isActivityCall(activity)) {
+      } else if (isActivityCall(activity) || isExpectSignalCall(activity)) {
         if (activity.timeout) {
           const timeoutResult = tryResolveResult(activity.timeout);
           if (isResolved(timeoutResult) || isFailed(timeoutResult)) {
-            return Result.failed(new Timeout("Activity Timed Out"));
+            return Result.failed(
+              new Timeout(
+                isActivityCall(activity)
+                  ? "Activity Timed Out"
+                  : isExpectSignalCall(activity)
+                  ? "Expect Signal Timed Out"
+                  : assertNever(activity)
+              )
+            );
           }
         }
         return undefined;
@@ -559,11 +570,6 @@ export function interpret<Return>(
       ? Result.resolved(event.result)
       : isAlarmCompleted(event)
       ? Result.resolved(undefined)
-      : isExpectSignalTimedOut(event)
-      ? Result.failed(new Timeout("Expect Signal Timed Out"))
-      : isConditionTimedOut(event)
-      ? // a timed out condition returns false
-        Result.resolved(false)
       : isActivityHeartbeatTimedOut(event)
       ? Result.failed(new HeartbeatTimeout("Activity Heartbeat TimedOut"))
       : Result.failed(new EventualError(event.error, event.message));

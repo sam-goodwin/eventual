@@ -169,7 +169,7 @@ export const workflowWithTimeouts = workflow(
     return Promise.allSettled([
       actWithTimeout(),
       workflow2WithTimeouts(undefined),
-      dataSignal.expectSignal({ timeoutSeconds: 30 }),
+      dataSignal.expectSignal({ timeout: duration(30, "seconds") }),
     ]);
   }
 );

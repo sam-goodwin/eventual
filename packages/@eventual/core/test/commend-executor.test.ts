@@ -4,10 +4,8 @@ import {
   ActivityScheduled,
   ChildWorkflowScheduled,
   ConditionStarted,
-  ConditionTimedOut,
   EventsPublished,
   ExpectSignalStarted,
-  ExpectSignalTimedOut,
   SignalSent,
   AlarmCompleted,
   AlarmScheduled,
@@ -223,29 +221,15 @@ describe("expect signal", () => {
         kind: CommandType.ExpectSignal,
         signalId: "signal",
         seq: 0,
-        timeoutSeconds: 100,
       },
       baseTime
     );
-
-    expect(mockTimerClient.scheduleEvent).toHaveBeenCalledWith<
-      [ScheduleEventRequest<ExpectSignalTimedOut>]
-    >({
-      event: {
-        signalId: "signal",
-        seq: 0,
-        type: WorkflowEventType.ExpectSignalTimedOut,
-      },
-      schedule: Schedule.relative(100, baseTime),
-      executionId,
-    });
 
     expect(event).toMatchObject<ExpectSignalStarted>({
       seq: 0,
       timestamp: expect.stringContaining("Z"),
       type: WorkflowEventType.ExpectSignalStarted,
       signalId: "signal",
-      timeoutSeconds: 100,
     });
   });
 });
@@ -346,21 +330,9 @@ describe("condition", () => {
       {
         kind: CommandType.StartCondition,
         seq: 0,
-        timeoutSeconds: 100,
       },
       baseTime
     );
-
-    expect(mockTimerClient.scheduleEvent).toHaveBeenCalledWith<
-      [ScheduleEventRequest<ConditionTimedOut>]
-    >({
-      event: {
-        type: WorkflowEventType.ConditionTimedOut,
-        seq: 0,
-      },
-      executionId,
-      schedule: Schedule.relative(100, baseTime),
-    });
 
     expect(event).toMatchObject<ConditionStarted>({
       seq: 0,

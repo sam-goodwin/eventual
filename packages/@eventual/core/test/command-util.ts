@@ -19,10 +19,8 @@ import {
   ChildWorkflowFailed,
   ChildWorkflowScheduled,
   ConditionStarted,
-  ConditionTimedOut,
   EventsPublished,
   ExpectSignalStarted,
-  ExpectSignalTimedOut,
   SignalReceived,
   SignalSent,
   AlarmCompleted,
@@ -86,14 +84,12 @@ export function createScheduledWorkflowCommand(
 
 export function createExpectSignalCommand(
   signalId: string,
-  seq: number,
-  timeoutSeconds?: number
+  seq: number
 ): ExpectSignalCommand {
   return {
     kind: CommandType.ExpectSignal,
     signalId,
     seq,
-    timeoutSeconds,
   };
 }
 
@@ -122,13 +118,11 @@ export function createPublishEventCommand(
 }
 
 export function createStartConditionCommand(
-  seq: number,
-  timeoutSeconds?: number
+  seq: number
 ): StartConditionCommand {
   return {
     kind: CommandType.StartCondition,
     seq,
-    timeoutSeconds,
   };
 }
 
@@ -235,29 +229,15 @@ export function completedAlarm(seq: number): AlarmCompleted {
   };
 }
 
-export function timedOutExpectSignal(
-  signalId: string,
-  seq: number
-): ExpectSignalTimedOut {
-  return {
-    type: WorkflowEventType.ExpectSignalTimedOut,
-    timestamp: new Date().toISOString(),
-    seq,
-    signalId,
-  };
-}
-
 export function startedExpectSignal(
   signalId: string,
-  seq: number,
-  timeoutSeconds?: number
+  seq: number
 ): ExpectSignalStarted {
   return {
     type: WorkflowEventType.ExpectSignalStarted,
     signalId,
     timestamp: new Date().toISOString(),
     seq,
-    timeoutSeconds,
   };
 }
 
@@ -295,14 +275,6 @@ export function conditionStarted(seq: number): ConditionStarted {
     type: WorkflowEventType.ConditionStarted,
     seq,
     timestamp: new Date().toISOString(),
-  };
-}
-
-export function conditionTimedOut(seq: number): ConditionTimedOut {
-  return {
-    type: WorkflowEventType.ConditionTimedOut,
-    timestamp: new Date().toISOString(),
-    seq,
   };
 }
 

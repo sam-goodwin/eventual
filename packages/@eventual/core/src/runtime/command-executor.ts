@@ -25,10 +25,8 @@ import {
   AlarmScheduled,
   AlarmCompleted,
   ExpectSignalStarted,
-  ExpectSignalTimedOut,
   HistoryStateEvent,
   ConditionStarted,
-  ConditionTimedOut,
   SignalSent,
   EventsPublished,
 } from "../workflow-events.js";
@@ -75,11 +73,11 @@ export class CommandExecutor {
       return this.scheduleSleep(executionId, command, baseTime);
     } else if (isExpectSignalCommand(command)) {
       // should the timeout command be generic (ex: StartTimeout) or specific (ex: ExpectSignal)?
-      return this.executeExpectSignal(executionId, command, baseTime);
+      return this.executeExpectSignal(command, baseTime);
     } else if (isSendSignalCommand(command)) {
       return this.sendSignal(executionId, command, baseTime);
     } else if (isStartConditionCommand(command)) {
-      return this.startCondition(executionId, command, baseTime);
+      return this.startCondition(command, baseTime);
     } else if (isPublishEventsCommand(command)) {
       return this.publishEvents(command, baseTime);
     } else {
@@ -170,29 +168,14 @@ export class CommandExecutor {
   }
 
   private async executeExpectSignal(
-    executionId: string,
-
     command: ExpectSignalCommand,
     baseTime: Date
   ): Promise<ExpectSignalStarted> {
-    if (command.timeoutSeconds) {
-      await this.props.timerClient.scheduleEvent<ExpectSignalTimedOut>({
-        event: {
-          signalId: command.signalId,
-          seq: command.seq,
-          type: WorkflowEventType.ExpectSignalTimedOut,
-        },
-        schedule: Schedule.relative(command.timeoutSeconds, baseTime),
-        executionId,
-      });
-    }
-
     return createEvent<ExpectSignalStarted>(
       {
         signalId: command.signalId,
         seq: command.seq,
         type: WorkflowEventType.ExpectSignalStarted,
-        timeoutSeconds: command.timeoutSeconds,
       },
       baseTime
     );
@@ -229,22 +212,7 @@ export class CommandExecutor {
     );
   }
 
-  private async startCondition(
-    executionId: string,
-    command: StartConditionCommand,
-    baseTime: Date
-  ) {
-    if (command.timeoutSeconds) {
-      await this.props.timerClient.scheduleEvent<ConditionTimedOut>({
-        event: {
-          type: WorkflowEventType.ConditionTimedOut,
-          seq: command.seq,
-        },
-        executionId,
-        schedule: Schedule.relative(command.timeoutSeconds, baseTime),
-      });
-    }
-
+  private async startCondition(command: StartConditionCommand, baseTime: Date) {
     return createEvent<ConditionStarted>(
       {
         type: WorkflowEventType.ConditionStarted,

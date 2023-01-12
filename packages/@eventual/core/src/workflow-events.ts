@@ -69,9 +69,7 @@ export type SucceededEvent =
 export type FailedEvent =
   | ActivityFailed
   | ActivityHeartbeatTimedOut
-  | ChildWorkflowFailed
-  | ConditionTimedOut
-  | ExpectSignalTimedOut;
+  | ChildWorkflowFailed;
 
 /**
  * Events used by the workflow to replay an execution.
@@ -290,12 +288,6 @@ export const isWorkflowCompletedEvent = or(
 export interface ExpectSignalStarted extends HistoryEventBase {
   type: WorkflowEventType.ExpectSignalStarted;
   signalId: string;
-  timeoutSeconds?: number;
-}
-
-export interface ExpectSignalTimedOut extends HistoryEventBase {
-  type: WorkflowEventType.ExpectSignalTimedOut;
-  signalId: string;
 }
 
 export interface SignalReceived<Payload = any> extends BaseEvent {
@@ -308,12 +300,6 @@ export function isExpectSignalStarted(
   event: WorkflowEvent
 ): event is ExpectSignalStarted {
   return event.type === WorkflowEventType.ExpectSignalStarted;
-}
-
-export function isExpectSignalTimedOut(
-  event: WorkflowEvent
-): event is ExpectSignalTimedOut {
-  return event.type === WorkflowEventType.ExpectSignalTimedOut;
 }
 
 export function isSignalReceived(
@@ -354,16 +340,6 @@ export function isConditionStarted(
   return event.type === WorkflowEventType.ConditionStarted;
 }
 
-export interface ConditionTimedOut extends HistoryEventBase {
-  type: WorkflowEventType.ConditionTimedOut;
-}
-
-export function isConditionTimedOut(
-  event: WorkflowEvent
-): event is ConditionTimedOut {
-  return event.type === WorkflowEventType.ConditionTimedOut;
-}
-
 export interface WorkflowTimedOut extends BaseEvent {
   type: WorkflowEventType.WorkflowTimedOut;
 }
@@ -394,8 +370,6 @@ export const isFailedEvent = or(
   isActivityFailed,
   isActivityHeartbeatTimedOut,
   isChildWorkflowFailed,
-  isConditionTimedOut,
-  isExpectSignalTimedOut,
   isWorkflowTimedOut
 );
 

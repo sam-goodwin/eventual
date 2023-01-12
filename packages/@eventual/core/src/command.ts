@@ -93,7 +93,6 @@ export function isAwaitDurationCommand(
 export interface ExpectSignalCommand
   extends CommandBase<CommandType.ExpectSignal> {
   signalId: string;
-  timeoutSeconds?: number;
 }
 
 export function isExpectSignalCommand(
@@ -114,10 +113,7 @@ export function isSendSignalCommand(
   return command.kind === CommandType.SendSignal;
 }
 
-export interface StartConditionCommand
-  extends CommandBase<CommandType.StartCondition> {
-  timeoutSeconds?: number;
-}
+export type StartConditionCommand = CommandBase<CommandType.StartCondition>;
 
 export function isStartConditionCommand(
   command: Command

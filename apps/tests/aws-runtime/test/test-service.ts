@@ -95,7 +95,7 @@ const doneSignal = signal("done");
 export const parentWorkflow = workflow("parentWorkflow", async () => {
   const child = childWorkflow({ name: "child" });
   while (true) {
-    const n = await mySignal.expectSignal({ timeoutSeconds: 10 });
+    const n = await mySignal.expectSignal({ timeout: duration(10, "seconds") });
 
     console.log(n);
 
@@ -142,7 +142,9 @@ export const childWorkflow = workflow(
     while (!done) {
       sendSignal(parentId, mySignal, last + 1);
       block = true;
-      if (!(await condition({ timeoutSeconds: 10 }, () => !block))) {
+      if (
+        !(await condition({ timeout: duration(10, "seconds") }, () => !block))
+      ) {
         throw new Error("timed out!");
       }
     }
@@ -170,12 +172,14 @@ export const timedOutWorkflow = workflow(
     // chains to be able to run in parallel.
     const timedOutFunctions = {
       condition: async () => {
-        if (!(await condition({ timeoutSeconds: 2 }, () => false))) {
+        if (
+          !(await condition({ timeout: duration(2, "seconds") }, () => false))
+        ) {
           throw new Error("Timed Out!");
         }
       },
       signal: async () => {
-        await mySignal.expectSignal({ timeoutSeconds: 2 });
+        await mySignal.expectSignal({ timeout: duration(2, "seconds") });
       },
       activity: slowActivity,
       workflow: () => slowWf(undefined),
@@ -293,13 +297,13 @@ export const eventDrivenWorkflow = workflow(
 
     // wait for the event to come back around and wake this workflow
     const { value } = await expectSignal("start", {
-      timeoutSeconds: 30,
+      timeout: duration(30, "seconds"),
     });
 
     await sendFinishEvent(ctx.execution.id);
 
     await expectSignal("finish", {
-      timeoutSeconds: 30,
+      timeout: duration(30, "seconds"),
     });
 
     return value;

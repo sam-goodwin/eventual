@@ -4,6 +4,7 @@ import { createExpectSignalCall } from "./calls/expect-signal-call.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
 import { getServiceClient } from "./global.js";
 import { ulid } from "ulidx";
+import { isEventual } from "./eventual.js";
 
 /**
  * A reference to a created signal handler.
@@ -120,11 +121,24 @@ export type SignalPayload<E extends Signal<any>> = E extends Signal<infer P>
 
 export interface ExpectSignalOptions {
   /**
-   * Optional. Seconds to wait for the signal to be received.
+   * Optional. A promise that determines when to timeout a signal.
    *
-   * After the provided seconds, the promise will reject.
+   * Can be used together with {@link time} or {@link duration} or any other promise.
+   *
+   * ```ts
+   * await expectSignal(signal, { timeout: duration(10, "seconds") })
+   * ```
+   *
+   * After the provided promise resolves or rejects, the {@link expectSignal} will reject.
+   *
+   * You can also chain an expect signal with other promises.
+   *
+   * ```ts
+   * const abortSignal = expectSignal(abortSignal);
+   * expectSignal(signal, { timeout: abortSignal });
+   * ```
    */
-  timeoutSeconds: number;
+  timeout: Promise<any>;
 }
 
 /**
@@ -140,8 +154,19 @@ export interface ExpectSignalOptions {
  * });
  * ```
  *
- * Use `opts.timeoutSeconds` to stop waiting after the provided time. The Promise will reject
- * when the provided time has elapsed.
+ * Use `opts.timeout` to stop waiting after some condition. The Promise will reject
+ * when the provided promise resolves.
+ *
+ * ```ts
+ * // timeout after 10 seconds
+ * await expectSignal(signal, { timeout: duration(10, "seconds") })
+ * ```
+ *
+ * ```ts
+ * // timeout after receiving a signal
+ * const abortSignal = expectSignal(abortSignal);
+ * await expectSignal(signal, { timeout: abortSignal });
+ * ```
  */
 export function expectSignal<SignalPayload = any>(
   signal: Signal<SignalPayload> | string,
@@ -151,9 +176,14 @@ export function expectSignal<SignalPayload = any>(
     throw new Error("expectSignal is only valid in a workflow");
   }
 
+  const timeout = opts?.timeout;
+  if (timeout && !isEventual(timeout)) {
+    throw new Error("Timeout promise must be an Eventual.");
+  }
+
   return createExpectSignalCall(
     typeof signal === "string" ? signal : signal.id,
-    opts?.timeoutSeconds
+    timeout
   ) as any;
 }
 
