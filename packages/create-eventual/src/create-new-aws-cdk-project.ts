@@ -76,10 +76,13 @@ export async function createAwsCdkProject({
           watch: "tsc -b -w",
           synth: run("synth"),
           deploy: run("deploy"),
+          hotswap: run("deploy", "--hotswap"),
         },
         devDependencies: {
           "@eventual/cli": `^${version}`,
           "@tsconfig/node16": "^1",
+          "@types/node": "^16",
+          esbuild: "^0.16.14",
         },
         ...(pkgManager !== "pnpm"
           ? {
@@ -100,6 +103,7 @@ export async function createAwsCdkProject({
           inlineSourceMap: true,
           inlineSources: true,
           resolveJsonModule: true,
+          types: ["@types/node"],
         },
       }),
       writeJsonFile("tsconfig.json", {
@@ -133,12 +137,20 @@ packages:
   }
 
   // creates a run script that is package aware
-  function run(script: string) {
-    return pkgManager === "npm"
-      ? `npm run ${script} --workspace=${infraDirName}`
-      : pkgManager === "yarn"
-      ? `yarn workspace ${infraPkgName} ${script}`
-      : `pnpm run ${script} --filter ${infraPkgName}`;
+  function run(script: string, ...args: any[]) {
+    return `${
+      pkgManager === "npm"
+        ? `npm run ${script} --workspace=${infraDirName}`
+        : pkgManager === "yarn"
+        ? `yarn workspace ${infraPkgName} ${script}`
+        : `pnpm --filter ${infraPkgName} ${
+            script === "deploy" ? "run deploy" : script
+          }`
+    }${
+      args.length > 0
+        ? `${`${pkgManager === "npm" ? " --" : ""}`} ${args.join(" ")}`
+        : ""
+    }`;
   }
 
   async function createInfra() {
@@ -176,7 +188,7 @@ packages:
           [serviceName!]: workspaceVersion,
         },
         devDependencies: {
-          "@eventual/cli": `^${version}`,
+          "@types/node": "^16",
           "aws-cdk": "^2.50.0",
           "ts-node": "^10.9.1",
           typescript: "^4.9.4",
