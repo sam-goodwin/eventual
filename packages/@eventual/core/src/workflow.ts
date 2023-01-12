@@ -1,23 +1,14 @@
-import {
-  workflows,
-  clearEventualCollector,
-  getServiceClient,
-} from "./global.js";
+import { workflows, getServiceClient } from "./global.js";
 import type { Program } from "./interpret.js";
-import type { Context, WorkflowContext } from "./context.js";
-import { DeterminismError } from "./error.js";
+import type { Context } from "./context.js";
 import {
-  filterEvents,
   HistoryStateEvent,
-  isHistoryEvent,
   isSleepCompleted,
   isSleepScheduled,
-  isWorkflowStarted,
   SleepCompleted,
   SleepScheduled,
   WorkflowEventType,
 } from "./workflow-events.js";
-import { interpret, WorkflowResult } from "./interpret.js";
 import { createWorkflowCall } from "./calls/workflow-call.js";
 import { AwaitedEventual } from "./eventual.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
@@ -175,72 +166,12 @@ export function workflow<Input = any, Output = any>(
   return workflow;
 }
 
-export interface ProgressWorkflowResult extends WorkflowResult {
-  history: HistoryStateEvent[];
-}
-
-/**
- * Advance a workflow using previous history, new events, and a program.
- */
-export function progressWorkflow(
-  program: Workflow,
-  historyEvents: HistoryStateEvent[],
-  taskEvents: HistoryStateEvent[],
-  workflowContext: WorkflowContext,
-  executionId: string,
-  baseTime: Date = new Date()
-): ProgressWorkflowResult {
-  // historical events and incoming events will be fed into the workflow to resume/progress state
-  const uniqueTaskEvents = filterEvents<HistoryStateEvent>(
-    historyEvents,
-    taskEvents
-  );
-
-  const inputEvents = [...historyEvents, ...uniqueTaskEvents];
-
-  // Generates events that are time sensitive, like sleep completed events.
-  const syntheticEvents = generateSyntheticEvents(inputEvents, baseTime);
-
-  const allEvents = [...inputEvents, ...syntheticEvents];
-
-  const startEvent = inputEvents.find(isWorkflowStarted);
-
-  if (!startEvent) {
-    throw new DeterminismError(
-      `No ${WorkflowEventType.WorkflowStarted} found.`
-    );
-  }
-
-  const context: Context = {
-    workflow: workflowContext,
-    execution: {
-      ...startEvent.context,
-      id: executionId,
-      startTime: startEvent.timestamp,
-    },
-  };
-
-  // execute workflow
-  const interpretEvents = allEvents.filter(isHistoryEvent);
-
-  console.debug("history events", JSON.stringify(historyEvents));
-  console.debug("task events", JSON.stringify(taskEvents));
-  console.debug("synthetic events", JSON.stringify(syntheticEvents));
-  console.debug("interpret events", JSON.stringify(interpretEvents));
-
-  try {
-    return {
-      ...interpret(
-        program.definition(startEvent.input, context),
-        interpretEvents
-      ),
-      history: allEvents,
-    };
-  } catch (err) {
-    // temporary fix when the interpreter fails, but the activities are not cleared.
-    clearEventualCollector();
-    throw err;
-  }
+export function runWorkflowDefinition(
+  workflow: Workflow,
+  input: any,
+  context: Context
+) {
+  return workflow.definition(input, context);
 }
 
 /**

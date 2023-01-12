@@ -14,7 +14,7 @@ import type { Events } from "./events";
 import type { Activities } from "./activities";
 import type { Scheduler } from "./scheduler";
 import { bundleSourcesSync } from "./compile-client";
-import { runtimeEntrypoint } from "./service";
+import { runtimeHandlersEntrypoint } from "./service";
 import { BuildSource } from "@eventual/compiler";
 
 export interface ApiProps {
@@ -64,7 +64,7 @@ export class Api extends Construct {
         methods: [HttpMethod.GET],
         entry: {
           name: "list-workflows",
-          entry: runtimeEntrypoint("api/list-workflows"),
+          entry: runtimeHandlersEntrypoint("api/list-workflows"),
         },
       },
       "/_eventual/workflows/{name}/executions": [
@@ -72,7 +72,7 @@ export class Api extends Construct {
           methods: [HttpMethod.POST],
           entry: {
             name: "start-execution",
-            entry: runtimeEntrypoint("api/executions/new"),
+            entry: runtimeHandlersEntrypoint("api/executions/new"),
           },
           grants: (fn) => {
             props.workflows.configureStartExecution(fn);
@@ -83,7 +83,7 @@ export class Api extends Construct {
         methods: [HttpMethod.GET],
         entry: {
           name: "list-executions",
-          entry: runtimeEntrypoint("api/executions/list"),
+          entry: runtimeHandlersEntrypoint("api/executions/list"),
         },
         grants: (fn) => {
           props.workflows.configureReadWorkflowData(fn);
@@ -93,7 +93,7 @@ export class Api extends Construct {
         methods: [HttpMethod.GET],
         entry: {
           name: "get-execution",
-          entry: runtimeEntrypoint("api/executions/get"),
+          entry: runtimeHandlersEntrypoint("api/executions/get"),
         },
         grants: (fn) => props.workflows.configureReadWorkflowData(fn),
       },
@@ -101,7 +101,7 @@ export class Api extends Construct {
         methods: [HttpMethod.GET],
         entry: {
           name: "executions-events",
-          entry: runtimeEntrypoint("api/executions/history"),
+          entry: runtimeHandlersEntrypoint("api/executions/history"),
         },
         grants: (fn) => props.workflows.configureReadWorkflowData(fn),
       },
@@ -109,7 +109,7 @@ export class Api extends Construct {
         methods: [HttpMethod.PUT],
         entry: {
           name: "send-signal",
-          entry: runtimeEntrypoint("api/executions/signals/send"),
+          entry: runtimeHandlersEntrypoint("api/executions/signals/send"),
         },
         grants: (fn) => {
           props.workflows.configureReadWorkflowData(fn);
@@ -120,7 +120,7 @@ export class Api extends Construct {
         methods: [HttpMethod.GET],
         entry: {
           name: "executions-history",
-          entry: runtimeEntrypoint("api/executions/workflow-history"),
+          entry: runtimeHandlersEntrypoint("api/executions/workflow-history"),
         },
         // TODO fix me
         grants: (fn) => {
@@ -133,7 +133,7 @@ export class Api extends Construct {
         methods: [HttpMethod.PUT],
         entry: {
           name: "publish-events",
-          entry: runtimeEntrypoint("api/publish-events"),
+          entry: runtimeHandlersEntrypoint("api/publish-events"),
         },
         grants: (fn) => {
           props.events.configurePublish(fn);
@@ -143,7 +143,7 @@ export class Api extends Construct {
         methods: [HttpMethod.POST],
         entry: {
           name: "update-activity",
-          entry: runtimeEntrypoint("api/update-activity"),
+          entry: runtimeHandlersEntrypoint("api/update-activity"),
         },
         grants: (fn) => {
           props.activities.configureUpdateActivity(fn);

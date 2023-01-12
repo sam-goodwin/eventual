@@ -15,6 +15,8 @@ import {
   ExecutionHandle,
   ExecutionHistoryClient,
   isWorkflowTask,
+  LogAgent,
+  LogLevel,
   Orchestrator,
   PublishEventsRequest,
   registerServiceClient,
@@ -33,7 +35,6 @@ import {
 } from "@eventual/core";
 import { bundleService } from "@eventual/compiler";
 import { TestMetricsClient } from "./clients/metrics-client.js";
-import { TestLogger } from "./clients/logger.js";
 import { TestExecutionHistoryClient } from "./clients/execution-history-client.js";
 import { TestWorkflowRuntimeClient } from "./clients/workflow-runtime-client.js";
 import { TestEventClient } from "./clients/event-client.js";
@@ -48,6 +49,7 @@ import {
   MockActivity,
 } from "./providers/activity-provider.js";
 import { TestEventHandlerProvider } from "./providers/event-handler-provider.js";
+import { TestLogsClient } from "./clients/logs-client.js";
 
 export interface TestEnvironmentProps {
   entry: string;
@@ -125,14 +127,19 @@ export class TestEnvironment extends RuntimeServiceClient {
       activityRuntimeClient,
       executionStore
     );
+    const testLogAgent = new LogAgent({
+      logsClient: new TestLogsClient(),
+      getTime: () => this.time,
+      logLevel: { default: LogLevel.DEBUG },
+    });
     const activityWorker = createActivityWorker({
       activityRuntimeClient,
       eventClient,
       timerClient,
-      logger: new TestLogger(),
       metricsClient: new TestMetricsClient(),
       workflowClient,
       activityProvider,
+      logAgent: testLogAgent,
     });
     const workflowRuntimeClient = new TestWorkflowRuntimeClient(
       executionStore,
@@ -172,7 +179,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       workflowRuntimeClient: this.workflowRuntimeClient,
       executionHistoryClient: this.executionHistoryClient,
       metricsClient: new TestMetricsClient(),
-      logger: new TestLogger(),
+      logAgent: testLogAgent,
     });
   }
 

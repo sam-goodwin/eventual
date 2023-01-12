@@ -16,30 +16,35 @@ import { createActivityToken } from "../activity-token.js";
 import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
-import {
-  RuntimeServiceClient,
-  Schedule,
-  TimerClient,
-  TimerRequestType,
-} from "../index.js";
-import { Logger } from "../logger.js";
 import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
 import { Unit } from "../metrics/unit.js";
 import { timed } from "../metrics/utils.js";
-import type { EventClient } from "../index.js";
 import { ActivityProvider } from "../providers/activity-provider.js";
 import { ActivityNotFoundError } from "../../error.js";
 import { extendsError } from "../../util.js";
+import {
+  Schedule,
+  TimerClient,
+  TimerRequestType,
+} from "../clients/timer-client.js";
+import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
+import {
+  ActivityLogContext,
+  LogAgent,
+  LogContextType,
+  LogLevel,
+} from "../log-agent.js";
+import { EventClient } from "../clients/event-client.js";
 
 export interface CreateActivityWorkerProps {
   activityRuntimeClient: ActivityRuntimeClient;
   workflowClient: WorkflowClient;
   timerClient: TimerClient;
   metricsClient: MetricsClient;
-  logger: Logger;
   eventClient: EventClient;
   activityProvider: ActivityProvider;
   serviceClient?: RuntimeServiceClient;
+  logAgent: LogAgent;
 }
 
 export interface ActivityWorkerRequest {
@@ -53,7 +58,7 @@ export interface ActivityWorkerRequest {
 export interface ActivityWorker {
   (
     request: ActivityWorkerRequest,
-    baseTime: Date,
+    baseTime?: Date,
     /**
      * Allows for a computed end time, for case like the test environment when the end time should be controlled.
      */
@@ -72,9 +77,9 @@ export function createActivityWorker({
   workflowClient,
   timerClient,
   metricsClient,
-  logger,
   activityProvider,
   serviceClient,
+  logAgent,
 }: CreateActivityWorkerProps): ActivityWorker {
   // make the service client available to all activity code
   if (serviceClient) {
@@ -85,13 +90,9 @@ export function createActivityWorker({
     (metrics) =>
       async (
         request: ActivityWorkerRequest,
-        baseTime: Date,
+        baseTime: Date = new Date(),
         getEndTime = () => new Date()
       ) => {
-        logger.addPersistentLogAttributes({
-          workflowName: request.workflowName,
-          executionId: request.executionId,
-        });
         const activityHandle = `${request.command.seq} for execution ${request.executionId} on retry ${request.retry}`;
         metrics.resetDimensions(false);
         metrics.setNamespace(MetricsCommon.EventualNamespace);
@@ -101,6 +102,12 @@ export function createActivityWorker({
         });
         // the time from the workflow emitting the activity scheduled command
         // to the request being seen.
+        const activityLogContext: ActivityLogContext = {
+          type: LogContextType.Activity,
+          activityName: request.command.name,
+          executionId: request.executionId,
+          seq: request.command.seq,
+        };
         const start = baseTime;
         const recordAge =
           start.getTime() - new Date(request.scheduledTime).getTime();
@@ -119,7 +126,7 @@ export function createActivityWorker({
           ))
         ) {
           metrics.putMetric(ActivityMetrics.ClaimRejected, 1, Unit.Count);
-          logger.info(`Activity ${activityHandle} already claimed.`);
+          console.info(`Activity ${activityHandle} already claimed.`);
           return;
         }
         if (request.command.heartbeatSeconds) {
@@ -142,7 +149,7 @@ export function createActivityWorker({
         });
         metrics.putMetric(ActivityMetrics.ClaimRejected, 0, Unit.Count);
 
-        logger.info(`Processing ${activityHandle}.`);
+        console.info(`Processing ${activityHandle}.`);
 
         const activity = activityProvider.getActivityHandler(
           request.command.name
@@ -156,11 +163,17 @@ export function createActivityWorker({
             );
           }
 
-          const result = await timed(
-            metrics,
-            ActivityMetrics.OperationDuration,
-            () => activity(...request.command.args)
+          const result = await logAgent.logContextScope(
+            activityLogContext,
+            async () => {
+              return await timed(
+                metrics,
+                ActivityMetrics.OperationDuration,
+                () => activity(...request.command.args)
+              );
+            }
           );
+
           if (isAsyncResult(result)) {
             metrics.setProperty(ActivityMetrics.HasResult, 0);
             metrics.setProperty(ActivityMetrics.AsyncResult, 1);
@@ -171,7 +184,11 @@ export function createActivityWorker({
              * The activity has declared that it is async, other than logging, there is nothing left to do here.
              * The activity should call {@link WorkflowClient.sendActivitySuccess} or {@link WorkflowClient.sendActivityFailure} when it is done.
              */
-            return;
+            return timed(
+              metrics,
+              ActivityMetrics.ActivityLogWriteDuration,
+              () => logAgent.flush()
+            );
           } else if (result) {
             metrics.setProperty(ActivityMetrics.HasResult, 1);
             metrics.setProperty(ActivityMetrics.AsyncResult, 0);
@@ -185,7 +202,9 @@ export function createActivityWorker({
             metrics.setProperty(ActivityMetrics.AsyncResult, 0);
           }
 
-          logger.info(
+          logAgent.logWithContext(
+            activityLogContext,
+            LogLevel.INFO,
             `Activity ${activityHandle} succeeded, reporting back to execution.`
           );
 
@@ -208,7 +227,9 @@ export function createActivityWorker({
             ? [err.name, err.message]
             : ["Error", JSON.stringify(err)];
 
-          logger.info(
+          logAgent.logWithContext(
+            activityLogContext,
+            LogLevel.DEBUG,
             `Activity ${activityHandle} failed, reporting failure back to execution: ${error}: ${message}`
           );
 
@@ -250,9 +271,15 @@ export function createActivityWorker({
           event: ActivitySucceeded | ActivityFailed,
           duration: number
         ) {
+          const logFlush = timed(
+            metrics,
+            ActivityMetrics.ActivityLogWriteDuration,
+            () => logAgent.flush()
+          );
           await timed(metrics, ActivityMetrics.SubmitWorkflowTaskDuration, () =>
             workflowClient.submitWorkflowTask(request.executionId, event)
           );
+          await logFlush;
 
           logActivityCompleteMetrics(isWorkflowFailed(event), duration);
         }
