@@ -11,7 +11,7 @@ import {
   createWorkflowClient,
   createWorkflowRuntimeClient,
 } from "../clients/create.js";
-import { SQSWorkflowTaskMessage } from "src/clients/workflow-client.js";
+import { SQSWorkflowTaskMessage } from "../clients/workflow-client.js";
 
 /**
  * Creates an entrypoint function for orchestrating a workflow
