@@ -112,7 +112,15 @@ The \`build\` script compiles all TypeScript (\`.ts\`) files in each package's \
 ${npm("build")}
 \`\`\`
 
-### Build
+### Test
+
+The \`test\` script runs \`jest\` in all sub-packages. Check out the apps/${serviceName} package for example tests.
+
+\`\`\`
+${npm("test")}
+\`\`\`
+
+### Watch
 
 The \`watch\` script run the typescript compiler in the background and re-compiles \`.ts\` files whenever they are changed.
 \`\`\`
@@ -150,10 +158,20 @@ ${npm("deploy")}
         private: true,
         scripts: {
           build: "tsc -b",
+          test: `NODE_OPTIONS=--experimental-vm-modules ${npm("test", {
+            workspace: "all",
+          })}`,
           watch: "tsc -b -w",
-          synth: run("synth"),
-          deploy: `tsc -b && ${run("deploy")}`,
-          hotswap: `tsc -b && ${run("deploy", "--hotswap")}`,
+          synth: `tsc -b && ${npm("synth", {
+            workspace: "infra",
+          })}`,
+          deploy: `tsc -b && ${npm("deploy", {
+            workspace: "infra",
+          })}`,
+          hotswap: `tsc -b && ${npm("deploy", {
+            workspace: "infra",
+            args: ["--hotswap"],
+          })}`,
         },
         devDependencies: {
           "@eventual/cli": `^${version}`,
@@ -180,6 +198,8 @@ ${npm("deploy")}
           declarationMap: true,
           inlineSourceMap: true,
           inlineSources: true,
+          module: "esnext",
+          moduleResolution: "NodeNext",
           resolveJsonModule: true,
           types: ["@types/node"],
         },
@@ -192,13 +212,19 @@ ${npm("deploy")}
           { path: `${packagesDirName}/events` },
         ],
       }),
-
+      writeJsonFile("jest.config.base.json", {
+        preset: "ts-jest",
+        transform: {
+          "^.+\\.(t|j)sx?$": "ts-jest",
+        },
+      }),
       fs.writeFile(
         ".gitignore",
         `lib
 node_modules
 cdk.out
-.eventual`
+.eventual
+*.tsbuildinfo`
       ),
       pkgManager === "pnpm"
         ? fs.writeFile(
@@ -214,33 +240,61 @@ packages:
     ]);
   }
 
-  function npm(command: string, ...args: string[]) {
-    return `${pkgManager}${needsRunPrefix() ? " run" : ""} ${command}${
-      args.length > 0 ? ` ${args.join(" ")}` : ""
-    }`;
-
-    function needsRunPrefix() {
-      return (
-        (pkgManager === "pnpm" && command === "deploy") || pkgManager === "npm"
-      );
+  function npm(
+    command: string,
+    options?: {
+      workspace?: "infra" | "service" | "events" | "all";
+      args?: string[];
     }
-  }
+  ) {
+    return `${pkgManager}${filter()}${prefix()} ${command}${args()}`;
 
-  // creates a run script that is package aware
-  function run(script: string, ...args: any[]) {
-    return `${
-      pkgManager === "npm"
-        ? `npm run ${script} --workspace=${infraDirName}`
-        : pkgManager === "yarn"
-        ? `yarn workspace ${infraPkgName} ${script}`
-        : `pnpm --filter ${infraPkgName} ${
-            script === "deploy" ? "run deploy" : script
-          }`
-    }${
-      args.length > 0
-        ? `${`${pkgManager === "npm" ? " --" : ""}`} ${args.join(" ")}`
-        : ""
-    }`;
+    function filter() {
+      if (options?.workspace === undefined) {
+        return "";
+      } else if (options.workspace === "all") {
+        if (pkgManager === "npm") {
+          return " -ws --if-present";
+        } else if (pkgManager === "yarn") {
+          // yarn doesn't have an --if-present
+          // TODO: add support for different yarn versions
+          return " workspaces";
+        } else {
+          return " -r";
+        }
+      } else if (pkgManager === "npm") {
+        return ` --workspace=${
+          options.workspace === "infra"
+            ? "infra"
+            : options.workspace === "events"
+            ? "packages/events"
+            : `apps/${serviceName}`
+        }`;
+      } else {
+        const workspace =
+          options.workspace === "events"
+            ? `@${serviceName}/events`
+            : options.workspace;
+        if (pkgManager === "yarn") {
+          return ` workspace ${workspace}`;
+        } else {
+          return ` --filter ${workspace}`;
+        }
+      }
+    }
+
+    function prefix() {
+      return (pkgManager === "pnpm" && command === "deploy") ||
+        pkgManager === "npm"
+        ? " run"
+        : options?.workspace === "all"
+        ? " run"
+        : "";
+    }
+
+    function args() {
+      return options?.args?.length ? ` ${options.args.join(" ")}` : "";
+    }
   }
 
   async function createInfra() {
@@ -252,6 +306,8 @@ packages:
         compilerOptions: {
           outDir: "lib",
           rootDir: "src",
+          module: "CommonJS",
+          moduleResolution: "Node",
         },
         references: [
           {
@@ -265,6 +321,7 @@ packages:
         scripts: {
           synth: "cdk synth",
           deploy: "cdk deploy",
+          test: "echo no-op",
         },
         dependencies: {
           "@aws-cdk/aws-apigatewayv2-alpha": "^2.50.0-alpha.0",
@@ -337,7 +394,8 @@ export class MyServiceStack extends Stack {
       dependencies: {
         [`@${projectName}/events`]: workspaceVersion,
       },
-      code: `import { activity, api, workflow } from "@eventual/core";
+      src: {
+        "index.ts": `import { activity, api, workflow } from "@eventual/core";
 
 // import a shared definition of the helloEvent
 import { helloEvent } from "@${projectName}/events";
@@ -371,10 +429,53 @@ export const formatMessage = activity("formatName", async (name: string) => {
   return \`hello \${name}\`;
 });
 
-helloEvent.onEvent((hello) => {
+helloEvent.onEvent(async (hello) => {
   console.log("received event", hello);
 });
 `,
+      },
+      test: {
+        "hello.test.ts": `import { Execution, ExecutionStatus } from "@eventual/core";
+import { TestEnvironment } from "@eventual/testing";
+import { createRequire } from "module";
+import path from "path";
+import { helloWorkflow } from "../src/index.js";
+
+const require = createRequire(import.meta.url);
+
+let env: TestEnvironment;
+
+// if there is pollution between tests, call reset()
+beforeAll(async () => {
+  env = new TestEnvironment({
+    entry: require.resolve("../src"),
+    outDir: path.resolve(".eventual"),
+  });
+
+  await env.initialize();
+});
+
+test("hello workflow should publish helloEvent and return message", async () => {
+  const execution = await env.startExecution({
+    workflow: helloWorkflow,
+    input: "name",
+  });
+
+  expect((await execution.getStatus()).status).toEqual(
+    ExecutionStatus.IN_PROGRESS
+  );
+
+  await env.tick();
+
+  expect(await execution.getStatus()).toMatchObject<Partial<Execution<string>>>(
+    {
+      status: ExecutionStatus.SUCCEEDED,
+      result: "hello name",
+    }
+  );
+});
+`,
+      },
     });
   }
 
@@ -408,11 +509,33 @@ export const helloEvent = event<HelloEvent>("HelloEvent");
         main: "lib/index.js",
         types: "lib/index.d.ts",
         module: "lib/index.js",
+        scripts: {
+          test: "jest --passWithNoTests",
+        },
         peerDependencies: {
           "@eventual/core": `^${version}`,
         },
         devDependencies: {
           "@eventual/core": version,
+          "@types/jest": "^29",
+          jest: "^29",
+          "ts-jest": "^29",
+          typescript: "^4.9.4",
+        },
+        jest: {
+          extensionsToTreatAsEsm: [".ts"],
+          moduleNameMapper: {
+            "^(\\.{1,2}/.*)\\.js$": "$1",
+          },
+          transform: {
+            "^.+\\.(t|j)sx?$": [
+              "ts-jest",
+              {
+                tsconfig: "tsconfig.test.json",
+                useESM: true,
+              },
+            ],
+          },
         },
       }),
       writeJsonFile("tsconfig.json", {
@@ -425,6 +548,16 @@ export const helloEvent = event<HelloEvent>("HelloEvent");
           outDir: "lib",
           rootDir: "src",
           target: "ES2021",
+        },
+      }),
+      writeJsonFile("tsconfig.test.json", {
+        extends: "./tsconfig.json",
+        include: ["src", "test"],
+        exclude: ["lib", "node_modules"],
+        compilerOptions: {
+          types: ["@types/node", "@types/jest"],
+          noEmit: true,
+          rootDir: ".",
         },
       }),
     ]);
