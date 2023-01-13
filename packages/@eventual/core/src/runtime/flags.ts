@@ -31,3 +31,17 @@ export async function serviceTypeScope<Output>(
     process.env[SERVICE_TYPE_FLAG] = back;
   }
 }
+
+export function serviceTypeScopeSync<Output>(
+  serviceType: ServiceType,
+  handler: () => Output
+): Output {
+  const back = process.env[SERVICE_TYPE_FLAG];
+  try {
+    process.env[SERVICE_TYPE_FLAG] = serviceType;
+    // await before return so that the promise is completed before the finally call.
+    return handler();
+  } finally {
+    process.env[SERVICE_TYPE_FLAG] = back;
+  }
+}

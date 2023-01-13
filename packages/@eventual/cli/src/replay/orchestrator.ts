@@ -5,6 +5,8 @@ import {
   isWorkflowStarted,
   isHistoryEvent,
   runWorkflowDefinition,
+  ServiceType,
+  serviceTypeScopeSync,
 } from "@eventual/core";
 
 export type Orchestrator = typeof orchestrator;
@@ -24,15 +26,17 @@ export function orchestrator(
     throw new Error("Missing start event");
   }
   const interpretEvents = historyEvents.filter(isHistoryEvent);
-  return interpret(
-    runWorkflowDefinition(workflow, startEvent.input, {
-      workflow: { name: workflow.name },
-      execution: {
-        ...startEvent.context,
-        startTime: startEvent.timestamp,
-        id: executionId,
-      },
-    }),
-    interpretEvents
+  return serviceTypeScopeSync(ServiceType.OrchestratorWorker, () =>
+    interpret(
+      runWorkflowDefinition(workflow, startEvent.input, {
+        workflow: { name: workflow.name },
+        execution: {
+          ...startEvent.context,
+          startTime: startEvent.timestamp,
+          id: executionId,
+        },
+      }),
+      interpretEvents
+    )
   );
 }

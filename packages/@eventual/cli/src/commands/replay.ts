@@ -2,8 +2,6 @@ import {
   encodeExecutionId,
   ExecutionID,
   parseWorkflowName,
-  ServiceType,
-  SERVICE_TYPE_FLAG,
   workflows,
 } from "@eventual/core";
 import { Argv } from "yargs";
@@ -30,7 +28,6 @@ export const replay = (yargs: Argv) =>
         }),
     serviceAction(
       async (spinner, serviceClient, { entry, service, execution }) => {
-        process.env[SERVICE_TYPE_FLAG] = ServiceType.OrchestratorWorker;
         spinner.start("Constructing replay...");
         const [, { events }] = await Promise.all([
           loadService(service, encodeExecutionId(execution), entry),
