@@ -248,7 +248,9 @@ packages:
         if (pkgManager === "npm") {
           return " -ws --if-present";
         } else if (pkgManager === "yarn") {
-          return " workspaces --if-present";
+          // yarn doesn't have an --if-present
+          // TODO: add support for different yarn versions
+          return " workspaces";
         } else {
           return " -r";
         }
@@ -311,6 +313,7 @@ packages:
         scripts: {
           synth: "cdk synth",
           deploy: "cdk deploy",
+          test: "echo no-op",
         },
         dependencies: {
           "@aws-cdk/aws-apigatewayv2-alpha": "^2.50.0-alpha.0",
