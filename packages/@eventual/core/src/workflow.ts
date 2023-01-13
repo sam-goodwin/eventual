@@ -108,6 +108,12 @@ export function lookupWorkflow(name: string): Workflow | undefined {
  * const hello = activity("hello", async (name: string) => {
  *   return `hello ${name}`;
  * });
+ *
+ * Logging using `console.info` (or similar) in a workflow will write logs to the
+ * execution's log stream in the service's workflow.
+ *
+ * To see these logs run `eventual get logs -e <execution>` or find the log group using
+ * `eventual get service`.
  * ```
  * @param name a globally unique ID for this workflow.
  * @param definition the workflow definition.

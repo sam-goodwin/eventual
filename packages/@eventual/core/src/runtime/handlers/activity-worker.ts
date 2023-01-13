@@ -93,7 +93,9 @@ export function createActivityWorker({
         baseTime: Date = new Date(),
         getEndTime = () => new Date()
       ) => {
-        const activityHandle = `${request.command.seq} for execution ${request.executionId} on retry ${request.retry}`;
+        const activityHandle = logAgent.isLogLevelSatisfied(LogLevel.DEBUG)
+          ? `${request.command.name}:${request.command.seq} for execution ${request.executionId} on retry ${request.retry}`
+          : request.command.name;
         metrics.resetDimensions(false);
         metrics.setNamespace(MetricsCommon.EventualNamespace);
         metrics.putDimensions({
