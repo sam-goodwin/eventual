@@ -41,12 +41,12 @@ export async function createNewService(serviceName?: string) {
     packageName: serviceName,
     eventualVersion,
     src: {
-      "index.ts": `import { api } from "@eventual/core"
+      "index.ts": `import { api } from "@eventual/core";
             
-      api.get("/echo", async (request) => {
-        return new Response(await request.text());
-      });
-      `,
+api.get("/echo", async (request) => {
+  return new Response(await request.text());
+});
+`,
     },
   });
 
@@ -94,7 +94,7 @@ export async function createServicePackage(
         types: "lib/index.d.ts",
         version: "0.0.0",
         scripts: {
-          test: "jest",
+          test: "jest --passWithNoTests",
         },
         dependencies: {
           "@eventual/core": `^${props.eventualVersion}`,
