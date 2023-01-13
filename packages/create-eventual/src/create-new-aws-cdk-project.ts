@@ -421,7 +421,11 @@ export const formatMessage = activity("formatName", async (name: string) => {
   return \`hello \${name}\`;
 });
 
+<<<<<<< HEAD
 helloEvent.onEvent(async (hello) => {
+=======
+helloEvent.onEvent((hello) => {
+>>>>>>> main
   console.log("received event", hello);
 });
 `,
