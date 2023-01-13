@@ -18,6 +18,7 @@ import { Events } from "./events";
 import { Logging } from "./logging";
 
 export interface ActivitiesProps {
+  serviceName: string;
   workflows: IWorkflows;
   scheduler: IScheduler;
   environment?: Record<string, string>;
@@ -72,6 +73,7 @@ export class Activities extends Construct implements IActivities, IGrantable {
     });
 
     this.worker = new ServiceFunction(this, "Worker", {
+      functionName: `${props.serviceName}-activity-handler`,
       serviceType: ServiceType.ActivityWorker,
       memorySize: 512,
       // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.

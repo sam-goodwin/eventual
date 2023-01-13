@@ -3,6 +3,34 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.10.0 (2023-01-13)
+
+### Features
+
+- set up unit testing in project template ([#227](https://github.com/functionless/eventual/issues/227)) ([0811135](https://github.com/functionless/eventual/commit/08111359cacbb459595c37699a856febb226a18c))
+
+## 0.9.4 (2023-01-13)
+
+### Bug Fixes
+
+- give physical names to Lambdas and the Execution LogGroup and simplify getting started ([#225](https://github.com/functionless/eventual/issues/225)) ([cd4d70d](https://github.com/functionless/eventual/commit/cd4d70db43a12f146ecaacb41643258c147face5))
+
+## 0.9.3 (2023-01-12)
+
+### Bug Fixes
+
+- disable create test scripts ([4198ee8](https://github.com/functionless/eventual/commit/4198ee881d2b92cb469f032b6fdc41ddea065718))
+
+## 0.9.2 (2023-01-12)
+
+### Bug Fixes
+
+- relative imports ([#222](https://github.com/functionless/eventual/issues/222)) ([fb0d28c](https://github.com/functionless/eventual/commit/fb0d28c4d50603c0682e7fecfc420ffb6ed843ab))
+
+## 0.9.1 (2023-01-12)
+
+**Note:** Version bump only for package @eventual/aws-cdk
+
 # 0.9.0 (2023-01-11)
 
 ### Features

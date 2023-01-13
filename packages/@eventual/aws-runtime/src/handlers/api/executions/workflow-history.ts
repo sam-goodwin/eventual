@@ -7,7 +7,7 @@ import {
   createLogsClient,
   createWorkflowClient,
   createWorkflowRuntimeClient,
-} from "src/clients/create.js";
+} from "../../../clients/create.js";
 import { withErrorMiddleware } from "../middleware.js";
 
 const workflowClient = createWorkflowRuntimeClient({

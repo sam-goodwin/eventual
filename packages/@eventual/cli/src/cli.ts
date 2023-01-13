@@ -13,6 +13,7 @@ import { execution } from "./commands/execution.js";
 import { publishEvents } from "./commands/publish-events.js";
 import { configure } from "./commands/configure.js";
 import { serviceInfo } from "./commands/service-info.js";
+import { create } from "./commands/create.js";
 
 const argv = hideBin(process.argv);
 
@@ -65,6 +66,9 @@ export const replayOperation = (yargs: Argv) =>
 export const startOperation = (yargs: Argv) =>
   yargs.command("start", "Start a workflow", addSubCommands(start));
 
+export const createOperation = (yargs: Argv) =>
+  yargs.command("create", "Create an eventual service", addSubCommands(create));
+
 const cli = yargs(argv).scriptName("eventual").strict();
 
 addSubCommands(
@@ -73,7 +77,8 @@ addSubCommands(
   sendOperation,
   publishOperation,
   replayOperation,
-  startOperation
+  startOperation,
+  createOperation
 )(cli);
 
 if (argv.length === 0) {

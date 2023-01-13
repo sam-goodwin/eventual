@@ -41,6 +41,7 @@ export class Api extends Construct {
     super(scope, id);
 
     this.handler = new ServiceFunction(this, "Handler", {
+      functionName: `${props.serviceName}-api-handler`,
       serviceType: ServiceType.ApiHandler,
       memorySize: 512,
       environment: props.environment,

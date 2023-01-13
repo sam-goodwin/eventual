@@ -1,0 +1,22 @@
+{
+  "name": "@eventual/project",
+  "version": "0.10.0",
+  "exports": {
+    ".": {
+      "import": "./lib/esm/src/index.js",
+      "require": "./lib/cjs/src/index.js"
+    }
+  },
+  "main": "lib/cjs/src/index.js",
+  "types": "lib/esm/src/index.d.ts",
+  "module": "lib/esm/src/index.js",
+  "dependencies": {
+    "inquirer": "^8"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^8"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
