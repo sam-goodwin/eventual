@@ -21,7 +21,7 @@ export interface ActivityCall<T = any>
   /**
    * Timeout can be any Eventual (promise). When the promise resolves, the activity is considered to be timed out.
    */
-  timeout?: any;
+  timeout?: Eventual;
 }
 
 export function createActivityCall(

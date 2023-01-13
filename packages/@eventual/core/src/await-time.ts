@@ -21,9 +21,9 @@ import { DurationSchedule, DurationUnit, TimeSchedule } from "./schedule.js";
  *
  * ```ts
  * workflow("myWorkflow", async () => {
- *   const minTime = duration(10, "minutes"); // sleep for 10 minutes
+ *   const minTime = duration(10, "minutes");
  *   // wait for 10 minutes OR the duration of myActivity, whichever is longer.
- *   await Promise.all([minTime, await myActivity()]);
+ *   await Promise.all([minTime, myActivity()]);
  *   return "DONE";
  * })
  * ```
