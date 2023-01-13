@@ -18,17 +18,13 @@ export const serviceInfo = (yargs: Argv) =>
           [
             `API Gateway: ${serviceData.apiEndpoint}`,
             `Event Bus Arn: ${serviceData.eventBusArn}`,
+            `Service Log Group: ${serviceData.logGroupName}`,
           ].join("\n")
         );
         process.stdout.write("\n");
       },
       async (_service, _, { serviceData }) => {
-        process.stdout.write(
-          JSON.stringify({
-            apiEndpoint: serviceData.apiEndpoint,
-            eventBusArn: serviceData.eventBusArn,
-          }) + "\n"
-        );
+        process.stdout.write(JSON.stringify(serviceData) + "\n");
       }
     )
   );

@@ -189,7 +189,7 @@ export class LogAgent {
     }
   }
 
-  private isLogLevelSatisfied(entry: LogLevel): boolean {
+  public isLogLevelSatisfied(entry: LogLevel): boolean {
     return LOG_LEVELS.indexOf(entry) >= this.logLevelIndex;
   }
 
