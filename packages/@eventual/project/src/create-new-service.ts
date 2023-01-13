@@ -40,12 +40,14 @@ export async function createNewService(serviceName?: string) {
   await createServicePackage(path.resolve(process.cwd(), "apps", serviceName), {
     packageName: serviceName,
     eventualVersion,
-    code: `import { api } from "@eventual/core"
+    src: {
+      "index.ts": `import { api } from "@eventual/core"
             
-api.get("/echo", async (request) => {
-  return new Response(await request.text());
-});
-`,
+      api.get("/echo", async (request) => {
+        return new Response(await request.text());
+      });
+      `,
+    },
   });
 
   await Promise.all([
@@ -66,7 +68,12 @@ export async function createServicePackage(
   serviceDir: string,
   props: {
     packageName: string;
-    code: string;
+    src: {
+      [fileName: string]: string;
+    };
+    test?: {
+      [fileName: string]: string;
+    };
     dependencies?: Record<string, string>;
     references?: string[];
     eventualVersion: string;
@@ -86,9 +93,35 @@ export async function createServicePackage(
         module: "lib/index.js",
         types: "lib/index.d.ts",
         version: "0.0.0",
+        scripts: {
+          test: "jest",
+        },
         dependencies: {
           "@eventual/core": `^${props.eventualVersion}`,
           ...props.dependencies,
+        },
+        devDependencies: {
+          "@eventual/testing": `^${props.eventualVersion}`,
+          "@types/jest": "^29",
+          esbuild: "^0.16.14",
+          jest: "^29",
+          "ts-jest": "^29",
+          typescript: "^4.9.4",
+        },
+        jest: {
+          extensionsToTreatAsEsm: [".ts"],
+          moduleNameMapper: {
+            "^(\\.{1,2}/.*)\\.js$": "$1",
+          },
+          transform: {
+            "^.+\\.(t|j)sx?$": [
+              "ts-jest",
+              {
+                tsconfig: "tsconfig.test.json",
+                useESM: true,
+              },
+            ],
+          },
         },
       }),
       writeJsonFile("tsconfig.json", {
@@ -97,16 +130,41 @@ export async function createServicePackage(
         references: props.references?.map((path) => ({ path })),
         compilerOptions: {
           lib: ["DOM"],
-          module: "esnext",
-          moduleResolution: "NodeNext",
           outDir: "lib",
           rootDir: "src",
           target: "ES2021",
         },
       }),
+      writeJsonFile("tsconfig.test.json", {
+        extends: "./tsconfig.json",
+        include: ["src", "test"],
+        exclude: ["lib", "node_modules"],
+        compilerOptions: {
+          types: ["@types/node", "@types/jest"],
+          noEmit: true,
+          rootDir: ".",
+        },
+      }),
       fs
         .mkdir("src")
-        .then(() => fs.writeFile(path.join("src", "index.ts"), props.code)),
+        .then(() =>
+          Promise.all(
+            Object.entries(props.src).map(([file, code]) =>
+              fs.writeFile(path.join("src", file), code)
+            )
+          )
+        ),
+      props.test
+        ? fs
+            .mkdir("test")
+            .then(() =>
+              Promise.all(
+                Object.entries(props.test!).map(([file, code]) =>
+                  fs.writeFile(path.join("test", file), code!)
+                )
+              )
+            )
+        : Promise.resolve(undefined),
     ]);
   } finally {
     process.chdir(cwd);
