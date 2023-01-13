@@ -151,7 +151,11 @@ export function createActivityWorker({
         });
         metrics.putMetric(ActivityMetrics.ClaimRejected, 0, Unit.Count);
 
-        console.info(`Processing ${activityHandle}.`);
+        logAgent.logWithContext(
+          activityLogContext,
+          LogLevel.DEBUG,
+          `Processing ${activityHandle}.`
+        );
 
         const activity = activityProvider.getActivityHandler(
           request.command.name
