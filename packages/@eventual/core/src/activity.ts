@@ -235,7 +235,7 @@ export function activity<Arguments extends any[], Output = any>(
           ? computeDurationSeconds(
               opts.heartbeatTimeout.dur,
               opts.heartbeatTimeout.unit
-            ) / 1000
+            )
           : undefined
       ) as any;
     } else {

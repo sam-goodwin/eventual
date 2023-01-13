@@ -372,12 +372,16 @@ export function createOrchestrator({
         logAgent.logWithContext(
           executionLogContext,
           LogLevel.DEBUG,
-          "Workflow terminated with: " + JSON.stringify(result)
+          result
+            ? "Workflow returned a result with: " + JSON.stringify(result)
+            : "Workflow did not return a result."
         );
         logAgent.logWithContext(
           executionLogContext,
           LogLevel.DEBUG,
-          `Found ${newCommands.length} new commands.`
+          `Found ${newCommands.length} new commands. ${JSON.stringify(
+            newCommands
+          )}`
         );
 
         yield* await timed(
