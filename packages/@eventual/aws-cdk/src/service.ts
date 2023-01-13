@@ -89,7 +89,7 @@ export interface ServiceProps {
    * @see WorkflowsProps
    */
   workflows?: Pick<WorkflowsProps, "orchestrator">;
-  logging?: LoggingProps;
+  logging?: Omit<LoggingProps, "serviceName">;
 }
 
 export class Service extends Construct implements IGrantable {
@@ -202,7 +202,10 @@ export class Service extends Construct implements IGrantable {
     const proxyWorkflows = lazyInterface<IWorkflows>();
     const proxyActivities = lazyInterface<IActivities>();
 
-    this.logging = new Logging(this, "logging", props.logging ?? {});
+    this.logging = new Logging(this, "logging", {
+      ...(props.logging ?? {}),
+      serviceName: this.serviceName,
+    });
 
     this.events = new Events(this, "Events", {
       appSpec: this.appSpec,
@@ -213,6 +216,7 @@ export class Service extends Construct implements IGrantable {
     });
 
     this.activities = new Activities(this, "Activities", {
+      serviceName: this.serviceName,
       scheduler: proxyScheduler,
       workflows: proxyWorkflows,
       environment: props.environment,
@@ -222,6 +226,7 @@ export class Service extends Construct implements IGrantable {
     proxyActivities._bind(this.activities);
 
     this.workflows = new Workflows(this, "Workflows", {
+      serviceName: this.serviceName,
       scheduler: proxyScheduler,
       activities: this.activities,
       table: this.table,

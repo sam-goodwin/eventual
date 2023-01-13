@@ -59,6 +59,7 @@ export class Events extends Construct implements IGrantable {
     this.deadLetterQueue = new Queue(this, "DeadLetterQueue");
 
     this.handler = new ServiceFunction(this, "Handler", {
+      functionName: `${props.serviceName}-event-handler`,
       serviceType: ServiceType.EventHandler,
       deadLetterQueueEnabled: true,
       deadLetterQueue: this.deadLetterQueue,

@@ -5,8 +5,13 @@ import { IGrantable } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
+import type { Service } from "./service";
 
 export interface LoggingProps {
+  /**
+   * The name of the {@link Service} this {@link Logging} belongs to.
+   */
+  serviceName: string;
   /**
    * Optionally provide a log group.
    *
@@ -37,6 +42,7 @@ export class Logging extends Construct {
       props.logGroup ??
       new LogGroup(this, "group", {
         removalPolicy: RemovalPolicy.DESTROY,
+        logGroupName: `${props.serviceName}-execution-logs`,
       });
   }
 

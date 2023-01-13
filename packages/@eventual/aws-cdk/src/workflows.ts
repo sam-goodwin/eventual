@@ -21,6 +21,7 @@ import { ServiceFunction } from "./service-function";
 import { addEnvironment } from "./utils";
 
 export interface WorkflowsProps {
+  serviceName: string;
   scheduler: IScheduler;
   activities: IActivities;
   table: ITable;
@@ -81,6 +82,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     });
 
     this.orchestrator = new ServiceFunction(this, "Orchestrator", {
+      functionName: `${props.serviceName}-orchestrator-handler`,
       serviceType: ServiceType.OrchestratorWorker,
       events: [
         new SqsEventSource(this.queue, {
