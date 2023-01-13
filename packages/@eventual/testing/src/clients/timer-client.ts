@@ -1,5 +1,6 @@
 import {
   assertNever,
+  computeScheduleDate,
   isActivityHeartbeatMonitorRequest,
   isTimerScheduleEventRequest,
   TimerClient,
@@ -9,17 +10,11 @@ import { TimeConnector } from "../environment.js";
 
 export class TestTimerClient extends TimerClient {
   constructor(private timeConnector: TimeConnector) {
-    super();
+    super(() => timeConnector.getTime());
   }
 
   public async startShortTimer(timerRequest: TimerRequest): Promise<number> {
-    const time =
-      timerRequest.schedule.type === "Absolute"
-        ? new Date(timerRequest.schedule.untilTime)
-        : new Date(
-            timerRequest.schedule.baseTime.getTime() +
-              timerRequest.schedule.timerSeconds * 1000
-          );
+    const time = computeScheduleDate(timerRequest.schedule, this.baseTime());
 
     const seconds =
       (time.getTime() - this.timeConnector.getTime().getTime()) / 1000;

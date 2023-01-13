@@ -6,7 +6,7 @@ import {
   getEventId,
   HistoryStateEvent,
   isHistoryEvent,
-  isAlarmCompleted,
+  isTimerCompleted,
   isWorkflowSucceeded,
   isWorkflowFailed,
   isWorkflowStarted,
@@ -460,7 +460,7 @@ export function createOrchestrator({
 
         const inputEvents = [...historyEvents, ...uniqueTaskEvents];
 
-        // Generates events that are time sensitive, like sleep completed events.
+        // Generates events that are time sensitive, like timer completed events.
         const syntheticEvents = generateSyntheticEvents(inputEvents, baseTime);
 
         const allEvents = [...inputEvents, ...syntheticEvents];
@@ -724,14 +724,14 @@ function logEventMetrics(
   events: WorkflowEvent[],
   now: Date
 ) {
-  const sleepCompletedEvents = events.filter(isAlarmCompleted);
-  if (sleepCompletedEvents.length > 0) {
-    const sleepCompletedVariance = sleepCompletedEvents.map(
+  const timerCompletedEvents = events.filter(isTimerCompleted);
+  if (timerCompletedEvents.length > 0) {
+    const timerCompletedVariance = timerCompletedEvents.map(
       (s) => now.getTime() - new Date(s.timestamp).getTime()
     );
     const avg =
-      sleepCompletedVariance.reduce((t, n) => t + n, 0) /
-      sleepCompletedVariance.length;
-    metrics.setProperty(OrchestratorMetrics.SleepVarianceMillis, avg);
+      timerCompletedVariance.reduce((t, n) => t + n, 0) /
+      timerCompletedVariance.length;
+    metrics.setProperty(OrchestratorMetrics.TimerVarianceMillis, avg);
   }
 }

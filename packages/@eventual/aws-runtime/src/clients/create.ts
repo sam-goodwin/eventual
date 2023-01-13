@@ -117,7 +117,7 @@ export const createTimerClient = /* @__PURE__ */ memoize(
       schedulerRoleArn: props.schedulerRoleArn ?? env.schedulerRoleArn(),
       schedulerDlqArn: props.schedulerDlqArn ?? env.schedulerDlqArn(),
       schedulerGroup: props.schedulerGroup ?? env.schedulerGroup(),
-      sleepQueueThresholdSeconds: props.sleepQueueThresholdSeconds ?? 15 * 60,
+      timerQueueThresholdSeconds: props.timerQueueThresholdSeconds ?? 15 * 60,
       sqs: props.sqs ?? sqs(),
       timerQueueUrl: props.timerQueueUrl ?? env.timerQueueUrl(),
       scheduleForwarderArn:

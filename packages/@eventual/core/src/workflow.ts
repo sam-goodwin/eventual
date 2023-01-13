@@ -3,10 +3,10 @@ import type { Program } from "./interpret.js";
 import type { Context } from "./context.js";
 import {
   HistoryStateEvent,
-  isAlarmCompleted,
-  isAlarmScheduled,
-  AlarmCompleted,
-  AlarmScheduled,
+  isTimerCompleted,
+  isTimerScheduled,
+  TimerCompleted,
+  TimerScheduled,
   WorkflowEventType,
 } from "./workflow-events.js";
 import { createWorkflowCall } from "./calls/workflow-call.js";
@@ -176,29 +176,29 @@ export function runWorkflowDefinition(
 }
 
 /**
- * Generates synthetic events, for example, {@link AlarmCompleted} events when the time has passed, but a real completed event has not come in yet.
+ * Generates synthetic events, for example, {@link TimerCompleted} events when the time has passed, but a real completed event has not come in yet.
  */
 export function generateSyntheticEvents(
   events: HistoryStateEvent[],
   baseTime: Date
-): AlarmCompleted[] {
-  const unresolvedSleep: Record<number, AlarmScheduled> = {};
+): TimerCompleted[] {
+  const unresolvedTimers: Record<number, TimerScheduled> = {};
 
-  const sleepEvents = events.filter(
-    (event): event is AlarmScheduled | AlarmCompleted =>
-      isAlarmScheduled(event) || isAlarmCompleted(event)
+  const timerEvents = events.filter(
+    (event): event is TimerScheduled | TimerCompleted =>
+      isTimerScheduled(event) || isTimerCompleted(event)
   );
 
-  for (const event of sleepEvents) {
-    if (isAlarmScheduled(event)) {
-      unresolvedSleep[event.seq] = event;
+  for (const event of timerEvents) {
+    if (isTimerScheduled(event)) {
+      unresolvedTimers[event.seq] = event;
     } else {
-      delete unresolvedSleep[event.seq];
+      delete unresolvedTimers[event.seq];
     }
   }
 
-  const syntheticSleepComplete: AlarmCompleted[] = Object.values(
-    unresolvedSleep
+  const syntheticTimerComplete: TimerCompleted[] = Object.values(
+    unresolvedTimers
   )
     .filter(
       (event) => new Date(event.untilTime).getTime() <= baseTime.getTime()
@@ -206,11 +206,11 @@ export function generateSyntheticEvents(
     .map(
       (e) =>
         ({
-          type: WorkflowEventType.AlarmCompleted,
+          type: WorkflowEventType.TimerCompleted,
           seq: e.seq,
           timestamp: baseTime.toISOString(),
-        } satisfies AlarmCompleted)
+        } satisfies TimerCompleted)
     );
 
-  return syntheticSleepComplete;
+  return syntheticTimerComplete;
 }

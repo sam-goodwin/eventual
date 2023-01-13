@@ -1,11 +1,10 @@
-import { DurationUnit } from "./await-time.js";
 import { EventEnvelope } from "./event.js";
+import { Schedule } from "./index.js";
 import { SignalTarget } from "./signals.js";
 import { WorkflowOptions } from "./workflow.js";
 
 export type Command =
-  | AwaitDurationCommand
-  | AwaitTimeCommand
+  | StartTimerCommand
   | ScheduleActivityCommand
   | ScheduleWorkflowCommand
   | PublishEventsCommand
@@ -17,11 +16,10 @@ interface CommandBase<T extends CommandType> {
 }
 
 export enum CommandType {
-  AwaitDuration = "AwaitDuration",
-  AwaitTime = "AwaitTime",
   PublishEvents = "PublishEvents",
   SendSignal = "SendSignal",
   StartActivity = "StartActivity",
+  StartTimer = "StartTimer",
   StartWorkflow = "StartWorkflow",
 }
 
@@ -58,32 +56,17 @@ export function isScheduleWorkflowCommand(
   return a.kind === CommandType.StartWorkflow;
 }
 
-export interface AwaitTimeCommand extends CommandBase<CommandType.AwaitTime> {
+export interface StartTimerCommand extends CommandBase<CommandType.StartTimer> {
   /**
    * Minimum time (in ISO 8601) where the machine should wake up.
    */
-  untilTime: string;
+  schedule: Schedule;
 }
 
-export function isAwaitTimeCommand(
+export function isStartTimerCommand(
   command: Command
-): command is AwaitTimeCommand {
-  return command.kind === CommandType.AwaitTime;
-}
-
-export interface AwaitDurationCommand
-  extends CommandBase<CommandType.AwaitDuration> {
-  /**
-   * Number of seconds from the time the command is executed until the machine should wake up.
-   */
-  dur: number;
-  unit: DurationUnit;
-}
-
-export function isAwaitDurationCommand(
-  command: Command
-): command is AwaitDurationCommand {
-  return command.kind === CommandType.AwaitDuration;
+): command is StartTimerCommand {
+  return command.kind === CommandType.StartTimer;
 }
 
 export interface SendSignalCommand extends CommandBase<CommandType.SendSignal> {

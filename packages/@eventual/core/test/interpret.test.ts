@@ -10,6 +10,7 @@ import {
   interpret,
   Program,
   Result,
+  Schedule,
   ServiceType,
   SERVICE_TYPE_FLAG,
   signal,
@@ -29,17 +30,16 @@ import {
   activityFailed,
   activityHeartbeatTimedOut,
   activityScheduled,
-  completedAlarm,
   createPublishEventCommand,
   createScheduledActivityCommand,
   createScheduledWorkflowCommand,
   createSendSignalCommand,
-  createAwaitDurationCommand,
-  createAwaitTimeCommand,
+  createStartTimerCommand,
   eventsPublished,
-  scheduledAlarm,
   signalReceived,
   signalSent,
+  timerCompleted,
+  timerScheduled,
   workflowSucceeded,
   workflowFailed,
   workflowScheduled,
@@ -116,7 +116,7 @@ test("should continue with result of completed Activity", () => {
   ).toMatchObject(<WorkflowResult>{
     commands: [
       createScheduledActivityCommand("my-activity-0", [event], 1),
-      createAwaitTimeCommand("then", 2),
+      createStartTimerCommand(2),
       createScheduledActivityCommand("my-activity-2", [event], 3),
     ],
   });
@@ -182,8 +182,8 @@ test("should catch error of timing out Activity", () => {
 
   expect(
     interpret(myWorkflow(event), [
-      scheduledAlarm("", 0),
-      completedAlarm(0),
+      timerScheduled(0),
+      timerCompleted(0),
       activityScheduled("my-activity", 1),
     ])
   ).toMatchObject(<WorkflowResult>{
@@ -224,10 +224,10 @@ test("timeout multiple activities at once", () => {
 
   expect(
     interpret(myWorkflow(event), [
-      scheduledAlarm("", 0),
+      timerScheduled(0),
       activityScheduled("my-activity", 1),
       activityScheduled("my-activity", 2),
-      completedAlarm(0),
+      timerCompleted(0),
     ])
   ).toMatchObject(<WorkflowResult>{
     result: Result.resolved([
@@ -285,10 +285,10 @@ test("should return final result", () => {
       activityScheduled("my-activity", 0),
       activitySucceeded("result", 0),
       activityScheduled("my-activity-0", 1),
-      scheduledAlarm("then", 2),
+      timerScheduled(2),
       activityScheduled("my-activity-2", 3),
       activitySucceeded("result-0", 1),
-      completedAlarm(2),
+      timerCompleted(2),
       activitySucceeded("result-2", 3),
     ])
   ).toMatchObject(<WorkflowResult>{
@@ -304,7 +304,7 @@ test("should handle missing blocks", () => {
     commands: [
       createScheduledActivityCommand("my-activity", [event], 0),
       createScheduledActivityCommand("my-activity-0", [event], 1),
-      createAwaitTimeCommand("then", 2),
+      createStartTimerCommand(2),
       createScheduledActivityCommand("my-activity-2", [event], 3),
     ],
   });
@@ -319,7 +319,7 @@ test("should handle partial blocks", () => {
     ])
   ).toMatchObject(<WorkflowResult>{
     commands: [
-      createAwaitTimeCommand("then", 2),
+      createStartTimerCommand(2),
       createScheduledActivityCommand("my-activity-2", [event], 3),
     ],
   });
@@ -335,7 +335,7 @@ test("should handle partial blocks with partial completes", () => {
     ])
   ).toMatchObject(<WorkflowResult>{
     commands: [
-      createAwaitTimeCommand("then", 2),
+      createStartTimerCommand(2),
       createScheduledActivityCommand("my-activity-2", [event], 3),
     ],
   });
@@ -417,7 +417,7 @@ describe("activity", () => {
 
 test("should throw when scheduled does not correspond to call", () => {
   expect(
-    interpret(myWorkflow(event), [scheduledAlarm("result", 0)])
+    interpret(myWorkflow(event), [timerScheduled(0)])
   ).toMatchObject<WorkflowResult>({
     result: Result.failed({ name: "DeterminismError" }),
     commands: [],
@@ -495,10 +495,10 @@ test("should wait if partial results", () => {
       activityScheduled("my-activity", 0),
       activitySucceeded("result", 0),
       activityScheduled("my-activity-0", 1),
-      scheduledAlarm("then", 2),
+      timerScheduled(2),
       activityScheduled("my-activity-2", 3),
       activitySucceeded("result-0", 1),
-      completedAlarm(2),
+      timerCompleted(2),
     ])
   ).toMatchObject(<WorkflowResult>{
     commands: [],
@@ -519,46 +519,43 @@ test("should return result of inner function", () => {
   });
 });
 
-test("should schedule sleep for", () => {
+test("should schedule duration", () => {
   function* workflow() {
     yield duration(10);
   }
 
   expect(interpret(workflow() as any, [])).toMatchObject(<WorkflowResult>{
-    commands: [createAwaitDurationCommand(10, "seconds", 0)],
+    commands: [createStartTimerCommand(Schedule.relative(10), 0)],
   });
 });
 
-test("should not re-schedule sleep for", () => {
+test("should not re-schedule duration", () => {
   function* workflow() {
     yield duration(10);
   }
 
-  expect(
-    interpret(workflow() as any, [scheduledAlarm("anything", 0)])
-  ).toMatchObject(<WorkflowResult>{
+  expect(interpret(workflow() as any, [timerScheduled(0)])).toMatchObject(<
+    WorkflowResult
+  >{
     commands: [],
   });
 });
 
-test("should complete sleep for", () => {
+test("should complete duration", () => {
   function* workflow() {
     yield duration(10);
     return "done";
   }
 
   expect(
-    interpret(workflow() as any, [
-      scheduledAlarm("anything", 0),
-      completedAlarm(0),
-    ])
+    interpret(workflow() as any, [timerScheduled(0), timerCompleted(0)])
   ).toMatchObject(<WorkflowResult>{
     result: Result.resolved("done"),
     commands: [],
   });
 });
 
-test("should schedule sleep until", () => {
+test("should schedule time", () => {
   const now = new Date();
 
   function* workflow() {
@@ -566,25 +563,27 @@ test("should schedule sleep until", () => {
   }
 
   expect(interpret(workflow() as any, [])).toMatchObject(<WorkflowResult>{
-    commands: [createAwaitTimeCommand(now.toISOString(), 0)],
+    commands: [
+      createStartTimerCommand(Schedule.absolute(now.toISOString()), 0),
+    ],
   });
 });
 
-test("should not re-schedule sleep until", () => {
+test("should not re-schedule time", () => {
   const now = new Date();
 
   function* workflow() {
     yield time(now);
   }
 
-  expect(
-    interpret(workflow() as any, [scheduledAlarm("anything", 0)])
-  ).toMatchObject(<WorkflowResult>{
+  expect(interpret(workflow() as any, [timerScheduled(0)])).toMatchObject(<
+    WorkflowResult
+  >{
     commands: [],
   });
 });
 
-test("should complete sleep until", () => {
+test("should complete time", () => {
   const now = new Date();
 
   function* workflow() {
@@ -593,10 +592,7 @@ test("should complete sleep until", () => {
   }
 
   expect(
-    interpret(workflow() as any, [
-      scheduledAlarm("anything", 0),
-      completedAlarm(0),
-    ])
+    interpret(workflow() as any, [timerScheduled(0), timerCompleted(0)])
   ).toMatchObject(<WorkflowResult>{
     result: Result.resolved("done"),
     commands: [],
@@ -607,13 +603,13 @@ describe("temple of doom", () => {
   /**
    * In our game, the player wants to get to the end of a hallway with traps.
    * The trap starts above the player and moves to a space in front of them
-   * after a sleepUntil("X").
+   * after a time("X").
    *
    * If the trap has moved (X time), the player may jump to avoid it.
    * If the player jumps when then trap has not moved, they will beheaded.
    * If the player runs when the trap has been triggered without jumping, they will have their legs cut off.
    *
-   * The trap is represented by a sleep command for X time.
+   * The trap is represented by a timer command for X time.
    * The player starts running by returning the "run" activity.
    * The player jumps be returning the "jump" activity.
    * (this would be better modeled with signals and conditions, but the effect is the same, wait, complete)
@@ -625,7 +621,7 @@ describe("temple of doom", () => {
     let jump = false;
 
     const startTrap = chain(function* () {
-      yield createAwaitTimeCall("X");
+      yield createAwaitTimeCall("then");
       trapDown = true;
     });
     const waitForJump = chain(function* () {
@@ -655,7 +651,7 @@ describe("temple of doom", () => {
   test("run until blocked", () => {
     expect(interpret(workflow() as any, [])).toMatchObject(<WorkflowResult>{
       commands: [
-        createAwaitTimeCommand("X", 0),
+        createStartTimerCommand(0),
         createScheduledActivityCommand("jump", [], 1),
         createScheduledActivityCommand("run", [], 2),
       ],
@@ -665,7 +661,7 @@ describe("temple of doom", () => {
   test("waiting", () => {
     expect(
       interpret(workflow() as any, [
-        scheduledAlarm("X", 0),
+        timerScheduled(0),
         activityScheduled("jump", 1),
         activityScheduled("run", 2),
       ])
@@ -675,13 +671,13 @@ describe("temple of doom", () => {
   });
 
   test("trap triggers, player has not started, nothing happens", () => {
-    // complete sleep, nothing happens
+    // complete timer, nothing happens
     expect(
       interpret(workflow() as any, [
-        scheduledAlarm("X", 0),
+        timerScheduled(0),
         activityScheduled("jump", 1),
         activityScheduled("run", 2),
-        completedAlarm(0),
+        timerCompleted(0),
       ])
     ).toMatchObject(<WorkflowResult>{
       commands: [],
@@ -689,13 +685,13 @@ describe("temple of doom", () => {
   });
 
   test("trap triggers and then the player starts, player is dead", () => {
-    // complete sleep, turn on, release the player, dead
+    // complete timer, turn on, release the player, dead
     expect(
       interpret(workflow() as any, [
-        scheduledAlarm("X", 0),
+        timerScheduled(0),
         activityScheduled("jump", 1),
         activityScheduled("run", 2),
-        completedAlarm(0),
+        timerCompleted(0),
         activitySucceeded("anything", 2),
       ])
     ).toMatchObject(<WorkflowResult>{
@@ -705,12 +701,12 @@ describe("temple of doom", () => {
   });
 
   test("trap triggers and then the player starts, player is dead, commands are out of order", () => {
-    // complete sleep, turn on, release the player, dead
+    // complete timer, turn on, release the player, dead
     expect(
       interpret(workflow() as any, [
-        completedAlarm(0),
+        timerCompleted(0),
         activitySucceeded("anything", 2),
-        scheduledAlarm("X", 0),
+        timerScheduled(0),
         activityScheduled("jump", 1),
         activityScheduled("run", 2),
       ])
@@ -724,7 +720,7 @@ describe("temple of doom", () => {
     // release the player, not on, alive
     expect(
       interpret(workflow() as any, [
-        scheduledAlarm("X", 0),
+        timerScheduled(0),
         activityScheduled("jump", 1),
         activityScheduled("run", 2),
         activitySucceeded("anything", 2),
@@ -739,7 +735,7 @@ describe("temple of doom", () => {
     // release the player, not on, alive
     expect(
       interpret(workflow() as any, [
-        scheduledAlarm("X", 0),
+        timerScheduled(0),
         activitySucceeded("anything", 2),
         activityScheduled("jump", 1),
         activityScheduled("run", 2),
@@ -755,7 +751,7 @@ describe("temple of doom", () => {
     expect(
       interpret(workflow() as any, [
         activitySucceeded("anything", 2),
-        scheduledAlarm("X", 0),
+        timerScheduled(0),
         activityScheduled("jump", 1),
         activityScheduled("run", 2),
       ])
@@ -768,11 +764,11 @@ describe("temple of doom", () => {
   test("release the player before the trap triggers, player lives", () => {
     expect(
       interpret(workflow() as any, [
-        scheduledAlarm("X", 0),
+        timerScheduled(0),
         activityScheduled("jump", 1),
         activityScheduled("run", 2),
         activitySucceeded("anything", 2),
-        completedAlarm(0),
+        timerCompleted(0),
       ])
     ).toMatchObject(<WorkflowResult>{
       result: Result.resolved("alive"),
@@ -1514,13 +1510,13 @@ describe("signals", () => {
       expect(interpret(wf.definition(undefined, context), [])).toMatchObject(<
         WorkflowResult
       >{
-        commands: [createAwaitDurationCommand(100 * 1000, "seconds", 0)],
+        commands: [createStartTimerCommand(Schedule.relative(100 * 1000), 0)],
       });
     });
 
     test("no signal", () => {
       expect(
-        interpret(wf.definition(undefined, context), [scheduledAlarm("", 0)])
+        interpret(wf.definition(undefined, context), [timerScheduled(0)])
       ).toMatchObject(<WorkflowResult>{
         commands: [],
       });
@@ -1529,7 +1525,7 @@ describe("signals", () => {
     test("match signal", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          scheduledAlarm("", 0),
+          timerScheduled(0),
           signalReceived("MySignal"),
         ])
       ).toMatchObject(<WorkflowResult>{
@@ -1541,7 +1537,7 @@ describe("signals", () => {
     test("match signal with payload", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          scheduledAlarm("", 0),
+          timerScheduled(0),
           signalReceived("MySignal", { done: true }),
         ])
       ).toMatchObject(<WorkflowResult>{
@@ -1553,8 +1549,8 @@ describe("signals", () => {
     test("timed out", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          scheduledAlarm("", 0),
-          completedAlarm(0),
+          timerScheduled(0),
+          timerCompleted(0),
         ])
       ).toMatchObject(<WorkflowResult>{
         result: Result.failed(new Timeout("Expect Signal Timed Out")),
@@ -1565,8 +1561,8 @@ describe("signals", () => {
     test("timed out then signal", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          scheduledAlarm("", 0),
-          completedAlarm(0),
+          timerScheduled(0),
+          timerCompleted(0),
           signalReceived("MySignal", { done: true }),
         ])
       ).toMatchObject(<WorkflowResult>{
@@ -1578,9 +1574,9 @@ describe("signals", () => {
     test("match signal then timeout", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          scheduledAlarm("", 0),
+          timerScheduled(0),
           signalReceived("MySignal"),
-          completedAlarm(0),
+          timerCompleted(0),
         ])
       ).toMatchObject(<WorkflowResult>{
         result: Result.resolved("done"),
@@ -1591,7 +1587,7 @@ describe("signals", () => {
     test("match signal twice", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          scheduledAlarm("", 0),
+          timerScheduled(0),
           signalReceived("MySignal"),
           signalReceived("MySignal"),
         ])
@@ -1617,8 +1613,8 @@ describe("signals", () => {
 
       expect(
         interpret(wf.definition(undefined, context), [
-          scheduledAlarm("", 0),
-          scheduledAlarm("", 1),
+          timerScheduled(0),
+          timerScheduled(1),
           signalReceived("MySignal", "done!!!"),
         ])
       ).toMatchObject(<WorkflowResult>{
@@ -1641,8 +1637,8 @@ describe("signals", () => {
 
       expect(
         interpret(wf.definition(undefined, context), [
-          scheduledAlarm("", 0),
-          completedAlarm(0),
+          timerScheduled(0),
+          timerCompleted(0),
         ])
       ).toMatchObject(<WorkflowResult>{
         result: Result.failed({ name: "Timeout" }),
@@ -1664,9 +1660,9 @@ describe("signals", () => {
 
       expect(
         interpret(wf.definition(undefined, context), [
-          scheduledAlarm("", 0),
+          timerScheduled(0),
           signalReceived("SomethingElse"),
-          completedAlarm(0),
+          timerCompleted(0),
         ])
       ).toMatchObject(<WorkflowResult>{
         result: Result.failed({ name: "Timeout" }),
@@ -1696,12 +1692,12 @@ describe("signals", () => {
         }
       );
 
-      yield createAwaitTimeCall("");
+      yield createAwaitTimeCall("then");
 
       mySignalHandler.dispose();
       myOtherSignalHandler.dispose();
 
-      yield createAwaitTimeCall("");
+      yield createAwaitTimeCall("then");
 
       return {
         mySignalHappened,
@@ -1714,7 +1710,7 @@ describe("signals", () => {
       expect(interpret(wf.definition(undefined, context), [])).toMatchObject(<
         WorkflowResult
       >{
-        commands: [createAwaitTimeCommand("", 0)],
+        commands: [createStartTimerCommand(0)],
       });
     });
 
@@ -1724,7 +1720,7 @@ describe("signals", () => {
           signalReceived("MySignal"),
         ])
       ).toMatchObject(<WorkflowResult>{
-        commands: [createAwaitTimeCommand("", 0)],
+        commands: [createStartTimerCommand(0)],
       });
     });
 
@@ -1732,10 +1728,10 @@ describe("signals", () => {
       expect(
         interpret(wf.definition(undefined, context), [
           signalReceived("MySignal"),
-          scheduledAlarm("", 0),
-          completedAlarm(0),
-          scheduledAlarm("", 1),
-          completedAlarm(1),
+          timerScheduled(0),
+          timerCompleted(0),
+          timerScheduled(1),
+          timerCompleted(1),
         ])
       ).toMatchObject(<WorkflowResult>{
         result: Result.resolved({
@@ -1753,10 +1749,10 @@ describe("signals", () => {
           signalReceived("MySignal"),
           signalReceived("MySignal"),
           signalReceived("MySignal"),
-          scheduledAlarm("", 0),
-          completedAlarm(0),
-          scheduledAlarm("", 1),
-          completedAlarm(1),
+          timerScheduled(0),
+          timerCompleted(0),
+          timerScheduled(1),
+          timerCompleted(1),
         ])
       ).toMatchObject(<WorkflowResult>{
         result: Result.resolved({
@@ -1771,13 +1767,13 @@ describe("signals", () => {
     test("send signal after dispose", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          scheduledAlarm("", 0),
-          completedAlarm(0),
+          timerScheduled(0),
+          timerCompleted(0),
           signalReceived("MySignal"),
           signalReceived("MySignal"),
           signalReceived("MySignal"),
-          scheduledAlarm("", 1),
-          completedAlarm(1),
+          timerScheduled(1),
+          timerCompleted(1),
         ])
       ).toMatchObject(<WorkflowResult>{
         result: Result.resolved({
@@ -1796,7 +1792,7 @@ describe("signals", () => {
         ])
       ).toMatchObject(<WorkflowResult>{
         commands: [
-          createAwaitTimeCommand("", 0),
+          createStartTimerCommand(0),
           createScheduledActivityCommand("act1", ["hi"], 1),
         ],
       });
@@ -1810,22 +1806,22 @@ describe("signals", () => {
         ])
       ).toMatchObject(<WorkflowResult>{
         commands: [
-          createAwaitTimeCommand("", 0),
+          createStartTimerCommand(0),
           createScheduledActivityCommand("act1", ["hi"], 1),
           createScheduledActivityCommand("act1", ["hi2"], 2),
         ],
       });
     });
 
-    test("send other signal, wake sleep, with act scheduled", () => {
+    test("send other signal, wake timer, with act scheduled", () => {
       expect(
         interpret(wf.definition(undefined, context), [
           signalReceived("MyOtherSignal", "hi"),
-          scheduledAlarm("", 0),
-          completedAlarm(0),
+          timerScheduled(0),
+          timerCompleted(0),
           activityScheduled("act1", 1),
-          scheduledAlarm("", 2),
-          completedAlarm(2),
+          timerScheduled(2),
+          timerCompleted(2),
         ])
       ).toMatchObject(<WorkflowResult>{
         result: Result.resolved({
@@ -1837,16 +1833,16 @@ describe("signals", () => {
       });
     });
 
-    test("send other signal, wake sleep, complete activity", () => {
+    test("send other signal, wake timer, complete activity", () => {
       expect(
         interpret(wf.definition(undefined, context), [
           signalReceived("MyOtherSignal", "hi"),
-          scheduledAlarm("", 0),
+          timerScheduled(0),
           activityScheduled("act1", 1),
           activitySucceeded("act1", 1),
-          completedAlarm(0),
-          scheduledAlarm("", 2),
-          completedAlarm(2),
+          timerCompleted(0),
+          timerScheduled(2),
+          timerCompleted(2),
         ])
       ).toMatchObject(<WorkflowResult>{
         result: Result.resolved({
@@ -1858,16 +1854,16 @@ describe("signals", () => {
       });
     });
 
-    test("send other signal, wake sleep, complete activity after dispose", () => {
+    test("send other signal, wake timer, complete activity after dispose", () => {
       expect(
         interpret(wf.definition(undefined, context), [
           signalReceived("MyOtherSignal", "hi"),
-          scheduledAlarm("", 0),
-          completedAlarm(0),
+          timerScheduled(0),
+          timerCompleted(0),
           activityScheduled("act1", 1),
           activitySucceeded("act1", 1),
-          scheduledAlarm("", 2),
-          completedAlarm(2),
+          timerScheduled(2),
+          timerCompleted(2),
         ])
       ).toMatchObject(<WorkflowResult>{
         result: Result.resolved({
@@ -1882,11 +1878,11 @@ describe("signals", () => {
     test("send other signal after dispose", () => {
       expect(
         interpret(wf.definition(undefined, context), [
-          scheduledAlarm("", 0),
-          completedAlarm(0),
+          timerScheduled(0),
+          timerCompleted(0),
           signalReceived("MyOtherSignal", "hi"),
-          scheduledAlarm("", 1),
-          completedAlarm(1),
+          timerScheduled(1),
+          timerCompleted(1),
         ])
       ).toMatchObject(<WorkflowResult>{
         result: Result.resolved({
@@ -2053,7 +2049,7 @@ describe("condition", () => {
     expect(
       interpret(wf.definition(undefined, context), [])
     ).toMatchObject<WorkflowResult>({
-      commands: [createAwaitDurationCommand(100, "seconds", 0)],
+      commands: [createStartTimerCommand(Schedule.relative(100), 0)],
     });
   });
 
@@ -2066,7 +2062,7 @@ describe("condition", () => {
     });
 
     expect(
-      interpret(wf.definition(undefined, context), [scheduledAlarm("", 0)])
+      interpret(wf.definition(undefined, context), [timerScheduled(0)])
     ).toMatchObject<WorkflowResult>({
       commands: [],
     });
@@ -2091,7 +2087,7 @@ describe("condition", () => {
   test("trigger success", () => {
     expect(
       interpret(signalConditionFlow.definition(undefined, context), [
-        scheduledAlarm("", 0),
+        timerScheduled(0),
         signalReceived("Yes"),
       ])
     ).toMatchObject<WorkflowResult>({
@@ -2103,7 +2099,7 @@ describe("condition", () => {
   test("trigger success eventually", () => {
     expect(
       interpret(signalConditionFlow.definition(undefined, context), [
-        scheduledAlarm("", 0),
+        timerScheduled(0),
         signalReceived("No"),
         signalReceived("No"),
         signalReceived("No"),
@@ -2141,8 +2137,8 @@ describe("condition", () => {
   test("trigger timeout", () => {
     expect(
       interpret(signalConditionFlow.definition(undefined, context), [
-        scheduledAlarm("", 0),
-        completedAlarm(0),
+        timerScheduled(0),
+        timerCompleted(0),
       ])
     ).toMatchObject<WorkflowResult>({
       result: Result.resolved("timed out"),
@@ -2153,9 +2149,9 @@ describe("condition", () => {
   test("trigger success before timeout", () => {
     expect(
       interpret(signalConditionFlow.definition(undefined, context), [
-        scheduledAlarm("", 0),
+        timerScheduled(0),
         signalReceived("Yes"),
-        completedAlarm(0),
+        timerCompleted(0),
       ])
     ).toMatchObject<WorkflowResult>({
       result: Result.resolved("done"),
@@ -2166,8 +2162,8 @@ describe("condition", () => {
   test("trigger timeout before success", () => {
     expect(
       interpret(signalConditionFlow.definition(undefined, context), [
-        scheduledAlarm("", 0),
-        completedAlarm(0),
+        timerScheduled(0),
+        timerCompleted(0),
         signalReceived("Yes"),
       ])
     ).toMatchObject<WorkflowResult>({
@@ -2194,7 +2190,7 @@ test("nestedChains", () => {
   const wf = workflow(function* () {
     const funcs = {
       a: chain(function* () {
-        yield createAwaitTimeCall("");
+        yield createAwaitTimeCall("then");
       }),
     };
 
@@ -2212,7 +2208,7 @@ test("nestedChains", () => {
   expect(
     interpret(wf.definition(undefined, context), [])
   ).toMatchObject<WorkflowResult>({
-    commands: [createAwaitTimeCommand("", 0)],
+    commands: [createStartTimerCommand(0)],
   });
 });
 

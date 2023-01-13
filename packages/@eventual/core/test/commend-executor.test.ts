@@ -5,8 +5,8 @@ import {
   ChildWorkflowScheduled,
   EventsPublished,
   SignalSent,
-  AlarmCompleted,
-  AlarmScheduled,
+  TimerCompleted,
+  TimerScheduled,
   WorkflowEventType,
 } from "../src/workflow-events.js";
 import {
@@ -61,67 +61,33 @@ afterEach(() => {
 });
 
 describe("await times", () => {
-  test("await duration", async () => {
-    const event = await testExecutor.executeCommand(
-      workflow,
-      executionId,
-      {
-        kind: CommandType.AwaitDuration,
-        dur: 10,
-        unit: "seconds",
-        seq: 0,
-      },
-      baseTime
-    );
-
-    const untilTime = new Date(baseTime.getTime() + 10 * 1000).toISOString();
-
-    expect(mockTimerClient.scheduleEvent).toHaveBeenCalledWith<
-      [ScheduleEventRequest<AlarmCompleted>]
-    >({
-      event: {
-        type: WorkflowEventType.AlarmCompleted,
-        seq: 0,
-      },
-      schedule: Schedule.absolute(untilTime),
-      executionId,
-    });
-
-    expect(event).toMatchObject<AlarmScheduled>({
-      seq: 0,
-      timestamp: expect.stringContaining("Z"),
-      type: WorkflowEventType.AlarmScheduled,
-      untilTime,
-    });
-  });
-
   test("await time", async () => {
     const event = await testExecutor.executeCommand(
       workflow,
       executionId,
       {
-        kind: CommandType.AwaitTime,
-        untilTime: baseTime.toISOString(),
+        kind: CommandType.StartTimer,
+        schedule: Schedule.absolute(baseTime),
         seq: 0,
       },
       baseTime
     );
 
     expect(mockTimerClient.scheduleEvent).toHaveBeenCalledWith<
-      [ScheduleEventRequest<AlarmCompleted>]
+      [ScheduleEventRequest<TimerCompleted>]
     >({
       event: {
-        type: WorkflowEventType.AlarmCompleted,
+        type: WorkflowEventType.TimerCompleted,
         seq: 0,
       },
       schedule: Schedule.absolute(baseTime.toISOString()),
       executionId,
     });
 
-    expect(event).toMatchObject<AlarmScheduled>({
+    expect(event).toMatchObject<TimerScheduled>({
       seq: 0,
       timestamp: expect.stringContaining("Z"),
-      type: WorkflowEventType.AlarmScheduled,
+      type: WorkflowEventType.TimerScheduled,
       untilTime: baseTime.toISOString(),
     });
   });

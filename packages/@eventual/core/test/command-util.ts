@@ -1,7 +1,6 @@
 import { ulid } from "ulidx";
 import {
-  AwaitDurationCommand,
-  AwaitTimeCommand,
+  StartTimerCommand,
   CommandType,
   PublishEventsCommand,
   ScheduleActivityCommand,
@@ -19,35 +18,28 @@ import {
   EventsPublished,
   SignalReceived,
   SignalSent,
-  AlarmCompleted,
-  AlarmScheduled,
   WorkflowEventType,
   WorkflowTimedOut,
   ActivityHeartbeatTimedOut,
+  TimerCompleted,
+  TimerScheduled,
 } from "../src/workflow-events.js";
 import { SignalTarget } from "../src/signals.js";
-import { DurationUnit } from "../src/await-time.js";
+import { Schedule } from "../src/index.js";
 
-export function createAwaitTimeCommand(
-  untilTime: string,
+export function createStartTimerCommand(
+  schedule: Schedule,
   seq: number
-): AwaitTimeCommand {
+): StartTimerCommand;
+export function createStartTimerCommand(seq: number): StartTimerCommand;
+export function createStartTimerCommand(
+  ...args: [schedule: Schedule, seq: number] | [seq: number]
+): StartTimerCommand {
+  const [schedule, seq] =
+    args.length === 1 ? [Schedule.absolute("then"), args[0]] : args;
   return {
-    kind: CommandType.AwaitTime,
-    untilTime,
-    seq,
-  };
-}
-
-export function createAwaitDurationCommand(
-  dur: number,
-  unit: DurationUnit,
-  seq: number
-): AwaitDurationCommand {
-  return {
-    kind: CommandType.AwaitDuration,
-    dur,
-    unit,
+    kind: CommandType.StartTimer,
+    schedule,
     seq,
   };
 }
@@ -188,18 +180,18 @@ export function workflowScheduled(
   };
 }
 
-export function scheduledAlarm(untilTime: string, seq: number): AlarmScheduled {
+export function timerScheduled(seq: number): TimerScheduled {
   return {
-    type: WorkflowEventType.AlarmScheduled,
-    untilTime,
+    type: WorkflowEventType.TimerScheduled,
+    untilTime: "",
     seq,
     timestamp: new Date(0).toISOString(),
   };
 }
 
-export function completedAlarm(seq: number): AlarmCompleted {
+export function timerCompleted(seq: number): TimerCompleted {
   return {
-    type: WorkflowEventType.AlarmCompleted,
+    type: WorkflowEventType.TimerCompleted,
     seq,
     timestamp: new Date(0).toISOString(),
   };

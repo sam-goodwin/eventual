@@ -1,6 +1,8 @@
 import { HistoryStateEvent } from "../../workflow-events.js";
 
 export abstract class TimerClient {
+  constructor(protected baseTime: () => Date) {}
+
   /**
    * Starts a timer using SQS's message delay.
    *
@@ -18,8 +20,8 @@ export abstract class TimerClient {
   /**
    * Starts a timer of any (positive) length.
    *
-   * If the timer is longer than 15 minutes (configurable via `props.sleepQueueThresholdMillis`),
-   * the timer will create a  EventBridge schedule until the untilTime - props.sleepQueueThresholdMillis
+   * If the timer is longer than 15 minutes (configurable via `props.timerQueueThresholdMillis`),
+   * the timer will create a  EventBridge schedule until the untilTime - props.timerQueueThresholdMillis
    * when the timer will be moved to the SQS queue.
    *
    * The SQS Queue will delay for floor(untilTime - currentTime) seconds until the timer handler can pick up the message.
@@ -35,7 +37,7 @@ export abstract class TimerClient {
    * Use this method to clean the schedule.
    *
    * The provided schedule-forwarder function will call this method in Eventual when
-   * the timer is transferred from EventBridge to SQS at `props.sleepQueueThresholdMillis`.
+   * the timer is transferred from EventBridge to SQS at `props.timerQueueThresholdMillis`.
    */
   public abstract clearSchedule(scheduleName: string): Promise<void>;
 
@@ -47,7 +49,10 @@ export abstract class TimerClient {
   public async scheduleEvent<E extends HistoryStateEvent>(
     request: ScheduleEventRequest<E>
   ): Promise<void> {
-    const untilTime = computeUntilTime(request.schedule);
+    const untilTime = computeScheduleDate(
+      request.schedule,
+      this.baseTime()
+    ).toISOString();
 
     const event = {
       ...request.event,
@@ -58,7 +63,7 @@ export abstract class TimerClient {
       event,
       executionId: request.executionId,
       type: TimerRequestType.ScheduleEvent,
-      schedule: Schedule.absolute(untilTime),
+      schedule: request.schedule,
     });
   }
 }
@@ -75,7 +80,6 @@ export enum TimerRequestType {
 export interface RelativeSchedule {
   type: "Relative";
   timerSeconds: number;
-  baseTime: Date;
 }
 
 export interface AbsoluteSchedule {
@@ -86,20 +90,17 @@ export interface AbsoluteSchedule {
 export type Schedule = RelativeSchedule | AbsoluteSchedule;
 
 export const Schedule = {
-  relative(
-    timerSeconds: number,
-    baseTime: Date = new Date()
-  ): RelativeSchedule {
+  relative(timerSeconds: number): RelativeSchedule {
     return {
       type: "Relative",
       timerSeconds,
-      baseTime,
     };
   },
-  absolute(untilTime: string): AbsoluteSchedule {
+  absolute(untilTime: string | Date): AbsoluteSchedule {
     return {
       type: "Absolute",
-      untilTime,
+      untilTime:
+        typeof untilTime === "string" ? untilTime : untilTime.toISOString(),
     };
   },
 };
@@ -156,10 +157,8 @@ export interface ScheduleEventRequest<E extends HistoryStateEvent>
   event: Omit<E, "timestamp">;
 }
 
-export function computeUntilTime(schedule: TimerRequest["schedule"]): string {
+export function computeScheduleDate(schedule: Schedule, baseTime: Date): Date {
   return "untilTime" in schedule
-    ? schedule.untilTime
-    : new Date(
-        schedule.baseTime.getTime() + schedule.timerSeconds * 1000
-      ).toISOString();
+    ? new Date(schedule.untilTime)
+    : new Date(baseTime.getTime() + schedule.timerSeconds * 1000);
 }

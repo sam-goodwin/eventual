@@ -200,7 +200,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.configureRecordHistory(this.orchestrator);
     // allows the orchestrator to directly invoke the activity worker lambda function (async)
     this.props.activities.configureScheduleActivity(this.orchestrator);
-    // allows allows the orchestrator to start timeout and sleep timers
+    // allows allows the orchestrator to start timeout and timers
     this.props.scheduler.configureScheduleTimer(this.orchestrator);
     // allows the orchestrator to send events to the workflow queue,
     // write events to the execution table, and start other workflows

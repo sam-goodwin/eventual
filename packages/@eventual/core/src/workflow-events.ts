@@ -21,14 +21,14 @@ export enum WorkflowEventType {
   ActivityFailed = "ActivityFailed",
   ActivityHeartbeatTimedOut = "ActivityHeartbeatTimedOut",
   ActivityScheduled = "ActivityScheduled",
-  AlarmCompleted = "AlarmCompleted",
-  AlarmScheduled = "AlarmScheduled",
   ChildWorkflowSucceeded = "ChildWorkflowSucceeded",
   ChildWorkflowFailed = "ChildWorkflowFailed",
   ChildWorkflowScheduled = "ChildWorkflowScheduled",
   EventsPublished = "EventsPublished",
   SignalReceived = "SignalReceived",
   SignalSent = "SignalSent",
+  TimerCompleted = "TimerCompleted",
+  TimerScheduled = "TimerScheduled",
   WorkflowSucceeded = "WorkflowSucceeded",
   WorkflowFailed = "WorkflowFailed",
   WorkflowStarted = "WorkflowStarted",
@@ -50,14 +50,14 @@ export type WorkflowEvent =
 
 export type ScheduledEvent =
   | ActivityScheduled
-  | AlarmScheduled
+  | TimerScheduled
   | ChildWorkflowScheduled
   | EventsPublished
   | SignalSent;
 
 export type SucceededEvent =
   | ActivitySucceeded
-  | AlarmCompleted
+  | TimerCompleted
   | ChildWorkflowSucceeded;
 
 export type FailedEvent =
@@ -218,19 +218,19 @@ export function isActivityHeartbeatTimedOut(
   return event.type === WorkflowEventType.ActivityHeartbeatTimedOut;
 }
 
-export interface AlarmScheduled extends HistoryEventBase {
-  type: WorkflowEventType.AlarmScheduled;
+export interface TimerScheduled extends HistoryEventBase {
+  type: WorkflowEventType.TimerScheduled;
   untilTime: string;
 }
 
-export function isAlarmScheduled(
+export function isTimerScheduled(
   event: WorkflowEvent
-): event is AlarmScheduled {
-  return event.type === WorkflowEventType.AlarmScheduled;
+): event is TimerScheduled {
+  return event.type === WorkflowEventType.TimerScheduled;
 }
 
-export interface AlarmCompleted extends HistoryEventBase {
-  type: WorkflowEventType.AlarmCompleted;
+export interface TimerCompleted extends HistoryEventBase {
+  type: WorkflowEventType.TimerCompleted;
   result?: undefined;
 }
 
@@ -268,10 +268,10 @@ export function isChildWorkflowFailed(
   return event.type === WorkflowEventType.ChildWorkflowFailed;
 }
 
-export function isAlarmCompleted(
+export function isTimerCompleted(
   event: WorkflowEvent
-): event is AlarmCompleted {
-  return event.type === WorkflowEventType.AlarmCompleted;
+): event is TimerCompleted {
+  return event.type === WorkflowEventType.TimerCompleted;
 }
 
 export const isWorkflowCompletedEvent = or(
@@ -328,13 +328,13 @@ export const isScheduledEvent = or(
   isChildWorkflowScheduled,
   isEventsPublished,
   isSignalSent,
-  isAlarmScheduled
+  isTimerScheduled
 );
 
 export const isSucceededEvent = or(
   isActivitySucceeded,
   isChildWorkflowSucceeded,
-  isAlarmCompleted
+  isTimerCompleted
 );
 
 export const isFailedEvent = or(

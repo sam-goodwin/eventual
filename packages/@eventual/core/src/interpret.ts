@@ -25,8 +25,8 @@ import {
   isSignalReceived,
   isFailedEvent,
   isScheduledEvent,
-  isAlarmCompleted,
-  isAlarmScheduled,
+  isTimerCompleted,
+  isTimerScheduled,
   ScheduledEvent,
   isSignalSent,
   isWorkflowTimedOut,
@@ -44,7 +44,13 @@ import {
   isResolvedOrFailed,
 } from "./result.js";
 import { createChain, isChain, Chain } from "./chain.js";
-import { assertNever, _Iterator, iterator, or } from "./util.js";
+import {
+  assertNever,
+  _Iterator,
+  iterator,
+  or,
+  computeDurationSeconds,
+} from "./util.js";
 import { Command, CommandType } from "./command.js";
 import {
   isAwaitDurationCall,
@@ -66,6 +72,7 @@ import { isAwaitAllSettled } from "./await-all-settled.js";
 import { isAwaitAny } from "./await-any.js";
 import { isRace } from "./race.js";
 import { isPublishEventsCall } from "./calls/send-events-call.js";
+import { Schedule } from "./index.js";
 
 export interface WorkflowResult<T = any> {
   /**
@@ -212,18 +219,13 @@ export function interpret<Return>(
         heartbeatSeconds: call.heartbeatSeconds,
         seq: call.seq!,
       };
-    } else if (isAwaitTimeCall(call)) {
+    } else if (isAwaitTimeCall(call) || isAwaitDurationCall(call)) {
       return {
-        kind: CommandType.AwaitTime,
+        kind: CommandType.StartTimer,
         seq: call.seq!,
-        untilTime: call.isoDate,
-      };
-    } else if (isAwaitDurationCall(call)) {
-      return {
-        kind: CommandType.AwaitDuration,
-        seq: call.seq!,
-        dur: call.dur,
-        unit: call.unit,
+        schedule: isAwaitTimeCall(call)
+          ? Schedule.absolute(call.isoDate)
+          : Schedule.relative(computeDurationSeconds(call.dur, call.unit)),
       };
     } else if (isWorkflowCall(call)) {
       return {
@@ -555,7 +557,7 @@ export function interpret<Return>(
     }
     call.result = isSucceededEvent(event)
       ? Result.resolved(event.result)
-      : isAlarmCompleted(event)
+      : isTimerCompleted(event)
       ? Result.resolved(undefined)
       : isActivityHeartbeatTimedOut(event)
       ? Result.failed(new HeartbeatTimeout("Activity Heartbeat TimedOut"))
@@ -570,7 +572,7 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
     return isActivityCall(call) && call.name === event.name;
   } else if (isChildWorkflowScheduled(event)) {
     return isWorkflowCall(call) && call.name === event.name;
-  } else if (isAlarmScheduled(event)) {
+  } else if (isTimerScheduled(event)) {
     return isAwaitTimeCall(call) || isAwaitDurationCall(call);
   } else if (isSignalSent(event)) {
     return isSendSignalCall(call) && event.signalId === call.signalId;

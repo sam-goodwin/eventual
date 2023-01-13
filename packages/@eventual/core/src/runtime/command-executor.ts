@@ -4,31 +4,29 @@ import {
   isScheduleActivityCommand,
   isScheduleWorkflowCommand,
   isSendSignalCommand,
-  isAwaitDurationCommand,
-  isAwaitTimeCommand,
+  isStartTimerCommand,
   PublishEventsCommand,
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
   SendSignalCommand,
-  AwaitDurationCommand,
-  AwaitTimeCommand,
+  StartTimerCommand,
 } from "../command.js";
 import {
   WorkflowEventType,
   createEvent,
   ActivityScheduled,
   ChildWorkflowScheduled,
-  AlarmScheduled,
-  AlarmCompleted,
+  TimerScheduled,
+  TimerCompleted,
   HistoryStateEvent,
   SignalSent,
   EventsPublished,
 } from "../workflow-events.js";
-import { assertNever, computeDurationDate } from "../util.js";
+import { assertNever } from "../util.js";
 import { Workflow } from "../workflow.js";
 import { formatChildExecutionName, formatExecutionId } from "./execution-id.js";
 import { ActivityWorkerRequest } from "./handlers/activity-worker.js";
-import { Schedule, TimerClient } from "./clients/timer-client.js";
+import { computeScheduleDate, TimerClient } from "./clients/timer-client.js";
 import { WorkflowRuntimeClient } from "./clients/workflow-runtime-client.js";
 import { WorkflowClient } from "./clients/workflow-client.js";
 import { EventClient } from "./clients/event-client.js";
@@ -62,9 +60,9 @@ export class CommandExecutor {
       );
     } else if (isScheduleWorkflowCommand(command)) {
       return this.scheduleChildWorkflow(executionId, command, baseTime);
-    } else if (isAwaitDurationCommand(command) || isAwaitTimeCommand(command)) {
-      // all sleep times are computed using the start time of the WorkflowTaskStarted
-      return this.scheduleSleep(executionId, command, baseTime);
+    } else if (isStartTimerCommand(command)) {
+      // all timers are computed using the start time of the WorkflowTaskStarted
+      return this.startTimer(executionId, command, baseTime);
     } else if (isSendSignalCommand(command)) {
       return this.sendSignal(executionId, command, baseTime);
     } else if (isPublishEventsCommand(command)) {
@@ -125,32 +123,29 @@ export class CommandExecutor {
     );
   }
 
-  private async scheduleSleep(
+  private async startTimer(
     executionId: string,
-
-    command: AwaitDurationCommand | AwaitTimeCommand,
+    command: StartTimerCommand,
     baseTime: Date
-  ): Promise<AlarmScheduled> {
+  ): Promise<TimerScheduled> {
     // TODO validate
-    const untilTime = isAwaitTimeCommand(command)
-      ? new Date(command.untilTime)
-      : computeDurationDate(baseTime, command.dur, command.unit);
-    const untilTimeIso = untilTime.toISOString();
-
-    await this.props.timerClient.scheduleEvent<AlarmCompleted>({
+    await this.props.timerClient.scheduleEvent<TimerCompleted>({
       event: {
-        type: WorkflowEventType.AlarmCompleted,
+        type: WorkflowEventType.TimerCompleted,
         seq: command.seq,
       },
-      schedule: Schedule.absolute(untilTimeIso),
+      schedule: command.schedule,
       executionId,
     });
 
-    return createEvent<AlarmScheduled>(
+    return createEvent<TimerScheduled>(
       {
-        type: WorkflowEventType.AlarmScheduled,
+        type: WorkflowEventType.TimerScheduled,
         seq: command.seq,
-        untilTime: untilTime.toISOString(),
+        untilTime: computeScheduleDate(
+          command.schedule,
+          baseTime
+        ).toISOString(),
       },
       baseTime
     );
