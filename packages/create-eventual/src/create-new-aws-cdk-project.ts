@@ -3,11 +3,9 @@ import {
   exec,
   install,
   PackageManager,
-  validateServiceName,
   writeJsonFile,
 } from "@eventual/project";
 import fs from "fs/promises";
-import inquirer from "inquirer";
 import path from "path";
 import { sampleCDKApp } from "./sample-code";
 
@@ -22,20 +20,8 @@ export interface CreateAwsCdkProps {
 export async function createAwsCdkProject({
   projectName,
   pkgManager,
-  serviceName,
+  serviceName = projectName,
 }: CreateAwsCdkProps) {
-  if (serviceName === undefined) {
-    const response = await inquirer.prompt([
-      {
-        type: "input",
-        name: "serviceName",
-        message: "service name",
-        validate: validateServiceName,
-      },
-    ]);
-    serviceName = response.serviceName! as string;
-  }
-
   await fs.mkdir(projectName);
   process.chdir(projectName);
   await exec("git", "init");
@@ -65,6 +51,96 @@ export async function createAwsCdkProject({
       fs.mkdir(eventsDir, {
         recursive: true,
       }),
+      fs.writeFile(
+        "README.md",
+        `# Welcome to your Eventual Project
+
+## Project Structure
+The following folder structure will be generated. 
+\`\`\`bash
+├──infra # an AWS CDK application that deploys the repo's infrastructure
+├──apps
+    ├──${serviceName} # the NPM package containing the my-service business logic
+├──packages
+    ├──events # a shared NPM package containing event definitions
+\`\`\`
+
+### \`infra\`
+
+This is where you control what infrastructure is deployed with your Service, for example adding DynamoDB Tables, SQS Queues, or other stateful Resources.
+
+### \`apps/${serviceName}\`
+
+This is where you add business logic such as APIs, Event handlers, Workflows and Activities.
+
+### \`packages/events\`
+
+The \`packages/\` directory is where you can place any shared packages containing code that you want to use elsewhere in the repo, such as \`apps/${serviceName}\`.
+
+The template includes an initial \`events\` package where you may want to place the type definitions of your events.
+
+## Deployed Infrastructure
+
+After deploying to AWS, you'll have a single stack named \`${serviceName}\` containing your Service. Take a look at the structure using the Resources view in CloudFormation. Here, you can find a list of all the Lambda Functions and other Resources that come with a Service.
+
+See the [Service documentation](https://docs.eventual.net/reference/service) for more information.
+
+### Noteworthy Lambda Functions
+
+* \`${serviceName}\-api-handler\` - the Lambda Function that handles any API routes, see [API](https://docs.eventual.net/reference/api).
+* \`${serviceName}\-event-handler\` - the Lambda Function that handles any Event subscriptions, see [Event](https://docs.eventual.net/reference/event).
+* \`${serviceName}\-activity-handler\` - the Lambda Function that handles any Activity invocations, see [Activity](https://docs.eventual.net/reference/activity).
+* \`${serviceName}\-orchestrator-handler\` - the Lambda Function that orchestrates Workflow Executions, see [Workflow](https://docs.eventual.net/reference/workflow).
+
+### Viewing the Logs
+
+The following CloudWatch LogGroups are useful for seeing what's happening in your Service.
+* \`${serviceName}-execution-logs\` - contains a single LogStream per Workflow Execution containing all logs from the \`workflow\` and \`activity\` functions. This is a good place to see the logs for a single execution in one place, including any logs from a workflow and any activities it invokes.
+* \`${serviceName}-api-handler\` - the API handler Lambda Function's logs, see [API](https://docs.eventual.net/reference/api).
+* \`${serviceName}-event-handler\` - the Event handler Lambda Function's logs, see [Events](https://docs.eventual.net/reference/event)
+* \`${serviceName}-orchestrator\` - system logs of the Workflow Orchestrator function.
+
+## Scripts
+
+The root \`package.json\` contains some scripts for your convenience.
+
+### Build
+
+The \`build\` script compiles all TypeScript (\`.ts\`) files in each package's \`src/\` directory and emits the compiled output in the corresponding \`lib/\` folder.
+
+\`\`\`
+${npm("build")}
+\`\`\`
+
+### Build
+
+The \`watch\` script run the typescript compiler in the background and re-compiles \`.ts\` files whenever they are changed.
+\`\`\`
+${npm("watch")}
+\`\`\`
+
+### Synth
+
+The \`synth\` script synthesizes the CDK application in the \`infra/\` package. 
+\`\`\`
+${npm("synth")}
+\`\`\`
+
+### Deploy
+
+The \`deploy\` script synthesizes and deploys the CDK application in the \`infra/\` package to AWS.
+\`\`\`
+${npm("deploy")}
+\`\`\`
+
+### Hotswap
+
+The \`hotswap\` script synthesizes and deploys the CDK application in the \`infra/\` package to AWS using \`cdk deploy --hotswap\` which can bypass a slow CloudFormation deployment in cases where only the business logic in a Lambda Function has changed.
+\`\`\`
+${npm("deploy")}
+\`\`\`
+`
+      ),
       writeJsonFile("eventual.json", {
         projectType: "aws-cdk",
       }),
@@ -76,14 +152,15 @@ export async function createAwsCdkProject({
           build: "tsc -b",
           watch: "tsc -b -w",
           synth: run("synth"),
-          deploy: run("deploy"),
-          hotswap: run("deploy", "--hotswap"),
+          deploy: `tsc -b && ${run("deploy")}`,
+          hotswap: `tsc -b && ${run("deploy", "--hotswap")}`,
         },
         devDependencies: {
           "@eventual/cli": `^${version}`,
           "@tsconfig/node16": "^1",
           "@types/node": "^16",
           esbuild: "^0.16.14",
+          typescript: "^4.9.4",
         },
         ...(pkgManager !== "pnpm"
           ? {
@@ -135,6 +212,18 @@ packages:
           )
         : Promise.resolve(),
     ]);
+  }
+
+  function npm(command: string, ...args: string[]) {
+    return `${pkgManager}${needsRunPrefix() ? " run" : ""} ${command}${
+      args.length > 0 ? ` ${args.join(" ")}` : ""
+    }`;
+
+    function needsRunPrefix() {
+      return (
+        (pkgManager === "pnpm" && command === "deploy") || pkgManager === "npm"
+      );
+    }
   }
 
   // creates a run script that is package aware
@@ -280,6 +369,10 @@ export const helloWorkflow = workflow("helloWorkflow", async (name: string) => {
 // an activity that does the work of formatting the message
 export const formatMessage = activity("formatName", async (name: string) => {
   return \`hello \${name}\`;
+});
+
+helloEvent.onEvent((hello) => {
+  console.log("received event", hello);
 });
 `,
     });
