@@ -113,7 +113,7 @@ export function lookupWorkflow(name: string): Workflow | undefined {
  * execution's log stream in the service's workflow.
  *
  * To see these logs run `eventual get logs -e <execution>` or find the log group using
- * `eventual get service`.
+ * `eventual show service`.
  * ```
  * @param name a globally unique ID for this workflow.
  * @param definition the workflow definition.
