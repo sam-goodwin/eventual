@@ -111,7 +111,7 @@ exports[`esbuild-plugin ts workflow 1`] = `
     yield func2();
   });
   var workflow2 = workflow("timeoutFlow", {
-    timeoutSeconds: 100
+    timeout: duration(100, "seconds")
   }, function* () {
     yield doWork("something");
   });

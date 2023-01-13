@@ -23,7 +23,7 @@ export class DeterminismError extends EventualError {
  * Thrown from within a workflow when any set timeout expires.
  *
  * ```ts
- * const myAct = new activity("myAct", {timeoutSeconds: 100}, async () => { ... });
+ * const myAct = new activity("myAct", {timeout: duration(100, "seconds") }, async () => { ... });
  * workflow("myWorkflow", async () => {
  *    try {
  *       await myAct();

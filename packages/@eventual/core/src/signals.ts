@@ -77,14 +77,14 @@ export class Signal<Payload = void> {
    * });
    * ```
    *
-   * Use `opts.timeoutSeconds` to stop waiting after the provided time. The Promise will reject
+   * Use `opts.timeout` to stop waiting after the provided time. The Promise will reject
    * when the provided time has elapsed.
    *
    * ```ts
    * const mySignal = signal<string>("MySignal");
    * workflow("wf", async () => {
    *    try {
-   *       const payload = await mySignal.expectSignal({ timeoutSecond: 10 * 60 });
+   *       const payload = await mySignal.expectSignal({ timeout: duration(10, "minutes) });
    *
    *       return payload;
    *    } catch {

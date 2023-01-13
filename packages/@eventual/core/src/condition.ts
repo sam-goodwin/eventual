@@ -33,7 +33,7 @@ export interface ConditionOptions {
  *    onSignal("mySignal", () => { n++ });
  *
  *    // after 5 mySignals, this promise will be resolved.
- *    if(!(await condition({ timeoutSeconds: 5 * 60 }, () => n === 5))) {
+ *    if(!(await condition({ timeout: duration(5, "minutes") }, () => n === 5))) {
  *       return "did not get 5 in 5 minutes."
  *    }
  *
