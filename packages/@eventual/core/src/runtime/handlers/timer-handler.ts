@@ -76,7 +76,7 @@ export function createTimerHandler({
           activitySeq: request.activitySeq,
           executionId: request.executionId,
           heartbeatSeconds: request.heartbeatSeconds,
-          schedule: Schedule.relative(request.heartbeatSeconds),
+          schedule: Schedule.duration(request.heartbeatSeconds),
         });
       }
     } else {

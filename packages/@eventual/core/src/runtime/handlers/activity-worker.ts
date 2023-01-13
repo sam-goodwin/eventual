@@ -135,7 +135,7 @@ export function createActivityWorker({
               type: TimerRequestType.ActivityHeartbeatMonitor,
               executionId: request.executionId,
               heartbeatSeconds: request.command.heartbeatSeconds,
-              schedule: Schedule.relative(request.command.heartbeatSeconds),
+              schedule: Schedule.duration(request.command.heartbeatSeconds),
             });
           }
           setActivityContext({

@@ -294,7 +294,7 @@ export function createOrchestrator({
               OrchestratorMetrics.TimeoutStartedDuration,
               () =>
                 timerClient.scheduleEvent<WorkflowTimedOut>({
-                  schedule: Schedule.absolute(newWorkflowStart.timeoutTime!),
+                  schedule: Schedule.time(newWorkflowStart.timeoutTime!),
                   event: createEvent<WorkflowTimedOut>(
                     {
                       type: WorkflowEventType.WorkflowTimedOut,

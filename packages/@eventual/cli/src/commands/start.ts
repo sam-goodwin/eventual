@@ -6,6 +6,7 @@ import {
   ExecutionEventsResponse,
   DURATION_UNITS,
   DurationUnit,
+  Schedule,
 } from "@eventual/core";
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
@@ -103,10 +104,7 @@ export const start = (yargs: Argv) =>
           input: inputJSON,
           executionName: args.name,
           timeout: args.timeout
-            ? {
-                dur: args.timeout,
-                unit: args.timeoutUnit as DurationUnit,
-              }
+            ? Schedule.duration(args.timeout, args.timeoutUnit as DurationUnit)
             : undefined,
         });
       }

@@ -1,4 +1,3 @@
-import { DurationSpec } from "./await-time.js";
 import { createActivityCall } from "./calls/activity-call.js";
 import { createAwaitDurationCall } from "./calls/await-time-call.js";
 import {
@@ -6,7 +5,7 @@ import {
   getActivityContext,
   getServiceClient,
 } from "./global.js";
-import { computeDurationSeconds } from "./index.js";
+import { computeDurationSeconds, DurationSchedule } from "./index.js";
 import { isActivityWorker, isOrchestratorWorker } from "./runtime/flags.js";
 import {
   EventualServiceClient,
@@ -22,7 +21,7 @@ export interface ActivityOptions {
    *
    * @default - workflow will run forever.
    */
-  timeout?: DurationSpec;
+  timeout?: DurationSchedule;
   /**
    * For long running activities, it is suggested that they report back that they
    * are still in progress to avoid waiting forever or until a long timeout when
@@ -33,7 +32,7 @@ export interface ActivityOptions {
    *
    * If it fails to do so, the workflow will cancel the activity and throw an error.
    */
-  heartbeatTimeout?: DurationSpec;
+  heartbeatTimeout?: DurationSchedule;
 }
 
 export interface ActivityFunction<Arguments extends any[], Output = any> {

@@ -25,7 +25,7 @@ import {
   lookupWorkflow,
   SortOrder,
   isExecutionStatus,
-  computeDurationDate,
+  computeScheduleDate,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 import { inspect } from "util";
@@ -109,11 +109,7 @@ export class AWSWorkflowClient extends WorkflowClient {
           // generate the time for the workflow to timeout based on when it was started.
           // the timer will be started by the orchestrator so the client does not need to have access to the timer client.
           timeoutTime: timeout
-            ? computeDurationDate(
-                new Date(),
-                timeout.dur,
-                timeout.unit
-              ).toISOString()
+            ? computeScheduleDate(timeout, this.baseTime()).toISOString()
             : undefined,
           context: {
             name: executionName,

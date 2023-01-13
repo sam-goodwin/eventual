@@ -44,13 +44,7 @@ import {
   isResolvedOrFailed,
 } from "./result.js";
 import { createChain, isChain, Chain } from "./chain.js";
-import {
-  assertNever,
-  _Iterator,
-  iterator,
-  or,
-  computeDurationSeconds,
-} from "./util.js";
+import { assertNever, _Iterator, iterator, or } from "./util.js";
 import { Command, CommandType } from "./command.js";
 import {
   isAwaitDurationCall,
@@ -224,8 +218,8 @@ export function interpret<Return>(
         kind: CommandType.StartTimer,
         seq: call.seq!,
         schedule: isAwaitTimeCall(call)
-          ? Schedule.absolute(call.isoDate)
-          : Schedule.relative(computeDurationSeconds(call.dur, call.unit)),
+          ? Schedule.time(call.isoDate)
+          : Schedule.duration(call.dur, call.unit),
       };
     } else if (isWorkflowCall(call)) {
       return {

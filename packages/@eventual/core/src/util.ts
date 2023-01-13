@@ -1,5 +1,3 @@
-import { DurationUnit } from "./await-time.js";
-
 export function assertNever(never: never, msg?: string): never {
   throw new Error(msg ?? `reached unreachable code with value ${never}`);
 }
@@ -79,28 +77,4 @@ export function iterator<I, T extends I>(
       }
     }
   }
-}
-
-export function computeDurationDate(
-  now: Date,
-  dur: number,
-  unit: DurationUnit
-) {
-  const milliseconds = computeDurationSeconds(dur, unit) * 1000;
-
-  return new Date(now.getTime() + milliseconds);
-}
-
-export function computeDurationSeconds(dur: number, unit: DurationUnit) {
-  return unit === "seconds" || unit === "second"
-    ? dur
-    : unit === "minutes" || unit === "minute"
-    ? dur * 60
-    : unit === "hours" || unit === "hour"
-    ? dur * 60 * 60
-    : unit === "days" || unit === "day"
-    ? dur * 60 * 60 * 24
-    : unit === "years" || unit === "year"
-    ? dur * 60 * 60 * 24 * 365.25
-    : assertNever(unit);
 }

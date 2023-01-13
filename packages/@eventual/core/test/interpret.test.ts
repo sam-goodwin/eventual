@@ -525,7 +525,7 @@ test("should schedule duration", () => {
   }
 
   expect(interpret(workflow() as any, [])).toMatchObject(<WorkflowResult>{
-    commands: [createStartTimerCommand(Schedule.relative(10), 0)],
+    commands: [createStartTimerCommand(Schedule.duration(10), 0)],
   });
 });
 
@@ -563,9 +563,7 @@ test("should schedule time", () => {
   }
 
   expect(interpret(workflow() as any, [])).toMatchObject(<WorkflowResult>{
-    commands: [
-      createStartTimerCommand(Schedule.absolute(now.toISOString()), 0),
-    ],
+    commands: [createStartTimerCommand(Schedule.time(now.toISOString()), 0)],
   });
 });
 
@@ -1510,7 +1508,7 @@ describe("signals", () => {
       expect(interpret(wf.definition(undefined, context), [])).toMatchObject(<
         WorkflowResult
       >{
-        commands: [createStartTimerCommand(Schedule.relative(100 * 1000), 0)],
+        commands: [createStartTimerCommand(Schedule.duration(100 * 1000), 0)],
       });
     });
 
@@ -2049,7 +2047,7 @@ describe("condition", () => {
     expect(
       interpret(wf.definition(undefined, context), [])
     ).toMatchObject<WorkflowResult>({
-      commands: [createStartTimerCommand(Schedule.relative(100), 0)],
+      commands: [createStartTimerCommand(Schedule.duration(100), 0)],
     });
   });
 

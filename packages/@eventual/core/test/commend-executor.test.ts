@@ -67,7 +67,7 @@ describe("await times", () => {
       executionId,
       {
         kind: CommandType.StartTimer,
-        schedule: Schedule.absolute(baseTime),
+        schedule: Schedule.time(baseTime),
         seq: 0,
       },
       baseTime
@@ -80,7 +80,7 @@ describe("await times", () => {
         type: WorkflowEventType.TimerCompleted,
         seq: 0,
       },
-      schedule: Schedule.absolute(baseTime.toISOString()),
+      schedule: Schedule.time(baseTime.toISOString()),
       executionId,
     });
 

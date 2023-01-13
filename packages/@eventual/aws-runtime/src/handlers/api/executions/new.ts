@@ -5,6 +5,7 @@ import {
   DurationUnit,
   DURATION_UNITS,
   isDurationUnit,
+  Schedule,
   StartExecutionResponse,
 } from "@eventual/core";
 import type {
@@ -62,10 +63,7 @@ export const handler: APIGatewayProxyHandlerV2<StartExecutionResponse> =
       input: event.body && JSON.parse(event.body),
       executionName,
       timeout: timeout
-        ? {
-            dur: timeout,
-            unit: (timeoutUnit as DurationUnit) ?? "seconds",
-          }
+        ? Schedule.duration(timeout, timeoutUnit as DurationUnit)
         : undefined,
     });
   });

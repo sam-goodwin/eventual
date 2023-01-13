@@ -3,32 +3,7 @@ import {
   createAwaitTimeCall,
 } from "./calls/await-time-call.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
-
-export const DURATION_UNITS = [
-  "second",
-  "seconds",
-  "minute",
-  "minutes",
-  "hour",
-  "hours",
-  "day",
-  "days",
-  "year",
-  "years",
-] as const;
-export type DurationUnit = typeof DURATION_UNITS[number];
-
-export function isDurationUnit(u: string): u is DurationUnit {
-  return DURATION_UNITS.includes(u as any);
-}
-
-export interface TimeSpec {
-  isoDate: string;
-}
-export interface DurationSpec {
-  dur: number;
-  unit: DurationUnit;
-}
+import { DurationSchedule, DurationUnit, TimeSchedule } from "./schedule.js";
 
 /**
  * Represents a time duration.
@@ -77,9 +52,9 @@ export interface DurationSpec {
 export function duration(
   dur: number,
   unit: DurationUnit = "seconds"
-): Promise<void> & DurationSpec {
+): Promise<void> & DurationSchedule {
   if (!isOrchestratorWorker()) {
-    return { dur, unit } as Promise<void> & DurationSpec;
+    return { dur, unit } as Promise<void> & DurationSchedule;
   }
 
   // register an await duration command and return it (to be yielded)
@@ -109,14 +84,14 @@ export function duration(
  * })
  * ```
  */
-export function time(isoDate: string): Promise<void> & TimeSpec;
-export function time(date: Date): Promise<void> & TimeSpec;
-export function time(date: Date | string): Promise<void> & TimeSpec {
+export function time(isoDate: string): Promise<void> & TimeSchedule;
+export function time(date: Date): Promise<void> & TimeSchedule;
+export function time(date: Date | string): Promise<void> & TimeSchedule {
   const d = new Date(date);
   const iso = d.toISOString();
 
   if (!isOrchestratorWorker()) {
-    return { isoDate: iso } as Promise<void> & TimeSpec;
+    return { isoDate: iso } as Promise<void> & TimeSchedule;
   }
 
   // register an await time command and return it (to be yielded)

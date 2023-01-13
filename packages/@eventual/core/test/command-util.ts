@@ -36,7 +36,7 @@ export function createStartTimerCommand(
   ...args: [schedule: Schedule, seq: number] | [seq: number]
 ): StartTimerCommand {
   const [schedule, seq] =
-    args.length === 1 ? [Schedule.absolute("then"), args[0]] : args;
+    args.length === 1 ? [Schedule.time("then"), args[0]] : args;
   return {
     kind: CommandType.StartTimer,
     schedule,
