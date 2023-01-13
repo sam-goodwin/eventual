@@ -15,6 +15,7 @@ export * from "./heartbeat.js";
 export * from "./interpret.js";
 export * from "./result.js";
 export * from "./runtime/index.js";
+export * from "./schedule.js";
 export * from "./secret.js";
 export * from "./service-client.js";
 export * from "./service-type.js";

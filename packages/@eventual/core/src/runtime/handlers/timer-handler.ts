@@ -7,7 +7,6 @@ import { assertNever } from "../../util.js";
 import {
   isActivityHeartbeatMonitorRequest,
   isTimerScheduleEventRequest,
-  Schedule,
   TimerClient,
   TimerRequest,
   TimerRequestType,
@@ -15,6 +14,7 @@ import {
 import type { WorkflowClient } from "../clients/workflow-client.js";
 import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
 import { LogAgent, LogContextType, LogLevel } from "../log-agent.js";
+import { Schedule } from "../../schedule.js";
 
 interface TimerHandlerProps {
   workflowClient: WorkflowClient;

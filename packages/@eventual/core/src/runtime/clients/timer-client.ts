@@ -1,3 +1,4 @@
+import { computeScheduleDate, Schedule } from "../../schedule.js";
 import { HistoryStateEvent } from "../../workflow-events.js";
 
 export abstract class TimerClient {
@@ -77,34 +78,6 @@ export enum TimerRequestType {
   ActivityHeartbeatMonitor = "CheckHeartbeat",
 }
 
-export interface RelativeSchedule {
-  type: "Relative";
-  timerSeconds: number;
-}
-
-export interface AbsoluteSchedule {
-  type: "Absolute";
-  untilTime: string;
-}
-
-export type Schedule = RelativeSchedule | AbsoluteSchedule;
-
-export const Schedule = {
-  relative(timerSeconds: number): RelativeSchedule {
-    return {
-      type: "Relative",
-      timerSeconds,
-    };
-  },
-  absolute(untilTime: string | Date): AbsoluteSchedule {
-    return {
-      type: "Absolute",
-      untilTime:
-        typeof untilTime === "string" ? untilTime : untilTime.toISOString(),
-    };
-  },
-};
-
 export type TimerRequestBase<T extends TimerRequestType> = {
   type: T;
   schedule: Schedule;
@@ -155,10 +128,4 @@ export interface ScheduleForwarderRequest {
 export interface ScheduleEventRequest<E extends HistoryStateEvent>
   extends Omit<TimerScheduleEventRequest, "event" | "type"> {
   event: Omit<E, "timestamp">;
-}
-
-export function computeScheduleDate(schedule: Schedule, baseTime: Date): Date {
-  return "untilTime" in schedule
-    ? new Date(schedule.untilTime)
-    : new Date(baseTime.getTime() + schedule.timerSeconds * 1000);
 }

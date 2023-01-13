@@ -72,7 +72,7 @@ import { isAwaitAllSettled } from "./await-all-settled.js";
 import { isAwaitAny } from "./await-any.js";
 import { isRace } from "./race.js";
 import { isPublishEventsCall } from "./calls/send-events-call.js";
-import { Schedule } from "./index.js";
+import { Schedule } from "./schedule.js";
 
 export interface WorkflowResult<T = any> {
   /**

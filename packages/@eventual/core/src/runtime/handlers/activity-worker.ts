@@ -22,11 +22,7 @@ import { timed } from "../metrics/utils.js";
 import { ActivityProvider } from "../providers/activity-provider.js";
 import { ActivityNotFoundError } from "../../error.js";
 import { extendsError } from "../../util.js";
-import {
-  Schedule,
-  TimerClient,
-  TimerRequestType,
-} from "../clients/timer-client.js";
+import { TimerClient, TimerRequestType } from "../clients/timer-client.js";
 import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
 import {
   ActivityLogContext,
@@ -37,6 +33,7 @@ import {
 import { EventClient } from "../clients/event-client.js";
 import { serviceTypeScope } from "../flags.js";
 import { ServiceType } from "../../service-type.js";
+import { Schedule } from "../../schedule.js";
 
 export interface CreateActivityWorkerProps {
   activityRuntimeClient: ActivityRuntimeClient;

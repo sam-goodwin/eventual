@@ -1,5 +1,5 @@
 import { EventEnvelope } from "./event.js";
-import { Schedule } from "./index.js";
+import { Schedule } from "./schedule.js";
 import { SignalTarget } from "./signals.js";
 import { WorkflowOptions } from "./workflow.js";
 

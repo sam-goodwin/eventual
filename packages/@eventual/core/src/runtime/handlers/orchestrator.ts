@@ -55,13 +55,14 @@ import { interpret } from "../../interpret.js";
 import { clearEventualCollector } from "../../global.js";
 import { DeterminismError } from "../../error.js";
 import { ExecutionHistoryClient } from "../clients/execution-history-client.js";
-import { Schedule, TimerClient } from "../clients/timer-client.js";
+import { TimerClient } from "../clients/timer-client.js";
 import { WorkflowRuntimeClient } from "../clients/workflow-runtime-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
 import { EventClient } from "../clients/event-client.js";
 import { serviceTypeScope } from "../flags.js";
 import { ServiceType } from "../../service-type.js";
+import { Schedule } from "../../schedule.js";
 
 /**
  * The Orchestrator's client dependencies.

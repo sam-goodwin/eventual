@@ -15,13 +15,13 @@ import {
   formatChildExecutionName,
   formatExecutionId,
   INTERNAL_EXECUTION_ID_PREFIX,
+  Schedule,
   SendSignalRequest,
   SignalTargetType,
   WorkflowClient,
   WorkflowRuntimeClient,
 } from "../src/index.js";
 import {
-  Schedule,
   ScheduleEventRequest,
   TimerClient,
 } from "../src/runtime/clients/timer-client.js";
