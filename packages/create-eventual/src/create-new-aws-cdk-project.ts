@@ -112,7 +112,15 @@ The \`build\` script compiles all TypeScript (\`.ts\`) files in each package's \
 ${npm("build")}
 \`\`\`
 
-### Build
+### Test
+
+The \`test\` script runs \`jest\` in all sub-packages. Check out the apps/${serviceName} package for example tests.
+
+\`\`\`
+${npm("test")}
+\`\`\`
+
+### Watch
 
 The \`watch\` script run the typescript compiler in the background and re-compiles \`.ts\` files whenever they are changed.
 \`\`\`
