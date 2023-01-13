@@ -3,29 +3,6 @@ import { createActivityCall } from "../src/calls/activity-call.js";
 import { chain } from "../src/chain.js";
 import { EventualError, HeartbeatTimeout, Timeout } from "../src/error.js";
 import {
-  Context,
-  createAwaitAll,
-  duration,
-  Eventual,
-  interpret,
-  Program,
-  Result,
-  Schedule,
-  ServiceType,
-  SERVICE_TYPE_FLAG,
-  signal,
-  SignalTargetType,
-  time,
-  Workflow,
-  workflow as _workflow,
-  WorkflowHandler,
-  WorkflowResult,
-} from "../src/index.js";
-import {
-  createAwaitDurationCall,
-  createAwaitTimeCall,
-} from "../src/calls/await-time-call.js";
-import {
   activitySucceeded,
   activityFailed,
   activityHeartbeatTimedOut,
@@ -51,7 +28,26 @@ import { createWorkflowCall } from "../src/calls/workflow-call.js";
 import { createSendSignalCall } from "../src/calls/send-signal-call.js";
 import { createConditionCall } from "../src/calls/condition-call.js";
 import { createPublishEventsCall } from "../src/calls/send-events-call.js";
+import { SERVICE_TYPE_FLAG } from "../src/runtime/flags.js";
+import { ServiceType } from "../src/service-type.js";
+import { interpret, Program, WorkflowResult } from "../src/interpret.js";
+import { Eventual } from "../src/eventual.js";
+import { Context } from "../src/context.js";
+import { createAwaitAll } from "../src/await-all.js";
+import { Result } from "../src/result.js";
+import { signal, SignalTargetType } from "../src/signals.js";
+import {
+  WorkflowHandler,
+  Workflow,
+  workflow as _workflow,
+} from "../src/workflow.js";
 import { createAwaitAllSettled } from "../src/await-all-settled.js";
+import { duration, time } from "../src/await-time.js";
+import {
+  createAwaitTimeCall,
+  createAwaitDurationCall,
+} from "../src/calls/await-time-call.js";
+import { Schedule } from "../src/schedule.js";
 
 beforeAll(() => {
   process.env[SERVICE_TYPE_FLAG] = ServiceType.OrchestratorWorker;

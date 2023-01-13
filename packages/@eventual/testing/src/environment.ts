@@ -49,10 +49,11 @@ import {
 } from "./providers/activity-provider.js";
 import { TestEventHandlerProvider } from "./providers/event-handler-provider.js";
 import { TestLogsClient } from "./clients/logs-client.js";
+import path from "path";
 
 export interface TestEnvironmentProps {
   entry: string;
-  outDir: string;
+  outDir?: string;
   /**
    * Start time, starting at the nearest second (rounded down).
    *
@@ -155,7 +156,7 @@ export class TestEnvironment extends RuntimeServiceClient {
     });
 
     this.serviceFile = bundleService(
-      props.outDir,
+      props.outDir ?? path.resolve(".eventual"),
       props.entry,
       ServiceType.OrchestratorWorker,
       undefined,

@@ -32,7 +32,9 @@ import {
   workflowWithTimeouts,
 } from "./workflow.js";
 import { MockActivity } from "../src/providers/activity-provider.js";
+
 const fakeSqsClientSend = jest.fn<SQSClient["send"]>();
+
 jest.mock("@aws-sdk/client-sqs", () => {
   return {
     ...(jest.requireActual("@aws-sdk/client-sqs") as any),
@@ -50,10 +52,6 @@ beforeAll(async () => {
     entry: path.resolve(
       url.fileURLToPath(new URL(".", import.meta.url)),
       "./workflow.ts"
-    ),
-    outDir: path.resolve(
-      url.fileURLToPath(new URL(".", import.meta.url)),
-      ".eventual"
     ),
   });
 
