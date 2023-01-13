@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.10.0 (2023-01-13)
+
+### Features
+
+- set up unit testing in project template ([#227](https://github.com/functionless/eventual/issues/227)) ([0811135](https://github.com/functionless/eventual/commit/08111359cacbb459595c37699a856febb226a18c))
+
 ## 0.9.4 (2023-01-13)
 
 ### Bug Fixes
