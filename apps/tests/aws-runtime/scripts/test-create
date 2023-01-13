@@ -29,6 +29,7 @@ cd ./infra
 npm install aws-cdk@2.50 aws-cdk-lib@2.50 constructs@10.1.154
 
 cd ..
+npm cache clear --force
 npm link ${EVENTUAL_PACKAGES[@]}
 
 npm run build
