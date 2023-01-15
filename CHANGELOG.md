@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.11.0 (2023-01-15)
+
+### Features
+
+- replace sleep with time and duration ([#221](https://github.com/functionless/eventual/issues/221)) ([27fc1fa](https://github.com/functionless/eventual/commit/27fc1faaed20ec7d65bbd5c0c2bf4fb2a6745e48))
+
 ## 0.10.1 (2023-01-13)
 
 **Note:** Version bump only for package eventual-monorepo
