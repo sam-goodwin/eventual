@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.11.1 (2023-01-15)
+
+### Bug Fixes
+
+- configure @types/jest at root to avoid vs code confusion ([#230](https://github.com/functionless/eventual/issues/230)) ([fcf69d3](https://github.com/functionless/eventual/commit/fcf69d3246c6e75da2be3130a8e70f6ca5863efa))
+
 # 0.11.0 (2023-01-15)
 
 ### Features
