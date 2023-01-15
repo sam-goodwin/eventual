@@ -59,7 +59,7 @@ export default workflow("workflow", async (input) => {
 
 export const workflow2 = workflow(
   "timeoutFlow",
-  { timeoutSeconds: 100 },
+  { timeout: duration(100, "seconds") },
   async () => {
     await doWork("something");
   }
@@ -69,6 +69,6 @@ export const workflow3 = workflow("timeoutFlow", async () => {
   await callMe();
 
   async function callMe() {
-    await sleepFor(20);
+    await duration(20, "seconds");
   }
 });

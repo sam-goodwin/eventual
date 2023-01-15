@@ -15,7 +15,10 @@ import {
   ScheduleForwarderRequest,
   TimerRequest,
   isActivityHeartbeatMonitorRequest,
-  computeUntilTime,
+  computeScheduleDate,
+  Schedule,
+  isTimeSchedule,
+  computeDurationSeconds,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 
@@ -25,10 +28,10 @@ export interface AWSTimerClientProps {
   readonly schedulerDlqArn: string;
   readonly schedulerGroup: string;
   /**
-   * If a sleep has a longer duration (in seconds) than this threshold,
+   * If a timer has a longer duration (in seconds) than this threshold,
    * create an Event Bus Scheduler before sending it to the TimerQueue
    */
-  readonly sleepQueueThresholdSeconds: number;
+  readonly timerQueueThresholdSeconds: number;
   readonly timerQueueUrl: string;
   readonly sqs: SQSClient;
   readonly scheduleForwarderArn: string;
@@ -36,7 +39,7 @@ export interface AWSTimerClientProps {
 
 export class AWSTimerClient extends TimerClient {
   constructor(private props: AWSTimerClientProps) {
-    super();
+    super(() => new Date());
   }
 
   /**
@@ -52,7 +55,10 @@ export class AWSTimerClient extends TimerClient {
    * the {@link TimerRequest} provided.
    */
   public async startShortTimer(timerRequest: TimerRequest) {
-    const delaySeconds = computeTimerSeconds(timerRequest.schedule);
+    const delaySeconds = computeTimerSeconds(
+      timerRequest.schedule,
+      this.baseTime()
+    );
 
     if (delaySeconds > 15 * 60) {
       throw new Error(
@@ -74,8 +80,8 @@ export class AWSTimerClient extends TimerClient {
   /**
    * Starts a timer of any (positive) length.
    *
-   * If the timer is longer than 15 minutes (configurable via `props.sleepQueueThresholdMillis`),
-   * the timer will create a  EventBridge schedule until the untilTime - props.sleepQueueThresholdMillis
+   * If the timer is longer than 15 minutes (configurable via `props.timerQueueThresholdMillis`),
+   * the timer will create a  EventBridge schedule until the untilTime - props.timerQueueThresholdMillis
    * when the timer will be moved to the SQS queue.
    *
    * The SQS Queue will delay for floor(untilTime - currentTime) seconds until the timer handler can pick up the message.
@@ -84,22 +90,27 @@ export class AWSTimerClient extends TimerClient {
    * the {@link TimerRequest} provided.
    */
   public async startTimer(timerRequest: TimerRequest) {
-    const untilTimeIso = computeUntilTime(timerRequest.schedule);
-    const untilTime = new Date(untilTimeIso);
-    const sleepDuration = computeTimerSeconds(timerRequest.schedule);
+    const untilTime = computeScheduleDate(
+      timerRequest.schedule,
+      this.baseTime()
+    );
+    const timerDuration = computeTimerSeconds(
+      timerRequest.schedule,
+      this.baseTime()
+    );
 
     /**
-     * If the sleep is longer than 15 minutes, create an EventBridge schedule first.
+     * If the timer is longer than 15 minutes, create an EventBridge schedule first.
      * The Schedule will trigger a lambda which will re-compute the delay time and
      * create a message in the timerQueue.
      *
-     * The timerQueue ultimately will pick up the event and forward the {@link SleepComplete} to the workflow queue.
+     * The timerQueue ultimately will pick up the event and forward the {@link TimerComplete} to the workflow queue.
      */
-    if (sleepDuration > this.props.sleepQueueThresholdSeconds) {
-      // wait for utilTime - sleepQueueThresholdMillis and then forward the event to
+    if (timerDuration > this.props.timerQueueThresholdSeconds) {
+      // wait for utilTime - timerQueueThresholdMillis and then forward the event to
       // the timerQueue
       const scheduleTime =
-        untilTime.getTime() - this.props.sleepQueueThresholdSeconds;
+        untilTime.getTime() - this.props.timerQueueThresholdSeconds;
       // EventBridge Scheduler only supports HH:MM:SS, strip off the milliseconds and `Z`.
       const formattedSchedulerTime = new Date(scheduleTime)
         .toISOString()
@@ -112,7 +123,7 @@ export class AWSTimerClient extends TimerClient {
         scheduleName,
         timerRequest,
         forwardTime: "<aws.scheduler.scheduled-time>",
-        untilTime: untilTimeIso,
+        untilTime: untilTime.toISOString(),
       };
 
       try {
@@ -145,7 +156,7 @@ export class AWSTimerClient extends TimerClient {
       }
     } else {
       /**
-       * When the sleep is less than 15 minutes, send the timer directly to the
+       * When the timer is less than 15 minutes, send the timer directly to the
        * timer queue. The timer queue will pass the event on to the workflow queue
        * once delaySeconds have passed.
        */
@@ -159,7 +170,7 @@ export class AWSTimerClient extends TimerClient {
    * Use this method to clean the schedule.
    *
    * The provided schedule-forwarder function will call this method in Eventual when
-   * the timer is transferred from EventBridge to SQS at `props.sleepQueueThresholdMillis`.
+   * the timer is transferred from EventBridge to SQS at `props.timerQueueThresholdMillis`.
    */
   public async clearSchedule(scheduleName: string) {
     try {
@@ -203,16 +214,16 @@ function safeScheduleName(name: string) {
   return name.replaceAll(/[^0-9a-zA-Z-_.]/g, "");
 }
 
-export function computeTimerSeconds(schedule: TimerRequest["schedule"]) {
-  return "untilTime" in schedule
+function computeTimerSeconds(schedule: Schedule, baseTime: Date) {
+  return isTimeSchedule(schedule)
     ? Math.max(
         // Compute the number of seconds (floored)
         // subtract 1 because the maxBatchWindow is set to 1s on the lambda event source.
         // this allows for more events to be sent at once while not adding extra latency
         Math.ceil(
-          (new Date(schedule.untilTime).getTime() - new Date().getTime()) / 1000
+          (new Date(schedule.isoDate).getTime() - baseTime.getTime()) / 1000
         ),
         0
       )
-    : schedule.timerSeconds;
+    : computeDurationSeconds(schedule.dur, schedule.unit);
 }

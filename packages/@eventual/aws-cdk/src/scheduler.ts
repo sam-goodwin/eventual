@@ -39,7 +39,7 @@ export interface SchedulerProps {
 }
 
 /**
- * Subsystem that orchestrates long running timers. Used to orchestrate timeouts, sleep
+ * Subsystem that orchestrates long running timers. Used to orchestrate timeouts, timers
  * and heartbeats.
  */
 export class Scheduler extends Construct implements IScheduler, IGrantable {
@@ -48,7 +48,7 @@ export class Scheduler extends Construct implements IScheduler, IGrantable {
    */
   public readonly schedulerRole: IRole;
   /**
-   * Timer (standard) queue which helps orchestrate scheduled things like sleep and dynamic retries.
+   * Timer (standard) queue which helps orchestrate scheduled things like timers, heartbeat, and dynamic retries.
    *
    * Worths in tandem with the {@link CfnSchedulerGroup} to create millisecond latency, long running timers.
    */

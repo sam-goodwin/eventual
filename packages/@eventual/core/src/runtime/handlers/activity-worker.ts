@@ -22,11 +22,7 @@ import { timed } from "../metrics/utils.js";
 import { ActivityProvider } from "../providers/activity-provider.js";
 import { ActivityNotFoundError } from "../../error.js";
 import { extendsError } from "../../util.js";
-import {
-  Schedule,
-  TimerClient,
-  TimerRequestType,
-} from "../clients/timer-client.js";
+import { TimerClient, TimerRequestType } from "../clients/timer-client.js";
 import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
 import {
   ActivityLogContext,
@@ -35,6 +31,9 @@ import {
   LogLevel,
 } from "../log-agent.js";
 import { EventClient } from "../clients/event-client.js";
+import { serviceTypeScope } from "../flags.js";
+import { ServiceType } from "../../service-type.js";
+import { Schedule } from "../../schedule.js";
 
 export interface CreateActivityWorkerProps {
   activityRuntimeClient: ActivityRuntimeClient;
@@ -92,203 +91,210 @@ export function createActivityWorker({
         request: ActivityWorkerRequest,
         baseTime: Date = new Date(),
         getEndTime = () => new Date()
-      ) => {
-        const activityHandle = logAgent.isLogLevelSatisfied(LogLevel.DEBUG)
-          ? `${request.command.name}:${request.command.seq} for execution ${request.executionId} on retry ${request.retry}`
-          : request.command.name;
-        metrics.resetDimensions(false);
-        metrics.setNamespace(MetricsCommon.EventualNamespace);
-        metrics.putDimensions({
-          ActivityName: request.command.name,
-          WorkflowName: request.workflowName,
-        });
-        // the time from the workflow emitting the activity scheduled command
-        // to the request being seen.
-        const activityLogContext: ActivityLogContext = {
-          type: LogContextType.Activity,
-          activityName: request.command.name,
-          executionId: request.executionId,
-          seq: request.command.seq,
-        };
-        const start = baseTime;
-        const recordAge =
-          start.getTime() - new Date(request.scheduledTime).getTime();
-        metrics.putMetric(
-          ActivityMetrics.ActivityRequestAge,
-          recordAge,
-          Unit.Milliseconds
-        );
-        if (
-          !(await timed(metrics, ActivityMetrics.ClaimDuration, () =>
-            activityRuntimeClient.claimActivity(
-              request.executionId,
-              request.command.seq,
-              request.retry
-            )
-          ))
-        ) {
-          metrics.putMetric(ActivityMetrics.ClaimRejected, 1, Unit.Count);
-          console.info(`Activity ${activityHandle} already claimed.`);
-          return;
-        }
-        if (request.command.heartbeatSeconds) {
-          await timerClient.startTimer({
-            activitySeq: request.command.seq,
-            type: TimerRequestType.ActivityHeartbeatMonitor,
-            executionId: request.executionId,
-            heartbeatSeconds: request.command.heartbeatSeconds,
-            schedule: Schedule.relative(request.command.heartbeatSeconds),
+      ) =>
+        await serviceTypeScope(ServiceType.ActivityWorker, async () => {
+          const activityHandle = logAgent.isLogLevelSatisfied(LogLevel.DEBUG)
+            ? `${request.command.name}:${request.command.seq} for execution ${request.executionId} on retry ${request.retry}`
+            : request.command.name;
+          metrics.resetDimensions(false);
+          metrics.setNamespace(MetricsCommon.EventualNamespace);
+          metrics.putDimensions({
+            ActivityName: request.command.name,
+            WorkflowName: request.workflowName,
           });
-        }
-        setActivityContext({
-          activityToken: createActivityToken(
-            request.executionId,
-            request.command.seq
-          ),
-          executionId: request.executionId,
-          scheduledTime: request.scheduledTime,
-          workflowName: request.workflowName,
-        });
-        metrics.putMetric(ActivityMetrics.ClaimRejected, 0, Unit.Count);
-
-        logAgent.logWithContext(
-          activityLogContext,
-          LogLevel.DEBUG,
-          `Processing ${activityHandle}.`
-        );
-
-        const activity = activityProvider.getActivityHandler(
-          request.command.name
-        );
-        try {
-          if (!activity) {
-            metrics.putMetric(ActivityMetrics.NotFoundError, 1, Unit.Count);
-            throw new ActivityNotFoundError(
-              request.command.name,
-              activityProvider.getActivityIds()
-            );
+          // the time from the workflow emitting the activity scheduled command
+          // to the request being seen.
+          const activityLogContext: ActivityLogContext = {
+            type: LogContextType.Activity,
+            activityName: request.command.name,
+            executionId: request.executionId,
+            seq: request.command.seq,
+          };
+          const start = baseTime;
+          const recordAge =
+            start.getTime() - new Date(request.scheduledTime).getTime();
+          metrics.putMetric(
+            ActivityMetrics.ActivityRequestAge,
+            recordAge,
+            Unit.Milliseconds
+          );
+          if (
+            !(await timed(metrics, ActivityMetrics.ClaimDuration, () =>
+              activityRuntimeClient.claimActivity(
+                request.executionId,
+                request.command.seq,
+                request.retry
+              )
+            ))
+          ) {
+            metrics.putMetric(ActivityMetrics.ClaimRejected, 1, Unit.Count);
+            console.info(`Activity ${activityHandle} already claimed.`);
+            return;
           }
-
-          const result = await logAgent.logContextScope(
-            activityLogContext,
-            async () => {
-              return await timed(
-                metrics,
-                ActivityMetrics.OperationDuration,
-                () => activity(...request.command.args)
-              );
-            }
-          );
-
-          if (isAsyncResult(result)) {
-            metrics.setProperty(ActivityMetrics.HasResult, 0);
-            metrics.setProperty(ActivityMetrics.AsyncResult, 1);
-
-            // TODO: Send heartbeat on sync activity completion.
-
-            /**
-             * The activity has declared that it is async, other than logging, there is nothing left to do here.
-             * The activity should call {@link WorkflowClient.sendActivitySuccess} or {@link WorkflowClient.sendActivityFailure} when it is done.
-             */
-            return timed(
-              metrics,
-              ActivityMetrics.ActivityLogWriteDuration,
-              () => logAgent.flush()
-            );
-          } else if (result) {
-            metrics.setProperty(ActivityMetrics.HasResult, 1);
-            metrics.setProperty(ActivityMetrics.AsyncResult, 0);
-            metrics.putMetric(
-              ActivityMetrics.ResultBytes,
-              JSON.stringify(result).length,
-              Unit.Bytes
-            );
-          } else {
-            metrics.setProperty(ActivityMetrics.HasResult, 0);
-            metrics.setProperty(ActivityMetrics.AsyncResult, 0);
+          if (request.command.heartbeatSeconds) {
+            await timerClient.startTimer({
+              activitySeq: request.command.seq,
+              type: TimerRequestType.ActivityHeartbeatMonitor,
+              executionId: request.executionId,
+              heartbeatSeconds: request.command.heartbeatSeconds,
+              schedule: Schedule.duration(request.command.heartbeatSeconds),
+            });
           }
-
-          logAgent.logWithContext(
-            activityLogContext,
-            LogLevel.INFO,
-            `Activity ${activityHandle} succeeded, reporting back to execution.`
-          );
-
-          const endTime = getEndTime(start);
-          const event = createEvent<ActivitySucceeded>(
-            {
-              type: WorkflowEventType.ActivitySucceeded,
-              seq: request.command.seq,
-              result,
-            },
-            endTime
-          );
-
-          await finishActivity(
-            event,
-            recordAge + (endTime.getTime() - start.getTime())
-          );
-        } catch (err) {
-          const [error, message] = extendsError(err)
-            ? [err.name, err.message]
-            : ["Error", JSON.stringify(err)];
+          setActivityContext({
+            activityToken: createActivityToken(
+              request.executionId,
+              request.command.seq
+            ),
+            executionId: request.executionId,
+            scheduledTime: request.scheduledTime,
+            workflowName: request.workflowName,
+          });
+          metrics.putMetric(ActivityMetrics.ClaimRejected, 0, Unit.Count);
 
           logAgent.logWithContext(
             activityLogContext,
             LogLevel.DEBUG,
-            `Activity ${activityHandle} failed, reporting failure back to execution: ${error}: ${message}`
+            `Processing ${activityHandle}.`
           );
 
-          const endTime = getEndTime(start);
-          const event = createEvent<ActivityFailed>(
-            {
-              type: WorkflowEventType.ActivityFailed,
-              seq: request.command.seq,
-              error,
-              message,
-            },
-            endTime
+          const activity = activityProvider.getActivityHandler(
+            request.command.name
           );
+          try {
+            if (!activity) {
+              metrics.putMetric(ActivityMetrics.NotFoundError, 1, Unit.Count);
+              throw new ActivityNotFoundError(
+                request.command.name,
+                activityProvider.getActivityIds()
+              );
+            }
 
-          await finishActivity(
-            event,
-            recordAge + (endTime.getTime() - start.getTime())
-          );
-        } finally {
-          clearActivityContext();
-        }
+            const result = await logAgent.logContextScope(
+              activityLogContext,
+              async () => {
+                return await timed(
+                  metrics,
+                  ActivityMetrics.OperationDuration,
+                  () => activity(...request.command.args)
+                );
+              }
+            );
 
-        function logActivityCompleteMetrics(failed: boolean, duration: number) {
-          metrics.putMetric(
-            ActivityMetrics.ActivityFailed,
-            failed ? 1 : 0,
-            Unit.Count
-          );
-          metrics.putMetric(
-            ActivityMetrics.ActivitySucceeded,
-            failed ? 0 : 1,
-            Unit.Count
-          );
-          // The total time from the activity being scheduled until it's result is send to the workflow.
-          metrics.putMetric(ActivityMetrics.TotalDuration, duration);
-        }
+            if (isAsyncResult(result)) {
+              metrics.setProperty(ActivityMetrics.HasResult, 0);
+              metrics.setProperty(ActivityMetrics.AsyncResult, 1);
 
-        async function finishActivity(
-          event: ActivitySucceeded | ActivityFailed,
-          duration: number
-        ) {
-          const logFlush = timed(
-            metrics,
-            ActivityMetrics.ActivityLogWriteDuration,
-            () => logAgent.flush()
-          );
-          await timed(metrics, ActivityMetrics.SubmitWorkflowTaskDuration, () =>
-            workflowClient.submitWorkflowTask(request.executionId, event)
-          );
-          await logFlush;
+              // TODO: Send heartbeat on sync activity completion.
 
-          logActivityCompleteMetrics(isWorkflowFailed(event), duration);
-        }
-      }
+              /**
+               * The activity has declared that it is async, other than logging, there is nothing left to do here.
+               * The activity should call {@link WorkflowClient.sendActivitySuccess} or {@link WorkflowClient.sendActivityFailure} when it is done.
+               */
+              return timed(
+                metrics,
+                ActivityMetrics.ActivityLogWriteDuration,
+                () => logAgent.flush()
+              );
+            } else if (result) {
+              metrics.setProperty(ActivityMetrics.HasResult, 1);
+              metrics.setProperty(ActivityMetrics.AsyncResult, 0);
+              metrics.putMetric(
+                ActivityMetrics.ResultBytes,
+                JSON.stringify(result).length,
+                Unit.Bytes
+              );
+            } else {
+              metrics.setProperty(ActivityMetrics.HasResult, 0);
+              metrics.setProperty(ActivityMetrics.AsyncResult, 0);
+            }
+
+            logAgent.logWithContext(
+              activityLogContext,
+              LogLevel.INFO,
+              `Activity ${activityHandle} succeeded, reporting back to execution.`
+            );
+
+            const endTime = getEndTime(start);
+            const event = createEvent<ActivitySucceeded>(
+              {
+                type: WorkflowEventType.ActivitySucceeded,
+                seq: request.command.seq,
+                result,
+              },
+              endTime
+            );
+
+            await finishActivity(
+              event,
+              recordAge + (endTime.getTime() - start.getTime())
+            );
+          } catch (err) {
+            const [error, message] = extendsError(err)
+              ? [err.name, err.message]
+              : ["Error", JSON.stringify(err)];
+
+            logAgent.logWithContext(
+              activityLogContext,
+              LogLevel.DEBUG,
+              `Activity ${activityHandle} failed, reporting failure back to execution: ${error}: ${message}`
+            );
+
+            const endTime = getEndTime(start);
+            const event = createEvent<ActivityFailed>(
+              {
+                type: WorkflowEventType.ActivityFailed,
+                seq: request.command.seq,
+                error,
+                message,
+              },
+              endTime
+            );
+
+            await finishActivity(
+              event,
+              recordAge + (endTime.getTime() - start.getTime())
+            );
+          } finally {
+            clearActivityContext();
+          }
+
+          function logActivityCompleteMetrics(
+            failed: boolean,
+            duration: number
+          ) {
+            metrics.putMetric(
+              ActivityMetrics.ActivityFailed,
+              failed ? 1 : 0,
+              Unit.Count
+            );
+            metrics.putMetric(
+              ActivityMetrics.ActivitySucceeded,
+              failed ? 0 : 1,
+              Unit.Count
+            );
+            // The total time from the activity being scheduled until it's result is send to the workflow.
+            metrics.putMetric(ActivityMetrics.TotalDuration, duration);
+          }
+
+          async function finishActivity(
+            event: ActivitySucceeded | ActivityFailed,
+            duration: number
+          ) {
+            const logFlush = timed(
+              metrics,
+              ActivityMetrics.ActivityLogWriteDuration,
+              () => logAgent.flush()
+            );
+            await timed(
+              metrics,
+              ActivityMetrics.SubmitWorkflowTaskDuration,
+              () =>
+                workflowClient.submitWorkflowTask(request.executionId, event)
+            );
+            await logFlush;
+
+            logActivityCompleteMetrics(isWorkflowFailed(event), duration);
+          }
+        })
   );
 }

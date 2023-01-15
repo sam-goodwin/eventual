@@ -1,57 +1,45 @@
 import { ulid } from "ulidx";
 import {
+  StartTimerCommand,
   CommandType,
-  ExpectSignalCommand,
   PublishEventsCommand,
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
   SendSignalCommand,
-  SleepForCommand,
-  SleepUntilCommand,
-  StartConditionCommand,
 } from "../src/command.js";
 import { EventEnvelope } from "../src/event.js";
 import {
   ActivitySucceeded,
   ActivityFailed,
   ActivityScheduled,
-  ActivityTimedOut,
   ChildWorkflowSucceeded,
   ChildWorkflowFailed,
   ChildWorkflowScheduled,
-  ConditionStarted,
-  ConditionTimedOut,
   EventsPublished,
-  ExpectSignalStarted,
-  ExpectSignalTimedOut,
   SignalReceived,
   SignalSent,
-  SleepCompleted,
-  SleepScheduled,
   WorkflowEventType,
   WorkflowTimedOut,
   ActivityHeartbeatTimedOut,
+  TimerCompleted,
+  TimerScheduled,
 } from "../src/workflow-events.js";
 import { SignalTarget } from "../src/signals.js";
+import { Schedule } from "../src/index.js";
 
-export function createSleepUntilCommand(
-  untilTime: string,
+export function createStartTimerCommand(
+  schedule: Schedule,
   seq: number
-): SleepUntilCommand {
+): StartTimerCommand;
+export function createStartTimerCommand(seq: number): StartTimerCommand;
+export function createStartTimerCommand(
+  ...args: [schedule: Schedule, seq: number] | [seq: number]
+): StartTimerCommand {
+  const [schedule, seq] =
+    args.length === 1 ? [Schedule.time("then"), args[0]] : args;
   return {
-    kind: CommandType.SleepUntil,
-    untilTime,
-    seq,
-  };
-}
-
-export function createSleepForCommand(
-  durationSeconds: number,
-  seq: number
-): SleepForCommand {
-  return {
-    kind: CommandType.SleepFor,
-    durationSeconds,
+    kind: CommandType.StartTimer,
+    schedule,
     seq,
   };
 }
@@ -82,19 +70,6 @@ export function createScheduledWorkflowCommand(
   };
 }
 
-export function createExpectSignalCommand(
-  signalId: string,
-  seq: number,
-  timeoutSeconds?: number
-): ExpectSignalCommand {
-  return {
-    kind: CommandType.ExpectSignal,
-    signalId,
-    seq,
-    timeoutSeconds,
-  };
-}
-
 export function createSendSignalCommand(
   target: SignalTarget,
   signalId: string,
@@ -116,17 +91,6 @@ export function createPublishEventCommand(
     kind: CommandType.PublishEvents,
     seq,
     events,
-  };
-}
-
-export function createStartConditionCommand(
-  seq: number,
-  timeoutSeconds?: number
-): StartConditionCommand {
-  return {
-    kind: CommandType.StartCondition,
-    seq,
-    timeoutSeconds,
   };
 }
 
@@ -156,14 +120,6 @@ export function activityFailed(error: any, seq: number): ActivityFailed {
     type: WorkflowEventType.ActivityFailed,
     error,
     message: "message",
-    seq,
-    timestamp: new Date(0).toISOString(),
-  };
-}
-
-export function activityTimedOut(seq: number): ActivityTimedOut {
-  return {
-    type: WorkflowEventType.ActivityTimedOut,
     seq,
     timestamp: new Date(0).toISOString(),
   };
@@ -224,46 +180,20 @@ export function workflowScheduled(
   };
 }
 
-export function scheduledSleep(untilTime: string, seq: number): SleepScheduled {
+export function timerScheduled(seq: number): TimerScheduled {
   return {
-    type: WorkflowEventType.SleepScheduled,
-    untilTime,
+    type: WorkflowEventType.TimerScheduled,
+    untilTime: "",
     seq,
     timestamp: new Date(0).toISOString(),
   };
 }
 
-export function completedSleep(seq: number): SleepCompleted {
+export function timerCompleted(seq: number): TimerCompleted {
   return {
-    type: WorkflowEventType.SleepCompleted,
+    type: WorkflowEventType.TimerCompleted,
     seq,
     timestamp: new Date(0).toISOString(),
-  };
-}
-
-export function timedOutExpectSignal(
-  signalId: string,
-  seq: number
-): ExpectSignalTimedOut {
-  return {
-    type: WorkflowEventType.ExpectSignalTimedOut,
-    timestamp: new Date().toISOString(),
-    seq,
-    signalId,
-  };
-}
-
-export function startedExpectSignal(
-  signalId: string,
-  seq: number,
-  timeoutSeconds?: number
-): ExpectSignalStarted {
-  return {
-    type: WorkflowEventType.ExpectSignalStarted,
-    signalId,
-    timestamp: new Date().toISOString(),
-    seq,
-    timeoutSeconds,
   };
 }
 
@@ -293,22 +223,6 @@ export function signalSent(
     signalId,
     timestamp: new Date().toISOString(),
     payload,
-  };
-}
-
-export function conditionStarted(seq: number): ConditionStarted {
-  return {
-    type: WorkflowEventType.ConditionStarted,
-    seq,
-    timestamp: new Date().toISOString(),
-  };
-}
-
-export function conditionTimedOut(seq: number): ConditionTimedOut {
-  return {
-    type: WorkflowEventType.ConditionTimedOut,
-    timestamp: new Date().toISOString(),
-    seq,
   };
 }
 

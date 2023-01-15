@@ -1,16 +1,14 @@
 import { EventEnvelope } from "./event.js";
+import { Schedule } from "./schedule.js";
 import { SignalTarget } from "./signals.js";
 import { WorkflowOptions } from "./workflow.js";
 
 export type Command =
-  | ExpectSignalCommand
+  | StartTimerCommand
   | ScheduleActivityCommand
   | ScheduleWorkflowCommand
   | PublishEventsCommand
-  | SendSignalCommand
-  | SleepForCommand
-  | SleepUntilCommand
-  | StartConditionCommand;
+  | SendSignalCommand;
 
 interface CommandBase<T extends CommandType> {
   kind: T;
@@ -18,13 +16,10 @@ interface CommandBase<T extends CommandType> {
 }
 
 export enum CommandType {
-  ExpectSignal = "ExpectSignal",
   PublishEvents = "PublishEvents",
   SendSignal = "SendSignal",
-  SleepFor = "SleepFor",
-  SleepUntil = "SleepUntil",
   StartActivity = "StartActivity",
-  StartCondition = "StartCondition",
+  StartTimer = "StartTimer",
   StartWorkflow = "StartWorkflow",
 }
 
@@ -38,7 +33,6 @@ export interface ScheduleActivityCommand
   extends CommandBase<CommandType.StartActivity> {
   name: string;
   args: any[];
-  timeoutSeconds?: number;
   heartbeatSeconds?: number;
 }
 
@@ -62,42 +56,17 @@ export function isScheduleWorkflowCommand(
   return a.kind === CommandType.StartWorkflow;
 }
 
-export interface SleepUntilCommand extends CommandBase<CommandType.SleepUntil> {
+export interface StartTimerCommand extends CommandBase<CommandType.StartTimer> {
   /**
    * Minimum time (in ISO 8601) where the machine should wake up.
    */
-  untilTime: string;
+  schedule: Schedule;
 }
 
-export function isSleepUntilCommand(
+export function isStartTimerCommand(
   command: Command
-): command is SleepUntilCommand {
-  return command.kind === CommandType.SleepUntil;
-}
-
-export interface SleepForCommand extends CommandBase<CommandType.SleepFor> {
-  /**
-   * Number of seconds from the time the command is executed until the machine should wake up.
-   */
-  durationSeconds: number;
-}
-
-export function isSleepForCommand(
-  command: Command
-): command is SleepForCommand {
-  return command.kind === CommandType.SleepFor;
-}
-
-export interface ExpectSignalCommand
-  extends CommandBase<CommandType.ExpectSignal> {
-  signalId: string;
-  timeoutSeconds?: number;
-}
-
-export function isExpectSignalCommand(
-  command: Command
-): command is ExpectSignalCommand {
-  return command.kind === CommandType.ExpectSignal;
+): command is StartTimerCommand {
+  return command.kind === CommandType.StartTimer;
 }
 
 export interface SendSignalCommand extends CommandBase<CommandType.SendSignal> {
@@ -110,17 +79,6 @@ export function isSendSignalCommand(
   command: Command
 ): command is SendSignalCommand {
   return command.kind === CommandType.SendSignal;
-}
-
-export interface StartConditionCommand
-  extends CommandBase<CommandType.StartCondition> {
-  timeoutSeconds?: number;
-}
-
-export function isStartConditionCommand(
-  command: Command
-): command is StartConditionCommand {
-  return command.kind === CommandType.StartCondition;
 }
 
 export interface PublishEventsCommand

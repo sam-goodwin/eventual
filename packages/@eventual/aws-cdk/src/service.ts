@@ -122,11 +122,11 @@ export class Service extends Construct implements IGrantable {
    */
   public readonly workflows: Workflows;
   /**
-   * The subsystem for schedules and sleep timers.
+   * The subsystem for schedules and timers.
    */
   public readonly scheduler: Scheduler;
   /**
-   * The Resources for schedules and sleep timers.
+   * The Resources for schedules and timers.
    */
   public readonly cliRole: Role;
   /**

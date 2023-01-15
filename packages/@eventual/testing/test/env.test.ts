@@ -52,7 +52,7 @@ beforeAll(async () => {
     entry: path.resolve(
       url.fileURLToPath(new URL(".", import.meta.url)),
       "./workflow.ts"
-    )
+    ),
   });
 
   await env.initialize();

@@ -4,22 +4,15 @@ import { chain, Chain } from "./chain.js";
 import type { Program } from "./interpret.js";
 import { Result } from "./result.js";
 import {
-  isSleepForCall,
-  isSleepUntilCall,
-  SleepForCall,
-  SleepUntilCall,
-} from "./calls/sleep-call.js";
-import {
-  isExpectSignalCall,
-  ExpectSignalCall,
-} from "./calls/expect-signal-call.js";
-import {
-  isRegisterSignalHandlerCall,
-  RegisterSignalHandlerCall,
-} from "./calls/signal-handler-call.js";
+  isAwaitDurationCall,
+  isAwaitTimeCall,
+  AwaitDurationCall,
+  AwaitTimeCall,
+} from "./calls/await-time-call.js";
+import { RegisterSignalHandlerCall } from "./calls/signal-handler-call.js";
 import { isSendSignalCall, SendSignalCall } from "./calls/send-signal-call.js";
 import { isWorkflowCall, WorkflowCall } from "./calls/workflow-call.js";
-import { ConditionCall, isConditionCall } from "./calls/condition-call.js";
+import { ConditionCall } from "./calls/condition-call.js";
 import { isOrchestratorWorker } from "./runtime/flags.js";
 import { AwaitAny, createAwaitAny } from "./await-any.js";
 import { AwaitAllSettled, createAwaitAllSettled } from "./await-all-settled.js";
@@ -28,6 +21,7 @@ import {
   isPublishEventsCall,
   PublishEventsCall,
 } from "./calls/send-events-call.js";
+import { ExpectSignalCall } from "./calls/expect-signal-call.js";
 
 export type AwaitedEventual<T> = T extends Promise<infer U>
   ? Awaited<U>
@@ -49,6 +43,8 @@ export enum EventualKind {
   AwaitAll = 0,
   AwaitAllSettled = 12,
   AwaitAny = 10,
+  AwaitDurationCall = 3,
+  AwaitTimeCall = 4,
   Chain = 2,
   ConditionCall = 9,
   ExpectSignalCall = 6,
@@ -56,8 +52,6 @@ export enum EventualKind {
   Race = 11,
   RegisterSignalHandlerCall = 7,
   SendSignalCall = 8,
-  SleepForCall = 3,
-  SleepUntilCall = 4,
   WorkflowCall = 5,
 }
 
@@ -86,32 +80,29 @@ export type Eventual<T = any> =
   | AwaitAny<T extends any[] ? T : never>
   | Chain<T>
   | CommandCall<T>
-  | Race<T extends any[] ? T : never>;
+  | ConditionCall
+  | ExpectSignalCall
+  | Race<T extends any[] ? T : never>
+  | RegisterSignalHandlerCall<T>;
 
 /**
  * Calls which emit commands.
  */
 export type CommandCall<T = any> =
   | ActivityCall<T>
-  | ConditionCall
-  | ExpectSignalCall<T>
-  | RegisterSignalHandlerCall<T>
+  | AwaitDurationCall
+  | AwaitTimeCall
   | PublishEventsCall
   | SendSignalCall
-  | SleepForCall
-  | SleepUntilCall
   | WorkflowCall<T>;
 
 export function isCommandCall(call: Eventual): call is CommandCall {
   return (
     isActivityCall(call) ||
-    isConditionCall(call) ||
-    isExpectSignalCall(call) ||
     isPublishEventsCall(call) ||
-    isRegisterSignalHandlerCall(call) ||
     isSendSignalCall(call) ||
-    isSleepForCall(call) ||
-    isSleepUntilCall(call) ||
+    isAwaitDurationCall(call) ||
+    isAwaitTimeCall(call) ||
     isWorkflowCall(call)
   );
 }

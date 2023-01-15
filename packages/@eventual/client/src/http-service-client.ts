@@ -75,7 +75,8 @@ export class HttpServiceClient implements EventualServiceClient {
         : request.workflow.workflowName;
 
     const queryString = formatQueryString({
-      timeoutSeconds: request.timeoutSeconds,
+      timeout: request.timeout?.dur,
+      timeoutUnit: request.timeout?.unit,
       executionName: request.executionName,
     });
 

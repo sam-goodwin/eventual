@@ -1,6 +1,7 @@
 import { ConditionPredicate } from "../condition.js";
 import {
   createEventual,
+  Eventual,
   EventualBase,
   EventualKind,
   isEventualOfKind,
@@ -16,17 +17,17 @@ export interface ConditionCall
   extends EventualBase<EventualKind.ConditionCall, Resolved<boolean> | Failed> {
   seq?: number;
   predicate: ConditionPredicate;
-  timeoutSeconds?: number;
+  timeout?: Eventual;
 }
 
 export function createConditionCall(
   predicate: ConditionPredicate,
-  timeoutSeconds?: number
+  timeout?: Eventual
 ) {
   return registerEventual(
     createEventual<ConditionCall>(EventualKind.ConditionCall, {
       predicate,
-      timeoutSeconds,
+      timeout,
     })
   );
 }

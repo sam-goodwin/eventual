@@ -7,7 +7,7 @@ import { SendActivityHeartbeatResponse } from "./service-client.js";
  *
  * If called from outside of an {@link activity}, the activity token must be provided.
  *
- * If the activity has a heartbeatTimeout set and the workflow has not received a heartbeat in heartbeatTimeoutSeconds,
+ * If the activity has a heartbeatTimeout set and the workflow has not received a heartbeat within the set duration,
  * the workflow will throw a {@link HeartbeatTimeout} and cancel the activity.
  *
  * @returns {@link HeartbeatResponse} which has response.cancelled if the activity was cancelled for any reason (ex: workflow succeeded, failed, or the activity timed out).

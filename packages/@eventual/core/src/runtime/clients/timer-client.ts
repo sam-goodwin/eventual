@@ -1,6 +1,9 @@
+import { computeScheduleDate, Schedule } from "../../schedule.js";
 import { HistoryStateEvent } from "../../workflow-events.js";
 
 export abstract class TimerClient {
+  constructor(protected baseTime: () => Date) {}
+
   /**
    * Starts a timer using SQS's message delay.
    *
@@ -18,8 +21,8 @@ export abstract class TimerClient {
   /**
    * Starts a timer of any (positive) length.
    *
-   * If the timer is longer than 15 minutes (configurable via `props.sleepQueueThresholdMillis`),
-   * the timer will create a  EventBridge schedule until the untilTime - props.sleepQueueThresholdMillis
+   * If the timer is longer than 15 minutes (configurable via `props.timerQueueThresholdMillis`),
+   * the timer will create a  EventBridge schedule until the untilTime - props.timerQueueThresholdMillis
    * when the timer will be moved to the SQS queue.
    *
    * The SQS Queue will delay for floor(untilTime - currentTime) seconds until the timer handler can pick up the message.
@@ -35,7 +38,7 @@ export abstract class TimerClient {
    * Use this method to clean the schedule.
    *
    * The provided schedule-forwarder function will call this method in Eventual when
-   * the timer is transferred from EventBridge to SQS at `props.sleepQueueThresholdMillis`.
+   * the timer is transferred from EventBridge to SQS at `props.timerQueueThresholdMillis`.
    */
   public abstract clearSchedule(scheduleName: string): Promise<void>;
 
@@ -47,7 +50,10 @@ export abstract class TimerClient {
   public async scheduleEvent<E extends HistoryStateEvent>(
     request: ScheduleEventRequest<E>
   ): Promise<void> {
-    const untilTime = computeUntilTime(request.schedule);
+    const untilTime = computeScheduleDate(
+      request.schedule,
+      this.baseTime()
+    ).toISOString();
 
     const event = {
       ...request.event,
@@ -58,7 +64,7 @@ export abstract class TimerClient {
       event,
       executionId: request.executionId,
       type: TimerRequestType.ScheduleEvent,
-      schedule: Schedule.absolute(untilTime),
+      schedule: request.schedule,
     });
   }
 }
@@ -71,38 +77,6 @@ export enum TimerRequestType {
   ScheduleEvent = "ScheduleEvent",
   ActivityHeartbeatMonitor = "CheckHeartbeat",
 }
-
-export interface RelativeSchedule {
-  type: "Relative";
-  timerSeconds: number;
-  baseTime: Date;
-}
-
-export interface AbsoluteSchedule {
-  type: "Absolute";
-  untilTime: string;
-}
-
-export type Schedule = RelativeSchedule | AbsoluteSchedule;
-
-export const Schedule = {
-  relative(
-    timerSeconds: number,
-    baseTime: Date = new Date()
-  ): RelativeSchedule {
-    return {
-      type: "Relative",
-      timerSeconds,
-      baseTime,
-    };
-  },
-  absolute(untilTime: string): AbsoluteSchedule {
-    return {
-      type: "Absolute",
-      untilTime,
-    };
-  },
-};
 
 export type TimerRequestBase<T extends TimerRequestType> = {
   type: T;
@@ -154,12 +128,4 @@ export interface ScheduleForwarderRequest {
 export interface ScheduleEventRequest<E extends HistoryStateEvent>
   extends Omit<TimerScheduleEventRequest, "event" | "type"> {
   event: Omit<E, "timestamp">;
-}
-
-export function computeUntilTime(schedule: TimerRequest["schedule"]): string {
-  return "untilTime" in schedule
-    ? schedule.untilTime
-    : new Date(
-        schedule.baseTime.getTime() + schedule.timerSeconds * 1000
-      ).toISOString();
 }

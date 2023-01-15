@@ -100,9 +100,9 @@ export namespace OrchestratorMetrics {
    */
   export const ExecutionResultBytes = "ExecutionResultBytes";
   /**
-   * Number of milliseconds between the expected sleep wakeup time and the actual incoming {@link SleepCompleted} event.
+   * Number of milliseconds between the expected timer wakeup time and the actual incoming {@link TimerCompleted} event.
    */
-  export const SleepVarianceMillis = "SleepVarianceMillis";
+  export const TimerVarianceMillis = "TimerVarianceMillis";
   /**
    * Number of milliseconds it takes to send execution logs to where ever they are persisted.
    */

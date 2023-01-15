@@ -1,7 +1,13 @@
 // startWorkflow uses the global workflows() to validate the workflow name.
 import "@eventual/entry/injected";
 
-import type { StartExecutionResponse } from "@eventual/core";
+import {
+  DurationUnit,
+  DURATION_UNITS,
+  isDurationUnit,
+  Schedule,
+  StartExecutionResponse,
+} from "@eventual/core";
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyHandlerV2,
@@ -20,21 +26,30 @@ const workflowClient = createWorkflowClient({
  * * workflowName - name of the workflow to start
  *
  * Query Parameters:
- * * timeoutSeconds - Number of seconds the workflow should run before it times out. Default: use the configured timeout or no timeout.
+ * * timeout - Number of `timeoutUnit` (default seconds) the workflow should run before it times out. Default: use the configured timeout or no timeout.
+ * * timeoutUnit - "seconds" | "minutes" | "hours" | "days" | "years". Units to use for the timeout, default: "seconds".
  * * executionName - name to give the workflow. Default: auto generated UUID.
  */
 export const handler: APIGatewayProxyHandlerV2<StartExecutionResponse> =
   withErrorMiddleware(async (event: APIGatewayProxyEventV2) => {
-    const { timeoutSeconds: timeoutSecondsString, executionName } =
-      event.queryStringParameters ?? {};
+    const {
+      timeout: timeoutString,
+      timeoutUnit,
+      executionName,
+    } = event.queryStringParameters ?? {};
 
-    const timeoutSeconds = timeoutSecondsString
-      ? parseInt(timeoutSecondsString)
-      : undefined;
+    const timeout = timeoutString ? parseInt(timeoutString) : undefined;
 
-    if (timeoutSeconds !== undefined && isNaN(timeoutSeconds)) {
+    if (timeout !== undefined && isNaN(timeout)) {
       throw new Error(
-        "Expected optional parameter timeoutSeconds to be a valid number"
+        "Expected optional parameter timeout to be a valid number"
+      );
+    }
+
+    if (timeoutUnit && !isDurationUnit(timeoutUnit)) {
+      throw new Error(
+        "Expected optional parameter timeoutUnit to be one of: " +
+          DURATION_UNITS.join()
       );
     }
 
@@ -47,6 +62,8 @@ export const handler: APIGatewayProxyHandlerV2<StartExecutionResponse> =
       workflow: workflowName,
       input: event.body && JSON.parse(event.body),
       executionName,
-      timeoutSeconds,
+      timeout: timeout
+        ? Schedule.duration(timeout, timeoutUnit as DurationUnit)
+        : undefined,
     });
   });

@@ -3,6 +3,7 @@ import {
   EventualBase,
   isEventualOfKind,
   createEventual,
+  Eventual,
 } from "../eventual.js";
 import { registerEventual } from "../global.js";
 import { Resolved, Failed } from "../result.js";
@@ -17,20 +18,23 @@ export interface ActivityCall<T = any>
   name: string;
   args: any[];
   heartbeatSeconds?: number;
-  timeoutSeconds?: number;
+  /**
+   * Timeout can be any Eventual (promise). When the promise resolves, the activity is considered to be timed out.
+   */
+  timeout?: Eventual;
 }
 
 export function createActivityCall(
   name: string,
   args: any[],
-  timeoutSeconds?: number,
+  timeout?: Eventual,
   heartbeatSeconds?: number
 ): ActivityCall {
   return registerEventual(
     createEventual(EventualKind.ActivityCall, {
       name,
       args,
-      timeoutSeconds,
+      timeout,
       heartbeatSeconds,
     })
   );

@@ -17,3 +17,31 @@ export function isOrchestratorWorker() {
 export function isEventHandler() {
   return process.env[SERVICE_TYPE_FLAG] === ServiceType.EventHandler;
 }
+
+export async function serviceTypeScope<Output>(
+  serviceType: ServiceType,
+  handler: () => Output
+): Promise<Awaited<Output>> {
+  const back = process.env[SERVICE_TYPE_FLAG];
+  try {
+    process.env[SERVICE_TYPE_FLAG] = serviceType;
+    // await before return so that the promise is completed before the finally call.
+    return await handler();
+  } finally {
+    process.env[SERVICE_TYPE_FLAG] = back;
+  }
+}
+
+export function serviceTypeScopeSync<Output>(
+  serviceType: ServiceType,
+  handler: () => Output
+): Output {
+  const back = process.env[SERVICE_TYPE_FLAG];
+  try {
+    process.env[SERVICE_TYPE_FLAG] = serviceType;
+    // await before return so that the promise is completed before the finally call.
+    return handler();
+  } finally {
+    process.env[SERVICE_TYPE_FLAG] = back;
+  }
+}

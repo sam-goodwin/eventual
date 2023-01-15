@@ -2,6 +2,8 @@ import { registerServiceClient } from "../../global.js";
 import type { EventEnvelope } from "../../event.js";
 import { EventHandlerProvider } from "../providers/event-handler-provider.js";
 import { EventualServiceClient } from "../../service-client.js";
+import { serviceTypeScope } from "../flags.js";
+import { ServiceType } from "../../service-type.js";
 
 /**
  * The dependencies of {@link createEventHandlerWorker}.
@@ -38,14 +40,16 @@ export function createEventHandlerWorker({
   }
 
   return async function (events) {
-    await Promise.allSettled(
-      events.map((event) =>
-        Promise.allSettled(
-          eventHandlerProvider
-            .getEventHandlersForEvent(event.name)
-            .map((handler) => handler(event.event))
+    return await serviceTypeScope(ServiceType.EventHandler, async () => {
+      await Promise.allSettled(
+        events.map((event) =>
+          Promise.allSettled(
+            eventHandlerProvider
+              .getEventHandlersForEvent(event.name)
+              .map((handler) => handler(event.event))
+          )
         )
-      )
-    );
+      );
+    });
   };
 }

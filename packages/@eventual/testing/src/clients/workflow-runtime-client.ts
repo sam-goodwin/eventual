@@ -7,12 +7,10 @@ import {
   FailedExecution,
   FailExecutionRequest,
   HistoryStateEvent,
-  ServiceType,
   UpdateHistoryRequest,
   WorkflowClient,
   WorkflowRuntimeClient,
 } from "@eventual/core";
-import { serviceTypeScope } from "../utils.js";
 import { TimeConnector } from "../environment.js";
 import { ExecutionStore } from "../execution-store.js";
 
@@ -77,13 +75,11 @@ export class TestWorkflowRuntimeClient extends WorkflowRuntimeClient {
   }
 
   public async startActivity(request: ActivityWorkerRequest): Promise<void> {
-    return serviceTypeScope(ServiceType.ActivityWorker, () =>
-      this.activityWorker(
-        request,
-        this.timeConnector.getTime(),
-        // end time is the start time plus one second
-        (start) => new Date(start.getTime() + 1000)
-      )
+    return this.activityWorker(
+      request,
+      this.timeConnector.getTime(),
+      // end time is the start time plus one second
+      (start) => new Date(start.getTime() + 1000)
     );
   }
 }

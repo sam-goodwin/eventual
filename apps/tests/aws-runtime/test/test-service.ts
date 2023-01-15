@@ -5,13 +5,13 @@ import {
   expectSignal,
   asyncResult,
   sendSignal,
-  sleepFor,
-  sleepUntil,
+  time,
   workflow,
   sendActivityHeartbeat,
   HeartbeatTimeout,
   EventualError,
   signal,
+  duration,
 } from "@eventual/core";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -62,8 +62,8 @@ export const workflow2 = workflow("my-parent-workflow", async () => {
 });
 
 export const workflow3 = workflow("sleepy", async () => {
-  await sleepFor(2);
-  await sleepUntil(new Date(new Date().getTime() + 1000 * 2));
+  await duration(2);
+  await time(new Date(new Date().getTime() + 1000 * 2));
   return `done!`;
 });
 
@@ -81,7 +81,7 @@ export const workflow4 = workflow("parallel", async () => {
   return Promise.allSettled([greetings, greetings2, greetings3, any, race]);
 
   async function sayHelloInSeconds(seconds: number) {
-    await sleepFor(seconds);
+    await duration(seconds);
     return await hello("sam");
   }
 });
@@ -95,7 +95,7 @@ const doneSignal = signal("done");
 export const parentWorkflow = workflow("parentWorkflow", async () => {
   const child = childWorkflow({ name: "child" });
   while (true) {
-    const n = await mySignal.expectSignal({ timeoutSeconds: 10 });
+    const n = await mySignal.expectSignal({ timeout: duration(10, "seconds") });
 
     console.log(n);
 
@@ -142,7 +142,9 @@ export const childWorkflow = workflow(
     while (!done) {
       sendSignal(parentId, mySignal, last + 1);
       block = true;
-      if (!(await condition({ timeoutSeconds: 10 }, () => !block))) {
+      if (
+        !(await condition({ timeout: duration(10, "seconds") }, () => !block))
+      ) {
         throw new Error("timed out!");
       }
     }
@@ -153,27 +155,31 @@ export const childWorkflow = workflow(
 
 const slowActivity = activity(
   "slowAct",
-  { timeoutSeconds: 5 },
+  { timeout: duration(5, "seconds") },
   () => new Promise((resolve) => setTimeout(resolve, 10 * 1000))
 );
 
-const slowWf = workflow("slowWorkflow", { timeoutSeconds: 5 }, () =>
-  sleepFor(10)
+const slowWf = workflow(
+  "slowWorkflow",
+  { timeout: duration(5, "seconds") },
+  () => duration(10)
 );
 
 export const timedOutWorkflow = workflow(
   "timedOut",
-  { timeoutSeconds: 100 },
+  { timeout: duration(100, "seconds") },
   async () => {
     // chains to be able to run in parallel.
     const timedOutFunctions = {
       condition: async () => {
-        if (!(await condition({ timeoutSeconds: 2 }, () => false))) {
+        if (
+          !(await condition({ timeout: duration(2, "seconds") }, () => false))
+        ) {
           throw new Error("Timed Out!");
         }
       },
       signal: async () => {
-        await mySignal.expectSignal({ timeoutSeconds: 2 });
+        await mySignal.expectSignal({ timeout: duration(2, "seconds") });
       },
       activity: slowActivity,
       workflow: () => slowWf(undefined),
@@ -196,7 +202,7 @@ export const timedOutWorkflow = workflow(
 
 export const asyncWorkflow = workflow(
   "asyncWorkflow",
-  { timeoutSeconds: 100 }, // timeout eventually
+  { timeout: duration(100, "seconds") }, // timeout eventually
   async () => {
     const result = await asyncActivity("complete");
 
@@ -211,7 +217,7 @@ export const asyncWorkflow = workflow(
 
 const activityWithHeartbeat = activity(
   "activityWithHeartbeat",
-  { heartbeatSeconds: 2 },
+  { heartbeatTimeout: duration(2, "seconds") },
   async (n: number, type: "success" | "no-heartbeat" | "some-heartbeat") => {
     const delay = (s: number) =>
       new Promise((resolve) => {
@@ -234,7 +240,7 @@ const activityWithHeartbeat = activity(
 
 export const heartbeatWorkflow = workflow(
   "heartbeatWorkflow",
-  { timeoutSeconds: 100 }, // timeout eventually
+  { timeout: duration(100, "seconds") }, // timeout eventually
   async (n: number) => {
     return await Promise.allSettled([
       activityWithHeartbeat(n, "success"),
@@ -291,13 +297,13 @@ export const eventDrivenWorkflow = workflow(
 
     // wait for the event to come back around and wake this workflow
     const { value } = await expectSignal("start", {
-      timeoutSeconds: 30,
+      timeout: duration(30, "seconds"),
     });
 
     await sendFinishEvent(ctx.execution.id);
 
     await expectSignal("finish", {
-      timeoutSeconds: 30,
+      timeout: duration(30, "seconds"),
     });
 
     return value;

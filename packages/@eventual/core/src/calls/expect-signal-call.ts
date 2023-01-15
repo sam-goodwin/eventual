@@ -3,6 +3,7 @@ import {
   EventualBase,
   isEventualOfKind,
   createEventual,
+  Eventual,
 } from "../eventual.js";
 import { registerEventual } from "../global.js";
 import { Failed, Resolved } from "../result.js";
@@ -15,16 +16,16 @@ export interface ExpectSignalCall<T = any>
   extends EventualBase<EventualKind.ExpectSignalCall, Resolved<T> | Failed> {
   seq?: number;
   signalId: string;
-  timeoutSeconds?: number;
+  timeout?: Eventual;
 }
 
 export function createExpectSignalCall(
   signalId: string,
-  timeoutSeconds?: number
+  timeout?: Eventual
 ): ExpectSignalCall {
   return registerEventual(
     createEventual(EventualKind.ExpectSignalCall, {
-      timeoutSeconds,
+      timeout,
       signalId,
     })
   );

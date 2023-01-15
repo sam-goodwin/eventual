@@ -3,10 +3,10 @@ import type { Program } from "./interpret.js";
 import type { Context } from "./context.js";
 import {
   HistoryStateEvent,
-  isSleepCompleted,
-  isSleepScheduled,
-  SleepCompleted,
-  SleepScheduled,
+  isTimerCompleted,
+  isTimerScheduled,
+  TimerCompleted,
+  TimerScheduled,
   WorkflowEventType,
 } from "./workflow-events.js";
 import { createWorkflowCall } from "./calls/workflow-call.js";
@@ -15,6 +15,7 @@ import { isOrchestratorWorker } from "./runtime/flags.js";
 import { isChain } from "./chain.js";
 import { ChildExecution, ExecutionHandle } from "./execution.js";
 import { StartExecutionRequest } from "./service-client.js";
+import { DurationSchedule } from "./schedule.js";
 
 export type WorkflowHandler<Input = any, Output = any> = (
   input: Input,
@@ -32,7 +33,7 @@ export interface WorkflowOptions {
    *
    * @default - workflow will never timeout.
    */
-  timeoutSeconds?: number;
+  timeout?: DurationSchedule;
 }
 
 export type WorkflowOutput<W extends Workflow> = W extends Workflow<
@@ -156,7 +157,7 @@ export function workflow<Input = any, Output = any>(
       workflow: name,
       executionName: input.executionName,
       input: input.input,
-      timeoutSeconds: input.timeoutSeconds,
+      timeout: input.timeout,
       ...opts,
     });
   };
@@ -181,29 +182,29 @@ export function runWorkflowDefinition(
 }
 
 /**
- * Generates synthetic events, for example, {@link SleepCompleted} events when the time has passed, but a real completed event has not come in yet.
+ * Generates synthetic events, for example, {@link TimerCompleted} events when the time has passed, but a real completed event has not come in yet.
  */
 export function generateSyntheticEvents(
   events: HistoryStateEvent[],
   baseTime: Date
-): SleepCompleted[] {
-  const unresolvedSleep: Record<number, SleepScheduled> = {};
+): TimerCompleted[] {
+  const unresolvedTimers: Record<number, TimerScheduled> = {};
 
-  const sleepEvents = events.filter(
-    (event): event is SleepScheduled | SleepCompleted =>
-      isSleepScheduled(event) || isSleepCompleted(event)
+  const timerEvents = events.filter(
+    (event): event is TimerScheduled | TimerCompleted =>
+      isTimerScheduled(event) || isTimerCompleted(event)
   );
 
-  for (const event of sleepEvents) {
-    if (isSleepScheduled(event)) {
-      unresolvedSleep[event.seq] = event;
+  for (const event of timerEvents) {
+    if (isTimerScheduled(event)) {
+      unresolvedTimers[event.seq] = event;
     } else {
-      delete unresolvedSleep[event.seq];
+      delete unresolvedTimers[event.seq];
     }
   }
 
-  const syntheticSleepComplete: SleepCompleted[] = Object.values(
-    unresolvedSleep
+  const syntheticTimerComplete: TimerCompleted[] = Object.values(
+    unresolvedTimers
   )
     .filter(
       (event) => new Date(event.untilTime).getTime() <= baseTime.getTime()
@@ -211,11 +212,11 @@ export function generateSyntheticEvents(
     .map(
       (e) =>
         ({
-          type: WorkflowEventType.SleepCompleted,
+          type: WorkflowEventType.TimerCompleted,
           seq: e.seq,
           timestamp: baseTime.toISOString(),
-        } satisfies SleepCompleted)
+        } satisfies TimerCompleted)
     );
 
-  return syntheticSleepComplete;
+  return syntheticTimerComplete;
 }

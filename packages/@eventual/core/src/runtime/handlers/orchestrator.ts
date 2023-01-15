@@ -6,7 +6,7 @@ import {
   getEventId,
   HistoryStateEvent,
   isHistoryEvent,
-  isSleepCompleted,
+  isTimerCompleted,
   isWorkflowSucceeded,
   isWorkflowFailed,
   isWorkflowStarted,
@@ -55,11 +55,14 @@ import { interpret } from "../../interpret.js";
 import { clearEventualCollector } from "../../global.js";
 import { DeterminismError } from "../../error.js";
 import { ExecutionHistoryClient } from "../clients/execution-history-client.js";
-import { Schedule, TimerClient } from "../clients/timer-client.js";
+import { TimerClient } from "../clients/timer-client.js";
 import { WorkflowRuntimeClient } from "../clients/workflow-runtime-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
 import { EventClient } from "../clients/event-client.js";
+import { serviceTypeScope } from "../flags.js";
+import { ServiceType } from "../../service-type.js";
+import { Schedule } from "../../schedule.js";
 
 /**
  * The Orchestrator's client dependencies.
@@ -107,62 +110,63 @@ export function createOrchestrator({
     eventClient,
   });
 
-  return async (workflowTasks, baseTime = new Date()) => {
-    const tasksByExecutionId = groupBy(
-      workflowTasks,
-      (task) => task.executionId
-    );
+  return async (workflowTasks, baseTime = new Date()) =>
+    await serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
+      const tasksByExecutionId = groupBy(
+        workflowTasks,
+        (task) => task.executionId
+      );
 
-    const eventsByExecutionId = Object.fromEntries(
-      Object.entries(tasksByExecutionId).map(([executionId, records]) => [
-        executionId,
-        records.flatMap((e) => e.events),
-      ])
-    );
-
-    console.info(
-      "Found execution ids: " + Object.keys(eventsByExecutionId).join(", ")
-    );
-
-    // for each execution id
-    const results = await promiseAllSettledPartitioned(
-      Object.entries(eventsByExecutionId),
-      async ([executionId, records]) => {
-        if (!isExecutionId(executionId)) {
-          throw new Error(`invalid ExecutionID: '${executionId}'`);
-        }
-        const workflowName = parseWorkflowName(executionId);
-        if (workflowName === undefined) {
-          throw new Error(`execution ID '${executionId}' does not exist`);
-        }
-        // TODO: get workflow from execution id
-        return orchestrateExecution(
-          workflowName,
+      const eventsByExecutionId = Object.fromEntries(
+        Object.entries(tasksByExecutionId).map(([executionId, records]) => [
           executionId,
-          records,
-          baseTime
+          records.flatMap((e) => e.events),
+        ])
+      );
+
+      console.info(
+        "Found execution ids: " + Object.keys(eventsByExecutionId).join(", ")
+      );
+
+      // for each execution id
+      const results = await promiseAllSettledPartitioned(
+        Object.entries(eventsByExecutionId),
+        async ([executionId, records]) => {
+          if (!isExecutionId(executionId)) {
+            throw new Error(`invalid ExecutionID: '${executionId}'`);
+          }
+          const workflowName = parseWorkflowName(executionId);
+          if (workflowName === undefined) {
+            throw new Error(`execution ID '${executionId}' does not exist`);
+          }
+          // TODO: get workflow from execution id
+          return orchestrateExecution(
+            workflowName,
+            executionId,
+            records,
+            baseTime
+          );
+        }
+      );
+
+      console.debug(
+        "Executions succeeded: " +
+          results.fulfilled.map(([[executionId]]) => executionId).join(",")
+      );
+
+      if (results.rejected.length > 0) {
+        console.error(
+          "Executions failed: \n" +
+            results.rejected
+              .map(([[executionId], error]) => `${executionId}: ${error}`)
+              .join("\n")
         );
       }
-    );
 
-    console.debug(
-      "Executions succeeded: " +
-        results.fulfilled.map(([[executionId]]) => executionId).join(",")
-    );
-
-    if (results.rejected.length > 0) {
-      console.error(
-        "Executions failed: \n" +
-          results.rejected
-            .map(([[executionId], error]) => `${executionId}: ${error}`)
-            .join("\n")
-      );
-    }
-
-    return {
-      failedExecutionIds: results.rejected.map((rejected) => rejected[0][0]),
-    };
-  };
+      return {
+        failedExecutionIds: results.rejected.map((rejected) => rejected[0][0]),
+      };
+    });
 
   async function orchestrateExecution(
     workflowName: string,
@@ -290,7 +294,7 @@ export function createOrchestrator({
               OrchestratorMetrics.TimeoutStartedDuration,
               () =>
                 timerClient.scheduleEvent<WorkflowTimedOut>({
-                  schedule: Schedule.absolute(newWorkflowStart.timeoutTime!),
+                  schedule: Schedule.time(newWorkflowStart.timeoutTime!),
                   event: createEvent<WorkflowTimedOut>(
                     {
                       type: WorkflowEventType.WorkflowTimedOut,
@@ -369,12 +373,16 @@ export function createOrchestrator({
         logAgent.logWithContext(
           executionLogContext,
           LogLevel.DEBUG,
-          "Workflow terminated with: " + JSON.stringify(result)
+          result
+            ? "Workflow returned a result with: " + JSON.stringify(result)
+            : "Workflow did not return a result."
         );
         logAgent.logWithContext(
           executionLogContext,
           LogLevel.DEBUG,
-          `Found ${newCommands.length} new commands.`
+          `Found ${newCommands.length} new commands. ${JSON.stringify(
+            newCommands
+          )}`
         );
 
         yield* await timed(
@@ -453,7 +461,7 @@ export function createOrchestrator({
 
         const inputEvents = [...historyEvents, ...uniqueTaskEvents];
 
-        // Generates events that are time sensitive, like sleep completed events.
+        // Generates events that are time sensitive, like timer completed events.
         const syntheticEvents = generateSyntheticEvents(inputEvents, baseTime);
 
         const allEvents = [...inputEvents, ...syntheticEvents];
@@ -717,14 +725,14 @@ function logEventMetrics(
   events: WorkflowEvent[],
   now: Date
 ) {
-  const sleepCompletedEvents = events.filter(isSleepCompleted);
-  if (sleepCompletedEvents.length > 0) {
-    const sleepCompletedVariance = sleepCompletedEvents.map(
+  const timerCompletedEvents = events.filter(isTimerCompleted);
+  if (timerCompletedEvents.length > 0) {
+    const timerCompletedVariance = timerCompletedEvents.map(
       (s) => now.getTime() - new Date(s.timestamp).getTime()
     );
     const avg =
-      sleepCompletedVariance.reduce((t, n) => t + n, 0) /
-      sleepCompletedVariance.length;
-    metrics.setProperty(OrchestratorMetrics.SleepVarianceMillis, avg);
+      timerCompletedVariance.reduce((t, n) => t + n, 0) /
+      timerCompletedVariance.length;
+    metrics.setProperty(OrchestratorMetrics.TimerVarianceMillis, avg);
   }
 }

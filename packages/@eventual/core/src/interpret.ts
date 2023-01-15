@@ -25,16 +25,11 @@ import {
   isSignalReceived,
   isFailedEvent,
   isScheduledEvent,
-  isSleepCompleted,
-  isSleepScheduled,
-  isExpectSignalStarted,
-  isExpectSignalTimedOut,
+  isTimerCompleted,
+  isTimerScheduled,
   ScheduledEvent,
   isSignalSent,
-  isConditionStarted,
-  isConditionTimedOut,
   isWorkflowTimedOut,
-  isActivityTimedOut,
   isActivityHeartbeatTimedOut,
   isEventsPublished,
   WorkflowEvent,
@@ -51,7 +46,10 @@ import {
 import { createChain, isChain, Chain } from "./chain.js";
 import { assertNever, _Iterator, iterator, or } from "./util.js";
 import { Command, CommandType } from "./command.js";
-import { isSleepForCall, isSleepUntilCall } from "./calls/sleep-call.js";
+import {
+  isAwaitDurationCall,
+  isAwaitTimeCall,
+} from "./calls/await-time-call.js";
 import {
   isExpectSignalCall,
   ExpectSignalCall,
@@ -68,6 +66,7 @@ import { isAwaitAllSettled } from "./await-all-settled.js";
 import { isAwaitAny } from "./await-any.js";
 import { isRace } from "./race.js";
 import { isPublishEventsCall } from "./calls/send-events-call.js";
+import { Schedule } from "./schedule.js";
 
 export interface WorkflowResult<T = any> {
   /**
@@ -211,21 +210,16 @@ export function interpret<Return>(
         kind: CommandType.StartActivity,
         args: call.args,
         name: call.name,
-        timeoutSeconds: call.timeoutSeconds,
         heartbeatSeconds: call.heartbeatSeconds,
         seq: call.seq!,
       };
-    } else if (isSleepUntilCall(call)) {
+    } else if (isAwaitTimeCall(call) || isAwaitDurationCall(call)) {
       return {
-        kind: CommandType.SleepUntil,
+        kind: CommandType.StartTimer,
         seq: call.seq!,
-        untilTime: call.isoDate,
-      };
-    } else if (isSleepForCall(call)) {
-      return {
-        kind: CommandType.SleepFor,
-        seq: call.seq!,
-        durationSeconds: call.durationSeconds,
+        schedule: isAwaitTimeCall(call)
+          ? Schedule.time(call.isoDate)
+          : Schedule.duration(call.dur, call.unit),
       };
     } else if (isWorkflowCall(call)) {
       return {
@@ -235,13 +229,6 @@ export function interpret<Return>(
         name: call.name,
         opts: call.opts,
       };
-    } else if (isExpectSignalCall(call)) {
-      return {
-        kind: CommandType.ExpectSignal,
-        signalId: call.signalId,
-        seq: call.seq!,
-        timeoutSeconds: call.timeoutSeconds,
-      };
     } else if (isSendSignalCall(call)) {
       return {
         kind: CommandType.SendSignal,
@@ -249,12 +236,6 @@ export function interpret<Return>(
         target: call.target,
         seq: call.seq!,
         payload: call.payload,
-      };
-    } else if (isConditionCall(call)) {
-      return {
-        kind: CommandType.StartCondition,
-        seq: call.seq!,
-        timeoutSeconds: call.timeoutSeconds,
       };
     } else if (isRegisterSignalHandlerCall(call)) {
       return [];
@@ -291,19 +272,6 @@ export function interpret<Return>(
        */
       pushEventual(activity) {
         if (isCommandCall(activity)) {
-          if (isExpectSignalCall(activity)) {
-            subscribeToSignal(activity.signalId, activity);
-          } else if (isConditionCall(activity)) {
-            // if the condition is resolvable, don't add it to the calls.
-            const result = tryResolveResult(activity);
-            if (result) {
-              return activity;
-            }
-          } else if (isRegisterSignalHandlerCall(activity)) {
-            subscribeToSignal(activity.signalId, activity);
-            // signal handler does not emit a call/command. It is only internal.
-            return activity;
-          }
           activity.seq = nextSeq();
           callTable[activity.seq!] = activity;
           calls.push(activity);
@@ -316,10 +284,19 @@ export function interpret<Return>(
           isAwaitAll(activity) ||
           isAwaitAllSettled(activity) ||
           isAwaitAny(activity) ||
+          isConditionCall(activity) ||
           isRace(activity)
         ) {
           return activity;
+        } else if (isRegisterSignalHandlerCall(activity)) {
+          subscribeToSignal(activity.signalId, activity);
+          // signal handler does not emit a call/command. It is only internal.
+          return activity;
+        } else if (isExpectSignalCall(activity)) {
+          subscribeToSignal(activity.signalId, activity);
+          return activity;
         }
+
         return assertNever(activity);
       },
     };
@@ -453,6 +430,13 @@ export function interpret<Return>(
      */
     function resolveResult(activity: Eventual & { result: undefined }) {
       if (isConditionCall(activity)) {
+        // first check the state of the condition's timeout
+        if (activity.timeout) {
+          const timeoutResult = tryResolveResult(activity.timeout);
+          if (isResolved(timeoutResult) || isFailed(timeoutResult)) {
+            return Result.resolved(false);
+          }
+        }
         // try to evaluate the condition's result.
         const predicateResult = activity.predicate();
         if (isGenerator(predicateResult)) {
@@ -464,7 +448,27 @@ export function interpret<Return>(
         } else if (predicateResult) {
           return Result.resolved(true);
         }
-      } else if (isChain(activity) || isCommandCall(activity)) {
+      } else if (isActivityCall(activity) || isExpectSignalCall(activity)) {
+        if (activity.timeout) {
+          const timeoutResult = tryResolveResult(activity.timeout);
+          if (isResolved(timeoutResult) || isFailed(timeoutResult)) {
+            return Result.failed(
+              new Timeout(
+                isActivityCall(activity)
+                  ? "Activity Timed Out"
+                  : isExpectSignalCall(activity)
+                  ? "Expect Signal Timed Out"
+                  : assertNever(activity)
+              )
+            );
+          }
+        }
+        return undefined;
+      } else if (
+        isChain(activity) ||
+        isCommandCall(activity) ||
+        isRegisterSignalHandlerCall(activity)
+      ) {
         // chain and most commands will be resolved elsewhere (ex: commitCompletionEvent or commitSignal)
         return undefined;
       } else if (isAwaitAll(activity)) {
@@ -547,15 +551,8 @@ export function interpret<Return>(
     }
     call.result = isSucceededEvent(event)
       ? Result.resolved(event.result)
-      : isSleepCompleted(event)
+      : isTimerCompleted(event)
       ? Result.resolved(undefined)
-      : isExpectSignalTimedOut(event)
-      ? Result.failed(new Timeout("Expect Signal Timed Out"))
-      : isConditionTimedOut(event)
-      ? // a timed out condition returns false
-        Result.resolved(false)
-      : isActivityTimedOut(event)
-      ? Result.failed(new Timeout("Activity Timed Out"))
       : isActivityHeartbeatTimedOut(event)
       ? Result.failed(new HeartbeatTimeout("Activity Heartbeat TimedOut"))
       : Result.failed(new EventualError(event.error, event.message));
@@ -569,14 +566,10 @@ function isCorresponding(event: ScheduledEvent, call: CommandCall) {
     return isActivityCall(call) && call.name === event.name;
   } else if (isChildWorkflowScheduled(event)) {
     return isWorkflowCall(call) && call.name === event.name;
-  } else if (isSleepScheduled(event)) {
-    return isSleepUntilCall(call) || isSleepForCall(call);
-  } else if (isExpectSignalStarted(event)) {
-    return isExpectSignalCall(call) && event.signalId === call.signalId;
+  } else if (isTimerScheduled(event)) {
+    return isAwaitTimeCall(call) || isAwaitDurationCall(call);
   } else if (isSignalSent(event)) {
     return isSendSignalCall(call) && event.signalId === call.signalId;
-  } else if (isConditionStarted(event)) {
-    return isConditionCall(call);
   } else if (isEventsPublished(event)) {
     return isPublishEventsCall(call);
   }
