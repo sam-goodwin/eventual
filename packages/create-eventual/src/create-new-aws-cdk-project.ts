@@ -176,6 +176,7 @@ ${npm("deploy")}
         devDependencies: {
           "@eventual/cli": `^${version}`,
           "@tsconfig/node16": "^1",
+          "@types/jest": "^29",
           "@types/node": "^16",
           esbuild: "^0.16.14",
           typescript: "^4.9.4",
@@ -201,22 +202,17 @@ ${npm("deploy")}
           module: "esnext",
           moduleResolution: "NodeNext",
           resolveJsonModule: true,
-          types: ["@types/node"],
+          types: ["@types/node", "@types/jest"],
         },
       }),
       writeJsonFile("tsconfig.json", {
         files: [],
         references: [
           { path: `${appsDirName}/${serviceName}` },
+          { path: `${appsDirName}/${serviceName}/tsconfig.test.json` },
           { path: infraDirName },
           { path: `${packagesDirName}/events` },
         ],
-      }),
-      writeJsonFile("jest.config.base.json", {
-        preset: "ts-jest",
-        transform: {
-          "^.+\\.(t|j)sx?$": "ts-jest",
-        },
       }),
       fs.writeFile(
         ".gitignore",
@@ -438,7 +434,6 @@ helloEvent.onEvent(async (hello) => {
         "hello.test.ts": `import { Execution, ExecutionStatus } from "@eventual/core";
 import { TestEnvironment } from "@eventual/testing";
 import { createRequire } from "module";
-import path from "path";
 import { helloWorkflow } from "../src/index.js";
 
 const require = createRequire(import.meta.url);
@@ -449,7 +444,6 @@ let env: TestEnvironment;
 beforeAll(async () => {
   env = new TestEnvironment({
     entry: require.resolve("../src"),
-    outDir: path.resolve(".eventual"),
   });
 
   await env.initialize();
@@ -517,7 +511,6 @@ export const helloEvent = event<HelloEvent>("HelloEvent");
         },
         devDependencies: {
           "@eventual/core": version,
-          "@types/jest": "^29",
           jest: "^29",
           "ts-jest": "^29",
           typescript: "^4.9.4",
@@ -555,7 +548,6 @@ export const helloEvent = event<HelloEvent>("HelloEvent");
         include: ["src", "test"],
         exclude: ["lib", "node_modules"],
         compilerOptions: {
-          types: ["@types/node", "@types/jest"],
           noEmit: true,
           rootDir: ".",
         },

@@ -102,7 +102,6 @@ export async function createServicePackage(
         },
         devDependencies: {
           "@eventual/testing": `^${props.eventualVersion}`,
-          "@types/jest": "^29",
           esbuild: "^0.16.14",
           jest: "^29",
           "ts-jest": "^29",
@@ -140,7 +139,6 @@ export async function createServicePackage(
         include: ["src", "test"],
         exclude: ["lib", "node_modules"],
         compilerOptions: {
-          types: ["@types/node", "@types/jest"],
           noEmit: true,
           rootDir: ".",
         },
