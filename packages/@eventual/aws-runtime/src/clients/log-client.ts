@@ -3,6 +3,7 @@ import {
   CloudWatchLogsClient,
   PutLogEventsCommand,
   CreateLogStreamCommand,
+  InvalidParameterException,
 } from "@aws-sdk/client-cloudwatch-logs";
 import { formatWorkflowExecutionStreamName } from "../utils.js";
 
@@ -18,16 +19,24 @@ export class AWSLogsClient implements LogsClient {
     executionId: string,
     ...logEntries: LogEntry[]
   ): Promise<void> {
-    await this.props.cloudwatchLogsClient.send(
-      new PutLogEventsCommand({
-        logGroupName: this.props.serviceLogGroup,
-        logStreamName: formatWorkflowExecutionStreamName(executionId),
-        logEvents: logEntries.map(({ time, message }) => ({
-          timestamp: time,
-          message,
-        })),
-      })
-    );
+    try {
+      await this.props.cloudwatchLogsClient.send(
+        new PutLogEventsCommand({
+          logGroupName: this.props.serviceLogGroup,
+          logStreamName: formatWorkflowExecutionStreamName(executionId),
+          logEvents: logEntries.map(({ time, message }) => ({
+            timestamp: time,
+            message,
+          })),
+        })
+      );
+    } catch (err) {
+      console.error("Log Client Put Execution Logs Error: ", err);
+      if (err instanceof InvalidParameterException) {
+        throw new Error(`${err.name}: ${err.message}`);
+      }
+      throw err;
+    }
   }
 
   // TODO: handle throttle errors and retry at > 50TPS
