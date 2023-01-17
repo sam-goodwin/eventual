@@ -87,7 +87,7 @@ eventualRuntimeTestHarness(({ testCompletion, testFailed }) => {
   );
 
   testCompletion("datetime", timedWorkflow, (r) => {
-    expect(r.dates).toHaveLength(5);
-    expect([...new Set(...r.dates)]).toHaveLength(5);
+    expect(r.dates).toHaveLength(6);
+    expect([...new Set(...r.dates)]).toHaveLength(6);
   });
 });
