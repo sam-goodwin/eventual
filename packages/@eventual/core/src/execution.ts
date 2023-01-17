@@ -18,6 +18,7 @@ interface ExecutionBase {
   status: ExecutionStatus;
   startTime: string;
   workflowName: string;
+  inputHash?: string;
   parent?: {
     /**
      * Seq number when this execution is the child of another workflow.

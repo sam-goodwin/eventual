@@ -34,7 +34,7 @@ export interface WorkflowsProps {
 
 export interface IWorkflows {
   configureStartExecution(func: Function): void;
-  grantSubmitWorkflowEvent(grantable: IGrantable): void;
+  grantStartExecution(grantable: IGrantable): void;
 
   configureSendWorkflowEvent(func: Function): void;
   grantSendWorkflowEvent(grantable: IGrantable): void;
@@ -103,15 +103,16 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.configureSendWorkflowEvent(func);
     // when we start a workflow, we create the log stream it will use.
     this.props.logging.configurePutServiceLogs(func);
-    this.grantSubmitWorkflowEvent(func);
+    this.grantStartExecution(func);
     addEnvironment(func, {
       [ENV_NAMES.TABLE_NAME]: this.props.table.tableName,
     });
   }
 
-  public grantSubmitWorkflowEvent(grantable: IGrantable) {
+  public grantStartExecution(grantable: IGrantable) {
     this.grantSendWorkflowEvent(grantable);
-    this.props.table.grantWriteData(grantable);
+    // put execution item and get execution item when there is a name collision.
+    this.props.table.grantReadWriteData(grantable);
   }
 
   public configureSendWorkflowEvent(func: Function) {

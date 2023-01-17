@@ -326,7 +326,7 @@ export class Service extends Construct implements IGrantable {
   }
 
   public grantStartExecution(grantable: IGrantable) {
-    this.workflows.grantSubmitWorkflowEvent(grantable);
+    this.workflows.grantStartExecution(grantable);
   }
 
   /**

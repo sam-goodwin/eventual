@@ -1,8 +1,10 @@
 import {
   AttributeValue,
+  ConditionalCheckFailedException,
   DynamoDBClient,
   GetItemCommand,
   PutItemCommand,
+  ReturnValue,
 } from "@aws-sdk/client-dynamodb";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
@@ -26,6 +28,8 @@ import {
   SortOrder,
   isExecutionStatus,
   computeScheduleDate,
+  StartExecutionResponse,
+  hashCode,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 import { inspect } from "util";
@@ -59,7 +63,9 @@ export class AWSWorkflowClient extends WorkflowClient {
     input,
     timeout,
     ...request
-  }: StartExecutionRequest<W> | StartChildExecutionRequest<W>) {
+  }:
+    | StartExecutionRequest<W>
+    | StartChildExecutionRequest<W>): Promise<StartExecutionResponse> {
     if (typeof workflow === "string" && !lookupWorkflow(workflow)) {
       throw new Error(`Workflow ${workflow} does not exist in the service.`);
     }
@@ -67,39 +73,60 @@ export class AWSWorkflowClient extends WorkflowClient {
     const workflowName =
       typeof workflow === "string" ? workflow : workflow.workflowName;
     const executionId = formatExecutionId(workflowName, executionName);
+    const inputHash =
+      input !== undefined
+        ? hashCode(JSON.stringify(input)).toString(16)
+        : undefined;
     console.log("execution input:", input);
+    console.log("execution input hash:", inputHash);
 
-    const createLogStream = async () => {
+    try {
+      try {
+        await this.props.dynamo.send(
+          new PutItemCommand({
+            TableName: this.props.tableName,
+            Item: {
+              pk: { S: ExecutionRecord.PARTITION_KEY },
+              sk: { S: ExecutionRecord.sortKey(executionId) },
+              id: { S: executionId },
+              name: { S: executionName },
+              workflowName: { S: workflowName },
+              status: { S: ExecutionStatus.IN_PROGRESS },
+              startTime: { S: new Date().toISOString() },
+              ...(inputHash !== undefined
+                ? { inputHash: { S: inputHash } }
+                : {}),
+              ...("parentExecutionId" in request
+                ? {
+                    parentExecutionId: { S: request.parentExecutionId },
+                    seq: { N: request.seq.toString(10) },
+                  }
+                : {}),
+            },
+            ConditionExpression: "attribute_not_exists(sk)",
+            ReturnValues: ReturnValue.ALL_OLD,
+          })
+        );
+      } catch (err) {
+        // execution name already exists for the workflow. Check to see if the execution
+        if (err instanceof ConditionalCheckFailedException) {
+          const execution = await this.getExecution(executionId);
+          if (execution?.inputHash === inputHash) {
+            return { executionId, alreadyRunning: true };
+          } else {
+            throw new Error(
+              `Execution name ${executionName} already exists for workflow ${workflowName} with different inputs.`
+            );
+          }
+        }
+        throw err;
+      }
+
       await this.props.logsClient.initializeExecutionLog(executionId);
       await this.props.logsClient.putExecutionLogs(executionId, {
         time: new Date().getTime(),
         message: "Workflow Started",
       });
-    };
-
-    const addExecutionEntry = await this.props.dynamo.send(
-      new PutItemCommand({
-        TableName: this.props.tableName,
-        Item: {
-          pk: { S: ExecutionRecord.PARTITION_KEY },
-          sk: { S: ExecutionRecord.sortKey(executionId) },
-          id: { S: executionId },
-          name: { S: executionName },
-          workflowName: { S: workflowName },
-          status: { S: ExecutionStatus.IN_PROGRESS },
-          startTime: { S: new Date().toISOString() },
-          ...("parentExecutionId" in request
-            ? {
-                parentExecutionId: { S: request.parentExecutionId },
-                seq: { N: request.seq.toString(10) },
-              }
-            : {}),
-        },
-      })
-    );
-
-    try {
-      await Promise.all([createLogStream(), addExecutionEntry]);
 
       const workflowStartedEvent = createEvent<WorkflowStarted>(
         {
@@ -124,7 +151,7 @@ export class AWSWorkflowClient extends WorkflowClient {
 
       await this.submitWorkflowTask(executionId, workflowStartedEvent);
 
-      return { executionId };
+      return { executionId, alreadyRunning: false };
     } catch (err) {
       console.log(err);
       throw new Error(
@@ -248,6 +275,7 @@ export type ExecutionRecord =
       endTime?: AttributeValue.SMember;
       error?: AttributeValue.SMember;
       message?: AttributeValue.SMember;
+      inputHash?: AttributeValue.NMember;
     } & (
       | {
           parentExecutionId: AttributeValue.SMember;
@@ -283,6 +311,7 @@ export function createExecutionFromResult(
     startTime: execution.startTime.S,
     status: execution.status.S,
     workflowName: execution.workflowName.S,
+    inputHash: execution.inputHash?.S,
     parent:
       execution.parentExecutionId !== undefined && execution.seq !== undefined
         ? {

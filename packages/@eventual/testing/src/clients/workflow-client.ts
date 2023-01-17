@@ -7,6 +7,7 @@ import {
   formatExecutionId,
   GetExecutionsRequest,
   GetExecutionsResponse,
+  hashCode,
   HistoryStateEvent,
   StartChildExecutionRequest,
   StartExecutionRequest,
@@ -37,10 +38,20 @@ export class TestWorkflowClient extends WorkflowClient {
       typeof request.workflow === "string"
         ? request.workflow
         : request.workflow.workflowName;
-    const executionId = formatExecutionId(
-      workflowName,
-      request.executionName ?? ulid()
-    );
+    const executionId = formatExecutionId(workflowName, name);
+    const inputHash =
+      request.input !== undefined
+        ? hashCode(JSON.stringify(request.input)).toString(16)
+        : undefined;
+
+    const existingExecution = this.executionStore.get(executionId);
+    if (existingExecution !== undefined) {
+      if (existingExecution.inputHash === inputHash) {
+        return { executionId, alreadyRunning: true };
+      } else {
+        throw new Error(`Execution name ${name} already exists`);
+      }
+    }
 
     const baseTime = this.baseTime();
 
@@ -49,6 +60,7 @@ export class TestWorkflowClient extends WorkflowClient {
       id: executionId,
       startTime: baseTime.toISOString(),
       workflowName,
+      inputHash,
       parent:
         "parentExecutionId" in request
           ? { executionId: request.parentExecutionId, seq: request.seq }
@@ -81,7 +93,7 @@ export class TestWorkflowClient extends WorkflowClient {
       )
     );
 
-    return { executionId };
+    return { executionId, alreadyRunning: false };
   }
 
   public async submitWorkflowTask(
