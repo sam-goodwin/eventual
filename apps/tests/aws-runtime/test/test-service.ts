@@ -368,3 +368,27 @@ export const signalWorkflow = workflow("signalWorkflow", async () => {
   await doneSignal.expectSignal();
   return n;
 });
+
+export const timeWorkflow = workflow(
+  "timeWorkflow",
+  async (input: { startDate: string }) => {
+    let n = 0;
+    let total = 0;
+    mySignal.onSignal(() => {
+      total++;
+      if (new Date().getTime() > new Date(input.startDate).getTime()) {
+        n++;
+      }
+    });
+
+    await condition(() => n > 10);
+
+    return { seen: total, n };
+  }
+);
+
+// before startDate
+// mySignal
+// after startDate
+// mySignal
+// mySignal x 9

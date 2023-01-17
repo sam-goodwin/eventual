@@ -27,6 +27,8 @@ import {
   orchestrateWorkflow,
   signalWorkflow,
   sleepWorkflow,
+  timedWorkflow,
+  timeWorkflow,
   workflow1,
   workflow3,
   workflowWithTimeouts,
@@ -52,6 +54,10 @@ beforeAll(async () => {
     entry: path.resolve(
       url.fileURLToPath(new URL(".", import.meta.url)),
       "./workflow.ts"
+    ),
+    outDir: path.resolve(
+      url.fileURLToPath(new URL(".", import.meta.url)),
+      ".eventual"
     ),
   });
 
@@ -1153,6 +1159,76 @@ describe("long running activities", () => {
         status: ExecutionStatus.SUCCEEDED,
         result: "sleep",
       });
+    });
+  });
+});
+
+describe("time", () => {
+  test("signal time", async () => {
+    const startDate = new Date("2022-01-01T00:00:00Z");
+    const targetDate = new Date("2022-02-01T00:00:00Z");
+
+    await env.tickUntil(startDate);
+    const execution = await env.startExecution({
+      workflow: timedWorkflow,
+      input: { startDate: targetDate.toISOString() },
+    });
+
+    await execution.sendSignal(dataSignal, "hi");
+    await execution.sendSignal(dataSignal, "hi");
+    await execution.sendSignal(dataSignal, "hi");
+
+    await env.tickUntil(targetDate);
+
+    await execution.sendSignal(dataSignal, "hi");
+    await execution.sendSignal(dataSignal, "hi");
+    await execution.sendSignal(dataSignal, "hi");
+    await execution.sendSignal(dataSignal, "hi");
+    await execution.sendSignal(dataSignal, "hi");
+    await execution.sendSignal(dataSignal, "hi");
+    await execution.sendSignal(dataSignal, "hi");
+
+    const r1 = await execution.getStatus();
+    expect(r1.status).toEqual(ExecutionStatus.IN_PROGRESS);
+
+    await execution.sendSignal(dataSignal, "hi");
+    await execution.sendSignal(dataSignal, "hi");
+    await execution.sendSignal(dataSignal, "hi");
+
+    // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
+    const r2 = await execution.getStatus();
+    // and the execution updated to a succeeded state
+    expect(r2).toMatchObject<Partial<typeof r2>>({
+      status: ExecutionStatus.SUCCEEDED,
+      result: { seen: 13, n: 10 },
+    });
+  });
+
+  test("output time", async () => {
+    const startDate = new Date("2022-01-01T00:00:00Z");
+
+    await env.tickUntil(startDate);
+
+    const execution = await env.startExecution({
+      workflow: timeWorkflow,
+      input: undefined,
+    });
+
+    await execution.sendSignal(dataSignal, "hi");
+    await execution.sendSignal(dataSignal, "hi");
+
+    // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
+    const r2 = await execution.getStatus();
+    // and the execution updated to a succeeded state
+    expect(r2).toMatchObject<Partial<typeof r2>>({
+      status: ExecutionStatus.SUCCEEDED,
+      result: {
+        dates: [
+          "2022-01-01T00:00:01.000Z",
+          "2022-01-01T00:00:02.000Z",
+          "2022-01-01T00:00:03.000Z",
+        ],
+      },
     });
   });
 });

@@ -22,6 +22,7 @@ import {
   HistoryEvent,
   WorkflowStarted,
   isWorkflowCompletedEvent,
+  isWorkflowRunStarted,
 } from "../../workflow-events.js";
 import {
   SucceededExecution,
@@ -63,6 +64,7 @@ import { EventClient } from "../clients/event-client.js";
 import { serviceTypeScope } from "../flags.js";
 import { ServiceType } from "../../service-type.js";
 import { Schedule } from "../../schedule.js";
+import { hookDate, restoreDate } from "../date-hook.js";
 
 /**
  * The Orchestrator's client dependencies.
@@ -252,7 +254,7 @@ export function createOrchestrator({
       };
 
       async function* executeWorkflowGenerator() {
-        yield createEvent<WorkflowRunStarted>(
+        const runStarted = createEvent<WorkflowRunStarted>(
           {
             type: WorkflowEventType.WorkflowRunStarted,
           },
@@ -261,6 +263,7 @@ export function createOrchestrator({
 
         const workflow = lookupWorkflow(workflowName);
         if (workflow === undefined) {
+          yield runStarted;
           yield createEvent<WorkflowFailed>(
             {
               type: WorkflowEventType.WorkflowFailed,
@@ -279,7 +282,8 @@ export function createOrchestrator({
           syntheticEvents,
           completedEvent,
           allEvents,
-        } = processEvents(history, events);
+          firstRunStarted,
+        } = processEvents(history, [runStarted, ...events]);
 
         /**
          * I*f this is the first run check to see if the workflow has timeout to start.
@@ -339,10 +343,26 @@ export function createOrchestrator({
               OrchestratorMetrics.AdvanceExecutionDuration,
               () => {
                 try {
+                  let currentTime = new Date(
+                    firstRunStarted.timestamp
+                  ).getTime();
+                  hookDate(() => currentTime);
                   return interpret(
                     runWorkflowDefinition(workflow, startEvent.input, context),
                     interpretEvents,
                     {
+                      /**
+                       * Invoked for each {@link HistoryResultEvent}, or an event which
+                       * represents the resolution of some {@link Eventual}.
+                       *
+                       * We use this to watch for the application of the {@link WorkflowRunStarted} event.
+                       * Which we use to find and apply the current time to the hooked {@link Date} object.
+                       */
+                      beforeApplyingResultEvent: (event) => {
+                        if (isWorkflowRunStarted(event)) {
+                          currentTime = new Date(event.timestamp).getTime();
+                        }
+                      },
                       // when an event is matched, that means all the work to this point has been completed, clear the logs collected.
                       // this implements "exactly once" logs with the workflow semantics.
                       historicalEventMatched: () =>
@@ -356,6 +376,7 @@ export function createOrchestrator({
                   throw err;
                 } finally {
                   // re-enable sending logs, any generated logs are new.
+                  restoreDate();
                   logAgent.enableSendingLogs();
                 }
               }
@@ -451,6 +472,7 @@ export function createOrchestrator({
         allEvents: HistoryStateEvent[];
         startEvent: WorkflowStarted;
         completedEvent?: WorkflowSucceeded | WorkflowFailed;
+        firstRunStarted: WorkflowRunStarted;
         isStartRun: boolean;
       } {
         // historical events and incoming events will be fed into the workflow to resume/progress state
@@ -476,13 +498,22 @@ export function createOrchestrator({
           );
         }
 
+        const firstRunStarted = allEvents.find(isWorkflowRunStarted);
+
+        if (!firstRunStarted) {
+          throw new DeterminismError(
+            `No ${WorkflowEventType.WorkflowRunStarted} found.`
+          );
+        }
+
         return {
           interpretEvents: allEvents.filter(isHistoryEvent),
           startEvent,
-          isStartRun: !!historicalStartEvent,
+          isStartRun: !historicalStartEvent,
           completedEvent: allEvents.find(isWorkflowCompletedEvent),
           syntheticEvents,
           allEvents,
+          firstRunStarted,
         };
       }
 

@@ -43,7 +43,6 @@ export enum WorkflowEventType {
 export type WorkflowEvent =
   | HistoryEvent
   | WorkflowRunCompleted
-  | WorkflowRunStarted
   | WorkflowSucceeded
   | WorkflowFailed
   | WorkflowStarted;
@@ -66,23 +65,34 @@ export type FailedEvent =
   | ChildWorkflowFailed;
 
 /**
- * Events used by the workflow to replay an execution.
+ * Events generated outside of the interpreter which progress the workflow.
  */
-export type HistoryEvent =
-  | SucceededEvent
+export type HistoryResultEvent =
   | FailedEvent
-  | ScheduledEvent
+  | SucceededEvent
   | SignalReceived
-  | WorkflowTimedOut;
+  | WorkflowTimedOut
+  | WorkflowRunStarted;
 
-export function isHistoryEvent(event: WorkflowEvent): event is HistoryEvent {
+export function isHistoryResultEvent(
+  event: WorkflowEvent
+): event is HistoryResultEvent {
   return (
     isSucceededEvent(event) ||
     isFailedEvent(event) ||
-    isScheduledEvent(event) ||
     isSignalReceived(event) ||
-    isWorkflowTimedOut(event)
+    isWorkflowTimedOut(event) ||
+    isWorkflowRunStarted(event)
   );
+}
+
+/**
+ * Events used by the workflow to replay an execution.
+ */
+export type HistoryEvent = HistoryResultEvent | ScheduledEvent;
+
+export function isHistoryEvent(event: WorkflowEvent): event is HistoryEvent {
+  return isHistoryResultEvent(event) || isScheduledEvent(event);
 }
 
 /**
@@ -359,11 +369,7 @@ export function assertEventType<T extends WorkflowEvent>(
  * Some events have a computed ID to save space.
  */
 export function getEventId(event: WorkflowEvent): string {
-  if (
-    isHistoryEvent(event) &&
-    !isSignalReceived(event) &&
-    !isWorkflowTimedOut(event)
-  ) {
+  if (isHistoryEvent(event) && "seq" in event) {
     return `${event.seq}_${event.type}`;
   } else {
     return event.id;
@@ -403,7 +409,9 @@ export function createEvent<T extends WorkflowEvent>(
   // history events do not have IDs, use getEventId
   if (
     isHistoryEvent(event as unknown as WorkflowEvent) &&
-    !isSignalReceived(event as unknown as WorkflowEvent)
+    !isSignalReceived(event as unknown as WorkflowEvent) &&
+    !isWorkflowRunStarted(event as unknown as WorkflowEvent) &&
+    !isWorkflowTimedOut(event as unknown as WorkflowEvent)
   ) {
     return { ...(event as any), timestamp };
   }

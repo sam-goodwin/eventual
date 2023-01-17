@@ -56,6 +56,13 @@
     "projects": [
       "<rootDir>/packages/@eventual/*"
     ],
+    "roots": [
+      "<rootDir>"
+    ],
+    "moduleDirectories": [
+      "node_modules",
+      "src"
+    ],
     "extensionsToTreatAsEsm": [
       ".ts"
     ],

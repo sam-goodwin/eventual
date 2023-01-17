@@ -23,7 +23,6 @@ import {
   isChildWorkflowScheduled,
   isSucceededEvent,
   isSignalReceived,
-  isFailedEvent,
   isScheduledEvent,
   isTimerCompleted,
   isTimerScheduled,
@@ -33,6 +32,9 @@ import {
   isActivityHeartbeatTimedOut,
   isEventsPublished,
   WorkflowEvent,
+  isWorkflowRunStarted,
+  isHistoryResultEvent,
+  HistoryResultEvent,
 } from "./workflow-events.js";
 import {
   Result,
@@ -44,7 +46,7 @@ import {
   isResolvedOrFailed,
 } from "./result.js";
 import { createChain, isChain, Chain } from "./chain.js";
-import { assertNever, _Iterator, iterator, or } from "./util.js";
+import { assertNever, _Iterator, iterator } from "./util.js";
 import { Command, CommandType } from "./command.js";
 import {
   isAwaitDurationCall,
@@ -90,6 +92,11 @@ export interface InterpretProps {
    * This call will be ignored.
    */
   historicalEventMatched?: (event: WorkflowEvent, call: CommandCall) => void;
+
+  /**
+   * Callback immediately before applying a result event.
+   */
+  beforeApplyingResultEvent?: (resultEvent: HistoryResultEvent) => void;
 }
 
 /**
@@ -117,10 +124,7 @@ export function interpret<Return>(
   }
 
   const emittedEvents = iterator(history, isScheduledEvent);
-  const resultEvents = iterator(
-    history,
-    or(isSucceededEvent, isFailedEvent, isSignalReceived, isWorkflowTimedOut)
-  );
+  const resultEvents = iterator(history, isHistoryResultEvent);
 
   try {
     /**
@@ -143,6 +147,8 @@ export function interpret<Return>(
       if (!newCalls.hasNext() && resultEvents.hasNext()) {
         const resultEvent = resultEvents.next()!;
 
+        props?.beforeApplyingResultEvent?.(resultEvent);
+
         // it is possible that committing events
         newCalls = iterator(
           collectActivitiesScope(() => {
@@ -153,7 +159,7 @@ export function interpret<Return>(
               mainChain.result = Result.failed(
                 new Timeout("Workflow timed out")
               );
-            } else {
+            } else if (!isWorkflowRunStarted(resultEvent)) {
               commitCompletionEvent(resultEvent);
             }
           })
