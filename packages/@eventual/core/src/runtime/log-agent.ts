@@ -205,7 +205,7 @@ export class LogAgent {
         } executions`
       );
 
-      // TODO retry
+      // TODO retry - https://github.com/functionless/eventual/issues/235
       const results = await Promise.allSettled(
         Object.entries(executions).map(([execution, entries]) => {
           return this.props.logsClient.putExecutionLogs(
@@ -219,7 +219,10 @@ export class LogAgent {
       );
 
       if (results.some((r) => r.status === "rejected")) {
-        throw new Error("Logs failed to send");
+        throw new Error(
+          "Logs failed to send: " +
+            JSON.stringify(results.filter((r) => r.status === "rejected"))
+        );
       }
     }
   }
