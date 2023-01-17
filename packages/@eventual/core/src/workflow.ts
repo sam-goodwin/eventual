@@ -173,14 +173,6 @@ export function workflow<Input = any, Output = any>(
   return workflow;
 }
 
-export function runWorkflowDefinition(
-  workflow: Workflow,
-  input: any,
-  context: Context
-) {
-  return workflow.definition(input, context);
-}
-
 /**
  * Generates synthetic events, for example, {@link TimerCompleted} events when the time has passed, but a real completed event has not come in yet.
  */

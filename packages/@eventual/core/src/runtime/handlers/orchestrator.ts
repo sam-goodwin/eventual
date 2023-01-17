@@ -34,7 +34,6 @@ import { isFailed, isResolved, isResult, Result } from "../../result.js";
 import {
   generateSyntheticEvents,
   lookupWorkflow,
-  runWorkflowDefinition,
   Workflow,
 } from "../../workflow.js";
 import { CommandExecutor } from "../command-executor.js";
@@ -275,20 +274,16 @@ export function createOrchestrator({
           return;
         }
 
-        const {
-          isStartRun,
-          interpretEvents,
-          startEvent,
-          syntheticEvents,
-          completedEvent,
-          allEvents,
-          firstRunStarted,
-        } = processEvents(history, [runStarted, ...events]);
+        const processedEvents = processEvents(
+          history,
+          [runStarted, ...events],
+          baseTime
+        );
 
         /**
          * I*f this is the first run check to see if the workflow has timeout to start.
          */
-        if (!isStartRun) {
+        if (!processedEvents.isStartRun) {
           const newWorkflowStart = events.find(isWorkflowStarted);
 
           if (newWorkflowStart?.timeoutTime) {
@@ -313,83 +308,40 @@ export function createOrchestrator({
           }
         }
 
-        const context: Context = {
-          workflow: {
-            name: workflow.workflowName,
-          },
-          execution: {
-            ...startEvent.context,
-            id: executionId,
-            startTime: startEvent.timestamp,
-          },
-        };
-
         const { result, commands: newCommands } = logAgent.logContextScopeSync(
           executionLogContext,
           () => {
             console.debug("history events", JSON.stringify(history));
             console.debug("task events", JSON.stringify(events));
-            console.debug("synthetic events", JSON.stringify(syntheticEvents));
-            console.debug("interpret events", JSON.stringify(interpretEvents));
-
-            // flush any logs generated to this point
-            const logCheckpoint = logAgent.getCheckpoint();
-
-            // buffer logs until interpret is complete - don't want to send logs we might clear
-            logAgent.disableSendingLogs();
+            console.debug(
+              "synthetic events",
+              JSON.stringify(processedEvents.syntheticEvents)
+            );
+            console.debug(
+              "interpret events",
+              JSON.stringify(processedEvents.interpretEvents)
+            );
 
             return timedSync(
               metrics,
               OrchestratorMetrics.AdvanceExecutionDuration,
-              () => {
-                try {
-                  let currentTime = new Date(
-                    firstRunStarted.timestamp
-                  ).getTime();
-                  hookDate(() => currentTime);
-                  return interpret(
-                    runWorkflowDefinition(workflow, startEvent.input, context),
-                    interpretEvents,
-                    {
-                      /**
-                       * Invoked for each {@link HistoryResultEvent}, or an event which
-                       * represents the resolution of some {@link Eventual}.
-                       *
-                       * We use this to watch for the application of the {@link WorkflowRunStarted} event.
-                       * Which we use to find and apply the current time to the hooked {@link Date} object.
-                       */
-                      beforeApplyingResultEvent: (event) => {
-                        if (isWorkflowRunStarted(event)) {
-                          currentTime = new Date(event.timestamp).getTime();
-                        }
-                      },
-                      // when an event is matched, that means all the work to this point has been completed, clear the logs collected.
-                      // this implements "exactly once" logs with the workflow semantics.
-                      historicalEventMatched: () =>
-                        logAgent.clearLogs(logCheckpoint),
-                    }
-                  );
-                } catch (err) {
-                  // temporary fix when the interpreter fails, but the activities are not cleared.
-                  clearEventualCollector();
-                  console.debug("workflow error", inspect(err));
-                  throw err;
-                } finally {
-                  // re-enable sending logs, any generated logs are new.
-                  restoreDate();
-                  logAgent.enableSendingLogs();
-                }
-              }
+              () =>
+                progressWorkflow(
+                  executionId,
+                  workflow,
+                  processedEvents,
+                  logAgent
+                )
             );
           }
         );
 
         metrics.setProperty(
           OrchestratorMetrics.AdvanceExecutionEvents,
-          allEvents.length
+          processedEvents.allEvents.length
         );
 
-        yield* allEvents;
+        yield* processedEvents.allEvents;
 
         logAgent.logWithContext(
           executionLogContext,
@@ -434,7 +386,7 @@ export function createOrchestrator({
           start
         );
 
-        if (!completedEvent && isResult(result)) {
+        if (!processedEvents.completedEvent && isResult(result)) {
           if (isFailed(result)) {
             const [error, message] = extendsError(result.error)
               ? [result.error.name, result.error.message]
@@ -461,60 +413,6 @@ export function createOrchestrator({
         }
 
         return result;
-      }
-
-      function processEvents(
-        historyEvents: HistoryStateEvent[],
-        taskEvents: HistoryStateEvent[]
-      ): {
-        syntheticEvents: HistoryStateEvent[];
-        interpretEvents: HistoryEvent[];
-        allEvents: HistoryStateEvent[];
-        startEvent: WorkflowStarted;
-        completedEvent?: WorkflowSucceeded | WorkflowFailed;
-        firstRunStarted: WorkflowRunStarted;
-        isStartRun: boolean;
-      } {
-        // historical events and incoming events will be fed into the workflow to resume/progress state
-        const uniqueTaskEvents = filterEvents<HistoryStateEvent>(
-          historyEvents,
-          taskEvents
-        );
-
-        const inputEvents = [...historyEvents, ...uniqueTaskEvents];
-
-        // Generates events that are time sensitive, like timer completed events.
-        const syntheticEvents = generateSyntheticEvents(inputEvents, baseTime);
-
-        const allEvents = [...inputEvents, ...syntheticEvents];
-
-        const historicalStartEvent = historyEvents.find(isWorkflowStarted);
-        const startEvent =
-          historicalStartEvent ?? uniqueTaskEvents.find(isWorkflowStarted);
-
-        if (!startEvent) {
-          throw new DeterminismError(
-            `No ${WorkflowEventType.WorkflowStarted} found.`
-          );
-        }
-
-        const firstRunStarted = allEvents.find(isWorkflowRunStarted);
-
-        if (!firstRunStarted) {
-          throw new DeterminismError(
-            `No ${WorkflowEventType.WorkflowRunStarted} found.`
-          );
-        }
-
-        return {
-          interpretEvents: allEvents.filter(isHistoryEvent),
-          startEvent,
-          isStartRun: !historicalStartEvent,
-          completedEvent: allEvents.find(isWorkflowCompletedEvent),
-          syntheticEvents,
-          allEvents,
-          firstRunStarted,
-        };
       }
 
       /**
@@ -766,4 +664,122 @@ function logEventMetrics(
       timerCompletedVariance.length;
     metrics.setProperty(OrchestratorMetrics.TimerVarianceMillis, avg);
   }
+}
+
+export function progressWorkflow(
+  executionId: string,
+  workflow: Workflow,
+  processedEvents: ProcessEventsResult,
+  logAgent?: LogAgent
+) {
+  // flush any logs generated to this point
+  const logCheckpoint = logAgent?.getCheckpoint();
+
+  // buffer logs until interpret is complete - don't want to send logs we might clear
+  logAgent?.disableSendingLogs();
+
+  const context: Context = {
+    workflow: {
+      name: workflow.workflowName,
+    },
+    execution: {
+      ...processedEvents.startEvent.context,
+      id: executionId,
+      startTime: processedEvents.startEvent.timestamp,
+    },
+  };
+
+  try {
+    let currentTime = new Date(
+      processedEvents.firstRunStarted.timestamp
+    ).getTime();
+    hookDate(() => currentTime);
+    return interpret(
+      workflow.definition(processedEvents.startEvent.input, context),
+      processedEvents.interpretEvents,
+      {
+        /**
+         * Invoked for each {@link HistoryResultEvent}, or an event which
+         * represents the resolution of some {@link Eventual}.
+         *
+         * We use this to watch for the application of the {@link WorkflowRunStarted} event.
+         * Which we use to find and apply the current time to the hooked {@link Date} object.
+         */
+        beforeApplyingResultEvent: (event) => {
+          if (isWorkflowRunStarted(event)) {
+            currentTime = new Date(event.timestamp).getTime();
+          }
+        },
+        // when an event is matched, that means all the work to this point has been completed, clear the logs collected.
+        // this implements "exactly once" logs with the workflow semantics.
+        historicalEventMatched: () => logAgent?.clearLogs(logCheckpoint),
+      }
+    );
+  } catch (err) {
+    // temporary fix when the interpreter fails, but the activities are not cleared.
+    clearEventualCollector();
+    console.debug("workflow error", inspect(err));
+    throw err;
+  } finally {
+    // re-enable sending logs, any generated logs are new.
+    restoreDate();
+    logAgent?.enableSendingLogs();
+  }
+}
+
+export interface ProcessEventsResult {
+  syntheticEvents: HistoryStateEvent[];
+  interpretEvents: HistoryEvent[];
+  allEvents: HistoryStateEvent[];
+  startEvent: WorkflowStarted;
+  completedEvent?: WorkflowSucceeded | WorkflowFailed;
+  firstRunStarted: WorkflowRunStarted;
+  isStartRun: boolean;
+}
+
+export function processEvents(
+  historyEvents: HistoryStateEvent[],
+  taskEvents: HistoryStateEvent[],
+  baseTime: Date
+): ProcessEventsResult {
+  // historical events and incoming events will be fed into the workflow to resume/progress state
+  const uniqueTaskEvents = filterEvents<HistoryStateEvent>(
+    historyEvents,
+    taskEvents
+  );
+
+  const inputEvents = [...historyEvents, ...uniqueTaskEvents];
+
+  // Generates events that are time sensitive, like timer completed events.
+  const syntheticEvents = generateSyntheticEvents(inputEvents, baseTime);
+
+  const allEvents = [...inputEvents, ...syntheticEvents];
+
+  const historicalStartEvent = historyEvents.find(isWorkflowStarted);
+  const startEvent =
+    historicalStartEvent ?? uniqueTaskEvents.find(isWorkflowStarted);
+
+  if (!startEvent) {
+    throw new DeterminismError(
+      `No ${WorkflowEventType.WorkflowStarted} found.`
+    );
+  }
+
+  const firstRunStarted = allEvents.find(isWorkflowRunStarted);
+
+  if (!firstRunStarted) {
+    throw new DeterminismError(
+      `No ${WorkflowEventType.WorkflowRunStarted} found.`
+    );
+  }
+
+  return {
+    interpretEvents: allEvents.filter(isHistoryEvent),
+    startEvent,
+    isStartRun: !historicalStartEvent,
+    completedEvent: allEvents.find(isWorkflowCompletedEvent),
+    syntheticEvents,
+    allEvents,
+    firstRunStarted,
+  };
 }

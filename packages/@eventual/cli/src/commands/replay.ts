@@ -1,13 +1,16 @@
 import {
   encodeExecutionId,
   ExecutionID,
+  isFailedExecution,
+  isSucceededExecution,
   parseWorkflowName,
+  processEvents,
+  progressWorkflow,
   workflows,
 } from "@eventual/core";
 import { Argv } from "yargs";
 import { bundleService } from "@eventual/compiler";
 import path from "path";
-import { orchestrator } from "../replay/orchestrator.js";
 import { serviceAction, setServiceOptions } from "../service-action.js";
 
 export const replay = (yargs: Argv) =>
@@ -29,9 +32,10 @@ export const replay = (yargs: Argv) =>
     serviceAction(
       async (spinner, serviceClient, { entry, service, execution }) => {
         spinner.start("Constructing replay...");
-        const [, { events }] = await Promise.all([
+        const [, { events }, executionObj] = await Promise.all([
           loadService(service, encodeExecutionId(execution), entry),
           serviceClient.getExecutionWorkflowHistory(execution),
+          serviceClient.getExecution(execution),
         ]);
 
         spinner.succeed();
@@ -40,9 +44,24 @@ export const replay = (yargs: Argv) =>
         if (!workflow) {
           throw new Error(`Workflow ${workflowName} not found!`);
         }
+        if (!executionObj) {
+          throw new Error(`Execution ${execution} not found!`);
+        }
         spinner.start("Running program");
 
-        const res = orchestrator(execution, workflow, events);
+        const processedEvents = processEvents(
+          events,
+          [],
+          new Date(
+            isSucceededExecution(executionObj) ||
+            isFailedExecution(executionObj)
+              ? executionObj.endTime
+              : executionObj.startTime
+          )
+        );
+
+        const res = progressWorkflow(execution, workflow, processedEvents);
+
         spinner.succeed();
         console.log(res);
       }
