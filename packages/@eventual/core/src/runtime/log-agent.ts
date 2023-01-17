@@ -212,7 +212,7 @@ export class LogAgent {
             execution,
             ...entries
               //
-              .sort((a, b) => (a.time > b.time ? 1 : a.time < b.time ? -1 : 0))
+              .sort((a, b) => a.time - b.time)
               .map((e) => ({
                 time: e.time,
                 message: this.logFormatter.format(e),
