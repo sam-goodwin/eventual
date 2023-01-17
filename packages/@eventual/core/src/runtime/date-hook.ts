@@ -20,8 +20,11 @@ export function hookDate(getDate: () => number | undefined) {
         super(...args);
       }
     }
-  } as typeof Date;
-  globalThis.Date.now = () => getDate() ?? originalDate.now();
+
+    public static now() {
+      return getDate() ?? originalDate.now();
+    }
+  } as DateConstructor;
   (globalThis.Date as any)[HOOKED_SYMBOL] = HOOKED_SYMBOL;
 }
 

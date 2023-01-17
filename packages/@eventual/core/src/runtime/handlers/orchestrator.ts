@@ -698,21 +698,23 @@ export function progressWorkflow(
       workflow.definition(processedEvents.startEvent.input, context),
       processedEvents.interpretEvents,
       {
-        /**
-         * Invoked for each {@link HistoryResultEvent}, or an event which
-         * represents the resolution of some {@link Eventual}.
-         *
-         * We use this to watch for the application of the {@link WorkflowRunStarted} event.
-         * Which we use to find and apply the current time to the hooked {@link Date} object.
-         */
-        beforeApplyingResultEvent: (event) => {
-          if (isWorkflowRunStarted(event)) {
-            currentTime = new Date(event.timestamp).getTime();
-          }
+        hooks: {
+          /**
+           * Invoked for each {@link HistoryResultEvent}, or an event which
+           * represents the resolution of some {@link Eventual}.
+           *
+           * We use this to watch for the application of the {@link WorkflowRunStarted} event.
+           * Which we use to find and apply the current time to the hooked {@link Date} object.
+           */
+          beforeApplyingResultEvent: (event) => {
+            if (isWorkflowRunStarted(event)) {
+              currentTime = new Date(event.timestamp).getTime();
+            }
+          },
+          // when an event is matched, that means all the work to this point has been completed, clear the logs collected.
+          // this implements "exactly once" logs with the workflow semantics.
+          historicalEventMatched: () => logAgent?.clearLogs(logCheckpoint),
         },
-        // when an event is matched, that means all the work to this point has been completed, clear the logs collected.
-        // this implements "exactly once" logs with the workflow semantics.
-        historicalEventMatched: () => logAgent?.clearLogs(logCheckpoint),
       }
     );
   } catch (err) {

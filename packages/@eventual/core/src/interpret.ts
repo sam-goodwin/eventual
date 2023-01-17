@@ -86,17 +86,19 @@ export interface WorkflowResult<T = any> {
 export type Program<Return = any> = Generator<Eventual, Return, any>;
 
 export interface InterpretProps {
-  /**
-   * Callback called when a returned call matches an input event.
-   *
-   * This call will be ignored.
-   */
-  historicalEventMatched?: (event: WorkflowEvent, call: CommandCall) => void;
+  hooks?: {
+    /**
+     * Callback called when a returned call matches an input event.
+     *
+     * This call will be ignored.
+     */
+    historicalEventMatched?: (event: WorkflowEvent, call: CommandCall) => void;
 
-  /**
-   * Callback immediately before applying a result event.
-   */
-  beforeApplyingResultEvent?: (resultEvent: HistoryResultEvent) => void;
+    /**
+     * Callback immediately before applying a result event.
+     */
+    beforeApplyingResultEvent?: (resultEvent: HistoryResultEvent) => void;
+  };
 }
 
 /**
@@ -147,7 +149,7 @@ export function interpret<Return>(
       if (!newCalls.hasNext() && resultEvents.hasNext()) {
         const resultEvent = resultEvents.next()!;
 
-        props?.beforeApplyingResultEvent?.(resultEvent);
+        props?.hooks?.beforeApplyingResultEvent?.(resultEvent);
 
         // it is possible that committing events
         newCalls = iterator(
@@ -172,7 +174,7 @@ export function interpret<Return>(
         const call = newCalls.next()!;
         const event = emittedEvents.next()!;
 
-        props?.historicalEventMatched?.(event, call);
+        props?.hooks?.historicalEventMatched?.(event, call);
 
         if (!isCorresponding(event, call)) {
           throw new DeterminismError(
