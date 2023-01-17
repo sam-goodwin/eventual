@@ -1,5 +1,4 @@
 const originalDate = globalThis.Date;
-const originalDateNow = globalThis.Date.now;
 const HOOKED_SYMBOL = Symbol.for("eventual-hooked-date");
 
 /**
@@ -16,13 +15,13 @@ export function hookDate(getDate: () => number | undefined) {
   globalThis.Date = class extends Date {
     constructor(...args: Parameters<typeof Date>) {
       if (args.length === 0) {
-        super(getDate() ?? originalDateNow());
+        super(getDate() ?? originalDate.now());
       } else {
         super(...args);
       }
     }
   } as typeof Date;
-  globalThis.Date.now = () => getDate() ?? originalDateNow();
+  globalThis.Date.now = () => getDate() ?? originalDate.now();
   (globalThis.Date as any)[HOOKED_SYMBOL] = HOOKED_SYMBOL;
 }
 
@@ -38,6 +37,4 @@ export function isDateHooked() {
  */
 export function restoreDate() {
   globalThis.Date = originalDate;
-  globalThis.Date.now = originalDateNow;
-  delete (globalThis.Date as any)[HOOKED_SYMBOL];
 }

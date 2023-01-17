@@ -67,3 +67,7 @@ test("restore", () => {
 function percOfNow(time: number) {
   return time / (1.0 * now);
 }
+
+test("instanceof", () => {
+  expect(new Date()).toBeInstanceOf(Date);
+});

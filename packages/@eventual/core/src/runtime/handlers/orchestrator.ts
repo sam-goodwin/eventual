@@ -748,12 +748,14 @@ export function processEvents(
     taskEvents
   );
 
-  const inputEvents = [...historyEvents, ...uniqueTaskEvents];
-
+  // mutating array to avoid performance hit of spread later.
+  const allEvents: HistoryStateEvent[] = [
+    ...historyEvents,
+    ...uniqueTaskEvents,
+  ];
   // Generates events that are time sensitive, like timer completed events.
-  const syntheticEvents = generateSyntheticEvents(inputEvents, baseTime);
-
-  const allEvents = [...inputEvents, ...syntheticEvents];
+  const syntheticEvents = generateSyntheticEvents(allEvents, baseTime);
+  allEvents.push(...syntheticEvents);
 
   const historicalStartEvent = historyEvents.find(isWorkflowStarted);
   const startEvent =
