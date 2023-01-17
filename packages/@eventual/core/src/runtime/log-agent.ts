@@ -210,10 +210,13 @@ export class LogAgent {
         Object.entries(executions).map(([execution, entries]) => {
           return this.props.logsClient.putExecutionLogs(
             execution,
-            ...entries.map((e) => ({
-              time: e.time,
-              message: this.logFormatter.format(e),
-            }))
+            ...entries
+              //
+              .sort((a, b) => (a.time > b.time ? 1 : a.time < b.time ? -1 : 0))
+              .map((e) => ({
+                time: e.time,
+                message: this.logFormatter.format(e),
+              }))
           );
         })
       );

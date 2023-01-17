@@ -281,19 +281,19 @@ export function createOrchestrator({
         );
 
         /**
-         * I*f this is the first run check to see if the workflow has timeout to start.
+         * If this is the first run check to see if the workflow has timeout to start.
          */
-        if (!processedEvents.isStartRun) {
-          const newWorkflowStart = events.find(isWorkflowStarted);
-
-          if (newWorkflowStart?.timeoutTime) {
+        if (processedEvents.isFirstRun) {
+          if (processedEvents.startEvent?.timeoutTime) {
             metrics.setProperty(OrchestratorMetrics.TimeoutStarted, 1);
             await timed(
               metrics,
               OrchestratorMetrics.TimeoutStartedDuration,
               () =>
                 timerClient.scheduleEvent<WorkflowTimedOut>({
-                  schedule: Schedule.time(newWorkflowStart.timeoutTime!),
+                  schedule: Schedule.time(
+                    processedEvents.startEvent.timeoutTime!
+                  ),
                   event: createEvent<WorkflowTimedOut>(
                     {
                       type: WorkflowEventType.WorkflowTimedOut,
@@ -736,7 +736,7 @@ export interface ProcessEventsResult {
   startEvent: WorkflowStarted;
   completedEvent?: WorkflowSucceeded | WorkflowFailed;
   firstRunStarted: WorkflowRunStarted;
-  isStartRun: boolean;
+  isFirstRun: boolean;
 }
 
 export function processEvents(
@@ -780,7 +780,7 @@ export function processEvents(
   return {
     interpretEvents: allEvents.filter(isHistoryEvent),
     startEvent,
-    isStartRun: !historicalStartEvent,
+    isFirstRun: !historicalStartEvent,
     completedEvent: allEvents.find(isWorkflowCompletedEvent),
     syntheticEvents,
     allEvents,
