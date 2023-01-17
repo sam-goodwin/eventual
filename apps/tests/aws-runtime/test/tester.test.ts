@@ -11,6 +11,7 @@ import {
   workflow3,
   workflow4,
   failedWorkflow,
+  timedWorkflow,
 } from "./test-service.js";
 
 jest.setTimeout(100 * 1000);
@@ -84,4 +85,9 @@ eventualRuntimeTestHarness(({ testCompletion, testFailed }) => {
     "Error",
     `"I am useless"`
   );
+
+  testCompletion("datetime", timedWorkflow, (r) => {
+    expect(r.dates).toHaveLength(6);
+    expect([...new Set(r.dates)]).toHaveLength(6);
+  });
 });

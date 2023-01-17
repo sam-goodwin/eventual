@@ -368,3 +368,19 @@ export const signalWorkflow = workflow("signalWorkflow", async () => {
   await doneSignal.expectSignal();
   return n;
 });
+
+/**
+ * Testing real datetimes is hard.
+ *
+ * Compute 2 second durations using only {@link Date} and {@link time}.
+ */
+export const timedWorkflow = workflow("timedWorkflow", async () => {
+  let n = 5;
+  const dates = [new Date().toISOString()];
+  while (n-- > 0) {
+    const d = new Date(new Date().getTime() + 1000 * 2);
+    dates.push(d.toISOString());
+    await time(d);
+  }
+  return { dates };
+});

@@ -57,22 +57,25 @@ class TesterContainer {
   public testCompletion<W extends Workflow = Workflow>(
     name: string,
     workflow: W,
-    result: WorkflowOutput<W>
+    result: WorkflowOutput<W> | ((r: WorkflowOutput<W>) => void)
   ): void;
 
   public testCompletion<W extends Workflow = Workflow>(
     name: string,
     workflow: W,
     input: WorkflowInput<W>,
-    result: WorkflowOutput<W>
+    result: WorkflowOutput<W> | ((r: WorkflowOutput<W>) => void)
   ): void;
 
   public testCompletion<W extends Workflow = Workflow>(
     name: string,
     workflow: W,
     ...args:
-      | [input: WorkflowInput<W>, output: WorkflowOutput<W>]
-      | [output: WorkflowOutput<W>]
+      | [
+          input: WorkflowInput<W>,
+          output: WorkflowOutput<W> | ((r: WorkflowOutput<W>) => void)
+        ]
+      | [output: WorkflowOutput<W> | ((r: WorkflowOutput<W>) => void)]
   ): void {
     const [input, output] = args.length === 1 ? [undefined, args[0]] : args;
 
@@ -88,9 +91,15 @@ class TesterContainer {
 
         assertCompleteExecution(execution);
 
-        typeof output === "object"
-          ? expect(execution.result).toMatchObject(output)
-          : expect(execution.result).toEqual(output);
+        if (typeof output === "function") {
+          (output as (r: WorkflowOutput<W>) => void)(
+            execution.result as WorkflowOutput<W>
+          );
+        } else {
+          typeof output === "object"
+            ? expect(execution.result).toMatchObject(output)
+            : expect(execution.result).toEqual(output);
+        }
       }
     );
   }

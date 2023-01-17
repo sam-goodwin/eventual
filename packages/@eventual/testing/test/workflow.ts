@@ -1,6 +1,7 @@
 import {
   activity,
   asyncResult,
+  condition,
   duration,
   event,
   sendSignal,
@@ -201,4 +202,40 @@ export const longRunningWorkflow = workflow("longRunningWf", async () => {
   ]);
 
   return await result;
+});
+
+/**
+ * Record signals received, only after a given date.
+ */
+export const timedWorkflow = workflow(
+  "timedWorkflow",
+  async (input: { startDate: string }) => {
+    let n = 0;
+    let total = 0;
+    dataSignal.onSignal(() => {
+      total++;
+      if (new Date().getTime() >= new Date(input.startDate).getTime()) {
+        n++;
+      }
+    });
+
+    await condition(() => n >= 10);
+
+    return { seen: total, n };
+  }
+);
+
+/**
+ * Record the dates of signals until we get 2.
+ */
+export const timeWorkflow = workflow("timeWorkflow", async () => {
+  const dates = [new Date().toISOString()];
+
+  dataSignal.onSignal(() => {
+    dates.push(new Date().toISOString());
+  });
+
+  await condition(() => dates.length === 3);
+
+  return { dates };
 });
