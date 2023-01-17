@@ -204,6 +204,9 @@ export const longRunningWorkflow = workflow("longRunningWf", async () => {
   return await result;
 });
 
+/**
+ * Record signals received, only after a given date.
+ */
 export const timedWorkflow = workflow(
   "timedWorkflow",
   async (input: { startDate: string }) => {
@@ -222,6 +225,9 @@ export const timedWorkflow = workflow(
   }
 );
 
+/**
+ * Record the dates of signals until we get 2.
+ */
 export const timeWorkflow = workflow("timeWorkflow", async () => {
   const dates = [new Date().toISOString()];
 
@@ -233,9 +239,3 @@ export const timeWorkflow = workflow("timeWorkflow", async () => {
 
   return { dates };
 });
-
-// before startDate
-// mySignal
-// after startDate
-// mySignal
-// mySignal x 9
