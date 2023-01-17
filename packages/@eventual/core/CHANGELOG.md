@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.12.0 (2023-01-17)
+
+### Features
+
+- datetime ([#234](https://github.com/functionless/eventual/issues/234)) ([e544da5](https://github.com/functionless/eventual/commit/e544da580c58b0a7e1c489bad0cbfb045680948e))
+
 ## 0.11.1 (2023-01-15)
 
 ### Bug Fixes
