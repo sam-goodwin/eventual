@@ -1,39 +1,40 @@
 import { isAsyncResult } from "../../activity.js";
-import { ScheduleActivityCommand } from "../../command.js";
-import {
-  ActivitySucceeded,
-  ActivityFailed,
-  createEvent,
-  isWorkflowFailed,
-  WorkflowEventType,
-} from "../../workflow-events.js";
+import { ActivityNotFoundError } from "../../error.js";
 import {
   clearActivityContext,
   registerServiceClient,
   setActivityContext,
 } from "../../global.js";
-import { createActivityToken } from "../activity-token.js";
-import { MetricsClient } from "../clients/metrics-client.js";
-import { WorkflowClient } from "../clients/workflow-client.js";
-import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
-import { Unit } from "../metrics/unit.js";
-import { timed } from "../metrics/utils.js";
-import { ActivityProvider } from "../providers/activity-provider.js";
-import { ActivityNotFoundError } from "../../error.js";
+import { Schedule } from "../../schedule.js";
+import { ServiceType } from "../../service-type.js";
 import { extendsError } from "../../util.js";
-import { TimerClient, TimerRequestType } from "../clients/timer-client.js";
+import {
+  ActivityFailed,
+  ActivitySucceeded,
+  createEvent,
+  isWorkflowFailed,
+  WorkflowEventType,
+} from "../../workflow-events.js";
+import { createActivityToken } from "../activity-token.js";
+import { ActivityWorkerRequest } from "../clients/activity-client.js";
+import { EventClient } from "../clients/event-client.js";
+import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
+import { MetricsClient } from "../clients/metrics-client.js";
 import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
+import { TimerClient, TimerRequestType } from "../clients/timer-client.js";
+import { WorkflowClient } from "../clients/workflow-client.js";
+import { serviceTypeScope } from "../flags.js";
 import {
   ActivityLogContext,
   LogAgent,
   LogContextType,
   LogLevel,
 } from "../log-agent.js";
-import { EventClient } from "../clients/event-client.js";
-import { serviceTypeScope } from "../flags.js";
-import { ServiceType } from "../../service-type.js";
-import { Schedule } from "../../schedule.js";
-import { ActivityStore, ExecutionQueueClient } from "../index.js";
+import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
+import { Unit } from "../metrics/unit.js";
+import { timed } from "../metrics/utils.js";
+import { ActivityProvider } from "../providers/activity-provider.js";
+import { ActivityStore } from "../stores/activity-store.js";
 
 export interface CreateActivityWorkerProps {
   timerClient: TimerClient;
@@ -44,14 +45,6 @@ export interface CreateActivityWorkerProps {
   logAgent: LogAgent;
   executionQueueClient: ExecutionQueueClient;
   activityStore: ActivityStore;
-}
-
-export interface ActivityWorkerRequest {
-  scheduledTime: string;
-  workflowName: string;
-  executionId: string;
-  command: ScheduleActivityCommand;
-  retry: number;
 }
 
 export interface ActivityWorker {

@@ -14,8 +14,12 @@ export class TestActivityStore implements ActivityStore {
     _executionId: string,
     _seq: number,
     _heartbeatTime: string
-  ): Promise<{ cancelled: boolean }> {
+  ): Promise<ActivityExecution> {
     return {
+      executionId: _executionId,
+      seq: _seq,
+      claims: [],
+      heartbeatTime: _heartbeatTime,
       cancelled: false,
     };
   }
@@ -28,6 +32,6 @@ export class TestActivityStore implements ActivityStore {
     executionId: string,
     seq: number
   ): Promise<ActivityExecution | undefined> {
-    return { executionId, seq };
+    return { executionId, seq, cancelled: false };
   }
 }

@@ -1,13 +1,13 @@
-import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
-import { createExecutionHistoryStore } from "../../../clients/create.js";
-import { withErrorMiddleware } from "../middleware.js";
 import {
   decodeExecutionId,
-  ExecutionEventsResponse,
+  ListExecutionEventsResponse,
   SortOrder,
 } from "@eventual/core";
+import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { createExecutionHistoryStore } from "../../../create.js";
+import { withErrorMiddleware } from "../middleware.js";
 
-const workflowClient = createExecutionHistoryStore();
+const executionHistoryStore = createExecutionHistoryStore();
 
 /**
  * Get events for a workflow.
@@ -21,7 +21,7 @@ const workflowClient = createExecutionHistoryStore();
  * * nextToken - continue a previous request
  * * after - a ISO 8601 timestamp which all events should be after
  */
-export const handler: APIGatewayProxyHandlerV2<ExecutionEventsResponse> =
+export const handler: APIGatewayProxyHandlerV2<ListExecutionEventsResponse> =
   withErrorMiddleware(async (event: APIGatewayProxyEventV2) => {
     const {
       nextToken,
@@ -56,7 +56,7 @@ export const handler: APIGatewayProxyHandlerV2<ExecutionEventsResponse> =
       return { statusCode: 400, body: `Missing executionId` };
     }
 
-    return workflowClient.getEvents({
+    return executionHistoryStore.getEvents({
       executionId: decodeExecutionId(executionId),
       maxResults,
       nextToken,

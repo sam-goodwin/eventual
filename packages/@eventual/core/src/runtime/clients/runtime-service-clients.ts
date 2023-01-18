@@ -1,22 +1,19 @@
+import { Execution, ExecutionHandle } from "../../execution.js";
+import { workflows } from "../../global.js";
 import {
   EventualServiceClient,
-  ExecutionEventsRequest,
-  ExecutionEventsResponse,
   ExecutionHistoryResponse,
   GetWorkflowResponse,
   PublishEventsRequest,
   StartExecutionRequest,
 } from "../../service-client.js";
-import { Execution, ExecutionHandle } from "../../execution.js";
 import { Workflow } from "../../workflow.js";
-import { EventClient } from "./event-client.js";
-import { ExecutionHistoryStore } from "../stores/execution-history-store.js";
-import { WorkflowClient } from "./workflow-client.js";
-import { workflows } from "../../global.js";
+import { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
 import {
-  ExecutionQueueClient,
-  SendSignalRequest,
-} from "./execution-queue-client.js";
+  ListExecutionEventsRequest,
+  ListExecutionEventsResponse,
+  ExecutionHistoryStore,
+} from "../stores/execution-history-store.js";
 import {
   ExecutionStore,
   ListExecutionsRequest,
@@ -29,7 +26,12 @@ import {
   SendActivityHeartbeatResponse,
   SendActivitySuccessRequest,
 } from "./activity-client.js";
-import { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
+import { EventClient } from "./event-client.js";
+import {
+  ExecutionQueueClient,
+  SendSignalRequest,
+} from "./execution-queue-client.js";
+import { WorkflowClient } from "./workflow-client.js";
 
 export interface RuntimeServiceClientProps {
   activityClient: ActivityClient;
@@ -77,8 +79,8 @@ export class RuntimeServiceClient implements EventualServiceClient {
   }
 
   public getExecutionHistory(
-    request: ExecutionEventsRequest
-  ): Promise<ExecutionEventsResponse> {
+    request: ListExecutionEventsRequest
+  ): Promise<ListExecutionEventsResponse> {
     return this.props.executionHistoryStore.getEvents(request);
   }
 

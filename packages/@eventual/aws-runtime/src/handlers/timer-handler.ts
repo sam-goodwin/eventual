@@ -1,12 +1,12 @@
+import { createTimerHandler, TimerRequest } from "@eventual/core";
 import { SQSHandler } from "aws-lambda";
-import { promiseAllSettledPartitioned } from "../utils.js";
 import {
   createActivityStore,
   createExecutionQueueClient,
   createLogAgent,
   createTimerClient,
-} from "../clients/create.js";
-import { createTimerHandler, TimerRequest } from "@eventual/core";
+} from "../create.js";
+import { promiseAllSettledPartitioned } from "../utils.js";
 
 const handleTimer = createTimerHandler({
   timerClient: createTimerClient(),

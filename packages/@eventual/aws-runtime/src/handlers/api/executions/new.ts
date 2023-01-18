@@ -12,7 +12,7 @@ import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyHandlerV2,
 } from "aws-lambda";
-import { createWorkflowClient } from "../../../clients/create.js";
+import { createWorkflowClient } from "../../../create.js";
 import { withErrorMiddleware } from "../middleware.js";
 
 const workflowClient = createWorkflowClient();

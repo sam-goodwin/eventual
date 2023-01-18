@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-this-alias */
 import { EventClient, EventEnvelope, EventPayload } from "@eventual/core";
 import {
   EventBridgeClient,
   PutEventsCommand,
 } from "@aws-sdk/client-eventbridge";
-import { chunkArray } from "./utils.js";
+import { chunkArray } from "../utils.js";
 
 export interface AWSEventClientProps {
   serviceName: string;

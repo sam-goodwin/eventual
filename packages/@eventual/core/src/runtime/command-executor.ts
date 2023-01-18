@@ -25,14 +25,16 @@ import {
 import { assertNever } from "../util.js";
 import { Workflow } from "../workflow.js";
 import { formatChildExecutionName, formatExecutionId } from "./execution-id.js";
-import { ActivityWorkerRequest } from "./handlers/activity-worker.js";
 import { TimerClient } from "./clients/timer-client.js";
 import { WorkflowClient } from "./clients/workflow-client.js";
 import { EventClient } from "./clients/event-client.js";
 import { isChildExecutionTarget } from "../signals.js";
 import { computeScheduleDate } from "../schedule.js";
 import { ExecutionQueueClient } from "./clients/execution-queue-client.js";
-import { ActivityClient } from "./index.js";
+import {
+  ActivityClient,
+  ActivityWorkerRequest,
+} from "./clients/activity-client.js";
 
 interface CommandExecutorProps {
   timerClient: TimerClient;

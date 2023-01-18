@@ -25,7 +25,7 @@ import {
   SucceededExecution,
   SucceedExecutionRequest,
 } from "@eventual/core";
-import { queryPageWithToken } from "../clients/utils.js";
+import { queryPageWithToken } from "../utils.js";
 
 export interface AWSExecutionStoreProps {
   tableName: string;

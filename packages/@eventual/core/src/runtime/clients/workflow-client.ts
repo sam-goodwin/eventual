@@ -1,30 +1,30 @@
-import {
-  createEvent,
-  WorkflowEventType,
-  WorkflowStarted,
-} from "../../workflow-events.js";
+import { ulid } from "ulidx";
+import { inspect } from "util";
 import {
   ExecutionStatus,
   FailedExecution,
   InProgressExecution,
   SucceededExecution,
 } from "../../execution.js";
-import { lookupWorkflow, Workflow, WorkflowOptions } from "../../workflow.js";
+import { computeScheduleDate } from "../../schedule.js";
 import {
   StartExecutionRequest,
   StartExecutionResponse,
 } from "../../service-client.js";
-import { ulid } from "ulidx";
-import { inspect } from "util";
-import { computeScheduleDate } from "../../schedule.js";
+import {
+  createEvent,
+  WorkflowEventType,
+  WorkflowStarted,
+} from "../../workflow-events.js";
+import { lookupWorkflow, Workflow, WorkflowOptions } from "../../workflow.js";
 import { formatExecutionId } from "../execution-id.js";
 import {
   ExecutionStore,
   FailExecutionRequest,
-  LogsClient,
   SucceedExecutionRequest,
-} from "../index.js";
+} from "../stores/execution-store.js";
 import { ExecutionQueueClient } from "./execution-queue-client.js";
+import { LogsClient } from "./logs-client.js";
 
 export class WorkflowClient {
   constructor(

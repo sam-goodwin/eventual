@@ -1,9 +1,11 @@
+import { Schedule } from "../../schedule.js";
+import { assertNever } from "../../util.js";
 import {
   ActivityHeartbeatTimedOut,
   createEvent,
   WorkflowEventType,
 } from "../../workflow-events.js";
-import { assertNever } from "../../util.js";
+import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import {
   isActivityHeartbeatMonitorRequest,
   isTimerScheduleEventRequest,
@@ -12,9 +14,7 @@ import {
   TimerRequestType,
 } from "../clients/timer-client.js";
 import { LogAgent, LogContextType, LogLevel } from "../log-agent.js";
-import { Schedule } from "../../schedule.js";
-import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
-import { ActivityStore } from "../index.js";
+import { ActivityStore } from "../stores/activity-store.js";
 
 interface TimerHandlerProps {
   timerClient: TimerClient;

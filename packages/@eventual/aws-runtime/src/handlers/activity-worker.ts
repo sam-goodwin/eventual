@@ -6,6 +6,7 @@ import {
   createActivityWorker,
   GlobalActivityProvider,
 } from "@eventual/core";
+import { AWSMetricsClient } from "../clients/metrics-client.js";
 import {
   createActivityStore,
   createEventClient,
@@ -13,8 +14,7 @@ import {
   createLogAgent,
   createServiceClient,
   createTimerClient,
-} from "../clients/create.js";
-import { AWSMetricsClient } from "../clients/metrics-client.js";
+} from "../create.js";
 
 export default (request: ActivityWorkerRequest) =>
   createActivityWorker({

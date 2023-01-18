@@ -1,6 +1,6 @@
 import {
-  ExecutionEventsRequest,
-  ExecutionEventsResponse,
+  ListExecutionEventsRequest,
+  ListExecutionEventsResponse,
   ExecutionHistoryStore,
   SortOrder,
   WorkflowEvent,
@@ -8,13 +8,6 @@ import {
 
 export class TestExecutionHistoryStore extends ExecutionHistoryStore {
   private eventStore: Record<string, WorkflowEvent[]> = {};
-
-  public async putEvent<T extends WorkflowEvent>(
-    executionId: string,
-    event: T
-  ): Promise<void> {
-    this.putEvents(executionId, [event]);
-  }
 
   public async putEvents(
     executionId: string,
@@ -24,8 +17,8 @@ export class TestExecutionHistoryStore extends ExecutionHistoryStore {
   }
 
   public async getEvents(
-    request: ExecutionEventsRequest
-  ): Promise<ExecutionEventsResponse> {
+    request: ListExecutionEventsRequest
+  ): Promise<ListExecutionEventsResponse> {
     const sortedEvents = (this.eventStore[request.executionId] ?? []).sort(
       (a, b) =>
         request.sortDirection === SortOrder.Asc

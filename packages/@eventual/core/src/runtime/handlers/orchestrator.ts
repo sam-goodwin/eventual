@@ -1,73 +1,68 @@
 import { inspect } from "util";
 import { Command } from "../../command.js";
 import { Context } from "../../context.js";
+import { DeterminismError } from "../../error.js";
+import {
+  ExecutionStatus,
+  FailedExecution,
+  isSucceededExecution,
+  SucceededExecution,
+} from "../../execution.js";
+import { clearEventualCollector } from "../../global.js";
+import { interpret } from "../../interpret.js";
+import { isFailed, isResolved, isResult, Result } from "../../result.js";
+import { Schedule } from "../../schedule.js";
+import { ServiceType } from "../../service-type.js";
+import { WorkflowTask } from "../../tasks.js";
+import { extendsError } from "../../util.js";
 import {
   createEvent,
+  filterEvents,
   getEventId,
+  HistoryEvent,
   HistoryStateEvent,
   isHistoryEvent,
+  isHistoryStateEvent,
   isTimerCompleted,
-  isWorkflowSucceeded,
+  isWorkflowCompletedEvent,
   isWorkflowFailed,
+  isWorkflowRunStarted,
   isWorkflowStarted,
-  WorkflowSucceeded,
+  isWorkflowSucceeded,
   WorkflowEvent,
   WorkflowEventType,
   WorkflowFailed,
   WorkflowRunCompleted,
   WorkflowRunStarted,
-  WorkflowTimedOut,
-  filterEvents,
-  isHistoryStateEvent,
-  HistoryEvent,
   WorkflowStarted,
-  isWorkflowCompletedEvent,
-  isWorkflowRunStarted,
+  WorkflowSucceeded,
+  WorkflowTimedOut,
 } from "../../workflow-events.js";
-import {
-  SucceededExecution,
-  ExecutionStatus,
-  FailedExecution,
-  isSucceededExecution,
-} from "../../execution.js";
-import { isFailed, isResolved, isResult, Result } from "../../result.js";
 import {
   generateSyntheticEvents,
   lookupWorkflow,
   Workflow,
 } from "../../workflow.js";
+import { MetricsClient } from "../clients/metrics-client.js";
+import { TimerClient } from "../clients/timer-client.js";
+import { WorkflowClient } from "../clients/workflow-client.js";
 import { CommandExecutor } from "../command-executor.js";
+import { hookDate, restoreDate } from "../date-hook.js";
 import { isExecutionId, parseWorkflowName } from "../execution-id.js";
-import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
-import { MetricsLogger } from "../metrics/metrics-logger.js";
-import { Unit } from "../metrics/unit.js";
-import { timed, timedSync } from "../metrics/utils.js";
-import { groupBy, promiseAllSettledPartitioned } from "../utils.js";
-import { extendsError } from "../../util.js";
-import { WorkflowTask } from "../../tasks.js";
+import { serviceTypeScope } from "../flags.js";
 import {
   ExecutionLogContext,
   LogAgent,
   LogContextType,
   LogLevel,
 } from "../log-agent.js";
-import { interpret } from "../../interpret.js";
-import { clearEventualCollector } from "../../global.js";
-import { DeterminismError } from "../../error.js";
+import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
+import { MetricsLogger } from "../metrics/metrics-logger.js";
+import { Unit } from "../metrics/unit.js";
+import { timed, timedSync } from "../metrics/utils.js";
+import { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
 import { ExecutionHistoryStore } from "../stores/execution-history-store.js";
-import { TimerClient } from "../clients/timer-client.js";
-import { WorkflowClient } from "../clients/workflow-client.js";
-import { MetricsClient } from "../clients/metrics-client.js";
-import { EventClient } from "../clients/event-client.js";
-import { serviceTypeScope } from "../flags.js";
-import { ServiceType } from "../../service-type.js";
-import { Schedule } from "../../schedule.js";
-import { hookDate, restoreDate } from "../date-hook.js";
-import {
-  ActivityClient,
-  ExecutionHistoryStateStore,
-  ExecutionQueueClient,
-} from "../index.js";
+import { groupBy, promiseAllSettledPartitioned } from "../utils.js";
 
 /**
  * The Orchestrator's client dependencies.
@@ -77,11 +72,9 @@ export interface OrchestratorDependencies {
   timerClient: TimerClient;
   workflowClient: WorkflowClient;
   metricsClient: MetricsClient;
-  eventClient: EventClient;
   logAgent: LogAgent;
-  executionQueueClient: ExecutionQueueClient;
   executionHistoryStateStore: ExecutionHistoryStateStore;
-  activityClient: ActivityClient;
+  commandExecutor: CommandExecutor;
 }
 
 export interface OrchestratorResult {
@@ -102,24 +95,14 @@ export interface Orchestrator {
  * inject its own client implementations designed for that platform.
  */
 export function createOrchestrator({
+  commandExecutor,
+  executionHistoryStateStore,
   executionHistoryStore,
+  logAgent,
+  metricsClient,
   timerClient,
   workflowClient,
-  metricsClient,
-  eventClient,
-  logAgent,
-  executionQueueClient,
-  executionHistoryStateStore,
-  activityClient,
 }: OrchestratorDependencies): Orchestrator {
-  const commandExecutor = new CommandExecutor({
-    timerClient,
-    workflowClient,
-    eventClient,
-    executionQueueClient,
-    activityClient,
-  });
-
   return async (workflowTasks, baseTime = new Date()) =>
     await serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
       const tasksByExecutionId = groupBy(

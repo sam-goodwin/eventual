@@ -1,6 +1,7 @@
 import "@eventual/entry/injected";
 
 import {
+  CommandExecutor,
   createOrchestrator,
   ExecutionQueueEventEnvelope,
 } from "@eventual/core";
@@ -15,7 +16,7 @@ import {
   createLogAgent,
   createTimerClient,
   createWorkflowClient,
-} from "../clients/create.js";
+} from "../create.js";
 
 /**
  * Creates an entrypoint function for orchestrating a workflow
@@ -25,12 +26,16 @@ const orchestrate = createOrchestrator({
   executionHistoryStore: createExecutionHistoryStore(),
   timerClient: createTimerClient(),
   workflowClient: createWorkflowClient(),
-  eventClient: createEventClient(),
   metricsClient: AWSMetricsClient,
   logAgent: createLogAgent(),
-  executionQueueClient: createExecutionQueueClient(),
   executionHistoryStateStore: createExecutionHistoryStateStore(),
-  activityClient: createActivityClient(),
+  commandExecutor: new CommandExecutor({
+    activityClient: createActivityClient(),
+    eventClient: createEventClient(),
+    executionQueueClient: createExecutionQueueClient(),
+    timerClient: createTimerClient(),
+    workflowClient: createWorkflowClient(),
+  }),
 });
 
 export default async (event: SQSEvent) => {

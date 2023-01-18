@@ -9,10 +9,14 @@ import {
 import { SendSignalRequest } from "./runtime/clients/execution-queue-client.js";
 import { ExecutionID } from "./runtime/execution-id.js";
 import {
+  ListExecutionEventsRequest,
+  ListExecutionEventsResponse,
+} from "./runtime/stores/execution-history-store.js";
+import {
   ListExecutionsRequest,
   ListExecutionsResponse,
 } from "./runtime/stores/execution-store.js";
-import { HistoryStateEvent, WorkflowEvent } from "./workflow-events.js";
+import { HistoryStateEvent } from "./workflow-events.js";
 import { Workflow, WorkflowInput, WorkflowOptions } from "./workflow.js";
 
 /**
@@ -46,8 +50,8 @@ export interface EventualServiceClient {
    * Retrieves the workflow events for an execution.
    */
   getExecutionHistory(
-    request: ExecutionEventsRequest
-  ): Promise<ExecutionEventsResponse>;
+    request: ListExecutionEventsRequest
+  ): Promise<ListExecutionEventsResponse>;
 
   /**
    * Retrieves the workflow history events for an execution.
@@ -107,28 +111,6 @@ export interface StartExecutionResponse {
 
 export interface PublishEventsRequest {
   events: EventEnvelope<any>[];
-}
-
-export interface ExecutionEventsRequest {
-  executionId: string;
-  /**
-   * @default "Asc"
-   */
-  sortDirection?: SortOrder;
-  nextToken?: string;
-  /**
-   * @default: 100
-   */
-  maxResults?: number;
-  /**
-   * Start returning results after a date.
-   */
-  after?: string;
-}
-
-export interface ExecutionEventsResponse {
-  events: WorkflowEvent[];
-  nextToken?: string;
 }
 
 export interface ExecutionHistoryResponse {

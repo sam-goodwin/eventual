@@ -2,18 +2,17 @@ import {
   AttributeValue,
   BatchWriteItemCommand,
   DynamoDBClient,
-  PutItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import {
   BaseEvent,
-  ExecutionEventsRequest,
-  ExecutionEventsResponse,
+  ListExecutionEventsRequest,
+  ListExecutionEventsResponse,
   ExecutionHistoryStore,
   getEventId,
   SortOrder,
   WorkflowEvent,
 } from "@eventual/core";
-import { queryPageWithToken } from "../clients/utils.js";
+import { queryPageWithToken } from "../utils.js";
 
 export interface AWSExecutionHistoryStoreProps {
   readonly dynamo: DynamoDBClient;
@@ -23,18 +22,6 @@ export interface AWSExecutionHistoryStoreProps {
 export class AWSExecutionHistoryStore extends ExecutionHistoryStore {
   constructor(private props: AWSExecutionHistoryStoreProps) {
     super();
-  }
-
-  public async putEvent<T extends WorkflowEvent>(
-    executionId: string,
-    event: T
-  ): Promise<void> {
-    await this.props.dynamo.send(
-      new PutItemCommand({
-        Item: createEventRecord(executionId, event),
-        TableName: this.props.tableName,
-      })
-    );
   }
 
   /**
@@ -62,8 +49,8 @@ export class AWSExecutionHistoryStore extends ExecutionHistoryStore {
    * Read an execution's events from the execution history table table
    */
   public async getEvents(
-    request: ExecutionEventsRequest
-  ): Promise<ExecutionEventsResponse> {
+    request: ListExecutionEventsRequest
+  ): Promise<ListExecutionEventsResponse> {
     // normalize the date given and ensure it is a valid date.
     const after = request.after ? new Date(request.after) : undefined;
     const output = await queryPageWithToken<EventRecord>(

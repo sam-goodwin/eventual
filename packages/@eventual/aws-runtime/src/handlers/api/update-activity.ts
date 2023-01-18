@@ -1,4 +1,4 @@
-import { createActivityClient } from "../../clients/create.js";
+import { createActivityClient } from "../../create.js";
 import { withErrorMiddleware } from "./middleware.js";
 import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
 import {

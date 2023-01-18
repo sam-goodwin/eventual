@@ -1,3 +1,14 @@
+/**
+ * Store which manages the {@link ActivityExecution}s created by workflows.
+ * It supports the exactly once contract, heartbeat, and cancellation features of activities.
+ *
+ * A workflow first claims an {@link ActivityExecution}, which should create the record.
+ * Later attempts for the same {@link ActivityExecution} will return false to signify the
+ * {@link ActivityExecution} is already being handled.
+ *
+ * While running, an activity may be heartbeated or cancelled by any actor with access.
+ * The {@link TimerClient} may `get` the activity record to check if it is has been heartbeated recently.
+ */
 export interface ActivityStore {
   /**
    * Claims a activity for an actor.
@@ -16,12 +27,15 @@ export interface ActivityStore {
 
   /**
    * Mark the last heartbeat time of an activity.
+   *
+   * Note: This client does not handle all heartbeat logic, for example, checking if the workflow is cancelled.
+   *       Use {@link ActivityClient.sendHeartbeat} to heartbeat an activity.
    */
   heartbeat(
     executionId: string,
     seq: number,
     heartbeatTime: string
-  ): Promise<{ cancelled: boolean }>;
+  ): Promise<ActivityExecution>;
 
   /**
    * Marks an activity as cancelled. An activity can use the {@link heartbeat} call
@@ -40,5 +54,5 @@ export interface ActivityExecution {
   seq: number;
   claims?: string[];
   heartbeatTime?: string;
-  cancelled?: boolean;
+  cancelled: boolean;
 }

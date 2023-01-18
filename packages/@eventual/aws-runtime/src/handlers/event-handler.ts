@@ -1,11 +1,11 @@
 import "@eventual/entry/injected";
 
-import type { EventBridgeEvent } from "aws-lambda";
 import {
   createEventHandlerWorker,
   GlobalEventHandlerProvider,
 } from "@eventual/core";
-import { createServiceClient } from "../clients/create.js";
+import type { EventBridgeEvent } from "aws-lambda";
+import { createServiceClient } from "../create.js";
 
 export const processEvent = createEventHandlerWorker({
   serviceClient: createServiceClient(),

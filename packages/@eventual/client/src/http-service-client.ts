@@ -3,8 +3,8 @@ import {
   encodeExecutionId,
   EventualServiceClient,
   Execution,
-  ExecutionEventsRequest,
-  ExecutionEventsResponse,
+  ListExecutionEventsRequest,
+  ListExecutionEventsResponse,
   ExecutionHandle,
   ExecutionHistoryResponse,
   SendActivityFailureRequest,
@@ -123,15 +123,15 @@ export class HttpServiceClient implements EventualServiceClient {
   }
 
   public async getExecutionHistory(
-    request: ExecutionEventsRequest
-  ): Promise<ExecutionEventsResponse> {
+    request: ListExecutionEventsRequest
+  ): Promise<ListExecutionEventsResponse> {
     const queryString = formatQueryString({
       maxResults: request.maxResults,
       nextToken: request.nextToken,
       sortDirection: request.sortDirection,
       after: request.after,
     });
-    return await this.request<void, ExecutionEventsResponse>(
+    return await this.request<void, ListExecutionEventsResponse>(
       "GET",
       `executions/${encodeExecutionId(
         request.executionId

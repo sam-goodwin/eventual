@@ -8,7 +8,7 @@ import {
 import { SortOrder } from "../../service-client.js";
 
 /**
- * Low level entity access store. Should contain minimal business logic.
+ * Store which maintains the data for each {@link Execution}.
  */
 export interface ExecutionStore {
   /**
@@ -35,10 +35,16 @@ export interface ExecutionStore {
     request: FailExecutionRequest | SucceedExecutionRequest<Result>
   ): Promise<SucceededExecution<Result> | FailedExecution>;
 
+  /**
+   * Get a single execution.
+   */
   get<Result = any>(
     executionId: string
   ): Promise<Execution<Result> | undefined>;
 
+  /**
+   * List all executions with pagination.
+   */
   list(request: ListExecutionsRequest): Promise<ListExecutionsResponse>;
 }
 

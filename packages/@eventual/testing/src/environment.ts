@@ -1,8 +1,10 @@
+import { bundleService } from "@eventual/compiler";
 import {
   ActivityClient,
   ActivityFunction,
   ActivityOutput,
   clearEventSubscriptions,
+  CommandExecutor,
   createActivityWorker,
   createEventHandlerWorker,
   createOrchestrator,
@@ -34,24 +36,23 @@ import {
   workflows,
   WorkflowTask,
 } from "@eventual/core";
-import { bundleService } from "@eventual/compiler";
-import { TestMetricsClient } from "./clients/metrics-client.js";
-import { TestExecutionHistoryStore } from "./stores/execution-history-store.js";
+import path from "path";
 import { TestActivityClient } from "./clients/activity-client.js";
 import { TestEventClient } from "./clients/event-client.js";
+import { TestExecutionQueueClient } from "./clients/execution-queue-client.js";
+import { TestLogsClient } from "./clients/logs-client.js";
+import { TestMetricsClient } from "./clients/metrics-client.js";
 import { TestTimerClient } from "./clients/timer-client.js";
-import { TimeController } from "./time-controller.js";
 import {
   MockableActivityProvider,
   MockActivity,
 } from "./providers/activity-provider.js";
 import { TestEventHandlerProvider } from "./providers/event-handler-provider.js";
-import { TestLogsClient } from "./clients/logs-client.js";
-import path from "path";
-import { TestExecutionStore } from "./stores/execution-store.js";
-import { TestExecutionQueueClient } from "./clients/execution-queue-client.js";
-import { TestExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
 import { TestActivityStore } from "./stores/activity-store.js";
+import { TestExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
+import { TestExecutionHistoryStore } from "./stores/execution-history-store.js";
+import { TestExecutionStore } from "./stores/execution-store.js";
+import { TimeController } from "./time-controller.js";
 
 export interface TestEnvironmentProps {
   entry: string;
@@ -198,15 +199,21 @@ export class TestEnvironment extends RuntimeServiceClient {
     this.timerClient = timerClient;
     this.activityClient = activityClient;
 
+    const commandExecutor = new CommandExecutor({
+      activityClient,
+      eventClient,
+      executionQueueClient,
+      timerClient,
+      workflowClient,
+    });
+
     this.orchestrator = createOrchestrator({
+      commandExecutor,
       timerClient: this.timerClient,
-      eventClient: this.eventClient,
       workflowClient: this.workflowClient,
-      activityClient: this.activityClient,
       executionHistoryStore: this.executionHistoryStore,
       metricsClient: new TestMetricsClient(),
       logAgent: testLogAgent,
-      executionQueueClient,
       executionHistoryStateStore,
     });
   }

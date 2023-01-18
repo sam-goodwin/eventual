@@ -1,14 +1,15 @@
+import { ScheduleActivityCommand } from "../../command.js";
 import { ExecutionStatus } from "../../execution.js";
 import {
-  ActivitySucceeded,
-  WorkflowEventType,
   ActivityFailed,
+  ActivitySucceeded,
   createEvent,
+  WorkflowEventType,
 } from "../../workflow-events.js";
 import { decodeActivityToken } from "../activity-token.js";
-import { ActivityWorkerRequest } from "../handlers/activity-worker.js";
-import { ExecutionQueueClient, ExecutionStore } from "../index.js";
 import { ActivityStore } from "../stores/activity-store.js";
+import { ExecutionStore } from "../stores/execution-store.js";
+import { ExecutionQueueClient } from "./execution-queue-client.js";
 
 export interface ActivityClientProps {
   activityStore: ActivityStore;
@@ -36,11 +37,15 @@ export abstract class ActivityClient {
       return { cancelled: true };
     }
 
-    return this.props.activityStore.heartbeat(
+    const activityExecution = await this.props.activityStore.heartbeat(
       data.payload.executionId,
       data.payload.seq,
       this.baseTime().toISOString()
     );
+
+    return {
+      cancelled: activityExecution.cancelled,
+    };
   }
 
   /**
@@ -146,4 +151,12 @@ export interface SendActivityHeartbeatResponse {
    * This is the only way for a long running activity to know it was cancelled.
    */
   cancelled: boolean;
+}
+
+export interface ActivityWorkerRequest {
+  scheduledTime: string;
+  workflowName: string;
+  executionId: string;
+  command: ScheduleActivityCommand;
+  retry: number;
 }

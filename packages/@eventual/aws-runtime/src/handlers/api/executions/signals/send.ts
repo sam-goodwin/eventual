@@ -1,7 +1,7 @@
-import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
-import { withErrorMiddleware } from "../../middleware.js";
 import { decodeExecutionId, SendSignalRequest } from "@eventual/core";
-import { createExecutionQueueClient } from "../../../../clients/create.js";
+import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { createExecutionQueueClient } from "../../../../create.js";
+import { withErrorMiddleware } from "../../middleware.js";
 
 const executionQueueClient = createExecutionQueueClient();
 

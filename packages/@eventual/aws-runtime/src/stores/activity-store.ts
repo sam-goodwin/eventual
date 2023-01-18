@@ -56,7 +56,7 @@ export class AWSActivityStore implements ActivityStore {
     executionId: string,
     seq: number,
     heartbeatTime: string
-  ): Promise<{ cancelled: boolean }> {
+  ): Promise<ActivityExecution> {
     const item = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
@@ -74,10 +74,7 @@ export class AWSActivityStore implements ActivityStore {
       })
     );
 
-    return {
-      cancelled:
-        (item.Attributes as ActivityExecutionRecord).cancelled?.BOOL ?? false,
-    };
+    return createActivityFromRecord(item.Attributes as ActivityExecutionRecord);
   }
 
   public async cancel(executionId: string, seq: number): Promise<void> {

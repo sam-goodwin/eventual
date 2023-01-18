@@ -3,7 +3,7 @@ import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyHandlerV2,
 } from "aws-lambda";
-import { createExecutionHistoryStateStore } from "../../../clients/create.js";
+import { createExecutionHistoryStateStore } from "../../../create.js";
 import { withErrorMiddleware } from "../middleware.js";
 
 const executionHistoryStateStore = createExecutionHistoryStateStore();
