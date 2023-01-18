@@ -1,7 +1,4 @@
-import {
-  createLogsClient,
-  createWorkflowClient,
-} from "../../clients/create.js";
+import { createActivityClient } from "../../clients/create.js";
 import { withErrorMiddleware } from "./middleware.js";
 import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
 import {
@@ -13,10 +10,7 @@ import {
   SendActivityUpdateResponse,
 } from "@eventual/core";
 
-const workflowClient = createWorkflowClient({
-  tableName: "NOT_NEEDED",
-  logsClient: createLogsClient({ serviceLogGroup: "NOT_NEEDED" }),
-});
+const activityClient = createActivityClient();
 
 export const handler: APIGatewayProxyHandlerV2<SendActivityUpdateResponse> =
   withErrorMiddleware(async (event: APIGatewayProxyEventV2) => {
@@ -26,11 +20,11 @@ export const handler: APIGatewayProxyHandlerV2<SendActivityUpdateResponse> =
     }
     const activityRequest = JSON.parse(body) as SendActivityUpdate;
     if (isSendActivitySuccessRequest(activityRequest)) {
-      return workflowClient.sendActivitySuccess(activityRequest);
+      return activityClient.sendSuccess(activityRequest);
     } else if (isSendActivityFailureRequest(activityRequest)) {
-      return workflowClient.sendActivityFailure(activityRequest);
+      return activityClient.sendFailure(activityRequest);
     } else if (isSendActivityHeartbeatRequest(activityRequest)) {
-      return workflowClient.sendActivityHeartbeat(activityRequest);
+      return activityClient.sendHeartbeat(activityRequest);
     }
 
     try {

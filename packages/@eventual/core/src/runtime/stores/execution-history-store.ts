@@ -9,7 +9,7 @@ export type UnresolvedEvent<T extends WorkflowEvent> = Omit<
   "id" | "timestamp"
 >;
 
-export abstract class ExecutionHistoryClient {
+export abstract class ExecutionHistoryStore {
   public abstract putEvent<T extends WorkflowEvent>(
     executionId: string,
     event: T

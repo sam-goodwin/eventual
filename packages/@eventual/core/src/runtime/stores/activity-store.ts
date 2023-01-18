@@ -1,4 +1,4 @@
-export interface ActivityRuntimeClient {
+export interface ActivityStore {
   /**
    * Claims a activity for an actor.
    *
@@ -7,7 +7,7 @@ export interface ActivityRuntimeClient {
    * @param claimer optional string to correlate the lock to the claimer.
    * @return a boolean determining if the claim was granted to the current actor.
    **/
-  claimActivity(
+  claim(
     executionId: string,
     seq: number,
     retry: number,
@@ -17,7 +17,7 @@ export interface ActivityRuntimeClient {
   /**
    * Mark the last heartbeat time of an activity.
    */
-  heartbeatActivity(
+  heartbeat(
     executionId: string,
     seq: number,
     heartbeatTime: string
@@ -27,15 +27,12 @@ export interface ActivityRuntimeClient {
    * Marks an activity as cancelled. An activity can use the {@link heartbeat} call
    * to retrieve this value.
    */
-  cancelActivity(executionId: string, seq: number): Promise<void>;
+  cancel(executionId: string, seq: number): Promise<void>;
 
   /**
    * Retrieves the activity to check the cancellation status, heartbeat, or other properties.
    */
-  getActivity(
-    executionId: string,
-    seq: number
-  ): Promise<ActivityExecution | undefined>;
+  get(executionId: string, seq: number): Promise<ActivityExecution | undefined>;
 }
 
 export interface ActivityExecution {

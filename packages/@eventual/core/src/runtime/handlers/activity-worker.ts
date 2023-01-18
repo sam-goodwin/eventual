@@ -13,7 +13,6 @@ import {
   setActivityContext,
 } from "../../global.js";
 import { createActivityToken } from "../activity-token.js";
-import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
 import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
@@ -34,16 +33,17 @@ import { EventClient } from "../clients/event-client.js";
 import { serviceTypeScope } from "../flags.js";
 import { ServiceType } from "../../service-type.js";
 import { Schedule } from "../../schedule.js";
+import { ActivityStore, ExecutionQueueClient } from "../index.js";
 
 export interface CreateActivityWorkerProps {
-  activityRuntimeClient: ActivityRuntimeClient;
-  workflowClient: WorkflowClient;
   timerClient: TimerClient;
   metricsClient: MetricsClient;
   eventClient: EventClient;
   activityProvider: ActivityProvider;
   serviceClient?: RuntimeServiceClient;
   logAgent: LogAgent;
+  executionQueueClient: ExecutionQueueClient;
+  activityStore: ActivityStore;
 }
 
 export interface ActivityWorkerRequest {
@@ -72,13 +72,13 @@ export interface ActivityWorker {
  * inject its own client implementations designed for that platform.
  */
 export function createActivityWorker({
-  activityRuntimeClient,
-  workflowClient,
-  timerClient,
-  metricsClient,
   activityProvider,
-  serviceClient,
+  activityStore,
+  executionQueueClient,
+  metricsClient,
   logAgent,
+  serviceClient,
+  timerClient,
 }: CreateActivityWorkerProps): ActivityWorker {
   // make the service client available to all activity code
   if (serviceClient) {
@@ -120,7 +120,7 @@ export function createActivityWorker({
           );
           if (
             !(await timed(metrics, ActivityMetrics.ClaimDuration, () =>
-              activityRuntimeClient.claimActivity(
+              activityStore.claim(
                 request.executionId,
                 request.command.seq,
                 request.retry
@@ -289,7 +289,10 @@ export function createActivityWorker({
               metrics,
               ActivityMetrics.SubmitWorkflowTaskDuration,
               () =>
-                workflowClient.submitWorkflowTask(request.executionId, event)
+                executionQueueClient.submitExecutionEvents(
+                  request.executionId,
+                  event
+                )
             );
             await logFlush;
 

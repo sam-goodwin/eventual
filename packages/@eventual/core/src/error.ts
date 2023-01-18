@@ -88,3 +88,11 @@ export class ActivityNotFoundError extends Error {
     );
   }
 }
+
+export class ExecutionAlreadyExists extends Error {
+  constructor(name: string, workflowName: string) {
+    super(
+      `Execution name ${name} already exists for workflow ${workflowName} with different inputs.`
+    );
+  }
+}

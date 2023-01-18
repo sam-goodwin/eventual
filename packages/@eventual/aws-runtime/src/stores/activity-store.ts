@@ -6,30 +6,22 @@ import {
   ReturnValue,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import type { ActivityExecution, ActivityRuntimeClient } from "@eventual/core";
+import { ActivityExecution, ActivityStore } from "@eventual/core";
 
-export interface AWSActivityRuntimeClientProps {
-  dynamo: DynamoDBClient;
+export interface AWSActivityStoreProps {
   activityTableName: string;
+  dynamo: DynamoDBClient;
 }
 
-export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
-  constructor(private props: AWSActivityRuntimeClientProps) {}
+export class AWSActivityStore implements ActivityStore {
+  constructor(private props: AWSActivityStoreProps) {}
 
-  /**
-   * Claims a activity for an actor.
-   *
-   * Future invocations of the same executionId + future.seq + retry will fail.
-   *
-   * @param claimer optional string to correlate the lock to the claimer.
-   * @return a boolean determining if the claim was granted to the current actor.
-   **/
-  public async claimActivity(
+  public async claim(
     executionId: string,
     seq: number,
     retry: number,
-    claimer?: string
-  ) {
+    claimer?: string | undefined
+  ): Promise<boolean> {
     try {
       await this.props.dynamo.send(
         new UpdateItemCommand({
@@ -60,10 +52,7 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
     }
   }
 
-  /*
-   * Heartbeat an activity.
-   **/
-  public async heartbeatActivity(
+  public async heartbeat(
     executionId: string,
     seq: number,
     heartbeatTime: string
@@ -91,7 +80,7 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
     };
   }
 
-  public async cancelActivity(executionId: string, seq: number) {
+  public async cancel(executionId: string, seq: number): Promise<void> {
     await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
@@ -109,7 +98,7 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
     );
   }
 
-  public async getActivity(
+  public async get(
     executionId: string,
     seq: number
   ): Promise<ActivityExecution | undefined> {

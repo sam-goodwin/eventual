@@ -8,20 +8,20 @@ import {
   BaseEvent,
   ExecutionEventsRequest,
   ExecutionEventsResponse,
-  ExecutionHistoryClient,
+  ExecutionHistoryStore,
   getEventId,
   SortOrder,
   WorkflowEvent,
 } from "@eventual/core";
-import { queryPageWithToken } from "./utils.js";
+import { queryPageWithToken } from "../clients/utils.js";
 
-export interface AWSExecutionHistoryClientProps {
+export interface AWSExecutionHistoryStoreProps {
   readonly dynamo: DynamoDBClient;
   readonly tableName: string;
 }
 
-export class AWSExecutionHistoryClient extends ExecutionHistoryClient {
-  constructor(private props: AWSExecutionHistoryClientProps) {
+export class AWSExecutionHistoryStore extends ExecutionHistoryStore {
+  constructor(private props: AWSExecutionHistoryStoreProps) {
     super();
   }
 

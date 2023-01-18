@@ -7,30 +7,23 @@ import {
   GlobalActivityProvider,
 } from "@eventual/core";
 import {
-  createActivityRuntimeClient,
+  createActivityStore,
   createEventClient,
+  createExecutionQueueClient,
   createLogAgent,
   createServiceClient,
   createTimerClient,
-  createWorkflowClient,
-  createWorkflowRuntimeClient,
 } from "../clients/create.js";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 
 export default (request: ActivityWorkerRequest) =>
   createActivityWorker({
-    activityRuntimeClient: createActivityRuntimeClient(),
+    executionQueueClient: createExecutionQueueClient(),
     eventClient: createEventClient(),
-    workflowClient: createWorkflowClient(),
     timerClient: createTimerClient(),
     metricsClient: AWSMetricsClient,
     activityProvider: new GlobalActivityProvider(),
-    serviceClient: createServiceClient(
-      createWorkflowRuntimeClient({
-        executionHistoryBucket: "NOT_NEEDED",
-        activityWorkerFunctionName: "NOT_NEEDED",
-        tableName: "NOT_NEEDED",
-      })
-    ),
+    serviceClient: createServiceClient(),
     logAgent: createLogAgent(),
+    activityStore: createActivityStore(),
   })(request);

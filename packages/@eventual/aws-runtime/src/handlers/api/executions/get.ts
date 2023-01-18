@@ -1,17 +1,9 @@
-import {
-  createLogsClient,
-  createWorkflowClient,
-} from "../../../clients/create.js";
+import { createExecutionStore } from "../../../clients/create.js";
 import { withErrorMiddleware } from "../middleware.js";
 import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { decodeExecutionId, Execution } from "@eventual/core";
 
-const workflowClient = createWorkflowClient({
-  // TODO: further decouple the clients
-  activityTableName: "NOT_NEEDED",
-  workflowQueueUrl: "NOT_NEEDED",
-  logsClient: createLogsClient({ serviceLogGroup: "NOT_NEEDED" }),
-});
+const executionStore = createExecutionStore();
 
 async function get(event: APIGatewayProxyEventV2) {
   const executionId = event.pathParameters?.executionId;
@@ -20,7 +12,7 @@ async function get(event: APIGatewayProxyEventV2) {
   }
 
   const decodedExecutionId = decodeExecutionId(executionId);
-  const execution = await workflowClient.getExecution(decodedExecutionId);
+  const execution = await executionStore.get(decodedExecutionId);
   if (execution) {
     return execution;
   }

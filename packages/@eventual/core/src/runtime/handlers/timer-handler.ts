@@ -11,16 +11,16 @@ import {
   TimerRequest,
   TimerRequestType,
 } from "../clients/timer-client.js";
-import type { WorkflowClient } from "../clients/workflow-client.js";
-import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
 import { LogAgent, LogContextType, LogLevel } from "../log-agent.js";
 import { Schedule } from "../../schedule.js";
+import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
+import { ActivityStore } from "../index.js";
 
 interface TimerHandlerProps {
-  workflowClient: WorkflowClient;
-  activityRuntimeClient: ActivityRuntimeClient;
   timerClient: TimerClient;
   logAgent: LogAgent;
+  executionQueueClient: ExecutionQueueClient;
+  activityStore: ActivityStore;
 }
 
 /**
@@ -30,19 +30,19 @@ interface TimerHandlerProps {
  * inject its own client implementations designed for that platform.
  */
 export function createTimerHandler({
-  workflowClient,
-  activityRuntimeClient,
-  timerClient,
+  activityStore,
+  executionQueueClient,
   logAgent,
+  timerClient,
 }: TimerHandlerProps) {
   return async (request: TimerRequest) => {
     if (isTimerScheduleEventRequest(request)) {
-      await workflowClient.submitWorkflowTask(
+      await executionQueueClient.submitExecutionEvents(
         request.executionId,
         request.event
       );
     } else if (isActivityHeartbeatMonitorRequest(request)) {
-      const activity = await activityRuntimeClient.getActivity(
+      const activity = await activityStore.get(
         request.executionId,
         request.activitySeq
       );
@@ -59,7 +59,7 @@ export function createTimerHandler({
         !activity?.heartbeatTime ||
         isHeartbeatTimeElapsed(activity.heartbeatTime, request.heartbeatSeconds)
       ) {
-        return workflowClient.submitWorkflowTask(
+        return executionQueueClient.submitExecutionEvents(
           request.executionId,
           createEvent<ActivityHeartbeatTimedOut>(
             {

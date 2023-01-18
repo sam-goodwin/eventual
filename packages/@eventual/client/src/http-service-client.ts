@@ -8,8 +8,8 @@ import {
   ExecutionHandle,
   ExecutionHistoryResponse,
   SendActivityFailureRequest,
-  GetExecutionsRequest,
-  GetExecutionsResponse,
+  ListExecutionsRequest,
+  ListExecutionsResponse,
   GetWorkflowResponse,
   SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
@@ -20,6 +20,7 @@ import {
   Workflow,
   WorkflowInput,
   ActivityUpdateType,
+  StartExecutionResponse,
 } from "@eventual/core";
 import path from "path";
 import "./fetch-polyfill.js";
@@ -82,15 +83,15 @@ export class HttpServiceClient implements EventualServiceClient {
 
     const { executionId } = await this.request<
       WorkflowInput<W>,
-      { executionId: string }
+      StartExecutionResponse
     >("POST", `workflows/${workflow}/executions?${queryString}`, request.input);
 
     return new ExecutionHandle(executionId, this);
   }
 
   public async getExecutions(
-    request: GetExecutionsRequest
-  ): Promise<GetExecutionsResponse> {
+    request: ListExecutionsRequest
+  ): Promise<ListExecutionsResponse> {
     const queryStrings = formatQueryString({
       maxResults: request.maxResults,
       nextToken: request.nextToken,
@@ -99,7 +100,7 @@ export class HttpServiceClient implements EventualServiceClient {
       workflow: request.workflowName,
     });
 
-    return this.request<void, GetExecutionsResponse>(
+    return this.request<void, ListExecutionsResponse>(
       "GET",
       `executions?${queryStrings}`
     );

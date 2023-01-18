@@ -27,17 +27,19 @@ import { Workflow } from "../workflow.js";
 import { formatChildExecutionName, formatExecutionId } from "./execution-id.js";
 import { ActivityWorkerRequest } from "./handlers/activity-worker.js";
 import { TimerClient } from "./clients/timer-client.js";
-import { WorkflowRuntimeClient } from "./clients/workflow-runtime-client.js";
 import { WorkflowClient } from "./clients/workflow-client.js";
 import { EventClient } from "./clients/event-client.js";
 import { isChildExecutionTarget } from "../signals.js";
 import { computeScheduleDate } from "../schedule.js";
+import { ExecutionQueueClient } from "./clients/execution-queue-client.js";
+import { ActivityClient } from "./index.js";
 
 interface CommandExecutorProps {
-  workflowRuntimeClient: WorkflowRuntimeClient;
   timerClient: TimerClient;
   workflowClient: WorkflowClient;
+  executionQueueClient: ExecutionQueueClient;
   eventClient: EventClient;
+  activityClient: ActivityClient;
 }
 
 /**
@@ -87,7 +89,7 @@ export class CommandExecutor {
       retry: 0,
     };
 
-    await this.props.workflowRuntimeClient.startActivity(request);
+    await this.props.activityClient.startActivity(request);
 
     return createEvent<ActivityScheduled>(
       {
@@ -164,7 +166,7 @@ export class CommandExecutor {
         )
       : command.target.executionId;
 
-    await this.props.workflowClient.sendSignal({
+    await this.props.executionQueueClient.sendSignal({
       signal: command.signalId,
       execution: childExecutionId,
       id: `${executionId}/${command.seq}`,

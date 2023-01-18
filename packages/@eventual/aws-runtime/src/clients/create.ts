@@ -3,24 +3,28 @@ import { LambdaClient } from "@aws-sdk/client-lambda";
 import { S3Client } from "@aws-sdk/client-s3";
 import { SQSClient } from "@aws-sdk/client-sqs";
 import * as env from "../env.js";
-import { AWSActivityRuntimeClient } from "./activity-runtime-client.js";
-import { AWSExecutionHistoryClient } from "./execution-history-client.js";
-import { AWSWorkflowClient } from "./workflow-client.js";
-import { AWSWorkflowRuntimeClient } from "./workflow-runtime-client.js";
 import { SchedulerClient } from "@aws-sdk/client-scheduler";
 import { AWSTimerClient, AWSTimerClientProps } from "./timer-client.js";
 import { AWSEventClient } from "./event-client.js";
 import {
+  ActivityStore,
+  ExecutionQueueClient,
+  ExecutionStore,
   LogAgent,
   LogLevel,
   LogsClient,
   RuntimeServiceClient,
-  TimerClient,
+  RuntimeServiceClientProps,
   WorkflowClient,
-  WorkflowRuntimeClient,
 } from "@eventual/core";
 import { CloudWatchLogsClient } from "@aws-sdk/client-cloudwatch-logs";
 import { AWSLogsClient } from "./log-client.js";
+import { AWSExecutionStore } from "../stores/execution-store.js";
+import { AWSExecutionQueueClient } from "./execution-queue-client.js";
+import { AWSExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
+import { AWSExecutionHistoryStore } from "../stores/execution-history-store.js";
+import { AWSActivityStore } from "../stores/activity-store.js";
+import { AWSActivityClient } from "./activity-client.js";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -40,9 +44,9 @@ const cloudwatchLogs = /* @__PURE__ */ memoize(
 );
 const scheduler = /* @__PURE__ */ memoize(() => new SchedulerClient({}));
 
-export const createExecutionHistoryClient = /* @__PURE__ */ memoize(
+export const createExecutionHistoryStore = /* @__PURE__ */ memoize(
   ({ tableName }: { tableName?: string } = {}) =>
-    new AWSExecutionHistoryClient({
+    new AWSExecutionHistoryStore({
       dynamo: dynamo(),
       tableName: tableName ?? env.tableName(),
     }),
@@ -51,25 +55,36 @@ export const createExecutionHistoryClient = /* @__PURE__ */ memoize(
 
 export const createWorkflowClient = /* @__PURE__ */ memoize(
   ({
-    tableName,
-    workflowQueueUrl,
-    activityTableName,
     logsClient,
+    executionStore,
+    executionQueueClient,
   }: {
-    tableName?: string;
-    workflowQueueUrl?: string;
-    activityTableName?: string;
     logsClient?: LogsClient;
+    executionStore?: ExecutionStore;
+    executionQueueClient?: ExecutionQueueClient;
   } = {}) =>
-    new AWSWorkflowClient({
+    new WorkflowClient(
+      executionStore ?? createExecutionStore(),
+      logsClient ?? createLogsClient(),
+      executionQueueClient ?? createExecutionQueueClient()
+    ),
+  { cacheKey: JSON.stringify }
+);
+
+export const createExecutionQueueClient = /* @__PURE__ */ memoize(
+  ({ workflowQueueUrl }: { workflowQueueUrl?: string } = {}) =>
+    new AWSExecutionQueueClient({
       sqs: sqs(),
       workflowQueueUrl: workflowQueueUrl ?? env.workflowQueueUrl(),
+    })
+);
+
+export const createExecutionStore = /* @__PURE__ */ memoize(
+  ({ tableName }: { tableName?: string } = {}) =>
+    new AWSExecutionStore({
       dynamo: dynamo(),
       tableName: tableName ?? env.tableName(),
-      activityRuntimeClient: createActivityRuntimeClient({ activityTableName }),
-      logsClient: logsClient ?? createLogsClient(),
-    }),
-  { cacheKey: JSON.stringify }
+    })
 );
 
 export const createLogsClient = /* @__PURE__ */ memoize(
@@ -102,9 +117,9 @@ export const createLogAgent = /* @__PURE__ */ memoize(
   }
 );
 
-export const createActivityRuntimeClient = /* @__PURE__ */ memoize(
+export const createActivityStore = /* @__PURE__ */ memoize(
   ({ activityTableName }: { activityTableName?: string } = {}) =>
-    new AWSActivityRuntimeClient({
+    new AWSActivityStore({
       activityTableName: activityTableName ?? env.activityTableName(),
       dynamo: dynamo(),
     })
@@ -126,32 +141,36 @@ export const createTimerClient = /* @__PURE__ */ memoize(
   { cacheKey: JSON.stringify }
 );
 
-export const createWorkflowRuntimeClient = /* @__PURE__ */ memoize(
+export const createActivityClient = /* @__PURE__ */ memoize(
   ({
-    tableName = env.tableName(),
-    executionHistoryBucket = env.executionHistoryBucket(),
     activityWorkerFunctionName = env.activityWorkerFunctionName(),
-    timerClient,
-    workflowClient,
+    executionQueueClient,
+    executionStore,
+    activityStore,
   }: {
-    tableName?: string;
-    executionHistoryBucket?: string;
     activityWorkerFunctionName?: string;
-    timerClient?: TimerClient;
-    workflowClient?: WorkflowClient;
+    activityStore?: ActivityStore;
+    executionQueueClient?: ExecutionQueueClient;
+    executionStore?: ExecutionStore;
   } = {}) =>
-    new AWSWorkflowRuntimeClient({
-      dynamo: dynamo(),
-      s3: s3(),
-      // todo fail when missing
-      executionHistoryBucket,
-      tableName,
+    new AWSActivityClient({
       lambda: lambda(),
       activityWorkerFunctionName,
-      workflowClient: workflowClient ?? createWorkflowClient(),
-      timerClient: timerClient ?? createTimerClient(),
+      executionQueueClient:
+        executionQueueClient ?? createExecutionQueueClient(),
+      executionStore: executionStore ?? createExecutionStore(),
+      activityStore: activityStore ?? createActivityStore(),
     }),
   { cacheKey: JSON.stringify }
+);
+
+export const createExecutionHistoryStateStore = /* @__PURE__ */ memoize(
+  ({ executionHistoryBucket }: { executionHistoryBucket?: string } = {}) =>
+    new AWSExecutionHistoryStateStore({
+      s3: s3(),
+      executionHistoryBucket:
+        executionHistoryBucket ?? env.executionHistoryBucket(),
+    })
 );
 
 export const createEventClient = /* @__PURE__ */ memoize(
@@ -163,13 +182,26 @@ export const createEventClient = /* @__PURE__ */ memoize(
 );
 
 export const createServiceClient = memoize(
-  (workflowRuntimeClient?: WorkflowRuntimeClient) =>
+  ({
+    activityClient,
+    eventClient,
+    executionHistoryStateStore,
+    executionHistoryStore,
+    executionQueueClient,
+    executionStore,
+    workflowClient,
+  }: Partial<RuntimeServiceClientProps> = {}) =>
     new RuntimeServiceClient({
-      eventClient: createEventClient(),
-      executionHistoryClient: createExecutionHistoryClient(),
-      workflowClient: createWorkflowClient(),
-      workflowRuntimeClient:
-        workflowRuntimeClient ?? createWorkflowRuntimeClient(),
+      eventClient: eventClient ?? createEventClient(),
+      executionHistoryStore:
+        executionHistoryStore ?? createExecutionHistoryStore(),
+      workflowClient: workflowClient ?? createWorkflowClient(),
+      executionQueueClient:
+        executionQueueClient ?? createExecutionQueueClient(),
+      executionStore: executionStore ?? createExecutionStore(),
+      executionHistoryStateStore:
+        executionHistoryStateStore ?? createExecutionHistoryStateStore(),
+      activityClient: activityClient ?? createActivityClient(),
     })
 );
 

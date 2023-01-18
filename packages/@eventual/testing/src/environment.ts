@@ -1,4 +1,5 @@
 import {
+  ActivityClient,
   ActivityFunction,
   ActivityOutput,
   clearEventSubscriptions,
@@ -13,7 +14,8 @@ import {
   EventPayloadType,
   events,
   ExecutionHandle,
-  ExecutionHistoryClient,
+  ExecutionHistoryStore,
+  ExecutionStore,
   isWorkflowTask,
   LogAgent,
   LogLevel,
@@ -29,20 +31,16 @@ import {
   TimerClient,
   Workflow,
   WorkflowClient,
-  WorkflowRuntimeClient,
   workflows,
   WorkflowTask,
 } from "@eventual/core";
 import { bundleService } from "@eventual/compiler";
 import { TestMetricsClient } from "./clients/metrics-client.js";
-import { TestExecutionHistoryClient } from "./clients/execution-history-client.js";
-import { TestWorkflowRuntimeClient } from "./clients/workflow-runtime-client.js";
+import { TestExecutionHistoryStore } from "./stores/execution-history-store.js";
+import { TestActivityClient } from "./clients/activity-client.js";
 import { TestEventClient } from "./clients/event-client.js";
-import { TestWorkflowClient } from "./clients/workflow-client.js";
-import { TestActivityRuntimeClient } from "./clients/activity-runtime-client.js";
 import { TestTimerClient } from "./clients/timer-client.js";
 import { TimeController } from "./time-controller.js";
-import { ExecutionStore } from "./execution-store.js";
 import {
   MockableActivityProvider,
   MockActivity,
@@ -50,6 +48,10 @@ import {
 import { TestEventHandlerProvider } from "./providers/event-handler-provider.js";
 import { TestLogsClient } from "./clients/logs-client.js";
 import path from "path";
+import { TestExecutionStore } from "./stores/execution-store.js";
+import { TestExecutionQueueClient } from "./clients/execution-queue-client.js";
+import { TestExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
+import { TestActivityStore } from "./stores/activity-store.js";
 
 export interface TestEnvironmentProps {
   entry: string;
@@ -81,26 +83,27 @@ export interface TestEnvironmentProps {
 export class TestEnvironment extends RuntimeServiceClient {
   private serviceFile: Promise<string>;
 
+  private executionHistoryStore: ExecutionHistoryStore;
+  private executionStore: ExecutionStore;
+
   private timerClient: TimerClient;
   private workflowClient: WorkflowClient;
-  private workflowRuntimeClient: WorkflowRuntimeClient;
-  private executionHistoryClient: ExecutionHistoryClient;
   private eventClient: EventClient;
+  private activityClient: ActivityClient;
 
   private activityProvider: MockableActivityProvider;
   private eventHandlerProvider: TestEventHandlerProvider;
 
   private initialized = false;
   private timeController: TimeController<WorkflowTask>;
+
   private orchestrator: Orchestrator;
 
   constructor(props: TestEnvironmentProps) {
     const start = props.start
       ? new Date(props.start.getTime() - props.start.getMilliseconds())
       : new Date(0);
-    const executionHistoryClient = new TestExecutionHistoryClient();
-    const executionStore = new ExecutionStore();
-    const activityRuntimeClient = new TestActivityRuntimeClient();
+
     const timeController = new TimeController([], {
       // start the time controller at the given start time or Date(0)
       start: start.getTime(),
@@ -113,46 +116,65 @@ export class TestEnvironment extends RuntimeServiceClient {
         timeController.addEvent(time.getTime(), task),
       getTime: () => this.time,
     };
-    const timerClient = new TestTimerClient(timeConnector);
+
+    const executionHistoryStore = new TestExecutionHistoryStore();
+    const executionHistoryStateStore = new TestExecutionHistoryStateStore();
+    const activityStore = new TestActivityStore();
+    const executionStore = new TestExecutionStore(timeConnector);
+
     const activityProvider = new MockableActivityProvider();
     const eventHandlerProvider = new TestEventHandlerProvider();
-    const eventHandlerWorker = createEventHandlerWorker({
-      // break the circular dependence on the worker and client by making the client optional in the worker
-      // need to call registerEventClient before calling the handler.
-      eventHandlerProvider,
-    });
-    const eventClient = new TestEventClient(eventHandlerWorker);
-    const workflowClient = new TestWorkflowClient(
-      timeConnector,
-      activityRuntimeClient,
-      executionStore
-    );
+
     const testLogAgent = new LogAgent({
       logsClient: new TestLogsClient(),
       getTime: () => this.time,
       logLevel: { default: LogLevel.DEBUG },
     });
+
+    const eventHandlerWorker = createEventHandlerWorker({
+      // break the circular dependence on the worker and client by making the client optional in the worker
+      // need to call registerEventClient before calling the handler.
+      eventHandlerProvider,
+    });
+
+    const executionQueueClient = new TestExecutionQueueClient(timeConnector);
+    const timerClient = new TestTimerClient(timeConnector);
+    const eventClient = new TestEventClient(eventHandlerWorker);
+    const workflowClient = new WorkflowClient(
+      executionStore,
+      new TestLogsClient(),
+      executionQueueClient,
+      () => this.time
+    );
+
     const activityWorker = createActivityWorker({
-      activityRuntimeClient,
+      activityStore,
       eventClient,
       timerClient,
       metricsClient: new TestMetricsClient(),
-      workflowClient,
+      executionQueueClient,
       activityProvider,
       logAgent: testLogAgent,
     });
-    const workflowRuntimeClient = new TestWorkflowRuntimeClient(
-      executionStore,
+
+    const activityClient = new TestActivityClient(
       timeConnector,
-      workflowClient,
-      activityWorker
+      activityWorker,
+      {
+        executionStore,
+        executionQueueClient,
+        activityStore,
+      }
     );
 
     super({
+      activityClient,
       eventClient,
-      executionHistoryClient,
+      executionHistoryStore,
       workflowClient,
-      workflowRuntimeClient,
+      executionHistoryStateStore,
+      executionQueueClient,
+      executionStore,
     });
 
     this.serviceFile = bundleService(
@@ -163,23 +185,29 @@ export class TestEnvironment extends RuntimeServiceClient {
       true
     );
 
-    this.timeController = timeController;
-    this.executionHistoryClient = executionHistoryClient;
-    this.workflowClient = workflowClient;
+    this.executionStore = executionStore;
+    this.executionHistoryStore = executionHistoryStore;
+
     this.eventHandlerProvider = eventHandlerProvider;
+    this.activityProvider = activityProvider;
+
+    this.timeController = timeController;
+
+    this.workflowClient = workflowClient;
     this.eventClient = eventClient;
     this.timerClient = timerClient;
-    this.workflowRuntimeClient = workflowRuntimeClient;
-    this.activityProvider = activityProvider;
+    this.activityClient = activityClient;
 
     this.orchestrator = createOrchestrator({
       timerClient: this.timerClient,
       eventClient: this.eventClient,
       workflowClient: this.workflowClient,
-      workflowRuntimeClient: this.workflowRuntimeClient,
-      executionHistoryClient: this.executionHistoryClient,
+      activityClient: this.activityClient,
+      executionHistoryStore: this.executionHistoryStore,
       metricsClient: new TestMetricsClient(),
       logAgent: testLogAgent,
+      executionQueueClient,
+      executionHistoryStateStore,
     });
   }
 
@@ -334,7 +362,7 @@ export class TestEnvironment extends RuntimeServiceClient {
    * Retrieves an execution by execution id.
    */
   public async getExecution(executionId: string) {
-    return this.workflowClient.getExecution(executionId);
+    return this.executionStore.get(executionId);
   }
 
   /**
@@ -373,7 +401,7 @@ export class TestEnvironment extends RuntimeServiceClient {
   public async sendActivityFailure(
     request: Omit<SendActivityFailureRequest, "type">
   ) {
-    await this.workflowClient.sendActivityFailure(request);
+    await this.activityClient.sendFailure(request);
     return this.tick();
   }
 

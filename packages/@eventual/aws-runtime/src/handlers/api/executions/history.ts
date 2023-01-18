@@ -1,5 +1,5 @@
 import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
-import { createExecutionHistoryClient } from "../../../clients/create.js";
+import { createExecutionHistoryStore } from "../../../clients/create.js";
 import { withErrorMiddleware } from "../middleware.js";
 import {
   decodeExecutionId,
@@ -7,7 +7,7 @@ import {
   SortOrder,
 } from "@eventual/core";
 
-const workflowClient = createExecutionHistoryClient();
+const workflowClient = createExecutionHistoryStore();
 
 /**
  * Get events for a workflow.

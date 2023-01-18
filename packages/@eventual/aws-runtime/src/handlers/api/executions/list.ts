@@ -1,22 +1,14 @@
 import { withErrorMiddleware } from "../middleware.js";
-import {
-  createLogsClient,
-  createWorkflowClient,
-} from "../../../clients/create.js";
+import { createExecutionStore } from "../../../clients/create.js";
 import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
 import {
   ExecutionStatus,
-  GetExecutionsResponse,
+  ListExecutionsResponse,
   isExecutionStatus,
   SortOrder,
 } from "@eventual/core";
 
-const workflowClient = createWorkflowClient({
-  // TODO: further decouple the clients
-  activityTableName: "NOT_NEEDED",
-  workflowQueueUrl: "NOT_NEEDED",
-  logsClient: createLogsClient({ serviceLogGroup: "NOT_NEEDED" }),
-});
+const executionStore = createExecutionStore();
 
 /**
  * Query Parameters:
@@ -26,7 +18,7 @@ const workflowClient = createWorkflowClient({
  * * nextToken - continue a previous request
  * * statuses - IN_PROGRESS | SUCCEEDED | FAILED - One or more comma delimited statuses to return. Default: all statuses
  */
-export const handler: APIGatewayProxyHandlerV2<GetExecutionsResponse> =
+export const handler: APIGatewayProxyHandlerV2<ListExecutionsResponse> =
   withErrorMiddleware(async function (event: APIGatewayProxyEventV2) {
     const {
       workflow,
@@ -69,7 +61,7 @@ export const handler: APIGatewayProxyHandlerV2<GetExecutionsResponse> =
       };
     }
 
-    return workflowClient.getExecutions({
+    return executionStore.list({
       workflowName: workflow,
       statuses: statusStrings,
       maxResults,

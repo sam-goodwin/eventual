@@ -1,12 +1,12 @@
 import {
   ExecutionEventsRequest,
   ExecutionEventsResponse,
-  ExecutionHistoryClient,
+  ExecutionHistoryStore,
   SortOrder,
   WorkflowEvent,
 } from "@eventual/core";
 
-export class TestExecutionHistoryClient extends ExecutionHistoryClient {
+export class TestExecutionHistoryStore extends ExecutionHistoryStore {
   private eventStore: Record<string, WorkflowEvent[]> = {};
 
   public async putEvent<T extends WorkflowEvent>(

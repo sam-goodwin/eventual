@@ -15,9 +15,7 @@ import type {
 import { createWorkflowClient } from "../../../clients/create.js";
 import { withErrorMiddleware } from "../middleware.js";
 
-const workflowClient = createWorkflowClient({
-  activityTableName: "NOT_NEEDED",
-});
+const workflowClient = createWorkflowClient();
 
 /**
  * Create a new execution (start a workflow)
