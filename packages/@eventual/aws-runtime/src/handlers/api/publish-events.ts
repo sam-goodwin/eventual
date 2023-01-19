@@ -1,8 +1,8 @@
 import "@eventual/entry/injected";
 
 import { PublishEventsRequest } from "@eventual/core";
+import { createEventClient } from "../../create.js";
 import { withErrorMiddleware } from "./middleware.js";
-import { createEventClient } from "../../clients/create.js";
 
 const eventClient = createEventClient();
 

@@ -3,7 +3,7 @@ import {
   EventualServiceClient,
   isWorkflowSucceeded,
   isWorkflowFailed,
-  ExecutionEventsResponse,
+  ListExecutionEventsResponse,
   DURATION_UNITS,
   DurationUnit,
   Schedule,
@@ -119,7 +119,7 @@ async function* streamEvents(
   let nextToken: string | undefined;
 
   do {
-    const res: ExecutionEventsResponse =
+    const res: ListExecutionEventsResponse =
       await serviceClient.getExecutionHistory({
         executionId,
         // if there is a next token, continue, or else ask for events after the last one we saw

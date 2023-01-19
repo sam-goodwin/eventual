@@ -1,4 +1,4 @@
-import { LogEntry, LogsClient } from "@eventual/core";
+import { getLazy, LazyValue, LogEntry, LogsClient } from "@eventual/core";
 import {
   CloudWatchLogsClient,
   PutLogEventsCommand,
@@ -9,7 +9,7 @@ import { formatWorkflowExecutionStreamName } from "../utils.js";
 
 export interface AWSLogsClientProps {
   cloudwatchLogsClient: CloudWatchLogsClient;
-  serviceLogGroup: string;
+  serviceLogGroup: LazyValue<string>;
 }
 
 export class AWSLogsClient implements LogsClient {
@@ -22,7 +22,7 @@ export class AWSLogsClient implements LogsClient {
     try {
       await this.props.cloudwatchLogsClient.send(
         new PutLogEventsCommand({
-          logGroupName: this.props.serviceLogGroup,
+          logGroupName: getLazy(this.props.serviceLogGroup),
           logStreamName: formatWorkflowExecutionStreamName(executionId),
           logEvents: logEntries.map(({ time, message }) => ({
             timestamp: time,
@@ -43,7 +43,7 @@ export class AWSLogsClient implements LogsClient {
   public async initializeExecutionLog(executionId: string): Promise<void> {
     await this.props.cloudwatchLogsClient.send(
       new CreateLogStreamCommand({
-        logGroupName: this.props.serviceLogGroup,
+        logGroupName: getLazy(this.props.serviceLogGroup),
         logStreamName: formatWorkflowExecutionStreamName(executionId),
       })
     );

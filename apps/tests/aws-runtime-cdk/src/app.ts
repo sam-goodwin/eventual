@@ -39,8 +39,6 @@ testService.api.grantExecute(role);
 testService.cliRole.grantAssumeRole(role);
 eventual.Service.grantDescribeParameters(stack, role);
 testService.serviceDataSSM.grantRead(role);
-testService.workflows.grantFilterOrchestratorLogs(role);
-testService.activities.grantFilterWorkerLogs(role);
 role.addToPolicy(
   new PolicyStatement({
     actions: ["ssm:DescribeParameters"],

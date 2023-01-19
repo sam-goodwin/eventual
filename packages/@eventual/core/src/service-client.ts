@@ -1,14 +1,29 @@
 import { EventEnvelope } from "./event.js";
-import { Execution, ExecutionHandle, ExecutionStatus } from "./execution.js";
-import { SendSignalRequest } from "./runtime/clients/workflow-client.js";
-import { HistoryStateEvent, WorkflowEvent } from "./workflow-events.js";
+import { Execution, ExecutionHandle } from "./execution.js";
+import {
+  SendActivityFailureRequest,
+  SendActivityHeartbeatRequest,
+  SendActivityHeartbeatResponse,
+  SendActivitySuccessRequest,
+} from "./runtime/clients/activity-client.js";
+import { SendSignalRequest } from "./runtime/clients/execution-queue-client.js";
+import { ExecutionID } from "./runtime/execution-id.js";
+import {
+  ListExecutionEventsRequest,
+  ListExecutionEventsResponse,
+} from "./runtime/stores/execution-history-store.js";
+import {
+  ListExecutionsRequest,
+  ListExecutionsResponse,
+} from "./runtime/stores/execution-store.js";
+import { HistoryStateEvent } from "./workflow-events.js";
 import { Workflow, WorkflowInput, WorkflowOptions } from "./workflow.js";
 
 /**
  * Top level Eventual Client used by systems outside of an Eventual Service to interact with it.
  */
 export interface EventualServiceClient {
-  getWorkflows(): Promise<GetWorkflowResponse>;
+  listWorkflows(): Promise<ListWorkflowsResponse>;
 
   /**
    * Start a workflow execution
@@ -22,7 +37,9 @@ export interface EventualServiceClient {
   /**
    * Retrieves one or more workflow execution.
    */
-  getExecutions(request: GetExecutionsRequest): Promise<GetExecutionsResponse>;
+  listExecutions(
+    request: ListExecutionsRequest
+  ): Promise<ListExecutionsResponse>;
 
   /**
    * Retrieves a single workflow execution.
@@ -33,8 +50,8 @@ export interface EventualServiceClient {
    * Retrieves the workflow events for an execution.
    */
   getExecutionHistory(
-    request: ExecutionEventsRequest
-  ): Promise<ExecutionEventsResponse>;
+    request: ListExecutionEventsRequest
+  ): Promise<ListExecutionEventsResponse>;
 
   /**
    * Retrieves the workflow history events for an execution.
@@ -89,55 +106,11 @@ export interface StartExecutionResponse {
   /**
    * ID of the started workflow execution.
    */
-  executionId: string;
-}
-
-export interface GetExecutionsRequest {
-  statuses?: ExecutionStatus[];
-  workflowName?: string;
-  nextToken?: string;
-  /**
-   * @default "Asc"
-   */
-  sortDirection?: SortOrder;
-  /**
-   * @default: 100
-   */
-  maxResults?: number;
-}
-
-export interface GetExecutionsResponse {
-  executions: Execution[];
-  /**
-   * A token returned when there may be more executions to retrieve.
-   */
-  nextToken?: string;
+  executionId: ExecutionID;
 }
 
 export interface PublishEventsRequest {
   events: EventEnvelope<any>[];
-}
-
-export interface ExecutionEventsRequest {
-  executionId: string;
-  /**
-   * @default "Asc"
-   */
-  sortDirection?: SortOrder;
-  nextToken?: string;
-  /**
-   * @default: 100
-   */
-  maxResults?: number;
-  /**
-   * Start returning results after a date.
-   */
-  after?: string;
-}
-
-export interface ExecutionEventsResponse {
-  events: WorkflowEvent[];
-  nextToken?: string;
 }
 
 export interface ExecutionHistoryResponse {
@@ -174,64 +147,6 @@ export interface WorkflowReference {
   name: string;
 }
 
-export interface GetWorkflowResponse {
+export interface ListWorkflowsResponse {
   workflows: WorkflowReference[];
-}
-
-export enum ActivityUpdateType {
-  Success = "Success",
-  Failure = "Failure",
-  Heartbeat = "Heartbeat",
-}
-
-export type SendActivityUpdate<T = any> =
-  | SendActivitySuccessRequest<T>
-  | SendActivityFailureRequest
-  | SendActivityHeartbeatRequest;
-
-export interface SendActivitySuccessRequest<T = any> {
-  type: ActivityUpdateType.Success;
-  activityToken: string;
-  result: T;
-}
-
-export interface SendActivityFailureRequest {
-  type: ActivityUpdateType.Failure;
-  activityToken: string;
-  error: string;
-  message?: string;
-}
-
-export interface SendActivityHeartbeatRequest {
-  type: ActivityUpdateType.Heartbeat;
-  activityToken: string;
-}
-
-export function isSendActivitySuccessRequest<T = any>(
-  request: SendActivityUpdate<T>
-): request is SendActivitySuccessRequest<T> {
-  return request.type === ActivityUpdateType.Success;
-}
-
-export function isSendActivityFailureRequest(
-  request: SendActivityUpdate
-): request is SendActivityFailureRequest {
-  return request.type === ActivityUpdateType.Failure;
-}
-
-export function isSendActivityHeartbeatRequest(
-  request: SendActivityUpdate
-): request is SendActivityHeartbeatRequest {
-  return request.type === ActivityUpdateType.Heartbeat;
-}
-
-export type SendActivityUpdateResponse = SendActivityHeartbeatResponse | void;
-
-export interface SendActivityHeartbeatResponse {
-  /**
-   * True when the activity has been cancelled.
-   *
-   * This is the only way for a long running activity to know it was cancelled.
-   */
-  cancelled: boolean;
 }

@@ -1,31 +1,46 @@
+import { Execution, ExecutionHandle } from "../../execution.js";
+import { workflows } from "../../global.js";
 import {
-  SendActivitySuccessRequest,
   EventualServiceClient,
-  ExecutionEventsRequest,
-  ExecutionEventsResponse,
   ExecutionHistoryResponse,
-  SendActivityFailureRequest,
-  GetExecutionsRequest,
-  GetExecutionsResponse,
-  GetWorkflowResponse,
-  SendActivityHeartbeatRequest,
+  ListWorkflowsResponse,
   PublishEventsRequest,
   StartExecutionRequest,
-  SendActivityHeartbeatResponse,
 } from "../../service-client.js";
-import { Execution, ExecutionHandle } from "../../execution.js";
 import { Workflow } from "../../workflow.js";
+import { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
+import {
+  ListExecutionEventsRequest,
+  ListExecutionEventsResponse,
+  ExecutionHistoryStore,
+} from "../stores/execution-history-store.js";
+import {
+  ExecutionStore,
+  ListExecutionsRequest,
+  ListExecutionsResponse,
+} from "../stores/execution-store.js";
+import {
+  ActivityClient,
+  SendActivityFailureRequest,
+  SendActivityHeartbeatRequest,
+  SendActivityHeartbeatResponse,
+  SendActivitySuccessRequest,
+} from "./activity-client.js";
 import { EventClient } from "./event-client.js";
-import { ExecutionHistoryClient } from "./execution-history-client.js";
-import { SendSignalRequest, WorkflowClient } from "./workflow-client.js";
-import { WorkflowRuntimeClient } from "./workflow-runtime-client.js";
-import { workflows } from "../../global.js";
+import {
+  ExecutionQueueClient,
+  SendSignalRequest,
+} from "./execution-queue-client.js";
+import { WorkflowClient } from "./workflow-client.js";
 
 export interface RuntimeServiceClientProps {
+  activityClient: ActivityClient;
   workflowClient: WorkflowClient;
-  executionHistoryClient: ExecutionHistoryClient;
+  executionHistoryStore: ExecutionHistoryStore;
   eventClient: EventClient;
-  workflowRuntimeClient: WorkflowRuntimeClient;
+  executionStore: ExecutionStore;
+  executionQueueClient: ExecutionQueueClient;
+  executionHistoryStateStore: ExecutionHistoryStateStore;
 }
 
 /**
@@ -36,7 +51,7 @@ export interface RuntimeServiceClientProps {
 export class RuntimeServiceClient implements EventualServiceClient {
   constructor(private props: RuntimeServiceClientProps) {}
 
-  public async getWorkflows(): Promise<GetWorkflowResponse> {
+  public async listWorkflows(): Promise<ListWorkflowsResponse> {
     return {
       workflows: Array.from(workflows().keys()).map((k) => ({ name: k })),
     };
@@ -51,28 +66,28 @@ export class RuntimeServiceClient implements EventualServiceClient {
     return new ExecutionHandle(executionId, this);
   }
 
-  public async getExecutions(
-    request: GetExecutionsRequest
-  ): Promise<GetExecutionsResponse> {
-    return this.props.workflowClient.getExecutions(request);
+  public async listExecutions(
+    request: ListExecutionsRequest
+  ): Promise<ListExecutionsResponse> {
+    return this.props.executionStore.list(request);
   }
 
   public getExecution(
     executionId: string
   ): Promise<Execution<any> | undefined> {
-    return this.props.workflowClient.getExecution(executionId);
+    return this.props.executionStore.get(executionId);
   }
 
   public getExecutionHistory(
-    request: ExecutionEventsRequest
-  ): Promise<ExecutionEventsResponse> {
-    return this.props.executionHistoryClient.getEvents(request);
+    request: ListExecutionEventsRequest
+  ): Promise<ListExecutionEventsResponse> {
+    return this.props.executionHistoryStore.getEvents(request);
   }
 
   public async getExecutionWorkflowHistory(
     executionId: string
   ): Promise<ExecutionHistoryResponse> {
-    const events = await this.props.workflowRuntimeClient.getHistory(
+    const events = await this.props.executionHistoryStateStore.getHistory(
       executionId
     );
     return {
@@ -81,7 +96,7 @@ export class RuntimeServiceClient implements EventualServiceClient {
   }
 
   public async sendSignal(request: SendSignalRequest): Promise<void> {
-    return this.props.workflowClient.sendSignal(request);
+    return this.props.executionQueueClient.sendSignal(request);
   }
 
   public publishEvents(request: PublishEventsRequest): Promise<void> {
@@ -91,18 +106,18 @@ export class RuntimeServiceClient implements EventualServiceClient {
   public sendActivitySuccess(
     request: Omit<SendActivitySuccessRequest<any>, "type">
   ): Promise<void> {
-    return this.props.workflowClient.sendActivitySuccess(request);
+    return this.props.activityClient.sendSuccess(request);
   }
 
   public sendActivityFailure(
     request: Omit<SendActivityFailureRequest, "type">
   ): Promise<void> {
-    return this.props.workflowClient.sendActivityFailure(request);
+    return this.props.activityClient.sendFailure(request);
   }
 
   public sendActivityHeartbeat(
     request: Omit<SendActivityHeartbeatRequest, "type">
   ): Promise<SendActivityHeartbeatResponse> {
-    return this.props.workflowClient.sendActivityHeartbeat(request);
+    return this.props.activityClient.sendHeartbeat(request);
   }
 }

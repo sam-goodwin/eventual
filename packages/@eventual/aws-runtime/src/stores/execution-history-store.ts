@@ -2,39 +2,28 @@ import {
   AttributeValue,
   BatchWriteItemCommand,
   DynamoDBClient,
-  PutItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import {
   BaseEvent,
-  ExecutionEventsRequest,
-  ExecutionEventsResponse,
-  ExecutionHistoryClient,
+  ListExecutionEventsRequest,
+  ListExecutionEventsResponse,
+  ExecutionHistoryStore,
   getEventId,
   SortOrder,
   WorkflowEvent,
+  getLazy,
+  LazyValue,
 } from "@eventual/core";
-import { queryPageWithToken } from "./utils.js";
+import { queryPageWithToken } from "../utils.js";
 
-export interface AWSExecutionHistoryClientProps {
+export interface AWSExecutionHistoryStoreProps {
   readonly dynamo: DynamoDBClient;
-  readonly tableName: string;
+  readonly tableName: LazyValue<string>;
 }
 
-export class AWSExecutionHistoryClient extends ExecutionHistoryClient {
-  constructor(private props: AWSExecutionHistoryClientProps) {
+export class AWSExecutionHistoryStore extends ExecutionHistoryStore {
+  constructor(private props: AWSExecutionHistoryStoreProps) {
     super();
-  }
-
-  public async putEvent<T extends WorkflowEvent>(
-    executionId: string,
-    event: T
-  ): Promise<void> {
-    await this.props.dynamo.send(
-      new PutItemCommand({
-        Item: createEventRecord(executionId, event),
-        TableName: this.props.tableName,
-      })
-    );
   }
 
   /**
@@ -48,7 +37,7 @@ export class AWSExecutionHistoryClient extends ExecutionHistoryClient {
     await this.props.dynamo.send(
       new BatchWriteItemCommand({
         RequestItems: {
-          [this.props.tableName]: events.map((event) => ({
+          [getLazy(this.props.tableName)]: events.map((event) => ({
             PutRequest: {
               Item: createEventRecord(executionId, event),
             },
@@ -62,8 +51,8 @@ export class AWSExecutionHistoryClient extends ExecutionHistoryClient {
    * Read an execution's events from the execution history table table
    */
   public async getEvents(
-    request: ExecutionEventsRequest
-  ): Promise<ExecutionEventsResponse> {
+    request: ListExecutionEventsRequest
+  ): Promise<ListExecutionEventsResponse> {
     // normalize the date given and ensure it is a valid date.
     const after = request.after ? new Date(request.after) : undefined;
     const output = await queryPageWithToken<EventRecord>(
@@ -74,7 +63,7 @@ export class AWSExecutionHistoryClient extends ExecutionHistoryClient {
         nextToken: request.nextToken,
       },
       {
-        TableName: this.props.tableName,
+        TableName: getLazy(this.props.tableName),
         KeyConditionExpression: "pk = :pk AND begins_with ( sk, :sk )",
         FilterExpression: after ? "#ts > :tsUpper" : undefined,
         ScanIndexForward: request.sortDirection !== SortOrder.Desc,

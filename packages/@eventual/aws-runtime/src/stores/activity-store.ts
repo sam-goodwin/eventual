@@ -6,30 +6,27 @@ import {
   ReturnValue,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import type { ActivityExecution, ActivityRuntimeClient } from "@eventual/core";
+import {
+  ActivityExecution,
+  ActivityStore,
+  getLazy,
+  LazyValue,
+} from "@eventual/core";
 
-export interface AWSActivityRuntimeClientProps {
+export interface AWSActivityStoreProps {
+  activityTableName: LazyValue<string>;
   dynamo: DynamoDBClient;
-  activityTableName: string;
 }
 
-export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
-  constructor(private props: AWSActivityRuntimeClientProps) {}
+export class AWSActivityStore implements ActivityStore {
+  constructor(private props: AWSActivityStoreProps) {}
 
-  /**
-   * Claims a activity for an actor.
-   *
-   * Future invocations of the same executionId + future.seq + retry will fail.
-   *
-   * @param claimer optional string to correlate the lock to the claimer.
-   * @return a boolean determining if the claim was granted to the current actor.
-   **/
-  public async claimActivity(
+  public async claim(
     executionId: string,
     seq: number,
     retry: number,
-    claimer?: string
-  ) {
+    claimer?: string | undefined
+  ): Promise<boolean> {
     try {
       await this.props.dynamo.send(
         new UpdateItemCommand({
@@ -46,7 +43,7 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
             ":executionId": { S: executionId },
             ":seq": { N: `${seq}` },
           },
-          TableName: this.props.activityTableName,
+          TableName: getLazy(this.props.activityTableName),
           ConditionExpression: `attribute_not_exists(#claims)`,
         })
       );
@@ -60,14 +57,11 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
     }
   }
 
-  /*
-   * Heartbeat an activity.
-   **/
-  public async heartbeatActivity(
+  public async heartbeat(
     executionId: string,
     seq: number,
     heartbeatTime: string
-  ): Promise<{ cancelled: boolean }> {
+  ): Promise<ActivityExecution> {
     const item = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
@@ -80,18 +74,15 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
           ":executionId": { S: executionId },
           ":seq": { N: `${seq}` },
         },
-        TableName: this.props.activityTableName,
+        TableName: getLazy(this.props.activityTableName),
         ReturnValues: ReturnValue.ALL_NEW,
       })
     );
 
-    return {
-      cancelled:
-        (item.Attributes as ActivityExecutionRecord).cancelled?.BOOL ?? false,
-    };
+    return createActivityFromRecord(item.Attributes as ActivityExecutionRecord);
   }
 
-  public async cancelActivity(executionId: string, seq: number) {
+  public async cancel(executionId: string, seq: number): Promise<void> {
     await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
@@ -104,12 +95,12 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
           ":executionId": { S: executionId },
           ":seq": { N: `${seq}` },
         },
-        TableName: this.props.activityTableName,
+        TableName: getLazy(this.props.activityTableName),
       })
     );
   }
 
-  public async getActivity(
+  public async get(
     executionId: string,
     seq: number
   ): Promise<ActivityExecution | undefined> {
@@ -118,7 +109,7 @@ export class AWSActivityRuntimeClient implements ActivityRuntimeClient {
         Key: {
           pk: { S: ActivityExecutionRecord.key(executionId, seq) },
         },
-        TableName: this.props.activityTableName,
+        TableName: getLazy(this.props.activityTableName),
         ConsistentRead: true,
       })
     );
