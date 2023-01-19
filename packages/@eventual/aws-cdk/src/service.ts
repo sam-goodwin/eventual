@@ -202,7 +202,7 @@ export class Service extends Construct implements IGrantable {
     const proxyWorkflows = lazyInterface<IWorkflows>();
     const proxyActivities = lazyInterface<IActivities>();
 
-    this.logging = new Logging(this, "logging", {
+    this.logging = new Logging(this, "Logging", {
       ...(props.logging ?? {}),
       serviceName: this.serviceName,
     });

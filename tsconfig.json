@@ -12,6 +12,7 @@
     { "path": "packages/@eventual/aws-cdk" },
     { "path": "packages/@eventual/aws-client" },
     { "path": "packages/@eventual/aws-client/tsconfig.cjs.json" },
+    { "path": "packages/@eventual/aws-pulumi" },
     { "path": "packages/@eventual/aws-runtime" },
     { "path": "packages/@eventual/aws-runtime/tsconfig.cjs.json" },
     { "path": "packages/@eventual/cli" },
