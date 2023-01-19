@@ -48,9 +48,9 @@ export const createExecutionHistoryStore = /* @__PURE__ */ memoize(
   ({ tableName }: { tableName?: string } = {}) =>
     new AWSExecutionHistoryStore({
       dynamo: dynamo(),
-      tableName: tableName ?? env.tableName(),
+      tableName: tableName ?? env.tableName,
     }),
-  { cacheKey: (opts) => opts?.tableName ?? env.tableName() }
+  { cacheKey: (opts) => opts?.tableName ?? env.tableName }
 );
 
 export const createWorkflowClient = /* @__PURE__ */ memoize(
@@ -75,7 +75,7 @@ export const createExecutionQueueClient = /* @__PURE__ */ memoize(
   ({ workflowQueueUrl }: { workflowQueueUrl?: string } = {}) =>
     new AWSExecutionQueueClient({
       sqs: sqs(),
-      workflowQueueUrl: workflowQueueUrl ?? env.workflowQueueUrl(),
+      workflowQueueUrl: workflowQueueUrl ?? env.workflowQueueUrl,
     })
 );
 
@@ -83,7 +83,7 @@ export const createExecutionStore = /* @__PURE__ */ memoize(
   ({ tableName }: { tableName?: string } = {}) =>
     new AWSExecutionStore({
       dynamo: dynamo(),
-      tableName: tableName ?? env.tableName(),
+      tableName: tableName ?? env.tableName,
     })
 );
 
@@ -91,7 +91,7 @@ export const createLogsClient = /* @__PURE__ */ memoize(
   ({ serviceLogGroup }: { serviceLogGroup?: string } = {}) =>
     new AWSLogsClient({
       cloudwatchLogsClient: cloudwatchLogs(),
-      serviceLogGroup: serviceLogGroup ?? env.serviceLogGroupName(),
+      serviceLogGroup: serviceLogGroup ?? env.serviceLogGroupName,
     })
 );
 
@@ -106,12 +106,7 @@ export const createLogAgent = /* @__PURE__ */ memoize(
     return new LogAgent({
       logsClient: logsClient ?? createLogsClient(),
       logLevel: {
-        default:
-          defaultLogLevel ??
-          (process.env[env.ENV_NAMES.DEFAULT_LOG_LEVEL] as
-            | LogLevel
-            | undefined) ??
-          LogLevel.INFO,
+        default: defaultLogLevel ?? env.defaultLogLevel ?? LogLevel.INFO,
       },
     });
   }
@@ -120,7 +115,7 @@ export const createLogAgent = /* @__PURE__ */ memoize(
 export const createActivityStore = /* @__PURE__ */ memoize(
   ({ activityTableName }: { activityTableName?: string } = {}) =>
     new AWSActivityStore({
-      activityTableName: activityTableName ?? env.activityTableName(),
+      activityTableName: activityTableName ?? env.activityTableName,
       dynamo: dynamo(),
     })
 );
@@ -129,21 +124,21 @@ export const createTimerClient = /* @__PURE__ */ memoize(
   (props: Partial<AWSTimerClientProps> = {}) =>
     new AWSTimerClient({
       scheduler: props.scheduler ?? scheduler(),
-      schedulerRoleArn: props.schedulerRoleArn ?? env.schedulerRoleArn(),
-      schedulerDlqArn: props.schedulerDlqArn ?? env.schedulerDlqArn(),
-      schedulerGroup: props.schedulerGroup ?? env.schedulerGroup(),
+      schedulerRoleArn: props.schedulerRoleArn ?? env.schedulerRoleArn,
+      schedulerDlqArn: props.schedulerDlqArn ?? env.schedulerDlqArn,
+      schedulerGroup: props.schedulerGroup ?? env.schedulerGroup,
       timerQueueThresholdSeconds: props.timerQueueThresholdSeconds ?? 15 * 60,
       sqs: props.sqs ?? sqs(),
-      timerQueueUrl: props.timerQueueUrl ?? env.timerQueueUrl(),
+      timerQueueUrl: props.timerQueueUrl ?? env.timerQueueUrl,
       scheduleForwarderArn:
-        props.scheduleForwarderArn ?? env.schedulerForwarderArn(),
+        props.scheduleForwarderArn ?? env.schedulerForwarderArn,
     }),
   { cacheKey: JSON.stringify }
 );
 
 export const createActivityClient = /* @__PURE__ */ memoize(
   ({
-    activityWorkerFunctionName = env.activityWorkerFunctionName(),
+    activityWorkerFunctionName = env.activityWorkerFunctionName,
     executionQueueClient,
     executionStore,
     activityStore,
@@ -169,15 +164,15 @@ export const createExecutionHistoryStateStore = /* @__PURE__ */ memoize(
     new AWSExecutionHistoryStateStore({
       s3: s3(),
       executionHistoryBucket:
-        executionHistoryBucket ?? env.executionHistoryBucket(),
+        executionHistoryBucket ?? env.executionHistoryBucket,
     })
 );
 
 export const createEventClient = /* @__PURE__ */ memoize(
   () =>
     new AWSEventClient({
-      serviceName: env.serviceName(),
-      eventBusArn: env.eventBusArn(),
+      serviceName: env.serviceName,
+      eventBusArn: env.eventBusArn,
     })
 );
 
