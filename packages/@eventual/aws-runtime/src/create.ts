@@ -10,6 +10,7 @@ import {
   ActivityStore,
   ExecutionQueueClient,
   ExecutionStore,
+  GlobalWorkflowProvider,
   LogAgent,
   LogLevel,
   LogsClient,
@@ -46,6 +47,10 @@ const cloudwatchLogs = /* @__PURE__ */ memoize(
 const scheduler = /* @__PURE__ */ memoize(() => new SchedulerClient({}));
 const eventBridge = /* @__PURE__ */ memoize(() => new EventBridgeClient({}));
 
+export const createWorkflowProvider = /* @__PURE__ */ memoize(
+  () => new GlobalWorkflowProvider()
+);
+
 export const createExecutionHistoryStore = /* @__PURE__ */ memoize(
   ({ tableName }: { tableName?: string } = {}) =>
     new AWSExecutionHistoryStore({
@@ -68,7 +73,8 @@ export const createWorkflowClient = /* @__PURE__ */ memoize(
     new WorkflowClient(
       executionStore ?? createExecutionStore(),
       logsClient ?? createLogsClient(),
-      executionQueueClient ?? createExecutionQueueClient()
+      executionQueueClient ?? createExecutionQueueClient(),
+      createWorkflowProvider()
     )
 );
 

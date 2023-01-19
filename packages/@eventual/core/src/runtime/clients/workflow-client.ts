@@ -18,8 +18,12 @@ import {
   WorkflowEventType,
   WorkflowStarted,
 } from "../../workflow-events.js";
-import { lookupWorkflow, Workflow, WorkflowOptions } from "../../workflow.js";
-import { formatExecutionId } from "../execution-id.js";
+import { Workflow, WorkflowOptions } from "../../workflow.js";
+import {
+  formatExecutionId,
+  INTERNAL_EXECUTION_ID_PREFIX,
+} from "../execution-id.js";
+import { WorkflowProvider } from "../providers/workflow-provider.js";
 import {
   ExecutionStore,
   FailExecutionRequest,
@@ -33,13 +37,12 @@ export class WorkflowClient {
     private executionStore: ExecutionStore,
     private logsClient: LogsClient,
     private executionQueueClient: ExecutionQueueClient,
+    private workflowProvider: WorkflowProvider,
     protected baseTime: () => Date = () => new Date()
   ) {}
 
   /**
    * Start a workflow execution
-   *
-   * NOTE: the service entry point is required to access {@link workflows()}.
    *
    * @param name Suffix of execution id
    * @param input Workflow parameters
@@ -53,9 +56,14 @@ export class WorkflowClient {
   }:
     | StartExecutionRequest<W>
     | StartChildExecutionRequest<W>): Promise<StartExecutionResponse> {
-    if (typeof workflow === "string" && !lookupWorkflow(workflow)) {
+    if (
+      typeof workflow === "string" &&
+      !this.workflowProvider.lookupWorkflow(workflow)
+    ) {
       throw new Error(`Workflow ${workflow} does not exist in the service.`);
     }
+
+    validateExecutionName(executionName, "parentExecutionId" in request);
 
     const workflowName =
       typeof workflow === "string" ? workflow : workflow.workflowName;
@@ -88,10 +96,6 @@ export class WorkflowClient {
           const execution = await this.executionStore.get(executionId);
           if (execution?.inputHash === inputHash) {
             return { executionId, alreadyRunning: true };
-          } else {
-            throw new Error(
-              `Execution name ${executionName} already exists for workflow ${workflowName} with different inputs.`
-            );
           }
         }
         // rethrow to the top catch
@@ -204,4 +208,12 @@ export interface StartChildExecutionRequest<W extends Workflow = Workflow>
    * Sequence ID of this execution if this is a child workflow
    */
   seq: number;
+}
+
+function validateExecutionName(executionName: string, isChild: boolean) {
+  if (!isChild && executionName.startsWith(INTERNAL_EXECUTION_ID_PREFIX)) {
+    throw new Error(
+      `Execution names may not start with ${INTERNAL_EXECUTION_ID_PREFIX}`
+    );
+  }
 }
