@@ -7,13 +7,15 @@ import {
 } from "@aws-sdk/client-s3";
 import {
   ExecutionHistoryStateStore,
+  getLazy,
   HistoryStateEvent,
+  LazyValue,
   UpdateHistoryRequest,
 } from "@eventual/core";
 
 export interface AWSExecutionHistoryStateStoreProps {
   s3: S3Client;
-  executionHistoryBucket: string;
+  executionHistoryBucket: LazyValue<string>;
 }
 
 export class AWSExecutionHistoryStateStore
@@ -27,7 +29,7 @@ export class AWSExecutionHistoryStateStore
       const historyObject = await this.props.s3.send(
         new GetObjectCommand({
           Key: formatExecutionHistoryKey(executionId),
-          Bucket: this.props.executionHistoryBucket,
+          Bucket: getLazy(this.props.executionHistoryBucket),
         })
       );
 
@@ -48,7 +50,7 @@ export class AWSExecutionHistoryStateStore
     await this.props.s3.send(
       new PutObjectCommand({
         Key: formatExecutionHistoryKey(request.executionId),
-        Bucket: this.props.executionHistoryBucket,
+        Bucket: getLazy(this.props.executionHistoryBucket),
         Body: content,
       })
     );

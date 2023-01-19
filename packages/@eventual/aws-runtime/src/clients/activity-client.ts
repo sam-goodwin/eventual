@@ -7,11 +7,13 @@ import {
   ActivityClient,
   ActivityClientProps,
   ActivityWorkerRequest,
+  getLazy,
+  LazyValue,
 } from "@eventual/core";
 
 export interface AWSActivityClientProps extends ActivityClientProps {
   lambda: LambdaClient;
-  activityWorkerFunctionName: string;
+  activityWorkerFunctionName: LazyValue<string>;
 }
 
 export class AWSActivityClient extends ActivityClient {
@@ -22,7 +24,7 @@ export class AWSActivityClient extends ActivityClient {
   public async startActivity(request: ActivityWorkerRequest): Promise<void> {
     await this._props.lambda.send(
       new InvokeCommand({
-        FunctionName: this._props.activityWorkerFunctionName,
+        FunctionName: getLazy(this._props.activityWorkerFunctionName),
         Payload: Buffer.from(JSON.stringify(request)),
         InvocationType: InvocationType.Event,
       })

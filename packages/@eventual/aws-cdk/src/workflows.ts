@@ -243,7 +243,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
   }
 
   public configureWriteHistoryState(func: Function) {
-    this.grantReadHistoryState(func);
+    this.grantWriteHistoryState(func);
     this.addEnvs(func, ENV_NAMES.EXECUTION_HISTORY_BUCKET);
   }
 

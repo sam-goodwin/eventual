@@ -36,3 +36,13 @@ export function groupBy<T>(
     };
   }, {});
 }
+
+export type LazyValue<T extends string | number | object | boolean> =
+  | T
+  | (() => T);
+
+export function getLazy<T extends string | number | object | boolean>(
+  lazy: LazyValue<T>
+): T {
+  return typeof lazy !== "function" ? lazy : lazy();
+}

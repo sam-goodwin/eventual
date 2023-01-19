@@ -19,22 +19,24 @@ import {
   Schedule,
   isTimeSchedule,
   computeDurationSeconds,
+  LazyValue,
+  getLazy,
 } from "@eventual/core";
 import { ulid } from "ulidx";
 
 export interface AWSTimerClientProps {
   readonly scheduler: SchedulerClient;
-  readonly schedulerRoleArn: string;
-  readonly schedulerDlqArn: string;
-  readonly schedulerGroup: string;
+  readonly schedulerRoleArn: LazyValue<string>;
+  readonly schedulerDlqArn: LazyValue<string>;
+  readonly schedulerGroup: LazyValue<string>;
   /**
    * If a timer has a longer duration (in seconds) than this threshold,
    * create an Event Bus Scheduler before sending it to the TimerQueue
    */
   readonly timerQueueThresholdSeconds: number;
-  readonly timerQueueUrl: string;
+  readonly timerQueueUrl: LazyValue<string>;
   readonly sqs: SQSClient;
-  readonly scheduleForwarderArn: string;
+  readonly scheduleForwarderArn: LazyValue<string>;
 }
 
 export class AWSTimerClient extends TimerClient {
@@ -68,7 +70,7 @@ export class AWSTimerClient extends TimerClient {
 
     await this.props.sqs.send(
       new SendMessageCommand({
-        QueueUrl: this.props.timerQueueUrl,
+        QueueUrl: getLazy(this.props.timerQueueUrl),
         MessageBody: JSON.stringify(timerRequest),
         DelaySeconds: delaySeconds,
       })
@@ -129,13 +131,13 @@ export class AWSTimerClient extends TimerClient {
       try {
         await this.props.scheduler.send(
           new CreateScheduleCommand({
-            GroupName: this.props.schedulerGroup,
+            GroupName: getLazy(this.props.schedulerGroup),
             FlexibleTimeWindow: { Mode: FlexibleTimeWindowMode.OFF },
             ScheduleExpression: `at(${formattedSchedulerTime})`,
             Name: scheduleName,
             Target: {
-              Arn: this.props.scheduleForwarderArn,
-              RoleArn: this.props.schedulerRoleArn,
+              Arn: getLazy(this.props.scheduleForwarderArn),
+              RoleArn: getLazy(this.props.schedulerRoleArn),
               Input: JSON.stringify(schedulerForwardEvent),
               RetryPolicy: {
                 // send to the DLQ if 14 minutes have passed without forwarding the event.
@@ -143,7 +145,7 @@ export class AWSTimerClient extends TimerClient {
               },
               DeadLetterConfig: {
                 // TODO: handle messages in the DLQ - https://github.com/functionless/eventual/issues/39
-                Arn: this.props.schedulerDlqArn,
+                Arn: getLazy(this.props.schedulerDlqArn),
               },
             },
           })
@@ -177,7 +179,7 @@ export class AWSTimerClient extends TimerClient {
       await this.props.scheduler.send(
         new DeleteScheduleCommand({
           Name: scheduleName,
-          GroupName: this.props.schedulerGroup,
+          GroupName: getLazy(this.props.schedulerGroup),
           // the docs say optional, but an error is thrown when not present.
           ClientToken: scheduleName,
         })

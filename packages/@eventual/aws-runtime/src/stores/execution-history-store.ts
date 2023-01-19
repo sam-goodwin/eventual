@@ -11,12 +11,14 @@ import {
   getEventId,
   SortOrder,
   WorkflowEvent,
+  getLazy,
+  LazyValue,
 } from "@eventual/core";
 import { queryPageWithToken } from "../utils.js";
 
 export interface AWSExecutionHistoryStoreProps {
   readonly dynamo: DynamoDBClient;
-  readonly tableName: string;
+  readonly tableName: LazyValue<string>;
 }
 
 export class AWSExecutionHistoryStore extends ExecutionHistoryStore {
@@ -35,7 +37,7 @@ export class AWSExecutionHistoryStore extends ExecutionHistoryStore {
     await this.props.dynamo.send(
       new BatchWriteItemCommand({
         RequestItems: {
-          [this.props.tableName]: events.map((event) => ({
+          [getLazy(this.props.tableName)]: events.map((event) => ({
             PutRequest: {
               Item: createEventRecord(executionId, event),
             },
@@ -61,7 +63,7 @@ export class AWSExecutionHistoryStore extends ExecutionHistoryStore {
         nextToken: request.nextToken,
       },
       {
-        TableName: this.props.tableName,
+        TableName: getLazy(this.props.tableName),
         KeyConditionExpression: "pk = :pk AND begins_with ( sk, :sk )",
         FilterExpression: after ? "#ts > :tsUpper" : undefined,
         ScanIndexForward: request.sortDirection !== SortOrder.Desc,

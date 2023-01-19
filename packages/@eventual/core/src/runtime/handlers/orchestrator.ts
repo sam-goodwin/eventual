@@ -85,7 +85,10 @@ export interface OrchestratorResult {
 }
 
 export interface Orchestrator {
-  (workflowTasks: WorkflowTask[], baseTime?: Date): Promise<OrchestratorResult>;
+  (
+    workflowTasks: WorkflowTask[],
+    baseTime?: () => Date
+  ): Promise<OrchestratorResult>;
 }
 
 /**
@@ -103,7 +106,7 @@ export function createOrchestrator({
   timerClient,
   workflowClient,
 }: OrchestratorDependencies): Orchestrator {
-  return async (workflowTasks, baseTime = new Date()) =>
+  return async (workflowTasks, baseTime = () => new Date()) =>
     await serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
       const tasksByExecutionId = groupBy(
         workflowTasks,
@@ -165,10 +168,10 @@ export function createOrchestrator({
     workflowName: string,
     executionId: string,
     events: HistoryStateEvent[],
-    baseTime: Date
+    baseTime: () => Date
   ) {
     const metrics = initializeMetrics();
-    const start = baseTime;
+    const start = baseTime();
 
     const executionLogContext: ExecutionLogContext = {
       type: LogContextType.Execution,
@@ -225,7 +228,7 @@ export function createOrchestrator({
       // length of time the oldest event in the queue.
       const maxTaskAge = Math.max(
         ...events.map(
-          (event) => new Date().getTime() - Date.parse(event.timestamp)
+          (event) => baseTime().getTime() - Date.parse(event.timestamp)
         )
       );
       metrics.putMetric(
@@ -269,7 +272,7 @@ export function createOrchestrator({
         const processedEvents = processEvents(
           history,
           [runStarted, ...events],
-          baseTime
+          baseTime()
         );
 
         /**

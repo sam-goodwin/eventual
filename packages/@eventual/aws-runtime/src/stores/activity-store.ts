@@ -6,10 +6,15 @@ import {
   ReturnValue,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import { ActivityExecution, ActivityStore } from "@eventual/core";
+import {
+  ActivityExecution,
+  ActivityStore,
+  getLazy,
+  LazyValue,
+} from "@eventual/core";
 
 export interface AWSActivityStoreProps {
-  activityTableName: string;
+  activityTableName: LazyValue<string>;
   dynamo: DynamoDBClient;
 }
 
@@ -38,7 +43,7 @@ export class AWSActivityStore implements ActivityStore {
             ":executionId": { S: executionId },
             ":seq": { N: `${seq}` },
           },
-          TableName: this.props.activityTableName,
+          TableName: getLazy(this.props.activityTableName),
           ConditionExpression: `attribute_not_exists(#claims)`,
         })
       );
@@ -69,7 +74,7 @@ export class AWSActivityStore implements ActivityStore {
           ":executionId": { S: executionId },
           ":seq": { N: `${seq}` },
         },
-        TableName: this.props.activityTableName,
+        TableName: getLazy(this.props.activityTableName),
         ReturnValues: ReturnValue.ALL_NEW,
       })
     );
@@ -90,7 +95,7 @@ export class AWSActivityStore implements ActivityStore {
           ":executionId": { S: executionId },
           ":seq": { N: `${seq}` },
         },
-        TableName: this.props.activityTableName,
+        TableName: getLazy(this.props.activityTableName),
       })
     );
   }
@@ -104,7 +109,7 @@ export class AWSActivityStore implements ActivityStore {
         Key: {
           pk: { S: ActivityExecutionRecord.key(executionId, seq) },
         },
-        TableName: this.props.activityTableName,
+        TableName: getLazy(this.props.activityTableName),
         ConsistentRead: true,
       })
     );

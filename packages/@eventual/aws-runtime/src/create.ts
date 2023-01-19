@@ -25,6 +25,7 @@ import { AWSExecutionHistoryStateStore } from "./stores/execution-history-state-
 import { AWSExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { AWSActivityStore } from "./stores/activity-store.js";
 import { AWSActivityClient } from "./clients/activity-client.js";
+import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -43,6 +44,7 @@ const cloudwatchLogs = /* @__PURE__ */ memoize(
   () => new CloudWatchLogsClient({})
 );
 const scheduler = /* @__PURE__ */ memoize(() => new SchedulerClient({}));
+const eventBridge = /* @__PURE__ */ memoize(() => new EventBridgeClient({}));
 
 export const createExecutionHistoryStore = /* @__PURE__ */ memoize(
   ({ tableName }: { tableName?: string } = {}) =>
@@ -106,7 +108,7 @@ export const createLogAgent = /* @__PURE__ */ memoize(
     return new LogAgent({
       logsClient: logsClient ?? createLogsClient(),
       logLevel: {
-        default: defaultLogLevel ?? env.defaultLogLevel ?? LogLevel.INFO,
+        default: defaultLogLevel ?? env.defaultLogLevel,
       },
     });
   }
@@ -138,7 +140,7 @@ export const createTimerClient = /* @__PURE__ */ memoize(
 
 export const createActivityClient = /* @__PURE__ */ memoize(
   ({
-    activityWorkerFunctionName = env.activityWorkerFunctionName,
+    activityWorkerFunctionName,
     executionQueueClient,
     executionStore,
     activityStore,
@@ -150,7 +152,8 @@ export const createActivityClient = /* @__PURE__ */ memoize(
   } = {}) =>
     new AWSActivityClient({
       lambda: lambda(),
-      activityWorkerFunctionName,
+      activityWorkerFunctionName:
+        activityWorkerFunctionName ?? env.activityWorkerFunctionName,
       executionQueueClient:
         executionQueueClient ?? createExecutionQueueClient(),
       executionStore: executionStore ?? createExecutionStore(),
@@ -173,6 +176,7 @@ export const createEventClient = /* @__PURE__ */ memoize(
     new AWSEventClient({
       serviceName: env.serviceName,
       eventBusArn: env.eventBusArn,
+      eventBridgeClient: eventBridge(),
     })
 );
 

@@ -17,10 +17,6 @@ export const ENV_NAMES = {
   DEFAULT_LOG_LEVEL: "EVENTUAL_LOG_LEVEL",
 } as const;
 
-export function lazyEnv<T extends string = string>(env: string): T {
-  return new Proxy({}, { get: () => tryGetEnv<T>(env) }) as T;
-}
-
 export function tryGetEnv<T extends string = string>(name: string) {
   return assertNonNull<T>(
     process.env[name] as T | undefined,
@@ -28,21 +24,23 @@ export function tryGetEnv<T extends string = string>(name: string) {
   ) as T;
 }
 
-export const serviceName = lazyEnv(ENV_NAMES.SERVICE_NAME);
-export const tableName = lazyEnv(ENV_NAMES.TABLE_NAME);
-export const eventBusArn = lazyEnv(ENV_NAMES.EVENT_BUS_ARN);
-export const executionHistoryBucket = lazyEnv(
-  ENV_NAMES.EXECUTION_HISTORY_BUCKET
-);
-export const workflowQueueUrl = lazyEnv(ENV_NAMES.WORKFLOW_QUEUE_URL);
-export const activityWorkerFunctionName = lazyEnv(
-  ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME
-);
-export const activityTableName = lazyEnv(ENV_NAMES.ACTIVITY_TABLE_NAME);
-export const schedulerRoleArn = lazyEnv(ENV_NAMES.SCHEDULER_ROLE_ARN);
-export const schedulerDlqArn = lazyEnv(ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN);
-export const schedulerGroup = lazyEnv(ENV_NAMES.SCHEDULER_GROUP);
-export const timerQueueUrl = lazyEnv(ENV_NAMES.TIMER_QUEUE_URL);
-export const schedulerForwarderArn = lazyEnv(ENV_NAMES.SCHEDULE_FORWARDER_ARN);
-export const serviceLogGroupName = lazyEnv(ENV_NAMES.SERVICE_LOG_GROUP_NAME);
-export const defaultLogLevel = lazyEnv<LogLevel>(ENV_NAMES.DEFAULT_LOG_LEVEL);
+export const serviceName = () => tryGetEnv(ENV_NAMES.SERVICE_NAME);
+export const tableName = () => tryGetEnv(ENV_NAMES.TABLE_NAME);
+export const eventBusArn = () => tryGetEnv(ENV_NAMES.EVENT_BUS_ARN);
+export const executionHistoryBucket = () =>
+  tryGetEnv(ENV_NAMES.EXECUTION_HISTORY_BUCKET);
+export const workflowQueueUrl = () => tryGetEnv(ENV_NAMES.WORKFLOW_QUEUE_URL);
+export const activityWorkerFunctionName = () =>
+  tryGetEnv(ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME);
+export const activityTableName = () => tryGetEnv(ENV_NAMES.ACTIVITY_TABLE_NAME);
+export const schedulerRoleArn = () => tryGetEnv(ENV_NAMES.SCHEDULER_ROLE_ARN);
+export const schedulerDlqArn = () =>
+  tryGetEnv(ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN);
+export const schedulerGroup = () => tryGetEnv(ENV_NAMES.SCHEDULER_GROUP);
+export const timerQueueUrl = () => tryGetEnv(ENV_NAMES.TIMER_QUEUE_URL);
+export const schedulerForwarderArn = () =>
+  tryGetEnv(ENV_NAMES.SCHEDULE_FORWARDER_ARN);
+export const serviceLogGroupName = () =>
+  tryGetEnv(ENV_NAMES.SERVICE_LOG_GROUP_NAME);
+export const defaultLogLevel = () =>
+  tryGetEnv<LogLevel>(ENV_NAMES.DEFAULT_LOG_LEVEL) ?? LogLevel.INFO;

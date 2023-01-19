@@ -24,11 +24,13 @@ import {
   SortOrder,
   SucceededExecution,
   SucceedExecutionRequest,
+  LazyValue,
+  getLazy,
 } from "@eventual/core";
 import { queryPageWithToken } from "../utils.js";
 
 export interface AWSExecutionStoreProps {
-  tableName: string;
+  tableName: LazyValue<string>;
   dynamo: DynamoDBClient;
 }
 
@@ -48,7 +50,7 @@ export class AWSExecutionStore implements ExecutionStore {
     try {
       await this.props.dynamo.send(
         new PutItemCommand({
-          TableName: this.props.tableName,
+          TableName: getLazy(this.props.tableName),
           Item: {
             pk: { S: ExecutionRecord.PARTITION_KEY },
             sk: { S: ExecutionRecord.sortKey(execution.id) },
@@ -88,7 +90,7 @@ export class AWSExecutionStore implements ExecutionStore {
               pk: { S: ExecutionRecord.PARTITION_KEY },
               sk: { S: ExecutionRecord.sortKey(request.executionId) },
             },
-            TableName: this.props.tableName,
+            TableName: getLazy(this.props.tableName),
             UpdateExpression:
               "SET #status=:failed, #error=:error, #message=:message, endTime=if_not_exists(endTime,:endTime)",
             ExpressionAttributeNames: {
@@ -111,7 +113,7 @@ export class AWSExecutionStore implements ExecutionStore {
               pk: { S: ExecutionRecord.PARTITION_KEY },
               sk: { S: ExecutionRecord.sortKey(request.executionId) },
             },
-            TableName: this.props.tableName,
+            TableName: getLazy(this.props.tableName),
             UpdateExpression: request.result
               ? "SET #status=:complete, #result=:result, endTime=if_not_exists(endTime,:endTime)"
               : "SET #status=:complete, endTime=if_not_exists(endTime,:endTime)",
@@ -144,7 +146,7 @@ export class AWSExecutionStore implements ExecutionStore {
           pk: { S: ExecutionRecord.PARTITION_KEY },
           sk: { S: ExecutionRecord.sortKey(executionId) },
         },
-        TableName: this.props.tableName,
+        TableName: getLazy(this.props.tableName),
       })
     );
 
@@ -172,7 +174,7 @@ export class AWSExecutionStore implements ExecutionStore {
         nextToken: request?.nextToken,
       },
       {
-        TableName: this.props.tableName,
+        TableName: getLazy(this.props.tableName),
         IndexName: ExecutionRecord.START_TIME_SORTED_INDEX,
         KeyConditionExpression: "#pk = :pk",
         ScanIndexForward: request?.sortDirection !== SortOrder.Desc,

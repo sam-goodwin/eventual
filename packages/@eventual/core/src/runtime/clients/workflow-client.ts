@@ -63,7 +63,7 @@ export class WorkflowClient {
     const createLogStream = async () => {
       await this.logsClient.initializeExecutionLog(executionId);
       await this.logsClient.putExecutionLogs(executionId, {
-        time: new Date().getTime(),
+        time: this.baseTime().getTime(),
         message: "Workflow Started",
       });
     };
@@ -102,7 +102,7 @@ export class WorkflowClient {
                 : undefined,
           },
         },
-        new Date()
+        this.baseTime()
       );
 
       await this.executionQueueClient.submitExecutionEvents(

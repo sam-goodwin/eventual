@@ -3,9 +3,7 @@ import { AWSMetricsClient } from "../clients/metrics-client.js";
 import { createLogAgent, createTimerClient } from "../create.js";
 
 export const handle = createScheduleForwarder({
-  timerClient: createTimerClient({
-    scheduleForwarderArn: "NOT NEEDED",
-  }),
+  timerClient: createTimerClient(),
   metricsClient: AWSMetricsClient,
   logAgent: createLogAgent(),
 });

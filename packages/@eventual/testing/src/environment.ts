@@ -471,7 +471,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       throw new Error("Unknown event types in the TimerController.");
     }
 
-    await this.orchestrator(events, this.time);
+    await this.orchestrator(events, () => this.time);
   }
 }
 

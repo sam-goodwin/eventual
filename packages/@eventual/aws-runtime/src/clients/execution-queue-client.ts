@@ -3,11 +3,13 @@ import {
   ExecutionQueueClient,
   HistoryResultEvent,
   ExecutionQueueEventEnvelope,
+  LazyValue,
+  getLazy,
 } from "@eventual/core";
 
 export interface AWSExecutionQueueClientProps {
   sqs: SQSClient;
-  workflowQueueUrl: string;
+  workflowQueueUrl: LazyValue<string>;
   baseTime?: () => Date;
 }
 
@@ -31,7 +33,7 @@ export class AWSExecutionQueueClient extends ExecutionQueueClient {
     await this.props.sqs.send(
       new SendMessageCommand({
         MessageBody: JSON.stringify(workflowTask),
-        QueueUrl: this.props.workflowQueueUrl,
+        QueueUrl: getLazy(this.props.workflowQueueUrl),
         MessageGroupId: executionId,
       })
     );
