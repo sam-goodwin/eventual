@@ -1,9 +1,10 @@
+import { ExecutionRecord } from "@eventual/aws-runtime";
 import {
   AppSpec,
+  Event,
   MetricsCommon,
   OrchestratorMetrics,
   ServiceType,
-  Event,
 } from "@eventual/core";
 import {
   Arn,
@@ -13,6 +14,12 @@ import {
   RemovalPolicy,
   Stack,
 } from "aws-cdk-lib";
+import {
+  Metric,
+  MetricOptions,
+  Statistic,
+  Unit,
+} from "aws-cdk-lib/aws-cloudwatch";
 import {
   AttributeType,
   BillingMode,
@@ -31,23 +38,124 @@ import {
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
+import path from "path";
 import { Activities, IActivities } from "./activities";
+import { bundleSourcesSync, inferSync } from "./compile-client";
+import { Events } from "./events";
+import { Logging, LoggingProps } from "./logging";
 import { lazyInterface } from "./proxy-construct";
 import { IScheduler, Scheduler } from "./scheduler";
 import { Api } from "./service-api";
 import { outDir } from "./utils";
 import { IWorkflows, Workflows, WorkflowsProps } from "./workflows";
-import { Events } from "./events";
-import {
-  Metric,
-  MetricOptions,
-  Statistic,
-  Unit,
-} from "aws-cdk-lib/aws-cloudwatch";
-import { bundleSourcesSync, inferSync } from "./compile-client";
-import path from "path";
-import { ExecutionRecord } from "@eventual/aws-runtime";
-import { Logging, LoggingProps } from "./logging";
+
+export interface IService {
+  /**
+   * Subscribe this {@link Service} to another {@link Service}'s events.
+   *
+   * An Event Bridge {@link aws_events.Rule} will be created to route all events
+   * that match the {@link SubscribeProps.events}.
+   *
+   * @param props the {@link SubscribeProps} specifying the service and events to subscribe to
+   */
+  subscribe(
+    scope: Construct,
+    id: string,
+    props: SubscribeProps
+  ): aws_events.Rule;
+  addEnvironment(key: string, value: string): void;
+
+  configureStartExecution(func: Function): void;
+  grantStartExecution(grantable: IGrantable): void;
+
+  /**
+   * Read information about an execution or executions.
+   *
+   * * {@link EventualServiceClient.listExecutions}
+   * * {@link EventualServiceClient.getExecution}
+   * * {@link EventualServiceClient.getExecutionHistory}
+   * * {@link EventualServiceClient.getExecutionWorkflowHistory}
+   */
+  configureReadExecutions(func: Function): void;
+  /**
+   * Read information about an execution or executions.
+   *
+   * * {@link EventualServiceClient.listExecutions}
+   * * {@link EventualServiceClient.getExecution}
+   * * {@link EventualServiceClient.getExecutionHistory}
+   * * {@link EventualServiceClient.getExecutionWorkflowHistory}
+   */
+  grantReadExecutions(grantable: IGrantable): void;
+
+  /**
+   * Send signals to a workflow.
+   */
+  configureSendSignal(func: Function): void;
+  /**
+   * Send signals to a workflow.
+   */
+  grantSendSignal(grantable: IGrantable): void;
+
+  /**
+   * Publish Events
+   */
+  configurePublishEvents(func: Function): void;
+  /**
+   * Publish Events
+   */
+  grantPublishEvents(grantable: IGrantable): void;
+
+  /**
+   * Configure the ability to heartbeat, cancel, and complete activities.
+   *
+   * Useful for a function that is making an activity as complete.
+   *
+   * * {@link EventualServiceClient.sendActivitySuccess}
+   * * {@link EventualServiceClient.sendActivityFailure}
+   * * {@link EventualServiceClient.sendActivityHeartbeat}
+   */
+  configureUpdateActivity(func: Function): void;
+  /**
+   * Grants permission to use all operations on the {@link EventualServiceClient}.
+   */
+  configureForServiceClient(func: Function): void;
+
+  /**
+   * The time taken to run the workflow's function to advance execution of the workflow.
+   *
+   * This does not include the time taken to invoke commands or save history. It is
+   * purely a metric for how well the workflow's function is performing as history grows.
+   */
+  metricAdvanceExecutionDuration(options?: MetricOptions): Metric;
+  /**
+   * The number of commands invoked in a single batch by the orchestrator.
+   */
+  metricCommandsInvoked(options?: MetricOptions): Metric;
+  /**
+   * The time taken to invoke all Commands emitted by advancing a workflow.
+   */
+  metricInvokeCommandsDuration(options?: MetricOptions): Metric;
+  /**
+   * Time taken to download an execution's history from S3.
+   */
+  metricLoadHistoryDuration(options?: MetricOptions): Metric;
+  /**
+   * Time taken to save an execution's history to S3.
+   */
+  metricSaveHistoryDuration(options?: MetricOptions): Metric;
+  /**
+   * The size of the history S3 file in bytes.
+   */
+  metricSavedHistoryBytes(options?: MetricOptions): Metric;
+  /**
+   * The number of events stored in the history S3 file.grantRead
+   */
+  metricSavedHistoryEvents(options?: MetricOptions): Metric;
+  /**
+   * The number of commands invoked in a single batch by the orchestrator.
+   */
+  metricMaxTaskAge(options?: MetricOptions): Metric;
+}
 
 /**
  * The properties for subscribing a Service to another Service's events.
@@ -92,7 +200,7 @@ export interface ServiceProps {
   logging?: Omit<LoggingProps, "serviceName">;
 }
 
-export class Service extends Construct implements IGrantable {
+export class Service extends Construct implements IGrantable, IService {
   /**
    * Name of this Service.
    */
@@ -201,6 +309,7 @@ export class Service extends Construct implements IGrantable {
     const proxyScheduler = lazyInterface<IScheduler>();
     const proxyWorkflows = lazyInterface<IWorkflows>();
     const proxyActivities = lazyInterface<IActivities>();
+    const proxyService = lazyInterface<IService>();
 
     this.logging = new Logging(this, "logging", {
       ...(props.logging ?? {}),
@@ -211,8 +320,7 @@ export class Service extends Construct implements IGrantable {
       appSpec: this.appSpec,
       serviceName: this.serviceName,
       environment: props.environment,
-      workflows: proxyWorkflows,
-      activities: proxyActivities,
+      service: proxyService,
     });
 
     this.activities = new Activities(this, "Activities", {
@@ -222,6 +330,7 @@ export class Service extends Construct implements IGrantable {
       environment: props.environment,
       events: this.events,
       logging: this.logging,
+      service: proxyService,
     });
     proxyActivities._bind(this.activities);
 
@@ -251,6 +360,7 @@ export class Service extends Construct implements IGrantable {
       events: this.events,
       scheduler: this.scheduler,
       entry: props.entry,
+      service: proxyService,
     });
 
     this.grantPrincipal = new CompositePrincipal(
@@ -264,7 +374,6 @@ export class Service extends Construct implements IGrantable {
       roleName: `eventual-cli-${this.serviceName}`,
       assumedBy: new AccountRootPrincipal(),
     });
-    this.grantFilterLogEvents(this.cliRole);
     this.api.grantExecute(this.cliRole);
     this.logging.grantFilterLogEvents(this.cliRole);
 
@@ -278,16 +387,9 @@ export class Service extends Construct implements IGrantable {
     });
 
     this.serviceDataSSM.grantRead(this.cliRole);
+    proxyService._bind(this);
   }
 
-  /**
-   * Subscribe this {@link Service} to another {@link Service}'s events.
-   *
-   * An Event Bridge {@link aws_events.Rule} will be created to route all events
-   * that match the {@link SubscribeProps.events}.
-   *
-   * @param props the {@link SubscribeProps} specifying the service and events to subscribe to
-   */
   public subscribe(
     scope: Construct,
     id: string,
@@ -317,28 +419,59 @@ export class Service extends Construct implements IGrantable {
     this.workflows.orchestrator.addEnvironment(key, value);
   }
 
-  public grantRead(grantable: IGrantable) {
-    this.table.grantReadData(grantable);
-  }
+  /**
+   * Service Client
+   */
 
-  public grantFinishActivity(grantable: IGrantable) {
-    this.activities.grantCompleteActivity(grantable);
+  public configureStartExecution(func: Function) {
+    this.workflows.configureStartExecution(func);
   }
 
   public grantStartExecution(grantable: IGrantable) {
-    this.workflows.grantSubmitWorkflowEvent(grantable);
+    this.workflows.grantStartExecution(grantable);
   }
 
-  /**
-   * Configure the ability heartbeat, cancel, and finish activities.
-   */
-  public configureFullActivityControl(func: Function) {
-    this.activities.configureFullControl(func);
+  public configureReadExecutions(func: Function) {
+    this.workflows.configureReadExecutions(func);
+    this.workflows.configureReadExecutionHistory(func);
+    this.workflows.configureReadHistoryState(func);
   }
 
-  public grantFilterLogEvents(grantable: IGrantable) {
-    this.workflows.grantFilterOrchestratorLogs(grantable);
-    this.activities.grantFilterWorkerLogs(grantable);
+  public grantReadExecutions(grantable: IGrantable) {
+    this.workflows.grantReadExecutions(grantable);
+  }
+
+  public configureSendSignal(func: Function) {
+    this.workflows.configureSendSignal(func);
+  }
+
+  public grantSendSignal(grantable: IGrantable) {
+    this.workflows.grantSendSignal(grantable);
+  }
+
+  public configurePublishEvents(func: Function) {
+    this.events.configurePublish(func);
+  }
+
+  public grantPublishEvents(grantable: IGrantable) {
+    this.events.grantPublish(grantable);
+  }
+
+  public configureUpdateActivity(func: Function) {
+    // complete activities
+    this.activities.configureCompleteActivity(func);
+    // cancel
+    this.activities.configureWriteActivities(func);
+    // heartbeat
+    this.activities.configureSendHeartbeat(func);
+  }
+
+  public configureForServiceClient(func: Function) {
+    this.configureUpdateActivity(func);
+    this.configurePublishEvents(func);
+    this.configureReadExecutions(func);
+    this.configureSendSignal(func);
+    this.configureStartExecution(func);
   }
 
   /**
@@ -363,12 +496,6 @@ export class Service extends Construct implements IGrantable {
     );
   }
 
-  /**
-   * The time taken to run the workflow's function to advance execution of the workflow.
-   *
-   * This does not include the time taken to invoke commands or save history. It is
-   * purely a metric for how well the workflow's function is performing as history grows.
-   */
   public metricAdvanceExecutionDuration(options?: MetricOptions): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
@@ -378,9 +505,6 @@ export class Service extends Construct implements IGrantable {
     });
   }
 
-  /**
-   * The number of commands invoked in a single batch by the orchestrator.
-   */
   public metricCommandsInvoked(options?: MetricOptions): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
@@ -390,9 +514,6 @@ export class Service extends Construct implements IGrantable {
     });
   }
 
-  /**
-   * The time taken to invoke all Commands emitted by advancing a workflow.
-   */
   public metricInvokeCommandsDuration(options?: MetricOptions): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
@@ -402,9 +523,6 @@ export class Service extends Construct implements IGrantable {
     });
   }
 
-  /**
-   * Time taken to download an execution's history from S3.
-   */
   public metricLoadHistoryDuration(options?: MetricOptions): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
@@ -414,9 +532,6 @@ export class Service extends Construct implements IGrantable {
     });
   }
 
-  /**
-   * Time taken to save an execution's history to S3.
-   */
   public metricSaveHistoryDuration(options?: MetricOptions): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
@@ -426,9 +541,6 @@ export class Service extends Construct implements IGrantable {
     });
   }
 
-  /**
-   * The size of the history S3 file in bytes.
-   */
   public metricSavedHistoryBytes(options?: MetricOptions): Metric {
     return this.metric({
       metricName: OrchestratorMetrics.SavedHistoryBytes,
@@ -438,9 +550,6 @@ export class Service extends Construct implements IGrantable {
     });
   }
 
-  /**
-   * The number of events stored in the history S3 file.
-   */
   public metricSavedHistoryEvents(options?: MetricOptions): Metric {
     return this.metric({
       metricName: OrchestratorMetrics.SavedHistoryEvents,
@@ -450,9 +559,6 @@ export class Service extends Construct implements IGrantable {
     });
   }
 
-  /**
-   * The number of commands invoked in a single batch by the orchestrator.
-   */
   public metricMaxTaskAge(options?: MetricOptions): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,

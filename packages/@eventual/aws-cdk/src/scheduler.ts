@@ -13,16 +13,18 @@ import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import { IActivities } from "./activities";
 import { Logging } from "./logging";
-import { addEnvironment, baseFnProps, outDir } from "./utils";
+import { baseFnProps, outDir } from "./utils";
 import { IWorkflows } from "./workflows";
 
 export interface IScheduler {
   /**
-   * @internal
+   * {@link TimerClient.startTimer} or {@link TimerClient.scheduleEvent}.
    */
   configureScheduleTimer(func: Function): void;
-  grantCreateSchedule(grantable: IGrantable): void;
-  grantDeleteSchedule(grantable: IGrantable): void;
+  /**
+   * {@link TimerClient.startTimer} or {@link TimerClient.scheduleEvent}.
+   */
+  grantCreateTimer(grantable: IGrantable): void;
 }
 
 export interface SchedulerProps {
@@ -42,7 +44,10 @@ export interface SchedulerProps {
  * Subsystem that orchestrates long running timers. Used to orchestrate timeouts, timers
  * and heartbeats.
  */
-export class Scheduler extends Construct implements IScheduler, IGrantable {
+export class Scheduler
+  extends Construct
+  implements IScheduler, IGrantable, IScheduler
+{
   /**
    * The Scheduler's IAM Role.
    */
@@ -123,27 +128,23 @@ export class Scheduler extends Construct implements IScheduler, IGrantable {
     return this.handler.grantPrincipal;
   }
 
-  /**
-   * @internal
-   */
   public configureScheduleTimer(func: Function) {
-    this.grantCreateSchedule(func);
-    addEnvironment(func, {
-      ...(func === this.forwarder
-        ? {}
-        : {
-            [ENV_NAMES.SCHEDULE_FORWARDER_ARN]: this.forwarder.functionArn,
-          }),
-      [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: this.dlq.queueArn,
-      [ENV_NAMES.SCHEDULER_GROUP]: this.schedulerGroup.ref,
-      [ENV_NAMES.SCHEDULER_ROLE_ARN]: this.schedulerRole.roleArn,
-      [ENV_NAMES.TIMER_QUEUE_URL]: this.queue.queueUrl,
-    });
+    this.grantCreateTimer(func);
+    this.configureSubmitToTimerQueue(func);
+    this.addEnvs(
+      func,
+      ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN,
+      ENV_NAMES.SCHEDULER_GROUP,
+      ENV_NAMES.SCHEDULER_ROLE_ARN
+    );
     this.schedulerRole.grantPassRole(func.grantPrincipal);
+    if (func !== this.forwarder) {
+      this.addEnvs(func, ENV_NAMES.SCHEDULE_FORWARDER_ARN);
+    }
   }
 
-  public grantCreateSchedule(grantable: IGrantable) {
-    this.queue.grantSendMessages(grantable);
+  public grantCreateTimer(grantable: IGrantable) {
+    this.grantSubmitToTimerQueue(grantable);
     grantable.grantPrincipal.addToPrincipalPolicy(
       new PolicyStatement({
         actions: ["scheduler:CreateSchedule"],
@@ -152,8 +153,24 @@ export class Scheduler extends Construct implements IScheduler, IGrantable {
     );
   }
 
-  public grantDeleteSchedule(grantable: IGrantable) {
+  private configureSubmitToTimerQueue(func: Function) {
+    this.grantSubmitToTimerQueue(func);
+    this.addEnvs(func, ENV_NAMES.TIMER_QUEUE_URL);
+  }
+
+  private grantSubmitToTimerQueue(grantable: IGrantable) {
     this.queue.grantSendMessages(grantable);
+  }
+
+  private configureCleanupTimer(func: Function) {
+    this.grantCleanupTimer(func);
+    this.addEnvs(func, ENV_NAMES.SCHEDULER_GROUP);
+  }
+
+  /**
+   * Grants the ability for the forwarder to remove the schedule.
+   */
+  private grantCleanupTimer(grantable: IGrantable) {
     grantable.grantPrincipal.addToPrincipalPolicy(
       new PolicyStatement({
         actions: ["scheduler:DeleteSchedule"],
@@ -172,16 +189,35 @@ export class Scheduler extends Construct implements IScheduler, IGrantable {
   }
 
   private configureHandler() {
-    this.props.workflows.configureSendWorkflowEvent(this.handler);
-    this.props.activities.configureRead(this.handler);
+    // to support the ScheduleEventRequest
+    this.props.workflows.configureSubmitExecutionEvents(this.handler);
+    // to lookup activity heartbeat time
+    this.props.activities.configureReadActivities(this.handler);
+    // to re-schedule a new timer on heartbeat check success
     this.configureScheduleTimer(this.handler);
+    // logs to the execution
     this.props.logging.configurePutServiceLogs(this.handler);
   }
 
   private configureScheduleForwarder() {
-    this.configureScheduleTimer(this.forwarder);
-    this.grantDeleteSchedule(this.forwarder);
-    this.props.logging.configurePutServiceLogs(this.forwarder);
+    // starts a short timer to forward the timer
+    this.configureSubmitToTimerQueue(this.forwarder);
+    // deletes the EB schedule
+    this.configureCleanupTimer(this.forwarder);
+    // logs to the execution when forwarding
+    this.props.logging.configurePutServiceLogs(this.handler);
+  }
+
+  private ENV_MAPPINGS = {
+    [ENV_NAMES.SCHEDULE_FORWARDER_ARN]: () => this.forwarder.functionArn,
+    [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: () => this.dlq.queueArn,
+    [ENV_NAMES.SCHEDULER_GROUP]: () => this.schedulerGroup.ref,
+    [ENV_NAMES.SCHEDULER_ROLE_ARN]: () => this.schedulerRole.roleArn,
+    [ENV_NAMES.TIMER_QUEUE_URL]: () => this.queue.queueUrl,
+  } as const;
+
+  private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {
+    envs.forEach((env) => func.addEnvironment(env, this.ENV_MAPPINGS[env]()));
   }
 }
 

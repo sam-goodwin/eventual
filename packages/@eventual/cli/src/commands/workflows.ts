@@ -9,7 +9,7 @@ export const workflows = (yargs: Argv) =>
     setServiceOptions,
     serviceAction(async (spinner, serviceClient) => {
       spinner.start("Getting workflow");
-      const { workflows } = await serviceClient.getWorkflows();
+      const { workflows } = await serviceClient.listWorkflows();
       spinner.stop();
       styledConsole.success("Workflows");
       workflows.forEach((workflow) => {

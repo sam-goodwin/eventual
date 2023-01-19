@@ -23,7 +23,7 @@ import { Workflow, WorkflowInput, WorkflowOptions } from "./workflow.js";
  * Top level Eventual Client used by systems outside of an Eventual Service to interact with it.
  */
 export interface EventualServiceClient {
-  getWorkflows(): Promise<GetWorkflowResponse>;
+  listWorkflows(): Promise<ListWorkflowsResponse>;
 
   /**
    * Start a workflow execution
@@ -37,7 +37,7 @@ export interface EventualServiceClient {
   /**
    * Retrieves one or more workflow execution.
    */
-  getExecutions(
+  listExecutions(
     request: ListExecutionsRequest
   ): Promise<ListExecutionsResponse>;
 
@@ -147,6 +147,6 @@ export interface WorkflowReference {
   name: string;
 }
 
-export interface GetWorkflowResponse {
+export interface ListWorkflowsResponse {
   workflows: WorkflowReference[];
 }

@@ -10,7 +10,7 @@ import {
   SendActivityFailureRequest,
   ListExecutionsRequest,
   ListExecutionsResponse,
-  GetWorkflowResponse,
+  ListWorkflowsResponse,
   SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
   HistoryStateEvent,
@@ -58,7 +58,7 @@ export class HttpServiceClient implements EventualServiceClient {
     this.baseUrl = path.join(props.serviceUrl, "_eventual");
   }
 
-  public async getWorkflows(): Promise<GetWorkflowResponse> {
+  public async listWorkflows(): Promise<ListWorkflowsResponse> {
     const workflowNames = await this.request<void, string[]>(
       "GET",
       "workflows"
@@ -89,7 +89,7 @@ export class HttpServiceClient implements EventualServiceClient {
     return new ExecutionHandle(executionId, this);
   }
 
-  public async getExecutions(
+  public async listExecutions(
     request: ListExecutionsRequest
   ): Promise<ListExecutionsResponse> {
     const queryStrings = formatQueryString({

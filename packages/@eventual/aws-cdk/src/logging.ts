@@ -50,22 +50,28 @@ export class Logging extends Construct {
     this.logGroup.grant(grantable, "logs:FilterLogEvents");
   }
 
-  public grantPutServiceLogs(grantable: IGrantable) {
-    this.logGroup.grantWrite(grantable);
-  }
-
   /**
    * Creating and writing to the {@link Logging.logGroup}
    */
   public configurePutServiceLogs(func: Function) {
     this.grantPutServiceLogs(func);
-    func.addEnvironment(
+    this.addEnvs(
+      func,
       ENV_NAMES.SERVICE_LOG_GROUP_NAME,
-      this.logGroup.logGroupName
+      ENV_NAMES.DEFAULT_LOG_LEVEL
     );
-    func.addEnvironment(
-      ENV_NAMES.DEFAULT_LOG_LEVEL,
-      this.props.logLevel ?? "INFO"
-    );
+  }
+
+  public grantPutServiceLogs(grantable: IGrantable) {
+    this.logGroup.grantWrite(grantable);
+  }
+
+  private ENV_MAPPINGS = {
+    [ENV_NAMES.SERVICE_LOG_GROUP_NAME]: () => this.logGroup.logGroupName,
+    [ENV_NAMES.DEFAULT_LOG_LEVEL]: () => this.props.logLevel ?? "INFO",
+  } as const;
+
+  private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {
+    envs.forEach((env) => func.addEnvironment(env, this.ENV_MAPPINGS[env]()));
   }
 }

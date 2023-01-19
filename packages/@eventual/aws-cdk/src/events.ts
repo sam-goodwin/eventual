@@ -6,9 +6,8 @@ import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
-import { IActivities } from "./activities";
+import { IService } from "./service";
 import { ServiceFunction } from "./service-function";
-import { IWorkflows } from "./workflows";
 
 export interface EventsProps {
   /**
@@ -25,8 +24,7 @@ export interface EventsProps {
    * @default - no extra environment variables
    */
   readonly environment?: Record<string, string>;
-  readonly workflows: IWorkflows;
-  readonly activities: IActivities;
+  readonly service: IService;
 }
 
 export class Events extends Construct implements IGrantable {
@@ -90,6 +88,11 @@ export class Events extends Construct implements IGrantable {
     this.configureEventHandler();
   }
 
+  public configurePublish(func: Function) {
+    this.grantPublish(func);
+    this.addEnvs(func, ENV_NAMES.EVENT_BUS_ARN, ENV_NAMES.SERVICE_NAME);
+  }
+
   /**
    * Grants permission to publish to this {@link Service}'s {@link eventBus}.
    */
@@ -97,15 +100,17 @@ export class Events extends Construct implements IGrantable {
     this.bus.grantPutEventsTo(grantable);
   }
 
-  public configurePublish(func: Function) {
-    this.grantPublish(func);
-    func.addEnvironment(ENV_NAMES.EVENT_BUS_ARN, this.bus.eventBusArn);
-    func.addEnvironment(ENV_NAMES.SERVICE_NAME, this.serviceName);
+  private configureEventHandler() {
+    // allows the access to all of the operations on the injected service client
+    this.props.service.configureForServiceClient(this.handler);
   }
 
-  private configureEventHandler() {
-    this.props.workflows.configureFullControl(this.handler);
-    // allows the workflow to cancel activities
-    this.props.activities.configureUpdateActivity(this.handler);
+  private ENV_MAPPINGS = {
+    [ENV_NAMES.EVENT_BUS_ARN]: () => this.bus.eventBusArn,
+    [ENV_NAMES.SERVICE_NAME]: () => this.serviceName,
+  } as const;
+
+  private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {
+    envs.forEach((env) => func.addEnvironment(env, this.ENV_MAPPINGS[env]()));
   }
 }

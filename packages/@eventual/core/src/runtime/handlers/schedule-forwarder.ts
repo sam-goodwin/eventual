@@ -36,51 +36,55 @@ export function createScheduleForwarder({
 }: ScheduleForwarderDependencies) {
   return metricsClient.metricScope(
     (metrics) => async (event: ScheduleForwarderRequest) => {
-      metrics.setNamespace(MetricsCommon.EventualNamespace);
+      try {
+        metrics.setNamespace(MetricsCommon.EventualNamespace);
 
-      // log on behalf of the execution.
-      const executionLogContext: ExecutionLogContext = {
-        type: LogContextType.Execution,
-        executionId: event.timerRequest.executionId,
-      };
+        // log on behalf of the execution.
+        const executionLogContext: ExecutionLogContext = {
+          type: LogContextType.Execution,
+          executionId: event.timerRequest.executionId,
+        };
 
-      logAgent.logWithContext(
-        executionLogContext,
-        LogLevel.DEBUG,
-        "Forwarding request to the timer queue: " +
-          JSON.stringify(event.timerRequest)
-      );
-
-      const schedulerTimeDelay =
-        new Date().getTime() - new Date(event.forwardTime).getTime();
-
-      logAgent.logWithContext(
-        executionLogContext,
-        LogLevel.DEBUG,
-        `Timer Time: ${event.untilTime}. Forwarded Time: ${event.forwardTime}. ${schedulerTimeDelay} Millisecond delay from scheduler.`
-      );
-
-      metrics.setProperty(
-        SchedulerForwarderMetrics.SchedulerTimeDelay,
-        schedulerTimeDelay
-      );
-
-      const delaySeconds = await timerClient.startShortTimer(
-        event.timerRequest
-      );
-
-      metrics.setProperty(
-        SchedulerForwarderMetrics.TimerQueueDelaySeconds,
-        delaySeconds
-      );
-
-      if (event.clearSchedule) {
         logAgent.logWithContext(
           executionLogContext,
           LogLevel.DEBUG,
-          "Deleting the schedule: " + event.scheduleName
+          "Forwarding request to the timer queue: " +
+            JSON.stringify(event.timerRequest)
         );
-        await timerClient.clearSchedule(event.scheduleName);
+
+        const schedulerTimeDelay =
+          new Date().getTime() - new Date(event.forwardTime).getTime();
+
+        logAgent.logWithContext(
+          executionLogContext,
+          LogLevel.DEBUG,
+          `Timer Time: ${event.untilTime}. Forwarded Time: ${event.forwardTime}. ${schedulerTimeDelay} Millisecond delay from scheduler.`
+        );
+
+        metrics.setProperty(
+          SchedulerForwarderMetrics.SchedulerTimeDelay,
+          schedulerTimeDelay
+        );
+
+        const delaySeconds = await timerClient.startShortTimer(
+          event.timerRequest
+        );
+
+        metrics.setProperty(
+          SchedulerForwarderMetrics.TimerQueueDelaySeconds,
+          delaySeconds
+        );
+
+        if (event.clearSchedule) {
+          logAgent.logWithContext(
+            executionLogContext,
+            LogLevel.DEBUG,
+            "Deleting the schedule: " + event.scheduleName
+          );
+          await timerClient.clearSchedule(event.scheduleName);
+        }
+      } finally {
+        await logAgent.flush();
       }
     }
   );

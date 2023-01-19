@@ -18,7 +18,6 @@ import { Events } from "./events";
 import { Logging } from "./logging";
 import { IScheduler } from "./scheduler";
 import { ServiceFunction } from "./service-function";
-import { addEnvironment } from "./utils";
 
 export interface WorkflowsProps {
   serviceName: string;
@@ -34,26 +33,60 @@ export interface WorkflowsProps {
 
 export interface IWorkflows {
   configureStartExecution(func: Function): void;
-  grantSubmitWorkflowEvent(grantable: IGrantable): void;
+  grantStartExecution(grantable: IGrantable): void;
 
-  configureSendWorkflowEvent(func: Function): void;
-  grantSendWorkflowEvent(grantable: IGrantable): void;
+  /**
+   * * {@link WorkflowClient.succeedExecution}
+   * * {@link WorkflowClient.failExecution}
+   */
+  configureCompleteExecution(func: Function): void;
+  /**
+   * * {@link WorkflowClient.succeedExecution}
+   * * {@link WorkflowClient.failExecution}
+   */
+  grantCompleteExecution(grantable: IGrantable): void;
 
-  grantWriteExecutionHistory(grantable: IGrantable): void;
-
-  configureReadWorkflowData(func: Function): void;
-  grantReadWorkflowData(grantable: IGrantable): void;
-
-  configureRecordHistory(func: Function): void;
-  grantRecordHistory(grantable: IGrantable): void;
-
-  configureReadHistory(func: Function): void;
-  grantReadHistory(grantable: IGrantable): void;
+  /**
+   * Directly submit to the workflow queue.
+   *
+   * @internal
+   */
+  configureSubmitExecutionEvents(func: Function): void;
+  /**
+   * Directly submit to the workflow queue.
+   *
+   * @internal
+   */
+  grantSubmitExecutionEvents(grantable: IGrantable): void;
 
   configureSendSignal(func: Function): void;
   grantSendSignal(grantable: IGrantable): void;
 
-  grantFilterOrchestratorLogs(grantable: IGrantable): void;
+  /**
+   * * {@link ExecutionStore.listExecutions}
+   * * {@link ExecutionStore.getExecution}
+   */
+  configureReadExecutions(func: Function): void;
+  /**
+   * * {@link ExecutionStore.listExecutions}
+   * * {@link ExecutionStore.getExecution}
+   */
+  grantReadExecutions(grantable: IGrantable): void;
+
+  configureWriteExecutions(func: Function): void;
+  grantWriteExecutions(grantable: IGrantable): void;
+
+  configureReadExecutionHistory(func: Function): void;
+  grantReadExecutionHistory(grantable: IGrantable): void;
+
+  configureWriteExecutionHistory(func: Function): void;
+  grantWriteExecutionHistory(grantable: IGrantable): void;
+
+  configureReadHistoryState(func: Function): void;
+  grantReadHistoryState(grantable: IGrantable): void;
+
+  configureWriteHistoryState(func: Function): void;
+  grantWriteHistoryState(grantable: IGrantable): void;
 
   configureFullControl(func: Function): void;
 }
@@ -99,87 +132,123 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     return this.orchestrator.grantPrincipal;
   }
 
+  /**
+   * Workflow Client
+   */
+
   public configureStartExecution(func: Function) {
-    this.configureSendWorkflowEvent(func);
+    this.configureReadExecutions(func);
+    this.configureWriteExecutions(func);
     // when we start a workflow, we create the log stream it will use.
     this.props.logging.configurePutServiceLogs(func);
-    this.grantSubmitWorkflowEvent(func);
-    addEnvironment(func, {
-      [ENV_NAMES.TABLE_NAME]: this.props.table.tableName,
-    });
+    this.configureSubmitExecutionEvents(func);
   }
 
-  public grantSubmitWorkflowEvent(grantable: IGrantable) {
-    this.grantSendWorkflowEvent(grantable);
-    this.props.table.grantWriteData(grantable);
+  public grantStartExecution(grantable: IGrantable) {
+    this.grantReadExecutions(grantable);
+    this.grantWriteExecutions(grantable);
+    // when we start a workflow, we create the log stream it will use.
+    this.props.logging.grantPutServiceLogs(grantable);
+    this.grantSubmitExecutionEvents(grantable);
   }
 
-  public configureSendWorkflowEvent(func: Function) {
-    this.grantSendWorkflowEvent(func);
-    addEnvironment(func, {
-      [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.queue.queueUrl,
-    });
+  public configureCompleteExecution(func: Function) {
+    // update the execution record
+    this.configureWriteExecutions(func);
+    // send completion to parent workflow if applicable
+    this.configureSubmitExecutionEvents(func);
   }
 
-  public grantSendWorkflowEvent(grantable: IGrantable) {
+  public grantCompleteExecution(grantable: IGrantable) {
+    this.grantWriteExecutions(grantable);
+    this.grantSubmitExecutionEvents(grantable);
+  }
+
+  /**
+   * Execution Queue Client Configuration
+   */
+
+  public configureSubmitExecutionEvents(func: Function) {
+    this.grantSubmitExecutionEvents(func);
+    this.addEnvs(func, ENV_NAMES.WORKFLOW_QUEUE_URL);
+  }
+
+  public grantSubmitExecutionEvents(grantable: IGrantable) {
     this.queue.grantSendMessages(grantable);
   }
 
-  public configureRecordHistory(func: Function) {
-    this.grantRecordHistory(func);
-    addEnvironment(func, {
-      [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
-      // TODO: we shouldn't need this but all workflow clients need it
-      [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.queue.queueUrl,
-      [ENV_NAMES.TABLE_NAME]: this.props.table.tableName,
-    });
+  public configureSendSignal(func: Function) {
+    this.configureSubmitExecutionEvents(func);
+  }
+
+  public grantSendSignal(grantable: IGrantable) {
+    this.grantSubmitExecutionEvents(grantable);
+  }
+
+  /**
+   * Execution Store Configurations
+   */
+
+  public configureReadExecutions(func: Function) {
+    this.grantReadExecutions(func);
+    this.addEnvs(func, ENV_NAMES.TABLE_NAME);
+  }
+
+  public grantReadExecutions(grantable: IGrantable) {
+    this.props.table.grantReadData(grantable);
+  }
+
+  public configureWriteExecutions(func: Function) {
+    this.grantWriteExecutions(func);
+    this.addEnvs(func, ENV_NAMES.TABLE_NAME);
+  }
+
+  public grantWriteExecutions(grantable: IGrantable) {
+    this.props.table.grantWriteData(grantable);
+  }
+
+  /**
+   * Execution History Store Configurations
+   */
+
+  public configureReadExecutionHistory(func: Function) {
+    this.grantReadExecutionHistory(func);
+    this.addEnvs(func, ENV_NAMES.TABLE_NAME);
+  }
+
+  public grantReadExecutionHistory(grantable: IGrantable) {
+    this.props.table.grantReadData(grantable);
+  }
+
+  public configureWriteExecutionHistory(func: Function) {
+    this.grantWriteExecutionHistory(func);
+    this.addEnvs(func, ENV_NAMES.TABLE_NAME);
   }
 
   public grantWriteExecutionHistory(grantable: IGrantable) {
     this.props.table.grantWriteData(grantable);
   }
 
-  public configureReadWorkflowData(func: Function) {
-    this.grantReadWorkflowData(func);
-    addEnvironment(func, {
-      [ENV_NAMES.TABLE_NAME]: this.props.table.tableName,
-      // TODO: we shouldn't need this but all workflow clients need it
-      [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.queue.queueUrl,
-    });
+  /**
+   * Execution History State Store Configurations
+   */
+
+  public configureReadHistoryState(func: Function) {
+    this.grantReadHistoryState(func);
+    this.addEnvs(func, ENV_NAMES.EXECUTION_HISTORY_BUCKET);
   }
 
-  public grantReadWorkflowData(grantable: IGrantable) {
-    this.props.table.grantReadData(grantable);
-  }
-
-  public grantRecordHistory(grantable: IGrantable) {
-    this.history.grantReadWrite(grantable);
-  }
-
-  public configureReadHistory(func: Function) {
-    this.grantReadHistory(func);
-    addEnvironment(func, {
-      [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: this.history.bucketName,
-      // TODO: we shouldn't need this but all workflow clients need it
-      [ENV_NAMES.WORKFLOW_QUEUE_URL]: this.queue.queueUrl,
-      [ENV_NAMES.TABLE_NAME]: this.props.table.tableName,
-    });
-  }
-
-  public grantReadHistory(grantable: IGrantable) {
+  public grantReadHistoryState(grantable: IGrantable) {
     this.history.grantRead(grantable);
   }
 
-  public configureSendSignal(func: Function) {
-    this.configureSendWorkflowEvent(func);
+  public configureWriteHistoryState(func: Function) {
+    this.grantReadHistoryState(func);
+    this.addEnvs(func, ENV_NAMES.EXECUTION_HISTORY_BUCKET);
   }
 
-  public grantSendSignal(grantable: IGrantable) {
-    this.grantSendWorkflowEvent(grantable);
-  }
-
-  public grantFilterOrchestratorLogs(grantable: IGrantable) {
-    this.orchestrator.logGroup.grant(grantable, "logs:FilterLogEvents");
+  public grantWriteHistoryState(grantable: IGrantable) {
+    this.history.grantWrite(grantable);
   }
 
   /**
@@ -187,27 +256,62 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
    * and sending signals to workflows.
    */
   public configureFullControl(func: Function) {
+    // WF client
     this.configureStartExecution(func);
-    this.configureSendWorkflowEvent(func);
-    this.configureReadWorkflowData(func);
+    this.configureCompleteExecution(func);
+    // Execution Queue Client
+    this.configureSubmitExecutionEvents(func);
     this.configureSendSignal(func);
-    this.configureReadHistory(func);
+    // Execution Store
+    this.configureReadExecutions(func);
+    this.configureWriteExecutions(func);
+    // Execution History Store
+    this.configureReadExecutionHistory(func);
+    this.configureWriteExecutionHistory(func);
+    // Execution History State Store
+    this.configureReadHistoryState(func);
+    this.configureWriteHistoryState(func);
   }
 
   private configureOrchestrator() {
-    this.props.events.configurePublish(this.orchestrator);
+    /**
+     * Main Orchestrator
+     */
+    // Write events to the event history table.
+    this.configureWriteExecutionHistory(this.orchestrator);
+    // Mark an execution as succeeded or failed
+    this.configureCompleteExecution(this.orchestrator);
     // allows the orchestrator to save and load events from the history s3 bucket
-    this.configureRecordHistory(this.orchestrator);
-    // allows the orchestrator to directly invoke the activity worker lambda function (async)
-    this.props.activities.configureScheduleActivity(this.orchestrator);
-    // allows allows the orchestrator to start timeout and timers
-    this.props.scheduler.configureScheduleTimer(this.orchestrator);
-    // allows the orchestrator to send events to the workflow queue,
-    // write events to the execution table, and start other workflows
-    this.configureFullControl(this.orchestrator);
-    // allows the workflow to cancel activities
-    this.props.activities.configureUpdateActivity(this.orchestrator);
-    // adds the logging extension (via a layer) to the orchestrator
+    this.configureReadHistoryState(this.orchestrator);
+    this.configureWriteHistoryState(this.orchestrator);
+    // allows writing logs to the service log stream
     this.props.logging.configurePutServiceLogs(this.orchestrator);
+    /**
+     * Command Executor
+     */
+    // start child executions
+    this.configureStartExecution(this.orchestrator);
+    // send signals to other executions (or itself, don't judge)
+    this.configureSendSignal(this.orchestrator);
+    // publish events to the service
+    this.props.events.configurePublish(this.orchestrator);
+    // start activities
+    this.props.activities.configureStartActivity(this.orchestrator);
+    /**
+     * Both
+     */
+    // orchestrator - Schedule workflow timeout
+    // command executor - handler timer commands
+    this.props.scheduler.configureScheduleTimer(this.orchestrator);
+  }
+
+  private ENV_MAPPINGS = {
+    [ENV_NAMES.TABLE_NAME]: () => this.props.table.tableName,
+    [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: () => this.history.bucketName,
+    [ENV_NAMES.WORKFLOW_QUEUE_URL]: () => this.queue.queueUrl,
+  } as const;
+
+  private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {
+    envs.forEach((env) => func.addEnvironment(env, this.ENV_MAPPINGS[env]()));
   }
 }

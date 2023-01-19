@@ -18,7 +18,7 @@ export const ENV_NAMES = {
   SCHEDULE_FORWARDER_ARN: "EVENTUAL_SCHEDULE_FORWARDER_ARN",
   SERVICE_LOG_GROUP_NAME: "EVENTUAL_SERVICE_LOG_GROUP_NAME",
   DEFAULT_LOG_LEVEL: "EVENTUAL_LOG_LEVEL",
-};
+} as const;
 
 export function tryGetEnv(name: string) {
   return assertNonNull(

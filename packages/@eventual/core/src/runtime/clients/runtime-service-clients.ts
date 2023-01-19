@@ -3,7 +3,7 @@ import { workflows } from "../../global.js";
 import {
   EventualServiceClient,
   ExecutionHistoryResponse,
-  GetWorkflowResponse,
+  ListWorkflowsResponse,
   PublishEventsRequest,
   StartExecutionRequest,
 } from "../../service-client.js";
@@ -51,7 +51,7 @@ export interface RuntimeServiceClientProps {
 export class RuntimeServiceClient implements EventualServiceClient {
   constructor(private props: RuntimeServiceClientProps) {}
 
-  public async getWorkflows(): Promise<GetWorkflowResponse> {
+  public async listWorkflows(): Promise<ListWorkflowsResponse> {
     return {
       workflows: Array.from(workflows().keys()).map((k) => ({ name: k })),
     };
@@ -66,7 +66,7 @@ export class RuntimeServiceClient implements EventualServiceClient {
     return new ExecutionHandle(executionId, this);
   }
 
-  public async getExecutions(
+  public async listExecutions(
     request: ListExecutionsRequest
   ): Promise<ListExecutionsResponse> {
     return this.props.executionStore.list(request);

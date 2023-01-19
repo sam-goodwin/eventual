@@ -16,6 +16,7 @@ import { ServiceType } from "@eventual/core";
 import { ServiceFunction } from "./service-function";
 import { Events } from "./events";
 import { Logging } from "./logging";
+import { IService } from "./service";
 
 export interface ActivitiesProps {
   serviceName: string;
@@ -24,24 +25,43 @@ export interface ActivitiesProps {
   environment?: Record<string, string>;
   events: Events;
   logging: Logging;
+  service: IService;
 }
 
 export interface IActivities {
+  configureStartActivity(func: Function): void;
+  grantStartActivity(grantable: IGrantable): void;
+
+  configureSendHeartbeat(func: Function): void;
+  grantSendHeartbeat(grantable: IGrantable): void;
+
+  /**
+   * {@link ActivitiesClient.sendSuccess} or {@link ActivitiesClient.sendFailure} for an activity.
+   */
   configureCompleteActivity(func: Function): void;
+  /**
+   * {@link ActivitiesClient.sendSuccess} or {@link ActivitiesClient.sendFailure} for an activity.
+   */
   grantCompleteActivity(grantable: IGrantable): void;
 
-  configureUpdateActivity(func: Function): void;
-  grantUpdateActivity(grantable: IGrantable): void;
+  configureReadActivities(func: Function): void;
+  grantReadActivities(grantable: IGrantable): void;
 
-  configureRead(func: Function): void;
-  grantRead(grantable: IGrantable): void;
-
-  configureScheduleActivity(func: Function): void;
-  grantScheduleActivity(grantable: IGrantable): void;
-
-  grantFilterWorkerLogs(grantable: IGrantable): void;
+  /**
+   * Claim, Heartbeat, or Cancel an activity.
+   *
+   * Note: For the full heartbeat, use grantSendHeartbeat.
+   */
+  configureWriteActivities(func: Function): void;
+  /**
+   * Claim, Heartbeat, or Cancel an activity.
+   *
+   * Note: For the full heartbeat, use grantSendHeartbeat.
+   */
+  grantWriteActivities(grantable: IGrantable): void;
 
   configureFullControl(func: Function): void;
+  grantFullControl(grantable: IGrantable): void;
 }
 
 /**
@@ -49,7 +69,10 @@ export interface IActivities {
  *
  * Activities are started by the {@link Workflow.orchestrator} and send back {@link WorkflowEvent}s on completion.
  */
-export class Activities extends Construct implements IActivities, IGrantable {
+export class Activities
+  extends Construct
+  implements IActivities, IGrantable, IActivities
+{
   /**
    * Table which contains activity information for claiming, heartbeat, and cancellation.
    */
@@ -89,72 +112,100 @@ export class Activities extends Construct implements IActivities, IGrantable {
     return this.worker.grantPrincipal;
   }
 
-  public configureCompleteActivity(func: Function) {
-    this.props.workflows.configureSendWorkflowEvent(func);
-  }
-
-  public grantCompleteActivity(grantable: IGrantable) {
-    this.props.workflows.grantSendWorkflowEvent(grantable);
-  }
-
-  public configureUpdateActivity(func: Function) {
-    this.grantUpdateActivity(func);
-    addEnvironment(func, {
-      [ENV_NAMES.ACTIVITY_TABLE_NAME]: this.table.tableName,
-    });
-  }
-
-  public grantUpdateActivity(grantable: IGrantable) {
-    this.table.grantReadWriteData(grantable);
-  }
-
-  public configureRead(func: Function) {
-    this.grantRead(func);
-    addEnvironment(func, {
-      [ENV_NAMES.ACTIVITY_TABLE_NAME]: this.table.tableName,
-    });
-  }
-
-  public grantRead(grantable: IGrantable) {
-    this.table.grantReadData(grantable);
-  }
-
   /**
-   * Configure the ability heartbeat, cancel, and finish activities.
+   * Activity Client
    */
-  public configureFullControl(func: Function) {
-    this.configureRead(func);
-    this.configureUpdateActivity(func);
+
+  public configureStartActivity(func: Function) {
+    this.grantStartActivity(func);
+    this.addEnvs(func, ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME);
   }
 
-  public configureScheduleActivity(func: Function) {
-    this.grantScheduleActivity(func);
-    addEnvironment(func, {
-      [ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME]: this.worker.functionName,
-    });
-  }
-
-  public grantScheduleActivity(grantable: IGrantable) {
+  public grantStartActivity(grantable: IGrantable) {
     this.worker.grantInvoke(grantable);
   }
 
-  public grantFilterWorkerLogs(grantable: IGrantable) {
-    this.worker.logGroup.grant(grantable, "logs:FilterLogEvents");
+  public configureSendHeartbeat(func: Function) {
+    this.props.workflows.configureReadExecutions(func);
+    this.configureWriteActivities(func);
+  }
+
+  public grantSendHeartbeat(grantable: IGrantable) {
+    this.props.workflows.grantReadExecutions(grantable);
+    this.grantWriteActivities(grantable);
+  }
+
+  public configureCompleteActivity(func: Function) {
+    this.props.workflows.configureSubmitExecutionEvents(func);
+    this.grantCompleteActivity(func);
+  }
+
+  public grantCompleteActivity(grantable: IGrantable) {
+    this.props.workflows.grantSubmitExecutionEvents(grantable);
+  }
+
+  /**
+   * Activity Store Configuration
+   */
+
+  public configureReadActivities(func: Function) {
+    this.grantReadActivities(func);
+    this.addEnvs(func, ENV_NAMES.ACTIVITY_TABLE_NAME);
+  }
+
+  public grantReadActivities(grantable: IGrantable) {
+    this.table.grantReadData(grantable);
+  }
+
+  public configureWriteActivities(func: Function) {
+    this.grantWriteActivities(func);
+    this.addEnvs(func, ENV_NAMES.ACTIVITY_TABLE_NAME);
+  }
+
+  public grantWriteActivities(grantable: IGrantable) {
+    this.table.grantWriteData(grantable);
+  }
+
+  public configureFullControl(func: Function): void {
+    this.configureStartActivity(func);
+    this.configureSendHeartbeat(func);
+    this.configureCompleteActivity(func);
+    this.configureReadActivities(func);
+    this.configureWriteActivities(func);
+  }
+
+  public grantFullControl(grantable: IGrantable): void {
+    this.grantStartActivity(grantable);
+    this.grantSendHeartbeat(grantable);
+    this.grantCompleteActivity(grantable);
+    this.grantReadActivities(grantable);
+    this.grantWriteActivities(grantable);
   }
 
   private configureActivityWorker() {
-    this.props.events.configurePublish(this.worker);
+    // claim activities
+    this.configureWriteActivities(this.worker);
+    // report result back to the execution
+    this.props.workflows.configureSubmitExecutionEvents(this.worker);
+    // send logs to the execution log stream
+    this.props.logging.configurePutServiceLogs(this.worker);
+    // start heartbeat monitor
+    this.props.scheduler.configureScheduleTimer(this.worker);
+
     if (this.props.environment) {
       addEnvironment(this.worker, this.props.environment);
     }
-    // allows the activity worker to send events to the workflow queue
-    // and lookup the status of the workflow.
-    this.props.workflows.configureStartExecution(this.worker);
-    this.props.workflows.configureReadWorkflowData(this.worker);
-    // allows the activity worker to claim activities and check their heartbeat status.
-    this.configureUpdateActivity(this.worker);
-    // allows the activity worker to start the heartbeat monitor
-    this.props.scheduler.configureScheduleTimer(this.worker);
-    this.props.logging.configurePutServiceLogs(this.worker);
+
+    // allows access to any of the injected service client operations.
+    this.props.service.configureForServiceClient(this.worker);
+  }
+
+  private ENV_MAPPINGS = {
+    [ENV_NAMES.ACTIVITY_TABLE_NAME]: () => this.table.tableName,
+    [ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME]: () => this.worker.functionName,
+  } as const;
+
+  private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {
+    envs.forEach((env) => func.addEnvironment(env, this.ENV_MAPPINGS[env]()));
   }
 }

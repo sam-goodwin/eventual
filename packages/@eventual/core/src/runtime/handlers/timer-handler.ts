@@ -36,51 +36,64 @@ export function createTimerHandler({
   timerClient,
 }: TimerHandlerProps) {
   return async (request: TimerRequest) => {
-    if (isTimerScheduleEventRequest(request)) {
-      await executionQueueClient.submitExecutionEvents(
-        request.executionId,
-        request.event
-      );
-    } else if (isActivityHeartbeatMonitorRequest(request)) {
-      const activity = await activityStore.get(
-        request.executionId,
-        request.activitySeq
-      );
-
-      logAgent.logWithContext(
-        { type: LogContextType.Execution, executionId: request.executionId },
-        LogLevel.DEBUG,
-        `checking activity for heartbeat timeout: ${JSON.stringify(activity)}`
-      );
-
-      // the activity has not sent a heartbeat or the last time was too long ago.
-      // Send the timeout event to the workflow.
-      if (
-        !activity?.heartbeatTime ||
-        isHeartbeatTimeElapsed(activity.heartbeatTime, request.heartbeatSeconds)
-      ) {
-        return executionQueueClient.submitExecutionEvents(
-          request.executionId,
-          createEvent<ActivityHeartbeatTimedOut>(
-            {
-              type: WorkflowEventType.ActivityHeartbeatTimedOut,
-              seq: request.activitySeq,
-            },
-            new Date()
-          )
+    try {
+      if (isTimerScheduleEventRequest(request)) {
+        logAgent.logWithContext(
+          { type: LogContextType.Execution, executionId: request.executionId },
+          LogLevel.DEBUG,
+          `Forwarding event: ${request.event}.`
         );
+
+        await executionQueueClient.submitExecutionEvents(
+          request.executionId,
+          request.event
+        );
+      } else if (isActivityHeartbeatMonitorRequest(request)) {
+        const activity = await activityStore.get(
+          request.executionId,
+          request.activitySeq
+        );
+
+        logAgent.logWithContext(
+          { type: LogContextType.Execution, executionId: request.executionId },
+          LogLevel.DEBUG,
+          `Checking activity for heartbeat timeout: ${JSON.stringify(activity)}`
+        );
+
+        // the activity has not sent a heartbeat or the last time was too long ago.
+        // Send the timeout event to the workflow.
+        if (
+          !activity?.heartbeatTime ||
+          isHeartbeatTimeElapsed(
+            activity.heartbeatTime,
+            request.heartbeatSeconds
+          )
+        ) {
+          return executionQueueClient.submitExecutionEvents(
+            request.executionId,
+            createEvent<ActivityHeartbeatTimedOut>(
+              {
+                type: WorkflowEventType.ActivityHeartbeatTimedOut,
+                seq: request.activitySeq,
+              },
+              new Date()
+            )
+          );
+        } else {
+          // activity heartbeat has not timed out, start a new monitor instance
+          await timerClient.startTimer({
+            type: TimerRequestType.ActivityHeartbeatMonitor,
+            activitySeq: request.activitySeq,
+            executionId: request.executionId,
+            heartbeatSeconds: request.heartbeatSeconds,
+            schedule: Schedule.duration(request.heartbeatSeconds),
+          });
+        }
       } else {
-        // activity heartbeat has not timed out, start a new monitor instance
-        await timerClient.startTimer({
-          type: TimerRequestType.ActivityHeartbeatMonitor,
-          activitySeq: request.activitySeq,
-          executionId: request.executionId,
-          heartbeatSeconds: request.heartbeatSeconds,
-          schedule: Schedule.duration(request.heartbeatSeconds),
-        });
+        assertNever(request);
       }
-    } else {
-      assertNever(request);
+    } finally {
+      await logAgent.flush();
     }
   };
 }
