@@ -3,14 +3,14 @@ import {
   encodeExecutionId,
   EventualServiceClient,
   Execution,
-  ExecutionEventsRequest,
-  ExecutionEventsResponse,
+  ListExecutionEventsRequest,
+  ListExecutionEventsResponse,
   ExecutionHandle,
   ExecutionHistoryResponse,
   SendActivityFailureRequest,
-  GetExecutionsRequest,
-  GetExecutionsResponse,
-  GetWorkflowResponse,
+  ListExecutionsRequest,
+  ListExecutionsResponse,
+  ListWorkflowsResponse,
   SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
   HistoryStateEvent,
@@ -20,6 +20,7 @@ import {
   Workflow,
   WorkflowInput,
   ActivityUpdateType,
+  StartExecutionResponse,
 } from "@eventual/core";
 import path from "path";
 import "./fetch-polyfill.js";
@@ -57,7 +58,7 @@ export class HttpServiceClient implements EventualServiceClient {
     this.baseUrl = path.join(props.serviceUrl, "_eventual");
   }
 
-  public async getWorkflows(): Promise<GetWorkflowResponse> {
+  public async listWorkflows(): Promise<ListWorkflowsResponse> {
     const workflowNames = await this.request<void, string[]>(
       "GET",
       "workflows"
@@ -82,15 +83,15 @@ export class HttpServiceClient implements EventualServiceClient {
 
     const { executionId } = await this.request<
       WorkflowInput<W>,
-      { executionId: string }
+      StartExecutionResponse
     >("POST", `workflows/${workflow}/executions?${queryString}`, request.input);
 
     return new ExecutionHandle(executionId, this);
   }
 
-  public async getExecutions(
-    request: GetExecutionsRequest
-  ): Promise<GetExecutionsResponse> {
+  public async listExecutions(
+    request: ListExecutionsRequest
+  ): Promise<ListExecutionsResponse> {
     const queryStrings = formatQueryString({
       maxResults: request.maxResults,
       nextToken: request.nextToken,
@@ -99,7 +100,7 @@ export class HttpServiceClient implements EventualServiceClient {
       workflow: request.workflowName,
     });
 
-    return this.request<void, GetExecutionsResponse>(
+    return this.request<void, ListExecutionsResponse>(
       "GET",
       `executions?${queryStrings}`
     );
@@ -122,15 +123,15 @@ export class HttpServiceClient implements EventualServiceClient {
   }
 
   public async getExecutionHistory(
-    request: ExecutionEventsRequest
-  ): Promise<ExecutionEventsResponse> {
+    request: ListExecutionEventsRequest
+  ): Promise<ListExecutionEventsResponse> {
     const queryString = formatQueryString({
       maxResults: request.maxResults,
       nextToken: request.nextToken,
       sortDirection: request.sortDirection,
       after: request.after,
     });
-    return await this.request<void, ExecutionEventsResponse>(
+    return await this.request<void, ListExecutionEventsResponse>(
       "GET",
       `executions/${encodeExecutionId(
         request.executionId

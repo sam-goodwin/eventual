@@ -1,29 +1,27 @@
-import { EventClient, EventEnvelope, EventPayload } from "@eventual/core";
+/* eslint-disable @typescript-eslint/no-this-alias */
+import {
+  EventClient,
+  EventEnvelope,
+  EventPayload,
+  getLazy,
+  LazyValue,
+} from "@eventual/core";
 import {
   EventBridgeClient,
   PutEventsCommand,
 } from "@aws-sdk/client-eventbridge";
-import { chunkArray } from "./utils.js";
+import { chunkArray } from "../utils.js";
 
 export interface AWSEventClientProps {
-  serviceName: string;
-  eventBusArn: string;
-  eventBridgeClient?: EventBridgeClient;
+  serviceName: LazyValue<string>;
+  eventBusArn: LazyValue<string>;
+  eventBridgeClient: EventBridgeClient;
 }
 
 type EventTuple = readonly [eventName: string, eventJson: string];
 
 export class AWSEventClient implements EventClient {
-  public readonly eventBusArn: string;
-  public readonly eventBridgeClient: EventBridgeClient;
-  public readonly serviceName: string;
-
-  constructor(props: AWSEventClientProps) {
-    this.serviceName = props.serviceName;
-    this.eventBusArn = props.eventBusArn;
-    this.eventBridgeClient =
-      props.eventBridgeClient ?? new EventBridgeClient({});
-  }
+  constructor(private props: AWSEventClientProps) {}
 
   public async publishEvents(
     ...events: EventEnvelope<EventPayload>[]
@@ -59,13 +57,13 @@ export class AWSEventClient implements EventClient {
           );
         }
         try {
-          const response = await self.eventBridgeClient.send(
+          const response = await self.props.eventBridgeClient.send(
             new PutEventsCommand({
               Entries: events.map(([eventName, eventJson]) => ({
                 DetailType: eventName,
                 Detail: eventJson,
-                EventBusName: self.eventBusArn,
-                Source: self.serviceName,
+                EventBusName: getLazy(self.props.eventBusArn),
+                Source: getLazy(self.props.serviceName),
               })),
             })
           );

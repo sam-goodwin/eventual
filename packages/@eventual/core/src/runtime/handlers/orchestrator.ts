@@ -1,81 +1,80 @@
 import { inspect } from "util";
 import { Command } from "../../command.js";
 import { Context } from "../../context.js";
+import { DeterminismError } from "../../error.js";
+import {
+  ExecutionStatus,
+  FailedExecution,
+  isSucceededExecution,
+  SucceededExecution,
+} from "../../execution.js";
+import { clearEventualCollector } from "../../global.js";
+import { interpret } from "../../interpret.js";
+import { isFailed, isResolved, isResult, Result } from "../../result.js";
+import { Schedule } from "../../schedule.js";
+import { ServiceType } from "../../service-type.js";
+import { WorkflowTask } from "../../tasks.js";
+import { extendsError } from "../../util.js";
 import {
   createEvent,
+  filterEvents,
   getEventId,
+  HistoryEvent,
   HistoryStateEvent,
   isHistoryEvent,
+  isHistoryStateEvent,
   isTimerCompleted,
-  isWorkflowSucceeded,
+  isWorkflowCompletedEvent,
   isWorkflowFailed,
+  isWorkflowRunStarted,
   isWorkflowStarted,
-  WorkflowSucceeded,
+  isWorkflowSucceeded,
   WorkflowEvent,
   WorkflowEventType,
   WorkflowFailed,
   WorkflowRunCompleted,
   WorkflowRunStarted,
-  WorkflowTimedOut,
-  filterEvents,
-  isHistoryStateEvent,
-  HistoryEvent,
   WorkflowStarted,
-  isWorkflowCompletedEvent,
-  isWorkflowRunStarted,
+  WorkflowSucceeded,
+  WorkflowTimedOut,
 } from "../../workflow-events.js";
-import {
-  SucceededExecution,
-  ExecutionStatus,
-  FailedExecution,
-  isSucceededExecution,
-} from "../../execution.js";
-import { isFailed, isResolved, isResult, Result } from "../../result.js";
 import {
   generateSyntheticEvents,
   lookupWorkflow,
   Workflow,
 } from "../../workflow.js";
+import { MetricsClient } from "../clients/metrics-client.js";
+import { TimerClient } from "../clients/timer-client.js";
+import { WorkflowClient } from "../clients/workflow-client.js";
 import { CommandExecutor } from "../command-executor.js";
+import { hookDate, restoreDate } from "../date-hook.js";
 import { isExecutionId, parseWorkflowName } from "../execution-id.js";
-import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
-import { MetricsLogger } from "../metrics/metrics-logger.js";
-import { Unit } from "../metrics/unit.js";
-import { timed, timedSync } from "../metrics/utils.js";
-import { groupBy, promiseAllSettledPartitioned } from "../utils.js";
-import { extendsError } from "../../util.js";
-import { WorkflowTask } from "../../tasks.js";
+import { serviceTypeScope } from "../flags.js";
 import {
   ExecutionLogContext,
   LogAgent,
   LogContextType,
   LogLevel,
 } from "../log-agent.js";
-import { interpret } from "../../interpret.js";
-import { clearEventualCollector } from "../../global.js";
-import { DeterminismError } from "../../error.js";
-import { ExecutionHistoryClient } from "../clients/execution-history-client.js";
-import { TimerClient } from "../clients/timer-client.js";
-import { WorkflowRuntimeClient } from "../clients/workflow-runtime-client.js";
-import { WorkflowClient } from "../clients/workflow-client.js";
-import { MetricsClient } from "../clients/metrics-client.js";
-import { EventClient } from "../clients/event-client.js";
-import { serviceTypeScope } from "../flags.js";
-import { ServiceType } from "../../service-type.js";
-import { Schedule } from "../../schedule.js";
-import { hookDate, restoreDate } from "../date-hook.js";
+import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
+import { MetricsLogger } from "../metrics/metrics-logger.js";
+import { Unit } from "../metrics/unit.js";
+import { timed, timedSync } from "../metrics/utils.js";
+import { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
+import { ExecutionHistoryStore } from "../stores/execution-history-store.js";
+import { groupBy, promiseAllSettledPartitioned } from "../utils.js";
 
 /**
  * The Orchestrator's client dependencies.
  */
 export interface OrchestratorDependencies {
-  executionHistoryClient: ExecutionHistoryClient;
+  executionHistoryStore: ExecutionHistoryStore;
   timerClient: TimerClient;
-  workflowRuntimeClient: WorkflowRuntimeClient;
   workflowClient: WorkflowClient;
   metricsClient: MetricsClient;
-  eventClient: EventClient;
   logAgent: LogAgent;
+  executionHistoryStateStore: ExecutionHistoryStateStore;
+  commandExecutor: CommandExecutor;
 }
 
 export interface OrchestratorResult {
@@ -86,7 +85,10 @@ export interface OrchestratorResult {
 }
 
 export interface Orchestrator {
-  (workflowTasks: WorkflowTask[], baseTime?: Date): Promise<OrchestratorResult>;
+  (
+    workflowTasks: WorkflowTask[],
+    baseTime?: () => Date
+  ): Promise<OrchestratorResult>;
 }
 
 /**
@@ -96,22 +98,15 @@ export interface Orchestrator {
  * inject its own client implementations designed for that platform.
  */
 export function createOrchestrator({
-  executionHistoryClient,
-  timerClient,
-  workflowRuntimeClient,
-  workflowClient,
-  metricsClient,
-  eventClient,
+  commandExecutor,
+  executionHistoryStateStore,
+  executionHistoryStore,
   logAgent,
+  metricsClient,
+  timerClient,
+  workflowClient,
 }: OrchestratorDependencies): Orchestrator {
-  const commandExecutor = new CommandExecutor({
-    timerClient,
-    workflowClient,
-    workflowRuntimeClient,
-    eventClient,
-  });
-
-  return async (workflowTasks, baseTime = new Date()) =>
+  return async (workflowTasks, baseTime = () => new Date()) =>
     await serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
       const tasksByExecutionId = groupBy(
         workflowTasks,
@@ -173,10 +168,10 @@ export function createOrchestrator({
     workflowName: string,
     executionId: string,
     events: HistoryStateEvent[],
-    baseTime: Date
+    baseTime: () => Date
   ) {
     const metrics = initializeMetrics();
-    const start = baseTime;
+    const start = baseTime();
 
     const executionLogContext: ExecutionLogContext = {
       type: LogContextType.Execution,
@@ -233,7 +228,7 @@ export function createOrchestrator({
       // length of time the oldest event in the queue.
       const maxTaskAge = Math.max(
         ...events.map(
-          (event) => new Date().getTime() - Date.parse(event.timestamp)
+          (event) => baseTime().getTime() - Date.parse(event.timestamp)
         )
       );
       metrics.putMetric(
@@ -277,7 +272,7 @@ export function createOrchestrator({
         const processedEvents = processEvents(
           history,
           [runStarted, ...events],
-          baseTime
+          baseTime()
         );
 
         /**
@@ -285,15 +280,14 @@ export function createOrchestrator({
          */
         if (processedEvents.isFirstRun) {
           if (processedEvents.startEvent?.timeoutTime) {
+            const timeoutTime = processedEvents.startEvent?.timeoutTime;
             metrics.setProperty(OrchestratorMetrics.TimeoutStarted, 1);
             await timed(
               metrics,
               OrchestratorMetrics.TimeoutStartedDuration,
               () =>
                 timerClient.scheduleEvent<WorkflowTimedOut>({
-                  schedule: Schedule.time(
-                    processedEvents.startEvent.timeoutTime!
-                  ),
+                  schedule: Schedule.time(timeoutTime),
                   event: createEvent<WorkflowTimedOut>(
                     {
                       type: WorkflowEventType.WorkflowTimedOut,
@@ -400,7 +394,7 @@ export function createOrchestrator({
               start
             );
             executionCompletedDuringRun = true;
-          } else if (isResolved<any>(result)) {
+          } else if (isResolved(result)) {
             yield createEvent<WorkflowSucceeded>(
               {
                 type: WorkflowEventType.WorkflowSucceeded,
@@ -472,7 +466,7 @@ export function createOrchestrator({
       const history = await timed(
         metrics,
         OrchestratorMetrics.LoadHistoryDuration,
-        async () => workflowRuntimeClient.getHistory(executionId)
+        async () => executionHistoryStateStore.getHistory(executionId)
       );
 
       metrics.setProperty(
@@ -484,13 +478,13 @@ export function createOrchestrator({
     }
 
     /**
-     * Saves all new events generated by this execution to the {@link ExecutionHistoryClient}.
+     * Saves all new events generated by this execution to the {@link ExecutionHistoryStore}.
      */
     async function saveNewEventsToExecutionHistory(newEvents: WorkflowEvent[]) {
       await timed(
         metrics,
         OrchestratorMetrics.AddNewExecutionEventsDuration,
-        () => executionHistoryClient.putEvents(executionId, newEvents)
+        () => executionHistoryStore.putEvents(executionId, newEvents)
       );
 
       metrics.setProperty(
@@ -517,7 +511,7 @@ export function createOrchestrator({
         metrics,
         OrchestratorMetrics.SaveHistoryDuration,
         () =>
-          workflowRuntimeClient.updateHistory({
+          executionHistoryStateStore.updateHistory({
             executionId,
             events: updatedHistoryEvents,
           })
@@ -543,7 +537,7 @@ export function createOrchestrator({
           metrics,
           OrchestratorMetrics.ExecutionStatusUpdateDuration,
           () =>
-            workflowRuntimeClient.failExecution({
+            workflowClient.failExecution({
               executionId,
               error: resultEvent.error,
               message: resultEvent.message,
@@ -563,7 +557,7 @@ export function createOrchestrator({
           metrics,
           OrchestratorMetrics.ExecutionStatusUpdateDuration,
           () =>
-            workflowRuntimeClient.succeedExecution({
+            workflowClient.succeedExecution({
               executionId,
               result: resultEvent.output,
             })

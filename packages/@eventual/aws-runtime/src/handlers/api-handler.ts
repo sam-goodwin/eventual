@@ -2,30 +2,13 @@ import "@eventual/entry/injected";
 
 import { createApiHandler } from "@eventual/core";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
-import {
-  createServiceClient,
-  createTimerClient,
-  createWorkflowRuntimeClient,
-} from "../clients/create.js";
+import { createServiceClient } from "../create.js";
 
 // TODO: remove once we can upgrade to Node 18 in AWS Lambda
 import "./fetch-polyfill.js";
 
 const processRequest = createApiHandler({
-  serviceClient: createServiceClient(
-    createWorkflowRuntimeClient({
-      executionHistoryBucket: "NOT_NEEDED",
-      activityWorkerFunctionName: "NOT_NEEDED",
-      tableName: "NOT_NEEDED",
-      timerClient: createTimerClient({
-        scheduleForwarderArn: "NOT_NEEDED",
-        schedulerDlqArn: "NOT_NEEDED",
-        schedulerGroup: "NOT_NEEDED",
-        schedulerRoleArn: "NOT_NEEDED",
-        timerQueueUrl: "NOT_NEEDED",
-      }),
-    })
-  ),
+  serviceClient: createServiceClient(),
 });
 
 /**

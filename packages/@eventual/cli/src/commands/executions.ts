@@ -88,7 +88,7 @@ export const listExecutions = (yargs: Argv) =>
           args.failed ? ExecutionStatus.FAILED : undefined,
         ].filter((s): s is ExecutionStatus => !!s);
 
-        return service.getExecutions({
+        return service.listExecutions({
           workflowName: args.workflow,
           sortDirection: SortOrder.Desc,
           maxResults: args.maxResults ?? 100,

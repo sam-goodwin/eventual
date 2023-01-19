@@ -1,9 +1,11 @@
+import { Schedule } from "../../schedule.js";
+import { assertNever } from "../../util.js";
 import {
   ActivityHeartbeatTimedOut,
   createEvent,
   WorkflowEventType,
 } from "../../workflow-events.js";
-import { assertNever } from "../../util.js";
+import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import {
   isActivityHeartbeatMonitorRequest,
   isTimerScheduleEventRequest,
@@ -11,16 +13,14 @@ import {
   TimerRequest,
   TimerRequestType,
 } from "../clients/timer-client.js";
-import type { WorkflowClient } from "../clients/workflow-client.js";
-import { ActivityRuntimeClient } from "../clients/activity-runtime-client.js";
 import { LogAgent, LogContextType, LogLevel } from "../log-agent.js";
-import { Schedule } from "../../schedule.js";
+import { ActivityStore } from "../stores/activity-store.js";
 
 interface TimerHandlerProps {
-  workflowClient: WorkflowClient;
-  activityRuntimeClient: ActivityRuntimeClient;
   timerClient: TimerClient;
   logAgent: LogAgent;
+  executionQueueClient: ExecutionQueueClient;
+  activityStore: ActivityStore;
 }
 
 /**
@@ -30,57 +30,70 @@ interface TimerHandlerProps {
  * inject its own client implementations designed for that platform.
  */
 export function createTimerHandler({
-  workflowClient,
-  activityRuntimeClient,
-  timerClient,
+  activityStore,
+  executionQueueClient,
   logAgent,
+  timerClient,
 }: TimerHandlerProps) {
   return async (request: TimerRequest) => {
-    if (isTimerScheduleEventRequest(request)) {
-      await workflowClient.submitWorkflowTask(
-        request.executionId,
-        request.event
-      );
-    } else if (isActivityHeartbeatMonitorRequest(request)) {
-      const activity = await activityRuntimeClient.getActivity(
-        request.executionId,
-        request.activitySeq
-      );
-
-      logAgent.logWithContext(
-        { type: LogContextType.Execution, executionId: request.executionId },
-        LogLevel.DEBUG,
-        `checking activity for heartbeat timeout: ${JSON.stringify(activity)}`
-      );
-
-      // the activity has not sent a heartbeat or the last time was too long ago.
-      // Send the timeout event to the workflow.
-      if (
-        !activity?.heartbeatTime ||
-        isHeartbeatTimeElapsed(activity.heartbeatTime, request.heartbeatSeconds)
-      ) {
-        return workflowClient.submitWorkflowTask(
-          request.executionId,
-          createEvent<ActivityHeartbeatTimedOut>(
-            {
-              type: WorkflowEventType.ActivityHeartbeatTimedOut,
-              seq: request.activitySeq,
-            },
-            new Date()
-          )
+    try {
+      if (isTimerScheduleEventRequest(request)) {
+        logAgent.logWithContext(
+          { type: LogContextType.Execution, executionId: request.executionId },
+          LogLevel.DEBUG,
+          `Forwarding event: ${request.event}.`
         );
+
+        await executionQueueClient.submitExecutionEvents(
+          request.executionId,
+          request.event
+        );
+      } else if (isActivityHeartbeatMonitorRequest(request)) {
+        const activity = await activityStore.get(
+          request.executionId,
+          request.activitySeq
+        );
+
+        logAgent.logWithContext(
+          { type: LogContextType.Execution, executionId: request.executionId },
+          LogLevel.DEBUG,
+          `Checking activity for heartbeat timeout: ${JSON.stringify(activity)}`
+        );
+
+        // the activity has not sent a heartbeat or the last time was too long ago.
+        // Send the timeout event to the workflow.
+        if (
+          !activity?.heartbeatTime ||
+          isHeartbeatTimeElapsed(
+            activity.heartbeatTime,
+            request.heartbeatSeconds
+          )
+        ) {
+          return executionQueueClient.submitExecutionEvents(
+            request.executionId,
+            createEvent<ActivityHeartbeatTimedOut>(
+              {
+                type: WorkflowEventType.ActivityHeartbeatTimedOut,
+                seq: request.activitySeq,
+              },
+              new Date()
+            )
+          );
+        } else {
+          // activity heartbeat has not timed out, start a new monitor instance
+          await timerClient.startTimer({
+            type: TimerRequestType.ActivityHeartbeatMonitor,
+            activitySeq: request.activitySeq,
+            executionId: request.executionId,
+            heartbeatSeconds: request.heartbeatSeconds,
+            schedule: Schedule.duration(request.heartbeatSeconds),
+          });
+        }
       } else {
-        // activity heartbeat has not timed out, start a new monitor instance
-        await timerClient.startTimer({
-          type: TimerRequestType.ActivityHeartbeatMonitor,
-          activitySeq: request.activitySeq,
-          executionId: request.executionId,
-          heartbeatSeconds: request.heartbeatSeconds,
-          schedule: Schedule.duration(request.heartbeatSeconds),
-        });
+        assertNever(request);
       }
-    } else {
-      assertNever(request);
+    } finally {
+      await logAgent.flush();
     }
   };
 }

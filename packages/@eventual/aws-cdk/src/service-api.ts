@@ -1,21 +1,21 @@
 import { HttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
+import { BuildSource } from "@eventual/compiler";
 import { ServiceType } from "@eventual/core";
+import { Arn, Stack } from "aws-cdk-lib";
 import { HttpMethod } from "aws-cdk-lib/aws-events";
 import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Code, Function } from "aws-cdk-lib/aws-lambda";
-import { Arn, Stack } from "aws-cdk-lib";
 import { Construct } from "constructs";
+import type { Activities } from "./activities";
+import { bundleSourcesSync } from "./compile-client";
+import type { Events } from "./events";
+import type { Scheduler } from "./scheduler";
+import { IService, runtimeHandlersEntrypoint } from "./service";
 import { ServiceFunction } from "./service-function";
 import { baseFnProps, outDir } from "./utils";
 import type { Workflows } from "./workflows";
-import type { Events } from "./events";
-import type { Activities } from "./activities";
-import type { Scheduler } from "./scheduler";
-import { bundleSourcesSync } from "./compile-client";
-import { runtimeHandlersEntrypoint } from "./service";
-import { BuildSource } from "@eventual/compiler";
 
 export interface ApiProps {
   serviceName: string;
@@ -25,6 +25,7 @@ export interface ApiProps {
   activities: Activities;
   scheduler: Scheduler;
   events: Events;
+  service: IService;
 }
 
 export class Api extends Construct {
@@ -46,12 +47,9 @@ export class Api extends Construct {
       memorySize: 512,
       environment: props.environment,
     });
-    props.activities.configureCompleteActivity(this.handler);
-    props.activities.configureScheduleActivity(this.handler);
-    props.activities.configureUpdateActivity(this.handler);
-    props.workflows.configureSendSignal(this.handler);
-    props.workflows.configureSendWorkflowEvent(this.handler);
-    props.workflows.configureStartExecution(this.handler);
+    // The handler is given an instance of the service client.
+    // Allow it to access any of the methods on the service client by default.
+    props.service.configureForServiceClient(this.handler);
 
     this.gateway = new HttpApi(this, "Gateway", {
       apiName: `eventual-api-${props.serviceName}`,
@@ -87,7 +85,7 @@ export class Api extends Construct {
           entry: runtimeHandlersEntrypoint("api/executions/list"),
         },
         grants: (fn) => {
-          props.workflows.configureReadWorkflowData(fn);
+          props.workflows.configureReadExecutions(fn);
         },
       },
       "/_eventual/executions/{executionId}": {
@@ -96,7 +94,7 @@ export class Api extends Construct {
           name: "get-execution",
           entry: runtimeHandlersEntrypoint("api/executions/get"),
         },
-        grants: (fn) => props.workflows.configureReadWorkflowData(fn),
+        grants: (fn) => props.workflows.configureReadExecutions(fn),
       },
       "/_eventual/executions/{executionId}/history": {
         methods: [HttpMethod.GET],
@@ -104,7 +102,7 @@ export class Api extends Construct {
           name: "executions-events",
           entry: runtimeHandlersEntrypoint("api/executions/history"),
         },
-        grants: (fn) => props.workflows.configureReadWorkflowData(fn),
+        grants: (fn) => props.workflows.configureReadExecutionHistory(fn),
       },
       "/_eventual/executions/{executionId}/signals": {
         methods: [HttpMethod.PUT],
@@ -113,7 +111,6 @@ export class Api extends Construct {
           entry: runtimeHandlersEntrypoint("api/executions/signals/send"),
         },
         grants: (fn) => {
-          props.workflows.configureReadWorkflowData(fn);
           props.workflows.configureSendSignal(fn);
         },
       },
@@ -123,11 +120,8 @@ export class Api extends Construct {
           name: "executions-history",
           entry: runtimeHandlersEntrypoint("api/executions/workflow-history"),
         },
-        // TODO fix me
         grants: (fn) => {
-          props.activities.configureFullControl(fn);
-          props.workflows.configureReadHistory(fn);
-          props.scheduler.configureScheduleTimer(fn);
+          props.workflows.configureReadHistoryState(fn);
         },
       },
       "/_eventual/events": {
@@ -147,7 +141,7 @@ export class Api extends Construct {
           entry: runtimeHandlersEntrypoint("api/update-activity"),
         },
         grants: (fn) => {
-          props.activities.configureUpdateActivity(fn);
+          props.activities.configureWriteActivities(fn);
           props.activities.configureCompleteActivity(fn);
         },
       },

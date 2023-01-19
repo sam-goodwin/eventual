@@ -1,20 +1,18 @@
+import { createTimerHandler, TimerRequest } from "@eventual/core";
 import { SQSHandler } from "aws-lambda";
-import { promiseAllSettledPartitioned } from "../utils.js";
 import {
-  createActivityRuntimeClient,
+  createActivityStore,
+  createExecutionQueueClient,
   createLogAgent,
   createTimerClient,
-  createWorkflowClient,
-} from "../clients/create.js";
-import { createTimerHandler, TimerRequest } from "@eventual/core";
+} from "../create.js";
+import { promiseAllSettledPartitioned } from "../utils.js";
 
 const handleTimer = createTimerHandler({
-  workflowClient: createWorkflowClient({
-    tableName: "NOT_NEEDED",
-  }),
-  activityRuntimeClient: createActivityRuntimeClient(),
   timerClient: createTimerClient(),
   logAgent: createLogAgent(),
+  executionQueueClient: createExecutionQueueClient(),
+  activityStore: createActivityStore(),
 });
 
 export const handle: SQSHandler = async (event) => {

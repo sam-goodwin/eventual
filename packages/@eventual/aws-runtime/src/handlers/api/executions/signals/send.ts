@@ -1,15 +1,9 @@
-import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
-import { withErrorMiddleware } from "../../middleware.js";
 import { decodeExecutionId, SendSignalRequest } from "@eventual/core";
-import {
-  createLogsClient,
-  createWorkflowClient,
-} from "../../../../clients/create.js";
+import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { createExecutionQueueClient } from "../../../../create.js";
+import { withErrorMiddleware } from "../../middleware.js";
 
-const workflowClient = createWorkflowClient({
-  activityTableName: "NOT_NEEDED",
-  logsClient: createLogsClient({ serviceLogGroup: "NOT_NEEDED" }),
-});
+const executionQueueClient = createExecutionQueueClient();
 
 async function sendSignal(event: APIGatewayProxyEventV2) {
   const executionId = event.pathParameters?.executionId;
@@ -24,7 +18,7 @@ async function sendSignal(event: APIGatewayProxyEventV2) {
     "execution"
   >;
 
-  return await workflowClient.sendSignal({
+  return await executionQueueClient.sendSignal({
     ...request,
     execution: decodeExecutionId(executionId),
   });

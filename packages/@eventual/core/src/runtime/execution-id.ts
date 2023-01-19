@@ -18,6 +18,20 @@ export function formatExecutionId<
   return `${workflowName}/${id}` as ExecutionID<WorkflowName, ID>;
 }
 
+export function parseExecutionId(executionId: ExecutionID): {
+  workflowName: string;
+  executionName: string;
+} {
+  if (isExecutionId(executionId)) {
+    const parts = executionId.split("/");
+    return {
+      workflowName: parts[0]!,
+      executionName: parts.slice(1).join("/"),
+    };
+  }
+  throw new Error("Invalid execution Id: " + executionId);
+}
+
 // API Gateway doesn't agree with uri encoding in path parameter... so we have these. for now
 export function encodeExecutionId(executionId: string) {
   return Buffer.from(executionId, "utf-8").toString("base64");
