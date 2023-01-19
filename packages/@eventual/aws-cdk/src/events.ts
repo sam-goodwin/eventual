@@ -105,7 +105,7 @@ export class Events extends Construct implements IGrantable {
     this.props.service.configureForServiceClient(this.handler);
   }
 
-  private ENV_MAPPINGS = {
+  private readonly ENV_MAPPINGS = {
     [ENV_NAMES.EVENT_BUS_ARN]: () => this.bus.eventBusArn,
     [ENV_NAMES.SERVICE_NAME]: () => this.serviceName,
   } as const;

@@ -200,7 +200,7 @@ export class Activities
     this.props.service.configureForServiceClient(this.worker);
   }
 
-  private ENV_MAPPINGS = {
+  private readonly ENV_MAPPINGS = {
     [ENV_NAMES.ACTIVITY_TABLE_NAME]: () => this.table.tableName,
     [ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME]: () => this.worker.functionName,
   } as const;

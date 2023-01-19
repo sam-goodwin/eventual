@@ -208,7 +208,7 @@ export class Scheduler
     this.props.logging.configurePutServiceLogs(this.handler);
   }
 
-  private ENV_MAPPINGS = {
+  private readonly ENV_MAPPINGS = {
     [ENV_NAMES.SCHEDULE_FORWARDER_ARN]: () => this.forwarder.functionArn,
     [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: () => this.dlq.queueArn,
     [ENV_NAMES.SCHEDULER_GROUP]: () => this.schedulerGroup.ref,

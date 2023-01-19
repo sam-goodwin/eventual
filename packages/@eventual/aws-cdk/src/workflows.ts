@@ -305,7 +305,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.props.scheduler.configureScheduleTimer(this.orchestrator);
   }
 
-  private ENV_MAPPINGS = {
+  private readonly ENV_MAPPINGS = {
     [ENV_NAMES.TABLE_NAME]: () => this.props.table.tableName,
     [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: () => this.history.bucketName,
     [ENV_NAMES.WORKFLOW_QUEUE_URL]: () => this.queue.queueUrl,

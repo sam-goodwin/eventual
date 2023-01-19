@@ -33,7 +33,7 @@ export class AWSExecutionHistoryStateStore
         })
       );
 
-      return await historyEntryToEvents(historyObject);
+      return historyEntryToEvents(historyObject);
     } catch (err) {
       if (err instanceof NoSuchKey) {
         return [];

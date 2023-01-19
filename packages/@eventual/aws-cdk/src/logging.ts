@@ -66,7 +66,7 @@ export class Logging extends Construct {
     this.logGroup.grantWrite(grantable);
   }
 
-  private ENV_MAPPINGS = {
+  private readonly ENV_MAPPINGS = {
     [ENV_NAMES.SERVICE_LOG_GROUP_NAME]: () => this.logGroup.logGroupName,
     [ENV_NAMES.DEFAULT_LOG_LEVEL]: () => this.props.logLevel ?? "INFO",
   } as const;

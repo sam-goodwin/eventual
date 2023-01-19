@@ -123,7 +123,6 @@ export class WorkflowClient {
     request: SucceedExecutionRequest
   ): Promise<SucceededExecution> {
     const execution = await this.executionStore.update(request);
-    console.log("execution", execution);
     if (execution.parent) {
       await this.reportCompletionToParent(
         execution.parent.executionId,

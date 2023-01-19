@@ -69,8 +69,7 @@ export const createWorkflowClient = /* @__PURE__ */ memoize(
       executionStore ?? createExecutionStore(),
       logsClient ?? createLogsClient(),
       executionQueueClient ?? createExecutionQueueClient()
-    ),
-  { cacheKey: JSON.stringify }
+    )
 );
 
 export const createExecutionQueueClient = /* @__PURE__ */ memoize(
@@ -134,8 +133,7 @@ export const createTimerClient = /* @__PURE__ */ memoize(
       timerQueueUrl: props.timerQueueUrl ?? env.timerQueueUrl,
       scheduleForwarderArn:
         props.scheduleForwarderArn ?? env.schedulerForwarderArn,
-    }),
-  { cacheKey: JSON.stringify }
+    })
 );
 
 export const createActivityClient = /* @__PURE__ */ memoize(
@@ -158,8 +156,7 @@ export const createActivityClient = /* @__PURE__ */ memoize(
         executionQueueClient ?? createExecutionQueueClient(),
       executionStore: executionStore ?? createExecutionStore(),
       activityStore: activityStore ?? createActivityStore(),
-    }),
-  { cacheKey: JSON.stringify }
+    })
 );
 
 export const createExecutionHistoryStateStore = /* @__PURE__ */ memoize(
