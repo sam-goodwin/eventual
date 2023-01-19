@@ -1,6 +1,5 @@
 import { EventEnvelope } from "./event.js";
 import { Execution, ExecutionHandle } from "./execution.js";
-import { ExecutionID } from "./index.js";
 import {
   SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
@@ -8,6 +7,7 @@ import {
   SendActivitySuccessRequest,
 } from "./runtime/clients/activity-client.js";
 import { SendSignalRequest } from "./runtime/clients/execution-queue-client.js";
+import { ExecutionID } from "./runtime/execution-id.js";
 import {
   ListExecutionEventsRequest,
   ListExecutionEventsResponse,
