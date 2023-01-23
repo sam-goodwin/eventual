@@ -16,6 +16,7 @@ import {
   createLogAgent,
   createTimerClient,
   createWorkflowClient,
+  createWorkflowProvider,
 } from "../create.js";
 
 /**
@@ -36,6 +37,7 @@ const orchestrate = createOrchestrator({
     timerClient: createTimerClient(),
     workflowClient: createWorkflowClient(),
   }),
+  workflowProvider: createWorkflowProvider(),
 });
 
 export default async (event: SQSEvent) => {

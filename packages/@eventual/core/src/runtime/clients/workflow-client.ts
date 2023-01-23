@@ -1,5 +1,6 @@
 import { ulid } from "ulidx";
 import { inspect } from "util";
+import { ExecutionAlreadyExists } from "../../error.js";
 import {
   ExecutionStatus,
   FailedExecution,
@@ -11,13 +12,18 @@ import {
   StartExecutionRequest,
   StartExecutionResponse,
 } from "../../service-client.js";
+import { hashCode } from "../../util.js";
 import {
   createEvent,
   WorkflowEventType,
   WorkflowStarted,
 } from "../../workflow-events.js";
-import { lookupWorkflow, Workflow, WorkflowOptions } from "../../workflow.js";
-import { formatExecutionId } from "../execution-id.js";
+import { Workflow, WorkflowOptions } from "../../workflow.js";
+import {
+  formatExecutionId,
+  INTERNAL_EXECUTION_ID_PREFIX,
+} from "../execution-id.js";
+import { WorkflowProvider } from "../providers/workflow-provider.js";
 import {
   ExecutionStore,
   FailExecutionRequest,
@@ -31,13 +37,12 @@ export class WorkflowClient {
     private executionStore: ExecutionStore,
     private logsClient: LogsClient,
     private executionQueueClient: ExecutionQueueClient,
+    private workflowProvider: WorkflowProvider,
     protected baseTime: () => Date = () => new Date()
   ) {}
 
   /**
    * Start a workflow execution
-   *
-   * NOTE: the service entry point is required to access {@link workflows()}.
    *
    * @param name Suffix of execution id
    * @param input Workflow parameters
@@ -51,38 +56,54 @@ export class WorkflowClient {
   }:
     | StartExecutionRequest<W>
     | StartChildExecutionRequest<W>): Promise<StartExecutionResponse> {
-    if (typeof workflow === "string" && !lookupWorkflow(workflow)) {
+    if (
+      typeof workflow === "string" &&
+      !this.workflowProvider.lookupWorkflow(workflow)
+    ) {
       throw new Error(`Workflow ${workflow} does not exist in the service.`);
     }
+
+    validateExecutionName(executionName, "parentExecutionId" in request);
 
     const workflowName =
       typeof workflow === "string" ? workflow : workflow.workflowName;
     const executionId = formatExecutionId(workflowName, executionName);
-    console.log("execution input:", input);
-
-    const createLogStream = async () => {
-      await this.logsClient.initializeExecutionLog(executionId);
-      await this.logsClient.putExecutionLogs(executionId, {
-        time: this.baseTime().getTime(),
-        message: "Workflow Started",
-      });
-    };
+    const inputHash =
+      input !== undefined
+        ? hashCode(JSON.stringify(input)).toString(16)
+        : undefined;
+    console.debug("execution input:", input);
+    console.debug("execution input hash:", inputHash);
 
     const execution: InProgressExecution = {
       id: executionId,
       startTime: this.baseTime().toISOString(),
       workflowName,
       status: ExecutionStatus.IN_PROGRESS,
+      inputHash,
       parent:
         "parentExecutionId" in request
           ? { executionId: request.parentExecutionId, seq: request.seq }
           : undefined,
     };
 
-    const addExecutionEntry = this.executionStore.create(execution);
-
     try {
-      await Promise.all([createLogStream(), addExecutionEntry]);
+      try {
+        // try to create first as it may throw ExecutionAlreadyExists
+        await this.executionStore.create(execution);
+      } catch (err) {
+        if (err instanceof ExecutionAlreadyExists) {
+          const execution = await this.executionStore.get(executionId);
+          if (execution?.inputHash === inputHash) {
+            return { executionId, alreadyRunning: true };
+          }
+        }
+        // rethrow to the top catch
+        throw err;
+      }
+
+      // create the log
+      await this.logsClient.initializeExecutionLog(executionId);
 
       const workflowStartedEvent = createEvent<WorkflowStarted>(
         {
@@ -96,21 +117,28 @@ export class WorkflowClient {
             : undefined,
           context: {
             name: executionName,
-            parentId:
-              "parentExecutionId" in request
-                ? request.parentExecutionId
-                : undefined,
+            parentId: execution.parent
+              ? execution.parent.executionId
+              : undefined,
           },
         },
         this.baseTime()
       );
 
-      await this.executionQueueClient.submitExecutionEvents(
-        executionId,
-        workflowStartedEvent
-      );
+      await Promise.all([
+        // send the first event
+        this.executionQueueClient.submitExecutionEvents(
+          executionId,
+          workflowStartedEvent
+        ),
+        // send the first log message and warm up the log stream
+        this.logsClient.putExecutionLogs(executionId, {
+          time: this.baseTime().getTime(),
+          message: "Workflow Started",
+        }),
+      ]);
 
-      return { executionId };
+      return { executionId, alreadyRunning: false };
     } catch (err) {
       console.log(err);
       throw new Error(
@@ -180,4 +208,12 @@ export interface StartChildExecutionRequest<W extends Workflow = Workflow>
    * Sequence ID of this execution if this is a child workflow
    */
   seq: number;
+}
+
+function validateExecutionName(executionName: string, isChild: boolean) {
+  if (!isChild && executionName.startsWith(INTERNAL_EXECUTION_ID_PREFIX)) {
+    throw new Error(
+      `Execution names may not start with ${INTERNAL_EXECUTION_ID_PREFIX}`
+    );
+  }
 }

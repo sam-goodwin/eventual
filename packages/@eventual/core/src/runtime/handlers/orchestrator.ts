@@ -38,11 +38,7 @@ import {
   WorkflowSucceeded,
   WorkflowTimedOut,
 } from "../../workflow-events.js";
-import {
-  generateSyntheticEvents,
-  lookupWorkflow,
-  Workflow,
-} from "../../workflow.js";
+import { generateSyntheticEvents, Workflow } from "../../workflow.js";
 import { MetricsClient } from "../clients/metrics-client.js";
 import { TimerClient } from "../clients/timer-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
@@ -60,6 +56,7 @@ import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
 import { timed, timedSync } from "../metrics/utils.js";
+import { WorkflowProvider } from "../providers/workflow-provider.js";
 import { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
 import { ExecutionHistoryStore } from "../stores/execution-history-store.js";
 import { groupBy, promiseAllSettledPartitioned } from "../utils.js";
@@ -75,6 +72,7 @@ export interface OrchestratorDependencies {
   logAgent: LogAgent;
   executionHistoryStateStore: ExecutionHistoryStateStore;
   commandExecutor: CommandExecutor;
+  workflowProvider: WorkflowProvider;
 }
 
 export interface OrchestratorResult {
@@ -105,6 +103,7 @@ export function createOrchestrator({
   metricsClient,
   timerClient,
   workflowClient,
+  workflowProvider,
 }: OrchestratorDependencies): Orchestrator {
   return async (workflowTasks, baseTime = () => new Date()) =>
     await serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
@@ -255,7 +254,7 @@ export function createOrchestrator({
           start
         );
 
-        const workflow = lookupWorkflow(workflowName);
+        const workflow = workflowProvider.lookupWorkflow(workflowName);
         if (workflow === undefined) {
           yield runStarted;
           yield createEvent<WorkflowFailed>(

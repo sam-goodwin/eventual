@@ -89,10 +89,6 @@ export interface Workflow<in Input = any, Output = any> {
   ) => Program<AwaitedEventual<Output>>;
 }
 
-export function lookupWorkflow(name: string): Workflow | undefined {
-  return workflows().get(name);
-}
-
 /**
  * Creates and registers a long-running workflow.
  *

@@ -56,7 +56,7 @@ export const handler: APIGatewayProxyHandlerV2<StartExecutionResponse> =
       return { statusCode: 400, body: `Missing workflow name` };
     }
 
-    return await workflowClient.startExecution({
+    const result = await workflowClient.startExecution({
       workflow: workflowName,
       input: event.body && JSON.parse(event.body),
       executionName,
@@ -64,4 +64,10 @@ export const handler: APIGatewayProxyHandlerV2<StartExecutionResponse> =
         ? Schedule.duration(timeout, timeoutUnit as DurationUnit)
         : undefined,
     });
+
+    if (result.alreadyRunning) {
+      return result;
+    }
+
+    return { statusCode: 200, body: JSON.stringify(result) };
   });

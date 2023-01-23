@@ -41,7 +41,7 @@ export function decodeExecutionId(executionId: string) {
   return Buffer.from(executionId, "base64").toString("utf-8");
 }
 
-export const INTERNAL_EXECUTION_ID_PREFIX = "##EVENTUAL##";
+export const INTERNAL_EXECUTION_ID_PREFIX = "%";
 
 /**
  * Formats an child workflow execution as a unique, deterministic name.
