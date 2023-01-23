@@ -3,12 +3,15 @@
   "compilerOptions": {
     "baseUrl": ".",
     "rootDir": "src",
-    "outDir": "lib/cjs",
-    "paths": {
-      "@eventual/injected/*": ["./src/injected/*"]
-    }
+    "outDir": "lib/cjs"
   },
   "include": ["src"],
-  "exclude": ["lib", "node_modules", "src/package.json"],
+  "exclude": [
+    "lib",
+    "node_modules",
+    "src/package.json",
+    "src/create.ts",
+    "src/handlers"
+  ],
   "references": [{ "path": "../core/tsconfig.cjs.json" }]
 }

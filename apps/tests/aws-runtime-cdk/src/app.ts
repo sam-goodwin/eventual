@@ -1,4 +1,11 @@
-import { App, CfnOutput, CfnResource, DockerImage, Stack } from "aws-cdk-lib";
+import {
+  App,
+  AssetHashType,
+  CfnOutput,
+  CfnResource,
+  DockerImage,
+  Stack,
+} from "aws-cdk-lib";
 import { Queue } from "aws-cdk-lib/aws-sqs";
 import {
   ArnPrincipal,
@@ -67,6 +74,7 @@ const chaosLayerEntry = path.join(
 );
 const chaosLayer = new LayerVersion(stack, "chaosLayer", {
   code: Code.fromAsset(path.dirname(chaosLayerEntry), {
+    assetHashType: AssetHashType.OUTPUT,
     bundling: {
       image: DockerImage.fromRegistry("dummy"),
       local: {
@@ -76,6 +84,7 @@ const chaosLayer = new LayerVersion(stack, "chaosLayer", {
             bundle: true,
             outfile: `${outLoc}/chaos-ext/index.js`,
             platform: "node",
+            // cannot currently import modules from layers.
             format: "cjs",
             // Target for node 16
             target: "es2021",
@@ -106,9 +115,14 @@ testService.workflows.orchestrator.addEnvironment(
   "/opt/chaos-ext-start"
 );
 testService.workflows.orchestrator.addEnvironment(
+  "EVENTUAL_AWS_SDK_PLUGIN",
+  "/opt/chaos-ext/index.js"
+);
+testService.workflows.orchestrator.addEnvironment(
   "EVENTUAL_CHAOS_TEST_PARAM",
   chaosTestSSM.parameterName
 );
+
 chaosTestSSM.grantRead(testService.workflows.orchestrator);
 
 const asyncWriterFunction = new NodejsFunction(stack, "asyncWriterFunction", {

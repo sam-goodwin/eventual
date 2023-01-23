@@ -19,7 +19,7 @@
     "ulidx": "^0.3.0"
   },
   "devDependencies": {
-    "@aws-sdk/client-sqs": "^3.245.0",
+    "@aws-sdk/client-sqs": "^3.254.0",
     "@jest/globals": "^29.3.1",
     "@types/jest": "^29",
     "@types/node": "^16",

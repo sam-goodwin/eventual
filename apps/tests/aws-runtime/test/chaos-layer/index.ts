@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { register, next, EventType } from "./extensions-api.js";
 import { GetParameterCommand, SSMClient } from "@aws-sdk/client-ssm";
+import { Pluggable } from "@aws-sdk/types";
 import Mitm from "mitm";
 
 const ssm = new SSMClient({});
@@ -48,6 +49,9 @@ function handleInvoke(event: any) {
 
   mitm.on("connect", function (_socket, opts) {
     console.log("connection", opts);
+    _socket.on("data", (data) => {
+      console.log("connection data to: ", opts.host, data.toString("utf-8"));
+    });
     _socket.bypass();
   });
 
@@ -112,3 +116,20 @@ export interface ChaosTestConfig {
   disabled: boolean;
   rules?: [];
 }
+
+export default {
+  applyToStack(stack) {
+    stack.add(
+      (next, context) => {
+        return async (args) => {
+          console.log("chaos plugin", context, args);
+          return next(args);
+        };
+      },
+      {
+        step: "initialize",
+        name: "chaos_plugin_rejector",
+      }
+    );
+  },
+} satisfies Pluggable<any, any>;

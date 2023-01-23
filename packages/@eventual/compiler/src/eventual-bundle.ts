@@ -91,7 +91,7 @@ async function build({
     platform: "node",
     format: "esm",
     // Target for node 16
-    target: "es2021",
+    target: "es2022",
     metafile: true,
     bundle: true,
     entryPoints: [path.resolve(entry)],
