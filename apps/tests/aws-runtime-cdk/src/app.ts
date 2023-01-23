@@ -1,4 +1,4 @@
-import { App, CfnOutput, CfnResource, Stack } from "aws-cdk-lib";
+import { App, CfnOutput, CfnResource, DockerImage, Stack } from "aws-cdk-lib";
 import { Queue } from "aws-cdk-lib/aws-sqs";
 import {
   ArnPrincipal,
@@ -11,6 +11,10 @@ import * as eventual from "@eventual/aws-cdk";
 import path from "path";
 import { ServiceDashboard } from "@eventual/aws-cdk";
 import { LogLevel } from "@eventual/core";
+import { Code, LayerVersion } from "aws-cdk-lib/aws-lambda";
+import esbuild from "esbuild";
+import fs from "fs";
+import { StringParameter } from "aws-cdk-lib/aws-ssm";
 
 const app = new App();
 
@@ -52,6 +56,60 @@ const pipeRole = new Role(stack, "pipeRole", {
 
 testQueue.grantConsumeMessages(pipeRole);
 testQueue.grantSendMessages(testService);
+
+const chaosTestSSM = new StringParameter(stack, "chaos-param", {
+  stringValue: '{ "disabled": true }',
+});
+
+const chaosLayerEntry = path.join(
+  require.resolve("tests-runtime"),
+  "../chaos-layer/index.js"
+);
+const chaosLayer = new LayerVersion(stack, "chaosLayer", {
+  code: Code.fromAsset(path.dirname(chaosLayerEntry), {
+    bundling: {
+      image: DockerImage.fromRegistry("dummy"),
+      local: {
+        tryBundle: (outLoc) => {
+          esbuild.buildSync({
+            entryPoints: [chaosLayerEntry],
+            bundle: true,
+            outfile: `${outLoc}/chaos-ext/index.js`,
+            platform: "node",
+            format: "cjs",
+            // Target for node 16
+            target: "es2021",
+            // conditions: ["module", "import", "require"],
+            // mainFields: ["module", "main"],
+            // banner: {
+            //   js: [
+            //     `import { createRequire as topLevelCreateRequire } from 'module'`,
+            //     `const require = topLevelCreateRequire(import.meta.url)`,
+            //   ].join("\n"),
+            // },
+          });
+          fs.mkdirSync(`${outLoc}/extensions`);
+          fs.cpSync(
+            path.resolve(__dirname, "../scripts/extensions/chaos-ext"),
+            `${outLoc}/chaos-ext-start`
+          );
+          return true;
+        },
+      },
+    },
+  }),
+});
+
+testService.workflows.orchestrator.addLayers(chaosLayer);
+testService.workflows.orchestrator.addEnvironment(
+  "AWS_LAMBDA_EXEC_WRAPPER",
+  "/opt/chaos-ext-start"
+);
+testService.workflows.orchestrator.addEnvironment(
+  "EVENTUAL_CHAOS_TEST_PARAM",
+  chaosTestSSM.parameterName
+);
+chaosTestSSM.grantRead(testService.workflows.orchestrator);
 
 const asyncWriterFunction = new NodejsFunction(stack, "asyncWriterFunction", {
   entry: path.join(

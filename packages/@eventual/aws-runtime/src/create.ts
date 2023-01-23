@@ -26,6 +26,7 @@ import { AWSExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { AWSActivityStore } from "./stores/activity-store.js";
 import { AWSActivityClient } from "./clients/activity-client.js";
 import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
+import { InitializeMiddleware } from "@aws-sdk/types";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -34,11 +35,23 @@ import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
  * The pure annotations help esbuild determine that theses functions calls have no side effects.
  */
 
+const middlewareTest = (): InitializeMiddleware<any, any> => {
+  return (next, context) => async (args) => {
+    console.log("middlecontext", context);
+    return await next(args);
+  };
+};
+
 const dynamo = /* @__PURE__ */ memoize(() => new DynamoDBClient({}));
 const sqs = /* @__PURE__ */ memoize(() => new SQSClient({}));
-const s3 = /* @__PURE__ */ memoize(
-  () => new S3Client({ region: process.env.AWS_REGION })
-);
+const s3 = /* @__PURE__ */ memoize(() => {
+  const client = new S3Client({ region: process.env.AWS_REGION });
+  client.middlewareStack.add(middlewareTest(), {
+    name: "testmiddle",
+    step: "initialize",
+  });
+  return client;
+});
 const lambda = /* @__PURE__ */ memoize(() => new LambdaClient({}));
 const cloudwatchLogs = /* @__PURE__ */ memoize(
   () => new CloudWatchLogsClient({})

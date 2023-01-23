@@ -1,0 +1,17 @@
+  #!/bin/bash
+
+  ## This is a bash script which gives us access to starting the node process.
+
+
+  # the path to the interpreter and all of the originally intended arguments
+  args=("$@")
+
+  # the extra options to pass to the interpreter
+  ## Using require with CJS because --import isn't supported until node v19
+  extra_args=("--require" "/opt/chaos-ext/index.js")
+
+  # insert the extra options
+  args=("${args[@]:0:$#-1}" "${extra_args[@]}" "${args[@]: -1}")
+
+  # start the runtime with the extra options
+  exec "${args[@]}"
