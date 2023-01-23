@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 import { register, next, EventType } from "./extensions-api.js";
-import { GetParameterCommand, SSMClient } from "@aws-sdk/client-ssm";
-import { Pluggable } from "@aws-sdk/types";
-import Mitm from "mitm";
+import { HandlerExecutionContext, Pluggable } from "@aws-sdk/types";
+import { SSMChaosClient } from "./chaos-client.js";
+import { ChaosEngine, ChaosTestConfig } from "./chaos-engine.js";
 
-const ssm = new SSMClient({});
 const paramName = process.env.EVENTUAL_CHAOS_TEST_PARAM ?? "";
 
 if (!paramName) {
@@ -20,6 +19,9 @@ function handleInvoke(event: any) {
   console.log("invoke", { event });
 }
 
+let testingConfig: undefined | ChaosTestConfig;
+const chaosEngine = new ChaosEngine(() => testingConfig);
+
 (async function main() {
   process.on("SIGINT", () => handleShutdown("SIGINT"));
   process.on("SIGTERM", () => handleShutdown("SIGTERM"));
@@ -30,30 +32,7 @@ function handleInvoke(event: any) {
   const extensionId = await register();
   console.log("extensionId", extensionId);
 
-  let testingConfig: undefined | ChaosTestConfigWrapper;
-
-  const mitm = Mitm();
-  (mitm as any).enable();
-
-  mitm.on("request", function (request, res) {
-    const block = false;
-    console.log("request", request);
-
-    if (block) {
-      res.statusCode = 500;
-      res.end();
-    } else {
-      // do nothing
-    }
-  });
-
-  mitm.on("connect", function (_socket, opts) {
-    console.log("connection", opts);
-    _socket.on("data", (data) => {
-      console.log("connection data to: ", opts.host, data.toString("utf-8"));
-    });
-    _socket.bypass();
-  });
+  const chaosClient = new SSMChaosClient(paramName);
 
   // execute extensions logic
 
@@ -61,7 +40,7 @@ function handleInvoke(event: any) {
     console.log("next");
     const event = await next(extensionId);
     // once per invoke, get new config
-    await updateChaosConfig();
+    testingConfig = await chaosClient.getConfiguration();
     if (!event) {
       continue;
     }
@@ -76,53 +55,23 @@ function handleInvoke(event: any) {
         throw new Error("unknown event: " + event.eventType);
     }
   }
-
-  async function updateChaosConfig() {
-    const config = await getChaosTestParamValue();
-    if (config.version !== testingConfig?.version) {
-      testingConfig = config;
-      console.debug(
-        `Found new chaos config version ${config.version}: ${config.config}`
-      );
-    }
-  }
 })();
-
-async function getChaosTestParamValue(): Promise<ChaosTestConfigWrapper> {
-  const param = await ssm.send(
-    new GetParameterCommand({
-      Name: paramName,
-    })
-  );
-
-  const rawValue = param.Parameter?.Value;
-  if (!rawValue) {
-    console.log("Chaos testing value not found, testing disabled.");
-    return { config: { disabled: true } };
-  }
-
-  return {
-    version: param.Parameter?.Version,
-    config: JSON.parse(rawValue) as ChaosTestConfig,
-  };
-}
-
-interface ChaosTestConfigWrapper {
-  version?: number;
-  config: ChaosTestConfig;
-}
-
-export interface ChaosTestConfig {
-  disabled: boolean;
-  rules?: [];
-}
 
 export default {
   applyToStack(stack) {
     stack.add(
       (next, context) => {
         return async (args) => {
-          console.log("chaos plugin", context, args);
+          if (isCommandContext(context)) {
+            if (
+              chaosEngine.rejectOperation(
+                context.clientName,
+                context.commandName
+              )
+            ) {
+              throw new Error("Rejected");
+            }
+          }
           return next(args);
         };
       },
@@ -133,3 +82,14 @@ export default {
     );
   },
 } satisfies Pluggable<any, any>;
+
+interface CommandContext extends HandlerExecutionContext {
+  clientName: string;
+  commandName: string;
+}
+
+function isCommandContext(
+  context: HandlerExecutionContext
+): context is CommandContext {
+  return "clientName" in context && "commandName" in context;
+}

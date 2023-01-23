@@ -68,6 +68,9 @@ const chaosTestSSM = new StringParameter(stack, "chaos-param", {
   stringValue: '{ "disabled": true }',
 });
 
+chaosTestSSM.grantRead(role);
+chaosTestSSM.grantWrite(role);
+
 const chaosLayerEntry = path.join(
   require.resolve("tests-runtime"),
   "../chaos-layer/index.js"
@@ -88,14 +91,6 @@ const chaosLayer = new LayerVersion(stack, "chaosLayer", {
             format: "cjs",
             // Target for node 16
             target: "es2021",
-            // conditions: ["module", "import", "require"],
-            // mainFields: ["module", "main"],
-            // banner: {
-            //   js: [
-            //     `import { createRequire as topLevelCreateRequire } from 'module'`,
-            //     `const require = topLevelCreateRequire(import.meta.url)`,
-            //   ].join("\n"),
-            // },
           });
           fs.mkdirSync(`${outLoc}/extensions`);
           fs.cpSync(
