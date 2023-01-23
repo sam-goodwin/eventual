@@ -18,6 +18,7 @@ import {
   ExecutionHandle,
   ExecutionHistoryStore,
   ExecutionStore,
+  GlobalWorkflowProvider,
   isWorkflowTask,
   LogAgent,
   LogLevel,
@@ -138,6 +139,9 @@ export class TestEnvironment extends RuntimeServiceClient {
       eventHandlerProvider,
     });
 
+    // TODO, update this to support mocking workflows.
+    const workflowProvider = new GlobalWorkflowProvider();
+
     const executionQueueClient = new TestExecutionQueueClient(timeConnector);
     const timerClient = new TestTimerClient(timeConnector);
     const eventClient = new TestEventClient(eventHandlerWorker);
@@ -145,6 +149,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       executionStore,
       new TestLogsClient(),
       executionQueueClient,
+      workflowProvider,
       () => this.time
     );
 
@@ -215,6 +220,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       metricsClient: new TestMetricsClient(),
       logAgent: testLogAgent,
       executionHistoryStateStore,
+      workflowProvider,
     });
   }
 

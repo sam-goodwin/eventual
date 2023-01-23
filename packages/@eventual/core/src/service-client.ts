@@ -107,6 +107,11 @@ export interface StartExecutionResponse {
    * ID of the started workflow execution.
    */
   executionId: ExecutionID;
+  /**
+   * @returns true when the execution name with the same input
+   *          was already started. Use `getExecution` to check the status.
+   */
+  alreadyRunning: boolean;
 }
 
 export interface PublishEventsRequest {

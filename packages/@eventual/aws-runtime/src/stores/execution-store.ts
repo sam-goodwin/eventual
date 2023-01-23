@@ -58,6 +58,9 @@ export class AWSExecutionStore implements ExecutionStore {
             workflowName: { S: execution.workflowName },
             status: { S: ExecutionStatus.IN_PROGRESS },
             startTime: { S: execution.startTime },
+            ...(execution.inputHash !== undefined
+              ? { inputHash: { S: execution.inputHash } }
+              : {}),
             ...(execution.parent
               ? {
                   parentExecutionId: { S: execution.parent.executionId },
@@ -227,7 +230,7 @@ export type ExecutionRecord =
       endTime?: AttributeValue.SMember;
       error?: AttributeValue.SMember;
       message?: AttributeValue.SMember;
-      inputHash?: AttributeValue.NMember;
+      inputHash?: AttributeValue.SMember;
     } & (
       | {
           parentExecutionId: AttributeValue.SMember;
@@ -263,6 +266,7 @@ export function createExecutionFromResult(
     startTime: execution.startTime.S,
     status: execution.status.S,
     workflowName: execution.workflowName.S,
+    inputHash: execution.inputHash?.S,
     parent:
       execution.parentExecutionId !== undefined && execution.seq !== undefined
         ? {
