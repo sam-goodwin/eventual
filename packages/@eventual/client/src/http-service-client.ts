@@ -58,6 +58,17 @@ export class HttpServiceClient implements EventualServiceClient {
     this.baseUrl = path.join(props.serviceUrl, "_eventual");
   }
 
+  /**
+   * Pass through any http request to the eventual endpoint.
+   */
+  public async proxy(request: {
+    method: HttpMethod;
+    path: string;
+    body?: Body;
+  }) {
+    return this.request(request.method, request.path, request.body);
+  }
+
   public async listWorkflows(): Promise<ListWorkflowsResponse> {
     const workflowNames = await this.request<void, string[]>(
       "GET",
@@ -199,7 +210,7 @@ export class HttpServiceClient implements EventualServiceClient {
   }
 
   private async request<Body = any, Resp = any>(
-    method: "POST" | "GET" | "PUT",
+    method: HttpMethod,
     suffix: string,
     body?: Body
   ) {
@@ -228,6 +239,8 @@ export class HttpServiceClient implements EventualServiceClient {
     }
   }
 }
+
+export type HttpMethod = "POST" | "GET" | "PUT";
 
 export class HttpError extends Error {
   constructor(

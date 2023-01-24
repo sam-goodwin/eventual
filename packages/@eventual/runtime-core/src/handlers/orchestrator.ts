@@ -711,7 +711,7 @@ export function progressWorkflow(
   } catch (err) {
     // temporary fix when the interpreter fails, but the activities are not cleared.
     clearEventualCollector();
-    console.debug("workflow error", inspect(err));
+    // console.debug("workflow error", inspect(err));
     throw err;
   } finally {
     // re-enable sending logs, any generated logs are new.

@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@eventual/client": "workspace:^",
     "@eventual/core": "workspace:^",
     "@tanstack/react-query": "^4.19.1",
     "buffer": "^6.0.3",

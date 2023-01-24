@@ -1,12 +1,13 @@
+import { HttpServiceClient } from "@eventual/client";
+import { decodeExecutionId, WorkflowStarted } from "@eventual/core";
 import { useQuery } from "@tanstack/react-query";
 import { Buffer } from "buffer";
-import ky from "ky";
 import { ReactNode } from "react";
-import { ActivityList } from "./components/activity-list/activity-list.js";
 import styles from "./App.module.css";
-import { TimelineActivity } from "./activity.js";
+import { ActivityList } from "./components/activity-list/activity-list.js";
 import { Timeline } from "./components/timeline/timeline.js";
-import { WorkflowStarted } from "@eventual/core";
+
+const serviceClient = new HttpServiceClient({ serviceUrl: "/api" });
 
 function Layout({
   start,
@@ -68,10 +69,21 @@ function App() {
     ["events"],
     () => {
       const executionId = window.location.href.split("/").at(-1);
-      return ky(`/api/timeline/${executionId}`).json<{
-        start: WorkflowStarted;
-        activities: TimelineActivity[];
-      }>();
+      const history = serviceClient.getExecutionWorkflowHistory(
+        decodeExecutionId(executionId!)
+      );
+      console.log(history);
+      return {
+        history,
+        activities: [],
+        start: {
+          type: "WorkflowStarted",
+          context: { name: "hi" },
+          id: "",
+          timestamp: "",
+          workflowName: "",
+        } as WorkflowStarted,
+      };
     },
     { refetchInterval: 5000 }
   );

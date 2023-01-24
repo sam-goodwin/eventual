@@ -478,6 +478,7 @@ importers:
       '@aws-sdk/node-config-provider': ^3.226.0
       '@aws-sdk/types': ^3.226.0
       '@eventual/aws-client': workspace:^
+      '@eventual/client': workspace:^
       '@eventual/compiler': workspace:^
       '@eventual/core': workspace:^
       '@eventual/project': workspace:^
@@ -513,6 +514,7 @@ importers:
       '@aws-sdk/node-config-provider': 3.226.0
       '@aws-sdk/types': 3.226.0
       '@eventual/aws-client': link:../aws-client
+      '@eventual/client': link:../client
       '@eventual/compiler': link:../compiler
       '@eventual/core': link:../core
       '@eventual/project': link:../project
@@ -707,6 +709,7 @@ importers:
 
   packages/@eventual/timeline:
     specifiers:
+      '@eventual/client': workspace:^
       '@eventual/core': workspace:^
       '@tanstack/react-query': ^4.19.1
       '@types/react': ^18.0.26
@@ -722,6 +725,7 @@ importers:
       typescript: ^4.9.4
       vite: ^4.0.0
     dependencies:
+      '@eventual/client': link:../client
       '@eventual/core': link:../core
       '@tanstack/react-query': 4.19.1_biqbaboplfbrettd7655fr4n2y
       buffer: 6.0.3
