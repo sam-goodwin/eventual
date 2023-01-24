@@ -27,7 +27,7 @@ export class ChaosExtension extends Construct {
 
     const chaosLayerEntry = path.join(
       require.resolve("tests-runtime"),
-      "../chaos-layer/index.js"
+      "../chaos-extension/index.js"
     );
 
     this.layer = new LayerVersion(this, "extensionLayer", {

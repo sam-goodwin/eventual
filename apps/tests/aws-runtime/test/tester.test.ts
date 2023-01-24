@@ -1,5 +1,5 @@
 import { EventualError, HeartbeatTimeout } from "@eventual/core";
-import { ChaosEffects, ChaosTargets } from "./chaos-plugin/chaos-engine.js";
+import { ChaosEffects, ChaosTargets } from "./chaos-extension/chaos-engine.js";
 import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
 import {
   eventDrivenWorkflow,
