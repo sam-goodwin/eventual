@@ -11,7 +11,7 @@ import {
 } from "./workflow-events.js";
 import { createWorkflowCall } from "./calls/workflow-call.js";
 import { AwaitedEventual } from "./eventual.js";
-import { isOrchestratorWorker } from "./runtime/flags.js";
+import { isOrchestratorWorker } from "./flags.js";
 import { isChain } from "./chain.js";
 import { ChildExecution, ExecutionHandle } from "./execution.js";
 import { StartExecutionRequest } from "./service-client.js";
@@ -167,6 +167,14 @@ export function workflow<Input = any, Output = any>(
   ) as Workflow<Input, Output>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
   workflows().set(name, workflow);
   return workflow;
+}
+
+export function startWorkflowDefinition(
+  workflow: Workflow,
+  input: any,
+  context: Context
+) {
+  return workflow.definition(input, context);
 }
 
 /**

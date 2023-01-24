@@ -1,17 +1,17 @@
 import {
   Execution,
   ExecutionStatus,
-  ExecutionStore,
   FailedExecution,
   FailExecutionRequest,
-  ListExecutionsRequest,
-  ListExecutionsResponse,
   InProgressExecution,
   isFailedExecutionRequest,
+  ListExecutionsRequest,
+  ListExecutionsResponse,
   SortOrder,
   SucceededExecution,
   SucceedExecutionRequest,
 } from "@eventual/core";
+import { ExecutionStore } from "@eventual/runtime-core";
 import { TimeConnector } from "../environment.js";
 
 export class TestExecutionStore implements ExecutionStore {

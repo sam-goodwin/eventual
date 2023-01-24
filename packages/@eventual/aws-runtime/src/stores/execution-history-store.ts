@@ -5,15 +5,17 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import {
   BaseEvent,
+  getEventId,
   ListExecutionEventsRequest,
   ListExecutionEventsResponse,
-  ExecutionHistoryStore,
-  getEventId,
   SortOrder,
   WorkflowEvent,
+} from "@eventual/core";
+import {
+  ExecutionHistoryStore,
   getLazy,
   LazyValue,
-} from "@eventual/core";
+} from "@eventual/runtime-core";
 import { queryPageWithToken } from "../utils.js";
 
 export interface AWSExecutionHistoryStoreProps {

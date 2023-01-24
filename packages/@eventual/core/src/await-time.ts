@@ -2,7 +2,7 @@ import {
   createAwaitDurationCall,
   createAwaitTimeCall,
 } from "./calls/await-time-call.js";
-import { isOrchestratorWorker } from "./runtime/flags.js";
+import { isOrchestratorWorker } from "./flags.js";
 import { DurationSchedule, DurationUnit, TimeSchedule } from "./schedule.js";
 
 /**

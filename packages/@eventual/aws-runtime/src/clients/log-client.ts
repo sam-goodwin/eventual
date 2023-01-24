@@ -1,10 +1,15 @@
-import { getLazy, LazyValue, LogEntry, LogsClient } from "@eventual/core";
 import {
   CloudWatchLogsClient,
-  PutLogEventsCommand,
   CreateLogStreamCommand,
   InvalidParameterException,
+  PutLogEventsCommand,
 } from "@aws-sdk/client-cloudwatch-logs";
+import {
+  getLazy,
+  LazyValue,
+  LogEntry,
+  LogsClient,
+} from "@eventual/runtime-core";
 import { formatWorkflowExecutionStreamName } from "../utils.js";
 
 export interface AWSLogsClientProps {

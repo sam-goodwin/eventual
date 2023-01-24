@@ -1,5 +1,5 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
-import { LogLevel } from "@eventual/core";
+import { LogLevel } from "@eventual/runtime-core";
 import { RemovalPolicy } from "aws-cdk-lib";
 import { IGrantable } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";

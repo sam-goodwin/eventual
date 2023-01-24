@@ -1,4 +1,5 @@
-import { assertNonNull, LogLevel } from "@eventual/core";
+import { assertNonNull } from "@eventual/core";
+import { LogLevel } from "@eventual/runtime-core";
 
 export const ENV_NAMES = {
   SERVICE_NAME: "EVENTUAL_SERVICE_NAME",

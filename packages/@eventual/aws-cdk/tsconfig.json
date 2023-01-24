@@ -9,6 +9,7 @@
   "references": [
     { "path": "../aws-runtime/tsconfig.cjs.json" },
     { "path": "../core/tsconfig.cjs.json" },
-    { "path": "../compiler" }
+    { "path": "../compiler" },
+    { "path": "../runtime-core/tsconfig.cjs.json" }
   ]
 }

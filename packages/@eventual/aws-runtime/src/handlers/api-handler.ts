@@ -1,6 +1,6 @@
 import "@eventual/entry/injected";
 
-import { createApiHandler } from "@eventual/core";
+import { createApiHandler } from "@eventual/runtime-core";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
 import { createServiceClient } from "../create.js";
 

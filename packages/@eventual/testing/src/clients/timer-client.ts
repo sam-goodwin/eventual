@@ -1,11 +1,10 @@
+import { assertNever, computeScheduleDate } from "@eventual/core";
 import {
-  assertNever,
-  computeScheduleDate,
   isActivityHeartbeatMonitorRequest,
   isTimerScheduleEventRequest,
   TimerClient,
   TimerRequest,
-} from "@eventual/core";
+} from "@eventual/runtime-core";
 import { TimeConnector } from "../environment.js";
 
 export class TestTimerClient extends TimerClient {
