@@ -1,12 +1,7 @@
-import {
-  App,
-  AssetHashType,
-  CfnOutput,
-  CfnResource,
-  DockerImage,
-  Stack,
-} from "aws-cdk-lib";
-import { Queue } from "aws-cdk-lib/aws-sqs";
+import * as eventual from "@eventual/aws-cdk";
+import { ServiceDashboard } from "@eventual/aws-cdk";
+import { LogLevel } from "@eventual/core";
+import { App, CfnOutput, CfnResource, Stack } from "aws-cdk-lib";
 import {
   ArnPrincipal,
   PolicyStatement,
@@ -14,14 +9,9 @@ import {
   ServicePrincipal,
 } from "aws-cdk-lib/aws-iam";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
-import * as eventual from "@eventual/aws-cdk";
+import { Queue } from "aws-cdk-lib/aws-sqs";
 import path from "path";
-import { ServiceDashboard } from "@eventual/aws-cdk";
-import { LogLevel } from "@eventual/core";
-import { Code, LayerVersion } from "aws-cdk-lib/aws-lambda";
-import esbuild from "esbuild";
-import fs from "fs";
-import { StringParameter } from "aws-cdk-lib/aws-ssm";
+import { ChaosExtension } from "./chaos-extension";
 
 const app = new App();
 
@@ -64,61 +54,20 @@ const pipeRole = new Role(stack, "pipeRole", {
 testQueue.grantConsumeMessages(pipeRole);
 testQueue.grantSendMessages(testService);
 
-const chaosTestSSM = new StringParameter(stack, "chaos-param", {
-  stringValue: '{ "disabled": true }',
-});
+/**
+ * Chaos Testing
+ */
 
-chaosTestSSM.grantRead(role);
-chaosTestSSM.grantWrite(role);
+const chaosExtension = new ChaosExtension(stack, "chaos");
 
-const chaosLayerEntry = path.join(
-  require.resolve("tests-runtime"),
-  "../chaos-layer/index.js"
-);
-const chaosLayer = new LayerVersion(stack, "chaosLayer", {
-  code: Code.fromAsset(path.dirname(chaosLayerEntry), {
-    assetHashType: AssetHashType.OUTPUT,
-    bundling: {
-      image: DockerImage.fromRegistry("dummy"),
-      local: {
-        tryBundle: (outLoc) => {
-          esbuild.buildSync({
-            entryPoints: [chaosLayerEntry],
-            bundle: true,
-            outfile: `${outLoc}/chaos-ext/index.js`,
-            platform: "node",
-            // cannot currently import modules from layers.
-            format: "cjs",
-            // Target for node 16
-            target: "es2021",
-          });
-          fs.mkdirSync(`${outLoc}/extensions`);
-          fs.cpSync(
-            path.resolve(__dirname, "../scripts/extensions/chaos-ext"),
-            `${outLoc}/chaos-ext-start`
-          );
-          return true;
-        },
-      },
-    },
-  }),
-});
+chaosExtension.addToFunction(testService.activities.worker);
+chaosExtension.addToFunction(testService.workflows.orchestrator);
 
-testService.workflows.orchestrator.addLayers(chaosLayer);
-testService.workflows.orchestrator.addEnvironment(
-  "AWS_LAMBDA_EXEC_WRAPPER",
-  "/opt/chaos-ext-start"
-);
-testService.workflows.orchestrator.addEnvironment(
-  "EVENTUAL_AWS_SDK_PLUGIN",
-  "/opt/chaos-ext/index.js"
-);
-testService.workflows.orchestrator.addEnvironment(
-  "EVENTUAL_CHAOS_TEST_PARAM",
-  chaosTestSSM.parameterName
-);
+chaosExtension.grantReadWrite(role);
 
-chaosTestSSM.grantRead(testService.workflows.orchestrator);
+/**
+ * Async lambda test.
+ */
 
 const asyncWriterFunction = new NodejsFunction(stack, "asyncWriterFunction", {
   entry: path.join(
@@ -132,10 +81,6 @@ const asyncWriterFunction = new NodejsFunction(stack, "asyncWriterFunction", {
 });
 asyncWriterFunction.grantInvoke(pipeRole);
 testService.api.grantExecute(asyncWriterFunction);
-
-new ServiceDashboard(stack, "dashboard", {
-  service: testService,
-});
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-pipes-pipe.html
 new CfnResource(stack, "pipe", {
@@ -152,6 +97,10 @@ new CfnResource(stack, "pipe", {
   },
 });
 
+new ServiceDashboard(stack, "dashboard", {
+  service: testService,
+});
+
 new CfnOutput(stack, "roleArn", {
   value: role.roleArn,
   exportName: "RoleArn",
@@ -163,5 +112,5 @@ new CfnOutput(stack, "serviceUrl", {
 });
 
 new CfnOutput(stack, "chaosParamName", {
-  value: chaosTestSSM.parameterName,
+  value: chaosExtension.ssm.parameterName,
 });

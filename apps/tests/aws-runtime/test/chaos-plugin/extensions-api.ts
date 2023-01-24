@@ -1,13 +1,11 @@
 import fetch from "node-fetch";
 import path from "path";
-// import url from "url";
 
 export enum EventType {
   INVOKE = "INVOKE",
   SHUTDOWN = "SHUTDOWN",
 }
 
-// const __dirname = path.dirname(url.fileURLToPat h(import.meta.url));
 const baseUrl = `http://${process.env.AWS_LAMBDA_RUNTIME_API}/2020-01-01/extension`;
 
 export async function register(): Promise<string> {
@@ -16,7 +14,6 @@ export async function register(): Promise<string> {
     body: JSON.stringify({
       events: [
         "INVOKE",
-        // "SHUTDOWN"
       ],
     }),
     headers: {

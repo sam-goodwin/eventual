@@ -1,4 +1,5 @@
 import { EventualError, HeartbeatTimeout } from "@eventual/core";
+import { ChaosEffects, ChaosTargets } from "./chaos-plugin/chaos-engine.js";
 import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
 import {
   eventDrivenWorkflow,
@@ -98,14 +99,8 @@ eventualRuntimeTestHarness(
     chaos: {
       rules: [
         {
-          targets: [
-            {
-              type: "Operation",
-              clientName: "S3Client",
-              operationName: "PutObjectCommand",
-            },
-          ],
-          effect: { type: "Reject" },
+          targets: [ChaosTargets.command("PutObjectCommand", "S3Client")],
+          effect: ChaosEffects.reject(),
         },
       ],
       durationMillis: 4000,

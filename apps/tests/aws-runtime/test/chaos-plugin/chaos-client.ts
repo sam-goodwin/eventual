@@ -14,13 +14,17 @@ export interface ChaosClient {
   enable(): Promise<void>;
 }
 
-const ssm = new SSMClient({});
-
+/**
+ * Implementation of {@link ChaosClient} using SSM Parameters.
+ *
+ * {@link ChaosClient} helps retrieve and update {@link ChaosTestConfig} from
+ * the runtime and test utilities.
+ */
 export class SSMChaosClient implements ChaosClient {
-  constructor(private paramName: string) {}
+  constructor(private paramName: string, private ssm: SSMClient) {}
 
   async getConfiguration() {
-    const param = await ssm.send(
+    const param = await this.ssm.send(
       new GetParameterCommand({
         Name: this.paramName,
       })
@@ -36,7 +40,7 @@ export class SSMChaosClient implements ChaosClient {
   }
 
   async setConfiguration(config: ChaosTestConfig): Promise<void> {
-    await ssm.send(
+    await this.ssm.send(
       new PutParameterCommand({
         Name: this.paramName,
         Value: JSON.stringify(config),
