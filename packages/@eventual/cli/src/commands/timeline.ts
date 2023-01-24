@@ -12,6 +12,7 @@ import {
   encodeExecutionId,
   isWorkflowStarted,
   WorkflowStarted,
+  decodeExecutionId,
 } from "@eventual/core";
 import path from "path";
 
@@ -34,7 +35,8 @@ export const timeline = (yargs: Argv) =>
         // We forward errors onto our handler for the ui to deal with
         try {
           const { events } = await serviceClient.getExecutionWorkflowHistory(
-            req.params.execution
+            // execution id is encoded and will be re-encoded by the client.
+            decodeExecutionId(req.params.execution)
           );
           const timeline = aggregateEvents(events);
           res.json(timeline);
