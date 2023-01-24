@@ -384,3 +384,43 @@ export const timedWorkflow = workflow("timedWorkflow", async () => {
   }
   return { dates };
 });
+
+const resumeSignal = signal("resume");
+const notifyEvent = event<{ executionId: string }>("notify");
+
+notifyEvent.onEvent(async ({ executionId }) => {
+  await resumeSignal.sendSignal(executionId);
+});
+
+/**
+ * A test designed to show that all commands are idempotent.
+ *
+ * They should not fail a second time or apply a second time.
+ */
+export const allCommands = workflow("allCommands", async (_, context) => {
+  const sendEvent = notifyEvent.publishEvents({
+    executionId: context.execution.id,
+  });
+  const activity = hello("sam");
+  const timer = duration(1);
+  const childWorkflow = workflow1({ name: "amanda" });
+  let n = 0;
+  let m = 0;
+  mySignal.onSignal(() => {
+    n++;
+  });
+  resumeSignal.onSignal(() => {
+    m++;
+  });
+  // prove that only one signal is sent.
+  const signalResponse = mySignal.sendSignal(context.execution.id, 1);
+  await resumeSignal.expectSignal();
+  await Promise.all([
+    activity,
+    timer,
+    childWorkflow,
+    signalResponse,
+    sendEvent,
+  ]);
+  return { signalCount: n, eventResumeCount: m };
+});

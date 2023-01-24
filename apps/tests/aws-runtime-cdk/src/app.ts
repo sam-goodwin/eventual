@@ -161,3 +161,7 @@ new CfnOutput(stack, "serviceUrl", {
   value: testService.api.gateway.apiEndpoint,
   exportName: "ServiceUrl",
 });
+
+new CfnOutput(stack, "chaosParamName", {
+  value: chaosTestSSM.parameterName,
+});
