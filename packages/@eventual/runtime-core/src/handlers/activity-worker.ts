@@ -8,8 +8,8 @@ import {
   extendsError,
   isAsyncResult,
   isWorkflowFailed,
+  LogLevel,
   registerServiceClient,
-  Schedule,
   ServiceType,
   serviceTypeScope,
   setActivityContext,
@@ -22,16 +22,12 @@ import { MetricsClient } from "../clients/metrics-client.js";
 import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
 import { TimerClient, TimerRequestType } from "../clients/timer-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
-import {
-  ActivityLogContext,
-  LogAgent,
-  LogContextType,
-  LogLevel,
-} from "../log-agent.js";
+import { ActivityLogContext, LogAgent, LogContextType } from "../log-agent.js";
 import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
 import { Unit } from "../metrics/unit.js";
 import { timed } from "../metrics/utils.js";
 import { ActivityProvider } from "../providers/activity-provider.js";
+import { computeDurationSeconds } from "../schedule.js";
 import { ActivityStore } from "../stores/activity-store.js";
 
 export interface CreateActivityWorkerProps {
@@ -122,13 +118,15 @@ export function createActivityWorker({
             console.info(`Activity ${activityHandle} already claimed.`);
             return;
           }
-          if (request.command.heartbeatSeconds) {
+          if (request.command.heartbeat) {
             await timerClient.startTimer({
               activitySeq: request.command.seq,
               type: TimerRequestType.ActivityHeartbeatMonitor,
               executionId: request.executionId,
-              heartbeatSeconds: request.command.heartbeatSeconds,
-              schedule: Schedule.duration(request.command.heartbeatSeconds),
+              heartbeatSeconds: computeDurationSeconds(
+                request.command.heartbeat
+              ),
+              schedule: request.command.heartbeat,
             });
           }
           setActivityContext({

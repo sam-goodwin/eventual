@@ -1,33 +1,34 @@
 /* eslint-disable require-yield, no-throw-literal */
-import { createAwaitAllSettled } from "../src/await-all-settled.js";
-import { createAwaitAll } from "../src/await-all.js";
-import { duration, time } from "../src/await-time.js";
-import { createActivityCall } from "../src/calls/activity-call.js";
 import {
+  chain,
+  Context,
+  createActivityCall,
+  createAwaitAll,
+  createAwaitAllSettled,
   createAwaitDurationCall,
   createAwaitTimeCall,
-} from "../src/calls/await-time-call.js";
-import { createConditionCall } from "../src/calls/condition-call.js";
-import { createExpectSignalCall } from "../src/calls/expect-signal-call.js";
-import { createPublishEventsCall } from "../src/calls/send-events-call.js";
-import { createSendSignalCall } from "../src/calls/send-signal-call.js";
-import { createRegisterSignalHandlerCall } from "../src/calls/signal-handler-call.js";
-import { createWorkflowCall } from "../src/calls/workflow-call.js";
-import { chain } from "../src/chain.js";
-import { Context } from "../src/context.js";
-import { EventualError, HeartbeatTimeout, Timeout } from "../src/error.js";
-import { Eventual } from "../src/eventual.js";
-import { SERVICE_TYPE_FLAG } from "../src/flags.js";
-import { interpret, Program, WorkflowResult } from "../src/interpret.js";
-import { Result } from "../src/result.js";
-import { Schedule } from "../src/schedule.js";
-import { ServiceType } from "../src/service-type.js";
-import { signal, SignalTargetType } from "../src/signals.js";
-import {
-  Workflow,
+  createConditionCall,
+  createExpectSignalCall,
+  createPublishEventsCall,
+  createRegisterSignalHandlerCall,
+  createSendSignalCall,
+  createWorkflowCall,
+  duration,
+  Eventual,
+  EventualError,
+  HeartbeatTimeout,
+  Program,
+  Result,
+  Schedule,
+  ServiceType,
+  serviceTypeScopeSync,
+  signal,
+  SignalTargetType,
+  time,
+  Timeout,
   workflow as _workflow,
-  WorkflowHandler,
-} from "../src/workflow.js";
+} from "@eventual/core";
+import { interpret as _interpret, WorkflowResult } from "../src/interpret.js";
 import {
   activityFailed,
   activityHeartbeatTimedOut,
@@ -48,14 +49,6 @@ import {
   workflowSucceeded,
   workflowTimedOut,
 } from "./command-util.js";
-
-beforeAll(() => {
-  process.env[SERVICE_TYPE_FLAG] = ServiceType.OrchestratorWorker;
-});
-
-afterAll(() => {
-  delete process.env[SERVICE_TYPE_FLAG];
-});
 
 function* myWorkflow(event: any): Program<any> {
   try {
@@ -90,12 +83,21 @@ const context: Context = {
 
 const workflow = (() => {
   let n = 0;
-  return <Input, Output>(
-    handler: WorkflowHandler<Input, Output>
-  ): Workflow<Input, Output> => {
+  return (handler: Parameters<typeof _workflow>[2]) => {
     return _workflow(`wf${n++}`, handler);
   };
 })();
+
+/**
+ * We expect to call interpret from within an orchestrator.
+ * Only change the service scope when interpret is called, allowing us to use
+ * contextual methods like {@link duration} outside of the workflows.
+ */
+const interpret = (...args: Parameters<typeof _interpret>) => {
+  return serviceTypeScopeSync(ServiceType.OrchestratorWorker, () => {
+    return _interpret(...args);
+  });
+};
 
 test("no history", () => {
   expect(interpret(myWorkflow(event), [])).toMatchObject(<WorkflowResult>{
@@ -350,7 +352,12 @@ test("yield constant", () => {
 describe("activity", () => {
   describe("heartbeat", () => {
     const wf = workflow(function* () {
-      return createActivityCall("getPumpedUp", [], undefined, 100);
+      return createActivityCall(
+        "getPumpedUp",
+        [],
+        undefined,
+        Schedule.duration(100)
+      );
     });
 
     test("timeout from heartbeat seconds", () => {
@@ -387,7 +394,7 @@ describe("activity", () => {
             "getPumpedUp",
             [],
             undefined,
-            1
+            Schedule.duration(1)
           );
           return result;
         } catch (err) {

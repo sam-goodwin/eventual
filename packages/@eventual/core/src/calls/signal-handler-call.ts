@@ -6,7 +6,6 @@ import {
 } from "../eventual.js";
 import { SignalsHandler } from "../signals.js";
 import { registerEventual } from "../global.js";
-import { Program } from "../interpret.js";
 import { Resolved, Result } from "../result.js";
 
 export function isRegisterSignalHandlerCall(
@@ -20,7 +19,7 @@ export interface RegisterSignalHandlerCall<T = any>
     SignalsHandler {
   seq?: number;
   signalId: string;
-  handler: (input: T) => Program | void;
+  handler: (input: T) => void;
 }
 
 export function createRegisterSignalHandlerCall(

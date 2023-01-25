@@ -4,7 +4,6 @@ import {
   assertNever,
   ChildWorkflowScheduled,
   Command,
-  computeScheduleDate,
   createEvent,
   EventsPublished,
   formatChildExecutionName,
@@ -32,6 +31,7 @@ import { EventClient } from "./clients/event-client.js";
 import { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { TimerClient } from "./clients/timer-client.js";
 import { WorkflowClient } from "./clients/workflow-client.js";
+import { computeScheduleDate } from "./schedule.js";
 
 interface CommandExecutorProps {
   timerClient: TimerClient;

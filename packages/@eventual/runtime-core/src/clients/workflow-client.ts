@@ -1,5 +1,4 @@
 import {
-  computeScheduleDate,
   createEvent,
   ExecutionAlreadyExists,
   ExecutionStatus,
@@ -21,6 +20,7 @@ import {
 import { ulid } from "ulidx";
 import { inspect } from "util";
 import { WorkflowProvider } from "../providers/workflow-provider.js";
+import { computeScheduleDate } from "../schedule.js";
 import { ExecutionStore } from "../stores/execution-store.js";
 import { ExecutionQueueClient } from "./execution-queue-client.js";
 import { LogsClient } from "./logs-client.js";

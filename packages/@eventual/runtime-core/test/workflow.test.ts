@@ -1,11 +1,11 @@
 import {
   ActivityScheduled,
   ActivitySucceeded,
-  filterEvents,
   WorkflowEvent,
   WorkflowEventType,
-  WorkflowStarted,
-} from "../src/workflow-events.js";
+  WorkflowStarted
+} from "@eventual/core";
+import { filterEvents } from "../src/handlers/orchestrator.js";
 
 const started1: WorkflowStarted = {
   type: WorkflowEventType.WorkflowStarted,

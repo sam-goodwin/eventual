@@ -19,9 +19,10 @@ import { RegisterSignalHandlerCall } from "./calls/signal-handler-call.js";
 import { isWorkflowCall, WorkflowCall } from "./calls/workflow-call.js";
 import { chain, Chain } from "./chain.js";
 import { isOrchestratorWorker } from "./flags.js";
-import type { Program } from "./interpret.js";
 import { createRace, Race } from "./race.js";
 import { Result } from "./result.js";
+
+export type Program<Return = any> = Generator<Eventual, Return, any>;
 
 export type AwaitedEventual<T> = T extends Promise<infer U>
   ? Awaited<U>

@@ -1,14 +1,10 @@
+import { LogLevel } from "@eventual/core";
 import type { MetricsClient } from "../clients/metrics-client.js";
 import type {
   ScheduleForwarderRequest,
   TimerClient,
 } from "../clients/timer-client.js";
-import {
-  ExecutionLogContext,
-  LogAgent,
-  LogContextType,
-  LogLevel,
-} from "../log-agent.js";
+import { ExecutionLogContext, LogAgent, LogContextType } from "../log-agent.js";
 import {
   MetricsCommon,
   SchedulerForwarderMetrics,

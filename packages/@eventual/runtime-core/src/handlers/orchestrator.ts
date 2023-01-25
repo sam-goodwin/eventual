@@ -7,12 +7,10 @@ import {
   ExecutionStatus,
   extendsError,
   FailedExecution,
-  filterEvents,
   generateSyntheticEvents,
   getEventId,
   HistoryEvent,
   HistoryStateEvent,
-  interpret,
   isExecutionId,
   isFailed,
   isHistoryEvent,
@@ -26,12 +24,12 @@ import {
   isWorkflowRunStarted,
   isWorkflowStarted,
   isWorkflowSucceeded,
+  LogLevel,
   parseWorkflowName,
   Result,
   Schedule,
   ServiceType,
   serviceTypeScope,
-  startWorkflowDefinition,
   SucceededExecution,
   Workflow,
   WorkflowEvent,
@@ -50,12 +48,8 @@ import { TimerClient } from "../clients/timer-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
 import { CommandExecutor } from "../command-executor.js";
 import { hookDate, restoreDate } from "../date-hook.js";
-import {
-  ExecutionLogContext,
-  LogAgent,
-  LogContextType,
-  LogLevel,
-} from "../log-agent.js";
+import { interpret } from "../interpret.js";
+import { ExecutionLogContext, LogAgent, LogContextType } from "../log-agent.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
@@ -692,11 +686,7 @@ export function progressWorkflow(
     ).getTime();
     hookDate(() => currentTime);
     return interpret(
-      startWorkflowDefinition(
-        workflow,
-        processedEvents.startEvent.input,
-        context
-      ),
+      workflow.definition(processedEvents.startEvent.input, context),
       processedEvents.interpretEvents,
       {
         hooks: {
@@ -787,4 +777,25 @@ export function processEvents(
     allEvents,
     firstRunStarted,
   };
+}
+
+/**
+ * Filters out events that are also present in origin events.
+ *
+ * Events are taken only if their ID ({@link getEventId}) is unique across all other events.
+ */
+export function filterEvents<T extends WorkflowEvent>(
+  originEvents: T[],
+  events: T[]
+): T[] {
+  const ids = new Set(originEvents.map(getEventId));
+
+  return events.filter((event) => {
+    const id = getEventId(event);
+    if (ids.has(id)) {
+      return false;
+    }
+    ids.add(id);
+    return true;
+  });
 }

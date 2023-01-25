@@ -1,8 +1,5 @@
-import {
-  HistoryStateEvent,
-  computeScheduleDate,
-  Schedule,
-} from "@eventual/core";
+import { HistoryStateEvent, Schedule } from "@eventual/core";
+import { computeScheduleDate } from "../schedule.js";
 
 export abstract class TimerClient {
   constructor(protected baseTime: () => Date) {}

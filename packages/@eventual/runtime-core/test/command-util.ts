@@ -1,31 +1,29 @@
-import { ulid } from "ulidx";
 import {
-  StartTimerCommand,
+  ActivityFailed,
+  ActivityHeartbeatTimedOut,
+  ActivityScheduled,
+  ActivitySucceeded,
+  ChildWorkflowFailed,
+  ChildWorkflowScheduled,
+  ChildWorkflowSucceeded,
   CommandType,
+  EventEnvelope,
+  EventsPublished,
   PublishEventsCommand,
+  Schedule,
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
   SendSignalCommand,
-} from "../src/command.js";
-import { EventEnvelope } from "../src/event.js";
-import {
-  ActivitySucceeded,
-  ActivityFailed,
-  ActivityScheduled,
-  ChildWorkflowSucceeded,
-  ChildWorkflowFailed,
-  ChildWorkflowScheduled,
-  EventsPublished,
   SignalReceived,
   SignalSent,
-  WorkflowEventType,
-  WorkflowTimedOut,
-  ActivityHeartbeatTimedOut,
+  SignalTarget,
+  StartTimerCommand,
   TimerCompleted,
   TimerScheduled,
-} from "../src/workflow-events.js";
-import { SignalTarget } from "../src/signals.js";
-import { Schedule } from "../src/index.js";
+  WorkflowEventType,
+  WorkflowTimedOut,
+} from "@eventual/core";
+import { ulid } from "ulidx";
 
 export function createStartTimerCommand(
   schedule: Schedule,

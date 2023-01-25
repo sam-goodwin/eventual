@@ -1,4 +1,4 @@
-import { assertNever } from "@eventual/core";
+import { assertNever, LogLevel, LOG_LEVELS } from "@eventual/core";
 import { LogsClient } from "./clients/logs-client.js";
 import {
   hookConsole,
@@ -37,15 +37,6 @@ export function isActivityLogContext(
 ): context is ActivityLogContext {
   return context.type === LogContextType.Activity;
 }
-
-export enum LogLevel {
-  TRACE = "TRACE",
-  DEBUG = "DEBUG",
-  INFO = "INFO",
-  WARN = "WARN",
-  ERROR = "ERROR",
-}
-export const LOG_LEVELS = Object.values(LogLevel);
 
 export interface LogAgentProps {
   logsClient: LogsClient;

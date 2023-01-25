@@ -1,6 +1,12 @@
-import { workflows, getServiceClient } from "./global.js";
-import type { Program } from "./interpret.js";
+import { createWorkflowCall } from "./calls/workflow-call.js";
+import { isChain } from "./chain.js";
 import type { Context } from "./context.js";
+import { Program } from "./eventual.js";
+import { ChildExecution, ExecutionHandle } from "./execution.js";
+import { isOrchestratorWorker } from "./flags.js";
+import { getServiceClient, workflows } from "./global.js";
+import { DurationSchedule } from "./schedule.js";
+import { StartExecutionRequest } from "./service-client.js";
 import {
   HistoryStateEvent,
   isTimerCompleted,
@@ -9,18 +15,10 @@ import {
   TimerScheduled,
   WorkflowEventType,
 } from "./workflow-events.js";
-import { createWorkflowCall } from "./calls/workflow-call.js";
-import { AwaitedEventual } from "./eventual.js";
-import { isOrchestratorWorker } from "./flags.js";
-import { isChain } from "./chain.js";
-import { ChildExecution, ExecutionHandle } from "./execution.js";
-import { StartExecutionRequest } from "./service-client.js";
-import { DurationSchedule } from "./schedule.js";
 
-export type WorkflowHandler<Input = any, Output = any> = (
-  input: Input,
-  context: Context
-) => Promise<Output> | Program<Output>;
+export interface WorkflowHandler<Input = any, Output = any> {
+  (input: Input, context: Context): Promise<Output> | Program<any>;
+}
 
 /**
  * Options which determine how a workflow operates.
@@ -79,14 +77,6 @@ export interface Workflow<in Input = any, Output = any> {
   startExecution(
     request: Omit<StartExecutionRequest<Workflow<Input, Output>>, "workflow">
   ): Promise<ExecutionHandle<Workflow<Input, Output>>>;
-
-  /**
-   * @internal - this is the internal DSL representation that produces a {@link Program} instead of a Promise.
-   */
-  definition: (
-    input: Input,
-    context: Context
-  ) => Program<AwaitedEventual<Output>>;
 }
 
 /**
@@ -158,23 +148,15 @@ export function workflow<Input = any, Output = any>(
     });
   };
 
-  workflow.definition = (
-    isChain(definition)
-      ? definition
-      : function* (input, context): any {
-          return yield definition(input, context);
-        }
-  ) as Workflow<Input, Output>["definition"]; // safe to cast because we rely on transformer (it is always the generator API)
+  // @ts-ignore
+  workflow.definition = isChain(definition)
+    ? definition
+    : function* (input: Input, context: Context): any {
+        return yield definition(input, context);
+      }; // This type is added in the runtime-core package declaration.
+
   workflows().set(name, workflow);
   return workflow;
-}
-
-export function startWorkflowDefinition(
-  workflow: Workflow,
-  input: any,
-  context: Context
-) {
-  return workflow.definition(input, context);
 }
 
 /**

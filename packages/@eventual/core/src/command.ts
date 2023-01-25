@@ -1,5 +1,5 @@
 import { EventEnvelope } from "./event.js";
-import { Schedule } from "./schedule.js";
+import { DurationSchedule, Schedule } from "./schedule.js";
 import { SignalTarget } from "./signals.js";
 import { WorkflowOptions } from "./workflow.js";
 
@@ -33,7 +33,7 @@ export interface ScheduleActivityCommand
   extends CommandBase<CommandType.StartActivity> {
   name: string;
   args: any[];
-  heartbeatSeconds?: number;
+  heartbeat?: DurationSchedule;
 }
 
 export function isScheduleActivityCommand(

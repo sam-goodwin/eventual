@@ -6,7 +6,7 @@ import {
   getActivityContext,
   getServiceClient,
 } from "./global.js";
-import { computeDurationSeconds, DurationSchedule } from "./schedule.js";
+import { DurationSchedule } from "./schedule.js";
 import {
   EventualServiceClient,
   SendActivityFailureRequest,
@@ -231,11 +231,6 @@ export function activity<Arguments extends any[], Output = any>(
           ? createAwaitDurationCall(opts.timeout.dur, opts.timeout.unit)
           : undefined,
         opts?.heartbeatTimeout
-          ? computeDurationSeconds(
-              opts.heartbeatTimeout.dur,
-              opts.heartbeatTimeout.unit
-            )
-          : undefined
       ) as any;
     } else {
       // calling the activity from outside the orchestrator just calls the handler

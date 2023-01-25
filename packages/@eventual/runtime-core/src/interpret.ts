@@ -1,74 +1,69 @@
 import {
-  Eventual,
-  isEventual,
+  assertNever,
+  Chain,
+  clearEventualCollector,
+  Command,
   CommandCall,
-  isCommandCall,
-  EventualCallCollector,
-} from "./eventual.js";
-import { isAwaitAll } from "./await-all.js";
-import { isActivityCall } from "./calls/activity-call.js";
-import {
+  CommandType,
+  createChain,
   DeterminismError,
+  Eventual,
+  EventualCallCollector,
   EventualError,
-  HeartbeatTimeout,
-  SynchronousOperationError,
-  Timeout,
-} from "./error.js";
-import {
-  SucceededEvent,
-  SignalReceived,
-  FailedEvent,
-  HistoryEvent,
-  isActivityScheduled,
-  isChildWorkflowScheduled,
-  isSucceededEvent,
-  isSignalReceived,
-  isScheduledEvent,
-  isTimerCompleted,
-  isTimerScheduled,
-  ScheduledEvent,
-  isSignalSent,
-  isWorkflowTimedOut,
-  isActivityHeartbeatTimedOut,
-  isEventsPublished,
-  WorkflowEvent,
-  isWorkflowRunStarted,
-  isHistoryResultEvent,
-  HistoryResultEvent,
-} from "./workflow-events.js";
-import {
-  Result,
-  isResolved,
-  isFailed,
-  isPending,
-  Resolved,
+  ExpectSignalCall,
   Failed,
-  isResolvedOrFailed,
-} from "./result.js";
-import { createChain, isChain, Chain } from "./chain.js";
-import { assertNever, _Iterator, iterator } from "./util.js";
-import { Command, CommandType } from "./command.js";
-import {
+  FailedEvent,
+  HeartbeatTimeout,
+  HistoryEvent,
+  HistoryResultEvent,
+  isActivityCall,
+  isActivityHeartbeatTimedOut,
+  isActivityScheduled,
+  isAwaitAll,
+  isAwaitAllSettled,
+  isAwaitAny,
   isAwaitDurationCall,
   isAwaitTimeCall,
-} from "./calls/await-time-call.js";
-import {
+  isChain,
+  isChildWorkflowScheduled,
+  isCommandCall,
+  isConditionCall,
+  isEventsPublished,
+  isEventual,
   isExpectSignalCall,
-  ExpectSignalCall,
-} from "./calls/expect-signal-call.js";
-import {
+  isFailed,
+  isHistoryResultEvent,
+  isPending,
+  isPublishEventsCall,
+  isRace,
   isRegisterSignalHandlerCall,
+  isResolved,
+  isResolvedOrFailed,
+  isScheduledEvent,
+  isSendSignalCall,
+  isSignalReceived,
+  isSignalSent,
+  isSucceededEvent,
+  isTimerCompleted,
+  isTimerScheduled,
+  isWorkflowCall,
+  isWorkflowRunStarted,
+  isWorkflowTimedOut,
+  iterator,
+  Program,
   RegisterSignalHandlerCall,
-} from "./calls/signal-handler-call.js";
-import { isSendSignalCall } from "./calls/send-signal-call.js";
-import { isWorkflowCall } from "./calls/workflow-call.js";
-import { clearEventualCollector, setEventualCollector } from "./global.js";
-import { isConditionCall } from "./calls/condition-call.js";
-import { isAwaitAllSettled } from "./await-all-settled.js";
-import { isAwaitAny } from "./await-any.js";
-import { isRace } from "./race.js";
-import { isPublishEventsCall } from "./calls/send-events-call.js";
-import { Schedule } from "./schedule.js";
+  Resolved,
+  Result,
+  Schedule,
+  ScheduledEvent,
+  setEventualCollector,
+  SignalReceived,
+  SucceededEvent,
+  SynchronousOperationError,
+  Timeout,
+  WorkflowEvent,
+  _Iterator
+} from "@eventual/core";
 
 export interface WorkflowResult<T = any> {
   /**
@@ -82,8 +77,6 @@ export interface WorkflowResult<T = any> {
    */
   commands: Command[];
 }
-
-export type Program<Return = any> = Generator<Eventual, Return, any>;
 
 export interface InterpretProps {
   hooks?: {
@@ -218,7 +211,7 @@ export function interpret<Return>(
         kind: CommandType.StartActivity,
         args: call.args,
         name: call.name,
-        heartbeatSeconds: call.heartbeatSeconds,
+        heartbeat: call.heartbeat,
         seq: call.seq!,
       };
     } else if (isAwaitTimeCall(call) || isAwaitDurationCall(call)) {

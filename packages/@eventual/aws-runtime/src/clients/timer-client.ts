@@ -9,13 +9,13 @@ import {
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
   assertNever,
-  computeDurationSeconds,
-  computeScheduleDate,
   getEventId,
   isTimeSchedule,
   Schedule,
 } from "@eventual/core";
 import {
+  computeDurationSeconds,
+  computeScheduleDate,
   getLazy,
   isActivityHeartbeatMonitorRequest,
   isTimerScheduleEventRequest,
@@ -229,5 +229,5 @@ function computeTimerSeconds(schedule: Schedule, baseTime: Date) {
         ),
         0
       )
-    : computeDurationSeconds(schedule.dur, schedule.unit);
+    : computeDurationSeconds(schedule);
 }

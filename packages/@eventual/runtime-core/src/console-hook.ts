@@ -1,4 +1,4 @@
-import { LogLevel } from "./log-agent.js";
+import { LogLevel } from "@eventual/core";
 
 const originalConsole = globalThis.console;
 const HOOKED_SYMBOL = Symbol.for("eventual-hooked-console");

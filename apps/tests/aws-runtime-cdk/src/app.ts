@@ -1,6 +1,6 @@
 import * as eventual from "@eventual/aws-cdk";
 import { ServiceDashboard } from "@eventual/aws-cdk";
-import { LogLevel } from "@eventual/runtime-core";
+import { LogLevel } from "@eventual/core";
 import { App, CfnOutput, CfnResource, Stack } from "aws-cdk-lib";
 import {
   ArnPrincipal,

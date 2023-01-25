@@ -2,6 +2,7 @@ import {
   ActivityHeartbeatTimedOut,
   assertNever,
   createEvent,
+  LogLevel,
   Schedule,
   WorkflowEventType,
 } from "@eventual/core";
@@ -13,7 +14,7 @@ import {
   TimerRequest,
   TimerRequestType,
 } from "../clients/timer-client.js";
-import { LogAgent, LogContextType, LogLevel } from "../log-agent.js";
+import { LogAgent, LogContextType } from "../log-agent.js";
 import { ActivityStore } from "../stores/activity-store.js";
 
 interface TimerHandlerProps {

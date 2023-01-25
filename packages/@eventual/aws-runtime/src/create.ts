@@ -5,13 +5,13 @@ import { LambdaClient } from "@aws-sdk/client-lambda";
 import { S3Client } from "@aws-sdk/client-s3";
 import { SchedulerClient } from "@aws-sdk/client-scheduler";
 import { SQSClient } from "@aws-sdk/client-sqs";
+import { LogLevel } from "@eventual/core";
 import {
   ActivityStore,
   ExecutionQueueClient,
   ExecutionStore,
   GlobalWorkflowProvider,
   LogAgent,
-  LogLevel,
   LogsClient,
   RuntimeServiceClient,
   RuntimeServiceClientProps,
