@@ -22,7 +22,7 @@ import {
   Workflow,
   WorkflowInput,
 } from "@eventual/core";
-import "./fetch-polyfill.js";
+import { polyfillFetch } from "./fetch-polyfill.js";
 
 export interface HttpServiceClientProps {
   /**
@@ -59,7 +59,7 @@ export class HttpServiceClient implements EventualServiceClient {
 
   /**
    * Pass through any http request to the eventual endpoint.
-   * 
+   *
    * Does not inject the _eventual suffix into the url. ([serviceUrl]/[path]).
    */
   public async proxy(request: {
@@ -221,6 +221,7 @@ export class HttpServiceClient implements EventualServiceClient {
     body?: Body,
     baseUrl?: string
   ) {
+    await polyfillFetch();
     const initRequest = new Request(
       new URL(`${baseUrl ?? this.baseUrl}/${suffix}`),
       {
