@@ -33,7 +33,8 @@ export const timeline = (yargs: Argv) =>
 
       app.use("/api/*", async (req, res) => {
         // We forward errors onto our handler for the ui to deal with
-        const path = req.path.split("/").slice(1).join("/");
+        const path = req.baseUrl.split("/").slice(3).join("/");
+        console.log(path);
         try {
           res.json(
             await serviceClient.proxy({

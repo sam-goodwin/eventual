@@ -709,36 +709,36 @@ importers:
 
   packages/@eventual/timeline:
     specifiers:
+      '@esbuild-plugins/node-globals-polyfill': ^0.1.1
       '@eventual/client': workspace:^
       '@eventual/core': workspace:^
       '@tanstack/react-query': ^4.19.1
       '@types/react': ^18.0.26
       '@types/react-dom': ^18.0.9
       '@vitejs/plugin-react': ^3.0.0
-      buffer: ^6.0.3
       express: ^4.18.2
       get-port: ^6.1.2
-      ky: ^0.32.2
       open: ^8.4.0
       react: ^18.2.0
       react-dom: ^18.2.0
+      rollup-plugin-node-polyfills: ^0.2.1
       typescript: ^4.9.4
       vite: ^4.0.0
     dependencies:
       '@eventual/client': link:../client
       '@eventual/core': link:../core
       '@tanstack/react-query': 4.19.1_biqbaboplfbrettd7655fr4n2y
-      buffer: 6.0.3
-      ky: 0.32.2
       react: 18.2.0
       react-dom: 18.2.0_react@18.2.0
     devDependencies:
+      '@esbuild-plugins/node-globals-polyfill': 0.1.1_esbuild@0.16.16
       '@types/react': 18.0.26
       '@types/react-dom': 18.0.9
       '@vitejs/plugin-react': 3.0.0_vite@4.0.0
       express: 4.18.2
       get-port: 6.1.2
       open: 8.4.0
+      rollup-plugin-node-polyfills: 0.2.1
       typescript: 4.9.4
       vite: 4.0.0
 
@@ -3193,6 +3193,14 @@ packages:
 
   /@datastructures-js/heap/4.1.2:
     resolution: {integrity: sha512-Dl6MPPVXxzWsSQxIaV0sOpAx/B8r7RYUO5/GWe7GhG9v9P4QfZ1cgPSq+SoF0QJFhu9G9TmtPfRLHPWzL73GpQ==}
+
+  /@esbuild-plugins/node-globals-polyfill/0.1.1_esbuild@0.16.16:
+    resolution: {integrity: sha512-MR0oAA+mlnJWrt1RQVQ+4VYuRJW/P2YmRTv1AsplObyvuBMnPHiizUF95HHYiSsMGLhyGtWufaq2XQg6+iurBg==}
+    peerDependencies:
+      esbuild: '*'
+    dependencies:
+      esbuild: 0.16.16
+    dev: true
 
   /@esbuild/android-arm/0.15.18:
     resolution: {integrity: sha512-5GT+kcs2WVGjVs7+boataCkO5Fg0y4kCjzkB5bAip7H4jfnOS3dA6KPiww9W1OEKTKeAcUVhdZGvgI65OXmUnw==}
@@ -8358,6 +8366,10 @@ packages:
     engines: {node: '>=4.0'}
     dev: true
 
+  /estree-walker/0.6.1:
+    resolution: {integrity: sha512-SqmZANLWS0mnatqbSfRP5g8OXZC12Fgg1IwNtLsyHDzJizORW4khDfjPqJZsemPWBB2uqykUah5YpQ6epsqC/w==}
+    dev: true
+
   /esutils/2.0.3:
     resolution: {integrity: sha512-kVscqXk4OCp68SZ0dkgEKVi6/8ij300KBWTJq32P/dYeWTSwK41WyTxalN1eRmA5Z9UU/LX9D7FWSmV9SAYx6g==}
     engines: {node: '>=0.10.0'}
@@ -10385,11 +10397,6 @@ packages:
     engines: {node: '>=6'}
     dev: true
 
-  /ky/0.32.2:
-    resolution: {integrity: sha512-eBJeF6IXNwX5rksdwBrE2rIJrU2d84GoTvdM7OmmTIwUVXEMd72wIwvT+nyhrqtv7AzbSNsWz7yRsHgVhj1uog==}
-    engines: {node: '>=14.16'}
-    dev: false
-
   /kysely-codegen/0.6.2_kysely@0.21.6:
     resolution: {integrity: sha512-AWiaSQ0CBuiHsB3ubBFCf8838BaG8sypdjWi7tCJoNcAvJo1Ls8WO+1YWOi6IAjU4fBO4kG/t1rj4EnSVQwm9A==}
     hasBin: true
@@ -10749,6 +10756,12 @@ packages:
   /lru-cache/7.14.1:
     resolution: {integrity: sha512-ysxwsnTKdAx96aTRdhDOCQfDgbHnt8SK0KY8SEjO0wHinhWOFTESbjVCMPbU1uGXg/ch4lifqx0wfjOawU2+WA==}
     engines: {node: '>=12'}
+    dev: true
+
+  /magic-string/0.25.9:
+    resolution: {integrity: sha512-RmF0AsMzgt25qzqqLc1+MbHmhdx0ojF2Fvs4XnOqz2ZOBXzzkEwc/dJQZCYHAn7v1jbVOjAZfK8msRn4BxO4VQ==}
+    dependencies:
+      sourcemap-codec: 1.4.8
     dev: true
 
   /magic-string/0.27.0:
@@ -12336,6 +12349,27 @@ packages:
       glob: 7.2.3
     dev: true
 
+  /rollup-plugin-inject/3.0.2:
+    resolution: {integrity: sha512-ptg9PQwzs3orn4jkgXJ74bfs5vYz1NCZlSQMBUA0wKcGp5i5pA1AO3fOUEte8enhGUC+iapTCzEWw2jEFFUO/w==}
+    deprecated: This package has been deprecated and is no longer maintained. Please use @rollup/plugin-inject.
+    dependencies:
+      estree-walker: 0.6.1
+      magic-string: 0.25.9
+      rollup-pluginutils: 2.8.2
+    dev: true
+
+  /rollup-plugin-node-polyfills/0.2.1:
+    resolution: {integrity: sha512-4kCrKPTJ6sK4/gLL/U5QzVT8cxJcofO0OU74tnB19F40cmuAKSzH5/siithxlofFEjwvw1YAhPmbvGNA6jEroA==}
+    dependencies:
+      rollup-plugin-inject: 3.0.2
+    dev: true
+
+  /rollup-pluginutils/2.8.2:
+    resolution: {integrity: sha512-EEp9NhnUkwY8aif6bxgovPHMoMoNr2FulJziTndpt5H9RdwC47GSGuII9XxpSdzVGM0GWrNPHV6ie1LTNJPaLQ==}
+    dependencies:
+      estree-walker: 0.6.1
+    dev: true
+
   /rollup/2.79.1:
     resolution: {integrity: sha512-uKxbd0IhMZOhjAiD5oAFp7BqvkA4Dv47qpOCtaNvng4HBwdbWtdOh8f5nZNuk2rp51PMGk3bzfWu5oayNEuYnw==}
     engines: {node: '>=10.0.0'}
@@ -12593,6 +12627,11 @@ packages:
   /source-map/0.6.1:
     resolution: {integrity: sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g==}
     engines: {node: '>=0.10.0'}
+    dev: true
+
+  /sourcemap-codec/1.4.8:
+    resolution: {integrity: sha512-9NykojV5Uih4lgo5So5dtw+f0JgJX30KCNI8gwhz2J9A15wD0Ml6tjHKwf6fTSa6fAdVBdZeNOs9eJ71qCk8vA==}
+    deprecated: Please use @jridgewell/sourcemap-codec instead
     dev: true
 
   /spdx-correct/3.1.1:

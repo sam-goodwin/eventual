@@ -22,7 +22,6 @@ import {
   ActivityUpdateType,
   StartExecutionResponse,
 } from "@eventual/core";
-import path from "path";
 import "./fetch-polyfill.js";
 
 export interface HttpServiceClientProps {
@@ -55,7 +54,7 @@ export class HttpServiceClient implements EventualServiceClient {
   private readonly baseUrl: string;
 
   constructor(private props: HttpServiceClientProps) {
-    this.baseUrl = path.join(props.serviceUrl, "_eventual");
+    this.baseUrl = `${props.serviceUrl}/_eventual`;
   }
 
   /**
@@ -214,7 +213,7 @@ export class HttpServiceClient implements EventualServiceClient {
     suffix: string,
     body?: Body
   ) {
-    const initRequest = new Request(new URL(path.join(this.baseUrl, suffix)), {
+    const initRequest = new Request(new URL(`${this.baseUrl}/${suffix}`), {
       method,
       body: body ? JSON.stringify(body) : undefined,
       headers: {

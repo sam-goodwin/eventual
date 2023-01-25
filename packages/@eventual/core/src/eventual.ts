@@ -174,5 +174,5 @@ declare global {
   var $Eventual: typeof Eventual;
 }
 
-global.$eventual = chain;
-global.$Eventual = Eventual;
+globalThis.$eventual = chain;
+globalThis.$Eventual = Eventual;

@@ -1,13 +1,14 @@
 import { HttpServiceClient } from "@eventual/client";
 import { decodeExecutionId, WorkflowStarted } from "@eventual/core";
 import { useQuery } from "@tanstack/react-query";
-import { Buffer } from "buffer";
 import { ReactNode } from "react";
 import styles from "./App.module.css";
 import { ActivityList } from "./components/activity-list/activity-list.js";
 import { Timeline } from "./components/timeline/timeline.js";
 
-const serviceClient = new HttpServiceClient({ serviceUrl: "/api" });
+const serviceClient = new HttpServiceClient({
+  serviceUrl: `${window.location.origin}/api`,
+});
 
 function Layout({
   start,
@@ -25,9 +26,7 @@ function Layout({
   if (!executionId) {
     return <div>No execution id in path!</div>;
   }
-  const decodedExecutionId = Buffer.from(executionId, "base64").toString(
-    "utf-8"
-  );
+  const decodedExecutionId = decodeExecutionId(executionId);
   return (
     <main className={styles.layout}>
       <div style={{ textAlign: "center" }}>
@@ -65,11 +64,11 @@ function Layout({
 }
 
 function App() {
-  const { data: timeline, isLoading } = useQuery(
-    ["events"],
-    () => {
+  const { data: timeline, isLoading } = useQuery({
+    queryKey: ["events"],
+    queryFn: async () => {
       const executionId = window.location.href.split("/").at(-1);
-      const history = serviceClient.getExecutionWorkflowHistory(
+      const history = await serviceClient.getExecutionWorkflowHistory(
         decodeExecutionId(executionId!)
       );
       console.log(history);
@@ -85,8 +84,11 @@ function App() {
         } as WorkflowStarted,
       };
     },
-    { refetchInterval: 5000 }
-  );
+    onError: (err) => {
+      console.log(err);
+    },
+    refetchInterval: 5000,
+  });
 
   if (isLoading) {
     return (
