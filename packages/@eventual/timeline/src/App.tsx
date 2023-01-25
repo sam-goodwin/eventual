@@ -2,6 +2,7 @@ import { HttpServiceClient } from "@eventual/client";
 import { decodeExecutionId, WorkflowStarted } from "@eventual/core";
 import { useQuery } from "@tanstack/react-query";
 import { ReactNode } from "react";
+import { aggregateEvents } from "./activity.js";
 import styles from "./App.module.css";
 import { ActivityList } from "./components/activity-list/activity-list.js";
 import { Timeline } from "./components/timeline/timeline.js";
@@ -71,17 +72,10 @@ function App() {
       const history = await serviceClient.getExecutionWorkflowHistory(
         decodeExecutionId(executionId!)
       );
-      console.log(history);
+      const { activities, start } = aggregateEvents(history.events);
       return {
-        history,
-        activities: [],
-        start: {
-          type: "WorkflowStarted",
-          context: { name: "hi" },
-          id: "",
-          timestamp: "",
-          workflowName: "",
-        } as WorkflowStarted,
+        activities,
+        start,
       };
     },
     onError: (err) => {

@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 import { BuildSource, bundleSources } from "./eventual-bundle.js";
 
 export async function cli() {

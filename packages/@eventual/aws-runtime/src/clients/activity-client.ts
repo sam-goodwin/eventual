@@ -10,6 +10,7 @@ import {
   getLazy,
   LazyValue,
 } from "@eventual/runtime-core";
+import { Buffer } from "buffer";
 
 export interface AWSActivityClientProps extends ActivityClientProps {
   lambda: LambdaClient;

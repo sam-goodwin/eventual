@@ -4,6 +4,9 @@ import { NodeGlobalsPolyfillPlugin } from "@esbuild-plugins/node-globals-polyfil
 import rollupNodePolyFill from "rollup-plugin-node-polyfills";
 import path from "path";
 
+/**
+ * Vite runs build from an ES Module.
+ */
 import { createRequire as topLevelCreateRequire } from "module";
 // @ts-ignore
 const require = topLevelCreateRequire(import.meta.url);
@@ -35,6 +38,7 @@ export default defineConfig({
         require.resolve("rollup-plugin-node-polyfills"),
         "../../polyfills/buffer-es6"
       ),
+      "node-fetch": "fetch",
     },
   },
 });

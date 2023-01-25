@@ -1,26 +1,26 @@
 import {
-  SendActivitySuccessRequest,
+  ActivityUpdateType,
   encodeExecutionId,
   EventualServiceClient,
   Execution,
-  ListExecutionEventsRequest,
-  ListExecutionEventsResponse,
   ExecutionHandle,
   ExecutionHistoryResponse,
-  SendActivityFailureRequest,
+  HistoryStateEvent,
+  ListExecutionEventsRequest,
+  ListExecutionEventsResponse,
   ListExecutionsRequest,
   ListExecutionsResponse,
   ListWorkflowsResponse,
+  PublishEventsRequest,
+  SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
-  HistoryStateEvent,
-  PublishEventsRequest,
+  SendActivitySuccessRequest,
   SendSignalRequest,
   StartExecutionRequest,
+  StartExecutionResponse,
   Workflow,
   WorkflowInput,
-  ActivityUpdateType,
-  StartExecutionResponse,
 } from "@eventual/core";
 import "./fetch-polyfill.js";
 
@@ -59,13 +59,20 @@ export class HttpServiceClient implements EventualServiceClient {
 
   /**
    * Pass through any http request to the eventual endpoint.
+   * 
+   * Does not inject the _eventual suffix into the url. ([serviceUrl]/[path]).
    */
   public async proxy(request: {
     method: HttpMethod;
     path: string;
     body?: Body;
   }) {
-    return this.request(request.method, request.path, request.body);
+    return this.request(
+      request.method,
+      request.path,
+      request.body,
+      this.props.serviceUrl
+    );
   }
 
   public async listWorkflows(): Promise<ListWorkflowsResponse> {
@@ -211,15 +218,19 @@ export class HttpServiceClient implements EventualServiceClient {
   private async request<Body = any, Resp = any>(
     method: HttpMethod,
     suffix: string,
-    body?: Body
+    body?: Body,
+    baseUrl?: string
   ) {
-    const initRequest = new Request(new URL(`${this.baseUrl}/${suffix}`), {
-      method,
-      body: body ? JSON.stringify(body) : undefined,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const initRequest = new Request(
+      new URL(`${baseUrl ?? this.baseUrl}/${suffix}`),
+      {
+        method,
+        body: body ? JSON.stringify(body) : undefined,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     const request = this.props.beforeRequest
       ? await this.props.beforeRequest(initRequest)
