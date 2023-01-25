@@ -28,6 +28,7 @@ export default defineConfig({
       },
       plugins: [
         NodeGlobalsPolyfillPlugin({ buffer: true }),
+        // require due to esbuild bug: https://github.com/remorses/esbuild-plugins/issues/27
         {
           name: "fix-node-globals-polyfill",
           setup(build) {
