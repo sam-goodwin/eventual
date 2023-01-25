@@ -41,6 +41,8 @@ export const timeline = (yargs: Argv) =>
 
       const isProduction = process.env.NODE_ENV === "production";
 
+      console.log(isProduction);
+
       if (isProduction) {
         // Serve our built site as an spa - serve js and css files out of our dist folder, otherwise just serve index.html
         app.get("*", async (request, response) => {

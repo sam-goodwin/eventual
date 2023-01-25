@@ -21,11 +21,23 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
+    exclude: ["@esbuild-plugins/node-globals-polyfill"],
     esbuildOptions: {
       define: {
         global: "globalThis",
       },
-      plugins: [NodeGlobalsPolyfillPlugin({ buffer: true })],
+      plugins: [
+        NodeGlobalsPolyfillPlugin({ buffer: true }),
+        {
+          name: "fix-node-globals-polyfill",
+          setup(build) {
+            build.onResolve(
+              { filter: /_(buffer|virtual-process-polyfill_)\.js/ },
+              ({ path }) => ({ path })
+            );
+          },
+        },
+      ],
     },
   },
   resolve: {
@@ -38,7 +50,6 @@ export default defineConfig({
         require.resolve("rollup-plugin-node-polyfills"),
         "../../polyfills/buffer-es6"
       ),
-      "node-fetch": "fetch",
     },
   },
 });
