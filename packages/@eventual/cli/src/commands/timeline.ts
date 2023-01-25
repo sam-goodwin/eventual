@@ -65,7 +65,7 @@ export const timeline = (yargs: Argv) =>
       const port = await getPort({ port: portNumbers(3000, 4000) });
       app.listen(port);
       const url = `http://localhost:${port}`;
-      spinner.succeed(`Visualiser running on ${url}`);
+      spinner.succeed(`Visualizer running on ${url}`);
       open(`${url}/${service}/${encodeExecutionId(execution)}`);
     })
   );
