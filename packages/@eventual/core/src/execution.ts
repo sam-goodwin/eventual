@@ -1,4 +1,5 @@
 import { ulid } from "ulidx";
+import { ExecutionID } from "./index.js";
 import { EventualServiceClient } from "./service-client.js";
 import { Signal, SendSignalProps } from "./signals.js";
 import { Workflow, WorkflowOutput } from "./workflow.js";
@@ -14,10 +15,11 @@ export function isExecutionStatus(s: string): s is ExecutionStatus {
 }
 
 interface ExecutionBase {
-  id: string;
+  id: ExecutionID;
   status: ExecutionStatus;
   startTime: string;
   workflowName: string;
+  inputHash?: string;
   parent?: {
     /**
      * Seq number when this execution is the child of another workflow.
@@ -69,7 +71,7 @@ export function isSucceededExecution(
  */
 export class ExecutionHandle<W extends Workflow> implements ChildExecution {
   constructor(
-    public executionId: string,
+    public executionId: ExecutionID,
     private serviceClient: EventualServiceClient
   ) {}
 

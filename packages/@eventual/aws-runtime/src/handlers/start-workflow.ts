@@ -1,9 +1,9 @@
-import { Handler } from "aws-lambda";
 import type {
   StartExecutionRequest,
   StartExecutionResponse,
 } from "@eventual/core";
-import { createWorkflowClient } from "../clients/create.js";
+import { Handler } from "aws-lambda";
+import { createWorkflowClient } from "../create.js";
 
 const workflowClient = createWorkflowClient();
 

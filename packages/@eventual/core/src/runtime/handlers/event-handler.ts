@@ -1,9 +1,9 @@
-import { registerServiceClient } from "../../global.js";
 import type { EventEnvelope } from "../../event.js";
-import { EventHandlerProvider } from "../providers/event-handler-provider.js";
+import { registerServiceClient } from "../../global.js";
 import { EventualServiceClient } from "../../service-client.js";
-import { serviceTypeScope } from "../flags.js";
 import { ServiceType } from "../../service-type.js";
+import { serviceTypeScope } from "../flags.js";
+import { EventHandlerProvider } from "../providers/event-handler-provider.js";
 
 /**
  * The dependencies of {@link createEventHandlerWorker}.

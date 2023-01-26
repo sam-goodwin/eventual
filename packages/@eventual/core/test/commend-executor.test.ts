@@ -10,8 +10,10 @@ import {
   WorkflowEventType,
 } from "../src/workflow-events.js";
 import {
+  ActivityClient,
   EventClient,
   EventEnvelope,
+  ExecutionQueueClient,
   formatChildExecutionName,
   formatExecutionId,
   INTERNAL_EXECUTION_ID_PREFIX,
@@ -19,7 +21,6 @@ import {
   SendSignalRequest,
   SignalTargetType,
   WorkflowClient,
-  WorkflowRuntimeClient,
 } from "../src/index.js";
 import {
   ScheduleEventRequest,
@@ -33,20 +34,23 @@ const mockTimerClient = {
 } satisfies Partial<TimerClient> as TimerClient;
 const mockWorkflowClient = {
   startExecution: jest.fn() as WorkflowClient["startExecution"],
-  sendSignal: jest.fn() as WorkflowClient["sendSignal"],
 } satisfies Partial<WorkflowClient> as WorkflowClient;
-const mockWorkflowRuntimeClient = {
-  startActivity: jest.fn() as WorkflowRuntimeClient["startActivity"],
-} satisfies Partial<WorkflowRuntimeClient> as WorkflowRuntimeClient;
+const mockActivityClient = {
+  startActivity: jest.fn() as ActivityClient["startActivity"],
+} satisfies Partial<ActivityClient> as ActivityClient;
 const mockEventClient = {
   publishEvents: jest.fn() as EventClient["publishEvents"],
 } satisfies Partial<EventClient> as EventClient;
+const mockExecutionQueueClient = {
+  sendSignal: jest.fn() as ExecutionQueueClient["sendSignal"],
+} satisfies Partial<ExecutionQueueClient> as ExecutionQueueClient;
 
 const testExecutor = new CommandExecutor({
   timerClient: mockTimerClient,
   workflowClient: mockWorkflowClient,
-  workflowRuntimeClient: mockWorkflowRuntimeClient,
+  activityClient: mockActivityClient,
   eventClient: mockEventClient,
+  executionQueueClient: mockExecutionQueueClient,
 });
 
 const workflow = {
@@ -109,7 +113,7 @@ describe("activity", () => {
 
     expect(mockTimerClient.scheduleEvent).not.toHaveBeenCalled();
 
-    expect(mockWorkflowRuntimeClient.startActivity).toHaveBeenCalledTimes(1);
+    expect(mockActivityClient.startActivity).toHaveBeenCalledTimes(1);
 
     expect(event).toMatchObject<ActivityScheduled>({
       seq: 0,
@@ -168,7 +172,7 @@ describe("send signal", () => {
       baseTime
     );
 
-    expect(mockWorkflowClient.sendSignal).toHaveBeenCalledWith<
+    expect(mockExecutionQueueClient.sendSignal).toHaveBeenCalledWith<
       [SendSignalRequest]
     >({ signal: "signal", execution: "exec1", id: `${executionId}/${0}` });
 
@@ -203,7 +207,7 @@ describe("send signal", () => {
       formatChildExecutionName(executionId, 0)
     );
 
-    expect(mockWorkflowClient.sendSignal).toHaveBeenCalledWith<
+    expect(mockExecutionQueueClient.sendSignal).toHaveBeenCalledWith<
       [SendSignalRequest]
     >({
       signal: "signal",

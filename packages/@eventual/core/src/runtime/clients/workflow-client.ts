@@ -1,170 +1,203 @@
+import { ulid } from "ulidx";
+import { inspect } from "util";
+import { ExecutionAlreadyExists } from "../../error.js";
 import {
-  ActivitySucceeded,
-  ActivityFailed,
-  createEvent,
-  HistoryStateEvent,
-  SignalReceived,
-  WorkflowEventType,
-} from "../../workflow-events.js";
-import {
-  Execution,
-  ExecutionHandle,
   ExecutionStatus,
+  FailedExecution,
+  InProgressExecution,
+  SucceededExecution,
 } from "../../execution.js";
-import { Signal } from "../../signals.js";
-import { Workflow, WorkflowOptions } from "../../workflow.js";
-import { decodeActivityToken } from "../activity-token.js";
-import { ActivityRuntimeClient } from "./activity-runtime-client.js";
+import { computeScheduleDate } from "../../schedule.js";
 import {
-  SendActivitySuccessRequest,
-  SendActivityFailureRequest,
-  GetExecutionsRequest,
-  GetExecutionsResponse,
-  SendActivityHeartbeatRequest,
   StartExecutionRequest,
-  SendActivityHeartbeatResponse,
   StartExecutionResponse,
 } from "../../service-client.js";
+import { hashCode } from "../../util.js";
+import {
+  createEvent,
+  WorkflowEventType,
+  WorkflowStarted,
+} from "../../workflow-events.js";
+import { Workflow, WorkflowOptions } from "../../workflow.js";
+import {
+  formatExecutionId,
+  INTERNAL_EXECUTION_ID_PREFIX,
+} from "../execution-id.js";
+import { WorkflowProvider } from "../providers/workflow-provider.js";
+import {
+  ExecutionStore,
+  FailExecutionRequest,
+  SucceedExecutionRequest,
+} from "../stores/execution-store.js";
+import { ExecutionQueueClient } from "./execution-queue-client.js";
+import { LogsClient } from "./logs-client.js";
 
-export abstract class WorkflowClient {
+export class WorkflowClient {
   constructor(
-    private activityRuntimeClient: ActivityRuntimeClient,
-    protected baseTime: () => Date
+    private executionStore: ExecutionStore,
+    private logsClient: LogsClient,
+    private executionQueueClient: ExecutionQueueClient,
+    private workflowProvider: WorkflowProvider,
+    protected baseTime: () => Date = () => new Date()
   ) {}
 
   /**
    * Start a workflow execution
+   *
    * @param name Suffix of execution id
    * @param input Workflow parameters
-   * @returns
    */
-  public abstract startExecution<W extends Workflow = Workflow>(
-    request: StartChildExecutionRequest<W> | StartExecutionRequest<W>
-  ): Promise<StartExecutionResponse>;
-
-  /**
-   * Submit events to be processed by a workflow's orchestrator.
-   *
-   * @param executionId ID of the workflow execution
-   * @param events events to submit for processing
-   */
-  public abstract submitWorkflowTask(
-    executionId: string,
-    ...events: HistoryStateEvent[]
-  ): Promise<void>;
-
-  public abstract getExecutions(
-    props: GetExecutionsRequest
-  ): Promise<GetExecutionsResponse>;
-
-  public abstract getExecution(
-    executionId: string
-  ): Promise<Execution | undefined>;
-
-  /**
-   * Sends a signal to the given execution.
-   *
-   * The execution may be waiting on a signal or may have a handler registered
-   * that runs when the signal is received.
-   */
-  public async sendSignal(request: SendSignalRequest): Promise<void> {
-    const executionId =
-      typeof request.execution === "string"
-        ? request.execution
-        : request.execution.executionId;
-    await this.submitWorkflowTask(
-      executionId,
-      createEvent<SignalReceived>(
-        {
-          type: WorkflowEventType.SignalReceived,
-          payload: request.payload,
-          signalId:
-            typeof request.signal === "string"
-              ? request.signal
-              : request.signal.id,
-        },
-        this.baseTime(),
-        request.id
-      )
-    );
-  }
-
-  /**
-   * Succeeds an async activity causing it to return the given value.
-   */
-  public async sendActivitySuccess({
-    activityToken,
-    result,
-  }: Omit<SendActivitySuccessRequest, "type">): Promise<void> {
-    await this.sendActivityResult<ActivitySucceeded>(activityToken, {
-      type: WorkflowEventType.ActivitySucceeded,
-      result,
-    });
-  }
-
-  /**
-   * Fails an async activity causing it to throw the given error.
-   */
-  public async sendActivityFailure({
-    activityToken,
-    error,
-    message,
-  }: Omit<SendActivityFailureRequest, "type">): Promise<void> {
-    await this.sendActivityResult<ActivityFailed>(activityToken, {
-      type: WorkflowEventType.ActivityFailed,
-      error,
-      message,
-    });
-  }
-
-  /**
-   * Submits a "heartbeat" for the given activityToken.
-   *
-   * @returns whether the activity has been cancelled by the calling workflow.
-   */
-  public async sendActivityHeartbeat(
-    request: Omit<SendActivityHeartbeatRequest, "type">
-  ): Promise<SendActivityHeartbeatResponse> {
-    const data = decodeActivityToken(request.activityToken);
-
-    const execution = await this.getExecution(data.payload.executionId);
-
-    if (execution?.status !== ExecutionStatus.IN_PROGRESS) {
-      return { cancelled: true };
+  public async startExecution<W extends Workflow = Workflow>({
+    executionName = ulid(),
+    workflow,
+    input,
+    timeout,
+    ...request
+  }:
+    | StartExecutionRequest<W>
+    | StartChildExecutionRequest<W>): Promise<StartExecutionResponse> {
+    if (
+      typeof workflow === "string" &&
+      !this.workflowProvider.lookupWorkflow(workflow)
+    ) {
+      throw new Error(`Workflow ${workflow} does not exist in the service.`);
     }
 
-    return await this.activityRuntimeClient.heartbeatActivity(
-      data.payload.executionId,
-      data.payload.seq,
-      this.baseTime().toISOString()
-    );
-  }
+    validateExecutionName(executionName, "parentExecutionId" in request);
 
-  private async sendActivityResult<
-    E extends ActivitySucceeded | ActivityFailed
-  >(activityToken: string, event: Omit<E, "seq" | "duration" | "timestamp">) {
-    const data = decodeActivityToken(activityToken);
-    await this.submitWorkflowTask(
-      data.payload.executionId,
-      createEvent<ActivitySucceeded | ActivityFailed>(
+    const workflowName =
+      typeof workflow === "string" ? workflow : workflow.workflowName;
+    const executionId = formatExecutionId(workflowName, executionName);
+    const inputHash =
+      input !== undefined
+        ? hashCode(JSON.stringify(input)).toString(16)
+        : undefined;
+    console.debug("execution input:", input);
+    console.debug("execution input hash:", inputHash);
+
+    const execution: InProgressExecution = {
+      id: executionId,
+      startTime: this.baseTime().toISOString(),
+      workflowName,
+      status: ExecutionStatus.IN_PROGRESS,
+      inputHash,
+      parent:
+        "parentExecutionId" in request
+          ? { executionId: request.parentExecutionId, seq: request.seq }
+          : undefined,
+    };
+
+    try {
+      try {
+        // try to create first as it may throw ExecutionAlreadyExists
+        await this.executionStore.create(execution);
+      } catch (err) {
+        if (err instanceof ExecutionAlreadyExists) {
+          const execution = await this.executionStore.get(executionId);
+          if (execution?.inputHash === inputHash) {
+            return { executionId, alreadyRunning: true };
+          }
+        }
+        // rethrow to the top catch
+        throw err;
+      }
+
+      // create the log
+      await this.logsClient.initializeExecutionLog(executionId);
+
+      const workflowStartedEvent = createEvent<WorkflowStarted>(
         {
-          ...event,
-          seq: data.payload.seq,
+          type: WorkflowEventType.WorkflowStarted,
+          input,
+          workflowName,
+          // generate the time for the workflow to timeout based on when it was started.
+          // the timer will be started by the orchestrator so the client does not need to have access to the timer client.
+          timeoutTime: timeout
+            ? computeScheduleDate(timeout, this.baseTime()).toISOString()
+            : undefined,
+          context: {
+            name: executionName,
+            parentId: execution.parent
+              ? execution.parent.executionId
+              : undefined,
+          },
         },
         this.baseTime()
-      )
-    );
-  }
-}
+      );
 
-export interface SendSignalRequest<Payload = any> {
-  execution: ExecutionHandle<any> | string;
-  signal: string | Signal<Payload>;
-  payload?: Payload;
-  /**
-   * Execution scoped unique event id. Duplicates will be deduplicated.
-   */
-  id?: string;
+      await Promise.all([
+        // send the first event
+        this.executionQueueClient.submitExecutionEvents(
+          executionId,
+          workflowStartedEvent
+        ),
+        // send the first log message and warm up the log stream
+        this.logsClient.putExecutionLogs(executionId, {
+          time: this.baseTime().getTime(),
+          message: "Workflow Started",
+        }),
+      ]);
+
+      return { executionId, alreadyRunning: false };
+    } catch (err) {
+      console.log(err);
+      throw new Error(
+        "Something went wrong starting a workflow: " + inspect(err)
+      );
+    }
+  }
+
+  public async succeedExecution(
+    request: SucceedExecutionRequest
+  ): Promise<SucceededExecution> {
+    const execution = await this.executionStore.update(request);
+    if (execution.parent) {
+      await this.reportCompletionToParent(
+        execution.parent.executionId,
+        execution.parent.seq,
+        request.result
+      );
+    }
+
+    return execution as SucceededExecution;
+  }
+
+  public async failExecution(
+    request: FailExecutionRequest
+  ): Promise<FailedExecution> {
+    const execution = await this.executionStore.update(request);
+    if (execution.parent) {
+      await this.reportCompletionToParent(
+        execution.parent.executionId,
+        execution.parent.seq,
+        request.error,
+        request.message
+      );
+    }
+
+    return execution as FailedExecution;
+  }
+
+  private async reportCompletionToParent(
+    parentExecutionId: string,
+    seq: number,
+    ...args: [result: any] | [error: string, message: string]
+  ) {
+    await this.executionQueueClient.submitExecutionEvents(parentExecutionId, {
+      seq,
+      timestamp: new Date().toISOString(),
+      ...(args.length === 1
+        ? {
+            type: WorkflowEventType.ChildWorkflowSucceeded,
+            result: args[0],
+          }
+        : {
+            type: WorkflowEventType.ChildWorkflowFailed,
+            error: args[0],
+            message: args[1],
+          }),
+    });
+  }
 }
 
 export interface StartChildExecutionRequest<W extends Workflow = Workflow>
@@ -175,4 +208,12 @@ export interface StartChildExecutionRequest<W extends Workflow = Workflow>
    * Sequence ID of this execution if this is a child workflow
    */
   seq: number;
+}
+
+function validateExecutionName(executionName: string, isChild: boolean) {
+  if (!isChild && executionName.startsWith(INTERNAL_EXECUTION_ID_PREFIX)) {
+    throw new Error(
+      `Execution names may not start with ${INTERNAL_EXECUTION_ID_PREFIX}`
+    );
+  }
 }

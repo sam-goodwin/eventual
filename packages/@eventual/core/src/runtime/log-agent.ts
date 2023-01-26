@@ -5,7 +5,7 @@ import {
   isConsoleHooked,
   restoreConsole,
 } from "./console-hook.js";
-import { groupBy } from "./utils.js";
+import { getLazy, groupBy, LazyValue } from "./utils.js";
 
 export type LogContext = ExecutionLogContext | ActivityLogContext;
 
@@ -58,7 +58,7 @@ export interface LogAgentProps {
    */
   sendingLogsEnabled?: boolean;
   logLevel: {
-    default: LogLevel;
+    default: LazyValue<LogLevel>;
   };
 }
 
@@ -92,7 +92,7 @@ export class LogAgent {
     this.sendingLogsEnabled = props.sendingLogsEnabled ?? true;
     this.logFormatter = props.logFormatter ?? new DefaultLogFormatter();
     this.getTime = props.getTime ?? (() => new Date());
-    this.logLevelIndex = LOG_LEVELS.indexOf(props.logLevel.default);
+    this.logLevelIndex = LOG_LEVELS.indexOf(getLazy(props.logLevel.default));
   }
 
   /**
