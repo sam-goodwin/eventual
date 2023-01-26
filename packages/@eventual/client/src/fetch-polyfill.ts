@@ -11,7 +11,7 @@
 export async function polyfillFetch() {
   if (!globalThis.fetch) {
     const nodeFetch = await import("node-fetch");
-    globalThis.fetch = nodeFetch as unknown as typeof globalThis.fetch;
+    globalThis.fetch = nodeFetch.default as unknown as typeof globalThis.fetch;
     globalThis.Headers =
       nodeFetch.Headers as unknown as typeof globalThis.Headers;
     globalThis.Request =
