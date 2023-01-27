@@ -88,8 +88,9 @@ export class AWSExecutionHistoryStore extends ExecutionHistoryStore {
         ConsistentRead: true,
       }
     );
-    const events = output.records.map(({ event, time }) => ({
+    const events = output.records.map(({ event, time, id }) => ({
       ...JSON.parse(event!.S!),
+      ...(id ? { id: id?.S } : {}),
       timestamp: time!.S,
     }));
 
