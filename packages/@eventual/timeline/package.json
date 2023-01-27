@@ -12,10 +12,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@esbuild-plugins/node-globals-polyfill": "^0.1.1",
+    "@eventual/client": "workspace:^",
     "@eventual/core": "workspace:^",
     "@tanstack/react-query": "^4.19.1",
-    "buffer": "^6.0.3",
-    "ky": "^0.32.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
@@ -26,8 +26,9 @@
     "express": "^4.18.2",
     "get-port": "^6.1.2",
     "open": "^8.4.0",
+    "rollup-plugin-node-polyfills": "^0.2.1",
     "typescript": "^4.9.4",
-    "vite": "^4.0.0"
+    "vite": "^4.0.4"
   },
   "publishConfig": {
     "access": "public"

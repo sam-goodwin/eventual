@@ -1,3 +1,4 @@
+import { Buffer } from "buffer";
 /**
  * TODO move this into compile once compile supports CJS.
  */

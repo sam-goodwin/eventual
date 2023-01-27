@@ -2,6 +2,7 @@ import "@eventual/entry/injected";
 
 import { createApiHandler } from "@eventual/runtime-core";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
+import { Buffer } from "buffer";
 import { createServiceClient } from "../create.js";
 
 // TODO: remove once we can upgrade to Node 18 in AWS Lambda
