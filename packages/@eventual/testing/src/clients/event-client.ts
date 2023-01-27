@@ -1,9 +1,5 @@
-import {
-  EventClient,
-  EventEnvelope,
-  EventHandlerWorker,
-  EventPayload,
-} from "@eventual/core";
+import { EventEnvelope, EventPayload } from "@eventual/core";
+import { EventClient, EventHandlerWorker } from "@eventual/runtime-core";
 
 export class TestEventClient implements EventClient {
   constructor(private eventHandlerWorker: EventHandlerWorker) {}

@@ -10,6 +10,7 @@
     { "path": "../aws-client" },
     { "path": "../compiler" },
     { "path": "../core" },
-    { "path": "../project" }
+    { "path": "../project" },
+    { "path": "../runtime-core" }
   ]
 }

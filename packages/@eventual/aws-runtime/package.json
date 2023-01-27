@@ -21,6 +21,7 @@
     "@aws-sdk/client-scheduler": "^3.245.0",
     "@aws-sdk/client-sqs": "^3.245.0",
     "@eventual/core": "workspace:^",
+    "@eventual/runtime-core": "workspace:^",
     "@middy/core": "^3.6.2",
     "aws-embedded-metrics": "^4.1.0",
     "aws-lambda": "^1.0.7",

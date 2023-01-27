@@ -1,4 +1,4 @@
-import { MetricsClient, MetricsLogger } from "@eventual/core";
+import { MetricsClient, MetricsLogger } from "@eventual/runtime-core";
 
 export class TestMetricsClient implements MetricsClient {
   public createMetricsLogger() {

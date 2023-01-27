@@ -1,5 +1,3 @@
-import { assertNever } from "./util.js";
-
 export const DURATION_UNITS = [
   "second",
   "seconds",
@@ -55,27 +53,4 @@ export function isDurationSchedule(
 
 export function isTimeSchedule(schedule: Schedule): schedule is TimeSchedule {
   return schedule.type === "Time";
-}
-
-export function computeScheduleDate(schedule: Schedule, baseTime: Date): Date {
-  return isTimeSchedule(schedule)
-    ? new Date(schedule.isoDate)
-    : new Date(
-        baseTime.getTime() +
-          computeDurationSeconds(schedule.dur, schedule.unit) * 1000
-      );
-}
-
-export function computeDurationSeconds(dur: number, unit: DurationUnit) {
-  return unit === "seconds" || unit === "second"
-    ? dur
-    : unit === "minutes" || unit === "minute"
-    ? dur * 60
-    : unit === "hours" || unit === "hour"
-    ? dur * 60 * 60
-    : unit === "days" || unit === "day"
-    ? dur * 60 * 60 * 24
-    : unit === "years" || unit === "year"
-    ? dur * 60 * 60 * 24 * 365.25
-    : assertNever(unit);
 }

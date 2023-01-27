@@ -8,7 +8,6 @@ import {
   callableActivities,
   EventualError,
   Failed,
-  GlobalActivityProvider,
   HeartbeatTimeout,
   isFailed,
   isResolved,
@@ -17,6 +16,7 @@ import {
   Result,
   Timeout,
 } from "@eventual/core";
+import { GlobalActivityProvider } from "@eventual/runtime-core";
 
 export class MockableActivityProvider extends GlobalActivityProvider {
   private mockedActivities: Record<string, MockActivity<any>> = {};

@@ -376,27 +376,6 @@ export function getEventId(event: WorkflowEvent): string {
   }
 }
 
-/**
- * Filters out events that are also present in origin events.
- *
- * Events are taken only if their ID ({@link getEventId}) is unique across all other events.
- */
-export function filterEvents<T extends WorkflowEvent>(
-  originEvents: T[],
-  events: T[]
-): T[] {
-  const ids = new Set(originEvents.map(getEventId));
-
-  return events.filter((event) => {
-    const id = getEventId(event);
-    if (ids.has(id)) {
-      return false;
-    }
-    ids.add(id);
-    return true;
-  });
-}
-
 type UnresolvedEvent<T extends WorkflowEvent> = Omit<T, "id" | "timestamp">;
 
 export function createEvent<T extends WorkflowEvent>(

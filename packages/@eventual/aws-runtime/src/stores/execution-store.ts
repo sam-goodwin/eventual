@@ -12,21 +12,19 @@ import {
   ExecutionAlreadyExists,
   ExecutionID,
   ExecutionStatus,
-  ExecutionStore,
   FailedExecution,
   FailExecutionRequest,
-  ListExecutionsRequest,
-  ListExecutionsResponse,
   InProgressExecution,
   isExecutionStatus,
   isFailedExecutionRequest,
+  ListExecutionsRequest,
+  ListExecutionsResponse,
   parseExecutionId,
   SortOrder,
   SucceededExecution,
   SucceedExecutionRequest,
-  LazyValue,
-  getLazy,
 } from "@eventual/core";
+import { ExecutionStore, getLazy, LazyValue } from "@eventual/runtime-core";
 import { queryPageWithToken } from "../utils.js";
 
 export interface AWSExecutionStoreProps {
