@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.12.4 (2023-01-27)
+
+### Bug Fixes
+
+- missing id in events ([#250](https://github.com/functionless/eventual/issues/250)) ([9eee09d](https://github.com/functionless/eventual/commit/9eee09d6a092a5f45b43dc625dc7c3ff95c4081a))
+
 ## 0.12.3 (2023-01-27)
 
 **Note:** Version bump only for package eventual-monorepo
