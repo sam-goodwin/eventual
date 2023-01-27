@@ -1,6 +1,6 @@
 {
   "name": "@eventual/compiler",
-  "version": "0.12.1",
+  "version": "0.12.2",
   "main": "lib/index.js",
   "module": "lib/index.js",
   "types:": "lib/index.d.ts",
@@ -28,7 +28,7 @@
     "@types/jest": "^29",
     "@types/minimatch": "5.1.2",
     "@types/node": "^16",
-    "esbuild": "^0.16.16",
+    "esbuild": "^0.17.4",
     "jest": "^29",
     "ts-jest": "^29",
     "ts-node": "^10.9.1",

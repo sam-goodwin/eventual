@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.12.2 (2023-01-26)
+
+### Bug Fixes
+
+- **timeline:** encoding ([#242](https://github.com/functionless/eventual/issues/242)) ([2af8bfb](https://github.com/functionless/eventual/commit/2af8bfb28e66d9798e20cd73b7e5c0a4d7b0dd21))
+
 ## 0.12.1 (2023-01-19)
 
 **Note:** Version bump only for package @eventual/cli
