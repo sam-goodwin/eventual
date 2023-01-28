@@ -250,6 +250,8 @@ export class Service extends Construct implements IGrantable, IService {
 
     this.appSpec = inferSync(props.entry);
 
+    console.log(JSON.stringify(this.appSpec, null, 2));
+
     bundleSourcesSync(
       outDir(this),
       props.entry,

@@ -1,4 +1,11 @@
-import { activity, asyncResult, event, workflow } from "@eventual/core";
+import {
+  activity,
+  api,
+  asyncResult,
+  duration,
+  event,
+  workflow,
+} from "@eventual/core";
 import { randomInt } from "crypto";
 
 const StockActionResultEvent = event<{
@@ -17,6 +24,17 @@ interface RequestApprovalEventPayload {
 
 const RequestApprovalEvent =
   event<RequestApprovalEventPayload>("RequestApproval");
+
+export const getStock = api.get(
+  "/stock/:stockId",
+  {
+    memorySize: 512,
+    timeout: duration(1, "minute"),
+  },
+  async () => {
+    return new Response();
+  }
+);
 
 // auto approval for the human request approval event.
 RequestApprovalEvent.onEvent(async (event) => {
