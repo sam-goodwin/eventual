@@ -1,22 +1,9 @@
+import { ScheduleActivityCommand } from "./command.js";
 import { EventEnvelope } from "./event.js";
-import { Execution, ExecutionHandle } from "./execution.js";
-import {
-  SendActivityFailureRequest,
-  SendActivityHeartbeatRequest,
-  SendActivityHeartbeatResponse,
-  SendActivitySuccessRequest,
-} from "./runtime/clients/activity-client.js";
-import { SendSignalRequest } from "./runtime/clients/execution-queue-client.js";
-import { ExecutionID } from "./runtime/execution-id.js";
-import {
-  ListExecutionEventsRequest,
-  ListExecutionEventsResponse,
-} from "./runtime/stores/execution-history-store.js";
-import {
-  ListExecutionsRequest,
-  ListExecutionsResponse,
-} from "./runtime/stores/execution-store.js";
-import { HistoryStateEvent } from "./workflow-events.js";
+import { ExecutionID } from "./execution-id.js";
+import { Execution, ExecutionHandle, ExecutionStatus } from "./execution.js";
+import { Signal } from "./signals.js";
+import { HistoryStateEvent, WorkflowEvent } from "./workflow-events.js";
 import { Workflow, WorkflowInput, WorkflowOptions } from "./workflow.js";
 
 /**
@@ -154,4 +141,141 @@ export interface WorkflowReference {
 
 export interface ListWorkflowsResponse {
   workflows: WorkflowReference[];
+}
+
+export interface SucceedExecutionRequest<Result = any> {
+  executionId: string;
+  result?: Result;
+}
+
+export interface FailExecutionRequest {
+  executionId: string;
+  error: string;
+  message: string;
+}
+
+export function isFailedExecutionRequest(
+  executionRequest: SucceedExecutionRequest | FailExecutionRequest
+): executionRequest is FailExecutionRequest {
+  return "error" in executionRequest;
+}
+
+export interface ListExecutionsRequest {
+  statuses?: ExecutionStatus[];
+  workflowName?: string;
+  nextToken?: string;
+  /**
+   * @default "Asc"
+   */
+  sortDirection?: SortOrder;
+  /**
+   * @default: 100
+   */
+  maxResults?: number;
+}
+
+export interface ListExecutionsResponse {
+  executions: Execution[];
+  /**
+   * A token returned when there may be more executions to retrieve.
+   */
+  nextToken?: string;
+}
+
+export interface ListExecutionEventsRequest {
+  executionId: string;
+  /**
+   * @default "Asc"
+   */
+  sortDirection?: SortOrder;
+  nextToken?: string;
+  /**
+   * @default: 100
+   */
+  maxResults?: number;
+  /**
+   * Start returning results after a date.
+   */
+  after?: string;
+}
+
+export interface ListExecutionEventsResponse {
+  events: WorkflowEvent[];
+  nextToken?: string;
+}
+
+export enum ActivityUpdateType {
+  Success = "Success",
+  Failure = "Failure",
+  Heartbeat = "Heartbeat",
+}
+
+export type SendActivityUpdate<T = any> =
+  | SendActivitySuccessRequest<T>
+  | SendActivityFailureRequest
+  | SendActivityHeartbeatRequest;
+
+export interface SendActivitySuccessRequest<T = any> {
+  type: ActivityUpdateType.Success;
+  activityToken: string;
+  result: T;
+}
+
+export interface SendActivityFailureRequest {
+  type: ActivityUpdateType.Failure;
+  activityToken: string;
+  error: string;
+  message?: string;
+}
+
+export interface SendActivityHeartbeatRequest {
+  type: ActivityUpdateType.Heartbeat;
+  activityToken: string;
+}
+
+export function isSendActivitySuccessRequest<T = any>(
+  request: SendActivityUpdate<T>
+): request is SendActivitySuccessRequest<T> {
+  return request.type === ActivityUpdateType.Success;
+}
+
+export function isSendActivityFailureRequest(
+  request: SendActivityUpdate
+): request is SendActivityFailureRequest {
+  return request.type === ActivityUpdateType.Failure;
+}
+
+export function isSendActivityHeartbeatRequest(
+  request: SendActivityUpdate
+): request is SendActivityHeartbeatRequest {
+  return request.type === ActivityUpdateType.Heartbeat;
+}
+
+export type SendActivityUpdateResponse = SendActivityHeartbeatResponse | void;
+
+export interface SendActivityHeartbeatResponse {
+  /**
+   * True when the activity has been cancelled.
+   *
+   * This is the only way for a long running activity to know it was cancelled.
+   */
+  cancelled: boolean;
+}
+
+export interface ActivityWorkerRequest {
+  scheduledTime: string;
+  workflowName: string;
+  executionId: string;
+  command: ScheduleActivityCommand;
+  retry: number;
+}
+
+export interface SendSignalRequest<Payload = any> {
+  execution: ExecutionHandle<any> | string;
+  signal: string | Signal<Payload>;
+  payload?: Payload;
+  /**
+   * Execution scoped unique event id. Duplicates will be deduplicated.
+   */
+  id?: string;
 }

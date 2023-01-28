@@ -1,9 +1,5 @@
-import {
-  EventHandler,
-  EventPayloadType,
-  GlobalEventHandlerProvider,
-  Event,
-} from "@eventual/core";
+import { Event, EventHandler, EventPayloadType } from "@eventual/core";
+import { GlobalEventHandlerProvider } from "@eventual/runtime-core";
 
 export class TestEventHandlerProvider extends GlobalEventHandlerProvider {
   private defaultHandlersDisabled = false;

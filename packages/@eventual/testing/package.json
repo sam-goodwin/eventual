@@ -1,6 +1,6 @@
 {
   "name": "@eventual/testing",
-  "version": "0.12.1",
+  "version": "0.12.4",
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",
@@ -15,6 +15,7 @@
   "dependencies": {
     "@eventual/compiler": "workspace:^",
     "@eventual/core": "workspace:^",
+    "@eventual/runtime-core": "workspace:^",
     "heap-js": "^2.2.0",
     "ulidx": "^0.3.0"
   },

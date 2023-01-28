@@ -1,11 +1,11 @@
 // the user's entry point will register activities as a side effect.
 import "@eventual/entry/injected";
 
+import { ActivityWorkerRequest } from "@eventual/core";
 import {
-  ActivityWorkerRequest,
   createActivityWorker,
-  GlobalActivityProvider,
-} from "@eventual/core";
+  GlobalActivityProvider
+} from "@eventual/runtime-core";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 import {
   createActivityStore,
@@ -13,7 +13,7 @@ import {
   createExecutionQueueClient,
   createLogAgent,
   createServiceClient,
-  createTimerClient,
+  createTimerClient
 } from "../create.js";
 
 export default (request: ActivityWorkerRequest) =>

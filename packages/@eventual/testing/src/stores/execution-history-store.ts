@@ -1,10 +1,10 @@
 import {
   ListExecutionEventsRequest,
   ListExecutionEventsResponse,
-  ExecutionHistoryStore,
   SortOrder,
   WorkflowEvent,
 } from "@eventual/core";
+import { ExecutionHistoryStore } from "@eventual/runtime-core";
 
 export class TestExecutionHistoryStore extends ExecutionHistoryStore {
   private eventStore: Record<string, WorkflowEvent[]> = {};

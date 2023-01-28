@@ -1,4 +1,5 @@
-import { ExecutionQueueClient, HistoryStateEvent } from "@eventual/core";
+import { HistoryStateEvent } from "@eventual/core";
+import { ExecutionQueueClient } from "@eventual/runtime-core";
 import { TimeConnector } from "../environment.js";
 
 export class TestExecutionQueueClient extends ExecutionQueueClient {

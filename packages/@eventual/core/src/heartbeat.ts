@@ -1,6 +1,6 @@
 import { getActivityContext, getServiceClient } from "./global.js";
-import { SendActivityHeartbeatResponse } from "./runtime/clients/activity-client.js";
-import { isActivityWorker, isOrchestratorWorker } from "./runtime/flags.js";
+import { isActivityWorker, isOrchestratorWorker } from "./flags.js";
+import { SendActivityHeartbeatResponse } from "./service-client.js";
 
 /**
  * Sends a heartbeat for the current activity or to the provided activity token.

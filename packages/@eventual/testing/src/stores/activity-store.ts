@@ -1,4 +1,4 @@
-import { ActivityExecution, ActivityStore } from "@eventual/core";
+import { ActivityExecution, ActivityStore } from "@eventual/runtime-core";
 
 export class TestActivityStore implements ActivityStore {
   public async claim(

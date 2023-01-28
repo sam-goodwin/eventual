@@ -1,19 +1,19 @@
 import { createActivityCall } from "./calls/activity-call.js";
 import { createAwaitDurationCall } from "./calls/await-time-call.js";
+import { isActivityWorker, isOrchestratorWorker } from "./flags.js";
 import {
   callableActivities,
   getActivityContext,
   getServiceClient,
 } from "./global.js";
+import { DurationSchedule } from "./schedule.js";
 import {
+  EventualServiceClient,
   SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
   SendActivitySuccessRequest,
-} from "./runtime/clients/activity-client.js";
-import { isActivityWorker, isOrchestratorWorker } from "./runtime/flags.js";
-import { computeDurationSeconds, DurationSchedule } from "./schedule.js";
-import { EventualServiceClient } from "./service-client.js";
+} from "./service-client.js";
 
 export interface ActivityOptions {
   /**
@@ -231,11 +231,6 @@ export function activity<Arguments extends any[], Output = any>(
           ? createAwaitDurationCall(opts.timeout.dur, opts.timeout.unit)
           : undefined,
         opts?.heartbeatTimeout
-          ? computeDurationSeconds(
-              opts.heartbeatTimeout.dur,
-              opts.heartbeatTimeout.unit
-            )
-          : undefined
       ) as any;
     } else {
       // calling the activity from outside the orchestrator just calls the handler

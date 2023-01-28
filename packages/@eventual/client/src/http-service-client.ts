@@ -1,29 +1,28 @@
 import {
-  SendActivitySuccessRequest,
+  ActivityUpdateType,
   encodeExecutionId,
   EventualServiceClient,
   Execution,
-  ListExecutionEventsRequest,
-  ListExecutionEventsResponse,
   ExecutionHandle,
   ExecutionHistoryResponse,
-  SendActivityFailureRequest,
+  HistoryStateEvent,
+  ListExecutionEventsRequest,
+  ListExecutionEventsResponse,
   ListExecutionsRequest,
   ListExecutionsResponse,
   ListWorkflowsResponse,
+  PublishEventsRequest,
+  SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
-  HistoryStateEvent,
-  PublishEventsRequest,
+  SendActivitySuccessRequest,
   SendSignalRequest,
   StartExecutionRequest,
+  StartExecutionResponse,
   Workflow,
   WorkflowInput,
-  ActivityUpdateType,
-  StartExecutionResponse,
 } from "@eventual/core";
-import path from "path";
-import "./fetch-polyfill.js";
+import { polyfillFetch } from "./fetch-polyfill.js";
 
 export interface HttpServiceClientProps {
   /**
@@ -55,7 +54,25 @@ export class HttpServiceClient implements EventualServiceClient {
   private readonly baseUrl: string;
 
   constructor(private props: HttpServiceClientProps) {
-    this.baseUrl = path.join(props.serviceUrl, "_eventual");
+    this.baseUrl = `${props.serviceUrl}/_eventual`;
+  }
+
+  /**
+   * Pass through any http request to the eventual endpoint.
+   *
+   * Does not inject the _eventual suffix into the url. ([serviceUrl]/[path]).
+   */
+  public async proxy(request: {
+    method: HttpMethod;
+    path: string;
+    body?: Body;
+  }) {
+    return this.request(
+      request.method,
+      request.path,
+      request.body,
+      this.props.serviceUrl
+    );
   }
 
   public async listWorkflows(): Promise<ListWorkflowsResponse> {
@@ -199,17 +216,22 @@ export class HttpServiceClient implements EventualServiceClient {
   }
 
   private async request<Body = any, Resp = any>(
-    method: "POST" | "GET" | "PUT",
+    method: HttpMethod,
     suffix: string,
-    body?: Body
+    body?: Body,
+    baseUrl?: string
   ) {
-    const initRequest = new Request(new URL(path.join(this.baseUrl, suffix)), {
-      method,
-      body: body ? JSON.stringify(body) : undefined,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    await polyfillFetch();
+    const initRequest = new Request(
+      new URL(`${baseUrl ?? this.baseUrl}/${suffix}`),
+      {
+        method,
+        body: body ? JSON.stringify(body) : undefined,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     const request = this.props.beforeRequest
       ? await this.props.beforeRequest(initRequest)
@@ -228,6 +250,8 @@ export class HttpServiceClient implements EventualServiceClient {
     }
   }
 }
+
+export type HttpMethod = "POST" | "GET" | "PUT";
 
 export class HttpError extends Error {
   constructor(

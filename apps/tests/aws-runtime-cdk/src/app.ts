@@ -1,5 +1,7 @@
+import * as eventual from "@eventual/aws-cdk";
+import { ServiceDashboard } from "@eventual/aws-cdk";
+import { LogLevel } from "@eventual/core";
 import { App, CfnOutput, CfnResource, Stack } from "aws-cdk-lib";
-import { Queue } from "aws-cdk-lib/aws-sqs";
 import {
   ArnPrincipal,
   PolicyStatement,
@@ -7,10 +9,8 @@ import {
   ServicePrincipal,
 } from "aws-cdk-lib/aws-iam";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
-import * as eventual from "@eventual/aws-cdk";
+import { Queue } from "aws-cdk-lib/aws-sqs";
 import path from "path";
-import { ServiceDashboard } from "@eventual/aws-cdk";
-import { LogLevel } from "@eventual/core";
 
 const app = new App();
 

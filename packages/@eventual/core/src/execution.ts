@@ -1,5 +1,5 @@
 import { ulid } from "ulidx";
-import { ExecutionID } from "./index.js";
+import { ExecutionID } from "./execution-id.js";
 import { EventualServiceClient } from "./service-client.js";
 import { Signal, SendSignalProps } from "./signals.js";
 import { Workflow, WorkflowOutput } from "./workflow.js";

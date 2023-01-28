@@ -1,6 +1,6 @@
 {
   "name": "@eventual/aws-cdk",
-  "version": "0.12.1",
+  "version": "0.12.4",
   "main": "lib/index.js",
   "types:": "lib/index.d.ts",
   "scripts": {
@@ -9,7 +9,8 @@
   "dependencies": {
     "@eventual/aws-runtime": "workspace:^",
     "@eventual/compiler": "workspace:^",
-    "@eventual/core": "workspace:^"
+    "@eventual/core": "workspace:^",
+    "@eventual/runtime-core": "workspace:^"
   },
   "peerDependencies": {
     "@aws-cdk/aws-apigatewayv2-alpha": "^2.50.0-alpha.0",
@@ -29,7 +30,7 @@
     "aws-cdk": "2.50.0",
     "aws-cdk-lib": "2.50.0",
     "constructs": "10.1.224",
-    "esbuild": "^0.16.16",
+    "esbuild": "^0.17.4",
     "jest": "^29",
     "ts-jest": "^29",
     "ts-node": "^10.9.1",
