@@ -1,6 +1,7 @@
 import { Service as CDKService } from "@eventual/aws-cdk";
-import {} from "@pulumi/cdk";
+import { Bridge } from "pulumi-cdk-classic";
 
-export class Service implements CDKService {
-  constructor() {}
-}
+/**
+ * Bridges the AWS CDK {@link CDKService} into the Pulumi ecosystem.
+ */
+export class Service extends Bridge(CDKService) {}

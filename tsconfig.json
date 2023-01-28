@@ -8,6 +8,7 @@
     { "path": "examples/lambda-test-runner/infra" },
     { "path": "examples/lambda-test-runner/runtime" },
     { "path": "examples/stock-bot/infra" },
+    { "path": "examples/stock-bot/infra-pulumi" },
     { "path": "examples/stock-bot/runtime" },
     { "path": "packages/@eventual/aws-cdk" },
     { "path": "packages/@eventual/aws-client" },
