@@ -81,6 +81,7 @@ export class Api extends Construct {
               path,
               {
                 ...route,
+                id: route.exportName,
                 grants: (fn) =>
                   this.props.service.configureForServiceClient(fn),
               },
@@ -153,16 +154,20 @@ export class Api extends Construct {
 
     Object.entries(mappings).forEach(([apiPath, mappings]) => {
       const mappingsArray = Array.isArray(mappings) ? mappings : [mappings];
-      mappingsArray.forEach(({ name, file, methods, grants }) => {
-        const id = name ?? path.dirname(file);
-        const fn = new Function(this, file, {
+      mappingsArray.forEach(({ id, name, file, methods, grants }) => {
+        const funcId = id ?? name ?? path.dirname(file);
+        const fn = new Function(this, funcId, {
+          functionName: id ? `${this.props.serviceName}-api-${id}` : undefined,
           code: Code.fromAsset(this.props.build.resolveFolder(file)),
           ...baseFnProps,
           handler: "index.handler",
         });
 
         grants?.(fn);
-        const integration = new HttpLambdaIntegration(`${id}-integration`, fn);
+        const integration = new HttpLambdaIntegration(
+          `${funcId}-integration`,
+          fn
+        );
         this.gateway.addRoutes({
           path: apiPath,
           integration,
@@ -183,5 +188,6 @@ export class Api extends Construct {
 }
 
 interface RouteMapping extends ApiFunction {
+  id?: string;
   grants?: (grantee: Function) => void;
 }

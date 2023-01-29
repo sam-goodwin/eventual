@@ -153,13 +153,14 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           return [
             route.path,
             {
-              file: (await buildFunction({
+              file: await buildFunction({
                 name: path.join("api", route.path),
-                entry: route.sourceLocation.fileName,
+                entry: runtimeHandlersEntrypoint("api-handler"),
                 exportName: route.sourceLocation.exportName,
                 serviceType: ServiceType.ApiHandler,
                 injectedEntry: route.sourceLocation.fileName,
-              }))!,
+              }),
+              exportName: route.sourceLocation.exportName,
               methods: [route.method],
               memorySize: route.memorySize,
               timeout: route.timeout,
@@ -211,7 +212,6 @@ export async function buildService(request: BuildAWSRuntimeProps) {
             entry: runtimeHandlersEntrypoint("schedule-forwarder"),
             injectedEntry: request.entry,
           },
-
           {
             name: "SchedulerHandler",
             entry: runtimeHandlersEntrypoint("timer-handler"),

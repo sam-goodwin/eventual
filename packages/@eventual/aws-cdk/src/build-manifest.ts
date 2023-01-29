@@ -54,5 +54,6 @@ export interface EventFunction extends BundledFunction {
 }
 
 export interface ApiFunction extends BundledFunction {
+  exportName?: string;
   methods: HttpMethod[];
 }
