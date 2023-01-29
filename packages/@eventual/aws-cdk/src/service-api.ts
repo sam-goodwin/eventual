@@ -2,7 +2,8 @@ import { HttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
 import { ServiceType } from "@eventual/core";
-import { Arn, Stack } from "aws-cdk-lib";
+import { computeDurationSeconds } from "@eventual/runtime-core";
+import { Arn, Duration, Stack } from "aws-cdk-lib";
 import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Code, Function } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
@@ -81,7 +82,6 @@ export class Api extends Construct {
               path,
               {
                 ...route,
-                id: route.exportName,
                 grants: (fn) =>
                   this.props.service.configureForServiceClient(fn),
               },
@@ -152,14 +152,23 @@ export class Api extends Construct {
   private applyRouteMappings(mappings: Record<string, RouteMapping>) {
     const deferredAddRoutes: (() => void)[] = [];
 
-    Object.entries(mappings).forEach(([apiPath, mappings]) => {
-      const mappingsArray = Array.isArray(mappings) ? mappings : [mappings];
-      mappingsArray.forEach(({ id, name, file, methods, grants }) => {
-        const funcId = id ?? name ?? path.dirname(file);
+    Object.entries(mappings).forEach(
+      ([
+        apiPath,
+        { name, file, methods, grants, memorySize, timeout, exportName },
+      ]) => {
+        const funcId = name ?? path.dirname(file);
         const fn = new Function(this, funcId, {
-          functionName: id ? `${this.props.serviceName}-api-${id}` : undefined,
+          functionName: exportName
+            ? // use the exportName as the function name - encourage users to choose unique names
+              `${this.props.serviceName}-api-${exportName}`
+            : undefined,
           code: Code.fromAsset(this.props.build.resolveFolder(file)),
           ...baseFnProps,
+          memorySize,
+          timeout: timeout
+            ? Duration.seconds(computeDurationSeconds(timeout))
+            : undefined,
           handler: "index.handler",
         });
 
@@ -174,8 +183,8 @@ export class Api extends Construct {
           methods,
           authorizer: new HttpIamAuthorizer(),
         });
-      });
-    });
+      }
+    );
 
     // actually create the lambda and routes.
     deferredAddRoutes.forEach((a) => a());
@@ -188,6 +197,5 @@ export class Api extends Construct {
 }
 
 interface RouteMapping extends ApiFunction {
-  id?: string;
   grants?: (grantee: Function) => void;
 }
