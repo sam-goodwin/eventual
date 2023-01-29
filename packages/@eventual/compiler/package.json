@@ -1,14 +1,25 @@
 {
   "name": "@eventual/compiler",
   "version": "0.12.4",
-  "main": "lib/index.js",
-  "module": "lib/index.js",
-  "types:": "lib/index.d.ts",
   "bin": {
     "eventual-bundle": "./bin/eventual-bundle.js",
     "eventual-infer": "./bin/eventual-infer.js"
   },
-  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./lib/esm/index.js",
+      "require": "./lib/cjs/index.js"
+    },
+    "./bin/eventual-bundle.js": {
+      "require": "./bin/eventual-bundle.js"
+    },
+    "./bin/eventual-infer.js": {
+      "require": "./bin/eventual-infer.js"
+    }
+  },
+  "main": "./lib/cjs/index.js",
+  "module": "./lib/esm/index.js",
+  "types:": "lib/esm/index.d.ts",
   "files": [
     "bin",
     "lib"

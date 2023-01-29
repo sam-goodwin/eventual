@@ -8,17 +8,11 @@ import { ServiceType, SERVICE_TYPE_FLAG } from "@eventual/core";
 
 export async function bundleSources(
   outDir: string,
-  serviceEntry: string,
-  entries: Omit<BuildSource, "outDir" | "injectedEntry">[],
+  entries: Omit<BuildSource, "outDir">[],
   cleanOutput = false
 ) {
-  console.log("Bundling:", outDir, serviceEntry);
   await prepareOutDir(outDir, cleanOutput);
-  await Promise.all(
-    entries
-      .map((s) => ({ ...s, outDir, injectedEntry: serviceEntry }))
-      .map(build)
-  );
+  await Promise.all(entries.map((s) => ({ ...s, outDir })).map(build));
 }
 
 export async function bundleService(
@@ -31,6 +25,7 @@ export async function bundleService(
   await prepareOutDir(outDir);
   return build({
     outDir,
+    injectedEntry: entry,
     entry,
     name: "service",
     eventualTransform: true,
@@ -43,29 +38,43 @@ export async function bundleService(
 }
 
 export interface BuildSource {
-  injectedEntry?: string;
   eventualTransform?: boolean;
   outDir: string;
   name: string;
   entry: string;
+  injectedEntry: string;
+  /**
+   * Optionally provide the name of the handler that should be tree-shaken.
+   *
+   * If it is undefined, then the entire file is bundled.
+   */
+  exportName?: string;
   sourcemap?: boolean | "inline";
   serviceType?: ServiceType;
   external?: string[];
   allPackagesExternal?: boolean;
+  metafile?: boolean;
 }
 
-async function build({
+export async function build({
   outDir,
   injectedEntry,
   name,
   entry,
+  // exportName,
   eventualTransform = false,
   sourcemap,
   serviceType,
   external,
   allPackagesExternal,
-}: BuildSource) {
-  const outfile = path.join(outDir, `${name}/index.mjs`);
+  metafile,
+}: BuildSource): Promise<string> {
+  const codeDir = path.join(outDir, name);
+  await fs.mkdir(codeDir, {
+    recursive: true,
+  });
+  const outfile = path.join(codeDir, "index.mjs");
+
   const bundle = await esbuild.build({
     mainFields: ["module", "main"],
     sourcemap: sourcemap ?? true,
@@ -92,7 +101,7 @@ async function build({
     format: "esm",
     // Target for node 16
     target: "es2021",
-    metafile: true,
+    metafile,
     bundle: true,
     entryPoints: [path.resolve(entry)],
     banner: esmPolyfillRequireBanner(),
@@ -125,8 +134,12 @@ function esmPolyfillRequireBanner() {
 }
 
 function writeEsBuildMetafile(
-  esbuildResult: esbuild.BuildResult & { metafile: esbuild.Metafile },
+  esbuildResult: esbuild.BuildResult & { metafile?: esbuild.Metafile },
   path: string
 ) {
-  return fs.writeFile(path, JSON.stringify(esbuildResult.metafile));
+  if (esbuildResult.metafile) {
+    return fs.writeFile(path, JSON.stringify(esbuildResult.metafile));
+  } else {
+    return Promise.resolve(undefined);
+  }
 }

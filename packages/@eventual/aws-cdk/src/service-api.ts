@@ -1,20 +1,20 @@
 import { HttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
-import { BuildSource } from "@eventual/compiler";
 import { ServiceType } from "@eventual/core";
 import { Arn, Stack } from "aws-cdk-lib";
-import { HttpMethod } from "aws-cdk-lib/aws-events";
 import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Code, Function } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
+import path from "path";
 import type { Activities } from "./activities";
-import { bundleSourcesSync } from "./compile-client";
+import type { BuildOutput } from "./build";
+import { ApiFunction, InternalApiRoutes } from "./build-manifest";
 import type { Events } from "./events";
 import type { Scheduler } from "./scheduler";
-import { IService, runtimeHandlersEntrypoint } from "./service";
+import { IService } from "./service";
 import { ServiceFunction } from "./service-function";
-import { baseFnProps, outDir } from "./utils";
+import { baseFnProps } from "./utils";
 import type { Workflows } from "./workflows";
 
 export interface ApiProps {
@@ -26,6 +26,7 @@ export interface ApiProps {
   scheduler: Scheduler;
   events: Events;
   service: IService;
+  build: BuildOutput;
 }
 
 export class Api extends Construct {
@@ -46,7 +47,9 @@ export class Api extends Construct {
       serviceType: ServiceType.ApiHandler,
       memorySize: 512,
       environment: props.environment,
+      code: props.build.getCode(props.build.api.default.file),
     });
+
     // The handler is given an instance of the service client.
     // Allow it to access any of the methods on the service client by default.
     props.service.configureForServiceClient(this.handler);
@@ -56,96 +59,9 @@ export class Api extends Construct {
       defaultIntegration: new HttpLambdaIntegration("default", this.handler),
     });
 
-    // TODO move the API definition to the aws-runtime or core-runtime
-    //      https://github.com/functionless/eventual/issues/173
-    this.applyRouteMappings({
-      "/_eventual/workflows": {
-        methods: [HttpMethod.GET],
-        entry: {
-          name: "list-workflows",
-          entry: runtimeHandlersEntrypoint("api/list-workflows"),
-        },
-      },
-      "/_eventual/workflows/{name}/executions": [
-        {
-          methods: [HttpMethod.POST],
-          entry: {
-            name: "start-execution",
-            entry: runtimeHandlersEntrypoint("api/executions/new"),
-          },
-          grants: (fn) => {
-            props.workflows.configureStartExecution(fn);
-          },
-        },
-      ],
-      "/_eventual/executions": {
-        methods: [HttpMethod.GET],
-        entry: {
-          name: "list-executions",
-          entry: runtimeHandlersEntrypoint("api/executions/list"),
-        },
-        grants: (fn) => {
-          props.workflows.configureReadExecutions(fn);
-        },
-      },
-      "/_eventual/executions/{executionId}": {
-        methods: [HttpMethod.GET],
-        entry: {
-          name: "get-execution",
-          entry: runtimeHandlersEntrypoint("api/executions/get"),
-        },
-        grants: (fn) => props.workflows.configureReadExecutions(fn),
-      },
-      "/_eventual/executions/{executionId}/history": {
-        methods: [HttpMethod.GET],
-        entry: {
-          name: "executions-events",
-          entry: runtimeHandlersEntrypoint("api/executions/history"),
-        },
-        grants: (fn) => props.workflows.configureReadExecutionHistory(fn),
-      },
-      "/_eventual/executions/{executionId}/signals": {
-        methods: [HttpMethod.PUT],
-        entry: {
-          name: "send-signal",
-          entry: runtimeHandlersEntrypoint("api/executions/signals/send"),
-        },
-        grants: (fn) => {
-          props.workflows.configureSendSignal(fn);
-        },
-      },
-      "/_eventual/executions/{executionId}/workflow-history": {
-        methods: [HttpMethod.GET],
-        entry: {
-          name: "executions-history",
-          entry: runtimeHandlersEntrypoint("api/executions/workflow-history"),
-        },
-        grants: (fn) => {
-          props.workflows.configureReadHistoryState(fn);
-        },
-      },
-      "/_eventual/events": {
-        methods: [HttpMethod.PUT],
-        entry: {
-          name: "publish-events",
-          entry: runtimeHandlersEntrypoint("api/publish-events"),
-        },
-        grants: (fn) => {
-          props.events.configurePublish(fn);
-        },
-      },
-      "/_eventual/activities": {
-        methods: [HttpMethod.POST],
-        entry: {
-          name: "update-activity",
-          entry: runtimeHandlersEntrypoint("api/update-activity"),
-        },
-        grants: (fn) => {
-          props.activities.configureWriteActivities(fn);
-          props.activities.configureCompleteActivity(fn);
-        },
-      },
-    });
+    this.createUserDefinedRoutes();
+
+    this.createInternalApiRoutes();
 
     this.configureApiHandler();
   }
@@ -153,6 +69,62 @@ export class Api extends Construct {
   public grantExecute(grantable: IGrantable) {
     grantable.grantPrincipal.addToPrincipalPolicy(
       this.executeApiPolicyStatement()
+    );
+  }
+
+  private createUserDefinedRoutes() {
+    this.applyRouteMappings(
+      Object.fromEntries(
+        Object.entries(this.props.build.api.routes).flatMap(([path, route]) => {
+          return [
+            [
+              path,
+              {
+                ...route,
+                grants: (fn) =>
+                  this.props.service.configureForServiceClient(fn),
+              },
+            ],
+          ];
+        })
+      )
+    );
+  }
+
+  private createInternalApiRoutes() {
+    const routes: InternalApiRoutes = this.props.build.api.internal;
+
+    const grants: {
+      [route in keyof typeof routes]?: RouteMapping["grants"];
+    } = {
+      "/_eventual/activities": (fn) => {
+        this.props.activities.configureWriteActivities(fn);
+        this.props.activities.configureCompleteActivity(fn);
+      },
+      "/_eventual/events": (fn) => this.props.events.configurePublish(fn),
+      "/_eventual/executions": (fn) =>
+        this.props.workflows.configureReadExecutions(fn),
+      "/_eventual/executions/{executionId}": (fn) =>
+        this.props.workflows.configureReadExecutions(fn),
+      "/_eventual/executions/{executionId}/history": (fn) =>
+        this.props.workflows.configureReadExecutionHistory(fn),
+      "/_eventual/executions/{executionId}/signals": (fn) =>
+        this.props.workflows.configureSendSignal(fn),
+      "/_eventual/executions/{executionId}/workflow-history": (fn) =>
+        this.props.workflows.configureReadHistoryState(fn),
+      "/_eventual/workflows/{name}/executions": (fn) =>
+        this.props.workflows.configureStartExecution(fn),
+    };
+
+    // TODO move the API definition to the aws-runtime or core-runtime
+    //      https://github.com/functionless/eventual/issues/173
+    this.applyRouteMappings(
+      Object.fromEntries(
+        Object.entries(routes).map(([path, route]) => ({
+          ...route,
+          grants: grants[path as keyof typeof grants],
+        }))
+      )
     );
   }
 
@@ -176,57 +148,39 @@ export class Api extends Construct {
   private applyRouteMappings(
     mappings: Record<string, RouteMapping | RouteMapping[]>
   ) {
-    const bundles: Omit<BuildSource, "outDir" | "injectedEntry">[] = [];
     const deferredAddRoutes: (() => void)[] = [];
 
-    Object.entries(mappings).forEach(([path, mappings]) => {
+    Object.entries(mappings).forEach(([apiPath, mappings]) => {
       const mappingsArray = Array.isArray(mappings) ? mappings : [mappings];
-      mappingsArray.forEach(({ entry, methods, grants }) => {
-        const id = entry.name;
-        // register the bundles we need to make
-        bundles.push(entry);
-        // create a closure that creates the gateway route.
-        // lambda validates the code bundle immediately so we need to bundle
-        // before creating the lambda.
-        deferredAddRoutes.push(() => {
-          const fn = this.prebundledLambda(id, entry.name);
-          grants?.(fn);
-          const integration = new HttpLambdaIntegration(
-            `${id}-integration`,
-            fn
-          );
-          this.gateway.addRoutes({
-            path,
-            integration,
-            methods,
-            authorizer: new HttpIamAuthorizer(),
-          });
+      mappingsArray.forEach(({ name, file, methods, grants }) => {
+        const id = name ?? path.dirname(file);
+        const fn = new Function(this, file, {
+          code: Code.fromAsset(this.props.build.resolveFolder(file)),
+          ...baseFnProps,
+          handler: "index.handler",
+        });
+
+        grants?.(fn);
+        const integration = new HttpLambdaIntegration(`${id}-integration`, fn);
+        this.gateway.addRoutes({
+          path: apiPath,
+          integration,
+          methods,
+          authorizer: new HttpIamAuthorizer(),
         });
       });
     });
 
-    // bundle the functions found
-    bundleSourcesSync(outDir(this), this.props.entry, ...bundles);
     // actually create the lambda and routes.
     deferredAddRoutes.forEach((a) => a());
   }
 
-  private prebundledLambda(id: string, entry: string) {
-    return new Function(this, id, {
-      code: Code.fromAsset(outDir(this, entry)),
-      ...baseFnProps,
-      handler: "index.handler",
-    });
-  }
-
-  private configureApiHandler() {
-    this.props.workflows.configureFullControl(this.handler);
-    this.props.events.configurePublish(this.handler);
+  private configureApiHandler(handler?: Function) {
+    this.props.workflows.configureFullControl(handler ?? this.handler);
+    this.props.events.configurePublish(handler ?? this.handler);
   }
 }
 
-interface RouteMapping {
-  methods?: HttpMethod[];
-  entry: Omit<BuildSource, "outDir" | "injectedEntry">;
+interface RouteMapping extends ApiFunction {
   grants?: (grantee: Function) => void;
 }

@@ -17,8 +17,10 @@ import { ServiceFunction } from "./service-function";
 import { Events } from "./events";
 import { Logging } from "./logging";
 import { IService } from "./service";
+import type { BuildOutput } from "./build";
 
 export interface ActivitiesProps {
+  build: BuildOutput;
   serviceName: string;
   workflows: IWorkflows;
   scheduler: IScheduler;
@@ -96,6 +98,7 @@ export class Activities
     });
 
     this.worker = new ServiceFunction(this, "Worker", {
+      code: props.build.getCode(props.build.activities.default.file),
       functionName: `${props.serviceName}-activity-handler`,
       serviceType: ServiceType.ActivityWorker,
       memorySize: 512,

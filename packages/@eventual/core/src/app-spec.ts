@@ -1,5 +1,6 @@
-import { Subscription } from "./event.js";
-import { DurationSchedule } from "./schedule.js";
+import type { HttpMethod } from "./api.js";
+import type { Subscription } from "./event.js";
+import type { DurationSchedule } from "./schedule.js";
 
 /**
  * Specification for an Eventual application
@@ -9,10 +10,11 @@ export interface AppSpec {
    * A list of all event {@link Subscription}s.
    */
   subscriptions: Subscription[];
+  api: ApiSpec;
+}
 
-  api: {
-    routes: RouteSpec[];
-  };
+export interface ApiSpec {
+  routes: RouteSpec[];
 }
 
 export interface FunctionSpec {
@@ -22,16 +24,11 @@ export interface FunctionSpec {
 
 export interface RouteSpec extends FunctionSpec {
   path: string;
+  method: HttpMethod;
   sourceLocation?: SourceLocation;
 }
 
 export interface SourceLocation {
-  /**
-   * @internal - only available during eventual-infer
-   */
   fileName?: string;
-  /**
-   * @internal - only available during eventual-infer
-   */
   exportName?: string;
 }

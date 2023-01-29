@@ -8,8 +8,8 @@ const router = itty.Router() as any as Router;
 export const api: Router = new Proxy(
   {},
   {
-    get: (_, prop: keyof typeof router) => {
-      if (prop === "routes") {
+    get: (_, method: keyof typeof router) => {
+      if (method === "routes" || method === "handle") {
         return router.routes;
       } else {
         return (
@@ -22,6 +22,7 @@ export const api: Router = new Proxy(
           const route: Route = {
             sourceLocation: typeof args[0] === "object" ? args[0] : undefined,
             path: (typeof args[0] === "string" ? args[0] : args[1]) as string,
+            method: method.toUpperCase() as HttpMethod,
             runtimeProps:
               typeof args[0] === "string"
                 ? typeof args[1] === "object"
@@ -57,9 +58,20 @@ export interface RouteRuntimeProps {
   timeout?: DurationSchedule;
 }
 
+export enum HttpMethod {
+  POST = "POST",
+  GET = "GET",
+  HEAD = "HEAD",
+  OPTIONS = "OPTIONS",
+  PUT = "PUT",
+  PATCH = "PATCH",
+  DELETE = "DELETE",
+}
+
 export interface Route {
   path: string;
   handlers: RouteHandler[];
+  method: HttpMethod;
   runtimeProps?: RouteRuntimeProps;
   /**
    * Only available during eventual-infer

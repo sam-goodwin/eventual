@@ -1,10 +1,10 @@
 {
-  "extends": "../../../tsconfig-base",
-  "include": ["src", "src/package.json"],
+  "extends": "../../../tsconfig-base.cjs",
+  "include": ["src"],
   "exclude": ["lib", "node_modules"],
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "lib/esm"
+    "outDir": "lib/cjs"
   },
   "references": [{ "path": "../core" }]
 }

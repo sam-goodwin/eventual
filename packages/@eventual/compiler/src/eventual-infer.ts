@@ -4,7 +4,7 @@
  *
  * @see AppSpec
  */
-import { AppSpec, eventSubscriptions, routes } from "@eventual/core";
+import { AppSpec, eventSubscriptions, routes, RouteSpec } from "@eventual/core";
 import crypto from "crypto";
 import esbuild from "esbuild";
 import fs from "fs/promises";
@@ -24,8 +24,7 @@ import { Visitor } from "@swc/core/Visitor.js";
 import { printModule } from "./print-module.js";
 import { getSpan, isApiCall } from "./ast-util.js";
 
-export async function infer() {
-  let scriptName = process.argv[2];
+export async function infer(scriptName = process.argv[2]): Promise<AppSpec> {
   if (scriptName === undefined) {
     throw new Error(`scriptName undefined`);
   }
@@ -49,19 +48,25 @@ export async function infer() {
 
   await import(path.resolve(scriptName));
 
-  const eventualData: AppSpec = {
+  const appSpec: AppSpec = {
     subscriptions: eventSubscriptions().flatMap((e) => e.subscriptions),
     api: {
-      routes: routes.map((route) => ({
-        loc: route.sourceLocation,
-        path: route.path,
-        memorySize: route.runtimeProps?.memorySize,
-        timeout: route.runtimeProps?.timeout,
-      })),
+      routes: routes.map(
+        (route) =>
+          ({
+            sourceLocation: route.sourceLocation,
+            path: route.path,
+            memorySize: route.runtimeProps?.memorySize,
+            timeout: route.runtimeProps?.timeout,
+            method: route.method,
+          } satisfies RouteSpec)
+      ),
     },
   };
 
-  console.log(JSON.stringify(eventualData));
+  console.log(JSON.stringify(appSpec));
+
+  return appSpec;
 }
 
 export const inferPlugin: esBuild.Plugin = {

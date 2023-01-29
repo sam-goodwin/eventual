@@ -429,6 +429,7 @@ importers:
       '@aws-sdk/client-s3': ^3.245.0
       '@aws-sdk/client-scheduler': ^3.245.0
       '@aws-sdk/client-sqs': ^3.245.0
+      '@eventual/compiler': workspace:^
       '@eventual/core': workspace:^
       '@eventual/runtime-core': workspace:^
       '@middy/core': ^3.6.2
@@ -453,6 +454,7 @@ importers:
       '@aws-sdk/client-s3': 3.245.0
       '@aws-sdk/client-scheduler': 3.245.0
       '@aws-sdk/client-sqs': 3.245.0
+      '@eventual/compiler': link:../compiler
       '@eventual/core': link:../core
       '@eventual/runtime-core': link:../runtime-core
       '@middy/core': 3.6.2

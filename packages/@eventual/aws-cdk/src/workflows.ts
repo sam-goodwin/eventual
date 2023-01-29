@@ -14,12 +14,14 @@ import {
 } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import { IActivities } from "./activities";
+import type { BuildOutput } from "./build";
 import { Events } from "./events";
 import { Logging } from "./logging";
 import { IScheduler } from "./scheduler";
 import { ServiceFunction } from "./service-function";
 
 export interface WorkflowsProps {
+  build: BuildOutput;
   serviceName: string;
   scheduler: IScheduler;
   activities: IActivities;
@@ -117,6 +119,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.orchestrator = new ServiceFunction(this, "Orchestrator", {
       functionName: `${props.serviceName}-orchestrator-handler`,
       serviceType: ServiceType.OrchestratorWorker,
+      code: props.build.getCode(props.build.orchestrator.file),
       events: [
         new SqsEventSource(this.queue, {
           batchSize: 10,

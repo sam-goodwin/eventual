@@ -1,4 +1,4 @@
 #! /usr/bin/env node
-import { cli } from "../lib/eventual-bundle-cli.js";
+const { cli } = require("../lib/cjs/eventual-bundle-cli.js");
 
 await cli();
