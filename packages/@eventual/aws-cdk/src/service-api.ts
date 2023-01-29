@@ -120,10 +120,13 @@ export class Api extends Construct {
     //      https://github.com/functionless/eventual/issues/173
     this.applyRouteMappings(
       Object.fromEntries(
-        Object.entries(routes).map(([path, route]) => ({
-          ...route,
-          grants: grants[path as keyof typeof grants],
-        }))
+        Object.entries(routes).map(([path, route]) => [
+          path,
+          {
+            ...route,
+            grants: grants[path as keyof typeof grants],
+          },
+        ])
       )
     );
   }
@@ -145,9 +148,7 @@ export class Api extends Construct {
     });
   }
 
-  private applyRouteMappings(
-    mappings: Record<string, RouteMapping | RouteMapping[]>
-  ) {
+  private applyRouteMappings(mappings: Record<string, RouteMapping>) {
     const deferredAddRoutes: (() => void)[] = [];
 
     Object.entries(mappings).forEach(([apiPath, mappings]) => {
