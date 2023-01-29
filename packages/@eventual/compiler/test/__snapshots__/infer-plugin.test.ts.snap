@@ -638,14 +638,15 @@ var itty_router_min_default = { Router: e };
 // ../core/lib/esm/api.js
 var router = itty_router_min_default.Router();
 var api = new Proxy({}, {
-  get: (_, prop) => {
-    if (prop === "routes") {
+  get: (_, method) => {
+    if (method === "routes" || method === "handle") {
       return router.routes;
     } else {
       return (...args) => {
         const route = {
           sourceLocation: typeof args[0] === "object" ? args[0] : void 0,
           path: typeof args[0] === "string" ? args[0] : args[1],
+          method: method.toUpperCase(),
           runtimeProps: typeof args[0] === "string" ? typeof args[1] === "object" ? args[1] : void 0 : typeof args[2] === "object" ? args[2] : void 0,
           handlers: args.filter((a) => typeof a === "function")
           // todo: why do i need to cast?
@@ -656,6 +657,16 @@ var api = new Proxy({}, {
     }
   }
 });
+var HttpMethod;
+(function(HttpMethod2) {
+  HttpMethod2["POST"] = "POST";
+  HttpMethod2["GET"] = "GET";
+  HttpMethod2["HEAD"] = "HEAD";
+  HttpMethod2["OPTIONS"] = "OPTIONS";
+  HttpMethod2["PUT"] = "PUT";
+  HttpMethod2["PATCH"] = "PATCH";
+  HttpMethod2["DELETE"] = "DELETE";
+})(HttpMethod || (HttpMethod = {}));
 
 // ../core/lib/esm/command.js
 var CommandType;
@@ -778,13 +789,13 @@ var isFailedEvent = or(isActivityFailed, isActivityHeartbeatTimedOut, isChildWor
 // test-files/api-handler.ts
 var myHandler = api.get({
   exportName: "myHandler",
-  fileName: "/Users/samgoodwin/workspaces/eventual/packages/@eventual/compiler/test-files/api-handler.ts"
+  fileName: "/test-files/api-handler.ts"
 }, "/", async () => {
   return new Response();
 });
 var myHandler2 = api.get({
   exportName: "myHandler2",
-  fileName: "/Users/samgoodwin/workspaces/eventual/packages/@eventual/compiler/test-files/api-handler.ts"
+  fileName: "/test-files/api-handler.ts"
 }, "/", async () => {
   return new Response();
 });
