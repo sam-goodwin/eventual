@@ -1,7 +1,7 @@
 {
   "name": "@eventual/cli",
   "type": "module",
-  "version": "0.12.4",
+  "version": "0.12.5",
   "bin": {
     "eventual": "bin/eventual.js"
   },
