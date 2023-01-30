@@ -11,6 +11,7 @@ import {
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Queue } from "aws-cdk-lib/aws-sqs";
 import path from "path";
+import { ChaosExtension } from "./chaos-extension";
 
 const app = new App();
 
@@ -53,6 +54,21 @@ const pipeRole = new Role(stack, "pipeRole", {
 testQueue.grantConsumeMessages(pipeRole);
 testQueue.grantSendMessages(testService);
 
+/**
+ * Chaos Testing
+ */
+
+const chaosExtension = new ChaosExtension(stack, "chaos");
+
+chaosExtension.addToFunction(testService.activities.worker);
+chaosExtension.addToFunction(testService.workflows.orchestrator);
+
+chaosExtension.grantReadWrite(role);
+
+/**
+ * Async lambda test.
+ */
+
 const asyncWriterFunction = new NodejsFunction(stack, "asyncWriterFunction", {
   entry: path.join(
     require.resolve("tests-runtime"),
@@ -65,10 +81,6 @@ const asyncWriterFunction = new NodejsFunction(stack, "asyncWriterFunction", {
 });
 asyncWriterFunction.grantInvoke(pipeRole);
 testService.api.grantExecute(asyncWriterFunction);
-
-new ServiceDashboard(stack, "dashboard", {
-  service: testService,
-});
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-pipes-pipe.html
 new CfnResource(stack, "pipe", {
@@ -85,6 +97,10 @@ new CfnResource(stack, "pipe", {
   },
 });
 
+new ServiceDashboard(stack, "dashboard", {
+  service: testService,
+});
+
 new CfnOutput(stack, "roleArn", {
   value: role.roleArn,
   exportName: "RoleArn",
@@ -93,4 +109,8 @@ new CfnOutput(stack, "roleArn", {
 new CfnOutput(stack, "serviceUrl", {
   value: testService.api.gateway.apiEndpoint,
   exportName: "ServiceUrl",
+});
+
+new CfnOutput(stack, "chaosParamName", {
+  value: chaosExtension.ssm.parameterName,
 });
