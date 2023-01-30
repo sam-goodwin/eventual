@@ -1,28 +1,29 @@
 {
-  "name": "example-test-runner",
+  "name": "example-stock-bot-pulumi",
   "private": true,
   "version": "0.0.0",
   "main": "lib/index.js",
   "scripts": {
-    "test": "cdk synth",
     "cdk": "cdk",
-    "deploy": "cdk deploy --require-approval=never",
-    "hotswap": "cdk deploy --hotswap --require-approval=never",
+    "deploy": "pulumi up",
     "eventual": "eventual",
-    "start-my-workflow": "eventual start my-workflow --service my-service --input '{\"name\": \"world\"}' --follow"
+    "start-my-workflow": "eventual start workflow my-workflow --service my-service --input '{\"name\": \"world\"}' --follow"
   },
   "dependencies": {
-    "@eventual/aws-cdk": "workspace:^",
-    "aws-cdk-lib": "2.50.0",
-    "constructs": "10.1.224"
+    "aws-cdk-lib": "^2.50.0",
+    "constructs": "10.1.224",
+    "@pulumi/pulumi": "^3.53.1",
+    "@pulumi/aws": "^5.28.0",
+    "@eventual/aws-pulumi": "workspace:^",
+    "pulumi-cdk-classic": "^0.0.5"
   },
   "devDependencies": {
     "@eventual/cli": "workspace:^",
     "@types/jest": "^29",
     "@types/node": "^16",
     "aws-cdk": "2.50.0",
-    "esbuild": "^0.17.4",
-    "example-test-runner-runtime": "workspace:^",
+    "esbuild": "^0.16.16",
+    "example-stock-bot-runtime": "workspace:^",
     "jest": "^29",
     "ts-jest": "^29",
     "ts-node": "^10.9.1",
