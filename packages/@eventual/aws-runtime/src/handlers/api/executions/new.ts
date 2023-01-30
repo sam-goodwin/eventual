@@ -1,5 +1,4 @@
-// startWorkflow uses the global workflows() to validate the workflow name.
-import "@eventual/entry/injected";
+import appSpec from "@eventual/injected/spec.json";
 
 import {
   DurationUnit,
@@ -14,8 +13,12 @@ import type {
 } from "aws-lambda";
 import { createWorkflowClient } from "../../../create.js";
 import { withErrorMiddleware } from "../middleware.js";
+import { AppSpecWorkflowProvider } from "@eventual/runtime-core";
 
-const workflowClient = createWorkflowClient();
+const workflowProvider = new AppSpecWorkflowProvider(appSpec);
+const workflowClient = createWorkflowClient({
+  workflowProvider,
+});
 
 /**
  * Create a new execution (start a workflow)

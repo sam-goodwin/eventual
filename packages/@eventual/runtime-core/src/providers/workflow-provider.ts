@@ -1,7 +1,12 @@
-import { Workflow, workflows } from "@eventual/core";
+import { AppSpec, Workflow, workflows } from "@eventual/core";
 
-export interface WorkflowProvider {
+export interface WorkflowProvider extends WorkflowSpecProvider {
   lookupWorkflow(workflowName: string): Workflow | undefined;
+}
+
+export interface WorkflowSpecProvider {
+  workflowExists(workflowName: string): boolean;
+  getWorkflowNames(): string[];
 }
 
 /**
@@ -12,5 +17,28 @@ export interface WorkflowProvider {
 export class GlobalWorkflowProvider implements WorkflowProvider {
   public lookupWorkflow(workflowName: string): Workflow | undefined {
     return workflows().get(workflowName);
+  }
+
+  public workflowExists(workflowName: string): boolean {
+    return !!this.lookupWorkflow(workflowName);
+  }
+
+  public getWorkflowNames(): string[] {
+    return Object.keys(workflows());
+  }
+}
+
+export class AppSpecWorkflowProvider implements WorkflowSpecProvider {
+  private workflowNames: Set<string>;
+  constructor(appSpec: AppSpec) {
+    this.workflowNames = new Set(appSpec.workflows.map((w) => w.name));
+  }
+
+  public workflowExists(workflowName: string): boolean {
+    return this.workflowNames.has(workflowName);
+  }
+
+  public getWorkflowNames(): string[] {
+    return [...this.workflowNames];
   }
 }

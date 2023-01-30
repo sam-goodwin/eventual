@@ -11,7 +11,7 @@ import { jest } from "@jest/globals";
 import { ExecutionQueueClient } from "../src/clients/execution-queue-client.js";
 import { LogsClient } from "../src/clients/logs-client.js";
 import { WorkflowClient } from "../src/clients/workflow-client.js";
-import { WorkflowProvider } from "../src/providers/workflow-provider.js";
+import { WorkflowSpecProvider } from "../src/providers/workflow-provider.js";
 import { ExecutionStore } from "../src/stores/execution-store.js";
 
 const mockExecutionStore = {
@@ -27,9 +27,9 @@ const mockExecutionQueueClient = {
   submitExecutionEvents:
     jest.fn() as ExecutionQueueClient["submitExecutionEvents"],
 } as ExecutionQueueClient;
-const mockWorkflowProvider: WorkflowProvider = {
-  lookupWorkflow: jest.fn<WorkflowProvider["lookupWorkflow"]>(),
-} as WorkflowProvider;
+const mockWorkflowProvider = {
+  workflowExists: jest.fn() as WorkflowSpecProvider["workflowExists"],
+} as WorkflowSpecProvider;
 
 const testDate = new Date();
 
@@ -46,7 +46,7 @@ const myWF = workflow("myWorkflow", async () => {
 });
 
 beforeEach(() => {
-  jest.mocked(mockWorkflowProvider.lookupWorkflow).mockReturnValue(myWF);
+  jest.mocked(mockWorkflowProvider.workflowExists).mockReturnValue(true);
 });
 
 afterEach(() => {
@@ -66,7 +66,7 @@ describe("start execution", () => {
   });
 
   test("workflow does not exist", async () => {
-    jest.mocked(mockWorkflowProvider.lookupWorkflow).mockReturnValue(undefined);
+    jest.mocked(mockWorkflowProvider.workflowExists).mockReturnValue(false);
 
     expect(() =>
       underTest.startExecution({
@@ -80,7 +80,7 @@ describe("start execution", () => {
   });
 
   test("workflow is object", async () => {
-    jest.mocked(mockWorkflowProvider.lookupWorkflow).mockReturnValue(undefined);
+    jest.mocked(mockWorkflowProvider.workflowExists).mockReturnValue(false);
 
     const { alreadyRunning, executionId } = await underTest.startExecution({
       input: undefined,

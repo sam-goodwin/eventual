@@ -16,6 +16,7 @@ import {
   RuntimeServiceClient,
   RuntimeServiceClientProps,
   WorkflowClient,
+  WorkflowSpecProvider,
 } from "@eventual/runtime-core";
 import { AWSActivityClient } from "./clients/activity-client.js";
 import { AWSEventClient } from "./clients/event-client.js";
@@ -65,16 +66,18 @@ export const createWorkflowClient = /* @__PURE__ */ memoize(
     logsClient,
     executionStore,
     executionQueueClient,
+    workflowProvider,
   }: {
     logsClient?: LogsClient;
     executionStore?: ExecutionStore;
     executionQueueClient?: ExecutionQueueClient;
+    workflowProvider?: WorkflowSpecProvider;
   } = {}) =>
     new WorkflowClient(
       executionStore ?? createExecutionStore(),
       logsClient ?? createLogsClient(),
       executionQueueClient ?? createExecutionQueueClient(),
-      createWorkflowProvider()
+      workflowProvider ?? createWorkflowProvider()
     )
 );
 

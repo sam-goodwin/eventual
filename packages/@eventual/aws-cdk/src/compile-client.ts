@@ -10,12 +10,16 @@ import { execSync } from "child_process";
 export function bundleSourcesSync(
   outDir: string,
   serviceEntry: string,
-  ...sources: Omit<BuildSource, "outDir" | "injectedEntry">[]
+  appSpecPath: string,
+  ...sources: Omit<
+    BuildSource,
+    "outDir" | "injectedEntry" | "injectedAppSpec"
+  >[]
 ) {
   execSync(
     `node ${require.resolve(
       "@eventual/compiler/bin/eventual-bundle.js"
-    )} "${outDir}" "${serviceEntry}" ${Buffer.from(
+    )} "${outDir}" "${serviceEntry}" "${appSpecPath}" ${Buffer.from(
       JSON.stringify(sources)
     ).toString("base64")}`
   ).toString("utf-8");

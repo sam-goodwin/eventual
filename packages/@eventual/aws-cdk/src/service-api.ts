@@ -21,6 +21,7 @@ export interface ApiProps {
   serviceName: string;
   environment?: Record<string, string>;
   entry: string;
+  appSpecPath: string;
   workflows: Workflows;
   activities: Activities;
   scheduler: Scheduler;
@@ -206,7 +207,12 @@ export class Api extends Construct {
     });
 
     // bundle the functions found
-    bundleSourcesSync(outDir(this), this.props.entry, ...bundles);
+    bundleSourcesSync(
+      outDir(this),
+      this.props.entry,
+      this.props.appSpecPath,
+      ...bundles
+    );
     // actually create the lambda and routes.
     deferredAddRoutes.forEach((a) => a());
   }

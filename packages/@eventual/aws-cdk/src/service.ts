@@ -33,6 +33,7 @@ import {
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
+import { writeFileSync } from "fs";
 import path from "path";
 import { Activities, IActivities } from "./activities";
 import { bundleSourcesSync, inferSync } from "./compile-client";
@@ -250,9 +251,13 @@ export class Service extends Construct implements IGrantable, IService {
 
     this.appSpec = inferSync(props.entry);
 
+    const specPath = outDir(this, "spec.json");
+    writeFileSync(outDir(this, "spec.json"), JSON.stringify(this.appSpec));
+
     bundleSourcesSync(
       outDir(this),
       props.entry,
+      specPath,
       {
         name: ServiceType.OrchestratorWorker,
         entry: runtimeHandlersEntrypoint("orchestrator"),
@@ -355,6 +360,7 @@ export class Service extends Construct implements IGrantable, IService {
       events: this.events,
       scheduler: this.scheduler,
       entry: props.entry,
+      appSpecPath: specPath,
       service: proxyService,
     });
 

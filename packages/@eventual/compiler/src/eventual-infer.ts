@@ -4,7 +4,7 @@
  *
  * @see AppSpec
  */
-import { AppSpec, eventSubscriptions } from "@eventual/core";
+import { AppSpec, eventSubscriptions, workflows } from "@eventual/core";
 import crypto from "crypto";
 import esbuild from "esbuild";
 import fs from "fs/promises";
@@ -39,6 +39,7 @@ export async function infer() {
 
   const eventualData: AppSpec = {
     subscriptions: eventSubscriptions().flatMap((e) => e.subscriptions),
+    workflows: [...workflows().keys()].map((n) => ({ name: n })),
   };
 
   console.log(JSON.stringify(eventualData));

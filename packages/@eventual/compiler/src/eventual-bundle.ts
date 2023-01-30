@@ -9,14 +9,20 @@ import { ServiceType, SERVICE_TYPE_FLAG } from "@eventual/core";
 export async function bundleSources(
   outDir: string,
   serviceEntry: string,
-  entries: Omit<BuildSource, "outDir" | "injectedEntry">[],
+  appSpec: string,
+  entries: Omit<BuildSource, "outDir" | "injectedEntry" | "injectedAppSpec">[],
   cleanOutput = false
 ) {
   console.log("Bundling:", outDir, serviceEntry);
   await prepareOutDir(outDir, cleanOutput);
   await Promise.all(
     entries
-      .map((s) => ({ ...s, outDir, injectedEntry: serviceEntry }))
+      .map((s) => ({
+        ...s,
+        outDir,
+        injectedEntry: serviceEntry,
+        injectedAppSpec: appSpec,
+      }))
       .map(build)
   );
 }
@@ -44,6 +50,7 @@ export async function bundleService(
 
 export interface BuildSource {
   injectedEntry?: string;
+  injectedAppSpec?: string;
   eventualTransform?: boolean;
   outDir: string;
   name: string;
@@ -57,6 +64,7 @@ export interface BuildSource {
 async function build({
   outDir,
   injectedEntry,
+  injectedAppSpec,
   name,
   entry,
   eventualTransform = false,
@@ -70,11 +78,22 @@ async function build({
     mainFields: ["module", "main"],
     sourcemap: sourcemap ?? true,
     plugins: [
-      ...(injectedEntry
+      ...(injectedEntry || injectedAppSpec
         ? [
             aliasPath({
               alias: {
-                "@eventual/entry/injected": path.resolve(injectedEntry),
+                ...(injectedEntry
+                  ? {
+                      "@eventual/injected/entry.js":
+                        path.resolve(injectedEntry),
+                    }
+                  : {}),
+                ...(injectedAppSpec
+                  ? {
+                      "@eventual/injected/spec.json":
+                        path.resolve(injectedAppSpec),
+                    }
+                  : {}),
               },
             }),
           ]

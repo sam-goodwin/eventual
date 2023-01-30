@@ -1,8 +1,10 @@
-import "@eventual/entry/injected";
+import appSpec from "@eventual/injected/spec.json";
 
-import { workflows } from "@eventual/core";
 import { withErrorMiddleware } from "./middleware.js";
+import { AppSpecWorkflowProvider } from "@eventual/runtime-core";
+
+const workflowProvider = new AppSpecWorkflowProvider(appSpec);
 
 export const handler = withErrorMiddleware(async function () {
-  return Array.from(workflows().keys());
+  return Array.from(workflowProvider.getWorkflowNames());
 });

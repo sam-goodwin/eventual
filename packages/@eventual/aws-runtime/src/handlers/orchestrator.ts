@@ -1,4 +1,4 @@
-import "@eventual/entry/injected";
+import "@eventual/injected/entry.js";
 
 import {
   CommandExecutor,
