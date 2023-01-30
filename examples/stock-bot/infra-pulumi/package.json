@@ -4,7 +4,6 @@
   "version": "0.0.0",
   "main": "lib/index.js",
   "scripts": {
-    "test": "cdk synth",
     "cdk": "cdk",
     "deploy": "pulumi up",
     "eventual": "eventual",
