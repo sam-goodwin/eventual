@@ -5,6 +5,7 @@ import { LambdaClient } from "@aws-sdk/client-lambda";
 import { S3Client } from "@aws-sdk/client-s3";
 import { SchedulerClient } from "@aws-sdk/client-scheduler";
 import { SQSClient } from "@aws-sdk/client-sqs";
+import { Client, Pluggable } from "@aws-sdk/types";
 import { LogLevel } from "@eventual/core";
 import {
   ActivityStore,
@@ -35,17 +36,50 @@ import { AWSExecutionStore } from "./stores/execution-store.js";
  * The pure annotations help esbuild determine that theses functions calls have no side effects.
  */
 
-const dynamo = /* @__PURE__ */ memoize(() => new DynamoDBClient({}));
-const sqs = /* @__PURE__ */ memoize(() => new SQSClient({}));
-const s3 = /* @__PURE__ */ memoize(
-  () => new S3Client({ region: process.env.AWS_REGION })
+const awsSDKPlugin = process.env.EVENTUAL_AWS_SDK_PLUGIN
+  ? require(process.env.EVENTUAL_AWS_SDK_PLUGIN)
+  : undefined;
+
+if (
+  awsSDKPlugin &&
+  awsSDKPlugin.default &&
+  !isAwsSDKPluggble(awsSDKPlugin.default)
+) {
+  throw new Error(
+    `Expected entry point ${
+      process.env.EVENTUAL_AWS_SDK_PLUGIN
+    } in defined EVENTUAL_AWS_SDK_PLUGIN to be a AWS-SDK plugin. ${JSON.stringify(
+      awsSDKPlugin
+    )}`
+  );
+}
+
+function clientWithPlugin<C extends Client<any, any, any>>(client: C): C {
+  if (awsSDKPlugin) {
+    client.middlewareStack.use(awsSDKPlugin.default);
+  }
+  return client;
+}
+
+const dynamo = /* @__PURE__ */ memoize(() =>
+  clientWithPlugin(new DynamoDBClient({}))
 );
-const lambda = /* @__PURE__ */ memoize(() => new LambdaClient({}));
-const cloudwatchLogs = /* @__PURE__ */ memoize(
-  () => new CloudWatchLogsClient({})
+const sqs = /* @__PURE__ */ memoize(() => clientWithPlugin(new SQSClient({})));
+const s3 = /* @__PURE__ */ memoize(() =>
+  clientWithPlugin(new S3Client({ region: process.env.AWS_REGION }))
 );
-const scheduler = /* @__PURE__ */ memoize(() => new SchedulerClient({}));
-const eventBridge = /* @__PURE__ */ memoize(() => new EventBridgeClient({}));
+const lambda = /* @__PURE__ */ memoize(() =>
+  clientWithPlugin(new LambdaClient({}))
+);
+const cloudwatchLogs = /* @__PURE__ */ memoize(() =>
+  clientWithPlugin(new CloudWatchLogsClient({}))
+);
+const scheduler = /* @__PURE__ */ memoize(() =>
+  clientWithPlugin(new SchedulerClient({}))
+);
+const eventBridge = /* @__PURE__ */ memoize(() =>
+  clientWithPlugin(new EventBridgeClient({}))
+);
 
 export const createWorkflowProvider = /* @__PURE__ */ memoize(
   () => new GlobalWorkflowProvider()
@@ -226,4 +260,8 @@ function memoize<T extends (...args: any[]) => any>(
       return result;
     }
   };
+}
+
+function isAwsSDKPluggble(p: any): p is Pluggable<any, any> {
+  return p && "applyToStack" in p;
 }
