@@ -8,6 +8,7 @@ import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
 import { IService } from "./service";
+import { IServiceApi } from "./service-api";
 import { ServiceFunction } from "./service-function";
 
 export interface EventsProps {
@@ -26,6 +27,7 @@ export interface EventsProps {
    */
   readonly environment?: Record<string, string>;
   readonly service: IService;
+  readonly api: IServiceApi;
 }
 
 export class Events extends Construct implements IGrantable {
@@ -104,6 +106,8 @@ export class Events extends Construct implements IGrantable {
   private configureEventHandler() {
     // allows the access to all of the operations on the injected service client
     this.props.service.configureForServiceClient(this.handler);
+    // allow http access to the service client
+    this.props.api.configureInvokeHttpServiceApi(this.handler);
   }
 
   private readonly ENV_MAPPINGS = {

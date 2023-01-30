@@ -18,6 +18,7 @@ import { Events } from "./events";
 import { Logging } from "./logging";
 import { IService } from "./service";
 import type { BuildOutput } from "./build";
+import { IServiceApi } from "./service-api";
 
 export interface ActivitiesProps {
   build: BuildOutput;
@@ -28,6 +29,7 @@ export interface ActivitiesProps {
   events: Events;
   logging: Logging;
   service: IService;
+  readonly api: IServiceApi;
 }
 
 export interface IActivities {
@@ -201,6 +203,7 @@ export class Activities
 
     // allows access to any of the injected service client operations.
     this.props.service.configureForServiceClient(this.worker);
+    this.props.api.configureInvokeHttpServiceApi(this.worker);
   }
 
   private readonly ENV_MAPPINGS = {

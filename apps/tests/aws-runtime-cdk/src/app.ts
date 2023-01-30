@@ -36,7 +36,7 @@ const testService = new eventual.Service(stack, "testService", {
   },
 });
 
-testService.api.grantExecute(role);
+testService.api.grantInvokeHttpServiceApi(role);
 testService.cliRole.grantAssumeRole(role);
 eventual.Service.grantDescribeParameters(stack, role);
 testService.serviceDataSSM.grantRead(role);
@@ -80,7 +80,7 @@ const asyncWriterFunction = new NodejsFunction(stack, "asyncWriterFunction", {
   },
 });
 asyncWriterFunction.grantInvoke(pipeRole);
-testService.api.grantExecute(asyncWriterFunction);
+testService.api.grantInvokeHttpServiceApi(asyncWriterFunction);
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-pipes-pipe.html
 new CfnResource(stack, "pipe", {

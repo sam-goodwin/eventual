@@ -40,7 +40,7 @@ import { Events } from "./events";
 import { Logging, LoggingProps } from "./logging";
 import { lazyInterface } from "./proxy-construct";
 import { IScheduler, Scheduler } from "./scheduler";
-import { Api } from "./service-api";
+import { Api, IServiceApi } from "./service-api";
 import { IWorkflows, Workflows, WorkflowsProps } from "./workflows";
 
 export interface IService {
@@ -273,6 +273,7 @@ export class Service extends Construct implements IGrantable, IService {
     const proxyWorkflows = lazyInterface<IWorkflows>();
     const proxyActivities = lazyInterface<IActivities>();
     const proxyService = lazyInterface<IService>();
+    const apiProxy = lazyInterface<IServiceApi>();
 
     this.logging = new Logging(this, "logging", {
       ...(props.logging ?? {}),
@@ -284,6 +285,7 @@ export class Service extends Construct implements IGrantable, IService {
       serviceName: this.serviceName,
       environment: props.environment,
       service: proxyService,
+      api: apiProxy,
     });
 
     this.activities = new Activities(this, "Activities", {
@@ -295,6 +297,7 @@ export class Service extends Construct implements IGrantable, IService {
       events: this.events,
       logging: this.logging,
       service: proxyService,
+      api: apiProxy,
     });
     proxyActivities._bind(this.activities);
 
@@ -329,6 +332,7 @@ export class Service extends Construct implements IGrantable, IService {
       entry: props.entry,
       service: proxyService,
     });
+    apiProxy._bind(this.api);
 
     this.grantPrincipal = new CompositePrincipal(
       // when granting permissions to the service,
@@ -341,7 +345,7 @@ export class Service extends Construct implements IGrantable, IService {
       roleName: `eventual-cli-${this.serviceName}`,
       assumedBy: new AccountRootPrincipal(),
     });
-    this.api.grantExecute(this.cliRole);
+    this.api.grantInvokeHttpServiceApi(this.cliRole);
     this.logging.grantFilterLogEvents(this.cliRole);
 
     this.serviceDataSSM = new StringParameter(this, "service-data", {

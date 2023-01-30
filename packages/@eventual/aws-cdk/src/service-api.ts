@@ -1,6 +1,7 @@
 import { HttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
+import { ENV_NAMES } from "@eventual/aws-runtime";
 import { ServiceType } from "@eventual/core";
 import { computeDurationSeconds } from "@eventual/runtime-core";
 import { Arn, Duration, Stack } from "aws-cdk-lib";
@@ -30,7 +31,12 @@ export interface ApiProps {
   build: BuildOutput;
 }
 
-export class Api extends Construct {
+export interface IServiceApi {
+  configureInvokeHttpServiceApi(func: Function): void;
+  grantInvokeHttpServiceApi(grantable: IGrantable): void;
+}
+
+export class Api extends Construct implements IServiceApi {
   /**
    * API Gateway for providing service api
    */
@@ -51,14 +57,14 @@ export class Api extends Construct {
       code: props.build.getCode(props.build.api.default.file),
     });
 
-    // The handler is given an instance of the service client.
-    // Allow it to access any of the methods on the service client by default.
-    props.service.configureForServiceClient(this.handler);
-
     this.gateway = new HttpApi(this, "Gateway", {
       apiName: `eventual-api-${props.serviceName}`,
       defaultIntegration: new HttpLambdaIntegration("default", this.handler),
     });
+
+    // The handler is given an instance of the service client.
+    // Allow it to access any of the methods on the service client by default.
+    this.configureInvokeHttpServiceApi(this.handler);
 
     this.createUserDefinedRoutes();
 
@@ -67,7 +73,12 @@ export class Api extends Construct {
     this.configureApiHandler();
   }
 
-  public grantExecute(grantable: IGrantable) {
+  public configureInvokeHttpServiceApi(func: Function) {
+    this.grantInvokeHttpServiceApi(func);
+    this.addEnvs(func, ENV_NAMES.SERVICE_URL);
+  }
+
+  public grantInvokeHttpServiceApi(grantable: IGrantable) {
     grantable.grantPrincipal.addToPrincipalPolicy(
       this.executeApiPolicyStatement()
     );
@@ -82,8 +93,7 @@ export class Api extends Construct {
               path,
               {
                 ...route,
-                grants: (fn) =>
-                  this.props.service.configureForServiceClient(fn),
+                grants: (fn) => this.configureInvokeHttpServiceApi(fn),
               },
             ],
           ];
@@ -202,6 +212,14 @@ export class Api extends Construct {
   private configureApiHandler(handler?: Function) {
     this.props.workflows.configureFullControl(handler ?? this.handler);
     this.props.events.configurePublish(handler ?? this.handler);
+  }
+
+  private readonly ENV_MAPPINGS = {
+    [ENV_NAMES.SERVICE_URL]: () => this.gateway.apiEndpoint,
+  } as const;
+
+  private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {
+    envs.forEach((env) => func.addEnvironment(env, this.ENV_MAPPINGS[env]()));
   }
 }
 

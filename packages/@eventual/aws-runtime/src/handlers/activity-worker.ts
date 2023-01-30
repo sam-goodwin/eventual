@@ -4,16 +4,18 @@ import "@eventual/entry/injected";
 import { ActivityWorkerRequest } from "@eventual/core";
 import {
   createActivityWorker,
-  GlobalActivityProvider
+  GlobalActivityProvider,
 } from "@eventual/runtime-core";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 import {
+  createActivityClient,
   createActivityStore,
   createEventClient,
   createExecutionQueueClient,
+  createExecutionStore,
   createLogAgent,
   createServiceClient,
-  createTimerClient
+  createTimerClient,
 } from "../create.js";
 
 export default (request: ActivityWorkerRequest) =>
@@ -23,7 +25,14 @@ export default (request: ActivityWorkerRequest) =>
     timerClient: createTimerClient(),
     metricsClient: AWSMetricsClient,
     activityProvider: new GlobalActivityProvider(),
-    serviceClient: createServiceClient(),
+    // partially uses the runtime clients and partially uses the http client
+    serviceClient: createServiceClient({
+      activityClient: createActivityClient(),
+      eventClient: createEventClient(),
+      executionQueueClient: createExecutionQueueClient(),
+      // already used by the activity client
+      executionStore: createExecutionStore(),
+    }),
     logAgent: createLogAgent(),
     activityStore: createActivityStore(),
   })(request);

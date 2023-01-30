@@ -28,7 +28,7 @@ const mockExecutionQueueClient = {
     jest.fn() as ExecutionQueueClient["submitExecutionEvents"],
 } as ExecutionQueueClient;
 const mockWorkflowProvider: WorkflowProvider = {
-  lookupWorkflow: jest.fn<WorkflowProvider["lookupWorkflow"]>(),
+  lookupWorkflow: jest.fn() as WorkflowProvider["lookupWorkflow"],
 } as WorkflowProvider;
 
 const testDate = new Date();
