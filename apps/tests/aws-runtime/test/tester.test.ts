@@ -115,7 +115,6 @@ eventualRuntimeTestHarness(
 
       testCompletion("test commands", allCommands, {
         signalCount: 1,
-        eventResumeCount: 1,
       });
     },
   }

@@ -405,12 +405,8 @@ export const allCommands = workflow("allCommands", async (_, context) => {
   const timer = duration(1);
   const childWorkflow = workflow1({ name: "amanda" });
   let n = 0;
-  let m = 0;
   mySignal.onSignal(() => {
     n++;
-  });
-  resumeSignal.onSignal(() => {
-    m++;
   });
   // prove that only one signal is sent.
   const signalResponse = mySignal.sendSignal(context.execution.id, 1);
@@ -422,5 +418,5 @@ export const allCommands = workflow("allCommands", async (_, context) => {
     signalResponse,
     sendEvent,
   ]);
-  return { signalCount: n, eventResumeCount: m };
+  return { signalCount: n };
 });

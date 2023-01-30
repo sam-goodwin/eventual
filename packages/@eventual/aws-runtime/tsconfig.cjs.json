@@ -3,7 +3,10 @@
   "compilerOptions": {
     "baseUrl": ".",
     "rootDir": "src",
-    "outDir": "lib/cjs"
+    "outDir": "lib/cjs",
+    "paths": {
+      "@eventual/injected/*": ["./src/injected/*"]
+    }
   },
   "include": ["src"],
   "exclude": [
