@@ -1,11 +1,11 @@
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { HistoryResultEvent } from "@eventual/core";
 import {
   ExecutionQueueClient,
-  HistoryResultEvent,
   ExecutionQueueEventEnvelope,
-  LazyValue,
   getLazy,
-} from "@eventual/core";
+  LazyValue,
+} from "@eventual/runtime-core";
 
 export interface AWSExecutionQueueClientProps {
   sqs: SQSClient;

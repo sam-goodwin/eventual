@@ -6,18 +6,18 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { SchedulerClient } from "@aws-sdk/client-scheduler";
 import { SQSClient } from "@aws-sdk/client-sqs";
 import { Client, Pluggable } from "@aws-sdk/types";
+import { LogLevel } from "@eventual/core";
 import {
   ActivityStore,
   ExecutionQueueClient,
   ExecutionStore,
   GlobalWorkflowProvider,
   LogAgent,
-  LogLevel,
   LogsClient,
   RuntimeServiceClient,
   RuntimeServiceClientProps,
   WorkflowClient,
-} from "@eventual/core";
+} from "@eventual/runtime-core";
 import { AWSActivityClient } from "./clients/activity-client.js";
 import { AWSEventClient } from "./clients/event-client.js";
 import { AWSExecutionQueueClient } from "./clients/execution-queue-client.js";

@@ -5,13 +5,13 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { HistoryStateEvent } from "@eventual/core";
 import {
   ExecutionHistoryStateStore,
   getLazy,
-  HistoryStateEvent,
   LazyValue,
   UpdateHistoryRequest,
-} from "@eventual/core";
+} from "@eventual/runtime-core";
 
 export interface AWSExecutionHistoryStateStoreProps {
   s3: S3Client;

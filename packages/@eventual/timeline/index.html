@@ -5,6 +5,11 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Eventual Timeline</title>
+    <script>
+      // global is not polyfilled correctly from rollup-plugin-node-polyfills 
+      // https://github.com/ionic-team/rollup-plugin-node-polyfills/issues/42 
+    window.global = window;
+    </script>
   </head>
   <body>
     <div id="root"></div>

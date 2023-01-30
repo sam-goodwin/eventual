@@ -1,16 +1,15 @@
+import { bundleService } from "@eventual/compiler";
 import {
   encodeExecutionId,
   ExecutionID,
   isFailedExecution,
   isSucceededExecution,
   parseWorkflowName,
-  processEvents,
-  progressWorkflow,
   workflows,
 } from "@eventual/core";
-import { Argv } from "yargs";
-import { bundleService } from "@eventual/compiler";
+import { processEvents, progressWorkflow } from "@eventual/runtime-core";
 import path from "path";
+import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
 
 export const replay = (yargs: Argv) =>

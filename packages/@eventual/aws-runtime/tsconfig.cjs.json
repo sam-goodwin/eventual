@@ -13,5 +13,8 @@
     "src/create.ts",
     "src/handlers"
   ],
-  "references": [{ "path": "../core/tsconfig.cjs.json" }]
+  "references": [
+    { "path": "../core/tsconfig.cjs.json" },
+    { "path": "../runtime-core/tsconfig.cjs.json" }
+  ]
 }

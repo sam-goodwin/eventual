@@ -5,9 +5,9 @@ import {
   EventualBase,
   isEventualOfKind,
   createEventual,
+  Program,
 } from "./eventual.js";
 import { registerEventual } from "./global.js";
-import { Program } from "./interpret.js";
 import { Result } from "./result.js";
 
 export function isChain(a: any): a is Chain {

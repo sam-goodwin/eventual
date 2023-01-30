@@ -1,7 +1,7 @@
 import { createSendSignalCall } from "./calls/send-signal-call.js";
 import { createRegisterSignalHandlerCall } from "./calls/signal-handler-call.js";
 import { createExpectSignalCall } from "./calls/expect-signal-call.js";
-import { isOrchestratorWorker } from "./runtime/flags.js";
+import { isOrchestratorWorker } from "./flags.js";
 import { getServiceClient } from "./global.js";
 import { ulid } from "ulidx";
 import { isEventual } from "./eventual.js";

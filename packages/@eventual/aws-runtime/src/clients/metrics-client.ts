@@ -1,5 +1,5 @@
-import type { MetricsClient } from "@eventual/core";
-import { metricScope, createMetricsLogger } from "aws-embedded-metrics";
+import type { MetricsClient } from "@eventual/runtime-core";
+import { createMetricsLogger, metricScope } from "aws-embedded-metrics";
 
 export const AWSMetricsClient: MetricsClient = {
   metricScope,

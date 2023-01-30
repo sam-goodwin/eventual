@@ -1,19 +1,12 @@
-import { Argv } from "yargs";
-import { serviceAction, setServiceOptions } from "../service-action.js";
+import { HttpMethod } from "@eventual/client";
+import { encodeExecutionId } from "@eventual/core";
 import express from "express";
 import getPort, { portNumbers } from "get-port";
-import open from "open";
 import { resolve } from "import-meta-resolve";
-import {
-  HistoryStateEvent,
-  isActivitySucceeded,
-  isActivityFailed,
-  isActivityScheduled,
-  encodeExecutionId,
-  isWorkflowStarted,
-  WorkflowStarted,
-} from "@eventual/core";
+import open from "open";
 import path from "path";
+import { Argv } from "yargs";
+import { serviceAction, setServiceOptions } from "../service-action.js";
 
 export const timeline = (yargs: Argv) =>
   yargs.command(
@@ -30,20 +23,25 @@ export const timeline = (yargs: Argv) =>
       spinner.start("Starting viz server");
       const app = express();
 
-      app.use("/api/timeline/:execution", async (req, res) => {
+      app.use("/api/*", async (req, res) => {
         // We forward errors onto our handler for the ui to deal with
+        const path = req.baseUrl.split("/").slice(2).join("/");
         try {
-          const { events } = await serviceClient.getExecutionWorkflowHistory(
-            req.params.execution
+          res.json(
+            await serviceClient.proxy({
+              method: req.method as HttpMethod,
+              path,
+              body: req.body,
+            })
           );
-          const timeline = aggregateEvents(events);
-          res.json(timeline);
         } catch (e: any) {
           res.status(500).json({ error: e.toString() });
         }
       });
 
       const isProduction = process.env.NODE_ENV === "production";
+
+      console.log(isProduction);
 
       if (isProduction) {
         // Serve our built site as an spa - serve js and css files out of our dist folder, otherwise just serve index.html
@@ -69,70 +67,10 @@ export const timeline = (yargs: Argv) =>
       const port = await getPort({ port: portNumbers(3000, 4000) });
       app.listen(port);
       const url = `http://localhost:${port}`;
-      spinner.succeed(`Visualiser running on ${url}`);
+      spinner.succeed(`Visualizer running on ${url}`);
       open(`${url}/${service}/${encodeExecutionId(execution)}`);
     })
   );
 
-interface TimelineActivity {
-  type: "activity";
-  seq: number;
-  name: string;
-  start: number;
-  state:
-    | { status: "succeeded"; end: number }
-    | { status: "failed"; end: number }
-    | { status: "inprogress" };
-}
-
 const resolveEntry = async (entry: string) =>
   new URL(await resolve(entry, import.meta.url)).pathname;
-
-function aggregateEvents(events: HistoryStateEvent[]): {
-  start: WorkflowStarted;
-  activities: TimelineActivity[];
-} {
-  let start: WorkflowStarted | undefined;
-  const activities: Record<number, TimelineActivity> = [];
-  events.forEach((event) => {
-    if (isWorkflowStarted(event)) {
-      start = event;
-    } else if (isActivityScheduled(event)) {
-      activities[event.seq] = {
-        type: "activity",
-        name: event.name,
-        seq: event.seq,
-        start: new Date(event.timestamp).getTime(),
-        state: { status: "inprogress" },
-      };
-    } else if (isActivitySucceeded(event)) {
-      const existingActivity = activities[event.seq];
-      if (existingActivity) {
-        existingActivity.state = {
-          status: "succeeded",
-          end: new Date(event.timestamp).getTime(),
-        };
-      } else {
-        console.log(
-          `Warning: Found completion event without matching scheduled event: ${event}`
-        );
-      }
-    } else if (isActivityFailed(event)) {
-      const existingActivity = activities[event.seq];
-      if (existingActivity) {
-        existingActivity.state = {
-          status: "failed",
-          end: new Date(event.timestamp).getTime(),
-        };
-      } else {
-        console.log(
-          `Warning: Found failure event without matching scheduled event: ${event}`
-        );
-      }
-    }
-  });
-  if (!start) {
-    throw new Error("Failed to find WorkflowStarted event!");
-  }
-  return { start, activities: Object.values(activities) };
-}

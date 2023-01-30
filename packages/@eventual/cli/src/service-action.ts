@@ -1,9 +1,9 @@
-import ora, { Ora } from "ora";
-import { Arguments, Argv } from "yargs";
-import { styledConsole } from "./styled-console.js";
-import util from "util";
+import { AwsCredentialIdentity } from "@aws-sdk/types";
 import { AwsHttpServiceClient } from "@eventual/aws-client";
-import { EventualServiceClient } from "@eventual/core";
+import { HttpServiceClient } from "@eventual/client";
+import ora, { Ora } from "ora";
+import util from "util";
+import { Arguments, Argv } from "yargs";
 import { assumeCliRole } from "./role.js";
 import {
   getServiceData,
@@ -11,11 +11,11 @@ import {
   ServiceData,
   tryResolveDefaultService,
 } from "./service-data.js";
-import { AwsCredentialIdentity } from "@aws-sdk/types";
+import { styledConsole } from "./styled-console.js";
 
 export type ServiceAction<T> = (
   spinner: Ora,
-  serviceClient: EventualServiceClient,
+  serviceClient: HttpServiceClient,
   args: Arguments<T & { service: string }>,
   resolved: {
     credentials: AwsCredentialIdentity;
@@ -25,7 +25,7 @@ export type ServiceAction<T> = (
 ) => Promise<void>;
 
 export type ServiceJsonAction<T> = (
-  serviceClient: EventualServiceClient,
+  serviceClient: HttpServiceClient,
   args: Arguments<T & { service: string }>,
   resolved: {
     credentials: AwsCredentialIdentity;
