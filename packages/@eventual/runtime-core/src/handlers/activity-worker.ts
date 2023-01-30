@@ -5,6 +5,7 @@ import {
   ActivityWorkerRequest,
   clearActivityContext,
   createEvent,
+  EventualServiceClient,
   extendsError,
   isAsyncResult,
   isWorkflowFailed,
@@ -19,7 +20,6 @@ import { createActivityToken } from "../activity-token.js";
 import { EventClient } from "../clients/event-client.js";
 import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
-import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
 import { TimerClient, TimerRequestType } from "../clients/timer-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
 import { ActivityLogContext, LogAgent, LogContextType } from "../log-agent.js";
@@ -35,7 +35,7 @@ export interface CreateActivityWorkerProps {
   metricsClient: MetricsClient;
   eventClient: EventClient;
   activityProvider: ActivityProvider;
-  serviceClient?: RuntimeServiceClient;
+  serviceClient?: EventualServiceClient;
   logAgent: LogAgent;
   executionQueueClient: ExecutionQueueClient;
   activityStore: ActivityStore;

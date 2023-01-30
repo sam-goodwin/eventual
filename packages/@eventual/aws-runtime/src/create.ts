@@ -14,7 +14,7 @@ import {
   GlobalWorkflowProvider,
   LogAgent,
   LogsClient,
-  RuntimeServiceClient,
+  RuntimeFallbackServiceClient,
   RuntimeServiceClientProps,
   WorkflowClient,
 } from "@eventual/runtime-core";
@@ -28,6 +28,7 @@ import { AWSActivityStore } from "./stores/activity-store.js";
 import { AWSExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
 import { AWSExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { AWSExecutionStore } from "./stores/execution-store.js";
+import { AwsHttpServiceClient } from "@eventual/aws-client";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -217,7 +218,7 @@ export const createEventClient = /* @__PURE__ */ memoize(
     })
 );
 
-export const createServiceClient = memoize(
+export const createServiceClient = /* @__PURE__ */ memoize(
   ({
     activityClient,
     eventClient,
@@ -226,19 +227,26 @@ export const createServiceClient = memoize(
     executionQueueClient,
     executionStore,
     workflowClient,
-  }: Partial<RuntimeServiceClientProps> = {}) =>
-    new RuntimeServiceClient({
-      eventClient: eventClient ?? createEventClient(),
-      executionHistoryStore:
-        executionHistoryStore ?? createExecutionHistoryStore(),
-      workflowClient: workflowClient ?? createWorkflowClient(),
-      executionQueueClient:
-        executionQueueClient ?? createExecutionQueueClient(),
-      executionStore: executionStore ?? createExecutionStore(),
-      executionHistoryStateStore:
-        executionHistoryStateStore ?? createExecutionHistoryStateStore(),
-      activityClient: activityClient ?? createActivityClient(),
-    })
+    workflowProvider,
+  }: Partial<RuntimeServiceClientProps>) =>
+    new RuntimeFallbackServiceClient(
+      {
+        eventClient: eventClient,
+        executionHistoryStore: executionHistoryStore,
+        workflowClient: workflowClient,
+        executionQueueClient: executionQueueClient,
+        executionStore: executionStore,
+        executionHistoryStateStore: executionHistoryStateStore,
+        activityClient: activityClient,
+        workflowProvider: workflowProvider,
+      },
+      createHttpServiceClient()
+    )
+);
+
+export const createHttpServiceClient = memoize(
+  ({ serviceUrl }: { serviceUrl?: string } = {}) =>
+    new AwsHttpServiceClient({ serviceUrl: serviceUrl ?? env.serviceUrl() })
 );
 
 function memoize<T extends (...args: any[]) => any>(

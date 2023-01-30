@@ -17,15 +17,17 @@ import { ServiceFunction } from "./service-function";
 import { Events } from "./events";
 import { Logging } from "./logging";
 import { IService } from "./service";
+import { IServiceApi } from "./service-api";
 
 export interface ActivitiesProps {
-  serviceName: string;
-  workflows: IWorkflows;
-  scheduler: IScheduler;
-  environment?: Record<string, string>;
-  events: Events;
-  logging: Logging;
-  service: IService;
+  readonly serviceName: string;
+  readonly workflows: IWorkflows;
+  readonly scheduler: IScheduler;
+  readonly environment?: Record<string, string>;
+  readonly events: Events;
+  readonly logging: Logging;
+  readonly service: IService;
+  readonly api: IServiceApi;
 }
 
 export interface IActivities {
@@ -198,6 +200,7 @@ export class Activities
 
     // allows access to any of the injected service client operations.
     this.props.service.configureForServiceClient(this.worker);
+    this.props.api.configureInvokeHttpServiceApi(this.worker);
   }
 
   private readonly ENV_MAPPINGS = {
