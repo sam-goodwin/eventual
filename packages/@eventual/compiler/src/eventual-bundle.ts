@@ -61,7 +61,6 @@ export async function build({
   injectedEntry,
   name,
   entry,
-  // exportName,
   eventualTransform = false,
   sourcemap,
   serviceType,
@@ -78,6 +77,7 @@ export async function build({
   const bundle = await esbuild.build({
     mainFields: ["module", "main"],
     sourcemap: sourcemap ?? true,
+    sourcesContent: false,
     plugins: [
       ...(injectedEntry
         ? [

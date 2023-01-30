@@ -1,3 +1,5 @@
+import { Buffer } from "buffer";
+
 export type ExecutionID<
   WorkflowName extends string = string,
   ID extends string = string

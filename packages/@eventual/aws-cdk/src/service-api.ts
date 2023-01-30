@@ -155,7 +155,16 @@ export class Api extends Construct {
     Object.entries(mappings).forEach(
       ([
         apiPath,
-        { name, file, methods, grants, memorySize, timeout, exportName },
+        {
+          name,
+          file,
+          methods,
+          grants,
+          memorySize,
+          timeout,
+          exportName,
+          authorized,
+        },
       ]) => {
         const funcId = name ?? path.dirname(file);
         const fn = new Function(this, funcId, {
@@ -181,7 +190,7 @@ export class Api extends Construct {
           path: apiPath,
           integration,
           methods,
-          authorizer: new HttpIamAuthorizer(),
+          authorizer: authorized ? new HttpIamAuthorizer() : undefined,
         });
       }
     );
@@ -197,5 +206,6 @@ export class Api extends Construct {
 }
 
 interface RouteMapping extends ApiFunction {
+  authorized?: boolean;
   grants?: (grantee: Function) => void;
 }

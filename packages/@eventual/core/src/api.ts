@@ -5,6 +5,17 @@ import type { DurationSchedule } from "./schedule.js";
 
 const router = itty.Router() as any as Router;
 
+/**
+ * This Proxy intercepts the method  being called, e.g. `get`, `post`, etc.
+ * and includes that information in the created {@link Route} object. This
+ * information is then picked up during infer so we know the HTTP method
+ * for each route.
+ *
+ * It also includes `sourceLocation` (injected by the compiler), `path`, and
+ * any `runtimeProps` passed in by the user.
+ *
+ * @see Route for all the metadata associated with each route
+ */
 export const api: Router = new Proxy(
   {},
   {
