@@ -4,7 +4,7 @@ import "@eventual/entry/injected";
 import { ActivityWorkerRequest } from "@eventual/core";
 import {
   createActivityWorker,
-  GlobalActivityProvider
+  GlobalActivityProvider,
 } from "@eventual/runtime-core";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 import {
@@ -13,7 +13,7 @@ import {
   createExecutionQueueClient,
   createLogAgent,
   createServiceClient,
-  createTimerClient
+  createTimerClient,
 } from "../create.js";
 
 export default (request: ActivityWorkerRequest) =>

@@ -2,12 +2,11 @@
 // @ts-nocheck
 
 // TODO: remove once we can upgrade to Node 18
+import { Request, Response } from "node-fetch";
 
-import fetch, { Headers, Request, Response } from "node-fetch";
-
-if (!globalThis.fetch) {
-  globalThis.fetch = fetch;
-  globalThis.Headers = Headers;
+if (!globalThis.Request) {
   globalThis.Request = Request;
+}
+if (!globalThis.Response) {
   globalThis.Response = Response;
 }
