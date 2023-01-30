@@ -183,6 +183,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       executionHistoryStateStore,
       executionQueueClient,
       executionStore,
+      workflowProvider,
     });
 
     this.serviceFile = bundleService(
