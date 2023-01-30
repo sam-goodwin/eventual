@@ -32,9 +32,10 @@ import {
 } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
+import { Mode } from "aws-cdk-lib/aws-stepfunctions-tasks";
 import { Construct } from "constructs";
-import { writeFileSync } from "fs";
-import path from "path";
+import { mkdirSync, writeFileSync } from "fs";
+import path, { dirname } from "path";
 import { Activities, IActivities } from "./activities";
 import { bundleSourcesSync, inferSync } from "./compile-client";
 import { Events } from "./events";
@@ -252,7 +253,8 @@ export class Service extends Construct implements IGrantable, IService {
     this.appSpec = inferSync(props.entry);
 
     const specPath = outDir(this, "spec.json");
-    writeFileSync(outDir(this, "spec.json"), JSON.stringify(this.appSpec));
+    mkdirSync(dirname(specPath), { recursive: true });
+    writeFileSync(specPath, JSON.stringify(this.appSpec));
 
     bundleSourcesSync(
       outDir(this),
