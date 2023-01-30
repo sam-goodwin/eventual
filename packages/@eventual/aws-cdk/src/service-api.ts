@@ -22,7 +22,6 @@ import type { Workflows } from "./workflows";
 export interface ApiProps {
   serviceName: string;
   environment?: Record<string, string>;
-  entry: string;
   workflows: Workflows;
   activities: Activities;
   scheduler: Scheduler;

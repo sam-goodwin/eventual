@@ -5,7 +5,8 @@
     "rootDir": "src",
     "outDir": "lib/esm",
     "paths": {
-      "@eventual/injected/*": ["./src/injected/*"]
+      "@eventual/injected/entry": ["./src/injected/entry.ts"],
+      "@eventual/injected/spec": ["./src/injected/spec.ts"]
     }
   },
   "include": ["src", "src/package.json"],

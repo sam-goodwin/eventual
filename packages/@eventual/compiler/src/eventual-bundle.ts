@@ -18,6 +18,7 @@ export async function bundleSources(
 export async function bundleService(
   outDir: string,
   entry: string,
+  appSpec?: string,
   serviceType?: ServiceType,
   external?: string[],
   allPackagesExternal?: boolean
@@ -26,6 +27,7 @@ export async function bundleService(
   return build({
     outDir,
     injectedEntry: entry,
+    injectedAppSpec: appSpec,
     entry,
     name: "service",
     eventualTransform: true,
@@ -43,6 +45,7 @@ export interface BuildSource {
   name: string;
   entry: string;
   injectedEntry: string;
+  injectedAppSpec?: string;
   /**
    * Optionally provide the name of the handler that should be tree-shaken.
    *
@@ -59,6 +62,7 @@ export interface BuildSource {
 export async function build({
   outDir,
   injectedEntry,
+  injectedAppSpec,
   name,
   entry,
   eventualTransform = false,
@@ -79,11 +83,20 @@ export async function build({
     sourcemap: sourcemap ?? true,
     sourcesContent: false,
     plugins: [
-      ...(injectedEntry
+      ...(injectedEntry || injectedAppSpec
         ? [
             aliasPath({
               alias: {
-                "@eventual/entry/injected": path.resolve(injectedEntry),
+                ...(injectedEntry
+                  ? {
+                      "@eventual/injected/entry": path.resolve(injectedEntry),
+                    }
+                  : {}),
+                ...(injectedAppSpec
+                  ? {
+                      "@eventual/injected/spec": path.resolve(injectedAppSpec),
+                    }
+                  : {}),
               },
             }),
           ]

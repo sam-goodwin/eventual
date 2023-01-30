@@ -2,6 +2,10 @@ import type { HttpMethod } from "./api.js";
 import type { Subscription } from "./event.js";
 import type { DurationSchedule } from "./schedule.js";
 
+export interface WorkflowSpec {
+  name: string;
+}
+
 /**
  * Specification for an Eventual application
  */
@@ -11,6 +15,10 @@ export interface AppSpec {
    */
   subscriptions: Subscription[];
   api: ApiSpec;
+  /**
+   * List of workflows
+   */
+  workflows: WorkflowSpec[];
 }
 
 export interface ApiSpec {

@@ -1,5 +1,5 @@
 // the user's entry point will register activities as a side effect.
-import "@eventual/entry/injected";
+import "@eventual/injected/entry";
 
 import { ActivityWorkerRequest } from "@eventual/core";
 import {

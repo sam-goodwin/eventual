@@ -141,10 +141,17 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     },
   };
 
-  await fs.promises.writeFile(
-    path.join(outDir, "manifest.json"),
-    JSON.stringify(manifest, null, 2)
-  );
+  const specPath = path.join(outDir, "spec.json");
+  await Promise.all([
+    // the full manifest
+    fs.promises.writeFile(
+      path.join(outDir, "manifest.json"),
+      JSON.stringify(manifest, null, 2)
+    ),
+    // just data extracted from the service, used by the handlers
+    // separate from the manifest to avoid injecting local file information into the bundles.
+    fs.promises.writeFile(specPath, JSON.stringify(appSpec)),
+  ]);
 
   async function bundleApis() {
     const routes = await Promise.all(
@@ -159,6 +166,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
                 exportName: route.sourceLocation.exportName,
                 serviceType: ServiceType.ApiHandler,
                 injectedEntry: route.sourceLocation.fileName,
+                injectedAppSpec: specPath,
               }),
               exportName: route.sourceLocation.exportName,
               methods: [route.method],
@@ -194,18 +202,21 @@ export async function buildService(request: BuildAWSRuntimeProps) {
             entry: runtimeHandlersEntrypoint("activity-worker"),
             serviceType: ServiceType.ActivityWorker,
             injectedEntry: request.entry,
+            injectedAppSpec: specPath,
           },
           {
             name: ServiceType.ApiHandler,
             entry: runtimeHandlersEntrypoint("api-handler"),
             serviceType: ServiceType.ApiHandler,
             injectedEntry: request.entry,
+            injectedAppSpec: specPath,
           },
           {
             name: ServiceType.EventHandler,
             entry: runtimeHandlersEntrypoint("event-handler"),
             serviceType: ServiceType.EventHandler,
             injectedEntry: request.entry,
+            injectedAppSpec: specPath,
           },
           {
             name: "SchedulerForwarder",

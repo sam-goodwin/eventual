@@ -1,4 +1,4 @@
-import "@eventual/entry/injected";
+import "@eventual/injected/entry";
 
 import { ApiRequest } from "@eventual/core";
 import { createApiHandler } from "@eventual/runtime-core";

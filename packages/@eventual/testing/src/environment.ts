@@ -189,6 +189,7 @@ export class TestEnvironment extends RuntimeServiceClient {
     this.serviceFile = bundleService(
       props.outDir ?? path.resolve(".eventual"),
       props.entry,
+      undefined, // testing does not currently use the app spec
       ServiceType.OrchestratorWorker,
       undefined,
       true

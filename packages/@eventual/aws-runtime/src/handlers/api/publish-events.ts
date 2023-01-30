@@ -1,4 +1,4 @@
-import "@eventual/entry/injected";
+import "@eventual/injected/entry";
 
 import { PublishEventsRequest } from "@eventual/core";
 import { createEventClient } from "../../create.js";

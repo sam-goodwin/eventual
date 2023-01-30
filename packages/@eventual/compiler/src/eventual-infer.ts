@@ -4,7 +4,13 @@
  *
  * @see AppSpec
  */
-import { AppSpec, eventSubscriptions, routes, RouteSpec } from "@eventual/core";
+import {
+  AppSpec,
+  eventSubscriptions,
+  routes,
+  workflows,
+  RouteSpec,
+} from "@eventual/core";
 import crypto from "crypto";
 import esbuild from "esbuild";
 import fs from "fs/promises";
@@ -62,6 +68,7 @@ export async function infer(scriptName = process.argv[2]): Promise<AppSpec> {
           } satisfies RouteSpec)
       ),
     },
+    workflows: [...workflows().keys()].map((n) => ({ name: n })),
   };
 
   console.log(JSON.stringify(appSpec));

@@ -329,7 +329,6 @@ export class Service extends Construct implements IGrantable, IService {
       workflows: this.workflows,
       events: this.events,
       scheduler: this.scheduler,
-      entry: props.entry,
       service: proxyService,
     });
     apiProxy._bind(this.api);
