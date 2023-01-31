@@ -74,7 +74,7 @@ export const replay = (yargs: Argv) =>
           assertExpectedResult(executionObj, res.result);
 
           spinner.succeed();
-          console.log(res);
+          process.stdout.write(`result: ${resultToString(res.result)}\n`);
         });
       }
     )
@@ -102,7 +102,10 @@ function assertExpectedResult(execution: Execution, replayResult?: Result) {
       }
     }
   } else if (isSucceededExecution(execution)) {
-    if (!isResolved(replayResult) || replayResult.value !== execution.result) {
+    if (
+      !isResolved(replayResult) ||
+      JSON.stringify(replayResult.value) !== JSON.stringify(execution.result)
+    ) {
       throwUnexpectedResult();
     }
   } else {
