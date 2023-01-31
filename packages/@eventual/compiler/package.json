@@ -2,19 +2,19 @@
   "name": "@eventual/compiler",
   "version": "0.13.1",
   "bin": {
-    "eventual-bundle": "./bin/eventual-bundle.js",
-    "eventual-infer": "./bin/eventual-infer.js"
+    "eventual-bundle": "./bin/eventual-bundle.mjs",
+    "eventual-infer": "./bin/eventual-infer.mjs"
   },
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",
       "require": "./lib/cjs/index.js"
     },
-    "./bin/eventual-bundle.js": {
-      "require": "./bin/eventual-bundle.js"
+    "./bin/eventual-bundle.mjs": {
+      "require": "./bin/eventual-bundle.mjs"
     },
-    "./bin/eventual-infer.js": {
-      "require": "./bin/eventual-infer.js"
+    "./bin/eventual-infer.mjs": {
+      "require": "./bin/eventual-infer.mjs"
     }
   },
   "main": "./lib/cjs/index.js",
