@@ -1,5 +1,8 @@
+import { jest } from "@jest/globals";
+
 import { EventualError, HeartbeatTimeout } from "@eventual/core";
 import { ChaosEffects, ChaosTargets } from "./chaos-extension/chaos-engine.js";
+import { serviceUrl } from "./env.js";
 import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
 import {
   eventDrivenWorkflow,
@@ -15,6 +18,8 @@ import {
   timedWorkflow,
   allCommands,
 } from "./test-service.js";
+
+import fetch from "node-fetch";
 
 jest.setTimeout(100 * 1000);
 
@@ -119,3 +124,11 @@ eventualRuntimeTestHarness(
     },
   }
 );
+
+const url = serviceUrl();
+
+test("hello API should route and return OK response", async () => {
+  const response = await (await fetch(`${url}/hello`)).text();
+
+  expect(response).toEqual("hello world");
+});

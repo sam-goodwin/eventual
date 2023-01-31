@@ -4,9 +4,9 @@ import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-al
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { ServiceType } from "@eventual/core";
 import { computeDurationSeconds } from "@eventual/runtime-core";
-import { Arn, Duration, Stack } from "aws-cdk-lib";
+import { Arn, aws_iam, Duration, Stack } from "aws-cdk-lib";
 import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
-import { Code, Function } from "aws-cdk-lib/aws-lambda";
+import { Code, Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import path from "path";
 import type { Activities } from "./activities";
@@ -41,10 +41,33 @@ export class Api extends Construct implements IServiceApi {
    * API Gateway for providing service api
    */
   public readonly gateway: HttpApi;
-  /*
-   * The Lambda Function for processing inbound API requests with user defined code.
+  /**
+   * The default Lambda Function for processing inbound API requests with user defined code.
+   *
+   * Any API route that could not be individually bundled or tree-shaken is handled by this
+   * default Function.
    */
   public readonly handler: Function;
+  /**
+   * Individual Lambda Functions per API route. Any API function that was exported from a
+   * module is individually tree-shaken and loaded into its own Lambda Function with a
+   * customizable memory and timeout.
+   */
+  public readonly routes: {
+    [path: string]: Function;
+  };
+  /**
+   * Individual Lambda Functions handling each of the internal Eventual APIs.
+   *
+   * @see InternalApiRoutes
+   */
+  public readonly internalRoutes: {
+    [path in keyof InternalApiRoutes]: Function;
+  };
+
+  public get handlers(): Function[] {
+    return [this.handler, ...Object.values(this.routes)];
+  }
 
   constructor(scope: Construct, id: string, private props: ApiProps) {
     super(scope, id);
@@ -66,16 +89,18 @@ export class Api extends Construct implements IServiceApi {
     // Allow it to access any of the methods on the service client by default.
     this.configureInvokeHttpServiceApi(this.handler);
 
-    this.createUserDefinedRoutes();
+    this.routes = this.createUserDefinedRoutes();
 
-    this.createInternalApiRoutes();
+    this.internalRoutes = this.createInternalApiRoutes();
 
     this.configureApiHandler();
   }
 
-  public configureInvokeHttpServiceApi(func: Function) {
-    this.grantInvokeHttpServiceApi(func);
-    this.addEnvs(func, ENV_NAMES.SERVICE_URL);
+  public configureInvokeHttpServiceApi(...functions: Function[]) {
+    for (const func of functions) {
+      this.grantInvokeHttpServiceApi(func);
+      this.addEnvs(func, ENV_NAMES.SERVICE_URL);
+    }
   }
 
   public grantInvokeHttpServiceApi(grantable: IGrantable) {
@@ -85,7 +110,7 @@ export class Api extends Construct implements IServiceApi {
   }
 
   private createUserDefinedRoutes() {
-    this.applyRouteMappings(
+    return this.applyRouteMappings(
       Object.fromEntries(
         Object.entries(this.props.build.api.routes).flatMap(([path, route]) => {
           return [
@@ -94,7 +119,12 @@ export class Api extends Construct implements IServiceApi {
               {
                 ...route,
                 grants: (fn) => this.configureInvokeHttpServiceApi(fn),
-              },
+                role: this.handler.role,
+                handler: "index.default",
+                environment: {
+                  NODE_OPTIONS: "--enable-source-maps",
+                },
+              } satisfies RouteMapping,
             ],
           ];
         })
@@ -102,7 +132,9 @@ export class Api extends Construct implements IServiceApi {
     );
   }
 
-  private createInternalApiRoutes() {
+  private createInternalApiRoutes(): {
+    [path in keyof InternalApiRoutes]: Function;
+  } {
     const routes: InternalApiRoutes = this.props.build.api.internal;
 
     const grants: {
@@ -129,17 +161,20 @@ export class Api extends Construct implements IServiceApi {
 
     // TODO move the API definition to the aws-runtime or core-runtime
     //      https://github.com/functionless/eventual/issues/173
-    this.applyRouteMappings(
+    return this.applyRouteMappings(
       Object.fromEntries(
-        Object.entries(routes).map(([path, route]) => [
-          path,
-          {
-            ...route,
-            grants: grants[path as keyof typeof grants],
-          },
-        ])
+        Object.entries(routes).map(
+          ([path, route]) =>
+            [
+              path,
+              {
+                ...route,
+                grants: grants[path as keyof typeof grants],
+              },
+            ] as const
+        )
       )
-    );
+    ) as any;
   }
 
   private executeApiPolicyStatement() {
@@ -159,54 +194,58 @@ export class Api extends Construct implements IServiceApi {
     });
   }
 
-  private applyRouteMappings(mappings: Record<string, RouteMapping>) {
-    const deferredAddRoutes: (() => void)[] = [];
+  private applyRouteMappings(mappings: Record<string, RouteMapping>): {
+    [route: string]: Function;
+  } {
+    return Object.fromEntries(
+      Object.entries(mappings).map(
+        ([
+          apiPath,
+          {
+            name,
+            file,
+            methods,
+            grants,
+            memorySize,
+            timeout,
+            exportName,
+            authorized,
+            role,
+            ...props
+          },
+        ]) => {
+          const funcId = name ?? path.dirname(file);
+          const fn = new Function(this, funcId, {
+            functionName: exportName
+              ? // use the exportName as the function name - encourage users to choose unique names
+                `${this.props.serviceName}-api-${exportName}`
+              : undefined,
+            code: Code.fromAsset(this.props.build.resolveFolder(file)),
+            ...baseFnProps,
+            memorySize,
+            timeout: timeout
+              ? Duration.seconds(computeDurationSeconds(timeout))
+              : undefined,
+            handler: "index.handler",
+            role,
+            ...props,
+          });
 
-    Object.entries(mappings).forEach(
-      ([
-        apiPath,
-        {
-          name,
-          file,
-          methods,
-          grants,
-          memorySize,
-          timeout,
-          exportName,
-          authorized,
-        },
-      ]) => {
-        const funcId = name ?? path.dirname(file);
-        const fn = new Function(this, funcId, {
-          functionName: exportName
-            ? // use the exportName as the function name - encourage users to choose unique names
-              `${this.props.serviceName}-api-${exportName}`
-            : undefined,
-          code: Code.fromAsset(this.props.build.resolveFolder(file)),
-          ...baseFnProps,
-          memorySize,
-          timeout: timeout
-            ? Duration.seconds(computeDurationSeconds(timeout))
-            : undefined,
-          handler: "index.handler",
-        });
-
-        grants?.(fn);
-        const integration = new HttpLambdaIntegration(
-          `${funcId}-integration`,
-          fn
-        );
-        this.gateway.addRoutes({
-          path: apiPath,
-          integration,
-          methods,
-          authorizer: authorized ? new HttpIamAuthorizer() : undefined,
-        });
-      }
+          grants?.(fn);
+          const integration = new HttpLambdaIntegration(
+            `${funcId}-integration`,
+            fn
+          );
+          this.gateway.addRoutes({
+            path: apiPath,
+            integration,
+            methods,
+            authorizer: authorized ? new HttpIamAuthorizer() : undefined,
+          });
+          return [apiPath, fn] as const;
+        }
+      )
     );
-
-    // actually create the lambda and routes.
-    deferredAddRoutes.forEach((a) => a());
   }
 
   private configureApiHandler(handler?: Function) {
@@ -223,7 +262,10 @@ export class Api extends Construct implements IServiceApi {
   }
 }
 
-interface RouteMapping extends ApiFunction {
+interface RouteMapping
+  extends ApiFunction,
+    Omit<Partial<FunctionProps>, "memorySize" | "timeout"> {
   authorized?: boolean;
   grants?: (grantee: Function) => void;
+  role?: aws_iam.IRole;
 }

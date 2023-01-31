@@ -21,7 +21,7 @@ export const api: Router = new Proxy(
   {
     get: (_, method: keyof typeof router) => {
       if (method === "routes" || method === "handle") {
-        return router.routes;
+        return router[method];
       } else {
         return (
           ...args:
@@ -47,7 +47,7 @@ export const api: Router = new Proxy(
             ) as RouteHandler[], // todo: why do i need to cast?
           };
           routes.push(route);
-          return route;
+          return router[method](route.path, ...route.handlers);
         };
       }
     },
@@ -96,7 +96,7 @@ export interface RouteFactory {
 }
 
 export interface Router {
-  handle: (request: ApiRequest, ...extra: any) => Promise<Response>;
+  handle: (request: ApiRequest, ...extra: any) => Promise<Response | undefined>;
   routes: RouteEntry[];
   all: RouteFactory;
   get: RouteFactory;

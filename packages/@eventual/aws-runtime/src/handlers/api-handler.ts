@@ -45,7 +45,7 @@ export default async function (
 
   const response = await processRequest(request);
   const headers: Record<string, string> = {};
-  response.headers.forEach((value, key) => (headers[key] = value));
+  response.headers?.forEach((value, key) => (headers[key] = value));
   return {
     headers,
     statusCode: response.status,

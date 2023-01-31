@@ -12,6 +12,7 @@ import {
   EventualError,
   signal,
   duration,
+  api,
 } from "@eventual/core";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -420,3 +421,13 @@ export const allCommands = workflow("allCommands", async (_, context) => {
   ]);
   return { signalCount: n };
 });
+
+export const userApi = api.get(
+  "/hello",
+  {
+    memorySize: 512,
+  },
+  async () => {
+    return new Response("hello world");
+  }
+);
