@@ -1,5 +1,7 @@
 import {
   ActivityUpdateType,
+  ApiRequest,
+  ApiRequestInit,
   encodeExecutionId,
   EventualServiceClient,
   Execution,
@@ -22,7 +24,13 @@ import {
   Workflow,
   WorkflowInput,
 } from "@eventual/core";
-import { polyfillFetch } from "./fetch-polyfill.js";
+import { getRequestHandler } from "./request-handler/factory.js";
+import {
+  BeforeRequest,
+  HttpError,
+  HttpMethod,
+  RequestHandler,
+} from "./request-handler/request-handler.js";
 
 export interface HttpServiceClientProps {
   /**
@@ -37,10 +45,6 @@ export interface HttpServiceClientProps {
   beforeRequest?: BeforeRequest;
 }
 
-export interface BeforeRequest {
-  (request: Request): Promise<Request>;
-}
-
 /**
  * Http implementation of the {@link EventualServiceClient} to hit the API deployed
  * with an eventual service.
@@ -51,10 +55,12 @@ export interface BeforeRequest {
  * an existing platform specific client. (ex: {@link AwsHttpServiceClient} in @eventual/aws-client)
  */
 export class HttpServiceClient implements EventualServiceClient {
-  private readonly baseUrl: string;
+  private readonly baseUrl: URL;
+  private requestHandler: RequestHandler;
 
-  constructor(private props: HttpServiceClientProps) {
-    this.baseUrl = `${props.serviceUrl}/_eventual`;
+  constructor(props: HttpServiceClientProps) {
+    this.baseUrl = new URL(props.serviceUrl);
+    this.requestHandler = getRequestHandler(props.beforeRequest);
   }
 
   /**
@@ -62,24 +68,19 @@ export class HttpServiceClient implements EventualServiceClient {
    *
    * Does not inject the _eventual suffix into the url. ([serviceUrl]/[path]).
    */
-  public async proxy(request: {
-    method: HttpMethod;
-    path: string;
-    body?: Body;
-  }) {
-    return this.request(
-      request.method,
-      request.path,
-      request.body,
-      this.props.serviceUrl
+  public async proxy(
+    request: Omit<ApiRequestInit, "params"> & { path: string }
+  ) {
+    return this.requestHandler.request(
+      new ApiRequest(`${this.baseUrl.href}/${request.path}`, request)
     );
   }
 
   public async listWorkflows(): Promise<ListWorkflowsResponse> {
-    const workflowNames = await this.request<void, string[]>(
-      "GET",
-      "workflows"
-    );
+    const workflowNames = await this.request<void, string[]>({
+      method: "GET",
+      path: "workflows",
+    });
 
     return { workflows: workflowNames.map((n) => ({ name: n })) };
   }
@@ -92,16 +93,18 @@ export class HttpServiceClient implements EventualServiceClient {
         ? request.workflow
         : request.workflow.workflowName;
 
-    const queryString = formatQueryString({
-      timeout: request.timeout?.dur,
-      timeoutUnit: request.timeout?.unit,
-      executionName: request.executionName,
-    });
-
     const { executionId } = await this.request<
       WorkflowInput<W>,
       StartExecutionResponse
-    >("POST", `workflows/${workflow}/executions?${queryString}`, request.input);
+    >({
+      method: "POST",
+      path: `workflows/${workflow}/executions?${formatQueryString({
+        timeout: request.timeout?.dur,
+        timeoutUnit: request.timeout?.unit,
+        executionName: request.executionName,
+      })}`,
+      body: request.input,
+    });
 
     return new ExecutionHandle(executionId, this);
   }
@@ -109,28 +112,26 @@ export class HttpServiceClient implements EventualServiceClient {
   public async listExecutions(
     request: ListExecutionsRequest
   ): Promise<ListExecutionsResponse> {
-    const queryStrings = formatQueryString({
-      maxResults: request.maxResults,
-      nextToken: request.nextToken,
-      sortDirection: request.sortDirection,
-      statuses: request.statuses,
-      workflow: request.workflowName,
+    return this.request<void, ListExecutionsResponse>({
+      method: "GET",
+      path: `executions?${formatQueryString({
+        maxResults: request.maxResults,
+        nextToken: request.nextToken,
+        sortDirection: request.sortDirection,
+        statuses: request.statuses,
+        workflow: request.workflowName,
+      })}`,
     });
-
-    return this.request<void, ListExecutionsResponse>(
-      "GET",
-      `executions?${queryStrings}`
-    );
   }
 
   public async getExecution(
     executionId: string
   ): Promise<Execution<any> | undefined> {
     try {
-      return await this.request<void, Execution>(
-        "GET",
-        `executions/${encodeExecutionId(executionId)}`
-      );
+      return this.request<void, Execution>({
+        method: "GET",
+        path: `executions/${encodeExecutionId(executionId)}`,
+      });
     } catch (err) {
       if (err instanceof HttpError && err.status === 404) {
         return undefined;
@@ -142,27 +143,26 @@ export class HttpServiceClient implements EventualServiceClient {
   public async getExecutionHistory(
     request: ListExecutionEventsRequest
   ): Promise<ListExecutionEventsResponse> {
-    const queryString = formatQueryString({
-      maxResults: request.maxResults,
-      nextToken: request.nextToken,
-      sortDirection: request.sortDirection,
-      after: request.after,
-    });
-    return await this.request<void, ListExecutionEventsResponse>(
-      "GET",
-      `executions/${encodeExecutionId(
+    return this.request<void, ListExecutionEventsResponse>({
+      method: "GET",
+      path: `executions/${encodeExecutionId(
         request.executionId
-      )}/history?${queryString}`
-    );
+      )}/history?${formatQueryString({
+        maxResults: request.maxResults,
+        nextToken: request.nextToken,
+        sortDirection: request.sortDirection,
+        after: request.after,
+      })}`,
+    });
   }
 
   public async getExecutionWorkflowHistory(
     executionId: string
   ): Promise<ExecutionHistoryResponse> {
-    const resp = await this.request<void, HistoryStateEvent[]>(
-      "GET",
-      `executions/${encodeExecutionId(executionId)}}/workflow-history`
-    );
+    const resp = await this.request<void, HistoryStateEvent[]>({
+      method: "GET",
+      path: `executions/${encodeExecutionId(executionId)}}/workflow-history`,
+    });
 
     return { events: resp };
   }
@@ -172,38 +172,42 @@ export class HttpServiceClient implements EventualServiceClient {
     const executionId =
       typeof execution === "string" ? execution : execution.executionId;
     const signalId = typeof signal === "string" ? signal : signal.id;
-    return await this.request<Omit<SendSignalRequest, "execution">, void>(
-      "PUT",
-      `executions/${encodeExecutionId(executionId)}}/signals`,
-      {
+    return this.request<Omit<SendSignalRequest, "execution">, void>({
+      method: "PUT",
+      path: `executions/${encodeExecutionId(executionId)}}/signals`,
+      body: {
         ...rest,
         signal: signalId,
-      }
-    );
+      },
+    });
   }
 
   public publishEvents(request: PublishEventsRequest): Promise<void> {
-    return this.request<PublishEventsRequest, void>("PUT", `events`, request);
+    return this.request<PublishEventsRequest, void>({
+      method: "PUT",
+      path: `events`,
+      body: request,
+    });
   }
 
   public sendActivitySuccess(
     request: Omit<SendActivitySuccessRequest<any>, "type">
   ): Promise<void> {
-    return this.request<SendActivitySuccessRequest, void>(
-      "POST",
-      `activities`,
-      { ...request, type: ActivityUpdateType.Success }
-    );
+    return this.request<SendActivitySuccessRequest, void>({
+      method: "POST",
+      path: `activities`,
+      body: { ...request, type: ActivityUpdateType.Success },
+    });
   }
 
   public sendActivityFailure(
     request: Omit<SendActivityFailureRequest, "type">
   ): Promise<void> {
-    return this.request<SendActivityFailureRequest, void>(
-      "POST",
-      `activities`,
-      { ...request, type: ActivityUpdateType.Failure }
-    );
+    return this.request<SendActivityFailureRequest, void>({
+      method: "POST",
+      path: `activities`,
+      body: { ...request, type: ActivityUpdateType.Failure },
+    });
   }
 
   public sendActivityHeartbeat(
@@ -212,54 +216,26 @@ export class HttpServiceClient implements EventualServiceClient {
     return this.request<
       SendActivityHeartbeatRequest,
       SendActivityHeartbeatResponse
-    >("POST", `activities`, { ...request, type: ActivityUpdateType.Heartbeat });
+    >({
+      method: "POST",
+      path: `activities`,
+      body: { ...request, type: ActivityUpdateType.Heartbeat },
+    });
   }
 
-  private async request<Body = any, Resp = any>(
-    method: HttpMethod,
-    suffix: string,
-    body?: Body,
-    baseUrl?: string
-  ) {
-    await polyfillFetch();
-    const initRequest = new Request(
-      new URL(`${baseUrl ?? this.baseUrl}/${suffix}`),
-      {
-        method,
-        body: body ? JSON.stringify(body) : undefined,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
+  private async request<Body = any, Resp = any>(request: {
+    body?: Body;
+    method: HttpMethod;
+    path: string;
+  }): Promise<Resp> {
+    const url = `${this.baseUrl.href}_eventual/${request.path}`;
+    return this.requestHandler.request(
+      new ApiRequest(url, {
+        body: request.body ? JSON.stringify(request.body) : undefined,
+        headers: { "Content-Type": "application/json" },
+        method: request.method,
+      })
     );
-
-    const request = this.props.beforeRequest
-      ? await this.props.beforeRequest(initRequest)
-      : initRequest;
-
-    const resp = await fetch(request);
-
-    if (resp.ok) {
-      return resp.json() as Resp;
-    } else {
-      throw new HttpError(
-        resp.status,
-        resp.statusText,
-        resp.body ? await resp.text() : undefined
-      );
-    }
-  }
-}
-
-export type HttpMethod = "POST" | "GET" | "PUT";
-
-export class HttpError extends Error {
-  constructor(
-    public status: number,
-    public statusText: string,
-    public body?: string
-  ) {
-    super(body || statusText);
   }
 }
 

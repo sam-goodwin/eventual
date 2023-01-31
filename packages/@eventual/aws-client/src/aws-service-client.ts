@@ -1,10 +1,11 @@
 import { Sha256 } from "@aws-crypto/sha256-js";
-import { HttpRequest } from "@aws-sdk/protocol-http";
+import { HttpRequest as AwsHttpRequest } from "@aws-sdk/protocol-http";
 import { parseQueryString } from "@aws-sdk/querystring-parser";
 import { SignatureV4, SignatureV4Init } from "@aws-sdk/signature-v4";
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import {
   BeforeRequest,
+  HttpMethod,
   HttpServiceClient,
   HttpServiceClientProps,
 } from "@eventual/client";
@@ -13,6 +14,7 @@ import {
   NODE_REGION_CONFIG_OPTIONS,
 } from "@aws-sdk/config-resolver";
 import { loadConfig } from "@aws-sdk/node-config-provider";
+import { ApiRequest } from "@eventual/core";
 
 export interface AwsHttpServiceClientProps extends HttpServiceClientProps {
   credentials?: SignatureV4Init["credentials"];
@@ -33,25 +35,21 @@ export interface AwsHttpServiceClientProps extends HttpServiceClientProps {
  */
 export class AwsHttpServiceClient extends HttpServiceClient {
   constructor(props: AwsHttpServiceClientProps) {
-    const signRequest: BeforeRequest = async (request: Request) => {
+    const signRequest: BeforeRequest = async (request) => {
       const updatedRequest = props.beforeRequestSigning
         ? await props.beforeRequestSigning(request)
         : request;
 
       const url = new URL(updatedRequest.url);
 
-      const _headers: [string, string][] = [["host", url.hostname]];
-      // workaround because Headers.entries() is not available in node-fetch
-      new Headers(updatedRequest!.headers).forEach((value, key) =>
-        _headers.push([key, value])
-      );
+      const _headers = { ...updatedRequest.headers, host: url.hostname };
 
-      const _request = new HttpRequest({
+      const _request = new AwsHttpRequest({
         hostname: url.hostname,
         path: url.pathname,
-        body: updatedRequest.body ? await updatedRequest.text() : undefined,
+        body: updatedRequest.body ? updatedRequest.body : undefined,
         method: updatedRequest.method.toUpperCase(),
-        headers: Object.fromEntries(_headers),
+        headers: _headers,
         protocol: url.protocol,
         query: parseQueryString(url.search),
       });
@@ -67,10 +65,10 @@ export class AwsHttpServiceClient extends HttpServiceClient {
       // sign the request and extract the signed headers, body and method
       const { headers, body, method } = await signer.sign(_request);
 
-      const authorizedRequest = new Request(url, {
-        headers: new Headers(headers),
+      const authorizedRequest = new ApiRequest(url.href, {
+        method: method as HttpMethod,
         body,
-        method,
+        headers,
       });
 
       return props.beforeRequest

@@ -59,18 +59,55 @@ export type RouteHandler = (
   ...args: any
 ) => ApiResponse | Promise<ApiResponse>;
 
-export interface ApiRequest {
+export interface ApiRequestInit {
+  method: string;
+  headers?: Record<string, string>;
+  body?: string | Buffer;
+  params?: Record<string, string>;
+  query?: Record<string, string | string[]>;
+}
+
+export class ApiRequest {
   url: string;
   method: string;
   headers: Record<string, string>;
   body: string | Buffer | undefined;
   params?: Record<string, string>;
   query?: Record<string, string | string[]>;
-  json(): Promise<any>;
-  text(): Promise<any>;
-  arrayBuffer?(): Promise<any>;
-  blob?(): Promise<any>;
-  formData?(): Promise<any>;
+
+  constructor(url: string, private props: ApiRequestInit) {
+    const _url = new URL(url);
+    this.method = props.method;
+    this.headers = props.headers ?? {};
+    this.body = props.body;
+    if (props.query) {
+      this.query = props.query;
+    } else {
+      const query: Record<string, string | string[]> = {};
+      _url.searchParams.forEach((value, key) => {
+        query[key] = value.includes(",") ? value.split(",") : value;
+      });
+      this.query = query;
+    }
+    this.params = props.params;
+    this.url = _url.href;
+  }
+
+  async json() {
+    return JSON.parse(await this.text());
+  }
+
+  async text() {
+    if (this.props.body === undefined) {
+      return "";
+    } else if (typeof this.props.body === "string") {
+      return JSON.parse(this.props.body);
+    } else {
+      // TODO: is this risky? Should we just fail whenever it's a base64 encoded buffer?
+      // Or ... is this the best way to best-effort parse a buffer as JSON?
+      return JSON.parse(this.props.body.toString("utf-8"));
+    }
+  }
 }
 
 export interface ApiResponse {
