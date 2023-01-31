@@ -556,16 +556,12 @@ importers:
     specifiers:
       '@eventual/core': workspace:^
       '@types/node': ^16
-      '@types/node-fetch': ^2.6.2
-      node-fetch: ^2.6.7
       ts-node: ^10.9.1
       typescript: ^4.9.4
     dependencies:
       '@eventual/core': link:../core
-      node-fetch: 2.6.7
     devDependencies:
       '@types/node': 16.18.3
-      '@types/node-fetch': 2.6.2
       ts-node: 10.9.1_rniibfx3zftzehea7t244vwgdu
       typescript: 4.9.4
 
