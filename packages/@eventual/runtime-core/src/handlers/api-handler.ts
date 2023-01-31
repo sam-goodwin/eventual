@@ -1,5 +1,7 @@
 import {
   api,
+  ApiRequest,
+  ApiResponse,
   EventualServiceClient,
   registerServiceClient,
   ServiceType,
@@ -26,7 +28,9 @@ export function createApiHandler({ serviceClient }: ApiHandlerDependencies) {
    * Each webhook registers routes on the central {@link router} which
    * then handles the request.
    */
-  return async function processRequest(request: Request): Promise<Response> {
+  return async function processRequest(
+    request: ApiRequest
+  ): Promise<ApiResponse> {
     return await serviceTypeScope(ServiceType.ApiHandler, async () => {
       try {
         const response = await api.handle(request);
@@ -38,9 +42,10 @@ export function createApiHandler({ serviceClient }: ApiHandlerDependencies) {
         return response;
       } catch (err) {
         console.error(err);
-        return new Response("Internal Server Error", {
+        return {
           status: 500,
-        });
+          body: "Internal Server Error",
+        };
       }
     });
   };
