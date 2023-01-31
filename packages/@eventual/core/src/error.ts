@@ -19,6 +19,7 @@ export class DeterminismError extends EventualError {
     super("DeterminismError", message);
   }
 }
+
 /**
  * Thrown from within a workflow when any set timeout expires.
  *
