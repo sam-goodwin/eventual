@@ -3,6 +3,18 @@ globalThis.fetch = fetchMock;
 
 import { jest } from "@jest/globals";
 
+import * as node_fetch from "node-fetch";
+
+if (!globalThis.Request) {
+  globalThis.Request = node_fetch.Request as unknown as typeof Request;
+}
+if (!globalThis.Response) {
+  globalThis.Response = node_fetch.Response as typeof Response;
+}
+if (!globalThis.Headers) {
+  globalThis.Headers = node_fetch.Headers as typeof Headers;
+}
+
 import { ApiRequest } from "@eventual/core";
 import { FetchRequestHandler } from "../src/request-handler/fetch-request-handler.js";
 import { HttpError } from "../src/request-handler/request-handler.js";
