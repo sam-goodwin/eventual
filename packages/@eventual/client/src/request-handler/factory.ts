@@ -1,14 +1,16 @@
 import { FetchRequestHandler } from "./fetch-request-handler.js";
 import { NodeRequestHandler } from "./node-request-handler.js";
-import { RequestHandler } from "./request-handler.js";
+import { BeforeRequest, RequestHandler } from "./request-handler.js";
 
 /**
  * Retrieves either the {@link FetchRequestHandler or NodeRequestHandler} based on
- * whether fetch is available in the system.  
+ * whether fetch is available in the system.
  */
-export function getRequestHandler(): RequestHandler {
+export function getRequestHandler(
+  beforeRequest?: BeforeRequest
+): RequestHandler {
   if (!!globalThis.fetch) {
-    return new FetchRequestHandler();
+    return new FetchRequestHandler(beforeRequest);
   }
-  return new NodeRequestHandler();
+  return new NodeRequestHandler(beforeRequest);
 }

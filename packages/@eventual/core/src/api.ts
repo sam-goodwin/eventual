@@ -27,6 +27,7 @@ export class ApiRequest {
     const _url = new URL(url);
     this.method = props.method;
     this.headers = props.headers ?? {};
+    this.body = props.body;
     if (props.query) {
       this.query = props.query;
     } else {

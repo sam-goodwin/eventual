@@ -42,18 +42,14 @@ export class AwsHttpServiceClient extends HttpServiceClient {
 
       const url = new URL(updatedRequest.url);
 
-      const _headers: [string, string][] = [["host", url.hostname]];
-      // workaround because Headers.entries() is not available in node-fetch
-      new Headers(updatedRequest!.headers).forEach((value, key) =>
-        _headers.push([key, value])
-      );
+      const _headers = { ...updatedRequest.headers, host: url.hostname };
 
       const _request = new AwsHttpRequest({
         hostname: url.hostname,
         path: url.pathname,
         body: updatedRequest.body ? updatedRequest.body : undefined,
         method: updatedRequest.method.toUpperCase(),
-        headers: Object.fromEntries(_headers),
+        headers: _headers,
         protocol: url.protocol,
         query: parseQueryString(url.search),
       });

@@ -1,12 +1,6 @@
 const requestFn = jest.fn();
 jest.unstable_mockModule("https", () => ({
-  // @ts-ignore
-  // ...jest.requireActual("https"), // import and retain the original functionalities
-  __esModule: true, // this property makes it work
   request: requestFn,
-  on: jest.fn(),
-  write: jest.fn(),
-  end: jest.fn(),
 }));
 
 import { jest } from "@jest/globals";
@@ -29,6 +23,17 @@ test("returns json", async () => {
   requestFn.mockImplementation(createRequest(apiResponseBody, 200));
   const result = await handler.request(
     new ApiRequest("https://hello.com", { method: "get" })
+  );
+  expect(result).toEqual(apiResponseBody);
+});
+
+test("with body", async () => {
+  requestFn.mockImplementation(createRequest(apiResponseBody, 200));
+  const result = await handler.request(
+    new ApiRequest("https://hello.com", {
+      method: "post",
+      body: JSON.stringify({ b: "hello" }),
+    })
   );
   expect(result).toEqual(apiResponseBody);
 });

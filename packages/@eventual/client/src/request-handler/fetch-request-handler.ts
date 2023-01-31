@@ -12,11 +12,8 @@ export class FetchRequestHandler extends RequestHandler {
   public async _request<Resp = any>(req: ApiRequest) {
     const request = new Request(req.url, {
       method: req.method,
-      body: req.body ? JSON.stringify(req.body) : undefined,
-      headers: {
-        ...req.headers,
-        "Content-Type": "application/json",
-      },
+      body: req.body ? req.body : undefined,
+      headers: new Headers(req.headers),
     });
 
     const resp = await fetch(request);

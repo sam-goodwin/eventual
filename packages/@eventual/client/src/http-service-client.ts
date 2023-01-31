@@ -60,7 +60,7 @@ export class HttpServiceClient implements EventualServiceClient {
 
   constructor(props: HttpServiceClientProps) {
     this.baseUrl = new URL(props.serviceUrl);
-    this.requestHandler = getRequestHandler();
+    this.requestHandler = getRequestHandler(props.beforeRequest);
   }
 
   /**
@@ -228,7 +228,7 @@ export class HttpServiceClient implements EventualServiceClient {
     method: HttpMethod;
     path: string;
   }): Promise<Resp> {
-    const url = `${this.baseUrl.href}/_eventual/${request.path}`;
+    const url = `${this.baseUrl.href}_eventual/${request.path}`;
     return this.requestHandler.request(
       new ApiRequest(url, {
         body: request.body ? JSON.stringify(request.body) : undefined,
