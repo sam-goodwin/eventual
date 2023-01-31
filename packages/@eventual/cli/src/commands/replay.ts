@@ -1,10 +1,17 @@
 import { bundleService } from "@eventual/compiler";
 import {
+  DeterminismError,
   encodeExecutionId,
+  Execution,
   ExecutionID,
+  isFailed,
   isFailedExecution,
+  isResolved,
   isSucceededExecution,
+  normalizeFailedResult,
   parseWorkflowName,
+  Result,
+  resultToString,
   ServiceType,
   serviceTypeScopeSync,
   workflows,
@@ -64,6 +71,8 @@ export const replay = (yargs: Argv) =>
 
           const res = progressWorkflow(execution, workflow, processedEvents);
 
+          assertExpectedResult(executionObj, res.result);
+
           spinner.succeed();
           console.log(res);
         });
@@ -80,4 +89,39 @@ async function loadService(
 
   const workflowPath = await bundleService(outDir, entry);
   await import(path.resolve(workflowPath));
+}
+
+function assertExpectedResult(execution: Execution, replayResult?: Result) {
+  if (isFailedExecution(execution)) {
+    if (!isFailed(replayResult)) {
+      throwUnexpectedResult();
+    } else if (isFailed(replayResult)) {
+      const { error, message } = normalizeFailedResult(replayResult);
+      if (error !== execution.error || message !== execution.message) {
+        throwUnexpectedResult();
+      }
+    }
+  } else if (isSucceededExecution(execution)) {
+    if (!isResolved(replayResult) || replayResult.value !== execution.result) {
+      throwUnexpectedResult();
+    }
+  } else {
+    if (isResolved(replayResult) || isFailed(replayResult)) {
+      throwUnexpectedResult();
+    }
+  }
+
+  function throwUnexpectedResult() {
+    const executionResultString = isFailedExecution(execution)
+      ? `${execution.error}: ${execution.message}`
+      : isSucceededExecution(execution)
+      ? JSON.stringify(execution.result)
+      : "workflow in progress";
+    throw new DeterminismError(
+      `Something went wrong, execution returned a different result on replay.
+  
+  Expected - ${executionResultString}
+  Received - ${resultToString(replayResult)}`
+    );
+  }
 }
