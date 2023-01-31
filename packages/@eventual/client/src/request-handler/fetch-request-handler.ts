@@ -1,9 +1,5 @@
-import {
-  BeforeRequest,
-  HttpError,
-  HttpRequest,
-  RequestHandler,
-} from "./request-handler.js";
+import { ApiRequest } from "@eventual/core";
+import { BeforeRequest, HttpError, RequestHandler } from "./request-handler.js";
 
 /**
  * A request handler that uses fetch, should work with browser or node fetch.
@@ -13,7 +9,7 @@ export class FetchRequestHandler extends RequestHandler {
     super(beforeRequest);
   }
 
-  public async _request<Resp = any>(req: HttpRequest) {
+  public async _request<Resp = any>(req: ApiRequest) {
     const request = new Request(req.url, {
       method: req.method,
       body: req.body ? JSON.stringify(req.body) : undefined,

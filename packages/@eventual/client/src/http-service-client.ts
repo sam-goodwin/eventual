@@ -1,5 +1,7 @@
 import {
   ActivityUpdateType,
+  ApiRequest,
+  ApiRequestInit,
   encodeExecutionId,
   EventualServiceClient,
   Execution,
@@ -26,7 +28,7 @@ import { getRequestHandler } from "./request-handler/factory.js";
 import {
   BeforeRequest,
   HttpError,
-  HttpRequest,
+  HttpMethod,
   RequestHandler,
 } from "./request-handler/request-handler.js";
 
@@ -66,11 +68,12 @@ export class HttpServiceClient implements EventualServiceClient {
    *
    * Does not inject the _eventual suffix into the url. ([serviceUrl]/[path]).
    */
-  public async proxy(request: Omit<HttpRequest, "url"> & { path: string }) {
-    return this.requestHandler.request({
-      ...request,
-      url: `${this.baseUrl.href}/${request.path}`,
-    });
+  public async proxy(
+    request: Omit<ApiRequestInit, "params"> & { path: string }
+  ) {
+    return this.requestHandler.request(
+      new ApiRequest(`${this.baseUrl.href}/${request.path}`, request)
+    );
   }
 
   public async listWorkflows(): Promise<ListWorkflowsResponse> {
@@ -95,13 +98,12 @@ export class HttpServiceClient implements EventualServiceClient {
       StartExecutionResponse
     >({
       method: "POST",
-      path: `workflows/${workflow}/executions`,
-      body: request.input,
-      query: {
+      path: `workflows/${workflow}/executions?${formatQueryString({
         timeout: request.timeout?.dur,
         timeoutUnit: request.timeout?.unit,
         executionName: request.executionName,
-      },
+      })}`,
+      body: request.input,
     });
 
     return new ExecutionHandle(executionId, this);
@@ -112,14 +114,13 @@ export class HttpServiceClient implements EventualServiceClient {
   ): Promise<ListExecutionsResponse> {
     return this.request<void, ListExecutionsResponse>({
       method: "GET",
-      path: `executions`,
-      query: {
+      path: `executions?${formatQueryString({
         maxResults: request.maxResults,
         nextToken: request.nextToken,
         sortDirection: request.sortDirection,
         statuses: request.statuses,
         workflow: request.workflowName,
-      },
+      })}`,
     });
   }
 
@@ -144,13 +145,14 @@ export class HttpServiceClient implements EventualServiceClient {
   ): Promise<ListExecutionEventsResponse> {
     return this.request<void, ListExecutionEventsResponse>({
       method: "GET",
-      path: `executions/${encodeExecutionId(request.executionId)}/history`,
-      query: {
+      path: `executions/${encodeExecutionId(
+        request.executionId
+      )}/history?${formatQueryString({
         maxResults: request.maxResults,
         nextToken: request.nextToken,
         sortDirection: request.sortDirection,
         after: request.after,
-      },
+      })}`,
     });
   }
 
@@ -221,23 +223,19 @@ export class HttpServiceClient implements EventualServiceClient {
     });
   }
 
-  private async request<Body = any, Resp = any>(
-    request: Omit<HttpRequest<Body>, "url"> & {
-      path: string;
-      query?: Record<string, undefined | string | number | (string | number)[]>;
-    }
-  ): Promise<Resp> {
-    const url = new URL(
-      `${this.baseUrl.href}/_eventual/${request.path}${
-        request.query ? `?${formatQueryString(request.query)}` : ""
-      }`
+  private async request<Body = any, Resp = any>(request: {
+    body?: Body;
+    method: HttpMethod;
+    path: string;
+  }): Promise<Resp> {
+    const url = `${this.baseUrl.href}/_eventual/${request.path}`;
+    return this.requestHandler.request(
+      new ApiRequest(url, {
+        body: request.body ? JSON.stringify(request.body) : undefined,
+        headers: { "Content-Type": "application/json" },
+        method: request.method,
+      })
     );
-    return this.requestHandler.request({
-      ...request,
-      url: url.href,
-      headers: {},
-      method: request.method,
-    });
   }
 }
 

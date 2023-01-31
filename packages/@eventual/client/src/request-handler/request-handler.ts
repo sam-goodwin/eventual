@@ -1,3 +1,5 @@
+import { ApiRequest } from "@eventual/core";
+
 export abstract class RequestHandler {
   constructor(private beforeRequest?: BeforeRequest) {}
 
@@ -7,7 +9,7 @@ export abstract class RequestHandler {
     );
   }
 
-  protected abstract _request<Resp = any>(request: HttpRequest): Promise<Resp>;
+  protected abstract _request<Resp = any>(request: ApiRequest): Promise<Resp>;
 }
 
 export type HttpMethod = "POST" | "GET" | "PUT";
@@ -23,14 +25,5 @@ export class HttpError extends Error {
 }
 
 export interface BeforeRequest {
-  (request: HttpRequest): Promise<HttpRequest>;
-}
-
-interface ApiRequest extends Request {}
-
-export interface HttpRequest<Body = any> {
-  method: HttpMethod;
-  url: string;
-  headers?: Record<string, string>;
-  body?: Body;
+  (request: ApiRequest): Promise<ApiRequest>;
 }
