@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.13.2 (2023-01-31)
+
+### Bug Fixes
+
+- replay was broken ([#260](https://github.com/functionless/eventual/issues/260)) ([53eab42](https://github.com/functionless/eventual/commit/53eab42cd139ba850841f2203d23d1509c080851))
+
 ## 0.13.1 (2023-01-31)
 
 **Note:** Version bump only for package @eventual/cli
