@@ -5,6 +5,8 @@ import {
   isFailedExecution,
   isSucceededExecution,
   parseWorkflowName,
+  ServiceType,
+  serviceTypeScopeSync,
   workflows,
 } from "@eventual/core";
 import { processEvents, progressWorkflow } from "@eventual/runtime-core";
@@ -48,21 +50,23 @@ export const replay = (yargs: Argv) =>
         }
         spinner.start("Running program");
 
-        const processedEvents = processEvents(
-          events,
-          [],
-          new Date(
-            isSucceededExecution(executionObj) ||
-            isFailedExecution(executionObj)
-              ? executionObj.endTime
-              : executionObj.startTime
-          )
-        );
+        serviceTypeScopeSync(ServiceType.OrchestratorWorker, () => {
+          const processedEvents = processEvents(
+            events,
+            [],
+            new Date(
+              isSucceededExecution(executionObj) ||
+              isFailedExecution(executionObj)
+                ? executionObj.endTime
+                : executionObj.startTime
+            )
+          );
 
-        const res = progressWorkflow(execution, workflow, processedEvents);
+          const res = progressWorkflow(execution, workflow, processedEvents);
 
-        spinner.succeed();
-        console.log(res);
+          spinner.succeed();
+          console.log(res);
+        });
       }
     )
   );
