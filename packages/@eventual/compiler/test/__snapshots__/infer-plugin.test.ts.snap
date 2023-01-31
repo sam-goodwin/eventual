@@ -640,7 +640,7 @@ var router = itty_router_min_default.Router();
 var api = new Proxy({}, {
   get: (_, method) => {
     if (method === "routes" || method === "handle") {
-      return router.routes;
+      return router[method];
     } else {
       return (...args) => {
         const route = {
@@ -652,7 +652,7 @@ var api = new Proxy({}, {
           // todo: why do i need to cast?
         };
         routes.push(route);
-        return route;
+        return router[method](route.path, ...route.handlers);
       };
     }
   }

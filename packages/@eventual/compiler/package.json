@@ -25,7 +25,7 @@
     "lib"
   ],
   "scripts": {
-    "test": "jest --passWithNoTests"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --passWithNoTests"
   },
   "peerDependencies": {
     "esbuild": ">=0.16.x <1.0.0"
