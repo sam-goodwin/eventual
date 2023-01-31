@@ -1,6 +1,6 @@
 {
   "name": "@eventual/runtime-core",
-  "version": "0.12.5",
+  "version": "0.13.0",
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",
