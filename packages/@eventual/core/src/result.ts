@@ -1,5 +1,5 @@
 import { Eventual } from "./eventual.js";
-import { or } from "./util.js";
+import { extendsError, or } from "./util.js";
 
 export const ResultSymbol = Symbol.for("eventual:Result");
 
@@ -63,6 +63,27 @@ export function isResolved<T>(
 
 export function isFailed(result: Result | undefined): result is Failed {
   return isResult(result) && result[ResultSymbol] === ResultKind.Failed;
+}
+
+export function normalizeFailedResult(result: Failed): {
+  error: string;
+  message: string;
+} {
+  const [error, message] = extendsError(result.error)
+    ? [result.error.name, result.error.message]
+    : ["Error", JSON.stringify(result.error)];
+  return { error, message };
+}
+
+export function resultToString(result?: Result) {
+  if (isFailed(result)) {
+    const { error, message } = normalizeFailedResult(result);
+    return `${error}: ${message}`;
+  } else if (isResolved(result)) {
+    return result.value ? JSON.stringify(result.value) : "";
+  } else {
+    return "";
+  }
 }
 
 export const isResolvedOrFailed = or(isResolved, isFailed);

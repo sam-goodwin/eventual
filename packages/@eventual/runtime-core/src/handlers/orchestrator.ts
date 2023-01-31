@@ -5,7 +5,6 @@ import {
   createEvent,
   DeterminismError,
   ExecutionStatus,
-  extendsError,
   FailedExecution,
   generateSyntheticEvents,
   getEventId,
@@ -25,6 +24,7 @@ import {
   isWorkflowStarted,
   isWorkflowSucceeded,
   LogLevel,
+  normalizeFailedResult,
   parseWorkflowName,
   Result,
   Schedule,
@@ -379,9 +379,7 @@ export function createOrchestrator({
 
         if (!processedEvents.completedEvent && isResult(result)) {
           if (isFailed(result)) {
-            const [error, message] = extendsError(result.error)
-              ? [result.error.name, result.error.message]
-              : ["Error", JSON.stringify(result.error)];
+            const { error, message } = normalizeFailedResult(result);
             yield createEvent<WorkflowFailed>(
               {
                 type: WorkflowEventType.WorkflowFailed,
