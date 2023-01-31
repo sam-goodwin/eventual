@@ -8,8 +8,7 @@ import {
   ReceiverEvent,
   ReceiverMultipleAckError,
 } from "@slack/bolt";
-import { RouteHandler } from "@eventual/core";
-import type itty from "itty-router";
+import { ApiRequest, RouteHandler } from "@eventual/core";
 
 export interface FetchReceiverOptions {
   signingSecret: string;
@@ -63,13 +62,15 @@ export default class FetchReceiver implements Receiver {
     return Promise.resolve(undefined);
   }
 
-  public async handle(request: Request): Promise<Response> {
+  public async handle(request: ApiRequest): Promise<Response> {
     this.logger.debug(`Request: ${JSON.stringify(request, null, 2)}`);
 
     const rawBody = await this.getRawBody(request);
     const body: any = this.parseRequestBody(
       rawBody,
-      request.headers.get("Content-Type") ?? undefined,
+      request.headers["Content-Type"] ??
+        request.headers["content-type"] ??
+        undefined,
       this.logger
     );
 
@@ -84,8 +85,8 @@ export default class FetchReceiver implements Receiver {
     }
 
     // request signature verification
-    const signature = request.headers.get("X-Slack-Signature") as string;
-    const ts = Number(request.headers.get("X-Slack-Request-Timestamp"));
+    const signature = request.headers["X-Slack-Signature"] as string;
+    const ts = Number(request.headers["X-Slack-Request-Timestamp"]);
     if (
       !this.isValidRequestSignature(this.signingSecret, rawBody, signature, ts)
     ) {
@@ -122,7 +123,7 @@ export default class FetchReceiver implements Receiver {
 
     // Structure the ReceiverEvent
     let storedResponse;
-    const retryNum = request.headers.get("X-Slack-Retry-Num");
+    const retryNum = request.headers["X-Slack-Retry-Num"];
     const event: ReceiverEvent = {
       body,
       ack: async (response) => {
@@ -138,7 +139,7 @@ export default class FetchReceiver implements Receiver {
         }
       },
       retryNum: retryNum ? Number(retryNum) : undefined,
-      retryReason: request.headers.get("X-Slack-Retry-Reason") ?? undefined,
+      retryReason: request.headers["X-Slack-Retry-Reason"] ?? undefined,
     };
 
     // Send the event to the app for processing
@@ -174,7 +175,7 @@ export default class FetchReceiver implements Receiver {
     });
   }
 
-  private async getRawBody(request: itty.Request): Promise<string> {
+  private async getRawBody(request: ApiRequest): Promise<string> {
     return (await request.text?.()) ?? "";
   }
 
