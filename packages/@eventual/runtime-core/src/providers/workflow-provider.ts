@@ -2,6 +2,7 @@ import { Workflow, workflows } from "@eventual/core";
 
 export interface WorkflowProvider {
   lookupWorkflow(workflowName: string): Workflow | undefined;
+  getWorkflowNames(): string[];
 }
 
 /**
@@ -12,5 +13,9 @@ export interface WorkflowProvider {
 export class GlobalWorkflowProvider implements WorkflowProvider {
   public lookupWorkflow(workflowName: string): Workflow | undefined {
     return workflows().get(workflowName);
+  }
+
+  public getWorkflowNames(): string[] {
+    return Object.keys(workflows());
   }
 }

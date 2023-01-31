@@ -1,0 +1,12 @@
+{
+  "extends": "../../../tsconfig-base",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "lib": ["DOM", "ES2021"],
+    "types": ["@types/node", "@types/jest"]
+  },
+  "include": ["src", "test"],
+  "exclude": ["lib", "node_modules"],
+  "references": [{ "path": "../core" }]
+}

@@ -9,7 +9,13 @@
     }
   },
   "include": ["src"],
-  "exclude": ["lib", "node_modules", "src/package.json"],
+  "exclude": [
+    "lib",
+    "node_modules",
+    "src/package.json",
+    "src/create.ts",
+    "src/handlers"
+  ],
   "references": [
     { "path": "../core/tsconfig.cjs.json" },
     { "path": "../runtime-core/tsconfig.cjs.json" }

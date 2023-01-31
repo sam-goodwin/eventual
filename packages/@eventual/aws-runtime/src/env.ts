@@ -2,6 +2,7 @@ import { assertNonNull, LogLevel } from "@eventual/core";
 
 export const ENV_NAMES = {
   SERVICE_NAME: "EVENTUAL_SERVICE_NAME",
+  SERVICE_URL: "EVENTUAL_SERVICE_URL",
   TABLE_NAME: "EVENTUAL_TABLE_NAME",
   EXECUTION_HISTORY_BUCKET: "EVENTUAL_EXECUTION_HISTORY_BUCKET",
   EVENT_BUS_ARN: "EVENTUAL_EVENT_BUS_ARN",
@@ -42,5 +43,6 @@ export const schedulerForwarderArn = () =>
   tryGetEnv(ENV_NAMES.SCHEDULE_FORWARDER_ARN);
 export const serviceLogGroupName = () =>
   tryGetEnv(ENV_NAMES.SERVICE_LOG_GROUP_NAME);
+export const serviceUrl = () => tryGetEnv<LogLevel>(ENV_NAMES.SERVICE_URL);
 export const defaultLogLevel = () =>
   tryGetEnv<LogLevel>(ENV_NAMES.DEFAULT_LOG_LEVEL) ?? LogLevel.INFO;

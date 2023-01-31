@@ -4,7 +4,7 @@
     "baseUrl": ".",
     "rootDir": "src",
     "outDir": "lib/esm",
-    "lib": ["DOM", "ES2022"],
+    "lib": ["DOM", "ES2021"],
     "types": ["node"]
   },
   "include": ["src", "src/package.json"],

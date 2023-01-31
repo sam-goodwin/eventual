@@ -1,6 +1,7 @@
 import { HttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
+import { ENV_NAMES } from "@eventual/aws-runtime";
 import { BuildSource } from "@eventual/compiler";
 import { ServiceType } from "@eventual/core";
 import { Arn, Stack } from "aws-cdk-lib";
@@ -28,7 +29,12 @@ export interface ApiProps {
   service: IService;
 }
 
-export class Api extends Construct {
+export interface IServiceApi {
+  configureInvokeHttpServiceApi(func: Function): void;
+  grantInvokeHttpServiceApi(grantable: IGrantable): void;
+}
+
+export class Api extends Construct implements IServiceApi {
   /**
    * API Gateway for providing service api
    */
@@ -55,6 +61,8 @@ export class Api extends Construct {
       apiName: `eventual-api-${props.serviceName}`,
       defaultIntegration: new HttpLambdaIntegration("default", this.handler),
     });
+
+    this.configureInvokeHttpServiceApi(this.handler);
 
     // TODO move the API definition to the aws-runtime or core-runtime
     //      https://github.com/functionless/eventual/issues/173
@@ -150,7 +158,12 @@ export class Api extends Construct {
     this.configureApiHandler();
   }
 
-  public grantExecute(grantable: IGrantable) {
+  public configureInvokeHttpServiceApi(func: Function) {
+    this.grantInvokeHttpServiceApi(func);
+    this.addEnvs(func, ENV_NAMES.SERVICE_URL);
+  }
+
+  public grantInvokeHttpServiceApi(grantable: IGrantable) {
     grantable.grantPrincipal.addToPrincipalPolicy(
       this.executeApiPolicyStatement()
     );
@@ -222,6 +235,14 @@ export class Api extends Construct {
   private configureApiHandler() {
     this.props.workflows.configureFullControl(this.handler);
     this.props.events.configurePublish(this.handler);
+  }
+
+  private readonly ENV_MAPPINGS = {
+    [ENV_NAMES.SERVICE_URL]: () => this.gateway.apiEndpoint,
+  } as const;
+
+  private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {
+    envs.forEach((env) => func.addEnvironment(env, this.ENV_MAPPINGS[env]()));
   }
 }
 

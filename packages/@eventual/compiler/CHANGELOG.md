@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.13.0 (2023-01-31)
+
+### Features
+
+- remove dependency on node-fetch ([#258](https://github.com/functionless/eventual/issues/258)) ([cbedcbc](https://github.com/functionless/eventual/commit/cbedcbc5f3aacc4a3942ae9195ed81357deecf99))
+
+## 0.12.5 (2023-01-30)
+
+**Note:** Version bump only for package @eventual/compiler
+
 ## 0.12.4 (2023-01-27)
 
 ### Bug Fixes

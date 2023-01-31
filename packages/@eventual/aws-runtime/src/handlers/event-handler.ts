@@ -5,10 +5,13 @@ import {
   GlobalEventHandlerProvider,
 } from "@eventual/runtime-core";
 import type { EventBridgeEvent } from "aws-lambda";
-import { createServiceClient } from "../create.js";
+import { createEventClient, createServiceClient } from "../create.js";
 
 export const processEvent = createEventHandlerWorker({
-  serviceClient: createServiceClient(),
+  // partially uses the runtime clients and partially uses the http client
+  serviceClient: createServiceClient({
+    eventClient: createEventClient(),
+  }),
   eventHandlerProvider: new GlobalEventHandlerProvider(),
 });
 

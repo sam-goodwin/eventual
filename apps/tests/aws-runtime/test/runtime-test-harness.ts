@@ -6,14 +6,21 @@ import {
   Workflow,
   WorkflowInput,
   WorkflowOutput,
+  ExecutionHandle,
 } from "@eventual/core";
 import { AwsHttpServiceClient } from "@eventual/aws-client";
-import { serviceUrl } from "./env.js";
+import { chaosSSMParamName, serviceUrl } from "./env.js";
+import { ChaosRule } from "./chaos-extension/chaos-engine.js";
+import { SSMChaosClient } from "./chaos-extension/chaos-client.js";
+import { SSMClient } from "@aws-sdk/client-ssm";
 
 const serviceClient = new AwsHttpServiceClient({
   serviceUrl: serviceUrl(),
   region: "us-east-1",
 });
+
+const ssm = new SSMClient({});
+const chaosClient = new SSMChaosClient(chaosSSMParamName(), ssm);
 
 export interface Test<W extends Workflow = Workflow> {
   name: string;
@@ -148,41 +155,85 @@ class TesterContainer {
   }
 }
 
-export function eventualRuntimeTestHarness(
-  register: (tester: {
+export interface TestSetFunction {
+  (tester: {
     test: TesterContainer["test"];
     testCompletion: TesterContainer["testCompletion"];
     testFailed: TesterContainer["testFailed"];
-  }) => void
+  }): void;
+}
+
+export interface TestSetProps {
+  name?: string;
+  chaos: { rules: ChaosRule[]; durationMillis: number };
+  register: TestSetFunction;
+}
+
+/**
+ * Register one or more test sets to be run against the an Eventual Runtime.
+ *
+ * A test set may introduce "chaos", which applies a set of rules for
+ * the duration given.
+ */
+export function eventualRuntimeTestHarness(
+  ...testSets: (TestSetFunction | TestSetProps)[]
 ) {
-  const tester = new TesterContainer();
+  testSets.forEach((registerConfig, i) => {
+    const tester = new TesterContainer();
 
-  register({
-    test: tester.test.bind(tester),
-    testCompletion: tester.testCompletion.bind(tester),
-    testFailed: tester.testFailed.bind(tester),
-  });
+    const [register, chaos] =
+      typeof registerConfig === "function"
+        ? [registerConfig, undefined]
+        : [registerConfig.register, registerConfig.chaos];
 
-  // start all of the workflow immediately, the tests can wait for them.
-  const executionTests = tester.tests.map((_test) => ({
-    execution: serviceClient.startExecution({
-      workflow: _test.workflow,
-      input: _test.input,
-    }),
-    test: _test,
-  }));
+    register({
+      test: tester.test.bind(tester),
+      testCompletion: tester.testCompletion.bind(tester),
+      testFailed: tester.testFailed.bind(tester),
+    });
 
-  executionTests.forEach(({ execution, test: _test }) => {
-    describe(_test.name, () => {
-      let done = false;
-      const cancelCallback = () => done;
-      afterEach(() => {
-        done = true;
+    describe(registerConfig.name ?? `test set ${i}`, () => {
+      let executions: Promise<ExecutionHandle<any>>[];
+      beforeAll(async () => {
+        if (chaos) {
+          // break something!! muahahaha
+          await chaosClient.setConfiguration({
+            disabled: false,
+            rules: chaos.rules,
+          });
+        } else {
+          await chaosClient.disable();
+        }
+
+        // start all of the workflow immediately, the tests can wait for them.
+        executions = tester.tests.map((_test) =>
+          serviceClient.startExecution({
+            workflow: _test.workflow,
+            input: _test.input,
+          })
+        );
+
+        if (chaos) {
+          // let the workflows run with the chaos rules for a while
+          await delay(chaos.durationMillis);
+          await chaosClient.disable();
+        }
       });
-      test("test", async () => {
-        const { executionId } = await execution;
 
-        await _test.test(executionId, { cancelCallback });
+      tester.tests.forEach((_test, j) => {
+        describe(_test.name, () => {
+          let done = false;
+          const cancelCallback = () => done;
+          afterEach(() => {
+            done = true;
+          });
+          test("test", async () => {
+            const execution = executions[j]!;
+            const { executionId } = await execution;
+
+            await _test.test(executionId, { cancelCallback });
+          });
+        });
       });
     });
   });

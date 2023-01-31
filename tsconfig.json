@@ -19,6 +19,7 @@
     { "path": "packages/@eventual/cli" },
     { "path": "packages/@eventual/client" },
     { "path": "packages/@eventual/client/tsconfig.cjs.json" },
+    { "path": "packages/@eventual/client/tsconfig.test.json" },
     { "path": "packages/@eventual/compiler" },
     { "path": "packages/@eventual/compiler/tsconfig.test.json" },
     { "path": "packages/@eventual/core" },

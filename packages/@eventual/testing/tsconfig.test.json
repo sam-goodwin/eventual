@@ -8,5 +8,9 @@
   },
   "include": ["src", "test"],
   "exclude": ["lib", "node_modules"],
-  "references": [{ "path": "../core" }, { "path": "../compiler" }]
+  "references": [
+    { "path": "../core" },
+    { "path": "../compiler" },
+    { "path": "../runtime-core" }
+  ]
 }
