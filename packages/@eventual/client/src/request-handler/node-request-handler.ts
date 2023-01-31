@@ -2,7 +2,6 @@
 import type { ApiRequest } from "@eventual/core";
 import type { ClientRequest, IncomingMessage } from "http";
 import type { RequestOptions } from "https";
-import type { Readable } from "stream";
 import { BeforeRequest, HttpError, RequestHandler } from "./request-handler.js";
 
 /**
@@ -43,7 +42,7 @@ export class NodeRequestHandler extends RequestHandler {
     }
 
     const data = await collectBody(res);
-    return JSON.parse(data);
+    return data ? JSON.parse(data) : undefined;
   }
 }
 
@@ -55,27 +54,15 @@ function writeBody(httpRequest: ClientRequest, body?: any) {
   }
 }
 
-async function collectBody(body: IncomingMessage) {
-  const arr = await collectStream(body);
-  return await toUtf8(arr);
-}
-
-async function toUtf8(arr: Uint8Array): Promise<string> {
-  return new TextDecoder("utf8").decode(arr);
-}
-
-async function collectStream(stream: Readable): Promise<Uint8Array> {
-  let res = new Uint8Array(0);
-  let isDone = false;
-  while (!isDone) {
-    const value = await stream.read();
-    if (value !== null) {
-      const prior = res;
-      res = new Uint8Array(prior.length + value.length);
-      res.set(prior);
-      res.set(value, prior.length);
-    }
-    isDone = value === null;
-  }
-  return res;
+function collectBody(body: IncomingMessage) {
+  let dArray: string[] | undefined = undefined;
+  return new Promise<string | undefined>((resolve) => {
+    body.on("data", (d) => {
+      if (!dArray) {
+        dArray = [];
+      }
+      dArray.push(d);
+    });
+    body.on("close", () => resolve(dArray ? dArray.join("") : undefined));
+  });
 }
