@@ -5,7 +5,7 @@
   "version": "0.0.0",
   "main": "lib/test-service.js",
   "scripts": {
-    "test:runtime": "OUTPUTS_FILE=cdk.out/outputs.json jest --passWithNoTests",
+    "test:runtime": "NODE_OPTIONS=--experimental-vm-modules OUTPUTS_FILE=cdk.out/outputs.json jest --passWithNoTests",
     "test:cli": "./scripts/test-cli",
     "test:create": "./scripts/test-create",
     "deploy:runtime": "OUTPUTS_FILE=cdk.out/outputs.json ./scripts/deploy",
