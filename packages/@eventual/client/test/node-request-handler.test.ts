@@ -7,6 +7,14 @@ import { jest } from "@jest/globals";
 import { ClientRequest, IncomingMessage } from "http";
 import { Stream } from "stream";
 
+import * as node_fetch from "node-fetch";
+
+if (!globalThis.fetch) {
+  globalThis.fetch = node_fetch.default as typeof fetch;
+  globalThis.Headers = node_fetch.Headers as typeof Headers;
+  globalThis.Request = node_fetch.Request as unknown as typeof Request;
+  globalThis.Response = node_fetch.Response as typeof Response;
+}
 import { ApiRequest } from "@eventual/core";
 import { NodeRequestHandler } from "../src/request-handler/node-request-handler.js";
 import { HttpError } from "../src/request-handler/request-handler.js";
