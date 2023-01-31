@@ -1,4 +1,4 @@
-import { api, duration } from "@eventual/core";
+import { api, ApiResponse, duration } from "@eventual/core";
 
 export const getStock = api.get(
   "/stock/:stockId",
@@ -7,6 +7,6 @@ export const getStock = api.get(
     timeout: duration(1, "minute"),
   },
   async () => {
-    return new Response();
+    return new ApiResponse();
   }
 );

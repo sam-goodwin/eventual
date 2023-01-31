@@ -35,17 +35,16 @@ export function createApiHandler({ serviceClient }: ApiHandlerDependencies) {
       try {
         const response = await api.handle(request);
         if (response === undefined) {
-          return new Response("Not Found", {
+          return new ApiResponse("Not Found", {
             status: 404,
           });
         }
         return response;
       } catch (err) {
         console.error(err);
-        return {
+        return new ApiResponse("Internal Server Error", {
           status: 500,
-          body: "Internal Server Error",
-        };
+        });
       }
     });
   };

@@ -8,7 +8,7 @@ import {
   ReceiverEvent,
   ReceiverMultipleAckError,
 } from "@slack/bolt";
-import { ApiRequest, RouteHandler } from "@eventual/core";
+import { ApiRequest, ApiResponse, RouteHandler } from "@eventual/core";
 
 export interface FetchReceiverOptions {
   signingSecret: string;
@@ -62,7 +62,7 @@ export default class FetchReceiver implements Receiver {
     return Promise.resolve(undefined);
   }
 
-  public async handle(request: ApiRequest): Promise<Response> {
+  public async handle(request: ApiRequest): Promise<ApiResponse> {
     this.logger.debug(`Request: ${JSON.stringify(request, null, 2)}`);
 
     const rawBody = await this.getRawBody(request);
@@ -81,7 +81,7 @@ export default class FetchReceiver implements Receiver {
       typeof body.ssl_check !== "undefined" &&
       body.ssl_check != null
     ) {
-      return new Response("", { status: 200 });
+      return new ApiResponse("", { status: 200 });
     }
 
     // request signature verification
@@ -93,7 +93,7 @@ export default class FetchReceiver implements Receiver {
       this.logger.info(
         `Invalid request signature detected (X-Slack-Signature: ${signature}, X-Slack-Request-Timestamp: ${ts})`
       );
-      return new Response("", { status: 401 });
+      return new ApiResponse("", { status: 401 });
     }
 
     // url_verification (Events API)
@@ -104,7 +104,7 @@ export default class FetchReceiver implements Receiver {
       body.type != null &&
       body.type === "url_verification"
     ) {
-      return new Response(JSON.stringify({ challenge: body.challenge }), {
+      return new ApiResponse(JSON.stringify({ challenge: body.challenge }), {
         headers: { "Content-Type": "application/json" },
         status: 200,
       });
@@ -147,11 +147,11 @@ export default class FetchReceiver implements Receiver {
       await this.app?.processEvent(event);
       if (storedResponse !== undefined) {
         if (typeof storedResponse === "string") {
-          return new Response(storedResponse, {
+          return new ApiResponse(storedResponse, {
             status: 200,
           });
         }
-        return new Response(JSON.stringify(storedResponse), {
+        return new ApiResponse(JSON.stringify(storedResponse), {
           headers: { "Content-Type": "application/json" },
           status: 200,
         });
@@ -163,14 +163,14 @@ export default class FetchReceiver implements Receiver {
       this.logger.debug(
         `Error details: ${err}, storedResponse: ${storedResponse}`
       );
-      return new Response("Internal server error", {
+      return new ApiResponse("Internal server error", {
         status: 500,
       });
     }
     this.logger.info(
       `No request handler matched the request: ${new URL(request.url).pathname}`
     );
-    return new Response("", {
+    return new ApiResponse("", {
       status: 404,
     });
   }

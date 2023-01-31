@@ -59,27 +59,62 @@ export type RouteHandler = (
   ...args: any
 ) => ApiResponse | Promise<ApiResponse>;
 
+abstract class BaseApiObject {
+  abstract readonly body: string | Buffer | ReadableStream<Uint8Array> | null;
+
+  async json() {
+    return JSON.parse((await this.text?.()) ?? "");
+  }
+
+  async text(): Promise<string> {
+    if (this.body === undefined) {
+      return "";
+    } else if (typeof this.body === "string") {
+      return this.body;
+    } else if (Buffer.isBuffer(this.body)) {
+      // TODO: is this risky? Should we just fail whenever it's a base64 encoded buffer?
+      // Or ... is this the best way to best-effort parse a buffer as JSON?
+      return this.body.toString("utf-8");
+    } else {
+      return new TextDecoder().decode(await readStream(this.body));
+    }
+  }
+
+  async arrayBuffer(): Promise<ArrayBuffer> {
+    if (this.body === undefined) {
+      return new ArrayBuffer(0);
+    } else if (typeof this.body === "string") {
+      return Buffer.from(this.body, "utf8");
+    } else if (Buffer.isBuffer(this.body)) {
+      return this.body;
+    } else {
+      return readStream(this.body);
+    }
+  }
+}
+
 export interface ApiRequestInit {
   method: string;
   headers?: Record<string, string>;
-  body?: string | Buffer;
+  body?: string | Buffer | null;
   params?: Record<string, string>;
   query?: Record<string, string | string[]>;
 }
 
-export class ApiRequest {
-  url: string;
-  method: string;
-  headers: Record<string, string>;
-  body: string | Buffer | undefined;
-  params?: Record<string, string>;
-  query?: Record<string, string | string[]>;
+export class ApiRequest extends BaseApiObject {
+  readonly url: string;
+  readonly method: string;
+  readonly headers: Record<string, string>;
+  readonly body: string | Buffer | null;
+  readonly params?: Record<string, string>;
+  readonly query?: Record<string, string | string[]>;
 
-  constructor(url: string, private props: ApiRequestInit) {
+  constructor(url: string, props: ApiRequestInit) {
+    super();
     const _url = new URL(url);
     this.method = props.method;
     this.headers = props.headers ?? {};
-    this.body = props.body;
+    this.body = props.body ?? null;
     if (props.query) {
       this.query = props.query;
     } else {
@@ -92,31 +127,61 @@ export class ApiRequest {
     this.params = props.params;
     this.url = _url.href;
   }
+}
 
-  async json() {
-    return JSON.parse(await this.text());
-  }
-
-  async text() {
-    if (this.props.body === undefined) {
-      return "";
-    } else if (typeof this.props.body === "string") {
-      return JSON.parse(this.props.body);
-    } else {
-      // TODO: is this risky? Should we just fail whenever it's a base64 encoded buffer?
-      // Or ... is this the best way to best-effort parse a buffer as JSON?
-      return JSON.parse(this.props.body.toString("utf-8"));
+export class ApiResponse extends BaseApiObject {
+  readonly body: string | Buffer | ReadableStream<Uint8Array> | null;
+  readonly status: number;
+  readonly statusText?: string;
+  readonly headers?: Record<string, string> | Headers;
+  constructor(
+    body?: string | Buffer | ReadableStream<Uint8Array> | null,
+    init?: {
+      status: number;
+      statusText?: string;
+      headers?: Record<string, string> | Headers;
     }
+  ) {
+    super();
+    this.body = body === undefined ? null : body;
+    this.status = init?.status ?? 200;
+    this.statusText = init?.statusText;
+    this.headers = init?.headers;
   }
 }
 
-export interface ApiResponse {
-  status: number;
-  body: string | Buffer | ReadableStream<Uint8Array> | null;
-  headers?: Record<string, string> | Headers;
-  json?(): Promise<any>;
-  text?(): Promise<any>;
-  arrayBuffer?(): Promise<any>;
+async function readStream(
+  stream?: ReadableStream<Uint8Array> | null
+): Promise<Uint8Array> {
+  let chunk: ReadableStreamReadResult<Uint8Array> | undefined;
+  const chunks = [];
+  const reader = stream?.getReader();
+  if (!reader) {
+    return new Uint8Array(0);
+  }
+  while ((chunk = await reader.read()) !== undefined) {
+    if (chunk.value) {
+      chunks.push(chunk.value);
+    }
+    if (chunk.done) {
+      break;
+    }
+  }
+  return concatStream(chunks);
+}
+
+function concatStream(arrays: Uint8Array[]): Uint8Array {
+  let length = 0;
+  arrays.forEach((item) => (length += item.length));
+
+  // Create a new array with total length and merge all source arrays.
+  let mergedArray = new Uint8Array(length);
+  let offset = 0;
+  arrays.forEach((item) => {
+    mergedArray.set(item, offset);
+    offset += item.length;
+  });
+  return mergedArray;
 }
 
 /**
