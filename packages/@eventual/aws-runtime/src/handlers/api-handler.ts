@@ -1,6 +1,6 @@
-import { ApiRequest } from "@eventual/core";
 import "@eventual/entry/injected";
 
+import { ApiRequest } from "@eventual/core";
 import { createApiHandler } from "@eventual/runtime-core";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
 import { Buffer } from "buffer";
@@ -29,27 +29,15 @@ export default async function (
       : event.body
     : undefined;
 
-  const request: ApiRequest = {
-    // TODO: get protocol from header 'x-forwarded-proto'?
-    url: `https://${event.requestContext.domainName}${event.rawPath}?${event.rawQueryString}`,
-    body: requestBody,
-    headers: event.headers as Record<string, string>,
-    method: event.requestContext.http.method,
-    async json() {
-      return JSON.parse(await this.text());
-    },
-    async text() {
-      if (requestBody === undefined) {
-        return "";
-      } else if (typeof requestBody === "string") {
-        return JSON.parse(requestBody);
-      } else {
-        // TODO: is this risky? Should we just fail whenever it's a base64 encoded buffer?
-        // Or ... is this the best way to best-effort parse a buffer as JSON?
-        return JSON.parse(requestBody.toString("utf-8"));
-      }
-    },
-  };
+  const request = new ApiRequest(
+    `https://${event.requestContext.domainName}${event.rawPath}?${event.rawQueryString}`,
+    {
+      // TODO: get protocol from header 'x-forwarded-proto'?
+      body: requestBody,
+      headers: event.headers as Record<string, string>,
+      method: event.requestContext.http.method,
+    }
+  );
 
   const response = await processRequest(request);
   let headers: Record<string, string>;
