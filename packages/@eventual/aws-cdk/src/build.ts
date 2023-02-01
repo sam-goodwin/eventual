@@ -3,7 +3,7 @@ import { HttpMethod, ServiceType } from "@eventual/core";
 import { Code } from "aws-cdk-lib/aws-lambda";
 import { execSync } from "child_process";
 import fs from "fs";
-import path from "path";
+import path, { dirname } from "path";
 import { ApiFunction, BuildManifest } from "./build-manifest";
 
 export interface BuildOutput extends BuildManifest {}
@@ -49,6 +49,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
   const serviceSpec = await infer(request.entry);
 
   const specPath = path.join(outDir, "spec.json");
+  await fs.promises.mkdir(dirname(specPath), { recursive: true });
   // just data extracted from the service, used by the handlers
   // separate from the manifest to avoid circular dependency with the bundles
   // and reduce size of the data injected into the bundles
