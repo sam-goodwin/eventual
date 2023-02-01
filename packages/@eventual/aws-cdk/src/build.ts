@@ -198,86 +198,77 @@ export async function buildService(request: BuildAWSRuntimeProps) {
             entry: runtimeHandlersEntrypoint("orchestrator"),
             eventualTransform: true,
             serviceType: ServiceType.OrchestratorWorker,
-            injectedEntry: request.entry,
           },
           {
             name: ServiceType.ActivityWorker,
             entry: runtimeHandlersEntrypoint("activity-worker"),
             serviceType: ServiceType.ActivityWorker,
-            injectedEntry: request.entry,
-            injectedServiceSpec: specPath,
           },
           {
             name: ServiceType.ApiHandler,
             entry: runtimeHandlersEntrypoint("api-handler"),
             serviceType: ServiceType.ApiHandler,
-            injectedEntry: request.entry,
-            injectedServiceSpec: specPath,
           },
           {
             name: ServiceType.EventHandler,
             entry: runtimeHandlersEntrypoint("event-handler"),
             serviceType: ServiceType.EventHandler,
-            injectedEntry: request.entry,
-            injectedServiceSpec: specPath,
           },
           {
             name: "SchedulerForwarder",
             entry: runtimeHandlersEntrypoint("schedule-forwarder"),
-            injectedEntry: request.entry,
           },
           {
             name: "SchedulerHandler",
             entry: runtimeHandlersEntrypoint("timer-handler"),
-            injectedEntry: request.entry,
           },
           {
             name: "list-workflows",
             entry: runtimeHandlersEntrypoint("api/list-workflows"),
-            injectedEntry: request.entry,
           },
           {
             name: "start-execution",
             entry: runtimeHandlersEntrypoint("api/executions/new"),
-            injectedEntry: request.entry,
           },
           {
             name: "list-executions",
             entry: runtimeHandlersEntrypoint("api/executions/list"),
-            injectedEntry: request.entry,
           },
           {
             name: "get-execution",
             entry: runtimeHandlersEntrypoint("api/executions/get"),
-            injectedEntry: request.entry,
           },
           {
             name: "executions-events",
             entry: runtimeHandlersEntrypoint("api/executions/history"),
-            injectedEntry: request.entry,
           },
           {
             name: "send-signal",
             entry: runtimeHandlersEntrypoint("api/executions/signals/send"),
-            injectedEntry: request.entry,
           },
           {
             name: "executions-history",
             entry: runtimeHandlersEntrypoint("api/executions/workflow-history"),
-            injectedEntry: request.entry,
           },
           {
             name: "publish-events",
             entry: runtimeHandlersEntrypoint("api/publish-events"),
-            injectedEntry: request.entry,
           },
           {
             name: "update-activity",
             entry: runtimeHandlersEntrypoint("api/update-activity"),
-            injectedEntry: request.entry,
           },
-        ] satisfies Omit<BuildSource, "outDir">[]
-      ).map(buildFunction)
+        ] satisfies Omit<
+          BuildSource,
+          "outDir" | "injectedEntry" | "injectedServiceSpec"
+        >[]
+      )
+        .map((s) => ({
+          ...s,
+          injectedEntry: request.entry,
+          injectedServiceSpec: specPath,
+        }))
+        .map(buildFunction)
     );
   }
 
