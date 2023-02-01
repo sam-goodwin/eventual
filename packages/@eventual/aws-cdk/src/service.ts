@@ -387,6 +387,9 @@ export class Service extends Construct implements IGrantable, IService {
     this.activities.worker.addEnvironment(key, value);
     this.api.handlers.forEach((handler) => handler.addEnvironment(key, value));
     this.events.defaultHandler.addEnvironment(key, value);
+    this.events.handlers.forEach((handler) =>
+      handler.addEnvironment(key, value)
+    );
     this.workflows.orchestrator.addEnvironment(key, value);
   }
 
