@@ -23,11 +23,21 @@ export class DebugDashboard extends Construct {
     const logSummaryBucketDuration = "10m";
 
     const allLogGroups = [
+      // execution log group
       service.logging.logGroup.logGroupName,
+      // workflow orchestrator
       service.workflows.orchestrator.logGroup.logGroupName,
+      // activities worker
       service.activities.worker.logGroup.logGroupName,
+      // user APIS
       ...service.api.handlers.map((api) => api.logGroup.logGroupName),
+      // internal APIs
+      ...Object.values(service.api.internalRoutes).map(
+        (api) => api.logGroup.logGroupName
+      ),
+      // event handler
       service.events.handler.logGroup.logGroupName,
+      // scheduler/timer handler and forwarder
       service.scheduler.handler.logGroup.logGroupName,
       service.scheduler.forwarder.logGroup.logGroupName,
     ];
@@ -56,7 +66,7 @@ export class DebugDashboard extends Construct {
         ],
         [
           new LogQueryWidget({
-            title: "All Errors",
+            title: "All Lambda Errors",
             logGroupNames: allLogGroups,
             queryLines: [
               `fields @timestamp, @log, @message`,
