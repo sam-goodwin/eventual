@@ -1,4 +1,5 @@
 import type { Readable } from "node:stream";
+import { HeaderValues, ParamValues } from "./api.js";
 
 abstract class BaseApiObject {
   abstract readonly body: string | Buffer | Readable | null;
@@ -126,3 +127,41 @@ interface Headers {
     thisArg?: any
   ): void;
 }
+
+export type TypedApiRequest<
+  Input,
+  Headers extends HeaderValues | undefined,
+  Params extends ParamValues | undefined
+> = (undefined extends Input
+  ? {}
+  : {
+      body: Input;
+    }) &
+  (Headers extends undefined
+    ? {
+        headers?: Record<string, string>;
+      }
+    : {
+        headers: Headers;
+      }) &
+  (Params extends undefined
+    ? {
+        params?: Record<string, string | string[]>;
+      }
+    : {
+        params: Params;
+      });
+
+export type TypedApiResponse<
+  Output,
+  Headers extends HeaderValues | undefined
+> = {
+  status: number;
+  body: Output;
+} & (Headers extends undefined
+  ? {
+      headers?: Record<string, string>;
+    }
+  : {
+      headers: Headers;
+    });

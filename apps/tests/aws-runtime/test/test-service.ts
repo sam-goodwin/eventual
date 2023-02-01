@@ -428,10 +428,17 @@ export const allCommands = workflow("allCommands", async (_, context) => {
   return { signalCount: n };
 });
 
-export const userApi = api.get(
-  "/hello",
+export const getUser = api.get(
+  "/hello/:id",
   {
     memorySize: 512,
+    params: {
+      id: z.string(),
+    },
+    headers: {
+      "Content-Type": z.string().optional(),
+    },
+    output: z.string(),
   },
   async () => {
     return new ApiResponse("hello world");
