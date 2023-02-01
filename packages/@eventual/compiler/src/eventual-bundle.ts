@@ -99,8 +99,8 @@ export async function build({
     packages: allPackagesExternal ? "external" : undefined,
     platform: "node",
     format: "esm",
-    // Target for node 16
-    target: "es2021",
+    // Target for node 18
+    target: "es2022",
     metafile,
     bundle: true,
     entryPoints: [path.resolve(entry)],
