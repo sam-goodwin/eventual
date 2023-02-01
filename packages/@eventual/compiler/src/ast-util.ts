@@ -46,6 +46,25 @@ export function isApiCall(call: CallExpression): boolean {
   }
   return false;
 }
+
+/**
+ * A heuristic for identifying a {@link CallExpression} that is a call to an API handler.
+ *
+ * 1. must be a call to a MemberExpression matching to `api.get` or
+ *    `ev.api.get` where `get` is any of the allowed {@link apiCalls}.
+ * 2. Must have between 2 and 3 arguments.
+ */
+export function isOnEventCall(call: CallExpression): boolean {
+  const c = call.callee;
+  if (c.type === "MemberExpression") {
+    if (isId(c.property, "onEvent")) {
+      // eventType.onEvent(async () => { })
+      return call.arguments.length === 1 || call.arguments.length === 2;
+    }
+  }
+  return false;
+}
+
 /**
  * Checks whether a {@link node} is an {@link Identifier} with a value of {@link Value}.
  */

@@ -1,9 +1,9 @@
-import { Event, EventHandler, EventPayloadType } from "@eventual/core";
+import { Event, EventHandlerFunction, EventPayloadType } from "@eventual/core";
 import { GlobalEventHandlerProvider } from "@eventual/runtime-core";
 
 export class TestEventHandlerProvider extends GlobalEventHandlerProvider {
   private defaultHandlersDisabled = false;
-  private testHandlers: Record<string, EventHandler<any>[]> = {};
+  private testHandlers: Record<string, EventHandlerFunction<any>[]> = {};
 
   /**
    * Disables all subscribes made on the service outside of the test environment.
@@ -25,7 +25,7 @@ export class TestEventHandlerProvider extends GlobalEventHandlerProvider {
 
   public subscribeEvent<E extends Event>(
     event: E,
-    handler: EventHandler<EventPayloadType<E>>
+    handler: EventHandlerFunction<EventPayloadType<E>>
   ) {
     if (!(event.name in this.testHandlers)) {
       this.testHandlers[event.name] = [];
@@ -35,7 +35,7 @@ export class TestEventHandlerProvider extends GlobalEventHandlerProvider {
 
   public override getEventHandlersForEvent(
     eventId: string
-  ): EventHandler<any>[] {
+  ): EventHandlerFunction<any>[] {
     const defaultHandlers = this.defaultHandlersDisabled
       ? []
       : super.getEventHandlersForEvent(eventId);

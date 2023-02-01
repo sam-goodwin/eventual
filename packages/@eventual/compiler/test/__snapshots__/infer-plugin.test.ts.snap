@@ -657,16 +657,6 @@ var api = new Proxy({}, {
     }
   }
 });
-var HttpMethod;
-(function(HttpMethod2) {
-  HttpMethod2["POST"] = "POST";
-  HttpMethod2["GET"] = "GET";
-  HttpMethod2["HEAD"] = "HEAD";
-  HttpMethod2["OPTIONS"] = "OPTIONS";
-  HttpMethod2["PUT"] = "PUT";
-  HttpMethod2["PATCH"] = "PATCH";
-  HttpMethod2["DELETE"] = "DELETE";
-})(HttpMethod || (HttpMethod = {}));
 
 // ../core/lib/esm/command.js
 var CommandType;
@@ -687,6 +677,18 @@ var ExecutionStatus;
   ExecutionStatus2["FAILED"] = "FAILED";
 })(ExecutionStatus || (ExecutionStatus = {}));
 var ExecutionStatuses = new Set(Object.values(ExecutionStatus));
+
+// ../core/lib/esm/http-method.js
+var HttpMethod;
+(function(HttpMethod2) {
+  HttpMethod2["POST"] = "POST";
+  HttpMethod2["GET"] = "GET";
+  HttpMethod2["HEAD"] = "HEAD";
+  HttpMethod2["OPTIONS"] = "OPTIONS";
+  HttpMethod2["PUT"] = "PUT";
+  HttpMethod2["PATCH"] = "PATCH";
+  HttpMethod2["DELETE"] = "DELETE";
+})(HttpMethod || (HttpMethod = {}));
 
 // ../core/lib/esm/logging.js
 var LogLevel;

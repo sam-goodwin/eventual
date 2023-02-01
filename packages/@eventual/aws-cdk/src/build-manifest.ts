@@ -13,7 +13,14 @@ export interface BuildManifest {
     };
   };
   events: {
+    /**
+     * The catch-all function for any event handlers that cannot be bundled individually.
+     */
     default: EventFunction;
+    /**
+     * Individually bundled {@link EventFunction}s containing a single `onEvent` event handler.
+     */
+    handlers: ExportedEventHandlerFunction[];
   };
   api: {
     default: BundledFunction;
@@ -49,8 +56,14 @@ export interface BundledFunction {
   timeout?: DurationSchedule;
 }
 
+export interface ExportedEventHandlerFunction extends EventFunction {
+  exportName: string;
+}
+
 export interface EventFunction extends BundledFunction {
+  exportName?: string;
   subscriptions: Subscription[];
+  retryAttempts?: number;
 }
 
 export interface ApiFunction extends BundledFunction {

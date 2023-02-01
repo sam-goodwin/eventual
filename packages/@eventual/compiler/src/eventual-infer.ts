@@ -4,7 +4,13 @@
  *
  * @see AppSpec
  */
-import { AppSpec, eventSubscriptions, routes, RouteSpec } from "@eventual/core";
+import {
+  AppSpec,
+  eventHandlers,
+  EventHandlerSpec,
+  routes,
+  RouteSpec,
+} from "@eventual/core";
 import crypto from "crypto";
 import esbuild from "esbuild";
 import fs from "fs/promises";
@@ -22,7 +28,7 @@ import {
 
 import { Visitor } from "@swc/core/Visitor.js";
 import { printModule } from "./print-module.js";
-import { getSpan, isApiCall } from "./ast-util.js";
+import { getSpan, isApiCall, isOnEventCall } from "./ast-util.js";
 
 export async function infer(scriptName = process.argv[2]): Promise<AppSpec> {
   if (scriptName === undefined) {
@@ -49,7 +55,22 @@ export async function infer(scriptName = process.argv[2]): Promise<AppSpec> {
   await import(path.resolve(scriptName));
 
   const appSpec: AppSpec = {
-    subscriptions: eventSubscriptions().flatMap((e) => e.subscriptions),
+    events: {
+      subscriptions: eventHandlers().flatMap((e) =>
+        e.sourceLocation ? [] : e.subscriptions
+      ),
+      handlers: eventHandlers().flatMap((e) =>
+        e.sourceLocation
+          ? [
+              {
+                runtimeProps: e.runtimeProps,
+                sourceLocation: e.sourceLocation,
+                subscriptions: e.subscriptions,
+              } satisfies EventHandlerSpec,
+            ]
+          : []
+      ),
+    },
     api: {
       routes: routes.map(
         (route) =>
@@ -142,7 +163,7 @@ export class InferVisitor extends Visitor {
   }
 
   visitCallExpression(call: CallExpression): Expression {
-    if (this.exportName && isApiCall(call)) {
+    if (this.exportName && (isApiCall(call) || isOnEventCall(call))) {
       this.didMutate = true;
 
       return {

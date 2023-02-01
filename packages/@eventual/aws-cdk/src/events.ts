@@ -1,5 +1,5 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
-import { ServiceType } from "@eventual/core";
+import { ServiceType, Subscription } from "@eventual/core";
 import { EventBus, IEventBus, Rule } from "aws-cdk-lib/aws-events";
 import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";
 import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
@@ -21,7 +21,7 @@ export interface EventsProps {
    */
   readonly serviceName: string;
   /**
-   * Optional environment variables to add to the {@link Events.handler}.
+   * Optional environment variables to add to the {@link Events.defaultHandler}.
    *
    * @default - no extra environment variables
    */
@@ -36,9 +36,19 @@ export class Events extends Construct implements IGrantable {
    */
   public readonly bus: IEventBus;
   /**
-   * The Lambda {@link Function} that handles events subscribed to in this service's {@link eventBus}.
+   * The default Lambda {@link Function} that handles events subscribed to in this service's {@link eventBus}.
+   *
+   * This Function only contains event handlers that were not exported by the service -- exported event
+   * handlers are individually bundled and a separate {@link Function} is created. These are available
+   * in {@link handlers}.
    */
-  public readonly handler: Function;
+  public readonly defaultHandler: Function;
+  /**
+   * Individual Event Handler Lambda Functions handling only events they subscribe to. These handlers
+   * are individually bundled and tree-shaken for optimal performance and may contain their own custom
+   * memory and timeout configuration.
+   */
+  public readonly handlers: Function[];
   /**
    * A SQS Queue to collect events that failed to be handled.
    */
@@ -59,36 +69,69 @@ export class Events extends Construct implements IGrantable {
 
     this.deadLetterQueue = new Queue(this, "DeadLetterQueue");
 
-    this.handler = new ServiceFunction(this, "Handler", {
-      code: props.build.getCode(props.build.events.default.file),
-      functionName: `${props.serviceName}-event-handler`,
+    const functionProps = {
       serviceType: ServiceType.EventHandler,
       deadLetterQueueEnabled: true,
       deadLetterQueue: this.deadLetterQueue,
       retryAttempts: 2,
       environment: props.environment,
-    });
-    this.grantPrincipal = this.handler.grantPrincipal;
-    this.configurePublish(this.handler);
+    };
 
-    const subscriptions = props.build.events.default.subscriptions;
+    this.defaultHandler = new ServiceFunction(this, "Handler", {
+      code: props.build.getCode(props.build.events.default.file),
+      functionName: `${props.serviceName}-event-handler`,
+      ...functionProps,
+    });
+    this.grantPrincipal = this.defaultHandler.grantPrincipal;
+    this.configurePublish(this.defaultHandler);
+
+    // create a Construct to safely nest bundled functions in their own namespace
+    const handlers = new Construct(this, "BundledHandlers");
+
+    this.handlers = props.build.events.handlers.map((handler) => {
+      const handlerFunction = new ServiceFunction(
+        handlers,
+        handler.exportName,
+        {
+          code: props.build.getCode(props.build.events.default.file),
+          functionName: `${props.serviceName}-event-${handler.exportName}`,
+          ...functionProps,
+          memorySize: handler.memorySize,
+          retryAttempts: handler.retryAttempts ?? functionProps.retryAttempts,
+        }
+      );
+
+      this.createRule(handlerFunction, handler.subscriptions);
+
+      return handlerFunction;
+    });
+
+    this.createRule(
+      this.defaultHandler,
+      props.build.events.default.subscriptions
+    );
+
+    this.configureEventHandler();
+  }
+
+  private createRule(func: Function, subscriptions: Subscription[]) {
     if (subscriptions.length > 0) {
       // configure a Rule to route all subscribed events to the eventHandler
-      new Rule(this, "Rules", {
+      new Rule(func, "Rules", {
         eventBus: this.bus,
         eventPattern: {
-          source: [props.serviceName],
+          // only events that originate
+          // TODO: this seems like it would break service-to-service?
+          source: [this.serviceName],
           detailType: Array.from(new Set(subscriptions.map((sub) => sub.name))),
         },
         targets: [
-          new LambdaFunction(this.handler, {
+          new LambdaFunction(this.defaultHandler, {
             deadLetterQueue: this.deadLetterQueue,
           }),
         ],
       });
     }
-
-    this.configureEventHandler();
   }
 
   public configurePublish(func: Function) {
@@ -105,9 +148,9 @@ export class Events extends Construct implements IGrantable {
 
   private configureEventHandler() {
     // allows the access to all of the operations on the injected service client
-    this.props.service.configureForServiceClient(this.handler);
+    this.props.service.configureForServiceClient(this.defaultHandler);
     // allow http access to the service client
-    this.props.api.configureInvokeHttpServiceApi(this.handler);
+    this.props.api.configureInvokeHttpServiceApi(this.defaultHandler);
   }
 
   private readonly ENV_MAPPINGS = {
