@@ -10,6 +10,11 @@ export interface WorkflowSpecProvider {
   getWorkflowNames(): string[];
 }
 
+export interface WorkflowSpecProvider {
+  workflowExists(workflowName: string): boolean;
+  getWorkflowNames(): string[];
+}
+
 /**
  * Returns workflows from the global {@link workflows()}.
  *

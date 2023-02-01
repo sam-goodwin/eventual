@@ -6,6 +6,10 @@ export interface WorkflowSpec {
   name: string;
 }
 
+export interface WorkflowSpec {
+  name: string;
+}
+
 /**
  * Specification for an Eventual application
  */
