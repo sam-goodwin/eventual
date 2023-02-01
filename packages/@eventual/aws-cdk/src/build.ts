@@ -48,6 +48,12 @@ export async function buildService(request: BuildAWSRuntimeProps) {
   const outDir = request.outDir;
   const serviceSpec = await infer(request.entry);
 
+  const specPath = path.join(outDir, "spec.json");
+  // just data extracted from the service, used by the handlers
+  // separate from the manifest to avoid circular dependency with the bundles
+  // and reduce size of the data injected into the bundles
+  await fs.promises.writeFile(specPath, JSON.stringify(serviceSpec));
+
   const [
     individualApis,
     [
@@ -67,7 +73,10 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       publishEvents,
       updateActivity,
     ],
-  ] = await Promise.all([bundleApis(), bundleFunctions()] as const);
+  ] = await Promise.all([
+    bundleApis(specPath),
+    bundleFunctions(specPath),
+  ] as const);
 
   const manifest: BuildManifest = {
     orchestrator: {
@@ -141,19 +150,12 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     },
   };
 
-  const specPath = path.join(outDir, "spec.json");
-  await Promise.all([
-    // the full manifest
-    fs.promises.writeFile(
-      path.join(outDir, "manifest.json"),
-      JSON.stringify(manifest, null, 2)
-    ),
-    // just data extracted from the service, used by the handlers
-    // separate from the manifest to avoid injecting local file information into the bundles.
-    fs.promises.writeFile(specPath, JSON.stringify(serviceSpec)),
-  ]);
+  await fs.promises.writeFile(
+    path.join(outDir, "manifest.json"),
+    JSON.stringify(manifest, null, 2)
+  );
 
-  async function bundleApis() {
+  async function bundleApis(specPath: string) {
     const routes = await Promise.all(
       serviceSpec.api.routes.map(async (route) => {
         if (route.sourceLocation?.fileName) {
@@ -186,7 +188,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     );
   }
 
-  function bundleFunctions() {
+  function bundleFunctions(specPath: string) {
     return Promise.all(
       (
         [
