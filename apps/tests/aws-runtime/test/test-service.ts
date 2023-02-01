@@ -1,3 +1,4 @@
+import z from "zod";
 import {
   activity,
   condition,
@@ -312,11 +313,13 @@ export const eventDrivenWorkflow = workflow(
   }
 );
 
-const signalEvent = event<{
-  executionId: string;
-  signalId: string;
-  proxy?: true;
-}>("SignalEvent");
+const SignalEventPayload = z.object({
+  executionId: z.string(),
+  signalId: z.string(),
+  proxy: z.literal(true).optional(),
+});
+
+const signalEvent = event("SignalEvent", SignalEventPayload);
 
 export const onSignalEvent = signalEvent.onEvent(
   async ({ executionId, signalId, proxy }) => {
