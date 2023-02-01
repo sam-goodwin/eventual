@@ -91,10 +91,8 @@ export async function build({
       ...(eventualTransform ? [eventualESPlugin] : []),
     ],
     conditions: ["module", "import", "require"],
-    // supported with NODE_18.x runtime
-    // TODO: make this configurable.
-    external: [...(external ?? []), "@aws-sdk", "@aws-crypto"],
-    // external,
+    // external: ["@aws-sdk"],
+    external,
     // does not include any node modules packages in the bundle
     packages: allPackagesExternal ? "external" : undefined,
     platform: "node",
