@@ -8,6 +8,7 @@ import {
   AppSpec,
   eventHandlers,
   EventHandlerSpec,
+  events,
   routes,
   RouteSpec,
 } from "@eventual/core";
@@ -29,6 +30,7 @@ import {
 import { Visitor } from "@swc/core/Visitor.js";
 import { printModule } from "./print-module.js";
 import { getSpan, isApiCall, isOnEventCall } from "./ast-util.js";
+import { generateSchema } from "@anatine/zod-openapi";
 
 export async function infer(scriptName = process.argv[2]): Promise<AppSpec> {
   if (scriptName === undefined) {
@@ -56,6 +58,15 @@ export async function infer(scriptName = process.argv[2]): Promise<AppSpec> {
 
   const appSpec: AppSpec = {
     events: {
+      schemas: Object.fromEntries(
+        Array.from(events().values()).map(
+          (event) =>
+            [
+              event.name,
+              event.schema ? generateSchema(event.schema) : {},
+            ] as const
+        )
+      ),
       subscriptions: eventHandlers().flatMap((e) =>
         e.sourceLocation ? [] : e.subscriptions
       ),

@@ -3,6 +3,7 @@ import type {
   HttpMethod,
   Subscription,
 } from "@eventual/core";
+import type { SchemaObject } from "openapi3-ts";
 
 export interface BuildManifest {
   orchestrator: BundledFunction;
@@ -13,6 +14,12 @@ export interface BuildManifest {
     };
   };
   events: {
+    /**
+     * Open API 3 schema definitions for all known Events in this Service.
+     */
+    schemas: {
+      [eventName: string]: SchemaObject;
+    };
     /**
      * The catch-all function for any event handlers that cannot be bundled individually.
      */

@@ -1,6 +1,7 @@
 import type { EventHandler, Subscription } from "./event.js";
 import type { HttpMethod } from "./http-method.js";
 import type { DurationSchedule } from "./schedule.js";
+import type { SchemaObject } from "openapi3-ts";
 
 /**
  * Specification for an Eventual application
@@ -11,6 +12,10 @@ export interface AppSpec {
 }
 
 export interface EventSpec {
+  /**
+   * Schemas of all events within this Service.
+   */
+  schemas: Schemas;
   /**
    * Catch-all default subscriptions and route to the default Event Handler monolith.
    */
@@ -53,4 +58,8 @@ export function isSourceLocation(a: any) {
 export interface SourceLocation {
   fileName: string;
   exportName: string;
+}
+
+export interface Schemas {
+  [schemaName: string]: SchemaObject;
 }

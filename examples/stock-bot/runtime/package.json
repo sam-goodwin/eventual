@@ -9,7 +9,9 @@
     "eventual": "eventual"
   },
   "dependencies": {
-    "@eventual/core": "workspace:^"
+    "@eventual/core": "workspace:^",
+    "zod": "^3",
+    "zod-class": "^0.0.2"
   },
   "devDependencies": {
     "@eventual/cli": "workspace:^",

@@ -33,7 +33,8 @@
   "dependencies": {
     "@eventual/core": "workspace:^",
     "@swc/core": "^1.2.245",
-    "esbuild-plugin-alias-path": "^2.0.2"
+    "esbuild-plugin-alias-path": "^2.0.2",
+    "@anatine/zod-openapi": "^1.12.0"
   },
   "devDependencies": {
     "@types/jest": "^29",

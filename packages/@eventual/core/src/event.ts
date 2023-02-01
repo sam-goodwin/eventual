@@ -1,3 +1,4 @@
+import z from "zod";
 import { isSourceLocation, SourceLocation } from "./app-spec.js";
 import { createPublishEventsCall } from "./calls/send-events-call.js";
 import { isOrchestratorWorker } from "./flags.js";
@@ -57,6 +58,10 @@ export interface Event<E extends EventPayload = EventPayload> {
    * The Event's globally unique name.
    */
   readonly name: string;
+  /**
+   * An optional Schema of the Event.
+   */
+  schema?: z.Schema<E>;
   /**
    * Subscribe to this event. The {@link handler} will be invoked every
    * time an event with this name is published within the service boundary.
@@ -173,14 +178,19 @@ export type EventHandlerFunction<E extends EventPayload> = (
  * ```
  *
  * @param name a unique name that identifies this event type within the Service.
+ * @param schema an optional zod schema describing the allowed data.
  * @returns an {@link Event}
  */
-export function event<E extends EventPayload>(name: string): Event<E> {
+export function event<E extends EventPayload>(
+  name: string,
+  schema?: z.Schema<E>
+): Event<E> {
   if (events().has(name)) {
     throw new Error(`event with name '${name}' already exists`);
   }
   const event: Event<E> = {
     name,
+    schema,
     onEvent(...args: any[]) {
       // we have an implicit contract where the SourceLocation may be passed in as the first argument
       const [sourceLocation, eventHandlerProps, handler] =
@@ -219,7 +229,18 @@ export function event<E extends EventPayload>(name: string): Event<E> {
 
       return eventHandler;
     },
-    publishEvents(...events) {
+    async publishEvents(...events) {
+      if (schema) {
+        events.forEach((event, i) => {
+          const result = schema.safeParse(event);
+          if (!result.success) {
+            throw new Error(
+              `event at position ${i} does not match the provided schema: ${result.error.message}`
+            );
+          }
+        });
+      }
+
       const envelopes = events.map((event) => ({
         name,
         event,

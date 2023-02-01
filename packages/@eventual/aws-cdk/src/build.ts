@@ -82,6 +82,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       },
     },
     events: {
+      schemas: appSpec.events.schemas,
       default: {
         file: eventHandler!,
         subscriptions: appSpec.events.subscriptions,

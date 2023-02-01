@@ -1,11 +1,13 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
-import { ServiceType, Subscription } from "@eventual/core";
+import { Schemas, ServiceType, Subscription } from "@eventual/core";
+import { aws_eventschemas, Lazy, Resource } from "aws-cdk-lib";
 import { EventBus, IEventBus, Rule } from "aws-cdk-lib/aws-events";
 import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";
 import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
+import type { OpenAPIObject, SchemaObject } from "openapi3-ts";
 import type { BuildOutput } from "./build";
 import { IService } from "./service";
 import { IServiceApi } from "./service-api";
@@ -36,6 +38,10 @@ export class Events extends Construct implements IGrantable {
    */
   public readonly bus: IEventBus;
   /**
+   * The Event Bridge Schema Registry for all Events in this Service.
+   */
+  public readonly registry: Registry;
+  /**
    * The default Lambda {@link Function} that handles events subscribed to in this service's {@link eventBus}.
    *
    * This Function only contains event handlers that were not exported by the service -- exported event
@@ -65,6 +71,12 @@ export class Events extends Construct implements IGrantable {
 
     this.bus = new EventBus(this, "Bus", {
       eventBusName: props.serviceName,
+    });
+
+    this.registry = new Registry(this, "Registry", {
+      registryName: props.serviceName,
+      description: `Event Schemas for the ${props.serviceName} service`,
+      schemas: props.build.events.schemas,
     });
 
     this.deadLetterQueue = new Queue(this, "DeadLetterQueue");
@@ -160,5 +172,97 @@ export class Events extends Construct implements IGrantable {
 
   private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {
     envs.forEach((env) => func.addEnvironment(env, this.ENV_MAPPINGS[env]()));
+  }
+}
+
+export interface RegistryProps {
+  registryName?: string;
+  description?: string;
+  schemas?: Schemas;
+}
+
+export class Registry extends Resource {
+  /**
+   * The underlying CloudFormation Schema Registry.
+   */
+  public readonly resource: aws_eventschemas.CfnRegistry;
+  /**
+   * ARN of the Schema Registry.
+   */
+  public readonly registryArn: string;
+  /**
+   * Name of the Schema Registry.
+   */
+  public readonly registryName: string;
+
+  // internal Construct for namespacing Schemas.
+  public readonly schema: Schema;
+
+  constructor(scope: Construct, id: string, props: RegistryProps) {
+    super(scope, id);
+
+    this.resource = new aws_eventschemas.CfnRegistry(this, "Resource", {
+      registryName: props.registryName,
+      description: props.description,
+    });
+
+    this.registryArn = this.resource.attrRegistryArn;
+    this.registryName = this.resource.attrRegistryName;
+
+    this.schema = new Schema(this, "Schema", {
+      schemaRegistry: this,
+      schemaName: props.registryName,
+      schemas: props.schemas,
+    });
+  }
+}
+
+export interface SchemaProps {
+  schemaRegistry: Registry;
+  schemaName?: string;
+  schemas?: Schemas;
+}
+
+export class Schema extends Resource {
+  /**
+   * The underlying Schema CloudFormation Resource.
+   */
+  public readonly resource: aws_eventschemas.CfnSchema;
+  /**
+   * Schemas inside this Schema registration.
+   */
+  public readonly schemas: Schemas;
+
+  constructor(scope: Construct, id: string, props: SchemaProps) {
+    super(scope, id);
+
+    this.schemas = props.schemas ?? {};
+
+    this.resource = new aws_eventschemas.CfnSchema(this, "Resource", {
+      registryName: props.schemaRegistry.registryName,
+      schemaName: props.schemaName,
+      type: "OpenApi3",
+      content: Lazy.string({
+        produce: () =>
+          JSON.stringify({
+            openapi: "3.0.0",
+            info: {
+              version: "1.0.0",
+              title: props.schemaName ?? props.schemaRegistry.registryName,
+            },
+            components: {
+              schemas: props.schemas,
+            },
+            paths: {},
+          } satisfies OpenAPIObject),
+      }),
+    });
+  }
+
+  public addSchema(schemaName: string, schema: SchemaObject): void {
+    if (schemaName in this.schemas) {
+      throw new Error(`schema ${schemaName} already exists in this Registry`);
+    }
+    this.schemas[schemaName] = schema;
   }
 }
