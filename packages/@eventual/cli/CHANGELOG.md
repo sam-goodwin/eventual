@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.14.0 (2023-02-01)
+
+### Features
+
+- infer memorySize, timeout, fileName and exportName from api route code ([#254](https://github.com/functionless/eventual/issues/254)) ([2d8297a](https://github.com/functionless/eventual/commit/2d8297a8f39d6244e2d2468e9ef44a64bcefb9d1))
+
 ## 0.13.2 (2023-01-31)
 
 ### Bug Fixes
