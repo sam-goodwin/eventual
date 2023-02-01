@@ -1,5 +1,5 @@
 import { ExecutionRecord } from "@eventual/aws-runtime";
-import { AppSpec, Event, ServiceType } from "@eventual/core";
+import { Event } from "@eventual/core";
 import { MetricsCommon, OrchestratorMetrics } from "@eventual/runtime-core";
 import {
   Arn,
@@ -35,13 +35,12 @@ import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
 import path from "path";
 import { Activities, IActivities } from "./activities";
-import { bundleSourcesSync, inferSync } from "./compile-client";
+import { BuildOutput, buildServiceSync } from "./build";
 import { Events } from "./events";
 import { Logging, LoggingProps } from "./logging";
 import { lazyInterface } from "./proxy-construct";
 import { IScheduler, Scheduler } from "./scheduler";
 import { Api, IServiceApi } from "./service-api";
-import { outDir } from "./utils";
 import { IWorkflows, Workflows, WorkflowsProps } from "./workflows";
 
 export interface IService {
@@ -203,7 +202,7 @@ export class Service extends Construct implements IGrantable, IService {
   /**
    * The {@link AppSec} inferred from the application code.
    */
-  public readonly appSpec: AppSpec;
+  public readonly build: BuildOutput;
   /**
    * This {@link Service}'s API Gateway.
    */
@@ -248,41 +247,10 @@ export class Service extends Construct implements IGrantable, IService {
 
     this.serviceName = props.name ?? Names.uniqueResourceName(this, {});
 
-    this.appSpec = inferSync(props.entry);
-
-    bundleSourcesSync(
-      outDir(this),
-      props.entry,
-      {
-        name: ServiceType.OrchestratorWorker,
-        entry: runtimeHandlersEntrypoint("orchestrator"),
-        eventualTransform: true,
-        serviceType: ServiceType.OrchestratorWorker,
-      },
-      {
-        name: ServiceType.ActivityWorker,
-        entry: runtimeHandlersEntrypoint("activity-worker"),
-        serviceType: ServiceType.ActivityWorker,
-      },
-      {
-        name: ServiceType.ApiHandler,
-        entry: runtimeHandlersEntrypoint("api-handler"),
-        serviceType: ServiceType.ApiHandler,
-      },
-      {
-        name: ServiceType.EventHandler,
-        entry: runtimeHandlersEntrypoint("event-handler"),
-        serviceType: ServiceType.EventHandler,
-      },
-      {
-        name: "SchedulerForwarder",
-        entry: runtimeHandlersEntrypoint("schedule-forwarder"),
-      },
-      {
-        name: "SchedulerHandler",
-        entry: runtimeHandlersEntrypoint("timer-handler"),
-      }
-    );
+    this.build = buildServiceSync({
+      entry: props.entry,
+      outDir: path.join(".eventual", this.node.addr),
+    });
 
     // Table - History, Executions
     this.table = new Table(this, "Table", {
@@ -313,7 +281,7 @@ export class Service extends Construct implements IGrantable, IService {
     });
 
     this.events = new Events(this, "Events", {
-      appSpec: this.appSpec,
+      build: this.build,
       serviceName: this.serviceName,
       environment: props.environment,
       service: proxyService,
@@ -321,6 +289,7 @@ export class Service extends Construct implements IGrantable, IService {
     });
 
     this.activities = new Activities(this, "Activities", {
+      build: this.build,
       serviceName: this.serviceName,
       scheduler: proxyScheduler,
       workflows: proxyWorkflows,
@@ -333,6 +302,7 @@ export class Service extends Construct implements IGrantable, IService {
     proxyActivities._bind(this.activities);
 
     this.workflows = new Workflows(this, "Workflows", {
+      build: this.build,
       serviceName: this.serviceName,
       scheduler: proxyScheduler,
       activities: this.activities,
@@ -344,6 +314,7 @@ export class Service extends Construct implements IGrantable, IService {
     proxyWorkflows._bind(this.workflows);
 
     this.scheduler = new Scheduler(this, "Scheduler", {
+      build: this.build,
       workflows: this.workflows,
       activities: this.activities,
       logging: this.logging,
@@ -351,6 +322,7 @@ export class Service extends Construct implements IGrantable, IService {
     proxyScheduler._bind(this.scheduler);
 
     this.api = new Api(this, "Api", {
+      build: this.build,
       serviceName: this.serviceName,
       environment: props.environment,
       activities: this.activities,
@@ -413,7 +385,7 @@ export class Service extends Construct implements IGrantable, IService {
    */
   public addEnvironment(key: string, value: string): void {
     this.activities.worker.addEnvironment(key, value);
-    this.api.handler.addEnvironment(key, value);
+    this.api.handlers.forEach((handler) => handler.addEnvironment(key, value));
     this.events.handler.addEnvironment(key, value);
     this.workflows.orchestrator.addEnvironment(key, value);
   }

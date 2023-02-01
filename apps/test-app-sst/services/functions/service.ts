@@ -1,4 +1,4 @@
-import { event, activity, workflow, api } from "@eventual/core";
+import { event, activity, workflow, api, ApiResponse } from "@eventual/core";
 
 api.post("/work", async (request) => {
   const items: string[] = await request.json();
@@ -7,7 +7,7 @@ api.post("/work", async (request) => {
     input: items,
   });
 
-  return new Response(JSON.stringify({ executionId }), {
+  return new ApiResponse(JSON.stringify({ executionId }), {
     status: 200,
   });
 });

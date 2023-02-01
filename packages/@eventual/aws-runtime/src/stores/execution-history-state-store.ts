@@ -64,7 +64,7 @@ async function historyEntryToEvents(
   if (objectOutput.Body) {
     return (await objectOutput.Body.transformToString())
       .split("\n")
-      .map((l) => JSON.parse(l)) as HistoryStateEvent[];
+      .map((l: string) => JSON.parse(l)) as HistoryStateEvent[];
   }
   return [];
 }

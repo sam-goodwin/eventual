@@ -1,23 +1,18 @@
 import {
-  Argument,
   ArrowFunctionExpression,
   AwaitExpression,
   CallExpression,
   Expression,
   FunctionExpression,
   Param,
-  Span,
   TsType,
-  Node,
-  StringLiteral,
   FunctionDeclaration,
   BlockStatement,
   VariableDeclaration,
-  Statement,
-  HasSpan,
 } from "@swc/core";
 
 import { Visitor } from "@swc/core/Visitor.js";
+import { getSpan, isAsyncFunctionDecl, isWorkflowCall } from "./ast-util.js";
 
 const supportedPromiseFunctions: string[] = [
   "all",
@@ -254,67 +249,4 @@ export class InnerVisitor extends Visitor {
     };
     return call;
   }
-}
-
-function hasSpan(expr: Node): expr is Node & HasSpan {
-  return "span" in expr;
-}
-
-function getSpan(expr: Node): Span {
-  if (hasSpan(expr)) {
-    return expr.span;
-  } else {
-    // this is only true for JSXExpressions which we should not encounter
-    throw new Error(`cannot get span of ${expr.type}`);
-  }
-}
-
-/**
- * A heuristic for identifying a {@link CallExpression} that is a call
- * to the eventual.workflow utility:
- *
- * 1. must be a function call with exactly 2 arguments
- * 2. first argument is a string literal
- * 3. second argument is a FunctionExpression or ArrowFunctionExpression
- * 4. callee is an identifier `"workflow"` or `<identifier>.workflow`
- */
-function isWorkflowCall(call: CallExpression): call is CallExpression & {
-  arguments: [
-    Argument & { expression: StringLiteral },
-    Argument & { expression: FunctionExpression | ArrowFunctionExpression }
-  ];
-} {
-  return (
-    isWorkflowCallee(call.callee) &&
-    call.arguments[0]?.expression.type === "StringLiteral" &&
-    ((call.arguments.length === 2 &&
-      isNonGeneratorFunction(call.arguments[1]?.expression)) ||
-      (call.arguments.length === 3 &&
-        isNonGeneratorFunction(call.arguments[2]?.expression)))
-  );
-}
-
-function isNonGeneratorFunction(
-  expr?: Expression
-): expr is ArrowFunctionExpression | FunctionExpression {
-  return (
-    (expr?.type === "ArrowFunctionExpression" ||
-      expr?.type === "FunctionExpression") &&
-    !expr.generator
-  );
-}
-
-function isWorkflowCallee(callee: CallExpression["callee"]) {
-  return (
-    (callee.type === "Identifier" && callee.value === "workflow") ||
-    (callee.type === "MemberExpression" &&
-      callee.property.type === "Identifier" &&
-      callee.property.value === "workflow")
-  );
-}
-
-function isAsyncFunctionDecl(
-  stmt: Statement
-): stmt is FunctionDeclaration & { async: true } {
-  return stmt.type === "FunctionDeclaration" && stmt.async;
 }

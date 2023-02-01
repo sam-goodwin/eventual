@@ -41,10 +41,10 @@ export async function createNewService(serviceName?: string) {
     packageName: serviceName,
     eventualVersion,
     src: {
-      "index.ts": `import { api } from "@eventual/core";
+      "index.ts": `import { api, ApiResponse } from "@eventual/core";
             
 api.get("/echo", async (request) => {
-  return new Response(await request.text());
+  return new ApiResponse(await request.text());
 });
 `,
     },

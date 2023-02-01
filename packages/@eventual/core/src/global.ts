@@ -3,6 +3,7 @@ import { ActivityContext, ActivityHandler } from "./activity.js";
 import type { Eventual, EventualCallCollector } from "./eventual.js";
 import type { Workflow } from "./workflow.js";
 import { EventualServiceClient } from "./service-client.js";
+import { Route } from "./api.js";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -43,10 +44,16 @@ declare global {
      * within this application.
      */
     eventSubscriptions?: EventSubscription[];
+    /**
+     * API routes registered within the application.
+     */
+    routes?: Route[];
   };
 }
 
 globalThis._eventual ??= {};
+
+export const routes = (globalThis._eventual.routes ??= []);
 
 export const workflows = (): Map<string, Workflow> =>
   (globalThis._eventual.workflows ??= new Map<string, Workflow>());

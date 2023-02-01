@@ -1,0 +1,808 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`api handlers should be decorated with source location 1`] = `
+""use strict";
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __commonJS = (cb, mod) => function __require() {
+  return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
+};
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// ../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/error.js
+var require_error = __commonJS({
+  "../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/error.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.isError = exports.inherit = exports.assertError = void 0;
+    function assertError(err) {
+      if (!isError(err)) {
+        throw new Error("Parameter was not an error");
+      }
+    }
+    exports.assertError = assertError;
+    function inherit(ctor, superCtor) {
+      ctor.super_ = superCtor;
+      ctor.prototype = Object.create(superCtor.prototype, {
+        constructor: {
+          value: ctor,
+          enumerable: false,
+          writable: true,
+          configurable: true
+        }
+      });
+    }
+    exports.inherit = inherit;
+    function isError(err) {
+      return objectToString(err) === "[object Error]" || err instanceof Error;
+    }
+    exports.isError = isError;
+    function objectToString(obj) {
+      return Object.prototype.toString.call(obj);
+    }
+  }
+});
+
+// ../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/tools.js
+var require_tools = __commonJS({
+  "../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/tools.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.parseArguments = void 0;
+    var error_1 = require_error();
+    function parseArguments(args) {
+      let options, shortMessage = "";
+      if (args.length === 0) {
+        options = {};
+      } else if (error_1.isError(args[0])) {
+        options = {
+          cause: args[0]
+        };
+        shortMessage = args.slice(1).join(" ") || "";
+      } else if (args[0] && typeof args[0] === "object") {
+        options = Object.assign({}, args[0]);
+        shortMessage = args.slice(1).join(" ") || "";
+      } else if (typeof args[0] === "string") {
+        options = {};
+        shortMessage = shortMessage = args.join(" ") || "";
+      } else {
+        throw new Error("Invalid arguments passed to Layerr");
+      }
+      return {
+        options,
+        shortMessage
+      };
+    }
+    exports.parseArguments = parseArguments;
+  }
+});
+
+// ../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/layerr.js
+var require_layerr = __commonJS({
+  "../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/layerr.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.Layerr = void 0;
+    var error_1 = require_error();
+    var tools_1 = require_tools();
+    function Layerr(errorOptionsOrMessage, messageText) {
+      const args = [...arguments];
+      if (this instanceof Layerr === false) {
+        throw new Error("Cannot invoke 'Layerr' like a function: It must be called with 'new'");
+      }
+      const { options, shortMessage } = tools_1.parseArguments(args);
+      this.name = "Layerr";
+      if (options.name && typeof options.name === "string") {
+        this.name = options.name;
+      }
+      let message = shortMessage;
+      if (options.cause) {
+        Object.defineProperty(this, "_cause", { value: options.cause });
+        message = \`\${message}: \${options.cause.message}\`;
+      }
+      this.message = message;
+      Object.defineProperty(this, "_info", { value: {} });
+      if (options.info && typeof options.info === "object") {
+        Object.assign(this._info, options.info);
+      }
+      Error.call(this, message);
+      if (Error.captureStackTrace) {
+        const ctor = options.constructorOpt || this.constructor;
+        Error.captureStackTrace(this, ctor);
+      }
+      return this;
+    }
+    exports.Layerr = Layerr;
+    error_1.inherit(Layerr, Error);
+    Layerr.prototype.cause = function _getCause() {
+      return Layerr.cause(this) || void 0;
+    };
+    Layerr.prototype.toString = function _toString() {
+      let output = this.name || this.constructor.name || this.constructor.prototype.name;
+      if (this.message) {
+        output = \`\${output}: \${this.message}\`;
+      }
+      return output;
+    };
+    Layerr.cause = function __getCause(err) {
+      error_1.assertError(err);
+      return error_1.isError(err._cause) ? err._cause : null;
+    };
+    Layerr.fullStack = function __getFullStack(err) {
+      error_1.assertError(err);
+      const cause = Layerr.cause(err);
+      if (cause) {
+        return \`\${err.stack}
+caused by: \${Layerr.fullStack(cause)}\`;
+      }
+      return err.stack;
+    };
+    Layerr.info = function __getInfo(err) {
+      error_1.assertError(err);
+      const output = {};
+      const cause = Layerr.cause(err);
+      if (cause) {
+        Object.assign(output, Layerr.info(cause));
+      }
+      if (err._info) {
+        Object.assign(output, err._info);
+      }
+      return output;
+    };
+  }
+});
+
+// ../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/types.js
+var require_types = __commonJS({
+  "../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/types.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+  }
+});
+
+// ../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/index.js
+var require_dist = __commonJS({
+  "../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/index.js"(exports) {
+    "use strict";
+    var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m, k, k2) {
+      if (k2 === void 0)
+        k2 = k;
+      Object.defineProperty(o, k2, { enumerable: true, get: function() {
+        return m[k];
+      } });
+    } : function(o, m, k, k2) {
+      if (k2 === void 0)
+        k2 = k;
+      o[k2] = m[k];
+    });
+    var __exportStar = exports && exports.__exportStar || function(m, exports2) {
+      for (var p in m)
+        if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports2, p))
+          __createBinding(exports2, m, p);
+    };
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.Layerr = void 0;
+    var layerr_1 = require_layerr();
+    Object.defineProperty(exports, "Layerr", { enumerable: true, get: function() {
+      return layerr_1.Layerr;
+    } });
+    __exportStar(require_types(), exports);
+  }
+});
+
+// ../../../node_modules/.pnpm/ulidx@0.3.0/node_modules/ulidx/dist/ulid.js
+var require_ulid = __commonJS({
+  "../../../node_modules/.pnpm/ulidx@0.3.0/node_modules/ulidx/dist/ulid.js"(exports) {
+    "use strict";
+    var __assign = exports && exports.__assign || function() {
+      __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+          s = arguments[i];
+          for (var p in s)
+            if (Object.prototype.hasOwnProperty.call(s, p))
+              t[p] = s[p];
+        }
+        return t;
+      };
+      return __assign.apply(this, arguments);
+    };
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.ulid = exports.replaceCharAt = exports.randomChar = exports.monotonicFactory = exports.incrementBase32 = exports.encodeTime = exports.encodeRandom = exports.detectPRNG = exports.decodeTime = void 0;
+    var layerr_1 = require_dist();
+    var ENCODING = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+    var ENCODING_LEN = ENCODING.length;
+    var TIME_MAX = Math.pow(2, 48) - 1;
+    var TIME_LEN = 10;
+    var RANDOM_LEN = 16;
+    var ERROR_INFO = Object.freeze({
+      source: "ulid"
+    });
+    function decodeTime(id) {
+      if (id.length !== TIME_LEN + RANDOM_LEN) {
+        throw new layerr_1.Layerr({
+          info: __assign({ code: "DEC_TIME_MALFORMED" }, ERROR_INFO)
+        }, "Malformed ULID");
+      }
+      var time = id.substr(0, TIME_LEN).split("").reverse().reduce(function(carry, char, index) {
+        var encodingIndex = ENCODING.indexOf(char);
+        if (encodingIndex === -1) {
+          throw new layerr_1.Layerr({
+            info: __assign({ code: "DEC_TIME_CHAR" }, ERROR_INFO)
+          }, "Time decode error: Invalid character: " + char);
+        }
+        return carry += encodingIndex * Math.pow(ENCODING_LEN, index);
+      }, 0);
+      if (time > TIME_MAX) {
+        throw new layerr_1.Layerr({
+          info: __assign({ code: "DEC_TIME_CHAR" }, ERROR_INFO)
+        }, "Malformed ULID: timestamp too large: " + time);
+      }
+      return time;
+    }
+    exports.decodeTime = decodeTime;
+    function detectPRNG(root) {
+      var rootLookup = root || detectRoot();
+      var globalCrypto = rootLookup && (rootLookup.crypto || rootLookup.msCrypto) || (typeof crypto !== "undefined" ? crypto : null);
+      if (typeof (globalCrypto === null || globalCrypto === void 0 ? void 0 : globalCrypto.getRandomValues) === "function") {
+        return function() {
+          var buffer = new Uint8Array(1);
+          globalCrypto.getRandomValues(buffer);
+          return buffer[0] / 255;
+        };
+      } else if (typeof (globalCrypto === null || globalCrypto === void 0 ? void 0 : globalCrypto.randomBytes) === "function") {
+        return function() {
+          return globalCrypto.randomBytes(1).readUInt8() / 255;
+        };
+      } else {
+        try {
+          var nodeCrypto_1 = require("crypto");
+          return function() {
+            return nodeCrypto_1.randomBytes(1).readUInt8() / 255;
+          };
+        } catch (e2) {
+        }
+      }
+      throw new layerr_1.Layerr({
+        info: __assign({ code: "PRNG_DETECT" }, ERROR_INFO)
+      }, "Failed to find a reliable PRNG");
+    }
+    exports.detectPRNG = detectPRNG;
+    function detectRoot() {
+      if (inWebWorker())
+        return self;
+      if (typeof window !== "undefined") {
+        return window;
+      }
+      if (typeof global !== "undefined") {
+        return global;
+      }
+      return null;
+    }
+    function encodeRandom(len, prng) {
+      var str = "";
+      for (; len > 0; len--) {
+        str = randomChar(prng) + str;
+      }
+      return str;
+    }
+    exports.encodeRandom = encodeRandom;
+    function encodeTime(now, len) {
+      if (isNaN(now)) {
+        throw new layerr_1.Layerr({
+          info: __assign({ code: "ENC_TIME_NAN" }, ERROR_INFO)
+        }, "Time must be a number: " + now);
+      } else if (now > TIME_MAX) {
+        throw new layerr_1.Layerr({
+          info: __assign({ code: "ENC_TIME_SIZE_EXCEED" }, ERROR_INFO)
+        }, "Cannot encode a time larger than " + TIME_MAX + ": " + now);
+      } else if (now < 0) {
+        throw new layerr_1.Layerr({
+          info: __assign({ code: "ENC_TIME_NEG" }, ERROR_INFO)
+        }, "Time must be positive: " + now);
+      } else if (Number.isInteger(now) === false) {
+        throw new layerr_1.Layerr({
+          info: __assign({ code: "ENC_TIME_TYPE" }, ERROR_INFO)
+        }, "Time must be an integer: " + now);
+      }
+      var mod, str = "";
+      for (var currentLen = len; currentLen > 0; currentLen--) {
+        mod = now % ENCODING_LEN;
+        str = ENCODING.charAt(mod) + str;
+        now = (now - mod) / ENCODING_LEN;
+      }
+      return str;
+    }
+    exports.encodeTime = encodeTime;
+    function incrementBase32(str) {
+      var done = void 0, index = str.length, char, charIndex, output = str;
+      var maxCharIndex = ENCODING_LEN - 1;
+      while (!done && index-- >= 0) {
+        char = output[index];
+        charIndex = ENCODING.indexOf(char);
+        if (charIndex === -1) {
+          throw new layerr_1.Layerr({
+            info: __assign({ code: "B32_INC_ENC" }, ERROR_INFO)
+          }, "Incorrectly encoded string");
+        }
+        if (charIndex === maxCharIndex) {
+          output = replaceCharAt(output, index, ENCODING[0]);
+          continue;
+        }
+        done = replaceCharAt(output, index, ENCODING[charIndex + 1]);
+      }
+      if (typeof done === "string") {
+        return done;
+      }
+      throw new layerr_1.Layerr({
+        info: __assign({ code: "B32_INC_INVALID" }, ERROR_INFO)
+      }, "Failed incrementing string");
+    }
+    exports.incrementBase32 = incrementBase32;
+    function inWebWorker() {
+      return typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+    }
+    function monotonicFactory(prng) {
+      var currentPRNG = prng || detectPRNG();
+      var lastTime = 0, lastRandom;
+      return function _ulid(seedTime) {
+        var seed = isNaN(seedTime) ? Date.now() : seedTime;
+        if (seed <= lastTime) {
+          var incrementedRandom = lastRandom = incrementBase32(lastRandom);
+          return encodeTime(lastTime, TIME_LEN) + incrementedRandom;
+        }
+        lastTime = seed;
+        var newRandom = lastRandom = encodeRandom(RANDOM_LEN, currentPRNG);
+        return encodeTime(seed, TIME_LEN) + newRandom;
+      };
+    }
+    exports.monotonicFactory = monotonicFactory;
+    function randomChar(prng) {
+      var rand = Math.floor(prng() * ENCODING_LEN);
+      if (rand === ENCODING_LEN) {
+        rand = ENCODING_LEN - 1;
+      }
+      return ENCODING.charAt(rand);
+    }
+    exports.randomChar = randomChar;
+    function replaceCharAt(str, index, char) {
+      if (index > str.length - 1) {
+        return str;
+      }
+      return str.substr(0, index) + char + str.substr(index + 1);
+    }
+    exports.replaceCharAt = replaceCharAt;
+    function ulid4(seedTime, prng) {
+      var currentPRNG = prng || detectPRNG();
+      var seed = isNaN(seedTime) ? Date.now() : seedTime;
+      return encodeTime(seed, TIME_LEN) + encodeRandom(RANDOM_LEN, currentPRNG);
+    }
+    exports.ulid = ulid4;
+  }
+});
+
+// ../../../node_modules/.pnpm/ulidx@0.3.0/node_modules/ulidx/dist/types.js
+var require_types2 = __commonJS({
+  "../../../node_modules/.pnpm/ulidx@0.3.0/node_modules/ulidx/dist/types.js"(exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+  }
+});
+
+// ../../../node_modules/.pnpm/ulidx@0.3.0/node_modules/ulidx/dist/index.js
+var require_dist2 = __commonJS({
+  "../../../node_modules/.pnpm/ulidx@0.3.0/node_modules/ulidx/dist/index.js"(exports) {
+    "use strict";
+    var __createBinding = exports && exports.__createBinding || (Object.create ? function(o, m, k, k2) {
+      if (k2 === void 0)
+        k2 = k;
+      Object.defineProperty(o, k2, { enumerable: true, get: function() {
+        return m[k];
+      } });
+    } : function(o, m, k, k2) {
+      if (k2 === void 0)
+        k2 = k;
+      o[k2] = m[k];
+    });
+    var __exportStar = exports && exports.__exportStar || function(m, exports2) {
+      for (var p in m)
+        if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports2, p))
+          __createBinding(exports2, m, p);
+    };
+    Object.defineProperty(exports, "__esModule", { value: true });
+    exports.decodeTime = exports.ulid = exports.monotonicFactory = void 0;
+    var ulid_1 = require_ulid();
+    Object.defineProperty(exports, "monotonicFactory", { enumerable: true, get: function() {
+      return ulid_1.monotonicFactory;
+    } });
+    Object.defineProperty(exports, "ulid", { enumerable: true, get: function() {
+      return ulid_1.ulid;
+    } });
+    Object.defineProperty(exports, "decodeTime", { enumerable: true, get: function() {
+      return ulid_1.decodeTime;
+    } });
+    __exportStar(require_types2(), exports);
+  }
+});
+
+// test-files/api-handler.ts
+var api_handler_exports = {};
+__export(api_handler_exports, {
+  myHandler: () => myHandler,
+  myHandler2: () => myHandler2
+});
+module.exports = __toCommonJS(api_handler_exports);
+
+// ../core/lib/esm/await-all-settled.js
+function createAwaitAllSettled(activities) {
+  return createEventual(EventualKind.AwaitAllSettled, {
+    activities
+  });
+}
+
+// ../core/lib/esm/await-all.js
+function createAwaitAll(activities) {
+  return createEventual(EventualKind.AwaitAll, {
+    activities
+  });
+}
+
+// ../core/lib/esm/await-any.js
+function createAwaitAny(activities) {
+  return createEventual(EventualKind.AwaitAny, {
+    activities
+  });
+}
+
+// ../core/lib/esm/global.js
+globalThis._eventual ??= {};
+var routes = globalThis._eventual.routes ??= [];
+var eventualCollector = () => {
+  const collector = globalThis._eventual.eventualCollector;
+  if (!collector) {
+    throw new Error("No Eventual Collector Provided");
+  }
+  return collector;
+};
+function registerEventual(eventual) {
+  return eventualCollector().pushEventual(eventual);
+}
+
+// ../core/lib/esm/util.js
+function or(...conditions) {
+  return (a) => conditions.some((cond) => cond(a));
+}
+
+// ../core/lib/esm/result.js
+var ResultSymbol = Symbol.for("eventual:Result");
+var ResultKind;
+(function(ResultKind2) {
+  ResultKind2[ResultKind2["Pending"] = 0] = "Pending";
+  ResultKind2[ResultKind2["Resolved"] = 1] = "Resolved";
+  ResultKind2[ResultKind2["Failed"] = 2] = "Failed";
+})(ResultKind || (ResultKind = {}));
+function isResult(a) {
+  return a && typeof a === "object" && ResultSymbol in a;
+}
+function isResolved(result) {
+  return isResult(result) && result[ResultSymbol] === ResultKind.Resolved;
+}
+function isFailed(result) {
+  return isResult(result) && result[ResultSymbol] === ResultKind.Failed;
+}
+var isResolvedOrFailed = or(isResolved, isFailed);
+
+// ../core/lib/esm/service-type.js
+var ServiceType;
+(function(ServiceType2) {
+  ServiceType2["ActivityWorker"] = "ActivityWorker";
+  ServiceType2["ApiHandler"] = "ApiHandler";
+  ServiceType2["EventHandler"] = "EventHandler";
+  ServiceType2["OrchestratorWorker"] = "OrchestratorWorker";
+})(ServiceType || (ServiceType = {}));
+
+// ../core/lib/esm/flags.js
+var SERVICE_TYPE_FLAG = "EVENTUAL_SERVICE_TYPE";
+function isOrchestratorWorker() {
+  return process.env[SERVICE_TYPE_FLAG] === ServiceType.OrchestratorWorker;
+}
+
+// ../core/lib/esm/signals.js
+var import_ulidx = __toESM(require_dist2(), 1);
+var SignalTargetType;
+(function(SignalTargetType2) {
+  SignalTargetType2[SignalTargetType2["Execution"] = 0] = "Execution";
+  SignalTargetType2[SignalTargetType2["ChildExecution"] = 1] = "ChildExecution";
+})(SignalTargetType || (SignalTargetType = {}));
+
+// ../core/lib/esm/chain.js
+function chain(func) {
+  return (...args) => {
+    const generator = func(...args);
+    return registerChain(generator);
+  };
+}
+function createChain(program) {
+  return createEventual(EventualKind.Chain, program);
+}
+function registerChain(program) {
+  return registerEventual(createChain(program));
+}
+
+// ../core/lib/esm/race.js
+function createRace(activities) {
+  return createEventual(EventualKind.Race, {
+    activities
+  });
+}
+
+// ../core/lib/esm/eventual.js
+var EventualSymbol = Symbol.for("eventual:Eventual");
+var EventualKind;
+(function(EventualKind2) {
+  EventualKind2[EventualKind2["ActivityCall"] = 1] = "ActivityCall";
+  EventualKind2[EventualKind2["AwaitAll"] = 0] = "AwaitAll";
+  EventualKind2[EventualKind2["AwaitAllSettled"] = 12] = "AwaitAllSettled";
+  EventualKind2[EventualKind2["AwaitAny"] = 10] = "AwaitAny";
+  EventualKind2[EventualKind2["AwaitDurationCall"] = 3] = "AwaitDurationCall";
+  EventualKind2[EventualKind2["AwaitTimeCall"] = 4] = "AwaitTimeCall";
+  EventualKind2[EventualKind2["Chain"] = 2] = "Chain";
+  EventualKind2[EventualKind2["ConditionCall"] = 9] = "ConditionCall";
+  EventualKind2[EventualKind2["ExpectSignalCall"] = 6] = "ExpectSignalCall";
+  EventualKind2[EventualKind2["PublishEventsCall"] = 13] = "PublishEventsCall";
+  EventualKind2[EventualKind2["Race"] = 11] = "Race";
+  EventualKind2[EventualKind2["RegisterSignalHandlerCall"] = 7] = "RegisterSignalHandlerCall";
+  EventualKind2[EventualKind2["SendSignalCall"] = 8] = "SendSignalCall";
+  EventualKind2[EventualKind2["WorkflowCall"] = 5] = "WorkflowCall";
+})(EventualKind || (EventualKind = {}));
+function createEventual(kind, e2) {
+  e2[EventualSymbol] = kind;
+  return e2;
+}
+var Eventual = {
+  /**
+   * Wait for all {@link activities} to succeed or until at least one throws.
+   *
+   * This is the equivalent behavior to Promise.all.
+   */
+  all(activities) {
+    if (!isOrchestratorWorker()) {
+      throw new Error("Eventual.all is only valid in a workflow");
+    }
+    return createAwaitAll(activities);
+  },
+  any(activities) {
+    if (!isOrchestratorWorker()) {
+      throw new Error("Eventual.any is only valid in a workflow");
+    }
+    return createAwaitAny(activities);
+  },
+  race(activities) {
+    if (!isOrchestratorWorker()) {
+      throw new Error("Eventual.race is only valid in a workflow");
+    }
+    return createRace(activities);
+  },
+  allSettled(activities) {
+    if (!isOrchestratorWorker()) {
+      throw new Error("Eventual.allSettled is only valid in a workflow");
+    }
+    return createAwaitAllSettled(activities);
+  }
+};
+globalThis.$eventual = chain;
+globalThis.$Eventual = Eventual;
+
+// ../core/lib/esm/activity.js
+var AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
+
+// ../../../node_modules/.pnpm/itty-router@2.6.6/node_modules/itty-router/dist/itty-router.min.mjs
+function e({ base: t = "", routes: n = [] } = {}) {
+  return { __proto__: new Proxy({}, { get: (e2, a, o) => (e3, ...r) => n.push([a.toUpperCase(), RegExp(\`^\${(t + e3).replace(/(\\/?)\\*/g, "($1.*)?").replace(/(\\/$)|((?<=\\/)\\/)/, "").replace(/:(\\w+)(\\?)?(\\.)?/g, "$2(?<$1>[^/]+)$2$3").replace(/\\.(?=[\\w(])/, "\\\\.").replace(/\\)\\.\\?\\(([^\\[]+)\\[\\^/g, "?)\\\\.?($1(?<=\\\\.)[^\\\\.")}/*$\`), r]) && o }), routes: n, async handle(e2, ...r) {
+    let a, o, t2 = new URL(e2.url);
+    e2.query = Object.fromEntries(t2.searchParams);
+    for (var [p, s, u] of n)
+      if ((p === e2.method || "ALL" === p) && (o = t2.pathname.match(s))) {
+        e2.params = o.groups;
+        for (var c of u)
+          if (void 0 !== (a = await c(e2.proxy || e2, ...r)))
+            return a;
+      }
+  } };
+}
+var itty_router_min_default = { Router: e };
+
+// ../core/lib/esm/api.js
+var router = itty_router_min_default.Router();
+var api = new Proxy({}, {
+  get: (_, method) => {
+    if (method === "routes" || method === "handle") {
+      return router[method];
+    } else {
+      return (...args) => {
+        const route = {
+          sourceLocation: typeof args[0] === "object" ? args[0] : void 0,
+          path: typeof args[0] === "string" ? args[0] : args[1],
+          method: method.toUpperCase(),
+          runtimeProps: typeof args[0] === "string" ? typeof args[1] === "object" ? args[1] : void 0 : typeof args[2] === "object" ? args[2] : void 0,
+          handlers: args.filter((a) => typeof a === "function")
+          // todo: why do i need to cast?
+        };
+        routes.push(route);
+        return router[method](route.path, ...route.handlers);
+      };
+    }
+  }
+});
+var HttpMethod;
+(function(HttpMethod2) {
+  HttpMethod2["POST"] = "POST";
+  HttpMethod2["GET"] = "GET";
+  HttpMethod2["HEAD"] = "HEAD";
+  HttpMethod2["OPTIONS"] = "OPTIONS";
+  HttpMethod2["PUT"] = "PUT";
+  HttpMethod2["PATCH"] = "PATCH";
+  HttpMethod2["DELETE"] = "DELETE";
+})(HttpMethod || (HttpMethod = {}));
+
+// ../core/lib/esm/command.js
+var CommandType;
+(function(CommandType2) {
+  CommandType2["PublishEvents"] = "PublishEvents";
+  CommandType2["SendSignal"] = "SendSignal";
+  CommandType2["StartActivity"] = "StartActivity";
+  CommandType2["StartTimer"] = "StartTimer";
+  CommandType2["StartWorkflow"] = "StartWorkflow";
+})(CommandType || (CommandType = {}));
+
+// ../core/lib/esm/execution.js
+var import_ulidx2 = __toESM(require_dist2(), 1);
+var ExecutionStatus;
+(function(ExecutionStatus2) {
+  ExecutionStatus2["IN_PROGRESS"] = "IN_PROGRESS";
+  ExecutionStatus2["SUCCEEDED"] = "SUCCEEDED";
+  ExecutionStatus2["FAILED"] = "FAILED";
+})(ExecutionStatus || (ExecutionStatus = {}));
+var ExecutionStatuses = new Set(Object.values(ExecutionStatus));
+
+// ../core/lib/esm/logging.js
+var LogLevel;
+(function(LogLevel2) {
+  LogLevel2["TRACE"] = "TRACE";
+  LogLevel2["DEBUG"] = "DEBUG";
+  LogLevel2["INFO"] = "INFO";
+  LogLevel2["WARN"] = "WARN";
+  LogLevel2["ERROR"] = "ERROR";
+})(LogLevel || (LogLevel = {}));
+var LOG_LEVELS = Object.values(LogLevel);
+
+// ../core/lib/esm/secret.js
+var _BaseCachingSecret_value;
+_BaseCachingSecret_value = /* @__PURE__ */ new WeakMap();
+
+// ../core/lib/esm/service-client.js
+var SortOrder;
+(function(SortOrder2) {
+  SortOrder2["Asc"] = "ASC";
+  SortOrder2["Desc"] = "DESC";
+})(SortOrder || (SortOrder = {}));
+var ActivityUpdateType;
+(function(ActivityUpdateType2) {
+  ActivityUpdateType2["Success"] = "Success";
+  ActivityUpdateType2["Failure"] = "Failure";
+  ActivityUpdateType2["Heartbeat"] = "Heartbeat";
+})(ActivityUpdateType || (ActivityUpdateType = {}));
+
+// ../core/lib/esm/workflow-events.js
+var import_ulidx3 = __toESM(require_dist2(), 1);
+var WorkflowEventType;
+(function(WorkflowEventType2) {
+  WorkflowEventType2["ActivitySucceeded"] = "ActivitySucceeded";
+  WorkflowEventType2["ActivityFailed"] = "ActivityFailed";
+  WorkflowEventType2["ActivityHeartbeatTimedOut"] = "ActivityHeartbeatTimedOut";
+  WorkflowEventType2["ActivityScheduled"] = "ActivityScheduled";
+  WorkflowEventType2["ChildWorkflowSucceeded"] = "ChildWorkflowSucceeded";
+  WorkflowEventType2["ChildWorkflowFailed"] = "ChildWorkflowFailed";
+  WorkflowEventType2["ChildWorkflowScheduled"] = "ChildWorkflowScheduled";
+  WorkflowEventType2["EventsPublished"] = "EventsPublished";
+  WorkflowEventType2["SignalReceived"] = "SignalReceived";
+  WorkflowEventType2["SignalSent"] = "SignalSent";
+  WorkflowEventType2["TimerCompleted"] = "TimerCompleted";
+  WorkflowEventType2["TimerScheduled"] = "TimerScheduled";
+  WorkflowEventType2["WorkflowSucceeded"] = "WorkflowSucceeded";
+  WorkflowEventType2["WorkflowFailed"] = "WorkflowFailed";
+  WorkflowEventType2["WorkflowStarted"] = "WorkflowStarted";
+  WorkflowEventType2["WorkflowRunCompleted"] = "WorkflowRunCompleted";
+  WorkflowEventType2["WorkflowRunStarted"] = "WorkflowRunStarted";
+  WorkflowEventType2["WorkflowTimedOut"] = "WorkflowTimedOut";
+})(WorkflowEventType || (WorkflowEventType = {}));
+function isActivityScheduled(event) {
+  return event.type === WorkflowEventType.ActivityScheduled;
+}
+function isActivitySucceeded(event) {
+  return event.type === WorkflowEventType.ActivitySucceeded;
+}
+function isActivityFailed(event) {
+  return event.type === WorkflowEventType.ActivityFailed;
+}
+function isActivityHeartbeatTimedOut(event) {
+  return event.type === WorkflowEventType.ActivityHeartbeatTimedOut;
+}
+function isTimerScheduled(event) {
+  return event.type === WorkflowEventType.TimerScheduled;
+}
+function isWorkflowSucceeded(event) {
+  return event.type === WorkflowEventType.WorkflowSucceeded;
+}
+function isWorkflowFailed(event) {
+  return event.type === WorkflowEventType.WorkflowFailed;
+}
+function isChildWorkflowScheduled(event) {
+  return event.type === WorkflowEventType.ChildWorkflowScheduled;
+}
+function isChildWorkflowSucceeded(event) {
+  return event.type === WorkflowEventType.ChildWorkflowSucceeded;
+}
+function isChildWorkflowFailed(event) {
+  return event.type === WorkflowEventType.ChildWorkflowFailed;
+}
+function isTimerCompleted(event) {
+  return event.type === WorkflowEventType.TimerCompleted;
+}
+var isWorkflowCompletedEvent = or(isWorkflowFailed, isWorkflowSucceeded);
+function isSignalSent(event) {
+  return event.type === WorkflowEventType.SignalSent;
+}
+function isEventsPublished(event) {
+  return event.type === WorkflowEventType.EventsPublished;
+}
+function isWorkflowTimedOut(event) {
+  return event.type === WorkflowEventType.WorkflowTimedOut;
+}
+var isScheduledEvent = or(isActivityScheduled, isChildWorkflowScheduled, isEventsPublished, isSignalSent, isTimerScheduled);
+var isSucceededEvent = or(isActivitySucceeded, isChildWorkflowSucceeded, isTimerCompleted);
+var isFailedEvent = or(isActivityFailed, isActivityHeartbeatTimedOut, isChildWorkflowFailed, isWorkflowTimedOut);
+
+// test-files/api-handler.ts
+var myHandler = api.get({
+  exportName: "myHandler",
+  fileName: "/test-files/api-handler.ts"
+}, "/", async () => {
+  return new Response();
+});
+var myHandler2 = api.get({
+  exportName: "myHandler2",
+  fileName: "/test-files/api-handler.ts"
+}, "/", async () => {
+  return new Response();
+});
+// Annotate the CommonJS export names for ESM import in node:
+0 && (module.exports = {
+  myHandler,
+  myHandler2
+});
+"
+`;

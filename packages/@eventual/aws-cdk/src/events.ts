@@ -1,20 +1,21 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
-import { AppSpec, ServiceType } from "@eventual/core";
+import { ServiceType } from "@eventual/core";
 import { EventBus, IEventBus, Rule } from "aws-cdk-lib/aws-events";
 import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";
 import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
+import type { BuildOutput } from "./build";
 import { IService } from "./service";
 import { IServiceApi } from "./service-api";
 import { ServiceFunction } from "./service-function";
 
 export interface EventsProps {
   /**
-   * The {@link AppSec} describing the event subscriptions within the Service.
+   * The built service describing the event subscriptions within the Service.
    */
-  readonly appSpec: AppSpec;
+  readonly build: BuildOutput;
   /**
    * The name of the Service this {@link Events} repository belongs to.
    */
@@ -59,6 +60,7 @@ export class Events extends Construct implements IGrantable {
     this.deadLetterQueue = new Queue(this, "DeadLetterQueue");
 
     this.handler = new ServiceFunction(this, "Handler", {
+      code: props.build.getCode(props.build.events.default.file),
       functionName: `${props.serviceName}-event-handler`,
       serviceType: ServiceType.EventHandler,
       deadLetterQueueEnabled: true,
@@ -69,15 +71,14 @@ export class Events extends Construct implements IGrantable {
     this.grantPrincipal = this.handler.grantPrincipal;
     this.configurePublish(this.handler);
 
-    if (props.appSpec.subscriptions.length > 0) {
+    const subscriptions = props.build.events.default.subscriptions;
+    if (subscriptions.length > 0) {
       // configure a Rule to route all subscribed events to the eventHandler
       new Rule(this, "Rules", {
         eventBus: this.bus,
         eventPattern: {
           source: [props.serviceName],
-          detailType: Array.from(
-            new Set(props.appSpec.subscriptions.map((sub) => sub.name))
-          ),
+          detailType: Array.from(new Set(subscriptions.map((sub) => sub.name))),
         },
         targets: [
           new LambdaFunction(this.handler, {

@@ -22,11 +22,6 @@ export function createApiHandler({ serviceClient }: ApiHandlerDependencies) {
   // make the service client available to web hooks
   registerServiceClient(serviceClient);
 
-  api.all("*", () => ({
-    status: 404,
-    body: "Not Found",
-  }));
-
   /**
    * Handle inbound webhook API requests.
    *
@@ -38,13 +33,18 @@ export function createApiHandler({ serviceClient }: ApiHandlerDependencies) {
   ): Promise<ApiResponse> {
     return await serviceTypeScope(ServiceType.ApiHandler, async () => {
       try {
-        return api.handle(request);
+        const response = await api.handle(request);
+        if (response === undefined) {
+          return new ApiResponse("Not Found", {
+            status: 404,
+          });
+        }
+        return response;
       } catch (err) {
         console.error(err);
-        return {
+        return new ApiResponse("Internal Server Error", {
           status: 500,
-          body: "Internal Server Error",
-        };
+        });
       }
     });
   };

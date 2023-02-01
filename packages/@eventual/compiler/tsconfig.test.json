@@ -3,7 +3,10 @@
   "compilerOptions": {
     "rootDir": ".",
     "types": ["@types/node", "@types/jest"],
-    "noEmit": true
+    "noEmit": true,
+    "module": "Node16",
+    "target": "ESNext",
+    "moduleResolution": "Node16"
   },
   "include": ["src", "test"],
   "exclude": ["lib", "node_modules"],

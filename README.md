@@ -69,10 +69,10 @@ With our plug-and-play foundation blocks, you can use as much or as little as ne
 Easily create scalable, event-driven APIs with code-first routes.
 
 ```ts
-import { api } from "@eventual/core";
+import { api, ApiResponse } from "@eventual/core";
 
 api.post("/echo", async (request) => {
-  return new Response(await request.text());
+  return new ApiResponse(await request.text());
 });
 ```
 

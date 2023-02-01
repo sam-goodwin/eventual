@@ -54,7 +54,7 @@ export function duration(
   unit: DurationUnit = "seconds"
 ): Promise<void> & DurationSchedule {
   if (!isOrchestratorWorker()) {
-    return { dur, unit } as Promise<void> & DurationSchedule;
+    return { type: "Duration", dur, unit } as Promise<void> & DurationSchedule;
   }
 
   // register an await duration command and return it (to be yielded)

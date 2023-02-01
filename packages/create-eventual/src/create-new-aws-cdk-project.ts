@@ -391,7 +391,7 @@ export class MyServiceStack extends Stack {
         [`@${projectName}/events`]: workspaceVersion,
       },
       src: {
-        "index.ts": `import { activity, api, workflow } from "@eventual/core";
+        "index.ts": `import { activity, api, ApiResponse, workflow } from "@eventual/core";
 
 // import a shared definition of the helloEvent
 import { helloEvent } from "@${projectName}/events";
@@ -404,7 +404,7 @@ api.post("/hello", async (request) => {
     input: name,
   });
 
-  return new Response(JSON.stringify({ executionId }));
+  return new ApiResponse(JSON.stringify({ executionId }));
 });
 
 export const helloWorkflow = workflow("helloWorkflow", async (name: string) => {

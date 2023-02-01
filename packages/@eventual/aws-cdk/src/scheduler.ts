@@ -7,13 +7,14 @@ import {
   Role,
   ServicePrincipal,
 } from "aws-cdk-lib/aws-iam";
-import { Code, Function } from "aws-cdk-lib/aws-lambda";
+import { Function } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import { IActivities } from "./activities";
+import type { BuildOutput } from "./build";
 import { Logging } from "./logging";
-import { baseFnProps, outDir } from "./utils";
+import { baseFnProps } from "./utils";
 import { IWorkflows } from "./workflows";
 
 export interface IScheduler {
@@ -28,6 +29,7 @@ export interface IScheduler {
 }
 
 export interface SchedulerProps {
+  build: BuildOutput;
   /**
    * Workflow controller represent the ability to control the workflow, including starting the workflow
    * sending signals, and more.
@@ -101,7 +103,7 @@ export class Scheduler
 
     // TODO: handle failures to a DLQ - https://github.com/functionless/eventual/issues/40
     this.forwarder = new Function(this, "Forwarder", {
-      code: Code.fromAsset(outDir(this, "SchedulerForwarder")),
+      code: props.build.getCode(props.build.scheduler.forwarder.file),
       ...baseFnProps,
       handler: "index.handle",
     });
@@ -110,7 +112,7 @@ export class Scheduler
     this.forwarder.grantInvoke(this.schedulerRole);
 
     this.handler = new Function(this, "handler", {
-      code: Code.fromAsset(outDir(this, "SchedulerHandler")),
+      code: props.build.getCode(props.build.scheduler.timerHandler.file),
       ...baseFnProps,
       handler: "index.handle",
       events: [

@@ -3,7 +3,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "rootDir": "src",
-    "outDir": "lib/cjs"
+    "outDir": "lib/cjs",
+    "lib": ["DOM"]
   },
   "include": ["src"],
   "exclude": ["lib", "node_modules", "src/package.json"],

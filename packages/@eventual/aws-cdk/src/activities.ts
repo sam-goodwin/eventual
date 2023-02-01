@@ -17,16 +17,18 @@ import { ServiceFunction } from "./service-function";
 import { Events } from "./events";
 import { Logging } from "./logging";
 import { IService } from "./service";
+import type { BuildOutput } from "./build";
 import { IServiceApi } from "./service-api";
 
 export interface ActivitiesProps {
-  readonly serviceName: string;
-  readonly workflows: IWorkflows;
-  readonly scheduler: IScheduler;
-  readonly environment?: Record<string, string>;
-  readonly events: Events;
-  readonly logging: Logging;
-  readonly service: IService;
+  build: BuildOutput;
+  serviceName: string;
+  workflows: IWorkflows;
+  scheduler: IScheduler;
+  environment?: Record<string, string>;
+  events: Events;
+  logging: Logging;
+  service: IService;
   readonly api: IServiceApi;
 }
 
@@ -98,6 +100,7 @@ export class Activities
     });
 
     this.worker = new ServiceFunction(this, "Worker", {
+      code: props.build.getCode(props.build.activities.default.file),
       functionName: `${props.serviceName}-activity-handler`,
       serviceType: ServiceType.ActivityWorker,
       memorySize: 512,

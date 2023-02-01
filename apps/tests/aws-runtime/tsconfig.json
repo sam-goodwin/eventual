@@ -4,7 +4,10 @@
   "exclude": ["lib", "node_modules"],
   "compilerOptions": {
     "rootDir": "test",
-    "outDir": "lib"
+    "outDir": "lib",
+    "module": "Node16",
+    "target": "ESNext",
+    "moduleResolution": "Node16"
   },
   "references": [
     { "path": "../../../packages/@eventual/core" },
