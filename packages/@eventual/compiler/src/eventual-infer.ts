@@ -2,21 +2,15 @@
  * This script imports a user's script and outputs a JSON object
  * to stdout containing all of the data that can be inferred.
  *
- * @see AppSpec
+ * @see ServiceSpec
  */
 import {
-  AppSpec,
   eventSubscriptions,
   routes,
-  workflows,
   RouteSpec,
+  ServiceSpec,
+  workflows,
 } from "@eventual/core";
-import crypto from "crypto";
-import esbuild from "esbuild";
-import fs from "fs/promises";
-import os from "os";
-import path from "path";
-import esBuild from "esbuild";
 import {
   CallExpression,
   ExportDeclaration,
@@ -25,12 +19,18 @@ import {
   parseFile,
   TsType,
 } from "@swc/core";
-
 import { Visitor } from "@swc/core/Visitor.js";
-import { printModule } from "./print-module.js";
+import crypto from "crypto";
+import esbuild from "esbuild";
+import fs from "fs/promises";
+import os from "os";
+import path from "path";
 import { getSpan, isApiCall } from "./ast-util.js";
+import { printModule } from "./print-module.js";
 
-export async function infer(scriptName = process.argv[2]): Promise<AppSpec> {
+export async function infer(
+  scriptName = process.argv[2]
+): Promise<ServiceSpec> {
   if (scriptName === undefined) {
     throw new Error(`scriptName undefined`);
   }
@@ -54,7 +54,7 @@ export async function infer(scriptName = process.argv[2]): Promise<AppSpec> {
 
   await import(path.resolve(scriptName));
 
-  const appSpec: AppSpec = {
+  const serviceSpec: ServiceSpec = {
     subscriptions: eventSubscriptions().flatMap((e) => e.subscriptions),
     api: {
       routes: routes.map(
@@ -71,12 +71,12 @@ export async function infer(scriptName = process.argv[2]): Promise<AppSpec> {
     workflows: [...workflows().keys()].map((n) => ({ name: n })),
   };
 
-  console.log(JSON.stringify(appSpec));
+  console.log(JSON.stringify(serviceSpec));
 
-  return appSpec;
+  return serviceSpec;
 }
 
-export const inferPlugin: esBuild.Plugin = {
+export const inferPlugin: esbuild.Plugin = {
   name: "eventual",
   setup(build) {
     build.onLoad({ filter: /\.[mc]?[tj]s$/g }, async (args) => {

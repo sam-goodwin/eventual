@@ -1,12 +1,12 @@
-import { AppSpec } from "@eventual/core";
+import { ServiceSpec } from "@eventual/core";
 
 /**
- * Empty {@link AppSpec} to provide typing for @eventual/injected/spec.
- * Can be a js/ts file or a .json file that exports the {@link AppSpec} schema.
+ * Empty {@link ServiceSpec} to provide typing for @eventual/injected/spec.
+ * Can be a js/ts file or a .json file that exports the {@link ServiceSpec} schema.
  */
 
 export default {
   workflows: [],
   subscriptions: [],
   api: { routes: [] },
-} satisfies AppSpec;
+} satisfies ServiceSpec;

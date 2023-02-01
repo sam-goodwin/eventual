@@ -1,8 +1,8 @@
 import itty from "itty-router";
 import { Readable } from "node:stream";
-import { SourceLocation } from "./app-spec.js";
 import { routes } from "./global.js";
 import type { DurationSchedule } from "./schedule.js";
+import { SourceLocation } from "./service-spec.js";
 
 const router = itty.Router() as any as Router;
 

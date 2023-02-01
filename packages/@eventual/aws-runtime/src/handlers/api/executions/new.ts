@@ -1,4 +1,4 @@
-import appSpec from "@eventual/injected/spec";
+import serviceSpec from "@eventual/injected/spec";
 
 import {
   DurationUnit,
@@ -7,15 +7,15 @@ import {
   Schedule,
   StartExecutionResponse,
 } from "@eventual/core";
+import { ServiceSpecWorkflowProvider } from "@eventual/runtime-core";
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyHandlerV2,
 } from "aws-lambda";
 import { createWorkflowClient } from "../../../create.js";
 import { withErrorMiddleware } from "../middleware.js";
-import { AppSpecWorkflowProvider } from "@eventual/runtime-core";
 
-const workflowProvider = new AppSpecWorkflowProvider(appSpec);
+const workflowProvider = new ServiceSpecWorkflowProvider(serviceSpec);
 const workflowClient = createWorkflowClient({
   workflowProvider,
 });

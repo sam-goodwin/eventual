@@ -1,10 +1,10 @@
 import { build, BuildSource, infer } from "@eventual/compiler";
 import { HttpMethod, ServiceType } from "@eventual/core";
+import { Code } from "aws-cdk-lib/aws-lambda";
+import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import { ApiFunction, BuildManifest } from "./build-manifest";
-import { execSync } from "child_process";
-import { Code } from "aws-cdk-lib/aws-lambda";
 
 export interface BuildOutput extends BuildManifest {}
 
@@ -46,7 +46,7 @@ export interface BuildAWSRuntimeProps {
 
 export async function buildService(request: BuildAWSRuntimeProps) {
   const outDir = request.outDir;
-  const appSpec = await infer(request.entry);
+  const serviceSpec = await infer(request.entry);
 
   const [
     individualApis,
@@ -84,7 +84,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     events: {
       default: {
         file: eventHandler!,
-        subscriptions: appSpec.subscriptions,
+        subscriptions: serviceSpec.subscriptions,
       },
     },
     scheduler: {
@@ -150,12 +150,12 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     ),
     // just data extracted from the service, used by the handlers
     // separate from the manifest to avoid injecting local file information into the bundles.
-    fs.promises.writeFile(specPath, JSON.stringify(appSpec)),
+    fs.promises.writeFile(specPath, JSON.stringify(serviceSpec)),
   ]);
 
   async function bundleApis() {
     const routes = await Promise.all(
-      appSpec.api.routes.map(async (route) => {
+      serviceSpec.api.routes.map(async (route) => {
         if (route.sourceLocation?.fileName) {
           return [
             route.path,
@@ -166,7 +166,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
                 exportName: route.sourceLocation.exportName,
                 serviceType: ServiceType.ApiHandler,
                 injectedEntry: route.sourceLocation.fileName,
-                injectedAppSpec: specPath,
+                injectedServiceSpec: specPath,
               }),
               exportName: route.sourceLocation.exportName,
               methods: [route.method],
@@ -202,21 +202,21 @@ export async function buildService(request: BuildAWSRuntimeProps) {
             entry: runtimeHandlersEntrypoint("activity-worker"),
             serviceType: ServiceType.ActivityWorker,
             injectedEntry: request.entry,
-            injectedAppSpec: specPath,
+            injectedServiceSpec: specPath,
           },
           {
             name: ServiceType.ApiHandler,
             entry: runtimeHandlersEntrypoint("api-handler"),
             serviceType: ServiceType.ApiHandler,
             injectedEntry: request.entry,
-            injectedAppSpec: specPath,
+            injectedServiceSpec: specPath,
           },
           {
             name: ServiceType.EventHandler,
             entry: runtimeHandlersEntrypoint("event-handler"),
             serviceType: ServiceType.EventHandler,
             injectedEntry: request.entry,
-            injectedAppSpec: specPath,
+            injectedServiceSpec: specPath,
           },
           {
             name: "SchedulerForwarder",

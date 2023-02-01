@@ -2,18 +2,10 @@ import type { HttpMethod } from "./api.js";
 import type { Subscription } from "./event.js";
 import type { DurationSchedule } from "./schedule.js";
 
-export interface WorkflowSpec {
-  name: string;
-}
-
-export interface WorkflowSpec {
-  name: string;
-}
-
 /**
  * Specification for an Eventual application
  */
-export interface AppSpec {
+export interface ServiceSpec {
   /**
    * A list of all event {@link Subscription}s.
    */
@@ -43,4 +35,8 @@ export interface RouteSpec extends FunctionSpec {
 export interface SourceLocation {
   fileName?: string;
   exportName?: string;
+}
+
+export interface WorkflowSpec {
+  name: string;
 }
