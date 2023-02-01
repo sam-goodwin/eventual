@@ -1,4 +1,8 @@
-import { ActivityMetrics, OrchestratorMetrics } from "@eventual/runtime-core";
+import {
+  ActivityMetrics,
+  MetricsCommon,
+  OrchestratorMetrics,
+} from "@eventual/runtime-core";
 import { Dashboard, LogQueryWidget } from "aws-cdk-lib/aws-cloudwatch";
 import { Construct } from "constructs";
 import { Service } from "./service";
@@ -36,6 +40,22 @@ export class DebugDashboard extends Construct {
       widgets: [
         [
           new LogQueryWidget({
+            title: "Workflow Information",
+            logGroupNames: allLogGroups,
+            queryLines: [
+              `filter NOT isempty(${MetricsCommon.WorkflowName})`,
+              `sort @timestamp desc`,
+              `stats count(${OrchestratorMetrics.ExecutionStarted}) as started, count(${OrchestratorMetrics.ExecutionCompleted}) as completed, ` +
+                ` avg(${OrchestratorMetrics.ExecutionTotalDuration}) as avg_execution_duration, max(${OrchestratorMetrics.ExecutionTotalDuration}) as max_execution_duration,` +
+                ` avg(${OrchestratorMetrics.ExecutionResultBytes}) / 1024 as avg_result_kb, max(${OrchestratorMetrics.ExecutionResultBytes}) / 1024 as max_result_kb` +
+                ` by ${MetricsCommon.WorkflowName}`,
+            ],
+            width: 24,
+            height: 6,
+          }),
+        ],
+        [
+          new LogQueryWidget({
             title: "All Errors",
             logGroupNames: allLogGroups,
             queryLines: [
@@ -54,7 +74,6 @@ export class DebugDashboard extends Construct {
               service.workflows.orchestrator.logGroup.logGroupName,
             ],
             queryLines: [
-              "fields @duration",
               `filter @type="REPORT" OR ${OrchestratorMetrics.LoadHistoryDuration} > 0`,
               `sort @timestamp desc`,
               `stats avg(@duration) as duration, avg(@initDuration) as coldDuration, avg(@maxMemoryUsed) / 1024 as memKB, avg(${OrchestratorMetrics.LoadHistoryDuration}) as historyLoad, avg(${OrchestratorMetrics.SaveHistoryDuration}) as historySave by bin(${logSummaryBucketDuration})`,
@@ -66,7 +85,6 @@ export class DebugDashboard extends Construct {
             title: "Activity Worker Summary",
             logGroupNames: [service.activities.worker.logGroup.logGroupName],
             queryLines: [
-              "fields @duration",
               `filter @type="REPORT" OR ${ActivityMetrics.OperationDuration} > 0`,
               `sort @timestamp desc`,
               `stats avg(@duration) as duration, avg(@initDuration) as coldDuration, avg(@maxMemoryUsed) / 1024 as memKB, avg(${ActivityMetrics.OperationDuration}) as operationDuration by bin(${logSummaryBucketDuration})`,
@@ -80,7 +98,6 @@ export class DebugDashboard extends Construct {
               (api) => api.logGroup.logGroupName
             ),
             queryLines: [
-              "fields @duration",
               `filter @type="REPORT"`,
               `sort @timestamp desc`,
               // group by log name as well
@@ -93,7 +110,6 @@ export class DebugDashboard extends Construct {
             title: "Event Handler Summary",
             logGroupNames: [service.events.handler.logGroup.logGroupName],
             queryLines: [
-              "fields @duration",
               `filter @type="REPORT"`,
               `sort @timestamp desc`,
               // group by log name as well

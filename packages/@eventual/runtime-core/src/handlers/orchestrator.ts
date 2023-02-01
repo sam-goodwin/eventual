@@ -278,6 +278,7 @@ export function createOrchestrator({
          * If this is the first run check to see if the workflow has timeout to start.
          */
         if (processedEvents.isFirstRun) {
+          metrics.setProperty(OrchestratorMetrics.ExecutionStarted, 1);
           if (processedEvents.startEvent?.timeoutTime) {
             const timeoutTime = processedEvents.startEvent?.timeoutTime;
             metrics.setProperty(OrchestratorMetrics.TimeoutStarted, 1);
@@ -614,8 +615,9 @@ export function createOrchestrator({
     function logExecutionCompleteMetrics(
       execution: SucceededExecution | FailedExecution
     ) {
+      metrics.setProperty(OrchestratorMetrics.ExecutionCompleted, 1);
       metrics.putMetric(
-        OrchestratorMetrics.ExecutionComplete,
+        OrchestratorMetrics.ExecutionSucceeded,
         execution.status === ExecutionStatus.SUCCEEDED ? 1 : 0,
         Unit.Count
       );

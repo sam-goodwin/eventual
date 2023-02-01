@@ -85,9 +85,17 @@ export namespace OrchestratorMetrics {
    */
   export const NewExecutionEvents = "NewExecutionEvents";
   /**
+   * Emitted by orchestrator when the execution starts.
+   */
+  export const ExecutionStarted = "ExecutionStarted";
+  /**
+   * Emitted by orchestrator when the execution completes.
+   */
+  export const ExecutionCompleted = "ExecutionCompleted";
+  /**
    * Whether the execution completed without error.
    */
-  export const ExecutionComplete = "ExecutionComplete";
+  export const ExecutionSucceeded = "ExecutionSucceeded";
   /**
    * Whether the execution completed with an error.
    */
