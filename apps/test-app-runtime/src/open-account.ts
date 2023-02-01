@@ -1,4 +1,4 @@
-import { activity, api, event, workflow } from "@eventual/core";
+import { activity, api, ApiResponse, event, workflow } from "@eventual/core";
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
@@ -77,7 +77,7 @@ api.post("/open-account", async (request) => {
     input,
   });
 
-  return new Response(JSON.stringify(response), {
+  return new ApiResponse(JSON.stringify(response), {
     headers: {
       "Content-Type": "application/json",
     },

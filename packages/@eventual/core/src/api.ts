@@ -1,4 +1,5 @@
 import itty from "itty-router";
+import { Readable } from "node:stream";
 import { SourceLocation } from "./app-spec.js";
 import { routes } from "./global.js";
 import type { DurationSchedule } from "./schedule.js";
@@ -60,7 +61,7 @@ export type RouteHandler = (
 ) => ApiResponse | Promise<ApiResponse>;
 
 abstract class BaseApiObject {
-  abstract readonly body: string | Buffer | ReadableStream<Uint8Array> | null;
+  abstract readonly body: string | Buffer | Readable | null;
 
   async json() {
     return JSON.parse((await this.text?.()) ?? "");
@@ -76,7 +77,9 @@ abstract class BaseApiObject {
       // Or ... is this the best way to best-effort parse a buffer as JSON?
       return this.body.toString("utf-8");
     } else {
-      return new TextDecoder().decode(await readStream(this.body));
+      return Buffer.from((await readStream(this.body)).buffer).toString(
+        "utf-8"
+      );
     }
   }
 
@@ -129,13 +132,15 @@ export class ApiRequest extends BaseApiObject {
   }
 }
 
+export type Body = string | Buffer | Readable | null;
+
 export class ApiResponse extends BaseApiObject {
-  readonly body: string | Buffer | ReadableStream<Uint8Array> | null;
+  readonly body: Body;
   readonly status: number;
   readonly statusText?: string;
   readonly headers?: Record<string, string> | Headers;
   constructor(
-    body?: string | Buffer | ReadableStream<Uint8Array> | null,
+    body?: Body,
     init?: {
       status: number;
       statusText?: string;
@@ -150,38 +155,19 @@ export class ApiResponse extends BaseApiObject {
   }
 }
 
-async function readStream(
-  stream?: ReadableStream<Uint8Array> | null
-): Promise<Uint8Array> {
-  let chunk: ReadableStreamReadResult<Uint8Array> | undefined;
-  const chunks = [];
-  const reader = stream?.getReader();
-  if (!reader) {
-    return new Uint8Array(0);
+async function readStream(readable?: Readable | null): Promise<Buffer> {
+  if (!readable) {
+    return Buffer.from(new Uint8Array(0));
   }
-  while ((chunk = await reader.read()) !== undefined) {
-    if (chunk.value) {
-      chunks.push(chunk.value);
-    }
-    if (chunk.done) {
-      break;
-    }
-  }
-  return concatStream(chunks);
-}
 
-function concatStream(arrays: Uint8Array[]): Uint8Array {
-  let length = 0;
-  arrays.forEach((item) => (length += item.length));
-
-  // Create a new array with total length and merge all source arrays.
-  let mergedArray = new Uint8Array(length);
-  let offset = 0;
-  arrays.forEach((item) => {
-    mergedArray.set(item, offset);
-    offset += item.length;
+  return new Promise((resolve, reject) => {
+    const chunks: any[] = [];
+    readable.on("error", reject);
+    readable.on("data", (data) => {
+      chunks.push(data);
+    });
+    readable.on("close", () => resolve(Buffer.concat(chunks)));
   });
-  return mergedArray;
 }
 
 /**

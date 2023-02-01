@@ -13,6 +13,7 @@ import {
   signal,
   duration,
   api,
+  ApiResponse,
 } from "@eventual/core";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -428,6 +429,6 @@ export const userApi = api.get(
     memorySize: 512,
   },
   async () => {
-    return new Response("hello world");
+    return new ApiResponse("hello world");
   }
 );
