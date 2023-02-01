@@ -6,7 +6,7 @@
     "outDir": "lib/esm",
     "paths": {
       "@eventual/injected/entry": ["./src/injected/entry.ts"],
-      "@eventual/injected/spec": ["./src/injected/spec.ts"]
+      "@eventual/injected/spec": ["src/injected/service-spec.ts"]
     }
   },
   "include": ["src", "src/package.json"],
