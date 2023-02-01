@@ -58,6 +58,12 @@ import { TestExecutionStore } from "./stores/execution-store.js";
 import { TimeController } from "./time-controller.js";
 
 export interface TestEnvironmentProps {
+  /**
+   * A service name which will be used as the service name in the given {@link TestEnvironment}.
+   *
+   * @default testing
+   */
+  serviceName?: string;
   entry: string;
   outDir?: string;
   /**
@@ -163,6 +169,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       executionQueueClient,
       activityProvider,
       logAgent: testLogAgent,
+      serviceName: props.serviceName ?? "testing",
     });
 
     const activityClient = new TestActivityClient(
@@ -224,6 +231,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       logAgent: testLogAgent,
       executionHistoryStateStore,
       workflowProvider,
+      serviceName: props.serviceName ?? "testing",
     });
   }
 

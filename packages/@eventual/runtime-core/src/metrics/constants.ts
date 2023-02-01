@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 export namespace MetricsCommon {
   export const EventualNamespace = "Eventual";
-  export const WorkflowNameDimension = "WorkflowName";
+  export const ServiceNameDimension = "ServiceName";
+  export const WorkflowName = "WorkflowName";
 }
 
 export namespace OrchestratorMetrics {
@@ -118,6 +119,7 @@ export namespace OrchestratorMetrics {
 }
 
 export namespace ActivityMetrics {
+  export const ActivityNameDimension = "ActivityName";
   /**
    * The age of the request, or the time from when it was sent to when it was started processing.
    */

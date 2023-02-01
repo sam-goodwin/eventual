@@ -204,6 +204,10 @@ export class Activities
     // allows access to any of the injected service client operations.
     this.props.service.configureForServiceClient(this.worker);
     this.props.api.configureInvokeHttpServiceApi(this.worker);
+    /**
+     * Access to service name in the activity worker for metrics logging
+     */
+    this.props.service.configureServiceName(this.worker);
   }
 
   private readonly ENV_MAPPINGS = {

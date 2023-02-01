@@ -1,4 +1,4 @@
-import { ExecutionRecord } from "@eventual/aws-runtime";
+import { ENV_NAMES, ExecutionRecord } from "@eventual/aws-runtime";
 import { Event } from "@eventual/core";
 import { MetricsCommon, OrchestratorMetrics } from "@eventual/runtime-core";
 import {
@@ -113,6 +113,8 @@ export interface IService {
    * Grants permission to use all operations on the {@link EventualServiceClient}.
    */
   configureForServiceClient(func: Function): void;
+
+  configureServiceName(func: Function): void;
 
   /**
    * The time taken to run the workflow's function to advance execution of the workflow.
@@ -309,6 +311,7 @@ export class Service extends Construct implements IGrantable, IService {
       table: this.table,
       events: this.events,
       logging: this.logging,
+      service: proxyService,
       ...props.workflows,
     });
     proxyWorkflows._bind(this.workflows);
@@ -445,6 +448,18 @@ export class Service extends Construct implements IGrantable, IService {
     this.configureStartExecution(func);
   }
 
+  public configureServiceName(func: Function) {
+    this.addEnvs(func, ENV_NAMES.SERVICE_NAME);
+  }
+
+  private readonly ENV_MAPPINGS = {
+    [ENV_NAMES.SERVICE_NAME]: () => this.serviceName,
+  } as const;
+
+  private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {
+    envs.forEach((env) => func.addEnvironment(env, this.ENV_MAPPINGS[env]()));
+  }
+
   /**
    * Allow a client to list services from ssm
    */
@@ -549,7 +564,7 @@ export class Service extends Construct implements IGrantable, IService {
       namespace: MetricsCommon.EventualNamespace,
       dimensionsMap: {
         ...options?.dimensionsMap,
-        [MetricsCommon.WorkflowNameDimension]: this.serviceName,
+        [MetricsCommon.ServiceNameDimension]: this.serviceName,
       },
     });
   }
