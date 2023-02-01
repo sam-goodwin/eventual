@@ -93,8 +93,8 @@ export async function build({
     conditions: ["module", "import", "require"],
     // supported with NODE_18.x runtime
     // TODO: make this configurable.
-    // external: ["@aws-sdk"],
-    external,
+    external: [...(external ?? []), "@aws-sdk", "@aws-crypto"],
+    // external,
     // does not include any node modules packages in the bundle
     packages: allPackagesExternal ? "external" : undefined,
     platform: "node",
