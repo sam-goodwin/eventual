@@ -13,6 +13,7 @@ import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import { IActivities } from "./activities";
 import type { BuildOutput } from "./build";
+import { grant } from "./grant";
 import { Logging } from "./logging";
 import { baseFnProps } from "./utils";
 import { IWorkflows } from "./workflows";
@@ -145,6 +146,7 @@ export class Scheduler
     }
   }
 
+  @grant()
   public grantCreateTimer(grantable: IGrantable) {
     this.grantSubmitToTimerQueue(grantable);
     grantable.grantPrincipal.addToPrincipalPolicy(
@@ -172,7 +174,8 @@ export class Scheduler
   /**
    * Grants the ability for the forwarder to remove the schedule.
    */
-  private grantCleanupTimer(grantable: IGrantable) {
+  @grant()
+  private grantCleanupTimer(grantable: IGrantable): any {
     grantable.grantPrincipal.addToPrincipalPolicy(
       new PolicyStatement({
         actions: ["scheduler:DeleteSchedule"],

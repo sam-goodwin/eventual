@@ -16,6 +16,7 @@ import { Construct } from "constructs";
 import { IActivities } from "./activities";
 import type { BuildOutput } from "./build";
 import { Events } from "./events";
+import { grant } from "./grant";
 import { Logging } from "./logging";
 import { IScheduler } from "./scheduler";
 import { ServiceFunction } from "./service-function";
@@ -147,6 +148,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.configureSubmitExecutionEvents(func);
   }
 
+  @grant()
   public grantStartExecution(grantable: IGrantable) {
     this.grantReadExecutions(grantable);
     this.grantWriteExecutions(grantable);
@@ -162,6 +164,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.configureSubmitExecutionEvents(func);
   }
 
+  @grant()
   public grantCompleteExecution(grantable: IGrantable) {
     this.grantWriteExecutions(grantable);
     this.grantSubmitExecutionEvents(grantable);
@@ -176,6 +179,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.addEnvs(func, ENV_NAMES.WORKFLOW_QUEUE_URL);
   }
 
+  @grant()
   public grantSubmitExecutionEvents(grantable: IGrantable) {
     this.queue.grantSendMessages(grantable);
   }
@@ -184,6 +188,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.configureSubmitExecutionEvents(func);
   }
 
+  @grant()
   public grantSendSignal(grantable: IGrantable) {
     this.grantSubmitExecutionEvents(grantable);
   }
@@ -197,6 +202,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.addEnvs(func, ENV_NAMES.TABLE_NAME);
   }
 
+  @grant()
   public grantReadExecutions(grantable: IGrantable) {
     this.props.table.grantReadData(grantable);
   }
@@ -206,6 +212,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.addEnvs(func, ENV_NAMES.TABLE_NAME);
   }
 
+  @grant()
   public grantWriteExecutions(grantable: IGrantable) {
     this.props.table.grantWriteData(grantable);
   }
@@ -219,6 +226,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.addEnvs(func, ENV_NAMES.TABLE_NAME);
   }
 
+  @grant()
   public grantReadExecutionHistory(grantable: IGrantable) {
     this.props.table.grantReadData(grantable);
   }
@@ -228,6 +236,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.addEnvs(func, ENV_NAMES.TABLE_NAME);
   }
 
+  @grant()
   public grantWriteExecutionHistory(grantable: IGrantable) {
     this.props.table.grantWriteData(grantable);
   }
@@ -241,6 +250,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.addEnvs(func, ENV_NAMES.EXECUTION_HISTORY_BUCKET);
   }
 
+  @grant()
   public grantReadHistoryState(grantable: IGrantable) {
     this.history.grantRead(grantable);
   }
@@ -250,6 +260,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.addEnvs(func, ENV_NAMES.EXECUTION_HISTORY_BUCKET);
   }
 
+  @grant()
   public grantWriteHistoryState(grantable: IGrantable) {
     this.history.grantWrite(grantable);
   }

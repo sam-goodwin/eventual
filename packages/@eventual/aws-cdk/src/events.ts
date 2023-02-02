@@ -10,6 +10,9 @@ import type { BuildOutput } from "./build";
 import { IService } from "./service";
 import { IServiceApi } from "./service-api";
 import { ServiceFunction } from "./service-function";
+import { grant } from "./grant";
+import { computeDurationSeconds } from "@eventual/runtime-core";
+import { Duration } from "aws-cdk-lib";
 
 export interface EventsProps {
   /**
@@ -97,24 +100,36 @@ export class Events extends Construct implements IGrantable {
           functionName: `${props.serviceName}-event-${handler.exportName}`,
           ...functionProps,
           memorySize: handler.memorySize,
-          retryAttempts: handler.retryAttempts ?? functionProps.retryAttempts,
+          timeout: handler.timeout
+            ? Duration.seconds(computeDurationSeconds(handler.timeout))
+            : undefined,
+          role: this.defaultHandler.role,
         }
       );
 
-      this.createRule(handlerFunction, handler.subscriptions);
+      this.createRule(
+        handlerFunction,
+        handler.subscriptions,
+        handler.retryAttempts
+      );
 
       return handlerFunction;
     });
 
     this.createRule(
       this.defaultHandler,
-      props.build.events.default.subscriptions
+      props.build.events.default.subscriptions,
+      undefined
     );
 
     this.configureEventHandler();
   }
 
-  private createRule(func: Function, subscriptions: Subscription[]) {
+  private createRule(
+    func: Function,
+    subscriptions: Subscription[],
+    retryAttempts: number | undefined
+  ) {
     if (subscriptions.length > 0) {
       // configure a Rule to route all subscribed events to the eventHandler
       new Rule(func, "Rules", {
@@ -126,8 +141,9 @@ export class Events extends Construct implements IGrantable {
           detailType: Array.from(new Set(subscriptions.map((sub) => sub.name))),
         },
         targets: [
-          new LambdaFunction(this.defaultHandler, {
+          new LambdaFunction(func, {
             deadLetterQueue: this.deadLetterQueue,
+            retryAttempts,
           }),
         ],
       });
@@ -142,15 +158,22 @@ export class Events extends Construct implements IGrantable {
   /**
    * Grants permission to publish to this {@link Service}'s {@link eventBus}.
    */
+  @grant()
   public grantPublish(grantable: IGrantable) {
     this.bus.grantPutEventsTo(grantable);
   }
 
-  private configureEventHandler() {
+  configureEventHandler() {
     // allows the access to all of the operations on the injected service client
     this.props.service.configureForServiceClient(this.defaultHandler);
+    this.handlers.map((handler) =>
+      this.props.service.configureForServiceClient(handler)
+    );
     // allow http access to the service client
     this.props.api.configureInvokeHttpServiceApi(this.defaultHandler);
+    this.handlers.map((handler) =>
+      this.props.api.configureInvokeHttpServiceApi(handler)
+    );
   }
 
   private readonly ENV_MAPPINGS = {

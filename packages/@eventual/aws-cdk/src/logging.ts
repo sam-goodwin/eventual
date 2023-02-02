@@ -5,6 +5,7 @@ import { IGrantable } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
+import { grant } from "./grant";
 import type { Service } from "./service";
 
 export interface LoggingProps {
@@ -46,6 +47,7 @@ export class Logging extends Construct {
       });
   }
 
+  @grant()
   public grantFilterLogEvents(grantable: IGrantable) {
     this.logGroup.grant(grantable, "logs:FilterLogEvents");
   }
@@ -62,6 +64,7 @@ export class Logging extends Construct {
     );
   }
 
+  @grant()
   public grantPutServiceLogs(grantable: IGrantable) {
     this.logGroup.grantWrite(grantable);
   }
