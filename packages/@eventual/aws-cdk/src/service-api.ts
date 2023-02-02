@@ -17,27 +17,41 @@ import { grant } from "./grant";
 import type { Scheduler } from "./scheduler";
 import { IService } from "./service";
 import { ServiceFunction } from "./service-function";
-import { baseFnProps } from "./utils";
+import { baseFnProps, KeysOfType, PickType } from "./utils";
 import type { Workflows } from "./workflows";
 
-export interface ApiProps {
+export type ApiNames<Service = any> = KeysOfType<Service, { kind: "Api" }>;
+
+export interface ApiProps<Service = any> {
   serviceName: string;
   environment?: Record<string, string>;
   entry: string;
   workflows: Workflows;
   activities: Activities;
   scheduler: Scheduler;
-  events: Events;
+  events: Events<Service>;
   service: IService;
   build: BuildOutput;
+  handlers?: {
+    [route in ApiNames<Service>]?: ApiHandlerProps;
+  };
 }
+
+/**
+ * Properties that can be overridden for an individual API handler Function.
+ */
+export interface ApiHandlerProps
+  extends Omit<
+    Partial<RouteMapping>,
+    "exportName" | "name" | "authorized" | "grants"
+  > {}
 
 export interface IServiceApi {
   configureInvokeHttpServiceApi(func: Function): void;
   grantInvokeHttpServiceApi(grantable: IGrantable): void;
 }
 
-export class Api extends Construct implements IServiceApi {
+export class Api<Service> extends Construct implements IServiceApi {
   /**
    * API Gateway for providing service api
    */
@@ -55,7 +69,7 @@ export class Api extends Construct implements IServiceApi {
    * customizable memory and timeout.
    */
   public readonly routes: {
-    [path: string]: Function;
+    [route in ApiNames<Service>]: Function;
   };
   /**
    * Individual Lambda Functions handling each of the internal Eventual APIs.
@@ -67,10 +81,10 @@ export class Api extends Construct implements IServiceApi {
   };
 
   public get handlers(): Function[] {
-    return [this.handler, ...Object.values(this.routes)];
+    return [this.handler, ...(Object.values(this.routes) as Function[])];
   }
 
-  constructor(scope: Construct, id: string, private props: ApiProps) {
+  constructor(scope: Construct, id: string, private props: ApiProps<Service>) {
     super(scope, id);
 
     this.handler = new ServiceFunction(this, "Handler", {
@@ -123,15 +137,25 @@ export class Api extends Construct implements IServiceApi {
                 grants: (fn) => this.configureInvokeHttpServiceApi(fn),
                 role: this.handler.role,
                 handler: "index.default",
+                ...(this.props.handlers?.[
+                  route.exportName as ApiNames<Service>
+                ] ?? {}),
                 environment: {
                   NODE_OPTIONS: "--enable-source-maps",
+                  ...((
+                    this.props.handlers?.[
+                      route.exportName as ApiNames<Service>
+                    ] ?? {}
+                  ).environment ?? {}),
                 },
               } satisfies RouteMapping,
             ],
           ];
         })
       )
-    );
+    ) as {
+      [route in keyof PickType<Service, { kind: "Api" }>]: Function;
+    };
   }
 
   private createInternalApiRoutes(): {
@@ -266,7 +290,7 @@ export class Api extends Construct implements IServiceApi {
 
 interface RouteMapping
   extends ApiFunction,
-    Omit<Partial<FunctionProps>, "memorySize" | "timeout"> {
+    Omit<Partial<FunctionProps>, "memorySize" | "timeout" | "code"> {
   authorized?: boolean;
   grants?: (grantee: Function) => void;
   role?: aws_iam.IRole;

@@ -27,7 +27,7 @@ export interface WorkflowsProps {
   scheduler: IScheduler;
   activities: IActivities;
   table: ITable;
-  events: Events;
+  events: Events<any>;
   logging: Logging;
   orchestrator?: {
     reservedConcurrentExecutions?: number;

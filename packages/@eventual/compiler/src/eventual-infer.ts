@@ -74,6 +74,7 @@ export async function infer(scriptName = process.argv[2]): Promise<AppSpec> {
         e.sourceLocation
           ? [
               {
+                kind: "EventHandler",
                 runtimeProps: e.runtimeProps,
                 sourceLocation: e.sourceLocation,
                 subscriptions: e.subscriptions,

@@ -17,14 +17,12 @@ export interface ApiRouteRuntimeProps<
   Input extends z.ZodType = z.ZodAny,
   Responses extends ApiResponseSchemas = ApiResponseSchemas,
   Headers extends HeadersSchema | undefined = undefined,
-  Params extends ParamsSchema | undefined = undefined,
-  OutputHeaders extends HeadersSchema | undefined = undefined
+  Params extends ParamsSchema | undefined = undefined
 > extends FunctionRuntimeProps {
   request?: Input;
   headers?: Headers;
   params?: Params;
   responses?: Responses;
-  outputHeaders?: OutputHeaders;
 }
 
 export interface ApiRouteFactory {
@@ -33,8 +31,7 @@ export interface ApiRouteFactory {
     Input extends z.ZodType,
     Responses extends ApiResponseSchemas,
     Headers extends HeadersSchema | undefined,
-    Params extends ParamsSchema | undefined,
-    OutputHeaders extends HeadersSchema | undefined
+    Params extends ParamsSchema | undefined
   >(
     path: Path,
     props: ApiRouteRuntimeProps<Input, Responses, Headers, Params>,
@@ -42,24 +39,21 @@ export interface ApiRouteFactory {
       z.infer<Input>,
       InferApiResponses<Responses>,
       InferOrDefault<Headers, HeaderValues>,
-      InferOrDefault<Params, ParamValues>,
-      InferOrDefault<OutputHeaders, HeaderValues>
+      InferOrDefault<Params, ParamValues>
     >[]
   ): Api<
     Path,
     z.infer<Input>,
     InferApiResponses<Responses>,
     InferOrDefault<Headers, HeaderValues>,
-    InferOrDefault<Params, ParamValues>,
-    InferOrDefault<OutputHeaders, HeaderValues>
+    InferOrDefault<Params, ParamValues>
   >;
   <Path extends string>(path: Path, ...handlers: RouteHandler[]): Api<
     Path,
     any,
     any,
     HeaderValues,
-    ParamValues,
-    HeaderValues
+    ParamValues
   >;
 }
 
@@ -69,12 +63,12 @@ export interface GetRouteRuntimeProps<
   },
   Headers extends HeadersSchema | undefined = undefined,
   Params extends ParamsSchema | undefined = undefined,
-  OutputHeaders extends HeadersSchema | undefined = undefined
+  DefaultResponseHeaders extends HeadersSchema | undefined = undefined
 > extends FunctionRuntimeProps {
   headers?: Headers;
   params?: Params;
   responses?: Responses;
-  outputHeaders?: OutputHeaders;
+  DefaultResponseHeaders?: DefaultResponseHeaders;
 }
 
 export interface GetApiRouteFactory {
@@ -83,7 +77,7 @@ export interface GetApiRouteFactory {
     Responses extends ApiResponseSchemas,
     Headers extends HeadersSchema | undefined,
     Params extends ParamsSchema | undefined,
-    OutputHeaders extends HeadersSchema | undefined
+    DefaultResponseHeaders extends HeadersSchema | undefined
   >(
     path: Path,
     props: GetRouteRuntimeProps<Responses, Headers, Params>,
@@ -92,14 +86,13 @@ export interface GetApiRouteFactory {
     Path,
     InferApiResponses<Responses>,
     InferOrDefault<Headers, HeaderValues>,
-    InferOrDefault<Params, ParamValues>,
-    InferOrDefault<OutputHeaders, HeaderValues>
+    InferOrDefault<Params, ParamValues>
   >;
   // TODO: deprecate this - only support type-safe
   <Path extends string>(
     path: Path,
     ...handlers: TypedRouteHandler<undefined>[]
-  ): GetApi<Path, any, HeaderValues, ParamValues, HeaderValues>;
+  ): GetApi<Path, any, HeaderValues, ParamValues>;
 }
 
 type InferApiResponses<Responses extends ApiResponseSchemas> = {

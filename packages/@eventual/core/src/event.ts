@@ -60,6 +60,7 @@ export interface EventHandlerRuntimeProps extends FunctionRuntimeProps {
  * may be {@link publishEvents}ed and {@link onEvent}d to.
  */
 export interface Event<E extends EventPayload = EventPayload> {
+  kind: "Event";
   /**
    * The Event's globally unique name.
    */
@@ -88,6 +89,7 @@ export interface Event<E extends EventPayload = EventPayload> {
 }
 
 export interface EventHandler<E extends EventPayload = EventPayload> {
+  kind: "EventHandler";
   /**
    * The Handler Function for processing the Events.
    */
@@ -193,6 +195,7 @@ export function event<E extends EventPayload>(
     throw new Error(`event with name '${name}' already exists`);
   }
   const event: Event<E> = {
+    kind: "Event",
     name,
     schema,
     onEvent(...args: any[]) {
@@ -219,6 +222,7 @@ export function event<E extends EventPayload>(
           : [undefined, undefined, args[0] as EventHandlerFunction<E>];
 
       const eventHandler: EventHandler<E> = {
+        kind: "EventHandler",
         handler,
         subscriptions: [
           {
