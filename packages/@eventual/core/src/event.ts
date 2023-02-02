@@ -1,4 +1,4 @@
-import z from "zod";
+import type z from "zod";
 import { isSourceLocation, SourceLocation } from "./app-spec.js";
 import { createPublishEventsCall } from "./calls/send-events-call.js";
 import { isOrchestratorWorker } from "./flags.js";

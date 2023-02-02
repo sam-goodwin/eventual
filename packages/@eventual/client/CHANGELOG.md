@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.15.0 (2023-02-02)
+
+### Features
+
+- support Zod Schemas on event declarations for validation and SchemaRegistry configuration ([#263](https://github.com/functionless/eventual/issues/263)) ([a9ce175](https://github.com/functionless/eventual/commit/a9ce175127f6a332be34683b5753059a53891d4c))
+
 ## 0.14.1 (2023-02-02)
 
 ### Bug Fixes
