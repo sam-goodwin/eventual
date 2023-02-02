@@ -238,17 +238,6 @@ export function event<E extends EventPayload>(
       return eventHandler;
     },
     async publishEvents(...events) {
-      if (schema) {
-        events.forEach((event, i) => {
-          const result = schema.safeParse(event);
-          if (!result.success) {
-            throw new Error(
-              `event at position ${i} does not match the provided schema: ${result.error.message}`
-            );
-          }
-        });
-      }
-
       const envelopes = events.map((event) => ({
         name,
         event,
