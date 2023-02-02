@@ -1,5 +1,7 @@
 import { activity, asyncResult, event, workflow } from "@eventual/core";
 import { randomInt } from "crypto";
+import z from "zod";
+import { ZodClass } from "zod-class";
 
 const StockActionResultEvent = event<{
   symbol: string;
@@ -8,15 +10,17 @@ const StockActionResultEvent = event<{
   quantity: number;
 }>("StockActionResult");
 
-interface RequestApprovalEventPayload {
-  symbol: string;
-  recommendation: "buy" | "sell";
-  price: number;
-  token: string;
-}
+class RequestApprovalEventPayload extends ZodClass({
+  symbol: z.string(),
+  recommendation: z.enum(["buy", "sell"]),
+  price: z.number(),
+  token: z.string(),
+}) {}
 
-const RequestApprovalEvent =
-  event<RequestApprovalEventPayload>("RequestApproval");
+const RequestApprovalEvent = event(
+  "RequestApproval",
+  RequestApprovalEventPayload
+);
 
 // auto approval for the human request approval event.
 export const onApproval = RequestApprovalEvent.onEvent(async (event) => {
