@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.14.1 (2023-02-02)
+
+### Bug Fixes
+
+- create eventual does not use own version ([#267](https://github.com/functionless/eventual/issues/267)) ([623a51f](https://github.com/functionless/eventual/commit/623a51f7f6a1bcf62c78fdbec831a3244dc89d0a))
+
 # 0.14.0 (2023-02-01)
 
 ### Features

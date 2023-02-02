@@ -43,7 +43,13 @@ export interface EventEnvelope<E extends EventPayload = EventPayload> {
  */
 export interface EventHandlerRuntimeProps extends FunctionRuntimeProps {
   /**
-   * Number of times an Event Handler can be retried before considering the Event as failed to process.
+   * Number of times an event can be re-driven to the Event Handler before considering
+   * the Event as failed to process and sending it to the Service Dead Letter Queue.
+   *
+   * Minimum value of `0`.
+   * Maximum value of `185`.
+   *
+   * @default 185
    */
   retryAttempts?: number;
 }
@@ -82,8 +88,6 @@ export interface Event<E extends EventPayload = EventPayload> {
 }
 
 export interface EventHandler<E extends EventPayload = EventPayload> {
-  // TODO: remove this once we have a zod schema.
-  __brand?: E;
   /**
    * The Handler Function for processing the Events.
    */
