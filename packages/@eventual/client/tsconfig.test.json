@@ -3,7 +3,7 @@
   "compilerOptions": {
     "rootDir": ".",
     "noEmit": true,
-    "lib": ["DOM", "ES2021"],
+    "lib": ["DOM", "ES2022"],
     "types": ["@types/node", "@types/jest"]
   },
   "include": ["src", "test"],
