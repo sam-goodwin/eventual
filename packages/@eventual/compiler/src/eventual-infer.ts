@@ -4,8 +4,11 @@
  *
  * @see ServiceSpec
  */
+import { generateSchema } from "@anatine/zod-openapi";
 import {
-  eventSubscriptions,
+  eventHandlers,
+  EventHandlerSpec,
+  events,
   routes,
   RouteSpec,
   ServiceSpec,
@@ -25,7 +28,7 @@ import esbuild from "esbuild";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
-import { getSpan, isApiCall } from "./ast-util.js";
+import { getSpan, isApiCall, isOnEventCall } from "./ast-util.js";
 import { printModule } from "./print-module.js";
 
 export async function infer(
@@ -55,7 +58,31 @@ export async function infer(
   await import(path.resolve(scriptName));
 
   const serviceSpec: ServiceSpec = {
-    subscriptions: eventSubscriptions().flatMap((e) => e.subscriptions),
+    events: {
+      schemas: Object.fromEntries(
+        Array.from(events().values()).map(
+          (event) =>
+            [
+              event.name,
+              event.schema ? generateSchema(event.schema) : {},
+            ] as const
+        )
+      ),
+      subscriptions: eventHandlers().flatMap((e) =>
+        e.sourceLocation ? [] : e.subscriptions
+      ),
+      handlers: eventHandlers().flatMap((e) =>
+        e.sourceLocation
+          ? [
+              {
+                runtimeProps: e.runtimeProps,
+                sourceLocation: e.sourceLocation,
+                subscriptions: e.subscriptions,
+              } satisfies EventHandlerSpec,
+            ]
+          : []
+      ),
+    },
     api: {
       routes: routes.map(
         (route) =>
@@ -149,7 +176,7 @@ export class InferVisitor extends Visitor {
   }
 
   visitCallExpression(call: CallExpression): Expression {
-    if (this.exportName && isApiCall(call)) {
+    if (this.exportName && (isApiCall(call) || isOnEventCall(call))) {
       this.didMutate = true;
 
       return {

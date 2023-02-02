@@ -13,6 +13,7 @@ import type { Activities } from "./activities";
 import type { BuildOutput } from "./build";
 import { ApiFunction, InternalApiRoutes } from "./build-manifest";
 import type { Events } from "./events";
+import { grant } from "./grant";
 import type { Scheduler } from "./scheduler";
 import { IService } from "./service";
 import { ServiceFunction } from "./service-function";
@@ -102,6 +103,7 @@ export class Api extends Construct implements IServiceApi {
     }
   }
 
+  @grant()
   public grantInvokeHttpServiceApi(grantable: IGrantable) {
     grantable.grantPrincipal.addToPrincipalPolicy(
       this.executeApiPolicyStatement()

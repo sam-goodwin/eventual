@@ -1,21 +1,26 @@
 import {
-  EventHandler,
+  EventHandlerFunction,
   EventPayload,
   EventSubscription,
-  eventSubscriptions,
+  eventHandlers,
 } from "@eventual/core";
 
 export interface EventHandlerProvider {
-  getEventHandlersForEvent(eventId: string): EventHandler<any>[];
+  getEventHandlersForEvent(eventId: string): EventHandlerFunction<any>[];
 }
 
 export class GlobalEventHandlerProvider implements EventHandlerProvider {
-  private readonly subscriptions: Record<string, EventHandler<EventPayload>[]>;
+  private readonly subscriptions: Record<
+    string,
+    EventHandlerFunction<EventPayload>[]
+  >;
   constructor() {
-    this.subscriptions = indexEventSubscriptions(eventSubscriptions());
+    this.subscriptions = indexEventSubscriptions(eventHandlers());
   }
 
-  public getEventHandlersForEvent(eventId: string): EventHandler<any>[] {
+  public getEventHandlersForEvent(
+    eventId: string
+  ): EventHandlerFunction<any>[] {
     return this.subscriptions[eventId] ?? [];
   }
 }
@@ -31,7 +36,7 @@ function indexEventSubscriptions(
     .flatMap((e) =>
       e.subscriptions.map((sub) => [sub.name, e.handler] as const)
     )
-    .reduce<Record<string, EventHandler<EventPayload>[]>>(
+    .reduce<Record<string, EventHandlerFunction<EventPayload>[]>>(
       (index, [name, handler]) => ({
         ...index,
         ...(name in index

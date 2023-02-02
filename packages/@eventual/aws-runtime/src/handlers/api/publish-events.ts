@@ -11,6 +11,7 @@ export const handler = withErrorMiddleware(async (request) => {
   if (!body) {
     return { statusCode: 400, body: "Expected publish events to have a body." };
   }
+
   const eventsRequest = JSON.parse(body) as PublishEventsRequest;
 
   return eventClient.publishEvents(...eventsRequest.events);

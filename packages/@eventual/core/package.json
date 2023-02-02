@@ -1,6 +1,6 @@
 {
   "name": "@eventual/core",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",
@@ -17,7 +17,11 @@
   },
   "dependencies": {
     "itty-router": "^2.6.6",
+    "openapi3-ts": "^3",
     "ulidx": "^0.3.0"
+  },
+  "peerDependencies": {
+    "zod": "^3"
   },
   "devDependencies": {
     "@jest/globals": "^29.3.1",
@@ -26,8 +30,9 @@
     "jest": "^29",
     "ts-jest": "^29",
     "ts-node": "^10.9.1",
-    "typescript": "^4.9.4",
-    "ulidx": "^0.3.0"
+    "typescript": "^4.9.5",
+    "ulidx": "^0.3.0",
+    "zod": "3.20.2"
   },
   "jest": {
     "extensionsToTreatAsEsm": [
