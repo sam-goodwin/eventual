@@ -1,6 +1,9 @@
+import type z from "zod";
+import { isSourceLocation, SourceLocation } from "./app-spec.js";
 import { createPublishEventsCall } from "./calls/send-events-call.js";
 import { isOrchestratorWorker } from "./flags.js";
-import { events, eventSubscriptions, getServiceClient } from "./global.js";
+import type { FunctionRuntimeProps } from "./function-props.js";
+import { events, eventHandlers, getServiceClient } from "./global.js";
 
 /**
  * An EventPayload is the data sent as an event.
@@ -36,6 +39,22 @@ export interface EventEnvelope<E extends EventPayload = EventPayload> {
 }
 
 /**
+ * Runtime Props for an Event Handler.
+ */
+export interface EventHandlerRuntimeProps extends FunctionRuntimeProps {
+  /**
+   * Number of times an event can be re-driven to the Event Handler before considering
+   * the Event as failed to process and sending it to the Service Dead Letter Queue.
+   *
+   * Minimum value of `0`.
+   * Maximum value of `185`.
+   *
+   * @default 185
+   */
+  retryAttempts?: number;
+}
+
+/**
  * An {@link Event} is an object representing the declaration of an event
  * that belongs within the service. An {@link Event} has a unique {@link name},
  * may be {@link publishEvents}ed and {@link onEvent}d to.
@@ -46,12 +65,20 @@ export interface Event<E extends EventPayload = EventPayload> {
    */
   readonly name: string;
   /**
+   * An optional Schema of the Event.
+   */
+  schema?: z.Schema<E>;
+  /**
    * Subscribe to this event. The {@link handler} will be invoked every
    * time an event with this name is published within the service boundary.
    *
    * @param handler the handler function that will process the event.
    */
-  onEvent(handler: (event: E) => Promise<void>): void;
+  onEvent(handler: EventHandlerFunction<E>): EventHandler<E>;
+  onEvent(
+    props: EventHandlerRuntimeProps,
+    handlers: EventHandlerFunction<E>
+  ): EventHandler<E>;
   /**
    * Publish events of this type within the service boundary.
    *
@@ -60,9 +87,30 @@ export interface Event<E extends EventPayload = EventPayload> {
   publishEvents(...events: E[]): Promise<void>;
 }
 
+export interface EventHandler<E extends EventPayload = EventPayload> {
+  /**
+   * The Handler Function for processing the Events.
+   */
+  handler: EventHandlerFunction<E>;
+  /**
+   * Subscriptions this Event Handler is subscribed to. Any event flowing
+   * through the Service's Event Bus that match these criteria will be
+   * sent to this Lambda Function.
+   */
+  subscriptions: Subscription[];
+  /**
+   * Runtime configuration for this Event Handler.
+   */
+  runtimeProps?: EventHandlerRuntimeProps;
+  /**
+   * Only available during eventual-infer.
+   */
+  sourceLocation?: SourceLocation;
+}
+
 /**
  * A {@link Subscription} is an object that describes how to select events from
- * within a service boundary to route to a {@link EventHandler}.
+ * within a service boundary to route to a {@link EventHandlerFunction}.
  *
  * For now, we only support matching on a single name, but this object can be
  * extended with other properties such as selection predicates.
@@ -85,16 +133,18 @@ export interface EventSubscription<E extends EventPayload = EventPayload> {
    */
   subscriptions: Subscription[];
   /**
-   * The {@link EventHandler} to invoke for any event that matches one of
+   * The {@link EventHandlerFunction} to invoke for any event that matches one of
    * the {@link subscriptions}.
    */
-  handler: EventHandler<E>;
+  handler: EventHandlerFunction<E>;
 }
 
 /**
  * A Function that processes an {@link event} of type {@link E}.
  */
-export type EventHandler<E extends EventPayload> = (event: E) => Promise<void>;
+export type EventHandlerFunction<E extends EventPayload> = (
+  event: E
+) => Promise<void>;
 
 /**
  * Declares an event that can be published and subscribed to.
@@ -132,25 +182,58 @@ export type EventHandler<E extends EventPayload> = (event: E) => Promise<void>;
  * ```
  *
  * @param name a unique name that identifies this event type within the Service.
+ * @param schema an optional zod schema describing the allowed data.
  * @returns an {@link Event}
  */
-export function event<E extends EventPayload>(name: string): Event<E> {
+export function event<E extends EventPayload>(
+  name: string,
+  schema?: z.Schema<E>
+): Event<E> {
   if (events().has(name)) {
     throw new Error(`event with name '${name}' already exists`);
   }
   const event: Event<E> = {
     name,
-    onEvent(handler) {
-      eventSubscriptions().push({
+    schema,
+    onEvent(...args: any[]) {
+      // we have an implicit contract where the SourceLocation may be passed in as the first argument
+      const [sourceLocation, eventHandlerProps, handler] =
+        typeof args[2] === "function"
+          ? [
+              args[0] as SourceLocation,
+              args[1] as EventHandlerRuntimeProps,
+              args[2] as EventHandlerFunction<E>,
+            ]
+          : typeof args[1] === "function"
+          ? isSourceLocation(args[0])
+            ? [
+                args[0] as SourceLocation,
+                undefined,
+                args[1] as EventHandlerFunction<E>,
+              ]
+            : [
+                undefined,
+                args[0] as EventHandlerRuntimeProps,
+                args[1] as EventHandlerFunction<E>,
+              ]
+          : [undefined, undefined, args[0] as EventHandlerFunction<E>];
+
+      const eventHandler: EventHandler<E> = {
+        handler,
         subscriptions: [
           {
             name,
           },
         ],
-        handler: handler as EventHandler<EventPayload>,
-      });
+        runtimeProps: eventHandlerProps,
+        sourceLocation,
+      };
+
+      eventHandlers().push(eventHandler);
+
+      return eventHandler;
     },
-    publishEvents(...events) {
+    async publishEvents(...events) {
       const envelopes = events.map((event) => ({
         name,
         event,
@@ -162,6 +245,6 @@ export function event<E extends EventPayload>(name: string): Event<E> {
       }
     },
   };
-  events().set(name, event);
+  events().set(name, event as Event<any>);
   return event;
 }

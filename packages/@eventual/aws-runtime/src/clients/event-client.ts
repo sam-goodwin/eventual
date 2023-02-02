@@ -3,7 +3,11 @@ import {
   EventBridgeClient,
   PutEventsCommand,
 } from "@aws-sdk/client-eventbridge";
-import { EventEnvelope, EventPayload } from "@eventual/core";
+import {
+  EventEnvelope,
+  EventPayload,
+  events as GlobalEvents,
+} from "@eventual/core";
 import { EventClient, getLazy, LazyValue } from "@eventual/runtime-core";
 import { chunkArray } from "../utils.js";
 
@@ -27,7 +31,25 @@ export class AWSEventClient implements EventClient {
 
     const eventBatches = chunkArray(
       10,
-      events.map((event) => [event.name, JSON.stringify(event.event)] as const)
+      events.map((event, i) => {
+        const schema = GlobalEvents().get(event.name)?.schema;
+        if (schema) {
+          const result = schema.safeParse(event.event);
+          if (!result.success) {
+            const errorMessages = result.error.errors.map(
+              (error) =>
+                `${error.code}(${error.path.join(".")}): ${error.message}`
+            );
+            throw new Error(
+              `event ${i} did not match the provided schema: [${errorMessages.join(
+                ", "
+              )}]`
+            );
+          }
+        }
+
+        return [event.name, JSON.stringify(event.event)] as const;
+      })
     );
 
     await Promise.all(

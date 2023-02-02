@@ -1,4 +1,4 @@
-import { Event, EventSubscription } from "./event.js";
+import { Event, EventHandler, EventSubscription } from "./event.js";
 import { ActivityContext, ActivityHandler } from "./activity.js";
 import type { Eventual, EventualCallCollector } from "./eventual.js";
 import type { Workflow } from "./workflow.js";
@@ -43,7 +43,7 @@ declare global {
      * A global variable storing a list of all {@link EventSubscription}s declared
      * within this application.
      */
-    eventSubscriptions?: EventSubscription[];
+    eventHandlers?: EventHandler[];
     /**
      * API routes registered within the application.
      */
@@ -61,11 +61,11 @@ export const workflows = (): Map<string, Workflow> =>
 export const events = (): Map<string, Event> =>
   (globalThis._eventual.events ??= new Map<string, Event>());
 
-export const eventSubscriptions = (): EventSubscription[] =>
-  (globalThis._eventual.eventSubscriptions ??= []);
+export const eventHandlers = (): EventHandler<any>[] =>
+  (globalThis._eventual.eventHandlers ??= []);
 
-export function clearEventSubscriptions() {
-  globalThis._eventual.eventSubscriptions = [];
+export function clearEventHandlers() {
+  globalThis._eventual.eventHandlers = [];
 }
 
 export const callableActivities = (): Record<string, ActivityHandler<any>> =>

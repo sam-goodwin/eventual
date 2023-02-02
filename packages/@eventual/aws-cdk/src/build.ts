@@ -82,10 +82,18 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       },
     },
     events: {
+      schemas: appSpec.events.schemas,
       default: {
         file: eventHandler!,
-        subscriptions: appSpec.subscriptions,
+        subscriptions: appSpec.events.subscriptions,
       },
+      handlers: appSpec.events.handlers.map((handler) => ({
+        file: handler.sourceLocation.fileName,
+        subscriptions: handler.subscriptions,
+        memorySize: handler.runtimeProps?.memorySize,
+        timeout: handler.runtimeProps?.timeout,
+        exportName: handler.sourceLocation.exportName,
+      })),
     },
     scheduler: {
       forwarder: {

@@ -2,10 +2,10 @@ import { bundleService } from "@eventual/compiler";
 import {
   ActivityFunction,
   ActivityOutput,
-  clearEventSubscriptions,
+  clearEventHandlers,
   Event,
   EventEnvelope,
-  EventHandler,
+  EventHandlerFunction,
   EventPayload,
   EventPayloadType,
   events,
@@ -246,7 +246,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       _workflows.clear();
       const _events = events();
       _events.clear();
-      clearEventSubscriptions();
+      clearEventHandlers();
       // run the service to re-import the workflows, but transformed
       await import(await this.serviceFile);
       this.initialized = true;
@@ -310,7 +310,7 @@ export class TestEnvironment extends RuntimeServiceClient {
    */
   public subscribeEvent<E extends Event<any>>(
     event: E,
-    handler: EventHandler<EventPayloadType<E>>
+    handler: EventHandlerFunction<EventPayloadType<E>>
   ) {
     return this.eventHandlerProvider.subscribeEvent(event, handler);
   }
