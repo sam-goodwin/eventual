@@ -613,6 +613,7 @@ importers:
   packages/@eventual/core:
     specifiers:
       '@jest/globals': ^29.3.1
+      '@tshttp/status': ^2.0.0
       '@types/jest': ^29
       '@types/node': ^16
       itty-router: ^2.6.6
@@ -629,6 +630,7 @@ importers:
       ulidx: 0.3.0
     devDependencies:
       '@jest/globals': 29.3.1
+      '@tshttp/status': 2.0.0
       '@types/jest': 29.2.2
       '@types/node': 16.18.3
       jest: 29.3.1_dnlfjp7n5lpfgnj4digwzn5fhe
@@ -6427,6 +6429,11 @@ packages:
 
   /@tsconfig/node16/1.0.3:
     resolution: {integrity: sha512-yOlFc+7UtL/89t2ZhjPvvB/DeAr3r+Dq58IgzsFkOAvVC6NMJXmCGjbptdXdR9qsX7pKcTL+s87FtYREi2dEEQ==}
+    dev: true
+
+  /@tshttp/status/2.0.0:
+    resolution: {integrity: sha512-oJOTL/eZ48CSTlvov5rkdR8gTaBivMyz1+gcoFFTBuQqUpUstAhWOjMASlconIrz0ZuhGcSGE25fSkx1uOJQYw==}
+    engines: {node: '>=8.10'}
     dev: true
 
   /@types/aws-lambda/8.10.108:

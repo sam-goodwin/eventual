@@ -1,31 +1,43 @@
-import type z from "zod";
 import itty from "itty-router";
-import type {
-  ApiRequest,
-  ApiResponse,
-  TypedApiRequest,
-  TypedApiResponse,
-} from "./api-request.js";
+import { RouteHandler } from "./api-handler.js";
+import type { ApiRequest, ApiResponse } from "./api-request.js";
+import {
+  GetApiRouteFactory,
+  ApiRouteFactory,
+  ApiRouteRuntimeProps,
+} from "./api-route.js";
 import { SourceLocation } from "./app-spec.js";
-import { FunctionRuntimeProps } from "./function-props.js";
 import { routes } from "./global.js";
 import { HttpMethod } from "./http-method.js";
 
 const router = itty.Router() as any as Router;
 
+export type RouteEntry = [string, RegExp, RouteHandler];
+
+export interface Route {
+  path: string;
+  handlers: RouteHandler[];
+  method: HttpMethod;
+  runtimeProps?: ApiRouteRuntimeProps;
+  /**
+   * Only available during eventual-infer
+   */
+  sourceLocation?: SourceLocation;
+}
+
 export interface Router {
   handle: (request: ApiRequest, ...extra: any) => Promise<ApiResponse>;
   routes: RouteEntry[];
-  all: RouteFactory;
-  get: GetRouteFactory;
-  head: RouteFactory;
-  post: RouteFactory;
-  put: RouteFactory;
-  delete: RouteFactory;
-  connect: RouteFactory;
-  options: RouteFactory;
-  trace: RouteFactory;
-  patch: RouteFactory;
+  all: ApiRouteFactory;
+  get: GetApiRouteFactory;
+  head: ApiRouteFactory;
+  post: ApiRouteFactory;
+  put: ApiRouteFactory;
+  delete: ApiRouteFactory;
+  connect: ApiRouteFactory;
+  options: ApiRouteFactory;
+  trace: ApiRouteFactory;
+  patch: ApiRouteFactory;
 }
 
 /**
@@ -49,9 +61,9 @@ export const api: Router = new Proxy(
         return (
           ...args:
             | [SourceLocation, string, ...RouteHandler[]]
-            | [SourceLocation, string, RouteRuntimeProps, ...RouteHandler[]]
+            | [SourceLocation, string, ApiRouteRuntimeProps, ...RouteHandler[]]
             | [string, ...RouteHandler[]]
-            | [string, RouteRuntimeProps, ...RouteHandler[]]
+            | [string, ApiRouteRuntimeProps, ...RouteHandler[]]
         ) => {
           const route: Route = {
             sourceLocation: typeof args[0] === "object" ? args[0] : undefined,
@@ -70,153 +82,10 @@ export const api: Router = new Proxy(
             ) as RouteHandler[], // todo: why do i need to cast?
           };
           routes.push(route);
+          // @ts-expect-error - functions don't overlap, but we know they can be called together
           return router[method](route.path, ...route.handlers);
         };
       }
     },
   }
 ) as any;
-
-export type RouteHandler = (
-  request: ApiRequest,
-  ...args: any
-) => ApiResponse | Promise<ApiResponse>;
-
-type ParamValue = string | number | boolean;
-
-export interface ParamsSchema {
-  [parameterName: string]: z.ZodType<ParamValue | ParamValue[]>;
-}
-
-export interface ParamValues {
-  [parameterName: string]: ParamValue | ParamValue[];
-}
-
-export interface HeadersSchema {
-  [headerName: string]: z.ZodType<undefined | string | string[]>;
-}
-
-export interface HeaderValues {
-  [headerName: string]: string | string[] | undefined;
-}
-
-export interface RouteRuntimeProps<
-  Input extends z.ZodType = z.ZodAny,
-  Output extends z.ZodType = z.ZodAny,
-  Headers extends HeadersSchema | undefined = undefined,
-  Params extends ParamsSchema | undefined = undefined,
-  OutputHeaders extends HeadersSchema | undefined = undefined
-> extends FunctionRuntimeProps {
-  input?: Input;
-  headers?: Headers;
-  params?: Params;
-  output?: Output;
-  outputHeaders?: OutputHeaders;
-}
-
-export interface GetRouteRuntimeProps<
-  Output extends z.ZodType = z.ZodAny,
-  Headers extends HeadersSchema | undefined = undefined,
-  Params extends ParamsSchema | undefined = undefined,
-  OutputHeaders extends HeadersSchema | undefined = undefined
-> extends FunctionRuntimeProps {
-  headers?: Headers;
-  params?: Params;
-  output?: Output;
-  outputHeaders?: OutputHeaders;
-}
-
-export interface Route {
-  path: string;
-  handlers: RouteHandler[];
-  method: HttpMethod;
-  runtimeProps?: RouteRuntimeProps;
-  /**
-   * Only available during eventual-infer
-   */
-  sourceLocation?: SourceLocation;
-}
-
-export interface GetApi<
-  Output,
-  Headers extends HeaderValues | undefined,
-  Params extends ParamValues | undefined,
-  OutputHeaders extends HeaderValues | undefined
-> extends Api<undefined, Output, Headers, Params, OutputHeaders> {}
-
-export interface Api<
-  Input,
-  Output,
-  Headers extends HeaderValues | undefined,
-  Params extends ParamValues | undefined,
-  OutputHeaders extends HeaderValues | undefined
-> {
-  (request: TypedApiRequest<Input, Headers, Params>): Promise<
-    TypedApiResponse<Output, OutputHeaders>
-  >;
-}
-
-export interface RouteFactory {
-  <
-    Input extends z.ZodType,
-    Output extends z.ZodType,
-    Headers extends HeadersSchema | undefined,
-    Params extends ParamsSchema | undefined,
-    OutputHeaders extends HeadersSchema | undefined
-  >(
-    path: string,
-    props: RouteRuntimeProps<Input, Output, Headers, Params>,
-    ...handlers: RouteHandler[]
-  ): Api<
-    z.infer<Input>,
-    z.infer<Output>,
-    undefined extends Headers
-      ? HeaderValues
-      : z.infer<z.ZodObject<Exclude<Headers, undefined>>>,
-    Params extends undefined
-      ? ParamValues
-      : z.infer<z.ZodObject<Exclude<Params, undefined>>>,
-    undefined extends OutputHeaders
-      ? HeaderValues
-      : z.infer<z.ZodObject<Exclude<OutputHeaders, undefined>>>
-  >;
-  (path: string, ...handlers: RouteHandler[]): Api<
-    any,
-    any,
-    HeaderValues,
-    ParamValues,
-    HeaderValues
-  >;
-}
-
-export interface GetRouteFactory {
-  <
-    Output extends z.ZodType,
-    Headers extends HeadersSchema | undefined,
-    Params extends ParamsSchema | undefined,
-    OutputHeaders extends HeadersSchema | undefined
-  >(
-    path: string,
-    props: GetRouteRuntimeProps<Output, Headers, Params>,
-    ...handlers: RouteHandler[]
-  ): GetApi<
-    z.infer<Output>,
-    undefined extends Headers
-      ? HeaderValues
-      : z.infer<z.ZodObject<Exclude<Headers, undefined>>>,
-    Params extends undefined
-      ? ParamValues
-      : z.infer<z.ZodObject<Exclude<Params, undefined>>>,
-    OutputHeaders extends undefined
-      ? HeaderValues
-      : z.infer<z.ZodObject<Exclude<OutputHeaders, undefined>>>
-  >;
-  (path: string, ...handlers: RouteHandler[]): GetApi<
-    any,
-    HeaderValues,
-    ParamValues,
-    HeaderValues
-  >;
-}
-
-export type RouteEntry = [string, RegExp, RouteHandler];

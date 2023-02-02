@@ -438,9 +438,11 @@ export const getUser = api.get(
     headers: {
       "Content-Type": z.string().optional(),
     },
-    output: z.string(),
+    responses: {
+      200: z.string(),
+    },
   },
-  async () => {
+  async (_) => {
     return new ApiResponse("hello world");
   }
 );
