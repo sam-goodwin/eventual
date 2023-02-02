@@ -1,6 +1,6 @@
 {
   "name": "@eventual/core",
-  "version": "0.14.1",
+  "version": "0.15.0",
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",
@@ -17,8 +17,8 @@
   },
   "dependencies": {
     "itty-router": "^2.6.6",
-    "ulidx": "^0.3.0",
-    "openapi3-ts": "^3"
+    "openapi3-ts": "^3",
+    "ulidx": "^0.3.0"
   },
   "peerDependencies": {
     "zod": "^3"
