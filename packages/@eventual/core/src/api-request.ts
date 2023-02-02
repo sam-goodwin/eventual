@@ -1,5 +1,6 @@
 import type { Readable } from "node:stream";
-import { HeaderValues, ParamValues } from "./api.js";
+import { HeaderValues, ParamValues } from "./api-schema.js";
+import { HttpStatus } from "./http-status.js";
 
 abstract class BaseApiObject {
   abstract readonly body: string | Buffer | Readable | null;
@@ -130,38 +131,48 @@ interface Headers {
 
 export type TypedApiRequest<
   Input,
-  Headers extends HeaderValues | undefined,
-  Params extends ParamValues | undefined
+  Headers extends HeaderValues,
+  Params extends ParamValues
 > = (undefined extends Input
   ? {}
   : {
       body: Input;
     }) &
-  (Headers extends undefined
+  (HeaderValues extends Headers
     ? {
-        headers?: Record<string, string>;
+        headers?: Headers;
       }
     : {
         headers: Headers;
       }) &
-  (Params extends undefined
+  (ParamValues extends Params
     ? {
-        params?: Record<string, string | string[]>;
+        params?: Params;
       }
     : {
         params: Params;
       });
 
 export type TypedApiResponse<
-  Output,
-  Headers extends HeaderValues | undefined
+  Responses extends {
+    [status in HttpStatus]?: any;
+  },
+  Status extends keyof Responses,
+  Headers extends HeaderValues
 > = {
-  status: number;
-  body: Output;
-} & (Headers extends undefined
-  ? {
-      headers?: Record<string, string>;
-    }
-  : {
-      headers: Headers;
-    });
+  status: Status;
+  body: Responses[Status];
+} & TypedApiHeaders<Headers>;
+
+export type TypedApiHeaders<Headers extends HeaderValues | undefined> =
+  Headers extends undefined
+    ? {
+        headers?: HeaderValues;
+      }
+    : HeaderValues extends Headers
+    ? {
+        headers?: HeaderValues;
+      }
+    : {
+        headers: Headers;
+      };
