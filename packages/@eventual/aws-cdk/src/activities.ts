@@ -19,6 +19,7 @@ import { Logging } from "./logging";
 import { IService } from "./service";
 import type { BuildOutput } from "./build";
 import { IServiceApi } from "./service-api";
+import { grant } from "./grant";
 
 export interface ActivitiesProps {
   build: BuildOutput;
@@ -126,6 +127,7 @@ export class Activities
     this.addEnvs(func, ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME);
   }
 
+  @grant()
   public grantStartActivity(grantable: IGrantable) {
     this.worker.grantInvoke(grantable);
   }
@@ -135,6 +137,7 @@ export class Activities
     this.configureWriteActivities(func);
   }
 
+  @grant()
   public grantSendHeartbeat(grantable: IGrantable) {
     this.props.workflows.grantReadExecutions(grantable);
     this.grantWriteActivities(grantable);
@@ -145,6 +148,7 @@ export class Activities
     this.grantCompleteActivity(func);
   }
 
+  @grant()
   public grantCompleteActivity(grantable: IGrantable) {
     this.props.workflows.grantSubmitExecutionEvents(grantable);
   }
@@ -158,6 +162,7 @@ export class Activities
     this.addEnvs(func, ENV_NAMES.ACTIVITY_TABLE_NAME);
   }
 
+  @grant()
   public grantReadActivities(grantable: IGrantable) {
     this.table.grantReadData(grantable);
   }
@@ -167,6 +172,7 @@ export class Activities
     this.addEnvs(func, ENV_NAMES.ACTIVITY_TABLE_NAME);
   }
 
+  @grant()
   public grantWriteActivities(grantable: IGrantable) {
     this.table.grantWriteData(grantable);
   }
@@ -179,6 +185,7 @@ export class Activities
     this.configureWriteActivities(func);
   }
 
+  @grant()
   public grantFullControl(grantable: IGrantable): void {
     this.grantStartActivity(grantable);
     this.grantSendHeartbeat(grantable);

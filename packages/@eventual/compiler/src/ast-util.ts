@@ -48,11 +48,10 @@ export function isApiCall(call: CallExpression): boolean {
 }
 
 /**
- * A heuristic for identifying a {@link CallExpression} that is a call to an API handler.
+ * A heuristic for identifying a {@link CallExpression} that is a call to an `onEvent` handler.
  *
- * 1. must be a call to a MemberExpression matching to `api.get` or
- *    `ev.api.get` where `get` is any of the allowed {@link apiCalls}.
- * 2. Must have between 2 and 3 arguments.
+ * 1. must be a call to a MemberExpression matching to `<expression>.onEvent(impl | props, impl)`.
+ * 2. must have 1 or 2 arguments.
  */
 export function isOnEventCall(call: CallExpression): boolean {
   const c = call.callee;
