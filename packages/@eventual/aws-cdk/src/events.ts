@@ -1,5 +1,5 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
-import { ServiceType } from "@eventual/core";
+import { ServiceType, Subscription } from "@eventual/core";
 import { EventBus, IEventBus, Rule } from "aws-cdk-lib/aws-events";
 import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";
 import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
@@ -10,6 +10,9 @@ import type { BuildOutput } from "./build";
 import { IService } from "./service";
 import { IServiceApi } from "./service-api";
 import { ServiceFunction } from "./service-function";
+import { grant } from "./grant";
+import { computeDurationSeconds } from "@eventual/runtime-core";
+import { Duration } from "aws-cdk-lib";
 
 export interface EventsProps {
   /**
@@ -21,7 +24,7 @@ export interface EventsProps {
    */
   readonly serviceName: string;
   /**
-   * Optional environment variables to add to the {@link Events.handler}.
+   * Optional environment variables to add to the {@link Events.defaultHandler}.
    *
    * @default - no extra environment variables
    */
@@ -36,9 +39,19 @@ export class Events extends Construct implements IGrantable {
    */
   public readonly bus: IEventBus;
   /**
-   * The Lambda {@link Function} that handles events subscribed to in this service's {@link eventBus}.
+   * The default Lambda {@link Function} that handles events subscribed to in this service's {@link eventBus}.
+   *
+   * This Function only contains event handlers that were not exported by the service -- exported event
+   * handlers are individually bundled and a separate {@link Function} is created. These are available
+   * in {@link handlers}.
    */
-  public readonly handler: Function;
+  public readonly defaultHandler: Function;
+  /**
+   * Individual Event Handler Lambda Functions handling only events they subscribe to. These handlers
+   * are individually bundled and tree-shaken for optimal performance and may contain their own custom
+   * memory and timeout configuration.
+   */
+  public readonly handlers: Function[];
   /**
    * A SQS Queue to collect events that failed to be handled.
    */
@@ -59,36 +72,82 @@ export class Events extends Construct implements IGrantable {
 
     this.deadLetterQueue = new Queue(this, "DeadLetterQueue");
 
-    this.handler = new ServiceFunction(this, "Handler", {
-      code: props.build.getCode(props.build.events.default.file),
-      functionName: `${props.serviceName}-event-handler`,
+    const functionProps = {
       serviceType: ServiceType.EventHandler,
       deadLetterQueueEnabled: true,
       deadLetterQueue: this.deadLetterQueue,
       retryAttempts: 2,
       environment: props.environment,
-    });
-    this.grantPrincipal = this.handler.grantPrincipal;
-    this.configurePublish(this.handler);
+    };
 
-    const subscriptions = props.build.events.default.subscriptions;
+    this.defaultHandler = new ServiceFunction(this, "Handler", {
+      code: props.build.getCode(props.build.events.default.file),
+      functionName: `${props.serviceName}-event-handler`,
+      ...functionProps,
+    });
+    this.grantPrincipal = this.defaultHandler.grantPrincipal;
+    this.configurePublish(this.defaultHandler);
+
+    // create a Construct to safely nest bundled functions in their own namespace
+    const handlers = new Construct(this, "BundledHandlers");
+
+    this.handlers = props.build.events.handlers.map((handler) => {
+      const handlerFunction = new ServiceFunction(
+        handlers,
+        handler.exportName,
+        {
+          code: props.build.getCode(props.build.events.default.file),
+          functionName: `${props.serviceName}-event-${handler.exportName}`,
+          ...functionProps,
+          memorySize: handler.memorySize,
+          timeout: handler.timeout
+            ? Duration.seconds(computeDurationSeconds(handler.timeout))
+            : undefined,
+          role: this.defaultHandler.role,
+        }
+      );
+
+      this.createRule(
+        handlerFunction,
+        handler.subscriptions,
+        handler.retryAttempts
+      );
+
+      return handlerFunction;
+    });
+
+    this.createRule(
+      this.defaultHandler,
+      props.build.events.default.subscriptions,
+      undefined
+    );
+
+    this.configureEventHandler();
+  }
+
+  private createRule(
+    func: Function,
+    subscriptions: Subscription[],
+    retryAttempts: number | undefined
+  ) {
     if (subscriptions.length > 0) {
       // configure a Rule to route all subscribed events to the eventHandler
-      new Rule(this, "Rules", {
+      new Rule(func, "Rules", {
         eventBus: this.bus,
         eventPattern: {
-          source: [props.serviceName],
+          // only events that originate
+          // TODO: this seems like it would break service-to-service?
+          source: [this.serviceName],
           detailType: Array.from(new Set(subscriptions.map((sub) => sub.name))),
         },
         targets: [
-          new LambdaFunction(this.handler, {
+          new LambdaFunction(func, {
             deadLetterQueue: this.deadLetterQueue,
+            retryAttempts,
           }),
         ],
       });
     }
-
-    this.configureEventHandler();
   }
 
   public configurePublish(func: Function) {
@@ -99,15 +158,22 @@ export class Events extends Construct implements IGrantable {
   /**
    * Grants permission to publish to this {@link Service}'s {@link eventBus}.
    */
+  @grant()
   public grantPublish(grantable: IGrantable) {
     this.bus.grantPutEventsTo(grantable);
   }
 
-  private configureEventHandler() {
+  configureEventHandler() {
     // allows the access to all of the operations on the injected service client
-    this.props.service.configureForServiceClient(this.handler);
+    this.props.service.configureForServiceClient(this.defaultHandler);
+    this.handlers.map((handler) =>
+      this.props.service.configureForServiceClient(handler)
+    );
     // allow http access to the service client
-    this.props.api.configureInvokeHttpServiceApi(this.handler);
+    this.props.api.configureInvokeHttpServiceApi(this.defaultHandler);
+    this.handlers.map((handler) =>
+      this.props.api.configureInvokeHttpServiceApi(handler)
+    );
   }
 
   private readonly ENV_MAPPINGS = {

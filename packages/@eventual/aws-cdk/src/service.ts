@@ -37,6 +37,7 @@ import path from "path";
 import { Activities, IActivities } from "./activities";
 import { BuildOutput, buildServiceSync } from "./build";
 import { Events } from "./events";
+import { grant } from "./grant";
 import { Logging, LoggingProps } from "./logging";
 import { lazyInterface } from "./proxy-construct";
 import { IScheduler, Scheduler } from "./scheduler";
@@ -386,7 +387,10 @@ export class Service extends Construct implements IGrantable, IService {
   public addEnvironment(key: string, value: string): void {
     this.activities.worker.addEnvironment(key, value);
     this.api.handlers.forEach((handler) => handler.addEnvironment(key, value));
-    this.events.handler.addEnvironment(key, value);
+    this.events.defaultHandler.addEnvironment(key, value);
+    this.events.handlers.forEach((handler) =>
+      handler.addEnvironment(key, value)
+    );
     this.workflows.orchestrator.addEnvironment(key, value);
   }
 
@@ -398,6 +402,7 @@ export class Service extends Construct implements IGrantable, IService {
     this.workflows.configureStartExecution(func);
   }
 
+  @grant()
   public grantStartExecution(grantable: IGrantable) {
     this.workflows.grantStartExecution(grantable);
   }
@@ -407,7 +412,7 @@ export class Service extends Construct implements IGrantable, IService {
     this.workflows.configureReadExecutionHistory(func);
     this.workflows.configureReadHistoryState(func);
   }
-
+  @grant()
   public grantReadExecutions(grantable: IGrantable) {
     this.workflows.grantReadExecutions(grantable);
   }
@@ -416,6 +421,7 @@ export class Service extends Construct implements IGrantable, IService {
     this.workflows.configureSendSignal(func);
   }
 
+  @grant()
   public grantSendSignal(grantable: IGrantable) {
     this.workflows.grantSendSignal(grantable);
   }
@@ -424,6 +430,7 @@ export class Service extends Construct implements IGrantable, IService {
     this.events.configurePublish(func);
   }
 
+  @grant()
   public grantPublishEvents(grantable: IGrantable) {
     this.events.grantPublish(grantable);
   }

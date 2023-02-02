@@ -19,7 +19,7 @@ const RequestApprovalEvent =
   event<RequestApprovalEventPayload>("RequestApproval");
 
 // auto approval for the human request approval event.
-RequestApprovalEvent.onEvent(async (event) => {
+export const onApproval = RequestApprovalEvent.onEvent(async (event) => {
   await requestApproval.sendActivitySuccess({
     activityToken: event.token,
     result: { approve: true },
