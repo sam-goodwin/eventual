@@ -145,12 +145,13 @@ export interface GetApi<
 > extends Api<undefined, Output, Headers, Params, OutputHeaders> {}
 
 export interface Api<
-  Input,
-  Output,
-  Headers extends HeaderValues | undefined,
-  Params extends ParamValues | undefined,
-  OutputHeaders extends HeaderValues | undefined
+  Input = any,
+  Output = any,
+  Headers extends HeaderValues | undefined = undefined,
+  Params extends ParamValues | undefined = undefined,
+  OutputHeaders extends HeaderValues | undefined = undefined
 > {
+  kind: "Api";
   (request: TypedApiRequest<Input, Headers, Params>): Promise<
     TypedApiResponse<Output, OutputHeaders>
   >;

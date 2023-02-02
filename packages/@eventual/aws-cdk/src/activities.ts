@@ -27,7 +27,7 @@ export interface ActivitiesProps {
   workflows: IWorkflows;
   scheduler: IScheduler;
   environment?: Record<string, string>;
-  events: Events;
+  events: Events<any>;
   logging: Logging;
   service: IService;
   readonly api: IServiceApi;

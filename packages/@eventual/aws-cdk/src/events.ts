@@ -4,7 +4,7 @@ import { aws_eventschemas, Lazy, Resource } from "aws-cdk-lib";
 import { EventBus, IEventBus, Rule } from "aws-cdk-lib/aws-events";
 import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";
 import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
-import { Function } from "aws-cdk-lib/aws-lambda";
+import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import type { OpenAPIObject, SchemaObject } from "openapi3-ts";
@@ -15,8 +15,14 @@ import { ServiceFunction } from "./service-function";
 import { grant } from "./grant";
 import { computeDurationSeconds } from "@eventual/runtime-core";
 import { Duration } from "aws-cdk-lib";
+import type { KeysOfType } from "./utils";
 
-export interface EventsProps {
+export type EventHandlerNames<Service> = KeysOfType<
+  Service,
+  { kind: "EventHandler" }
+>;
+
+export interface EventsProps<Service = any> {
   /**
    * The built service describing the event subscriptions within the Service.
    */
@@ -31,11 +37,20 @@ export interface EventsProps {
    * @default - no extra environment variables
    */
   readonly environment?: Record<string, string>;
+  /**
+   * Configuration for individual Event Handlers created with `onEvent`.
+   */
+  readonly handlers?: {
+    [eventHandler in EventHandlerNames<Service>]?: EventHandlerProps;
+  };
   readonly service: IService;
   readonly api: IServiceApi;
 }
 
-export class Events extends Construct implements IGrantable {
+export interface EventHandlerProps
+  extends Omit<Partial<FunctionProps>, "code" | "handler" | "functionName"> {}
+
+export class Events<Service> extends Construct implements IGrantable {
   /**
    * The {@link EventBus} containing all events flowing into and out of this {@link Service}.
    */
@@ -57,7 +72,14 @@ export class Events extends Construct implements IGrantable {
    * are individually bundled and tree-shaken for optimal performance and may contain their own custom
    * memory and timeout configuration.
    */
-  public readonly handlers: Function[];
+  public readonly handlers: {
+    [handler in EventHandlerNames<Service>]: Function;
+  };
+
+  public get handlersList(): Function[] {
+    return Object.values(this.handlers);
+  }
+
   /**
    * A SQS Queue to collect events that failed to be handled.
    */
@@ -103,30 +125,35 @@ export class Events extends Construct implements IGrantable {
     // create a Construct to safely nest bundled functions in their own namespace
     const handlers = new Construct(this, "BundledHandlers");
 
-    this.handlers = props.build.events.handlers.map((handler) => {
-      const handlerFunction = new ServiceFunction(
-        handlers,
-        handler.exportName,
-        {
-          code: props.build.getCode(props.build.events.default.file),
-          functionName: `${props.serviceName}-event-${handler.exportName}`,
-          ...functionProps,
-          memorySize: handler.memorySize,
-          timeout: handler.timeout
-            ? Duration.seconds(computeDurationSeconds(handler.timeout))
-            : undefined,
-          role: this.defaultHandler.role,
-        }
-      );
+    this.handlers = Object.fromEntries(
+      props.build.events.handlers.map((handler) => {
+        const handlerFunction = new ServiceFunction(
+          handlers,
+          handler.exportName,
+          {
+            code: props.build.getCode(props.build.events.default.file),
+            functionName: `${props.serviceName}-event-${handler.exportName}`,
+            ...functionProps,
+            memorySize: handler.memorySize,
+            timeout: handler.timeout
+              ? Duration.seconds(computeDurationSeconds(handler.timeout))
+              : undefined,
+            role: this.defaultHandler.role,
+            ...(props.handlers?.[handler.exportName] ?? {}),
+          }
+        );
 
-      this.createRule(
-        handlerFunction,
-        handler.subscriptions,
-        handler.retryAttempts
-      );
+        this.createRule(
+          handlerFunction,
+          handler.subscriptions,
+          handler.retryAttempts
+        );
 
-      return handlerFunction;
-    });
+        return [handler.exportName, handlerFunction];
+      })
+    ) as {
+      [handler in EventHandlerNames<Service>]: Function;
+    };
 
     this.createRule(
       this.defaultHandler,
@@ -178,13 +205,13 @@ export class Events extends Construct implements IGrantable {
   configureEventHandler() {
     // allows the access to all of the operations on the injected service client
     this.props.service.configureForServiceClient(this.defaultHandler);
-    this.handlers.map((handler) =>
-      this.props.service.configureForServiceClient(handler)
+    this.handlersList.map((handler) =>
+      this.props.service.configureForServiceClient(handler as Function)
     );
     // allow http access to the service client
     this.props.api.configureInvokeHttpServiceApi(this.defaultHandler);
-    this.handlers.map((handler) =>
-      this.props.api.configureInvokeHttpServiceApi(handler)
+    this.handlersList.map((handler) =>
+      this.props.api.configureInvokeHttpServiceApi(handler as Function)
     );
   }
 

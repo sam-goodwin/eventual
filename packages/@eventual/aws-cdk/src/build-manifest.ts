@@ -45,15 +45,15 @@ export interface ApiRoutes {
 }
 
 export interface InternalApiRoutes {
-  "/_eventual/workflows": ApiFunction;
-  "/_eventual/workflows/{name}/executions": ApiFunction;
-  "/_eventual/executions": ApiFunction;
-  "/_eventual/executions/{executionId}": ApiFunction;
-  "/_eventual/executions/{executionId}/history": ApiFunction;
-  "/_eventual/executions/{executionId}/signals": ApiFunction;
-  "/_eventual/executions/{executionId}/workflow-history": ApiFunction;
-  "/_eventual/events": ApiFunction;
-  "/_eventual/activities": ApiFunction;
+  "/_eventual/workflows": InternalApiFunction;
+  "/_eventual/workflows/{name}/executions": InternalApiFunction;
+  "/_eventual/executions": InternalApiFunction;
+  "/_eventual/executions/{executionId}": InternalApiFunction;
+  "/_eventual/executions/{executionId}/history": InternalApiFunction;
+  "/_eventual/executions/{executionId}/signals": InternalApiFunction;
+  "/_eventual/executions/{executionId}/workflow-history": InternalApiFunction;
+  "/_eventual/events": InternalApiFunction;
+  "/_eventual/activities": InternalApiFunction;
 }
 
 export interface BundledFunction {
@@ -73,7 +73,9 @@ export interface EventFunction extends BundledFunction {
   retryAttempts?: number;
 }
 
+export interface InternalApiFunction extends Omit<ApiFunction, "exportName"> {}
+
 export interface ApiFunction extends BundledFunction {
-  exportName?: string;
+  exportName: string;
   methods: HttpMethod[];
 }

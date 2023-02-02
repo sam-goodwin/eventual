@@ -3,7 +3,7 @@ import { randomInt } from "crypto";
 import z from "zod";
 import { ZodClass } from "zod-class";
 
-const StockActionResultEvent = event<{
+export const StockActionResultEvent = event<{
   symbol: string;
   action: "buy" | "sell";
   price: number;
@@ -67,14 +67,17 @@ export const stockBot = workflow("stock-bot", async () => {
  * Emulates the effort to lookup the current price of the symbol.
  * This will likely make an authenticated API call to some other service.
  */
-const getStockPrice = activity("getStockPrice", async (_symbol: string) => {
-  return { price: randomInt(1, 100) };
-});
+export const getStockPrice = activity(
+  "getStockPrice",
+  async (_symbol: string) => {
+    return { price: randomInt(1, 100) };
+  }
+);
 
 /**
  * Emulates some complex logic that determine to buy or sell, this could be ML or another algorithm.
  */
-const makeDecision = activity("makeDecision", async (price: number) => {
+export const makeDecision = activity("makeDecision", async (price: number) => {
   return { decision: price < 50 ? ("buy" as const) : ("sell" as const) };
 });
 
@@ -83,7 +86,7 @@ const makeDecision = activity("makeDecision", async (price: number) => {
  * but a complete application would display the choice to a user
  * and respond back to the application with the decision.
  */
-const requestApproval = activity(
+export const requestApproval = activity(
   "requestApproval",
   async (event: Omit<RequestApprovalEventPayload, "token">) => {
     return asyncResult<{ approve: boolean }>(async (token) => {
@@ -95,14 +98,17 @@ const requestApproval = activity(
 /**
  * Emulates the effort to buy the stock. This will likely make an authenticated API call to some other service.
  */
-const buyStock = activity("buyStock", async (_request: { symbol: string }) => {
-  return { qty: randomInt(1, 10) };
-});
+export const buyStock = activity(
+  "buyStock",
+  async (_request: { symbol: string }) => {
+    return { qty: randomInt(1, 10) };
+  }
+);
 
 /**
  * Emulates the effort to sell the stock. This will likely make an authenticated API call to some other service.
  */
-const sellStock = activity(
+export const sellStock = activity(
   "sellStock",
   async (_request: { symbol: string }) => {
     return { qty: randomInt(1, 10) };

@@ -41,7 +41,8 @@ import { grant } from "./grant";
 import { Logging, LoggingProps } from "./logging";
 import { lazyInterface } from "./proxy-construct";
 import { IScheduler, Scheduler } from "./scheduler";
-import { Api, IServiceApi } from "./service-api";
+import { Api, ApiHandlerProps, ApiNames, IServiceApi } from "./service-api";
+import { PickType } from "./utils";
 import { IWorkflows, Workflows, WorkflowsProps } from "./workflows";
 
 export interface IService {
@@ -168,7 +169,7 @@ export interface SubscribeProps extends aws_events_targets.EventBusProps {
   events: (Event | string)[];
 }
 
-export interface ServiceProps {
+export interface ServiceProps<Service = any> {
   /**
    * The path of the `.ts` or `.js` file that is the entrypoint to the Service's logic.
    */
@@ -185,6 +186,16 @@ export interface ServiceProps {
   environment?: {
     [key: string]: string;
   };
+  api?: {
+    handlers: {
+      [api in ApiNames<Service>]?: ApiHandlerProps;
+    };
+  };
+  events?: {
+    handlers?: {
+      [eventHandler in keyof PickType<Service, { kind: "EventHandler" }>]?: any;
+    };
+  };
   /**
    * Override the workflow dependencies of a Service {@link WorkflowsProps}
    *
@@ -195,7 +206,10 @@ export interface ServiceProps {
   logging?: Omit<LoggingProps, "serviceName">;
 }
 
-export class Service extends Construct implements IGrantable, IService {
+export class Service<S = any>
+  extends Construct
+  implements IGrantable, IService
+{
   /**
    * Name of this Service.
    */
@@ -207,11 +221,11 @@ export class Service extends Construct implements IGrantable, IService {
   /**
    * This {@link Service}'s API Gateway.
    */
-  public readonly api: Api;
+  public readonly api: Api<S>;
   /**
    * This {@link Service}'s {@link Events} that can be published and subscribed to.
    */
-  public readonly events: Events;
+  public readonly events: Events<S>;
   /**
    * A single-table used for execution data and granular workflow events/
    */
@@ -243,7 +257,7 @@ export class Service extends Construct implements IGrantable, IService {
 
   public readonly grantPrincipal: IPrincipal;
 
-  constructor(scope: Construct, id: string, props: ServiceProps) {
+  constructor(scope: Construct, id: string, props: ServiceProps<S>) {
     super(scope, id);
 
     this.serviceName = props.name ?? Names.uniqueResourceName(this, {});
@@ -332,6 +346,7 @@ export class Service extends Construct implements IGrantable, IService {
       scheduler: this.scheduler,
       entry: props.entry,
       service: proxyService,
+      handlers: props.api?.handlers,
     });
     apiProxy._bind(this.api);
 
@@ -388,7 +403,7 @@ export class Service extends Construct implements IGrantable, IService {
     this.activities.worker.addEnvironment(key, value);
     this.api.handlers.forEach((handler) => handler.addEnvironment(key, value));
     this.events.defaultHandler.addEnvironment(key, value);
-    this.events.handlers.forEach((handler) =>
+    this.events.handlersList.forEach((handler) =>
       handler.addEnvironment(key, value)
     );
     this.workflows.orchestrator.addEnvironment(key, value);
