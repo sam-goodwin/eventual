@@ -41,10 +41,6 @@ export class Events extends Construct implements IGrantable {
    */
   public readonly bus: IEventBus;
   /**
-   * The Event Bridge Schema Registry for all Events in this Service.
-   */
-  public readonly registry: Registry;
-  /**
    * The default Lambda {@link Function} that handles events subscribed to in this service's {@link eventBus}.
    *
    * This Function only contains event handlers that were not exported by the service -- exported event
@@ -74,12 +70,6 @@ export class Events extends Construct implements IGrantable {
 
     this.bus = new EventBus(this, "Bus", {
       eventBusName: props.serviceName,
-    });
-
-    this.registry = new Registry(this, "Registry", {
-      registryName: props.serviceName,
-      description: `Event Schemas for the ${props.serviceName} service`,
-      schemas: props.build.events.schemas,
     });
 
     this.deadLetterQueue = new Queue(this, "DeadLetterQueue");
