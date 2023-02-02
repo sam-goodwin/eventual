@@ -17,7 +17,7 @@ import { grant } from "./grant";
 import type { Scheduler } from "./scheduler";
 import { IService } from "./service";
 import { ServiceFunction } from "./service-function";
-import { baseFnProps } from "./utils";
+import { addEnvironment, baseFnProps } from "./utils";
 import type { Workflows } from "./workflows";
 
 export interface ApiProps {
@@ -48,7 +48,7 @@ export class Api extends Construct implements IServiceApi {
    * Any API route that could not be individually bundled or tree-shaken is handled by this
    * default Function.
    */
-  public readonly handler: Function;
+  public readonly defaultHandler: Function;
   /**
    * Individual Lambda Functions per API route. Any API function that was exported from a
    * module is individually tree-shaken and loaded into its own Lambda Function with a
@@ -66,35 +66,38 @@ export class Api extends Construct implements IServiceApi {
     [path in keyof InternalApiRoutes]: Function;
   };
 
-  public get handlers(): Function[] {
-    return [this.handler, ...Object.values(this.routes)];
-  }
+  /**
+   * Individual API Handler Lambda Functions handling only a single API route. These handlers
+   * are individually bundled and tree-shaken for optimal performance and may contain their own custom
+   * memory and timeout configuration.
+   */
+  public readonly handlers: Function[];
 
   constructor(scope: Construct, id: string, private props: ApiProps) {
     super(scope, id);
 
-    this.handler = new ServiceFunction(this, "Handler", {
+    this.defaultHandler = new ServiceFunction(this, "Handler", {
       functionName: `${props.serviceName}-api-handler`,
       serviceType: ServiceType.ApiHandler,
       memorySize: 512,
-      environment: props.environment,
       code: props.build.getCode(props.build.api.default.file),
     });
 
     this.gateway = new HttpApi(this, "Gateway", {
       apiName: `eventual-api-${props.serviceName}`,
-      defaultIntegration: new HttpLambdaIntegration("default", this.handler),
+      defaultIntegration: new HttpLambdaIntegration(
+        "default",
+        this.defaultHandler
+      ),
     });
-
-    // The handler is given an instance of the service client.
-    // Allow it to access any of the methods on the service client by default.
-    this.configureInvokeHttpServiceApi(this.handler);
 
     this.routes = this.createUserDefinedRoutes();
 
+    this.handlers = [this.defaultHandler, ...Object.values(this.routes)];
+
     this.internalRoutes = this.createInternalApiRoutes();
 
-    this.configureApiHandler();
+    this.configureApiHandler(this.defaultHandler);
   }
 
   public configureInvokeHttpServiceApi(...functions: Function[]) {
@@ -120,12 +123,11 @@ export class Api extends Construct implements IServiceApi {
               path,
               {
                 ...route,
-                grants: (fn) => this.configureInvokeHttpServiceApi(fn),
-                role: this.handler.role,
+                // configure all handlers permissions and envs
+                // note: all of the handlers share the same role, but each need to be given the env variables.
+                grants: (f) => this.configureApiHandler(f),
+                role: this.defaultHandler.role,
                 handler: "index.default",
-                environment: {
-                  NODE_OPTIONS: "--enable-source-maps",
-                },
               } satisfies RouteMapping,
             ],
           ];
@@ -250,9 +252,15 @@ export class Api extends Construct implements IServiceApi {
     );
   }
 
-  private configureApiHandler(handler?: Function) {
-    this.props.workflows.configureFullControl(handler ?? this.handler);
-    this.props.events.configurePublish(handler ?? this.handler);
+  private configureApiHandler(handler: Function) {
+    // The handlers are given an instance of the service client.
+    // Allow them to access any of the methods on the service client by default.
+    this.props.service.configureForServiceClient(handler);
+    this.configureInvokeHttpServiceApi(handler);
+    // add any user provided envs
+    if (this.props.environment) {
+      addEnvironment(handler, this.props.environment);
+    }
   }
 
   private readonly ENV_MAPPINGS = {

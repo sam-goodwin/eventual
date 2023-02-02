@@ -342,7 +342,8 @@ export class Service extends Construct implements IGrantable, IService {
       // when granting permissions to the service,
       // propagate them to the following principals
       this.activities.worker.grantPrincipal,
-      this.api.handler.grantPrincipal
+      this.api.defaultHandler.grantPrincipal,
+      this.events.defaultHandler.grantPrincipal
     );
 
     this.cliRole = new Role(this, "EventualCliRole", {
