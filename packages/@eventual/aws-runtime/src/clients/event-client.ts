@@ -36,8 +36,14 @@ export class AWSEventClient implements EventClient {
         if (schema) {
           const result = schema.safeParse(event.event);
           if (!result.success) {
+            const errorMessages = result.error.errors.map(
+              (error) =>
+                `${error.code}(${error.path.join(".")}): ${error.message}`
+            );
             throw new Error(
-              `event at position ${i} does not match the provided schema: ${result.error.message}`
+              `event ${i} did not match the provided schema: [${errorMessages.join(
+                ", "
+              )}]`
             );
           }
         }
