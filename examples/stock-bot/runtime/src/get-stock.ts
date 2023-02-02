@@ -18,6 +18,7 @@ export const getStock = api.get(
 export const addStock = api.post(
   "/stocks",
   {
+    memorySize: 512,
     timeout: duration(1, "minute"),
     request: z.object({
       ticker: z.string(),
@@ -32,6 +33,7 @@ export const addStock = api.post(
         },
         body: z.object({
           stockId: z.string(),
+          ticker: z.string(),
         }),
       },
       400: z.object({
@@ -39,12 +41,13 @@ export const addStock = api.post(
       }),
     },
   },
-  async (request, ctx) => {
-    request.headers["Content-Type"];
-    return ctx.response({
+  async (request) => {
+    return request.response({
       status: 200,
+
       body: {
-        stockId: "stock-id",
+        stockId: "stockId",
+        ticker: request.body.ticker,
       },
     });
   }

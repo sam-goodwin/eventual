@@ -42,23 +42,21 @@ export interface GetApi<
   Path extends string,
   Responses extends ApiResponses,
   Headers extends HeaderValues,
-  Params extends ParamValues,
-  ResponseHeaders extends HeaderValues
-> extends Api<Path, undefined, Responses, Headers, Params, ResponseHeaders> {}
+  Params extends ParamValues
+> extends Api<Path, undefined, Responses, Headers, Params> {}
 
 export interface Api<
   Path extends string,
   Input,
   Responses extends ApiResponses,
   Headers extends HeaderValues,
-  Params extends ParamValues,
-  OutputHeaders extends HeaderValues
+  Params extends ParamValues
 > {
   kind: "Api";
   path: Path;
   input: z.ZodType<Input>;
   responses: {};
-  (request: TypedApiRequest<Input, Headers, Params>): Promise<
-    TypedApiResponse<Responses, keyof Responses, OutputHeaders>
+  (request: TypedApiRequest<Input, Responses, Headers, Params>): Promise<
+    TypedApiResponse<Responses, keyof Responses>
   >;
 }
