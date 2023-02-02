@@ -9,7 +9,7 @@
     "experimentalDecorators": true,
     "inlineSourceMap": true,
     "inlineSources": true,
-    "lib": ["ES2021", "ES2021.Promise"],
+    "lib": ["ES2022"],
     "module": "esnext",
     "moduleResolution": "NodeNext",
     "noEmitOnError": false,

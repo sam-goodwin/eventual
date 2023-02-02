@@ -91,16 +91,14 @@ export async function build({
       ...(eventualTransform ? [eventualESPlugin] : []),
     ],
     conditions: ["module", "import", "require"],
-    // supported with NODE_18.x runtime
-    // TODO: make this configurable.
     // external: ["@aws-sdk"],
     external,
     // does not include any node modules packages in the bundle
     packages: allPackagesExternal ? "external" : undefined,
     platform: "node",
     format: "esm",
-    // Target for node 16
-    target: "es2021",
+    // Target for node 18
+    target: "es2022",
     metafile,
     bundle: true,
     entryPoints: [path.resolve(entry)],
