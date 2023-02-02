@@ -10,7 +10,7 @@
     "create-eventual": "./bin/index.js"
   },
   "scripts": {
-    "build": "esbuild src/index.ts --bundle --outfile=lib/cli.js --platform=node --sourcemap=inline",
+    "build": "esbuild src/index.ts --bundle --outfile=lib/cli.js --platform=node --sourcemap=inline --external:../package.json",
     "watch": "esbuild src/index.ts --bundle --outfile=lib/cli.js --platform=node --watch --sourcemap=inline"
   },
   "dependencies": {
