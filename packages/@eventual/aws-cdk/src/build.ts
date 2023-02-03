@@ -1,5 +1,5 @@
 import { build, BuildSource, infer } from "@eventual/compiler";
-import { HttpOperation, ServiceType } from "@eventual/core";
+import { HttpMethod, ServiceType } from "@eventual/core";
 import fs from "fs";
 import path from "path";
 import { ApiFunction, BuildManifest } from "./build-manifest";

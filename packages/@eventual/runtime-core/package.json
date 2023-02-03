@@ -17,7 +17,8 @@
   },
   "dependencies": {
     "@eventual/core": "workspace:^",
-    "ulidx": "^0.3.0"
+    "ulidx": "^0.3.0",
+    "superjson": "^1"
   },
   "devDependencies": {
     "@jest/globals": "^29.3.1",

@@ -2,7 +2,7 @@ import { api, HttpError, HttpRequest, HttpResponse } from "@eventual/core";
 import { z } from "zod";
 
 export class RateLimitedError extends HttpError("RateLimitedError", {
-  status: 200,
+  status: 400,
   body: z.object({
     message: z.string(),
   }),
@@ -33,34 +33,30 @@ export const addStock = api.post(
   async (request) => {
     if (typeof request === "object") {
       if (request) {
-        return {
-          response: new AddStockResponse({
-            stockId: "",
-          }),
-        };
+        return new AddStockResponse({
+          body: {
+            stockId: "new stock id",
+          },
+        });
       } else {
         return {
-          response: {
-            type: "AddStockResponse",
-            body: {
-              stockId: "",
-            },
+          type: "AddStockResponse" as const,
+          status: 200,
+          body: {
+            stockId: "",
           },
         };
       }
     } else if (request) {
-      return {
-        error: new RateLimitedError({
-          message: "foo",
-        }),
-      };
+      return new RateLimitedError({
+        message: "foo",
+      });
     } else {
       return {
-        error: {
-          type: "RateLimitedError",
-          body: {
-            message: "you dun goofed",
-          },
+        type: "RateLimitedError" as const,
+        status: 400,
+        body: {
+          message: "you dun goofed",
         },
       };
     }

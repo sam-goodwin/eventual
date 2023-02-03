@@ -1,11 +1,13 @@
 import {
   api,
-  HttpRequest,
-  HttpResponse,
   EventualServiceClient,
   registerServiceClient,
   ServiceType,
   serviceTypeScope,
+  HttpResponse,
+  HttpRequest,
+  RawHttpResponse,
+  RawHttpRequest,
 } from "@eventual/core";
 
 export interface ApiHandlerDependencies {
@@ -29,25 +31,38 @@ export function createApiHandler({ serviceClient }: ApiHandlerDependencies) {
    * then handles the request.
    */
   return async function processRequest(
-    request: HttpRequest
-  ): Promise<HttpResponse> {
+    request: RawHttpRequest
+  ): Promise<RawHttpResponse> {
     return await serviceTypeScope(ServiceType.ApiHandler, async () => {
       try {
-        const response = await api.handle(request);
+        const response = await api.handle(parseHttpRequest(request));
         if (response === undefined) {
-          return {
+          return new RawHttpResponse("Not Found", {
             status: 404,
-            body: "Not Found",
-          };
+          });
         }
-        return response;
+
+        if (response instanceof RawHttpResponse) {
+          return response;
+        } else {
+          return toRawHttpResponse(response);
+        }
       } catch (err) {
         console.error(err);
-        return {
+        return new RawHttpResponse("Internal Server Error", {
           status: 500,
-          body: "Internal Server Error",
-        };
+        });
       }
     });
   };
+}
+
+function parseHttpRequest(
+  request: RawHttpRequest
+): RawHttpRequest | HttpRequest {
+  return request;
+}
+
+function toRawHttpResponse(request: HttpResponse): RawHttpResponse {
+  return new RawHttpResponse(JSON.stringify(request.body));
 }

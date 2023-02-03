@@ -35,7 +35,7 @@ export const HttpResponse: {
     }
   ): HttpResponse.Class<Type, Body, Headers>;
 
-  new (url: string, init: RawHttpResponseInit): HttpResponse;
+  new (body?: RawBody, init?: RawHttpResponseInit): HttpResponse;
 } = function (
   ...args:
     | Parameters<typeof HttpResponse>

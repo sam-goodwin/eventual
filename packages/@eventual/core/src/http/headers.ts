@@ -9,15 +9,6 @@ export declare namespace HttpHeaders {
     [headerName: string]: z.ZodType<undefined | string | string[]>;
   }
 
-  export type IsOptional<Headers extends Schema | undefined = Schema> =
-    Schema extends Headers
-      ? true
-      : Headers extends undefined
-      ? true
-      : { [header in keyof Headers]?: undefined } extends Headers
-      ? true
-      : false;
-
   export type Envelope<Headers extends Schema | undefined = Schema> =
     Schema extends Headers
       ? {
@@ -56,4 +47,13 @@ export declare namespace HttpHeaders {
             Exclude<Headers, undefined>[headerName]
           >;
         };
+
+  export type IsOptional<Headers extends Schema | undefined = Schema> =
+    Schema extends Headers
+      ? true
+      : Headers extends undefined
+      ? true
+      : { [header in keyof Headers]?: undefined } extends Headers
+      ? true
+      : false;
 }

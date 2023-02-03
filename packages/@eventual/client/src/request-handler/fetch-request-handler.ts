@@ -1,4 +1,4 @@
-import { HttpRequest } from "@eventual/core";
+import { RawHttpRequest } from "@eventual/core";
 import { BeforeRequest, HttpError, RequestHandler } from "./request-handler.js";
 
 /**
@@ -9,7 +9,7 @@ export class FetchRequestHandler extends RequestHandler {
     super(beforeRequest);
   }
 
-  public async _request<Resp = any>(req: HttpRequest) {
+  public async _request<Resp = any>(req: RawHttpRequest) {
     const request = new Request(req.url, {
       method: req.method,
       body: req.body ? req.body : undefined,

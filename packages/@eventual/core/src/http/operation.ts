@@ -1,8 +1,7 @@
-import type { z } from "zod";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpError } from "./error.js";
 import type { HttpHeaders } from "./headers.js";
-import type { ParamsSchema, ParamValues } from "./params.js";
+import type { Params } from "./params.js";
 import type { HttpRequest } from "./request.js";
 import type { HttpResponse } from "./response.js";
 
@@ -12,19 +11,18 @@ export interface HttpOperation<
   Response extends HttpResponse.Schema | undefined = undefined,
   Errors extends HttpError.Schema[] | undefined = undefined,
   Headers extends HttpHeaders.Schema | undefined = undefined,
-  Params extends ParamsSchema | undefined = undefined
+  Params extends Params.Schema | undefined = undefined
 > {
-  kind: "Api";
+  kind: "HttpOperation";
   path: Path;
-  input: z.ZodType<Request>;
-  responses: {};
-  (
-    request: HttpRequest<
-      HttpRequest.FromSchema<Request>,
-      Headers,
-      ParamValues<Params>
-    >
-  ): Promise<HttpResponse<Response, Errors>>;
+  request: Request;
+  response: Response;
+  errors: Error;
+  headers: Headers;
+  params: Params;
+  (request: HttpRequest<Request, Headers, Params>): Promise<
+    HttpResponse<Response, Errors>
+  >;
 }
 
 export namespace HttpOperation {
@@ -41,7 +39,7 @@ export namespace HttpOperation {
     Headers extends HttpHeaders.Schema | undefined =
       | HttpHeaders.Schema
       | undefined,
-    Params extends ParamsSchema | undefined = ParamsSchema | undefined
+    Params extends Params.Schema | undefined = Params.Schema | undefined
   > extends FunctionRuntimeProps {
     request?: Request;
     response?: Response;
@@ -63,15 +61,11 @@ export namespace HttpOperation {
     Headers extends HttpHeaders.Schema | undefined =
       | HttpHeaders.Schema
       | undefined,
-    Params extends ParamsSchema | undefined = ParamsSchema | undefined
+    Params extends Params.Schema | undefined = Params.Schema | undefined
   > {
-    (
-      request: HttpRequest<
-        HttpRequest.FromSchema<Request>,
-        Headers,
-        ParamValues<Params>
-      >
-    ): HttpResponse<Response, Errors> | Promise<HttpResponse<Response, Errors>>;
+    (request: HttpRequest<Request, Headers, Params>):
+      | HttpResponse<Response, Errors>
+      | Promise<HttpResponse<Response, Errors>>;
   }
 
   export interface Router {
@@ -81,7 +75,7 @@ export namespace HttpOperation {
       Response extends HttpResponse.Schema | undefined = undefined,
       Errors extends HttpError.Schema[] | undefined = undefined,
       Headers extends HttpHeaders.Schema | undefined = undefined,
-      Params extends ParamsSchema | undefined = undefined
+      Params extends Params.Schema | undefined = undefined
     >(
       path: Path,
       props: Props<Request, Response, Errors, Headers, Params>,
@@ -95,7 +89,7 @@ export namespace HttpOperation {
     Response extends HttpResponse.Schema | undefined,
     Errors extends HttpError.Schema[] | undefined,
     Headers extends HttpHeaders.Schema | undefined,
-    Params extends ParamsSchema | undefined
+    Params extends Params.Schema | undefined
   > extends HttpOperation<Path, undefined, Response, Errors, Headers, Params> {}
 
   export namespace Get {
@@ -103,7 +97,7 @@ export namespace HttpOperation {
       Response extends HttpResponse.Schema | undefined,
       Errors extends HttpError.Schema[] | undefined = undefined,
       Headers extends HttpHeaders.Schema | undefined = undefined,
-      Params extends ParamsSchema | undefined = undefined
+      Params extends Params.Schema | undefined = undefined
     > extends FunctionRuntimeProps {
       headers?: Headers;
       params?: Params;
@@ -112,12 +106,13 @@ export namespace HttpOperation {
     }
 
     export interface Router {
+      <Path extends string>(path: Path, handler: Handler): HttpOperation<Path>;
       <
         Path extends string,
         Response extends HttpResponse.Schema | undefined = undefined,
         Errors extends HttpError.Schema[] | undefined = undefined,
         Headers extends HttpHeaders.Schema | undefined = undefined,
-        Params extends ParamsSchema | undefined = undefined
+        Params extends Params.Schema | undefined = undefined
       >(
         path: Path,
         props: Props<Response, Errors, Headers, Params>,

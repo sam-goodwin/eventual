@@ -68,8 +68,8 @@ export default class FetchReceiver implements Receiver {
     const rawBody = await this.getRawBody(request);
     const body: any = this.parseRequestBody(
       rawBody,
-      request.headers["Content-Type"] ??
-        request.headers["content-type"] ??
+      (request.headers?.["Content-Type"] as string) ??
+        (request.headers?.["content-type"] as string) ??
         undefined,
       this.logger
     );
@@ -85,8 +85,8 @@ export default class FetchReceiver implements Receiver {
     }
 
     // request signature verification
-    const signature = request.headers["X-Slack-Signature"] as string;
-    const ts = Number(request.headers["X-Slack-Request-Timestamp"]);
+    const signature = request.headers?.["X-Slack-Signature"] as string;
+    const ts = Number(request.headers?.["X-Slack-Request-Timestamp"]);
     if (
       !this.isValidRequestSignature(this.signingSecret, rawBody, signature, ts)
     ) {
@@ -123,7 +123,7 @@ export default class FetchReceiver implements Receiver {
 
     // Structure the ReceiverEvent
     let storedResponse;
-    const retryNum = request.headers["X-Slack-Retry-Num"];
+    const retryNum = request.headers?.["X-Slack-Retry-Num"];
     const event: ReceiverEvent = {
       body,
       ack: async (response) => {
@@ -139,7 +139,8 @@ export default class FetchReceiver implements Receiver {
         }
       },
       retryNum: retryNum ? Number(retryNum) : undefined,
-      retryReason: request.headers["X-Slack-Retry-Reason"] ?? undefined,
+      retryReason:
+        (request.headers?.["X-Slack-Retry-Reason"] as string) ?? undefined,
     };
 
     // Send the event to the app for processing

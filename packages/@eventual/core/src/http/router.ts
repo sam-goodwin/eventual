@@ -4,6 +4,7 @@ import type { SourceLocation } from "../app-spec.js";
 import { routes } from "../global.js";
 import type { HttpMethod } from "./method.js";
 import type { HttpOperation } from "./operation.js";
+import type { RawHttpRequest, RawHttpResponse } from "./raw.js";
 import type { HttpRequest } from "./request.js";
 import type { HttpResponse } from "./response.js";
 
@@ -23,7 +24,10 @@ export interface Route {
 }
 
 export interface Router {
-  handle: (request: HttpRequest, ...extra: any) => Promise<HttpResponse>;
+  handle: (
+    request: HttpRequest | RawHttpRequest,
+    ...extra: any
+  ) => Promise<RawHttpResponse | HttpResponse>;
   routes: RouteEntry[];
   all: HttpOperation.Router;
   get: HttpOperation.Get.Router;

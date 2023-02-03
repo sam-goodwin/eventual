@@ -1,6 +1,5 @@
 import {
   ActivityUpdateType,
-  HttpRequest,
   encodeExecutionId,
   EventualServiceClient,
   Execution,
@@ -24,6 +23,7 @@ import {
   WorkflowInput,
   RawHttpRequestInit,
   HttpMethod,
+  RawHttpRequest,
 } from "@eventual/core";
 import { getRequestHandler } from "./request-handler/factory.js";
 import {
@@ -72,7 +72,7 @@ export class HttpServiceClient implements EventualServiceClient {
     request: Omit<RawHttpRequestInit, "params"> & { path: string }
   ) {
     return this.requestHandler.request(
-      new HttpRequest(`${this.baseUrl.href}/${request.path}`, request)
+      new RawHttpRequest(`${this.baseUrl.href}/${request.path}`, request)
     );
   }
 
@@ -230,7 +230,7 @@ export class HttpServiceClient implements EventualServiceClient {
   }): Promise<Resp> {
     const url = `${this.baseUrl.href}_eventual/${request.path}`;
     return this.requestHandler.request(
-      new HttpRequest(url, {
+      new RawHttpRequest(url, {
         body: request.body ? JSON.stringify(request.body) : undefined,
         headers: { "Content-Type": "application/json" },
         method: request.method,

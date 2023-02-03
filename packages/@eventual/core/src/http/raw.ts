@@ -1,8 +1,9 @@
 import type { Readable } from "node:stream";
+import type { HttpMethod } from "./method.js";
 
 type Body = string | Buffer | Readable | null;
 
-abstract class BaseApiObject {
+abstract class BaseRawHttpPayload {
   abstract readonly body: string | Buffer | Readable | null;
 
   async json() {
@@ -39,16 +40,16 @@ abstract class BaseApiObject {
 }
 
 export interface RawHttpRequestInit {
-  method: string;
+  method: HttpMethod;
   headers?: Record<string, string>;
   body?: string | Buffer | null;
   params?: Record<string, string>;
   query?: Record<string, string | string[]>;
 }
 
-export class RawHttpRequest extends BaseApiObject {
+export class RawHttpRequest extends BaseRawHttpPayload {
   readonly url: string;
-  readonly method: string;
+  readonly method: HttpMethod;
   readonly headers: Record<string, string>;
   readonly body: string | Buffer | null;
   readonly params?: Record<string, string>;
@@ -80,7 +81,7 @@ export interface RawHttpResponseInit {
   headers?: Record<string, string> | Headers;
 }
 
-export class RawHttpResponse extends BaseApiObject {
+export class RawHttpResponse extends BaseRawHttpPayload {
   readonly body: Body;
   readonly status: number;
   readonly statusText?: string;
