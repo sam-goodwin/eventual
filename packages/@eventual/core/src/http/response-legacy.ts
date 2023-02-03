@@ -1,10 +1,6 @@
 import type { Readable } from "node:stream";
-import {
-  ApiResponses,
-  ApiResponseValue,
-  HeaderValues,
-  ParamValues,
-} from "./api-schema.js";
+
+type Body = string | Buffer | Readable | null;
 
 abstract class BaseApiObject {
   abstract readonly body: string | Buffer | Readable | null;
@@ -78,8 +74,6 @@ export class ApiRequest extends BaseApiObject {
   }
 }
 
-export type Body = string | Buffer | Readable | null;
-
 export class ApiResponse extends BaseApiObject {
   readonly body: Body;
   readonly status: number;
@@ -132,70 +126,3 @@ interface Headers {
     thisArg?: any
   ): void;
 }
-
-export type TypedApiRequest<
-  Input,
-  Responses extends ApiResponses,
-  Headers extends HeaderValues,
-  Params extends ParamValues
-> = {
-  response<Status extends keyof Responses>(
-    props: {
-      status: Status;
-      body: Responses[Status] extends undefined
-        ? undefined
-        : Extract<Responses[Status], ApiResponseValue>["body"];
-    } & TypedApiHeaders<
-      Responses[Status] extends ApiResponseValue
-        ? Responses[Status]["headers"] extends undefined
-          ? HeaderValues
-          : Responses[Status]["headers"]
-        : HeaderValues
-    >
-  ): TypedApiResponse<Responses, Status>;
-} & (undefined extends Input
-  ? {}
-  : {
-      body: Input;
-    }) &
-  (HeaderValues extends Headers
-    ? {
-        headers?: Headers;
-      }
-    : {
-        headers: Headers;
-      }) &
-  (ParamValues extends Params
-    ? {
-        params?: Params;
-      }
-    : {
-        params: Params;
-      });
-
-export type TypedApiResponse<
-  Responses extends ApiResponses,
-  Status extends keyof Responses
-> = {
-  status: Status;
-  body: Responses[Status] extends undefined
-    ? undefined
-    : Extract<Responses[Status], ApiResponseValue>["body"];
-} & TypedApiHeaders<
-  Responses[Status] extends ApiResponseValue
-    ? Responses[Status]["body"]
-    : undefined
->;
-
-export type TypedApiHeaders<Headers extends HeaderValues | undefined> =
-  Headers extends undefined
-    ? {
-        headers?: HeaderValues;
-      }
-    : HeaderValues extends Headers
-    ? {
-        headers?: HeaderValues;
-      }
-    : {
-        headers: Headers;
-      };

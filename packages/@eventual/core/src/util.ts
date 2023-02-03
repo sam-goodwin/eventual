@@ -95,3 +95,15 @@ export function hashCode(str: string): number {
   }
   return hash;
 }
+
+/**
+ * Evaluates a computed type, T, and returns the final
+ * type signature as an object literal.
+ */
+export type Eval<T> = UnionToIntersection<T>;
+
+export type UnionToIntersection<T> = (
+  T extends any ? (x: T) => any : never
+) extends (x: infer R) => any
+  ? R
+  : never;

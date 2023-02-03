@@ -14,7 +14,7 @@ import {
   signal,
   duration,
   api,
-  ApiResponse,
+  HttpResponse,
 } from "@eventual/core";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -428,21 +428,57 @@ export const allCommands = workflow("allCommands", async (_, context) => {
   return { signalCount: n };
 });
 
+export class GetUserResponse extends HttpResponse("GetUserResponse", {
+  headers: {
+    headerId: z.string(),
+  },
+  body: z.object({
+    userId: z.string(),
+    createdTime: z.date(),
+  }),
+}) {}
+
+GetUserResponse.status;
+
 export const getUser = api.get(
-  "/hello/:id",
+  "/user/:id",
+  {
+    memorySize: 512,
+    headers: {
+      header: z.string(),
+    },
+    params: {
+      id: z.string(),
+    },
+    response: GetUserResponse,
+  },
+  async (request) => {
+    return {
+      type: "GetUserResponse",
+      headers: {
+        headerId: "",
+      },
+      status: 200,
+      body: {
+        userId: request.params.id,
+        createdTime: new Date(),
+      },
+    } as const;
+  }
+);
+
+export const untypedGetUser = api.get(
+  "/user/:id",
   {
     memorySize: 512,
     params: {
       id: z.string(),
     },
-    headers: {
-      "Content-Type": z.string().optional(),
-    },
-    responses: {
-      200: z.string(),
-    },
   },
-  async (_) => {
-    return new ApiResponse("hello world");
+  async (request) => {
+    return {
+      status: 200,
+      body: "",
+    };
   }
 );

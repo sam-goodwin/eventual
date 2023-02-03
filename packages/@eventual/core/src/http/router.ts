@@ -1,24 +1,20 @@
 import itty from "itty-router";
-import { RouteHandler } from "./api-handler.js";
-import type { ApiRequest, ApiResponse } from "./api-request.js";
-import {
-  GetApiRouteFactory,
-  ApiRouteFactory,
-  ApiRouteRuntimeProps,
-} from "./api-route.js";
-import { SourceLocation } from "./app-spec.js";
-import { routes } from "./global.js";
-import { HttpMethod } from "./http-method.js";
+
+import type { SourceLocation } from "../app-spec.js";
+import { routes } from "../global.js";
+import type { HttpMethod } from "./method.js";
+import { HttpRequest } from "./request.js";
+import { HttpResponse } from "./response.js";
 
 const router = itty.Router() as any as Router;
 
-export type RouteEntry = [string, RegExp, RouteHandler];
+export type RouteEntry = [string, RegExp, HttpMethod.Handler];
 
 export interface Route {
   path: string;
-  handlers: RouteHandler[];
+  handlers: HttpMethod.Handler[];
   method: HttpMethod;
-  runtimeProps?: ApiRouteRuntimeProps;
+  runtimeProps?: HttpMethod.Props;
   /**
    * Only available during eventual-infer
    */
@@ -26,18 +22,21 @@ export interface Route {
 }
 
 export interface Router {
-  handle: (request: ApiRequest, ...extra: any) => Promise<ApiResponse>;
+  handle: (
+    request: HttpRequest.Payload,
+    ...extra: any
+  ) => Promise<HttpResponse.Payload>;
   routes: RouteEntry[];
-  all: ApiRouteFactory;
-  get: GetApiRouteFactory;
-  head: ApiRouteFactory;
-  post: ApiRouteFactory;
-  put: ApiRouteFactory;
-  delete: ApiRouteFactory;
-  connect: ApiRouteFactory;
-  options: ApiRouteFactory;
-  trace: ApiRouteFactory;
-  patch: ApiRouteFactory;
+  all: HttpMethod.Router;
+  get: HttpMethod.Get.Router;
+  head: HttpMethod.Router;
+  post: HttpMethod.Router;
+  put: HttpMethod.Router;
+  delete: HttpMethod.Router;
+  connect: HttpMethod.Router;
+  options: HttpMethod.Router;
+  trace: HttpMethod.Router;
+  patch: HttpMethod.Router;
 }
 
 /**
@@ -60,10 +59,15 @@ export const api: Router = new Proxy(
       } else {
         return (
           ...args:
-            | [SourceLocation, string, ...RouteHandler[]]
-            | [SourceLocation, string, ApiRouteRuntimeProps, ...RouteHandler[]]
-            | [string, ...RouteHandler[]]
-            | [string, ApiRouteRuntimeProps, ...RouteHandler[]]
+            | [SourceLocation, string, ...HttpMethod.Handler[]]
+            | [
+                SourceLocation,
+                string,
+                HttpMethod.Props,
+                ...HttpMethod.Handler[]
+              ]
+            | [string, ...HttpMethod.Handler[]]
+            | [string, HttpMethod.Props, ...HttpMethod.Handler[]]
         ) => {
           const route: Route = {
             sourceLocation: typeof args[0] === "object" ? args[0] : undefined,
@@ -78,8 +82,8 @@ export const api: Router = new Proxy(
                 ? args[2]
                 : undefined,
             handlers: args.filter(
-              (a: any): a is RouteHandler => typeof a === "function"
-            ) as RouteHandler[], // todo: why do i need to cast?
+              (a: any): a is HttpMethod.Handler => typeof a === "function"
+            ) as HttpMethod.Handler[], // todo: why do i need to cast?
           };
           routes.push(route);
           // @ts-expect-error - functions don't overlap, but we know they can be called together

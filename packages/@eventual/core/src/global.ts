@@ -1,5 +1,5 @@
 import { ActivityContext, ActivityHandler } from "./activity.js";
-import type { Route } from "./api.js";
+import type { Route } from "./http/router.js";
 import { Event, EventHandler, EventSubscription } from "./event.js";
 import type { Eventual, EventualCallCollector } from "./eventual.js";
 import { EventualServiceClient } from "./service-client.js";

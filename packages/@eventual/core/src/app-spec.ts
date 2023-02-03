@@ -1,5 +1,5 @@
 import type { EventHandler, Subscription } from "./event.js";
-import type { HttpMethod } from "./http-method.js";
+import type { HttpMethod } from "./http/method.js";
 import type { DurationSchedule } from "./schedule.js";
 import type { SchemaObject } from "openapi3-ts";
 
