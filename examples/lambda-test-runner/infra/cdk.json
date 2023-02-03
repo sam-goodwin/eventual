@@ -1,4 +1,0 @@
-{
-  "app": "ts-node ./src/app.ts",
-  "watch": "."
-}
