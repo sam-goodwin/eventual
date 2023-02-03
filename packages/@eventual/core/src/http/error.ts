@@ -8,9 +8,16 @@ export type HttpError<
   Status extends HttpStatusCode = HttpStatusCode,
   Body extends z.ZodType | undefined = undefined,
   Headers extends HttpHeaders.Schema | undefined = undefined
-> = (string extends Type ? {} : { type: Type }) & {
-  status: Status;
-  statusText?: string;
+> = (string extends Type
+  ? {
+      status: Status;
+      statusText?: string;
+    }
+  : {
+      error: Type;
+      statusText?: string;
+    }) & {
+  response?: never;
 } & (Body extends undefined
     ? {
         body?: RawBody;

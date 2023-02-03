@@ -14,8 +14,9 @@ export type HttpResponse<
   Status extends HttpStatusCode = HttpStatusCode,
   Body extends z.ZodType | undefined = undefined,
   Headers extends HttpHeaders.Schema | undefined = undefined
-> = (string extends Type ? {} : { type: Type }) & {
+> = {
   status: Status;
+  error?: never;
   statusText?: string;
   body: Body extends undefined ? RawBody : z.infer<Exclude<Body, undefined>>;
 } & HttpHeaders.Envelope<Headers>;

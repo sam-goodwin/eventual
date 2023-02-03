@@ -465,12 +465,11 @@ export const getUser = api.get(
   async (request) => {
     if (request.params.id === "a") {
       return {
-        type: "UserNotFound",
-        status: 404,
+        error: "UserNotFound" as const,
         body: {
           userId: request.params.id,
         },
-      } satisfies UserNotFound;
+      };
     }
 
     return new GetUserResponse({
@@ -499,11 +498,10 @@ export const getUserNoClass = api.get(
   },
   async (request) => {
     return {
-      type: "GetUserResponse",
+      status: 200,
       headers: {
         headerId: "",
       },
-      status: 200,
       body: {
         userId: request.params.id,
         createdTime: new Date(),
