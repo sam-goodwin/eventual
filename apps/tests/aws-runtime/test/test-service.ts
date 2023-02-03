@@ -466,10 +466,11 @@ export const getUser = api.get(
     if (request.params.id === "a") {
       return {
         type: "UserNotFound",
+        status: 404,
         body: {
           userId: request.params.id,
         },
-      } as const;
+      } satisfies UserNotFound;
     }
 
     return new GetUserResponse({

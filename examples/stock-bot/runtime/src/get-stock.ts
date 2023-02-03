@@ -1,4 +1,4 @@
-import { api, HttpResponse, duration } from "@eventual/core";
+import { api, duration } from "@eventual/core";
 import { z } from "zod";
 
 export const getStock = api.get(
@@ -11,6 +11,8 @@ export const getStock = api.get(
     },
   },
   async (_request) => {
-    return new HttpResponse();
+    return {
+      status: 200,
+    };
   }
 );

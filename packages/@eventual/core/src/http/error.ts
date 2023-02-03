@@ -1,7 +1,24 @@
 import type z from "zod";
-import type { RawBody } from "./body.js";
+import { RawBody } from "./body.js";
 import type { HttpHeaders } from "./headers.js";
 import type { HttpStatusCode } from "./status-code.js";
+
+export type HttpError<
+  Type extends string = string,
+  Status extends HttpStatusCode = HttpStatusCode,
+  Body extends z.ZodType | undefined = undefined,
+  Headers extends HttpHeaders.Schema | undefined = undefined
+> = (string extends Type ? {} : { type: Type }) & {
+  status: Status;
+  statusText?: string;
+} & (Body extends undefined
+    ? {
+        body?: RawBody;
+      }
+    : {
+        body: z.infer<Exclude<Body, undefined>>;
+      }) &
+  HttpHeaders.Envelope<Headers>;
 
 export function HttpError<
   Type extends string,
@@ -12,6 +29,7 @@ export function HttpError<
   type: Type,
   props: {
     status: Status;
+    statusText?: string;
     body?: Body;
     headers?: Headers;
   }
@@ -44,7 +62,7 @@ export declare namespace HttpError {
       props?: {
         headers?: Headers;
       }
-    ): ValueOf<this>;
+    ): HttpError<Name, Status, Body, Headers>;
   }
 
   export interface Schema<
@@ -62,24 +80,9 @@ export declare namespace HttpError {
     headers: Headers;
   }
 
-  export type ValueOf<
-    E extends {
-      type: string;
-      body: z.ZodType;
-    }
-  > = {
-    type: E["type"];
-    body: z.infer<E["body"]>;
-  };
-
-  export type ValuesOf<E extends Schema[] | undefined> = E extends Schema[]
-    ? {
-        type: Exclude<E, undefined>[number]["type"];
-        status?: Exclude<E, undefined>[number]["status"];
-        body: z.infer<Exclude<E, undefined>[number]["body"]>;
-      }
-    : {
-        status: HttpStatusCode;
-        body?: RawBody | undefined;
-      };
+  export type Of<E extends Schema[] | Schema | undefined> = E extends Schema[]
+    ? Of<E[number]>
+    : E extends Schema
+    ? HttpError<E["type"], E["status"], E["body"], E["headers"]>
+    : HttpError;
 }

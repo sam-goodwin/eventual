@@ -3,7 +3,7 @@ import type { HttpError } from "./error.js";
 import type { HttpHeaders } from "./headers.js";
 import type { Params } from "./params.js";
 import type { HttpRequest } from "./request.js";
-import type { HttpResponse } from "./response.js";
+import type { HttpResponse, HttpResponseOrError } from "./response.js";
 
 export interface HttpOperation<
   Path extends string,
@@ -21,7 +21,7 @@ export interface HttpOperation<
   headers: Headers;
   params: Params;
   (request: HttpRequest<Request, Headers, Params>): Promise<
-    HttpResponse<Response, Errors>
+    HttpResponseOrError<Response, Errors>
   >;
 }
 
@@ -39,7 +39,7 @@ export namespace HttpOperation {
     Headers extends HttpHeaders.Schema | undefined =
       | HttpHeaders.Schema
       | undefined,
-    Params extends Params.Schema | undefined = Params.Schema | undefined
+    Params extends Params.Schema | undefined = undefined
   > extends FunctionRuntimeProps {
     request?: Request;
     response?: Response;
@@ -49,26 +49,19 @@ export namespace HttpOperation {
   }
 
   export interface Handler<
-    Request extends HttpRequest.Schema | undefined =
-      | HttpRequest.Schema
-      | undefined,
-    Response extends HttpResponse.Schema | undefined =
-      | HttpResponse.Schema
-      | undefined,
-    Errors extends HttpError.Schema[] | undefined =
-      | HttpError.Schema[]
-      | undefined,
-    Headers extends HttpHeaders.Schema | undefined =
-      | HttpHeaders.Schema
-      | undefined,
-    Params extends Params.Schema | undefined = Params.Schema | undefined
+    Request extends HttpRequest.Schema | undefined = undefined,
+    Response extends HttpResponse.Schema | undefined = undefined,
+    Errors extends HttpError.Schema[] | undefined = undefined,
+    Headers extends HttpHeaders.Schema | undefined = undefined,
+    Params extends Params.Schema | undefined = undefined
   > {
     (request: HttpRequest<Request, Headers, Params>):
-      | HttpResponse<Response, Errors>
-      | Promise<HttpResponse<Response, Errors>>;
+      | HttpResponseOrError<Response, Errors>
+      | Promise<HttpResponseOrError<Response, Errors>>;
   }
 
   export interface Router {
+    <Path extends string>(path: Path, handler: Handler): HttpOperation<Path>;
     <
       Path extends string,
       Request extends HttpRequest.Schema | undefined = undefined,
@@ -81,7 +74,6 @@ export namespace HttpOperation {
       props: Props<Request, Response, Errors, Headers, Params>,
       handler: Handler<Request, Response, Errors, Headers, Params>
     ): HttpOperation<Path, Request, Response, Errors, Headers, Params>;
-    <Path extends string>(path: Path, handler: Handler): HttpOperation<Path>;
   }
 
   export interface Get<

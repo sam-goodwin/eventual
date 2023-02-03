@@ -4,3 +4,8 @@ export type HttpStatusCode = typeof http.Status[keyof typeof http.Status];
 
 export type SuccessHttpStatusCode =
   typeof http.SuccessStatus[keyof typeof http.SuccessStatus];
+
+export type ErrorHttpStatusCode = Exclude<
+  HttpStatusCode,
+  SuccessHttpStatusCode
+>;

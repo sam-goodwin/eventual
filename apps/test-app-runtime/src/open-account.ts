@@ -1,4 +1,4 @@
-import { activity, api, HttpResponse, event, workflow } from "@eventual/core";
+import { activity, api, event, workflow } from "@eventual/core";
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
@@ -77,12 +77,13 @@ api.post("/open-account", async (request) => {
     input,
   });
 
-  return new HttpResponse(JSON.stringify(response), {
+  return {
     headers: {
       "Content-Type": "application/json",
     },
     status: 200,
-  });
+    body: JSON.stringify(response),
+  };
 });
 
 const openAccountEvent = event<OpenAccountRequest>("OpenAccount");

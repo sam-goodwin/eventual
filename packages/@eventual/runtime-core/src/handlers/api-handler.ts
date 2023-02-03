@@ -63,6 +63,9 @@ function parseHttpRequest(
   return request;
 }
 
-function toRawHttpResponse(request: HttpResponse): RawHttpResponse {
-  return new RawHttpResponse(JSON.stringify(request.body));
+function toRawHttpResponse(response: HttpResponse): RawHttpResponse {
+  return new RawHttpResponse(JSON.stringify(response.body), {
+    status: response.status ?? 200,
+    // headers: response.
+  });
 }

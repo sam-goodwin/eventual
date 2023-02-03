@@ -7,7 +7,7 @@ const app = new App();
 
 const stack = new Stack(app, "example-stock-bot");
 
-const service = new eventual.Service<typeof stockbot>(stack, "StockBot", {
+new eventual.Service<typeof stockbot>(stack, "StockBot", {
   entry: require.resolve("example-stock-bot-runtime"),
   name: "stock-bot",
   api: {

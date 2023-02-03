@@ -81,7 +81,10 @@ export default class FetchReceiver implements Receiver {
       typeof body.ssl_check !== "undefined" &&
       body.ssl_check != null
     ) {
-      return new HttpResponse("", { status: 200 });
+      return {
+        status: 200,
+        body: "",
+      };
     }
 
     // request signature verification
@@ -93,7 +96,10 @@ export default class FetchReceiver implements Receiver {
       this.logger.info(
         `Invalid request signature detected (X-Slack-Signature: ${signature}, X-Slack-Request-Timestamp: ${ts})`
       );
-      return new HttpResponse("", { status: 401 });
+      return {
+        status: 404,
+        body: "",
+      };
     }
 
     // url_verification (Events API)
@@ -104,10 +110,11 @@ export default class FetchReceiver implements Receiver {
       body.type != null &&
       body.type === "url_verification"
     ) {
-      return new HttpResponse(JSON.stringify({ challenge: body.challenge }), {
-        headers: { "Content-Type": "application/json" },
+      return {
         status: 200,
-      });
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ challenge: body.challenge }),
+      };
     }
 
     // Setup ack timeout warning
@@ -148,14 +155,16 @@ export default class FetchReceiver implements Receiver {
       await this.app?.processEvent(event);
       if (storedResponse !== undefined) {
         if (typeof storedResponse === "string") {
-          return new HttpResponse(storedResponse, {
+          return {
             status: 200,
-          });
+            body: storedResponse,
+          };
         }
-        return new HttpResponse(JSON.stringify(storedResponse), {
-          headers: { "Content-Type": "application/json" },
+        return {
           status: 200,
-        });
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(storedResponse),
+        };
       }
     } catch (err) {
       this.logger.error(
@@ -164,16 +173,18 @@ export default class FetchReceiver implements Receiver {
       this.logger.debug(
         `Error details: ${err}, storedResponse: ${storedResponse}`
       );
-      return new HttpResponse("Internal server error", {
+      return {
         status: 500,
-      });
+        body: "Internal server error",
+      };
     }
     this.logger.info(
       `No request handler matched the request: ${new URL(request.url).pathname}`
     );
-    return new HttpResponse("", {
+    return {
       status: 404,
-    });
+      body: "",
+    };
   }
 
   private async getRawBody(request: HttpRequest): Promise<string> {
