@@ -19,6 +19,7 @@ import { Events } from "./events";
 import { grant } from "./grant";
 import { Logging } from "./logging";
 import { IScheduler } from "./scheduler";
+import { IService } from "./service";
 import { ServiceFunction } from "./service-function";
 
 export interface WorkflowsProps {
@@ -32,6 +33,7 @@ export interface WorkflowsProps {
   orchestrator?: {
     reservedConcurrentExecutions?: number;
   };
+  service: IService;
 }
 
 export interface IWorkflows {
@@ -317,6 +319,10 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     // orchestrator - Schedule workflow timeout
     // command executor - handler timer commands
     this.props.scheduler.configureScheduleTimer(this.orchestrator);
+    /**
+     * Access to service name in the orchestrator for metric logging
+     */
+    this.props.service.configureServiceName(this.orchestrator);
   }
 
   private readonly ENV_MAPPINGS = {

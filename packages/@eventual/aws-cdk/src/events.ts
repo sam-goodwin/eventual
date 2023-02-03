@@ -91,32 +91,35 @@ export class Events extends Construct implements IGrantable {
     this.configurePublish(this.defaultHandler);
 
     // create a Construct to safely nest bundled functions in their own namespace
-    const handlers = new Construct(this, "BundledHandlers");
+    const bundledHandlers = new Construct(this, "BundledHandlers");
 
-    this.handlers = props.build.events.handlers.map((handler) => {
-      const handlerFunction = new ServiceFunction(
-        handlers,
-        handler.exportName,
-        {
-          code: props.build.getCode(props.build.events.default.file),
-          functionName: `${props.serviceName}-event-${handler.exportName}`,
-          ...functionProps,
-          memorySize: handler.memorySize,
-          timeout: handler.timeout
-            ? Duration.seconds(computeDurationSeconds(handler.timeout))
-            : undefined,
-          role: this.defaultHandler.role,
-        }
-      );
+    this.handlers = [
+      this.defaultHandler,
+      ...props.build.events.handlers.map((handler) => {
+        const handlerFunction = new ServiceFunction(
+          bundledHandlers,
+          handler.exportName,
+          {
+            code: props.build.getCode(props.build.events.default.file),
+            functionName: `${props.serviceName}-event-${handler.exportName}`,
+            ...functionProps,
+            memorySize: handler.memorySize,
+            timeout: handler.timeout
+              ? Duration.seconds(computeDurationSeconds(handler.timeout))
+              : undefined,
+            role: this.defaultHandler.role,
+          }
+        );
 
-      this.createRule(
-        handlerFunction,
-        handler.subscriptions,
-        handler.retryAttempts
-      );
+        this.createRule(
+          handlerFunction,
+          handler.subscriptions,
+          handler.retryAttempts
+        );
 
-      return handlerFunction;
-    });
+        return handlerFunction;
+      }),
+    ];
 
     this.createRule(
       this.defaultHandler,

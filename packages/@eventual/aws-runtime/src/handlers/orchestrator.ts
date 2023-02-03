@@ -18,6 +18,7 @@ import {
   createWorkflowClient,
   createWorkflowProvider,
 } from "../create.js";
+import { serviceName } from "../env.js";
 
 /**
  * Creates an entrypoint function for orchestrating a workflow
@@ -38,6 +39,7 @@ const orchestrate = createOrchestrator({
     workflowClient: createWorkflowClient(),
   }),
   workflowProvider: createWorkflowProvider(),
+  serviceName: serviceName(),
 });
 
 export default async (event: SQSEvent) => {

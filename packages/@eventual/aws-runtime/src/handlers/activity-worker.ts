@@ -17,6 +17,7 @@ import {
   createServiceClient,
   createTimerClient,
 } from "../create.js";
+import { serviceName } from "../env.js";
 
 export default (request: ActivityWorkerRequest) =>
   createActivityWorker({
@@ -35,4 +36,5 @@ export default (request: ActivityWorkerRequest) =>
     }),
     logAgent: createLogAgent(),
     activityStore: createActivityStore(),
+    serviceName: serviceName(),
   })(request);
