@@ -1,7 +1,7 @@
 import {
   api,
-  ApiRequest,
-  ApiResponse,
+  HttpRequest,
+  HttpResponse,
   EventualServiceClient,
   registerServiceClient,
   ServiceType,
@@ -29,22 +29,24 @@ export function createApiHandler({ serviceClient }: ApiHandlerDependencies) {
    * then handles the request.
    */
   return async function processRequest(
-    request: ApiRequest
-  ): Promise<ApiResponse> {
+    request: HttpRequest
+  ): Promise<HttpResponse> {
     return await serviceTypeScope(ServiceType.ApiHandler, async () => {
       try {
         const response = await api.handle(request);
         if (response === undefined) {
-          return new ApiResponse("Not Found", {
+          return {
             status: 404,
-          });
+            body: "Not Found",
+          };
         }
         return response;
       } catch (err) {
         console.error(err);
-        return new ApiResponse("Internal Server Error", {
+        return {
           status: 500,
-        });
+          body: "Internal Server Error",
+        };
       }
     });
   };

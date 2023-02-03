@@ -5,7 +5,6 @@ import { SignatureV4, SignatureV4Init } from "@aws-sdk/signature-v4";
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import {
   BeforeRequest,
-  HttpMethod,
   HttpServiceClient,
   HttpServiceClientProps,
 } from "@eventual/client";
@@ -14,7 +13,7 @@ import {
   NODE_REGION_CONFIG_OPTIONS,
 } from "@aws-sdk/config-resolver";
 import { loadConfig } from "@aws-sdk/node-config-provider";
-import { ApiRequest } from "@eventual/core";
+import { HttpOperation, HttpRequest } from "@eventual/core";
 
 export interface AwsHttpServiceClientProps extends HttpServiceClientProps {
   credentials?: SignatureV4Init["credentials"];
@@ -65,7 +64,7 @@ export class AwsHttpServiceClient extends HttpServiceClient {
       // sign the request and extract the signed headers, body and method
       const { headers, body, method } = await signer.sign(_request);
 
-      const authorizedRequest = new ApiRequest(url.href, {
+      const authorizedRequest = new HttpRequest(url.href, {
         method: method as HttpMethod,
         body,
         headers,

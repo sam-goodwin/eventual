@@ -15,7 +15,7 @@ if (!globalThis.Headers) {
   globalThis.Headers = node_fetch.Headers as typeof Headers;
 }
 
-import { ApiRequest } from "@eventual/core";
+import { HttpRequest } from "@eventual/core";
 import { FetchRequestHandler } from "../src/request-handler/fetch-request-handler.js";
 import { HttpError } from "../src/request-handler/request-handler.js";
 
@@ -30,7 +30,7 @@ beforeEach(() => {
 test("returns json", async () => {
   fetchMock.mockImplementation(createRequest(apiResponseBody, 200));
   const result = await handler.request(
-    new ApiRequest("https://hello.com", { method: "get" })
+    new HttpRequest("https://hello.com", { method: "get" })
   );
   expect(result).toEqual(apiResponseBody);
 });
@@ -38,7 +38,7 @@ test("returns json", async () => {
 test("throws on error", async () => {
   fetchMock.mockImplementation(createRequest("something went wrong", 400));
   expect(() =>
-    handler.request(new ApiRequest("https://hello.com", { method: "get" }))
+    handler.request(new HttpRequest("https://hello.com", { method: "get" }))
   ).rejects.toThrow(new HttpError(400, JSON.stringify("something went wrong")));
 });
 

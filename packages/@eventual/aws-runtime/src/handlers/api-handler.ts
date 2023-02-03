@@ -1,6 +1,6 @@
 import "@eventual/entry/injected";
 
-import { ApiRequest } from "@eventual/core";
+import { HttpRequest } from "@eventual/core";
 import { createApiHandler } from "@eventual/runtime-core";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
 import { Buffer } from "buffer";
@@ -29,7 +29,7 @@ export default async function (
       : event.body
     : undefined;
 
-  const request = new ApiRequest(
+  const request = new HttpRequest(
     `https://${event.requestContext.domainName}${event.rawPath}?${event.rawQueryString}`,
     {
       // TODO: get protocol from header 'x-forwarded-proto'?

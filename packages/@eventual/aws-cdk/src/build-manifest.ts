@@ -1,6 +1,6 @@
 import type {
   DurationSchedule,
-  HttpMethod,
+  HttpOperation,
   Subscription,
 } from "@eventual/core";
 import type { SchemaObject } from "openapi3-ts";

@@ -1,5 +1,9 @@
 import type { z } from "zod";
 
+export interface HttpHeaders {
+  [headerName: string]: string | string[] | undefined;
+}
+
 export declare namespace HttpHeaders {
   export interface Schema {
     [headerName: string]: z.ZodType<undefined | string | string[]>;
@@ -14,18 +18,14 @@ export declare namespace HttpHeaders {
       ? true
       : false;
 
-  export type ValueOfEnvelope<Headers extends Schema | undefined = Schema> =
+  export type Envelope<Headers extends Schema | undefined = Schema> =
     Schema extends Headers
       ? {
-          headers?: {
-            [headerName: string]: string | string[] | undefined;
-          };
+          headers?: HttpHeaders;
         }
       : Headers extends undefined
       ? {
-          headers?: {
-            [headerName: string]: string | string[] | undefined;
-          };
+          headers?: HttpHeaders;
         }
       : { [header in keyof Headers]?: undefined } extends Headers
       ? {
@@ -42,7 +42,7 @@ export declare namespace HttpHeaders {
             >;
           };
         };
-  export type ValueOf<Headers extends Schema | undefined = Schema> =
+  export type FromSchema<Headers extends Schema | undefined = Schema> =
     Schema extends Headers
       ? {
           [headerName: string]: string | string[] | undefined;

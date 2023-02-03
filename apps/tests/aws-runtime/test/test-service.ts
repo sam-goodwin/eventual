@@ -15,6 +15,8 @@ import {
   duration,
   api,
   HttpResponse,
+  HttpError,
+  HttpRequest,
 } from "@eventual/core";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -428,6 +430,13 @@ export const allCommands = workflow("allCommands", async (_, context) => {
   return { signalCount: n };
 });
 
+export class UserNotFound extends HttpError("UserNotFound", {
+  status: 404,
+  body: z.object({
+    userId: z.string(),
+  }),
+}) {}
+
 export class GetUserResponse extends HttpResponse("GetUserResponse", {
   headers: {
     headerId: z.string(),
@@ -441,6 +450,41 @@ export class GetUserResponse extends HttpResponse("GetUserResponse", {
 GetUserResponse.status;
 
 export const getUser = api.get(
+  "/user/:id",
+  {
+    memorySize: 512,
+    headers: {
+      header: z.string(),
+    },
+    params: {
+      id: z.string(),
+    },
+    response: GetUserResponse,
+    errors: [UserNotFound],
+  },
+  async (request) => {
+    if (request.params.id === "a") {
+      return {
+        type: "UserNotFound",
+        body: {
+          userId: request.params.id,
+        },
+      } as const;
+    }
+
+    return new GetUserResponse({
+      headers: {
+        headerId: "",
+      },
+      body: {
+        userId: request.params.id,
+        createdTime: new Date(),
+      },
+    });
+  }
+);
+
+export const getUserNoClass = api.get(
   "/user/:id",
   {
     memorySize: 512,
@@ -478,7 +522,60 @@ export const untypedGetUser = api.get(
   async (request) => {
     return {
       status: 200,
-      body: "",
+      body: request.params.id,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    };
+  }
+);
+
+const User = z.object({
+  userId: z.string(),
+});
+
+class AddUserRequest extends HttpRequest("AddUserRequest", {
+  body: User,
+}) {}
+
+class AddUserResponse extends HttpResponse("AddUserResponse", {
+  headers: {
+    "Content-Type": z.literal("application/json"),
+  },
+  body: z.object({
+    user: User,
+  }),
+}) {}
+
+export const addUser = api.post(
+  "/user",
+  {
+    request: AddUserRequest,
+    response: AddUserResponse,
+  },
+  async (request) => {
+    return new AddUserResponse({
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: {
+        user: {
+          userId: request.body.userId,
+        },
+      },
+    });
+    // both work
+    return {
+      type: "AddUserResponse" as const,
+      status: 200,
+      body: {
+        user: {
+          userId: request.body.userId,
+        },
+      },
+      headers: {
+        "Content-Type": "application/json" as const,
+      },
     };
   }
 );

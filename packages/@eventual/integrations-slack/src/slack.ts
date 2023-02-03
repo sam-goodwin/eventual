@@ -2,7 +2,7 @@ import {
   activity,
   api,
   isOrchestratorWorker,
-  RouteHandler,
+  HttpOperation,
   Secret,
 } from "@eventual/core";
 import slack from "@slack/bolt";
@@ -65,7 +65,7 @@ export interface Slack extends slack.App {}
 export class Slack {
   private fetchReceiver: FetchReceiver | undefined;
   private app: slack.App | undefined;
-  private handler: RouteHandler | undefined;
+  private handler: HttpOperation.Handler | undefined;
   private deferred: [name: string, args: any[]][] = [];
 
   constructor(readonly name: string, readonly props: SlackProps) {
@@ -175,7 +175,7 @@ export class Slack {
     });
   }
 
-  private async getHandler(): Promise<RouteHandler> {
+  private async getHandler(): Promise<HttpOperation.Handler> {
     if (!this.app) {
       const { token, signingSecret } = await this.props.credentials.getSecret();
       this.fetchReceiver = new FetchReceiver({

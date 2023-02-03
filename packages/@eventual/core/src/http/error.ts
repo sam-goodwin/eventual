@@ -75,7 +75,7 @@ export declare namespace HttpError {
   export type ValuesOf<E extends Schema[] | undefined> = E extends Schema[]
     ? {
         type: Exclude<E, undefined>[number]["type"];
-        status: Exclude<E, undefined>[number]["status"];
+        status?: Exclude<E, undefined>[number]["status"];
         body: z.infer<Exclude<E, undefined>[number]["body"]>;
       }
     : {
