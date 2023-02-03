@@ -1,10 +1,10 @@
-import fs from "fs/promises";
-import path from "path";
+import { ServiceType, SERVICE_TYPE_FLAG } from "@eventual/core";
 import esbuild from "esbuild";
 import { aliasPath } from "esbuild-plugin-alias-path";
-import { eventualESPlugin } from "./esbuild-plugin.js";
+import fs from "fs/promises";
+import path from "path";
 import { prepareOutDir } from "./build.js";
-import { ServiceType, SERVICE_TYPE_FLAG } from "@eventual/core";
+import { eventualESPlugin } from "./esbuild-plugin.js";
 
 export async function bundleSources(
   outDir: string,
@@ -18,6 +18,7 @@ export async function bundleSources(
 export async function bundleService(
   outDir: string,
   entry: string,
+  serviceSpec?: string,
   serviceType?: ServiceType,
   external?: string[],
   allPackagesExternal?: boolean
@@ -26,6 +27,7 @@ export async function bundleService(
   return build({
     outDir,
     injectedEntry: entry,
+    injectedServiceSpec: serviceSpec,
     entry,
     name: "service",
     eventualTransform: true,
@@ -43,6 +45,7 @@ export interface BuildSource {
   name: string;
   entry: string;
   injectedEntry: string;
+  injectedServiceSpec?: string;
   /**
    * Optionally provide the name of the handler that should be tree-shaken.
    *
@@ -59,6 +62,7 @@ export interface BuildSource {
 export async function build({
   outDir,
   injectedEntry,
+  injectedServiceSpec,
   name,
   entry,
   eventualTransform = false,
@@ -79,11 +83,21 @@ export async function build({
     sourcemap: sourcemap ?? true,
     sourcesContent: false,
     plugins: [
-      ...(injectedEntry
+      ...(injectedEntry || injectedServiceSpec
         ? [
             aliasPath({
               alias: {
-                "@eventual/entry/injected": path.resolve(injectedEntry),
+                ...(injectedEntry
+                  ? {
+                      "@eventual/injected/entry": path.resolve(injectedEntry),
+                    }
+                  : {}),
+                ...(injectedServiceSpec
+                  ? {
+                      "@eventual/injected/spec":
+                        path.resolve(injectedServiceSpec),
+                    }
+                  : {}),
               },
             }),
           ]

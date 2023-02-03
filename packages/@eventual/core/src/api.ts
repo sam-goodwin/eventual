@@ -1,9 +1,9 @@
 import itty from "itty-router";
 import { ApiRequest, ApiResponse } from "./api-request.js";
-import { SourceLocation } from "./app-spec.js";
 import { FunctionRuntimeProps } from "./function-props.js";
 import { routes } from "./global.js";
 import { HttpMethod } from "./http-method.js";
+import { SourceLocation } from "./service-spec.js";
 
 const router = itty.Router() as any as Router;
 

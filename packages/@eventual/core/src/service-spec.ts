@@ -6,9 +6,13 @@ import type { SchemaObject } from "openapi3-ts";
 /**
  * Specification for an Eventual application
  */
-export interface AppSpec {
+export interface ServiceSpec {
   api: ApiSpec;
   events: EventSpec;
+  /**
+   * List of workflows
+   */
+  workflows: WorkflowSpec[];
 }
 
 export interface EventSpec {
@@ -62,4 +66,8 @@ export interface SourceLocation {
 
 export interface Schemas {
   [schemaName: string]: SchemaObject;
+}
+
+export interface WorkflowSpec {
+  name: string;
 }
