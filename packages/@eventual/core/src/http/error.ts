@@ -1,5 +1,5 @@
 import type z from "zod";
-import { RawBody } from "./body.js";
+import type { BodyEnvelope } from "./body.js";
 import type { HttpHeaders } from "./headers.js";
 import type { HttpStatusCode } from "./status-code.js";
 
@@ -8,29 +8,16 @@ export type HttpError<
   Status extends HttpStatusCode = HttpStatusCode,
   Body extends z.ZodType | undefined = undefined,
   Headers extends HttpHeaders.Schema | undefined = undefined
-> = (string extends Type
-  ? {
-      status: Status;
-      statusText?: string;
-    }
-  : {
-      error: Type;
-      statusText?: string;
-    }) & {
-  response?: never;
-} & (Body extends undefined
-    ? {
-        body?: RawBody;
-      }
-    : {
-        body: z.infer<Exclude<Body, undefined>>;
-      }) &
+> = {
+  status: Status;
+  statusText?: string;
+} & BodyEnvelope<Body> &
   HttpHeaders.Envelope<Headers>;
 
 export function HttpError<
   Type extends string,
   Status extends HttpStatusCode,
-  Body extends z.ZodType = z.ZodAny,
+  Body extends z.ZodType = z.ZodUndefined,
   Headers extends HttpHeaders.Schema | undefined = undefined
 >(
   type: Type,

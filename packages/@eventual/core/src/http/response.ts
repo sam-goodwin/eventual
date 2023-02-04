@@ -1,12 +1,12 @@
 import type { z } from "zod";
-import type { RawBody } from "./body.js";
+import { BodyEnvelope } from "./body.js";
 import type { HttpError } from "./error.js";
 import type { HttpHeaders } from "./headers.js";
 import type { HttpStatusCode } from "./status-code.js";
 
 export type HttpResponseOrError<
   Response extends HttpResponse.Schema | undefined = undefined,
-  Errors extends HttpError.Schema[] | undefined = undefined
+  Errors extends HttpError.Schema | undefined = undefined
 > = HttpError.Of<Errors> | HttpResponse.Of<Response>;
 
 export type HttpResponse<
@@ -18,13 +18,13 @@ export type HttpResponse<
   status: Status;
   error?: never;
   statusText?: string;
-  body: Body extends undefined ? RawBody : z.infer<Exclude<Body, undefined>>;
-} & HttpHeaders.Envelope<Headers>;
+} & BodyEnvelope<Body> &
+  HttpHeaders.Envelope<Headers>;
 
 export function HttpResponse<
   Type extends string,
   Body extends z.ZodType,
-  Headers extends HttpHeaders.Schema | undefined = undefined,
+  Headers extends HttpHeaders.Schema = HttpHeaders.Schema,
   Status extends HttpStatusCode = 200
 >(
   type: Type,
@@ -33,7 +33,7 @@ export function HttpResponse<
     status?: Status;
     headers?: Headers;
   }
-): HttpResponse.Class<Type, Body, Headers> {
+): HttpResponse.Class<HttpResponse.Schema<Type, Body, Headers, Status>> {
   return class HttpResponse {
     static readonly kind = "HttpResponse";
     static readonly type = type;
@@ -52,17 +52,13 @@ export function HttpResponse<
 }
 
 export declare namespace HttpResponse {
-  export interface Class<
-    Type extends string,
-    Body extends z.ZodType,
-    Headers extends HttpHeaders.Schema | undefined
-  > extends Schema<Type, Body, Headers> {
+  export type Class<Props extends Schema> = Props & {
     new (
       props: {
-        body: z.infer<Body>;
-      } & HttpHeaders.Envelope<Headers>
-    ): Of<this>;
-  }
+        body: z.infer<Props["body"]>;
+      } & HttpHeaders.Envelope<Props["headers"]>
+    ): Of<Props>;
+  };
 
   export interface Schema<
     Type extends string = string,
@@ -70,7 +66,7 @@ export declare namespace HttpResponse {
     Headers extends HttpHeaders.Schema | undefined =
       | HttpHeaders.Schema
       | undefined,
-    Status extends HttpStatusCode = 200
+    Status extends HttpStatusCode = HttpStatusCode
   > {
     kind: "Response";
     type: Type;

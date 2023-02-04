@@ -9,7 +9,7 @@ export interface HttpOperation<
   Path extends string,
   Request extends HttpRequest.Schema | undefined = undefined,
   Response extends HttpResponse.Schema | undefined = undefined,
-  Errors extends HttpError.Schema[] | undefined = undefined,
+  Errors extends HttpError.Schema | undefined = undefined,
   Headers extends HttpHeaders.Schema | undefined = undefined,
   Params extends Params.Schema | undefined = undefined
 > {
@@ -27,33 +27,37 @@ export interface HttpOperation<
 
 export namespace HttpOperation {
   export interface Props<
-    Request extends HttpRequest.Schema | undefined =
+    Path extends string = string,
+    Input extends HttpRequest.Schema | undefined =
       | HttpRequest.Schema
       | undefined,
-    Response extends HttpResponse.Schema | undefined =
+    Output extends HttpResponse.Schema | undefined =
       | HttpResponse.Schema
       | undefined,
-    Errors extends HttpError.Schema[] | undefined =
-      | HttpError.Schema[]
-      | undefined,
+    Errors extends HttpError.Schema | undefined = HttpError.Schema | undefined,
     Headers extends HttpHeaders.Schema | undefined =
       | HttpHeaders.Schema
       | undefined,
-    Params extends Params.Schema | undefined = undefined
+    Params extends Params.Schema<Params.Parse<Path>> = Params.Schema<
+      Params.Parse<Path>
+    >
   > extends FunctionRuntimeProps {
-    request?: Request;
-    response?: Response;
-    errors?: Errors;
+    input?: Input;
+    output?: Output | Output[];
+    errors?: Errors | Errors[];
     headers?: Headers;
     params?: Params;
   }
 
   export interface Handler<
+    Path extends string = string,
     Request extends HttpRequest.Schema | undefined = undefined,
     Response extends HttpResponse.Schema | undefined = undefined,
-    Errors extends HttpError.Schema[] | undefined = undefined,
+    Errors extends HttpError.Schema | undefined = undefined,
     Headers extends HttpHeaders.Schema | undefined = undefined,
-    Params extends Params.Schema | undefined = undefined
+    Params extends Params.Schema<Params.Parse<Path>> = Params.Schema<
+      Params.Parse<Path>
+    >
   > {
     (request: HttpRequest<Request, Headers, Params>):
       | HttpResponseOrError<Response, Errors>
@@ -64,37 +68,39 @@ export namespace HttpOperation {
     <Path extends string>(path: Path, handler: Handler): HttpOperation<Path>;
     <
       Path extends string,
-      Request extends HttpRequest.Schema | undefined = undefined,
+      Output extends HttpRequest.Schema | undefined = undefined,
       Response extends HttpResponse.Schema | undefined = undefined,
-      Errors extends HttpError.Schema[] | undefined = undefined,
+      Errors extends HttpError.Schema | undefined = undefined,
       Headers extends HttpHeaders.Schema | undefined = undefined,
-      Params extends Params.Schema | undefined = undefined
+      Params extends Params.Schema<Params.Parse<Path>> = Params.Schema<
+        Params.Parse<Path>
+      >
     >(
       path: Path,
-      props: Props<Request, Response, Errors, Headers, Params>,
-      handler: Handler<Request, Response, Errors, Headers, Params>
-    ): HttpOperation<Path, Request, Response, Errors, Headers, Params>;
+      props: Props<Path, Output, Response, Errors, Headers, Params>,
+      handler: Handler<Path, Output, Response, Errors, Headers, Params>
+    ): HttpOperation<Path, Output, Response, Errors, Headers, Params>;
   }
 
   export interface Get<
     Path extends string,
     Response extends HttpResponse.Schema | undefined,
-    Errors extends HttpError.Schema[] | undefined,
+    Errors extends HttpError.Schema | undefined,
     Headers extends HttpHeaders.Schema | undefined,
     Params extends Params.Schema | undefined
   > extends HttpOperation<Path, undefined, Response, Errors, Headers, Params> {}
 
   export namespace Get {
     export interface Props<
-      Response extends HttpResponse.Schema | undefined,
-      Errors extends HttpError.Schema[] | undefined = undefined,
+      Output extends HttpResponse.Schema | undefined,
+      Errors extends HttpError.Schema | undefined = undefined,
       Headers extends HttpHeaders.Schema | undefined = undefined,
       Params extends Params.Schema | undefined = undefined
     > extends FunctionRuntimeProps {
       headers?: Headers;
       params?: Params;
-      response?: Response;
-      errors?: Errors;
+      output?: Output | Output[];
+      errors?: Errors | Errors[];
     }
 
     export interface Router {
@@ -102,13 +108,15 @@ export namespace HttpOperation {
       <
         Path extends string,
         Response extends HttpResponse.Schema | undefined = undefined,
-        Errors extends HttpError.Schema[] | undefined = undefined,
+        Errors extends HttpError.Schema | undefined = undefined,
         Headers extends HttpHeaders.Schema | undefined = undefined,
-        Params extends Params.Schema | undefined = undefined
+        Params extends Params.Schema<Params.Parse<Path>> = Params.Schema<
+          Params.Parse<Path>
+        >
       >(
         path: Path,
         props: Props<Response, Errors, Headers, Params>,
-        handler: Handler<undefined, Response, Errors, Headers, Params>
+        handler: Handler<Path, undefined, Response, Errors, Headers, Params>
       ): HttpOperation.Get<Path, Response, Errors, Headers, Params>;
     }
   }

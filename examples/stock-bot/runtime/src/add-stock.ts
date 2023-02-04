@@ -18,6 +18,9 @@ export class AddStockRequest extends HttpRequest("AddStockRequest", {
 }) {}
 
 export class AddStockResponse extends HttpResponse("AddStockResponse", {
+  headers: {
+    Cache: z.string().optional(),
+  },
   body: z.object({
     stockId: z.string(),
   }),
@@ -26,39 +29,16 @@ export class AddStockResponse extends HttpResponse("AddStockResponse", {
 export const addStock = api.post(
   "/stocks",
   {
-    request: AddStockRequest,
-    response: AddStockResponse,
+    input: AddStockRequest,
+    output: AddStockResponse,
     errors: [RateLimitedError],
   },
   async (request) => {
-    if (typeof request === "object") {
-      if (request) {
-        return new AddStockResponse({
-          body: {
-            stockId: "new stock id",
-          },
-        });
-      } else {
-        return {
-          type: "AddStockResponse" as const,
-          status: 200,
-          body: {
-            stockId: "",
-          },
-        };
-      }
-    } else if (request) {
-      return new RateLimitedError({
-        message: "foo",
-      });
-    } else {
-      return {
-        type: "RateLimitedError" as const,
-        status: 400,
-        body: {
-          message: "you dun goofed",
-        },
-      };
-    }
+    return {
+      status: 200,
+      body: {
+        stockId: request.body.ticker,
+      },
+    };
   }
 );

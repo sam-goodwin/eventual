@@ -18,20 +18,14 @@ export declare namespace HttpHeaders {
       ? {
           headers?: HttpHeaders;
         }
-      : { [header in keyof Headers]?: undefined } extends Headers
+      : {
+          [headerName in keyof Headers]: undefined;
+        } extends HttpHeaders.FromSchema<Headers>
       ? {
-          headers?: {
-            [headerName in keyof Headers]: z.infer<
-              Exclude<Headers, undefined>[headerName]
-            >;
-          };
+          headers?: z.infer<z.ZodObject<Exclude<Headers, undefined>>>;
         }
       : {
-          headers: {
-            [headerName in keyof Headers]: z.infer<
-              Exclude<Headers, undefined>[headerName]
-            >;
-          };
+          headers: z.infer<z.ZodObject<Exclude<Headers, undefined>>>;
         };
   export type FromSchema<Headers extends Schema | undefined = Schema> =
     Schema extends Headers

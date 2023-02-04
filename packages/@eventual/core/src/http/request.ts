@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { RawBody } from "./body.js";
 import type { HttpHeaders } from "./headers.js";
 import { HttpMethod } from "./method.js";
 import { Params } from "./params.js";
@@ -14,7 +15,7 @@ export type HttpRequest<
   method: HttpMethod;
   body: HttpRequest.Body<Request>;
   text(): Promise<string>;
-  json(): Promise<HttpRequest.Body<Request>>;
+  json(): Promise<HttpRequest.Json<Request>>;
   arrayBuffer(): Promise<ArrayBuffer>;
 } & HttpHeaders.Envelope<Headers> &
   (Params.Schema extends Params
@@ -79,8 +80,12 @@ export declare namespace HttpRequest {
     headers: Headers;
   }
 
-  export type Body<T extends Schema | undefined> = T extends undefined
+  export type Json<T extends Schema | undefined> = T extends undefined
     ? any
+    : HttpRequest.FromSchema<Exclude<T, undefined>>["body"];
+
+  export type Body<T extends Schema | undefined> = T extends undefined
+    ? RawBody
     : HttpRequest.FromSchema<Exclude<T, undefined>>["body"];
 
   export type FromSchema<T extends Schema | undefined> = T extends Schema
