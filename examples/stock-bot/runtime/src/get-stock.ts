@@ -1,5 +1,18 @@
-import { api, duration, HttpError, HttpResponse } from "@eventual/core";
+import {
+  api,
+  duration,
+  HttpError,
+  HttpRequest,
+  HttpResponse,
+} from "@eventual/core";
 import { z } from "zod";
+
+class GetStockRequest extends HttpRequest("GetStockRequest", {
+  params: {
+    stockId: z.string(),
+  },
+  body: z.undefined(),
+}) {}
 
 class GetStockResponse extends HttpResponse("GetStockResponse", {
   body: z.string(),
@@ -14,10 +27,8 @@ export const getStock = api.get(
   {
     memorySize: 512,
     timeout: duration(1, "minute"),
-    params: {
-      stockId: z.string().optional(),
-    },
-    output: [GetStockResponse],
+    input: GetStockRequest,
+    output: GetStockResponse,
     errors: [NotFound],
   },
   async (_request) => {

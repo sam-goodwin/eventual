@@ -16,7 +16,7 @@ export interface Route {
   path: string;
   handlers: HttpOperation.Handler[];
   method: HttpMethod;
-  runtimeProps?: HttpOperation.Props;
+  runtimeProps?: HttpOperation.Props<any, any, any, any>;
   /**
    * Only available during eventual-infer
    */
@@ -30,7 +30,7 @@ export interface Router {
   ) => Promise<RawHttpResponse | HttpResponse>;
   routes: RouteEntry[];
   all: HttpOperation.Router;
-  get: HttpOperation.Get.Router;
+  get: HttpOperation.Router;
   head: HttpOperation.Router;
   post: HttpOperation.Router;
   put: HttpOperation.Router;

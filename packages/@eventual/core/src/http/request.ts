@@ -29,14 +29,16 @@ export type HttpRequest<
 export function HttpRequest<
   Type extends string,
   Body extends z.ZodType,
-  Headers extends HttpHeaders.Schema | undefined = undefined
+  Headers extends HttpHeaders.Schema = HttpHeaders.Schema,
+  PathParams extends Params.Schema = Params.Schema
 >(
   type: Type,
   props: {
     body: Body;
     headers?: Headers;
+    params?: PathParams;
   }
-): HttpRequest.Class<Type, Body, Headers> {
+): HttpRequest.Class<Type, Body, Headers, PathParams> {
   return class HttpRequest {
     static readonly kind = "HttpRequest";
     static readonly type = type;
@@ -55,8 +57,9 @@ export declare namespace HttpRequest {
   export interface Class<
     Type extends string,
     Body extends z.ZodType,
-    Headers extends HttpHeaders.Schema | undefined
-  > extends Schema<Type, Body, Headers> {
+    Headers extends HttpHeaders.Schema,
+    PathParams extends Params.Schema = Params.Schema
+  > extends Schema<Type, Body, Headers, PathParams> {
     new (
       body: z.infer<Body>,
       ...[headers]: Headers extends undefined
@@ -67,17 +70,24 @@ export declare namespace HttpRequest {
     ): FromSchema<this>;
   }
 
+  export type Input<Path extends string> = Schema<
+    string,
+    z.ZodType<any>,
+    HttpHeaders.Schema,
+    Params.Schema<Params.Parse<Path>>
+  >;
+
   export interface Schema<
     Type extends string = string,
     Body extends z.ZodType = z.ZodType,
-    Headers extends HttpHeaders.Schema | undefined =
-      | HttpHeaders.Schema
-      | undefined
+    Headers extends HttpHeaders.Schema = HttpHeaders.Schema,
+    PathParams extends Params.Schema = Params.Schema
   > {
-    kind: "Request";
-    type: Type;
+    kind?: "Request";
+    type?: Type;
     body: Body;
-    headers: Headers;
+    headers?: Headers;
+    params?: PathParams;
   }
 
   export type Json<T extends Schema | undefined> = T extends undefined
@@ -90,8 +100,8 @@ export declare namespace HttpRequest {
 
   export type FromSchema<T extends Schema | undefined> = T extends Schema
     ? {
-        type: T["type"];
+        type?: T["type"];
         body: z.infer<T["body"]>;
-      } & HttpHeaders.FromSchema<T["headers"]>
+      } & HttpHeaders.Envelope<T["headers"]>
     : undefined;
 }
