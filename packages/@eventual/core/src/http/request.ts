@@ -4,11 +4,16 @@ import type { HttpHeaders } from "./headers.js";
 import type { HttpMethod } from "./method.js";
 import type { Params } from "./params.js";
 
-export type HttpRequest<Input extends HttpRequest.Input = HttpRequest.Input> = {
+export type HttpRequest<
+  Path extends string = string,
+  Input extends HttpRequest.Input<Path> = HttpRequest.Input<Path>
+> = {
   url: string;
   method: HttpMethod;
   body: HttpRequest.Body<Input>;
-  params: Params.FromSchema<Exclude<Input["params"], undefined>>;
+  params: Input extends { params: infer P extends Params.Schema }
+    ? Params.FromSchema<P>
+    : Params.FromSchema<Params.Schema<Params.Parse<Path>>>;
   text(): Promise<string>;
   json(): Promise<HttpRequest.Json<HttpRequest.Schema<Input>>>;
   arrayBuffer(): Promise<ArrayBuffer>;
@@ -46,7 +51,8 @@ export declare namespace HttpRequest {
     Type extends string,
     Body extends z.ZodType,
     Headers extends HttpHeaders.Schema,
-    PathParams extends Params.Schema = Params.Schema
+    PathParams extends Params.Schema = Params.Schema,
+    Path extends string = string
   > {
     type?: Type;
     body: Body;
@@ -59,7 +65,7 @@ export declare namespace HttpRequest {
         : HttpHeaders.IsOptional<Headers> extends true
         ? [props?: HttpHeaders.Envelope<Headers>]
         : [props: HttpHeaders.Envelope<Headers>]
-    ): HttpRequest<this>;
+    ): HttpRequest<Path, this>;
   }
 
   export type DefaultInput<Path extends string> = Input<

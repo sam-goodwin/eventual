@@ -8,7 +8,7 @@ export interface HttpHandler<
   Output extends HttpResponse.Schema = HttpResponse.Schema,
   Errors extends HttpError.Schema = HttpError.Schema
 > {
-  (request: HttpRequest<Input>):
+  (request: HttpRequest<Path, Input>):
     | HttpResponse.Of<Errors>
     | HttpResponse.Of<Output>
     | Promise<HttpResponse.Of<Errors> | HttpResponse.Of<Output>>;

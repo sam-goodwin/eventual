@@ -10,7 +10,6 @@ import type { HttpMethod } from "./method.js";
 import type { RawHttpRequest, RawHttpResponse } from "./raw.js";
 import type { HttpRequest } from "./request.js";
 import type { HttpResponse } from "./response.js";
-import { Params } from "./params.js";
 
 const router = itty.Router() as any as HttpRouter;
 
@@ -66,9 +65,9 @@ export const api: HttpRouter = new Proxy(
         return (
           ...args:
             | [SourceLocation, string, ...HttpHandler[]]
-            | [SourceLocation, string, HttpRouteProps, ...HttpHandler[]]
+            | [SourceLocation, string, AnyHttpRouteProps, ...HttpHandler[]]
             | [string, ...HttpHandler[]]
-            | [string, HttpRouteProps, ...HttpHandler[]]
+            | [string, AnyHttpRouteProps, ...HttpHandler[]]
         ) => {
           const route: Route = {
             sourceLocation: typeof args[0] === "object" ? args[0] : undefined,
@@ -95,15 +94,18 @@ export const api: HttpRouter = new Proxy(
   }
 ) as any;
 
+type AnyHttpRouteProps = HttpRouteProps<
+  string,
+  HttpRequest.Input<string>,
+  HttpResponse.Schema,
+  HttpError.Schema
+>;
+
 export interface HttpRouteProps<
-  Path extends string = string,
-  Input extends HttpRequest.Input<Path> = HttpRequest.Input<
-    Path,
-    undefined,
-    Params.Schema<Params.Parse<Path>>
-  >,
-  Output extends HttpResponse.Schema = HttpResponse.Schema,
-  Errors extends HttpError.Schema = HttpError.Schema
+  Path extends string,
+  Input extends HttpRequest.Input<Path>,
+  Output extends HttpResponse.Schema,
+  Errors extends HttpError.Schema
 > extends FunctionRuntimeProps {
   input?: Input | Input[];
   output?: Output | Output[];
@@ -117,7 +119,7 @@ export interface HttpRouteFactory {
   ): HttpRoute<Path, HttpRequest.Input<Path>>;
   <
     Path extends string,
-    Input extends HttpRequest.Input<Path> = HttpRequest.DefaultInput<Path>,
+    Input extends HttpRequest.Input<Path>,
     Output extends HttpResponse.Schema = HttpResponse.Schema,
     Errors extends HttpError.Schema = HttpError.Schema
   >(
