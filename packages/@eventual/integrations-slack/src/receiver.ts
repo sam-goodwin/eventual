@@ -1,14 +1,14 @@
-import { Logger, ConsoleLogger, LogLevel } from "@slack/logger";
-import querystring from "querystring";
-import crypto from "crypto";
-import tsscmp from "tsscmp";
+import { HttpHandler, HttpRequest, HttpResponse } from "@eventual/core";
 import {
   App,
   Receiver,
   ReceiverEvent,
   ReceiverMultipleAckError,
 } from "@slack/bolt";
-import { HttpRequest, HttpResponse, HttpOperation } from "@eventual/core";
+import { ConsoleLogger, Logger, LogLevel } from "@slack/logger";
+import crypto from "crypto";
+import querystring from "querystring";
+import tsscmp from "tsscmp";
 
 export interface FetchReceiverOptions {
   signingSecret: string;
@@ -54,7 +54,7 @@ export default class FetchReceiver implements Receiver {
     this.app = app;
   }
 
-  public start(): Promise<HttpOperation.Handler> {
+  public start(): Promise<HttpHandler> {
     return Promise.resolve(this.handle.bind(this));
   }
 

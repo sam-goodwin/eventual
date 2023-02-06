@@ -1,44 +1,48 @@
 import itty from "itty-router";
 
-import type { SourceLocation } from "../app-spec.js";
 import { routes } from "../global.js";
+
+import type { SourceLocation } from "../app-spec.js";
+import type { FunctionRuntimeProps } from "../function-props.js";
+import type { HttpError } from "./error.js";
+import type { HttpHandler } from "./handler.js";
 import type { HttpMethod } from "./method.js";
-import type { HttpOperation } from "./operation.js";
 import type { RawHttpRequest, RawHttpResponse } from "./raw.js";
 import type { HttpRequest } from "./request.js";
 import type { HttpResponse } from "./response.js";
+import { Params } from "./params.js";
 
-const router = itty.Router() as any as Router;
+const router = itty.Router() as any as HttpRouter;
 
-export type RouteEntry = [string, RegExp, HttpOperation.Handler];
+export type RouteEntry = [string, RegExp, HttpHandler];
 
 export interface Route {
   path: string;
-  handlers: HttpOperation.Handler[];
+  handlers: HttpHandler[];
   method: HttpMethod;
-  runtimeProps?: HttpOperation.Props<any, any, any, any>;
+  runtimeProps?: HttpRouteProps<any, any, any, any>;
   /**
    * Only available during eventual-infer
    */
   sourceLocation?: SourceLocation;
 }
 
-export interface Router {
+export interface HttpRouter {
   handle: (
     request: HttpRequest | RawHttpRequest,
     ...extra: any
   ) => Promise<RawHttpResponse | HttpResponse>;
   routes: RouteEntry[];
-  all: HttpOperation.Router;
-  get: HttpOperation.Router;
-  head: HttpOperation.Router;
-  post: HttpOperation.Router;
-  put: HttpOperation.Router;
-  delete: HttpOperation.Router;
-  connect: HttpOperation.Router;
-  options: HttpOperation.Router;
-  trace: HttpOperation.Router;
-  patch: HttpOperation.Router;
+  all: HttpRouteFactory;
+  get: HttpRouteFactory;
+  head: HttpRouteFactory;
+  post: HttpRouteFactory;
+  put: HttpRouteFactory;
+  delete: HttpRouteFactory;
+  connect: HttpRouteFactory;
+  options: HttpRouteFactory;
+  trace: HttpRouteFactory;
+  patch: HttpRouteFactory;
 }
 
 /**
@@ -52,7 +56,7 @@ export interface Router {
  *
  * @see Route for all the metadata associated with each route
  */
-export const api: Router = new Proxy(
+export const api: HttpRouter = new Proxy(
   {},
   {
     get: (_, method: keyof typeof router) => {
@@ -61,15 +65,10 @@ export const api: Router = new Proxy(
       } else {
         return (
           ...args:
-            | [SourceLocation, string, ...HttpOperation.Handler[]]
-            | [
-                SourceLocation,
-                string,
-                HttpOperation.Props,
-                ...HttpOperation.Handler[]
-              ]
-            | [string, ...HttpOperation.Handler[]]
-            | [string, HttpOperation.Props, ...HttpOperation.Handler[]]
+            | [SourceLocation, string, ...HttpHandler[]]
+            | [SourceLocation, string, HttpRouteProps, ...HttpHandler[]]
+            | [string, ...HttpHandler[]]
+            | [string, HttpRouteProps, ...HttpHandler[]]
         ) => {
           const route: Route = {
             sourceLocation: typeof args[0] === "object" ? args[0] : undefined,
@@ -84,8 +83,8 @@ export const api: Router = new Proxy(
                 ? args[2]
                 : undefined,
             handlers: args.filter(
-              (a: any): a is HttpOperation.Handler => typeof a === "function"
-            ) as HttpOperation.Handler[], // todo: why do i need to cast?
+              (a: any): a is HttpHandler => typeof a === "function"
+            ) as HttpHandler[], // todo: why do i need to cast?
           };
           routes.push(route);
           // @ts-expect-error - functions don't overlap, but we know they can be called together
@@ -95,3 +94,48 @@ export const api: Router = new Proxy(
     },
   }
 ) as any;
+
+export interface HttpRouteProps<
+  Path extends string = string,
+  Input extends HttpRequest.Input<Path> = HttpRequest.Input<
+    Path,
+    undefined,
+    Params.Schema<Params.Parse<Path>>
+  >,
+  Output extends HttpResponse.Schema = HttpResponse.Schema,
+  Errors extends HttpError.Schema = HttpError.Schema
+> extends FunctionRuntimeProps {
+  input?: Input | Input[];
+  output?: Output | Output[];
+  errors?: Errors | Errors[];
+}
+
+export interface HttpRouteFactory {
+  <Path extends string>(
+    path: Path,
+    handler: HttpHandler<Path, HttpRequest.Input<Path>>
+  ): HttpRoute<Path, HttpRequest.Input<Path>>;
+  <
+    Path extends string,
+    Input extends HttpRequest.Input<Path> = HttpRequest.DefaultInput<Path>,
+    Output extends HttpResponse.Schema = HttpResponse.Schema,
+    Errors extends HttpError.Schema = HttpError.Schema
+  >(
+    path: Path,
+    props: HttpRouteProps<Path, Input, Output, Errors>,
+    handler: HttpHandler<Path, Input, Output, Errors>
+  ): HttpRoute<Path, Input, Output, Errors>;
+}
+
+export type HttpRoute<
+  Path extends string,
+  Input extends HttpRequest.Input<Path> = HttpRequest.Input<Path>,
+  Output extends HttpResponse.Schema = HttpResponse.Schema,
+  Errors extends HttpError.Schema = HttpError.Schema
+> = {
+  kind: "HttpRoute";
+  path: Path;
+  request: Input;
+  response: Output;
+  errors: Error;
+} & HttpHandler<Path, Input, Output, Errors>;

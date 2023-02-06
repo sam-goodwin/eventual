@@ -4,23 +4,15 @@ import type { HttpHeaders } from "./headers.js";
 import type { HttpMethod } from "./method.js";
 import type { Params } from "./params.js";
 
-export type HttpRequest<
-  Request extends HttpRequest.Schema = HttpRequest.Schema
-> = {
+export type HttpRequest<Input extends HttpRequest.Input = HttpRequest.Input> = {
   url: string;
   method: HttpMethod;
-  body: HttpRequest.Body<Request>;
+  body: HttpRequest.Body<Input>;
+  params: Params.FromSchema<Exclude<Input["params"], undefined>>;
   text(): Promise<string>;
-  json(): Promise<HttpRequest.Json<Request>>;
+  json(): Promise<HttpRequest.Json<HttpRequest.Schema<Input>>>;
   arrayBuffer(): Promise<ArrayBuffer>;
-} & HttpHeaders.Envelope<Exclude<Request["headers"], undefined>> &
-  (Params.Schema extends Params
-    ? {
-        params?: Params.FromSchema<Exclude<Request["params"], undefined>>;
-      }
-    : {
-        params: Params.FromSchema<Exclude<Request["params"], undefined>>;
-      });
+} & HttpHeaders.Envelope<Exclude<Input["headers"], undefined>>;
 
 export function HttpRequest<
   Type extends string,
@@ -55,7 +47,11 @@ export declare namespace HttpRequest {
     Body extends z.ZodType,
     Headers extends HttpHeaders.Schema,
     PathParams extends Params.Schema = Params.Schema
-  > extends Schema<Type, Body, Headers, PathParams> {
+  > {
+    type?: Type;
+    body: Body;
+    headers: Headers;
+    params: PathParams;
     new (
       body: z.infer<Body>,
       ...[headers]: Headers extends undefined
@@ -66,31 +62,37 @@ export declare namespace HttpRequest {
     ): HttpRequest<this>;
   }
 
-  export type Input<Path extends string> = Partial<
-    Schema<
-      string,
-      z.ZodType<any>,
-      HttpHeaders.Schema,
-      Params.Schema<Params.Parse<Path>>
-    >
+  export type DefaultInput<Path extends string> = Input<
+    Path,
+    undefined,
+    Params.Schema<Params.Parse<Path>>
   >;
 
-  export interface Schema<
-    Type extends string = string,
-    Body extends z.ZodType = z.ZodType,
-    Headers extends HttpHeaders.Schema = HttpHeaders.Schema,
-    PathParams extends Params.Schema = Params.Schema
-  > {
-    kind?: "Request";
-    type?: Type;
+  export type Input<
+    Path extends string = string,
+    Body extends z.ZodType<any> | undefined = z.ZodType<any> | undefined,
+    PathParams extends Params.Schema<Params.Parse<Path>> = Params.Schema<
+      Params.Parse<Path>
+    >
+  > = {
+    type?: string;
     body?: Body;
-    headers?: Headers;
+    headers?: HttpHeaders.Schema;
     params?: PathParams;
+  };
+
+  export interface Schema<T extends Input> {
+    type?: T["type"];
+    body: T["body"] extends undefined
+      ? z.ZodType<RawBody>
+      : Exclude<T["body"], undefined>;
+    headers: Exclude<T["headers"], undefined>;
+    params: Exclude<T["params"], undefined>;
   }
 
-  export type Json<T extends Schema> = T extends undefined ? any : Body<T>;
+  export type Json<T extends Input> = Body<T>;
 
-  export type Body<T extends Schema> = T["body"] extends undefined
+  export type Body<T extends Input> = undefined extends T["body"]
     ? RawBody
     : z.infer<Exclude<T["body"], undefined>>;
 }

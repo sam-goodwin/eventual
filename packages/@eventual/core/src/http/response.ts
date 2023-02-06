@@ -1,18 +1,12 @@
 import type { z } from "zod";
-import { BodyEnvelope } from "./body.js";
-import type { HttpError } from "./error.js";
+import type { BodyEnvelope } from "./body.js";
 import type { HttpHeaders } from "./headers.js";
 import type { HttpStatusCode } from "./status-code.js";
-
-export type HttpResponseOrError<
-  Response extends HttpResponse.Schema | undefined = undefined,
-  Errors extends HttpError.Schema | undefined = undefined
-> = HttpError.Of<Errors> | HttpResponse.Of<Response>;
 
 export type HttpResponse<
   Type extends string = string,
   Status extends HttpStatusCode = HttpStatusCode,
-  Body extends z.ZodType | undefined = undefined,
+  Body extends z.ZodType = z.ZodType,
   Headers extends HttpHeaders.Schema = HttpHeaders.Schema
 > = {
   status: Status;
@@ -29,8 +23,9 @@ export function HttpResponse<
 >(
   type: Type,
   props: {
-    body: Body;
+    body?: Body;
     status?: Status;
+    statusText?: string;
     headers?: Headers;
   }
 ): HttpResponse.Class<HttpResponse.Schema<Type, Body, Headers, Status>> {

@@ -17,7 +17,6 @@ export * from "./execution.js";
 export * from "./flags.js";
 export * from "./global.js";
 export * from "./heartbeat.js";
-export * from "./http/operation.js";
 export * from "./http/index.js";
 export * from "./logging.js";
 export * from "./race.js";

@@ -2,8 +2,8 @@ import {
   activity,
   api,
   isOrchestratorWorker,
-  HttpOperation,
   Secret,
+  HttpHandler,
 } from "@eventual/core";
 import slack from "@slack/bolt";
 import { WebClient } from "@slack/web-api";
@@ -65,7 +65,7 @@ export interface Slack extends slack.App {}
 export class Slack {
   private fetchReceiver: FetchReceiver | undefined;
   private app: slack.App | undefined;
-  private handler: HttpOperation.Handler | undefined;
+  private handler: HttpHandler | undefined;
   private deferred: [name: string, args: any[]][] = [];
 
   constructor(readonly name: string, readonly props: SlackProps) {
@@ -175,7 +175,7 @@ export class Slack {
     });
   }
 
-  private async getHandler(): Promise<HttpOperation.Handler> {
+  private async getHandler(): Promise<HttpHandler> {
     if (!this.app) {
       const { token, signingSecret } = await this.props.credentials.getSecret();
       this.fetchReceiver = new FetchReceiver({
