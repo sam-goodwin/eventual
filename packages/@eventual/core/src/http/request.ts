@@ -1,21 +1,19 @@
 import type { z } from "zod";
-import { RawBody } from "./body.js";
+import type { RawBody } from "./body.js";
 import type { HttpHeaders } from "./headers.js";
 import type { HttpMethod } from "./method.js";
 import type { Params } from "./params.js";
 
 export type HttpRequest<
   Path extends string = string,
-  Input extends HttpRequest.Input<Path> = HttpRequest.Input<Path>
+  Input extends HttpRequest.Schema<Path> = HttpRequest.Schema<Path>
 > = {
   url: string;
   method: HttpMethod;
   body: HttpRequest.Body<Input>;
-  params: Input extends { params: infer P extends Params.Schema }
-    ? Params.FromSchema<P>
-    : Params.FromSchema<Params.Schema<Params.Parse<Path>>>;
+  params: HttpRequest.Params<Path, Input>;
   text(): Promise<string>;
-  json(): Promise<HttpRequest.Json<HttpRequest.Schema<Input>>>;
+  json(): Promise<HttpRequest.Json<Input>>;
   arrayBuffer(): Promise<ArrayBuffer>;
 } & HttpHeaders.Envelope<Exclude<Input["headers"], undefined>>;
 
@@ -68,37 +66,30 @@ export declare namespace HttpRequest {
     ): HttpRequest<Path, this>;
   }
 
-  export type DefaultInput<Path extends string> = Input<
-    Path,
-    undefined,
-    Params.Schema<Params.Parse<Path>>
-  >;
-
-  export type Input<
-    Path extends string = string,
-    Body extends z.ZodType<any> | undefined = z.ZodType<any> | undefined,
-    PathParams extends Params.Schema<Params.Parse<Path>> = Params.Schema<
-      Params.Parse<Path>
-    >
-  > = {
+  export type Schema<Path extends string> = {
     type?: string;
-    body?: Body;
+    body?: z.ZodType<any>;
     headers?: HttpHeaders.Schema;
-    params?: PathParams;
+    params?: Params.Schema<Params.Parse<Path>>;
   };
 
-  export interface Schema<T extends Input> {
-    type?: T["type"];
-    body: T["body"] extends undefined
-      ? z.ZodType<RawBody>
-      : Exclude<T["body"], undefined>;
-    headers: Exclude<T["headers"], undefined>;
-    params: Exclude<T["params"], undefined>;
+  export type Params<Path extends string, T extends Schema<Path>> = T extends {
+    params: infer P extends Params.Schema;
   }
+    ? Params.FromSchema<P>
+    : {
+        [parameterName in Params.Parse<Path>]: string;
+      };
 
-  export type Json<T extends Input> = Body<T>;
+  export type Json<T extends Schema<string>> = T extends {
+    body: infer B extends z.ZodType;
+  }
+    ? z.infer<B>
+    : any;
 
-  export type Body<T extends Input> = undefined extends T["body"]
-    ? RawBody
-    : z.infer<Exclude<T["body"], undefined>>;
+  export type Body<T extends Schema<string>> = T extends {
+    body: infer B extends z.ZodType;
+  }
+    ? z.infer<B>
+    : RawBody;
 }

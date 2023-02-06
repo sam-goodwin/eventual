@@ -51,7 +51,7 @@ export const saveStock = api.put(
     input: {
       body: z.string(),
       params: {
-        stockId: z.string(),
+        stockId: z.number().int(),
       },
       headers: {
         key: z.string(),
@@ -59,6 +59,8 @@ export const saveStock = api.put(
     },
   },
   async (request) => {
+    request.body;
+    request.params.stockId;
     return {
       status: 200,
       body: request.body,

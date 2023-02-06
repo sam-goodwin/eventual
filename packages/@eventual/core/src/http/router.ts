@@ -96,14 +96,14 @@ export const api: HttpRouter = new Proxy(
 
 type AnyHttpRouteProps = HttpRouteProps<
   string,
-  HttpRequest.Input<string>,
+  HttpRequest.Schema<string>,
   HttpResponse.Schema,
   HttpError.Schema
 >;
 
 export interface HttpRouteProps<
   Path extends string,
-  Input extends HttpRequest.Input<Path>,
+  Input extends HttpRequest.Schema<Path>,
   Output extends HttpResponse.Schema,
   Errors extends HttpError.Schema
 > extends FunctionRuntimeProps {
@@ -115,12 +115,12 @@ export interface HttpRouteProps<
 export interface HttpRouteFactory {
   <Path extends string>(
     path: Path,
-    handler: HttpHandler<Path, HttpRequest.Input<Path>>
-  ): HttpRoute<Path, HttpRequest.Input<Path>>;
+    handler: HttpHandler<Path, HttpRequest.Schema<Path>>
+  ): HttpRoute<Path, HttpRequest.Schema<Path>>;
   <
     Path extends string,
-    Input extends HttpRequest.Input<Path>,
-    Output extends HttpResponse.Schema = HttpResponse.Schema,
+    Input extends HttpRequest.Schema<Path>,
+    Output extends HttpResponse.Schema,
     Errors extends HttpError.Schema = HttpError.Schema
   >(
     path: Path,
@@ -131,7 +131,7 @@ export interface HttpRouteFactory {
 
 export type HttpRoute<
   Path extends string,
-  Input extends HttpRequest.Input<Path> = HttpRequest.Input<Path>,
+  Input extends HttpRequest.Schema<Path> = HttpRequest.Schema<Path>,
   Output extends HttpResponse.Schema = HttpResponse.Schema,
   Errors extends HttpError.Schema = HttpError.Schema
 > = {

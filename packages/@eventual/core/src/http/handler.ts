@@ -4,7 +4,7 @@ import type { HttpResponse } from "./response.js";
 
 export interface HttpHandler<
   Path extends string = string,
-  Input extends HttpRequest.Input<Path> = HttpRequest.Input<Path>,
+  Input extends HttpRequest.Schema<Path> = HttpRequest.Schema<Path>,
   Output extends HttpResponse.Schema = HttpResponse.Schema,
   Errors extends HttpError.Schema = HttpError.Schema
 > {

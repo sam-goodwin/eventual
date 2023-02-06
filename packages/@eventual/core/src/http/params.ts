@@ -1,14 +1,16 @@
 import type { z } from "zod";
 
-export type Param = string | number | boolean;
+export type ParamValue = string | number | boolean;
 
 export type Params<Names extends string = string> = {
-  [parameterName in string]: Param | Param[];
+  [parameterName in string]: ParamValue | ParamValue[];
 };
 
 export declare namespace Params {
   export type Schema<ParameterNames extends string = string> = {
-    [parameterName in ParameterNames]: z.ZodType<Param | Param[] | undefined>;
+    [parameterName in ParameterNames]: z.ZodType<
+      ParamValue | ParamValue[] | undefined
+    >;
   };
 
   export type Envelope<ParamsSchema extends Schema = Schema> =
