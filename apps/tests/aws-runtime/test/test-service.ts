@@ -452,11 +452,14 @@ export const getUser = api.get(
   "/user/:id",
   {
     memorySize: 512,
-    headers: {
-      header: z.string(),
-    },
-    params: {
-      id: z.string(),
+    input: {
+      body: z.undefined(),
+      headers: {
+        header: z.string(),
+      },
+      params: {
+        id: z.string(),
+      },
     },
     output: GetUserResponse,
     errors: [UserNotFound],

@@ -1,15 +1,11 @@
 import type { z } from "zod";
 import { RawBody } from "./body.js";
 import type { HttpHeaders } from "./headers.js";
-import { HttpMethod } from "./method.js";
-import { Params } from "./params.js";
+import type { HttpMethod } from "./method.js";
+import type { Params } from "./params.js";
 
 export type HttpRequest<
-  Request extends HttpRequest.Schema | undefined = undefined,
-  Headers extends HttpHeaders.Schema | undefined =
-    | HttpHeaders.Schema
-    | undefined,
-  Params extends Params.Schema | undefined = Params.Schema | undefined
+  Request extends HttpRequest.Schema = HttpRequest.Schema
 > = {
   url: string;
   method: HttpMethod;
@@ -17,13 +13,13 @@ export type HttpRequest<
   text(): Promise<string>;
   json(): Promise<HttpRequest.Json<Request>>;
   arrayBuffer(): Promise<ArrayBuffer>;
-} & HttpHeaders.Envelope<Headers> &
+} & HttpHeaders.Envelope<Exclude<Request["headers"], undefined>> &
   (Params.Schema extends Params
     ? {
-        params?: Params.FromSchema<Params>;
+        params?: Params.FromSchema<Exclude<Request["params"], undefined>>;
       }
     : {
-        params: Params.FromSchema<Params>;
+        params: Params.FromSchema<Exclude<Request["params"], undefined>>;
       });
 
 export function HttpRequest<
@@ -67,14 +63,16 @@ export declare namespace HttpRequest {
         : HttpHeaders.IsOptional<Headers> extends true
         ? [props?: HttpHeaders.Envelope<Headers>]
         : [props: HttpHeaders.Envelope<Headers>]
-    ): FromSchema<this>;
+    ): HttpRequest<this>;
   }
 
-  export type Input<Path extends string> = Schema<
-    string,
-    z.ZodType<any>,
-    HttpHeaders.Schema,
-    Params.Schema<Params.Parse<Path>>
+  export type Input<Path extends string> = Partial<
+    Schema<
+      string,
+      z.ZodType<any>,
+      HttpHeaders.Schema,
+      Params.Schema<Params.Parse<Path>>
+    >
   >;
 
   export interface Schema<
@@ -85,23 +83,14 @@ export declare namespace HttpRequest {
   > {
     kind?: "Request";
     type?: Type;
-    body: Body;
+    body?: Body;
     headers?: Headers;
     params?: PathParams;
   }
 
-  export type Json<T extends Schema | undefined> = T extends undefined
-    ? any
-    : HttpRequest.FromSchema<Exclude<T, undefined>>["body"];
+  export type Json<T extends Schema> = T extends undefined ? any : Body<T>;
 
-  export type Body<T extends Schema | undefined> = T extends undefined
+  export type Body<T extends Schema> = T["body"] extends undefined
     ? RawBody
-    : HttpRequest.FromSchema<Exclude<T, undefined>>["body"];
-
-  export type FromSchema<T extends Schema | undefined> = T extends Schema
-    ? {
-        type?: T["type"];
-        body: z.infer<T["body"]>;
-      } & HttpHeaders.Envelope<T["headers"]>
-    : undefined;
+    : z.infer<Exclude<T["body"], undefined>>;
 }

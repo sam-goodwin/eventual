@@ -7,7 +7,7 @@ export type HttpError<
   Type extends string = string,
   Status extends HttpStatusCode = HttpStatusCode,
   Body extends z.ZodType | undefined = undefined,
-  Headers extends HttpHeaders.Schema | undefined = undefined
+  Headers extends HttpHeaders.Schema = HttpHeaders.Schema
 > = {
   status: Status;
   statusText?: string;
@@ -18,7 +18,7 @@ export function HttpError<
   Type extends string,
   Status extends HttpStatusCode,
   Body extends z.ZodType = z.ZodUndefined,
-  Headers extends HttpHeaders.Schema | undefined = undefined
+  Headers extends HttpHeaders.Schema = HttpHeaders.Schema
 >(
   type: Type,
   props: {
@@ -49,7 +49,7 @@ export declare namespace HttpError {
     Name extends string,
     Status extends HttpStatusCode,
     Body extends z.ZodType,
-    Headers extends HttpHeaders.Schema | undefined
+    Headers extends HttpHeaders.Schema
   > extends Schema<Name, Status, Body, Headers> {
     new (
       body: z.infer<Body>,
@@ -77,6 +77,11 @@ export declare namespace HttpError {
   export type Of<E extends Schema[] | Schema | undefined> = E extends Schema[]
     ? Of<E[number]>
     : E extends Schema
-    ? HttpError<E["type"], E["status"], E["body"], E["headers"]>
+    ? HttpError<
+        E["type"],
+        E["status"],
+        E["body"],
+        Exclude<E["headers"], undefined>
+      >
     : HttpError;
 }

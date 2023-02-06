@@ -11,29 +11,26 @@ export declare namespace Params {
     [parameterName in ParameterNames]: z.ZodType<Param | Param[] | undefined>;
   };
 
-  export type Envelope<Params extends Schema | undefined = Schema> =
-    Schema extends Params
+  export type Envelope<ParamsSchema extends Schema = Schema> =
+    Schema extends ParamsSchema
       ? {
-          params?: Params;
+          params?: ParamsSchema;
         }
-      : Params extends undefined
+      : ParamsSchema extends undefined
       ? {
-          params?: Params;
+          params?: ParamsSchema;
         }
-      : { [header in keyof Params]?: undefined } extends Params
+      : { [header in keyof ParamsSchema]?: undefined } extends ParamsSchema
       ? {
-          params?: FromSchema<Params>;
+          params?: FromSchema<ParamsSchema>;
         }
       : {
-          params: FromSchema<Params>;
+          params: FromSchema<ParamsSchema>;
         };
 
-  export type FromSchema<P extends Schema | undefined = Schema | undefined> =
-    Schema extends P
-      ? Params
-      : P extends undefined
-      ? Params
-      : z.infer<z.ZodObject<Exclude<P, undefined>>>;
+  export type FromSchema<P extends Schema = Schema> = z.infer<
+    z.ZodObject<Exclude<P, undefined>>
+  >;
 
   export type Parse<
     Text extends string,

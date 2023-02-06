@@ -9,24 +9,19 @@ export declare namespace HttpHeaders {
     [headerName: string]: z.ZodType<undefined | string | string[]>;
   }
 
-  export type Envelope<Headers extends Schema | undefined = Schema> =
-    Schema extends Headers
-      ? {
-          headers?: HttpHeaders;
-        }
-      : Headers extends undefined
-      ? {
-          headers?: HttpHeaders;
-        }
-      : {
-          [headerName in keyof Headers]: undefined;
-        } extends HttpHeaders.FromSchema<Headers>
-      ? {
-          headers?: z.infer<z.ZodObject<Exclude<Headers, undefined>>>;
-        }
-      : {
-          headers: z.infer<z.ZodObject<Exclude<Headers, undefined>>>;
-        };
+  export type Envelope<Headers extends Schema = Schema> = Schema extends Headers
+    ? {
+        headers?: HttpHeaders;
+      }
+    : {
+        [headerName in keyof Headers]: undefined;
+      } extends HttpHeaders.FromSchema<Headers>
+    ? {
+        headers?: z.infer<z.ZodObject<Exclude<Headers, undefined>>>;
+      }
+    : {
+        headers: z.infer<z.ZodObject<Exclude<Headers, undefined>>>;
+      };
   export type FromSchema<Headers extends Schema | undefined = Schema> =
     Schema extends Headers
       ? {

@@ -13,7 +13,7 @@ export type HttpResponse<
   Type extends string = string,
   Status extends HttpStatusCode = HttpStatusCode,
   Body extends z.ZodType | undefined = undefined,
-  Headers extends HttpHeaders.Schema | undefined = undefined
+  Headers extends HttpHeaders.Schema = HttpHeaders.Schema
 > = {
   status: Status;
   error?: never;
@@ -63,9 +63,7 @@ export declare namespace HttpResponse {
   export interface Schema<
     Type extends string = string,
     Body extends z.ZodType = z.ZodType,
-    Headers extends HttpHeaders.Schema | undefined =
-      | HttpHeaders.Schema
-      | undefined,
+    Headers extends HttpHeaders.Schema = HttpHeaders.Schema,
     Status extends HttpStatusCode = HttpStatusCode
   > {
     kind: "Response";

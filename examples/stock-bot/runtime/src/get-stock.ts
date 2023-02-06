@@ -15,6 +15,9 @@ class GetStockRequest extends HttpRequest("GetStockRequest", {
 }) {}
 
 class GetStockResponse extends HttpResponse("GetStockResponse", {
+  headers: {
+    "Content-Type": z.string().optional(),
+  },
   body: z.string(),
 }) {}
 
@@ -33,7 +36,11 @@ export const getStock = api.get(
   },
   async (_request) => {
     return {
-      status: 404,
+      status: 200,
+      headers: {
+        "Content-Type": "",
+      },
+      body: "",
     };
   }
 );
