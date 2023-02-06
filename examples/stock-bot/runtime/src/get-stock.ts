@@ -44,26 +44,3 @@ export const getStock = api.get(
     };
   }
 );
-
-export const saveStock = api.put(
-  "/stock/:stockId",
-  {
-    input: {
-      body: z.string(),
-      params: {
-        stockId: z.number().int(),
-      },
-      headers: {
-        key: z.string(),
-      },
-    },
-  },
-  async (request) => {
-    request.body;
-    request.params.stockId;
-    return {
-      status: 200,
-      body: request.body,
-    };
-  }
-);

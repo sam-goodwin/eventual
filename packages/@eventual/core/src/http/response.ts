@@ -1,19 +1,16 @@
 import type { z } from "zod";
-import type { BodyEnvelope } from "./body.js";
 import type { HttpHeaders } from "./headers.js";
+import type { HttpRequest } from "./request.js";
 import type { HttpStatusCode } from "./status-code.js";
 
 export type HttpResponse<
-  Type extends string = string,
-  Status extends HttpStatusCode = HttpStatusCode,
-  Body extends z.ZodType = z.ZodType,
-  Headers extends HttpHeaders.Schema = HttpHeaders.Schema
+  Schema extends HttpResponse.Schema = HttpResponse.Schema
 > = {
-  status: Status;
+  status: Schema["status"];
   error?: never;
   statusText?: string;
-} & BodyEnvelope<Body> &
-  HttpHeaders.Envelope<Headers>;
+  body: HttpRequest.Body<Schema>;
+} & HttpHeaders.Envelope<Schema["headers"]>;
 
 export function HttpResponse<
   Type extends string,
@@ -28,7 +25,7 @@ export function HttpResponse<
     statusText?: string;
     headers?: Headers;
   }
-): HttpResponse.Class<HttpResponse.Schema<Type, Body, Headers, Status>> {
+): HttpResponse.Class<Type, Body, Headers, Status> {
   return class HttpResponse {
     static readonly kind = "HttpResponse";
     static readonly type = type;
@@ -47,27 +44,31 @@ export function HttpResponse<
 }
 
 export declare namespace HttpResponse {
-  export type Class<Props extends Schema> = Props & {
-    new (
-      props: {
-        body: z.infer<Props["body"]>;
-      } & HttpHeaders.Envelope<Props["headers"]>
-    ): Of<Props>;
-  };
-
-  export interface Schema<
-    Type extends string = string,
-    Body extends z.ZodType = z.ZodType,
-    Headers extends HttpHeaders.Schema = HttpHeaders.Schema,
-    Status extends HttpStatusCode = HttpStatusCode
+  export interface Class<
+    Type extends string,
+    Body extends z.ZodType,
+    Headers extends HttpHeaders.Schema,
+    Status extends HttpStatusCode
   > {
-    kind: "Response";
     type: Type;
     body: Body;
     headers: Headers;
     status: Status;
+    new (
+      props: {
+        body: z.infer<Body>;
+      } & HttpHeaders.Envelope<Headers>
+    ): Of<this>;
   }
+
+  export interface Schema<Status extends HttpStatusCode = HttpStatusCode> {
+    type?: string;
+    body?: z.ZodType<any>;
+    headers?: HttpHeaders.Schema;
+    status: Status;
+  }
+
   export type Of<T extends Schema | undefined> = T extends Schema
-    ? HttpResponse<T["type"], T["status"], T["body"], T["headers"]>
-    : HttpResponse;
+    ? HttpResponse<T>
+    : HttpResponse<Schema>;
 }

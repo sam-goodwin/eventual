@@ -9,7 +9,13 @@ export declare namespace HttpHeaders {
     [headerName: string]: z.ZodType<undefined | string | string[]>;
   }
 
-  export type Envelope<Headers extends Schema = Schema> = Schema extends Headers
+  export type Envelope<
+    Headers extends Schema | undefined = Schema | undefined
+  > = undefined extends Headers
+    ? {
+        headers?: HttpHeaders;
+      }
+    : Schema extends Headers
     ? {
         headers?: HttpHeaders;
       }

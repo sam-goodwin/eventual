@@ -6,16 +6,16 @@ import type { Params } from "./params.js";
 
 export type HttpRequest<
   Path extends string = string,
-  Input extends HttpRequest.Schema<Path> = HttpRequest.Schema<Path>
+  Schema extends HttpRequest.Schema<Path> = HttpRequest.Schema<Path>
 > = {
   url: string;
   method: HttpMethod;
-  body: HttpRequest.Body<Input>;
-  params: HttpRequest.Params<Path, Input>;
+  body: HttpRequest.Body<Schema>;
+  params: HttpRequest.Params<Path, Schema>;
   text(): Promise<string>;
-  json(): Promise<HttpRequest.Json<Input>>;
+  json(): Promise<HttpRequest.Json<Schema>>;
   arrayBuffer(): Promise<ArrayBuffer>;
-} & HttpHeaders.Envelope<Exclude<Input["headers"], undefined>>;
+} & HttpHeaders.Envelope<Exclude<Schema["headers"], undefined>>;
 
 export function HttpRequest<
   Type extends string,
@@ -66,12 +66,12 @@ export declare namespace HttpRequest {
     ): HttpRequest<Path, this>;
   }
 
-  export type Schema<Path extends string> = {
+  export interface Schema<Path extends string> {
     type?: string;
     body?: z.ZodType<any>;
     headers?: HttpHeaders.Schema;
     params?: Params.Schema<Params.Parse<Path>>;
-  };
+  }
 
   export type Params<Path extends string, T extends Schema<Path>> = T extends {
     params: infer P extends Params.Schema;
