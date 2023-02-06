@@ -8,7 +8,13 @@ import {
   HttpRequest,
   RawHttpResponse,
   RawHttpRequest,
+  HttpRoute,
+  Params,
 } from "@eventual/core";
+
+// superjson handles types like Date, Map, Set, etc.
+// TODO: is it worth bringing in a dependency or should we roll it ourselves?
+import json from "superjson";
 
 export interface ApiHandlerDependencies {
   serviceClient: EventualServiceClient;
@@ -35,7 +41,10 @@ export function createApiHandler({ serviceClient }: ApiHandlerDependencies) {
   ): Promise<RawHttpResponse> {
     return await serviceTypeScope(ServiceType.ApiHandler, async () => {
       try {
-        const response = await api.handle(parseHttpRequest(request));
+        const route = await api.handle(request);
+        const response = await route.handler(
+          await parseHttpRequest(route, request)
+        );
         if (response === undefined) {
           return new RawHttpResponse("Not Found", {
             status: 404,
@@ -45,7 +54,7 @@ export function createApiHandler({ serviceClient }: ApiHandlerDependencies) {
         if (response instanceof RawHttpResponse) {
           return response;
         } else {
-          return toRawHttpResponse(response);
+          return serializeHttpResponse(route, response);
         }
       } catch (err) {
         console.error(err);
@@ -57,15 +66,64 @@ export function createApiHandler({ serviceClient }: ApiHandlerDependencies) {
   };
 }
 
-function parseHttpRequest(
+async function parseHttpRequest(
+  route: HttpRoute,
   request: RawHttpRequest
-): RawHttpRequest | HttpRequest {
+): Promise<HttpRequest> {
+  if (route.input) {
+    const body = await parseBody(route.input, request);
+    return {
+      body,
+      method: request.method,
+      url: request.url,
+      params: parseParams(route.input, request),
+      text: request.text.bind(request),
+      json: () => Promise.resolve(body),
+    };
+  }
   return request;
 }
 
-function toRawHttpResponse(response: HttpResponse): RawHttpResponse {
-  return new RawHttpResponse(JSON.stringify(response.body), {
-    status: response.status ?? 200,
-    // headers: response.
+async function parseBody(schema: HttpRequest.Schema, request: RawHttpRequest) {
+  const rawJson = await request.json();
+  return schema.body ? schema.body.parse(rawJson) : rawJson;
+}
+
+function parseParams(schema: HttpRequest.Schema, request: RawHttpRequest) {
+  return schema.params
+    ? Object.fromEntries(
+        Object.entries(request.params).map(([paramName, paramValue]) => {
+          const paramSchema = (schema?.params as Params.Schema<string>)[
+            paramName
+          ];
+          if (paramSchema) {
+            return [paramName, paramSchema.parse(paramValue)];
+          }
+          return [paramName, paramValue];
+        })
+      )
+    : request.params;
+}
+
+function serializeHttpResponse(
+  _route: HttpRoute,
+  response: HttpResponse
+): RawHttpResponse {
+  // TODO: validate schema
+  return new RawHttpResponse(json.stringify(response.body), {
+    status: response.status,
+    headers: response.headers
+      ? Object.fromEntries(
+          Object.entries(response.headers).flatMap(
+            ([headerName, headerValue]) => {
+              if (headerValue === undefined) {
+                return [];
+              }
+              return [[headerName, headerValue.toString()]];
+            }
+          )
+        )
+      : undefined,
+    statusText: response.statusText,
   });
 }

@@ -1,12 +1,14 @@
 import type { z } from "zod";
 
+export type HttpHeaderValue = undefined | string | number | boolean;
+
 export interface HttpHeaders {
-  [headerName: string]: string | string[] | undefined;
+  [headerName: string]: HttpHeaderValue;
 }
 
 export declare namespace HttpHeaders {
   export interface Schema {
-    [headerName: string]: z.ZodType<undefined | string | string[]>;
+    [headerName: string]: z.ZodType<HttpHeaderValue>;
   }
 
   export type Envelope<

@@ -89,8 +89,8 @@ export async function infer(scriptName = process.argv[2]): Promise<AppSpec> {
           ({
             sourceLocation: route.sourceLocation,
             path: route.path,
-            memorySize: route.runtimeProps?.memorySize,
-            timeout: route.runtimeProps?.timeout,
+            memorySize: route.memorySize,
+            timeout: route.timeout,
             method: route.method,
           } satisfies RouteSpec)
       ),

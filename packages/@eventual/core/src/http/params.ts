@@ -13,27 +13,6 @@ export declare namespace Params {
     >;
   };
 
-  export type Envelope<ParamsSchema extends Schema = Schema> =
-    Schema extends ParamsSchema
-      ? {
-          params?: ParamsSchema;
-        }
-      : ParamsSchema extends undefined
-      ? {
-          params?: ParamsSchema;
-        }
-      : { [header in keyof ParamsSchema]?: undefined } extends ParamsSchema
-      ? {
-          params?: FromSchema<ParamsSchema>;
-        }
-      : {
-          params: FromSchema<ParamsSchema>;
-        };
-
-  export type FromSchema<P extends Schema = Schema> = z.infer<
-    z.ZodObject<Exclude<P, undefined>>
-  >;
-
   export type Parse<
     Text extends string,
     FoundNames extends string = never
@@ -49,7 +28,7 @@ export declare namespace Params {
     : FoundNames;
 }
 
-export type TakeWhile<
+type TakeWhile<
   Input extends string,
   Match extends string,
   Result extends string = ""

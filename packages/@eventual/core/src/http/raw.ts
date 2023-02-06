@@ -52,7 +52,7 @@ export class RawHttpRequest extends BaseRawHttpPayload {
   readonly method: HttpMethod;
   readonly headers: Record<string, string>;
   readonly body: string | Buffer | null;
-  readonly params?: Record<string, string>;
+  readonly params: Record<string, string>;
   readonly query?: Record<string, string | string[]>;
 
   constructor(url: string, props: RawHttpRequestInit) {
@@ -70,7 +70,7 @@ export class RawHttpRequest extends BaseRawHttpPayload {
       });
       this.query = query;
     }
-    this.params = props.params;
+    this.params = props.params ?? {};
     this.url = _url.href;
   }
 }

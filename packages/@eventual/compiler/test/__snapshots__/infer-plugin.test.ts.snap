@@ -619,45 +619,6 @@ globalThis.$Eventual = Eventual;
 // ../core/lib/esm/activity.js
 var AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
 
-// ../../../node_modules/.pnpm/itty-router@2.6.6/node_modules/itty-router/dist/itty-router.min.mjs
-function e({ base: t = "", routes: n = [] } = {}) {
-  return { __proto__: new Proxy({}, { get: (e2, a, o) => (e3, ...r) => n.push([a.toUpperCase(), RegExp(\`^\${(t + e3).replace(/(\\/?)\\*/g, "($1.*)?").replace(/(\\/$)|((?<=\\/)\\/)/, "").replace(/:(\\w+)(\\?)?(\\.)?/g, "$2(?<$1>[^/]+)$2$3").replace(/\\.(?=[\\w(])/, "\\\\.").replace(/\\)\\.\\?\\(([^\\[]+)\\[\\^/g, "?)\\\\.?($1(?<=\\\\.)[^\\\\.")}/*$\`), r]) && o }), routes: n, async handle(e2, ...r) {
-    let a, o, t2 = new URL(e2.url);
-    e2.query = Object.fromEntries(t2.searchParams);
-    for (var [p, s, u] of n)
-      if ((p === e2.method || "ALL" === p) && (o = t2.pathname.match(s))) {
-        e2.params = o.groups;
-        for (var c of u)
-          if (void 0 !== (a = await c(e2.proxy || e2, ...r)))
-            return a;
-      }
-  } };
-}
-var itty_router_min_default = { Router: e };
-
-// ../core/lib/esm/api.js
-var router = itty_router_min_default.Router();
-var api = new Proxy({}, {
-  get: (_, method) => {
-    if (method === "routes" || method === "handle") {
-      return router[method];
-    } else {
-      return (...args) => {
-        const route = {
-          sourceLocation: typeof args[0] === "object" ? args[0] : void 0,
-          path: typeof args[0] === "string" ? args[0] : args[1],
-          method: method.toUpperCase(),
-          runtimeProps: typeof args[0] === "string" ? typeof args[1] === "object" ? args[1] : void 0 : typeof args[2] === "object" ? args[2] : void 0,
-          handlers: args.filter((a) => typeof a === "function")
-          // todo: why do i need to cast?
-        };
-        routes.push(route);
-        return router[method](route.path, ...route.handlers);
-      };
-    }
-  }
-});
-
 // ../core/lib/esm/command.js
 var CommandType;
 (function(CommandType2) {
@@ -678,7 +639,7 @@ var ExecutionStatus;
 })(ExecutionStatus || (ExecutionStatus = {}));
 var ExecutionStatuses = new Set(Object.values(ExecutionStatus));
 
-// ../core/lib/esm/http-method.js
+// ../core/lib/esm/http/method.js
 var HttpMethod;
 (function(HttpMethod2) {
   HttpMethod2["POST"] = "POST";
@@ -689,6 +650,64 @@ var HttpMethod;
   HttpMethod2["PATCH"] = "PATCH";
   HttpMethod2["DELETE"] = "DELETE";
 })(HttpMethod || (HttpMethod = {}));
+
+// ../../../node_modules/.pnpm/itty-router@2.6.6/node_modules/itty-router/dist/itty-router.min.mjs
+function e({ base: t = "", routes: n = [] } = {}) {
+  return { __proto__: new Proxy({}, { get: (e2, a, o) => (e3, ...r) => n.push([a.toUpperCase(), RegExp(\`^\${(t + e3).replace(/(\\/?)\\*/g, "($1.*)?").replace(/(\\/$)|((?<=\\/)\\/)/, "").replace(/:(\\w+)(\\?)?(\\.)?/g, "$2(?<$1>[^/]+)$2$3").replace(/\\.(?=[\\w(])/, "\\\\.").replace(/\\)\\.\\?\\(([^\\[]+)\\[\\^/g, "?)\\\\.?($1(?<=\\\\.)[^\\\\.")}/*$\`), r]) && o }), routes: n, async handle(e2, ...r) {
+    let a, o, t2 = new URL(e2.url);
+    e2.query = Object.fromEntries(t2.searchParams);
+    for (var [p, s, u] of n)
+      if ((p === e2.method || "ALL" === p) && (o = t2.pathname.match(s))) {
+        e2.params = o.groups;
+        for (var c of u)
+          if (void 0 !== (a = await c(e2.proxy || e2, ...r)))
+            return a;
+      }
+  } };
+}
+var itty_router_min_default = { Router: e };
+
+// ../core/lib/esm/http/router.js
+var router = itty_router_min_default.Router();
+var api = new Proxy({}, {
+  get: (_, method) => {
+    if (method === "routes" || method === "handle") {
+      return router[method];
+    } else {
+      return (...args) => {
+        const [sourceLocation, path, routeProps, handler] = typeof args[0] === "object" ? typeof args[3] === "function" ? args : [
+          args[0],
+          args[1],
+          void 0,
+          args[2]
+        ] : typeof args[2] === "function" ? [
+          void 0,
+          args[0],
+          args[1],
+          args[2]
+        ] : [void 0, args[0], void 0, args[1]];
+        const route = {
+          kind: "HttpRoute",
+          path,
+          method: method.toUpperCase(),
+          ...routeProps,
+          sourceLocation,
+          handler,
+          input: routeProps?.input,
+          output: coerceArray(routeProps?.output),
+          errors: coerceArray(routeProps?.errors)
+        };
+        routes.push(route);
+        return router[method](route.path, () => {
+          return route;
+        });
+      };
+    }
+  }
+});
+function coerceArray(t) {
+  return t ? Array.isArray(t) ? t : [t] : void 0;
+}
 
 // ../core/lib/esm/logging.js
 var LogLevel;

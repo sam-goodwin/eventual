@@ -7,7 +7,7 @@ import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpError } from "./error.js";
 import type { HttpHandler } from "./handler.js";
 import type { HttpMethod } from "./method.js";
-import type { RawHttpRequest, RawHttpResponse } from "./raw.js";
+import type { RawHttpRequest } from "./raw.js";
 import type { HttpRequest } from "./request.js";
 import type { HttpResponse } from "./response.js";
 
@@ -15,22 +15,8 @@ const router = itty.Router() as any as HttpRouter;
 
 export type RouteEntry = [string, RegExp, HttpHandler];
 
-export interface Route {
-  path: string;
-  handlers: HttpHandler[];
-  method: HttpMethod;
-  runtimeProps?: HttpRouteProps<any, any, any, any>;
-  /**
-   * Only available during eventual-infer
-   */
-  sourceLocation?: SourceLocation;
-}
-
 export interface HttpRouter {
-  handle: (
-    request: HttpRequest | RawHttpRequest,
-    ...extra: any
-  ) => Promise<RawHttpResponse | HttpResponse>;
+  handle: (request: RawHttpRequest, ...extra: any) => Promise<HttpRoute>;
   routes: RouteEntry[];
   all: HttpRouteFactory;
   get: HttpRouteFactory;
@@ -64,35 +50,61 @@ export const api: HttpRouter = new Proxy(
       } else {
         return (
           ...args:
-            | [SourceLocation, string, ...HttpHandler[]]
-            | [SourceLocation, string, AnyHttpRouteProps, ...HttpHandler[]]
-            | [string, ...HttpHandler[]]
-            | [string, AnyHttpRouteProps, ...HttpHandler[]]
+            | [SourceLocation, string, HttpHandler]
+            | [SourceLocation, string, AnyHttpRouteProps, HttpHandler]
+            | [string, HttpHandler]
+            | [string, AnyHttpRouteProps, HttpHandler]
         ) => {
-          const route: Route = {
-            sourceLocation: typeof args[0] === "object" ? args[0] : undefined,
-            path: (typeof args[0] === "string" ? args[0] : args[1]) as string,
+          const [sourceLocation, path, routeProps, handler] =
+            typeof args[0] === "object"
+              ? typeof args[3] === "function"
+                ? (args as [
+                    SourceLocation,
+                    string,
+                    AnyHttpRouteProps,
+                    HttpHandler
+                  ])
+                : [
+                    args[0] as SourceLocation,
+                    args[1] as string,
+                    undefined,
+                    args[2] as HttpHandler,
+                  ]
+              : typeof args[2] === "function"
+              ? [
+                  undefined,
+                  args[0],
+                  args[1] as AnyHttpRouteProps,
+                  args[2] as HttpHandler,
+                ]
+              : [undefined, args[0], undefined, args[1] as HttpHandler];
+          const route: HttpRoute = {
+            kind: "HttpRoute",
+            path,
             method: method.toUpperCase() as HttpMethod,
-            runtimeProps:
-              typeof args[0] === "string"
-                ? typeof args[1] === "object"
-                  ? args[1]
-                  : undefined
-                : typeof args[2] === "object"
-                ? args[2]
-                : undefined,
-            handlers: args.filter(
-              (a: any): a is HttpHandler => typeof a === "function"
-            ) as HttpHandler[], // todo: why do i need to cast?
+            ...routeProps,
+            sourceLocation,
+            handler,
+            input: routeProps?.input,
+            output: coerceArray(routeProps?.output),
+            errors: coerceArray(routeProps?.errors),
           };
           routes.push(route);
-          // @ts-expect-error - functions don't overlap, but we know they can be called together
-          return router[method](route.path, ...route.handlers);
+          return router[method](route.path, () => {
+            // we return the matched route so that it can be intercepted by our api handler
+            // the interceptor will check the request against the schema and perform any
+            // upfront parsing.
+            return route as any;
+          });
         };
       }
     },
   }
 ) as any;
+
+function coerceArray<T>(t: T | T[] | undefined) {
+  return t ? (Array.isArray(t) ? t : [t]) : undefined;
+}
 
 type AnyHttpRouteProps = HttpRouteProps<
   string,
@@ -107,7 +119,7 @@ export interface HttpRouteProps<
   Output extends HttpResponse.Schema,
   Errors extends HttpError.Schema
 > extends FunctionRuntimeProps {
-  input?: Input | Input[];
+  input?: Input;
   output?: Output | Output[];
   errors?: Errors | Errors[];
 }
@@ -129,15 +141,21 @@ export interface HttpRouteFactory {
   ): HttpRoute<Path, Input, Output, Errors>;
 }
 
-export type HttpRoute<
-  Path extends string,
+export interface HttpRoute<
+  Path extends string = string,
   Input extends HttpRequest.Schema<Path> = HttpRequest.Schema<Path>,
   Output extends HttpResponse.Schema = HttpResponse.Schema,
   Errors extends HttpError.Schema = HttpError.Schema
-> = {
+> extends FunctionRuntimeProps {
   kind: "HttpRoute";
+  method: HttpMethod;
   path: Path;
-  request: Input;
-  response: Output;
-  errors: Error;
-} & HttpHandler<Path, Input, Output, Errors>;
+  input?: Input;
+  output?: Output[];
+  errors?: Errors[];
+  handler: HttpHandler<Path, Input, Output, Errors>;
+  /**
+   * Only available during eventual-infer
+   */
+  sourceLocation?: SourceLocation;
+}

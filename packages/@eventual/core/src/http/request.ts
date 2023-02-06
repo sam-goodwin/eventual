@@ -14,7 +14,6 @@ export type HttpRequest<
   params: HttpRequest.Params<Path, Schema>;
   text(): Promise<string>;
   json(): Promise<HttpRequest.Json<Schema>>;
-  arrayBuffer(): Promise<ArrayBuffer>;
 } & HttpHeaders.Envelope<Exclude<Schema["headers"], undefined>>;
 
 export function HttpRequest<
@@ -66,7 +65,7 @@ export declare namespace HttpRequest {
     ): HttpRequest<Path, this>;
   }
 
-  export interface Schema<Path extends string> {
+  export interface Schema<Path extends string = string> {
     type?: string;
     body?: z.ZodType<any>;
     headers?: HttpHeaders.Schema;
@@ -76,7 +75,7 @@ export declare namespace HttpRequest {
   export type Params<Path extends string, T extends Schema<Path>> = T extends {
     params: infer P extends Params.Schema;
   }
-    ? Params.FromSchema<P>
+    ? z.infer<z.ZodObject<P>>
     : {
         [parameterName in Params.Parse<Path>]: string;
       };
