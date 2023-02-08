@@ -479,7 +479,7 @@ function createAwaitAny(activities) {
 
 // ../core/lib/esm/global.js
 globalThis._eventual ??= {};
-var routes = globalThis._eventual.routes ??= [];
+var commands = globalThis._eventual.commands ??= [];
 var eventualCollector = () => {
   const collector = globalThis._eventual.eventualCollector;
   if (!collector) {
@@ -513,7 +513,10 @@ function isResolved(result) {
 function isFailed(result) {
   return isResult(result) && result[ResultSymbol] === ResultKind.Failed;
 }
-var isResolvedOrFailed = or(isResolved, isFailed);
+var isResolvedOrFailed = or({
+  exportName: "isResolvedOrFailed",
+  fileName: "/Users/samgoodwin/workspaces/eventual/packages/@eventual/core/lib/esm/result.js"
+}, isResolved, isFailed);
 
 // ../core/lib/esm/service-type.js
 var ServiceType;
@@ -639,18 +642,6 @@ var ExecutionStatus;
 })(ExecutionStatus || (ExecutionStatus = {}));
 var ExecutionStatuses = new Set(Object.values(ExecutionStatus));
 
-// ../core/lib/esm/http/method.js
-var HttpMethod;
-(function(HttpMethod2) {
-  HttpMethod2["POST"] = "POST";
-  HttpMethod2["GET"] = "GET";
-  HttpMethod2["HEAD"] = "HEAD";
-  HttpMethod2["OPTIONS"] = "OPTIONS";
-  HttpMethod2["PUT"] = "PUT";
-  HttpMethod2["PATCH"] = "PATCH";
-  HttpMethod2["DELETE"] = "DELETE";
-})(HttpMethod || (HttpMethod = {}));
-
 // ../../../node_modules/.pnpm/itty-router@2.6.6/node_modules/itty-router/dist/itty-router.min.mjs
 function e({ base: t = "", routes: n = [] } = {}) {
   return { __proto__: new Proxy({}, { get: (e2, a, o) => (e3, ...r) => n.push([a.toUpperCase(), RegExp(\`^\${(t + e3).replace(/(\\/?)\\*/g, "($1.*)?").replace(/(\\/$)|((?<=\\/)\\/)/, "").replace(/:(\\w+)(\\?)?(\\.)?/g, "$2(?<$1>[^/]+)$2$3").replace(/\\.(?=[\\w(])/, "\\\\.").replace(/\\)\\.\\?\\(([^\\[]+)\\[\\^/g, "?)\\\\.?($1(?<=\\\\.)[^\\\\.")}/*$\`), r]) && o }), routes: n, async handle(e2, ...r) {
@@ -667,7 +658,7 @@ function e({ base: t = "", routes: n = [] } = {}) {
 }
 var itty_router_min_default = { Router: e };
 
-// ../core/lib/esm/http/router.js
+// ../core/lib/esm/http/api.js
 var router = itty_router_min_default.Router();
 var api = new Proxy({}, {
   get: (_, method) => {
@@ -686,28 +677,24 @@ var api = new Proxy({}, {
           args[1],
           args[2]
         ] : [void 0, args[0], void 0, args[1]];
-        const route = {
-          kind: "HttpRoute",
-          path,
-          method: method.toUpperCase(),
-          ...routeProps,
-          sourceLocation,
+        const command = {
+          kind: "Command",
           handler,
-          input: routeProps?.input,
-          output: coerceArray(routeProps?.output),
-          errors: coerceArray(routeProps?.errors)
+          memorySize: routeProps?.memorySize,
+          method: method.toUpperCase(),
+          name: path,
+          path: typeof args[0] === "string" ? args[0] : args[1],
+          sourceLocation,
+          timeout: routeProps?.timeout,
+          // we want the base HTTP request, not the transformed one
+          passThrough: true
         };
-        routes.push(route);
-        return router[method](route.path, () => {
-          return route;
-        });
+        commands.push(command);
+        return router[method](path, command.handler);
       };
     }
   }
 });
-function coerceArray(t) {
-  return t ? Array.isArray(t) ? t : [t] : void 0;
-}
 
 // ../core/lib/esm/logging.js
 var LogLevel;
@@ -793,7 +780,10 @@ function isChildWorkflowFailed(event) {
 function isTimerCompleted(event) {
   return event.type === WorkflowEventType.TimerCompleted;
 }
-var isWorkflowCompletedEvent = or(isWorkflowFailed, isWorkflowSucceeded);
+var isWorkflowCompletedEvent = or({
+  exportName: "isWorkflowCompletedEvent",
+  fileName: "/Users/samgoodwin/workspaces/eventual/packages/@eventual/core/lib/esm/workflow-events.js"
+}, isWorkflowFailed, isWorkflowSucceeded);
 function isSignalSent(event) {
   return event.type === WorkflowEventType.SignalSent;
 }
@@ -804,7 +794,10 @@ function isWorkflowTimedOut(event) {
   return event.type === WorkflowEventType.WorkflowTimedOut;
 }
 var isScheduledEvent = or(isActivityScheduled, isChildWorkflowScheduled, isEventsPublished, isSignalSent, isTimerScheduled);
-var isSucceededEvent = or(isActivitySucceeded, isChildWorkflowSucceeded, isTimerCompleted);
+var isSucceededEvent = or({
+  exportName: "isSucceededEvent",
+  fileName: "/Users/samgoodwin/workspaces/eventual/packages/@eventual/core/lib/esm/workflow-events.js"
+}, isActivitySucceeded, isChildWorkflowSucceeded, isTimerCompleted);
 var isFailedEvent = or(isActivityFailed, isActivityHeartbeatTimedOut, isChildWorkflowFailed, isWorkflowTimedOut);
 
 // test-files/api-handler.ts
