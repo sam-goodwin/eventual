@@ -14,7 +14,7 @@ export function computeScheduleDate(schedule: Schedule, baseTime: Date): Date {
 
 export function computeDurationSeconds(
   ...args: [dur: number, unit: DurationUnit] | [duration: DurationSchedule]
-) {
+): number {
   const [dur, unit] = args.length === 1 ? [args[0].dur, args[0].unit] : args;
   return unit === "seconds" || unit === "second"
     ? dur

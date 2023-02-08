@@ -1,12 +1,13 @@
 import type { Readable } from "node:stream";
-import type { HttpMethod } from "./method.js";
+import type { HttpMethod } from "../http-method.js";
 
 type Body = string | Buffer | Readable | null;
 
-abstract class BaseRawHttpPayload {
+abstract class BaseHttpPayload {
   abstract readonly body: string | Buffer | Readable | null;
 
   async json() {
+    console.log(this.body);
     return JSON.parse((await this.text?.()) ?? "");
   }
 
@@ -39,7 +40,7 @@ abstract class BaseRawHttpPayload {
   }
 }
 
-export interface RawHttpRequestInit {
+export interface HttpRequestInit {
   method: HttpMethod;
   headers?: Record<string, string>;
   body?: string | Buffer | null;
@@ -47,7 +48,7 @@ export interface RawHttpRequestInit {
   query?: Record<string, string | string[]>;
 }
 
-export class RawHttpRequest extends BaseRawHttpPayload {
+export class HttpRequest extends BaseHttpPayload {
   readonly url: string;
   readonly method: HttpMethod;
   readonly headers: Record<string, string>;
@@ -55,7 +56,7 @@ export class RawHttpRequest extends BaseRawHttpPayload {
   readonly params: Record<string, string>;
   readonly query?: Record<string, string | string[]>;
 
-  constructor(url: string, props: RawHttpRequestInit) {
+  constructor(url: string, props: HttpRequestInit) {
     super();
     const _url = new URL(url);
     this.method = props.method;
@@ -81,7 +82,7 @@ export interface RawHttpResponseInit {
   headers?: Record<string, string> | Headers;
 }
 
-export class RawHttpResponse extends BaseRawHttpPayload {
+export class HttpResponse extends BaseHttpPayload {
   readonly body: Body;
   readonly status: number;
   readonly statusText?: string;

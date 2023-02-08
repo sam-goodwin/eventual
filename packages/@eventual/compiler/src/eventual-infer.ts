@@ -6,11 +6,11 @@
  */
 import {
   AppSpec,
+  commands,
   eventHandlers,
   EventHandlerSpec,
   events,
-  routes,
-  RouteSpec,
+  CommandSpec,
 } from "@eventual/core";
 import crypto from "crypto";
 import esbuild from "esbuild";
@@ -29,7 +29,7 @@ import {
 
 import { Visitor } from "@swc/core/Visitor.js";
 import { printModule } from "./print-module.js";
-import { getSpan, isApiCall, isOnEventCall } from "./ast-util.js";
+import { getSpan, isCommandCall, isOnEventCall } from "./ast-util.js";
 import { generateSchema } from "@anatine/zod-openapi";
 
 export async function infer(scriptName = process.argv[2]): Promise<AppSpec> {
@@ -84,15 +84,18 @@ export async function infer(scriptName = process.argv[2]): Promise<AppSpec> {
       ),
     },
     api: {
-      routes: routes.map(
-        (route) =>
+      commands: commands.map(
+        (command) =>
           ({
-            sourceLocation: route.sourceLocation,
-            path: route.path,
-            memorySize: route.memorySize,
-            timeout: route.timeout,
-            method: route.method,
-          } satisfies RouteSpec)
+            name: command.name,
+            sourceLocation: command.sourceLocation,
+            path: command.path,
+            memorySize: command.memorySize,
+            timeout: command.timeout,
+            method: command.method,
+            input: command.input ? generateSchema(command.input) : undefined,
+            output: command.output ? generateSchema(command.output) : undefined,
+          } satisfies CommandSpec)
       ),
     },
   };
@@ -175,7 +178,7 @@ export class InferVisitor extends Visitor {
   }
 
   visitCallExpression(call: CallExpression): Expression {
-    if (this.exportName && (isApiCall(call) || isOnEventCall(call))) {
+    if (this.exportName && (isCommandCall(call) || isOnEventCall(call))) {
       this.didMutate = true;
 
       return {

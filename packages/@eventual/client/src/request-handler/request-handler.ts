@@ -1,17 +1,15 @@
-import { RawHttpRequest } from "@eventual/core";
+import { HttpRequest } from "@eventual/core";
 
 export abstract class RequestHandler {
   constructor(private beforeRequest?: BeforeRequest) {}
 
-  public async request<Resp = any>(req: RawHttpRequest): Promise<Resp> {
+  public async request<Resp = any>(req: HttpRequest): Promise<Resp> {
     return this._request(
       this.beforeRequest ? await this.beforeRequest(req) : req
     );
   }
 
-  protected abstract _request<Resp = any>(
-    request: RawHttpRequest
-  ): Promise<Resp>;
+  protected abstract _request<Resp = any>(request: HttpRequest): Promise<Resp>;
 }
 
 export class HttpError extends Error {
@@ -25,5 +23,5 @@ export class HttpError extends Error {
 }
 
 export interface BeforeRequest {
-  (request: RawHttpRequest): Promise<RawHttpRequest>;
+  (request: HttpRequest): Promise<HttpRequest>;
 }

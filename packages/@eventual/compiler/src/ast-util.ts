@@ -14,16 +14,6 @@ import {
   ComputedPropName,
 } from "@swc/core";
 
-const apiCalls = new Set([
-  "get",
-  "post",
-  "put",
-  "patch",
-  "delete",
-  "options",
-  "connect",
-] as const);
-
 /**
  * A heuristic for identifying a {@link CallExpression} that is a call to an API handler.
  *
@@ -31,20 +21,16 @@ const apiCalls = new Set([
  *    `ev.api.get` where `get` is any of the allowed {@link apiCalls}.
  * 2. Must have between 2 and 3 arguments.
  */
-export function isApiCall(call: CallExpression): boolean {
+export function isCommandCall(call: CallExpression): boolean {
   const c = call.callee;
-  if (c.type === "MemberExpression") {
-    if (
-      isId(c.property, apiCalls) &&
-      (isId(c.object, "api") ||
-        (c.object.type === "MemberExpression" &&
-          isId(c.object.property, "api")))
-    ) {
-      // api.get()
-      return call.arguments.length === 2 || call.arguments.length === 3;
-    }
+  if (
+    (c.type !== "Identifier" || c.value === "command") &&
+    (c.type !== "MemberExpression" || isId(c.property, "command"))
+  ) {
+    return false;
   }
-  return false;
+
+  return call.arguments.length === 2 || call.arguments.length === 3;
 }
 
 /**

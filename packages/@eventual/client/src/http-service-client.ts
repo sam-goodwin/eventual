@@ -21,9 +21,9 @@ import {
   StartExecutionResponse,
   Workflow,
   WorkflowInput,
-  RawHttpRequestInit,
+  HttpRequestInit,
   HttpMethod,
-  RawHttpRequest,
+  HttpRequest,
 } from "@eventual/core";
 import { getRequestHandler } from "./request-handler/factory.js";
 import {
@@ -69,16 +69,16 @@ export class HttpServiceClient implements EventualServiceClient {
    * Does not inject the _eventual suffix into the url. ([serviceUrl]/[path]).
    */
   public async proxy(
-    request: Omit<RawHttpRequestInit, "params"> & { path: string }
+    request: Omit<HttpRequestInit, "params"> & { path: string }
   ) {
     return this.requestHandler.request(
-      new RawHttpRequest(`${this.baseUrl.href}/${request.path}`, request)
+      new HttpRequest(`${this.baseUrl.href}/${request.path}`, request)
     );
   }
 
   public async listWorkflows(): Promise<ListWorkflowsResponse> {
     const workflowNames = await this.request<void, string[]>({
-      method: HttpMethod.GET,
+      method: "GET",
       path: "workflows",
     });
 
@@ -97,7 +97,7 @@ export class HttpServiceClient implements EventualServiceClient {
       WorkflowInput<W>,
       StartExecutionResponse
     >({
-      method: HttpMethod.POST,
+      method: "POST",
       path: `workflows/${workflow}/executions?${formatQueryString({
         timeout: request.timeout?.dur,
         timeoutUnit: request.timeout?.unit,
@@ -113,7 +113,7 @@ export class HttpServiceClient implements EventualServiceClient {
     request: ListExecutionsRequest
   ): Promise<ListExecutionsResponse> {
     return this.request<void, ListExecutionsResponse>({
-      method: HttpMethod.GET,
+      method: "GET",
       path: `executions?${formatQueryString({
         maxResults: request.maxResults,
         nextToken: request.nextToken,
@@ -129,7 +129,7 @@ export class HttpServiceClient implements EventualServiceClient {
   ): Promise<Execution<any> | undefined> {
     try {
       return this.request<void, Execution>({
-        method: HttpMethod.GET,
+        method: "GET",
         path: `executions/${encodeExecutionId(executionId)}`,
       });
     } catch (err) {
@@ -144,7 +144,7 @@ export class HttpServiceClient implements EventualServiceClient {
     request: ListExecutionEventsRequest
   ): Promise<ListExecutionEventsResponse> {
     return this.request<void, ListExecutionEventsResponse>({
-      method: HttpMethod.GET,
+      method: "GET",
       path: `executions/${encodeExecutionId(
         request.executionId
       )}/history?${formatQueryString({
@@ -160,7 +160,7 @@ export class HttpServiceClient implements EventualServiceClient {
     executionId: string
   ): Promise<ExecutionHistoryResponse> {
     const resp = await this.request<void, HistoryStateEvent[]>({
-      method: HttpMethod.GET,
+      method: "GET",
       path: `executions/${encodeExecutionId(executionId)}}/workflow-history`,
     });
 
@@ -173,7 +173,7 @@ export class HttpServiceClient implements EventualServiceClient {
       typeof execution === "string" ? execution : execution.executionId;
     const signalId = typeof signal === "string" ? signal : signal.id;
     return this.request<Omit<SendSignalRequest, "execution">, void>({
-      method: HttpMethod.PUT,
+      method: "PUT",
       path: `executions/${encodeExecutionId(executionId)}}/signals`,
       body: {
         ...rest,
@@ -184,7 +184,7 @@ export class HttpServiceClient implements EventualServiceClient {
 
   public publishEvents(request: PublishEventsRequest): Promise<void> {
     return this.request<PublishEventsRequest, void>({
-      method: HttpMethod.PUT,
+      method: "PUT",
       path: `events`,
       body: request,
     });
@@ -194,7 +194,7 @@ export class HttpServiceClient implements EventualServiceClient {
     request: Omit<SendActivitySuccessRequest<any>, "type">
   ): Promise<void> {
     return this.request<SendActivitySuccessRequest, void>({
-      method: HttpMethod.POST,
+      method: "POST",
       path: `activities`,
       body: { ...request, type: ActivityUpdateType.Success },
     });
@@ -204,7 +204,7 @@ export class HttpServiceClient implements EventualServiceClient {
     request: Omit<SendActivityFailureRequest, "type">
   ): Promise<void> {
     return this.request<SendActivityFailureRequest, void>({
-      method: HttpMethod.POST,
+      method: "POST",
       path: `activities`,
       body: { ...request, type: ActivityUpdateType.Failure },
     });
@@ -217,7 +217,7 @@ export class HttpServiceClient implements EventualServiceClient {
       SendActivityHeartbeatRequest,
       SendActivityHeartbeatResponse
     >({
-      method: HttpMethod.POST,
+      method: "POST",
       path: `activities`,
       body: { ...request, type: ActivityUpdateType.Heartbeat },
     });
@@ -230,7 +230,7 @@ export class HttpServiceClient implements EventualServiceClient {
   }): Promise<Resp> {
     const url = `${this.baseUrl.href}_eventual/${request.path}`;
     return this.requestHandler.request(
-      new RawHttpRequest(url, {
+      new HttpRequest(url, {
         body: request.body ? JSON.stringify(request.body) : undefined,
         headers: { "Content-Type": "application/json" },
         method: request.method,

@@ -13,7 +13,7 @@ import {
   NODE_REGION_CONFIG_OPTIONS,
 } from "@aws-sdk/config-resolver";
 import { loadConfig } from "@aws-sdk/node-config-provider";
-import { HttpMethod, RawHttpRequest } from "@eventual/core";
+import { HttpMethod, HttpRequest } from "@eventual/core";
 
 export interface AwsHttpServiceClientProps extends HttpServiceClientProps {
   credentials?: SignatureV4Init["credentials"];
@@ -64,7 +64,7 @@ export class AwsHttpServiceClient extends HttpServiceClient {
       // sign the request and extract the signed headers, body and method
       const { headers, body, method } = await signer.sign(_request);
 
-      const authorizedRequest = new RawHttpRequest(url.href, {
+      const authorizedRequest = new HttpRequest(url.href, {
         method: method as HttpMethod,
         body,
         headers,

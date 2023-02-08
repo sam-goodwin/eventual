@@ -1,46 +1,24 @@
-import {
-  api,
-  duration,
-  HttpError,
-  HttpRequest,
-  HttpResponse,
-} from "@eventual/core";
+import { duration, command } from "@eventual/core";
 import { z } from "zod";
 
-class GetStockRequest extends HttpRequest("GetStockRequest", {
-  params: {
-    stockId: z.string(),
-  },
-  body: z.undefined(),
-}) {}
+export interface Stock {
+  ticker: string;
+  price: number;
+}
 
-class GetStockResponse extends HttpResponse("GetStockResponse", {
-  headers: {
-    "Content-Type": z.string().optional(),
-  },
-  body: z.string(),
-}) {}
-
-class NotFound extends HttpError("NotFound", {
-  status: 404,
-}) {}
-
-export const getStock = api.get(
-  "/stock/:stockId",
+export const getStock = command(
+  "getStock",
   {
+    method: "GET",
+    path: "/stock/:ticker",
     memorySize: 512,
     timeout: duration(1, "minute"),
-    input: GetStockRequest,
-    output: GetStockResponse,
-    errors: [NotFound],
+    input: z.object({ ticker: z.string() }),
   },
-  async (_request) => {
+  async (input): Promise<Stock> => {
     return {
-      status: 200,
-      headers: {
-        "Content-Type": "",
-      },
-      body: "",
+      ticker: input.ticker,
+      price: 1,
     };
   }
 );

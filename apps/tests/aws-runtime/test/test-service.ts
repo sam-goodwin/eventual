@@ -13,9 +13,7 @@ import {
   EventualError,
   signal,
   duration,
-  api,
-  HttpResponse,
-  HttpError,
+  command,
 } from "@eventual/core";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -429,51 +427,62 @@ export const allCommands = workflow("allCommands", async (_, context) => {
   return { signalCount: n };
 });
 
-export class UserNotFound extends HttpError("UserNotFound", {
-  status: 404,
-  body: z.object({
-    userId: z.string(),
-  }),
-}) {}
-
-export class GetUserResponse extends HttpResponse("GetUserResponse", {
-  headers: {
-    headerId: z.string(),
-  },
-  body: z.object({
-    userId: z.string(),
-    createdTime: z.date(),
-  }),
-}) {}
-
-GetUserResponse.status;
-
-export const getUser = api.get(
-  "/user/:id",
+export const helloApi = command(
+  "helloApi",
   {
-    memorySize: 512,
-    input: {
-      body: z.undefined(),
+    path: "/hello",
+  },
+  async () => {
+    return {
+      status: 200,
+      body: "hello world",
+    };
+  }
+);
+
+// provide a schema for the parameters
+export const typed1 = command(
+  "typed1",
+  {
+    path: "/user/typed1/:userId",
+    input: z.object({
+      userId: z.string(),
+    }),
+  },
+  async ({ userId }) => {
+    return {
+      status: 200,
       headers: {
-        header: z.string(),
+        myHeader: "my-header-value",
       },
-      params: {
-        id: z.string(),
-      },
-    },
-    output: GetUserResponse,
-    errors: [UserNotFound],
+      body: JSON.stringify({
+        userId: userId,
+        createdTime: new Date(0).toISOString(),
+      }),
+    };
+  }
+);
+
+const User = z.object({
+  userId: z.string(),
+  createdTime: z.date(),
+});
+
+// provide a schema for the output body
+export const typed2 = command(
+  "typed2",
+  {
+    path: "/user/typed2/:userId",
+    method: "GET",
+    input: z.object({
+      userId: z.string(),
+    }),
+    output: User,
   },
   async (request) => {
     return {
-      status: 200,
-      body: {
-        userId: request.params.id,
-        createdTime: new Date(),
-      },
-      headers: {
-        headerId: "",
-      },
+      userId: request.userId,
+      createdTime: new Date(0),
     };
   }
 );

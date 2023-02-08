@@ -4,6 +4,11 @@
   "type": "module",
   "version": "0.0.0",
   "main": "lib/test-service.js",
+  "exports": {
+    "/client": {
+      "import": "./dist/generated-client"
+    }
+  },
   "scripts": {
     "test:runtime": "NODE_OPTIONS=--experimental-vm-modules OUTPUTS_FILE=cdk.out/outputs.json jest --passWithNoTests",
     "test:cli": "./scripts/test-cli",

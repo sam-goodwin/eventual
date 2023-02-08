@@ -1,5 +1,5 @@
 import { build, BuildSource, infer } from "@eventual/compiler";
-import { HttpMethod, ServiceType } from "@eventual/core";
+import { ServiceType } from "@eventual/core";
 import fs from "fs";
 import path from "path";
 import { ApiFunction, BuildManifest } from "./build-manifest";
@@ -9,7 +9,11 @@ import { Code } from "aws-cdk-lib/aws-lambda";
 export interface BuildOutput extends BuildManifest {}
 
 export class BuildOutput {
-  constructor(readonly outDir: string, manifest: BuildManifest) {
+  constructor(
+    readonly serviceName: string,
+    readonly outDir: string,
+    manifest: BuildManifest
+  ) {
     Object.assign(this, manifest);
   }
 
@@ -30,6 +34,7 @@ export function buildServiceSync(request: BuildAWSRuntimeProps): BuildOutput {
   );
 
   return new BuildOutput(
+    request.serviceName,
     path.resolve(request.outDir),
     JSON.parse(
       fs
@@ -40,6 +45,7 @@ export function buildServiceSync(request: BuildAWSRuntimeProps): BuildOutput {
 }
 
 export interface BuildAWSRuntimeProps {
+  serviceName: string;
   entry: string;
   outDir: string;
 }
@@ -110,39 +116,67 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       routes: individualApis,
       internal: {
         "/_eventual/workflows": {
-          methods: [HttpMethod.GET],
+          command: {
+            name: "listWorkflows",
+            method: "GET",
+          },
           file: listWorkflows!,
         },
         "/_eventual/workflows/{name}/executions": {
-          methods: [HttpMethod.POST],
+          command: {
+            name: "startExecution",
+            method: "POST",
+          },
           file: startExecution!,
         },
         "/_eventual/executions": {
-          methods: [HttpMethod.GET],
+          command: {
+            name: "listExecutions",
+            method: "GET",
+          },
           file: listExecutions!,
         },
         "/_eventual/executions/{executionId}": {
-          methods: [HttpMethod.GET],
+          command: {
+            name: "getExecution",
+            method: "GET",
+          },
           file: getExecution!,
         },
         "/_eventual/executions/{executionId}/history": {
-          methods: [HttpMethod.GET],
+          command: {
+            name: "listExecutionEvents",
+            method: "GET",
+          },
           file: executionEvents!,
         },
         "/_eventual/executions/{executionId}/signals": {
-          methods: [HttpMethod.PUT],
+          command: {
+            name: "sendSignal",
+            method: "PUT",
+          },
           file: sendSignal!,
         },
         "/_eventual/executions/{executionId}/workflow-history": {
-          methods: [HttpMethod.GET],
+          command: {
+            // TODO: what is this endpoint? Don't know what the URL means ...
+            name: "getExecutionHistory",
+            method: "GET",
+          },
           file: executionsHistory!,
         },
         "/_eventual/events": {
-          methods: [HttpMethod.PUT],
+          command: {
+            name: "publishEvents",
+            method: "PUT",
+          },
           file: publishEvents!,
         },
         "/_eventual/activities": {
-          methods: [HttpMethod.POST],
+          command: {
+            name: "updateActivity",
+            method: "POST",
+          },
           file: updateActivity!,
         },
       },
@@ -156,22 +190,22 @@ export async function buildService(request: BuildAWSRuntimeProps) {
 
   async function bundleApis() {
     const routes = await Promise.all(
-      appSpec.api.routes.map(async (route) => {
-        if (route.sourceLocation?.fileName) {
+      appSpec.api.commands.map(async (command) => {
+        if (command.sourceLocation?.fileName) {
           return [
-            route.path,
+            command.path,
             {
               file: await buildFunction({
-                name: path.join("api", route.path),
+                name: path.join("api", command.name),
                 entry: runtimeHandlersEntrypoint("api-handler"),
-                exportName: route.sourceLocation.exportName,
+                exportName: command.sourceLocation.exportName,
                 serviceType: ServiceType.ApiHandler,
-                injectedEntry: route.sourceLocation.fileName,
+                injectedEntry: command.sourceLocation.fileName,
               }),
-              exportName: route.sourceLocation.exportName,
-              methods: [route.method],
-              memorySize: route.memorySize,
-              timeout: route.timeout,
+              exportName: command.sourceLocation.exportName,
+              command,
+              memorySize: command.memorySize,
+              timeout: command.timeout,
             } satisfies ApiFunction,
           ] as const;
         }

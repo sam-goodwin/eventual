@@ -1,6 +1,6 @@
 import type {
   DurationSchedule,
-  HttpMethod,
+  CommandSpec,
   Subscription,
 } from "@eventual/core";
 import type { SchemaObject } from "openapi3-ts";
@@ -77,5 +77,5 @@ export interface InternalApiFunction extends Omit<ApiFunction, "exportName"> {}
 
 export interface ApiFunction extends BundledFunction {
   exportName: string;
-  methods: HttpMethod[];
+  command: CommandSpec;
 }

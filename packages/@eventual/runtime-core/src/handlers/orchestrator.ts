@@ -1,6 +1,6 @@
 import {
   clearEventualCollector,
-  Command,
+  WorkflowCommand,
   Context,
   createEvent,
   DeterminismError,
@@ -576,7 +576,7 @@ export function createOrchestrator({
      */
     async function processCommands(
       workflow: Workflow,
-      commands: Command[]
+      commands: WorkflowCommand[]
     ): Promise<HistoryStateEvent[]> {
       console.debug("Commands to send", JSON.stringify(commands));
       // register command events

@@ -1,34 +1,20 @@
-import type z from "zod";
-import type { HttpHeaders } from "./headers.js";
-import { HttpResponse } from "./response.js";
-import type { ErrorHttpStatusCode } from "./status-code.js";
+import type { Status } from "@tshttp/status";
 
-export type HttpError<
-  Schema extends HttpResponse.Schema = HttpResponse.Schema
-> = HttpResponse<Schema>;
+export type HttpStatusCode = Status;
 
-export function HttpError<
-  Type extends string,
-  Status extends ErrorHttpStatusCode,
-  Body extends z.ZodType = z.ZodUndefined,
-  Headers extends HttpHeaders.Schema = HttpHeaders.Schema
->(
-  type: Type,
-  props: {
-    status: Status;
-    statusText?: string;
-    body?: Body;
-    headers?: Headers;
-  }
-): HttpResponse.Class<Type, Body, Headers, Status> {
-  return HttpResponse(type, props) as HttpResponse.Class<
-    Type,
-    Body,
-    Headers,
-    Status
-  >;
+export function isHttpError(err: any): err is HttpError {
+  return err && typeof err === "object" && err.kind === "HttpError";
 }
 
-export declare namespace HttpError {
-  export type Schema = HttpResponse.Schema<ErrorHttpStatusCode>;
+export class HttpError<Data = any> {
+  readonly kind = "HttpError";
+
+  readonly code;
+  readonly message;
+  readonly data;
+  constructor(props: { code: HttpStatusCode; message: string; data?: Data }) {
+    this.code = props.code;
+    this.message = props.message;
+    this.data = props.data;
+  }
 }

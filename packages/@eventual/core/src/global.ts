@@ -1,9 +1,9 @@
 import { ActivityContext, ActivityHandler } from "./activity.js";
-import type { HttpRoute } from "./http/router.js";
 import { Event, EventHandler, EventSubscription } from "./event.js";
 import type { Eventual, EventualCallCollector } from "./eventual.js";
 import { EventualServiceClient } from "./service-client.js";
 import type { Workflow } from "./workflow.js";
+import type { Command } from "./http/index.js";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -47,13 +47,13 @@ declare global {
     /**
      * API routes registered within the application.
      */
-    routes?: HttpRoute[];
+    commands?: Command<any, any, any>[];
   };
 }
 
 globalThis._eventual ??= {};
 
-export const routes = (globalThis._eventual.routes ??= []);
+export const commands = (globalThis._eventual.commands ??= []);
 
 export const workflows = (): Map<string, Workflow> =>
   (globalThis._eventual.workflows ??= new Map<string, Workflow>());

@@ -1,7 +1,8 @@
+import type openapi from "openapi3-ts";
+import type { z } from "zod";
 import type { EventHandler, Subscription } from "./event.js";
+import type { Command } from "./http/command.js";
 import type { DurationSchedule } from "./schedule.js";
-import type { SchemaObject } from "openapi3-ts";
-import type { HttpMethod } from "./http/method.js";
 
 /**
  * Specification for an Eventual application
@@ -32,7 +33,7 @@ export interface EventHandlerSpec extends Omit<EventHandler, "handler"> {
 }
 
 export interface ApiSpec {
-  routes: RouteSpec[];
+  commands: CommandSpec[];
 }
 
 export interface FunctionSpec {
@@ -40,11 +41,23 @@ export interface FunctionSpec {
   timeout?: DurationSchedule;
 }
 
-export interface RouteSpec extends FunctionSpec {
-  path: string;
-  method: HttpMethod;
-  sourceLocation?: SourceLocation;
-}
+export type CommandSpec = Omit<ToSpec<Command>, "kind">;
+
+type ToSpec<T> = T extends z.ZodType
+  ? openapi.SchemaObject
+  : T extends (infer I)[]
+  ? ToSpec<I>[]
+  : T extends Record<string, any>
+  ? {
+      [prop in keyof DropFunctions<T>]: ToSpec<T[prop]>;
+    }
+  : T;
+
+type DropFunctions<T> = Pick<T, KeysNotOfType<T, (...args: any[]) => any>>;
+
+type KeysNotOfType<T, U> = {
+  [k in keyof T]: T[k] extends U ? never : k;
+}[keyof T];
 
 export function isSourceLocation(a: any) {
   return (
@@ -61,5 +74,5 @@ export interface SourceLocation {
 }
 
 export interface Schemas {
-  [schemaName: string]: SchemaObject;
+  [schemaName: string]: openapi.SchemaObject;
 }

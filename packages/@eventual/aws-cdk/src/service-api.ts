@@ -1,4 +1,4 @@
-import { HttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
+import { HttpApi, HttpMethod } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
 import { ENV_NAMES } from "@eventual/aws-runtime";
@@ -19,6 +19,8 @@ import { IService } from "./service";
 import { ServiceFunction } from "./service-function";
 import { baseFnProps, KeysOfType, PickType } from "./utils";
 import type { Workflows } from "./workflows";
+
+import openapi from "openapi3-ts";
 
 export type ApiNames<Service = any> = KeysOfType<Service, { kind: "Api" }>;
 
@@ -79,6 +81,10 @@ export class Api<Service> extends Construct implements IServiceApi {
   public readonly internalRoutes: {
     [path in keyof InternalApiRoutes]: Function;
   };
+  /**
+   * A Reference to this Service's {@link BuildOutput}.
+   */
+  readonly build: BuildOutput;
 
   public get handlers(): Function[] {
     return [this.handler, ...(Object.values(this.routes) as Function[])];
@@ -86,7 +92,7 @@ export class Api<Service> extends Construct implements IServiceApi {
 
   constructor(scope: Construct, id: string, private props: ApiProps<Service>) {
     super(scope, id);
-
+    this.build = props.build;
     this.handler = new ServiceFunction(this, "Handler", {
       functionName: `${props.serviceName}-api-handler`,
       serviceType: ServiceType.ApiHandler,
@@ -99,6 +105,8 @@ export class Api<Service> extends Construct implements IServiceApi {
       apiName: `eventual-api-${props.serviceName}`,
       defaultIntegration: new HttpLambdaIntegration("default", this.handler),
     });
+
+    this.toOpenAPI(Object.values(this.build.api.routes));
 
     // The handler is given an instance of the service client.
     // Allow it to access any of the methods on the service client by default.
@@ -230,7 +238,7 @@ export class Api<Service> extends Construct implements IServiceApi {
           {
             name,
             file,
-            methods,
+            command,
             grants,
             memorySize,
             timeout,
@@ -262,12 +270,24 @@ export class Api<Service> extends Construct implements IServiceApi {
             `${funcId}-integration`,
             fn
           );
+
           this.gateway.addRoutes({
-            path: apiPath,
+            path: `/_rpc/${command.name}`,
             integration,
-            methods,
+            methods: [HttpMethod.POST],
             authorizer: authorized ? new HttpIamAuthorizer() : undefined,
           });
+          if (command.path) {
+            this.gateway.addRoutes({
+              path: command.path,
+              integration,
+              methods: command.method
+                ? [command.method as HttpMethod]
+                : // TODO: is GET the right default? No default? POST? POST is easier to map to because it has a body but GET is the usual default.
+                  [HttpMethod.GET],
+              authorizer: authorized ? new HttpIamAuthorizer() : undefined,
+            });
+          }
           return [apiPath, fn] as const;
         }
       )
@@ -286,6 +306,120 @@ export class Api<Service> extends Construct implements IServiceApi {
   private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {
     envs.forEach((env) => func.addEnvironment(env, this.ENV_MAPPINGS[env]()));
   }
+
+  private toOpenAPI(routes: ApiFunction[]): openapi.OpenAPIObject {
+    const self = this;
+    return {
+      openapi: "3.0.1",
+      info: {
+        title: this.build.serviceName,
+        // TODO: use the package.json?
+        version: "1",
+      },
+      paths: {
+        "/$default": {
+          isDefaultRoute: true,
+          [XAmazonApiGatewayIntegration]: {
+            connectionType: "INTERNET",
+            httpMethod: HttpMethod.POST, // TODO: why POST? Exported API has this but it's not clear
+            payloadFormatVersion: "2.0",
+            type: "aws_proxy",
+            uri: this.handler.functionArn,
+          } satisfies XAmazonApiGatewayIntegration,
+        },
+        ...routes.reduce<openapi.PathsObject>((paths, func) => {
+          const routes = routeToOpenApi(func);
+          for (const [path, route] of Object.entries(routes)) {
+            if (path in paths) {
+              // spread collisions into one
+              // assumes no duplicate METHODs
+              paths[path] = {
+                ...paths[path],
+                [path]: route,
+              };
+            } else {
+              paths[path] = route;
+            }
+          }
+          return paths;
+        }, {}),
+      },
+    };
+
+    function routeToOpenApi(func: ApiFunction): openapi.PathsObject {
+      const command = func.command;
+      const funcId = path.dirname(func.file);
+      const handler = new Function(self, funcId, {
+        functionName: command.sourceLocation?.exportName
+          ? // use the exportName as the function name - encourage users to choose unique names
+            `${self.props.serviceName}-api-${command.sourceLocation.exportName}`
+          : undefined,
+        code: Code.fromAsset(self.props.build.resolveFolder(func.file)),
+        ...baseFnProps,
+        memorySize: func.memorySize,
+        timeout: func.timeout
+          ? (Duration.seconds(computeDurationSeconds(func.timeout)) as Duration)
+          : undefined,
+        role: self.handler.role,
+        handler: "index.default",
+        // ...(self.props.handlers?.[
+        //   command.sourceLocation?.exportName as ApiNames<Service>
+        // ] ?? {}),
+        environment: {
+          NODE_OPTIONS: "--enable-source-maps",
+          ...((
+            self.props.handlers?.[
+              command.sourceLocation?.exportName as ApiNames<Service>
+            ] ?? {}
+          ).environment ?? {}),
+        },
+      });
+
+      self.configureInvokeHttpServiceApi(handler);
+
+      return {
+        [`/_rpc/${command.name}`]: {
+          post: {
+            requestBody: {
+              content: {
+                "/application/json": {
+                  schema: command.input,
+                },
+              },
+            },
+            responses: {
+              default: {
+                description: `Default response for ${command.method} ${command.path}`,
+              } satisfies openapi.ResponseObject,
+            },
+          },
+        } satisfies openapi.PathItemObject,
+        ...(command.path
+          ? {
+              [command.path]: {
+                [command.method?.toLocaleLowerCase() ?? "get"]: {
+                  parameters: Object.entries(command.params ?? {}).flatMap(
+                    ([name, spec]) =>
+                      spec === "body" ||
+                      (typeof spec === "object" && spec.in === "body")
+                        ? []
+                        : [
+                            {
+                              in:
+                                typeof spec === "string"
+                                  ? spec
+                                  : (spec?.in as "query" | "header") ?? "query",
+                              name,
+                            } satisfies openapi.ParameterObject,
+                          ]
+                  ),
+                },
+              } satisfies openapi.PathItemObject,
+            }
+          : {}),
+      };
+    }
+  }
 }
 
 interface RouteMapping
@@ -294,4 +428,14 @@ interface RouteMapping
   authorized?: boolean;
   grants?: (grantee: Function) => void;
   role?: aws_iam.IRole;
+}
+
+const XAmazonApiGatewayIntegration = "x-amazon-apigateway-integration";
+
+interface XAmazonApiGatewayIntegration {
+  payloadFormatVersion: "2.0";
+  type: "aws_proxy";
+  httpMethod: HttpMethod;
+  uri: string;
+  connectionType: "INTERNET";
 }

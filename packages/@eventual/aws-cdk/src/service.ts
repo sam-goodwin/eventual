@@ -263,6 +263,7 @@ export class Service<S = any>
     this.serviceName = props.name ?? Names.uniqueResourceName(this, {});
 
     this.build = buildServiceSync({
+      serviceName: this.serviceName,
       entry: props.entry,
       outDir: path.join(".eventual", this.node.addr),
     });

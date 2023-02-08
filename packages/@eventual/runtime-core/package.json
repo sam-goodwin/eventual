@@ -17,8 +17,9 @@
   },
   "dependencies": {
     "@eventual/core": "workspace:^",
+    "itty-router": "^2.6.6",
     "ulidx": "^0.3.0",
-    "superjson": "^1"
+    "zod": "^3"
   },
   "devDependencies": {
     "@jest/globals": "^29.3.1",
