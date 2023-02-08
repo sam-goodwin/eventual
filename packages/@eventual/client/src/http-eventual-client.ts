@@ -33,7 +33,7 @@ import { HttpError } from "./request-handler/request-handler.js";
  * Makes unauthenticated and unsigned requests using fetch to the http endpoint.
  *
  * To authorize and/or sign requests, use the beforeRequest hook or
- * an existing platform specific client. (ex: {@link AwsHttpEventualClient} in @eventual/aws-client)
+ * an existing platform specific client. (ex: {@link AwsHttpServiceClient} in @eventual/aws-client)
  */
 export class HttpEventualClient
   extends HttpServiceClient
