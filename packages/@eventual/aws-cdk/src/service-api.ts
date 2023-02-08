@@ -8,6 +8,7 @@ import { Arn, aws_iam, Duration, Stack } from "aws-cdk-lib";
 import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Code, Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
+import openapi from "openapi3-ts";
 import path from "path";
 import type { Activities } from "./activities";
 import type { BuildOutput } from "./build";
@@ -19,8 +20,6 @@ import { IService } from "./service";
 import { ServiceFunction } from "./service-function";
 import { addEnvironment, baseFnProps, KeysOfType, PickType } from "./utils";
 import type { Workflows } from "./workflows";
-
-import openapi from "openapi3-ts";
 
 export type ApiNames<Service = any> = KeysOfType<Service, { kind: "Command" }>;
 

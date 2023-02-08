@@ -515,7 +515,6 @@ function isFailed(result) {
 }
 var isResolvedOrFailed = or({
   exportName: "isResolvedOrFailed",
-  fileName: "/Users/samgoodwin/workspaces/eventual/packages/@eventual/core/lib/esm/result.js"
 }, isResolved, isFailed);
 
 // ../core/lib/esm/service-type.js
@@ -782,7 +781,6 @@ function isTimerCompleted(event) {
 }
 var isWorkflowCompletedEvent = or({
   exportName: "isWorkflowCompletedEvent",
-  fileName: "/Users/samgoodwin/workspaces/eventual/packages/@eventual/core/lib/esm/workflow-events.js"
 }, isWorkflowFailed, isWorkflowSucceeded);
 function isSignalSent(event) {
   return event.type === WorkflowEventType.SignalSent;
@@ -796,20 +794,17 @@ function isWorkflowTimedOut(event) {
 var isScheduledEvent = or(isActivityScheduled, isChildWorkflowScheduled, isEventsPublished, isSignalSent, isTimerScheduled);
 var isSucceededEvent = or({
   exportName: "isSucceededEvent",
-  fileName: "/Users/samgoodwin/workspaces/eventual/packages/@eventual/core/lib/esm/workflow-events.js"
 }, isActivitySucceeded, isChildWorkflowSucceeded, isTimerCompleted);
 var isFailedEvent = or(isActivityFailed, isActivityHeartbeatTimedOut, isChildWorkflowFailed, isWorkflowTimedOut);
 
 // test-files/api-handler.ts
 var myHandler = api.get({
   exportName: "myHandler",
-  fileName: "/test-files/api-handler.ts"
 }, "/", async () => {
   return new Response();
 });
 var myHandler2 = api.get({
   exportName: "myHandler2",
-  fileName: "/test-files/api-handler.ts"
 }, "/", async () => {
   return new Response();
 });

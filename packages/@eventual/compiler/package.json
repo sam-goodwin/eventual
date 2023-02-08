@@ -31,7 +31,6 @@
     "esbuild": ">=0.16.x <1.0.0"
   },
   "dependencies": {
-    "zod": "^3",
     "@anatine/zod-openapi": "^1.12.0",
     "@eventual/core": "workspace:^",
     "@swc/core": "^1.2.245",
