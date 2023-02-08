@@ -1,21 +1,12 @@
-import { Sha256 } from "@aws-crypto/sha256-js";
-import { HttpRequest as AwsHttpRequest } from "@aws-sdk/protocol-http";
-import { parseQueryString } from "@aws-sdk/querystring-parser";
-import { SignatureV4, SignatureV4Init } from "@aws-sdk/signature-v4";
-import { defaultProvider } from "@aws-sdk/credential-provider-node";
+import { SignatureV4Init } from "@aws-sdk/signature-v4";
 import {
   BeforeRequest,
   HttpEventualClient,
   HttpServiceClientProps,
 } from "@eventual/client";
-import {
-  NODE_REGION_CONFIG_FILE_OPTIONS,
-  NODE_REGION_CONFIG_OPTIONS,
-} from "@aws-sdk/config-resolver";
-import { loadConfig } from "@aws-sdk/node-config-provider";
-import { HttpMethod, HttpRequest } from "@eventual/core";
+import { createAwsHttpRequestSigner } from "./aws-http-request-signer.js";
 
-export interface AwsHttpServiceClientProps extends HttpServiceClientProps {
+export interface AWSHttpEventualClientProps extends HttpServiceClientProps {
   credentials?: SignatureV4Init["credentials"];
   region?: string;
   /**
@@ -32,56 +23,8 @@ export interface AwsHttpServiceClientProps extends HttpServiceClientProps {
  *
  * Makes authorized and signed requests to API Gateway using the credentials provided on construction.
  */
-export class AwsHttpServiceClient extends HttpEventualClient {
-  constructor(props: AwsHttpServiceClientProps) {
-    const signRequest: BeforeRequest = async (request) => {
-      const updatedRequest = props.beforeRequestSigning
-        ? await props.beforeRequestSigning(request)
-        : request;
-
-      const url = new URL(updatedRequest.url);
-
-      const _headers = { ...updatedRequest.headers, host: url.hostname };
-
-      const _request = new AwsHttpRequest({
-        hostname: url.hostname,
-        path: url.pathname,
-        body: updatedRequest.body ? updatedRequest.body : undefined,
-        method: updatedRequest.method.toUpperCase(),
-        headers: _headers,
-        protocol: url.protocol,
-        query: parseQueryString(url.search),
-      });
-
-      // create a signer object with the credentials, the service name and the region
-      const signer = new SignatureV4({
-        credentials: props.credentials ?? defaultProvider(),
-        service: "execute-api",
-        region: props.region ?? (await resolveRegion()),
-        sha256: Sha256,
-      });
-
-      // sign the request and extract the signed headers, body and method
-      const { headers, body, method } = await signer.sign(_request);
-
-      const authorizedRequest = new HttpRequest(url.href, {
-        method: method as HttpMethod,
-        body,
-        headers,
-      });
-
-      return props.beforeRequest
-        ? await props.beforeRequest(authorizedRequest)
-        : authorizedRequest;
-    };
-
-    super({ ...props, beforeRequest: signRequest });
+export class AWSHttpEventualClient extends HttpEventualClient {
+  constructor(props: AWSHttpEventualClientProps) {
+    super({ ...props, beforeRequest: createAwsHttpRequestSigner(props) });
   }
-}
-
-export async function resolveRegion() {
-  return await loadConfig(
-    NODE_REGION_CONFIG_OPTIONS,
-    NODE_REGION_CONFIG_FILE_OPTIONS
-  )();
 }

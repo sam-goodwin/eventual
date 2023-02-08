@@ -1,5 +1,5 @@
 import { AwsCredentialIdentity } from "@aws-sdk/types";
-import { AwsHttpServiceClient } from "@eventual/aws-client";
+import { AWSHttpEventualClient } from "@eventual/aws-client";
 import { HttpEventualClient } from "@eventual/client";
 import ora, { Ora } from "ora";
 import util from "util";
@@ -57,7 +57,7 @@ export function serviceAction<T>(
         serviceName,
         region
       );
-      const serviceClient = new AwsHttpServiceClient({
+      const serviceClient = new AWSHttpEventualClient({
         credentials,
         serviceUrl: serviceData.apiEndpoint,
         region,

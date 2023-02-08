@@ -25,13 +25,18 @@ export const ServiceClient: {
 } = class ServiceClient extends HttpServiceClient {
   constructor(props: HttpServiceClientProps) {
     super(props);
-    return new Proxy(this, {
-      get: (_, commandName: string) => (input: any) =>
-        this.request({
-          path: `/_rpc/${commandName}`,
-          method: "POST",
-          body: JSON.stringify(input),
-        }),
-    });
+
+    return mixinServiceClient.call(this);
   }
 } as any;
+
+export function mixinServiceClient(this: HttpServiceClient) {
+  return new Proxy(this, {
+    get: (_, commandName: string) => (input: any) =>
+      this.request({
+        path: `/_rpc/${commandName}`,
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
+  });
+}
