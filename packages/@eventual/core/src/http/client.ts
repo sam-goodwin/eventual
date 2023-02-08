@@ -9,6 +9,14 @@ export type HttpClient<Service> = {
     : never;
 };
 
+export interface HttpClientProps {}
+
+export const HttpClient: {
+  new <Service>(endpoint: string): HttpClient<Service>;
+} = class HttpClient {
+  constructor(readonly endpoint: string) {}
+} as any;
+
 type KeysOfType<T, U> = {
   [k in keyof T]: T[k] extends U ? k : never;
 }[keyof T];

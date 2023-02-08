@@ -28,7 +28,7 @@ import { AWSActivityStore } from "./stores/activity-store.js";
 import { AWSExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
 import { AWSExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { AWSExecutionStore } from "./stores/execution-store.js";
-import { AwsHttpServiceClient } from "@eventual/aws-client";
+import { AwsHttpEventualClient } from "@eventual/aws-client";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -246,7 +246,7 @@ export const createServiceClient = /* @__PURE__ */ memoize(
 
 export const createHttpServiceClient = memoize(
   ({ serviceUrl }: { serviceUrl?: string } = {}) =>
-    new AwsHttpServiceClient({ serviceUrl: serviceUrl ?? env.serviceUrl() })
+    new AwsHttpEventualClient({ serviceUrl: serviceUrl ?? env.serviceUrl() })
 );
 
 function memoize<T extends (...args: any[]) => any>(

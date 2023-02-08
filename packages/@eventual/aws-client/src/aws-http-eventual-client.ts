@@ -5,7 +5,7 @@ import { SignatureV4, SignatureV4Init } from "@aws-sdk/signature-v4";
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import {
   BeforeRequest,
-  HttpServiceClient,
+  HttpEventualClient,
   HttpServiceClientProps,
 } from "@eventual/client";
 import {
@@ -15,7 +15,7 @@ import {
 import { loadConfig } from "@aws-sdk/node-config-provider";
 import { HttpMethod, HttpRequest } from "@eventual/core";
 
-export interface AwsHttpServiceClientProps extends HttpServiceClientProps {
+export interface AwsHttpEventualClientProps extends HttpServiceClientProps {
   credentials?: SignatureV4Init["credentials"];
   region?: string;
   /**
@@ -32,8 +32,8 @@ export interface AwsHttpServiceClientProps extends HttpServiceClientProps {
  *
  * Makes authorized and signed requests to API Gateway using the credentials provided on construction.
  */
-export class AwsHttpServiceClient extends HttpServiceClient {
-  constructor(props: AwsHttpServiceClientProps) {
+export class AwsHttpEventualClient extends HttpEventualClient {
+  constructor(props: AwsHttpEventualClientProps) {
     const signRequest: BeforeRequest = async (request) => {
       const updatedRequest = props.beforeRequestSigning
         ? await props.beforeRequestSigning(request)

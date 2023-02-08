@@ -334,6 +334,7 @@ importers:
   examples/stock-bot/runtime:
     specifiers:
       '@eventual/cli': workspace:^
+      '@eventual/client': workspace:^
       '@eventual/compiler': workspace:^
       '@eventual/core': workspace:^
       '@types/aws-lambda': ^8.10.108
@@ -346,6 +347,7 @@ importers:
       zod: ^3
       zod-class: ^0.0.2
     dependencies:
+      '@eventual/client': link:../../../packages/@eventual/client
       '@eventual/core': link:../../../packages/@eventual/core
       zod: 3.20.2
       zod-class: 0.0.2_zod@3.20.2

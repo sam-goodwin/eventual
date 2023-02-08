@@ -6,6 +6,7 @@ import {
   ExecutionHandle,
   ExecutionHistoryResponse,
   HistoryStateEvent,
+  HttpRequestInit,
   ListExecutionEventsRequest,
   ListExecutionEventsResponse,
   ListExecutionsRequest,
@@ -21,29 +22,9 @@ import {
   StartExecutionResponse,
   Workflow,
   WorkflowInput,
-  HttpRequestInit,
-  HttpMethod,
-  HttpRequest,
 } from "@eventual/core";
-import { getRequestHandler } from "./request-handler/factory.js";
-import {
-  BeforeRequest,
-  HttpError,
-  RequestHandler,
-} from "./request-handler/request-handler.js";
-
-export interface HttpServiceClientProps {
-  /**
-   * Https URL provided by the eventual service on deployment.
-   */
-  serviceUrl: string;
-  /**
-   * Optional hook which allows the mutation of a request before being sent.
-   *
-   * Can be used to provide authorization, common headers, or signing requests.
-   */
-  beforeRequest?: BeforeRequest;
-}
+import { HttpServiceClient } from "./base-http-client.js";
+import { HttpError } from "./request-handler/request-handler.js";
 
 /**
  * Http implementation of the {@link EventualServiceClient} to hit the API deployed
@@ -52,28 +33,16 @@ export interface HttpServiceClientProps {
  * Makes unauthenticated and unsigned requests using fetch to the http endpoint.
  *
  * To authorize and/or sign requests, use the beforeRequest hook or
- * an existing platform specific client. (ex: {@link AwsHttpServiceClient} in @eventual/aws-client)
+ * an existing platform specific client. (ex: {@link AwsHttpEventualClient} in @eventual/aws-client)
  */
-export class HttpServiceClient implements EventualServiceClient {
-  private readonly baseUrl: URL;
-  private requestHandler: RequestHandler;
-
-  constructor(props: HttpServiceClientProps) {
-    this.baseUrl = new URL(props.serviceUrl);
-    this.requestHandler = getRequestHandler(props.beforeRequest);
-  }
-
-  /**
-   * Pass through any http request to the eventual endpoint.
-   *
-   * Does not inject the _eventual suffix into the url. ([serviceUrl]/[path]).
-   */
+export class HttpEventualClient
+  extends HttpServiceClient
+  implements EventualServiceClient
+{
   public async proxy(
     request: Omit<HttpRequestInit, "params"> & { path: string }
   ) {
-    return this.requestHandler.request(
-      new HttpRequest(`${this.baseUrl.href}/${request.path}`, request)
-    );
+    return super.proxy(request);
   }
 
   public async listWorkflows(): Promise<ListWorkflowsResponse> {
@@ -221,21 +190,6 @@ export class HttpServiceClient implements EventualServiceClient {
       path: `activities`,
       body: { ...request, type: ActivityUpdateType.Heartbeat },
     });
-  }
-
-  private async request<Body = any, Resp = any>(request: {
-    body?: Body;
-    method: HttpMethod;
-    path: string;
-  }): Promise<Resp> {
-    const url = `${this.baseUrl.href}_eventual/${request.path}`;
-    return this.requestHandler.request(
-      new HttpRequest(url, {
-        body: request.body ? JSON.stringify(request.body) : undefined,
-        headers: { "Content-Type": "application/json" },
-        method: request.method,
-      })
-    );
   }
 }
 

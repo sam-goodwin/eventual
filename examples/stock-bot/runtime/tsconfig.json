@@ -6,5 +6,8 @@
   },
   "include": ["src"],
   "exclude": ["lib", "node_modules"],
-  "references": [{ "path": "../../../packages/@eventual/core" }]
+  "references": [
+    { "path": "../../../packages/@eventual/core" },
+    { "path": "../../../packages/@eventual/client" }
+  ]
 }

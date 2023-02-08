@@ -1,6 +1,6 @@
-import { AwsHttpServiceClient } from "@eventual/aws-client";
+import { AwsHttpEventualClient } from "@eventual/aws-client";
 
-const workflowClient = new AwsHttpServiceClient({
+const workflowClient = new AwsHttpEventualClient({
   serviceUrl: process.env.EVENTUAL_SERVICE_URL ?? "",
 });
 

@@ -1,6 +1,6 @@
 import { AwsCredentialIdentity } from "@aws-sdk/types";
-import { AwsHttpServiceClient } from "@eventual/aws-client";
-import { HttpServiceClient } from "@eventual/client";
+import { AwsHttpEventualClient } from "@eventual/aws-client";
+import { HttpEventualClient } from "@eventual/client";
 import ora, { Ora } from "ora";
 import util from "util";
 import { Arguments, Argv } from "yargs";
@@ -15,7 +15,7 @@ import { styledConsole } from "./styled-console.js";
 
 export type ServiceAction<T> = (
   spinner: Ora,
-  serviceClient: HttpServiceClient,
+  serviceClient: HttpEventualClient,
   args: Arguments<T & { service: string }>,
   resolved: {
     credentials: AwsCredentialIdentity;
@@ -25,7 +25,7 @@ export type ServiceAction<T> = (
 ) => Promise<void>;
 
 export type ServiceJsonAction<T> = (
-  serviceClient: HttpServiceClient,
+  serviceClient: HttpEventualClient,
   args: Arguments<T & { service: string }>,
   resolved: {
     credentials: AwsCredentialIdentity;
@@ -57,7 +57,7 @@ export function serviceAction<T>(
         serviceName,
         region
       );
-      const serviceClient = new AwsHttpServiceClient({
+      const serviceClient = new AwsHttpEventualClient({
         credentials,
         serviceUrl: serviceData.apiEndpoint,
         region,

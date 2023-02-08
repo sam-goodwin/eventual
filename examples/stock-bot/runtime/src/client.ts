@@ -1,15 +1,21 @@
-import type { HttpClient } from "@eventual/core";
+import { ServiceClient } from "@eventual/client";
+import { HttpError } from "@eventual/core";
 
 import type * as myService from "./index.js";
 
-declare const client: HttpClient<typeof myService>;
+const client = new ServiceClient<typeof myService>({
+  serviceUrl: "https://my-api.com",
+});
 
 try {
-  client.addStock({
-    ticker: "",
-  });
   const result = await client.addStock({
-    ticker: "",
+    ticker: "TSLA",
   });
   result.stockId;
-} catch (err) {}
+} catch (err) {
+  if (err instanceof HttpError) {
+    if (err.code === 404) {
+      err.message;
+    }
+  }
+}

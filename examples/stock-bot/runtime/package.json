@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@eventual/core": "workspace:^",
+    "@eventual/client": "workspace:^",
     "zod": "^3",
     "zod-class": "^0.0.2"
   },
