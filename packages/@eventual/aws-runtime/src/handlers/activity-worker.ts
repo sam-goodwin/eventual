@@ -1,5 +1,5 @@
 // the user's entry point will register activities as a side effect.
-import "@eventual/entry/injected";
+import "@eventual/injected/entry";
 
 import { ActivityWorkerRequest } from "@eventual/core";
 import {
@@ -17,6 +17,7 @@ import {
   createServiceClient,
   createTimerClient,
 } from "../create.js";
+import { serviceName } from "../env.js";
 
 export default (request: ActivityWorkerRequest) =>
   createActivityWorker({
@@ -35,4 +36,5 @@ export default (request: ActivityWorkerRequest) =>
     }),
     logAgent: createLogAgent(),
     activityStore: createActivityStore(),
+    serviceName: serviceName(),
   })(request);

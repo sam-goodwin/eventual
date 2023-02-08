@@ -19,7 +19,7 @@ import {
 } from "@eventual/core";
 import { ulid } from "ulidx";
 import { inspect } from "util";
-import { WorkflowProvider } from "../providers/workflow-provider.js";
+import { WorkflowSpecProvider } from "../providers/workflow-provider.js";
 import { computeScheduleDate } from "../schedule.js";
 import { ExecutionStore } from "../stores/execution-store.js";
 import { ExecutionQueueClient } from "./execution-queue-client.js";
@@ -30,7 +30,7 @@ export class WorkflowClient {
     private executionStore: ExecutionStore,
     private logsClient: LogsClient,
     private executionQueueClient: ExecutionQueueClient,
-    private workflowProvider: WorkflowProvider,
+    private workflowProvider: WorkflowSpecProvider,
     protected baseTime: () => Date = () => new Date()
   ) {}
 
@@ -51,7 +51,7 @@ export class WorkflowClient {
     | StartChildExecutionRequest<W>): Promise<StartExecutionResponse> {
     if (
       typeof workflow === "string" &&
-      !this.workflowProvider.lookupWorkflow(workflow)
+      !this.workflowProvider.workflowExists(workflow)
     ) {
       throw new Error(`Workflow ${workflow} does not exist in the service.`);
     }

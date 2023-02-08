@@ -44,8 +44,8 @@ export class ChaosExtension extends Construct {
                 platform: "node",
                 // cannot currently import modules from layers.
                 format: "cjs",
-                // Target for node 16
-                target: "es2021",
+                // Target for node 18
+                target: "es2022",
               });
               fs.mkdirSync(`${outLoc}/extensions`);
               fs.cpSync(

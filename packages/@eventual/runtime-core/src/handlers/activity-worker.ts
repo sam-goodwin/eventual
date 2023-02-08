@@ -39,6 +39,7 @@ export interface CreateActivityWorkerProps {
   logAgent: LogAgent;
   executionQueueClient: ExecutionQueueClient;
   activityStore: ActivityStore;
+  serviceName: string;
 }
 
 export interface ActivityWorker {
@@ -65,6 +66,7 @@ export function createActivityWorker({
   metricsClient,
   logAgent,
   serviceClient,
+  serviceName,
   timerClient,
 }: CreateActivityWorkerProps): ActivityWorker {
   // make the service client available to all activity code
@@ -86,9 +88,10 @@ export function createActivityWorker({
           metrics.resetDimensions(false);
           metrics.setNamespace(MetricsCommon.EventualNamespace);
           metrics.putDimensions({
-            ActivityName: request.command.name,
-            WorkflowName: request.workflowName,
+            [ActivityMetrics.ActivityNameDimension]: request.command.name,
+            [MetricsCommon.ServiceNameDimension]: serviceName,
           });
+          metrics.setProperty(MetricsCommon.WorkflowName, request.workflowName);
           // the time from the workflow emitting the activity scheduled command
           // to the request being seen.
           const activityLogContext: ActivityLogContext = {

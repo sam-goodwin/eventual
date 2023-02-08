@@ -17,17 +17,16 @@ import { grant } from "./grant";
 import type { Scheduler } from "./scheduler";
 import { IService } from "./service";
 import { ServiceFunction } from "./service-function";
-import { baseFnProps, KeysOfType, PickType } from "./utils";
+import { addEnvironment, baseFnProps, KeysOfType, PickType } from "./utils";
 import type { Workflows } from "./workflows";
 
 import openapi from "openapi3-ts";
 
-export type ApiNames<Service = any> = KeysOfType<Service, { kind: "Api" }>;
+export type ApiNames<Service = any> = KeysOfType<Service, { kind: "Command" }>;
 
 export interface ApiProps<Service = any> {
   serviceName: string;
   environment?: Record<string, string>;
-  entry: string;
   workflows: Workflows;
   activities: Activities;
   scheduler: Scheduler;
@@ -64,7 +63,7 @@ export class Api<Service> extends Construct implements IServiceApi {
    * Any API route that could not be individually bundled or tree-shaken is handled by this
    * default Function.
    */
-  public readonly handler: Function;
+  public readonly defaultHandler: Function;
   /**
    * Individual Lambda Functions per API route. Any API function that was exported from a
    * module is individually tree-shaken and loaded into its own Lambda Function with a
@@ -86,37 +85,48 @@ export class Api<Service> extends Construct implements IServiceApi {
    */
   readonly build: BuildOutput;
 
-  public get handlers(): Function[] {
-    return [this.handler, ...(Object.values(this.routes) as Function[])];
-  }
+  /**
+   * Individual API Handler Lambda Functions handling only a single API route. These handlers
+   * are individually bundled and tree-shaken for optimal performance and may contain their own custom
+   * memory and timeout configuration.
+   */
+  public readonly handlers: Function[];
 
   constructor(scope: Construct, id: string, private props: ApiProps<Service>) {
     super(scope, id);
     this.build = props.build;
-    this.handler = new ServiceFunction(this, "Handler", {
+
+    this.defaultHandler = new ServiceFunction(this, "Handler", {
       functionName: `${props.serviceName}-api-handler`,
       serviceType: ServiceType.ApiHandler,
       memorySize: 512,
-      environment: props.environment,
       code: props.build.getCode(props.build.api.default.file),
     });
 
     this.gateway = new HttpApi(this, "Gateway", {
       apiName: `eventual-api-${props.serviceName}`,
-      defaultIntegration: new HttpLambdaIntegration("default", this.handler),
+      defaultIntegration: new HttpLambdaIntegration(
+        "default",
+        this.defaultHandler
+      ),
     });
 
     this.toOpenAPI(Object.values(this.build.api.routes));
 
     // The handler is given an instance of the service client.
     // Allow it to access any of the methods on the service client by default.
-    this.configureInvokeHttpServiceApi(this.handler);
+    this.configureInvokeHttpServiceApi(this.defaultHandler);
 
     this.routes = this.createUserDefinedRoutes();
 
+    this.handlers = [
+      this.defaultHandler,
+      ...Object.values<Function>(this.routes),
+    ];
+
     this.internalRoutes = this.createInternalApiRoutes();
 
-    this.configureApiHandler();
+    this.configureApiHandler(this.defaultHandler);
   }
 
   public configureInvokeHttpServiceApi(...functions: Function[]) {
@@ -142,8 +152,10 @@ export class Api<Service> extends Construct implements IServiceApi {
               path,
               {
                 ...route,
-                grants: (fn) => this.configureInvokeHttpServiceApi(fn),
-                role: this.handler.role,
+                // configure all handlers permissions and envs
+                // note: all of the handlers share the same role, but each need to be given the env variables.
+                grants: (f) => this.configureApiHandler(f),
+                role: this.defaultHandler.role,
                 handler: "index.default",
                 ...(this.props.handlers?.[
                   route.exportName as ApiNames<Service>
@@ -162,7 +174,7 @@ export class Api<Service> extends Construct implements IServiceApi {
         })
       )
     ) as {
-      [route in keyof PickType<Service, { kind: "Api" }>]: Function;
+      [route in keyof PickType<Service, { kind: "Command" }>]: Function;
     };
   }
 
@@ -294,9 +306,15 @@ export class Api<Service> extends Construct implements IServiceApi {
     );
   }
 
-  private configureApiHandler(handler?: Function) {
-    this.props.workflows.configureFullControl(handler ?? this.handler);
-    this.props.events.configurePublish(handler ?? this.handler);
+  private configureApiHandler(handler: Function) {
+    // The handlers are given an instance of the service client.
+    // Allow them to access any of the methods on the service client by default.
+    this.props.service.configureForServiceClient(handler);
+    this.configureInvokeHttpServiceApi(handler);
+    // add any user provided envs
+    if (this.props.environment) {
+      addEnvironment(handler, this.props.environment);
+    }
   }
 
   private readonly ENV_MAPPINGS = {
@@ -324,7 +342,7 @@ export class Api<Service> extends Construct implements IServiceApi {
             httpMethod: HttpMethod.POST, // TODO: why POST? Exported API has this but it's not clear
             payloadFormatVersion: "2.0",
             type: "aws_proxy",
-            uri: this.handler.functionArn,
+            uri: this.defaultHandler.functionArn,
           } satisfies XAmazonApiGatewayIntegration,
         },
         ...routes.reduce<openapi.PathsObject>((paths, func) => {
@@ -360,7 +378,9 @@ export class Api<Service> extends Construct implements IServiceApi {
         timeout: func.timeout
           ? (Duration.seconds(computeDurationSeconds(func.timeout)) as Duration)
           : undefined,
-        role: self.handler.role,
+        // re-use the same Role for all Commands
+        // TODO: re-evaluate, is it too broad? probably
+        role: self.defaultHandler.role,
         handler: "index.default",
         // ...(self.props.handlers?.[
         //   command.sourceLocation?.exportName as ApiNames<Service>

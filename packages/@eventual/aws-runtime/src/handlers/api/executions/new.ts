@@ -1,5 +1,4 @@
-// startWorkflow uses the global workflows() to validate the workflow name.
-import "@eventual/entry/injected";
+import serviceSpec from "@eventual/injected/spec";
 
 import {
   DurationUnit,
@@ -8,6 +7,7 @@ import {
   Schedule,
   StartExecutionResponse,
 } from "@eventual/core";
+import { ServiceSpecWorkflowProvider } from "@eventual/runtime-core";
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyHandlerV2,
@@ -15,7 +15,10 @@ import type {
 import { createWorkflowClient } from "../../../create.js";
 import { withErrorMiddleware } from "../middleware.js";
 
-const workflowClient = createWorkflowClient();
+const workflowProvider = new ServiceSpecWorkflowProvider(serviceSpec);
+const workflowClient = createWorkflowClient({
+  workflowProvider,
+});
 
 /**
  * Create a new execution (start a workflow)

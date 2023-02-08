@@ -7,9 +7,13 @@ import type { DurationSchedule } from "./schedule.js";
 /**
  * Specification for an Eventual application
  */
-export interface AppSpec {
+export interface ServiceSpec {
   api: ApiSpec;
   events: EventSpec;
+  /**
+   * List of workflows
+   */
+  workflows: WorkflowSpec[];
 }
 
 export interface EventSpec {
@@ -75,4 +79,8 @@ export interface SourceLocation {
 
 export interface Schemas {
   [schemaName: string]: openapi.SchemaObject;
+}
+
+export interface WorkflowSpec {
+  name: string;
 }

@@ -113,12 +113,12 @@ export class Events<Service> extends Construct implements IGrantable {
     this.configurePublish(this.defaultHandler);
 
     // create a Construct to safely nest bundled functions in their own namespace
-    const handlers = new Construct(this, "BundledHandlers");
+    const bundledHandlers = new Construct(this, "BundledHandlers");
 
     this.handlers = Object.fromEntries(
       props.build.events.handlers.map((handler) => {
         const handlerFunction = new ServiceFunction(
-          handlers,
+          bundledHandlers,
           handler.exportName,
           {
             code: props.build.getCode(props.build.events.default.file),

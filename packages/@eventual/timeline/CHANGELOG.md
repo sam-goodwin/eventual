@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.15.3 (2023-02-03)
+
+**Note:** Version bump only for package @eventual/timeline
+
+## 0.15.2 (2023-02-03)
+
+### Bug Fixes
+
+- make zod and openapi a dependency ([#270](https://github.com/functionless/eventual/issues/270)) ([dcbf312](https://github.com/functionless/eventual/commit/dcbf3121873552d6b5398ebda69edb935c8e66f7))
+
+## 0.15.1 (2023-02-02)
+
+**Note:** Version bump only for package @eventual/timeline
+
 # 0.15.0 (2023-02-02)
 
 ### Features

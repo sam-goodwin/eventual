@@ -1,8 +1,10 @@
-import "@eventual/entry/injected";
+import serviceSpec from "@eventual/injected/spec";
 
-import { workflows } from "@eventual/core";
+import { ServiceSpecWorkflowProvider } from "@eventual/runtime-core";
 import { withErrorMiddleware } from "./middleware.js";
 
+const workflowProvider = new ServiceSpecWorkflowProvider(serviceSpec);
+
 export const handler = withErrorMiddleware(async function () {
-  return Array.from(workflows().keys());
+  return Array.from(workflowProvider.getWorkflowNames());
 });

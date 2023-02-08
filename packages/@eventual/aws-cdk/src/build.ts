@@ -1,10 +1,10 @@
 import { build, BuildSource, infer } from "@eventual/compiler";
 import { ServiceType } from "@eventual/core";
+import { Code } from "aws-cdk-lib/aws-lambda";
+import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import { ApiFunction, BuildManifest } from "./build-manifest";
-import { execSync } from "child_process";
-import { Code } from "aws-cdk-lib/aws-lambda";
 
 export interface BuildOutput extends BuildManifest {}
 
@@ -52,7 +52,14 @@ export interface BuildAWSRuntimeProps {
 
 export async function buildService(request: BuildAWSRuntimeProps) {
   const outDir = request.outDir;
-  const appSpec = await infer(request.entry);
+  const serviceSpec = await infer(request.entry);
+
+  const specPath = path.join(outDir, "spec.json");
+  await fs.promises.mkdir(path.dirname(specPath), { recursive: true });
+  // just data extracted from the service, used by the handlers
+  // separate from the manifest to avoid circular dependency with the bundles
+  // and reduce size of the data injected into the bundles
+  await fs.promises.writeFile(specPath, JSON.stringify(serviceSpec));
 
   const [
     individualApis,
@@ -73,7 +80,10 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       publishEvents,
       updateActivity,
     ],
-  ] = await Promise.all([bundleApis(), bundleFunctions()] as const);
+  ] = await Promise.all([
+    bundleApis(specPath),
+    bundleFunctions(specPath),
+  ] as const);
 
   const manifest: BuildManifest = {
     orchestrator: {
@@ -88,12 +98,12 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       },
     },
     events: {
-      schemas: appSpec.events.schemas,
+      schemas: serviceSpec.events.schemas,
       default: {
         file: eventHandler!,
-        subscriptions: appSpec.events.subscriptions,
+        subscriptions: serviceSpec.events.subscriptions,
       },
-      handlers: appSpec.events.handlers.map((handler) => ({
+      handlers: serviceSpec.events.handlers.map((handler) => ({
         file: handler.sourceLocation.fileName,
         subscriptions: handler.subscriptions,
         memorySize: handler.runtimeProps?.memorySize,
@@ -188,9 +198,9 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     JSON.stringify(manifest, null, 2)
   );
 
-  async function bundleApis() {
+  async function bundleApis(specPath: string) {
     const routes = await Promise.all(
-      appSpec.api.commands.map(async (command) => {
+      serviceSpec.api.commands.map(async (command) => {
         if (command.sourceLocation?.fileName) {
           return [
             command.path,
@@ -201,6 +211,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
                 exportName: command.sourceLocation.exportName,
                 serviceType: ServiceType.ApiHandler,
                 injectedEntry: command.sourceLocation.fileName,
+                injectedServiceSpec: specPath,
               }),
               exportName: command.sourceLocation.exportName,
               command,
@@ -220,7 +231,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     );
   }
 
-  function bundleFunctions() {
+  function bundleFunctions(specPath: string) {
     return Promise.all(
       (
         [
@@ -229,83 +240,77 @@ export async function buildService(request: BuildAWSRuntimeProps) {
             entry: runtimeHandlersEntrypoint("orchestrator"),
             eventualTransform: true,
             serviceType: ServiceType.OrchestratorWorker,
-            injectedEntry: request.entry,
           },
           {
             name: ServiceType.ActivityWorker,
             entry: runtimeHandlersEntrypoint("activity-worker"),
             serviceType: ServiceType.ActivityWorker,
-            injectedEntry: request.entry,
           },
           {
             name: ServiceType.ApiHandler,
             entry: runtimeHandlersEntrypoint("api-handler"),
             serviceType: ServiceType.ApiHandler,
-            injectedEntry: request.entry,
           },
           {
             name: ServiceType.EventHandler,
             entry: runtimeHandlersEntrypoint("event-handler"),
             serviceType: ServiceType.EventHandler,
-            injectedEntry: request.entry,
           },
           {
             name: "SchedulerForwarder",
             entry: runtimeHandlersEntrypoint("schedule-forwarder"),
-            injectedEntry: request.entry,
           },
           {
             name: "SchedulerHandler",
             entry: runtimeHandlersEntrypoint("timer-handler"),
-            injectedEntry: request.entry,
           },
           {
             name: "list-workflows",
             entry: runtimeHandlersEntrypoint("api/list-workflows"),
-            injectedEntry: request.entry,
           },
           {
             name: "start-execution",
             entry: runtimeHandlersEntrypoint("api/executions/new"),
-            injectedEntry: request.entry,
           },
           {
             name: "list-executions",
             entry: runtimeHandlersEntrypoint("api/executions/list"),
-            injectedEntry: request.entry,
           },
           {
             name: "get-execution",
             entry: runtimeHandlersEntrypoint("api/executions/get"),
-            injectedEntry: request.entry,
           },
           {
             name: "executions-events",
             entry: runtimeHandlersEntrypoint("api/executions/history"),
-            injectedEntry: request.entry,
           },
           {
             name: "send-signal",
             entry: runtimeHandlersEntrypoint("api/executions/signals/send"),
-            injectedEntry: request.entry,
           },
           {
             name: "executions-history",
             entry: runtimeHandlersEntrypoint("api/executions/workflow-history"),
-            injectedEntry: request.entry,
           },
           {
             name: "publish-events",
             entry: runtimeHandlersEntrypoint("api/publish-events"),
-            injectedEntry: request.entry,
           },
           {
             name: "update-activity",
             entry: runtimeHandlersEntrypoint("api/update-activity"),
-            injectedEntry: request.entry,
           },
-        ] satisfies Omit<BuildSource, "outDir">[]
-      ).map(buildFunction)
+        ] satisfies Omit<
+          BuildSource,
+          "outDir" | "injectedEntry" | "injectedServiceSpec"
+        >[]
+      )
+        .map((s) => ({
+          ...s,
+          injectedEntry: request.entry,
+          injectedServiceSpec: specPath,
+        }))
+        .map(buildFunction)
     );
   }
 

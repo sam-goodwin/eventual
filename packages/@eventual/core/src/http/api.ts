@@ -1,5 +1,5 @@
 import itty from "itty-router";
-import type { SourceLocation } from "../app-spec.js";
+import type { SourceLocation } from "../service-spec.js";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import { commands } from "../global.js";
 import type { HttpMethod } from "../http-method.js";

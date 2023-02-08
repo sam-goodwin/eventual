@@ -1,5 +1,5 @@
 import type z from "zod";
-import { SourceLocation } from "../app-spec.js";
+import { SourceLocation } from "../service-spec.js";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import { commands } from "../global.js";
 import type { HttpMethod } from "../http-method.js";

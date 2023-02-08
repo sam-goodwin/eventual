@@ -71,6 +71,7 @@ export interface OrchestratorDependencies {
   executionHistoryStateStore: ExecutionHistoryStateStore;
   commandExecutor: CommandExecutor;
   workflowProvider: WorkflowProvider;
+  serviceName: string;
 }
 
 export interface OrchestratorResult {
@@ -99,6 +100,7 @@ export function createOrchestrator({
   executionHistoryStore,
   logAgent,
   metricsClient,
+  serviceName,
   timerClient,
   workflowClient,
   workflowProvider,
@@ -276,6 +278,7 @@ export function createOrchestrator({
          * If this is the first run check to see if the workflow has timeout to start.
          */
         if (processedEvents.isFirstRun) {
+          metrics.setProperty(OrchestratorMetrics.ExecutionStarted, 1);
           if (processedEvents.startEvent?.timeoutTime) {
             const timeoutTime = processedEvents.startEvent?.timeoutTime;
             metrics.setProperty(OrchestratorMetrics.TimeoutStarted, 1);
@@ -593,8 +596,9 @@ export function createOrchestrator({
       metrics.resetDimensions(false);
       metrics.setNamespace(MetricsCommon.EventualNamespace);
       metrics.setDimensions({
-        [MetricsCommon.WorkflowNameDimension]: workflowName,
+        [MetricsCommon.ServiceNameDimension]: serviceName,
       });
+      metrics.setProperty(MetricsCommon.WorkflowName, workflowName);
       // number of events that came from the workflow task
       metrics.setProperty(OrchestratorMetrics.TaskEvents, events.length);
       // number of workflow tasks that are being processed in the batch (max: 10)
@@ -611,8 +615,9 @@ export function createOrchestrator({
     function logExecutionCompleteMetrics(
       execution: SucceededExecution | FailedExecution
     ) {
+      metrics.setProperty(OrchestratorMetrics.ExecutionCompleted, 1);
       metrics.putMetric(
-        OrchestratorMetrics.ExecutionComplete,
+        OrchestratorMetrics.ExecutionSucceeded,
         execution.status === ExecutionStatus.SUCCEEDED ? 1 : 0,
         Unit.Count
       );

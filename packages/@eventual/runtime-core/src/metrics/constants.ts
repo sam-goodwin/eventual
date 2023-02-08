@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 export namespace MetricsCommon {
   export const EventualNamespace = "Eventual";
-  export const WorkflowNameDimension = "WorkflowName";
+  export const ServiceNameDimension = "ServiceName";
+  export const WorkflowName = "WorkflowName";
 }
 
 export namespace OrchestratorMetrics {
@@ -84,9 +85,17 @@ export namespace OrchestratorMetrics {
    */
   export const NewExecutionEvents = "NewExecutionEvents";
   /**
+   * Emitted by orchestrator when the execution starts.
+   */
+  export const ExecutionStarted = "ExecutionStarted";
+  /**
+   * Emitted by orchestrator when the execution completes.
+   */
+  export const ExecutionCompleted = "ExecutionCompleted";
+  /**
    * Whether the execution completed without error.
    */
-  export const ExecutionComplete = "ExecutionComplete";
+  export const ExecutionSucceeded = "ExecutionSucceeded";
   /**
    * Whether the execution completed with an error.
    */
@@ -118,6 +127,7 @@ export namespace OrchestratorMetrics {
 }
 
 export namespace ActivityMetrics {
+  export const ActivityNameDimension = "ActivityName";
   /**
    * The age of the request, or the time from when it was sent to when it was started processing.
    */

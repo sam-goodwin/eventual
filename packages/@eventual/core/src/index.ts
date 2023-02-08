@@ -1,5 +1,4 @@
 export * from "./activity.js";
-export * from "./app-spec.js";
 export * from "./await-all-settled.js";
 export * from "./await-all.js";
 export * from "./await-any.js";
@@ -25,6 +24,7 @@ export * from "./result.js";
 export * from "./schedule.js";
 export * from "./secret.js";
 export * from "./service-client.js";
+export * from "./service-spec.js";
 export * from "./service-type.js";
 export * from "./signals.js";
 export * from "./tasks.js";

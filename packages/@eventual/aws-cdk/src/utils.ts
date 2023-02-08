@@ -10,9 +10,15 @@ export const NODE_18_X = new Runtime("nodejs18.x", RuntimeFamily.NODEJS, {
   supportsInlineCode: true,
 });
 
-export const baseFnProps: Pick<FunctionProps, "runtime" | "architecture"> = {
-  runtime: Runtime.NODEJS_16_X,
+export const baseFnProps: Pick<
+  FunctionProps,
+  "runtime" | "architecture" | "environment"
+> = {
+  runtime: NODE_18_X,
   architecture: Architecture.ARM_64,
+  environment: {
+    NODE_OPTIONS: "--enable-source-maps",
+  },
 };
 
 export function addEnvironment(
