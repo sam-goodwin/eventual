@@ -206,28 +206,14 @@ export function event<E extends EventPayload>(
     kind: "Event",
     name,
     schema,
-    onEvent<Name extends string>(name: Name, ...args: any[]) {
+    onEvent<Name extends string>(...args: any[]) {
       // we have an implicit contract where the SourceLocation may be passed in as the first argument
-      const [sourceLocation, eventHandlerProps, handler] =
-        typeof args[2] === "function"
-          ? [
-              args[0] as SourceLocation,
-              args[1] as EventHandlerRuntimeProps,
-              args[2] as EventHandlerFunction<E>,
-            ]
-          : typeof args[1] === "function"
-          ? isSourceLocation(args[0])
-            ? [
-                args[0] as SourceLocation,
-                undefined,
-                args[1] as EventHandlerFunction<E>,
-              ]
-            : [
-                undefined,
-                args[0] as EventHandlerRuntimeProps,
-                args[1] as EventHandlerFunction<E>,
-              ]
-          : [undefined, undefined, args[0] as EventHandlerFunction<E>];
+      const [sourceLocation, name, eventHandlerProps, handler] = [
+        args.find(isSourceLocation)!,
+        args.find((a) => typeof a === "string") as Name,
+        args.find((a) => typeof a === "object" && !isSourceLocation(a))!,
+        args.find((a) => typeof a === "function"),
+      ];
 
       const eventHandler: EventHandler<Name, E> = {
         kind: "EventHandler",

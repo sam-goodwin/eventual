@@ -41,15 +41,15 @@ export interface ApiRoutes {
 }
 
 export interface InternalApiRoutes {
-  "/_eventual/workflows": InternalApiFunction;
-  "/_eventual/workflows/{name}/executions": InternalApiFunction;
-  "/_eventual/executions": InternalApiFunction;
-  "/_eventual/executions/{executionId}": InternalApiFunction;
-  "/_eventual/executions/{executionId}/history": InternalApiFunction;
-  "/_eventual/executions/{executionId}/signals": InternalApiFunction;
-  "/_eventual/executions/{executionId}/workflow-history": InternalApiFunction;
-  "/_eventual/events": InternalApiFunction;
-  "/_eventual/activities": InternalApiFunction;
+  "/_eventual/workflows": InternalCommandFunction;
+  "/_eventual/workflows/{name}/executions": InternalCommandFunction;
+  "/_eventual/executions": InternalCommandFunction;
+  "/_eventual/executions/{executionId}": InternalCommandFunction;
+  "/_eventual/executions/{executionId}/history": InternalCommandFunction;
+  "/_eventual/executions/{executionId}/signals": InternalCommandFunction;
+  "/_eventual/executions/{executionId}/workflow-history": InternalCommandFunction;
+  "/_eventual/events": InternalCommandFunction;
+  "/_eventual/activities": InternalCommandFunction;
 }
 
 export type BundledFunction<Spec = undefined> = {
@@ -69,7 +69,8 @@ export interface ExportedEventHandlerFunction extends SubscriptionFunction {
 export interface SubscriptionFunction
   extends BundledFunction<SubscriptionSpec> {}
 
-export interface InternalApiFunction
-  extends Omit<CommandFunction, "exportName"> {}
+export interface InternalCommandFunction extends CommandFunction {
+  spec: CommandFunction["spec"] & {};
+}
 
 export interface CommandFunction extends BundledFunction<CommandSpec> {}

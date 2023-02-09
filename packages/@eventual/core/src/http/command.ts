@@ -22,6 +22,7 @@ export interface Command<
   params?: RestParams<Parameters<Handler>[0], Path, Method>;
   sourceLocation?: SourceLocation;
   passThrough?: boolean;
+  internal?: boolean;
 }
 
 export type RestOptions<

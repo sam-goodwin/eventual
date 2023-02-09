@@ -80,11 +80,12 @@ chaosExtension.grantReadWrite(role);
  * Async lambda test.
  */
 
+const entry = path.join(
+  require.resolve("tests-runtime"),
+  "../async-writer-handler.js"
+);
 const asyncWriterFunction = new NodejsFunction(stack, "asyncWriterFunction", {
-  entry: path.join(
-    require.resolve("tests-runtime"),
-    "../async-writer-handler.js"
-  ),
+  entry,
   handler: "handle",
   environment: {
     TEST_SERVICE_URL: testService.api.gateway.apiEndpoint,

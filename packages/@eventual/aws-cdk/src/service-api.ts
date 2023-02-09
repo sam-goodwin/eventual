@@ -5,6 +5,7 @@ import {
 } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
+// import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { computeDurationSeconds } from "@eventual/runtime-core";
 import { Arn, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
@@ -21,7 +22,7 @@ import type { Activities } from "./activities";
 import type { BuildOutput } from "./build";
 import {
   CommandFunction,
-  InternalApiFunction,
+  InternalCommandFunction,
   InternalApiRoutes,
 } from "./build-manifest";
 import type { Events } from "./events";
@@ -82,17 +83,14 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
    * A Reference to this Service's {@link BuildOutput}.
    */
   private readonly build: BuildOutput;
-
   /**
    * API Gateway for providing service api
    */
   public readonly gateway: HttpApi;
-
   /**
    * The OpenAPI specification for this Service.
    */
   readonly specification: openapi.OpenAPIObject;
-
   /**
    * A map of Command Name to the Lambda Function handling its logic.
    */
@@ -143,6 +141,10 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
     });
     this.grantPrincipal = role;
 
+    // Construct for grouping commands in the CDK tree
+    const commandsScope = new Construct(this, "Commands");
+    const internalScope = new Construct(this, "Internal");
+
     const { specification, commands } = synthesizeAPI([
       ...Object.values(this.build.commands).map(
         (manifest) =>
@@ -159,7 +161,10 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
           } satisfies CommandMapping)
       ),
       ...(Object.entries(this.build.api) as any).map(
-        ([path, manifest]: [keyof InternalApiRoutes, InternalApiFunction]) =>
+        ([path, manifest]: [
+          keyof InternalApiRoutes,
+          InternalCommandFunction
+        ]) =>
           ({
             manifest,
             overrides: {
@@ -181,6 +186,8 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
       ),
     });
 
+    this.finalize();
+
     function synthesizeAPI(commands: CommandMapping[]): {
       specification: openapi.OpenAPIObject;
       commands: ServiceCommands<Service>;
@@ -189,33 +196,40 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
         commands.map((mapping) => {
           const { manifest, overrides } = mapping;
           const command = manifest.spec;
-          let sanitizedName = command.name.replace(/[^A-Za-z_-]/g, "-");
+          // TODO: this is unsafe probably
+          let sanitizedName = command.name.replace(/[^A-Za-z0-9_-]/g, "-");
           if (sanitizedName !== command.name) {
             // name was sanitized, so add the METHOD to the name
             sanitizedName = `${sanitizedName}-${
               mapping.manifest.spec.method ?? "GET"
             }`;
           }
-          const handler = new Function(self, command.name, {
-            ...overrides,
-            functionName: `${self.props.serviceName}-command-${sanitizedName}`,
-            code: Code.fromAsset(self.props.build.resolveFolder(manifest.file)),
-            runtime: NODE_18_X,
-            architecture: Architecture.ARM_64,
-            environment: {
-              NODE_OPTIONS: "--enable-source-maps",
-              ...(overrides?.environment ?? {}),
-            },
-            memorySize: overrides?.memorySize ?? manifest.spec.memorySize,
-            timeout:
-              overrides?.timeout ?? manifest.spec.timeout
-                ? Duration.seconds(
-                    computeDurationSeconds(manifest.spec.timeout!)
-                  )
-                : undefined,
-            handler: overrides?.handler ?? "index.handler",
-            role: overrides?.role ?? role,
-          });
+          const handler = new Function(
+            command.internal ? internalScope : commandsScope,
+            command.name,
+            {
+              ...overrides,
+              functionName: `${self.props.serviceName}-command-${sanitizedName}`,
+              code: Code.fromAsset(
+                self.props.build.resolveFolder(manifest.file)
+              ),
+              runtime: NODE_18_X,
+              architecture: Architecture.ARM_64,
+              environment: {
+                NODE_OPTIONS: "--enable-source-maps",
+                ...(overrides?.environment ?? {}),
+              },
+              memorySize: overrides?.memorySize ?? manifest.spec.memorySize,
+              timeout:
+                overrides?.timeout ?? manifest.spec.timeout
+                  ? Duration.seconds(
+                      computeDurationSeconds(manifest.spec.timeout!)
+                    )
+                  : undefined,
+              handler: overrides?.handler ?? "index.default",
+              role: overrides?.role ?? role,
+            }
+          );
 
           return [
             command.name as CommandNames<Service>,
@@ -241,6 +255,7 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
           // TODO: use the package.json?
           version: "1",
         },
+
         paths: {
           "/$default": {
             isDefaultRoute: true,
@@ -288,10 +303,39 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
 
       function createAPIPaths(
         handler: Function,
-        { manifest, init }: CommandMapping
+        { manifest, overrides, init }: CommandMapping
       ): openapi.PathsObject {
         const command = manifest.spec;
         init?.(handler);
+        if (overrides?.init) {
+          // issue all override finalizers after all the routes and api gateway is created
+          self.onFinalize(() => overrides!.init!(handler!));
+        }
+
+        // TODO: use the Open API spec to configure instead of consuming CloudFormation resources
+        // this seems not so simple and not well documented, so for now we take the cheap way out
+        // we will keep the api spec and improve it over time
+        self.onFinalize(() => {
+          const integration = new HttpLambdaIntegration(command.name, handler);
+          if (!command.internal) {
+            self.gateway.addRoutes({
+              path: `/_rpc/${command.name}`,
+              methods: [HttpMethod.POST],
+              integration,
+              authorizer: overrides?.authorizer,
+            });
+          }
+          if (command.path) {
+            self.gateway.addRoutes({
+              path: command.path,
+              methods: [
+                (command.method as HttpMethod | undefined) ?? HttpMethod.GET,
+              ],
+              integration,
+              authorizer: overrides?.authorizer,
+            });
+          }
+        });
 
         return {
           [`/_rpc/${command.name}`]: {
@@ -337,6 +381,16 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
         };
       }
     }
+  }
+
+  private finalizers: (() => any)[] = [];
+  private onFinalize(finalizer: () => any) {
+    this.finalizers.push(finalizer);
+  }
+
+  private finalize() {
+    this.finalizers.forEach((finalizer) => finalizer());
+    this.finalizers = []; // clear the closures from memory
   }
 
   public configureInvokeHttpServiceApi(...functions: Function[]) {

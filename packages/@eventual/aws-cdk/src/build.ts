@@ -13,7 +13,7 @@ import path from "path";
 import {
   BuildManifest,
   InternalApiRoutes,
-  InternalApiFunction,
+  InternalCommandFunction,
   BundledFunction,
 } from "./build-manifest";
 
@@ -77,7 +77,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
   // just data extracted from the service, used by the handlers
   // separate from the manifest to avoid circular dependency with the bundles
   // and reduce size of the data injected into the bundles
-  await fs.promises.writeFile(specPath, JSON.stringify(serviceSpec));
+  await fs.promises.writeFile(specPath, JSON.stringify(serviceSpec, null, 2));
 
   const [
     [
@@ -120,7 +120,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       file: monoActivityFunction!,
     },
     events: serviceSpec.events,
-    subscriptions: subscriptions as BuildManifest["subscriptions"],
+    subscriptions,
     scheduler: {
       forwarder: {
         file: scheduleForwarder!,
@@ -321,7 +321,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
   }
 
   function manifestInternalAPI(): {
-    [k in keyof InternalApiRoutes]: InternalApiFunction;
+    [k in keyof InternalApiRoutes]: InternalCommandFunction;
   } {
     return Object.fromEntries([
       internalCommand({
@@ -379,7 +379,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         file: updateActivity!,
       }),
     ]) as {
-      [k in keyof InternalApiRoutes]: InternalApiFunction;
+      [k in keyof InternalApiRoutes]: InternalCommandFunction;
     };
 
     function internalCommand<P extends keyof InternalApiRoutes>(props: {
@@ -393,11 +393,13 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         {
           spec: {
             name: props.name,
+            path: props.path,
             method: props.method,
             passThrough: true,
+            internal: true,
           },
           file: props.file,
-        } satisfies InternalApiFunction,
+        } satisfies InternalCommandFunction,
       ] as const;
     }
   }
