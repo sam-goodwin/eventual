@@ -1,7 +1,7 @@
 import {
   HttpServiceClient,
   HttpServiceClientProps,
-  mixinServiceClient,
+  proxyServiceClient,
   ServiceClient,
 } from "@eventual/client";
 import type { AWSHttpEventualClientProps } from "./aws-http-eventual-client.js";
@@ -21,6 +21,6 @@ export const AWSServiceClient: {
   constructor(props: AWSHttpEventualClientProps) {
     super({ ...props, beforeRequest: createAwsHttpRequestSigner(props) });
 
-    return mixinServiceClient.call(this);
+    return proxyServiceClient.call(this);
   }
 } as any;

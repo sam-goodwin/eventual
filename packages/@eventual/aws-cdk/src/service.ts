@@ -41,9 +41,9 @@ import { grant } from "./grant";
 import { Logging, LoggingProps } from "./logging";
 import { lazyInterface } from "./proxy-construct";
 import { IScheduler, Scheduler } from "./scheduler";
-import { Api, ApiHandlerProps, ApiNames, IServiceApi } from "./service-api";
+import { Api, CommandProps, IServiceApi } from "./service-api";
 import { PickType } from "./utils";
-import { IWorkflows, Workflows, WorkflowsProps } from "./workflows";
+import { IWorkflows, Workflows } from "./workflows";
 
 export interface IService {
   /**
@@ -188,23 +188,18 @@ export interface ServiceProps<Service = any> {
   environment?: {
     [key: string]: string;
   };
-  api?: {
-    handlers: {
-      [api in ApiNames<Service>]?: ApiHandlerProps;
-    };
-  };
+  /**
+   *
+   */
+  commands?: CommandProps<Service>;
   events?: {
     handlers?: {
       [eventHandler in keyof PickType<Service, { kind: "EventHandler" }>]?: any;
     };
   };
-  /**
-   * Override the workflow dependencies of a Service {@link WorkflowsProps}
-   *
-   * @default - the dependencies are created.
-   * @see WorkflowsProps
-   */
-  workflows?: Pick<WorkflowsProps, "orchestrator">;
+  workflows?: {
+    reservedConcurrentExecutions?: number;
+  };
   logging?: Omit<LoggingProps, "serviceName">;
 }
 
@@ -349,7 +344,7 @@ export class Service<S = any>
       events: this.events,
       scheduler: this.scheduler,
       service: proxyService,
-      handlers: props.api?.handlers,
+      commands: props.commands,
     });
     apiProxy._bind(this.api);
 
@@ -357,7 +352,7 @@ export class Service<S = any>
       // when granting permissions to the service,
       // propagate them to the following principals
       this.activities.worker.grantPrincipal,
-      this.api.defaultHandler.grantPrincipal,
+      this.api.commands.default.grantPrincipal,
       this.events.defaultHandler.grantPrincipal
     );
 

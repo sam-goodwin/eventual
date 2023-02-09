@@ -1,4 +1,8 @@
-import { HttpApi, HttpMethod } from "@aws-cdk/aws-apigatewayv2-alpha";
+import {
+  HttpApi,
+  HttpMethod,
+  HttpRouteProps,
+} from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
 import { ENV_NAMES } from "@eventual/aws-runtime";
@@ -6,22 +10,39 @@ import { ServiceType } from "@eventual/core";
 import { computeDurationSeconds } from "@eventual/runtime-core";
 import { Arn, aws_iam, Duration, Stack } from "aws-cdk-lib";
 import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
-import { Code, Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
+import {
+  Architecture,
+  Code,
+  Function,
+  FunctionProps,
+} from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import openapi from "openapi3-ts";
-import path from "path";
 import type { Activities } from "./activities";
 import type { BuildOutput } from "./build";
-import { ApiFunction, InternalApiRoutes } from "./build-manifest";
+import {
+  CommandFunction,
+  InternalApiFunction,
+  InternalApiRoutes,
+} from "./build-manifest";
 import type { Events } from "./events";
 import { grant } from "./grant";
 import type { Scheduler } from "./scheduler";
 import { IService } from "./service";
 import { ServiceFunction } from "./service-function";
-import { addEnvironment, baseFnProps, KeysOfType, PickType } from "./utils";
+import { addEnvironment, KeysOfType, NODE_18_X } from "./utils";
 import type { Workflows } from "./workflows";
 
-export type ApiNames<Service = any> = KeysOfType<Service, { kind: "Command" }>;
+export type CommandNames<Service = any> = KeysOfType<
+  Service,
+  { kind: "Command" }
+>;
+
+export type CommandProps<Service> = {
+  default?: CommandHandlerProps;
+} & {
+  [api in CommandNames<Service>]?: CommandHandlerProps;
+};
 
 export interface ApiProps<Service = any> {
   serviceName: string;
@@ -32,158 +53,83 @@ export interface ApiProps<Service = any> {
   events: Events<Service>;
   service: IService;
   build: BuildOutput;
-  handlers?: {
-    [route in ApiNames<Service>]?: ApiHandlerProps;
-  };
+  commands?: CommandProps<Service>;
 }
 
 /**
  * Properties that can be overridden for an individual API handler Function.
  */
-export interface ApiHandlerProps
-  extends Omit<
-    Partial<RouteMapping>,
-    "exportName" | "name" | "authorized" | "grants"
-  > {}
+export interface CommandHandlerProps
+  extends Partial<Omit<FunctionProps, "code" | "runtime" | "functionName">>,
+    Pick<HttpRouteProps, "authorizer"> {
+  /**
+   * A callback that will be invoked on the Function after all the Service has been fully instantiated
+   */
+  init?(func: Function): void;
+}
 
 export interface IServiceApi {
   configureInvokeHttpServiceApi(func: Function): void;
   grantInvokeHttpServiceApi(grantable: IGrantable): void;
 }
 
+export type ServiceCommands<Service> = {
+  default: Function;
+} & {
+  [command in CommandNames<Service>]: Function;
+};
+
 export class Api<Service> extends Construct implements IServiceApi {
+  /**
+   * A Reference to this Service's {@link BuildOutput}.
+   */
+  private readonly build: BuildOutput;
+
   /**
    * API Gateway for providing service api
    */
   public readonly gateway: HttpApi;
+
   /**
-   * The default Lambda Function for processing inbound API requests with user defined code.
-   *
-   * Any API route that could not be individually bundled or tree-shaken is handled by this
-   * default Function.
+   * The OpenAPI specification for this Service.
    */
-  public readonly defaultHandler: Function;
+  readonly specification: openapi.OpenAPIObject;
+
   /**
-   * Individual Lambda Functions per API route. Any API function that was exported from a
-   * module is individually tree-shaken and loaded into its own Lambda Function with a
-   * customizable memory and timeout.
+   * A map of Command Name to the Lambda Function handling its logic.
    */
-  public readonly routes: {
-    [route in ApiNames<Service>]: Function;
-  };
-  /**
-   * Individual Lambda Functions handling each of the internal Eventual APIs.
-   *
-   * @see InternalApiRoutes
-   */
-  public readonly internalRoutes: {
-    [path in keyof InternalApiRoutes]: Function;
-  };
-  /**
-   * A Reference to this Service's {@link BuildOutput}.
-   */
-  readonly build: BuildOutput;
+  readonly commands: ServiceCommands<Service>;
 
   /**
    * Individual API Handler Lambda Functions handling only a single API route. These handlers
    * are individually bundled and tree-shaken for optimal performance and may contain their own custom
    * memory and timeout configuration.
    */
-  public readonly handlers: Function[];
+  public get handlers(): Function[] {
+    return Object.values(this.commands);
+  }
 
   constructor(scope: Construct, id: string, private props: ApiProps<Service>) {
     super(scope, id);
+    const self = this;
+
     this.build = props.build;
 
-    this.defaultHandler = new ServiceFunction(this, "Handler", {
+    const defaultHandler = new ServiceFunction(this, "Handler", {
       functionName: `${props.serviceName}-api-handler`,
       serviceType: ServiceType.ApiHandler,
       memorySize: 512,
-      code: props.build.getCode(props.build.api.default.file),
+      code: props.build.getCode(props.build.commands.default.file),
     });
 
     this.gateway = new HttpApi(this, "Gateway", {
       apiName: `eventual-api-${props.serviceName}`,
-      defaultIntegration: new HttpLambdaIntegration(
-        "default",
-        this.defaultHandler
-      ),
+      defaultIntegration: new HttpLambdaIntegration("default", defaultHandler),
     });
 
-    this.toOpenAPI(Object.values(this.build.api.routes));
-
-    // The handler is given an instance of the service client.
-    // Allow it to access any of the methods on the service client by default.
-    this.configureInvokeHttpServiceApi(this.defaultHandler);
-
-    this.routes = this.createUserDefinedRoutes();
-
-    this.handlers = [
-      this.defaultHandler,
-      ...Object.values<Function>(this.routes),
-    ];
-
-    this.internalRoutes = this.createInternalApiRoutes();
-
-    this.configureApiHandler(this.defaultHandler);
-  }
-
-  public configureInvokeHttpServiceApi(...functions: Function[]) {
-    for (const func of functions) {
-      this.grantInvokeHttpServiceApi(func);
-      this.addEnvs(func, ENV_NAMES.SERVICE_URL);
-    }
-  }
-
-  @grant()
-  public grantInvokeHttpServiceApi(grantable: IGrantable) {
-    grantable.grantPrincipal.addToPrincipalPolicy(
-      this.executeApiPolicyStatement()
-    );
-  }
-
-  private createUserDefinedRoutes() {
-    return this.applyRouteMappings(
-      Object.fromEntries(
-        Object.entries(this.props.build.api.routes).flatMap(([path, route]) => {
-          return [
-            [
-              path,
-              {
-                ...route,
-                // configure all handlers permissions and envs
-                // note: all of the handlers share the same role, but each need to be given the env variables.
-                grants: (f) => this.configureApiHandler(f),
-                role: this.defaultHandler.role,
-                handler: "index.default",
-                ...(this.props.handlers?.[
-                  route.exportName as ApiNames<Service>
-                ] ?? {}),
-                environment: {
-                  NODE_OPTIONS: "--enable-source-maps",
-                  ...((
-                    this.props.handlers?.[
-                      route.exportName as ApiNames<Service>
-                    ] ?? {}
-                  ).environment ?? {}),
-                },
-              } satisfies RouteMapping,
-            ],
-          ];
-        })
-      )
-    ) as {
-      [route in keyof PickType<Service, { kind: "Command" }>]: Function;
-    };
-  }
-
-  private createInternalApiRoutes(): {
-    [path in keyof InternalApiRoutes]: Function;
-  } {
-    const routes: InternalApiRoutes = this.props.build.api.internal;
-
-    const grants: {
-      [route in keyof typeof routes]?: RouteMapping["grants"];
+    const internalApiRoutes: InternalApiRoutes = this.props.build.api.eventual;
+    const internalInit: {
+      [route in keyof typeof internalApiRoutes]?: CommandMapping["init"];
     } = {
       "/_eventual/activities": (fn) => {
         this.props.activities.configureWriteActivities(fn);
@@ -204,22 +150,201 @@ export class Api<Service> extends Construct implements IServiceApi {
         this.props.workflows.configureStartExecution(fn),
     };
 
-    // TODO move the API definition to the aws-runtime or core-runtime
-    //      https://github.com/functionless/eventual/issues/173
-    return this.applyRouteMappings(
-      Object.fromEntries(
-        Object.entries(routes).map(
-          ([path, route]) =>
-            [
-              path,
-              {
-                ...route,
-                grants: grants[path as keyof typeof grants],
+    const { specification, commands } = synthesizeAPI([
+      {
+        manifest: this.build.commands.default,
+        overrides: this.props.commands?.default,
+      },
+      ...Object.values(this.build.commands.custom).map(
+        (manifest) =>
+          ({
+            manifest,
+            overrides:
+              props.commands?.[manifest.command.name as CommandNames<Service>],
+          } satisfies CommandMapping)
+      ),
+      ...(Object.entries(this.build.api.eventual) as any).map(
+        ([path, manifest]: [keyof InternalApiRoutes, InternalApiFunction]) =>
+          ({
+            manifest,
+            overrides: {
+              authorizer: new HttpIamAuthorizer(),
+              init: internalInit[path],
+            },
+          } satisfies CommandMapping)
+      ),
+    ]);
+
+    this.specification = specification;
+    this.commands = commands;
+
+    // The handler is given an instance of the service client.
+    // Allow it to access any of the methods on the service client by default.
+    this.configureInvokeHttpServiceApi(this.commands.default);
+
+    this.configureApiHandler(defaultHandler);
+
+    function synthesizeAPI(commands: CommandMapping[]): {
+      specification: openapi.OpenAPIObject;
+      commands: ServiceCommands<Service>;
+    } {
+      const synthesizedCommands = Object.fromEntries(
+        commands.map((mapping) => {
+          const { manifest, overrides } = mapping;
+          const command = manifest.command;
+          const handler = new Function(self, manifest.name, {
+            ...overrides,
+            functionName: `${self.props.serviceName}-command-${command.name}`,
+            code: Code.fromAsset(self.props.build.resolveFolder(manifest.file)),
+            runtime: NODE_18_X,
+            architecture: Architecture.ARM_64,
+            environment: {
+              NODE_OPTIONS: "--enable-source-maps",
+              ...(overrides?.environment ?? {}),
+            },
+            memorySize: overrides?.memorySize ?? manifest.memorySize,
+            timeout:
+              overrides?.timeout ?? manifest.timeout
+                ? Duration.seconds(computeDurationSeconds(manifest.timeout!))
+                : undefined,
+            handler: overrides?.handler ?? "index.handler",
+            role: overrides?.role ?? defaultHandler.role,
+          });
+          return [
+            command.name as CommandNames<Service>,
+            {
+              handler,
+              paths: createAPIPaths(handler, mapping),
+            },
+          ] as const;
+        })
+      );
+
+      const specification: openapi.OpenAPIObject = {
+        openapi: "3.0.1",
+        info: {
+          title: self.build.serviceName,
+          // TODO: use the package.json?
+          version: "1",
+        },
+        paths: {
+          "/$default": {
+            isDefaultRoute: true,
+            [XAmazonApiGatewayIntegration]: {
+              connectionType: "INTERNET",
+              httpMethod: HttpMethod.POST, // TODO: why POST? Exported API has this but it's not clear
+              payloadFormatVersion: "2.0",
+              type: "aws_proxy",
+              uri: defaultHandler.functionArn,
+            } satisfies XAmazonApiGatewayIntegration,
+          },
+          ...Object.values(
+            synthesizedCommands as Record<
+              string,
+              { paths: openapi.PathsObject }
+            >
+          ).reduce<openapi.PathsObject>(
+            (allPaths, { paths }) => mergeAPIPaths(allPaths, paths),
+            {}
+          ),
+        },
+      };
+
+      return {
+        specification,
+        commands: Object.fromEntries(
+          Object.entries(synthesizedCommands).map(
+            ([commandName, { handler }]) => [commandName, handler]
+          )
+        ) as ServiceCommands<Service>,
+      };
+
+      function mergeAPIPaths(
+        a: openapi.PathsObject,
+        b: openapi.PathsObject
+      ): openapi.PathsObject {
+        for (const [path, route] of Object.entries(b)) {
+          if (path in a) {
+            // spread collisions into one
+            // assumes no duplicate METHODs
+            a[path] = {
+              ...a[path],
+              [path]: route,
+            };
+          } else {
+            a[path] = route;
+          }
+        }
+        return a;
+      }
+
+      function createAPIPaths(
+        handler: Function,
+        { manifest, init }: CommandMapping
+      ): openapi.PathsObject {
+        const command = manifest.command;
+        init?.(handler);
+
+        self.configureInvokeHttpServiceApi(handler);
+
+        return {
+          [`/_rpc/${command.name}`]: {
+            post: {
+              requestBody: {
+                content: {
+                  "/application/json": {
+                    schema: command.input,
+                  },
+                },
               },
-            ] as const
-        )
-      )
-    ) as any;
+              responses: {
+                default: {
+                  description: `Default response for ${command.method} ${command.path}`,
+                } satisfies openapi.ResponseObject,
+              },
+            },
+          } satisfies openapi.PathItemObject,
+          ...(command.path
+            ? {
+                [command.path]: {
+                  [command.method?.toLocaleLowerCase() ?? "get"]: {
+                    parameters: Object.entries(command.params ?? {}).flatMap(
+                      ([name, spec]) =>
+                        spec === "body" ||
+                        (typeof spec === "object" && spec.in === "body")
+                          ? []
+                          : [
+                              {
+                                in:
+                                  typeof spec === "string"
+                                    ? spec
+                                    : (spec?.in as "query" | "header") ??
+                                      "query",
+                                name,
+                              } satisfies openapi.ParameterObject,
+                            ]
+                    ),
+                  },
+                } satisfies openapi.PathItemObject,
+              }
+            : {}),
+        };
+      }
+    }
+  }
+
+  public configureInvokeHttpServiceApi(...functions: Function[]) {
+    for (const func of functions) {
+      this.grantInvokeHttpServiceApi(func);
+      this.addEnvs(func, ENV_NAMES.SERVICE_URL);
+    }
+  }
+
+  @grant()
+  public grantInvokeHttpServiceApi(grantable: IGrantable) {
+    grantable.grantPrincipal.addToPrincipalPolicy(
+      this.executeApiPolicyStatement()
+    );
   }
 
   private executeApiPolicyStatement() {
@@ -237,72 +362,6 @@ export class Api<Service> extends Construct implements IServiceApi {
         ),
       ],
     });
-  }
-
-  private applyRouteMappings(mappings: Record<string, RouteMapping>): {
-    [route: string]: Function;
-  } {
-    return Object.fromEntries(
-      Object.entries(mappings).map(
-        ([
-          apiPath,
-          {
-            name,
-            file,
-            command,
-            grants,
-            memorySize,
-            timeout,
-            exportName,
-            authorized,
-            role,
-            ...props
-          },
-        ]) => {
-          const funcId = name ?? path.dirname(file);
-          const fn = new Function(this, funcId, {
-            functionName: exportName
-              ? // use the exportName as the function name - encourage users to choose unique names
-                `${this.props.serviceName}-api-${exportName}`
-              : undefined,
-            code: Code.fromAsset(this.props.build.resolveFolder(file)),
-            ...baseFnProps,
-            memorySize,
-            timeout: timeout
-              ? Duration.seconds(computeDurationSeconds(timeout))
-              : undefined,
-            handler: "index.handler",
-            role,
-            ...props,
-          });
-
-          grants?.(fn);
-          const integration = new HttpLambdaIntegration(
-            `${funcId}-integration`,
-            fn
-          );
-
-          this.gateway.addRoutes({
-            path: `/_rpc/${command.name}`,
-            integration,
-            methods: [HttpMethod.POST],
-            authorizer: authorized ? new HttpIamAuthorizer() : undefined,
-          });
-          if (command.path) {
-            this.gateway.addRoutes({
-              path: command.path,
-              integration,
-              methods: command.method
-                ? [command.method as HttpMethod]
-                : // TODO: is GET the right default? No default? POST? POST is easier to map to because it has a body but GET is the usual default.
-                  [HttpMethod.GET],
-              authorizer: authorized ? new HttpIamAuthorizer() : undefined,
-            });
-          }
-          return [apiPath, fn] as const;
-        }
-      )
-    );
   }
 
   private configureApiHandler(handler: Function) {
@@ -323,129 +382,12 @@ export class Api<Service> extends Construct implements IServiceApi {
   private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {
     envs.forEach((env) => func.addEnvironment(env, this.ENV_MAPPINGS[env]()));
   }
-
-  private toOpenAPI(routes: ApiFunction[]): openapi.OpenAPIObject {
-    const self = this;
-    return {
-      openapi: "3.0.1",
-      info: {
-        title: this.build.serviceName,
-        // TODO: use the package.json?
-        version: "1",
-      },
-      paths: {
-        "/$default": {
-          isDefaultRoute: true,
-          [XAmazonApiGatewayIntegration]: {
-            connectionType: "INTERNET",
-            httpMethod: HttpMethod.POST, // TODO: why POST? Exported API has this but it's not clear
-            payloadFormatVersion: "2.0",
-            type: "aws_proxy",
-            uri: this.defaultHandler.functionArn,
-          } satisfies XAmazonApiGatewayIntegration,
-        },
-        ...routes.reduce<openapi.PathsObject>((paths, func) => {
-          const routes = routeToOpenApi(func);
-          for (const [path, route] of Object.entries(routes)) {
-            if (path in paths) {
-              // spread collisions into one
-              // assumes no duplicate METHODs
-              paths[path] = {
-                ...paths[path],
-                [path]: route,
-              };
-            } else {
-              paths[path] = route;
-            }
-          }
-          return paths;
-        }, {}),
-      },
-    };
-
-    function routeToOpenApi(func: ApiFunction): openapi.PathsObject {
-      const command = func.command;
-      const funcId = path.dirname(func.file);
-      const handler = new Function(self, funcId, {
-        functionName: command.sourceLocation?.exportName
-          ? // use the exportName as the function name - encourage users to choose unique names
-            `${self.props.serviceName}-api-${command.sourceLocation.exportName}`
-          : undefined,
-        code: Code.fromAsset(self.props.build.resolveFolder(func.file)),
-        ...baseFnProps,
-        memorySize: func.memorySize,
-        timeout: func.timeout
-          ? (Duration.seconds(computeDurationSeconds(func.timeout)) as Duration)
-          : undefined,
-        // re-use the same Role for all Commands
-        // TODO: re-evaluate, is it too broad? probably
-        role: self.defaultHandler.role,
-        handler: "index.default",
-        // ...(self.props.handlers?.[
-        //   command.sourceLocation?.exportName as ApiNames<Service>
-        // ] ?? {}),
-        environment: {
-          NODE_OPTIONS: "--enable-source-maps",
-          ...((
-            self.props.handlers?.[
-              command.sourceLocation?.exportName as ApiNames<Service>
-            ] ?? {}
-          ).environment ?? {}),
-        },
-      });
-
-      self.configureInvokeHttpServiceApi(handler);
-
-      return {
-        [`/_rpc/${command.name}`]: {
-          post: {
-            requestBody: {
-              content: {
-                "/application/json": {
-                  schema: command.input,
-                },
-              },
-            },
-            responses: {
-              default: {
-                description: `Default response for ${command.method} ${command.path}`,
-              } satisfies openapi.ResponseObject,
-            },
-          },
-        } satisfies openapi.PathItemObject,
-        ...(command.path
-          ? {
-              [command.path]: {
-                [command.method?.toLocaleLowerCase() ?? "get"]: {
-                  parameters: Object.entries(command.params ?? {}).flatMap(
-                    ([name, spec]) =>
-                      spec === "body" ||
-                      (typeof spec === "object" && spec.in === "body")
-                        ? []
-                        : [
-                            {
-                              in:
-                                typeof spec === "string"
-                                  ? spec
-                                  : (spec?.in as "query" | "header") ?? "query",
-                              name,
-                            } satisfies openapi.ParameterObject,
-                          ]
-                  ),
-                },
-              } satisfies openapi.PathItemObject,
-            }
-          : {}),
-      };
-    }
-  }
 }
 
-interface RouteMapping
-  extends ApiFunction,
-    Omit<Partial<FunctionProps>, "memorySize" | "timeout" | "code"> {
-  authorized?: boolean;
-  grants?: (grantee: Function) => void;
+interface CommandMapping {
+  manifest: CommandFunction;
+  overrides?: CommandHandlerProps;
+  init?: (grantee: Function) => void;
   role?: aws_iam.IRole;
 }
 

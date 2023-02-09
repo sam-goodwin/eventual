@@ -29,10 +29,20 @@ export interface BuildManifest {
      */
     handlers: ExportedEventHandlerFunction[];
   };
+  commands: {
+    /**
+     * The Default Function for handling any Command.
+     */
+    default: CommandFunction;
+    /**
+     * Individually bundled and tree-shaken functions for a specific Command.
+     */
+    custom: {
+      [commandName: string]: CommandFunction;
+    };
+  };
   api: {
-    default: BundledFunction;
-    routes: ApiRoutes;
-    internal: InternalApiRoutes;
+    eventual: InternalApiRoutes;
   };
   scheduler: {
     forwarder: BundledFunction;
@@ -41,7 +51,7 @@ export interface BuildManifest {
 }
 
 export interface ApiRoutes {
-  [route: string]: ApiFunction;
+  [route: string]: CommandFunction;
 }
 
 export interface InternalApiRoutes {
@@ -57,7 +67,7 @@ export interface InternalApiRoutes {
 }
 
 export interface BundledFunction {
-  name?: string;
+  name: string;
   file: string;
   memorySize?: number;
   timeout?: DurationSchedule;
@@ -73,9 +83,9 @@ export interface EventFunction extends BundledFunction {
   retryAttempts?: number;
 }
 
-export interface InternalApiFunction extends Omit<ApiFunction, "exportName"> {}
+export interface InternalApiFunction
+  extends Omit<CommandFunction, "exportName"> {}
 
-export interface ApiFunction extends BundledFunction {
-  exportName: string;
+export interface CommandFunction extends BundledFunction {
   command: CommandSpec;
 }

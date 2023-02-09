@@ -4,7 +4,7 @@ import { Code } from "aws-cdk-lib/aws-lambda";
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
-import { ApiFunction, BuildManifest } from "./build-manifest";
+import { CommandFunction, BuildManifest } from "./build-manifest";
 
 export interface BuildOutput extends BuildManifest {}
 
@@ -100,10 +100,13 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     events: {
       schemas: serviceSpec.events.schemas,
       default: {
+        name: "default",
         file: eventHandler!,
         subscriptions: serviceSpec.events.subscriptions,
       },
       handlers: serviceSpec.events.handlers.map((handler) => ({
+        // TODO
+        // name:
         file: handler.sourceLocation.fileName,
         subscriptions: handler.subscriptions,
         memorySize: handler.runtimeProps?.memorySize,
@@ -119,10 +122,15 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         file: timerHandler!,
       },
     },
-    api: {
+    commands: {
       default: {
+        name: "default",
         file: defaultApiHandler!,
+        command: {},
       },
+      custom: individualApis,
+    },
+    api: {
       routes: individualApis,
       internal: {
         "/_eventual/workflows": {
@@ -217,7 +225,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
               command,
               memorySize: command.memorySize,
               timeout: command.timeout,
-            } satisfies ApiFunction,
+            } satisfies CommandFunction,
           ] as const;
         }
         return undefined;
