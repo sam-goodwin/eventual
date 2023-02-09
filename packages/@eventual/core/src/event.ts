@@ -235,7 +235,7 @@ export function event<E extends EventPayload>(
         handler,
         subscriptions: [
           {
-            name,
+            name: event.name,
           },
         ],
         runtimeProps: eventHandlerProps,

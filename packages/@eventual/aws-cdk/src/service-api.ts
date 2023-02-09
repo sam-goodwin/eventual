@@ -7,7 +7,7 @@ import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { computeDurationSeconds } from "@eventual/runtime-core";
-import { Arn, aws_iam, Duration, Stack } from "aws-cdk-lib";
+import { Arn, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
 import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import {
   Architecture,
@@ -150,6 +150,12 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
             manifest,
             overrides:
               props.commands?.[manifest.spec.name as CommandNames<Service>],
+            init: (handler) => {
+              // The handler is given an instance of the service client.
+              // Allow it to access any of the methods on the service client by default.
+              self.configureInvokeHttpServiceApi(handler);
+              self.configureApiHandler(handler);
+            },
           } satisfies CommandMapping)
       ),
       ...(Object.entries(this.build.api) as any).map(
@@ -175,11 +181,6 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
       ),
     });
 
-    // The handler is given an instance of the service client.
-    // Allow it to access any of the methods on the service client by default.
-    this.configureInvokeHttpServiceApi(this.commands.default);
-    this.configureApiHandler(this.commands.default);
-
     function synthesizeAPI(commands: CommandMapping[]): {
       specification: openapi.OpenAPIObject;
       commands: ServiceCommands<Service>;
@@ -188,9 +189,16 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
         commands.map((mapping) => {
           const { manifest, overrides } = mapping;
           const command = manifest.spec;
-          const handler = new Function(self, manifest.spec.name, {
+          let sanitizedName = command.name.replace(/[^A-Za-z_-]/g, "-");
+          if (sanitizedName !== command.name) {
+            // name was sanitized, so add the METHOD to the name
+            sanitizedName = `${sanitizedName}-${
+              mapping.manifest.spec.method ?? "GET"
+            }`;
+          }
+          const handler = new Function(self, command.name, {
             ...overrides,
-            functionName: `${self.props.serviceName}-command-${command.name}`,
+            functionName: `${self.props.serviceName}-command-${sanitizedName}`,
             code: Code.fromAsset(self.props.build.resolveFolder(manifest.file)),
             runtime: NODE_18_X,
             architecture: Architecture.ARM_64,
@@ -206,8 +214,9 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
                   )
                 : undefined,
             handler: overrides?.handler ?? "index.handler",
-            role: overrides?.role ?? self.commands.default.role,
+            role: overrides?.role ?? role,
           });
+
           return [
             command.name as CommandNames<Service>,
             {
@@ -240,7 +249,9 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
               httpMethod: HttpMethod.POST, // TODO: why POST? Exported API has this but it's not clear
               payloadFormatVersion: "2.0",
               type: "aws_proxy",
-              uri: self.commands.default.functionArn,
+              uri: Lazy.string({
+                produce: () => self.commands.default.functionArn,
+              }),
             } satisfies XAmazonApiGatewayIntegration,
           },
           ...paths,
@@ -281,8 +292,6 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
       ): openapi.PathsObject {
         const command = manifest.spec;
         init?.(handler);
-
-        self.configureInvokeHttpServiceApi(handler);
 
         return {
           [`/_rpc/${command.name}`]: {
@@ -352,7 +361,9 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
         Arn.format(
           {
             service: "execute-api",
-            resource: this.gateway.apiId,
+            resource: Lazy.string({
+              produce: () => this.gateway.apiId,
+            }),
             resourceName: "*/*/*",
           },
           Stack.of(this)
@@ -373,7 +384,10 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
   }
 
   private readonly ENV_MAPPINGS = {
-    [ENV_NAMES.SERVICE_URL]: () => this.gateway.apiEndpoint,
+    [ENV_NAMES.SERVICE_URL]: () =>
+      Lazy.string({
+        produce: () => this.gateway.apiEndpoint,
+      }),
   } as const;
 
   private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {

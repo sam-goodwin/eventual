@@ -1,9 +1,10 @@
 import type z from "zod";
-import { SourceLocation } from "../service-spec.js";
+import type { SourceLocation } from "../service-spec.js";
 import type { FunctionRuntimeProps } from "../function-props.js";
-import { commands } from "../global.js";
 import type { HttpMethod } from "../http-method.js";
 import type { ParsePath } from "./path.js";
+
+import { commands } from "../global.js";
 
 export interface Command<
   Name extends string = string,

@@ -28,6 +28,7 @@ export interface BuildManifest {
     [subscriptionName: string]: SubscriptionFunction;
   };
   commands: {
+    default: CommandFunction;
     /**
      * Individually bundled and tree-shaken functions for a specific Command.
      */

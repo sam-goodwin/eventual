@@ -3,9 +3,10 @@ import {
   ActivitySucceeded,
   WorkflowEvent,
   WorkflowEventType,
-  WorkflowStarted
+  WorkflowStarted,
 } from "@eventual/core";
 import { filterEvents } from "../src/handlers/orchestrator.js";
+import "../src/workflow";
 
 const started1: WorkflowStarted = {
   type: WorkflowEventType.WorkflowStarted,

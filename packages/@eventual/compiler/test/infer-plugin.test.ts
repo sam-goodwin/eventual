@@ -36,7 +36,7 @@ function sanitizeBundle(
       // TODO: figure out why running vs code test is having trouble identifying the right
       //       tsconfig.test.json without a configuration at the root.
       // HINT: something to do with `.vscode/launch.json`
-      .filter((line) => !line.includes("fileName:"))
+      .filter((line) => !(line.includes("fileName:") || line.includes("// ")))
       .join("\n")
   );
 }

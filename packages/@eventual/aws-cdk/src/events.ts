@@ -26,6 +26,10 @@ export type EventHandlerNames<Service> = KeysOfType<
   { kind: "EventHandler" }
 >;
 
+export type SubscriptionProps<Service> = {
+  [eventHandler in EventHandlerNames<Service>]?: EventHandlerProps;
+};
+
 export interface EventsProps<Service = any> {
   /**
    * The built service describing the event subscriptions within the Service.
@@ -44,9 +48,7 @@ export interface EventsProps<Service = any> {
   /**
    * Configuration for individual Event Handlers created with `onEvent`.
    */
-  readonly handlers?: {
-    [eventHandler in EventHandlerNames<Service>]?: EventHandlerProps;
-  };
+  readonly subscriptions?: SubscriptionProps<Service>;
   readonly service: IService;
   readonly api: IServiceApi;
 }
@@ -115,16 +117,14 @@ export class Events<Service> extends Construct implements IGrantable {
           code: props.build.getCode(func.file),
           functionName: `${props.serviceName}-event-${sub.name}`,
           ...functionProps,
-          ...(props.handlers?.[sub.name] ?? {}),
+          ...(props.subscriptions?.[sub.name] ?? {}),
           memorySize: sub.runtimeProps?.memorySize,
           timeout: sub.runtimeProps?.timeout
             ? Duration.seconds(computeDurationSeconds(sub.runtimeProps.timeout))
             : undefined,
 
-          role: props.handlers?.[sub.name]?.role ?? role,
+          role: props.subscriptions?.[sub.name]?.role ?? role,
         });
-        this.configurePublish(handler);
-        this.configureEventHandler(handler);
 
         if (sub.subscriptions.length > 0) {
           // configure a Rule to route all subscribed events to the eventHandler
@@ -152,16 +152,25 @@ export class Events<Service> extends Construct implements IGrantable {
       [handler in EventHandlerNames<Service>]: Function;
     };
 
-    this.grantPrincipal = new CompositePrincipal(
-      ...Array.from(
-        this.handlers.reduce<Set<aws_iam.IPrincipal>>((roles, handler) => {
-          if (handler.role) {
-            roles.add(handler.role);
-          }
-          return roles;
-        }, new Set())
-      )
-    );
+    this.handlers.forEach((handler) => {
+      this.configurePublish(handler);
+      this.configureEventHandler(handler);
+    });
+
+    if (this.handlers.length > 0) {
+      this.grantPrincipal = new CompositePrincipal(
+        ...Array.from(
+          this.handlers.reduce<Set<aws_iam.IPrincipal>>((roles, handler) => {
+            if (handler.role) {
+              roles.add(handler.role);
+            }
+            return roles;
+          }, new Set())
+        )
+      );
+    } else {
+      this.grantPrincipal = role;
+    }
   }
 
   public configurePublish(func: Function) {

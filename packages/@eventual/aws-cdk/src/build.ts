@@ -83,9 +83,9 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     [
       // bundle the default handlers first as we refer to them when bundling all of the individual handlers
       orchestrator,
-      defaultActivityFunction,
-      defaultCommandFunction,
-      defaultSubscriptionFunction,
+      monoActivityFunction,
+      monoCommandFunction,
+      monoSubscriptionFunction,
     ],
     [
       // also bundle each of the internal eventual API Functions as they have no dependencies
@@ -117,7 +117,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       file: orchestrator!,
     },
     activities: {
-      file: defaultActivityFunction!,
+      file: monoActivityFunction!,
     },
     events: serviceSpec.events,
     subscriptions: subscriptions as BuildManifest["subscriptions"],
@@ -129,7 +129,15 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         file: timerHandler!,
       },
     },
-    commands: commands as BuildManifest["commands"],
+    commands: {
+      ...commands,
+      default: {
+        file: monoCommandFunction!,
+        spec: {
+          name: "default",
+        },
+      },
+    },
     api: manifestInternalAPI(),
   };
 
@@ -190,8 +198,8 @@ export async function buildService(request: BuildAWSRuntimeProps) {
                 spec: spec,
                 file:
                   type === "commands"
-                    ? defaultCommandFunction!
-                    : defaultSubscriptionFunction!,
+                    ? monoCommandFunction!
+                    : monoSubscriptionFunction!,
               },
             ] as const;
           }
@@ -312,7 +320,9 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     return path.relative(path.resolve(request.outDir), path.resolve(file));
   }
 
-  function manifestInternalAPI() {
+  function manifestInternalAPI(): {
+    [k in keyof InternalApiRoutes]: InternalApiFunction;
+  } {
     return Object.fromEntries([
       internalCommand({
         name: "listWorkflows",
@@ -368,7 +378,10 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         method: "POST",
         file: updateActivity!,
       }),
-    ]);
+    ]) as {
+      [k in keyof InternalApiRoutes]: InternalApiFunction;
+    };
+
     function internalCommand<P extends keyof InternalApiRoutes>(props: {
       name: string;
       path: P;
@@ -376,7 +389,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       file: string;
     }) {
       return [
-        path,
+        props.path,
         {
           spec: {
             name: props.name,

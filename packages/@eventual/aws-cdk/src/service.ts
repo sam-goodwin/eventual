@@ -36,13 +36,12 @@ import { Construct } from "constructs";
 import path from "path";
 import { Activities, IActivities } from "./activities";
 import { BuildOutput, buildServiceSync } from "./build";
-import { Events } from "./events";
+import { Events, SubscriptionProps } from "./events";
 import { grant } from "./grant";
 import { Logging, LoggingProps } from "./logging";
 import { lazyInterface } from "./proxy-construct";
 import { IScheduler, Scheduler } from "./scheduler";
 import { Api, CommandProps, IServiceApi } from "./service-api";
-import { PickType } from "./utils";
 import { IWorkflows, Workflows } from "./workflows";
 
 export interface IService {
@@ -192,11 +191,8 @@ export interface ServiceProps<Service = any> {
    *
    */
   commands?: CommandProps<Service>;
-  events?: {
-    handlers?: {
-      [eventHandler in keyof PickType<Service, { kind: "EventHandler" }>]?: any;
-    };
-  };
+  subscriptions?: SubscriptionProps<Service>;
+
   workflows?: {
     reservedConcurrentExecutions?: number;
   };
