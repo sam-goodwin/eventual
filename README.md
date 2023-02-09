@@ -87,7 +87,7 @@ interface MyEvent {
 
 export const myEvent = event<MyEvent>("MyEvent");
 
-myEvent.onEvent((e) => {
+myEvent.onEvent("onMyEvent", (e) => {
   console.log(e.key);
 });
 ```

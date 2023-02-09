@@ -101,7 +101,7 @@ export class Activities
     });
 
     this.worker = new ServiceFunction(this, "Worker", {
-      code: props.build.getCode(props.build.activities.default.file),
+      code: props.build.getCode(props.build.activities.file),
       functionName: `${props.serviceName}-activity-handler`,
       serviceType: ServiceType.ActivityWorker,
       memorySize: 512,

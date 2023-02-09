@@ -9,10 +9,13 @@ import {
   commands,
   CommandSpec,
   eventHandlers,
-  EventHandlerSpec,
+  SubscriptionSpec,
   events,
   ServiceSpec,
   workflows,
+  EventSpec,
+  activities,
+  ActivitySpec,
 } from "@eventual/core";
 import {
   CallExpression,
@@ -58,48 +61,55 @@ export async function infer(
   await import(path.resolve(scriptName));
 
   const serviceSpec: ServiceSpec = {
-    events: {
-      schemas: Object.fromEntries(
-        Array.from(events().values()).map(
-          (event) =>
-            [
-              event.name,
-              event.schema ? generateSchema(event.schema) : {},
-            ] as const
-        )
-      ),
-      subscriptions: eventHandlers().flatMap((e) =>
-        e.sourceLocation ? [] : e.subscriptions
-      ),
-      handlers: eventHandlers().flatMap((e) =>
-        e.sourceLocation
-          ? [
-              {
-                kind: "EventHandler",
-                runtimeProps: e.runtimeProps,
-                sourceLocation: e.sourceLocation,
-                subscriptions: e.subscriptions,
-              } satisfies EventHandlerSpec,
-            ]
-          : []
-      ),
-    },
-    api: {
-      commands: commands.map(
-        (command) =>
-          ({
-            name: command.name,
-            sourceLocation: command.sourceLocation,
-            path: command.path,
-            memorySize: command.memorySize,
-            timeout: command.timeout,
-            method: command.method,
-            input: command.input ? generateSchema(command.input) : undefined,
-            output: command.output ? generateSchema(command.output) : undefined,
-          } satisfies CommandSpec)
-      ),
-    },
     workflows: [...workflows().keys()].map((n) => ({ name: n })),
+    activities: Object.fromEntries(
+      activities().map((activity) => [
+        activity.activityID,
+        {
+          // TODO: source location, etc.
+          activityID: activity.activityID,
+          options: activity.options,
+        } satisfies ActivitySpec,
+      ])
+    ),
+    events: Object.fromEntries(
+      Array.from(events().values()).map(
+        (event) =>
+          [
+            event.name,
+            {
+              name: event.name,
+              schema: event.schema ? generateSchema(event.schema) : undefined,
+            } satisfies EventSpec,
+          ] as const
+      )
+    ),
+    subscriptions: Object.fromEntries(
+      eventHandlers().map((e) => [
+        e.name,
+        {
+          name: e.name,
+          runtimeProps: e.runtimeProps,
+          sourceLocation: e.sourceLocation,
+          subscriptions: e.subscriptions,
+        } satisfies SubscriptionSpec,
+      ])
+    ) as ServiceSpec["subscriptions"],
+    commands: Object.fromEntries(
+      commands.map((command) => [
+        command.name,
+        {
+          name: command.name,
+          sourceLocation: command.sourceLocation,
+          path: command.path,
+          memorySize: command.memorySize,
+          timeout: command.timeout,
+          method: command.method,
+          input: command.input ? generateSchema(command.input) : undefined,
+          output: command.output ? generateSchema(command.output) : undefined,
+        } satisfies CommandSpec,
+      ])
+    ),
   };
 
   console.log(JSON.stringify(serviceSpec));

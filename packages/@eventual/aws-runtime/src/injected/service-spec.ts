@@ -7,6 +7,17 @@ import { ServiceSpec } from "@eventual/core";
 
 export default {
   workflows: [],
-  events: { handlers: [], schemas: {}, subscriptions: [] },
-  api: { commands: [] },
+  events: {},
+  commands: {
+    default: {
+      name: "default",
+    },
+  },
+  activities: {},
+  subscriptions: {
+    default: {
+      name: "default",
+      subscriptions: [],
+    },
+  },
 } satisfies ServiceSpec;

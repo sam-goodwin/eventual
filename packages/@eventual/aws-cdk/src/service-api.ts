@@ -6,7 +6,6 @@ import {
 import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
 import { ENV_NAMES } from "@eventual/aws-runtime";
-import { ServiceType } from "@eventual/core";
 import { computeDurationSeconds } from "@eventual/runtime-core";
 import { Arn, aws_iam, Duration, Stack } from "aws-cdk-lib";
 import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
@@ -29,7 +28,6 @@ import type { Events } from "./events";
 import { grant } from "./grant";
 import type { Scheduler } from "./scheduler";
 import { IService } from "./service";
-import { ServiceFunction } from "./service-function";
 import { addEnvironment, KeysOfType, NODE_18_X } from "./utils";
 import type { Workflows } from "./workflows";
 
@@ -79,7 +77,7 @@ export type ServiceCommands<Service> = {
   [command in CommandNames<Service>]: Function;
 };
 
-export class Api<Service> extends Construct implements IServiceApi {
+export class Api<Service> extends Construct implements IServiceApi, IGrantable {
   /**
    * A Reference to this Service's {@link BuildOutput}.
    */
@@ -100,6 +98,8 @@ export class Api<Service> extends Construct implements IServiceApi {
    */
   readonly commands: ServiceCommands<Service>;
 
+  readonly grantPrincipal: aws_iam.IPrincipal;
+
   /**
    * Individual API Handler Lambda Functions handling only a single API route. These handlers
    * are individually bundled and tree-shaken for optimal performance and may contain their own custom
@@ -115,19 +115,7 @@ export class Api<Service> extends Construct implements IServiceApi {
 
     this.build = props.build;
 
-    const defaultHandler = new ServiceFunction(this, "Handler", {
-      functionName: `${props.serviceName}-api-handler`,
-      serviceType: ServiceType.ApiHandler,
-      memorySize: 512,
-      code: props.build.getCode(props.build.commands.default.file),
-    });
-
-    this.gateway = new HttpApi(this, "Gateway", {
-      apiName: `eventual-api-${props.serviceName}`,
-      defaultIntegration: new HttpLambdaIntegration("default", defaultHandler),
-    });
-
-    const internalApiRoutes: InternalApiRoutes = this.props.build.api.eventual;
+    const internalApiRoutes: InternalApiRoutes = this.props.build.api;
     const internalInit: {
       [route in keyof typeof internalApiRoutes]?: CommandMapping["init"];
     } = {
@@ -150,20 +138,21 @@ export class Api<Service> extends Construct implements IServiceApi {
         this.props.workflows.configureStartExecution(fn),
     };
 
+    const role = new aws_iam.Role(this, "DefaultRole", {
+      assumedBy: new aws_iam.ServicePrincipal("lambda.amazonaws.com"),
+    });
+    this.grantPrincipal = role;
+
     const { specification, commands } = synthesizeAPI([
-      {
-        manifest: this.build.commands.default,
-        overrides: this.props.commands?.default,
-      },
-      ...Object.values(this.build.commands.custom).map(
+      ...Object.values(this.build.commands).map(
         (manifest) =>
           ({
             manifest,
             overrides:
-              props.commands?.[manifest.command.name as CommandNames<Service>],
+              props.commands?.[manifest.spec.name as CommandNames<Service>],
           } satisfies CommandMapping)
       ),
-      ...(Object.entries(this.build.api.eventual) as any).map(
+      ...(Object.entries(this.build.api) as any).map(
         ([path, manifest]: [keyof InternalApiRoutes, InternalApiFunction]) =>
           ({
             manifest,
@@ -178,11 +167,18 @@ export class Api<Service> extends Construct implements IServiceApi {
     this.specification = specification;
     this.commands = commands;
 
+    this.gateway = new HttpApi(this, "Gateway", {
+      apiName: `eventual-api-${props.serviceName}`,
+      defaultIntegration: new HttpLambdaIntegration(
+        "default",
+        this.commands.default
+      ),
+    });
+
     // The handler is given an instance of the service client.
     // Allow it to access any of the methods on the service client by default.
     this.configureInvokeHttpServiceApi(this.commands.default);
-
-    this.configureApiHandler(defaultHandler);
+    this.configureApiHandler(this.commands.default);
 
     function synthesizeAPI(commands: CommandMapping[]): {
       specification: openapi.OpenAPIObject;
@@ -191,8 +187,8 @@ export class Api<Service> extends Construct implements IServiceApi {
       const synthesizedCommands = Object.fromEntries(
         commands.map((mapping) => {
           const { manifest, overrides } = mapping;
-          const command = manifest.command;
-          const handler = new Function(self, manifest.name, {
+          const command = manifest.spec;
+          const handler = new Function(self, manifest.spec.name, {
             ...overrides,
             functionName: `${self.props.serviceName}-command-${command.name}`,
             code: Code.fromAsset(self.props.build.resolveFolder(manifest.file)),
@@ -202,13 +198,15 @@ export class Api<Service> extends Construct implements IServiceApi {
               NODE_OPTIONS: "--enable-source-maps",
               ...(overrides?.environment ?? {}),
             },
-            memorySize: overrides?.memorySize ?? manifest.memorySize,
+            memorySize: overrides?.memorySize ?? manifest.spec.memorySize,
             timeout:
-              overrides?.timeout ?? manifest.timeout
-                ? Duration.seconds(computeDurationSeconds(manifest.timeout!))
+              overrides?.timeout ?? manifest.spec.timeout
+                ? Duration.seconds(
+                    computeDurationSeconds(manifest.spec.timeout!)
+                  )
                 : undefined,
             handler: overrides?.handler ?? "index.handler",
-            role: overrides?.role ?? defaultHandler.role,
+            role: overrides?.role ?? self.commands.default.role,
           });
           return [
             command.name as CommandNames<Service>,
@@ -218,6 +216,13 @@ export class Api<Service> extends Construct implements IServiceApi {
             },
           ] as const;
         })
+      );
+
+      const paths = Object.values(
+        synthesizedCommands as Record<string, { paths: openapi.PathsObject }>
+      ).reduce<openapi.PathsObject>(
+        (allPaths, { paths }) => mergeAPIPaths(allPaths, paths),
+        {}
       );
 
       const specification: openapi.OpenAPIObject = {
@@ -235,18 +240,10 @@ export class Api<Service> extends Construct implements IServiceApi {
               httpMethod: HttpMethod.POST, // TODO: why POST? Exported API has this but it's not clear
               payloadFormatVersion: "2.0",
               type: "aws_proxy",
-              uri: defaultHandler.functionArn,
+              uri: self.commands.default.functionArn,
             } satisfies XAmazonApiGatewayIntegration,
           },
-          ...Object.values(
-            synthesizedCommands as Record<
-              string,
-              { paths: openapi.PathsObject }
-            >
-          ).reduce<openapi.PathsObject>(
-            (allPaths, { paths }) => mergeAPIPaths(allPaths, paths),
-            {}
-          ),
+          ...paths,
         },
       };
 
@@ -282,7 +279,7 @@ export class Api<Service> extends Construct implements IServiceApi {
         handler: Function,
         { manifest, init }: CommandMapping
       ): openapi.PathsObject {
-        const command = manifest.command;
+        const command = manifest.spec;
         init?.(handler);
 
         self.configureInvokeHttpServiceApi(handler);

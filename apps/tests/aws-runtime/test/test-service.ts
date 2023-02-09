@@ -321,6 +321,7 @@ const SignalEventPayload = z.object({
 const signalEvent = event("SignalEvent", SignalEventPayload);
 
 export const onSignalEvent = signalEvent.onEvent(
+  "onSignalEvent",
   async ({ executionId, signalId, proxy }) => {
     console.debug("received signal event", { executionId, signalId, proxy });
     if (proxy) {
@@ -394,7 +395,7 @@ export const timedWorkflow = workflow("timedWorkflow", async () => {
 const resumeSignal = signal("resume");
 const notifyEvent = event<{ executionId: string }>("notify");
 
-notifyEvent.onEvent(async ({ executionId }) => {
+notifyEvent.onEvent("onNotifyEvent", async ({ executionId }) => {
   await resumeSignal.sendSignal(executionId);
 });
 

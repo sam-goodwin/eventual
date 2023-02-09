@@ -75,11 +75,15 @@ export interface Event<E extends EventPayload = EventPayload> {
    *
    * @param handler the handler function that will process the event.
    */
-  onEvent(handler: EventHandlerFunction<E>): EventHandler<E>;
-  onEvent(
+  onEvent<Name extends string>(
+    name: Name,
+    handler: EventHandlerFunction<E>
+  ): EventHandler<Name, E>;
+  onEvent<Name extends string>(
+    name: Name,
     props: EventHandlerRuntimeProps,
     handlers: EventHandlerFunction<E>
-  ): EventHandler<E>;
+  ): EventHandler<Name, E>;
   /**
    * Publish events of this type within the service boundary.
    *
@@ -88,8 +92,12 @@ export interface Event<E extends EventPayload = EventPayload> {
   publishEvents(...events: E[]): Promise<void>;
 }
 
-export interface EventHandler<E extends EventPayload = EventPayload> {
+export interface EventHandler<
+  Name extends string = string,
+  E extends EventPayload = EventPayload
+> {
   kind: "EventHandler";
+  name: Name;
   /**
    * The Handler Function for processing the Events.
    */
@@ -178,7 +186,7 @@ export type EventHandlerFunction<E extends EventPayload> = (
  * handler that wil lbe invoked for every event of this type that is received.
  *
  * ```ts
- * checkoutEvent.onEvent(async (checkout) => {
+ * checkoutEvent.onEvent("onCheckoutEvent", async (checkout) => {
  *   console.log(checkout);
  * });
  * ```
@@ -198,7 +206,7 @@ export function event<E extends EventPayload>(
     kind: "Event",
     name,
     schema,
-    onEvent(...args: any[]) {
+    onEvent<Name extends string>(name: Name, ...args: any[]) {
       // we have an implicit contract where the SourceLocation may be passed in as the first argument
       const [sourceLocation, eventHandlerProps, handler] =
         typeof args[2] === "function"
@@ -221,8 +229,9 @@ export function event<E extends EventPayload>(
               ]
           : [undefined, undefined, args[0] as EventHandlerFunction<E>];
 
-      const eventHandler: EventHandler<E> = {
+      const eventHandler: EventHandler<Name, E> = {
         kind: "EventHandler",
+        name,
         handler,
         subscriptions: [
           {
@@ -233,7 +242,7 @@ export function event<E extends EventPayload>(
         sourceLocation,
       };
 
-      eventHandlers().push(eventHandler);
+      eventHandlers().push(eventHandler as EventHandler<any, any>);
 
       return eventHandler;
     },

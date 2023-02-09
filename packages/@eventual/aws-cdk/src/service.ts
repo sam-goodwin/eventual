@@ -352,8 +352,8 @@ export class Service<S = any>
       // when granting permissions to the service,
       // propagate them to the following principals
       this.activities.worker.grantPrincipal,
-      this.api.commands.default.grantPrincipal,
-      this.events.defaultHandler.grantPrincipal
+      this.api.grantPrincipal,
+      this.events.grantPrincipal
     );
 
     this.cliRole = new Role(this, "EventualCliRole", {
@@ -401,8 +401,7 @@ export class Service<S = any>
   public addEnvironment(key: string, value: string): void {
     this.activities.worker.addEnvironment(key, value);
     this.api.handlers.forEach((handler) => handler.addEnvironment(key, value));
-    this.events.defaultHandler.addEnvironment(key, value);
-    this.events.handlersList.forEach((handler) =>
+    this.events.handlers.forEach((handler) =>
       handler.addEnvironment(key, value)
     );
     this.workflows.orchestrator.addEnvironment(key, value);

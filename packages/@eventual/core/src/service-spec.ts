@@ -1,49 +1,64 @@
 import type openapi from "openapi3-ts";
 import type { z } from "zod";
-import type { EventHandler, Subscription } from "./event.js";
+import type { Event, EventHandler } from "./event.js";
 import type { Command } from "./http/command.js";
 import type { DurationSchedule } from "./schedule.js";
+import type { ActivityFunction } from "./activity.js";
 
 /**
  * Specification for an Eventual application
  */
 export interface ServiceSpec {
-  api: ApiSpec;
-  events: EventSpec;
   /**
    * List of workflows
    */
   workflows: WorkflowSpec[];
-}
-
-export interface EventSpec {
-  /**
-   * Schemas of all events within this Service.
-   */
-  schemas: Schemas;
-  /**
-   * Catch-all default subscriptions and route to the default Event Handler monolith.
-   */
-  subscriptions: Subscription[];
-  /**
-   * Individually bundled and subscribed event Event Handlers.
-   */
-  handlers: EventHandlerSpec[];
-}
-
-export interface EventHandlerSpec extends Omit<EventHandler, "handler"> {
-  // source location is mandatory for individually bundled event handlers.
-  sourceLocation: SourceLocation;
-}
-
-export interface ApiSpec {
-  commands: CommandSpec[];
+  activities: {
+    [activityName: string]: ActivitySpec;
+  };
+  commands: {
+    /**
+     * Default Route for handling a catch-all, e.g. returning 404
+     *
+     * Each command should be bundled in its own lambda function but we continue this catch-all just in case
+     * for the API Gateway's default integration.
+     *
+     * TODO: consider removing.
+     */
+    default: CommandSpec;
+    /**
+     * Individually bundled and tree-shaken functions for a specific Command.
+     */
+    [commandName: string]: CommandSpec;
+  };
+  events: {
+    /**
+     * Open API 3 schema definitions for all known Events in this Service.
+     */
+    [eventName: string]: EventSpec;
+  };
+  subscriptions: {
+    /**
+     * The catch-all function for any event handlers that cannot be bundled individually.
+     */
+    default: SubscriptionSpec;
+    /**
+     * Individually bundled {@link EventFunction}s containing a single `onEvent` event handler.
+     */
+    [subscriptionName: string]: SubscriptionSpec;
+  };
 }
 
 export interface FunctionSpec {
   memorySize?: number;
   timeout?: DurationSchedule;
 }
+
+export type ActivitySpec = ToSpec<ActivityFunction>;
+
+export type SubscriptionSpec = Omit<ToSpec<EventHandler>, "kind">;
+
+export type EventSpec = Omit<ToSpec<Event>, "kind">;
 
 export type CommandSpec = Omit<ToSpec<Command>, "kind">;
 

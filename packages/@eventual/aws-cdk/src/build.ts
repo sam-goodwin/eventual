@@ -1,14 +1,30 @@
 import { build, BuildSource, infer } from "@eventual/compiler";
-import { ServiceType } from "@eventual/core";
+import {
+  CommandSpec,
+  HttpMethod,
+  ServiceSpec,
+  ServiceType,
+  SubscriptionSpec,
+} from "@eventual/core";
 import { Code } from "aws-cdk-lib/aws-lambda";
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
-import { CommandFunction, BuildManifest } from "./build-manifest";
+import {
+  BuildManifest,
+  InternalApiRoutes,
+  InternalApiFunction,
+  BundledFunction,
+} from "./build-manifest";
 
 export interface BuildOutput extends BuildManifest {}
 
 export class BuildOutput {
+  // ensure that only one Asset is created per file even if that file is packaged multiple times
+  private codeAssetCache: {
+    [file: string]: Code;
+  } = {};
+
   constructor(
     readonly serviceName: string,
     readonly outDir: string,
@@ -18,7 +34,9 @@ export class BuildOutput {
   }
 
   public getCode(file: string) {
-    return Code.fromAsset(this.resolveFolder(file));
+    return (this.codeAssetCache[file] ??= Code.fromAsset(
+      this.resolveFolder(file)
+    ));
   }
 
   public resolveFolder(file: string) {
@@ -62,12 +80,15 @@ export async function buildService(request: BuildAWSRuntimeProps) {
   await fs.promises.writeFile(specPath, JSON.stringify(serviceSpec));
 
   const [
-    individualApis,
     [
+      // bundle the default handlers first as we refer to them when bundling all of the individual handlers
       orchestrator,
-      activityWorker,
-      defaultApiHandler,
-      eventHandler,
+      defaultActivityFunction,
+      defaultCommandFunction,
+      defaultSubscriptionFunction,
+    ],
+    [
+      // also bundle each of the internal eventual API Functions as they have no dependencies
       scheduleForwarder,
       timerHandler,
       listWorkflows,
@@ -81,8 +102,14 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       updateActivity,
     ],
   ] = await Promise.all([
-    bundleApis(specPath),
-    bundleFunctions(specPath),
+    bundleMonolithDefaultHandlers(specPath),
+    bundleEventualAPIFunctions(specPath),
+  ]);
+
+  // then, bundle each of the commands and subscriptions
+  const [commands, subscriptions] = await Promise.all([
+    bundle(specPath, "commands"),
+    bundle(specPath, "subscriptions"),
   ] as const);
 
   const manifest: BuildManifest = {
@@ -90,30 +117,10 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       file: orchestrator!,
     },
     activities: {
-      default: {
-        file: activityWorker!,
-      },
-      handlers: {
-        // TODO: bundle activities individually
-      },
+      file: defaultActivityFunction!,
     },
-    events: {
-      schemas: serviceSpec.events.schemas,
-      default: {
-        name: "default",
-        file: eventHandler!,
-        subscriptions: serviceSpec.events.subscriptions,
-      },
-      handlers: serviceSpec.events.handlers.map((handler) => ({
-        // TODO
-        // name:
-        file: handler.sourceLocation.fileName,
-        subscriptions: handler.subscriptions,
-        memorySize: handler.runtimeProps?.memorySize,
-        timeout: handler.runtimeProps?.timeout,
-        exportName: handler.sourceLocation.exportName,
-      })),
-    },
+    events: serviceSpec.events,
+    subscriptions: subscriptions as BuildManifest["subscriptions"],
     scheduler: {
       forwarder: {
         file: scheduleForwarder!,
@@ -122,148 +129,123 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         file: timerHandler!,
       },
     },
-    commands: {
-      default: {
-        name: "default",
-        file: defaultApiHandler!,
-        command: {},
-      },
-      custom: individualApis,
-    },
-    api: {
-      routes: individualApis,
-      internal: {
-        "/_eventual/workflows": {
-          command: {
-            name: "listWorkflows",
-            method: "GET",
-          },
-          file: listWorkflows!,
-        },
-        "/_eventual/workflows/{name}/executions": {
-          command: {
-            name: "startExecution",
-            method: "POST",
-          },
-          file: startExecution!,
-        },
-        "/_eventual/executions": {
-          command: {
-            name: "listExecutions",
-            method: "GET",
-          },
-          file: listExecutions!,
-        },
-        "/_eventual/executions/{executionId}": {
-          command: {
-            name: "getExecution",
-            method: "GET",
-          },
-          file: getExecution!,
-        },
-        "/_eventual/executions/{executionId}/history": {
-          command: {
-            name: "listExecutionEvents",
-            method: "GET",
-          },
-          file: executionEvents!,
-        },
-        "/_eventual/executions/{executionId}/signals": {
-          command: {
-            name: "sendSignal",
-            method: "PUT",
-          },
-          file: sendSignal!,
-        },
-        "/_eventual/executions/{executionId}/workflow-history": {
-          command: {
-            // TODO: what is this endpoint? Don't know what the URL means ...
-            name: "getExecutionHistory",
-            method: "GET",
-          },
-          file: executionsHistory!,
-        },
-        "/_eventual/events": {
-          command: {
-            name: "publishEvents",
-            method: "PUT",
-          },
-          file: publishEvents!,
-        },
-        "/_eventual/activities": {
-          command: {
-            name: "updateActivity",
-            method: "POST",
-          },
-          file: updateActivity!,
-        },
-      },
-    },
+    commands: commands as BuildManifest["commands"],
+    api: manifestInternalAPI(),
   };
 
   await fs.promises.writeFile(
     path.join(outDir, "manifest.json"),
     JSON.stringify(manifest, null, 2)
   );
+  type SpecFor<Type extends "subscriptions" | "commands"> =
+    Type extends "commands" ? CommandSpec : SubscriptionSpec;
 
-  async function bundleApis(specPath: string) {
+  async function bundle<Type extends "subscriptions" | "commands">(
+    specPath: string,
+    type: Type
+  ): Promise<{
+    [k in keyof ServiceSpec[Type]]: BundledFunction<SpecFor<Type>>;
+  }> {
     const routes = await Promise.all(
-      serviceSpec.api.commands.map(async (command) => {
-        if (command.sourceLocation?.fileName) {
-          return [
-            command.path,
-            {
-              file: await buildFunction({
-                name: path.join("api", command.name),
-                entry: runtimeHandlersEntrypoint("api-handler"),
-                exportName: command.sourceLocation.exportName,
-                serviceType: ServiceType.ApiHandler,
-                injectedEntry: command.sourceLocation.fileName,
-                injectedServiceSpec: specPath,
-              }),
-              exportName: command.sourceLocation.exportName,
-              command,
-              memorySize: command.memorySize,
-              timeout: command.timeout,
-            } satisfies CommandFunction,
-          ] as const;
+      Object.values(serviceSpec[type]).map(
+        async (
+          spec: SpecFor<Type>
+        ): Promise<
+          readonly [string, BundledFunction<CommandSpec | SubscriptionSpec>]
+        > => {
+          if (spec.sourceLocation?.fileName) {
+            // we know the source location of the command, so individually build it from that
+            // file and create a separate (optimized bundle) for it
+            // TODO: generate an index.ts that imports { exportName } from "./sourceLocation" for enhanced bundling
+            // TODO: consider always bundling from the root index.ts instead of arbitrarily via ESBuild+SWC AST transformer
+            return [
+              spec.name,
+              {
+                spec,
+                file: await buildFunction({
+                  name: path.join(
+                    type === "commands" ? "command" : "subscription",
+                    spec.name
+                  ),
+                  entry: runtimeHandlersEntrypoint(
+                    type === "subscriptions" ? "event-handler" : "api-handler"
+                  ),
+                  exportName: spec.sourceLocation.exportName,
+                  serviceType:
+                    type === "commands"
+                      ? ServiceType.ApiHandler
+                      : ServiceType.EventHandler,
+                  injectedEntry: spec.sourceLocation.fileName,
+                  injectedServiceSpec: specPath,
+                }),
+              },
+            ] as const;
+          } else {
+            // if we don't know the location of this command (because it is not exported)
+            // then use the default monolithic handler
+            // we'll still create a separate Lambda Function for each command though
+            return [
+              spec.name,
+              {
+                spec: spec,
+                file:
+                  type === "commands"
+                    ? defaultCommandFunction!
+                    : defaultSubscriptionFunction!,
+              },
+            ] as const;
+          }
         }
-        return undefined;
-      })
+      )
     );
     return Object.fromEntries(
       routes.filter(
         (route): route is Exclude<typeof route, undefined> =>
           route !== undefined
       )
+    ) as {
+      [k in keyof ServiceSpec[Type]]: BundledFunction<SpecFor<Type>>;
+    };
+  }
+
+  function bundleMonolithDefaultHandlers(specPath: string) {
+    return Promise.all(
+      [
+        {
+          name: ServiceType.OrchestratorWorker,
+          entry: runtimeHandlersEntrypoint("orchestrator"),
+          eventualTransform: true,
+          serviceType: ServiceType.OrchestratorWorker,
+        },
+        {
+          name: ServiceType.ActivityWorker,
+          entry: runtimeHandlersEntrypoint("activity-worker"),
+          serviceType: ServiceType.ActivityWorker,
+        },
+        {
+          name: ServiceType.ApiHandler,
+          entry: runtimeHandlersEntrypoint("api-handler"),
+          serviceType: ServiceType.ApiHandler,
+        },
+        {
+          name: ServiceType.EventHandler,
+          entry: runtimeHandlersEntrypoint("event-handler"),
+          serviceType: ServiceType.EventHandler,
+        },
+      ]
+        .map((s) => ({
+          ...s,
+          injectedEntry: request.entry,
+          injectedServiceSpec: specPath,
+        }))
+        .map(buildFunction)
     );
   }
 
-  function bundleFunctions(specPath: string) {
+  function bundleEventualAPIFunctions(specPath: string) {
     return Promise.all(
       (
         [
-          {
-            name: ServiceType.OrchestratorWorker,
-            entry: runtimeHandlersEntrypoint("orchestrator"),
-            eventualTransform: true,
-            serviceType: ServiceType.OrchestratorWorker,
-          },
-          {
-            name: ServiceType.ActivityWorker,
-            entry: runtimeHandlersEntrypoint("activity-worker"),
-            serviceType: ServiceType.ActivityWorker,
-          },
-          {
-            name: ServiceType.ApiHandler,
-            entry: runtimeHandlersEntrypoint("api-handler"),
-            serviceType: ServiceType.ApiHandler,
-          },
-          {
-            name: ServiceType.EventHandler,
-            entry: runtimeHandlersEntrypoint("event-handler"),
-            serviceType: ServiceType.EventHandler,
-          },
           {
             name: "SchedulerForwarder",
             entry: runtimeHandlersEntrypoint("schedule-forwarder"),
@@ -328,6 +310,83 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       outDir: request.outDir,
     });
     return path.relative(path.resolve(request.outDir), path.resolve(file));
+  }
+
+  function manifestInternalAPI() {
+    return Object.fromEntries([
+      internalCommand({
+        name: "listWorkflows",
+        path: "/_eventual/workflows",
+        method: "GET",
+        file: listWorkflows!,
+      }),
+      internalCommand({
+        name: "startExecution",
+        path: "/_eventual/workflows/{name}/executions",
+        method: "POST",
+        file: startExecution!,
+      }),
+      internalCommand({
+        name: "listExecutions",
+        path: "/_eventual/executions",
+        method: "GET",
+        file: listExecutions!,
+      }),
+      internalCommand({
+        name: "getExecution",
+        path: "/_eventual/executions/{executionId}",
+        method: "GET",
+        file: getExecution!,
+      }),
+      internalCommand({
+        name: "listExecutionEvents",
+        path: "/_eventual/executions/{executionId}/history",
+        method: "GET",
+        file: executionEvents!,
+      }),
+      internalCommand({
+        name: "sendSignal",
+        path: "/_eventual/executions/{executionId}/signals",
+        method: "PUT",
+        file: sendSignal!,
+      }),
+      internalCommand({
+        name: "getExecutionHistory",
+        path: "/_eventual/executions/{executionId}/workflow-history",
+        method: "GET",
+        file: executionsHistory!,
+      }),
+      internalCommand({
+        name: "publishEvents",
+        path: "/_eventual/events",
+        method: "PUT",
+        file: publishEvents!,
+      }),
+      internalCommand({
+        name: "updateActivity",
+        path: "/_eventual/activities",
+        method: "POST",
+        file: updateActivity!,
+      }),
+    ]);
+    function internalCommand<P extends keyof InternalApiRoutes>(props: {
+      name: string;
+      path: P;
+      method: HttpMethod;
+      file: string;
+    }) {
+      return [
+        path,
+        {
+          spec: {
+            name: props.name,
+            method: props.method,
+            passThrough: true,
+          },
+          file: props.file,
+        } satisfies InternalApiFunction,
+      ] as const;
+    }
   }
 }
 

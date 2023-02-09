@@ -36,15 +36,15 @@ export function isCommandCall(call: CallExpression): boolean {
 /**
  * A heuristic for identifying a {@link CallExpression} that is a call to an `onEvent` handler.
  *
- * 1. must be a call to a MemberExpression matching to `<expression>.onEvent(impl | props, impl)`.
- * 2. must have 1 or 2 arguments.
+ * 1. must be a call to a MemberExpression matching to `<expression>.onEvent(name, impl | props, impl)`.
+ * 2. must have 2 or 3 arguments.
  */
 export function isOnEventCall(call: CallExpression): boolean {
   const c = call.callee;
   if (c.type === "MemberExpression") {
     if (isId(c.property, "onEvent")) {
       // eventType.onEvent(async () => { })
-      return call.arguments.length === 1 || call.arguments.length === 2;
+      return call.arguments.length === 2 || call.arguments.length === 3;
     }
   }
   return false;

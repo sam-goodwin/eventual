@@ -1,52 +1,37 @@
-import type {
-  DurationSchedule,
-  CommandSpec,
-  Subscription,
-} from "@eventual/core";
-import type { SchemaObject } from "openapi3-ts";
+import type { CommandSpec, EventSpec, SubscriptionSpec } from "@eventual/core";
 
 export interface BuildManifest {
   orchestrator: BundledFunction;
-  activities: {
-    default: BundledFunction;
-    handlers: {
-      [activityName: string]: BundledFunction;
-    };
-  };
-  events: {
-    /**
-     * Open API 3 schema definitions for all known Events in this Service.
-     */
-    schemas: {
-      [eventName: string]: SchemaObject;
-    };
-    /**
-     * The catch-all function for any event handlers that cannot be bundled individually.
-     */
-    default: EventFunction;
-    /**
-     * Individually bundled {@link EventFunction}s containing a single `onEvent` event handler.
-     */
-    handlers: ExportedEventHandlerFunction[];
-  };
-  commands: {
-    /**
-     * The Default Function for handling any Command.
-     */
-    default: CommandFunction;
-    /**
-     * Individually bundled and tree-shaken functions for a specific Command.
-     */
-    custom: {
-      [commandName: string]: CommandFunction;
-    };
-  };
-  api: {
-    eventual: InternalApiRoutes;
-  };
+  api: InternalApiRoutes;
   scheduler: {
     forwarder: BundledFunction;
     timerHandler: BundledFunction;
+  };
+  /**
+   * Activities declared within the Service.
+   */
+  // TODO: split out into individual activity functions
+  activities: BundledFunction<undefined>;
+  /**
+   * The events and their schema.
+   */
+  events: {
+    [eventName: string]: EventSpec;
+  };
+  /**
+   * All subscriptions to events declared within the service.
+   */
+  subscriptions: {
+    /**
+     * Individually bundled {@link SubscriptionFunction}s containing a single `onEvent` event handler.
+     */
+    [subscriptionName: string]: SubscriptionFunction;
+  };
+  commands: {
+    /**
+     * Individually bundled and tree-shaken functions for a specific Command.
+     */
+    [commandName: string]: CommandFunction;
   };
 }
 
@@ -66,26 +51,24 @@ export interface InternalApiRoutes {
   "/_eventual/activities": InternalApiFunction;
 }
 
-export interface BundledFunction {
-  name: string;
+export type BundledFunction<Spec = undefined> = {
   file: string;
-  memorySize?: number;
-  timeout?: DurationSchedule;
-}
+} & (Spec extends undefined
+  ? {
+      spec?: Spec;
+    }
+  : {
+      spec: Spec;
+    });
 
-export interface ExportedEventHandlerFunction extends EventFunction {
+export interface ExportedEventHandlerFunction extends SubscriptionFunction {
   exportName: string;
 }
 
-export interface EventFunction extends BundledFunction {
-  exportName?: string;
-  subscriptions: Subscription[];
-  retryAttempts?: number;
-}
+export interface SubscriptionFunction
+  extends BundledFunction<SubscriptionSpec> {}
 
 export interface InternalApiFunction
   extends Omit<CommandFunction, "exportName"> {}
 
-export interface CommandFunction extends BundledFunction {
-  command: CommandSpec;
-}
+export interface CommandFunction extends BundledFunction<CommandSpec> {}
