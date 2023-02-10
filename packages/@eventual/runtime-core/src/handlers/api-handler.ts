@@ -160,6 +160,7 @@ function initRouter() {
         }
 
         // TODO: support mapping RPC output back to HTTP properties such as Headers
+        // TODO: support alternative status code https://github.com/functionless/eventual/issues/276
 
         return new HttpResponse(JSON.stringify(output, jsonReplacer), {
           status: 200,

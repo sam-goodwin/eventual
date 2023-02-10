@@ -2,7 +2,6 @@
 packages:
   - "packages/@eventual/*"
   - "packages/create-eventual"
-  - "examples/*/*"
   - "apps/*"
   - "apps/tests/*"
   - "apps/test-app-sst/services"
