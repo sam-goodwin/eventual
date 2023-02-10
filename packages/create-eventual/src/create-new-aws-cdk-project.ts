@@ -361,7 +361,7 @@ export class MyServiceStack extends Stack {
 
     this.service = new Service(this, "${serviceName}", {
       name: "${serviceName}",
-      entry: require.resolve("${serviceName}")
+      entry: require.resolve("${servicePackageName}")
     });
 
     new CfnOutput(this, "${serviceName}-api-endpoint", {
