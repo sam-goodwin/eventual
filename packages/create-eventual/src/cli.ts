@@ -46,7 +46,6 @@ const targetChoices = [ProjectType.AWS_CDK, ProjectType.SST].sort();
             return true;
           }),
       async (args) => {
-        console.log(args.git);
         await createNewProject({
           projectType: args.target,
           projectName: args.projectName,
