@@ -1,14 +1,14 @@
 export type ParsePath<
   Text extends string,
   FoundNames extends string = never
-> = Text extends `:${infer NameHead extends Alphanumeric}${infer Rest}`
-  ? TakeWhile<Rest, Alphanumeric> extends [
+> = Text extends `:${infer NameHead extends Word}${infer Rest}`
+  ? TakeWhile<Rest, Word> extends [
       infer Tail extends string,
       infer NameTail extends string
     ]
     ? ParsePath<Tail, FoundNames | `${NameHead}${NameTail}`>
     : FoundNames
-  : Text extends `${Alphanumeric | "/"}${infer Rest}`
+  : Text extends `${Word | "/"}${infer Rest}`
   ? ParsePath<Rest, FoundNames>
   : FoundNames;
 
@@ -24,6 +24,7 @@ type TakeWhile<
 
 type Digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9";
 
+type Word = Alphanumeric | "-" | "_";
 type Alphanumeric = Digit | Letter;
 type Letter = UppercaseLetter | LowercaseLetter;
 type UppercaseLetter = Uppercase<LowercaseLetter>;

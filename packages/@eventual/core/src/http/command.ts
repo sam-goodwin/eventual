@@ -23,6 +23,10 @@ export interface Command<
   sourceLocation?: SourceLocation;
   passThrough?: boolean;
   internal?: boolean;
+  /**
+   * @default true
+   */
+  validate?: boolean;
 }
 
 export type RestOptions<
@@ -97,6 +101,12 @@ export function command<
     params?: RestParams<Input, Path, Method>;
     input: z.ZodType<Input>;
     output?: z.ZodType<Output>;
+    /**
+     * Enable or disable schema validation.
+     *
+     * @default true
+     */
+    validate?: boolean;
   },
   handler: Handler
 ): Command<Name, Handler, Path, Method>;
@@ -113,6 +123,12 @@ export function command<
     method?: Method;
     params?: RestParams<Parameters<Handler>[0], Path, Method>;
     input?: undefined;
+    /**
+     * Enable or disable schema validation.
+     *
+     * @default true
+     */
+    validate?: boolean;
   },
   handler: Handler
 ): Command<Name, Handler, Path, Method>;

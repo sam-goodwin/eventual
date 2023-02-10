@@ -78,6 +78,8 @@ function initRouter() {
   const router: Router = itty.Router<HttpRequest, Router>();
 
   for (const command of commands) {
+    const shouldValidate = command.validate !== false;
+
     // RPC route takes a POST request and passes the parsed JSON body as input to the input
     router.post(`/_rpc/${command.name}`, async (request) => {
       if (command.passThrough) {
@@ -86,7 +88,7 @@ function initRouter() {
       }
 
       let input = await request.tryJson();
-      if (command.input) {
+      if (command.input && shouldValidate) {
         try {
           input = command.input.parse(input);
         } catch (err) {
@@ -101,7 +103,7 @@ function initRouter() {
       let output = await command.handler(input, {
         headers: request.headers,
       });
-      if (command.output) {
+      if (command.output && shouldValidate) {
         try {
           output = command.output.parse(output);
         } catch (err) {
@@ -129,10 +131,10 @@ function initRouter() {
         }
 
         // first, get the body as pure JSON - assume it's an object
-        const body =
-          request.method === "GET" ? undefined : await request.json();
+        const body = await request.tryJson();
         let input: any = {
           ...request.params,
+          ...(body && typeof body === "object" ? body : {}),
         };
 
         // parse headers/params/queries/body into the RPC interface
@@ -144,7 +146,7 @@ function initRouter() {
           );
         }
 
-        if (command.input) {
+        if (command.input && shouldValidate) {
           // validate the zod input schema if one is specified
           input = command.input.parse(input);
         }
@@ -154,7 +156,7 @@ function initRouter() {
           headers: request.headers,
         });
 
-        if (command.output) {
+        if (command.output && shouldValidate) {
           // validate the output of the command handler against the schema if it's defined
           output = command.output.parse(output);
         }
@@ -215,9 +217,7 @@ type RouteHandler = (
  * Implements JSON serialization for well known types.
  */
 function jsonReplacer(_key: string, value: any) {
-  if (Buffer.isBuffer(value)) {
-    return value.toString("base64");
-  } else if (value instanceof Date) {
+  if (value instanceof Date) {
     return value.toISOString();
   }
   return value;

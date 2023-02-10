@@ -1,8 +1,4 @@
-import {
-  ActivityContext,
-  ActivityFunction,
-  ActivityHandler,
-} from "./activity.js";
+import { ActivityContext, Activity, ActivityHandler } from "./activity.js";
 import { Event, EventHandler, EventSubscription } from "./event.js";
 import type { Eventual, EventualCallCollector } from "./eventual.js";
 import { EventualServiceClient } from "./service-client.js";
@@ -72,9 +68,8 @@ export function clearEventHandlers() {
   globalThis._eventual.eventHandlers = [];
 }
 
-export function activities(): ActivityFunction[] {
-  // TODO: shouldn't callable activities return ActivityFunction
-  return Object.values(callableActivities()) as ActivityFunction[];
+export function activities(): Activity[] {
+  return Object.values(callableActivities()) as Activity[];
 }
 
 export const callableActivities = (): Record<string, ActivityHandler<any>> =>

@@ -43,9 +43,6 @@ const testService = new eventual.Service<typeof testServiceRuntime>(
   }
 );
 
-testService.events;
-testService.api.commands;
-
 testService.api.grantInvokeHttpServiceApi(role);
 testService.cliRole.grantAssumeRole(role);
 eventual.Service.grantDescribeParameters(stack, role);

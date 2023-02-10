@@ -188,14 +188,34 @@ export interface ServiceProps<Service = any> {
     [key: string]: string;
   };
   /**
-   *
+   * Override properties of Command Functions within the Service.
    */
   commands?: CommandProps<Service>;
+  /**
+   * Override properties of Subscription Functions within the Service.
+   */
   subscriptions?: SubscriptionProps<Service>;
-
+  /**
+   * Configuration properties for the workflow orchestrator
+   */
   workflows?: {
+    /**
+     * Set the reservedConcurrentExecutions for the workflow orchestrator lambda function.
+     *
+     * This function consumes from the central SQS FIFO Queue and the number of parallel executions
+     * scales directly on the number of active workflow executions. Each execution id is used as
+     * the message group ID which directly affects concurrent executions.
+     *
+     * Set this value to protect the workflow's concurrent executions from:
+     * 1. browning out other functions by consuming concurrent executions
+     * 2. be brought down by other functions in the AWS account
+     * 3. ensure the timely performance of workflows for a given scale
+     */
     reservedConcurrentExecutions?: number;
   };
+  /**
+   * Configure the Log Level and Log Group.
+   */
   logging?: Omit<LoggingProps, "serviceName">;
 }
 

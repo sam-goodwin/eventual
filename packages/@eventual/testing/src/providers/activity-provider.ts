@@ -1,6 +1,6 @@
 import {
   ActivityArguments,
-  ActivityFunction,
+  Activity,
   ActivityHandler,
   ActivityOutput,
   assertNever,
@@ -21,9 +21,7 @@ import { GlobalActivityProvider } from "@eventual/runtime-core";
 export class MockableActivityProvider extends GlobalActivityProvider {
   private mockedActivities: Record<string, MockActivity<any>> = {};
 
-  public mockActivity<A extends ActivityFunction<any, any>>(
-    activity: A | string
-  ) {
+  public mockActivity<A extends Activity<any, any>>(activity: A | string) {
     const id = typeof activity === "string" ? activity : activity.activityID;
     const realActivity =
       typeof activity === "string" ? super.getActivityHandler(id) : activity;
@@ -40,7 +38,7 @@ export class MockableActivityProvider extends GlobalActivityProvider {
     return mock;
   }
 
-  public clearMock(activity: ActivityFunction<any, any> | string) {
+  public clearMock(activity: Activity<any, any> | string) {
     const id = typeof activity === "string" ? activity : activity.activityID;
     delete this.mockedActivities[id];
   }
@@ -267,7 +265,7 @@ export interface AsyncResultResolution {
   tokenCallback?: AsyncResultTokenCallback;
 }
 
-export class MockActivity<A extends ActivityFunction<any, any>>
+export class MockActivity<A extends Activity<any, any>>
   implements IMockActivity<ActivityArguments<A>, ActivityOutput<A>>
 {
   private onceResolutions: ActivityResolution<

@@ -5,7 +5,6 @@ import {
 } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
-// import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { computeDurationSeconds } from "@eventual/runtime-core";
 import { Arn, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
@@ -160,7 +159,6 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
             init: (handler) => {
               // The handler is given an instance of the service client.
               // Allow it to access any of the methods on the service client by default.
-              self.configureInvokeHttpServiceApi(handler);
               self.configureApiHandler(handler);
             },
           } satisfies CommandMapping)
@@ -202,10 +200,13 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
           const { manifest, overrides } = mapping;
           const command = manifest.spec;
           // TODO: this is unsafe probably
-          let sanitizedName = command.name.replace(/[^A-Za-z0-9_-]/g, "-");
+          let sanitizedName = command.name.replace(/[^A-Za-z0-9_]/g, "-");
           if (sanitizedName !== command.name) {
-            // name was sanitized, so add the METHOD to the name
-            sanitizedName = `${sanitizedName}-${command.method ?? "GET"}`;
+            // in this case, we're working with the low-level http api
+            // we do a best effort to transform an HTTP path into a name that Lambda supports
+            sanitizedName = `${sanitizedName}-${
+              command.method?.toLocaleLowerCase() ?? "all"
+            }`;
           }
 
           const handler = new Function(

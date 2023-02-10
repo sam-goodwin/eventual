@@ -10,8 +10,8 @@ import { createAwsHttpRequestSigner } from "./aws-http-request-signer.js";
 export type AWSServiceClient<Service> = ServiceClient<Service>;
 
 /**
- * AWS specific Http implementation of the {@link EventualServiceClient} to hit the API deployed
- * with an eventual service.
+ * AWS specific Http implementation of the {@link EventualServiceClient} to execute requests
+ * to the Commands within a Service.
  *
  * Makes authorized and signed requests to API Gateway using the credentials provided on construction.
  */

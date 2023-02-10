@@ -1,6 +1,6 @@
 import { bundleService } from "@eventual/compiler";
 import {
-  ActivityFunction,
+  Activity,
   ActivityOutput,
   clearEventHandlers,
   Event,
@@ -295,7 +295,7 @@ export class TestEnvironment extends RuntimeServiceClient {
    * mockActivity.succeed("hello"); // myActivity will return "hello" when invoked until the mock is reset or a new resolution is given.
    * ```
    */
-  public mockActivity<A extends ActivityFunction<any, any>>(
+  public mockActivity<A extends Activity<any, any>>(
     activity: A | string
   ): MockActivity<A> {
     return this.activityProvider.mockActivity(activity as any);
@@ -403,7 +403,7 @@ export class TestEnvironment extends RuntimeServiceClient {
    * env.sendActivitySuccess(activityToken, "value");
    * ```
    */
-  public async sendActivitySuccess<A extends ActivityFunction<any, any> = any>(
+  public async sendActivitySuccess<A extends Activity<any, any> = any>(
     request: Omit<SendActivitySuccessRequest<ActivityOutput<A>>, "type">
   ) {
     await super.sendActivitySuccess(request);

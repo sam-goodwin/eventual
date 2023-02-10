@@ -105,6 +105,11 @@ export class Events<Service> extends Construct implements IGrantable {
 
     const role = new aws_iam.Role(this, "DefaultSubscriptionRole", {
       assumedBy: new aws_iam.ServicePrincipal("lambda.amazonaws.com"),
+      managedPolicies: [
+        aws_iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AWSLambdaBasicExecutionRole"
+        ),
+      ],
     });
 
     // create a Construct to safely nest bundled functions in their own namespace

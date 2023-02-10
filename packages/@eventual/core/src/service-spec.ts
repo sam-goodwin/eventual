@@ -3,7 +3,7 @@ import type { z } from "zod";
 import type { Event, EventHandler } from "./event.js";
 import type { Command } from "./http/command.js";
 import type { DurationSchedule } from "./schedule.js";
-import type { ActivityFunction } from "./activity.js";
+import type { Activity } from "./activity.js";
 
 /**
  * Specification for an Eventual application
@@ -50,7 +50,7 @@ export interface FunctionSpec {
   timeout?: DurationSchedule;
 }
 
-export type ActivitySpec = ToSpec<ActivityFunction>;
+export type ActivitySpec = Omit<ToSpec<Activity>, "kind">;
 
 export type SubscriptionSpec = Omit<ToSpec<EventHandler>, "kind">;
 

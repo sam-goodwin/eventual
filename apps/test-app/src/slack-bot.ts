@@ -15,7 +15,6 @@ const slackBot = new eventual.Service<typeof slackbot>(stack, "slack-bot", {
   environment: {
     SLACK_SECRET_ID: slackSecrets.secretArn,
   },
-  subscriptions: {},
 });
 
 slackSecrets.grantRead(slackBot);
