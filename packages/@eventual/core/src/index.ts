@@ -1,6 +1,4 @@
 export * from "./activity.js";
-export * from "./api-request.js";
-export * from "./api.js";
 export * from "./await-all-settled.js";
 export * from "./await-all.js";
 export * from "./await-any.js";
@@ -19,6 +17,7 @@ export * from "./flags.js";
 export * from "./global.js";
 export * from "./heartbeat.js";
 export * from "./http-method.js";
+export * from "./http/index.js";
 export * from "./logging.js";
 export * from "./race.js";
 export * from "./result.js";

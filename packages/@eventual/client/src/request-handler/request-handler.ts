@@ -1,18 +1,16 @@
-import { ApiRequest } from "@eventual/core";
+import { HttpRequest } from "@eventual/core";
 
 export abstract class RequestHandler {
   constructor(private beforeRequest?: BeforeRequest) {}
 
-  public async request<Resp = any>(req: ApiRequest): Promise<Resp> {
+  public async request<Resp = any>(req: HttpRequest): Promise<Resp> {
     return this._request(
       this.beforeRequest ? await this.beforeRequest(req) : req
     );
   }
 
-  protected abstract _request<Resp = any>(request: ApiRequest): Promise<Resp>;
+  protected abstract _request<Resp = any>(request: HttpRequest): Promise<Resp>;
 }
-
-export type HttpMethod = "POST" | "GET" | "PUT";
 
 export class HttpError extends Error {
   constructor(
@@ -25,5 +23,5 @@ export class HttpError extends Error {
 }
 
 export interface BeforeRequest {
-  (request: ApiRequest): Promise<ApiRequest>;
+  (request: HttpRequest): Promise<HttpRequest>;
 }

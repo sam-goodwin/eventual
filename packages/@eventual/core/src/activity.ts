@@ -35,9 +35,22 @@ export interface ActivityOptions {
   heartbeatTimeout?: DurationSchedule;
 }
 
-export interface ActivityFunction<Arguments extends any[], Output = any> {
+export interface Activity<
+  Name extends string = string,
+  Arguments extends any[] = any[],
+  Output = any
+> {
+  kind: "Activity";
   (...args: Arguments): Promise<Awaited<UnwrapAsync<Output>>>;
 
+  /**
+   * Unique name of this Activity.
+   */
+  activityID: Name;
+  /**
+   * Optional runtime properties.
+   */
+  options?: ActivityOptions;
   /**
    * Complete an activity request by its {@link SendActivitySuccessRequest.activityToken}.
    *
@@ -51,7 +64,7 @@ export interface ActivityFunction<Arguments extends any[], Output = any> {
    *   return asyncResult<string>(token => tokenEvent.publishEvents({ token }));
    * });
    *
-   * tokenEvent.onEvent(async ({token}) => {
+   * tokenEvent.onEvent("onTokenEvent", async ({token}) => {
    *   await asyncActivity.sendActivitySuccess({
    *     activityToken: token,
    *     result: "done"
@@ -79,7 +92,7 @@ export interface ActivityFunction<Arguments extends any[], Output = any> {
    *   return asyncResult<string>(token => tokenEvent.publishEvents({ token }));
    * });
    *
-   * tokenEvent.onEvent(async ({token}) => {
+   * tokenEvent.onEvent("onTokenEvent", async ({token}) => {
    *   await asyncActivity.sendActivityFailure({
    *     activityToken: token,
    *     error: "MyError",
@@ -105,7 +118,7 @@ export interface ActivityFunction<Arguments extends any[], Output = any> {
    *   return asyncResult<string>(token => tokenEvent.publishEvents({ token }));
    * });
    *
-   * tokenEvent.onEvent(async ({token}) => {
+   * tokenEvent.onEvent("onTokenEvent", async ({token}) => {
    *   await asyncActivity.sendActivityFailure({
    *     activityToken: token
    *   });
@@ -115,8 +128,6 @@ export interface ActivityFunction<Arguments extends any[], Output = any> {
   sendActivityHeartbeat(
     request: Omit<SendActivityHeartbeatRequest, "type">
   ): Promise<SendActivityHeartbeatResponse>;
-
-  activityID: string;
 }
 
 export interface ActivityHandler<Arguments extends any[], Output = any> {
@@ -131,11 +142,16 @@ export type UnwrapAsync<Output> = Output extends AsyncResult<infer O>
   ? O
   : Output;
 
-export type ActivityArguments<A extends ActivityFunction<any, any>> =
-  A extends ActivityFunction<infer Arguments extends any[]> ? Arguments : never;
+export type ActivityArguments<A extends Activity<any, any>> =
+  A extends Activity<string, infer Arguments extends any[]> ? Arguments : never;
 
-export type ActivityOutput<A extends ActivityFunction<any, any>> =
-  A extends ActivityFunction<any, infer Output> ? UnwrapAsync<Output> : never;
+export type ActivityOutput<A extends Activity<any, any>> = A extends Activity<
+  string,
+  any,
+  infer Output
+>
+  ? UnwrapAsync<Output>
+  : never;
 
 const AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
 
@@ -203,25 +219,37 @@ export interface ActivityContext {
  * @param activityID a string that uniquely identifies the Activity within a single workflow context.
  * @param handler the function that handles the activity
  */
-export function activity<Arguments extends any[], Output = any>(
-  activityID: string,
+export function activity<
+  Name extends string,
+  Arguments extends any[],
+  Output = any
+>(
+  activityID: Name,
   handler: ActivityHandler<Arguments, Output>
-): ActivityFunction<Arguments, Output>;
-export function activity<Arguments extends any[], Output = any>(
-  activityID: string,
+): Activity<Name, Arguments, Output>;
+export function activity<
+  Name extends string,
+  Arguments extends any[],
+  Output = any
+>(
+  activityID: Name,
   opts: ActivityOptions,
   handler: ActivityHandler<Arguments, Output>
-): ActivityFunction<Arguments, Output>;
-export function activity<Arguments extends any[], Output = any>(
-  activityID: string,
+): Activity<Name, Arguments, Output>;
+export function activity<
+  Name extends string,
+  Arguments extends any[],
+  Output = any
+>(
+  activityID: Name,
   ...args:
     | [opts: ActivityOptions, handler: ActivityHandler<Arguments, Output>]
     | [handler: ActivityHandler<Arguments, Output>]
-): ActivityFunction<Arguments, Output> {
+): Activity<Name, Arguments, Output> {
   const [opts, handler] = args.length === 1 ? [undefined, args[0]] : args;
   // register the handler to be looked up during execution.
   callableActivities()[activityID] = handler;
-  const func = ((...args: Parameters<ActivityFunction<Arguments, Output>>) => {
+  const func = ((...args: Parameters<Activity<Name, Arguments, Output>>) => {
     if (isOrchestratorWorker()) {
       // if we're in the orchestrator, return a command to invoke the activity in the worker function
       return createActivityCall(
@@ -236,7 +264,7 @@ export function activity<Arguments extends any[], Output = any>(
       // calling the activity from outside the orchestrator just calls the handler
       return handler(...args);
     }
-  }) as ActivityFunction<Arguments, Output>;
+  }) as Activity<Name, Arguments, Output>;
   func.sendActivitySuccess = async function (request) {
     return getServiceClient().sendActivitySuccess(request);
   };

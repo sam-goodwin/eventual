@@ -31,10 +31,6 @@ export class DebugDashboard extends Construct {
       service.activities.worker.logGroup.logGroupName,
       // user APIS - default and bundled
       ...service.api.handlers.map((api) => api.logGroup.logGroupName),
-      // internal APIs
-      ...Object.values(service.api.internalRoutes).map(
-        (api) => api.logGroup.logGroupName
-      ),
       // event handlers - default and bundled
       ...service.events.handlers.map((f) => f.logGroup.logGroupName),
       // scheduler/timer handler and forwarder

@@ -24,16 +24,11 @@ var __copyProps = (to, from, except, desc) => {
   return to;
 };
 var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// ../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/error.js
 var require_error = __commonJS({
   "../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/error.js"(exports) {
     "use strict";
@@ -67,7 +62,6 @@ var require_error = __commonJS({
   }
 });
 
-// ../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/tools.js
 var require_tools = __commonJS({
   "../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/tools.js"(exports) {
     "use strict";
@@ -101,7 +95,6 @@ var require_tools = __commonJS({
   }
 });
 
-// ../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/layerr.js
 var require_layerr = __commonJS({
   "../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/layerr.js"(exports) {
     "use strict";
@@ -176,7 +169,6 @@ caused by: \${Layerr.fullStack(cause)}\`;
   }
 });
 
-// ../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/types.js
 var require_types = __commonJS({
   "../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/types.js"(exports) {
     "use strict";
@@ -184,7 +176,6 @@ var require_types = __commonJS({
   }
 });
 
-// ../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/index.js
 var require_dist = __commonJS({
   "../../../node_modules/.pnpm/layerr@0.1.2/node_modules/layerr/dist/index.js"(exports) {
     "use strict";
@@ -214,7 +205,6 @@ var require_dist = __commonJS({
   }
 });
 
-// ../../../node_modules/.pnpm/ulidx@0.3.0/node_modules/ulidx/dist/ulid.js
 var require_ulid = __commonJS({
   "../../../node_modules/.pnpm/ulidx@0.3.0/node_modules/ulidx/dist/ulid.js"(exports) {
     "use strict";
@@ -404,7 +394,6 @@ var require_ulid = __commonJS({
   }
 });
 
-// ../../../node_modules/.pnpm/ulidx@0.3.0/node_modules/ulidx/dist/types.js
 var require_types2 = __commonJS({
   "../../../node_modules/.pnpm/ulidx@0.3.0/node_modules/ulidx/dist/types.js"(exports) {
     "use strict";
@@ -412,7 +401,6 @@ var require_types2 = __commonJS({
   }
 });
 
-// ../../../node_modules/.pnpm/ulidx@0.3.0/node_modules/ulidx/dist/index.js
 var require_dist2 = __commonJS({
   "../../../node_modules/.pnpm/ulidx@0.3.0/node_modules/ulidx/dist/index.js"(exports) {
     "use strict";
@@ -448,7 +436,6 @@ var require_dist2 = __commonJS({
   }
 });
 
-// test-files/api-handler.ts
 var api_handler_exports = {};
 __export(api_handler_exports, {
   myHandler: () => myHandler,
@@ -456,30 +443,26 @@ __export(api_handler_exports, {
 });
 module.exports = __toCommonJS(api_handler_exports);
 
-// ../core/lib/esm/await-all-settled.js
 function createAwaitAllSettled(activities) {
   return createEventual(EventualKind.AwaitAllSettled, {
     activities
   });
 }
 
-// ../core/lib/esm/await-all.js
 function createAwaitAll(activities) {
   return createEventual(EventualKind.AwaitAll, {
     activities
   });
 }
 
-// ../core/lib/esm/await-any.js
 function createAwaitAny(activities) {
   return createEventual(EventualKind.AwaitAny, {
     activities
   });
 }
 
-// ../core/lib/esm/global.js
 globalThis._eventual ??= {};
-var routes = globalThis._eventual.routes ??= [];
+var commands = globalThis._eventual.commands ??= [];
 var eventualCollector = () => {
   const collector = globalThis._eventual.eventualCollector;
   if (!collector) {
@@ -491,12 +474,10 @@ function registerEventual(eventual) {
   return eventualCollector().pushEventual(eventual);
 }
 
-// ../core/lib/esm/util.js
 function or(...conditions) {
   return (a) => conditions.some((cond) => cond(a));
 }
 
-// ../core/lib/esm/result.js
 var ResultSymbol = Symbol.for("eventual:Result");
 var ResultKind;
 (function(ResultKind2) {
@@ -515,7 +496,6 @@ function isFailed(result) {
 }
 var isResolvedOrFailed = or(isResolved, isFailed);
 
-// ../core/lib/esm/service-type.js
 var ServiceType;
 (function(ServiceType2) {
   ServiceType2["ActivityWorker"] = "ActivityWorker";
@@ -524,13 +504,11 @@ var ServiceType;
   ServiceType2["OrchestratorWorker"] = "OrchestratorWorker";
 })(ServiceType || (ServiceType = {}));
 
-// ../core/lib/esm/flags.js
 var SERVICE_TYPE_FLAG = "EVENTUAL_SERVICE_TYPE";
 function isOrchestratorWorker() {
   return process.env[SERVICE_TYPE_FLAG] === ServiceType.OrchestratorWorker;
 }
 
-// ../core/lib/esm/signals.js
 var import_ulidx = __toESM(require_dist2(), 1);
 var SignalTargetType;
 (function(SignalTargetType2) {
@@ -538,7 +516,6 @@ var SignalTargetType;
   SignalTargetType2[SignalTargetType2["ChildExecution"] = 1] = "ChildExecution";
 })(SignalTargetType || (SignalTargetType = {}));
 
-// ../core/lib/esm/chain.js
 function chain(func) {
   return (...args) => {
     const generator = func(...args);
@@ -552,14 +529,12 @@ function registerChain(program) {
   return registerEventual(createChain(program));
 }
 
-// ../core/lib/esm/race.js
 function createRace(activities) {
   return createEventual(EventualKind.Race, {
     activities
   });
 }
 
-// ../core/lib/esm/eventual.js
 var EventualSymbol = Symbol.for("eventual:Eventual");
 var EventualKind;
 (function(EventualKind2) {
@@ -616,10 +591,26 @@ var Eventual = {
 globalThis.$eventual = chain;
 globalThis.$Eventual = Eventual;
 
-// ../core/lib/esm/activity.js
 var AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
 
-// ../../../node_modules/.pnpm/itty-router@2.6.6/node_modules/itty-router/dist/itty-router.min.mjs
+var CommandType;
+(function(CommandType2) {
+  CommandType2["PublishEvents"] = "PublishEvents";
+  CommandType2["SendSignal"] = "SendSignal";
+  CommandType2["StartActivity"] = "StartActivity";
+  CommandType2["StartTimer"] = "StartTimer";
+  CommandType2["StartWorkflow"] = "StartWorkflow";
+})(CommandType || (CommandType = {}));
+
+var import_ulidx2 = __toESM(require_dist2(), 1);
+var ExecutionStatus;
+(function(ExecutionStatus2) {
+  ExecutionStatus2["IN_PROGRESS"] = "IN_PROGRESS";
+  ExecutionStatus2["SUCCEEDED"] = "SUCCEEDED";
+  ExecutionStatus2["FAILED"] = "FAILED";
+})(ExecutionStatus || (ExecutionStatus = {}));
+var ExecutionStatuses = new Set(Object.values(ExecutionStatus));
+
 function e({ base: t = "", routes: n = [] } = {}) {
   return { __proto__: new Proxy({}, { get: (e2, a, o) => (e3, ...r) => n.push([a.toUpperCase(), RegExp(\`^\${(t + e3).replace(/(\\/?)\\*/g, "($1.*)?").replace(/(\\/$)|((?<=\\/)\\/)/, "").replace(/:(\\w+)(\\?)?(\\.)?/g, "$2(?<$1>[^/]+)$2$3").replace(/\\.(?=[\\w(])/, "\\\\.").replace(/\\)\\.\\?\\(([^\\[]+)\\[\\^/g, "?)\\\\.?($1(?<=\\\\.)[^\\\\.")}/*$\`), r]) && o }), routes: n, async handle(e2, ...r) {
     let a, o, t2 = new URL(e2.url);
@@ -635,7 +626,6 @@ function e({ base: t = "", routes: n = [] } = {}) {
 }
 var itty_router_min_default = { Router: e };
 
-// ../core/lib/esm/api.js
 var router = itty_router_min_default.Router();
 var api = new Proxy({}, {
   get: (_, method) => {
@@ -643,54 +633,35 @@ var api = new Proxy({}, {
       return router[method];
     } else {
       return (...args) => {
-        const route = {
-          sourceLocation: typeof args[0] === "object" ? args[0] : void 0,
-          path: typeof args[0] === "string" ? args[0] : args[1],
+        const [sourceLocation, path, routeProps, handler] = typeof args[0] === "object" ? typeof args[3] === "function" ? args : [
+          args[0],
+          args[1],
+          void 0,
+          args[2]
+        ] : typeof args[2] === "function" ? [
+          void 0,
+          args[0],
+          args[1],
+          args[2]
+        ] : [void 0, args[0], void 0, args[1]];
+        const command = {
+          kind: "Command",
+          handler,
+          memorySize: routeProps?.memorySize,
           method: method.toUpperCase(),
-          runtimeProps: typeof args[0] === "string" ? typeof args[1] === "object" ? args[1] : void 0 : typeof args[2] === "object" ? args[2] : void 0,
-          handlers: args.filter((a) => typeof a === "function")
-          // todo: why do i need to cast?
+          name: path,
+          path: typeof args[0] === "string" ? args[0] : args[1],
+          sourceLocation,
+          timeout: routeProps?.timeout,
+          passThrough: true
         };
-        routes.push(route);
-        return router[method](route.path, ...route.handlers);
+        commands.push(command);
+        return router[method](path, command.handler);
       };
     }
   }
 });
 
-// ../core/lib/esm/command.js
-var CommandType;
-(function(CommandType2) {
-  CommandType2["PublishEvents"] = "PublishEvents";
-  CommandType2["SendSignal"] = "SendSignal";
-  CommandType2["StartActivity"] = "StartActivity";
-  CommandType2["StartTimer"] = "StartTimer";
-  CommandType2["StartWorkflow"] = "StartWorkflow";
-})(CommandType || (CommandType = {}));
-
-// ../core/lib/esm/execution.js
-var import_ulidx2 = __toESM(require_dist2(), 1);
-var ExecutionStatus;
-(function(ExecutionStatus2) {
-  ExecutionStatus2["IN_PROGRESS"] = "IN_PROGRESS";
-  ExecutionStatus2["SUCCEEDED"] = "SUCCEEDED";
-  ExecutionStatus2["FAILED"] = "FAILED";
-})(ExecutionStatus || (ExecutionStatus = {}));
-var ExecutionStatuses = new Set(Object.values(ExecutionStatus));
-
-// ../core/lib/esm/http-method.js
-var HttpMethod;
-(function(HttpMethod2) {
-  HttpMethod2["POST"] = "POST";
-  HttpMethod2["GET"] = "GET";
-  HttpMethod2["HEAD"] = "HEAD";
-  HttpMethod2["OPTIONS"] = "OPTIONS";
-  HttpMethod2["PUT"] = "PUT";
-  HttpMethod2["PATCH"] = "PATCH";
-  HttpMethod2["DELETE"] = "DELETE";
-})(HttpMethod || (HttpMethod = {}));
-
-// ../core/lib/esm/logging.js
 var LogLevel;
 (function(LogLevel2) {
   LogLevel2["TRACE"] = "TRACE";
@@ -701,11 +672,9 @@ var LogLevel;
 })(LogLevel || (LogLevel = {}));
 var LOG_LEVELS = Object.values(LogLevel);
 
-// ../core/lib/esm/secret.js
 var _BaseCachingSecret_value;
 _BaseCachingSecret_value = /* @__PURE__ */ new WeakMap();
 
-// ../core/lib/esm/service-client.js
 var SortOrder;
 (function(SortOrder2) {
   SortOrder2["Asc"] = "ASC";
@@ -718,7 +687,6 @@ var ActivityUpdateType;
   ActivityUpdateType2["Heartbeat"] = "Heartbeat";
 })(ActivityUpdateType || (ActivityUpdateType = {}));
 
-// ../core/lib/esm/workflow-events.js
 var import_ulidx3 = __toESM(require_dist2(), 1);
 var WorkflowEventType;
 (function(WorkflowEventType2) {
@@ -788,20 +756,12 @@ var isScheduledEvent = or(isActivityScheduled, isChildWorkflowScheduled, isEvent
 var isSucceededEvent = or(isActivitySucceeded, isChildWorkflowSucceeded, isTimerCompleted);
 var isFailedEvent = or(isActivityFailed, isActivityHeartbeatTimedOut, isChildWorkflowFailed, isWorkflowTimedOut);
 
-// test-files/api-handler.ts
-var myHandler = api.get({
-  exportName: "myHandler",
-  fileName: "/test-files/api-handler.ts"
-}, "/", async () => {
+var myHandler = api.get("/", async () => {
   return new Response();
 });
-var myHandler2 = api.get({
-  exportName: "myHandler2",
-  fileName: "/test-files/api-handler.ts"
-}, "/", async () => {
+var myHandler2 = api.get("/", async () => {
   return new Response();
 });
-// Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
   myHandler,
   myHandler2

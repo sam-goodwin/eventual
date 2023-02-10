@@ -1,7 +1,7 @@
 import { Handler } from "aws-lambda";
-import { AwsHttpServiceClient } from "@eventual/aws-client";
+import { AWSHttpEventualClient } from "@eventual/aws-client";
 
-const serviceClient = new AwsHttpServiceClient({
+const serviceClient = new AWSHttpEventualClient({
   serviceUrl: process.env.TEST_SERVICE_URL ?? "",
 });
 

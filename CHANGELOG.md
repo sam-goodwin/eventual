@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.16.0 (2023-02-10)
+
+### Features
+
+- add support for typed APIs with zod ([#264](https://github.com/functionless/eventual/issues/264)) ([5b54ed3](https://github.com/functionless/eventual/commit/5b54ed3ea63b2a31c22ad82cb4f6640eca8738ed))
+
 ## 0.15.3 (2023-02-03)
 
 **Note:** Version bump only for package eventual-monorepo

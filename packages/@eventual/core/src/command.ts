@@ -3,7 +3,7 @@ import { DurationSchedule, Schedule } from "./schedule.js";
 import { SignalTarget } from "./signals.js";
 import { WorkflowOptions } from "./workflow.js";
 
-export type Command =
+export type WorkflowCommand =
   | StartTimerCommand
   | ScheduleActivityCommand
   | ScheduleWorkflowCommand
@@ -37,7 +37,7 @@ export interface ScheduleActivityCommand
 }
 
 export function isScheduleActivityCommand(
-  a: Command
+  a: WorkflowCommand
 ): a is ScheduleActivityCommand {
   return a.kind === CommandType.StartActivity;
 }
@@ -51,7 +51,7 @@ export interface ScheduleWorkflowCommand
 }
 
 export function isScheduleWorkflowCommand(
-  a: Command
+  a: WorkflowCommand
 ): a is ScheduleWorkflowCommand {
   return a.kind === CommandType.StartWorkflow;
 }
@@ -64,7 +64,7 @@ export interface StartTimerCommand extends CommandBase<CommandType.StartTimer> {
 }
 
 export function isStartTimerCommand(
-  command: Command
+  command: WorkflowCommand
 ): command is StartTimerCommand {
   return command.kind === CommandType.StartTimer;
 }
@@ -76,7 +76,7 @@ export interface SendSignalCommand extends CommandBase<CommandType.SendSignal> {
 }
 
 export function isSendSignalCommand(
-  command: Command
+  command: WorkflowCommand
 ): command is SendSignalCommand {
   return command.kind === CommandType.SendSignal;
 }
@@ -87,7 +87,7 @@ export interface PublishEventsCommand
 }
 
 export function isPublishEventsCommand(
-  command: Command
+  command: WorkflowCommand
 ): command is PublishEventsCommand {
   return command.kind === CommandType.PublishEvents;
 }

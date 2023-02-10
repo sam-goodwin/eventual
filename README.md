@@ -69,10 +69,10 @@ With our plug-and-play foundation blocks, you can use as much or as little as ne
 Easily create scalable, event-driven APIs with code-first routes.
 
 ```ts
-import { api, ApiResponse } from "@eventual/core";
+import { api, HttpResponse } from "@eventual/core";
 
 api.post("/echo", async (request) => {
-  return new ApiResponse(await request.text());
+  return new HttpResponse(await request.text());
 });
 ```
 
@@ -87,7 +87,7 @@ interface MyEvent {
 
 export const myEvent = event<MyEvent>("MyEvent");
 
-myEvent.onEvent((e) => {
+myEvent.onEvent("onMyEvent", (e) => {
   console.log(e.key);
 });
 ```

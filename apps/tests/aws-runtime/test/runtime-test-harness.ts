@@ -8,13 +8,13 @@ import {
   WorkflowOutput,
   ExecutionHandle,
 } from "@eventual/core";
-import { AwsHttpServiceClient } from "@eventual/aws-client";
+import { AWSHttpEventualClient } from "@eventual/aws-client";
 import { chaosSSMParamName, serviceUrl } from "./env.js";
 import { ChaosRule } from "./chaos-extension/chaos-engine.js";
 import { SSMChaosClient } from "./chaos-extension/chaos-client.js";
 import { SSMClient } from "@aws-sdk/client-ssm";
 
-const serviceClient = new AwsHttpServiceClient({
+const serviceClient = new AWSHttpEventualClient({
   serviceUrl: serviceUrl(),
   region: "us-east-1",
 });

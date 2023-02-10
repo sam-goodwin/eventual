@@ -1,9 +1,9 @@
 import {
   activity,
-  api,
   isOrchestratorWorker,
-  RouteHandler,
   Secret,
+  http,
+  HttpHandler,
 } from "@eventual/core";
 import slack from "@slack/bolt";
 import { WebClient } from "@slack/web-api";
@@ -62,13 +62,13 @@ export interface Slack extends slack.App {}
  * To learn more about the different capabilities, we recommend reviewing
  * their [Getting Started Guide](https://slack.dev/bolt-js/tutorial/getting-started).
  */
-export class Slack {
+export class Slack<Name extends string = string> {
   private fetchReceiver: FetchReceiver | undefined;
   private app: slack.App | undefined;
-  private handler: RouteHandler | undefined;
+  private handler: HttpHandler | undefined;
   private deferred: [name: string, args: any[]][] = [];
 
-  constructor(readonly name: string, readonly props: SlackProps) {
+  constructor(readonly name: Name, readonly props: SlackProps) {
     const slackActivity = activity(
       `slack.client.${name}`,
       async ({
@@ -87,7 +87,7 @@ export class Slack {
       }
     );
 
-    api.all(`/_slack/${name}`, async (request) => {
+    http.all(`/_slack/${name}`, async (request) => {
       return (await this.getHandler())(request);
     });
 
@@ -175,7 +175,7 @@ export class Slack {
     });
   }
 
-  private async getHandler(): Promise<RouteHandler> {
+  private async getHandler(): Promise<HttpHandler> {
     if (!this.app) {
       const { token, signingSecret } = await this.props.credentials.getSecret();
       this.fetchReceiver = new FetchReceiver({
