@@ -15,16 +15,20 @@ export interface CreateAwsCdkProps {
   projectName: string;
   pkgManager: PackageManager;
   serviceName: string | undefined;
+  git: boolean;
 }
 
 export async function createAwsCdkProject({
   projectName,
   pkgManager,
   serviceName = projectName,
+  git,
 }: CreateAwsCdkProps) {
   await fs.mkdir(projectName);
   process.chdir(projectName);
-  await exec("git", "init");
+  if (git) {
+    await exec("git", "init");
+  }
 
   const basePath = process.cwd();
 
@@ -383,7 +387,7 @@ export class MyServiceStack extends Stack {
     await createServicePackage(path.resolve(basePath, serviceDir), {
       packageName: servicePackageName,
       eventualVersion: version,
-      references: [`../../${corePackageName}`],
+      references: [`../../${coreDir}`],
       dependencies: {
         [corePackageName]: workspaceVersion,
       },
