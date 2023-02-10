@@ -494,9 +494,7 @@ function isResolved(result) {
 function isFailed(result) {
   return isResult(result) && result[ResultSymbol] === ResultKind.Failed;
 }
-var isResolvedOrFailed = or({
-  exportName: "isResolvedOrFailed",
-}, isResolved, isFailed);
+var isResolvedOrFailed = or(isResolved, isFailed);
 
 var ServiceType;
 (function(ServiceType2) {
@@ -744,9 +742,7 @@ function isChildWorkflowFailed(event) {
 function isTimerCompleted(event) {
   return event.type === WorkflowEventType.TimerCompleted;
 }
-var isWorkflowCompletedEvent = or({
-  exportName: "isWorkflowCompletedEvent",
-}, isWorkflowFailed, isWorkflowSucceeded);
+var isWorkflowCompletedEvent = or(isWorkflowFailed, isWorkflowSucceeded);
 function isSignalSent(event) {
   return event.type === WorkflowEventType.SignalSent;
 }
@@ -757,19 +753,13 @@ function isWorkflowTimedOut(event) {
   return event.type === WorkflowEventType.WorkflowTimedOut;
 }
 var isScheduledEvent = or(isActivityScheduled, isChildWorkflowScheduled, isEventsPublished, isSignalSent, isTimerScheduled);
-var isSucceededEvent = or({
-  exportName: "isSucceededEvent",
-}, isActivitySucceeded, isChildWorkflowSucceeded, isTimerCompleted);
+var isSucceededEvent = or(isActivitySucceeded, isChildWorkflowSucceeded, isTimerCompleted);
 var isFailedEvent = or(isActivityFailed, isActivityHeartbeatTimedOut, isChildWorkflowFailed, isWorkflowTimedOut);
 
-var myHandler = api.get({
-  exportName: "myHandler",
-}, "/", async () => {
+var myHandler = api.get("/", async () => {
   return new Response();
 });
-var myHandler2 = api.get({
-  exportName: "myHandler2",
-}, "/", async () => {
+var myHandler2 = api.get("/", async () => {
   return new Response();
 });
 0 && (module.exports = {
