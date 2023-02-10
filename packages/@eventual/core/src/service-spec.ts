@@ -39,10 +39,6 @@ export interface ServiceSpec {
   };
   subscriptions: {
     /**
-     * The catch-all function for any event handlers that cannot be bundled individually.
-     */
-    default: SubscriptionSpec;
-    /**
      * Individually bundled {@link EventFunction}s containing a single `onEvent` event handler.
      */
     [subscriptionName: string]: SubscriptionSpec;
