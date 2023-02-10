@@ -36,13 +36,13 @@ import { Construct } from "constructs";
 import path from "path";
 import { Activities, IActivities } from "./activities";
 import { BuildOutput, buildServiceSync } from "./build";
-import { Events } from "./events";
+import { Events, SubscriptionProps } from "./events";
 import { grant } from "./grant";
 import { Logging, LoggingProps } from "./logging";
 import { lazyInterface } from "./proxy-construct";
 import { IScheduler, Scheduler } from "./scheduler";
-import { Api, IServiceApi } from "./service-api";
-import { IWorkflows, Workflows, WorkflowsProps } from "./workflows";
+import { Api, CommandProps, IServiceApi } from "./service-api";
+import { IWorkflows, Workflows } from "./workflows";
 
 export interface IService {
   /**
@@ -170,7 +170,7 @@ export interface SubscribeProps extends aws_events_targets.EventBusProps {
   events: (Event | string)[];
 }
 
-export interface ServiceProps {
+export interface ServiceProps<Service = any> {
   /**
    * The path of the `.ts` or `.js` file that is the entrypoint to the Service's logic.
    */
@@ -188,16 +188,41 @@ export interface ServiceProps {
     [key: string]: string;
   };
   /**
-   * Override the workflow dependencies of a Service {@link WorkflowsProps}
-   *
-   * @default - the dependencies are created.
-   * @see WorkflowsProps
+   * Override properties of Command Functions within the Service.
    */
-  workflows?: Pick<WorkflowsProps, "orchestrator">;
+  commands?: CommandProps<Service>;
+  /**
+   * Override properties of Subscription Functions within the Service.
+   */
+  subscriptions?: SubscriptionProps<Service>;
+  /**
+   * Configuration properties for the workflow orchestrator
+   */
+  workflows?: {
+    /**
+     * Set the reservedConcurrentExecutions for the workflow orchestrator lambda function.
+     *
+     * This function consumes from the central SQS FIFO Queue and the number of parallel executions
+     * scales directly on the number of active workflow executions. Each execution id is used as
+     * the message group ID which directly affects concurrent executions.
+     *
+     * Set this value to protect the workflow's concurrent executions from:
+     * 1. browning out other functions by consuming concurrent executions
+     * 2. be brought down by other functions in the AWS account
+     * 3. ensure the timely performance of workflows for a given scale
+     */
+    reservedConcurrentExecutions?: number;
+  };
+  /**
+   * Configure the Log Level and Log Group.
+   */
   logging?: Omit<LoggingProps, "serviceName">;
 }
 
-export class Service extends Construct implements IGrantable, IService {
+export class Service<S = any>
+  extends Construct
+  implements IGrantable, IService
+{
   /**
    * Name of this Service.
    */
@@ -209,11 +234,11 @@ export class Service extends Construct implements IGrantable, IService {
   /**
    * This {@link Service}'s API Gateway.
    */
-  public readonly api: Api;
+  public readonly api: Api<S>;
   /**
    * This {@link Service}'s {@link Events} that can be published and subscribed to.
    */
-  public readonly events: Events;
+  public readonly events: Events<S>;
   /**
    * A single-table used for execution data and granular workflow events/
    */
@@ -245,12 +270,13 @@ export class Service extends Construct implements IGrantable, IService {
 
   public readonly grantPrincipal: IPrincipal;
 
-  constructor(scope: Construct, id: string, props: ServiceProps) {
+  constructor(scope: Construct, id: string, props: ServiceProps<S>) {
     super(scope, id);
 
     this.serviceName = props.name ?? Names.uniqueResourceName(this, {});
 
     this.build = buildServiceSync({
+      serviceName: this.serviceName,
       entry: props.entry,
       outDir: path.join(".eventual", this.node.addr),
     });
@@ -334,6 +360,7 @@ export class Service extends Construct implements IGrantable, IService {
       events: this.events,
       scheduler: this.scheduler,
       service: proxyService,
+      commands: props.commands,
     });
     apiProxy._bind(this.api);
 
@@ -341,8 +368,8 @@ export class Service extends Construct implements IGrantable, IService {
       // when granting permissions to the service,
       // propagate them to the following principals
       this.activities.worker.grantPrincipal,
-      this.api.defaultHandler.grantPrincipal,
-      this.events.defaultHandler.grantPrincipal
+      this.api.grantPrincipal,
+      this.events.grantPrincipal
     );
 
     this.cliRole = new Role(this, "EventualCliRole", {
@@ -390,7 +417,6 @@ export class Service extends Construct implements IGrantable, IService {
   public addEnvironment(key: string, value: string): void {
     this.activities.worker.addEnvironment(key, value);
     this.api.handlers.forEach((handler) => handler.addEnvironment(key, value));
-    this.events.defaultHandler.addEnvironment(key, value);
     this.events.handlers.forEach((handler) =>
       handler.addEnvironment(key, value)
     );

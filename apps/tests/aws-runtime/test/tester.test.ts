@@ -128,7 +128,59 @@ eventualRuntimeTestHarness(
 const url = serviceUrl();
 
 test("hello API should route and return OK response", async () => {
-  const response = await (await fetch(`${url}/hello`)).text();
+  const restResponse = await (await fetch(`${url}/hello`)).json();
+  const rpcResponse = await (
+    await fetch(`${url}/_rpc/helloApi`, {
+      method: "POST",
+    })
+  ).json();
 
-  expect(response).toEqual("hello world");
+  expect(restResponse).toEqual("hello world");
+  expect(rpcResponse).toEqual("hello world");
+});
+
+test("params with schema should parse", async () => {
+  const restResponse = await (
+    await fetch(`${url}/user/typed1/my-user-id`)
+  ).json();
+
+  const rpcResponse = await (
+    await fetch(`${url}/_rpc/typed1`, {
+      method: "POST",
+      body: JSON.stringify({
+        userId: "my-user-id",
+      }),
+    })
+  ).json();
+
+  const expectedResponse = {
+    userId: "my-user-id",
+    createdTime: new Date(0).toISOString(),
+  };
+
+  expect(restResponse).toEqual(expectedResponse);
+  expect(rpcResponse).toEqual(expectedResponse);
+});
+
+test("output with schema should serialize", async () => {
+  const restResponse = await (
+    await fetch(`${url}/user/typed2/my-user-id`)
+  ).json();
+
+  const rpcResponse = await (
+    await fetch(`${url}/_rpc/typed2`, {
+      method: "POST",
+      body: JSON.stringify({
+        userId: "my-user-id",
+      }),
+    })
+  ).json();
+
+  const expected = {
+    userId: "my-user-id",
+    createdTime: new Date(0).toISOString(),
+  };
+
+  expect(restResponse).toEqual(expected);
+  expect(rpcResponse).toEqual(expected);
 });

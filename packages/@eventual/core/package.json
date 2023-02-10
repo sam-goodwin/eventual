@@ -23,6 +23,7 @@
   },
   "devDependencies": {
     "@jest/globals": "^29.3.1",
+    "@tshttp/status": "^2.0.0",
     "@types/jest": "^29",
     "@types/node": "^16",
     "jest": "^29",

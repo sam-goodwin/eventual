@@ -1,5 +1,4 @@
-import { HttpMethod } from "@eventual/client";
-import { encodeExecutionId } from "@eventual/core";
+import { encodeExecutionId, HttpMethod } from "@eventual/core";
 import express from "express";
 import getPort, { portNumbers } from "get-port";
 import { resolve } from "import-meta-resolve";

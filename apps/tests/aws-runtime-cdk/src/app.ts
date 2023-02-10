@@ -13,6 +13,8 @@ import { Queue } from "aws-cdk-lib/aws-sqs";
 import path from "path";
 import { ChaosExtension } from "./chaos-extension";
 
+import type * as testServiceRuntime from "tests-runtime";
+
 const app = new App();
 
 const stack = new Stack(app, "eventual-tests");
@@ -25,16 +27,21 @@ const role = new Role(stack, "testRole", {
 
 const testQueue = new Queue(stack, "testQueue");
 
-const testService = new eventual.Service(stack, "testService", {
-  name: "eventual-tests",
-  entry: require.resolve("tests-runtime"),
-  environment: {
-    TEST_QUEUE_URL: testQueue.queueUrl,
-  },
-  logging: {
-    logLevel: LogLevel.DEBUG,
-  },
-});
+const testService = new eventual.Service<typeof testServiceRuntime>(
+  stack,
+  "testService",
+  {
+    name: "eventual-tests",
+    entry: require.resolve("tests-runtime"),
+    environment: {
+      TEST_QUEUE_URL: testQueue.queueUrl,
+    },
+    logging: {
+      logLevel: LogLevel.DEBUG,
+    },
+    commands: {},
+  }
+);
 
 testService.api.grantInvokeHttpServiceApi(role);
 testService.cliRole.grantAssumeRole(role);
@@ -69,11 +76,12 @@ chaosExtension.grantReadWrite(role);
  * Async lambda test.
  */
 
+const entry = path.join(
+  require.resolve("tests-runtime"),
+  "../async-writer-handler.js"
+);
 const asyncWriterFunction = new NodejsFunction(stack, "asyncWriterFunction", {
-  entry: path.join(
-    require.resolve("tests-runtime"),
-    "../async-writer-handler.js"
-  ),
+  entry,
   handler: "handle",
   environment: {
     TEST_SERVICE_URL: testService.api.gateway.apiEndpoint,

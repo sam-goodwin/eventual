@@ -13,8 +13,7 @@ import {
   EventualError,
   signal,
   duration,
-  api,
-  ApiResponse,
+  command,
 } from "@eventual/core";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -322,6 +321,7 @@ const SignalEventPayload = z.object({
 const signalEvent = event("SignalEvent", SignalEventPayload);
 
 export const onSignalEvent = signalEvent.onEvent(
+  "onSignalEvent",
   async ({ executionId, signalId, proxy }) => {
     console.debug("received signal event", { executionId, signalId, proxy });
     if (proxy) {
@@ -395,7 +395,7 @@ export const timedWorkflow = workflow("timedWorkflow", async () => {
 const resumeSignal = signal("resume");
 const notifyEvent = event<{ executionId: string }>("notify");
 
-notifyEvent.onEvent(async ({ executionId }) => {
+notifyEvent.onEvent("onNotifyEvent", async ({ executionId }) => {
   await resumeSignal.sendSignal(executionId);
 });
 
@@ -428,12 +428,53 @@ export const allCommands = workflow("allCommands", async (_, context) => {
   return { signalCount: n };
 });
 
-export const userApi = api.get(
-  "/hello",
+export const helloApi = command(
+  "helloApi",
   {
-    memorySize: 512,
+    path: "/hello",
   },
   async () => {
-    return new ApiResponse("hello world");
+    return "hello world";
+  }
+);
+
+// provide a schema for the parameters
+export const typed1 = command(
+  "typed1",
+  {
+    path: "/user/typed1/:userId",
+    input: z.object({
+      userId: z.string(),
+    }),
+  },
+  async ({ userId }) => {
+    return {
+      userId: userId,
+      createdTime: new Date(0).toISOString(),
+    };
+  }
+);
+
+const User = z.object({
+  userId: z.string(),
+  createdTime: z.date(),
+});
+
+// provide a schema for the output body
+export const typed2 = command(
+  "typed2",
+  {
+    path: "/user/typed2/:userId",
+    method: "GET",
+    input: z.object({
+      userId: z.string(),
+    }),
+    output: User,
+  },
+  async (request) => {
+    return {
+      userId: request.userId,
+      createdTime: new Date(0),
+    };
   }
 );

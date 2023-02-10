@@ -50,6 +50,8 @@ import {
   workflowTimedOut,
 } from "./command-util.js";
 
+import "../src/workflow";
+
 function* myWorkflow(event: any): Program<any> {
   try {
     const a: any = yield createActivityCall("my-activity", [event]);
@@ -1035,6 +1037,7 @@ describe("AwaitAny", () => {
         activityFailed("B", 1),
       ])
     ).toMatchObject(<WorkflowResult>{
+      // @ts-ignore - AggregateError not available?
       result: Result.failed(new AggregateError(["A", "B"])),
     });
   });

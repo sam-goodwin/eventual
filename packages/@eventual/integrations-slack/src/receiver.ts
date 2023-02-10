@@ -1,14 +1,14 @@
-import { Logger, ConsoleLogger, LogLevel } from "@slack/logger";
-import querystring from "querystring";
-import crypto from "crypto";
-import tsscmp from "tsscmp";
+import { HttpHandler, HttpRequest, HttpResponse } from "@eventual/core";
 import {
   App,
   Receiver,
   ReceiverEvent,
   ReceiverMultipleAckError,
 } from "@slack/bolt";
-import { ApiRequest, ApiResponse, RouteHandler } from "@eventual/core";
+import { ConsoleLogger, Logger, LogLevel } from "@slack/logger";
+import crypto from "crypto";
+import querystring from "querystring";
+import tsscmp from "tsscmp";
 
 export interface FetchReceiverOptions {
   signingSecret: string;
@@ -54,7 +54,7 @@ export default class FetchReceiver implements Receiver {
     this.app = app;
   }
 
-  public start(): Promise<RouteHandler> {
+  public start(): Promise<HttpHandler> {
     return Promise.resolve(this.handle.bind(this));
   }
 
@@ -62,14 +62,14 @@ export default class FetchReceiver implements Receiver {
     return Promise.resolve(undefined);
   }
 
-  public async handle(request: ApiRequest): Promise<ApiResponse> {
+  public async handle(request: HttpRequest): Promise<HttpResponse> {
     this.logger.debug(`Request: ${JSON.stringify(request, null, 2)}`);
 
     const rawBody = await this.getRawBody(request);
     const body: any = this.parseRequestBody(
       rawBody,
-      request.headers["Content-Type"] ??
-        request.headers["content-type"] ??
+      (request.headers?.["Content-Type"] as string) ??
+        (request.headers?.["content-type"] as string) ??
         undefined,
       this.logger
     );
@@ -81,19 +81,23 @@ export default class FetchReceiver implements Receiver {
       typeof body.ssl_check !== "undefined" &&
       body.ssl_check != null
     ) {
-      return new ApiResponse("", { status: 200 });
+      return new HttpResponse("", {
+        status: 200,
+      });
     }
 
     // request signature verification
-    const signature = request.headers["X-Slack-Signature"] as string;
-    const ts = Number(request.headers["X-Slack-Request-Timestamp"]);
+    const signature = request.headers?.["X-Slack-Signature"] as string;
+    const ts = Number(request.headers?.["X-Slack-Request-Timestamp"]);
     if (
       !this.isValidRequestSignature(this.signingSecret, rawBody, signature, ts)
     ) {
       this.logger.info(
         `Invalid request signature detected (X-Slack-Signature: ${signature}, X-Slack-Request-Timestamp: ${ts})`
       );
-      return new ApiResponse("", { status: 401 });
+      return new HttpResponse("", {
+        status: 404,
+      });
     }
 
     // url_verification (Events API)
@@ -104,9 +108,9 @@ export default class FetchReceiver implements Receiver {
       body.type != null &&
       body.type === "url_verification"
     ) {
-      return new ApiResponse(JSON.stringify({ challenge: body.challenge }), {
-        headers: { "Content-Type": "application/json" },
+      return new HttpResponse(JSON.stringify({ challenge: body.challenge }), {
         status: 200,
+        headers: { "Content-Type": "application/json" },
       });
     }
 
@@ -123,7 +127,7 @@ export default class FetchReceiver implements Receiver {
 
     // Structure the ReceiverEvent
     let storedResponse;
-    const retryNum = request.headers["X-Slack-Retry-Num"];
+    const retryNum = request.headers?.["X-Slack-Retry-Num"];
     const event: ReceiverEvent = {
       body,
       ack: async (response) => {
@@ -139,7 +143,8 @@ export default class FetchReceiver implements Receiver {
         }
       },
       retryNum: retryNum ? Number(retryNum) : undefined,
-      retryReason: request.headers["X-Slack-Retry-Reason"] ?? undefined,
+      retryReason:
+        (request.headers?.["X-Slack-Retry-Reason"] as string) ?? undefined,
     };
 
     // Send the event to the app for processing
@@ -147,13 +152,13 @@ export default class FetchReceiver implements Receiver {
       await this.app?.processEvent(event);
       if (storedResponse !== undefined) {
         if (typeof storedResponse === "string") {
-          return new ApiResponse(storedResponse, {
+          return new HttpResponse(storedResponse, {
             status: 200,
           });
         }
-        return new ApiResponse(JSON.stringify(storedResponse), {
-          headers: { "Content-Type": "application/json" },
+        return new HttpResponse(JSON.stringify(storedResponse), {
           status: 200,
+          headers: { "Content-Type": "application/json" },
         });
       }
     } catch (err) {
@@ -163,19 +168,19 @@ export default class FetchReceiver implements Receiver {
       this.logger.debug(
         `Error details: ${err}, storedResponse: ${storedResponse}`
       );
-      return new ApiResponse("Internal server error", {
+      return new HttpResponse("Internal Server Error", {
         status: 500,
       });
     }
     this.logger.info(
       `No request handler matched the request: ${new URL(request.url).pathname}`
     );
-    return new ApiResponse("", {
+    return new HttpResponse("Internal Server Error", {
       status: 404,
     });
   }
 
-  private async getRawBody(request: ApiRequest): Promise<string> {
+  private async getRawBody(request: HttpRequest): Promise<string> {
     return (await request.text?.()) ?? "";
   }
 

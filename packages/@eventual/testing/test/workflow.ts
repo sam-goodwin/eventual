@@ -118,15 +118,15 @@ export const orchestrate = workflow(
   }
 );
 
-continueEvent.onEvent(async ({ executionId }) => {
+continueEvent.onEvent("onContinueEvent", async ({ executionId }) => {
   await sendSignal(executionId, continueSignal);
 });
 
-dataEvent.onEvent(async ({ executionId, data }) => {
+dataEvent.onEvent("onDataEvent", async ({ executionId, data }) => {
   await sendSignal(executionId, dataSignal, data);
 });
 
-dataDoneEvent.onEvent(async ({ executionId }) => {
+dataDoneEvent.onEvent("onDataDoneEvent", async ({ executionId }) => {
   await sendSignal(executionId, dataDoneSignal);
 });
 

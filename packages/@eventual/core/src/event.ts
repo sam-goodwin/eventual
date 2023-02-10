@@ -60,6 +60,7 @@ export interface EventHandlerRuntimeProps extends FunctionRuntimeProps {
  * may be {@link publishEvents}ed and {@link onEvent}d to.
  */
 export interface Event<E extends EventPayload = EventPayload> {
+  kind: "Event";
   /**
    * The Event's globally unique name.
    */
@@ -74,11 +75,15 @@ export interface Event<E extends EventPayload = EventPayload> {
    *
    * @param handler the handler function that will process the event.
    */
-  onEvent(handler: EventHandlerFunction<E>): EventHandler<E>;
-  onEvent(
+  onEvent<Name extends string>(
+    name: Name,
+    handler: EventHandlerFunction<E>
+  ): EventHandler<Name, E>;
+  onEvent<Name extends string>(
+    name: Name,
     props: EventHandlerRuntimeProps,
     handlers: EventHandlerFunction<E>
-  ): EventHandler<E>;
+  ): EventHandler<Name, E>;
   /**
    * Publish events of this type within the service boundary.
    *
@@ -87,7 +92,12 @@ export interface Event<E extends EventPayload = EventPayload> {
   publishEvents(...events: E[]): Promise<void>;
 }
 
-export interface EventHandler<E extends EventPayload = EventPayload> {
+export interface EventHandler<
+  Name extends string = string,
+  E extends EventPayload = EventPayload
+> {
+  kind: "EventHandler";
+  name: Name;
   /**
    * The Handler Function for processing the Events.
    */
@@ -176,7 +186,7 @@ export type EventHandlerFunction<E extends EventPayload> = (
  * handler that wil lbe invoked for every event of this type that is received.
  *
  * ```ts
- * checkoutEvent.onEvent(async (checkout) => {
+ * checkoutEvent.onEvent("onCheckoutEvent", async (checkout) => {
  *   console.log(checkout);
  * });
  * ```
@@ -193,43 +203,32 @@ export function event<E extends EventPayload>(
     throw new Error(`event with name '${name}' already exists`);
   }
   const event: Event<E> = {
+    kind: "Event",
     name,
     schema,
-    onEvent(...args: any[]) {
+    onEvent<Name extends string>(...args: any[]) {
       // we have an implicit contract where the SourceLocation may be passed in as the first argument
-      const [sourceLocation, eventHandlerProps, handler] =
-        typeof args[2] === "function"
-          ? [
-              args[0] as SourceLocation,
-              args[1] as EventHandlerRuntimeProps,
-              args[2] as EventHandlerFunction<E>,
-            ]
-          : typeof args[1] === "function"
-          ? isSourceLocation(args[0])
-            ? [
-                args[0] as SourceLocation,
-                undefined,
-                args[1] as EventHandlerFunction<E>,
-              ]
-            : [
-                undefined,
-                args[0] as EventHandlerRuntimeProps,
-                args[1] as EventHandlerFunction<E>,
-              ]
-          : [undefined, undefined, args[0] as EventHandlerFunction<E>];
+      const [sourceLocation, name, eventHandlerProps, handler] = [
+        args.find(isSourceLocation)!,
+        args.find((a) => typeof a === "string") as Name,
+        args.find((a) => typeof a === "object" && !isSourceLocation(a))!,
+        args.find((a) => typeof a === "function"),
+      ];
 
-      const eventHandler: EventHandler<E> = {
+      const eventHandler: EventHandler<Name, E> = {
+        kind: "EventHandler",
+        name,
         handler,
         subscriptions: [
           {
-            name,
+            name: event.name,
           },
         ],
         runtimeProps: eventHandlerProps,
         sourceLocation,
       };
 
-      eventHandlers().push(eventHandler);
+      eventHandlers().push(eventHandler as EventHandler<any, any>);
 
       return eventHandler;
     },

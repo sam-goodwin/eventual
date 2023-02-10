@@ -7,7 +7,7 @@ import { jest } from "@jest/globals";
 import { ClientRequest, IncomingMessage } from "http";
 import { Stream } from "stream";
 
-import { ApiRequest } from "@eventual/core";
+import { HttpRequest } from "@eventual/core";
 import { NodeRequestHandler } from "../src/request-handler/node-request-handler.js";
 import { HttpError } from "../src/request-handler/request-handler.js";
 
@@ -22,7 +22,9 @@ beforeEach(() => {
 test("returns json", async () => {
   requestFn.mockImplementation(createRequest(apiResponseBody, 200));
   const result = await handler.request(
-    new ApiRequest("https://hello.com", { method: "get" })
+    new HttpRequest("https://hello.com", {
+      method: "GET",
+    })
   );
   expect(result).toEqual(apiResponseBody);
 });
@@ -30,8 +32,8 @@ test("returns json", async () => {
 test("with body", async () => {
   requestFn.mockImplementation(createRequest(apiResponseBody, 200));
   const result = await handler.request(
-    new ApiRequest("https://hello.com", {
-      method: "post",
+    new HttpRequest("https://hello.com", {
+      method: "POST",
       body: JSON.stringify({ b: "hello" }),
     })
   );
@@ -41,7 +43,11 @@ test("with body", async () => {
 test("throws on error", async () => {
   requestFn.mockImplementation(createRequest("something went wrong", 400));
   expect(() =>
-    handler.request(new ApiRequest("https://hello.com", { method: "get" }))
+    handler.request(
+      new HttpRequest("https://hello.com", {
+        method: "GET",
+      })
+    )
   ).rejects.toThrow(new HttpError(400, JSON.stringify("something went wrong")));
 });
 

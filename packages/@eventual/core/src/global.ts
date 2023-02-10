@@ -1,9 +1,9 @@
+import { ActivityContext, Activity, ActivityHandler } from "./activity.js";
 import { Event, EventHandler, EventSubscription } from "./event.js";
-import { ActivityContext, ActivityHandler } from "./activity.js";
 import type { Eventual, EventualCallCollector } from "./eventual.js";
-import type { Workflow } from "./workflow.js";
 import { EventualServiceClient } from "./service-client.js";
-import { Route } from "./api.js";
+import type { Workflow } from "./workflow.js";
+import type { Command } from "./http/index.js";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -47,13 +47,13 @@ declare global {
     /**
      * API routes registered within the application.
      */
-    routes?: Route[];
+    commands?: Command<any, any, any>[];
   };
 }
 
 globalThis._eventual ??= {};
 
-export const routes = (globalThis._eventual.routes ??= []);
+export const commands = (globalThis._eventual.commands ??= []);
 
 export const workflows = (): Map<string, Workflow> =>
   (globalThis._eventual.workflows ??= new Map<string, Workflow>());
@@ -61,11 +61,15 @@ export const workflows = (): Map<string, Workflow> =>
 export const events = (): Map<string, Event> =>
   (globalThis._eventual.events ??= new Map<string, Event>());
 
-export const eventHandlers = (): EventHandler<any>[] =>
+export const eventHandlers = (): EventHandler[] =>
   (globalThis._eventual.eventHandlers ??= []);
 
 export function clearEventHandlers() {
   globalThis._eventual.eventHandlers = [];
+}
+
+export function activities(): Activity[] {
+  return Object.values(callableActivities()) as Activity[];
 }
 
 export const callableActivities = (): Record<string, ActivityHandler<any>> =>

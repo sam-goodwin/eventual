@@ -29,3 +29,9 @@ export function addEnvironment(
     func.addEnvironment(key, value)
   );
 }
+
+export type PickType<T, U> = Pick<T, KeysOfType<T, U>>;
+
+export type KeysOfType<T, U> = {
+  [k in keyof T]: T[k] extends U ? k : never;
+}[keyof T];

@@ -1,88 +1,26 @@
-import { Sha256 } from "@aws-crypto/sha256-js";
-import { HttpRequest as AwsHttpRequest } from "@aws-sdk/protocol-http";
-import { parseQueryString } from "@aws-sdk/querystring-parser";
-import { SignatureV4, SignatureV4Init } from "@aws-sdk/signature-v4";
-import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import {
-  BeforeRequest,
-  HttpMethod,
   HttpServiceClient,
   HttpServiceClientProps,
+  proxyServiceClient,
+  ServiceClient,
 } from "@eventual/client";
-import {
-  NODE_REGION_CONFIG_FILE_OPTIONS,
-  NODE_REGION_CONFIG_OPTIONS,
-} from "@aws-sdk/config-resolver";
-import { loadConfig } from "@aws-sdk/node-config-provider";
-import { ApiRequest } from "@eventual/core";
+import type { AWSHttpEventualClientProps } from "./aws-http-eventual-client.js";
+import { createAwsHttpRequestSigner } from "./aws-http-request-signer.js";
 
-export interface AwsHttpServiceClientProps extends HttpServiceClientProps {
-  credentials?: SignatureV4Init["credentials"];
-  region?: string;
-  /**
-   * Optional hook to mutate the request before the request is signed.
-   *
-   * `beforeRequest` is invoked after signing the request and may invalidate the signature.
-   */
-  beforeRequestSigning?: BeforeRequest;
-}
+export type AWSServiceClient<Service> = ServiceClient<Service>;
 
 /**
- * AWS specific Http implementation of the {@link EventualServiceClient} to hit the API deployed
- * with an eventual service.
+ * AWS specific Http implementation of the {@link EventualServiceClient} to execute requests
+ * to the Commands within a Service.
  *
  * Makes authorized and signed requests to API Gateway using the credentials provided on construction.
  */
-export class AwsHttpServiceClient extends HttpServiceClient {
-  constructor(props: AwsHttpServiceClientProps) {
-    const signRequest: BeforeRequest = async (request) => {
-      const updatedRequest = props.beforeRequestSigning
-        ? await props.beforeRequestSigning(request)
-        : request;
+export const AWSServiceClient: {
+  new <Service>(props: HttpServiceClientProps): ServiceClient<Service>;
+} = class AWSServiceClient extends HttpServiceClient {
+  constructor(props: AWSHttpEventualClientProps) {
+    super({ ...props, beforeRequest: createAwsHttpRequestSigner(props) });
 
-      const url = new URL(updatedRequest.url);
-
-      const _headers = { ...updatedRequest.headers, host: url.hostname };
-
-      const _request = new AwsHttpRequest({
-        hostname: url.hostname,
-        path: url.pathname,
-        body: updatedRequest.body ? updatedRequest.body : undefined,
-        method: updatedRequest.method.toUpperCase(),
-        headers: _headers,
-        protocol: url.protocol,
-        query: parseQueryString(url.search),
-      });
-
-      // create a signer object with the credentials, the service name and the region
-      const signer = new SignatureV4({
-        credentials: props.credentials ?? defaultProvider(),
-        service: "execute-api",
-        region: props.region ?? (await resolveRegion()),
-        sha256: Sha256,
-      });
-
-      // sign the request and extract the signed headers, body and method
-      const { headers, body, method } = await signer.sign(_request);
-
-      const authorizedRequest = new ApiRequest(url.href, {
-        method: method as HttpMethod,
-        body,
-        headers,
-      });
-
-      return props.beforeRequest
-        ? await props.beforeRequest(authorizedRequest)
-        : authorizedRequest;
-    };
-
-    super({ ...props, beforeRequest: signRequest });
+    return proxyServiceClient.call(this);
   }
-}
-
-export async function resolveRegion() {
-  return await loadConfig(
-    NODE_REGION_CONFIG_OPTIONS,
-    NODE_REGION_CONFIG_FILE_OPTIONS
-  )();
-}
+} as any;

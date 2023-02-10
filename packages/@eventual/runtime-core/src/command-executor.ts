@@ -3,7 +3,7 @@ import {
   ActivityWorkerRequest,
   assertNever,
   ChildWorkflowScheduled,
-  Command,
+  WorkflowCommand,
   createEvent,
   EventsPublished,
   formatChildExecutionName,
@@ -50,7 +50,7 @@ export class CommandExecutor {
   public async executeCommand(
     workflow: Workflow,
     executionId: string,
-    command: Command,
+    command: WorkflowCommand,
     baseTime: Date
   ): Promise<HistoryStateEvent> {
     if (isScheduleActivityCommand(command)) {

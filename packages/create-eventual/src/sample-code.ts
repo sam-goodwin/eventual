@@ -1,4 +1,4 @@
-export const sampleServiceCode = `import { event, activity, workflow, api, ApiResponse } from "@eventual/core";
+export const sampleServiceCode = `import { event, activity, workflow, api, HttpResponse } from "@eventual/core";
 
 api.post("/work", async (request) => {
   const items: string[] = await request.json();
@@ -7,7 +7,7 @@ api.post("/work", async (request) => {
     input: items,
   });
 
-  return new ApiResponse(JSON.stringify({ executionId }), {
+  return new HttpResponse(JSON.stringify({ executionId }), {
     status: 200,
   });
 });

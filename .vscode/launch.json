@@ -31,5 +31,22 @@
       "cwd": "${workspaceFolder}/apps/test-app/",
       "outFiles": ["${workspaceFolder}/**/*.js", "!**/node_modules/**"]
     }
+    {
+      "type": "node",
+      "name": "synth apps/tests/aws-runtime-cdk",
+      "request": "launch",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--nolazy",
+        "-r",
+        "ts-node/register/transpile-only",
+        "--enable-source-maps"
+      ],
+      "args": ["src/app.ts"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "openOnSessionStart",
+      "cwd": "${workspaceFolder}/apps/tests/aws-runtime-cdk",
+      "outFiles": ["${workspaceFolder}/**/*.js", "!**/node_modules/**"]
+    }
   ]
 }

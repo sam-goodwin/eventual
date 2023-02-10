@@ -1,7 +1,18 @@
 import type { Readable } from "node:stream";
+import type { HttpMethod } from "../http-method.js";
 
-abstract class BaseApiObject {
+type Body = string | Buffer | Readable | null;
+
+abstract class BaseHttpPayload {
   abstract readonly body: string | Buffer | Readable | null;
+
+  async tryJson(): Promise<any> {
+    try {
+      return await this.json();
+    } catch {
+      return undefined;
+    }
+  }
 
   async json() {
     return JSON.parse((await this.text?.()) ?? "");
@@ -36,23 +47,23 @@ abstract class BaseApiObject {
   }
 }
 
-export interface ApiRequestInit {
-  method: string;
+export interface HttpRequestInit {
+  method: HttpMethod;
   headers?: Record<string, string>;
   body?: string | Buffer | null;
   params?: Record<string, string>;
   query?: Record<string, string | string[]>;
 }
 
-export class ApiRequest extends BaseApiObject {
+export class HttpRequest extends BaseHttpPayload {
   readonly url: string;
-  readonly method: string;
+  readonly method: HttpMethod;
   readonly headers: Record<string, string>;
   readonly body: string | Buffer | null;
-  readonly params?: Record<string, string>;
+  readonly params: Record<string, string>;
   readonly query?: Record<string, string | string[]>;
 
-  constructor(url: string, props: ApiRequestInit) {
+  constructor(url: string, props: HttpRequestInit) {
     super();
     const _url = new URL(url);
     this.method = props.method;
@@ -67,26 +78,23 @@ export class ApiRequest extends BaseApiObject {
       });
       this.query = query;
     }
-    this.params = props.params;
+    this.params = props.params ?? {};
     this.url = _url.href;
   }
 }
 
-export type Body = string | Buffer | Readable | null;
+export interface RawHttpResponseInit {
+  status: number;
+  statusText?: string;
+  headers?: Record<string, string> | Headers;
+}
 
-export class ApiResponse extends BaseApiObject {
+export class HttpResponse extends BaseHttpPayload {
   readonly body: Body;
   readonly status: number;
   readonly statusText?: string;
   readonly headers?: Record<string, string> | Headers;
-  constructor(
-    body?: Body,
-    init?: {
-      status: number;
-      statusText?: string;
-      headers?: Record<string, string> | Headers;
-    }
-  ) {
+  constructor(body?: Body, init?: RawHttpResponseInit) {
     super();
     this.body = body === undefined ? null : body;
     this.status = init?.status ?? 200;

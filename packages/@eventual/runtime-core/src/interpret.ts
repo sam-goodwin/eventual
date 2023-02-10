@@ -2,7 +2,7 @@ import {
   assertNever,
   Chain,
   clearEventualCollector,
-  Command,
+  WorkflowCommand,
   CommandCall,
   CommandType,
   createChain,
@@ -62,7 +62,7 @@ import {
   SynchronousOperationError,
   Timeout,
   WorkflowEvent,
-  _Iterator
+  _Iterator,
 } from "@eventual/core";
 
 export interface WorkflowResult<T = any> {
@@ -75,7 +75,7 @@ export interface WorkflowResult<T = any> {
    *
    * This can still be non-empty even if the chain has terminated because of dangling promises.
    */
-  commands: Command[];
+  commands: WorkflowCommand[];
 }
 
 export interface InterpretProps {
@@ -205,7 +205,9 @@ export function interpret<Return>(
     };
   }
 
-  function callToCommand(call: CommandCall): Command[] | Command {
+  function callToCommand(
+    call: CommandCall
+  ): WorkflowCommand[] | WorkflowCommand {
     if (isActivityCall(call)) {
       return {
         kind: CommandType.StartActivity,

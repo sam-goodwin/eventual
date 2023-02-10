@@ -1,6 +1,6 @@
 import "@eventual/injected/entry";
 
-import { ApiRequest } from "@eventual/core";
+import { HttpMethod, HttpRequest } from "@eventual/core";
 import { createApiHandler } from "@eventual/runtime-core";
 import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from "aws-lambda";
 import { Buffer } from "buffer";
@@ -22,20 +22,19 @@ const processRequest = createApiHandler({
 export default async function (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> {
-  console.debug("event", event);
   const requestBody = event.body
     ? event.isBase64Encoded
       ? Buffer.from(event.body, "base64")
       : event.body
     : undefined;
 
-  const request = new ApiRequest(
+  const request = new HttpRequest(
     `https://${event.requestContext.domainName}${event.rawPath}?${event.rawQueryString}`,
     {
       // TODO: get protocol from header 'x-forwarded-proto'?
       body: requestBody,
       headers: event.headers as Record<string, string>,
-      method: event.requestContext.http.method,
+      method: event.requestContext.http.method as HttpMethod,
     }
   );
 
@@ -63,10 +62,11 @@ export default async function (
   } else {
     throw new Error(`Unrecognized body type: ${typeof response.body}`);
   }
-  return {
+  const httpResponse = {
     headers,
     statusCode: response.status,
     body: responseBody.toString("base64"),
     isBase64Encoded: true,
   };
+  return httpResponse;
 }

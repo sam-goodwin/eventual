@@ -19,7 +19,7 @@
     "lint": "eslint . --fix",
     "prepare": "husky install",
     "test": "NODE_OPTIONS=--experimental-vm-modules turbo run test",
-    "test:runtime": "pnpm --filter tests-runtime test:runtime",
+    "test:runtime": "pnpm --filter tests-runtime test:runtime-deploy",
     "test:cli": "pnpm --filter tests-runtime test:cli",
     "test:smoke": "./scripts/smoke-test",
     "typecheck": "tsc -b",

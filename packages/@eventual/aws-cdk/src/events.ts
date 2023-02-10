@@ -1,10 +1,14 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
-import { Schemas, ServiceType, Subscription } from "@eventual/core";
-import { aws_eventschemas, Lazy, Resource } from "aws-cdk-lib";
+import { Schemas, ServiceType } from "@eventual/core";
+import { aws_eventschemas, aws_iam, Lazy, Resource } from "aws-cdk-lib";
 import { EventBus, IEventBus, Rule } from "aws-cdk-lib/aws-events";
 import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";
-import { IGrantable, IPrincipal } from "aws-cdk-lib/aws-iam";
-import { Function } from "aws-cdk-lib/aws-lambda";
+import {
+  CompositePrincipal,
+  IGrantable,
+  IPrincipal,
+} from "aws-cdk-lib/aws-iam";
+import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import type { OpenAPIObject, SchemaObject } from "openapi3-ts";
@@ -15,8 +19,18 @@ import { ServiceFunction } from "./service-function";
 import { grant } from "./grant";
 import { computeDurationSeconds } from "@eventual/runtime-core";
 import { Duration } from "aws-cdk-lib";
+import type { KeysOfType } from "./utils";
 
-export interface EventsProps {
+export type EventHandlerNames<Service> = KeysOfType<
+  Service,
+  { kind: "EventHandler" }
+>;
+
+export type SubscriptionProps<Service> = {
+  [eventHandler in EventHandlerNames<Service>]?: EventHandlerProps;
+};
+
+export interface EventsProps<Service = any> {
   /**
    * The built service describing the event subscriptions within the Service.
    */
@@ -31,29 +45,36 @@ export interface EventsProps {
    * @default - no extra environment variables
    */
   readonly environment?: Record<string, string>;
+  /**
+   * Configuration for individual Event Handlers created with `onEvent`.
+   */
+  readonly subscriptions?: SubscriptionProps<Service>;
   readonly service: IService;
   readonly api: IServiceApi;
 }
 
-export class Events extends Construct implements IGrantable {
+export interface EventHandlerProps
+  extends Omit<Partial<FunctionProps>, "code" | "handler" | "functionName"> {}
+
+export class Events<Service> extends Construct implements IGrantable {
   /**
    * The {@link EventBus} containing all events flowing into and out of this {@link Service}.
    */
   public readonly bus: IEventBus;
-  /**
-   * The default Lambda {@link Function} that handles events subscribed to in this service's {@link eventBus}.
-   *
-   * This Function only contains event handlers that were not exported by the service -- exported event
-   * handlers are individually bundled and a separate {@link Function} is created. These are available
-   * in {@link handlers}.
-   */
-  public readonly defaultHandler: Function;
+
   /**
    * Individual Event Handler Lambda Functions handling only events they subscribe to. These handlers
    * are individually bundled and tree-shaken for optimal performance and may contain their own custom
    * memory and timeout configuration.
    */
-  public readonly handlers: Function[];
+  public readonly subscriptions: {
+    [handler in EventHandlerNames<Service>]: Function;
+  };
+
+  public get handlers(): Function[] {
+    return Object.values(this.subscriptions);
+  }
+
   /**
    * A SQS Queue to collect events that failed to be handled.
    */
@@ -82,76 +103,78 @@ export class Events extends Construct implements IGrantable {
       environment: props.environment,
     };
 
-    this.defaultHandler = new ServiceFunction(this, "Handler", {
-      code: props.build.getCode(props.build.events.default.file),
-      functionName: `${props.serviceName}-event-handler`,
-      ...functionProps,
+    const role = new aws_iam.Role(this, "DefaultSubscriptionRole", {
+      assumedBy: new aws_iam.ServicePrincipal("lambda.amazonaws.com"),
+      managedPolicies: [
+        aws_iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AWSLambdaBasicExecutionRole"
+        ),
+      ],
     });
-    this.grantPrincipal = this.defaultHandler.grantPrincipal;
-    this.configurePublish(this.defaultHandler);
 
     // create a Construct to safely nest bundled functions in their own namespace
     const bundledHandlers = new Construct(this, "BundledHandlers");
 
-    this.handlers = [
-      this.defaultHandler,
-      ...props.build.events.handlers.map((handler) => {
-        const handlerFunction = new ServiceFunction(
-          bundledHandlers,
-          handler.exportName,
-          {
-            code: props.build.getCode(props.build.events.default.file),
-            functionName: `${props.serviceName}-event-${handler.exportName}`,
-            ...functionProps,
-            memorySize: handler.memorySize,
-            timeout: handler.timeout
-              ? Duration.seconds(computeDurationSeconds(handler.timeout))
-              : undefined,
-            role: this.defaultHandler.role,
-          }
-        );
+    this.subscriptions = Object.fromEntries(
+      Object.values(props.build.subscriptions).map((func) => {
+        const sub = func.spec;
+        const handler = new ServiceFunction(bundledHandlers, func.spec.name, {
+          code: props.build.getCode(func.file),
+          functionName: `${props.serviceName}-event-${sub.name}`,
+          ...functionProps,
+          ...(props.subscriptions?.[sub.name] ?? {}),
+          memorySize: sub.runtimeProps?.memorySize,
+          timeout: sub.runtimeProps?.timeout
+            ? Duration.seconds(computeDurationSeconds(sub.runtimeProps.timeout))
+            : undefined,
 
-        this.createRule(
-          handlerFunction,
-          handler.subscriptions,
-          handler.retryAttempts
-        );
+          role: props.subscriptions?.[sub.name]?.role ?? role,
+        });
 
-        return handlerFunction;
-      }),
-    ];
+        if (sub.subscriptions.length > 0) {
+          // configure a Rule to route all subscribed events to the eventHandler
+          new Rule(handler, "Rules", {
+            eventBus: this.bus,
+            eventPattern: {
+              // only events that originate
+              // TODO: this seems like it would break service-to-service?
+              source: [this.serviceName],
+              detailType: Array.from(
+                new Set(sub.subscriptions.map((sub) => sub.name))
+              ),
+            },
+            targets: [
+              new LambdaFunction(handler, {
+                deadLetterQueue: this.deadLetterQueue,
+                retryAttempts: sub.runtimeProps?.retryAttempts,
+              }),
+            ],
+          });
+        }
+        return [sub.name, handler];
+      })
+    ) as {
+      [handler in EventHandlerNames<Service>]: Function;
+    };
 
-    this.createRule(
-      this.defaultHandler,
-      props.build.events.default.subscriptions,
-      undefined
-    );
+    this.handlers.forEach((handler) => {
+      this.configurePublish(handler);
+      this.configureEventHandler(handler);
+    });
 
-    this.configureEventHandler();
-  }
-
-  private createRule(
-    func: Function,
-    subscriptions: Subscription[],
-    retryAttempts: number | undefined
-  ) {
-    if (subscriptions.length > 0) {
-      // configure a Rule to route all subscribed events to the eventHandler
-      new Rule(func, "Rules", {
-        eventBus: this.bus,
-        eventPattern: {
-          // only events that originate
-          // TODO: this seems like it would break service-to-service?
-          source: [this.serviceName],
-          detailType: Array.from(new Set(subscriptions.map((sub) => sub.name))),
-        },
-        targets: [
-          new LambdaFunction(func, {
-            deadLetterQueue: this.deadLetterQueue,
-            retryAttempts,
-          }),
-        ],
-      });
+    if (this.handlers.length > 0) {
+      this.grantPrincipal = new CompositePrincipal(
+        ...Array.from(
+          this.handlers.reduce<Set<aws_iam.IPrincipal>>((roles, handler) => {
+            if (handler.role) {
+              roles.add(handler.role);
+            }
+            return roles;
+          }, new Set())
+        )
+      );
+    } else {
+      this.grantPrincipal = role;
     }
   }
 
@@ -168,16 +191,16 @@ export class Events extends Construct implements IGrantable {
     this.bus.grantPutEventsTo(grantable);
   }
 
-  configureEventHandler() {
+  private configureEventHandler(handler: Function) {
     // allows the access to all of the operations on the injected service client
-    this.props.service.configureForServiceClient(this.defaultHandler);
+    this.props.service.configureForServiceClient(handler);
     this.handlers.map((handler) =>
-      this.props.service.configureForServiceClient(handler)
+      this.props.service.configureForServiceClient(handler as Function)
     );
     // allow http access to the service client
-    this.props.api.configureInvokeHttpServiceApi(this.defaultHandler);
+    this.props.api.configureInvokeHttpServiceApi(handler);
     this.handlers.map((handler) =>
-      this.props.api.configureInvokeHttpServiceApi(handler)
+      this.props.api.configureInvokeHttpServiceApi(handler as Function)
     );
   }
 

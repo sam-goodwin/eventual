@@ -17,9 +17,7 @@ const stack = new Stack(app, "test-eventual");
 const benchService = new eventual.Service(stack, "Benchmark", {
   entry: require.resolve("test-app-runtime/lib/time-benchmark.js"),
   workflows: {
-    orchestrator: {
-      reservedConcurrentExecutions: 100,
-    },
+    reservedConcurrentExecutions: 100,
   },
 });
 

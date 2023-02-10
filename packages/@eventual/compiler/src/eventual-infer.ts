@@ -6,13 +6,16 @@
  */
 import { generateSchema } from "@anatine/zod-openapi";
 import {
+  commands,
+  CommandSpec,
   eventHandlers,
-  EventHandlerSpec,
+  SubscriptionSpec,
   events,
-  routes,
-  RouteSpec,
   ServiceSpec,
   workflows,
+  EventSpec,
+  activities,
+  ActivitySpec,
 } from "@eventual/core";
 import {
   CallExpression,
@@ -28,7 +31,7 @@ import esbuild from "esbuild";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
-import { getSpan, isApiCall, isOnEventCall } from "./ast-util.js";
+import { getSpan, isCommandCall, isOnEventCall } from "./ast-util.js";
 import { printModule } from "./print-module.js";
 
 export async function infer(
@@ -58,44 +61,55 @@ export async function infer(
   await import(path.resolve(scriptName));
 
   const serviceSpec: ServiceSpec = {
-    events: {
-      schemas: Object.fromEntries(
-        Array.from(events().values()).map(
-          (event) =>
-            [
-              event.name,
-              event.schema ? generateSchema(event.schema) : {},
-            ] as const
-        )
-      ),
-      subscriptions: eventHandlers().flatMap((e) =>
-        e.sourceLocation ? [] : e.subscriptions
-      ),
-      handlers: eventHandlers().flatMap((e) =>
-        e.sourceLocation
-          ? [
-              {
-                runtimeProps: e.runtimeProps,
-                sourceLocation: e.sourceLocation,
-                subscriptions: e.subscriptions,
-              } satisfies EventHandlerSpec,
-            ]
-          : []
-      ),
-    },
-    api: {
-      routes: routes.map(
-        (route) =>
-          ({
-            sourceLocation: route.sourceLocation,
-            path: route.path,
-            memorySize: route.runtimeProps?.memorySize,
-            timeout: route.runtimeProps?.timeout,
-            method: route.method,
-          } satisfies RouteSpec)
-      ),
-    },
     workflows: [...workflows().keys()].map((n) => ({ name: n })),
+    activities: Object.fromEntries(
+      activities().map((activity) => [
+        activity.activityID,
+        {
+          // TODO: source location, etc.
+          activityID: activity.activityID,
+          options: activity.options,
+        } satisfies ActivitySpec,
+      ])
+    ),
+    events: Object.fromEntries(
+      Array.from(events().values()).map(
+        (event) =>
+          [
+            event.name,
+            {
+              name: event.name,
+              schema: event.schema ? generateSchema(event.schema) : undefined,
+            } satisfies EventSpec,
+          ] as const
+      )
+    ),
+    subscriptions: Object.fromEntries(
+      eventHandlers().map((e) => [
+        e.name,
+        {
+          name: e.name,
+          runtimeProps: e.runtimeProps,
+          sourceLocation: e.sourceLocation,
+          subscriptions: e.subscriptions,
+        } satisfies SubscriptionSpec,
+      ])
+    ) as ServiceSpec["subscriptions"],
+    commands: Object.fromEntries(
+      commands.map((command) => [
+        command.name,
+        {
+          name: command.name,
+          sourceLocation: command.sourceLocation,
+          path: command.path,
+          memorySize: command.memorySize,
+          timeout: command.timeout,
+          method: command.method,
+          input: command.input ? generateSchema(command.input) : undefined,
+          output: command.output ? generateSchema(command.output) : undefined,
+        } satisfies CommandSpec,
+      ])
+    ),
   };
 
   console.log(JSON.stringify(serviceSpec));
@@ -176,7 +190,7 @@ export class InferVisitor extends Visitor {
   }
 
   visitCallExpression(call: CallExpression): Expression {
-    if (this.exportName && (isApiCall(call) || isOnEventCall(call))) {
+    if (this.exportName && (isCommandCall(call) || isOnEventCall(call))) {
       this.didMutate = true;
 
       return {
