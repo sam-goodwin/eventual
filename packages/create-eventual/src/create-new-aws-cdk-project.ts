@@ -26,29 +26,32 @@ export async function createAwsCdkProject({
   process.chdir(projectName);
   await exec("git", "init");
 
-  const appsDirName = `apps`;
-  const appsDir = path.resolve(process.cwd(), appsDirName);
-  const serviceDir = path.resolve(appsDir, serviceName);
-  const packagesDirName = `packages`;
-  const infraDirName = `infra`;
+  const basePath = process.cwd();
+
+  const appsDir = `apps`;
+  const serviceDir = path.join(appsDir, "service");
+  const packagesDir = `packages`;
+  const coreDir = path.join(packagesDir, "core");
+  const infraDir = `infra`;
+
   const infraPkgName = `infra`;
-  const infraDir = path.resolve(process.cwd(), infraDirName);
-  const eventsDir = path.resolve(process.cwd(), packagesDirName, "events");
+  const corePackageName = `@${serviceName}/core`;
+  const servicePackageName = `@${serviceName}/service`;
 
   const workspaceVersion = pkgManager === "pnpm" ? "workspace:^" : "*";
 
   await createRoot();
   await createService();
   await createInfra();
-  await createEvents();
+  await createCore();
 
   async function createRoot() {
     await Promise.all([
-      fs.mkdir(infraDir),
-      fs.mkdir(serviceDir, {
+      fs.mkdir(path.resolve(basePath, infraDir)),
+      fs.mkdir(path.resolve(basePath, serviceDir), {
         recursive: true,
       }),
-      fs.mkdir(eventsDir, {
+      fs.mkdir(path.resolve(basePath, coreDir), {
         recursive: true,
       }),
       fs.writeFile(
@@ -60,24 +63,24 @@ The following folder structure will be generated.
 \`\`\`bash
 ├──infra # an AWS CDK application that deploys the repo's infrastructure
 ├──apps
-    ├──${serviceName} # the NPM package containing the my-service business logic
+    ├──service # the NPM package containing the my-service business logic
 ├──packages
-    ├──events # a shared NPM package containing event definitions
+    ├──core # a shared NPM package containing event and type definitions
 \`\`\`
 
 ### \`infra\`
 
 This is where you control what infrastructure is deployed with your Service, for example adding DynamoDB Tables, SQS Queues, or other stateful Resources.
 
-### \`apps/${serviceName}\`
+### \`apps/service\`
 
 This is where you add business logic such as APIs, Event handlers, Workflows and Activities.
 
-### \`packages/events\`
+### \`packages/core\`
 
-The \`packages/\` directory is where you can place any shared packages containing code that you want to use elsewhere in the repo, such as \`apps/${serviceName}\`.
+The \`packages/\` directory is where you can place any shared packages containing code that you want to use elsewhere in the repo, such as \`apps/service}\`.
 
-The template includes an initial \`events\` package where you may want to place the type definitions of your events.
+The template includes an initial \`core\` package where you may want to place the type, events, and other shared resources.
 
 ## Deployed Infrastructure
 
@@ -114,7 +117,7 @@ ${npm("build")}
 
 ### Test
 
-The \`test\` script runs \`jest\` in all sub-packages. Check out the apps/${serviceName} package for example tests.
+The \`test\` script runs \`jest\` in all sub-packages. Check out the apps/service package for example tests.
 
 \`\`\`
 ${npm("test")}
@@ -183,11 +186,7 @@ ${npm("deploy")}
         },
         ...(pkgManager !== "pnpm"
           ? {
-              workspaces: [
-                `${appsDirName}/*`,
-                infraDirName,
-                `${packagesDirName}/*`,
-              ],
+              workspaces: [`${appsDir}/*`, infraDir, `${packagesDir}/*`],
             }
           : {}),
       }),
@@ -208,10 +207,10 @@ ${npm("deploy")}
       writeJsonFile("tsconfig.json", {
         files: [],
         references: [
-          { path: `${appsDirName}/${serviceName}` },
-          { path: `${appsDirName}/${serviceName}/tsconfig.test.json` },
-          { path: infraDirName },
-          { path: `${packagesDirName}/events` },
+          { path: serviceDir },
+          { path: path.join(serviceDir, "tsconfig.test.json") },
+          { path: infraDir },
+          { path: coreDir },
         ],
       }),
       fs.writeFile(
@@ -227,9 +226,9 @@ cdk.out
             "pnpm-workspace.yaml",
             `# https://pnpm.io/pnpm-workspace_yaml
 packages:
-  - "${appsDirName}/*"
-  - "${infraDirName}"
-  - "${packagesDirName}/*"
+  - "${appsDir}/*"
+  - "${infraDir}"
+  - "${packagesDir}/*"
 `
           )
         : Promise.resolve(),
@@ -239,7 +238,7 @@ packages:
   function npm(
     command: string,
     options?: {
-      workspace?: "infra" | "service" | "events" | "all";
+      workspace?: "infra" | "service" | "core" | "all";
       args?: string[];
     }
   ) {
@@ -261,16 +260,14 @@ packages:
       } else if (pkgManager === "npm") {
         return ` --workspace=${
           options.workspace === "infra"
-            ? "infra"
-            : options.workspace === "events"
-            ? "packages/events"
-            : `apps/${serviceName}`
+            ? infraDir
+            : options.workspace === "core"
+            ? coreDir
+            : serviceDir
         }`;
       } else {
         const workspace =
-          options.workspace === "events"
-            ? `@${serviceName}/events`
-            : options.workspace;
+          options.workspace === "core" ? corePackageName : options.workspace;
         if (pkgManager === "yarn") {
           return ` workspace ${workspace}`;
         } else {
@@ -294,7 +291,7 @@ packages:
   }
 
   async function createInfra() {
-    process.chdir(infraDir);
+    process.chdir(path.resolve(basePath, infraDir));
     await Promise.all([
       writeJsonFile("tsconfig.json", {
         extends: "../tsconfig.base.json",
@@ -307,7 +304,7 @@ packages:
         },
         references: [
           {
-            path: `../apps/${serviceName}`,
+            path: `../apps/service`,
           },
         ],
       }),
@@ -328,7 +325,7 @@ packages:
           "aws-cdk": "^2.50.0",
           constructs: "^10",
           esbuild: "^0.16.14",
-          [serviceName!]: workspaceVersion,
+          [servicePackageName]: workspaceVersion,
         },
         devDependencies: {
           "@types/node": "^16",
@@ -383,18 +380,18 @@ export class MyServiceStack extends Stack {
   }
 
   async function createService() {
-    await createServicePackage(path.resolve(serviceDir), {
-      packageName: serviceName!,
+    await createServicePackage(path.resolve(basePath, serviceDir), {
+      packageName: servicePackageName,
       eventualVersion: version,
-      references: ["../../packages/events"],
+      references: [`../../${corePackageName}`],
       dependencies: {
-        [`@${projectName}/events`]: workspaceVersion,
+        [corePackageName]: workspaceVersion,
       },
       src: {
         "index.ts": `import { activity, api, ApiResponse, workflow } from "@eventual/core";
 
 // import a shared definition of the helloEvent
-import { helloEvent } from "@${projectName}/events";
+import { helloEvent } from "${corePackageName}";
 
 // create a REST API for: POST /hello <name>
 api.post("/hello", async (request) => {
@@ -473,8 +470,8 @@ test("hello workflow should publish helloEvent and return message", async () => 
     });
   }
 
-  async function createEvents() {
-    process.chdir(eventsDir);
+  async function createCore() {
+    process.chdir(path.resolve(basePath, coreDir));
     await Promise.all([
       fs.mkdir("src").then(() =>
         Promise.all([
@@ -496,7 +493,7 @@ export const helloEvent = event<HelloEvent>("HelloEvent");
         ])
       ),
       writeJsonFile("package.json", {
-        name: `@${projectName}/events`,
+        name: corePackageName,
         version: "0.0.0",
         private: true,
         type: "module",
