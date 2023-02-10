@@ -63,10 +63,12 @@ export default async function (
   } else {
     throw new Error(`Unrecognized body type: ${typeof response.body}`);
   }
-  return {
+  const httpResponse = {
     headers,
     statusCode: response.status,
     body: responseBody.toString("base64"),
     isBase64Encoded: true,
   };
+  console.debug("response", response);
+  return httpResponse;
 }

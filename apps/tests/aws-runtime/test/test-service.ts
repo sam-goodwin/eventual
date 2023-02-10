@@ -434,10 +434,7 @@ export const helloApi = command(
     path: "/hello",
   },
   async () => {
-    return {
-      status: 200,
-      body: "hello world",
-    };
+    return "hello world";
   }
 );
 
@@ -452,14 +449,8 @@ export const typed1 = command(
   },
   async ({ userId }) => {
     return {
-      status: 200,
-      headers: {
-        myHeader: "my-header-value",
-      },
-      body: JSON.stringify({
-        userId: userId,
-        createdTime: new Date(0).toISOString(),
-      }),
+      userId: userId,
+      createdTime: new Date(0).toISOString(),
     };
   }
 );

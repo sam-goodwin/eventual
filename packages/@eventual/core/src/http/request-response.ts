@@ -6,8 +6,15 @@ type Body = string | Buffer | Readable | null;
 abstract class BaseHttpPayload {
   abstract readonly body: string | Buffer | Readable | null;
 
+  async tryJson(): Promise<any> {
+    try {
+      return await this.json();
+    } catch {
+      return undefined;
+    }
+  }
+
   async json() {
-    console.log(this.body);
     return JSON.parse((await this.text?.()) ?? "");
   }
 

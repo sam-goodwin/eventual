@@ -59,7 +59,7 @@ export function createApiHandler({ serviceClient }: ApiHandlerDependencies) {
             }
           );
         } else if (err instanceof Error) {
-          console.warn(err);
+          console.error(err);
           return new HttpResponse(err.message, {
             status: 500,
             statusText: "Internal Server Error",
@@ -85,23 +85,41 @@ function initRouter() {
         return command.handler(request);
       }
 
-      let input = await request.json();
+      let input = await request.tryJson();
       if (command.input) {
-        input = command.input.parse(command.input);
+        try {
+          input = command.input.parse(input);
+        } catch (err) {
+          console.error("Invalid input", err, input);
+          return new HttpResponse(JSON.stringify(err), {
+            status: 400,
+            statusText: "Invalid input",
+          });
+        }
       }
+
       let output = await command.handler(input, {
         headers: request.headers,
       });
       if (command.output) {
-        output = command.output.parse(output);
+        try {
+          output = command.output.parse(output);
+        } catch (err) {
+          console.error("RPC output did not match schema", output, err);
+          return new HttpResponse(JSON.stringify(err), {
+            status: 500,
+            statusText: "RPC output did not match schema",
+          });
+        }
       }
       return new HttpResponse(JSON.stringify(output, jsonReplacer), {
         status: 200,
       });
     });
 
-    if (command.path && command.method) {
-      const method = command.method.toLocaleLowerCase() as keyof Router;
+    if (command.path) {
+      const method = (command.method?.toLocaleLowerCase() ??
+        "all") as keyof Router;
 
       // REST routes parse the request according to the command's path/method/params configuration
       router[method](command.path, async (request: HttpRequest) => {
@@ -111,7 +129,8 @@ function initRouter() {
         }
 
         // first, get the body as pure JSON - assume it's an object
-        const body = await request.json();
+        const body =
+          request.method === "GET" ? undefined : await request.json();
         let input: any = {
           ...request.params,
         };
