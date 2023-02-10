@@ -39,12 +39,11 @@ const testService = new eventual.Service<typeof testServiceRuntime>(
     logging: {
       logLevel: LogLevel.DEBUG,
     },
-    commands: {
-      typed1: {},
-    },
+    commands: {},
   }
 );
 
+testService.events;
 testService.api.commands;
 
 testService.api.grantInvokeHttpServiceApi(role);

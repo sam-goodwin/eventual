@@ -1,5 +1,5 @@
 import type z from "zod";
-import type { SourceLocation } from "../service-spec.js";
+import { isSourceLocation, SourceLocation } from "../service-spec.js";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
 import type { ParsePath } from "./path.js";
@@ -118,15 +118,21 @@ export function command<
 ): Command<Name, Handler, Path, Method>;
 
 export function command<Name extends string, Handler extends CommandHandler>(
-  name: Name,
-  ...args: any[]
+  ...args: [name: Name, ...args: any[]]
 ): Command<Name, Handler, undefined, undefined> {
-  const [options, handler] =
-    args.length === 1 ? [undefined, args[0]] : [args[0], args[1]];
+  const [sourceLocation, name, options, handler] = [
+    // TODO: is this 4x scan too inefficient, or is the trade-off between simplicity and performance worth it here?
+    // i think it would be marginal looping over a small array multiple times but i could be wrong
+    args.find(isSourceLocation),
+    args.find((a) => typeof a === "string"),
+    args.find((a) => typeof a === "object" && !isSourceLocation(a)),
+    args.find((a) => typeof a === "function"),
+  ];
   const command: Command<Name, Handler, undefined, undefined> = {
     kind: "Command",
     name,
     handler,
+    sourceLocation,
     ...options,
   };
   commands.push(command);

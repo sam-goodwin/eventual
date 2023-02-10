@@ -24,13 +24,12 @@ import {
 export function isCommandCall(call: CallExpression): boolean {
   const c = call.callee;
   if (
-    (c.type !== "Identifier" || c.value === "command") &&
-    (c.type !== "MemberExpression" || isId(c.property, "command"))
+    (c.type == "Identifier" && c.value === "command") ||
+    (c.type === "MemberExpression" && isId(c.property, "command"))
   ) {
-    return false;
+    return call.arguments.length === 2 || call.arguments.length === 3;
   }
-
-  return call.arguments.length === 2 || call.arguments.length === 3;
+  return false;
 }
 
 /**

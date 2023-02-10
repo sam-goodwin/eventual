@@ -138,6 +138,11 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
 
     const role = new aws_iam.Role(this, "DefaultRole", {
       assumedBy: new aws_iam.ServicePrincipal("lambda.amazonaws.com"),
+      managedPolicies: [
+        aws_iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AWSLambdaBasicExecutionRole"
+        ),
+      ],
     });
     this.grantPrincipal = role;
 
@@ -200,16 +205,17 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
           let sanitizedName = command.name.replace(/[^A-Za-z0-9_-]/g, "-");
           if (sanitizedName !== command.name) {
             // name was sanitized, so add the METHOD to the name
-            sanitizedName = `${sanitizedName}-${
-              mapping.manifest.spec.method ?? "GET"
-            }`;
+            sanitizedName = `${sanitizedName}-${command.method ?? "GET"}`;
           }
+
           const handler = new Function(
             command.internal ? internalScope : commandsScope,
             command.name,
             {
               ...overrides,
-              functionName: `${self.props.serviceName}-command-${sanitizedName}`,
+              functionName: `${self.props.serviceName}-${
+                command.internal ? "internal" : "command"
+              }-${sanitizedName}`,
               code: Code.fromAsset(
                 self.props.build.resolveFolder(manifest.file)
               ),
@@ -219,15 +225,16 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
                 NODE_OPTIONS: "--enable-source-maps",
                 ...(overrides?.environment ?? {}),
               },
-              memorySize: overrides?.memorySize ?? manifest.spec.memorySize,
+              memorySize: overrides?.memorySize ?? command.memorySize ?? 512,
               timeout:
-                overrides?.timeout ?? manifest.spec.timeout
-                  ? Duration.seconds(
-                      computeDurationSeconds(manifest.spec.timeout!)
-                    )
+                overrides?.timeout ?? command.timeout
+                  ? Duration.seconds(computeDurationSeconds(command.timeout!))
                   : undefined,
-              handler: overrides?.handler ?? "index.default",
-              role: overrides?.role ?? role,
+              handler:
+                overrides?.handler ?? command.internal
+                  ? "index.handler"
+                  : "index.default",
+              role: command.internal ? undefined : overrides?.role ?? role,
             }
           );
 

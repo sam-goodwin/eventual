@@ -78,7 +78,7 @@ type KeysNotOfType<T, U> = {
   [k in keyof T]: T[k] extends U ? never : k;
 }[keyof T];
 
-export function isSourceLocation(a: any) {
+export function isSourceLocation(a: any): a is SourceLocation {
   return (
     a &&
     typeof a === "object" &&
