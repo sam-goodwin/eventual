@@ -12,7 +12,6 @@ import { addEnvironment } from "./utils";
 import { IWorkflows } from "./workflows";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { IScheduler } from "./scheduler";
-import { ServiceType } from "@eventual/core";
 import { ServiceFunction } from "./service-function";
 import { Events } from "./events";
 import { Logging } from "./logging";
@@ -103,7 +102,6 @@ export class Activities
     this.worker = new ServiceFunction(this, "Worker", {
       code: props.build.getCode(props.build.activities.file),
       functionName: `${props.serviceName}-activity-handler`,
-      serviceType: ServiceType.ActivityWorker,
       memorySize: 512,
       // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
       retryAttempts: 0,

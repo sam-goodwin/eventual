@@ -25,6 +25,7 @@ import {
   TimerScheduled,
   Workflow,
   WorkflowEventType,
+  ExecutionID,
 } from "@eventual/core";
 import { ActivityClient } from "./clients/activity-client.js";
 import { EventClient } from "./clients/event-client.js";
@@ -49,7 +50,7 @@ export class CommandExecutor {
 
   public async executeCommand(
     workflow: Workflow,
-    executionId: string,
+    executionId: ExecutionID,
     command: WorkflowCommand,
     baseTime: Date
   ): Promise<HistoryStateEvent> {
@@ -101,7 +102,7 @@ export class CommandExecutor {
   }
 
   private async scheduleChildWorkflow(
-    executionId: string,
+    executionId: ExecutionID,
     command: ScheduleWorkflowCommand,
     baseTime: Date
   ): Promise<ChildWorkflowScheduled> {

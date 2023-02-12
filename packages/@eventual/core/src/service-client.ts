@@ -146,12 +146,14 @@ export interface ListWorkflowsResponse {
 export interface SucceedExecutionRequest<Result = any> {
   executionId: string;
   result?: Result;
+  endTime: string;
 }
 
 export interface FailExecutionRequest {
   executionId: string;
   error: string;
   message: string;
+  endTime: string;
 }
 
 export function isFailedExecutionRequest(

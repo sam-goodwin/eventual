@@ -19,6 +19,7 @@ import {
   AttributeType,
   BillingMode,
   ProjectionType,
+  StreamViewType,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
 import {
@@ -287,6 +288,8 @@ export class Service<S = any>
       sortKey: { name: "sk", type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY,
+      stream: StreamViewType.NEW_IMAGE,
+      timeToLiveAttribute: "ttl",
     });
 
     this.table.addLocalSecondaryIndex({

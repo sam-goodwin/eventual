@@ -5,6 +5,8 @@ import {
   GetItemCommand,
   PutItemCommand,
   ReturnValue,
+  TransactWriteItemsCommand,
+  Update,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import {
@@ -12,8 +14,8 @@ import {
   ExecutionAlreadyExists,
   ExecutionID,
   ExecutionStatus,
-  FailedExecution,
   FailExecutionRequest,
+  getEventId,
   InProgressExecution,
   isExecutionStatus,
   isFailedExecutionRequest,
@@ -21,10 +23,15 @@ import {
   ListExecutionsResponse,
   parseExecutionId,
   SortOrder,
-  SucceededExecution,
   SucceedExecutionRequest,
+  WorkflowStarted,
 } from "@eventual/core";
-import { ExecutionStore, getLazy, LazyValue } from "@eventual/runtime-core";
+import {
+  ExecutionStore,
+  getLazy,
+  LazyValue,
+  UpdateEvent,
+} from "@eventual/runtime-core";
 import { queryPageWithToken } from "../utils.js";
 
 export interface AWSExecutionStoreProps {
@@ -43,8 +50,12 @@ export class AWSExecutionStore implements ExecutionStore {
    * Note: This methods does not do other things needed to start a workflow,
    *       only creates the database record.
    * @see EventualServiceClient.startExecution
+   * @override
    */
-  public async create(execution: InProgressExecution): Promise<void> {
+  public async create(
+    execution: InProgressExecution,
+    startEvent?: WorkflowStarted
+  ): Promise<void> {
     try {
       await this.props.dynamo.send(
         new PutItemCommand({
@@ -56,6 +67,13 @@ export class AWSExecutionStore implements ExecutionStore {
             workflowName: { S: execution.workflowName },
             status: { S: ExecutionStatus.IN_PROGRESS },
             startTime: { S: execution.startTime },
+            ...(startEvent
+              ? {
+                  [ExecutionInsertEventRecord.INSERT_EVENT]: {
+                    S: JSON.stringify(startEvent),
+                  },
+                }
+              : {}),
             ...(execution.inputHash !== undefined
               ? { inputHash: { S: execution.inputHash } }
               : {}),
@@ -82,60 +100,79 @@ export class AWSExecutionStore implements ExecutionStore {
   }
 
   public async update<Result = any>(
-    request: FailExecutionRequest | SucceedExecutionRequest<Result>
-  ) {
-    const executionResult = isFailedExecutionRequest(request)
-      ? await this.props.dynamo.send(
-          new UpdateItemCommand({
-            Key: {
-              pk: { S: ExecutionRecord.PARTITION_KEY },
-              sk: { S: ExecutionRecord.sortKey(request.executionId) },
-            },
-            TableName: getLazy(this.props.tableName),
-            UpdateExpression:
-              "SET #status=:failed, #error=:error, #message=:message, endTime=if_not_exists(endTime,:endTime)",
-            ExpressionAttributeNames: {
-              "#status": "status",
-              "#error": "error",
-              "#message": "message",
-            },
-            ExpressionAttributeValues: {
-              ":failed": { S: ExecutionStatus.FAILED },
-              ":endTime": { S: new Date().toISOString() },
-              ":error": { S: request.error },
-              ":message": { S: request.message },
-            },
-            ReturnValues: "ALL_NEW",
-          })
-        )
-      : await this.props.dynamo.send(
-          new UpdateItemCommand({
-            Key: {
-              pk: { S: ExecutionRecord.PARTITION_KEY },
-              sk: { S: ExecutionRecord.sortKey(request.executionId) },
-            },
-            TableName: getLazy(this.props.tableName),
-            UpdateExpression: request.result
-              ? "SET #status=:complete, #result=:result, endTime=if_not_exists(endTime,:endTime)"
-              : "SET #status=:complete, endTime=if_not_exists(endTime,:endTime)",
-            ExpressionAttributeNames: {
-              "#status": "status",
-              ...(request.result ? { "#result": "result" } : {}),
-            },
-            ExpressionAttributeValues: {
-              ":complete": { S: ExecutionStatus.SUCCEEDED },
-              ":endTime": { S: new Date().toISOString() },
-              ...(request.result
-                ? { ":result": { S: JSON.stringify(request.result) } }
-                : {}),
-            },
-            ReturnValues: "ALL_NEW",
-          })
-        );
+    request: FailExecutionRequest | SucceedExecutionRequest<Result>,
+    updateEvent?: UpdateEvent
+  ): Promise<void> {
+    const update: Update = isFailedExecutionRequest(request)
+      ? {
+          Key: {
+            pk: { S: ExecutionRecord.PARTITION_KEY },
+            sk: { S: ExecutionRecord.sortKey(request.executionId) },
+          },
+          TableName: getLazy(this.props.tableName),
+          UpdateExpression:
+            "SET #status=:failed, #error=:error, #message=:message, endTime=if_not_exists(endTime,:endTime)",
+          ExpressionAttributeNames: {
+            "#status": "status",
+            "#error": "error",
+            "#message": "message",
+          },
+          ExpressionAttributeValues: {
+            ":failed": { S: ExecutionStatus.FAILED },
+            ":endTime": { S: request.endTime },
+            ":error": { S: request.error },
+            ":message": { S: request.message },
+          },
+        }
+      : {
+          Key: {
+            pk: { S: ExecutionRecord.PARTITION_KEY },
+            sk: { S: ExecutionRecord.sortKey(request.executionId) },
+          },
+          TableName: getLazy(this.props.tableName),
+          UpdateExpression: request.result
+            ? "SET #status=:complete, #result=:result, endTime=if_not_exists(endTime,:endTime)"
+            : "SET #status=:complete, endTime=if_not_exists(endTime,:endTime)",
+          ExpressionAttributeNames: {
+            "#status": "status",
+            ...(request.result ? { "#result": "result" } : {}),
+          },
+          ExpressionAttributeValues: {
+            ":complete": { S: ExecutionStatus.SUCCEEDED },
+            ":endTime": { S: request.endTime },
+            ...(request.result
+              ? { ":result": { S: JSON.stringify(request.result) } }
+              : {}),
+          },
+        };
 
-    return createExecutionFromResult(
-      executionResult.Attributes as ExecutionRecord
-    ) as SucceededExecution | FailedExecution;
+    if (updateEvent) {
+      await this.props.dynamo.send(
+        new TransactWriteItemsCommand({
+          TransactItems: [
+            { Update: update },
+            {
+              Put: {
+                TableName: getLazy(this.props.tableName),
+                Item: {
+                  pk: { S: ExecutionInsertEventRecord.PARTITION_KEY },
+                  sk: {
+                    S: ExecutionInsertEventRecord.sortKey(
+                      updateEvent.executionId + getEventId(updateEvent.event)
+                    ),
+                  },
+                  id: { S: updateEvent.executionId },
+                  insertEvent: { S: JSON.stringify(updateEvent.event) },
+                  ttl: { N: (new Date().getTime() + 10000).toString() },
+                } satisfies ExecutionUpdateEventRecord,
+              },
+            },
+          ],
+        })
+      );
+    } else {
+      await this.props.dynamo.send(new UpdateItemCommand(update));
+    }
   }
 
   public async get<Result = any>(
@@ -148,6 +185,7 @@ export class AWSExecutionStore implements ExecutionStore {
           sk: { S: ExecutionRecord.sortKey(executionId) },
         },
         TableName: getLazy(this.props.tableName),
+        ConsistentRead: true,
       })
     );
 
@@ -229,9 +267,13 @@ export type ExecutionRecord =
       error?: AttributeValue.SMember;
       message?: AttributeValue.SMember;
       inputHash?: AttributeValue.SMember;
+      /**
+       * When provided, a the event will be emitted to the workflow queue after the execution is created.
+       */
+      insertEvent?: AttributeValue.SMember;
     } & (
       | {
-          parentExecutionId: AttributeValue.SMember;
+          parentExecutionId: { S: ExecutionID };
           seq: AttributeValue.NMember;
         }
       | {
@@ -245,10 +287,37 @@ export const ExecutionRecord = {
   SORT_KEY_PREFIX: `Execution$`,
   START_TIME_SORTED_INDEX: "startTime-order",
   START_TIME: "startTime",
+  INSERT_EVENT: "insertEvent",
   sortKey(
     executionId: string
   ): `${typeof this.SORT_KEY_PREFIX}${typeof executionId}` {
     return `${this.SORT_KEY_PREFIX}${executionId}`;
+  },
+};
+
+/**
+ * A temporary dynamo entry used to transactionally send an event
+ * with an update to an execution.
+ */
+export interface ExecutionUpdateEventRecord {
+  pk: { S: typeof ExecutionInsertEventRecord.PARTITION_KEY };
+  sk: {
+    S: `${typeof ExecutionInsertEventRecord.SORT_KEY_PREFIX}${string}`;
+  };
+  id: { S: ExecutionID };
+  /**
+   * The event to emit on a successfully writing this item.
+   */
+  insertEvent: AttributeValue.SMember;
+  ttl: AttributeValue.NMember;
+}
+
+export const ExecutionInsertEventRecord = {
+  PARTITION_KEY: "ExecutionInsertEvent",
+  SORT_KEY_PREFIX: `InsertEvent$`,
+  INSERT_EVENT: "insertEvent",
+  sortKey(id: string): `${typeof this.SORT_KEY_PREFIX}${typeof id}` {
+    return `${this.SORT_KEY_PREFIX}${id}`;
   },
 };
 

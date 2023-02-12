@@ -1,6 +1,8 @@
 import {
   createEvent,
   ExecutionAlreadyExists,
+  ExecutionID,
+  ExecutionParent,
   ExecutionStatus,
   FailedExecution,
   FailExecutionRequest,
@@ -21,15 +23,13 @@ import { ulid } from "ulidx";
 import { inspect } from "util";
 import { WorkflowSpecProvider } from "../providers/workflow-provider.js";
 import { computeScheduleDate } from "../schedule.js";
-import { ExecutionStore } from "../stores/execution-store.js";
-import { ExecutionQueueClient } from "./execution-queue-client.js";
+import { ExecutionStore, UpdateEvent } from "../stores/execution-store.js";
 import { LogsClient } from "./logs-client.js";
 
 export class WorkflowClient {
   constructor(
     private executionStore: ExecutionStore,
     private logsClient: LogsClient,
-    private executionQueueClient: ExecutionQueueClient,
     private workflowProvider: WorkflowSpecProvider,
     protected baseTime: () => Date = () => new Date()
   ) {}
@@ -81,23 +81,6 @@ export class WorkflowClient {
     };
 
     try {
-      try {
-        // try to create first as it may throw ExecutionAlreadyExists
-        await this.executionStore.create(execution);
-      } catch (err) {
-        if (err instanceof ExecutionAlreadyExists) {
-          const execution = await this.executionStore.get(executionId);
-          if (execution?.inputHash === inputHash) {
-            return { executionId, alreadyRunning: true };
-          }
-        }
-        // rethrow to the top catch
-        throw err;
-      }
-
-      // create the log
-      await this.logsClient.initializeExecutionLog(executionId);
-
       const workflowStartedEvent = createEvent<WorkflowStarted>(
         {
           type: WorkflowEventType.WorkflowStarted,
@@ -118,18 +101,28 @@ export class WorkflowClient {
         this.baseTime()
       );
 
-      await Promise.all([
-        // send the first event
-        this.executionQueueClient.submitExecutionEvents(
-          executionId,
-          workflowStartedEvent
-        ),
-        // send the first log message and warm up the log stream
-        this.logsClient.putExecutionLogs(executionId, {
-          time: this.baseTime().getTime(),
-          message: "Workflow Started",
-        }),
-      ]);
+      // create the log
+      await this.logsClient.initializeExecutionLog(executionId);
+
+      try {
+        // try to create first as it may throw ExecutionAlreadyExists
+        await this.executionStore.create(execution, workflowStartedEvent);
+      } catch (err) {
+        if (err instanceof ExecutionAlreadyExists) {
+          const execution = await this.executionStore.get(executionId);
+          if (execution?.inputHash === inputHash) {
+            return { executionId, alreadyRunning: true };
+          }
+        }
+        // rethrow to the top catch
+        throw err;
+      }
+
+      // send the first log message and warm up the log stream
+      await this.logsClient.putExecutionLogs(executionId, {
+        time: this.baseTime().getTime(),
+        message: "Workflow Started",
+      });
 
       return { executionId, alreadyRunning: false };
     } catch (err) {
@@ -143,60 +136,80 @@ export class WorkflowClient {
   public async succeedExecution(
     request: SucceedExecutionRequest
   ): Promise<SucceededExecution> {
-    const execution = await this.executionStore.update(request);
-    if (execution.parent) {
-      await this.reportCompletionToParent(
-        execution.parent.executionId,
-        execution.parent.seq,
-        request.result
-      );
+    const execution = await this.executionStore.get(request.executionId);
+    if (!execution) {
+      throw new Error("Execution does not exist");
     }
 
-    return execution as SucceededExecution;
+    const parentChildEvent = execution.parent
+      ? this.reportCompletionToParentEvent(execution.parent, request.result)
+      : undefined;
+
+    await this.executionStore.update(request, parentChildEvent);
+
+    return {
+      ...execution,
+      result: request.result,
+      endTime: request.endTime,
+      status: ExecutionStatus.SUCCEEDED,
+    };
   }
 
   public async failExecution(
     request: FailExecutionRequest
   ): Promise<FailedExecution> {
-    const execution = await this.executionStore.update(request);
-    if (execution.parent) {
-      await this.reportCompletionToParent(
-        execution.parent.executionId,
-        execution.parent.seq,
-        request.error,
-        request.message
-      );
+    const execution = await this.executionStore.get(request.executionId);
+    if (!execution) {
+      throw new Error("Execution does not exist");
     }
 
-    return execution as FailedExecution;
+    const parentChildEvent = execution.parent
+      ? this.reportCompletionToParentEvent(
+          execution.parent,
+          request.error,
+          request.message
+        )
+      : undefined;
+
+    await this.executionStore.update(request, parentChildEvent);
+
+    return {
+      ...execution,
+      error: request.error,
+      message: request.message,
+      status: ExecutionStatus.FAILED,
+      endTime: request.endTime,
+    };
   }
 
-  private async reportCompletionToParent(
-    parentExecutionId: string,
-    seq: number,
+  private reportCompletionToParentEvent(
+    parent: ExecutionParent,
     ...args: [result: any] | [error: string, message: string]
-  ) {
-    await this.executionQueueClient.submitExecutionEvents(parentExecutionId, {
-      seq,
-      timestamp: new Date().toISOString(),
-      ...(args.length === 1
-        ? {
-            type: WorkflowEventType.ChildWorkflowSucceeded,
-            result: args[0],
-          }
-        : {
-            type: WorkflowEventType.ChildWorkflowFailed,
-            error: args[0],
-            message: args[1],
-          }),
-    });
+  ): UpdateEvent {
+    return {
+      executionId: parent.executionId,
+      event: {
+        seq: parent.seq,
+        timestamp: this.baseTime().toISOString(),
+        ...(args.length === 1
+          ? {
+              type: WorkflowEventType.ChildWorkflowSucceeded,
+              result: args[0],
+            }
+          : {
+              type: WorkflowEventType.ChildWorkflowFailed,
+              error: args[0],
+              message: args[1],
+            }),
+      },
+    };
   }
 }
 
 export interface StartChildExecutionRequest<W extends Workflow = Workflow>
   extends StartExecutionRequest<W>,
     WorkflowOptions {
-  parentExecutionId: string;
+  parentExecutionId: ExecutionID;
   /**
    * Sequence ID of this execution if this is a child workflow
    */

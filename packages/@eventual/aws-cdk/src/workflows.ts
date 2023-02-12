@@ -1,8 +1,8 @@
-import { ENV_NAMES } from "@eventual/aws-runtime";
-import { ServiceType } from "@eventual/core";
-import { RemovalPolicy } from "aws-cdk-lib";
+import { ENV_NAMES, ExecutionInsertEventRecord, ExecutionRecord } from "@eventual/aws-runtime";
+import { ExecutionQueueEventEnvelope } from "@eventual/runtime-core";
+import { CfnResource, RemovalPolicy } from "aws-cdk-lib";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
-import { IGrantable } from "aws-cdk-lib/aws-iam";
+import { IGrantable, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { Bucket, IBucket } from "aws-cdk-lib/aws-s3";
@@ -121,7 +121,6 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
 
     this.orchestrator = new ServiceFunction(this, "Orchestrator", {
       functionName: `${props.serviceName}-orchestrator-handler`,
-      serviceType: ServiceType.OrchestratorWorker,
       code: props.build.getCode(props.build.orchestrator.file),
       events: [
         new SqsEventSource(this.queue, {
@@ -129,6 +128,73 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
           reportBatchItemFailures: true,
         }),
       ],
+    });
+
+    const starterRole = new Role(this, "StarterRole", {
+      assumedBy: new ServicePrincipal("pipes"),
+    });
+
+    this.queue.grantSendMessages(starterRole);
+    this.props.table.grantStreamRead(starterRole);
+
+    new CfnResource(this, "Starter", {
+      type: "AWS::Pipes::Pipe",
+      properties: {
+        TargetParameters: {
+          SqsQueueParameters: {
+            MessageGroupId: "$.dynamodb.NewImage.id.S",
+          },
+          /**
+           * transform the dynamo record into an {@link ExecutionQueueEventEnvelope} that contains a {@link WorkflowStarted} event.
+           *
+           * {
+           *    task: {
+           *        executionId: <$.dynamodb.id.S>,
+           *        events: [<$.dynamodb.insertEvent.S>]
+           *    }
+           * }
+           */
+          InputTemplate: JSON.stringify({
+            task: {
+              events: ["<$.dynamodb.NewImage.insertEvent.S>"],
+              executionId: "<$.dynamodb.NewImage.id.S>",
+            },
+          } satisfies ExecutionQueueEventEnvelope),
+        },
+        Name: `${props.serviceName}-execution-starter`,
+        RoleArn: starterRole.roleArn,
+        Source: this.props.table.tableStreamArn,
+        SourceParameters: {
+          // TODO: DLQ - though the retry is infinite, can this happen?
+          DynamoDBStreamParameters: {
+            StartingPosition: "LATEST",
+            // do not wait for multiple records, just go.
+            BatchSize: 1,
+            MaximumBatchingWindowInSeconds: 1,
+          },
+          FilterCriteria: {
+            Filters: [
+              {
+                Pattern: JSON.stringify({
+                  eventName: ["INSERT"],
+                  dynamodb: {
+                    NewImage: {
+                      pk: {
+                        S: [
+                          ExecutionRecord.PARTITION_KEY,
+                          ExecutionInsertEventRecord.PARTITION_KEY,
+                        ],
+                      },
+                      [ExecutionRecord.INSERT_EVENT]: { S: [{ exists: true }] },
+                    },
+                  },
+                }),
+              },
+            ],
+          },
+        },
+        Target: this.queue.queueArn,
+      },
     });
 
     this.configureOrchestrator();

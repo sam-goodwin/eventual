@@ -17,6 +17,8 @@ export interface LogsClient {
   /**
    * Do any actions required to create the log location for an execution.
    * For example, CreateLogStream in AWS CloudWatch Logs.
+   * 
+   * If the log group already exists, will ignore the error.
    */
   initializeExecutionLog(executionId: string): Promise<void>;
 }

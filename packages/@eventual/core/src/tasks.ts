@@ -7,7 +7,8 @@ import { HistoryStateEvent, WorkflowEvent } from "./workflow-events.js";
  */
 export interface WorkflowTask {
   executionId: string;
-  events: HistoryStateEvent[];
+  // accepts events as an object or a stringified HistoryStateEvent.
+  events: (HistoryStateEvent | string)[];
 }
 
 export function isWorkflowTask(obj: any): obj is WorkflowTask {

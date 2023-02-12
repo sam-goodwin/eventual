@@ -1,5 +1,5 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
-import { Schemas, ServiceType } from "@eventual/core";
+import { Schemas } from "@eventual/core";
 import { aws_eventschemas, aws_iam, Lazy, Resource } from "aws-cdk-lib";
 import { EventBus, IEventBus, Rule } from "aws-cdk-lib/aws-events";
 import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";
@@ -15,7 +15,7 @@ import type { OpenAPIObject, SchemaObject } from "openapi3-ts";
 import type { BuildOutput } from "./build";
 import { IService } from "./service";
 import { IServiceApi } from "./service-api";
-import { ServiceFunction } from "./service-function";
+import { ServiceFunction, ServiceFunctionProps } from "./service-function";
 import { grant } from "./grant";
 import { computeDurationSeconds } from "@eventual/runtime-core";
 import { Duration } from "aws-cdk-lib";
@@ -95,8 +95,7 @@ export class Events<Service> extends Construct implements IGrantable {
 
     this.deadLetterQueue = new Queue(this, "DeadLetterQueue");
 
-    const functionProps = {
-      serviceType: ServiceType.EventHandler,
+    const functionProps: Partial<ServiceFunctionProps> = {
       deadLetterQueueEnabled: true,
       deadLetterQueue: this.deadLetterQueue,
       retryAttempts: 2,

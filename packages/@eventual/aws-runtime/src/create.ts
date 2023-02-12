@@ -100,7 +100,6 @@ export const createWorkflowClient = /* @__PURE__ */ memoize(
   ({
     logsClient,
     executionStore,
-    executionQueueClient,
     workflowProvider,
   }: {
     logsClient?: LogsClient;
@@ -111,7 +110,6 @@ export const createWorkflowClient = /* @__PURE__ */ memoize(
     new WorkflowClient(
       executionStore ?? createExecutionStore(),
       logsClient ?? createLogsClient(),
-      executionQueueClient ?? createExecutionQueueClient(),
       workflowProvider ?? createWorkflowProvider()
     )
 );

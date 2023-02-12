@@ -133,11 +133,6 @@ export interface WorkflowStarted extends BaseEvent {
 }
 export interface WorkflowRunStarted extends BaseEvent {
   type: WorkflowEventType.WorkflowRunStarted;
-  /**
-   * An execution ID of the parent workflow execution that
-   * started this workflow if this is a child workflow.
-   */
-  parent?: string;
 }
 
 export interface ActivityScheduled extends HistoryEventBase {

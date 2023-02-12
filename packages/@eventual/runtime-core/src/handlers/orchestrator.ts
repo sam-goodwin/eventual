@@ -41,6 +41,7 @@ import {
   WorkflowSucceeded,
   WorkflowTask,
   WorkflowTimedOut,
+  ExecutionID,
 } from "@eventual/core";
 import { inspect } from "util";
 import { MetricsClient } from "../clients/metrics-client.js";
@@ -115,7 +116,12 @@ export function createOrchestrator({
       const eventsByExecutionId = Object.fromEntries(
         Object.entries(tasksByExecutionId).map(([executionId, records]) => [
           executionId,
-          records.flatMap((e) => e.events),
+          records.flatMap((e) =>
+            e.events.map((e) =>
+              // events can be objects or stringified json
+              typeof e === "string" ? (JSON.parse(e) as HistoryStateEvent) : e
+            )
+          ),
         ])
       );
 
@@ -165,7 +171,7 @@ export function createOrchestrator({
 
   async function orchestrateExecution(
     workflowName: string,
-    executionId: string,
+    executionId: ExecutionID,
     events: HistoryStateEvent[],
     baseTime: () => Date
   ) {
@@ -539,6 +545,7 @@ export function createOrchestrator({
               executionId,
               error: resultEvent.error,
               message: resultEvent.message,
+              endTime: baseTime().toISOString(),
             })
         );
 
@@ -558,6 +565,7 @@ export function createOrchestrator({
             workflowClient.succeedExecution({
               executionId,
               result: resultEvent.output,
+              endTime: baseTime().toISOString(),
             })
         );
 

@@ -3,6 +3,7 @@ import {
   CreateLogStreamCommand,
   InvalidParameterException,
   PutLogEventsCommand,
+  ResourceAlreadyExistsException,
 } from "@aws-sdk/client-cloudwatch-logs";
 import {
   getLazy,
@@ -46,11 +47,18 @@ export class AWSLogsClient implements LogsClient {
 
   // TODO: handle throttle errors and retry at > 50TPS
   public async initializeExecutionLog(executionId: string): Promise<void> {
-    await this.props.cloudwatchLogsClient.send(
-      new CreateLogStreamCommand({
-        logGroupName: getLazy(this.props.serviceLogGroup),
-        logStreamName: formatWorkflowExecutionStreamName(executionId),
-      })
-    );
+    try {
+      await this.props.cloudwatchLogsClient.send(
+        new CreateLogStreamCommand({
+          logGroupName: getLazy(this.props.serviceLogGroup),
+          logStreamName: formatWorkflowExecutionStreamName(executionId),
+        })
+      );
+    } catch (err) {
+      // if the resource already exists, then there is no work to do.
+      if (err instanceof ResourceAlreadyExistsException) {
+        return;
+      }
+    }
   }
 }
