@@ -182,7 +182,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
       grant: (role) => this.props.table.grantStreamRead(role),
       source: this.props.table.tableStreamArn!,
       sourceProps: {
-        // TODO: DLQ - though the retry is infinite, can this happen?
+        // will retry forever in the case of an SQS outage!
         DynamoDBStreamParameters: {
           StartingPosition: "LATEST",
           // do not wait for multiple records, just go.
@@ -220,14 +220,16 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
   }
 
   public pipeToWorkflowQueue(id: string, props: PipeToWorkflowQueueProps) {
-    const pipeRole = new Role(this, `${id}Role`, {
+    const scope = new Construct(this, id);
+
+    const pipeRole = new Role(scope, `Role`, {
       assumedBy: new ServicePrincipal("pipes"),
     });
 
     this.queue.grantSendMessages(pipeRole);
     props.grant(pipeRole);
 
-    new CfnResource(this, id, {
+    new CfnResource(scope, "Pipe", {
       type: "AWS::Pipes::Pipe",
       properties: {
         Name: `${this.props.serviceName}-${id}`,

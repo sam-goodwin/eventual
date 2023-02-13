@@ -186,7 +186,8 @@ export function createActivityWorker({
                   await finishActivity(event);
                 } catch (err) {
                   // if we fail to report the activity result, fallback
-                  // to using the async function on success.
+                  // to using the async function on success destination.
+                  // on success => sqs => pipe (CompletionPipe) => workflow queue
                   return {
                     executionId: request.executionId,
                     event,
