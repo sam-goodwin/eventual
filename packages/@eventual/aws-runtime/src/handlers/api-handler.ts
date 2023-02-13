@@ -42,13 +42,7 @@ export default async function (
   let headers: Record<string, string>;
   response.body;
 
-  if (typeof response.headers?.forEach === "function") {
-    headers = {};
-    // handle node fetch API
-    response.headers.forEach((value, key) => (headers[key] = value));
-  } else {
-    headers = (response.headers as Record<string, string>) ?? {};
-  }
+  headers = (response.headers as Record<string, string>) ?? {};
 
   let responseBody: Buffer;
   if (typeof response.body === "string") {

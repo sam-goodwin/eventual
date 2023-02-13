@@ -86,20 +86,20 @@ export class HttpRequest extends BaseHttpPayload {
 export interface RawHttpResponseInit {
   status: number;
   statusText?: string;
-  headers?: Record<string, string> | Headers;
+  headers?: Record<string, string>;
 }
 
 export class HttpResponse extends BaseHttpPayload {
   readonly body: Body;
   readonly status: number;
   readonly statusText?: string;
-  readonly headers?: Record<string, string> | Headers;
+  readonly headers: Record<string, string>;
   constructor(body?: Body, init?: RawHttpResponseInit) {
     super();
     this.body = body === undefined ? null : body;
     this.status = init?.status ?? 200;
     this.statusText = init?.statusText;
-    this.headers = init?.headers;
+    this.headers = init?.headers ?? {};
   }
 }
 
@@ -116,21 +116,4 @@ async function readStream(readable?: Readable | null): Promise<Buffer> {
     });
     readable.on("close", () => resolve(Buffer.concat(chunks)));
   });
-}
-
-/**
- * This models the Node Fetch API. We extract it to avoid coupling users to "dom" lib
- * or any particular node version, but we also want to support users who opt-in to
- * those.
- */
-interface Headers {
-  append(name: string, value: string): void;
-  delete(name: string): void;
-  get(name: string): string | null;
-  has(name: string): boolean;
-  set(name: string, value: string): void;
-  forEach(
-    callbackfn: (value: string, key: string, parent: Headers) => void,
-    thisArg?: any
-  ): void;
 }
