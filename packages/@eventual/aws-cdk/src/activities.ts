@@ -19,6 +19,9 @@ import { IService } from "./service";
 import type { BuildOutput } from "./build";
 import { IServiceApi } from "./service-api";
 import { grant } from "./grant";
+import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
+import { SqsDestination } from "aws-cdk-lib/aws-lambda-destinations";
+import { ActivityCompletionResultType } from "@eventual/runtime-core";
 
 export interface ActivitiesProps {
   build: BuildOutput;
@@ -85,6 +88,10 @@ export class Activities
    * Function which executes all activities. The worker is invoked by the {@link Workflows.orchestrator}.
    */
   public worker: Function;
+  /**
+   * Activity results are placed in a queue to be processed and sent to the workflow.
+   */
+  public resultQueue: IQueue;
 
   constructor(scope: Construct, id: string, private props: ActivitiesProps) {
     super(scope, id);
@@ -99,6 +106,8 @@ export class Activities
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
+    this.resultQueue = new Queue(this, "ResultQueue");
+
     this.worker = new ServiceFunction(this, "Worker", {
       code: props.build.getCode(props.build.activities.file),
       functionName: `${props.serviceName}-activity-handler`,
@@ -107,6 +116,31 @@ export class Activities
       retryAttempts: 0,
       // TODO: determine worker timeout strategy
       timeout: Duration.minutes(1),
+      // when the activity completes, the results are put in the queue to be durably sent to the workflow
+      onSuccess: new SqsDestination(this.resultQueue),
+    });
+
+    this.props.workflows.pipeToWorkflowQueue("CompletionPipe", {
+      grant: (role) => this.resultQueue.grantConsumeMessages(role),
+      source: this.resultQueue.queueArn,
+      eventPath: "$.body.responsePayload.event",
+      executionIdPath: "$.body.responsePayload.executionId",
+      sourceProps: {
+        FilterCriteria: {
+          Filters: [
+            {
+              Pattern: JSON.stringify({
+                body: {
+                  responsePayload: {
+                    type: [ActivityCompletionResultType.DURABLE_COMPLETION],
+                    executionId: [{ exists: true }],
+                  },
+                },
+              }),
+            },
+          ],
+        },
+      },
     });
 
     this.configureActivityWorker();

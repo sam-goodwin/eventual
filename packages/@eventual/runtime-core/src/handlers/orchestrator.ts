@@ -112,7 +112,7 @@ export function createOrchestrator({
         workflowTasks,
         (task) => task.executionId
       );
-
+      
       const eventsByExecutionId = Object.fromEntries(
         Object.entries(tasksByExecutionId).map(([executionId, records]) => [
           executionId,

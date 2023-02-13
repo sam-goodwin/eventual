@@ -47,6 +47,8 @@ export default async (event: SQSEvent) => {
     throw new Error("Expected SQS Records to contain fifo message id");
   }
 
+  console.log(JSON.stringify(event.Records));
+
   const workflowTasks = event.Records.map(sqsRecordToTask);
 
   const { failedExecutionIds } = await orchestrate(workflowTasks);
