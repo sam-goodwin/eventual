@@ -5,7 +5,7 @@ import type { HttpMethod } from "../http-method.js";
 import type { ParsePath } from "./path.js";
 
 import { commands } from "../global.js";
-import { Middleware } from "./middleware.js";
+import type { Middleware } from "./middleware.js";
 
 export interface Command<
   Name extends string = string,
@@ -146,7 +146,7 @@ export function command<Name extends string, Handler extends CommandHandler>(
   return command;
 }
 
-export function parseCommandArgs(...args: any[]) {
+export function parseCommandArgs(args: any[]) {
   return [
     // TODO: is this 4x scan too inefficient, or is the trade-off between simplicity and performance worth it here?
     // i think it would be marginal looping over a small array multiple times but i could be wrong

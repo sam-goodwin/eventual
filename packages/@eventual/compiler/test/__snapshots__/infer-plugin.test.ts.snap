@@ -642,7 +642,7 @@ function command(...args) {
   commands.push(command2);
   return command2;
 }
-function parseCommandArgs(...args) {
+function parseCommandArgs(args) {
   return [
     args.find(isSourceLocation),
     args.find((a) => typeof a === "string"),

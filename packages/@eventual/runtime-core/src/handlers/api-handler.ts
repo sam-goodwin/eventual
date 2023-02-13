@@ -197,7 +197,7 @@ function initRouter() {
      *
      * Each context can add to or completely replace the context. They can
      * also break the chain at any time by returning a HttpResponse instead
-     * of calling
+     * of calling `next`.
      *
      * @param handler
      * @returns
