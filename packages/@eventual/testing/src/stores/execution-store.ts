@@ -12,7 +12,7 @@ import {
   SucceedExecutionRequest,
   WorkflowStarted,
 } from "@eventual/core";
-import { ExecutionStore, UpdateEvent } from "@eventual/runtime-core";
+import { ExecutionStore } from "@eventual/runtime-core";
 import { TimeConnector } from "../environment.js";
 
 export class TestExecutionStore implements ExecutionStore {
@@ -35,9 +35,8 @@ export class TestExecutionStore implements ExecutionStore {
   }
 
   public async update<Result = any>(
-    request: FailExecutionRequest | SucceedExecutionRequest<Result>,
-    updateEvent?: UpdateEvent
-  ): Promise<void> {
+    request: FailExecutionRequest | SucceedExecutionRequest<Result>
+  ): Promise<FailedExecution | SucceededExecution<Result>> {
     const execution = await this.get(request.executionId);
 
     if (!execution) {
@@ -62,12 +61,7 @@ export class TestExecutionStore implements ExecutionStore {
 
     this.executionStore[execution.id] = updated;
 
-    if (updateEvent) {
-      this.timeConnector.pushEvent({
-        executionId: updateEvent.executionId,
-        events: [updateEvent.event],
-      });
-    }
+    return updated;
   }
 
   public async get<Result = any>(

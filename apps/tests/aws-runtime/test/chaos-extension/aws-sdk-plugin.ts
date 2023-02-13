@@ -4,7 +4,7 @@ import { ChaosEngine } from "./chaos-engine.js";
 /**
  * Creates a plugin that modifies the behavior of any Aws SDK client based on the
  * given {@link ChaosTestConfig}.
- * 
+ *
  * ```ts
  * const s3 = new S3Client({});
  * s3.middlewareStack.use(createAwsSDKChaosPlugin(chaosEngine));

@@ -2,7 +2,6 @@ import {
   createEvent,
   ExecutionAlreadyExists,
   ExecutionID,
-  ExecutionParent,
   ExecutionStatus,
   FailedExecution,
   FailExecutionRequest,
@@ -23,13 +22,15 @@ import { ulid } from "ulidx";
 import { inspect } from "util";
 import { WorkflowSpecProvider } from "../providers/workflow-provider.js";
 import { computeScheduleDate } from "../schedule.js";
-import { ExecutionStore, UpdateEvent } from "../stores/execution-store.js";
+import { ExecutionStore } from "../stores/execution-store.js";
+import { ExecutionQueueClient } from "./execution-queue-client.js";
 import { LogsClient } from "./logs-client.js";
 
 export class WorkflowClient {
   constructor(
     private executionStore: ExecutionStore,
     private logsClient: LogsClient,
+    private executionQueueClient: ExecutionQueueClient,
     private workflowProvider: WorkflowSpecProvider,
     protected baseTime: () => Date = () => new Date()
   ) {}
@@ -136,73 +137,53 @@ export class WorkflowClient {
   public async succeedExecution(
     request: SucceedExecutionRequest
   ): Promise<SucceededExecution> {
-    const execution = await this.executionStore.get(request.executionId);
-    if (!execution) {
-      throw new Error("Execution does not exist");
+    const execution = await this.executionStore.update(request);
+    if (execution.parent) {
+      await this.reportCompletionToParent(
+        execution.parent.executionId,
+        execution.parent.seq,
+        request.result
+      );
     }
 
-    const parentChildEvent = execution.parent
-      ? this.reportCompletionToParentEvent(execution.parent, request.result)
-      : undefined;
-
-    await this.executionStore.update(request, parentChildEvent);
-
-    return {
-      ...execution,
-      result: request.result,
-      endTime: request.endTime,
-      status: ExecutionStatus.SUCCEEDED,
-    };
+    return execution as SucceededExecution;
   }
 
   public async failExecution(
     request: FailExecutionRequest
   ): Promise<FailedExecution> {
-    const execution = await this.executionStore.get(request.executionId);
-    if (!execution) {
-      throw new Error("Execution does not exist");
+    const execution = await this.executionStore.update(request);
+    if (execution.parent) {
+      await this.reportCompletionToParent(
+        execution.parent.executionId,
+        execution.parent.seq,
+        request.error,
+        request.message
+      );
     }
 
-    const parentChildEvent = execution.parent
-      ? this.reportCompletionToParentEvent(
-          execution.parent,
-          request.error,
-          request.message
-        )
-      : undefined;
-
-    await this.executionStore.update(request, parentChildEvent);
-
-    return {
-      ...execution,
-      error: request.error,
-      message: request.message,
-      status: ExecutionStatus.FAILED,
-      endTime: request.endTime,
-    };
+    return execution as FailedExecution;
   }
 
-  private reportCompletionToParentEvent(
-    parent: ExecutionParent,
+  private async reportCompletionToParent(
+    parentExecutionId: string,
+    seq: number,
     ...args: [result: any] | [error: string, message: string]
-  ): UpdateEvent {
-    return {
-      executionId: parent.executionId,
-      event: {
-        seq: parent.seq,
-        timestamp: this.baseTime().toISOString(),
-        ...(args.length === 1
-          ? {
-              type: WorkflowEventType.ChildWorkflowSucceeded,
-              result: args[0],
-            }
-          : {
-              type: WorkflowEventType.ChildWorkflowFailed,
-              error: args[0],
-              message: args[1],
-            }),
-      },
-    };
+  ) {
+    await this.executionQueueClient.submitExecutionEvents(parentExecutionId, {
+      seq,
+      timestamp: new Date().toISOString(),
+      ...(args.length === 1
+        ? {
+            type: WorkflowEventType.ChildWorkflowSucceeded,
+            result: args[0],
+          }
+        : {
+            type: WorkflowEventType.ChildWorkflowFailed,
+            error: args[0],
+            message: args[1],
+          }),
+    });
   }
 }
 

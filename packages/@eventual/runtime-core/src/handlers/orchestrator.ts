@@ -116,12 +116,34 @@ export function createOrchestrator({
       const eventsByExecutionId = Object.fromEntries(
         Object.entries(tasksByExecutionId).map(([executionId, records]) => [
           executionId,
-          records.flatMap((e) =>
-            e.events.map((e) =>
+          records.flatMap((e) => {
+            const injectedFields = e.injectedFields
+              ? Object.fromEntries(
+                  Object.entries(e.injectedFields).map(
+                    ([name, { format, value }]) => {
+                      return [
+                        name,
+                        format === "JSON_STRING" ? JSON.parse(value) : value,
+                      ];
+                    }
+                  )
+                )
+              : {};
+            return e.events.map((evnt) =>
               // events can be objects or stringified json
-              typeof e === "string" ? (JSON.parse(e) as HistoryStateEvent) : e
-            )
-          ),
+              {
+                const event =
+                  typeof evnt === "string"
+                    ? (JSON.parse(evnt) as HistoryStateEvent)
+                    : evnt;
+
+                return {
+                  ...event,
+                  injectedFields,
+                };
+              }
+            );
+          }),
         ])
       );
 

@@ -1,19 +1,14 @@
 import {
   Execution,
-  ExecutionID,
+  FailedExecution,
   FailExecutionRequest,
-  HistoryStateEvent,
   InProgressExecution,
   ListExecutionsRequest,
   ListExecutionsResponse,
+  SucceededExecution,
   SucceedExecutionRequest,
   WorkflowStarted,
 } from "@eventual/core";
-
-export interface UpdateEvent {
-  executionId: ExecutionID;
-  event: HistoryStateEvent;
-}
 
 /**
  * Store which maintains the data for each {@link Execution}.
@@ -46,12 +41,11 @@ export interface ExecutionStore {
    * @see WorkflowRuntimeClient.succeedExecution
    *
    * @param updateEvent - when provided the event will be transactionally emitted
-   *                      on successful workflow update.
+   *                      on workflow update.
    */
   update<Result = any>(
-    request: SucceedExecutionRequest<Result> | FailExecutionRequest,
-    updateEvent?: UpdateEvent
-  ): Promise<void>;
+    request: SucceedExecutionRequest<Result> | FailExecutionRequest
+  ): Promise<FailedExecution | SucceededExecution<Result>>;
 
   /**
    * Get a single execution.

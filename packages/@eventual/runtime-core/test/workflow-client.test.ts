@@ -1,12 +1,14 @@
 import {
   ExecutionAlreadyExists,
   ExecutionStatus,
+  FailedExecution,
   hashCode,
-  InProgressExecution,
   INTERNAL_EXECUTION_ID_PREFIX,
+  SucceededExecution,
   workflow,
 } from "@eventual/core";
 import { jest } from "@jest/globals";
+import { ExecutionQueueClient } from "../src/clients/execution-queue-client.js";
 import { LogsClient } from "../src/clients/logs-client.js";
 import { WorkflowClient } from "../src/clients/workflow-client.js";
 import { WorkflowSpecProvider } from "../src/providers/workflow-provider.js";
@@ -21,6 +23,10 @@ const mockLogClient = {
   initializeExecutionLog: jest.fn() as LogsClient["initializeExecutionLog"],
   putExecutionLogs: jest.fn() as LogsClient["putExecutionLogs"],
 } as LogsClient;
+const mockExecutionQueueClient = {
+  submitExecutionEvents:
+    jest.fn() as ExecutionQueueClient["submitExecutionEvents"],
+} as ExecutionQueueClient;
 const mockWorkflowProvider = {
   workflowExists: jest.fn() as WorkflowSpecProvider["workflowExists"],
 } as WorkflowSpecProvider;
@@ -30,6 +36,7 @@ const testDate = new Date();
 const underTest = new WorkflowClient(
   mockExecutionStore,
   mockLogClient,
+  mockExecutionQueueClient,
   mockWorkflowProvider,
   () => testDate
 );
@@ -253,13 +260,27 @@ describe("start execution", () => {
       })
     ).rejects.toThrowError("Some Error");
   });
+
+  test("submit to queue fails", async () => {
+    jest
+      .mocked(mockExecutionQueueClient.submitExecutionEvents)
+      .mockRejectedValue(new Error("Some Error"));
+
+    expect(() =>
+      underTest.startExecution({
+        input: { value: "hello" },
+        workflow: "myWorkflow",
+        executionName: "myExecution",
+      })
+    ).rejects.toThrowError("Some Error");
+  });
 });
 
 describe("succeed execution", () => {
   test("happy path", async () => {
-    jest.mocked(mockExecutionStore.get).mockResolvedValue({
+    jest.mocked(mockExecutionStore.update).mockResolvedValue({
       parent: undefined,
-    } as Partial<InProgressExecution> as InProgressExecution);
+    } as Partial<SucceededExecution> as SucceededExecution);
 
     await underTest.succeedExecution({
       executionId: "",
@@ -267,16 +288,15 @@ describe("succeed execution", () => {
       endTime: "",
     });
 
-    expect(mockExecutionStore.update).toHaveBeenCalledWith(
-      expect.anything(),
-      undefined
-    );
+    expect(
+      mockExecutionQueueClient.submitExecutionEvents
+    ).not.toHaveBeenCalled();
   });
 
   test("happy path with parent", async () => {
-    jest.mocked(mockExecutionStore.get).mockResolvedValue({
+    jest.mocked(mockExecutionStore.update).mockResolvedValue({
       parent: { executionId: "/", seq: 0 },
-    } as Partial<InProgressExecution> as InProgressExecution);
+    } as Partial<SucceededExecution> as SucceededExecution);
 
     await underTest.succeedExecution({
       executionId: "",
@@ -284,18 +304,15 @@ describe("succeed execution", () => {
       endTime: "",
     });
 
-    expect(mockExecutionStore.update).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything()
-    );
+    expect(mockExecutionQueueClient.submitExecutionEvents).toHaveBeenCalled();
   });
 });
 
 describe("fail execution", () => {
   test("happy path", async () => {
-    jest.mocked(mockExecutionStore.get).mockResolvedValue({
+    jest.mocked(mockExecutionStore.update).mockResolvedValue({
       parent: undefined,
-    } as Partial<InProgressExecution> as InProgressExecution);
+    } as Partial<FailedExecution> as FailedExecution);
 
     await underTest.failExecution({
       executionId: "",
@@ -304,16 +321,15 @@ describe("fail execution", () => {
       endTime: "",
     });
 
-    expect(mockExecutionStore.update).toHaveBeenCalledWith(
-      expect.anything(),
-      undefined
-    );
+    expect(
+      mockExecutionQueueClient.submitExecutionEvents
+    ).not.toHaveBeenCalled();
   });
 
   test("happy path with parent", async () => {
-    jest.mocked(mockExecutionStore.get).mockResolvedValue({
+    jest.mocked(mockExecutionStore.update).mockResolvedValue({
       parent: { executionId: "/", seq: 0 },
-    } as Partial<InProgressExecution> as InProgressExecution);
+    } as Partial<FailedExecution> as FailedExecution);
 
     await underTest.failExecution({
       executionId: "",
@@ -322,9 +338,6 @@ describe("fail execution", () => {
       endTime: "",
     });
 
-    expect(mockExecutionStore.update).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything()
-    );
+    expect(mockExecutionQueueClient.submitExecutionEvents).toHaveBeenCalled();
   });
 });

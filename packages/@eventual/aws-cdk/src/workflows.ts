@@ -1,8 +1,4 @@
-import {
-  ENV_NAMES,
-  ExecutionInsertEventRecord,
-  ExecutionRecord,
-} from "@eventual/aws-runtime";
+import { ENV_NAMES, ExecutionRecord } from "@eventual/aws-runtime";
 import { ExecutionQueueEventEnvelope } from "@eventual/runtime-core";
 import { CfnResource, RemovalPolicy } from "aws-cdk-lib";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
@@ -42,10 +38,20 @@ export interface WorkflowsProps {
 
 interface PipeToWorkflowQueueProps {
   grant: (grantable: IRole) => void;
-  // path to the execution id $.path.to.id ex: $.dynamodb.NewImage.id.S
+  /**
+   * path to the execution id $.path.to.id ex: $.dynamodb.NewImage.id.S
+   */
   executionIdPath: string;
-  // path to the event $.path.to.event ex: $.dynamodb.NewImage.insertEvent.S
-  eventPath: string;
+  /**
+   * Input template format event object or path <$.path.to.event> ex: <$.dynamodb.NewImage.insertEvent.S>
+   */
+  event: string;
+  /**
+   * An object matching the {@link WorkflowTask}.injectedFields property.
+   *
+   * Useful to inject values into the event from another part of the source event.
+   */
+  injectedFields?: string;
   /**
    * Source ARN
    */
@@ -181,7 +187,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
      * }
      */
     this.pipeToWorkflowQueue(this, "InsertEvent", {
-      eventPath: `$.dynamodb.NewImage.${ExecutionInsertEventRecord.INSERT_EVENT}.S`,
+      event: `<$.dynamodb.NewImage.${ExecutionRecord.INSERT_EVENT}.S>`,
       executionIdPath: "$.dynamodb.NewImage.id.S",
       grant: (role) => this.props.table.grantStreamRead(role),
       source: this.props.table.tableStreamArn!,
@@ -201,10 +207,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
                 dynamodb: {
                   NewImage: {
                     pk: {
-                      S: [
-                        ExecutionRecord.PARTITION_KEY,
-                        ExecutionInsertEventRecord.PARTITION_KEY,
-                      ],
+                      S: [ExecutionRecord.PARTITION_KEY],
                     },
                     [ExecutionRecord.INSERT_EVENT]: { S: [{ exists: true }] },
                   },
@@ -249,7 +252,11 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
           SqsQueueParameters: {
             MessageGroupId: props.executionIdPath,
           },
-          InputTemplate: `{"task": { "events": [<${props.eventPath}>], "executionId": <${props.executionIdPath}> } }`,
+          InputTemplate: `{"task": { "events": [${
+            props.event
+          }], "executionId": <${props.executionIdPath}>, "injectedFields": ${
+            props.injectedFields ?? "{}"
+          } } }`,
         },
       },
     });

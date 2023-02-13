@@ -289,7 +289,7 @@ export class Service<S = any>
       billingMode: BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY,
       stream: StreamViewType.NEW_IMAGE,
-      timeToLiveAttribute: "ttl",
+      // timeToLiveAttribute: "ttl",
     });
 
     this.table.addLocalSecondaryIndex({

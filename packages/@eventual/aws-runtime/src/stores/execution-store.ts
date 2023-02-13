@@ -5,7 +5,6 @@ import {
   GetItemCommand,
   PutItemCommand,
   ReturnValue,
-  TransactWriteItemsCommand,
   Update,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
@@ -14,8 +13,8 @@ import {
   ExecutionAlreadyExists,
   ExecutionID,
   ExecutionStatus,
+  FailedExecution,
   FailExecutionRequest,
-  getEventId,
   InProgressExecution,
   isExecutionStatus,
   isFailedExecutionRequest,
@@ -23,15 +22,11 @@ import {
   ListExecutionsResponse,
   parseExecutionId,
   SortOrder,
+  SucceededExecution,
   SucceedExecutionRequest,
   WorkflowStarted,
 } from "@eventual/core";
-import {
-  ExecutionStore,
-  getLazy,
-  LazyValue,
-  UpdateEvent,
-} from "@eventual/runtime-core";
+import { ExecutionStore, getLazy, LazyValue } from "@eventual/runtime-core";
 import { queryPageWithToken } from "../utils.js";
 
 export interface AWSExecutionStoreProps {
@@ -69,7 +64,7 @@ export class AWSExecutionStore implements ExecutionStore {
             startTime: { S: execution.startTime },
             ...(startEvent
               ? {
-                  [ExecutionInsertEventRecord.INSERT_EVENT]: {
+                  [ExecutionRecord.INSERT_EVENT]: {
                     S: JSON.stringify(startEvent),
                   },
                 }
@@ -100,78 +95,55 @@ export class AWSExecutionStore implements ExecutionStore {
   }
 
   public async update<Result = any>(
-    request: FailExecutionRequest | SucceedExecutionRequest<Result>,
-    updateEvent?: UpdateEvent
-  ): Promise<void> {
-    const updateCommon = {
-      Key: {
-        pk: { S: ExecutionRecord.PARTITION_KEY },
-        sk: { S: ExecutionRecord.sortKey(request.executionId) },
+    request: FailExecutionRequest | SucceedExecutionRequest<Result>
+  ): Promise<FailedExecution | SucceededExecution<Result>> {
+    const commonUpdateExp: UpdateExpr = {
+      set: {
+        endTime: {
+          formatter: (n, v) => `${n}=if_not_exists(${n}, ${v})`,
+          value: { S: request.endTime },
+        },
       },
-      TableName: getLazy(this.props.tableName),
-    } satisfies Pick<Update, "Key" | "TableName">;
-    const update: Update = isFailedExecutionRequest(request)
+      // remove the insert event if it was added
+      remove: [ExecutionRecord.INSERT_EVENT],
+    };
+
+    const updateExp: UpdateExpr = isFailedExecutionRequest(request)
       ? {
-          ...updateCommon,
-          UpdateExpression:
-            "SET #status=:failed, #error=:error, #message=:message, endTime=if_not_exists(endTime,:endTime)",
-          ExpressionAttributeNames: {
-            "#status": "status",
-            "#error": "error",
-            "#message": "message",
-          },
-          ExpressionAttributeValues: {
-            ":failed": { S: ExecutionStatus.FAILED },
-            ":endTime": { S: request.endTime },
-            ":error": { S: request.error },
-            ":message": { S: request.message },
+          ...commonUpdateExp,
+          set: {
+            ...commonUpdateExp.set,
+            status: { S: ExecutionStatus.FAILED },
+            error: { S: request.error },
+            message: { S: request.message },
           },
         }
       : {
-          ...updateCommon,
-          UpdateExpression: request.result
-            ? "SET #status=:complete, #result=:result, endTime=if_not_exists(endTime,:endTime)"
-            : "SET #status=:complete, endTime=if_not_exists(endTime,:endTime)",
-          ExpressionAttributeNames: {
-            "#status": "status",
-            ...(request.result ? { "#result": "result" } : {}),
-          },
-          ExpressionAttributeValues: {
-            ":complete": { S: ExecutionStatus.SUCCEEDED },
-            ":endTime": { S: request.endTime },
-            ...(request.result
-              ? { ":result": { S: JSON.stringify(request.result) } }
-              : {}),
+          ...commonUpdateExp,
+          set: {
+            ...commonUpdateExp.set,
+            status: { S: ExecutionStatus.SUCCEEDED },
+            result: request.result
+              ? { S: JSON.stringify(request.result) }
+              : undefined,
           },
         };
 
-    if (updateEvent) {
-      await this.props.dynamo.send(
-        new TransactWriteItemsCommand({
-          TransactItems: [
-            { Update: update },
-            {
-              Put: {
-                TableName: getLazy(this.props.tableName),
-                Item: {
-                  pk: { S: ExecutionInsertEventRecord.PARTITION_KEY },
-                  sk: {
-                    S: ExecutionInsertEventRecord.sortKey(
-                      updateEvent.executionId + getEventId(updateEvent.event)
-                    ),
-                  },
-                  id: { S: updateEvent.executionId },
-                  insertEvent: { S: JSON.stringify(updateEvent.event) },
-                  ttl: { N: (new Date().getTime() + 10000).toString() },
-                } satisfies ExecutionUpdateEventRecord,
-              },
-            },
-          ],
-        })
-      );
-    } else {
-      await this.props.dynamo.send(new UpdateItemCommand(update));
-    }
+    const executionRecord = await this.props.dynamo.send(
+      new UpdateItemCommand({
+        Key: {
+          pk: { S: ExecutionRecord.PARTITION_KEY },
+          sk: { S: ExecutionRecord.sortKey(request.executionId) },
+        },
+        TableName: getLazy(this.props.tableName),
+        ReturnValues: "ALL_NEW",
+        ...formatUpdateExpr(updateExp),
+      })
+    );
+
+    return createExecutionFromResult(
+      executionRecord.Attributes as ExecutionRecord
+    ) as FailedExecution | SucceededExecution<Result>;
   }
 
   public async get<Result = any>(
@@ -294,35 +266,7 @@ export const ExecutionRecord = {
   },
 };
 
-/**
- * A temporary dynamo entry used to transactionally send an event
- * with an update to an execution.
- */
-export interface ExecutionUpdateEventRecord {
-  pk: { S: typeof ExecutionInsertEventRecord.PARTITION_KEY };
-  sk: {
-    S: `${typeof ExecutionInsertEventRecord.SORT_KEY_PREFIX}${string}`;
-  };
-  id: { S: ExecutionID };
-  /**
-   * The event to emit on a successfully writing this item.
-   */
-  insertEvent: AttributeValue.SMember;
-  ttl: AttributeValue.NMember;
-}
-
-export const ExecutionInsertEventRecord = {
-  PARTITION_KEY: "ExecutionInsertEvent",
-  SORT_KEY_PREFIX: `InsertEvent$`,
-  INSERT_EVENT: "insertEvent",
-  sortKey(id: string): `${typeof this.SORT_KEY_PREFIX}${typeof id}` {
-    return `${this.SORT_KEY_PREFIX}${id}`;
-  },
-};
-
-export function createExecutionFromResult(
-  execution: ExecutionRecord
-): Execution {
+function createExecutionFromResult(execution: ExecutionRecord): Execution {
   return {
     id: execution.id.S,
     endTime: execution.endTime?.S as string,
@@ -340,5 +284,62 @@ export function createExecutionFromResult(
             seq: parseInt(execution.seq.N, 10),
           }
         : undefined,
+  };
+}
+
+interface UpdateExpr {
+  set: Record<
+    string,
+    | AttributeValue
+    | undefined
+    | {
+        formatter: (nameKey: string, valueKey: string) => string;
+        value: AttributeValue;
+      }
+  >;
+  remove?: string[];
+}
+
+function formatUpdateExpr(
+  expr: UpdateExpr
+): Pick<
+  Update,
+  "UpdateExpression" | "ExpressionAttributeNames" | "ExpressionAttributeValues"
+> {
+  const names: Record<string, string> = {};
+  const values: Record<string, AttributeValue> = {};
+  const remove = expr.remove
+    ? `REMOVE ${[...new Set(expr.remove)]
+        .map((name) => {
+          names[`#${name}`] = name;
+          return `#${name}`;
+        })
+        .join(",")}`
+    : "";
+  const set = `SET ${Object.entries(expr.set)
+    .filter(
+      (entry): entry is [string, Exclude<typeof entry[1], undefined>] =>
+        entry[1] !== undefined
+    )
+    .map(([name, value]) => {
+      const n = `#${name}`;
+      const v = `:${name}`;
+
+      const [formatted, _value] =
+        "formatter" in value
+          ? [value.formatter(n, v), value.value]
+          : [`${n}=${v}`, value];
+
+      names[n] = name;
+      values[v] = _value;
+
+      return formatted;
+    })
+    .join(",")}`;
+
+  return {
+    UpdateExpression: [remove, set].join(" "),
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: values,
   };
 }

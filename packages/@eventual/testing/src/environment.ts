@@ -156,6 +156,7 @@ export class TestEnvironment extends RuntimeServiceClient {
     const workflowClient = new WorkflowClient(
       executionStore,
       new TestLogsClient(),
+      executionQueueClient,
       workflowProvider,
       () => this.time
     );
