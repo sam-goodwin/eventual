@@ -59,6 +59,7 @@ export class AWSLogsClient implements LogsClient {
       if (err instanceof ResourceAlreadyExistsException) {
         return;
       }
+      throw err;
     }
   }
 }

@@ -1,4 +1,5 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
+import { ActivityCompletionResultType } from "@eventual/runtime-core";
 import { Duration, RemovalPolicy } from "aws-cdk-lib";
 import {
   AttributeType,
@@ -7,21 +8,20 @@ import {
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
 import { IGrantable } from "aws-cdk-lib/aws-iam";
+import { Function } from "aws-cdk-lib/aws-lambda";
+import { SqsDestination } from "aws-cdk-lib/aws-lambda-destinations";
+import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
+import type { BuildOutput } from "./build";
+import { Events } from "./events";
+import { grant } from "./grant";
+import { Logging } from "./logging";
+import { IScheduler } from "./scheduler";
+import { IService } from "./service";
+import { IServiceApi } from "./service-api";
+import { ServiceFunction } from "./service-function";
 import { addEnvironment } from "./utils";
 import { IWorkflows } from "./workflows";
-import { Function } from "aws-cdk-lib/aws-lambda";
-import { IScheduler } from "./scheduler";
-import { ServiceFunction } from "./service-function";
-import { Events } from "./events";
-import { Logging } from "./logging";
-import { IService } from "./service";
-import type { BuildOutput } from "./build";
-import { IServiceApi } from "./service-api";
-import { grant } from "./grant";
-import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
-import { SqsDestination } from "aws-cdk-lib/aws-lambda-destinations";
-import { ActivityCompletionResultType } from "@eventual/runtime-core";
 
 export interface ActivitiesProps {
   build: BuildOutput;
