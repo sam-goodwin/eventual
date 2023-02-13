@@ -103,13 +103,16 @@ export class AWSExecutionStore implements ExecutionStore {
     request: FailExecutionRequest | SucceedExecutionRequest<Result>,
     updateEvent?: UpdateEvent
   ): Promise<void> {
+    const updateCommon = {
+      Key: {
+        pk: { S: ExecutionRecord.PARTITION_KEY },
+        sk: { S: ExecutionRecord.sortKey(request.executionId) },
+      },
+      TableName: getLazy(this.props.tableName),
+    } satisfies Pick<Update, "Key" | "TableName">;
     const update: Update = isFailedExecutionRequest(request)
       ? {
-          Key: {
-            pk: { S: ExecutionRecord.PARTITION_KEY },
-            sk: { S: ExecutionRecord.sortKey(request.executionId) },
-          },
-          TableName: getLazy(this.props.tableName),
+          ...updateCommon,
           UpdateExpression:
             "SET #status=:failed, #error=:error, #message=:message, endTime=if_not_exists(endTime,:endTime)",
           ExpressionAttributeNames: {
@@ -125,11 +128,7 @@ export class AWSExecutionStore implements ExecutionStore {
           },
         }
       : {
-          Key: {
-            pk: { S: ExecutionRecord.PARTITION_KEY },
-            sk: { S: ExecutionRecord.sortKey(request.executionId) },
-          },
-          TableName: getLazy(this.props.tableName),
+          ...updateCommon,
           UpdateExpression: request.result
             ? "SET #status=:complete, #result=:result, endTime=if_not_exists(endTime,:endTime)"
             : "SET #status=:complete, endTime=if_not_exists(endTime,:endTime)",

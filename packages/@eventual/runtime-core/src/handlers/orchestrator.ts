@@ -112,7 +112,7 @@ export function createOrchestrator({
         workflowTasks,
         (task) => task.executionId
       );
-      
+
       const eventsByExecutionId = Object.fromEntries(
         Object.entries(tasksByExecutionId).map(([executionId, records]) => [
           executionId,
@@ -285,8 +285,13 @@ export function createOrchestrator({
          */
         if (processedEvents.isFirstRun) {
           metrics.setProperty(OrchestratorMetrics.ExecutionStarted, 1);
-          if (processedEvents.startEvent?.timeoutTime) {
-            const timeoutTime = processedEvents.startEvent?.timeoutTime;
+          metrics.setProperty(
+            OrchestratorMetrics.ExecutionStartedDuration,
+            baseTime().getTime() -
+              new Date(processedEvents.startEvent.timestamp).getTime()
+          );
+          if (processedEvents.startEvent.timeoutTime) {
+            const timeoutTime = processedEvents.startEvent.timeoutTime;
             metrics.setProperty(OrchestratorMetrics.TimeoutStarted, 1);
             await timed(
               metrics,

@@ -1,23 +1,26 @@
 import { EventualError, HeartbeatTimeout } from "@eventual/core";
+import { jest } from "@jest/globals";
 import { ChaosEffects, ChaosTargets } from "./chaos-extension/chaos-engine.js";
 import { serviceUrl } from "./env.js";
 import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
 import {
-  eventDrivenWorkflow,
+  allCommands,
   asyncWorkflow,
+  eventDrivenWorkflow,
+  failedWorkflow,
   heartbeatWorkflow,
   parentWorkflow,
   timedOutWorkflow,
+  timedWorkflow,
   workflow1,
   workflow2,
   workflow3,
   workflow4,
-  failedWorkflow,
-  timedWorkflow,
-  allCommands,
 } from "./test-service.js";
 
 import fetch from "node-fetch";
+
+jest.setTimeout(100 * 1000);
 
 eventualRuntimeTestHarness(
   ({ testCompletion, testFailed }) => {

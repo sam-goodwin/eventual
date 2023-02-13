@@ -71,7 +71,11 @@ export interface IWorkflows {
    *
    * Which
    */
-  pipeToWorkflowQueue(id: string, props: PipeToWorkflowQueueProps): void;
+  pipeToWorkflowQueue(
+    scope: Construct,
+    id: string,
+    props: PipeToWorkflowQueueProps
+  ): void;
 
   configureStartExecution(func: Function): void;
   grantStartExecution(grantable: IGrantable): void;
@@ -176,7 +180,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
      *    }
      * }
      */
-    this.pipeToWorkflowQueue("InsertEvent", {
+    this.pipeToWorkflowQueue(this, "InsertEvent", {
       eventPath: `$.dynamodb.NewImage.${ExecutionInsertEventRecord.INSERT_EVENT}.S`,
       executionIdPath: "$.dynamodb.NewImage.id.S",
       grant: (role) => this.props.table.grantStreamRead(role),
@@ -219,17 +223,21 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     return this.orchestrator.grantPrincipal;
   }
 
-  public pipeToWorkflowQueue(id: string, props: PipeToWorkflowQueueProps) {
-    const scope = new Construct(this, id);
+  public pipeToWorkflowQueue(
+    scope: Construct,
+    id: string,
+    props: PipeToWorkflowQueueProps
+  ) {
+    const container = new Construct(scope, id);
 
-    const pipeRole = new Role(scope, `Role`, {
+    const pipeRole = new Role(container, `Role`, {
       assumedBy: new ServicePrincipal("pipes"),
     });
 
     this.queue.grantSendMessages(pipeRole);
     props.grant(pipeRole);
 
-    new CfnResource(scope, "Pipe", {
+    new CfnResource(container, "Pipe", {
       type: "AWS::Pipes::Pipe",
       properties: {
         Name: `${this.props.serviceName}-${id}`,

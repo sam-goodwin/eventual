@@ -120,7 +120,13 @@ export class Activities
       onSuccess: new SqsDestination(this.resultQueue),
     });
 
-    this.props.workflows.pipeToWorkflowQueue("CompletionPipe", {
+    /**
+     * A pipe that reports the result of activities to the caller workflow.
+     * 
+     * This is used when the activity worker fails to submit a result as a last
+     * resort. The happy path currently submits the result directly to the workflow.
+     */
+    this.props.workflows.pipeToWorkflowQueue(this, "DurableCompletionPipe", {
       grant: (role) => this.resultQueue.grantConsumeMessages(role),
       source: this.resultQueue.queueArn,
       eventPath: "$.body.responsePayload.event",
