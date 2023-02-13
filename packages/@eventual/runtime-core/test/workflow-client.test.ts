@@ -268,8 +268,8 @@ describe("succeed execution", () => {
     });
 
     expect(mockExecutionStore.update).toHaveBeenCalledWith(
-      expect.anything,
-      expect.not.objectContaining({})
+      expect.anything(),
+      undefined
     );
   });
 
@@ -285,8 +285,8 @@ describe("succeed execution", () => {
     });
 
     expect(mockExecutionStore.update).toHaveBeenCalledWith(
-      expect.anything,
-      expect.anything
+      expect.anything(),
+      expect.anything()
     );
   });
 });
@@ -305,8 +305,8 @@ describe("fail execution", () => {
     });
 
     expect(mockExecutionStore.update).toHaveBeenCalledWith(
-      expect.anything,
-      expect.not.objectContaining({})
+      expect.anything(),
+      undefined
     );
   });
 
@@ -323,8 +323,8 @@ describe("fail execution", () => {
     });
 
     expect(mockExecutionStore.update).toHaveBeenCalledWith(
-      expect.anything,
-      expect.anything
+      expect.anything(),
+      expect.anything()
     );
   });
 });
