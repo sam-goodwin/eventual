@@ -222,7 +222,6 @@ function initRouter() {
               request,
               context,
               next: async (context) => {
-                console.log("next", context);
                 if (consumed) {
                   consumed = true;
                   throw new Error(

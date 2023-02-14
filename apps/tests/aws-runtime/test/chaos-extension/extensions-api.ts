@@ -22,7 +22,6 @@ export async function register(): Promise<string> {
   if (!res.ok) {
     console.error("register failed", await res.text());
   }
-
   return res.headers.get("lambda-extension-identifier") as string;
 }
 

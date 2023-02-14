@@ -1,8 +1,8 @@
 // type imports can stay in the lexical imports
-import type { HttpRequest } from "@eventual/core";
 import type { ClientRequest, IncomingMessage } from "http";
 import type { RequestOptions } from "https";
 import { BeforeRequest, HttpError, RequestHandler } from "./request-handler.js";
+import type { HttpRequest } from "../http-request.js";
 
 /**
  * A request handler that uses node's https module.
@@ -16,10 +16,8 @@ export class NodeRequestHandler extends RequestHandler {
   protected async _request<Resp = any>(inReq: HttpRequest): Promise<Resp> {
     const res = await new Promise<IncomingMessage>(async (resolve, reject) => {
       const url = new URL(inReq.url);
-      const headers: any = {};
-      inReq.headers.forEach((value, key) => (headers[key] = value));
       const nodeHttpsOptions: RequestOptions = {
-        headers,
+        headers: inReq.headers,
         method: inReq.method,
       };
 
