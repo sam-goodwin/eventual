@@ -1,6 +1,6 @@
 {
   "name": "@eventual/testing",
-  "version": "0.16.0",
+  "version": "0.16.2",
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",

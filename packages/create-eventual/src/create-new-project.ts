@@ -12,6 +12,7 @@ export interface CreateNewProjectProps {
   projectName?: string;
   serviceName?: string;
   projectType?: ProjectType;
+  git: boolean;
 }
 
 const projectNameRegex = /^[A-Za-z-_0-9]+$/g;
@@ -54,6 +55,7 @@ export async function createNewProject(args: CreateNewProjectProps) {
       pkgManager,
       projectName: projectName!,
       serviceName: args.serviceName,
+      git: args.git,
     });
   }
 }
