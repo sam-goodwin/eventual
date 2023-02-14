@@ -47,12 +47,6 @@ interface PipeToWorkflowQueueProps {
    */
   event: string;
   /**
-   * An object matching the {@link WorkflowTask}.injectedFields property.
-   *
-   * Useful to inject values into the event from another part of the source event.
-   */
-  injectedFields?: string;
-  /**
    * Source ARN
    */
   source: string;
@@ -254,9 +248,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
           },
           InputTemplate: `{"task": { "events": [${
             props.event
-          }], "executionId": <${props.executionIdPath}>, "injectedFields": ${
-            props.injectedFields ?? "{}"
-          } } }`,
+          }], "executionId": <${props.executionIdPath}> } }`,
         },
       },
     });

@@ -101,10 +101,6 @@ export class WorkflowClient {
         },
         this.baseTime()
       );
-
-      // create the log
-      await this.logsClient.initializeExecutionLog(executionId);
-
       try {
         // try to create first as it may throw ExecutionAlreadyExists
         await this.executionStore.create(execution, workflowStartedEvent);
@@ -118,6 +114,9 @@ export class WorkflowClient {
         // rethrow to the top catch
         throw err;
       }
+
+      // create the log - we expect this to complete before anything tries to write to it.
+      await this.logsClient.initializeExecutionLog(executionId);
 
       // send the first log message and warm up the log stream
       await this.logsClient.putExecutionLogs(executionId, {
