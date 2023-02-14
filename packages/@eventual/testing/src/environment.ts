@@ -5,7 +5,7 @@ import {
   clearEventHandlers,
   Event,
   EventEnvelope,
-  EventHandlerFunction,
+  SubscriptionHandler,
   EventPayload,
   EventPayloadType,
   events,
@@ -311,7 +311,7 @@ export class TestEnvironment extends RuntimeServiceClient {
    */
   public subscribeEvent<E extends Event<any>>(
     event: E,
-    handler: EventHandlerFunction<EventPayloadType<E>>
+    handler: SubscriptionHandler<EventPayloadType<E>>
   ) {
     return this.eventHandlerProvider.subscribeEvent(event, handler);
   }

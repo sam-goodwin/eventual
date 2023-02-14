@@ -182,7 +182,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
                   serviceType:
                     type === "commands"
                       ? ServiceType.ApiHandler
-                      : ServiceType.EventHandler,
+                      : ServiceType.Subscription,
                   injectedEntry: spec.sourceLocation.fileName,
                   injectedServiceSpec: specPath,
                 }),
@@ -236,9 +236,9 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           serviceType: ServiceType.ApiHandler,
         },
         {
-          name: ServiceType.EventHandler,
+          name: ServiceType.Subscription,
           entry: runtimeHandlersEntrypoint("event-handler"),
-          serviceType: ServiceType.EventHandler,
+          serviceType: ServiceType.Subscription,
         },
       ]
         .map((s) => ({

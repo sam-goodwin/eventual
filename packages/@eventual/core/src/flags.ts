@@ -15,7 +15,7 @@ export function isOrchestratorWorker() {
 }
 
 export function isEventHandler() {
-  return process.env[SERVICE_TYPE_FLAG] === ServiceType.EventHandler;
+  return process.env[SERVICE_TYPE_FLAG] === ServiceType.Subscription;
 }
 
 export async function serviceTypeScope<Output>(

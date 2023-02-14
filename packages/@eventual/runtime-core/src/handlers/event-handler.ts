@@ -42,7 +42,7 @@ export function createEventHandlerWorker({
   }
 
   return async function (events) {
-    return await serviceTypeScope(ServiceType.EventHandler, async () => {
+    return await serviceTypeScope(ServiceType.Subscription, async () => {
       await Promise.allSettled(
         events.map((event) =>
           Promise.allSettled(

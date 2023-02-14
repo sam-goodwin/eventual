@@ -8,7 +8,7 @@ import { generateSchema } from "@anatine/zod-openapi";
 import {
   commands,
   CommandSpec,
-  eventHandlers,
+  subscriptions,
   SubscriptionSpec,
   events,
   ServiceSpec,
@@ -85,13 +85,13 @@ export async function infer(
       )
     ),
     subscriptions: Object.fromEntries(
-      eventHandlers().map((e) => [
+      subscriptions().map((e) => [
         e.name,
         {
           name: e.name,
-          runtimeProps: e.runtimeProps,
+          props: e.props,
           sourceLocation: e.sourceLocation,
-          subscriptions: e.subscriptions,
+          filters: e.filters,
         } satisfies SubscriptionSpec,
       ])
     ) as ServiceSpec["subscriptions"],

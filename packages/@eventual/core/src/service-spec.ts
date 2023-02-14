@@ -1,9 +1,10 @@
 import type openapi from "openapi3-ts";
 import type { z } from "zod";
-import type { Event, EventHandler } from "./event.js";
+import type { Event } from "./event.js";
 import type { Command } from "./http/command.js";
 import type { DurationSchedule } from "./schedule.js";
 import type { Activity } from "./activity.js";
+import type { Subscription } from "./subscription.js";
 
 /**
  * Specification for an Eventual application
@@ -52,7 +53,7 @@ export interface FunctionSpec {
 
 export type ActivitySpec = Omit<ToSpec<Activity>, "kind">;
 
-export type SubscriptionSpec = Omit<ToSpec<EventHandler>, "kind">;
+export type SubscriptionSpec = Omit<ToSpec<Subscription>, "kind">;
 
 export type EventSpec = Omit<ToSpec<Event>, "kind">;
 

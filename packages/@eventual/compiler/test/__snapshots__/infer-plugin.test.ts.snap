@@ -500,7 +500,7 @@ var ServiceType;
 (function(ServiceType2) {
   ServiceType2["ActivityWorker"] = "ActivityWorker";
   ServiceType2["ApiHandler"] = "ApiHandler";
-  ServiceType2["EventHandler"] = "EventHandler";
+  ServiceType2["Subscription"] = "Subscription";
   ServiceType2["OrchestratorWorker"] = "OrchestratorWorker";
 })(ServiceType || (ServiceType = {}));
 
