@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.18.0 (2023-02-14)
+
+### Features
+
+- add Subscription concept ([#284](https://github.com/functionless/eventual/issues/284)) ([2bc4eca](https://github.com/functionless/eventual/commit/2bc4ecab66c46fe5130a30c8a3789dd1a53b9353))
+
 # 0.17.0 (2023-02-14)
 
 ### Features
