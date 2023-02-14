@@ -7,7 +7,7 @@ import {
   Schedule,
   StartExecutionResponse,
 } from "@eventual/core";
-import { ServiceSpecWorkflowProvider } from "@eventual/runtime-core";
+import { ServiceSpecWorkflowProvider } from "@eventual/core-runtime";
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyHandlerV2,

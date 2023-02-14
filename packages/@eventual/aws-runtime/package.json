@@ -22,7 +22,7 @@
     "@aws-sdk/client-sqs": "^3.254.0",
     "@eventual/aws-client": "workspace:^",
     "@eventual/core": "workspace:^",
-    "@eventual/runtime-core": "workspace:^",
+    "@eventual/core-runtime": "workspace:^",
     "@middy/core": "^3.6.2",
     "aws-embedded-metrics": "^4.1.0",
     "aws-lambda": "^1.0.7",

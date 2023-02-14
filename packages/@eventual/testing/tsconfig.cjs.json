@@ -9,6 +9,6 @@
   "exclude": ["lib", "node_modules", "src/package.json"],
   "references": [
     { "path": "../core/tsconfig.cjs.json" },
-    { "path": "../runtime-core/tsconfig.cjs.json" }
+    { "path": "../core-runtime/tsconfig.cjs.json" }
   ]
 }

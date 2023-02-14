@@ -1,4 +1,4 @@
-import { LogEntry, LogsClient } from "@eventual/runtime-core";
+import { LogEntry, LogsClient } from "@eventual/core-runtime";
 
 export class TestLogsClient implements LogsClient {
   public async putExecutionLogs(

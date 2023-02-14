@@ -1,5 +1,5 @@
 import { ENV_NAMES, ExecutionRecord } from "@eventual/aws-runtime";
-import { ExecutionQueueEventEnvelope } from "@eventual/runtime-core";
+import { ExecutionQueueEventEnvelope } from "@eventual/core-runtime";
 import { CfnResource, RemovalPolicy } from "aws-cdk-lib";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { IGrantable, IRole, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
@@ -246,9 +246,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
           SqsQueueParameters: {
             MessageGroupId: props.executionIdPath,
           },
-          InputTemplate: `{"task": { "events": [${
-            props.event
-          }], "executionId": <${props.executionIdPath}> } }`,
+          InputTemplate: `{"task": { "events": [${props.event}], "executionId": <${props.executionIdPath}> } }`,
         },
       },
     });

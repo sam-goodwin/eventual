@@ -1,4 +1,4 @@
-import { createScheduleForwarder } from "@eventual/runtime-core";
+import { createScheduleForwarder } from "@eventual/core-runtime";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 import { createLogAgent, createTimerClient } from "../create.js";
 

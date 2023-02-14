@@ -1,4 +1,4 @@
-import { createTimerHandler, TimerRequest } from "@eventual/runtime-core";
+import { createTimerHandler, TimerRequest } from "@eventual/core-runtime";
 import { SQSHandler } from "aws-lambda";
 import {
   createActivityStore,

@@ -62,7 +62,7 @@
     "@eventual/compiler": "workspace:^",
     "@eventual/core": "workspace:^",
     "@eventual/project": "workspace:^",
-    "@eventual/runtime-core": "workspace:^",
+    "@eventual/core-runtime": "workspace:^",
     "@eventual/timeline": "workspace:^",
     "chalk": "^5.1.2",
     "cli-table3": "^0.6.3",

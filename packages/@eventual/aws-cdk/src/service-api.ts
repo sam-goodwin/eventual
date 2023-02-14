@@ -6,7 +6,7 @@ import {
 import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
 import { ENV_NAMES } from "@eventual/aws-runtime";
-import { computeDurationSeconds } from "@eventual/runtime-core";
+import { computeDurationSeconds } from "@eventual/core-runtime";
 import { Arn, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
 import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import {

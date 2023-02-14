@@ -11,7 +11,7 @@ import {
   getLazy,
   LazyValue,
   UpdateHistoryRequest,
-} from "@eventual/runtime-core";
+} from "@eventual/core-runtime";
 
 export interface AWSExecutionHistoryStateStoreProps {
   s3: S3Client;

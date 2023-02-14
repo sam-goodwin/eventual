@@ -12,7 +12,7 @@ import {
   SucceedExecutionRequest,
   WorkflowStarted,
 } from "@eventual/core";
-import { ExecutionStore } from "@eventual/runtime-core";
+import { ExecutionStore } from "@eventual/core-runtime";
 import { TimeConnector } from "../environment.js";
 
 export class TestExecutionStore implements ExecutionStore {

@@ -9,7 +9,7 @@ import {
   ActivityWorkerRequest,
   getLazy,
   LazyValue,
-} from "@eventual/runtime-core";
+} from "@eventual/core-runtime";
 import { Buffer } from "buffer";
 
 export interface AWSActivityClientProps extends ActivityClientProps {

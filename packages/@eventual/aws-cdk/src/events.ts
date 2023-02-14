@@ -17,7 +17,7 @@ import { IService } from "./service";
 import { IServiceApi } from "./service-api";
 import { ServiceFunction, ServiceFunctionProps } from "./service-function";
 import { grant } from "./grant";
-import { computeDurationSeconds } from "@eventual/runtime-core";
+import { computeDurationSeconds } from "@eventual/core-runtime";
 import { Duration } from "aws-cdk-lib";
 import type { KeysOfType } from "./utils";
 

@@ -8,7 +8,7 @@ import {
   EventPayload,
   events as GlobalEvents,
 } from "@eventual/core";
-import { EventClient, getLazy, LazyValue } from "@eventual/runtime-core";
+import { EventClient, getLazy, LazyValue } from "@eventual/core-runtime";
 import { chunkArray } from "../utils.js";
 
 export interface AWSEventClientProps {
