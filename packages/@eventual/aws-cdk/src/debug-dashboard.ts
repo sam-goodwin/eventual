@@ -32,7 +32,9 @@ export class DebugDashboard extends Construct {
       // user APIS - default and bundled
       ...service.api.handlers.map((api) => api.logGroup.logGroupName),
       // event handlers - default and bundled
-      ...service.events.handlers.map((f) => f.logGroup.logGroupName),
+      ...service.subscriptionsList.map(
+        ({ handler }) => handler.logGroup.logGroupName
+      ),
       // scheduler/timer handler and forwarder
       service.scheduler.handler.logGroup.logGroupName,
       service.scheduler.forwarder.logGroup.logGroupName,
@@ -113,9 +115,9 @@ export class DebugDashboard extends Construct {
             height: 6,
           }),
           new LogQueryWidget({
-            title: "Event Handler Summary",
-            logGroupNames: service.events.handlers.map(
-              (f) => f.logGroup.logGroupName
+            title: "Subscription Summary",
+            logGroupNames: service.subscriptionsList.map(
+              ({ handler }) => handler.logGroup.logGroupName
             ),
             queryLines: [
               `filter @type="REPORT"`,
