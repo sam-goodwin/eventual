@@ -325,7 +325,8 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
         // we will keep the api spec and improve it over time
         self.onFinalize(() => {
           const integration = new HttpLambdaIntegration(command.name, handler);
-          if (!command.internal) {
+          if (!(command.internal || command.passThrough)) {
+            // internal and low-level HTTP APIs should be passed through
             self.gateway.addRoutes({
               path: `/_rpc/${command.name}`,
               methods: [HttpMethod.POST],

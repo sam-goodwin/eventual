@@ -9,7 +9,7 @@
     "experimentalDecorators": true,
     "inlineSourceMap": true,
     "inlineSources": true,
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "WebWorker"],
     "module": "esnext",
     "moduleResolution": "NodeNext",
     "noEmitOnError": false,

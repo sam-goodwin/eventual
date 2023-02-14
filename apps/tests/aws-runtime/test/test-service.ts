@@ -14,6 +14,8 @@ import {
   signal,
   duration,
   command,
+  api,
+  HttpResponse,
 } from "@eventual/core";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -478,3 +480,43 @@ export const typed2 = command(
     };
   }
 );
+
+export const extractHeaderCommand = api
+  .use(({ request, next }) =>
+    next({
+      MyHeader: request.headers.get("MyHeader"),
+    })
+  )
+  .command("extractHeaderCommand", (_, context) => context);
+
+export const earlyMiddlewareResponse = api
+  .use(() => {
+    return new HttpResponse("Early Response");
+  })
+  .command("earlyMiddlewareResponse", async () => {});
+
+export const earlyMiddlewareResponseHttp = api
+  .use(() => {
+    return new HttpResponse("Early Response");
+  })
+  .get("/early-middleware-response", async () => {
+    return new HttpResponse("Not This");
+  });
+
+export const modifyResponseMiddleware = api
+  .use(async ({ next, context }) => {
+    const response = await next(context);
+    response.headers.set("ModifiedHeader", "Injected Header");
+    return response;
+  })
+  .command("modifyResponseMiddleware", async () => {});
+
+export const modifyResponseMiddlewareHttp = api
+  .use(async ({ next, context }) => {
+    const response = await next(context);
+    response.headers.set("ModifiedHeader", "Injected Header");
+    return response;
+  })
+  .get("/modify-response-http", async () => {
+    return new HttpResponse("My Response");
+  });

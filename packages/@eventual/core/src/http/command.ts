@@ -5,6 +5,7 @@ import type { HttpMethod } from "../http-method.js";
 import type { ParsePath } from "./path.js";
 
 import { commands } from "../global.js";
+import type { Middleware } from "./middleware.js";
 
 export interface Command<
   Name extends string = string,
@@ -23,6 +24,7 @@ export interface Command<
   sourceLocation?: SourceLocation;
   passThrough?: boolean;
   internal?: boolean;
+  middlewares?: Middleware<any, any>[];
   /**
    * @default true
    */
@@ -72,13 +74,9 @@ export interface Headers {
   [headerName: string]: string;
 }
 
-export interface CommandMetadata {
-  headers?: Headers;
-}
-
-export type CommandHandler<T = any, U = any> = (
+export type CommandHandler<T = any, U = any, Context = any> = (
   input: T,
-  metadata: CommandMetadata
+  context: Context
 ) => Promise<U> | Awaited<U>;
 
 export function command<Name extends string, Handler extends CommandHandler>(
@@ -134,16 +132,9 @@ export function command<
 ): Command<Name, Handler, Path, Method>;
 
 export function command<Name extends string, Handler extends CommandHandler>(
-  ...args: [name: Name, ...args: any[]]
+  ...args: any[]
 ): Command<Name, Handler, undefined, undefined> {
-  const [sourceLocation, name, options, handler] = [
-    // TODO: is this 4x scan too inefficient, or is the trade-off between simplicity and performance worth it here?
-    // i think it would be marginal looping over a small array multiple times but i could be wrong
-    args.find(isSourceLocation),
-    args.find((a) => typeof a === "string"),
-    args.find((a) => typeof a === "object" && !isSourceLocation(a)),
-    args.find((a) => typeof a === "function"),
-  ];
+  const [sourceLocation, name, options, handler] = parseCommandArgs(args);
   const command: Command<Name, Handler, undefined, undefined> = {
     kind: "Command",
     name,
@@ -153,4 +144,15 @@ export function command<Name extends string, Handler extends CommandHandler>(
   };
   commands.push(command);
   return command;
+}
+
+export function parseCommandArgs(args: any[]) {
+  return [
+    // TODO: is this 4x scan too inefficient, or is the trade-off between simplicity and performance worth it here?
+    // i think it would be marginal looping over a small array multiple times but i could be wrong
+    args.find(isSourceLocation),
+    args.find((a) => typeof a === "string"),
+    args.find((a) => typeof a === "object" && !isSourceLocation(a)),
+    args.find((a) => typeof a === "function"),
+  ] as const;
 }

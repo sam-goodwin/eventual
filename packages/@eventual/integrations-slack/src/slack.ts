@@ -2,7 +2,7 @@ import {
   activity,
   isOrchestratorWorker,
   Secret,
-  http,
+  api,
   HttpHandler,
 } from "@eventual/core";
 import slack from "@slack/bolt";
@@ -87,8 +87,8 @@ export class Slack<Name extends string = string> {
       }
     );
 
-    http.all(`/_slack/${name}`, async (request) => {
-      return (await this.getHandler())(request);
+    api.all(`/_slack/${name}`, async (request, context) => {
+      return (await this.getHandler())(request, context);
     });
 
     const deferMethodNames = new Set([

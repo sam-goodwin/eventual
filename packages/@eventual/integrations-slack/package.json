@@ -25,7 +25,7 @@
   "devDependencies": {
     "@eventual/core": "workspace:^",
     "@types/jest": "^29",
-    "@types/node": "^16",
+    "@types/node": "^18",
     "@types/tsscmp": "^1.0.0",
     "itty-router": "2.6.6",
     "jest": "^29",

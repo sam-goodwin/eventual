@@ -16,7 +16,7 @@
     "@serverless-stack/core": "^1.18.4",
     "@serverless-stack/cli": "^1.18.4",
     "@serverless-stack/resources": "^1.18.4",
-    "@tsconfig/node16": "^1.0.3",
+    "@tsconfig/node18": "^1.0.1",
     "aws-cdk-lib": "2.50.0",
     "fs-extra": "^11.1.0",
     "typescript": "^4.9.5",

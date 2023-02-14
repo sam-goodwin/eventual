@@ -13,7 +13,7 @@ import { Queue } from "aws-cdk-lib/aws-sqs";
 import path from "path";
 import { ChaosExtension } from "./chaos-extension";
 
-import type * as testServiceRuntime from "tests-runtime";
+import * as testServiceRuntime from "tests-runtime";
 
 const app = new App();
 
@@ -39,7 +39,6 @@ const testService = new eventual.Service<typeof testServiceRuntime>(
     logging: {
       logLevel: LogLevel.DEBUG,
     },
-    commands: {},
   }
 );
 

@@ -43,7 +43,6 @@ const ssm = new SSMClient({});
   // execute extensions logic
 
   while (true) {
-    console.log("next");
     const event = await next(extensionId);
     if (!event) {
       continue;
