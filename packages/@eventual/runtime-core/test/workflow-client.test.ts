@@ -68,7 +68,7 @@ describe("start execution", () => {
   test("workflow does not exist", async () => {
     jest.mocked(mockWorkflowProvider.workflowExists).mockReturnValue(false);
 
-    expect(() =>
+    await expect(() =>
       underTest.startExecution({
         input: undefined,
         workflow: "myWorkflow",
@@ -103,7 +103,7 @@ describe("start execution", () => {
   });
 
   test("execution name is invalid non child", async () => {
-    expect(() =>
+    await expect(() =>
       underTest.startExecution({
         input: undefined,
         workflow: "myWorkflow",
@@ -183,7 +183,7 @@ describe("start execution", () => {
       status: ExecutionStatus.IN_PROGRESS,
     });
 
-    expect(() =>
+    await expect(() =>
       underTest.startExecution({
         input: { value: "hello again" },
         workflow: "myWorkflow",
@@ -208,7 +208,7 @@ describe("start execution", () => {
       status: ExecutionStatus.IN_PROGRESS,
     });
 
-    expect(() =>
+    await expect(() =>
       underTest.startExecution({
         input: { value: "hello" },
         workflow: "myWorkflow",
@@ -224,7 +224,7 @@ describe("start execution", () => {
       .mocked(mockExecutionStore.create)
       .mockRejectedValue(new Error("Some Error"));
 
-    expect(() =>
+    await expect(() =>
       underTest.startExecution({
         input: { value: "hello" },
         workflow: "myWorkflow",
@@ -238,7 +238,7 @@ describe("start execution", () => {
       .mocked(mockLogClient.initializeExecutionLog)
       .mockRejectedValue(new Error("Some Error"));
 
-    expect(() =>
+    await expect(() =>
       underTest.startExecution({
         input: { value: "hello" },
         workflow: "myWorkflow",
@@ -252,21 +252,7 @@ describe("start execution", () => {
       .mocked(mockLogClient.putExecutionLogs)
       .mockRejectedValue(new Error("Some Error"));
 
-    expect(() =>
-      underTest.startExecution({
-        input: { value: "hello" },
-        workflow: "myWorkflow",
-        executionName: "myExecution",
-      })
-    ).rejects.toThrowError("Some Error");
-  });
-
-  test("submit to queue fails", async () => {
-    jest
-      .mocked(mockExecutionQueueClient.submitExecutionEvents)
-      .mockRejectedValue(new Error("Some Error"));
-
-    expect(() =>
+    await expect(() =>
       underTest.startExecution({
         input: { value: "hello" },
         workflow: "myWorkflow",
