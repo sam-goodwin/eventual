@@ -5,11 +5,11 @@ import {
   subscriptions,
 } from "@eventual/core";
 
-export interface EventHandlerProvider {
-  getEventHandlersForEvent(eventId: string): SubscriptionHandler<any>[];
+export interface SubscriptionProvider {
+  getSubscriptionsForEvent(eventId: string): SubscriptionHandler<any>[];
 }
 
-export class GlobalEventHandlerProvider implements EventHandlerProvider {
+export class GlobalSubscriptionProvider implements SubscriptionProvider {
   private readonly subscriptions: Record<
     string,
     SubscriptionHandler<EventPayload>[]
@@ -18,7 +18,7 @@ export class GlobalEventHandlerProvider implements EventHandlerProvider {
     this.subscriptions = indexSubscriptions(subscriptions());
   }
 
-  public getEventHandlersForEvent(eventId: string): SubscriptionHandler<any>[] {
+  public getSubscriptionsForEvent(eventId: string): SubscriptionHandler<any>[] {
     return this.subscriptions[eventId] ?? [];
   }
 }

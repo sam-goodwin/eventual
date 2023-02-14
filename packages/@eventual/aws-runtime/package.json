@@ -8,7 +8,7 @@
   },
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
-  "version": "0.16.2",
+  "version": "0.17.0",
   "scripts": {
     "test": "jest --passWithNoTests"
   },

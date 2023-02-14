@@ -653,7 +653,7 @@ importers:
       yargs: ^17.6.2
     dependencies:
       aws-cdk: 2.64.0
-      create-sst: 2.0.22
+      create-sst: 2.0.23
     devDependencies:
       '@eventual/project': link:../@eventual/project
       '@types/inquirer': 8.2.5
@@ -7153,8 +7153,8 @@ packages:
     resolution: {integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==}
     dev: true
 
-  /create-sst/2.0.22:
-    resolution: {integrity: sha512-yFcwXFdOBqL/ysO92haVCqz29jk2n2eAuKsNe1sYctqgJ8d9RpykkLEf6pyuH/OaaoU/5uO3Zs93CfDtETp/PQ==}
+  /create-sst/2.0.23:
+    resolution: {integrity: sha512-4PXL2WvV7bhe27AvDHJKGHazeqGdg3eH+3/k+pB7p1ORL2rt6eYc64Y1AERLa0EAG85fnkVO2kVn/YI714LoLg==}
     hasBin: true
     dependencies:
       cli-spinners: 2.7.0
