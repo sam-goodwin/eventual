@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.17.0 (2023-02-14)
+
+### Features
+
+- add middleware for APIs and Commands ([#281](https://github.com/functionless/eventual/issues/281)) ([ffa9b3c](https://github.com/functionless/eventual/commit/ffa9b3c85e205ba07bd30156bb3a6a02fcf029a1))
+
+## 0.16.2 (2023-02-13)
+
+### Bug Fixes
+
+- filter out only Command types on ServiceClient ([#280](https://github.com/functionless/eventual/issues/280)) ([bd6844d](https://github.com/functionless/eventual/commit/bd6844d2c0f767cd3255985bd18d15a8909b1f0f))
+
+## 0.16.1 (2023-02-12)
+
+**Note:** Version bump only for package @eventual/testing
+
 # 0.16.0 (2023-02-10)
 
 ### Features

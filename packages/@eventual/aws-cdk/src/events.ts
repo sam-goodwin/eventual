@@ -21,13 +21,13 @@ import { computeDurationSeconds } from "@eventual/runtime-core";
 import { Duration } from "aws-cdk-lib";
 import type { KeysOfType } from "./utils";
 
-export type EventHandlerNames<Service> = KeysOfType<
+export type SubscriptionNames<Service> = KeysOfType<
   Service,
-  { kind: "EventHandler" }
+  { kind: "Subscription" }
 >;
 
 export type SubscriptionProps<Service> = {
-  [eventHandler in EventHandlerNames<Service>]?: EventHandlerProps;
+  [eventHandler in SubscriptionNames<Service>]?: EventHandlerProps;
 };
 
 export interface EventsProps<Service = any> {
@@ -68,7 +68,7 @@ export class Events<Service> extends Construct implements IGrantable {
    * memory and timeout configuration.
    */
   public readonly subscriptions: {
-    [handler in EventHandlerNames<Service>]: Function;
+    [handler in SubscriptionNames<Service>]: Function;
   };
 
   public get handlers(): Function[] {
@@ -96,6 +96,7 @@ export class Events<Service> extends Construct implements IGrantable {
     this.deadLetterQueue = new Queue(this, "DeadLetterQueue");
 
     const functionProps: Partial<ServiceFunctionProps> = {
+      serviceType: ServiceType.Subscription,
       deadLetterQueueEnabled: true,
       deadLetterQueue: this.deadLetterQueue,
       retryAttempts: 2,
@@ -122,15 +123,15 @@ export class Events<Service> extends Construct implements IGrantable {
           functionName: `${props.serviceName}-event-${sub.name}`,
           ...functionProps,
           ...(props.subscriptions?.[sub.name] ?? {}),
-          memorySize: sub.runtimeProps?.memorySize,
-          timeout: sub.runtimeProps?.timeout
-            ? Duration.seconds(computeDurationSeconds(sub.runtimeProps.timeout))
+          memorySize: sub.props?.memorySize,
+          timeout: sub.props?.timeout
+            ? Duration.seconds(computeDurationSeconds(sub.props.timeout))
             : undefined,
 
           role: props.subscriptions?.[sub.name]?.role ?? role,
         });
 
-        if (sub.subscriptions.length > 0) {
+        if (sub.filters.length > 0) {
           // configure a Rule to route all subscribed events to the eventHandler
           new Rule(handler, "Rules", {
             eventBus: this.bus,
@@ -139,13 +140,13 @@ export class Events<Service> extends Construct implements IGrantable {
               // TODO: this seems like it would break service-to-service?
               source: [this.serviceName],
               detailType: Array.from(
-                new Set(sub.subscriptions.map((sub) => sub.name))
+                new Set(sub.filters.map((sub) => sub.name))
               ),
             },
             targets: [
               new LambdaFunction(handler, {
                 deadLetterQueue: this.deadLetterQueue,
-                retryAttempts: sub.runtimeProps?.retryAttempts,
+                retryAttempts: sub.props?.retryAttempts,
               }),
             ],
           });
@@ -153,7 +154,7 @@ export class Events<Service> extends Construct implements IGrantable {
         return [sub.name, handler];
       })
     ) as {
-      [handler in EventHandlerNames<Service>]: Function;
+      [handler in SubscriptionNames<Service>]: Function;
     };
 
     this.handlers.forEach((handler) => {

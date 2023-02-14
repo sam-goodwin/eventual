@@ -94,16 +94,25 @@ type ServiceClientName<T> = T extends { name: infer Name extends string }
 type ServiceClientMethod<T> = T extends {
   handler: infer Handler extends (...args: any[]) => any;
 }
-  ? (...args: Parameters<Handler>) => Promise<Awaited<ReturnType<Handler>>>
+  ? ReturnType<Handler> extends Promise<any>
+    ? Handler // only re-write the signature if the return type needs to be Awaited
+    : (...args: Parameters<Handler>) => Promise<Awaited<ReturnType<Handler>>>
   : never;
 
 type KeysWhereNameIsSame<Service> = {
   [k in keyof Service]: k extends Extract<Service[k], { name: string }>["name"]
-    ? k
+    ? // we only want commands to show up
+      Service[k] extends { kind: "Command" }
+      ? k
+      : never
     : never;
 }[keyof Service];
 
 type KeysWhereNameIsDifferent<Service> = Exclude<
-  keyof Service,
+  KeysOfType<Service, { kind: "Command" }>,
   KeysWhereNameIsSame<Service>
 >;
+
+type KeysOfType<T, U> = {
+  [k in keyof T]: T[k] extends U ? k : never;
+}[keyof T];

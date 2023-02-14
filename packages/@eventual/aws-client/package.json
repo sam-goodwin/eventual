@@ -8,7 +8,7 @@
   },
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "scripts": {
     "test": "jest --passWithNoTests"
   },
@@ -22,12 +22,10 @@
     "@aws-sdk/querystring-parser": "^3.254.0",
     "@aws-sdk/signature-v4": "^3.254.0",
     "@eventual/client": "workspace:^",
-    "@eventual/core": "workspace:^",
-    "node-fetch": "^2.6.7"
+    "@eventual/core": "workspace:^"
   },
   "devDependencies": {
-    "@types/node": "^16",
-    "@types/node-fetch": "^2.6.2",
+    "@types/node": "^18",
     "ts-node": "^10.9.1",
     "typescript": "^4.9.5"
   },

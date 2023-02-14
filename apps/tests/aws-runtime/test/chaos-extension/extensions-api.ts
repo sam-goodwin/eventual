@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 import path from "path";
 
 export enum EventType {
@@ -12,9 +11,7 @@ export async function register(): Promise<string> {
   const res = await fetch(`${baseUrl}/register`, {
     method: "post",
     body: JSON.stringify({
-      events: [
-        "INVOKE",
-      ],
+      events: ["INVOKE"],
     }),
     headers: {
       "Content-Type": "application/json",
@@ -25,7 +22,6 @@ export async function register(): Promise<string> {
   if (!res.ok) {
     console.error("register failed", await res.text());
   }
-
   return res.headers.get("lambda-extension-identifier") as string;
 }
 

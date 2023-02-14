@@ -1,4 +1,4 @@
-import { HttpRequest } from "@eventual/core";
+import { HttpRequest } from "../http-request.js";
 
 export abstract class RequestHandler {
   constructor(private beforeRequest?: BeforeRequest) {}

@@ -1,4 +1,4 @@
-#!/usr/bin/env -S node -r "ts-node/register"
+#!/usr/bin/env node
 
 import { infer } from "../lib/cjs/eventual-infer.js";
 

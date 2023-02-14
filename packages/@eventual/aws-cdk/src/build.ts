@@ -142,7 +142,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         },
       },
     },
-    api: manifestInternalAPI(),
+    api: manifestInternalAPI() as any,
   };
 
   await fs.promises.writeFile(
@@ -186,7 +186,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
                   serviceType:
                     type === "commands"
                       ? ServiceType.ApiHandler
-                      : ServiceType.EventHandler,
+                      : ServiceType.Subscription,
                   injectedEntry: spec.sourceLocation.fileName,
                   injectedServiceSpec: specPath,
                 }),
@@ -240,9 +240,9 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           serviceType: ServiceType.ApiHandler,
         },
         {
-          name: ServiceType.EventHandler,
+          name: ServiceType.Subscription,
           entry: runtimeHandlersEntrypoint("event-handler"),
-          serviceType: ServiceType.EventHandler,
+          serviceType: ServiceType.Subscription,
         },
       ]
         .map((s) => ({
@@ -328,9 +328,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     return path.relative(path.resolve(request.outDir), path.resolve(file));
   }
 
-  function manifestInternalAPI(): {
-    [k in keyof InternalApiRoutes]: InternalCommandFunction;
-  } {
+  function manifestInternalAPI() {
     return Object.fromEntries([
       internalCommand({
         name: "listWorkflows",
@@ -386,9 +384,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         method: "POST",
         file: updateActivity!,
       }),
-    ]) as {
-      [k in keyof InternalApiRoutes]: InternalCommandFunction;
-    };
+    ] as const);
 
     function internalCommand<P extends keyof InternalApiRoutes>(props: {
       name: string;

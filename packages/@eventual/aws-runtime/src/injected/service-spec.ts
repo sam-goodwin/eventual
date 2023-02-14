@@ -17,7 +17,7 @@ export default {
   subscriptions: {
     default: {
       name: "default",
-      subscriptions: [],
+      filters: [],
     },
   },
 } satisfies ServiceSpec;

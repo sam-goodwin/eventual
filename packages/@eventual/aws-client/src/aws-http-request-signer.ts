@@ -3,8 +3,7 @@ import { defaultProvider } from "@aws-sdk/credential-provider-node";
 import { HttpRequest as AwsHttpRequest } from "@aws-sdk/protocol-http";
 import { parseQueryString } from "@aws-sdk/querystring-parser";
 import { SignatureV4 } from "@aws-sdk/signature-v4";
-import { BeforeRequest } from "@eventual/client";
-import { HttpMethod, HttpRequest } from "@eventual/core";
+import { BeforeRequest, HttpRequest } from "@eventual/client";
 import { AWSHttpEventualClientProps } from "./aws-http-eventual-client.js";
 import { resolveRegion } from "./resolve-aws-region.js";
 
@@ -18,7 +17,7 @@ export function createAwsHttpRequestSigner(
 
     const url = new URL(updatedRequest.url);
 
-    const _headers = { ...updatedRequest.headers, host: url.hostname };
+    const _headers: any = { ...updatedRequest.headers, host: url.hostname };
 
     const _request = new AwsHttpRequest({
       hostname: url.hostname,
@@ -41,11 +40,12 @@ export function createAwsHttpRequestSigner(
     // sign the request and extract the signed headers, body and method
     const { headers, body, method } = await signer.sign(_request);
 
-    const authorizedRequest = new HttpRequest(url.href, {
-      method: method as HttpMethod,
+    const authorizedRequest: HttpRequest = {
+      url: url.href,
       body,
       headers,
-    });
+      method,
+    };
 
     return props.beforeRequest
       ? await props.beforeRequest(authorizedRequest)

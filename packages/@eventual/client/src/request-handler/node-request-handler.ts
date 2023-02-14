@@ -1,8 +1,8 @@
 // type imports can stay in the lexical imports
-import type { HttpRequest } from "@eventual/core";
 import type { ClientRequest, IncomingMessage } from "http";
 import type { RequestOptions } from "https";
 import { BeforeRequest, HttpError, RequestHandler } from "./request-handler.js";
+import type { HttpRequest } from "../http-request.js";
 
 /**
  * A request handler that uses node's https module.

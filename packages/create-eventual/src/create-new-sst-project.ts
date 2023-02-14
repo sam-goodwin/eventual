@@ -23,6 +23,7 @@ export async function createSSTProject({
 }: CreateSSTProps) {
   await exec(
     "npx",
+    "--yes",
     "create-sst@1.x",
     projectName,
     "--template=minimal/typescript-starter"

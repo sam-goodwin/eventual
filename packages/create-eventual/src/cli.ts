@@ -30,6 +30,12 @@ const targetChoices = [ProjectType.AWS_CDK, ProjectType.SST].sort();
             type: "string",
             description: "Name of the service to create",
           })
+          .option("git", {
+            type: "boolean",
+            boolean: true,
+            default: true,
+            description: "init a git repo",
+          })
           .check(({ projectName, serviceName }) => {
             if (projectName) {
               assertName("project", validateProjectName);
@@ -44,6 +50,7 @@ const targetChoices = [ProjectType.AWS_CDK, ProjectType.SST].sort();
           projectType: args.target,
           projectName: args.projectName,
           serviceName: args.serviceName,
+          git: args.git,
         });
       }
     )

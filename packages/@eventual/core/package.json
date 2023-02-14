@@ -1,6 +1,6 @@
 {
   "name": "@eventual/core",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",
@@ -25,7 +25,7 @@
     "@jest/globals": "^29.3.1",
     "@tshttp/status": "^2.0.0",
     "@types/jest": "^29",
-    "@types/node": "^16",
+    "@types/node": "^18",
     "jest": "^29",
     "ts-jest": "^29",
     "ts-node": "^10.9.1",
