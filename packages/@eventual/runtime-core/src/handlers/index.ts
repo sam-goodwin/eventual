@@ -1,3 +1,4 @@
+export * from "./activity-fallback-handler.js";
 export * from "./activity-worker.js";
 export * from "./api-handler.js";
 export * from "./event-handler.js";

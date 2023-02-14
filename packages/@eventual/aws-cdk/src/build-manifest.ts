@@ -11,7 +11,10 @@ export interface BuildManifest {
    * Activities declared within the Service.
    */
   // TODO: split out into individual activity functions
-  activities: BundledFunction<undefined>;
+  activities: {
+    handler: BundledFunction<undefined>;
+    fallbackHandler: BundledFunction<undefined>;
+  };
   /**
    * The events and their schema.
    */

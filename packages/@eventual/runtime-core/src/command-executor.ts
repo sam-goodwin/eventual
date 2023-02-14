@@ -1,6 +1,5 @@
 import {
   ActivityScheduled,
-  ActivityWorkerRequest,
   assertNever,
   ChildWorkflowScheduled,
   WorkflowCommand,
@@ -27,7 +26,10 @@ import {
   WorkflowEventType,
   ExecutionID,
 } from "@eventual/core";
-import { ActivityClient } from "./clients/activity-client.js";
+import {
+  ActivityClient,
+  ActivityWorkerRequest,
+} from "./clients/activity-client.js";
 import { EventClient } from "./clients/event-client.js";
 import { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { TimerClient } from "./clients/timer-client.js";

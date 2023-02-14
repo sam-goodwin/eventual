@@ -1,5 +1,4 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
-import { ActivityCompletionResultType } from "@eventual/runtime-core";
 import { Duration, RemovalPolicy } from "aws-cdk-lib";
 import {
   AttributeType,
@@ -9,8 +8,7 @@ import {
 } from "aws-cdk-lib/aws-dynamodb";
 import { IGrantable } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
-import { SqsDestination } from "aws-cdk-lib/aws-lambda-destinations";
-import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
+import { LambdaDestination } from "aws-cdk-lib/aws-lambda-destinations";
 import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
 import { Events } from "./events";
@@ -89,9 +87,9 @@ export class Activities
    */
   public worker: Function;
   /**
-   * Activity results are placed in a queue to be processed and sent to the workflow.
+   * Function which is executed when an activity worker returns a failure.
    */
-  public resultQueue: IQueue;
+  public fallbackHandler: Function;
 
   constructor(scope: Construct, id: string, private props: ActivitiesProps) {
     super(scope, id);
@@ -106,49 +104,25 @@ export class Activities
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
-    this.resultQueue = new Queue(this, "ResultQueue");
+    this.fallbackHandler = new ServiceFunction(this, "FallbackHandler", {
+      code: props.build.getCode(props.build.activities.fallbackHandler.file),
+      functionName: `${props.serviceName}-activity-fallback-handler`,
+      memorySize: 512,
+    });
 
     this.worker = new ServiceFunction(this, "Worker", {
-      code: props.build.getCode(props.build.activities.file),
+      code: props.build.getCode(props.build.activities.handler.file),
       functionName: `${props.serviceName}-activity-handler`,
       memorySize: 512,
       // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
       retryAttempts: 0,
       // TODO: determine worker timeout strategy
       timeout: Duration.minutes(1),
-      // when the activity completes, the results are put in the queue to be durably sent to the workflow
-      onSuccess: new SqsDestination(this.resultQueue),
+      // handler and recovers from error cases
+      onFailure: new LambdaDestination(this.fallbackHandler),
     });
 
-    /**
-     * A pipe that reports the result of activities to the caller workflow.
-     *
-     * This is used when the activity worker fails to submit a result as a last
-     * resort. The happy path currently submits the result directly to the workflow.
-     */
-    this.props.workflows.pipeToWorkflowQueue(this, "DurableCompletionPipe", {
-      grant: (role) => this.resultQueue.grantConsumeMessages(role),
-      source: this.resultQueue.queueArn,
-      event: "<$.body.responsePayload.event>",
-      executionIdPath: "$.body.responsePayload.executionId",
-      sourceProps: {
-        FilterCriteria: {
-          Filters: [
-            {
-              Pattern: JSON.stringify({
-                body: {
-                  responsePayload: {
-                    type: [ActivityCompletionResultType.DURABLE_COMPLETION],
-                    executionId: [{ exists: true }],
-                  },
-                },
-              }),
-            },
-          ],
-        },
-      },
-    });
-
+    this.configureActivityFallbackHandler();
     this.configureActivityWorker();
   }
 
@@ -253,6 +227,11 @@ export class Activities
      * Access to service name in the activity worker for metrics logging
      */
     this.props.service.configureServiceName(this.worker);
+  }
+
+  private configureActivityFallbackHandler() {
+    // report result back to the execution
+    this.props.workflows.configureSubmitExecutionEvents(this.fallbackHandler);
   }
 
   private readonly ENV_MAPPINGS = {

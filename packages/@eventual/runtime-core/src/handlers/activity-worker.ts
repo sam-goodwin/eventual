@@ -2,7 +2,6 @@ import {
   ActivityFailed,
   ActivityNotFoundError,
   ActivitySucceeded,
-  ActivityWorkerRequest,
   clearActivityContext,
   createEvent,
   EventualServiceClient,
@@ -18,6 +17,7 @@ import {
   WorkflowEventType,
 } from "@eventual/core";
 import { createActivityToken } from "../activity-token.js";
+import { ActivityWorkerRequest } from "../clients/activity-client.js";
 import { EventClient } from "../clients/event-client.js";
 import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
@@ -30,6 +30,10 @@ import { timed } from "../metrics/utils.js";
 import { ActivityProvider } from "../providers/activity-provider.js";
 import { computeDurationSeconds } from "../schedule.js";
 import { ActivityStore } from "../stores/activity-store.js";
+import {
+  ActivityFallbackRequest,
+  ActivityFallbackRequestType,
+} from "./activity-fallback-handler.js";
 
 export interface CreateActivityWorkerProps {
   timerClient: TimerClient;
@@ -51,23 +55,7 @@ export interface ActivityWorker {
      * Allows for a computed end time, for case like the test environment when the end time should be controlled.
      */
     getEndTime?: (startTime: Date) => Date
-  ): Promise<void | DurableCompletionResult>;
-}
-
-export enum ActivityCompletionResultType {
-  DURABLE_COMPLETION = "DURABLE_COMPLETION",
-}
-
-export interface DurableCompletionResult {
-  type: ActivityCompletionResultType.DURABLE_COMPLETION;
-  event: ActivityFailed | ActivitySucceeded;
-  executionId: string;
-}
-
-export function isDurationCompletionResult(
-  res: any
-): res is DurableCompletionResult {
-  return res && res.type === ActivityCompletionResultType.DURABLE_COMPLETION;
+  ): Promise<void | ActivityFallbackRequest>;
 }
 
 /**
@@ -189,9 +177,9 @@ export function createActivityWorker({
                   // to using the async function on success destination.
                   // on success => sqs => pipe (CompletionPipe) => workflow queue
                   return {
-                    executionId: request.executionId,
+                    type: ActivityFallbackRequestType.ActivitySendEventFailure,
                     event,
-                    type: ActivityCompletionResultType.DURABLE_COMPLETION,
+                    executionId: request.executionId,
                   };
                 } finally {
                   logActivityCompleteMetrics(
@@ -340,7 +328,7 @@ export function createActivityWorker({
           // as a final fallback, report the activity as failed if anything failed an was not yet caught.
           // TODO: support retries
           return {
-            type: ActivityCompletionResultType.DURABLE_COMPLETION,
+            type: ActivityFallbackRequestType.ActivitySendEventFailure,
             executionId: request.executionId,
             event: {
               type: WorkflowEventType.ActivityFailed,

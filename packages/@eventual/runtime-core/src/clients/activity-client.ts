@@ -1,9 +1,9 @@
 import {
   ActivityFailed,
   ActivitySucceeded,
-  ActivityWorkerRequest,
   createEvent,
   ExecutionStatus,
+  ScheduleActivityCommand,
   SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
   SendActivitySuccessRequest,
@@ -96,4 +96,12 @@ export abstract class ActivityClient {
   }
 
   public abstract startActivity(request: ActivityWorkerRequest): Promise<void>;
+}
+
+export interface ActivityWorkerRequest {
+  scheduledTime: string;
+  workflowName: string;
+  executionId: string;
+  command: ScheduleActivityCommand;
+  retry: number;
 }
