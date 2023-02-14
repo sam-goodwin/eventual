@@ -89,7 +89,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     ],
     [
       // also bundle each of the internal eventual API Functions as they have no dependencies
-      activityErrorHandler,
+      activityFallbackHandler,
       scheduleForwarder,
       timerHandler,
       listWorkflows,
@@ -121,7 +121,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       handler: {
         file: monoActivityFunction!,
       },
-      fallbackHandler: { file: activityErrorHandler! },
+      fallbackHandler: { file: activityFallbackHandler! },
     },
     events: serviceSpec.events,
     subscriptions,
@@ -259,8 +259,8 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       (
         [
           {
-            name: "ActivityErrorHandler",
-            entry: runtimeHandlersEntrypoint("activity-error-handler"),
+            name: "ActivityFallbackHandler",
+            entry: runtimeHandlersEntrypoint("activity-fallback-handler"),
           },
           {
             name: "SchedulerForwarder",
