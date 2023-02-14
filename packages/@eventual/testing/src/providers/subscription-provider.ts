@@ -1,7 +1,7 @@
 import { Event, SubscriptionHandler, EventPayloadType } from "@eventual/core";
-import { GlobalEventHandlerProvider } from "@eventual/runtime-core";
+import { GlobalSubscriptionProvider } from "@eventual/runtime-core";
 
-export class TestEventHandlerProvider extends GlobalEventHandlerProvider {
+export class TestSubscriptionProvider extends GlobalSubscriptionProvider {
   private defaultHandlersDisabled = false;
   private testHandlers: Record<string, SubscriptionHandler<any>[]> = {};
 
@@ -23,22 +23,24 @@ export class TestEventHandlerProvider extends GlobalEventHandlerProvider {
     this.testHandlers = {};
   }
 
-  public subscribeEvent<E extends Event>(
-    event: E,
+  public subscribeEvents<E extends Event>(
+    events: E[],
     handler: SubscriptionHandler<EventPayloadType<E>>
   ) {
-    if (!(event.name in this.testHandlers)) {
-      this.testHandlers[event.name] = [];
+    for (const event of events) {
+      if (!(event.name in this.testHandlers)) {
+        this.testHandlers[event.name] = [];
+      }
+      this.testHandlers[event.name]?.push(handler);
     }
-    this.testHandlers[event.name]?.push(handler);
   }
 
-  public override getEventHandlersForEvent(
+  public override getSubscriptionsForEvent(
     eventId: string
   ): SubscriptionHandler<any>[] {
     const defaultHandlers = this.defaultHandlersDisabled
       ? []
-      : super.getEventHandlersForEvent(eventId);
+      : super.getSubscriptionsForEvent(eventId);
 
     const testHandlers = this.testHandlers[eventId] ?? [];
 
