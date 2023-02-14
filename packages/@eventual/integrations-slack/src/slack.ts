@@ -87,8 +87,8 @@ export class Slack<Name extends string = string> {
       }
     );
 
-    api.all(`/_slack/${name}`, async (request) => {
-      return (await this.getHandler())(request);
+    api.all(`/_slack/${name}`, async (request, context) => {
+      return (await this.getHandler())(request, context);
     });
 
     const deferMethodNames = new Set([

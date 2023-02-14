@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { jest } from "@jest/globals";
 
 import { EventualError, HeartbeatTimeout } from "@eventual/core";
@@ -18,8 +19,6 @@ import {
   timedWorkflow,
   allCommands,
 } from "./test-service.js";
-
-import fetch from "node-fetch";
 
 jest.setTimeout(100 * 1000);
 
@@ -183,4 +182,46 @@ test("output with schema should serialize", async () => {
 
   expect(restResponse).toEqual(expected);
   expect(rpcResponse).toEqual(expected);
+});
+
+test("middleware context is properly piped to command", async () => {
+  const rpcResponse = await (
+    await fetch(`${url}/_rpc/extractHeaderCommand`, {
+      method: "POST",
+      body: JSON.stringify({
+        userId: "my-user-id",
+      }),
+      headers: {
+        MyHeader: "value",
+      },
+    })
+  ).json();
+
+  expect(rpcResponse).toEqual({
+    MyHeader: "value",
+  });
+});
+
+test("middleware can respond early", async () => {
+  const rpcResponse = await (
+    await fetch(`${url}/_rpc/earlyMiddlewareResponse`, {
+      method: "POST",
+      body: JSON.stringify({
+        userId: "my-user-id",
+      }),
+    })
+  ).text();
+
+  expect(rpcResponse).toEqual("Early Response");
+});
+
+test("middleware can edit response", async () => {
+  const rpcResponse = await fetch(`${url}/_rpc/modifyResponseMiddleware`, {
+    method: "POST",
+    body: JSON.stringify({
+      userId: "my-user-id",
+    }),
+  });
+
+  expect(rpcResponse.headers.get("ModifiedHeader")).toEqual("Injected Header");
 });

@@ -107,6 +107,10 @@ export async function infer(
           method: command.method,
           input: command.input ? generateSchema(command.input) : undefined,
           output: command.output ? generateSchema(command.output) : undefined,
+          passThrough: command.passThrough,
+          params: command.params,
+          validate: command.validate,
+          internal: command.internal,
         } satisfies CommandSpec,
       ])
     ),

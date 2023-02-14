@@ -157,7 +157,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     const routes = await Promise.all(
       Object.values(serviceSpec[type]).map(
         async (
-          spec: SpecFor<Type>
+          spec: any
         ): Promise<
           readonly [string, BundledFunction<CommandSpec | SubscriptionSpec>]
         > => {
@@ -320,9 +320,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     return path.relative(path.resolve(request.outDir), path.resolve(file));
   }
 
-  function manifestInternalAPI(): {
-    [k in keyof InternalApiRoutes]: InternalCommandFunction;
-  } {
+  function manifestInternalAPI() {
     return Object.fromEntries([
       internalCommand({
         name: "listWorkflows",
@@ -378,9 +376,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         method: "POST",
         file: updateActivity!,
       }),
-    ]) as {
-      [k in keyof InternalApiRoutes]: InternalCommandFunction;
-    };
+    ]) as any;
 
     function internalCommand<P extends keyof InternalApiRoutes>(props: {
       name: string;

@@ -34,6 +34,7 @@ export function createApiHandler({ serviceClient }: ApiHandlerDependencies) {
    * then handles the request.
    */
   return function processRequest(request: HttpRequest): Promise<HttpResponse> {
+    console.log("request", request);
     return serviceTypeScope(ServiceType.ApiHandler, async () => {
       try {
         const response = await router.handle(request);
@@ -102,9 +103,7 @@ function initRouter() {
           }
         }
 
-        let output: any = await command.handler(input, {
-          headers: request.headers,
-        });
+        let output: any = await command.handler(input, context);
         if (command.output && shouldValidate) {
           try {
             output = command.output.parse(output);
@@ -180,7 +179,7 @@ function initRouter() {
             } else if (spec === "query") {
               return request.query?.[name];
             } else if (spec === "header") {
-              return request.headers?.[name];
+              return request.headers.get(name);
             } else if (spec === "path") {
               return request.params?.[name];
             } else {
@@ -214,6 +213,7 @@ function initRouter() {
           request: HttpRequest,
           context: any
         ): Promise<HttpResponse> {
+          let consumed = false;
           const middleware = chain.next();
           if (middleware.done) {
             return handler(request, context);
@@ -221,7 +221,16 @@ function initRouter() {
             return middleware.value({
               request,
               context,
-              next: async (context) => next(request, context),
+              next: async (context) => {
+                console.log("next", context);
+                if (consumed) {
+                  consumed = true;
+                  throw new Error(
+                    `Middleware cannot call 'next' more than once`
+                  );
+                }
+                return next(request, context);
+              },
             });
           }
         }

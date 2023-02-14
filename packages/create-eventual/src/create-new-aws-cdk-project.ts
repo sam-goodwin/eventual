@@ -175,9 +175,9 @@ ${npm("deploy")}
         },
         devDependencies: {
           "@eventual/cli": `^${version}`,
-          "@tsconfig/node16": "^1",
+          "@tsconfig/node18": "^1",
           "@types/jest": "^29",
-          "@types/node": "^16",
+          "@types/node": "^18",
           esbuild: "^0.16.14",
           typescript: "^4.9.4",
         },
@@ -192,7 +192,7 @@ ${npm("deploy")}
           : {}),
       }),
       writeJsonFile("tsconfig.base.json", {
-        extends: "@tsconfig/node16/tsconfig.json",
+        extends: "@tsconfig/node18/tsconfig.json",
         compilerOptions: {
           composite: true,
           declaration: true,
@@ -202,6 +202,7 @@ ${npm("deploy")}
           module: "esnext",
           moduleResolution: "NodeNext",
           resolveJsonModule: true,
+          lib: ["ES2022", "WebWorker"],
           types: ["@types/node", "@types/jest"],
         },
       }),
@@ -331,7 +332,7 @@ packages:
           [serviceName!]: workspaceVersion,
         },
         devDependencies: {
-          "@types/node": "^16",
+          "@types/node": "^18",
           "aws-cdk": "^2.50.0",
           "ts-node": "^10.9.1",
           typescript: "^4.9.4",

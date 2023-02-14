@@ -115,14 +115,14 @@ function createRouter<Context>(
 
 export interface RouteRuntimeProps extends FunctionRuntimeProps {}
 
-export type HttpHandler = (
+export type HttpHandler<Context = any> = (
   request: HttpRequest,
-  ...args: any
+  context: Context
 ) => HttpResponse | Promise<HttpResponse>;
 
 export interface HttpRoute {
   path: string;
-  handlers: HttpHandler[];
+  handlers: HttpHandler<any>[];
   method: HttpMethod;
   runtimeProps?: RouteRuntimeProps;
   /**
@@ -135,9 +135,9 @@ export interface HttpRouteFactory<Context> {
   (
     path: string,
     props: RouteRuntimeProps,
-    ...handlers: HttpHandler[]
+    handlers: HttpHandler<Context>
   ): HttpRouter<Context>;
-  (path: string, ...handlers: HttpHandler[]): HttpRouter<Context>;
+  (path: string, handlers: HttpHandler<Context>): HttpRouter<Context>;
 }
 
 export interface HttpRouter<Context> {

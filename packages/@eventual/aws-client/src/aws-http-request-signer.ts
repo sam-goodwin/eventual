@@ -18,7 +18,8 @@ export function createAwsHttpRequestSigner(
 
     const url = new URL(updatedRequest.url);
 
-    const _headers = { ...updatedRequest.headers, host: url.hostname };
+    const _headers: any = { host: url.hostname };
+    updatedRequest.headers.forEach((value, key) => (_headers[key] = value));
 
     const _request = new AwsHttpRequest({
       hostname: url.hostname,
