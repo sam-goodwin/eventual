@@ -94,7 +94,11 @@ export async function infer(
         e.name,
         {
           name: e.name,
-          props: e.props,
+          props: {
+            memorySize: e.props?.memorySize,
+            retryAttempts: e.props?.retryAttempts,
+            timeout: e.props?.timeout,
+          },
           sourceLocation: e.sourceLocation,
           filters: e.filters,
         } satisfies SubscriptionSpec,
