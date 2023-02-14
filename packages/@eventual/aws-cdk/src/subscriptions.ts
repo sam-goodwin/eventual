@@ -134,17 +134,18 @@ export class Subscription extends Construct implements IGrantable {
     this.deadLetterQueue = new Queue(this, "DeadLetterQueue");
     this.handler = new ServiceFunction(this, "Handler", {
       code: props.build.getCode(func.file),
-      functionName: `${props.serviceName}-event-${subscription.name}`,
+      functionName: `${props.serviceName}-subscription-${subscription.name}`,
       serviceType: ServiceType.Subscription,
       deadLetterQueueEnabled: true,
-      retryAttempts: 2,
-      environment: props.environment,
       ...(props.overrides ?? {}),
-      memorySize: subscription.props?.memorySize,
+      environment: {
+        ...(props.environment ?? {}),
+        ...(props.overrides?.environment ?? {}),
+      },
+      memorySize: subscription.props?.memorySize ?? 512,
       timeout: subscription.props?.timeout
         ? Duration.seconds(computeDurationSeconds(subscription.props.timeout))
         : undefined,
-
       role: props.overrides?.role,
     });
     this.grantPrincipal = this.handler.role!;
@@ -164,7 +165,10 @@ export class Subscription extends Construct implements IGrantable {
         targets: [
           new LambdaFunction(this.handler, {
             deadLetterQueue: this.deadLetterQueue,
-            retryAttempts: subscription.props?.retryAttempts,
+            retryAttempts:
+              props.overrides?.retryAttempts ??
+              props.subscription.spec.props?.retryAttempts ??
+              2,
           }),
         ],
       });
