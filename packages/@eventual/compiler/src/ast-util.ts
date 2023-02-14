@@ -50,6 +50,23 @@ export function isOnEventCall(call: CallExpression): boolean {
 }
 
 /**
+ * A heuristic for identifying a {@link CallExpression} that is a call to an `subscription` handler.
+ *
+ * 1. must be a call to an `subscription(name, props, impl)` or a MemberExpression matching to `<expression>.subscription(name,  props, impl)`.
+ * 2. must have exactly 3 arguments.
+ */
+export function isSubscriptionCall(call: CallExpression): boolean {
+  const c = call.callee;
+  if (
+    (c.type == "Identifier" && c.value === "subscription") ||
+    (c.type === "MemberExpression" && isId(c.property, "subscription"))
+  ) {
+    return call.arguments.length === 3;
+  }
+  return false;
+}
+
+/**
  * Checks whether a {@link node} is an {@link Identifier} with a value of {@link Value}.
  */
 function isId<Value extends string>(

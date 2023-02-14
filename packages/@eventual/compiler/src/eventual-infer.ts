@@ -31,7 +31,12 @@ import esbuild from "esbuild";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
-import { getSpan, isCommandCall, isOnEventCall } from "./ast-util.js";
+import {
+  getSpan,
+  isCommandCall,
+  isOnEventCall,
+  isSubscriptionCall,
+} from "./ast-util.js";
 import { printModule } from "./print-module.js";
 
 export async function infer(
@@ -194,7 +199,10 @@ export class InferVisitor extends Visitor {
   }
 
   visitCallExpression(call: CallExpression): Expression {
-    if (this.exportName && (isCommandCall(call) || isOnEventCall(call))) {
+    if (
+      this.exportName &&
+      (isCommandCall(call) || isOnEventCall(call) || isSubscriptionCall(call))
+    ) {
       this.didMutate = true;
 
       return {

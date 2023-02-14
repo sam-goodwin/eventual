@@ -1,4 +1,4 @@
-import type { EventPayload } from "./event.js";
+import type { Event, EventPayload } from "./event.js";
 import type { FunctionRuntimeProps } from "./function-props.js";
 import { subscriptions } from "./global.js";
 import { isSourceLocation, SourceLocation } from "./service-spec.js";
@@ -31,7 +31,7 @@ export interface SubscriptionProps<E extends EventPayload>
   /**
    * Events to subscribe to.
    */
-  events: E[];
+  events: Event<E>[];
 }
 
 export interface Subscription<
