@@ -1,7 +1,18 @@
 /* eslint-disable require-yield, no-throw-literal */
 import {
-  chain,
   Context,
+  duration,
+  EventualError,
+  HeartbeatTimeout,
+  Schedule,
+  signal,
+  SignalTargetType,
+  time,
+  Timeout,
+  workflow as _workflow,
+} from "@eventual/core";
+import {
+  chain,
   createActivityCall,
   createAwaitAll,
   createAwaitAllSettled,
@@ -13,21 +24,12 @@ import {
   createRegisterSignalHandlerCall,
   createSendSignalCall,
   createWorkflowCall,
-  duration,
   Eventual,
-  EventualError,
-  HeartbeatTimeout,
   Program,
   Result,
-  Schedule,
   ServiceType,
   serviceTypeScopeSync,
-  signal,
-  SignalTargetType,
-  time,
-  Timeout,
-  workflow as _workflow,
-} from "@eventual/core";
+} from "@eventual/core/internal";
 import { interpret as _interpret, WorkflowResult } from "../src/interpret.js";
 import {
   activityFailed,

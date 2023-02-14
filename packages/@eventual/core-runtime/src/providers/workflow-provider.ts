@@ -1,4 +1,5 @@
-import { ServiceSpec, Workflow, workflows } from "@eventual/core";
+import { Workflow } from "@eventual/core";
+import { workflows, ServiceSpec } from "@eventual/core/internal";
 
 export interface WorkflowProvider extends WorkflowSpecProvider {
   lookupWorkflow(workflowName: string): Workflow | undefined;

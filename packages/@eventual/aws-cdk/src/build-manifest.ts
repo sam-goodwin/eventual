@@ -1,4 +1,8 @@
-import type { CommandSpec, EventSpec, SubscriptionSpec } from "@eventual/core";
+import type {
+  CommandSpec,
+  EventSpec,
+  SubscriptionSpec,
+} from "@eventual/core/internal";
 
 export interface BuildManifest {
   orchestrator: BundledFunction;

@@ -1,11 +1,10 @@
 import {
   ActivityHeartbeatTimedOut,
-  assertNever,
-  createEvent,
   LogLevel,
   Schedule,
   WorkflowEventType,
 } from "@eventual/core";
+import { assertNever } from "@eventual/core/internal";
 import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import {
   isActivityHeartbeatMonitorRequest,
@@ -16,6 +15,7 @@ import {
 } from "../clients/timer-client.js";
 import { LogAgent, LogContextType } from "../log-agent.js";
 import { ActivityStore } from "../stores/activity-store.js";
+import { createEvent } from "../workflow-events.js";
 
 interface TimerHandlerProps {
   timerClient: TimerClient;

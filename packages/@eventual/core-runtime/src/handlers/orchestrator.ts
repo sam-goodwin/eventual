@@ -1,21 +1,15 @@
 import {
-  clearEventualCollector,
-  WorkflowCommand,
   Context,
-  createEvent,
   DeterminismError,
+  ExecutionID,
   ExecutionStatus,
   FailedExecution,
   generateSyntheticEvents,
   getEventId,
   HistoryEvent,
   HistoryStateEvent,
-  isExecutionId,
-  isFailed,
   isHistoryEvent,
   isHistoryStateEvent,
-  isResolved,
-  isResult,
   isSucceededExecution,
   isTimerCompleted,
   isWorkflowCompletedEvent,
@@ -24,12 +18,7 @@ import {
   isWorkflowStarted,
   isWorkflowSucceeded,
   LogLevel,
-  normalizeFailedResult,
-  parseWorkflowName,
-  Result,
   Schedule,
-  ServiceType,
-  serviceTypeScope,
   SucceededExecution,
   Workflow,
   WorkflowEvent,
@@ -39,16 +28,26 @@ import {
   WorkflowRunStarted,
   WorkflowStarted,
   WorkflowSucceeded,
-  WorkflowTask,
   WorkflowTimedOut,
-  ExecutionID,
 } from "@eventual/core";
+import {
+  clearEventualCollector,
+  isFailed,
+  isResolved,
+  isResult,
+  normalizeFailedResult,
+  Result,
+  ServiceType,
+  serviceTypeScope,
+  WorkflowCommand,
+} from "@eventual/core/internal";
 import { inspect } from "util";
 import { MetricsClient } from "../clients/metrics-client.js";
 import { TimerClient } from "../clients/timer-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
 import { CommandExecutor } from "../command-executor.js";
 import { hookDate, restoreDate } from "../date-hook.js";
+import { isExecutionId, parseWorkflowName } from "../execution.js";
 import { interpret } from "../interpret.js";
 import { ExecutionLogContext, LogAgent, LogContextType } from "../log-agent.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
@@ -58,7 +57,9 @@ import { timed, timedSync } from "../metrics/utils.js";
 import { WorkflowProvider } from "../providers/workflow-provider.js";
 import { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
 import { ExecutionHistoryStore } from "../stores/execution-history-store.js";
+import { WorkflowTask } from "../tasks.js";
 import { groupBy, promiseAllSettledPartitioned } from "../utils.js";
+import { createEvent } from "../workflow-events.js";
 
 /**
  * The Orchestrator's client dependencies.

@@ -1,4 +1,5 @@
-import { assertNever, LogLevel, LOG_LEVELS } from "@eventual/core";
+import { LogLevel, LOG_LEVELS } from "@eventual/core";
+import { assertNever } from "@eventual/core/internal";
 import { LogsClient } from "./clients/logs-client.js";
 import {
   hookConsole,

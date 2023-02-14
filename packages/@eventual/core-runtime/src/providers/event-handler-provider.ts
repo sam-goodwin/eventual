@@ -2,8 +2,8 @@ import {
   EventHandlerFunction,
   EventPayload,
   EventSubscription,
-  eventHandlers,
 } from "@eventual/core";
+import { eventHandlers } from "@eventual/core/internal";
 
 export interface EventHandlerProvider {
   getEventHandlersForEvent(eventId: string): EventHandlerFunction<any>[];

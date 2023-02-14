@@ -1,8 +1,5 @@
-import {
-  ActivityHandler,
-  callableActivities,
-  getCallableActivityNames,
-} from "@eventual/core";
+import { ActivityHandler } from "@eventual/core";
+import { callableActivities } from "@eventual/core/internal";
 
 export interface ActivityProvider {
   getActivityHandler(activityId: string): ActivityHandler<any> | undefined;
@@ -15,6 +12,6 @@ export class GlobalActivityProvider implements ActivityProvider {
   }
 
   public getActivityIds(): string[] {
-    return getCallableActivityNames();
+    return Object.keys(callableActivities());
   }
 }

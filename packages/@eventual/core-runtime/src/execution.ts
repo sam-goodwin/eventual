@@ -1,9 +1,4 @@
-import { Buffer } from "buffer";
-
-export type ExecutionID<
-  WorkflowName extends string = string,
-  ID extends string = string
-> = `${WorkflowName}/${ID}`;
+import { ExecutionID } from "@eventual/core";
 
 export function isExecutionId(a: any): a is ExecutionID {
   return typeof a === "string" && a.split("/").length === 2;
@@ -32,15 +27,6 @@ export function parseExecutionId(executionId: ExecutionID): {
     };
   }
   throw new Error("Invalid execution Id: " + executionId);
-}
-
-// API Gateway doesn't agree with uri encoding in path parameter... so we have these. for now
-export function encodeExecutionId(executionId: string) {
-  return Buffer.from(executionId, "utf-8").toString("base64");
-}
-
-export function decodeExecutionId(executionId: string) {
-  return Buffer.from(executionId, "base64").toString("utf-8");
 }
 
 export const INTERNAL_EXECUTION_ID_PREFIX = "%";

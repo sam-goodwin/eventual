@@ -1,6 +1,5 @@
 import {
   ActivityUpdateType,
-  encodeExecutionId,
   EventualServiceClient,
   Execution,
   ExecutionHandle,
@@ -23,6 +22,7 @@ import {
   Workflow,
   WorkflowInput,
 } from "@eventual/core";
+import { encodeExecutionId } from "@eventual/core/internal";
 import { HttpServiceClient } from "./base-http-client.js";
 import { HttpError } from "./request-handler/request-handler.js";
 

@@ -1,4 +1,4 @@
-import { extendsError } from "@eventual/core";
+import { extendsError } from "@eventual/core/internal";
 import middy, { MiddlewareObj } from "@middy/core";
 import { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import util from "util";

@@ -1,11 +1,5 @@
 import { build, BuildSource, infer } from "@eventual/compiler";
-import {
-  CommandSpec,
-  HttpMethod,
-  ServiceSpec,
-  ServiceType,
-  SubscriptionSpec,
-} from "@eventual/core";
+import { HttpMethod } from "@eventual/core";
 import { Code } from "aws-cdk-lib/aws-lambda";
 import { execSync } from "child_process";
 import fs from "fs";

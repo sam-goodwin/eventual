@@ -1,10 +1,5 @@
-import {
-  EventEnvelope,
-  EventualServiceClient,
-  registerServiceClient,
-  ServiceType,
-  serviceTypeScope,
-} from "@eventual/core";
+import { EventEnvelope, EventualServiceClient } from "@eventual/core";
+import { registerServiceClient, serviceTypeScope, ServiceType } from "@eventual/core/internal";
 import { EventHandlerProvider } from "../providers/event-handler-provider.js";
 
 /**

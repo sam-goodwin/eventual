@@ -1,10 +1,5 @@
-import {
-  activity,
-  isOrchestratorWorker,
-  Secret,
-  http,
-  HttpHandler,
-} from "@eventual/core";
+import { activity, Secret, http, HttpHandler } from "@eventual/core";
+import { isOrchestratorWorker } from "@eventual/core/internal";
 import slack from "@slack/bolt";
 import { WebClient } from "@slack/web-api";
 import FetchReceiver from "./receiver.js";

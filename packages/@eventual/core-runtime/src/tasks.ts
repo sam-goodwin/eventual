@@ -1,4 +1,7 @@
-import { HistoryStateEvent, WorkflowEvent } from "./workflow-events.js";
+import {
+  HistoryStateEvent,
+  WorkflowEvent,
+} from "../../core/src/workflow-events.js";
 
 /**
  * A task which delivers new {@link WorkflowEvent}s to a workflow execution.

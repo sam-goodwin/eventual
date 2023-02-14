@@ -1,12 +1,8 @@
 import {
   ActivityScheduled,
   ChildWorkflowScheduled,
-  CommandType,
   EventEnvelope,
   EventsPublished,
-  formatChildExecutionName,
-  formatExecutionId,
-  INTERNAL_EXECUTION_ID_PREFIX,
   Schedule,
   SendSignalRequest,
   SignalSent,
@@ -16,6 +12,7 @@ import {
   Workflow,
   WorkflowEventType,
 } from "@eventual/core";
+import { CommandType } from "@eventual/core/internal";
 import { jest } from "@jest/globals";
 import { ActivityClient } from "../src/clients/activity-client.js";
 import { EventClient } from "../src/clients/event-client.js";
@@ -26,6 +23,11 @@ import {
 } from "../src/clients/timer-client.js";
 import { WorkflowClient } from "../src/clients/workflow-client.js";
 import { CommandExecutor } from "../src/command-executor.js";
+import {
+  INTERNAL_EXECUTION_ID_PREFIX,
+  formatExecutionId,
+  formatChildExecutionName,
+} from "../src/execution.js";
 
 const mockTimerClient = {
   scheduleEvent: jest.fn() as TimerClient["scheduleEvent"],

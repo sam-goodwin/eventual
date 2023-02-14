@@ -20,13 +20,17 @@ import {
   isFailedExecutionRequest,
   ListExecutionsRequest,
   ListExecutionsResponse,
-  parseExecutionId,
   SortOrder,
   SucceededExecution,
   SucceedExecutionRequest,
   WorkflowStarted,
 } from "@eventual/core";
-import { ExecutionStore, getLazy, LazyValue } from "@eventual/core-runtime";
+import {
+  ExecutionStore,
+  getLazy,
+  LazyValue,
+  parseExecutionId,
+} from "@eventual/core-runtime";
 import { queryPageWithToken } from "../utils.js";
 
 export interface AWSExecutionStoreProps {

@@ -1,11 +1,11 @@
 import {
-  assertNever,
   isSendActivityFailureRequest,
   isSendActivityHeartbeatRequest,
   isSendActivitySuccessRequest,
   SendActivityHeartbeatResponse,
   SendActivityUpdate,
 } from "@eventual/core";
+import { assertNever } from "@eventual/core/internal";
 import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { createActivityClient } from "../../create.js";
 import { withErrorMiddleware } from "./middleware.js";

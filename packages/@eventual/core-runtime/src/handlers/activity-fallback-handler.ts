@@ -1,9 +1,9 @@
 import {
   ActivityFailed,
   ActivitySucceeded,
-  assertNever,
   WorkflowEventType,
 } from "@eventual/core";
+import { assertNever } from "@eventual/core/internal";
 import { ActivityWorkerRequest } from "../clients/activity-client.js";
 import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 

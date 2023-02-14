@@ -16,7 +16,7 @@ import {
   EventSpec,
   activities,
   ActivitySpec,
-} from "@eventual/core";
+} from "@eventual/core/internal";
 import {
   CallExpression,
   ExportDeclaration,

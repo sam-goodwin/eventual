@@ -277,16 +277,3 @@ export function activity<
   func.activityID = activityID;
   return func;
 }
-
-/**
- * Retrieve an activity function that has been registered in a workflow.
- */
-export function getCallableActivity(
-  activityId: string
-): ActivityHandler<any> | undefined {
-  return callableActivities()[activityId] as ActivityHandler<any>;
-}
-
-export function getCallableActivityNames() {
-  return Object.keys(callableActivities());
-}
