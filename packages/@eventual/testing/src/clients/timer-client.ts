@@ -5,7 +5,7 @@ import {
   isTimerScheduleEventRequest,
   TimerClient,
   TimerRequest,
-} from "@eventual/runtime-core";
+} from "@eventual/core-runtime";
 import { TimeConnector } from "../environment.js";
 
 export class TestTimerClient extends TimerClient {

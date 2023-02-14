@@ -1,4 +1,4 @@
-import { computeDurationSeconds } from "@eventual/runtime-core";
+import { computeDurationSeconds } from "@eventual/core-runtime";
 import { aws_iam, Duration } from "aws-cdk-lib";
 import { IEventBus, Rule } from "aws-cdk-lib/aws-events";
 import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";

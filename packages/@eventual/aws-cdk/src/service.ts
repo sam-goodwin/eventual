@@ -1,6 +1,6 @@
 import { ENV_NAMES, ExecutionRecord } from "@eventual/aws-runtime";
 import { Event } from "@eventual/core";
-import { MetricsCommon, OrchestratorMetrics } from "@eventual/runtime-core";
+import { MetricsCommon, OrchestratorMetrics } from "@eventual/core-runtime";
 import {
   Arn,
   aws_events,

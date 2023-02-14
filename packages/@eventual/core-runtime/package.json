@@ -1,5 +1,5 @@
 {
-  "name": "@eventual/runtime-core",
+  "name": "@eventual/core-runtime",
   "version": "0.18.2",
   "exports": {
     ".": {

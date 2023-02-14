@@ -10,7 +10,7 @@ import {
   LazyValue,
   LogEntry,
   LogsClient,
-} from "@eventual/runtime-core";
+} from "@eventual/core-runtime";
 import { formatWorkflowExecutionStreamName } from "../utils.js";
 
 export interface AWSLogsClientProps {

@@ -16,7 +16,7 @@ import {
   serviceTypeScopeSync,
   workflows,
 } from "@eventual/core";
-import { processEvents, progressWorkflow } from "@eventual/runtime-core";
+import { processEvents, progressWorkflow } from "@eventual/core-runtime";
 import path from "path";
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";

@@ -2,7 +2,7 @@ import {
   ActivityMetrics,
   MetricsCommon,
   OrchestratorMetrics,
-} from "@eventual/runtime-core";
+} from "@eventual/core-runtime";
 import { Dashboard, LogQueryWidget } from "aws-cdk-lib/aws-cloudwatch";
 import { Construct } from "constructs";
 import { Service } from "./service";

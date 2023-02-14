@@ -11,6 +11,6 @@
   "references": [
     { "path": "../core" },
     { "path": "../compiler" },
-    { "path": "../runtime-core" }
+    { "path": "../core-runtime" }
   ]
 }

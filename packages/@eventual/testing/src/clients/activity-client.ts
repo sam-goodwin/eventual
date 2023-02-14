@@ -4,7 +4,7 @@ import {
   ActivityWorker,
   ActivityWorkerRequest,
   isActivitySendEventRequest,
-} from "@eventual/runtime-core";
+} from "@eventual/core-runtime";
 import { TimeConnector } from "../environment.js";
 
 export class TestActivityClient extends ActivityClient {

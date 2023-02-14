@@ -38,7 +38,7 @@ import {
   RuntimeServiceClient,
   TimerClient,
   WorkflowClient,
-} from "@eventual/runtime-core";
+} from "@eventual/core-runtime";
 import path from "path";
 import { TestActivityClient } from "./clients/activity-client.js";
 import { TestEventClient } from "./clients/event-client.js";

@@ -4,7 +4,7 @@ import {
   SortOrder,
   WorkflowEvent,
 } from "@eventual/core";
-import { ExecutionHistoryStore } from "@eventual/runtime-core";
+import { ExecutionHistoryStore } from "@eventual/core-runtime";
 
 export class TestExecutionHistoryStore extends ExecutionHistoryStore {
   private eventStore: Record<string, WorkflowEvent[]> = {};

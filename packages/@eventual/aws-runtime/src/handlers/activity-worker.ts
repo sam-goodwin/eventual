@@ -6,7 +6,7 @@ import {
   ActivityWorkerRequest,
   createActivityWorker,
   GlobalActivityProvider,
-} from "@eventual/runtime-core";
+} from "@eventual/core-runtime";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 import {
   createActivityClient,

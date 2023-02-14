@@ -1,5 +1,5 @@
 import { Event, SubscriptionHandler, EventPayloadType } from "@eventual/core";
-import { GlobalSubscriptionProvider } from "@eventual/runtime-core";
+import { GlobalSubscriptionProvider } from "@eventual/core-runtime";
 
 export class TestSubscriptionProvider extends GlobalSubscriptionProvider {
   private defaultHandlersDisabled = false;

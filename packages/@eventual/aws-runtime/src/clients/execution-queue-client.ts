@@ -5,7 +5,7 @@ import {
   ExecutionQueueEventEnvelope,
   getLazy,
   LazyValue,
-} from "@eventual/runtime-core";
+} from "@eventual/core-runtime";
 
 export interface AWSExecutionQueueClientProps {
   sqs: SQSClient;
