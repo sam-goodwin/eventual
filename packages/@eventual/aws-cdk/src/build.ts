@@ -138,7 +138,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         },
       },
     },
-    api: manifestInternalAPI(),
+    api: manifestInternalAPI() as any,
   };
 
   await fs.promises.writeFile(
@@ -157,7 +157,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     const routes = await Promise.all(
       Object.values(serviceSpec[type]).map(
         async (
-          spec: any
+          spec: SpecFor<Type>
         ): Promise<
           readonly [string, BundledFunction<CommandSpec | SubscriptionSpec>]
         > => {
@@ -376,7 +376,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         method: "POST",
         file: updateActivity!,
       }),
-    ]) as any;
+    ] as const);
 
     function internalCommand<P extends keyof InternalApiRoutes>(props: {
       name: string;

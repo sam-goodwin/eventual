@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { jest } from "@jest/globals";
 
 import { EventualError, HeartbeatTimeout } from "@eventual/core";
