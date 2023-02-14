@@ -27,6 +27,7 @@ export * from "./service-client.js";
 export * from "./service-spec.js";
 export * from "./service-type.js";
 export * from "./signals.js";
+export * from "./subscription.js";
 export * from "./tasks.js";
 export * from "./util.js";
 export * from "./workflow-events.js";

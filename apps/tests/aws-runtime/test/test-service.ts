@@ -16,6 +16,7 @@ import {
   command,
   api,
   HttpResponse,
+  subscription,
 } from "@eventual/core";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -322,8 +323,11 @@ const SignalEventPayload = z.object({
 
 const signalEvent = event("SignalEvent", SignalEventPayload);
 
-export const onSignalEvent = signalEvent.onEvent(
+export const onSignalEvent = subscription(
   "onSignalEvent",
+  {
+    events: [signalEvent],
+  },
   async ({ executionId, signalId, proxy }) => {
     console.debug("received signal event", { executionId, signalId, proxy });
     if (proxy) {

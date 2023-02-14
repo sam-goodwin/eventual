@@ -5,7 +5,7 @@ import {
   ServiceType,
   serviceTypeScope,
 } from "@eventual/core";
-import { EventHandlerProvider } from "../providers/event-handler-provider.js";
+import { SubscriptionProvider } from "../providers/subscription-provider.js";
 
 /**
  * The dependencies of {@link createEventHandlerWorker}.
@@ -19,7 +19,7 @@ export interface EventHandlerDependencies {
   /**
    * Returns event handlers
    */
-  eventHandlerProvider: EventHandlerProvider;
+  eventHandlerProvider: SubscriptionProvider;
 }
 
 export interface EventHandlerWorker {
@@ -42,12 +42,12 @@ export function createEventHandlerWorker({
   }
 
   return async function (events) {
-    return await serviceTypeScope(ServiceType.EventHandler, async () => {
+    return await serviceTypeScope(ServiceType.Subscription, async () => {
       await Promise.allSettled(
         events.map((event) =>
           Promise.allSettled(
             eventHandlerProvider
-              .getEventHandlersForEvent(event.name)
+              .getSubscriptionsForEvent(event.name)
               .map((handler) => handler(event.event))
           )
         )
