@@ -1,1 +1,4 @@
-export * from "../src/internal/index.js"
+/**
+ * Alias to the internal module for CJS imports.
+ */
+export * from "../lib/cjs/internal/index.js";
