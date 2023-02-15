@@ -2,7 +2,8 @@
   "extends": "../../../tsconfig-base.cjs",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "lib/cjs"
+    "outDir": "lib/cjs",
+    "moduleResolution": "nodenext"
   },
   "include": ["src"],
   "exclude": ["lib", "node_modules", "src/package.json"],

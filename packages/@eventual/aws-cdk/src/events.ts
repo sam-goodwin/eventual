@@ -1,5 +1,5 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
-import { Schemas } from "@eventual/core";
+import { Schemas } from "@eventual/core/internal";
 import { aws_eventschemas, aws_iam, Lazy, Resource } from "aws-cdk-lib";
 import { EventBus, IEventBus, Rule } from "aws-cdk-lib/aws-events";
 import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";

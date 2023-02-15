@@ -4,7 +4,8 @@
   "exclude": ["lib", "node_modules", "src/package.json"],
   "compilerOptions": {
     "outDir": "lib/cjs",
-    "rootDir": "src"
+    "rootDir": "src",
+    "moduleResolution": "nodenext"
   },
   "references": []
 }

@@ -4,7 +4,8 @@
     "baseUrl": ".",
     "rootDir": "src",
     "outDir": "lib/cjs",
-    "lib": ["DOM"]
+    "lib": ["DOM"],
+    "moduleResolution": "nodenext"
   },
   "include": ["src"],
   "exclude": ["lib", "node_modules", "src/package.json"],
