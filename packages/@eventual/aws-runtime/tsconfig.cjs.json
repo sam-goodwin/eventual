@@ -7,8 +7,7 @@
     "paths": {
       "@eventual/injected/entry": ["./src/injected/entry.ts"],
       "@eventual/injected/spec": ["./src/injected/spec.ts"]
-    },
-    "moduleResolution": "nodenext"
+    }
   },
   "include": ["src"],
   "exclude": [

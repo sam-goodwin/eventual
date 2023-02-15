@@ -4,7 +4,8 @@
   "exclude": ["lib", "node_modules"],
   "compilerOptions": {
     "outDir": "lib",
-    "rootDir": "src"
+    "rootDir": "src",
+    "moduleResolution": "node"
   },
   "references": [
     { "path": "../../packages/@eventual/aws-cdk" },

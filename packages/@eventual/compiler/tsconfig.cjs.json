@@ -4,8 +4,7 @@
   "exclude": ["lib", "node_modules"],
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "lib/cjs",
-    "moduleResolution": "nodenext"
+    "outDir": "lib/cjs"
   },
   "references": [{ "path": "../core" }]
 }
