@@ -537,7 +537,7 @@ importers:
       '@eventual/core': workspace:^
       '@slack/bolt': ^3.12.2
       '@slack/logger': ^3.0.0
-      '@slack/web-api': ^6.8.0
+      '@slack/web-api': ^6.8.1
       '@types/jest': ^29
       '@types/node': ^18
       '@types/tsscmp': ^1.0.0
@@ -551,7 +551,7 @@ importers:
     dependencies:
       '@slack/bolt': 3.12.2
       '@slack/logger': 3.0.0
-      '@slack/web-api': 6.8.0
+      '@slack/web-api': 6.8.1
       tsscmp: 1.0.6
     devDependencies:
       '@eventual/core': link:../core
@@ -5393,25 +5393,6 @@ packages:
   /@slack/types/2.8.0:
     resolution: {integrity: sha512-ghdfZSF0b4NC9ckBA8QnQgC9DJw2ZceDq0BIjjRSv6XAZBXJdWgxIsYz0TYnWSiqsKZGH2ZXbj9jYABZdH3OSQ==}
     engines: {node: '>= 12.13.0', npm: '>= 6.12.0'}
-    dev: false
-
-  /@slack/web-api/6.8.0:
-    resolution: {integrity: sha512-DI0T7pQy2SM14s+zJKlarzkyOqhpu2Qk3rL19g+3m7VDZ+lSMB/dt9nwf3BZIIp49/CoLlBjEmKMoakm69OD4Q==}
-    engines: {node: '>= 12.13.0', npm: '>= 6.12.0'}
-    dependencies:
-      '@slack/logger': 3.0.0
-      '@slack/types': 2.8.0
-      '@types/is-stream': 1.1.0
-      '@types/node': 18.13.0
-      axios: 0.27.2
-      eventemitter3: 3.1.2
-      form-data: 2.5.1
-      is-electron: 2.2.0
-      is-stream: 1.1.0
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-    transitivePeerDependencies:
-      - debug
     dev: false
 
   /@slack/web-api/6.8.1:
