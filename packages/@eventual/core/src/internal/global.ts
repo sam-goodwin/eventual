@@ -1,9 +1,9 @@
-import { ActivityContext, Activity, ActivityHandler } from "./activity.js";
-import { Event, EventHandler, EventSubscription } from "./event.js";
+import { ActivityContext, Activity, ActivityHandler } from "../activity.js";
+import { Event, EventHandler, EventSubscription } from "../event.js";
 import type { Eventual, EventualCallCollector } from "./eventual.js";
-import { EventualServiceClient } from "./service-client.js";
-import type { Workflow } from "./workflow.js";
-import type { Command } from "./http/index.js";
+import { EventualServiceClient } from "../service-client.js";
+import type { Workflow } from "../workflow.js";
+import type { Command } from "../http/index.js";
 
 declare global {
   // eslint-disable-next-line no-var

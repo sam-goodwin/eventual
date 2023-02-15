@@ -1,6 +1,6 @@
 import { ExecutionContext } from "./context.js";
 import { EventEnvelope } from "./event.js";
-import { or } from "./util.js";
+import { or } from "./internal/util.js";
 
 export interface BaseEvent {
   type: WorkflowEventType;

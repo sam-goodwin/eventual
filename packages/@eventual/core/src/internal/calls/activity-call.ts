@@ -7,7 +7,7 @@ import {
 } from "../eventual.js";
 import { registerEventual } from "../global.js";
 import { Failed, Resolved } from "../result.js";
-import { DurationSchedule } from "../schedule.js";
+import { DurationSchedule } from "../../schedule.js";
 
 export function isActivityCall(a: any): a is ActivityCall {
   return isEventualOfKind(EventualKind.ActivityCall, a);

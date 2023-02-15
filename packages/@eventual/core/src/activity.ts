@@ -1,11 +1,11 @@
-import { createActivityCall } from "./calls/activity-call.js";
-import { createAwaitDurationCall } from "./calls/await-time-call.js";
-import { isActivityWorker, isOrchestratorWorker } from "./flags.js";
+import { createActivityCall } from "./internal/calls/activity-call.js";
+import { createAwaitDurationCall } from "./internal/calls/await-time-call.js";
+import { isActivityWorker, isOrchestratorWorker } from "./internal/flags.js";
 import {
   callableActivities,
   getActivityContext,
   getServiceClient,
-} from "./global.js";
+} from "./internal/global.js";
 import { DurationSchedule } from "./schedule.js";
 import {
   EventualServiceClient,

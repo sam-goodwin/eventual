@@ -6,7 +6,7 @@ import {
 } from "../eventual.js";
 import { registerEventual } from "../global.js";
 import { Resolved, Result } from "../result.js";
-import { SignalTarget } from "../signals.js";
+import { SignalTarget } from "../../signals.js";
 
 export function isSendSignalCall(a: any): a is SendSignalCall {
   return isEventualOfKind(EventualKind.SendSignalCall, a);

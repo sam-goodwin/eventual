@@ -1,9 +1,9 @@
 import type z from "zod";
-import { createPublishEventsCall } from "./calls/send-events-call.js";
-import { isOrchestratorWorker } from "./flags.js";
+import { createPublishEventsCall } from "./internal/calls/send-events-call.js";
+import { isOrchestratorWorker } from "./internal/flags.js";
 import type { FunctionRuntimeProps } from "./function-props.js";
-import { eventHandlers, events, getServiceClient } from "./global.js";
-import { isSourceLocation, SourceLocation } from "./service-spec.js";
+import { eventHandlers, events, getServiceClient } from "./internal/global.js";
+import { isSourceLocation, SourceLocation } from "./internal/service-spec.js";
 
 /**
  * An EventPayload is the data sent as an event.

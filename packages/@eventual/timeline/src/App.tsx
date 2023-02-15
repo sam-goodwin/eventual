@@ -1,5 +1,6 @@
-import { HttpServiceClient } from "@eventual/client";
-import { decodeExecutionId, WorkflowStarted } from "@eventual/core";
+import { HttpEventualClient } from "@eventual/client";
+import { WorkflowStarted } from "@eventual/core";
+import { decodeExecutionId } from "@eventual/core/internal";
 import { useQuery } from "@tanstack/react-query";
 import { ReactNode } from "react";
 import { aggregateEvents } from "./activity.js";
@@ -7,7 +8,7 @@ import styles from "./App.module.css";
 import { ActivityList } from "./components/activity-list/activity-list.js";
 import { Timeline } from "./components/timeline/timeline.js";
 
-const serviceClient = new HttpServiceClient({
+const serviceClient = new HttpEventualClient({
   serviceUrl: `${window.location.origin}/api`,
 });
 

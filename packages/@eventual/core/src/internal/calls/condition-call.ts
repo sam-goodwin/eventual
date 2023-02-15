@@ -1,4 +1,4 @@
-import { ConditionPredicate } from "../condition.js";
+import { ConditionPredicate } from "../../condition.js";
 import {
   createEventual,
   Eventual,

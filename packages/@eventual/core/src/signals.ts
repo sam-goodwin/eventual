@@ -1,10 +1,10 @@
-import { createSendSignalCall } from "./calls/send-signal-call.js";
-import { createRegisterSignalHandlerCall } from "./calls/signal-handler-call.js";
-import { createExpectSignalCall } from "./calls/expect-signal-call.js";
-import { isOrchestratorWorker } from "./flags.js";
-import { getServiceClient } from "./global.js";
+import { createSendSignalCall } from "./internal/calls/send-signal-call.js";
+import { createRegisterSignalHandlerCall } from "./internal/calls/signal-handler-call.js";
+import { createExpectSignalCall } from "./internal/calls/expect-signal-call.js";
+import { isOrchestratorWorker } from "./internal/flags.js";
+import { getServiceClient } from "./internal/global.js";
 import { ulid } from "ulidx";
-import { isEventual } from "./eventual.js";
+import { isEventual } from "./internal/eventual.js";
 
 /**
  * A reference to a created signal handler.

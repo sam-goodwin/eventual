@@ -5,7 +5,7 @@ import {
   createEventual,
 } from "../eventual.js";
 import { registerEventual } from "../global.js";
-import { EventEnvelope } from "../event.js";
+import { EventEnvelope } from "../../event.js";
 import { Resolved, Result } from "../result.js";
 
 export function isPublishEventsCall(a: any): a is PublishEventsCall {

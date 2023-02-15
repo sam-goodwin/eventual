@@ -5,11 +5,11 @@ import {
   EventualKind,
   isEventualOfKind,
 } from "../eventual.js";
-import { ChildExecution } from "../execution.js";
+import { ChildExecution } from "../../execution.js";
 import { registerEventual } from "../global.js";
 import { Result } from "../result.js";
-import { SignalTargetType } from "../signals.js";
-import { Workflow, WorkflowOptions } from "../workflow.js";
+import { SignalTargetType } from "../../signals.js";
+import { Workflow, WorkflowOptions } from "../../workflow.js";
 import { createSendSignalCall } from "./send-signal-call.js";
 
 export function isWorkflowCall<T>(a: Eventual<T>): a is WorkflowCall<T> {

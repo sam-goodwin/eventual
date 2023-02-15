@@ -385,12 +385,12 @@ var require_ulid = __commonJS({
       return str.substr(0, index) + char + str.substr(index + 1);
     }
     exports.replaceCharAt = replaceCharAt;
-    function ulid4(seedTime, prng) {
+    function ulid3(seedTime, prng) {
       var currentPRNG = prng || detectPRNG();
       var seed = isNaN(seedTime) ? Date.now() : seedTime;
       return encodeTime(seed, TIME_LEN) + encodeRandom(RANDOM_LEN, currentPRNG);
     }
-    exports.ulid = ulid4;
+    exports.ulid = ulid3;
   }
 });
 
@@ -593,15 +593,6 @@ globalThis.$Eventual = Eventual;
 
 var AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
 
-var CommandType;
-(function(CommandType2) {
-  CommandType2["PublishEvents"] = "PublishEvents";
-  CommandType2["SendSignal"] = "SendSignal";
-  CommandType2["StartActivity"] = "StartActivity";
-  CommandType2["StartTimer"] = "StartTimer";
-  CommandType2["StartWorkflow"] = "StartWorkflow";
-})(CommandType || (CommandType = {}));
-
 var import_ulidx2 = __toESM(require_dist2(), 1);
 var ExecutionStatus;
 (function(ExecutionStatus2) {
@@ -687,7 +678,6 @@ var ActivityUpdateType;
   ActivityUpdateType2["Heartbeat"] = "Heartbeat";
 })(ActivityUpdateType || (ActivityUpdateType = {}));
 
-var import_ulidx3 = __toESM(require_dist2(), 1);
 var WorkflowEventType;
 (function(WorkflowEventType2) {
   WorkflowEventType2["ActivitySucceeded"] = "ActivitySucceeded";
@@ -755,6 +745,15 @@ function isWorkflowTimedOut(event) {
 var isScheduledEvent = or(isActivityScheduled, isChildWorkflowScheduled, isEventsPublished, isSignalSent, isTimerScheduled);
 var isSucceededEvent = or(isActivitySucceeded, isChildWorkflowSucceeded, isTimerCompleted);
 var isFailedEvent = or(isActivityFailed, isActivityHeartbeatTimedOut, isChildWorkflowFailed, isWorkflowTimedOut);
+
+var CommandType;
+(function(CommandType2) {
+  CommandType2["PublishEvents"] = "PublishEvents";
+  CommandType2["SendSignal"] = "SendSignal";
+  CommandType2["StartActivity"] = "StartActivity";
+  CommandType2["StartTimer"] = "StartTimer";
+  CommandType2["StartWorkflow"] = "StartWorkflow";
+})(CommandType || (CommandType = {}));
 
 var myHandler = api.get("/", async () => {
   return new Response();
