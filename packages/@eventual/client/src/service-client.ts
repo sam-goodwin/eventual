@@ -94,9 +94,12 @@ type ServiceClientName<T> = T extends { name: infer Name extends string }
 type ServiceClientMethod<T> = T extends {
   handler: infer Handler extends (...args: any[]) => any;
 }
-  ? ReturnType<Handler> extends Promise<any>
-    ? Handler // only re-write the signature if the return type needs to be Awaited
-    : (...args: Parameters<Handler>) => Promise<Awaited<ReturnType<Handler>>>
+  ? (
+      input: Parameters<Handler>[0],
+      options?: {
+        headers: Record<string, string>;
+      }
+    ) => Promise<Awaited<ReturnType<Handler>>>
   : never;
 
 type KeysWhereNameIsSame<Service> = {

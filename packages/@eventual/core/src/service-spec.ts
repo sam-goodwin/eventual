@@ -89,6 +89,10 @@ type ToSpec<T> = T extends z.ZodType
   ? {
       [prop in keyof DropFunctions<T>]: ToSpec<T[prop]>;
     }
+  : T extends Event
+  ? {
+      name: T["name"];
+    }
   : T;
 
 type DropFunctions<T> = Pick<T, KeysNotOfType<T, (...args: any[]) => any>>;
