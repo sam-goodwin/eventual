@@ -30,7 +30,7 @@
       "internalConsoleOptions": "openOnSessionStart",
       "cwd": "${workspaceFolder}/apps/test-app/",
       "outFiles": ["${workspaceFolder}/**/*.js", "!**/node_modules/**"]
-    }
+    },
     {
       "type": "node",
       "name": "synth apps/tests/aws-runtime-cdk",

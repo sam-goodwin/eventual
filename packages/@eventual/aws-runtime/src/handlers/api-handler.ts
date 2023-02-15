@@ -22,6 +22,7 @@ const processRequest = createApiHandler({
 export default async function (
   event: APIGatewayProxyEventV2
 ): Promise<APIGatewayProxyResultV2> {
+  console.debug("event", event);
   const requestBody = event.body
     ? event.isBase64Encoded
       ? Buffer.from(event.body, "base64")
@@ -39,16 +40,9 @@ export default async function (
   );
 
   const response = await processRequest(request);
-  let headers: Record<string, string>;
-  response.body;
+  const headers: Record<string, string> = {};
 
-  if (typeof response.headers?.forEach === "function") {
-    headers = {};
-    // handle node fetch API
-    response.headers.forEach((value, key) => (headers[key] = value));
-  } else {
-    headers = (response.headers as Record<string, string>) ?? {};
-  }
+  response.headers.forEach((value, key) => (headers[key] = value));
 
   let responseBody: Buffer;
   if (typeof response.body === "string") {
@@ -68,5 +62,6 @@ export default async function (
     body: responseBody.toString("base64"),
     isBase64Encoded: true,
   };
+  console.log("httpResponse", httpResponse);
   return httpResponse;
 }

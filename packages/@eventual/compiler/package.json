@@ -1,6 +1,6 @@
 {
   "name": "@eventual/compiler",
-  "version": "0.16.0",
+  "version": "0.18.1",
   "bin": {
     "eventual-bundle": "./bin/eventual-bundle.mjs",
     "eventual-infer": "./bin/eventual-infer.mjs"
@@ -41,7 +41,7 @@
   "devDependencies": {
     "@types/jest": "^29",
     "@types/minimatch": "5.1.2",
-    "@types/node": "^16",
+    "@types/node": "^18",
     "esbuild": "^0.17.4",
     "jest": "^29",
     "ts-jest": "^29",

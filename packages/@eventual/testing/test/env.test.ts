@@ -3,7 +3,7 @@ import {
   EventPayloadType,
   Execution,
   ExecutionStatus,
-  EventHandlerFunction,
+  SubscriptionHandler,
   Timeout,
   EventualError,
 } from "@eventual/core";
@@ -577,8 +577,8 @@ describe("events", () => {
   describe("publishEvent", () => {
     test("using service handlers", async () => {
       const dataEventMock =
-        jest.fn<EventHandlerFunction<EventPayloadType<typeof dataEvent>>>();
-      env.subscribeEvent(dataEvent, dataEventMock);
+        jest.fn<SubscriptionHandler<EventPayloadType<typeof dataEvent>>>();
+      env.subscribeEvents([dataEvent], dataEventMock);
       const execution = await env.startExecution({
         workflow: signalWorkflow,
         input: undefined,
@@ -605,8 +605,8 @@ describe("events", () => {
 
     test("workflow send events", async () => {
       const dataEventMock =
-        jest.fn<EventHandlerFunction<EventPayloadType<typeof dataEvent>>>();
-      env.subscribeEvent(dataEvent, dataEventMock);
+        jest.fn<SubscriptionHandler<EventPayloadType<typeof dataEvent>>>();
+      env.subscribeEvents([dataEvent], dataEventMock);
 
       const execution = await env.startExecution({
         workflow: signalWorkflow,
@@ -640,8 +640,8 @@ describe("events", () => {
   describe("handle event", () => {
     test("using service handlers", async () => {
       const dataEventMock =
-        jest.fn<EventHandlerFunction<EventPayloadType<typeof dataEvent>>>();
-      env.subscribeEvent(dataEvent, dataEventMock);
+        jest.fn<SubscriptionHandler<EventPayloadType<typeof dataEvent>>>();
+      env.subscribeEvents([dataEvent], dataEventMock);
       const execution = await env.startExecution({
         workflow: signalWorkflow,
         input: undefined,
@@ -672,8 +672,8 @@ describe("events", () => {
       env.disableServiceSubscriptions();
 
       const dataEventMock =
-        jest.fn<EventHandlerFunction<EventPayloadType<typeof dataEvent>>>();
-      env.subscribeEvent(dataEvent, dataEventMock);
+        jest.fn<SubscriptionHandler<EventPayloadType<typeof dataEvent>>>();
+      env.subscribeEvents([dataEvent], dataEventMock);
       const execution = await env.startExecution({
         workflow: signalWorkflow,
         input: undefined,
@@ -721,8 +721,8 @@ describe("events", () => {
 
     test("reset subscriptions", async () => {
       const dataEventMock =
-        jest.fn<EventHandlerFunction<EventPayloadType<typeof dataEvent>>>();
-      env.subscribeEvent(dataEvent, dataEventMock);
+        jest.fn<SubscriptionHandler<EventPayloadType<typeof dataEvent>>>();
+      env.subscribeEvents([dataEvent], dataEventMock);
       await env.publishEvent(dataEvent, {
         executionId: "dummy",
         data: "event data",

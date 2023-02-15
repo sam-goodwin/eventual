@@ -1,6 +1,6 @@
 {
   "name": "@eventual/integrations-slack",
-  "version": "0.16.0",
+  "version": "0.18.1",
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",
@@ -15,7 +15,7 @@
   "dependencies": {
     "@slack/bolt": "^3.12.2",
     "@slack/logger": "^3.0.0",
-    "@slack/web-api": "^6.8.0",
+    "@slack/web-api": "^6.8.1",
     "tsscmp": "^1.0.6"
   },
   "peerDependencies": {
@@ -25,7 +25,7 @@
   "devDependencies": {
     "@eventual/core": "workspace:^",
     "@types/jest": "^29",
-    "@types/node": "^16",
+    "@types/node": "^18",
     "@types/tsscmp": "^1.0.0",
     "itty-router": "2.6.6",
     "jest": "^29",

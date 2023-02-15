@@ -37,12 +37,17 @@ import { Construct } from "constructs";
 import path from "path";
 import { Activities, IActivities } from "./activities";
 import { BuildOutput, buildServiceSync } from "./build";
-import { Events, SubscriptionProps } from "./events";
+import { Events } from "./events";
 import { grant } from "./grant";
 import { Logging, LoggingProps } from "./logging";
 import { lazyInterface } from "./proxy-construct";
 import { IScheduler, Scheduler } from "./scheduler";
 import { Api, CommandProps, IServiceApi } from "./service-api";
+import {
+  Subscription,
+  SubscriptionOverrides,
+  Subscriptions,
+} from "./subscriptions";
 import { IWorkflows, Workflows } from "./workflows";
 
 export interface IService {
@@ -195,7 +200,7 @@ export interface ServiceProps<Service = any> {
   /**
    * Override properties of Subscription Functions within the Service.
    */
-  subscriptions?: SubscriptionProps<Service>;
+  subscriptions?: SubscriptionOverrides<Service>;
   /**
    * Configuration properties for the workflow orchestrator
    */
@@ -240,6 +245,10 @@ export class Service<S = any>
    * This {@link Service}'s {@link Events} that can be published and subscribed to.
    */
   public readonly events: Events<S>;
+  /**
+   * The Subscriptions within this Service.
+   */
+  public readonly subscriptions: Subscriptions<S>;
   /**
    * A single-table used for execution data and granular workflow events/
    */
@@ -315,9 +324,6 @@ export class Service<S = any>
     this.events = new Events(this, "Events", {
       build: this.build,
       serviceName: this.serviceName,
-      environment: props.environment,
-      service: proxyService,
-      api: apiProxy,
     });
 
     this.activities = new Activities(this, "Activities", {
@@ -367,12 +373,24 @@ export class Service<S = any>
     });
     apiProxy._bind(this.api);
 
+    this.subscriptions = new Subscriptions(this, {
+      api: this.api,
+      build: this.build,
+      environment: props.environment,
+      events: this.events,
+      service: this,
+      serviceName: this.serviceName,
+      subscriptions: props.subscriptions,
+    });
+
     this.grantPrincipal = new CompositePrincipal(
       // when granting permissions to the service,
       // propagate them to the following principals
       this.activities.worker.grantPrincipal,
       this.api.grantPrincipal,
-      this.events.grantPrincipal
+      ...this.subscriptionsList.flatMap(
+        (sub) => sub.handler.role?.grantPrincipal!
+      )
     );
 
     this.cliRole = new Role(this, "EventualCliRole", {
@@ -393,6 +411,10 @@ export class Service<S = any>
 
     this.serviceDataSSM.grantRead(this.cliRole);
     proxyService._bind(this);
+  }
+
+  public get subscriptionsList(): Subscription[] {
+    return Object.values(this.subscriptions);
   }
 
   public subscribe(
@@ -420,7 +442,7 @@ export class Service<S = any>
   public addEnvironment(key: string, value: string): void {
     this.activities.worker.addEnvironment(key, value);
     this.api.handlers.forEach((handler) => handler.addEnvironment(key, value));
-    this.events.handlers.forEach((handler) =>
+    this.subscriptionsList.forEach(({ handler }) =>
       handler.addEnvironment(key, value)
     );
     this.workflows.orchestrator.addEnvironment(key, value);

@@ -1,6 +1,6 @@
 {
   "name": "@eventual/testing",
-  "version": "0.16.0",
+  "version": "0.18.1",
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",
@@ -23,7 +23,7 @@
     "@aws-sdk/client-sqs": "^3.254.0",
     "@jest/globals": "^29.3.1",
     "@types/jest": "^29",
-    "@types/node": "^16",
+    "@types/node": "^18",
     "jest": "^29",
     "ts-jest": "^29",
     "ts-node": "^10.9.1",

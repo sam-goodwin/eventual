@@ -1,9 +1,10 @@
 import { ActivityContext, Activity, ActivityHandler } from "../activity.js";
-import { Event, EventHandler, EventSubscription } from "../event.js";
+import { Event } from "../event.js";
 import type { Eventual, EventualCallCollector } from "./eventual.js";
 import { EventualServiceClient } from "../service-client.js";
 import type { Workflow } from "../workflow.js";
 import type { Command } from "../http/index.js";
+import { Subscription } from "../subscription.js";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -40,10 +41,10 @@ declare global {
      */
     events?: Map<string, Event>;
     /**
-     * A global variable storing a list of all {@link EventSubscription}s declared
+     * A global variable storing a list of all {@link Subscription}s declared
      * within this application.
      */
-    eventHandlers?: EventHandler[];
+    subscriptions?: Subscription[];
     /**
      * API routes registered within the application.
      */
@@ -61,11 +62,11 @@ export const workflows = (): Map<string, Workflow> =>
 export const events = (): Map<string, Event> =>
   (globalThis._eventual.events ??= new Map<string, Event>());
 
-export const eventHandlers = (): EventHandler[] =>
-  (globalThis._eventual.eventHandlers ??= []);
+export const subscriptions = (): Subscription[] =>
+  (globalThis._eventual.subscriptions ??= []);
 
 export function clearEventHandlers() {
-  globalThis._eventual.eventHandlers = [];
+  globalThis._eventual.subscriptions = [];
 }
 
 export function activities(): Activity[] {

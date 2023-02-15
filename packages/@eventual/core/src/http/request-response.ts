@@ -58,7 +58,7 @@ export interface HttpRequestInit {
 export class HttpRequest extends BaseHttpPayload {
   readonly url: string;
   readonly method: HttpMethod;
-  readonly headers: Record<string, string>;
+  readonly headers: Headers;
   readonly body: string | Buffer | null;
   readonly params: Record<string, string>;
   readonly query?: Record<string, string | string[]>;
@@ -67,7 +67,7 @@ export class HttpRequest extends BaseHttpPayload {
     super();
     const _url = new URL(url);
     this.method = props.method;
-    this.headers = props.headers ?? {};
+    this.headers = toHeaders(props.headers);
     this.body = props.body ?? null;
     if (props.query) {
       this.query = props.query;
@@ -93,13 +93,27 @@ export class HttpResponse extends BaseHttpPayload {
   readonly body: Body;
   readonly status: number;
   readonly statusText?: string;
-  readonly headers?: Record<string, string> | Headers;
+  readonly headers: Headers;
   constructor(body?: Body, init?: RawHttpResponseInit) {
     super();
     this.body = body === undefined ? null : body;
     this.status = init?.status ?? 200;
     this.statusText = init?.statusText;
-    this.headers = init?.headers;
+    this.headers = toHeaders(init?.headers);
+  }
+}
+
+function toHeaders(headers?: Record<string, string> | Headers): Headers {
+  if (headers === undefined) {
+    return new Headers();
+  } else if (headers instanceof Headers) {
+    return headers;
+  } else {
+    const h = new Headers();
+    for (const [k, v] of Object.entries(headers)) {
+      h.set(k, v);
+    }
+    return h;
   }
 }
 
@@ -116,21 +130,4 @@ async function readStream(readable?: Readable | null): Promise<Buffer> {
     });
     readable.on("close", () => resolve(Buffer.concat(chunks)));
   });
-}
-
-/**
- * This models the Node Fetch API. We extract it to avoid coupling users to "dom" lib
- * or any particular node version, but we also want to support users who opt-in to
- * those.
- */
-interface Headers {
-  append(name: string, value: string): void;
-  delete(name: string): void;
-  get(name: string): string | null;
-  has(name: string): boolean;
-  set(name: string, value: string): void;
-  forEach(
-    callbackfn: (value: string, key: string, parent: Headers) => void,
-    thisArg?: any
-  ): void;
 }

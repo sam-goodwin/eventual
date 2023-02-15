@@ -1,4 +1,4 @@
-import { HttpMethod, HttpRequest, HttpRequestInit } from "@eventual/core";
+import { HttpMethod, HttpRequestInit } from "@eventual/core";
 import { getRequestHandler } from "./request-handler/factory.js";
 import {
   BeforeRequest,
@@ -35,9 +35,12 @@ export class HttpServiceClient {
   protected async proxy(
     request: Omit<HttpRequestInit, "params"> & { path: string }
   ) {
-    return this.requestHandler.request(
-      new HttpRequest(`${this.baseUrl.href}/${request.path}`, request)
-    );
+    return this.requestHandler.request({
+      url: `${this.baseUrl.href}/${request.path}`,
+      method: request.method,
+      body: request.body,
+      headers: request.headers,
+    });
   }
 
   protected async request<Body = any, Resp = any>(request: {
@@ -46,12 +49,11 @@ export class HttpServiceClient {
     path: string;
   }): Promise<Resp> {
     const url = `${this.baseUrl.href}_eventual/${request.path}`;
-    return this.requestHandler.request(
-      new HttpRequest(url, {
-        body: request.body ? JSON.stringify(request.body) : undefined,
-        headers: { "Content-Type": "application/json" },
-        method: request.method,
-      })
-    );
+    return this.requestHandler.request({
+      url,
+      body: request.body ? JSON.stringify(request.body) : undefined,
+      headers: { "Content-Type": "application/json" },
+      method: request.method,
+    });
   }
 }

@@ -15,12 +15,12 @@
   "dependencies": {
     "@eventual/aws-cdk": "workspace:^",
     "aws-cdk-lib": "2.50.0",
-    "constructs": "^10.1.154"
+    "constructs": "10.1.154"
   },
   "devDependencies": {
     "@eventual/cli": "workspace:^",
     "@types/jest": "^29",
-    "@types/node": "^16",
+    "@types/node": "^18",
     "aws-cdk": "2.50.0",
     "esbuild": "^0.17.4",
     "jest": "^29",

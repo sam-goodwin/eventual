@@ -1,5 +1,10 @@
-import { activity, Secret, http, HttpHandler } from "@eventual/core";
 import { isOrchestratorWorker } from "@eventual/core/internal";
+import {
+  activity,
+  Secret,
+  api,
+  HttpHandler,
+} from "@eventual/core";
 import slack from "@slack/bolt";
 import { WebClient } from "@slack/web-api";
 import FetchReceiver from "./receiver.js";
@@ -82,8 +87,8 @@ export class Slack<Name extends string = string> {
       }
     );
 
-    http.all(`/_slack/${name}`, async (request) => {
-      return (await this.getHandler())(request);
+    api.all(`/_slack/${name}`, async (request, context) => {
+      return (await this.getHandler())(request, context);
     });
 
     const deferMethodNames = new Set([

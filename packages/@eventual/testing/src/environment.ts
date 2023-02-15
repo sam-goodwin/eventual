@@ -4,7 +4,7 @@ import {
   ActivityOutput,
   Event,
   EventEnvelope,
-  EventHandlerFunction,
+  SubscriptionHandler,
   EventPayload,
   EventPayloadType,
   ExecutionHandle,
@@ -52,7 +52,7 @@ import {
   MockableActivityProvider,
   MockActivity,
 } from "./providers/activity-provider.js";
-import { TestEventHandlerProvider } from "./providers/event-handler-provider.js";
+import { TestSubscriptionProvider } from "./providers/subscription-provider.js";
 import { TestActivityStore } from "./stores/activity-store.js";
 import { TestExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
 import { TestExecutionHistoryStore } from "./stores/execution-history-store.js";
@@ -104,7 +104,7 @@ export class TestEnvironment extends RuntimeServiceClient {
   private activityClient: ActivityClient;
 
   private activityProvider: MockableActivityProvider;
-  private eventHandlerProvider: TestEventHandlerProvider;
+  private eventHandlerProvider: TestSubscriptionProvider;
 
   private initialized = false;
   private timeController: TimeController<WorkflowTask>;
@@ -135,7 +135,7 @@ export class TestEnvironment extends RuntimeServiceClient {
     const executionStore = new TestExecutionStore(timeConnector);
 
     const activityProvider = new MockableActivityProvider();
-    const eventHandlerProvider = new TestEventHandlerProvider();
+    const eventHandlerProvider = new TestSubscriptionProvider();
 
     const testLogAgent = new LogAgent({
       logsClient: new TestLogsClient(),
@@ -311,11 +311,11 @@ export class TestEnvironment extends RuntimeServiceClient {
    *       included with the service or {@link resetTestSubscriptions}
    *       to clear handlers added via this method.
    */
-  public subscribeEvent<E extends Event<any>>(
-    event: E,
-    handler: EventHandlerFunction<EventPayloadType<E>>
+  public subscribeEvents<E extends Event<any>>(
+    events: E[],
+    handler: SubscriptionHandler<EventPayloadType<E>>
   ) {
-    return this.eventHandlerProvider.subscribeEvent(event, handler);
+    return this.eventHandlerProvider.subscribeEvents(events, handler);
   }
 
   /**

@@ -500,7 +500,7 @@ var ServiceType;
 (function(ServiceType2) {
   ServiceType2["ActivityWorker"] = "ActivityWorker";
   ServiceType2["ApiHandler"] = "ApiHandler";
-  ServiceType2["EventHandler"] = "EventHandler";
+  ServiceType2["Subscription"] = "Subscription";
   ServiceType2["OrchestratorWorker"] = "OrchestratorWorker";
 })(ServiceType || (ServiceType = {}));
 
@@ -593,6 +593,22 @@ globalThis.$Eventual = Eventual;
 
 var AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
 
+<<<<<<< HEAD
+=======
+var CommandType;
+(function(CommandType2) {
+  CommandType2["PublishEvents"] = "PublishEvents";
+  CommandType2["SendSignal"] = "SendSignal";
+  CommandType2["StartActivity"] = "StartActivity";
+  CommandType2["StartTimer"] = "StartTimer";
+  CommandType2["StartWorkflow"] = "StartWorkflow";
+})(CommandType || (CommandType = {}));
+
+function isSourceLocation(a) {
+  return a && typeof a === "object" && typeof a.fileName === "string" && typeof a.exportName === "string";
+}
+
+>>>>>>> sussman/fix/start_durability
 var import_ulidx2 = __toESM(require_dist2(), 1);
 var ExecutionStatus;
 (function(ExecutionStatus2) {
@@ -617,41 +633,76 @@ function e({ base: t = "", routes: n = [] } = {}) {
 }
 var itty_router_min_default = { Router: e };
 
+function command(...args) {
+  const [sourceLocation, name, options, handler] = parseCommandArgs(args);
+  const command2 = {
+    kind: "Command",
+    name,
+    handler,
+    sourceLocation,
+    ...options
+  };
+  commands.push(command2);
+  return command2;
+}
+function parseCommandArgs(args) {
+  return [
+    args.find(isSourceLocation),
+    args.find((a) => typeof a === "string"),
+    args.find((a) => typeof a === "object" && !isSourceLocation(a)),
+    args.find((a) => typeof a === "function")
+  ];
+}
+
 var router = itty_router_min_default.Router();
-var api = new Proxy({}, {
-  get: (_, method) => {
-    if (method === "routes" || method === "handle") {
-      return router[method];
-    } else {
-      return (...args) => {
-        const [sourceLocation, path, routeProps, handler] = typeof args[0] === "object" ? typeof args[3] === "function" ? args : [
-          args[0],
-          args[1],
-          void 0,
-          args[2]
-        ] : typeof args[2] === "function" ? [
-          void 0,
-          args[0],
-          args[1],
-          args[2]
-        ] : [void 0, args[0], void 0, args[1]];
-        const command = {
-          kind: "Command",
-          handler,
-          memorySize: routeProps?.memorySize,
-          method: method.toUpperCase(),
-          name: path,
-          path: typeof args[0] === "string" ? args[0] : args[1],
-          sourceLocation,
-          timeout: routeProps?.timeout,
-          passThrough: true
+var api = createRouter([]);
+function createRouter(middlewares) {
+  return new Proxy({}, {
+    get: (_, method) => {
+      if (method === "routes" || method === "handle") {
+        return router[method];
+      } else if (method === "use") {
+        return (middleware) => createRouter([...middlewares ?? [], middleware]);
+      } else if (method === "command") {
+        return (...args) => {
+          const [sourceLocation, name, options, handler] = parseCommandArgs(args);
+          return command(sourceLocation, name, {
+            ...options ?? {},
+            middlewares
+          }, handler);
         };
-        commands.push(command);
-        return router[method](path, command.handler);
-      };
+      } else {
+        return (...args) => {
+          const [sourceLocation, path, routeProps, handler] = typeof args[0] === "object" ? typeof args[3] === "function" ? args : [
+            args[0],
+            args[1],
+            void 0,
+            args[2]
+          ] : typeof args[2] === "function" ? [
+            void 0,
+            args[0],
+            args[1],
+            args[2]
+          ] : [void 0, args[0], void 0, args[1]];
+          const command2 = {
+            kind: "Command",
+            handler,
+            memorySize: routeProps?.memorySize,
+            method: method.toUpperCase(),
+            name: path,
+            path: typeof args[0] === "string" ? args[0] : args[1],
+            sourceLocation,
+            timeout: routeProps?.timeout,
+            middlewares,
+            passThrough: true
+          };
+          commands.push(command2);
+          return router[method](path, command2.handler);
+        };
+      }
     }
-  }
-});
+  });
+}
 
 var LogLevel;
 (function(LogLevel2) {

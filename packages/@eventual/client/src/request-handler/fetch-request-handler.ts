@@ -1,5 +1,5 @@
-import { HttpRequest } from "@eventual/core";
 import { BeforeRequest, HttpError, RequestHandler } from "./request-handler.js";
+import { HttpRequest } from "../http-request.js";
 
 /**
  * A request handler that uses fetch, should work with browser or node fetch.

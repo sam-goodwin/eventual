@@ -1,9 +1,13 @@
 import type openapi from "openapi3-ts";
 import type { z } from "zod";
-import type { Event, EventHandler } from "../event.js";
+import type { Event } from "../event.js";
 import type { Command } from "../http/command.js";
 import type { DurationSchedule } from "../schedule.js";
 import type { Activity } from "../activity.js";
+import type {
+  SubscriptionFilter,
+  SubscriptionRuntimeProps,
+} from "../subscription.js";
 
 /**
  * Specification for an Eventual application
@@ -52,7 +56,26 @@ export interface FunctionSpec {
 
 export type ActivitySpec = Omit<ToSpec<Activity>, "kind">;
 
-export type SubscriptionSpec = Omit<ToSpec<EventHandler>, "kind">;
+export interface SubscriptionSpec<Name extends string = string> {
+  /**
+   * Unique name of this Subscription.
+   */
+  name: Name;
+  /**
+   * Subscriptions this Event Handler is subscribed to. Any event flowing
+   * through the Service's Event Bus that match these criteria will be
+   * sent to this Lambda Function.
+   */
+  filters: SubscriptionFilter[];
+  /**
+   * Runtime configuration for this Event Handler.
+   */
+  props?: SubscriptionRuntimeProps;
+  /**
+   * Only available during eventual-infer.
+   */
+  sourceLocation?: SourceLocation;
+}
 
 export type EventSpec = Omit<ToSpec<Event>, "kind">;
 
@@ -65,6 +88,10 @@ type ToSpec<T> = T extends z.ZodType
   : T extends Record<string, any>
   ? {
       [prop in keyof DropFunctions<T>]: ToSpec<T[prop]>;
+    }
+  : T extends Event
+  ? {
+      name: T["name"];
     }
   : T;
 

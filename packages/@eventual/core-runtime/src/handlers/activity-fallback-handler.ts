@@ -58,7 +58,7 @@ export interface ActivityFallbackHandler {
  * For example, if the activity handler fails to submit a result to the workflow,
  * try to submit from here.
  *
- * TODO: support tries
+ * TODO: support retries
  */
 export function createActivityFallbackHandler({
   executionQueueClient,

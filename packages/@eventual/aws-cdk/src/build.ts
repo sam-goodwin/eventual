@@ -136,7 +136,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         },
       },
     },
-    api: manifestInternalAPI(),
+    api: manifestInternalAPI() as any,
   };
 
   await fs.promises.writeFile(
@@ -157,7 +157,10 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         async (
           spec: SpecFor<Type>
         ): Promise<
-          readonly [string, BundledFunction<internal.CommandSpec | internal.SubscriptionSpec>]
+          readonly [
+            string,
+            BundledFunction<internal.CommandSpec | internal.SubscriptionSpec>
+          ]
         > => {
           if (spec.sourceLocation?.fileName) {
             // we know the source location of the command, so individually build it from that
@@ -180,7 +183,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
                   serviceType:
                     type === "commands"
                       ? internal.ServiceType.ApiHandler
-                      : internal.ServiceType.EventHandler,
+                      : internal.ServiceType.Subscription,
                   injectedEntry: spec.sourceLocation.fileName,
                   injectedServiceSpec: specPath,
                 }),
@@ -234,9 +237,9 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           serviceType: internal.ServiceType.ApiHandler,
         },
         {
-          name: internal.ServiceType.EventHandler,
+          name: internal.ServiceType.Subscription,
           entry: runtimeHandlersEntrypoint("event-handler"),
-          serviceType: internal.ServiceType.EventHandler,
+          serviceType: internal.ServiceType.Subscription,
         },
       ]
         .map((s) => ({
@@ -322,9 +325,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     return path.relative(path.resolve(request.outDir), path.resolve(file));
   }
 
-  function manifestInternalAPI(): {
-    [k in keyof InternalApiRoutes]: InternalCommandFunction;
-  } {
+  function manifestInternalAPI() {
     return Object.fromEntries([
       internalCommand({
         name: "listWorkflows",
@@ -380,9 +381,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         method: "POST",
         file: updateActivity!,
       }),
-    ]) as {
-      [k in keyof InternalApiRoutes]: InternalCommandFunction;
-    };
+    ] as const);
 
     function internalCommand<P extends keyof InternalApiRoutes>(props: {
       name: string;

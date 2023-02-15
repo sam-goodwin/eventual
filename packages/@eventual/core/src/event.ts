@@ -1,9 +1,9 @@
 import type z from "zod";
 import { createPublishEventsCall } from "./internal/calls/send-events-call.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
-import type { FunctionRuntimeProps } from "./function-props.js";
-import { eventHandlers, events, getServiceClient } from "./internal/global.js";
-import { isSourceLocation, SourceLocation } from "./internal/service-spec.js";
+import { subscriptions, events, getServiceClient } from "./internal/global.js";
+import { isSourceLocation } from "./internal/service-spec.js";
+import { Subscription, SubscriptionRuntimeProps } from "./subscription.js";
 
 /**
  * An EventPayload is the data sent as an event.
@@ -39,22 +39,6 @@ export interface EventEnvelope<E extends EventPayload = EventPayload> {
 }
 
 /**
- * Runtime Props for an Event Handler.
- */
-export interface EventHandlerRuntimeProps extends FunctionRuntimeProps {
-  /**
-   * Number of times an event can be re-driven to the Event Handler before considering
-   * the Event as failed to process and sending it to the Service Dead Letter Queue.
-   *
-   * Minimum value of `0`.
-   * Maximum value of `185`.
-   *
-   * @default 185
-   */
-  retryAttempts?: number;
-}
-
-/**
  * An {@link Event} is an object representing the declaration of an event
  * that belongs within the service. An {@link Event} has a unique {@link name},
  * may be {@link publishEvents}ed and {@link onEvent}d to.
@@ -78,75 +62,18 @@ export interface Event<E extends EventPayload = EventPayload> {
   onEvent<Name extends string>(
     name: Name,
     handler: EventHandlerFunction<E>
-  ): EventHandler<Name, E>;
+  ): Subscription<Name, E>;
   onEvent<Name extends string>(
     name: Name,
-    props: EventHandlerRuntimeProps,
+    props: SubscriptionRuntimeProps,
     handlers: EventHandlerFunction<E>
-  ): EventHandler<Name, E>;
+  ): Subscription<Name, E>;
   /**
    * Publish events of this type within the service boundary.
    *
    * @param events a list of events to publish.
    */
   publishEvents(...events: E[]): Promise<void>;
-}
-
-export interface EventHandler<
-  Name extends string = string,
-  E extends EventPayload = EventPayload
-> {
-  kind: "EventHandler";
-  name: Name;
-  /**
-   * The Handler Function for processing the Events.
-   */
-  handler: EventHandlerFunction<E>;
-  /**
-   * Subscriptions this Event Handler is subscribed to. Any event flowing
-   * through the Service's Event Bus that match these criteria will be
-   * sent to this Lambda Function.
-   */
-  subscriptions: Subscription[];
-  /**
-   * Runtime configuration for this Event Handler.
-   */
-  runtimeProps?: EventHandlerRuntimeProps;
-  /**
-   * Only available during eventual-infer.
-   */
-  sourceLocation?: SourceLocation;
-}
-
-/**
- * A {@link Subscription} is an object that describes how to select events from
- * within a service boundary to route to a {@link EventHandlerFunction}.
- *
- * For now, we only support matching on a single name, but this object can be
- * extended with other properties such as selection predicates.
- */
-export interface Subscription {
-  /**
-   * Name of the event to subscribe to.
-   */
-  name: string;
-}
-
-/**
- * An {@link EventSubscription} is an object that associates a {@link handler}
- * function with a list of {@link subscriptions}. The {@link subscriptions}
- * define which events this {@link handler} should be invoked for.
- */
-export interface EventSubscription<E extends EventPayload = EventPayload> {
-  /**
-   * A list of {@link Subscription}s that should invoke this {@link handler}.
-   */
-  subscriptions: Subscription[];
-  /**
-   * The {@link EventHandlerFunction} to invoke for any event that matches one of
-   * the {@link subscriptions}.
-   */
-  handler: EventHandlerFunction<E>;
 }
 
 /**
@@ -215,20 +142,16 @@ export function event<E extends EventPayload>(
         args.find((a) => typeof a === "function"),
       ];
 
-      const eventHandler: EventHandler<Name, E> = {
-        kind: "EventHandler",
+      const eventHandler: Subscription<Name, E> = {
+        kind: "Subscription",
         name,
         handler,
-        subscriptions: [
-          {
-            name: event.name,
-          },
-        ],
-        runtimeProps: eventHandlerProps,
+        filters: [{ name: event.name }],
+        props: eventHandlerProps,
         sourceLocation,
       };
 
-      eventHandlers().push(eventHandler as EventHandler<any, any>);
+      subscriptions().push(eventHandler as Subscription<any, any>);
 
       return eventHandler;
     },
