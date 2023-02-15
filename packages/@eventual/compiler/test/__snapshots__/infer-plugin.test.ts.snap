@@ -593,22 +593,10 @@ globalThis.$Eventual = Eventual;
 
 var AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
 
-<<<<<<< HEAD
-=======
-var CommandType;
-(function(CommandType2) {
-  CommandType2["PublishEvents"] = "PublishEvents";
-  CommandType2["SendSignal"] = "SendSignal";
-  CommandType2["StartActivity"] = "StartActivity";
-  CommandType2["StartTimer"] = "StartTimer";
-  CommandType2["StartWorkflow"] = "StartWorkflow";
-})(CommandType || (CommandType = {}));
-
 function isSourceLocation(a) {
   return a && typeof a === "object" && typeof a.fileName === "string" && typeof a.exportName === "string";
 }
 
->>>>>>> sussman/fix/start_durability
 var import_ulidx2 = __toESM(require_dist2(), 1);
 var ExecutionStatus;
 (function(ExecutionStatus2) {
