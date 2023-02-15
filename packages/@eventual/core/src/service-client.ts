@@ -1,4 +1,3 @@
-import { ScheduleActivityCommand } from "./command.js";
 import { EventEnvelope } from "./event.js";
 import { ExecutionID } from "./execution-id.js";
 import { Execution, ExecutionHandle, ExecutionStatus } from "./execution.js";
@@ -146,12 +145,14 @@ export interface ListWorkflowsResponse {
 export interface SucceedExecutionRequest<Result = any> {
   executionId: string;
   result?: Result;
+  endTime: string;
 }
 
 export interface FailExecutionRequest {
   executionId: string;
   error: string;
   message: string;
+  endTime: string;
 }
 
 export function isFailedExecutionRequest(
@@ -251,8 +252,6 @@ export function isSendActivityHeartbeatRequest(
   return request.type === ActivityUpdateType.Heartbeat;
 }
 
-export type SendActivityUpdateResponse = SendActivityHeartbeatResponse | void;
-
 export interface SendActivityHeartbeatResponse {
   /**
    * True when the activity has been cancelled.
@@ -260,14 +259,6 @@ export interface SendActivityHeartbeatResponse {
    * This is the only way for a long running activity to know it was cancelled.
    */
   cancelled: boolean;
-}
-
-export interface ActivityWorkerRequest {
-  scheduledTime: string;
-  workflowName: string;
-  executionId: string;
-  command: ScheduleActivityCommand;
-  retry: number;
 }
 
 export interface SendSignalRequest<Payload = any> {

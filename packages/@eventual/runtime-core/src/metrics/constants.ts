@@ -89,6 +89,12 @@ export namespace OrchestratorMetrics {
    */
   export const ExecutionStarted = "ExecutionStarted";
   /**
+   * Time between the first workflow started event and the first execution run.
+   *
+   * This should represent the time the runtime takes to actually start a workflow.
+   */
+  export const ExecutionStartedDuration = "ExecutionStartedDuration";
+  /**
    * Emitted by orchestrator when the execution completes.
    */
   export const ExecutionCompleted = "ExecutionCompleted";

@@ -1,18 +1,18 @@
-import { createActivityClient } from "../../create.js";
-import { withErrorMiddleware } from "./middleware.js";
-import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
 import {
   assertNever,
   isSendActivityFailureRequest,
   isSendActivityHeartbeatRequest,
   isSendActivitySuccessRequest,
+  SendActivityHeartbeatResponse,
   SendActivityUpdate,
-  SendActivityUpdateResponse,
 } from "@eventual/core";
+import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { createActivityClient } from "../../create.js";
+import { withErrorMiddleware } from "./middleware.js";
 
 const activityClient = createActivityClient();
 
-export const handler: APIGatewayProxyHandlerV2<SendActivityUpdateResponse> =
+export const handler: APIGatewayProxyHandlerV2<SendActivityHeartbeatResponse | void> =
   withErrorMiddleware(async (event: APIGatewayProxyEventV2) => {
     const body = event.body;
     if (!body) {

@@ -54,7 +54,7 @@ const testExecutor = new CommandExecutor({
 const workflow = {
   workflowName: "myWorkflow",
 } satisfies Partial<Workflow> as Workflow;
-const executionId = "execId";
+const executionId = "execId/123";
 
 const baseTime = new Date();
 

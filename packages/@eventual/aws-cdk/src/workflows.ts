@@ -1,8 +1,8 @@
-import { ENV_NAMES } from "@eventual/aws-runtime";
-import { ServiceType } from "@eventual/core";
-import { RemovalPolicy } from "aws-cdk-lib";
+import { ENV_NAMES, ExecutionRecord } from "@eventual/aws-runtime";
+import { ExecutionQueueEventEnvelope } from "@eventual/runtime-core";
+import { CfnResource, RemovalPolicy } from "aws-cdk-lib";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
-import { IGrantable } from "aws-cdk-lib/aws-iam";
+import { IGrantable, IRole, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { Bucket, IBucket } from "aws-cdk-lib/aws-s3";
@@ -36,7 +36,47 @@ export interface WorkflowsProps {
   service: IService;
 }
 
+interface PipeToWorkflowQueueProps {
+  grant: (grantable: IRole) => void;
+  /**
+   * path to the execution id $.path.to.id ex: $.dynamodb.NewImage.id.S
+   */
+  executionIdPath: string;
+  /**
+   * Input template format event object or path <$.path.to.event> ex: <$.dynamodb.NewImage.insertEvent.S>
+   */
+  event: string;
+  /**
+   * Source ARN
+   */
+  source: string;
+  /**
+   * Source Properties given to the pipe
+   */
+  sourceProps: {
+    FilterCriteria?: { Filters: { Pattern: string }[] };
+    [key: string]: any;
+  };
+}
+
 export interface IWorkflows {
+  /**
+   * Creates an Event Bridge Pipe from a valid Pipe source to the Workflow Queue.
+   *
+   * Intended to pipe {@link HistoryStateEvent}s to the workflow in a serverless way.
+   * For example, reacting to an execution being created or updated to send the event durably
+   * on the dynamo put/write.
+   *
+   * Sources: https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-pipes-event-source.html
+   *
+   * Which
+   */
+  pipeToWorkflowQueue(
+    scope: Construct,
+    id: string,
+    props: PipeToWorkflowQueueProps
+  ): void;
+
   configureStartExecution(func: Function): void;
   grantStartExecution(grantable: IGrantable): void;
 
@@ -121,7 +161,6 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
 
     this.orchestrator = new ServiceFunction(this, "Orchestrator", {
       functionName: `${props.serviceName}-orchestrator-handler`,
-      serviceType: ServiceType.OrchestratorWorker,
       code: props.build.getCode(props.build.orchestrator.file),
       events: [
         new SqsEventSource(this.queue, {
@@ -131,11 +170,88 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
       ],
     });
 
+    /**
+     * transform the dynamo record into an {@link ExecutionQueueEventEnvelope} that contains a {@link WorkflowStarted} event.
+     *
+     * {
+     *    task: {
+     *        executionId: <$.dynamodb.id.S>,
+     *        events: [<$.dynamodb.insertEvent.S>]
+     *    }
+     * }
+     */
+    this.pipeToWorkflowQueue(this, "InsertEvent", {
+      event: `<$.dynamodb.NewImage.${ExecutionRecord.INSERT_EVENT}.S>`,
+      executionIdPath: "$.dynamodb.NewImage.id.S",
+      grant: (role) => this.props.table.grantStreamRead(role),
+      source: this.props.table.tableStreamArn!,
+      sourceProps: {
+        // will retry forever in the case of an SQS outage!
+        DynamoDBStreamParameters: {
+          StartingPosition: "LATEST",
+          // do not wait for multiple records, just go.
+          BatchSize: 1,
+          MaximumBatchingWindowInSeconds: 1,
+        },
+        FilterCriteria: {
+          Filters: [
+            {
+              Pattern: JSON.stringify({
+                eventName: ["INSERT"],
+                dynamodb: {
+                  NewImage: {
+                    pk: {
+                      S: [ExecutionRecord.PARTITION_KEY],
+                    },
+                    [ExecutionRecord.INSERT_EVENT]: { S: [{ exists: true }] },
+                  },
+                },
+              }),
+            },
+          ],
+        },
+      },
+    });
+
     this.configureOrchestrator();
   }
 
   public get grantPrincipal() {
     return this.orchestrator.grantPrincipal;
+  }
+
+  public pipeToWorkflowQueue(
+    scope: Construct,
+    id: string,
+    props: PipeToWorkflowQueueProps
+  ) {
+    const container = new Construct(scope, id);
+
+    const pipeRole = new Role(container, `Role`, {
+      assumedBy: new ServicePrincipal("pipes"),
+    });
+
+    this.queue.grantSendMessages(pipeRole);
+    props.grant(pipeRole);
+
+    new CfnResource(container, "Pipe", {
+      type: "AWS::Pipes::Pipe",
+      properties: {
+        Name: `${this.props.serviceName}-${id}`,
+        RoleArn: pipeRole.roleArn,
+        Source: props.source,
+        SourceParameters: props.sourceProps,
+        Target: this.queue.queueArn,
+        TargetParameters: {
+          SqsQueueParameters: {
+            MessageGroupId: props.executionIdPath,
+          },
+          InputTemplate: `{"task": { "events": [${
+            props.event
+          }], "executionId": <${props.executionIdPath}> } }`,
+        },
+      },
+    });
   }
 
   /**

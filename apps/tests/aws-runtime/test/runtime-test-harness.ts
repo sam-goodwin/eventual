@@ -166,6 +166,7 @@ export interface TestSetFunction {
 export interface TestSetProps {
   name?: string;
   chaos: { rules: ChaosRule[]; durationMillis: number };
+  testTimeout?: number;
   register: TestSetFunction;
 }
 
@@ -181,10 +182,14 @@ export function eventualRuntimeTestHarness(
   testSets.forEach((registerConfig, i) => {
     const tester = new TesterContainer();
 
-    const [register, chaos] =
+    const [register, chaos, timeout = 100 * 1000] =
       typeof registerConfig === "function"
         ? [registerConfig, undefined]
-        : [registerConfig.register, registerConfig.chaos];
+        : [
+            registerConfig.register,
+            registerConfig.chaos,
+            registerConfig.testTimeout,
+          ];
 
     register({
       test: tester.test.bind(tester),
@@ -227,12 +232,16 @@ export function eventualRuntimeTestHarness(
           afterEach(() => {
             done = true;
           });
-          test("test", async () => {
-            const execution = executions[j]!;
-            const { executionId } = await execution;
+          test(
+            "test",
+            async () => {
+              const execution = executions[j]!;
+              const { executionId } = await execution;
 
-            await _test.test(executionId, { cancelCallback });
-          });
+              await _test.test(executionId, { cancelCallback });
+            },
+            timeout
+          );
         });
       });
     });

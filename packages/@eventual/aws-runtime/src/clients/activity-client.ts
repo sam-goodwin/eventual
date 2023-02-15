@@ -3,10 +3,10 @@ import {
   InvokeCommand,
   LambdaClient,
 } from "@aws-sdk/client-lambda";
-import { ActivityWorkerRequest } from "@eventual/core";
 import {
   ActivityClient,
   ActivityClientProps,
+  ActivityWorkerRequest,
   getLazy,
   LazyValue,
 } from "@eventual/runtime-core";

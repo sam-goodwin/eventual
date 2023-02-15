@@ -7,6 +7,7 @@ import {
   ListExecutionsResponse,
   SucceededExecution,
   SucceedExecutionRequest,
+  WorkflowStarted,
 } from "@eventual/core";
 
 /**
@@ -22,8 +23,14 @@ export interface ExecutionStore {
    *       For example, sending the {@link workflowStartedEvent}.
    *       It only creates the database record.
    * @see EventualServiceClient.startExecution
+   *
+   * @param startEvent - when provided, the system will emit a start event when the record is
+   *                     successfully saved
    */
-  create(execution: InProgressExecution): Promise<void>;
+  create(
+    execution: InProgressExecution,
+    startEvent?: WorkflowStarted
+  ): Promise<void>;
 
   /**
    * Updates an execution to the failed or succeeded state.
@@ -32,10 +39,13 @@ export interface ExecutionStore {
    *       For example, updating the parent workflow of the change.
    *       It only updates the database record.
    * @see WorkflowRuntimeClient.succeedExecution
+   *
+   * @param updateEvent - when provided the event will be transactionally emitted
+   *                      on workflow update.
    */
   update<Result = any>(
-    request: FailExecutionRequest | SucceedExecutionRequest<Result>
-  ): Promise<SucceededExecution<Result> | FailedExecution>;
+    request: SucceedExecutionRequest<Result> | FailExecutionRequest
+  ): Promise<FailedExecution | SucceededExecution<Result>>;
 
   /**
    * Get a single execution.

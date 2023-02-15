@@ -1,6 +1,7 @@
 import {
   createEvent,
   ExecutionAlreadyExists,
+  ExecutionID,
   ExecutionStatus,
   FailedExecution,
   FailExecutionRequest,
@@ -81,23 +82,6 @@ export class WorkflowClient {
     };
 
     try {
-      try {
-        // try to create first as it may throw ExecutionAlreadyExists
-        await this.executionStore.create(execution);
-      } catch (err) {
-        if (err instanceof ExecutionAlreadyExists) {
-          const execution = await this.executionStore.get(executionId);
-          if (execution?.inputHash === inputHash) {
-            return { executionId, alreadyRunning: true };
-          }
-        }
-        // rethrow to the top catch
-        throw err;
-      }
-
-      // create the log
-      await this.logsClient.initializeExecutionLog(executionId);
-
       const workflowStartedEvent = createEvent<WorkflowStarted>(
         {
           type: WorkflowEventType.WorkflowStarted,
@@ -118,18 +102,28 @@ export class WorkflowClient {
         this.baseTime()
       );
 
-      await Promise.all([
-        // send the first event
-        this.executionQueueClient.submitExecutionEvents(
-          executionId,
-          workflowStartedEvent
-        ),
-        // send the first log message and warm up the log stream
-        this.logsClient.putExecutionLogs(executionId, {
-          time: this.baseTime().getTime(),
-          message: "Workflow Started",
-        }),
-      ]);
+      // create the log - we expect this to complete before anything tries to write to it.
+      await this.logsClient.initializeExecutionLog(executionId);
+
+      try {
+        // try to create first as it may throw ExecutionAlreadyExists
+        await this.executionStore.create(execution, workflowStartedEvent);
+      } catch (err) {
+        if (err instanceof ExecutionAlreadyExists) {
+          const execution = await this.executionStore.get(executionId);
+          if (execution?.inputHash === inputHash) {
+            return { executionId, alreadyRunning: true };
+          }
+        }
+        // rethrow to the top catch
+        throw err;
+      }
+
+      // send the first log message and warm up the log stream
+      await this.logsClient.putExecutionLogs(executionId, {
+        time: this.baseTime().getTime(),
+        message: "Workflow Started",
+      });
 
       return { executionId, alreadyRunning: false };
     } catch (err) {
@@ -196,7 +190,7 @@ export class WorkflowClient {
 export interface StartChildExecutionRequest<W extends Workflow = Workflow>
   extends StartExecutionRequest<W>,
     WorkflowOptions {
-  parentExecutionId: string;
+  parentExecutionId: ExecutionID;
   /**
    * Sequence ID of this execution if this is a child workflow
    */

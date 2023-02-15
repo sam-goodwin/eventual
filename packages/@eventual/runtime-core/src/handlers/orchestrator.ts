@@ -41,6 +41,7 @@ import {
   WorkflowSucceeded,
   WorkflowTask,
   WorkflowTimedOut,
+  ExecutionID,
 } from "@eventual/core";
 import { inspect } from "util";
 import { MetricsClient } from "../clients/metrics-client.js";
@@ -115,7 +116,14 @@ export function createOrchestrator({
       const eventsByExecutionId = Object.fromEntries(
         Object.entries(tasksByExecutionId).map(([executionId, records]) => [
           executionId,
-          records.flatMap((e) => e.events),
+          records.flatMap((e) => {
+            return e.events.map((evnt) =>
+              // events can be objects or stringified json
+              typeof evnt === "string"
+                ? (JSON.parse(evnt) as HistoryStateEvent)
+                : evnt
+            );
+          }),
         ])
       );
 
@@ -165,7 +173,7 @@ export function createOrchestrator({
 
   async function orchestrateExecution(
     workflowName: string,
-    executionId: string,
+    executionId: ExecutionID,
     events: HistoryStateEvent[],
     baseTime: () => Date
   ) {
@@ -279,8 +287,13 @@ export function createOrchestrator({
          */
         if (processedEvents.isFirstRun) {
           metrics.setProperty(OrchestratorMetrics.ExecutionStarted, 1);
-          if (processedEvents.startEvent?.timeoutTime) {
-            const timeoutTime = processedEvents.startEvent?.timeoutTime;
+          metrics.setProperty(
+            OrchestratorMetrics.ExecutionStartedDuration,
+            baseTime().getTime() -
+              new Date(processedEvents.startEvent.timestamp).getTime()
+          );
+          if (processedEvents.startEvent.timeoutTime) {
+            const timeoutTime = processedEvents.startEvent.timeoutTime;
             metrics.setProperty(OrchestratorMetrics.TimeoutStarted, 1);
             await timed(
               metrics,
@@ -539,6 +552,7 @@ export function createOrchestrator({
               executionId,
               error: resultEvent.error,
               message: resultEvent.message,
+              endTime: baseTime().toISOString(),
             })
         );
 
@@ -558,6 +572,7 @@ export function createOrchestrator({
             workflowClient.succeedExecution({
               executionId,
               result: resultEvent.output,
+              endTime: baseTime().toISOString(),
             })
         );
 

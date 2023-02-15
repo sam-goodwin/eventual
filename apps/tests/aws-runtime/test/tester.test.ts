@@ -1,22 +1,21 @@
-import { jest } from "@jest/globals";
-
 import { EventualError, HeartbeatTimeout } from "@eventual/core";
+import { jest } from "@jest/globals";
 import { ChaosEffects, ChaosTargets } from "./chaos-extension/chaos-engine.js";
 import { serviceUrl } from "./env.js";
 import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
 import {
-  eventDrivenWorkflow,
+  allCommands,
   asyncWorkflow,
+  eventDrivenWorkflow,
+  failedWorkflow,
   heartbeatWorkflow,
   parentWorkflow,
   timedOutWorkflow,
+  timedWorkflow,
   workflow1,
   workflow2,
   workflow3,
   workflow4,
-  failedWorkflow,
-  timedWorkflow,
-  allCommands,
 } from "./test-service.js";
 
 jest.setTimeout(100 * 1000);
@@ -116,6 +115,24 @@ eventualRuntimeTestHarness(
         "you said hello sam"
       );
 
+      testCompletion("test commands", allCommands, {
+        signalCount: 1,
+      });
+    },
+  },
+  {
+    name: "sqs send failures",
+    chaos: {
+      rules: [
+        {
+          targets: [ChaosTargets.command("SendMessageCommand", "SQSClient")],
+          effect: ChaosEffects.reject(),
+        },
+      ],
+      durationMillis: 4000,
+    },
+    testTimeout: 200 * 1000,
+    register: ({ testCompletion }) => {
       testCompletion("test commands", allCommands, {
         signalCount: 1,
       });

@@ -14,22 +14,24 @@ export function isExecutionStatus(s: string): s is ExecutionStatus {
   return ExecutionStatuses.has(s as ExecutionStatus);
 }
 
+export interface ExecutionParent {
+  /**
+   * Seq number when this execution is the child of another workflow.
+   */
+  seq: number;
+  /**
+   * Id of the parent workflow, while present.
+   */
+  executionId: ExecutionID;
+}
+
 interface ExecutionBase {
   id: ExecutionID;
   status: ExecutionStatus;
   startTime: string;
   workflowName: string;
   inputHash?: string;
-  parent?: {
-    /**
-     * Seq number when this execution is the child of another workflow.
-     */
-    seq: number;
-    /**
-     * Id of the parent workflow, while present.
-     */
-    executionId: string;
-  };
+  parent?: ExecutionParent;
 }
 
 export type Execution<Result = any> =

@@ -10,6 +10,7 @@ import {
   SortOrder,
   SucceededExecution,
   SucceedExecutionRequest,
+  WorkflowStarted,
 } from "@eventual/core";
 import { ExecutionStore } from "@eventual/runtime-core";
 import { TimeConnector } from "../environment.js";
@@ -19,8 +20,18 @@ export class TestExecutionStore implements ExecutionStore {
 
   constructor(private timeConnector: TimeConnector) {}
 
-  public async create(execution: InProgressExecution): Promise<void> {
+  public async create(
+    execution: InProgressExecution,
+    startEvent?: WorkflowStarted
+  ): Promise<void> {
     this.executionStore[execution.id] = execution;
+
+    if (startEvent) {
+      this.timeConnector.pushEvent({
+        executionId: execution.id,
+        events: [startEvent],
+      });
+    }
   }
 
   public async update<Result = any>(
@@ -36,14 +47,14 @@ export class TestExecutionStore implements ExecutionStore {
       isFailedExecutionRequest(request)
         ? {
             ...execution,
-            endTime: this.timeConnector.getTime().toISOString(),
+            endTime: request.endTime,
             error: request.error,
             message: request.message,
             status: ExecutionStatus.FAILED,
           }
         : {
             ...execution,
-            endTime: this.timeConnector.getTime().toISOString(),
+            endTime: request.endTime,
             result: request.result,
             status: ExecutionStatus.SUCCEEDED,
           };

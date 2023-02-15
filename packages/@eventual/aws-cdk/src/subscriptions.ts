@@ -1,4 +1,3 @@
-import { ServiceType } from "@eventual/core";
 import { computeDurationSeconds } from "@eventual/runtime-core";
 import { aws_iam, Duration } from "aws-cdk-lib";
 import { IEventBus, Rule } from "aws-cdk-lib/aws-events";
@@ -135,7 +134,6 @@ export class Subscription extends Construct implements IGrantable {
     this.handler = new ServiceFunction(this, "Handler", {
       code: props.build.getCode(func.file),
       functionName: `${props.serviceName}-subscription-${subscription.name}`,
-      serviceType: ServiceType.Subscription,
       deadLetterQueueEnabled: true,
       ...(props.overrides ?? {}),
       environment: {

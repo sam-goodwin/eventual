@@ -7,19 +7,19 @@ import {
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
 import { IGrantable } from "aws-cdk-lib/aws-iam";
+import { Function } from "aws-cdk-lib/aws-lambda";
+import { LambdaDestination } from "aws-cdk-lib/aws-lambda-destinations";
 import { Construct } from "constructs";
+import type { BuildOutput } from "./build";
+import { Events } from "./events";
+import { grant } from "./grant";
+import { Logging } from "./logging";
+import { IScheduler } from "./scheduler";
+import { IService } from "./service";
+import { IServiceApi } from "./service-api";
+import { ServiceFunction } from "./service-function";
 import { addEnvironment } from "./utils";
 import { IWorkflows } from "./workflows";
-import { Function } from "aws-cdk-lib/aws-lambda";
-import { IScheduler } from "./scheduler";
-import { ServiceType } from "@eventual/core";
-import { ServiceFunction } from "./service-function";
-import { Events } from "./events";
-import { Logging } from "./logging";
-import { IService } from "./service";
-import type { BuildOutput } from "./build";
-import { IServiceApi } from "./service-api";
-import { grant } from "./grant";
 
 export interface ActivitiesProps {
   build: BuildOutput;
@@ -86,6 +86,10 @@ export class Activities
    * Function which executes all activities. The worker is invoked by the {@link Workflows.orchestrator}.
    */
   public worker: Function;
+  /**
+   * Function which is executed when an activity worker returns a failure.
+   */
+  public fallbackHandler: Function;
 
   constructor(scope: Construct, id: string, private props: ActivitiesProps) {
     super(scope, id);
@@ -100,17 +104,25 @@ export class Activities
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
+    this.fallbackHandler = new ServiceFunction(this, "FallbackHandler", {
+      code: props.build.getCode(props.build.activities.fallbackHandler.file),
+      functionName: `${props.serviceName}-activity-fallback-handler`,
+      memorySize: 512,
+    });
+
     this.worker = new ServiceFunction(this, "Worker", {
-      code: props.build.getCode(props.build.activities.file),
+      code: props.build.getCode(props.build.activities.handler.file),
       functionName: `${props.serviceName}-activity-handler`,
-      serviceType: ServiceType.ActivityWorker,
       memorySize: 512,
       // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
       retryAttempts: 0,
       // TODO: determine worker timeout strategy
       timeout: Duration.minutes(1),
+      // handler and recovers from error cases
+      onFailure: new LambdaDestination(this.fallbackHandler),
     });
 
+    this.configureActivityFallbackHandler();
     this.configureActivityWorker();
   }
 
@@ -215,6 +227,11 @@ export class Activities
      * Access to service name in the activity worker for metrics logging
      */
     this.props.service.configureServiceName(this.worker);
+  }
+
+  private configureActivityFallbackHandler() {
+    // report result back to the execution
+    this.props.workflows.configureSubmitExecutionEvents(this.fallbackHandler);
   }
 
   private readonly ENV_MAPPINGS = {

@@ -51,6 +51,7 @@ const ssm = new SSMClient({});
       case EventType.INVOKE:
         // once per invoke, get new config
         testingConfig = await chaosClient.getConfiguration();
+        console.debug("loaded chaos config: " + JSON.stringify(testingConfig));
         break;
       default:
         throw new Error("unknown event: " + event.eventType);

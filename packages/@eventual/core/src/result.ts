@@ -69,9 +69,13 @@ export function normalizeFailedResult(result: Failed): {
   error: string;
   message: string;
 } {
-  const [error, message] = extendsError(result.error)
-    ? [result.error.name, result.error.message]
-    : ["Error", JSON.stringify(result.error)];
+  return normalizeError(result.error);
+}
+
+export function normalizeError(err: any) {
+  const [error, message] = extendsError(err)
+    ? [err.name, err.message]
+    : ["Error", JSON.stringify(err)];
   return { error, message };
 }
 

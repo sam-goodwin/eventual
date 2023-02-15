@@ -29,6 +29,8 @@ export class DebugDashboard extends Construct {
       service.workflows.orchestrator.logGroup.logGroupName,
       // activities worker
       service.activities.worker.logGroup.logGroupName,
+      // activities worker
+      service.activities.fallbackHandler.logGroup.logGroupName,
       // user APIS - default and bundled
       ...service.api.handlers.map((api) => api.logGroup.logGroupName),
       // event handlers - default and bundled

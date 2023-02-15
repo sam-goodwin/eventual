@@ -68,7 +68,7 @@ describe("start execution", () => {
   test("workflow does not exist", async () => {
     jest.mocked(mockWorkflowProvider.workflowExists).mockReturnValue(false);
 
-    expect(() =>
+    await expect(() =>
       underTest.startExecution({
         input: undefined,
         workflow: "myWorkflow",
@@ -103,7 +103,7 @@ describe("start execution", () => {
   });
 
   test("execution name is invalid non child", async () => {
-    expect(() =>
+    await expect(() =>
       underTest.startExecution({
         input: undefined,
         workflow: "myWorkflow",
@@ -119,7 +119,7 @@ describe("start execution", () => {
       input: undefined,
       workflow: "myWorkflow",
       executionName: "%child",
-      parentExecutionId: "someParent",
+      parentExecutionId: "someParent/",
       seq: 0,
     });
 
@@ -183,7 +183,7 @@ describe("start execution", () => {
       status: ExecutionStatus.IN_PROGRESS,
     });
 
-    expect(() =>
+    await expect(() =>
       underTest.startExecution({
         input: { value: "hello again" },
         workflow: "myWorkflow",
@@ -208,7 +208,7 @@ describe("start execution", () => {
       status: ExecutionStatus.IN_PROGRESS,
     });
 
-    expect(() =>
+    await expect(() =>
       underTest.startExecution({
         input: { value: "hello" },
         workflow: "myWorkflow",
@@ -224,7 +224,7 @@ describe("start execution", () => {
       .mocked(mockExecutionStore.create)
       .mockRejectedValue(new Error("Some Error"));
 
-    expect(() =>
+    await expect(() =>
       underTest.startExecution({
         input: { value: "hello" },
         workflow: "myWorkflow",
@@ -238,7 +238,7 @@ describe("start execution", () => {
       .mocked(mockLogClient.initializeExecutionLog)
       .mockRejectedValue(new Error("Some Error"));
 
-    expect(() =>
+    await expect(() =>
       underTest.startExecution({
         input: { value: "hello" },
         workflow: "myWorkflow",
@@ -252,21 +252,7 @@ describe("start execution", () => {
       .mocked(mockLogClient.putExecutionLogs)
       .mockRejectedValue(new Error("Some Error"));
 
-    expect(() =>
-      underTest.startExecution({
-        input: { value: "hello" },
-        workflow: "myWorkflow",
-        executionName: "myExecution",
-      })
-    ).rejects.toThrowError("Some Error");
-  });
-
-  test("submit to queue fails", async () => {
-    jest
-      .mocked(mockExecutionQueueClient.submitExecutionEvents)
-      .mockRejectedValue(new Error("Some Error"));
-
-    expect(() =>
+    await expect(() =>
       underTest.startExecution({
         input: { value: "hello" },
         workflow: "myWorkflow",
@@ -285,6 +271,7 @@ describe("succeed execution", () => {
     await underTest.succeedExecution({
       executionId: "",
       result: undefined,
+      endTime: "",
     });
 
     expect(
@@ -294,12 +281,13 @@ describe("succeed execution", () => {
 
   test("happy path with parent", async () => {
     jest.mocked(mockExecutionStore.update).mockResolvedValue({
-      parent: { executionId: "", seq: 0 },
+      parent: { executionId: "/", seq: 0 },
     } as Partial<SucceededExecution> as SucceededExecution);
 
     await underTest.succeedExecution({
       executionId: "",
       result: undefined,
+      endTime: "",
     });
 
     expect(mockExecutionQueueClient.submitExecutionEvents).toHaveBeenCalled();
@@ -316,6 +304,7 @@ describe("fail execution", () => {
       executionId: "",
       error: "",
       message: "",
+      endTime: "",
     });
 
     expect(
@@ -325,13 +314,14 @@ describe("fail execution", () => {
 
   test("happy path with parent", async () => {
     jest.mocked(mockExecutionStore.update).mockResolvedValue({
-      parent: { executionId: "", seq: 0 },
+      parent: { executionId: "/", seq: 0 },
     } as Partial<FailedExecution> as FailedExecution);
 
     await underTest.failExecution({
       executionId: "",
       error: "",
       message: "",
+      endTime: "",
     });
 
     expect(mockExecutionQueueClient.submitExecutionEvents).toHaveBeenCalled();
