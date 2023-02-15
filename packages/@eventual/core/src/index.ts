@@ -16,4 +16,3 @@ export * from "./signals.js";
 export * from "./subscription.js";
 export * from "./workflow-events.js";
 export * from "./workflow.js";
-export * as internal from "./internal/index.js";

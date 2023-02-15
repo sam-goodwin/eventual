@@ -1,5 +1,5 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
-import { internal } from "@eventual/core";
+import { Schemas } from "@eventual/core/internal";
 import { aws_eventschemas, Lazy, Resource } from "aws-cdk-lib";
 import { EventBus, IEventBus } from "aws-cdk-lib/aws-events";
 import { IGrantable } from "aws-cdk-lib/aws-iam";
@@ -64,7 +64,7 @@ export class Events<Service> extends Construct {
 export interface RegistryProps {
   registryName?: string;
   description?: string;
-  schemas?: internal.Schemas;
+  schemas?: Schemas;
 }
 
 export class Registry extends Resource {
@@ -106,7 +106,7 @@ export class Registry extends Resource {
 export interface SchemaProps {
   schemaRegistry: Registry;
   schemaName?: string;
-  schemas?: internal.Schemas;
+  schemas?: Schemas;
 }
 
 export class Schema extends Resource {
@@ -117,7 +117,7 @@ export class Schema extends Resource {
   /**
    * Schemas inside this Schema registration.
    */
-  public readonly schemas: internal.Schemas;
+  public readonly schemas: Schemas;
 
   constructor(scope: Construct, id: string, props: SchemaProps) {
     super(scope, id);
