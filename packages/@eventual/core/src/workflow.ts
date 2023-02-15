@@ -153,7 +153,7 @@ export function workflow<Input = any, Output = any>(
     ? definition
     : function* (input: Input, context: Context): any {
         return yield definition(input, context);
-      }; // This type is added in the runtime-core package declaration.
+      }; // This type is added in the core-runtime package declaration.
 
   workflows().set(name, workflow);
   return workflow;

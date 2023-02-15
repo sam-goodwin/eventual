@@ -15,7 +15,7 @@ import {
   ExecutionHistoryStore,
   getLazy,
   LazyValue,
-} from "@eventual/runtime-core";
+} from "@eventual/core-runtime";
 import { queryPageWithToken } from "../utils.js";
 
 export interface AWSExecutionHistoryStoreProps {

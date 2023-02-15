@@ -26,7 +26,7 @@ import {
   SucceedExecutionRequest,
   WorkflowStarted,
 } from "@eventual/core";
-import { ExecutionStore, getLazy, LazyValue } from "@eventual/runtime-core";
+import { ExecutionStore, getLazy, LazyValue } from "@eventual/core-runtime";
 import { queryPageWithToken } from "../utils.js";
 
 export interface AWSExecutionStoreProps {

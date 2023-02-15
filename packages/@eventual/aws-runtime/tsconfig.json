@@ -11,5 +11,5 @@
   },
   "include": ["src", "src/package.json"],
   "exclude": ["lib", "node_modules"],
-  "references": [{ "path": "../core" }, { "path": "../runtime-core" }]
+  "references": [{ "path": "../core" }, { "path": "../core-runtime" }]
 }

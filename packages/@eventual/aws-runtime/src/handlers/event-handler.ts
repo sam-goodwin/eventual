@@ -3,7 +3,7 @@ import "@eventual/injected/entry";
 import {
   createEventHandlerWorker,
   GlobalSubscriptionProvider,
-} from "@eventual/runtime-core";
+} from "@eventual/core-runtime";
 import type { EventBridgeEvent } from "aws-lambda";
 import { createEventClient, createServiceClient } from "../create.js";
 

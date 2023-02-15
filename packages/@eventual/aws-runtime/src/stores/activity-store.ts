@@ -11,7 +11,7 @@ import {
   ActivityStore,
   getLazy,
   LazyValue,
-} from "@eventual/runtime-core";
+} from "@eventual/core-runtime";
 
 export interface AWSActivityStoreProps {
   activityTableName: LazyValue<string>;

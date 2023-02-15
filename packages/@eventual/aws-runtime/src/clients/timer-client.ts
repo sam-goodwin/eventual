@@ -23,7 +23,7 @@ import {
   ScheduleForwarderRequest,
   TimerClient,
   TimerRequest,
-} from "@eventual/runtime-core";
+} from "@eventual/core-runtime";
 import { ulid } from "ulidx";
 
 export interface AWSTimerClientProps {

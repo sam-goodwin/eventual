@@ -3,7 +3,7 @@ import {
   ActivityFallbackRequestType,
   ActivityWorkerRequest,
   createActivityFallbackHandler,
-} from "@eventual/runtime-core";
+} from "@eventual/core-runtime";
 import { createExecutionQueueClient } from "../create.js";
 
 const handler = createActivityFallbackHandler({

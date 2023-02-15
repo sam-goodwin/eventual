@@ -18,7 +18,7 @@ import {
   RuntimeServiceClientProps,
   WorkflowClient,
   WorkflowSpecProvider,
-} from "@eventual/runtime-core";
+} from "@eventual/core-runtime";
 import { AWSActivityClient } from "./clients/activity-client.js";
 import { AWSEventClient } from "./clients/event-client.js";
 import { AWSExecutionQueueClient } from "./clients/execution-queue-client.js";

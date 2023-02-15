@@ -15,7 +15,7 @@
   "dependencies": {
     "@eventual/compiler": "workspace:^",
     "@eventual/core": "workspace:^",
-    "@eventual/runtime-core": "workspace:^",
+    "@eventual/core-runtime": "workspace:^",
     "heap-js": "^2.2.0",
     "ulidx": "^0.3.0"
   },

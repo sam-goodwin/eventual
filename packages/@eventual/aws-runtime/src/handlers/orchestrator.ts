@@ -4,7 +4,7 @@ import {
   CommandExecutor,
   createOrchestrator,
   ExecutionQueueEventEnvelope,
-} from "@eventual/runtime-core";
+} from "@eventual/core-runtime";
 import type { SQSEvent, SQSRecord } from "aws-lambda";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 import {

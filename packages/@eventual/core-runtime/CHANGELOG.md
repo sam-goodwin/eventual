@@ -45,7 +45,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## 0.15.3 (2023-02-03)
 
-**Note:** Version bump only for package @eventual/runtime-core
+**Note:** Version bump only for package @eventual/core-runtime
 
 ## 0.15.2 (2023-02-03)
 
@@ -55,7 +55,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## 0.15.1 (2023-02-02)
 
-**Note:** Version bump only for package @eventual/runtime-core
+**Note:** Version bump only for package @eventual/core-runtime
 
 # 0.15.0 (2023-02-02)
 
@@ -83,7 +83,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## 0.13.1 (2023-01-31)
 
-**Note:** Version bump only for package @eventual/runtime-core
+**Note:** Version bump only for package @eventual/core-runtime
 
 # 0.13.0 (2023-01-31)
 
@@ -93,7 +93,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## 0.12.5 (2023-01-30)
 
-**Note:** Version bump only for package @eventual/runtime-core
+**Note:** Version bump only for package @eventual/core-runtime
 
 ## 0.12.4 (2023-01-27)
 
@@ -103,7 +103,7 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ## 0.12.3 (2023-01-27)
 
-**Note:** Version bump only for package @eventual/runtime-core
+**Note:** Version bump only for package @eventual/core-runtime
 
 ## 0.12.1 (2023-01-19)
 
