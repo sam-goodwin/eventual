@@ -246,7 +246,13 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
           SqsQueueParameters: {
             MessageGroupId: props.executionIdPath,
           },
+<<<<<<< HEAD
           InputTemplate: `{"task": { "events": [${props.event}], "executionId": <${props.executionIdPath}> } }`,
+=======
+          InputTemplate: `{"task": { "events": [${
+            props.event
+          }], "executionId": <${props.executionIdPath}> } }`,
+>>>>>>> main
         },
       },
     });

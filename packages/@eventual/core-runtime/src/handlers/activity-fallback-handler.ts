@@ -1,7 +1,7 @@
 import {
   ActivityFailed,
   ActivitySucceeded,
-  WorkflowEventType,
+  WorkflowEventType
 } from "@eventual/core";
 import { assertNever } from "@eventual/core/internal";
 import { ActivityWorkerRequest } from "../clients/activity-client.js";
