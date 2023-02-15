@@ -1,4 +1,4 @@
-import { Event, EventPayloadType, SubscriptionHandler } from "@eventual/core";
+import { Event, SubscriptionHandler, EventPayloadType } from "@eventual/core";
 import { GlobalSubscriptionProvider } from "@eventual/core-runtime";
 
 export class TestSubscriptionProvider extends GlobalSubscriptionProvider {
