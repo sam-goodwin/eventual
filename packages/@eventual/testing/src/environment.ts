@@ -4,7 +4,6 @@ import {
   ActivityOutput,
   Event,
   EventEnvelope,
-  SubscriptionHandler,
   EventPayload,
   EventPayloadType,
   ExecutionHandle,
@@ -14,6 +13,7 @@ import {
   SendActivitySuccessRequest,
   SendSignalRequest,
   StartExecutionRequest,
+  SubscriptionHandler,
   Workflow,
 } from "@eventual/core";
 import {
@@ -35,11 +35,11 @@ import {
   WorkflowTask,
 } from "@eventual/core-runtime";
 import {
-  ServiceType,
-  registerServiceClient,
-  workflows,
-  events,
   clearEventHandlers,
+  events,
+  registerServiceClient,
+  ServiceType,
+  workflows,
 } from "@eventual/core/internal";
 import path from "path";
 import { TestActivityClient } from "./clients/activity-client.js";
