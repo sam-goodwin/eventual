@@ -1,4 +1,8 @@
-import type { internal } from "@eventual/core";
+import type {
+  CommandSpec,
+  EventSpec,
+  SubscriptionSpec,
+} from "@eventual/core/internal";
 
 export interface BuildManifest {
   orchestrator: BundledFunction;
@@ -19,7 +23,7 @@ export interface BuildManifest {
    * The events and their schema.
    */
   events: {
-    [eventName: string]: internal.EventSpec;
+    [eventName: string]: EventSpec;
   };
   /**
    * All subscriptions to events declared within the service.
@@ -70,11 +74,10 @@ export interface ExportedEventHandlerFunction extends SubscriptionFunction {
 }
 
 export interface SubscriptionFunction
-  extends BundledFunction<internal.SubscriptionSpec> {}
+  extends BundledFunction<SubscriptionSpec> {}
 
 export interface InternalCommandFunction extends CommandFunction {
   spec: CommandFunction["spec"] & {};
 }
 
-export interface CommandFunction
-  extends BundledFunction<internal.CommandSpec> {}
+export interface CommandFunction extends BundledFunction<CommandSpec> {}

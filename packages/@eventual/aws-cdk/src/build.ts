@@ -1,14 +1,20 @@
 import { build, BuildSource, infer } from "@eventual/compiler";
-import { HttpMethod, internal } from "@eventual/core";
+import { HttpMethod } from "@eventual/core";
+import {
+  CommandSpec,
+  ServiceSpec,
+  ServiceType,
+  SubscriptionSpec,
+} from "@eventual/core/internal";
 import { Code } from "aws-cdk-lib/aws-lambda";
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import {
   BuildManifest,
+  BundledFunction,
   InternalApiRoutes,
   InternalCommandFunction,
-  BundledFunction,
 } from "./build-manifest";
 
 export interface BuildOutput extends BuildManifest {}
@@ -144,23 +150,20 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     JSON.stringify(manifest, null, 2)
   );
   type SpecFor<Type extends "subscriptions" | "commands"> =
-    Type extends "commands" ? internal.CommandSpec : internal.SubscriptionSpec;
+    Type extends "commands" ? CommandSpec : SubscriptionSpec;
 
   async function bundle<Type extends "subscriptions" | "commands">(
     specPath: string,
     type: Type
   ): Promise<{
-    [k in keyof internal.ServiceSpec[Type]]: BundledFunction<SpecFor<Type>>;
+    [k in keyof ServiceSpec[Type]]: BundledFunction<SpecFor<Type>>;
   }> {
     const routes = await Promise.all(
       Object.values(serviceSpec[type]).map(
         async (
           spec: SpecFor<Type>
         ): Promise<
-          readonly [
-            string,
-            BundledFunction<internal.CommandSpec | internal.SubscriptionSpec>
-          ]
+          readonly [string, BundledFunction<CommandSpec | SubscriptionSpec>]
         > => {
           if (spec.sourceLocation?.fileName) {
             // we know the source location of the command, so individually build it from that
@@ -182,8 +185,8 @@ export async function buildService(request: BuildAWSRuntimeProps) {
                   exportName: spec.sourceLocation.exportName,
                   serviceType:
                     type === "commands"
-                      ? internal.ServiceType.ApiHandler
-                      : internal.ServiceType.Subscription,
+                      ? ServiceType.ApiHandler
+                      : ServiceType.Subscription,
                   injectedEntry: spec.sourceLocation.fileName,
                   injectedServiceSpec: specPath,
                 }),
@@ -213,7 +216,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           route !== undefined
       )
     ) as {
-      [k in keyof internal.ServiceSpec[Type]]: BundledFunction<SpecFor<Type>>;
+      [k in keyof ServiceSpec[Type]]: BundledFunction<SpecFor<Type>>;
     };
   }
 
@@ -221,25 +224,25 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     return Promise.all(
       [
         {
-          name: internal.ServiceType.OrchestratorWorker,
+          name: ServiceType.OrchestratorWorker,
           entry: runtimeHandlersEntrypoint("orchestrator"),
           eventualTransform: true,
-          serviceType: internal.ServiceType.OrchestratorWorker,
+          serviceType: ServiceType.OrchestratorWorker,
         },
         {
-          name: internal.ServiceType.ActivityWorker,
+          name: ServiceType.ActivityWorker,
           entry: runtimeHandlersEntrypoint("activity-worker"),
-          serviceType: internal.ServiceType.ActivityWorker,
+          serviceType: ServiceType.ActivityWorker,
         },
         {
-          name: internal.ServiceType.ApiHandler,
+          name: ServiceType.ApiHandler,
           entry: runtimeHandlersEntrypoint("api-handler"),
-          serviceType: internal.ServiceType.ApiHandler,
+          serviceType: ServiceType.ApiHandler,
         },
         {
-          name: internal.ServiceType.Subscription,
+          name: ServiceType.Subscription,
           entry: runtimeHandlersEntrypoint("event-handler"),
-          serviceType: internal.ServiceType.Subscription,
+          serviceType: ServiceType.Subscription,
         },
       ]
         .map((s) => ({
