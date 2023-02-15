@@ -4,7 +4,7 @@ import { isActivityWorker, isOrchestratorWorker } from "./internal/flags.js";
 import {
   callableActivities,
   getActivityContext,
-  getServiceClient,
+  getServiceClient
 } from "./internal/global.js";
 import { DurationSchedule } from "./schedule.js";
 import {
@@ -12,7 +12,7 @@ import {
   SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
-  SendActivitySuccessRequest,
+  SendActivitySuccessRequest
 } from "./service-client.js";
 
 export interface ActivityOptions {

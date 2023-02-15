@@ -1,8 +1,8 @@
+import type { Context } from "./context.js";
+import { ChildExecution, ExecutionHandle } from "./execution.js";
 import { createWorkflowCall } from "./internal/calls/workflow-call.js";
 import { isChain } from "./internal/chain.js";
-import type { Context } from "./context.js";
 import { Program } from "./internal/eventual.js";
-import { ChildExecution, ExecutionHandle } from "./execution.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
 import { getServiceClient, workflows } from "./internal/global.js";
 import { DurationSchedule } from "./schedule.js";
