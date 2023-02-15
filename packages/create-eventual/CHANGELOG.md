@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.18.2 (2023-02-15)
+
+### Bug Fixes
+
+- start, child completion, and activity result durability ([#282](https://github.com/functionless/eventual/issues/282)) ([3016b0d](https://github.com/functionless/eventual/commit/3016b0d0c1d7e9e00cc6b47270ea5135aff889f6))
+
 ## 0.18.1 (2023-02-15)
 
 ### Bug Fixes
