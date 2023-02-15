@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.18.1 (2023-02-15)
+
+### Bug Fixes
+
+- don't carry a Command's context through to the client ([#287](https://github.com/functionless/eventual/issues/287)) ([1ce652a](https://github.com/functionless/eventual/commit/1ce652af503c95cad91e47a4f0da4efba43b2fed))
+
 # 0.18.0 (2023-02-14)
 
 ### Features
