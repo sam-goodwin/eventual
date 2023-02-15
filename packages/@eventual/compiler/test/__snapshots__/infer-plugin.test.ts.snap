@@ -496,6 +496,8 @@ function isFailed(result) {
 }
 var isResolvedOrFailed = or(isResolved, isFailed);
 
+var import_ulidx = __toESM(require_dist2(), 1);
+
 var ServiceType;
 (function(ServiceType2) {
   ServiceType2["ActivityWorker"] = "ActivityWorker";
@@ -509,7 +511,6 @@ function isOrchestratorWorker() {
   return process.env[SERVICE_TYPE_FLAG] === ServiceType.OrchestratorWorker;
 }
 
-var import_ulidx = __toESM(require_dist2(), 1);
 var SignalTargetType;
 (function(SignalTargetType2) {
   SignalTargetType2[SignalTargetType2["Execution"] = 0] = "Execution";
@@ -784,15 +785,6 @@ function isWorkflowTimedOut(event) {
 var isScheduledEvent = or(isActivityScheduled, isChildWorkflowScheduled, isEventsPublished, isSignalSent, isTimerScheduled);
 var isSucceededEvent = or(isActivitySucceeded, isChildWorkflowSucceeded, isTimerCompleted);
 var isFailedEvent = or(isActivityFailed, isActivityHeartbeatTimedOut, isChildWorkflowFailed, isWorkflowTimedOut);
-
-var CommandType;
-(function(CommandType2) {
-  CommandType2["PublishEvents"] = "PublishEvents";
-  CommandType2["SendSignal"] = "SendSignal";
-  CommandType2["StartActivity"] = "StartActivity";
-  CommandType2["StartTimer"] = "StartTimer";
-  CommandType2["StartWorkflow"] = "StartWorkflow";
-})(CommandType || (CommandType = {}));
 
 var myHandler = api.get("/", async () => {
   return new Response();
