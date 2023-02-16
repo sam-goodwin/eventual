@@ -24,7 +24,7 @@ export class MockableActivityProvider extends GlobalActivityProvider {
   private mockedActivities: Record<string, MockActivity<any>> = {};
 
   public mockActivity<A extends Activity<any, any>>(activity: A | string) {
-    const id = typeof activity === "string" ? activity : activity.name;
+    const id = typeof activity === "string" ? activity : activity.activityID;
     const realActivity =
       typeof activity === "string" ? super.getActivity(id) : activity;
     if (!realActivity) {
@@ -41,7 +41,7 @@ export class MockableActivityProvider extends GlobalActivityProvider {
   }
 
   public clearMock(activity: Activity<any, any> | string) {
-    const id = typeof activity === "string" ? activity : activity.name;
+    const id = typeof activity === "string" ? activity : activity.activityID;
     delete this.mockedActivities[id];
   }
 

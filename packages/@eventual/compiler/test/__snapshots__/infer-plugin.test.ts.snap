@@ -445,21 +445,21 @@ module.exports = __toCommonJS(api_handler_exports);
 
 var AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
 
-function createAwaitAllSettled(activities) {
+function createAwaitAllSettled(activities2) {
   return createEventual(EventualKind.AwaitAllSettled, {
-    activities
+    activities: activities2
   });
 }
 
-function createAwaitAll(activities) {
+function createAwaitAll(activities2) {
   return createEventual(EventualKind.AwaitAll, {
-    activities
+    activities: activities2
   });
 }
 
-function createAwaitAny(activities) {
+function createAwaitAny(activities2) {
   return createEventual(EventualKind.AwaitAny, {
-    activities
+    activities: activities2
   });
 }
 
@@ -530,9 +530,9 @@ function isOrchestratorWorker() {
   return process.env[SERVICE_TYPE_FLAG] === ServiceType.OrchestratorWorker;
 }
 
-function createRace(activities) {
+function createRace(activities2) {
   return createEventual(EventualKind.Race, {
-    activities
+    activities: activities2
   });
 }
 
@@ -564,29 +564,29 @@ var Eventual = {
    *
    * This is the equivalent behavior to Promise.all.
    */
-  all(activities) {
+  all(activities2) {
     if (!isOrchestratorWorker()) {
       throw new Error("Eventual.all is only valid in a workflow");
     }
-    return createAwaitAll(activities);
+    return createAwaitAll(activities2);
   },
-  any(activities) {
+  any(activities2) {
     if (!isOrchestratorWorker()) {
       throw new Error("Eventual.any is only valid in a workflow");
     }
-    return createAwaitAny(activities);
+    return createAwaitAny(activities2);
   },
-  race(activities) {
+  race(activities2) {
     if (!isOrchestratorWorker()) {
       throw new Error("Eventual.race is only valid in a workflow");
     }
-    return createRace(activities);
+    return createRace(activities2);
   },
-  allSettled(activities) {
+  allSettled(activities2) {
     if (!isOrchestratorWorker()) {
       throw new Error("Eventual.allSettled is only valid in a workflow");
     }
-    return createAwaitAllSettled(activities);
+    return createAwaitAllSettled(activities2);
   }
 };
 globalThis.$eventual = chain;
@@ -679,7 +679,7 @@ function createRouter(middlewares) {
             name: path,
             path: typeof args[0] === "string" ? args[0] : args[1],
             sourceLocation,
-            timeout: routeProps?.timeout,
+            handlerTimeout: routeProps?.handlerTimeout,
             middlewares,
             passThrough: true
           };
