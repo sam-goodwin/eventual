@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.18.4 (2023-02-16)
+
+**Note:** Version bump only for package create-eventual
+
 ## 0.18.3 (2023-02-15)
 
 **Note:** Version bump only for package create-eventual
