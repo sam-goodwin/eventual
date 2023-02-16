@@ -1,3 +1,4 @@
+export * from "./activity.js";
 export * from "./await-all-settled.js";
 export * from "./await-all.js";
 export * from "./await-any.js";
@@ -6,9 +7,11 @@ export * from "./chain.js";
 export * from "./command.js";
 export * from "./eventual.js";
 export * from "./flags.js";
+export * from "./guards.js";
 export * from "./global.js";
 export * from "./race.js";
 export * from "./result.js";
+export * from "./schedule.js";
 export * from "./service-spec.js";
 export * from "./service-type.js";
 export * from "./signal.js";

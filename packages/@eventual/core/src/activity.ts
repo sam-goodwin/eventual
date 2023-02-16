@@ -1,3 +1,4 @@
+import { AsyncTokenSymbol } from "./internal/activity.js";
 import { createActivityCall } from "./internal/calls/activity-call.js";
 import { createAwaitDurationCall } from "./internal/calls/await-time-call.js";
 import { isActivityWorker, isOrchestratorWorker } from "./internal/flags.js";
@@ -140,10 +141,7 @@ export interface ActivityHandler<Arguments extends any[], Output = any> {
 
 export type UnwrapAsync<Output> = Output extends AsyncResult<infer O>
   ? O
-  : Output;
-
-export type ActivityArguments<A extends Activity<any, any>> =
-  A extends Activity<string, infer Arguments extends any[]> ? Arguments : never;
+  : Output;  
 
 export type ActivityOutput<A extends Activity<any, any>> = A extends Activity<
   string,
@@ -153,18 +151,12 @@ export type ActivityOutput<A extends Activity<any, any>> = A extends Activity<
   ? UnwrapAsync<Output>
   : never;
 
-const AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
-
 /**
  * When returned from an activity, the activity will become async,
  * allowing it to run "forever". The
  */
 export interface AsyncResult<Output = any> {
   [AsyncTokenSymbol]: typeof AsyncTokenSymbol & Output;
-}
-
-export function isAsyncResult(obj: any): obj is AsyncResult {
-  return !!obj && obj[AsyncTokenSymbol] === AsyncTokenSymbol;
 }
 
 /**

@@ -1,7 +1,6 @@
 import {
   ActivityNotFoundError,
   EventualServiceClient,
-  isAsyncResult,
   LogLevel,
 } from "@eventual/core";
 import {
@@ -9,6 +8,7 @@ import {
   ActivitySucceeded,
   clearActivityContext,
   extendsError,
+  isAsyncResult,
   isWorkflowFailed,
   normalizeError,
   registerServiceClient,

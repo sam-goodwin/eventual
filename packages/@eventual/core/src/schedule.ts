@@ -10,11 +10,8 @@ export const DURATION_UNITS = [
   "year",
   "years",
 ] as const;
-export type DurationUnit = typeof DURATION_UNITS[number];
 
-export function isDurationUnit(u: string): u is DurationUnit {
-  return DURATION_UNITS.includes(u as any);
-}
+export type DurationUnit = (typeof DURATION_UNITS)[number];
 
 export interface DurationSchedule {
   type: "Duration";
@@ -44,13 +41,3 @@ export const Schedule = {
     };
   },
 };
-
-export function isDurationSchedule(
-  schedule: Schedule
-): schedule is DurationSchedule {
-  return schedule.type === "Duration";
-}
-
-export function isTimeSchedule(schedule: Schedule): schedule is TimeSchedule {
-  return schedule.type === "Time";
-}

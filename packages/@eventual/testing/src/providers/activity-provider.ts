@@ -1,6 +1,5 @@
 import {
   Activity,
-  ActivityArguments,
   ActivityHandler,
   ActivityOutput,
   asyncResult,
@@ -10,6 +9,7 @@ import {
 } from "@eventual/core";
 import { GlobalActivityProvider } from "@eventual/core-runtime";
 import {
+  ActivityArguments,
   assertNever,
   callableActivities,
   Failed,

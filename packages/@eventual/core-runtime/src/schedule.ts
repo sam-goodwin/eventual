@@ -1,10 +1,5 @@
-import {
-  DurationSchedule,
-  DurationUnit,
-  isTimeSchedule,
-  Schedule,
-} from "@eventual/core";
-import { assertNever } from "@eventual/core/internal";
+import { DurationSchedule, DurationUnit, Schedule } from "@eventual/core";
+import { assertNever, isTimeSchedule } from "@eventual/core/internal";
 
 export function computeScheduleDate(schedule: Schedule, baseTime: Date): Date {
   return isTimeSchedule(schedule)

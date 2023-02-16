@@ -17,7 +17,6 @@ import {
   FailExecutionRequest,
   InProgressExecution,
   isExecutionStatus,
-  isFailedExecutionRequest,
   ListExecutionsRequest,
   ListExecutionsResponse,
   SortOrder,
@@ -30,7 +29,10 @@ import {
   LazyValue,
   parseExecutionId,
 } from "@eventual/core-runtime";
-import { WorkflowStarted } from "@eventual/core/internal";
+import {
+  isFailedExecutionRequest,
+  WorkflowStarted,
+} from "@eventual/core/internal";
 import { queryPageWithToken } from "../utils.js";
 
 export interface AWSExecutionStoreProps {
