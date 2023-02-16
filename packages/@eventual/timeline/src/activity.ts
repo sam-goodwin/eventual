@@ -1,4 +1,11 @@
-import { HistoryStateEvent, WorkflowStarted, isWorkflowStarted, isActivityScheduled, isActivitySucceeded, isActivityFailed } from "@eventual/core";
+import {
+  HistoryStateEvent,
+  WorkflowStarted,
+  isWorkflowStarted,
+  isActivityScheduled,
+  isActivitySucceeded,
+  isActivityFailed,
+} from "@eventual/core/internal";
 
 export interface Succeeded {
   status: "succeeded";

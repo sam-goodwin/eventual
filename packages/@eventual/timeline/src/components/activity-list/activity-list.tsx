@@ -1,4 +1,4 @@
-import { WorkflowStarted } from "@eventual/core";
+import { WorkflowStarted } from "@eventual/core/internal";
 import { endTime, TimelineActivity } from "../../activity.js";
 import styles from "./activity-list.module.css";
 

@@ -1,6 +1,5 @@
 import { HttpEventualClient } from "@eventual/client";
-import { WorkflowStarted } from "@eventual/core";
-import { decodeExecutionId } from "@eventual/core/internal";
+import { decodeExecutionId, WorkflowStarted } from "@eventual/core/internal";
 import { useQuery } from "@tanstack/react-query";
 import { ReactNode } from "react";
 import { aggregateEvents } from "./activity.js";
