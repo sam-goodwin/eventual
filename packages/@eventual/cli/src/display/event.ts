@@ -4,7 +4,7 @@ import {
   isActivityScheduled,
   isSignalReceived,
   isSignalSent,
-} from "@eventual/core";
+} from "@eventual/core/internal";
 import chalk from "chalk";
 import { formatTime } from "./time.js";
 

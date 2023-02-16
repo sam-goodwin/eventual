@@ -5,8 +5,11 @@ import {
   ExecutionID,
   ExecutionStatus,
 } from "./execution.js";
+import {
+  HistoryStateEvent,
+  WorkflowEvent,
+} from "./internal/workflow-events.js";
 import { Signal } from "./signals.js";
-import { HistoryStateEvent, WorkflowEvent } from "./workflow-events.js";
 import { Workflow, WorkflowInput, WorkflowOptions } from "./workflow.js";
 
 /**

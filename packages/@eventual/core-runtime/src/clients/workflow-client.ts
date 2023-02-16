@@ -10,11 +10,13 @@ import {
   SucceededExecution,
   SucceedExecutionRequest,
   Workflow,
-  WorkflowEventType,
   WorkflowOptions,
-  WorkflowStarted,
 } from "@eventual/core";
-import { hashCode } from "@eventual/core/internal";
+import {
+  hashCode,
+  WorkflowEventType,
+  WorkflowStarted,
+} from "@eventual/core/internal";
 import { ulid } from "ulidx";
 import { inspect } from "util";
 import {

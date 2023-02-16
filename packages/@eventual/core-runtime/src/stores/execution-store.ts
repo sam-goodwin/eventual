@@ -7,8 +7,8 @@ import {
   ListExecutionsResponse,
   SucceededExecution,
   SucceedExecutionRequest,
-  WorkflowStarted,
 } from "@eventual/core";
+import { WorkflowStarted } from "@eventual/core/internal";
 
 /**
  * Store which maintains the data for each {@link Execution}.

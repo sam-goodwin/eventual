@@ -1,4 +1,4 @@
-import { SignalTarget } from "../../signals.js";
+import { SignalTarget } from "../signal.js";
 import {
   createEventual,
   EventualBase,

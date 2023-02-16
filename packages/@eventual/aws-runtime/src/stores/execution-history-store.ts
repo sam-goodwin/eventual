@@ -4,18 +4,16 @@ import {
   DynamoDBClient,
 } from "@aws-sdk/client-dynamodb";
 import {
-  BaseEvent,
-  getEventId,
   ListExecutionEventsRequest,
   ListExecutionEventsResponse,
   SortOrder,
-  WorkflowEvent,
 } from "@eventual/core";
 import {
   ExecutionHistoryStore,
   getLazy,
   LazyValue,
 } from "@eventual/core-runtime";
+import { BaseEvent, getEventId, WorkflowEvent } from "@eventual/core/internal";
 import { queryPageWithToken } from "../utils.js";
 
 export interface AWSExecutionHistoryStoreProps {

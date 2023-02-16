@@ -1,10 +1,10 @@
 import {
-  WorkflowEvent,
   isHistoryEvent,
   isSignalReceived,
   isWorkflowRunStarted,
   isWorkflowTimedOut,
-} from "@eventual/core";
+  WorkflowEvent,
+} from "@eventual/core/internal";
 import { ulid } from "ulidx";
 
 type UnresolvedEvent<T extends WorkflowEvent> = Omit<T, "id" | "timestamp">;

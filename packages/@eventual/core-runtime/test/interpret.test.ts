@@ -6,7 +6,6 @@ import {
   HeartbeatTimeout,
   Schedule,
   signal,
-  SignalTargetType,
   time,
   Timeout,
   workflow as _workflow,
@@ -29,6 +28,7 @@ import {
   Result,
   ServiceType,
   serviceTypeScopeSync,
+  SignalTargetType,
 } from "@eventual/core/internal";
 import { interpret as _interpret, WorkflowResult } from "../src/interpret.js";
 import {

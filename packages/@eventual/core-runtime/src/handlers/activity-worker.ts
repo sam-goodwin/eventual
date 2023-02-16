@@ -1,21 +1,21 @@
 import {
-  ActivityFailed,
   ActivityNotFoundError,
-  ActivitySucceeded,
   EventualServiceClient,
   isAsyncResult,
-  isWorkflowFailed,
   LogLevel,
-  WorkflowEventType,
 } from "@eventual/core";
 import {
+  ActivityFailed,
+  ActivitySucceeded,
   clearActivityContext,
   extendsError,
+  isWorkflowFailed,
   normalizeError,
   registerServiceClient,
   ServiceType,
   serviceTypeScope,
   setActivityContext,
+  WorkflowEventType,
 } from "@eventual/core/internal";
 import { createActivityToken } from "../activity-token.js";
 import { ActivityWorkerRequest } from "../clients/activity-client.js";

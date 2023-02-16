@@ -1,10 +1,9 @@
+import { LogLevel, Schedule } from "@eventual/core";
 import {
   ActivityHeartbeatTimedOut,
-  LogLevel,
-  Schedule,
+  assertNever,
   WorkflowEventType,
-} from "@eventual/core";
-import { assertNever } from "@eventual/core/internal";
+} from "@eventual/core/internal";
 import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import {
   isActivityHeartbeatMonitorRequest,

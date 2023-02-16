@@ -1,5 +1,5 @@
 import { ChildExecution } from "../../execution.js";
-import { SignalTargetType } from "../../signals.js";
+import { SignalTargetType } from "../signal.js";
 import { Workflow, WorkflowOptions } from "../../workflow.js";
 import {
   createEventual,

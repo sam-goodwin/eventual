@@ -1,18 +1,11 @@
+import { ExecutionID, Workflow } from "@eventual/core";
 import {
   ActivityScheduled,
+  assertNever,
   ChildWorkflowScheduled,
   EventsPublished,
-  ExecutionID,
   HistoryStateEvent,
   isChildExecutionTarget,
-  SignalSent,
-  TimerCompleted,
-  TimerScheduled,
-  Workflow,
-  WorkflowEventType,
-} from "@eventual/core";
-import {
-  assertNever,
   isPublishEventsCommand,
   isScheduleActivityCommand,
   isScheduleWorkflowCommand,
@@ -22,8 +15,12 @@ import {
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
   SendSignalCommand,
+  SignalSent,
   StartTimerCommand,
+  TimerCompleted,
+  TimerScheduled,
   WorkflowCommand,
+  WorkflowEventType,
 } from "@eventual/core/internal";
 import {
   ActivityClient,

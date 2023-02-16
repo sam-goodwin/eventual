@@ -1,18 +1,20 @@
 import {
-  ActivityScheduled,
-  ChildWorkflowScheduled,
   EventEnvelope,
-  EventsPublished,
   Schedule,
   SendSignalRequest,
+  Workflow,
+} from "@eventual/core";
+import {
+  ActivityScheduled,
+  ChildWorkflowScheduled,
+  CommandType,
+  EventsPublished,
   SignalSent,
   SignalTargetType,
   TimerCompleted,
   TimerScheduled,
-  Workflow,
   WorkflowEventType,
-} from "@eventual/core";
-import { CommandType } from "@eventual/core/internal";
+} from "@eventual/core/internal";
 import { jest } from "@jest/globals";
 import { ActivityClient } from "../src/clients/activity-client.js";
 import { EventClient } from "../src/clients/event-client.js";
@@ -24,9 +26,9 @@ import {
 import { WorkflowClient } from "../src/clients/workflow-client.js";
 import { CommandExecutor } from "../src/command-executor.js";
 import {
-  INTERNAL_EXECUTION_ID_PREFIX,
-  formatExecutionId,
   formatChildExecutionName,
+  formatExecutionId,
+  INTERNAL_EXECUTION_ID_PREFIX,
 } from "../src/execution.js";
 
 const mockTimerClient = {

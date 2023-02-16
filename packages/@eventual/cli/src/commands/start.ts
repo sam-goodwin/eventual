@@ -1,17 +1,16 @@
-import { styledConsole } from "../styled-console.js";
 import {
-  EventualServiceClient,
-  isWorkflowSucceeded,
-  isWorkflowFailed,
-  ListExecutionEventsResponse,
-  DURATION_UNITS,
   DurationUnit,
+  DURATION_UNITS,
+  EventualServiceClient,
+  ListExecutionEventsResponse,
   Schedule,
 } from "@eventual/core";
+import { isWorkflowFailed, isWorkflowSucceeded } from "@eventual/core/internal";
 import { Argv } from "yargs";
-import { serviceAction, setServiceOptions } from "../service-action.js";
-import { getInputJson } from "./utils.js";
 import { displayEvent } from "../display/event.js";
+import { serviceAction, setServiceOptions } from "../service-action.js";
+import { styledConsole } from "../styled-console.js";
+import { getInputJson } from "./utils.js";
 
 export const start = (yargs: Argv) =>
   yargs.command(

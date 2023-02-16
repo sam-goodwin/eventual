@@ -5,8 +5,6 @@ import { isChain } from "./internal/chain.js";
 import { Program } from "./internal/eventual.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
 import { getServiceClient, workflows } from "./internal/global.js";
-import { DurationSchedule } from "./schedule.js";
-import { StartExecutionRequest } from "./service-client.js";
 import {
   HistoryStateEvent,
   isTimerCompleted,
@@ -14,7 +12,9 @@ import {
   TimerCompleted,
   TimerScheduled,
   WorkflowEventType,
-} from "./workflow-events.js";
+} from "./internal/workflow-events.js";
+import { DurationSchedule } from "./schedule.js";
+import { StartExecutionRequest } from "./service-client.js";
 
 export interface WorkflowHandler<Input = any, Output = any> {
   (input: Input, context: Context): Promise<Output> | Program<any>;

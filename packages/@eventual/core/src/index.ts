@@ -14,5 +14,4 @@ export * from "./secret.js";
 export * from "./service-client.js";
 export * from "./signals.js";
 export * from "./subscription.js";
-export * from "./workflow-events.js";
 export * from "./workflow.js";

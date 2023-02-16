@@ -1,9 +1,9 @@
+import { SendSignalRequest } from "@eventual/core";
 import {
   HistoryStateEvent,
-  SendSignalRequest,
   SignalReceived,
   WorkflowEventType,
-} from "@eventual/core";
+} from "@eventual/core/internal";
 import { WorkflowTask } from "../tasks.js";
 import { createEvent } from "../workflow-events.js";
 export abstract class ExecutionQueueClient {
