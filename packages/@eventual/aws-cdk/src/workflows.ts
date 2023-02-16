@@ -147,12 +147,12 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
   constructor(scope: Construct, id: string, private props: WorkflowsProps) {
     super(scope, id);
 
-    this.history = new Bucket(scope, "History", {
+    this.history = new Bucket(this, "History", {
       // TODO: remove after testing
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
-    this.queue = new Queue(scope, "Queue", {
+    this.queue = new Queue(this, "Queue", {
       fifo: true,
       fifoThroughputLimit: FifoThroughputLimit.PER_MESSAGE_GROUP_ID,
       deduplicationScope: DeduplicationScope.MESSAGE_GROUP,

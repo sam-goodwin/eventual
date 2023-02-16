@@ -261,7 +261,7 @@ export class Service<S = any> extends Construct implements IService {
   public readonly workflows: Workflows;
 
   public readonly internal: {
-    activities: Activities<S>;
+    readonly activities: Activities<S>;
     /**
      * The {@link AppSec} inferred from the application code.
      */
@@ -403,6 +403,7 @@ export class Service<S = any> extends Construct implements IService {
       )
     );
 
+    // Access Role
     const cliRole = new Role(this, "EventualCliRole", {
       roleName: `eventual-cli-${this.serviceName}`,
       assumedBy: new AccountRootPrincipal(),
@@ -410,6 +411,7 @@ export class Service<S = any> extends Construct implements IService {
     this.api.grantInvokeHttpServiceApi(cliRole);
     logging.grantFilterLogEvents(cliRole);
 
+    // service metadata
     const serviceDataSSM = new StringParameter(this, "service-data", {
       parameterName: `/eventual/services/${this.serviceName}`,
       stringValue: JSON.stringify({

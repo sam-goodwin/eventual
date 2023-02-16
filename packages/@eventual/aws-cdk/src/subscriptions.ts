@@ -139,6 +139,7 @@ export class Subscription extends Construct implements IGrantable {
       serviceName: props.serviceName,
       functionNameSuffix: subscriptionServiceFunctionSuffix(subscription.name),
       overrides: {
+        deadLetterQueue: this.deadLetterQueue,
         deadLetterQueueEnabled: true,
         ...props.overrides,
       },
