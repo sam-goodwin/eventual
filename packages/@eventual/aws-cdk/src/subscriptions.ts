@@ -9,8 +9,8 @@ import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
 import type { SubscriptionFunction } from "./build-manifest";
 import type { Events } from "./events";
-import type { Service } from "./service";
-import type { Api } from "./service-api";
+import type { IService } from "./service";
+import { IServiceApi } from "./service-api";
 import { ServiceFunction } from "./service-function";
 import type { KeysOfType } from "./utils";
 
@@ -50,8 +50,8 @@ export interface SubscriptionsProps<S = any> {
    */
   readonly events: Events;
 
-  service: Service<S>;
-  api: Api<S>;
+  readonly service: IService;
+  readonly api: IServiceApi;
 }
 
 export type Subscriptions<Service> = {
@@ -80,6 +80,10 @@ export const Subscriptions: {
             bus: props.events.bus,
             serviceName: props.serviceName,
             subscription: sub,
+            overrides:
+              props.subscriptions?.[
+                sub.spec.name as SubscriptionNames<Service>
+              ],
           }),
         ];
       })

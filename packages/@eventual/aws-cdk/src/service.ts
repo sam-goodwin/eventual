@@ -35,7 +35,12 @@ import { Function } from "aws-cdk-lib/aws-lambda";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
 import path from "path";
-import { Activities, IActivities } from "./activities";
+import {
+  Activities,
+  ActivityOverrides,
+  IActivities,
+  ServiceActivities,
+} from "./activities.js";
 import { BuildOutput, buildServiceSync } from "./build";
 import { Events } from "./events";
 import { grant } from "./grant";
@@ -194,6 +199,10 @@ export interface ServiceProps<Service = any> {
     [key: string]: string;
   };
   /**
+   * Override Properties of the Activity handlers within the service.
+   */
+  activities?: ActivityOverrides<Service>;
+  /**
    * Override properties of Command Functions within the Service.
    */
   commands?: CommandProps<Service>;
@@ -231,10 +240,6 @@ export class Service<S = any> extends Construct implements IService {
    */
   public readonly serviceName: string;
   /**
-   * The {@link AppSec} inferred from the application code.
-   */
-  public readonly build: BuildOutput;
-  /**
    * This {@link Service}'s API Gateway.
    */
   public readonly api: Api<S>;
@@ -247,33 +252,41 @@ export class Service<S = any> extends Construct implements IService {
    */
   public readonly subscriptions: Subscriptions<S>;
   /**
-   * A single-table used for execution data and granular workflow events/
-   */
-  public readonly table: Table;
-  /**
    * The subsystem that controls activities.
    */
-  public readonly activities: Activities<S>;
+  public readonly activities: ServiceActivities<S>;
   /**
    * The subsystem that controls workflows.
    */
   public readonly workflows: Workflows;
-  /**
-   * The subsystem for schedules and timers.
-   */
-  public readonly scheduler: Scheduler;
-  /**
-   * The Resources for schedules and timers.
-   */
-  public readonly cliRole: Role;
-  /**
-   * A SSM parameter containing data about this service.
-   */
-  public readonly serviceDataSSM: StringParameter;
-  /**
-   * The resources used to facilitate service logging.
-   */
-  public readonly logging: Logging;
+
+  public readonly internal: {
+    activities: Activities<S>;
+    /**
+     * The {@link AppSec} inferred from the application code.
+     */
+    readonly build: BuildOutput;
+    /**
+     * A single-table used for execution data and granular workflow events/
+     */
+    readonly table: Table;
+    /**
+     * The subsystem for schedules and timers.
+     */
+    readonly scheduler: Scheduler;
+    /**
+     * A SSM parameter containing data about this service.
+     */
+    readonly serviceDataSSM: StringParameter;
+    /**
+     * The Resources for schedules and timers.
+     */
+    readonly cliRole: Role;
+    /**
+     * The resources used to facilitate service logging.
+     */
+    readonly logging: Logging;
+  };
 
   public readonly grantPrincipal: IPrincipal;
 
@@ -282,14 +295,14 @@ export class Service<S = any> extends Construct implements IService {
 
     this.serviceName = props.name ?? Names.uniqueResourceName(this, {});
 
-    this.build = buildServiceSync({
+    const build = buildServiceSync({
       serviceName: this.serviceName,
       entry: props.entry,
       outDir: path.join(".eventual", this.node.addr),
     });
 
     // Table - History, Executions
-    this.table = new Table(this, "Table", {
+    const table = new Table(this, "Table", {
       partitionKey: { name: "pk", type: AttributeType.STRING },
       sortKey: { name: "sk", type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
@@ -298,7 +311,7 @@ export class Service<S = any> extends Construct implements IService {
       // timeToLiveAttribute: "ttl",
     });
 
-    this.table.addLocalSecondaryIndex({
+    table.addLocalSecondaryIndex({
       indexName: ExecutionRecord.START_TIME_SORTED_INDEX,
       sortKey: {
         name: ExecutionRecord.START_TIME,
@@ -313,7 +326,7 @@ export class Service<S = any> extends Construct implements IService {
     const proxyService = lazyInterface<IService>();
     const apiProxy = lazyInterface<IServiceApi>();
 
-    this.logging = new Logging(this, "logging", {
+    const logging = new Logging(this, "Logging", {
       ...(props.logging ?? {}),
       serviceName: this.serviceName,
     });
@@ -322,48 +335,50 @@ export class Service<S = any> extends Construct implements IService {
       serviceName: this.serviceName,
     });
 
-    this.activities = new Activities(this, "Activities", {
-      build: this.build,
+    const activities = new Activities<S>(this, "Activities", {
+      build: build,
       serviceName: this.serviceName,
       scheduler: proxyScheduler,
       workflows: proxyWorkflows,
       environment: props.environment,
       events: this.events,
-      logging: this.logging,
+      logging,
       service: proxyService,
       api: apiProxy,
+      overrides: props.activities,
     });
-    proxyActivities._bind(this.activities);
+    proxyActivities._bind(activities);
+    this.activities = activities.activities;
 
     this.workflows = new Workflows(this, "Workflows", {
-      build: this.build,
+      build,
       serviceName: this.serviceName,
       scheduler: proxyScheduler,
-      activities: this.activities,
-      table: this.table,
+      activities: activities,
+      table,
       events: this.events,
-      logging: this.logging,
+      logging,
       service: proxyService,
       ...props.workflows,
     });
     proxyWorkflows._bind(this.workflows);
 
-    this.scheduler = new Scheduler(this, "Scheduler", {
-      build: this.build,
+    const scheduler = new Scheduler(this, "Scheduler", {
+      build,
       workflows: this.workflows,
-      activities: this.activities,
-      logging: this.logging,
+      activities,
+      logging,
     });
-    proxyScheduler._bind(this.scheduler);
+    proxyScheduler._bind(scheduler);
 
     this.api = new Api(this, "Api", {
-      build: this.build,
+      build,
       serviceName: this.serviceName,
       environment: props.environment,
-      activities: this.activities,
+      activities: activities,
       workflows: this.workflows,
       events: this.events,
-      scheduler: this.scheduler,
+      scheduler,
       service: proxyService,
       commands: props.commands,
     });
@@ -371,10 +386,10 @@ export class Service<S = any> extends Construct implements IService {
 
     this.subscriptions = new Subscriptions(this, {
       api: this.api,
-      build: this.build,
+      build,
       environment: props.environment,
       events: this.events,
-      service: this,
+      service: proxyService,
       serviceName: this.serviceName,
       subscriptions: props.subscriptions,
     });
@@ -388,28 +403,37 @@ export class Service<S = any> extends Construct implements IService {
       )
     );
 
-    this.cliRole = new Role(this, "EventualCliRole", {
+    const cliRole = new Role(this, "EventualCliRole", {
       roleName: `eventual-cli-${this.serviceName}`,
       assumedBy: new AccountRootPrincipal(),
     });
-    this.api.grantInvokeHttpServiceApi(this.cliRole);
-    this.logging.grantFilterLogEvents(this.cliRole);
+    this.api.grantInvokeHttpServiceApi(cliRole);
+    logging.grantFilterLogEvents(cliRole);
 
-    this.serviceDataSSM = new StringParameter(this, "service-data", {
+    const serviceDataSSM = new StringParameter(this, "service-data", {
       parameterName: `/eventual/services/${this.serviceName}`,
       stringValue: JSON.stringify({
         apiEndpoint: this.api.gateway.apiEndpoint,
         eventBusArn: this.events.bus.eventBusArn,
-        logGroupName: this.logging.logGroup.logGroupName,
+        logGroupName: logging.logGroup.logGroupName,
       }),
     });
 
-    this.serviceDataSSM.grantRead(this.cliRole);
+    serviceDataSSM.grantRead(cliRole);
+    this.internal = {
+      activities,
+      build,
+      cliRole,
+      logging,
+      scheduler,
+      serviceDataSSM,
+      table,
+    };
     proxyService._bind(this);
   }
 
   public get activitiesList(): Subscription[] {
-    return Object.values(this.activities.activities);
+    return Object.values(this.activities);
   }
 
   public get subscriptionsList(): Subscription[] {
@@ -492,11 +516,11 @@ export class Service<S = any> extends Construct implements IService {
 
   public configureUpdateActivity(func: Function) {
     // complete activities
-    this.activities.configureCompleteActivity(func);
+    this.internal.activities.configureCompleteActivity(func);
     // cancel
-    this.activities.configureWriteActivities(func);
+    this.internal.activities.configureWriteActivities(func);
     // heartbeat
-    this.activities.configureSendHeartbeat(func);
+    this.internal.activities.configureSendHeartbeat(func);
   }
 
   public configureForServiceClient(func: Function) {

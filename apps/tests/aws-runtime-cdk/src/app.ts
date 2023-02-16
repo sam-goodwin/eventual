@@ -43,9 +43,9 @@ const testService = new eventual.Service<typeof testServiceRuntime>(
 );
 
 testService.api.grantInvokeHttpServiceApi(role);
-testService.cliRole.grantAssumeRole(role);
+testService.internal.cliRole.grantAssumeRole(role);
 eventual.Service.grantDescribeParameters(stack, role);
-testService.serviceDataSSM.grantRead(role);
+testService.internal.serviceDataSSM.grantRead(role);
 role.addToPolicy(
   new PolicyStatement({
     actions: ["ssm:DescribeParameters"],
@@ -58,7 +58,7 @@ const pipeRole = new Role(stack, "pipeRole", {
 });
 
 testQueue.grantConsumeMessages(pipeRole);
-testQueue.grantSendMessages(testService.activities.activities.asyncActivity);
+testQueue.grantSendMessages(testService.activities.asyncActivity);
 testQueue.grantSendMessages(testService);
 
 /**

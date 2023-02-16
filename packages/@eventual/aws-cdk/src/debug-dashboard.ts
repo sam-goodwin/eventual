@@ -24,13 +24,13 @@ export class DebugDashboard extends Construct {
 
     const allLogGroups = [
       // execution log group
-      service.logging.logGroup.logGroupName,
+      service.internal.logging.logGroup.logGroupName,
       // workflow orchestrator
       service.workflows.orchestrator.logGroup.logGroupName,
       // activities worker
       ...service.activitiesList.map((a) => a.handler.logGroup.logGroupName),
       // activities fallback
-      service.activities.fallbackHandler.logGroup.logGroupName,
+      service.internal.activities.fallbackHandler.logGroup.logGroupName,
       // user APIS - default and bundled
       ...service.api.handlers.map((api) => api.logGroup.logGroupName),
       // event handlers - default and bundled
@@ -38,8 +38,8 @@ export class DebugDashboard extends Construct {
         ({ handler }) => handler.logGroup.logGroupName
       ),
       // scheduler/timer handler and forwarder
-      service.scheduler.handler.logGroup.logGroupName,
-      service.scheduler.forwarder.logGroup.logGroupName,
+      service.internal.scheduler.handler.logGroup.logGroupName,
+      service.internal.scheduler.forwarder.logGroup.logGroupName,
     ];
 
     this.dashboard = new Dashboard(this, "Dashboard", {

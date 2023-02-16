@@ -25,7 +25,12 @@ import { ServiceFunction } from "./service-function";
 import { KeysOfType } from "./utils";
 import { IWorkflows } from "./workflows";
 
-export interface ActivitiesProps {
+export type ServiceActivities<Service> = Record<
+  keyof Pick<Service, ActivityNames<Service>>,
+  Activity
+>;
+
+export interface ActivitiesProps<Service> {
   build: BuildOutput;
   serviceName: string;
   workflows: IWorkflows;
@@ -35,6 +40,7 @@ export interface ActivitiesProps {
   logging: Logging;
   service: IService;
   readonly api: IServiceApi;
+  overrides?: ActivityOverrides<Service>;
 }
 
 export interface IActivities {
@@ -88,16 +94,17 @@ export class Activities<Service> extends Construct implements IActivities {
   /**
    * Function which executes all activities. The worker is invoked by the {@link Workflows.orchestrator}.
    */
-  public activities: Record<
-    keyof Pick<Service, ActivityNames<Service>>,
-    Activity
-  >;
+  public activities: ServiceActivities<Service>;
   /**
    * Function which is executed when an activity worker returns a failure.
    */
   public fallbackHandler: Function;
 
-  constructor(scope: Construct, id: string, private props: ActivitiesProps) {
+  constructor(
+    scope: Construct,
+    id: string,
+    private props: ActivitiesProps<Service>
+  ) {
     super(scope, id);
     this.table = new Table(this, "Table", {
       billingMode: BillingMode.PAY_PER_REQUEST,
@@ -112,7 +119,9 @@ export class Activities<Service> extends Construct implements IActivities {
     this.fallbackHandler = new ServiceFunction(this, "FallbackHandler", {
       bundledFunction: props.build.internal.activities.fallbackHandler,
       build: props.build,
-      functionNameSuffix: `activity-fallback-handler`,
+      functionNameSuffix: activityServiceFunctionSuffix(
+        `internal-fallback-handler`
+      ),
       serviceName: props.serviceName,
     });
 
@@ -126,6 +135,7 @@ export class Activities<Service> extends Construct implements IActivities {
           fallbackHandler: this.fallbackHandler,
           serviceName: this.props.serviceName,
           environment: this.props.environment,
+          overrides: props.overrides?.[act.spec.name as ActivityNames<Service>],
         });
 
         this.configureActivityWorker(activity.handler);
@@ -247,10 +257,16 @@ export class Activities<Service> extends Construct implements IActivities {
   }
 }
 
+export type ActivityOverrides<Service> = {
+  default?: ActivityHandlerProps;
+} & {
+  [api in ActivityNames<Service>]?: ActivityHandlerProps;
+};
+
 export interface ActivityHandlerProps
   extends Omit<
     Partial<FunctionProps>,
-    "code" | "handler" | "functionName" | "onFailure"
+    "code" | "handler" | "functionName" | "onFailure" | "retryAttempts"
   > {}
 
 export interface ActivityProps {
@@ -260,6 +276,7 @@ export interface ActivityProps {
   environment?: Record<string, string>;
   serviceName: string;
   fallbackHandler: Function;
+  overrides?: ActivityHandlerProps;
 }
 
 export class Activity extends Construct implements IGrantable {
@@ -276,11 +293,12 @@ export class Activity extends Construct implements IGrantable {
         props.activity.spec.name
       ),
       overrides: {
+        timeout: Duration.minutes(1),
+        ...props.overrides,
         // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
         retryAttempts: 0,
         // handler and recovers from error cases
         onFailure: new LambdaDestination(props.fallbackHandler),
-        timeout: Duration.minutes(1),
       },
       serviceName: props.serviceName,
       environment: props.environment,

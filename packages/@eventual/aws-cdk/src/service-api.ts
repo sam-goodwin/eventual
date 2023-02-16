@@ -83,10 +83,6 @@ export type ServiceCommands<Service> = {
 
 export class Api<Service> extends Construct implements IServiceApi, IGrantable {
   /**
-   * A Reference to this Service's {@link BuildOutput}.
-   */
-  private readonly build: BuildOutput;
-  /**
    * API Gateway for providing service api
    */
   public readonly gateway: HttpApi;
@@ -113,8 +109,6 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
   constructor(scope: Construct, id: string, private props: ApiProps<Service>) {
     super(scope, id);
     const self = this;
-
-    this.build = props.build;
 
     const internalApiRoutes: InternalApiRoutes = this.props.build.api;
     const internalInit: {
@@ -154,7 +148,7 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
     const internalScope = new Construct(this, "Internal");
 
     const { specification, commands } = synthesizeAPI([
-      ...this.build.commands.map(
+      ...this.props.build.commands.map(
         (manifest) =>
           ({
             manifest,
@@ -167,7 +161,7 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
             },
           } satisfies CommandMapping)
       ),
-      ...(Object.entries(this.build.api) as any).map(
+      ...(Object.entries(this.props.build.api) as any).map(
         ([path, manifest]: [
           keyof InternalApiRoutes,
           InternalCommandFunction
@@ -266,7 +260,7 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
       const specification: openapi.OpenAPIObject = {
         openapi: "3.0.1",
         info: {
-          title: self.build.serviceName,
+          title: self.props.build.serviceName,
           // TODO: use the package.json?
           version: "1",
         },
