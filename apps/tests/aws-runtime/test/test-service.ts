@@ -29,7 +29,7 @@ const hello = activity("hello", async (name: string) => {
   return `hello ${name}`;
 });
 
-const asyncActivity = activity(
+export const asyncActivity = activity(
   "asyncActivity",
   async (type: AsyncWriterTestEvent["type"]) => {
     return asyncResult<string>(async (token) => {

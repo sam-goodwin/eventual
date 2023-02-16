@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@aws-sdk/types": "^3.254.0",
+    "node-fetch": "^3.3.0",
     "@jest/globals": "^29",
     "@types/aws-lambda": "^8.10.108",
     "@types/jest": "^29",

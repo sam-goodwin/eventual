@@ -58,6 +58,7 @@ const pipeRole = new Role(stack, "pipeRole", {
 });
 
 testQueue.grantConsumeMessages(pipeRole);
+testQueue.grantSendMessages(testService.activities.activities.asyncActivity);
 testQueue.grantSendMessages(testService);
 
 /**

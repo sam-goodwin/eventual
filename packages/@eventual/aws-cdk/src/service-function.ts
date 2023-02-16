@@ -33,7 +33,7 @@ export class ServiceFunction extends Function {
         ? Duration.seconds(
             computeDurationSeconds(props.runtimeProps.handlerTimeout)
           )
-        : undefined,
+        : props.overrides?.timeout,
       environment: {
         NODE_OPTIONS: "--enable-source-maps",
         ...baseFnProps.environment,

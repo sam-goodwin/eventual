@@ -73,10 +73,7 @@ export interface IActivities {
   grantFullControl(grantable: IGrantable): void;
 }
 
-export type ActivityNames<Service> = KeysOfType<
-  Service,
-  { kind: "Activities" }
->;
+export type ActivityNames<Service> = KeysOfType<Service, { kind: "Activity" }>;
 
 /**
  * Subsystem which supports durable activities.

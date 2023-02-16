@@ -8,6 +8,8 @@ import {
   ActivityClientProps,
   ActivityProvider,
   ActivityWorkerRequest,
+  getLazy,
+  LazyValue,
 } from "@eventual/core-runtime";
 import { Buffer } from "buffer";
 import { activityServiceFunctionName } from "../utils.js";
@@ -15,7 +17,7 @@ import { activityServiceFunctionName } from "../utils.js";
 export interface AWSActivityClientProps extends ActivityClientProps {
   lambda: LambdaClient;
   activityProvider: ActivityProvider;
-  serviceName: string;
+  serviceName: LazyValue<string>;
 }
 
 export class AWSActivityClient extends ActivityClient {
@@ -31,7 +33,7 @@ export class AWSActivityClient extends ActivityClient {
       throw new Error(`Activity ${request.command.name} does not exist.`);
     } else {
       const functionName = activityServiceFunctionName(
-        this._props.serviceName,
+        getLazy(this._props.serviceName),
         request.command.name
       );
       await this._props.lambda.send(

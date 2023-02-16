@@ -160,7 +160,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     });
 
     this.orchestrator = new ServiceFunction(this, "Orchestrator", {
-      functionNameSuffix: `${props.serviceName}-orchestrator-handler`,
+      functionNameSuffix: `orchestrator-handler`,
       build: props.build,
       bundledFunction: props.build.workflows.orchestrator,
       overrides: {
@@ -172,7 +172,6 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
         ],
       },
       serviceName: props.serviceName,
-      
     });
 
     /**

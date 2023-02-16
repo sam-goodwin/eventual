@@ -198,7 +198,7 @@ export const createActivityClient = /* @__PURE__ */ memoize(
         executionQueueClient ?? createExecutionQueueClient(),
       executionStore: executionStore ?? createExecutionStore(),
       lambda: lambda(),
-      serviceName: env.serviceName(),
+      serviceName: env.serviceName,
     })
 );
 
