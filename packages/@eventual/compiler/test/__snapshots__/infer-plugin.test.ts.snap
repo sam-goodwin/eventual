@@ -443,6 +443,8 @@ __export(api_handler_exports, {
 });
 module.exports = __toCommonJS(api_handler_exports);
 
+var AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
+
 function createAwaitAllSettled(activities) {
   return createEventual(EventualKind.AwaitAllSettled, {
     activities
@@ -496,21 +498,6 @@ function isFailed(result) {
 }
 var isResolvedOrFailed = or(isResolved, isFailed);
 
-var import_ulidx = __toESM(require_dist2(), 1);
-
-var ServiceType;
-(function(ServiceType2) {
-  ServiceType2["ActivityWorker"] = "ActivityWorker";
-  ServiceType2["ApiHandler"] = "ApiHandler";
-  ServiceType2["Subscription"] = "Subscription";
-  ServiceType2["OrchestratorWorker"] = "OrchestratorWorker";
-})(ServiceType || (ServiceType = {}));
-
-var SERVICE_TYPE_FLAG = "EVENTUAL_SERVICE_TYPE";
-function isOrchestratorWorker() {
-  return process.env[SERVICE_TYPE_FLAG] === ServiceType.OrchestratorWorker;
-}
-
 var SignalTargetType;
 (function(SignalTargetType2) {
   SignalTargetType2[SignalTargetType2["Execution"] = 0] = "Execution";
@@ -528,6 +515,19 @@ function createChain(program) {
 }
 function registerChain(program) {
   return registerEventual(createChain(program));
+}
+
+var ServiceType;
+(function(ServiceType2) {
+  ServiceType2["ActivityWorker"] = "ActivityWorker";
+  ServiceType2["ApiHandler"] = "ApiHandler";
+  ServiceType2["Subscription"] = "Subscription";
+  ServiceType2["OrchestratorWorker"] = "OrchestratorWorker";
+})(ServiceType || (ServiceType = {}));
+
+var SERVICE_TYPE_FLAG = "EVENTUAL_SERVICE_TYPE";
+function isOrchestratorWorker() {
+  return process.env[SERVICE_TYPE_FLAG] === ServiceType.OrchestratorWorker;
 }
 
 function createRace(activities) {
@@ -592,13 +592,11 @@ var Eventual = {
 globalThis.$eventual = chain;
 globalThis.$Eventual = Eventual;
 
-var AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
-
 function isSourceLocation(a) {
   return a && typeof a === "object" && typeof a.fileName === "string" && typeof a.exportName === "string";
 }
 
-var import_ulidx2 = __toESM(require_dist2(), 1);
+var import_ulidx = __toESM(require_dist2(), 1);
 var ExecutionStatus;
 (function(ExecutionStatus2) {
   ExecutionStatus2["IN_PROGRESS"] = "IN_PROGRESS";
@@ -717,6 +715,8 @@ var ActivityUpdateType;
   ActivityUpdateType2["Failure"] = "Failure";
   ActivityUpdateType2["Heartbeat"] = "Heartbeat";
 })(ActivityUpdateType || (ActivityUpdateType = {}));
+
+var import_ulidx2 = __toESM(require_dist2(), 1);
 
 var WorkflowEventType;
 (function(WorkflowEventType2) {
