@@ -28,7 +28,7 @@ export interface WorkflowsProps {
   scheduler: IScheduler;
   activities: IActivities;
   table: ITable;
-  events: Events<any>;
+  events: Events;
   logging: Logging;
   orchestrator?: {
     reservedConcurrentExecutions?: number;
@@ -160,14 +160,19 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     });
 
     this.orchestrator = new ServiceFunction(this, "Orchestrator", {
-      functionName: `${props.serviceName}-orchestrator-handler`,
-      code: props.build.getCode(props.build.orchestrator.file),
-      events: [
-        new SqsEventSource(this.queue, {
-          batchSize: 10,
-          reportBatchItemFailures: true,
-        }),
-      ],
+      functionNameSuffix: `${props.serviceName}-orchestrator-handler`,
+      build: props.build,
+      bundledFunction: props.build.workflows.orchestrator,
+      overrides: {
+        events: [
+          new SqsEventSource(this.queue, {
+            batchSize: 10,
+            reportBatchItemFailures: true,
+          }),
+        ],
+      },
+      serviceName: props.serviceName,
+      
     });
 
     /**

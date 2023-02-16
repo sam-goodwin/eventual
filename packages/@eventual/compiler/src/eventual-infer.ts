@@ -5,9 +5,9 @@
  * @see ServiceSpec
  */
 import { generateSchema } from "@anatine/zod-openapi";
+import { ActivitySpec } from "@eventual/core";
 import {
   activities,
-  ActivitySpec,
   commands,
   CommandSpec,
   events,
@@ -33,6 +33,7 @@ import os from "os";
 import path from "path";
 import {
   getSpan,
+  isActivityCall,
   isCommandCall,
   isOnEventCall,
   isSubscriptionCall,
@@ -68,11 +69,11 @@ export async function infer(
   const serviceSpec: ServiceSpec = {
     workflows: [...workflows().keys()].map((n) => ({ name: n })),
     activities: Object.fromEntries(
-      activities().map((activity) => [
+      Object.values(activities()).map((activity) => [
         activity.activityID,
         {
-          // TODO: source location, etc.
           activityID: activity.activityID,
+          sourceLocation: activity.sourceLocation,
           options: activity.options,
         } satisfies ActivitySpec,
       ])
@@ -97,7 +98,7 @@ export async function infer(
           props: {
             memorySize: e.props?.memorySize,
             retryAttempts: e.props?.retryAttempts,
-            timeout: e.props?.timeout,
+            handlerTimeout: e.props?.handlerTimeout,
           },
           sourceLocation: e.sourceLocation,
           filters: e.filters,
@@ -112,7 +113,7 @@ export async function infer(
           sourceLocation: command.sourceLocation,
           path: command.path,
           memorySize: command.memorySize,
-          timeout: command.timeout,
+          handlerTimeout: command.handlerTimeout,
           method: command.method,
           input: command.input ? generateSchema(command.input) : undefined,
           output: command.output ? generateSchema(command.output) : undefined,
@@ -205,7 +206,10 @@ export class InferVisitor extends Visitor {
   visitCallExpression(call: CallExpression): Expression {
     if (
       this.exportName &&
-      (isCommandCall(call) || isOnEventCall(call) || isSubscriptionCall(call))
+      (isCommandCall(call) ||
+        isOnEventCall(call) ||
+        isSubscriptionCall(call) ||
+        isActivityCall(call))
     ) {
       this.didMutate = true;
 

@@ -1,5 +1,4 @@
-import { computeDurationSeconds } from "@eventual/core-runtime";
-import { aws_iam, Duration } from "aws-cdk-lib";
+import { aws_iam } from "aws-cdk-lib";
 import { IEventBus, Rule } from "aws-cdk-lib/aws-events";
 import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";
 import type { IGrantable } from "aws-cdk-lib/aws-iam";
@@ -48,7 +47,7 @@ export interface SubscriptionsProps<S = any> {
   /**
    * The Service's {@link Events} repository.
    */
-  readonly events: Events<S>;
+  readonly events: Events;
 
   service: Service<S>;
   api: Api<S>;
@@ -127,25 +126,22 @@ export class Subscription extends Construct implements IGrantable {
 
   constructor(scope: Construct, id: string, props: SubscriptionProps) {
     super(scope, id);
-    const func = props.subscription;
     const subscription = props.subscription.spec;
 
     this.deadLetterQueue = new Queue(this, "DeadLetterQueue");
     this.handler = new ServiceFunction(this, "Handler", {
-      code: props.build.getCode(func.file),
-      functionName: `${props.serviceName}-subscription-${subscription.name}`,
-      deadLetterQueueEnabled: true,
-      ...(props.overrides ?? {}),
-      environment: {
-        ...(props.environment ?? {}),
-        ...(props.overrides?.environment ?? {}),
+      build: props.build,
+      serviceName: props.serviceName,
+      functionNameSuffix: `subscription-${subscription.name}`,
+      overrides: {
+        deadLetterQueueEnabled: true,
+        ...props.overrides,
       },
-      memorySize: subscription.props?.memorySize ?? 512,
-      timeout: subscription.props?.timeout
-        ? Duration.seconds(computeDurationSeconds(subscription.props.timeout))
-        : undefined,
-      role: props.overrides?.role,
+      environment: props.environment,
+      runtimeProps: props.subscription.spec.props,
+      bundledFunction: props.subscription,
     });
+
     this.grantPrincipal = this.handler.role!;
 
     if (subscription.filters.length > 0) {

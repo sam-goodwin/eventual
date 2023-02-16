@@ -225,10 +225,7 @@ export interface ServiceProps<Service = any> {
   logging?: Omit<LoggingProps, "serviceName">;
 }
 
-export class Service<S = any>
-  extends Construct
-  implements IGrantable, IService
-{
+export class Service<S = any> extends Construct implements IService {
   /**
    * Name of this Service.
    */
@@ -244,7 +241,7 @@ export class Service<S = any>
   /**
    * This {@link Service}'s {@link Events} that can be published and subscribed to.
    */
-  public readonly events: Events<S>;
+  public readonly events: Events;
   /**
    * The Subscriptions within this Service.
    */
@@ -256,7 +253,7 @@ export class Service<S = any>
   /**
    * The subsystem that controls activities.
    */
-  public readonly activities: Activities;
+  public readonly activities: Activities<S>;
   /**
    * The subsystem that controls workflows.
    */
@@ -386,7 +383,6 @@ export class Service<S = any>
     this.grantPrincipal = new CompositePrincipal(
       // when granting permissions to the service,
       // propagate them to the following principals
-      this.activities.worker.grantPrincipal,
       this.api.grantPrincipal,
       ...this.subscriptionsList.flatMap(
         (sub) => sub.handler.role?.grantPrincipal!
@@ -411,6 +407,10 @@ export class Service<S = any>
 
     this.serviceDataSSM.grantRead(this.cliRole);
     proxyService._bind(this);
+  }
+
+  public get activitiesList(): Subscription[] {
+    return Object.values(this.activities.activities);
   }
 
   public get subscriptionsList(): Subscription[] {
@@ -440,7 +440,9 @@ export class Service<S = any>
    * @param value The environment variable's value.
    */
   public addEnvironment(key: string, value: string): void {
-    this.activities.worker.addEnvironment(key, value);
+    this.activitiesList.forEach(({ handler }) =>
+      handler.addEnvironment(key, value)
+    );
     this.api.handlers.forEach((handler) => handler.addEnvironment(key, value));
     this.subscriptionsList.forEach(({ handler }) =>
       handler.addEnvironment(key, value)

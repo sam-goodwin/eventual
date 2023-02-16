@@ -173,3 +173,21 @@ export function chunkArray<T>(batchSize: number, items: T[]): T[][] {
     }
   }, []);
 }
+
+export function serviceFunctionName(serviceName: string, suffix: string) {
+  return `${serviceName}-${suffix}`;
+}
+
+export function activityServiceFunctionSuffix(activityId: string) {
+  return `activity-${activityId}`;
+}
+
+export function activityServiceFunctionName(
+  serviceName: string,
+  activityId: string
+): string {
+  return serviceFunctionName(
+    serviceName,
+    activityServiceFunctionSuffix(activityId)
+  );
+}

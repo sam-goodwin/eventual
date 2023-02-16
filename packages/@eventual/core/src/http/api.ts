@@ -98,7 +98,7 @@ function createRouter<Context>(
               name: path,
               path: (typeof args[0] === "string" ? args[0] : args[1]) as string,
               sourceLocation,
-              timeout: routeProps?.timeout,
+              handlerTimeout: routeProps?.handlerTimeout,
               middlewares,
               // we want the base HTTP request, not the transformed one
               passThrough: true,

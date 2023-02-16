@@ -20,7 +20,7 @@ export interface EventsProps {
   readonly serviceName: string;
 }
 
-export class Events<Service> extends Construct {
+export class Events extends Construct {
   /**
    * The {@link EventBus} containing all events flowing into and out of this {@link Service}.
    */

@@ -28,8 +28,8 @@ export class DebugDashboard extends Construct {
       // workflow orchestrator
       service.workflows.orchestrator.logGroup.logGroupName,
       // activities worker
-      service.activities.worker.logGroup.logGroupName,
-      // activities worker
+      ...service.activitiesList.map((a) => a.handler.logGroup.logGroupName),
+      // activities fallback
       service.activities.fallbackHandler.logGroup.logGroupName,
       // user APIS - default and bundled
       ...service.api.handlers.map((api) => api.logGroup.logGroupName),
@@ -93,7 +93,9 @@ export class DebugDashboard extends Construct {
           }),
           new LogQueryWidget({
             title: "Activity Worker Summary",
-            logGroupNames: [service.activities.worker.logGroup.logGroupName],
+            logGroupNames: service.activitiesList.map(
+              (a) => a.handler.logGroup.logGroupName
+            ),
             queryLines: [
               `filter @type="REPORT" OR ${ActivityMetrics.OperationDuration} > 0`,
               `sort @timestamp desc`,

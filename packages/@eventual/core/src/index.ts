@@ -5,6 +5,7 @@ export * from "./context.js";
 export * from "./error.js";
 export * from "./event.js";
 export * from "./execution.js";
+export * from "./function-props.js";
 export * from "./heartbeat.js";
 export * from "./http-method.js";
 export * from "./http/index.js";

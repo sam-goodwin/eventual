@@ -1,5 +1,8 @@
-import { ENV_NAMES } from "@eventual/aws-runtime";
-import { Duration, RemovalPolicy } from "aws-cdk-lib";
+import {
+  activityServiceFunctionSuffix,
+  ENV_NAMES,
+} from "@eventual/aws-runtime";
+import { aws_iam, Duration, RemovalPolicy } from "aws-cdk-lib";
 import {
   AttributeType,
   BillingMode,
@@ -7,10 +10,11 @@ import {
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
 import { IGrantable } from "aws-cdk-lib/aws-iam";
-import { Function } from "aws-cdk-lib/aws-lambda";
+import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { LambdaDestination } from "aws-cdk-lib/aws-lambda-destinations";
 import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
+import { ActivityFunction } from "./build-manifest";
 import { Events } from "./events";
 import { grant } from "./grant";
 import { Logging } from "./logging";
@@ -18,7 +22,7 @@ import { IScheduler } from "./scheduler";
 import { IService } from "./service";
 import { IServiceApi } from "./service-api";
 import { ServiceFunction } from "./service-function";
-import { addEnvironment } from "./utils";
+import { KeysOfType } from "./utils";
 import { IWorkflows } from "./workflows";
 
 export interface ActivitiesProps {
@@ -27,7 +31,7 @@ export interface ActivitiesProps {
   workflows: IWorkflows;
   scheduler: IScheduler;
   environment?: Record<string, string>;
-  events: Events<any>;
+  events: Events;
   logging: Logging;
   service: IService;
   readonly api: IServiceApi;
@@ -69,15 +73,17 @@ export interface IActivities {
   grantFullControl(grantable: IGrantable): void;
 }
 
+export type ActivityNames<Service> = KeysOfType<
+  Service,
+  { kind: "Activities" }
+>;
+
 /**
  * Subsystem which supports durable activities.
  *
  * Activities are started by the {@link Workflow.orchestrator} and send back {@link WorkflowEvent}s on completion.
  */
-export class Activities
-  extends Construct
-  implements IActivities, IGrantable, IActivities
-{
+export class Activities<Service> extends Construct implements IActivities {
   /**
    * Table which contains activity information for claiming, heartbeat, and cancellation.
    */
@@ -85,7 +91,10 @@ export class Activities
   /**
    * Function which executes all activities. The worker is invoked by the {@link Workflows.orchestrator}.
    */
-  public worker: Function;
+  public activities: Record<
+    keyof Pick<Service, ActivityNames<Service>>,
+    Activity
+  >;
   /**
    * Function which is executed when an activity worker returns a failure.
    */
@@ -93,7 +102,6 @@ export class Activities
 
   constructor(scope: Construct, id: string, private props: ActivitiesProps) {
     super(scope, id);
-
     this.table = new Table(this, "Table", {
       billingMode: BillingMode.PAY_PER_REQUEST,
       partitionKey: {
@@ -105,29 +113,31 @@ export class Activities
     });
 
     this.fallbackHandler = new ServiceFunction(this, "FallbackHandler", {
-      code: props.build.getCode(props.build.activities.fallbackHandler.file),
-      functionName: `${props.serviceName}-activity-fallback-handler`,
-      memorySize: 512,
+      bundledFunction: props.build.internal.activities.fallbackHandler,
+      build: props.build,
+      functionNameSuffix: `activity-fallback-handler`,
+      serviceName: props.serviceName,
     });
 
-    this.worker = new ServiceFunction(this, "Worker", {
-      code: props.build.getCode(props.build.activities.handler.file),
-      functionName: `${props.serviceName}-activity-handler`,
-      memorySize: 512,
-      // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
-      retryAttempts: 0,
-      // TODO: determine worker timeout strategy
-      timeout: Duration.minutes(1),
-      // handler and recovers from error cases
-      onFailure: new LambdaDestination(this.fallbackHandler),
-    });
+    const activityScope = new Construct(this, "Activities");
+    this.activities = Object.fromEntries(
+      Object.entries(props.build.activities).map(([name, act]) => {
+        const activity = new Activity(activityScope, act.spec.activityID, {
+          activity: act,
+          build: props.build,
+          codeFile: act.file,
+          fallbackHandler: this.fallbackHandler,
+          serviceName: this.props.serviceName,
+          environment: this.props.environment,
+        });
+
+        this.configureActivityWorker(activity.handler);
+
+        return [name, activity];
+      })
+    ) as Record<keyof Pick<Service, ActivityNames<Service>>, Activity>;
 
     this.configureActivityFallbackHandler();
-    this.configureActivityWorker();
-  }
-
-  public get grantPrincipal() {
-    return this.worker.grantPrincipal;
   }
 
   /**
@@ -136,12 +146,13 @@ export class Activities
 
   public configureStartActivity(func: Function) {
     this.grantStartActivity(func);
-    this.addEnvs(func, ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME);
   }
 
   @grant()
   public grantStartActivity(grantable: IGrantable) {
-    this.worker.grantInvoke(grantable);
+    Object.values<Activity>(this.activities).map((a) => {
+      a.handler.grantInvoke(grantable);
+    });
   }
 
   public configureSendHeartbeat(func: Function) {
@@ -206,27 +217,23 @@ export class Activities
     this.grantWriteActivities(grantable);
   }
 
-  private configureActivityWorker() {
+  private configureActivityWorker(func: Function) {
     // claim activities
-    this.configureWriteActivities(this.worker);
+    this.configureWriteActivities(func);
     // report result back to the execution
-    this.props.workflows.configureSubmitExecutionEvents(this.worker);
+    this.props.workflows.configureSubmitExecutionEvents(func);
     // send logs to the execution log stream
-    this.props.logging.configurePutServiceLogs(this.worker);
+    this.props.logging.configurePutServiceLogs(func);
     // start heartbeat monitor
-    this.props.scheduler.configureScheduleTimer(this.worker);
-
-    if (this.props.environment) {
-      addEnvironment(this.worker, this.props.environment);
-    }
+    this.props.scheduler.configureScheduleTimer(func);
 
     // allows access to any of the injected service client operations.
-    this.props.service.configureForServiceClient(this.worker);
-    this.props.api.configureInvokeHttpServiceApi(this.worker);
+    this.props.service.configureForServiceClient(func);
+    this.props.api.configureInvokeHttpServiceApi(func);
     /**
      * Access to service name in the activity worker for metrics logging
      */
-    this.props.service.configureServiceName(this.worker);
+    this.props.service.configureServiceName(func);
   }
 
   private configureActivityFallbackHandler() {
@@ -236,10 +243,53 @@ export class Activities
 
   private readonly ENV_MAPPINGS = {
     [ENV_NAMES.ACTIVITY_TABLE_NAME]: () => this.table.tableName,
-    [ENV_NAMES.ACTIVITY_WORKER_FUNCTION_NAME]: () => this.worker.functionName,
   } as const;
 
   private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {
     envs.forEach((env) => func.addEnvironment(env, this.ENV_MAPPINGS[env]()));
+  }
+}
+
+export interface ActivityHandlerProps
+  extends Omit<
+    Partial<FunctionProps>,
+    "code" | "handler" | "functionName" | "onFailure"
+  > {}
+
+export interface ActivityProps {
+  build: BuildOutput;
+  activity: ActivityFunction;
+  codeFile: string;
+  environment?: Record<string, string>;
+  serviceName: string;
+  fallbackHandler: Function;
+}
+
+export class Activity extends Construct implements IGrantable {
+  public handler: Function;
+  public grantPrincipal: aws_iam.IPrincipal;
+
+  constructor(scope: Construct, id: string, props: ActivityProps) {
+    super(scope, id);
+
+    this.handler = new ServiceFunction(this, "Worker", {
+      build: props.build,
+      bundledFunction: props.activity,
+      functionNameSuffix: activityServiceFunctionSuffix(
+        props.activity.spec.activityID
+      ),
+      overrides: {
+        // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
+        retryAttempts: 0,
+        // handler and recovers from error cases
+        onFailure: new LambdaDestination(props.fallbackHandler),
+        timeout: Duration.minutes(1),
+      },
+      serviceName: props.serviceName,
+      environment: props.environment,
+      runtimeProps: props.activity.spec.options,
+    });
+
+    this.grantPrincipal = this.handler.grantPrincipal;
   }
 }

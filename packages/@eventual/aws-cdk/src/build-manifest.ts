@@ -3,21 +3,18 @@ import type {
   EventSpec,
   SubscriptionSpec,
 } from "@eventual/core/internal";
+import { ActivitySpec } from "@eventual/core/src/activity";
 
 export interface BuildManifest {
-  orchestrator: BundledFunction;
-  api: InternalApiRoutes;
-  scheduler: {
-    forwarder: BundledFunction;
-    timerHandler: BundledFunction;
+  workflows: {
+    orchestrator: BundledFunction;
   };
+  api: InternalApiRoutes;
   /**
    * Activities declared within the Service.
    */
-  // TODO: split out into individual activity functions
   activities: {
-    handler: BundledFunction<undefined>;
-    fallbackHandler: BundledFunction<undefined>;
+    [activityId: string]: ActivityFunction;
   };
   /**
    * The events and their schema.
@@ -30,7 +27,7 @@ export interface BuildManifest {
    */
   subscriptions: {
     /**
-     * Individually bundled {@link SubscriptionFunction}s containing a single `onEvent` event handler.
+     * Individually bundled {@link SubscriptionFunction}s containing a single `subscription` handler.
      */
     [subscriptionName: string]: SubscriptionFunction;
   };
@@ -40,6 +37,15 @@ export interface BuildManifest {
      * Individually bundled and tree-shaken functions for a specific Command.
      */
     [commandName: string]: CommandFunction;
+  };
+  internal: {
+    activities: {
+      fallbackHandler: BundledFunction<undefined>;
+    };
+    scheduler: {
+      forwarder: BundledFunction;
+      timerHandler: BundledFunction;
+    };
   };
 }
 
@@ -61,6 +67,12 @@ export interface InternalApiRoutes {
 
 export type BundledFunction<Spec = undefined> = {
   file: string;
+  /**
+   * Export name of the handler in the file.
+   *
+   * @default index.default
+   */
+  handler?: string;
 } & (Spec extends undefined
   ? {
       spec?: Spec;
@@ -75,6 +87,8 @@ export interface ExportedEventHandlerFunction extends SubscriptionFunction {
 
 export interface SubscriptionFunction
   extends BundledFunction<SubscriptionSpec> {}
+
+export interface ActivityFunction extends BundledFunction<ActivitySpec> {}
 
 export interface InternalCommandFunction extends CommandFunction {
   spec: CommandFunction["spec"] & {};

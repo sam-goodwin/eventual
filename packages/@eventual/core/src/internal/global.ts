@@ -1,4 +1,4 @@
-import { Activity, ActivityContext, ActivityHandler } from "../activity.js";
+import { Activity, ActivityContext } from "../activity.js";
 import { Event } from "../event.js";
 import type { Command } from "../http/index.js";
 import { EventualServiceClient } from "../service-client.js";
@@ -22,7 +22,7 @@ declare global {
     /**
      * Callable activities which register themselves in an activity worker.
      */
-    callableActivities?: Record<string, ActivityHandler<any>>;
+    activities?: Record<string, Activity>;
     /**
      * Available workflows which have registered themselves.
      *
@@ -69,12 +69,8 @@ export function clearEventHandlers() {
   globalThis._eventual.subscriptions = [];
 }
 
-export function activities(): Activity[] {
-  return Object.values(callableActivities()) as Activity[];
-}
-
-export const callableActivities = (): Record<string, ActivityHandler<any>> =>
-  (globalThis._eventual.callableActivities ??= {});
+export const activities = (): Record<string, Activity<any, any, any>> =>
+  (globalThis._eventual.activities ??= {});
 
 const eventualCollector = (): EventualCallCollector => {
   const collector = globalThis._eventual.eventualCollector;

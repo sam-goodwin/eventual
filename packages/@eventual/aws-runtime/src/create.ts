@@ -11,6 +11,7 @@ import {
   ActivityStore,
   ExecutionQueueClient,
   ExecutionStore,
+  GlobalActivityProvider,
   GlobalWorkflowProvider,
   LogAgent,
   LogsClient,
@@ -182,24 +183,22 @@ export const createTimerClient = /* @__PURE__ */ memoize(
 
 export const createActivityClient = /* @__PURE__ */ memoize(
   ({
-    activityWorkerFunctionName,
     executionQueueClient,
     executionStore,
     activityStore,
   }: {
-    activityWorkerFunctionName?: string;
     activityStore?: ActivityStore;
     executionQueueClient?: ExecutionQueueClient;
     executionStore?: ExecutionStore;
   } = {}) =>
     new AWSActivityClient({
-      lambda: lambda(),
-      activityWorkerFunctionName:
-        activityWorkerFunctionName ?? env.activityWorkerFunctionName,
+      activityProvider: new GlobalActivityProvider(),
+      activityStore: activityStore ?? createActivityStore(),
       executionQueueClient:
         executionQueueClient ?? createExecutionQueueClient(),
       executionStore: executionStore ?? createExecutionStore(),
-      activityStore: activityStore ?? createActivityStore(),
+      lambda: lambda(),
+      serviceName: env.serviceName(),
     })
 );
 

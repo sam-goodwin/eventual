@@ -46,9 +46,9 @@ export interface ApiProps<Service = any> {
   serviceName: string;
   environment?: Record<string, string>;
   workflows: Workflows;
-  activities: Activities;
+  activities: Activities<Service>;
   scheduler: Scheduler;
-  events: Events<Service>;
+  events: Events;
   service: IService;
   build: BuildOutput;
   commands?: CommandProps<Service>;
@@ -228,8 +228,10 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
               },
               memorySize: overrides?.memorySize ?? command.memorySize ?? 512,
               timeout:
-                overrides?.timeout ?? command.timeout
-                  ? Duration.seconds(computeDurationSeconds(command.timeout!))
+                overrides?.timeout ?? command.handlerTimeout
+                  ? Duration.seconds(
+                      computeDurationSeconds(command.handlerTimeout!)
+                    )
                   : undefined,
               handler:
                 overrides?.handler ?? command.internal
