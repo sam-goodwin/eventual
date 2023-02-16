@@ -59,7 +59,7 @@ export class HttpEventualClient
     const workflow =
       typeof request.workflow === "string"
         ? request.workflow
-        : request.workflow.workflowName;
+        : request.workflow.name;
 
     const { executionId } = await this.request<
       WorkflowInput<W>,

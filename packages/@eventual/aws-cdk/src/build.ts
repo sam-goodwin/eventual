@@ -178,7 +178,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
                   "command",
                   "api-handler",
                   ServiceType.ApiHandler,
-                  (spec as CommandSpec).name,
+                  spec.name,
                   monoCommandFunction!,
                 ] as const)
               : type === "subscriptions"
@@ -186,14 +186,14 @@ export async function buildService(request: BuildAWSRuntimeProps) {
                   "subscription",
                   "event-handler",
                   ServiceType.Subscription,
-                  (spec as SubscriptionSpec).name,
+                  spec.name,
                   monoSubscriptionFunction!,
                 ] as const)
               : ([
                   "activity",
                   "activity-worker",
                   ServiceType.ActivityWorker,
-                  (spec as ActivitySpec).activityID,
+                  spec.name,
                   monoActivityFunction!,
                 ] as const);
 

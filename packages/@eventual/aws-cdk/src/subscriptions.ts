@@ -1,3 +1,4 @@
+import { subscriptionServiceFunctionSuffix } from "@eventual/aws-runtime";
 import { aws_iam } from "aws-cdk-lib";
 import { IEventBus, Rule } from "aws-cdk-lib/aws-events";
 import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";
@@ -132,7 +133,7 @@ export class Subscription extends Construct implements IGrantable {
     this.handler = new ServiceFunction(this, "Handler", {
       build: props.build,
       serviceName: props.serviceName,
-      functionNameSuffix: `subscription-${subscription.name}`,
+      functionNameSuffix: subscriptionServiceFunctionSuffix(subscription.name),
       overrides: {
         deadLetterQueueEnabled: true,
         ...props.overrides,

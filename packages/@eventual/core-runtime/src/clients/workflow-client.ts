@@ -64,7 +64,7 @@ export class WorkflowClient {
     validateExecutionName(executionName, "parentExecutionId" in request);
 
     const workflowName =
-      typeof workflow === "string" ? workflow : workflow.workflowName;
+      typeof workflow === "string" ? workflow : workflow.name;
     const executionId = formatExecutionId(workflowName, executionName);
     const inputHash =
       input !== undefined

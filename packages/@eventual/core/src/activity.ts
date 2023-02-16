@@ -44,7 +44,7 @@ export interface ActivitySpec<Name extends string = string> {
   /**
    * Unique name of this Activity.
    */
-  activityID: Name;
+  name: Name;
   /**
    * Optional runtime properties.
    */
@@ -56,10 +56,13 @@ export interface Activity<
   Name extends string = string,
   Arguments extends any[] = any[],
   Output = any
-> extends ActivitySpec<Name> {
+> extends Omit<ActivitySpec<Name>, "name"> {
   kind: "Activity";
   (...args: Arguments): Promise<Awaited<UnwrapAsync<Output>>>;
-
+  /**
+   * Globally unique ID of this {@link Activity}.
+   */
+  name: Name;
   handler: ActivityHandler<Arguments, Output>;
   /**
    * Complete an activity request by its {@link SendActivitySuccessRequest.activityToken}.
@@ -150,7 +153,7 @@ export interface ActivityHandler<Arguments extends any[], Output = any> {
 
 export type UnwrapAsync<Output> = Output extends AsyncResult<infer O>
   ? O
-  : Output;  
+  : Output;
 
 export type ActivityOutput<A extends Activity<any, any>> = A extends Activity<
   string,
@@ -290,6 +293,8 @@ export function activity<
       return handler(...args);
     }
   }) as Activity<Name, Arguments, Output>;
+
+  Object.defineProperty(func, "name", { value: name, writable: false });
   func.sendActivitySuccess = async function (request) {
     return getServiceClient().sendActivitySuccess(request);
   };
@@ -299,7 +304,6 @@ export function activity<
   func.sendActivityHeartbeat = async function (request) {
     return getServiceClient().sendActivityHeartbeat(request);
   };
-  func.activityID = name;
   func.sourceLocation = sourceLocation;
 
   // @ts-ignore

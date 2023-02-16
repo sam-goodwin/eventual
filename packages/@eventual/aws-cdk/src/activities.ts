@@ -119,7 +119,7 @@ export class Activities<Service> extends Construct implements IActivities {
     const activityScope = new Construct(this, "Activities");
     this.activities = Object.fromEntries(
       Object.entries(props.build.activities).map(([name, act]) => {
-        const activity = new Activity(activityScope, act.spec.activityID, {
+        const activity = new Activity(activityScope, act.spec.name, {
           activity: act,
           build: props.build,
           codeFile: act.file,
@@ -273,7 +273,7 @@ export class Activity extends Construct implements IGrantable {
       build: props.build,
       bundledFunction: props.activity,
       functionNameSuffix: activityServiceFunctionSuffix(
-        props.activity.spec.activityID
+        props.activity.spec.name
       ),
       overrides: {
         // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.

@@ -69,14 +69,17 @@ export async function infer(
   const serviceSpec: ServiceSpec = {
     workflows: [...workflows().keys()].map((n) => ({ name: n })),
     activities: Object.fromEntries(
-      Object.values(activities()).map((activity) => [
-        activity.activityID,
-        {
-          activityID: activity.activityID,
-          sourceLocation: activity.sourceLocation,
-          options: activity.options,
-        } satisfies ActivitySpec,
-      ])
+      Object.values(activities()).map(
+        (activity) =>
+          [
+            activity.name,
+            {
+              name: activity.name,
+              sourceLocation: activity.sourceLocation,
+              options: activity.options,
+            },
+          ] satisfies [string, ActivitySpec]
+      )
     ),
     events: Object.fromEntries(
       Array.from(events().values()).map(

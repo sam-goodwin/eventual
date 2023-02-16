@@ -5,7 +5,11 @@ import {
 } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
-import { ENV_NAMES } from "@eventual/aws-runtime";
+import {
+  ENV_NAMES,
+  sanitizeFunctionName,
+  serviceFunctionName,
+} from "@eventual/aws-runtime";
 import { computeDurationSeconds } from "@eventual/core-runtime";
 import { Arn, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
 import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
@@ -199,8 +203,8 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
         commands.map((mapping) => {
           const { manifest, overrides } = mapping;
           const command = manifest.spec;
-          // TODO: this is unsafe probably
-          let sanitizedName = command.name.replace(/[^A-Za-z0-9_]/g, "-");
+
+          let sanitizedName = sanitizeFunctionName(command.name);
           if (sanitizedName !== command.name) {
             // in this case, we're working with the low-level http api
             // we do a best effort to transform an HTTP path into a name that Lambda supports
@@ -214,9 +218,10 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
             command.name,
             {
               ...overrides,
-              functionName: `${self.props.serviceName}-${
-                command.internal ? "internal" : "command"
-              }-${sanitizedName}`,
+              functionName: serviceFunctionName(
+                self.props.serviceName,
+                `${command.internal ? "internal" : "command"}-${sanitizedName}`
+              ),
               code: Code.fromAsset(
                 self.props.build.resolveFolder(manifest.file)
               ),

@@ -690,7 +690,7 @@ export function progressWorkflow(
 
   const context: Context = {
     workflow: {
-      name: workflow.workflowName,
+      name: workflow.name,
     },
     execution: {
       ...processedEvents.startEvent.context,

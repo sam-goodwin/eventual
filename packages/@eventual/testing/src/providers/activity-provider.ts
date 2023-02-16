@@ -24,7 +24,7 @@ export class MockableActivityProvider extends GlobalActivityProvider {
   private mockedActivities: Record<string, MockActivity<any>> = {};
 
   public mockActivity<A extends Activity<any, any>>(activity: A | string) {
-    const id = typeof activity === "string" ? activity : activity.activityID;
+    const id = typeof activity === "string" ? activity : activity.name;
     const realActivity =
       typeof activity === "string" ? super.getActivity(id) : activity;
     if (!realActivity) {
@@ -41,7 +41,7 @@ export class MockableActivityProvider extends GlobalActivityProvider {
   }
 
   public clearMock(activity: Activity<any, any> | string) {
-    const id = typeof activity === "string" ? activity : activity.activityID;
+    const id = typeof activity === "string" ? activity : activity.name;
     delete this.mockedActivities[id];
   }
 
@@ -53,7 +53,7 @@ export class MockableActivityProvider extends GlobalActivityProvider {
     if (activityId in this.mockedActivities) {
       const mock = this.mockedActivities[activityId]!;
       return {
-        activityID: activityId,
+        name: activityId,
         handler: (...args) => mock.call(...args),
       } as Activity;
     }

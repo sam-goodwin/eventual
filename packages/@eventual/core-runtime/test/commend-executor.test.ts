@@ -56,7 +56,7 @@ const testExecutor = new CommandExecutor({
 });
 
 const workflow = {
-  workflowName: "myWorkflow",
+  name: "myWorkflow",
 } satisfies Partial<Workflow> as Workflow;
 const executionId = "execId/123";
 

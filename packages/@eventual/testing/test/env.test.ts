@@ -1,16 +1,17 @@
-import { jest } from "@jest/globals";
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
   EventPayloadType,
+  EventualError,
   Execution,
   ExecutionStatus,
   SubscriptionHandler,
   Timeout,
-  EventualError,
 } from "@eventual/core";
+import { jest } from "@jest/globals";
 import path from "path";
 import * as url from "url";
 import { TestEnvironment } from "../src/environment.js";
-import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { MockActivity } from "../src/providers/activity-provider.js";
 import {
   activity1,
   actWithTimeout,
@@ -33,7 +34,6 @@ import {
   workflow3,
   workflowWithTimeouts,
 } from "./workflow.js";
-import { MockActivity } from "../src/providers/activity-provider.js";
 
 const fakeSqsClientSend = jest.fn<SQSClient["send"]>();
 
@@ -750,7 +750,7 @@ describe("completing executions", () => {
       endTime: env.time.toISOString(),
       id: execution.executionId,
       status: ExecutionStatus.SUCCEEDED,
-      workflowName: workflow1.workflowName,
+      workflowName: workflow1.name,
       result: "hi",
       startTime: new Date(env.time.getTime() - 1000).toISOString(),
     });
@@ -769,7 +769,7 @@ describe("completing executions", () => {
       endTime: env.time.toISOString(),
       id: execution.executionId,
       status: ExecutionStatus.SUCCEEDED,
-      workflowName: workflow1.workflowName,
+      workflowName: workflow1.name,
       result: "hi",
       startTime: new Date(env.time.getTime() - 1000).toISOString(),
     });
@@ -787,7 +787,7 @@ describe("completing executions", () => {
       endTime: env.time.toISOString(),
       id: execution.executionId,
       status: ExecutionStatus.FAILED,
-      workflowName: errorWorkflow.workflowName,
+      workflowName: errorWorkflow.name,
       error: "Error",
       message: "failed!",
       startTime: new Date(env.time.getTime() - 1000).toISOString(),
@@ -807,7 +807,7 @@ describe("completing executions", () => {
       endTime: env.time.toISOString(),
       id: execution.executionId,
       status: ExecutionStatus.FAILED,
-      workflowName: errorWorkflow.workflowName,
+      workflowName: errorWorkflow.name,
       error: "Error",
       message: "failed!",
       startTime: new Date(env.time.getTime() - 1000).toISOString(),
