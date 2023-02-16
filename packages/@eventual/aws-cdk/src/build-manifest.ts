@@ -13,31 +13,16 @@ export interface BuildManifest {
   /**
    * Activities declared within the Service.
    */
-  activities: {
-    [activityId: string]: ActivityFunction;
-  };
+  activities: ActivityFunction[];
   /**
    * The events and their schema.
    */
-  events: {
-    [eventName: string]: EventSpec;
-  };
+  events: EventSpec[];
   /**
    * All subscriptions to events declared within the service.
    */
-  subscriptions: {
-    /**
-     * Individually bundled {@link SubscriptionFunction}s containing a single `subscription` handler.
-     */
-    [subscriptionName: string]: SubscriptionFunction;
-  };
-  commands: {
-    default: CommandFunction;
-    /**
-     * Individually bundled and tree-shaken functions for a specific Command.
-     */
-    [commandName: string]: CommandFunction;
-  };
+  subscriptions: SubscriptionFunction[];
+  commands: CommandFunction[];
   internal: {
     activities: {
       fallbackHandler: BundledFunction<undefined>;

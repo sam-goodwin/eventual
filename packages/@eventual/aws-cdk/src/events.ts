@@ -6,14 +6,9 @@ import { IGrantable } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import type { OpenAPIObject, SchemaObject } from "openapi3-ts";
-import type { BuildOutput } from "./build";
 import { grant } from "./grant";
 
 export interface EventsProps {
-  /**
-   * The built service describing the event subscriptions within the Service.
-   */
-  readonly build: BuildOutput;
   /**
    * The name of the Service this {@link Events} repository belongs to.
    */
@@ -26,12 +21,8 @@ export class Events extends Construct {
    */
   public readonly bus: IEventBus;
 
-  private readonly serviceName: string;
-
-  constructor(scope: Construct, id: string, props: EventsProps) {
+  constructor(scope: Construct, id: string, private props: EventsProps) {
     super(scope, id);
-
-    this.serviceName = props.serviceName;
 
     this.bus = new EventBus(this, "Bus", {
       eventBusName: props.serviceName,
@@ -53,7 +44,7 @@ export class Events extends Construct {
 
   private readonly ENV_MAPPINGS = {
     [ENV_NAMES.EVENT_BUS_ARN]: () => this.bus.eventBusArn,
-    [ENV_NAMES.SERVICE_NAME]: () => this.serviceName,
+    [ENV_NAMES.SERVICE_NAME]: () => this.props.serviceName,
   } as const;
 
   private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {

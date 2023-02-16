@@ -72,7 +72,7 @@ export const Subscriptions: {
     // create a Construct to safely nest bundled functions in their own namespace
 
     const subscriptions = Object.fromEntries(
-      Object.values(props.build.subscriptions).map((sub) => {
+      props.build.subscriptions.map((sub) => {
         return [
           sub.spec.name,
           new Subscription(scope, sub.spec.name, {

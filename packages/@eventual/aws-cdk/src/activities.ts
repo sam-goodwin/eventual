@@ -118,7 +118,7 @@ export class Activities<Service> extends Construct implements IActivities {
 
     const activityScope = new Construct(this, "Activities");
     this.activities = Object.fromEntries(
-      Object.entries(props.build.activities).map(([name, act]) => {
+      props.build.activities.map((act) => {
         const activity = new Activity(activityScope, act.spec.name, {
           activity: act,
           build: props.build,
@@ -130,7 +130,7 @@ export class Activities<Service> extends Construct implements IActivities {
 
         this.configureActivityWorker(activity.handler);
 
-        return [name, activity];
+        return [act.spec.name, activity];
       })
     ) as Record<keyof Pick<Service, ActivityNames<Service>>, Activity>;
 

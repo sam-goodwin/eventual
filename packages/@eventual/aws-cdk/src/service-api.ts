@@ -154,7 +154,7 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
     const internalScope = new Construct(this, "Internal");
 
     const { specification, commands } = synthesizeAPI([
-      ...Object.values(this.build.commands).map(
+      ...this.build.commands.map(
         (manifest) =>
           ({
             manifest,

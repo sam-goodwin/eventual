@@ -17,36 +17,16 @@ export interface ServiceSpec {
    * List of workflows
    */
   workflows: WorkflowSpec[];
-  activities: {
-    [activityName: string]: ActivitySpec;
-  };
-  commands: {
-    /**
-     * Default Route for handling a catch-all, e.g. returning 404
-     *
-     * Each command should be bundled in its own lambda function but we continue this catch-all just in case
-     * for the API Gateway's default integration.
-     *
-     * TODO: consider removing.
-     */
-    default: CommandSpec;
-    /**
-     * Individually bundled and tree-shaken functions for a specific Command.
-     */
-    [commandName: string]: CommandSpec;
-  };
-  events: {
-    /**
-     * Open API 3 schema definitions for all known Events in this Service.
-     */
-    [eventName: string]: EventSpec;
-  };
-  subscriptions: {
-    /**
-     * Individually bundled {@link EventFunction}s containing a single `onEvent` event handler.
-     */
-    [subscriptionName: string]: SubscriptionSpec;
-  };
+  activities: ActivitySpec[];
+  commands: CommandSpec[];
+  /**
+   * Open API 3 schema definitions for all known Events in this Service.
+   */
+  events: EventSpec[];
+  /**
+   * Individually bundled {@link EventFunction}s containing a single `subscription` event handler.
+   */
+  subscriptions: SubscriptionSpec[];
 }
 
 export interface FunctionSpec {

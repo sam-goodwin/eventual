@@ -319,7 +319,6 @@ export class Service<S = any> extends Construct implements IService {
     });
 
     this.events = new Events(this, "Events", {
-      build: this.build,
       serviceName: this.serviceName,
     });
 

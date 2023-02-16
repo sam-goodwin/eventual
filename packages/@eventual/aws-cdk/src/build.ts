@@ -2,7 +2,6 @@ import { build, BuildSource, infer } from "@eventual/compiler";
 import { ActivitySpec, HttpMethod } from "@eventual/core";
 import {
   CommandSpec,
-  ServiceSpec,
   ServiceType,
   SubscriptionSpec,
 } from "@eventual/core/internal";
@@ -123,15 +122,15 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     activities: activities,
     events: serviceSpec.events,
     subscriptions,
-    commands: {
+    commands: [
       ...commands,
-      default: {
+      {
         file: monoCommandFunction!,
         spec: {
           name: "default",
         },
       },
-    },
+    ],
     api: manifestInternalAPI() as any,
     internal: {
       activities: {
@@ -161,64 +160,47 @@ export async function buildService(request: BuildAWSRuntimeProps) {
 
   async function bundle<
     Type extends "subscriptions" | "commands" | "activities"
-  >(
-    specPath: string,
-    type: Type
-  ): Promise<{
-    [k in keyof ServiceSpec[Type]]: BundledFunction<SpecFor<Type>>;
-  }> {
-    const routes = await Promise.all(
-      Object.values(serviceSpec[type]).map(
-        async (
-          spec: SpecFor<Type>
-        ): Promise<readonly [string, BundledFunction<SpecFor<Type>>]> => {
-          const [pathPrefix, entry, serviceType, name, monoFunction] =
-            type === "commands"
-              ? ([
-                  "command",
-                  "api-handler",
-                  ServiceType.ApiHandler,
-                  spec.name,
-                  monoCommandFunction!,
-                ] as const)
-              : type === "subscriptions"
-              ? ([
-                  "subscription",
-                  "event-handler",
-                  ServiceType.Subscription,
-                  spec.name,
-                  monoSubscriptionFunction!,
-                ] as const)
-              : ([
-                  "activity",
-                  "activity-worker",
-                  ServiceType.ActivityWorker,
-                  spec.name,
-                  monoActivityFunction!,
-                ] as const);
+  >(specPath: string, type: Type): Promise<BundledFunction<SpecFor<Type>>[]> {
+    return await Promise.all(
+      serviceSpec[type].map(async (spec) => {
+        const [pathPrefix, entry, serviceType, name, monoFunction] =
+          type === "commands"
+            ? ([
+                "command",
+                "api-handler",
+                ServiceType.ApiHandler,
+                spec.name,
+                monoCommandFunction!,
+              ] as const)
+            : type === "subscriptions"
+            ? ([
+                "subscription",
+                "event-handler",
+                ServiceType.Subscription,
+                spec.name,
+                monoSubscriptionFunction!,
+              ] as const)
+            : ([
+                "activity",
+                "activity-worker",
+                ServiceType.ActivityWorker,
+                spec.name,
+                monoActivityFunction!,
+              ] as const);
 
-          const file = await bundleFile(
-            specPath,
-            spec,
-            pathPrefix,
-            entry,
-            serviceType,
-            name,
-            monoFunction
-          );
+        const file = await bundleFile(
+          specPath,
+          spec,
+          pathPrefix,
+          entry,
+          serviceType,
+          name,
+          monoFunction
+        );
 
-          return [name, { file, spec } as any] as const;
-        }
-      )
+        return { file, spec } as any;
+      })
     );
-    return Object.fromEntries(
-      routes.filter(
-        (route): route is Exclude<typeof route, undefined> =>
-          route !== undefined
-      )
-    ) as {
-      [k in keyof ServiceSpec[Type]]: BundledFunction<SpecFor<Type>>;
-    };
   }
 
   async function bundleFile<
