@@ -1,12 +1,9 @@
+import { ExecutionID, Workflow } from "@eventual/core";
 import {
   ActivityScheduled,
   assertNever,
   ChildWorkflowScheduled,
-  WorkflowCommand,
-  createEvent,
   EventsPublished,
-  formatChildExecutionName,
-  formatExecutionId,
   HistoryStateEvent,
   isChildExecutionTarget,
   isPublishEventsCommand,
@@ -22,10 +19,9 @@ import {
   StartTimerCommand,
   TimerCompleted,
   TimerScheduled,
-  Workflow,
+  WorkflowCommand,
   WorkflowEventType,
-  ExecutionID,
-} from "@eventual/core";
+} from "@eventual/core/internal";
 import {
   ActivityClient,
   ActivityWorkerRequest,
@@ -34,7 +30,9 @@ import { EventClient } from "./clients/event-client.js";
 import { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { TimerClient } from "./clients/timer-client.js";
 import { WorkflowClient } from "./clients/workflow-client.js";
+import { formatChildExecutionName, formatExecutionId } from "./execution.js";
 import { computeScheduleDate } from "./schedule.js";
+import { createEvent } from "./workflow-events.js";
 
 interface CommandExecutorProps {
   timerClient: TimerClient;

@@ -1,21 +1,22 @@
 import {
-  ActivityFailed,
   ActivityNotFoundError,
+  EventualServiceClient,
+  LogLevel,
+} from "@eventual/core";
+import {
+  ActivityFailed,
   ActivitySucceeded,
   clearActivityContext,
-  createEvent,
-  EventualServiceClient,
   extendsError,
   isAsyncResult,
   isWorkflowFailed,
-  LogLevel,
   normalizeError,
   registerServiceClient,
   ServiceType,
   serviceTypeScope,
   setActivityContext,
   WorkflowEventType,
-} from "@eventual/core";
+} from "@eventual/core/internal";
 import { createActivityToken } from "../activity-token.js";
 import { ActivityWorkerRequest } from "../clients/activity-client.js";
 import { EventClient } from "../clients/event-client.js";
@@ -30,6 +31,7 @@ import { timed } from "../metrics/utils.js";
 import { ActivityProvider } from "../providers/activity-provider.js";
 import { computeDurationSeconds } from "../schedule.js";
 import { ActivityStore } from "../stores/activity-store.js";
+import { createEvent } from "../workflow-events.js";
 import {
   ActivityFallbackRequest,
   ActivityFallbackRequestType,

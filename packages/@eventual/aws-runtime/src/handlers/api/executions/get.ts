@@ -1,4 +1,5 @@
-import { decodeExecutionId, Execution } from "@eventual/core";
+import { Execution } from "@eventual/core";
+import { decodeExecutionId } from "@eventual/core/internal";
 import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { createExecutionStore } from "../../../create.js";
 import { withErrorMiddleware } from "../middleware.js";

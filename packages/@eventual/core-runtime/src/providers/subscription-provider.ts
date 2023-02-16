@@ -1,9 +1,9 @@
 import {
-  SubscriptionHandler,
   EventPayload,
   Subscription,
-  subscriptions,
+  SubscriptionHandler,
 } from "@eventual/core";
+import { subscriptions } from "@eventual/core/internal";
 
 export interface SubscriptionProvider {
   getSubscriptionsForEvent(eventId: string): SubscriptionHandler<any>[];

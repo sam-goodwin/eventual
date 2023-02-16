@@ -1,10 +1,9 @@
 import type z from "zod";
-import { isSourceLocation, SourceLocation } from "../service-spec.js";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
+import { commands } from "../internal/global.js";
+import { isSourceLocation, SourceLocation } from "../internal/service-spec.js";
 import type { ParsePath } from "./path.js";
-
-import { commands } from "../global.js";
 import type { Middleware } from "./middleware.js";
 
 export interface Command<

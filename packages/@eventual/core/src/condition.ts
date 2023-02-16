@@ -1,6 +1,6 @@
-import { createConditionCall } from "./calls/condition-call.js";
-import { isEventual } from "./eventual.js";
-import { isOrchestratorWorker } from "./flags.js";
+import { createConditionCall } from "./internal/calls/condition-call.js";
+import { isEventual } from "./internal/eventual.js";
+import { isOrchestratorWorker } from "./internal/flags.js";
 
 export type ConditionPredicate = () => boolean;
 

@@ -1,3 +1,4 @@
+import { EventEnvelope, Schedule } from "@eventual/core";
 import {
   ActivityFailed,
   ActivityHeartbeatTimedOut,
@@ -7,10 +8,8 @@ import {
   ChildWorkflowScheduled,
   ChildWorkflowSucceeded,
   CommandType,
-  EventEnvelope,
   EventsPublished,
   PublishEventsCommand,
-  Schedule,
   ScheduleActivityCommand,
   ScheduleWorkflowCommand,
   SendSignalCommand,
@@ -22,7 +21,7 @@ import {
   TimerScheduled,
   WorkflowEventType,
   WorkflowTimedOut,
-} from "@eventual/core";
+} from "@eventual/core/internal";
 import { ulid } from "ulidx";
 
 export function createStartTimerCommand(

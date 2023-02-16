@@ -3,10 +3,10 @@ import serviceSpec from "@eventual/injected/spec";
 import {
   DurationUnit,
   DURATION_UNITS,
-  isDurationUnit,
   Schedule,
   StartExecutionResponse,
 } from "@eventual/core";
+import { isDurationUnit } from "@eventual/core/internal";
 import { ServiceSpecWorkflowProvider } from "@eventual/core-runtime";
 import type {
   APIGatewayProxyEventV2,

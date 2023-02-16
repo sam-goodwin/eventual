@@ -1,8 +1,6 @@
 import type z from "zod";
 import itty from "itty-router";
-import type { SourceLocation } from "../service-spec.js";
 import type { FunctionRuntimeProps } from "../function-props.js";
-import { commands } from "../global.js";
 import type { HttpMethod } from "../http-method.js";
 import {
   command,
@@ -17,6 +15,8 @@ import type {
   MiddlewareInput,
   MiddlewareOutput,
 } from "./middleware.js";
+import { SourceLocation } from "../internal/service-spec.js";
+import { commands } from "../internal/global.js";
 
 const router = itty.Router() as any as HttpRouter<{}>;
 

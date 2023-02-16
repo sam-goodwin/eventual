@@ -6,17 +6,17 @@
  */
 import { generateSchema } from "@anatine/zod-openapi";
 import {
-  commands,
-  CommandSpec,
-  subscriptions,
-  SubscriptionSpec,
-  events,
-  ServiceSpec,
-  workflows,
-  EventSpec,
   activities,
   ActivitySpec,
-} from "@eventual/core";
+  commands,
+  CommandSpec,
+  events,
+  EventSpec,
+  ServiceSpec,
+  subscriptions,
+  SubscriptionSpec,
+  workflows,
+} from "@eventual/core/internal";
 import {
   CallExpression,
   ExportDeclaration,

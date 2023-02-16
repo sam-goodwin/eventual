@@ -1,19 +1,23 @@
 import {
+  DeterminismError,
+  EventualError,
+  HeartbeatTimeout,
+  Schedule,
+  SynchronousOperationError,
+  Timeout,
+} from "@eventual/core";
+import {
   assertNever,
   Chain,
   clearEventualCollector,
-  WorkflowCommand,
   CommandCall,
   CommandType,
   createChain,
-  DeterminismError,
   Eventual,
   EventualCallCollector,
-  EventualError,
   ExpectSignalCall,
   Failed,
   FailedEvent,
-  HeartbeatTimeout,
   HistoryEvent,
   HistoryResultEvent,
   isActivityCall,
@@ -54,16 +58,14 @@ import {
   RegisterSignalHandlerCall,
   Resolved,
   Result,
-  Schedule,
   ScheduledEvent,
   setEventualCollector,
   SignalReceived,
   SucceededEvent,
-  SynchronousOperationError,
-  Timeout,
+  WorkflowCommand,
   WorkflowEvent,
   _Iterator,
-} from "@eventual/core";
+} from "@eventual/core/internal";
 
 export interface WorkflowResult<T = any> {
   /**

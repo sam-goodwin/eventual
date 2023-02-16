@@ -1,4 +1,4 @@
-import { HistoryStateEvent } from "@eventual/core";
+import { HistoryStateEvent } from "@eventual/core/internal";
 import {
   ExecutionHistoryStateStore,
   UpdateHistoryRequest,

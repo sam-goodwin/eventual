@@ -1,10 +1,10 @@
+import { SignalsHandler } from "../../signals.js";
 import {
   createEventual,
   EventualBase,
   EventualKind,
   isEventualOfKind,
 } from "../eventual.js";
-import { SignalsHandler } from "../signals.js";
 import { registerEventual } from "../global.js";
 import { Resolved, Result } from "../result.js";
 

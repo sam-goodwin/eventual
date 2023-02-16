@@ -1,10 +1,10 @@
 import {
-  EventualKind,
-  Eventual,
   AwaitedEventual,
-  EventualBase,
-  isEventualOfKind,
   createEventual,
+  Eventual,
+  EventualBase,
+  EventualKind,
+  isEventualOfKind,
   Program,
 } from "./eventual.js";
 import { registerEventual } from "./global.js";

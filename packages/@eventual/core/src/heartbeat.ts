@@ -1,5 +1,5 @@
-import { getActivityContext, getServiceClient } from "./global.js";
-import { isActivityWorker, isOrchestratorWorker } from "./flags.js";
+import { isActivityWorker, isOrchestratorWorker } from "./internal/flags.js";
+import { getActivityContext, getServiceClient } from "./internal/global.js";
 import { SendActivityHeartbeatResponse } from "./service-client.js";
 
 /**

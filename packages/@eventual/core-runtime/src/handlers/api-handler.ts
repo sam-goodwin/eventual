@@ -1,14 +1,16 @@
 import {
-  commands,
   EventualServiceClient,
   isHttpError,
   HttpRequest,
   HttpResponse,
-  registerServiceClient,
   RestParamSpec,
-  ServiceType,
-  serviceTypeScope,
 } from "@eventual/core";
+import {
+  registerServiceClient,
+  serviceTypeScope,
+  ServiceType,
+  commands,
+} from "@eventual/core/internal";
 import itty from "itty-router";
 
 export interface ApiHandlerDependencies {

@@ -1,12 +1,10 @@
-import { createWorkflowCall } from "./calls/workflow-call.js";
-import { isChain } from "./chain.js";
 import type { Context } from "./context.js";
-import { Program } from "./eventual.js";
 import { ChildExecution, ExecutionHandle } from "./execution.js";
-import { isOrchestratorWorker } from "./flags.js";
-import { getServiceClient, workflows } from "./global.js";
-import { DurationSchedule } from "./schedule.js";
-import { StartExecutionRequest } from "./service-client.js";
+import { createWorkflowCall } from "./internal/calls/workflow-call.js";
+import { isChain } from "./internal/chain.js";
+import { Program } from "./internal/eventual.js";
+import { isOrchestratorWorker } from "./internal/flags.js";
+import { getServiceClient, workflows } from "./internal/global.js";
 import {
   HistoryStateEvent,
   isTimerCompleted,
@@ -14,7 +12,9 @@ import {
   TimerCompleted,
   TimerScheduled,
   WorkflowEventType,
-} from "./workflow-events.js";
+} from "./internal/workflow-events.js";
+import { DurationSchedule } from "./schedule.js";
+import { StartExecutionRequest } from "./service-client.js";
 
 export interface WorkflowHandler<Input = any, Output = any> {
   (input: Input, context: Context): Promise<Output> | Program<any>;

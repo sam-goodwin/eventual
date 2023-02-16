@@ -1,4 +1,4 @@
-import { ServiceSpec } from "@eventual/core";
+import { ServiceSpec } from "@eventual/core/internal";
 
 /**
  * Empty {@link ServiceSpec} to provide typing for @eventual/injected/spec.

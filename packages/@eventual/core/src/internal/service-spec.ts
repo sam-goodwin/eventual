@@ -1,13 +1,13 @@
 import type openapi from "openapi3-ts";
 import type { z } from "zod";
-import type { Event } from "./event.js";
-import type { Command } from "./http/command.js";
-import type { DurationSchedule } from "./schedule.js";
-import type { Activity } from "./activity.js";
+import type { Activity } from "../activity.js";
+import type { Event } from "../event.js";
+import type { Command } from "../http/command.js";
+import type { DurationSchedule } from "../schedule.js";
 import type {
   SubscriptionFilter,
   SubscriptionRuntimeProps,
-} from "./subscription.js";
+} from "../subscription.js";
 
 /**
  * Specification for an Eventual application

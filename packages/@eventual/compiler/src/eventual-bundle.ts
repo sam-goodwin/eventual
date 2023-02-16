@@ -1,4 +1,4 @@
-import { ServiceType, SERVICE_TYPE_FLAG } from "@eventual/core";
+import { ServiceType, SERVICE_TYPE_FLAG } from "@eventual/core/internal";
 import esbuild from "esbuild";
 import { aliasPath } from "esbuild-plugin-alias-path";
 import fs from "fs/promises";

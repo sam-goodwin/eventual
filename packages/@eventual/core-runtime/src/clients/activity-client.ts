@@ -1,17 +1,14 @@
 import {
-  ActivityFailed,
-  ActivitySucceeded,
-  createEvent,
   ExecutionStatus,
-  ScheduleActivityCommand,
   SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
   SendActivitySuccessRequest,
-  WorkflowEventType,
 } from "@eventual/core";
+import { ActivityFailed, ActivitySucceeded, ScheduleActivityCommand, WorkflowEventType } from "@eventual/core/internal";
 import { decodeActivityToken } from "../activity-token.js";
 import { ActivityStore } from "../stores/activity-store.js";
 import { ExecutionStore } from "../stores/execution-store.js";
+import { createEvent } from "../workflow-events.js";
 import { ExecutionQueueClient } from "./execution-queue-client.js";
 
 export interface ActivityClientProps {

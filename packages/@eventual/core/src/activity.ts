@@ -1,18 +1,19 @@
-import { createActivityCall } from "./calls/activity-call.js";
-import { createAwaitDurationCall } from "./calls/await-time-call.js";
-import { isActivityWorker, isOrchestratorWorker } from "./flags.js";
+import { AsyncTokenSymbol } from "./internal/activity.js";
+import { createActivityCall } from "./internal/calls/activity-call.js";
+import { createAwaitDurationCall } from "./internal/calls/await-time-call.js";
+import { isActivityWorker, isOrchestratorWorker } from "./internal/flags.js";
 import {
   callableActivities,
   getActivityContext,
-  getServiceClient,
-} from "./global.js";
+  getServiceClient
+} from "./internal/global.js";
 import { DurationSchedule } from "./schedule.js";
 import {
   EventualServiceClient,
   SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
-  SendActivitySuccessRequest,
+  SendActivitySuccessRequest
 } from "./service-client.js";
 
 export interface ActivityOptions {
@@ -140,10 +141,7 @@ export interface ActivityHandler<Arguments extends any[], Output = any> {
 
 export type UnwrapAsync<Output> = Output extends AsyncResult<infer O>
   ? O
-  : Output;
-
-export type ActivityArguments<A extends Activity<any, any>> =
-  A extends Activity<string, infer Arguments extends any[]> ? Arguments : never;
+  : Output;  
 
 export type ActivityOutput<A extends Activity<any, any>> = A extends Activity<
   string,
@@ -153,18 +151,12 @@ export type ActivityOutput<A extends Activity<any, any>> = A extends Activity<
   ? UnwrapAsync<Output>
   : never;
 
-const AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
-
 /**
  * When returned from an activity, the activity will become async,
  * allowing it to run "forever". The
  */
 export interface AsyncResult<Output = any> {
   [AsyncTokenSymbol]: typeof AsyncTokenSymbol & Output;
-}
-
-export function isAsyncResult(obj: any): obj is AsyncResult {
-  return !!obj && obj[AsyncTokenSymbol] === AsyncTokenSymbol;
 }
 
 /**
@@ -276,17 +268,4 @@ export function activity<
   };
   func.activityID = activityID;
   return func;
-}
-
-/**
- * Retrieve an activity function that has been registered in a workflow.
- */
-export function getCallableActivity(
-  activityId: string
-): ActivityHandler<any> | undefined {
-  return callableActivities()[activityId] as ActivityHandler<any>;
-}
-
-export function getCallableActivityNames() {
-  return Object.keys(callableActivities());
 }

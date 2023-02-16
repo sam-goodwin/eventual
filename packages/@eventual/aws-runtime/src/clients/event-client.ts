@@ -3,12 +3,9 @@ import {
   EventBridgeClient,
   PutEventsCommand,
 } from "@aws-sdk/client-eventbridge";
-import {
-  EventEnvelope,
-  EventPayload,
-  events as GlobalEvents,
-} from "@eventual/core";
+import { EventEnvelope, EventPayload } from "@eventual/core";
 import { EventClient, getLazy, LazyValue } from "@eventual/core-runtime";
+import { events as GlobalEvents } from "@eventual/core/internal";
 import { chunkArray } from "../utils.js";
 
 export interface AWSEventClientProps {

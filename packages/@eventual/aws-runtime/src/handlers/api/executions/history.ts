@@ -1,8 +1,5 @@
-import {
-  decodeExecutionId,
-  ListExecutionEventsResponse,
-  SortOrder,
-} from "@eventual/core";
+import { ListExecutionEventsResponse, SortOrder } from "@eventual/core";
+import { decodeExecutionId } from "@eventual/core/internal";
 import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
 import { createExecutionHistoryStore } from "../../../create.js";
 import { withErrorMiddleware } from "../middleware.js";

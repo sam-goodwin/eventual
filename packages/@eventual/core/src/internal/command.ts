@@ -1,7 +1,7 @@
-import { EventEnvelope } from "./event.js";
-import { DurationSchedule, Schedule } from "./schedule.js";
-import { SignalTarget } from "./signals.js";
-import { WorkflowOptions } from "./workflow.js";
+import { EventEnvelope } from "../event.js";
+import { DurationSchedule, Schedule } from "../schedule.js";
+import { SignalTarget } from "./signal.js";
+import { WorkflowOptions } from "../workflow.js";
 
 export type WorkflowCommand =
   | StartTimerCommand

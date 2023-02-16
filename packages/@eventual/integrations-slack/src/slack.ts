@@ -1,6 +1,6 @@
+import { isOrchestratorWorker } from "@eventual/core/internal";
 import {
   activity,
-  isOrchestratorWorker,
   Secret,
   api,
   HttpHandler,

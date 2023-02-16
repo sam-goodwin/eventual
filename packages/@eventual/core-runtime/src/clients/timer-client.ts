@@ -1,4 +1,5 @@
-import { HistoryStateEvent, Schedule } from "@eventual/core";
+import { Schedule } from "@eventual/core";
+import { HistoryStateEvent } from "@eventual/core/internal";
 import { computeScheduleDate } from "../schedule.js";
 
 export abstract class TimerClient {

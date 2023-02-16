@@ -1,9 +1,9 @@
 import {
-  Eventual,
-  EventualKind,
-  EventualBase,
-  EventualArrayUnion,
   createEventual,
+  Eventual,
+  EventualArrayUnion,
+  EventualBase,
+  EventualKind,
   isEventualOfKind,
 } from "./eventual.js";
 import { Failed, Resolved } from "./result.js";

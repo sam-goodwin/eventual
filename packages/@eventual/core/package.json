@@ -5,11 +5,16 @@
     ".": {
       "import": "./lib/esm/index.js",
       "require": "./lib/cjs/index.js"
+    },
+    "./internal": {
+      "import": "./lib/esm/internal/index.js",
+      "require": "./lib/cjs/internal/index.js"
     }
   },
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
   "files": [
+    "internal",
     "lib"
   ],
   "scripts": {

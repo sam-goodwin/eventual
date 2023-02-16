@@ -1,4 +1,4 @@
-import { assertNever } from "@eventual/core";
+import { assertNever } from "@eventual/core/internal";
 import {
   computeScheduleDate,
   isActivityHeartbeatMonitorRequest,

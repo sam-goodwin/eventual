@@ -1,11 +1,11 @@
+import { SendSignalRequest } from "@eventual/core";
 import {
-  createEvent,
   HistoryStateEvent,
-  SendSignalRequest,
   SignalReceived,
   WorkflowEventType,
-  WorkflowTask,
-} from "@eventual/core";
+} from "@eventual/core/internal";
+import { WorkflowTask } from "../tasks.js";
+import { createEvent } from "../workflow-events.js";
 export abstract class ExecutionQueueClient {
   constructor(private baseTime: () => Date) {}
 

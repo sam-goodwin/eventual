@@ -1,28 +1,32 @@
 import {
-  createEvent,
   ExecutionAlreadyExists,
   ExecutionID,
   ExecutionStatus,
   FailedExecution,
   FailExecutionRequest,
-  formatExecutionId,
-  hashCode,
   InProgressExecution,
-  INTERNAL_EXECUTION_ID_PREFIX,
   StartExecutionRequest,
   StartExecutionResponse,
   SucceededExecution,
   SucceedExecutionRequest,
   Workflow,
-  WorkflowEventType,
   WorkflowOptions,
-  WorkflowStarted,
 } from "@eventual/core";
+import {
+  hashCode,
+  WorkflowEventType,
+  WorkflowStarted,
+} from "@eventual/core/internal";
 import { ulid } from "ulidx";
 import { inspect } from "util";
+import {
+  formatExecutionId,
+  INTERNAL_EXECUTION_ID_PREFIX,
+} from "../execution.js";
 import { WorkflowSpecProvider } from "../providers/workflow-provider.js";
 import { computeScheduleDate } from "../schedule.js";
 import { ExecutionStore } from "../stores/execution-store.js";
+import { createEvent } from "../workflow-events.js";
 import { ExecutionQueueClient } from "./execution-queue-client.js";
 import { LogsClient } from "./logs-client.js";
 

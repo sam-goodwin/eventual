@@ -1,12 +1,12 @@
+import { DurationUnit } from "../../schedule.js";
 import {
-  EventualKind,
-  EventualBase,
-  isEventualOfKind,
   createEventual,
+  EventualBase,
+  EventualKind,
+  isEventualOfKind,
 } from "../eventual.js";
 import { registerEventual } from "../global.js";
 import { Resolved } from "../result.js";
-import { DurationUnit } from "../schedule.js";
 
 export function isAwaitDurationCall(a: any): a is AwaitDurationCall {
   return isEventualOfKind(EventualKind.AwaitDurationCall, a);

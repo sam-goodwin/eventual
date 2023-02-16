@@ -2,26 +2,19 @@ import { bundleService } from "@eventual/compiler";
 import {
   Activity,
   ActivityOutput,
-  clearEventHandlers,
   Event,
   EventEnvelope,
-  SubscriptionHandler,
   EventPayload,
   EventPayloadType,
-  events,
   ExecutionHandle,
-  isWorkflowTask,
   LogLevel,
   PublishEventsRequest,
-  registerServiceClient,
   SendActivityFailureRequest,
   SendActivitySuccessRequest,
   SendSignalRequest,
-  ServiceType,
   StartExecutionRequest,
+  SubscriptionHandler,
   Workflow,
-  workflows,
-  WorkflowTask,
 } from "@eventual/core";
 import {
   ActivityClient,
@@ -33,12 +26,21 @@ import {
   ExecutionHistoryStore,
   ExecutionStore,
   GlobalWorkflowProvider,
+  isWorkflowTask,
   LogAgent,
   Orchestrator,
   RuntimeServiceClient,
   TimerClient,
   WorkflowClient,
+  WorkflowTask,
 } from "@eventual/core-runtime";
+import {
+  clearEventHandlers,
+  events,
+  registerServiceClient,
+  ServiceType,
+  workflows,
+} from "@eventual/core/internal";
 import path from "path";
 import { TestActivityClient } from "./clients/activity-client.js";
 import { TestEventClient } from "./clients/event-client.js";

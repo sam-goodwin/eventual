@@ -1,7 +1,7 @@
 import type { Event, EventPayload } from "./event.js";
 import type { FunctionRuntimeProps } from "./function-props.js";
-import { subscriptions } from "./global.js";
-import { isSourceLocation, SourceLocation } from "./service-spec.js";
+import { subscriptions } from "./internal/global.js";
+import { isSourceLocation, SourceLocation } from "./internal/service-spec.js";
 
 /**
  * A Function that processes an {@link event} of type {@link E}.

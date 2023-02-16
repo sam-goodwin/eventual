@@ -1,9 +1,9 @@
 import {
-  EventualKind,
-  EventualBase,
-  isEventualOfKind,
   createEventual,
   Eventual,
+  EventualBase,
+  EventualKind,
+  isEventualOfKind,
 } from "../eventual.js";
 import { registerEventual } from "../global.js";
 import { Failed, Resolved } from "../result.js";

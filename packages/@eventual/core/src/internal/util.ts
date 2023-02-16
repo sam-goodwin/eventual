@@ -95,3 +95,12 @@ export function hashCode(str: string): number {
   }
   return hash;
 }
+
+// API Gateway doesn't agree with uri encoding in path parameter... so we have these. for now
+export function encodeExecutionId(executionId: string) {
+  return Buffer.from(executionId, "utf-8").toString("base64");
+}
+
+export function decodeExecutionId(executionId: string) {
+  return Buffer.from(executionId, "base64").toString("utf-8");
+}

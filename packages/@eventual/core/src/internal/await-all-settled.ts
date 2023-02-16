@@ -1,10 +1,10 @@
 import {
-  Eventual,
-  EventualKind,
-  EventualBase,
-  isEventualOfKind,
   createEventual,
+  Eventual,
   EventualArrayPromiseResult,
+  EventualBase,
+  EventualKind,
+  isEventualOfKind,
 } from "./eventual.js";
 import { Resolved } from "./result.js";
 

@@ -1,11 +1,9 @@
 import {
   ActivityUpdateType,
-  encodeExecutionId,
   EventualServiceClient,
   Execution,
   ExecutionHandle,
   ExecutionHistoryResponse,
-  HistoryStateEvent,
   HttpRequestInit,
   ListExecutionEventsRequest,
   ListExecutionEventsResponse,
@@ -23,6 +21,7 @@ import {
   Workflow,
   WorkflowInput,
 } from "@eventual/core";
+import { encodeExecutionId, HistoryStateEvent } from "@eventual/core/internal";
 import { HttpServiceClient } from "./base-http-client.js";
 import { HttpError } from "./request-handler/request-handler.js";
 

@@ -7,12 +7,7 @@ import {
   SchedulerClient,
 } from "@aws-sdk/client-scheduler";
 import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
-import {
-  assertNever,
-  getEventId,
-  isTimeSchedule,
-  Schedule,
-} from "@eventual/core";
+import { Schedule } from "@eventual/core";
 import {
   computeDurationSeconds,
   computeScheduleDate,
@@ -24,6 +19,11 @@ import {
   TimerClient,
   TimerRequest,
 } from "@eventual/core-runtime";
+import {
+  assertNever,
+  getEventId,
+  isTimeSchedule,
+} from "@eventual/core/internal";
 import { ulid } from "ulidx";
 
 export interface AWSTimerClientProps {

@@ -1,10 +1,9 @@
+import { EventEnvelope, EventualServiceClient } from "@eventual/core";
 import {
-  EventEnvelope,
-  EventualServiceClient,
   registerServiceClient,
   ServiceType,
   serviceTypeScope,
-} from "@eventual/core";
+} from "@eventual/core/internal";
 import { SubscriptionProvider } from "../providers/subscription-provider.js";
 
 /**

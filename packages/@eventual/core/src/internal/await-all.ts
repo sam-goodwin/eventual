@@ -1,10 +1,10 @@
 import {
-  Eventual,
-  EventualKind,
-  EventualBase,
-  isEventualOfKind,
   createEventual,
+  Eventual,
   EventualArrayPositional,
+  EventualBase,
+  EventualKind,
+  isEventualOfKind,
 } from "./eventual.js";
 import { Failed, Resolved } from "./result.js";
 

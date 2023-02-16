@@ -3,7 +3,7 @@ import {
   ActivitySucceeded,
   assertNever,
   WorkflowEventType,
-} from "@eventual/core";
+} from "@eventual/core/internal";
 import { ActivityWorkerRequest } from "../clients/activity-client.js";
 import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 

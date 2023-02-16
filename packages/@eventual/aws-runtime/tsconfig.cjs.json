@@ -18,6 +18,7 @@
     "src/handlers"
   ],
   "references": [
+    { "path": "../aws-client/tsconfig.cjs.json" },
     { "path": "../core/tsconfig.cjs.json" },
     { "path": "../core-runtime/tsconfig.cjs.json" }
   ]

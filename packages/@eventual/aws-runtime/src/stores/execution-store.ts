@@ -17,16 +17,22 @@ import {
   FailExecutionRequest,
   InProgressExecution,
   isExecutionStatus,
-  isFailedExecutionRequest,
   ListExecutionsRequest,
   ListExecutionsResponse,
-  parseExecutionId,
   SortOrder,
   SucceededExecution,
   SucceedExecutionRequest,
-  WorkflowStarted,
 } from "@eventual/core";
-import { ExecutionStore, getLazy, LazyValue } from "@eventual/core-runtime";
+import {
+  ExecutionStore,
+  getLazy,
+  LazyValue,
+  parseExecutionId,
+} from "@eventual/core-runtime";
+import {
+  isFailedExecutionRequest,
+  WorkflowStarted,
+} from "@eventual/core/internal";
 import { queryPageWithToken } from "../utils.js";
 
 export interface AWSExecutionStoreProps {
@@ -318,7 +324,7 @@ function formatUpdateExpr(
     : "";
   const set = `SET ${Object.entries(expr.set)
     .filter(
-      (entry): entry is [string, Exclude<typeof entry[1], undefined>] =>
+      (entry): entry is [string, Exclude<(typeof entry)[1], undefined>] =>
         entry[1] !== undefined
     )
     .map(([name, value]) => {

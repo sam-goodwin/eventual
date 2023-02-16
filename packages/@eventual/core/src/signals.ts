@@ -1,10 +1,11 @@
-import { createSendSignalCall } from "./calls/send-signal-call.js";
-import { createRegisterSignalHandlerCall } from "./calls/signal-handler-call.js";
-import { createExpectSignalCall } from "./calls/expect-signal-call.js";
-import { isOrchestratorWorker } from "./flags.js";
-import { getServiceClient } from "./global.js";
 import { ulid } from "ulidx";
-import { isEventual } from "./eventual.js";
+import { createExpectSignalCall } from "./internal/calls/expect-signal-call.js";
+import { createSendSignalCall } from "./internal/calls/send-signal-call.js";
+import { createRegisterSignalHandlerCall } from "./internal/calls/signal-handler-call.js";
+import { isEventual } from "./internal/eventual.js";
+import { isOrchestratorWorker } from "./internal/flags.js";
+import { getServiceClient } from "./internal/global.js";
+import { SignalTargetType } from "./internal/signal.js";
 
 /**
  * A reference to a created signal handler.
@@ -269,34 +270,4 @@ export function sendSignal<Payload = any>(
       payload,
     });
   }
-}
-
-export type SignalTarget = ExecutionTarget | ChildExecutionTarget;
-
-export enum SignalTargetType {
-  Execution,
-  ChildExecution,
-}
-
-export interface ExecutionTarget {
-  type: SignalTargetType.Execution;
-  executionId: string;
-}
-
-export interface ChildExecutionTarget {
-  type: SignalTargetType.ChildExecution;
-  workflowName: string;
-  seq: number;
-}
-
-export function isChildExecutionTarget(
-  target: SignalTarget
-): target is ChildExecutionTarget {
-  return target.type === SignalTargetType.ChildExecution;
-}
-
-export function isExecutionTarget(
-  target: SignalTarget
-): target is ExecutionTarget {
-  return target.type === SignalTargetType.Execution;
 }

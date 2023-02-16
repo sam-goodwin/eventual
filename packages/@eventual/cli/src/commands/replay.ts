@@ -1,22 +1,27 @@
 import { bundleService } from "@eventual/compiler";
 import {
   DeterminismError,
-  encodeExecutionId,
   Execution,
   ExecutionID,
-  isFailed,
   isFailedExecution,
-  isResolved,
-  isSucceededExecution,
-  normalizeFailedResult,
+  isSucceededExecution
+} from "@eventual/core";
+import {
   parseWorkflowName,
+  processEvents,
+  progressWorkflow
+} from "@eventual/core-runtime";
+import {
+  encodeExecutionId,
+  isFailed,
+  isResolved,
+  normalizeFailedResult,
   Result,
   resultToString,
   ServiceType,
   serviceTypeScopeSync,
-  workflows,
-} from "@eventual/core";
-import { processEvents, progressWorkflow } from "@eventual/core-runtime";
+  workflows
+} from "@eventual/core/internal";
 import path from "path";
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";

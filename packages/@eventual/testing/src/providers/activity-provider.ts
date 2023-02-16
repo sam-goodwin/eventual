@@ -1,22 +1,24 @@
 import {
-  ActivityArguments,
   Activity,
   ActivityHandler,
   ActivityOutput,
-  assertNever,
   asyncResult,
-  callableActivities,
   EventualError,
-  Failed,
   HeartbeatTimeout,
+  Timeout,
+} from "@eventual/core";
+import { GlobalActivityProvider } from "@eventual/core-runtime";
+import {
+  ActivityArguments,
+  assertNever,
+  callableActivities,
+  Failed,
   isFailed,
   isResolved,
   isResult,
   Resolved,
   Result,
-  Timeout,
-} from "@eventual/core";
-import { GlobalActivityProvider } from "@eventual/core-runtime";
+} from "@eventual/core/internal";
 
 export class MockableActivityProvider extends GlobalActivityProvider {
   private mockedActivities: Record<string, MockActivity<any>> = {};

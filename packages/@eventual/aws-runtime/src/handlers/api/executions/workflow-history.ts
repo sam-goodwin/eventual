@@ -1,4 +1,4 @@
-import { decodeExecutionId, HistoryStateEvent } from "@eventual/core";
+import { decodeExecutionId, HistoryStateEvent } from "@eventual/core/internal";
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyHandlerV2,
