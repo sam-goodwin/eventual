@@ -326,7 +326,7 @@ export class Service<S = any> extends Construct implements IService {
     const proxyService = lazyInterface<IService>();
     const apiProxy = lazyInterface<IServiceApi>();
 
-    const logging = new Logging(this, "Logging", {
+    const logging = new Logging(this, "logging", {
       ...(props.logging ?? {}),
       serviceName: this.serviceName,
     });
