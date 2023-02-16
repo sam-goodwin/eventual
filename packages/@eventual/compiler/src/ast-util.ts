@@ -78,7 +78,7 @@ export function isActivityCall(call: CallExpression): boolean {
     (c.type == "Identifier" && c.value === "activity") ||
     (c.type === "MemberExpression" && isId(c.property, "activity"))
   ) {
-    return call.arguments.length === 3;
+    return call.arguments.length === 2 || call.arguments.length === 3;
   }
   return false;
 }
