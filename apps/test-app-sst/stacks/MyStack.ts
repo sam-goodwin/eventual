@@ -8,6 +8,6 @@ export function MyStack({ stack }: StackContext) {
     name: "my-service",
   });
   stack.addOutputs({
-    ApiEndpoint: service.api.gateway.url!,
+    ApiEndpoint: service.gateway.url!,
   });
 }

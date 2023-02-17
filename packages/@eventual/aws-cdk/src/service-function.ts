@@ -1,6 +1,6 @@
 import { serviceFunctionName } from "@eventual/aws-runtime";
+import { FunctionRuntimeProps } from "@eventual/core";
 import { computeDurationSeconds } from "@eventual/core-runtime";
-import { FunctionRuntimeProps } from "@eventual/core/src/function-props";
 import { Duration } from "aws-cdk-lib";
 import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";

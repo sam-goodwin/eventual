@@ -367,12 +367,12 @@ export class MyServiceStack extends Stack {
 
     new CfnOutput(this, "${serviceName}-api-endpoint", {
       exportName: "${serviceName}-api-endpoint",
-      value: this.service.api.gateway.url!,
+      value: this.service.gateway.url!,
     });
 
     new CfnOutput(this, "${serviceName}-event-bus-arn", {
       exportName: "${serviceName}-event-bus-arn",
-      value: this.service.events.bus.eventBusArn,
+      value: this.service.bus.eventBusArn,
     });
   }
 }

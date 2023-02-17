@@ -1,4 +1,4 @@
-import { IHttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
+import { HttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { ENV_NAMES, ExecutionRecord } from "@eventual/aws-runtime";
 import { Event } from "@eventual/core";
 import { MetricsCommon, OrchestratorMetrics } from "@eventual/core-runtime";
@@ -45,11 +45,11 @@ import {
   ServiceActivities,
 } from "./activities.js";
 import { BuildOutput, buildServiceSync } from "./build";
+import { CommandProps, Commands, ICommands, ServiceCommands } from "./commands";
 import { Events } from "./events";
 import { grant } from "./grant";
 import { lazyInterface } from "./proxy-construct";
 import { IScheduler, Scheduler } from "./scheduler";
-import { CommandProps, Commands, ICommands, ServiceCommands } from "./commands";
 import {
   Subscription,
   SubscriptionOverrides,
@@ -226,7 +226,7 @@ export class Service<S = any> extends Construct implements IService {
    */
   public readonly serviceName: string;
   public readonly bus: IEventBus;
-  public readonly gateway: IHttpApi;
+  public readonly gateway: HttpApi;
   /**
    * The subsystem that controls activities.
    */

@@ -1,9 +1,9 @@
+import type { ActivitySpec } from "@eventual/core";
 import type {
   CommandSpec,
   EventSpec,
   SubscriptionSpec,
 } from "@eventual/core/internal";
-import { ActivitySpec } from "@eventual/core/src/activity";
 
 export interface BuildManifest {
   workflows: {

@@ -240,8 +240,6 @@ export class Workflows implements IWorkflows, IGrantable {
         // will retry forever in the case of an SQS outage!
         DynamoDBStreamParameters: {
           StartingPosition: "LATEST",
-          // do not wait for multiple records, just go.
-          BatchSize: 1,
           MaximumBatchingWindowInSeconds: 1,
         },
         FilterCriteria: {
