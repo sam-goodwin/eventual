@@ -1905,7 +1905,7 @@ describe("signals", () => {
     const mySignal = signal("MySignal");
     const wf = workflow(function* (): any {
       createSendSignalCall(
-        { type: SignalTargetType.Execution, executionId: "someExecution" },
+        { type: SignalTargetType.Execution, executionId: "someExecution/" },
         mySignal.id
       );
 
@@ -1969,7 +1969,7 @@ describe("signals", () => {
         interpret(wf.definition(undefined, context), [
           signalSent("someExec", "MySignal", 0),
           workflowScheduled("childWorkflow", 1),
-          signalSent("someExecution", "MySignal", 2),
+          signalSent("someExecution/", "MySignal", 2),
         ])
       ).toMatchObject(<WorkflowResult>{
         commands: [],
@@ -1981,7 +1981,7 @@ describe("signals", () => {
         interpret(wf.definition(undefined, context), [
           signalSent("someExec", "MySignal", 0),
           workflowScheduled("childWorkflow", 1),
-          signalSent("someExecution", "MySignal", 2),
+          signalSent("someExecution/", "MySignal", 2),
           workflowSucceeded("done", 1),
         ])
       ).toMatchObject(<WorkflowResult>{
@@ -2008,7 +2008,7 @@ describe("signals", () => {
         interpret(wf.definition(undefined, context), [
           signalSent("someExec", "MySignal", 0),
           workflowScheduled("childWorkflow", 1),
-          signalSent("someExecution", "MySignal", 2),
+          signalSent("someExecution/", "MySignal", 2),
           workflowSucceeded("done", 1),
         ])
       ).toMatchObject(<WorkflowResult>{
