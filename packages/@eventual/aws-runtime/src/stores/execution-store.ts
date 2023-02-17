@@ -36,7 +36,7 @@ import {
 import { queryPageWithToken } from "../utils.js";
 
 export interface AWSExecutionStoreProps {
-  tableName: LazyValue<string>;
+  executionTableName: LazyValue<string>;
   dynamo: DynamoDBClient;
 }
 
@@ -60,7 +60,7 @@ export class AWSExecutionStore implements ExecutionStore {
     try {
       await this.props.dynamo.send(
         new PutItemCommand({
-          TableName: getLazy(this.props.tableName),
+          TableName: getLazy(this.props.executionTableName),
           Item: {
             pk: { S: ExecutionRecord.PARTITION_KEY },
             sk: { S: ExecutionRecord.sortKey(execution.id) },
@@ -141,7 +141,7 @@ export class AWSExecutionStore implements ExecutionStore {
           pk: { S: ExecutionRecord.PARTITION_KEY },
           sk: { S: ExecutionRecord.sortKey(request.executionId) },
         },
-        TableName: getLazy(this.props.tableName),
+        TableName: getLazy(this.props.executionTableName),
         ReturnValues: "ALL_NEW",
         ...formatUpdateExpr(updateExp),
       })
@@ -161,7 +161,7 @@ export class AWSExecutionStore implements ExecutionStore {
           pk: { S: ExecutionRecord.PARTITION_KEY },
           sk: { S: ExecutionRecord.sortKey(executionId) },
         },
-        TableName: getLazy(this.props.tableName),
+        TableName: getLazy(this.props.executionTableName),
         ConsistentRead: true,
       })
     );
@@ -190,7 +190,7 @@ export class AWSExecutionStore implements ExecutionStore {
         nextToken: request?.nextToken,
       },
       {
-        TableName: getLazy(this.props.tableName),
+        TableName: getLazy(this.props.executionTableName),
         IndexName: ExecutionRecord.START_TIME_SORTED_INDEX,
         KeyConditionExpression: "#pk = :pk",
         ScanIndexForward: request?.sortDirection !== SortOrder.Desc,
@@ -260,8 +260,10 @@ export type ExecutionRecord =
     );
 
 export const ExecutionRecord = {
+  // support for single table patterns if needed for expansion.
   PARTITION_KEY: "Execution",
-  SORT_KEY_PREFIX: `Execution$`,
+  // main execution record will be $[executionId]
+  SORT_KEY_PREFIX: `$`,
   START_TIME_SORTED_INDEX: "startTime-order",
   START_TIME: "startTime",
   INSERT_EVENT: "insertEvent",

@@ -2,7 +2,14 @@ import { ENV_NAMES, ExecutionRecord } from "@eventual/aws-runtime";
 import { LogLevel } from "@eventual/core";
 import { ExecutionQueueEventEnvelope } from "@eventual/core-runtime";
 import { CfnResource, RemovalPolicy } from "aws-cdk-lib";
-import { ITable } from "aws-cdk-lib/aws-dynamodb";
+import {
+  AttributeType,
+  BillingMode,
+  ITable,
+  ProjectionType,
+  StreamViewType,
+  Table,
+} from "aws-cdk-lib/aws-dynamodb";
 import { IGrantable, IRole, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
@@ -28,7 +35,6 @@ export interface WorkflowsProps
   activities: IActivities;
   events: Events;
   scheduler: IScheduler;
-  table: ITable;
 }
 
 export interface WorkflowOverrides {
@@ -175,6 +181,8 @@ export class Workflows implements IWorkflows, IGrantable {
   public readonly queue: IQueue;
   public readonly history: IBucket;
   public readonly logGroup: LogGroup;
+  public readonly executionsTable: ITable;
+  public readonly executionHistoryTable: ITable;
 
   constructor(private props: WorkflowsProps) {
     // creates the System => Workflow scope.
@@ -193,6 +201,40 @@ export class Workflows implements IWorkflows, IGrantable {
       // TODO: remove after testing
       removalPolicy: RemovalPolicy.DESTROY,
     });
+
+    // Table - History, Executions
+    // TODO move this to workflows and split up.
+    const executionsTable = (this.executionsTable = new Table(
+      workflowSystemScope,
+      "ExecutionTable",
+      {
+        partitionKey: { name: "pk", type: AttributeType.STRING },
+        sortKey: { name: "sk", type: AttributeType.STRING },
+        billingMode: BillingMode.PAY_PER_REQUEST,
+        removalPolicy: RemovalPolicy.DESTROY,
+        stream: StreamViewType.NEW_IMAGE,
+      }
+    ));
+
+    executionsTable.addLocalSecondaryIndex({
+      indexName: ExecutionRecord.START_TIME_SORTED_INDEX,
+      sortKey: {
+        name: ExecutionRecord.START_TIME,
+        type: AttributeType.STRING,
+      },
+      projectionType: ProjectionType.ALL,
+    });
+
+    this.executionHistoryTable = new Table(
+      workflowSystemScope,
+      "ExecutionHistoryTable",
+      {
+        partitionKey: { name: "pk", type: AttributeType.STRING },
+        sortKey: { name: "sk", type: AttributeType.STRING },
+        billingMode: BillingMode.PAY_PER_REQUEST,
+        removalPolicy: RemovalPolicy.DESTROY,
+      }
+    );
 
     this.queue = new Queue(workflowSystemScope, "Queue", {
       fifo: true,
@@ -234,8 +276,8 @@ export class Workflows implements IWorkflows, IGrantable {
     this.pipeToWorkflowQueue(workflowSystemScope, "StartEvent", {
       event: `<$.dynamodb.NewImage.${ExecutionRecord.INSERT_EVENT}.S>`,
       executionIdPath: "$.dynamodb.NewImage.id.S",
-      grant: (role) => this.props.table.grantStreamRead(role),
-      source: this.props.table.tableStreamArn!,
+      grant: (role) => this.executionsTable.grantStreamRead(role),
+      source: this.executionsTable.tableStreamArn!,
       sourceProps: {
         // will retry forever in the case of an SQS outage!
         DynamoDBStreamParameters: {
@@ -286,7 +328,6 @@ export class Workflows implements IWorkflows, IGrantable {
     new CfnResource(container, "Pipe", {
       type: "AWS::Pipes::Pipe",
       properties: {
-        Name: `${this.props.serviceName}-${id}`,
         RoleArn: pipeRole.roleArn,
         Source: props.source,
         SourceParameters: props.sourceProps,
@@ -364,22 +405,22 @@ export class Workflows implements IWorkflows, IGrantable {
 
   public configureReadExecutions(func: Function) {
     this.grantReadExecutions(func);
-    this.addEnvs(func, ENV_NAMES.TABLE_NAME);
+    this.addEnvs(func, ENV_NAMES.EXECUTION_TABLE_NAME);
   }
 
   @grant()
   public grantReadExecutions(grantable: IGrantable) {
-    this.props.table.grantReadData(grantable);
+    this.executionsTable.grantReadData(grantable);
   }
 
   public configureWriteExecutions(func: Function) {
     this.grantWriteExecutions(func);
-    this.addEnvs(func, ENV_NAMES.TABLE_NAME);
+    this.addEnvs(func, ENV_NAMES.EXECUTION_TABLE_NAME);
   }
 
   @grant()
   public grantWriteExecutions(grantable: IGrantable) {
-    this.props.table.grantWriteData(grantable);
+    this.executionsTable.grantWriteData(grantable);
   }
 
   /**
@@ -388,22 +429,22 @@ export class Workflows implements IWorkflows, IGrantable {
 
   public configureReadExecutionHistory(func: Function) {
     this.grantReadExecutionHistory(func);
-    this.addEnvs(func, ENV_NAMES.TABLE_NAME);
+    this.addEnvs(func, ENV_NAMES.EXECUTION_HISTORY_TABLE_NAME);
   }
 
   @grant()
   public grantReadExecutionHistory(grantable: IGrantable) {
-    this.props.table.grantReadData(grantable);
+    this.executionHistoryTable.grantReadData(grantable);
   }
 
   public configureWriteExecutionHistory(func: Function) {
     this.grantWriteExecutionHistory(func);
-    this.addEnvs(func, ENV_NAMES.TABLE_NAME);
+    this.addEnvs(func, ENV_NAMES.EXECUTION_HISTORY_TABLE_NAME);
   }
 
   @grant()
   public grantWriteExecutionHistory(grantable: IGrantable) {
-    this.props.table.grantWriteData(grantable);
+    this.executionHistoryTable.grantWriteData(grantable);
   }
 
   /**
@@ -515,7 +556,9 @@ export class Workflows implements IWorkflows, IGrantable {
   }
 
   private readonly ENV_MAPPINGS = {
-    [ENV_NAMES.TABLE_NAME]: () => this.props.table.tableName,
+    [ENV_NAMES.EXECUTION_TABLE_NAME]: () => this.executionsTable.tableName,
+    [ENV_NAMES.EXECUTION_HISTORY_TABLE_NAME]: () =>
+      this.executionHistoryTable.tableName,
     [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: () => this.history.bucketName,
     [ENV_NAMES.WORKFLOW_QUEUE_URL]: () => this.queue.queueUrl,
     [ENV_NAMES.WORKFLOW_EXECUTION_LOG_GROUP_NAME]: () =>

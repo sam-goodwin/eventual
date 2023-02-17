@@ -79,7 +79,7 @@ const context: Context = {
     name: "wf1",
   },
   execution: {
-    id: "123",
+    id: "123/",
     name: "wf1#123",
     startTime: "",
   },
@@ -1924,7 +1924,7 @@ describe("signals", () => {
           createSendSignalCommand(
             {
               type: SignalTargetType.Execution,
-              executionId: "someExecution",
+              executionId: "someExecution/",
             },
             "MySignal",
             0
@@ -1993,7 +1993,7 @@ describe("signals", () => {
     test("yielded sendSignal does nothing", () => {
       const wf = workflow(function* (): any {
         yield createSendSignalCall(
-          { type: SignalTargetType.Execution, executionId: "someExecution" },
+          { type: SignalTargetType.Execution, executionId: "someExecution/" },
           mySignal.id
         );
 

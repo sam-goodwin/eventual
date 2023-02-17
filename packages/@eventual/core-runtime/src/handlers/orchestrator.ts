@@ -694,7 +694,7 @@ export function progressWorkflow(
     },
     execution: {
       ...processedEvents.startEvent.context,
-      id: executionId,
+      id: executionId as ExecutionID,
       startTime: processedEvents.startEvent.timestamp,
     },
   };

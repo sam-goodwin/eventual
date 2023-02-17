@@ -1,28 +1,14 @@
 import { HttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
-import { ENV_NAMES, ExecutionRecord } from "@eventual/aws-runtime";
+import { ENV_NAMES } from "@eventual/aws-runtime";
 import { Event } from "@eventual/core";
 import { MetricsCommon, OrchestratorMetrics } from "@eventual/core-runtime";
-import {
-  Arn,
-  aws_events,
-  aws_events_targets,
-  Names,
-  RemovalPolicy,
-  Stack,
-} from "aws-cdk-lib";
+import { Arn, aws_events, aws_events_targets, Names, Stack } from "aws-cdk-lib";
 import {
   Metric,
   MetricOptions,
   Statistic,
   Unit,
 } from "aws-cdk-lib/aws-cloudwatch";
-import {
-  AttributeType,
-  BillingMode,
-  ProjectionType,
-  StreamViewType,
-  Table,
-} from "aws-cdk-lib/aws-dynamodb";
 import { IEventBus } from "aws-cdk-lib/aws-events/index.js";
 import {
   AccountRootPrincipal,
@@ -256,12 +242,6 @@ export class Service<S = any> extends Construct implements IService {
      */
     readonly build: BuildOutput;
     /**
-     * A single-table used for execution data and granular workflow events/
-     *
-     * TODO: move this to workflows
-     */
-    readonly table: Table;
-    /**
      * The subsystem for schedules and timers.
      */
     readonly scheduler: Scheduler;
@@ -289,25 +269,6 @@ export class Service<S = any> extends Construct implements IService {
       serviceName: this.serviceName,
       entry: props.entry,
       outDir: path.join(".eventual", this.node.addr),
-    });
-
-    // Table - History, Executions
-    // TODO move this to workflows and split up.
-    const table = new Table(serviceScope, "Table", {
-      partitionKey: { name: "pk", type: AttributeType.STRING },
-      sortKey: { name: "sk", type: AttributeType.STRING },
-      billingMode: BillingMode.PAY_PER_REQUEST,
-      removalPolicy: RemovalPolicy.DESTROY,
-      stream: StreamViewType.NEW_IMAGE,
-    });
-
-    table.addLocalSecondaryIndex({
-      indexName: ExecutionRecord.START_TIME_SORTED_INDEX,
-      sortKey: {
-        name: ExecutionRecord.START_TIME,
-        type: AttributeType.STRING,
-      },
-      projectionType: ProjectionType.ALL,
     });
 
     const proxyScheduler = lazyInterface<IScheduler>();
@@ -342,7 +303,6 @@ export class Service<S = any> extends Construct implements IService {
       activities: activities,
       events,
       scheduler: proxyScheduler,
-      table,
       ...serviceConstructProps,
       ...props.workflows,
     });
@@ -409,7 +369,6 @@ export class Service<S = any> extends Construct implements IService {
       events,
       scheduler,
       serviceMetadataSSM: serviceDataSSM,
-      table,
       workflows,
     };
     proxyService._bind(this);
