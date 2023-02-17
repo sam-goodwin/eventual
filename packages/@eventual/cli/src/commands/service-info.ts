@@ -18,7 +18,7 @@ export const serviceInfo = (yargs: Argv) =>
           [
             `API Gateway: ${serviceData.apiEndpoint}`,
             `Event Bus Arn: ${serviceData.eventBusArn}`,
-            `Service Log Group: ${serviceData.logGroupName}`,
+            `Service Log Group: ${serviceData.workflowExecutionLogGroupName}`,
           ].join("\n")
         );
         process.stdout.write("\n");

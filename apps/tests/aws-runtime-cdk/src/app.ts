@@ -36,16 +36,16 @@ const testService = new eventual.Service<typeof testServiceRuntime>(
     environment: {
       TEST_QUEUE_URL: testQueue.queueUrl,
     },
-    logging: {
+    workflows: {
       logLevel: LogLevel.DEBUG,
     },
   }
 );
 
-testService.api.grantInvokeHttpServiceApi(role);
-testService.internal.cliRole.grantAssumeRole(role);
+testService.system.commands.grantInvokeHttpServiceApi(role);
+testService.system.accessRole.grantAssumeRole(role);
 eventual.Service.grantDescribeParameters(stack, role);
-testService.internal.serviceDataSSM.grantRead(role);
+testService.system.serviceMetadataSSM.grantRead(role);
 role.addToPolicy(
   new PolicyStatement({
     actions: ["ssm:DescribeParameters"],
@@ -68,7 +68,7 @@ testQueue.grantSendMessages(testService);
 const chaosExtension = new ChaosExtension(stack, "chaos");
 
 testService.activitiesList.map((a) => chaosExtension.addToFunction(a.handler));
-chaosExtension.addToFunction(testService.workflows.orchestrator);
+chaosExtension.addToFunction(testService.system.workflows.orchestrator);
 
 chaosExtension.grantReadWrite(role);
 
@@ -84,11 +84,11 @@ const asyncWriterFunction = new NodejsFunction(stack, "asyncWriterFunction", {
   entry,
   handler: "handle",
   environment: {
-    TEST_SERVICE_URL: testService.api.gateway.apiEndpoint,
+    TEST_SERVICE_URL: testService.gateway.apiEndpoint,
   },
 });
 asyncWriterFunction.grantInvoke(pipeRole);
-testService.api.grantInvokeHttpServiceApi(asyncWriterFunction);
+testService.system.commands.grantInvokeHttpServiceApi(asyncWriterFunction);
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-pipes-pipe.html
 new CfnResource(stack, "pipe", {
@@ -119,7 +119,7 @@ new CfnOutput(stack, "roleArn", {
 });
 
 new CfnOutput(stack, "serviceUrl", {
-  value: testService.api.gateway.apiEndpoint,
+  value: testService.gateway.apiEndpoint,
   exportName: "ServiceUrl",
 });
 

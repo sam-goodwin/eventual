@@ -22,16 +22,14 @@ import {
 import { Construct } from "constructs";
 import openapi from "openapi3-ts";
 import type { Activities } from "./activities";
-import type { BuildOutput } from "./build";
 import {
   CommandFunction,
-  InternalCommandFunction,
   InternalApiRoutes,
+  InternalCommandFunction,
 } from "./build-manifest";
 import type { Events } from "./events";
 import { grant } from "./grant";
-import type { Scheduler } from "./scheduler";
-import { IService } from "./service";
+import { ServiceConstructProps } from "./service";
 import { addEnvironment, KeysOfType, NODE_18_X } from "./utils";
 import type { Workflows } from "./workflows";
 
@@ -46,16 +44,11 @@ export type CommandProps<Service> = {
   [api in CommandNames<Service>]?: CommandHandlerProps;
 };
 
-export interface ApiProps<Service = any> {
-  serviceName: string;
-  environment?: Record<string, string>;
-  workflows: Workflows;
+export interface CommandsProps<Service = any> extends ServiceConstructProps {
   activities: Activities<Service>;
-  scheduler: Scheduler;
-  events: Events;
-  service: IService;
-  build: BuildOutput;
   commands?: CommandProps<Service>;
+  events: Events;
+  workflows: Workflows;
 }
 
 /**
@@ -70,7 +63,7 @@ export interface CommandHandlerProps
   init?(func: Function): void;
 }
 
-export interface IServiceApi {
+export interface ICommands {
   configureInvokeHttpServiceApi(func: Function): void;
   grantInvokeHttpServiceApi(grantable: IGrantable): void;
 }
@@ -81,7 +74,11 @@ export type ServiceCommands<Service> = {
   [command in CommandNames<Service>]: Function;
 };
 
-export class Api<Service> extends Construct implements IServiceApi, IGrantable {
+export interface SystemCommands {
+  [key: string]: Function;
+}
+
+export class Commands<Service> implements ICommands, IGrantable {
   /**
    * API Gateway for providing service api
    */
@@ -93,7 +90,8 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
   /**
    * A map of Command Name to the Lambda Function handling its logic.
    */
-  readonly commands: ServiceCommands<Service>;
+  readonly serviceCommands: ServiceCommands<Service>;
+  readonly systemCommands: SystemCommands;
 
   readonly grantPrincipal: aws_iam.IPrincipal;
 
@@ -103,11 +101,10 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
    * memory and timeout configuration.
    */
   public get handlers(): Function[] {
-    return Object.values(this.commands);
+    return Object.values(this.serviceCommands);
   }
 
-  constructor(scope: Construct, id: string, private props: ApiProps<Service>) {
-    super(scope, id);
+  constructor(private props: CommandsProps<Service>) {
     const self = this;
 
     const internalApiRoutes: InternalApiRoutes = this.props.build.api;
@@ -133,7 +130,13 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
         this.props.workflows.configureStartExecution(fn),
     };
 
-    const role = new aws_iam.Role(this, "DefaultRole", {
+    // Construct for grouping commands in the CDK tree
+    // Service => System => Commands => [all system commands]
+    const commandsSystemScope = new Construct(props.systemScope, "Commands");
+    // Service => Commands
+    const commandsScope = new Construct(props.serviceScope, "Commands");
+
+    const role = new aws_iam.Role(commandsSystemScope, "DefaultRole", {
       assumedBy: new aws_iam.ServicePrincipal("lambda.amazonaws.com"),
       managedPolicies: [
         aws_iam.ManagedPolicy.fromAwsManagedPolicyName(
@@ -143,12 +146,8 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
     });
     this.grantPrincipal = role;
 
-    // Construct for grouping commands in the CDK tree
-    const commandsScope = new Construct(this, "Commands");
-    const internalScope = new Construct(this, "Internal");
-
-    const { specification, commands } = synthesizeAPI([
-      ...this.props.build.commands.map(
+    const serviceCommands = synthesizeAPI(
+      this.props.build.commands.map(
         (manifest) =>
           ({
             manifest,
@@ -160,8 +159,11 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
               self.configureApiHandler(handler);
             },
           } satisfies CommandMapping)
-      ),
-      ...(Object.entries(this.props.build.api) as any).map(
+      )
+    );
+
+    const systemCommands = synthesizeAPI(
+      (Object.entries(this.props.build.api) as any).map(
         ([path, manifest]: [
           keyof InternalApiRoutes,
           InternalCommandFunction
@@ -173,27 +175,33 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
               init: internalInit[path],
             },
           } satisfies CommandMapping)
-      ),
-    ]);
+      )
+    );
 
-    this.specification = specification;
-    this.commands = commands;
+    this.specification = createSpecification({
+      ...serviceCommands,
+      ...systemCommands,
+    });
+    this.serviceCommands = Object.fromEntries(
+      Object.entries(serviceCommands).map(([c, { handler }]) => [c, handler])
+    ) as ServiceCommands<Service>;
+    this.systemCommands = Object.fromEntries(
+      Object.entries(systemCommands).map(([c, { handler }]) => [c, handler])
+    ) as SystemCommands;
 
-    this.gateway = new HttpApi(this, "Gateway", {
+    // Service => Gateway
+    this.gateway = new HttpApi(props.serviceScope, "Gateway", {
       apiName: `eventual-api-${props.serviceName}`,
       defaultIntegration: new HttpLambdaIntegration(
         "default",
-        this.commands.default
+        this.serviceCommands.default
       ),
     });
 
     this.finalize();
 
-    function synthesizeAPI(commands: CommandMapping[]): {
-      specification: openapi.OpenAPIObject;
-      commands: ServiceCommands<Service>;
-    } {
-      const synthesizedCommands = Object.fromEntries(
+    function synthesizeAPI(commands: CommandMapping[]) {
+      return Object.fromEntries(
         commands.map((mapping) => {
           const { manifest, overrides } = mapping;
           const command = manifest.spec;
@@ -208,7 +216,7 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
           }
 
           const handler = new Function(
-            command.internal ? internalScope : commandsScope,
+            command.internal ? commandsSystemScope : commandsScope,
             command.name,
             {
               ...overrides,
@@ -250,72 +258,14 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
         })
       );
 
-      const paths = Object.values(
-        synthesizedCommands as Record<string, { paths: openapi.PathsObject }>
-      ).reduce<openapi.PathsObject>(
-        (allPaths, { paths }) => mergeAPIPaths(allPaths, paths),
-        {}
-      );
-
-      const specification: openapi.OpenAPIObject = {
-        openapi: "3.0.1",
-        info: {
-          title: self.props.build.serviceName,
-          // TODO: use the package.json?
-          version: "1",
-        },
-
-        paths: {
-          "/$default": {
-            isDefaultRoute: true,
-            [XAmazonApiGatewayIntegration]: {
-              connectionType: "INTERNET",
-              httpMethod: HttpMethod.POST, // TODO: why POST? Exported API has this but it's not clear
-              payloadFormatVersion: "2.0",
-              type: "aws_proxy",
-              uri: Lazy.string({
-                produce: () => self.commands.default.functionArn,
-              }),
-            } satisfies XAmazonApiGatewayIntegration,
-          },
-          ...paths,
-        },
-      };
-
-      return {
-        specification,
-        commands: Object.fromEntries(
-          Object.entries(synthesizedCommands).map(
-            ([commandName, { handler }]) => [commandName, handler]
-          )
-        ) as ServiceCommands<Service>,
-      };
-
-      function mergeAPIPaths(
-        a: openapi.PathsObject,
-        b: openapi.PathsObject
-      ): openapi.PathsObject {
-        for (const [path, route] of Object.entries(b)) {
-          if (path in a) {
-            // spread collisions into one
-            // assumes no duplicate METHODs
-            a[path] = {
-              ...a[path],
-              [path]: route,
-            };
-          } else {
-            a[path] = route;
-          }
-        }
-        return a;
-      }
-
       function createAPIPaths(
         handler: Function,
         { manifest, overrides, init }: CommandMapping
       ): openapi.PathsObject {
         const command = manifest.spec;
-        init?.(handler);
+        if (init) {
+          self.onFinalize(() => init?.(handler));
+        }
         if (overrides?.init) {
           // issue all override finalizers after all the routes and api gateway is created
           self.onFinalize(() => overrides!.init!(handler!));
@@ -391,6 +341,57 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
         };
       }
     }
+
+    function createSpecification(commands: Record<string, SynthesizedCommand>) {
+      const paths = Object.values(commands).reduce<openapi.PathsObject>(
+        (allPaths, { paths }) => mergeAPIPaths(allPaths, paths),
+        {}
+      );
+
+      return {
+        openapi: "3.0.1",
+        info: {
+          title: self.props.build.serviceName,
+          // TODO: use the package.json?
+          version: "1",
+        },
+
+        paths: {
+          "/$default": {
+            isDefaultRoute: true,
+            [XAmazonApiGatewayIntegration]: {
+              connectionType: "INTERNET",
+              httpMethod: HttpMethod.POST, // TODO: why POST? Exported API has this but it's not clear
+              payloadFormatVersion: "2.0",
+              type: "aws_proxy",
+              uri: Lazy.string({
+                produce: () => self.serviceCommands.default.functionArn,
+              }),
+            } satisfies XAmazonApiGatewayIntegration,
+          },
+          ...paths,
+        },
+      } satisfies openapi.OpenAPIObject;
+
+      function mergeAPIPaths(
+        a: openapi.PathsObject,
+        b: openapi.PathsObject
+      ): openapi.PathsObject {
+        for (const [path, route] of Object.entries(b)) {
+          if (path in a) {
+            // spread collisions into one
+            // assumes no duplicate METHODs
+            a[path] = {
+              ...a[path],
+              [path]: route,
+            };
+          } else {
+            a[path] = route;
+          }
+        }
+        return a;
+      }
+    }
   }
 
   private finalizers: (() => any)[] = [];
@@ -430,7 +431,7 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
             }),
             resourceName: "*/*/*",
           },
-          Stack.of(this)
+          Stack.of(this.gateway)
         ),
       ],
     });
@@ -457,6 +458,11 @@ export class Api<Service> extends Construct implements IServiceApi, IGrantable {
   private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {
     envs.forEach((env) => func.addEnvironment(env, this.ENV_MAPPINGS[env]()));
   }
+}
+
+interface SynthesizedCommand {
+  handler: Function;
+  paths: openapi.PathsObject;
 }
 
 interface CommandMapping {

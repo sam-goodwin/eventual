@@ -41,11 +41,11 @@ const bench = new aws_lambda_nodejs.NodejsFunction(stack, "BenchmarkFunc", {
   },
   timeout: Duration.minutes(1),
   environment: {
-    EVENTUAL_SERVICE_URL: benchService.api.gateway.apiEndpoint,
+    EVENTUAL_SERVICE_URL: benchService.gateway.apiEndpoint,
   },
 });
 
-benchService.api.grantInvokeHttpServiceApi(bench);
+benchService.system.commands.grantInvokeHttpServiceApi(bench);
 
 const accountTable = new aws_dynamodb.Table(stack, "Accounts", {
   partitionKey: {
@@ -64,7 +64,7 @@ const openAccount = new eventual.Service(stack, "OpenAccount", {
 });
 
 new CfnOutput(stack, "open-account-api-url", {
-  value: openAccount.api.gateway.apiEndpoint,
+  value: openAccount.gateway.apiEndpoint,
 });
 
 new eventual.Service(stack, "my-service", {

@@ -15,12 +15,10 @@ import { LambdaDestination } from "aws-cdk-lib/aws-lambda-destinations";
 import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
 import { ActivityFunction } from "./build-manifest";
-import { Events } from "./events";
 import { grant } from "./grant";
-import { Logging } from "./logging";
 import { IScheduler } from "./scheduler";
-import { IService } from "./service";
-import { IServiceApi } from "./service-api";
+import { ServiceConstructProps } from "./service";
+import { ICommands } from "./commands";
 import { ServiceFunction } from "./service-function";
 import { KeysOfType } from "./utils";
 import { IWorkflows } from "./workflows";
@@ -30,17 +28,11 @@ export type ServiceActivities<Service> = Record<
   Activity
 >;
 
-export interface ActivitiesProps<Service> {
-  build: BuildOutput;
-  serviceName: string;
-  workflows: IWorkflows;
-  scheduler: IScheduler;
-  environment?: Record<string, string>;
-  events: Events;
-  logging: Logging;
-  service: IService;
-  readonly api: IServiceApi;
-  overrides?: ActivityOverrides<Service>;
+export interface ActivitiesProps<Service> extends ServiceConstructProps {
+  readonly workflows: IWorkflows;
+  readonly scheduler: IScheduler;
+  readonly commands: ICommands;
+  readonly overrides?: ActivityOverrides<Service>;
 }
 
 export interface IActivities {
@@ -86,7 +78,7 @@ export type ActivityNames<Service> = KeysOfType<Service, { kind: "Activity" }>;
  *
  * Activities are started by the {@link Workflow.orchestrator} and send back {@link WorkflowEvent}s on completion.
  */
-export class Activities<Service> extends Construct implements IActivities {
+export class Activities<Service> implements IActivities {
   /**
    * Table which contains activity information for claiming, heartbeat, and cancellation.
    */
@@ -100,13 +92,13 @@ export class Activities<Service> extends Construct implements IActivities {
    */
   public fallbackHandler: Function;
 
-  constructor(
-    scope: Construct,
-    id: string,
-    private props: ActivitiesProps<Service>
-  ) {
-    super(scope, id);
-    this.table = new Table(this, "Table", {
+  constructor(private props: ActivitiesProps<Service>) {
+    const activitiesSystemScope = new Construct(
+      props.systemScope,
+      "Activities"
+    );
+
+    this.table = new Table(activitiesSystemScope, "Table", {
       billingMode: BillingMode.PAY_PER_REQUEST,
       partitionKey: {
         name: "pk",
@@ -116,16 +108,20 @@ export class Activities<Service> extends Construct implements IActivities {
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
-    this.fallbackHandler = new ServiceFunction(this, "FallbackHandler", {
-      bundledFunction: props.build.internal.activities.fallbackHandler,
-      build: props.build,
-      functionNameSuffix: activityServiceFunctionSuffix(
-        `internal-fallback-handler`
-      ),
-      serviceName: props.serviceName,
-    });
+    this.fallbackHandler = new ServiceFunction(
+      activitiesSystemScope,
+      "FallbackHandler",
+      {
+        bundledFunction: props.build.internal.activities.fallbackHandler,
+        build: props.build,
+        functionNameSuffix: activityServiceFunctionSuffix(
+          `internal-fallback-handler`
+        ),
+        serviceName: props.serviceName,
+      }
+    );
 
-    const activityScope = new Construct(this, "Activities");
+    const activityScope = new Construct(props.serviceScope, "Activities");
     this.activities = Object.fromEntries(
       props.build.activities.map((act) => {
         const activity = new Activity(activityScope, act.spec.name, {
@@ -230,13 +226,13 @@ export class Activities<Service> extends Construct implements IActivities {
     // report result back to the execution
     this.props.workflows.configureSubmitExecutionEvents(func);
     // send logs to the execution log stream
-    this.props.logging.configurePutServiceLogs(func);
+    this.props.workflows.configurePutWorkflowExecutionLogs(func);
     // start heartbeat monitor
     this.props.scheduler.configureScheduleTimer(func);
 
     // allows access to any of the injected service client operations.
     this.props.service.configureForServiceClient(func);
-    this.props.api.configureInvokeHttpServiceApi(func);
+    this.props.commands.configureInvokeHttpServiceApi(func);
     /**
      * Access to service name in the activity worker for metrics logging
      */

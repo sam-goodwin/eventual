@@ -15,7 +15,7 @@ import { styledConsole } from "./styled-console.js";
 export interface ServiceData {
   apiEndpoint: string;
   eventBusArn: string;
-  logGroupName: string;
+  workflowExecutionLogGroupName: string;
 }
 
 /**

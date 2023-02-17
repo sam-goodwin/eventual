@@ -9,8 +9,8 @@ import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
 import type { SubscriptionFunction } from "./build-manifest";
 import type { Events } from "./events";
-import type { IService } from "./service";
-import { IServiceApi } from "./service-api";
+import type { ServiceConstructProps } from "./service";
+import { ICommands } from "./commands";
 import { ServiceFunction } from "./service-function";
 import type { KeysOfType } from "./utils";
 
@@ -26,21 +26,7 @@ export type SubscriptionOverrides<Service> = {
 export interface SubscriptionHandlerProps
   extends Omit<Partial<FunctionProps>, "code" | "handler" | "functionName"> {}
 
-export interface SubscriptionsProps<S = any> {
-  /**
-   * The built service describing the event subscriptions within the Service.
-   */
-  readonly build: BuildOutput;
-  /**
-   * The name of the Service this {@link Events} repository belongs to.
-   */
-  readonly serviceName: string;
-  /**
-   * Optional environment variables to add to the {@link Events.defaultHandler}.
-   *
-   * @default - no extra environment variables
-   */
-  readonly environment?: Record<string, string>;
+export interface SubscriptionsProps<S = any> extends ServiceConstructProps {
   /**
    * Configuration for individual Event Handlers created with `onEvent`.
    */
@@ -49,9 +35,7 @@ export interface SubscriptionsProps<S = any> {
    * The Service's {@link Events} repository.
    */
   readonly events: Events;
-
-  readonly service: IService;
-  readonly api: IServiceApi;
+  readonly commands: ICommands;
 }
 
 export type Subscriptions<Service> = {
@@ -61,13 +45,13 @@ export type Subscriptions<Service> = {
   >]: Subscription;
 };
 export const Subscriptions: {
-  new <Service>(
-    scope: Construct,
-    props: SubscriptionsProps<Service>
-  ): Subscriptions<Service>;
+  new <Service>(props: SubscriptionsProps<Service>): Subscriptions<Service>;
 } = class Subscriptions<Service> {
-  constructor(scope: Construct, props: SubscriptionsProps<Service>) {
-    scope = new Construct(scope, "Subscriptions");
+  constructor(props: SubscriptionsProps<Service>) {
+    const subscriptionsServiceScope = new Construct(
+      props.serviceScope,
+      "Subscriptions"
+    );
 
     // create a Construct to safely nest bundled functions in their own namespace
 
@@ -75,7 +59,7 @@ export const Subscriptions: {
       props.build.subscriptions.map((sub) => {
         return [
           sub.spec.name,
-          new Subscription(scope, sub.spec.name, {
+          new Subscription(subscriptionsServiceScope, sub.spec.name, {
             build: props.build,
             bus: props.events.bus,
             serviceName: props.serviceName,
@@ -101,7 +85,7 @@ export const Subscriptions: {
       props.service.configureForServiceClient(handler);
 
       // allow http access to the service client
-      props.api.configureInvokeHttpServiceApi(handler);
+      props.commands.configureInvokeHttpServiceApi(handler);
     });
   }
 } as any;

@@ -7,24 +7,18 @@ import { Function } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import type { OpenAPIObject, SchemaObject } from "openapi3-ts";
 import { grant } from "./grant";
+import { ServiceConstructProps } from "./service";
 
-export interface EventsProps {
-  /**
-   * The name of the Service this {@link Events} repository belongs to.
-   */
-  readonly serviceName: string;
-}
+export interface EventsProps extends ServiceConstructProps {}
 
-export class Events extends Construct {
+export class Events {
   /**
    * The {@link EventBus} containing all events flowing into and out of this {@link Service}.
    */
   public readonly bus: IEventBus;
 
-  constructor(scope: Construct, id: string, private props: EventsProps) {
-    super(scope, id);
-
-    this.bus = new EventBus(this, "Bus", {
+  constructor(private props: EventsProps) {
+    this.bus = new EventBus(props.serviceScope, "Bus", {
       eventBusName: props.serviceName,
     });
   }

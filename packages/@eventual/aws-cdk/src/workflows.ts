@@ -1,10 +1,12 @@
 import { ENV_NAMES, ExecutionRecord } from "@eventual/aws-runtime";
+import { LogLevel } from "@eventual/core";
 import { ExecutionQueueEventEnvelope } from "@eventual/core-runtime";
 import { CfnResource, RemovalPolicy } from "aws-cdk-lib";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { IGrantable, IRole, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
+import { LogGroup } from "aws-cdk-lib/aws-logs";
 import { Bucket, IBucket } from "aws-cdk-lib/aws-s3";
 import {
   DeduplicationScope,
@@ -14,26 +16,47 @@ import {
 } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import { IActivities } from "./activities";
-import type { BuildOutput } from "./build";
 import { Events } from "./events";
 import { grant } from "./grant";
-import { Logging } from "./logging";
 import { IScheduler } from "./scheduler";
-import { IService } from "./service";
+import { ServiceConstructProps } from "./service";
 import { ServiceFunction } from "./service-function";
 
-export interface WorkflowsProps {
-  build: BuildOutput;
-  serviceName: string;
-  scheduler: IScheduler;
+export interface WorkflowsProps
+  extends WorkflowOverrides,
+    ServiceConstructProps {
   activities: IActivities;
-  table: ITable;
   events: Events;
-  logging: Logging;
-  orchestrator?: {
-    reservedConcurrentExecutions?: number;
-  };
-  service: IService;
+  scheduler: IScheduler;
+  table: ITable;
+}
+
+export interface WorkflowOverrides {
+  /**
+   * Set the reservedConcurrentExecutions for the workflow orchestrator lambda function.
+   *
+   * This function consumes from the central SQS FIFO Queue and the number of parallel executions
+   * scales directly on the number of active workflow executions. Each execution id is used as
+   * the message group ID which directly affects concurrent executions.
+   *
+   * Set this value to protect the workflow's concurrent executions from:
+   * 1. browning out other functions by consuming concurrent executions
+   * 2. be brought down by other functions in the AWS account
+   * 3. ensure the timely performance of workflows for a given scale
+   */
+  reservedConcurrentExecutions?: number;
+  /**
+   * Optionally provide a log group.
+   *
+   * @default one will be created @ [service_name]-execution-logs
+   */
+  logGroup?: LogGroup;
+  /**
+   * Log level to put into the workflow logs.
+   *
+   * @default INFO
+   */
+  logLevel?: LogLevel;
 }
 
 interface PipeToWorkflowQueueProps {
@@ -134,45 +157,69 @@ export interface IWorkflows {
   grantWriteHistoryState(grantable: IGrantable): void;
 
   configureFullControl(func: Function): void;
+
+  grantFilterLogEvents(grantable: IGrantable): void;
+
+  /**
+   * Creating and writing to the {@link Workflows.logGroup}
+   */
+  configurePutWorkflowExecutionLogs(func: Function): void;
+  grantPutWorkflowExecutionLogs(grantable: IGrantable): void;
 }
 
 /**
  * Subsystem which manages and orchestrates workflows and workflow executions.
  */
-export class Workflows extends Construct implements IWorkflows, IGrantable {
+export class Workflows implements IWorkflows, IGrantable {
   public readonly orchestrator: Function;
   public readonly queue: IQueue;
   public readonly history: IBucket;
+  public readonly logGroup: LogGroup;
 
-  constructor(scope: Construct, id: string, private props: WorkflowsProps) {
-    super(scope, id);
+  constructor(private props: WorkflowsProps) {
+    // creates the System => Workflow scope.
+    const workflowSystemScope = new Construct(props.systemScope, "Workflow");
 
-    this.history = new Bucket(this, "History", {
+    // TODO: move in the table
+
+    this.logGroup =
+      props.logGroup ??
+      new LogGroup(props.serviceScope, "WorkflowExecutionLogs", {
+        removalPolicy: RemovalPolicy.DESTROY,
+        logGroupName: `${props.serviceName}-execution-logs`,
+      });
+
+    this.history = new Bucket(workflowSystemScope, "HistoryBucket", {
       // TODO: remove after testing
       removalPolicy: RemovalPolicy.DESTROY,
     });
 
-    this.queue = new Queue(this, "Queue", {
+    this.queue = new Queue(workflowSystemScope, "Queue", {
       fifo: true,
       fifoThroughputLimit: FifoThroughputLimit.PER_MESSAGE_GROUP_ID,
       deduplicationScope: DeduplicationScope.MESSAGE_GROUP,
       contentBasedDeduplication: true,
     });
 
-    this.orchestrator = new ServiceFunction(this, "Orchestrator", {
-      functionNameSuffix: `orchestrator-handler`,
-      build: props.build,
-      bundledFunction: props.build.workflows.orchestrator,
-      overrides: {
-        events: [
-          new SqsEventSource(this.queue, {
-            batchSize: 10,
-            reportBatchItemFailures: true,
-          }),
-        ],
-      },
-      serviceName: props.serviceName,
-    });
+    this.orchestrator = new ServiceFunction(
+      workflowSystemScope,
+      "Orchestrator",
+      {
+        functionNameSuffix: `orchestrator-handler`,
+        build: props.build,
+        bundledFunction: props.build.workflows.orchestrator,
+        overrides: {
+          environment: props.environment,
+          events: [
+            new SqsEventSource(this.queue, {
+              batchSize: 10,
+              reportBatchItemFailures: true,
+            }),
+          ],
+        },
+        serviceName: props.serviceName,
+      }
+    );
 
     /**
      * transform the dynamo record into an {@link ExecutionQueueEventEnvelope} that contains a {@link WorkflowStarted} event.
@@ -184,7 +231,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
      *    }
      * }
      */
-    this.pipeToWorkflowQueue(this, "InsertEvent", {
+    this.pipeToWorkflowQueue(workflowSystemScope, "StartEvent", {
       event: `<$.dynamodb.NewImage.${ExecutionRecord.INSERT_EVENT}.S>`,
       executionIdPath: "$.dynamodb.NewImage.id.S",
       grant: (role) => this.props.table.grantStreamRead(role),
@@ -264,7 +311,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.configureReadExecutions(func);
     this.configureWriteExecutions(func);
     // when we start a workflow, we create the log stream it will use.
-    this.props.logging.configurePutServiceLogs(func);
+    this.configurePutWorkflowExecutionLogs(func);
     this.configureSubmitExecutionEvents(func);
   }
 
@@ -273,7 +320,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.grantReadExecutions(grantable);
     this.grantWriteExecutions(grantable);
     // when we start a workflow, we create the log stream it will use.
-    this.props.logging.grantPutServiceLogs(grantable);
+    this.grantPutWorkflowExecutionLogs(grantable);
     this.grantSubmitExecutionEvents(grantable);
   }
 
@@ -386,6 +433,32 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
   }
 
   /**
+   * Log Client - for workflow execution logs
+   */
+
+  @grant()
+  public grantFilterLogEvents(grantable: IGrantable) {
+    this.logGroup.grant(grantable, "logs:FilterLogEvents");
+  }
+
+  /**
+   * Creating and writing to the {@link Logging.logGroup}
+   */
+  public configurePutWorkflowExecutionLogs(func: Function) {
+    this.grantPutWorkflowExecutionLogs(func);
+    this.addEnvs(
+      func,
+      ENV_NAMES.WORKFLOW_EXECUTION_LOG_GROUP_NAME,
+      ENV_NAMES.DEFAULT_LOG_LEVEL
+    );
+  }
+
+  @grant()
+  public grantPutWorkflowExecutionLogs(grantable: IGrantable) {
+    this.logGroup.grantWrite(grantable);
+  }
+
+  /**
    * Allows starting workflows, finishing activities, reading workflow status
    * and sending signals to workflows.
    */
@@ -419,7 +492,7 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     this.configureReadHistoryState(this.orchestrator);
     this.configureWriteHistoryState(this.orchestrator);
     // allows writing logs to the service log stream
-    this.props.logging.configurePutServiceLogs(this.orchestrator);
+    this.configurePutWorkflowExecutionLogs(this.orchestrator);
     /**
      * Command Executor
      */
@@ -447,6 +520,9 @@ export class Workflows extends Construct implements IWorkflows, IGrantable {
     [ENV_NAMES.TABLE_NAME]: () => this.props.table.tableName,
     [ENV_NAMES.EXECUTION_HISTORY_BUCKET]: () => this.history.bucketName,
     [ENV_NAMES.WORKFLOW_QUEUE_URL]: () => this.queue.queueUrl,
+    [ENV_NAMES.WORKFLOW_EXECUTION_LOG_GROUP_NAME]: () =>
+      this.logGroup.logGroupName,
+    [ENV_NAMES.DEFAULT_LOG_LEVEL]: () => this.props.logLevel ?? "INFO",
   } as const;
 
   private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {

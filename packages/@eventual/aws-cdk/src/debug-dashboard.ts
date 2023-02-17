@@ -24,22 +24,24 @@ export class DebugDashboard extends Construct {
 
     const allLogGroups = [
       // execution log group
-      service.internal.logging.logGroup.logGroupName,
+      service.workflowLogGroup.logGroupName,
       // workflow orchestrator
-      service.workflows.orchestrator.logGroup.logGroupName,
+      service.system.workflows.orchestrator.logGroup.logGroupName,
       // activities worker
       ...service.activitiesList.map((a) => a.handler.logGroup.logGroupName),
       // activities fallback
-      service.internal.activities.fallbackHandler.logGroup.logGroupName,
+      service.system.activities.fallbackHandler.logGroup.logGroupName,
       // user APIS - default and bundled
-      ...service.api.handlers.map((api) => api.logGroup.logGroupName),
+      ...service.system.commands.handlers.map(
+        (api) => api.logGroup.logGroupName
+      ),
       // event handlers - default and bundled
       ...service.subscriptionsList.map(
         ({ handler }) => handler.logGroup.logGroupName
       ),
       // scheduler/timer handler and forwarder
-      service.internal.scheduler.handler.logGroup.logGroupName,
-      service.internal.scheduler.forwarder.logGroup.logGroupName,
+      service.system.scheduler.handler.logGroup.logGroupName,
+      service.system.scheduler.forwarder.logGroup.logGroupName,
     ];
 
     this.dashboard = new Dashboard(this, "Dashboard", {
@@ -81,7 +83,7 @@ export class DebugDashboard extends Construct {
           new LogQueryWidget({
             title: "Orchestrator Summary",
             logGroupNames: [
-              service.workflows.orchestrator.logGroup.logGroupName,
+              service.system.workflows.orchestrator.logGroup.logGroupName,
             ],
             queryLines: [
               `filter @type="REPORT" OR ${OrchestratorMetrics.LoadHistoryDuration} > 0`,
@@ -106,7 +108,7 @@ export class DebugDashboard extends Construct {
           }),
           new LogQueryWidget({
             title: "API Handlers Summary",
-            logGroupNames: service.api.handlers.map(
+            logGroupNames: service.system.commands.handlers.map(
               (api) => api.logGroup.logGroupName
             ),
             queryLines: [
