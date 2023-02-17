@@ -203,7 +203,6 @@ export class Workflows implements IWorkflows, IGrantable {
     });
 
     // Table - History, Executions
-    // TODO move this to workflows and split up.
     const executionsTable = (this.executionsTable = new Table(
       workflowSystemScope,
       "ExecutionTable",
@@ -281,7 +280,12 @@ export class Workflows implements IWorkflows, IGrantable {
       sourceProps: {
         // will retry forever in the case of an SQS outage!
         DynamoDBStreamParameters: {
-          StartingPosition: "LATEST",
+          // when CREATE/REPLACING a pipe, it can take up to 1 minute to start polling for events.
+          // TRIM_HORIZON will catch any events created during that one minute (and last 24 hours for existing streams)
+          // The assumption is that it is unlikely that the pipe will be replaced on an active service
+          // TODO: check in with the Event Bridge team to see LATEST will work without dropping events
+          //       for new streams.
+          StartingPosition: "TRIM_HORIZON",
           MaximumBatchingWindowInSeconds: 1,
         },
         FilterCriteria: {
