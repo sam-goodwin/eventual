@@ -93,12 +93,12 @@ export class Activities<Service> implements IActivities {
   public fallbackHandler: Function;
 
   constructor(private props: ActivitiesProps<Service>) {
-    const activitiesSystemScope = new Construct(
+    const activityServiceScope = new Construct(
       props.systemScope,
-      "Activities"
+      "ActivityService"
     );
 
-    this.table = new Table(activitiesSystemScope, "Table", {
+    this.table = new Table(activityServiceScope, "Table", {
       billingMode: BillingMode.PAY_PER_REQUEST,
       partitionKey: {
         name: "pk",
@@ -109,7 +109,7 @@ export class Activities<Service> implements IActivities {
     });
 
     this.fallbackHandler = new ServiceFunction(
-      activitiesSystemScope,
+      activityServiceScope,
       "FallbackHandler",
       {
         bundledFunction: props.build.internal.activities.fallbackHandler,

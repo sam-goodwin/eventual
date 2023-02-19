@@ -42,7 +42,7 @@ const testService = new eventual.Service<typeof testServiceRuntime>(
   }
 );
 
-testService.system.commands.grantInvokeHttpServiceApi(role);
+testService.grantInvokeHttpServiceApi(role);
 testService.system.accessRole.grantAssumeRole(role);
 eventual.Service.grantDescribeParameters(stack, role);
 testService.system.serviceMetadataSSM.grantRead(role);
@@ -59,7 +59,6 @@ const pipeRole = new Role(stack, "pipeRole", {
 
 testQueue.grantConsumeMessages(pipeRole);
 testQueue.grantSendMessages(testService.activities.asyncActivity);
-testQueue.grantSendMessages(testService);
 
 /**
  * Chaos Testing
@@ -68,7 +67,7 @@ testQueue.grantSendMessages(testService);
 const chaosExtension = new ChaosExtension(stack, "chaos");
 
 testService.activitiesList.map((a) => chaosExtension.addToFunction(a.handler));
-chaosExtension.addToFunction(testService.system.workflows.orchestrator);
+chaosExtension.addToFunction(testService.system.workflowService.orchestrator);
 
 chaosExtension.grantReadWrite(role);
 
@@ -88,7 +87,7 @@ const asyncWriterFunction = new NodejsFunction(stack, "asyncWriterFunction", {
   },
 });
 asyncWriterFunction.grantInvoke(pipeRole);
-testService.system.commands.grantInvokeHttpServiceApi(asyncWriterFunction);
+testService.grantInvokeHttpServiceApi(asyncWriterFunction);
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-pipes-pipe.html
 new CfnResource(stack, "pipe", {

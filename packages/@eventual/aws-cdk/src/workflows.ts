@@ -186,7 +186,10 @@ export class Workflows implements IWorkflows, IGrantable {
 
   constructor(private props: WorkflowsProps) {
     // creates the System => Workflow scope.
-    const workflowSystemScope = new Construct(props.systemScope, "Workflow");
+    const workflowServiceScope = new Construct(
+      props.systemScope,
+      "WorkflowService"
+    );
 
     // TODO: move in the table
 
@@ -197,14 +200,15 @@ export class Workflows implements IWorkflows, IGrantable {
         logGroupName: `${props.serviceName}-execution-logs`,
       });
 
-    this.history = new Bucket(workflowSystemScope, "HistoryBucket", {
+    this.history = new Bucket(workflowServiceScope, "HistoryBucket", {
       // TODO: remove after testing
       removalPolicy: RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
     });
 
     // Table - History, Executions
     const executionsTable = (this.executionsTable = new Table(
-      workflowSystemScope,
+      workflowServiceScope,
       "ExecutionTable",
       {
         partitionKey: { name: "pk", type: AttributeType.STRING },
@@ -225,7 +229,7 @@ export class Workflows implements IWorkflows, IGrantable {
     });
 
     this.executionHistoryTable = new Table(
-      workflowSystemScope,
+      workflowServiceScope,
       "ExecutionHistoryTable",
       {
         partitionKey: { name: "pk", type: AttributeType.STRING },
@@ -235,7 +239,7 @@ export class Workflows implements IWorkflows, IGrantable {
       }
     );
 
-    this.queue = new Queue(workflowSystemScope, "Queue", {
+    this.queue = new Queue(workflowServiceScope, "Queue", {
       fifo: true,
       fifoThroughputLimit: FifoThroughputLimit.PER_MESSAGE_GROUP_ID,
       deduplicationScope: DeduplicationScope.MESSAGE_GROUP,
@@ -243,7 +247,7 @@ export class Workflows implements IWorkflows, IGrantable {
     });
 
     this.orchestrator = new ServiceFunction(
-      workflowSystemScope,
+      workflowServiceScope,
       "Orchestrator",
       {
         functionNameSuffix: `orchestrator-handler`,
@@ -272,7 +276,7 @@ export class Workflows implements IWorkflows, IGrantable {
      *    }
      * }
      */
-    this.pipeToWorkflowQueue(workflowSystemScope, "StartEvent", {
+    this.pipeToWorkflowQueue(workflowServiceScope, "StartEvent", {
       event: `<$.dynamodb.NewImage.${ExecutionRecord.INSERT_EVENT}.S>`,
       executionIdPath: "$.dynamodb.NewImage.id.S",
       grant: (role) => this.executionsTable.grantStreamRead(role),
