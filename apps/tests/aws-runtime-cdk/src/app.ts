@@ -36,8 +36,10 @@ const testService = new eventual.Service<typeof testServiceRuntime>(
     environment: {
       TEST_QUEUE_URL: testQueue.queueUrl,
     },
-    workflows: {
-      logLevel: LogLevel.DEBUG,
+    system: {
+      workflowService: {
+        logLevel: LogLevel.DEBUG,
+      },
     },
   }
 );

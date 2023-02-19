@@ -21,17 +21,17 @@ import {
 } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import openapi from "openapi3-ts";
-import type { Activities } from "./activities";
+import type { ActivityService } from "./activity-service";
 import {
   CommandFunction,
   InternalApiRoutes,
   InternalCommandFunction,
 } from "./build-manifest";
-import type { Events } from "./events";
+import type { EventService } from "./event-service";
 import { grant } from "./grant";
 import { ServiceConstructProps } from "./service";
 import { addEnvironment, KeysOfType, NODE_18_X } from "./utils";
-import type { Workflows } from "./workflows";
+import type { WorkflowService } from "./workflow-service";
 
 export type CommandNames<Service = any> = KeysOfType<
   Service,
@@ -45,10 +45,10 @@ export type CommandProps<Service> = {
 };
 
 export interface CommandsProps<Service = any> extends ServiceConstructProps {
-  activities: Activities<Service>;
-  commands?: CommandProps<Service>;
-  events: Events;
-  workflows: Workflows;
+  activityService: ActivityService<Service>;
+  overrides?: CommandProps<Service>;
+  eventService: EventService;
+  workflowService: WorkflowService;
 }
 
 /**
@@ -63,11 +63,6 @@ export interface CommandHandlerProps
   init?(func: Function): void;
 }
 
-export interface ICommands {
-  configureInvokeHttpServiceApi(func: Function): void;
-  grantInvokeHttpServiceApi(grantable: IGrantable): void;
-}
-
 export type ServiceCommands<Service> = {
   default: Function;
 } & {
@@ -78,7 +73,7 @@ export interface SystemCommands {
   [key: string]: Function;
 }
 
-export class Commands<Service> implements ICommands {
+export class CommandService<Service = any> {
   /**
    * API Gateway for providing service api
    */
@@ -105,27 +100,28 @@ export class Commands<Service> implements ICommands {
   constructor(private props: CommandsProps<Service>) {
     const self = this;
 
-    const internalApiRoutes: InternalApiRoutes = this.props.build.api;
+    const internalApiRoutes: InternalApiRoutes =
+      this.props.build.system.eventualService.commands;
     const internalInit: {
       [route in keyof typeof internalApiRoutes]?: CommandMapping["init"];
     } = {
       "/_eventual/activities": (fn) => {
-        this.props.activities.configureWriteActivities(fn);
-        this.props.activities.configureCompleteActivity(fn);
+        this.props.activityService.configureWriteActivities(fn);
+        this.props.activityService.configureCompleteActivity(fn);
       },
-      "/_eventual/events": (fn) => this.props.events.configurePublish(fn),
+      "/_eventual/events": (fn) => this.props.eventService.configurePublish(fn),
       "/_eventual/executions": (fn) =>
-        this.props.workflows.configureReadExecutions(fn),
+        this.props.workflowService.configureReadExecutions(fn),
       "/_eventual/executions/{executionId}": (fn) =>
-        this.props.workflows.configureReadExecutions(fn),
+        this.props.workflowService.configureReadExecutions(fn),
       "/_eventual/executions/{executionId}/history": (fn) =>
-        this.props.workflows.configureReadExecutionHistory(fn),
+        this.props.workflowService.configureReadExecutionHistory(fn),
       "/_eventual/executions/{executionId}/signals": (fn) =>
-        this.props.workflows.configureSendSignal(fn),
+        this.props.workflowService.configureSendSignal(fn),
       "/_eventual/executions/{executionId}/workflow-history": (fn) =>
-        this.props.workflows.configureReadHistoryState(fn),
+        this.props.workflowService.configureReadHistoryState(fn),
       "/_eventual/workflows/{name}/executions": (fn) =>
-        this.props.workflows.configureStartExecution(fn),
+        this.props.workflowService.configureStartExecution(fn),
     };
 
     // Construct for grouping commands in the CDK tree
@@ -143,7 +139,7 @@ export class Commands<Service> implements ICommands {
           ({
             manifest,
             overrides:
-              props.commands?.[manifest.spec.name as CommandNames<Service>],
+              props.overrides?.[manifest.spec.name as CommandNames<Service>],
             init: (handler) => {
               // The handler is given an instance of the service client.
               // Allow it to access any of the methods on the service client by default.
@@ -154,7 +150,9 @@ export class Commands<Service> implements ICommands {
     );
 
     const systemCommands = synthesizeAPI(
-      (Object.entries(this.props.build.api) as any).map(
+      (
+        Object.entries(this.props.build.system.eventualService.commands) as any
+      ).map(
         ([path, manifest]: [
           keyof InternalApiRoutes,
           InternalCommandFunction
@@ -216,7 +214,7 @@ export class Commands<Service> implements ICommands {
                 `${command.internal ? "internal" : "command"}-${sanitizedName}`
               ),
               code: Code.fromAsset(
-                self.props.build.resolveFolder(manifest.file)
+                self.props.build.resolveFolder(manifest.entry)
               ),
               runtime: NODE_18_X,
               architecture: Architecture.ARM_64,

@@ -6,10 +6,6 @@ import type {
 } from "@eventual/core/internal";
 
 export interface BuildManifest {
-  workflows: {
-    orchestrator: BundledFunction;
-  };
-  api: InternalApiRoutes;
   /**
    * Activities declared within the Service.
    */
@@ -23,13 +19,19 @@ export interface BuildManifest {
    */
   subscriptions: SubscriptionFunction[];
   commands: CommandFunction[];
-  internal: {
-    activities: {
+  system: {
+    activityService: {
       fallbackHandler: BundledFunction<undefined>;
     };
-    scheduler: {
+    eventualService: {
+      commands: InternalApiRoutes;
+    };
+    schedulerService: {
       forwarder: BundledFunction;
       timerHandler: BundledFunction;
+    };
+    workflowService: {
+      orchestrator: BundledFunction;
     };
   };
 }
@@ -51,7 +53,7 @@ export interface InternalApiRoutes {
 }
 
 export type BundledFunction<Spec = undefined> = {
-  file: string;
+  entry: string;
   /**
    * Export name of the handler in the file.
    *

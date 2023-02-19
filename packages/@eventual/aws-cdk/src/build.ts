@@ -114,34 +114,36 @@ export async function buildService(request: BuildAWSRuntimeProps) {
   ] as const);
 
   const manifest: BuildManifest = {
-    workflows: {
-      orchestrator: {
-        file: orchestrator!,
-      },
-    },
     activities: activities,
     events: serviceSpec.events,
     subscriptions,
     commands: [
       ...commands,
       {
-        file: monoCommandFunction!,
+        entry: monoCommandFunction!,
         spec: {
           name: "default",
         },
       },
     ],
-    api: manifestInternalAPI() as any,
-    internal: {
-      activities: {
-        fallbackHandler: { file: activityFallbackHandler! },
+    system: {
+      activityService: {
+        fallbackHandler: { entry: activityFallbackHandler! },
       },
-      scheduler: {
+      eventualService: {
+        commands: manifestInternalAPI() as any,
+      },
+      schedulerService: {
         forwarder: {
-          file: scheduleForwarder!,
+          entry: scheduleForwarder!,
         },
         timerHandler: {
-          file: timerHandler!,
+          entry: timerHandler!,
+        },
+      },
+      workflowService: {
+        orchestrator: {
+          entry: orchestrator!,
         },
       },
     },
@@ -412,7 +414,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
             passThrough: true,
             internal: true,
           },
-          file: props.file,
+          entry: props.file,
         } satisfies InternalCommandFunction,
       ] as const;
     }

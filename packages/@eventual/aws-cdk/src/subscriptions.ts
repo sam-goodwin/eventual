@@ -8,11 +8,12 @@ import { Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
 import type { SubscriptionFunction } from "./build-manifest";
-import type { Events } from "./events";
+import type { EventService } from "./event-service";
 import type { ServiceConstructProps } from "./service";
-import { ICommands } from "./commands";
+import { CommandService } from "./command-service";
 import { ServiceFunction } from "./service-function";
 import type { KeysOfType } from "./utils";
+import { LazyInterface } from "./proxy-construct";
 
 export type SubscriptionNames<Service> = KeysOfType<
   Service,
@@ -32,10 +33,10 @@ export interface SubscriptionsProps<S = any> extends ServiceConstructProps {
    */
   readonly subscriptions?: SubscriptionOverrides<S>;
   /**
-   * The Service's {@link Events} repository.
+   * The Service's {@link EventService} repository.
    */
-  readonly events: Events;
-  readonly commands: ICommands;
+  readonly eventService: EventService;
+  readonly commandService: LazyInterface<CommandService>;
 }
 
 export type Subscriptions<Service> = {
@@ -61,7 +62,7 @@ export const Subscriptions: {
           sub.spec.name,
           new Subscription(subscriptionsServiceScope, sub.spec.name, {
             build: props.build,
-            bus: props.events.bus,
+            bus: props.eventService.bus,
             serviceName: props.serviceName,
             subscription: sub,
             overrides:
@@ -79,13 +80,13 @@ export const Subscriptions: {
     Object.assign(this, subscriptions);
 
     handlers.forEach((handler) => {
-      props.events.configurePublish(handler);
+      props.eventService.configurePublish(handler);
 
       // allows the access to all of the operations on the injected service client
       props.service.configureForServiceClient(handler);
 
       // allow http access to the service client
-      props.commands.configureInvokeHttpServiceApi(handler);
+      props.commandService.configureInvokeHttpServiceApi(handler);
     });
   }
 } as any;
@@ -122,13 +123,16 @@ export class Subscription extends Construct implements IGrantable {
       build: props.build,
       serviceName: props.serviceName,
       functionNameSuffix: subscriptionServiceFunctionSuffix(subscription.name),
-      overrides: {
+      // defaults are applied
+      defaults: {
         deadLetterQueue: this.deadLetterQueue,
         deadLetterQueueEnabled: true,
-        ...props.overrides,
+        environment: props.environment,
       },
-      environment: props.environment,
+      // then runtime props
       runtimeProps: props.subscription.spec.props,
+      // then overrides
+      overrides: props.overrides,
       bundledFunction: props.subscription,
     });
 
