@@ -78,14 +78,17 @@ export class Scheduler implements IScheduler {
   public readonly dlq: Queue;
 
   constructor(private props: SchedulerProps) {
-    const schedulerSystemScope = new Construct(props.systemScope, "Scheduler");
+    const schedulerServiceScope = new Construct(
+      props.systemScope,
+      "SchedulerService"
+    );
 
     this.schedulerGroup = new ScheduleGroup(
-      schedulerSystemScope,
+      schedulerServiceScope,
       "ScheduleGroup"
     );
 
-    this.schedulerRole = new Role(schedulerSystemScope, "SchedulerRole", {
+    this.schedulerRole = new Role(schedulerServiceScope, "SchedulerRole", {
       assumedBy: new ServicePrincipal("scheduler.amazonaws.com", {
         conditions: {
           ArnEquals: {
@@ -95,13 +98,13 @@ export class Scheduler implements IScheduler {
       }),
     });
 
-    this.dlq = new Queue(schedulerSystemScope, "DeadLetterQueue");
+    this.dlq = new Queue(schedulerServiceScope, "DeadLetterQueue");
     this.dlq.grantSendMessages(this.schedulerRole);
 
-    this.queue = new Queue(schedulerSystemScope, "Queue");
+    this.queue = new Queue(schedulerServiceScope, "Queue");
 
     // TODO: handle failures to a DLQ - https://github.com/functionless/eventual/issues/40
-    this.forwarder = new Function(schedulerSystemScope, "Forwarder", {
+    this.forwarder = new Function(schedulerServiceScope, "Forwarder", {
       code: props.build.getCode(props.build.internal.scheduler.forwarder.file),
       ...baseFnProps,
       handler: "index.handle",
@@ -110,7 +113,7 @@ export class Scheduler implements IScheduler {
     // Allow the scheduler to create workflow tasks.
     this.forwarder.grantInvoke(this.schedulerRole);
 
-    this.handler = new Function(schedulerSystemScope, "handler", {
+    this.handler = new Function(schedulerServiceScope, "handler", {
       code: props.build.getCode(
         props.build.internal.scheduler.timerHandler.file
       ),

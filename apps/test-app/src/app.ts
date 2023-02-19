@@ -45,7 +45,7 @@ const bench = new aws_lambda_nodejs.NodejsFunction(stack, "BenchmarkFunc", {
   },
 });
 
-benchService.system.commands.grantInvokeHttpServiceApi(bench);
+benchService.grantInvokeHttpServiceApi(bench);
 
 const accountTable = new aws_dynamodb.Table(stack, "Accounts", {
   partitionKey: {

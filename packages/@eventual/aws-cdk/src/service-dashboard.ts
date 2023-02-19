@@ -31,17 +31,19 @@ export class ServiceDashboard extends Construct {
           new GraphWidget({
             title: `Health of the Orchestrator's Lambda Function`,
             left: [
-              service.system.workflows.orchestrator.metricInvocations(),
-              service.system.workflows.orchestrator.metricErrors(),
-              service.system.workflows.orchestrator.metricThrottles(),
+              service.system.workflowService.orchestrator.metricInvocations(),
+              service.system.workflowService.orchestrator.metricErrors(),
+              service.system.workflowService.orchestrator.metricThrottles(),
             ],
-            right: [service.system.workflows.orchestrator.metricDuration()],
+            right: [
+              service.system.workflowService.orchestrator.metricDuration(),
+            ],
             width: 12,
           }),
           new GraphWidget({
             title: `How well the Orchestrator FIFO Queue is keeping up`,
             left: [
-              service.system.workflows.queue.metricApproximateAgeOfOldestMessage(
+              service.system.workflowService.queue.metricApproximateAgeOfOldestMessage(
                 {
                   label:
                     "Approximate age of oldest message in the Orchestrator's SQS FIFO Queue",
@@ -72,7 +74,7 @@ export class ServiceDashboard extends Construct {
           new GraphWidget({
             title: `Size and timing impact of the History S3 Object on the Orchestrator`,
             left: [
-              service.system.workflows.orchestrator.metricDuration({
+              service.system.workflowService.orchestrator.metricDuration({
                 label: "Time taken to process a batch of messages",
               }),
               service.metricLoadHistoryDuration({

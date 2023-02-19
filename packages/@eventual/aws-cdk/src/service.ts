@@ -26,10 +26,8 @@ import {
 import { IEventBus } from "aws-cdk-lib/aws-events/index.js";
 import {
   AccountRootPrincipal,
-  CompositePrincipal,
   Effect,
   IGrantable,
-  IPrincipal,
   PolicyStatement,
   Role,
 } from "aws-cdk-lib/aws-iam";
@@ -37,6 +35,7 @@ import { Function } from "aws-cdk-lib/aws-lambda";
 import { LogGroup } from "aws-cdk-lib/aws-logs/index.js";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
+import openapi from "openapi3-ts";
 import path from "path";
 import {
   Activities,
@@ -45,7 +44,13 @@ import {
   ServiceActivities,
 } from "./activities.js";
 import { BuildOutput, buildServiceSync } from "./build";
-import { CommandProps, Commands, ICommands, ServiceCommands } from "./commands";
+import {
+  CommandProps,
+  Commands,
+  ICommands,
+  ServiceCommands,
+  SystemCommands,
+} from "./commands";
 import { Events } from "./events";
 import { grant } from "./grant";
 import { lazyInterface } from "./proxy-construct";
@@ -129,6 +134,11 @@ export interface IService {
   configureForServiceClient(func: Function): void;
 
   configureServiceName(func: Function): void;
+
+  /**
+   * Grants permission to use the {@link AWSHttpEventualClient} commands.
+   */
+  grantInvokeHttpServiceApi(grantable: IGrantable): void;
 
   /**
    * The time taken to run the workflow's function to advance execution of the workflow.
@@ -222,49 +232,62 @@ export interface LoggingProps {}
 
 export class Service<S = any> extends Construct implements IService {
   /**
-   * Name of this Service.
-   */
-  public readonly serviceName: string;
-  public readonly bus: IEventBus;
-  public readonly gateway: HttpApi;
-  /**
    * The subsystem that controls activities.
    */
   public readonly activities: ServiceActivities<S>;
   /**
-   * This {@link Service}'s API Gateway.
+   * Bus which transports events in and out of the service.
+   */
+  public readonly bus: IEventBus;
+  /**
+   * Commands defined by the service.
    */
   public readonly commands: ServiceCommands<S>;
+  /**
+   * API Gateway which serves the service commands and the system commands.
+   */
+  public readonly gateway: HttpApi;
+  /**
+   * Name of this Service.
+   */
+  public readonly serviceName: string;
+  /**
+   * This {@link Service}'s API Gateway.
+   */
+  public readonly specification: openapi.OpenAPIObject;
   /**
    * The Subscriptions within this Service.
    */
   public readonly subscriptions: Subscriptions<S>;
+  /**
+   * Log group which workflow executions write to.
+   */
   public readonly workflowLogGroup: LogGroup;
+
+  private readonly events: Events;
+  private readonly _commands: Commands<S>;
+
   public readonly system: {
     /**
      * The subsystem that controls workflows.
      */
-    readonly workflows: Workflows;
-    readonly activities: Activities<S>;
-    readonly commands: Commands<S>;
-    /**
-     * This {@link Service}'s {@link Events} that can be published and subscribed to.
+    readonly workflowService: Workflows;
+    readonly activityService: Activities<S>;
+    /**`
+     * The subsystem for schedules and timers.
      */
-    readonly events: Events;
+    readonly schedulerService: Scheduler;
     /**
      * The {@link AppSec} inferred from the application code.
      */
     readonly build: BuildOutput;
+    readonly systemCommands: SystemCommands;
     /**
      * A single-table used for execution data and granular workflow events/
      *
      * TODO: move this to workflows
      */
     readonly table: Table;
-    /**
-     * The subsystem for schedules and timers.
-     */
-    readonly scheduler: Scheduler;
     /**
      * A SSM parameter containing data about this service.
      */
@@ -275,8 +298,6 @@ export class Service<S = any> extends Construct implements IService {
     readonly accessRole: Role;
   };
 
-  public readonly grantPrincipal: IPrincipal;
-
   constructor(scope: Construct, id: string, props: ServiceProps<S>) {
     super(scope, id);
 
@@ -284,6 +305,7 @@ export class Service<S = any> extends Construct implements IService {
 
     const serviceScope = this;
     const systemScope = new Construct(this, "System");
+    const eventualServiceScope = new Construct(this, "EventualService");
 
     const build = buildServiceSync({
       serviceName: this.serviceName,
@@ -323,10 +345,11 @@ export class Service<S = any> extends Construct implements IService {
       serviceName: this.serviceName,
       serviceScope,
       systemScope,
+      eventualServiceScope,
     };
 
-    const events = new Events(serviceConstructProps);
-    this.bus = events.bus;
+    this.events = new Events(serviceConstructProps);
+    this.bus = this.events.bus;
 
     const activities = new Activities<S>({
       ...serviceConstructProps,
@@ -340,7 +363,7 @@ export class Service<S = any> extends Construct implements IService {
 
     const workflows = new Workflows({
       activities: activities,
-      events,
+      events: this.events,
       scheduler: proxyScheduler,
       table,
       ...serviceConstructProps,
@@ -356,45 +379,37 @@ export class Service<S = any> extends Construct implements IService {
     });
     proxyScheduler._bind(scheduler);
 
-    const commands = new Commands({
+    this._commands = new Commands({
       activities: activities,
       commands: props.commands,
-      events,
+      events: this.events,
       workflows,
       ...serviceConstructProps,
     });
-    commandsProxy._bind(commands);
-    this.commands = commands.serviceCommands;
-    this.gateway = commands.gateway;
+    commandsProxy._bind(this._commands);
+    this.commands = this._commands.serviceCommands;
+    this.gateway = this._commands.gateway;
+    this.specification = this._commands.specification;
 
     this.subscriptions = new Subscriptions({
-      commands,
-      events,
+      commands: this._commands,
+      events: this.events,
       subscriptions: props.subscriptions,
       ...serviceConstructProps,
     });
 
-    this.grantPrincipal = new CompositePrincipal(
-      // when granting permissions to the service,
-      // propagate them to the following principals
-      commands.grantPrincipal,
-      ...this.subscriptionsList.flatMap(
-        (sub) => sub.handler.role?.grantPrincipal!
-      )
-    );
-
-    const accessRole = new Role(systemScope, "AccessRole", {
+    const accessRole = new Role(eventualServiceScope, "AccessRole", {
       roleName: `eventual-cli-${this.serviceName}`,
       assumedBy: new AccountRootPrincipal(),
     });
-    commands.grantInvokeHttpServiceApi(accessRole);
+    this._commands.grantInvokeHttpServiceApi(accessRole);
     workflows.grantFilterLogEvents(accessRole);
 
     // service metadata
-    const serviceDataSSM = new StringParameter(systemScope, "ServiceMetadata", {
+    const serviceDataSSM = new StringParameter(eventualServiceScope, "ServiceMetadata", {
       parameterName: `/eventual/services/${this.serviceName}`,
       stringValue: JSON.stringify({
-        apiEndpoint: commands.gateway.apiEndpoint,
+        apiEndpoint: this._commands.gateway.apiEndpoint,
         eventBusArn: this.bus.eventBusArn,
         workflowExecutionLogGroupName: workflows.logGroup.logGroupName,
       }),
@@ -402,21 +417,24 @@ export class Service<S = any> extends Construct implements IService {
 
     serviceDataSSM.grantRead(accessRole);
     this.system = {
-      activities,
+      activityService: activities,
       build,
       accessRole: accessRole,
-      commands,
-      events,
-      scheduler,
+      schedulerService: scheduler,
+      systemCommands: this._commands.systemCommands,
       serviceMetadataSSM: serviceDataSSM,
       table,
-      workflows,
+      workflowService: workflows,
     };
     proxyService._bind(this);
   }
 
   public get activitiesList(): Subscription[] {
     return Object.values(this.activities);
+  }
+
+  public get commandsList(): Function[] {
+    return Object.values(this.commands);
   }
 
   public get subscriptionsList(): Subscription[] {
@@ -449,13 +467,11 @@ export class Service<S = any> extends Construct implements IService {
     this.activitiesList.forEach(({ handler }) =>
       handler.addEnvironment(key, value)
     );
-    this.system.commands.handlers.forEach((handler) =>
-      handler.addEnvironment(key, value)
-    );
+    this.commandsList.forEach((handler) => handler.addEnvironment(key, value));
     this.subscriptionsList.forEach(({ handler }) =>
       handler.addEnvironment(key, value)
     );
-    this.system.workflows.orchestrator.addEnvironment(key, value);
+    this.system.workflowService.orchestrator.addEnvironment(key, value);
   }
 
   /**
@@ -463,49 +479,54 @@ export class Service<S = any> extends Construct implements IService {
    */
 
   public configureStartExecution(func: Function) {
-    this.system.workflows.configureStartExecution(func);
+    this.system.workflowService.configureStartExecution(func);
   }
 
   @grant()
   public grantStartExecution(grantable: IGrantable) {
-    this.system.workflows.grantStartExecution(grantable);
+    this.system.workflowService.grantStartExecution(grantable);
   }
 
   public configureReadExecutions(func: Function) {
-    this.system.workflows.configureReadExecutions(func);
-    this.system.workflows.configureReadExecutionHistory(func);
-    this.system.workflows.configureReadHistoryState(func);
+    this.system.workflowService.configureReadExecutions(func);
+    this.system.workflowService.configureReadExecutionHistory(func);
+    this.system.workflowService.configureReadHistoryState(func);
   }
   @grant()
   public grantReadExecutions(grantable: IGrantable) {
-    this.system.workflows.grantReadExecutions(grantable);
+    this.system.workflowService.grantReadExecutions(grantable);
   }
 
   public configureSendSignal(func: Function) {
-    this.system.workflows.configureSendSignal(func);
+    this.system.workflowService.configureSendSignal(func);
   }
 
   @grant()
   public grantSendSignal(grantable: IGrantable) {
-    this.system.workflows.grantSendSignal(grantable);
+    this.system.workflowService.grantSendSignal(grantable);
   }
 
   public configurePublishEvents(func: Function) {
-    this.system.events.configurePublish(func);
+    this.events.configurePublish(func);
   }
 
   @grant()
   public grantPublishEvents(grantable: IGrantable) {
-    this.system.events.grantPublish(grantable);
+    this.events.grantPublish(grantable);
+  }
+
+  @grant()
+  public grantInvokeHttpServiceApi(grantable: IGrantable) {
+    this._commands.grantInvokeHttpServiceApi(grantable);
   }
 
   public configureUpdateActivity(func: Function) {
     // complete activities
-    this.system.activities.configureCompleteActivity(func);
+    this.system.activityService.configureCompleteActivity(func);
     // cancel
-    this.system.activities.configureWriteActivities(func);
+    this.system.activityService.configureWriteActivities(func);
     // heartbeat
-    this.system.activities.configureSendHeartbeat(func);
+    this.system.activityService.configureSendHeartbeat(func);
   }
 
   public configureForServiceClient(func: Function) {
@@ -661,4 +682,5 @@ export interface ServiceConstructProps {
   readonly serviceName: string;
   readonly serviceScope: Construct;
   readonly systemScope: Construct;
+  readonly eventualServiceScope: Construct;
 }

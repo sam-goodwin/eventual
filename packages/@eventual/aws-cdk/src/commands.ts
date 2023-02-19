@@ -78,7 +78,7 @@ export interface SystemCommands {
   [key: string]: Function;
 }
 
-export class Commands<Service> implements ICommands, IGrantable {
+export class Commands<Service> implements ICommands {
   /**
    * API Gateway for providing service api
    */
@@ -92,8 +92,6 @@ export class Commands<Service> implements ICommands, IGrantable {
    */
   readonly serviceCommands: ServiceCommands<Service>;
   readonly systemCommands: SystemCommands;
-
-  readonly grantPrincipal: aws_iam.IPrincipal;
 
   /**
    * Individual API Handler Lambda Functions handling only a single API route. These handlers
@@ -131,20 +129,13 @@ export class Commands<Service> implements ICommands, IGrantable {
     };
 
     // Construct for grouping commands in the CDK tree
-    // Service => System => Commands => [all system commands]
-    const commandsSystemScope = new Construct(props.systemScope, "Commands");
+    // Service => System => EventualService => Commands => [all system commands]
+    const commandsSystemScope = new Construct(
+      props.eventualServiceScope,
+      "Commands"
+    );
     // Service => Commands
     const commandsScope = new Construct(props.serviceScope, "Commands");
-
-    const role = new aws_iam.Role(commandsSystemScope, "DefaultRole", {
-      assumedBy: new aws_iam.ServicePrincipal("lambda.amazonaws.com"),
-      managedPolicies: [
-        aws_iam.ManagedPolicy.fromAwsManagedPolicyName(
-          "service-role/AWSLambdaBasicExecutionRole"
-        ),
-      ],
-    });
-    this.grantPrincipal = role;
 
     const serviceCommands = synthesizeAPI(
       this.props.build.commands.map(
@@ -244,7 +235,7 @@ export class Commands<Service> implements ICommands, IGrantable {
                 overrides?.handler ?? command.internal
                   ? "index.handler"
                   : "index.default",
-              role: command.internal ? undefined : overrides?.role ?? role,
+              role: command.internal ? undefined : overrides?.role,
             }
           );
 
