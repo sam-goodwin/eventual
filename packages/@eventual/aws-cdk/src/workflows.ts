@@ -170,7 +170,7 @@ export interface IWorkflows {
 /**
  * Subsystem which manages and orchestrates workflows and workflow executions.
  */
-export class Workflows implements IWorkflows, IGrantable {
+export class Workflows implements IWorkflows {
   public readonly orchestrator: Function;
   public readonly queue: IQueue;
   public readonly history: IBucket;
@@ -267,10 +267,6 @@ export class Workflows implements IWorkflows, IGrantable {
     });
 
     this.configureOrchestrator();
-  }
-
-  public get grantPrincipal() {
-    return this.orchestrator.grantPrincipal;
   }
 
   public pipeToWorkflowQueue(

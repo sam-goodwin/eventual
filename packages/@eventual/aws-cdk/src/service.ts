@@ -28,6 +28,7 @@ import {
   AccountRootPrincipal,
   Effect,
   IGrantable,
+  IPrincipal,
   PolicyStatement,
   Role,
 } from "aws-cdk-lib/aws-iam";
@@ -51,6 +52,7 @@ import {
   ServiceCommands,
   SystemCommands,
 } from "./commands";
+import { DeepCompositePrincipal } from "./deep-composite-principal.js";
 import { Events } from "./events";
 import { grant } from "./grant";
 import { lazyInterface } from "./proxy-construct";
@@ -230,7 +232,10 @@ export interface ServiceProps<Service = any> {
 
 export interface LoggingProps {}
 
-export class Service<S = any> extends Construct implements IService {
+export class Service<S = any>
+  extends Construct
+  implements IService, IGrantable
+{
   /**
    * The subsystem that controls activities.
    */
@@ -263,6 +268,10 @@ export class Service<S = any> extends Construct implements IService {
    * Log group which workflow executions write to.
    */
   public readonly workflowLogGroup: LogGroup;
+  public grantPrincipal: IPrincipal;
+  public commandsPrincipal: IPrincipal;
+  public activitiesPrincipal: IPrincipal;
+  public subscriptionsPrincipal: IPrincipal;
 
   private readonly events: Events;
   private readonly _commands: Commands<S>;
@@ -406,14 +415,33 @@ export class Service<S = any> extends Construct implements IService {
     workflows.grantFilterLogEvents(accessRole);
 
     // service metadata
-    const serviceDataSSM = new StringParameter(eventualServiceScope, "ServiceMetadata", {
-      parameterName: `/eventual/services/${this.serviceName}`,
-      stringValue: JSON.stringify({
-        apiEndpoint: this._commands.gateway.apiEndpoint,
-        eventBusArn: this.bus.eventBusArn,
-        workflowExecutionLogGroupName: workflows.logGroup.logGroupName,
-      }),
-    });
+    const serviceDataSSM = new StringParameter(
+      eventualServiceScope,
+      "ServiceMetadata",
+      {
+        parameterName: `/eventual/services/${this.serviceName}`,
+        stringValue: JSON.stringify({
+          apiEndpoint: this._commands.gateway.apiEndpoint,
+          eventBusArn: this.bus.eventBusArn,
+          workflowExecutionLogGroupName: workflows.logGroup.logGroupName,
+        }),
+      }
+    );
+
+    this.commandsPrincipal = new DeepCompositePrincipal(
+      ...this.commandsList.map((f) => f.grantPrincipal)
+    );
+    this.activitiesPrincipal = new DeepCompositePrincipal(
+      ...this.activitiesList.map((f) => f.grantPrincipal)
+    );
+    this.subscriptionsPrincipal = new DeepCompositePrincipal(
+      ...this.subscriptionsList.map((f) => f.grantPrincipal)
+    );
+    this.grantPrincipal = new DeepCompositePrincipal(
+      this.commandsPrincipal,
+      this.activitiesPrincipal,
+      this.subscriptionsPrincipal
+    );
 
     serviceDataSSM.grantRead(accessRole);
     this.system = {

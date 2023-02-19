@@ -132,7 +132,7 @@ export class Subscription extends Construct implements IGrantable {
       bundledFunction: props.subscription,
     });
 
-    this.grantPrincipal = this.handler.role!;
+    this.grantPrincipal = this.handler.grantPrincipal;
 
     if (subscription.filters.length > 0) {
       // configure a Rule to route all subscribed events to the eventHandler
