@@ -164,7 +164,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     Type extends "subscriptions" | "commands" | "activities"
   >(specPath: string, type: Type): Promise<BundledFunction<SpecFor<Type>>[]> {
     return await Promise.all(
-      serviceSpec[type].map(async (spec) => {
+      (serviceSpec[type] as SpecFor<Type>[]).map(async (spec) => {
         const [pathPrefix, entry, serviceType, name, monoFunction] =
           type === "commands"
             ? ([
@@ -190,17 +190,18 @@ export async function buildService(request: BuildAWSRuntimeProps) {
                 monoActivityFunction!,
               ] as const);
 
-        const file = await bundleFile(
-          specPath,
+        return {
+          entry: await bundleFile(
+            specPath,
+            spec,
+            pathPrefix,
+            entry,
+            serviceType,
+            name,
+            monoFunction
+          ),
           spec,
-          pathPrefix,
-          entry,
-          serviceType,
-          name,
-          monoFunction
-        );
-
-        return { file, spec } as any;
+        };
       })
     );
   }

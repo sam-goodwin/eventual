@@ -12,7 +12,7 @@ export interface ServiceFunctionProps {
   overrides?: Omit<Partial<FunctionProps>, "code" | "handler" | "functionName">;
   defaults?: Omit<Partial<FunctionProps>, "code" | "handler" | "functionName">;
   build: BuildOutput;
-  bundledFunction: BundledFunction<any>;
+  bundledFunction: BundledFunction<undefined> | BundledFunction<any>;
   runtimeProps?: FunctionRuntimeProps;
   serviceName: string;
   functionNameSuffix: string;

@@ -60,13 +60,7 @@ export type BundledFunction<Spec = undefined> = {
    * @default index.default
    */
   handler?: string;
-} & (Spec extends undefined
-  ? {
-      spec?: Spec;
-    }
-  : {
-      spec: Spec;
-    });
+} & ([Spec] extends [object] ? { spec: Spec } : { spec?: never });
 
 export interface ExportedEventHandlerFunction extends SubscriptionFunction {
   exportName: string;
