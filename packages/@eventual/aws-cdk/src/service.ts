@@ -429,15 +429,24 @@ export class Service<S = any>
       }
     );
 
-    this.commandsPrincipal = this.commandsList.length > 0 ? new DeepCompositePrincipal(
-      ...this.commandsList.map((f) => f.grantPrincipal)
-    ): new UnknownPrincipal({resource: this });
-    this.activitiesPrincipal = this.commandsList.length > 0 ? new DeepCompositePrincipal(
-      ...this.activitiesList.map((f) => f.grantPrincipal)
-    ) : new UnknownPrincipal({resource: this });
-    this.subscriptionsPrincipal = this.commandsList.length > 0 ? new DeepCompositePrincipal(
-      ...this.subscriptionsList.map((f) => f.grantPrincipal)
-    ): new UnknownPrincipal({resource: this });
+    this.commandsPrincipal =
+      this.commandsList.length > 0
+        ? new DeepCompositePrincipal(
+            ...this.commandsList.map((f) => f.grantPrincipal)
+          )
+        : new UnknownPrincipal({ resource: this });
+    this.activitiesPrincipal =
+      this.activitiesList.length > 0
+        ? new DeepCompositePrincipal(
+            ...this.activitiesList.map((f) => f.grantPrincipal)
+          )
+        : new UnknownPrincipal({ resource: this });
+    this.subscriptionsPrincipal =
+      this.subscriptionsList.length > 0
+        ? new DeepCompositePrincipal(
+            ...this.subscriptionsList.map((f) => f.grantPrincipal)
+          )
+        : new UnknownPrincipal({ resource: this });
     this.grantPrincipal = new DeepCompositePrincipal(
       this.commandsPrincipal,
       this.activitiesPrincipal,
@@ -453,7 +462,7 @@ export class Service<S = any>
       systemCommands: this._commands.systemCommands,
       serviceMetadataSSM: serviceDataSSM,
       table,
-=      workflowService: workflows,
+      workflowService: workflows,
     };
     proxyService._bind(this);
   }
