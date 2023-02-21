@@ -280,7 +280,6 @@ export class MockActivity<A extends Activity<any, any>>
     | ActivityResolution<ActivityArguments<A>, ActivityOutput<A>>
     | undefined;
 
-  // TODO: should this be the ActivityFunction or the ActivityHandler?
   constructor(private activity: A) {}
 
   public call(...args: ActivityArguments<A>) {

@@ -1,12 +1,13 @@
-import { Slack, SlackCredentials } from "@eventual/integrations-slack";
 import { AWSSecret } from "@eventual/aws-client";
 import {
   duration,
+  ExecutionID,
   expectSignal,
   JsonSecret,
   sendSignal,
   workflow,
 } from "@eventual/core";
+import { Slack, SlackCredentials } from "@eventual/integrations-slack";
 import ms from "ms";
 
 const slack = new Slack("my-slack-connection", {
@@ -80,7 +81,7 @@ const humanTask = workflow(
 );
 
 slack.command("/ack", async (request) => {
-  const executionId = request.command.text;
+  const executionId = request.command.text as ExecutionID;
   await sendSignal(executionId, "ack");
   request.ack();
 });

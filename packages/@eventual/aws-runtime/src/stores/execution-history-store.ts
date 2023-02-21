@@ -4,6 +4,7 @@ import {
   DynamoDBClient,
 } from "@aws-sdk/client-dynamodb";
 import {
+  ExecutionID,
   ListExecutionEventsRequest,
   ListExecutionEventsResponse,
   SortOrder,
@@ -18,7 +19,7 @@ import { queryPageWithToken } from "../utils.js";
 
 export interface AWSExecutionHistoryStoreProps {
   readonly dynamo: DynamoDBClient;
-  readonly tableName: LazyValue<string>;
+  readonly executionHistoryTableName: LazyValue<string>;
 }
 
 export class AWSExecutionHistoryStore extends ExecutionHistoryStore {
@@ -30,18 +31,20 @@ export class AWSExecutionHistoryStore extends ExecutionHistoryStore {
    * Writes events as a batch into the execution history table.
    */
   public async putEvents(
-    executionId: string,
+    executionId: ExecutionID,
     events: WorkflowEvent[]
   ): Promise<void> {
     // TODO: partition the batches
     await this.props.dynamo.send(
       new BatchWriteItemCommand({
         RequestItems: {
-          [getLazy(this.props.tableName)]: events.map((event) => ({
-            PutRequest: {
-              Item: createEventRecord(executionId, event),
-            },
-          })),
+          [getLazy(this.props.executionHistoryTableName)]: events.map(
+            (event) => ({
+              PutRequest: {
+                Item: createEventRecord(executionId, event),
+              },
+            })
+          ),
         },
       })
     );
@@ -63,14 +66,14 @@ export class AWSExecutionHistoryStore extends ExecutionHistoryStore {
         nextToken: request.nextToken,
       },
       {
-        TableName: getLazy(this.props.tableName),
+        TableName: getLazy(this.props.executionHistoryTableName),
         KeyConditionExpression: "pk = :pk AND begins_with ( sk, :sk )",
         FilterExpression: after ? "#ts > :tsUpper" : undefined,
         ScanIndexForward: request.sortDirection !== SortOrder.Desc,
         ExpressionAttributeValues: {
-          ":pk": { S: EventRecord.PARTITION_KEY },
+          ":pk": { S: EventRecord.partitionKey(request.executionId as ExecutionID) },
           ":sk": {
-            S: EventRecord.sortKey(request.executionId, "", ""),
+            S: EventRecord.SORT_KEY_PREFIX,
           },
           ...(after
             ? {
@@ -100,45 +103,38 @@ export class AWSExecutionHistoryStore extends ExecutionHistoryStore {
 }
 
 interface EventRecord {
-  pk: { S: typeof EventRecord.PARTITION_KEY };
-  sk: { S: `${typeof EventRecord.SORT_KEY_PREFIX}${string}$${string}` };
+  pk: { S: ExecutionID };
+  sk: { S: `$${string}` };
   event: AttributeValue.SMember;
   // not all events have an ID to save space. Use getEventId to get a unique ID.
   id?: AttributeValue.SMember;
-  executionId: AttributeValue.SMember;
   time: AttributeValue.SMember;
 }
 
 const EventRecord = {
-  PARTITION_KEY: "ExecutionHistory",
-  SORT_KEY_PREFIX: `Event$`,
-  sortKey(
-    executionId: string,
-    timestamp: string,
-    id: string
-  ): `${typeof this.SORT_KEY_PREFIX}${string}$${string}` {
-    return `${this.SORT_KEY_PREFIX}${executionId}$${timestamp}${id}`;
+  partitionKey: (executionId: ExecutionID) => executionId,
+  SORT_KEY_PREFIX: `$` as const,
+  sortKey(timestamp: string, id: string): `$${string}` {
+    return `${EventRecord.SORT_KEY_PREFIX}${timestamp}${id}`;
   },
 };
 
 function createEventRecord(
-  executionId: string,
+  executionId: ExecutionID,
   workflowEvent: WorkflowEvent
 ): EventRecord & Record<string, AttributeValue> {
   const { id, timestamp, ...event } = workflowEvent as WorkflowEvent &
     Partial<BaseEvent>;
   return {
-    pk: { S: EventRecord.PARTITION_KEY },
+    pk: { S: EventRecord.partitionKey(executionId) },
     sk: {
       S: EventRecord.sortKey(
-        executionId,
         workflowEvent.timestamp,
         getEventId(workflowEvent)
       ),
     },
     // do not create an id property if it doesn't exist on the event.
     ...(id ? { id: { S: id } } : undefined),
-    executionId: { S: executionId },
     // only save the parts of the event not in the record.
     event: { S: JSON.stringify(event) },
     time: { S: workflowEvent.timestamp },

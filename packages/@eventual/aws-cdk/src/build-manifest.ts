@@ -2,7 +2,7 @@ import type { ActivitySpec } from "@eventual/core";
 import type {
   CommandSpec,
   EventSpec,
-  SubscriptionSpec,
+  SubscriptionSpec
 } from "@eventual/core/internal";
 
 export interface BuildManifest {

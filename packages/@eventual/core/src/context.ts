@@ -1,3 +1,5 @@
+import { ExecutionID } from "./execution.js";
+
 /**
  * Context values related to the current execution of the workflow.
  */
@@ -5,7 +7,7 @@ export interface ExecutionContext {
   /**
    * Computed, Unique ID of the execution.
    */
-  id: string;
+  id: ExecutionID;
   /**
    * Unique name of the execution, optionally provided in the startWorkflow call.
    */
@@ -13,7 +15,7 @@ export interface ExecutionContext {
   /**
    * ID of the parent execution if this is a child workflow
    */
-  parentId?: string;
+  parentId?: ExecutionID;
   /**
    * The ISO 8601 UTC time the execution started.
    */

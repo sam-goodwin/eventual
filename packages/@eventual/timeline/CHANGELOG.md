@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.19.0 (2023-02-21)
+
+### Features
+
+- bundled activities ([#290](https://github.com/functionless/eventual/issues/290)) ([e45e98a](https://github.com/functionless/eventual/commit/e45e98a56a000ec5ac0b5601806a7ee03381adfa))
+
 ## 0.18.4 (2023-02-16)
 
 **Note:** Version bump only for package @eventual/timeline

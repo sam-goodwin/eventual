@@ -116,12 +116,10 @@ new DebugDashboard(stack, "debug-dash", {
 
 new CfnOutput(stack, "roleArn", {
   value: role.roleArn,
-  exportName: "RoleArn",
 });
 
 new CfnOutput(stack, "serviceUrl", {
   value: testService.gateway.apiEndpoint,
-  exportName: "ServiceUrl",
 });
 
 new CfnOutput(stack, "chaosParamName", {
