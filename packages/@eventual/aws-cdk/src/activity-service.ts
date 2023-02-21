@@ -15,60 +15,25 @@ import { LambdaDestination } from "aws-cdk-lib/aws-lambda-destinations";
 import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
 import { ActivityFunction } from "./build-manifest";
+import { CommandService } from "./command-service";
 import { grant } from "./grant";
-import { IScheduler } from "./scheduler";
+import { LazyInterface } from "./proxy-construct";
+import { SchedulerService } from "./scheduler-service";
 import { ServiceConstructProps } from "./service";
-import { ICommands } from "./commands";
 import { ServiceFunction } from "./service-function";
 import { KeysOfType } from "./utils";
-import { IWorkflows } from "./workflows";
+import { WorkflowService } from "./workflow-service";
 
 export type ServiceActivities<Service> = Record<
-  keyof Pick<Service, ActivityNames<Service>>,
+  ActivityNames<Service>,
   Activity
 >;
 
 export interface ActivitiesProps<Service> extends ServiceConstructProps {
-  readonly workflows: IWorkflows;
-  readonly scheduler: IScheduler;
-  readonly commands: ICommands;
+  readonly workflowService: LazyInterface<WorkflowService>;
+  readonly schedulerService: LazyInterface<SchedulerService>;
+  readonly commandsService: LazyInterface<CommandService<Service>>;
   readonly overrides?: ActivityOverrides<Service>;
-}
-
-export interface IActivities {
-  configureStartActivity(func: Function): void;
-  grantStartActivity(grantable: IGrantable): void;
-
-  configureSendHeartbeat(func: Function): void;
-  grantSendHeartbeat(grantable: IGrantable): void;
-
-  /**
-   * {@link ActivitiesClient.sendSuccess} or {@link ActivitiesClient.sendFailure} for an activity.
-   */
-  configureCompleteActivity(func: Function): void;
-  /**
-   * {@link ActivitiesClient.sendSuccess} or {@link ActivitiesClient.sendFailure} for an activity.
-   */
-  grantCompleteActivity(grantable: IGrantable): void;
-
-  configureReadActivities(func: Function): void;
-  grantReadActivities(grantable: IGrantable): void;
-
-  /**
-   * Claim, Heartbeat, or Cancel an activity.
-   *
-   * Note: For the full heartbeat, use grantSendHeartbeat.
-   */
-  configureWriteActivities(func: Function): void;
-  /**
-   * Claim, Heartbeat, or Cancel an activity.
-   *
-   * Note: For the full heartbeat, use grantSendHeartbeat.
-   */
-  grantWriteActivities(grantable: IGrantable): void;
-
-  configureFullControl(func: Function): void;
-  grantFullControl(grantable: IGrantable): void;
 }
 
 export type ActivityNames<Service> = KeysOfType<Service, { kind: "Activity" }>;
@@ -78,13 +43,13 @@ export type ActivityNames<Service> = KeysOfType<Service, { kind: "Activity" }>;
  *
  * Activities are started by the {@link Workflow.orchestrator} and send back {@link WorkflowEvent}s on completion.
  */
-export class Activities<Service> implements IActivities {
+export class ActivityService<Service = any> {
   /**
    * Table which contains activity information for claiming, heartbeat, and cancellation.
    */
   public table: ITable;
   /**
-   * Function which executes all activities. The worker is invoked by the {@link Workflows.orchestrator}.
+   * Function which executes all activities. The worker is invoked by the {@link WorkflowService.orchestrator}.
    */
   public activities: ServiceActivities<Service>;
   /**
@@ -112,7 +77,7 @@ export class Activities<Service> implements IActivities {
       activityServiceScope,
       "FallbackHandler",
       {
-        bundledFunction: props.build.internal.activities.fallbackHandler,
+        bundledFunction: props.build.system.activityService.fallbackHandler,
         build: props.build,
         functionNameSuffix: activityServiceFunctionSuffix(
           `internal-fallback-handler`
@@ -127,7 +92,7 @@ export class Activities<Service> implements IActivities {
         const activity = new Activity(activityScope, act.spec.name, {
           activity: act,
           build: props.build,
-          codeFile: act.file,
+          codeFile: act.entry,
           fallbackHandler: this.fallbackHandler,
           serviceName: this.props.serviceName,
           environment: this.props.environment,
@@ -136,9 +101,9 @@ export class Activities<Service> implements IActivities {
 
         this.configureActivityWorker(activity.handler);
 
-        return [act.spec.name, activity];
+        return [act.spec.name, activity] as const;
       })
-    ) as Record<keyof Pick<Service, ActivityNames<Service>>, Activity>;
+    ) as ServiceActivities<Service>;
 
     this.configureActivityFallbackHandler();
   }
@@ -159,24 +124,24 @@ export class Activities<Service> implements IActivities {
   }
 
   public configureSendHeartbeat(func: Function) {
-    this.props.workflows.configureReadExecutions(func);
+    this.props.workflowService.configureReadExecutions(func);
     this.configureWriteActivities(func);
   }
 
   @grant()
   public grantSendHeartbeat(grantable: IGrantable) {
-    this.props.workflows.grantReadExecutions(grantable);
+    this.props.workflowService.grantReadExecutions(grantable);
     this.grantWriteActivities(grantable);
   }
 
   public configureCompleteActivity(func: Function) {
-    this.props.workflows.configureSubmitExecutionEvents(func);
+    this.props.workflowService.configureSubmitExecutionEvents(func);
     this.grantCompleteActivity(func);
   }
 
   @grant()
   public grantCompleteActivity(grantable: IGrantable) {
-    this.props.workflows.grantSubmitExecutionEvents(grantable);
+    this.props.workflowService.grantSubmitExecutionEvents(grantable);
   }
 
   /**
@@ -224,15 +189,15 @@ export class Activities<Service> implements IActivities {
     // claim activities
     this.configureWriteActivities(func);
     // report result back to the execution
-    this.props.workflows.configureSubmitExecutionEvents(func);
+    this.props.workflowService.configureSubmitExecutionEvents(func);
     // send logs to the execution log stream
-    this.props.workflows.configurePutWorkflowExecutionLogs(func);
+    this.props.workflowService.configurePutWorkflowExecutionLogs(func);
     // start heartbeat monitor
-    this.props.scheduler.configureScheduleTimer(func);
+    this.props.schedulerService.configureScheduleTimer(func);
 
     // allows access to any of the injected service client operations.
     this.props.service.configureForServiceClient(func);
-    this.props.commands.configureInvokeHttpServiceApi(func);
+    this.props.commandsService.configureInvokeHttpServiceApi(func);
     /**
      * Access to service name in the activity worker for metrics logging
      */
@@ -241,7 +206,9 @@ export class Activities<Service> implements IActivities {
 
   private configureActivityFallbackHandler() {
     // report result back to the execution
-    this.props.workflows.configureSubmitExecutionEvents(this.fallbackHandler);
+    this.props.workflowService.configureSubmitExecutionEvents(
+      this.fallbackHandler
+    );
   }
 
   private readonly ENV_MAPPINGS = {
@@ -284,21 +251,21 @@ export class Activity extends Construct implements IGrantable {
 
     this.handler = new ServiceFunction(this, "Worker", {
       build: props.build,
+      serviceName: props.serviceName,
       bundledFunction: props.activity,
       functionNameSuffix: activityServiceFunctionSuffix(
         props.activity.spec.name
       ),
-      overrides: {
+      defaults: {
         timeout: Duration.minutes(1),
-        ...props.overrides,
         // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
         retryAttempts: 0,
         // handler and recovers from error cases
         onFailure: new LambdaDestination(props.fallbackHandler),
+        environment: props.environment,
       },
-      serviceName: props.serviceName,
-      environment: props.environment,
       runtimeProps: props.activity.spec.options,
+      overrides: props.overrides,
     });
 
     this.grantPrincipal = this.handler.grantPrincipal;

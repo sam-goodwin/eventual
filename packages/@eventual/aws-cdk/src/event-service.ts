@@ -11,7 +11,7 @@ import { ServiceConstructProps } from "./service";
 
 export interface EventsProps extends ServiceConstructProps {}
 
-export class Events {
+export class EventService {
   /**
    * The {@link EventBus} containing all events flowing into and out of this {@link Service}.
    */

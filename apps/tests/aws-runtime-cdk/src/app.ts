@@ -36,8 +36,10 @@ const testService = new eventual.Service<typeof testServiceRuntime>(
     environment: {
       TEST_QUEUE_URL: testQueue.queueUrl,
     },
-    workflows: {
-      logLevel: LogLevel.DEBUG,
+    system: {
+      workflowService: {
+        logLevel: LogLevel.DEBUG,
+      },
     },
   }
 );
@@ -58,7 +60,7 @@ const pipeRole = new Role(stack, "pipeRole", {
 });
 
 testQueue.grantConsumeMessages(pipeRole);
-testQueue.grantSendMessages(testService);
+testQueue.grantSendMessages(testService.activities.asyncActivity);
 
 /**
  * Chaos Testing

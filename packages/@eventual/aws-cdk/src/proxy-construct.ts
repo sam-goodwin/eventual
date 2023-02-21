@@ -1,3 +1,5 @@
+import { KeysOfType } from "./utils";
+
 /**
  * A function which allows a one way interface to be lazily applied.
  *
@@ -15,7 +17,7 @@
  * lazyOneWay._bind({ setDate: (value) => { console.log(value); } });
  * ```
  */
-export function lazyInterface<Iter extends object>(): Iter & {
+export function lazyInterface<Iter extends object>(): LazyInterface<Iter> & {
   _bind: (real: Iter) => void;
 } {
   const calls: [keyof Iter, any[]][] = [];
@@ -47,3 +49,8 @@ export function lazyInterface<Iter extends object>(): Iter & {
     }
   ) as Iter & { _bind: () => void };
 }
+
+export type LazyInterface<Construct> = Pick<
+  Construct,
+  KeysOfType<Construct, Function>
+>;
