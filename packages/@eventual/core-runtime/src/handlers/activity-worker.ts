@@ -164,7 +164,7 @@ export function createActivityWorker({
                 `Processing ${activityHandle}.`
               );
 
-              const activity = activityProvider.getActivityHandler(
+              const activity = activityProvider.getActivity(
                 request.command.name
               );
 
@@ -213,7 +213,7 @@ export function createActivityWorker({
                       return await timed(
                         metrics,
                         ActivityMetrics.OperationDuration,
-                        () => activity(...request.command.args)
+                        () => activity.handler(...request.command.args)
                       );
                     }
                   );

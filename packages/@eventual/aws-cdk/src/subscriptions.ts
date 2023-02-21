@@ -1,5 +1,5 @@
-import { computeDurationSeconds } from "@eventual/core-runtime";
-import { aws_iam, Duration } from "aws-cdk-lib";
+import { subscriptionServiceFunctionSuffix } from "@eventual/aws-runtime";
+import { aws_iam } from "aws-cdk-lib";
 import { IEventBus, Rule } from "aws-cdk-lib/aws-events";
 import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";
 import type { IGrantable } from "aws-cdk-lib/aws-iam";
@@ -8,11 +8,12 @@ import { Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
 import type { SubscriptionFunction } from "./build-manifest";
-import type { Events } from "./events";
-import type { Service } from "./service";
-import type { Api } from "./service-api";
+import type { EventService } from "./event-service";
+import type { ServiceConstructProps } from "./service";
+import { CommandService } from "./command-service";
 import { ServiceFunction } from "./service-function";
 import type { KeysOfType } from "./utils";
+import { LazyInterface } from "./proxy-construct";
 
 export type SubscriptionNames<Service> = KeysOfType<
   Service,
@@ -26,32 +27,16 @@ export type SubscriptionOverrides<Service> = {
 export interface SubscriptionHandlerProps
   extends Omit<Partial<FunctionProps>, "code" | "handler" | "functionName"> {}
 
-export interface SubscriptionsProps<S = any> {
-  /**
-   * The built service describing the event subscriptions within the Service.
-   */
-  readonly build: BuildOutput;
-  /**
-   * The name of the Service this {@link Events} repository belongs to.
-   */
-  readonly serviceName: string;
-  /**
-   * Optional environment variables to add to the {@link Events.defaultHandler}.
-   *
-   * @default - no extra environment variables
-   */
-  readonly environment?: Record<string, string>;
+export interface SubscriptionsProps<S = any> extends ServiceConstructProps {
   /**
    * Configuration for individual Event Handlers created with `onEvent`.
    */
   readonly subscriptions?: SubscriptionOverrides<S>;
   /**
-   * The Service's {@link Events} repository.
+   * The Service's {@link EventService} repository.
    */
-  readonly events: Events<S>;
-
-  service: Service<S>;
-  api: Api<S>;
+  readonly eventService: EventService;
+  readonly commandService: LazyInterface<CommandService>;
 }
 
 export type Subscriptions<Service> = {
@@ -61,25 +46,29 @@ export type Subscriptions<Service> = {
   >]: Subscription;
 };
 export const Subscriptions: {
-  new <Service>(
-    scope: Construct,
-    props: SubscriptionsProps<Service>
-  ): Subscriptions<Service>;
+  new <Service>(props: SubscriptionsProps<Service>): Subscriptions<Service>;
 } = class Subscriptions<Service> {
-  constructor(scope: Construct, props: SubscriptionsProps<Service>) {
-    scope = new Construct(scope, "Subscriptions");
+  constructor(props: SubscriptionsProps<Service>) {
+    const subscriptionsServiceScope = new Construct(
+      props.serviceScope,
+      "Subscriptions"
+    );
 
     // create a Construct to safely nest bundled functions in their own namespace
 
     const subscriptions = Object.fromEntries(
-      Object.values(props.build.subscriptions).map((sub) => {
+      props.build.subscriptions.map((sub) => {
         return [
           sub.spec.name,
-          new Subscription(scope, sub.spec.name, {
+          new Subscription(subscriptionsServiceScope, sub.spec.name, {
             build: props.build,
-            bus: props.events.bus,
+            bus: props.eventService.bus,
             serviceName: props.serviceName,
             subscription: sub,
+            overrides:
+              props.subscriptions?.[
+                sub.spec.name as SubscriptionNames<Service>
+              ],
           }),
         ];
       })
@@ -91,13 +80,13 @@ export const Subscriptions: {
     Object.assign(this, subscriptions);
 
     handlers.forEach((handler) => {
-      props.events.configurePublish(handler);
+      props.eventService.configurePublish(handler);
 
       // allows the access to all of the operations on the injected service client
       props.service.configureForServiceClient(handler);
 
       // allow http access to the service client
-      props.api.configureInvokeHttpServiceApi(handler);
+      props.commandService.configureInvokeHttpServiceApi(handler);
     });
   }
 } as any;
@@ -127,25 +116,26 @@ export class Subscription extends Construct implements IGrantable {
 
   constructor(scope: Construct, id: string, props: SubscriptionProps) {
     super(scope, id);
-    const func = props.subscription;
     const subscription = props.subscription.spec;
 
     this.deadLetterQueue = new Queue(this, "DeadLetterQueue");
     this.handler = new ServiceFunction(this, "Handler", {
-      code: props.build.getCode(func.file),
-      functionName: `${props.serviceName}-subscription-${subscription.name}`,
-      deadLetterQueueEnabled: true,
-      ...(props.overrides ?? {}),
-      environment: {
-        ...(props.environment ?? {}),
-        ...(props.overrides?.environment ?? {}),
+      build: props.build,
+      serviceName: props.serviceName,
+      functionNameSuffix: subscriptionServiceFunctionSuffix(subscription.name),
+      // defaults are applied
+      defaults: {
+        deadLetterQueue: this.deadLetterQueue,
+        deadLetterQueueEnabled: true,
+        environment: props.environment,
       },
-      memorySize: subscription.props?.memorySize ?? 512,
-      timeout: subscription.props?.timeout
-        ? Duration.seconds(computeDurationSeconds(subscription.props.timeout))
-        : undefined,
-      role: props.overrides?.role,
+      // then runtime props
+      runtimeProps: props.subscription.spec.props,
+      // then overrides
+      overrides: props.overrides,
+      bundledFunction: props.subscription,
     });
+
     this.grantPrincipal = this.handler.role!;
 
     if (subscription.filters.length > 0) {

@@ -1,4 +1,6 @@
+import fetch from "node-fetch";
 import path from "path";
+
 
 export enum EventType {
   INVOKE = "INVOKE",

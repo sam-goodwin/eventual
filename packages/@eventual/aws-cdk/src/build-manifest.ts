@@ -1,3 +1,4 @@
+import type { ActivitySpec } from "@eventual/core";
 import type {
   CommandSpec,
   EventSpec,
@@ -5,41 +6,33 @@ import type {
 } from "@eventual/core/internal";
 
 export interface BuildManifest {
-  orchestrator: BundledFunction;
-  api: InternalApiRoutes;
-  scheduler: {
-    forwarder: BundledFunction;
-    timerHandler: BundledFunction;
-  };
   /**
    * Activities declared within the Service.
    */
-  // TODO: split out into individual activity functions
-  activities: {
-    handler: BundledFunction<undefined>;
-    fallbackHandler: BundledFunction<undefined>;
-  };
+  activities: ActivityFunction[];
   /**
    * The events and their schema.
    */
-  events: {
-    [eventName: string]: EventSpec;
-  };
+  events: EventSpec[];
   /**
    * All subscriptions to events declared within the service.
    */
-  subscriptions: {
-    /**
-     * Individually bundled {@link SubscriptionFunction}s containing a single `onEvent` event handler.
-     */
-    [subscriptionName: string]: SubscriptionFunction;
-  };
-  commands: {
-    default: CommandFunction;
-    /**
-     * Individually bundled and tree-shaken functions for a specific Command.
-     */
-    [commandName: string]: CommandFunction;
+  subscriptions: SubscriptionFunction[];
+  commands: CommandFunction[];
+  system: {
+    activityService: {
+      fallbackHandler: BundledFunction<undefined>;
+    };
+    eventualService: {
+      commands: InternalApiRoutes;
+    };
+    schedulerService: {
+      forwarder: BundledFunction;
+      timerHandler: BundledFunction;
+    };
+    workflowService: {
+      orchestrator: BundledFunction;
+    };
   };
 }
 
@@ -60,14 +53,14 @@ export interface InternalApiRoutes {
 }
 
 export type BundledFunction<Spec = undefined> = {
-  file: string;
-} & (Spec extends undefined
-  ? {
-      spec?: Spec;
-    }
-  : {
-      spec: Spec;
-    });
+  entry: string;
+  /**
+   * Export name of the handler in the file.
+   *
+   * @default index.default
+   */
+  handler?: string;
+} & ([Spec] extends [object] ? { spec: Spec } : { spec?: never });
 
 export interface ExportedEventHandlerFunction extends SubscriptionFunction {
   exportName: string;
@@ -75,6 +68,8 @@ export interface ExportedEventHandlerFunction extends SubscriptionFunction {
 
 export interface SubscriptionFunction
   extends BundledFunction<SubscriptionSpec> {}
+
+export interface ActivityFunction extends BundledFunction<ActivitySpec> {}
 
 export interface InternalCommandFunction extends CommandFunction {
   spec: CommandFunction["spec"] & {};

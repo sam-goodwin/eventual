@@ -1,3 +1,4 @@
+import { HttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { ENV_NAMES, ExecutionRecord } from "@eventual/aws-runtime";
 import { Event } from "@eventual/core";
 import { MetricsCommon, OrchestratorMetrics } from "@eventual/core-runtime";
@@ -22,143 +23,42 @@ import {
   StreamViewType,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
+import { IEventBus } from "aws-cdk-lib/aws-events/index.js";
 import {
   AccountRootPrincipal,
-  CompositePrincipal,
   Effect,
   IGrantable,
-  IPrincipal,
   PolicyStatement,
   Role,
 } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
+import { LogGroup } from "aws-cdk-lib/aws-logs/index.js";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
+import openapi from "openapi3-ts";
 import path from "path";
-import { Activities, IActivities } from "./activities";
+import {
+  ActivityOverrides,
+  ActivityService,
+  ServiceActivities,
+} from "./activity-service.js";
 import { BuildOutput, buildServiceSync } from "./build";
-import { Events } from "./events";
+import {
+  CommandProps,
+  CommandService,
+  ServiceCommands,
+  SystemCommands,
+} from "./command-service";
+import { EventService } from "./event-service";
 import { grant } from "./grant";
-import { Logging, LoggingProps } from "./logging";
-import { lazyInterface } from "./proxy-construct";
-import { IScheduler, Scheduler } from "./scheduler";
-import { Api, CommandProps, IServiceApi } from "./service-api";
+import { LazyInterface, lazyInterface } from "./proxy-construct";
+import { SchedulerService } from "./scheduler-service";
 import {
   Subscription,
   SubscriptionOverrides,
   Subscriptions,
 } from "./subscriptions";
-import { IWorkflows, Workflows } from "./workflows";
-
-export interface IService {
-  /**
-   * Subscribe this {@link Service} to another {@link Service}'s events.
-   *
-   * An Event Bridge {@link aws_events.Rule} will be created to route all events
-   * that match the {@link SubscribeProps.events}.
-   *
-   * @param props the {@link SubscribeProps} specifying the service and events to subscribe to
-   */
-  subscribe(
-    scope: Construct,
-    id: string,
-    props: SubscribeProps
-  ): aws_events.Rule;
-  addEnvironment(key: string, value: string): void;
-
-  configureStartExecution(func: Function): void;
-  grantStartExecution(grantable: IGrantable): void;
-
-  /**
-   * Read information about an execution or executions.
-   *
-   * * {@link EventualServiceClient.listExecutions}
-   * * {@link EventualServiceClient.getExecution}
-   * * {@link EventualServiceClient.getExecutionHistory}
-   * * {@link EventualServiceClient.getExecutionWorkflowHistory}
-   */
-  configureReadExecutions(func: Function): void;
-  /**
-   * Read information about an execution or executions.
-   *
-   * * {@link EventualServiceClient.listExecutions}
-   * * {@link EventualServiceClient.getExecution}
-   * * {@link EventualServiceClient.getExecutionHistory}
-   * * {@link EventualServiceClient.getExecutionWorkflowHistory}
-   */
-  grantReadExecutions(grantable: IGrantable): void;
-
-  /**
-   * Send signals to a workflow.
-   */
-  configureSendSignal(func: Function): void;
-  /**
-   * Send signals to a workflow.
-   */
-  grantSendSignal(grantable: IGrantable): void;
-
-  /**
-   * Publish Events
-   */
-  configurePublishEvents(func: Function): void;
-  /**
-   * Publish Events
-   */
-  grantPublishEvents(grantable: IGrantable): void;
-
-  /**
-   * Configure the ability to heartbeat, cancel, and complete activities.
-   *
-   * Useful for a function that is making an activity as complete.
-   *
-   * * {@link EventualServiceClient.sendActivitySuccess}
-   * * {@link EventualServiceClient.sendActivityFailure}
-   * * {@link EventualServiceClient.sendActivityHeartbeat}
-   */
-  configureUpdateActivity(func: Function): void;
-  /**
-   * Grants permission to use all operations on the {@link EventualServiceClient}.
-   */
-  configureForServiceClient(func: Function): void;
-
-  configureServiceName(func: Function): void;
-
-  /**
-   * The time taken to run the workflow's function to advance execution of the workflow.
-   *
-   * This does not include the time taken to invoke commands or save history. It is
-   * purely a metric for how well the workflow's function is performing as history grows.
-   */
-  metricAdvanceExecutionDuration(options?: MetricOptions): Metric;
-  /**
-   * The number of commands invoked in a single batch by the orchestrator.
-   */
-  metricCommandsInvoked(options?: MetricOptions): Metric;
-  /**
-   * The time taken to invoke all Commands emitted by advancing a workflow.
-   */
-  metricInvokeCommandsDuration(options?: MetricOptions): Metric;
-  /**
-   * Time taken to download an execution's history from S3.
-   */
-  metricLoadHistoryDuration(options?: MetricOptions): Metric;
-  /**
-   * Time taken to save an execution's history to S3.
-   */
-  metricSaveHistoryDuration(options?: MetricOptions): Metric;
-  /**
-   * The size of the history S3 file in bytes.
-   */
-  metricSavedHistoryBytes(options?: MetricOptions): Metric;
-  /**
-   * The number of events stored in the history S3 file.grantRead
-   */
-  metricSavedHistoryEvents(options?: MetricOptions): Metric;
-  /**
-   * The number of commands invoked in a single batch by the orchestrator.
-   */
-  metricMaxTaskAge(options?: MetricOptions): Metric;
-}
+import { WorkflowService, WorkflowServiceOverrides } from "./workflow-service";
 
 /**
  * The properties for subscribing a Service to another Service's events.
@@ -194,6 +94,10 @@ export interface ServiceProps<Service = any> {
     [key: string]: string;
   };
   /**
+   * Override Properties of the Activity handlers within the service.
+   */
+  activities?: ActivityOverrides<Service>;
+  /**
    * Override properties of Command Functions within the Service.
    */
   commands?: CommandProps<Service>;
@@ -201,107 +105,112 @@ export interface ServiceProps<Service = any> {
    * Override properties of Subscription Functions within the Service.
    */
   subscriptions?: SubscriptionOverrides<Service>;
-  /**
-   * Configuration properties for the workflow orchestrator
-   */
-  workflows?: {
+  system?: {
     /**
-     * Set the reservedConcurrentExecutions for the workflow orchestrator lambda function.
-     *
-     * This function consumes from the central SQS FIFO Queue and the number of parallel executions
-     * scales directly on the number of active workflow executions. Each execution id is used as
-     * the message group ID which directly affects concurrent executions.
-     *
-     * Set this value to protect the workflow's concurrent executions from:
-     * 1. browning out other functions by consuming concurrent executions
-     * 2. be brought down by other functions in the AWS account
-     * 3. ensure the timely performance of workflows for a given scale
+     * Configuration properties for the workflow orchestrator
      */
-    reservedConcurrentExecutions?: number;
+    workflowService?: WorkflowServiceOverrides;
   };
-  /**
-   * Configure the Log Level and Log Group.
-   */
-  logging?: Omit<LoggingProps, "serviceName">;
 }
 
-export class Service<S = any>
-  extends Construct
-  implements IGrantable, IService
-{
+export interface LoggingProps {}
+
+export interface ServiceSystem<S> {
+  /**
+   * The subsystem that controls workflows.
+   */
+  readonly workflowService: WorkflowService;
+  readonly activityService: ActivityService<S>;
+  /**`
+   * The subsystem for schedules and timers.
+   */
+  readonly schedulerService: SchedulerService;
+  /**
+   * The {@link AppSec} inferred from the application code.
+   */
+  readonly build: BuildOutput;
+  readonly systemCommands: SystemCommands;
+  /**
+   * A single-table used for execution data and granular workflow events/
+   *
+   * TODO: move this to workflows
+   */
+  readonly table: Table;
+  /**
+   * A SSM parameter containing data about this service.
+   */
+  readonly serviceMetadataSSM: StringParameter;
+  /**
+   * The Resources for schedules and timers.
+   */
+  readonly accessRole: Role;
+}
+
+export class Service<S = any> extends Construct {
+  /**
+   * The subsystem that controls activities.
+   */
+  public readonly activities: ServiceActivities<S>;
+  /**
+   * Bus which transports events in and out of the service.
+   */
+  public readonly bus: IEventBus;
+  /**
+   * Commands defined by the service.
+   */
+  public readonly commands: ServiceCommands<S>;
+  /**
+   * API Gateway which serves the service commands and the system commands.
+   */
+  public readonly gateway: HttpApi;
   /**
    * Name of this Service.
    */
   public readonly serviceName: string;
   /**
-   * The {@link AppSec} inferred from the application code.
-   */
-  public readonly build: BuildOutput;
-  /**
    * This {@link Service}'s API Gateway.
    */
-  public readonly api: Api<S>;
-  /**
-   * This {@link Service}'s {@link Events} that can be published and subscribed to.
-   */
-  public readonly events: Events<S>;
+  public readonly specification: openapi.OpenAPIObject;
   /**
    * The Subscriptions within this Service.
    */
   public readonly subscriptions: Subscriptions<S>;
   /**
-   * A single-table used for execution data and granular workflow events/
+   * Log group which workflow executions write to.
    */
-  public readonly table: Table;
-  /**
-   * The subsystem that controls activities.
-   */
-  public readonly activities: Activities;
-  /**
-   * The subsystem that controls workflows.
-   */
-  public readonly workflows: Workflows;
-  /**
-   * The subsystem for schedules and timers.
-   */
-  public readonly scheduler: Scheduler;
-  /**
-   * The Resources for schedules and timers.
-   */
-  public readonly cliRole: Role;
-  /**
-   * A SSM parameter containing data about this service.
-   */
-  public readonly serviceDataSSM: StringParameter;
-  /**
-   * The resources used to facilitate service logging.
-   */
-  public readonly logging: Logging;
+  public readonly workflowLogGroup: LogGroup;
 
-  public readonly grantPrincipal: IPrincipal;
+  private readonly eventService: EventService;
+  private readonly commandService: CommandService<S>;
+
+  public readonly system: ServiceSystem<S>;
 
   constructor(scope: Construct, id: string, props: ServiceProps<S>) {
     super(scope, id);
 
     this.serviceName = props.name ?? Names.uniqueResourceName(this, {});
 
-    this.build = buildServiceSync({
+    const serviceScope = this;
+    const systemScope = new Construct(this, "System");
+    const eventualServiceScope = new Construct(systemScope, "EventualService");
+
+    const build = buildServiceSync({
       serviceName: this.serviceName,
       entry: props.entry,
       outDir: path.join(".eventual", this.node.addr),
     });
 
     // Table - History, Executions
-    this.table = new Table(this, "Table", {
+    // TODO move this to workflows and split up.
+    const table = new Table(serviceScope, "Table", {
       partitionKey: { name: "pk", type: AttributeType.STRING },
       sortKey: { name: "sk", type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY,
       stream: StreamViewType.NEW_IMAGE,
-      // timeToLiveAttribute: "ttl",
     });
 
-    this.table.addLocalSecondaryIndex({
+    table.addLocalSecondaryIndex({
       indexName: ExecutionRecord.START_TIME_SORTED_INDEX,
       sortKey: {
         name: ExecutionRecord.START_TIME,
@@ -310,107 +219,113 @@ export class Service<S = any>
       projectionType: ProjectionType.ALL,
     });
 
-    const proxyScheduler = lazyInterface<IScheduler>();
-    const proxyWorkflows = lazyInterface<IWorkflows>();
-    const proxyActivities = lazyInterface<IActivities>();
-    const proxyService = lazyInterface<IService>();
-    const apiProxy = lazyInterface<IServiceApi>();
+    const proxySchedulerService = lazyInterface<SchedulerService>();
+    const proxyWorkflowService = lazyInterface<WorkflowService>();
+    const proxyActivityService = lazyInterface<ActivityService<S>>();
+    const proxyService = lazyInterface<Service<S>>();
+    const proxyCommandService = lazyInterface<CommandService<S>>();
 
-    this.logging = new Logging(this, "logging", {
-      ...(props.logging ?? {}),
-      serviceName: this.serviceName,
-    });
-
-    this.events = new Events(this, "Events", {
-      build: this.build,
-      serviceName: this.serviceName,
-    });
-
-    this.activities = new Activities(this, "Activities", {
-      build: this.build,
-      serviceName: this.serviceName,
-      scheduler: proxyScheduler,
-      workflows: proxyWorkflows,
+    const serviceConstructProps: ServiceConstructProps = {
+      build,
       environment: props.environment,
-      events: this.events,
-      logging: this.logging,
       service: proxyService,
-      api: apiProxy,
-    });
-    proxyActivities._bind(this.activities);
-
-    this.workflows = new Workflows(this, "Workflows", {
-      build: this.build,
       serviceName: this.serviceName,
-      scheduler: proxyScheduler,
-      activities: this.activities,
-      table: this.table,
-      events: this.events,
-      logging: this.logging,
-      service: proxyService,
-      ...props.workflows,
-    });
-    proxyWorkflows._bind(this.workflows);
+      serviceScope,
+      systemScope,
+      eventualServiceScope,
+    };
 
-    this.scheduler = new Scheduler(this, "Scheduler", {
-      build: this.build,
-      workflows: this.workflows,
-      activities: this.activities,
-      logging: this.logging,
-    });
-    proxyScheduler._bind(this.scheduler);
+    this.eventService = new EventService(serviceConstructProps);
+    this.bus = this.eventService.bus;
 
-    this.api = new Api(this, "Api", {
-      build: this.build,
-      serviceName: this.serviceName,
-      environment: props.environment,
-      activities: this.activities,
-      workflows: this.workflows,
-      events: this.events,
-      scheduler: this.scheduler,
-      service: proxyService,
-      commands: props.commands,
+    const activityService = new ActivityService<S>({
+      ...serviceConstructProps,
+      schedulerService: proxySchedulerService,
+      workflowService: proxyWorkflowService,
+      commandsService: proxyCommandService,
+      overrides: props.activities,
     });
-    apiProxy._bind(this.api);
+    proxyActivityService._bind(activityService);
+    this.activities = activityService.activities;
 
-    this.subscriptions = new Subscriptions(this, {
-      api: this.api,
-      build: this.build,
-      environment: props.environment,
-      events: this.events,
-      service: this,
-      serviceName: this.serviceName,
+    const workflowService = new WorkflowService({
+      activityService: activityService,
+      eventService: this.eventService,
+      schedulerService: proxySchedulerService,
+      table,
+      overrides: props.system?.workflowService,
+      ...serviceConstructProps,
+    });
+    proxyWorkflowService._bind(workflowService);
+    this.workflowLogGroup = workflowService.logGroup;
+
+    const scheduler = new SchedulerService({
+      activityService: activityService,
+      workflowService: workflowService,
+      ...serviceConstructProps,
+    });
+    proxySchedulerService._bind(scheduler);
+
+    this.commandService = new CommandService({
+      activityService: activityService,
+      overrides: props.commands,
+      eventService: this.eventService,
+      workflowService: workflowService,
+      ...serviceConstructProps,
+    });
+    proxyCommandService._bind(this.commandService);
+    this.commands = this.commandService.serviceCommands;
+    this.gateway = this.commandService.gateway;
+    this.specification = this.commandService.specification;
+
+    this.subscriptions = new Subscriptions({
+      commandService: this.commandService,
+      eventService: this.eventService,
       subscriptions: props.subscriptions,
+      ...serviceConstructProps,
     });
 
-    this.grantPrincipal = new CompositePrincipal(
-      // when granting permissions to the service,
-      // propagate them to the following principals
-      this.activities.worker.grantPrincipal,
-      this.api.grantPrincipal,
-      ...this.subscriptionsList.flatMap(
-        (sub) => sub.handler.role?.grantPrincipal!
-      )
-    );
-
-    this.cliRole = new Role(this, "EventualCliRole", {
+    const accessRole = new Role(eventualServiceScope, "AccessRole", {
       roleName: `eventual-cli-${this.serviceName}`,
       assumedBy: new AccountRootPrincipal(),
     });
-    this.api.grantInvokeHttpServiceApi(this.cliRole);
-    this.logging.grantFilterLogEvents(this.cliRole);
+    this.commandService.grantInvokeHttpServiceApi(accessRole);
+    workflowService.grantFilterLogEvents(accessRole);
 
-    this.serviceDataSSM = new StringParameter(this, "service-data", {
-      parameterName: `/eventual/services/${this.serviceName}`,
-      stringValue: JSON.stringify({
-        apiEndpoint: this.api.gateway.apiEndpoint,
-        eventBusArn: this.events.bus.eventBusArn,
-        logGroupName: this.logging.logGroup.logGroupName,
-      }),
-    });
+    // service metadata
+    const serviceDataSSM = new StringParameter(
+      eventualServiceScope,
+      "ServiceMetadata",
+      {
+        parameterName: `/eventual/services/${this.serviceName}`,
+        stringValue: JSON.stringify({
+          apiEndpoint: this.commandService.gateway.apiEndpoint,
+          eventBusArn: this.bus.eventBusArn,
+          workflowExecutionLogGroupName: workflowService.logGroup.logGroupName,
+        }),
+      }
+    );
 
-    this.serviceDataSSM.grantRead(this.cliRole);
+    serviceDataSSM.grantRead(accessRole);
+    this.system = {
+      activityService: activityService,
+      build,
+      accessRole: accessRole,
+      schedulerService: scheduler,
+      systemCommands: this.commandService.systemCommands,
+      serviceMetadataSSM: serviceDataSSM,
+      table,
+      workflowService: workflowService,
+    };
     proxyService._bind(this);
+  }
+
+  public get activitiesList(): Subscription[] {
+    return Object.values(this.activities);
+  }
+
+  public get commandsList(): Function[] {
+    return Object.values(this.commands);
   }
 
   public get subscriptionsList(): Subscription[] {
@@ -423,13 +338,13 @@ export class Service<S = any>
     props: SubscribeProps
   ): aws_events.Rule {
     return new aws_events.Rule(scope, id, {
-      eventBus: props.service.events.bus,
+      eventBus: props.service.bus,
       eventPattern: {
         detailType: props.events.map((event) =>
           typeof event === "string" ? event : event.name
         ),
       },
-      targets: [new aws_events_targets.EventBus(this.events.bus)],
+      targets: [new aws_events_targets.EventBus(this.bus)],
     });
   }
 
@@ -440,12 +355,14 @@ export class Service<S = any>
    * @param value The environment variable's value.
    */
   public addEnvironment(key: string, value: string): void {
-    this.activities.worker.addEnvironment(key, value);
-    this.api.handlers.forEach((handler) => handler.addEnvironment(key, value));
+    this.activitiesList.forEach(({ handler }) =>
+      handler.addEnvironment(key, value)
+    );
+    this.commandsList.forEach((handler) => handler.addEnvironment(key, value));
     this.subscriptionsList.forEach(({ handler }) =>
       handler.addEnvironment(key, value)
     );
-    this.workflows.orchestrator.addEnvironment(key, value);
+    this.system.workflowService.orchestrator.addEnvironment(key, value);
   }
 
   /**
@@ -453,49 +370,54 @@ export class Service<S = any>
    */
 
   public configureStartExecution(func: Function) {
-    this.workflows.configureStartExecution(func);
+    this.system.workflowService.configureStartExecution(func);
   }
 
   @grant()
   public grantStartExecution(grantable: IGrantable) {
-    this.workflows.grantStartExecution(grantable);
+    this.system.workflowService.grantStartExecution(grantable);
   }
 
   public configureReadExecutions(func: Function) {
-    this.workflows.configureReadExecutions(func);
-    this.workflows.configureReadExecutionHistory(func);
-    this.workflows.configureReadHistoryState(func);
+    this.system.workflowService.configureReadExecutions(func);
+    this.system.workflowService.configureReadExecutionHistory(func);
+    this.system.workflowService.configureReadHistoryState(func);
   }
   @grant()
   public grantReadExecutions(grantable: IGrantable) {
-    this.workflows.grantReadExecutions(grantable);
+    this.system.workflowService.grantReadExecutions(grantable);
   }
 
   public configureSendSignal(func: Function) {
-    this.workflows.configureSendSignal(func);
+    this.system.workflowService.configureSendSignal(func);
   }
 
   @grant()
   public grantSendSignal(grantable: IGrantable) {
-    this.workflows.grantSendSignal(grantable);
+    this.system.workflowService.grantSendSignal(grantable);
   }
 
   public configurePublishEvents(func: Function) {
-    this.events.configurePublish(func);
+    this.eventService.configurePublish(func);
   }
 
   @grant()
   public grantPublishEvents(grantable: IGrantable) {
-    this.events.grantPublish(grantable);
+    this.eventService.grantPublish(grantable);
+  }
+
+  @grant()
+  public grantInvokeHttpServiceApi(grantable: IGrantable) {
+    this.commandService.grantInvokeHttpServiceApi(grantable);
   }
 
   public configureUpdateActivity(func: Function) {
     // complete activities
-    this.activities.configureCompleteActivity(func);
+    this.system.activityService.configureCompleteActivity(func);
     // cancel
-    this.activities.configureWriteActivities(func);
+    this.system.activityService.configureWriteActivities(func);
     // heartbeat
-    this.activities.configureSendHeartbeat(func);
+    this.system.activityService.configureSendHeartbeat(func);
   }
 
   public configureForServiceClient(func: Function) {
@@ -634,4 +556,22 @@ export function runtimeHandlersEntrypoint(name: string) {
 
 export function runtimeEntrypoint() {
   return path.join(require.resolve("@eventual/aws-runtime"), `../../esm`);
+}
+
+export interface ServiceConstructProps {
+  /**
+   * The built service describing the event subscriptions within the Service.
+   */
+  readonly build: BuildOutput;
+  /**
+   * Optional environment variables to add to the {@link EventService.defaultHandler}.
+   *
+   * @default - no extra environment variables
+   */
+  readonly environment?: Record<string, string>;
+  readonly service: LazyInterface<Service<any>>;
+  readonly serviceName: string;
+  readonly serviceScope: Construct;
+  readonly systemScope: Construct;
+  readonly eventualServiceScope: Construct;
 }

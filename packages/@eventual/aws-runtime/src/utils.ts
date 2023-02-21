@@ -173,3 +173,32 @@ export function chunkArray<T>(batchSize: number, items: T[]): T[][] {
     }
   }, []);
 }
+
+export function serviceFunctionName(serviceName: string, suffix: string) {
+  return sanitizeFunctionName(`${serviceName}-${suffix}`);
+}
+
+export function activityServiceFunctionSuffix(activityId: string) {
+  return `activity-${activityId}`;
+}
+
+export function subscriptionServiceFunctionSuffix(subscriptionName: string) {
+  return `subscription-${subscriptionName}`;
+}
+
+export function activityServiceFunctionName(
+  serviceName: string,
+  activityId: string
+): string {
+  return serviceFunctionName(
+    serviceName,
+    activityServiceFunctionSuffix(activityId)
+  );
+}
+
+/**
+ * Valid lambda function names contains letters, numbers, dash, or underscore and no spaces.
+ */
+export function sanitizeFunctionName(name: string) {
+  return name.replaceAll(/[^a-zA-Z0-9-_]/g, "-");
+}

@@ -12,5 +12,5 @@ export interface FunctionRuntimeProps {
    *
    * @default 3s
    */
-  timeout?: DurationSchedule;
+  handlerTimeout?: DurationSchedule;
 }

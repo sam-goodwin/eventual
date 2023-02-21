@@ -73,7 +73,7 @@ export const logs = (yargs: Argv) =>
           throw new Error("since parameter must be a string or number");
         }
         const startTime = await getStartTime(serviceClient, since, execution);
-        const { logGroupName } = serviceData;
+        const { workflowExecutionLogGroupName: logGroupName } = serviceData;
         const cloudwatchLogsClient = new cwLogs.CloudWatchLogsClient({
           credentials,
         });

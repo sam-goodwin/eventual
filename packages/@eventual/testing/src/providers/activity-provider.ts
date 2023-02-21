@@ -11,7 +11,7 @@ import { GlobalActivityProvider } from "@eventual/core-runtime";
 import {
   ActivityArguments,
   assertNever,
-  callableActivities,
+  activities,
   Failed,
   isFailed,
   isResolved,
@@ -24,15 +24,15 @@ export class MockableActivityProvider extends GlobalActivityProvider {
   private mockedActivities: Record<string, MockActivity<any>> = {};
 
   public mockActivity<A extends Activity<any, any>>(activity: A | string) {
-    const id = typeof activity === "string" ? activity : activity.activityID;
+    const id = typeof activity === "string" ? activity : activity.name;
     const realActivity =
-      typeof activity === "string" ? super.getActivityHandler(id) : activity;
+      typeof activity === "string" ? super.getActivity(id) : activity;
     if (!realActivity) {
       throw new Error("Activity being mocked does not exist. " + id);
     }
 
     const mock = new MockActivity<any>((...args: any[]) =>
-      realActivity(...args)
+      realActivity.handler(...args)
     );
 
     this.mockedActivities[id] = mock;
@@ -41,7 +41,7 @@ export class MockableActivityProvider extends GlobalActivityProvider {
   }
 
   public clearMock(activity: Activity<any, any> | string) {
-    const id = typeof activity === "string" ? activity : activity.activityID;
+    const id = typeof activity === "string" ? activity : activity.name;
     delete this.mockedActivities[id];
   }
 
@@ -49,14 +49,15 @@ export class MockableActivityProvider extends GlobalActivityProvider {
     this.mockedActivities = {};
   }
 
-  public override getActivityHandler(
-    activityId: string
-  ): ActivityHandler<any, any> | undefined {
+  public override getActivity(activityId: string): Activity | undefined {
     if (activityId in this.mockedActivities) {
       const mock = this.mockedActivities[activityId]!;
-      return (...args) => mock.call(...args);
+      return {
+        name: activityId,
+        handler: (...args) => mock.call(...args),
+      } as Activity;
     }
-    const activity = callableActivities()[activityId];
+    const activity = activities()[activityId];
     if (!activity) {
       throw new Error("Activity not found: " + activityId);
     }

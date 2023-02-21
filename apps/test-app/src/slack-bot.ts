@@ -17,8 +17,8 @@ const slackBot = new eventual.Service<typeof slackbot>(stack, "slack-bot", {
   },
 });
 
-slackSecrets.grantRead(slackBot);
+slackBot.commandsList.map((c) => slackSecrets.grantRead(c));
 
 new CfnOutput(stack, "open-account-api-url", {
-  value: slackBot.api.gateway.apiEndpoint,
+  value: slackBot.gateway.apiEndpoint,
 });

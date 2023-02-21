@@ -83,7 +83,7 @@ export class CommandExecutor {
   ) {
     const request: ActivityWorkerRequest = {
       scheduledTime: baseTime.toISOString(),
-      workflowName: workflow.workflowName,
+      workflowName: workflow.name,
       executionId,
       command,
       retry: 0,

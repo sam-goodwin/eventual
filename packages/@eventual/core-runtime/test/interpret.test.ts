@@ -1442,18 +1442,18 @@ test("workflow calling other workflow", () => {
     yield createActivityCall("call-a", []);
   });
   const wf2 = workflow(function* (): any {
-    const result = yield createWorkflowCall(wf1.workflowName) as any;
+    const result = yield createWorkflowCall(wf1.name) as any;
     yield createActivityCall("call-b", []);
     return result;
   });
 
   expect(interpret(wf2.definition(undefined, context), [])).toMatchObject({
-    commands: [createScheduledWorkflowCommand(wf1.workflowName, undefined, 0)],
+    commands: [createScheduledWorkflowCommand(wf1.name, undefined, 0)],
   });
 
   expect(
     interpret(wf2.definition(undefined, context), [
-      workflowScheduled(wf1.workflowName, 0),
+      workflowScheduled(wf1.name, 0),
     ])
   ).toMatchObject({
     commands: [],
@@ -1461,7 +1461,7 @@ test("workflow calling other workflow", () => {
 
   expect(
     interpret(wf2.definition(undefined, context), [
-      workflowScheduled(wf1.workflowName, 0),
+      workflowScheduled(wf1.name, 0),
       workflowSucceeded("result", 0),
     ])
   ).toMatchObject({
@@ -1470,7 +1470,7 @@ test("workflow calling other workflow", () => {
 
   expect(
     interpret(wf2.definition(undefined, context), [
-      workflowScheduled(wf1.workflowName, 0),
+      workflowScheduled(wf1.name, 0),
       workflowSucceeded("result", 0),
       activityScheduled("call-b", 1),
     ])
@@ -1480,7 +1480,7 @@ test("workflow calling other workflow", () => {
 
   expect(
     interpret(wf2.definition(undefined, context), [
-      workflowScheduled(wf1.workflowName, 0),
+      workflowScheduled(wf1.name, 0),
       workflowSucceeded("result", 0),
       activityScheduled("call-b", 1),
       activitySucceeded(undefined, 1),
@@ -1492,7 +1492,7 @@ test("workflow calling other workflow", () => {
 
   expect(
     interpret(wf2.definition(undefined, context), [
-      workflowScheduled(wf1.workflowName, 0),
+      workflowScheduled(wf1.name, 0),
       workflowFailed("error", 0),
     ])
   ).toMatchObject({

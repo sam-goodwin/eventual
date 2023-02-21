@@ -67,6 +67,23 @@ export function isSubscriptionCall(call: CallExpression): boolean {
 }
 
 /**
+ * A heuristic for identifying a {@link CallExpression} that is a call to an `activity` handler.
+ *
+ * 1. must be a call to an `activity(name, [props, impl] | [impl])` or a MemberExpression matching to `<expression>.activity(name,  [props, impl] | [impl])`.
+ * 2. must have exactly 2 to 3 arguments.
+ */
+export function isActivityCall(call: CallExpression): boolean {
+  const c = call.callee;
+  if (
+    (c.type == "Identifier" && c.value === "activity") ||
+    (c.type === "MemberExpression" && isId(c.property, "activity"))
+  ) {
+    return call.arguments.length === 2 || call.arguments.length === 3;
+  }
+  return false;
+}
+
+/**
  * Checks whether a {@link node} is an {@link Identifier} with a value of {@link Value}.
  */
 function isId<Value extends string>(

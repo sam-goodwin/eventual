@@ -36,16 +36,18 @@ const testService = new eventual.Service<typeof testServiceRuntime>(
     environment: {
       TEST_QUEUE_URL: testQueue.queueUrl,
     },
-    logging: {
-      logLevel: LogLevel.DEBUG,
+    system: {
+      workflowService: {
+        logLevel: LogLevel.DEBUG,
+      },
     },
   }
 );
 
-testService.api.grantInvokeHttpServiceApi(role);
-testService.cliRole.grantAssumeRole(role);
+testService.grantInvokeHttpServiceApi(role);
+testService.system.accessRole.grantAssumeRole(role);
 eventual.Service.grantDescribeParameters(stack, role);
-testService.serviceDataSSM.grantRead(role);
+testService.system.serviceMetadataSSM.grantRead(role);
 role.addToPolicy(
   new PolicyStatement({
     actions: ["ssm:DescribeParameters"],
@@ -58,7 +60,7 @@ const pipeRole = new Role(stack, "pipeRole", {
 });
 
 testQueue.grantConsumeMessages(pipeRole);
-testQueue.grantSendMessages(testService);
+testQueue.grantSendMessages(testService.activities.asyncActivity);
 
 /**
  * Chaos Testing
@@ -66,8 +68,8 @@ testQueue.grantSendMessages(testService);
 
 const chaosExtension = new ChaosExtension(stack, "chaos");
 
-chaosExtension.addToFunction(testService.activities.worker);
-chaosExtension.addToFunction(testService.workflows.orchestrator);
+testService.activitiesList.map((a) => chaosExtension.addToFunction(a.handler));
+chaosExtension.addToFunction(testService.system.workflowService.orchestrator);
 
 chaosExtension.grantReadWrite(role);
 
@@ -83,11 +85,11 @@ const asyncWriterFunction = new NodejsFunction(stack, "asyncWriterFunction", {
   entry,
   handler: "handle",
   environment: {
-    TEST_SERVICE_URL: testService.api.gateway.apiEndpoint,
+    TEST_SERVICE_URL: testService.gateway.apiEndpoint,
   },
 });
 asyncWriterFunction.grantInvoke(pipeRole);
-testService.api.grantInvokeHttpServiceApi(asyncWriterFunction);
+testService.grantInvokeHttpServiceApi(asyncWriterFunction);
 
 // https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-pipes-pipe.html
 new CfnResource(stack, "pipe", {
@@ -118,7 +120,7 @@ new CfnOutput(stack, "roleArn", {
 });
 
 new CfnOutput(stack, "serviceUrl", {
-  value: testService.api.gateway.apiEndpoint,
+  value: testService.gateway.apiEndpoint,
   exportName: "ServiceUrl",
 });
 

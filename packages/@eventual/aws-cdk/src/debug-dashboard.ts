@@ -24,22 +24,25 @@ export class DebugDashboard extends Construct {
 
     const allLogGroups = [
       // execution log group
-      service.logging.logGroup.logGroupName,
+      service.workflowLogGroup.logGroupName,
       // workflow orchestrator
-      service.workflows.orchestrator.logGroup.logGroupName,
+      service.system.workflowService.orchestrator.logGroup.logGroupName,
       // activities worker
-      service.activities.worker.logGroup.logGroupName,
-      // activities worker
-      service.activities.fallbackHandler.logGroup.logGroupName,
+      ...service.activitiesList.map((a) => a.handler.logGroup.logGroupName),
+      // activities fallback
+      service.system.activityService.fallbackHandler.logGroup.logGroupName,
       // user APIS - default and bundled
-      ...service.api.handlers.map((api) => api.logGroup.logGroupName),
+      ...service.commandsList.map((api) => api.logGroup.logGroupName),
+      ...Object.values(service.system.systemCommands).map(
+        (c) => c.logGroup.logGroupName
+      ),
       // event handlers - default and bundled
       ...service.subscriptionsList.map(
         ({ handler }) => handler.logGroup.logGroupName
       ),
       // scheduler/timer handler and forwarder
-      service.scheduler.handler.logGroup.logGroupName,
-      service.scheduler.forwarder.logGroup.logGroupName,
+      service.system.schedulerService.handler.logGroup.logGroupName,
+      service.system.schedulerService.forwarder.logGroup.logGroupName,
     ];
 
     this.dashboard = new Dashboard(this, "Dashboard", {
@@ -81,7 +84,7 @@ export class DebugDashboard extends Construct {
           new LogQueryWidget({
             title: "Orchestrator Summary",
             logGroupNames: [
-              service.workflows.orchestrator.logGroup.logGroupName,
+              service.system.workflowService.orchestrator.logGroup.logGroupName,
             ],
             queryLines: [
               `filter @type="REPORT" OR ${OrchestratorMetrics.LoadHistoryDuration} > 0`,
@@ -93,7 +96,9 @@ export class DebugDashboard extends Construct {
           }),
           new LogQueryWidget({
             title: "Activity Worker Summary",
-            logGroupNames: [service.activities.worker.logGroup.logGroupName],
+            logGroupNames: service.activitiesList.map(
+              (a) => a.handler.logGroup.logGroupName
+            ),
             queryLines: [
               `filter @type="REPORT" OR ${ActivityMetrics.OperationDuration} > 0`,
               `sort @timestamp desc`,
@@ -103,8 +108,22 @@ export class DebugDashboard extends Construct {
             height: 6,
           }),
           new LogQueryWidget({
-            title: "API Handlers Summary",
-            logGroupNames: service.api.handlers.map(
+            title: "User Command Handlers Summary",
+            logGroupNames: service.commandsList.map(
+              (api) => api.logGroup.logGroupName
+            ),
+            queryLines: [
+              `filter @type="REPORT"`,
+              `sort @timestamp desc`,
+              // group by log name as well
+              `stats avg(@duration) as duration, avg(@initDuration) as coldDuration, avg(@maxMemoryUsed) / 1024 as memKB by bin(${logSummaryBucketDuration}), @log`,
+            ],
+            width: 12,
+            height: 6,
+          }),
+          new LogQueryWidget({
+            title: "System Command Handlers Summary",
+            logGroupNames: Object.values(service.system.systemCommands).map(
               (api) => api.logGroup.logGroupName
             ),
             queryLines: [

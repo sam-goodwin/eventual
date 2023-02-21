@@ -56,7 +56,7 @@ export interface Workflow<in Input = any, Output = any> {
   /**
    * Globally unique ID of this {@link Workflow}.
    */
-  workflowName: string;
+  name: string;
 
   options?: WorkflowOptions;
 
@@ -135,7 +135,7 @@ export function workflow<Input = any, Output = any>(
     return createWorkflowCall(name, input, opts);
   }) as any;
 
-  workflow.workflowName = name;
+  Object.defineProperty(workflow, "name", { value: name, writable: false });
 
   workflow.startExecution = async function (input) {
     const serviceClient = getServiceClient();

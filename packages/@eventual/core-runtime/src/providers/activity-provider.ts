@@ -1,17 +1,17 @@
-import { ActivityHandler } from "@eventual/core";
-import { callableActivities } from "@eventual/core/internal";
+import { Activity } from "@eventual/core";
+import { activities } from "@eventual/core/internal";
 
 export interface ActivityProvider {
-  getActivityHandler(activityId: string): ActivityHandler<any> | undefined;
+  getActivity(activityId: string): Activity | undefined;
   getActivityIds(): string[];
 }
 
 export class GlobalActivityProvider implements ActivityProvider {
-  public getActivityHandler(activityId: string) {
-    return callableActivities()[activityId];
+  public getActivity(activityId: string): Activity | undefined {
+    return activities()[activityId];
   }
 
   public getActivityIds(): string[] {
-    return Object.keys(callableActivities());
+    return Object.keys(activities());
   }
 }

@@ -11,46 +11,30 @@ import { Function } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
-import { IActivities } from "./activities";
-import type { BuildOutput } from "./build";
+import { ActivityService } from "./activity-service";
 import { grant } from "./grant";
-import { Logging } from "./logging";
+import { LazyInterface } from "./proxy-construct";
+import { ServiceConstructProps } from "./service";
 import { baseFnProps } from "./utils";
-import { IWorkflows } from "./workflows";
+import { WorkflowService } from "./workflow-service";
 
-export interface IScheduler {
-  /**
-   * {@link TimerClient.startTimer} or {@link TimerClient.scheduleEvent}.
-   */
-  configureScheduleTimer(func: Function): void;
-  /**
-   * {@link TimerClient.startTimer} or {@link TimerClient.scheduleEvent}.
-   */
-  grantCreateTimer(grantable: IGrantable): void;
-}
-
-export interface SchedulerProps {
-  build: BuildOutput;
+export interface SchedulerProps extends ServiceConstructProps {
   /**
    * Workflow controller represent the ability to control the workflow, including starting the workflow
    * sending signals, and more.
    */
-  workflows: IWorkflows;
+  workflowService: LazyInterface<WorkflowService>;
   /**
    * Used by the activity heartbeat monitor to retrieve heartbeat data.
    */
-  activities: IActivities;
-  logging: Logging;
+  activityService: LazyInterface<ActivityService>;
 }
 
 /**
  * Subsystem that orchestrates long running timers. Used to orchestrate timeouts, timers
  * and heartbeats.
  */
-export class Scheduler
-  extends Construct
-  implements IScheduler, IGrantable, IScheduler
-{
+export class SchedulerService {
   /**
    * The Scheduler's IAM Role.
    */
@@ -83,11 +67,18 @@ export class Scheduler
    */
   public readonly dlq: Queue;
 
-  constructor(scope: Construct, id: string, private props: SchedulerProps) {
-    super(scope, id);
-    this.schedulerGroup = new ScheduleGroup(this, "ScheduleGroup");
+  constructor(private props: SchedulerProps) {
+    const schedulerServiceScope = new Construct(
+      props.systemScope,
+      "SchedulerService"
+    );
 
-    this.schedulerRole = new Role(this, "SchedulerRole", {
+    this.schedulerGroup = new ScheduleGroup(
+      schedulerServiceScope,
+      "ScheduleGroup"
+    );
+
+    this.schedulerRole = new Role(schedulerServiceScope, "SchedulerRole", {
       assumedBy: new ServicePrincipal("scheduler.amazonaws.com", {
         conditions: {
           ArnEquals: {
@@ -97,14 +88,16 @@ export class Scheduler
       }),
     });
 
-    this.dlq = new Queue(this, "DeadLetterQueue");
+    this.dlq = new Queue(schedulerServiceScope, "DeadLetterQueue");
     this.dlq.grantSendMessages(this.schedulerRole);
 
-    this.queue = new Queue(this, "Queue");
+    this.queue = new Queue(schedulerServiceScope, "Queue");
 
     // TODO: handle failures to a DLQ - https://github.com/functionless/eventual/issues/40
-    this.forwarder = new Function(this, "Forwarder", {
-      code: props.build.getCode(props.build.scheduler.forwarder.file),
+    this.forwarder = new Function(schedulerServiceScope, "Forwarder", {
+      code: props.build.getCode(
+        props.build.system.schedulerService.forwarder.entry
+      ),
       ...baseFnProps,
       handler: "index.handle",
     });
@@ -112,8 +105,10 @@ export class Scheduler
     // Allow the scheduler to create workflow tasks.
     this.forwarder.grantInvoke(this.schedulerRole);
 
-    this.handler = new Function(this, "handler", {
-      code: props.build.getCode(props.build.scheduler.timerHandler.file),
+    this.handler = new Function(schedulerServiceScope, "handler", {
+      code: props.build.getCode(
+        props.build.system.schedulerService.timerHandler.entry
+      ),
       ...baseFnProps,
       handler: "index.handle",
       events: [
@@ -185,7 +180,7 @@ export class Scheduler
   }
 
   private get scheduleGroupWildCardArn() {
-    return Stack.of(this).formatArn({
+    return Stack.of(this.schedulerGroup).formatArn({
       service: "scheduler",
       resource: "schedule",
       arnFormat: ArnFormat.SLASH_RESOURCE_NAME,
@@ -195,13 +190,13 @@ export class Scheduler
 
   private configureHandler() {
     // to support the ScheduleEventRequest
-    this.props.workflows.configureSubmitExecutionEvents(this.handler);
+    this.props.workflowService.configureSubmitExecutionEvents(this.handler);
     // to lookup activity heartbeat time
-    this.props.activities.configureReadActivities(this.handler);
+    this.props.activityService.configureReadActivities(this.handler);
     // to re-schedule a new timer on heartbeat check success
     this.configureScheduleTimer(this.handler);
     // logs to the execution
-    this.props.logging.configurePutServiceLogs(this.handler);
+    this.props.workflowService.configurePutWorkflowExecutionLogs(this.handler);
   }
 
   private configureScheduleForwarder() {
@@ -210,7 +205,7 @@ export class Scheduler
     // deletes the EB schedule
     this.configureCleanupTimer(this.forwarder);
     // logs to the execution when forwarding
-    this.props.logging.configurePutServiceLogs(this.handler);
+    this.props.workflowService.configurePutWorkflowExecutionLogs(this.handler);
   }
 
   private readonly ENV_MAPPINGS = {

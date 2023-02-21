@@ -1,26 +1,30 @@
 import { AsyncTokenSymbol } from "./internal/activity.js";
+import { FunctionRuntimeProps } from "./function-props.js";
 import { createActivityCall } from "./internal/calls/activity-call.js";
 import { createAwaitDurationCall } from "./internal/calls/await-time-call.js";
 import { isActivityWorker, isOrchestratorWorker } from "./internal/flags.js";
 import {
-  callableActivities,
+  activities,
   getActivityContext,
-  getServiceClient
+  getServiceClient,
 } from "./internal/global.js";
+import { isSourceLocation, SourceLocation } from "./internal/service-spec.js";
 import { DurationSchedule } from "./schedule.js";
 import {
   EventualServiceClient,
   SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
-  SendActivitySuccessRequest
+  SendActivitySuccessRequest,
 } from "./service-client.js";
 
-export interface ActivityOptions {
+export interface ActivityRuntimeProps extends FunctionRuntimeProps {}
+
+export interface ActivityOptions extends FunctionRuntimeProps {
   /**
    * How long the workflow will wait for the activity to complete or fail.
    *
-   * @default - workflow will run forever.
+   * @default - workflow will wait forever.
    */
   timeout?: DurationSchedule;
   /**
@@ -36,22 +40,30 @@ export interface ActivityOptions {
   heartbeatTimeout?: DurationSchedule;
 }
 
-export interface Activity<
-  Name extends string = string,
-  Arguments extends any[] = any[],
-  Output = any
-> {
-  kind: "Activity";
-  (...args: Arguments): Promise<Awaited<UnwrapAsync<Output>>>;
-
+export interface ActivitySpec<Name extends string = string> {
   /**
    * Unique name of this Activity.
    */
-  activityID: Name;
+  name: Name;
   /**
    * Optional runtime properties.
    */
   options?: ActivityOptions;
+  sourceLocation?: SourceLocation;
+}
+
+export interface Activity<
+  Name extends string = string,
+  Arguments extends any[] = any[],
+  Output = any
+> extends Omit<ActivitySpec<Name>, "name"> {
+  kind: "Activity";
+  (...args: Arguments): Promise<Awaited<UnwrapAsync<Output>>>;
+  /**
+   * Globally unique ID of this {@link Activity}.
+   */
+  name: Name;
+  handler: ActivityHandler<Arguments, Output>;
   /**
    * Complete an activity request by its {@link SendActivitySuccessRequest.activityToken}.
    *
@@ -141,7 +153,7 @@ export interface ActivityHandler<Arguments extends any[], Output = any> {
 
 export type UnwrapAsync<Output> = Output extends AsyncResult<infer O>
   ? O
-  : Output;  
+  : Output;
 
 export type ActivityOutput<A extends Activity<any, any>> = A extends Activity<
   string,
@@ -233,19 +245,43 @@ export function activity<
   Arguments extends any[],
   Output = any
 >(
-  activityID: Name,
   ...args:
-    | [opts: ActivityOptions, handler: ActivityHandler<Arguments, Output>]
-    | [handler: ActivityHandler<Arguments, Output>]
+    | [
+        sourceLocation: SourceLocation,
+        name: Name,
+        opts: ActivityOptions,
+        handler: ActivityHandler<Arguments, Output>
+      ]
+    | [
+        sourceLocation: SourceLocation,
+        name: Name,
+        handler: ActivityHandler<Arguments, Output>
+      ]
+    | [
+        name: Name,
+        opts: ActivityOptions,
+        handler: ActivityHandler<Arguments, Output>
+      ]
+    | [name: Name, handler: ActivityHandler<Arguments, Output>]
 ): Activity<Name, Arguments, Output> {
-  const [opts, handler] = args.length === 1 ? [undefined, args[0]] : args;
+  const [sourceLocation, name, opts, handler] =
+    args.length === 2
+      ? // just handler
+        [undefined, args[0], undefined, args[1]]
+      : args.length === 4
+      ? // source location, opts, handler
+        args
+      : isSourceLocation(args[0])
+      ? // // source location, handler
+        [args[0], args[1] as Name, undefined, args[2]]
+      : // opts, handler
+        [undefined, args[0] as Name, args[1] as ActivityOptions, args[2]];
   // register the handler to be looked up during execution.
-  callableActivities()[activityID] = handler;
   const func = ((...args: Parameters<Activity<Name, Arguments, Output>>) => {
     if (isOrchestratorWorker()) {
       // if we're in the orchestrator, return a command to invoke the activity in the worker function
       return createActivityCall(
-        activityID,
+        name,
         args,
         opts?.timeout
           ? createAwaitDurationCall(opts.timeout.dur, opts.timeout.unit)
@@ -257,6 +293,8 @@ export function activity<
       return handler(...args);
     }
   }) as Activity<Name, Arguments, Output>;
+
+  Object.defineProperty(func, "name", { value: name, writable: false });
   func.sendActivitySuccess = async function (request) {
     return getServiceClient().sendActivitySuccess(request);
   };
@@ -266,6 +304,10 @@ export function activity<
   func.sendActivityHeartbeat = async function (request) {
     return getServiceClient().sendActivityHeartbeat(request);
   };
-  func.activityID = activityID;
+  func.sourceLocation = sourceLocation;
+
+  // @ts-ignore
+  func.handler = handler;
+  activities()[name] = func;
   return func;
 }

@@ -1,8 +1,7 @@
 import { build, BuildSource, infer } from "@eventual/compiler";
-import { HttpMethod } from "@eventual/core";
+import { ActivitySpec, HttpMethod } from "@eventual/core";
 import {
   CommandSpec,
-  ServiceSpec,
   ServiceType,
   SubscriptionSpec,
 } from "@eventual/core/internal";
@@ -108,116 +107,130 @@ export async function buildService(request: BuildAWSRuntimeProps) {
   ]);
 
   // then, bundle each of the commands and subscriptions
-  const [commands, subscriptions] = await Promise.all([
+  const [commands, subscriptions, activities] = await Promise.all([
     bundle(specPath, "commands"),
     bundle(specPath, "subscriptions"),
+    bundle(specPath, "activities"),
   ] as const);
 
   const manifest: BuildManifest = {
-    orchestrator: {
-      file: orchestrator!,
-    },
-    activities: {
-      handler: {
-        file: monoActivityFunction!,
-      },
-      fallbackHandler: { file: activityFallbackHandler! },
-    },
+    activities: activities,
     events: serviceSpec.events,
     subscriptions,
-    scheduler: {
-      forwarder: {
-        file: scheduleForwarder!,
-      },
-      timerHandler: {
-        file: timerHandler!,
-      },
-    },
-    commands: {
+    commands: [
       ...commands,
-      default: {
-        file: monoCommandFunction!,
+      {
+        entry: monoCommandFunction!,
         spec: {
           name: "default",
         },
       },
+    ],
+    system: {
+      activityService: {
+        fallbackHandler: { entry: activityFallbackHandler! },
+      },
+      eventualService: {
+        commands: manifestInternalAPI() as any,
+      },
+      schedulerService: {
+        forwarder: {
+          entry: scheduleForwarder!,
+        },
+        timerHandler: {
+          entry: timerHandler!,
+        },
+      },
+      workflowService: {
+        orchestrator: {
+          entry: orchestrator!,
+        },
+      },
     },
-    api: manifestInternalAPI() as any,
   };
 
   await fs.promises.writeFile(
     path.join(outDir, "manifest.json"),
     JSON.stringify(manifest, null, 2)
   );
-  type SpecFor<Type extends "subscriptions" | "commands"> =
-    Type extends "commands" ? CommandSpec : SubscriptionSpec;
+  type SpecFor<Type extends "subscriptions" | "commands" | "activities"> =
+    Type extends "commands"
+      ? CommandSpec
+      : Type extends "subscriptions"
+      ? SubscriptionSpec
+      : ActivitySpec;
 
-  async function bundle<Type extends "subscriptions" | "commands">(
-    specPath: string,
-    type: Type
-  ): Promise<{
-    [k in keyof ServiceSpec[Type]]: BundledFunction<SpecFor<Type>>;
-  }> {
-    const routes = await Promise.all(
-      Object.values(serviceSpec[type]).map(
-        async (
-          spec: SpecFor<Type>
-        ): Promise<
-          readonly [string, BundledFunction<CommandSpec | SubscriptionSpec>]
-        > => {
-          if (spec.sourceLocation?.fileName) {
-            // we know the source location of the command, so individually build it from that
-            // file and create a separate (optimized bundle) for it
-            // TODO: generate an index.ts that imports { exportName } from "./sourceLocation" for enhanced bundling
-            // TODO: consider always bundling from the root index.ts instead of arbitrarily via ESBuild+SWC AST transformer
-            return [
-              spec.name,
-              {
-                spec,
-                file: await buildFunction({
-                  name: path.join(
-                    type === "commands" ? "command" : "subscription",
-                    spec.name
-                  ),
-                  entry: runtimeHandlersEntrypoint(
-                    type === "subscriptions" ? "event-handler" : "api-handler"
-                  ),
-                  exportName: spec.sourceLocation.exportName,
-                  serviceType:
-                    type === "commands"
-                      ? ServiceType.ApiHandler
-                      : ServiceType.Subscription,
-                  injectedEntry: spec.sourceLocation.fileName,
-                  injectedServiceSpec: specPath,
-                }),
-              },
-            ] as const;
-          } else {
-            // if we don't know the location of this command (because it is not exported)
-            // then use the default monolithic handler
-            // we'll still create a separate Lambda Function for each command though
-            return [
-              spec.name,
-              {
-                spec: spec,
-                file:
-                  type === "commands"
-                    ? monoCommandFunction!
-                    : monoSubscriptionFunction!,
-              },
-            ] as const;
-          }
-        }
-      )
+  async function bundle<
+    Type extends "subscriptions" | "commands" | "activities"
+  >(specPath: string, type: Type): Promise<BundledFunction<SpecFor<Type>>[]> {
+    return await Promise.all(
+      (serviceSpec[type] as SpecFor<Type>[]).map(async (spec) => {
+        const [pathPrefix, entry, serviceType, name, monoFunction] =
+          type === "commands"
+            ? ([
+                "command",
+                "api-handler",
+                ServiceType.ApiHandler,
+                spec.name,
+                monoCommandFunction!,
+              ] as const)
+            : type === "subscriptions"
+            ? ([
+                "subscription",
+                "event-handler",
+                ServiceType.Subscription,
+                spec.name,
+                monoSubscriptionFunction!,
+              ] as const)
+            : ([
+                "activity",
+                "activity-worker",
+                ServiceType.ActivityWorker,
+                spec.name,
+                monoActivityFunction!,
+              ] as const);
+
+        return {
+          entry: await bundleFile(
+            specPath,
+            spec,
+            pathPrefix,
+            entry,
+            serviceType,
+            name,
+            monoFunction
+          ),
+          spec,
+        };
+      })
     );
-    return Object.fromEntries(
-      routes.filter(
-        (route): route is Exclude<typeof route, undefined> =>
-          route !== undefined
-      )
-    ) as {
-      [k in keyof ServiceSpec[Type]]: BundledFunction<SpecFor<Type>>;
-    };
+  }
+
+  async function bundleFile<
+    Spec extends CommandSpec | SubscriptionSpec | ActivitySpec
+  >(
+    specPath: string,
+    spec: Spec,
+    pathPrefix: string,
+    entryPoint: "event-handler" | "api-handler" | "activity-worker",
+    serviceType: ServiceType,
+    name: string,
+    monoFunction: string
+  ): Promise<string> {
+    return spec.sourceLocation?.fileName
+      ? // we know the source location of the command, so individually build it from that
+        // file and create a separate (optimized bundle) for it
+        // TODO: generate an index.ts that imports { exportName } from "./sourceLocation" for enhanced bundling
+        // TODO: consider always bundling from the root index.ts instead of arbitrarily via ESBuild+SWC AST transformer
+        await buildFunction({
+          name: path.join(pathPrefix, name),
+          entry: runtimeHandlersEntrypoint(entryPoint),
+          exportName: spec.sourceLocation.exportName,
+          serviceType: serviceType,
+          injectedEntry: spec.sourceLocation.fileName,
+          injectedServiceSpec: specPath,
+        })
+      : monoFunction;
   }
 
   function bundleMonolithDefaultHandlers(specPath: string) {
@@ -402,7 +415,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
             passThrough: true,
             internal: true,
           },
-          file: props.file,
+          entry: props.file,
         } satisfies InternalCommandFunction,
       ] as const;
     }

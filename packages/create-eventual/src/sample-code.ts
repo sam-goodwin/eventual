@@ -50,8 +50,8 @@ export function MyStack({ stack }: StackContext) {
     name: "${projectName}",
   });
   stack.addOutputs({
-    ServiceApiEndpoint: service.api.gateway.url!,
-    ServiceEventBusArn: service.events.bus.eventBusArn
+    ServiceApiEndpoint: service.gateway.url!,
+    ServiceEventBusArn: service.bus.eventBusArn
   });
 }
 `;

@@ -7,14 +7,10 @@
 import { generateSchema } from "@anatine/zod-openapi";
 import {
   activities,
-  ActivitySpec,
   commands,
-  CommandSpec,
   events,
-  EventSpec,
   ServiceSpec,
   subscriptions,
-  SubscriptionSpec,
   workflows,
 } from "@eventual/core/internal";
 import {
@@ -33,6 +29,7 @@ import os from "os";
 import path from "path";
 import {
   getSpan,
+  isActivityCall,
   isCommandCall,
   isOnEventCall,
   isSubscriptionCall,
@@ -67,62 +64,39 @@ export async function infer(
 
   const serviceSpec: ServiceSpec = {
     workflows: [...workflows().keys()].map((n) => ({ name: n })),
-    activities: Object.fromEntries(
-      activities().map((activity) => [
-        activity.activityID,
-        {
-          // TODO: source location, etc.
-          activityID: activity.activityID,
-          options: activity.options,
-        } satisfies ActivitySpec,
-      ])
-    ),
-    events: Object.fromEntries(
-      Array.from(events().values()).map(
-        (event) =>
-          [
-            event.name,
-            {
-              name: event.name,
-              schema: event.schema ? generateSchema(event.schema) : undefined,
-            } satisfies EventSpec,
-          ] as const
-      )
-    ),
-    subscriptions: Object.fromEntries(
-      subscriptions().map((e) => [
-        e.name,
-        {
-          name: e.name,
-          props: {
-            memorySize: e.props?.memorySize,
-            retryAttempts: e.props?.retryAttempts,
-            timeout: e.props?.timeout,
-          },
-          sourceLocation: e.sourceLocation,
-          filters: e.filters,
-        } satisfies SubscriptionSpec,
-      ])
-    ) as ServiceSpec["subscriptions"],
-    commands: Object.fromEntries(
-      commands.map((command) => [
-        command.name,
-        {
-          name: command.name,
-          sourceLocation: command.sourceLocation,
-          path: command.path,
-          memorySize: command.memorySize,
-          timeout: command.timeout,
-          method: command.method,
-          input: command.input ? generateSchema(command.input) : undefined,
-          output: command.output ? generateSchema(command.output) : undefined,
-          passThrough: command.passThrough,
-          params: command.params,
-          validate: command.validate,
-          internal: command.internal,
-        } satisfies CommandSpec,
-      ])
-    ),
+    activities: Object.values(activities()).map((activity) => ({
+      name: activity.name,
+      sourceLocation: activity.sourceLocation,
+      options: activity.options,
+    })),
+    events: Array.from(events().values()).map((event) => ({
+      name: event.name,
+      schema: event.schema ? generateSchema(event.schema) : undefined,
+    })),
+    subscriptions: subscriptions().map((e) => ({
+      name: e.name,
+      props: {
+        memorySize: e.props?.memorySize,
+        retryAttempts: e.props?.retryAttempts,
+        handlerTimeout: e.props?.handlerTimeout,
+      },
+      sourceLocation: e.sourceLocation,
+      filters: e.filters,
+    })),
+    commands: commands.map((command) => ({
+      name: command.name,
+      sourceLocation: command.sourceLocation,
+      path: command.path,
+      memorySize: command.memorySize,
+      handlerTimeout: command.handlerTimeout,
+      method: command.method,
+      input: command.input ? generateSchema(command.input) : undefined,
+      output: command.output ? generateSchema(command.output) : undefined,
+      passThrough: command.passThrough,
+      params: command.params,
+      validate: command.validate,
+      internal: command.internal,
+    })),
   };
 
   console.log(JSON.stringify(serviceSpec));
@@ -205,7 +179,10 @@ export class InferVisitor extends Visitor {
   visitCallExpression(call: CallExpression): Expression {
     if (
       this.exportName &&
-      (isCommandCall(call) || isOnEventCall(call) || isSubscriptionCall(call))
+      (isCommandCall(call) ||
+        isOnEventCall(call) ||
+        isSubscriptionCall(call) ||
+        isActivityCall(call))
     ) {
       this.didMutate = true;
 
