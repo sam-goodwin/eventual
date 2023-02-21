@@ -3,7 +3,7 @@ import { ActivitySpec, HttpMethod } from "@eventual/core";
 import {
   CommandSpec,
   ServiceType,
-  SubscriptionSpec,
+  SubscriptionSpec
 } from "@eventual/core/internal";
 import { Code } from "aws-cdk-lib/aws-lambda";
 import { execSync } from "child_process";
@@ -13,7 +13,7 @@ import {
   BuildManifest,
   BundledFunction,
   InternalApiRoutes,
-  InternalCommandFunction,
+  InternalCommandFunction
 } from "./build-manifest";
 
 export interface BuildOutput extends BuildManifest {}

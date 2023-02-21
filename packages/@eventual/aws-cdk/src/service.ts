@@ -14,8 +14,10 @@ import {
   AccountRootPrincipal,
   Effect,
   IGrantable,
+  IPrincipal,
   PolicyStatement,
   Role,
+  UnknownPrincipal,
 } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { LogGroup } from "aws-cdk-lib/aws-logs/index.js";
@@ -35,6 +37,7 @@ import {
   ServiceCommands,
   SystemCommands,
 } from "./command-service";
+import { DeepCompositePrincipal } from "./deep-composite-principal.js";
 import { EventService } from "./event-service";
 import { grant } from "./grant";
 import { LazyInterface, lazyInterface } from "./proxy-construct";
@@ -163,6 +166,11 @@ export class Service<S = any> extends Construct {
   private readonly eventService: EventService;
   private readonly commandService: CommandService<S>;
 
+  public grantPrincipal: IPrincipal;
+  public commandsPrincipal: IPrincipal;
+  public activitiesPrincipal: IPrincipal;
+  public subscriptionsPrincipal: IPrincipal;
+
   public readonly system: ServiceSystem<S>;
 
   constructor(scope: Construct, id: string, props: ServiceProps<S>) {
@@ -266,15 +274,39 @@ export class Service<S = any> extends Construct {
       }
     );
 
+    this.commandsPrincipal =
+      this.commandsList.length > 0
+        ? new DeepCompositePrincipal(
+            ...this.commandsList.map((f) => f.grantPrincipal)
+          )
+        : new UnknownPrincipal({ resource: this });
+    this.activitiesPrincipal =
+      this.activitiesList.length > 0
+        ? new DeepCompositePrincipal(
+            ...this.activitiesList.map((f) => f.grantPrincipal)
+          )
+        : new UnknownPrincipal({ resource: this });
+    this.subscriptionsPrincipal =
+      this.subscriptionsList.length > 0
+        ? new DeepCompositePrincipal(
+            ...this.subscriptionsList.map((f) => f.grantPrincipal)
+          )
+        : new UnknownPrincipal({ resource: this });
+    this.grantPrincipal = new DeepCompositePrincipal(
+      this.commandsPrincipal,
+      this.activitiesPrincipal,
+      this.subscriptionsPrincipal
+    );
+
     serviceDataSSM.grantRead(accessRole);
     this.system = {
-      activityService: activityService,
+      activityService,
       build,
       accessRole: accessRole,
       schedulerService: scheduler,
       systemCommands: this.commandService.systemCommands,
       serviceMetadataSSM: serviceDataSSM,
-      workflowService: workflowService,
+      workflowService,
     };
     proxyService._bind(this);
   }
