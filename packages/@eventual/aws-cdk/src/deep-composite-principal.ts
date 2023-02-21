@@ -6,6 +6,15 @@ import {
 } from "aws-cdk-lib/aws-iam";
 import { DependencyGroup, IDependable } from "constructs";
 
+/**
+ * {@link CompositePrincipal} only works with assumes principals and on grants to resources
+ * with resource policies (ex: SQS). Resources that that require principal policies (dynamo) will fail silently.
+ *
+ * This sub-class is an attempt to support some principal policy use cases like dynamo.
+ *
+ * In the case of dynamo, the composite will try to add a policy statement to each nested principal's
+ * policy.
+ */
 export class DeepCompositePrincipal extends CompositePrincipal {
   private _principals: IPrincipal[];
   constructor(..._principals: IPrincipal[]) {
@@ -37,13 +46,14 @@ export class DeepCompositePrincipal extends CompositePrincipal {
     const res = this._principals.map((p) => p.addToPrincipalPolicy(statement));
     const added = res.every((s) => s.statementAdded);
     if (added) {
-      const dependable = res
+      const dependables = res
         .map((s) => s.policyDependable)
         .filter((p): p is IDependable => !!p);
 
       return {
         statementAdded: added,
-        policyDependable: new DependencyGroup(...dependable),
+        // aggregate all of the nested dependables.
+        policyDependable: new DependencyGroup(...dependables),
       };
     } else {
       return { statementAdded: false };
