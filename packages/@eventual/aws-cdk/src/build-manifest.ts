@@ -24,7 +24,7 @@ export interface BuildManifest {
       fallbackHandler: BundledFunction<undefined>;
     };
     eventualService: {
-      commands: InternalApiRoutes;
+      commands: InternalCommands;
     };
     schedulerService: {
       forwarder: BundledFunction;
@@ -40,17 +40,21 @@ export interface ApiRoutes {
   [route: string]: CommandFunction;
 }
 
-export interface InternalApiRoutes {
-  "/_eventual/workflows": InternalCommandFunction;
-  "/_eventual/workflows/{name}/executions": InternalCommandFunction;
-  "/_eventual/executions": InternalCommandFunction;
-  "/_eventual/executions/{executionId}": InternalCommandFunction;
-  "/_eventual/executions/{executionId}/history": InternalCommandFunction;
-  "/_eventual/executions/{executionId}/signals": InternalCommandFunction;
-  "/_eventual/executions/{executionId}/workflow-history": InternalCommandFunction;
-  "/_eventual/events": InternalCommandFunction;
-  "/_eventual/activities": InternalCommandFunction;
-}
+export type InternalCommandName =
+  | "listWorkflows"
+  | "startExecution"
+  | "listExecutions"
+  | "getExecution"
+  | "getExecutionWorkflowHistory"
+  | "sendSignal"
+  | "getExecutionHistory"
+  | "publishEvents"
+  | "updateActivity";
+
+export type InternalCommands = Record<
+  InternalCommandName,
+  InternalCommandFunction
+>;
 
 export type BundledFunction<Spec = undefined> = {
   entry: string;

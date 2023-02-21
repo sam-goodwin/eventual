@@ -1,4 +1,4 @@
-import { EventEnvelope } from "./event.js";
+import { EventEnvelopeSchema } from "./event.js";
 import {
   Execution,
   ExecutionHandle,
@@ -11,6 +11,7 @@ import {
 } from "./internal/workflow-events.js";
 import { Signal } from "./signals.js";
 import { Workflow, WorkflowInput, WorkflowOptions } from "./workflow.js";
+import { z } from "zod";
 
 /**
  * Top level Eventual Client used by systems outside of an Eventual Service to interact with it.
@@ -107,9 +108,11 @@ export interface StartExecutionResponse {
   alreadyRunning: boolean;
 }
 
-export interface PublishEventsRequest {
-  events: EventEnvelope<any>[];
-}
+export const PublishEventsRequestSchema = z.object({
+  events: z.array(EventEnvelopeSchema),
+});
+
+export type PublishEventsRequest = z.infer<typeof PublishEventsRequestSchema>;
 
 export interface ExecutionHistoryResponse {
   events: HistoryStateEvent[];
@@ -119,6 +122,12 @@ export enum SortOrder {
   Asc = "ASC",
   Desc = "DESC",
 }
+
+export const StartExecutionRequestSchema = z.object({
+  executionName: z.string(),
+  workflow: z.string(),
+  input: z.any().optional(),
+});
 
 export interface StartExecutionRequest<W extends Workflow = Workflow>
   extends WorkflowOptions {

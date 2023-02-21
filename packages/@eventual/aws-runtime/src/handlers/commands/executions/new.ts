@@ -14,6 +14,7 @@ import type {
 } from "aws-lambda";
 import { createWorkflowClient } from "../../../create.js";
 import { withErrorMiddleware } from "../middleware.js";
+import { systemCommand } from "../system-command.js";
 
 const workflowProvider = new ServiceSpecWorkflowProvider(serviceSpec);
 const workflowClient = createWorkflowClient({
@@ -31,7 +32,20 @@ const workflowClient = createWorkflowClient({
  * * timeoutUnit - "seconds" | "minutes" | "hours" | "days" | "years". Units to use for the timeout, default: "seconds".
  * * executionName - name to give the workflow. Default: auto generated UUID.
  */
-export const handler: APIGatewayProxyHandlerV2<StartExecutionResponse> =
+export const handler = systemCommand({input: StartExecutionRequestSchema}, (request) => {
+  return const result = await workflowClient.startExecution({
+    workflow: workflowName,
+    input: event.body && JSON.parse(event.body),
+    executionName,
+    timeout: timeout
+      ? Schedule.duration(timeout, timeoutUnit as DurationUnit)
+      : undefined,
+  });
+
+  if (result.alreadyRunning) {
+    return result;
+  }
+}): APIGatewayProxyHandlerV2<StartExecutionResponse> =
   withErrorMiddleware(async (event: APIGatewayProxyEventV2) => {
     const {
       timeout: timeoutString,

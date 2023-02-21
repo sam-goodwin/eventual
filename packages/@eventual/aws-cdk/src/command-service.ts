@@ -24,7 +24,7 @@ import openapi from "openapi3-ts";
 import type { ActivityService } from "./activity-service";
 import {
   CommandFunction,
-  InternalApiRoutes,
+  InternalCommands,
   InternalCommandFunction,
 } from "./build-manifest";
 import type { EventService } from "./event-service";
@@ -100,27 +100,26 @@ export class CommandService<Service = any> {
   constructor(private props: CommandsProps<Service>) {
     const self = this;
 
-    const internalApiRoutes: InternalApiRoutes =
+    const internalApiRoutes: InternalCommands =
       this.props.build.system.eventualService.commands;
     const internalInit: {
       [route in keyof typeof internalApiRoutes]?: CommandMapping["init"];
     } = {
-      "/_eventual/activities": (fn) => {
+      updateActivity: (fn) => {
         this.props.activityService.configureWriteActivities(fn);
         this.props.activityService.configureCompleteActivity(fn);
       },
-      "/_eventual/events": (fn) => this.props.eventService.configurePublish(fn),
-      "/_eventual/executions": (fn) =>
+      publishEvents: (fn) => this.props.eventService.configurePublish(fn),
+      listExecutions: (fn) =>
         this.props.workflowService.configureReadExecutions(fn),
-      "/_eventual/executions/{executionId}": (fn) =>
+      getExecution: (fn) =>
         this.props.workflowService.configureReadExecutions(fn),
-      "/_eventual/executions/{executionId}/history": (fn) =>
+      getExecutionHistory: (fn) =>
         this.props.workflowService.configureReadExecutionHistory(fn),
-      "/_eventual/executions/{executionId}/signals": (fn) =>
-        this.props.workflowService.configureSendSignal(fn),
-      "/_eventual/executions/{executionId}/workflow-history": (fn) =>
+      sendSignal: (fn) => this.props.workflowService.configureSendSignal(fn),
+      getExecutionWorkflowHistory: (fn) =>
         this.props.workflowService.configureReadHistoryState(fn),
-      "/_eventual/workflows/{name}/executions": (fn) =>
+      startExecution: (fn) =>
         this.props.workflowService.configureStartExecution(fn),
     };
 
@@ -153,10 +152,7 @@ export class CommandService<Service = any> {
       (
         Object.entries(this.props.build.system.eventualService.commands) as any
       ).map(
-        ([path, manifest]: [
-          keyof InternalApiRoutes,
-          InternalCommandFunction
-        ]) =>
+        ([path, manifest]: [keyof InternalCommands, InternalCommandFunction]) =>
           ({
             manifest,
             overrides: {
@@ -265,10 +261,12 @@ export class CommandService<Service = any> {
         // we will keep the api spec and improve it over time
         self.onFinalize(() => {
           const integration = new HttpLambdaIntegration(command.name, handler);
-          if (!(command.internal || command.passThrough)) {
+          if (!command.passThrough) {
             // internal and low-level HTTP APIs should be passed through
             self.gateway.addRoutes({
-              path: `/_rpc/${command.name}`,
+              path: command.internal
+                ? `/_eventual/${command.name}`
+                : `/_rpc/${command.name}`,
               methods: [HttpMethod.POST],
               integration,
               authorizer: overrides?.authorizer,
