@@ -89,12 +89,14 @@ export const createWorkflowProvider = /* @__PURE__ */ memoize(
 );
 
 export const createExecutionHistoryStore = /* @__PURE__ */ memoize(
-  ({ tableName }: { tableName?: string } = {}) =>
+  ({
+    executionHistoryTableName,
+  }: { executionHistoryTableName?: string } = {}) =>
     new AWSExecutionHistoryStore({
       dynamo: dynamo(),
-      tableName: tableName ?? env.tableName,
-    }),
-  { cacheKey: (opts) => opts?.tableName ?? env.tableName }
+      executionHistoryTableName:
+        executionHistoryTableName ?? env.executionHistoryTableName,
+    })
 );
 
 export const createWorkflowClient = /* @__PURE__ */ memoize(
@@ -126,10 +128,10 @@ export const createExecutionQueueClient = /* @__PURE__ */ memoize(
 );
 
 export const createExecutionStore = /* @__PURE__ */ memoize(
-  ({ tableName }: { tableName?: string } = {}) =>
+  ({ executionTableName }: { executionTableName?: string } = {}) =>
     new AWSExecutionStore({
       dynamo: dynamo(),
-      tableName: tableName ?? env.tableName,
+      executionTableName: executionTableName ?? env.executionTableName,
     })
 );
 

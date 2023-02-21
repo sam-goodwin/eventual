@@ -1,3 +1,5 @@
+import { ExecutionID } from "../execution.js";
+
 export function assertNever(never: never, msg?: string): never {
   throw new Error(msg ?? `reached unreachable code with value ${never}`);
 }
@@ -101,6 +103,6 @@ export function encodeExecutionId(executionId: string) {
   return Buffer.from(executionId, "utf-8").toString("base64");
 }
 
-export function decodeExecutionId(executionId: string) {
-  return Buffer.from(executionId, "base64").toString("utf-8");
+export function decodeExecutionId(executionId: string): ExecutionID {
+  return Buffer.from(executionId, "base64").toString("utf-8") as ExecutionID;
 }

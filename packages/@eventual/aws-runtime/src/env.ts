@@ -4,7 +4,8 @@ import { assertNonNull } from "@eventual/core/internal";
 export const ENV_NAMES = {
   SERVICE_NAME: "EVENTUAL_SERVICE_NAME",
   SERVICE_URL: "EVENTUAL_SERVICE_URL",
-  TABLE_NAME: "EVENTUAL_TABLE_NAME",
+  EXECUTION_TABLE_NAME: "EVENTUAL_EXECUTION_TABLE_NAME",
+  EXECUTION_HISTORY_TABLE_NAME: "EVENTUAL_EXECUTION_HISTORY_TABLE_NAME",
   EXECUTION_HISTORY_BUCKET: "EVENTUAL_EXECUTION_HISTORY_BUCKET",
   EVENT_BUS_ARN: "EVENTUAL_EVENT_BUS_ARN",
   WORKFLOW_QUEUE_URL: "EVENTUAL_WORKFLOW_QUEUE_URL",
@@ -27,7 +28,10 @@ export function tryGetEnv<T extends string = string>(name: string) {
 }
 
 export const serviceName = () => tryGetEnv(ENV_NAMES.SERVICE_NAME);
-export const tableName = () => tryGetEnv(ENV_NAMES.TABLE_NAME);
+export const executionTableName = () =>
+  tryGetEnv(ENV_NAMES.EXECUTION_TABLE_NAME);
+export const executionHistoryTableName = () =>
+  tryGetEnv(ENV_NAMES.EXECUTION_HISTORY_TABLE_NAME);
 export const eventBusArn = () => tryGetEnv(ENV_NAMES.EVENT_BUS_ARN);
 export const executionHistoryBucket = () =>
   tryGetEnv(ENV_NAMES.EXECUTION_HISTORY_BUCKET);

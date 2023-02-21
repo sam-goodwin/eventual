@@ -1,4 +1,4 @@
-import { EventualServiceClient, SortOrder } from "@eventual/core";
+import { EventualServiceClient, ExecutionID, SortOrder } from "@eventual/core";
 import { Argv } from "yargs";
 import { displayEvent } from "../display/event.js";
 import { serviceAction, setServiceOptions } from "../service-action.js";
@@ -60,7 +60,7 @@ export const history = (yargs: Argv) =>
 
       async function getExecutionHistory(serviceClient: EventualServiceClient) {
         return await serviceClient.getExecutionHistory({
-          executionId: args.execution,
+          executionId: args.execution as ExecutionID,
           nextToken: args.nextToken,
           maxResults: args.maxResults,
           sortDirection: args.desc ? SortOrder.Desc : SortOrder.Asc,

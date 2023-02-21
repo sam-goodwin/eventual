@@ -8,12 +8,12 @@ import { Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
 import type { SubscriptionFunction } from "./build-manifest";
-import type { EventService } from "./event-service";
-import type { ServiceConstructProps } from "./service";
 import { CommandService } from "./command-service";
+import type { EventService } from "./event-service";
+import { LazyInterface } from "./proxy-construct";
+import type { ServiceConstructProps } from "./service";
 import { ServiceFunction } from "./service-function";
 import type { KeysOfType } from "./utils";
-import { LazyInterface } from "./proxy-construct";
 
 export type SubscriptionNames<Service> = KeysOfType<
   Service,
