@@ -2,14 +2,10 @@ import type { ActivitySpec } from "@eventual/core";
 import type {
   CommandSpec,
   EventSpec,
-  SubscriptionSpec,
+  SubscriptionSpec
 } from "@eventual/core/internal";
 
 export interface BuildManifest {
-  workflows: {
-    orchestrator: BundledFunction;
-  };
-  api: InternalApiRoutes;
   /**
    * Activities declared within the Service.
    */
@@ -23,13 +19,19 @@ export interface BuildManifest {
    */
   subscriptions: SubscriptionFunction[];
   commands: CommandFunction[];
-  internal: {
-    activities: {
+  system: {
+    activityService: {
       fallbackHandler: BundledFunction<undefined>;
     };
-    scheduler: {
+    eventualService: {
+      commands: InternalApiRoutes;
+    };
+    schedulerService: {
       forwarder: BundledFunction;
       timerHandler: BundledFunction;
+    };
+    workflowService: {
+      orchestrator: BundledFunction;
     };
   };
 }
@@ -51,20 +53,14 @@ export interface InternalApiRoutes {
 }
 
 export type BundledFunction<Spec = undefined> = {
-  file: string;
+  entry: string;
   /**
    * Export name of the handler in the file.
    *
    * @default index.default
    */
   handler?: string;
-} & (Spec extends undefined
-  ? {
-      spec?: Spec;
-    }
-  : {
-      spec: Spec;
-    });
+} & ([Spec] extends [object] ? { spec: Spec } : { spec?: never });
 
 export interface ExportedEventHandlerFunction extends SubscriptionFunction {
   exportName: string;
