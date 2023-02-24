@@ -1,8 +1,9 @@
-import { ListExecutionEventsResponse, SortOrder } from "@eventual/core";
-import { decodeExecutionId } from "@eventual/core/internal";
-import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
+import {
+  EventualService,
+  listExecutionEventsRequestSchema,
+} from "@eventual/core/internal";
 import { createExecutionHistoryStore } from "../../../create.js";
-import { withErrorMiddleware } from "../middleware.js";
+import { systemCommand } from "../system-command.js";
 
 const executionHistoryStore = createExecutionHistoryStore();
 
@@ -18,46 +19,9 @@ const executionHistoryStore = createExecutionHistoryStore();
  * * nextToken - continue a previous request
  * * after - a ISO 8601 timestamp which all events should be after
  */
-export const handler: APIGatewayProxyHandlerV2<ListExecutionEventsResponse> =
-  withErrorMiddleware(async (event: APIGatewayProxyEventV2) => {
-    const {
-      nextToken,
-      maxResults: maxResultString,
-      sortDirection: rawSortDirection,
-      after,
-    } = event.queryStringParameters ?? {};
-
-    const maxResults = maxResultString ? parseInt(maxResultString) : undefined;
-    if (maxResults !== undefined && isNaN(maxResults)) {
-      return {
-        statusCode: 400,
-        body: "Expected optional parameter maxResults to be a number",
-      };
-    }
-
-    const sortDirection = rawSortDirection?.toUpperCase();
-    if (
-      sortDirection &&
-      !Object.values(SortOrder).includes(sortDirection as SortOrder)
-    ) {
-      return {
-        statusCode: 400,
-        body: `Expected optional parameter sortDirection to be one of ${Object.values(
-          SortOrder
-        ).join(",")}`,
-      };
-    }
-
-    const executionId = event.pathParameters?.executionId;
-    if (!executionId) {
-      return { statusCode: 400, body: `Missing executionId` };
-    }
-
-    return executionHistoryStore.getEvents({
-      executionId: decodeExecutionId(executionId),
-      maxResults,
-      nextToken,
-      after,
-      sortDirection: sortDirection as SortOrder | undefined,
-    });
-  });
+export const handler = systemCommand<EventualService["getExecutionHistory"]>(
+  { inputSchema: listExecutionEventsRequestSchema },
+  (request) => {
+    return executionHistoryStore.getEvents(request);
+  }
+);

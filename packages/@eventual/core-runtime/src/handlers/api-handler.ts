@@ -123,13 +123,15 @@ function initRouter() {
       })
     );
 
-    if (command.path) {
+    const path = command.path;
+
+    if (path) {
       const method = (command.method?.toLocaleLowerCase() ??
         "all") as keyof Router;
 
       // REST routes parse the request according to the command's path/method/params configuration
       router[method](
-        command.path,
+        path,
         withMiddleware(async (request: HttpRequest, context) => {
           if (command.passThrough) {
             // if passthrough is enabled, just proxy the request-response to the handler

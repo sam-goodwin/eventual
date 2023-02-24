@@ -1,4 +1,4 @@
-import { HttpMethod, HttpRequestInit } from "@eventual/core";
+import { HttpMethod } from "@eventual/core";
 import { getRequestHandler } from "./request-handler/factory.js";
 import {
   BeforeRequest,
@@ -27,28 +27,27 @@ export class HttpServiceClient {
     this.requestHandler = getRequestHandler(props.beforeRequest);
   }
 
-  /**
-   * Pass through any http request to the eventual endpoint.
-   *
-   * Does not inject the _eventual suffix into the url. ([serviceUrl]/[path]).
-   */
-  protected async proxy(
-    request: Omit<HttpRequestInit, "params"> & { path: string }
-  ) {
-    return this.requestHandler.request({
-      url: `${this.baseUrl.href}/${request.path}`,
-      method: request.method,
-      body: request.body,
-      headers: request.headers,
+  public async rpc<Payload = any, Resp = any>(request: {
+    payload: Payload;
+    command: string;
+    /**
+     * @default _default
+     */
+    namespace: string;
+  }): Promise<Resp> {
+    return this.request({
+      path: `/_rpc/${request.namespace}/${request.command}`,
+      body: request.payload ? JSON.stringify(request.payload) : undefined,
+      method: "POST",
     });
   }
 
-  protected async request<Body = any, Resp = any>(request: {
+  public async request<Body = any, Resp = any>(request: {
     body?: Body;
     method: HttpMethod;
     path: string;
   }): Promise<Resp> {
-    const url = `${this.baseUrl.href}_eventual/${request.path}`;
+    const url = `${this.baseUrl.href}/${request.path}`;
     return this.requestHandler.request({
       url,
       body: request.body ? JSON.stringify(request.body) : undefined,

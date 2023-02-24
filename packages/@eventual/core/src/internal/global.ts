@@ -48,7 +48,7 @@ declare global {
     /**
      * API routes registered within the application.
      */
-    commands?: Command<any, any, any>[];
+    commands?: Command<any, any, any, any, any, any>[];
   };
 }
 

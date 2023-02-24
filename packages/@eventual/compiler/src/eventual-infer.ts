@@ -95,7 +95,7 @@ export async function infer(
       passThrough: command.passThrough,
       params: command.params,
       validate: command.validate,
-      internal: command.internal,
+      namespace: command.namespace,
     })),
   };
 

@@ -1,20 +1,9 @@
 import serviceSpec from "@eventual/injected/spec";
 
-import {
-  DurationUnit,
-  DURATION_UNITS,
-  Schedule,
-  StartExecutionResponse,
-} from "@eventual/core";
-import { isDurationUnit } from "@eventual/core/internal";
 import { ServiceSpecWorkflowProvider } from "@eventual/core-runtime";
-import type {
-  APIGatewayProxyEventV2,
-  APIGatewayProxyHandlerV2,
-} from "aws-lambda";
 import { createWorkflowClient } from "../../../create.js";
-import { withErrorMiddleware } from "../middleware.js";
 import { systemCommand } from "../system-command.js";
+import { EventualService, startExecutionRequestSchema } from "@eventual/core/internal";
 
 const workflowProvider = new ServiceSpecWorkflowProvider(serviceSpec);
 const workflowClient = createWorkflowClient({
@@ -32,59 +21,14 @@ const workflowClient = createWorkflowClient({
  * * timeoutUnit - "seconds" | "minutes" | "hours" | "days" | "years". Units to use for the timeout, default: "seconds".
  * * executionName - name to give the workflow. Default: auto generated UUID.
  */
-export const handler = systemCommand({input: StartExecutionRequestSchema}, (request) => {
-  return const result = await workflowClient.startExecution({
-    workflow: workflowName,
-    input: event.body && JSON.parse(event.body),
-    executionName,
-    timeout: timeout
-      ? Schedule.duration(timeout, timeoutUnit as DurationUnit)
-      : undefined,
-  });
-
-  if (result.alreadyRunning) {
-    return result;
-  }
-}): APIGatewayProxyHandlerV2<StartExecutionResponse> =
-  withErrorMiddleware(async (event: APIGatewayProxyEventV2) => {
-    const {
-      timeout: timeoutString,
-      timeoutUnit,
-      executionName,
-    } = event.queryStringParameters ?? {};
-
-    const timeout = timeoutString ? parseInt(timeoutString) : undefined;
-
-    if (timeout !== undefined && isNaN(timeout)) {
-      throw new Error(
-        "Expected optional parameter timeout to be a valid number"
-      );
-    }
-
-    if (timeoutUnit && !isDurationUnit(timeoutUnit)) {
-      throw new Error(
-        "Expected optional parameter timeoutUnit to be one of: " +
-          DURATION_UNITS.join()
-      );
-    }
-
-    const workflowName = event.pathParameters?.name;
-    if (!workflowName) {
-      return { statusCode: 400, body: `Missing workflow name` };
-    }
-
-    const result = await workflowClient.startExecution({
-      workflow: workflowName,
-      input: event.body && JSON.parse(event.body),
-      executionName,
-      timeout: timeout
-        ? Schedule.duration(timeout, timeoutUnit as DurationUnit)
-        : undefined,
+export const handler = systemCommand<EventualService["startExecution"]>(
+  { inputSchema: startExecutionRequestSchema },
+  async (request) => {
+    return await workflowClient.startExecution({
+      input: request.input,
+      workflow: request.workflow,
+      executionName: request.executionName,
+      timeout: request.timeout,
     });
-
-    if (result.alreadyRunning) {
-      return result;
-    }
-
-    return { statusCode: 200, body: JSON.stringify(result) };
-  });
+  }
+);

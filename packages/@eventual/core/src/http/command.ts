@@ -8,21 +8,26 @@ import type { Middleware } from "./middleware.js";
 
 export interface Command<
   Name extends string = string,
-  Handler extends CommandHandler = CommandHandler,
+  Input = any,
+  Output = any,
+  Context = any,
   Path extends string | undefined = string | undefined,
   Method extends HttpMethod | undefined = HttpMethod | undefined
 > extends FunctionRuntimeProps {
   kind: "Command";
   name: Name;
-  input?: z.ZodType<Parameters<Handler>[0]>;
-  output?: z.ZodType<Awaited<ReturnType<Handler>>[0]>;
-  handler: Handler;
+  input?: z.ZodType<Input>;
+  output?: z.ZodType<Awaited<Output>>;
+  handler: CommandHandler<Input, Output, Context>;
   path?: Path;
   method?: Method;
-  params?: RestParams<Parameters<Handler>[0], Path, Method>;
+  params?: RestParams<Input, Path, Method>;
   sourceLocation?: SourceLocation;
   passThrough?: boolean;
-  internal?: boolean;
+  /**
+   * @default _default
+   */
+  namespace?: string;
   middlewares?: Middleware<any, any>[];
   /**
    * @default true
@@ -78,18 +83,33 @@ export type CommandHandler<T = any, U = any, Context = any> = (
   context: Context
 ) => Promise<U> | Awaited<U>;
 
-export function command<Name extends string, Handler extends CommandHandler>(
+export type CommandInput<C extends Command> = C extends Command<
+  any,
+  infer Input
+>
+  ? Input
+  : never;
+
+export type CommandOutput<C extends Command> = C extends Command<
+  any,
+  any,
+  infer Output
+>
+  ? Output
+  : never;
+
+export function command<Name extends string, Input, Output, Context>(
   name: Name,
-  handler: Handler
-): Command<Name, Handler, undefined, undefined>;
+  handler: CommandHandler<Input, Output, Context>
+): Command<Name, Input, Output, Context, undefined, undefined>;
 
 export function command<
   Name extends string,
   Input,
   Output,
+  Context,
   Path extends string | undefined,
-  Method extends HttpMethod | undefined,
-  Handler extends CommandHandler<Input, Output>
+  Method extends HttpMethod | undefined
 >(
   name: Name,
   options: FunctionRuntimeProps & {
@@ -105,20 +125,22 @@ export function command<
      */
     validate?: boolean;
   },
-  handler: Handler
-): Command<Name, Handler, Path, Method>;
+  handler: CommandHandler<Input, Output, Context>
+): Command<Name, Input, Output, Context, Path, Method>;
 
 export function command<
   Name extends string,
+  Input,
+  Output,
+  Context,
   Path extends string | undefined,
-  Method extends HttpMethod | undefined,
-  Handler extends CommandHandler
+  Method extends HttpMethod | undefined
 >(
   name: Name,
   options: FunctionRuntimeProps & {
     path?: Path;
     method?: Method;
-    params?: RestParams<Parameters<Handler>[0], Path, Method>;
+    params?: RestParams<Input, Path, Method>;
     input?: undefined;
     /**
      * Enable or disable schema validation.
@@ -127,14 +149,14 @@ export function command<
      */
     validate?: boolean;
   },
-  handler: Handler
-): Command<Name, Handler, Path, Method>;
+  handler: CommandHandler<Input, Output, Context>
+): Command<Name, Input, Output, Context, Path, Method>;
 
-export function command<Name extends string, Handler extends CommandHandler>(
+export function command<Name extends string, Input, Output, Context>(
   ...args: any[]
-): Command<Name, Handler, undefined, undefined> {
+): Command<Name, Input, Output, Context, undefined, undefined> {
   const [sourceLocation, name, options, handler] = parseCommandArgs(args);
-  const command: Command<Name, Handler, undefined, undefined> = {
+  const command: Command<Name, Input, Output, Context, undefined, undefined> = {
     kind: "Command",
     name,
     handler,

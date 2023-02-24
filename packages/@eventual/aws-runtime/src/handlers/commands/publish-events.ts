@@ -1,12 +1,12 @@
 import "@eventual/injected/entry";
 
-import { PublishEventsRequestSchema } from "@eventual/core";
+import { publishEventsRequestSchema } from "@eventual/core/internal";
 import { createEventClient } from "../../create.js";
 import { systemCommand } from "./system-command.js";
 
 const eventClient = createEventClient();
 
 export const handler = systemCommand(
-  { input: PublishEventsRequestSchema },
-  async (request) => eventClient.publishEvents(...request.events)
+  { inputSchema: publishEventsRequestSchema },
+  (request) => eventClient.publishEvents(...request.events)
 );

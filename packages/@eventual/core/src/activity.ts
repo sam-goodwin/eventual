@@ -1,7 +1,8 @@
-import { AsyncTokenSymbol } from "./internal/activity.js";
 import { FunctionRuntimeProps } from "./function-props.js";
+import { AsyncTokenSymbol } from "./internal/activity.js";
 import { createActivityCall } from "./internal/calls/activity-call.js";
 import { createAwaitDurationCall } from "./internal/calls/await-time-call.js";
+import { SendActivityFailureRequest, SendActivityHeartbeatRequest, SendActivitySuccessRequest } from "./internal/eventual-service.js";
 import { isActivityWorker, isOrchestratorWorker } from "./internal/flags.js";
 import {
   activities,
@@ -12,10 +13,7 @@ import { isSourceLocation, SourceLocation } from "./internal/service-spec.js";
 import { DurationSchedule } from "./schedule.js";
 import {
   EventualServiceClient,
-  SendActivityFailureRequest,
-  SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
-  SendActivitySuccessRequest,
 } from "./service-client.js";
 
 export interface ActivityRuntimeProps extends FunctionRuntimeProps {}

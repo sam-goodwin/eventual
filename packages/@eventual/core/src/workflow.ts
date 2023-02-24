@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { Context } from "./context.js";
 import { ChildExecution, ExecutionHandle } from "./execution.js";
 import { createWorkflowCall } from "./internal/calls/workflow-call.js";
@@ -13,12 +14,16 @@ import {
   TimerScheduled,
   WorkflowEventType,
 } from "./internal/workflow-events.js";
-import { DurationSchedule } from "./schedule.js";
+import { DurationSchedule, durationScheduleSchema } from "./schedule.js";
 import { StartExecutionRequest } from "./service-client.js";
 
 export interface WorkflowHandler<Input = any, Output = any> {
   (input: Input, context: Context): Promise<Output> | Program<any>;
 }
+
+export const workflowOptionsSchema = z.object({
+  timeout: durationScheduleSchema.optional(),
+});
 
 /**
  * Options which determine how a workflow operates.

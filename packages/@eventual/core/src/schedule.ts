@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 export const DURATION_UNITS = [
   "second",
   "seconds",
@@ -13,16 +15,20 @@ export const DURATION_UNITS = [
 
 export type DurationUnit = (typeof DURATION_UNITS)[number];
 
-export interface DurationSchedule {
-  type: "Duration";
-  dur: number;
-  unit: DurationUnit;
-}
+export const durationScheduleSchema = z.object({
+  type: z.literal("Duration"),
+  dur: z.number(),
+  unit: z.enum(DURATION_UNITS),
+});
 
-export interface TimeSchedule {
-  type: "Time";
-  isoDate: string;
-}
+export type DurationSchedule = z.infer<typeof durationScheduleSchema>;
+
+export const TimeScheduleSchema = z.object({
+  type: z.literal("Time"),
+  isoDate: z.string().datetime(),
+});
+
+export type TimeSchedule = z.infer<typeof TimeScheduleSchema>;
 
 export type Schedule = DurationSchedule | TimeSchedule;
 

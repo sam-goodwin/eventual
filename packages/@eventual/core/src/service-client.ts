@@ -1,17 +1,20 @@
-import { EventEnvelopeSchema } from "./event.js";
+import { Execution, ExecutionHandle } from "./execution.js";
+import { CommandInput } from "./http/command.js";
 import {
-  Execution,
-  ExecutionHandle,
-  ExecutionID,
-  ExecutionStatus,
-} from "./execution.js";
-import {
-  HistoryStateEvent,
-  WorkflowEvent,
-} from "./internal/workflow-events.js";
+  ActivityUpdateType,
+  EventualService,
+  ExecutionHistoryResponse,
+  ListExecutionEventsResponse,
+  ListExecutionsResponse,
+  ListWorkflowsResponse,
+  SendActivityFailureRequest,
+  SendActivityHeartbeatRequest,
+  SendActivityHeartbeatResponse,
+  SendActivitySuccessRequest,
+  SortOrder,
+} from "./internal/eventual-service.js";
 import { Signal } from "./signals.js";
 import { Workflow, WorkflowInput, WorkflowOptions } from "./workflow.js";
-import { z } from "zod";
 
 /**
  * Top level Eventual Client used by systems outside of an Eventual Service to interact with it.
@@ -75,16 +78,12 @@ export interface EventualServiceClient {
   /**
    * Succeeds an async activity with the given value.
    */
-  sendActivitySuccess(
-    request: Omit<SendActivitySuccessRequest, "type">
-  ): Promise<void>;
+  sendActivitySuccess(request: SendActivitySuccessRequest): Promise<void>;
 
   /**
    * Fails an async activity causing it to throw the given error.
    */
-  sendActivityFailure(
-    request: Omit<SendActivityFailureRequest, "type">
-  ): Promise<void>;
+  sendActivityFailure(request: SendActivityFailureRequest): Promise<void>;
 
   /**
    * Submits a "heartbeat" for the given activityToken.
@@ -92,42 +91,13 @@ export interface EventualServiceClient {
    * @returns whether the activity has been cancelled by the calling workflow.
    */
   sendActivityHeartbeat(
-    request: Omit<SendActivityHeartbeatRequest, "type">
+    request: SendActivityHeartbeatRequest
   ): Promise<SendActivityHeartbeatResponse>;
 }
 
-export interface StartExecutionResponse {
-  /**
-   * ID of the started workflow execution.
-   */
-  executionId: ExecutionID;
-  /**
-   * @returns true when the execution name with the same input
-   *          was already started. Use `getExecution` to check the status.
-   */
-  alreadyRunning: boolean;
-}
-
-export const PublishEventsRequestSchema = z.object({
-  events: z.array(EventEnvelopeSchema),
-});
-
-export type PublishEventsRequest = z.infer<typeof PublishEventsRequestSchema>;
-
-export interface ExecutionHistoryResponse {
-  events: HistoryStateEvent[];
-}
-
-export enum SortOrder {
-  Asc = "ASC",
-  Desc = "DESC",
-}
-
-export const StartExecutionRequestSchema = z.object({
-  executionName: z.string(),
-  workflow: z.string(),
-  input: z.any().optional(),
-});
+export type PublishEventsRequest = CommandInput<
+  EventualService["publishEvents"]
+>;
 
 export interface StartExecutionRequest<W extends Workflow = Workflow>
   extends WorkflowOptions {
@@ -150,14 +120,6 @@ export interface StartExecutionRequest<W extends Workflow = Workflow>
   input: WorkflowInput<W>;
 }
 
-export interface WorkflowReference {
-  name: string;
-}
-
-export interface ListWorkflowsResponse {
-  workflows: WorkflowReference[];
-}
-
 export interface SucceedExecutionRequest<Result = any> {
   executionId: string;
   result?: Result;
@@ -171,94 +133,34 @@ export interface FailExecutionRequest {
   endTime: string;
 }
 
-export interface ListExecutionsRequest {
-  statuses?: ExecutionStatus[];
-  workflowName?: string;
-  nextToken?: string;
-  /**
-   * @default "Asc"
-   */
-  sortDirection?: SortOrder;
-  /**
-   * @default: 100
-   */
-  maxResults?: number;
-}
+export type ListExecutionsRequest = CommandInput<
+  EventualService["listExecutions"]
+>;
 
-export interface ListExecutionsResponse {
-  executions: Execution[];
-  /**
-   * A token returned when there may be more executions to retrieve.
-   */
-  nextToken?: string;
-}
-
-export interface ListExecutionEventsRequest {
-  executionId: string;
-  /**
-   * @default "Asc"
-   */
-  sortDirection?: SortOrder;
-  nextToken?: string;
-  /**
-   * @default: 100
-   */
-  maxResults?: number;
-  /**
-   * Start returning results after a date.
-   */
-  after?: string;
-}
-
-export interface ListExecutionEventsResponse {
-  events: WorkflowEvent[];
-  nextToken?: string;
-}
-
-export enum ActivityUpdateType {
-  Success = "Success",
-  Failure = "Failure",
-  Heartbeat = "Heartbeat",
-}
-
-export type SendActivityUpdate<T = any> =
-  | SendActivitySuccessRequest<T>
-  | SendActivityFailureRequest
-  | SendActivityHeartbeatRequest;
-
-export interface SendActivitySuccessRequest<T = any> {
-  type: ActivityUpdateType.Success;
-  activityToken: string;
-  result: T;
-}
-
-export interface SendActivityFailureRequest {
-  type: ActivityUpdateType.Failure;
-  activityToken: string;
-  error: string;
-  message?: string;
-}
-
-export interface SendActivityHeartbeatRequest {
-  type: ActivityUpdateType.Heartbeat;
-  activityToken: string;
-}
-
-export interface SendActivityHeartbeatResponse {
-  /**
-   * True when the activity has been cancelled.
-   *
-   * This is the only way for a long running activity to know it was cancelled.
-   */
-  cancelled: boolean;
-}
+export type ListExecutionEventsRequest = CommandInput<
+  EventualService["getExecutionHistory"]
+>;
 
 export interface SendSignalRequest<Payload = any> {
+  signal: Signal<Payload> | string;
   execution: ExecutionHandle<any> | string;
-  signal: string | Signal<Payload>;
   payload?: Payload;
   /**
    * Execution scoped unique event id. Duplicates will be deduplicated.
    */
   id?: string;
 }
+
+// re-exports types used by the client, the types are in the internal path otherwise.
+export {
+  ActivityUpdateType,
+  ExecutionHistoryResponse,
+  ListExecutionsResponse,
+  ListExecutionEventsResponse,
+  ListWorkflowsResponse,
+  SendActivityFailureRequest,
+  SendActivityHeartbeatRequest,
+  SendActivityHeartbeatResponse,
+  SendActivitySuccessRequest,
+  SortOrder,
+};

@@ -4,7 +4,6 @@ import {
   Execution,
   ExecutionHandle,
   ExecutionHistoryResponse,
-  HttpRequestInit,
   ListExecutionEventsRequest,
   ListExecutionEventsResponse,
   ListExecutionsRequest,
@@ -12,18 +11,19 @@ import {
   ListWorkflowsResponse,
   PublishEventsRequest,
   SendActivityFailureRequest,
-  SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
   SendActivitySuccessRequest,
   SendSignalRequest,
   StartExecutionRequest,
-  StartExecutionResponse,
   Workflow,
-  WorkflowInput,
 } from "@eventual/core";
-import { encodeExecutionId, HistoryStateEvent } from "@eventual/core/internal";
-import { HttpServiceClient } from "./base-http-client.js";
-import { HttpError } from "./request-handler/request-handler.js";
+import {
+  EventualService,
+  EVENTUAL_INTERNAL_COMMAND_NAMESPACE,
+  SendActivityHeartbeatRequest,
+} from "@eventual/core/internal";
+import { HttpServiceClientProps } from "./base-http-client.js";
+import { ServiceClient } from "./service-client.js";
 
 /**
  * Http implementation of the {@link EventualServiceClient} to hit the API deployed
@@ -34,44 +34,33 @@ import { HttpError } from "./request-handler/request-handler.js";
  * To authorize and/or sign requests, use the beforeRequest hook or
  * an existing platform specific client. (ex: {@link AwsHttpServiceClient} in @eventual/aws-client)
  */
-export class HttpEventualClient
-  extends HttpServiceClient
-  implements EventualServiceClient
-{
-  public async proxy(
-    request: Omit<HttpRequestInit, "params"> & { path: string }
-  ) {
-    return super.proxy(request);
+export class HttpEventualClient implements EventualServiceClient {
+  protected readonly serviceClient: ServiceClient<EventualService>;
+  constructor(props: HttpServiceClientProps) {
+    this.serviceClient = new ServiceClient<EventualService>(
+      props,
+      EVENTUAL_INTERNAL_COMMAND_NAMESPACE
+    );
   }
 
   public async listWorkflows(): Promise<ListWorkflowsResponse> {
-    const workflowNames = await this.request<void, string[]>({
-      method: "GET",
-      path: "workflows",
-    });
-
-    return { workflows: workflowNames.map((n) => ({ name: n })) };
+    return this.serviceClient.listWorkflows();
   }
 
   public async startExecution<W extends Workflow<any, any>>(
     request: StartExecutionRequest<W>
   ): Promise<ExecutionHandle<W>> {
+    // serialize the workflow object to a string
     const workflow =
       typeof request.workflow === "string"
         ? request.workflow
         : request.workflow.name;
 
-    const { executionId } = await this.request<
-      WorkflowInput<W>,
-      StartExecutionResponse
-    >({
-      method: "POST",
-      path: `workflows/${workflow}/executions?${formatQueryString({
-        timeout: request.timeout?.dur,
-        timeoutUnit: request.timeout?.unit,
-        executionName: request.executionName,
-      })}`,
-      body: request.input,
+    const { executionId } = await this.serviceClient.startExecution({
+      workflow,
+      input: request.input,
+      executionName: request.executionName,
+      timeout: request.timeout,
     });
 
     return new ExecutionHandle(executionId, this);
@@ -80,138 +69,67 @@ export class HttpEventualClient
   public async listExecutions(
     request: ListExecutionsRequest
   ): Promise<ListExecutionsResponse> {
-    return this.request<void, ListExecutionsResponse>({
-      method: "GET",
-      path: `executions?${formatQueryString({
-        maxResults: request.maxResults,
-        nextToken: request.nextToken,
-        sortDirection: request.sortDirection,
-        statuses: request.statuses,
-        workflow: request.workflowName,
-      })}`,
-    });
+    return this.serviceClient.listExecutions(request);
   }
 
   public async getExecution(
     executionId: string
   ): Promise<Execution<any> | undefined> {
-    try {
-      return this.request<void, Execution>({
-        method: "GET",
-        path: `executions/${encodeExecutionId(executionId)}`,
-      });
-    } catch (err) {
-      if (err instanceof HttpError && err.status === 404) {
-        return undefined;
-      }
-      throw err;
-    }
+    return this.serviceClient.getExecution(executionId);
   }
 
   public async getExecutionHistory(
     request: ListExecutionEventsRequest
   ): Promise<ListExecutionEventsResponse> {
-    return this.request<void, ListExecutionEventsResponse>({
-      method: "GET",
-      path: `executions/${encodeExecutionId(
-        request.executionId
-      )}/history?${formatQueryString({
-        maxResults: request.maxResults,
-        nextToken: request.nextToken,
-        sortDirection: request.sortDirection,
-        after: request.after,
-      })}`,
-    });
+    return this.serviceClient.getExecutionHistory(request);
   }
 
   public async getExecutionWorkflowHistory(
     executionId: string
   ): Promise<ExecutionHistoryResponse> {
-    const resp = await this.request<void, HistoryStateEvent[]>({
-      method: "GET",
-      path: `executions/${encodeExecutionId(executionId)}}/workflow-history`,
-    });
-
-    return { events: resp };
+    return this.serviceClient.getExecutionWorkflowHistory(executionId);
   }
 
   public async sendSignal(request: SendSignalRequest<any>): Promise<void> {
     const { execution, signal, ...rest } = request;
+    const signalId = typeof signal === "string" ? signal : signal.id;
     const executionId =
       typeof execution === "string" ? execution : execution.executionId;
-    const signalId = typeof signal === "string" ? signal : signal.id;
-    return this.request<Omit<SendSignalRequest, "execution">, void>({
-      method: "PUT",
-      path: `executions/${encodeExecutionId(executionId)}}/signals`,
-      body: {
-        ...rest,
-        signal: signalId,
-      },
+    return this.serviceClient.sendSignal({
+      ...rest,
+      signalId,
+      executionId,
     });
   }
 
   public publishEvents(request: PublishEventsRequest): Promise<void> {
-    return this.request<PublishEventsRequest, void>({
-      method: "PUT",
-      path: `events`,
-      body: request,
-    });
+    return this.serviceClient.publishEvents(request);
   }
 
-  public sendActivitySuccess(
-    request: Omit<SendActivitySuccessRequest<any>, "type">
+  public async sendActivitySuccess(
+    request: SendActivitySuccessRequest<any>
   ): Promise<void> {
-    return this.request<SendActivitySuccessRequest, void>({
-      method: "POST",
-      path: `activities`,
-      body: { ...request, type: ActivityUpdateType.Success },
-    });
+    return (await this.serviceClient.updateActivity({
+      ...request,
+      type: ActivityUpdateType.Success,
+    })) as void;
   }
 
-  public sendActivityFailure(
-    request: Omit<SendActivityFailureRequest, "type">
+  public async sendActivityFailure(
+    request: SendActivityFailureRequest
   ): Promise<void> {
-    return this.request<SendActivityFailureRequest, void>({
-      method: "POST",
-      path: `activities`,
-      body: { ...request, type: ActivityUpdateType.Failure },
-    });
+    return (await this.serviceClient.updateActivity({
+      ...request,
+      type: ActivityUpdateType.Failure,
+    })) as void;
   }
 
-  public sendActivityHeartbeat(
-    request: Omit<SendActivityHeartbeatRequest, "type">
+  public async sendActivityHeartbeat(
+    request: SendActivityHeartbeatRequest
   ): Promise<SendActivityHeartbeatResponse> {
-    return this.request<
-      SendActivityHeartbeatRequest,
-      SendActivityHeartbeatResponse
-    >({
-      method: "POST",
-      path: `activities`,
-      body: { ...request, type: ActivityUpdateType.Heartbeat },
-    });
+    return (await this.serviceClient.updateActivity({
+      ...request,
+      type: ActivityUpdateType.Heartbeat,
+    })) as SendActivityHeartbeatResponse;
   }
-}
-
-/**
- * Formats a query string, filtering undefined values and empty arrays.
- *
- * name=value&name2=value2
- */
-function formatQueryString(
-  entries: Record<string, undefined | string | number | (string | number)[]>
-) {
-  return Object.entries(entries)
-    .filter(
-      (e): e is [string, string | number | (string | number)[]] =>
-        e[1] !== undefined && (!Array.isArray(e[1]) || e[1].length > 0)
-    )
-    .map(
-      ([name, value]) =>
-        `${name}=${
-          Array.isArray(value)
-            ? value.map((v) => encodeURIComponent(v.toString())).join(",")
-            : encodeURIComponent(value.toString())
-        }`
-    )
-    .join("&");
 }

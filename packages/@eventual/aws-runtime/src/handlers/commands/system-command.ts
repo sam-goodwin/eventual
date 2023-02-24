@@ -1,33 +1,45 @@
 import {
+  Command,
+  CommandHandler,
+  CommandInput,
+  CommandOutput,
+} from "@eventual/core";
+import {
   APIGatewayProxyEventV2,
   APIGatewayProxyHandlerV2,
 } from "aws-lambda/trigger/api-gateway-proxy.js";
 import { z } from "zod";
 import { withErrorMiddleware } from "./middleware.js";
 
-interface SystemCommandOptions<Request> {
-  input: z.Schema<Request>;
+interface SystemCommandOptions<ZRequest extends z.Schema> {
+  /**
+   * When provided, validates the input using zod.
+   */
+  inputSchema: ZRequest;
 }
 
-export function systemCommand<Request, Response>(
-  opts: SystemCommandOptions<Request>,
-  handler: (request: Request) => Response | Promise<Response>
+export function systemCommand<C extends Command>(
+  opts: SystemCommandOptions<z.Schema<CommandInput<C>>>,
+  handler: CommandHandler<CommandInput<C>, CommandOutput<C>>
 ): APIGatewayProxyHandlerV2<Response>;
-export function systemCommand<Request, Response>(
-  handler: (request: Request) => Response | Promise<Response>
+export function systemCommand<C extends Command>(
+  handler: CommandHandler<CommandInput<C>, CommandOutput<C>>
 ): APIGatewayProxyHandlerV2<Response>;
-export function systemCommand<Request, Response>(
+export function systemCommand<C extends Command>(
   ...args:
-    | [handler: (request: Request) => Promise<Response>]
+    | [handler: CommandHandler<CommandInput<C>, CommandOutput<C>>]
     | [
-        opts: SystemCommandOptions<Request>,
-        handler: (request: Request) => Promise<Response>
+        opts: SystemCommandOptions<any>,
+        handler: CommandHandler<CommandInput<C>, CommandOutput<C>>
       ]
 ): APIGatewayProxyHandlerV2<Response> {
   const [opts, handler] = args.length === 1 ? [undefined, args[0]] : args;
   return withErrorMiddleware(async (event: APIGatewayProxyEventV2) => {
     const payload = event.body ? JSON.parse(event.body) : undefined;
 
-    return handler(opts?.input ? opts?.input.parse(payload) : payload);
+    return handler(
+      opts?.inputSchema ? opts?.inputSchema.parse(payload) : payload,
+      undefined
+    );
   });
 }

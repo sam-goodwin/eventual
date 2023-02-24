@@ -2,6 +2,7 @@ import { build, BuildSource, infer } from "@eventual/compiler";
 import { ActivitySpec } from "@eventual/core";
 import {
   CommandSpec,
+  EVENTUAL_INTERNAL_COMMAND_NAMESPACE,
   ServiceType,
   SubscriptionSpec,
 } from "@eventual/core/internal";
@@ -12,9 +13,9 @@ import path from "path";
 import {
   BuildManifest,
   BundledFunction,
-  InternalCommands,
   InternalCommandFunction,
   InternalCommandName,
+  InternalCommands,
 } from "./build-manifest";
 
 export interface BuildOutput extends BuildManifest {}
@@ -319,7 +320,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         {
           spec: {
             name: props.name,
-            internal: true,
+            namespace: EVENTUAL_INTERNAL_COMMAND_NAMESPACE,
           },
           entry: props.file,
         } satisfies InternalCommandFunction,

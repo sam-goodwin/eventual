@@ -1,27 +1,13 @@
-import { Execution } from "@eventual/core";
-import { decodeExecutionId } from "@eventual/core/internal";
-import { APIGatewayProxyEventV2, APIGatewayProxyHandlerV2 } from "aws-lambda";
+import { EventualService } from "@eventual/core/internal";
+import { z } from "zod";
 import { createExecutionStore } from "../../../create.js";
-import { withErrorMiddleware } from "../middleware.js";
+import { systemCommand } from "../system-command.js";
 
 const executionStore = createExecutionStore();
 
-async function get(event: APIGatewayProxyEventV2) {
-  const executionId = event.pathParameters?.executionId;
-  if (!executionId) {
-    return { statusCode: 400, body: `Missing executionId` };
+export const handler = systemCommand<EventualService["getExecution"]>(
+  { inputSchema: z.string() },
+  async (request) => {
+    return executionStore.get(request);
   }
-
-  const decodedExecutionId = decodeExecutionId(executionId);
-  const execution = await executionStore.get(decodedExecutionId);
-  if (execution) {
-    return execution;
-  }
-  return {
-    statusCode: 404,
-    body: `Execution ${decodedExecutionId} not found.`,
-  };
-}
-
-export const handler: APIGatewayProxyHandlerV2<Execution> =
-  withErrorMiddleware(get);
+);
