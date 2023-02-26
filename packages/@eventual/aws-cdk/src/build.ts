@@ -316,15 +316,13 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       name: Name;
       file: string;
     }) {
-      return [
-        {
-          spec: {
-            name: props.name,
-            namespace: EVENTUAL_INTERNAL_COMMAND_NAMESPACE,
-          },
-          entry: props.file,
-        } satisfies InternalCommandFunction,
-      ] as const;
+      return {
+        spec: {
+          name: props.name,
+          namespace: EVENTUAL_INTERNAL_COMMAND_NAMESPACE,
+        },
+        entry: props.file,
+      } satisfies InternalCommandFunction;
     }
   }
 

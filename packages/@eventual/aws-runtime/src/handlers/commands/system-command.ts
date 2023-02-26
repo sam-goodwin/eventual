@@ -11,7 +11,7 @@ import {
 import { z } from "zod";
 import { withErrorMiddleware } from "./middleware.js";
 
-interface SystemCommandOptions<ZRequest extends z.Schema> {
+interface SystemCommandOptions<ZRequest extends z.Schema = z.Schema> {
   /**
    * When provided, validates the input using zod.
    */
@@ -29,7 +29,7 @@ export function systemCommand<C extends Command>(
   ...args:
     | [handler: CommandHandler<CommandInput<C>, CommandOutput<C>>]
     | [
-        opts: SystemCommandOptions<any>,
+        opts: SystemCommandOptions,
         handler: CommandHandler<CommandInput<C>, CommandOutput<C>>
       ]
 ): APIGatewayProxyHandlerV2<Response> {

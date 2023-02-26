@@ -36,8 +36,8 @@ export class HttpServiceClient {
     namespace: string;
   }): Promise<Resp> {
     return this.request({
-      path: `/_rpc/${request.namespace}/${request.command}`,
-      body: request.payload ? JSON.stringify(request.payload) : undefined,
+      path: `_rpc/${request.namespace}/${request.command}`,
+      body: request.payload,
       method: "POST",
     });
   }
@@ -47,7 +47,7 @@ export class HttpServiceClient {
     method: HttpMethod;
     path: string;
   }): Promise<Resp> {
-    const url = `${this.baseUrl.href}/${request.path}`;
+    const url = `${this.baseUrl.href}${request.path}`;
     return this.requestHandler.request({
       url,
       body: request.body ? JSON.stringify(request.body) : undefined,
