@@ -1,6 +1,6 @@
 import { isActivityWorker, isOrchestratorWorker } from "./internal/flags.js";
 import { getActivityContext, getServiceClient } from "./internal/global.js";
-import { SendActivityHeartbeatResponse } from "./service-client.js";
+import type { SendActivityHeartbeatResponse } from "./service-client.js";
 
 /**
  * Sends a heartbeat for the current activity or to the provided activity token.

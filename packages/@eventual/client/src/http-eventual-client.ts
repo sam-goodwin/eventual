@@ -1,5 +1,4 @@
 import {
-  ActivityUpdateType,
   EventualServiceClient,
   Execution,
   ExecutionHandle,
@@ -111,7 +110,7 @@ export class HttpEventualClient implements EventualServiceClient {
   ): Promise<void> {
     return (await this.serviceClient.updateActivity({
       ...request,
-      type: ActivityUpdateType.Success,
+      type: "Success",
     })) as void;
   }
 
@@ -120,7 +119,7 @@ export class HttpEventualClient implements EventualServiceClient {
   ): Promise<void> {
     return (await this.serviceClient.updateActivity({
       ...request,
-      type: ActivityUpdateType.Failure,
+      type: "Failure",
     })) as void;
   }
 
@@ -129,7 +128,7 @@ export class HttpEventualClient implements EventualServiceClient {
   ): Promise<SendActivityHeartbeatResponse> {
     return (await this.serviceClient.updateActivity({
       ...request,
-      type: ActivityUpdateType.Heartbeat,
+      type: "Heartbeat",
     })) as SendActivityHeartbeatResponse;
   }
 }

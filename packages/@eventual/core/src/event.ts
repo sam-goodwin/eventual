@@ -3,7 +3,7 @@ import { createPublishEventsCall } from "./internal/calls/send-events-call.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
 import { events, getServiceClient, subscriptions } from "./internal/global.js";
 import { isSourceLocation } from "./internal/service-spec.js";
-import { Subscription, SubscriptionRuntimeProps } from "./subscription.js";
+import type { Subscription, SubscriptionRuntimeProps } from "./subscription.js";
 
 /**
  * An EventPayload is the data sent as an event.

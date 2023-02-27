@@ -1,4 +1,4 @@
-import { ExecutionID } from "./execution.js";
+import type { ExecutionID } from "./execution.js";
 
 /**
  * Context values related to the current execution of the workflow.

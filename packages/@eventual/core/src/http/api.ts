@@ -3,7 +3,7 @@ import type z from "zod";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
 import { commands } from "../internal/global.js";
-import { SourceLocation } from "../internal/service-spec.js";
+import type { SourceLocation } from "../internal/service-spec.js";
 import {
   command,
   Command,

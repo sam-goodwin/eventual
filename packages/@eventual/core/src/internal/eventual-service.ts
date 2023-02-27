@@ -5,10 +5,7 @@ import { Command } from "../http/command.js";
 import { HistoryStateEvent, WorkflowEvent } from "./workflow-events.js";
 import { workflowOptionsSchema } from "./workflow.js";
 
-export enum SortOrder {
-  Asc = "ASC",
-  Desc = "DESC",
-}
+export const sortOrderSchema = z.enum(["ASC", "DESC"]);
 
 export const publishEventsRequestSchema = /* @__PURE__ */ z.object({
   events: z.array(eventEnvelopeSchema),
@@ -52,7 +49,7 @@ export const listExecutionsRequestSchema = /* @__PURE__ */ z.object({
   statuses: z.array(z.nativeEnum(ExecutionStatus)).optional(),
   workflowName: z.string().optional(),
   nextToken: z.string().optional(),
-  sortDirection: z.nativeEnum(SortOrder).default(SortOrder.Asc).optional(),
+  sortDirection: sortOrderSchema.default("ASC").optional(),
   maxResults: z.number().default(100).optional(),
 });
 
@@ -66,7 +63,7 @@ export interface ListExecutionsResponse {
 
 export const listExecutionEventsRequestSchema = /* @__PURE__ */ z.object({
   executionId: z.string(),
-  sortDirection: z.nativeEnum(SortOrder).default(SortOrder.Asc).optional(),
+  sortDirection: sortOrderSchema.default("ASC").optional(),
   nextToken: z.string().optional(),
   maxResults: z.number().default(100).optional(),
   after: z.string().optional().describe("Start returning after a data"),
@@ -81,27 +78,21 @@ export interface ExecutionHistoryResponse {
   events: HistoryStateEvent[];
 }
 
-export enum ActivityUpdateType {
-  Success = "Success",
-  Failure = "Failure",
-  Heartbeat = "Heartbeat",
-}
-
 export const sendActivitySuccessRequestSchema = /* @__PURE__ */ z.object({
-  type: z.literal(ActivityUpdateType.Success),
+  type: z.literal("Success"),
   activityToken: z.string(),
   result: z.any(),
 });
 
 export const sendActivityFailureRequestSchema = /* @__PURE__ */ z.object({
-  type: z.literal(ActivityUpdateType.Failure),
+  type: z.literal("Failure"),
   activityToken: z.string(),
   error: z.string(),
   message: z.string().optional(),
 });
 
 export const sendActivityHeartbeatRequestSchema = /* @__PURE__ */ z.object({
-  type: z.literal(ActivityUpdateType.Heartbeat),
+  type: z.literal("Heartbeat"),
   activityToken: z.string(),
 });
 
@@ -133,25 +124,25 @@ export type SendActivityHeartbeatRequest = Omit<
 export function isSendActivitySuccessRequest<T = any>(
   request: SendActivityUpdate
 ): request is SendActivitySuccessRequest<T> & {
-  type: ActivityUpdateType.Success;
+  type: "Success";
 } {
-  return request.type === ActivityUpdateType.Success;
+  return request.type === "Success";
 }
 
 export function isSendActivityFailureRequest(
   request: SendActivityUpdate
 ): request is SendActivityFailureRequest & {
-  type: ActivityUpdateType.Failure;
+  type: "Failure";
 } {
-  return request.type === ActivityUpdateType.Failure;
+  return request.type === "Failure";
 }
 
 export function isSendActivityHeartbeatRequest(
   request: SendActivityUpdate
 ): request is SendActivityHeartbeatRequest & {
-  type: ActivityUpdateType.Heartbeat;
+  type: "Heartbeat";
 } {
-  return request.type === ActivityUpdateType.Heartbeat;
+  return request.type === "Heartbeat";
 }
 
 export interface SendActivityHeartbeatResponse {

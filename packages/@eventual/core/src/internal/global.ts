@@ -1,8 +1,8 @@
-import { Activity, ActivityContext } from "../activity.js";
-import { Event } from "../event.js";
+import type { Activity, ActivityContext } from "../activity.js";
+import type { Event } from "../event.js";
 import type { Command } from "../http/index.js";
-import { EventualServiceClient } from "../service-client.js";
-import { Subscription } from "../subscription.js";
+import type { EventualServiceClient } from "../service-client.js";
+import type { Subscription } from "../subscription.js";
 import type { Workflow } from "../workflow.js";
 import type { Eventual, EventualCallCollector } from "./eventual.js";
 

@@ -1,7 +1,6 @@
 import { Execution, ExecutionHandle } from "./execution.js";
-import { CommandInput } from "./http/command.js";
-import {
-  ActivityUpdateType,
+import type { CommandInput } from "./http/command.js";
+import type {
   EventualService,
   ExecutionHistoryResponse,
   ListExecutionEventsResponse,
@@ -11,7 +10,6 @@ import {
   SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
   SendActivitySuccessRequest,
-  SortOrder,
 } from "./internal/eventual-service.js";
 import { Signal } from "./signals.js";
 import { Workflow, WorkflowInput, WorkflowOptions } from "./workflow.js";
@@ -153,7 +151,6 @@ export interface SendSignalRequest<Payload = any> {
 
 // re-exports types used by the client, the types are in the internal path otherwise.
 export {
-  ActivityUpdateType,
   ExecutionHistoryResponse,
   ListExecutionsResponse,
   ListExecutionEventsResponse,
@@ -162,5 +159,4 @@ export {
   SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
   SendActivitySuccessRequest,
-  SortOrder,
 };
