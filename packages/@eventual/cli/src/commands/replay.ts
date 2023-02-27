@@ -51,8 +51,6 @@ export const replay = (yargs: Argv) =>
           serviceClient.getExecution(execution),
         ]);
 
-        console.log(events);
-
         spinner.succeed();
         const workflowName = parseWorkflowName(execution as ExecutionID);
         const workflow = workflows().get(workflowName);
