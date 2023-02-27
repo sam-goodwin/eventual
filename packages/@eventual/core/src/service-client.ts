@@ -1,4 +1,4 @@
-import { Execution, ExecutionHandle } from "./execution.js";
+import type { Execution, ExecutionHandle } from "./execution.js";
 import type { CommandInput } from "./http/command.js";
 import type {
   EventualService,
@@ -9,7 +9,7 @@ import type {
   SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
-  SendActivitySuccessRequest
+  SendActivitySuccessRequest,
 } from "./internal/eventual-service.js";
 import type { Signal } from "./signals.js";
 import type { Workflow, WorkflowInput, WorkflowOptions } from "./workflow.js";

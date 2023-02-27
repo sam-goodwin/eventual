@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { eventEnvelopeSchema } from "./event.js";
 import { Execution, ExecutionID, ExecutionStatus } from "../execution.js";
 import { Command } from "../http/command.js";
-import { HistoryStateEvent, WorkflowEvent } from "./workflow-events.js";
+import { eventEnvelopeSchema } from "./event.js";
+import type { HistoryStateEvent, WorkflowEvent } from "./workflow-events.js";
 import { workflowOptionsSchema } from "./workflow.js";
 
 export const sortOrderSchema = z.enum(["ASC", "DESC"]);

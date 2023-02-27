@@ -21,7 +21,7 @@ import {
   EVENTUAL_INTERNAL_COMMAND_NAMESPACE,
   SendActivityHeartbeatRequest,
 } from "@eventual/core/internal";
-import { HttpServiceClientProps } from "./base-http-client.js";
+import type { HttpServiceClientProps } from "./base-http-client.js";
 import { ServiceClient } from "./service-client.js";
 
 /**
