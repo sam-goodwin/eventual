@@ -5,6 +5,7 @@ import { EVENTUAL_DEFAULT_COMMAND_NAMESPACE } from "../internal/command.js";
 import { commands } from "../internal/global.js";
 import type { SourceLocation } from "../internal/service-spec.js";
 import {
+  AnyCommand,
   command,
   Command,
   CommandHandler,
@@ -90,7 +91,7 @@ function createRouter<Context>(
                     args[2] as HttpHandler,
                   ]
                 : [undefined, args[0], undefined, args[1] as HttpHandler];
-            const command: Command<any, any, any, any, any> = {
+            const command: AnyCommand = {
               kind: "Command",
               handler,
               memorySize: routeProps?.memorySize,

@@ -1,6 +1,6 @@
 import type { Activity, ActivityContext } from "../activity.js";
 import type { Event } from "../event.js";
-import type { Command } from "../http/index.js";
+import type { AnyCommand } from "../http/command.js";
 import type { EventualServiceClient } from "../service-client.js";
 import type { Subscription } from "../subscription.js";
 import type { Workflow } from "../workflow.js";
@@ -48,7 +48,7 @@ declare global {
     /**
      * API routes registered within the application.
      */
-    commands?: Command<any, any, any, any, any, any>[];
+    commands?: AnyCommand[];
   };
 }
 

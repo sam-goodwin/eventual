@@ -1,4 +1,4 @@
-import { Command, command } from "@eventual/core";
+import { AnyCommand, command } from "@eventual/core";
 import {
   assertNever,
   EVENTUAL_INTERNAL_COMMAND_NAMESPACE,
@@ -164,9 +164,7 @@ export function createSendSignalCommand({
   );
 }
 
-function systemCommand<C extends Command<any, any, any, any, any, any>>(
-  c: C
-): C {
+function systemCommand<C extends AnyCommand>(c: C): C {
   c.namespace = EVENTUAL_INTERNAL_COMMAND_NAMESPACE;
   return c;
 }

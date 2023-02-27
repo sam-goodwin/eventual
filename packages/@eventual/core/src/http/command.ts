@@ -7,6 +7,8 @@ import { isSourceLocation, SourceLocation } from "../internal/service-spec.js";
 import type { Middleware } from "./middleware.js";
 import type { ParsePath } from "./path.js";
 
+export type AnyCommand = Command<any, any, any, any, any, any>;
+
 export interface Command<
   Name extends string = string,
   Input = undefined,
@@ -84,11 +86,27 @@ export type CommandHandler<T = undefined, U = void, Context = any> = (
   context: Context
 ) => Promise<U> | Awaited<U>;
 
-export type CommandInput<C extends Command<any, any, any, any, any, any>> =
-  C extends Command<any, infer Input, any, any, any, any> ? Input : never;
+export type CommandInput<C extends AnyCommand> = C extends Command<
+  any,
+  infer Input,
+  any,
+  any,
+  any,
+  any
+>
+  ? Input
+  : never;
 
-export type CommandOutput<C extends Command<any, any, any, any, any, any>> =
-  C extends Command<any, any, infer Output, any, any, any> ? Output : never;
+export type CommandOutput<C extends AnyCommand> = C extends Command<
+  any,
+  any,
+  infer Output,
+  any,
+  any,
+  any
+>
+  ? Output
+  : never;
 
 export interface CommandOptions<
   Input,
@@ -139,7 +157,7 @@ export function command<
   Context = any
 >(...args: any[]): Command<Name, Input, Output, Context, undefined, undefined> {
   const [sourceLocation, name, options, handler] = parseCommandArgs(args);
-  const command: Command<Name, Input, Output, Context, undefined, undefined> = {
+  const command: AnyCommand = {
     kind: "Command",
     name,
     handler,
