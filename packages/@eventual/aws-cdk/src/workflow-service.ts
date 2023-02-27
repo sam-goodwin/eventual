@@ -91,7 +91,7 @@ interface PipeToWorkflowQueueProps {
 /**
  * Subsystem which manages and orchestrates workflows and workflow executions.
  */
-export class WorkflowService implements IGrantable {
+export class WorkflowService {
   public readonly orchestrator: Function;
   public readonly queue: IQueue;
   public readonly history: IBucket;
@@ -232,10 +232,6 @@ export class WorkflowService implements IGrantable {
     });
 
     this.configureOrchestrator();
-  }
-
-  public get grantPrincipal() {
-    return this.orchestrator.grantPrincipal;
   }
 
   public pipeToWorkflowQueue(

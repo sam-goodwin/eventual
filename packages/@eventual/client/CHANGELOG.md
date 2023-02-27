@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.20.0 (2023-02-21)
+
+### Features
+
+- deep composite principal ([#292](https://github.com/functionless/eventual/issues/292)) ([ad84935](https://github.com/functionless/eventual/commit/ad84935574b826e0e7f05bbeffdc258dffaa36c0))
+
+## 0.19.1 (2023-02-21)
+
+**Note:** Version bump only for package @eventual/client
+
 # 0.19.0 (2023-02-21)
 
 ### Features
