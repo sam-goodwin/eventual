@@ -165,6 +165,7 @@ importers:
       '@aws-sdk/types': ^3.254.0
       '@eventual/aws-client': workspace:^
       '@eventual/cli': workspace:^
+      '@eventual/client': workspace:^
       '@eventual/core': workspace:^
       '@jest/globals': ^29
       '@types/aws-lambda': ^8.10.108
@@ -182,6 +183,7 @@ importers:
       '@aws-sdk/client-ssm': 3.267.0
       '@eventual/aws-client': link:../../../packages/@eventual/aws-client
       '@eventual/cli': link:../../../packages/@eventual/cli
+      '@eventual/client': link:../../../packages/@eventual/client
       '@eventual/core': link:../../../packages/@eventual/core
       zod: 3.20.6
     devDependencies:

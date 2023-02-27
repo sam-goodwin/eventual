@@ -436,12 +436,12 @@ var require_dist2 = __commonJS({
   }
 });
 
-var api_handler_exports = {};
-__export(api_handler_exports, {
+var command_worker_exports = {};
+__export(command_worker_exports, {
   myHandler: () => myHandler,
   myHandler2: () => myHandler2
 });
-module.exports = __toCommonJS(api_handler_exports);
+module.exports = __toCommonJS(command_worker_exports);
 
 var AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
 
@@ -520,7 +520,7 @@ function registerChain(program) {
 var ServiceType;
 (function(ServiceType2) {
   ServiceType2["ActivityWorker"] = "ActivityWorker";
-  ServiceType2["ApiHandler"] = "ApiHandler";
+  ServiceType2["CommandWorker"] = "CommandWorker";
   ServiceType2["Subscription"] = "Subscription";
   ServiceType2["OrchestratorWorker"] = "OrchestratorWorker";
 })(ServiceType || (ServiceType = {}));
@@ -620,6 +620,16 @@ function e({ base: t = "", routes: n = [] } = {}) {
 }
 var itty_router_min_default = { Router: e };
 
+var EVENTUAL_DEFAULT_COMMAND_NAMESPACE = "_default";
+var CommandType;
+(function(CommandType2) {
+  CommandType2["PublishEvents"] = "PublishEvents";
+  CommandType2["SendSignal"] = "SendSignal";
+  CommandType2["StartActivity"] = "StartActivity";
+  CommandType2["StartTimer"] = "StartTimer";
+  CommandType2["StartWorkflow"] = "StartWorkflow";
+})(CommandType || (CommandType = {}));
+
 function command(...args) {
   const [sourceLocation, name, options, handler] = parseCommandArgs(args);
   const command2 = {
@@ -627,6 +637,7 @@ function command(...args) {
     name,
     handler,
     sourceLocation,
+    namespace: EVENTUAL_DEFAULT_COMMAND_NAMESPACE,
     ...options
   };
   commands.push(command2);
@@ -681,6 +692,7 @@ function createRouter(middlewares) {
             sourceLocation,
             handlerTimeout: routeProps?.handlerTimeout,
             middlewares,
+            namespace: EVENTUAL_DEFAULT_COMMAND_NAMESPACE,
             passThrough: true
           };
           commands.push(command2);
