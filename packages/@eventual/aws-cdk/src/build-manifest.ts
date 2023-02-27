@@ -1,10 +1,9 @@
-import { ServiceClient } from "@eventual/client";
 import type { ActivitySpec } from "@eventual/core";
 import type {
   CommandSpec,
   EventSpec,
   EventualService,
-  SubscriptionSpec
+  SubscriptionSpec,
 } from "@eventual/core/internal";
 
 export interface BuildManifest {
@@ -42,7 +41,7 @@ export interface ApiRoutes {
   [route: string]: CommandFunction;
 }
 
-export type InternalCommandName = keyof ServiceClient<EventualService>;
+export type InternalCommandName = keyof EventualService;
 
 export type InternalCommands = Record<
   InternalCommandName,
