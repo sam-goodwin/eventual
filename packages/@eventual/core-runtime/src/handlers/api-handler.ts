@@ -85,7 +85,7 @@ function initRouter() {
 
     // RPC route takes a POST request and passes the parsed JSON body as input to the input
     router.post(
-      `/_rpc/${command.name}`,
+      `/_rpc/${command.namespace}/${command.name}`,
       withMiddleware(async (request, context) => {
         if (command.passThrough) {
           // if passthrough is enabled, just proxy the request-response to the handler

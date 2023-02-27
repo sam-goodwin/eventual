@@ -4,12 +4,12 @@ import {
   Execution,
   ExecutionID,
   isFailedExecution,
-  isSucceededExecution
+  isSucceededExecution,
 } from "@eventual/core";
 import {
   parseWorkflowName,
   processEvents,
-  progressWorkflow
+  progressWorkflow,
 } from "@eventual/core-runtime";
 import {
   encodeExecutionId,
@@ -20,7 +20,7 @@ import {
   resultToString,
   ServiceType,
   serviceTypeScopeSync,
-  workflows
+  workflows,
 } from "@eventual/core/internal";
 import path from "path";
 import { Argv } from "yargs";
@@ -50,6 +50,8 @@ export const replay = (yargs: Argv) =>
           serviceClient.getExecutionWorkflowHistory(execution),
           serviceClient.getExecution(execution),
         ]);
+
+        console.log(events);
 
         spinner.succeed();
         const workflowName = parseWorkflowName(execution as ExecutionID);

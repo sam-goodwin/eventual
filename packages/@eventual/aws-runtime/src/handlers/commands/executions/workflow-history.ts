@@ -1,4 +1,4 @@
-import { decodeExecutionId, EventualService } from "@eventual/core/internal";
+import type { EventualService } from "@eventual/core/internal";
 import { z } from "zod";
 import { createExecutionHistoryStateStore } from "../../../create.js";
 import { systemCommand } from "../system-command.js";
@@ -9,8 +9,6 @@ export const handler = systemCommand<
   EventualService["getExecutionWorkflowHistory"]
 >({ inputSchema: z.string() }, async (executionId) => {
   return {
-    events: await executionHistoryStateStore.getHistory(
-      decodeExecutionId(executionId)
-    ),
+    events: await executionHistoryStateStore.getHistory(executionId),
   };
 });
