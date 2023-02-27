@@ -211,7 +211,7 @@ export class CommandService<Service = any> {
               ...overrides,
               functionName: serviceFunctionName(
                 self.props.serviceName,
-                `command-${command.namespace}-${sanitizedName}`
+                `${sanitizedName}-${command.namespace}-command`
               ),
               code: Code.fromAsset(
                 self.props.build.resolveFolder(manifest.entry)

@@ -174,8 +174,18 @@ export function chunkArray<T>(batchSize: number, items: T[]): T[][] {
   }, []);
 }
 
+/**
+ * Creates a function name with a max length of 64 characters
+ *
+ * The name will be the whole service name followed by the suffix trimmed to fit 64 characters.
+
+ */
 export function serviceFunctionName(serviceName: string, suffix: string) {
-  return sanitizeFunctionName(`${serviceName}-${suffix}`);
+  const serviceNameAndSeparatorLength = serviceName.length + 1;
+  const remaining = 64 - serviceNameAndSeparatorLength;
+  return sanitizeFunctionName(
+    `${serviceName}-${suffix.substring(0, remaining)}`
+  );
 }
 
 export function activityServiceFunctionSuffix(activityId: string) {
