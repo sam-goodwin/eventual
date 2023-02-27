@@ -1,7 +1,8 @@
-import { AnyCommand, command } from "@eventual/core";
+import { AnyCommand, api, command, HttpResponse } from "@eventual/core";
 import {
   assertNever,
   EVENTUAL_INTERNAL_COMMAND_NAMESPACE,
+  extendsError,
   isSendActivityFailureRequest,
   isSendActivityHeartbeatRequest,
   isSendActivitySuccessRequest,
@@ -21,6 +22,30 @@ import type { WorkflowSpecProvider } from "./providers/workflow-provider.js";
 import type { ExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
 import type { ExecutionHistoryStore } from "./stores/execution-history-store.js";
 import type { ExecutionStore } from "./stores/execution-store.js";
+import util from "util";
+
+const withErrorHandling = api.use(async ({ next, context }) => {
+  try {
+    return next(context);
+  } catch (err) {
+    return new HttpResponse(
+      JSON.stringify(
+        extendsError(err)
+          ? {
+              error: err.name,
+              message: err.message,
+              stack: err.stack,
+            }
+          : { error: util.inspect(err) },
+        null,
+        2
+      ),
+      {
+        status: 500,
+      }
+    );
+  }
+});
 
 export function createNewCommand({
   workflowClient,
@@ -28,7 +53,7 @@ export function createNewCommand({
   workflowClient: WorkflowClient;
 }) {
   return systemCommand(
-    command(
+    withErrorHandling.command(
       "startExecution",
       { input: startExecutionRequestSchema },
       (request) => {
@@ -49,7 +74,7 @@ export function createPublishEventsCommand({
   eventClient: EventClient;
 }) {
   return systemCommand(
-    command(
+    withErrorHandling.command(
       "publishEvents",
       { input: publishEventsRequestSchema },
       (request) => {
@@ -65,7 +90,7 @@ export function createUpdateActivityCommand({
   activityClient: ActivityClient;
 }) {
   return systemCommand(
-    command(
+    withErrorHandling.command(
       "updateActivity",
       { input: sendActivityUpdateSchema },
       async (request) => {
@@ -88,7 +113,7 @@ export function createListWorkflowsCommand({
   workflowProvider: WorkflowSpecProvider;
 }) {
   return systemCommand(
-    command("listWorkflows", () => ({
+    withErrorHandling.command("listWorkflows", () => ({
       workflows: Array.from(workflowProvider.getWorkflowNames()).map((w) => ({
         name: w,
       })),
@@ -102,7 +127,7 @@ export function createListWorkflowHistoryCommand({
   executionHistoryStateStore: ExecutionHistoryStateStore;
 }) {
   return systemCommand(
-    command(
+    withErrorHandling.command(
       "getExecutionWorkflowHistory",
       { input: z.string() },
       async (executionId) => ({
@@ -118,7 +143,7 @@ export function createListExecutionsCommand({
   executionStore: ExecutionStore;
 }) {
   return systemCommand(
-    command(
+    withErrorHandling.command(
       "listExecutions",
       { input: listExecutionsRequestSchema },
       (request) => executionStore.list(request)
@@ -146,8 +171,10 @@ export function createGetExecutionCommand({
   executionStore: ExecutionStore;
 }) {
   return systemCommand(
-    command("getExecution", { input: z.string() }, (executionId) =>
-      executionStore.get(executionId)
+    withErrorHandling.command(
+      "getExecution",
+      { input: z.string() },
+      (executionId) => executionStore.get(executionId)
     )
   );
 }
@@ -158,13 +185,16 @@ export function createSendSignalCommand({
   executionQueueClient: ExecutionQueueClient;
 }) {
   return systemCommand(
-    command("sendSignal", { input: sendSignalRequestSchema }, (request) =>
-      executionQueueClient.sendSignal({
-        id: request.id,
-        payload: request.payload,
-        execution: request.executionId,
-        signal: request.signalId,
-      })
+    withErrorHandling.command(
+      "sendSignal",
+      { input: sendSignalRequestSchema },
+      (request) =>
+        executionQueueClient.sendSignal({
+          id: request.id,
+          payload: request.payload,
+          execution: request.executionId,
+          signal: request.signalId,
+        })
     )
   );
 }
