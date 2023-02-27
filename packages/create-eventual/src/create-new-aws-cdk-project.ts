@@ -393,21 +393,19 @@ export class MyServiceStack extends Stack {
         [corePackageName]: workspaceVersion,
       },
       src: {
-        "index.ts": `import { activity, api, HttpResponse, workflow } from "@eventual/core";
+        "index.ts": `import { activity, command, subscription, workflow } from "@eventual/core";
 
 // import a shared definition of the helloEvent
 import { helloEvent } from "${corePackageName}";
 
 // create a REST API for: POST /hello <name>
-api.post("/hello", async (request) => {
-  const name = await request.text();
-
+export const hello = command("hello", async (name: string) => {
   const { executionId } = await helloWorkflow.startExecution({
     input: name,
   });
 
-  return new HttpResponse(JSON.stringify({ executionId }));
-});
+  return { executionId };
+})
 
 export const helloWorkflow = workflow("helloWorkflow", async (name: string) => {
   // call an activity to format the message
@@ -427,9 +425,15 @@ export const formatMessage = activity("formatName", async (name: string) => {
   return \`hello \${name}\`;
 });
 
-helloEvent.onEvent("onHelloEvent", async (hello) => {
-  console.log("received event", hello);
-});
+export const onHelloEvent = subscription(
+  "onHelloEvent",
+  {
+    events: [helloEvent],
+  },
+  async (hello) => {
+    console.log("received event", hello);
+  }
+);
 `,
       },
       test: {
@@ -537,12 +541,11 @@ export const helloEvent = event<HelloEvent>("HelloEvent");
         extends: "../../tsconfig.base.json",
         include: ["src"],
         compilerOptions: {
-          lib: ["DOM"],
           module: "esnext",
           moduleResolution: "NodeNext",
           outDir: "lib",
           rootDir: "src",
-          target: "ES2021",
+          target: "ES2022",
         },
       }),
       writeJsonFile("tsconfig.test.json", {
