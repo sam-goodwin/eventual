@@ -9,10 +9,10 @@ import type {
   SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
-  SendActivitySuccessRequest,
+  SendActivitySuccessRequest
 } from "./internal/eventual-service.js";
-import { Signal } from "./signals.js";
-import { Workflow, WorkflowInput, WorkflowOptions } from "./workflow.js";
+import type { Signal } from "./signals.js";
+import type { Workflow, WorkflowInput, WorkflowOptions } from "./workflow.js";
 
 /**
  * Top level Eventual Client used by systems outside of an Eventual Service to interact with it.
