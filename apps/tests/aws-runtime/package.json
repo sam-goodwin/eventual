@@ -18,7 +18,7 @@
     "@eventual/client": "workspace:^",
     "@eventual/cli": "workspace:^",
     "@eventual/core": "workspace:^",
-    "zod": "^3.20.6"
+    "zod": "^3"
   },
   "devDependencies": {
     "@aws-sdk/types": "^3.254.0",
