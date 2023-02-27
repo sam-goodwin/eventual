@@ -1,6 +1,6 @@
 export enum ServiceType {
   ActivityWorker = "ActivityWorker",
-  ApiHandler = "ApiHandler",
+  CommandWorker = "CommandWorker",
   Subscription = "Subscription",
   OrchestratorWorker = "OrchestratorWorker",
 }

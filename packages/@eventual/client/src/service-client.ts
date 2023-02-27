@@ -1,4 +1,4 @@
-import { Command, CommandInput, CommandOutput } from "@eventual/core";
+import { Command } from "@eventual/core";
 import { EVENTUAL_DEFAULT_COMMAND_NAMESPACE } from "@eventual/core/internal";
 import {
   HttpServiceClient,
@@ -103,15 +103,31 @@ type ServiceClientName<T> = T extends { name: infer Name extends string }
   ? Name
   : never;
 
-type ServiceClientMethod<T> = T extends Command
-  ? {
-      (
-        input: CommandInput<T>,
-        options?: {
-          headers: Record<string, string>;
-        }
-      ): Promise<Awaited<CommandOutput<T>>>;
-    }
+type ServiceClientMethod<T> = T extends Command<
+  any,
+  infer Input,
+  infer Output,
+  any,
+  any,
+  any
+>
+  ? [Input] extends [undefined]
+    ? {
+        (
+          input?: Input,
+          options?: {
+            headers: Record<string, string>;
+          }
+        ): Promise<Awaited<Output>>;
+      }
+    : {
+        (
+          input: Input,
+          options?: {
+            headers: Record<string, string>;
+          }
+        ): Promise<Awaited<Output>>;
+      }
   : never;
 
 type KeysWhereNameIsSame<Service> = {

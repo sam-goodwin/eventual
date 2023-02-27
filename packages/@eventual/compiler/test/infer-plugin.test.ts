@@ -11,7 +11,7 @@ test("api handlers should be decorated with source location", async () => {
   const bundle = await esbuild.build({
     mainFields: ["module", "main"],
     entryPoints: [
-      path.resolve(__dirname, "..", "test-files", "api-handler.ts"),
+      path.resolve(__dirname, "..", "test-files", "command-worker.ts"),
     ],
     sourcemap: false,
     plugins: [inferPlugin],

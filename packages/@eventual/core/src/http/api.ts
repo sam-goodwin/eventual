@@ -1,15 +1,15 @@
 import itty from "itty-router";
-import type z from "zod";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
+import { EVENTUAL_DEFAULT_COMMAND_NAMESPACE } from "../internal/command.js";
 import { commands } from "../internal/global.js";
 import type { SourceLocation } from "../internal/service-spec.js";
 import {
   command,
   Command,
   CommandHandler,
+  CommandOptions,
   parseCommandArgs,
-  RestParams,
 } from "./command.js";
 import type {
   Middleware,
@@ -90,7 +90,7 @@ function createRouter<Context>(
                     args[2] as HttpHandler,
                   ]
                 : [undefined, args[0], undefined, args[1] as HttpHandler];
-            const command: Command = {
+            const command: Command<any, any, any, any, any> = {
               kind: "Command",
               handler,
               memorySize: routeProps?.memorySize,
@@ -100,6 +100,7 @@ function createRouter<Context>(
               sourceLocation,
               handlerTimeout: routeProps?.handlerTimeout,
               middlewares,
+              namespace: EVENTUAL_DEFAULT_COMMAND_NAMESPACE,
               // we want the base HTTP request, not the transformed one
               passThrough: true,
             };
@@ -159,60 +160,22 @@ export interface HttpRouter<Context> {
     ) => Promise<MiddlewareOutput<NextContext>> | MiddlewareOutput<NextContext>
   ): HttpRouter<NextContext>;
 
-  command<
-    Name extends string,
-    Handler extends CommandHandler<any, any, Context>
-  >(
+  command<Name extends string, Input = undefined, Output = void>(
     name: Name,
-    handler: Handler
-  ): Command<Name, Handler, undefined, undefined>;
+    handler: CommandHandler<Input, Output, Context>
+  ): Command<Name, Input, Output, Context, undefined, undefined>;
 
   command<
     Name extends string,
     Input,
     Output,
     Path extends string | undefined,
-    Method extends HttpMethod | undefined,
-    Handler extends CommandHandler<Input, Output, Context>
+    Method extends HttpMethod | undefined
   >(
     name: Name,
-    options: FunctionRuntimeProps & {
-      path?: Path;
-      method?: Method;
-      params?: RestParams<Input, Path, Method>;
-      input: z.ZodType<Input>;
-      output?: z.ZodType<Output>;
-      /**
-       * Enable or disable schema validation.
-       *
-       * @default true
-       */
-      validate?: boolean;
-    },
-    handler: Handler
-  ): Command<Name, Handler, Path, Method>;
-
-  command<
-    Name extends string,
-    Path extends string | undefined,
-    Method extends HttpMethod | undefined,
-    Handler extends CommandHandler<any, any, Context>
-  >(
-    name: Name,
-    options: FunctionRuntimeProps & {
-      path?: Path;
-      method?: Method;
-      params?: RestParams<Parameters<Handler>[0], Path, Method>;
-      input?: undefined;
-      /**
-       * Enable or disable schema validation.
-       *
-       * @default true
-       */
-      validate?: boolean;
-    },
-    handler: Handler
-  ): Command<Name, Handler, Path, Method>;
+    options: CommandOptions<Input, Output, Path, Method>,
+    handler: CommandHandler<Input, Output, Context>
+  ): Command<Name, Input, Output, Context, Path, Method>;
 }
 
 export type HttpRouteEntry = [string, RegExp, HttpHandler];

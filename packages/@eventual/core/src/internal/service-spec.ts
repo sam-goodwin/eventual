@@ -57,7 +57,10 @@ export interface SubscriptionSpec<Name extends string = string> {
 
 export type EventSpec = Omit<ToSpec<Event>, "kind">;
 
-export type CommandSpec = Omit<ToSpec<Command>, "kind">;
+export type CommandSpec = Omit<
+  ToSpec<Command<any, any, any, any, any, any>>,
+  "kind"
+>;
 
 type ToSpec<T> = T extends z.ZodType
   ? openapi.SchemaObject

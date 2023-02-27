@@ -1,6 +1,7 @@
 import type z from "zod";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
+import { EVENTUAL_DEFAULT_COMMAND_NAMESPACE } from "../internal/command.js";
 import { commands } from "../internal/global.js";
 import { isSourceLocation, SourceLocation } from "../internal/service-spec.js";
 import type { Middleware } from "./middleware.js";
@@ -8,8 +9,8 @@ import type { ParsePath } from "./path.js";
 
 export interface Command<
   Name extends string = string,
-  Input = any,
-  Output = any,
+  Input = undefined,
+  Output = void,
   Context = any,
   Path extends string | undefined = string | undefined,
   Method extends HttpMethod | undefined = HttpMethod | undefined
@@ -27,7 +28,7 @@ export interface Command<
   /**
    * @default _default
    */
-  namespace?: string;
+  namespace: string;
   middlewares?: Middleware<any, any>[];
   /**
    * @default true
@@ -78,89 +79,72 @@ export interface Headers {
   [headerName: string]: string;
 }
 
-export type CommandHandler<T = any, U = any, Context = any> = (
+export type CommandHandler<T = undefined, U = void, Context = any> = (
   input: T,
   context: Context
 ) => Promise<U> | Awaited<U>;
 
-export type CommandInput<C extends Command> = C extends Command<
-  any,
-  infer Input
->
-  ? Input
-  : never;
+export type CommandInput<C extends Command<any, any, any, any, any, any>> =
+  C extends Command<any, infer Input, any, any, any, any> ? Input : never;
 
-export type CommandOutput<C extends Command> = C extends Command<
-  any,
-  any,
-  infer Output
->
-  ? Output
-  : never;
+export type CommandOutput<C extends Command<any, any, any, any, any, any>> =
+  C extends Command<any, any, infer Output, any, any, any> ? Output : never;
 
-export function command<Name extends string, Input, Output, Context>(
+export interface CommandOptions<
+  Input,
+  Output,
+  Path extends string | undefined,
+  Method extends HttpMethod | undefined
+> extends FunctionRuntimeProps {
+  path?: Path;
+  method?: Method;
+  params?: RestParams<Input, Path, Method>;
+  input?: z.ZodType<Input>;
+  output?: z.ZodType<Output>;
+  /**
+   * Enable or disable schema validation.
+   *
+   * @default true
+   */
+  validate?: boolean;
+}
+
+export function command<
+  Name extends string,
+  Input = undefined,
+  Output = void,
+  Context = any
+>(
   name: Name,
   handler: CommandHandler<Input, Output, Context>
 ): Command<Name, Input, Output, Context, undefined, undefined>;
 
 export function command<
   Name extends string,
-  Input,
-  Output,
-  Context,
-  Path extends string | undefined,
-  Method extends HttpMethod | undefined
+  Input = undefined,
+  Output = void,
+  Context = any,
+  Path extends string | undefined = string | undefined,
+  Method extends HttpMethod | undefined = HttpMethod | undefined
 >(
   name: Name,
-  options: FunctionRuntimeProps & {
-    path?: Path;
-    method?: Method;
-    params?: RestParams<Input, Path, Method>;
-    input: z.ZodType<Input>;
-    output?: z.ZodType<Output>;
-    /**
-     * Enable or disable schema validation.
-     *
-     * @default true
-     */
-    validate?: boolean;
-  },
+  options: CommandOptions<Input, Output, Path, Method>,
   handler: CommandHandler<Input, Output, Context>
 ): Command<Name, Input, Output, Context, Path, Method>;
 
 export function command<
   Name extends string,
-  Input,
-  Output,
-  Context,
-  Path extends string | undefined,
-  Method extends HttpMethod | undefined
->(
-  name: Name,
-  options: FunctionRuntimeProps & {
-    path?: Path;
-    method?: Method;
-    params?: RestParams<Input, Path, Method>;
-    input?: undefined;
-    /**
-     * Enable or disable schema validation.
-     *
-     * @default true
-     */
-    validate?: boolean;
-  },
-  handler: CommandHandler<Input, Output, Context>
-): Command<Name, Input, Output, Context, Path, Method>;
-
-export function command<Name extends string, Input, Output, Context>(
-  ...args: any[]
-): Command<Name, Input, Output, Context, undefined, undefined> {
+  Input = undefined,
+  Output = void,
+  Context = any
+>(...args: any[]): Command<Name, Input, Output, Context, undefined, undefined> {
   const [sourceLocation, name, options, handler] = parseCommandArgs(args);
   const command: Command<Name, Input, Output, Context, undefined, undefined> = {
     kind: "Command",
     name,
     handler,
     sourceLocation,
+    namespace: EVENTUAL_DEFAULT_COMMAND_NAMESPACE,
     ...options,
   };
   commands.push(command);

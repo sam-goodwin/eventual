@@ -35,11 +35,20 @@ export class HttpServiceClient {
      */
     namespace: string;
   }): Promise<Resp> {
-    return this.request({
-      path: `_rpc/${request.namespace}/${request.command}`,
-      body: request.payload,
-      method: "POST",
-    });
+    try {
+      const r = await this.request({
+        path: `_rpc/${request.namespace}/${request.command}`,
+        body: request.payload,
+        method: "POST",
+      });
+
+      console.log(r);
+
+      return r;
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
   }
 
   public async request<Body = any, Resp = any>(request: {

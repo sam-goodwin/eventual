@@ -11,7 +11,6 @@ import {
   serviceFunctionName,
 } from "@eventual/aws-runtime";
 import { computeDurationSeconds } from "@eventual/core-runtime";
-import { EVENTUAL_DEFAULT_COMMAND_NAMESPACE } from "@eventual/core/internal";
 import { Arn, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
 import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import {
@@ -260,9 +259,7 @@ export class CommandService<Service = any> {
           if (!command.passThrough) {
             // internal and low-level HTTP APIs should be passed through
             self.gateway.addRoutes({
-              path: `/_rpc/${
-                command.namespace ?? EVENTUAL_DEFAULT_COMMAND_NAMESPACE
-              }/${command.name}`,
+              path: `/_rpc/${command.namespace}/${command.name}`,
               methods: [HttpMethod.POST],
               integration,
               authorizer: overrides?.authorizer,

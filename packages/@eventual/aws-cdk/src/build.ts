@@ -2,6 +2,7 @@ import { build, BuildSource, infer } from "@eventual/compiler";
 import { ActivitySpec } from "@eventual/core";
 import {
   CommandSpec,
+  EVENTUAL_DEFAULT_COMMAND_NAMESPACE,
   EVENTUAL_INTERNAL_COMMAND_NAMESPACE,
   ServiceType,
   SubscriptionSpec,
@@ -116,6 +117,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         entry: monoCommandFunction!,
         spec: {
           name: "default",
+          namespace: EVENTUAL_DEFAULT_COMMAND_NAMESPACE,
         },
       },
     ],
@@ -162,8 +164,8 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           type === "commands"
             ? ([
                 "command",
-                "api-handler",
-                ServiceType.ApiHandler,
+                "command-worker",
+                ServiceType.CommandWorker,
                 spec.name,
                 monoCommandFunction!,
               ] as const)
@@ -205,7 +207,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     specPath: string,
     spec: Spec,
     pathPrefix: string,
-    entryPoint: "event-handler" | "api-handler" | "activity-worker",
+    entryPoint: string,
     serviceType: ServiceType,
     name: string,
     monoFunction: string
@@ -241,9 +243,9 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           serviceType: ServiceType.ActivityWorker,
         },
         {
-          name: ServiceType.ApiHandler,
-          entry: runtimeHandlersEntrypoint("api-handler"),
-          serviceType: ServiceType.ApiHandler,
+          name: ServiceType.CommandWorker,
+          entry: runtimeHandlersEntrypoint("command-worker"),
+          serviceType: ServiceType.CommandWorker,
         },
         {
           name: ServiceType.Subscription,

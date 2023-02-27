@@ -14,7 +14,11 @@ import {
 import itty from "itty-router";
 
 export interface ApiHandlerDependencies {
-  serviceClient: EventualServiceClient;
+  serviceClient?: EventualServiceClient;
+}
+
+export interface CommandWorker {
+  (request: HttpRequest): Promise<HttpResponse>;
 }
 
 /**
@@ -23,9 +27,13 @@ export interface ApiHandlerDependencies {
  * decoupled from a runtime's specifics by the clients. A runtime must
  * inject its own client implementations designed for that platform.
  */
-export function createApiHandler({ serviceClient }: ApiHandlerDependencies) {
+export function createCommandWorker({
+  serviceClient,
+}: ApiHandlerDependencies): CommandWorker {
   // make the service client available to web hooks
-  registerServiceClient(serviceClient);
+  if (serviceClient) {
+    registerServiceClient(serviceClient);
+  }
 
   const router = initRouter();
 
@@ -35,9 +43,9 @@ export function createApiHandler({ serviceClient }: ApiHandlerDependencies) {
    * Each webhook registers routes on the central {@link router} which
    * then handles the request.
    */
-  return function processRequest(request: HttpRequest): Promise<HttpResponse> {
+  return function (request) {
     console.log("request", request);
-    return serviceTypeScope(ServiceType.ApiHandler, async () => {
+    return serviceTypeScope(ServiceType.CommandWorker, async () => {
       try {
         const response = await router.handle(request);
         if (response === undefined) {

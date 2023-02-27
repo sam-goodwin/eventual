@@ -7,7 +7,7 @@ export function isActivityWorker() {
 }
 
 export function isApiHandler() {
-  return process.env[SERVICE_TYPE_FLAG] === ServiceType.ApiHandler;
+  return process.env[SERVICE_TYPE_FLAG] === ServiceType.CommandWorker;
 }
 
 export function isOrchestratorWorker() {
