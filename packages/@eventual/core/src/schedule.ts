@@ -1,4 +1,8 @@
-import { z } from "zod";
+import type { z } from "zod";
+import type {
+  durationScheduleSchema,
+  TimeScheduleSchema,
+} from "./internal/schedule.js";
 
 export const DURATION_UNITS = [
   "second",
@@ -15,18 +19,7 @@ export const DURATION_UNITS = [
 
 export type DurationUnit = (typeof DURATION_UNITS)[number];
 
-export const durationScheduleSchema = z.object({
-  type: z.literal("Duration"),
-  dur: z.number(),
-  unit: z.enum(DURATION_UNITS),
-});
-
 export type DurationSchedule = z.infer<typeof durationScheduleSchema>;
-
-export const TimeScheduleSchema = z.object({
-  type: z.literal("Time"),
-  isoDate: z.string().datetime(),
-});
 
 export type TimeSchedule = z.infer<typeof TimeScheduleSchema>;
 

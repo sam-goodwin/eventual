@@ -1,7 +1,9 @@
-import type z from "zod";
 import itty from "itty-router";
+import type z from "zod";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
+import { commands } from "../internal/global.js";
+import { SourceLocation } from "../internal/service-spec.js";
 import {
   command,
   Command,
@@ -9,14 +11,12 @@ import {
   parseCommandArgs,
   RestParams,
 } from "./command.js";
-import type { HttpRequest, HttpResponse } from "./request-response.js";
 import type {
   Middleware,
   MiddlewareInput,
   MiddlewareOutput,
 } from "./middleware.js";
-import { SourceLocation } from "../internal/service-spec.js";
-import { commands } from "../internal/global.js";
+import type { HttpRequest, HttpResponse } from "./request-response.js";
 
 const router = itty.Router() as any as HttpRouter<{}>;
 

@@ -1,3 +1,4 @@
+import { z } from "zod";
 import {
   DurationSchedule,
   DurationUnit,
@@ -19,3 +20,14 @@ export function isDurationSchedule(
 export function isTimeSchedule(schedule: Schedule): schedule is TimeSchedule {
   return schedule.type === "Time";
 }
+
+export const durationScheduleSchema = /* @__PURE__ */ z.object({
+  type: z.literal("Duration"),
+  dur: z.number(),
+  unit: z.enum(DURATION_UNITS),
+});
+
+export const TimeScheduleSchema = /* @__PURE__ */ z.object({
+  type: z.literal("Time"),
+  isoDate: z.string().datetime(),
+});

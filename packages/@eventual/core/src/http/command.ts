@@ -3,8 +3,8 @@ import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
 import { commands } from "../internal/global.js";
 import { isSourceLocation, SourceLocation } from "../internal/service-spec.js";
-import type { ParsePath } from "./path.js";
 import type { Middleware } from "./middleware.js";
+import type { ParsePath } from "./path.js";
 
 export interface Command<
   Name extends string = string,

@@ -1,14 +1,10 @@
 import { EventEnvelope } from "../event.js";
 import { DurationSchedule, Schedule } from "../schedule.js";
-import { SignalTarget } from "./signal.js";
 import { WorkflowOptions } from "../workflow.js";
-import { CommandSpec } from "./service-spec.js";
+import { SignalTarget } from "./signal.js";
 
 export const EVENTUAL_INTERNAL_COMMAND_NAMESPACE = "_internal";
 export const EVENTUAL_DEFAULT_COMMAND_NAMESPACE = "_default";
-export function isInternalCommand(command: CommandSpec) {
-  return command.namespace === EVENTUAL_INTERNAL_COMMAND_NAMESPACE;
-}
 
 export type WorkflowCommand =
   | StartTimerCommand

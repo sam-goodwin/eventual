@@ -1,9 +1,12 @@
 import serviceSpec from "@eventual/injected/spec";
 
 import { ServiceSpecWorkflowProvider } from "@eventual/core-runtime";
+import {
+  EventualService,
+  startExecutionRequestSchema,
+} from "@eventual/core/internal";
 import { createWorkflowClient } from "../../../create.js";
 import { systemCommand } from "../system-command.js";
-import { EventualService, startExecutionRequestSchema } from "@eventual/core/internal";
 
 const workflowProvider = new ServiceSpecWorkflowProvider(serviceSpec);
 const workflowClient = createWorkflowClient({

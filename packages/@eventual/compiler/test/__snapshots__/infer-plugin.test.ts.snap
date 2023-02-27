@@ -596,6 +596,197 @@ function isSourceLocation(a) {
   return a && typeof a === "object" && typeof a.fileName === "string" && typeof a.exportName === "string";
 }
 
+var import_ulidx = __toESM(require_dist2(), 1);
+var ExecutionStatus;
+(function(ExecutionStatus2) {
+  ExecutionStatus2["IN_PROGRESS"] = "IN_PROGRESS";
+  ExecutionStatus2["SUCCEEDED"] = "SUCCEEDED";
+  ExecutionStatus2["FAILED"] = "FAILED";
+})(ExecutionStatus || (ExecutionStatus = {}));
+var ExecutionStatuses = new Set(Object.values(ExecutionStatus));
+
+function e({ base: t = "", routes: n = [] } = {}) {
+  return { __proto__: new Proxy({}, { get: (e2, a, o) => (e3, ...r) => n.push([a.toUpperCase(), RegExp(\`^\${(t + e3).replace(/(\\/?)\\*/g, "($1.*)?").replace(/(\\/$)|((?<=\\/)\\/)/, "").replace(/:(\\w+)(\\?)?(\\.)?/g, "$2(?<$1>[^/]+)$2$3").replace(/\\.(?=[\\w(])/, "\\\\.").replace(/\\)\\.\\?\\(([^\\[]+)\\[\\^/g, "?)\\\\.?($1(?<=\\\\.)[^\\\\.")}/*$\`), r]) && o }), routes: n, async handle(e2, ...r) {
+    let a, o, t2 = new URL(e2.url);
+    e2.query = Object.fromEntries(t2.searchParams);
+    for (var [p, s, u] of n)
+      if ((p === e2.method || "ALL" === p) && (o = t2.pathname.match(s))) {
+        e2.params = o.groups;
+        for (var c of u)
+          if (void 0 !== (a = await c(e2.proxy || e2, ...r)))
+            return a;
+      }
+  } };
+}
+var itty_router_min_default = { Router: e };
+
+function command(...args) {
+  const [sourceLocation, name, options, handler] = parseCommandArgs(args);
+  const command2 = {
+    kind: "Command",
+    name,
+    handler,
+    sourceLocation,
+    ...options
+  };
+  commands.push(command2);
+  return command2;
+}
+function parseCommandArgs(args) {
+  return [
+    args.find(isSourceLocation),
+    args.find((a) => typeof a === "string"),
+    args.find((a) => typeof a === "object" && !isSourceLocation(a)),
+    args.find((a) => typeof a === "function")
+  ];
+}
+
+var router = itty_router_min_default.Router();
+var api = createRouter([]);
+function createRouter(middlewares) {
+  return new Proxy({}, {
+    get: (_, method) => {
+      if (method === "routes" || method === "handle") {
+        return router[method];
+      } else if (method === "use") {
+        return (middleware) => createRouter([...middlewares ?? [], middleware]);
+      } else if (method === "command") {
+        return (...args) => {
+          const [sourceLocation, name, options, handler] = parseCommandArgs(args);
+          return command(sourceLocation, name, {
+            ...options ?? {},
+            middlewares
+          }, handler);
+        };
+      } else {
+        return (...args) => {
+          const [sourceLocation, path, routeProps, handler] = typeof args[0] === "object" ? typeof args[3] === "function" ? args : [
+            args[0],
+            args[1],
+            void 0,
+            args[2]
+          ] : typeof args[2] === "function" ? [
+            void 0,
+            args[0],
+            args[1],
+            args[2]
+          ] : [void 0, args[0], void 0, args[1]];
+          const command2 = {
+            kind: "Command",
+            handler,
+            memorySize: routeProps?.memorySize,
+            method: method.toUpperCase(),
+            name: path,
+            path: typeof args[0] === "string" ? args[0] : args[1],
+            sourceLocation,
+            handlerTimeout: routeProps?.handlerTimeout,
+            middlewares,
+            passThrough: true
+          };
+          commands.push(command2);
+          return router[method](path, command2.handler);
+        };
+      }
+    }
+  });
+}
+
+var BaseHttpPayload = class {
+  async tryJson() {
+    try {
+      return await this.json();
+    } catch {
+      return void 0;
+    }
+  }
+  async json() {
+    return JSON.parse(await this.text?.() ?? "");
+  }
+  async text() {
+    if (this.body === void 0) {
+      return "";
+    } else if (typeof this.body === "string") {
+      return this.body;
+    } else if (Buffer.isBuffer(this.body)) {
+      return this.body.toString("utf-8");
+    } else {
+      return Buffer.from((await readStream(this.body)).buffer).toString("utf-8");
+    }
+  }
+  async arrayBuffer() {
+    if (this.body === void 0) {
+      return new ArrayBuffer(0);
+    } else if (typeof this.body === "string") {
+      return Buffer.from(this.body, "utf8");
+    } else if (Buffer.isBuffer(this.body)) {
+      return this.body;
+    } else {
+      return readStream(this.body);
+    }
+  }
+};
+var HttpResponse = class extends BaseHttpPayload {
+  constructor(body, init) {
+    super();
+    this.body = body === void 0 ? null : body;
+    this.status = init?.status ?? 200;
+    this.statusText = init?.statusText;
+    this.headers = toHeaders(init?.headers);
+  }
+};
+function toHeaders(headers) {
+  if (headers === void 0) {
+    return new Headers();
+  } else if (headers instanceof Headers) {
+    return headers;
+  } else {
+    const h = new Headers();
+    for (const [k, v] of Object.entries(headers)) {
+      h.set(k, v);
+    }
+    return h;
+  }
+}
+async function readStream(readable) {
+  if (!readable) {
+    return Buffer.from(new Uint8Array(0));
+  }
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    readable.on("error", reject);
+    readable.on("data", (data) => {
+      chunks.push(data);
+    });
+    readable.on("close", () => resolve(Buffer.concat(chunks)));
+  });
+}
+
+var LogLevel;
+(function(LogLevel2) {
+  LogLevel2["TRACE"] = "TRACE";
+  LogLevel2["DEBUG"] = "DEBUG";
+  LogLevel2["INFO"] = "INFO";
+  LogLevel2["WARN"] = "WARN";
+  LogLevel2["ERROR"] = "ERROR";
+})(LogLevel || (LogLevel = {}));
+var LOG_LEVELS = Object.values(LogLevel);
+
+var DURATION_UNITS = [
+  "second",
+  "seconds",
+  "minute",
+  "minutes",
+  "hour",
+  "hours",
+  "day",
+  "days",
+  "year",
+  "years"
+];
+
+var _BaseCachingSecret_value;
+_BaseCachingSecret_value = /* @__PURE__ */ new WeakMap();
+
 var util;
 (function(util2) {
   util2.assertEqual = (val) => val;
@@ -3911,140 +4102,81 @@ var mod = /* @__PURE__ */ Object.freeze({
   ZodError
 });
 
-var EventEnvelopeSchema = mod.object({
-  name: mod.string().describe("hi"),
+var eventEnvelopeSchema = /* @__PURE__ */ mod.object({
+  name: mod.string(),
   event: mod.record(mod.any())
 });
 
-var import_ulidx = __toESM(require_dist2(), 1);
-var ExecutionStatus;
-(function(ExecutionStatus2) {
-  ExecutionStatus2["IN_PROGRESS"] = "IN_PROGRESS";
-  ExecutionStatus2["SUCCEEDED"] = "SUCCEEDED";
-  ExecutionStatus2["FAILED"] = "FAILED";
-})(ExecutionStatus || (ExecutionStatus = {}));
-var ExecutionStatuses = new Set(Object.values(ExecutionStatus));
-
-function e({ base: t = "", routes: n = [] } = {}) {
-  return { __proto__: new Proxy({}, { get: (e2, a, o) => (e3, ...r) => n.push([a.toUpperCase(), RegExp(\`^\${(t + e3).replace(/(\\/?)\\*/g, "($1.*)?").replace(/(\\/$)|((?<=\\/)\\/)/, "").replace(/:(\\w+)(\\?)?(\\.)?/g, "$2(?<$1>[^/]+)$2$3").replace(/\\.(?=[\\w(])/, "\\\\.").replace(/\\)\\.\\?\\(([^\\[]+)\\[\\^/g, "?)\\\\.?($1(?<=\\\\.)[^\\\\.")}/*$\`), r]) && o }), routes: n, async handle(e2, ...r) {
-    let a, o, t2 = new URL(e2.url);
-    e2.query = Object.fromEntries(t2.searchParams);
-    for (var [p, s, u] of n)
-      if ((p === e2.method || "ALL" === p) && (o = t2.pathname.match(s))) {
-        e2.params = o.groups;
-        for (var c of u)
-          if (void 0 !== (a = await c(e2.proxy || e2, ...r)))
-            return a;
-      }
-  } };
-}
-var itty_router_min_default = { Router: e };
-
-function command(...args) {
-  const [sourceLocation, name, options, handler] = parseCommandArgs(args);
-  const command2 = {
-    kind: "Command",
-    name,
-    handler,
-    sourceLocation,
-    ...options
-  };
-  commands.push(command2);
-  return command2;
-}
-function parseCommandArgs(args) {
-  return [
-    args.find(isSourceLocation),
-    args.find((a) => typeof a === "string"),
-    args.find((a) => typeof a === "object" && !isSourceLocation(a)),
-    args.find((a) => typeof a === "function")
-  ];
-}
-
-var router = itty_router_min_default.Router();
-var api = createRouter([]);
-function createRouter(middlewares) {
-  return new Proxy({}, {
-    get: (_, method) => {
-      if (method === "routes" || method === "handle") {
-        return router[method];
-      } else if (method === "use") {
-        return (middleware) => createRouter([...middlewares ?? [], middleware]);
-      } else if (method === "command") {
-        return (...args) => {
-          const [sourceLocation, name, options, handler] = parseCommandArgs(args);
-          return command(sourceLocation, name, {
-            ...options ?? {},
-            middlewares
-          }, handler);
-        };
-      } else {
-        return (...args) => {
-          const [sourceLocation, path, routeProps, handler] = typeof args[0] === "object" ? typeof args[3] === "function" ? args : [
-            args[0],
-            args[1],
-            void 0,
-            args[2]
-          ] : typeof args[2] === "function" ? [
-            void 0,
-            args[0],
-            args[1],
-            args[2]
-          ] : [void 0, args[0], void 0, args[1]];
-          const command2 = {
-            kind: "Command",
-            handler,
-            memorySize: routeProps?.memorySize,
-            method: method.toUpperCase(),
-            name: path,
-            path: typeof args[0] === "string" ? args[0] : args[1],
-            sourceLocation,
-            handlerTimeout: routeProps?.handlerTimeout,
-            middlewares,
-            passThrough: true
-          };
-          commands.push(command2);
-          return router[method](path, command2.handler);
-        };
-      }
-    }
-  });
-}
-
-var LogLevel;
-(function(LogLevel2) {
-  LogLevel2["TRACE"] = "TRACE";
-  LogLevel2["DEBUG"] = "DEBUG";
-  LogLevel2["INFO"] = "INFO";
-  LogLevel2["WARN"] = "WARN";
-  LogLevel2["ERROR"] = "ERROR";
-})(LogLevel || (LogLevel = {}));
-var LOG_LEVELS = Object.values(LogLevel);
-
-var DURATION_UNITS = [
-  "second",
-  "seconds",
-  "minute",
-  "minutes",
-  "hour",
-  "hours",
-  "day",
-  "days",
-  "year",
-  "years"
-];
-var durationScheduleSchema = mod.object({
+var durationScheduleSchema = /* @__PURE__ */ mod.object({
   type: mod.literal("Duration"),
   dur: mod.number(),
   unit: mod.enum(DURATION_UNITS)
 });
-var TimeScheduleSchema = mod.object({
+var TimeScheduleSchema = /* @__PURE__ */ mod.object({
   type: mod.literal("Time"),
   isoDate: mod.string().datetime()
 });
 
-var _BaseCachingSecret_value;
-_BaseCachingSecret_value = /* @__PURE__ */ new WeakMap();
+var workflowOptionsSchema = /* @__PURE__ */ mod.object({
+  timeout: durationScheduleSchema.optional()
+});
+
+var SortOrder;
+(function(SortOrder2) {
+  SortOrder2["Asc"] = "ASC";
+  SortOrder2["Desc"] = "DESC";
+})(SortOrder || (SortOrder = {}));
+var publishEventsRequestSchema = /* @__PURE__ */ mod.object({
+  events: mod.array(eventEnvelopeSchema)
+});
+var sendSignalRequestSchema = /* @__PURE__ */ mod.object({
+  executionId: mod.string(),
+  signalId: mod.string(),
+  payload: mod.any(),
+  id: mod.string().optional()
+});
+var startExecutionRequestSchema = /* @__PURE__ */ workflowOptionsSchema.extend({
+  executionName: mod.string().optional(),
+  workflow: mod.string(),
+  input: mod.any().optional()
+});
+var listExecutionsRequestSchema = /* @__PURE__ */ mod.object({
+  statuses: mod.array(mod.nativeEnum(ExecutionStatus)).optional(),
+  workflowName: mod.string().optional(),
+  nextToken: mod.string().optional(),
+  sortDirection: mod.nativeEnum(SortOrder).default(SortOrder.Asc).optional(),
+  maxResults: mod.number().default(100).optional()
+});
+var listExecutionEventsRequestSchema = /* @__PURE__ */ mod.object({
+  executionId: mod.string(),
+  sortDirection: mod.nativeEnum(SortOrder).default(SortOrder.Asc).optional(),
+  nextToken: mod.string().optional(),
+  maxResults: mod.number().default(100).optional(),
+  after: mod.string().optional().describe("Start returning after a data")
+});
+var ActivityUpdateType;
+(function(ActivityUpdateType2) {
+  ActivityUpdateType2["Success"] = "Success";
+  ActivityUpdateType2["Failure"] = "Failure";
+  ActivityUpdateType2["Heartbeat"] = "Heartbeat";
+})(ActivityUpdateType || (ActivityUpdateType = {}));
+var sendActivitySuccessRequestSchema = /* @__PURE__ */ mod.object({
+  type: mod.literal(ActivityUpdateType.Success),
+  activityToken: mod.string(),
+  result: mod.any()
+});
+var sendActivityFailureRequestSchema = /* @__PURE__ */ mod.object({
+  type: mod.literal(ActivityUpdateType.Failure),
+  activityToken: mod.string(),
+  error: mod.string(),
+  message: mod.string().optional()
+});
+var sendActivityHeartbeatRequestSchema = /* @__PURE__ */ mod.object({
+  type: mod.literal(ActivityUpdateType.Heartbeat),
+  activityToken: mod.string()
+});
+
+var import_ulidx2 = __toESM(require_dist2(), 1);
 
 var WorkflowEventType;
 (function(WorkflowEventType2) {
@@ -4114,77 +4246,11 @@ var isScheduledEvent = or(isActivityScheduled, isChildWorkflowScheduled, isEvent
 var isSucceededEvent = or(isActivitySucceeded, isChildWorkflowSucceeded, isTimerCompleted);
 var isFailedEvent = or(isActivityFailed, isActivityHeartbeatTimedOut, isChildWorkflowFailed, isWorkflowTimedOut);
 
-var workflowOptionsSchema = mod.object({
-  timeout: durationScheduleSchema.optional()
-});
-
-var SortOrder;
-(function(SortOrder2) {
-  SortOrder2["Asc"] = "ASC";
-  SortOrder2["Desc"] = "DESC";
-})(SortOrder || (SortOrder = {}));
-var publishEventsRequestSchema = mod.object({
-  events: mod.array(EventEnvelopeSchema)
-});
-var sendSignalRequestSchema = mod.object({
-  executionId: mod.string(),
-  signalId: mod.string(),
-  payload: mod.any(),
-  id: mod.string().optional()
-});
-var startExecutionRequestSchema = workflowOptionsSchema.extend({
-  executionName: mod.string().optional(),
-  workflow: mod.string(),
-  input: mod.any().optional()
-});
-var listExecutionsRequestSchema = mod.object({
-  statuses: mod.array(mod.nativeEnum(ExecutionStatus)).optional(),
-  workflowName: mod.string().optional(),
-  nextToken: mod.string().optional(),
-  sortDirection: mod.nativeEnum(SortOrder).default(SortOrder.Asc).optional(),
-  maxResults: mod.number().default(100).optional()
-});
-var listExecutionEventsRequestSchema = mod.object({
-  executionId: mod.string(),
-  sortDirection: mod.nativeEnum(SortOrder).default(SortOrder.Asc).optional(),
-  nextToken: mod.string().optional(),
-  maxResults: mod.number().default(100).optional(),
-  after: mod.string().optional().describe("Start returning after a data")
-});
-var ActivityUpdateType;
-(function(ActivityUpdateType2) {
-  ActivityUpdateType2["Success"] = "Success";
-  ActivityUpdateType2["Failure"] = "Failure";
-  ActivityUpdateType2["Heartbeat"] = "Heartbeat";
-})(ActivityUpdateType || (ActivityUpdateType = {}));
-var sendActivitySuccessRequestSchema = mod.object({
-  type: mod.literal(ActivityUpdateType.Success),
-  activityToken: mod.string(),
-  result: mod.any()
-});
-var sendActivityFailureRequestSchema = mod.object({
-  type: mod.literal(ActivityUpdateType.Failure),
-  activityToken: mod.string(),
-  error: mod.string(),
-  message: mod.string().optional()
-});
-var sendActivityHeartbeatRequestSchema = mod.object({
-  type: mod.literal(ActivityUpdateType.Heartbeat),
-  activityToken: mod.string()
-});
-var sendActivityUpdateSchema = mod.union([
-  sendActivitySuccessRequestSchema,
-  sendActivityFailureRequestSchema,
-  sendActivityHeartbeatRequestSchema
-]);
-
-var import_ulidx2 = __toESM(require_dist2(), 1);
-
 var myHandler = api.get("/", async () => {
-  return new Response();
+  return new HttpResponse();
 });
 var myHandler2 = api.get("/", async () => {
-  return new Response();
+  return new HttpResponse();
 });
 0 && (module.exports = {
   myHandler,

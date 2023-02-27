@@ -1,4 +1,4 @@
-import z from "zod";
+import { z } from "zod";
 import { createPublishEventsCall } from "./internal/calls/send-events-call.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
 import { events, getServiceClient, subscriptions } from "./internal/global.js";
@@ -19,11 +19,6 @@ export type EventPayloadType<E extends Event<any>> = E extends Event<
 >
   ? Payload
   : never;
-
-export const EventEnvelopeSchema = z.object({
-  name: z.string().describe("hi"),
-  event: z.record(z.any()),
-});
 
 /**
  * An envelope object containing the {@link event} payload associated

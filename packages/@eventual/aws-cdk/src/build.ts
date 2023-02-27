@@ -363,12 +363,12 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     });
     return path.relative(path.resolve(request.outDir), path.resolve(file));
   }
+}
 
-  function runtimeHandlersEntrypoint(name: string) {
-    return path.join(runtimeEntrypoint(), `/handlers/${name}.js`);
-  }
+function runtimeHandlersEntrypoint(name: string) {
+  return path.join(runtimeEntrypoint(), `/handlers/${name}.js`);
+}
 
-  function runtimeEntrypoint() {
-    return path.join(require.resolve("@eventual/aws-runtime"), `../../esm`);
-  }
+function runtimeEntrypoint() {
+  return path.join(require.resolve("@eventual/aws-runtime"), `../../esm`);
 }

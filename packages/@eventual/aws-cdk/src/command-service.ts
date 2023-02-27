@@ -11,10 +11,7 @@ import {
   serviceFunctionName,
 } from "@eventual/aws-runtime";
 import { computeDurationSeconds } from "@eventual/core-runtime";
-import {
-  EVENTUAL_DEFAULT_COMMAND_NAMESPACE,
-  isInternalCommand,
-} from "@eventual/core/internal";
+import { EVENTUAL_DEFAULT_COMMAND_NAMESPACE } from "@eventual/core/internal";
 import { Arn, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
 import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import {
@@ -29,6 +26,7 @@ import type { ActivityService } from "./activity-service";
 import {
   CommandFunction,
   InternalCommandFunction,
+  InternalCommandName,
   InternalCommands,
 } from "./build-manifest";
 import type { EventService } from "./event-service";
@@ -104,10 +102,8 @@ export class CommandService<Service = any> {
   constructor(private props: CommandsProps<Service>) {
     const self = this;
 
-    const internalApiRoutes: InternalCommands =
-      this.props.build.system.eventualService.commands;
     const internalInit: {
-      [route in keyof typeof internalApiRoutes]?: CommandMapping["init"];
+      [route in InternalCommandName]?: CommandMapping["init"];
     } = {
       updateActivity: (fn) => {
         this.props.activityService.configureWriteActivities(fn);
@@ -137,6 +133,7 @@ export class CommandService<Service = any> {
     const commandsScope = new Construct(props.serviceScope, "Commands");
 
     const serviceCommands = synthesizeAPI(
+      commandsScope,
       this.props.build.commands.map(
         (manifest) =>
           ({
@@ -153,6 +150,7 @@ export class CommandService<Service = any> {
     );
 
     const systemCommands = synthesizeAPI(
+      commandsSystemScope,
       (
         Object.entries(this.props.build.system.eventualService.commands) as any
       ).map(
@@ -162,6 +160,7 @@ export class CommandService<Service = any> {
             overrides: {
               authorizer: new HttpIamAuthorizer(),
               init: internalInit[path],
+              handler: "index.handler",
             },
           } satisfies CommandMapping)
       )
@@ -189,7 +188,7 @@ export class CommandService<Service = any> {
 
     this.finalize();
 
-    function synthesizeAPI(commands: CommandMapping[]) {
+    function synthesizeAPI(scope: Construct, commands: CommandMapping[]) {
       return Object.fromEntries(
         commands.map((mapping) => {
           const { manifest, overrides } = mapping;
@@ -204,38 +203,31 @@ export class CommandService<Service = any> {
             }`;
           }
 
-          const handler = new Function(
-            isInternalCommand(command) ? commandsSystemScope : commandsScope,
-            command.name,
-            {
-              ...overrides,
-              functionName: serviceFunctionName(
-                self.props.serviceName,
-                `${sanitizedName}-${command.namespace}-command`
-              ),
-              code: Code.fromAsset(
-                self.props.build.resolveFolder(manifest.entry)
-              ),
-              runtime: NODE_18_X,
-              architecture: Architecture.ARM_64,
-              environment: {
-                NODE_OPTIONS: "--enable-source-maps",
-                ...(overrides?.environment ?? {}),
-              },
-              memorySize: overrides?.memorySize ?? command.memorySize ?? 512,
-              timeout:
-                overrides?.timeout ?? command.handlerTimeout
-                  ? Duration.seconds(
-                      computeDurationSeconds(command.handlerTimeout!)
-                    )
-                  : undefined,
-              handler:
-                overrides?.handler ?? isInternalCommand(command)
-                  ? "index.handler"
-                  : "index.default",
-              role: isInternalCommand(command) ? undefined : overrides?.role,
-            }
-          );
+          const handler = new Function(scope, command.name, {
+            ...overrides,
+            functionName: serviceFunctionName(
+              self.props.serviceName,
+              `${sanitizedName}-${command.namespace}-command`
+            ),
+            code: Code.fromAsset(
+              self.props.build.resolveFolder(manifest.entry)
+            ),
+            runtime: NODE_18_X,
+            architecture: Architecture.ARM_64,
+            environment: {
+              NODE_OPTIONS: "--enable-source-maps",
+              ...(overrides?.environment ?? {}),
+            },
+            memorySize: overrides?.memorySize ?? command.memorySize ?? 512,
+            timeout:
+              overrides?.timeout ?? command.handlerTimeout
+                ? Duration.seconds(
+                    computeDurationSeconds(command.handlerTimeout!)
+                  )
+                : undefined,
+            handler: overrides?.handler ?? "index.default",
+            role: overrides?.role,
+          });
 
           return [
             command.name as CommandNames<Service>,

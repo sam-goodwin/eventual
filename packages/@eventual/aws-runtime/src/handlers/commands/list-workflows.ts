@@ -1,8 +1,8 @@
 import serviceSpec from "@eventual/injected/spec";
 
 import { ServiceSpecWorkflowProvider } from "@eventual/core-runtime";
-import { systemCommand } from "./system-command.js";
 import { EventualService } from "@eventual/core/internal";
+import { systemCommand } from "./system-command.js";
 
 const workflowProvider = new ServiceSpecWorkflowProvider(serviceSpec);
 

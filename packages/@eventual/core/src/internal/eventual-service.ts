@@ -1,17 +1,17 @@
 import { z } from "zod";
-import { EventEnvelopeSchema } from "../event.js";
+import { eventEnvelopeSchema } from "./event.js";
 import { Execution, ExecutionID, ExecutionStatus } from "../execution.js";
 import { Command } from "../http/command.js";
-import { workflowOptionsSchema } from "../workflow.js";
 import { HistoryStateEvent, WorkflowEvent } from "./workflow-events.js";
+import { workflowOptionsSchema } from "./workflow.js";
 
 export enum SortOrder {
   Asc = "ASC",
   Desc = "DESC",
 }
 
-export const publishEventsRequestSchema = z.object({
-  events: z.array(EventEnvelopeSchema),
+export const publishEventsRequestSchema = /* @__PURE__ */ z.object({
+  events: z.array(eventEnvelopeSchema),
 });
 
 export interface WorkflowReference {
@@ -22,18 +22,19 @@ export interface ListWorkflowsResponse {
   workflows: WorkflowReference[];
 }
 
-export const sendSignalRequestSchema = z.object({
+export const sendSignalRequestSchema = /* @__PURE__ */ z.object({
   executionId: z.string(),
   signalId: z.string(),
   payload: z.any(),
   id: z.string().optional(),
 });
 
-export const startExecutionRequestSchema = workflowOptionsSchema.extend({
-  executionName: z.string().optional(),
-  workflow: z.string(),
-  input: z.any().optional(),
-});
+export const startExecutionRequestSchema =
+  /* @__PURE__ */ workflowOptionsSchema.extend({
+    executionName: z.string().optional(),
+    workflow: z.string(),
+    input: z.any().optional(),
+  });
 
 export interface StartExecutionResponse {
   /**
@@ -47,7 +48,7 @@ export interface StartExecutionResponse {
   alreadyRunning: boolean;
 }
 
-export const listExecutionsRequestSchema = z.object({
+export const listExecutionsRequestSchema = /* @__PURE__ */ z.object({
   statuses: z.array(z.nativeEnum(ExecutionStatus)).optional(),
   workflowName: z.string().optional(),
   nextToken: z.string().optional(),
@@ -63,7 +64,7 @@ export interface ListExecutionsResponse {
   nextToken?: string;
 }
 
-export const listExecutionEventsRequestSchema = z.object({
+export const listExecutionEventsRequestSchema = /* @__PURE__ */ z.object({
   executionId: z.string(),
   sortDirection: z.nativeEnum(SortOrder).default(SortOrder.Asc).optional(),
   nextToken: z.string().optional(),
@@ -86,25 +87,25 @@ export enum ActivityUpdateType {
   Heartbeat = "Heartbeat",
 }
 
-export const sendActivitySuccessRequestSchema = z.object({
+export const sendActivitySuccessRequestSchema = /* @__PURE__ */ z.object({
   type: z.literal(ActivityUpdateType.Success),
   activityToken: z.string(),
   result: z.any(),
 });
 
-export const sendActivityFailureRequestSchema = z.object({
+export const sendActivityFailureRequestSchema = /* @__PURE__ */ z.object({
   type: z.literal(ActivityUpdateType.Failure),
   activityToken: z.string(),
   error: z.string(),
   message: z.string().optional(),
 });
 
-export const sendActivityHeartbeatRequestSchema = z.object({
+export const sendActivityHeartbeatRequestSchema = /* @__PURE__ */ z.object({
   type: z.literal(ActivityUpdateType.Heartbeat),
   activityToken: z.string(),
 });
 
-export const sendActivityUpdateSchema = z.union([
+export const sendActivityUpdateSchema = /* @__PURE__ */ z.union([
   sendActivitySuccessRequestSchema,
   sendActivityFailureRequestSchema,
   sendActivityHeartbeatRequestSchema,
