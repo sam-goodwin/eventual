@@ -67,8 +67,6 @@ export interface SubscriptionFunction
 
 export interface ActivityFunction extends BundledFunction<ActivitySpec> {}
 
-export interface InternalCommandFunction extends CommandFunction {
-  spec: CommandFunction["spec"] & {};
-}
+export interface InternalCommandFunction extends CommandFunction {}
 
 export interface CommandFunction extends BundledFunction<CommandSpec> {}

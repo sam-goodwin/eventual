@@ -159,7 +159,6 @@ export class CommandService<Service = any> {
             overrides: {
               authorizer: new HttpIamAuthorizer(),
               init: internalInit[path],
-              handler: "index.handler",
             },
           } satisfies CommandMapping)
       )

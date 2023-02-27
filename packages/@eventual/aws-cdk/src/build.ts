@@ -262,38 +262,44 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     );
   }
 
+  /**
+   * The system command entry files currently come with their own instance of the
+   * {@link CommandWorker}. Just bundle each file with a synthetic command spec.
+   */
   async function bundleSystemCommandFunctions(
     specPath: string
   ): Promise<InternalCommands> {
     const commands: Record<InternalCommandName, { entry: string }> = {
       listWorkflows: {
-        entry: runtimeHandlersEntrypoint("commands/list-workflows"),
+        entry: runtimeHandlersEntrypoint("system-commands/list-workflows"),
       },
       startExecution: {
-        entry: runtimeHandlersEntrypoint("commands/executions/new"),
+        entry: runtimeHandlersEntrypoint("system-commands/start-execution"),
       },
       listExecutions: {
-        entry: runtimeHandlersEntrypoint("commands/executions/list"),
+        entry: runtimeHandlersEntrypoint("system-commands/list-executions"),
       },
       getExecution: {
-        entry: runtimeHandlersEntrypoint("commands/executions/get"),
+        entry: runtimeHandlersEntrypoint("system-commands/get-execution"),
       },
       getExecutionHistory: {
-        entry: runtimeHandlersEntrypoint("commands/executions/history"),
+        entry: runtimeHandlersEntrypoint(
+          "system-commands/get-execution-history"
+        ),
       },
       sendSignal: {
-        entry: runtimeHandlersEntrypoint("commands/executions/signals/send"),
+        entry: runtimeHandlersEntrypoint("system-commands/send-signal"),
       },
       getExecutionWorkflowHistory: {
         entry: runtimeHandlersEntrypoint(
-          "commands/executions/workflow-history"
+          "system-commands/get-execution-workflow-history"
         ),
       },
       publishEvents: {
-        entry: runtimeHandlersEntrypoint("commands/publish-events"),
+        entry: runtimeHandlersEntrypoint("system-commands/publish-events"),
       },
       updateActivity: {
-        entry: runtimeHandlersEntrypoint("commands/update-activity"),
+        entry: runtimeHandlersEntrypoint("system-commands/update-activity"),
       },
     };
 
@@ -308,24 +314,14 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           });
           return [
             name,
-            internalCommand({ file, name: name as InternalCommandName }),
+            {
+              entry: file,
+              spec: { name, namespace: EVENTUAL_INTERNAL_COMMAND_NAMESPACE },
+            } satisfies InternalCommandFunction,
           ];
         })
       )
     );
-
-    function internalCommand<Name extends keyof InternalCommands>(props: {
-      name: Name;
-      file: string;
-    }) {
-      return {
-        spec: {
-          name: props.name,
-          namespace: EVENTUAL_INTERNAL_COMMAND_NAMESPACE,
-        },
-        entry: props.file,
-      } satisfies InternalCommandFunction;
-    }
   }
 
   function bundleEventualSystemFunctions(specPath: string) {
