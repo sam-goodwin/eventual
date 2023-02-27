@@ -343,43 +343,13 @@ packages:
         app: "ts-node ./src/app.ts",
       }),
 
-      fs.mkdir("src").then(() =>
-        Promise.all([
-          fs.writeFile(path.join("src", "app.ts"), sampleCDKApp(projectName)),
-          fs.writeFile(
-            path.join("src", `${projectName}-stack.ts`),
-            `import { Construct } from "constructs";
-import { CfnOutput, Stack, StackProps } from "aws-cdk-lib";
-import { Service } from "@eventual/aws-cdk";
-
-export interface MyServiceStackProps extends StackProps {}
-
-export class MyServiceStack extends Stack {
-  public readonly service: Service;
-
-  constructor(scope: Construct, id: string, props?: MyServiceStackProps) {
-    super(scope, id, props);
-
-    this.service = new Service(this, "${serviceName}", {
-      name: "${serviceName}",
-      entry: require.resolve("${servicePackageName}")
-    });
-
-    new CfnOutput(this, "${serviceName}-api-endpoint", {
-      exportName: "${serviceName}-api-endpoint",
-      value: this.service.gateway.url!,
-    });
-
-    new CfnOutput(this, "${serviceName}-event-bus-arn", {
-      exportName: "${serviceName}-event-bus-arn",
-      value: this.service.bus.eventBusArn,
-    });
-  }
-}
-`
-          ),
-        ])
-      ),
+      fs
+        .mkdir("src")
+        .then(() =>
+          Promise.all([
+            fs.writeFile(path.join("src", "app.ts"), sampleCDKApp(projectName)),
+          ])
+        ),
     ]);
     process.chdir("..");
   }
