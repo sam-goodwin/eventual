@@ -12,6 +12,7 @@ import {
   sendSignalRequestSchema,
   startExecutionRequestSchema,
 } from "@eventual/core/internal";
+import { z } from "zod";
 import type { ActivityClient } from "./clients/activity-client.js";
 import type { EventClient } from "./clients/event-client.js";
 import type { ExecutionQueueClient } from "./clients/execution-queue-client.js";
@@ -101,9 +102,13 @@ export function createListWorkflowHistoryCommand({
   executionHistoryStateStore: ExecutionHistoryStateStore;
 }) {
   return systemCommand(
-    command("getExecutionWorkflowHistory", async (executionId: string) => ({
-      events: await executionHistoryStateStore.getHistory(executionId),
-    }))
+    command(
+      "getExecutionWorkflowHistory",
+      { input: z.string() },
+      async (executionId) => ({
+        events: await executionHistoryStateStore.getHistory(executionId),
+      })
+    )
   );
 }
 
@@ -141,7 +146,7 @@ export function createGetExecutionCommand({
   executionStore: ExecutionStore;
 }) {
   return systemCommand(
-    command("getExecution", (executionId: string) =>
+    command("getExecution", { input: z.string() }, (executionId) =>
       executionStore.get(executionId)
     )
   );
