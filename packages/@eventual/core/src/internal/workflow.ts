@@ -1,6 +1,8 @@
 import { z } from "zod";
-import { durationScheduleSchema } from "./schedule.js";
+import { durationScheduleSchema, timeScheduleSchema } from "./schedule.js";
 
 export const workflowOptionsSchema = /* @__PURE__ */ z.object({
-  timeout: durationScheduleSchema.optional(),
+  timeout: /* @__PURE__ */ timeScheduleSchema
+    .or(durationScheduleSchema)
+    .optional(),
 });

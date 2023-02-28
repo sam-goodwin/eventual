@@ -453,7 +453,11 @@ export function interpret<Return>(
         } else if (predicateResult) {
           return Result.resolved(true);
         }
-      } else if (isActivityCall(activity) || isExpectSignalCall(activity)) {
+      } else if (
+        isActivityCall(activity) ||
+        isExpectSignalCall(activity) ||
+        isWorkflowCall(activity)
+      ) {
         if (activity.timeout) {
           const timeoutResult = tryResolveResult(activity.timeout);
           if (isResolved(timeoutResult) || isFailed(timeoutResult)) {
@@ -463,6 +467,8 @@ export function interpret<Return>(
                   ? "Activity Timed Out"
                   : isExpectSignalCall(activity)
                   ? "Expect Signal Timed Out"
+                  : isWorkflowCall(activity)
+                  ? "Child Workflow Timed Out"
                   : assertNever(activity)
               )
             );

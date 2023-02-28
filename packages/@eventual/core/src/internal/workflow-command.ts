@@ -1,6 +1,6 @@
 import { EventEnvelope } from "../event.js";
 import { DurationSchedule, Schedule } from "../schedule.js";
-import { WorkflowOptions } from "../workflow.js";
+import { WorkflowExecutionOptions } from "../workflow.js";
 import { SignalTarget } from "./signal.js";
 
 export type WorkflowCommand =
@@ -42,12 +42,11 @@ export function isScheduleActivityCommand(
   return a.kind === CommandType.StartActivity;
 }
 
-// TODO support a timeout at the parent workflow level. The current timeout fails the whole workflow and not just the waiter.
 export interface ScheduleWorkflowCommand
   extends CommandBase<CommandType.StartWorkflow> {
   name: string;
   input?: any;
-  opts?: WorkflowOptions;
+  opts?: WorkflowExecutionOptions;
 }
 
 export function isScheduleWorkflowCommand(

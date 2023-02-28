@@ -1,6 +1,6 @@
 import { ChildExecution } from "../../execution.js";
 import { SignalTargetType } from "../signal.js";
-import { Workflow, WorkflowOptions } from "../../workflow.js";
+import { Workflow, WorkflowExecutionOptions } from "../../workflow.js";
 import {
   createEventual,
   Eventual,
@@ -25,19 +25,29 @@ export interface WorkflowCall<T = any>
   name: string;
   input?: any;
   seq?: number;
-  opts?: WorkflowOptions;
+  opts?: WorkflowExecutionOptions;
+  /**
+   * An Eventual/Promise that determines when a child workflow should timeout.
+   *
+   * This timeout is separate from the timeout passed to the workflow (opts.timeout), which can only be a relative duration.
+   *
+   * TODO: support cancellation of child workflow.
+   */
+  timeout: Eventual<any>;
 }
 
 export function createWorkflowCall(
   name: string,
   input?: any,
-  opts?: WorkflowOptions
+  opts?: WorkflowExecutionOptions,
+  timeout?: Eventual<any>
 ): WorkflowCall {
   const call = registerEventual(
     createEventual<WorkflowCall>(EventualKind.WorkflowCall, {
       input,
       name,
       opts,
+      timeout,
     } as WorkflowCall)
   );
 

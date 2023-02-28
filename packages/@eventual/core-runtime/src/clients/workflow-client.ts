@@ -9,7 +9,7 @@ import {
   SucceededExecution,
   SucceedExecutionRequest,
   Workflow,
-  WorkflowOptions,
+  WorkflowExecutionOptions,
 } from "@eventual/core";
 import {
   hashCode,
@@ -193,7 +193,7 @@ export class WorkflowClient {
 
 export interface StartChildExecutionRequest<W extends Workflow = Workflow>
   extends StartExecutionRequest<W>,
-    WorkflowOptions {
+    WorkflowExecutionOptions {
   parentExecutionId: ExecutionID;
   /**
    * Sequence ID of this execution if this is a child workflow

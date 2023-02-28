@@ -9,10 +9,13 @@ import type {
   SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
-  SendActivitySuccessRequest,
+  SendActivitySuccessRequest
 } from "./internal/eventual-service.js";
 import type { Signal } from "./signals.js";
-import type { Workflow, WorkflowInput, WorkflowOptions } from "./workflow.js";
+import type { Workflow, WorkflowInput } from "./workflow.js";
+import {
+  WorkflowExecutionOptions
+} from "./workflow.js";
 
 /**
  * Top level Eventual Client used by systems outside of an Eventual Service to interact with it.
@@ -97,7 +100,7 @@ export interface PublishEventsRequest
   extends CommandInput<EventualService["publishEvents"]> {}
 
 export interface StartExecutionRequest<W extends Workflow = Workflow>
-  extends WorkflowOptions {
+  extends WorkflowExecutionOptions {
   /**
    * Name of the workflow execution.
    *
