@@ -52,18 +52,22 @@ export interface ActivitySpec<Name extends string = string> {
   sourceLocation?: SourceLocation;
 }
 
+export type ActivityArguments<Input = any> = [Input] extends [undefined]
+  ? [input?: Input]
+  : [input: Input];
+
 export interface Activity<
   Name extends string = string,
-  Arguments extends any[] = any[],
+  Input = any,
   Output = any
 > extends Omit<ActivitySpec<Name>, "name"> {
   kind: "Activity";
-  (...args: Arguments): Promise<Awaited<UnwrapAsync<Output>>>;
+  (...args: ActivityArguments<Input>): Promise<Awaited<UnwrapAsync<Output>>>;
   /**
    * Globally unique ID of this {@link Activity}.
    */
   name: Name;
-  handler: ActivityHandler<Arguments, Output>;
+  handler: ActivityHandler<Input, Output>;
   /**
    * Complete an activity request by its {@link SendActivitySuccessRequest.activityToken}.
    *
@@ -143,8 +147,8 @@ export interface Activity<
   ): Promise<SendActivityHeartbeatResponse>;
 }
 
-export interface ActivityHandler<Arguments extends any[], Output = any> {
-  (...args: Arguments):
+export interface ActivityHandler<Input = any, Output = any> {
+  (input: Input):
     | Promise<Awaited<Output>>
     | Output
     | AsyncResult<Output>
@@ -223,47 +227,35 @@ export interface ActivityContext {
  * @param activityID a string that uniquely identifies the Activity within a single workflow context.
  * @param handler the function that handles the activity
  */
-export function activity<
-  Name extends string,
-  Arguments extends any[],
-  Output = any
->(
+export function activity<Name extends string, Input = any, Output = any>(
   activityID: Name,
-  handler: ActivityHandler<Arguments, Output>
-): Activity<Name, Arguments, Output>;
-export function activity<
-  Name extends string,
-  Arguments extends any[],
-  Output = any
->(
+  handler: ActivityHandler<Input, Output>
+): Activity<Name, Input, Output>;
+export function activity<Name extends string, Input = any, Output = any>(
   activityID: Name,
   opts: ActivityOptions,
-  handler: ActivityHandler<Arguments, Output>
-): Activity<Name, Arguments, Output>;
-export function activity<
-  Name extends string,
-  Arguments extends any[],
-  Output = any
->(
+  handler: ActivityHandler<Input, Output>
+): Activity<Name, Input, Output>;
+export function activity<Name extends string, Input = any, Output = any>(
   ...args:
     | [
         sourceLocation: SourceLocation,
         name: Name,
         opts: ActivityOptions,
-        handler: ActivityHandler<Arguments, Output>
+        handler: ActivityHandler<Input, Output>
       ]
     | [
         sourceLocation: SourceLocation,
         name: Name,
-        handler: ActivityHandler<Arguments, Output>
+        handler: ActivityHandler<Input, Output>
       ]
     | [
         name: Name,
         opts: ActivityOptions,
-        handler: ActivityHandler<Arguments, Output>
+        handler: ActivityHandler<Input, Output>
       ]
-    | [name: Name, handler: ActivityHandler<Arguments, Output>]
-): Activity<Name, Arguments, Output> {
+    | [name: Name, handler: ActivityHandler<Input, Output>]
+): Activity<Name, Input, Output> {
   const [sourceLocation, name, opts, handler] =
     args.length === 2
       ? // just handler
@@ -277,12 +269,12 @@ export function activity<
       : // opts, handler
         [undefined, args[0] as Name, args[1] as ActivityOptions, args[2]];
   // register the handler to be looked up during execution.
-  const func = ((...args: Parameters<Activity<Name, Arguments, Output>>) => {
+  const func = ((...handlerArgs: ActivityArguments<Input>) => {
     if (isOrchestratorWorker()) {
       // if we're in the orchestrator, return a command to invoke the activity in the worker function
       return createActivityCall(
         name,
-        args,
+        handlerArgs[0],
         opts?.timeout
           ? createAwaitDurationCall(opts.timeout.dur, opts.timeout.unit)
           : undefined,
@@ -290,9 +282,9 @@ export function activity<
       ) as any;
     } else {
       // calling the activity from outside the orchestrator just calls the handler
-      return handler(...args);
+      return handler(handlerArgs[0] as Input);
     }
-  }) as Activity<Name, Arguments, Output>;
+  }) as Activity<Name, Input, Output>;
 
   Object.defineProperty(func, "name", { value: name, writable: false });
   func.sendActivitySuccess = async function (request) {

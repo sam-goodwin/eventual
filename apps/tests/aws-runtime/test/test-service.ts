@@ -223,7 +223,13 @@ export const asyncWorkflow = workflow(
 const activityWithHeartbeat = activity(
   "activityWithHeartbeat",
   { heartbeatTimeout: duration(2, "seconds") },
-  async (n: number, type: "success" | "no-heartbeat" | "some-heartbeat") => {
+  async ({
+    n,
+    type,
+  }: {
+    n: number;
+    type: "success" | "no-heartbeat" | "some-heartbeat";
+  }) => {
     const delay = (s: number) =>
       new Promise((resolve) => {
         setTimeout(resolve, s * 1000);
@@ -248,11 +254,11 @@ export const heartbeatWorkflow = workflow(
   { timeout: duration(100, "seconds") }, // timeout eventually
   async (n: number) => {
     return await Promise.allSettled([
-      activityWithHeartbeat(n, "success"),
-      activityWithHeartbeat(n, "some-heartbeat"),
+      activityWithHeartbeat({ n, type: "success" }),
+      activityWithHeartbeat({ n, type: "some-heartbeat" }),
       (async () => {
         try {
-          return await activityWithHeartbeat(n, "some-heartbeat");
+          return await activityWithHeartbeat({ n, type: "some-heartbeat" });
         } catch (err) {
           if (err instanceof HeartbeatTimeout) {
             return "activity did not respond";
@@ -260,7 +266,7 @@ export const heartbeatWorkflow = workflow(
           throw new Error("I should not get here");
         }
       })(),
-      activityWithHeartbeat(n, "no-heartbeat"),
+      activityWithHeartbeat({ n, type: "no-heartbeat" }),
     ]);
   }
 );

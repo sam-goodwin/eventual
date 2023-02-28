@@ -213,7 +213,7 @@ export function createActivityWorker({
                       return await timed(
                         metrics,
                         ActivityMetrics.OperationDuration,
-                        () => activity.handler(...request.command.args)
+                        () => activity.handler(request.command.input)
                       );
                     }
                   );

@@ -54,13 +54,13 @@ export const associateAccountInformation = workflow(
   async ({ accountId, address, email, bankDetails }: OpenAccountRequest) => {
     const rollbacks: RollbackHandler[] = [];
     try {
-      await addAddress(accountId, address);
+      await addAddress({ accountId, address });
       rollbacks.push(async () => removeAddress(accountId));
 
-      await addEmail(accountId, email);
+      await addEmail({ accountId, email });
       rollbacks.push(async () => removeEmail(accountId));
 
-      await addBankAccount(accountId, bankDetails);
+      await addBankAccount({ accountId, bankDetails });
       rollbacks.push(async () => removeBankAccount(accountId));
     } catch (err) {
       // roll back procedures are independent of each other, run them in parallel
@@ -113,7 +113,13 @@ const createAccount = activity("createAccount", async (accountId: string) => {
 
 const addAddress = activity(
   "addAddress",
-  async (accountId: string, address: PostalAddress) => {
+  async ({
+    accountId,
+    address,
+  }: {
+    accountId: string;
+    address: PostalAddress;
+  }) => {
     await dynamo().send(
       new UpdateCommand({
         TableName,
@@ -150,7 +156,7 @@ const removeAddress = activity("removeAddress", async (accountId: string) => {
 
 const addEmail = activity(
   "addEmail",
-  async (accountId: string, email: string) => {
+  async ({ accountId, email }: { accountId: string; email: string }) => {
     await dynamo().send(
       new UpdateCommand({
         TableName,
@@ -188,7 +194,13 @@ const removeEmail = activity("removeEmail", async (accountId: string) => {
 
 const addBankAccount = activity(
   "addBankAccount",
-  async (accountId: string, bankDetails: BankDetails) => {
+  async ({
+    accountId,
+    bankDetails,
+  }: {
+    accountId: string;
+    bankDetails: BankDetails;
+  }) => {
     await dynamo().send(
       new UpdateCommand({
         TableName,

@@ -9,7 +9,7 @@ import {
 } from "@eventual/core";
 import { GlobalActivityProvider } from "@eventual/core-runtime";
 import {
-  ActivityArguments,
+  ActivityInput,
   assertNever,
   activities,
   Failed,
@@ -31,8 +31,8 @@ export class MockableActivityProvider extends GlobalActivityProvider {
       throw new Error("Activity being mocked does not exist. " + id);
     }
 
-    const mock = new MockActivity<any>((...args: any[]) =>
-      realActivity.handler(...args)
+    const mock = new MockActivity<any>((input: any) =>
+      realActivity.handler(input)
     );
 
     this.mockedActivities[id] = mock;
@@ -71,7 +71,7 @@ export type AsyncResultTokenCallback = (token: string) => void;
  * A mock activity which provides fine grained control over the results of the activity when
  * called by the workflow within a {@link TestEnvironment}.
  */
-export interface IMockActivity<Arguments extends any[] = any[], Output = any> {
+export interface IMockActivity<Input = any, Output = any> {
   /**
    * Imitates the {@link asyncResult} behavior of an activity.
    *
@@ -91,7 +91,7 @@ export interface IMockActivity<Arguments extends any[] = any[], Output = any> {
    */
   asyncResult(
     tokenCallback?: AsyncResultTokenCallback
-  ): IMockActivity<Arguments, Output>;
+  ): IMockActivity<Input, Output>;
   /**
    * Imitates the {@link asyncResult} behavior of an activity for one invocation.
    *
@@ -110,35 +110,35 @@ export interface IMockActivity<Arguments extends any[] = any[], Output = any> {
    */
   asyncResultOnce(
     tokenCallback?: AsyncResultTokenCallback
-  ): IMockActivity<Arguments, Output>;
+  ): IMockActivity<Input, Output>;
   /**
    * Succeeds the activity with a given value.
    *
    * The activity will use this resolution after all once resolutions are
    * consumed and until another resolution is given.
    */
-  succeed(output: Output): IMockActivity<Arguments, Output>;
+  succeed(output: Output): IMockActivity<Input, Output>;
   /**
    * Succeeds the activity once with a given value.
    *
    * The activity will use this resolution once all previous once resolutions are consumed.
    */
-  succeedOnce(output: Output): IMockActivity<Arguments, Output>;
+  succeedOnce(output: Output): IMockActivity<Input, Output>;
   /**
    * Fails the activity with a given error.
    *
    * The activity will use this resolution after all once resolutions are
    * consumed and until another resolution is given.
    */
-  fail(error: Error): IMockActivity<Arguments, Output>;
-  fail(error: string, message: string): IMockActivity<Arguments, Output>;
+  fail(error: Error): IMockActivity<Input, Output>;
+  fail(error: string, message: string): IMockActivity<Input, Output>;
   /**
    * Fails the activity once with a given error.
    *
    * The activity will use this resolution once all previous once resolutions are consumed.
    */
-  failOnce(error: Error): IMockActivity<Arguments, Output>;
-  failOnce(error: string, message: string): IMockActivity<Arguments, Output>;
+  failOnce(error: Error): IMockActivity<Input, Output>;
+  failOnce(error: string, message: string): IMockActivity<Input, Output>;
   /**
    * When the activity is invoked, the given callback will be called with the values given.
    *
@@ -161,9 +161,7 @@ export interface IMockActivity<Arguments extends any[] = any[], Output = any> {
    * The activity will use this resolution after all once resolutions are
    * consumed and until another resolution is given.
    */
-  invoke(
-    handler: ActivityHandler<Arguments, Output>
-  ): IMockActivity<Arguments, Output>;
+  invoke(handler: ActivityHandler<Input, Output>): IMockActivity<Input, Output>;
   /**
    * When the activity is invoked, the given callback will be called once with the values given.
    *
@@ -186,34 +184,34 @@ export interface IMockActivity<Arguments extends any[] = any[], Output = any> {
    * The activity will use this resolution once all previous once resolutions are consumed.
    */
   invokeOnce(
-    handler: ActivityHandler<Arguments, Output>
-  ): IMockActivity<Arguments, Output>;
+    handler: ActivityHandler<Input, Output>
+  ): IMockActivity<Input, Output>;
   /**
    * Fails the activity with a {@link Timeout} error.
    *
    * The activity will use this resolution after all once resolutions are
    * consumed and until another resolution is given.
    */
-  timeout(): IMockActivity<Arguments, Output>;
+  timeout(): IMockActivity<Input, Output>;
   /**
    * Fails the activity once with a {@link Timeout} error.
    *
    * The activity will use this resolution once all previous once resolutions are consumed.
    */
-  timeoutOnce(): IMockActivity<Arguments, Output>;
+  timeoutOnce(): IMockActivity<Input, Output>;
   /**
    * Fails the activity with a {@link HeartbeatTimeout} error.
    *
    * The activity will use this resolution after all once resolutions are
    * consumed and until another resolution is given.
    */
-  heartbeatTimeout(): IMockActivity<Arguments, Output>;
+  heartbeatTimeout(): IMockActivity<Input, Output>;
   /**
    * Fails the activity once with a {@link HeartbeatTimeout} error.
    *
    * The activity will use this resolution once all previous once resolutions are consumed.
    */
-  heartbeatTimeoutOnce(): IMockActivity<Arguments, Output>;
+  heartbeatTimeoutOnce(): IMockActivity<Input, Output>;
   /**
    * Invokes the real handler, this can be used to revert back to the real activity handler without
    * using {@link TestEnvironment.restMocks()} or to maintain the current once resolutions while still
@@ -228,7 +226,7 @@ export interface IMockActivity<Arguments extends any[] = any[], Output = any> {
    * The activity will use this resolution after all once resolutions are
    * consumed and until another resolution is given.
    */
-  invokeReal(): IMockActivity<Arguments, Output>;
+  invokeReal(): IMockActivity<Input, Output>;
   /**
    * Invokes the real handler once, this can be used to revert back to the real activity handler without
    * using {@link TestEnvironment.restMocks()} or to maintain the current once resolutions while still
@@ -242,21 +240,18 @@ export interface IMockActivity<Arguments extends any[] = any[], Output = any> {
    *
    * The activity will use this resolution once all previous once resolutions are consumed.
    */
-  invokeRealOnce(): IMockActivity<Arguments, Output>;
+  invokeRealOnce(): IMockActivity<Input, Output>;
 }
 
-export type ActivityResolution<Arguments extends any[] = any[], Output = any> =
+export type ActivityResolution<Input = any, Output = any> =
   | AsyncResultResolution
   | Failed
   | InvokeRealResolution
-  | InvokeResolution<Arguments, Output>
+  | InvokeResolution<Input, Output>
   | Resolved<any>;
 
-export interface InvokeResolution<
-  Arguments extends any[] = any[],
-  Output = any
-> {
-  handler: ActivityHandler<Arguments, Output>;
+export interface InvokeResolution<Input = any, Output = any> {
+  handler: ActivityHandler<Input, Output>;
 }
 
 export interface InvokeRealResolution {
@@ -269,20 +264,20 @@ export interface AsyncResultResolution {
 }
 
 export class MockActivity<A extends Activity<any, any>>
-  implements IMockActivity<ActivityArguments<A>, ActivityOutput<A>>
+  implements IMockActivity<ActivityInput<A>, ActivityOutput<A>>
 {
   private onceResolutions: ActivityResolution<
-    ActivityArguments<A>,
+    ActivityInput<A>,
     ActivityOutput<A>
   >[] = [];
 
   private resolution:
-    | ActivityResolution<ActivityArguments<A>, ActivityOutput<A>>
+    | ActivityResolution<ActivityInput<A>, ActivityOutput<A>>
     | undefined;
 
   constructor(private activity: A) {}
 
-  public call(...args: ActivityArguments<A>) {
+  public call(...args: ActivityInput<A>) {
     const before = this.onceResolutions.shift();
     if (before) {
       return this.resolve(before, args);
@@ -293,11 +288,11 @@ export class MockActivity<A extends Activity<any, any>>
   }
 
   private resolve(
-    resolution: ActivityResolution<ActivityArguments<A>, ActivityOutput<A>>,
-    args: ActivityArguments<A>
+    resolution: ActivityResolution<ActivityInput<A>, ActivityOutput<A>>,
+    input: ActivityInput<A>
   ) {
     if ("real" in resolution) {
-      return this.activity(...(args as any[]));
+      return this.activity(input);
     } else if (isResult(resolution)) {
       if (isResolved(resolution)) {
         return resolution.value;
@@ -305,7 +300,7 @@ export class MockActivity<A extends Activity<any, any>>
         throw resolution.error;
       }
     } else if ("handler" in resolution) {
-      return resolution.handler(...args);
+      return resolution.handler(input);
     } else if ("asyncResult" in resolution) {
       return asyncResult(
         resolution.tokenCallback
@@ -320,13 +315,13 @@ export class MockActivity<A extends Activity<any, any>>
 
   public succeed(
     output: ActivityOutput<A>
-  ): IMockActivity<ActivityArguments<A>, ActivityOutput<A>> {
+  ): IMockActivity<ActivityInput<A>, ActivityOutput<A>> {
     return this.setResolution(Result.resolved(output));
   }
 
   public succeedOnce(
     output: ActivityOutput<A>
-  ): IMockActivity<ActivityArguments<A>, ActivityOutput<A>> {
+  ): IMockActivity<ActivityInput<A>, ActivityOutput<A>> {
     return this.addOnceResolution(Result.resolved(output));
   }
 
@@ -359,14 +354,14 @@ export class MockActivity<A extends Activity<any, any>>
   }
 
   public invoke(
-    handler: ActivityHandler<ActivityArguments<A>, ActivityOutput<A>>
-  ): IMockActivity<ActivityArguments<A>, ActivityOutput<A>> {
+    handler: ActivityHandler<ActivityInput<A>, ActivityOutput<A>>
+  ): IMockActivity<ActivityInput<A>, ActivityOutput<A>> {
     return this.setResolution({ handler });
   }
 
   public invokeOnce(
-    handler: ActivityHandler<ActivityArguments<A>, ActivityOutput<A>>
-  ): IMockActivity<ActivityArguments<A>, ActivityOutput<A>> {
+    handler: ActivityHandler<ActivityInput<A>, ActivityOutput<A>>
+  ): IMockActivity<ActivityInput<A>, ActivityOutput<A>> {
     return this.addOnceResolution({ handler });
   }
 
@@ -387,14 +382,14 @@ export class MockActivity<A extends Activity<any, any>>
   }
 
   private setResolution(
-    resolution: ActivityResolution<ActivityArguments<A>, ActivityOutput<A>>
+    resolution: ActivityResolution<ActivityInput<A>, ActivityOutput<A>>
   ) {
     this.resolution = resolution;
     return this;
   }
 
   private addOnceResolution(
-    resolution: ActivityResolution<ActivityArguments<A>, ActivityOutput<A>>
+    resolution: ActivityResolution<ActivityInput<A>, ActivityOutput<A>>
   ) {
     this.onceResolutions.push(resolution);
     return this;
