@@ -1,6 +1,16 @@
-import type { Activity, AsyncResult } from "../activity.js";
+import type {
+  Activity,
+  ActivityExecutionContext,
+  ActivityInvocationContext,
+  AsyncResult,
+} from "../activity.js";
 
 export const AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
+
+export interface ActivityRuntimeContext {
+  execution: ActivityExecutionContext;
+  invocation: ActivityInvocationContext;
+}
 
 export type ActivityInput<A extends Activity<any, any>> = A extends Activity<
   string,

@@ -1,5 +1,5 @@
 import {
-  Context,
+  WorkflowContext,
   DeterminismError,
   ExecutionID,
   ExecutionStatus,
@@ -688,7 +688,7 @@ export function progressWorkflow(
   // buffer logs until interpret is complete - don't want to send logs we might clear
   logAgent?.disableSendingLogs();
 
-  const context: Context = {
+  const context: WorkflowContext = {
     workflow: {
       name: workflow.name,
     },

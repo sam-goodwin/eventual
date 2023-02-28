@@ -1,10 +1,13 @@
 import {
+  ActivityContext,
   ActivityNotFoundError,
   EventualServiceClient,
+  ExecutionID,
   LogLevel,
 } from "@eventual/core";
 import {
   ActivityFailed,
+  ActivityRuntimeContext,
   ActivitySucceeded,
   clearActivityContext,
   extendsError,
@@ -147,15 +150,21 @@ export function createActivityWorker({
                   schedule: request.command.heartbeat,
                 });
               }
-              setActivityContext({
-                activityToken: createActivityToken(
-                  request.executionId,
-                  request.command.seq
-                ),
-                executionId: request.executionId,
-                scheduledTime: request.scheduledTime,
-                workflowName: request.workflowName,
-              });
+              const runtimeContext: ActivityRuntimeContext = {
+                execution: {
+                  id: request.executionId as ExecutionID,
+                  workflowName: request.workflowName,
+                },
+                invocation: {
+                  token: createActivityToken(
+                    request.executionId,
+                    request.command.seq
+                  ),
+                  scheduledTime: request.scheduledTime,
+                  retry: request.retry,
+                },
+              };
+              setActivityContext(runtimeContext);
               metrics.putMetric(ActivityMetrics.ClaimRejected, 0, Unit.Count);
 
               logAgent.logWithContext(
@@ -207,13 +216,21 @@ export function createActivityWorker({
                     );
                   }
 
+                  const context: ActivityContext = {
+                    activity: {
+                      name,
+                    },
+                    execution: runtimeContext.execution,
+                    invocation: runtimeContext.invocation,
+                  };
+
                   const result = await logAgent.logContextScope(
                     activityLogContext,
                     async () => {
                       return await timed(
                         metrics,
                         ActivityMetrics.OperationDuration,
-                        () => activity.handler(request.command.input)
+                        () => activity.handler(request.command.input, context)
                       );
                     }
                   );

@@ -17,6 +17,7 @@ import {
   SendActivityHeartbeatResponse,
   SendActivitySuccessRequest,
 } from "./service-client.js";
+import { ExecutionID } from "./execution.js";
 
 export interface ActivityRuntimeProps extends FunctionRuntimeProps {}
 
@@ -148,7 +149,7 @@ export interface Activity<
 }
 
 export interface ActivityHandler<Input = any, Output = any> {
-  (input: Input):
+  (input: Input, context: ActivityContext):
     | Promise<Awaited<Output>>
     | Output
     | AsyncResult<Output>
@@ -208,17 +209,10 @@ export async function asyncResult<Output = any>(
       "Activity context has not been set yet, asyncResult can only be used from within an activity."
     );
   }
-  await tokenContext(activityContext.activityToken);
+  await tokenContext(activityContext.invocation.token);
   return {
     [AsyncTokenSymbol]: AsyncTokenSymbol as typeof AsyncTokenSymbol & Output,
   };
-}
-
-export interface ActivityContext {
-  workflowName: string;
-  executionId: string;
-  activityToken: string;
-  scheduledTime: string;
 }
 
 /**
@@ -281,8 +275,16 @@ export function activity<Name extends string, Input = any, Output = any>(
         opts?.heartbeatTimeout
       ) as any;
     } else {
+      const runtimeContext = getActivityContext();
+      const context: ActivityContext = {
+        activity: {
+          name,
+        },
+        execution: runtimeContext.execution,
+        invocation: runtimeContext.invocation,
+      };
       // calling the activity from outside the orchestrator just calls the handler
-      return handler(handlerArgs[0] as Input);
+      return handler(handlerArgs[0] as Input, context);
     }
   }) as Activity<Name, Input, Output>;
 
@@ -302,4 +304,43 @@ export function activity<Name extends string, Input = any, Output = any>(
   func.handler = handler;
   activities()[name] = func;
   return func;
+}
+
+export interface ActivityExecutionContext {
+  id: ExecutionID;
+  workflowName: string;
+}
+
+export interface ActivityDefinitionContext {
+  name: string;
+}
+
+export interface ActivityInvocationContext {
+  /**
+   * A token used to complete or heartbeat an activity when running async.
+   */
+  token: string;
+  /**
+   * ISO 8601 timestamp when the activity was first scheduled.
+   */
+  scheduledTime: string;
+  /**
+   * Current retry count, starting at 0.
+   */
+  retry: number;
+}
+
+export interface ActivityContext {
+  /**
+   * Workflow execution which started the activity.
+   */
+  execution: ActivityExecutionContext;
+  /**
+   * Information about the activity being invoked.
+   */
+  activity: ActivityDefinitionContext;
+  /**
+   * Information about this specific invocation of the execution.
+   */
+  invocation: ActivityInvocationContext;
 }

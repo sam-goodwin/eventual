@@ -1,9 +1,10 @@
-import { Activity, ActivityContext } from "../activity.js";
+import { Activity } from "../activity.js";
 import { Event } from "../event.js";
 import type { Command } from "../http/index.js";
 import { EventualServiceClient } from "../service-client.js";
 import { Subscription } from "../subscription.js";
 import type { Workflow } from "../workflow.js";
+import { ActivityRuntimeContext } from "./activity.js";
 import type { Eventual, EventualCallCollector } from "./eventual.js";
 
 declare global {
@@ -12,7 +13,7 @@ declare global {
     /**
      * Data about the current activity assigned before running an activity on an the activity worker.
      */
-    activityContext?: ActivityContext;
+    activityContext?: ActivityRuntimeContext;
     /**
      * An object used by the interpreter to collect {@link Eventual}s while running a workflow code.
      *
@@ -110,7 +111,7 @@ export function getServiceClient(): EventualServiceClient {
   return globalThis._eventual.serviceClient;
 }
 
-export function setActivityContext(context: ActivityContext) {
+export function setActivityContext(context: ActivityRuntimeContext) {
   globalThis._eventual.activityContext = context;
 }
 
@@ -118,7 +119,7 @@ export function clearActivityContext() {
   globalThis._eventual.activityContext = undefined;
 }
 
-export function getActivityContext(): ActivityContext {
+export function getActivityContext(): ActivityRuntimeContext {
   const context = globalThis._eventual.activityContext;
 
   if (!context) {

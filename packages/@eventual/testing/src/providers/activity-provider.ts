@@ -1,5 +1,6 @@
 import {
   Activity,
+  ActivityContext,
   ActivityHandler,
   ActivityOutput,
   asyncResult,
@@ -31,8 +32,8 @@ export class MockableActivityProvider extends GlobalActivityProvider {
       throw new Error("Activity being mocked does not exist. " + id);
     }
 
-    const mock = new MockActivity<any>((input: any) =>
-      realActivity.handler(input)
+    const mock = new MockActivity<any>((input: any, context: ActivityContext) =>
+      realActivity.handler(input, context)
     );
 
     this.mockedActivities[id] = mock;
@@ -54,7 +55,7 @@ export class MockableActivityProvider extends GlobalActivityProvider {
       const mock = this.mockedActivities[activityId]!;
       return {
         name: activityId,
-        handler: (...args) => mock.call(...args),
+        handler: (input, context) => mock.call(input, context),
       } as Activity;
     }
     const activity = activities()[activityId];
@@ -277,19 +278,20 @@ export class MockActivity<A extends Activity<any, any>>
 
   constructor(private activity: A) {}
 
-  public call(...args: ActivityInput<A>) {
+  public call(input: ActivityInput<A>, context: ActivityContext) {
     const before = this.onceResolutions.shift();
     if (before) {
-      return this.resolve(before, args);
+      return this.resolve(before, input, context);
     } else if (this.resolution) {
-      return this.resolve(this.resolution, args);
+      return this.resolve(this.resolution, input, context);
     }
     return undefined;
   }
 
   private resolve(
     resolution: ActivityResolution<ActivityInput<A>, ActivityOutput<A>>,
-    input: ActivityInput<A>
+    input: ActivityInput<A>,
+    context: ActivityContext
   ) {
     if ("real" in resolution) {
       return this.activity(input);
@@ -300,7 +302,7 @@ export class MockActivity<A extends Activity<any, any>>
         throw resolution.error;
       }
     } else if ("handler" in resolution) {
-      return resolution.handler(input);
+      return resolution.handler(input, context);
     } else if ("asyncResult" in resolution) {
       return asyncResult(
         resolution.tokenCallback

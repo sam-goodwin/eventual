@@ -29,6 +29,13 @@ const hello = activity("hello", async (name: string) => {
   return `hello ${name}`;
 });
 
+const hello2 = activity(
+  "hello2",
+  async (name: string, { activity, execution }) => {
+    return `hello ${name} I am ${activity.name} and you were invoked by ${execution.workflowName}`;
+  }
+);
+
 export const asyncActivity = activity(
   "asyncActivity",
   async (type: AsyncWriterTestEvent["type"]) => {
@@ -55,7 +62,7 @@ export const workflow1 = workflow(
   "my-workflow",
   async ({ name }: { name: string }) => {
     console.log("before");
-    const result = await hello(name);
+    const result = await hello2(name);
     console.log("after");
     return `you said ${result}`;
   }
