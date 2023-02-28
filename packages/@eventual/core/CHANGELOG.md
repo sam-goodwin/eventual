@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.20.1 (2023-02-28)
+
+### Bug Fixes
+
+- properly use an entity's string name in the CDK types ([#294](https://github.com/functionless/eventual/issues/294)) ([7f4da8a](https://github.com/functionless/eventual/commit/7f4da8a5b878a687620b4c026798adbe6c6b98d7))
+
 # 0.20.0 (2023-02-21)
 
 ### Features
