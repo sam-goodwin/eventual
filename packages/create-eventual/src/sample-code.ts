@@ -69,14 +69,9 @@ const stack = new Stack(app, "${serviceName}")
 
 import type * as ${serviceReferenceName} from "${servicePackageName}"
 
-const service = new Service<typeof ${serviceReferenceName}>(this, "Service", {
+const service = new Service<typeof ${serviceReferenceName}>(stack, "Service", {
   name: "${serviceName}",
   entry: require.resolve("${servicePackageName}")
-});
-
-new CfnOutput(stack, "${serviceName}-api-endpoint", {
-  exportName: "${serviceName}-api-endpoint",
-  value: service.gateway.url!,
 });
 `;
 }
