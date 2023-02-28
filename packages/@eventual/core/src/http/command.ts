@@ -1,11 +1,29 @@
 import type z from "zod";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
-import { EVENTUAL_DEFAULT_COMMAND_NAMESPACE } from "../internal/command.js";
 import { commands } from "../internal/global.js";
 import { isSourceLocation, SourceLocation } from "../internal/service-spec.js";
 import type { Middleware } from "./middleware.js";
 import type { ParsePath } from "./path.js";
+
+export function isDefaultNamespaceCommand<
+  C extends Pick<AnyCommand, "name" | "namespace">
+>(command: C): command is C & { namespace: undefined } {
+  return !command.namespace;
+}
+
+/**
+ * Formats the RPC Rest path for a command.
+ *
+ * rpc[/namespace]/name
+ */
+export function commandRpcPath(
+  command: Pick<AnyCommand, "name" | "namespace">
+) {
+  return `rpc${
+    isDefaultNamespaceCommand(command) ? "" : `/${command.namespace}`
+  }/${command.name}`;
+}
 
 export type AnyCommand = Command<any, any, any, any, any, any>;
 
@@ -14,8 +32,8 @@ export interface Command<
   Input = undefined,
   Output = void,
   Context = any,
-  Path extends string | undefined = string | undefined,
-  Method extends HttpMethod | undefined = HttpMethod | undefined
+  Path extends string | undefined = undefined,
+  Method extends HttpMethod | undefined = undefined
 > extends FunctionRuntimeProps {
   kind: "Command";
   name: Name;
@@ -28,9 +46,11 @@ export interface Command<
   sourceLocation?: SourceLocation;
   passThrough?: boolean;
   /**
-   * @default _default
+   * Used to isolate rpc paths.
+   *
+   * /rpc[/namespace]/command
    */
-  namespace: string;
+  namespace?: string;
   middlewares?: Middleware<any, any>[];
   /**
    * @default true
@@ -97,17 +117,6 @@ export type CommandInput<C extends AnyCommand> = C extends Command<
   ? Input
   : never;
 
-export type CommandOutput<C extends AnyCommand> = C extends Command<
-  any,
-  any,
-  infer Output,
-  any,
-  any,
-  any
->
-  ? Output
-  : never;
-
 export interface CommandOptions<
   Input,
   Output,
@@ -142,8 +151,8 @@ export function command<
   Input = undefined,
   Output = void,
   Context = any,
-  Path extends string | undefined = string | undefined,
-  Method extends HttpMethod | undefined = HttpMethod | undefined
+  Path extends string | undefined = undefined,
+  Method extends HttpMethod | undefined = undefined
 >(
   name: Name,
   options: CommandOptions<Input, Output, Path, Method>,
@@ -155,14 +164,13 @@ export function command<
   Input = undefined,
   Output = void,
   Context = any
->(...args: any[]): Command<Name, Input, Output, Context, undefined, undefined> {
+>(...args: any[]): Command<Name, Input, Output, Context, any, any> {
   const [sourceLocation, name, options, handler] = parseCommandArgs(args);
   const command: AnyCommand = {
     kind: "Command",
     name,
     handler,
     sourceLocation,
-    namespace: EVENTUAL_DEFAULT_COMMAND_NAMESPACE,
     ...options,
   };
   commands.push(command);

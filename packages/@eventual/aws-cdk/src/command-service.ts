@@ -1,37 +1,32 @@
 import {
   HttpApi,
   HttpMethod,
-  HttpRouteProps,
+  HttpRouteProps
 } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
+import { ENV_NAMES, sanitizeFunctionName } from "@eventual/aws-runtime";
 import {
-  ENV_NAMES,
-  sanitizeFunctionName,
-  serviceFunctionName,
-} from "@eventual/aws-runtime";
-import { computeDurationSeconds } from "@eventual/core-runtime";
-import { Arn, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
+  commandRpcPath,
+  isDefaultNamespaceCommand
+} from "@eventual/core";
+import { Arn, aws_iam, Lazy, Stack } from "aws-cdk-lib";
 import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
-import {
-  Architecture,
-  Code,
-  Function,
-  FunctionProps,
-} from "aws-cdk-lib/aws-lambda";
+import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import openapi from "openapi3-ts";
 import type { ActivityService } from "./activity-service";
-import {
+import type {
   CommandFunction,
   InternalCommandFunction,
   InternalCommandName,
-  InternalCommands,
+  InternalCommands
 } from "./build-manifest";
 import type { EventService } from "./event-service";
 import { grant } from "./grant";
-import { ServiceConstructProps } from "./service";
-import { addEnvironment, NODE_18_X, ServiceEntityProps } from "./utils";
+import type { ServiceConstructProps } from "./service";
+import { ServiceFunction } from "./service-function.js";
+import type { ServiceEntityProps } from "./utils";
 import type { WorkflowService } from "./workflow-service";
 
 export type Commands<Service> = {
@@ -191,31 +186,19 @@ export class CommandService<Service = any> {
               command.method?.toLocaleLowerCase() ?? "all"
             }`;
           }
+          const namespacedName = isDefaultNamespaceCommand(command)
+            ? sanitizedName
+            : `${sanitizedName}-${command.namespace}`;
 
-          const handler = new Function(scope, command.name, {
-            ...overrides,
-            functionName: serviceFunctionName(
-              self.props.serviceName,
-              `${sanitizedName}-${command.namespace}-command`
-            ),
-            code: Code.fromAsset(
-              self.props.build.resolveFolder(manifest.entry)
-            ),
-            runtime: NODE_18_X,
-            architecture: Architecture.ARM_64,
-            environment: {
-              NODE_OPTIONS: "--enable-source-maps",
-              ...(overrides?.environment ?? {}),
+          const handler = new ServiceFunction(scope, namespacedName, {
+            build: self.props.build,
+            bundledFunction: manifest,
+            functionNameSuffix: `${namespacedName}-command`,
+            serviceName: props.serviceName,
+            overrides,
+            defaults: {
+              environment: props.environment,
             },
-            memorySize: overrides?.memorySize ?? command.memorySize ?? 512,
-            timeout:
-              overrides?.timeout ?? command.handlerTimeout
-                ? Duration.seconds(
-                    computeDurationSeconds(command.handlerTimeout!)
-                  )
-                : undefined,
-            handler: overrides?.handler ?? "index.default",
-            role: overrides?.role,
           });
 
           return [
@@ -249,7 +232,7 @@ export class CommandService<Service = any> {
           if (!command.passThrough) {
             // internal and low-level HTTP APIs should be passed through
             self.gateway.addRoutes({
-              path: `/_rpc/${command.namespace}/${command.name}`,
+              path: `/${commandRpcPath(command)}`,
               methods: [HttpMethod.POST],
               integration,
               authorizer: overrides?.authorizer,
@@ -268,7 +251,7 @@ export class CommandService<Service = any> {
         });
 
         return {
-          [`/_rpc/${command.name}`]: {
+          [`/${commandRpcPath(command)}`]: {
             post: {
               requestBody: {
                 content: {
@@ -412,10 +395,6 @@ export class CommandService<Service = any> {
     // Allow them to access any of the methods on the service client by default.
     this.props.service.configureForServiceClient(handler);
     this.configureInvokeHttpServiceApi(handler);
-    // add any user provided envs
-    if (this.props.environment) {
-      addEnvironment(handler, this.props.environment);
-    }
   }
 
   private readonly ENV_MAPPINGS = {

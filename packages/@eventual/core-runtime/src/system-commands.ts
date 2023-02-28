@@ -1,7 +1,8 @@
 import { AnyCommand, api, command, HttpResponse } from "@eventual/core";
 import {
   assertNever,
-  EVENTUAL_INTERNAL_COMMAND_NAMESPACE,
+  EventualService,
+  EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
   extendsError,
   isSendActivityFailureRequest,
   isSendActivityHeartbeatRequest,
@@ -13,6 +14,7 @@ import {
   sendSignalRequestSchema,
   startExecutionRequestSchema,
 } from "@eventual/core/internal";
+import util from "util";
 import { z } from "zod";
 import type { ActivityClient } from "./clients/activity-client.js";
 import type { EventClient } from "./clients/event-client.js";
@@ -22,7 +24,6 @@ import type { WorkflowSpecProvider } from "./providers/workflow-provider.js";
 import type { ExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
 import type { ExecutionHistoryStore } from "./stores/execution-history-store.js";
 import type { ExecutionStore } from "./stores/execution-store.js";
-import util from "util";
 
 const withErrorHandling = api.use(async ({ next, context }) => {
   try {
@@ -47,11 +48,11 @@ const withErrorHandling = api.use(async ({ next, context }) => {
   }
 });
 
-export function createNewCommand({
+export function createStartExecutionCommand({
   workflowClient,
 }: {
   workflowClient: WorkflowClient;
-}) {
+}): EventualService["startExecution"] {
   return systemCommand(
     withErrorHandling.command(
       "startExecution",
@@ -72,7 +73,7 @@ export function createPublishEventsCommand({
   eventClient,
 }: {
   eventClient: EventClient;
-}) {
+}): EventualService["publishEvents"] {
   return systemCommand(
     withErrorHandling.command(
       "publishEvents",
@@ -88,7 +89,7 @@ export function createUpdateActivityCommand({
   activityClient,
 }: {
   activityClient: ActivityClient;
-}) {
+}): EventualService["updateActivity"] {
   return systemCommand(
     withErrorHandling.command(
       "updateActivity",
@@ -111,7 +112,7 @@ export function createListWorkflowsCommand({
   workflowProvider,
 }: {
   workflowProvider: WorkflowSpecProvider;
-}) {
+}): EventualService["listWorkflows"] {
   return systemCommand(
     withErrorHandling.command("listWorkflows", () => ({
       workflows: Array.from(workflowProvider.getWorkflowNames()).map((w) => ({
@@ -125,7 +126,7 @@ export function createListWorkflowHistoryCommand({
   executionHistoryStateStore,
 }: {
   executionHistoryStateStore: ExecutionHistoryStateStore;
-}) {
+}): EventualService["getExecutionWorkflowHistory"] {
   return systemCommand(
     withErrorHandling.command(
       "getExecutionWorkflowHistory",
@@ -141,7 +142,7 @@ export function createListExecutionsCommand({
   executionStore,
 }: {
   executionStore: ExecutionStore;
-}) {
+}): EventualService["listExecutions"] {
   return systemCommand(
     withErrorHandling.command(
       "listExecutions",
@@ -155,7 +156,7 @@ export function createListExecutionHistoryCommand({
   executionHistoryStore,
 }: {
   executionHistoryStore: ExecutionHistoryStore;
-}) {
+}): EventualService["getExecutionHistory"] {
   return systemCommand(
     command(
       "getExecutionHistory",
@@ -169,7 +170,7 @@ export function createGetExecutionCommand({
   executionStore,
 }: {
   executionStore: ExecutionStore;
-}) {
+}): EventualService["getExecution"] {
   return systemCommand(
     withErrorHandling.command(
       "getExecution",
@@ -183,7 +184,7 @@ export function createSendSignalCommand({
   executionQueueClient,
 }: {
   executionQueueClient: ExecutionQueueClient;
-}) {
+}): EventualService["sendSignal"] {
   return systemCommand(
     withErrorHandling.command(
       "sendSignal",
@@ -200,6 +201,6 @@ export function createSendSignalCommand({
 }
 
 function systemCommand<C extends AnyCommand>(c: C): C {
-  c.namespace = EVENTUAL_INTERNAL_COMMAND_NAMESPACE;
+  c.namespace = EVENTUAL_SYSTEM_COMMAND_NAMESPACE;
   return c;
 }

@@ -1,7 +1,7 @@
 import serviceSpec from "@eventual/injected/spec";
 
 import {
-  createNewCommand,
+  createStartExecutionCommand,
   ServiceSpecWorkflowProvider,
 } from "@eventual/core-runtime";
 import { createWorkflowClient } from "../../create.js";
@@ -14,7 +14,7 @@ const workflowClient = createWorkflowClient({
 
 // initialize the new command in the worker
 export default systemCommandWorker(
-  createNewCommand({
+  createStartExecutionCommand({
     workflowClient,
   })
 );

@@ -61,7 +61,7 @@ export function createApiGCommandAdaptor({
       body: responseBody.toString("base64"),
       isBase64Encoded: true,
     };
-    console.log("httpResponse", httpResponse);
+    console.debug("httpResponse", httpResponse);
     return httpResponse;
   };
 }

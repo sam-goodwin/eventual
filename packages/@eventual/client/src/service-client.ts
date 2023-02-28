@@ -1,5 +1,4 @@
 import { Command } from "@eventual/core";
-import { EVENTUAL_DEFAULT_COMMAND_NAMESPACE } from "@eventual/core/internal";
 import {
   HttpServiceClient,
   HttpServiceClientProps,
@@ -44,10 +43,7 @@ export const ServiceClient: {
   ): ServiceClient<Service>;
 } = class ServiceClient {
   public httpClient: HttpServiceClient;
-  constructor(
-    props: HttpServiceClientProps,
-    rpcNamespace: string = EVENTUAL_DEFAULT_COMMAND_NAMESPACE
-  ) {
+  constructor(props: HttpServiceClientProps, rpcNamespace?: string) {
     this.httpClient = new HttpServiceClient(props);
 
     return proxyServiceClient.call(this, rpcNamespace);
@@ -57,7 +53,7 @@ export const ServiceClient: {
 /**
  * Creates a Proxy client that dispatches commands over HTTP to an
  * Eventual Service. The Proxy assumes the method name is the command
- * name when crafting the request to the service's `/_rpc/${commandName}`
+ * name when crafting the request to the service's `/rpc[/${namespace}]/${commandName}`
  * endpoint.
  *
  * Types then enforce that your client is calling commands by the right name
@@ -65,7 +61,7 @@ export const ServiceClient: {
  */
 export function proxyServiceClient(
   this: { httpClient: HttpServiceClient },
-  namespace: string
+  namespace?: string
 ) {
   return new Proxy(this, {
     get: (_, commandName: string) => (input: any) =>

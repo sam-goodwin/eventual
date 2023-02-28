@@ -4,7 +4,6 @@ import {
   proxyServiceClient,
   ServiceClient,
 } from "@eventual/client";
-import { EVENTUAL_DEFAULT_COMMAND_NAMESPACE } from "@eventual/core/internal";
 import type { AWSHttpEventualClientProps } from "./aws-http-eventual-client.js";
 import { createAwsHttpRequestSigner } from "./aws-http-request-signer.js";
 
@@ -26,6 +25,6 @@ export const AWSServiceClient: {
       beforeRequest: createAwsHttpRequestSigner(props),
     });
 
-    return proxyServiceClient.call(this, EVENTUAL_DEFAULT_COMMAND_NAMESPACE);
+    return proxyServiceClient.call(this);
   }
 } as any;

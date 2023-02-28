@@ -5,11 +5,16 @@ import { eventEnvelopeSchema } from "./event.js";
 import type { HistoryStateEvent, WorkflowEvent } from "./workflow-events.js";
 import { workflowOptionsSchema } from "./workflow.js";
 
+export const EVENTUAL_SYSTEM_COMMAND_NAMESPACE = "_system";
+
 export const sortOrderSchema = z.enum(["ASC", "DESC"]);
 
 export const publishEventsRequestSchema = /* @__PURE__ */ z.object({
   events: z.array(eventEnvelopeSchema),
 });
+
+export interface PublishEventsRequest
+  extends z.infer<typeof publishEventsRequestSchema> {}
 
 export interface WorkflowReference {
   name: string;
@@ -26,12 +31,18 @@ export const sendSignalRequestSchema = /* @__PURE__ */ z.object({
   id: z.string().optional(),
 });
 
+export interface SendSignalRequestSchema
+  extends z.infer<typeof sendSignalRequestSchema> {}
+
 export const startExecutionRequestSchema =
   /* @__PURE__ */ workflowOptionsSchema.extend({
     executionName: z.string().optional(),
     workflow: z.string(),
     input: z.any().optional(),
   });
+
+export interface StartExecutionRequest
+  extends z.infer<typeof startExecutionRequestSchema> {}
 
 export interface StartExecutionResponse {
   /**
@@ -53,6 +64,9 @@ export const listExecutionsRequestSchema = /* @__PURE__ */ z.object({
   maxResults: z.number().default(100).optional(),
 });
 
+export interface ListExecutionsRequest
+  extends z.infer<typeof listExecutionsRequestSchema> {}
+
 export interface ListExecutionsResponse {
   executions: Execution[];
   /**
@@ -68,6 +82,9 @@ export const listExecutionEventsRequestSchema = /* @__PURE__ */ z.object({
   maxResults: z.number().default(100).optional(),
   after: z.string().optional().describe("Start returning after a data"),
 });
+
+export interface ListExecutionEventsRequest
+  extends z.infer<typeof listExecutionEventsRequestSchema> {}
 
 export interface ListExecutionEventsResponse {
   events: WorkflowEvent[];
@@ -151,32 +168,24 @@ export interface SendActivityHeartbeatResponse {
   cancelled: boolean;
 }
 
-export type EventualService = {
+export interface EventualService {
   listWorkflows: Command<"listWorkflows", void, ListWorkflowsResponse>;
-  publishEvents: Command<
-    "publishEvents",
-    z.infer<typeof publishEventsRequestSchema>,
-    void
-  >;
+  publishEvents: Command<"publishEvents", PublishEventsRequest, void>;
   getExecution: Command<"getExecution", string, Execution<any> | undefined>;
   startExecution: Command<
     "startExecution",
-    z.infer<typeof startExecutionRequestSchema>,
+    StartExecutionRequest,
     StartExecutionResponse
   >;
   listExecutions: Command<
     "listExecutions",
-    z.infer<typeof listExecutionsRequestSchema>,
+    ListExecutionsRequest,
     ListExecutionsResponse
   >;
-  sendSignal: Command<
-    "sendSignal",
-    z.infer<typeof sendSignalRequestSchema>,
-    void
-  >;
+  sendSignal: Command<"sendSignal", SendSignalRequestSchema, void>;
   getExecutionHistory: Command<
     "getExecutionHistory",
-    z.infer<typeof listExecutionEventsRequestSchema>,
+    ListExecutionEventsRequest,
     ListExecutionEventsResponse
   >;
   getExecutionWorkflowHistory: Command<
@@ -189,4 +198,4 @@ export type EventualService = {
     SendActivityUpdate,
     void | SendActivityHeartbeatResponse
   >;
-};
+}

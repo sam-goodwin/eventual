@@ -2,8 +2,7 @@ import { build, BuildSource, infer } from "@eventual/compiler";
 import { ActivitySpec } from "@eventual/core";
 import {
   CommandSpec,
-  EVENTUAL_DEFAULT_COMMAND_NAMESPACE,
-  EVENTUAL_INTERNAL_COMMAND_NAMESPACE,
+  EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
   ServiceType,
   SubscriptionSpec,
 } from "@eventual/core/internal";
@@ -117,7 +116,6 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         entry: monoCommandFunction!,
         spec: {
           name: "default",
-          namespace: EVENTUAL_DEFAULT_COMMAND_NAMESPACE,
         },
       },
     ],
@@ -316,7 +314,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
             name,
             {
               entry: file,
-              spec: { name, namespace: EVENTUAL_INTERNAL_COMMAND_NAMESPACE },
+              spec: { name, namespace: EVENTUAL_SYSTEM_COMMAND_NAMESPACE },
             } satisfies InternalCommandFunction,
           ];
         })

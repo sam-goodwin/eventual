@@ -1,4 +1,4 @@
-import { HttpMethod } from "@eventual/core";
+import { commandRpcPath, HttpMethod } from "@eventual/core";
 import { getRequestHandler } from "./request-handler/factory.js";
 import {
   BeforeRequest,
@@ -30,13 +30,13 @@ export class HttpServiceClient {
   public async rpc<Payload = any, Resp = any>(request: {
     payload: Payload;
     command: string;
-    /**
-     * @default _default
-     */
-    namespace: string;
+    namespace?: string;
   }): Promise<Resp> {
     return await this.request({
-      path: `_rpc/${request.namespace}/${request.command}`,
+      path: commandRpcPath({
+        name: request.command,
+        namespace: request.namespace,
+      }),
       body: request.payload,
       method: "POST",
     });

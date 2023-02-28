@@ -18,7 +18,7 @@ import {
 } from "@eventual/core";
 import {
   EventualService,
-  EVENTUAL_INTERNAL_COMMAND_NAMESPACE,
+  EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
   SendActivityHeartbeatRequest,
 } from "@eventual/core/internal";
 import type { HttpServiceClientProps } from "./base-http-client.js";
@@ -38,7 +38,7 @@ export class HttpEventualClient implements EventualServiceClient {
   constructor(props: HttpServiceClientProps) {
     this.serviceClient = new ServiceClient<EventualService>(
       props,
-      EVENTUAL_INTERNAL_COMMAND_NAMESPACE
+      EVENTUAL_SYSTEM_COMMAND_NAMESPACE
     );
   }
 

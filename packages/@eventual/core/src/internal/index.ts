@@ -4,7 +4,7 @@ export * from "./await-all.js";
 export * from "./await-any.js";
 export * from "./calls/index.js";
 export * from "./chain.js";
-export * from "./command.js";
+export * from "./workflow-command.js";
 export * from "./eventual-service.js";
 export * from "./eventual.js";
 export * from "./flags.js";

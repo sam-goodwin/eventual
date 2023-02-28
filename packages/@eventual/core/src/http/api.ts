@@ -1,7 +1,6 @@
 import itty from "itty-router";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
-import { EVENTUAL_DEFAULT_COMMAND_NAMESPACE } from "../internal/command.js";
 import { commands } from "../internal/global.js";
 import type { SourceLocation } from "../internal/service-spec.js";
 import {
@@ -101,7 +100,6 @@ function createRouter<Context>(
               sourceLocation,
               handlerTimeout: routeProps?.handlerTimeout,
               middlewares,
-              namespace: EVENTUAL_DEFAULT_COMMAND_NAMESPACE,
               // we want the base HTTP request, not the transformed one
               passThrough: true,
             };

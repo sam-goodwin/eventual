@@ -4,6 +4,7 @@ import {
   HttpRequest,
   HttpResponse,
   RestParamSpec,
+  commandRpcPath,
 } from "@eventual/core";
 import {
   registerServiceClient,
@@ -86,14 +87,17 @@ export function createCommandWorker({
 }
 
 function initRouter() {
-  const router: Router = itty.Router<HttpRequest, Router>();
+  const router: Router = itty.Router<HttpRequest, Router>({
+    // paths always start with slash, the router will remove double slashes
+    base: "/",
+  });
 
   for (const command of commands) {
     const shouldValidate = command.validate !== false;
 
     // RPC route takes a POST request and passes the parsed JSON body as input to the input
     router.post(
-      `/_rpc/${command.namespace}/${command.name}`,
+      commandRpcPath(command),
       withMiddleware(async (request, context) => {
         if (command.passThrough) {
           // if passthrough is enabled, just proxy the request-response to the handler
