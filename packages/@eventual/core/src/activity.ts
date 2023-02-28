@@ -23,7 +23,7 @@ import { ExecutionID } from "./execution.js";
 
 export interface ActivityRuntimeProps extends FunctionRuntimeProps {}
 
-export interface ActivityOptions extends FunctionRuntimeProps {
+export interface ActivityInvocationOptions {
   /**
    * How long the workflow will wait for the activity to complete or fail.
    *
@@ -43,6 +43,10 @@ export interface ActivityOptions extends FunctionRuntimeProps {
   heartbeatTimeout?: DurationSchedule;
 }
 
+export interface ActivityOptions
+  extends ActivityInvocationOptions,
+    FunctionRuntimeProps {}
+
 export interface ActivitySpec<Name extends string = string> {
   /**
    * Unique name of this Activity.
@@ -56,8 +60,8 @@ export interface ActivitySpec<Name extends string = string> {
 }
 
 export type ActivityArguments<Input = any> = [Input] extends [undefined]
-  ? [input?: Input]
-  : [input: Input];
+  ? [input?: Input, options?: ActivityInvocationOptions]
+  : [input: Input, options?: ActivityInvocationOptions];
 
 export interface Activity<
   Name extends string = string,
@@ -265,16 +269,17 @@ export function activity<Name extends string, Input = any, Output = any>(
       : // opts, handler
         [undefined, args[0] as Name, args[1] as ActivityOptions, args[2]];
   // register the handler to be looked up during execution.
-  const func = ((...handlerArgs: ActivityArguments<Input>) => {
+  const func = ((input, options) => {
     if (isOrchestratorWorker()) {
       // if we're in the orchestrator, return a command to invoke the activity in the worker function
+      const timeout = options?.timeout ?? opts?.timeout;
       return createActivityCall(
         name,
-        handlerArgs[0],
-        opts?.timeout
-          ? createAwaitDurationCall(opts.timeout.dur, opts.timeout.unit)
+        input,
+        timeout
+          ? createAwaitDurationCall(timeout.dur, timeout.unit)
           : undefined,
-        opts?.heartbeatTimeout
+        options?.heartbeatTimeout ?? opts?.heartbeatTimeout
       ) as any;
     } else {
       const runtimeContext = getActivityContext();
@@ -286,7 +291,7 @@ export function activity<Name extends string, Input = any, Output = any>(
         invocation: runtimeContext.invocation,
       };
       // calling the activity from outside the orchestrator just calls the handler
-      return handler(handlerArgs[0] as Input, context);
+      return handler(input as Input, context);
     }
   }) as Activity<Name, Input, Output>;
 
