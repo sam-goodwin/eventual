@@ -1,3 +1,4 @@
+import { Command } from "@eventual/core";
 import {
   HttpServiceClient,
   HttpServiceClientProps,
@@ -36,31 +37,38 @@ export interface ServiceClientProps {}
  * ```
  */
 export const ServiceClient: {
-  new <Service>(props: HttpServiceClientProps): ServiceClient<Service>;
-} = class ServiceClient extends HttpServiceClient {
-  constructor(props: HttpServiceClientProps) {
-    super(props);
+  new <Service>(
+    props: HttpServiceClientProps,
+    rpcNamespace?: string
+  ): ServiceClient<Service>;
+} = class ServiceClient {
+  public httpClient: HttpServiceClient;
+  constructor(props: HttpServiceClientProps, rpcNamespace?: string) {
+    this.httpClient = new HttpServiceClient(props);
 
-    return proxyServiceClient.call(this);
+    return proxyServiceClient.call(this, rpcNamespace);
   }
 } as any;
 
 /**
  * Creates a Proxy client that dispatches commands over HTTP to an
  * Eventual Service. The Proxy assumes the method name is the command
- * name when crafting the request to the service's `/_rpc/${commandName}`
+ * name when crafting the request to the service's `/rpc[/${namespace}]/${commandName}`
  * endpoint.
  *
  * Types then enforce that your client is calling commands by the right name
  * and input/output contract.
  */
-export function proxyServiceClient(this: HttpServiceClient) {
+export function proxyServiceClient(
+  this: { httpClient: HttpServiceClient },
+  namespace?: string
+) {
   return new Proxy(this, {
     get: (_, commandName: string) => (input: any) =>
-      this.request({
-        path: `/_rpc/${commandName}`,
-        method: "POST",
-        body: JSON.stringify(input),
+      this.httpClient.rpc({
+        command: commandName,
+        payload: input,
+        namespace,
       }),
   });
 }
@@ -91,15 +99,31 @@ type ServiceClientName<T> = T extends { name: infer Name extends string }
   ? Name
   : never;
 
-type ServiceClientMethod<T> = T extends {
-  handler: infer Handler extends (...args: any[]) => any;
-}
-  ? (
-      input: Parameters<Handler>[0],
-      options?: {
-        headers: Record<string, string>;
+type ServiceClientMethod<T> = T extends Command<
+  any,
+  infer Input,
+  infer Output,
+  any,
+  any,
+  any
+>
+  ? [Input] extends [undefined]
+    ? {
+        (
+          input?: Input,
+          options?: {
+            headers: Record<string, string>;
+          }
+        ): Promise<Awaited<Output>>;
       }
-    ) => Promise<Awaited<ReturnType<Handler>>>
+    : {
+        (
+          input: Input,
+          options?: {
+            headers: Record<string, string>;
+          }
+        ): Promise<Awaited<Output>>;
+      }
   : never;
 
 type KeysWhereNameIsSame<Service> = {

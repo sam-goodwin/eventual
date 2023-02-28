@@ -3,7 +3,7 @@ import {
   createAwaitTimeCall
 } from "./internal/calls/await-time-call.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
-import { DurationSchedule, DurationUnit, TimeSchedule } from "./schedule.js";
+import type { DurationSchedule, DurationUnit, TimeSchedule } from "./schedule.js";
 
 /**
  * Represents a time duration.

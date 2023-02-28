@@ -248,7 +248,7 @@ export const createServiceClient = /* @__PURE__ */ memoize(
     )
 );
 
-export const createHttpServiceClient = memoize(
+export const createHttpServiceClient = /* @__PURE__ */ memoize(
   ({ serviceUrl }: { serviceUrl?: string } = {}) =>
     new AWSHttpEventualClient({ serviceUrl: serviceUrl ?? env.serviceUrl() })
 );

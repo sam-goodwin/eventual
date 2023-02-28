@@ -436,12 +436,12 @@ var require_dist2 = __commonJS({
   }
 });
 
-var api_handler_exports = {};
-__export(api_handler_exports, {
+var command_worker_exports = {};
+__export(command_worker_exports, {
   myHandler: () => myHandler,
   myHandler2: () => myHandler2
 });
-module.exports = __toCommonJS(api_handler_exports);
+module.exports = __toCommonJS(command_worker_exports);
 
 var AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
 
@@ -520,7 +520,7 @@ function registerChain(program) {
 var ServiceType;
 (function(ServiceType2) {
   ServiceType2["ActivityWorker"] = "ActivityWorker";
-  ServiceType2["ApiHandler"] = "ApiHandler";
+  ServiceType2["CommandWorker"] = "CommandWorker";
   ServiceType2["Subscription"] = "Subscription";
   ServiceType2["OrchestratorWorker"] = "OrchestratorWorker";
 })(ServiceType || (ServiceType = {}));
@@ -691,6 +691,76 @@ function createRouter(middlewares) {
   });
 }
 
+var BaseHttpPayload = class {
+  async tryJson() {
+    try {
+      return await this.json();
+    } catch {
+      return void 0;
+    }
+  }
+  async json() {
+    return JSON.parse(await this.text?.() ?? "");
+  }
+  async text() {
+    if (this.body === void 0) {
+      return "";
+    } else if (typeof this.body === "string") {
+      return this.body;
+    } else if (Buffer.isBuffer(this.body)) {
+      return this.body.toString("utf-8");
+    } else {
+      return Buffer.from((await readStream(this.body)).buffer).toString("utf-8");
+    }
+  }
+  async arrayBuffer() {
+    if (this.body === void 0) {
+      return new ArrayBuffer(0);
+    } else if (typeof this.body === "string") {
+      return Buffer.from(this.body, "utf8");
+    } else if (Buffer.isBuffer(this.body)) {
+      return this.body;
+    } else {
+      return readStream(this.body);
+    }
+  }
+};
+var HttpResponse = class extends BaseHttpPayload {
+  constructor(body, init) {
+    super();
+    this.body = body === void 0 ? null : body;
+    this.status = init?.status ?? 200;
+    this.statusText = init?.statusText;
+    this.headers = toHeaders(init?.headers);
+  }
+};
+function toHeaders(headers) {
+  if (headers === void 0) {
+    return new Headers();
+  } else if (headers instanceof Headers) {
+    return headers;
+  } else {
+    const h = new Headers();
+    for (const [k, v] of Object.entries(headers)) {
+      h.set(k, v);
+    }
+    return h;
+  }
+}
+async function readStream(readable) {
+  if (!readable) {
+    return Buffer.from(new Uint8Array(0));
+  }
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    readable.on("error", reject);
+    readable.on("data", (data) => {
+      chunks.push(data);
+    });
+    readable.on("close", () => resolve(Buffer.concat(chunks)));
+  });
+}
+
 var LogLevel;
 (function(LogLevel2) {
   LogLevel2["TRACE"] = "TRACE";
@@ -703,18 +773,6 @@ var LOG_LEVELS = Object.values(LogLevel);
 
 var _BaseCachingSecret_value;
 _BaseCachingSecret_value = /* @__PURE__ */ new WeakMap();
-
-var SortOrder;
-(function(SortOrder2) {
-  SortOrder2["Asc"] = "ASC";
-  SortOrder2["Desc"] = "DESC";
-})(SortOrder || (SortOrder = {}));
-var ActivityUpdateType;
-(function(ActivityUpdateType2) {
-  ActivityUpdateType2["Success"] = "Success";
-  ActivityUpdateType2["Failure"] = "Failure";
-  ActivityUpdateType2["Heartbeat"] = "Heartbeat";
-})(ActivityUpdateType || (ActivityUpdateType = {}));
 
 var import_ulidx2 = __toESM(require_dist2(), 1);
 
@@ -787,10 +845,10 @@ var isSucceededEvent = or(isActivitySucceeded, isChildWorkflowSucceeded, isTimer
 var isFailedEvent = or(isActivityFailed, isActivityHeartbeatTimedOut, isChildWorkflowFailed, isWorkflowTimedOut);
 
 var myHandler = api.get("/", async () => {
-  return new Response();
+  return new HttpResponse();
 });
 var myHandler2 = api.get("/", async () => {
-  return new Response();
+  return new HttpResponse();
 });
 0 && (module.exports = {
   myHandler,

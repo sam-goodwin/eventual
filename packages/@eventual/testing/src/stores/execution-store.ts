@@ -6,7 +6,6 @@ import {
   InProgressExecution,
   ListExecutionsRequest,
   ListExecutionsResponse,
-  SortOrder,
   SucceededExecution,
   SucceedExecutionRequest,
 } from "@eventual/core";
@@ -76,7 +75,7 @@ export class TestExecutionStore implements ExecutionStore {
     request: ListExecutionsRequest
   ): Promise<ListExecutionsResponse> {
     const executions = Object.values(this.executionStore).sort((a, b) =>
-      request.sortDirection === SortOrder.Asc
+      request.sortDirection === "ASC"
         ? new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
         : new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
     );

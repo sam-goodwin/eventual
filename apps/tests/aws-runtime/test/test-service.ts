@@ -508,7 +508,7 @@ export const extractHeaderCommand = api
 
 export const earlyMiddlewareResponse = api
   .use(() => {
-    return new HttpResponse("Early Response");
+    return new HttpResponse(JSON.stringify("Early Response"));
   })
   .command("earlyMiddlewareResponse", async () => {});
 

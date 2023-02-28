@@ -1,10 +1,10 @@
-import { Activity } from "../activity.js";
-import { Event } from "../event.js";
-import type { Command } from "../http/index.js";
-import { EventualServiceClient } from "../service-client.js";
-import { Subscription } from "../subscription.js";
+import type { Activity } from "../activity.js";
+import type { Event } from "../event.js";
+import type { AnyCommand } from "../http/command.js";
+import type { EventualServiceClient } from "../service-client.js";
+import type { Subscription } from "../subscription.js";
 import type { Workflow } from "../workflow.js";
-import { ActivityRuntimeContext } from "./activity.js";
+import type { ActivityRuntimeContext } from "./activity.js";
 import type { Eventual, EventualCallCollector } from "./eventual.js";
 
 declare global {
@@ -49,7 +49,7 @@ declare global {
     /**
      * API routes registered within the application.
      */
-    commands?: Command<any, any, any>[];
+    commands?: AnyCommand[];
   };
 }
 

@@ -1,7 +1,7 @@
 import { ulid } from "ulidx";
-import { EventualServiceClient } from "./service-client.js";
-import { SendSignalProps, Signal } from "./signals.js";
-import { Workflow, WorkflowOutput } from "./workflow.js";
+import type { EventualServiceClient } from "./service-client.js";
+import type { SendSignalProps, Signal } from "./signals.js";
+import type { Workflow, WorkflowOutput } from "./workflow.js";
 
 export enum ExecutionStatus {
   IN_PROGRESS = "IN_PROGRESS",

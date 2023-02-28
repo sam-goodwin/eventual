@@ -1,9 +1,10 @@
 import { build, BuildSource, infer } from "@eventual/compiler";
-import { ActivitySpec, HttpMethod } from "@eventual/core";
+import { ActivitySpec } from "@eventual/core";
 import {
   CommandSpec,
+  EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
   ServiceType,
-  SubscriptionSpec
+  SubscriptionSpec,
 } from "@eventual/core/internal";
 import { Code } from "aws-cdk-lib/aws-lambda";
 import { execSync } from "child_process";
@@ -12,8 +13,9 @@ import path from "path";
 import {
   BuildManifest,
   BundledFunction,
-  InternalApiRoutes,
-  InternalCommandFunction
+  InternalCommandFunction,
+  InternalCommandName,
+  InternalCommands,
 } from "./build-manifest";
 
 export interface BuildOutput extends BuildManifest {}
@@ -91,19 +93,10 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       activityFallbackHandler,
       scheduleForwarder,
       timerHandler,
-      listWorkflows,
-      startExecution,
-      listExecutions,
-      getExecution,
-      executionEvents,
-      sendSignal,
-      executionsHistory,
-      publishEvents,
-      updateActivity,
     ],
   ] = await Promise.all([
     bundleMonolithDefaultHandlers(specPath),
-    bundleEventualAPIFunctions(specPath),
+    bundleEventualSystemFunctions(specPath),
   ]);
 
   // then, bundle each of the commands and subscriptions
@@ -131,7 +124,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         fallbackHandler: { entry: activityFallbackHandler! },
       },
       eventualService: {
-        commands: manifestInternalAPI() as any,
+        commands: await bundleSystemCommandFunctions(specPath),
       },
       schedulerService: {
         forwarder: {
@@ -169,8 +162,8 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           type === "commands"
             ? ([
                 "command",
-                "api-handler",
-                ServiceType.ApiHandler,
+                "command-worker",
+                ServiceType.CommandWorker,
                 spec.name,
                 monoCommandFunction!,
               ] as const)
@@ -212,7 +205,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     specPath: string,
     spec: Spec,
     pathPrefix: string,
-    entryPoint: "event-handler" | "api-handler" | "activity-worker",
+    entryPoint: string,
     serviceType: ServiceType,
     name: string,
     monoFunction: string
@@ -248,9 +241,9 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           serviceType: ServiceType.ActivityWorker,
         },
         {
-          name: ServiceType.ApiHandler,
-          entry: runtimeHandlersEntrypoint("api-handler"),
-          serviceType: ServiceType.ApiHandler,
+          name: ServiceType.CommandWorker,
+          entry: runtimeHandlersEntrypoint("command-worker"),
+          serviceType: ServiceType.CommandWorker,
         },
         {
           name: ServiceType.Subscription,
@@ -267,7 +260,69 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     );
   }
 
-  function bundleEventualAPIFunctions(specPath: string) {
+  /**
+   * The system command entry files currently come with their own instance of the
+   * {@link CommandWorker}. Just bundle each file with a synthetic command spec.
+   */
+  async function bundleSystemCommandFunctions(
+    specPath: string
+  ): Promise<InternalCommands> {
+    const commands: Record<InternalCommandName, { entry: string }> = {
+      listWorkflows: {
+        entry: runtimeHandlersEntrypoint("system-commands/list-workflows"),
+      },
+      startExecution: {
+        entry: runtimeHandlersEntrypoint("system-commands/start-execution"),
+      },
+      listExecutions: {
+        entry: runtimeHandlersEntrypoint("system-commands/list-executions"),
+      },
+      getExecution: {
+        entry: runtimeHandlersEntrypoint("system-commands/get-execution"),
+      },
+      getExecutionHistory: {
+        entry: runtimeHandlersEntrypoint(
+          "system-commands/get-execution-history"
+        ),
+      },
+      sendSignal: {
+        entry: runtimeHandlersEntrypoint("system-commands/send-signal"),
+      },
+      getExecutionWorkflowHistory: {
+        entry: runtimeHandlersEntrypoint(
+          "system-commands/get-execution-workflow-history"
+        ),
+      },
+      publishEvents: {
+        entry: runtimeHandlersEntrypoint("system-commands/publish-events"),
+      },
+      updateActivity: {
+        entry: runtimeHandlersEntrypoint("system-commands/update-activity"),
+      },
+    };
+
+    return Object.fromEntries(
+      await Promise.all(
+        Object.entries(commands).map(async ([name, { entry }]) => {
+          const file = await buildFunction({
+            name,
+            entry,
+            injectedEntry: request.entry,
+            injectedServiceSpec: specPath,
+          });
+          return [
+            name,
+            {
+              entry: file,
+              spec: { name, namespace: EVENTUAL_SYSTEM_COMMAND_NAMESPACE },
+            } satisfies InternalCommandFunction,
+          ];
+        })
+      )
+    );
+  }
+
+  function bundleEventualSystemFunctions(specPath: string) {
     return Promise.all(
       (
         [
@@ -282,42 +337,6 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           {
             name: "SchedulerHandler",
             entry: runtimeHandlersEntrypoint("timer-handler"),
-          },
-          {
-            name: "list-workflows",
-            entry: runtimeHandlersEntrypoint("api/list-workflows"),
-          },
-          {
-            name: "start-execution",
-            entry: runtimeHandlersEntrypoint("api/executions/new"),
-          },
-          {
-            name: "list-executions",
-            entry: runtimeHandlersEntrypoint("api/executions/list"),
-          },
-          {
-            name: "get-execution",
-            entry: runtimeHandlersEntrypoint("api/executions/get"),
-          },
-          {
-            name: "executions-events",
-            entry: runtimeHandlersEntrypoint("api/executions/history"),
-          },
-          {
-            name: "send-signal",
-            entry: runtimeHandlersEntrypoint("api/executions/signals/send"),
-          },
-          {
-            name: "executions-history",
-            entry: runtimeHandlersEntrypoint("api/executions/workflow-history"),
-          },
-          {
-            name: "publish-events",
-            entry: runtimeHandlersEntrypoint("api/publish-events"),
-          },
-          {
-            name: "update-activity",
-            entry: runtimeHandlersEntrypoint("api/update-activity"),
           },
         ] satisfies Omit<
           BuildSource,
@@ -339,86 +358,6 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       outDir: request.outDir,
     });
     return path.relative(path.resolve(request.outDir), path.resolve(file));
-  }
-
-  function manifestInternalAPI() {
-    return Object.fromEntries([
-      internalCommand({
-        name: "listWorkflows",
-        path: "/_eventual/workflows",
-        method: "GET",
-        file: listWorkflows!,
-      }),
-      internalCommand({
-        name: "startExecution",
-        path: "/_eventual/workflows/{name}/executions",
-        method: "POST",
-        file: startExecution!,
-      }),
-      internalCommand({
-        name: "listExecutions",
-        path: "/_eventual/executions",
-        method: "GET",
-        file: listExecutions!,
-      }),
-      internalCommand({
-        name: "getExecution",
-        path: "/_eventual/executions/{executionId}",
-        method: "GET",
-        file: getExecution!,
-      }),
-      internalCommand({
-        name: "listExecutionEvents",
-        path: "/_eventual/executions/{executionId}/history",
-        method: "GET",
-        file: executionEvents!,
-      }),
-      internalCommand({
-        name: "sendSignal",
-        path: "/_eventual/executions/{executionId}/signals",
-        method: "PUT",
-        file: sendSignal!,
-      }),
-      internalCommand({
-        name: "getExecutionHistory",
-        path: "/_eventual/executions/{executionId}/workflow-history",
-        method: "GET",
-        file: executionsHistory!,
-      }),
-      internalCommand({
-        name: "publishEvents",
-        path: "/_eventual/events",
-        method: "PUT",
-        file: publishEvents!,
-      }),
-      internalCommand({
-        name: "updateActivity",
-        path: "/_eventual/activities",
-        method: "POST",
-        file: updateActivity!,
-      }),
-    ] as const);
-
-    function internalCommand<P extends keyof InternalApiRoutes>(props: {
-      name: string;
-      path: P;
-      method: HttpMethod;
-      file: string;
-    }) {
-      return [
-        props.path,
-        {
-          spec: {
-            name: props.name,
-            path: props.path,
-            method: props.method,
-            passThrough: true,
-            internal: true,
-          },
-          entry: props.file,
-        } satisfies InternalCommandFunction,
-      ] as const;
-    }
   }
 }
 

@@ -6,7 +6,6 @@ import {
   FailExecutionRequest,
   InProgressExecution,
   StartExecutionRequest,
-  StartExecutionResponse,
   SucceededExecution,
   SucceedExecutionRequest,
   Workflow,
@@ -14,6 +13,7 @@ import {
 } from "@eventual/core";
 import {
   hashCode,
+  StartExecutionResponse,
   WorkflowEventType,
   WorkflowStarted,
 } from "@eventual/core/internal";

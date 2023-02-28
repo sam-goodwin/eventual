@@ -19,7 +19,6 @@ import {
   isExecutionStatus,
   ListExecutionsRequest,
   ListExecutionsResponse,
-  SortOrder,
   SucceededExecution,
   SucceedExecutionRequest,
 } from "@eventual/core";
@@ -193,7 +192,7 @@ export class AWSExecutionStore implements ExecutionStore {
         TableName: getLazy(this.props.executionTableName),
         IndexName: ExecutionRecord.START_TIME_SORTED_INDEX,
         KeyConditionExpression: "#pk = :pk",
-        ScanIndexForward: request?.sortDirection !== SortOrder.Desc,
+        ScanIndexForward: request?.sortDirection !== "DESC",
         FilterExpression: filters || undefined,
         ExpressionAttributeValues: {
           ":pk": { S: ExecutionRecord.PARTITION_KEY },

@@ -1,6 +1,5 @@
 import {
   Architecture,
-  Function,
   FunctionProps,
   Runtime,
   RuntimeFamily,
@@ -20,15 +19,6 @@ export const baseFnProps: Pick<
     NODE_OPTIONS: "--enable-source-maps",
   },
 };
-
-export function addEnvironment(
-  func: Function,
-  variables: Record<string, string>
-) {
-  Object.entries(variables).forEach(([key, value]) =>
-    func.addEnvironment(key, value)
-  );
-}
 
 export type ServiceEntityProps<Service, Kind extends string, Value> = {
   // first, pluck the methods where the exported name and the string name are the same

@@ -2,7 +2,8 @@ import type { ActivitySpec } from "@eventual/core";
 import type {
   CommandSpec,
   EventSpec,
-  SubscriptionSpec
+  EventualService,
+  SubscriptionSpec,
 } from "@eventual/core/internal";
 
 export interface BuildManifest {
@@ -24,7 +25,7 @@ export interface BuildManifest {
       fallbackHandler: BundledFunction<undefined>;
     };
     eventualService: {
-      commands: InternalApiRoutes;
+      commands: InternalCommands;
     };
     schedulerService: {
       forwarder: BundledFunction;
@@ -40,17 +41,12 @@ export interface ApiRoutes {
   [route: string]: CommandFunction;
 }
 
-export interface InternalApiRoutes {
-  "/_eventual/workflows": InternalCommandFunction;
-  "/_eventual/workflows/{name}/executions": InternalCommandFunction;
-  "/_eventual/executions": InternalCommandFunction;
-  "/_eventual/executions/{executionId}": InternalCommandFunction;
-  "/_eventual/executions/{executionId}/history": InternalCommandFunction;
-  "/_eventual/executions/{executionId}/signals": InternalCommandFunction;
-  "/_eventual/executions/{executionId}/workflow-history": InternalCommandFunction;
-  "/_eventual/events": InternalCommandFunction;
-  "/_eventual/activities": InternalCommandFunction;
-}
+export type InternalCommandName = keyof EventualService;
+
+export type InternalCommands = Record<
+  InternalCommandName,
+  InternalCommandFunction
+>;
 
 export type BundledFunction<Spec = undefined> = {
   entry: string;
@@ -71,8 +67,6 @@ export interface SubscriptionFunction
 
 export interface ActivityFunction extends BundledFunction<ActivitySpec> {}
 
-export interface InternalCommandFunction extends CommandFunction {
-  spec: CommandFunction["spec"] & {};
-}
+export interface InternalCommandFunction extends CommandFunction {}
 
 export interface CommandFunction extends BundledFunction<CommandSpec> {}

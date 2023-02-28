@@ -1,10 +1,6 @@
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
-import {
-  EventualServiceClient,
-  ExecutionStatus,
-  SortOrder,
-} from "@eventual/core";
+import { EventualServiceClient, ExecutionStatus } from "@eventual/core";
 import { displayExecution } from "../display/execution.js";
 
 export const listExecutions = (yargs: Argv) =>
@@ -90,7 +86,7 @@ export const listExecutions = (yargs: Argv) =>
 
         return service.listExecutions({
           workflowName: args.workflow,
-          sortDirection: SortOrder.Desc,
+          sortDirection: "DESC",
           maxResults: args.maxResults ?? 100,
           statuses: statuses.length > 0 ? statuses : undefined,
           nextToken: args.nextToken,

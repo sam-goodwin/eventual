@@ -4,6 +4,7 @@ import {
   HttpRequest,
   HttpResponse,
   RestParamSpec,
+  commandRpcPath,
 } from "@eventual/core";
 import {
   registerServiceClient,
@@ -14,7 +15,11 @@ import {
 import itty from "itty-router";
 
 export interface ApiHandlerDependencies {
-  serviceClient: EventualServiceClient;
+  serviceClient?: EventualServiceClient;
+}
+
+export interface CommandWorker {
+  (request: HttpRequest): Promise<HttpResponse>;
 }
 
 /**
@@ -23,9 +28,13 @@ export interface ApiHandlerDependencies {
  * decoupled from a runtime's specifics by the clients. A runtime must
  * inject its own client implementations designed for that platform.
  */
-export function createApiHandler({ serviceClient }: ApiHandlerDependencies) {
+export function createCommandWorker({
+  serviceClient,
+}: ApiHandlerDependencies): CommandWorker {
   // make the service client available to web hooks
-  registerServiceClient(serviceClient);
+  if (serviceClient) {
+    registerServiceClient(serviceClient);
+  }
 
   const router = initRouter();
 
@@ -35,9 +44,9 @@ export function createApiHandler({ serviceClient }: ApiHandlerDependencies) {
    * Each webhook registers routes on the central {@link router} which
    * then handles the request.
    */
-  return function processRequest(request: HttpRequest): Promise<HttpResponse> {
+  return function (request) {
     console.log("request", request);
-    return serviceTypeScope(ServiceType.ApiHandler, async () => {
+    return serviceTypeScope(ServiceType.CommandWorker, async () => {
       try {
         const response = await router.handle(request);
         if (response === undefined) {
@@ -78,14 +87,17 @@ export function createApiHandler({ serviceClient }: ApiHandlerDependencies) {
 }
 
 function initRouter() {
-  const router: Router = itty.Router<HttpRequest, Router>();
+  const router: Router = itty.Router<HttpRequest, Router>({
+    // paths always start with slash, the router will remove double slashes
+    base: "/",
+  });
 
   for (const command of commands) {
     const shouldValidate = command.validate !== false;
 
     // RPC route takes a POST request and passes the parsed JSON body as input to the input
     router.post(
-      `/_rpc/${command.name}`,
+      commandRpcPath(command),
       withMiddleware(async (request, context) => {
         if (command.passThrough) {
           // if passthrough is enabled, just proxy the request-response to the handler
@@ -123,13 +135,15 @@ function initRouter() {
       })
     );
 
-    if (command.path) {
+    const path = command.path;
+
+    if (path) {
       const method = (command.method?.toLocaleLowerCase() ??
         "all") as keyof Router;
 
       // REST routes parse the request according to the command's path/method/params configuration
       router[method](
-        command.path,
+        path,
         withMiddleware(async (request: HttpRequest, context) => {
           if (command.passThrough) {
             // if passthrough is enabled, just proxy the request-response to the handler

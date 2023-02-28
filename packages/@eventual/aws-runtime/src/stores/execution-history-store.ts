@@ -7,7 +7,6 @@ import {
   ExecutionID,
   ListExecutionEventsRequest,
   ListExecutionEventsResponse,
-  SortOrder,
 } from "@eventual/core";
 import {
   ExecutionHistoryStore,
@@ -69,9 +68,11 @@ export class AWSExecutionHistoryStore extends ExecutionHistoryStore {
         TableName: getLazy(this.props.executionHistoryTableName),
         KeyConditionExpression: "pk = :pk AND begins_with ( sk, :sk )",
         FilterExpression: after ? "#ts > :tsUpper" : undefined,
-        ScanIndexForward: request.sortDirection !== SortOrder.Desc,
+        ScanIndexForward: request.sortDirection !== "DESC",
         ExpressionAttributeValues: {
-          ":pk": { S: EventRecord.partitionKey(request.executionId as ExecutionID) },
+          ":pk": {
+            S: EventRecord.partitionKey(request.executionId as ExecutionID),
+          },
           ":sk": {
             S: EventRecord.SORT_KEY_PREFIX,
           },

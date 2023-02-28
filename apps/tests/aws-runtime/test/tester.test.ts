@@ -1,4 +1,9 @@
-import { EventualError, HeartbeatTimeout } from "@eventual/core";
+import { ServiceClient } from "@eventual/client";
+import {
+  commandRpcPath,
+  EventualError,
+  HeartbeatTimeout,
+} from "@eventual/core";
 import { jest } from "@jest/globals";
 import { ChaosEffects, ChaosTargets } from "./chaos-extension/chaos-engine.js";
 import { serviceUrl } from "./env.js";
@@ -17,6 +22,7 @@ import {
   workflow3,
   workflow4,
 } from "./test-service.js";
+import type * as TestService from "./test-service.js";
 
 jest.setTimeout(100 * 1000);
 
@@ -149,7 +155,7 @@ const url = serviceUrl();
 test("hello API should route and return OK response", async () => {
   const restResponse = await (await fetch(`${url}/hello`)).json();
   const rpcResponse = await (
-    await fetch(`${url}/_rpc/helloApi`, {
+    await fetch(`${url}/${commandRpcPath({ name: "helloApi" })}`, {
       method: "POST",
     })
   ).json();
@@ -164,7 +170,7 @@ test("params with schema should parse", async () => {
   ).json();
 
   const rpcResponse = await (
-    await fetch(`${url}/_rpc/typed1`, {
+    await fetch(`${url}/${commandRpcPath({ name: "typed1" })}`, {
       method: "POST",
       body: JSON.stringify({
         userId: "my-user-id",
@@ -187,7 +193,7 @@ test("output with schema should serialize", async () => {
   ).json();
 
   const rpcResponse = await (
-    await fetch(`${url}/_rpc/typed2`, {
+    await fetch(`${url}/${commandRpcPath({ name: "typed2" })}`, {
       method: "POST",
       body: JSON.stringify({
         userId: "my-user-id",
@@ -206,7 +212,7 @@ test("output with schema should serialize", async () => {
 
 test("middleware context is properly piped to command", async () => {
   const rpcResponse = await (
-    await fetch(`${url}/_rpc/extractHeaderCommand`, {
+    await fetch(`${url}/${commandRpcPath({ name: "extractHeaderCommand" })}`, {
       method: "POST",
       body: JSON.stringify({
         userId: "my-user-id",
@@ -224,24 +230,40 @@ test("middleware context is properly piped to command", async () => {
 
 test("middleware can respond early", async () => {
   const rpcResponse = await (
-    await fetch(`${url}/_rpc/earlyMiddlewareResponse`, {
+    await fetch(
+      `${url}/${commandRpcPath({ name: "earlyMiddlewareResponse" })}`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          userId: "my-user-id",
+        }),
+      }
+    )
+  ).text();
+
+  expect(rpcResponse).toEqual('"Early Response"');
+});
+
+test("middleware response through service client", async () => {
+  const serviceClient = new ServiceClient<typeof TestService>({
+    serviceUrl: url,
+  });
+
+  await expect(serviceClient.earlyMiddlewareResponse()).resolves.toEqual(
+    "Early Response"
+  );
+});
+
+test("middleware can edit response", async () => {
+  const rpcResponse = await fetch(
+    `${url}/${commandRpcPath({ name: "modifyResponseMiddleware" })}`,
+    {
       method: "POST",
       body: JSON.stringify({
         userId: "my-user-id",
       }),
-    })
-  ).text();
-
-  expect(rpcResponse).toEqual("Early Response");
-});
-
-test("middleware can edit response", async () => {
-  const rpcResponse = await fetch(`${url}/_rpc/modifyResponseMiddleware`, {
-    method: "POST",
-    body: JSON.stringify({
-      userId: "my-user-id",
-    }),
-  });
+    }
+  );
 
   expect(rpcResponse.headers.get("ModifiedHeader")).toEqual("Injected Header");
 });

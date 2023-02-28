@@ -17,9 +17,13 @@ export type AWSServiceClient<Service> = ServiceClient<Service>;
  */
 export const AWSServiceClient: {
   new <Service>(props: HttpServiceClientProps): ServiceClient<Service>;
-} = class AWSServiceClient extends HttpServiceClient {
+} = class AWSServiceClient {
+  public httpClient: HttpServiceClient;
   constructor(props: AWSHttpEventualClientProps) {
-    super({ ...props, beforeRequest: createAwsHttpRequestSigner(props) });
+    this.httpClient = new HttpServiceClient({
+      serviceUrl: props.serviceUrl,
+      beforeRequest: createAwsHttpRequestSigner(props),
+    });
 
     return proxyServiceClient.call(this);
   }

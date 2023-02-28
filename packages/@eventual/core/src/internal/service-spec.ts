@@ -2,7 +2,7 @@ import type openapi from "openapi3-ts";
 import type { z } from "zod";
 import { ActivitySpec } from "../activity.js";
 import type { Event } from "../event.js";
-import type { Command } from "../http/command.js";
+import { AnyCommand } from "../http/command.js";
 import type { DurationSchedule } from "../schedule.js";
 import type {
   SubscriptionFilter,
@@ -57,7 +57,7 @@ export interface SubscriptionSpec<Name extends string = string> {
 
 export type EventSpec = Omit<ToSpec<Event>, "kind">;
 
-export type CommandSpec = Omit<ToSpec<Command>, "kind">;
+export type CommandSpec = Omit<ToSpec<AnyCommand>, "kind">;
 
 type ToSpec<T> = T extends z.ZodType
   ? openapi.SchemaObject

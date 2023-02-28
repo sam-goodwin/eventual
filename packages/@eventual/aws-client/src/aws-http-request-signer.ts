@@ -8,7 +8,7 @@ import { AWSHttpEventualClientProps } from "./aws-http-eventual-client.js";
 import { resolveRegion } from "./resolve-aws-region.js";
 
 export function createAwsHttpRequestSigner(
-  props: AWSHttpEventualClientProps
+  props: Omit<AWSHttpEventualClientProps, "serviceUrl">
 ): BeforeRequest {
   return async (request) => {
     const updatedRequest = props.beforeRequestSigning

@@ -1,7 +1,12 @@
-import { AsyncTokenSymbol } from "./internal/activity.js";
 import { FunctionRuntimeProps } from "./function-props.js";
+import { AsyncTokenSymbol } from "./internal/activity.js";
 import { createActivityCall } from "./internal/calls/activity-call.js";
 import { createAwaitDurationCall } from "./internal/calls/await-time-call.js";
+import type {
+  SendActivityFailureRequest,
+  SendActivityHeartbeatRequest,
+  SendActivitySuccessRequest,
+} from "./internal/eventual-service.js";
 import { isActivityWorker, isOrchestratorWorker } from "./internal/flags.js";
 import {
   activities,
@@ -9,13 +14,10 @@ import {
   getServiceClient,
 } from "./internal/global.js";
 import { isSourceLocation, SourceLocation } from "./internal/service-spec.js";
-import { DurationSchedule } from "./schedule.js";
-import {
+import type { DurationSchedule } from "./schedule.js";
+import type {
   EventualServiceClient,
-  SendActivityFailureRequest,
-  SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
-  SendActivitySuccessRequest,
 } from "./service-client.js";
 import { ExecutionID } from "./execution.js";
 
