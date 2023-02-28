@@ -19,9 +19,10 @@ export const DURATION_UNITS = [
 
 export type DurationUnit = (typeof DURATION_UNITS)[number];
 
-export type DurationSchedule = z.infer<typeof durationScheduleSchema>;
+export interface DurationSchedule
+  extends z.infer<typeof durationScheduleSchema> {}
 
-export type TimeSchedule = z.infer<typeof TimeScheduleSchema>;
+export interface TimeSchedule extends z.infer<typeof TimeScheduleSchema> {}
 
 export type Schedule = DurationSchedule | TimeSchedule;
 

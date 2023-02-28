@@ -104,22 +104,19 @@ export const sendActivityUpdateSchema = /* @__PURE__ */ z.union([
 
 export type SendActivityUpdate = z.infer<typeof sendActivityUpdateSchema>;
 
-export type SendActivitySuccessRequest<T = any> = Omit<
-  z.infer<typeof sendActivitySuccessRequestSchema>,
-  "result" | "type"
-> & {
+export interface SendActivitySuccessRequest<T = any>
+  extends Omit<
+    z.infer<typeof sendActivitySuccessRequestSchema>,
+    "result" | "type"
+  > {
   result?: T;
-};
+}
 
-export type SendActivityFailureRequest = Omit<
-  z.infer<typeof sendActivityFailureRequestSchema>,
-  "type"
->;
+export interface SendActivityFailureRequest
+  extends Omit<z.infer<typeof sendActivityFailureRequestSchema>, "type"> {}
 
-export type SendActivityHeartbeatRequest = Omit<
-  z.infer<typeof sendActivityHeartbeatRequestSchema>,
-  "type"
->;
+export interface SendActivityHeartbeatRequest
+  extends Omit<z.infer<typeof sendActivityHeartbeatRequestSchema>, "type"> {}
 
 export function isSendActivitySuccessRequest<T = any>(
   request: SendActivityUpdate
@@ -189,7 +186,7 @@ export type EventualService = {
   >;
   updateActivity: Command<
     "updateActivity",
-    z.infer<typeof sendActivityUpdateSchema>,
+    SendActivityUpdate,
     void | SendActivityHeartbeatResponse
   >;
 };
