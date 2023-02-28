@@ -116,7 +116,7 @@ eventualRuntimeTestHarness(
         "call activity",
         workflow1,
         { name: "sam" },
-        "you said hello sam"
+        "you said hello sam I am hello2 and you were invoked by my-workflow"
       );
 
       testCompletion("test commands", allCommands, {
