@@ -1,35 +1,58 @@
+import { ExecutionID } from "./execution.js";
 import { FunctionRuntimeProps } from "./function-props.js";
 import { AsyncTokenSymbol } from "./internal/activity.js";
 import { createActivityCall } from "./internal/calls/activity-call.js";
-import { createAwaitDurationCall } from "./internal/calls/await-time-call.js";
+import {
+  createAwaitDurationCall,
+  createAwaitTimeCall,
+} from "./internal/calls/await-time-call.js";
 import type {
   SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
   SendActivitySuccessRequest,
 } from "./internal/eventual-service.js";
+import { isEventual } from "./internal/eventual.js";
 import { isActivityWorker, isOrchestratorWorker } from "./internal/flags.js";
 import {
   activities,
   getActivityContext,
   getServiceClient,
 } from "./internal/global.js";
+import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
 import { isSourceLocation, SourceLocation } from "./internal/service-spec.js";
-import type { DurationSchedule } from "./schedule.js";
-import type {
+import { assertNever } from "./internal/util.js";
+import type { DurationSchedule, Schedule } from "./schedule.js";
+import {
   EventualServiceClient,
   SendActivityHeartbeatResponse,
 } from "./service-client.js";
-import { ExecutionID } from "./execution.js";
 
 export interface ActivityRuntimeProps extends FunctionRuntimeProps {}
 
+/**
+ * Activity options available when invoked by a workflow.
+ */
 export interface ActivityInvocationOptions {
   /**
-   * How long the workflow will wait for the activity to complete or fail.
+   * A promise whose resolution (fulfillment or rejection) determines the timeout for an activity.
    *
-   * @default - workflow will wait forever.
+   *
+   * Overrides any timeout configured on the activity definition.
+   *
+   * ```ts
+   * // times out after 10 minutes
+   * myActivity("someInput", { timeout: duration(10, "minutes") });
+   * // times out when myTimeoutActivity resolves
+   * myActivity("someInput", { timeout: myTimeoutActivity() });
+   * // times out when the value x is equal to 100
+   * myActivity("someInput", { timeout: condition(() => x === 100) });
+   * // times out after 10 minutes, like the first example
+   * myActivity("someInput", { timeout: Schedule.duration(10, "minutes") });
+   * ```
+   *
+   * @default - the configured activity timeout or the workflow will await forever.
    */
-  timeout?: DurationSchedule;
+  timeout?: Promise<any> | Schedule;
   /**
    * For long running activities, it is suggested that they report back that they
    * are still in progress to avoid waiting forever or until a long timeout when
@@ -43,9 +66,19 @@ export interface ActivityInvocationOptions {
   heartbeatTimeout?: DurationSchedule;
 }
 
+/**
+ * Activity options available at definition time.
+ */
 export interface ActivityOptions
-  extends ActivityInvocationOptions,
-    FunctionRuntimeProps {}
+  extends Omit<ActivityInvocationOptions, "timeout">,
+    FunctionRuntimeProps {
+  /**
+   * How long the workflow will wait for the activity to complete or fail.
+   *
+   * @default - workflow will wait forever.
+   */
+  timeout?: DurationSchedule;
+}
 
 export interface ActivitySpec<Name extends string = string> {
   /**
@@ -271,13 +304,31 @@ export function activity<Name extends string, Input = any, Output = any>(
   // register the handler to be looked up during execution.
   const func = ((input, options) => {
     if (isOrchestratorWorker()) {
-      // if we're in the orchestrator, return a command to invoke the activity in the worker function
       const timeout = options?.timeout ?? opts?.timeout;
+      if (
+        timeout &&
+        !(
+          isEventual(timeout) ||
+          isDurationSchedule(timeout) ||
+          isTimeSchedule(timeout)
+        )
+      ) {
+        throw new Error("Timeout promise must be an Eventual or a Schedule.");
+      }
+      // if we're in the orchestrator, return a command to invoke the activity in the worker function
       return createActivityCall(
         name,
         input,
         timeout
-          ? createAwaitDurationCall(timeout.dur, timeout.unit)
+          ? // if the timeout is an eventual already, just use that
+            isEventual(timeout)
+            ? timeout
+            : // otherwise make the right eventual type
+            isDurationSchedule(timeout)
+            ? createAwaitDurationCall(timeout.dur, timeout.unit)
+            : isTimeSchedule(timeout)
+            ? createAwaitTimeCall(timeout.isoDate)
+            : assertNever(timeout)
           : undefined,
         options?.heartbeatTimeout ?? opts?.heartbeatTimeout
       ) as any;

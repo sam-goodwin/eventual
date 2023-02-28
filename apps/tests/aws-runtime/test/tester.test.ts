@@ -61,6 +61,9 @@ eventualRuntimeTestHarness(
       signal: true,
       activity: true,
       workflow: true,
+      activityFailImmediately: true,
+      activityOnInvoke: true,
+      workflowOnInvoke: true,
     });
 
     testCompletion("asyncActivities", asyncWorkflow, [

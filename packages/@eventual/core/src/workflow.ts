@@ -1,19 +1,25 @@
-import type { ChildExecution, ExecutionHandle } from "./execution.js";
-import type { ExecutionID } from "./execution.js";
+import type {
+  ChildExecution,
+  ExecutionHandle,
+  ExecutionID,
+} from "./execution.js";
 import { createWorkflowCall } from "./internal/calls/workflow-call.js";
 import { isChain } from "./internal/chain.js";
 import type { Program } from "./internal/eventual.js";
+import { isEventual } from "./internal/eventual.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
 import { getServiceClient, workflows } from "./internal/global.js";
+import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
 import {
   HistoryStateEvent,
   isTimerCompleted,
   isTimerScheduled,
   TimerCompleted,
   TimerScheduled,
-  WorkflowEventType
+  WorkflowEventType,
 } from "./internal/workflow-events.js";
 import type { DurationSchedule } from "./schedule.js";
+import { Schedule } from "./schedule.js";
 import type { StartExecutionRequest } from "./service-client.js";
 
 export interface WorkflowHandler<Input = any, Output = any> {
@@ -21,11 +27,32 @@ export interface WorkflowHandler<Input = any, Output = any> {
 }
 
 /**
+ * Workflow options available when invoked by another workflow.
+ */
+export interface ChildWorkflowOptions {
+  timeout?: Promise<any> | Schedule;
+}
+
+/**
+ * Options which determine how an execution operates.
+ *
+ * Overrides those provided by the workflow definition.
+ */
+export interface WorkflowExecutionOptions {
+  /**
+   * Number of seconds before or a time to time the workflow out at.
+   *
+   * @default - workflow will never timeout.
+   */
+  timeout?: Schedule;
+}
+
+/**
  * Options which determine how a workflow operates.
  *
  * Can be provided at workflow definition time and/or overridden by the caller of {@link WorkflowClient.startWorkflow}.
  */
-export interface WorkflowOptions {
+export interface WorkflowDefinitionOptions {
   /**
    * Number of seconds before execution times out.
    *
@@ -48,6 +75,10 @@ export type WorkflowInput<W extends Workflow> = W extends Workflow<
   ? In
   : undefined;
 
+export type WorkflowArguments<Input = any> = [Input] extends [undefined]
+  ? [input?: Input, options?: ChildWorkflowOptions]
+  : [input: Input, options?: ChildWorkflowOptions];
+
 /**
  * A {@link Workflow} is a long-running process that orchestrates calls
  * to other services in a durable and observable way.
@@ -58,7 +89,7 @@ export interface Workflow<in Input = any, Output = any> {
    */
   name: string;
 
-  options?: WorkflowOptions;
+  options?: WorkflowDefinitionOptions;
 
   /**
    * Invokes the {@link Workflow} from within another workflow.
@@ -69,7 +100,7 @@ export interface Workflow<in Input = any, Output = any> {
    *
    * To start a workflow from another environment, use {@link start}.
    */
-  (input: Input): Promise<Output> & ChildExecution;
+  (...args: WorkflowArguments<Input>): Promise<Output> & ChildExecution;
 
   /**
    * Starts a workflow execution
@@ -111,13 +142,16 @@ export function workflow<Input = any, Output = any>(
 ): Workflow<Input, Output>;
 export function workflow<Input = any, Output = any>(
   name: string,
-  opts: WorkflowOptions,
+  opts: WorkflowDefinitionOptions,
   definition: WorkflowHandler<Input, Output>
 ): Workflow<Input, Output>;
 export function workflow<Input = any, Output = any>(
   name: string,
   ...args:
-    | [opts: WorkflowOptions, definition: WorkflowHandler<Input, Output>]
+    | [
+        opts: WorkflowDefinitionOptions,
+        definition: WorkflowHandler<Input, Output>
+      ]
     | [definition: WorkflowHandler<Input, Output>]
 ): Workflow<Input, Output> {
   const [opts, definition] = args.length === 1 ? [undefined, args[0]] : args;
@@ -125,14 +159,46 @@ export function workflow<Input = any, Output = any>(
     throw new Error(`workflow with name '${name}' already exists`);
   }
 
-  const workflow: Workflow<Input, Output> = ((input?: any) => {
+  const workflow: Workflow<Input, Output> = ((
+    input?: any,
+    options?: ChildWorkflowOptions
+  ) => {
     if (!isOrchestratorWorker()) {
       throw new Error(
         "Direct workflow invocation is only valid in a workflow, use workflow.startExecution instead."
       );
     }
 
-    return createWorkflowCall(name, input, opts);
+    // a timeout can either by from definition or a eventual/promise or both.
+    // take the invocation time configuration first.
+    const timeout = options?.timeout ?? opts?.timeout;
+    if (
+      timeout &&
+      !(
+        isEventual(timeout) ||
+        isTimeSchedule(timeout) ||
+        isDurationSchedule(timeout)
+      )
+    ) {
+      throw new Error("Timeout promise must be an Eventual or a Schedule.");
+    }
+
+    return createWorkflowCall(
+      name,
+      input,
+      // if the timeout is a time or a duration, from any source, send the timeout to the child execution
+      // to time itself out.
+      {
+        timeout:
+          isDurationSchedule(timeout) || isTimeSchedule(timeout)
+            ? timeout
+            : undefined,
+      },
+      // if an eventual/promise is given, even if it is a duration or a time, timeout based on the
+      // promise resolution.
+      // TODO: support reporting cancellation to children when the parent times out?
+      isEventual(timeout) ? timeout : undefined
+    );
   }) as any;
 
   Object.defineProperty(workflow, "name", { value: name, writable: false });

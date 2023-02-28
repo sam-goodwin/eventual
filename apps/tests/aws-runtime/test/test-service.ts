@@ -80,7 +80,9 @@ export const workflow3 = workflow("sleepy", async () => {
 });
 
 export const workflow4 = workflow("parallel", async () => {
-  const greetings = Promise.all(["sam", "chris", "sam"].map(hello));
+  const greetings = Promise.all(
+    ["sam", "chris", "sam"].map((name) => hello(name))
+  );
   const greetings2 = Promise.all(
     ["sam", "chris", "sam"].map(async (name) => {
       const greeting = await hello(name);
@@ -171,9 +173,21 @@ const slowActivity = activity(
   () => new Promise((resolve) => setTimeout(resolve, 10 * 1000))
 );
 
+const slowActivityWithLongTimeout = activity(
+  "slowAct2",
+  { timeout: duration(110, "seconds") },
+  () => new Promise((resolve) => setTimeout(resolve, 10 * 1000))
+);
+
 const slowWf = workflow(
   "slowWorkflow",
   { timeout: duration(5, "seconds") },
+  () => duration(10)
+);
+
+const slowWfWithLongTimeout = workflow(
+  "slowWorkflow2",
+  { timeout: duration(110, "seconds") },
   () => duration(10)
 );
 
@@ -195,6 +209,16 @@ export const timedOutWorkflow = workflow(
       },
       activity: slowActivity,
       workflow: () => slowWf(undefined),
+      activityOnInvoke: () =>
+        slowActivityWithLongTimeout(undefined, {
+          timeout: duration(2, "second"),
+        }),
+      workflowOnInvoke: () =>
+        slowWfWithLongTimeout(undefined, { timeout: duration(2, "seconds") }),
+      activityFailImmediately: () =>
+        slowActivityWithLongTimeout(undefined, {
+          timeout: condition(() => true),
+        }),
     };
 
     return <Record<keyof typeof timedOutFunctions, boolean>>Object.fromEntries(
