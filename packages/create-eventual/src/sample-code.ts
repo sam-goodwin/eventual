@@ -62,6 +62,7 @@ export function sampleCDKApp(projectName: string) {
   const serviceReferenceName = projectName.replace(/[^A-Za-z0-9_]*/g, "");
 
   return `import { App, Stack, CfnOutput } from "aws-cdk-lib";
+import { Service } from "@eventual/aws-cdk";
 
 const app = new App();
 const stack = new Stack(app, "${projectName}")
