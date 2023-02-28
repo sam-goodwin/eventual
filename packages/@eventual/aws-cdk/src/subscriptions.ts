@@ -13,16 +13,17 @@ import type { EventService } from "./event-service";
 import { LazyInterface } from "./proxy-construct";
 import type { ServiceConstructProps } from "./service";
 import { ServiceFunction } from "./service-function";
-import type { KeysOfType } from "./utils";
+import type { ServiceEntityProps } from "./utils";
 
-export type SubscriptionNames<Service> = KeysOfType<
+export type Subscriptions<Service> = ServiceEntityProps<
   Service,
-  { kind: "Subscription" }
+  "Subscription",
+  Subscription
 >;
 
-export type SubscriptionOverrides<Service> = {
-  [eventHandler in SubscriptionNames<Service>]?: SubscriptionHandlerProps;
-};
+export type SubscriptionOverrides<Service> = Partial<
+  ServiceEntityProps<Service, "Subscription", SubscriptionHandlerProps>
+>;
 
 export interface SubscriptionHandlerProps
   extends Omit<Partial<FunctionProps>, "code" | "handler" | "functionName"> {}
@@ -39,12 +40,6 @@ export interface SubscriptionsProps<S = any> extends ServiceConstructProps {
   readonly commandService: LazyInterface<CommandService>;
 }
 
-export type Subscriptions<Service> = {
-  [subscriptionName in keyof Pick<
-    Service,
-    SubscriptionNames<Service>
-  >]: Subscription;
-};
 export const Subscriptions: {
   new <Service>(props: SubscriptionsProps<Service>): Subscriptions<Service>;
 } = class Subscriptions<Service> {
@@ -67,7 +62,7 @@ export const Subscriptions: {
             subscription: sub,
             overrides:
               props.subscriptions?.[
-                sub.spec.name as SubscriptionNames<Service>
+                sub.spec.name as keyof SubscriptionOverrides<Service>
               ],
           }),
         ];

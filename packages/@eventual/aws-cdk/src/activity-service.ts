@@ -21,13 +21,20 @@ import { LazyInterface } from "./proxy-construct";
 import { SchedulerService } from "./scheduler-service";
 import { ServiceConstructProps } from "./service";
 import { ServiceFunction } from "./service-function";
-import { KeysOfType } from "./utils";
+import { GetServiceEntityNames, ServiceEntityProps } from "./utils";
 import { WorkflowService } from "./workflow-service";
 
-export type ServiceActivities<Service> = Record<
-  ActivityNames<Service>,
+export type ActivityNames<Service> = GetServiceEntityNames<Service, "Activity">;
+
+export type ServiceActivities<Service> = ServiceEntityProps<
+  Service,
+  "Activity",
   Activity
 >;
+
+export type ActivityOverrides<Service> = {
+  default?: ActivityHandlerProps;
+} & Partial<ServiceEntityProps<Service, "Activity", ActivityHandlerProps>>;
 
 export interface ActivitiesProps<Service> extends ServiceConstructProps {
   readonly workflowService: LazyInterface<WorkflowService>;
@@ -35,8 +42,6 @@ export interface ActivitiesProps<Service> extends ServiceConstructProps {
   readonly commandsService: LazyInterface<CommandService<Service>>;
   readonly overrides?: ActivityOverrides<Service>;
 }
-
-export type ActivityNames<Service> = KeysOfType<Service, { kind: "Activity" }>;
 
 /**
  * Subsystem which supports durable activities.
@@ -96,7 +101,14 @@ export class ActivityService<Service = any> {
           fallbackHandler: this.fallbackHandler,
           serviceName: this.props.serviceName,
           environment: this.props.environment,
-          overrides: props.overrides?.[act.spec.name as ActivityNames<Service>],
+          overrides:
+            props.overrides?.[
+              act.spec.name as keyof ServiceEntityProps<
+                Service,
+                "Activity",
+                ActivityHandlerProps
+              >
+            ],
         });
 
         this.configureActivityWorker(activity.handler);
@@ -219,12 +231,6 @@ export class ActivityService<Service = any> {
     envs.forEach((env) => func.addEnvironment(env, this.ENV_MAPPINGS[env]()));
   }
 }
-
-export type ActivityOverrides<Service> = {
-  default?: ActivityHandlerProps;
-} & {
-  [api in ActivityNames<Service>]?: ActivityHandlerProps;
-};
 
 export interface ActivityHandlerProps
   extends Omit<

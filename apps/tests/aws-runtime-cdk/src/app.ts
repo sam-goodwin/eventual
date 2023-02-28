@@ -13,7 +13,7 @@ import { Queue } from "aws-cdk-lib/aws-sqs";
 import path from "path";
 import { ChaosExtension } from "./chaos-extension";
 
-import * as testServiceRuntime from "tests-runtime";
+import type * as testServiceRuntime from "tests-runtime";
 
 const app = new App();
 
