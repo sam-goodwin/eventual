@@ -213,7 +213,7 @@ export function interpret<Return>(
     if (isActivityCall(call)) {
       return {
         kind: CommandType.StartActivity,
-        args: call.args,
+        input: call.input,
         name: call.name,
         heartbeat: call.heartbeat,
         seq: call.seq!,

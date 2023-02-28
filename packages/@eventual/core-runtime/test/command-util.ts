@@ -43,14 +43,14 @@ export function createStartTimerCommand(
 
 export function createScheduledActivityCommand(
   name: string,
-  args: any[],
+  input: any,
   seq: number
 ): ScheduleActivityCommand {
   return {
     kind: CommandType.StartActivity,
     seq,
     name,
-    args,
+    input,
   };
 }
 

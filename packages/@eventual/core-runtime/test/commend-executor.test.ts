@@ -106,7 +106,7 @@ describe("activity", () => {
       executionId,
       {
         kind: CommandType.StartActivity,
-        args: [],
+        input: undefined,
         name: "activity",
         seq: 0,
       },

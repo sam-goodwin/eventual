@@ -17,7 +17,7 @@ export interface ActivityCall<T = any>
   extends EventualBase<EventualKind.ActivityCall, Resolved<T> | Failed> {
   seq?: number;
   name: string;
-  args: any[];
+  input: any;
   heartbeat?: DurationSchedule;
   /**
    * Timeout can be any Eventual (promise). When the promise resolves, the activity is considered to be timed out.
@@ -27,14 +27,14 @@ export interface ActivityCall<T = any>
 
 export function createActivityCall(
   name: string,
-  args: any[],
+  input: any,
   timeout?: Eventual,
   heartbeat?: DurationSchedule
 ): ActivityCall {
   return registerEventual(
     createEventual(EventualKind.ActivityCall, {
       name,
-      args,
+      input,
       timeout,
       heartbeat,
     })

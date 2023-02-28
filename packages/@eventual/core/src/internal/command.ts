@@ -32,7 +32,7 @@ export enum CommandType {
 export interface ScheduleActivityCommand
   extends CommandBase<CommandType.StartActivity> {
   name: string;
-  args: any[];
+  input: any;
   heartbeat?: DurationSchedule;
 }
 

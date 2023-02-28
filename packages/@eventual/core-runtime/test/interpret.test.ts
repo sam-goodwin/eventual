@@ -1,6 +1,6 @@
 /* eslint-disable require-yield, no-throw-literal */
 import {
-  Context,
+  WorkflowContext,
   duration,
   EventualError,
   HeartbeatTimeout,
@@ -74,7 +74,7 @@ function* myWorkflow(event: any): Program<any> {
 
 const event = "hello world";
 
-const context: Context = {
+const context: WorkflowContext = {
   workflow: {
     name: "wf1",
   },

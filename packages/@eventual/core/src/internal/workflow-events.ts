@@ -1,5 +1,5 @@
-import { ExecutionContext } from "../context.js";
 import { EventEnvelope } from "../event.js";
+import { WorkflowExecutionContext } from "../workflow.js";
 import { or } from "./util.js";
 
 export interface BaseEvent {
@@ -128,7 +128,7 @@ export interface WorkflowStarted extends BaseEvent {
    * Optional ISO timestamp after which the workflow should timeout.
    */
   timeoutTime?: string;
-  context: Omit<ExecutionContext, "id" | "startTime">;
+  context: Omit<WorkflowExecutionContext, "id" | "startTime">;
 }
 export interface WorkflowRunStarted extends BaseEvent {
   type: WorkflowEventType.WorkflowRunStarted;
