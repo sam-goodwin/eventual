@@ -1,5 +1,5 @@
-import type { Context } from "./context.js";
 import type { ChildExecution, ExecutionHandle } from "./execution.js";
+import type { ExecutionID } from "./execution.js";
 import { createWorkflowCall } from "./internal/calls/workflow-call.js";
 import { isChain } from "./internal/chain.js";
 import type { Program } from "./internal/eventual.js";
@@ -11,13 +11,13 @@ import {
   isTimerScheduled,
   TimerCompleted,
   TimerScheduled,
-  WorkflowEventType,
+  WorkflowEventType
 } from "./internal/workflow-events.js";
 import type { DurationSchedule } from "./schedule.js";
 import type { StartExecutionRequest } from "./service-client.js";
 
 export interface WorkflowHandler<Input = any, Output = any> {
-  (input: Input, context: Context): Promise<Output> | Program<any>;
+  (input: Input, context: WorkflowContext): Promise<Output> | Program<any>;
 }
 
 /**
@@ -151,7 +151,7 @@ export function workflow<Input = any, Output = any>(
   // @ts-ignore
   workflow.definition = isChain(definition)
     ? definition
-    : function* (input: Input, context: Context): any {
+    : function* (input: Input, context: WorkflowContext): any {
         return yield definition(input, context);
       }; // This type is added in the core-runtime package declaration.
 
@@ -197,4 +197,50 @@ export function generateSyntheticEvents(
     );
 
   return syntheticTimerComplete;
+}
+
+/**
+ * Context values related to the current execution of the workflow.
+ */
+export interface WorkflowExecutionContext {
+  /**
+   * Computed, Unique ID of the execution.
+   */
+  id: ExecutionID;
+  /**
+   * Unique name of the execution, optionally provided in the startWorkflow call.
+   */
+  name: string;
+  /**
+   * ID of the parent execution if this is a child workflow
+   */
+  parentId?: ExecutionID;
+  /**
+   * The ISO 8601 UTC time the execution started.
+   */
+  startTime: string;
+}
+
+/**
+ * Context values related to the workflow definition.
+ */
+export interface WorkflowDefinitionContext {
+  /**
+   * The name of the workflow.
+   */
+  name: string;
+}
+
+/**
+ * Context values provided to each workflow execution.
+ */
+export interface WorkflowContext {
+  /**
+   * Context values related to the current execution of the workflow.
+   */
+  workflow: WorkflowDefinitionContext;
+  /**
+   * Context values related to the workflow definition.
+   */
+  execution: WorkflowExecutionContext;
 }

@@ -32,10 +32,14 @@ eventualRuntimeTestHarness(
       "call activity",
       workflow1,
       { name: "sam" },
-      "you said hello sam"
+      `you said hello sam I am hello2 and you were invoked by my-workflow`
     );
 
-    testCompletion("call workflow", workflow2, "user: you said hello sam");
+    testCompletion(
+      "call workflow",
+      workflow2,
+      "user: you said hello sam I am hello2 and you were invoked by my-workflow"
+    );
 
     testCompletion("sleep", workflow3, "done!");
 
@@ -118,7 +122,7 @@ eventualRuntimeTestHarness(
         "call activity",
         workflow1,
         { name: "sam" },
-        "you said hello sam"
+        "you said hello sam I am hello2 and you were invoked by my-workflow"
       );
 
       testCompletion("test commands", allCommands, {
