@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.21.0 (2023-02-28)
+
+### Features
+
+- invocation time timeouts for workflows and activities ([#304](https://github.com/functionless/eventual/issues/304)) ([3329d36](https://github.com/functionless/eventual/commit/3329d364c34bb96c0ae6e689fc8ca01081a56237))
+
 ## 0.20.4 (2023-02-28)
 
 **Note:** Version bump only for package @eventual/cli
