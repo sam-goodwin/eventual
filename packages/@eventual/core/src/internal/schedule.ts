@@ -23,12 +23,12 @@ export function isTimeSchedule(schedule: any): schedule is TimeSchedule {
 }
 
 export const durationScheduleSchema = /* @__PURE__ */ z.object({
-  type: z.literal("Duration"),
-  dur: z.number(),
-  unit: z.enum(DURATION_UNITS),
+  type: /* @__PURE__ */ z.literal("Duration"),
+  dur: /* @__PURE__ */ z.number(),
+  unit: /* @__PURE__ */ z.enum(DURATION_UNITS),
 });
 
 export const timeScheduleSchema = /* @__PURE__ */ z.object({
-  type: z.literal("Time"),
-  isoDate: z.string().datetime(),
+  type: /* @__PURE__ */ z.literal("Time"),
+  isoDate: /* @__PURE__ */ z.string().datetime(),
 });

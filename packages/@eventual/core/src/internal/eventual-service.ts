@@ -9,8 +9,10 @@ export const EVENTUAL_SYSTEM_COMMAND_NAMESPACE = "_system";
 
 export const sortOrderSchema = z.enum(["ASC", "DESC"]);
 
+// Note: all top level zod builder functions should be labelled with pure
+// to avoid them being considered side effects and bundled
 export const publishEventsRequestSchema = /* @__PURE__ */ z.object({
-  events: z.array(eventEnvelopeSchema),
+  events: /* @__PURE__ */ z.array(eventEnvelopeSchema),
 });
 
 export interface PublishEventsRequest
@@ -25,10 +27,10 @@ export interface ListWorkflowsResponse {
 }
 
 export const sendSignalRequestSchema = /* @__PURE__ */ z.object({
-  executionId: z.string(),
-  signalId: z.string(),
-  payload: z.any(),
-  id: z.string().optional(),
+  executionId: /* @__PURE__ */ z.string(),
+  signalId: /* @__PURE__ */ z.string(),
+  payload: /* @__PURE__ */ z.any(),
+  id: /* @__PURE__ */ z.string().optional(),
 });
 
 export interface SendSignalRequestSchema
@@ -36,9 +38,9 @@ export interface SendSignalRequestSchema
 
 export const startExecutionRequestSchema =
   /* @__PURE__ */ workflowOptionsSchema.extend({
-    executionName: z.string().optional(),
-    workflow: z.string(),
-    input: z.any().optional(),
+    executionName: /* @__PURE__ */ z.string().optional(),
+    workflow: /* @__PURE__ */ z.string(),
+    input: /* @__PURE__ */ z.any().optional(),
   });
 
 export interface StartExecutionRequest
@@ -57,11 +59,11 @@ export interface StartExecutionResponse {
 }
 
 export const listExecutionsRequestSchema = /* @__PURE__ */ z.object({
-  statuses: z.array(z.nativeEnum(ExecutionStatus)).optional(),
-  workflowName: z.string().optional(),
-  nextToken: z.string().optional(),
-  sortDirection: sortOrderSchema.default("ASC").optional(),
-  maxResults: z.number().default(100).optional(),
+  statuses: /* @__PURE__ */ z.array(z.nativeEnum(ExecutionStatus)).optional(),
+  workflowName: /* @__PURE__ */ z.string().optional(),
+  nextToken: /* @__PURE__ */ z.string().optional(),
+  sortDirection: /* @__PURE__ */ sortOrderSchema.default("ASC").optional(),
+  maxResults: /* @__PURE__ */ z.number().default(100).optional(),
 });
 
 export interface ListExecutionsRequest
@@ -76,11 +78,14 @@ export interface ListExecutionsResponse {
 }
 
 export const listExecutionEventsRequestSchema = /* @__PURE__ */ z.object({
-  executionId: z.string(),
-  sortDirection: sortOrderSchema.default("ASC").optional(),
-  nextToken: z.string().optional(),
-  maxResults: z.number().default(100).optional(),
-  after: z.string().optional().describe("Start returning after a data"),
+  executionId: /* @__PURE__ */ z.string(),
+  sortDirection: /* @__PURE__ */ sortOrderSchema.default("ASC").optional(),
+  nextToken: /* @__PURE__ */ z.string().optional(),
+  maxResults: /* @__PURE__ */ z.number().default(100).optional(),
+  after: /* @__PURE__ */ z
+    .string()
+    .optional()
+    .describe("Start returning after a data"),
 });
 
 export interface ListExecutionEventsRequest
@@ -96,21 +101,21 @@ export interface ExecutionHistoryResponse {
 }
 
 export const sendActivitySuccessRequestSchema = /* @__PURE__ */ z.object({
-  type: z.literal("Success"),
-  activityToken: z.string(),
-  result: z.any(),
+  type: /* @__PURE__ */ z.literal("Success"),
+  activityToken: /* @__PURE__ */ z.string(),
+  result: /* @__PURE__ */ z.any(),
 });
 
 export const sendActivityFailureRequestSchema = /* @__PURE__ */ z.object({
-  type: z.literal("Failure"),
-  activityToken: z.string(),
-  error: z.string(),
-  message: z.string().optional(),
+  type: /* @__PURE__ */ z.literal("Failure"),
+  activityToken: /* @__PURE__ */ z.string(),
+  error: /* @__PURE__ */ z.string(),
+  message: /* @__PURE__ */ z.string().optional(),
 });
 
 export const sendActivityHeartbeatRequestSchema = /* @__PURE__ */ z.object({
-  type: z.literal("Heartbeat"),
-  activityToken: z.string(),
+  type: /* @__PURE__ */ z.literal("Heartbeat"),
+  activityToken: /* @__PURE__ */ z.string(),
 });
 
 export const sendActivityUpdateSchema = /* @__PURE__ */ z.union([
