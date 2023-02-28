@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.20.4 (2023-02-28)
+
+**Note:** Version bump only for package @eventual/integrations-slack
+
 ## 0.20.3 (2023-02-28)
 
 **Note:** Version bump only for package @eventual/integrations-slack
