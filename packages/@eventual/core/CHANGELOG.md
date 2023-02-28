@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.20.2 (2023-02-28)
+
+### Bug Fixes
+
+- clean up create-eventual and use command in template instead of api.get/put/post ([#301](https://github.com/functionless/eventual/issues/301)) ([247d197](https://github.com/functionless/eventual/commit/247d1974a4b619c82e81db2f5628496868434e79))
+
 ## 0.20.1 (2023-02-28)
 
 ### Bug Fixes

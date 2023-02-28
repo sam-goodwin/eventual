@@ -57,12 +57,21 @@ export function MyStack({ stack }: StackContext) {
 `;
 }
 
-export function sampleCDKApp(projectName: string) {
-  return `import { App } from "aws-cdk-lib";
-import { MyServiceStack } from "./${projectName}-stack";
+export function sampleCDKApp(serviceName: string) {
+  const servicePackageName = `@${serviceName}/service`;
+  const serviceReferenceName = serviceName.replace(/[^A-Za-z0-9_]*/g, "");
+
+  return `import { App, Stack, CfnOutput } from "aws-cdk-lib";
+import { Service } from "@eventual/aws-cdk";
 
 const app = new App();
+const stack = new Stack(app, "${serviceName}")
 
-new MyServiceStack(app, "${projectName}");
+import type * as ${serviceReferenceName} from "${servicePackageName}"
+
+const service = new Service<typeof ${serviceReferenceName}>(stack, "Service", {
+  name: "${serviceName}",
+  entry: require.resolve("${servicePackageName}")
+});
 `;
 }
