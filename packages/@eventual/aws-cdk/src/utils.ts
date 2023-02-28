@@ -30,7 +30,45 @@ export function addEnvironment(
   );
 }
 
-export type PickType<T, U> = Pick<T, KeysOfType<T, U>>;
+export type ServiceEntityProps<Service, Kind extends string, Value> = {
+  // first, pluck the methods where the exported name and the string name are the same
+  // these we want to use direct pick so that the type-level connection is maintained
+  // this gives us jump to definition from client.method to export const method = command()
+  // it also carries forward documentation on the method declaration
+  [k in keyof Pick<Service, KeysWhereNameIsSame<Service, Kind>>]: Value;
+} & {
+  // second, if the method's string name differs from the exported name, then transform
+  // from the exported name into the command literal name
+  // this is a fall back as it loses the aforementioned links
+  // we still get type-safety but no jump to definition or carry-forward of docs from
+  // the command declaration
+  // those features will still work for the input passed into the command, but not the
+  // command itself.
+  [k in keyof Pick<
+    Service,
+    KeysWhereNameIsDifferent<Service, Kind>
+  > as Service[k] extends { name: infer Name extends string }
+    ? Name
+    : never]: Value;
+};
+
+export type GetServiceEntityNames<Service, Kind> =
+  | KeysWhereNameIsSame<Service, Kind>
+  | KeysWhereNameIsDifferent<Service, Kind>;
+
+export type KeysWhereNameIsSame<Service, Kind> = {
+  [k in keyof Service]: k extends Extract<Service[k], { name: string }>["name"]
+    ? // we only want commands to show up
+      Service[k] extends { kind: Kind }
+      ? k
+      : never
+    : never;
+}[keyof Service];
+
+export type KeysWhereNameIsDifferent<Service, Kind> = Exclude<
+  KeysOfType<Service, { kind: Kind }>,
+  KeysWhereNameIsSame<Service, Kind>
+>;
 
 export type KeysOfType<T, U> = {
   [k in keyof T]: T[k] extends U ? k : never;

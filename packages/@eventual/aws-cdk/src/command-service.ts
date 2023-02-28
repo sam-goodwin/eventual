@@ -30,19 +30,16 @@ import {
 import type { EventService } from "./event-service";
 import { grant } from "./grant";
 import { ServiceConstructProps } from "./service";
-import { addEnvironment, KeysOfType, NODE_18_X } from "./utils";
+import { addEnvironment, NODE_18_X, ServiceEntityProps } from "./utils";
 import type { WorkflowService } from "./workflow-service";
 
-export type CommandNames<Service = any> = KeysOfType<
-  Service,
-  { kind: "Command" }
->;
+export type Commands<Service> = {
+  default: Function;
+} & ServiceEntityProps<Service, "Command", Function>;
 
 export type CommandProps<Service> = {
   default?: CommandHandlerProps;
-} & {
-  [api in CommandNames<Service>]?: CommandHandlerProps;
-};
+} & Partial<ServiceEntityProps<Service, "Command", CommandHandlerProps>>;
 
 export interface CommandsProps<Service = any> extends ServiceConstructProps {
   activityService: ActivityService<Service>;
@@ -63,12 +60,6 @@ export interface CommandHandlerProps
   init?(func: Function): void;
 }
 
-export type ServiceCommands<Service> = {
-  default: Function;
-} & {
-  [command in CommandNames<Service>]: Function;
-};
-
 export interface SystemCommands {
   [key: string]: Function;
 }
@@ -85,7 +76,7 @@ export class CommandService<Service = any> {
   /**
    * A map of Command Name to the Lambda Function handling its logic.
    */
-  readonly serviceCommands: ServiceCommands<Service>;
+  readonly serviceCommands: Commands<Service>;
   readonly systemCommands: SystemCommands;
 
   /**
@@ -139,7 +130,7 @@ export class CommandService<Service = any> {
           ({
             manifest,
             overrides:
-              props.overrides?.[manifest.spec.name as CommandNames<Service>],
+              props.overrides?.[manifest.spec.name as keyof Commands<Service>],
             init: (handler) => {
               // The handler is given an instance of the service client.
               // Allow it to access any of the methods on the service client by default.
@@ -173,7 +164,7 @@ export class CommandService<Service = any> {
     });
     this.serviceCommands = Object.fromEntries(
       Object.entries(serviceCommands).map(([c, { handler }]) => [c, handler])
-    ) as ServiceCommands<Service>;
+    ) as Commands<Service>;
     this.systemCommands = Object.fromEntries(
       Object.entries(systemCommands).map(([c, { handler }]) => [c, handler])
     ) as SystemCommands;
@@ -238,7 +229,7 @@ export class CommandService<Service = any> {
           );
 
           return [
-            command.name as CommandNames<Service>,
+            command.name as keyof Commands<Service>,
             {
               handler,
               paths: createAPIPaths(handler, mapping),

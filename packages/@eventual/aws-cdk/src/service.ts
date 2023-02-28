@@ -34,7 +34,7 @@ import { BuildOutput, buildServiceSync } from "./build";
 import {
   CommandProps,
   CommandService,
-  ServiceCommands,
+  Commands,
   SystemCommands,
 } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal.js";
@@ -141,7 +141,7 @@ export class Service<S = any> extends Construct {
   /**
    * Commands defined by the service.
    */
-  public readonly commands: ServiceCommands<S>;
+  public readonly commands: Commands<S>;
   /**
    * API Gateway which serves the service commands and the system commands.
    */
