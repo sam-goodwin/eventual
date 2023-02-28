@@ -92,21 +92,6 @@ After deploying to AWS, you'll have a single stack named \`${serviceName}\` cont
 
 See the [Service documentation](https://docs.eventual.net/reference/service) for more information.
 
-### Noteworthy Lambda Functions
-
-* \`${serviceName}\-api-handler\` - the Lambda Function that handles any API routes, see [API](https://docs.eventual.net/reference/api).
-* \`${serviceName}\-event-handler\` - the Lambda Function that handles any Event subscriptions, see [Event](https://docs.eventual.net/reference/event).
-* \`${serviceName}\-activity-handler\` - the Lambda Function that handles any Activity invocations, see [Activity](https://docs.eventual.net/reference/activity).
-* \`${serviceName}\-orchestrator-handler\` - the Lambda Function that orchestrates Workflow Executions, see [Workflow](https://docs.eventual.net/reference/workflow).
-
-### Viewing the Logs
-
-The following CloudWatch LogGroups are useful for seeing what's happening in your Service.
-* \`${serviceName}-execution-logs\` - contains a single LogStream per Workflow Execution containing all logs from the \`workflow\` and \`activity\` functions. This is a good place to see the logs for a single execution in one place, including any logs from a workflow and any activities it invokes.
-* \`${serviceName}-api-handler\` - the API handler Lambda Function's logs, see [API](https://docs.eventual.net/reference/api).
-* \`${serviceName}-event-handler\` - the Event handler Lambda Function's logs, see [Events](https://docs.eventual.net/reference/event)
-* \`${serviceName}-orchestrator\` - system logs of the Workflow Orchestrator function.
-
 ## Scripts
 
 The root \`package.json\` contains some scripts for your convenience.
@@ -347,7 +332,7 @@ packages:
         .mkdir("src")
         .then(() =>
           Promise.all([
-            fs.writeFile(path.join("src", "app.ts"), sampleCDKApp(projectName)),
+            fs.writeFile(path.join("src", "app.ts"), sampleCDKApp(serviceName)),
           ])
         ),
     ]);

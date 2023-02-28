@@ -57,25 +57,25 @@ export function MyStack({ stack }: StackContext) {
 `;
 }
 
-export function sampleCDKApp(projectName: string) {
-  const servicePackageName = `@${projectName}/service`;
-  const serviceReferenceName = projectName.replace(/[^A-Za-z0-9_]*/g, "");
+export function sampleCDKApp(serviceName: string) {
+  const servicePackageName = `@${serviceName}/service`;
+  const serviceReferenceName = serviceName.replace(/[^A-Za-z0-9_]*/g, "");
 
   return `import { App, Stack, CfnOutput } from "aws-cdk-lib";
 import { Service } from "@eventual/aws-cdk";
 
 const app = new App();
-const stack = new Stack(app, "${projectName}")
+const stack = new Stack(app, "${serviceName}")
 
 import type * as ${serviceReferenceName} from "${servicePackageName}"
 
 const service = new Service<typeof ${serviceReferenceName}>(this, "Service", {
-  name: "${projectName}",
+  name: "${serviceName}",
   entry: require.resolve("${servicePackageName}")
 });
 
-new CfnOutput(stack, "${projectName}-api-endpoint", {
-  exportName: "${projectName}-api-endpoint",
+new CfnOutput(stack, "${serviceName}-api-endpoint", {
+  exportName: "${serviceName}-api-endpoint",
   value: service.gateway.url!,
 });
 `;
