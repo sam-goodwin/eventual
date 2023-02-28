@@ -218,7 +218,7 @@ export function createActivityWorker({
 
                   const context: ActivityContext = {
                     activity: {
-                      name,
+                      name: activity.name,
                     },
                     execution: runtimeContext.execution,
                     invocation: runtimeContext.invocation,
