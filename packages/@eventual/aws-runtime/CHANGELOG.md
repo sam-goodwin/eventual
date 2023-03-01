@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.22.0 (2023-03-01)
+
+### Features
+
+- support api gateway and path based CORS ([#305](https://github.com/functionless/eventual/issues/305)) ([399f173](https://github.com/functionless/eventual/commit/399f17358c02b2d79be2ef2ff7f7b2c39e5c7944))
+
 # 0.21.0 (2023-02-28)
 
 ### Features
