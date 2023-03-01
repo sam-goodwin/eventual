@@ -52,6 +52,8 @@ export function createCommandWorker({
         if (response === undefined) {
           if (request.method === "OPTIONS") {
             return new HttpResponse(undefined, {
+              // CORS expects a 204 or 200, using 204 to match API Gateway
+              // and accurately reflect NO CONTENT
               status: 204,
             });
           }
