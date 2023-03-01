@@ -36,6 +36,7 @@ import {
   CommandService,
   Commands,
   SystemCommands,
+  CorsOptions,
 } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal.js";
 import { EventService } from "./event-service";
@@ -94,6 +95,7 @@ export interface ServiceProps<Service = any> {
    * Override properties of Subscription Functions within the Service.
    */
   subscriptions?: SubscriptionOverrides<Service>;
+  cors?: CorsOptions;
   system?: {
     /**
      * Configuration properties for the workflow orchestrator
@@ -239,6 +241,7 @@ export class Service<S = any> extends Construct {
       overrides: props.commands,
       eventService: this.eventService,
       workflowService: workflowService,
+      cors: props.cors,
       ...serviceConstructProps,
     });
     proxyCommandService._bind(this.commandService);
