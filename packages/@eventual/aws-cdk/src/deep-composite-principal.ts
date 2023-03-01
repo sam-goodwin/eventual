@@ -42,7 +42,6 @@ export class DeepCompositePrincipal extends CompositePrincipal {
   override addToPrincipalPolicy(
     statement: PolicyStatement
   ): AddToPrincipalPolicyResult {
-    console.log(statement);
     const res = this._principals.map((p) => p.addToPrincipalPolicy(statement));
     const added = res.every((s) => s.statementAdded);
     if (added) {

@@ -50,6 +50,11 @@ export function createCommandWorker({
       try {
         const response = await router.handle(request);
         if (response === undefined) {
+          if (request.method === "OPTIONS") {
+            return new HttpResponse(undefined, {
+              status: 204,
+            });
+          }
           return new HttpResponse(
             `Not Found: ${request.method} ${request.url}`,
             {

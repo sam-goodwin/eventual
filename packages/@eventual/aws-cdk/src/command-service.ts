@@ -1,16 +1,14 @@
 import {
   HttpApi,
+  HttpRouteProps,
   HttpMethod,
-  HttpRouteProps
+  CorsHttpMethod,
 } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
 import { ENV_NAMES, sanitizeFunctionName } from "@eventual/aws-runtime";
-import {
-  commandRpcPath,
-  isDefaultNamespaceCommand
-} from "@eventual/core";
-import { Arn, aws_iam, Lazy, Stack } from "aws-cdk-lib";
+import { commandRpcPath, isDefaultNamespaceCommand } from "@eventual/core";
+import { Arn, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
 import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
@@ -20,7 +18,7 @@ import type {
   CommandFunction,
   InternalCommandFunction,
   InternalCommandName,
-  InternalCommands
+  InternalCommands,
 } from "./build-manifest";
 import type { EventService } from "./event-service";
 import { grant } from "./grant";
@@ -37,11 +35,47 @@ export type CommandProps<Service> = {
   default?: CommandHandlerProps;
 } & Partial<ServiceEntityProps<Service, "Command", CommandHandlerProps>>;
 
+export interface CorsOptions {
+  /**
+   * Specifies whether credentials are included in the CORS request.
+   * @default false
+   */
+  readonly allowCredentials?: boolean;
+  /**
+   * Represents a collection of allowed headers.
+   * @default - No Headers are allowed.
+   */
+  readonly allowHeaders?: string[];
+  /**
+   * Represents a collection of allowed HTTP methods.
+   * OPTIONS will be added automatically.
+   *
+   * @default - OPTIONS
+   */
+  readonly allowMethods?: CorsHttpMethod[];
+  /**
+   * Represents a collection of allowed origins.
+   * @default - No Origins are allowed.
+   */
+  readonly allowOrigins?: string[];
+  /**
+   * Represents a collection of exposed headers.
+   * @default - No Expose Headers are allowed.
+   */
+  readonly exposeHeaders?: string[];
+  /**
+   * The duration that the browser should cache preflight request results.
+   * @default Duration.seconds(0)
+   */
+  readonly maxAge?: Duration;
+}
+
 export interface CommandsProps<Service = any> extends ServiceConstructProps {
   activityService: ActivityService<Service>;
   overrides?: CommandProps<Service>;
   eventService: EventService;
   workflowService: WorkflowService;
+  cors?: CorsOptions;
 }
 
 /**
@@ -168,6 +202,17 @@ export class CommandService<Service = any> {
         "default",
         this.serviceCommands.default
       ),
+      corsPreflight: props.cors
+        ? {
+            ...props.cors,
+            allowMethods: Array.from(
+              new Set([
+                ...(props.cors.allowMethods ?? []),
+                CorsHttpMethod.OPTIONS,
+              ])
+            ),
+          }
+        : undefined,
     });
 
     this.finalize();
@@ -240,7 +285,11 @@ export class CommandService<Service = any> {
           }
           if (command.path) {
             self.gateway.addRoutes({
-              path: command.path,
+              // itty router supports paths in the form /*, but api gateway expects them in the form /{proxy+}
+              path:
+                command.path === "*"
+                  ? "/{proxy+}"
+                  : (command.path as string).replace(/\*/g, "{proxy+}"),
               methods: [
                 (command.method as HttpMethod | undefined) ?? HttpMethod.GET,
               ],
