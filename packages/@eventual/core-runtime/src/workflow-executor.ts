@@ -170,7 +170,7 @@ export class WorkflowExecutor<Input, Output> {
 
     return new Promise(async (resolve) => {
       // start context with execution hook
-      this.registerExecutionHook();
+      await this.registerExecutionHook();
       this.started = {
         // TODO, also cancel?
         resolve: (result) => {
@@ -234,7 +234,7 @@ export class WorkflowExecutor<Input, Output> {
     this.history.push(...history);
 
     return new Promise(async (resolve) => {
-      this.registerExecutionHook();
+      await this.registerExecutionHook();
       await this.drainHistoryEvents();
 
       const newCommands = this.commandsToEmit;
@@ -254,9 +254,9 @@ export class WorkflowExecutor<Input, Output> {
     this.started.resolve(result);
   }
 
-  private registerExecutionHook() {
+  private async registerExecutionHook() {
     const self = this;
-    registerWorkflowHook({
+    await registerWorkflowHook({
       registerEventualCall: (call) => {
         try {
           const eventual = createEventualFromCall(call);

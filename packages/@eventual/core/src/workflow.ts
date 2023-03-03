@@ -1,4 +1,3 @@
-import { isPromise } from "util/types";
 import type {
   ChildExecution,
   ExecutionHandle,
@@ -185,7 +184,7 @@ export function workflow<Input = any, Output = any>(
       // if an eventual/promise is given, even if it is a duration or a time, timeout based on the
       // promise resolution.
       // TODO: support reporting cancellation to children when the parent times out?
-      isPromise(timeout) ? timeout : undefined
+      timeout && "then" in timeout ? timeout : undefined
     );
   }) as any;
 

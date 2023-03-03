@@ -5,7 +5,6 @@ import type { EventualServiceClient } from "../service-client.js";
 import type { Subscription } from "../subscription.js";
 import type { Workflow } from "../workflow.js";
 import type { ActivityRuntimeContext } from "./activity.js";
-// import type { Eventual, EventualCallCollector } from "./eventual.js";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -14,12 +13,6 @@ declare global {
      * Data about the current activity assigned before running an activity on an the activity worker.
      */
     activityContext?: ActivityRuntimeContext;
-    /**
-     * An object used by the interpreter to collect {@link Eventual}s while running a workflow code.
-     *
-     * Set by the interpreter only when needed.
-     */
-    // eventualCollector?: EventualCallCollector;
     /**
      * Callable activities which register themselves in an activity worker.
      */
@@ -72,26 +65,6 @@ export function clearEventHandlers() {
 
 export const activities = (): Record<string, Activity<any, any, any>> =>
   (globalThis._eventual.activities ??= {});
-
-// const eventualCollector = (): EventualCallCollector => {
-//   const collector = globalThis._eventual.eventualCollector;
-//   if (!collector) {
-//     throw new Error("No Eventual Collector Provided");
-//   }
-//   return collector;
-// };
-
-// export function registerEventual<A extends Eventual>(eventual: A): A {
-//   return eventualCollector().pushEventual(eventual);
-// }
-
-// export function setEventualCollector(collector: EventualCallCollector) {
-//   globalThis._eventual.eventualCollector = collector;
-// }
-
-// export function clearEventualCollector() {
-//   globalThis._eventual.eventualCollector = undefined;
-// }
 
 /**
  * Register the global service client used by workflow functions

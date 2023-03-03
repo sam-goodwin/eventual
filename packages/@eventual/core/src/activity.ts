@@ -1,4 +1,3 @@
-import { isPromise } from "util/types";
 import { ExecutionID } from "./execution.js";
 import { FunctionRuntimeProps } from "./function-props.js";
 import { AsyncTokenSymbol } from "./internal/activity.js";
@@ -20,7 +19,6 @@ import {
 } from "./internal/global.js";
 import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
 import { isSourceLocation, SourceLocation } from "./internal/service-spec.js";
-import { assertNever } from "./internal/util.js";
 import type { DurationSchedule, Schedule } from "./schedule.js";
 import {
   EventualServiceClient,
@@ -311,15 +309,11 @@ export function activity<Name extends string, Input = any, Output = any>(
         name,
         input,
         timeout
-          ? // if the timeout is an eventual already, just use that
-            isPromise(timeout)
-            ? timeout
-            : // otherwise make the right eventual type
-            isDurationSchedule(timeout)
+          ? isDurationSchedule(timeout)
             ? createAwaitDurationCall(timeout.dur, timeout.unit)
             : isTimeSchedule(timeout)
             ? createAwaitTimeCall(timeout.isoDate)
-            : assertNever(timeout)
+            : timeout
           : undefined,
         options?.heartbeatTimeout ?? opts?.heartbeatTimeout
       ) as any;
