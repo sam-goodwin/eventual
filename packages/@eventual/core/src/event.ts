@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { createPublishEventsCall } from "./internal/calls/send-events-call.js";
+import { createPublishEventsCall } from "./internal/calls/publish-events-call.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
 import { events, getServiceClient, subscriptions } from "./internal/global.js";
 import { isSourceLocation } from "./internal/service-spec.js";

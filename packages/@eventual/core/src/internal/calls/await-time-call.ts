@@ -1,49 +1,46 @@
 import { DurationUnit } from "../../schedule.js";
+import { EventualPromise, getWorkflowHook } from "../eventual-hook.js";
 import {
-  createEventual,
-  EventualBase,
-  EventualKind,
-  isEventualOfKind,
-} from "../eventual.js";
-import { registerEventual } from "../global.js";
-import { Resolved } from "../result.js";
+  createEventualCall,
+  EventualCallBase,
+  EventualCallKind,
+  isEventualCallOfKind,
+} from "./calls.js";
 
 export function isAwaitDurationCall(a: any): a is AwaitDurationCall {
-  return isEventualOfKind(EventualKind.AwaitDurationCall, a);
+  return isEventualCallOfKind(EventualCallKind.AwaitDurationCall, a);
 }
 
 export function isAwaitTimeCall(a: any): a is AwaitTimeCall {
-  return isEventualOfKind(EventualKind.AwaitTimeCall, a);
+  return isEventualCallOfKind(EventualCallKind.AwaitTimeCall, a);
 }
 
 export interface AwaitDurationCall
-  extends EventualBase<EventualKind.AwaitDurationCall, Resolved<undefined>> {
-  seq?: number;
+  extends EventualCallBase<EventualCallKind.AwaitDurationCall> {
   dur: number;
   unit: DurationUnit;
 }
 
 export interface AwaitTimeCall
-  extends EventualBase<EventualKind.AwaitTimeCall, Resolved<undefined>> {
-  seq?: number;
+  extends EventualCallBase<EventualCallKind.AwaitTimeCall> {
   isoDate: string;
 }
 
 export function createAwaitDurationCall(
   dur: number,
   unit: DurationUnit
-): AwaitDurationCall {
-  return registerEventual(
-    createEventual(EventualKind.AwaitDurationCall, {
+): EventualPromise<void> {
+  return getWorkflowHook().registerEventualCall(
+    createEventualCall(EventualCallKind.AwaitDurationCall, {
       dur,
       unit,
     })
   );
 }
 
-export function createAwaitTimeCall(isoDate: string): AwaitTimeCall {
-  return registerEventual(
-    createEventual(EventualKind.AwaitTimeCall, {
+export function createAwaitTimeCall(isoDate: string): EventualPromise<void> {
+  return getWorkflowHook().registerEventualCall(
+    createEventualCall(EventualCallKind.AwaitTimeCall, {
       isoDate,
     })
   );

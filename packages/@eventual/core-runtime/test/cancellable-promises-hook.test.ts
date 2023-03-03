@@ -301,6 +301,22 @@ test("isPromise", async () => {
   });
 });
 
+/**
+ * This currently fails, cancellation only rejects the top promise, not all of the children, what value does it do?
+ */
+test.skip("cancelled child", async () => {
+  let p1: Promise<any>;
+  const p2 = cancellable(async () => {
+    p1 = new Promise(() => {});
+    await sleep(0);
+    cancelLocalPromises();
+    await p1;
+  });
+
+  await expect(() => p2!).rejects.toThrow("cancelled");
+  await expect(p1!).rejects.toThrow("cancelled");
+});
+
 // test("cancel with ordered", async () => {
 //   const fn = jest.fn();
 //   const fn2 = jest.fn();

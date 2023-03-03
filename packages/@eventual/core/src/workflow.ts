@@ -1,12 +1,10 @@
+import { isPromise } from "util/types";
 import type {
   ChildExecution,
   ExecutionHandle,
   ExecutionID,
 } from "./execution.js";
 import { createWorkflowCall } from "./internal/calls/workflow-call.js";
-import { isChain } from "./internal/chain.js";
-import type { Program } from "./internal/eventual.js";
-import { isEventual } from "./internal/eventual.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
 import { getServiceClient, workflows } from "./internal/global.js";
 import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
@@ -23,7 +21,7 @@ import { Schedule } from "./schedule.js";
 import type { StartExecutionRequest } from "./service-client.js";
 
 export interface WorkflowHandler<Input = any, Output = any> {
-  (input: Input, context: WorkflowContext): Promise<Output> | Program<any>;
+  (input: Input, context: WorkflowContext): Promise<Output>;
 }
 
 /**
@@ -172,16 +170,6 @@ export function workflow<Input = any, Output = any>(
     // a timeout can either by from definition or a eventual/promise or both.
     // take the invocation time configuration first.
     const timeout = options?.timeout ?? opts?.timeout;
-    if (
-      timeout &&
-      !(
-        isEventual(timeout) ||
-        isTimeSchedule(timeout) ||
-        isDurationSchedule(timeout)
-      )
-    ) {
-      throw new Error("Timeout promise must be an Eventual or a Schedule.");
-    }
 
     return createWorkflowCall(
       name,
@@ -197,7 +185,7 @@ export function workflow<Input = any, Output = any>(
       // if an eventual/promise is given, even if it is a duration or a time, timeout based on the
       // promise resolution.
       // TODO: support reporting cancellation to children when the parent times out?
-      isEventual(timeout) ? timeout : undefined
+      isPromise(timeout) ? timeout : undefined
     );
   }) as any;
 
@@ -215,11 +203,7 @@ export function workflow<Input = any, Output = any>(
   };
 
   // @ts-ignore
-  workflow.definition = isChain(definition)
-    ? definition
-    : function* (input: Input, context: WorkflowContext): any {
-        return yield definition(input, context);
-      }; // This type is added in the core-runtime package declaration.
+  workflow.definition = definition;
 
   workflows().set(name, workflow);
   return workflow;

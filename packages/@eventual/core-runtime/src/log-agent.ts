@@ -228,7 +228,7 @@ export class LogAgent {
   public async logContextScope<T>(
     context: LogContext,
     scopeHandler: () => T
-  ): Promise<T> {
+  ): Promise<Awaited<T>> {
     try {
       this.pushContext(context);
       return await scopeHandler();

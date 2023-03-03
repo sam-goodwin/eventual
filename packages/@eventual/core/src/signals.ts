@@ -2,7 +2,6 @@ import { ulid } from "ulidx";
 import { createExpectSignalCall } from "./internal/calls/expect-signal-call.js";
 import { createSendSignalCall } from "./internal/calls/send-signal-call.js";
 import { createRegisterSignalHandlerCall } from "./internal/calls/signal-handler-call.js";
-import { isEventual } from "./internal/eventual.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
 import { getServiceClient } from "./internal/global.js";
 import { SignalTargetType } from "./internal/signal.js";
@@ -177,14 +176,9 @@ export function expectSignal<SignalPayload = any>(
     throw new Error("expectSignal is only valid in a workflow");
   }
 
-  const timeout = opts?.timeout;
-  if (timeout && !isEventual(timeout)) {
-    throw new Error("Timeout promise must be an Eventual.");
-  }
-
   return createExpectSignalCall(
     typeof signal === "string" ? signal : signal.id,
-    timeout
+    opts?.timeout
   ) as any;
 }
 

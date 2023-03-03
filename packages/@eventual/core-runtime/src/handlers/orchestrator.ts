@@ -1,5 +1,4 @@
 import {
-  WorkflowContext,
   DeterminismError,
   ExecutionID,
   ExecutionStatus,
@@ -10,9 +9,9 @@ import {
   Schedule,
   SucceededExecution,
   Workflow,
+  WorkflowContext,
 } from "@eventual/core";
 import {
-  clearEventualCollector,
   getEventId,
   HistoryEvent,
   HistoryStateEvent,
@@ -48,18 +47,18 @@ import { WorkflowClient } from "../clients/workflow-client.js";
 import { CommandExecutor } from "../command-executor.js";
 import { hookDate, restoreDate } from "../date-hook.js";
 import { isExecutionId, parseWorkflowName } from "../execution.js";
-import { interpret } from "../interpret.js";
 import { ExecutionLogContext, LogAgent, LogContextType } from "../log-agent.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
-import { timed, timedSync } from "../metrics/utils.js";
+import { timed } from "../metrics/utils.js";
 import { WorkflowProvider } from "../providers/workflow-provider.js";
 import { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
 import { ExecutionHistoryStore } from "../stores/execution-history-store.js";
 import { WorkflowTask } from "../tasks.js";
 import { groupBy, promiseAllSettledPartitioned } from "../utils.js";
 import { createEvent } from "../workflow-events.js";
+import { WorkflowExecutor } from "../workflow-executor.js";
 
 /**
  * The Orchestrator's client dependencies.
@@ -316,9 +315,8 @@ export function createOrchestrator({
           }
         }
 
-        const { result, commands: newCommands } = logAgent.logContextScopeSync(
-          executionLogContext,
-          () => {
+        const { result, commands: newCommands } =
+          await logAgent.logContextScope(executionLogContext, () => {
             console.debug("history events", JSON.stringify(history));
             console.debug("task events", JSON.stringify(events));
             console.debug(
@@ -330,7 +328,7 @@ export function createOrchestrator({
               JSON.stringify(processedEvents.interpretEvents)
             );
 
-            return timedSync(
+            return timed(
               metrics,
               OrchestratorMetrics.AdvanceExecutionDuration,
               () =>
@@ -341,8 +339,7 @@ export function createOrchestrator({
                   logAgent
                 )
             );
-          }
-        );
+          });
 
         metrics.setProperty(
           OrchestratorMetrics.AdvanceExecutionEvents,
@@ -676,7 +673,7 @@ function logEventMetrics(
   }
 }
 
-export function progressWorkflow(
+export async function progressWorkflow(
   executionId: string,
   workflow: Workflow,
   processedEvents: ProcessEventsResult,
@@ -704,8 +701,8 @@ export function progressWorkflow(
       processedEvents.firstRunStarted.timestamp
     ).getTime();
     hookDate(() => currentTime);
-    return interpret(
-      workflow.definition(processedEvents.startEvent.input, context),
+    const executor = new WorkflowExecutor(
+      workflow,
       processedEvents.interpretEvents,
       {
         hooks: {
@@ -727,9 +724,10 @@ export function progressWorkflow(
         },
       }
     );
+    return await executor.start(processedEvents.startEvent.input, context);
   } catch (err) {
     // temporary fix when the interpreter fails, but the activities are not cleared.
-    clearEventualCollector();
+    // clearEventualCollector();
     console.debug("workflow error", inspect(err));
     throw err;
   } finally {

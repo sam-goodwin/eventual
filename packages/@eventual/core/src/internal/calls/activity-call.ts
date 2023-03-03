@@ -1,38 +1,35 @@
 import { DurationSchedule } from "../../schedule.js";
+import { EventualPromise, getWorkflowHook } from "../eventual-hook.js";
 import {
-  createEventual,
-  Eventual,
-  EventualBase,
-  EventualKind,
-  isEventualOfKind,
-} from "../eventual.js";
-import { registerEventual } from "../global.js";
-import { Failed, Resolved } from "../result.js";
+  createEventualCall,
+  EventualCallBase,
+  EventualCallKind,
+  isEventualCallOfKind,
+} from "./calls.js";
 
 export function isActivityCall(a: any): a is ActivityCall {
-  return isEventualOfKind(EventualKind.ActivityCall, a);
+  return isEventualCallOfKind(EventualCallKind.ActivityCall, a);
 }
 
-export interface ActivityCall<T = any>
-  extends EventualBase<EventualKind.ActivityCall, Resolved<T> | Failed> {
-  seq?: number;
+export interface ActivityCall
+  extends EventualCallBase<EventualCallKind.ActivityCall> {
   name: string;
   input: any;
   heartbeat?: DurationSchedule;
   /**
    * Timeout can be any Eventual (promise). When the promise resolves, the activity is considered to be timed out.
    */
-  timeout?: Eventual;
+  timeout?: Promise<any>;
 }
 
-export function createActivityCall(
+export function createActivityCall<T>(
   name: string,
   input: any,
-  timeout?: Eventual,
+  timeout?: Promise<any>,
   heartbeat?: DurationSchedule
-): ActivityCall {
-  return registerEventual(
-    createEventual(EventualKind.ActivityCall, {
+): EventualPromise<T> {
+  return getWorkflowHook().registerEventualCall(
+    createEventualCall(EventualCallKind.ActivityCall, {
       name,
       input,
       timeout,

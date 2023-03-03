@@ -1,30 +1,27 @@
+import { EventualPromise, getWorkflowHook } from "../eventual-hook.js";
 import {
-  createEventual,
-  Eventual,
-  EventualBase,
-  EventualKind,
-  isEventualOfKind,
-} from "../eventual.js";
-import { registerEventual } from "../global.js";
-import { Failed, Resolved } from "../result.js";
+  createEventualCall,
+  EventualCallBase,
+  EventualCallKind,
+  isEventualCallOfKind,
+} from "./calls.js";
 
 export function isExpectSignalCall(a: any): a is ExpectSignalCall {
-  return isEventualOfKind(EventualKind.ExpectSignalCall, a);
+  return isEventualCallOfKind(EventualCallKind.ExpectSignalCall, a);
 }
 
-export interface ExpectSignalCall<T = any>
-  extends EventualBase<EventualKind.ExpectSignalCall, Resolved<T> | Failed> {
-  seq?: number;
+export interface ExpectSignalCall
+  extends EventualCallBase<EventualCallKind.ExpectSignalCall> {
   signalId: string;
-  timeout?: Eventual;
+  timeout?: Promise<any>;
 }
 
-export function createExpectSignalCall(
+export function createExpectSignalCall<T = any>(
   signalId: string,
-  timeout?: Eventual
-): ExpectSignalCall {
-  return registerEventual(
-    createEventual(EventualKind.ExpectSignalCall, {
+  timeout?: Promise<any>
+): EventualPromise<T> {
+  return getWorkflowHook().registerEventualCall(
+    createEventualCall(EventualCallKind.ExpectSignalCall, {
       timeout,
       signalId,
     })
