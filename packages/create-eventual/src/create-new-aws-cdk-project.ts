@@ -331,12 +331,9 @@ packages:
 The index.ts of your app should export all of the commands, activities and subscriptions
 defined within your service package.
 */
-export * from "./hello.js"
+export * from "./hello.js";
 `,
         "hello.ts": `import { activity, command, event, subscription, workflow } from "@eventual/core";
-
-// import a shared definition of the helloEvent
-import { helloEvent } from "${corePackageName}";
 
 // create a REST API for: POST /hello <name>
 export const hello = command("hello", async (name: string) => {
@@ -365,6 +362,8 @@ export const formatMessage = activity("formatName", async (name: string) => {
   return \`hello \${name}\`;
 });
 
+export const helloEvent = event<HelloEvent>("HelloEvent");
+
 export const onHelloEvent = subscription(
   "onHelloEvent",
   {
@@ -378,8 +377,7 @@ export const onHelloEvent = subscription(
 export interface HelloEvent {
   message: string;
 }
-
-export const helloEvent = event<HelloEvent>("HelloEvent");`,
+`,
       },
       test: {
         "hello.test.ts": `import { Execution, ExecutionStatus } from "@eventual/core";

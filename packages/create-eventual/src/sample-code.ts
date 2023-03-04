@@ -1,15 +1,11 @@
-export const sampleServiceCode = `import { event, activity, workflow, api, HttpResponse } from "@eventual/core";
+export const sampleServiceCode = `import { event, activity, workflow, command, HttpResponse } from "@eventual/core";
 
-api.post("/work", async (request) => {
-  const items: string[] = await request.json();
-
+export const work = command("work", async (items: string[]) => {
   const { executionId } = await myWorkflow.startExecution({
     input: items,
   });
-
-  return new HttpResponse(JSON.stringify({ executionId }), {
-    status: 200,
-  });
+  
+  return { executionId };
 });
 
 export const myWorkflow = workflow("myWorkflow", async (items: string[]) => {
