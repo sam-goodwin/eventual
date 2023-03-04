@@ -37,7 +37,6 @@ export async function createAwsCdkProject({
   const infraDir = `infra`;
 
   const infraPkgName = `infra`;
-  const corePackageName = `@${serviceName}/core`;
   const servicePackageName = `@${serviceName}/service`;
 
   const workspaceVersion = pkgManager === "pnpm" ? "workspace:^" : "*";
@@ -212,7 +211,7 @@ packages:
   function npm(
     command: string,
     options?: {
-      workspace?: "infra" | "service" | "core" | "all";
+      workspace?: "infra" | "service" | "all";
       args?: string[];
     }
   ) {
@@ -236,8 +235,7 @@ packages:
           options.workspace === "infra" ? infraDir : serviceDir
         }`;
       } else {
-        const workspace =
-          options.workspace === "core" ? corePackageName : options.workspace;
+        const workspace = options.workspace;
         if (pkgManager === "yarn") {
           return ` workspace ${workspace}`;
         } else {
@@ -323,9 +321,6 @@ packages:
     await createServicePackage(path.resolve(basePath, serviceDir), {
       packageName: servicePackageName,
       eventualVersion: version,
-      dependencies: {
-        [corePackageName]: workspaceVersion,
-      },
       src: {
         "index.ts": `/*
 The index.ts of your app should export all of the commands, activities and subscriptions
