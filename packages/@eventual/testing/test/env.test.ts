@@ -54,8 +54,6 @@ let env: TestEnvironment;
 // if there is pollution between tests, call reset()
 beforeAll(async () => {
   env = new TestEnvironment();
-
-  await env.initialize();
 });
 
 afterEach(() => {

@@ -7,8 +7,10 @@ import {
 import {
   assertNever,
   createEventualPromise,
+  enterWorkflowHookScope,
   EventualCall,
   EventualPromise,
+  ExecutionWorkflowHook,
   HistoryEvent,
   HistoryResultEvent,
   HistoryScheduledEvent,
@@ -21,14 +23,11 @@ import {
   isWorkflowTimedOut,
   iterator,
   Result,
-  tryGetWorkflowHook,
   WorkflowCommand,
   WorkflowEvent,
-  enterWorkflowHookScope,
   WorkflowRunStarted,
   WorkflowTimedOut,
   _Iterator,
-  ExecutionWorkflowHook,
 } from "@eventual/core/internal";
 import { isPromise } from "util/types";
 import { createEventualFromCall, isCorresponding } from "./eventual-factory.js";
@@ -172,7 +171,6 @@ export class WorkflowExecutor<Input, Output> {
 
     return new Promise(async (resolve) => {
       // start context with execution hook
-      console.log(tryGetWorkflowHook());
       this.started = {
         resolve: (result) => {
           const newCommands = this.commandsToEmit;
@@ -182,13 +180,11 @@ export class WorkflowExecutor<Input, Output> {
         },
       };
       try {
-        console.log(tryGetWorkflowHook());
         // ensure the workflow hook is available to the workflow
         // and tied to the workflow promise context
         const workflowPromise = this.enterWorkflowHookScope(() => {
           return this.workflow.definition(input, context);
         });
-        console.log(tryGetWorkflowHook());
         workflowPromise.then(
           (result) => this.forceComplete(Result.resolved(result)),
           (err) => this.forceComplete(Result.failed(err))

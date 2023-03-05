@@ -13,7 +13,7 @@ import {
   SendSignalRequest,
   StartExecutionRequest,
   SubscriptionHandler,
-  Workflow,
+  Workflow
 } from "@eventual/core";
 import {
   ActivityClient,
@@ -31,7 +31,7 @@ import {
   RuntimeServiceClient,
   TimerClient,
   WorkflowClient,
-  WorkflowTask,
+  WorkflowTask
 } from "@eventual/core-runtime";
 import { registerServiceClient } from "@eventual/core/internal";
 import { TestActivityClient } from "./clients/activity-client.js";
@@ -42,7 +42,7 @@ import { TestMetricsClient } from "./clients/metrics-client.js";
 import { TestTimerClient } from "./clients/timer-client.js";
 import {
   MockableActivityProvider,
-  MockActivity,
+  MockActivity
 } from "./providers/activity-provider.js";
 import { TestSubscriptionProvider } from "./providers/subscription-provider.js";
 import { TestActivityStore } from "./stores/activity-store.js";
@@ -73,7 +73,6 @@ export interface TestEnvironmentProps {
  *
  * ```ts
  * const env = new TestEnvironment(...);
- * await env.initialize();
  *
  * // start a workflow
  * await env.startExecution(workflow, input);
@@ -94,7 +93,6 @@ export class TestEnvironment extends RuntimeServiceClient {
   private activityProvider: MockableActivityProvider;
   private eventHandlerProvider: TestSubscriptionProvider;
 
-  private initialized = false;
   private timeController: TimeController<WorkflowTask>;
 
   private orchestrator: Orchestrator;
@@ -215,17 +213,8 @@ export class TestEnvironment extends RuntimeServiceClient {
       workflowProvider,
       serviceName: props?.serviceName ?? "testing",
     });
-  }
 
-  /**
-   * Initializes a {@link TestEnvironment}, bootstrapping the workflows and event handlers
-   * in the provided service entry point file.
-   */
-  public async initialize() {
-    if (!this.initialized) {
-      registerServiceClient(this);
-      this.initialized = true;
-    }
+    registerServiceClient(this);
   }
 
   /**
