@@ -179,23 +179,25 @@ export class WorkflowExecutor<Input, Output> {
           resolve({ commands: newCommands, result });
         },
       };
-      try {
-        // ensure the workflow hook is available to the workflow
-        // and tied to the workflow promise context
-        const workflowPromise = this.enterWorkflowHookScope(() => {
-          return this.workflow.definition(input, context);
-        });
-        workflowPromise.then(
-          (result) => this.forceComplete(Result.resolved(result)),
-          (err) => this.forceComplete(Result.failed(err))
-        );
-      } catch (err) {
-        // handle any synchronous errors.
-        this.forceComplete(Result.failed(err));
-      }
+      // ensure the workflow hook is available to the workflow
+      // and tied to the workflow promise context
+      // Also ensure that any handlers like signal handlers returned by the workflow
+      // have access to the workflow hook
+      await this.enterWorkflowHookScope(async () => {
+        try {
+          const workflowPromise = this.workflow.definition(input, context);
+          workflowPromise.then(
+            (result) => this.forceComplete(Result.resolved(result)),
+            (err) => this.forceComplete(Result.failed(err))
+          );
+        } catch (err) {
+          // handle any synchronous errors.
+          this.forceComplete(Result.failed(err));
+        }
 
-      // APPLY EVENTS
-      await this.drainHistoryEvents();
+        // APPLY EVENTS
+        await this.drainHistoryEvents();
+      });
 
       // let everything that has started or will be started complete
       // set timeout adds the closure to the end of the event loop
@@ -249,7 +251,9 @@ export class WorkflowExecutor<Input, Output> {
     this.history.push(...history);
 
     return new Promise(async (resolve) => {
-      await this.drainHistoryEvents();
+      // Also ensure that any handlers like signal handlers returned by the workflow
+      // have access to the workflow hook
+      await this.enterWorkflowHookScope(() => this.drainHistoryEvents());
 
       const newCommands = this.commandsToEmit;
       this.commandsToEmit = [];
