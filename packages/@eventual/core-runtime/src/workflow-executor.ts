@@ -195,6 +195,9 @@ export class WorkflowExecutor<Input, Output> {
       await this.drainHistoryEvents();
 
       // let everything that has started or will be started complete
+      // set timeout adds the closure to the end of the event loop
+      // this assumption breaks down when the user tries to start a promise
+      // to accomplish non-deterministic actions like IO.
       setTimeout(() => {
         const newCommands = this.commandsToEmit;
         this.commandsToEmit = [];
@@ -220,8 +223,17 @@ export class WorkflowExecutor<Input, Output> {
     });
   }
 
+  /**
+   * Continue a previously started workflow by feeding in new {@link HistoryResultEvent}, possibly advancing the execution.
+   * 
+   * This allows the workflow to continue without re-running previous history.
+   * 
+   * Events will be applied to the workflow in order.
+   * 
+   * @returns {@link WorkflowResult} - containing new commands and a result of one was generated.  
+   */
   public async continue(
-    ...history: HistoryEvent[]
+    ...history: HistoryResultEvent[]
   ): Promise<WorkflowResult<Output>> {
     if (!this.options?.resumable) {
       throw new Error(
@@ -375,7 +387,7 @@ export class WorkflowExecutor<Input, Output> {
           eventual.eventual.applyEvent?.(event)
         );
       }
-      [...this.runtimeState.awaitingAny].map((s) => {
+      [...this.runtimeState.awaitingAny].forEach((s) => {
         const eventual = this.runtimeState.active[s];
         if (eventual && eventual.eventual.afterEveryEvent) {
           this.tryResolveEventual(s, eventual.eventual.afterEveryEvent());
