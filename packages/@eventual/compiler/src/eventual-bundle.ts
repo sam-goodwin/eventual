@@ -4,7 +4,6 @@ import { aliasPath } from "esbuild-plugin-alias-path";
 import fs from "fs/promises";
 import path from "path";
 import { prepareOutDir } from "./build.js";
-// import { eventualESPlugin } from "./esbuild-plugin.js";
 
 export async function bundleSources(
   outDir: string,

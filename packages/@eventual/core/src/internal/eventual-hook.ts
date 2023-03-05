@@ -2,7 +2,7 @@ import type { AsyncLocalStorage } from "async_hooks";
 import { EventualCall } from "./calls/calls.js";
 import { Result } from "./result.js";
 
-let storage: AsyncLocalStorage<ExecutionWorkflowHook>;
+let storage: AsyncLocalStorage<ExecutionWorkflowHook> | undefined;
 
 export const EventualPromiseSymbol = Symbol.for("Eventual:Promise");
 
@@ -28,7 +28,7 @@ export interface ExecutionWorkflowHook {
 }
 
 export function tryGetWorkflowHook() {
-  return storage.getStore();
+  return storage?.getStore();
 }
 
 export function getWorkflowHook() {
@@ -43,11 +43,12 @@ export function getWorkflowHook() {
   return hook;
 }
 
-export async function registerWorkflowHook(
-  eventualHook: ExecutionWorkflowHook
+export async function enterWorkflowHookScope<R>(
+  eventualHook: ExecutionWorkflowHook,
+  callback: (...args: any[]) => R
 ) {
   if (!storage) {
     storage = new (await import("async_hooks")).AsyncLocalStorage();
   }
-  storage.enterWith(eventualHook);
+  return storage.run(eventualHook, callback);
 }

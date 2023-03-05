@@ -1,4 +1,3 @@
-import { bundleService } from "@eventual/compiler";
 import {
   Activity,
   ActivityOutput,
@@ -34,14 +33,7 @@ import {
   WorkflowClient,
   WorkflowTask,
 } from "@eventual/core-runtime";
-import {
-  clearEventHandlers,
-  events,
-  registerServiceClient,
-  ServiceType,
-  workflows,
-} from "@eventual/core/internal";
-import path from "path";
+import { registerServiceClient } from "@eventual/core/internal";
 import { TestActivityClient } from "./clients/activity-client.js";
 import { TestEventClient } from "./clients/event-client.js";
 import { TestExecutionQueueClient } from "./clients/execution-queue-client.js";
@@ -66,8 +58,6 @@ export interface TestEnvironmentProps {
    * @default testing
    */
   serviceName?: string;
-  entry: string;
-  outDir?: string;
   /**
    * Start time, starting at the nearest second (rounded down).
    *
@@ -93,8 +83,6 @@ export interface TestEnvironmentProps {
  * ```
  */
 export class TestEnvironment extends RuntimeServiceClient {
-  private serviceFile: Promise<string>;
-
   private executionHistoryStore: ExecutionHistoryStore;
   private executionStore: ExecutionStore;
 
@@ -111,8 +99,8 @@ export class TestEnvironment extends RuntimeServiceClient {
 
   private orchestrator: Orchestrator;
 
-  constructor(props: TestEnvironmentProps) {
-    const start = props.start
+  constructor(props?: TestEnvironmentProps) {
+    const start = props?.start
       ? new Date(props.start.getTime() - props.start.getMilliseconds())
       : new Date(0);
 
@@ -171,7 +159,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       executionQueueClient,
       activityProvider,
       logAgent: testLogAgent,
-      serviceName: props.serviceName ?? "testing",
+      serviceName: props?.serviceName ?? "testing",
     });
 
     const activityClient = new TestActivityClient(
@@ -194,15 +182,6 @@ export class TestEnvironment extends RuntimeServiceClient {
       executionStore,
       workflowProvider,
     });
-
-    this.serviceFile = bundleService(
-      props.outDir ?? path.resolve(".eventual"),
-      props.entry,
-      undefined, // testing does not currently use the app spec
-      ServiceType.OrchestratorWorker,
-      undefined,
-      true
-    );
 
     this.executionStore = executionStore;
     this.executionHistoryStore = executionHistoryStore;
@@ -234,7 +213,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       logAgent: testLogAgent,
       executionHistoryStateStore,
       workflowProvider,
-      serviceName: props.serviceName ?? "testing",
+      serviceName: props?.serviceName ?? "testing",
     });
   }
 
@@ -245,13 +224,6 @@ export class TestEnvironment extends RuntimeServiceClient {
   public async initialize() {
     if (!this.initialized) {
       registerServiceClient(this);
-      const _workflows = workflows();
-      _workflows.clear();
-      const _events = events();
-      _events.clear();
-      clearEventHandlers();
-      // run the service to re-import the workflows, but transformed
-      await import(await this.serviceFile);
       this.initialized = true;
     }
   }
