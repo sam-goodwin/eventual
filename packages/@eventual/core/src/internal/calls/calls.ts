@@ -19,19 +19,15 @@ export type EventualCall =
   | WorkflowCall;
 
 export enum EventualCallKind {
-  ActivityCall = 1,
-  AwaitAll = 0,
-  AwaitAllSettled = 12,
-  AwaitAny = 10,
-  AwaitDurationCall = 3,
-  AwaitTimeCall = 4,
-  ConditionCall = 9,
-  ExpectSignalCall = 6,
-  PublishEventsCall = 13,
-  Race = 11,
-  RegisterSignalHandlerCall = 7,
-  SendSignalCall = 8,
-  WorkflowCall = 5,
+  ActivityCall = 0,
+  AwaitDurationCall = 1,
+  AwaitTimeCall = 2,
+  ConditionCall = 3,
+  ExpectSignalCall = 4,
+  PublishEventsCall = 5,
+  RegisterSignalHandlerCall = 6,
+  SendSignalCall = 7,
+  WorkflowCall = 8,
 }
 
 const EventualCallSymbol = Symbol.for("eventual:EventualCall");

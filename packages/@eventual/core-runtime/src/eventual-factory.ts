@@ -6,7 +6,6 @@ import {
 } from "@eventual/core";
 import {
   assertNever,
-  CommandType,
   EventualCall,
   isActivityCall,
   isActivityFailed,
@@ -32,6 +31,7 @@ import {
   Result,
   ScheduledEvent,
 } from "@eventual/core/internal";
+import { CommandType } from "./workflow-command.js";
 import { Eventual } from "./workflow-executor.js";
 
 export function createEventualFromCall(

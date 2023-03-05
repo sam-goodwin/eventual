@@ -23,7 +23,6 @@ import {
   isWorkflowTimedOut,
   iterator,
   Result,
-  WorkflowCommand,
   WorkflowEvent,
   WorkflowRunStarted,
   WorkflowTimedOut,
@@ -31,6 +30,7 @@ import {
 } from "@eventual/core/internal";
 import { isPromise } from "util/types";
 import { createEventualFromCall, isCorresponding } from "./eventual-factory.js";
+import { WorkflowCommand } from "./index.js";
 
 interface ActiveEventual<R = any> {
   resolve: (result: R) => void;
@@ -106,17 +106,6 @@ function initializeRuntimeState(historyEvents: HistoryEvent[]): RuntimeState {
   };
 }
 
-/**
- * 1. get hook - getEventualHook
- * 2. register - register eventual call
- *    a. create eventual with handlers and callbacks
- *    b. check for completion - the eventual can choose to end early, for example, a condition
- *    c. create promise
- *    d. register eventual with the executor
- *    e. return promise
- * 3. return promise to caller/workflow
- */
-
 interface ExecutorOptions {
   /**
    * When false, the workflow will auto-cancel when it has exhausted all history events provided
@@ -159,6 +148,11 @@ export class WorkflowExecutor<Input, Output> {
     this.commandsToEmit = [];
   }
 
+  /**
+   * Starts an execution.
+   *
+   * The execution will run until completion or until the events are exhausted.
+   */
   public start(
     input: Input,
     context: WorkflowContext

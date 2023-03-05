@@ -11,6 +11,4 @@ export * from "./service-spec.js";
 export * from "./service-type.js";
 export * from "./signal.js";
 export * from "./util.js";
-export * from "./workflow-command.js";
 export * from "./workflow-events.js";
-

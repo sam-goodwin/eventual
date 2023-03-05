@@ -30,7 +30,6 @@ import {
   Result,
   ServiceType,
   serviceTypeScope,
-  WorkflowCommand,
   WorkflowEvent,
   WorkflowEventType,
   WorkflowFailed,
@@ -57,6 +56,7 @@ import { ExecutionHistoryStateStore } from "../stores/execution-history-state-st
 import { ExecutionHistoryStore } from "../stores/execution-history-store.js";
 import { WorkflowTask } from "../tasks.js";
 import { groupBy, promiseAllSettledPartitioned } from "../utils.js";
+import { WorkflowCommand } from "../workflow-command.js";
 import { createEvent } from "../workflow-events.js";
 import { WorkflowExecutor } from "../workflow-executor.js";
 
