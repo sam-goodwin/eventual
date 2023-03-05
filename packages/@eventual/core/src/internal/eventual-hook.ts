@@ -2,7 +2,16 @@ import type { AsyncLocalStorage } from "async_hooks";
 import { EventualCall } from "./calls/calls.js";
 import { Result } from "./result.js";
 
-let storage: AsyncLocalStorage<ExecutionWorkflowHook> | undefined;
+/**
+ * In the case that the workflow is bundled with a different instance of eventual/core,
+ * put the store in globals.
+ */
+declare global {
+  // eslint-disable-next-line no-var
+  var eventualWorkflowHookStore:
+    | AsyncLocalStorage<ExecutionWorkflowHook>
+    | undefined;
+}
 
 export const EventualPromiseSymbol = Symbol.for("Eventual:Promise");
 
@@ -28,7 +37,7 @@ export interface ExecutionWorkflowHook {
 }
 
 export function tryGetWorkflowHook() {
-  return storage?.getStore();
+  return globalThis.eventualWorkflowHookStore?.getStore();
 }
 
 export function getWorkflowHook() {
@@ -47,8 +56,10 @@ export async function enterWorkflowHookScope<R>(
   eventualHook: ExecutionWorkflowHook,
   callback: (...args: any[]) => R
 ) {
-  if (!storage) {
-    storage = new (await import("async_hooks")).AsyncLocalStorage();
+  if (!globalThis.eventualWorkflowHookStore) {
+    globalThis.eventualWorkflowHookStore = new (
+      await import("async_hooks")
+    ).AsyncLocalStorage();
   }
-  return storage.run(eventualHook, callback);
+  return globalThis.eventualWorkflowHookStore.run(eventualHook, callback);
 }

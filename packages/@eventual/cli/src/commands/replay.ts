@@ -62,7 +62,7 @@ export const replay = (yargs: Argv) =>
         }
         spinner.start("Running program");
 
-        serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
+        await serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
           const processedEvents = processEvents(
             events,
             [],

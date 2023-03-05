@@ -8,9 +8,13 @@ npx eventual list services
 
 npx eventual list workflows
 
-npx eventual list executions 
+npx eventual start workflow sleepy
 
-npx eventual list executions --workflow parallel --json > .eventual/out.json
+npx eventual start workflow sleepy -f
+
+npx eventual list executions
+
+npx eventual list executions --workflow sleepy --json > .eventual/out.json
 
 execution_id=$(node -p 'JSON.parse(require("fs").readFileSync(".eventual/out.json").toString("utf8")).executions[0].id')
 
@@ -18,12 +22,8 @@ npx eventual get history -e ${execution_id}
 
 npx eventual get logs --all
 
-npx eventual get logs --workflow parallel
+npx eventual get logs --workflow sleepy
 
 npx eventual get logs --execution ${execution_id}
-
-npx eventual start workflow sleepy
-
-npx eventual start workflow sleepy -f
 
 npx eventual replay execution ${execution_id} --entry 'test/test-service.ts'
