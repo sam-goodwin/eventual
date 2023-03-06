@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.23.0 (2023-03-06)
+
+### Features
+
+- move apps/service to packages/service and remove packages/core from template ([#307](https://github.com/functionless/eventual/issues/307)) ([99d225e](https://github.com/functionless/eventual/commit/99d225e398cbb6d167460ee2f61816109fdb496f))
+
 # 0.22.0 (2023-03-01)
 
 ### Features
