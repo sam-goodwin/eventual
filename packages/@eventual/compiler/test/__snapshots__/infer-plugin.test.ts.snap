@@ -449,19 +449,14 @@ var EventualPromiseSymbol = Symbol.for("Eventual:Promise");
 
 var EventualCallKind;
 (function(EventualCallKind2) {
-  EventualCallKind2[EventualCallKind2["ActivityCall"] = 1] = "ActivityCall";
-  EventualCallKind2[EventualCallKind2["AwaitAll"] = 0] = "AwaitAll";
-  EventualCallKind2[EventualCallKind2["AwaitAllSettled"] = 12] = "AwaitAllSettled";
-  EventualCallKind2[EventualCallKind2["AwaitAny"] = 10] = "AwaitAny";
-  EventualCallKind2[EventualCallKind2["AwaitDurationCall"] = 3] = "AwaitDurationCall";
-  EventualCallKind2[EventualCallKind2["AwaitTimeCall"] = 4] = "AwaitTimeCall";
-  EventualCallKind2[EventualCallKind2["ConditionCall"] = 9] = "ConditionCall";
-  EventualCallKind2[EventualCallKind2["ExpectSignalCall"] = 6] = "ExpectSignalCall";
-  EventualCallKind2[EventualCallKind2["PublishEventsCall"] = 13] = "PublishEventsCall";
-  EventualCallKind2[EventualCallKind2["Race"] = 11] = "Race";
-  EventualCallKind2[EventualCallKind2["RegisterSignalHandlerCall"] = 7] = "RegisterSignalHandlerCall";
-  EventualCallKind2[EventualCallKind2["SendSignalCall"] = 8] = "SendSignalCall";
-  EventualCallKind2[EventualCallKind2["WorkflowCall"] = 5] = "WorkflowCall";
+  EventualCallKind2[EventualCallKind2["ActivityCall"] = 0] = "ActivityCall";
+  EventualCallKind2[EventualCallKind2["AwaitTimerCall"] = 1] = "AwaitTimerCall";
+  EventualCallKind2[EventualCallKind2["ConditionCall"] = 2] = "ConditionCall";
+  EventualCallKind2[EventualCallKind2["ExpectSignalCall"] = 3] = "ExpectSignalCall";
+  EventualCallKind2[EventualCallKind2["PublishEventsCall"] = 4] = "PublishEventsCall";
+  EventualCallKind2[EventualCallKind2["RegisterSignalHandlerCall"] = 5] = "RegisterSignalHandlerCall";
+  EventualCallKind2[EventualCallKind2["SendSignalCall"] = 6] = "SendSignalCall";
+  EventualCallKind2[EventualCallKind2["WorkflowCall"] = 7] = "WorkflowCall";
 })(EventualCallKind || (EventualCallKind = {}));
 var EventualCallSymbol = Symbol.for("eventual:EventualCall");
 
