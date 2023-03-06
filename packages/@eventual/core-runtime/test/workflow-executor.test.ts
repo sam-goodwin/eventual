@@ -2621,3 +2621,99 @@ test("publish event", async () => {
     commands: [],
   });
 });
+
+describe("continue", () => {
+  test("start a workflow with no events and feed it one after", async () => {
+    const executor = new WorkflowExecutor(myWorkflow, [], { resumable: true });
+    await expect(
+      executor.start(event, context)
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [createScheduledActivityCommand("my-activity", [event], 0)],
+      result: undefined,
+    });
+
+    await expect(
+      executor.continue(activitySucceeded("result", 0))
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [
+        createScheduledActivityCommand("my-activity-0", [event], 1),
+        createStartTimerCommand(2),
+        createScheduledActivityCommand("my-activity-2", [event], 3),
+      ],
+      result: undefined,
+    });
+  });
+
+  test("start a workflow with events and feed it one after", async () => {
+    const executor = new WorkflowExecutor(
+      myWorkflow,
+      [activityScheduled("my-activity", 0), activitySucceeded("result", 0)],
+      { resumable: true }
+    );
+    await expect(
+      executor.start(event, context)
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [
+        createScheduledActivityCommand("my-activity-0", [event], 1),
+        createStartTimerCommand(2),
+        createScheduledActivityCommand("my-activity-2", [event], 3),
+      ],
+      result: undefined,
+    });
+
+    await expect(
+      executor.continue(timerCompleted(2), activitySucceeded("result-2", 3))
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [],
+      result: Result.resolved(["result", [undefined, "result-2"]]),
+    });
+  });
+
+  test("many iterations", async () => {
+    const wf = workflow(async () => {
+      for (const i of [...Array(100).keys()]) {
+        await createActivityCall("myAct", i);
+      }
+
+      return "done";
+    });
+
+    const executor = new WorkflowExecutor(wf, [], { resumable: true });
+
+    await executor.start(undefined, context);
+
+    for (const i of [...Array(99).keys()]) {
+      await executor.continue(activitySucceeded(undefined, i));
+    }
+
+    await expect(
+      executor.continue(activitySucceeded(undefined, 99))
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [],
+      result: Result.resolved("done"),
+    });
+  });
+
+  test("many iterations at once", async () => {
+    const wf = workflow(async () => {
+      for (const i of [...Array(100).keys()]) {
+        await createActivityCall("myAct", i);
+      }
+
+      return "done";
+    });
+
+    const executor = new WorkflowExecutor(wf, [], { resumable: true });
+
+    await executor.start(undefined, context);
+
+    await expect(
+      executor.continue(
+        ...[...Array(100).keys()].map((i) => activitySucceeded(undefined, i))
+      )
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [],
+      result: Result.resolved("done"),
+    });
+  });
+});
