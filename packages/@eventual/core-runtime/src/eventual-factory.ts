@@ -3,54 +3,46 @@ import {
   assertNever,
   EventualCall,
   isActivityCall,
-  isActivityFailed,
-  isActivityHeartbeatTimedOut,
   isActivityScheduled,
-  isActivitySucceeded,
   isAwaitTimerCall,
-  isChildWorkflowFailed,
   isChildWorkflowScheduled,
-  isChildWorkflowSucceeded,
   isConditionCall,
   isEventsPublished,
   isExpectSignalCall,
   isPublishEventsCall,
   isRegisterSignalHandlerCall,
   isSendSignalCall,
-  isSignalReceived,
   isSignalSent,
-  isTimerCompleted,
   isTimerScheduled,
   isWorkflowCall,
   Result,
   ScheduledEvent,
+  WorkflowEventType,
 } from "@eventual/core/internal";
 import { CommandType } from "./workflow-command.js";
-import { Eventual } from "./workflow-executor.js";
+import { EventualDefinition, Trigger } from "./workflow-executor.js";
 
 export function createEventualFromCall(
   call: EventualCall
-): Omit<Eventual<any>, "seq"> {
+): EventualDefinition<any> {
   if (isActivityCall(call)) {
     return {
-      applyEvent: (event) => {
-        if (isActivitySucceeded(event)) {
-          return Result.resolved(event.result);
-        } else if (isActivityFailed(event)) {
-          return Result.failed(new EventualError(event.error, event.message));
-        } else if (isActivityHeartbeatTimedOut(event)) {
-          return Result.failed(
-            new HeartbeatTimeout("Activity Heartbeat TimedOut")
-          );
-        }
-        return undefined;
-      },
-      dependencies: call.timeout
-        ? {
-            promise: call.timeout,
-            handler: () => Result.failed(new Timeout("Activity Timed Out")),
-          }
-        : undefined,
+      triggers: [
+        Trigger.workflowEvent(WorkflowEventType.ActivitySucceeded, (event) =>
+          Result.resolved(event.result)
+        ),
+        Trigger.workflowEvent(WorkflowEventType.ActivityFailed, (event) =>
+          Result.failed(new EventualError(event.error, event.message))
+        ),
+        Trigger.workflowEvent(WorkflowEventType.ActivityHeartbeatTimedOut, () =>
+          Result.failed(new HeartbeatTimeout("Activity Heartbeat TimedOut"))
+        ),
+        call.timeout
+          ? Trigger.promise(call.timeout, () =>
+              Result.failed(new Timeout("Activity Timed Out"))
+            )
+          : undefined,
+      ],
       generateCommands(seq) {
         return {
           kind: CommandType.StartActivity,
@@ -63,20 +55,20 @@ export function createEventualFromCall(
     };
   } else if (isWorkflowCall(call)) {
     return {
-      applyEvent: (event) => {
-        if (isChildWorkflowSucceeded(event)) {
-          return Result.resolved(event.result);
-        } else if (isChildWorkflowFailed(event)) {
-          return Result.failed(new EventualError(event.error, event.message));
-        }
-        return undefined;
-      },
-      dependencies: call.timeout
-        ? {
-            promise: call.timeout,
-            handler: () => Result.failed("Activity Timed Out"),
-          }
-        : undefined,
+      triggers: [
+        Trigger.workflowEvent(
+          WorkflowEventType.ChildWorkflowSucceeded,
+          (event) => Result.resolved(event.result)
+        ),
+        Trigger.workflowEvent(WorkflowEventType.ChildWorkflowFailed, (event) =>
+          Result.failed(new EventualError(event.error, event.message))
+        ),
+        call.timeout
+          ? Trigger.promise(call.timeout, () =>
+              Result.failed("Child Workflow Timed Out")
+            )
+          : undefined,
+      ],
       generateCommands(seq) {
         return {
           kind: CommandType.StartWorkflow,
@@ -89,12 +81,9 @@ export function createEventualFromCall(
     };
   } else if (isAwaitTimerCall(call)) {
     return {
-      applyEvent: (event) => {
-        if (isTimerCompleted(event)) {
-          return Result.resolved(undefined);
-        }
-        return undefined;
-      },
+      triggers: Trigger.workflowEvent(WorkflowEventType.TimerCompleted, () =>
+        Result.resolved(undefined)
+      ),
       generateCommands(seq) {
         return {
           kind: CommandType.StartTimer,
@@ -118,20 +107,16 @@ export function createEventualFromCall(
     };
   } else if (isExpectSignalCall(call)) {
     return {
-      signals: call.signalId,
-      applyEvent: (event) => {
-        if (isSignalReceived(event)) {
-          return Result.resolved(event.payload);
-        }
-        return undefined;
-      },
-      dependencies: call.timeout
-        ? {
-            promise: call.timeout,
-            handler: () =>
-              Result.failed(new Timeout("Expect Signal Timed Out")),
-          }
-        : undefined,
+      triggers: [
+        Trigger.signal(call.signalId, (event) =>
+          Result.resolved(event.payload)
+        ),
+        call.timeout
+          ? Trigger.promise(call.timeout, () =>
+              Result.failed(new Timeout("Expect Signal Timed Out"))
+            )
+          : undefined,
+      ],
     };
   } else if (isPublishEventsCall(call)) {
     return {
@@ -150,27 +135,22 @@ export function createEventualFromCall(
     } else {
       // otherwise check the state after every event is applied.
       return {
-        afterEveryEvent: () => {
-          const result = call.predicate();
-          return result ? Result.resolved(result) : undefined;
-        },
-        dependencies: call.timeout
-          ? {
-              promise: call.timeout,
-              handler: () => Result.resolved(false),
-            }
-          : undefined,
+        triggers: [
+          Trigger.afterEveryEvent(() => {
+            const result = call.predicate();
+            return result ? Result.resolved(result) : undefined;
+          }),
+          call.timeout
+            ? Trigger.promise(call.timeout, () => Result.resolved(false))
+            : undefined,
+        ],
       };
     }
   } else if (isRegisterSignalHandlerCall(call)) {
     return {
-      signals: call.signalId,
-      applyEvent: (event) => {
-        if (isSignalReceived(event)) {
-          call.handler(event.payload);
-        }
-        return undefined;
-      },
+      triggers: Trigger.signal(call.signalId, (event) => {
+        call.handler(event.payload);
+      }),
     };
   }
   return assertNever(call);

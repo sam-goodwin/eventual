@@ -22,18 +22,11 @@ export interface EventualPromise<R> extends Promise<R> {
   [EventualPromiseSymbol]: number;
 }
 
-export function createEventualPromise<R>(
-  promise: Promise<R>,
-  seq: number
-): EventualPromise<R> {
-  const _promise = promise as EventualPromise<R>;
-  _promise[EventualPromiseSymbol] = seq;
-  return _promise;
-}
-
 export interface ExecutionWorkflowHook {
-  registerEventualCall<R>(eventual: EventualCall): EventualPromise<R>;
-  resolveEventual<R>(seq: number, result: Result<R>): void;
+  registerEventualCall<E extends EventualPromise<any>>(
+    eventual: EventualCall
+  ): E;
+  resolveEventual(seq: number, result: Result<any>): void;
 }
 
 export function tryGetWorkflowHook() {

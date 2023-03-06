@@ -1,20 +1,19 @@
 import {
   DeterminismError,
+  Signal,
   Timeout,
   Workflow,
   WorkflowContext,
 } from "@eventual/core";
 import {
-  assertNever,
-  createEventualPromise,
   enterWorkflowHookScope,
   EventualCall,
   EventualPromise,
+  EventualPromiseSymbol,
   ExecutionWorkflowHook,
   HistoryEvent,
   HistoryResultEvent,
   HistoryScheduledEvent,
-  isFailed,
   isResolved,
   isResultEvent,
   isScheduledEvent,
@@ -23,87 +22,60 @@ import {
   isWorkflowTimedOut,
   iterator,
   Result,
+  SignalReceived,
   WorkflowEvent,
-  WorkflowRunStarted,
-  WorkflowTimedOut,
   _Iterator,
 } from "@eventual/core/internal";
 import { isPromise } from "util/types";
 import { createEventualFromCall, isCorresponding } from "./eventual-factory.js";
-import { WorkflowCommand } from "./index.js";
+import type { WorkflowCommand } from "./workflow-command.js";
 
+/**
+ * Put the resolve method on the promise, but don't expose it.
+ */
+export interface RuntimeEventualPromise<R> extends EventualPromise<R> {
+  resolve: (result: Result<R>) => void;
+}
+
+/**
+ * Values used to interact with an eventual while it is active.
+ */
 interface ActiveEventual<R = any> {
-  resolve: (result: R) => void;
-  reject: (reason: any) => void;
-  promise: EventualPromise<R>;
-  eventual: Eventual<R>;
-}
-
-interface RuntimeState {
   /**
-   * All {@link Eventual} waiting on a sequence based result event.
+   * A reference to the promise passed back to the workflow.
    */
-  active: Record<number, ActiveEventual>;
+  promise: RuntimeEventualPromise<R>;
   /**
-   * All {@link Eventual}s waiting on a signal.
-   */
-  awaitingSignals: Record<string, Set<number>>;
-  /**
-   * All {@link Eventual}s which should be invoked on every new event.
+   * Back reference from eventual to the signals it consumes.
    *
-   * For example, Condition should be checked after applying any event.
+   * Intended to reduce searching when deactivating an eventual.
    */
-  awaitingAny: Set<number>;
+  signals?: string[];
   /**
-   * Iterator containing the in order events we expected to see in a deterministic workflow.
+   * The sequence number of the eventual.
    */
-  expected: _Iterator<HistoryEvent, HistoryScheduledEvent>;
-  /**
-   * Iterator containing events to apply.
-   */
-  events: _Iterator<HistoryEvent, HistoryResultEvent>;
-}
-
-interface DependencyHandler<R, OwnR> {
-  promise: Promise<R>;
-  handler: (val: Result<R>) => Result<OwnR> | undefined;
-}
-
-export interface Eventual<R> {
-  /**
-   * Invoke this handler every time a new event is applied, in seq order.
-   */
-  afterEveryEvent?: () => Result<R> | undefined;
-  signals?: string[] | string;
-  /**
-   * When an promise completes, call the handler on this eventual.
-   *
-   * Useful for things like activities, which use other {@link Eventual}s to cancel/timeout.
-   */
-  dependencies?: DependencyHandler<any, R>[] | DependencyHandler<any, R>;
-  /**
-   * When an event comes in that matches this eventual's sequence,
-   * pass the event to the eventual if not already resolved.
-   */
-  applyEvent?: (event: HistoryEvent) => Result<R> | undefined;
-  /**
-   * Commands to emit.
-   *
-   * When undefined, the eventual will not be checked against an expected event as it does not emit commands.
-   */
-  generateCommands?: (seq: number) => WorkflowCommand[] | WorkflowCommand;
   seq: number;
-  result?: Result<R>;
 }
 
-function initializeRuntimeState(historyEvents: HistoryEvent[]): RuntimeState {
-  return {
-    active: {},
-    awaitingSignals: {},
-    awaitingAny: new Set(),
-    expected: iterator(historyEvents, isScheduledEvent),
-    events: iterator(historyEvents, isResultEvent),
+export function createEventualPromise<R>(
+  seq: number,
+  beforeResolve?: () => void
+): RuntimeEventualPromise<R> {
+  let resolve: (r: R) => void, reject: (reason: any) => void;
+  const promise = new Promise((r, rr) => {
+    resolve = r;
+    reject = rr;
+  }) as RuntimeEventualPromise<R>;
+  promise[EventualPromiseSymbol] = seq;
+  promise.resolve = (result) => {
+    beforeResolve?.();
+    if (isResolved(result)) {
+      resolve(result.value);
+    } else {
+      reject(result.error);
+    }
   };
+  return promise;
 }
 
 interface ExecutorOptions {
@@ -130,10 +102,45 @@ interface ExecutorOptions {
 }
 
 export class WorkflowExecutor<Input, Output> {
-  private seq: number;
-  private runtimeState: RuntimeState;
+  /**
+   * The sequence number to assign to the next eventual registered.
+   */
+  private nextSeq: number;
+  /**
+   * All {@link EventualDefinition} which are still active.
+   */
+  private activeEventuals: Record<number, ActiveEventual> = {};
+  /**
+   * All {@link EventualDefinition}s waiting on a signal.
+   */
+  private activeHandlers: {
+    events: Record<number, Record<string, EventTrigger<any, any>["handler"]>>;
+    signals: Record<string, Record<number, SignalTrigger<any, any>["handler"]>>;
+    afterEveryEvent: Record<number, AfterEveryEventTrigger<any>["afterEvery"]>;
+  } = {
+    signals: {},
+    events: {},
+    afterEveryEvent: {},
+  };
+  /**
+   * Iterator containing the in order events we expected to see in a deterministic workflow.
+   */
+  private expected: _Iterator<HistoryEvent, HistoryScheduledEvent>;
+  /**
+   * Iterator containing events to apply.
+   */
+  private events: _Iterator<HistoryEvent, HistoryResultEvent>;
+
+  /**
+   * Set when the workflow is started.
+   */
   private started?: {
-    resolve: (result: Result) => void;
+    /**
+     * When called, resolves the workflow execution with a {@link result}.
+     *
+     * This will cause the current promise from start or continue to resolve with a the given value.
+     */
+    resolve: (result?: Result) => void;
   };
   private commandsToEmit: WorkflowCommand[];
   public result?: Result<Output>;
@@ -143,8 +150,9 @@ export class WorkflowExecutor<Input, Output> {
     private history: HistoryEvent[],
     private options?: ExecutorOptions
   ) {
-    this.seq = 0;
-    this.runtimeState = initializeRuntimeState(history);
+    this.nextSeq = 0;
+    this.expected = iterator(history, isScheduledEvent);
+    this.events = iterator(history, isResultEvent);
     this.commandsToEmit = [];
   }
 
@@ -167,10 +175,7 @@ export class WorkflowExecutor<Input, Output> {
       // start context with execution hook
       this.started = {
         resolve: (result) => {
-          const newCommands = this.commandsToEmit;
-          this.commandsToEmit = [];
-
-          resolve({ commands: newCommands, result });
+          resolve(this.flushCurrentWorkflowResult(result));
         },
       };
       // ensure the workflow hook is available to the workflow
@@ -181,12 +186,12 @@ export class WorkflowExecutor<Input, Output> {
         try {
           const workflowPromise = this.workflow.definition(input, context);
           workflowPromise.then(
-            (result) => this.forceComplete(Result.resolved(result)),
-            (err) => this.forceComplete(Result.failed(err))
+            (result) => this.endWorkflowRun(Result.resolved(result)),
+            (err) => this.endWorkflowRun(Result.failed(err))
           );
         } catch (err) {
           // handle any synchronous errors.
-          this.forceComplete(Result.failed(err));
+          this.endWorkflowRun(Result.failed(err));
         }
 
         // APPLY EVENTS
@@ -198,28 +203,30 @@ export class WorkflowExecutor<Input, Output> {
       // this assumption breaks down when the user tries to start a promise
       // to accomplish non-deterministic actions like IO.
       setTimeout(() => {
-        const newCommands = this.commandsToEmit;
-        this.commandsToEmit = [];
-
-        if (!this.result && !this.options?.resumable) {
-          // cancel promises?
-          if (this.runtimeState.expected.hasNext()) {
-            this.forceComplete(
-              Result.failed(
-                new DeterminismError(
-                  "Workflow did not return expected commands"
-                )
-              )
-            );
-          }
-        }
-
-        resolve({
-          commands: newCommands,
-          result: this.result,
-        });
+        resolve(this.flushCurrentWorkflowResult());
       });
     });
+  }
+
+  /**
+   * Returns current result and commands, resetting the command array.
+   *
+   * If the workflow has additional expected events to apply, fails the workflow with a determinism error.
+   */
+  private flushCurrentWorkflowResult(
+    overrideResult?: Result
+  ): WorkflowResult<Output> {
+    const newCommands = this.commandsToEmit;
+    this.commandsToEmit = [];
+
+    this.result =
+      !this.result && !this.options?.resumable && this.expected.hasNext()
+        ? Result.failed(
+            new DeterminismError("Workflow did not return expected commands")
+          )
+        : overrideResult ?? this.result;
+
+    return { result: this.result, commands: newCommands };
   }
 
   /**
@@ -259,20 +266,20 @@ export class WorkflowExecutor<Input, Output> {
     });
   }
 
-  private forceComplete(result: Result) {
+  private endWorkflowRun(result?: Result) {
     if (!this.started) {
       throw new Error("Execution is not started.");
     }
     this.started.resolve(result);
   }
 
-  private async enterWorkflowHookScope<R>(callback: (...args: any) => R) {
+  private async enterWorkflowHookScope<Res>(callback: (...args: any) => Res) {
     const self = this;
     const workflowHook: ExecutionWorkflowHook = {
-      registerEventualCall: (call) => {
+      registerEventualCall<E extends EventualPromise<any>>(call: EventualCall) {
         try {
           const eventual = createEventualFromCall(call);
-          const seq = this.seq++;
+          const seq = self.nextSeq++;
 
           /**
            * if the call is new, generate and emit it's commands
@@ -285,7 +292,7 @@ export class WorkflowExecutor<Input, Output> {
            *       and instead maintain the call history to match against.
            */
           if (eventual.generateCommands && !isExpectedCall(seq, call)) {
-            this.commandsToEmit.push(
+            self.commandsToEmit.push(
               ...normalizeToArray(eventual.generateCommands(seq))
             );
           }
@@ -293,45 +300,20 @@ export class WorkflowExecutor<Input, Output> {
           /**
            * If the eventual comes with a result, do not active it, it is already resolved!
            */
-          if (eventual.result) {
-            return createEventualPromise(
-              isResolved(eventual.result)
-                ? Promise.resolve(eventual.result.value)
-                : Promise.reject(eventual.result.error),
-              seq
-            );
+          if (isResolvedEventualDefinition(eventual)) {
+            const promise = createEventualPromise<any>(seq);
+            promise.resolve(eventual.result);
+            return promise as unknown as E;
           }
 
-          const activeEventual = this.activateEventual({ ...eventual, seq });
-
-          /**
-           * For each dependency, wire the dependency promise to the handler provided by the eventual.
-           *
-           * If the dependency resolves or rejects, pass the result along.
-           */
-          const deps = normalizeToArray(eventual.dependencies);
-          deps.forEach((dep) => {
-            (!isPromise(dep.promise)
-              ? Promise.resolve(dep.promise)
-              : dep.promise
-            ).then(
-              (res) => {
-                this.tryResolveEventual(seq, dep.handler(Result.resolved(res)));
-              },
-              (err) => {
-                this.tryResolveEventual(seq, dep.handler(Result.failed(err)));
-              }
-            );
-          });
-
-          return activeEventual.promise;
+          return self.activateEventual(seq, eventual) as E;
         } catch (err) {
-          this.forceComplete(Result.failed(err));
+          self.endWorkflowRun(Result.failed(err));
           throw err;
         }
       },
-      resolveEventual: (seq, result) => {
-        this.tryResolveEventual(seq, result);
+      resolveEventual(seq, result) {
+        self.tryResolveEventual(seq, result);
       },
     };
     return await enterWorkflowHookScope(workflowHook, callback);
@@ -342,8 +324,8 @@ export class WorkflowExecutor<Input, Output> {
      * @throws {@link DeterminismError} when the call is not expected and there are expected events remaining.
      */
     function isExpectedCall(seq: number, call: EventualCall) {
-      if (self.runtimeState.expected.hasNext()) {
-        const expected = self.runtimeState.expected.next()!;
+      if (self.expected.hasNext()) {
+        const expected = self.expected.next()!;
 
         self.options?.hooks?.historicalEventMatched?.(expected, call);
 
@@ -361,8 +343,8 @@ export class WorkflowExecutor<Input, Output> {
   }
 
   private async drainHistoryEvents() {
-    while (this.runtimeState.events.hasNext() && !this.result) {
-      const event = this.runtimeState.events.next()!;
+    while (this.events.hasNext() && !this.result) {
+      const event = this.events.next()!;
       this.options?.hooks?.beforeApplyingResultEvent?.(event);
       await new Promise((resolve) => {
         setTimeout(() => {
@@ -385,23 +367,34 @@ export class WorkflowExecutor<Input, Output> {
    */
   private tryCommitResultEvent(event: HistoryResultEvent) {
     if (isWorkflowTimedOut(event)) {
-      this.forceComplete(Result.failed(new Timeout("Workflow timed out")));
-      // TODO cancel workflow?
+      return this.endWorkflowRun(
+        Result.failed(new Timeout("Workflow timed out"))
+      );
     } else if (!isWorkflowRunStarted(event)) {
-      const eventuals = this.getEventualsForEvent(event);
-      for (const eventual of eventuals ?? []) {
-        // pass event to the eventual
-        this.tryResolveEventual(
-          eventual.eventual.seq,
-          eventual.eventual.applyEvent?.(event)
-        );
-      }
-      [...this.runtimeState.awaitingAny].forEach((s) => {
-        const eventual = this.runtimeState.active[s];
-        if (eventual && eventual.eventual.afterEveryEvent) {
-          this.tryResolveEventual(s, eventual.eventual.afterEveryEvent());
+      if (isSignalReceived(event)) {
+        const signalHandlers =
+          this.activeHandlers.signals[event.signalId] ?? {};
+        Object.entries(signalHandlers)
+          .filter(([seq]) => this.isEventualActive(seq))
+          .map(([seq, handler]) => {
+            this.tryResolveEventual(Number(seq), handler(event) ?? undefined);
+          });
+      } else {
+        if (this.isEventualActive(event.seq)) {
+          const eventHandler =
+            this.activeHandlers.events[event.seq]?.[event.type];
+          this.tryResolveEventual(
+            event.seq,
+            eventHandler?.(event) ?? undefined
+          );
         }
-      });
+      }
+      // resolve any eventuals should be triggered on each new event
+      Object.entries(this.activeHandlers.afterEveryEvent)
+        .filter(([seq]) => this.isEventualActive(seq))
+        .forEach(([seq, handler]) => {
+          this.tryResolveEventual(Number(seq), handler() ?? undefined);
+        });
     }
   }
 
@@ -410,42 +403,15 @@ export class WorkflowExecutor<Input, Output> {
     result: Result<R> | undefined
   ): void {
     if (result) {
-      const eventual = this.runtimeState.active[seq];
+      const eventual = this.activeEventuals[seq];
       if (eventual) {
-        // deactivate the eventual to avoid a circular resolution
-        this.deactivateEventual(eventual.eventual);
-        // TODO: remove from signal listens
-        if (isResolved(result)) {
-          eventual.resolve(result.value);
-        } else if (isFailed(result)) {
-          eventual.reject(result.error);
-        } else {
-          return assertNever(result);
-        }
+        eventual.promise.resolve(result);
       }
     }
   }
 
-  private getEventualsForEvent(
-    event: Exclude<HistoryResultEvent, WorkflowTimedOut | WorkflowRunStarted>
-  ): ActiveEventual[] | undefined {
-    if (isSignalReceived(event)) {
-      return [...(this.runtimeState.awaitingSignals[event.signalId] ?? [])]
-        ?.map((seq) => this.getActiveEventual(seq))
-        .filter((envt): envt is ActiveEventual => !!envt);
-    } else {
-      const eventual = this.runtimeState.active[event.seq];
-      // no more active Eventuals for this seq, ignore it
-      if (!eventual) {
-        return [];
-      } else {
-        return [eventual];
-      }
-    }
-  }
-
-  private getActiveEventual(seq: number): ActiveEventual | undefined {
-    return this.runtimeState.active[seq];
+  private isEventualActive(seq: number | string) {
+    return seq in this.activeEventuals;
   }
 
   /**
@@ -454,24 +420,21 @@ export class WorkflowExecutor<Input, Output> {
    *
    * Roughly the opposite of {@link deactivateEventual}.
    */
-  private activateEventual(eventual: Eventual<any>): ActiveEventual {
+  private activateEventual(
+    seq: number,
+    eventual: UnresolvedEventualDefinition<any>
+  ): EventualPromise<any> {
     /**
      * The promise that represents
      */
-    let reject: any, resolve: any;
-    const promise = createEventualPromise(
-      new Promise((r, rr) => {
-        resolve = r;
-        reject = rr;
-      }),
-      eventual.seq
+    const promise = createEventualPromise<any>(seq, () =>
+      // ensure the eventual is deactivated when resolved
+      this.deactivateEventual(seq)
     );
 
-    const activeEventual: ActiveEventual = {
-      resolve,
-      reject,
+    const activeEventual: ActiveEventual<any> = {
       promise,
-      eventual,
+      seq,
     };
 
     /**
@@ -479,46 +442,97 @@ export class WorkflowExecutor<Input, Output> {
      *
      * This is how we determine which eventuals are active.
      */
-    this.runtimeState.active[eventual.seq] = activeEventual;
+    this.activeEventuals[seq] = activeEventual;
+
+    const triggers = normalizeToArray(eventual.triggers).filter(
+      (t): t is Exclude<typeof t, undefined> => !!t
+    );
+
+    const workflowEventTriggers = triggers.filter(isEventTrigger);
+    if (workflowEventTriggers.length > 0) {
+      this.activeHandlers.events[seq] = Object.fromEntries(
+        workflowEventTriggers.map((eventTrigger) => [
+          eventTrigger.eventType,
+          eventTrigger.handler,
+        ])
+      );
+    }
+
+    /**
+     * For each dependency, wire the dependency promise to the handler provided by the eventual.
+     *
+     * If the dependency resolves or rejects, pass the result along.
+     */
+    const promiseTriggers = triggers.filter(isPromiseTrigger);
+    promiseTriggers.forEach((promiseTrigger) => {
+      // in case someone sneaks a non-promise in here, just make it a promise
+      (!isPromise(promiseTrigger.promise)
+        ? Promise.resolve(promiseTrigger.promise)
+        : promiseTrigger.promise
+      ).then(
+        (res) => {
+          if (this.isEventualActive(seq)) {
+            this.tryResolveEventual(
+              seq,
+              promiseTrigger.handler(Result.resolved(res)) ?? undefined
+            );
+          }
+        },
+        (err) => {
+          if (this.isEventualActive(seq)) {
+            this.tryResolveEventual(
+              seq,
+              promiseTrigger.handler(Result.failed(err)) ?? undefined
+            );
+          }
+        }
+      );
+    });
 
     /**
      * If the eventual subscribes to a signal, add it to the map.
      */
-    if (eventual.signals) {
-      const signals = new Set(normalizeToArray(eventual.signals));
-      [...signals].map((signal) => {
-        if (!(signal in this.runtimeState.awaitingSignals)) {
-          this.runtimeState.awaitingSignals[signal] = new Set();
-        }
-        this.runtimeState.awaitingSignals[signal]!.add(eventual.seq);
-      });
-    }
+    const signalTriggers = triggers.filter(isSignalTrigger);
+    signalTriggers.forEach(
+      (signalTrigger) =>
+        (this.activeHandlers.signals[signalTrigger.signalId] = {
+          ...(this.activeHandlers.signals[signalTrigger.signalId] ?? {}),
+          [seq]: signalTrigger.handler,
+        })
+    );
+    // maintain a reference to the signals this eventual is listening for
+    // in order to effectively remove the handlers later.
+    activeEventual.signals = signalTriggers.map((s) => s.signalId);
 
     /**
      * If the eventual should be invoked after each event is applied, add it to the set.
      */
-    if (eventual.afterEveryEvent) {
-      this.runtimeState.awaitingAny.add(eventual.seq);
+    const [afterEventHandler] = triggers.filter(isAfterEveryEventTrigger);
+    if (afterEventHandler) {
+      this.activeHandlers.afterEveryEvent[seq] = afterEventHandler.afterEvery;
     }
 
-    return activeEventual;
+    return activeEventual.promise;
   }
 
   /**
-   * Remove an eventual from the runtime state.
+   * Remove an eventual from the active handlers.
    * An inactive eventual has already been resolved and has a result.
    *
    * Roughly the opposite of {@link activateEventual}.
    */
-  private deactivateEventual(eventual: Eventual<any>) {
-    // if the eventual is has a result, immediately remove it
-    delete this.runtimeState.active[eventual.seq];
-    this.runtimeState.awaitingAny.delete(eventual.seq);
-    if (eventual.signals) {
-      const signals = normalizeToArray(eventual.signals);
-      signals.forEach((signal) =>
-        this.runtimeState.awaitingSignals[signal]?.delete(eventual.seq)
-      );
+  private deactivateEventual(seq: number) {
+    const active = this.activeEventuals[seq];
+    if (active) {
+      // if the eventual is has a result, immediately remove it
+      delete this.activeEventuals[seq];
+      delete this.activeHandlers.events[seq];
+      delete this.activeHandlers.afterEveryEvent[seq];
+      if (active.signals) {
+        active.signals.forEach(
+          (signal) => delete this.activeHandlers.signals[signal]?.[seq]
+        );
+      }
     }
   }
 }
@@ -538,4 +552,131 @@ export interface WorkflowResult<T = any> {
    * This can still be non-empty even if the chain has terminated because of dangling promises.
    */
   commands: WorkflowCommand[];
+}
+
+export type Trigger<OwnRes> =
+  | PromiseTrigger<OwnRes>
+  | EventTrigger<OwnRes>
+  | AfterEveryEventTrigger<OwnRes>
+  | SignalTrigger<OwnRes>;
+
+export const Trigger = {
+  promise: <OwnRes = any, Res = any>(
+    promise: Promise<Res>,
+    handler: PromiseTrigger<OwnRes, Res>["handler"]
+  ): PromiseTrigger<OwnRes, Res> => {
+    return {
+      promise,
+      handler,
+    };
+  },
+  afterEveryEvent: <OwnRes = any>(
+    handler: AfterEveryEventTrigger<OwnRes>["afterEvery"]
+  ): AfterEveryEventTrigger<OwnRes> => {
+    return {
+      afterEvery: handler,
+    };
+  },
+  workflowEvent: <OwnRes = any, T extends HistoryResultEvent["type"] = any>(
+    eventType: T,
+    handler: EventTrigger<OwnRes, HistoryResultEvent & { type: T }>["handler"]
+  ): EventTrigger<OwnRes, HistoryResultEvent & { type: T }> => {
+    return {
+      eventType,
+      handler,
+    };
+  },
+  signal: <OwnRes = any, Payload = any>(
+    signalId: Signal<Payload>["id"],
+    handler: SignalTrigger<OwnRes, Payload>["handler"]
+  ): SignalTrigger<OwnRes, Payload> => {
+    return {
+      signalId,
+      handler,
+    };
+  },
+};
+
+export interface PromiseTrigger<OwnRes, Res = any> {
+  promise: Promise<Res>;
+  handler: (val: Result<Res>) => Result<OwnRes> | void;
+}
+
+export interface AfterEveryEventTrigger<OwnRes> {
+  afterEvery: () => Result<OwnRes> | void;
+}
+
+export interface EventTrigger<
+  out OwnRes = any,
+  E extends HistoryResultEvent = any
+> {
+  eventType: E["type"];
+  handler: (event: E) => Result<OwnRes> | void;
+}
+
+export interface SignalTrigger<OwnRes, Payload = any> {
+  signalId: Signal["id"];
+  handler: (event: SignalReceived<Payload>) => Result<OwnRes> | void;
+}
+
+export function isPromiseTrigger<OwnRes, R>(
+  t: Trigger<OwnRes>
+): t is PromiseTrigger<OwnRes, R> {
+  return "promise" in t;
+}
+
+export function isAfterEveryEventTrigger<OwnRes>(
+  t: Trigger<OwnRes>
+): t is AfterEveryEventTrigger<OwnRes> {
+  return "afterEvery" in t;
+}
+
+export function isEventTrigger<OwnRes, E extends HistoryResultEvent>(
+  t: Trigger<OwnRes>
+): t is EventTrigger<OwnRes, E> {
+  return "eventType" in t;
+}
+
+export function isSignalTrigger<OwnRes, Payload = any>(
+  t: Trigger<OwnRes>
+): t is SignalTrigger<OwnRes, Payload> {
+  return "signalId" in t;
+}
+
+interface EventualDefinitionBase {
+  /**
+   * Commands to emit.
+   *
+   * When undefined, the eventual will not be checked against an expected event as it does not emit commands.
+   */
+  generateCommands?: (seq: number) => WorkflowCommand[] | WorkflowCommand;
+}
+
+export interface ResolvedEventualDefinition<R> extends EventualDefinitionBase {
+  /**
+   * When provided, immediately resolves an EventualPromise with a value or error back to the workflow.
+   *
+   * Commands can still be emitted, but the eventual cannot be triggered.
+   */
+  result: Result<R>;
+}
+
+export interface UnresolvedEventualDefinition<R>
+  extends EventualDefinitionBase {
+  /**
+   * Triggers give the Eventual an opportunity to resolve themselves.
+   *
+   * Triggers are only called when an eventual is considered to be active.
+   */
+  triggers: Trigger<R> | (Trigger<R> | undefined)[];
+}
+
+export type EventualDefinition<R> =
+  | ResolvedEventualDefinition<R>
+  | UnresolvedEventualDefinition<R>;
+
+export function isResolvedEventualDefinition<R>(
+  eventualDefinition: EventualDefinition<R>
+): eventualDefinition is ResolvedEventualDefinition<R> {
+  return "result" in eventualDefinition;
 }
