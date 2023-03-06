@@ -2622,6 +2622,31 @@ test("publish event", async () => {
   });
 });
 
+test("many events at once", async () => {
+  const wf = workflow(async () => {
+    for (const i of [...Array(100).keys()]) {
+      await createActivityCall("myAct", i);
+    }
+
+    return "done";
+  });
+
+  const executor = new WorkflowExecutor(
+    wf,
+    [...Array(100).keys()].flatMap((i) => [
+      activityScheduled("myAct", i),
+      activitySucceeded(undefined, i),
+    ])
+  );
+
+  await expect(
+    executor.start(undefined, context)
+  ).resolves.toEqual<WorkflowResult>({
+    commands: [],
+    result: Result.resolved("done"),
+  });
+});
+
 describe("continue", () => {
   test("start a workflow with no events and feed it one after", async () => {
     const executor = new WorkflowExecutor(myWorkflow, [], { resumable: true });
@@ -2704,6 +2729,41 @@ describe("continue", () => {
     });
 
     const executor = new WorkflowExecutor(wf, [], { resumable: true });
+
+    await executor.start(undefined, context);
+
+    await expect(
+      executor.continue(
+        ...[...Array(100).keys()].map((i) => activitySucceeded(undefined, i))
+      )
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [...Array(99).keys()].map((i) =>
+        // commands are still emitted because normally the command would precede the events.
+        // the first command is emitted during start
+        createScheduledActivityCommand("myAct", i + 1, i + 1)
+      ),
+      result: Result.resolved("done"),
+    });
+  });
+
+  test("many iterations at once with expected", async () => {
+    const wf = workflow(async () => {
+      for (const i of [...Array(100).keys()]) {
+        await createActivityCall("myAct", i);
+      }
+
+      return "done";
+    });
+
+    const executor = new WorkflowExecutor(
+      wf,
+      /**
+       * We will provide expected events, but will not consume them all until all of the
+       * succeeded events are supplied.
+       */
+      [...Array(100).keys()].map((i) => activityScheduled("myAct", i)),
+      { resumable: true }
+    );
 
     await executor.start(undefined, context);
 

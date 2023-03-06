@@ -203,7 +203,7 @@ export class WorkflowExecutor<Input, Output> {
       // this assumption breaks down when the user tries to start a promise
       // to accomplish non-deterministic actions like IO.
       setTimeout(() => {
-        resolve(this.flushCurrentWorkflowResult());
+        this.started?.resolve();
       });
     });
   }
@@ -252,16 +252,21 @@ export class WorkflowExecutor<Input, Output> {
     this.history.push(...history);
 
     return new Promise(async (resolve) => {
+      // start context with execution hook
+      this.started = {
+        resolve: (result) => {
+          resolve(this.flushCurrentWorkflowResult(result));
+        },
+      };
+
       // Also ensure that any handlers like signal handlers returned by the workflow
       // have access to the workflow hook
-      await this.enterWorkflowHookScope(() => this.drainHistoryEvents());
+      await this.enterWorkflowHookScope(async () => {
+        await this.drainHistoryEvents();
+      });
 
-      const newCommands = this.commandsToEmit;
-      this.commandsToEmit = [];
-
-      resolve({
-        commands: newCommands,
-        result: this.result,
+      setTimeout(() => {
+        resolve(this.flushCurrentWorkflowResult());
       });
     });
   }
@@ -273,6 +278,9 @@ export class WorkflowExecutor<Input, Output> {
     this.started.resolve(result);
   }
 
+  /**
+   * Provides a scope where the workflowHook is available to the {@link Call}s.
+   */
   private async enterWorkflowHookScope<Res>(callback: (...args: any) => Res) {
     const self = this;
     const workflowHook: ExecutionWorkflowHook = {
@@ -342,6 +350,12 @@ export class WorkflowExecutor<Input, Output> {
     }
   }
 
+  /**
+   * Applies each of the history events to the workflow in the order they were received.
+   *
+   * Each event will find all of the applicable handlers and let them resolve
+   * before applying the next set of events.
+   */
   private async drainHistoryEvents() {
     while (this.events.hasNext() && !this.result) {
       const event = this.events.next()!;
@@ -398,6 +412,11 @@ export class WorkflowExecutor<Input, Output> {
     }
   }
 
+  /**
+   * Attempts to provide a result to an eventual.
+   *
+   * If the eventual is not active, the result will be ignored.
+   */
   private tryResolveEventual<R>(
     seq: number,
     result: Result<R> | undefined
