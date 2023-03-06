@@ -15,8 +15,7 @@ import {
 } from "@eventual/core";
 import {
   createActivityCall,
-  createAwaitDurationCall,
-  createAwaitTimeCall,
+  createAwaitTimerCall,
   createConditionCall,
   createExpectSignalCall,
   createPublishEventsCall,
@@ -83,7 +82,7 @@ const myWorkflow = workflow(async (event) => {
     createActivityCall("my-activity-0", [event]);
 
     const all = (await Promise.all([
-      createAwaitTimeCall("then"),
+      createAwaitTimerCall(Schedule.time("then")),
       createActivityCall("my-activity-2", [event]),
     ])) as any;
     return [a, all];
@@ -189,7 +188,7 @@ test("should catch error of timing out Activity", async () => {
       const a = await createActivityCall(
         "my-activity",
         [event],
-        createAwaitTimeCall("")
+        createAwaitTimerCall(Schedule.time(""))
       );
 
       return a;
@@ -234,7 +233,7 @@ test("immediately abort activity on invalid timeout", async () => {
 
 test("timeout multiple activities at once", async () => {
   const myWorkflow = workflow(async (event) => {
-    const time = createAwaitTimeCall("");
+    const time = createAwaitTimerCall(Schedule.time(""));
     const a = createActivityCall("my-activity", [event], time);
     const b = createActivityCall("my-activity", [event], time);
 
@@ -695,7 +694,7 @@ describe("temple of doom", () => {
     let jump = false;
 
     async function startTrap() {
-      await createAwaitTimeCall("then");
+      await createAwaitTimerCall(Schedule.time("then"));
       trapDown = true;
     }
 
@@ -1714,7 +1713,7 @@ describe("signals", () => {
     const wf = workflow(async () => {
       const result = await createExpectSignalCall(
         "MySignal",
-        createAwaitDurationCall(100 * 1000, "seconds")
+        createAwaitTimerCall(Schedule.duration(100 * 1000, "seconds"))
       );
 
       return result ?? "done";
@@ -1818,11 +1817,11 @@ describe("signals", () => {
       const wf = workflow(async () => {
         const wait1 = createExpectSignalCall(
           "MySignal",
-          createAwaitDurationCall(100 * 1000, "seconds")
+          createAwaitTimerCall(Schedule.duration(100 * 1000, "seconds"))
         );
         const wait2 = createExpectSignalCall(
           "MySignal",
-          createAwaitDurationCall(100 * 1000, "seconds")
+          createAwaitTimerCall(Schedule.duration(100 * 1000, "seconds"))
         );
 
         return Promise.all([wait1, wait2]);
@@ -1848,11 +1847,11 @@ describe("signals", () => {
       const wf = workflow(async () => {
         await createExpectSignalCall(
           "MySignal",
-          createAwaitDurationCall(100 * 1000, "seconds")
+          createAwaitTimerCall(Schedule.duration(100 * 1000, "seconds"))
         );
         await createExpectSignalCall(
           "MySignal",
-          createAwaitDurationCall(100 * 1000, "seconds")
+          createAwaitTimerCall(Schedule.duration(100 * 1000, "seconds"))
         );
       });
 
@@ -1868,11 +1867,11 @@ describe("signals", () => {
       const wf = workflow(async () => {
         await createExpectSignalCall(
           "MySignal",
-          createAwaitDurationCall(100 * 1000, "seconds")
+          createAwaitTimerCall(Schedule.duration(100 * 1000, "seconds"))
         );
         await createExpectSignalCall(
           "MySignal",
-          createAwaitDurationCall(100 * 1000, "seconds")
+          createAwaitTimerCall(Schedule.duration(100 * 1000, "seconds"))
         );
       });
 
@@ -1914,12 +1913,12 @@ describe("signals", () => {
         }
       );
 
-      await createAwaitTimeCall("then");
+      await createAwaitTimerCall(Schedule.time("then"));
 
       mySignalHandler.dispose();
       myOtherSignalHandler.dispose();
 
-      await createAwaitTimeCall("then");
+      await createAwaitTimerCall(Schedule.time("then"));
 
       return {
         mySignalHappened,
@@ -2302,7 +2301,7 @@ describe("condition", () => {
     const wf = workflow(async () => {
       await createConditionCall(
         () => false,
-        createAwaitDurationCall(100, "seconds")
+        createAwaitTimerCall(Schedule.duration(100, "seconds"))
       );
     });
 
@@ -2317,7 +2316,7 @@ describe("condition", () => {
     const wf = workflow(async () => {
       await createConditionCall(
         () => false,
-        createAwaitDurationCall(100, "seconds")
+        createAwaitTimerCall(Schedule.duration(100, "seconds"))
       );
     });
 
@@ -2336,7 +2335,7 @@ describe("condition", () => {
     if (
       !(await createConditionCall(
         () => yes,
-        createAwaitDurationCall(100, "seconds")
+        createAwaitTimerCall(Schedule.duration(100, "seconds"))
       ))
     ) {
       return "timed out";
@@ -2454,7 +2453,7 @@ test("nestedChains", async () => {
   const wf = workflow(async () => {
     const funcs = {
       a: async () => {
-        await createAwaitTimeCall("then");
+        await createAwaitTimerCall(Schedule.time("then"));
       },
     };
 

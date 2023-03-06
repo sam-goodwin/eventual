@@ -1,9 +1,4 @@
-import {
-  EventualError,
-  HeartbeatTimeout,
-  Schedule,
-  Timeout,
-} from "@eventual/core";
+import { EventualError, HeartbeatTimeout, Timeout } from "@eventual/core";
 import {
   assertNever,
   EventualCall,
@@ -12,8 +7,7 @@ import {
   isActivityHeartbeatTimedOut,
   isActivityScheduled,
   isActivitySucceeded,
-  isAwaitDurationCall,
-  isAwaitTimeCall,
+  isAwaitTimerCall,
   isChildWorkflowFailed,
   isChildWorkflowScheduled,
   isChildWorkflowSucceeded,
@@ -93,7 +87,7 @@ export function createEventualFromCall(
         };
       },
     };
-  } else if (isAwaitTimeCall(call) || isAwaitDurationCall(call)) {
+  } else if (isAwaitTimerCall(call)) {
     return {
       applyEvent: (event) => {
         if (isTimerCompleted(event)) {
@@ -105,9 +99,7 @@ export function createEventualFromCall(
         return {
           kind: CommandType.StartTimer,
           seq,
-          schedule: isAwaitTimeCall(call)
-            ? Schedule.time(call.isoDate)
-            : Schedule.duration(call.dur, call.unit),
+          schedule: call.schedule,
         };
       },
     };
@@ -196,7 +188,7 @@ export function isCorresponding(
   } else if (isChildWorkflowScheduled(event)) {
     return isWorkflowCall(call) && call.name === event.name;
   } else if (isTimerScheduled(event)) {
-    return isAwaitTimeCall(call) || isAwaitDurationCall(call);
+    return isAwaitTimerCall(call);
   } else if (isSignalSent(event)) {
     return isSendSignalCall(call) && event.signalId === call.signalId;
   } else if (isEventsPublished(event)) {

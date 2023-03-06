@@ -1,5 +1,5 @@
 import { ActivityCall } from "./activity-call.js";
-import { AwaitDurationCall, AwaitTimeCall } from "./await-time-call.js";
+import { AwaitTimerCall } from "./await-time-call.js";
 import { ConditionCall } from "./condition-call.js";
 import { ExpectSignalCall } from "./expect-signal-call.js";
 import { PublishEventsCall } from "./publish-events-call.js";
@@ -9,8 +9,7 @@ import { WorkflowCall } from "./workflow-call.js";
 
 export type EventualCall =
   | ActivityCall
-  | AwaitDurationCall
-  | AwaitTimeCall
+  | AwaitTimerCall
   | ConditionCall
   | ExpectSignalCall
   | PublishEventsCall
@@ -20,14 +19,13 @@ export type EventualCall =
 
 export enum EventualCallKind {
   ActivityCall = 0,
-  AwaitDurationCall = 1,
-  AwaitTimeCall = 2,
-  ConditionCall = 3,
-  ExpectSignalCall = 4,
-  PublishEventsCall = 5,
-  RegisterSignalHandlerCall = 6,
-  SendSignalCall = 7,
-  WorkflowCall = 8,
+  AwaitTimerCall = 1,
+  ConditionCall = 2,
+  ExpectSignalCall = 3,
+  PublishEventsCall = 4,
+  RegisterSignalHandlerCall = 5,
+  SendSignalCall = 6,
+  WorkflowCall = 7,
 }
 
 const EventualCallSymbol = Symbol.for("eventual:EventualCall");

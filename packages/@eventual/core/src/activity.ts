@@ -2,10 +2,7 @@ import { ExecutionID } from "./execution.js";
 import { FunctionRuntimeProps } from "./function-props.js";
 import { AsyncTokenSymbol } from "./internal/activity.js";
 import { createActivityCall } from "./internal/calls/activity-call.js";
-import {
-  createAwaitDurationCall,
-  createAwaitTimeCall,
-} from "./internal/calls/await-time-call.js";
+import { createAwaitTimerCall } from "./internal/calls/await-time-call.js";
 import type {
   SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
@@ -309,10 +306,8 @@ export function activity<Name extends string, Input = any, Output = any>(
         name,
         input,
         timeout
-          ? isDurationSchedule(timeout)
-            ? createAwaitDurationCall(timeout.dur, timeout.unit)
-            : isTimeSchedule(timeout)
-            ? createAwaitTimeCall(timeout.isoDate)
+          ? isDurationSchedule(timeout) || isTimeSchedule(timeout)
+            ? createAwaitTimerCall(timeout)
             : timeout
           : undefined,
         options?.heartbeatTimeout ?? opts?.heartbeatTimeout
