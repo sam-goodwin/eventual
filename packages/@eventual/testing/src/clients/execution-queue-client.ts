@@ -1,5 +1,5 @@
 import { ExecutionQueueClient } from "@eventual/core-runtime";
-import { HistoryStateEvent } from "@eventual/core/internal";
+import { WorkflowInputEvent } from "@eventual/core/internal";
 import { TimeConnector } from "../environment.js";
 
 export class TestExecutionQueueClient extends ExecutionQueueClient {
@@ -9,7 +9,7 @@ export class TestExecutionQueueClient extends ExecutionQueueClient {
 
   public async submitExecutionEvents(
     executionId: string,
-    ...events: HistoryStateEvent[]
+    ...events: WorkflowInputEvent[]
   ): Promise<void> {
     this.timeConnector.pushEvent({ executionId, events });
   }

@@ -2830,6 +2830,19 @@ describe("continue", () => {
       result: undefined,
     });
   });
+
+  test("filters duplicate events", async () => {
+    const executor = new WorkflowExecutor(myWorkflow, [
+      activityScheduled("my-activity", 0),
+      activitySucceeded("result", 0),
+    ]);
+    await expect(
+      executor.continue(activitySucceeded("result", 0))
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [],
+      result: undefined,
+    });
+  });
 });
 
 describe("running after result", () => {

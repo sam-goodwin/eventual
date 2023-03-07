@@ -1,8 +1,8 @@
 import { SendSignalRequest } from "@eventual/core";
 import {
-  HistoryStateEvent,
   SignalReceived,
   WorkflowEventType,
+  WorkflowInputEvent,
 } from "@eventual/core/internal";
 import { WorkflowTask } from "../tasks.js";
 import { createEvent } from "../workflow-events.js";
@@ -11,7 +11,7 @@ export abstract class ExecutionQueueClient {
 
   public abstract submitExecutionEvents(
     executionId: string,
-    ...events: HistoryStateEvent[]
+    ...events: WorkflowInputEvent[]
   ): Promise<void>;
 
   public async sendSignal(request: SendSignalRequest): Promise<void> {

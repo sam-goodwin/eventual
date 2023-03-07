@@ -5,7 +5,8 @@ import {
   WorkflowEventType,
   WorkflowStarted,
 } from "@eventual/core/internal";
-import { filterEvents } from "../src/handlers/orchestrator.js";
+import { filterEvents } from "../src/workflow-events.js";
+
 import "../src/workflow";
 
 const started1: WorkflowStarted = {

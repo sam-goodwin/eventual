@@ -14,3 +14,4 @@ export * from "./system-commands.js";
 export * from "./tasks.js";
 export * from "./utils.js";
 export * from "./workflow-command.js";
+export * from "./workflow-executor.js";

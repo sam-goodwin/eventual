@@ -14,9 +14,9 @@ import {
   ExecutionWorkflowHook,
   extendsSystemError,
   HistoryEvent,
-  HistoryResultEvent,
-  HistoryScheduledEvent,
-  isResultEvent,
+  CompletionEvent,
+  ScheduledEvent,
+  isCompletionEvent,
   isScheduledEvent,
   isSignalReceived,
   isWorkflowRunStarted,
@@ -33,6 +33,7 @@ import { isPromise } from "util/types";
 import { createEventualFromCall, isCorresponding } from "./eventual-factory.js";
 import { isFailed, isResolved, isResult } from "./result.js";
 import type { WorkflowCommand } from "./workflow-command.js";
+import { filterEvents } from "./workflow-events.js";
 
 /**
  * Put the resolve method on the promise, but don't expose it.
@@ -108,7 +109,7 @@ interface ExecutorOptions {
     /**
      * Callback immediately before applying a result event.
      */
-    beforeApplyingResultEvent?: (resultEvent: HistoryResultEvent) => void;
+    beforeApplyingResultEvent?: (resultEvent: CompletionEvent) => void;
   };
 }
 
@@ -136,11 +137,11 @@ export class WorkflowExecutor<Input, Output> {
   /**
    * Iterator containing the in order events we expected to see in a deterministic workflow.
    */
-  private expected: _Iterator<HistoryEvent, HistoryScheduledEvent>;
+  private expected: _Iterator<HistoryEvent, ScheduledEvent>;
   /**
    * Iterator containing events to apply.
    */
-  private events: _Iterator<HistoryEvent, HistoryResultEvent>;
+  private events: _Iterator<HistoryEvent, CompletionEvent>;
 
   /**
    * The state of the current workflow run (start or continue are running).
@@ -184,7 +185,7 @@ export class WorkflowExecutor<Input, Output> {
   ) {
     this.nextSeq = 0;
     this.expected = iterator(history, isScheduledEvent);
-    this.events = iterator(history, isResultEvent);
+    this.events = iterator(history, isCompletionEvent);
   }
 
   /**
@@ -222,18 +223,18 @@ export class WorkflowExecutor<Input, Output> {
   }
 
   /**
-   * Continue a previously started workflow by feeding in new {@link HistoryResultEvent}, possibly advancing the execution.
+   * Continue a previously started workflow by feeding in new {@link CompletionEvent}, possibly advancing the execution.
    *
    * This allows the workflow to continue without re-running previous history.
    *
-   * Events will be applied to the workflow in order.
+   * Events will be applied to the workflow in order after being filtered for uniqueness.
    *
    * The execution will run until the events are exhausted or the workflow fails.
    *
    * @returns {@link WorkflowResult} - containing new commands and a result of one was generated.
    */
   public async continue(
-    ...history: HistoryResultEvent[]
+    ...events: CompletionEvent[]
   ): Promise<WorkflowResult<Output>> {
     if (!this.started) {
       throw new Error("Execution has not been started, call start first.");
@@ -243,9 +244,15 @@ export class WorkflowExecutor<Input, Output> {
       );
     }
 
-    this.history.push(...history);
+    const filteredHistory = filterEvents(this.history, events);
+
+    this.history.push(...filteredHistory);
 
     return await this.startWorkflowRun();
+  }
+
+  public isStarted() {
+    return !!this.started;
   }
 
   private startWorkflowRun(beforeCommitEvents?: () => void) {
@@ -422,7 +429,7 @@ export class WorkflowExecutor<Input, Output> {
    * 4. if the resolved eventuals have any dependents, try resolve them too until the queue is drained.
    *    note: dependents are those eventuals while have declared other eventuals they care about.
    */
-  private tryApplyEvent(event: HistoryResultEvent) {
+  private tryApplyEvent(event: CompletionEvent) {
     if (isWorkflowTimedOut(event)) {
       return this.resolveWorkflow(
         Result.failed(new WorkflowTimeout("Workflow timed out"))
@@ -460,7 +467,7 @@ export class WorkflowExecutor<Input, Output> {
   }
 
   private *getHandlersForEvent(
-    event: Exclude<HistoryResultEvent, WorkflowRunStarted | WorkflowTimedOut>
+    event: Exclude<CompletionEvent, WorkflowRunStarted | WorkflowTimedOut>
   ): Generator<TriggerHandlerRef<any>, void, undefined> {
     if (isSignalReceived(event)) {
       const signalHandlers = this.activeHandlers.signals[event.signalId] ?? {};
@@ -667,10 +674,10 @@ export const Trigger = {
       afterEvery: handler,
     };
   },
-  onWorkflowEvent: <Output = any, T extends HistoryResultEvent["type"] = any>(
+  onWorkflowEvent: <Output = any, T extends CompletionEvent["type"] = any>(
     eventType: T,
-    handler: EventTrigger<Output, HistoryResultEvent & { type: T }>["handler"]
-  ): EventTrigger<Output, HistoryResultEvent & { type: T }> => {
+    handler: EventTrigger<Output, CompletionEvent & { type: T }>["handler"]
+  ): EventTrigger<Output, CompletionEvent & { type: T }> => {
     return {
       eventType,
       handler,
@@ -704,7 +711,7 @@ export interface AfterEveryEventTrigger<Output> {
 
 export interface EventTrigger<
   out Output = any,
-  E extends HistoryResultEvent = any
+  E extends CompletionEvent = any
 > {
   eventType: E["type"];
   handler: TriggerHandler<[event: E], Output>;
@@ -727,7 +734,7 @@ export function isAfterEveryEventTrigger<Output>(
   return "afterEvery" in t;
 }
 
-export function isEventTrigger<Output, E extends HistoryResultEvent>(
+export function isEventTrigger<Output, E extends CompletionEvent>(
   t: Trigger<Output>
 ): t is EventTrigger<Output, E> {
   return "eventType" in t;

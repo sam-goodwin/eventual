@@ -12,6 +12,7 @@ import {
   WorkflowContext,
 } from "@eventual/core";
 import {
+  CompletionEvent,
   getEventId,
   HistoryEvent,
   HistoryStateEvent,
@@ -29,6 +30,7 @@ import {
   WorkflowEvent,
   WorkflowEventType,
   WorkflowFailed,
+  WorkflowInputEvent,
   WorkflowRunCompleted,
   WorkflowRunStarted,
   WorkflowStarted,
@@ -60,7 +62,7 @@ import { ExecutionHistoryStore } from "../stores/execution-history-store.js";
 import { WorkflowTask } from "../tasks.js";
 import { groupBy } from "../utils.js";
 import { WorkflowCommand } from "../workflow-command.js";
-import { createEvent } from "../workflow-events.js";
+import { createEvent, filterEvents } from "../workflow-events.js";
 import { WorkflowExecutor } from "../workflow-executor.js";
 
 /**
@@ -112,71 +114,35 @@ export function createOrchestrator({
   return async (workflowTasks, baseTime = () => new Date()) =>
     await serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
       console.log(JSON.stringify(workflowTasks, null, 4));
-      const tasksByExecutionId = groupBy(
+
+      const results = await runExecutions(
         workflowTasks,
-        (task) => task.executionId
-      );
-
-      const eventsByExecutionId = Object.fromEntries(
-        Object.entries(tasksByExecutionId).map(([executionId, records]) => [
-          executionId,
-          records.flatMap((e) => {
-            return e.events.map((evnt) =>
-              // events can be objects or stringified json
-              typeof evnt === "string"
-                ? (JSON.parse(evnt) as HistoryStateEvent)
-                : evnt
-            );
-          }),
-        ])
-      );
-
-      console.info(
-        "Found execution ids: " + Object.keys(eventsByExecutionId).join(", ")
-      );
-
-      // for each execution id
-      const succeeded: string[] = [];
-      const failed: Record<string, string> = {};
-
-      for (const [executionId, records] of Object.entries(
-        eventsByExecutionId
-      )) {
-        try {
-          if (!isExecutionId(executionId)) {
-            throw new Error(`invalid ExecutionID: '${executionId}'`);
-          }
-          const workflowName = parseWorkflowName(executionId);
-          if (workflowName === undefined) {
-            throw new Error(`execution ID '${executionId}' does not exist`);
-          }
-          // TODO: get workflow from execution id
-          await orchestrateExecution(
+        async (workflowName, executionId, events) => {
+          return orchestrateExecution(
             workflowName,
             executionId,
-            records,
+            events,
             baseTime
           );
-
-          succeeded.push(executionId);
-        } catch (err) {
-          failed[executionId] = normalizeError(err).message;
         }
-      }
+      );
 
-      console.debug("Executions succeeded: " + succeeded.join(", "));
+      console.debug(
+        "Executions run without error: " + results.succeededExecutions
+      );
 
-      if (Object.keys(failed).length > 0) {
+      const failedExecutionIds = Object.keys(results.failedExecutions);
+      if (failedExecutionIds.length > 0) {
         console.error(
           "Executions failed: \n" +
-            Object.entries(failed)
+            Object.entries(results.failedExecutions)
               .map(([executionId, error]) => `${executionId}: ${error}`)
               .join("\n")
         );
       }
 
       return {
-        failedExecutionIds: Object.keys(failed),
+        failedExecutionIds,
       };
     });
 
@@ -740,6 +706,7 @@ export async function progressWorkflow(
   } finally {
     restoreDate();
     // re-enable sending logs, any generated logs are new.
+    restoreDate();
     logAgent?.enableSendingLogs();
   }
 }
@@ -803,23 +770,56 @@ export function processEvents(
   };
 }
 
-/**
- * Filters out events that are also present in origin events.
- *
- * Events are taken only if their ID ({@link getEventId}) is unique across all other events.
- */
-export function filterEvents<T extends WorkflowEvent>(
-  originEvents: T[],
-  events: T[]
-): T[] {
-  const ids = new Set(originEvents.map(getEventId));
+export async function runExecutions<T>(
+  workflowTasks: WorkflowTask[],
+  executor: (
+    workflowName: string,
+    executionId: ExecutionID,
+    events: WorkflowInputEvent[]
+  ) => T
+): Promise<{
+  failedExecutions: Record<ExecutionID, string>;
+  succeededExecutions: ExecutionID[];
+}> {
+  const tasksByExecutionId = groupBy(workflowTasks, (task) => task.executionId);
 
-  return events.filter((event) => {
-    const id = getEventId(event);
-    if (ids.has(id)) {
-      return false;
+  const eventsByExecutionId = Object.fromEntries(
+    Object.entries(tasksByExecutionId).map(([executionId, records]) => [
+      executionId,
+      records.flatMap((e) => {
+        return e.events.map((evnt) =>
+          // events can be objects or stringified json
+          typeof evnt === "string"
+            ? (JSON.parse(evnt) as CompletionEvent)
+            : evnt
+        );
+      }),
+    ])
+  );
+
+  // for each execution id
+  const succeeded: ExecutionID[] = [];
+  const failed: Record<string, string> = {};
+
+  for (const [executionId, records] of Object.entries(eventsByExecutionId)) {
+    try {
+      if (!isExecutionId(executionId)) {
+        throw new Error(`invalid ExecutionID: '${executionId}'`);
+      }
+      const workflowName = parseWorkflowName(executionId);
+      if (workflowName === undefined) {
+        throw new Error(`execution ID '${executionId}' does not exist`);
+      }
+      // TODO: get workflow from execution id
+      await executor(workflowName, executionId, records);
+      succeeded.push(executionId);
+    } catch (err) {
+      failed[executionId] = normalizeError(err).message;
     }
-    ids.add(id);
-    return true;
-  });
+  }
+
+  return {
+    failedExecutions: failed,
+    succeededExecutions: succeeded,
+  };
 }

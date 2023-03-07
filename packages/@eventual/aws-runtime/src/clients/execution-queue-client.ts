@@ -5,7 +5,7 @@ import {
   getLazy,
   LazyValue,
 } from "@eventual/core-runtime";
-import { HistoryResultEvent } from "@eventual/core/internal";
+import { CompletionEvent } from "@eventual/core/internal";
 
 export interface AWSExecutionQueueClientProps {
   sqs: SQSClient;
@@ -20,7 +20,7 @@ export class AWSExecutionQueueClient extends ExecutionQueueClient {
 
   public async submitExecutionEvents(
     executionId: string,
-    ...events: HistoryResultEvent[]
+    ...events: CompletionEvent[]
   ) {
     // send workflow task to workflow queue
     const workflowTask: ExecutionQueueEventEnvelope = {
