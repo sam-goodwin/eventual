@@ -55,6 +55,11 @@ function getDate() {
   );
 }
 
+/**
+ * Overrides the date within the scope when Date is hooked.
+ *
+ * Also provides a setDate method to update the date while in the scope.
+ */
 export function overrideDateScope<T>(
   initialDate: number | undefined,
   executor: (setDate: (date: number | undefined) => void) => T
