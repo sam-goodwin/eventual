@@ -133,8 +133,6 @@ export function createOrchestrator({
         "Found execution ids: " + Object.keys(eventsByExecutionId).join(", ")
       );
 
-      hookDate();
-
       // for each execution id
       const results = await promiseAllSettledPartitioned(
         Object.entries(eventsByExecutionId),
@@ -155,8 +153,6 @@ export function createOrchestrator({
           );
         }
       );
-
-      restoreDate();
 
       console.debug(
         "Executions succeeded: " +
@@ -703,7 +699,8 @@ export async function progressWorkflow(
   };
 
   try {
-    return overrideDateScope(
+    hookDate();
+    return await overrideDateScope(
       new Date(processedEvents.firstRunStarted.timestamp).getTime(),
       async (setDate) => {
         const executor = new WorkflowExecutor(
@@ -736,6 +733,7 @@ export async function progressWorkflow(
     console.debug("workflow error", inspect(err));
     throw err;
   } finally {
+    restoreDate();
     // re-enable sending logs, any generated logs are new.
     logAgent?.enableSendingLogs();
   }
