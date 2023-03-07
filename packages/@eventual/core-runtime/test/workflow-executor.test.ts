@@ -28,6 +28,7 @@ import {
   SERVICE_TYPE_FLAG,
   SignalTargetType,
 } from "@eventual/core/internal";
+import { WorkflowExecutor, WorkflowResult } from "../src/workflow-executor.js";
 import {
   activityFailed,
   activityHeartbeatTimedOut,
@@ -49,7 +50,6 @@ import {
   workflowTimedOut,
 } from "./command-util.js";
 
-import { WorkflowExecutor, WorkflowResult } from "../src/workflow-executor.js";
 import "../src/workflow.js";
 
 const event = "hello world";
@@ -475,19 +475,6 @@ describe("activity", () => {
 test("should throw when scheduled does not correspond to call", async () => {
   await expect(
     execute(myWorkflow, [timerScheduled(0)], event)
-  ).resolves.toMatchObject<WorkflowResult>({
-    result: Result.failed({ name: "DeterminismError" }),
-    commands: [],
-  });
-});
-
-test("should throw when there are more schedules than calls emitted", async () => {
-  await expect(
-    execute(
-      myWorkflow,
-      [activityScheduled("my-activity", 0), activityScheduled("result", 1)],
-      event
-    )
   ).resolves.toMatchObject<WorkflowResult>({
     result: Result.failed({ name: "DeterminismError" }),
     commands: [],
@@ -2649,7 +2636,7 @@ test("many events at once", async () => {
 
 describe("continue", () => {
   test("start a workflow with no events and feed it one after", async () => {
-    const executor = new WorkflowExecutor(myWorkflow, [], { resumable: true });
+    const executor = new WorkflowExecutor(myWorkflow, []);
     await expect(
       executor.start(event, context)
     ).resolves.toEqual<WorkflowResult>({
@@ -2670,11 +2657,10 @@ describe("continue", () => {
   });
 
   test("start a workflow with events and feed it one after", async () => {
-    const executor = new WorkflowExecutor(
-      myWorkflow,
-      [activityScheduled("my-activity", 0), activitySucceeded("result", 0)],
-      { resumable: true }
-    );
+    const executor = new WorkflowExecutor(myWorkflow, [
+      activityScheduled("my-activity", 0),
+      activitySucceeded("result", 0),
+    ]);
     await expect(
       executor.start(event, context)
     ).resolves.toEqual<WorkflowResult>({
@@ -2703,7 +2689,7 @@ describe("continue", () => {
       return "done";
     });
 
-    const executor = new WorkflowExecutor(wf, [], { resumable: true });
+    const executor = new WorkflowExecutor(wf, []);
 
     await executor.start(undefined, context);
 
@@ -2728,7 +2714,7 @@ describe("continue", () => {
       return "done";
     });
 
-    const executor = new WorkflowExecutor(wf, [], { resumable: true });
+    const executor = new WorkflowExecutor(wf, []);
 
     await executor.start(undefined, context);
 
@@ -2761,8 +2747,7 @@ describe("continue", () => {
        * We will provide expected events, but will not consume them all until all of the
        * succeeded events are supplied.
        */
-      [...Array(100).keys()].map((i) => activityScheduled("myAct", i)),
-      { resumable: true }
+      [...Array(100).keys()].map((i) => activityScheduled("myAct", i))
     );
 
     await executor.start(undefined, context);

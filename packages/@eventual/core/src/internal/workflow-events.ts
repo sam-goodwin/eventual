@@ -80,7 +80,7 @@ export type HistoryScheduledEvent =
   | SignalSent
   | TimerScheduled;
 
-export const isScheduledEvent = or(
+export const isScheduledEvent = /* @__PURE__ */ or(
   isActivityScheduled,
   isChildWorkflowScheduled,
   isEventsPublished,
@@ -88,20 +88,20 @@ export const isScheduledEvent = or(
   isTimerScheduled
 );
 
-export const isSucceededEvent = or(
+export const isSucceededEvent = /* @__PURE__ */ or(
   isActivitySucceeded,
   isChildWorkflowSucceeded,
   isTimerCompleted
 );
 
-export const isFailedEvent = or(
+export const isFailedEvent = /* @__PURE__ */ or(
   isActivityFailed,
   isActivityHeartbeatTimedOut,
   isChildWorkflowFailed,
   isWorkflowTimedOut
 );
 
-export const isResultEvent = or(
+export const isResultEvent = /* @__PURE__ */ or(
   isSucceededEvent,
   isFailedEvent,
   isSignalReceived,

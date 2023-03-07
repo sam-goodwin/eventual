@@ -18,21 +18,3 @@ export async function timed<T>(
 
   return result;
 }
-
-export function timedSync<T>(
-  metricLogger: MetricsLogger,
-  name: string,
-  call: () => T
-): T {
-  const start = new Date();
-
-  const result = call();
-
-  metricLogger.putMetric(
-    name,
-    new Date().getTime() - start.getTime(),
-    Unit.Milliseconds
-  );
-
-  return result;
-}

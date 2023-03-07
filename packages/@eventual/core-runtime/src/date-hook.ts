@@ -1,5 +1,5 @@
 const originalDate = globalThis.Date;
-const HOOKED_SYMBOL = Symbol.for("eventual-hooked-date");
+const HOOKED_SYMBOL = /* @__PURE__ */ Symbol.for("eventual-hooked-date");
 
 /**
  * Replaces the node implementation of Date with a hook to get the current datetime.

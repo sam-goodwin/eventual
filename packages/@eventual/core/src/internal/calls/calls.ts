@@ -28,7 +28,7 @@ export enum EventualCallKind {
   WorkflowCall = 7,
 }
 
-const EventualCallSymbol = Symbol.for("eventual:EventualCall");
+const EventualCallSymbol = /* @__PURE__ */ Symbol.for("eventual:EventualCall");
 
 export interface EventualCallBase<
   Kind extends EventualCall[typeof EventualCallSymbol]

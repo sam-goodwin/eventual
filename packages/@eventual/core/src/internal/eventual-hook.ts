@@ -13,7 +13,8 @@ declare global {
     | undefined;
 }
 
-export const EventualPromiseSymbol = Symbol.for("Eventual:Promise");
+export const EventualPromiseSymbol =
+  /* @__PURE__ */ Symbol.for("Eventual:Promise");
 
 export interface EventualPromise<R> extends Promise<R> {
   /**

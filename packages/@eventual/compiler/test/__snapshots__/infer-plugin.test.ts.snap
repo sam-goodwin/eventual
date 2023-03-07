@@ -443,10 +443,6 @@ __export(command_worker_exports, {
 });
 module.exports = __toCommonJS(command_worker_exports);
 
-var AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
-
-var EventualPromiseSymbol = Symbol.for("Eventual:Promise");
-
 var EventualCallKind;
 (function(EventualCallKind2) {
   EventualCallKind2[EventualCallKind2["ActivityCall"] = 0] = "ActivityCall";
@@ -458,7 +454,6 @@ var EventualCallKind;
   EventualCallKind2[EventualCallKind2["SendSignalCall"] = 6] = "SendSignalCall";
   EventualCallKind2[EventualCallKind2["WorkflowCall"] = 7] = "WorkflowCall";
 })(EventualCallKind || (EventualCallKind = {}));
-var EventualCallSymbol = Symbol.for("eventual:EventualCall");
 
 var ServiceType;
 (function(ServiceType2) {
@@ -655,33 +650,21 @@ _BaseCachingSecret_value = /* @__PURE__ */ new WeakMap();
 
 var import_ulidx2 = __toESM(require_dist2(), 1);
 
-function or(...conditions) {
-  return (a) => conditions.some((cond) => cond(a));
-}
-
-var ResultSymbol = Symbol.for("eventual:Result");
 var ResultKind;
 (function(ResultKind2) {
-  ResultKind2[ResultKind2["Pending"] = 0] = "Pending";
-  ResultKind2[ResultKind2["Resolved"] = 1] = "Resolved";
-  ResultKind2[ResultKind2["Failed"] = 2] = "Failed";
+  ResultKind2[ResultKind2["Resolved"] = 0] = "Resolved";
+  ResultKind2[ResultKind2["Failed"] = 1] = "Failed";
 })(ResultKind || (ResultKind = {}));
-function isResult(a) {
-  return a && typeof a === "object" && ResultSymbol in a;
-}
-function isResolved(result) {
-  return isResult(result) && result[ResultSymbol] === ResultKind.Resolved;
-}
-function isFailed(result) {
-  return isResult(result) && result[ResultSymbol] === ResultKind.Failed;
-}
-var isResolvedOrFailed = or(isResolved, isFailed);
 
 var SignalTargetType;
 (function(SignalTargetType2) {
   SignalTargetType2[SignalTargetType2["Execution"] = 0] = "Execution";
   SignalTargetType2[SignalTargetType2["ChildExecution"] = 1] = "ChildExecution";
 })(SignalTargetType || (SignalTargetType = {}));
+
+function or(...conditions) {
+  return (a) => conditions.some((cond) => cond(a));
+}
 
 var WorkflowEventType;
 (function(WorkflowEventType2) {
@@ -704,59 +687,13 @@ var WorkflowEventType;
   WorkflowEventType2["WorkflowRunStarted"] = "WorkflowRunStarted";
   WorkflowEventType2["WorkflowTimedOut"] = "WorkflowTimedOut";
 })(WorkflowEventType || (WorkflowEventType = {}));
-var isScheduledEvent = or(isActivityScheduled, isChildWorkflowScheduled, isEventsPublished, isSignalSent, isTimerScheduled);
-var isSucceededEvent = or(isActivitySucceeded, isChildWorkflowSucceeded, isTimerCompleted);
-var isFailedEvent = or(isActivityFailed, isActivityHeartbeatTimedOut, isChildWorkflowFailed, isWorkflowTimedOut);
-var isResultEvent = or(isSucceededEvent, isFailedEvent, isSignalReceived, isWorkflowTimedOut, isWorkflowRunStarted);
-function isWorkflowRunStarted(event) {
-  return event.type === WorkflowEventType.WorkflowRunStarted;
-}
-function isActivityScheduled(event) {
-  return event.type === WorkflowEventType.ActivityScheduled;
-}
-function isActivitySucceeded(event) {
-  return event.type === WorkflowEventType.ActivitySucceeded;
-}
-function isActivityFailed(event) {
-  return event.type === WorkflowEventType.ActivityFailed;
-}
-function isActivityHeartbeatTimedOut(event) {
-  return event.type === WorkflowEventType.ActivityHeartbeatTimedOut;
-}
-function isTimerScheduled(event) {
-  return event.type === WorkflowEventType.TimerScheduled;
-}
 function isWorkflowSucceeded(event) {
   return event.type === WorkflowEventType.WorkflowSucceeded;
 }
 function isWorkflowFailed(event) {
   return event.type === WorkflowEventType.WorkflowFailed;
 }
-function isChildWorkflowScheduled(event) {
-  return event.type === WorkflowEventType.ChildWorkflowScheduled;
-}
-function isChildWorkflowSucceeded(event) {
-  return event.type === WorkflowEventType.ChildWorkflowSucceeded;
-}
-function isChildWorkflowFailed(event) {
-  return event.type === WorkflowEventType.ChildWorkflowFailed;
-}
-function isTimerCompleted(event) {
-  return event.type === WorkflowEventType.TimerCompleted;
-}
 var isWorkflowCompletedEvent = or(isWorkflowFailed, isWorkflowSucceeded);
-function isSignalReceived(event) {
-  return event.type === WorkflowEventType.SignalReceived;
-}
-function isSignalSent(event) {
-  return event.type === WorkflowEventType.SignalSent;
-}
-function isEventsPublished(event) {
-  return event.type === WorkflowEventType.EventsPublished;
-}
-function isWorkflowTimedOut(event) {
-  return event.type === WorkflowEventType.WorkflowTimedOut;
-}
 
 var myHandler = api.get("/", async () => {
   return new HttpResponse();

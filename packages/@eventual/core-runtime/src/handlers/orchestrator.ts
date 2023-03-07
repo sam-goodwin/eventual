@@ -15,18 +15,14 @@ import {
   getEventId,
   HistoryEvent,
   HistoryStateEvent,
-  isFailed,
   isHistoryEvent,
   isHistoryStateEvent,
-  isResolved,
-  isResult,
   isTimerCompleted,
   isWorkflowCompletedEvent,
   isWorkflowFailed,
   isWorkflowRunStarted,
   isWorkflowStarted,
   isWorkflowSucceeded,
-  normalizeFailedResult,
   Result,
   ServiceType,
   serviceTypeScope,
@@ -52,6 +48,12 @@ import { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
 import { timed } from "../metrics/utils.js";
 import { WorkflowProvider } from "../providers/workflow-provider.js";
+import {
+  isFailed,
+  isResolved,
+  isResult,
+  normalizeFailedResult,
+} from "../result.js";
 import { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
 import { ExecutionHistoryStore } from "../stores/execution-history-store.js";
 import { WorkflowTask } from "../tasks.js";
@@ -726,8 +728,6 @@ export async function progressWorkflow(
     );
     return await executor.start(processedEvents.startEvent.input, context);
   } catch (err) {
-    // temporary fix when the interpreter fails, but the activities are not cleared.
-    // clearEventualCollector();
     console.debug("workflow error", inspect(err));
     throw err;
   } finally {

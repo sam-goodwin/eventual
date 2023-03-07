@@ -1,7 +1,7 @@
 import { LogLevel } from "@eventual/core";
 
 const originalConsole = globalThis.console;
-const HOOKED_SYMBOL = Symbol.for("eventual-hooked-console");
+const HOOKED_SYMBOL = /* @__PURE__ */ Symbol.for("eventual-hooked-console");
 
 /**
  * Replaces the node implementation of console.[log, info, debug, error, warn, trace]

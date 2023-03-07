@@ -7,17 +7,17 @@ import {
   isSucceededExecution,
 } from "@eventual/core";
 import {
-  parseWorkflowName,
-  processEvents,
-  progressWorkflow,
-} from "@eventual/core-runtime";
-import {
-  encodeExecutionId,
   isFailed,
   isResolved,
   normalizeFailedResult,
-  Result,
+  parseWorkflowName,
+  processEvents,
+  progressWorkflow,
   resultToString,
+} from "@eventual/core-runtime";
+import {
+  encodeExecutionId,
+  Result,
   ServiceType,
   serviceTypeScope,
   workflows,

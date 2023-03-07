@@ -64,7 +64,6 @@ export async function build({
   injectedServiceSpec,
   name,
   entry,
-  // eventualTransform = false,
   sourcemap,
   serviceType,
   external,
@@ -101,7 +100,6 @@ export async function build({
             }),
           ]
         : []),
-      // ...(eventualTransform ? [eventualESPlugin] : []),
     ],
     conditions: ["module", "import", "require"],
     // external: ["@aws-sdk"],

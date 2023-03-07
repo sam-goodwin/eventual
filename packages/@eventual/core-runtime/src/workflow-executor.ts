@@ -14,7 +14,6 @@ import {
   HistoryEvent,
   HistoryResultEvent,
   HistoryScheduledEvent,
-  isResolved,
   isResultEvent,
   isScheduledEvent,
   isSignalReceived,
@@ -28,6 +27,7 @@ import {
 } from "@eventual/core/internal";
 import { isPromise } from "util/types";
 import { createEventualFromCall, isCorresponding } from "./eventual-factory.js";
+import { isResolved } from "./result.js";
 import type { WorkflowCommand } from "./workflow-command.js";
 
 /**
@@ -79,13 +79,6 @@ export function createEventualPromise<R>(
 }
 
 interface ExecutorOptions {
-  /**
-   * When false, the workflow will auto-cancel when it has exhausted all history events provided
-   * during {@link start}.
-   *
-   * When true, use {@link continue} to provide more history events.
-   */
-  resumable?: boolean;
   hooks?: {
     /**
      * Callback called when a returned call matches an input event.
@@ -167,11 +160,50 @@ export class WorkflowExecutor<Input, Output> {
   ): Promise<WorkflowResult<Output>> {
     if (this.started) {
       throw new Error(
-        "Execution has already been started. If resumable is on, use continue to apply new events or create a new Interpreter"
+        "Execution has already been started. Use continue to apply new events or create a new Interpreter"
       );
     }
 
-    return new Promise(async (resolve) => {
+    // start a workflow run and start the workflow itself.
+    return this.startWorkflowRun(() => {
+      try {
+        const workflowPromise = this.workflow.definition(input, context);
+        workflowPromise.then(
+          (result) => this.endWorkflowRun(Result.resolved(result)),
+          (err) => this.endWorkflowRun(Result.failed(err))
+        );
+      } catch (err) {
+        // handle any synchronous errors.
+        this.endWorkflowRun(Result.failed(err));
+      }
+    });
+  }
+
+  /**
+   * Continue a previously started workflow by feeding in new {@link HistoryResultEvent}, possibly advancing the execution.
+   *
+   * This allows the workflow to continue without re-running previous history.
+   *
+   * Events will be applied to the workflow in order.
+   *
+   * Workflow will run until completion or until all of the events are exhausted.
+   *
+   * @returns {@link WorkflowResult} - containing new commands and a result of one was generated.
+   */
+  public async continue(
+    ...history: HistoryResultEvent[]
+  ): Promise<WorkflowResult<Output>> {
+    if (!this.started) {
+      throw new Error("Execution has not been started, call start first.");
+    }
+
+    this.history.push(...history);
+
+    return this.startWorkflowRun();
+  }
+
+  private startWorkflowRun(beforeCommitEvents?: () => void) {
+    return new Promise<WorkflowResult<Output>>(async (resolve) => {
       // start context with execution hook
       this.started = {
         resolve: (result) => {
@@ -183,17 +215,7 @@ export class WorkflowExecutor<Input, Output> {
       // Also ensure that any handlers like signal handlers returned by the workflow
       // have access to the workflow hook
       await this.enterWorkflowHookScope(async () => {
-        try {
-          const workflowPromise = this.workflow.definition(input, context);
-          workflowPromise.then(
-            (result) => this.endWorkflowRun(Result.resolved(result)),
-            (err) => this.endWorkflowRun(Result.failed(err))
-          );
-        } catch (err) {
-          // handle any synchronous errors.
-          this.endWorkflowRun(Result.failed(err));
-        }
-
+        beforeCommitEvents?.();
         // APPLY EVENTS
         await this.drainHistoryEvents();
       });
@@ -203,9 +225,16 @@ export class WorkflowExecutor<Input, Output> {
       // this assumption breaks down when the user tries to start a promise
       // to accomplish non-deterministic actions like IO.
       setTimeout(() => {
-        this.started?.resolve();
+        this.endWorkflowRun();
       });
     });
+  }
+
+  private endWorkflowRun(result?: Result) {
+    if (!this.started) {
+      throw new Error("Execution is not started.");
+    }
+    this.started.resolve(result);
   }
 
   /**
@@ -219,63 +248,9 @@ export class WorkflowExecutor<Input, Output> {
     const newCommands = this.commandsToEmit;
     this.commandsToEmit = [];
 
-    this.result =
-      !this.result && !this.options?.resumable && this.expected.hasNext()
-        ? Result.failed(
-            new DeterminismError("Workflow did not return expected commands")
-          )
-        : overrideResult ?? this.result;
+    this.result = overrideResult ?? this.result;
 
     return { result: this.result, commands: newCommands };
-  }
-
-  /**
-   * Continue a previously started workflow by feeding in new {@link HistoryResultEvent}, possibly advancing the execution.
-   *
-   * This allows the workflow to continue without re-running previous history.
-   *
-   * Events will be applied to the workflow in order.
-   *
-   * @returns {@link WorkflowResult} - containing new commands and a result of one was generated.
-   */
-  public async continue(
-    ...history: HistoryResultEvent[]
-  ): Promise<WorkflowResult<Output>> {
-    if (!this.options?.resumable) {
-      throw new Error(
-        "Cannot continue an execution unless resumable is set to true."
-      );
-    } else if (!this.started) {
-      throw new Error("Execution has not been started, call start first.");
-    }
-
-    this.history.push(...history);
-
-    return new Promise(async (resolve) => {
-      // start context with execution hook
-      this.started = {
-        resolve: (result) => {
-          resolve(this.flushCurrentWorkflowResult(result));
-        },
-      };
-
-      // Also ensure that any handlers like signal handlers returned by the workflow
-      // have access to the workflow hook
-      await this.enterWorkflowHookScope(async () => {
-        await this.drainHistoryEvents();
-      });
-
-      setTimeout(() => {
-        resolve(this.flushCurrentWorkflowResult());
-      });
-    });
-  }
-
-  private endWorkflowRun(result?: Result) {
-    if (!this.started) {
-      throw new Error("Execution is not started.");
-    }
-    this.started.resolve(result);
   }
 
   /**
@@ -299,7 +274,10 @@ export class WorkflowExecutor<Input, Output> {
            *       One thought would be to get rid of the scheduled events
            *       and instead maintain the call history to match against.
            */
-          if (eventual.generateCommands && !isExpectedCall(seq, call)) {
+          if (
+            eventual.generateCommands &&
+            !checkExpectedCallAndAdvance(seq, call)
+          ) {
             self.commandsToEmit.push(
               ...normalizeToArray(eventual.generateCommands(seq))
             );
@@ -331,7 +309,7 @@ export class WorkflowExecutor<Input, Output> {
      * @returns false if the call is new and true if the call matches the expected events.
      * @throws {@link DeterminismError} when the call is not expected and there are expected events remaining.
      */
-    function isExpectedCall(seq: number, call: EventualCall) {
+    function checkExpectedCallAndAdvance(seq: number, call: EventualCall) {
       if (self.expected.hasNext()) {
         const expected = self.expected.next()!;
 
@@ -400,6 +378,14 @@ export class WorkflowExecutor<Input, Output> {
           this.tryResolveEventual(
             event.seq,
             eventHandler?.(event) ?? undefined
+          );
+        } else if (event.seq >= this.nextSeq) {
+          // if a workflow history event precedes the call, throw an error.
+          // this should never happen if the workflow is deterministic.
+          this.endWorkflowRun(
+            Result.failed(
+              new DeterminismError(`Call for seq ${event.seq} was not emitted.`)
+            )
           );
         }
       }
