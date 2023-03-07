@@ -40,7 +40,7 @@ import { MetricsClient } from "../clients/metrics-client.js";
 import { TimerClient } from "../clients/timer-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
 import { CommandExecutor } from "../command-executor.js";
-import { hookDate, restoreDate } from "../date-hook.js";
+import { hookDate, overrideDateScope, restoreDate } from "../date-hook.js";
 import { isExecutionId, parseWorkflowName } from "../execution.js";
 import { ExecutionLogContext, LogAgent, LogContextType } from "../log-agent.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
@@ -699,34 +699,36 @@ export async function progressWorkflow(
   };
 
   try {
-    let currentTime = new Date(
-      processedEvents.firstRunStarted.timestamp
-    ).getTime();
-    hookDate(() => currentTime);
-    const executor = new WorkflowExecutor(
-      workflow,
-      processedEvents.interpretEvents,
-      {
-        hooks: {
-          /**
-           * Invoked for each {@link HistoryResultEvent}, or an event which
-           * represents the resolution of some {@link Eventual}.
-           *
-           * We use this to watch for the application of the {@link WorkflowRunStarted} event.
-           * Which we use to find and apply the current time to the hooked {@link Date} object.
-           */
-          beforeApplyingResultEvent: (event) => {
-            if (isWorkflowRunStarted(event)) {
-              currentTime = new Date(event.timestamp).getTime();
-            }
-          },
-          // when an event is matched, that means all the work to this point has been completed, clear the logs collected.
-          // this implements "exactly once" logs with the workflow semantics.
-          historicalEventMatched: () => logAgent?.clearLogs(logCheckpoint),
-        },
+    hookDate();
+    return overrideDateScope(
+      new Date(processedEvents.firstRunStarted.timestamp).getTime(),
+      async (setDate) => {
+        const executor = new WorkflowExecutor(
+          workflow,
+          processedEvents.interpretEvents,
+          {
+            hooks: {
+              /**
+               * Invoked for each {@link HistoryResultEvent}, or an event which
+               * represents the resolution of some {@link Eventual}.
+               *
+               * We use this to watch for the application of the {@link WorkflowRunStarted} event.
+               * Which we use to find and apply the current time to the hooked {@link Date} object.
+               */
+              beforeApplyingResultEvent: (event) => {
+                if (isWorkflowRunStarted(event)) {
+                  setDate(new Date(event.timestamp).getTime());
+                }
+              },
+              // when an event is matched, that means all the work to this point has been completed, clear the logs collected.
+              // this implements "exactly once" logs with the workflow semantics.
+              historicalEventMatched: () => logAgent?.clearLogs(logCheckpoint),
+            },
+          }
+        );
+        return await executor.start(processedEvents.startEvent.input, context);
       }
     );
-    return await executor.start(processedEvents.startEvent.input, context);
   } catch (err) {
     console.debug("workflow error", inspect(err));
     throw err;
