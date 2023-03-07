@@ -152,7 +152,7 @@ export class WorkflowExecutor<Input, Output> {
   /**
    * Starts an execution.
    *
-   * The execution will run until the events are exhausted or .
+   * The execution will run until the events are exhausted or the workflow fails.
    */
   public start(
     input: Input,
@@ -189,7 +189,7 @@ export class WorkflowExecutor<Input, Output> {
    *
    * Events will be applied to the workflow in order.
    *
-   * Workflow will run until completion or until all of the events are exhausted.
+   * The execution will run until the events are exhausted or the workflow fails.
    *
    * @returns {@link WorkflowResult} - containing new commands and a result of one was generated.
    */
