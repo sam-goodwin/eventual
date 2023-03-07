@@ -2762,3 +2762,90 @@ describe("continue", () => {
     });
   });
 });
+
+describe("running after result", () => {
+  test("signal handler works after execution completes", async () => {
+    const wf = workflow(async () => {
+      createRegisterSignalHandlerCall("signal1", () => {
+        createActivityCall("on signal", 1);
+      });
+      return "hello?";
+    });
+
+    const executor = new WorkflowExecutor(wf, []);
+
+    await expect(
+      executor.start(undefined, context)
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [],
+      result: Result.resolved("hello?"),
+    });
+
+    await expect(
+      executor.continue(signalReceived("signal1"))
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [createScheduledActivityCommand("on signal", 1, 1)],
+      result: Result.resolved("hello?"),
+    });
+  });
+
+  test("signal handler does not accept after a failure", async () => {
+    const wf = workflow(async () => {
+      createRegisterSignalHandlerCall("signal1", () => {
+        createActivityCall("on signal", 1);
+      });
+      throw Error("AHHH");
+    });
+
+    const executor = new WorkflowExecutor(wf, []);
+
+    await expect(
+      executor.start(undefined, context)
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [],
+      result: Result.failed(new Error("AHHH")),
+    });
+
+    await expect(
+      executor.continue(signalReceived("signal1"))
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [],
+      result: Result.failed(new Error("AHHH")),
+    });
+  });
+
+  test("async promises after completion", async () => {
+    const wf = workflow(async () => {
+      createRegisterSignalHandlerCall("signal1", async () => {
+        let n = 10;
+        while (n-- > 0) {
+          createActivityCall("on signal", 1);
+        }
+      });
+
+      (async () => {
+        await createActivityCall("in the async", undefined);
+      })();
+
+      return "hello?";
+    });
+
+    const executor = new WorkflowExecutor(wf, []);
+
+    await expect(
+      executor.start(undefined, context)
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [createScheduledActivityCommand("in the async", undefined, 1)],
+      result: Result.resolved("hello?"),
+    });
+
+    await expect(
+      executor.continue(signalReceived("signal1"))
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [...Array(10).keys()].map((i) =>
+        createScheduledActivityCommand("on signal", 1, 2 + i)
+      ),
+      result: Result.resolved("hello?"),
+    });
+  });
+});

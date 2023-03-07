@@ -27,7 +27,7 @@ import {
 } from "@eventual/core/internal";
 import { isPromise } from "util/types";
 import { createEventualFromCall, isCorresponding } from "./eventual-factory.js";
-import { isResolved } from "./result.js";
+import { isFailed, isResolved } from "./result.js";
 import type { WorkflowCommand } from "./workflow-command.js";
 
 /**
@@ -62,9 +62,9 @@ export function createEventualPromise<R>(
   beforeResolve?: () => void
 ): RuntimeEventualPromise<R> {
   let resolve: (r: R) => void, reject: (reason: any) => void;
-  const promise = new Promise((r, rr) => {
-    resolve = r;
-    reject = rr;
+  const promise = new Promise((_resolve, _reject) => {
+    resolve = _resolve;
+    reject = _reject;
   }) as RuntimeEventualPromise<R>;
   promise[EventualPromiseSymbol] = seq;
   promise.resolve = (result) => {
@@ -152,7 +152,7 @@ export class WorkflowExecutor<Input, Output> {
   /**
    * Starts an execution.
    *
-   * The execution will run until completion or until the events are exhausted.
+   * The execution will run until the events are exhausted or .
    */
   public start(
     input: Input,
@@ -169,7 +169,10 @@ export class WorkflowExecutor<Input, Output> {
       try {
         const workflowPromise = this.workflow.definition(input, context);
         workflowPromise.then(
-          (result) => this.endWorkflowRun(Result.resolved(result)),
+          // successfully completed workflows can continue to retrieve events.
+          // TODO: make this configurable?
+          (result) => (this.result = Result.resolved(result)),
+          // failed workflows will stop accepting events
           (err) => this.endWorkflowRun(Result.failed(err))
         );
       } catch (err) {
@@ -335,7 +338,7 @@ export class WorkflowExecutor<Input, Output> {
    * before applying the next set of events.
    */
   private async drainHistoryEvents() {
-    while (this.events.hasNext() && !this.result) {
+    while (this.events.hasNext() && !isFailed(this.result)) {
       const event = this.events.next()!;
       this.options?.hooks?.beforeApplyingResultEvent?.(event);
       await new Promise((resolve) => {
@@ -344,7 +347,6 @@ export class WorkflowExecutor<Input, Output> {
           resolve(undefined);
         });
       });
-      // TODO: do we need to use setTimeout here to go to the end of the event loop?
     }
   }
 
