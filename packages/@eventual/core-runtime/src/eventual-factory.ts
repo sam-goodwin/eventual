@@ -34,11 +34,13 @@ export function createEventualFromCall(
         Trigger.workflowEvent(WorkflowEventType.ActivityFailed, (event) =>
           Result.failed(new EventualError(event.error, event.message))
         ),
-        Trigger.workflowEvent(WorkflowEventType.ActivityHeartbeatTimedOut, () =>
+        Trigger.workflowEvent(
+          WorkflowEventType.ActivityHeartbeatTimedOut,
           Result.failed(new HeartbeatTimeout("Activity Heartbeat TimedOut"))
         ),
         call.timeout
-          ? Trigger.promise(call.timeout, () =>
+          ? Trigger.promise(
+              call.timeout,
               Result.failed(new Timeout("Activity Timed Out"))
             )
           : undefined,
@@ -64,7 +66,8 @@ export function createEventualFromCall(
           Result.failed(new EventualError(event.error, event.message))
         ),
         call.timeout
-          ? Trigger.promise(call.timeout, () =>
+          ? Trigger.promise(
+              call.timeout,
               Result.failed("Child Workflow Timed Out")
             )
           : undefined,
@@ -81,7 +84,8 @@ export function createEventualFromCall(
     };
   } else if (isAwaitTimerCall(call)) {
     return {
-      triggers: Trigger.workflowEvent(WorkflowEventType.TimerCompleted, () =>
+      triggers: Trigger.workflowEvent(
+        WorkflowEventType.TimerCompleted,
         Result.resolved(undefined)
       ),
       generateCommands(seq) {
@@ -112,7 +116,8 @@ export function createEventualFromCall(
           Result.resolved(event.payload)
         ),
         call.timeout
-          ? Trigger.promise(call.timeout, () =>
+          ? Trigger.promise(
+              call.timeout,
               Result.failed(new Timeout("Expect Signal Timed Out"))
             )
           : undefined,
@@ -141,7 +146,7 @@ export function createEventualFromCall(
             return result ? Result.resolved(result) : undefined;
           }),
           call.timeout
-            ? Trigger.promise(call.timeout, () => Result.resolved(false))
+            ? Trigger.promise(call.timeout, Result.resolved(false))
             : undefined,
         ],
       };

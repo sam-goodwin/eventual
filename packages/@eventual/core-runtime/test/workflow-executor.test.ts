@@ -2765,6 +2765,34 @@ describe("continue", () => {
       result: Result.resolved("done"),
     });
   });
+
+  test("throws if previous run not complete", async () => {
+    const executor = new WorkflowExecutor(myWorkflow, []);
+    const startPromise = executor.start(event, context);
+    await expect(
+      executor.continue(activitySucceeded("result", 0))
+    ).rejects.toThrowError(
+      "Workflow is already running, await the promise returned by the last start or complete call."
+    );
+    await expect(startPromise).resolves.toEqual<WorkflowResult>({
+      commands: [createScheduledActivityCommand("my-activity", [event], 0)],
+      result: undefined,
+    });
+    const continuePromise = executor.continue(activitySucceeded("result", 0));
+    await expect(
+      executor.continue(activitySucceeded("result", 0))
+    ).rejects.toThrowError(
+      "Workflow is already running, await the promise returned by the last start or complete call."
+    );
+    await expect(continuePromise).resolves.toEqual<WorkflowResult>({
+      commands: [
+        createScheduledActivityCommand("my-activity-0", [event], 1),
+        createStartTimerCommand(2),
+        createScheduledActivityCommand("my-activity-2", [event], 3),
+      ],
+      result: undefined,
+    });
+  });
 });
 
 describe("running after result", () => {
