@@ -69,7 +69,7 @@ testQueue.grantSendMessages(testService.activities.asyncActivity);
 const chaosExtension = new ChaosExtension(stack, "chaos");
 
 testService.activitiesList.map((a) => chaosExtension.addToFunction(a.handler));
-// chaosExtension.addToFunction(testService.system.workflowService.orchestrator);
+chaosExtension.addToFunction(testService.system.workflowService.orchestrator);
 
 chaosExtension.grantReadWrite(role);
 
