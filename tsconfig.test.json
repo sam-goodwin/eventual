@@ -8,6 +8,7 @@
     { "path": "packages/@eventual/compiler/tsconfig.test.json" },
     { "path": "packages/@eventual/client/tsconfig.test.json" },
     { "path": "packages/@eventual/core/tsconfig.test.json" },
+    { "path": "packages/@eventual/core-runtime/tsconfig.test.json" },
     { "path": "packages/@eventual/testing/tsconfig.test.json" }
   ]
 }

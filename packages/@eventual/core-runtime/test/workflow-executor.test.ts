@@ -1685,7 +1685,7 @@ test("workflow calling other workflow", async () => {
     commands: [],
   });
 
-  await  expect(
+  await expect(
     execute(
       wf2,
       [workflowScheduled(wf1.name, 0), workflowFailed("error", 0)],
@@ -2793,7 +2793,7 @@ describe("running after result", () => {
     });
   });
 
-  test("signal handler does not accept after a failure", async () => {
+  test("signal handler accepts after a failure", async () => {
     const wf = workflow(async () => {
       createRegisterSignalHandlerCall("signal1", () => {
         createActivityCall("on signal", 1);
@@ -2813,7 +2813,7 @@ describe("running after result", () => {
     await expect(
       executor.continue(signalReceived("signal1"))
     ).resolves.toEqual<WorkflowResult>({
-      commands: [],
+      commands: [createScheduledActivityCommand("on signal", 1, 1)],
       result: Result.failed(new Error("AHHH")),
     });
   });
@@ -2850,6 +2850,196 @@ describe("running after result", () => {
         createScheduledActivityCommand("on signal", 1, 2 + i)
       ),
       result: Result.resolved("hello?"),
+    });
+  });
+});
+
+describe("failures", () => {
+  const asyncFuncWf = workflow(async () => {
+    await createActivityCall("hello", undefined);
+
+    (async () => {
+      await createActivityCall("hello", undefined);
+      await createActivityCall("hello", undefined);
+      await createActivityCall("hello", undefined);
+      await createActivityCall("hello", undefined);
+    })();
+
+    throw new Error("AHH");
+  });
+
+  const signalWf = workflow(async () => {
+    await createActivityCall("hello", undefined);
+
+    createRegisterSignalHandlerCall("signal", () => {
+      createActivityCall("signalAct", undefined);
+    });
+
+    throw new Error("AHH");
+  });
+
+  test("with events", async () => {
+    await expect(
+      execute(
+        asyncFuncWf,
+        [
+          activityScheduled("hello", 0),
+          activitySucceeded(undefined, 0),
+          activityScheduled("hello", 1),
+          activitySucceeded(undefined, 1),
+          activityScheduled("hello", 2),
+          activitySucceeded(undefined, 2),
+          activityScheduled("hello", 3),
+          activitySucceeded(undefined, 3),
+        ],
+        undefined
+      )
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [createScheduledActivityCommand("hello", undefined, 4)],
+      result: Result.failed(Error("AHH")),
+    });
+  });
+
+  test("with partial async function", async () => {
+    await expect(
+      execute(
+        asyncFuncWf,
+        [activityScheduled("hello", 0), activitySucceeded(undefined, 0)],
+        undefined
+      )
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [createScheduledActivityCommand("hello", undefined, 1)],
+      result: Result.failed(Error("AHH")),
+    });
+  });
+
+  test("with signal handler", async () => {
+    await expect(
+      execute(
+        signalWf,
+        [
+          activityScheduled("hello", 0),
+          activitySucceeded(undefined, 0),
+          signalReceived("signal"),
+        ],
+        undefined
+      )
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [createScheduledActivityCommand("signalAct", undefined, 2)],
+      result: Result.failed(Error("AHH")),
+    });
+  });
+
+  test("with signal handler 2", async () => {
+    const wf = workflow(async () => {
+      await createActivityCall("hello", undefined);
+
+      createRegisterSignalHandlerCall("signal", () => {
+        createActivityCall("signalAct", undefined);
+      });
+
+      await createExpectSignalCall("signal");
+
+      throw new Error("AHH");
+    });
+
+    await expect(
+      execute(
+        wf,
+        [
+          activityScheduled("hello", 0),
+          activitySucceeded(undefined, 0),
+          signalReceived("signal"),
+        ],
+        undefined
+      )
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [createScheduledActivityCommand("signalAct", undefined, 3)],
+      result: Result.failed(Error("AHH")),
+    });
+  });
+
+  test("without fail", async () => {
+    const wf = workflow(async () => {
+      await createActivityCall("hello", undefined);
+
+      createRegisterSignalHandlerCall("signal", () => {
+        createActivityCall("signalAct", undefined);
+        throw new Error("AHH");
+      });
+
+      await createExpectSignalCall("signal");
+      createActivityCall("signalAct", undefined);
+    });
+
+    await expect(
+      execute(
+        wf,
+        [
+          activityScheduled("hello", 0),
+          activitySucceeded(undefined, 0),
+          signalReceived("signal"),
+        ],
+        undefined
+      )
+    ).resolves.toMatchObject<WorkflowResult>({
+      commands: [
+        createScheduledActivityCommand("signalAct", undefined, 3),
+        createScheduledActivityCommand("signalAct", undefined, 4),
+      ],
+      result: Result.resolved(undefined),
+    });
+  });
+
+  test("with lots of events", async () => {
+    const wf = workflow(async () => {
+      await createActivityCall("hello", undefined);
+
+      let n = 0;
+      while (n++ < 10) {
+        (async () => {
+          await createActivityCall("hello", undefined);
+          await createActivityCall("hello", undefined);
+        })();
+      }
+
+      throw new Error("AHH");
+    });
+
+    await expect(
+      execute(
+        wf,
+        [...Array(21).keys()].flatMap((i) => [
+          activityScheduled("hello", i),
+          activitySucceeded(undefined, i),
+        ]),
+        undefined
+      )
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [],
+      result: Result.failed(Error("AHH")),
+    });
+  });
+
+  test("with continue", async () => {
+    const executor = new WorkflowExecutor(signalWf, [
+      activityScheduled("hello", 0),
+      activitySucceeded(undefined, 0),
+      signalReceived("signal"),
+    ]);
+
+    await expect(
+      executor.start(undefined, context)
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [createScheduledActivityCommand("signalAct", undefined, 2)],
+      result: Result.failed(Error("AHH")),
+    });
+
+    await expect(
+      executor.continue(signalReceived("signal"))
+    ).resolves.toEqual<WorkflowResult>({
+      commands: [createScheduledActivityCommand("signalAct", undefined, 3)],
+      result: Result.failed(Error("AHH")),
     });
   });
 });

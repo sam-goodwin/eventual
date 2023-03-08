@@ -111,6 +111,7 @@ export function createOrchestrator({
 }: OrchestratorDependencies): Orchestrator {
   return async (workflowTasks, baseTime = () => new Date()) =>
     await serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
+      console.log(JSON.stringify(workflowTasks, null, 4));
       const tasksByExecutionId = groupBy(
         workflowTasks,
         (task) => task.executionId
