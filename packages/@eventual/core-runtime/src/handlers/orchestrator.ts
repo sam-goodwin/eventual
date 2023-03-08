@@ -40,7 +40,7 @@ import { MetricsClient } from "../clients/metrics-client.js";
 import { TimerClient } from "../clients/timer-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
 import { CommandExecutor } from "../command-executor.js";
-import { hookDate, overrideDateScope, restoreDate } from "../date-hook.js";
+import { hookDate, restoreDate } from "../date-hook.js";
 import { isExecutionId, parseWorkflowName } from "../execution.js";
 import { ExecutionLogContext, LogAgent, LogContextType } from "../log-agent.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
@@ -52,12 +52,13 @@ import {
   isFailed,
   isResolved,
   isResult,
+  normalizeError,
   normalizeFailedResult,
 } from "../result.js";
 import { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
 import { ExecutionHistoryStore } from "../stores/execution-history-store.js";
 import { WorkflowTask } from "../tasks.js";
-import { groupBy, promiseAllSettledPartitioned } from "../utils.js";
+import { groupBy } from "../utils.js";
 import { WorkflowCommand } from "../workflow-command.js";
 import { createEvent } from "../workflow-events.js";
 import { WorkflowExecutor } from "../workflow-executor.js";
@@ -133,12 +134,14 @@ export function createOrchestrator({
         "Found execution ids: " + Object.keys(eventsByExecutionId).join(", ")
       );
 
-      hookDate();
-
       // for each execution id
-      const results = await promiseAllSettledPartitioned(
-        Object.entries(eventsByExecutionId),
-        async ([executionId, records]) => {
+      const succeeded: string[] = [];
+      const failed: Record<string, string> = {};
+
+      for (const [executionId, records] of Object.entries(
+        eventsByExecutionId
+      )) {
+        try {
           if (!isExecutionId(executionId)) {
             throw new Error(`invalid ExecutionID: '${executionId}'`);
           }
@@ -147,33 +150,32 @@ export function createOrchestrator({
             throw new Error(`execution ID '${executionId}' does not exist`);
           }
           // TODO: get workflow from execution id
-          return orchestrateExecution(
+          await orchestrateExecution(
             workflowName,
             executionId,
             records,
             baseTime
           );
+
+          succeeded.push(executionId);
+        } catch (err) {
+          failed[executionId] = normalizeError(err).message;
         }
-      );
+      }
 
-      restoreDate();
+      console.debug("Executions succeeded: " + succeeded.join(", "));
 
-      console.debug(
-        "Executions succeeded: " +
-          results.fulfilled.map(([[executionId]]) => executionId).join(",")
-      );
-
-      if (results.rejected.length > 0) {
+      if (Object.keys(failed).length > 0) {
         console.error(
           "Executions failed: \n" +
-            results.rejected
-              .map(([[executionId], error]) => `${executionId}: ${error}`)
+            Object.entries(failed)
+              .map(([executionId, error]) => `${executionId}: ${error}`)
               .join("\n")
         );
       }
 
       return {
-        failedExecutionIds: results.rejected.map((rejected) => rejected[0][0]),
+        failedExecutionIds: Object.keys(failed),
       };
     });
 
@@ -703,39 +705,39 @@ export async function progressWorkflow(
   };
 
   try {
-    return overrideDateScope(
-      new Date(processedEvents.firstRunStarted.timestamp).getTime(),
-      async (setDate) => {
-        const executor = new WorkflowExecutor(
-          workflow,
-          processedEvents.interpretEvents,
-          {
-            hooks: {
-              /**
-               * Invoked for each {@link HistoryResultEvent}, or an event which
-               * represents the resolution of some {@link Eventual}.
-               *
-               * We use this to watch for the application of the {@link WorkflowRunStarted} event.
-               * Which we use to find and apply the current time to the hooked {@link Date} object.
-               */
-              beforeApplyingResultEvent: (event) => {
-                if (isWorkflowRunStarted(event)) {
-                  setDate(new Date(event.timestamp).getTime());
-                }
-              },
-              // when an event is matched, that means all the work to this point has been completed, clear the logs collected.
-              // this implements "exactly once" logs with the workflow semantics.
-              historicalEventMatched: () => logAgent?.clearLogs(logCheckpoint),
-            },
-          }
-        );
-        return await executor.start(processedEvents.startEvent.input, context);
+    let currentTime = new Date(
+      processedEvents.firstRunStarted.timestamp
+    ).getTime();
+    hookDate(() => currentTime);
+    const executor = new WorkflowExecutor(
+      workflow,
+      processedEvents.interpretEvents,
+      {
+        hooks: {
+          /**
+           * Invoked for each {@link HistoryResultEvent}, or an event which
+           * represents the resolution of some {@link Eventual}.
+           *
+           * We use this to watch for the application of the {@link WorkflowRunStarted} event.
+           * Which we use to find and apply the current time to the hooked {@link Date} object.
+           */
+          beforeApplyingResultEvent: (event) => {
+            if (isWorkflowRunStarted(event)) {
+              currentTime = new Date(event.timestamp).getTime();
+            }
+          },
+          // when an event is matched, that means all the work to this point has been completed, clear the logs collected.
+          // this implements "exactly once" logs with the workflow semantics.
+          historicalEventMatched: () => logAgent?.clearLogs(logCheckpoint),
+        },
       }
     );
+    return await executor.start(processedEvents.startEvent.input, context);
   } catch (err) {
     console.debug("workflow error", inspect(err));
     throw err;
   } finally {
+    restoreDate();
     // re-enable sending logs, any generated logs are new.
     logAgent?.enableSendingLogs();
   }

@@ -1408,10 +1408,12 @@ test("try-catch-finally with await in catch", async () => {
       await createActivityCall("finally", []);
     }
   });
-  expect(execute(wf, [], undefined)).resolves.toMatchObject(<WorkflowResult>{
+  await expect(execute(wf, [], undefined)).resolves.toMatchObject(<
+    WorkflowResult
+  >{
     commands: [createScheduledActivityCommand("catch", [], 0)],
   });
-  expect(
+  await expect(
     execute(
       wf,
       [activityScheduled("catch", 0), activitySucceeded(undefined, 0)],
@@ -1423,7 +1425,7 @@ test("try-catch-finally with await in catch", async () => {
 });
 
 test("try-catch-finally with dangling promise in catch", async () => {
-  expect(
+  await expect(
     execute(
       workflow(async () => {
         try {
@@ -1466,7 +1468,7 @@ test("throw error within nested function", async () => {
       return "returned in finally";
     }
   });
-  expect(execute(wf, [], ["good", "bad"])).resolves.toMatchObject(<
+  await expect(execute(wf, [], ["good", "bad"])).resolves.toMatchObject(<
     WorkflowResult
   >{
     commands: [
@@ -1474,7 +1476,7 @@ test("throw error within nested function", async () => {
       createScheduledActivityCommand("inside", ["bad"], 1),
     ],
   });
-  expect(
+  await expect(
     execute(
       wf,
       [
@@ -1488,7 +1490,7 @@ test("throw error within nested function", async () => {
   ).resolves.toMatchObject(<WorkflowResult>{
     commands: [createScheduledActivityCommand("catch", [], 2)],
   });
-  expect(
+  await expect(
     execute(
       wf,
       [
@@ -1504,7 +1506,7 @@ test("throw error within nested function", async () => {
   ).resolves.toMatchObject(<WorkflowResult>{
     commands: [createScheduledActivityCommand("finally", [], 3)],
   });
-  expect(
+  await expect(
     execute(
       wf,
       [
@@ -1539,7 +1541,7 @@ test("properly evaluate await of sub-programs", async () => {
     return await sub();
   });
 
-  expect(execute(wf, [], undefined)).resolves.toMatchObject({
+  await expect(execute(wf, [], undefined)).resolves.toMatchObject({
     commands: [
       //
       createScheduledActivityCommand("a", [], 0),
@@ -1547,7 +1549,7 @@ test("properly evaluate await of sub-programs", async () => {
     ],
   });
 
-  expect(
+  await expect(
     execute(
       wf,
       [
@@ -1574,7 +1576,7 @@ test("properly evaluate await of Promise.all", async () => {
     return item;
   });
 
-  expect(execute(wf, [], undefined)).resolves.toMatchObject({
+  await expect(execute(wf, [], undefined)).resolves.toMatchObject({
     commands: [
       //
       createScheduledActivityCommand("a", [], 0),
@@ -1582,7 +1584,7 @@ test("properly evaluate await of Promise.all", async () => {
     ],
   });
 
-  expect(
+  await expect(
     execute(
       wf,
       [
@@ -1608,10 +1610,10 @@ test("generator function returns an ActivityCall", async () => {
     return createActivityCall("call-a", []);
   }
 
-  expect(execute(wf, [], undefined)).resolves.toMatchObject({
+  await expect(execute(wf, [], undefined)).resolves.toMatchObject({
     commands: [createScheduledActivityCommand("call-a", [], 0)],
   });
-  expect(
+  await expect(
     execute(
       wf,
       [activityScheduled("call-a", 0), activitySucceeded("result", 0)],
@@ -1633,17 +1635,17 @@ test("workflow calling other workflow", async () => {
     return result;
   });
 
-  expect(execute(wf2, [], undefined)).resolves.toMatchObject({
+  await expect(execute(wf2, [], undefined)).resolves.toMatchObject({
     commands: [createScheduledWorkflowCommand(wf1.name, undefined, 0)],
   });
 
-  expect(
+  await expect(
     execute(wf2, [workflowScheduled(wf1.name, 0)], undefined)
   ).resolves.toMatchObject({
     commands: [],
   });
 
-  expect(
+  await expect(
     execute(
       wf2,
       [workflowScheduled(wf1.name, 0), workflowSucceeded("result", 0)],
@@ -1653,7 +1655,7 @@ test("workflow calling other workflow", async () => {
     commands: [createScheduledActivityCommand("call-b", [], 1)],
   });
 
-  expect(
+  await expect(
     execute(
       wf2,
       [
@@ -1667,7 +1669,7 @@ test("workflow calling other workflow", async () => {
     commands: [],
   });
 
-  expect(
+  await expect(
     execute(
       wf2,
       [
@@ -1683,7 +1685,7 @@ test("workflow calling other workflow", async () => {
     commands: [],
   });
 
-  expect(
+  await  expect(
     execute(
       wf2,
       [workflowScheduled(wf1.name, 0), workflowFailed("error", 0)],
@@ -2453,7 +2455,9 @@ test("nestedChains", async () => {
     );
   });
 
-  expect(execute(wf, [], undefined)).resolves.toMatchObject<WorkflowResult>({
+  await expect(
+    execute(wf, [], undefined)
+  ).resolves.toMatchObject<WorkflowResult>({
     commands: [createStartTimerCommand(0)],
   });
 });
