@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.24.0 (2023-03-09)
+
+### Features
+
+- async workflows ([#306](https://github.com/functionless/eventual/issues/306)) ([f048ae9](https://github.com/functionless/eventual/commit/f048ae92ea69f2c089f9fc77c35293609a71c7e9))
+
 # 0.23.0 (2023-03-06)
 
 ### Features
