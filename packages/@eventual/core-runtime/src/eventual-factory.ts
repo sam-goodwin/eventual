@@ -28,18 +28,18 @@ export function createEventualFromCall(
   if (isActivityCall(call)) {
     return {
       triggers: [
-        Trigger.workflowEvent(WorkflowEventType.ActivitySucceeded, (event) =>
+        Trigger.onWorkflowEvent(WorkflowEventType.ActivitySucceeded, (event) =>
           Result.resolved(event.result)
         ),
-        Trigger.workflowEvent(WorkflowEventType.ActivityFailed, (event) =>
+        Trigger.onWorkflowEvent(WorkflowEventType.ActivityFailed, (event) =>
           Result.failed(new EventualError(event.error, event.message))
         ),
-        Trigger.workflowEvent(
+        Trigger.onWorkflowEvent(
           WorkflowEventType.ActivityHeartbeatTimedOut,
           Result.failed(new HeartbeatTimeout("Activity Heartbeat TimedOut"))
         ),
         call.timeout
-          ? Trigger.promise(
+          ? Trigger.onPromiseResolution(
               call.timeout,
               Result.failed(new Timeout("Activity Timed Out"))
             )
@@ -58,15 +58,17 @@ export function createEventualFromCall(
   } else if (isWorkflowCall(call)) {
     return {
       triggers: [
-        Trigger.workflowEvent(
+        Trigger.onWorkflowEvent(
           WorkflowEventType.ChildWorkflowSucceeded,
           (event) => Result.resolved(event.result)
         ),
-        Trigger.workflowEvent(WorkflowEventType.ChildWorkflowFailed, (event) =>
-          Result.failed(new EventualError(event.error, event.message))
+        Trigger.onWorkflowEvent(
+          WorkflowEventType.ChildWorkflowFailed,
+          (event) =>
+            Result.failed(new EventualError(event.error, event.message))
         ),
         call.timeout
-          ? Trigger.promise(
+          ? Trigger.onPromiseResolution(
               call.timeout,
               Result.failed("Child Workflow Timed Out")
             )
@@ -84,7 +86,7 @@ export function createEventualFromCall(
     };
   } else if (isAwaitTimerCall(call)) {
     return {
-      triggers: Trigger.workflowEvent(
+      triggers: Trigger.onWorkflowEvent(
         WorkflowEventType.TimerCompleted,
         Result.resolved(undefined)
       ),
@@ -112,11 +114,11 @@ export function createEventualFromCall(
   } else if (isExpectSignalCall(call)) {
     return {
       triggers: [
-        Trigger.signal(call.signalId, (event) =>
+        Trigger.onSignal(call.signalId, (event) =>
           Result.resolved(event.payload)
         ),
         call.timeout
-          ? Trigger.promise(
+          ? Trigger.onPromiseResolution(
               call.timeout,
               Result.failed(new Timeout("Expect Signal Timed Out"))
             )
@@ -146,14 +148,14 @@ export function createEventualFromCall(
             return result ? Result.resolved(result) : undefined;
           }),
           call.timeout
-            ? Trigger.promise(call.timeout, Result.resolved(false))
+            ? Trigger.onPromiseResolution(call.timeout, Result.resolved(false))
             : undefined,
         ],
       };
     }
   } else if (isRegisterSignalHandlerCall(call)) {
     return {
-      triggers: Trigger.signal(call.signalId, (event) => {
+      triggers: Trigger.onSignal(call.signalId, (event) => {
         call.handler(event.payload);
       }),
     };
