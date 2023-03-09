@@ -2228,12 +2228,49 @@ describe("signals", () => {
       });
     });
 
-    test("awaited sendSignal does nothing", async () => {
+    test("sendSignal then", async () => {
       const wf = workflow(async () => {
+        console.log("before signal");
+        return createSendSignalCall(
+          { type: SignalTargetType.Execution, executionId: "someExecution/" },
+          mySignal.id
+        ).then(async () => {
+          console.log("after signal");
+
+          const childWorkflow = createWorkflowCall("childWorkflow");
+
+          await childWorkflow.sendSignal(mySignal);
+
+          return await childWorkflow;
+        });
+      });
+
+      await expect(
+        execute(
+          wf,
+          [
+            signalSent("someExec", "MySignal", 0),
+            workflowScheduled("childWorkflow", 1),
+            signalSent("someExecution/", "MySignal", 2),
+            workflowSucceeded("done", 1),
+          ],
+          undefined
+        )
+      ).resolves.toEqual(<WorkflowResult>{
+        result: Result.resolved("done"),
+        commands: [],
+      });
+    });
+
+    test("awaited sendSignal does nothing 2", async () => {
+      const wf = workflow(async () => {
+        console.log("before signal");
         await createSendSignalCall(
           { type: SignalTargetType.Execution, executionId: "someExecution/" },
           mySignal.id
         );
+
+        console.log("after signal");
 
         const childWorkflow = createWorkflowCall("childWorkflow");
 
@@ -2253,7 +2290,7 @@ describe("signals", () => {
           ],
           undefined
         )
-      ).resolves.toMatchObject(<WorkflowResult>{
+      ).resolves.toEqual(<WorkflowResult>{
         result: Result.resolved("done"),
         commands: [],
       });
@@ -3068,6 +3105,443 @@ describe("failures", () => {
     ).resolves.toEqual<WorkflowResult>({
       commands: [createScheduledActivityCommand("signalAct", undefined, 3)],
       result: Result.failed(Error("AHH")),
+    });
+  });
+});
+
+describe("using then, catch, finally", () => {
+  describe("then", () => {
+    test("chained result", async () => {
+      await expect(
+        execute(
+          workflow(async () =>
+            createActivityCall<number>("testme", undefined).then(
+              (result) => result + 1
+            )
+          ),
+          [activityScheduled("testme", 0), activitySucceeded(1, 0)],
+          undefined
+        )
+      ).resolves.toEqual<WorkflowResult>({
+        commands: [],
+        result: Result.resolved(2),
+      });
+    });
+
+    test("chained but does not complete", async () => {
+      await expect(
+        execute(
+          workflow(async () =>
+            createActivityCall<number>("testme", undefined).then(
+              (result) => result + 1
+            )
+          ),
+          [activityScheduled("testme", 0)],
+          undefined
+        )
+      ).resolves.toEqual<WorkflowResult>({
+        commands: [],
+        result: undefined,
+      });
+    });
+
+    test("chained using immediate resolutions", async () => {
+      await expect(
+        execute(
+          workflow(async () =>
+            createSendSignalCall(
+              {
+                type: SignalTargetType.Execution,
+                executionId: "something",
+              },
+              "signal"
+            ).then(() => "hi")
+          ),
+          [signalSent("something", "signal", 0)],
+          undefined
+        )
+      ).resolves.toEqual<WorkflowResult>({
+        commands: [],
+        result: Result.resolved("hi"),
+      });
+    });
+
+    test("chained using immediate resolutions and emit more", async () => {
+      await expect(
+        execute(
+          workflow(async () =>
+            createSendSignalCall(
+              {
+                type: SignalTargetType.Execution,
+                executionId: "something",
+              },
+              "signal"
+            ).then(() => {
+              createActivityCall("act1", undefined);
+              return "hi";
+            })
+          ),
+          [signalSent("something", "signal", 0)],
+          undefined
+        )
+      ).resolves.toEqual<WorkflowResult>({
+        commands: [createScheduledActivityCommand("act1", undefined, 1)],
+        result: Result.resolved("hi"),
+      });
+    });
+
+    test("chained using immediate resolutions and chain more", async () => {
+      await expect(
+        execute(
+          workflow(async () =>
+            createSendSignalCall(
+              {
+                type: SignalTargetType.Execution,
+                executionId: "something",
+              },
+              "signal"
+            ).then(() => createActivityCall("act1", undefined))
+          ),
+          [
+            signalSent("something", "signal", 0),
+            activityScheduled("act1", 1),
+            activitySucceeded("hi", 1),
+          ],
+          undefined
+        )
+      ).resolves.toEqual<WorkflowResult>({
+        commands: [],
+        result: Result.resolved("hi"),
+      });
+    });
+
+    test("then then then then", async () => {
+      await expect(
+        execute(
+          workflow(async () =>
+            createSendSignalCall(
+              {
+                type: SignalTargetType.Execution,
+                executionId: "something",
+              },
+              "signal"
+            ).then(() => {
+              let x = 0;
+              return Promise.all([
+                createActivityCall("act1", undefined).then(() => {
+                  x++;
+                  return createActivityCall("boom", undefined);
+                }),
+                createSendSignalCall(
+                  {
+                    type: SignalTargetType.Execution,
+                    executionId: "something",
+                  },
+                  "signal2",
+                  undefined
+                ).then(() => {
+                  x++;
+                  return createActivityCall("boom", undefined);
+                }),
+                createWorkflowCall("workflow1", undefined).then(() => {
+                  x++;
+                  return createActivityCall("boom", undefined);
+                }),
+                createExpectSignalCall("signal2").then(() => {
+                  x++;
+                  return createActivityCall("boom", undefined);
+                }),
+                createConditionCall(() => true).then(() => {
+                  x++;
+                  return createActivityCall("boom", undefined);
+                }),
+                createConditionCall(() => x >= 5).then(() =>
+                  createActivityCall("boom", undefined)
+                ),
+              ]);
+            })
+          ),
+          [
+            signalSent("something", "signal", 0),
+            activityScheduled("act1", 1),
+            signalSent("something", "signal2", 2),
+            workflowScheduled("workflow1", 3),
+            activityScheduled("boom", 7), // from signal sent
+            activityScheduled("boom", 8), // from condition true
+            activitySucceeded("hi", 1), // succeed first activity
+            activityScheduled("boom", 9), // after first act
+            workflowSucceeded("something", 3), // succeed child workflow
+            activityScheduled("boom", 10), // after child workflow
+            signalReceived("signal2"), // signal for expect
+            activityScheduled("boom", 11), // after expect
+            activityScheduled("boom", 12), // after last condition
+            activitySucceeded("b", 7),
+            activitySucceeded("e", 8),
+            activitySucceeded("a", 9),
+            activitySucceeded("c", 10),
+            activitySucceeded("d", 11),
+            activitySucceeded("f", 12),
+          ],
+          undefined
+        )
+      ).resolves.toEqual<WorkflowResult>({
+        commands: [],
+        result: Result.resolved(["a", "b", "c", "d", "e", "f"]),
+      });
+    });
+  });
+
+  describe("catch", () => {
+    test("chained result", async () => {
+      await expect(
+        execute(
+          workflow(async () =>
+            createActivityCall<number>("testme", undefined).catch(
+              (result) => (result as Error).name + 1
+            )
+          ),
+          [activityScheduled("testme", 0), activityFailed(new Error(""), 0)],
+          undefined
+        )
+      ).resolves.toEqual<WorkflowResult>({
+        commands: [],
+        result: Result.resolved("Error1"),
+      });
+    });
+
+    test("chained but does not complete", async () => {
+      await expect(
+        execute(
+          workflow(async () =>
+            createActivityCall<number>("testme", undefined).catch(
+              (result) => (result as Error).name + 1
+            )
+          ),
+          [activityScheduled("testme", 0)],
+          undefined
+        )
+      ).resolves.toEqual<WorkflowResult>({
+        commands: [],
+        result: undefined,
+      });
+    });
+
+    test("chained using immediate resolutions", async () => {
+      await expect(
+        execute(
+          workflow(async () =>
+            createSendSignalCall(
+              {
+                type: SignalTargetType.Execution,
+                executionId: "something",
+              },
+              "signal"
+            )
+              .then(() => {
+                throw new Error("");
+              })
+              .catch(() => "hi")
+          ),
+          [signalSent("something", "signal", 0)],
+          undefined
+        )
+      ).resolves.toEqual<WorkflowResult>({
+        commands: [],
+        result: Result.resolved("hi"),
+      });
+    });
+
+    test("chained using immediate resolutions and emit more", async () => {
+      await expect(
+        execute(
+          workflow(async () =>
+            createSendSignalCall(
+              {
+                type: SignalTargetType.Execution,
+                executionId: "something",
+              },
+              "signal"
+            )
+              .then(() => {
+                throw new Error("");
+              })
+              .catch(() => {
+                createActivityCall("act1", undefined);
+                return "hi";
+              })
+          ),
+          [signalSent("something", "signal", 0)],
+          undefined
+        )
+      ).resolves.toEqual<WorkflowResult>({
+        commands: [createScheduledActivityCommand("act1", undefined, 1)],
+        result: Result.resolved("hi"),
+      });
+    });
+
+    test("chained using immediate resolutions and chain more", async () => {
+      await expect(
+        execute(
+          workflow(async () =>
+            createSendSignalCall(
+              {
+                type: SignalTargetType.Execution,
+                executionId: "something",
+              },
+              "signal"
+            )
+              .then(() => {
+                throw Error("");
+              })
+              .catch(() => createActivityCall("act1", undefined))
+          ),
+          [
+            signalSent("something", "signal", 0),
+            activityScheduled("act1", 1),
+            activitySucceeded("hi", 1),
+          ],
+          undefined
+        )
+      ).resolves.toEqual<WorkflowResult>({
+        commands: [],
+        result: Result.resolved("hi"),
+      });
+    });
+
+    test("catch catch catch catch", async () => {
+      await expect(
+        execute(
+          workflow(async () =>
+            createSendSignalCall(
+              {
+                type: SignalTargetType.Execution,
+                executionId: "something",
+              },
+              "signal"
+            )
+              .then(() => {
+                throw new Error("");
+              })
+              .catch(() => {
+                let x = 0;
+                return Promise.all([
+                  createActivityCall("act1", undefined).catch(() => {
+                    x++;
+                    return createActivityCall("boom", undefined);
+                  }),
+                  createSendSignalCall(
+                    {
+                      type: SignalTargetType.Execution,
+                      executionId: "something",
+                    },
+                    "signal2",
+                    undefined
+                  )
+                    .then(() => {
+                      throw new Error("");
+                    })
+                    .catch(() => {
+                      x++;
+                      return createActivityCall("boom", undefined);
+                    }),
+                  createWorkflowCall("workflow1", undefined).catch(() => {
+                    x++;
+                    return createActivityCall("boom", undefined);
+                  }),
+                  createExpectSignalCall(
+                    "signal2",
+                    createAwaitTimerCall(Schedule.time(""))
+                  ).catch(() => {
+                    x++;
+                    return createActivityCall("boom", undefined);
+                  }),
+                  createConditionCall(
+                    () => false,
+                    createAwaitTimerCall(Schedule.time(""))
+                  )
+                    .then(() => {
+                      throw new Error("");
+                    })
+                    .catch(() => {
+                      x++;
+                      return createActivityCall("boom", undefined);
+                    }),
+                  createConditionCall(
+                    () => x >= 1000000000000,
+                    createAwaitTimerCall(Schedule.time(""))
+                  )
+                    .then(() => {
+                      throw new Error("");
+                    })
+                    .catch(() => createActivityCall("boom", undefined)),
+                ]);
+              })
+          ),
+          [
+            signalSent("something", "signal", 0),
+            activityScheduled("act1", 1),
+            signalSent("something", "signal2", 2),
+            workflowScheduled("workflow1", 3),
+            timerScheduled(4),
+            timerScheduled(6),
+            timerScheduled(8),
+            activityScheduled("boom", 10), // from signal sent
+            activityFailed("hi", 1), // succeed first activity
+            activityScheduled("boom", 11), // after first act
+            workflowFailed("something", 3), // succeed child workflow
+            activityScheduled("boom", 12), // after child workflow
+            timerCompleted(4),
+            activityScheduled("boom", 13), // from expect timeout
+            timerCompleted(6),
+            activityScheduled("boom", 14), // from condition false timeout
+            timerCompleted(8),
+            activityScheduled("boom", 15), // from condition 10000000 timeout
+            activitySucceeded("b", 10),
+            activitySucceeded("a", 11),
+            activitySucceeded("c", 12),
+            activitySucceeded("d", 13),
+            activitySucceeded("e", 14),
+            activitySucceeded("f", 15),
+          ],
+          undefined
+        )
+      ).resolves.toEqual<WorkflowResult>({
+        commands: [],
+        result: Result.resolved(["a", "b", "c", "d", "e", "f"]),
+      });
+    });
+  });
+
+  describe("finally", () => {
+    test("chained result", async () => {
+      await expect(
+        execute(
+          workflow(async () => {
+            return Promise.all([
+              createActivityCall<number>("testme", undefined).finally(() =>
+                createActivityCall("actact", undefined)
+              ),
+              createSendSignalCall(
+                { type: SignalTargetType.Execution, executionId: "" },
+                "signal1"
+              ).finally(() => createActivityCall("actact", undefined)),
+            ]);
+          }),
+          [
+            activityScheduled("testme", 0),
+            signalSent("", "signal1", 1),
+            activityScheduled("actact", 2),
+            activitySucceeded("something", 0),
+            activitySucceeded("something1", 2),
+            activityScheduled("actact", 3),
+            activitySucceeded("something2", 3),
+          ],
+          undefined
+        )
+      ).resolves.toEqual<WorkflowResult>({
+        commands: [],
+        result: Result.resolved(["something", undefined]),
+      });
     });
   });
 });

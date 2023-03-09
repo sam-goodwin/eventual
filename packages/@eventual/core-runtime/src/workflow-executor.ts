@@ -130,7 +130,7 @@ export class WorkflowExecutor<Input, Output> {
 
   /**
    * The state of the current workflow run (start or continue are running).
-   * 
+   *
    * When undefined, the workflow is not running and can be started or accept new events (unless stopped is true).
    */
   private currentRun?: {
@@ -361,9 +361,7 @@ export class WorkflowExecutor<Input, Output> {
               new DeterminismError(
                 `Workflow returned ${JSON.stringify(
                   call
-                )}, but ${JSON.stringify(expected)} was expected at ${
-                  expected?.seq
-                }`
+                )}, but ${JSON.stringify(expected)} was expected at ${seq}`
               )
             )
           );
@@ -388,6 +386,7 @@ export class WorkflowExecutor<Input, Output> {
       // 1. we want the user code to finish executing before continuing to the next event
       // 2. the promise allows us to use iteration instead of a recursive call stack and depth limits
       await new Promise((resolve) => {
+        // this is only needed when using async on immediately resolved promises, like send signal
         process.nextTick(() => {
           this.tryCommitResultEvent(event);
           resolve(undefined);
