@@ -1,5 +1,4 @@
 import { createConditionCall } from "./internal/calls/condition-call.js";
-import { isEventual } from "./internal/eventual.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
 
 export type ConditionPredicate = () => boolean;
@@ -56,10 +55,5 @@ export function condition(
   }
   const [opts, predicate] = args.length === 1 ? [undefined, args[0]] : args;
 
-  const timeout = opts?.timeout;
-  if (timeout && !isEventual(timeout)) {
-    throw new Error("Timeout promise must be an Eventual.");
-  }
-
-  return createConditionCall(predicate, timeout) as any;
+  return createConditionCall(predicate, opts?.timeout) as any;
 }

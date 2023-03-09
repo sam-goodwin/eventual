@@ -1,4 +1,4 @@
-import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import type { SQSClient } from "@aws-sdk/client-sqs";
 import {
   EventPayloadType,
   EventualError,
@@ -8,11 +8,25 @@ import {
   Timeout,
 } from "@eventual/core";
 import { jest } from "@jest/globals";
-import path from "path";
-import * as url from "url";
 import { TestEnvironment } from "../src/environment.js";
 import { MockActivity } from "../src/providers/activity-provider.js";
-import {
+
+const fakeSqsClientSend = jest.fn<SQSClient["send"]>();
+jest.unstable_mockModule("@aws-sdk/client-sqs", () => {
+  return {
+    ...(jest.requireActual("@aws-sdk/client-sqs") as any),
+    SQSClient: jest
+      .fn()
+      .mockImplementation(() => ({ send: fakeSqsClientSend })),
+  };
+});
+const { SendMessageCommand } = await import("@aws-sdk/client-sqs");
+
+// using a dynamic import for the service/workflows because
+// 1. this is an esm module https://jestjs.io/docs/ecmascript-modules#module-mocking-in-esm
+// 2. we want the test env to use the mocked SQS client instead of the real one
+// if YOU are not using mocked modules, the service can be imported normally.
+const {
   activity1,
   actWithTimeout,
   continueEvent,
@@ -33,35 +47,13 @@ import {
   workflow1,
   workflow3,
   workflowWithTimeouts,
-} from "./workflow.js";
-
-const fakeSqsClientSend = jest.fn<SQSClient["send"]>();
-
-jest.mock("@aws-sdk/client-sqs", () => {
-  return {
-    ...(jest.requireActual("@aws-sdk/client-sqs") as any),
-    SQSClient: jest
-      .fn()
-      .mockImplementation(() => ({ send: fakeSqsClientSend })),
-  };
-});
+} = await import("./workflow.js");
 
 let env: TestEnvironment;
 
 // if there is pollution between tests, call reset()
 beforeAll(async () => {
-  env = new TestEnvironment({
-    entry: path.resolve(
-      url.fileURLToPath(new URL(".", import.meta.url)),
-      "./workflow.ts"
-    ),
-    outDir: path.resolve(
-      url.fileURLToPath(new URL(".", import.meta.url)),
-      ".eventual"
-    ),
-  });
-
-  await env.initialize();
+  env = new TestEnvironment();
 });
 
 afterEach(() => {

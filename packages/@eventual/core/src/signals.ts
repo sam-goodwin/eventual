@@ -2,7 +2,6 @@ import { ulid } from "ulidx";
 import { createExpectSignalCall } from "./internal/calls/expect-signal-call.js";
 import { createSendSignalCall } from "./internal/calls/send-signal-call.js";
 import { createRegisterSignalHandlerCall } from "./internal/calls/signal-handler-call.js";
-import { isEventual } from "./internal/eventual.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
 import { getServiceClient } from "./internal/global.js";
 import { SignalTargetType } from "./internal/signal.js";
@@ -14,7 +13,7 @@ export interface SignalsHandler {
   /**
    * Remove the handler from the signal.
    *
-   * Any ongoing {@link Chain}s started by the handler will continue to run to completion.
+   * Any ongoing {@link Promise}s started by the handler will continue to run to completion.
    */
   dispose: () => void;
 }
@@ -33,7 +32,7 @@ export class Signal<Payload = void> {
    * Listens for signals sent to the current workflow.
    *
    * When the signal is received, the handler is invoked.
-   * If the handler return a promise, the handler is added a {@link Chain}
+   * If the handler return a promise, the handler is added a {@link Promise}
    * and progressed until completion.
    *
    * ```ts
@@ -177,14 +176,9 @@ export function expectSignal<SignalPayload = any>(
     throw new Error("expectSignal is only valid in a workflow");
   }
 
-  const timeout = opts?.timeout;
-  if (timeout && !isEventual(timeout)) {
-    throw new Error("Timeout promise must be an Eventual.");
-  }
-
   return createExpectSignalCall(
     typeof signal === "string" ? signal : signal.id,
-    timeout
+    opts?.timeout
   ) as any;
 }
 
@@ -192,7 +186,7 @@ export function expectSignal<SignalPayload = any>(
  * Listens for a signal matching the signalId provided.
  *
  * When the signal is received, the handler is invoked.
- * If the handler return a promise, the handler is added as a {@link Chain}
+ * If the handler return a promise, the handler is added as a {@link Promise}
  * and progressed until completion.
  *
  * ```ts

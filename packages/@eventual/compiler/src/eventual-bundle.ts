@@ -4,7 +4,6 @@ import { aliasPath } from "esbuild-plugin-alias-path";
 import fs from "fs/promises";
 import path from "path";
 import { prepareOutDir } from "./build.js";
-import { eventualESPlugin } from "./esbuild-plugin.js";
 
 export async function bundleSources(
   outDir: string,
@@ -65,7 +64,6 @@ export async function build({
   injectedServiceSpec,
   name,
   entry,
-  eventualTransform = false,
   sourcemap,
   serviceType,
   external,
@@ -102,7 +100,6 @@ export async function build({
             }),
           ]
         : []),
-      ...(eventualTransform ? [eventualESPlugin] : []),
     ],
     conditions: ["module", "import", "require"],
     // external: ["@aws-sdk"],

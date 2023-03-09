@@ -7,7 +7,6 @@ import {
 import {
   ActivityScheduled,
   ChildWorkflowScheduled,
-  CommandType,
   EventsPublished,
   SignalSent,
   SignalTargetType,
@@ -30,6 +29,7 @@ import {
   formatExecutionId,
   INTERNAL_EXECUTION_ID_PREFIX,
 } from "../src/execution.js";
+import { CommandType } from "../src/workflow-command.js";
 
 const mockTimerClient = {
   scheduleEvent: jest.fn() as TimerClient["scheduleEvent"],

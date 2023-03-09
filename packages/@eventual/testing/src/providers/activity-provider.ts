@@ -8,15 +8,17 @@ import {
   HeartbeatTimeout,
   Timeout,
 } from "@eventual/core";
-import { GlobalActivityProvider } from "@eventual/core-runtime";
 import {
-  ActivityInput,
-  assertNever,
-  activities,
-  Failed,
+  GlobalActivityProvider,
   isFailed,
   isResolved,
   isResult,
+} from "@eventual/core-runtime";
+import {
+  activities,
+  ActivityInput,
+  assertNever,
+  Failed,
   Resolved,
   Result,
 } from "@eventual/core/internal";

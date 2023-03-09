@@ -1,5 +1,4 @@
 import {
-  WorkflowContext,
   DeterminismError,
   ExecutionID,
   ExecutionStatus,
@@ -10,28 +9,23 @@ import {
   Schedule,
   SucceededExecution,
   Workflow,
+  WorkflowContext,
 } from "@eventual/core";
 import {
-  clearEventualCollector,
   getEventId,
   HistoryEvent,
   HistoryStateEvent,
-  isFailed,
   isHistoryEvent,
   isHistoryStateEvent,
-  isResolved,
-  isResult,
   isTimerCompleted,
   isWorkflowCompletedEvent,
   isWorkflowFailed,
   isWorkflowRunStarted,
   isWorkflowStarted,
   isWorkflowSucceeded,
-  normalizeFailedResult,
   Result,
   ServiceType,
   serviceTypeScope,
-  WorkflowCommand,
   WorkflowEvent,
   WorkflowEventType,
   WorkflowFailed,
@@ -48,18 +42,26 @@ import { WorkflowClient } from "../clients/workflow-client.js";
 import { CommandExecutor } from "../command-executor.js";
 import { hookDate, restoreDate } from "../date-hook.js";
 import { isExecutionId, parseWorkflowName } from "../execution.js";
-import { interpret } from "../interpret.js";
 import { ExecutionLogContext, LogAgent, LogContextType } from "../log-agent.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
-import { timed, timedSync } from "../metrics/utils.js";
+import { timed } from "../metrics/utils.js";
 import { WorkflowProvider } from "../providers/workflow-provider.js";
+import {
+  isFailed,
+  isResolved,
+  isResult,
+  normalizeError,
+  normalizeFailedResult,
+} from "../result.js";
 import { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
 import { ExecutionHistoryStore } from "../stores/execution-history-store.js";
 import { WorkflowTask } from "../tasks.js";
-import { groupBy, promiseAllSettledPartitioned } from "../utils.js";
+import { groupBy } from "../utils.js";
+import { WorkflowCommand } from "../workflow-command.js";
 import { createEvent } from "../workflow-events.js";
+import { WorkflowExecutor } from "../workflow-executor.js";
 
 /**
  * The Orchestrator's client dependencies.
@@ -109,6 +111,7 @@ export function createOrchestrator({
 }: OrchestratorDependencies): Orchestrator {
   return async (workflowTasks, baseTime = () => new Date()) =>
     await serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
+      console.log(JSON.stringify(workflowTasks, null, 4));
       const tasksByExecutionId = groupBy(
         workflowTasks,
         (task) => task.executionId
@@ -133,9 +136,13 @@ export function createOrchestrator({
       );
 
       // for each execution id
-      const results = await promiseAllSettledPartitioned(
-        Object.entries(eventsByExecutionId),
-        async ([executionId, records]) => {
+      const succeeded: string[] = [];
+      const failed: Record<string, string> = {};
+
+      for (const [executionId, records] of Object.entries(
+        eventsByExecutionId
+      )) {
+        try {
           if (!isExecutionId(executionId)) {
             throw new Error(`invalid ExecutionID: '${executionId}'`);
           }
@@ -144,31 +151,32 @@ export function createOrchestrator({
             throw new Error(`execution ID '${executionId}' does not exist`);
           }
           // TODO: get workflow from execution id
-          return orchestrateExecution(
+          await orchestrateExecution(
             workflowName,
             executionId,
             records,
             baseTime
           );
+
+          succeeded.push(executionId);
+        } catch (err) {
+          failed[executionId] = normalizeError(err).message;
         }
-      );
+      }
 
-      console.debug(
-        "Executions succeeded: " +
-          results.fulfilled.map(([[executionId]]) => executionId).join(",")
-      );
+      console.debug("Executions succeeded: " + succeeded.join(", "));
 
-      if (results.rejected.length > 0) {
+      if (Object.keys(failed).length > 0) {
         console.error(
           "Executions failed: \n" +
-            results.rejected
-              .map(([[executionId], error]) => `${executionId}: ${error}`)
+            Object.entries(failed)
+              .map(([executionId, error]) => `${executionId}: ${error}`)
               .join("\n")
         );
       }
 
       return {
-        failedExecutionIds: results.rejected.map((rejected) => rejected[0][0]),
+        failedExecutionIds: Object.keys(failed),
       };
     });
 
@@ -316,9 +324,8 @@ export function createOrchestrator({
           }
         }
 
-        const { result, commands: newCommands } = logAgent.logContextScopeSync(
-          executionLogContext,
-          () => {
+        const { result, commands: newCommands } =
+          await logAgent.logContextScope(executionLogContext, () => {
             console.debug("history events", JSON.stringify(history));
             console.debug("task events", JSON.stringify(events));
             console.debug(
@@ -330,7 +337,7 @@ export function createOrchestrator({
               JSON.stringify(processedEvents.interpretEvents)
             );
 
-            return timedSync(
+            return timed(
               metrics,
               OrchestratorMetrics.AdvanceExecutionDuration,
               () =>
@@ -341,8 +348,7 @@ export function createOrchestrator({
                   logAgent
                 )
             );
-          }
-        );
+          });
 
         metrics.setProperty(
           OrchestratorMetrics.AdvanceExecutionEvents,
@@ -676,7 +682,7 @@ function logEventMetrics(
   }
 }
 
-export function progressWorkflow(
+export async function progressWorkflow(
   executionId: string,
   workflow: Workflow,
   processedEvents: ProcessEventsResult,
@@ -704,8 +710,8 @@ export function progressWorkflow(
       processedEvents.firstRunStarted.timestamp
     ).getTime();
     hookDate(() => currentTime);
-    return interpret(
-      workflow.definition(processedEvents.startEvent.input, context),
+    const executor = new WorkflowExecutor(
+      workflow,
       processedEvents.interpretEvents,
       {
         hooks: {
@@ -727,14 +733,13 @@ export function progressWorkflow(
         },
       }
     );
+    return await executor.start(processedEvents.startEvent.input, context);
   } catch (err) {
-    // temporary fix when the interpreter fails, but the activities are not cleared.
-    clearEventualCollector();
     console.debug("workflow error", inspect(err));
     throw err;
   } finally {
-    // re-enable sending logs, any generated logs are new.
     restoreDate();
+    // re-enable sending logs, any generated logs are new.
     logAgent?.enableSendingLogs();
   }
 }

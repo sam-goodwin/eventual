@@ -386,11 +386,7 @@ let env: TestEnvironment;
 
 // if there is pollution between tests, call reset()
 beforeAll(async () => {
-  env = new TestEnvironment({
-    entry: require.resolve("../src"),
-  });
-
-  await env.initialize();
+  env = new TestEnvironment();
 });
 
 test("hello workflow should publish helloEvent and return message", async () => {

@@ -1,20 +1,18 @@
+import { EventualPromise, getWorkflowHook } from "../eventual-hook.js";
 import { SignalTarget } from "../signal.js";
 import {
-  createEventual,
-  EventualBase,
-  EventualKind,
-  isEventualOfKind,
-} from "../eventual.js";
-import { registerEventual } from "../global.js";
-import { Resolved, Result } from "../result.js";
+  createEventualCall,
+  EventualCallBase,
+  EventualCallKind,
+  isEventualCallOfKind,
+} from "./calls.js";
 
 export function isSendSignalCall(a: any): a is SendSignalCall {
-  return isEventualOfKind(EventualKind.SendSignalCall, a);
+  return isEventualCallOfKind(EventualCallKind.SendSignalCall, a);
 }
 
 export interface SendSignalCall
-  extends EventualBase<EventualKind.SendSignalCall, Resolved<void>> {
-  seq?: number;
+  extends EventualCallBase<EventualCallKind.SendSignalCall> {
   signalId: string;
   payload?: any;
   target: SignalTarget;
@@ -26,18 +24,18 @@ export function createSendSignalCall(
   signalId: string,
   payload?: any,
   id?: string
-): SendSignalCall {
-  return registerEventual(
-    createEventual(EventualKind.SendSignalCall, {
+): EventualPromise<void> {
+  return getWorkflowHook().registerEventualCall(
+    createEventualCall(EventualCallKind.SendSignalCall, {
       payload,
       signalId,
       target,
       id,
-      /**
-       * Send signal is modeled synchronously, but the {@link sendSignal} method
-       * returns a promise. Ensure the SendSignalCall is always considered to be immediately resolved.
-       */
-      result: Result.resolved(undefined),
+      // /**
+      //  * Send signal is modeled synchronously, but the {@link sendSignal} method
+      //  * returns a promise. Ensure the SendSignalCall is always considered to be immediately resolved.
+      //  */
+      // result: Result.resolved(undefined),
     })
   );
 }

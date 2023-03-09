@@ -1,17 +1,11 @@
 import {
-  Argument,
-  ArrowFunctionExpression,
   CallExpression,
+  ComputedPropName,
   Expression,
-  FunctionExpression,
-  Span,
-  Node,
-  StringLiteral,
-  FunctionDeclaration,
-  Statement,
   HasSpan,
   Identifier,
-  ComputedPropName,
+  Node,
+  Span,
 } from "@swc/core";
 
 /**
@@ -99,67 +93,6 @@ function isId<Value extends string>(
         ? node.value === value
         : value.has(node.value as any)))
   );
-}
-
-/**
- * A heuristic for identifying a {@link CallExpression} that is a call
- * to the eventual.workflow utility:
- *
- * 1. must be a function call with exactly 2 arguments
- * 2. first argument is a string literal
- * 3. second argument is a FunctionExpression or ArrowFunctionExpression
- * 4. callee is an identifier `"workflow"` or `<identifier>.workflow`
- */
-export function isWorkflowCall(call: CallExpression): call is CallExpression & {
-  arguments: [
-    Argument & { expression: StringLiteral },
-    Argument & { expression: FunctionExpression | ArrowFunctionExpression }
-  ];
-} {
-  return (
-    isWorkflowCallee(call.callee) &&
-    call.arguments[0]?.expression.type === "StringLiteral" &&
-    ((call.arguments.length === 2 &&
-      isNonGeneratorFunction(call.arguments[1]?.expression)) ||
-      (call.arguments.length === 3 &&
-        isNonGeneratorFunction(call.arguments[2]?.expression)))
-  );
-}
-
-export function isNonGeneratorFunction(
-  expr?: Expression
-): expr is ArrowFunctionExpression | FunctionExpression {
-  return (
-    (expr?.type === "ArrowFunctionExpression" ||
-      expr?.type === "FunctionExpression") &&
-    !expr.generator
-  );
-}
-
-export function isActivityCallee(callee: CallExpression["callee"]) {
-  return isCallee("activity", callee);
-}
-
-export function isWorkflowCallee(callee: CallExpression["callee"]) {
-  return isCallee("workflow", callee);
-}
-
-export function isCallee(
-  type: "activity" | "workflow",
-  callee: CallExpression["callee"]
-) {
-  return (
-    (callee.type === "Identifier" && callee.value === type) ||
-    (callee.type === "MemberExpression" &&
-      callee.property.type === "Identifier" &&
-      callee.property.value === type)
-  );
-}
-
-export function isAsyncFunctionDecl(
-  stmt: Statement
-): stmt is FunctionDeclaration & { async: true } {
-  return stmt.type === "FunctionDeclaration" && stmt.async;
 }
 
 export function hasSpan(expr: Node): expr is Node & HasSpan {

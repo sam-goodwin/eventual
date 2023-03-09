@@ -13,7 +13,6 @@ import {
   extendsError,
   isAsyncResult,
   isWorkflowFailed,
-  normalizeError,
   registerServiceClient,
   ServiceType,
   serviceTypeScope,
@@ -32,6 +31,7 @@ import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
 import { Unit } from "../metrics/unit.js";
 import { timed } from "../metrics/utils.js";
 import { ActivityProvider } from "../providers/activity-provider.js";
+import { normalizeError } from "../result.js";
 import { computeDurationSeconds } from "../schedule.js";
 import { ActivityStore } from "../stores/activity-store.js";
 import { createEvent } from "../workflow-events.js";

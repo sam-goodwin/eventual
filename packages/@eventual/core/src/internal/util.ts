@@ -1,4 +1,4 @@
-import { ExecutionID } from "../execution.js";
+import { SystemError } from "../error.js";
 
 export function assertNever(never: never, msg?: string): never {
   throw new Error(msg ?? `reached unreachable code with value ${never}`);
@@ -31,6 +31,17 @@ export function extendsError(err: unknown): err is Error {
       ("prototype" in err &&
         !!err.prototype &&
         Object.prototype.isPrototypeOf.call(err.prototype, Error)))
+  );
+}
+
+export function extendsSystemError(err: unknown): err is SystemError {
+  return (
+    !!err &&
+    typeof err === "object" &&
+    (err instanceof SystemError ||
+      ("prototype" in err &&
+        !!err.prototype &&
+        Object.prototype.isPrototypeOf.call(err.prototype, SystemError)))
   );
 }
 
@@ -101,8 +112,4 @@ export function hashCode(str: string): number {
 // API Gateway doesn't agree with uri encoding in path parameter... so we have these. for now
 export function encodeExecutionId(executionId: string) {
   return Buffer.from(executionId, "utf-8").toString("base64");
-}
-
-export function decodeExecutionId(executionId: string): ExecutionID {
-  return Buffer.from(executionId, "base64").toString("utf-8") as ExecutionID;
 }

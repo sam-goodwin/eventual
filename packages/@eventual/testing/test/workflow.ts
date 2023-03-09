@@ -214,6 +214,7 @@ export const timedWorkflow = workflow(
     let total = 0;
     dataSignal.onSignal(() => {
       total++;
+      console.log(new Date());
       if (new Date().getTime() >= new Date(input.startDate).getTime()) {
         n++;
       }

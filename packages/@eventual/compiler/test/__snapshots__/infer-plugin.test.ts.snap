@@ -443,79 +443,17 @@ __export(command_worker_exports, {
 });
 module.exports = __toCommonJS(command_worker_exports);
 
-var AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
-
-function createAwaitAllSettled(activities2) {
-  return createEventual(EventualKind.AwaitAllSettled, {
-    activities: activities2
-  });
-}
-
-function createAwaitAll(activities2) {
-  return createEventual(EventualKind.AwaitAll, {
-    activities: activities2
-  });
-}
-
-function createAwaitAny(activities2) {
-  return createEventual(EventualKind.AwaitAny, {
-    activities: activities2
-  });
-}
-
-globalThis._eventual ??= {};
-var commands = globalThis._eventual.commands ??= [];
-var eventualCollector = () => {
-  const collector = globalThis._eventual.eventualCollector;
-  if (!collector) {
-    throw new Error("No Eventual Collector Provided");
-  }
-  return collector;
-};
-function registerEventual(eventual) {
-  return eventualCollector().pushEventual(eventual);
-}
-
-function or(...conditions) {
-  return (a) => conditions.some((cond) => cond(a));
-}
-
-var ResultSymbol = Symbol.for("eventual:Result");
-var ResultKind;
-(function(ResultKind2) {
-  ResultKind2[ResultKind2["Pending"] = 0] = "Pending";
-  ResultKind2[ResultKind2["Resolved"] = 1] = "Resolved";
-  ResultKind2[ResultKind2["Failed"] = 2] = "Failed";
-})(ResultKind || (ResultKind = {}));
-function isResult(a) {
-  return a && typeof a === "object" && ResultSymbol in a;
-}
-function isResolved(result) {
-  return isResult(result) && result[ResultSymbol] === ResultKind.Resolved;
-}
-function isFailed(result) {
-  return isResult(result) && result[ResultSymbol] === ResultKind.Failed;
-}
-var isResolvedOrFailed = or(isResolved, isFailed);
-
-var SignalTargetType;
-(function(SignalTargetType2) {
-  SignalTargetType2[SignalTargetType2["Execution"] = 0] = "Execution";
-  SignalTargetType2[SignalTargetType2["ChildExecution"] = 1] = "ChildExecution";
-})(SignalTargetType || (SignalTargetType = {}));
-
-function chain(func) {
-  return (...args) => {
-    const generator = func(...args);
-    return registerChain(generator);
-  };
-}
-function createChain(program) {
-  return createEventual(EventualKind.Chain, program);
-}
-function registerChain(program) {
-  return registerEventual(createChain(program));
-}
+var EventualCallKind;
+(function(EventualCallKind2) {
+  EventualCallKind2[EventualCallKind2["ActivityCall"] = 0] = "ActivityCall";
+  EventualCallKind2[EventualCallKind2["AwaitTimerCall"] = 1] = "AwaitTimerCall";
+  EventualCallKind2[EventualCallKind2["ConditionCall"] = 2] = "ConditionCall";
+  EventualCallKind2[EventualCallKind2["ExpectSignalCall"] = 3] = "ExpectSignalCall";
+  EventualCallKind2[EventualCallKind2["PublishEventsCall"] = 4] = "PublishEventsCall";
+  EventualCallKind2[EventualCallKind2["RegisterSignalHandlerCall"] = 5] = "RegisterSignalHandlerCall";
+  EventualCallKind2[EventualCallKind2["SendSignalCall"] = 6] = "SendSignalCall";
+  EventualCallKind2[EventualCallKind2["WorkflowCall"] = 7] = "WorkflowCall";
+})(EventualCallKind || (EventualCallKind = {}));
 
 var ServiceType;
 (function(ServiceType2) {
@@ -525,72 +463,8 @@ var ServiceType;
   ServiceType2["OrchestratorWorker"] = "OrchestratorWorker";
 })(ServiceType || (ServiceType = {}));
 
-var SERVICE_TYPE_FLAG = "EVENTUAL_SERVICE_TYPE";
-function isOrchestratorWorker() {
-  return process.env[SERVICE_TYPE_FLAG] === ServiceType.OrchestratorWorker;
-}
-
-function createRace(activities2) {
-  return createEventual(EventualKind.Race, {
-    activities: activities2
-  });
-}
-
-var EventualSymbol = Symbol.for("eventual:Eventual");
-var EventualKind;
-(function(EventualKind2) {
-  EventualKind2[EventualKind2["ActivityCall"] = 1] = "ActivityCall";
-  EventualKind2[EventualKind2["AwaitAll"] = 0] = "AwaitAll";
-  EventualKind2[EventualKind2["AwaitAllSettled"] = 12] = "AwaitAllSettled";
-  EventualKind2[EventualKind2["AwaitAny"] = 10] = "AwaitAny";
-  EventualKind2[EventualKind2["AwaitDurationCall"] = 3] = "AwaitDurationCall";
-  EventualKind2[EventualKind2["AwaitTimeCall"] = 4] = "AwaitTimeCall";
-  EventualKind2[EventualKind2["Chain"] = 2] = "Chain";
-  EventualKind2[EventualKind2["ConditionCall"] = 9] = "ConditionCall";
-  EventualKind2[EventualKind2["ExpectSignalCall"] = 6] = "ExpectSignalCall";
-  EventualKind2[EventualKind2["PublishEventsCall"] = 13] = "PublishEventsCall";
-  EventualKind2[EventualKind2["Race"] = 11] = "Race";
-  EventualKind2[EventualKind2["RegisterSignalHandlerCall"] = 7] = "RegisterSignalHandlerCall";
-  EventualKind2[EventualKind2["SendSignalCall"] = 8] = "SendSignalCall";
-  EventualKind2[EventualKind2["WorkflowCall"] = 5] = "WorkflowCall";
-})(EventualKind || (EventualKind = {}));
-function createEventual(kind, e2) {
-  e2[EventualSymbol] = kind;
-  return e2;
-}
-var Eventual = {
-  /**
-   * Wait for all {@link activities} to succeed or until at least one throws.
-   *
-   * This is the equivalent behavior to Promise.all.
-   */
-  all(activities2) {
-    if (!isOrchestratorWorker()) {
-      throw new Error("Eventual.all is only valid in a workflow");
-    }
-    return createAwaitAll(activities2);
-  },
-  any(activities2) {
-    if (!isOrchestratorWorker()) {
-      throw new Error("Eventual.any is only valid in a workflow");
-    }
-    return createAwaitAny(activities2);
-  },
-  race(activities2) {
-    if (!isOrchestratorWorker()) {
-      throw new Error("Eventual.race is only valid in a workflow");
-    }
-    return createRace(activities2);
-  },
-  allSettled(activities2) {
-    if (!isOrchestratorWorker()) {
-      throw new Error("Eventual.allSettled is only valid in a workflow");
-    }
-    return createAwaitAllSettled(activities2);
-  }
-};
-globalThis.$eventual = chain;
-globalThis.$Eventual = Eventual;
+globalThis._eventual ??= {};
+var commands = globalThis._eventual.commands ??= [];
 
 function isSourceLocation(a) {
   return a && typeof a === "object" && typeof a.fileName === "string" && typeof a.exportName === "string";
@@ -776,6 +650,22 @@ _BaseCachingSecret_value = /* @__PURE__ */ new WeakMap();
 
 var import_ulidx2 = __toESM(require_dist2(), 1);
 
+var ResultKind;
+(function(ResultKind2) {
+  ResultKind2[ResultKind2["Resolved"] = 0] = "Resolved";
+  ResultKind2[ResultKind2["Failed"] = 1] = "Failed";
+})(ResultKind || (ResultKind = {}));
+
+var SignalTargetType;
+(function(SignalTargetType2) {
+  SignalTargetType2[SignalTargetType2["Execution"] = 0] = "Execution";
+  SignalTargetType2[SignalTargetType2["ChildExecution"] = 1] = "ChildExecution";
+})(SignalTargetType || (SignalTargetType = {}));
+
+function or(...conditions) {
+  return (a) => conditions.some((cond) => cond(a));
+}
+
 var WorkflowEventType;
 (function(WorkflowEventType2) {
   WorkflowEventType2["ActivitySucceeded"] = "ActivitySucceeded";
@@ -797,52 +687,13 @@ var WorkflowEventType;
   WorkflowEventType2["WorkflowRunStarted"] = "WorkflowRunStarted";
   WorkflowEventType2["WorkflowTimedOut"] = "WorkflowTimedOut";
 })(WorkflowEventType || (WorkflowEventType = {}));
-function isActivityScheduled(event) {
-  return event.type === WorkflowEventType.ActivityScheduled;
-}
-function isActivitySucceeded(event) {
-  return event.type === WorkflowEventType.ActivitySucceeded;
-}
-function isActivityFailed(event) {
-  return event.type === WorkflowEventType.ActivityFailed;
-}
-function isActivityHeartbeatTimedOut(event) {
-  return event.type === WorkflowEventType.ActivityHeartbeatTimedOut;
-}
-function isTimerScheduled(event) {
-  return event.type === WorkflowEventType.TimerScheduled;
-}
 function isWorkflowSucceeded(event) {
   return event.type === WorkflowEventType.WorkflowSucceeded;
 }
 function isWorkflowFailed(event) {
   return event.type === WorkflowEventType.WorkflowFailed;
 }
-function isChildWorkflowScheduled(event) {
-  return event.type === WorkflowEventType.ChildWorkflowScheduled;
-}
-function isChildWorkflowSucceeded(event) {
-  return event.type === WorkflowEventType.ChildWorkflowSucceeded;
-}
-function isChildWorkflowFailed(event) {
-  return event.type === WorkflowEventType.ChildWorkflowFailed;
-}
-function isTimerCompleted(event) {
-  return event.type === WorkflowEventType.TimerCompleted;
-}
 var isWorkflowCompletedEvent = or(isWorkflowFailed, isWorkflowSucceeded);
-function isSignalSent(event) {
-  return event.type === WorkflowEventType.SignalSent;
-}
-function isEventsPublished(event) {
-  return event.type === WorkflowEventType.EventsPublished;
-}
-function isWorkflowTimedOut(event) {
-  return event.type === WorkflowEventType.WorkflowTimedOut;
-}
-var isScheduledEvent = or(isActivityScheduled, isChildWorkflowScheduled, isEventsPublished, isSignalSent, isTimerScheduled);
-var isSucceededEvent = or(isActivitySucceeded, isChildWorkflowSucceeded, isTimerCompleted);
-var isFailedEvent = or(isActivityFailed, isActivityHeartbeatTimedOut, isChildWorkflowFailed, isWorkflowTimedOut);
 
 var myHandler = api.get("/", async () => {
   return new HttpResponse();

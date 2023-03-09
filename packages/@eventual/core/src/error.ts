@@ -14,7 +14,14 @@ export class EventualError extends Error {
     };
   }
 }
-export class DeterminismError extends EventualError {
+
+export class SystemError extends EventualError {
+  constructor(name?: string, message?: string) {
+    super(name ?? "SystemError", message);
+  }
+}
+
+export class DeterminismError extends SystemError {
   constructor(message?: string) {
     super("DeterminismError", message);
   }
@@ -68,12 +75,16 @@ export class HeartbeatTimeout extends Timeout {
     this.name = "HeartbeatTimeout";
   }
 }
+
 /**
- * Thrown when a particular context only support synchronous operations (ex: condition predicate).
+ * Thrown when the workflow times out.
+ *
+ * After a workflow times out, events are no longer accepted
+ * and commands are no longer executed.
  */
-export class SynchronousOperationError extends EventualError {
+export class WorkflowTimeout extends SystemError {
   constructor(message?: string) {
-    super("SynchronousOperationError", message);
+    super("WorkflowTimeout", message);
   }
 }
 

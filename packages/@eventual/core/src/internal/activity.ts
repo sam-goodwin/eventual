@@ -5,7 +5,9 @@ import type {
   AsyncResult,
 } from "../activity.js";
 
-export const AsyncTokenSymbol = Symbol.for("eventual:AsyncToken");
+export const AsyncTokenSymbol = /* @__PURE__ */ Symbol.for(
+  "eventual:AsyncToken"
+);
 
 export interface ActivityRuntimeContext {
   execution: ActivityExecutionContext;

@@ -73,17 +73,41 @@ export type HistoryResultEvent =
   | WorkflowTimedOut
   | WorkflowRunStarted;
 
-export function isHistoryResultEvent(
-  event: WorkflowEvent
-): event is HistoryResultEvent {
-  return (
-    isSucceededEvent(event) ||
-    isFailedEvent(event) ||
-    isSignalReceived(event) ||
-    isWorkflowTimedOut(event) ||
-    isWorkflowRunStarted(event)
-  );
-}
+export type HistoryScheduledEvent =
+  | ActivityScheduled
+  | ChildWorkflowScheduled
+  | EventsPublished
+  | SignalSent
+  | TimerScheduled;
+
+export const isScheduledEvent = /* @__PURE__ */ or(
+  isActivityScheduled,
+  isChildWorkflowScheduled,
+  isEventsPublished,
+  isSignalSent,
+  isTimerScheduled
+);
+
+export const isSucceededEvent = /* @__PURE__ */ or(
+  isActivitySucceeded,
+  isChildWorkflowSucceeded,
+  isTimerCompleted
+);
+
+export const isFailedEvent = /* @__PURE__ */ or(
+  isActivityFailed,
+  isActivityHeartbeatTimedOut,
+  isChildWorkflowFailed,
+  isWorkflowTimedOut
+);
+
+export const isResultEvent = /* @__PURE__ */ or(
+  isSucceededEvent,
+  isFailedEvent,
+  isSignalReceived,
+  isWorkflowTimedOut,
+  isWorkflowRunStarted
+);
 
 /**
  * Events used by the workflow to replay an execution.
@@ -91,7 +115,7 @@ export function isHistoryResultEvent(
 export type HistoryEvent = HistoryResultEvent | ScheduledEvent;
 
 export function isHistoryEvent(event: WorkflowEvent): event is HistoryEvent {
-  return isHistoryResultEvent(event) || isScheduledEvent(event);
+  return isResultEvent(event) || isScheduledEvent(event);
 }
 
 /**
@@ -326,27 +350,6 @@ export function isWorkflowTimedOut(
 ): event is WorkflowTimedOut {
   return event.type === WorkflowEventType.WorkflowTimedOut;
 }
-
-export const isScheduledEvent = or(
-  isActivityScheduled,
-  isChildWorkflowScheduled,
-  isEventsPublished,
-  isSignalSent,
-  isTimerScheduled
-);
-
-export const isSucceededEvent = or(
-  isActivitySucceeded,
-  isChildWorkflowSucceeded,
-  isTimerCompleted
-);
-
-export const isFailedEvent = or(
-  isActivityFailed,
-  isActivityHeartbeatTimedOut,
-  isChildWorkflowFailed,
-  isWorkflowTimedOut
-);
 
 export function assertEventType<T extends WorkflowEvent>(
   event: any,

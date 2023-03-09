@@ -1,9 +1,11 @@
-import {
-  createAwaitDurationCall,
-  createAwaitTimeCall
-} from "./internal/calls/await-time-call.js";
+import { createAwaitTimerCall } from "./internal/calls/await-time-call.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
-import type { DurationSchedule, DurationUnit, TimeSchedule } from "./schedule.js";
+import {
+  DurationSchedule,
+  DurationUnit,
+  Schedule,
+  TimeSchedule,
+} from "./schedule.js";
 
 /**
  * Represents a time duration.
@@ -58,7 +60,7 @@ export function duration(
   }
 
   // register an await duration command and return it (to be yielded)
-  return createAwaitDurationCall(dur, unit) as any;
+  return createAwaitTimerCall(Schedule.duration(dur, unit)) as any;
 }
 
 /**
@@ -95,5 +97,5 @@ export function time(date: Date | string): Promise<void> & TimeSchedule {
   }
 
   // register an await time command and return it (to be yielded)
-  return createAwaitTimeCall(iso) as any;
+  return createAwaitTimerCall(Schedule.time(iso)) as any;
 }

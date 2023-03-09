@@ -1,5 +1,6 @@
 import { HttpEventualClient } from "@eventual/client";
-import { decodeExecutionId, WorkflowStarted } from "@eventual/core/internal";
+import type { ExecutionID } from "@eventual/core";
+import type { WorkflowStarted } from "@eventual/core/internal";
 import { useQuery } from "@tanstack/react-query";
 import { ReactNode } from "react";
 import { aggregateEvents } from "./activity.js";
@@ -109,6 +110,10 @@ function App() {
       </Layout>
     );
   }
+}
+
+export function decodeExecutionId(executionId: string): ExecutionID {
+  return Buffer.from(executionId, "base64").toString("utf-8") as ExecutionID;
 }
 
 export default App;

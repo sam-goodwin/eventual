@@ -7,19 +7,19 @@ import {
   isSucceededExecution,
 } from "@eventual/core";
 import {
-  parseWorkflowName,
-  processEvents,
-  progressWorkflow,
-} from "@eventual/core-runtime";
-import {
-  encodeExecutionId,
   isFailed,
   isResolved,
   normalizeFailedResult,
-  Result,
+  parseWorkflowName,
+  processEvents,
+  progressWorkflow,
   resultToString,
+} from "@eventual/core-runtime";
+import {
+  encodeExecutionId,
+  Result,
   ServiceType,
-  serviceTypeScopeSync,
+  serviceTypeScope,
   workflows,
 } from "@eventual/core/internal";
 import path from "path";
@@ -62,7 +62,7 @@ export const replay = (yargs: Argv) =>
         }
         spinner.start("Running program");
 
-        serviceTypeScopeSync(ServiceType.OrchestratorWorker, () => {
+        await serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
           const processedEvents = processEvents(
             events,
             [],
@@ -74,7 +74,11 @@ export const replay = (yargs: Argv) =>
             )
           );
 
-          const res = progressWorkflow(execution, workflow, processedEvents);
+          const res = await progressWorkflow(
+            execution,
+            workflow,
+            processedEvents
+          );
 
           assertExpectedResult(executionObj, res.result);
 

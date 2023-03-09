@@ -1,23 +1,25 @@
 import { SignalsHandler } from "../../signals.js";
 import {
-  createEventual,
-  EventualBase,
-  EventualKind,
-  isEventualOfKind,
-} from "../eventual.js";
-import { registerEventual } from "../global.js";
-import { Resolved, Result } from "../result.js";
+  EventualPromise,
+  EventualPromiseSymbol,
+  getWorkflowHook,
+} from "../eventual-hook.js";
+import { Result } from "../result.js";
+import {
+  createEventualCall,
+  EventualCallBase,
+  EventualCallKind,
+  isEventualCallOfKind,
+} from "./calls.js";
 
 export function isRegisterSignalHandlerCall(
   a: any
 ): a is RegisterSignalHandlerCall {
-  return isEventualOfKind(EventualKind.RegisterSignalHandlerCall, a);
+  return isEventualCallOfKind(EventualCallKind.RegisterSignalHandlerCall, a);
 }
 
 export interface RegisterSignalHandlerCall<T = any>
-  extends EventualBase<EventualKind.RegisterSignalHandlerCall, Resolved>,
-    SignalsHandler {
-  seq?: number;
+  extends EventualCallBase<EventualCallKind.RegisterSignalHandlerCall> {
   signalId: string;
   handler: (input: T) => void;
 }
@@ -25,14 +27,22 @@ export interface RegisterSignalHandlerCall<T = any>
 export function createRegisterSignalHandlerCall(
   signalId: string,
   handler: RegisterSignalHandlerCall["handler"]
-): RegisterSignalHandlerCall {
-  return registerEventual(
-    createEventual(EventualKind.RegisterSignalHandlerCall, {
+): SignalsHandler {
+  const hook = getWorkflowHook();
+  const eventualPromise = hook.registerEventualCall(
+    createEventualCall(EventualCallKind.RegisterSignalHandlerCall, {
       signalId,
       handler,
-      dispose: function () {
-        this.result = Result.resolved(undefined);
-      },
     })
-  );
+  ) as EventualPromise<void> & SignalsHandler;
+  // the signal handler call should not block
+  return {
+    dispose: function () {
+      // resolving the signal handler eventual makes it unable to accept new events.
+      hook.resolveEventual(
+        eventualPromise[EventualPromiseSymbol],
+        Result.resolved(undefined)
+      );
+    },
+  };
 }

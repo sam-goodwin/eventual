@@ -1,31 +1,28 @@
 import { ConditionPredicate } from "../../condition.js";
+import { getWorkflowHook } from "../eventual-hook.js";
 import {
-  createEventual,
-  Eventual,
-  EventualBase,
-  EventualKind,
-  isEventualOfKind
-} from "../eventual.js";
-import { registerEventual } from "../global.js";
-import { Failed, Resolved } from "../result.js";
+  createEventualCall,
+  EventualCallBase,
+  EventualCallKind,
+  isEventualCallOfKind,
+} from "./calls.js";
 
 export function isConditionCall(a: any): a is ConditionCall {
-  return isEventualOfKind(EventualKind.ConditionCall, a);
+  return isEventualCallOfKind(EventualCallKind.ConditionCall, a);
 }
 
 export interface ConditionCall
-  extends EventualBase<EventualKind.ConditionCall, Resolved<boolean> | Failed> {
-  seq?: number;
+  extends EventualCallBase<EventualCallKind.ConditionCall> {
   predicate: ConditionPredicate;
-  timeout?: Eventual;
+  timeout?: Promise<any>;
 }
 
 export function createConditionCall(
   predicate: ConditionPredicate,
-  timeout?: Eventual
+  timeout?: Promise<any>
 ) {
-  return registerEventual(
-    createEventual<ConditionCall>(EventualKind.ConditionCall, {
+  return getWorkflowHook().registerEventualCall(
+    createEventualCall<ConditionCall>(EventualCallKind.ConditionCall, {
       predicate,
       timeout,
     })

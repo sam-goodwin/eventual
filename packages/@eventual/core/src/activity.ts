@@ -2,16 +2,12 @@ import { ExecutionID } from "./execution.js";
 import { FunctionRuntimeProps } from "./function-props.js";
 import { AsyncTokenSymbol } from "./internal/activity.js";
 import { createActivityCall } from "./internal/calls/activity-call.js";
-import {
-  createAwaitDurationCall,
-  createAwaitTimeCall,
-} from "./internal/calls/await-time-call.js";
+import { createAwaitTimerCall } from "./internal/calls/await-time-call.js";
 import type {
   SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
   SendActivitySuccessRequest,
 } from "./internal/eventual-service.js";
-import { isEventual } from "./internal/eventual.js";
 import { isActivityWorker, isOrchestratorWorker } from "./internal/flags.js";
 import {
   activities,
@@ -20,7 +16,6 @@ import {
 } from "./internal/global.js";
 import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
 import { isSourceLocation, SourceLocation } from "./internal/service-spec.js";
-import { assertNever } from "./internal/util.js";
 import type { DurationSchedule, Schedule } from "./schedule.js";
 import {
   EventualServiceClient,
@@ -305,30 +300,15 @@ export function activity<Name extends string, Input = any, Output = any>(
   const func = ((input, options) => {
     if (isOrchestratorWorker()) {
       const timeout = options?.timeout ?? opts?.timeout;
-      if (
-        timeout &&
-        !(
-          isEventual(timeout) ||
-          isDurationSchedule(timeout) ||
-          isTimeSchedule(timeout)
-        )
-      ) {
-        throw new Error("Timeout promise must be an Eventual or a Schedule.");
-      }
+
       // if we're in the orchestrator, return a command to invoke the activity in the worker function
       return createActivityCall(
         name,
         input,
         timeout
-          ? // if the timeout is an eventual already, just use that
-            isEventual(timeout)
-            ? timeout
-            : // otherwise make the right eventual type
-            isDurationSchedule(timeout)
-            ? createAwaitDurationCall(timeout.dur, timeout.unit)
-            : isTimeSchedule(timeout)
-            ? createAwaitTimeCall(timeout.isoDate)
-            : assertNever(timeout)
+          ? isDurationSchedule(timeout) || isTimeSchedule(timeout)
+            ? createAwaitTimerCall(timeout)
+            : timeout
           : undefined,
         options?.heartbeatTimeout ?? opts?.heartbeatTimeout
       ) as any;

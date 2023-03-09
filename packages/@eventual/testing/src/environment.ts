@@ -1,4 +1,3 @@
-import { bundleService } from "@eventual/compiler";
 import {
   Activity,
   ActivityOutput,
@@ -14,7 +13,7 @@ import {
   SendSignalRequest,
   StartExecutionRequest,
   SubscriptionHandler,
-  Workflow,
+  Workflow
 } from "@eventual/core";
 import {
   ActivityClient,
@@ -32,16 +31,9 @@ import {
   RuntimeServiceClient,
   TimerClient,
   WorkflowClient,
-  WorkflowTask,
+  WorkflowTask
 } from "@eventual/core-runtime";
-import {
-  clearEventHandlers,
-  events,
-  registerServiceClient,
-  ServiceType,
-  workflows,
-} from "@eventual/core/internal";
-import path from "path";
+import { registerServiceClient } from "@eventual/core/internal";
 import { TestActivityClient } from "./clients/activity-client.js";
 import { TestEventClient } from "./clients/event-client.js";
 import { TestExecutionQueueClient } from "./clients/execution-queue-client.js";
@@ -50,7 +42,7 @@ import { TestMetricsClient } from "./clients/metrics-client.js";
 import { TestTimerClient } from "./clients/timer-client.js";
 import {
   MockableActivityProvider,
-  MockActivity,
+  MockActivity
 } from "./providers/activity-provider.js";
 import { TestSubscriptionProvider } from "./providers/subscription-provider.js";
 import { TestActivityStore } from "./stores/activity-store.js";
@@ -66,8 +58,6 @@ export interface TestEnvironmentProps {
    * @default testing
    */
   serviceName?: string;
-  entry: string;
-  outDir?: string;
   /**
    * Start time, starting at the nearest second (rounded down).
    *
@@ -83,7 +73,6 @@ export interface TestEnvironmentProps {
  *
  * ```ts
  * const env = new TestEnvironment(...);
- * await env.initialize();
  *
  * // start a workflow
  * await env.startExecution(workflow, input);
@@ -93,8 +82,6 @@ export interface TestEnvironmentProps {
  * ```
  */
 export class TestEnvironment extends RuntimeServiceClient {
-  private serviceFile: Promise<string>;
-
   private executionHistoryStore: ExecutionHistoryStore;
   private executionStore: ExecutionStore;
 
@@ -106,13 +93,12 @@ export class TestEnvironment extends RuntimeServiceClient {
   private activityProvider: MockableActivityProvider;
   private eventHandlerProvider: TestSubscriptionProvider;
 
-  private initialized = false;
   private timeController: TimeController<WorkflowTask>;
 
   private orchestrator: Orchestrator;
 
-  constructor(props: TestEnvironmentProps) {
-    const start = props.start
+  constructor(props?: TestEnvironmentProps) {
+    const start = props?.start
       ? new Date(props.start.getTime() - props.start.getMilliseconds())
       : new Date(0);
 
@@ -171,7 +157,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       executionQueueClient,
       activityProvider,
       logAgent: testLogAgent,
-      serviceName: props.serviceName ?? "testing",
+      serviceName: props?.serviceName ?? "testing",
     });
 
     const activityClient = new TestActivityClient(
@@ -194,15 +180,6 @@ export class TestEnvironment extends RuntimeServiceClient {
       executionStore,
       workflowProvider,
     });
-
-    this.serviceFile = bundleService(
-      props.outDir ?? path.resolve(".eventual"),
-      props.entry,
-      undefined, // testing does not currently use the app spec
-      ServiceType.OrchestratorWorker,
-      undefined,
-      true
-    );
 
     this.executionStore = executionStore;
     this.executionHistoryStore = executionHistoryStore;
@@ -234,26 +211,10 @@ export class TestEnvironment extends RuntimeServiceClient {
       logAgent: testLogAgent,
       executionHistoryStateStore,
       workflowProvider,
-      serviceName: props.serviceName ?? "testing",
+      serviceName: props?.serviceName ?? "testing",
     });
-  }
 
-  /**
-   * Initializes a {@link TestEnvironment}, bootstrapping the workflows and event handlers
-   * in the provided service entry point file.
-   */
-  public async initialize() {
-    if (!this.initialized) {
-      registerServiceClient(this);
-      const _workflows = workflows();
-      _workflows.clear();
-      const _events = events();
-      _events.clear();
-      clearEventHandlers();
-      // run the service to re-import the workflows, but transformed
-      await import(await this.serviceFile);
-      this.initialized = true;
-    }
+    registerServiceClient(this);
   }
 
   /**
