@@ -26,6 +26,7 @@ import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
 import { TimerClient, TimerRequestType } from "../clients/timer-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
+import { hookConsole, restoreConsole } from "../console-hook.js";
 import { ActivityLogContext, LogAgent, LogContextType } from "../log-agent.js";
 import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
 import { Unit } from "../metrics/unit.js";
@@ -224,16 +225,18 @@ export function createActivityWorker({
                     invocation: runtimeContext.invocation,
                   };
 
-                  const result = await logAgent.logContextScope(
-                    activityLogContext,
-                    async () => {
-                      return await timed(
-                        metrics,
-                        ActivityMetrics.OperationDuration,
-                        () => activity.handler(request.command.input, context)
-                      );
-                    }
+                  hookConsole((level, data) => {
+                    logAgent.logWithContext(activityLogContext, level, ...data);
+                    return undefined;
+                  });
+
+                  const result = await timed(
+                    metrics,
+                    ActivityMetrics.OperationDuration,
+                    () => activity.handler(request.command.input, context)
                   );
+
+                  restoreConsole();
 
                   if (isAsyncResult(result)) {
                     metrics.setProperty(ActivityMetrics.HasResult, 0);

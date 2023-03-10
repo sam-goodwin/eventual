@@ -1,11 +1,6 @@
 import { LogLevel, LOG_LEVELS } from "@eventual/core";
 import { assertNever } from "@eventual/core/internal";
 import { LogsClient } from "./clients/logs-client.js";
-import {
-  hookConsole,
-  isConsoleHooked,
-  restoreConsole,
-} from "./console-hook.js";
 import { getLazy, groupBy, LazyValue } from "./utils.js";
 
 export type LogContext = ExecutionLogContext | ActivityLogContext;
@@ -66,7 +61,6 @@ interface LogEntry {
 }
 
 export class LogAgent {
-  private contextStack: LogContext[] = [];
   private readonly logs: {
     context: LogContext;
     level: LogLevel;
@@ -101,11 +95,6 @@ export class LogAgent {
     this.sendingLogsEnabled = false;
   }
 
-  public clearContext() {
-    this.contextStack = [];
-    restoreConsole();
-  }
-
   /**
    * Clear all buffered logs.
    *
@@ -127,42 +116,6 @@ export class LogAgent {
       lastLogEntry:
         this.logs.length > 0 ? this.logs[this.logs.length - 1] : undefined,
     };
-  }
-
-  public pushContext(context: LogContext) {
-    this.contextStack.push(context);
-    if (!isConsoleHooked()) {
-      hookConsole((level, ...data) => {
-        if (this.contextStack.length > 0) {
-          this.log(level, ...data);
-          return undefined;
-        } else {
-          // if there is no context set, let the console log like normal
-          return data;
-        }
-      });
-    }
-  }
-
-  public popContext(): LogContext {
-    const context = this.contextStack.pop();
-    if (!context) {
-      throw new Error("No contexts to pop");
-    }
-    if (this.contextStack.length === 0) {
-      restoreConsole();
-    }
-    return context;
-  }
-
-  public log(logLevel: LogLevel, ...data: any[]) {
-    const context = this.contextStack[this.contextStack.length - 1];
-    if (!context) {
-      throw new Error(
-        "A Log Context has not been set yet. Call LogAgent.pushContext or use LogAgent.logWithContext."
-      );
-    }
-    this.logWithContext(context, logLevel, ...data);
   }
 
   public logWithContext(
@@ -203,7 +156,6 @@ export class LogAgent {
           return this.props.logsClient.putExecutionLogs(
             execution,
             ...entries
-              //
               .sort((a, b) => a.time - b.time)
               .map((e) => ({
                 time: e.time,
@@ -219,33 +171,6 @@ export class LogAgent {
             JSON.stringify(results.filter((r) => r.status === "rejected"))
         );
       }
-    }
-  }
-
-  /**
-   * Sets the log context for the duration of the provided handler.
-   */
-  public async logContextScope<T>(
-    context: LogContext,
-    scopeHandler: () => T
-  ): Promise<Awaited<T>> {
-    try {
-      this.pushContext(context);
-      return await scopeHandler();
-    } finally {
-      this.popContext();
-    }
-  }
-
-  /**
-   * Sets the log context for the duration of the provided handler.
-   */
-  public logContextScopeSync<T>(context: LogContext, scopeHandler: () => T): T {
-    try {
-      this.pushContext(context);
-      return scopeHandler();
-    } finally {
-      this.popContext();
     }
   }
 }

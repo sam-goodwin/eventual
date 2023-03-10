@@ -42,6 +42,7 @@ import { MetricsClient } from "../clients/metrics-client.js";
 import { TimerClient } from "../clients/timer-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
 import { CommandExecutor } from "../command-executor.js";
+import { hookConsole, restoreConsole } from "../console-hook.js";
 import { hookDate, restoreDate } from "../date-hook.js";
 import { isExecutionId, parseWorkflowName } from "../execution.js";
 import { ExecutionLogContext, LogAgent, LogContextType } from "../log-agent.js";
@@ -290,31 +291,37 @@ export function createOrchestrator({
           }
         }
 
-        const { result, commands: newCommands } =
-          await logAgent.logContextScope(executionLogContext, () => {
-            console.debug("history events", JSON.stringify(history));
-            console.debug("task events", JSON.stringify(events));
-            console.debug(
-              "synthetic events",
-              JSON.stringify(processedEvents.syntheticEvents)
-            );
-            console.debug(
-              "interpret events",
-              JSON.stringify(processedEvents.interpretEvents)
-            );
+        logAgent.logWithContext(
+          executionLogContext,
+          LogLevel.DEBUG,
+          "history events",
+          JSON.stringify(history)
+        );
+        logAgent.logWithContext(
+          executionLogContext,
+          LogLevel.DEBUG,
+          "task events",
+          JSON.stringify(events)
+        );
+        logAgent.logWithContext(
+          executionLogContext,
+          LogLevel.DEBUG,
+          "synthetic events",
+          JSON.stringify(processedEvents.syntheticEvents)
+        );
+        logAgent.logWithContext(
+          executionLogContext,
+          LogLevel.DEBUG,
+          "interpret events",
+          JSON.stringify(processedEvents.interpretEvents)
+        );
 
-            return timed(
-              metrics,
-              OrchestratorMetrics.AdvanceExecutionDuration,
-              () =>
-                progressWorkflow(
-                  executionId,
-                  workflow,
-                  processedEvents,
-                  logAgent
-                )
-            );
-          });
+        const { result, commands: newCommands } = await timed(
+          metrics,
+          OrchestratorMetrics.AdvanceExecutionDuration,
+          () =>
+            progressWorkflow(executionId, workflow, processedEvents, logAgent)
+        );
 
         metrics.setProperty(
           OrchestratorMetrics.AdvanceExecutionEvents,
@@ -676,6 +683,15 @@ export async function progressWorkflow(
       processedEvents.firstRunStarted.timestamp
     ).getTime();
     hookDate(() => currentTime);
+    if (logAgent) {
+      hookConsole((level, data) =>
+        logAgent.logWithContext(
+          { type: LogContextType.Execution, executionId },
+          level,
+          ...data
+        )
+      );
+    }
     const executor = new WorkflowExecutor(
       workflow,
       processedEvents.interpretEvents,
@@ -705,7 +721,7 @@ export async function progressWorkflow(
     console.debug("workflow error", inspect(err));
     throw err;
   } finally {
-    restoreDate();
+    restoreConsole();
     // re-enable sending logs, any generated logs are new.
     restoreDate();
     logAgent?.enableSendingLogs();
