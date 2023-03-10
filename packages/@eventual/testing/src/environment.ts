@@ -13,7 +13,7 @@ import {
   SendSignalRequest,
   StartExecutionRequest,
   SubscriptionHandler,
-  Workflow
+  Workflow,
 } from "@eventual/core";
 import {
   ActivityClient,
@@ -31,9 +31,9 @@ import {
   RuntimeServiceClient,
   TimerClient,
   WorkflowClient,
-  WorkflowTask
+  WorkflowTask,
 } from "@eventual/core-runtime";
-import { registerServiceClient } from "@eventual/core/internal";
+import { ActivityInput, registerServiceClient } from "@eventual/core/internal";
 import { TestActivityClient } from "./clients/activity-client.js";
 import { TestEventClient } from "./clients/event-client.js";
 import { TestExecutionQueueClient } from "./clients/execution-queue-client.js";
@@ -42,7 +42,7 @@ import { TestMetricsClient } from "./clients/metrics-client.js";
 import { TestTimerClient } from "./clients/timer-client.js";
 import {
   MockableActivityProvider,
-  MockActivity
+  MockActivity,
 } from "./providers/activity-provider.js";
 import { TestSubscriptionProvider } from "./providers/subscription-provider.js";
 import { TestActivityStore } from "./stores/activity-store.js";
@@ -259,9 +259,12 @@ export class TestEnvironment extends RuntimeServiceClient {
    * ```
    */
   public mockActivity<A extends Activity<any, any>>(
-    activity: A | string
+    activity: A | string,
+    resolution?:
+      | ActivityOutput<A>
+      | ((input: ActivityInput<A>) => ActivityOutput<A>)
   ): MockActivity<A> {
-    return this.activityProvider.mockActivity(activity as any);
+    return this.activityProvider.mockActivity(activity, resolution);
   }
 
   /**

@@ -26,7 +26,12 @@ import {
 export class MockableActivityProvider extends GlobalActivityProvider {
   private mockedActivities: Record<string, MockActivity<any>> = {};
 
-  public mockActivity<A extends Activity<any, any>>(activity: A | string) {
+  public mockActivity<A extends Activity<any, any>>(
+    activity: A | string,
+    resolution?:
+      | ActivityOutput<A>
+      | ((input: ActivityInput<A>) => ActivityOutput<A>)
+  ) {
     const id = typeof activity === "string" ? activity : activity.name;
     const realActivity =
       typeof activity === "string" ? super.getActivity(id) : activity;
@@ -34,9 +39,20 @@ export class MockableActivityProvider extends GlobalActivityProvider {
       throw new Error("Activity being mocked does not exist. " + id);
     }
 
-    const mock = new MockActivity<any>((input: any, context: ActivityContext) =>
-      realActivity.handler(input, context)
-    );
+    const mock =
+      (this.mockedActivities[id] as MockActivity<A>) ??
+      new MockActivity<A>(((
+        input: ActivityInput<A>,
+        context: ActivityContext
+      ) => realActivity.handler(input, context)) as A);
+
+    if (resolution) {
+      if (typeof resolution === "function") {
+        mock.invoke(resolution);
+      } else {
+        mock.succeed(resolution);
+      }
+    }
 
     this.mockedActivities[id] = mock;
 
