@@ -3,10 +3,15 @@ import {
   CommandExecutor,
   createEvent,
   ExecutionHistoryStore,
+  ExecutorProvider,
+  hookConsole,
   hookDate,
   isFailed,
+  LogAgent,
+  LogContextType,
   normalizeFailedResult,
   Orchestrator,
+  restoreConsole,
   restoreDate,
   runExecutions,
   TimerClient,
@@ -16,12 +21,14 @@ import {
   WorkflowResult,
 } from "@eventual/core-runtime";
 import {
-  HistoryStateEvent,
+  isTimerScheduled,
   isWorkflowRunStarted,
   isWorkflowStarted,
   Result,
   ServiceType,
   serviceTypeScope,
+  TimerCompleted,
+  TimerScheduled,
   WorkflowEvent,
   WorkflowEventType,
   WorkflowFailed,
@@ -31,17 +38,6 @@ import {
   WorkflowSucceeded,
   WorkflowTimedOut,
 } from "@eventual/core/internal";
-
-export interface ExecutionExecutorProvider<Context extends any = undefined> {
-  getRunningExecution(
-    executionId: string
-  ): Promise<WorkflowExecutor<any, any, Context> | undefined>;
-  persistExecution(
-    executionId: string,
-    commandEvents: HistoryStateEvent[],
-    executor: WorkflowExecutor<any, any, any>
-  ): Promise<void>;
-}
 
 export function createLocalOrchestrator(
   deps: OrchestrateDependencies
@@ -71,12 +67,13 @@ export function createLocalOrchestrator(
 }
 
 interface OrchestrateDependencies {
-  workflowProvider: WorkflowProvider;
-  executorProvider: ExecutionExecutorProvider<ExecutorContext>;
   commandExecutor: CommandExecutor;
-  workflowClient: WorkflowClient;
   executionHistoryStore: ExecutionHistoryStore;
+  executorProvider: ExecutorProvider<ExecutorContext>;
+  logAgent: LogAgent;
   timerClient: TimerClient;
+  workflowClient: WorkflowClient;
+  workflowProvider: WorkflowProvider;
 }
 
 export interface ExecutorContext {
@@ -94,7 +91,7 @@ export async function orchestrateExecution(
   const workflow = deps.workflowProvider.lookupWorkflow(workflowName);
 
   // start event collection
-  const [commandEvents, executor] = await eventCollectorScope(
+  const [commandEvents, executor, logFlush] = await eventCollectorScope(
     executionId,
     deps.executionHistoryStore,
     async (emitEvent) => {
@@ -122,6 +119,13 @@ export async function orchestrateExecution(
       const hasPreviousResult = !!executor.result;
 
       hookDate(() => executor.executionContext.date);
+      hookConsole((level, data) =>
+        deps.logAgent.logWithContext(
+          { type: LogContextType.Execution, executionId },
+          level,
+          ...data
+        )
+      );
 
       const { commands, result } = await runExecutor(
         executionId,
@@ -129,10 +133,12 @@ export async function orchestrateExecution(
         events,
         workflow,
         executor,
+        executionTime,
         deps.timerClient
-      );
-
-      restoreDate();
+      ).finally(() => {
+        restoreDate();
+        restoreConsole();
+      });
 
       console.debug("Commands to send", JSON.stringify(commands));
       // try to execute all commands
@@ -161,7 +167,7 @@ export async function orchestrateExecution(
         )
       );
 
-      return [commandEvents, executor];
+      return [commandEvents, executor, deps.logAgent.flush()];
     }
   );
 
@@ -173,6 +179,8 @@ export async function orchestrateExecution(
     );
   }
 
+  await logFlush;
+
   /**
    * Retrieves the previously started executor or creates a new one and starts it.
    */
@@ -181,15 +189,10 @@ export async function orchestrateExecution(
     executionId: string,
     executionTime: Date
   ): Promise<WorkflowExecutor<any, any, ExecutorContext>> {
-    const runningExecutor = await deps.executorProvider.getRunningExecution(
-      executionId
-    );
-
-    if (!runningExecutor) {
-      // TODO hooks
+    return await deps.executorProvider.getExecutor(executionId, (history) => {
       return new WorkflowExecutor(
         workflow,
-        [],
+        history,
         { date: executionTime.getTime() },
         {
           hooks: {
@@ -201,9 +204,7 @@ export async function orchestrateExecution(
           },
         }
       );
-    }
-
-    return runningExecutor;
+    });
   }
 
   async function persistWorkflowResult(
@@ -247,14 +248,17 @@ async function runExecutor(
   events: WorkflowInputEvent[],
   workflow: Workflow,
   workflowExecutor: WorkflowExecutor<any, any, ExecutorContext>,
+  executionTime: Date,
   timerClient: TimerClient
 ) {
   let startResult: WorkflowResult | undefined = undefined;
   // if the executor has not been started, try to start it.
   if (!workflowExecutor.isStarted()) {
-    const startEvent = events.find(isWorkflowStarted);
+    const historicalStartEvent = workflowExecutor.startEvent;
+    const startEvent = historicalStartEvent ?? events.find(isWorkflowStarted);
 
-    if (startEvent) {
+    // if the start event is new in this execution...
+    if (!historicalStartEvent && startEvent) {
       if (startEvent.timeoutTime) {
         timerClient.scheduleEvent<WorkflowTimedOut>({
           schedule: Schedule.time(startEvent.timeoutTime),
@@ -282,11 +286,6 @@ async function runExecutor(
     }
   }
 
-  // if the workflow already failed, return the current result
-  if (startResult && isFailed(startResult?.result)) {
-    return startResult;
-  }
-
   // run the workflow with the new events
   const continueResult = await workflowExecutor.continue(
     workflowRunStartedEvent,
@@ -296,11 +295,51 @@ async function runExecutor(
     )
   );
 
+  /**
+   * If the workflow has any active timers that can be completed, complete them now
+   * and continue the workflow.
+   */
+  const syntheticTimerEvents = generateSyntheticTimerEvents(
+    workflowExecutor,
+    executionTime
+  );
+
+  const syntheticEventsResult =
+    syntheticTimerEvents.length > 0
+      ? await workflowExecutor.continue(...syntheticTimerEvents)
+      : undefined;
+
   // merge the start and continue commands and then return.
   return {
-    commands: [...(startResult?.commands ?? []), ...continueResult.commands],
-    result: continueResult.result,
+    commands: [
+      ...(startResult?.commands ?? []),
+      ...continueResult.commands,
+      ...(syntheticEventsResult?.commands ?? []),
+    ],
+    result: syntheticEventsResult?.result ?? continueResult.result,
   };
+}
+
+function generateSyntheticTimerEvents(
+  executor: WorkflowExecutor<any, any, any>,
+  executionTime: Date
+) {
+  if (!executor.hasActiveEventuals) {
+    return [];
+  }
+  const events = executor.historyEvents;
+  const activeCompleteTimerEvents = events.filter(
+    (event): event is TimerScheduled =>
+      isTimerScheduled(event) &&
+      executor.isEventualActive(event.seq) &&
+      new Date(event.timestamp).getTime() <= executionTime.getTime()
+  );
+  return activeCompleteTimerEvents.map((event) =>
+    createEvent<TimerCompleted>(
+      { type: WorkflowEventType.TimerCompleted, seq: event.seq },
+      executionTime
+    )
+  );
 }
 
 async function eventCollectorScope<T>(

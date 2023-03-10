@@ -24,6 +24,7 @@ import {
   ExecutionHistoryStore,
   ExecutionStore,
   GlobalWorkflowProvider,
+  InMemoryExecutorProvider,
   isWorkflowTask,
   LogAgent,
   Orchestrator,
@@ -44,7 +45,6 @@ import {
   MockableActivityProvider,
   MockActivity,
 } from "./providers/activity-provider.js";
-import { LocalExecutionProvider } from "./providers/execution-provider.js";
 import { TestSubscriptionProvider } from "./providers/subscription-provider.js";
 import { TestActivityStore } from "./stores/activity-store.js";
 import { TestExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
@@ -206,7 +206,8 @@ export class TestEnvironment extends RuntimeServiceClient {
     this.orchestrator = createLocalOrchestrator({
       commandExecutor,
       executionHistoryStore: this.executionHistoryStore,
-      executorProvider: new LocalExecutionProvider(),
+      executorProvider: new InMemoryExecutorProvider(),
+      logAgent: testLogAgent,
       workflowClient: this.workflowClient,
       workflowProvider,
       timerClient: this.timerClient,

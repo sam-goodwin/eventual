@@ -28,6 +28,9 @@ import {
   WorkflowRunStarted,
   WorkflowTimedOut,
   _Iterator,
+  HistoryStateEvent,
+  WorkflowStarted,
+  isWorkflowStarted,
 } from "@eventual/core/internal";
 import { isPromise } from "util/types";
 import { createEventualFromCall, isCorresponding } from "./eventual-factory.js";
@@ -184,10 +187,14 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
    * The current result of the workflow, also returned by start and continue on completion.
    */
   public result?: Result<Output>;
+  /**
+   * The first WorkflowStarted event found in the history.
+   */
+  public readonly startEvent?: WorkflowStarted;
 
   constructor(
     private workflow: Workflow<Input, Output>,
-    private history: HistoryEvent[],
+    private history: HistoryStateEvent[],
     /**
      * A context object tied to the executor.
      * Used to maintain data that may change throughout the execution like the current execution datetime.
@@ -198,6 +205,18 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
     this.nextSeq = 0;
     this.expected = iterator(history, isScheduledEvent);
     this.events = iterator(history, isCompletionEvent);
+    this.startEvent = history.find(isWorkflowStarted);
+  }
+
+  /**
+   * Returns a cloned array of all history events run or created by the executor.
+   */
+  get historyEvents() {
+    return this.history.slice(0);
+  }
+
+  get hasActiveEventuals() {
+    return Object.keys(this.activeEventuals).length > 0;
   }
 
   /**
@@ -533,7 +552,10 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
     }
   }
 
-  private isEventualActive(seq: number | string) {
+  /**
+   * @returns true if a seq number matches an active eventual.
+   */
+  public isEventualActive(seq: number | string) {
     return seq in this.activeEventuals;
   }
 
