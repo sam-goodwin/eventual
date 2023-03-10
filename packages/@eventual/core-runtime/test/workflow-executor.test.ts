@@ -2840,6 +2840,7 @@ describe("continue", () => {
       [activityScheduled("my-activity", 0), activitySucceeded("result", 0)],
       undefined
     );
+    await executor.start([event], context);
     await expect(
       executor.continue(activitySucceeded("result", 0))
     ).resolves.toEqual<WorkflowResult>({
