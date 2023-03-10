@@ -3,7 +3,7 @@ import {
   BatchWriteItemCommand,
   DynamoDBClient,
 } from "@aws-sdk/client-dynamodb";
-import {
+import type {
   ExecutionID,
   ListExecutionEventsRequest,
   ListExecutionEventsResponse,

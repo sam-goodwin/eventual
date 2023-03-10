@@ -679,6 +679,7 @@ export async function progressWorkflow(
     const executor = new WorkflowExecutor(
       workflow,
       processedEvents.interpretEvents,
+      undefined,
       {
         hooks: {
           /**

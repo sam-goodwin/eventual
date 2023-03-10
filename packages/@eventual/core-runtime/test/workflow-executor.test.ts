@@ -106,7 +106,7 @@ async function execute<W extends Workflow>(
   history: HistoryEvent[],
   input: WorkflowInput<W>
 ) {
-  const executor = new WorkflowExecutor(workflow, history);
+  const executor = new WorkflowExecutor(workflow, history, undefined);
   return executor.start(input, context);
 }
 
@@ -2664,7 +2664,8 @@ test("many events at once", async () => {
     [...Array(100).keys()].flatMap((i) => [
       activityScheduled("myAct", i),
       activitySucceeded(undefined, i),
-    ])
+    ]),
+    undefined
   );
 
   await expect(
@@ -2677,7 +2678,7 @@ test("many events at once", async () => {
 
 describe("continue", () => {
   test("start a workflow with no events and feed it one after", async () => {
-    const executor = new WorkflowExecutor(myWorkflow, []);
+    const executor = new WorkflowExecutor(myWorkflow, [], undefined);
     await expect(
       executor.start(event, context)
     ).resolves.toEqual<WorkflowResult>({
@@ -2698,10 +2699,11 @@ describe("continue", () => {
   });
 
   test("start a workflow with events and feed it one after", async () => {
-    const executor = new WorkflowExecutor(myWorkflow, [
-      activityScheduled("my-activity", 0),
-      activitySucceeded("result", 0),
-    ]);
+    const executor = new WorkflowExecutor(
+      myWorkflow,
+      [activityScheduled("my-activity", 0), activitySucceeded("result", 0)],
+      undefined
+    );
     await expect(
       executor.start(event, context)
     ).resolves.toEqual<WorkflowResult>({
@@ -2730,7 +2732,7 @@ describe("continue", () => {
       return "done";
     });
 
-    const executor = new WorkflowExecutor(wf, []);
+    const executor = new WorkflowExecutor(wf, [], undefined);
 
     await executor.start(undefined, context);
 
@@ -2755,7 +2757,7 @@ describe("continue", () => {
       return "done";
     });
 
-    const executor = new WorkflowExecutor(wf, []);
+    const executor = new WorkflowExecutor(wf, [], undefined);
 
     await executor.start(undefined, context);
 
@@ -2788,7 +2790,8 @@ describe("continue", () => {
        * We will provide expected events, but will not consume them all until all of the
        * succeeded events are supplied.
        */
-      [...Array(100).keys()].map((i) => activityScheduled("myAct", i))
+      [...Array(100).keys()].map((i) => activityScheduled("myAct", i)),
+      undefined
     );
 
     await executor.start(undefined, context);
@@ -2804,7 +2807,7 @@ describe("continue", () => {
   });
 
   test("throws if previous run not complete", async () => {
-    const executor = new WorkflowExecutor(myWorkflow, []);
+    const executor = new WorkflowExecutor(myWorkflow, [], undefined);
     const startPromise = executor.start(event, context);
     await expect(
       executor.continue(activitySucceeded("result", 0))
@@ -2832,10 +2835,11 @@ describe("continue", () => {
   });
 
   test("filters duplicate events", async () => {
-    const executor = new WorkflowExecutor(myWorkflow, [
-      activityScheduled("my-activity", 0),
-      activitySucceeded("result", 0),
-    ]);
+    const executor = new WorkflowExecutor(
+      myWorkflow,
+      [activityScheduled("my-activity", 0), activitySucceeded("result", 0)],
+      undefined
+    );
     await expect(
       executor.continue(activitySucceeded("result", 0))
     ).resolves.toEqual<WorkflowResult>({
@@ -2854,7 +2858,7 @@ describe("running after result", () => {
       return "hello?";
     });
 
-    const executor = new WorkflowExecutor(wf, []);
+    const executor = new WorkflowExecutor(wf, [], undefined);
 
     await expect(
       executor.start(undefined, context)
@@ -2879,7 +2883,7 @@ describe("running after result", () => {
       throw Error("AHHH");
     });
 
-    const executor = new WorkflowExecutor(wf, []);
+    const executor = new WorkflowExecutor(wf, [], undefined);
 
     await expect(
       executor.start(undefined, context)
@@ -2912,7 +2916,7 @@ describe("running after result", () => {
       return "hello?";
     });
 
-    const executor = new WorkflowExecutor(wf, []);
+    const executor = new WorkflowExecutor(wf, [], undefined);
 
     await expect(
       executor.start(undefined, context)
@@ -3100,11 +3104,15 @@ describe("failures", () => {
   });
 
   test("with continue", async () => {
-    const executor = new WorkflowExecutor(signalWf, [
-      activityScheduled("hello", 0),
-      activitySucceeded(undefined, 0),
-      signalReceived("signal"),
-    ]);
+    const executor = new WorkflowExecutor(
+      signalWf,
+      [
+        activityScheduled("hello", 0),
+        activitySucceeded(undefined, 0),
+        signalReceived("signal"),
+      ],
+      undefined
+    );
 
     await expect(
       executor.start(undefined, context)

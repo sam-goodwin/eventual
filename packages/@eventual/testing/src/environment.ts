@@ -13,14 +13,13 @@ import {
   SendSignalRequest,
   StartExecutionRequest,
   SubscriptionHandler,
-  Workflow
+  Workflow,
 } from "@eventual/core";
 import {
   ActivityClient,
   CommandExecutor,
   createActivityWorker,
   createEventHandlerWorker,
-  createOrchestrator,
   EventClient,
   ExecutionHistoryStore,
   ExecutionStore,
@@ -31,7 +30,7 @@ import {
   RuntimeServiceClient,
   TimerClient,
   WorkflowClient,
-  WorkflowTask
+  WorkflowTask,
 } from "@eventual/core-runtime";
 import { registerServiceClient } from "@eventual/core/internal";
 import { TestActivityClient } from "./clients/activity-client.js";
@@ -40,10 +39,12 @@ import { TestExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { TestLogsClient } from "./clients/logs-client.js";
 import { TestMetricsClient } from "./clients/metrics-client.js";
 import { TestTimerClient } from "./clients/timer-client.js";
+import { createLocalOrchestrator } from "./handlers/local-orchestrator.js";
 import {
   MockableActivityProvider,
-  MockActivity
+  MockActivity,
 } from "./providers/activity-provider.js";
+import { LocalExecutionProvider } from "./providers/execution-provider.js";
 import { TestSubscriptionProvider } from "./providers/subscription-provider.js";
 import { TestActivityStore } from "./stores/activity-store.js";
 import { TestExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
@@ -202,16 +203,13 @@ export class TestEnvironment extends RuntimeServiceClient {
       workflowClient,
     });
 
-    this.orchestrator = createOrchestrator({
+    this.orchestrator = createLocalOrchestrator({
       commandExecutor,
-      timerClient: this.timerClient,
-      workflowClient: this.workflowClient,
       executionHistoryStore: this.executionHistoryStore,
-      metricsClient: new TestMetricsClient(),
-      logAgent: testLogAgent,
-      executionHistoryStateStore,
+      executorProvider: new LocalExecutionProvider(),
+      workflowClient: this.workflowClient,
       workflowProvider,
-      serviceName: props?.serviceName ?? "testing",
+      timerClient: this.timerClient,
     });
 
     registerServiceClient(this);
