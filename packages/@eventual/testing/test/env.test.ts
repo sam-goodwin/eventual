@@ -93,6 +93,47 @@ describe("activity", () => {
     beforeAll(() => {
       mockActivity = env.mockActivity(activity1);
     });
+
+    test("succeed with inline mock", async () => {
+      env.mockActivity(activity1, "hello from the inline mock");
+      // execution starts
+      const execution = await env.startExecution({
+        workflow: workflow3,
+        input: undefined,
+      });
+      await env.tick();
+
+      // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
+      const r2 = await execution.getStatus();
+      // and the execution updated to a succeeded state
+      expect(r2).toMatchObject<Partial<typeof r2>>({
+        status: ExecutionStatus.SUCCEEDED,
+        result: [
+          [{ status: "fulfilled", value: "hello from the inline mock" }],
+        ],
+      });
+    });
+
+    test("succeed with inline invoke", async () => {
+      env.mockActivity(activity1, () => "hello from the inline invoke");
+      // execution starts
+      const execution = await env.startExecution({
+        workflow: workflow3,
+        input: undefined,
+      });
+      await env.tick();
+
+      // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
+      const r2 = await execution.getStatus();
+      // and the execution updated to a succeeded state
+      expect(r2).toMatchObject<Partial<typeof r2>>({
+        status: ExecutionStatus.SUCCEEDED,
+        result: [
+          [{ status: "fulfilled", value: "hello from the inline invoke" }],
+        ],
+      });
+    });
+
     test("succeed once with always", async () => {
       mockActivity.succeed("hello from the mock");
       // execution starts
