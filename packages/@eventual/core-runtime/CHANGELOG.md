@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.25.0 (2023-03-11)
+
+### Features
+
+- improved testend activity mock ([#309](https://github.com/functionless/eventual/issues/309)) ([398f73b](https://github.com/functionless/eventual/commit/398f73bdd8338c3fc85027aa2134273349de97be))
+
 # 0.24.0 (2023-03-09)
 
 ### Features
