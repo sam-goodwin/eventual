@@ -286,10 +286,7 @@ export class CommandService<Service = any> {
           if (command.path) {
             self.gateway.addRoutes({
               // itty router supports paths in the form /*, but api gateway expects them in the form /{proxy+}
-              path:
-                command.path === "*"
-                  ? "/{proxy+}"
-                  : (command.path as string).replace(/\*/g, "{proxy+}"),
+              path: ittyRouteToApigatewayRoute(command.path),
               methods: [
                 (command.method as HttpMethod | undefined) ?? HttpMethod.GET,
               ],
@@ -456,6 +453,12 @@ export class CommandService<Service = any> {
   private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {
     envs.forEach((env) => func.addEnvironment(env, this.ENV_MAPPINGS[env]()));
   }
+}
+
+function ittyRouteToApigatewayRoute(route: string) {
+  return route === "*"
+    ? "/{proxy+}"
+    : route.replace(/\*/g, "{proxy+}").replaceAll(/\:([^\/]*)/g, "{$1}");
 }
 
 interface SynthesizedCommand {

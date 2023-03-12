@@ -102,45 +102,47 @@ function initRouter() {
   for (const command of commands) {
     const shouldValidate = command.validate !== false;
 
-    // RPC route takes a POST request and passes the parsed JSON body as input to the input
-    router.post(
-      commandRpcPath(command),
-      withMiddleware(async (request, context) => {
-        if (command.passThrough) {
-          // if passthrough is enabled, just proxy the request-response to the handler
-          return command.handler(request, context);
-        }
-
-        let input: any = await request.tryJson();
-        if (command.input && shouldValidate) {
-          try {
-            input = command.input.parse(input);
-          } catch (err) {
-            console.error("Invalid input", err, input);
-            return new HttpResponse(JSON.stringify(err), {
-              status: 400,
-              statusText: "Invalid input",
-            });
+    if (!command.passThrough) {
+      // RPC route takes a POST request and passes the parsed JSON body as input to the input
+      router.post(
+        commandRpcPath(command),
+        withMiddleware(async (request, context) => {
+          if (command.passThrough) {
+            // if passthrough is enabled, just proxy the request-response to the handler
+            return command.handler(request, context);
           }
-        }
 
-        let output: any = await command.handler(input, context);
-        if (command.output && shouldValidate) {
-          try {
-            output = command.output.parse(output);
-          } catch (err) {
-            console.error("RPC output did not match schema", output, err);
-            return new HttpResponse(JSON.stringify(err), {
-              status: 500,
-              statusText: "RPC output did not match schema",
-            });
+          let input: any = await request.tryJson();
+          if (command.input && shouldValidate) {
+            try {
+              input = command.input.parse(input);
+            } catch (err) {
+              console.error("Invalid input", err, input);
+              return new HttpResponse(JSON.stringify(err), {
+                status: 400,
+                statusText: "Invalid input",
+              });
+            }
           }
-        }
-        return new HttpResponse(JSON.stringify(output, jsonReplacer), {
-          status: 200,
-        });
-      })
-    );
+
+          let output: any = await command.handler(input, context);
+          if (command.output && shouldValidate) {
+            try {
+              output = command.output.parse(output);
+            } catch (err) {
+              console.error("RPC output did not match schema", output, err);
+              return new HttpResponse(JSON.stringify(err), {
+                status: 500,
+                statusText: "RPC output did not match schema",
+              });
+            }
+          }
+          return new HttpResponse(JSON.stringify(output, jsonReplacer), {
+            status: 200,
+          });
+        })
+      );
+    }
 
     const path = command.path;
 
