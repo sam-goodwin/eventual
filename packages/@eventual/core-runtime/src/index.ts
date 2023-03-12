@@ -2,7 +2,6 @@ export * from "./activity-token.js";
 export * from "./clients/index.js";
 export * from "./command-executor.js";
 export * from "./console-hook.js";
-export * from "./date-hook.js";
 export * from "./execution.js";
 export * from "./handlers/index.js";
 export * from "./log-agent.js";

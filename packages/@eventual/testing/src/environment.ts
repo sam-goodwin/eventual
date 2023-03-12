@@ -20,6 +20,7 @@ import {
   CommandExecutor,
   createActivityWorker,
   createEventHandlerWorker,
+  createLocalOrchestrator,
   EventClient,
   ExecutionHistoryStore,
   ExecutionStore,
@@ -40,7 +41,6 @@ import { TestExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { TestLogsClient } from "./clients/logs-client.js";
 import { TestMetricsClient } from "./clients/metrics-client.js";
 import { TestTimerClient } from "./clients/timer-client.js";
-import { createLocalOrchestrator } from "./handlers/local-orchestrator.js";
 import {
   MockableActivityProvider,
   MockActivity,

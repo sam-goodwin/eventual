@@ -2,11 +2,11 @@ import "@eventual/injected/entry";
 
 import {
   CommandExecutor,
-  createOrchestrator,
+  createLocalOrchestrator,
   ExecutionQueueEventEnvelope,
+  RemoteExecutorProvider,
 } from "@eventual/core-runtime";
 import type { SQSEvent, SQSRecord } from "aws-lambda";
-import { AWSMetricsClient } from "../clients/metrics-client.js";
 import {
   createActivityClient,
   createEventClient,
@@ -18,19 +18,18 @@ import {
   createWorkflowClient,
   createWorkflowProvider,
 } from "../create.js";
-import { serviceName } from "../env.js";
 
 /**
  * Creates an entrypoint function for orchestrating a workflow
  * from within an AWS Lambda Function attached to a SQS FIFO queue.
  */
-const orchestrate = createOrchestrator({
+const orchestrate = createLocalOrchestrator({
   executionHistoryStore: createExecutionHistoryStore(),
   timerClient: createTimerClient(),
   workflowClient: createWorkflowClient(),
-  metricsClient: AWSMetricsClient,
+  // metricsClient: AWSMetricsClient,
   logAgent: createLogAgent(),
-  executionHistoryStateStore: createExecutionHistoryStateStore(),
+  // executionHistoryStateStore: createExecutionHistoryStateStore(),
   commandExecutor: new CommandExecutor({
     activityClient: createActivityClient(),
     eventClient: createEventClient(),
@@ -39,7 +38,10 @@ const orchestrate = createOrchestrator({
     workflowClient: createWorkflowClient(),
   }),
   workflowProvider: createWorkflowProvider(),
-  serviceName: serviceName(),
+  executorProvider: new RemoteExecutorProvider({
+    executionHistoryStateStore: createExecutionHistoryStateStore(),
+  }),
+  // serviceName: serviceName(),
 });
 
 export default async (event: SQSEvent) => {
