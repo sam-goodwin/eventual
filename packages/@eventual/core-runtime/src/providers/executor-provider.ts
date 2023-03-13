@@ -21,7 +21,7 @@ export interface ExecutorProvider<Context extends any = undefined> {
     executionId: string,
     newEvents: HistoryStateEvent[],
     executor: WorkflowExecutor<any, any, any>
-  ): Promise<void>;
+  ): Promise<{ storedBytes: number }>;
 }
 
 export interface RemoteExecutorProviderProps {
@@ -53,14 +53,17 @@ export class RemoteExecutorProvider<Context extends any = undefined>
     executionId: string,
     newHistoryEvents: HistoryStateEvent[],
     executor: WorkflowExecutor<any, any, any>
-  ): Promise<void> {
+  ): Promise<{ storedBytes: number }> {
     // provides a shallow copy of the history events.
     const historyEvents = executor.history.slice(0);
     historyEvents.push(...newHistoryEvents);
-    await this.props.executionHistoryStateStore.updateHistory({
-      executionId,
-      events: historyEvents,
-    });
+    const { bytes } = await this.props.executionHistoryStateStore.updateHistory(
+      {
+        executionId,
+        events: historyEvents,
+      }
+    );
+    return { storedBytes: bytes };
   }
 }
 
@@ -84,7 +87,8 @@ export class InMemoryExecutorProvider<Context extends any = undefined>
     executionId: string,
     _newEvents: HistoryStateEvent[],
     executor: WorkflowExecutor<any, any, any>
-  ): Promise<void> {
+  ): Promise<{ storedBytes: number }> {
     this.executions[executionId] = executor;
+    return { storedBytes: 0 };
   }
 }

@@ -4,9 +4,10 @@ import {
   CommandExecutor,
   createLocalOrchestrator,
   ExecutionQueueEventEnvelope,
-  RemoteExecutorProvider,
+  RemoteExecutorProvider
 } from "@eventual/core-runtime";
 import type { SQSEvent, SQSRecord } from "aws-lambda";
+import { AWSMetricsClient } from "../clients/metrics-client.js";
 import {
   createActivityClient,
   createEventClient,
@@ -16,8 +17,9 @@ import {
   createLogAgent,
   createTimerClient,
   createWorkflowClient,
-  createWorkflowProvider,
+  createWorkflowProvider
 } from "../create.js";
+import { serviceName } from "../env.js";
 
 /**
  * Creates an entrypoint function for orchestrating a workflow
@@ -27,9 +29,8 @@ const orchestrate = createLocalOrchestrator({
   executionHistoryStore: createExecutionHistoryStore(),
   timerClient: createTimerClient(),
   workflowClient: createWorkflowClient(),
-  // metricsClient: AWSMetricsClient,
+  metricsClient: AWSMetricsClient,
   logAgent: createLogAgent(),
-  // executionHistoryStateStore: createExecutionHistoryStateStore(),
   commandExecutor: new CommandExecutor({
     activityClient: createActivityClient(),
     eventClient: createEventClient(),
@@ -41,7 +42,7 @@ const orchestrate = createLocalOrchestrator({
   executorProvider: new RemoteExecutorProvider({
     executionHistoryStateStore: createExecutionHistoryStateStore(),
   }),
-  // serviceName: serviceName(),
+  serviceName: serviceName(),
 });
 
 export default async (event: SQSEvent) => {

@@ -2,7 +2,7 @@ import { MetricsLogger } from "./metrics-logger.js";
 import { Unit } from "./unit.js";
 
 export async function timed<T>(
-  metricLogger: MetricsLogger,
+  metricLogger: MetricsLogger | undefined,
   name: string,
   call: () => Promise<T> | T
 ): Promise<T> {
@@ -10,7 +10,7 @@ export async function timed<T>(
 
   const result = await call();
 
-  metricLogger.putMetric(
+  metricLogger?.putMetric(
     name,
     new Date().getTime() - start.getTime(),
     Unit.Milliseconds

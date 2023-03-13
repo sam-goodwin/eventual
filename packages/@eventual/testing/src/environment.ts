@@ -208,9 +208,10 @@ export class TestEnvironment extends RuntimeServiceClient {
       executionHistoryStore: this.executionHistoryStore,
       executorProvider: new InMemoryExecutorProvider(),
       logAgent: testLogAgent,
+      serviceName: props?.serviceName ?? "testing",
+      timerClient: this.timerClient,
       workflowClient: this.workflowClient,
       workflowProvider,
-      timerClient: this.timerClient,
     });
 
     registerServiceClient(this);
