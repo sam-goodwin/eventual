@@ -137,7 +137,7 @@ export function createActivityWorker({
                 ))
               ) {
                 metrics.putMetric(ActivityMetrics.ClaimRejected, 1, Unit.Count);
-                console.info(`Activity ${activityHandle} already claimed.`);
+                console.debug(`Activity ${activityHandle} already claimed.`);
                 return;
               }
               if (request.command.heartbeat) {
@@ -268,7 +268,7 @@ export function createActivityWorker({
 
                   logAgent.logWithContext(
                     activityLogContext,
-                    LogLevel.INFO,
+                    LogLevel.DEBUG,
                     `Activity ${activityHandle} succeeded, reporting back to execution.`
                   );
 

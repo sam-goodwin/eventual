@@ -191,7 +191,7 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
 
   constructor(
     private workflow: Workflow<Input, Output>,
-    private history: HistoryStateEvent[],
+    public history: HistoryStateEvent[],
     /**
      * A context object tied to the executor.
      * Used to maintain data that may change throughout the execution like the current execution datetime.
@@ -202,13 +202,6 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
     this.nextSeq = 0;
     this.expected = iterator(history, isScheduledEvent);
     this.events = iterator(history, isCompletionEvent);
-  }
-
-  /**
-   * Returns a cloned array of all history events run or created by the executor.
-   */
-  get historyEvents() {
-    return this.history.slice(0);
   }
 
   get hasActiveEventuals() {
