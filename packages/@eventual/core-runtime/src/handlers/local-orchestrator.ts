@@ -36,6 +36,7 @@ export function createLocalOrchestrator(
 ): Orchestrator {
   return (workflowTasks, baseTime = () => new Date()) => {
     return serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
+      console.log(workflowTasks);
       const result = await runExecutions(
         workflowTasks,
         (workflowName, executionId, events) => {
@@ -50,6 +51,7 @@ export function createLocalOrchestrator(
           );
         }
       );
+      console.log(result);
 
       return {
         failedExecutionIds: Object.keys(result.failedExecutions),
@@ -82,17 +84,36 @@ export async function orchestrateExecution(
   // get the workflow
   const workflow = deps.workflowProvider.lookupWorkflow(workflowName);
 
+  const startEvent = events.find(isWorkflowStarted);
+
+  // if this is the first run, there will be a start event.
+  // if there is a timeout, start it
+  if (startEvent?.timeoutTime) {
+    // if the start event is new in this execution and had a timeout, start it
+    deps.timerClient.scheduleEvent<WorkflowTimedOut>({
+      schedule: Schedule.time(startEvent.timeoutTime),
+      event: createEvent<WorkflowTimedOut>(
+        {
+          type: WorkflowEventType.WorkflowTimedOut,
+        },
+        new Date(startEvent.timeoutTime)
+      ),
+      executionId,
+    });
+  }
+
+  const runStarted = createEvent<WorkflowRunStarted>(
+    {
+      type: WorkflowEventType.WorkflowRunStarted,
+    },
+    executionTime
+  );
+
   // start event collection
-  const [commandEvents, executor, logFlush] = await eventCollectorScope(
+  const { commandEvents, executor, flushPromise } = await eventCollectorScope(
     executionId,
     deps.executionHistoryStore,
     async (emitEvent) => {
-      const runStarted = createEvent<WorkflowRunStarted>(
-        {
-          type: WorkflowEventType.WorkflowRunStarted,
-        },
-        executionTime
-      );
       emitEvent(runStarted);
 
       // workflow could not be loaded, mark the workflow as failed and exit
@@ -103,7 +124,7 @@ export async function orchestrateExecution(
         emitEvent(
           await persistWorkflowResult(Result.failed(error), executionTime)
         );
-        return [];
+        return {};
       }
 
       // get the persisted or new instance of the executor
@@ -120,13 +141,10 @@ export async function orchestrateExecution(
       );
 
       const { commands, result } = await runExecutor(
-        executionId,
         runStarted,
         events,
-        workflow,
         executor,
-        executionTime,
-        deps.timerClient
+        executionTime
       ).finally(() => {
         restoreDate();
         restoreConsole();
@@ -159,19 +177,23 @@ export async function orchestrateExecution(
         )
       );
 
-      return [commandEvents, executor, deps.logAgent.flush()];
+      return {
+        commandEvents,
+        executor,
+        flushPromise: deps.logAgent.flush(),
+      };
     }
   );
 
   if (executor) {
     await deps.executorProvider.persistExecution(
       executionId,
-      commandEvents ?? [],
+      [runStarted, ...(commandEvents ?? [])],
       executor
     );
   }
 
-  await logFlush;
+  await flushPromise;
 
   /**
    * Retrieves the previously started executor or creates a new one and starts it.
@@ -235,57 +257,26 @@ export async function orchestrateExecution(
 }
 
 async function runExecutor(
-  executionId: string,
   workflowRunStartedEvent: WorkflowRunStarted,
   events: WorkflowInputEvent[],
-  workflow: Workflow,
   workflowExecutor: WorkflowExecutor<any, any, ExecutorContext>,
-  executionTime: Date,
-  timerClient: TimerClient
+  executionTime: Date
 ) {
-  let startResult: WorkflowResult | undefined = undefined;
+  // when this is the first time the workflow has been run, the workflow started event will be emitted as well.
+  let workflowResult: WorkflowResult | undefined = undefined;
   // if the executor has not been started, try to start it.
   if (!workflowExecutor.isStarted()) {
-    const historicalStartEvent = workflowExecutor.startEvent;
-    const startEvent = historicalStartEvent ?? events.find(isWorkflowStarted);
-
-    // if the start event is new in this execution...
-    if (!historicalStartEvent && startEvent) {
-      if (startEvent.timeoutTime) {
-        timerClient.scheduleEvent<WorkflowTimedOut>({
-          schedule: Schedule.time(startEvent.timeoutTime),
-          event: createEvent<WorkflowTimedOut>(
-            {
-              type: WorkflowEventType.WorkflowTimedOut,
-            },
-            new Date(startEvent.timeoutTime)
-          ),
-          executionId,
-        });
-      }
-      startResult = await workflowExecutor.start(startEvent.input, {
-        workflow: { name: workflow.name },
-        execution: {
-          ...startEvent.context,
-          id: executionId as ExecutionID,
-          startTime: startEvent.timestamp,
-        },
-      });
-    } else {
-      throw new Error(
-        "No running execution was found and no StartWorkflow event was provided"
-      );
-    }
+    workflowResult = await workflowExecutor.start(events);
+  } else {
+    // run the workflow with the new events
+    workflowResult = await workflowExecutor.continue(
+      workflowRunStartedEvent,
+      ...events.filter(
+        (event): event is Exclude<typeof event, WorkflowStarted> =>
+          !isWorkflowStarted(event)
+      )
+    );
   }
-
-  // run the workflow with the new events
-  const continueResult = await workflowExecutor.continue(
-    workflowRunStartedEvent,
-    ...events.filter(
-      (event): event is Exclude<typeof event, WorkflowStarted> =>
-        !isWorkflowStarted(event)
-    )
-  );
 
   /**
    * If the workflow has any active timers that can be completed, complete them now
@@ -304,11 +295,10 @@ async function runExecutor(
   // merge the start and continue commands and then return.
   return {
     commands: [
-      ...(startResult?.commands ?? []),
-      ...continueResult.commands,
+      ...workflowResult.commands,
       ...(syntheticEventsResult?.commands ?? []),
     ],
-    result: syntheticEventsResult?.result ?? continueResult.result,
+    result: syntheticEventsResult?.result ?? workflowResult.result,
   };
 }
 

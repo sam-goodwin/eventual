@@ -45,6 +45,7 @@ export class RemoteExecutorProvider<Context extends any = undefined>
     const history = await this.props.executionHistoryStateStore.getHistory(
       executionId
     );
+    console.log(history);
     return initExecutor(history);
   }
 

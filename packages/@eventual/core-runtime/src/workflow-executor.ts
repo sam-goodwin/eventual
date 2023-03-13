@@ -7,6 +7,7 @@ import {
   WorkflowTimeout,
 } from "@eventual/core";
 import {
+  CompletionEvent,
   enterWorkflowHookScope,
   EventualCall,
   EventualPromise,
@@ -14,26 +15,26 @@ import {
   ExecutionWorkflowHook,
   extendsSystemError,
   HistoryEvent,
-  CompletionEvent,
-  ScheduledEvent,
+  HistoryStateEvent,
   isCompletionEvent,
   isScheduledEvent,
   isSignalReceived,
   isWorkflowRunStarted,
+  isWorkflowStarted,
   isWorkflowTimedOut,
   iterator,
   Result,
+  ScheduledEvent,
   SignalReceived,
   WorkflowEvent,
+  WorkflowInputEvent,
   WorkflowRunStarted,
   WorkflowTimedOut,
   _Iterator,
-  HistoryStateEvent,
-  WorkflowStarted,
-  isWorkflowStarted,
 } from "@eventual/core/internal";
 import { isPromise } from "util/types";
 import { createEventualFromCall, isCorresponding } from "./eventual-factory.js";
+import { formatExecutionId } from "./execution.js";
 import { isFailed, isResolved, isResult } from "./result.js";
 import type { WorkflowCommand } from "./workflow-command.js";
 import { filterEvents } from "./workflow-events.js";
@@ -187,10 +188,6 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
    * The current result of the workflow, also returned by start and continue on completion.
    */
   public result?: Result<Output>;
-  /**
-   * The first WorkflowStarted event found in the history.
-   */
-  public readonly startEvent?: WorkflowStarted;
 
   constructor(
     private workflow: Workflow<Input, Output>,
@@ -205,7 +202,6 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
     this.nextSeq = 0;
     this.expected = iterator(history, isScheduledEvent);
     this.events = iterator(history, isCompletionEvent);
-    this.startEvent = history.find(isWorkflowStarted);
   }
 
   /**
@@ -223,16 +219,25 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
    * Starts an execution.
    *
    * The execution will run until the events are exhausted or the workflow fails.
+   *
+   * If the input and context are provided, a WorkflowStarted event is not needed in the input events or history.
+   * Otherwise a WorkflowStarted event must be in the history or the events passed on start.
    */
   public start(
-    input: Input,
-    context: WorkflowContext
+    ...args:
+      | [input: Input, context: WorkflowContext, events?: CompletionEvent[]]
+      | [events: WorkflowInputEvent[]]
   ): Promise<WorkflowResult<Output>> {
     if (this.started) {
       throw new Error(
         "Execution has already been started. Use continue to apply new events or create a new Interpreter"
       );
     }
+    const self = this;
+
+    const { input, context, events } = processArgs(args);
+
+    this.addHistoryEvents(events ?? []);
 
     this.started = true;
 
@@ -251,6 +256,52 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
         this.resolveWorkflow(Result.failed(err));
       }
     });
+
+    function processArgs(
+      args:
+        | [input: Input, context: WorkflowContext, events?: CompletionEvent[]]
+        | [events: WorkflowInputEvent[]]
+    ): {
+      input: Input;
+      context: WorkflowContext;
+      events?: WorkflowInputEvent[];
+    } {
+      if (args.length === 1) {
+        // first look for the WorkflowStarted event in the history and then in the recent events.
+        const workflowStartEvent =
+          self.history.find(isWorkflowStarted) ??
+          args[0].find(isWorkflowStarted);
+
+        if (!workflowStartEvent) {
+          throw new Error(
+            "No WorkflowStarted event was provided in the history or in the start operation. Either provide a WorkflowStarted event or the input/context."
+          );
+        }
+
+        return {
+          input: workflowStartEvent.input,
+          context: {
+            workflow: { name: workflowStartEvent.workflowName },
+            execution: {
+              ...workflowStartEvent.context,
+              id: formatExecutionId(
+                workflowStartEvent.workflowName,
+                workflowStartEvent.context.name
+              ),
+              startTime: workflowStartEvent.timestamp,
+              parentId: workflowStartEvent.context.parentId,
+            },
+          },
+          events: args[0],
+        };
+      } else {
+        return {
+          input: args[0],
+          context: args[1],
+          events: args[2],
+        };
+      }
+    }
   }
 
   /**
@@ -275,9 +326,7 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
       );
     }
 
-    const filteredHistory = filterEvents(this.history, events);
-
-    this.history.push(...filteredHistory);
+    this.addHistoryEvents(events);
 
     return await this.startWorkflowRun();
   }
@@ -318,6 +367,14 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
           this.currentRun?.resolve();
         })
     );
+  }
+
+  private addHistoryEvents(newEvents?: WorkflowInputEvent[]) {
+    const filteredHistory = newEvents
+      ? filterEvents(this.history, newEvents)
+      : [];
+
+    this.history.push(...filteredHistory);
   }
 
   /**
