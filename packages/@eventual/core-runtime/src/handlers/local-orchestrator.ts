@@ -427,11 +427,11 @@ async function runExecutor(
 ) {
   // when this is the first time the workflow has been run, the workflow started event will be emitted as well.
   let workflowResult: WorkflowResult | undefined = undefined;
-  // if the executor has not been started, try to start it.
   if (!workflowExecutor.isStarted()) {
+    // if the executor has not been started, start it
     workflowResult = await workflowExecutor.start(events);
   } else {
-    // run the workflow with the new events
+    // if the executor is already started, run the workflow with the new events
     workflowResult = await workflowExecutor.continue(
       workflowRunStartedEvent,
       ...events.filter(
@@ -457,10 +457,9 @@ async function runExecutor(
 
   // merge the start and continue commands and then return.
   return {
-    commands: [
-      ...workflowResult.commands,
-      ...(syntheticEventsResult?.commands ?? []),
-    ],
+    commands: syntheticEventsResult?.commands
+      ? [...workflowResult.commands, ...(syntheticEventsResult?.commands ?? [])]
+      : workflowResult.commands,
     result: syntheticEventsResult?.result ?? workflowResult.result,
   };
 }
