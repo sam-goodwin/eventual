@@ -124,7 +124,15 @@ interface ExecutorOptions<Context extends any = undefined> {
   };
 }
 
-export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
+export interface BaseExecutionContext {
+  lastExecutionRunTimestamp: number | undefined;
+}
+
+export class WorkflowExecutor<
+  Input,
+  Output,
+  Context extends BaseExecutionContext = BaseExecutionContext
+> {
   /**
    * The sequence number to assign to the next eventual registered.
    */
@@ -522,7 +530,11 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
       return this.resolveWorkflow(
         Result.failed(new WorkflowTimeout("Workflow timed out"))
       );
-    } else if (!isWorkflowRunStarted(event)) {
+    } else if (isWorkflowRunStarted(event)) {
+      this.executionContext.lastExecutionRunTimestamp = new Date(
+        event.timestamp
+      ).getTime();
+    } else {
       for (const { seq, handler, args } of this.getHandlersForEvent(event)) {
         // stop calling handler if the workflow is stopped
         // this should only happen on a SystemError

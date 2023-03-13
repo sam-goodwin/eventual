@@ -1,8 +1,13 @@
 import { HistoryStateEvent } from "@eventual/core/internal";
 import { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
-import { WorkflowExecutor } from "../workflow-executor.js";
+import {
+  BaseExecutionContext,
+  WorkflowExecutor,
+} from "../workflow-executor.js";
 
-export interface ExecutorProvider<Context extends any = undefined> {
+export interface ExecutorProvider<
+  Context extends BaseExecutionContext = BaseExecutionContext
+> {
   /**
    * Returns an executor which may already be started.
    *
@@ -31,8 +36,9 @@ export interface RemoteExecutorProviderProps {
 /**
  * An executor provider that works with an out of memory store.
  */
-export class RemoteExecutorProvider<Context extends any = undefined>
-  implements ExecutorProvider<Context>
+export class RemoteExecutorProvider<
+  Context extends BaseExecutionContext = BaseExecutionContext
+> implements ExecutorProvider<Context>
 {
   constructor(private props: RemoteExecutorProviderProps) {}
 
@@ -67,8 +73,9 @@ export class RemoteExecutorProvider<Context extends any = undefined>
   }
 }
 
-export class InMemoryExecutorProvider<Context extends any = undefined>
-  implements ExecutorProvider<Context>
+export class InMemoryExecutorProvider<
+  Context extends BaseExecutionContext = BaseExecutionContext
+> implements ExecutorProvider<Context>
 {
   private executions: Record<string, WorkflowExecutor<any, any, Context>> = {};
 

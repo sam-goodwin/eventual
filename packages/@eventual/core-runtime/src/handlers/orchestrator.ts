@@ -12,7 +12,6 @@ import {
   WorkflowContext,
 } from "@eventual/core";
 import {
-  CompletionEvent,
   getEventId,
   HistoryEvent,
   HistoryStateEvent,
@@ -30,7 +29,6 @@ import {
   WorkflowEvent,
   WorkflowEventType,
   WorkflowFailed,
-  WorkflowInputEvent,
   WorkflowRunCompleted,
   WorkflowRunStarted,
   WorkflowStarted,
@@ -44,7 +42,6 @@ import { WorkflowClient } from "../clients/workflow-client.js";
 import { CommandExecutor } from "../command-executor.js";
 import { hookConsole, restoreConsole } from "../console-hook.js";
 import { hookDate, restoreDate } from "../date-hook.js";
-import { isExecutionId, parseWorkflowName } from "../execution.js";
 import { ExecutionLogContext, LogAgent, LogContextType } from "../log-agent.js";
 import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
 import { MetricsLogger } from "../metrics/metrics-logger.js";
@@ -55,16 +52,14 @@ import {
   isFailed,
   isResolved,
   isResult,
-  normalizeError,
   normalizeFailedResult,
 } from "../result.js";
 import { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
 import { ExecutionHistoryStore } from "../stores/execution-history-store.js";
-import { WorkflowTask } from "../tasks.js";
-import { groupBy } from "../utils.js";
 import { WorkflowCommand } from "../workflow-command.js";
 import { createEvent, filterEvents } from "../workflow-events.js";
 import { WorkflowExecutor } from "../workflow-executor.js";
+import { Orchestrator, runExecutions } from "./local-orchestrator.js";
 
 /**
  * The Orchestrator's client dependencies.
@@ -79,20 +74,6 @@ export interface OrchestratorDependencies {
   commandExecutor: CommandExecutor;
   workflowProvider: WorkflowProvider;
   serviceName: string;
-}
-
-export interface OrchestratorResult {
-  /**
-   * IDs of the Executions that failed to orchestrate.
-   */
-  failedExecutionIds: string[];
-}
-
-export interface Orchestrator {
-  (
-    workflowTasks: WorkflowTask[],
-    baseTime?: () => Date
-  ): Promise<OrchestratorResult>;
 }
 
 /**
@@ -695,7 +676,11 @@ export async function progressWorkflow(
     const executor = new WorkflowExecutor(
       workflow,
       processedEvents.interpretEvents,
-      undefined,
+      {
+        lastExecutionRunTimestamp: new Date(
+          processedEvents.firstRunStarted.timestamp
+        ).getTime(),
+      },
       {
         hooks: {
           /**
@@ -784,59 +769,5 @@ export function processEvents(
     syntheticEvents,
     allEvents,
     firstRunStarted,
-  };
-}
-
-export async function runExecutions<T>(
-  workflowTasks: WorkflowTask[],
-  executor: (
-    workflowName: string,
-    executionId: ExecutionID,
-    events: WorkflowInputEvent[]
-  ) => T
-): Promise<{
-  failedExecutions: Record<ExecutionID, string>;
-  succeededExecutions: ExecutionID[];
-}> {
-  const tasksByExecutionId = groupBy(workflowTasks, (task) => task.executionId);
-
-  const eventsByExecutionId = Object.fromEntries(
-    Object.entries(tasksByExecutionId).map(([executionId, records]) => [
-      executionId,
-      records.flatMap((e) => {
-        return e.events.map((evnt) =>
-          // events can be objects or stringified json
-          typeof evnt === "string"
-            ? (JSON.parse(evnt) as CompletionEvent)
-            : evnt
-        );
-      }),
-    ])
-  );
-
-  // for each execution id
-  const succeeded: ExecutionID[] = [];
-  const failed: Record<string, string> = {};
-
-  for (const [executionId, records] of Object.entries(eventsByExecutionId)) {
-    try {
-      if (!isExecutionId(executionId)) {
-        throw new Error(`invalid ExecutionID: '${executionId}'`);
-      }
-      const workflowName = parseWorkflowName(executionId);
-      if (workflowName === undefined) {
-        throw new Error(`execution ID '${executionId}' does not exist`);
-      }
-      // TODO: get workflow from execution id
-      await executor(workflowName, executionId, records);
-      succeeded.push(executionId);
-    } catch (err) {
-      failed[executionId] = normalizeError(err).message;
-    }
-  }
-
-  return {
-    failedExecutions: failed,
-    succeededExecutions: succeeded,
   };
 }

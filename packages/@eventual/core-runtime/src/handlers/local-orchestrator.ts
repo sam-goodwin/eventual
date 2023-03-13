@@ -9,6 +9,7 @@ import {
   Workflow,
 } from "@eventual/core";
 import {
+  CompletionEvent,
   events,
   HistoryStateEvent,
   isTimerCompleted,
@@ -30,27 +31,40 @@ import {
   WorkflowTimedOut,
 } from "@eventual/core/internal";
 import { inspect } from "util";
+import { MetricsClient } from "../clients/metrics-client.js";
 import type { TimerClient } from "../clients/timer-client.js";
 import type { WorkflowClient } from "../clients/workflow-client.js";
 import type { CommandExecutor } from "../command-executor.js";
 import { hookConsole, restoreConsole } from "../console-hook.js";
 import { hookDate, restoreDate } from "../date-hook.js";
-import {
-  MetricsClient,
-  MetricsCommon,
-  MetricsLogger,
-  OrchestratorMetrics,
-} from "../index.js";
+import { isExecutionId, parseWorkflowName } from "../execution.js";
 import { ExecutionLogContext, LogAgent, LogContextType } from "../log-agent.js";
+import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
+import { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
 import { timed } from "../metrics/utils.js";
 import type { ExecutorProvider } from "../providers/executor-provider.js";
 import type { WorkflowProvider } from "../providers/workflow-provider.js";
-import { isFailed, normalizeFailedResult } from "../result.js";
+import { isFailed, normalizeError, normalizeFailedResult } from "../result.js";
 import type { ExecutionHistoryStore } from "../stores/execution-history-store.js";
+import { WorkflowTask } from "../tasks.js";
+import { groupBy } from "../utils.js";
 import { createEvent } from "../workflow-events.js";
 import { WorkflowExecutor, WorkflowResult } from "../workflow-executor.js";
-import { Orchestrator, runExecutions } from "./orchestrator.js";
+
+export interface OrchestratorResult {
+  /**
+   * IDs of the Executions that failed to orchestrate.
+   */
+  failedExecutionIds: string[];
+}
+
+export interface Orchestrator {
+  (
+    workflowTasks: WorkflowTask[],
+    baseTime?: () => Date
+  ): Promise<OrchestratorResult>;
+}
 
 export function createLocalOrchestrator(
   deps: OrchestrateDependencies
@@ -85,7 +99,7 @@ export function createLocalOrchestrator(
 interface OrchestrateDependencies {
   commandExecutor: CommandExecutor;
   executionHistoryStore: ExecutionHistoryStore;
-  executorProvider: ExecutorProvider<ExecutorContext>;
+  executorProvider: ExecutorProvider;
   logAgent?: LogAgent;
   metricsClient?: MetricsClient;
   serviceName: string;
@@ -170,27 +184,34 @@ export async function orchestrateExecution(
           executionTime,
           deps.logAgent
         );
-        const hasPreviousResult = !!executor.result;
 
-        hookDate(() => executor.executionContext.date);
-        if (deps.logAgent) {
-          hookConsole((level, data) =>
-            deps.logAgent?.logWithContext(executionLogContext, level, ...data)
-          );
-        }
+        // hookDate(() => executor.executionContext.lastExecutionRunTimestamp);
+        // if (deps.logAgent) {
+        //   hookConsole((level, data) =>
+        //     deps.logAgent?.logWithContext(executionLogContext, level, ...data)
+        //   );
+        // }
 
-        deps.logAgent?.disableSendingLogs();
+        // deps.logAgent?.disableSendingLogs();
 
-        const { commands, result } = await timed(
+        const { commands, result, previousResult } = await timed(
           metrics,
           OrchestratorMetrics.AdvanceExecutionDuration,
           async () =>
-            await runExecutor(runStarted, events, executor, executionTime)
-        ).finally(() => {
-          restoreDate();
-          restoreConsole();
-          deps.logAgent?.enableSendingLogs();
-        });
+            await runExecutor(
+              runStarted,
+              events,
+              executor,
+              executionTime,
+              executionId,
+              deps.logAgent
+            )
+        );
+        // ).finally(() => {
+        //   restoreDate();
+        //   // restoreConsole();
+        //   // deps.logAgent?.enableSendingLogs();
+        // });
 
         metrics?.setProperty(
           OrchestratorMetrics.AdvanceExecutionEvents,
@@ -237,7 +258,7 @@ export async function orchestrateExecution(
         emitEvent(...commandEvents);
 
         // only persist results when the result is new in this run
-        if (result && !hasPreviousResult) {
+        if (result && !previousResult) {
           emitEvent(await persistWorkflowResult(result, executionTime));
         }
         emitEvent(
@@ -297,7 +318,7 @@ export async function orchestrateExecution(
     executionId: string,
     executionTime: Date,
     logAgent?: LogAgent
-  ): Promise<WorkflowExecutor<any, any, ExecutorContext>> {
+  ): Promise<WorkflowExecutor<any, any>> {
     logAgent?.logWithContext(
       { type: LogContextType.Execution, executionId },
       LogLevel.DEBUG,
@@ -318,22 +339,22 @@ export async function orchestrateExecution(
           history.length
         );
 
-        const logCheckpoint = logAgent?.getCheckpoint();
+        // const logCheckpoint = logAgent?.getCheckpoint();
 
         return new WorkflowExecutor(
           workflow,
           history,
-          { date: executionTime.getTime() },
+          { lastExecutionRunTimestamp: executionTime.getTime() },
           {
             hooks: {
-              beforeApplyingResultEvent: (event, context) => {
-                if (isWorkflowRunStarted(event)) {
-                  context.date = new Date(event.timestamp).getTime();
-                }
-              },
-              historicalEventMatched: () => {
-                logAgent?.clearLogs(logCheckpoint);
-              },
+              // beforeApplyingResultEvent: (event, context) => {
+              //   if (isWorkflowRunStarted(event)) {
+              //     context.date = new Date(event.timestamp).getTime();
+              //   }
+              // },
+              // historicalEventMatched: () => {
+              //   logAgent?.clearLogs(logCheckpoint);
+              // },
             },
           }
         );
@@ -418,15 +439,65 @@ export async function orchestrateExecution(
 async function runExecutor(
   workflowRunStartedEvent: WorkflowRunStarted,
   events: WorkflowInputEvent[],
-  workflowExecutor: WorkflowExecutor<any, any, ExecutorContext>,
-  executionTime: Date
+  workflowExecutor: WorkflowExecutor<any, any>,
+  executionTime: Date,
+  executionId: string,
+  logAgent?: LogAgent
 ) {
+  let previousResult: Result | undefined = undefined;
   // when this is the first time the workflow has been run, the workflow started event will be emitted as well.
   let workflowResult: WorkflowResult | undefined = undefined;
+  hookDate(() => workflowExecutor.executionContext.lastExecutionRunTimestamp);
   if (!workflowExecutor.isStarted()) {
-    // if the executor has not been started, start it
-    workflowResult = await workflowExecutor.start(events);
+    if (workflowExecutor.history.length > 0) {
+      if (logAgent) {
+        hookConsole(() => {
+          /* Do nothing! */
+        });
+      }
+      // if the executor has not been started, but has history, start it and grab the result before the history.
+      previousResult = (await workflowExecutor.start([])).result;
+      if (logAgent) {
+        hookConsole((level, data) => {
+          logAgent.logWithContext(
+            { type: LogContextType.Execution, executionId },
+            level,
+            ...data
+          );
+        });
+      }
+      workflowResult = await workflowExecutor.continue(
+        ...events.filter(
+          (event): event is Exclude<typeof event, WorkflowStarted> =>
+            !isWorkflowStarted(event)
+        )
+      );
+    } else {
+      if (logAgent) {
+        hookConsole((level, data) => {
+          logAgent.logWithContext(
+            { type: LogContextType.Execution, executionId },
+            level,
+            ...data
+          );
+        });
+      }
+      // on the first run, the workflow executor will have no history, just start it
+      previousResult = undefined;
+      workflowResult = await workflowExecutor.start(events);
+    }
   } else {
+    if (logAgent) {
+      hookConsole((level, data) => {
+        logAgent.logWithContext(
+          { type: LogContextType.Execution, executionId },
+          level,
+          ...data
+        );
+      });
+    }
+    // when given a running executor, use the executor's current result.
+    previousResult = workflowExecutor.result;
     // if the executor is already started, run the workflow with the new events
     workflowResult = await workflowExecutor.continue(
       workflowRunStartedEvent,
@@ -436,6 +507,8 @@ async function runExecutor(
       )
     );
   }
+  restoreConsole();
+  restoreDate();
 
   /**
    * If the workflow has any active timers that can be completed, complete them now
@@ -453,6 +526,7 @@ async function runExecutor(
 
   // merge the start and continue commands and then return.
   return {
+    previousResult,
     commands: syntheticEventsResult?.commands
       ? [...workflowResult.commands, ...(syntheticEventsResult?.commands ?? [])]
       : workflowResult.commands,
@@ -636,4 +710,58 @@ function logExecutionCompleteMetrics(
       );
     }
   }
+}
+
+export async function runExecutions<T>(
+  workflowTasks: WorkflowTask[],
+  executor: (
+    workflowName: string,
+    executionId: ExecutionID,
+    events: WorkflowInputEvent[]
+  ) => T
+): Promise<{
+  failedExecutions: Record<ExecutionID, string>;
+  succeededExecutions: ExecutionID[];
+}> {
+  const tasksByExecutionId = groupBy(workflowTasks, (task) => task.executionId);
+
+  const eventsByExecutionId = Object.fromEntries(
+    Object.entries(tasksByExecutionId).map(([executionId, records]) => [
+      executionId,
+      records.flatMap((e) => {
+        return e.events.map((evnt) =>
+          // events can be objects or stringified json
+          typeof evnt === "string"
+            ? (JSON.parse(evnt) as CompletionEvent)
+            : evnt
+        );
+      }),
+    ])
+  );
+
+  // for each execution id
+  const succeeded: ExecutionID[] = [];
+  const failed: Record<string, string> = {};
+
+  for (const [executionId, records] of Object.entries(eventsByExecutionId)) {
+    try {
+      if (!isExecutionId(executionId)) {
+        throw new Error(`invalid ExecutionID: '${executionId}'`);
+      }
+      const workflowName = parseWorkflowName(executionId);
+      if (workflowName === undefined) {
+        throw new Error(`execution ID '${executionId}' does not exist`);
+      }
+      // TODO: get workflow from execution id
+      await executor(workflowName, executionId, records);
+      succeeded.push(executionId);
+    } catch (err) {
+      failed[executionId] = normalizeError(err).message;
+    }
+  }
+
+  return {
+    failedExecutions: failed,
+    succeededExecutions: succeeded,
+  };
 }
