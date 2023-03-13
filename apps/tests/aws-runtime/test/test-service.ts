@@ -471,6 +471,10 @@ export const allCommands = workflow("allCommands", async (_, context) => {
   return { signalCount: n };
 });
 
+export const hello3 = api.post("/hello3", () => {
+  return new HttpResponse("hello?");
+});
+
 export const helloApi = command(
   "helloApi",
   {
