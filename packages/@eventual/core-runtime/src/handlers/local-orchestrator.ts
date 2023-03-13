@@ -66,9 +66,7 @@ export function createLocalOrchestrator(
             executionId,
             events,
             baseTime(),
-            {
-              ...deps,
-            }
+            deps
           );
         }
       );
@@ -186,15 +184,13 @@ export async function orchestrateExecution(
         const { commands, result } = await timed(
           metrics,
           OrchestratorMetrics.AdvanceExecutionDuration,
-          () =>
-            runExecutor(runStarted, events, executor, executionTime).finally(
-              () => {
-                restoreDate();
-                restoreConsole();
-                deps.logAgent?.enableSendingLogs();
-              }
-            )
-        );
+          async () =>
+            await runExecutor(runStarted, events, executor, executionTime)
+        ).finally(() => {
+          restoreDate();
+          restoreConsole();
+          deps.logAgent?.enableSendingLogs();
+        });
 
         metrics?.setProperty(
           OrchestratorMetrics.AdvanceExecutionEvents,
@@ -290,7 +286,7 @@ export async function orchestrateExecution(
     );
     throw err;
   } finally {
-    metrics?.flush();
+    await metrics?.flush();
   }
 
   /**
@@ -476,7 +472,7 @@ function generateSyntheticTimerEvents(
     (event): event is TimerScheduled =>
       isTimerScheduled(event) &&
       executor.isEventualActive(event.seq) &&
-      new Date(event.timestamp).getTime() <= executionTime.getTime()
+      new Date(event.untilTime).getTime() <= executionTime.getTime()
   );
   return activeCompleteTimerEvents.map((event) =>
     createEvent<TimerCompleted>(
