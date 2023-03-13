@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.25.1 (2023-03-13)
+
+### Bug Fixes
+
+- command bugs ([#310](https://github.com/functionless/eventual/issues/310)) ([391cd8e](https://github.com/functionless/eventual/commit/391cd8eda73b9e7b566c2bb415bcd924f239f4ca))
+
 # 0.25.0 (2023-03-11)
 
 ### Features
