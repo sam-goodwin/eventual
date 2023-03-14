@@ -41,7 +41,7 @@ export function createTimerHandler({
         logAgent.logWithContext(
           { type: LogContextType.Execution, executionId: request.executionId },
           LogLevel.DEBUG,
-          `Forwarding event: ${request.event}.`
+          [`Forwarding event: ${request.event}.`]
         );
 
         await executionQueueClient.submitExecutionEvents(
@@ -57,7 +57,11 @@ export function createTimerHandler({
         logAgent.logWithContext(
           { type: LogContextType.Execution, executionId: request.executionId },
           LogLevel.DEBUG,
-          `Checking activity for heartbeat timeout: ${JSON.stringify(activity)}`
+          () => [
+            `Checking activity for heartbeat timeout: ${JSON.stringify(
+              activity
+            )}`,
+          ]
         );
 
         // the activity has not sent a heartbeat or the last time was too long ago.

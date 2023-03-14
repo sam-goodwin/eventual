@@ -2714,7 +2714,7 @@ describe("continue", () => {
     });
 
     await expect(
-      executor.continue(timerCompleted(2), activitySucceeded("result-2", 3))
+      executor.continue([timerCompleted(2), activitySucceeded("result-2", 3)])
     ).resolves.toEqual<WorkflowResult>({
       commands: [],
       result: Result.resolved(["result", [undefined, "result-2"]]),
@@ -2761,7 +2761,7 @@ describe("continue", () => {
 
     await expect(
       executor.continue(
-        ...[...Array(100).keys()].map((i) => activitySucceeded(undefined, i))
+        [...Array(100).keys()].map((i) => activitySucceeded(undefined, i))
       )
     ).resolves.toEqual<WorkflowResult>({
       commands: [...Array(99).keys()].map((i) =>
@@ -2795,7 +2795,7 @@ describe("continue", () => {
 
     await expect(
       executor.continue(
-        ...[...Array(100).keys()].map((i) => activitySucceeded(undefined, i))
+        [...Array(100).keys()].map((i) => activitySucceeded(undefined, i))
       )
     ).resolves.toEqual<WorkflowResult>({
       commands: [],

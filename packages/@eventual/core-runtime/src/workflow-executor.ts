@@ -301,7 +301,7 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
    * @returns {@link WorkflowResult} - containing new commands and a result of one was generated.
    */
   public async continue(
-    ...events: CompletionEvent[]
+    events: WorkflowInputEvent[] | WorkflowInputEvent
   ): Promise<WorkflowResult<Output>> {
     if (!this.started) {
       throw new Error("Execution has not been started, call start first.");
@@ -311,7 +311,7 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
       );
     }
 
-    this.addHistoryEvents(events);
+    this.addHistoryEvents(normalizeToArray(events));
 
     return await this.startWorkflowRun();
   }

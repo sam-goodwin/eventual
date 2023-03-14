@@ -28,7 +28,7 @@ import { TimerClient, TimerRequestType } from "../clients/timer-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
 import { hookConsole, restoreConsole } from "../console-hook.js";
 import { ActivityLogContext, LogAgent, LogContextType } from "../log-agent.js";
-import { ActivityMetrics, MetricsCommon } from "../metrics/constants.js";
+import { ActivityMetrics, MetricsCommon } from "../metrics/constants/index.js";
 import { Unit } from "../metrics/unit.js";
 import { timed } from "../metrics/utils.js";
 import { ActivityProvider } from "../providers/activity-provider.js";
@@ -168,11 +168,9 @@ export function createActivityWorker({
               setActivityContext(runtimeContext);
               metrics.putMetric(ActivityMetrics.ClaimRejected, 0, Unit.Count);
 
-              logAgent.logWithContext(
-                activityLogContext,
-                LogLevel.DEBUG,
-                `Processing ${activityHandle}.`
-              );
+              logAgent.logWithContext(activityLogContext, LogLevel.DEBUG, [
+                `Processing ${activityHandle}.`,
+              ]);
 
               const activity = activityProvider.getActivity(
                 request.command.name
@@ -226,7 +224,7 @@ export function createActivityWorker({
                   };
 
                   hookConsole((level, data) => {
-                    logAgent.logWithContext(activityLogContext, level, ...data);
+                    logAgent.logWithContext(activityLogContext, level, data);
                     return undefined;
                   });
 
@@ -266,11 +264,9 @@ export function createActivityWorker({
                     metrics.setProperty(ActivityMetrics.AsyncResult, 0);
                   }
 
-                  logAgent.logWithContext(
-                    activityLogContext,
-                    LogLevel.DEBUG,
-                    `Activity ${activityHandle} succeeded, reporting back to execution.`
-                  );
+                  logAgent.logWithContext(activityLogContext, LogLevel.DEBUG, [
+                    `Activity ${activityHandle} succeeded, reporting back to execution.`,
+                  ]);
 
                   const endTime = getEndTime(start);
                   return createEvent<ActivitySucceeded>(
@@ -286,11 +282,9 @@ export function createActivityWorker({
                     ? [err.name, err.message]
                     : ["Error", JSON.stringify(err)];
 
-                  logAgent.logWithContext(
-                    activityLogContext,
-                    LogLevel.DEBUG,
-                    `Activity ${activityHandle} failed, reporting failure back to execution: ${error}: ${message}`
-                  );
+                  logAgent.logWithContext(activityLogContext, LogLevel.DEBUG, [
+                    `Activity ${activityHandle} failed, reporting failure back to execution: ${error}: ${message}`,
+                  ]);
 
                   const endTime = getEndTime(start);
                   return createEvent<ActivityFailed>(

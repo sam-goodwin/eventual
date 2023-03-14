@@ -61,12 +61,7 @@ interface LogEntry {
 }
 
 export class LogAgent {
-  private readonly logs: {
-    context: LogContext;
-    level: LogLevel;
-    data: any[];
-    time: number;
-  }[] = [];
+  private readonly logs: LogEntry[] = [];
 
   private readonly logFormatter: LogFormatter;
   private readonly getTime: () => Date;
@@ -121,14 +116,17 @@ export class LogAgent {
   public logWithContext(
     context: LogContext,
     logLevel: LogLevel,
-    ...data: any[]
+    /**
+     * When data is an event, it is only invoked when the log level is satisfied
+     */
+    data: any[] | (() => any[])
   ) {
     if (this.isLogLevelSatisfied(logLevel)) {
       this.logsSeenCount++;
       this.logs.push({
         context,
         level: logLevel,
-        data,
+        data: typeof data === "function" ? data() : data,
         time: this.getTime().getTime(),
       });
     }

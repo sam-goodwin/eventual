@@ -26,7 +26,6 @@ import {
   WorkflowFailed,
   WorkflowInputEvent,
   WorkflowRunStarted,
-  WorkflowStarted,
   WorkflowSucceeded,
   WorkflowTimedOut,
 } from "@eventual/core/internal";
@@ -39,7 +38,10 @@ import { hookConsole, restoreConsole } from "../console-hook.js";
 import { hookDate, restoreDate } from "../date-hook.js";
 import { isExecutionId, parseWorkflowName } from "../execution.js";
 import { ExecutionLogContext, LogAgent, LogContextType } from "../log-agent.js";
-import { MetricsCommon, OrchestratorMetrics } from "../metrics/constants.js";
+import {
+  MetricsCommon,
+  OrchestratorMetrics,
+} from "../metrics/constants/index.js";
 import { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
 import { timed } from "../metrics/utils.js";
@@ -75,7 +77,6 @@ export function createOrchestrator(
 ): Orchestrator {
   return (workflowTasks, baseTime = () => new Date()) => {
     return serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
-      console.log(workflowTasks);
       const result = await runExecutions(
         workflowTasks,
         (workflowName, executionId, events) => {
@@ -88,7 +89,6 @@ export function createOrchestrator(
           );
         }
       );
-      console.log(result);
 
       // ensure all of the logs have been sent.
       await deps.logAgent?.flush();
@@ -137,12 +137,10 @@ export async function orchestrateExecution(
     // get the workflow
     const workflow = deps.workflowProvider.lookupWorkflow(workflowName);
 
-    deps.logAgent?.logWithContext(
-      executionLogContext,
-      LogLevel.DEBUG,
+    deps.logAgent?.logWithContext(executionLogContext, LogLevel.DEBUG, () => [
       "Incoming Events",
-      JSON.stringify(events)
-    );
+      JSON.stringify(events),
+    ]);
 
     const maxTaskAge = recordEventMetrics(metrics, events, executionTime);
 
@@ -183,7 +181,7 @@ export async function orchestrateExecution(
         // Pins the date time of the workflow run to the current execution time (and other context in the future).
         const runEvents = ([runStarted] as WorkflowInputEvent[]).concat(events);
 
-        emitEvent(...runEvents);
+        emitEvent(runEvents);
 
         // get the persisted or new instance of the executor
         const executor = await getExecutor(
@@ -195,8 +193,8 @@ export async function orchestrateExecution(
         const { commands, result, previousResult } = await timed(
           metrics,
           OrchestratorMetrics.AdvanceExecutionDuration,
-          async () =>
-            await runExecutor(
+          () =>
+            runExecutor(
               executor,
               runEvents,
               executionTime,
@@ -217,14 +215,20 @@ export async function orchestrateExecution(
         deps.logAgent?.logWithContext(
           executionLogContext,
           LogLevel.DEBUG,
-          result
-            ? "Workflow returned a result with: " + JSON.stringify(result)
-            : "Workflow did not return a result."
+          () => [
+            result
+              ? "Workflow returned a result with: " + JSON.stringify(result)
+              : "Workflow did not return a result.",
+          ]
         );
         deps.logAgent?.logWithContext(
           executionLogContext,
           LogLevel.DEBUG,
-          `Found ${commands.length} new commands. ${JSON.stringify(commands)}`
+          () => [
+            `Found ${commands.length} new commands. ${JSON.stringify(
+              commands
+            )}`,
+          ]
         );
 
         // try to execute all commands
@@ -251,7 +255,7 @@ export async function orchestrateExecution(
         );
 
         // register command events
-        emitEvent(...commandEvents);
+        emitEvent(commandEvents);
 
         // only persist results when the result is new in this run
         if (result && !previousResult) {
@@ -297,12 +301,10 @@ export async function orchestrateExecution(
     await flushPromise;
   } catch (err) {
     console.error(inspect(err));
-    deps.logAgent?.logWithContext(
-      executionLogContext,
-      LogLevel.DEBUG,
+    deps.logAgent?.logWithContext(executionLogContext, LogLevel.DEBUG, () => [
       "orchestrator error",
-      inspect(err)
-    );
+      inspect(err),
+    ]);
     throw err;
   } finally {
     await metrics?.flush();
@@ -319,16 +321,15 @@ export async function orchestrateExecution(
     logAgent?.logWithContext(
       { type: LogContextType.Execution, executionId },
       LogLevel.DEBUG,
-      "Retrieve Executor"
+      ["Retrieve Executor"]
     );
 
-    return await timed(metrics, OrchestratorMetrics.LoadHistoryDuration, () =>
+    return timed(metrics, OrchestratorMetrics.LoadHistoryDuration, () =>
       deps.executorProvider.getExecutor(executionId, (history) => {
         deps.logAgent?.logWithContext(
           executionLogContext,
           LogLevel.DEBUG,
-          "History Events",
-          JSON.stringify(history)
+          () => ["History Events", JSON.stringify(history)]
         );
 
         metrics?.setProperty(
@@ -351,19 +352,22 @@ export async function orchestrateExecution(
     if (isFailed(result)) {
       const normalizedError = normalizeFailedResult(result);
       logExecutionCompleteMetrics(
-        await deps.workflowClient.failExecution({
-          endTime: executionTime.toISOString(),
-          executionId,
-          ...normalizedError,
-        }),
+        await timed(
+          metrics,
+          OrchestratorMetrics.ExecutionStatusUpdateDuration,
+          () =>
+            deps.workflowClient.failExecution({
+              endTime: executionTime.toISOString(),
+              executionId,
+              ...normalizedError,
+            })
+        ),
         metrics
       );
-      deps.logAgent?.logWithContext(
-        executionLogContext,
-        LogLevel.INFO,
+      deps.logAgent?.logWithContext(executionLogContext, LogLevel.INFO, [
         "Workflow Failed",
-        `${normalizedError.error}: ${normalizedError.message}`
-      );
+        `${normalizedError.error}: ${normalizedError.message}`,
+      ]);
       return createEvent<WorkflowFailed>(
         {
           type: WorkflowEventType.WorkflowFailed,
@@ -373,19 +377,22 @@ export async function orchestrateExecution(
       );
     } else {
       logExecutionCompleteMetrics(
-        await deps.workflowClient.succeedExecution({
-          endTime: executionTime.toISOString(),
-          executionId,
-          result: result.value,
-        }),
+        await timed(
+          metrics,
+          OrchestratorMetrics.ExecutionStatusUpdateDuration,
+          () =>
+            deps.workflowClient.succeedExecution({
+              endTime: executionTime.toISOString(),
+              executionId,
+              result: result.value,
+            })
+        ),
         metrics
       );
-      deps.logAgent?.logWithContext(
-        executionLogContext,
-        LogLevel.INFO,
+      deps.logAgent?.logWithContext(executionLogContext, LogLevel.INFO, [
         "Workflow Succeeded",
-        JSON.stringify(result.value, undefined, 4)
-      );
+        JSON.stringify(result.value, undefined, 4),
+      ]);
       return createEvent<WorkflowSucceeded>(
         {
           type: WorkflowEventType.WorkflowSucceeded,
@@ -423,11 +430,11 @@ async function eventCollectorScope<T>(
   eventStore: ExecutionHistoryStore,
   metrics: MetricsLogger | undefined,
   executor: (
-    emitEvent: (...events: WorkflowEvent[]) => void
+    emitEvent: (events: WorkflowEvent[] | WorkflowEvent) => void
   ) => Promise<Awaited<T>>
 ) {
-  const events: WorkflowEvent[][] = [];
-  const result = await executor((..._events: WorkflowEvent[]) => {
+  const events: (WorkflowEvent[] | WorkflowEvent)[] = [];
+  const result = await executor((_events) => {
     events.push(_events);
   });
   const newEvents = events.flat();
@@ -503,7 +510,7 @@ function initializeMetrics(
     metrics.setProperty(OrchestratorMetrics.ExecutionId, executionId);
     metrics.setProperty(
       OrchestratorMetrics.Version,
-      OrchestratorMetrics.VersionV1
+      OrchestratorMetrics.VersionV2
     );
     return metrics;
   }
@@ -617,7 +624,6 @@ async function runExecutions<T>(
       if (workflowName === undefined) {
         throw new Error(`execution ID '${executionId}' does not exist`);
       }
-      // TODO: get workflow from execution id
       await executor(workflowName, executionId, records);
       succeeded.push(executionId);
     } catch (err) {
@@ -713,7 +719,7 @@ export async function runExecutor(
         logging.logAgent.logWithContext(
           logging.executionLogContext,
           level,
-          ...data
+          data
         );
       });
     }
@@ -753,12 +759,7 @@ export async function runExecutor(
    */
   async function runCurrentExecutor() {
     if (workflowExecutor.isStarted()) {
-      return await workflowExecutor.continue(
-        ...newEvents.filter(
-          (event): event is Exclude<typeof event, WorkflowStarted> =>
-            !isWorkflowStarted(event)
-        )
-      );
+      return await workflowExecutor.continue(newEvents);
     } else {
       return await workflowExecutor.start(newEvents);
     }
@@ -775,7 +776,7 @@ export async function runExecutor(
     );
 
     return syntheticTimerEvents.length > 0
-      ? await workflowExecutor.continue(...syntheticTimerEvents)
+      ? await workflowExecutor.continue(syntheticTimerEvents)
       : undefined;
   }
 }
