@@ -7,8 +7,6 @@ import {
   Schedule,
   SucceededExecution,
   Workflow,
-  WorkflowInput,
-  WorkflowOutput,
 } from "@eventual/core";
 import {
   CompletionEvent,
@@ -157,20 +155,18 @@ export async function orchestrateExecution(
       metrics
     );
 
-    const runStarted = createEvent<WorkflowRunStarted>(
-      {
-        type: WorkflowEventType.WorkflowRunStarted,
-      },
-      executionTime
-    );
-
     // start event collection
     const { commandEvents, executor, flushPromise } = await eventCollectorScope(
       executionId,
       deps.executionHistoryStore,
       metrics,
       async (emitEvent) => {
-        emitEvent(runStarted);
+        const runStarted = createEvent<WorkflowRunStarted>(
+          {
+            type: WorkflowEventType.WorkflowRunStarted,
+          },
+          executionTime
+        );
 
         // workflow could not be loaded, mark the workflow as failed and exit
         if (!workflow) {
@@ -182,6 +178,12 @@ export async function orchestrateExecution(
           );
           return {};
         }
+
+        // Put the WorkflowRunStarted first
+        // Pins the date time of the workflow run to the current execution time (and other context in the future).
+        const runEvents = ([runStarted] as WorkflowInputEvent[]).concat(events);
+
+        emitEvent(...runEvents);
 
         // get the persisted or new instance of the executor
         const executor = await getExecutor(
@@ -196,7 +198,7 @@ export async function orchestrateExecution(
           async () =>
             await runExecutor(
               executor,
-              events,
+              runEvents,
               executionTime,
               deps.logAgent
                 ? {
@@ -287,7 +289,9 @@ export async function orchestrateExecution(
     }
 
     if (executor) {
-      await persistExecutor(executor, [runStarted, ...commandEvents]);
+      // write the state of the executor, a record of the current run, and all events emitted by commands
+      // to storage (in memory or remote).
+      await persistExecutor(executor, commandEvents);
     }
 
     await flushPromise;
@@ -332,11 +336,10 @@ export async function orchestrateExecution(
           history.length
         );
 
-        return new WorkflowExecutor<
-          WorkflowInput<typeof workflow>,
-          WorkflowOutput<typeof workflow>,
-          ExecutorRunContext
-        >(workflow, history);
+        return new WorkflowExecutor<any, any, ExecutorRunContext>(
+          workflow,
+          history
+        );
       })
     );
   }
@@ -413,28 +416,6 @@ export async function orchestrateExecution(
       Unit.Bytes
     );
   }
-}
-
-function generateSyntheticTimerEvents(
-  executor: WorkflowExecutor<any, any, any>,
-  executionTime: Date
-) {
-  if (!executor.hasActiveEventuals) {
-    return [];
-  }
-  const events = executor.history;
-  const activeCompleteTimerEvents = events.filter(
-    (event): event is TimerScheduled =>
-      isTimerScheduled(event) &&
-      executor.isEventualActive(event.seq) &&
-      new Date(event.untilTime).getTime() <= executionTime.getTime()
-  );
-  return activeCompleteTimerEvents.map((event) =>
-    createEvent<TimerCompleted>(
-      { type: WorkflowEventType.TimerCompleted, seq: event.seq },
-      executionTime
-    )
-  );
 }
 
 async function eventCollectorScope<T>(
@@ -593,7 +574,10 @@ function logExecutionCompleteMetrics(
   }
 }
 
-export async function runExecutions<T>(
+/**
+ * Runs each of the executions present in the workflow tasks in series.
+ */
+async function runExecutions<T>(
   workflowTasks: WorkflowTask[],
   executor: (
     workflowName: string,
@@ -647,6 +631,15 @@ export async function runExecutions<T>(
   };
 }
 
+/**
+ * Runs an executor, returning the result and any commands generated.
+ *
+ * 1. Initialize the executor to support dynamic date and logging
+ * 2. Run any historical events.
+ * 3. Run any new events
+ * 4. Run any synthetically generable events (ex: timers)
+ * 5. Return new commands to execute
+ */
 export async function runExecutor(
   workflowExecutor: WorkflowExecutor<any, any, ExecutorRunContext>,
   newEvents: WorkflowInputEvent[],
@@ -785,4 +778,26 @@ export async function runExecutor(
       ? await workflowExecutor.continue(...syntheticTimerEvents)
       : undefined;
   }
+}
+
+function generateSyntheticTimerEvents(
+  executor: WorkflowExecutor<any, any, any>,
+  executionTime: Date
+) {
+  if (!executor.hasActiveEventuals) {
+    return [];
+  }
+  const events = executor.history;
+  const activeCompleteTimerEvents = events.filter(
+    (event): event is TimerScheduled =>
+      isTimerScheduled(event) &&
+      executor.isEventualActive(event.seq) &&
+      new Date(event.untilTime).getTime() <= executionTime.getTime()
+  );
+  return activeCompleteTimerEvents.map((event) =>
+    createEvent<TimerCompleted>(
+      { type: WorkflowEventType.TimerCompleted, seq: event.seq },
+      executionTime
+    )
+  );
 }
