@@ -20,7 +20,7 @@ import {
   CommandExecutor,
   createActivityWorker,
   createEventHandlerWorker,
-  createLocalOrchestrator,
+  createOrchestrator,
   EventClient,
   ExecutionHistoryStore,
   ExecutionStore,
@@ -203,7 +203,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       workflowClient,
     });
 
-    this.orchestrator = createLocalOrchestrator({
+    this.orchestrator = createOrchestrator({
       commandExecutor,
       executionHistoryStore: this.executionHistoryStore,
       executorProvider: new InMemoryExecutorProvider(),

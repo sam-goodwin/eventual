@@ -101,38 +101,7 @@ export function createEventualPromise<R>(
   return promise;
 }
 
-interface ExecutorOptions<Context extends any = undefined> {
-  hooks?: {
-    /**
-     * Callback called when a returned call matches an input event.
-     *
-     * This call will be ignored.
-     */
-    historicalEventMatched?: (
-      event: WorkflowEvent,
-      call: EventualCall,
-      context: Context
-    ) => void;
-
-    /**
-     * Callback immediately before applying a result event.
-     */
-    beforeApplyingResultEvent?: (
-      resultEvent: CompletionEvent,
-      context: Context
-    ) => void;
-  };
-}
-
-export interface BaseExecutionContext {
-  lastExecutionRunTimestamp: number | undefined;
-}
-
-export class WorkflowExecutor<
-  Input,
-  Output,
-  Context extends BaseExecutionContext = BaseExecutionContext
-> {
+export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
   /**
    * The sequence number to assign to the next eventual registered.
    */
@@ -196,16 +165,31 @@ export class WorkflowExecutor<
    * The current result of the workflow, also returned by start and continue on completion.
    */
   public result?: Result<Output>;
+  private _executionContext?: Context;
+  private hooks: {
+    /**
+     * Callback called when a returned call matches an input event.
+     *
+     * This call will be ignored.
+     */
+    historicalEventMatched?: (
+      event: WorkflowEvent,
+      call: EventualCall,
+      context?: Context
+    ) => void;
+
+    /**
+     * Callback immediately before applying a result event.
+     */
+    beforeApplyingResultEvent?: (
+      resultEvent: CompletionEvent,
+      context?: Context
+    ) => void;
+  } = {};
 
   constructor(
     private workflow: Workflow<Input, Output>,
-    public history: HistoryStateEvent[],
-    /**
-     * A context object tied to the executor.
-     * Used to maintain data that may change throughout the execution like the current execution datetime.
-     */
-    public executionContext: Context,
-    private options?: ExecutorOptions<Context>
+    public history: HistoryStateEvent[]
   ) {
     this.nextSeq = 0;
     this.expected = iterator(history, isScheduledEvent);
@@ -370,6 +354,36 @@ export class WorkflowExecutor<
     );
   }
 
+  public get executionContext(): Context | undefined {
+    return this._executionContext;
+  }
+
+  public setExecutionContext(context: Context) {
+    this._executionContext = context;
+  }
+
+  /**
+   * Overrides the before applying result handler.
+   *
+   * This handler is called before each event is applied to the workflow.
+   */
+  public onBeforeApplyingResultEvent(
+    handler?: typeof this.hooks.beforeApplyingResultEvent
+  ) {
+    this.hooks.beforeApplyingResultEvent = handler;
+  }
+
+  /**
+   * Overrides the historical event matched event.
+   *
+   * This handler is called when a historical event (ex: scheduled) is matched to a call.
+   */
+  public onHistoricalEventMatched(
+    handler?: typeof this.hooks.historicalEventMatched
+  ) {
+    this.hooks.historicalEventMatched = handler;
+  }
+
   private addHistoryEvents(newEvents?: WorkflowInputEvent[]) {
     const filteredHistory = newEvents
       ? filterEvents(this.history, newEvents)
@@ -467,10 +481,10 @@ export class WorkflowExecutor<
       if (self.expected.hasNext()) {
         const expected = self.expected.next()!;
 
-        self.options?.hooks?.historicalEventMatched?.(
+        self.hooks?.historicalEventMatched?.(
           expected,
           call,
-          self.executionContext
+          self._executionContext
         );
 
         if (!isCorresponding(expected, seq, call)) {
@@ -499,10 +513,7 @@ export class WorkflowExecutor<
   private async applyEvents() {
     while (this.events.hasNext() && !this.stopped) {
       const event = this.events.next()!;
-      this.options?.hooks?.beforeApplyingResultEvent?.(
-        event,
-        this.executionContext
-      );
+      this.hooks?.beforeApplyingResultEvent?.(event, this._executionContext);
       // We use a promise here because...
       // 1. we want the user code to finish executing before continuing to the next event
       // 2. the promise allows us to use iteration instead of a recursive call stack and depth limits
@@ -530,11 +541,7 @@ export class WorkflowExecutor<
       return this.resolveWorkflow(
         Result.failed(new WorkflowTimeout("Workflow timed out"))
       );
-    } else if (isWorkflowRunStarted(event)) {
-      this.executionContext.lastExecutionRunTimestamp = new Date(
-        event.timestamp
-      ).getTime();
-    } else {
+    } else if (!isWorkflowRunStarted(event)) {
       for (const { seq, handler, args } of this.getHandlersForEvent(event)) {
         // stop calling handler if the workflow is stopped
         // this should only happen on a SystemError

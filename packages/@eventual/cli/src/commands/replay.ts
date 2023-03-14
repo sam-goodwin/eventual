@@ -11,9 +11,9 @@ import {
   isResolved,
   normalizeFailedResult,
   parseWorkflowName,
-  processEvents,
-  progressWorkflow,
   resultToString,
+  runExecutor,
+  WorkflowExecutor,
 } from "@eventual/core-runtime";
 import {
   encodeExecutionId,
@@ -63,22 +63,12 @@ export const replay = (yargs: Argv) =>
         spinner.start("Running program");
 
         await serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
-          const processedEvents = processEvents(
-            events,
-            [],
-            new Date(
-              isSucceededExecution(executionObj) ||
-              isFailedExecution(executionObj)
-                ? executionObj.endTime
-                : executionObj.startTime
-            )
+          const executor = new WorkflowExecutor<any, any, any>(
+            workflow,
+            events
           );
 
-          const res = await progressWorkflow(
-            execution,
-            workflow,
-            processedEvents
-          );
+          const res = await runExecutor(executor, [], new Date());
 
           assertExpectedResult(executionObj, res.result);
 
