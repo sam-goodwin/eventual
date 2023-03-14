@@ -1,4 +1,4 @@
-import { HistoryStateEvent } from "@eventual/core/internal";
+import type { HistoryStateEvent } from "@eventual/core/internal";
 
 /**
  * A store which contains history events that are needed to replay

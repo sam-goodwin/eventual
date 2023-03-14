@@ -1,5 +1,8 @@
-import { Schedule } from "@eventual/core";
-import { HistoryStateEvent, WorkflowInputEvent } from "@eventual/core/internal";
+import type { Schedule } from "@eventual/core";
+import type {
+  HistoryStateEvent,
+  WorkflowInputEvent,
+} from "@eventual/core/internal";
 import { computeScheduleDate } from "../schedule.js";
 
 export abstract class TimerClient {

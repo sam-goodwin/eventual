@@ -4,7 +4,7 @@ import type {
   ScheduleForwarderRequest,
   TimerClient,
 } from "../clients/timer-client.js";
-import { ExecutionLogContext, LogAgent } from "../log-agent.js";
+import type { ExecutionLogContext, LogAgent } from "../log-agent.js";
 import {
   MetricsCommon,
   SchedulerForwarderMetrics,
