@@ -37,7 +37,7 @@ import type { CommandExecutor } from "../command-executor.js";
 import { hookConsole, restoreConsole } from "../console-hook.js";
 import { hookDate, restoreDate } from "../date-hook.js";
 import { isExecutionId, parseWorkflowName } from "../execution.js";
-import { ExecutionLogContext, LogAgent, LogContextType } from "../log-agent.js";
+import { ExecutionLogContext, LogAgent } from "../log-agent.js";
 import {
   MetricsCommon,
   OrchestratorMetrics,
@@ -130,7 +130,6 @@ export async function orchestrateExecution(
     deps.metricsClient
   );
   const executionLogContext: ExecutionLogContext = {
-    type: LogContextType.Execution,
     executionId,
   };
   try {
@@ -318,11 +317,9 @@ export async function orchestrateExecution(
     executionId: string,
     logAgent?: LogAgent
   ): Promise<WorkflowExecutor<any, any, ExecutorRunContext>> {
-    logAgent?.logWithContext(
-      { type: LogContextType.Execution, executionId },
-      LogLevel.DEBUG,
-      ["Retrieve Executor"]
-    );
+    logAgent?.logWithContext({ executionId }, LogLevel.DEBUG, [
+      "Retrieve Executor",
+    ]);
 
     return timed(metrics, OrchestratorMetrics.LoadHistoryDuration, () =>
       deps.executorProvider.getExecutor(executionId, (history) => {

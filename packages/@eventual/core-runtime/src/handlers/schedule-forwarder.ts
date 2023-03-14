@@ -4,7 +4,7 @@ import type {
   ScheduleForwarderRequest,
   TimerClient,
 } from "../clients/timer-client.js";
-import { ExecutionLogContext, LogAgent, LogContextType } from "../log-agent.js";
+import { ExecutionLogContext, LogAgent } from "../log-agent.js";
 import {
   MetricsCommon,
   SchedulerForwarderMetrics,
@@ -37,7 +37,6 @@ export function createScheduleForwarder({
 
         // log on behalf of the execution.
         const executionLogContext: ExecutionLogContext = {
-          type: LogContextType.Execution,
           executionId: event.timerRequest.executionId,
         };
 

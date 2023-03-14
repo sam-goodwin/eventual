@@ -27,7 +27,7 @@ import { MetricsClient } from "../clients/metrics-client.js";
 import { TimerClient, TimerRequestType } from "../clients/timer-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
 import { hookConsole, restoreConsole } from "../console-hook.js";
-import { ActivityLogContext, LogAgent, LogContextType } from "../log-agent.js";
+import { ActivityLogContext, LogAgent } from "../log-agent.js";
 import { ActivityMetrics, MetricsCommon } from "../metrics/constants/index.js";
 import { Unit } from "../metrics/unit.js";
 import { timed } from "../metrics/utils.js";
@@ -114,7 +114,6 @@ export function createActivityWorker({
               // the time from the workflow emitting the activity scheduled command
               // to the request being seen.
               const activityLogContext: ActivityLogContext = {
-                type: LogContextType.Activity,
                 activityName: request.command.name,
                 executionId: request.executionId,
                 seq: request.command.seq,

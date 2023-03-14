@@ -12,7 +12,7 @@ import {
   TimerRequest,
   TimerRequestType,
 } from "../clients/timer-client.js";
-import { LogAgent, LogContextType } from "../log-agent.js";
+import { LogAgent } from "../log-agent.js";
 import { ActivityStore } from "../stores/activity-store.js";
 import { createEvent } from "../workflow-events.js";
 
@@ -39,7 +39,7 @@ export function createTimerHandler({
     try {
       if (isTimerScheduleEventRequest(request)) {
         logAgent.logWithContext(
-          { type: LogContextType.Execution, executionId: request.executionId },
+          { executionId: request.executionId },
           LogLevel.DEBUG,
           [`Forwarding event: ${request.event}.`]
         );
@@ -55,7 +55,7 @@ export function createTimerHandler({
         );
 
         logAgent.logWithContext(
-          { type: LogContextType.Execution, executionId: request.executionId },
+          { executionId: request.executionId },
           LogLevel.DEBUG,
           () => [
             `Checking activity for heartbeat timeout: ${JSON.stringify(
