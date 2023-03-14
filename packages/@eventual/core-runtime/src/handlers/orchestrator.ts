@@ -37,19 +37,19 @@ import type { CommandExecutor } from "../command-executor.js";
 import { hookConsole, restoreConsole } from "../console-hook.js";
 import { hookDate, restoreDate } from "../date-hook.js";
 import { isExecutionId, parseWorkflowName } from "../execution.js";
-import { ExecutionLogContext, LogAgent } from "../log-agent.js";
+import type { ExecutionLogContext, LogAgent } from "../log-agent.js";
 import {
   MetricsCommon,
   OrchestratorMetrics,
 } from "../metrics/constants/index.js";
-import { MetricsLogger } from "../metrics/metrics-logger.js";
+import type { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
 import { timed } from "../metrics/utils.js";
 import type { ExecutorProvider } from "../providers/executor-provider.js";
 import type { WorkflowProvider } from "../providers/workflow-provider.js";
 import { isFailed, normalizeError, normalizeFailedResult } from "../result.js";
 import type { ExecutionHistoryStore } from "../stores/execution-history-store.js";
-import { WorkflowTask } from "../tasks.js";
+import type { WorkflowTask } from "../tasks.js";
 import { groupBy } from "../utils.js";
 import { createEvent } from "../workflow-events.js";
 import { WorkflowExecutor } from "../workflow-executor.js";
@@ -794,6 +794,7 @@ function generateSyntheticTimerEvents(
   executor: WorkflowExecutor<any, any, any>,
   executionTime: Date
 ) {
+  // if there are no active eventuals, there is nothing to complete.
   if (!executor.hasActiveEventuals) {
     return [];
   }
