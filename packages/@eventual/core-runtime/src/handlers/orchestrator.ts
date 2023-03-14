@@ -144,7 +144,7 @@ export async function orchestrateExecution(
     const maxTaskAge = recordEventMetrics(metrics, events, executionTime);
 
     // if it is the first execution, record metrics for and start the timeout if configured
-    await tryHandleFirstExecution(
+    await tryHandleFirstRun(
       events,
       executionTime,
       executionId,
@@ -152,7 +152,7 @@ export async function orchestrateExecution(
       metrics
     );
 
-    // start event collection
+    // start event collection and then save the events
     const { commandEvents, executor, flushPromise } = await eventCollectorScope(
       executionId,
       deps.executionHistoryStore,
@@ -422,6 +422,10 @@ export async function orchestrateExecution(
   }
 }
 
+/**
+ * Collects events using the emitEvent method and then write the collected events
+ * to the {@link ExecutionHistoryStore}
+ */
 async function eventCollectorScope<T>(
   executionId: ExecutionID,
   eventStore: ExecutionHistoryStore,
@@ -445,7 +449,13 @@ async function eventCollectorScope<T>(
   return result;
 }
 
-async function tryHandleFirstExecution(
+/**
+ * Checks if this is the first run of the execution.
+ *
+ * If it is not, log that.
+ * If it is, try to start the timeout and log.
+ */
+async function tryHandleFirstRun(
   events: WorkflowInputEvent[],
   executionTime: Date,
   executionId: string,
@@ -514,7 +524,9 @@ function initializeMetrics(
   return undefined;
 }
 
-/** Logs metrics specific to the incoming events */
+/**
+ * Logs metrics specific to the incoming events
+ */
 function recordEventMetrics(
   metrics: MetricsLogger | undefined,
   events: WorkflowEvent[],
