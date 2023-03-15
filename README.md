@@ -73,124 +73,33 @@ cd <project-name>
 npm run deploy
 ```
 
-## What is Eventual?
+## Examples
 
-Eventual makes building and operating resilient event-driven applications easy at any scale. Its code-first workflow engine and event-driven primitives simplify and standardize how teams solve complex business orchestration problems and evolve system architectures over time. Leverages Serverless to scale from 0 to any sized workload and your favorite Infrastructure-as-Code framework to drop directly in to your stack without getting in your way.
+- [Eventual Example Repository](https://github.com/functionless/eventual-examples) - a collection of eventual projects to help you get a feel and orient yourself around the programming model
+- Event-Driven-Architecture Patterns (Coming Soon) - a collection of patterns for event-driven-architectures and domain-driven-design, inspired by https://serverlessland.com/event-driven-architecture/visuals and implemented with Eventual.
 
-We highly recommend checking out [Werner Vogel's 2022 AWS RE:Invent Keynote](https://www.youtube.com/watch?v=RfvL_423a-I&t=328s).
+## How it works
 
-With our plug-and-play foundation blocks, you can use as much or as little as needed to build your distributed system. These building blocks include:
+Eventual offers "core abstractions" for distributed systems that are mapped to AWS Serverless Resources. These primitives include Commands, Events, Subscriptions, Workflows, Activities, Signals and Actors (coming soon). They provide a simple, consistent and type-safe programming model for micro-services.
 
-### 🌐 Serverless REST APIs
+The top-level concept of Eventual is a Service that be deployed to AWS with a CDK Construct. Each Service gets its own API Gateway, Event Bus, and Workflow Engine that you customize and build on using the core abstractions.
 
-Easily create scalable, event-driven APIs with code-first routes.
+Eventual ships with its own Workflow Engine that deploys into your AWS account. It consists of purely serverless AWS Resources, such as an AWS SQS FIFO Queue, S3 Bucket, DynamoDB Table and Event Bridge Scheduler Group. This provides an abstraction for orchestrating long running, durable workflows using plain TypeScript - such as if-else, loops, functions, async/await, Promise.all, etc. This gives you an expressive, Turing complete way to implement business logic, however complex, distributed or time-dependent it may be.
 
-```ts
-import { api, HttpResponse } from "@eventual/core";
+The business logic of your Service (including APIs, Subscriptions, Activities, etc.) are discovered by analyzing your code and then optimally configuring AWS Resources for them. This includes optimal tree-shaking, bundling into individual Lambda Functions and providing supporting infrastructure such as Event Bus Rules, Dead Letter Queues, IAM Roles, etc.
 
-api.post("/echo", async (request) => {
-  return new HttpResponse(await request.text());
-});
-```
+## Why Eventual?
 
-### 📣 Publish and subscribe to Events
+Eventual accelerates the development of distributed systems in the cloud with its fully integrated tool-chain.
 
-```ts
-import { event } from "@eventual/core";
+You don't have to worry about low-level primitives such as concurrency control, scaling, or glueing individual AWS Resources together and managing all of their failure cases. Instead, you simply write your application in TypeScript and then deploy directly to AWS using your favorite IaC framework.
 
-interface MyEvent {
-  key: string;
-}
+Eventual provides core abstractions that shield you from the complexities of distributed systems and ensure a consistent, best-practice serverless architecture with a slick and type-safe programming model.
 
-export const myEvent = event<MyEvent>("MyEvent");
+Everything can be written and tested in a single TypeScript code-base. You can run your massively scalable distributed cloud system LOCALLY before you even deploy. Run, test and iterate locally, then deploy only when it’s working.
 
-myEvent.onEvent("onMyEvent", (e) => {
-  console.log(e.key);
-});
-```
+You can even debug production locally. Workflows running in production can be replayed locally and debugged from the comfort of your IDE.
 
-### 🤖 Turing complete, imperative workflows
+Eventual supports customization and integration via IaC. Our Construct provides best practices out of the box but you are free to override and configure according to your needs.
 
-Eventual allows you to use the full power of TypeScript to build long-running, durable workflows with unlimited complexity - including operators, for-loops, try-catch, if-else, while, do-while, etc.
-
-```ts
-export const myWorkflow = workflow("myWorkflow", async (items: string[]) => {
-  try {
-    await Promise.all(
-      items.map(async (item) => {
-        if (isConditionTrue(item)) {
-          await downStreamService(`hello ${item}`);
-        }
-      })
-    );
-  } catch (err) {
-    console.error(err);
-  }
-});
-```
-
-### 🧪 Unit test and simulate distributed systems
-
-Easily unit test your service's business logic, including APIs, workflows, and event handlers, using your preferred testing practices and frameworks. Run tests locally or within your CI/CD pipeline to ensure your service is reliable and maintainable.
-
-```ts
-import { myWorkflow } from "../src/my-workflow";
-
-const env = new TestEnvironment({
-  entry: path.join(__dirname, "..", "src", "my-workflow.ts")
-})
-
-test("workflow should be OK", async () => {
-  const execution = await env.startExecution(myWorkflow, ({
-    hello: "world",
-  });
-
-  // advance time
-  await env.tick(1);
-
-  expect(await execution.getStatus()).toMatchObject({
-    status: ExecutionStatus.SUCCESS
-  });
-});
-```
-
-### 🐞 Debug production problems locally in your IDE
-
-Replay problematic workflows in production locally and use your IDE's debugger to discover and fix problems.
-
-![Debug Production](./assets/debug-1.gif)
-
-```
-eventual replay execution <execution-id> --entry ./src/index.ts
-```
-
-### 🔌 Integrate with Cloud Resources and Services
-
-```ts
-import { Slack, SlackCredentials } from "@eventual/integrations-slack";
-import { AWSSecret } from "@eventual/aws-client";
-
-const slack = new Slack("my-slack-connection", {
-  credentials: new JsonSecret<SlackCredentials>(
-    new AWSSecret({
-      secretId: process.env.SLACK_SECRET_ID!,
-    })
-  ),
-});
-
-// register a webhook for a slack command
-slack.command("/ack", async (request) => {
-  await sendSignal(request.text, "ack");
-  request.ack();
-});
-
-export const task = workflow("task", async (request) => {
-  await expectSignal("ack");
-
-  // publish a message to slack from a workflow
-  await slack.client.chat.postMessage({
-    channel: request.channel,
-    text: `Complete: ${request.task}`,
-  });
-});
-```
+All of your data remains within your own AWS account and security boundaries. With broad strokes, you can apply your own security policies to the system, such as server-side or client-side encryption, minimally permissive IAM Policies, etc.
