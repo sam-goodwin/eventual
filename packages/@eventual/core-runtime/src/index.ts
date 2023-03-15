@@ -4,6 +4,7 @@ export * from "./command-executor.js";
 export * from "./console-hook.js";
 export * from "./execution.js";
 export * from "./handlers/index.js";
+export * from "./local/local-environment.js";
 export * from "./log-agent.js";
 export * from "./metrics/index.js";
 export * from "./providers/index.js";
@@ -16,3 +17,4 @@ export * from "./utils.js";
 export * from "./workflow-command.js";
 export * from "./workflow-events.js";
 export * from "./workflow-executor.js";
+

@@ -42,15 +42,15 @@ import {
 } from "./activity-fallback-handler.js";
 
 export interface CreateActivityWorkerProps {
-  timerClient: TimerClient;
-  metricsClient: MetricsClient;
-  eventClient: EventClient;
   activityProvider: ActivityProvider;
-  serviceClient?: EventualServiceClient;
-  logAgent: LogAgent;
-  executionQueueClient: ExecutionQueueClient;
   activityStore: ActivityStore;
+  eventClient: EventClient;
+  executionQueueClient: ExecutionQueueClient;
+  logAgent: LogAgent;
+  metricsClient: MetricsClient;
+  serviceClient?: EventualServiceClient;
   serviceName: string;
+  timerClient: TimerClient;
 }
 
 export interface ActivityWorker {

@@ -18,7 +18,7 @@ export type ServiceAction<T> = (
   serviceClient: HttpEventualClient,
   args: Arguments<T & { service: string }>,
   resolved: {
-    credentials: AwsCredentialIdentity;
+    credentials?: AwsCredentialIdentity;
     serviceName: string;
     serviceData: ServiceData;
   }
@@ -28,7 +28,7 @@ export type ServiceJsonAction<T> = (
   serviceClient: HttpEventualClient,
   args: Arguments<T & { service: string }>,
   resolved: {
-    credentials: AwsCredentialIdentity;
+    credentials?: AwsCredentialIdentity;
     serviceName: string;
     serviceData: ServiceData;
   }
@@ -57,19 +57,32 @@ export function serviceAction<T>(
     try {
       const region = args.region ?? (await resolveRegion());
       const serviceName = await tryResolveDefaultService(args.service, region);
-      const credentials = await assumeCliRole(serviceName, region);
-      const serviceData: ServiceData = args.local
-        ? {
-            apiEndpoint: "http://localhost:3000",
-            eventBusArn: "NOT SET ON LOCAL",
-            workflowExecutionLogGroupName: "NOT SET ON LOCAL",
-          }
-        : await getServiceData(credentials, serviceName, region);
-      const serviceClient = new AWSHttpEventualClient({
-        credentials,
-        serviceUrl: serviceData.apiEndpoint,
-        region,
-      });
+      const [serviceData, serviceClient, credentials] = await (async () => {
+        if (!args.local) {
+          const credentials = await assumeCliRole(serviceName, region);
+          const serviceData = await getServiceData(
+            credentials,
+            serviceName,
+            region
+          );
+          const serviceClient = new AWSHttpEventualClient({
+            credentials,
+            serviceUrl: serviceData.apiEndpoint,
+            region,
+          });
+          return [serviceData, serviceClient, credentials] as const;
+        } else {
+          return [
+            {
+              apiEndpoint: "http://localhost:3000",
+              eventBusArn: "NOT SET ON LOCAL",
+              workflowExecutionLogGroupName: "NOT SET ON LOCAL",
+            } satisfies ServiceData,
+            new HttpEventualClient({ serviceUrl: "http://localhost:3000" }),
+          ] as const;
+        }
+      })();
+
       if (!spinner) {
         if (!jsonAction) {
           throw new Error("Operation does not support --json.");

@@ -1,20 +1,12 @@
 import { HttpEventualClient } from "@eventual/client";
 import { inferLoadedService, loadService } from "@eventual/compiler";
-import { EventualServiceClient, HttpMethod, HttpRequest } from "@eventual/core";
-import {
-  createCommandWorker,
-  createListWorkflowsCommand,
-  createPublishEventsCommand,
-  createSubscriptionWorker,
-  GlobalSubscriptionProvider,
-  ServiceSpecWorkflowProvider,
-} from "@eventual/core-runtime";
-import { ServiceSpec } from "@eventual/core/internal";
+import { HttpMethod, HttpRequest } from "@eventual/core";
+import { LocalEnvironment } from "@eventual/core-runtime";
 import express from "express";
 import getPort, { portNumbers } from "get-port";
+import ora from "ora";
 import { Argv } from "yargs";
-import { LocalEventClient } from "../local/event-client.js";
-import { serviceAction, setServiceOptions } from "../service-action.js";
+import { setServiceOptions } from "../service-action.js";
 
 export const dev = (yargs: Argv) =>
   yargs.command(
@@ -32,7 +24,9 @@ export const dev = (yargs: Argv) =>
           type: "string",
           demandOption: true,
         }),
-    serviceAction(async (spinner, _, { port: userPort, entry }) => {
+    async ({ entry, port: userPort }) => {
+      const spinner = ora().start("Preparing");
+
       spinner.start("Starting Eventual Dev Server");
       const app = express();
 
@@ -50,49 +44,27 @@ export const dev = (yargs: Argv) =>
 
       const localServiceClient = new HttpEventualClient({ serviceUrl: url });
 
-      loadSystemCommands(serviceSpec, localServiceClient);
+      // TODO: should the loading be done by the local env?
+      const localEnv = new LocalEnvironment(localServiceClient);
 
-      const commandWorker = createCommandWorker({
-        serviceClient: localServiceClient,
-      });
+      app.use(express.json({ strict: false }));
 
-      app.use(express.json());
-
+      // open up all of the user and service commands to the service.
       app.all("/*", async (req, res) => {
-        const resp = await commandWorker(
-          new HttpRequest(`${url}${req.originalUrl}`, {
-            method: req.method as HttpMethod,
-            body: JSON.stringify(req.body),
-            headers: req.headers as Record<string, string>,
-          })
-        );
-        // TODO: remove me
-        console.debug(req.url);
-        console.debug(resp.body);
-        res.send(resp.body);
+        const request = new HttpRequest(`${url}${req.originalUrl}`, {
+          method: req.method as HttpMethod,
+          body: req.body ? JSON.stringify(req.body) : undefined,
+          headers: req.headers as Record<string, string>,
+        });
+        const resp = await localEnv.invokeCommandOrApi(request);
         res.status(resp.status);
         if (resp.statusText) {
           res.statusMessage = resp.statusText;
         }
         resp.headers.forEach((value, name) => res.setHeader(name, value));
+        res.send(resp.body);
       });
 
       spinner.succeed(`Eventual Dev Server running on ${url}`);
-    })
+    }
   );
-
-function loadSystemCommands(
-  serviceSpec: ServiceSpec,
-  serviceClient: EventualServiceClient
-) {
-  const subscriptionWorker = createSubscriptionWorker({
-    subscriptionProvider: new GlobalSubscriptionProvider(),
-    serviceClient,
-  });
-  createListWorkflowsCommand({
-    workflowProvider: new ServiceSpecWorkflowProvider(serviceSpec),
-  });
-  createPublishEventsCommand({
-    eventClient: new LocalEventClient(subscriptionWorker),
-  });
-}

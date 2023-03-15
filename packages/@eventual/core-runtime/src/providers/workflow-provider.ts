@@ -26,7 +26,7 @@ export class GlobalWorkflowProvider implements WorkflowProvider {
     return workflows().get(workflowName);
   }
   public getWorkflowNames(): string[] {
-    return Object.keys(workflows());
+    return [...workflows().keys()];
   }
   public workflowExists(workflowName: string): boolean {
     return !!this.lookupWorkflow(workflowName);
