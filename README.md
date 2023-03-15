@@ -103,3 +103,14 @@ You can even debug production locally. Workflows running in production can be re
 Eventual supports customization and integration via IaC. Our Construct provides best practices out of the box but you are free to override and configure according to your needs.
 
 All of your data remains within your own AWS account and security boundaries. With broad strokes, you can apply your own security policies to the system, such as server-side or client-side encryption, minimally permissive IAM Policies, etc.
+
+## Contact us
+
+- [Eventual Home](https://eventual.net)
+- [Twitter](https://twitter.com/EventualCloud)
+- [Discord](https://discord.gg/8hfnTn3QDT)
+
+### Project Leads
+
+- [Sam Goodwin](https://twitter.com/samgoodwin89)
+- [Sam Sussman](https://twitter.com/sussmansa)
