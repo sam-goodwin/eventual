@@ -33,13 +33,13 @@
 
 **[Website](https://eventual.net/) • [API Docs](https://docs.eventual.net) • [Quick Start](https://docs.eventual.net/getting-started)**
 
-Develop massively distributed systems without friction → Iterate locally on your machine → Deploy to your own cloud infrastructure
+Eventual is an open source TypeScript framework that offers "core abstractions" — including APIs, Messaging and long-running, durable Workflows — to shield you from the complexities of distributed systems and ensure a consistent, best-practice serverless architecture.
 
 ### Develop
 
 - 🌎 **APIs** - expose RPC and REST endpoints
 - 🚦 **Orchestration** - build long running, durable workflows using plain TypeScript - such as if-else, loops, functions, async/await, and all that goodness
-- 💬 **Messaging** - publish and subscribe to events within and across service boundaries.
+- 💬 **Messaging** - publish and subscribe to events within and across service boundaries
 - ✅ **End-to-end type safety** - from your frontend → backend → infrastructure
 
 ### Iterate
