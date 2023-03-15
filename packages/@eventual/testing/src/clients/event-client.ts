@@ -1,8 +1,8 @@
 import { EventEnvelope } from "@eventual/core";
-import { EventClient, EventHandlerWorker } from "@eventual/core-runtime";
+import { EventClient, SubscriptionWorker } from "@eventual/core-runtime";
 
 export class TestEventClient implements EventClient {
-  constructor(private eventHandlerWorker: EventHandlerWorker) {}
+  constructor(private eventHandlerWorker: SubscriptionWorker) {}
 
   public async publishEvents(...event: EventEnvelope[]): Promise<void> {
     return await this.eventHandlerWorker(event);

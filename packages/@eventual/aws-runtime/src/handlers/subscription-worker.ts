@@ -1,18 +1,18 @@
 import "@eventual/injected/entry";
 
 import {
-  createEventHandlerWorker,
+  createSubscriptionWorker,
   GlobalSubscriptionProvider,
 } from "@eventual/core-runtime";
 import type { EventBridgeEvent } from "aws-lambda";
 import { createEventClient, createServiceClient } from "../create.js";
 
-export const processEvent = createEventHandlerWorker({
+export const processEvent = createSubscriptionWorker({
   // partially uses the runtime clients and partially uses the http client
   serviceClient: createServiceClient({
     eventClient: createEventClient(),
   }),
-  eventHandlerProvider: new GlobalSubscriptionProvider(),
+  subscriptionProvider: new GlobalSubscriptionProvider(),
 });
 
 export default async function (event: EventBridgeEvent<string, any>) {

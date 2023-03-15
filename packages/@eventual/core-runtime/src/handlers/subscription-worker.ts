@@ -7,7 +7,7 @@ import {
 import { SubscriptionProvider } from "../providers/subscription-provider.js";
 
 /**
- * The dependencies of {@link createEventHandlerWorker}.
+ * The dependencies of {@link createSubscriptionWorker}.
  */
 export interface EventHandlerDependencies {
   /**
@@ -18,10 +18,10 @@ export interface EventHandlerDependencies {
   /**
    * Returns event handlers
    */
-  eventHandlerProvider: SubscriptionProvider;
+  subscriptionProvider: SubscriptionProvider;
 }
 
-export interface EventHandlerWorker {
+export interface SubscriptionWorker {
   (events: EventEnvelope[]): Promise<void>;
 }
 
@@ -31,10 +31,10 @@ export interface EventHandlerWorker {
  * decoupled from a runtime's specifics by the clients. A runtime must
  * inject its own client implementations designed for that platform.
  */
-export function createEventHandlerWorker({
+export function createSubscriptionWorker({
   serviceClient,
-  eventHandlerProvider,
-}: EventHandlerDependencies): EventHandlerWorker {
+  subscriptionProvider: eventHandlerProvider,
+}: EventHandlerDependencies): SubscriptionWorker {
   // make the workflow client available to web hooks
   if (serviceClient) {
     registerServiceClient(serviceClient);

@@ -19,7 +19,7 @@ import {
   ActivityClient,
   CommandExecutor,
   createActivityWorker,
-  createEventHandlerWorker,
+  createSubscriptionWorker,
   createOrchestrator,
   EventClient,
   ExecutionHistoryStore,
@@ -130,10 +130,10 @@ export class TestEnvironment extends RuntimeServiceClient {
       logLevel: { default: LogLevel.DEBUG },
     });
 
-    const eventHandlerWorker = createEventHandlerWorker({
+    const eventHandlerWorker = createSubscriptionWorker({
       // break the circular dependence on the worker and client by making the client optional in the worker
       // need to call registerEventClient before calling the handler.
-      eventHandlerProvider,
+      subscriptionProvider: eventHandlerProvider,
     });
 
     // TODO, update this to support mocking workflows.

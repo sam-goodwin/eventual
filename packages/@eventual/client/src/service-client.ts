@@ -64,12 +64,13 @@ export function proxyServiceClient(
   namespace?: string
 ) {
   return new Proxy(this, {
-    get: (_, commandName: string) => (input: any) =>
-      this.httpClient.rpc({
+    get: (_, commandName: string) => (input: any) => {
+      return this.httpClient.rpc({
         command: commandName,
         payload: input,
         namespace,
-      }),
+      });
+    },
   });
 }
 

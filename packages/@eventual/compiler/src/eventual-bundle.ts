@@ -11,7 +11,9 @@ export async function bundleSources(
   cleanOutput = false
 ) {
   await prepareOutDir(outDir, cleanOutput);
-  await Promise.all(entries.map((s) => ({ ...s, outDir })).map(build));
+  await Promise.all(
+    entries.map((s) => ({ ...s, outDir })).map((entry) => build(entry))
+  );
 }
 
 export async function bundleService(
@@ -20,26 +22,28 @@ export async function bundleService(
   serviceSpec?: string,
   serviceType?: ServiceType,
   external?: string[],
-  allPackagesExternal?: boolean
+  allPackagesExternal?: boolean,
+  plugins?: any[],
+  sourceMap: boolean | "inline" = "inline"
 ) {
   await prepareOutDir(outDir);
-  return build({
-    outDir,
-    injectedEntry: entry,
-    injectedServiceSpec: serviceSpec,
-    entry,
-    name: "service",
-    eventualTransform: true,
-    serviceType,
-    external,
-    allPackagesExternal,
-    // It's important that we DONT use inline source maps for service, otherwise debugger fails to pick it up
-    // sourcemap: "inline",
-  });
+  return build(
+    {
+      outDir,
+      injectedEntry: entry,
+      injectedServiceSpec: serviceSpec,
+      entry,
+      name: "service",
+      serviceType,
+      external,
+      allPackagesExternal,
+      sourcemap: sourceMap,
+    },
+    plugins
+  );
 }
 
 export interface BuildSource {
-  eventualTransform?: boolean;
   outDir: string;
   name: string;
   entry: string;
@@ -58,18 +62,21 @@ export interface BuildSource {
   metafile?: boolean;
 }
 
-export async function build({
-  outDir,
-  injectedEntry,
-  injectedServiceSpec,
-  name,
-  entry,
-  sourcemap,
-  serviceType,
-  external,
-  allPackagesExternal,
-  metafile,
-}: BuildSource): Promise<string> {
+export async function build(
+  {
+    outDir,
+    injectedEntry,
+    injectedServiceSpec,
+    name,
+    entry,
+    sourcemap,
+    serviceType,
+    external,
+    allPackagesExternal,
+    metafile,
+  }: BuildSource,
+  plugins?: any[]
+): Promise<string> {
   const codeDir = path.join(outDir, name);
   await fs.mkdir(codeDir, {
     recursive: true,
@@ -81,6 +88,7 @@ export async function build({
     sourcemap: sourcemap ?? true,
     sourcesContent: false,
     plugins: [
+      ...(plugins ?? []),
       ...(injectedEntry || injectedServiceSpec
         ? [
             aliasPath({

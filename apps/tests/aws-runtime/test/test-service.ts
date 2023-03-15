@@ -565,3 +565,13 @@ export const modifyResponseMiddlewareHttp = api
   .get("/modify-response-http", async () => {
     return new HttpResponse("My Response");
   });
+
+const simpleEvent = event<{ value: string }>("simpleEvent");
+
+export const simpleEventHandler = subscription(
+  "simpleEventHandler",
+  { events: [simpleEvent] },
+  (payload) => {
+    console.log("hi", payload);
+  }
+);

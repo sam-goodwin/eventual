@@ -44,7 +44,13 @@ export function serviceAction<T>(
 ) {
   return async (
     args: Arguments<
-      { debug: boolean; service?: string; region?: string; json?: boolean } & T
+      {
+        debug: boolean;
+        service?: string;
+        region?: string;
+        json?: boolean;
+        local?: boolean;
+      } & T
     >
   ) => {
     const spinner = args.json ? undefined : ora().start("Preparing");
@@ -52,11 +58,13 @@ export function serviceAction<T>(
       const region = args.region ?? (await resolveRegion());
       const serviceName = await tryResolveDefaultService(args.service, region);
       const credentials = await assumeCliRole(serviceName, region);
-      const serviceData = await getServiceData(
-        credentials,
-        serviceName,
-        region
-      );
+      const serviceData: ServiceData = args.local
+        ? {
+            apiEndpoint: "http://localhost:3000",
+            eventBusArn: "NOT SET ON LOCAL",
+            workflowExecutionLogGroupName: "NOT SET ON LOCAL",
+          }
+        : await getServiceData(credentials, serviceName, region);
       const serviceClient = new AWSHttpEventualClient({
         credentials,
         serviceUrl: serviceData.apiEndpoint,
@@ -120,6 +128,10 @@ export const setServiceOptions = (
       description: "Name of service to operate on",
     })
     .option("region", { alias: "r", type: "string" })
+    .option("local", {
+      type: "boolean",
+      describe: "uses a running eventual dev service",
+    })
     .option("debug", {
       alias: "d",
       describe: "Enable debug output",

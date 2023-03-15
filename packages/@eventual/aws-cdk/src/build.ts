@@ -170,7 +170,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
             : type === "subscriptions"
             ? ([
                 "subscription",
-                "event-handler",
+                "subscription-worker",
                 ServiceType.Subscription,
                 spec.name,
                 monoSubscriptionFunction!,
@@ -247,7 +247,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         },
         {
           name: ServiceType.Subscription,
-          entry: runtimeHandlersEntrypoint("event-handler"),
+          entry: runtimeHandlersEntrypoint("subscription-worker"),
           serviceType: ServiceType.Subscription,
         },
       ]
