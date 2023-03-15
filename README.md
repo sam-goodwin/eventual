@@ -1,23 +1,25 @@
 <div align="center">
   <a href="https://eventual.net">
-    <img src="assets/eventual-logo-image-only.svg" />
+    <img src="assets/eventual-logo-white-bg-128px.svg" />
   </a>
   <br />
-  <h1>Eventual</h1>
+  <h1>eventual</h1>
   <h3>
-  A drop-in serverless runtime and SDK for building event-driven systems.
+  Build scalable and durable micro-services with APIs, Messaging and Workflows.
   </h3>
+  
+  
   <a href="https://badge.fury.io/js/@eventual%2Fcore.svg">
     <img src="https://badge.fury.io/js/@eventual%2Fcore.svg" />
   </a>
   <a href="https://github.com/eventual/eventual/blob/main/LICENSE">
-    <img alt="MIT License" src="https://img.shields.io/github/license/functionless/eventual" />
+    <img alt="Apache 2.0 License" src="https://img.shields.io/github/license/functionless/eventual" />
   </a>
   <a href="https://discord.gg/8hfnTn3QDT">
     <img alt="Discord" src="https://img.shields.io/discord/985291961885949973?color=7389D8&label&logo=discord&logoColor=ffffff" />
   </a>
-  <a href="https://twitter.com/eventual_cloud">
-    <img alt="Twitter" src="https://img.shields.io/twitter/url.svg?label=%40eventual_cloud&style=social&url=https%3A%2F%2Ftwitter.com%2Feventual_cloud" />
+  <a href="https://twitter.com/EventualCloud">
+    <img alt="Twitter" src="https://img.shields.io/twitter/url.svg?label=%40EventualCloud&style=social&url=https%3A%2F%2Ftwitter.com%2FEventualCloud" />
   </a>
 </div>
 
@@ -31,15 +33,26 @@
 
 **[Website](https://eventual.net/) • [API Docs](https://docs.eventual.net) • [Quick Start](https://docs.eventual.net/getting-started)**
 
-Eventual makes building and operating resilient event-driven applications easy at any scale.
+Develop massively distributed systems without friction → Iterate locally on your machine → Deploy to your own cloud infrastructure
 
-- 💪&nbsp; **Powerful orchestration and choreography** - build durable, long-running Workflows, scale APIs, publish and subscribe to Events, and connect to SaaS via Integrations.
-- 🌀&nbsp; **Event-driven** - build asynchronous systems that are more resilient, scalable and evolvable.
-- 📈&nbsp; **Serverless** - fully serverless, load-based pricing that scales to $0 and minimal operational complexity.
-- 🧩&nbsp; **Composable and Evolvable** - loosely coupled architectures make it easy to add new services and evolve your system over time.
-- 🧑‍💻&nbsp; **Code-first** - end-to-end type safety that spans across service boundaries, from APIs to Events to long-running Workflows.
-- 🌩&nbsp; **Your cloud, your security boundaries** - runs on your cloud infrastructure, with transparent billing and total control over data and security.
-- 🛠&nbsp; **Distributed as IaC** - integrates with your favorite Infrastructure-as-Code (IaC) frameworks such as the AWS CDK and SST.
+### Develop
+
+- 🌎 **APIs** - expose RPC and REST endpoints
+- 🚦 **Orchestration** - build long running, durable workflows using plain TypeScript - such as if-else, loops, functions, async/await, and all that goodness
+- 💬 **Messaging** - publish and subscribe to events within and across service boundaries.
+- ✅ **End-to-end type safety** - from your frontend → backend → infrastructure
+
+### Iterate
+
+- 🧪 **Local Testing** - unit test with fine-grained control over timing to catch tricky edge cases
+- 🤖 **Simulate** - run your massively distributed system, locally and deploy only when it's working
+- 🐞 **Debug Production** - replay and debug production workflows from the comfort of your IDE
+
+### Deploy
+
+- 🛠 **Infrastructure as Code** - integrates directly into the AWS CDK and Pulumi
+- 🌩️ **Your Cloud** - runs in your own infrastructure and security boundaries
+- 📈 **Serverless** - we shield you from the complexities of distributed systems and ensure a consistent, best-practice serverless architecture
 
 ## Quick Start
 
