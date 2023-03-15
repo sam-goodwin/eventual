@@ -1,5 +1,6 @@
 import { LogLevel, LOG_LEVELS } from "@eventual/core";
 import { assertNever } from "@eventual/core/internal";
+import { format } from "util";
 import { LogsClient } from "./clients/logs-client.js";
 import { getLazy, groupBy, LazyValue } from "./utils.js";
 
@@ -128,9 +129,9 @@ export class DefaultLogFormatter implements LogFormatter {
     if (isActivityLogContext(entry.context)) {
       return `${entry.level}\t${entry.context.activityName}:${
         entry.context.seq
-      }\t${entry.data.join(" ")}`;
+      }\t${format(...entry.data)}`;
     } else if (isExecutionLogContext(entry.context)) {
-      return `${entry.level}\t${entry.data.join(" ")}`;
+      return `${entry.level}\t${format(...entry.data)}`;
     }
     return assertNever(entry.context);
   }

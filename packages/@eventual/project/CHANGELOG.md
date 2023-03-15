@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.25.2 (2023-03-15)
+
+### Bug Fixes
+
+- log agent should match console.log contract ([#312](https://github.com/functionless/eventual/issues/312)) ([bf2532e](https://github.com/functionless/eventual/commit/bf2532ec26cfd515b77825e3e83d695e03c432c5))
+
 ## 0.25.1 (2023-03-13)
 
 ### Bug Fixes
