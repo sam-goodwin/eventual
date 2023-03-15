@@ -50,9 +50,13 @@ Develop massively distributed systems without friction → Iterate locally on yo
 
 ### Deploy
 
-- 🛠 **Infrastructure as Code** - integrates directly into the AWS CDK and Pulumi
+- 🛠 **Infrastructure as Code** - integrates directly into the AWS CDK, SST and Pulumi
 - 🌩️ **Your Cloud** - runs in your own infrastructure and security boundaries
 - 📈 **Serverless** - we shield you from the complexities of distributed systems and ensure a consistent, best-practice serverless architecture
+
+<p align="center">
+  <img src="assets/logo-banner.svg" height="60px"  />
+</p>
 
 ## Quick Start
 
@@ -66,7 +70,7 @@ npm create eventual
 cd <project-name>
 
 # deploy to AWS
-npx cdk deploy
+npm run deploy
 ```
 
 ## What is Eventual?
