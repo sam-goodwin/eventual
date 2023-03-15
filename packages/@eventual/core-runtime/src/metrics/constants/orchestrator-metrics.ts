@@ -109,11 +109,11 @@ export const ExecutionResultBytes = "ExecutionResultBytes";
 /**
  * Number of milliseconds between the expected timer wakeup time and the actual incoming {@link TimerCompleted} event.
  */
-export const TimerVarianceMillis = "TimerVarianceMillis";
+export const TimerVarianceDuration = "TimerVarianceDuration";
 /**
  * Number of milliseconds it takes to send execution logs to where ever they are persisted.
  */
-export const ExecutionLogWriteDuration = "ExecutionLogWriteMillis";
+export const ExecutionLogWriteDuration = "ExecutionLogWriteDuration";
 /**
  * 1 when a workflow has a timeout and 0 when it does not.
  */

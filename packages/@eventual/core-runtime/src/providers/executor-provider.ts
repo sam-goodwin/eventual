@@ -2,7 +2,7 @@ import type { HistoryStateEvent } from "@eventual/core/internal";
 import type { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
 import type { WorkflowExecutor } from "../workflow-executor.js";
 
-export interface ExecutorProvider<Context extends any = undefined> {
+export interface ExecutorProvider<Context = undefined> {
   /**
    * Returns an executor which may already be started.
    *
@@ -31,7 +31,7 @@ export interface RemoteExecutorProviderProps {
 /**
  * An executor provider that works with an out of memory store.
  */
-export class RemoteExecutorProvider<Context extends any = undefined>
+export class RemoteExecutorProvider<Context = undefined>
   implements ExecutorProvider<Context>
 {
   constructor(private props: RemoteExecutorProviderProps) {}
@@ -45,7 +45,6 @@ export class RemoteExecutorProvider<Context extends any = undefined>
     const history = await this.props.executionHistoryStateStore.getHistory(
       executionId
     );
-    console.log(history);
     return initExecutor(history);
   }
 
@@ -67,7 +66,7 @@ export class RemoteExecutorProvider<Context extends any = undefined>
   }
 }
 
-export class InMemoryExecutorProvider<Context extends any = undefined>
+export class InMemoryExecutorProvider<Context = undefined>
   implements ExecutorProvider<Context>
 {
   private executions: Record<string, WorkflowExecutor<any, any, Context>> = {};
@@ -79,7 +78,7 @@ export class InMemoryExecutorProvider<Context extends any = undefined>
     ) => WorkflowExecutor<any, any, Context>
   ): Promise<WorkflowExecutor<any, any, Context>> {
     return Promise.resolve(
-      this.executions[executionId] ?? initializeNewExecutor([])
+      (this.executions[executionId] ??= initializeNewExecutor([]))
     );
   }
 

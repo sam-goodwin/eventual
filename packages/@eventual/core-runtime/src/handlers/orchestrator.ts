@@ -551,7 +551,7 @@ function recordEventMetrics(
       const avg =
         timerCompletedVariance.reduce((t, n) => t + n, 0) /
         timerCompletedVariance.length;
-      metrics.setProperty(OrchestratorMetrics.TimerVarianceMillis, avg);
+      metrics.setProperty(OrchestratorMetrics.TimerVarianceDuration, avg);
     }
 
     return maxTaskAge;
