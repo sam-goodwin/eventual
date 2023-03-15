@@ -2,19 +2,23 @@ import { MetricsLogger } from "./metrics-logger.js";
 import { Unit } from "./unit.js";
 
 export async function timed<T>(
-  metricLogger: MetricsLogger,
+  metricLogger: MetricsLogger | undefined,
   name: string,
   call: () => Promise<T> | T
 ): Promise<T> {
-  const start = new Date();
+  if (metricLogger) {
+    const start = new Date();
 
-  const result = await call();
+    const result = await call();
 
-  metricLogger.putMetric(
-    name,
-    new Date().getTime() - start.getTime(),
-    Unit.Milliseconds
-  );
+    metricLogger.putMetric(
+      name,
+      new Date().getTime() - start.getTime(),
+      Unit.Milliseconds
+    );
 
-  return result;
+    return result;
+  } else {
+    return call();
+  }
 }

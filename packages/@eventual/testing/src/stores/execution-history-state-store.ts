@@ -1,8 +1,8 @@
-import { HistoryStateEvent } from "@eventual/core/internal";
-import {
+import type {
   ExecutionHistoryStateStore,
   UpdateHistoryRequest,
 } from "@eventual/core-runtime";
+import type { HistoryStateEvent } from "@eventual/core/internal";
 
 export class TestExecutionHistoryStateStore
   implements ExecutionHistoryStateStore

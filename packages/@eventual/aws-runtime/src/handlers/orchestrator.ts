@@ -4,6 +4,7 @@ import {
   CommandExecutor,
   createOrchestrator,
   ExecutionQueueEventEnvelope,
+  RemoteExecutorProvider,
 } from "@eventual/core-runtime";
 import type { SQSEvent, SQSRecord } from "aws-lambda";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
@@ -30,7 +31,6 @@ const orchestrate = createOrchestrator({
   workflowClient: createWorkflowClient(),
   metricsClient: AWSMetricsClient,
   logAgent: createLogAgent(),
-  executionHistoryStateStore: createExecutionHistoryStateStore(),
   commandExecutor: new CommandExecutor({
     activityClient: createActivityClient(),
     eventClient: createEventClient(),
@@ -39,6 +39,9 @@ const orchestrate = createOrchestrator({
     workflowClient: createWorkflowClient(),
   }),
   workflowProvider: createWorkflowProvider(),
+  executorProvider: new RemoteExecutorProvider({
+    executionHistoryStateStore: createExecutionHistoryStateStore(),
+  }),
   serviceName: serviceName(),
 });
 

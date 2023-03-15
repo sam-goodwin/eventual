@@ -5,7 +5,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
-import { HistoryStateEvent } from "@eventual/core/internal";
+import type { HistoryStateEvent } from "@eventual/core/internal";
 import {
   ExecutionHistoryStateStore,
   getLazy,

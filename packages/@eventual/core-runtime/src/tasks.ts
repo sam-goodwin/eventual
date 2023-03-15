@@ -1,4 +1,7 @@
-import { HistoryStateEvent, WorkflowEvent } from "@eventual/core/internal";
+import type {
+  WorkflowEvent,
+  WorkflowInputEvent,
+} from "@eventual/core/internal";
 
 /**
  * A task which delivers new {@link WorkflowEvent}s to a workflow execution.
@@ -8,7 +11,7 @@ import { HistoryStateEvent, WorkflowEvent } from "@eventual/core/internal";
 export interface WorkflowTask {
   executionId: string;
   // accepts events as an object or a stringified HistoryStateEvent.
-  events: (HistoryStateEvent | string)[];
+  events: (WorkflowInputEvent | string)[];
 }
 
 export function isWorkflowTask(obj: any): obj is WorkflowTask {

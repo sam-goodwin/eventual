@@ -13,7 +13,7 @@ const HOOKED_SYMBOL = /* @__PURE__ */ Symbol.for("eventual-hooked-console");
  * Use {@link isConsoleHooked} to determine if the console is currently hooked
  */
 export function hookConsole(
-  hook: (logLevel: LogLevel, ...data: any[]) => any[] | undefined
+  hook: (logLevel: LogLevel, ...data: any[]) => any[] | undefined | void
 ) {
   const consoleProxy: typeof console & {
     [HOOKED_SYMBOL]: typeof HOOKED_SYMBOL;

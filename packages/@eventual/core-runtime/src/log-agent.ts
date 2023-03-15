@@ -2,33 +2,21 @@ import { LogLevel, LOG_LEVELS } from "@eventual/core";
 import { assertNever } from "@eventual/core/internal";
 import { format } from "util";
 import { LogsClient } from "./clients/logs-client.js";
-import {
-  hookConsole,
-  isConsoleHooked,
-  restoreConsole,
-} from "./console-hook.js";
 import { getLazy, groupBy, LazyValue } from "./utils.js";
 
 export type LogContext = ExecutionLogContext | ActivityLogContext;
 
-export enum LogContextType {
-  Activity = 0,
-  Execution = 1,
-}
-
 export interface ExecutionLogContext {
-  type: LogContextType.Execution;
   executionId: string;
 }
 
 export function isExecutionLogContext(
   context: LogContext
 ): context is ExecutionLogContext {
-  return context.type === LogContextType.Execution;
+  return context && !("activityName" in context);
 }
 
 export interface ActivityLogContext {
-  type: LogContextType.Activity;
   executionId: string;
   seq: number;
   activityName: string;
@@ -37,19 +25,13 @@ export interface ActivityLogContext {
 export function isActivityLogContext(
   context: LogContext
 ): context is ActivityLogContext {
-  return context.type === LogContextType.Activity;
+  return context && "activityName" in context;
 }
 
 export interface LogAgentProps {
   logsClient: LogsClient;
   logFormatter?: LogFormatter;
   getTime?: () => Date;
-  /**
-   * When false, logs are buffered.
-   *
-   * @default true
-   */
-  sendingLogsEnabled?: boolean;
   logLevel: {
     default: LazyValue<LogLevel>;
   };
@@ -67,116 +49,33 @@ interface LogEntry {
 }
 
 export class LogAgent {
-  private contextStack: LogContext[] = [];
-  private readonly logs: {
-    context: LogContext;
-    level: LogLevel;
-    data: any[];
-    time: number;
-  }[] = [];
+  private readonly logs: LogEntry[] = [];
 
   private readonly logFormatter: LogFormatter;
   private readonly getTime: () => Date;
   public logsSeenCount = 0;
-  private sendingLogsEnabled: boolean;
   private logLevelIndex: number;
 
   constructor(private props: LogAgentProps) {
-    this.sendingLogsEnabled = props.sendingLogsEnabled ?? true;
     this.logFormatter = props.logFormatter ?? new DefaultLogFormatter();
     this.getTime = props.getTime ?? (() => new Date());
     this.logLevelIndex = LOG_LEVELS.indexOf(getLazy(props.logLevel.default));
   }
 
-  /**
-   * Enable the sending of logs (based on configuration or flush).
-   */
-  public enableSendingLogs() {
-    this.sendingLogsEnabled = true;
-  }
-
-  /**
-   * Disable the sending of logs (based on configuration or flush).
-   */
-  public disableSendingLogs() {
-    this.sendingLogsEnabled = false;
-  }
-
-  public clearContext() {
-    this.contextStack = [];
-    restoreConsole();
-  }
-
-  /**
-   * Clear all buffered logs.
-   *
-   * @param checkpoint - if provided, clears log up to and not including the checkpoint position.
-   */
-  public clearLogs(checkpoint?: Checkpoint) {
-    const clearIndex = checkpoint?.lastLogEntry
-      ? this.logs.findIndex((l) => l === checkpoint.lastLogEntry) ?? -1
-      : -1;
-
-    this.logs.splice(clearIndex + 1);
-  }
-
-  /**
-   * Retrieve a pointer to the newest log item. Used to clear only to this point.
-   */
-  public getCheckpoint(): Checkpoint {
-    return {
-      lastLogEntry:
-        this.logs.length > 0 ? this.logs[this.logs.length - 1] : undefined,
-    };
-  }
-
-  public pushContext(context: LogContext) {
-    this.contextStack.push(context);
-    if (!isConsoleHooked()) {
-      hookConsole((level, ...data) => {
-        if (this.contextStack.length > 0) {
-          this.log(level, ...data);
-          return undefined;
-        } else {
-          // if there is no context set, let the console log like normal
-          return data;
-        }
-      });
-    }
-  }
-
-  public popContext(): LogContext {
-    const context = this.contextStack.pop();
-    if (!context) {
-      throw new Error("No contexts to pop");
-    }
-    if (this.contextStack.length === 0) {
-      restoreConsole();
-    }
-    return context;
-  }
-
-  public log(logLevel: LogLevel, ...data: any[]) {
-    const context = this.contextStack[this.contextStack.length - 1];
-    if (!context) {
-      throw new Error(
-        "A Log Context has not been set yet. Call LogAgent.pushContext or use LogAgent.logWithContext."
-      );
-    }
-    this.logWithContext(context, logLevel, ...data);
-  }
-
   public logWithContext(
     context: LogContext,
     logLevel: LogLevel,
-    ...data: any[]
+    /**
+     * When data is an event, it is only invoked when the log level is satisfied
+     */
+    data: any[] | (() => any[])
   ) {
     if (this.isLogLevelSatisfied(logLevel)) {
       this.logsSeenCount++;
       this.logs.push({
         context,
         level: logLevel,
-        data,
+        data: typeof data === "function" ? data() : data,
         time: this.getTime().getTime(),
       });
     }
@@ -187,66 +86,36 @@ export class LogAgent {
   }
 
   public async flush() {
-    if (this.sendingLogsEnabled) {
-      const logsToSend = this.logs.splice(0);
+    const logsToSend = this.logs.splice(0);
 
-      const executions = groupBy(logsToSend, (l) => l.context.executionId);
+    const executions = groupBy(logsToSend, (l) => l.context.executionId);
 
-      console.log(
-        `Sending ${logsToSend.length} logs for ${
-          Object.keys(executions).length
-        } executions`
-      );
+    console.debug(
+      `Sending ${logsToSend.length} logs for ${
+        Object.keys(executions).length
+      } executions`
+    );
 
-      // TODO retry - https://github.com/functionless/eventual/issues/235
-      const results = await Promise.allSettled(
-        Object.entries(executions).map(([execution, entries]) => {
-          return this.props.logsClient.putExecutionLogs(
-            execution,
-            ...entries
-              //
-              .sort((a, b) => a.time - b.time)
-              .map((e) => ({
-                time: e.time,
-                message: this.logFormatter.format(e),
-              }))
-          );
-        })
-      );
-
-      if (results.some((r) => r.status === "rejected")) {
-        throw new Error(
-          "Logs failed to send: " +
-            JSON.stringify(results.filter((r) => r.status === "rejected"))
+    // TODO retry - https://github.com/functionless/eventual/issues/235
+    const results = await Promise.allSettled(
+      Object.entries(executions).map(([execution, entries]) => {
+        return this.props.logsClient.putExecutionLogs(
+          execution,
+          ...entries
+            .sort((a, b) => a.time - b.time)
+            .map((e) => ({
+              time: e.time,
+              message: this.logFormatter.format(e),
+            }))
         );
-      }
-    }
-  }
+      })
+    );
 
-  /**
-   * Sets the log context for the duration of the provided handler.
-   */
-  public async logContextScope<T>(
-    context: LogContext,
-    scopeHandler: () => T
-  ): Promise<Awaited<T>> {
-    try {
-      this.pushContext(context);
-      return await scopeHandler();
-    } finally {
-      this.popContext();
-    }
-  }
-
-  /**
-   * Sets the log context for the duration of the provided handler.
-   */
-  public logContextScopeSync<T>(context: LogContext, scopeHandler: () => T): T {
-    try {
-      this.pushContext(context);
-      return scopeHandler();
-    } finally {
-      this.popContext();
+    if (results.some((r) => r.status === "rejected")) {
+      throw new Error(
+        "Logs failed to send: " +
+          JSON.stringify(results.filter((r) => r.status === "rejected"))
+      );
     }
   }
 }
@@ -257,12 +126,12 @@ export interface LogFormatter {
 
 export class DefaultLogFormatter implements LogFormatter {
   public format(entry: LogEntry): string {
-    if (isExecutionLogContext(entry.context)) {
-      return `${entry.level}\t${format(...entry.data)}`;
-    } else if (isActivityLogContext(entry.context)) {
+    if (isActivityLogContext(entry.context)) {
       return `${entry.level}\t${entry.context.activityName}:${
         entry.context.seq
       }\t${format(...entry.data)}`;
+    } else if (isExecutionLogContext(entry.context)) {
+      return `${entry.level}\t${format(...entry.data)}`;
     }
     return assertNever(entry.context);
   }

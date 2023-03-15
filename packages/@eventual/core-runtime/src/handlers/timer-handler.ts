@@ -4,7 +4,7 @@ import {
   assertNever,
   WorkflowEventType,
 } from "@eventual/core/internal";
-import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
+import type { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import {
   isActivityHeartbeatMonitorRequest,
   isTimerScheduleEventRequest,
@@ -12,8 +12,8 @@ import {
   TimerRequest,
   TimerRequestType,
 } from "../clients/timer-client.js";
-import { LogAgent, LogContextType } from "../log-agent.js";
-import { ActivityStore } from "../stores/activity-store.js";
+import type { LogAgent } from "../log-agent.js";
+import type { ActivityStore } from "../stores/activity-store.js";
 import { createEvent } from "../workflow-events.js";
 
 interface TimerHandlerProps {
@@ -39,9 +39,9 @@ export function createTimerHandler({
     try {
       if (isTimerScheduleEventRequest(request)) {
         logAgent.logWithContext(
-          { type: LogContextType.Execution, executionId: request.executionId },
+          { executionId: request.executionId },
           LogLevel.DEBUG,
-          `Forwarding event: ${request.event}.`
+          [`Forwarding event: ${request.event}.`]
         );
 
         await executionQueueClient.submitExecutionEvents(
@@ -55,9 +55,13 @@ export function createTimerHandler({
         );
 
         logAgent.logWithContext(
-          { type: LogContextType.Execution, executionId: request.executionId },
+          { executionId: request.executionId },
           LogLevel.DEBUG,
-          `Checking activity for heartbeat timeout: ${JSON.stringify(activity)}`
+          () => [
+            `Checking activity for heartbeat timeout: ${JSON.stringify(
+              activity
+            )}`,
+          ]
         );
 
         // the activity has not sent a heartbeat or the last time was too long ago.

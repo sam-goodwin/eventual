@@ -1,5 +1,8 @@
-import { Schedule } from "@eventual/core";
-import { HistoryStateEvent } from "@eventual/core/internal";
+import type { Schedule } from "@eventual/core";
+import type {
+  HistoryStateEvent,
+  WorkflowInputEvent,
+} from "@eventual/core/internal";
 import { computeScheduleDate } from "../schedule.js";
 
 export abstract class TimerClient {
@@ -48,7 +51,7 @@ export abstract class TimerClient {
    *
    * Helper for using {@link TimerClient.startTimer} with a {@link TimerScheduleEventRequest}.
    */
-  public async scheduleEvent<E extends HistoryStateEvent>(
+  public async scheduleEvent<E extends WorkflowInputEvent>(
     request: ScheduleEventRequest<E>
   ): Promise<void> {
     const untilTime = computeScheduleDate(
@@ -90,7 +93,7 @@ export type TimerRequestBase<T extends TimerRequestType> = {
 export interface TimerScheduleEventRequest
   extends TimerRequestBase<TimerRequestType.ScheduleEvent> {
   executionId: string;
-  event: HistoryStateEvent;
+  event: WorkflowInputEvent;
 }
 
 export function isTimerScheduleEventRequest(

@@ -25,6 +25,7 @@ import {
   ExecutionHistoryStore,
   ExecutionStore,
   GlobalWorkflowProvider,
+  InMemoryExecutorProvider,
   isWorkflowTask,
   LogAgent,
   Orchestrator,
@@ -204,14 +205,13 @@ export class TestEnvironment extends RuntimeServiceClient {
 
     this.orchestrator = createOrchestrator({
       commandExecutor,
+      executionHistoryStore: this.executionHistoryStore,
+      executorProvider: new InMemoryExecutorProvider(),
+      logAgent: testLogAgent,
+      serviceName: props?.serviceName ?? "testing",
       timerClient: this.timerClient,
       workflowClient: this.workflowClient,
-      executionHistoryStore: this.executionHistoryStore,
-      metricsClient: new TestMetricsClient(),
-      logAgent: testLogAgent,
-      executionHistoryStateStore,
       workflowProvider,
-      serviceName: props?.serviceName ?? "testing",
     });
 
     registerServiceClient(this);

@@ -7,6 +7,7 @@ import {
   WorkflowTimeout,
 } from "@eventual/core";
 import {
+  CompletionEvent,
   enterWorkflowHookScope,
   EventualCall,
   EventualPromise,
@@ -14,25 +15,29 @@ import {
   ExecutionWorkflowHook,
   extendsSystemError,
   HistoryEvent,
-  HistoryResultEvent,
-  HistoryScheduledEvent,
-  isResultEvent,
+  HistoryStateEvent,
+  isCompletionEvent,
   isScheduledEvent,
   isSignalReceived,
   isWorkflowRunStarted,
+  isWorkflowStarted,
   isWorkflowTimedOut,
   iterator,
   Result,
+  ScheduledEvent,
   SignalReceived,
   WorkflowEvent,
+  WorkflowInputEvent,
   WorkflowRunStarted,
   WorkflowTimedOut,
   _Iterator,
 } from "@eventual/core/internal";
 import { isPromise } from "util/types";
 import { createEventualFromCall, isCorresponding } from "./eventual-factory.js";
+import { formatExecutionId } from "./execution.js";
 import { isFailed, isResolved, isResult } from "./result.js";
 import type { WorkflowCommand } from "./workflow-command.js";
+import { filterEvents } from "./workflow-events.js";
 
 /**
  * Put the resolve method on the promise, but don't expose it.
@@ -96,23 +101,7 @@ export function createEventualPromise<R>(
   return promise;
 }
 
-interface ExecutorOptions {
-  hooks?: {
-    /**
-     * Callback called when a returned call matches an input event.
-     *
-     * This call will be ignored.
-     */
-    historicalEventMatched?: (event: WorkflowEvent, call: EventualCall) => void;
-
-    /**
-     * Callback immediately before applying a result event.
-     */
-    beforeApplyingResultEvent?: (resultEvent: HistoryResultEvent) => void;
-  };
-}
-
-export class WorkflowExecutor<Input, Output> {
+export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
   /**
    * The sequence number to assign to the next eventual registered.
    */
@@ -136,11 +125,11 @@ export class WorkflowExecutor<Input, Output> {
   /**
    * Iterator containing the in order events we expected to see in a deterministic workflow.
    */
-  private expected: _Iterator<HistoryEvent, HistoryScheduledEvent>;
+  private expected: _Iterator<HistoryEvent, ScheduledEvent>;
   /**
    * Iterator containing events to apply.
    */
-  private events: _Iterator<HistoryEvent, HistoryResultEvent>;
+  private events: _Iterator<HistoryEvent, CompletionEvent>;
 
   /**
    * The state of the current workflow run (start or continue are running).
@@ -176,31 +165,64 @@ export class WorkflowExecutor<Input, Output> {
    * The current result of the workflow, also returned by start and continue on completion.
    */
   public result?: Result<Output>;
+  private _executionContext?: Context;
+  private hooks: {
+    /**
+     * Callback called when a returned call matches an input event.
+     *
+     * This call will be ignored.
+     */
+    historicalEventMatched?: (
+      event: WorkflowEvent,
+      call: EventualCall,
+      context?: Context
+    ) => void;
+
+    /**
+     * Callback immediately before applying a result event.
+     */
+    beforeApplyingResultEvent?: (
+      resultEvent: CompletionEvent,
+      context?: Context
+    ) => void;
+  } = {};
 
   constructor(
     private workflow: Workflow<Input, Output>,
-    private history: HistoryEvent[],
-    private options?: ExecutorOptions
+    public history: HistoryStateEvent[]
   ) {
     this.nextSeq = 0;
     this.expected = iterator(history, isScheduledEvent);
-    this.events = iterator(history, isResultEvent);
+    this.events = iterator(history, isCompletionEvent);
+  }
+
+  get hasActiveEventuals() {
+    return Object.keys(this.activeEventuals).length > 0;
   }
 
   /**
    * Starts an execution.
    *
    * The execution will run until the events are exhausted or the workflow fails.
+   *
+   * If the input and context are provided, a WorkflowStarted event is not needed in the input events or history.
+   * Otherwise a WorkflowStarted event must be in the history or the events passed on start.
    */
   public start(
-    input: Input,
-    context: WorkflowContext
+    ...args:
+      | [input: Input, context: WorkflowContext, events?: CompletionEvent[]]
+      | [events: WorkflowInputEvent[]]
   ): Promise<WorkflowResult<Output>> {
     if (this.started) {
       throw new Error(
         "Execution has already been started. Use continue to apply new events or create a new Interpreter"
       );
     }
+    const self = this;
+
+    const { input, context, events } = processArgs(args);
+
+    this.addHistoryEvents(events ?? []);
 
     this.started = true;
 
@@ -219,21 +241,67 @@ export class WorkflowExecutor<Input, Output> {
         this.resolveWorkflow(Result.failed(err));
       }
     });
+
+    function processArgs(
+      args:
+        | [input: Input, context: WorkflowContext, events?: CompletionEvent[]]
+        | [events: WorkflowInputEvent[]]
+    ): {
+      input: Input;
+      context: WorkflowContext;
+      events?: WorkflowInputEvent[];
+    } {
+      if (args.length === 1) {
+        // first look for the WorkflowStarted event in the history and then in the recent events.
+        const workflowStartEvent =
+          self.history.find(isWorkflowStarted) ??
+          args[0].find(isWorkflowStarted);
+
+        if (!workflowStartEvent) {
+          throw new Error(
+            "No WorkflowStarted event was provided in the history or in the start operation. Either provide a WorkflowStarted event or the input/context."
+          );
+        }
+
+        return {
+          input: workflowStartEvent.input,
+          context: {
+            workflow: { name: workflowStartEvent.workflowName },
+            execution: {
+              ...workflowStartEvent.context,
+              id: formatExecutionId(
+                workflowStartEvent.workflowName,
+                workflowStartEvent.context.name
+              ),
+              startTime: workflowStartEvent.timestamp,
+              parentId: workflowStartEvent.context.parentId,
+            },
+          },
+          events: args[0],
+        };
+      } else {
+        return {
+          input: args[0],
+          context: args[1],
+          events: args[2],
+        };
+      }
+    }
   }
 
   /**
-   * Continue a previously started workflow by feeding in new {@link HistoryResultEvent}, possibly advancing the execution.
+   * Continue a previously started workflow by feeding in new {@link CompletionEvent}, possibly advancing the execution.
    *
    * This allows the workflow to continue without re-running previous history.
    *
-   * Events will be applied to the workflow in order.
+   * Events will be applied to the workflow in order after being filtered for uniqueness.
    *
    * The execution will run until the events are exhausted or the workflow fails.
    *
    * @returns {@link WorkflowResult} - containing new commands and a result of one was generated.
    */
   public async continue(
-    ...history: HistoryResultEvent[]
+    events: WorkflowInputEvent[] | WorkflowInputEvent
   ): Promise<WorkflowResult<Output>> {
     if (!this.started) {
       throw new Error("Execution has not been started, call start first.");
@@ -243,9 +311,13 @@ export class WorkflowExecutor<Input, Output> {
       );
     }
 
-    this.history.push(...history);
+    this.addHistoryEvents(normalizeToArray(events));
 
     return await this.startWorkflowRun();
+  }
+
+  public isStarted() {
+    return !!this.started;
   }
 
   private startWorkflowRun(beforeCommitEvents?: () => void) {
@@ -280,6 +352,44 @@ export class WorkflowExecutor<Input, Output> {
           this.currentRun?.resolve();
         })
     );
+  }
+
+  public get executionContext(): Context | undefined {
+    return this._executionContext;
+  }
+
+  public setExecutionContext(context: Context) {
+    this._executionContext = context;
+  }
+
+  /**
+   * Overrides the before applying result handler.
+   *
+   * This handler is called before each event is applied to the workflow.
+   */
+  public onBeforeApplyingResultEvent(
+    handler?: typeof this.hooks.beforeApplyingResultEvent
+  ) {
+    this.hooks.beforeApplyingResultEvent = handler;
+  }
+
+  /**
+   * Overrides the historical event matched event.
+   *
+   * This handler is called when a historical event (ex: scheduled) is matched to a call.
+   */
+  public onHistoricalEventMatched(
+    handler?: typeof this.hooks.historicalEventMatched
+  ) {
+    this.hooks.historicalEventMatched = handler;
+  }
+
+  private addHistoryEvents(newEvents?: WorkflowInputEvent[]) {
+    const filteredHistory = newEvents
+      ? filterEvents(this.history, newEvents)
+      : [];
+
+    this.history.push(...filteredHistory);
   }
 
   /**
@@ -371,7 +481,11 @@ export class WorkflowExecutor<Input, Output> {
       if (self.expected.hasNext()) {
         const expected = self.expected.next()!;
 
-        self.options?.hooks?.historicalEventMatched?.(expected, call);
+        self.hooks?.historicalEventMatched?.(
+          expected,
+          call,
+          self._executionContext
+        );
 
         if (!isCorresponding(expected, seq, call)) {
           self.resolveWorkflow(
@@ -399,7 +513,7 @@ export class WorkflowExecutor<Input, Output> {
   private async applyEvents() {
     while (this.events.hasNext() && !this.stopped) {
       const event = this.events.next()!;
-      this.options?.hooks?.beforeApplyingResultEvent?.(event);
+      this.hooks?.beforeApplyingResultEvent?.(event, this._executionContext);
       // We use a promise here because...
       // 1. we want the user code to finish executing before continuing to the next event
       // 2. the promise allows us to use iteration instead of a recursive call stack and depth limits
@@ -422,7 +536,7 @@ export class WorkflowExecutor<Input, Output> {
    * 4. if the resolved eventuals have any dependents, try resolve them too until the queue is drained.
    *    note: dependents are those eventuals while have declared other eventuals they care about.
    */
-  private tryApplyEvent(event: HistoryResultEvent) {
+  private tryApplyEvent(event: CompletionEvent) {
     if (isWorkflowTimedOut(event)) {
       return this.resolveWorkflow(
         Result.failed(new WorkflowTimeout("Workflow timed out"))
@@ -460,7 +574,7 @@ export class WorkflowExecutor<Input, Output> {
   }
 
   private *getHandlersForEvent(
-    event: Exclude<HistoryResultEvent, WorkflowRunStarted | WorkflowTimedOut>
+    event: Exclude<CompletionEvent, WorkflowRunStarted | WorkflowTimedOut>
   ): Generator<TriggerHandlerRef<any>, void, undefined> {
     if (isSignalReceived(event)) {
       const signalHandlers = this.activeHandlers.signals[event.signalId] ?? {};
@@ -507,7 +621,10 @@ export class WorkflowExecutor<Input, Output> {
     }
   }
 
-  private isEventualActive(seq: number | string) {
+  /**
+   * @returns true if a seq number matches an active eventual.
+   */
+  public isEventualActive(seq: number | string) {
     return seq in this.activeEventuals;
   }
 
@@ -667,10 +784,10 @@ export const Trigger = {
       afterEvery: handler,
     };
   },
-  onWorkflowEvent: <Output = any, T extends HistoryResultEvent["type"] = any>(
+  onWorkflowEvent: <Output = any, T extends CompletionEvent["type"] = any>(
     eventType: T,
-    handler: EventTrigger<Output, HistoryResultEvent & { type: T }>["handler"]
-  ): EventTrigger<Output, HistoryResultEvent & { type: T }> => {
+    handler: EventTrigger<Output, CompletionEvent & { type: T }>["handler"]
+  ): EventTrigger<Output, CompletionEvent & { type: T }> => {
     return {
       eventType,
       handler,
@@ -704,7 +821,7 @@ export interface AfterEveryEventTrigger<Output> {
 
 export interface EventTrigger<
   out Output = any,
-  E extends HistoryResultEvent = any
+  E extends CompletionEvent = any
 > {
   eventType: E["type"];
   handler: TriggerHandler<[event: E], Output>;
@@ -727,7 +844,7 @@ export function isAfterEveryEventTrigger<Output>(
   return "afterEvery" in t;
 }
 
-export function isEventTrigger<Output, E extends HistoryResultEvent>(
+export function isEventTrigger<Output, E extends CompletionEvent>(
   t: Trigger<Output>
 ): t is EventTrigger<Output, E> {
   return "eventType" in t;

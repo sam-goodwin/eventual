@@ -1,15 +1,16 @@
-import {
+import type {
+  ExecutionID,
   ListExecutionEventsRequest,
   ListExecutionEventsResponse,
 } from "@eventual/core";
 import { ExecutionHistoryStore } from "@eventual/core-runtime";
-import { WorkflowEvent } from "@eventual/core/internal";
+import type { WorkflowEvent } from "@eventual/core/internal";
 
 export class TestExecutionHistoryStore extends ExecutionHistoryStore {
   private eventStore: Record<string, WorkflowEvent[]> = {};
 
   public async putEvents(
-    executionId: string,
+    executionId: ExecutionID,
     events: WorkflowEvent[]
   ): Promise<void> {
     (this.eventStore[executionId] ??= []).push(...events);
