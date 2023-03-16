@@ -53,7 +53,7 @@ export class LocalEnvironment {
       start: new Date().getTime(),
     });
     const localConnector: LocalEnvConnector = {
-      getTime: () => new Date(this.timeController.currentTick),
+      getTime: () => new Date(),
       pushWorkflowTask: (task) =>
         this.timeController.addEvent(new Date().getTime(), task),
       scheduleEvent: (time, task) =>

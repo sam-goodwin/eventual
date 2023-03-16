@@ -44,5 +44,5 @@ export class TestTimerClient extends TimerClient {
     throw new Error("Method not implemented.");
   }
 
-  
+
 }

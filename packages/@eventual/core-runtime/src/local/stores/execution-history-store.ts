@@ -28,7 +28,7 @@ export class TestExecutionHistoryStore extends ExecutionHistoryStore {
       : undefined;
     const sortedEvents = (this.eventStore[request.executionId] ?? []).sort(
       (a, b) =>
-        request.sortDirection === "ASC"
+        request.sortDirection === "DESC"
           ? new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
           : new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );

@@ -342,7 +342,7 @@ export const eventDrivenWorkflow = workflow(
       timeout: duration(30, "seconds"),
     });
 
-    await sendFinishEvent(ctx.execution.id);
+    sendFinishEvent(ctx.execution.id);
 
     await expectSignal("finish", {
       timeout: duration(30, "seconds"),
