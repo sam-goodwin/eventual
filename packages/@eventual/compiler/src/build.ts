@@ -30,7 +30,8 @@ export async function cleanDir(dir: string) {
 export async function loadService(
   entry: string,
   plugins?: any[],
-  sourceMaps: boolean | "inline" = "inline"
+  sourceMaps: boolean | "inline" = "inline",
+  format: "esm" | "cjs" = "esm"
 ) {
   const hash = crypto.createHash("md5").update(entry).digest("hex");
 
@@ -43,7 +44,8 @@ export async function loadService(
     undefined,
     undefined,
     plugins,
-    sourceMaps
+    sourceMaps,
+    format
   );
 
   console.log("script", script);

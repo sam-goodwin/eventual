@@ -88,7 +88,7 @@ export function inferLoadedService(): ServiceSpec {
 }
 
 export async function loadServiceForInfer(entry: string) {
-  return loadService(entry, [inferPlugin], false);
+  return loadService(entry, [inferPlugin], false, "cjs");
 }
 
 export const inferPlugin: esbuild.Plugin = {
