@@ -1,4 +1,4 @@
-import { HttpServiceClient } from "@eventual/client";
+import { HttpError, HttpServiceClient } from "@eventual/client";
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
 import { getInputJson } from "./utils.js";
@@ -8,7 +8,7 @@ export const invokeCommand = (yargs: Argv) =>
     "invoke <command> [input]",
     "Send a signal to a running execution",
     (yargs) =>
-      setServiceOptions(yargs)
+      setServiceOptions(yargs, true)
         .positional("command", {
           describe: "Command Name",
           type: "string",
@@ -36,17 +36,35 @@ export const invokeCommand = (yargs: Argv) =>
           spinner.start(`Invoking ${args.command}`);
           try {
             const output = await invokeCommand(serviceData.apiEndpoint);
-            process.stdout.write(JSON.stringify(output, null, 2));
-            process.stdout.write("\n");
-          } finally {
-            spinner.stop();
+            spinner.succeed(JSON.stringify(output, undefined, 2));
+          } catch (err) {
+            if (err instanceof HttpError) {
+              try {
+                spinner.fail(
+                  err.body
+                    ? JSON.stringify(JSON.parse(err.body), undefined, 2)
+                    : undefined
+                );
+              } catch {
+                spinner.fail(err.body);
+              }
+            } else {
+              spinner.fail(JSON.stringify(err, undefined, 2));
+            }
+            process.exit(1);
           }
         },
         async (_, __, { serviceData }) => {
-          const output = await invokeCommand(serviceData.apiEndpoint);
+          try {
+            const output = await invokeCommand(serviceData.apiEndpoint);
 
-          process.stdout.write(JSON.stringify(output));
-          process.stdout.write("\n");
+            process.stdout.write(JSON.stringify(output));
+            process.stdout.write("\n");
+          } catch (err) {
+            process.stderr.write(JSON.stringify(err));
+            process.stderr.write("\n");
+            process.exit(1);
+          }
         }
       )(args);
 
