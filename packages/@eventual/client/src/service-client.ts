@@ -39,12 +39,17 @@ export interface ServiceClientProps {}
 export const ServiceClient: {
   new <Service>(
     props: HttpServiceClientProps,
-    rpcNamespace?: string
+    rpcNamespace?: string,
+    httpClient?: HttpServiceClient
   ): ServiceClient<Service>;
 } = class ServiceClient {
   public httpClient: HttpServiceClient;
-  constructor(props: HttpServiceClientProps, rpcNamespace?: string) {
-    this.httpClient = new HttpServiceClient(props);
+  constructor(
+    props: HttpServiceClientProps,
+    rpcNamespace?: string,
+    httpClient?: HttpServiceClient
+  ) {
+    this.httpClient = httpClient ?? new HttpServiceClient(props);
 
     return proxyServiceClient.call(this, rpcNamespace);
   }

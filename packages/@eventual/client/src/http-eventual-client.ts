@@ -3,6 +3,7 @@ import {
   Execution,
   ExecutionHandle,
   ExecutionHistoryResponse,
+  InvokeCommandRequest,
   ListExecutionEventsRequest,
   ListExecutionEventsResponse,
   ListExecutionsRequest,
@@ -21,7 +22,10 @@ import {
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
   SendActivityHeartbeatRequest,
 } from "@eventual/core/internal";
-import type { HttpServiceClientProps } from "./base-http-client.js";
+import {
+  HttpServiceClient,
+  HttpServiceClientProps,
+} from "./base-http-client.js";
 import { ServiceClient } from "./service-client.js";
 
 /**
@@ -35,11 +39,28 @@ import { ServiceClient } from "./service-client.js";
  */
 export class HttpEventualClient implements EventualServiceClient {
   protected readonly serviceClient: ServiceClient<EventualService>;
+  protected readonly httpClient: HttpServiceClient;
+
   constructor(props: HttpServiceClientProps) {
+    this.httpClient = new HttpServiceClient(props);
+
     this.serviceClient = new ServiceClient<EventualService>(
       props,
-      EVENTUAL_SYSTEM_COMMAND_NAMESPACE
+      EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
+      this.httpClient
     );
+  }
+
+  public async invokeCommand<Input, Output>(
+    request: InvokeCommandRequest<Input, Output>
+  ): Promise<Output> {
+    return this.httpClient.rpc({
+      command:
+        typeof request.command === "string"
+          ? request.command
+          : request.command.name,
+      payload: request.payload,
+    });
   }
 
   public async listWorkflows(): Promise<ListWorkflowsResponse> {

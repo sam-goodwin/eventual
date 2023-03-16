@@ -1,5 +1,5 @@
 import type { Execution, ExecutionHandle } from "./execution.js";
-import type { CommandInput } from "./http/command.js";
+import type { Command, CommandInput } from "./http/command.js";
 import type {
   EventualService,
   ExecutionHistoryResponse,
@@ -9,13 +9,11 @@ import type {
   SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
-  SendActivitySuccessRequest
+  SendActivitySuccessRequest,
 } from "./internal/eventual-service.js";
 import type { Signal } from "./signals.js";
 import type { Workflow, WorkflowInput } from "./workflow.js";
-import {
-  WorkflowExecutionOptions
-} from "./workflow.js";
+import { WorkflowExecutionOptions } from "./workflow.js";
 
 /**
  * Top level Eventual Client used by systems outside of an Eventual Service to interact with it.
@@ -147,6 +145,11 @@ export interface SendSignalRequest<Payload = any> {
    * Execution scoped unique event id. Duplicates will be deduplicated.
    */
   id?: string;
+}
+
+export interface InvokeCommandRequest<Payload = any, Output = any> {
+  command: Command<string, Payload, Output> | string;
+  payload?: Payload;
 }
 
 // re-exports types used by the client, the types are in the internal path otherwise.
