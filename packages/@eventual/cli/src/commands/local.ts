@@ -1,5 +1,5 @@
 import { HttpEventualClient } from "@eventual/client";
-import { inferLoadedService, loadService } from "@eventual/compiler";
+import { loadService } from "@eventual/compiler";
 import { HttpMethod, HttpRequest } from "@eventual/core";
 import { LocalEnvironment } from "@eventual/core-runtime";
 import express from "express";
@@ -8,7 +8,7 @@ import ora from "ora";
 import { Argv } from "yargs";
 import { setServiceOptions } from "../service-action.js";
 
-export const dev = (yargs: Argv) =>
+export const local = (yargs: Argv) =>
   yargs.command(
     "local",
     "Local Eventual Dev Server",
@@ -32,12 +32,7 @@ export const dev = (yargs: Argv) =>
       spinner.start("Starting Local Eventual Dev Server");
       const app = express();
 
-      // does not currently load source locations, loadServiceForInfer was failing
       await loadService(entry);
-
-      const serviceSpec = inferLoadedService();
-
-      console.log(JSON.stringify(serviceSpec));
 
       const port =
         userPort ?? (await getPort({ port: portNumbers(3000, 4000) }));

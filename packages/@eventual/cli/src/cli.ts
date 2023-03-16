@@ -14,7 +14,7 @@ import { publishEvents } from "./commands/publish-events.js";
 import { configure } from "./commands/configure.js";
 import { serviceInfo } from "./commands/service-info.js";
 import { create } from "./commands/create.js";
-import { dev } from "./commands/dev.js";
+import { local } from "./commands/local.js";
 
 const argv = hideBin(process.argv);
 
@@ -80,7 +80,7 @@ addSubCommands(
   replayOperation,
   startOperation,
   createOperation,
-  dev
+  local
 )(cli);
 
 if (argv.length === 0) {
