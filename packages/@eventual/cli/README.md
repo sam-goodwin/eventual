@@ -12,11 +12,11 @@ $ eventual list workflows
 
 ```sh
 $ # Input file should be a json file.
-$ eventual start workflow <workflow> [--input input | --inputFile filePath]
+$ eventual start workflow <workflow> [<input> | --inputFile filePath]
 ```
 
 ```sh
-$ eventual start workflow <workflow> --input '{"foo": "bar"}'
+$ eventual start workflow <workflow> '{"foo": "bar"}'
 ```
 
 Provide input as a json string
@@ -30,7 +30,7 @@ If no input is provided, it is read from stdin
 ## Start a workflow (follow)
 
 ```sh
-$ eventual start workflow <workflow> --follow [--input input | --inputFile filePath]
+$ eventual start workflow <workflow> --follow [<input> | --inputFile filePath]
 ```
 
 ## Get execution history

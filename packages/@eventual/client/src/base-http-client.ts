@@ -30,6 +30,7 @@ export class HttpServiceClient {
   public async rpc<Payload = any, Resp = any>(request: {
     payload: Payload;
     command: string;
+    headers?: Record<string, string>;
     namespace?: string;
   }): Promise<Resp> {
     return await this.request({
@@ -39,6 +40,7 @@ export class HttpServiceClient {
       }),
       body: request.payload,
       method: "POST",
+      headers: request.headers,
     });
   }
 
@@ -46,12 +48,13 @@ export class HttpServiceClient {
     body?: Body;
     method: HttpMethod;
     path: string;
+    headers?: Record<string, string>;
   }): Promise<Resp> {
     const url = `${this.baseUrl.href}${request.path}`;
     return this.requestHandler.request({
       url,
       body: request.body ? JSON.stringify(request.body) : undefined,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...request.headers },
       method: request.method,
     });
   }

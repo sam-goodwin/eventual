@@ -1,19 +1,20 @@
-import { services } from "./commands/services.js";
-import { workflows } from "./commands/workflows.js";
-import { listExecutions } from "./commands/executions.js";
-import { history } from "./commands/history.js";
-import { start } from "./commands/start.js";
-import { logs } from "./commands/logs.js";
 import yargs, { Argv } from "yargs";
 import { hideBin } from "yargs/helpers";
-import { replay } from "./commands/replay.js";
-import { timeline } from "./commands/timeline.js";
-import { sendSignal } from "./commands/send-signal.js";
-import { execution } from "./commands/execution.js";
-import { publishEvents } from "./commands/publish-events.js";
 import { configure } from "./commands/configure.js";
-import { serviceInfo } from "./commands/service-info.js";
 import { create } from "./commands/create.js";
+import { execution } from "./commands/execution.js";
+import { listExecutions } from "./commands/executions.js";
+import { history } from "./commands/history.js";
+import { invokeCommand } from "./commands/invoke.js";
+import { logs } from "./commands/logs.js";
+import { publishEvents } from "./commands/publish-events.js";
+import { replay } from "./commands/replay.js";
+import { sendSignal } from "./commands/send-signal.js";
+import { serviceInfo } from "./commands/service-info.js";
+import { services } from "./commands/services.js";
+import { start } from "./commands/start.js";
+import { timeline } from "./commands/timeline.js";
+import { workflows } from "./commands/workflows.js";
 
 const argv = hideBin(process.argv);
 
@@ -78,7 +79,8 @@ addSubCommands(
   publishOperation,
   replayOperation,
   startOperation,
-  createOperation
+  createOperation,
+  invokeCommand
 )(cli);
 
 if (argv.length === 0) {

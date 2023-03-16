@@ -39,12 +39,17 @@ export interface ServiceClientProps {}
 export const ServiceClient: {
   new <Service>(
     props: HttpServiceClientProps,
-    rpcNamespace?: string
+    rpcNamespace?: string,
+    httpClient?: HttpServiceClient
   ): ServiceClient<Service>;
 } = class ServiceClient {
   public httpClient: HttpServiceClient;
-  constructor(props: HttpServiceClientProps, rpcNamespace?: string) {
-    this.httpClient = new HttpServiceClient(props);
+  constructor(
+    props: HttpServiceClientProps,
+    rpcNamespace?: string,
+    httpClient?: HttpServiceClient
+  ) {
+    this.httpClient = httpClient ?? new HttpServiceClient(props);
 
     return proxyServiceClient.call(this, rpcNamespace);
   }
@@ -64,12 +69,14 @@ export function proxyServiceClient(
   namespace?: string
 ) {
   return new Proxy(this, {
-    get: (_, commandName: string) => (input: any) =>
-      this.httpClient.rpc({
-        command: commandName,
-        payload: input,
-        namespace,
-      }),
+    get: (_, commandName: string) =>
+      ((input: any, options?: { headers?: Record<string, string> }) =>
+        this.httpClient.rpc({
+          command: commandName,
+          payload: input,
+          headers: options?.headers,
+          namespace,
+        })) satisfies ServiceClientMethod<any>,
   });
 }
 
