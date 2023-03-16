@@ -69,15 +69,14 @@ export function proxyServiceClient(
   namespace?: string
 ) {
   return new Proxy(this, {
-    get:
-      (_, commandName: string) =>
-      (input: any, options: { headers?: Record<string, string> }) =>
+    get: (_, commandName: string) =>
+      ((input: any, options?: { headers?: Record<string, string> }) =>
         this.httpClient.rpc({
           command: commandName,
           payload: input,
-          headers: options.headers,
+          headers: options?.headers,
           namespace,
-        }),
+        })) satisfies ServiceClientMethod<any>,
   });
 }
 
