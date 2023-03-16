@@ -13,10 +13,10 @@ import {
   isFailedExecutionRequest,
   WorkflowStarted,
 } from "@eventual/core/internal";
-import type{ ExecutionStore } from "../../stores/execution-store.js";
+import type { ExecutionStore } from "../../stores/execution-store.js";
 import type { LocalEnvConnector } from "../local-environment.js";
 
-export class TestExecutionStore implements ExecutionStore {
+export class LocalExecutionStore implements ExecutionStore {
   private executionStore: Record<string, Execution<any>> = {};
 
   constructor(private localConnector: LocalEnvConnector) {}

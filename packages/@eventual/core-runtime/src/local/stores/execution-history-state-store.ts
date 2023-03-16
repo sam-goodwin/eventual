@@ -4,7 +4,7 @@ import type {
   UpdateHistoryRequest,
 } from "../../stores/execution-history-state-store.js";
 
-export class TestExecutionHistoryStateStore
+export class LocalExecutionHistoryStateStore
   implements ExecutionHistoryStateStore
 {
   private executionHistory: Record<string, HistoryStateEvent[]> = {};

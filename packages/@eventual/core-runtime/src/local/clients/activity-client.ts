@@ -7,7 +7,7 @@ import { isActivitySendEventRequest } from "../../handlers/activity-fallback-han
 import { ActivityWorker } from "../../handlers/activity-worker.js";
 import { LocalEnvConnector } from "../local-environment.js";
 
-export class TestActivityClient extends ActivityClient {
+export class LocalActivityClient extends ActivityClient {
   constructor(
     private localConnector: LocalEnvConnector,
     private activityWorker: ActivityWorker,

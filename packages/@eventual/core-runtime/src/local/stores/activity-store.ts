@@ -3,7 +3,7 @@ import type {
   ActivityStore,
 } from "../../stores/activity-store.js";
 
-export class TestActivityStore implements ActivityStore {
+export class LocalActivityStore implements ActivityStore {
   public async claim(
     _executionId: string,
     _seq: number,

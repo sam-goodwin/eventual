@@ -8,7 +8,7 @@ import {
 import { computeScheduleDate } from "../../schedule.js";
 import { LocalEnvConnector } from "../local-environment.js";
 
-export class TestTimerClient extends TimerClient {
+export class LocalTimerClient extends TimerClient {
   constructor(private timeConnector: LocalEnvConnector) {
     super(() => timeConnector.getTime());
   }
@@ -43,6 +43,4 @@ export class TestTimerClient extends TimerClient {
   public clearSchedule(_scheduleName: string): Promise<void> {
     throw new Error("Method not implemented.");
   }
-
-
 }

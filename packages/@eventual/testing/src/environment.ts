@@ -19,14 +19,25 @@ import {
   ActivityClient,
   CommandExecutor,
   createActivityWorker,
-  createSubscriptionWorker,
   createOrchestrator,
+  createSubscriptionWorker,
   EventClient,
   ExecutionHistoryStore,
   ExecutionStore,
   GlobalWorkflowProvider,
   InMemoryExecutorProvider,
   isWorkflowTask,
+  LocalActivityClient,
+  LocalActivityStore,
+  LocalEnvConnector,
+  LocalEventClient,
+  LocalExecutionHistoryStateStore,
+  LocalExecutionHistoryStore,
+  LocalExecutionQueueClient,
+  LocalExecutionStore,
+  LocalLogsClient,
+  LocalMetricsClient,
+  LocalTimerClient,
   LogAgent,
   Orchestrator,
   RuntimeServiceClient,
@@ -35,21 +46,11 @@ import {
   WorkflowTask,
 } from "@eventual/core-runtime";
 import { ActivityInput, registerServiceClient } from "@eventual/core/internal";
-import { TestActivityClient } from "./clients/activity-client.js";
-import { TestEventClient } from "./clients/event-client.js";
-import { TestExecutionQueueClient } from "./clients/execution-queue-client.js";
-import { TestLogsClient } from "./clients/logs-client.js";
-import { TestMetricsClient } from "./clients/metrics-client.js";
-import { TestTimerClient } from "./clients/timer-client.js";
 import {
   MockableActivityProvider,
   MockActivity,
 } from "./providers/activity-provider.js";
 import { TestSubscriptionProvider } from "./providers/subscription-provider.js";
-import { TestActivityStore } from "./stores/activity-store.js";
-import { TestExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
-import { TestExecutionHistoryStore } from "./stores/execution-history-store.js";
-import { TestExecutionStore } from "./stores/execution-store.js";
 import { TimeController } from "./time-controller.js";
 
 export interface TestEnvironmentProps {
@@ -109,23 +110,23 @@ export class TestEnvironment extends RuntimeServiceClient {
       // increment by seconds
       increment: 1000,
     });
-    const timeConnector: TimeConnector = {
-      pushEvent: (task) => timeController.addEventAtNextTick(task),
+    const localEnvConnector: LocalEnvConnector = {
+      pushWorkflowTask: (task) => timeController.addEventAtNextTick(task),
       scheduleEvent: (time, task) =>
         timeController.addEvent(time.getTime(), task),
       getTime: () => this.time,
     };
 
-    const executionHistoryStore = new TestExecutionHistoryStore();
-    const executionHistoryStateStore = new TestExecutionHistoryStateStore();
-    const activityStore = new TestActivityStore();
-    const executionStore = new TestExecutionStore(timeConnector);
+    const executionHistoryStore = new LocalExecutionHistoryStore();
+    const executionHistoryStateStore = new LocalExecutionHistoryStateStore();
+    const activityStore = new LocalActivityStore();
+    const executionStore = new LocalExecutionStore(localEnvConnector);
 
     const activityProvider = new MockableActivityProvider();
     const eventHandlerProvider = new TestSubscriptionProvider();
 
     const testLogAgent = new LogAgent({
-      logsClient: new TestLogsClient(),
+      logsClient: new LocalLogsClient(),
       getTime: () => this.time,
       logLevel: { default: LogLevel.DEBUG },
     });
@@ -139,12 +140,14 @@ export class TestEnvironment extends RuntimeServiceClient {
     // TODO, update this to support mocking workflows.
     const workflowProvider = new GlobalWorkflowProvider();
 
-    const executionQueueClient = new TestExecutionQueueClient(timeConnector);
-    const timerClient = new TestTimerClient(timeConnector);
-    const eventClient = new TestEventClient(eventHandlerWorker);
+    const executionQueueClient = new LocalExecutionQueueClient(
+      localEnvConnector
+    );
+    const timerClient = new LocalTimerClient(localEnvConnector);
+    const eventClient = new LocalEventClient(eventHandlerWorker);
     const workflowClient = new WorkflowClient(
       executionStore,
-      new TestLogsClient(),
+      new LocalLogsClient(),
       executionQueueClient,
       workflowProvider,
       () => this.time
@@ -154,15 +157,15 @@ export class TestEnvironment extends RuntimeServiceClient {
       activityStore,
       eventClient,
       timerClient,
-      metricsClient: new TestMetricsClient(),
+      metricsClient: new LocalMetricsClient(),
       executionQueueClient,
       activityProvider,
       logAgent: testLogAgent,
       serviceName: props?.serviceName ?? "testing",
     });
 
-    const activityClient = new TestActivityClient(
-      timeConnector,
+    const activityClient = new LocalActivityClient(
+      localEnvConnector,
       activityWorker,
       {
         executionStore,

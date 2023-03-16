@@ -30,16 +30,16 @@ import {
   createUpdateActivityCommand,
 } from "../system-commands.js";
 import { WorkflowTask } from "../tasks.js";
-import { TestActivityClient } from "./clients/activity-client.js";
-import { TestEventClient } from "./clients/event-client.js";
+import { LocalActivityClient } from "./clients/activity-client.js";
+import { LocalEventClient } from "./clients/event-client.js";
 import { LocalExecutionQueueClient } from "./clients/execution-queue-client.js";
-import { TestLogsClient } from "./clients/logs-client.js";
-import { TestMetricsClient } from "./clients/metrics-client.js";
-import { TestTimerClient } from "./clients/timer-client.js";
-import { TestActivityStore } from "./stores/activity-store.js";
-import { TestExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
-import { TestExecutionHistoryStore } from "./stores/execution-history-store.js";
-import { TestExecutionStore } from "./stores/execution-store.js";
+import { LocalLogsClient } from "./clients/logs-client.js";
+import { LocalMetricsClient } from "./clients/metrics-client.js";
+import { LocalTimerClient } from "./clients/timer-client.js";
+import { LocalActivityStore } from "./stores/activity-store.js";
+import { LocalExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
+import { LocalExecutionHistoryStore } from "./stores/execution-history-store.js";
+import { LocalExecutionStore } from "./stores/execution-store.js";
 import { TimeController } from "./time-controller.js";
 
 export class LocalEnvironment {
@@ -60,8 +60,8 @@ export class LocalEnvironment {
         this.timeController.addEvent(time.getTime(), task),
     };
     const executionQueueClient = new LocalExecutionQueueClient(localConnector);
-    const executionStore = new TestExecutionStore(localConnector);
-    const logsClient = new TestLogsClient();
+    const executionStore = new LocalExecutionStore(localConnector);
+    const logsClient = new LocalLogsClient();
     const workflowProvider = new GlobalWorkflowProvider();
     const workflowClient = new WorkflowClient(
       executionStore,
@@ -69,18 +69,18 @@ export class LocalEnvironment {
       executionQueueClient,
       workflowProvider
     );
-    const timerClient = new TestTimerClient(localConnector);
-    const executionHistoryStore = new TestExecutionHistoryStore();
+    const timerClient = new LocalTimerClient(localConnector);
+    const executionHistoryStore = new LocalExecutionHistoryStore();
     const activityProvider = new GlobalActivityProvider();
-    const activityStore = new TestActivityStore();
+    const activityStore = new LocalActivityStore();
     const subscriptionWorker = createSubscriptionWorker({
       subscriptionProvider: new GlobalSubscriptionProvider(),
       serviceClient,
     });
-    const eventClient = new TestEventClient(subscriptionWorker);
-    const metricsClient = new TestMetricsClient();
+    const eventClient = new LocalEventClient(subscriptionWorker);
+    const metricsClient = new LocalMetricsClient();
     const logAgent = new LogAgent({
-      logsClient: new TestLogsClient(),
+      logsClient: new LocalLogsClient(),
       getTime: () => new Date(this.timeController.currentTick),
       logLevel: { default: LogLevel.DEBUG },
     });
@@ -96,7 +96,7 @@ export class LocalEnvironment {
       timerClient,
       serviceClient,
     });
-    const activityClient = new TestActivityClient(
+    const activityClient = new LocalActivityClient(
       localConnector,
       activityWorker,
       {
@@ -141,7 +141,7 @@ export class LocalEnvironment {
     createSendSignalCommand({ executionQueueClient });
     // TODO: should this read from the live executions? or is it needed? I want to deprecate this command.
     createListWorkflowHistoryCommand({
-      executionHistoryStateStore: new TestExecutionHistoryStateStore(),
+      executionHistoryStateStore: new LocalExecutionHistoryStateStore(),
     });
     createListExecutionHistoryCommand({ executionHistoryStore });
 

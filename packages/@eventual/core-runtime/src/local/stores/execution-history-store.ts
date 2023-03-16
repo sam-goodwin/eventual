@@ -6,7 +6,7 @@ import type {
 import type { WorkflowEvent } from "@eventual/core/internal";
 import { ExecutionHistoryStore } from "../../stores/execution-history-store.js";
 
-export class TestExecutionHistoryStore extends ExecutionHistoryStore {
+export class LocalExecutionHistoryStore extends ExecutionHistoryStore {
   private eventStore: Record<string, WorkflowEvent[]> = {};
 
   public async putEvents(
