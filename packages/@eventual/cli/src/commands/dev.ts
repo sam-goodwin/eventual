@@ -10,13 +10,15 @@ import { setServiceOptions } from "../service-action.js";
 
 export const dev = (yargs: Argv) =>
   yargs.command(
-    "dev",
+    "local",
     "Local Eventual Dev Server",
     (yargs) =>
       setServiceOptions(yargs)
         .option("port", {
           alias: "p",
-          describe: "port to run the service on",
+          describe:
+            "Port to run the service on. Selects an open port between 3000 and 4000, unless provided.",
+          default: 3000,
           type: "number",
         })
         .option("entry", {
@@ -27,7 +29,7 @@ export const dev = (yargs: Argv) =>
     async ({ entry, port: userPort }) => {
       const spinner = ora().start("Preparing");
 
-      spinner.start("Starting Eventual Dev Server");
+      spinner.start("Starting Local Eventual Dev Server");
       const app = express();
 
       // does not currently load source locations, loadServiceForInfer was failing
