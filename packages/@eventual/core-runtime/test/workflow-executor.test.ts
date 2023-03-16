@@ -24,8 +24,6 @@ import {
   createWorkflowCall,
   HistoryEvent,
   Result,
-  ServiceType,
-  SERVICE_TYPE_FLAG,
   SignalTargetType,
 } from "@eventual/core/internal";
 import { WorkflowExecutor, WorkflowResult } from "../src/workflow-executor.js";
@@ -90,15 +88,6 @@ const myWorkflow = workflow(async (event) => {
     await createActivityCall("handle-error", [err]);
     return [];
   }
-});
-
-const serviceTypeBack = process.env[SERVICE_TYPE_FLAG];
-beforeAll(() => {
-  process.env[SERVICE_TYPE_FLAG] = ServiceType.OrchestratorWorker;
-});
-
-afterAll(() => {
-  process.env[SERVICE_TYPE_FLAG] = serviceTypeBack;
 });
 
 async function execute<W extends Workflow>(
@@ -579,7 +568,7 @@ test("should return result of inner function", async () => {
 
 test("should schedule duration", async () => {
   const wf = workflow(async () => {
-    await duration(10);
+    await createAwaitTimerCall(Schedule.duration(10));
   });
 
   await expect(execute(wf, [], undefined)).resolves.toMatchObject(<
@@ -603,7 +592,7 @@ test("should not re-schedule duration", async () => {
 
 test("should complete duration", async () => {
   const wf = workflow(async () => {
-    await duration(10);
+    await createAwaitTimerCall(Schedule.duration(10));
     return "done";
   });
 
@@ -619,7 +608,7 @@ test("should schedule time", async () => {
   const now = new Date();
 
   const wf = workflow(async () => {
-    await time(now);
+    await createAwaitTimerCall(Schedule.time(now));
   });
 
   await expect(execute(wf, [], undefined)).resolves.toMatchObject(<
@@ -647,7 +636,7 @@ test("should complete time", async () => {
   const now = new Date();
 
   const wf = workflow(async () => {
-    await time(now);
+    await createAwaitTimerCall(Schedule.time(now));
     return "done";
   });
 

@@ -158,12 +158,11 @@ export async function buildService(request: BuildAWSRuntimeProps) {
   >(specPath: string, type: Type): Promise<BundledFunction<SpecFor<Type>>[]> {
     return await Promise.all(
       (serviceSpec[type] as SpecFor<Type>[]).map(async (spec) => {
-        const [pathPrefix, entry, serviceType, name, monoFunction] =
+        const [pathPrefix, entry, name, monoFunction] =
           type === "commands"
             ? ([
                 "command",
                 "command-worker",
-                ServiceType.CommandWorker,
                 spec.name,
                 monoCommandFunction!,
               ] as const)
@@ -171,14 +170,12 @@ export async function buildService(request: BuildAWSRuntimeProps) {
             ? ([
                 "subscription",
                 "subscription-worker",
-                ServiceType.Subscription,
                 spec.name,
                 monoSubscriptionFunction!,
               ] as const)
             : ([
                 "activity",
                 "activity-worker",
-                ServiceType.ActivityWorker,
                 spec.name,
                 monoActivityFunction!,
               ] as const);
@@ -189,7 +186,6 @@ export async function buildService(request: BuildAWSRuntimeProps) {
             spec,
             pathPrefix,
             entry,
-            serviceType,
             name,
             monoFunction
           ),
@@ -206,7 +202,6 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     spec: Spec,
     pathPrefix: string,
     entryPoint: string,
-    serviceType: ServiceType,
     name: string,
     monoFunction: string
   ): Promise<string> {
@@ -219,7 +214,6 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           name: path.join(pathPrefix, name),
           entry: runtimeHandlersEntrypoint(entryPoint),
           exportName: spec.sourceLocation.exportName,
-          serviceType: serviceType,
           injectedEntry: spec.sourceLocation.fileName,
           injectedServiceSpec: specPath,
         })
@@ -233,22 +227,18 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           name: ServiceType.OrchestratorWorker,
           entry: runtimeHandlersEntrypoint("orchestrator"),
           eventualTransform: true,
-          serviceType: ServiceType.OrchestratorWorker,
         },
         {
           name: ServiceType.ActivityWorker,
           entry: runtimeHandlersEntrypoint("activity-worker"),
-          serviceType: ServiceType.ActivityWorker,
         },
         {
           name: ServiceType.CommandWorker,
           entry: runtimeHandlersEntrypoint("command-worker"),
-          serviceType: ServiceType.CommandWorker,
         },
         {
           name: ServiceType.Subscription,
           entry: runtimeHandlersEntrypoint("subscription-worker"),
-          serviceType: ServiceType.Subscription,
         },
       ]
         .map((s) => ({

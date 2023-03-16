@@ -1,8 +1,6 @@
 import { AsyncLocalStorage } from "async_hooks";
 import { ServiceType } from "./service-type.js";
 
-export const SERVICE_TYPE_FLAG = "EVENTUAL_SERVICE_TYPE";
-
 declare global {
   var serviceTypeStore: AsyncLocalStorage<ServiceType>;
 }

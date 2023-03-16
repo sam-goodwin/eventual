@@ -1,4 +1,3 @@
-import { ServiceType, SERVICE_TYPE_FLAG } from "@eventual/core/internal";
 import esbuild from "esbuild";
 import { aliasPath } from "esbuild-plugin-alias-path";
 import fs from "fs/promises";
@@ -20,7 +19,6 @@ export async function bundleService(
   outDir: string,
   entry: string,
   serviceSpec?: string,
-  serviceType?: ServiceType,
   external?: string[],
   allPackagesExternal?: boolean,
   plugins?: any[],
@@ -34,7 +32,6 @@ export async function bundleService(
       injectedServiceSpec: serviceSpec,
       entry,
       name: "service",
-      serviceType,
       external,
       allPackagesExternal,
       sourcemap: sourceMap,
@@ -56,7 +53,6 @@ export interface BuildSource {
    */
   exportName?: string;
   sourcemap?: boolean | "inline";
-  serviceType?: ServiceType;
   external?: string[];
   allPackagesExternal?: boolean;
   metafile?: boolean;
@@ -70,7 +66,6 @@ export async function build(
     name,
     entry,
     sourcemap,
-    serviceType,
     external,
     allPackagesExternal,
     metafile,
@@ -123,11 +118,6 @@ export async function build(
     entryPoints: [path.resolve(entry)],
     banner: esmPolyfillRequireBanner(),
     outfile,
-    define: serviceType
-      ? {
-          [`process.env.${SERVICE_TYPE_FLAG}`]: serviceType,
-        }
-      : undefined,
   });
 
   await writeEsBuildMetafile(

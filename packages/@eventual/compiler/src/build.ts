@@ -42,7 +42,6 @@ export async function loadService(
     undefined,
     undefined,
     undefined,
-    undefined,
     plugins,
     sourceMaps
   );
