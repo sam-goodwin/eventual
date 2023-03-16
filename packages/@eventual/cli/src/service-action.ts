@@ -143,7 +143,7 @@ export const setServiceOptions = (
     .option("region", { alias: "r", type: "string" })
     .option("local", {
       type: "boolean",
-      describe: "uses a running eventual dev service",
+      describe: "uses a running eventual dev server",
     })
     .option("debug", {
       alias: "d",
