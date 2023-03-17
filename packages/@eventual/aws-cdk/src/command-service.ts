@@ -6,7 +6,11 @@ import {
 } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
-import { ENV_NAMES, sanitizeFunctionName } from "@eventual/aws-runtime";
+import {
+  commandServiceFunctionSuffix,
+  ENV_NAMES,
+  sanitizeFunctionName,
+} from "@eventual/aws-runtime";
 import { commandRpcPath, isDefaultNamespaceCommand } from "@eventual/core";
 import { Arn, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
 import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
@@ -238,7 +242,7 @@ export class CommandService<Service = any> {
           const handler = new ServiceFunction(scope, namespacedName, {
             build: self.props.build,
             bundledFunction: manifest,
-            functionNameSuffix: `${namespacedName}-command`,
+            functionNameSuffix: commandServiceFunctionSuffix(namespacedName),
             serviceName: props.serviceName,
             overrides,
             defaults: {
