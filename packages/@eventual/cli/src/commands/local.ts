@@ -1,10 +1,10 @@
 import { HttpEventualClient } from "@eventual/client";
-import { loadService } from "@eventual/compiler";
 import { HttpMethod, HttpRequest } from "@eventual/core";
 import { LocalEnvironment } from "@eventual/core-runtime";
 import express from "express";
 import getPort, { portNumbers } from "get-port";
 import ora from "ora";
+import path from "path";
 import { Argv } from "yargs";
 import { setServiceOptions } from "../service-action.js";
 
@@ -32,7 +32,7 @@ export const local = (yargs: Argv) =>
       spinner.start("Starting Local Eventual Dev Server");
       const app = express();
 
-      await loadService(entry);
+      await import(path.resolve(entry));
 
       const port =
         userPort ?? (await getPort({ port: portNumbers(3000, 4000) }));

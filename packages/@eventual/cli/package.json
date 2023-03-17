@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.26.0",
   "bin": {
-    "eventual": "bin/eventual.js"
+    "eventual": "bin/eventual.ts"
   },
   "files": [
     "bin",
@@ -73,6 +73,7 @@
     "open": "^8.4.0",
     "ora": "^6.1.2",
     "serve-static": "^1.15.0",
+    "ts-node-esm": "^0.0.6",
     "vite": "^3.2.3",
     "yargs": "^17.6.2"
   }
