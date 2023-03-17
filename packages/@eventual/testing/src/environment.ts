@@ -21,6 +21,7 @@ import {
   createActivityWorker,
   createOrchestrator,
   createSubscriptionWorker,
+  createTimerHandler,
   EventClient,
   ExecutionHistoryStore,
   ExecutionStore,
@@ -42,6 +43,8 @@ import {
   Orchestrator,
   RuntimeServiceClient,
   TimerClient,
+  TimerHandler,
+  TimerRequest,
   WorkflowClient,
   WorkflowTask,
 } from "@eventual/core-runtime";
@@ -95,16 +98,17 @@ export class TestEnvironment extends RuntimeServiceClient {
   private activityProvider: MockableActivityProvider;
   private eventHandlerProvider: TestSubscriptionProvider;
 
-  private timeController: TimeController<WorkflowTask>;
+  private timeController: TimeController<WorkflowTask | TimerRequest>;
 
   private orchestrator: Orchestrator;
+  private timerHandler: TimerHandler;
 
   constructor(props?: TestEnvironmentProps) {
     const start = props?.start
       ? new Date(props.start.getTime() - props.start.getMilliseconds())
       : new Date(0);
 
-    const timeController = new TimeController([], {
+    const timeController = new TimeController<WorkflowTask | TimerRequest>([], {
       // start the time controller at the given start time or Date(0)
       start: start.getTime(),
       // increment by seconds
@@ -215,6 +219,13 @@ export class TestEnvironment extends RuntimeServiceClient {
       timerClient: this.timerClient,
       workflowClient: this.workflowClient,
       workflowProvider,
+    });
+
+    this.timerHandler = createTimerHandler({
+      activityStore,
+      executionQueueClient,
+      logAgent: testLogAgent,
+      timerClient,
     });
 
     registerServiceClient(this);
@@ -452,13 +463,18 @@ export class TestEnvironment extends RuntimeServiceClient {
   /**
    * Process the events from a single tick/second.
    */
-  private async processTickEvents(events: WorkflowTask[]) {
-    if (!events.every(isWorkflowTask)) {
-      // TODO: support other event types.
-      throw new Error("Unknown event types in the TimerController.");
-    }
+  private async processTickEvents(events: (WorkflowTask | TimerRequest)[]) {
+    const timerRequests = events.filter(
+      (task): task is TimerRequest => !isWorkflowTask(task)
+    );
 
-    await this.orchestrator(events, () => this.time);
+    await Promise.all(
+      timerRequests.map((request) => this.timerHandler(request))
+    );
+
+    const workflowTasks = events.filter(isWorkflowTask);
+
+    await this.orchestrator(workflowTasks, () => this.time);
   }
 }
 

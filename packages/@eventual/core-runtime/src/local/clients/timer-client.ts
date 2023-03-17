@@ -25,9 +25,7 @@ export class LocalTimerClient extends TimerClient {
         events: [timerRequest.event],
       });
     } else if (isActivityHeartbeatMonitorRequest(timerRequest)) {
-      throw new Error(
-        "Heartbeat timeout is not yet implemented for the Test Environment."
-      );
+      this.timeConnector.scheduleEvent(time, timerRequest);
     } else {
       return assertNever(timerRequest);
     }

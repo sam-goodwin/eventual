@@ -23,6 +23,10 @@ interface TimerHandlerProps {
   activityStore: ActivityStore;
 }
 
+export interface TimerHandler {
+  (request: TimerRequest): Promise<void>;
+}
+
 /**
  * Creates a generic function for handling {@link TimerRequest}s
  * that can be used in runtime implementations. This implementation is
@@ -34,8 +38,8 @@ export function createTimerHandler({
   executionQueueClient,
   logAgent,
   timerClient,
-}: TimerHandlerProps) {
-  return async (request: TimerRequest) => {
+}: TimerHandlerProps): TimerHandler {
+  return async (request) => {
     try {
       if (isTimerScheduleEventRequest(request)) {
         logAgent.logWithContext(
