@@ -6,17 +6,16 @@ import {
   LogLevel,
 } from "@eventual/core";
 import {
+  activityContextScope,
   ActivityFailed,
   ActivityRuntimeContext,
   ActivitySucceeded,
-  clearActivityContext,
   extendsError,
   isAsyncResult,
   isWorkflowFailed,
   registerServiceClient,
   ServiceType,
   serviceTypeScope,
-  setActivityContext,
   WorkflowEventType,
 } from "@eventual/core/internal";
 import { createActivityToken } from "../activity-token.js";
@@ -164,7 +163,6 @@ export function createActivityWorker({
                   retry: request.retry,
                 },
               };
-              setActivityContext(runtimeContext);
               metrics.putMetric(ActivityMetrics.ClaimRejected, 0, Unit.Count);
 
               logAgent.logWithContext(activityLogContext, LogLevel.DEBUG, [
@@ -175,7 +173,10 @@ export function createActivityWorker({
                 request.command.name
               );
 
-              const event = await runActivity();
+              const event = await activityContextScope(
+                runtimeContext,
+                runActivity
+              );
 
               if (event) {
                 try {
@@ -295,8 +296,6 @@ export function createActivityWorker({
                     },
                     endTime
                   );
-                } finally {
-                  clearActivityContext();
                 }
               }
 
