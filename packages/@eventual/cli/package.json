@@ -59,7 +59,6 @@
     "@aws-sdk/types": "^3.254.0",
     "@eventual/aws-client": "workspace:^",
     "@eventual/client": "workspace:^",
-    "@eventual/compiler": "workspace:^",
     "@eventual/core": "workspace:^",
     "@eventual/core-runtime": "workspace:^",
     "@eventual/project": "workspace:^",

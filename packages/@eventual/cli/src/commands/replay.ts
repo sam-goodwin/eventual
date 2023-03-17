@@ -1,10 +1,9 @@
-import { loadService } from "@eventual/compiler";
 import {
   DeterminismError,
   Execution,
   ExecutionID,
   isFailedExecution,
-  isSucceededExecution,
+  isSucceededExecution
 } from "@eventual/core";
 import {
   isFailed,
@@ -13,14 +12,15 @@ import {
   parseWorkflowName,
   resultToString,
   runExecutor,
-  WorkflowExecutor,
+  WorkflowExecutor
 } from "@eventual/core-runtime";
 import {
   Result,
   ServiceType,
   serviceTypeScope,
-  workflows,
+  workflows
 } from "@eventual/core/internal";
+import path from "path";
 import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
 
@@ -43,7 +43,7 @@ export const replay = (yargs: Argv) =>
     serviceAction(async (spinner, serviceClient, { entry, execution }) => {
       spinner.start("Constructing replay...");
       const [, { events }, executionObj] = await Promise.all([
-        loadService(entry),
+        import(path.resolve(entry)),
         serviceClient.getExecutionWorkflowHistory(execution),
         serviceClient.getExecution(execution),
       ]);

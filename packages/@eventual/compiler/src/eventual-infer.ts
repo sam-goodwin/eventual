@@ -22,7 +22,11 @@ import {
   TsType,
 } from "@swc/core";
 import { Visitor } from "@swc/core/Visitor.js";
+import crypto from "crypto";
 import esbuild from "esbuild";
+import fs from "fs/promises";
+import os from "os";
+import path from "path";
 import {
   getSpan,
   isActivityCall,
@@ -30,26 +34,35 @@ import {
   isOnEventCall,
   isSubscriptionCall,
 } from "./ast-util.js";
-import { loadService } from "./build.js";
 import { printModule } from "./print-module.js";
 
-export async function infer(scriptName: string): Promise<ServiceSpec> {
-  await loadServiceForInfer(scriptName);
+export async function infer(
+  scriptName = process.argv[2]
+): Promise<ServiceSpec> {
+  if (scriptName === undefined) {
+    throw new Error(`scriptName undefined`);
+  }
 
-  const serviceSpec = inferLoadedService();
+  const tmp = os.tmpdir();
 
-  console.log(JSON.stringify(serviceSpec));
+  const bundle = await esbuild.build({
+    mainFields: ["module", "main"],
+    entryPoints: [scriptName],
+    plugins: [inferPlugin],
+    sourcemap: false,
+    bundle: true,
+    write: false,
+    platform: "node",
+  });
 
-  return serviceSpec;
-}
+  const script = bundle.outputFiles[0]!.text;
+  const hash = crypto.createHash("md5").update(script).digest("hex");
+  scriptName = path.join(tmp, `${hash}.js`);
+  await fs.writeFile(scriptName, script);
 
-/**
- * Uses global service data after loading using {@link loadService} or {@link loadServiceForInfer}.
- *
- * To get source locations, use {@link loadServiceForInfer}.
- */
-export function inferLoadedService(): ServiceSpec {
-  return {
+  await import(path.resolve(scriptName));
+
+  const serviceSpec: ServiceSpec = {
     workflows: [...workflows().keys()].map((n) => ({ name: n })),
     activities: Object.values(activities()).map((activity) => ({
       name: activity.name,
@@ -85,10 +98,10 @@ export function inferLoadedService(): ServiceSpec {
       namespace: command.namespace,
     })),
   };
-}
 
-export async function loadServiceForInfer(entry: string) {
-  return loadService(entry, [inferPlugin], false, "cjs");
+  console.log(JSON.stringify(serviceSpec));
+
+  return serviceSpec;
 }
 
 export const inferPlugin: esbuild.Plugin = {

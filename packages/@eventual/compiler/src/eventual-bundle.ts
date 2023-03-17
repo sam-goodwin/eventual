@@ -15,33 +15,6 @@ export async function bundleSources(
   );
 }
 
-export async function bundleService(
-  outDir: string,
-  entry: string,
-  serviceSpec?: string,
-  external?: string[],
-  allPackagesExternal?: boolean,
-  plugins?: any[],
-  sourceMap: boolean | "inline" = "inline",
-  format?: "esm" | "cjs"
-) {
-  await prepareOutDir(outDir);
-  return build(
-    {
-      outDir,
-      injectedEntry: entry,
-      injectedServiceSpec: serviceSpec,
-      entry,
-      name: "service",
-      external,
-      allPackagesExternal,
-      sourcemap: sourceMap,
-      format,
-    },
-    plugins
-  );
-}
-
 export interface BuildSource {
   outDir: string;
   name: string;
@@ -58,10 +31,6 @@ export interface BuildSource {
   external?: string[];
   allPackagesExternal?: boolean;
   metafile?: boolean;
-  /**
-   * @default esm
-   */
-  format?: "esm" | "cjs";
 }
 
 export async function build(
@@ -75,7 +44,6 @@ export async function build(
     external,
     allPackagesExternal,
     metafile,
-    format,
   }: BuildSource,
   plugins?: any[]
 ): Promise<string> {
@@ -83,10 +51,7 @@ export async function build(
   await fs.mkdir(codeDir, {
     recursive: true,
   });
-  const outfile = path.join(
-    codeDir,
-    format === "cjs" ? "index.js" : "index.mjs"
-  );
+  const outfile = path.join(codeDir, "index.mjs");
 
   const bundle = await esbuild.build({
     mainFields: ["module", "main"],
@@ -120,7 +85,7 @@ export async function build(
     // does not include any node modules packages in the bundle
     packages: allPackagesExternal ? "external" : undefined,
     platform: "node",
-    format,
+    format: "esm",
     // Target for node 18
     target: "es2022",
     metafile,

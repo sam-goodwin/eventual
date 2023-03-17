@@ -367,7 +367,6 @@ importers:
       '@aws-sdk/types': ^3.254.0
       '@eventual/aws-client': workspace:^
       '@eventual/client': workspace:^
-      '@eventual/compiler': workspace:^
       '@eventual/core': workspace:^
       '@eventual/core-runtime': workspace:^
       '@eventual/project': workspace:^
@@ -404,7 +403,6 @@ importers:
       '@aws-sdk/types': 3.267.0
       '@eventual/aws-client': link:../aws-client
       '@eventual/client': link:../client
-      '@eventual/compiler': link:../compiler
       '@eventual/core': link:../core
       '@eventual/core-runtime': link:../core-runtime
       '@eventual/project': link:../project
