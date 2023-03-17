@@ -19,7 +19,12 @@ export async function getInputJson(
   } else if (inputFile) {
     return JSON.parse(await fs.readFile(inputFile, { encoding: "utf-8" }));
   } else if (input) {
-    return JSON.parse(input);
+    try {
+      return JSON.parse(input);
+    } catch {
+      // if it isn't invalid JSON, then pass it through as a plain string
+      return input;
+    }
   } else {
     const stdin = await getStdin();
     return stdin.length === 0 ? {} : JSON.parse(stdin);

@@ -14,7 +14,7 @@ import { getInputJson } from "./utils.js";
 
 export const start = (yargs: Argv) =>
   yargs.command(
-    "workflow <workflow>",
+    "workflow <workflow> [input]",
     "Start an workflow",
     (yargs) =>
       setServiceOptions(yargs, true)
@@ -34,8 +34,7 @@ export const start = (yargs: Argv) =>
           describe: "Input file json. If not provided, uses stdin",
           type: "string",
         })
-        .option("input", {
-          alias: "i",
+        .positional("input", {
           describe: "Input data as json string",
           type: "string",
         })

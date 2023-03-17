@@ -4,7 +4,7 @@ import { getInputJson } from "./utils.js";
 
 export const sendSignal = (yargs: Argv) =>
   yargs.command(
-    "signal <signal>",
+    "signal <signal> [input]",
     "Send a signal to a running execution",
     (yargs) =>
       setServiceOptions(yargs)
@@ -19,23 +19,22 @@ export const sendSignal = (yargs: Argv) =>
           type: "string",
           demandOption: true,
         })
-        .option("payloadFile", {
+        .option("inputFile", {
           alias: "f",
           describe:
             "Payload file containing json compatible data to be sent with the signal. Cannot be used with payload. If neither are given, uses stdin.",
           type: "string",
         })
-        .option("payload", {
+        .positional("input", {
           describe:
             "Payload data as json string to be sent with the signal. Cannot be used with payloadFile. If neither are given, uses stdin.",
           type: "string",
-          alias: "p",
         }),
     serviceAction(
-      async (spinner, service, { execution, signal, payload, payloadFile }) => {
+      async (spinner, service, { execution, signal, input, inputFile }) => {
         const inputJSON = await getInputJson(
-          payloadFile,
-          payload,
+          inputFile,
+          input,
           "payloadFile",
           "payload"
         );

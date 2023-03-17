@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.26.0 (2023-03-16)
+
+### Features
+
+- **cli:** invoke command ([#314](https://github.com/functionless/eventual/issues/314)) ([0c0c341](https://github.com/functionless/eventual/commit/0c0c3416cafde930ba8ddf459ecc82f9bec7f369))
+
 ## 0.25.3 (2023-03-15)
 
 **Note:** Version bump only for package @eventual/client

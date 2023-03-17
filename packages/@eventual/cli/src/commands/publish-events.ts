@@ -4,7 +4,7 @@ import { getInputJsonArray } from "./utils.js";
 
 export const publishEvents = (yargs: Argv) =>
   yargs.command(
-    "events <event>",
+    "events <event> [input]",
     "Send one or more events to the service",
     (yargs) =>
       setServiceOptions(yargs)
@@ -13,23 +13,22 @@ export const publishEvents = (yargs: Argv) =>
           type: "string",
           demandOption: true,
         })
-        .option("payloadFile", {
-          alias: "pf",
+        .option("inputFile", {
+          alias: "f",
           describe: "A return delimited file containing event payloads",
           type: "string",
         })
-        .option("payload", {
+        .positional("input", {
           describe:
             "Payload data as json string to be sent with the signal. Cannot be used with payloadFile. If neither are given, uses stdin.",
           type: "string",
-          alias: "p",
           array: true,
         }),
-    serviceAction(async (spinner, service, { event, payload, payloadFile }) => {
+    serviceAction(async (spinner, service, { event, input, inputFile }) => {
       spinner.start("Publish Event");
       const inputPayloads = await getInputJsonArray(
-        payloadFile,
-        payload,
+        inputFile,
+        input,
         "payloadFile",
         "payload"
       );
