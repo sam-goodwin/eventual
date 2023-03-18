@@ -17,6 +17,9 @@ import {
 } from "@eventual/core";
 import {
   ActivityClient,
+  ActivitySendEventRequest,
+  ActivityWorker,
+  ActivityWorkerRequest,
   CommandExecutor,
   createActivityWorker,
   createOrchestrator,
@@ -27,6 +30,9 @@ import {
   ExecutionStore,
   GlobalWorkflowProvider,
   InMemoryExecutorProvider,
+  isActivitySendEventRequest,
+  isActivityWorkerRequest,
+  isTimerRequest,
   isWorkflowTask,
   LocalActivityClient,
   LocalActivityStore,
@@ -98,17 +104,24 @@ export class TestEnvironment extends RuntimeServiceClient {
   private activityProvider: MockableActivityProvider;
   private eventHandlerProvider: TestSubscriptionProvider;
 
-  private timeController: TimeController<WorkflowTask | TimerRequest>;
+  private timeController: TimeController<
+    WorkflowTask | TimerRequest | ActivityWorkerRequest
+  >;
 
   private orchestrator: Orchestrator;
   private timerHandler: TimerHandler;
+  private activityWorker: ActivityWorker;
+
+  private localEnvConnector: LocalEnvConnector;
 
   constructor(props?: TestEnvironmentProps) {
     const start = props?.start
       ? new Date(props.start.getTime() - props.start.getMilliseconds())
       : new Date(0);
 
-    const timeController = new TimeController<WorkflowTask | TimerRequest>([], {
+    const timeController = new TimeController<
+      WorkflowTask | TimerRequest | ActivityWorkerRequest
+    >([], {
       // start the time controller at the given start time or Date(0)
       start: start.getTime(),
       // increment by seconds
@@ -157,26 +170,11 @@ export class TestEnvironment extends RuntimeServiceClient {
       () => this.time
     );
 
-    const activityWorker = createActivityWorker({
-      activityStore,
-      eventClient,
-      timerClient,
-      metricsClient: new LocalMetricsClient(),
+    const activityClient = new LocalActivityClient(localEnvConnector, {
+      executionStore,
       executionQueueClient,
-      activityProvider,
-      logAgent: testLogAgent,
-      serviceName: props?.serviceName ?? "testing",
+      activityStore,
     });
-
-    const activityClient = new LocalActivityClient(
-      localEnvConnector,
-      activityWorker,
-      {
-        executionStore,
-        executionQueueClient,
-        activityStore,
-      }
-    );
 
     super({
       activityClient,
@@ -187,6 +185,17 @@ export class TestEnvironment extends RuntimeServiceClient {
       executionQueueClient,
       executionStore,
       workflowProvider,
+    });
+
+    this.activityWorker = createActivityWorker({
+      activityStore,
+      eventClient,
+      timerClient,
+      metricsClient: new LocalMetricsClient(),
+      executionQueueClient,
+      activityProvider,
+      logAgent: testLogAgent,
+      serviceName: props?.serviceName ?? "testing",
     });
 
     this.executionStore = executionStore;
@@ -201,6 +210,8 @@ export class TestEnvironment extends RuntimeServiceClient {
     this.eventClient = eventClient;
     this.timerClient = timerClient;
     this.activityClient = activityClient;
+
+    this.localEnvConnector = localEnvConnector;
 
     const commandExecutor = new CommandExecutor({
       activityClient,
@@ -463,18 +474,39 @@ export class TestEnvironment extends RuntimeServiceClient {
   /**
    * Process the events from a single tick/second.
    */
-  private async processTickEvents(events: (WorkflowTask | TimerRequest)[]) {
-    const timerRequests = events.filter(
-      (task): task is TimerRequest => !isWorkflowTask(task)
-    );
-
-    await Promise.all(
-      timerRequests.map((request) => this.timerHandler(request))
-    );
-
+  private async processTickEvents(
+    events: (WorkflowTask | TimerRequest | ActivityWorkerRequest)[]
+  ) {
+    const timerRequests = events.filter(isTimerRequest);
     const workflowTasks = events.filter(isWorkflowTask);
+    const activityWorkerRequests = events.filter(isActivityWorkerRequest);
 
-    await this.orchestrator(workflowTasks, () => this.time);
+    const [activityResults] = await Promise.all([
+      Promise.all(
+        activityWorkerRequests.map((request) =>
+          this.activityWorker(
+            request,
+            this.localEnvConnector.getTime(),
+            // end time is the start time plus one second
+            (start) => new Date(start.getTime() + 1000)
+          )
+        )
+      ),
+      Promise.all(timerRequests.map((request) => this.timerHandler(request))),
+      this.orchestrator(workflowTasks),
+    ]);
+
+    activityResults
+      .filter(
+        (r): r is ActivitySendEventRequest =>
+          !!r && isActivitySendEventRequest(r)
+      )
+      .forEach((request) =>
+        this.localEnvConnector.pushWorkflowTask({
+          events: [request.event],
+          executionId: request.executionId,
+        })
+      );
   }
 }
 

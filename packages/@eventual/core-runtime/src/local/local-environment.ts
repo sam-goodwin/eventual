@@ -4,10 +4,13 @@ import {
   HttpResponse,
   LogLevel,
 } from "@eventual/core";
-import { TimerRequest } from "../clients/timer-client.js";
+import { isTimerRequest, TimerRequest } from "../clients/timer-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
 import { CommandExecutor } from "../command-executor.js";
-import { createActivityWorker } from "../handlers/activity-worker.js";
+import {
+  ActivityWorker,
+  createActivityWorker,
+} from "../handlers/activity-worker.js";
 import {
   CommandWorker,
   createCommandWorker,
@@ -15,6 +18,11 @@ import {
 import { createOrchestrator, Orchestrator } from "../handlers/orchestrator.js";
 import { createSubscriptionWorker } from "../handlers/subscription-worker.js";
 import { createTimerHandler, TimerHandler } from "../handlers/timer-handler.js";
+import {
+  ActivityWorkerRequest,
+  isActivitySendEventRequest,
+  isActivityWorkerRequest,
+} from "../index.js";
 import { LogAgent } from "../log-agent.js";
 import { GlobalActivityProvider } from "../providers/activity-provider.js";
 import { InMemoryExecutorProvider } from "../providers/executor-provider.js";
@@ -45,25 +53,31 @@ import { LocalExecutionStore } from "./stores/execution-store.js";
 import { TimeController } from "./time-controller.js";
 
 export class LocalEnvironment {
-  private timeController: TimeController<WorkflowTask | TimerRequest>;
+  private timeController: TimeController<
+    WorkflowTask | TimerRequest | ActivityWorkerRequest
+  >;
   private orchestrator: Orchestrator;
   private commandWorker: CommandWorker;
   private timerHandler: TimerHandler;
+  private activityWorker: ActivityWorker;
+  private localConnector: LocalEnvConnector;
   private running: boolean = false;
   constructor(serviceClient: EventualServiceClient) {
     this.timeController = new TimeController([], {
       increment: 1,
       start: new Date().getTime(),
     });
-    const localConnector: LocalEnvConnector = {
+    this.localConnector = {
       getTime: () => new Date(),
       pushWorkflowTask: (task) =>
         this.timeController.addEvent(new Date().getTime(), task),
       scheduleEvent: (time, task) =>
         this.timeController.addEvent(time.getTime(), task),
     };
-    const executionQueueClient = new LocalExecutionQueueClient(localConnector);
-    const executionStore = new LocalExecutionStore(localConnector);
+    const executionQueueClient = new LocalExecutionQueueClient(
+      this.localConnector
+    );
+    const executionStore = new LocalExecutionStore(this.localConnector);
     const logsClient = new LocalLogsClient();
     const workflowProvider = new GlobalWorkflowProvider();
     const workflowClient = new WorkflowClient(
@@ -72,7 +86,7 @@ export class LocalEnvironment {
       executionQueueClient,
       workflowProvider
     );
-    const timerClient = new LocalTimerClient(localConnector);
+    const timerClient = new LocalTimerClient(this.localConnector);
     const executionHistoryStore = new LocalExecutionHistoryStore();
     const activityProvider = new GlobalActivityProvider();
     const activityStore = new LocalActivityStore();
@@ -87,7 +101,7 @@ export class LocalEnvironment {
       logLevel: { default: LogLevel.DEBUG },
     });
 
-    const activityWorker = createActivityWorker({
+    this.activityWorker = createActivityWorker({
       activityProvider,
       activityStore,
       eventClient,
@@ -98,15 +112,11 @@ export class LocalEnvironment {
       timerClient,
       serviceClient,
     });
-    const activityClient = new LocalActivityClient(
-      localConnector,
-      activityWorker,
-      {
-        activityStore,
-        executionQueueClient,
-        executionStore,
-      }
-    );
+    const activityClient = new LocalActivityClient(this.localConnector, {
+      activityStore,
+      executionQueueClient,
+      executionStore,
+    });
 
     this.orchestrator = createOrchestrator({
       commandExecutor: new CommandExecutor({
@@ -167,19 +177,24 @@ export class LocalEnvironment {
   }
 
   private async processEvents() {
-    let events: (WorkflowTask | TimerRequest)[] = [];
+    let events: (WorkflowTask | TimerRequest | ActivityWorkerRequest)[] = [];
     while (
       (events = this.timeController.tickUntil(new Date().getTime())).length > 0
     ) {
-      const timerRequests = events.filter(
-        (task): task is TimerRequest => !isWorkflowTask(task)
-      );
-
-      await Promise.all(
-        timerRequests.map((request) => this.timerHandler(request))
-      );
-
+      const timerRequests = events.filter(isTimerRequest);
       const workflowTasks = events.filter(isWorkflowTask);
+      const activityWorkerRequests = events.filter(isActivityWorkerRequest);
+
+      activityWorkerRequests.map(async (request) => {
+        const result = await this.activityWorker(request);
+        if (!!result && isActivitySendEventRequest(result)) {
+          this.localConnector.pushWorkflowTask({
+            events: [result.event],
+            executionId: result.executionId,
+          });
+        }
+      });
+      timerRequests.map((request) => this.timerHandler(request));
 
       await this.orchestrator(workflowTasks);
     }
@@ -204,6 +219,11 @@ export class LocalEnvironment {
 
 export interface LocalEnvConnector {
   getTime: () => Date;
-  pushWorkflowTask: (workflowEvent: WorkflowTask | TimerRequest) => void;
-  scheduleEvent(time: Date, task: WorkflowTask | TimerRequest): void;
+  pushWorkflowTask: (
+    workflowEvent: WorkflowTask | TimerRequest | ActivityWorkerRequest
+  ) => void;
+  scheduleEvent(
+    time: Date,
+    task: WorkflowTask | TimerRequest | ActivityWorkerRequest
+  ): void;
 }

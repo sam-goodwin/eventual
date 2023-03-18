@@ -12,7 +12,10 @@ import {
 import { decodeActivityToken } from "../activity-token.js";
 import { ActivityStore } from "../stores/activity-store.js";
 import { ExecutionStore } from "../stores/execution-store.js";
-import { ScheduleActivityCommand } from "../workflow-command.js";
+import {
+  isScheduleActivityCommand,
+  ScheduleActivityCommand,
+} from "../workflow-command.js";
 import { createEvent } from "../workflow-events.js";
 import { ExecutionQueueClient } from "./execution-queue-client.js";
 
@@ -106,4 +109,10 @@ export interface ActivityWorkerRequest {
   executionId: string;
   command: ScheduleActivityCommand;
   retry: number;
+}
+
+export function isActivityWorkerRequest(
+  obj: any
+): obj is ActivityWorkerRequest {
+  return obj && "command" in obj && isScheduleActivityCommand(obj.command);
 }
