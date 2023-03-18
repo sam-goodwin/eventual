@@ -269,7 +269,6 @@ const activityWithHeartbeat = activity(
     let _n = 0;
     while (_n++ < n) {
       await delay(0.5);
-      console.log(_n, n, type);
       if (type === "success") {
         await sendActivityHeartbeat();
       } else if (type === "some-heartbeat" && _n < n * 0.33) {
