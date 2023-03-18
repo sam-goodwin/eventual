@@ -83,12 +83,12 @@ export function serviceAction<T>(
           } else {
             return [
               {
-                apiEndpoint: "http://localhost:3000",
+                apiEndpoint: "http://localhost:3111",
                 eventBusArn: "NOT SET ON LOCAL",
                 workflowExecutionLogGroupName: "NOT SET ON LOCAL",
               } satisfies ServiceData,
               undefined,
-              new HttpEventualClient({ serviceUrl: "http://localhost:3000" }),
+              new HttpEventualClient({ serviceUrl: "http://localhost:3111" }),
             ] as const;
           }
         })();

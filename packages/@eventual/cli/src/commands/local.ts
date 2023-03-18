@@ -1,7 +1,6 @@
 import { HttpMethod, HttpRequest } from "@eventual/core";
 import { LocalEnvironment } from "@eventual/core-runtime";
 import express from "express";
-import getPort, { portNumbers } from "get-port";
 import ora from "ora";
 import path from "path";
 import { Argv } from "yargs";
@@ -15,9 +14,8 @@ export const local = (yargs: Argv) =>
       setServiceOptions(yargs)
         .option("port", {
           alias: "p",
-          describe:
-            "Port to run the service on. Selects an open port between 3000 and 4000, unless provided.",
-          default: 3000,
+          describe: "Port to run the service on.",
+          default: 3111,
           type: "number",
         })
         .option("entry", {
@@ -33,8 +31,7 @@ export const local = (yargs: Argv) =>
 
       await import(path.resolve(entry));
 
-      const port =
-        userPort ?? (await getPort({ port: portNumbers(3000, 4000) }));
+      const port = userPort;
       app.listen(port);
       const url = `http://localhost:${port}`;
 

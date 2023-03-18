@@ -15,7 +15,7 @@ import { ChaosRule } from "./chaos-extension/chaos-engine.js";
 // import { chaosSSMParamName } from "./env.js";
 
 const serviceClient = new HttpEventualClient({
-  serviceUrl: "http://localhost:3000",
+  serviceUrl: "http://localhost:3111",
 });
 // new AWSHttpEventualClient({
 //   serviceUrl: serviceUrl(),
