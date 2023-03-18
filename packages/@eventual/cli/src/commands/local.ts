@@ -1,4 +1,3 @@
-import { HttpEventualClient } from "@eventual/client";
 import { HttpMethod, HttpRequest } from "@eventual/core";
 import { LocalEnvironment } from "@eventual/core-runtime";
 import express from "express";
@@ -39,10 +38,8 @@ export const local = (yargs: Argv) =>
       app.listen(port);
       const url = `http://localhost:${port}`;
 
-      const localServiceClient = new HttpEventualClient({ serviceUrl: url });
-
       // TODO: should the loading be done by the local env?
-      const localEnv = new LocalEnvironment(localServiceClient);
+      const localEnv = new LocalEnvironment();
 
       app.use(express.json({ strict: false }));
 

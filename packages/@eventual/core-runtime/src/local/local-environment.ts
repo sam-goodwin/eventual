@@ -1,7 +1,6 @@
 import {
-  EventualServiceClient,
   HttpRequest,
-  HttpResponse,
+  HttpResponse
 } from "@eventual/core";
 import { registerServiceClient } from "@eventual/core/internal";
 import { isTimerRequest, TimerRequest } from "../clients/timer-client.js";
@@ -9,6 +8,7 @@ import {
   ActivityWorkerRequest,
   isActivitySendEventRequest,
   isActivityWorkerRequest,
+  RuntimeServiceClient
 } from "../index.js";
 import { isWorkflowTask, WorkflowTask } from "../tasks.js";
 import { LocalContainer, LocalEnvConnector } from "./local-container.js";
@@ -22,7 +22,7 @@ export class LocalEnvironment {
   private running: boolean = false;
   private localContainer: LocalContainer;
 
-  constructor(serviceClient: EventualServiceClient) {
+  constructor() {
     this.timeController = new TimeController([], {
       increment: 1,
       start: new Date().getTime(),
@@ -40,6 +40,18 @@ export class LocalEnvironment {
     };
     this.localContainer = new LocalContainer(this.localConnector, {
       serviceName: "fixme",
+    });
+
+    const serviceClient = new RuntimeServiceClient({
+      activityClient: this.localContainer.activityClient,
+      eventClient: this.localContainer.eventClient,
+      executionHistoryStateStore:
+        this.localContainer.executionHistoryStateStore,
+      executionHistoryStore: this.localContainer.executionHistoryStore,
+      executionQueueClient: this.localContainer.executionQueueClient,
+      executionStore: this.localContainer.executionStore,
+      workflowClient: this.localContainer.workflowClient,
+      workflowProvider: this.localContainer.workflowProvider,
     });
 
     registerServiceClient(serviceClient);
