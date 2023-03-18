@@ -19,7 +19,6 @@ export class LocalExecutionHistoryStore extends ExecutionHistoryStore {
   public async getEvents(
     request: ListExecutionEventsRequest
   ): Promise<ListExecutionEventsResponse> {
-    console.log(request);
     const tokenPayload = request.nextToken
       ? deserializeToken(request.nextToken)
       : undefined;
@@ -50,7 +49,6 @@ export class LocalExecutionHistoryStore extends ExecutionHistoryStore {
           ? serializeToken({ index: start + rangeEvents.length })
           : undefined,
     };
-    console.log(res);
     return res;
   }
 }

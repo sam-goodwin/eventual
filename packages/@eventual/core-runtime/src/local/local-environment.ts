@@ -45,11 +45,11 @@ import { LocalExecutionStore } from "./stores/execution-store.js";
 import { TimeController } from "./time-controller.js";
 
 export class LocalEnvironment {
-  private poller: NodeJS.Timer;
   private timeController: TimeController<WorkflowTask | TimerRequest>;
   private orchestrator: Orchestrator;
   private commandWorker: CommandWorker;
   private timerHandler: TimerHandler;
+  private running: boolean = false;
   constructor(serviceClient: EventualServiceClient) {
     this.timeController = new TimeController([], {
       increment: 1,
@@ -84,7 +84,6 @@ export class LocalEnvironment {
     const metricsClient = new LocalMetricsClient();
     const logAgent = new LogAgent({
       logsClient: new LocalLogsClient(),
-      getTime: () => new Date(this.timeController.currentTick),
       logLevel: { default: LogLevel.DEBUG },
     });
 
@@ -106,7 +105,6 @@ export class LocalEnvironment {
         activityStore,
         executionQueueClient,
         executionStore,
-        baseTime: () => new Date(this.timeController.currentTick),
       }
     );
 
@@ -160,13 +158,19 @@ export class LocalEnvironment {
       timerClient,
     });
 
-    this.poller = this.start();
+    this.start();
   }
 
   private start() {
-    return setInterval(async () => {
-      const events = this.timeController.tickUntil(new Date().getTime());
+    this.running = true;
+    this.processEvents();
+  }
 
+  private async processEvents() {
+    let events: (WorkflowTask | TimerRequest)[] = [];
+    while (
+      (events = this.timeController.tickUntil(new Date().getTime())).length > 0
+    ) {
       const timerRequests = events.filter(
         (task): task is TimerRequest => !isWorkflowTask(task)
       );
@@ -177,15 +181,18 @@ export class LocalEnvironment {
 
       const workflowTasks = events.filter(isWorkflowTask);
 
-      await this.orchestrator(
-        workflowTasks,
-        () => new Date(this.timeController.currentTick)
-      );
-    }, 100);
+      await this.orchestrator(workflowTasks);
+    }
+
+    if (this.running) {
+      setTimeout(() => {
+        this.processEvents();
+      }, 100);
+    }
   }
 
   public stop() {
-    clearInterval(this.poller);
+    this.running = false;
   }
 
   public async invokeCommandOrApi(

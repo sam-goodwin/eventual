@@ -175,7 +175,7 @@ export function createActivityWorker({
 
               const event = await activityContextScope(
                 runtimeContext,
-                runActivity
+                async () => await runActivity()
               );
 
               if (event) {
