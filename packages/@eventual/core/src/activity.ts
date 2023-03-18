@@ -237,7 +237,7 @@ export async function asyncResult<Output = any>(
   if (!isActivityWorker()) {
     throw new Error("asyncResult can only be called from within an activity.");
   }
-  const activityContext = getActivityContext();
+  const activityContext = await getActivityContext();
   if (!activityContext) {
     throw new Error(
       "Activity context has not been set yet, asyncResult can only be used from within an activity."
@@ -297,7 +297,7 @@ export function activity<Name extends string, Input = any, Output = any>(
       : // opts, handler
         [undefined, args[0] as Name, args[1] as ActivityOptions, args[2]];
   // register the handler to be looked up during execution.
-  const func = ((input, options) => {
+  const func = (async (input, options) => {
     if (isOrchestratorWorker()) {
       const timeout = options?.timeout ?? opts?.timeout;
 
@@ -313,7 +313,7 @@ export function activity<Name extends string, Input = any, Output = any>(
         options?.heartbeatTimeout ?? opts?.heartbeatTimeout
       ) as any;
     } else {
-      const runtimeContext = getActivityContext();
+      const runtimeContext = await getActivityContext();
       const context: ActivityContext = {
         activity: {
           name,

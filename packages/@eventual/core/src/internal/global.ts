@@ -13,7 +13,7 @@ declare global {
     /**
      * Data about the current activity assigned before running an activity on an the activity worker.
      */
-    activityContextStore?: AsyncLocalStorage<ActivityRuntimeContext>;
+    activityContextStore?: Promise<AsyncLocalStorage<ActivityRuntimeContext>>;
     /**
      * Callable activities which register themselves in an activity worker.
      */
@@ -90,20 +90,19 @@ export async function activityContextScope<Output>(
   handler: () => Output
 ): Promise<Awaited<Output>> {
   if (!globalThis._eventual.activityContextStore) {
-    globalThis._eventual.activityContextStore = new (
-      await import("async_hooks")
-    ).AsyncLocalStorage<ActivityRuntimeContext>();
+    globalThis._eventual.activityContextStore = import("async_hooks").then(
+      (imp) => new imp.AsyncLocalStorage<ActivityRuntimeContext>()
+    );
   }
-  return await globalThis._eventual.activityContextStore.run(
-    context,
-    async () => {
-      return await handler();
-    }
-  );
+  return await (
+    await globalThis._eventual.activityContextStore
+  ).run(context, async () => {
+    return await handler();
+  });
 }
 
-export function getActivityContext(): ActivityRuntimeContext {
-  const context = globalThis._eventual.activityContextStore?.getStore();
+export async function getActivityContext(): Promise<ActivityRuntimeContext> {
+  const context = (await globalThis._eventual.activityContextStore)?.getStore();
 
   if (!context) {
     throw new Error(
