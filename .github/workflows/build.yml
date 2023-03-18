@@ -47,6 +47,8 @@ jobs:
           role-skip-session-tagging: true
       - name: Run Runtime Tests
         run: pnpm -r --filter tests-runtime run test:runtime
+      - name: Run Local Tests
+        run: pnpm -r --filter tests-runtime run test:local-start
       - name: Run CLI Tests
         run: pnpm -r --filter tests-runtime run test:cli
       - name: Run Create Tests
