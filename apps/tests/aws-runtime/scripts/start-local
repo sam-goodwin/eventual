@@ -5,10 +5,15 @@ set -ex
 export EVENTUAL_DEFAULT_SERVICE=eventual-tests
 
 ## start local as a daemon
-npx pm2 --name Local start npx -- eventual local --entry 'test/test-service.ts'
-
-## run the tests
-pnpm run test:local
+{
+  npx pm2 start --wait-ready --name Local pnpm -- eventual local --entry 'test/test-service.ts' &&
+  ## run the tests
+  pnpm run test:local
+} || {
+  npx pm2 logs --nostream &&
+  npx pm2 delete Local &&
+  exit 1
+}
 
 ## stop the server
 npx pm2 delete Local
