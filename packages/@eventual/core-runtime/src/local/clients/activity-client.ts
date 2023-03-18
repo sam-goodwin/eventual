@@ -3,14 +3,14 @@ import {
   ActivityClientProps,
   ActivityWorkerRequest,
 } from "../../clients/activity-client.js";
-import { LocalEnvConnector } from "../local-environment.js";
+import { LocalEnvConnector } from "../local-container.js";
 
 export class LocalActivityClient extends ActivityClient {
   constructor(
     private localConnector: LocalEnvConnector,
-    props: ActivityClientProps
+    props: Omit<ActivityClientProps, "baseTime">
   ) {
-    super(props);
+    super({ ...props, baseTime: () => this.localConnector.getTime() });
   }
 
   public async startActivity(request: ActivityWorkerRequest): Promise<void> {

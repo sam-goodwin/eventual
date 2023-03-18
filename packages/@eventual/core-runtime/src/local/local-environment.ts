@@ -2,66 +2,26 @@ import {
   EventualServiceClient,
   HttpRequest,
   HttpResponse,
-  LogLevel,
 } from "@eventual/core";
+import { registerServiceClient } from "@eventual/core/internal";
 import { isTimerRequest, TimerRequest } from "../clients/timer-client.js";
-import { WorkflowClient } from "../clients/workflow-client.js";
-import { CommandExecutor } from "../command-executor.js";
-import {
-  ActivityWorker,
-  createActivityWorker,
-} from "../handlers/activity-worker.js";
-import {
-  CommandWorker,
-  createCommandWorker,
-} from "../handlers/command-worker.js";
-import { createOrchestrator, Orchestrator } from "../handlers/orchestrator.js";
-import { createSubscriptionWorker } from "../handlers/subscription-worker.js";
-import { createTimerHandler, TimerHandler } from "../handlers/timer-handler.js";
 import {
   ActivityWorkerRequest,
   isActivitySendEventRequest,
   isActivityWorkerRequest,
 } from "../index.js";
-import { LogAgent } from "../log-agent.js";
-import { GlobalActivityProvider } from "../providers/activity-provider.js";
-import { InMemoryExecutorProvider } from "../providers/executor-provider.js";
-import { GlobalSubscriptionProvider } from "../providers/subscription-provider.js";
-import { GlobalWorkflowProvider } from "../providers/workflow-provider.js";
-import {
-  createGetExecutionCommand,
-  createListExecutionHistoryCommand,
-  createListExecutionsCommand,
-  createListWorkflowHistoryCommand,
-  createListWorkflowsCommand,
-  createPublishEventsCommand,
-  createSendSignalCommand,
-  createStartExecutionCommand,
-  createUpdateActivityCommand,
-} from "../system-commands.js";
 import { isWorkflowTask, WorkflowTask } from "../tasks.js";
-import { LocalActivityClient } from "./clients/activity-client.js";
-import { LocalEventClient } from "./clients/event-client.js";
-import { LocalExecutionQueueClient } from "./clients/execution-queue-client.js";
-import { LocalLogsClient } from "./clients/logs-client.js";
-import { LocalMetricsClient } from "./clients/metrics-client.js";
-import { LocalTimerClient } from "./clients/timer-client.js";
-import { LocalActivityStore } from "./stores/activity-store.js";
-import { LocalExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
-import { LocalExecutionHistoryStore } from "./stores/execution-history-store.js";
-import { LocalExecutionStore } from "./stores/execution-store.js";
+import { LocalContainer, LocalEnvConnector } from "./local-container.js";
 import { TimeController } from "./time-controller.js";
 
 export class LocalEnvironment {
   private timeController: TimeController<
     WorkflowTask | TimerRequest | ActivityWorkerRequest
   >;
-  private orchestrator: Orchestrator;
-  private commandWorker: CommandWorker;
-  private timerHandler: TimerHandler;
-  private activityWorker: ActivityWorker;
   private localConnector: LocalEnvConnector;
   private running: boolean = false;
+  private localContainer: LocalContainer;
+
   constructor(serviceClient: EventualServiceClient) {
     this.timeController = new TimeController([], {
       increment: 1,
@@ -78,99 +38,11 @@ export class LocalEnvironment {
         this.tryStartProcessingEvents();
       },
     };
-    const executionQueueClient = new LocalExecutionQueueClient(
-      this.localConnector
-    );
-    const executionStore = new LocalExecutionStore(this.localConnector);
-    const logsClient = new LocalLogsClient();
-    const workflowProvider = new GlobalWorkflowProvider();
-    const workflowClient = new WorkflowClient(
-      executionStore,
-      logsClient,
-      executionQueueClient,
-      workflowProvider
-    );
-    const timerClient = new LocalTimerClient(this.localConnector);
-    const executionHistoryStore = new LocalExecutionHistoryStore();
-    const activityProvider = new GlobalActivityProvider();
-    const activityStore = new LocalActivityStore();
-    const subscriptionWorker = createSubscriptionWorker({
-      subscriptionProvider: new GlobalSubscriptionProvider(),
-      serviceClient,
-    });
-    const eventClient = new LocalEventClient(subscriptionWorker);
-    const metricsClient = new LocalMetricsClient();
-    const logAgent = new LogAgent({
-      logsClient: new LocalLogsClient(),
-      logLevel: { default: LogLevel.DEBUG },
-    });
-
-    this.activityWorker = createActivityWorker({
-      activityProvider,
-      activityStore,
-      eventClient,
-      executionQueueClient,
-      logAgent,
-      metricsClient,
+    this.localContainer = new LocalContainer(this.localConnector, {
       serviceName: "fixme",
-      timerClient,
-      serviceClient,
-    });
-    const activityClient = new LocalActivityClient(this.localConnector, {
-      activityStore,
-      executionQueueClient,
-      executionStore,
     });
 
-    this.orchestrator = createOrchestrator({
-      commandExecutor: new CommandExecutor({
-        activityClient,
-        eventClient,
-        executionQueueClient: executionQueueClient,
-        timerClient,
-        workflowClient: workflowClient,
-      }),
-      workflowClient,
-      timerClient,
-      serviceName: "fixme",
-      executionHistoryStore,
-      executorProvider: new InMemoryExecutorProvider(),
-      workflowProvider,
-    });
-
-    /**
-     * Register all of the commands to run.
-     */
-    createListWorkflowsCommand({
-      workflowProvider,
-    });
-    createPublishEventsCommand({
-      eventClient,
-    });
-    createStartExecutionCommand({
-      workflowClient,
-    });
-    createListExecutionsCommand({ executionStore });
-    createGetExecutionCommand({ executionStore });
-    createUpdateActivityCommand({ activityClient });
-    createSendSignalCommand({ executionQueueClient });
-    // TODO: should this read from the live executions? or is it needed? I want to deprecate this command.
-    createListWorkflowHistoryCommand({
-      executionHistoryStateStore: new LocalExecutionHistoryStateStore(),
-    });
-    createListExecutionHistoryCommand({ executionHistoryStore });
-
-    // must register commands before the command worker is loaded!
-    this.commandWorker = createCommandWorker({
-      serviceClient: serviceClient,
-    });
-
-    this.timerHandler = createTimerHandler({
-      activityStore,
-      executionQueueClient,
-      logAgent,
-      timerClient,
-    });
+    registerServiceClient(serviceClient);
 
     this.start();
   }
@@ -233,7 +105,7 @@ export class LocalEnvironment {
 
       // run all activity requests, don't wait for a result
       activityWorkerRequests.forEach(async (request) => {
-        const result = await this.activityWorker(request);
+        const result = await this.localContainer.activityWorker(request);
         if (!!result && isActivitySendEventRequest(result)) {
           this.localConnector.pushWorkflowTask({
             events: [result.event],
@@ -242,10 +114,12 @@ export class LocalEnvironment {
         }
       });
       // run all timer requests, don't wait for a result
-      timerRequests.forEach((request) => this.timerHandler(request));
+      timerRequests.forEach((request) =>
+        this.localContainer.timerHandler(request)
+      );
 
       // run the orchestrator, but wait for a result.
-      await this.orchestrator(workflowTasks);
+      await this.localContainer.orchestrator(workflowTasks);
     }
   }
 
@@ -256,17 +130,6 @@ export class LocalEnvironment {
   public async invokeCommandOrApi(
     httpRequest: HttpRequest
   ): Promise<HttpResponse> {
-    return this.commandWorker(httpRequest);
+    return this.localContainer.commandWorker(httpRequest);
   }
-}
-
-export interface LocalEnvConnector {
-  getTime: () => Date;
-  pushWorkflowTask: (
-    workflowEvent: WorkflowTask | TimerRequest | ActivityWorkerRequest
-  ) => void;
-  scheduleEvent(
-    time: Date,
-    task: WorkflowTask | TimerRequest | ActivityWorkerRequest
-  ): void;
 }

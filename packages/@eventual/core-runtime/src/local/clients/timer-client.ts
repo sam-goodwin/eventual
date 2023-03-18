@@ -6,7 +6,7 @@ import {
   TimerRequest,
 } from "../../clients/timer-client.js";
 import { computeScheduleDate } from "../../schedule.js";
-import { LocalEnvConnector } from "../local-environment.js";
+import { LocalEnvConnector } from "../local-container.js";
 
 export class LocalTimerClient extends TimerClient {
   constructor(private timeConnector: LocalEnvConnector) {

@@ -14,7 +14,7 @@ import {
   WorkflowStarted,
 } from "@eventual/core/internal";
 import type { ExecutionStore } from "../../stores/execution-store.js";
-import type { LocalEnvConnector } from "../local-environment.js";
+import type { LocalEnvConnector } from "../local-container.js";
 
 export class LocalExecutionStore implements ExecutionStore {
   private executionStore: Record<string, Execution<any>> = {};
