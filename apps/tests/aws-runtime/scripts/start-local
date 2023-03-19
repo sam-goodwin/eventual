@@ -6,7 +6,7 @@ export EVENTUAL_DEFAULT_SERVICE=eventual-tests
 
 ## start local as a daemon
 {
-  npx pm2 start --wait-ready --name Local pnpm -- eventual local --entry 'test/test-service.ts' &&
+  npx pm2 start --wait-ready --interpreter pnpm --name Local eventual -- local --entry 'test/test-service.ts' &&
   ## run the tests
   pnpm run test:local
 } || {
