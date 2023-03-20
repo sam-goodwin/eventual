@@ -26,6 +26,7 @@ import { Construct } from "constructs";
 import openapi from "openapi3-ts";
 import path from "path";
 import {
+  Activity,
   ActivityOverrides,
   ActivityService,
   ServiceActivities,
@@ -237,6 +238,7 @@ export class Service<S = any> extends Construct {
       workflowService: proxyWorkflowService,
       commandsService: proxyCommandService,
       overrides: props.activities,
+      local: this.local,
     });
     proxyActivityService._bind(activityService);
     this.activities = activityService.activities;
@@ -264,6 +266,7 @@ export class Service<S = any> extends Construct {
       eventService: this.eventService,
       workflowService: workflowService,
       cors: props.cors,
+      local: this.local,
       ...serviceConstructProps,
     });
     proxyCommandService._bind(this.commandService);
@@ -275,6 +278,7 @@ export class Service<S = any> extends Construct {
       commandService: this.commandService,
       eventService: this.eventService,
       subscriptions: props.subscriptions,
+      local: this.local,
       ...serviceConstructProps,
     });
 
@@ -336,11 +340,11 @@ export class Service<S = any> extends Construct {
     proxyService._bind(this);
   }
 
-  public get activitiesList(): Subscription[] {
+  public get activitiesList(): Activity[] {
     return Object.values(this.activities);
   }
 
-  public get commandsList(): Function[] {
+  public get commandsList(): EventualResource[] {
     return Object.values(this.commands);
   }
 
@@ -374,7 +378,9 @@ export class Service<S = any> extends Construct {
     this.activitiesList.forEach(({ handler }) =>
       handler.addEnvironment(key, value)
     );
-    this.commandsList.forEach((handler) => handler.addEnvironment(key, value));
+    this.commandsList.forEach(({ handler }) =>
+      handler.addEnvironment(key, value)
+    );
     this.subscriptionsList.forEach(({ handler }) =>
       handler.addEnvironment(key, value)
     );
@@ -590,4 +596,16 @@ export interface ServiceConstructProps {
   readonly serviceScope: Construct;
   readonly systemScope: Construct;
   readonly eventualServiceScope: Construct;
+}
+
+export class EventualResource implements IGrantable {
+  public grantPrincipal: IPrincipal;
+  constructor(public handler: Function, local?: ServiceLocal) {
+    this.grantPrincipal = local
+      ? new DeepCompositePrincipal(
+          handler.grantPrincipal,
+          local.environmentRole
+        )
+      : handler.grantPrincipal;
+  }
 }

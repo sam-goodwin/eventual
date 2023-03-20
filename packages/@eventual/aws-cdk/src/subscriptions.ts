@@ -2,16 +2,20 @@ import { subscriptionServiceFunctionSuffix } from "@eventual/aws-runtime";
 import { aws_iam } from "aws-cdk-lib";
 import { IEventBus, Rule } from "aws-cdk-lib/aws-events";
 import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";
-import type { IGrantable } from "aws-cdk-lib/aws-iam";
 import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
 import type { SubscriptionFunction } from "./build-manifest";
 import { CommandService } from "./command-service";
+import { DeepCompositePrincipal } from "./deep-composite-principal";
 import type { EventService } from "./event-service";
 import { LazyInterface } from "./proxy-construct";
-import type { ServiceConstructProps } from "./service";
+import type {
+  EventualResource,
+  ServiceConstructProps,
+  ServiceLocal,
+} from "./service";
 import { ServiceFunction } from "./service-function";
 import type { ServiceEntityProps } from "./utils";
 
@@ -38,6 +42,7 @@ export interface SubscriptionsProps<S = any> extends ServiceConstructProps {
    */
   readonly eventService: EventService;
   readonly commandService: LazyInterface<CommandService>;
+  readonly local: ServiceLocal | undefined;
 }
 
 export const Subscriptions: {
@@ -64,6 +69,7 @@ export const Subscriptions: {
               props.subscriptions?.[
                 sub.spec.name as keyof SubscriptionOverrides<Service>
               ],
+            local: props.local,
           }),
         ];
       })
@@ -93,9 +99,10 @@ export interface SubscriptionProps {
   overrides?: SubscriptionHandlerProps;
   environment?: Record<string, string>;
   bus: IEventBus;
+  local: ServiceLocal | undefined;
 }
 
-export class Subscription extends Construct implements IGrantable {
+export class Subscription extends Construct implements EventualResource {
   /**
    * The Lambda Function processing the events matched by this Subscription.
    */
@@ -131,7 +138,12 @@ export class Subscription extends Construct implements IGrantable {
       bundledFunction: props.subscription,
     });
 
-    this.grantPrincipal = this.handler.role!;
+    this.grantPrincipal = props.local
+      ? new DeepCompositePrincipal(
+          props.local.environmentRole,
+          this.handler.grantPrincipal
+        )
+      : this.handler.grantPrincipal;
 
     if (subscription.filters.length > 0) {
       // configure a Rule to route all subscribed events to the eventHandler

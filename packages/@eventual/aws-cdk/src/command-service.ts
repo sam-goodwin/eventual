@@ -1,8 +1,8 @@
 import {
-  HttpApi,
-  HttpRouteProps,
-  HttpMethod,
   CorsHttpMethod,
+  HttpApi,
+  HttpMethod,
+  HttpRouteProps,
 } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
@@ -22,14 +22,18 @@ import type {
 } from "./build-manifest";
 import type { EventService } from "./event-service";
 import { grant } from "./grant";
-import type { ServiceConstructProps } from "./service";
+import {
+  EventualResource,
+  ServiceConstructProps,
+  ServiceLocal,
+} from "./service";
 import { ServiceFunction } from "./service-function.js";
 import type { ServiceEntityProps } from "./utils";
 import type { WorkflowService } from "./workflow-service";
 
 export type Commands<Service> = {
-  default: Function;
-} & ServiceEntityProps<Service, "Command", Function>;
+  default: EventualResource;
+} & ServiceEntityProps<Service, "Command", EventualResource>;
 
 export type CommandProps<Service> = {
   default?: CommandHandlerProps;
@@ -76,6 +80,7 @@ export interface CommandsProps<Service = any> extends ServiceConstructProps {
   eventService: EventService;
   workflowService: WorkflowService;
   cors?: CorsOptions;
+  local: ServiceLocal | undefined;
 }
 
 /**
@@ -115,7 +120,7 @@ export class CommandService<Service = any> {
    * memory and timeout configuration.
    */
   public get handlers(): Function[] {
-    return Object.values(this.serviceCommands);
+    return Object.values(this.serviceCommands).map((c) => c.handler);
   }
 
   constructor(private props: CommandsProps<Service>) {
@@ -189,18 +194,21 @@ export class CommandService<Service = any> {
       ...systemCommands,
     });
     this.serviceCommands = Object.fromEntries(
-      Object.entries(serviceCommands).map(([c, { handler }]) => [c, handler])
+      Object.entries(serviceCommands).map(([c, { handler }]) => [
+        c,
+        new EventualResource(handler, this.props.local),
+      ])
     ) as Commands<Service>;
     this.systemCommands = Object.fromEntries(
       Object.entries(systemCommands).map(([c, { handler }]) => [c, handler])
-    ) as SystemCommands;
+    ) satisfies SystemCommands;
 
     // Service => Gateway
     this.gateway = new HttpApi(props.serviceScope, "Gateway", {
       apiName: `eventual-api-${props.serviceName}`,
       defaultIntegration: new HttpLambdaIntegration(
         "default",
-        this.serviceCommands.default
+        this.serviceCommands.default.handler
       ),
       corsPreflight: props.cors
         ? {
@@ -364,7 +372,7 @@ export class CommandService<Service = any> {
               payloadFormatVersion: "2.0",
               type: "aws_proxy",
               uri: Lazy.string({
-                produce: () => self.serviceCommands.default.functionArn,
+                produce: () => self.serviceCommands.default.handler.functionArn,
               }),
             } satisfies XAmazonApiGatewayIntegration,
           },
