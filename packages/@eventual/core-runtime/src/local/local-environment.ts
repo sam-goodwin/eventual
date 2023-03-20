@@ -1,14 +1,11 @@
-import {
-  HttpRequest,
-  HttpResponse
-} from "@eventual/core";
+import { HttpRequest, HttpResponse } from "@eventual/core";
 import { registerServiceClient } from "@eventual/core/internal";
 import { isTimerRequest, TimerRequest } from "../clients/timer-client.js";
 import {
   ActivityWorkerRequest,
   isActivitySendEventRequest,
   isActivityWorkerRequest,
-  RuntimeServiceClient
+  RuntimeServiceClient,
 } from "../index.js";
 import { isWorkflowTask, WorkflowTask } from "../tasks.js";
 import { LocalContainer, LocalEnvConnector } from "./local-container.js";
@@ -29,6 +26,11 @@ export class LocalEnvironment {
     });
     this.localConnector = {
       getTime: () => new Date(),
+      // local env doesn't care about current vs next tick
+      pushWorkflowTaskNextTick: (task) => {
+        this.timeController.addEvent(new Date().getTime(), task);
+        this.tryStartProcessingEvents();
+      },
       pushWorkflowTask: (task) => {
         this.timeController.addEvent(new Date().getTime(), task);
         this.tryStartProcessingEvents();
@@ -119,7 +121,7 @@ export class LocalEnvironment {
       activityWorkerRequests.forEach(async (request) => {
         const result = await this.localContainer.activityWorker(request);
         if (!!result && isActivitySendEventRequest(result)) {
-          this.localConnector.pushWorkflowTask({
+          this.localConnector.pushWorkflowTaskNextTick({
             events: [result.event],
             executionId: result.executionId,
           });

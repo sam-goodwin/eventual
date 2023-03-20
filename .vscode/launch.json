@@ -12,7 +12,7 @@
       "outFiles": ["${workspaceFolder}/**/*.js", "!**/node_modules/**"],
       "runtimeArgs": ["--enable-source-maps"],
       "env": { "NODE_OPTIONS": "--experimental-vm-modules" },
-      "args": ["--runInBand", "--watchAll=false", "--selectProjects workspace"]
+      "args": ["--runInBand", "--watchAll=false", "--selectProjects=workspace"]
     },
     {
       "type": "node",

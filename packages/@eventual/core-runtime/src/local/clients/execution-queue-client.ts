@@ -11,6 +11,6 @@ export class LocalExecutionQueueClient extends ExecutionQueueClient {
     executionId: string,
     ...events: WorkflowInputEvent[]
   ): Promise<void> {
-    this.envConnector.pushWorkflowTask({ executionId, events });
+    this.envConnector.pushWorkflowTaskNextTick({ executionId, events });
   }
 }

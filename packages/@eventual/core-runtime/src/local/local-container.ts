@@ -211,6 +211,7 @@ export class LocalContainer {
 
 export interface LocalEnvConnector {
   getTime: () => Date;
+  pushWorkflowTaskNextTick: (envEvent: LocalEvent) => void;
   pushWorkflowTask: (envEvent: LocalEvent) => void;
   scheduleEvent(time: Date, envEvent: LocalEvent): void;
 }

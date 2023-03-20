@@ -77,7 +77,7 @@ describe("activity", () => {
 
     // progress time, the activity should be done now.
     // note: running real activities uses an async function and may not be done by the next tick
-    await env.tick(2);
+    await env.tick();
 
     // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
     const r2 = await result.getStatus();
@@ -101,7 +101,7 @@ describe("activity", () => {
         workflow: workflow3,
         input: undefined,
       });
-      await env.tick(2);
+      await env.tick();
 
       // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
       const r2 = await execution.getStatus();
@@ -121,7 +121,7 @@ describe("activity", () => {
         workflow: workflow3,
         input: undefined,
       });
-      await env.tick(2);
+      await env.tick();
 
       // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
       const r2 = await execution.getStatus();
@@ -141,7 +141,7 @@ describe("activity", () => {
         workflow: workflow3,
         input: undefined,
       });
-      await env.tick(2);
+      await env.tick();
 
       // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
       const r2 = await execution.getStatus();
@@ -159,7 +159,7 @@ describe("activity", () => {
         workflow: workflow3,
         input: { parallel: 3 },
       });
-      await env.tick(2);
+      await env.tick();
 
       // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
       const r2 = await execution.getStatus();
@@ -183,7 +183,7 @@ describe("activity", () => {
         workflow: workflow3,
         input: { parallel: 3 },
       });
-      await env.tick(2);
+      await env.tick();
 
       // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
       const r2 = await execution.getStatus();
@@ -207,7 +207,7 @@ describe("activity", () => {
         workflow: workflow3,
         input: { parallel: 3 },
       });
-      await env.tick(2);
+      await env.tick();
 
       // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
       const r2 = await execution.getStatus();
@@ -236,7 +236,7 @@ describe("activity", () => {
         workflow: workflow3,
         input: { parallel: 2 },
       });
-      await env.tick(2);
+      await env.tick();
 
       // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
       const r2 = await execution.getStatus();
@@ -262,7 +262,7 @@ describe("activity", () => {
         workflow: workflow3,
         input: { parallel: 1 },
       });
-      await env.tick(2);
+      await env.tick();
 
       // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
       const r2 = await execution.getStatus();
@@ -287,16 +287,14 @@ describe("activity", () => {
         workflow: workflow3,
         input: { series: 3 },
       });
-      // start activity 1 and completes at tick 2
-      await env.tick(2);
       // while activity call 1 succeeds, update the mock result
       mockActivity.succeed("new mock result");
-      // activity call 2 is started and completes at tick 4
-      await env.tick(2);
+      await env.tick();
 
       // while activity call 2 succeeds, update the mock result
       mockActivity.succeed("another new mock result");
-      // activity call 3 is stated and completes at tick 6
+      // activity call 2 succeeds at tick 1, starting activity call 3
+      // activity call 3 succeeds at tick 2
       await env.tick(2);
 
       // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
@@ -319,7 +317,7 @@ describe("activity", () => {
         workflow: workflow3,
         input: { parallel: 3 },
       });
-      await env.tick(2);
+      await env.tick();
 
       // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
       const r2 = await execution.getStatus();
@@ -495,20 +493,8 @@ describe("sleep", () => {
       input: false,
     });
 
-    // see if the execution has succeeded
     const r1 = await result.getStatus();
-    // we expect it to still be in progress
     expect(r1).toMatchObject<Partial<typeof r1>>({
-      status: ExecutionStatus.IN_PROGRESS,
-    });
-
-    // progress time, the sleep is triggered
-    // note: still need to progress once for the event to be processed
-    await env.tick();
-
-    // the workflow still not be done, have 9 more seconds left on the sleep
-    const r3 = await result.getStatus();
-    expect(r3).toMatchObject<Partial<typeof r3>>({
       status: ExecutionStatus.SUCCEEDED,
       result: "hello",
     });
@@ -894,7 +880,7 @@ describe("timeouts", () => {
     });
 
     await execution.sendSignal(dataSignal, "woo");
-    await env.tick(4);
+    await env.tick(3);
 
     expect(await execution.getStatus()).toMatchObject<
       Partial<Awaited<ReturnType<typeof execution.getStatus>>>
@@ -977,9 +963,6 @@ describe("long running activities", () => {
       input: undefined,
     });
 
-    // wait for the activity to run
-    await env.tick();
-
     if (!activityToken) {
       throw new Error("Expected activity token to be set");
     }
@@ -1001,9 +984,6 @@ describe("long running activities", () => {
       workflow: longRunningWorkflow,
       input: undefined,
     });
-
-    // wait for the activity to run
-    await env.tick();
 
     if (!activityToken) {
       throw new Error("Expected activity token to be set");
@@ -1028,9 +1008,6 @@ describe("long running activities", () => {
       input: undefined,
     });
 
-    // wait for the activity to run
-    await env.tick();
-
     if (!activityToken) {
       throw new Error("Expected activity token to be set");
     }
@@ -1053,9 +1030,6 @@ describe("long running activities", () => {
       workflow: longRunningWorkflow,
       input: undefined,
     });
-
-    // wait for the activity to run
-    await env.tick();
 
     if (!activityToken) {
       throw new Error("Expected activity token to be set");
@@ -1082,7 +1056,7 @@ describe("long running activities", () => {
         input: undefined,
       });
 
-      await env.tick(2);
+      await env.tick();
 
       expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
         status: ExecutionStatus.SUCCEEDED,
@@ -1241,12 +1215,6 @@ describe("time", () => {
     await execution.sendSignal(dataSignal, "hi");
     await execution.sendSignal(dataSignal, "hi");
     await execution.sendSignal(dataSignal, "hi");
-
-    console.log(
-      JSON.stringify(
-        await env.getExecutionHistory({ executionId: execution.executionId })
-      )
-    );
 
     // the workflow should be done now, the activity succeeded event should have been processed in the `tick`
     const r2 = await execution.getStatus();
