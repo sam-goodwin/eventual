@@ -107,6 +107,8 @@ export async function buildService(request: BuildAWSRuntimeProps) {
   ] as const);
 
   const manifest: BuildManifest = {
+    serviceName: request.serviceName,
+    entry: request.entry,
     activities: activities,
     events: serviceSpec.events,
     subscriptions,

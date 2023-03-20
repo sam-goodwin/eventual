@@ -29,22 +29,24 @@ export const local = (yargs: Argv) =>
           type: "string",
           demandOption: true,
         })
-        .option("skip-deployment", {
-          describe: "When set, does not try to deploy or update the service.",
-          type: "boolean",
+        .option("update", {
+          describe: "The update mode: first, never, always",
+          choices: ["first", "never", "always"],
+          default: "first",
+          type: "string",
         }),
     serviceAction(
       async (
         spinner,
         _,
-        { entry, port: userPort, cdk, skipDeployment },
+        { entry, port: userPort, cdk, update },
         { credentials, serviceName }
       ) => {
         spinner.start("Starting Local Eventual Dev Server");
         const app = express();
         process.env.EVENTUAL_LOCAL = "1";
 
-        if (!skipDeployment) {
+        if (!update) {
           spinner.text = "Deploying CDK";
           await exec(cdk);
         }

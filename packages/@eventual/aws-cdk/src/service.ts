@@ -210,7 +210,7 @@ export class Service<S = any> extends Construct {
     const build = buildServiceSync({
       serviceName: this.serviceName,
       entry: props.entry,
-      outDir: path.join(".eventual", this.node.addr),
+      outDir: path.join(".eventual", this.serviceName),
     });
 
     const proxySchedulerService = lazyInterface<SchedulerService>();

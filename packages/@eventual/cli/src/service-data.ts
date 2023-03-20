@@ -8,6 +8,8 @@ import { loadConfig } from "@aws-sdk/node-config-provider";
 import { AwsCredentialIdentity } from "@aws-sdk/types";
 import { defaultService } from "./env.js";
 import { styledConsole } from "./styled-console.js";
+import fs from "fs/promises";
+import path from "path";
 
 /**
  * The data which is encoded in SSM for a given service under /eventual/services/{name}
@@ -59,10 +61,7 @@ export async function resolveRegion() {
  * 3. List all service names, if there is one service name in the account, use it
  * 4. Fail
  */
-export async function tryResolveDefaultService(
-  _serviceName?: string,
-  region?: string
-) {
+export async function tryResolveDefaultService(_serviceName?: string) {
   // explicit
   if (_serviceName) {
     return _serviceName;
@@ -73,7 +72,7 @@ export async function tryResolveDefaultService(
     return envServiceName;
   }
   // check if there are zero, one, or more than one service names.
-  const serviceNames = await getServices(region, 2);
+  const serviceNames = await getLocalServices();
   const [serviceName, otherServiceName] = serviceNames;
   if (!serviceName) {
     throw new Error(
@@ -87,7 +86,32 @@ export async function tryResolveDefaultService(
   return serviceName;
 }
 
-export async function getServices(region?: string, max?: number) {
+export async function getLocalServices(): Promise<string[]> {
+  try {
+    const paths = await fs.readdir(".eventual");
+
+    return (
+      await Promise.allSettled(
+        paths.map(async (serviceName) => {
+          return fs
+            .access(path.join(serviceName, "manifest.json"))
+            .then(() => serviceName);
+        })
+      )
+    )
+      .filter(
+        (s): s is Exclude<typeof s, PromiseRejectedResult> =>
+          s.status === "fulfilled"
+      )
+      .map((s) => s.value);
+  } catch {
+    throw new Error(
+      "No .eventual directory was found or it is not a directory."
+    );
+  }
+}
+
+export async function getRemoteServices(region?: string, max?: number) {
   const ssmClient = new ssm.SSMClient({ region });
   const serviceParameters = await ssmClient.send(
     new ssm.DescribeParametersCommand({

@@ -7,6 +7,8 @@ import type {
 } from "@eventual/core/internal";
 
 export interface BuildManifest {
+  serviceName: string;
+  entry: string;
   /**
    * Activities declared within the Service.
    */
