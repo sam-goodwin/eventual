@@ -1,6 +1,7 @@
 export * from "./activity.js";
 export * from "./await-time.js";
 export * from "./condition.js";
+export * from "./entity.js";
 export * from "./error.js";
 export * from "./event.js";
 export * from "./execution.js";
