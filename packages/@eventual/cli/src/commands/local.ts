@@ -37,16 +37,17 @@ export const local = (yargs: Argv) =>
       async (
         spinner,
         _,
-        { entry, port: userPort, cdk },
+        { entry, port: userPort, cdk, skipDeployment },
         { credentials, serviceName }
       ) => {
         spinner.start("Starting Local Eventual Dev Server");
         const app = express();
-
-        spinner.text = "Deploying CDK";
-
         process.env.EVENTUAL_LOCAL = "1";
-        await exec(cdk);
+
+        if (!skipDeployment) {
+          spinner.text = "Deploying CDK";
+          await exec(cdk);
+        }
 
         if (!credentials || !serviceName) {
           // fix me
