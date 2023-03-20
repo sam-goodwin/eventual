@@ -33,10 +33,10 @@ import {
 import { BuildOutput, buildServiceSync } from "./build";
 import {
   CommandProps,
-  CommandService,
   Commands,
-  SystemCommands,
+  CommandService,
   CorsOptions,
+  SystemCommands,
 } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal.js";
 import { EventService } from "./event-service";
@@ -175,10 +175,14 @@ export class Service<S = any> extends Construct {
 
   public readonly system: ServiceSystem<S>;
 
+  public readonly localMode: boolean;
+
   constructor(scope: Construct, id: string, props: ServiceProps<S>) {
     super(scope, id);
 
     this.serviceName = props.name ?? Names.uniqueResourceName(this, {});
+
+    this.localMode = !!process.env.EVENTUAL_LOCAL;
 
     const serviceScope = this;
     const systemScope = new Construct(this, "System");
@@ -278,20 +282,23 @@ export class Service<S = any> extends Construct {
     );
 
     this.commandsPrincipal =
-      this.commandsList.length > 0
+      this.commandsList.length > 0 || this.localMode
         ? new DeepCompositePrincipal(
+            ...(this.localMode ? [accessRole] : []),
             ...this.commandsList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });
     this.activitiesPrincipal =
-      this.activitiesList.length > 0
+      this.activitiesList.length > 0 || this.localMode
         ? new DeepCompositePrincipal(
+            ...(this.localMode ? [accessRole] : []),
             ...this.activitiesList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });
     this.subscriptionsPrincipal =
-      this.subscriptionsList.length > 0
+      this.subscriptionsList.length > 0 || this.localMode
         ? new DeepCompositePrincipal(
+            ...(this.localMode ? [accessRole] : []),
             ...this.subscriptionsList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });

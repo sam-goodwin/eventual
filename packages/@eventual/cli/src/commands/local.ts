@@ -1,10 +1,10 @@
 import { HttpMethod, HttpRequest } from "@eventual/core";
 import { LocalEnvironment } from "@eventual/core-runtime";
+import { exec } from "@eventual/project";
 import express from "express";
-import ora from "ora";
 import path from "path";
 import { Argv } from "yargs";
-import { setServiceOptions } from "../service-action.js";
+import { serviceAction, setServiceOptions } from "../service-action.js";
 
 export const local = (yargs: Argv) =>
   yargs.command(
@@ -22,12 +22,20 @@ export const local = (yargs: Argv) =>
           describe: "Entry file",
           type: "string",
           demandOption: true,
+        })
+        .option("cdk", {
+          describe: "CDK Deploy script",
+          type: "string",
+          demandOption: true,
         }),
-    async ({ entry, port: userPort }) => {
-      const spinner = ora().start("Preparing");
-
+    serviceAction(async (spinner, _, { entry, port: userPort, cdk }) => {
       spinner.start("Starting Local Eventual Dev Server");
       const app = express();
+
+      spinner.text = "Deploying CDK";
+
+      process.env.EVENTUAL_LOCAL = "1";
+      await exec(cdk);
 
       await import(path.resolve(entry));
 
@@ -57,5 +65,5 @@ export const local = (yargs: Argv) =>
       });
 
       spinner.succeed(`Eventual Dev Server running on ${url}`);
-    }
+    })
   );
