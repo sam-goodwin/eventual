@@ -36,20 +36,46 @@ const hello2 = activity(
   }
 );
 
+const localEvent = event<AsyncWriterTestEvent>("LocalAsyncEvent");
+
+subscription("onAsyncEvent", { events: [localEvent] }, async (event) => {
+  if (event.type === "complete") {
+    await asyncActivity.sendActivitySuccess({
+      activityToken: event.token,
+      result: "hello from the async writer!",
+    });
+  } else {
+    await asyncActivity.sendActivityFailure({
+      activityToken: event.token,
+      error: "AsyncWriterError",
+      message: "I was told to fail this activity, sorry.",
+    });
+  }
+});
+
 export const asyncActivity = activity(
   "asyncActivity",
   async (type: AsyncWriterTestEvent["type"]) => {
     return asyncResult<string>(async (token) => {
       console.log(testQueueUrl);
-      await sqs.send(
-        new SendMessageCommand({
-          QueueUrl: testQueueUrl,
-          MessageBody: JSON.stringify({
-            type,
-            token,
-          }),
-        })
-      );
+      if (!process.env.EVENTUAL_LOCAL) {
+        await sqs.send(
+          new SendMessageCommand({
+            QueueUrl: testQueueUrl,
+            MessageBody: JSON.stringify({
+              type,
+              token,
+            }),
+          })
+        );
+      } else {
+        // when running locally, use an event instead of SQS
+        // we do not currently support incoming requests, so the SQS => Lambda could not reach the service without a tunnel/proxy.
+        await localEvent.publishEvents({
+          type,
+          token,
+        });
+      }
     });
   }
 );
@@ -86,6 +112,7 @@ export const workflow4 = workflow("parallel", async () => {
   const greetings2 = Promise.all(
     ["sam", "chris", "sam"].map(async (name) => {
       const greeting = await hello(name);
+      ``;
       return greeting.toUpperCase();
     })
   );

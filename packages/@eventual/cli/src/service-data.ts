@@ -16,6 +16,7 @@ export interface ServiceData {
   apiEndpoint: string;
   eventBusArn: string;
   workflowExecutionLogGroupName: string;
+  environmentVariables?: Record<string, string>;
 }
 
 /**

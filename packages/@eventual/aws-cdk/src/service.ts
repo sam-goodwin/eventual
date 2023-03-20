@@ -277,6 +277,7 @@ export class Service<S = any> extends Construct {
           apiEndpoint: this.commandService.gateway.apiEndpoint,
           eventBusArn: this.bus.eventBusArn,
           workflowExecutionLogGroupName: workflowService.logGroup.logGroupName,
+          environmentVariables: props.environment,
         }),
       }
     );
