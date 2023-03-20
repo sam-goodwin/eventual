@@ -98,7 +98,10 @@ export class TestEnvironment extends RuntimeServiceClient {
     const subscriptionProvider = new TestSubscriptionProvider();
 
     const localEnvConnector: LocalEnvConnector = {
-      pushWorkflowTask: (task) => this.timeController.addEventAtNextTick(task),
+      pushWorkflowTaskNextTick: (task) =>
+        this.timeController.addEventAtNextTick(task),
+      pushWorkflowTask: (task) =>
+        this.timeController.addEvent(this.timeController.currentTick, task),
       scheduleEvent: (time, task) =>
         this.timeController.addEvent(time.getTime(), task),
       getTime: () => this.time,
@@ -326,8 +329,12 @@ export class TestEnvironment extends RuntimeServiceClient {
    */
   public async tick(n?: number) {
     if (n === undefined || n === 1) {
-      const events = this.timeController.tick();
-      await this.processTickEvents(events);
+      const nextTick = this.timeController.nextTick;
+      let events = this.timeController.tickUntil(nextTick);
+      do {
+        await this.processTickEvents(events);
+        events = this.timeController.tickUntil(nextTick);
+      } while (events.length > 0);
     } else if (n < 1 || !Number.isInteger(n)) {
       throw new Error(
         "Must provide a positive integer number of seconds to tick"
@@ -374,27 +381,22 @@ export class TestEnvironment extends RuntimeServiceClient {
     await Promise.all(
       // run all activity requests, don't wait for a result
       [
-        Promise.all(
-          activityWorkerRequests.map(async (request) => {
-            const result = await this.localContainer.activityWorker(
-              request,
-              this.localEnvConnector.getTime(),
-              // end time is the start time plus one second
-              (start) => new Date(start.getTime() + 1000)
-            );
-            if (!!result && isActivitySendEventRequest(result)) {
-              this.localEnvConnector.pushWorkflowTask({
-                events: [result.event],
-                executionId: result.executionId,
-              });
-            }
-          })
-        ),
+        ...activityWorkerRequests.map(async (request) => {
+          const result = await this.localContainer.activityWorker(
+            request,
+            this.localEnvConnector.getTime(),
+            () => this.localEnvConnector.getTime()
+          );
+          if (!!result && isActivitySendEventRequest(result)) {
+            this.localEnvConnector.pushWorkflowTaskNextTick({
+              events: [result.event],
+              executionId: result.executionId,
+            });
+          }
+        }),
         // run all timer requests, don't wait for a result
-        Promise.all(
-          timerRequests.map((request) =>
-            this.localContainer.timerHandler(request)
-          )
+        ...timerRequests.map((request) =>
+          this.localContainer.timerHandler(request)
         ),
         // run the orchestrator, but wait for a result.
         this.localContainer.orchestrator(workflowTasks, () =>

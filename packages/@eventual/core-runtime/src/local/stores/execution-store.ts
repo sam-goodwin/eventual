@@ -28,7 +28,7 @@ export class LocalExecutionStore implements ExecutionStore {
     this.executionStore[execution.id] = execution;
 
     if (startEvent) {
-      this.localConnector.pushWorkflowTask({
+      this.localConnector.pushWorkflowTaskNextTick({
         executionId: execution.id,
         events: [startEvent],
       });
