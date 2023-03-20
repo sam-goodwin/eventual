@@ -11,16 +11,27 @@ import {
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Queue } from "aws-cdk-lib/aws-sqs";
 import path from "path";
-import { ChaosExtension } from "./chaos-extension";
+import { ChaosExtension } from "./chaos-extension.js";
+import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
+import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
+import { createRequire as topLevelCreateRequire } from "module";
 
 import type * as testServiceRuntime from "tests-runtime";
-import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
+
+const require = topLevelCreateRequire(import.meta.url);
+
+const currentIdent = await new STSClient({}).send(
+  new GetCallerIdentityCommand({})
+);
+const assumeRoleArn = currentIdent.Arn;
+
+if (!assumeRoleArn) {
+  throw new Error("Could not assume role to start CDK synth");
+}
 
 const app = new App();
 
 const stack = new Stack(app, "eventual-tests");
-
-const assumeRoleArn = stack.node.tryGetContext("assumeRole") as string;
 
 const role = new Role(stack, "testRole", {
   assumedBy: new ArnPrincipal(assumeRoleArn),
@@ -122,6 +133,7 @@ new DebugDashboard(stack, "debug-dash", {
   service: testService,
 });
 
+// used by github actions to run the test harness.
 new CfnOutput(stack, "roleArn", {
   value: role.roleArn,
 });

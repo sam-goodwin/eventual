@@ -5,7 +5,12 @@ import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
 import esbuild from "esbuild";
 import fs from "fs";
+import { createRequire as topLevelCreateRequire } from "module";
 import path from "path";
+import * as url from "url";
+
+const require = topLevelCreateRequire(import.meta.url);
+const __dirname = url.fileURLToPath(new URL(".", import.meta.url));
 
 /**
  * Chaos testing extension for lambda. Used in conjunction with Eventual's

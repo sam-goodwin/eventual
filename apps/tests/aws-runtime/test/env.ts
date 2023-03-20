@@ -9,4 +9,3 @@ const outputs = fs.existsSync(path.resolve(outputsFile))
 
 export const serviceUrl = () => outputs?.["eventual-tests"]?.serviceUrl;
 export const chaosSSMParamName = () => outputs?.["eventual-tests"]?.chaosParamName;
-export const testArn = () => outputs?.["eventual-tests"]?.roleArn;
