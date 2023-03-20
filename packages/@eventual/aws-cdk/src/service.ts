@@ -126,9 +126,13 @@ export interface ServiceSystem<S> {
    */
   readonly serviceMetadataSSM: StringParameter;
   /**
-   * The Resources for schedules and timers.
+   * Role used by the CLI and Local Environment.
    */
   readonly accessRole: Role;
+}
+
+export interface ServiceLocal {
+  readonly environmentRole: Role;
 }
 
 export class Service<S = any> extends Construct {
@@ -175,18 +179,32 @@ export class Service<S = any> extends Construct {
 
   public readonly system: ServiceSystem<S>;
 
-  public readonly localMode: boolean;
+  /**
+   * When present, local mode is enabled.
+   *
+   * Enable local mode by setting environment variable EVENTUAL_LOCAL=1 in deployment environment.
+   */
+  public readonly local?: ServiceLocal;
 
   constructor(scope: Construct, id: string, props: ServiceProps<S>) {
     super(scope, id);
 
     this.serviceName = props.name ?? Names.uniqueResourceName(this, {});
 
-    this.localMode = !!process.env.EVENTUAL_LOCAL;
-
     const serviceScope = this;
     const systemScope = new Construct(this, "System");
     const eventualServiceScope = new Construct(systemScope, "EventualService");
+
+    const accessRole = new Role(eventualServiceScope, "AccessRole", {
+      roleName: `eventual-cli-${this.serviceName}`,
+      assumedBy: new AccountRootPrincipal(),
+    });
+
+    this.local = !!process.env.EVENTUAL_LOCAL
+      ? {
+          environmentRole: accessRole,
+        }
+      : undefined;
 
     const build = buildServiceSync({
       serviceName: this.serviceName,
@@ -260,10 +278,6 @@ export class Service<S = any> extends Construct {
       ...serviceConstructProps,
     });
 
-    const accessRole = new Role(eventualServiceScope, "AccessRole", {
-      roleName: `eventual-cli-${this.serviceName}`,
-      assumedBy: new AccountRootPrincipal(),
-    });
     this.commandService.grantInvokeHttpServiceApi(accessRole);
     workflowService.grantFilterLogEvents(accessRole);
 
@@ -283,23 +297,23 @@ export class Service<S = any> extends Construct {
     );
 
     this.commandsPrincipal =
-      this.commandsList.length > 0 || this.localMode
+      this.commandsList.length > 0 || this.local
         ? new DeepCompositePrincipal(
-            ...(this.localMode ? [accessRole] : []),
+            ...(this.local ? [this.local.environmentRole] : []),
             ...this.commandsList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });
     this.activitiesPrincipal =
-      this.activitiesList.length > 0 || this.localMode
+      this.activitiesList.length > 0 || this.local
         ? new DeepCompositePrincipal(
-            ...(this.localMode ? [accessRole] : []),
+            ...(this.local ? [this.local.environmentRole] : []),
             ...this.activitiesList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });
     this.subscriptionsPrincipal =
-      this.subscriptionsList.length > 0 || this.localMode
+      this.subscriptionsList.length > 0 || this.local
         ? new DeepCompositePrincipal(
-            ...(this.localMode ? [accessRole] : []),
+            ...(this.local ? [this.local.environmentRole] : []),
             ...this.subscriptionsList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });
