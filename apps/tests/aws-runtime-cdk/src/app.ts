@@ -14,6 +14,7 @@ import path from "path";
 import { ChaosExtension } from "./chaos-extension";
 
 import type * as testServiceRuntime from "tests-runtime";
+import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
 
 const app = new App();
 
@@ -26,6 +27,11 @@ const role = new Role(stack, "testRole", {
 });
 
 const testQueue = new Queue(stack, "testQueue");
+const testTable = new Table(stack, "testTable", {
+  partitionKey: { name: "pk", type: AttributeType.STRING },
+  billingMode: BillingMode.PAY_PER_REQUEST,
+  timeToLiveAttribute: "ttl",
+});
 
 const testService = new eventual.Service<typeof testServiceRuntime>(
   stack,
@@ -35,6 +41,7 @@ const testService = new eventual.Service<typeof testServiceRuntime>(
     entry: require.resolve("tests-runtime"),
     environment: {
       TEST_QUEUE_URL: testQueue.queueUrl,
+      TEST_TABLE_NAME: testTable.tableName,
     },
     system: {
       workflowService: {
@@ -60,7 +67,8 @@ const pipeRole = new Role(stack, "pipeRole", {
 });
 
 testQueue.grantConsumeMessages(pipeRole);
-testQueue.grantSendMessages(testService.activitiesPrincipal);
+testQueue.grantSendMessages(testService.activities.asyncActivity);
+testTable.grantReadWriteData(testService.activitiesPrincipal);
 
 /**
  * Chaos Testing

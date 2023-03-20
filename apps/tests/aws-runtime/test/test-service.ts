@@ -1,27 +1,33 @@
-import z from "zod";
+import {
+  DeleteItemCommand,
+  DynamoDBClient,
+  PutItemCommand,
+} from "@aws-sdk/client-dynamodb";
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
   activity,
-  condition,
-  event,
-  expectSignal,
+  api,
   asyncResult,
+  command,
+  condition,
+  duration,
+  event,
+  EventualError,
+  expectSignal,
+  HeartbeatTimeout,
+  HttpResponse,
+  sendActivityHeartbeat,
   sendSignal,
+  signal,
+  subscription,
   time,
   workflow,
-  sendActivityHeartbeat,
-  HeartbeatTimeout,
-  EventualError,
-  signal,
-  duration,
-  command,
-  api,
-  HttpResponse,
-  subscription,
 } from "@eventual/core";
-import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import z from "zod";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
 
 const sqs = new SQSClient({});
+const dynamo = new DynamoDBClient({});
 
 const testQueueUrl = process.env.TEST_QUEUE_URL ?? "";
 
@@ -497,6 +503,42 @@ export const allCommands = workflow("allCommands", async (_, context) => {
   ]);
   return { signalCount: n };
 });
+
+const createActivity = activity(
+  "createActivity",
+  async (request: { id: string }) => {
+    await dynamo.send(
+      new PutItemCommand({
+        TableName: process.env.TEST_TABLE_NAME,
+        Item: {
+          pk: { S: request.id },
+          ttl: { N: (Math.floor(Date.now() / 1000) + 1000).toString() },
+        },
+      })
+    );
+  }
+);
+
+const destroyActivity = activity(
+  "createActivity",
+  async (request: { id: string }) => {
+    await dynamo.send(
+      new DeleteItemCommand({
+        TableName: process.env.TEST_TABLE_NAME,
+        Key: { pk: { S: request.id } },
+      })
+    );
+  }
+);
+
+export const createAndDestroyWorkflow = workflow(
+  "createAndDestroy",
+  async (_, { execution }) => {
+    await createActivity({ id: execution.id });
+    await destroyActivity({ id: execution.id });
+    return "done" as const;
+  }
+);
 
 export const hello3 = api.post("/hello3", () => {
   return new HttpResponse("hello?");
