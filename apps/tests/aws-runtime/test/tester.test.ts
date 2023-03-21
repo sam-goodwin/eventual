@@ -67,13 +67,16 @@ eventualRuntimeTestHarness(
       workflowOnInvoke: true,
     });
 
-    testCompletion("asyncActivities", asyncWorkflow, [
-      "hello from the async writer!",
-      new EventualError(
-        "AsyncWriterError",
-        "I was told to fail this activity, sorry."
-      ).toJSON(),
-    ]);
+    // TODO: support remote calls on local
+    if (!process.env.TEST_LOCAL) {
+      testCompletion("asyncActivities", asyncWorkflow, [
+        "hello from the async writer!",
+        new EventualError(
+          "AsyncWriterError",
+          "I was told to fail this activity, sorry."
+        ).toJSON(),
+      ]);
+    }
 
     testCompletion("heartbeat", heartbeatWorkflow, 20, [
       { status: "fulfilled", value: 20 },

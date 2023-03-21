@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.27.0 (2023-03-21)
+
+### Features
+
+- eventual dev server (local) ([#313](https://github.com/functionless/eventual/issues/313)) ([7236267](https://github.com/functionless/eventual/commit/72362676000e51c690e578d9beffb52595942c16))
+
 # 0.26.0 (2023-03-16)
 
 ### Features
