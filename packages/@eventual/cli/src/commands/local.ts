@@ -5,14 +5,17 @@ import { exec as _exec } from "child_process";
 import express from "express";
 import ora from "ora";
 import path from "path";
+import { promisify } from "util";
 import { Argv } from "yargs";
 import { assumeCliRole } from "../role.js";
 import { setServiceOptions } from "../service-action.js";
 import {
+  getBuildManifest,
   getServiceData,
   isServiceDeployed,
   tryResolveDefaultService,
 } from "../service-data.js";
+const execPromise = promisify(_exec);
 
 export const local = (yargs: Argv) =>
   yargs.command(
@@ -26,18 +29,13 @@ export const local = (yargs: Argv) =>
           default: 3111,
           type: "number",
         })
-        .option("entry", {
-          describe: "Entry file",
-          type: "string",
-          demandOption: true,
-        })
         .option("update", {
           describe: "The update mode: first, never, always",
           choices: ["first", "never", "always"],
           default: "first",
           type: "string",
         }),
-    async ({ entry, port: userPort, update, service, region }) => {
+    async ({ port: userPort, update, service, region }) => {
       const spinner = ora();
       spinner.start("Starting Local Eventual Dev Server");
       process.env.EVENTUAL_LOCAL = "1";
@@ -54,7 +52,7 @@ export const local = (yargs: Argv) =>
           spinner.fail("No eventual config (eventual.json) found...");
           process.exit(1);
         }
-        _exec(config.synth);
+        await execPromise(config.synth);
       }
 
       const serviceName = await tryResolveDefaultService(serviceNameFirst);
@@ -62,8 +60,7 @@ export const local = (yargs: Argv) =>
       if (!serviceName) {
         throw new Error("Service name was not found after synth.");
       }
-    
-      
+
       const isDeployed = await isServiceDeployed(serviceName, region);
 
       if ((!isDeployed && update === "first") || update === "always") {
@@ -74,6 +71,8 @@ export const local = (yargs: Argv) =>
         }
         await exec(config.deploy);
       }
+
+      const buildManifest = await getBuildManifest(serviceName);
 
       const credentials = await assumeCliRole(serviceName, region);
       const serviceData = await getServiceData(
@@ -89,7 +88,7 @@ export const local = (yargs: Argv) =>
       }
 
       // get from build manifest
-      await import(path.resolve(entry));
+      await import(path.resolve(buildManifest.entry));
 
       const port = userPort;
       const app = express();
