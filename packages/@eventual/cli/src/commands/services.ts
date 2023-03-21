@@ -1,7 +1,7 @@
 import { Argv } from "yargs";
 import ora from "ora";
 import { styledConsole } from "../styled-console.js";
-import { getServices } from "../service-data.js";
+import { getRemoteServices } from "../service-data.js";
 
 export const services = (yargs: Argv) =>
   yargs.command(
@@ -21,11 +21,11 @@ export const services = (yargs: Argv) =>
         }),
     async ({ region, json }) => {
       if (json) {
-        process.stdout.write(JSON.stringify(await getServices(region)));
+        process.stdout.write(JSON.stringify(await getRemoteServices(region)));
         process.stdout.write("\n");
       } else {
         const spinner = ora("Getting services").start();
-        const services = await getServices(region);
+        const services = await getRemoteServices(region);
         spinner.stop();
         styledConsole.success("Services");
         process.stdout.write(services.join("\n"));

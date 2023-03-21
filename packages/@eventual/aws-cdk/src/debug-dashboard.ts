@@ -32,7 +32,7 @@ export class DebugDashboard extends Construct {
       // activities fallback
       service.system.activityService.fallbackHandler.logGroup.logGroupName,
       // user APIS - default and bundled
-      ...service.commandsList.map((api) => api.logGroup.logGroupName),
+      ...service.commandsList.map((api) => api.handler.logGroup.logGroupName),
       ...Object.values(service.system.systemCommands).map(
         (c) => c.logGroup.logGroupName
       ),
@@ -110,7 +110,7 @@ export class DebugDashboard extends Construct {
           new LogQueryWidget({
             title: "User Command Handlers Summary",
             logGroupNames: service.commandsList.map(
-              (api) => api.logGroup.logGroupName
+              (api) => api.handler.logGroup.logGroupName
             ),
             queryLines: [
               `filter @type="REPORT"`,

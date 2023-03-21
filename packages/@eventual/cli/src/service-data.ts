@@ -8,6 +8,10 @@ import { loadConfig } from "@aws-sdk/node-config-provider";
 import { AwsCredentialIdentity } from "@aws-sdk/types";
 import { defaultService } from "./env.js";
 import { styledConsole } from "./styled-console.js";
+import fs from "fs/promises";
+import path from "path";
+import { readJsonFile } from "@eventual/project";
+import { BuildManifest } from "@eventual/core-runtime";
 
 /**
  * The data which is encoded in SSM for a given service under /eventual/services/{name}
@@ -16,6 +20,7 @@ export interface ServiceData {
   apiEndpoint: string;
   eventBusArn: string;
   workflowExecutionLogGroupName: string;
+  environmentVariables?: Record<string, string>;
 }
 
 /**
@@ -58,7 +63,53 @@ export async function resolveRegion() {
  * 3. List all service names, if there is one service name in the account, use it
  * 4. Fail
  */
-export async function tryResolveDefaultService(
+export async function tryResolveDefaultService(_serviceName?: string) {
+  // explicit
+  if (_serviceName) {
+    return _serviceName;
+  }
+  const envServiceName = defaultService();
+  if (envServiceName) {
+    // ENV
+    return envServiceName;
+  }
+  // check if there are zero, one, or more than one service names.
+  const serviceNames = await getLocalServices();
+  const [serviceName, otherServiceName] = serviceNames;
+  if (!serviceName) {
+    return undefined;
+  } else if (otherServiceName) {
+    throw new Error(
+      "Multiple service names found, provide a default service name via EVENTUAL_DEFAULT_SERVICE or the --service flag"
+    );
+  }
+  return serviceName;
+}
+
+export async function getLocalServices(): Promise<string[]> {
+  try {
+    const paths = await fs.readdir(".eventual");
+
+    const manifestResults = await Promise.allSettled(
+      paths.map(async (serviceName) => {
+        return fs
+          .access(path.resolve(".eventual", serviceName, "manifest.json"))
+          .then(() => serviceName);
+      })
+    );
+
+    return manifestResults
+      .filter(
+        (s): s is Exclude<typeof s, PromiseRejectedResult> =>
+          s.status === "fulfilled"
+      )
+      .map((s) => s.value);
+  } catch {
+    return [];
+  }
+}
+
+export async function tryResolveDefaultServiceRemote(
   _serviceName?: string,
   region?: string
 ) {
@@ -72,7 +123,7 @@ export async function tryResolveDefaultService(
     return envServiceName;
   }
   // check if there are zero, one, or more than one service names.
-  const serviceNames = await getServices(region, 2);
+  const serviceNames = await getRemoteServices(region, 2);
   const [serviceName, otherServiceName] = serviceNames;
   if (!serviceName) {
     throw new Error(
@@ -86,7 +137,7 @@ export async function tryResolveDefaultService(
   return serviceName;
 }
 
-export async function getServices(region?: string, max?: number) {
+export async function getRemoteServices(region?: string, max?: number) {
   const ssmClient = new ssm.SSMClient({ region });
   const serviceParameters = await ssmClient.send(
     new ssm.DescribeParametersCommand({
@@ -105,4 +156,29 @@ export async function getServices(region?: string, max?: number) {
       (p) => p.Name?.split("/eventual/services/")[1]
     ) ?? []
   );
+}
+
+export async function isServiceDeployed(serviceName: string, region?: string) {
+  const ssmClient = new ssm.SSMClient({ region });
+  const serviceParameters = await ssmClient.send(
+    new ssm.DescribeParametersCommand({
+      ParameterFilters: [
+        {
+          Key: "Name",
+          Values: [`/eventual/services/${serviceName}`],
+        },
+      ],
+      MaxResults: 1,
+    })
+  );
+
+  return (
+    serviceParameters.Parameters && serviceParameters.Parameters?.length > 0
+  );
+}
+
+export async function getBuildManifest(serviceName: string) {
+  return (await readJsonFile(
+    path.resolve(".eventual", serviceName, "manifest.json")
+  )) as BuildManifest;
 }

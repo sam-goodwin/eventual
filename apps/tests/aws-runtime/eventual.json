@@ -1,0 +1,5 @@
+{
+  "projectType": "aws-cdk",
+  "synth": "npx cdk synth --app \"ts-node --esm ../aws-runtime-cdk/src/app.mts\"",
+  "deploy": "./scripts/deploy"
+}

@@ -8,9 +8,10 @@ export async function exec(command: string, ...args: string[]) {
   return new Promise((resolve, reject) => {
     const proc = spawn(command, args, {
       stdio: "inherit",
+      env: process.env,
     });
 
     proc.on("error", (err) => reject(err));
-    proc.on("close", () => resolve(undefined));
+    proc.on("exit", () => resolve(undefined));
   });
 }

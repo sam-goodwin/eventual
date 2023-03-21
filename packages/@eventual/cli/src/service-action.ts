@@ -9,7 +9,7 @@ import {
   getServiceData,
   resolveRegion,
   ServiceData,
-  tryResolveDefaultService,
+  tryResolveDefaultServiceRemote,
 } from "./service-data.js";
 import { styledConsole } from "./styled-console.js";
 
@@ -59,7 +59,7 @@ export function serviceAction<T>(
         await (async () => {
           if (!args.local) {
             const region = args.region ?? (await resolveRegion());
-            const serviceName = await tryResolveDefaultService(
+            const serviceName = await tryResolveDefaultServiceRemote(
               args.service,
               region
             );

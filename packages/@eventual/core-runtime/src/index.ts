@@ -1,4 +1,5 @@
 export * from "./activity-token.js";
+export * from "./build-manifest.js";
 export * from "./clients/index.js";
 export * from "./command-executor.js";
 export * from "./console-hook.js";

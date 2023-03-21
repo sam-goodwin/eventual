@@ -1,27 +1,33 @@
-import z from "zod";
+import {
+  DeleteItemCommand,
+  DynamoDBClient,
+  PutItemCommand,
+} from "@aws-sdk/client-dynamodb";
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
   activity,
-  condition,
-  event,
-  expectSignal,
+  api,
   asyncResult,
+  command,
+  condition,
+  duration,
+  event,
+  EventualError,
+  expectSignal,
+  HeartbeatTimeout,
+  HttpResponse,
+  sendActivityHeartbeat,
   sendSignal,
+  signal,
+  subscription,
   time,
   workflow,
-  sendActivityHeartbeat,
-  HeartbeatTimeout,
-  EventualError,
-  signal,
-  duration,
-  command,
-  api,
-  HttpResponse,
-  subscription,
 } from "@eventual/core";
-import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import z from "zod";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
 
 const sqs = new SQSClient({});
+const dynamo = new DynamoDBClient({});
 
 const testQueueUrl = process.env.TEST_QUEUE_URL ?? "";
 
@@ -36,20 +42,46 @@ const hello2 = activity(
   }
 );
 
+const localEvent = event<AsyncWriterTestEvent>("LocalAsyncEvent");
+
+subscription("onAsyncEvent", { events: [localEvent] }, async (event) => {
+  if (event.type === "complete") {
+    await asyncActivity.sendActivitySuccess({
+      activityToken: event.token,
+      result: "hello from the async writer!",
+    });
+  } else {
+    await asyncActivity.sendActivityFailure({
+      activityToken: event.token,
+      error: "AsyncWriterError",
+      message: "I was told to fail this activity, sorry.",
+    });
+  }
+});
+
 export const asyncActivity = activity(
   "asyncActivity",
   async (type: AsyncWriterTestEvent["type"]) => {
     return asyncResult<string>(async (token) => {
       console.log(testQueueUrl);
-      await sqs.send(
-        new SendMessageCommand({
-          QueueUrl: testQueueUrl,
-          MessageBody: JSON.stringify({
-            type,
-            token,
-          }),
-        })
-      );
+      if (!process.env.EVENTUAL_LOCAL) {
+        await sqs.send(
+          new SendMessageCommand({
+            QueueUrl: testQueueUrl,
+            MessageBody: JSON.stringify({
+              type,
+              token,
+            }),
+          })
+        );
+      } else {
+        // when running locally, use an event instead of SQS
+        // we do not currently support incoming requests, so the SQS => Lambda could not reach the service without a tunnel/proxy.
+        await localEvent.publishEvents({
+          type,
+          token,
+        });
+      }
     });
   }
 );
@@ -86,6 +118,7 @@ export const workflow4 = workflow("parallel", async () => {
   const greetings2 = Promise.all(
     ["sam", "chris", "sam"].map(async (name) => {
       const greeting = await hello(name);
+      ``;
       return greeting.toUpperCase();
     })
   );
@@ -470,6 +503,42 @@ export const allCommands = workflow("allCommands", async (_, context) => {
   ]);
   return { signalCount: n };
 });
+
+const createActivity = activity(
+  "createActivity",
+  async (request: { id: string }) => {
+    await dynamo.send(
+      new PutItemCommand({
+        TableName: process.env.TEST_TABLE_NAME,
+        Item: {
+          pk: { S: request.id },
+          ttl: { N: (Math.floor(Date.now() / 1000) + 1000).toString() },
+        },
+      })
+    );
+  }
+);
+
+const destroyActivity = activity(
+  "createActivity",
+  async (request: { id: string }) => {
+    await dynamo.send(
+      new DeleteItemCommand({
+        TableName: process.env.TEST_TABLE_NAME,
+        Key: { pk: { S: request.id } },
+      })
+    );
+  }
+);
+
+export const createAndDestroyWorkflow = workflow(
+  "createAndDestroy",
+  async (_, { execution }) => {
+    await createActivity({ id: execution.id });
+    await destroyActivity({ id: execution.id });
+    return "done" as const;
+  }
+);
 
 export const hello3 = api.post("/hello3", () => {
   return new HttpResponse("hello?");

@@ -130,6 +130,8 @@ ${npm("deploy")}
       ),
       writeJsonFile("eventual.json", {
         projectType: "aws-cdk",
+        synth: "pnpm synth",
+        deploy: "pnpm deploy",
       }),
       writeJsonFile("package.json", {
         name: projectName,

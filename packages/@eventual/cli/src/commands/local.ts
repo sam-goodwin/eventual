@@ -1,10 +1,21 @@
 import { HttpMethod, HttpRequest } from "@eventual/core";
 import { LocalEnvironment } from "@eventual/core-runtime";
+import { discoverEventualConfig, exec } from "@eventual/project";
+import { exec as _exec } from "child_process";
 import express from "express";
 import ora from "ora";
 import path from "path";
+import { promisify } from "util";
 import { Argv } from "yargs";
+import { assumeCliRole } from "../role.js";
 import { setServiceOptions } from "../service-action.js";
+import {
+  getBuildManifest,
+  getServiceData,
+  isServiceDeployed,
+  tryResolveDefaultService,
+} from "../service-data.js";
+const execPromise = promisify(_exec);
 
 export const local = (yargs: Argv) =>
   yargs.command(
@@ -18,20 +29,69 @@ export const local = (yargs: Argv) =>
           default: 3111,
           type: "number",
         })
-        .option("entry", {
-          describe: "Entry file",
+        .option("update", {
+          describe: "The update mode: first, never, always",
+          choices: ["first", "never", "always"],
+          default: "first",
           type: "string",
-          demandOption: true,
         }),
-    async ({ entry, port: userPort }) => {
-      const spinner = ora().start("Preparing");
-
+    async ({ port: userPort, update, service, region }) => {
+      const spinner = ora();
       spinner.start("Starting Local Eventual Dev Server");
-      const app = express();
+      process.env.EVENTUAL_LOCAL = "1";
 
-      await import(path.resolve(entry));
+      const serviceNameFirst = await tryResolveDefaultService(service);
+
+      const config = await discoverEventualConfig();
+
+      // if the service name is not found, try to generate one
+      if (!serviceNameFirst) {
+        spinner.text =
+          "No service name found, running synth to try to generate one.";
+        if (!config) {
+          spinner.fail("No eventual config (eventual.json) found...");
+          process.exit(1);
+        }
+        await execPromise(config.synth);
+      }
+
+      const serviceName = await tryResolveDefaultService(serviceNameFirst);
+
+      if (!serviceName) {
+        throw new Error("Service name was not found after synth.");
+      }
+
+      const isDeployed = await isServiceDeployed(serviceName, region);
+
+      if ((!isDeployed && update === "first") || update === "always") {
+        spinner.text = "Deploying CDK";
+        if (!config) {
+          spinner.fail("No eventual config (eventual.json) found...");
+          process.exit(1);
+        }
+        await exec(config.deploy);
+      }
+
+      const buildManifest = await getBuildManifest(serviceName);
+
+      const credentials = await assumeCliRole(serviceName, region);
+      const serviceData = await getServiceData(
+        credentials,
+        serviceName,
+        region
+      );
+
+      if (serviceData.environmentVariables) {
+        Object.entries(serviceData.environmentVariables).forEach(
+          ([name, val]) => (process.env[name] = val)
+        );
+      }
+
+      // get from build manifest
+      await import(path.resolve(buildManifest.entry));
 
       const port = userPort;
+      const app = express();
       app.listen(port);
       const url = `http://localhost:${port}`;
 

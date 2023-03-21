@@ -8,9 +8,11 @@ import { jest } from "@jest/globals";
 import { ChaosEffects, ChaosTargets } from "./chaos-extension/chaos-engine.js";
 import { serviceUrl } from "./env.js";
 import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
+import type * as TestService from "./test-service.js";
 import {
   allCommands,
   asyncWorkflow,
+  createAndDestroyWorkflow,
   eventDrivenWorkflow,
   failedWorkflow,
   heartbeatWorkflow,
@@ -22,7 +24,6 @@ import {
   workflow3,
   workflow4,
 } from "./test-service.js";
-import type * as TestService from "./test-service.js";
 
 jest.setTimeout(100 * 1000);
 
@@ -111,6 +112,8 @@ eventualRuntimeTestHarness(
       expect(r.dates).toHaveLength(6);
       expect([...new Set(r.dates)]).toHaveLength(6);
     });
+
+    testCompletion("awsSdkCalls", createAndDestroyWorkflow, "done");
   },
   {
     name: "s3 persist failures",

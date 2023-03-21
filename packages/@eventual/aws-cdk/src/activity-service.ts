@@ -2,6 +2,7 @@ import {
   activityServiceFunctionSuffix,
   ENV_NAMES,
 } from "@eventual/aws-runtime";
+import type { ActivityFunction } from "@eventual/core-runtime";
 import { aws_iam, Duration, RemovalPolicy } from "aws-cdk-lib";
 import {
   AttributeType,
@@ -14,12 +15,16 @@ import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { LambdaDestination } from "aws-cdk-lib/aws-lambda-destinations";
 import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
-import { ActivityFunction } from "./build-manifest";
 import { CommandService } from "./command-service";
+import { DeepCompositePrincipal } from "./deep-composite-principal";
 import { grant } from "./grant";
 import { LazyInterface } from "./proxy-construct";
 import { SchedulerService } from "./scheduler-service";
-import { ServiceConstructProps } from "./service";
+import {
+  EventualResource,
+  ServiceConstructProps,
+  ServiceLocal,
+} from "./service";
 import { ServiceFunction } from "./service-function";
 import { GetServiceEntityNames, ServiceEntityProps } from "./utils";
 import { WorkflowService } from "./workflow-service";
@@ -41,6 +46,7 @@ export interface ActivitiesProps<Service> extends ServiceConstructProps {
   readonly schedulerService: LazyInterface<SchedulerService>;
   readonly commandsService: LazyInterface<CommandService<Service>>;
   readonly overrides?: ActivityOverrides<Service>;
+  readonly local: ServiceLocal | undefined;
 }
 
 /**
@@ -109,6 +115,7 @@ export class ActivityService<Service = any> {
                 ActivityHandlerProps
               >
             ],
+          local: this.props.local,
         });
 
         this.configureActivityWorker(activity.handler);
@@ -246,9 +253,10 @@ export interface ActivityProps {
   serviceName: string;
   fallbackHandler: Function;
   overrides?: ActivityHandlerProps;
+  local?: ServiceLocal;
 }
 
-export class Activity extends Construct implements IGrantable {
+export class Activity extends Construct implements EventualResource {
   public handler: Function;
   public grantPrincipal: aws_iam.IPrincipal;
 
@@ -274,6 +282,11 @@ export class Activity extends Construct implements IGrantable {
       overrides: props.overrides,
     });
 
-    this.grantPrincipal = this.handler.grantPrincipal;
+    this.grantPrincipal = props.local
+      ? new DeepCompositePrincipal(
+          props.local.environmentRole,
+          this.handler.grantPrincipal
+        )
+      : this.handler.grantPrincipal;
   }
 }

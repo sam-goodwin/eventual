@@ -26,6 +26,7 @@ import { Construct } from "constructs";
 import openapi from "openapi3-ts";
 import path from "path";
 import {
+  Activity,
   ActivityOverrides,
   ActivityService,
   ServiceActivities,
@@ -33,10 +34,10 @@ import {
 import { BuildOutput, buildServiceSync } from "./build";
 import {
   CommandProps,
-  CommandService,
   Commands,
-  SystemCommands,
+  CommandService,
   CorsOptions,
+  SystemCommands,
 } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal.js";
 import { EventService } from "./event-service";
@@ -126,9 +127,13 @@ export interface ServiceSystem<S> {
    */
   readonly serviceMetadataSSM: StringParameter;
   /**
-   * The Resources for schedules and timers.
+   * Role used by the CLI and Local Environment.
    */
   readonly accessRole: Role;
+}
+
+export interface ServiceLocal {
+  readonly environmentRole: Role;
 }
 
 export class Service<S = any> extends Construct {
@@ -175,6 +180,13 @@ export class Service<S = any> extends Construct {
 
   public readonly system: ServiceSystem<S>;
 
+  /**
+   * When present, local mode is enabled.
+   *
+   * Enable local mode by setting environment variable EVENTUAL_LOCAL=1 in deployment environment.
+   */
+  public readonly local?: ServiceLocal;
+
   constructor(scope: Construct, id: string, props: ServiceProps<S>) {
     super(scope, id);
 
@@ -184,10 +196,21 @@ export class Service<S = any> extends Construct {
     const systemScope = new Construct(this, "System");
     const eventualServiceScope = new Construct(systemScope, "EventualService");
 
+    const accessRole = new Role(eventualServiceScope, "AccessRole", {
+      roleName: `eventual-cli-${this.serviceName}`,
+      assumedBy: new AccountRootPrincipal(),
+    });
+
+    this.local = !!process.env.EVENTUAL_LOCAL
+      ? {
+          environmentRole: accessRole,
+        }
+      : undefined;
+
     const build = buildServiceSync({
       serviceName: this.serviceName,
       entry: props.entry,
-      outDir: path.join(".eventual", this.node.addr),
+      outDir: path.join(".eventual", this.serviceName),
     });
 
     const proxySchedulerService = lazyInterface<SchedulerService>();
@@ -215,6 +238,7 @@ export class Service<S = any> extends Construct {
       workflowService: proxyWorkflowService,
       commandsService: proxyCommandService,
       overrides: props.activities,
+      local: this.local,
     });
     proxyActivityService._bind(activityService);
     this.activities = activityService.activities;
@@ -242,6 +266,7 @@ export class Service<S = any> extends Construct {
       eventService: this.eventService,
       workflowService: workflowService,
       cors: props.cors,
+      local: this.local,
       ...serviceConstructProps,
     });
     proxyCommandService._bind(this.commandService);
@@ -253,13 +278,10 @@ export class Service<S = any> extends Construct {
       commandService: this.commandService,
       eventService: this.eventService,
       subscriptions: props.subscriptions,
+      local: this.local,
       ...serviceConstructProps,
     });
 
-    const accessRole = new Role(eventualServiceScope, "AccessRole", {
-      roleName: `eventual-cli-${this.serviceName}`,
-      assumedBy: new AccountRootPrincipal(),
-    });
     this.commandService.grantInvokeHttpServiceApi(accessRole);
     workflowService.grantFilterLogEvents(accessRole);
 
@@ -273,25 +295,29 @@ export class Service<S = any> extends Construct {
           apiEndpoint: this.commandService.gateway.apiEndpoint,
           eventBusArn: this.bus.eventBusArn,
           workflowExecutionLogGroupName: workflowService.logGroup.logGroupName,
+          environmentVariables: props.environment,
         }),
       }
     );
 
     this.commandsPrincipal =
-      this.commandsList.length > 0
+      this.commandsList.length > 0 || this.local
         ? new DeepCompositePrincipal(
+            ...(this.local ? [this.local.environmentRole] : []),
             ...this.commandsList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });
     this.activitiesPrincipal =
-      this.activitiesList.length > 0
+      this.activitiesList.length > 0 || this.local
         ? new DeepCompositePrincipal(
+            ...(this.local ? [this.local.environmentRole] : []),
             ...this.activitiesList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });
     this.subscriptionsPrincipal =
-      this.subscriptionsList.length > 0
+      this.subscriptionsList.length > 0 || this.local
         ? new DeepCompositePrincipal(
+            ...(this.local ? [this.local.environmentRole] : []),
             ...this.subscriptionsList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });
@@ -314,11 +340,11 @@ export class Service<S = any> extends Construct {
     proxyService._bind(this);
   }
 
-  public get activitiesList(): Subscription[] {
+  public get activitiesList(): Activity[] {
     return Object.values(this.activities);
   }
 
-  public get commandsList(): Function[] {
+  public get commandsList(): EventualResource[] {
     return Object.values(this.commands);
   }
 
@@ -352,7 +378,9 @@ export class Service<S = any> extends Construct {
     this.activitiesList.forEach(({ handler }) =>
       handler.addEnvironment(key, value)
     );
-    this.commandsList.forEach((handler) => handler.addEnvironment(key, value));
+    this.commandsList.forEach(({ handler }) =>
+      handler.addEnvironment(key, value)
+    );
     this.subscriptionsList.forEach(({ handler }) =>
       handler.addEnvironment(key, value)
     );
@@ -568,4 +596,16 @@ export interface ServiceConstructProps {
   readonly serviceScope: Construct;
   readonly systemScope: Construct;
   readonly eventualServiceScope: Construct;
+}
+
+export class EventualResource implements IGrantable {
+  public grantPrincipal: IPrincipal;
+  constructor(public handler: Function, local?: ServiceLocal) {
+    this.grantPrincipal = local
+      ? new DeepCompositePrincipal(
+          handler.grantPrincipal,
+          local.environmentRole
+        )
+      : handler.grantPrincipal;
+  }
 }

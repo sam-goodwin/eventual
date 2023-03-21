@@ -8,7 +8,6 @@ const serviceClient = new AWSHttpEventualClient({
 export interface AsyncWriterTestEvent {
   type: "complete" | "fail";
   token: string;
-  ingestionTime: string;
 }
 
 export const handle: Handler<AsyncWriterTestEvent[], void> = async (event) => {
