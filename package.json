@@ -54,6 +54,7 @@
     ]
   },
   "jest": {
+    "displayName": "workspace",
     "projects": [
       "<rootDir>/packages/@eventual/*"
     ],

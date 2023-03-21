@@ -1,6 +1,6 @@
-import { LogEntry, LogsClient } from "@eventual/core-runtime";
+import { LogEntry, LogsClient } from "../../clients/logs-client.js";
 
-export class TestLogsClient implements LogsClient {
+export class LocalLogsClient implements LogsClient {
   public async putExecutionLogs(
     executionId: string,
     ...logEntries: LogEntry[]

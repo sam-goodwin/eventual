@@ -45,7 +45,7 @@ export function createCommandWorker({
    * then handles the request.
    */
   return function (request) {
-    console.log("request", request);
+    console.debug("request", request);
     return serviceTypeScope(ServiceType.CommandWorker, async () => {
       try {
         const response = await router.handle(request);

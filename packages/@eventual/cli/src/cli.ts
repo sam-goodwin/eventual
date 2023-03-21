@@ -6,6 +6,7 @@ import { execution } from "./commands/execution.js";
 import { listExecutions } from "./commands/executions.js";
 import { history } from "./commands/history.js";
 import { invokeCommand } from "./commands/invoke.js";
+import { local } from "./commands/local.js";
 import { logs } from "./commands/logs.js";
 import { publishEvents } from "./commands/publish-events.js";
 import { replay } from "./commands/replay.js";
@@ -80,7 +81,8 @@ addSubCommands(
   replayOperation,
   startOperation,
   createOperation,
-  invokeCommand
+  invokeCommand,
+  local
 )(cli);
 
 if (argv.length === 0) {

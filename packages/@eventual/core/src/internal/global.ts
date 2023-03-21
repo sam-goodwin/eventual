@@ -1,3 +1,4 @@
+import type { AsyncLocalStorage } from "async_hooks";
 import type { Activity } from "../activity.js";
 import type { Event } from "../event.js";
 import type { AnyCommand } from "../http/command.js";
@@ -12,7 +13,7 @@ declare global {
     /**
      * Data about the current activity assigned before running an activity on an the activity worker.
      */
-    activityContext?: ActivityRuntimeContext;
+    activityContextStore?: Promise<AsyncLocalStorage<ActivityRuntimeContext>>;
     /**
      * Callable activities which register themselves in an activity worker.
      */
@@ -84,16 +85,24 @@ export function getServiceClient(): EventualServiceClient {
   return globalThis._eventual.serviceClient;
 }
 
-export function setActivityContext(context: ActivityRuntimeContext) {
-  globalThis._eventual.activityContext = context;
+export async function activityContextScope<Output>(
+  context: ActivityRuntimeContext,
+  handler: () => Output
+): Promise<Awaited<Output>> {
+  if (!globalThis._eventual.activityContextStore) {
+    globalThis._eventual.activityContextStore = import("async_hooks").then(
+      (imp) => new imp.AsyncLocalStorage<ActivityRuntimeContext>()
+    );
+  }
+  return await (
+    await globalThis._eventual.activityContextStore
+  ).run(context, async () => {
+    return await handler();
+  });
 }
 
-export function clearActivityContext() {
-  globalThis._eventual.activityContext = undefined;
-}
-
-export function getActivityContext(): ActivityRuntimeContext {
-  const context = globalThis._eventual.activityContext;
+export async function getActivityContext(): Promise<ActivityRuntimeContext> {
+  const context = (await globalThis._eventual.activityContextStore)?.getStore();
 
   if (!context) {
     throw new Error(

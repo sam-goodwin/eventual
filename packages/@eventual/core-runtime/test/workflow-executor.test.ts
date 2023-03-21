@@ -24,8 +24,6 @@ import {
   createWorkflowCall,
   HistoryEvent,
   Result,
-  ServiceType,
-  SERVICE_TYPE_FLAG,
   SignalTargetType,
 } from "@eventual/core/internal";
 import { WorkflowExecutor, WorkflowResult } from "../src/workflow-executor.js";
@@ -90,15 +88,6 @@ const myWorkflow = workflow(async (event) => {
     await createActivityCall("handle-error", [err]);
     return [];
   }
-});
-
-const serviceTypeBack = process.env[SERVICE_TYPE_FLAG];
-beforeAll(() => {
-  process.env[SERVICE_TYPE_FLAG] = ServiceType.OrchestratorWorker;
-});
-
-afterAll(() => {
-  process.env[SERVICE_TYPE_FLAG] = serviceTypeBack;
 });
 
 async function execute<W extends Workflow>(
@@ -528,6 +517,135 @@ test("should fail the workflow on uncaught user error of random type", async () 
   });
 });
 
+// tests a copy of the child workflow from the test-service
+test("should fail the workflow on uncaught user error after await", async () => {
+  const wf = workflow(async (input: { name: string; parentId: string }) => {
+    let block = false;
+    let done = false;
+    let last = 0;
+
+    if (!input.parentId) {
+      throw new Error("I need an adult");
+    }
+
+    console.log(`Hi, I am ${input.name}`);
+
+    createRegisterSignalHandlerCall("mySignal", (n) => {
+      last = n;
+      block = false;
+    });
+    createRegisterSignalHandlerCall("doneSignal", () => {
+      done = true;
+      block = false;
+    });
+
+    // eslint-disable-next-line no-unmodified-loop-condition
+    while (!done) {
+      createSendSignalCall(
+        { type: SignalTargetType.Execution, executionId: input.parentId },
+        "mySignal",
+        last + 1
+      );
+      block = true;
+      if (
+        !(await createConditionCall(
+          () => !block,
+          createAwaitTimerCall(Schedule.duration(10, "seconds"))
+        ))
+      ) {
+        throw new Error("timed out!");
+      }
+    }
+
+    return "done";
+  });
+
+  const executor = new WorkflowExecutor(wf, [
+    signalSent("parent", "mySignal", 2, 1),
+    timerScheduled(3),
+  ]);
+
+  await executor.start({ name: "child", parentId: "parent" }, context);
+
+  await expect(
+    executor.continue([timerCompleted(3)])
+  ).resolves.toMatchObject<WorkflowResult>({
+    result: Result.failed(new Error("timed out!")),
+    commands: [],
+  });
+});
+
+test("dangling promise failure", async () => {
+  const wf = workflow(async () => {
+    createActivityCall("I will fail", undefined);
+
+    await createConditionCall(() => false);
+
+    return "done";
+  });
+
+  const executor = new WorkflowExecutor(wf, [
+    activityScheduled("I will fail", 0),
+  ]);
+
+  await executor.start(undefined, context);
+
+  await expect(
+    executor.continue([activityFailed(new Error("AHH"), 0)])
+  ).resolves.toMatchObject<WorkflowResult>({
+    result: undefined,
+    commands: [],
+  });
+});
+
+test.skip("dangling promise failure with then", async () => {
+  const wf = workflow(async () => {
+    createActivityCall("I will fail", undefined).then(() => {
+      console.log("hi");
+    });
+
+    await createConditionCall(() => false);
+
+    return "done";
+  });
+
+  const executor = new WorkflowExecutor(wf, [
+    activityScheduled("I will fail", 0),
+  ]);
+
+  await executor.start(undefined, context);
+
+  await expect(
+    executor.continue([activityFailed(new Error("AHH"), 0)])
+  ).resolves.toMatchObject<WorkflowResult>({
+    result: undefined,
+    commands: [],
+  });
+});
+
+test("dangling promise success", async () => {
+  const wf = workflow(async () => {
+    createActivityCall("I will fail", undefined);
+
+    await createConditionCall(() => false);
+
+    return "done";
+  });
+
+  const executor = new WorkflowExecutor(wf, [
+    activityScheduled("I will fail", 0),
+  ]);
+
+  await executor.start(undefined, context);
+
+  await expect(
+    executor.continue([activitySucceeded("ahhh", 0)])
+  ).resolves.toMatchObject<WorkflowResult>({
+    result: undefined,
+    commands: [],
+  });
+});
+
 test("should fail the workflow on uncaught thrown value", async () => {
   const wf = workflow(() => {
     throw "hi";
@@ -579,7 +697,7 @@ test("should return result of inner function", async () => {
 
 test("should schedule duration", async () => {
   const wf = workflow(async () => {
-    await duration(10);
+    await createAwaitTimerCall(Schedule.duration(10));
   });
 
   await expect(execute(wf, [], undefined)).resolves.toMatchObject(<
@@ -603,7 +721,7 @@ test("should not re-schedule duration", async () => {
 
 test("should complete duration", async () => {
   const wf = workflow(async () => {
-    await duration(10);
+    await createAwaitTimerCall(Schedule.duration(10));
     return "done";
   });
 
@@ -619,7 +737,7 @@ test("should schedule time", async () => {
   const now = new Date();
 
   const wf = workflow(async () => {
-    await time(now);
+    await createAwaitTimerCall(Schedule.time(now));
   });
 
   await expect(execute(wf, [], undefined)).resolves.toMatchObject(<
@@ -647,7 +765,7 @@ test("should complete time", async () => {
   const now = new Date();
 
   const wf = workflow(async () => {
-    await time(now);
+    await createAwaitTimerCall(Schedule.time(now));
     return "done";
   });
 

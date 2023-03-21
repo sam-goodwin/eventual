@@ -1,10 +1,10 @@
+import type { HistoryStateEvent } from "@eventual/core/internal";
 import type {
   ExecutionHistoryStateStore,
   UpdateHistoryRequest,
-} from "@eventual/core-runtime";
-import type { HistoryStateEvent } from "@eventual/core/internal";
+} from "../../stores/execution-history-state-store.js";
 
-export class TestExecutionHistoryStateStore
+export class LocalExecutionHistoryStateStore
   implements ExecutionHistoryStateStore
 {
   private executionHistory: Record<string, HistoryStateEvent[]> = {};

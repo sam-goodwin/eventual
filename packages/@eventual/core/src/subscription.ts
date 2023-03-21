@@ -8,7 +8,7 @@ import { isSourceLocation, SourceLocation } from "./internal/service-spec.js";
  */
 export type SubscriptionHandler<E extends EventPayload> = (
   event: E
-) => Promise<void>;
+) => Promise<void> | void;
 
 /**
  * Runtime Props for an Event Handler.

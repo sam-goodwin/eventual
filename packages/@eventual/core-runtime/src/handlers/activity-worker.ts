@@ -6,17 +6,16 @@ import {
   LogLevel,
 } from "@eventual/core";
 import {
+  activityContextScope,
   ActivityFailed,
   ActivityRuntimeContext,
   ActivitySucceeded,
-  clearActivityContext,
   extendsError,
   isAsyncResult,
   isWorkflowFailed,
   registerServiceClient,
   ServiceType,
   serviceTypeScope,
-  setActivityContext,
   WorkflowEventType,
 } from "@eventual/core/internal";
 import { createActivityToken } from "../activity-token.js";
@@ -42,15 +41,15 @@ import {
 } from "./activity-fallback-handler.js";
 
 export interface CreateActivityWorkerProps {
-  timerClient: TimerClient;
-  metricsClient: MetricsClient;
-  eventClient: EventClient;
   activityProvider: ActivityProvider;
-  serviceClient?: EventualServiceClient;
-  logAgent: LogAgent;
-  executionQueueClient: ExecutionQueueClient;
   activityStore: ActivityStore;
+  eventClient: EventClient;
+  executionQueueClient: ExecutionQueueClient;
+  logAgent: LogAgent;
+  metricsClient: MetricsClient;
+  serviceClient?: EventualServiceClient;
   serviceName: string;
+  timerClient: TimerClient;
 }
 
 export interface ActivityWorker {
@@ -164,7 +163,6 @@ export function createActivityWorker({
                   retry: request.retry,
                 },
               };
-              setActivityContext(runtimeContext);
               metrics.putMetric(ActivityMetrics.ClaimRejected, 0, Unit.Count);
 
               logAgent.logWithContext(activityLogContext, LogLevel.DEBUG, [
@@ -175,7 +173,10 @@ export function createActivityWorker({
                 request.command.name
               );
 
-              const event = await runActivity();
+              const event = await activityContextScope(
+                runtimeContext,
+                async () => await runActivity()
+              );
 
               if (event) {
                 try {
@@ -295,8 +296,6 @@ export function createActivityWorker({
                     },
                     endTime
                   );
-                } finally {
-                  clearActivityContext();
                 }
               }
 

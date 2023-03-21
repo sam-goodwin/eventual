@@ -1,6 +1,7 @@
-import { MetricsClient, MetricsLogger } from "@eventual/core-runtime";
+import { MetricsClient } from "../../clients/metrics-client.js";
+import { MetricsLogger } from "../../metrics/metrics-logger.js";
 
-export class TestMetricsClient implements MetricsClient {
+export class LocalMetricsClient implements MetricsClient {
   public createMetricsLogger() {
     const logger: MetricsLogger = {
       setTimestamp: () => logger,

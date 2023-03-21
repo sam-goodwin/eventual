@@ -9,17 +9,17 @@ import {
   SucceededExecution,
   SucceedExecutionRequest,
 } from "@eventual/core";
-import { ExecutionStore } from "@eventual/core-runtime";
 import {
   isFailedExecutionRequest,
   WorkflowStarted,
 } from "@eventual/core/internal";
-import { TimeConnector } from "../environment.js";
+import type { ExecutionStore } from "../../stores/execution-store.js";
+import type { LocalEnvConnector } from "../local-container.js";
 
-export class TestExecutionStore implements ExecutionStore {
+export class LocalExecutionStore implements ExecutionStore {
   private executionStore: Record<string, Execution<any>> = {};
 
-  constructor(private timeConnector: TimeConnector) {}
+  constructor(private localConnector: LocalEnvConnector) {}
 
   public async create(
     execution: InProgressExecution,
@@ -28,7 +28,7 @@ export class TestExecutionStore implements ExecutionStore {
     this.executionStore[execution.id] = execution;
 
     if (startEvent) {
-      this.timeConnector.pushEvent({
+      this.localConnector.pushWorkflowTaskNextTick({
         executionId: execution.id,
         events: [startEvent],
       });

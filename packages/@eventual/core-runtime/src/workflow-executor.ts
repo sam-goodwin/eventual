@@ -89,6 +89,10 @@ export function createEventualPromise<R>(
           reject = _reject;
         })
   ) as RuntimeEventualPromise<R>;
+  // HACK: unhandled promise rejects cause node to fail, this will allow this promise to remain
+  //       "unhandled". However, adding one or more .then chains to a promise that rejects can still
+  //       fail.
+  promise.catch(() => {});
   promise[EventualPromiseSymbol] = seq;
   promise.resolve = (result) => {
     beforeResolve?.();

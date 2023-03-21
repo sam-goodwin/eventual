@@ -342,7 +342,7 @@ export const eventDrivenWorkflow = workflow(
       timeout: duration(30, "seconds"),
     });
 
-    await sendFinishEvent(ctx.execution.id);
+    sendFinishEvent(ctx.execution.id);
 
     await expectSignal("finish", {
       timeout: duration(30, "seconds"),
@@ -565,3 +565,13 @@ export const modifyResponseMiddlewareHttp = api
   .get("/modify-response-http", async () => {
     return new HttpResponse("My Response");
   });
+
+const simpleEvent = event<{ value: string }>("simpleEvent");
+
+export const simpleEventHandler = subscription(
+  "simpleEventHandler",
+  { events: [simpleEvent] },
+  (payload) => {
+    console.log("hi", payload);
+  }
+);

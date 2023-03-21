@@ -24,7 +24,7 @@ export async function sendActivityHeartbeat(
       activityToken,
     });
   } else if (isActivityWorker()) {
-    const token = getActivityContext().invocation.token;
+    const token = (await getActivityContext()).invocation.token;
     return await getServiceClient().sendActivityHeartbeat({
       activityToken: token,
     });

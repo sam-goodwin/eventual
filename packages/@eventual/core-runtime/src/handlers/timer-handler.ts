@@ -21,6 +21,11 @@ interface TimerHandlerProps {
   logAgent: LogAgent;
   executionQueueClient: ExecutionQueueClient;
   activityStore: ActivityStore;
+  baseTime?: () => Date;
+}
+
+export interface TimerHandler {
+  (request: TimerRequest): Promise<void>;
 }
 
 /**
@@ -34,8 +39,9 @@ export function createTimerHandler({
   executionQueueClient,
   logAgent,
   timerClient,
-}: TimerHandlerProps) {
-  return async (request: TimerRequest) => {
+  baseTime = () => new Date(),
+}: TimerHandlerProps): TimerHandler {
+  return async (request) => {
     try {
       if (isTimerScheduleEventRequest(request)) {
         logAgent.logWithContext(
@@ -70,7 +76,8 @@ export function createTimerHandler({
           !activity?.heartbeatTime ||
           isHeartbeatTimeElapsed(
             activity.heartbeatTime,
-            request.heartbeatSeconds
+            request.heartbeatSeconds,
+            baseTime()
           )
         ) {
           return executionQueueClient.submitExecutionEvents(
@@ -80,7 +87,7 @@ export function createTimerHandler({
                 type: WorkflowEventType.ActivityHeartbeatTimedOut,
                 seq: request.activitySeq,
               },
-              new Date()
+              baseTime()
             )
           );
         } else {
@@ -104,10 +111,11 @@ export function createTimerHandler({
 
 function isHeartbeatTimeElapsed(
   lastHeartbeatTime: string,
-  heartbeatSeconds: number
+  heartbeatSeconds: number,
+  currentDate: Date
 ) {
   const durationMillis =
-    new Date().getTime() - new Date(lastHeartbeatTime).getTime();
+    currentDate.getTime() - new Date(lastHeartbeatTime).getTime();
 
   return heartbeatSeconds * 1000 < durationMillis;
 }

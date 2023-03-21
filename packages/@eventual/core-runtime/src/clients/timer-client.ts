@@ -118,6 +118,12 @@ export function isActivityHeartbeatMonitorRequest(
   );
 }
 
+export function isTimerRequest(req: any): req is TimerRequest {
+  return (
+    isActivityHeartbeatMonitorRequest(req) || isTimerScheduleEventRequest(req)
+  );
+}
+
 export interface ScheduleForwarderRequest {
   scheduleName: string;
   clearSchedule: boolean;

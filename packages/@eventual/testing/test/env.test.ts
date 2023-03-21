@@ -493,20 +493,8 @@ describe("sleep", () => {
       input: false,
     });
 
-    // see if the execution has succeeded
     const r1 = await result.getStatus();
-    // we expect it to still be in progress
     expect(r1).toMatchObject<Partial<typeof r1>>({
-      status: ExecutionStatus.IN_PROGRESS,
-    });
-
-    // progress time, the sleep is triggered
-    // note: still need to progress once for the event to be processed
-    await env.tick();
-
-    // the workflow still not be done, have 9 more seconds left on the sleep
-    const r3 = await result.getStatus();
-    expect(r3).toMatchObject<Partial<typeof r3>>({
       status: ExecutionStatus.SUCCEEDED,
       result: "hello",
     });

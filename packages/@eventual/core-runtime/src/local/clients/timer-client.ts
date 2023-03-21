@@ -1,15 +1,15 @@
 import { assertNever } from "@eventual/core/internal";
 import {
-  computeScheduleDate,
   isActivityHeartbeatMonitorRequest,
   isTimerScheduleEventRequest,
   TimerClient,
   TimerRequest,
-} from "@eventual/core-runtime";
-import { TimeConnector } from "../environment.js";
+} from "../../clients/timer-client.js";
+import { computeScheduleDate } from "../../schedule.js";
+import { LocalEnvConnector } from "../local-container.js";
 
-export class TestTimerClient extends TimerClient {
-  constructor(private timeConnector: TimeConnector) {
+export class LocalTimerClient extends TimerClient {
+  constructor(private timeConnector: LocalEnvConnector) {
     super(() => timeConnector.getTime());
   }
 
@@ -25,9 +25,7 @@ export class TestTimerClient extends TimerClient {
         events: [timerRequest.event],
       });
     } else if (isActivityHeartbeatMonitorRequest(timerRequest)) {
-      throw new Error(
-        "Heartbeat timeout is not yet implemented for the Test Environment."
-      );
+      this.timeConnector.scheduleEvent(time, timerRequest);
     } else {
       return assertNever(timerRequest);
     }

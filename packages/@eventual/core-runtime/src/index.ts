@@ -4,6 +4,7 @@ export * from "./command-executor.js";
 export * from "./console-hook.js";
 export * from "./execution.js";
 export * from "./handlers/index.js";
+export * from "./local/index.js";
 export * from "./log-agent.js";
 export * from "./metrics/index.js";
 export * from "./providers/index.js";

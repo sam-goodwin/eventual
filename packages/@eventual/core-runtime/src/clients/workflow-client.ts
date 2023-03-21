@@ -176,7 +176,7 @@ export class WorkflowClient {
   ) {
     await this.executionQueueClient.submitExecutionEvents(parentExecutionId, {
       seq,
-      timestamp: new Date().toISOString(),
+      timestamp: this.baseTime().toISOString(),
       ...(args.length === 1
         ? {
             type: WorkflowEventType.ChildWorkflowSucceeded,

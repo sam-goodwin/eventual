@@ -1,10 +1,9 @@
-import { bundleService } from "@eventual/compiler";
 import {
   DeterminismError,
   Execution,
   ExecutionID,
   isFailedExecution,
-  isSucceededExecution,
+  isSucceededExecution
 } from "@eventual/core";
 import {
   isFailed,
@@ -13,14 +12,13 @@ import {
   parseWorkflowName,
   resultToString,
   runExecutor,
-  WorkflowExecutor,
+  WorkflowExecutor
 } from "@eventual/core-runtime";
 import {
-  encodeExecutionId,
   Result,
   ServiceType,
   serviceTypeScope,
-  workflows,
+  workflows
 } from "@eventual/core/internal";
 import path from "path";
 import { Argv } from "yargs";
@@ -42,53 +40,37 @@ export const replay = (yargs: Argv) =>
           type: "string",
           demandOption: true,
         }),
-    serviceAction(
-      async (spinner, serviceClient, { entry, service, execution }) => {
-        spinner.start("Constructing replay...");
-        const [, { events }, executionObj] = await Promise.all([
-          loadService(service, encodeExecutionId(execution), entry),
-          serviceClient.getExecutionWorkflowHistory(execution),
-          serviceClient.getExecution(execution),
-        ]);
+    serviceAction(async (spinner, serviceClient, { entry, execution }) => {
+      spinner.start("Constructing replay...");
+      const [, { events }, executionObj] = await Promise.all([
+        import(path.resolve(entry)),
+        serviceClient.getExecutionWorkflowHistory(execution),
+        serviceClient.getExecution(execution),
+      ]);
+
+      spinner.succeed();
+      const workflowName = parseWorkflowName(execution as ExecutionID);
+      const workflow = workflows().get(workflowName);
+      if (!workflow) {
+        throw new Error(`Workflow ${workflowName} not found!`);
+      }
+      if (!executionObj) {
+        throw new Error(`Execution ${execution} not found!`);
+      }
+      spinner.start("Running program");
+
+      await serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
+        const executor = new WorkflowExecutor<any, any, any>(workflow, events);
+
+        const res = await runExecutor(executor, [], new Date());
+
+        assertExpectedResult(executionObj, res.result);
 
         spinner.succeed();
-        const workflowName = parseWorkflowName(execution as ExecutionID);
-        const workflow = workflows().get(workflowName);
-        if (!workflow) {
-          throw new Error(`Workflow ${workflowName} not found!`);
-        }
-        if (!executionObj) {
-          throw new Error(`Execution ${execution} not found!`);
-        }
-        spinner.start("Running program");
-
-        await serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
-          const executor = new WorkflowExecutor<any, any, any>(
-            workflow,
-            events
-          );
-
-          const res = await runExecutor(executor, [], new Date());
-
-          assertExpectedResult(executionObj, res.result);
-
-          spinner.succeed();
-          process.stdout.write(`result: ${resultToString(res.result)}\n`);
-        });
-      }
-    )
+        process.stdout.write(`result: ${resultToString(res.result)}\n`);
+      });
+    })
   );
-
-async function loadService(
-  service: string,
-  encodedExecutionId: any,
-  entry: string
-) {
-  const outDir = path.join(".eventual", "cli", service, encodedExecutionId);
-
-  const workflowPath = await bundleService(outDir, entry);
-  await import(path.resolve(workflowPath));
-}
 
 function assertExpectedResult(execution: Execution, replayResult?: Result) {
   if (isFailedExecution(execution)) {
