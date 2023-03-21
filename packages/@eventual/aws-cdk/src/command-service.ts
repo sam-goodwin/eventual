@@ -9,8 +9,14 @@ import { ENV_NAMES, sanitizeFunctionName } from "@eventual/aws-runtime";
 import { commandRpcPath, isDefaultNamespaceCommand } from "@eventual/core";
 import type { CommandFunction } from "@eventual/core-runtime";
 import { CommandSpec } from "@eventual/core/internal";
-import { Arn, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
-import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
+import { Arn, ArnFormat, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
+import {
+  Effect,
+  IGrantable,
+  PolicyStatement,
+  Role,
+  ServicePrincipal,
+} from "aws-cdk-lib/aws-iam";
 import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import openapi from "openapi3-ts";
@@ -82,8 +88,7 @@ export interface CommandsProps<Service = any> extends ServiceConstructProps {
  * Properties that can be overridden for an individual API handler Function.
  */
 export interface CommandHandlerProps
-  extends Partial<Omit<FunctionProps, "code" | "runtime" | "functionName">>,
-    Pick<HttpRouteProps, "authorizer"> {
+  extends Partial<Omit<FunctionProps, "code" | "runtime" | "functionName">> {
   /**
    * A callback that will be invoked on the Function after all the Service has been fully instantiated
    */
@@ -104,6 +109,7 @@ export class CommandService<Service = any> {
    */
   readonly serviceCommands: Commands<Service>;
   readonly systemCommandsHandler: Function;
+  private integrationRole: Role;
 
   /**
    * Individual API Handler Lambda Functions handling only a single API route. These handlers
@@ -155,6 +161,24 @@ export class CommandService<Service = any> {
       }
     );
 
+    this.integrationRole = new Role(commandsSystemScope, "IntegrationRole", {
+      assumedBy: new ServicePrincipal("apigateway.amazonaws.com"),
+    });
+
+    this.integrationRole.addToPrincipalPolicy(
+      new PolicyStatement({
+        actions: ["lambda:InvokeFunction"],
+        resources: [
+          Stack.of(this.props.systemScope).formatArn({
+            service: "lambda",
+            resourceName: `${this.props.serviceName}-`,
+            resource: "function",
+            arnFormat: ArnFormat.COLON_RESOURCE_NAME,
+          }),
+        ],
+      })
+    );
+
     this.onFinalize(() => {
       // for update activity
       this.props.activityService.configureWriteActivities(
@@ -187,8 +211,7 @@ export class CommandService<Service = any> {
       );
     });
 
-    const handlerToIntegration: WeakMap<Function, HttpLambdaIntegration> =
-      new WeakMap();
+    // const handlerToIntegration: Set<Function> = new Set();
 
     // TODO system
     this.specification = createSpecification([
@@ -283,47 +306,74 @@ export class CommandService<Service = any> {
     function createAPIPaths(
       handler: Function,
       command: CommandSpec,
-      overrides?: CommandHandlerProps
+      iamAuth?: boolean
     ): openapi.PathsObject {
       // TODO: use the Open API spec to configure instead of consuming CloudFormation resources
       // this seems not so simple and not well documented, so for now we take the cheap way out
       // we will keep the api spec and improve it over time
-      self.onFinalize(() => {
-        if (!handlerToIntegration.has(handler)) {
-          handlerToIntegration.set(
-            handler,
-            new HttpLambdaIntegration(command.name, handler)
-          );
-        }
-        const integration = handlerToIntegration.get(handler)!;
-        if (!command.passThrough) {
-          // internal and low-level HTTP APIs should be passed through
-          self.gateway.addRoutes({
-            path: `/${commandRpcPath(command)}`,
-            methods: [HttpMethod.POST],
-            integration,
-            authorizer: overrides?.authorizer,
-          });
-        }
-        if (command.path) {
-          self.gateway.addRoutes({
-            // itty router supports paths in the form /*, but api gateway expects them in the form /{proxy+}
-            path: ittyRouteToApigatewayRoute(command.path),
-            methods: [
-              (command.method as HttpMethod | undefined) ?? HttpMethod.GET,
-            ],
-            integration,
-            authorizer: overrides?.authorizer,
-          });
-        }
-      });
+      // self.onFinalize(() => {
+      //   if (!handlerToIntegration.has(handler)) {
+      //     handlerToIntegration.set(
+      //       handler,
+      //       new HttpLambdaIntegration(command.name, handler)
+      //     );
+      //   }
+      //   const integration = handlerToIntegration.get(handler)!;
+      //   if (!command.passThrough) {
+      //     // internal and low-level HTTP APIs should be passed through
+      //     self.gateway.addRoutes({
+      //       path: `/${commandRpcPath(command)}`,
+      //       methods: [HttpMethod.POST],
+      //       integration,
+      //       authorizer: overrides?.authorizer,
+      //     });
+      //   }
+      //   if (command.path) {
+      //     self.gateway.addRoutes({
+      //       // itty router supports paths in the form /*, but api gateway expects them in the form /{proxy+}
+      //       path: ittyRouteToApigatewayRoute(command.path),
+      //       methods: [
+      //         (command.method as HttpMethod | undefined) ?? HttpMethod.GET,
+      //       ],
+      //       integration,
+      //       authorizer: overrides?.authorizer,
+      //     });
+      //   }
+      // });
+
+      // if (!handlerToIntegration.has(handler)) {
+      //   self.onFinalize(() => {
+      //     handler.addPermission("GatewayPermission", {
+      //       principal: new ServicePrincipal("apigateway.amazonaws.com"),
+      //       sourceArn: Stack.of(handler).formatArn({
+      //         service: "execute-api",
+      //         resource: self.gateway.apiId,
+      //         resourceName: `*/*`,
+      //       }),
+      //     });
+      //   });
+      //   handlerToIntegration.add(handler);
+      // }
 
       return {
         [`/${commandRpcPath(command)}`]: {
           post: {
+            "x-amazon-apigateway-auth": {
+              type: "AWS_IAM",
+            },
+            [XAmazonApiGatewayIntegration]: {
+              connectionType: "INTERNET",
+              httpMethod: HttpMethod.POST,
+              payloadFormatVersion: "2.0",
+              type: "AWS_PROXY",
+              credentials: self.integrationRole.roleArn,
+              uri: Lazy.string({
+                produce: () => handler.functionArn,
+              }),
+            } satisfies XAmazonApiGatewayIntegration,
             requestBody: {
               content: {
-                "/application/json": {
+                "application/json": {
                   schema: command.input,
                 },
               },
@@ -337,8 +387,18 @@ export class CommandService<Service = any> {
         } satisfies openapi.PathItemObject,
         ...(command.path
           ? {
-              [command.path]: {
+              [ittyRouteToApigatewayRoute(command.path)]: {
                 [command.method?.toLocaleLowerCase() ?? "get"]: {
+                  [XAmazonApiGatewayIntegration]: {
+                    connectionType: "INTERNET",
+                    httpMethod: HttpMethod.POST,
+                    payloadFormatVersion: "2.0",
+                    type: "AWS_PROXY",
+                    credentials: self.integrationRole.roleArn,
+                    uri: Lazy.string({
+                      produce: () => handler.functionArn,
+                    }),
+                  } satisfies XAmazonApiGatewayIntegration,
                   parameters: Object.entries(command.params ?? {}).flatMap(
                     ([name, spec]) =>
                       spec === "body" ||
@@ -382,7 +442,8 @@ export class CommandService<Service = any> {
               connectionType: "INTERNET",
               httpMethod: HttpMethod.POST, // TODO: why POST? Exported API has this but it's not clear
               payloadFormatVersion: "2.0",
-              type: "aws_proxy",
+              type: "AWS_PROXY",
+              credentials: self.integrationRole.roleArn,
               uri: Lazy.string({
                 produce: () => self.serviceCommands.default.handler.functionArn,
               }),
@@ -492,8 +553,9 @@ const XAmazonApiGatewayIntegration = "x-amazon-apigateway-integration";
 
 interface XAmazonApiGatewayIntegration {
   payloadFormatVersion: "2.0";
-  type: "aws_proxy";
+  type: "AWS_PROXY";
   httpMethod: HttpMethod;
   uri: string;
   connectionType: "INTERNET";
+  credentials: string;
 }
