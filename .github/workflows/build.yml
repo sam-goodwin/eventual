@@ -51,7 +51,7 @@ jobs:
         run: pnpm -r --filter tests-runtime run test:local-start
       - name: Run CLI Tests
         run: pnpm -r --filter tests-runtime run test:cli
-    test-runtime:
+    test-create:
       needs: [build]
       runs-on: ubuntu-latest
       permissions:
