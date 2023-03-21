@@ -228,8 +228,16 @@ export class CommandService<Service = any> {
     function synthesizeAPI(scope: Construct, commands: CommandMapping[]) {
       return Object.fromEntries(
         commands.map((mapping) => {
-          const { manifest, overrides } = mapping;
+          const { manifest, overrides, init } = mapping;
           const command = manifest.spec;
+
+          if (init) {
+            self.onFinalize(() => init?.(handler));
+          }
+          if (overrides?.init) {
+            // issue all override finalizers after all the routes and api gateway is created
+            self.onFinalize(() => overrides!.init!(handler!));
+          }
 
           let sanitizedName = sanitizeFunctionName(command.name);
           if (sanitizedName !== command.name) {
@@ -257,96 +265,87 @@ export class CommandService<Service = any> {
           return [
             command.name as keyof Commands<Service>,
             {
-              handler,
-              paths: createAPIPaths(handler, mapping),
+              handler
             },
           ] as const;
         })
       );
+    }
 
-      function createAPIPaths(
-        handler: Function,
-        { manifest, overrides, init }: CommandMapping
-      ): openapi.PathsObject {
-        const command = manifest.spec;
-        if (init) {
-          self.onFinalize(() => init?.(handler));
+    function createAPIPaths(
+      handler: Function,
+      { manifest, overrides }: CommandMapping
+    ): openapi.PathsObject {
+      const command = manifest.spec;
+
+      // TODO: use the Open API spec to configure instead of consuming CloudFormation resources
+      // this seems not so simple and not well documented, so for now we take the cheap way out
+      // we will keep the api spec and improve it over time
+      self.onFinalize(() => {
+        const integration = new HttpLambdaIntegration(command.name, handler);
+        if (!command.passThrough) {
+          // internal and low-level HTTP APIs should be passed through
+          self.gateway.addRoutes({
+            path: `/${commandRpcPath(command)}`,
+            methods: [HttpMethod.POST],
+            integration,
+            authorizer: overrides?.authorizer,
+          });
         }
-        if (overrides?.init) {
-          // issue all override finalizers after all the routes and api gateway is created
-          self.onFinalize(() => overrides!.init!(handler!));
+        if (command.path) {
+          self.gateway.addRoutes({
+            // itty router supports paths in the form /*, but api gateway expects them in the form /{proxy+}
+            path: ittyRouteToApigatewayRoute(command.path),
+            methods: [
+              (command.method as HttpMethod | undefined) ?? HttpMethod.GET,
+            ],
+            integration,
+            authorizer: overrides?.authorizer,
+          });
         }
+      });
 
-        // TODO: use the Open API spec to configure instead of consuming CloudFormation resources
-        // this seems not so simple and not well documented, so for now we take the cheap way out
-        // we will keep the api spec and improve it over time
-        self.onFinalize(() => {
-          const integration = new HttpLambdaIntegration(command.name, handler);
-          if (!command.passThrough) {
-            // internal and low-level HTTP APIs should be passed through
-            self.gateway.addRoutes({
-              path: `/${commandRpcPath(command)}`,
-              methods: [HttpMethod.POST],
-              integration,
-              authorizer: overrides?.authorizer,
-            });
-          }
-          if (command.path) {
-            self.gateway.addRoutes({
-              // itty router supports paths in the form /*, but api gateway expects them in the form /{proxy+}
-              path: ittyRouteToApigatewayRoute(command.path),
-              methods: [
-                (command.method as HttpMethod | undefined) ?? HttpMethod.GET,
-              ],
-              integration,
-              authorizer: overrides?.authorizer,
-            });
-          }
-        });
-
-        return {
-          [`/${commandRpcPath(command)}`]: {
-            post: {
-              requestBody: {
-                content: {
-                  "/application/json": {
-                    schema: command.input,
-                  },
+      return {
+        [`/${commandRpcPath(command)}`]: {
+          post: {
+            requestBody: {
+              content: {
+                "/application/json": {
+                  schema: command.input,
                 },
               },
-              responses: {
-                default: {
-                  description: `Default response for ${command.method} ${command.path}`,
-                } satisfies openapi.ResponseObject,
-              },
             },
-          } satisfies openapi.PathItemObject,
-          ...(command.path
-            ? {
-                [command.path]: {
-                  [command.method?.toLocaleLowerCase() ?? "get"]: {
-                    parameters: Object.entries(command.params ?? {}).flatMap(
-                      ([name, spec]) =>
-                        spec === "body" ||
-                        (typeof spec === "object" && spec.in === "body")
-                          ? []
-                          : [
-                              {
-                                in:
-                                  typeof spec === "string"
-                                    ? spec
-                                    : (spec?.in as "query" | "header") ??
-                                      "query",
-                                name,
-                              } satisfies openapi.ParameterObject,
-                            ]
-                    ),
-                  },
-                } satisfies openapi.PathItemObject,
-              }
-            : {}),
-        };
-      }
+            responses: {
+              default: {
+                description: `Default response for ${command.method} ${command.path}`,
+              } satisfies openapi.ResponseObject,
+            },
+          },
+        } satisfies openapi.PathItemObject,
+        ...(command.path
+          ? {
+              [command.path]: {
+                [command.method?.toLocaleLowerCase() ?? "get"]: {
+                  parameters: Object.entries(command.params ?? {}).flatMap(
+                    ([name, spec]) =>
+                      spec === "body" ||
+                      (typeof spec === "object" && spec.in === "body")
+                        ? []
+                        : [
+                            {
+                              in:
+                                typeof spec === "string"
+                                  ? spec
+                                  : (spec?.in as "query" | "header") ?? "query",
+                              name,
+                            } satisfies openapi.ParameterObject,
+                          ]
+                  ),
+                },
+              } satisfies openapi.PathItemObject,
+            }
+          : {}),
+      };
     }
 
     function createSpecification(commands: Record<string, SynthesizedCommand>) {

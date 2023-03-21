@@ -259,39 +259,19 @@ export async function buildService(request: BuildAWSRuntimeProps) {
   async function bundleSystemCommandFunctions(
     specPath: string
   ): Promise<InternalCommands> {
-    const commands: Record<InternalCommandName, { entry: string }> = {
-      listWorkflows: {
-        entry: runtimeHandlersEntrypoint("system-commands/list-workflows"),
-      },
-      startExecution: {
-        entry: runtimeHandlersEntrypoint("system-commands/start-execution"),
-      },
-      listExecutions: {
-        entry: runtimeHandlersEntrypoint("system-commands/list-executions"),
-      },
-      getExecution: {
-        entry: runtimeHandlersEntrypoint("system-commands/get-execution"),
-      },
-      getExecutionHistory: {
-        entry: runtimeHandlersEntrypoint(
-          "system-commands/get-execution-history"
-        ),
-      },
-      sendSignal: {
-        entry: runtimeHandlersEntrypoint("system-commands/send-signal"),
-      },
-      getExecutionWorkflowHistory: {
-        entry: runtimeHandlersEntrypoint(
-          "system-commands/get-execution-workflow-history"
-        ),
-      },
-      publishEvents: {
-        entry: runtimeHandlersEntrypoint("system-commands/publish-events"),
-      },
-      updateActivity: {
-        entry: runtimeHandlersEntrypoint("system-commands/update-activity"),
-      },
-    };
+    const commands: InternalCommandName[] = [
+      "listWorkflows",
+      "startExecution",
+      "listExecutions",
+      "getExecution",
+      "getExecutionHistory",
+      "sendSignal",
+      "getExecutionWorkflowHistory",
+      "publishEvents",
+      "updateActivity",
+    ];
+
+    const systemDefault = buildFunction()
 
     return Object.fromEntries(
       await Promise.all(
