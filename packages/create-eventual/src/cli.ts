@@ -36,6 +36,12 @@ const targetChoices = [ProjectType.AWS_CDK, ProjectType.SST].sort();
             default: true,
             description: "init a git repo",
           })
+          .option("skip-install", {
+            type: "boolean",
+            boolean: true,
+            default: false,
+            description: "skip the install step",
+          })
           .check(({ projectName, serviceName }) => {
             if (projectName) {
               assertName("project", validateProjectName);
@@ -51,6 +57,7 @@ const targetChoices = [ProjectType.AWS_CDK, ProjectType.SST].sort();
           projectName: args.projectName,
           serviceName: args.serviceName,
           git: args.git,
+          skipInstall: args.skipInstall,
         });
       }
     )

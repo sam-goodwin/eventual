@@ -21,15 +21,17 @@ PROJECT_NAME="testme"
 EVENTUAL_PACKAGES=("@eventual/core" "@eventual/core-runtime" "@eventual/aws-client" "@eventual/cli" "@eventual/client" "@eventual/aws-runtime" "@eventual/testing" "@eventual/compiler" "@eventual/integrations-slack" "@eventual/aws-cdk" "@eventual/timeline" "@eventual/project")
 
 rm -rf $PROJECT_NAME
-../../../../packages/create-eventual/bin/index.js $PROJECT_NAME --target aws-cdk --serviceName test-service
+../../../../packages/create-eventual/bin/index.js $PROJECT_NAME --target aws-cdk --serviceName test-service --skip-install --no-git
 cd $PROJECT_NAME
+
+npm link ${EVENTUAL_PACKAGES[@]}
 
 # CDK doesn't like mis-matched versions...
 cd ./infra
 npm install aws-cdk@2.50 aws-cdk-lib@2.50 constructs@10.1.154
 
 cd ..
-npm link ${EVENTUAL_PACKAGES[@]}
+npm install
 
 npm run build
 npm run synth
