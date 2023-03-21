@@ -37,7 +37,6 @@ import {
   Commands,
   CommandService,
   CorsOptions,
-  SystemCommands,
 } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal.js";
 import { EventService } from "./event-service";
@@ -121,7 +120,7 @@ export interface ServiceSystem<S> {
    * The {@link AppSec} inferred from the application code.
    */
   readonly build: BuildOutput;
-  readonly systemCommands: SystemCommands;
+  readonly systemCommandsHandler: Function;
   /**
    * A SSM parameter containing data about this service.
    */
@@ -333,7 +332,7 @@ export class Service<S = any> extends Construct {
       build,
       accessRole: accessRole,
       schedulerService: scheduler,
-      systemCommands: this.commandService.systemCommands,
+      systemCommandsHandler: this.commandService.systemCommandsHandler,
       serviceMetadataSSM: serviceDataSSM,
       workflowService,
     };

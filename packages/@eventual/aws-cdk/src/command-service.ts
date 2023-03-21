@@ -4,16 +4,11 @@ import {
   HttpMethod,
   HttpRouteProps,
 } from "@aws-cdk/aws-apigatewayv2-alpha";
-import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
 import { ENV_NAMES, sanitizeFunctionName } from "@eventual/aws-runtime";
 import { commandRpcPath, isDefaultNamespaceCommand } from "@eventual/core";
-import type {
-  CommandFunction,
-  InternalCommandFunction,
-  InternalCommandName,
-  InternalCommands,
-} from "@eventual/core-runtime";
+import type { CommandFunction } from "@eventual/core-runtime";
+import { CommandSpec } from "@eventual/core/internal";
 import { Arn, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
 import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
@@ -95,10 +90,6 @@ export interface CommandHandlerProps
   init?(func: Function): void;
 }
 
-export interface SystemCommands {
-  [key: string]: Function;
-}
-
 export class CommandService<Service = any> {
   /**
    * API Gateway for providing service api
@@ -112,7 +103,7 @@ export class CommandService<Service = any> {
    * A map of Command Name to the Lambda Function handling its logic.
    */
   readonly serviceCommands: Commands<Service>;
-  readonly systemCommands: SystemCommands;
+  readonly systemCommandsHandler: Function;
 
   /**
    * Individual API Handler Lambda Functions handling only a single API route. These handlers
@@ -125,27 +116,6 @@ export class CommandService<Service = any> {
 
   constructor(private props: CommandsProps<Service>) {
     const self = this;
-
-    const internalInit: {
-      [route in InternalCommandName]?: CommandMapping["init"];
-    } = {
-      updateActivity: (fn) => {
-        this.props.activityService.configureWriteActivities(fn);
-        this.props.activityService.configureCompleteActivity(fn);
-      },
-      publishEvents: (fn) => this.props.eventService.configurePublish(fn),
-      listExecutions: (fn) =>
-        this.props.workflowService.configureReadExecutions(fn),
-      getExecution: (fn) =>
-        this.props.workflowService.configureReadExecutions(fn),
-      getExecutionHistory: (fn) =>
-        this.props.workflowService.configureReadExecutionHistory(fn),
-      sendSignal: (fn) => this.props.workflowService.configureSendSignal(fn),
-      getExecutionWorkflowHistory: (fn) =>
-        this.props.workflowService.configureReadHistoryState(fn),
-      startExecution: (fn) =>
-        this.props.workflowService.configureStartExecution(fn),
-    };
 
     // Construct for grouping commands in the CDK tree
     // Service => System => EventualService => Commands => [all system commands]
@@ -173,29 +143,65 @@ export class CommandService<Service = any> {
       )
     );
 
-    const serviceCommandPaths = Object.fromEntries(
-      Object.entries(serviceCommandsHandlers).map(([name, entry]) => {})
+    this.systemCommandsHandler = new ServiceFunction(
+      commandsSystemScope,
+      "SystemCommandHandler",
+      {
+        build: this.props.build,
+        bundledFunction:
+          this.props.build.system.eventualService.systemCommandHandler,
+        functionNameSuffix: "system-command",
+        serviceName: this.props.serviceName,
+      }
     );
 
-    const systemCommands = synthesizeAPI(
-      commandsSystemScope,
-      [](
-        Object.entries(this.props.build.system.eventualService.commands) as any
-      ).map(
-        ([path, manifest]: [keyof InternalCommands, InternalCommandFunction]) =>
-          ({
-            manifest,
-            overrides: {
-              authorizer: new HttpIamAuthorizer(),
-              init: internalInit[path],
-            },
-          } satisfies CommandMapping)
-      )
-    );
+    this.onFinalize(() => {
+      // for update activity
+      this.props.activityService.configureWriteActivities(
+        this.systemCommandsHandler
+      );
+      this.props.activityService.configureCompleteActivity(
+        this.systemCommandsHandler
+      );
+      // publish events
+      this.props.eventService.configurePublish(this.systemCommandsHandler);
+      // get and list executions
+      this.props.workflowService.configureReadExecutions(
+        this.systemCommandsHandler
+      );
+      // execution history
+      this.props.workflowService.configureReadExecutionHistory(
+        this.systemCommandsHandler
+      );
+      // send signal
+      this.props.workflowService.configureSendSignal(
+        this.systemCommandsHandler
+      );
+      // workflow history
+      this.props.workflowService.configureReadHistoryState(
+        this.systemCommandsHandler
+      );
+      // start execution
+      this.props.workflowService.configureStartExecution(
+        this.systemCommandsHandler
+      );
+    });
+
+    const handlerToIntegration: WeakMap<Function, HttpLambdaIntegration> =
+      new WeakMap();
 
     // TODO system
     this.specification = createSpecification([
-      ...Object.entries(serviceCommandsHandlers).map(([name, {handler}]) => { return createAPIPaths(handler,) }),
+      ...Object.values(serviceCommands).map(({ handler, mapping }) => {
+        return createAPIPaths(
+          handler,
+          mapping.manifest.spec,
+          mapping.overrides
+        );
+      }),
+      ...this.props.build.system.eventualService.commands.map((command) =>
+        createAPIPaths(this.systemCommandsHandler, command)
+      ),
     ]);
     this.serviceCommands = Object.fromEntries(
       Object.entries(serviceCommands).map(([c, { handler }]) => [
@@ -203,9 +209,6 @@ export class CommandService<Service = any> {
         new EventualResource(handler, this.props.local),
       ])
     ) as Commands<Service>;
-    this.systemCommands = Object.fromEntries(
-      Object.entries(systemCommands).map(([c, { handler }]) => [c, handler])
-    ) satisfies SystemCommands;
 
     // Service => Gateway
     this.gateway = new HttpApi(props.serviceScope, "Gateway", {
@@ -270,7 +273,7 @@ export class CommandService<Service = any> {
             command.name as keyof Commands<Service>,
             {
               handler,
-              mapping
+              mapping,
             },
           ] as const;
         })
@@ -279,15 +282,20 @@ export class CommandService<Service = any> {
 
     function createAPIPaths(
       handler: Function,
-      { manifest, overrides }: CommandMapping
+      command: CommandSpec,
+      overrides?: CommandHandlerProps
     ): openapi.PathsObject {
-      const command = manifest.spec;
-
       // TODO: use the Open API spec to configure instead of consuming CloudFormation resources
       // this seems not so simple and not well documented, so for now we take the cheap way out
       // we will keep the api spec and improve it over time
       self.onFinalize(() => {
-        const integration = new HttpLambdaIntegration(command.name, handler);
+        if (!handlerToIntegration.has(handler)) {
+          handlerToIntegration.set(
+            handler,
+            new HttpLambdaIntegration(command.name, handler)
+          );
+        }
+        const integration = handlerToIntegration.get(handler)!;
         if (!command.passThrough) {
           // internal and low-level HTTP APIs should be passed through
           self.gateway.addRoutes({
@@ -471,11 +479,6 @@ function ittyRouteToApigatewayRoute(route: string) {
   return route === "*"
     ? "/{proxy+}"
     : route.replace(/\*/g, "{proxy+}").replaceAll(/\:([^\/]*)/g, "{$1}");
-}
-
-interface SynthesizedCommand {
-  handler: Function;
-  paths: openapi.PathsObject;
 }
 
 interface CommandMapping {
