@@ -173,9 +173,13 @@ export class CommandService<Service = any> {
       )
     );
 
+    const serviceCommandPaths = Object.fromEntries(
+      Object.entries(serviceCommandsHandlers).map(([name, entry]) => {})
+    );
+
     const systemCommands = synthesizeAPI(
       commandsSystemScope,
-      (
+      [](
         Object.entries(this.props.build.system.eventualService.commands) as any
       ).map(
         ([path, manifest]: [keyof InternalCommands, InternalCommandFunction]) =>
@@ -189,10 +193,10 @@ export class CommandService<Service = any> {
       )
     );
 
-    this.specification = createSpecification({
-      ...serviceCommands,
-      ...systemCommands,
-    });
+    // TODO system
+    this.specification = createSpecification([
+      ...Object.entries(serviceCommandsHandlers).map(([name, {handler}]) => { return createAPIPaths(handler,) }),
+    ]);
     this.serviceCommands = Object.fromEntries(
       Object.entries(serviceCommands).map(([c, { handler }]) => [
         c,
@@ -265,7 +269,8 @@ export class CommandService<Service = any> {
           return [
             command.name as keyof Commands<Service>,
             {
-              handler
+              handler,
+              mapping
             },
           ] as const;
         })
@@ -348,9 +353,9 @@ export class CommandService<Service = any> {
       };
     }
 
-    function createSpecification(commands: Record<string, SynthesizedCommand>) {
-      const paths = Object.values(commands).reduce<openapi.PathsObject>(
-        (allPaths, { paths }) => mergeAPIPaths(allPaths, paths),
+    function createSpecification(commandPaths: openapi.PathsObject[]) {
+      const paths = Object.values(commandPaths).reduce<openapi.PathsObject>(
+        (allPaths, paths) => mergeAPIPaths(allPaths, paths),
         {}
       );
 
