@@ -51,5 +51,16 @@ jobs:
         run: pnpm -r --filter tests-runtime run test:local-start
       - name: Run CLI Tests
         run: pnpm -r --filter tests-runtime run test:cli
-      - name: Run Create Tests
-        run: pnpm -r --filter tests-runtime run test:create
+    test-runtime:
+      needs: [build]
+      runs-on: ubuntu-latest
+      permissions:
+        contents: write
+        id-token: write
+      env:
+        CI: "true"
+      steps:
+        - uses: actions/checkout@v3
+        - uses: ./.github/actions/build
+        - name: Run Create Tests
+          run: pnpm -r --filter tests-runtime run test:create
