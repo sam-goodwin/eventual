@@ -18,7 +18,7 @@
     "@aws-sdk/client-sqs": "^3.254.0",
     "@aws-sdk/client-ssm": "^3.254.0",
     "@eventual/aws-client": "workspace:^",
-    "@eventual/cli": "^0.28.0",
+    "@eventual/cli": "workspace:^",
     "@eventual/client": "workspace:^",
     "@eventual/core": "workspace:^",
     "zod": "^3"
