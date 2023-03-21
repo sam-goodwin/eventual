@@ -3,14 +3,20 @@ import {
   ENV_NAMES,
 } from "@eventual/aws-runtime";
 import type { ActivityFunction } from "@eventual/core-runtime";
-import { aws_iam, Duration, RemovalPolicy } from "aws-cdk-lib";
+import {
+  ArnFormat,
+  aws_iam,
+  Duration,
+  RemovalPolicy,
+  Stack,
+} from "aws-cdk-lib";
 import {
   AttributeType,
   BillingMode,
   ITable,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
-import { IGrantable } from "aws-cdk-lib/aws-iam";
+import { IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { LambdaDestination } from "aws-cdk-lib/aws-lambda-destinations";
 import { Construct } from "constructs";
@@ -137,9 +143,27 @@ export class ActivityService<Service = any> {
 
   @grant()
   public grantStartActivity(grantable: IGrantable) {
-    Object.values<Activity>(this.activities).map((a) => {
-      a.handler.grantInvoke(grantable);
-    });
+    // grants the permission to start any activity
+    const stack = Stack.of(this.props.systemScope);
+    grantable.grantPrincipal.addToPrincipalPolicy(
+      new PolicyStatement({
+        actions: ["lambda:InvokeFunction"],
+        resources: [
+          stack.formatArn({
+            service: "lambda",
+            resourceName: `${this.props.serviceName}-activity-*`,
+            resource: "function",
+            arnFormat: ArnFormat.COLON_RESOURCE_NAME,
+          }),
+          stack.formatArn({
+            service: "lambda",
+            resourceName: `${this.props.serviceName}-activity-*:*`,
+            resource: "function",
+            arnFormat: ArnFormat.COLON_RESOURCE_NAME,
+          }),
+        ],
+      })
+    );
   }
 
   public configureSendHeartbeat(func: Function) {
