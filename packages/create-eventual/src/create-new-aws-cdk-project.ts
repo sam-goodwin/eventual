@@ -16,6 +16,7 @@ export interface CreateAwsCdkProps {
   pkgManager: PackageManager;
   serviceName: string | undefined;
   git: boolean;
+  skipInstall: boolean;
 }
 
 export async function createAwsCdkProject({
@@ -23,6 +24,7 @@ export async function createAwsCdkProject({
   pkgManager,
   serviceName = projectName,
   git,
+  skipInstall,
 }: CreateAwsCdkProps) {
   await fs.mkdir(projectName);
   process.chdir(projectName);
@@ -413,5 +415,7 @@ test("hello workflow should publish helloEvent and return message", async () => 
     });
   }
 
-  await install(pkgManager);
+  if (!skipInstall) {
+    await install(pkgManager);
+  }
 }

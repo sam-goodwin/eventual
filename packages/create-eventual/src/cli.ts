@@ -1,4 +1,4 @@
-import { validateServiceName } from "@eventual/project";
+import { PackageManager, validateServiceName } from "@eventual/project";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import {
@@ -36,6 +36,18 @@ const targetChoices = [ProjectType.AWS_CDK, ProjectType.SST].sort();
             default: true,
             description: "init a git repo",
           })
+          .option("skip-install", {
+            type: "boolean",
+            boolean: true,
+            default: false,
+            description: "skip the install step",
+          })
+          .option("package-manager", {
+            type: "string",
+            choices: ["yarn", "pnpm", "npm"],
+            description:
+              "Package managed, when not provided, will attempt to detect.",
+          })
           .check(({ projectName, serviceName }) => {
             if (projectName) {
               assertName("project", validateProjectName);
@@ -51,6 +63,8 @@ const targetChoices = [ProjectType.AWS_CDK, ProjectType.SST].sort();
           projectName: args.projectName,
           serviceName: args.serviceName,
           git: args.git,
+          skipInstall: args.skipInstall,
+          packageManager: args.packageManager as PackageManager,
         });
       }
     )
