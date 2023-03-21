@@ -8,18 +8,18 @@ import { HttpIamAuthorizer } from "@aws-cdk/aws-apigatewayv2-authorizers-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
 import { ENV_NAMES, sanitizeFunctionName } from "@eventual/aws-runtime";
 import { commandRpcPath, isDefaultNamespaceCommand } from "@eventual/core";
+import type {
+  CommandFunction,
+  InternalCommandFunction,
+  InternalCommandName,
+  InternalCommands,
+} from "@eventual/core-runtime";
 import { Arn, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
 import { Effect, IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import openapi from "openapi3-ts";
 import type { ActivityService } from "./activity-service";
-import type {
-  CommandFunction,
-  InternalCommandFunction,
-  InternalCommandName,
-  InternalCommands,
-} from "../../core-runtime/src/build-manifest";
 import type { EventService } from "./event-service";
 import { grant } from "./grant";
 import {

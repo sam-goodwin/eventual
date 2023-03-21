@@ -1,11 +1,13 @@
 import { serviceFunctionName } from "@eventual/aws-runtime";
-import { FunctionRuntimeProps } from "@eventual/core";
-import { computeDurationSeconds } from "@eventual/core-runtime";
+import type { FunctionRuntimeProps } from "@eventual/core";
+import {
+  BundledFunction,
+  computeDurationSeconds,
+} from "@eventual/core-runtime";
 import { Duration } from "aws-cdk-lib";
 import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
-import { BuildOutput } from "./build";
-import { BundledFunction } from "../../core-runtime/src/build-manifest";
+import type { BuildOutput } from "./build";
 import { baseFnProps } from "./utils";
 
 export interface ServiceFunctionProps {

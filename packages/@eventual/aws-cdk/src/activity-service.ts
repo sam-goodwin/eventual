@@ -2,6 +2,7 @@ import {
   activityServiceFunctionSuffix,
   ENV_NAMES,
 } from "@eventual/aws-runtime";
+import type { ActivityFunction } from "@eventual/core-runtime";
 import { aws_iam, Duration, RemovalPolicy } from "aws-cdk-lib";
 import {
   AttributeType,
@@ -14,7 +15,6 @@ import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { LambdaDestination } from "aws-cdk-lib/aws-lambda-destinations";
 import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
-import { ActivityFunction } from "../../core-runtime/src/build-manifest";
 import { CommandService } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal";
 import { grant } from "./grant";

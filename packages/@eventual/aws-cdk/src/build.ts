@@ -1,6 +1,13 @@
 import { build, BuildSource, infer } from "@eventual/compiler";
 import { ActivitySpec } from "@eventual/core";
 import {
+  BuildManifest,
+  BundledFunction,
+  InternalCommandFunction,
+  InternalCommandName,
+  InternalCommands,
+} from "@eventual/core-runtime";
+import {
   CommandSpec,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
   ServiceType,
@@ -10,13 +17,6 @@ import { Code } from "aws-cdk-lib/aws-lambda";
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
-import {
-  BuildManifest,
-  BundledFunction,
-  InternalCommandFunction,
-  InternalCommandName,
-  InternalCommands,
-} from "../../core-runtime/src/build-manifest";
 
 export interface BuildOutput extends BuildManifest {}
 

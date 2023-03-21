@@ -1,4 +1,5 @@
 import { subscriptionServiceFunctionSuffix } from "@eventual/aws-runtime";
+import type { SubscriptionFunction } from "@eventual/core-runtime";
 import { aws_iam } from "aws-cdk-lib";
 import { IEventBus, Rule } from "aws-cdk-lib/aws-events";
 import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";
@@ -6,11 +7,10 @@ import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
-import type { SubscriptionFunction } from "../../core-runtime/src/build-manifest";
 import { CommandService } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal";
 import type { EventService } from "./event-service";
-import { LazyInterface } from "./proxy-construct";
+import type { LazyInterface } from "./proxy-construct";
 import type {
   EventualResource,
   ServiceConstructProps,
