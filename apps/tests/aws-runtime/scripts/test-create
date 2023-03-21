@@ -25,7 +25,7 @@ cd ./infra
 pnpm install aws-cdk@2.50 aws-cdk-lib@2.50 constructs@10.1.154
 
 cd ..
-pnpm install
+pnpm install --no-frozen-lockfile
 
 pnpm run build
 pnpm run synth
