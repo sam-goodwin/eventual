@@ -9,7 +9,7 @@ import {
   getServiceData,
   resolveRegion,
   ServiceData,
-  tryResolveDefaultService,
+  tryResolveDefaultServiceRemote,
 } from "./service-data.js";
 import { styledConsole } from "./styled-console.js";
 
@@ -58,29 +58,28 @@ export function serviceAction<T>(
       const [serviceData, serviceName, serviceClient, credentials] =
         await (async () => {
           if (!args.local) {
-            const serviceName = await tryResolveDefaultService(args.service);
-            try {
-              const region = args.region ?? (await resolveRegion());
-              const credentials = await assumeCliRole(serviceName, region);
-              const serviceData = await getServiceData(
-                credentials,
-                serviceName,
-                region
-              );
-              const serviceClient = new AWSHttpEventualClient({
-                credentials,
-                serviceUrl: serviceData.apiEndpoint,
-                region,
-              });
-              return [
-                serviceData,
-                serviceName,
-                serviceClient,
-                credentials,
-              ] as const;
-            } catch {
-              return [undefined, serviceName];
-            }
+            const region = args.region ?? (await resolveRegion());
+            const serviceName = await tryResolveDefaultServiceRemote(
+              args.service,
+              region
+            );
+            const credentials = await assumeCliRole(serviceName, region);
+            const serviceData = await getServiceData(
+              credentials,
+              serviceName,
+              region
+            );
+            const serviceClient = new AWSHttpEventualClient({
+              credentials,
+              serviceUrl: serviceData.apiEndpoint,
+              region,
+            });
+            return [
+              serviceData,
+              serviceName,
+              serviceClient,
+              credentials,
+            ] as const;
           } else {
             return [
               {

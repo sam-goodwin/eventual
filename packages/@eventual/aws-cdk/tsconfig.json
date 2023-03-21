@@ -1,6 +1,10 @@
 {
   "extends": "../../../tsconfig-base.cjs",
-  "include": ["src", "src/package.json"],
+  "include": [
+    "src",
+    "src/package.json",
+    "../core-runtime/src/build-manifest.ts"
+  ],
   "exclude": ["lib", "node_modules"],
   "compilerOptions": {
     "rootDir": "src",

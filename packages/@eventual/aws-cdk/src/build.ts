@@ -16,7 +16,7 @@ import {
   InternalCommandFunction,
   InternalCommandName,
   InternalCommands,
-} from "./build-manifest";
+} from "../../core-runtime/src/build-manifest";
 
 export interface BuildOutput extends BuildManifest {}
 

@@ -1,15 +1,17 @@
 import { readJsonFile } from "./json-file.js";
 import path from "path";
 
-export interface EventualManifest {
+export interface EventualConfig {
   projectType: "aws-cdk";
+  synth: string;
+  deploy: string;
 }
 
 export const EventualManifestFileName = "eventual.json";
 
-export async function discoverEventualManifest(
+export async function discoverEventualConfig(
   dir = process.cwd()
-): Promise<EventualManifest | undefined> {
+): Promise<EventualConfig | undefined> {
   try {
     const filePath = path.join(dir, EventualManifestFileName);
     const file = await readJsonFile(filePath);

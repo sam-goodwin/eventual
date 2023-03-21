@@ -14,7 +14,7 @@ import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { LambdaDestination } from "aws-cdk-lib/aws-lambda-destinations";
 import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
-import { ActivityFunction } from "./build-manifest";
+import { ActivityFunction } from "../../core-runtime/src/build-manifest";
 import { CommandService } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal";
 import { grant } from "./grant";

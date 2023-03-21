@@ -6,7 +6,7 @@ import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
-import type { SubscriptionFunction } from "./build-manifest";
+import type { SubscriptionFunction } from "../../core-runtime/src/build-manifest";
 import { CommandService } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal";
 import type { EventService } from "./event-service";

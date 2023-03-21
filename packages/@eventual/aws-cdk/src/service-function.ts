@@ -5,7 +5,7 @@ import { Duration } from "aws-cdk-lib";
 import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import { BuildOutput } from "./build";
-import { BundledFunction } from "./build-manifest";
+import { BundledFunction } from "../../core-runtime/src/build-manifest";
 import { baseFnProps } from "./utils";
 
 export interface ServiceFunctionProps {

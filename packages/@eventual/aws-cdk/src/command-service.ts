@@ -19,7 +19,7 @@ import type {
   InternalCommandFunction,
   InternalCommandName,
   InternalCommands,
-} from "./build-manifest";
+} from "../../core-runtime/src/build-manifest";
 import type { EventService } from "./event-service";
 import { grant } from "./grant";
 import {

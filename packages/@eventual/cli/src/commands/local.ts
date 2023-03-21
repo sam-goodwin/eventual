@@ -1,11 +1,18 @@
 import { HttpMethod, HttpRequest } from "@eventual/core";
 import { LocalEnvironment } from "@eventual/core-runtime";
-import { exec } from "@eventual/project";
+import { discoverEventualConfig, exec } from "@eventual/project";
+import { exec as _exec } from "child_process";
 import express from "express";
+import ora from "ora";
 import path from "path";
 import { Argv } from "yargs";
-import { serviceAction, setServiceOptions } from "../service-action.js";
-import { getServiceData } from "../service-data.js";
+import { assumeCliRole } from "../role.js";
+import { setServiceOptions } from "../service-action.js";
+import {
+  getServiceData,
+  isServiceDeployed,
+  tryResolveDefaultService,
+} from "../service-data.js";
 
 export const local = (yargs: Argv) =>
   yargs.command(
@@ -24,77 +31,92 @@ export const local = (yargs: Argv) =>
           type: "string",
           demandOption: true,
         })
-        .option("cdk", {
-          describe: "CDK Deploy script",
-          type: "string",
-          demandOption: true,
-        })
         .option("update", {
           describe: "The update mode: first, never, always",
           choices: ["first", "never", "always"],
           default: "first",
           type: "string",
         }),
-    serviceAction(
-      async (
-        spinner,
-        _,
-        { entry, port: userPort, cdk, update },
-        { credentials, serviceName }
-      ) => {
-        spinner.start("Starting Local Eventual Dev Server");
-        const app = express();
-        process.env.EVENTUAL_LOCAL = "1";
+    async ({ entry, port: userPort, update, service, region }) => {
+      const spinner = ora();
+      spinner.start("Starting Local Eventual Dev Server");
+      process.env.EVENTUAL_LOCAL = "1";
 
-        if (!update) {
-          spinner.text = "Deploying CDK";
-          await exec(cdk);
+      const serviceNameFirst = await tryResolveDefaultService(service);
+
+      const config = await discoverEventualConfig();
+
+      // if the service name is not found, try to generate one
+      if (!serviceNameFirst) {
+        spinner.text =
+          "No service name found, running synth to try to generate one.";
+        if (!config) {
+          spinner.fail("No eventual config (eventual.json) found...");
+          process.exit(1);
         }
-
-        if (!credentials || !serviceName) {
-          // fix me
-          throw new Error("Missing things...");
-        }
-
-        const updatedServiceData = await getServiceData(
-          credentials,
-          serviceName
-        );
-
-        if (updatedServiceData.environmentVariables) {
-          Object.entries(updatedServiceData.environmentVariables).forEach(
-            ([name, val]) => (process.env[name] = val)
-          );
-        }
-
-        await import(path.resolve(entry));
-
-        const port = userPort;
-        app.listen(port);
-        const url = `http://localhost:${port}`;
-
-        // TODO: should the loading be done by the local env?
-        const localEnv = new LocalEnvironment();
-
-        app.use(express.json({ strict: false }));
-
-        // open up all of the user and service commands to the service.
-        app.all("/*", async (req, res) => {
-          const request = new HttpRequest(`${url}${req.originalUrl}`, {
-            method: req.method as HttpMethod,
-            body: req.body ? JSON.stringify(req.body) : undefined,
-            headers: req.headers as Record<string, string>,
-          });
-          const resp = await localEnv.invokeCommandOrApi(request);
-          res.status(resp.status);
-          if (resp.statusText) {
-            res.statusMessage = resp.statusText;
-          }
-          resp.headers.forEach((value, name) => res.setHeader(name, value));
-          res.send(resp.body);
-        });
-
-        spinner.succeed(`Eventual Dev Server running on ${url}`);
+        _exec(config.synth);
       }
-    )
+
+      const serviceName = await tryResolveDefaultService(serviceNameFirst);
+
+      if (!serviceName) {
+        throw new Error("Service name was not found after synth.");
+      }
+    
+      
+      const isDeployed = await isServiceDeployed(serviceName, region);
+
+      if ((!isDeployed && update === "first") || update === "always") {
+        spinner.text = "Deploying CDK";
+        if (!config) {
+          spinner.fail("No eventual config (eventual.json) found...");
+          process.exit(1);
+        }
+        await exec(config.deploy);
+      }
+
+      const credentials = await assumeCliRole(serviceName, region);
+      const serviceData = await getServiceData(
+        credentials,
+        serviceName,
+        region
+      );
+
+      if (serviceData.environmentVariables) {
+        Object.entries(serviceData.environmentVariables).forEach(
+          ([name, val]) => (process.env[name] = val)
+        );
+      }
+
+      // get from build manifest
+      await import(path.resolve(entry));
+
+      const port = userPort;
+      const app = express();
+      app.listen(port);
+      const url = `http://localhost:${port}`;
+
+      // TODO: should the loading be done by the local env?
+      const localEnv = new LocalEnvironment();
+
+      app.use(express.json({ strict: false }));
+
+      // open up all of the user and service commands to the service.
+      app.all("/*", async (req, res) => {
+        const request = new HttpRequest(`${url}${req.originalUrl}`, {
+          method: req.method as HttpMethod,
+          body: req.body ? JSON.stringify(req.body) : undefined,
+          headers: req.headers as Record<string, string>,
+        });
+        const resp = await localEnv.invokeCommandOrApi(request);
+        res.status(resp.status);
+        if (resp.statusText) {
+          res.statusMessage = resp.statusText;
+        }
+        resp.headers.forEach((value, name) => res.setHeader(name, value));
+        res.send(resp.body);
+      });
+
+      spinner.succeed(`Eventual Dev Server running on ${url}`);
+    }
   );

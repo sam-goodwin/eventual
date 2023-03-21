@@ -10,6 +10,8 @@ import { defaultService } from "./env.js";
 import { styledConsole } from "./styled-console.js";
 import fs from "fs/promises";
 import path from "path";
+import { readJsonFile } from "@eventual/project";
+import { BuildManifest } from "@eventual/core-runtime";
 
 /**
  * The data which is encoded in SSM for a given service under /eventual/services/{name}
@@ -75,9 +77,7 @@ export async function tryResolveDefaultService(_serviceName?: string) {
   const serviceNames = await getLocalServices();
   const [serviceName, otherServiceName] = serviceNames;
   if (!serviceName) {
-    throw new Error(
-      "No service name found. Have you deployed an Eventual Api?"
-    );
+    return undefined;
   } else if (otherServiceName) {
     throw new Error(
       "Multiple service names found, provide a default service name via EVENTUAL_DEFAULT_SERVICE or the --service flag"
@@ -90,25 +90,51 @@ export async function getLocalServices(): Promise<string[]> {
   try {
     const paths = await fs.readdir(".eventual");
 
-    return (
-      await Promise.allSettled(
-        paths.map(async (serviceName) => {
-          return fs
-            .access(path.join(serviceName, "manifest.json"))
-            .then(() => serviceName);
-        })
-      )
-    )
+    const manifestResults = await Promise.allSettled(
+      paths.map(async (serviceName) => {
+        return fs
+          .access(path.resolve(".eventual", serviceName, "manifest.json"))
+          .then(() => serviceName);
+      })
+    );
+
+    return manifestResults
       .filter(
         (s): s is Exclude<typeof s, PromiseRejectedResult> =>
           s.status === "fulfilled"
       )
       .map((s) => s.value);
   } catch {
+    return [];
+  }
+}
+
+export async function tryResolveDefaultServiceRemote(
+  _serviceName?: string,
+  region?: string
+) {
+  // explicit
+  if (_serviceName) {
+    return _serviceName;
+  }
+  const envServiceName = defaultService();
+  if (envServiceName) {
+    // ENV
+    return envServiceName;
+  }
+  // check if there are zero, one, or more than one service names.
+  const serviceNames = await getRemoteServices(region, 2);
+  const [serviceName, otherServiceName] = serviceNames;
+  if (!serviceName) {
     throw new Error(
-      "No .eventual directory was found or it is not a directory."
+      "No service name found. Have you deployed an Eventual Api?"
+    );
+  } else if (otherServiceName) {
+    throw new Error(
+      "Multiple service names found, provide a default service name via EVENTUAL_DEFAULT_SERVICE or the --service flag"
     );
   }
+  return serviceName;
 }
 
 export async function getRemoteServices(region?: string, max?: number) {
@@ -130,4 +156,29 @@ export async function getRemoteServices(region?: string, max?: number) {
       (p) => p.Name?.split("/eventual/services/")[1]
     ) ?? []
   );
+}
+
+export async function isServiceDeployed(serviceName: string, region?: string) {
+  const ssmClient = new ssm.SSMClient({ region });
+  const serviceParameters = await ssmClient.send(
+    new ssm.DescribeParametersCommand({
+      ParameterFilters: [
+        {
+          Key: "Name",
+          Values: [`/eventual/services/${serviceName}`],
+        },
+      ],
+      MaxResults: 1,
+    })
+  );
+
+  return (
+    serviceParameters.Parameters && serviceParameters.Parameters?.length > 0
+  );
+}
+
+export async function getBuildManifest(serviceName: string) {
+  return (await readJsonFile(
+    path.resolve(".eventual", serviceName, "manifest.json")
+  )) as BuildManifest;
 }
