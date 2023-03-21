@@ -6,10 +6,7 @@ set -ex
 cd "$(dirname $0)/.."
 
 npm cache clear --force
-pnpm -r --filter @eventual/* exec npm link
-
-# npm link wigs out when this is pnpm
-unset npm_config_user_agent
+pnpm -r --filter @eventual/* exec pnpm link --global
 
 mkdir -p ./.eventual
 cd ./.eventual
@@ -21,20 +18,20 @@ PROJECT_NAME="testme"
 EVENTUAL_PACKAGES=("@eventual/core" "@eventual/core-runtime" "@eventual/aws-client" "@eventual/cli" "@eventual/client" "@eventual/aws-runtime" "@eventual/testing" "@eventual/compiler" "@eventual/integrations-slack" "@eventual/aws-cdk" "@eventual/timeline" "@eventual/project")
 
 rm -rf $PROJECT_NAME
-../../../../packages/create-eventual/bin/index.js $PROJECT_NAME --target aws-cdk --serviceName test-service --skip-install --no-git
+../../../../packages/create-eventual/bin/index.js $PROJECT_NAME --target aws-cdk --serviceName test-service --skip-install --no-git --package-manager pnpm
 cd $PROJECT_NAME
 
-npm link ${EVENTUAL_PACKAGES[@]}
+pnpm link ${EVENTUAL_PACKAGES[@]} --global
 
 # CDK doesn't like mis-matched versions...
 cd ./infra
-npm install aws-cdk@2.50 aws-cdk-lib@2.50 constructs@10.1.154
+pnpm install aws-cdk@2.50 aws-cdk-lib@2.50 constructs@10.1.154
 
 cd ..
-npm install
+pnpm install
 
-npm run build
-npm run synth
+pnpm run build
+pnpm run synth
 
 cd ../
 

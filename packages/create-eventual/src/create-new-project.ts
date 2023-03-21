@@ -1,4 +1,4 @@
-import { discoverPackageManager } from "@eventual/project";
+import { discoverPackageManager, PackageManager } from "@eventual/project";
 import inquirer from "inquirer";
 import { createAwsCdkProject } from "./create-new-aws-cdk-project";
 import { createSSTProject } from "./create-new-sst-project";
@@ -14,6 +14,7 @@ export interface CreateNewProjectProps {
   projectType?: ProjectType;
   git: boolean;
   skipInstall: boolean;
+  packageManager?: PackageManager;
 }
 
 const projectNameRegex = /^[A-Za-z-_0-9]+$/g;
@@ -31,7 +32,7 @@ export function validateProjectName(name: string) {
  * All arguments are optional and will be inquired from the user when necessary.
  */
 export async function createNewProject(args: CreateNewProjectProps) {
-  const pkgManager = discoverPackageManager();
+  const pkgManager = args.packageManager ?? discoverPackageManager();
 
   const { projectName = args.projectName! } = await inquirer.prompt<{
     projectName: string;
