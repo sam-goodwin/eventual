@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.28.0 (2023-03-21)
+
+### Features
+
+- eventual local stage 2 ([#316](https://github.com/functionless/eventual/issues/316)) ([5f35905](https://github.com/functionless/eventual/commit/5f35905b6f3b5bab493e92c60b4875267f4de458))
+
 ## 0.27.1 (2023-03-21)
 
 ### Bug Fixes
