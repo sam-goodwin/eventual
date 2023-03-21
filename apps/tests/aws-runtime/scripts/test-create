@@ -5,9 +5,6 @@ set -ex
 ## start at the root of tests/aws-runtime
 cd "$(dirname $0)/.."
 
-npm cache clear --force
-pnpm -r --filter @eventual/* exec pnpm link --global
-
 mkdir -p ./.eventual
 cd ./.eventual
 
@@ -15,13 +12,13 @@ cd ./.eventual
 echo "Testing Create-Eventual with AWS CDK"
 
 PROJECT_NAME="testme"
-EVENTUAL_PACKAGES=("@eventual/core" "@eventual/core-runtime" "@eventual/aws-client" "@eventual/cli" "@eventual/client" "@eventual/aws-runtime" "@eventual/testing" "@eventual/compiler" "@eventual/integrations-slack" "@eventual/aws-cdk" "@eventual/timeline" "@eventual/project")
+EVENTUAL_PACKAGES=("../../../../../packages/@eventual/core" "../../../../../packages/@eventual/core-runtime" "../../../../../packages/@eventual/aws-client" "../../../../../packages/@eventual/cli" "../../../../../packages/@eventual/client" "../../../../../packages/@eventual/aws-runtime" "../../../../../packages/@eventual/testing" "../../../../../packages/@eventual/compiler" "../../../../../packages/@eventual/integrations-slack" "../../../../../packages/@eventual/aws-cdk" "../../../../../packages/@eventual/timeline" "../../../../../packages/@eventual/project")
 
 rm -rf $PROJECT_NAME
 ../../../../packages/create-eventual/bin/index.js $PROJECT_NAME --target aws-cdk --serviceName test-service --skip-install --no-git --package-manager pnpm
 cd $PROJECT_NAME
 
-pnpm link ${EVENTUAL_PACKAGES[@]} --global
+pnpm link ${EVENTUAL_PACKAGES[@]}
 
 # CDK doesn't like mis-matched versions...
 cd ./infra
