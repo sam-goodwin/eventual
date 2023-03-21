@@ -1,7 +1,7 @@
 {
   "name": "@eventual/cli",
   "type": "module",
-  "version": "0.27.0",
+  "version": "0.27.1",
   "bin": {
     "eventual": "bin/eventual.ts"
   },

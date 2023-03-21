@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.27.1 (2023-03-21)
+
+### Bug Fixes
+
+- replace ts-node-esm with ts-node ([#318](https://github.com/functionless/eventual/issues/318)) ([bead0a1](https://github.com/functionless/eventual/commit/bead0a11bb182a27d9fffb4641f27bf6354c0801))
+
 # 0.27.0 (2023-03-21)
 
 ### Features
