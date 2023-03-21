@@ -2,7 +2,6 @@ import {
   CorsHttpMethod,
   HttpApi,
   HttpMethod,
-  HttpRouteProps,
 } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
 import { ENV_NAMES, sanitizeFunctionName } from "@eventual/aws-runtime";
@@ -216,14 +215,10 @@ export class CommandService<Service = any> {
     // TODO system
     this.specification = createSpecification([
       ...Object.values(serviceCommands).map(({ handler, mapping }) => {
-        return createAPIPaths(
-          handler,
-          mapping.manifest.spec,
-          mapping.overrides
-        );
+        return createAPIPaths(handler, mapping.manifest.spec, false);
       }),
       ...this.props.build.system.eventualService.commands.map((command) =>
-        createAPIPaths(this.systemCommandsHandler, command)
+        createAPIPaths(this.systemCommandsHandler, command, true)
       ),
     ]);
     this.serviceCommands = Object.fromEntries(
@@ -251,6 +246,7 @@ export class CommandService<Service = any> {
             ),
           }
         : undefined,
+        
     });
 
     this.finalize();
@@ -358,9 +354,13 @@ export class CommandService<Service = any> {
       return {
         [`/${commandRpcPath(command)}`]: {
           post: {
-            "x-amazon-apigateway-auth": {
-              type: "AWS_IAM",
-            },
+            ...(iamAuth
+              ? {
+                  [XAmazonApiGatewayAuth]: {
+                    type: "AWS_IAM",
+                  } satisfies XAmazonApiGatewayAuth,
+                }
+              : {}),
             [XAmazonApiGatewayIntegration]: {
               connectionType: "INTERNET",
               httpMethod: HttpMethod.POST,
@@ -558,4 +558,10 @@ interface XAmazonApiGatewayIntegration {
   uri: string;
   connectionType: "INTERNET";
   credentials: string;
+}
+
+const XAmazonApiGatewayAuth = "x-amazon-apigateway-auth";
+
+interface XAmazonApiGatewayAuth {
+  type: "AWS_IAM";
 }
