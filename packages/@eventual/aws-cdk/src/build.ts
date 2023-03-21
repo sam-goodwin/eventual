@@ -271,27 +271,27 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       "updateActivity",
     ];
 
-    const systemDefault = buildFunction()
+    const systemDefault = await buildFunction({
+      entry: runtimeHandlersEntrypoint("system-command-handler"),
+      name: "systemDefault",
+      injectedEntry: request.entry,
+      injectedServiceSpec: specPath,
+    });
 
     return Object.fromEntries(
-      await Promise.all(
-        Object.entries(commands).map(async ([name, { entry }]) => {
-          const file = await buildFunction({
-            name,
-            entry,
-            injectedEntry: request.entry,
-            injectedServiceSpec: specPath,
-          });
-          return [
-            name,
-            {
-              entry: file,
-              spec: { name, namespace: EVENTUAL_SYSTEM_COMMAND_NAMESPACE },
-            } satisfies InternalCommandFunction,
-          ];
-        })
-      )
-    );
+      commands.map((commandName) => {
+        return [
+          commandName,
+          {
+            entry: systemDefault,
+            spec: {
+              name: commandName,
+              namespace: EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
+            },
+          } satisfies InternalCommandFunction,
+        ];
+      })
+    ) as InternalCommands;
   }
 
   function bundleEventualSystemFunctions(specPath: string) {
