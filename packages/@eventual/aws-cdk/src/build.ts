@@ -1,12 +1,6 @@
 import { build, BuildSource, infer } from "@eventual/compiler";
 import { ActivitySpec } from "@eventual/core";
-import {
-  BuildManifest,
-  BundledFunction,
-  InternalCommandFunction,
-  InternalCommandName,
-  InternalCommands,
-} from "@eventual/core-runtime";
+import { BuildManifest, BundledFunction } from "@eventual/core-runtime";
 import {
   CommandSpec,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
@@ -126,7 +120,28 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         fallbackHandler: { entry: activityFallbackHandler! },
       },
       eventualService: {
-        commands: await bundleSystemCommandFunctions(specPath),
+        systemCommandHandler: {
+          entry: await buildFunction({
+            entry: runtimeHandlersEntrypoint("system-command-handler"),
+            name: "systemDefault",
+            injectedEntry: request.entry,
+            injectedServiceSpec: specPath,
+          }),
+        },
+        commands: [
+          "listWorkflows",
+          "startExecution",
+          "listExecutions",
+          "getExecution",
+          "getExecutionHistory",
+          "sendSignal",
+          "getExecutionWorkflowHistory",
+          "publishEvents",
+          "updateActivity",
+        ].map((name) => ({
+          name,
+          namespace: EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
+        })),
       },
       schedulerService: {
         forwarder: {
@@ -250,48 +265,6 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         }))
         .map(buildFunction)
     );
-  }
-
-  /**
-   * The system command entry files currently come with their own instance of the
-   * {@link CommandWorker}. Just bundle each file with a synthetic command spec.
-   */
-  async function bundleSystemCommandFunctions(
-    specPath: string
-  ): Promise<InternalCommands> {
-    const commands: InternalCommandName[] = [
-      "listWorkflows",
-      "startExecution",
-      "listExecutions",
-      "getExecution",
-      "getExecutionHistory",
-      "sendSignal",
-      "getExecutionWorkflowHistory",
-      "publishEvents",
-      "updateActivity",
-    ];
-
-    const systemDefault = await buildFunction({
-      entry: runtimeHandlersEntrypoint("system-command-handler"),
-      name: "systemDefault",
-      injectedEntry: request.entry,
-      injectedServiceSpec: specPath,
-    });
-
-    return Object.fromEntries(
-      commands.map((commandName) => {
-        return [
-          commandName,
-          {
-            entry: systemDefault,
-            spec: {
-              name: commandName,
-              namespace: EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
-            },
-          } satisfies InternalCommandFunction,
-        ];
-      })
-    ) as InternalCommands;
   }
 
   function bundleEventualSystemFunctions(specPath: string) {

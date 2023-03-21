@@ -27,7 +27,8 @@ export interface BuildManifest {
       fallbackHandler: BundledFunction<undefined>;
     };
     eventualService: {
-      commands: InternalCommands;
+      systemCommandHandler: BundledFunction;
+      commands: CommandSpec[];
     };
     schedulerService: {
       forwarder: BundledFunction;
