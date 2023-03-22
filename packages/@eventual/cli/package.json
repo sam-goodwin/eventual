@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.28.0",
   "bin": {
-    "eventual": "bin/eventual.ts"
+    "eventual": "bin/eventual.mjs"
   },
   "files": [
     "bin",
