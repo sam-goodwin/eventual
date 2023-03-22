@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.28.1 (2023-03-22)
+
+### Bug Fixes
+
+- cli is broken ([#319](https://github.com/functionless/eventual/issues/319)) ([eb78606](https://github.com/functionless/eventual/commit/eb7860613ac861da496c9834f2e63f37e2a6599b))
+
 # 0.28.0 (2023-03-21)
 
 ### Features
