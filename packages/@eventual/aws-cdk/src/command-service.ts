@@ -20,6 +20,7 @@ import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import openapi from "openapi3-ts";
 import type { ActivityService } from "./activity-service";
+import { EntityService } from "./entity-service";
 import type { EventService } from "./event-service";
 import { grant } from "./grant";
 import {
@@ -76,11 +77,12 @@ export interface CorsOptions {
 
 export interface CommandsProps<Service = any> extends ServiceConstructProps {
   activityService: ActivityService<Service>;
-  overrides?: CommandProps<Service>;
-  eventService: EventService;
-  workflowService: WorkflowService;
   cors?: CorsOptions;
+  entityService: EntityService;
+  eventService: EventService;
   local: ServiceLocal | undefined;
+  overrides?: CommandProps<Service>;
+  workflowService: WorkflowService;
 }
 
 /**
@@ -449,6 +451,10 @@ export class CommandService<Service = any> {
     // Allow them to access any of the methods on the service client by default.
     this.props.service.configureForServiceClient(handler);
     this.configureInvokeHttpServiceApi(handler);
+    /**
+     * Dictionary operations
+     */
+    this.props.entityService.configureReadWriteEntityTable(handler);
   }
 
   private readonly ENV_MAPPINGS = {

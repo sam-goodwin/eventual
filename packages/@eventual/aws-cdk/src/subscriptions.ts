@@ -9,6 +9,7 @@ import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
 import { CommandService } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal";
+import { EntityService } from "./entity-service";
 import type { EventService } from "./event-service";
 import type { LazyInterface } from "./proxy-construct";
 import type {
@@ -33,16 +34,17 @@ export interface SubscriptionHandlerProps
   extends Omit<Partial<FunctionProps>, "code" | "handler" | "functionName"> {}
 
 export interface SubscriptionsProps<S = any> extends ServiceConstructProps {
+  readonly commandService: LazyInterface<CommandService>;
+  /**
+   * The Service's {@link EventService} repository.
+   */
+  readonly entityService: EntityService;
+  readonly eventService: EventService;
+  readonly local: ServiceLocal | undefined;
   /**
    * Configuration for individual Event Handlers created with `onEvent`.
    */
   readonly subscriptions?: SubscriptionOverrides<S>;
-  /**
-   * The Service's {@link EventService} repository.
-   */
-  readonly eventService: EventService;
-  readonly commandService: LazyInterface<CommandService>;
-  readonly local: ServiceLocal | undefined;
 }
 
 export const Subscriptions: {
@@ -88,6 +90,10 @@ export const Subscriptions: {
 
       // allow http access to the service client
       props.commandService.configureInvokeHttpServiceApi(handler);
+      /**
+       * Dictionary operations
+       */
+      props.entityService.configureReadWriteEntityTable(handler);
     });
   }
 } as any;

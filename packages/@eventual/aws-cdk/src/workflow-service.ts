@@ -23,6 +23,7 @@ import {
 } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import { ActivityService } from "./activity-service";
+import { EntityService } from "./entity-service";
 import { EventService } from "./event-service";
 import { grant } from "./grant";
 import { LazyInterface } from "./proxy-construct";
@@ -32,6 +33,7 @@ import { ServiceFunction } from "./service-function";
 
 export interface WorkflowsProps extends ServiceConstructProps {
   activityService: LazyInterface<ActivityService>;
+  entityService: EntityService;
   eventService: EventService;
   schedulerService: LazyInterface<SchedulerService>;
   overrides?: WorkflowServiceOverrides;
@@ -476,6 +478,10 @@ export class WorkflowService {
      * Access to service name in the orchestrator for metric logging
      */
     this.props.service.configureServiceName(this.orchestrator);
+    /**
+     * Dictionary Commands
+     */
+    this.props.entityService.configureReadWriteEntityTable(this.orchestrator);
   }
 
   private readonly ENV_MAPPINGS = {
