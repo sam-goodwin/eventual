@@ -244,7 +244,6 @@ export class CommandService<Service = any> {
             ),
           }
         : undefined,
-        
     });
 
     this.gateway.node.addDependency(this.integrationRole);
@@ -466,11 +465,6 @@ export class CommandService<Service = any> {
           Stack.of(this.gateway)
         ),
       ],
-      conditions: {
-        StringEquals: {
-          "aws:ResourceTag/ServiceName": [this.props.serviceName],
-        },
-      },
     });
   }
 
