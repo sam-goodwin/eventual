@@ -13,6 +13,7 @@ import {
   extendsError,
   isAsyncResult,
   isWorkflowFailed,
+  registerDictionaryHook,
   registerServiceClient,
   ServiceType,
   serviceTypeScope,
@@ -20,6 +21,7 @@ import {
 } from "@eventual/core/internal";
 import { createActivityToken } from "../activity-token.js";
 import type { ActivityWorkerRequest } from "../clients/activity-client.js";
+import { DictionaryClient } from "../clients/dictionary-client.js";
 import type { EventClient } from "../clients/event-client.js";
 import type { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import type { MetricsClient } from "../clients/metrics-client.js";
@@ -50,6 +52,7 @@ export interface CreateActivityWorkerProps {
   serviceClient?: EventualServiceClient;
   serviceName: string;
   timerClient: TimerClient;
+  dictionaryClient: DictionaryClient;
 }
 
 export interface ActivityWorker {
@@ -78,11 +81,13 @@ export function createActivityWorker({
   serviceClient,
   serviceName,
   timerClient,
+  dictionaryClient
 }: CreateActivityWorkerProps): ActivityWorker {
   // make the service client available to all activity code
   if (serviceClient) {
     registerServiceClient(serviceClient);
   }
+  registerDictionaryHook(dictionaryClient);
 
   return metricsClient.metricScope(
     (metrics) =>

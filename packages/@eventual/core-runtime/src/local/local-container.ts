@@ -3,6 +3,7 @@ import {
   ActivityClient,
   ActivityWorkerRequest,
 } from "../clients/activity-client.js";
+import { DictionaryClient } from "../clients/dictionary-client.js";
 import { TimerClient, TimerRequest } from "../clients/timer-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
 import { CommandExecutor } from "../command-executor.js";
@@ -63,6 +64,7 @@ import { LocalLogsClient } from "./clients/logs-client.js";
 import { LocalMetricsClient } from "./clients/metrics-client.js";
 import { LocalTimerClient } from "./clients/timer-client.js";
 import { LocalActivityStore } from "./stores/activity-store.js";
+import { LocalDictionaryStore } from "./stores/dictionary-store.js";
 import { LocalExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
 import { LocalExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { LocalExecutionStore } from "./stores/execution-store.js";
@@ -123,8 +125,10 @@ export class LocalContainer {
     this.activityStore = new LocalActivityStore();
     this.subscriptionProvider =
       props.subscriptionProvider ?? new GlobalSubscriptionProvider();
+    const dictionaryClient = new DictionaryClient(new LocalDictionaryStore());
     this.subscriptionWorker = createSubscriptionWorker({
       subscriptionProvider: this.subscriptionProvider,
+      dictionaryClient,
     });
     this.eventClient = new LocalEventClient(this.subscriptionWorker);
     this.metricsClient = new LocalMetricsClient();
@@ -143,6 +147,7 @@ export class LocalContainer {
       metricsClient: this.metricsClient,
       serviceName: props.serviceName,
       timerClient: this.timerClient,
+      dictionaryClient,
     });
     this.activityClient = new LocalActivityClient(this.localConnector, {
       activityStore: this.activityStore,
@@ -197,7 +202,7 @@ export class LocalContainer {
     });
 
     // must register commands before the command worker is loaded!
-    this.commandWorker = createCommandWorker({});
+    this.commandWorker = createCommandWorker({ dictionaryClient });
 
     this.timerHandler = createTimerHandler({
       activityStore: this.activityStore,

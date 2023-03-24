@@ -1,7 +1,11 @@
 import "@eventual/injected/entry";
 
 import { createCommandWorker } from "@eventual/core-runtime";
-import { createEventClient, createServiceClient } from "../create.js";
+import {
+  createDictionaryClient,
+  createEventClient,
+  createServiceClient,
+} from "../create.js";
 import { createApiGCommandAdaptor } from "./apig-command-adapter.js";
 
 /**
@@ -16,5 +20,6 @@ export default createApiGCommandAdaptor({
     serviceClient: createServiceClient({
       eventClient: createEventClient(),
     }),
+    dictionaryClient: createDictionaryClient(),
   }),
 });
