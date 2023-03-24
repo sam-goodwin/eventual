@@ -3,18 +3,14 @@ import {
   HttpMethod,
   IHttpApi,
 } from "@aws-cdk/aws-apigatewayv2-alpha";
-import {
-  ENV_NAMES,
-  sanitizeFunctionName,
-  serviceFunctionName,
-} from "@eventual/aws-runtime";
+import { ENV_NAMES, sanitizeFunctionName } from "@eventual/aws-runtime";
 import { commandRpcPath, isDefaultNamespaceCommand } from "@eventual/core";
 import type { CommandFunction } from "@eventual/core-runtime";
 import {
   CommandSpec,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
 } from "@eventual/core/internal";
-import { Arn, ArnFormat, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
+import { Arn, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
 import {
   Effect,
   IGrantable,
@@ -36,7 +32,7 @@ import {
 } from "./service";
 import { ServiceFunction } from "./service-function.js";
 import { SpecHttpApi } from "./spec-http-api";
-import type { ServiceEntityProps } from "./utils";
+import { ServiceEntityProps, serviceFunctionArn } from "./utils";
 import type { WorkflowService } from "./workflow-service";
 
 export type Commands<Service> = {
@@ -141,7 +137,7 @@ export class CommandService<Service = any> {
 
     this.serviceCommands = synthesizeAPI(
       commandsScope,
-      this.props.build.commands.map(
+      [...this.props.build.commands, this.props.build.commandDefault].map(
         (manifest) =>
           ({
             manifest,
@@ -176,12 +172,12 @@ export class CommandService<Service = any> {
       new PolicyStatement({
         actions: ["lambda:InvokeFunction"],
         resources: [
-          Stack.of(this.props.systemScope).formatArn({
-            service: "lambda",
-            resourceName: `${this.props.serviceName}-*`,
-            resource: "function",
-            arnFormat: ArnFormat.COLON_RESOURCE_NAME,
-          }),
+          serviceFunctionArn(
+            this.props.serviceName,
+            Stack.of(this.props.systemScope),
+            "*",
+            false
+          ),
         ],
       })
     );
@@ -293,15 +289,11 @@ export class CommandService<Service = any> {
       systemCommand?: boolean
     ): openapi.PathsObject {
       // compute the url to reduce circular dependencies.
-      const handlerArn = Stack.of(self.props.systemScope).formatArn({
-        service: "lambda",
-        resource: "function",
-        resourceName: serviceFunctionName(
-          self.props.serviceName,
-          systemCommand ? "system-command" : commandFunctionNameSuffix(command)
-        ),
-        arnFormat: ArnFormat.COLON_RESOURCE_NAME,
-      });
+      const handlerArn = serviceFunctionArn(
+        self.props.serviceName,
+        Stack.of(self.props.systemScope),
+        systemCommand ? "system-command" : commandFunctionNameSuffix(command)
+      );
 
       return {
         [`/${commandRpcPath(command)}`]: {
@@ -378,12 +370,6 @@ export class CommandService<Service = any> {
           // TODO: use the package.json?
           version: "1",
         },
-        tags: [
-          {
-            name: "ServiceName",
-            [XAmazonApigatewayTagValue]: self.props.serviceName,
-          },
-        ] satisfies XAmazonApigatewayTag[],
         paths: {
           "/$default": {
             [XAmazonApigatewayAnyMethod]: {
@@ -394,10 +380,13 @@ export class CommandService<Service = any> {
                 payloadFormatVersion: "2.0",
                 type: "AWS_PROXY",
                 credentials: self.integrationRole.roleArn,
-                uri: Lazy.string({
-                  produce: () =>
-                    self.serviceCommands.default.handler.functionArn,
-                }),
+                uri: serviceFunctionArn(
+                  self.props.serviceName,
+                  Stack.of(self.props.systemScope),
+                  commandFunctionNameSuffix(
+                    self.props.build.commandDefault.spec
+                  )
+                ),
               } satisfies XAmazonApiGatewayIntegration,
             } satisfies XAmazonApigatewayAnyMethod,
           },
@@ -527,14 +516,6 @@ const XAmazonApigatewayAnyMethod = "x-amazon-apigateway-any-method";
 interface XAmazonApigatewayAnyMethod {
   isDefaultRoute: boolean;
   [XAmazonApiGatewayIntegration]: XAmazonApiGatewayIntegration;
-}
-
-const XAmazonApigatewayTagValue = "x-amazon-apigateway-tag-value";
-
-// https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-openapi-extensions-x-amazon-apigateway-tag-value.html
-interface XAmazonApigatewayTag {
-  name: string;
-  [XAmazonApigatewayTagValue]: string;
 }
 
 function commandNamespaceName(command: CommandSpec) {

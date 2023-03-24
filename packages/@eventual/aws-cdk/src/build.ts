@@ -106,15 +106,13 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     activities: activities,
     events: serviceSpec.events,
     subscriptions,
-    commands: [
-      ...commands,
-      {
-        entry: monoCommandFunction!,
-        spec: {
-          name: "default",
-        },
+    commands: commands,
+    commandDefault: {
+      entry: monoCommandFunction!,
+      spec: {
+        name: "default",
       },
-    ],
+    },
     system: {
       activityService: {
         fallbackHandler: { entry: activityFallbackHandler! },
@@ -146,9 +144,11 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       schedulerService: {
         forwarder: {
           entry: scheduleForwarder!,
+          handler: "index.handle",
         },
         timerHandler: {
           entry: timerHandler!,
+          handler: "index.handle",
         },
       },
       workflowService: {
