@@ -1,4 +1,4 @@
-import { HttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
+import { IHttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { Event } from "@eventual/core";
 import { MetricsCommon, OrchestratorMetrics } from "@eventual/core-runtime";
@@ -151,7 +151,7 @@ export class Service<S = any> extends Construct {
   /**
    * API Gateway which serves the service commands and the system commands.
    */
-  public readonly gateway: HttpApi;
+  public readonly gateway: IHttpApi;
   /**
    * Name of this Service.
    */

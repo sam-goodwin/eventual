@@ -1,6 +1,8 @@
 import {
   HttpApiProps,
+  HttpStage,
   IHttpApi,
+  IHttpStage,
   VpcLink,
   VpcLinkProps,
 } from "@aws-cdk/aws-apigatewayv2-alpha";
@@ -71,28 +73,90 @@ export class SpecHttpApi extends HttpApiBase {
   /**
    * A human friendly name for this HTTP API. Note that this is different from `httpApiId`.
    */
-  readonly httpApiName: string;
+  // readonly httpApiName: string;
   readonly apiId: string;
   readonly httpApiId: string;
   readonly apiEndpoint: string;
 
+  /**
+   * The default stage of this API
+   */
+  public readonly defaultStage: IHttpStage | undefined;
+
   constructor(scope: Construct, id: string, props: SpecHttpApiProps) {
     super(scope, id);
-    this.httpApiName = props?.apiName ?? id;
+    // this.httpApiName = props?.apiName;
     const apiDefConfig = props.apiDefinition.bind(this);
+
+    props.apiDefinition.bindAfterCreate(this, this);
+
+    let corsConfiguration: CfnApi.CorsProperty | undefined;
+    if (props?.corsPreflight) {
+      const cors = props.corsPreflight;
+      if (
+        cors.allowOrigins &&
+        cors.allowOrigins.includes("*") &&
+        cors.allowCredentials
+      ) {
+        throw new Error(
+          "CORS preflight - allowCredentials is not supported when allowOrigin is '*'"
+        );
+      }
+      const {
+        allowCredentials,
+        allowHeaders,
+        allowMethods,
+        allowOrigins,
+        exposeHeaders,
+        maxAge,
+      } = props.corsPreflight;
+      corsConfiguration = {
+        allowCredentials,
+        allowHeaders,
+        allowMethods,
+        allowOrigins,
+        exposeHeaders,
+        maxAge: maxAge?.toSeconds(),
+      };
+    }
+
     const resource = new CfnApi(this, "Resource", {
-      name: this.httpApiName,
+      name: props.apiName,
       body: apiDefConfig.inlineDefinition ?? undefined,
       bodyS3Location: apiDefConfig.inlineDefinition
         ? undefined
         : apiDefConfig.s3Location,
+      corsConfiguration,
+      description: props?.description,
     });
-
-    props.apiDefinition.bindAfterCreate(this, this);
 
     this.apiId = resource.ref;
     this.httpApiId = resource.ref;
     this.apiEndpoint = resource.attrApiEndpoint;
+
+    if (
+      props?.createDefaultStage === undefined ||
+      props.createDefaultStage === true
+    ) {
+      this.defaultStage = new HttpStage(this, "DefaultStage", {
+        httpApi: this,
+        autoDeploy: true,
+        domainMapping: props?.defaultDomainMapping,
+      });
+
+      // to ensure the domain is ready before creating the default stage
+      if (props?.defaultDomainMapping) {
+        this.defaultStage.node.addDependency(
+          props.defaultDomainMapping.domainName
+        );
+      }
+    }
+
+    if (props?.createDefaultStage === false && props.defaultDomainMapping) {
+      throw new Error(
+        "defaultDomainMapping not supported with createDefaultStage disabled"
+      );
+    }
   }
 }
 

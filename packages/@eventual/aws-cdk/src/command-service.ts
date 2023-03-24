@@ -1,13 +1,19 @@
 import {
   CorsHttpMethod,
-  HttpApi,
   HttpMethod,
+  IHttpApi,
 } from "@aws-cdk/aws-apigatewayv2-alpha";
-import { HttpLambdaIntegration } from "@aws-cdk/aws-apigatewayv2-integrations-alpha";
-import { ENV_NAMES, sanitizeFunctionName } from "@eventual/aws-runtime";
+import {
+  ENV_NAMES,
+  sanitizeFunctionName,
+  serviceFunctionName,
+} from "@eventual/aws-runtime";
 import { commandRpcPath, isDefaultNamespaceCommand } from "@eventual/core";
 import type { CommandFunction } from "@eventual/core-runtime";
-import { CommandSpec } from "@eventual/core/internal";
+import {
+  CommandSpec,
+  EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
+} from "@eventual/core/internal";
 import { Arn, ArnFormat, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
 import {
   Effect,
@@ -22,12 +28,14 @@ import openapi from "openapi3-ts";
 import type { ActivityService } from "./activity-service";
 import type { EventService } from "./event-service";
 import { grant } from "./grant";
+import { ApiDefinition } from "./http-api-definition";
 import {
   EventualResource,
   ServiceConstructProps,
   ServiceLocal,
 } from "./service";
 import { ServiceFunction } from "./service-function.js";
+import { SpecHttpApi } from "./spec-http-api";
 import type { ServiceEntityProps } from "./utils";
 import type { WorkflowService } from "./workflow-service";
 
@@ -98,7 +106,7 @@ export class CommandService<Service = any> {
   /**
    * API Gateway for providing service api
    */
-  public readonly gateway: HttpApi;
+  public readonly gateway: IHttpApi;
   /**
    * The OpenAPI specification for this Service.
    */
@@ -131,7 +139,7 @@ export class CommandService<Service = any> {
     // Service => Commands
     const commandsScope = new Construct(props.serviceScope, "Commands");
 
-    const serviceCommands = synthesizeAPI(
+    this.serviceCommands = synthesizeAPI(
       commandsScope,
       this.props.build.commands.map(
         (manifest) =>
@@ -146,7 +154,7 @@ export class CommandService<Service = any> {
             },
           } satisfies CommandMapping)
       )
-    );
+    ) as Commands<Service>;
 
     this.systemCommandsHandler = new ServiceFunction(
       commandsSystemScope,
@@ -170,7 +178,7 @@ export class CommandService<Service = any> {
         resources: [
           Stack.of(this.props.systemScope).formatArn({
             service: "lambda",
-            resourceName: `${this.props.serviceName}-`,
+            resourceName: `${this.props.serviceName}-*`,
             resource: "function",
             arnFormat: ArnFormat.COLON_RESOURCE_NAME,
           }),
@@ -210,31 +218,21 @@ export class CommandService<Service = any> {
       );
     });
 
-    // const handlerToIntegration: Set<Function> = new Set();
-
-    // TODO system
     this.specification = createSpecification([
-      ...Object.values(serviceCommands).map(({ handler, mapping }) => {
-        return createAPIPaths(handler, mapping.manifest.spec, false);
+      ...this.props.build.commands.map((command) => {
+        return createAPIPaths(command.spec, false);
       }),
       ...this.props.build.system.eventualService.commands.map((command) =>
-        createAPIPaths(this.systemCommandsHandler, command, true)
+        createAPIPaths(command, true, true)
       ),
     ]);
-    this.serviceCommands = Object.fromEntries(
-      Object.entries(serviceCommands).map(([c, { handler }]) => [
-        c,
-        new EventualResource(handler, this.props.local),
-      ])
-    ) as Commands<Service>;
+
+    console.log(JSON.stringify(this.specification, null, 4));
 
     // Service => Gateway
-    this.gateway = new HttpApi(props.serviceScope, "Gateway", {
-      apiName: `eventual-api-${props.serviceName}`,
-      defaultIntegration: new HttpLambdaIntegration(
-        "default",
-        this.serviceCommands.default.handler
-      ),
+    this.gateway = new SpecHttpApi(props.serviceScope, "Gateway", {
+      // apiName: `eventual-api-${props.serviceName}`,
+      apiDefinition: ApiDefinition.fromInline(this.specification),
       corsPreflight: props.cors
         ? {
             ...props.cors,
@@ -248,6 +246,8 @@ export class CommandService<Service = any> {
         : undefined,
         
     });
+
+    this.gateway.node.addDependency(this.integrationRole);
 
     this.finalize();
 
@@ -265,111 +265,58 @@ export class CommandService<Service = any> {
             self.onFinalize(() => overrides!.init!(handler!));
           }
 
-          let sanitizedName = sanitizeFunctionName(command.name);
-          if (sanitizedName !== command.name) {
-            // in this case, we're working with the low-level http api
-            // we do a best effort to transform an HTTP path into a name that Lambda supports
-            sanitizedName = `${sanitizedName}-${
-              command.method?.toLocaleLowerCase() ?? "all"
-            }`;
-          }
-          const namespacedName = isDefaultNamespaceCommand(command)
-            ? sanitizedName
-            : `${sanitizedName}-${command.namespace}`;
-
-          const handler = new ServiceFunction(scope, namespacedName, {
-            build: self.props.build,
-            bundledFunction: manifest,
-            functionNameSuffix: `${namespacedName}-command`,
-            serviceName: props.serviceName,
-            overrides,
-            defaults: {
-              environment: props.environment,
-            },
-          });
+          const handler = new ServiceFunction(
+            scope,
+            commandNamespaceName(command),
+            {
+              build: self.props.build,
+              bundledFunction: manifest,
+              functionNameSuffix: commandFunctionNameSuffix(command),
+              serviceName: props.serviceName,
+              overrides,
+              defaults: {
+                environment: props.environment,
+              },
+            }
+          );
 
           return [
             command.name as keyof Commands<Service>,
-            {
-              handler,
-              mapping,
-            },
+            new EventualResource(handler, self.props.local),
           ] as const;
         })
       );
     }
 
     function createAPIPaths(
-      handler: Function,
       command: CommandSpec,
-      iamAuth?: boolean
+      iamAuth?: boolean,
+      systemCommand?: boolean
     ): openapi.PathsObject {
-      // TODO: use the Open API spec to configure instead of consuming CloudFormation resources
-      // this seems not so simple and not well documented, so for now we take the cheap way out
-      // we will keep the api spec and improve it over time
-      // self.onFinalize(() => {
-      //   if (!handlerToIntegration.has(handler)) {
-      //     handlerToIntegration.set(
-      //       handler,
-      //       new HttpLambdaIntegration(command.name, handler)
-      //     );
-      //   }
-      //   const integration = handlerToIntegration.get(handler)!;
-      //   if (!command.passThrough) {
-      //     // internal and low-level HTTP APIs should be passed through
-      //     self.gateway.addRoutes({
-      //       path: `/${commandRpcPath(command)}`,
-      //       methods: [HttpMethod.POST],
-      //       integration,
-      //       authorizer: overrides?.authorizer,
-      //     });
-      //   }
-      //   if (command.path) {
-      //     self.gateway.addRoutes({
-      //       // itty router supports paths in the form /*, but api gateway expects them in the form /{proxy+}
-      //       path: ittyRouteToApigatewayRoute(command.path),
-      //       methods: [
-      //         (command.method as HttpMethod | undefined) ?? HttpMethod.GET,
-      //       ],
-      //       integration,
-      //       authorizer: overrides?.authorizer,
-      //     });
-      //   }
-      // });
-
-      // if (!handlerToIntegration.has(handler)) {
-      //   self.onFinalize(() => {
-      //     handler.addPermission("GatewayPermission", {
-      //       principal: new ServicePrincipal("apigateway.amazonaws.com"),
-      //       sourceArn: Stack.of(handler).formatArn({
-      //         service: "execute-api",
-      //         resource: self.gateway.apiId,
-      //         resourceName: `*/*`,
-      //       }),
-      //     });
-      //   });
-      //   handlerToIntegration.add(handler);
-      // }
+      // compute the url to reduce circular dependencies.
+      const handlerArn = Stack.of(self.props.systemScope).formatArn({
+        service: "lambda",
+        resource: "function",
+        resourceName: serviceFunctionName(
+          self.props.serviceName,
+          systemCommand ? "system-command" : commandFunctionNameSuffix(command)
+        ),
+        arnFormat: ArnFormat.COLON_RESOURCE_NAME,
+      });
 
       return {
         [`/${commandRpcPath(command)}`]: {
           post: {
-            ...(iamAuth
-              ? {
-                  [XAmazonApiGatewayAuth]: {
-                    type: "AWS_IAM",
-                  } satisfies XAmazonApiGatewayAuth,
-                }
-              : {}),
+            [XAmazonApiGatewayAuth]: {
+              type: iamAuth ? "AWS_IAM" : "NONE",
+            } satisfies XAmazonApiGatewayAuth,
             [XAmazonApiGatewayIntegration]: {
               connectionType: "INTERNET",
               httpMethod: HttpMethod.POST,
               payloadFormatVersion: "2.0",
               type: "AWS_PROXY",
               credentials: self.integrationRole.roleArn,
-              uri: Lazy.string({
-                produce: () => handler.functionArn,
-              }),
+              uri: handlerArn,
             } satisfies XAmazonApiGatewayIntegration,
             requestBody: {
               content: {
@@ -395,9 +342,7 @@ export class CommandService<Service = any> {
                     payloadFormatVersion: "2.0",
                     type: "AWS_PROXY",
                     credentials: self.integrationRole.roleArn,
-                    uri: Lazy.string({
-                      produce: () => handler.functionArn,
-                    }),
+                    uri: handlerArn,
                   } satisfies XAmazonApiGatewayIntegration,
                   parameters: Object.entries(command.params ?? {}).flatMap(
                     ([name, spec]) =>
@@ -430,24 +375,32 @@ export class CommandService<Service = any> {
       return {
         openapi: "3.0.1",
         info: {
-          title: self.props.build.serviceName,
+          title: `eventual-api-${self.props.build.serviceName}`,
           // TODO: use the package.json?
           version: "1",
         },
-
+        tags: [
+          {
+            name: "ServiceName",
+            [XAmazonApigatewayTagValue]: self.props.serviceName,
+          },
+        ] satisfies XAmazonApigatewayTag[],
         paths: {
           "/$default": {
-            isDefaultRoute: true,
-            [XAmazonApiGatewayIntegration]: {
-              connectionType: "INTERNET",
-              httpMethod: HttpMethod.POST, // TODO: why POST? Exported API has this but it's not clear
-              payloadFormatVersion: "2.0",
-              type: "AWS_PROXY",
-              credentials: self.integrationRole.roleArn,
-              uri: Lazy.string({
-                produce: () => self.serviceCommands.default.handler.functionArn,
-              }),
-            } satisfies XAmazonApiGatewayIntegration,
+            [XAmazonApigatewayAnyMethod]: {
+              isDefaultRoute: true,
+              [XAmazonApiGatewayIntegration]: {
+                connectionType: "INTERNET",
+                httpMethod: HttpMethod.POST, // TODO: why POST? Exported API has this but it's not clear
+                payloadFormatVersion: "2.0",
+                type: "AWS_PROXY",
+                credentials: self.integrationRole.roleArn,
+                uri: Lazy.string({
+                  produce: () =>
+                    self.serviceCommands.default.handler.functionArn,
+                }),
+              } satisfies XAmazonApiGatewayIntegration,
+            } satisfies XAmazonApigatewayAnyMethod,
           },
           ...paths,
         },
@@ -506,14 +459,18 @@ export class CommandService<Service = any> {
         Arn.format(
           {
             service: "execute-api",
-            resource: Lazy.string({
-              produce: () => this.gateway.apiId,
-            }),
-            resourceName: "*/*/*",
+            resource: "*",
+            // stage/method/path
+            resourceName: `*/*/rpc/${EVENTUAL_SYSTEM_COMMAND_NAMESPACE}/*`,
           },
           Stack.of(this.gateway)
         ),
       ],
+      conditions: {
+        StringEquals: {
+          "aws:ResourceTag/ServiceName": [this.props.serviceName],
+        },
+      },
     });
   }
 
@@ -521,7 +478,7 @@ export class CommandService<Service = any> {
     // The handlers are given an instance of the service client.
     // Allow them to access any of the methods on the service client by default.
     this.props.service.configureForServiceClient(handler);
-    this.configureInvokeHttpServiceApi(handler);
+    this.grantInvokeHttpServiceApi(handler);
   }
 
   private readonly ENV_MAPPINGS = {
@@ -551,9 +508,13 @@ interface CommandMapping {
 
 const XAmazonApiGatewayIntegration = "x-amazon-apigateway-integration";
 
+// https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-swagger-extensions-integration.html
 interface XAmazonApiGatewayIntegration {
   payloadFormatVersion: "2.0";
   type: "AWS_PROXY";
+  /**
+   * The HTTP method used in the integration request. For Lambda function invocations, the value must be POST.
+   */
   httpMethod: HttpMethod;
   uri: string;
   connectionType: "INTERNET";
@@ -563,5 +524,41 @@ interface XAmazonApiGatewayIntegration {
 const XAmazonApiGatewayAuth = "x-amazon-apigateway-auth";
 
 interface XAmazonApiGatewayAuth {
-  type: "AWS_IAM";
+  type: "AWS_IAM" | "NONE";
+}
+
+const XAmazonApigatewayAnyMethod = "x-amazon-apigateway-any-method";
+
+// https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-swagger-extensions-any-method.html
+interface XAmazonApigatewayAnyMethod {
+  isDefaultRoute: boolean;
+  [XAmazonApiGatewayIntegration]: XAmazonApiGatewayIntegration;
+}
+
+const XAmazonApigatewayTagValue = "x-amazon-apigateway-tag-value";
+
+// https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-openapi-extensions-x-amazon-apigateway-tag-value.html
+interface XAmazonApigatewayTag {
+  name: string;
+  [XAmazonApigatewayTagValue]: string;
+}
+
+function commandNamespaceName(command: CommandSpec) {
+  let sanitizedName = sanitizeFunctionName(command.name);
+  if (sanitizedName !== command.name) {
+    // in this case, we're working with the low-level http api
+    // we do a best effort to transform an HTTP path into a name that Lambda supports
+    sanitizedName = `${sanitizedName}-${
+      command.method?.toLocaleLowerCase() ?? "all"
+    }`;
+  }
+  const namespacedName = isDefaultNamespaceCommand(command)
+    ? sanitizedName
+    : `${sanitizedName}-${command.namespace}`;
+
+  return namespacedName;
+}
+
+function commandFunctionNameSuffix(command: CommandSpec) {
+  return `${commandNamespaceName(command)}-command`;
 }
