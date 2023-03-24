@@ -77,7 +77,7 @@ export class AWSDictionaryStore implements DictionaryStore {
     const result = await this.list(name, request, ["value", "sk"]);
 
     return {
-      cursor: result.nextToken,
+      nextToken: result.nextToken,
       entries: result.records.map((r) => ({
         entity: JSON.parse(r.value.S),
         key: DictionaryEntityRecord.praseKeyFromSortKey(r.sk.S),
@@ -92,7 +92,7 @@ export class AWSDictionaryStore implements DictionaryStore {
     const result = await this.list(name, request, ["value", "sk"]);
 
     return {
-      cursor: result.nextToken,
+      nextToken: result.nextToken,
       keys: result.records.map((r) =>
         DictionaryEntityRecord.praseKeyFromSortKey(r.sk.S)
       ),
@@ -109,7 +109,7 @@ export class AWSDictionaryStore implements DictionaryStore {
         dynamoClient: this.props.dynamo,
         pageSize: request.limit ?? 1000,
         keys: ["pk", "sk"],
-        nextToken: request.cursor,
+        nextToken: request.nextToken,
       },
       {
         TableName: getLazy(this.props.entityTableName),

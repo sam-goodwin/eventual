@@ -5,18 +5,28 @@ import { dictionaries } from "./internal/global.js";
 
 export interface DictionaryListResult<Entity> {
   entries?: { key: string; entity: Entity }[];
-  cursor?: string;
+  /**
+   * Returned when there are more values than the limit allowed to return.
+   */
+  nextToken?: string;
 }
 
 export interface DictionaryListKeysResult {
   keys?: string[];
-  cursor?: string;
+  /**
+   * Returned when there are more values than the limit allowed to return.
+   */
+  nextToken?: string;
 }
 
 export interface DictionaryListRequest {
   prefix?: string;
+  /**
+   * Number of items to retrieve
+   * @default 100
+   */
   limit?: number;
-  cursor?: string;
+  nextToken?: string;
 }
 
 export interface Dictionary<Entity> {

@@ -1,9 +1,10 @@
 import {
+  DictionaryListKeysResult,
   DictionaryListRequest,
   DictionaryListResult,
-  DictionaryListKeysResult,
 } from "@eventual/core";
 import { DictionaryStore } from "../../stores/dictionary-store.js";
+import { paginateItems } from "./pagination.js";
 
 export class LocalDictionaryStore implements DictionaryStore {
   private dictionaries: Record<string, Map<string, any>> = {};
@@ -31,12 +32,12 @@ export class LocalDictionaryStore implements DictionaryStore {
     name: string,
     request: DictionaryListRequest
   ): Promise<DictionaryListResult<Entity>> {
-    const { items, cursor } = this.orderedEntries(name, request);
+    const { items, nextToken } = this.orderedEntries(name, request);
 
     // values should be sorted
     return {
       entries: items?.map(([key, value]) => ({ key, entity: value })),
-      cursor,
+      nextToken,
     };
   }
 
@@ -44,48 +45,28 @@ export class LocalDictionaryStore implements DictionaryStore {
     name: string,
     request: DictionaryListRequest
   ): Promise<DictionaryListKeysResult> {
-    const { items, cursor } = this.orderedEntries(name, request);
+    const { items, nextToken } = this.orderedEntries(name, request);
     return {
       keys: items?.map(([key]) => key),
-      cursor,
+      nextToken,
     };
   }
 
   private orderedEntries(name: string, listRequest: DictionaryListRequest) {
     const dictionary = this.dictionaries[name];
-    if (!dictionary) {
-      return {};
-    }
-    const cursor = listRequest.cursor
-      ? deserializeCursor(listRequest.cursor)
-      : undefined;
-    const entries = [...dictionary.entries()];
-    const filteredAndSorted = (
+    const entries = dictionary ? [...dictionary.entries()] : [];
+
+    const result = paginateItems(
+      entries,
+      (a, b) => a[0].localeCompare(b[0]),
       listRequest.prefix
-        ? entries.filter(([key]) => key.startsWith(listRequest.prefix!))
-        : entries
-    ).sort((a, b) => a[0].localeCompare(b[0]));
-    const start = cursor ? cursor.nextIndex : 0;
-    const end = listRequest.limit ? start + listRequest.limit : undefined;
-    const limited = filteredAndSorted.slice(start, end);
-    return {
-      items: limited,
-      cursor:
-        end && end < filteredAndSorted.length
-          ? serializeCursor({ nextIndex: end })
-          : undefined,
-    };
+        ? ([key]) => key.startsWith(listRequest.prefix!)
+        : undefined,
+      undefined,
+      listRequest.limit,
+      listRequest.nextToken
+    );
+
+    return result;
   }
-}
-
-interface Cursor {
-  nextIndex: number;
-}
-
-function serializeCursor(cursor: Cursor) {
-  return Buffer.from(JSON.stringify(cursor)).toString("base64");
-}
-
-function deserializeCursor(cursor: string): Cursor {
-  return JSON.parse(Buffer.from(cursor, "base64").toString("utf-8"));
 }
