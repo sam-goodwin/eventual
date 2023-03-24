@@ -22,16 +22,16 @@ import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import openapi from "openapi3-ts";
 import type { ActivityService } from "./activity-service";
+import { ApiDefinition } from "./constructs/http-api-definition.js";
+import { SpecHttpApi } from "./constructs/spec-http-api";
 import type { EventService } from "./event-service";
 import { grant } from "./grant";
-import { ApiDefinition } from "./http-api-definition";
 import {
   EventualResource,
   ServiceConstructProps,
   ServiceLocal,
 } from "./service";
 import { ServiceFunction } from "./service-function.js";
-import { SpecHttpApi } from "./spec-http-api";
 import { ServiceEntityProps, serviceFunctionArn } from "./utils";
 import type { WorkflowService } from "./workflow-service";
 
@@ -164,6 +164,10 @@ export class CommandService<Service = any> {
       }
     );
 
+    this.onFinalize(() => {
+      this.configureSystemCommandHandler();
+    });
+
     this.integrationRole = new Role(commandsSystemScope, "IntegrationRole", {
       assumedBy: new ServicePrincipal("apigateway.amazonaws.com"),
     });
@@ -182,38 +186,6 @@ export class CommandService<Service = any> {
       })
     );
 
-    this.onFinalize(() => {
-      // for update activity
-      this.props.activityService.configureWriteActivities(
-        this.systemCommandsHandler
-      );
-      this.props.activityService.configureCompleteActivity(
-        this.systemCommandsHandler
-      );
-      // publish events
-      this.props.eventService.configurePublish(this.systemCommandsHandler);
-      // get and list executions
-      this.props.workflowService.configureReadExecutions(
-        this.systemCommandsHandler
-      );
-      // execution history
-      this.props.workflowService.configureReadExecutionHistory(
-        this.systemCommandsHandler
-      );
-      // send signal
-      this.props.workflowService.configureSendSignal(
-        this.systemCommandsHandler
-      );
-      // workflow history
-      this.props.workflowService.configureReadHistoryState(
-        this.systemCommandsHandler
-      );
-      // start execution
-      this.props.workflowService.configureStartExecution(
-        this.systemCommandsHandler
-      );
-    });
-
     this.specification = createSpecification([
       ...this.props.build.commands.map((command) => {
         return createAPIPaths(command.spec, false);
@@ -222,8 +194,6 @@ export class CommandService<Service = any> {
         createAPIPaths(command, true, true)
       ),
     ]);
-
-    console.log(JSON.stringify(this.specification, null, 4));
 
     // Service => Gateway
     this.gateway = new SpecHttpApi(props.serviceScope, "Gateway", {
@@ -376,7 +346,7 @@ export class CommandService<Service = any> {
               isDefaultRoute: true,
               [XAmazonApiGatewayIntegration]: {
                 connectionType: "INTERNET",
-                httpMethod: HttpMethod.POST, // TODO: why POST? Exported API has this but it's not clear
+                httpMethod: HttpMethod.POST,
                 payloadFormatVersion: "2.0",
                 type: "AWS_PROXY",
                 credentials: self.integrationRole.roleArn,
@@ -462,6 +432,36 @@ export class CommandService<Service = any> {
     // Allow them to access any of the methods on the service client by default.
     this.props.service.configureForServiceClient(handler);
     this.grantInvokeHttpServiceApi(handler);
+  }
+
+  private configureSystemCommandHandler() {
+    // for update activity
+    this.props.activityService.configureWriteActivities(
+      this.systemCommandsHandler
+    );
+    this.props.activityService.configureCompleteActivity(
+      this.systemCommandsHandler
+    );
+    // publish events
+    this.props.eventService.configurePublish(this.systemCommandsHandler);
+    // get and list executions
+    this.props.workflowService.configureReadExecutions(
+      this.systemCommandsHandler
+    );
+    // execution history
+    this.props.workflowService.configureReadExecutionHistory(
+      this.systemCommandsHandler
+    );
+    // send signal
+    this.props.workflowService.configureSendSignal(this.systemCommandsHandler);
+    // workflow history
+    this.props.workflowService.configureReadHistoryState(
+      this.systemCommandsHandler
+    );
+    // start execution
+    this.props.workflowService.configureStartExecution(
+      this.systemCommandsHandler
+    );
   }
 
   private readonly ENV_MAPPINGS = {

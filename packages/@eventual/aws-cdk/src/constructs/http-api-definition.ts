@@ -11,6 +11,11 @@ import {
 import { Construct, Node } from "constructs";
 
 /**
+ * Taken from (and modified) closed cdk PR:
+ * https://github.com/aws/aws-cdk/pull/20815
+ */
+
+/**
  * Represents an OpenAPI definition asset.
  */
 export abstract class ApiDefinition {

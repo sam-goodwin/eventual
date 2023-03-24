@@ -13,6 +13,11 @@ import { Construct } from "constructs";
 import { ApiDefinition } from "./http-api-definition";
 
 /**
+ * Taken from (and modified) closed cdk PR:
+ * https://github.com/aws/aws-cdk/pull/20815
+ */
+
+/**
  * Properties to initialize an instance of `SpecHttpApi`
  */
 export interface SpecHttpApiProps {
