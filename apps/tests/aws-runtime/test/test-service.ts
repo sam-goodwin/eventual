@@ -10,6 +10,7 @@ import {
   asyncResult,
   command,
   condition,
+  dictionary,
   duration,
   event,
   EventualError,
@@ -537,6 +538,38 @@ export const createAndDestroyWorkflow = workflow(
     await createActivity({ id: execution.id });
     await destroyActivity({ id: execution.id });
     return "done" as const;
+  }
+);
+
+const counter = dictionary<{ n: number }>("counter", z.any());
+const dictEvent = event<{ id: string }>("dictEvent");
+const dictSignal = signal<{ n: number }>("dictSignal");
+
+subscription("onDictEvent", { events: [dictEvent] }, async ({ id }) => {
+  const value = await counter.get(id);
+  const newValue = (value?.n ?? 0) + 1;
+  await counter.set(id, { n: (value?.n ?? 0) + 1 });
+  await dictSignal.sendSignal(id, { n: newValue });
+});
+
+export const dictionaryActivity = activity(
+  "dictAct",
+  async (_, { execution: { id } }) => {
+    const value = await counter.get(id);
+    await counter.set(id, { n: (value?.n ?? 0) + 1 });
+  }
+);
+
+export const dictionaryWorkflow = workflow(
+  "dictionaryWorkflow",
+  async (_, { execution: { id } }) => {
+    // await counter.set(id, { n: 1 });
+    await dictionaryActivity();
+    const [, signalPayload] = await Promise.all([
+      dictEvent.publishEvents({ id }),
+      dictSignal.expectSignal(),
+    ]);
+    return signalPayload;
   }
 );
 
