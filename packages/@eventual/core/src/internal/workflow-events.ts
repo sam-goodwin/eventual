@@ -1,3 +1,4 @@
+import { DictionaryListRequest } from "../dictionary.js";
 import { EventEnvelope } from "../event.js";
 import { WorkflowExecutionContext } from "../workflow.js";
 import { or } from "./util.js";
@@ -23,6 +24,8 @@ export enum WorkflowEventType {
   ChildWorkflowSucceeded = "ChildWorkflowSucceeded",
   ChildWorkflowFailed = "ChildWorkflowFailed",
   ChildWorkflowScheduled = "ChildWorkflowScheduled",
+  DictionaryOperation = "DictionaryOperation",
+  DictionaryOperationResult = "DictionaryOperationResult",
   EventsPublished = "EventsPublished",
   SignalReceived = "SignalReceived",
   SignalSent = "SignalSent",
@@ -51,36 +54,33 @@ export type WorkflowEvent =
  */
 export type ScheduledEvent =
   | ActivityScheduled
-  | TimerScheduled
   | ChildWorkflowScheduled
+  | DictionaryOperation
   | EventsPublished
-  | SignalSent;
+  | SignalSent
+  | TimerScheduled;
 
 export const isScheduledEvent = /* @__PURE__ */ or(
   isActivityScheduled,
   isChildWorkflowScheduled,
   isEventsPublished,
+  isDictionaryOperation,
   isSignalSent,
   isTimerScheduled
 );
-
-export type SucceededEvent =
-  | ActivitySucceeded
-  | TimerCompleted
-  | ChildWorkflowSucceeded;
-
-export type FailedEvent =
-  | ActivityFailed
-  | ActivityHeartbeatTimedOut
-  | ChildWorkflowFailed;
 
 /**
  * Events generated outside of the interpreter which progress the workflow.
  */
 export type CompletionEvent =
-  | FailedEvent
-  | SucceededEvent
+  | ActivityFailed
+  | ActivityHeartbeatTimedOut
+  | ActivitySucceeded
+  | ChildWorkflowFailed
+  | ChildWorkflowSucceeded
+  | DictionaryOperationResult
   | SignalReceived
+  | TimerCompleted
   | WorkflowTimedOut
   | WorkflowRunStarted;
 
@@ -89,23 +89,14 @@ export type CompletionEvent =
  */
 export type WorkflowInputEvent = CompletionEvent | WorkflowStarted;
 
-export const isSucceededEvent = /* @__PURE__ */ or(
+export const isCompletionEvent = /* @__PURE__ */ or(
   isActivitySucceeded,
-  isChildWorkflowSucceeded,
-  isTimerCompleted
-);
-
-export const isFailedEvent = /* @__PURE__ */ or(
   isActivityFailed,
   isActivityHeartbeatTimedOut,
   isChildWorkflowFailed,
-  isWorkflowTimedOut
-);
-
-export const isCompletionEvent = /* @__PURE__ */ or(
-  isSucceededEvent,
-  isFailedEvent,
+  isChildWorkflowSucceeded,
   isSignalReceived,
+  isTimerCompleted,
   isWorkflowTimedOut,
   isWorkflowRunStarted
 );
@@ -245,6 +236,49 @@ export function isActivityHeartbeatTimedOut(
   event: WorkflowEvent
 ): event is ActivityHeartbeatTimedOut {
   return event.type === WorkflowEventType.ActivityHeartbeatTimedOut;
+}
+
+export interface DictionaryOperationBase extends HistoryEventBase {
+  type: WorkflowEventType.DictionaryOperation;
+  name: string;
+}
+
+export type DictionaryOperation =
+  | DictionaryGetDeleteOperation
+  | DictionarySetOperation
+  | DictionaryListOperation;
+
+export interface DictionaryGetDeleteOperation extends DictionaryOperationBase {
+  operation: "get" | "delete";
+  key: string;
+}
+
+export interface DictionarySetOperation extends DictionaryOperationBase {
+  operation: "set";
+  key: string;
+}
+
+export interface DictionaryListOperation extends DictionaryOperationBase {
+  operation: "list" | "listKeys";
+  request: DictionaryListRequest;
+}
+
+export interface DictionaryOperationResult extends HistoryEventBase {
+  type: WorkflowEventType.DictionaryOperationResult;
+  operation: DictionaryOperation["operation"];
+  result: any;
+}
+
+export function isDictionaryOperation(
+  event: WorkflowEvent
+): event is DictionaryOperation {
+  return event.type === WorkflowEventType.DictionaryOperation;
+}
+
+export function isDictionaryOperationResult(
+  event: WorkflowEvent
+): event is DictionaryOperationResult {
+  return event.type === WorkflowEventType.DictionaryOperationResult;
 }
 
 export interface TimerScheduled extends HistoryEventBase {
