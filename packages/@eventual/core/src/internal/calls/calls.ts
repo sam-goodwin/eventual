@@ -1,26 +1,29 @@
-import { ActivityCall } from "./activity-call.js";
-import { AwaitTimerCall } from "./await-time-call.js";
-import { ConditionCall } from "./condition-call.js";
-import { ExpectSignalCall } from "./expect-signal-call.js";
-import { PublishEventsCall } from "./publish-events-call.js";
-import { SendSignalCall } from "./send-signal-call.js";
-import { RegisterSignalHandlerCall } from "./signal-handler-call.js";
-import { ChildWorkflowCall } from "./workflow-call.js";
+import type { ActivityCall } from "./activity-call.js";
+import type { AwaitTimerCall } from "./await-time-call.js";
+import type { ConditionCall } from "./condition-call.js";
+import type { DictionaryCall } from "./dictionary-call.js";
+import type { ExpectSignalCall } from "./expect-signal-call.js";
+import type { PublishEventsCall } from "./publish-events-call.js";
+import type { SendSignalCall } from "./send-signal-call.js";
+import type { RegisterSignalHandlerCall } from "./signal-handler-call.js";
+import type { ChildWorkflowCall } from "./workflow-call.js";
 
 export type EventualCall =
   | ActivityCall
   | AwaitTimerCall
   | ConditionCall
+  | DictionaryCall
+  | ChildWorkflowCall
   | ExpectSignalCall
   | PublishEventsCall
-  | SendSignalCall
   | RegisterSignalHandlerCall
-  | ChildWorkflowCall;
+  | SendSignalCall;
 
 export enum EventualCallKind {
   ActivityCall = 0,
   AwaitTimerCall = 1,
   ConditionCall = 2,
+  DictionaryCall = 8,
   ExpectSignalCall = 3,
   PublishEventsCall = 4,
   RegisterSignalHandlerCall = 5,

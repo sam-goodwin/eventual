@@ -4,9 +4,12 @@ import {
   ActivityWorkerRequest,
 } from "../clients/activity-client.js";
 import { DictionaryClient } from "../clients/dictionary-client.js";
-import { TimerClient, TimerRequest } from "../clients/timer-client.js";
+import { EventClient } from "../clients/event-client.js";
+import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
+import { LogsClient } from "../clients/logs-client.js";
+import { MetricsClient } from "../clients/metrics-client.js";
+import type { TimerClient, TimerRequest } from "../clients/timer-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
-import { WorkflowCallExecutor } from "../workflow-call-executor.js";
 import {
   ActivityWorker,
   createActivityWorker,
@@ -21,16 +24,6 @@ import {
   SubscriptionWorker,
 } from "../handlers/subscription-worker.js";
 import { createTimerHandler, TimerHandler } from "../handlers/timer-handler.js";
-import {
-  ActivityStore,
-  EventClient,
-  ExecutionHistoryStateStore,
-  ExecutionHistoryStore,
-  ExecutionQueueClient,
-  ExecutionStore,
-  LogsClient,
-  MetricsClient,
-} from "../index.js";
 import { LogAgent } from "../log-agent.js";
 import {
   ActivityProvider,
@@ -45,6 +38,10 @@ import {
   GlobalWorkflowProvider,
   WorkflowProvider,
 } from "../providers/workflow-provider.js";
+import { ActivityStore } from "../stores/activity-store.js";
+import { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
+import { ExecutionHistoryStore } from "../stores/execution-history-store.js";
+import { ExecutionStore } from "../stores/execution-store.js";
 import {
   createGetExecutionCommand,
   createListExecutionHistoryCommand,
@@ -57,6 +54,7 @@ import {
   createUpdateActivityCommand,
 } from "../system-commands.js";
 import { WorkflowTask } from "../tasks.js";
+import { WorkflowCallExecutor } from "../workflow-call-executor.js";
 import { LocalActivityClient } from "./clients/activity-client.js";
 import { LocalEventClient } from "./clients/event-client.js";
 import { LocalExecutionQueueClient } from "./clients/execution-queue-client.js";
@@ -162,6 +160,7 @@ export class LocalContainer {
         executionQueueClient: this.executionQueueClient,
         timerClient: this.timerClient,
         workflowClient: this.workflowClient,
+        dictionaryClient,
       }),
       workflowClient: this.workflowClient,
       timerClient: this.timerClient,

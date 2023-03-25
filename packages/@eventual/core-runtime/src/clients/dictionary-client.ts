@@ -6,8 +6,10 @@ export class DictionaryClient implements DictionaryHook {
   constructor(private dictionaryStore: DictionaryStore) {}
   public async getDictionary<Entity>(
     name: string
-  ): Promise<Omit<Dictionary<Entity>, "schema" | "name"> | undefined> {
+  ): Promise<Dictionary<Entity> | undefined> {
     return {
+      name,
+      schema: undefined,
       get: (key) => this.dictionaryStore.getDictionaryValue(name, key),
       set: (key, entity) =>
         this.dictionaryStore.setDictionaryValue(name, key, entity),

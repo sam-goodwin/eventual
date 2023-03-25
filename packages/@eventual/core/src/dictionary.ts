@@ -31,7 +31,7 @@ export interface DictionaryListRequest {
 
 export interface Dictionary<Entity> {
   name: string;
-  schema: z.Schema<Entity>;
+  schema?: z.Schema<Entity>;
   get(key: string): Promise<Entity | undefined>;
   set(key: string, entity: Entity): Promise<void>;
   delete(key: string): Promise<void>;

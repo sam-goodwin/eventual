@@ -1,6 +1,6 @@
-import { DictionaryListRequest } from "../dictionary.js";
-import { EventEnvelope } from "../event.js";
-import { WorkflowExecutionContext } from "../workflow.js";
+import type { EventEnvelope } from "../event.js";
+import type { WorkflowExecutionContext } from "../workflow.js";
+import type { DictionaryOperation } from "./calls/dictionary-call.js";
 import { or } from "./util.js";
 
 export interface BaseEvent {
@@ -24,8 +24,9 @@ export enum WorkflowEventType {
   ChildWorkflowSucceeded = "ChildWorkflowSucceeded",
   ChildWorkflowFailed = "ChildWorkflowFailed",
   ChildWorkflowScheduled = "ChildWorkflowScheduled",
-  DictionaryOperation = "DictionaryOperation",
-  DictionaryOperationResult = "DictionaryOperationResult",
+  DictionaryRequest = "DictionaryRequest",
+  DictionaryRequestFailed = "DictionaryRequestFailed",
+  DictionaryRequestSucceeded = "DictionaryResult",
   EventsPublished = "EventsPublished",
   SignalReceived = "SignalReceived",
   SignalSent = "SignalSent",
@@ -55,7 +56,7 @@ export type WorkflowEvent =
 export type ScheduledEvent =
   | ActivityScheduled
   | ChildWorkflowScheduled
-  | DictionaryOperation
+  | DictionaryRequest
   | EventsPublished
   | SignalSent
   | TimerScheduled;
@@ -64,7 +65,7 @@ export const isScheduledEvent = /* @__PURE__ */ or(
   isActivityScheduled,
   isChildWorkflowScheduled,
   isEventsPublished,
-  isDictionaryOperation,
+  isDictionaryRequest,
   isSignalSent,
   isTimerScheduled
 );
@@ -78,7 +79,8 @@ export type CompletionEvent =
   | ActivitySucceeded
   | ChildWorkflowFailed
   | ChildWorkflowSucceeded
-  | DictionaryOperationResult
+  | DictionaryRequestFailed
+  | DictionaryRequestSucceeded
   | SignalReceived
   | TimerCompleted
   | WorkflowTimedOut
@@ -238,47 +240,40 @@ export function isActivityHeartbeatTimedOut(
   return event.type === WorkflowEventType.ActivityHeartbeatTimedOut;
 }
 
-export interface DictionaryOperationBase extends HistoryEventBase {
-  type: WorkflowEventType.DictionaryOperation;
-  name: string;
+export interface DictionaryRequest extends HistoryEventBase {
+  type: WorkflowEventType.DictionaryRequest;
+  operation: DictionaryOperation;
 }
 
-export type DictionaryOperation =
-  | DictionaryGetDeleteOperation
-  | DictionarySetOperation
-  | DictionaryListOperation;
-
-export interface DictionaryGetDeleteOperation extends DictionaryOperationBase {
-  operation: "get" | "delete";
-  key: string;
-}
-
-export interface DictionarySetOperation extends DictionaryOperationBase {
-  operation: "set";
-  key: string;
-}
-
-export interface DictionaryListOperation extends DictionaryOperationBase {
-  operation: "list" | "listKeys";
-  request: DictionaryListRequest;
-}
-
-export interface DictionaryOperationResult extends HistoryEventBase {
-  type: WorkflowEventType.DictionaryOperationResult;
+export interface DictionaryRequestSucceeded extends HistoryEventBase {
+  type: WorkflowEventType.DictionaryRequestSucceeded;
   operation: DictionaryOperation["operation"];
   result: any;
 }
 
-export function isDictionaryOperation(
-  event: WorkflowEvent
-): event is DictionaryOperation {
-  return event.type === WorkflowEventType.DictionaryOperation;
+export interface DictionaryRequestFailed extends HistoryEventBase {
+  type: WorkflowEventType.DictionaryRequestFailed;
+  operation: DictionaryOperation["operation"];
+  error: string;
+  message: string;
 }
 
-export function isDictionaryOperationResult(
+export function isDictionaryRequest(
   event: WorkflowEvent
-): event is DictionaryOperationResult {
-  return event.type === WorkflowEventType.DictionaryOperationResult;
+): event is DictionaryRequest {
+  return event.type === WorkflowEventType.DictionaryRequest;
+}
+
+export function isDictionaryRequestSucceeded(
+  event: WorkflowEvent
+): event is DictionaryRequestSucceeded {
+  return event.type === WorkflowEventType.DictionaryRequestSucceeded;
+}
+
+export function isDictionaryRequestFailed(
+  event: WorkflowEvent
+): event is DictionaryRequestFailed {
+  return event.type === WorkflowEventType.DictionaryRequestFailed;
 }
 
 export interface TimerScheduled extends HistoryEventBase {
