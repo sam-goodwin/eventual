@@ -445,9 +445,11 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
            * Check if there is a matching event for the call.
            * If the call does not have a corresponding event, bypass this step.
            */
-          assertCallIsNewOrExpected(seq, call, eventual);
-
-          self.currentRun?.callsToEmit.push(...normalizeToArray({ call, seq }));
+          if (checkExpectedCallAndAdvance(seq, call, eventual)) {
+            self.currentRun?.callsToEmit.push(
+              ...normalizeToArray({ call, seq })
+            );
+          }
 
           /**
            * If the eventual comes with a result, do not active it, it is already resolved!
@@ -475,33 +477,41 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
      * Checks the call against the expected events.
      * @throws {@link DeterminismError} when the call is not expected and there are expected events remaining.
      */
-    function assertCallIsNewOrExpected(
+    function checkExpectedCallAndAdvance(
       seq: number,
       call: EventualCall,
       definition: EventualDefinition<any>
     ) {
       // if there is no isCorresponding method, we will not take off of the expected queue.
-      if (definition.isCorresponding && self.expected.hasNext()) {
-        const expected = self.expected.next()!;
+      if (definition.isCorresponding) {
+        if (self.expected.hasNext()) {
+          const expected = self.expected.next()!;
 
-        self.hooks?.historicalEventMatched?.(
-          expected,
-          call,
-          self._executionContext
-        );
-
-        if (!definition.isCorresponding(expected, seq)) {
-          self.resolveWorkflow(
-            Result.failed(
-              new DeterminismError(
-                `Workflow returned ${JSON.stringify(
-                  call
-                )}, but ${JSON.stringify(expected)} was expected at ${seq}`
-              )
-            )
+          self.hooks?.historicalEventMatched?.(
+            expected,
+            call,
+            self._executionContext
           );
+
+          if (!definition.isCorresponding(expected, seq)) {
+            self.resolveWorkflow(
+              Result.failed(
+                new DeterminismError(
+                  `Workflow returned ${JSON.stringify(
+                    call
+                  )}, but ${JSON.stringify(expected)} was expected at ${seq}`
+                )
+              )
+            );
+          }
+          return false;
+        } else {
+          // no more expected events, emit this call
+          return true;
         }
       }
+      // don't emit calls that don't have isCorresponding checks
+      return false;
     }
   }
 

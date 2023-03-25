@@ -1642,8 +1642,10 @@ test("properly evaluate await of sub-programs", async () => {
     return await sub();
   });
 
-  await expect(execute(wf, [], undefined)).resolves.toMatchObject({
-    commands: [
+  await expect(
+    execute(wf, [], undefined)
+  ).resolves.toMatchObject<WorkflowResult>({
+    calls: [
       //
       activityCall("a", [], 0),
       activityCall("b", [], 1),
@@ -1661,9 +1663,9 @@ test("properly evaluate await of sub-programs", async () => {
       ],
       undefined
     )
-  ).resolves.toMatchObject({
+  ).resolves.toMatchObject<WorkflowResult>({
     result: Result.resolved(["a", "b"]),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -1698,9 +1700,9 @@ test("properly evaluate await of Promise.all", async () => {
       ],
       undefined
     )
-  ).resolves.toMatchObject({
+  ).resolves.toMatchObject<WorkflowResult>({
     result: Result.resolved(["a", "b"]),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -1724,9 +1726,9 @@ test("generator function returns an ActivityCall", async () => {
       [activityScheduled("call-a", 0), activitySucceeded("result", 0)],
       undefined
     )
-  ).resolves.toMatchObject({
+  ).resolves.toMatchObject<WorkflowResult>({
     result: Result.resolved("result"),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -1743,13 +1745,13 @@ test("workflow calling other workflow", async () => {
   await expect(
     execute(wf2, [], undefined)
   ).resolves.toMatchObject<WorkflowResult>({
-    calls: [activityCall(wf1.name, undefined, 0)],
+    calls: [childWorkflowCall(wf1.name, undefined, 0)],
   });
 
   await expect(
     execute(wf2, [workflowScheduled(wf1.name, 0)], undefined)
-  ).resolves.toMatchObject({
-    commands: [],
+  ).resolves.toMatchObject<WorkflowResult>({
+    calls: [],
   });
 
   await expect(
@@ -1772,8 +1774,8 @@ test("workflow calling other workflow", async () => {
       ],
       undefined
     )
-  ).resolves.toMatchObject({
-    commands: [],
+  ).resolves.toMatchObject<WorkflowResult>({
+    calls: [],
   });
 
   await expect(
@@ -1787,9 +1789,9 @@ test("workflow calling other workflow", async () => {
       ],
       undefined
     )
-  ).resolves.toMatchObject({
+  ).resolves.toMatchObject<WorkflowResult>({
     result: Result.resolved("result"),
-    commands: [],
+    calls: [],
   });
 
   await expect(
@@ -1798,9 +1800,9 @@ test("workflow calling other workflow", async () => {
       [workflowScheduled(wf1.name, 0), workflowFailed("error", 0)],
       undefined
     )
-  ).resolves.toMatchObject({
+  ).resolves.toMatchObject<WorkflowResult>({
     result: Result.failed(new EventualError("error").toJSON()),
-    commands: [],
+    calls: [],
   });
 });
 
