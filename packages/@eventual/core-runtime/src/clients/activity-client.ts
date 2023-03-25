@@ -1,4 +1,5 @@
 import {
+  DurationSchedule,
   ExecutionStatus,
   SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
@@ -12,10 +13,6 @@ import {
 import { decodeActivityToken } from "../activity-token.js";
 import { ActivityStore } from "../stores/activity-store.js";
 import { ExecutionStore } from "../stores/execution-store.js";
-import {
-  isScheduleActivityCommand,
-  ScheduleActivityCommand,
-} from "../workflow-command.js";
 import { createEvent } from "../workflow-events.js";
 import { ExecutionQueueClient } from "./execution-queue-client.js";
 
@@ -107,12 +104,15 @@ export interface ActivityWorkerRequest {
   scheduledTime: string;
   workflowName: string;
   executionId: string;
-  command: ScheduleActivityCommand;
+  activityName: string;
+  seq: number;
+  heartbeat?: DurationSchedule;
+  input?: any;
   retry: number;
 }
 
 export function isActivityWorkerRequest(
   obj: any
 ): obj is ActivityWorkerRequest {
-  return obj && "command" in obj && isScheduleActivityCommand(obj.command);
+  return obj && "retry" in obj && "activityName" in obj;
 }

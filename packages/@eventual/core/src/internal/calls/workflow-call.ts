@@ -15,14 +15,14 @@ import {
 } from "./calls.js";
 import { createSendSignalCall } from "./send-signal-call.js";
 
-export function isWorkflowCall(a: EventualCall): a is WorkflowCall {
+export function isChildWorkflowCall(a: EventualCall): a is ChildWorkflowCall {
   return isEventualCallOfKind(EventualCallKind.WorkflowCall, a);
 }
 
 /**
  * An {@link Eventual} representing an awaited call to a {@link Workflow}.
  */
-export interface WorkflowCall
+export interface ChildWorkflowCall
   extends EventualCallBase<EventualCallKind.WorkflowCall> {
   name: string;
   input?: any;
@@ -34,10 +34,10 @@ export interface WorkflowCall
    *
    * TODO: support cancellation of child workflow.
    */
-  timeout: Promise<any>;
+  timeout?: Promise<any>;
 }
 
-export function createWorkflowCall<T>(
+export function createChildWorkflowCall<T>(
   name: string,
   input?: any,
   opts?: WorkflowExecutionOptions,

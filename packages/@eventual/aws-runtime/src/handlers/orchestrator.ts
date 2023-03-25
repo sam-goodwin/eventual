@@ -1,7 +1,7 @@
 import "@eventual/injected/entry";
 
 import {
-  CommandExecutor,
+  WorkflowCallExecutor,
   createOrchestrator,
   ExecutionQueueEventEnvelope,
   RemoteExecutorProvider,
@@ -31,7 +31,7 @@ const orchestrate = createOrchestrator({
   workflowClient: createWorkflowClient(),
   metricsClient: AWSMetricsClient,
   logAgent: createLogAgent(),
-  commandExecutor: new CommandExecutor({
+  callExecutor: new WorkflowCallExecutor({
     activityClient: createActivityClient(),
     eventClient: createEventClient(),
     executionQueueClient: createExecutionQueueClient(),

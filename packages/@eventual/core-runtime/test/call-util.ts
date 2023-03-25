@@ -1,13 +1,20 @@
 import { EventEnvelope, Schedule } from "@eventual/core";
 import {
+  ActivityCall,
   ActivityFailed,
   ActivityHeartbeatTimedOut,
   ActivityScheduled,
   ActivitySucceeded,
+  AwaitTimerCall,
+  ChildWorkflowCall,
   ChildWorkflowFailed,
   ChildWorkflowScheduled,
   ChildWorkflowSucceeded,
+  createEventualCall,
   EventsPublished,
+  EventualCallKind,
+  PublishEventsCall,
+  SendSignalCall,
   SignalReceived,
   SignalSent,
   SignalTarget,
@@ -17,79 +24,77 @@ import {
   WorkflowTimedOut,
 } from "@eventual/core/internal";
 import { ulid } from "ulidx";
-import {
-  CommandType,
-  PublishEventsCommand,
-  ScheduleActivityCommand,
-  ScheduleWorkflowCommand,
-  SendSignalCommand,
-  StartTimerCommand,
-} from "../src/workflow-command.js";
+import { WorkflowCall } from "../src/workflow-executor.js";
 
-export function createStartTimerCommand(
+export function awaitTimerCall(
   schedule: Schedule,
   seq: number
-): StartTimerCommand;
-export function createStartTimerCommand(seq: number): StartTimerCommand;
-export function createStartTimerCommand(
+): WorkflowCall<AwaitTimerCall>;
+export function awaitTimerCall(seq: number): WorkflowCall<AwaitTimerCall>;
+export function awaitTimerCall(
   ...args: [schedule: Schedule, seq: number] | [seq: number]
-): StartTimerCommand {
+): WorkflowCall<AwaitTimerCall> {
   const [schedule, seq] =
     args.length === 1 ? [Schedule.time("then"), args[0]] : args;
   return {
-    kind: CommandType.StartTimer,
-    schedule,
+    call: createEventualCall(EventualCallKind.AwaitTimerCall, {
+      schedule,
+    }),
     seq,
   };
 }
 
-export function createScheduledActivityCommand(
+export function activityCall(
   name: string,
   input: any,
   seq: number
-): ScheduleActivityCommand {
+): WorkflowCall<ActivityCall> {
   return {
-    kind: CommandType.StartActivity,
+    call: createEventualCall(EventualCallKind.ActivityCall, {
+      name,
+      input,
+    }),
     seq,
-    name,
-    input,
   };
 }
 
-export function createScheduledWorkflowCommand(
+export function childWorkflowCall(
   name: string,
   input: any,
   seq: number
-): ScheduleWorkflowCommand {
+): WorkflowCall<ChildWorkflowCall> {
   return {
-    kind: CommandType.StartWorkflow,
     seq,
-    name,
-    input,
+    call: createEventualCall(EventualCallKind.WorkflowCall, {
+      name,
+      input,
+    }),
   };
 }
 
-export function createSendSignalCommand(
+export function sendSignalCall(
   target: SignalTarget,
   signalId: string,
   seq: number
-): SendSignalCommand {
+): WorkflowCall<SendSignalCall> {
   return {
-    kind: CommandType.SendSignal,
     seq,
-    target,
-    signalId,
+    call: createEventualCall(EventualCallKind.SendSignalCall, {
+      target,
+      signalId,
+    }),
   };
 }
 
-export function createPublishEventCommand(
+export function publishEventCall(
   events: EventEnvelope[],
   seq: number
-): PublishEventsCommand {
+): WorkflowCall<PublishEventsCall> {
   return {
-    kind: CommandType.PublishEvents,
     seq,
-    events,
+    call: createEventualCall(EventualCallKind.PublishEventsCall, {
+      events,
+    }),
   };
 }
 

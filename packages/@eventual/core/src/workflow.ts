@@ -3,7 +3,7 @@ import type {
   ExecutionHandle,
   ExecutionID,
 } from "./execution.js";
-import { createWorkflowCall } from "./internal/calls/workflow-call.js";
+import { createChildWorkflowCall } from "./internal/calls/workflow-call.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
 import { getServiceClient, workflows } from "./internal/global.js";
 import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
@@ -170,7 +170,7 @@ export function workflow<Input = any, Output = any>(
     // take the invocation time configuration first.
     const timeout = options?.timeout ?? opts?.timeout;
 
-    return createWorkflowCall(
+    return createChildWorkflowCall(
       name,
       input,
       // if the timeout is a time or a duration, from any source, send the timeout to the child execution

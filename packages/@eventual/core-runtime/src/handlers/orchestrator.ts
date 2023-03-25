@@ -33,7 +33,7 @@ import { inspect } from "util";
 import { MetricsClient } from "../clients/metrics-client.js";
 import type { TimerClient } from "../clients/timer-client.js";
 import type { WorkflowClient } from "../clients/workflow-client.js";
-import type { CommandExecutor } from "../command-executor.js";
+import type { WorkflowCallExecutor } from "../workflow-call-executor.js";
 import { hookConsole, restoreConsole } from "../console-hook.js";
 import { hookDate, restoreDate } from "../date-hook.js";
 import { isExecutionId, parseWorkflowName } from "../execution.js";
@@ -101,7 +101,7 @@ export function createOrchestrator(
 }
 
 interface OrchestrateDependencies {
-  commandExecutor: CommandExecutor;
+  callExecutor: WorkflowCallExecutor;
   executionHistoryStore: ExecutionHistoryStore;
   executorProvider: ExecutorProvider<ExecutorRunContext>;
   logAgent?: LogAgent;
@@ -153,7 +153,7 @@ export async function orchestrateExecution(
     );
 
     // start event collection and then save the events
-    const { commandEvents, executor, flushPromise } = await eventCollectorScope(
+    const { callEvents, executor, flushPromise } = await eventCollectorScope(
       executionId,
       deps.executionHistoryStore,
       metrics,
@@ -189,7 +189,7 @@ export async function orchestrateExecution(
           deps.logAgent
         );
 
-        const { commands, result, previousResult } = await timed(
+        const { calls, result, previousResult } = await timed(
           metrics,
           OrchestratorMetrics.AdvanceExecutionDuration,
           () =>
@@ -223,38 +223,33 @@ export async function orchestrateExecution(
         deps.logAgent?.logWithContext(
           executionLogContext,
           LogLevel.DEBUG,
-          () => [
-            `Found ${commands.length} new commands. ${JSON.stringify(
-              commands
-            )}`,
-          ]
+          () => [`Found ${calls.length} new calls. ${JSON.stringify(calls)}`]
         );
 
-        // try to execute all commands
-        const commandEvents = await timed(
-          metrics,
-          OrchestratorMetrics.InvokeCommandsDuration,
-          () =>
+        // try to execute all calls
+        const callEvents = (
+          await timed(metrics, OrchestratorMetrics.InvokeCallsDuration, () =>
             Promise.all(
-              commands.map((command) =>
-                deps.commandExecutor.executeCommand(
+              calls.map((call) =>
+                deps.callExecutor.executeCall(
                   workflow,
                   executionId,
-                  command,
+                  call,
                   executionTime
                 )
               )
             )
-        );
+          )
+        ).filter((e): e is HistoryStateEvent => !!e);
 
         metrics?.putMetric(
-          OrchestratorMetrics.CommandsInvoked,
-          commands.length,
+          OrchestratorMetrics.CallsInvoked,
+          calls.length,
           Unit.Count
         );
 
-        // register command events
-        emitEvent(commandEvents);
+        // register call events
+        emitEvent(callEvents);
 
         // only persist results when the result is new in this run
         if (result && !previousResult) {
@@ -268,7 +263,7 @@ export async function orchestrateExecution(
         );
 
         return {
-          commandEvents,
+          callEvents,
           executor,
           flushPromise: timed(
             metrics,
@@ -281,20 +276,20 @@ export async function orchestrateExecution(
     );
 
     if (maxTaskAge) {
-      // tracks the time it takes for a workflow task to be scheduled until new commands could be emitted.
+      // tracks the time it takes for a workflow task to be scheduled until new calls could be emitted.
       // This represent the workflow orchestration time of User Perceived Latency
       // Average expected time for an activity to be invoked until it is considered complete by the workflow should follow:
-      // AvgActivityDuration(N) = Avg(TimeToCommandsInvoked) + Avg(ActivityDuration(N))
+      // AvgActivityDuration(N) = Avg(TimeToCallsInvoked) + Avg(ActivityDuration(N))
       metrics?.putMetric(
-        OrchestratorMetrics.TimeToCommandsInvoked,
+        OrchestratorMetrics.TimeToCallsInvoked,
         maxTaskAge + (new Date().getTime() - executionTime.getTime())
       );
     }
 
     if (executor) {
-      // write the state of the executor, a record of the current run, and all events emitted by commands
+      // write the state of the executor, a record of the current run, and all events emitted by calls
       // to storage (in memory or remote).
-      await persistExecutor(executor, commandEvents);
+      await persistExecutor(executor, callEvents);
     }
 
     await flushPromise;
@@ -647,13 +642,13 @@ async function runExecutions<T>(
 }
 
 /**
- * Runs an executor, returning the result and any commands generated.
+ * Runs an executor, returning the result and any calls generated.
  *
  * 1. Initialize the executor to support dynamic date and logging
  * 2. Run any historical events.
  * 3. Run any new events
  * 4. Run any synthetically generable events (ex: timers)
- * 5. Return new commands to execute
+ * 5. Return new calls to execute
  */
 export async function runExecutor(
   workflowExecutor: WorkflowExecutor<any, any, ExecutorRunContext>,
@@ -675,15 +670,12 @@ export async function runExecutor(
     // check to see if we can complete any timers without their events (no op if not)
     const syntheticEventsResult = await runSyntheticTimerEvents();
 
-    // merge the start and continue commands and then return.
+    // merge the start and continue calls and then return.
     return {
       previousResult,
-      commands: syntheticEventsResult?.commands
-        ? [
-            ...workflowResult.commands,
-            ...(syntheticEventsResult?.commands ?? []),
-          ]
-        : workflowResult.commands,
+      calls: syntheticEventsResult?.calls
+        ? [...workflowResult.calls, ...(syntheticEventsResult?.calls ?? [])]
+        : workflowResult.calls,
       result: syntheticEventsResult?.result ?? workflowResult.result,
     };
   } finally {

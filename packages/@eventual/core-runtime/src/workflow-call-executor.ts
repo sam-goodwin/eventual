@@ -1,11 +1,24 @@
 import { ExecutionID, Workflow } from "@eventual/core";
 import {
+  ActivityCall,
   ActivityScheduled,
   assertNever,
+  AwaitTimerCall,
+  ChildWorkflowCall,
   ChildWorkflowScheduled,
   EventsPublished,
   HistoryStateEvent,
+  isActivityCall,
+  isAwaitTimerCall,
   isChildExecutionTarget,
+  isChildWorkflowCall,
+  isConditionCall,
+  isExpectSignalCall,
+  isPublishEventsCall,
+  isRegisterSignalHandlerCall,
+  isSendSignalCall,
+  PublishEventsCall,
+  SendSignalCall,
   SignalSent,
   TimerCompleted,
   TimerScheduled,
@@ -21,22 +34,10 @@ import { TimerClient } from "./clients/timer-client.js";
 import { WorkflowClient } from "./clients/workflow-client.js";
 import { formatChildExecutionName, formatExecutionId } from "./execution.js";
 import { computeScheduleDate } from "./schedule.js";
-import {
-  isPublishEventsCommand,
-  isScheduleActivityCommand,
-  isScheduleWorkflowCommand,
-  isSendSignalCommand,
-  isStartTimerCommand,
-  PublishEventsCommand,
-  ScheduleActivityCommand,
-  ScheduleWorkflowCommand,
-  SendSignalCommand,
-  StartTimerCommand,
-  WorkflowCommand,
-} from "./workflow-command.js";
 import { createEvent } from "./workflow-events.js";
+import { WorkflowCall } from "./workflow-executor.js";
 
-interface CommandExecutorProps {
+interface WorkflowCallExecutorProps {
   timerClient: TimerClient;
   workflowClient: WorkflowClient;
   executionQueueClient: ExecutionQueueClient;
@@ -45,49 +46,66 @@ interface CommandExecutorProps {
 }
 
 /**
- * Uses the clients to execute all supported commands and return events.
+ * Uses the clients to execute all supported calls and return events.
  */
-export class CommandExecutor {
-  constructor(private props: CommandExecutorProps) {}
+export class WorkflowCallExecutor {
+  constructor(private props: WorkflowCallExecutorProps) {}
 
-  public async executeCommand(
+  public async executeCall(
     workflow: Workflow,
     executionId: ExecutionID,
-    command: WorkflowCommand,
+    call: WorkflowCall,
     baseTime: Date
-  ): Promise<HistoryStateEvent> {
-    if (isScheduleActivityCommand(command)) {
+  ): Promise<HistoryStateEvent | undefined> {
+    if (isActivityCall(call.call)) {
       return await this.scheduleActivity(
         workflow,
         executionId,
-        command,
+        call.call,
+        call.seq,
         baseTime
       );
-    } else if (isScheduleWorkflowCommand(command)) {
-      return this.scheduleChildWorkflow(executionId, command, baseTime);
-    } else if (isStartTimerCommand(command)) {
+    } else if (isChildWorkflowCall(call.call)) {
+      return this.scheduleChildWorkflow(
+        executionId,
+        call.call,
+        call.seq,
+        baseTime
+      );
+    } else if (isAwaitTimerCall(call.call)) {
       // all timers are computed using the start time of the WorkflowTaskStarted
-      return this.startTimer(executionId, command, baseTime);
-    } else if (isSendSignalCommand(command)) {
-      return this.sendSignal(executionId, command, baseTime);
-    } else if (isPublishEventsCommand(command)) {
-      return this.publishEvents(command, baseTime);
+      return this.startTimer(executionId, call.call, call.seq, baseTime);
+    } else if (isSendSignalCall(call.call)) {
+      return this.sendSignal(executionId, call.call, call.seq, baseTime);
+    } else if (isPublishEventsCall(call.call)) {
+      return this.publishEvents(call.call, call.seq, baseTime);
+    } else if (
+      isConditionCall(call.call) ||
+      isExpectSignalCall(call.call) ||
+      isRegisterSignalHandlerCall(call.call)
+    ) {
+      // do nothing
+      return undefined;
     } else {
-      return assertNever(command, `unknown command type`);
+      return assertNever(call.call, `unknown call type`);
     }
   }
 
   private async scheduleActivity(
     workflow: Workflow,
     executionId: string,
-    command: ScheduleActivityCommand,
+    call: ActivityCall,
+    seq: number,
     baseTime: Date
   ) {
     const request: ActivityWorkerRequest = {
       scheduledTime: baseTime.toISOString(),
       workflowName: workflow.name,
       executionId,
-      command,
+      input: call.input,
+      activityName: call.name,
+      seq,
+      heartbeat: call.heartbeat,
       retry: 0,
     };
 
@@ -96,8 +114,8 @@ export class CommandExecutor {
     return createEvent<ActivityScheduled>(
       {
         type: WorkflowEventType.ActivityScheduled,
-        seq: command.seq,
-        name: command.name,
+        seq,
+        name: call.name,
       },
       baseTime
     );
@@ -105,24 +123,25 @@ export class CommandExecutor {
 
   private async scheduleChildWorkflow(
     executionId: ExecutionID,
-    command: ScheduleWorkflowCommand,
+    call: ChildWorkflowCall,
+    seq: number,
     baseTime: Date
   ): Promise<ChildWorkflowScheduled> {
     await this.props.workflowClient.startExecution({
-      workflow: command.name,
-      input: command.input,
+      workflow: call.name,
+      input: call.input,
       parentExecutionId: executionId,
-      executionName: formatChildExecutionName(executionId, command.seq),
-      seq: command.seq,
-      ...command.opts,
+      executionName: formatChildExecutionName(executionId, seq),
+      seq,
+      ...call.opts,
     });
 
     return createEvent<ChildWorkflowScheduled>(
       {
         type: WorkflowEventType.ChildWorkflowScheduled,
-        seq: command.seq,
-        name: command.name,
-        input: command.input,
+        seq,
+        name: call.name,
+        input: call.input,
       },
       baseTime
     );
@@ -130,27 +149,25 @@ export class CommandExecutor {
 
   private async startTimer(
     executionId: string,
-    command: StartTimerCommand,
+    call: AwaitTimerCall,
+    seq: number,
     baseTime: Date
   ): Promise<TimerScheduled> {
     // TODO validate
     await this.props.timerClient.scheduleEvent<TimerCompleted>({
       event: {
         type: WorkflowEventType.TimerCompleted,
-        seq: command.seq,
+        seq,
       },
-      schedule: command.schedule,
+      schedule: call.schedule,
       executionId,
     });
 
     return createEvent<TimerScheduled>(
       {
         type: WorkflowEventType.TimerScheduled,
-        seq: command.seq,
-        untilTime: computeScheduleDate(
-          command.schedule,
-          baseTime
-        ).toISOString(),
+        seq,
+        untilTime: computeScheduleDate(call.schedule, baseTime).toISOString(),
       },
       baseTime
     );
@@ -158,42 +175,47 @@ export class CommandExecutor {
 
   private async sendSignal(
     executionId: string,
-    command: SendSignalCommand,
+    call: SendSignalCall,
+    seq: number,
     baseTime: Date
   ) {
-    const childExecutionId = isChildExecutionTarget(command.target)
+    const childExecutionId = isChildExecutionTarget(call.target)
       ? formatExecutionId(
-          command.target.workflowName,
-          formatChildExecutionName(executionId, command.target.seq)
+          call.target.workflowName,
+          formatChildExecutionName(executionId, call.target.seq)
         )
-      : command.target.executionId;
+      : call.target.executionId;
 
     await this.props.executionQueueClient.sendSignal({
-      signal: command.signalId,
+      signal: call.signalId,
       execution: childExecutionId,
-      id: `${executionId}/${command.seq}`,
-      payload: command.payload,
+      id: `${executionId}/${seq}`,
+      payload: call.payload,
     });
 
     return createEvent<SignalSent>(
       {
         type: WorkflowEventType.SignalSent,
         executionId: childExecutionId,
-        seq: command.seq,
-        signalId: command.signalId,
-        payload: command.payload,
+        seq,
+        signalId: call.signalId,
+        payload: call.payload,
       },
       baseTime
     );
   }
 
-  private async publishEvents(command: PublishEventsCommand, baseTime: Date) {
-    await this.props.eventClient.publishEvents(...command.events);
+  private async publishEvents(
+    call: PublishEventsCall,
+    seq: number,
+    baseTime: Date
+  ) {
+    await this.props.eventClient.publishEvents(...call.events);
     return createEvent<EventsPublished>(
       {
         type: WorkflowEventType.EventsPublished,
-        events: command.events,
-        seq: command.seq!,
+        events: call.events,
+        seq,
       },
       baseTime
     );

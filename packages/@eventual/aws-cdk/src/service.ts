@@ -496,7 +496,7 @@ export class Service<S = any> extends Construct {
   public metricCommandsInvoked(options?: MetricOptions): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
-      metricName: OrchestratorMetrics.CommandsInvoked,
+      metricName: OrchestratorMetrics.CallsInvoked,
       unit: Unit.COUNT,
       ...options,
     });
@@ -505,7 +505,7 @@ export class Service<S = any> extends Construct {
   public metricInvokeCommandsDuration(options?: MetricOptions): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
-      metricName: OrchestratorMetrics.InvokeCommandsDuration,
+      metricName: OrchestratorMetrics.InvokeCallsDuration,
       unit: Unit.MILLISECONDS,
       ...options,
     });

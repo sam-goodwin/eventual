@@ -1,7 +1,7 @@
 export * from "./activity-token.js";
 export * from "./build-manifest.js";
 export * from "./clients/index.js";
-export * from "./command-executor.js";
+export * from "./workflow-call-executor.js";
 export * from "./console-hook.js";
 export * from "./execution.js";
 export * from "./handlers/index.js";
@@ -15,6 +15,5 @@ export * from "./stores/index.js";
 export * from "./system-commands.js";
 export * from "./tasks.js";
 export * from "./utils.js";
-export * from "./workflow-command.js";
 export * from "./workflow-events.js";
 export * from "./workflow-executor.js";
