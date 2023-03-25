@@ -33,10 +33,10 @@ import {
   _Iterator,
 } from "@eventual/core/internal";
 import { isPromise } from "util/types";
-import { createEventualFromCall, isCorresponding } from "./eventual-factory.js";
+import { createEventualFromCall } from "./eventual-factory.js";
 import { formatExecutionId } from "./execution.js";
 import { isFailed, isResolved, isResult } from "./result.js";
-import type { WorkflowCommand } from "./workflow-command.js";
+// import type { WorkflowCommand } from "./workflow-command.js";
 import { filterEvents } from "./workflow-events.js";
 
 /**
@@ -152,7 +152,7 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
      *
      * Cleared and returned when the method's promise resolves.
      */
-    commandsToEmit: WorkflowCommand[];
+    callsToEmit: WorkflowCall[];
   };
   /**
    * Has the executor ever been started?
@@ -342,7 +342,7 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
                 }
               });
             },
-            commandsToEmit: [],
+            callsToEmit: [],
           };
           // ensure the workflow hook is available to the workflow
           // and tied to the workflow promise context
@@ -418,12 +418,12 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
     overrideResult?: Result
   ): WorkflowResult<Output> | undefined {
     if (this.currentRun) {
-      const newCommands = this.currentRun.commandsToEmit;
+      const newCommands = this.currentRun.callsToEmit;
       this.currentRun = undefined;
 
       this.result = overrideResult ?? this.result;
 
-      return { result: this.result, commands: newCommands };
+      return { result: this.result, calls: newCommands };
     }
     return undefined;
   }
@@ -442,15 +442,12 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
           const seq = self.nextSeq++;
 
           /**
-           * if the call is new, generate and emit it's commands
-           * if the eventual does not generate commands, do not check it against the expected events.
+           * Check if there is a matching event for the call.
+           * If the call does not have a corresponding event, bypass this step.
            */
-          if (
-            eventual.generateCommands &&
-            !checkExpectedCallAndAdvance(seq, call)
-          ) {
-            self.currentRun?.commandsToEmit.push(
-              ...normalizeToArray(eventual.generateCommands(seq))
+          if (checkExpectedCallAndAdvance(seq, call, eventual)) {
+            self.currentRun?.callsToEmit.push(
+              ...normalizeToArray({ call, seq })
             );
           }
 
@@ -478,32 +475,42 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
 
     /**
      * Checks the call against the expected events.
-     * @returns false if the call is new and true if the call matches the expected events.
      * @throws {@link DeterminismError} when the call is not expected and there are expected events remaining.
      */
-    function checkExpectedCallAndAdvance(seq: number, call: EventualCall) {
-      if (self.expected.hasNext()) {
-        const expected = self.expected.next()!;
+    function checkExpectedCallAndAdvance(
+      seq: number,
+      call: EventualCall,
+      definition: EventualDefinition<any>
+    ) {
+      // if there is no isCorresponding method, we will not take off of the expected queue.
+      if (definition.isCorresponding) {
+        if (self.expected.hasNext()) {
+          const expected = self.expected.next()!;
 
-        self.hooks?.historicalEventMatched?.(
-          expected,
-          call,
-          self._executionContext
-        );
-
-        if (!isCorresponding(expected, seq, call)) {
-          self.resolveWorkflow(
-            Result.failed(
-              new DeterminismError(
-                `Workflow returned ${JSON.stringify(
-                  call
-                )}, but ${JSON.stringify(expected)} was expected at ${seq}`
-              )
-            )
+          self.hooks?.historicalEventMatched?.(
+            expected,
+            call,
+            self._executionContext
           );
+
+          if (!definition.isCorresponding(expected, seq)) {
+            self.resolveWorkflow(
+              Result.failed(
+                new DeterminismError(
+                  `Workflow returned ${JSON.stringify(
+                    call
+                  )}, but ${JSON.stringify(expected)} was expected at ${seq}`
+                )
+              )
+            );
+          }
+          return false;
+        } else {
+          // no more expected events, emit this call
+          return true;
         }
-        return true;
       }
+      // don't emit calls that don't have isCorresponding checks
       return false;
     }
   }
@@ -762,7 +769,7 @@ export interface WorkflowResult<T = any> {
    *
    * This can still be non-empty even if the chain has terminated because of dangling promises.
    */
-  commands: WorkflowCommand[];
+  calls: WorkflowCall[];
 }
 
 export type Trigger<Output> =
@@ -862,11 +869,12 @@ export function isSignalTrigger<Output, Payload = any>(
 
 interface EventualDefinitionBase {
   /**
-   * Commands to emit.
+   * Function which determines if an event matches the call when the workflow is re-run with history.
    *
-   * When undefined, the eventual will not be checked against an expected event as it does not emit commands.
+   * If undefined, the call will not be emitted by the workflow.
+   * If false, the workflow will throw a {@link DeterminismError}
    */
-  generateCommands?: (seq: number) => WorkflowCommand[] | WorkflowCommand;
+  isCorresponding?: (event: ScheduledEvent, seq: number) => boolean;
 }
 
 export interface ResolvedEventualDefinition<R> extends EventualDefinitionBase {
@@ -910,3 +918,8 @@ interface SignalTriggerLookup
   extends Record<string, Record<number, SignalTrigger<any>>> {}
 interface AfterEveryEventTriggerLookup
   extends Record<number, AfterEveryEventTrigger<any>> {}
+
+export interface WorkflowCall<E extends EventualCall = EventualCall> {
+  seq: number;
+  call: E;
+}

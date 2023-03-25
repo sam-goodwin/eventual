@@ -98,12 +98,12 @@ export function createActivityWorker({
               const activityHandle = logAgent.isLogLevelSatisfied(
                 LogLevel.DEBUG
               )
-                ? `${request.command.name}:${request.command.seq} for execution ${request.executionId} on retry ${request.retry}`
-                : request.command.name;
+                ? `${request.activityName}:${request.seq} for execution ${request.executionId} on retry ${request.retry}`
+                : request.activityName;
               metrics.resetDimensions(false);
               metrics.setNamespace(MetricsCommon.EventualNamespace);
               metrics.putDimensions({
-                [ActivityMetrics.ActivityNameDimension]: request.command.name,
+                [ActivityMetrics.ActivityNameDimension]: request.activityName,
                 [MetricsCommon.ServiceNameDimension]: serviceName,
               });
               metrics.setProperty(
@@ -113,9 +113,9 @@ export function createActivityWorker({
               // the time from the workflow emitting the activity scheduled command
               // to the request being seen.
               const activityLogContext: ActivityLogContext = {
-                activityName: request.command.name,
+                activityName: request.activityName,
                 executionId: request.executionId,
-                seq: request.command.seq,
+                seq: request.seq,
               };
               const start = baseTime;
               const recordAge =
@@ -129,7 +129,7 @@ export function createActivityWorker({
                 !(await timed(metrics, ActivityMetrics.ClaimDuration, () =>
                   activityStore.claim(
                     request.executionId,
-                    request.command.seq,
+                    request.seq,
                     request.retry
                   )
                 ))
@@ -138,15 +138,13 @@ export function createActivityWorker({
                 console.debug(`Activity ${activityHandle} already claimed.`);
                 return;
               }
-              if (request.command.heartbeat) {
+              if (request.heartbeat) {
                 await timerClient.startTimer({
-                  activitySeq: request.command.seq,
+                  activitySeq: request.seq,
                   type: TimerRequestType.ActivityHeartbeatMonitor,
                   executionId: request.executionId,
-                  heartbeatSeconds: computeDurationSeconds(
-                    request.command.heartbeat
-                  ),
-                  schedule: request.command.heartbeat,
+                  heartbeatSeconds: computeDurationSeconds(request.heartbeat),
+                  schedule: request.heartbeat,
                 });
               }
               const runtimeContext: ActivityRuntimeContext = {
@@ -155,10 +153,7 @@ export function createActivityWorker({
                   workflowName: request.workflowName,
                 },
                 invocation: {
-                  token: createActivityToken(
-                    request.executionId,
-                    request.command.seq
-                  ),
+                  token: createActivityToken(request.executionId, request.seq),
                   scheduledTime: request.scheduledTime,
                   retry: request.retry,
                 },
@@ -170,7 +165,7 @@ export function createActivityWorker({
               ]);
 
               const activity = activityProvider.getActivity(
-                request.command.name
+                request.activityName
               );
 
               const event = await activityContextScope(
@@ -210,7 +205,7 @@ export function createActivityWorker({
                       Unit.Count
                     );
                     throw new ActivityNotFoundError(
-                      request.command.name,
+                      request.activityName,
                       activityProvider.getActivityIds()
                     );
                   }
@@ -231,7 +226,7 @@ export function createActivityWorker({
                   const result = await timed(
                     metrics,
                     ActivityMetrics.OperationDuration,
-                    () => activity.handler(request.command.input, context)
+                    () => activity.handler(request.input, context)
                   );
 
                   restoreConsole();
@@ -272,7 +267,7 @@ export function createActivityWorker({
                   return createEvent<ActivitySucceeded>(
                     {
                       type: WorkflowEventType.ActivitySucceeded,
-                      seq: request.command.seq,
+                      seq: request.seq,
                       result,
                     },
                     endTime
@@ -290,7 +285,7 @@ export function createActivityWorker({
                   return createEvent<ActivityFailed>(
                     {
                       type: WorkflowEventType.ActivityFailed,
-                      seq: request.command.seq,
+                      seq: request.seq,
                       error,
                       message,
                     },
@@ -348,7 +343,7 @@ export function createActivityWorker({
               type: WorkflowEventType.ActivityFailed,
               ...normalizeError(err),
               timestamp: getEndTime(baseTime).toISOString(),
-              seq: request.command.seq,
+              seq: request.seq,
             },
           };
         }

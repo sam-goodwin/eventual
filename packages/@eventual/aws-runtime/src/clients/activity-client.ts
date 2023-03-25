@@ -27,14 +27,14 @@ export class AWSActivityClient extends ActivityClient {
 
   public async startActivity(request: ActivityWorkerRequest): Promise<void> {
     const activity = this._props.activityProvider.getActivity(
-      request.command.name
+      request.activityName
     );
     if (!activity) {
-      throw new Error(`Activity ${request.command.name} does not exist.`);
+      throw new Error(`Activity ${request.activityName} does not exist.`);
     } else {
       const functionName = activityServiceFunctionName(
         getLazy(this._props.serviceName),
-        request.command.name
+        request.activityName
       );
       await this._props.lambda.send(
         new InvokeCommand({

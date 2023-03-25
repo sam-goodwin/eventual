@@ -76,7 +76,7 @@ export function createActivityFallbackHandler({
         {
           type: WorkflowEventType.ActivityFailed,
           error: "Error",
-          seq: activityRequest.command.seq,
+          seq: activityRequest.seq,
           timestamp: baseTime().toISOString(),
         }
       );
