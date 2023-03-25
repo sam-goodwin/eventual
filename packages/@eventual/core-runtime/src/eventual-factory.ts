@@ -16,7 +16,6 @@ import {
   isSignalSent,
   isTimerScheduled,
   Result,
-  ScheduledEvent,
   WorkflowEventType,
 } from "@eventual/core/internal";
 import { EventualDefinition, Trigger } from "./workflow-executor.js";
@@ -134,25 +133,4 @@ export function createEventualFromCall(
     };
   }
   return assertNever(call);
-}
-
-export function isCorresponding(
-  event: ScheduledEvent,
-  seq: number,
-  call: EventualCall
-) {
-  if (event.seq !== seq) {
-    return false;
-  } else if (isActivityScheduled(event)) {
-    return isActivityCall(call) && call.name === event.name;
-  } else if (isChildWorkflowScheduled(event)) {
-    return isChildWorkflowCall(call) && call.name === event.name;
-  } else if (isTimerScheduled(event)) {
-    return isAwaitTimerCall(call);
-  } else if (isSignalSent(event)) {
-    return isSendSignalCall(call) && event.signalId === call.signalId;
-  } else if (isEventsPublished(event)) {
-    return isPublishEventsCall(call);
-  }
-  return assertNever(event);
 }
