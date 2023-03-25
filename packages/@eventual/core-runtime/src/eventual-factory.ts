@@ -135,12 +135,23 @@ export function createEventualFromCall(
     };
   } else if (isDictionaryCall(call)) {
     return {
-      triggers: Trigger.onWorkflowEvent(
-        WorkflowEventType.DictionaryRequestSucceeded,
-        (event) => Result.resolved(event.result)
-      ),
+      triggers: [
+        Trigger.onWorkflowEvent(
+          WorkflowEventType.DictionaryRequestSucceeded,
+          (event) => Result.resolved(event.result)
+        ),
+        Trigger.onWorkflowEvent(
+          WorkflowEventType.DictionaryRequestFailed,
+          (event) =>
+            Result.failed(new EventualError(event.error, event.message))
+        ),
+      ],
       isCorresponding(event) {
-        return isDictionaryRequest(event) && call.operation === event.operation;
+        return (
+          isDictionaryRequest(event) &&
+          call.operation.operation === event.operation.operation &&
+          call.name === event.name
+        );
       },
     };
   }

@@ -13,19 +13,20 @@ export function isDictionaryCall(a: any): a is DictionaryCall {
 
 export interface DictionaryCall
   extends EventualCallBase<EventualCallKind.DictionaryCall> {
+  name: string;
   operation: DictionaryOperation;
 }
 
-export function createDictionaryCall(operation: DictionaryOperation) {
+export function createDictionaryCall(
+  name: string,
+  operation: DictionaryOperation
+) {
   return getWorkflowHook().registerEventualCall(
     createEventualCall<DictionaryCall>(EventualCallKind.DictionaryCall, {
+      name,
       operation,
     })
   );
-}
-
-export interface DictionaryOperationBase {
-  name: string;
 }
 
 export type DictionaryOperation =
@@ -33,18 +34,18 @@ export type DictionaryOperation =
   | DictionarySetOperation
   | DictionaryListOperation;
 
-export interface DictionaryGetDeleteOperation extends DictionaryOperationBase {
+export interface DictionaryGetDeleteOperation {
   operation: "get" | "delete";
   key: string;
 }
 
-export interface DictionarySetOperation extends DictionaryOperationBase {
+export interface DictionarySetOperation {
   operation: "set";
   key: string;
   value: any;
 }
 
-export interface DictionaryListOperation extends DictionaryOperationBase {
+export interface DictionaryListOperation {
   operation: "list" | "listKeys";
   request: DictionaryListRequest;
 }

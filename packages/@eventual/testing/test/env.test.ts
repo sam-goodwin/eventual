@@ -1,5 +1,7 @@
 import type { SQSClient } from "@aws-sdk/client-sqs";
 import {
+  activity as _activity,
+  ActivityHandler,
   dictionary,
   EventPayloadType,
   EventualError,
@@ -7,7 +9,8 @@ import {
   ExecutionStatus,
   SubscriptionHandler,
   Timeout,
-  workflow,
+  workflow as _workflow,
+  WorkflowHandler,
 } from "@eventual/core";
 import { jest } from "@jest/globals";
 import z from "zod";
@@ -51,6 +54,24 @@ const {
   workflow3,
   workflowWithTimeouts,
 } = await import("./workflow.js");
+
+const activity = (() => {
+  let n = 0;
+  return <Input = any, Output = any>(
+    handler: ActivityHandler<Input, Output>
+  ) => {
+    return _activity<string, Input, Output>(`act${n++}`, handler);
+  };
+})();
+
+const workflow = (() => {
+  let n = 0;
+  return <Input = any, Output = any>(
+    handler: WorkflowHandler<Input, Output>
+  ) => {
+    return _workflow<Input, Output>(`wf${n++}`, handler);
+  };
+})();
 
 let env: TestEnvironment;
 
@@ -1257,12 +1278,16 @@ describe("time", () => {
   });
 });
 
-const myDict = dictionary("testDict1", z.any());
+const myDict = dictionary<{ n: number }>("testDict1", z.any());
 
 describe("dictionary", () => {
-  test("workflow uses get and set", async () => {
-    const wf = workflow("dictWf1", async (_, { execution: { id } }) => {
+  test("workflow and activity uses get and set", async () => {
+    const dictAct = activity(async (_, { execution: { id } }) => {
+      await myDict.set(id, { n: ((await myDict.get(id))?.n ?? 0) + 1 });
+    });
+    const wf = workflow(async (_, { execution: { id } }) => {
       await myDict.set(id, { n: 1 });
+      await dictAct();
       const value = await myDict.get(id);
       myDict.delete(id);
       return value;
@@ -1273,12 +1298,12 @@ describe("dictionary", () => {
       input: undefined,
     });
 
-    await env.tick(4);
+    await env.tick(20);
 
     await expect(execution.getStatus()).resolves.toMatchObject<
       Partial<Execution<any>>
     >({
-      result: { n: 1 },
+      result: { n: 2 },
       status: ExecutionStatus.SUCCEEDED,
     });
   });

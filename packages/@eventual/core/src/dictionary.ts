@@ -2,6 +2,7 @@ import { z } from "zod";
 import { getDictionaryHook } from "./internal/dictionary-hook.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
 import { dictionaries } from "./internal/global.js";
+import { createDictionaryCall } from "./internal/index.js";
 
 export interface DictionaryListResult<Entity> {
   entries?: { key: string; entity: Entity }[];
@@ -52,35 +53,42 @@ export function dictionary<Entity>(
     schema: schema,
     get: async (key) => {
       if (isOrchestratorWorker()) {
-        throw new Error("Implement Me");
+        return createDictionaryCall(name, { operation: "get", key });
       } else {
         return (await getDictionary()).get(key);
       }
     },
     set: async (key, entity) => {
       if (isOrchestratorWorker()) {
-        throw new Error("Implement Me");
+        return createDictionaryCall(name, {
+          operation: "set",
+          key,
+          value: entity,
+        });
       } else {
         return (await getDictionary()).set(key, entity);
       }
     },
     delete: async (key) => {
       if (isOrchestratorWorker()) {
-        throw new Error("Implement Me");
+        return createDictionaryCall(name, {
+          operation: "delete",
+          key,
+        });
       } else {
         return (await getDictionary()).delete(key);
       }
     },
     list: async (request) => {
       if (isOrchestratorWorker()) {
-        throw new Error("Implement Me");
+        return createDictionaryCall(name, { operation: "list", request });
       } else {
         return (await getDictionary()).list(request);
       }
     },
     listKeys: async (request) => {
       if (isOrchestratorWorker()) {
-        throw new Error("Implement Me");
+        return createDictionaryCall(name, { operation: "listKeys", request });
       } else {
         return (await getDictionary()).listKeys(request);
       }

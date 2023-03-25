@@ -245,10 +245,10 @@ export class WorkflowCallExecutor {
   ) {
     try {
       const dictionary = await this.props.dictionaryClient.getDictionary(
-        call.operation.name
+        call.name
       );
       if (!dictionary) {
-        throw new Error(`Dictionary ${call.operation.name} does not exist`);
+        throw new Error(`Dictionary ${call.name} does not exist`);
       }
       const result = await invokeDictionaryOperation(
         call.operation,
@@ -259,6 +259,7 @@ export class WorkflowCallExecutor {
         createEvent<DictionaryRequestSucceeded>(
           {
             type: WorkflowEventType.DictionaryRequestSucceeded,
+            name: call.name,
             operation: call.operation.operation,
             result,
             seq,
@@ -273,6 +274,7 @@ export class WorkflowCallExecutor {
           {
             type: WorkflowEventType.DictionaryRequestFailed,
             seq,
+            name: call.name,
             operation: call.operation.operation,
             ...normalizeError(err),
           },
@@ -284,6 +286,7 @@ export class WorkflowCallExecutor {
     return createEvent<DictionaryRequest>(
       {
         type: WorkflowEventType.DictionaryRequest,
+        name: call.name,
         operation: call.operation,
         seq,
       },

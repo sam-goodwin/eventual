@@ -26,7 +26,7 @@ export enum WorkflowEventType {
   ChildWorkflowScheduled = "ChildWorkflowScheduled",
   DictionaryRequest = "DictionaryRequest",
   DictionaryRequestFailed = "DictionaryRequestFailed",
-  DictionaryRequestSucceeded = "DictionaryResult",
+  DictionaryRequestSucceeded = "DictionaryRequestSucceeded",
   EventsPublished = "EventsPublished",
   SignalReceived = "SignalReceived",
   SignalSent = "SignalSent",
@@ -97,6 +97,8 @@ export const isCompletionEvent = /* @__PURE__ */ or(
   isActivityHeartbeatTimedOut,
   isChildWorkflowFailed,
   isChildWorkflowSucceeded,
+  isDictionaryRequestFailed,
+  isDictionaryRequestSucceeded,
   isSignalReceived,
   isTimerCompleted,
   isWorkflowTimedOut,
@@ -242,11 +244,13 @@ export function isActivityHeartbeatTimedOut(
 
 export interface DictionaryRequest extends HistoryEventBase {
   type: WorkflowEventType.DictionaryRequest;
+  name: string;
   operation: DictionaryOperation;
 }
 
 export interface DictionaryRequestSucceeded extends HistoryEventBase {
   type: WorkflowEventType.DictionaryRequestSucceeded;
+  name: string;
   operation: DictionaryOperation["operation"];
   result: any;
 }
@@ -254,6 +258,7 @@ export interface DictionaryRequestSucceeded extends HistoryEventBase {
 export interface DictionaryRequestFailed extends HistoryEventBase {
   type: WorkflowEventType.DictionaryRequestFailed;
   operation: DictionaryOperation["operation"];
+  name: string;
   error: string;
   message: string;
 }

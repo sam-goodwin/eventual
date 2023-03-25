@@ -110,12 +110,14 @@ export function activitySucceeded(result: any, seq: number): ActivitySucceeded {
 }
 
 export function dictionaryRequestCall(
+  name: string,
   operation: DictionaryOperation,
   seq: number
 ): WorkflowCall<DictionaryCall> {
   return {
     seq,
     call: createEventualCall(EventualCallKind.DictionaryCall, {
+      name,
       operation,
     }),
   };

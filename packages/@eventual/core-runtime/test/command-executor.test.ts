@@ -273,7 +273,7 @@ describe("dictionary request", () => {
     const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      dictionaryRequestCall({ operation: "get", key: "key", name: "dict" }, 0),
+      dictionaryRequestCall("dict", { operation: "get", key: "key" }, 0),
       baseTime
     );
 
@@ -283,7 +283,8 @@ describe("dictionary request", () => {
     expect(event).toMatchObject<DictionaryRequest>({
       seq: 0,
       type: WorkflowEventType.DictionaryRequest,
-      operation: { operation: "get", key: "key", name: "dict" },
+      name: "dict",
+      operation: { operation: "get", key: "key" },
       timestamp: expect.stringContaining("Z"),
     });
   });
@@ -293,7 +294,8 @@ describe("dictionary request", () => {
       workflow,
       executionId,
       dictionaryRequestCall(
-        { operation: "set", key: "key", value: "some value", name: "dict" },
+        "dict",
+        { operation: "set", key: "key", value: "some value" },
         0
       ),
       baseTime
@@ -305,11 +307,11 @@ describe("dictionary request", () => {
     expect(event).toMatchObject<DictionaryRequest>({
       seq: 0,
       type: WorkflowEventType.DictionaryRequest,
+      name: "dict",
       operation: {
         operation: "set",
         key: "key",
         value: "some value",
-        name: "dict",
       },
       timestamp: expect.stringContaining("Z"),
     });
@@ -319,10 +321,7 @@ describe("dictionary request", () => {
     const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      dictionaryRequestCall(
-        { operation: "delete", key: "key", name: "dict" },
-        0
-      ),
+      dictionaryRequestCall("dict", { operation: "delete", key: "key" }, 0),
       baseTime
     );
 
@@ -332,10 +331,10 @@ describe("dictionary request", () => {
     expect(event).toMatchObject<DictionaryRequest>({
       seq: 0,
       type: WorkflowEventType.DictionaryRequest,
+      name: "dict",
       operation: {
         operation: "delete",
         key: "key",
-        name: "dict",
       },
       timestamp: expect.stringContaining("Z"),
     });
@@ -345,10 +344,7 @@ describe("dictionary request", () => {
     const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      dictionaryRequestCall(
-        { operation: "list", request: {}, name: "dict" },
-        0
-      ),
+      dictionaryRequestCall("dict", { operation: "list", request: {} }, 0),
       baseTime
     );
 
@@ -358,7 +354,8 @@ describe("dictionary request", () => {
     expect(event).toMatchObject<DictionaryRequest>({
       seq: 0,
       type: WorkflowEventType.DictionaryRequest,
-      operation: { operation: "list", request: {}, name: "dict" },
+      name: "dict",
+      operation: { operation: "list", request: {} },
       timestamp: expect.stringContaining("Z"),
     });
   });
@@ -367,10 +364,7 @@ describe("dictionary request", () => {
     const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      dictionaryRequestCall(
-        { operation: "listKeys", request: {}, name: "dict" },
-        0
-      ),
+      dictionaryRequestCall("dict", { operation: "listKeys", request: {} }, 0),
       baseTime
     );
 
@@ -380,7 +374,8 @@ describe("dictionary request", () => {
     expect(event).toMatchObject<DictionaryRequest>({
       seq: 0,
       type: WorkflowEventType.DictionaryRequest,
-      operation: { operation: "listKeys", request: {}, name: "dict" },
+      name: "dict",
+      operation: { operation: "listKeys", request: {} },
       timestamp: expect.stringContaining("Z"),
     });
   });
