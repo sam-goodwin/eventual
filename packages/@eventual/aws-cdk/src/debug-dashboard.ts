@@ -33,9 +33,7 @@ export class DebugDashboard extends Construct {
       service.system.activityService.fallbackHandler.logGroup.logGroupName,
       // user APIS - default and bundled
       ...service.commandsList.map((api) => api.handler.logGroup.logGroupName),
-      ...Object.values(service.system.systemCommands).map(
-        (c) => c.logGroup.logGroupName
-      ),
+      service.system.systemCommandsHandler.logGroup.logGroupName,
       // event handlers - default and bundled
       ...service.subscriptionsList.map(
         ({ handler }) => handler.logGroup.logGroupName
@@ -123,9 +121,9 @@ export class DebugDashboard extends Construct {
           }),
           new LogQueryWidget({
             title: "System Command Handlers Summary",
-            logGroupNames: Object.values(service.system.systemCommands).map(
-              (api) => api.logGroup.logGroupName
-            ),
+            logGroupNames: [
+              service.system.systemCommandsHandler.logGroup.logGroupName,
+            ],
             queryLines: [
               `filter @type="REPORT"`,
               `sort @timestamp desc`,

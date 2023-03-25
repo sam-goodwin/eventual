@@ -1,4 +1,4 @@
-import { HttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
+import { IHttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { Event } from "@eventual/core";
 import { MetricsCommon, OrchestratorMetrics } from "@eventual/core-runtime";
@@ -37,7 +37,6 @@ import {
   Commands,
   CommandService,
   CorsOptions,
-  SystemCommands,
 } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal.js";
 import { EventService } from "./event-service";
@@ -121,7 +120,7 @@ export interface ServiceSystem<S> {
    * The {@link AppSec} inferred from the application code.
    */
   readonly build: BuildOutput;
-  readonly systemCommands: SystemCommands;
+  readonly systemCommandsHandler: Function;
   /**
    * A SSM parameter containing data about this service.
    */
@@ -152,7 +151,7 @@ export class Service<S = any> extends Construct {
   /**
    * API Gateway which serves the service commands and the system commands.
    */
-  public readonly gateway: HttpApi;
+  public readonly gateway: IHttpApi;
   /**
    * Name of this Service.
    */
@@ -333,7 +332,7 @@ export class Service<S = any> extends Construct {
       build,
       accessRole: accessRole,
       schedulerService: scheduler,
-      systemCommands: this.commandService.systemCommands,
+      systemCommandsHandler: this.commandService.systemCommandsHandler,
       serviceMetadataSSM: serviceDataSSM,
       workflowService,
     };

@@ -22,12 +22,14 @@ export interface BuildManifest {
    */
   subscriptions: SubscriptionFunction[];
   commands: CommandFunction[];
+  commandDefault: CommandFunction;
   system: {
     activityService: {
       fallbackHandler: BundledFunction<undefined>;
     };
     eventualService: {
-      commands: InternalCommands;
+      systemCommandHandler: BundledFunction;
+      commands: CommandSpec[];
     };
     schedulerService: {
       forwarder: BundledFunction;
