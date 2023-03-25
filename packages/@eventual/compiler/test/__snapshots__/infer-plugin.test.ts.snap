@@ -675,6 +675,8 @@ var WorkflowEventType;
   WorkflowEventType2["ChildWorkflowSucceeded"] = "ChildWorkflowSucceeded";
   WorkflowEventType2["ChildWorkflowFailed"] = "ChildWorkflowFailed";
   WorkflowEventType2["ChildWorkflowScheduled"] = "ChildWorkflowScheduled";
+  WorkflowEventType2["DictionaryOperation"] = "DictionaryOperation";
+  WorkflowEventType2["DictionaryOperationResult"] = "DictionaryOperationResult";
   WorkflowEventType2["EventsPublished"] = "EventsPublished";
   WorkflowEventType2["SignalReceived"] = "SignalReceived";
   WorkflowEventType2["SignalSent"] = "SignalSent";
