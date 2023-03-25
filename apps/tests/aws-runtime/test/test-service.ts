@@ -45,20 +45,24 @@ const hello2 = activity(
 
 const localEvent = event<AsyncWriterTestEvent>("LocalAsyncEvent");
 
-subscription("onAsyncEvent", { events: [localEvent] }, async (event) => {
-  if (event.type === "complete") {
-    await asyncActivity.sendActivitySuccess({
-      activityToken: event.token,
-      result: "hello from the async writer!",
-    });
-  } else {
-    await asyncActivity.sendActivityFailure({
-      activityToken: event.token,
-      error: "AsyncWriterError",
-      message: "I was told to fail this activity, sorry.",
-    });
+export const onAsyncEvent = subscription(
+  "onAsyncEvent",
+  { events: [localEvent] },
+  async (event) => {
+    if (event.type === "complete") {
+      await asyncActivity.sendActivitySuccess({
+        activityToken: event.token,
+        result: "hello from the async writer!",
+      });
+    } else {
+      await asyncActivity.sendActivityFailure({
+        activityToken: event.token,
+        error: "AsyncWriterError",
+        message: "I was told to fail this activity, sorry.",
+      });
+    }
   }
-});
+);
 
 export const asyncActivity = activity(
   "asyncActivity",
@@ -472,9 +476,12 @@ export const timedWorkflow = workflow("timedWorkflow", async () => {
 const resumeSignal = signal("resume");
 const notifyEvent = event<{ executionId: string }>("notify");
 
-notifyEvent.onEvent("onNotifyEvent", async ({ executionId }) => {
-  await resumeSignal.sendSignal(executionId);
-});
+export const onNotifyEvent = notifyEvent.onEvent(
+  "onNotifyEvent",
+  async ({ executionId }) => {
+    await resumeSignal.sendSignal(executionId);
+  }
+);
 
 /**
  * A test designed to show that all commands are idempotent.
@@ -505,7 +512,7 @@ export const allCommands = workflow("allCommands", async (_, context) => {
   return { signalCount: n };
 });
 
-const createActivity = activity(
+export const createActivity = activity(
   "createActivity",
   async (request: { id: string }) => {
     await dynamo.send(
@@ -520,7 +527,7 @@ const createActivity = activity(
   }
 );
 
-const destroyActivity = activity(
+export const destroyActivity = activity(
   "createActivity",
   async (request: { id: string }) => {
     await dynamo.send(
@@ -543,14 +550,17 @@ export const createAndDestroyWorkflow = workflow(
 
 const counter = dictionary<{ n: number }>("counter", z.any());
 const dictEvent = event<{ id: string }>("dictEvent");
-const dictSignal = signal<{ n: number }>("dictSignal");
+const dictSignal = signal("dictSignal");
 
-subscription("onDictEvent", { events: [dictEvent] }, async ({ id }) => {
-  const value = await counter.get(id);
-  const newValue = (value?.n ?? 0) + 1;
-  await counter.set(id, { n: (value?.n ?? 0) + 1 });
-  await dictSignal.sendSignal(id, { n: newValue });
-});
+export const onDictEvent = subscription(
+  "onDictEvent",
+  { events: [dictEvent] },
+  async ({ id }) => {
+    const value = await counter.get(id);
+    await counter.set(id, { n: (value?.n ?? 0) + 1 });
+    await dictSignal.sendSignal(id);
+  }
+);
 
 export const dictionaryActivity = activity(
   "dictAct",
@@ -563,13 +573,15 @@ export const dictionaryActivity = activity(
 export const dictionaryWorkflow = workflow(
   "dictionaryWorkflow",
   async (_, { execution: { id } }) => {
-    // await counter.set(id, { n: 1 });
+    await counter.set(id, { n: 1 });
     await dictionaryActivity();
-    const [, signalPayload] = await Promise.all([
+    await Promise.all([
       dictEvent.publishEvents({ id }),
       dictSignal.expectSignal(),
     ]);
-    return signalPayload;
+    const result = await counter.get(id);
+    counter.delete(id);
+    return result;
   }
 );
 

@@ -1,13 +1,16 @@
 import type { SQSClient } from "@aws-sdk/client-sqs";
 import {
+  dictionary,
   EventPayloadType,
   EventualError,
   Execution,
   ExecutionStatus,
   SubscriptionHandler,
   Timeout,
+  workflow,
 } from "@eventual/core";
 import { jest } from "@jest/globals";
+import z from "zod";
 import { TestEnvironment } from "../src/environment.js";
 import { MockActivity } from "../src/providers/activity-provider.js";
 
@@ -1250,6 +1253,33 @@ describe("time", () => {
           "2022-01-01T00:00:03.000Z",
         ],
       },
+    });
+  });
+});
+
+const myDict = dictionary("testDict1", z.any());
+
+describe("dictionary", () => {
+  test("workflow uses get and set", async () => {
+    const wf = workflow("dictWf1", async (_, { execution: { id } }) => {
+      await myDict.set(id, { n: 1 });
+      const value = await myDict.get(id);
+      myDict.delete(id);
+      return value;
+    });
+
+    const execution = await env.startExecution({
+      workflow: wf,
+      input: undefined,
+    });
+
+    await env.tick(4);
+
+    await expect(execution.getStatus()).resolves.toMatchObject<
+      Partial<Execution<any>>
+    >({
+      result: { n: 1 },
+      status: ExecutionStatus.SUCCEEDED,
     });
   });
 });
