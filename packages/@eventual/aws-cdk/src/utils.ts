@@ -1,3 +1,5 @@
+import { serviceFunctionName } from "@eventual/aws-runtime";
+import { ArnFormat, Stack } from "aws-cdk-lib";
 import {
   Architecture,
   FunctionProps,
@@ -63,3 +65,19 @@ export type KeysWhereNameIsDifferent<Service, Kind> = Exclude<
 export type KeysOfType<T, U> = {
   [k in keyof T]: T[k] extends U ? k : never;
 }[keyof T];
+
+export function serviceFunctionArn(
+  serviceName: string,
+  stack: Stack,
+  nameSuffix: string,
+  sanitized: boolean = true
+) {
+  return stack.formatArn({
+    service: "lambda",
+    resourceName: sanitized
+      ? serviceFunctionName(serviceName, nameSuffix)
+      : `${serviceName}-${nameSuffix}`,
+    resource: "function",
+    arnFormat: ArnFormat.COLON_RESOURCE_NAME,
+  });
+}

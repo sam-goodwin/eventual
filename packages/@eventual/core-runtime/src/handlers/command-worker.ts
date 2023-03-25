@@ -18,7 +18,7 @@ import { DictionaryClient } from "../clients/dictionary-client.js";
 
 export interface ApiHandlerDependencies {
   serviceClient?: EventualServiceClient;
-  dictionaryClient: DictionaryClient;
+  dictionaryClient?: DictionaryClient;
 }
 
 export interface CommandWorker {
@@ -39,7 +39,10 @@ export function createCommandWorker({
   if (serviceClient) {
     registerServiceClient(serviceClient);
   }
-  registerDictionaryHook(dictionaryClient);
+  // the system commands do not currently use the dictionary client so it will be optional for now.
+  if (dictionaryClient) {
+    registerDictionaryHook(dictionaryClient);
+  }
 
   const router = initRouter();
 

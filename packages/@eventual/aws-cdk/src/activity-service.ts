@@ -3,14 +3,14 @@ import {
   ENV_NAMES,
 } from "@eventual/aws-runtime";
 import type { ActivityFunction } from "@eventual/core-runtime";
-import { aws_iam, Duration, RemovalPolicy } from "aws-cdk-lib";
+import { aws_iam, Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
 import {
   AttributeType,
   BillingMode,
   ITable,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
-import { IGrantable } from "aws-cdk-lib/aws-iam";
+import { IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { LambdaDestination } from "aws-cdk-lib/aws-lambda-destinations";
 import { Construct } from "constructs";
@@ -27,7 +27,11 @@ import {
   ServiceLocal,
 } from "./service";
 import { ServiceFunction } from "./service-function";
-import { GetServiceEntityNames, ServiceEntityProps } from "./utils";
+import {
+  GetServiceEntityNames,
+  ServiceEntityProps,
+  serviceFunctionArn,
+} from "./utils";
 import { WorkflowService } from "./workflow-service";
 
 export type ActivityNames<Service> = GetServiceEntityNames<Service, "Activity">;
@@ -139,9 +143,26 @@ export class ActivityService<Service = any> {
 
   @grant()
   public grantStartActivity(grantable: IGrantable) {
-    Object.values<Activity>(this.activities).map((a) => {
-      a.handler.grantInvoke(grantable);
-    });
+    // grants the permission to start any activity
+    grantable.grantPrincipal.addToPrincipalPolicy(
+      new PolicyStatement({
+        actions: ["lambda:InvokeFunction"],
+        resources: [
+          serviceFunctionArn(
+            this.props.serviceName,
+            Stack.of(this.props.systemScope),
+            "activity-*",
+            false
+          ),
+          serviceFunctionArn(
+            this.props.serviceName,
+            Stack.of(this.props.systemScope),
+            "activity-*:*",
+            false
+          ),
+        ],
+      })
+    );
   }
 
   public configureSendHeartbeat(func: Function) {

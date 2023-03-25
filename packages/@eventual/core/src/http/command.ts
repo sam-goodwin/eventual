@@ -22,10 +22,10 @@ export function commandRpcPath(
 ) {
   return `rpc${
     isDefaultNamespaceCommand(command) ? "" : `/${command.namespace}`
-  }/${command.name}`;
+  }${command.name.startsWith("/") ? "" : "/"}${command.name}`;
 }
 
-export type AnyCommand = Command<any, any, any, any, any, any>;
+export type AnyCommand = Command<string, any, any, any, any, any>;
 
 export interface Command<
   Name extends string = string,
@@ -166,7 +166,7 @@ export function command<
   Context = any
 >(...args: any[]): Command<Name, Input, Output, Context, any, any> {
   const [sourceLocation, name, options, handler] = parseCommandArgs(args);
-  const command: AnyCommand = {
+  const command: Command<Name, Input, Output, Context, any, any> = {
     kind: "Command",
     name,
     handler,

@@ -1,12 +1,6 @@
 import { build, BuildSource, infer } from "@eventual/compiler";
 import { ActivitySpec } from "@eventual/core";
-import {
-  BuildManifest,
-  BundledFunction,
-  InternalCommandFunction,
-  InternalCommandName,
-  InternalCommands,
-} from "@eventual/core-runtime";
+import { BuildManifest, BundledFunction } from "@eventual/core-runtime";
 import {
   CommandSpec,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
@@ -112,28 +106,49 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     activities: activities,
     events: serviceSpec.events,
     subscriptions,
-    commands: [
-      ...commands,
-      {
-        entry: monoCommandFunction!,
-        spec: {
-          name: "default",
-        },
+    commands: commands,
+    commandDefault: {
+      entry: monoCommandFunction!,
+      spec: {
+        name: "default",
       },
-    ],
+    },
     system: {
       activityService: {
         fallbackHandler: { entry: activityFallbackHandler! },
       },
       eventualService: {
-        commands: await bundleSystemCommandFunctions(specPath),
+        systemCommandHandler: {
+          entry: await buildFunction({
+            entry: runtimeHandlersEntrypoint("system-command-handler"),
+            name: "systemDefault",
+            injectedEntry: request.entry,
+            injectedServiceSpec: specPath,
+          }),
+        },
+        commands: [
+          "listWorkflows",
+          "startExecution",
+          "listExecutions",
+          "getExecution",
+          "getExecutionHistory",
+          "sendSignal",
+          "getExecutionWorkflowHistory",
+          "publishEvents",
+          "updateActivity",
+        ].map((name) => ({
+          name,
+          namespace: EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
+        })),
       },
       schedulerService: {
         forwarder: {
           entry: scheduleForwarder!,
+          handler: "index.handle",
         },
         timerHandler: {
           entry: timerHandler!,
+          handler: "index.handle",
         },
       },
       workflowService: {
@@ -249,68 +264,6 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           injectedServiceSpec: specPath,
         }))
         .map(buildFunction)
-    );
-  }
-
-  /**
-   * The system command entry files currently come with their own instance of the
-   * {@link CommandWorker}. Just bundle each file with a synthetic command spec.
-   */
-  async function bundleSystemCommandFunctions(
-    specPath: string
-  ): Promise<InternalCommands> {
-    const commands: Record<InternalCommandName, { entry: string }> = {
-      listWorkflows: {
-        entry: runtimeHandlersEntrypoint("system-commands/list-workflows"),
-      },
-      startExecution: {
-        entry: runtimeHandlersEntrypoint("system-commands/start-execution"),
-      },
-      listExecutions: {
-        entry: runtimeHandlersEntrypoint("system-commands/list-executions"),
-      },
-      getExecution: {
-        entry: runtimeHandlersEntrypoint("system-commands/get-execution"),
-      },
-      getExecutionHistory: {
-        entry: runtimeHandlersEntrypoint(
-          "system-commands/get-execution-history"
-        ),
-      },
-      sendSignal: {
-        entry: runtimeHandlersEntrypoint("system-commands/send-signal"),
-      },
-      getExecutionWorkflowHistory: {
-        entry: runtimeHandlersEntrypoint(
-          "system-commands/get-execution-workflow-history"
-        ),
-      },
-      publishEvents: {
-        entry: runtimeHandlersEntrypoint("system-commands/publish-events"),
-      },
-      updateActivity: {
-        entry: runtimeHandlersEntrypoint("system-commands/update-activity"),
-      },
-    };
-
-    return Object.fromEntries(
-      await Promise.all(
-        Object.entries(commands).map(async ([name, { entry }]) => {
-          const file = await buildFunction({
-            name,
-            entry,
-            injectedEntry: request.entry,
-            injectedServiceSpec: specPath,
-          });
-          return [
-            name,
-            {
-              entry: file,
-              spec: { name, namespace: EVENTUAL_SYSTEM_COMMAND_NAMESPACE },
-            } satisfies InternalCommandFunction,
-          ];
-        })
-      )
     );
   }
 

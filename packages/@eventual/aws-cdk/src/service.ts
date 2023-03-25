@@ -1,4 +1,4 @@
-import { HttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
+import { IHttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { Event } from "@eventual/core";
 import { MetricsCommon, OrchestratorMetrics } from "@eventual/core-runtime";
@@ -38,7 +38,6 @@ import {
   Commands,
   CommandService,
   CorsOptions,
-  SystemCommands,
 } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal.js";
 import { EntityService } from "./entity-service.js";
@@ -124,7 +123,7 @@ export interface ServiceSystem<S> {
    * The {@link AppSec} inferred from the application code.
    */
   readonly build: BuildOutput;
-  readonly systemCommands: SystemCommands;
+  readonly systemCommandsHandler: Function;
   /**
    * A SSM parameter containing data about this service.
    */
@@ -159,7 +158,7 @@ export class Service<S = any> extends Construct {
   /**
    * API Gateway which serves the service commands and the system commands.
    */
-  public readonly gateway: HttpApi;
+  public readonly gateway: IHttpApi;
   /**
    * Name of this Service.
    */
@@ -348,7 +347,7 @@ export class Service<S = any> extends Construct {
       build,
       entityService,
       schedulerService: scheduler,
-      systemCommands: this.commandService.systemCommands,
+      systemCommandsHandler: this.commandService.systemCommandsHandler,
       serviceMetadataSSM: serviceDataSSM,
       workflowService,
     };
@@ -511,7 +510,7 @@ export class Service<S = any> extends Construct {
   public metricCommandsInvoked(options?: MetricOptions): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
-      metricName: OrchestratorMetrics.CommandsInvoked,
+      metricName: OrchestratorMetrics.CallsInvoked,
       unit: Unit.COUNT,
       ...options,
     });
@@ -520,7 +519,7 @@ export class Service<S = any> extends Construct {
   public metricInvokeCommandsDuration(options?: MetricOptions): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
-      metricName: OrchestratorMetrics.InvokeCommandsDuration,
+      metricName: OrchestratorMetrics.InvokeCallsDuration,
       unit: Unit.MILLISECONDS,
       ...options,
     });

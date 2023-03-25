@@ -5,7 +5,7 @@ import { ExpectSignalCall } from "./expect-signal-call.js";
 import { PublishEventsCall } from "./publish-events-call.js";
 import { SendSignalCall } from "./send-signal-call.js";
 import { RegisterSignalHandlerCall } from "./signal-handler-call.js";
-import { WorkflowCall } from "./workflow-call.js";
+import { ChildWorkflowCall } from "./workflow-call.js";
 
 export type EventualCall =
   | ActivityCall
@@ -15,7 +15,7 @@ export type EventualCall =
   | PublishEventsCall
   | SendSignalCall
   | RegisterSignalHandlerCall
-  | WorkflowCall;
+  | ChildWorkflowCall;
 
 export enum EventualCallKind {
   ActivityCall = 0,

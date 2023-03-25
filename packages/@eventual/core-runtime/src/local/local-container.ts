@@ -6,7 +6,7 @@ import {
 import { DictionaryClient } from "../clients/dictionary-client.js";
 import { TimerClient, TimerRequest } from "../clients/timer-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
-import { CommandExecutor } from "../command-executor.js";
+import { WorkflowCallExecutor } from "../workflow-call-executor.js";
 import {
   ActivityWorker,
   createActivityWorker,
@@ -156,7 +156,7 @@ export class LocalContainer {
     });
 
     this.orchestrator = createOrchestrator({
-      commandExecutor: new CommandExecutor({
+      callExecutor: new WorkflowCallExecutor({
         activityClient: this.activityClient,
         eventClient: this.eventClient,
         executionQueueClient: this.executionQueueClient,

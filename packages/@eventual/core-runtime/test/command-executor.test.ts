@@ -23,13 +23,19 @@ import {
   TimerClient,
 } from "../src/clients/timer-client.js";
 import { WorkflowClient } from "../src/clients/workflow-client.js";
-import { CommandExecutor } from "../src/command-executor.js";
 import {
   formatChildExecutionName,
   formatExecutionId,
   INTERNAL_EXECUTION_ID_PREFIX,
 } from "../src/execution.js";
-import { CommandType } from "../src/workflow-command.js";
+import { WorkflowCallExecutor } from "../src/workflow-call-executor.js";
+import {
+  activityCall,
+  awaitTimerCall,
+  childWorkflowCall,
+  publishEventCall,
+  sendSignalCall,
+} from "./call-util.js";
 
 const mockTimerClient = {
   scheduleEvent: jest.fn() as TimerClient["scheduleEvent"],
@@ -47,7 +53,7 @@ const mockExecutionQueueClient = {
   sendSignal: jest.fn() as ExecutionQueueClient["sendSignal"],
 } satisfies Partial<ExecutionQueueClient> as ExecutionQueueClient;
 
-const testExecutor = new CommandExecutor({
+const testExecutor = new WorkflowCallExecutor({
   timerClient: mockTimerClient,
   workflowClient: mockWorkflowClient,
   activityClient: mockActivityClient,
@@ -68,14 +74,10 @@ afterEach(() => {
 
 describe("await times", () => {
   test("await time", async () => {
-    const event = await testExecutor.executeCommand(
+    const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      {
-        kind: CommandType.StartTimer,
-        schedule: Schedule.time(baseTime),
-        seq: 0,
-      },
+      awaitTimerCall(Schedule.time(baseTime), 0),
       baseTime
     );
 
@@ -101,15 +103,10 @@ describe("await times", () => {
 
 describe("activity", () => {
   test("start", async () => {
-    const event = await testExecutor.executeCommand(
+    const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      {
-        kind: CommandType.StartActivity,
-        input: undefined,
-        name: "activity",
-        seq: 0,
-      },
+      activityCall("activity", undefined, 0),
       baseTime
     );
 
@@ -128,14 +125,10 @@ describe("activity", () => {
 
 describe("workflow", () => {
   test("start", async () => {
-    const event = await testExecutor.executeCommand(
+    const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      {
-        kind: CommandType.StartWorkflow,
-        name: "workflow",
-        seq: 0,
-      },
+      childWorkflowCall("workflow", undefined, 0),
       baseTime
     );
 
@@ -162,15 +155,14 @@ describe("workflow", () => {
 
 describe("send signal", () => {
   test("send", async () => {
-    const event = await testExecutor.executeCommand(
+    const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      {
-        kind: CommandType.SendSignal,
-        signalId: "signal",
-        seq: 0,
-        target: { executionId: "exec1", type: SignalTargetType.Execution },
-      },
+      sendSignalCall(
+        { executionId: "exec1", type: SignalTargetType.Execution },
+        "signal",
+        0
+      ),
       baseTime
     );
 
@@ -188,19 +180,18 @@ describe("send signal", () => {
   });
 
   test("send child workflow", async () => {
-    const event = await testExecutor.executeCommand(
+    const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      {
-        kind: CommandType.SendSignal,
-        signalId: "signal",
-        seq: 1,
-        target: {
+      sendSignalCall(
+        {
           seq: 0,
           workflowName: "otherWorkflow",
           type: SignalTargetType.ChildExecution,
         },
-      },
+        "signal",
+        1
+      ),
       baseTime
     );
 
@@ -230,14 +221,10 @@ describe("send signal", () => {
 
 describe("public events", () => {
   test("send", async () => {
-    const event = await testExecutor.executeCommand(
+    const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      {
-        kind: CommandType.PublishEvents,
-        events: [{ event: {}, name: "myEvent" }],
-        seq: 0,
-      },
+      publishEventCall([{ event: {}, name: "myEvent" }], 0),
       baseTime
     );
 

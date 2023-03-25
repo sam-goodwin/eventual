@@ -16,28 +16,28 @@ import {
 import {
   createActivityCall,
   createAwaitTimerCall,
+  createChildWorkflowCall,
   createConditionCall,
   createExpectSignalCall,
   createPublishEventsCall,
   createRegisterSignalHandlerCall,
   createSendSignalCall,
-  createWorkflowCall,
   HistoryEvent,
   Result,
   SignalTargetType,
 } from "@eventual/core/internal";
 import { WorkflowExecutor, WorkflowResult } from "../src/workflow-executor.js";
 import {
+  activityCall,
   activityFailed,
   activityHeartbeatTimedOut,
   activityScheduled,
   activitySucceeded,
-  createPublishEventCommand,
-  createScheduledActivityCommand,
-  createScheduledWorkflowCommand,
-  createSendSignalCommand,
-  createStartTimerCommand,
+  awaitTimerCall,
+  childWorkflowCall,
   eventsPublished,
+  publishEventCall,
+  sendSignalCall,
   signalReceived,
   signalSent,
   timerCompleted,
@@ -46,7 +46,7 @@ import {
   workflowScheduled,
   workflowSucceeded,
   workflowTimedOut,
-} from "./command-util.js";
+} from "./call-util.js";
 
 import "../src/workflow.js";
 
@@ -103,7 +103,7 @@ test("no history", async () => {
   await expect(execute(myWorkflow, [], event)).resolves.toMatchObject(<
     WorkflowResult
   >{
-    commands: [createScheduledActivityCommand("my-activity", [event], 0)],
+    calls: [activityCall("my-activity", [event], 0)],
   });
 });
 
@@ -115,10 +115,10 @@ test("should continue with result of completed Activity", async () => {
       event
     )
   ).resolves.toMatchObject(<WorkflowResult>{
-    commands: [
-      createScheduledActivityCommand("my-activity-0", [event], 1),
-      createStartTimerCommand(2),
-      createScheduledActivityCommand("my-activity-2", [event], 3),
+    calls: [
+      activityCall("my-activity-0", [event], 1),
+      awaitTimerCall(2),
+      activityCall("my-activity-2", [event], 3),
     ],
   });
 });
@@ -132,7 +132,7 @@ test("should fail on workflow timeout event", async () => {
     )
   ).resolves.toMatchObject(<WorkflowResult>{
     result: Result.failed(new Timeout("Workflow timed out")),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -149,7 +149,7 @@ test("should not continue on workflow timeout event", async () => {
     )
   ).resolves.toMatchObject(<WorkflowResult>{
     result: Result.failed(new Timeout("Workflow timed out")),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -161,12 +161,8 @@ test("should catch error of failed Activity", async () => {
       event
     )
   ).resolves.toMatchObject(<WorkflowResult>{
-    commands: [
-      createScheduledActivityCommand(
-        "handle-error",
-        [new EventualError("error").toJSON()],
-        1
-      ),
+    calls: [
+      activityCall("handle-error", [new EventualError("error").toJSON()], 1),
     ],
   });
 });
@@ -198,12 +194,8 @@ test("should catch error of timing out Activity", async () => {
       event
     )
   ).resolves.toMatchObject(<WorkflowResult>{
-    commands: [
-      createScheduledActivityCommand(
-        "handle-error",
-        [new Timeout("Activity Timed Out")],
-        2
-      ),
+    calls: [
+      activityCall("handle-error", [new Timeout("Activity Timed Out")], 2),
     ],
   });
 });
@@ -251,7 +243,7 @@ test("timeout multiple activities at once", async () => {
         reason: new Timeout("Activity Timed Out").toJSON(),
       },
     ]),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -290,7 +282,7 @@ test("activity times out activity", async () => {
         reason: new Timeout("Activity Timed Out").toJSON(),
       },
     ]),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -312,7 +304,7 @@ test("should return final result", async () => {
     )
   ).resolves.toMatchObject(<WorkflowResult>{
     result: Result.resolved(["result", [undefined, "result-2"]]),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -320,11 +312,11 @@ test("should handle missing blocks", async () => {
   await expect(
     execute(myWorkflow, [activitySucceeded("result", 0)], event)
   ).resolves.toMatchObject(<WorkflowResult>{
-    commands: [
-      createScheduledActivityCommand("my-activity", [event], 0),
-      createScheduledActivityCommand("my-activity-0", [event], 1),
-      createStartTimerCommand(2),
-      createScheduledActivityCommand("my-activity-2", [event], 3),
+    calls: [
+      activityCall("my-activity", [event], 0),
+      activityCall("my-activity-0", [event], 1),
+      awaitTimerCall(2),
+      activityCall("my-activity-2", [event], 3),
     ],
   });
 });
@@ -341,10 +333,7 @@ test("should handle partial blocks", async () => {
       event
     )
   ).resolves.toMatchObject(<WorkflowResult>{
-    commands: [
-      createStartTimerCommand(2),
-      createScheduledActivityCommand("my-activity-2", [event], 3),
-    ],
+    calls: [awaitTimerCall(2), activityCall("my-activity-2", [event], 3)],
   });
 });
 
@@ -361,10 +350,7 @@ test("should handle partial blocks with partial completes", async () => {
       event
     )
   ).resolves.toMatchObject(<WorkflowResult>{
-    commands: [
-      createStartTimerCommand(2),
-      createScheduledActivityCommand("my-activity-2", [event], 3),
-    ],
+    calls: [awaitTimerCall(2), activityCall("my-activity-2", [event], 3)],
   });
 });
 
@@ -405,7 +391,7 @@ describe("activity", () => {
         result: Result.failed(
           new HeartbeatTimeout("Activity Heartbeat TimedOut")
         ),
-        commands: [],
+        calls: [],
       });
     });
 
@@ -422,7 +408,7 @@ describe("activity", () => {
         )
       ).resolves.toMatchObject<WorkflowResult>({
         result: Result.resolved("done"),
-        commands: [],
+        calls: [],
       });
     });
 
@@ -455,7 +441,7 @@ describe("activity", () => {
         )
       ).resolves.toMatchObject<WorkflowResult>({
         result: Result.resolved("Activity Heartbeat TimedOut"),
-        commands: [],
+        calls: [],
       });
     });
   });
@@ -466,7 +452,7 @@ test("should throw when scheduled does not correspond to call", async () => {
     execute(myWorkflow, [timerScheduled(0)], event)
   ).resolves.toMatchObject<WorkflowResult>({
     result: Result.failed({ name: "DeterminismError" }),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -487,7 +473,7 @@ test("should throw when a completed precedes workflow state", async () => {
     )
   ).resolves.toMatchObject<WorkflowResult>({
     result: Result.failed({ name: "DeterminismError" }),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -500,7 +486,7 @@ test("should fail the workflow on uncaught user error", async () => {
     execute(wf, [], undefined)
   ).resolves.toMatchObject<WorkflowResult>({
     result: Result.failed({ name: "Error", message: "Hi" }),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -513,7 +499,7 @@ test("should fail the workflow on uncaught user error of random type", async () 
     execute(wf, [], undefined)
   ).resolves.toMatchObject<WorkflowResult>({
     result: Result.failed({ name: "TypeError", message: "Hi" }),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -571,7 +557,7 @@ test("should fail the workflow on uncaught user error after await", async () => 
     executor.continue([timerCompleted(3)])
   ).resolves.toMatchObject<WorkflowResult>({
     result: Result.failed(new Error("timed out!")),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -594,7 +580,7 @@ test("dangling promise failure", async () => {
     executor.continue([activityFailed(new Error("AHH"), 0)])
   ).resolves.toMatchObject<WorkflowResult>({
     result: undefined,
-    commands: [],
+    calls: [],
   });
 });
 
@@ -619,7 +605,7 @@ test.skip("dangling promise failure with then", async () => {
     executor.continue([activityFailed(new Error("AHH"), 0)])
   ).resolves.toMatchObject<WorkflowResult>({
     result: undefined,
-    commands: [],
+    calls: [],
   });
 });
 
@@ -642,7 +628,7 @@ test("dangling promise success", async () => {
     executor.continue([activitySucceeded("ahhh", 0)])
   ).resolves.toMatchObject<WorkflowResult>({
     result: undefined,
-    commands: [],
+    calls: [],
   });
 });
 
@@ -654,7 +640,7 @@ test("should fail the workflow on uncaught thrown value", async () => {
     execute(wf, [], undefined)
   ).resolves.toMatchObject<WorkflowResult>({
     result: Result.failed("hi"),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -674,7 +660,7 @@ test("should wait if partial results", async () => {
       event
     )
   ).resolves.toMatchObject(<WorkflowResult>{
-    commands: [],
+    calls: [],
   });
 });
 
@@ -691,7 +677,7 @@ test("should return result of inner function", async () => {
     WorkflowResult
   >{
     result: Result.resolved("foo"),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -703,7 +689,7 @@ test("should schedule duration", async () => {
   await expect(execute(wf, [], undefined)).resolves.toMatchObject(<
     WorkflowResult
   >{
-    commands: [createStartTimerCommand(Schedule.duration(10), 0)],
+    calls: [awaitTimerCall(Schedule.duration(10), 0)],
   });
 });
 
@@ -715,7 +701,7 @@ test("should not re-schedule duration", async () => {
   await expect(
     execute(wf, [timerScheduled(0)], undefined)
   ).resolves.toMatchObject(<WorkflowResult>{
-    commands: [],
+    calls: [],
   });
 });
 
@@ -729,7 +715,7 @@ test("should complete duration", async () => {
     execute(wf, [timerScheduled(0), timerCompleted(0)], undefined)
   ).resolves.toMatchObject(<WorkflowResult>{
     result: Result.resolved("done"),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -743,7 +729,7 @@ test("should schedule time", async () => {
   await expect(execute(wf, [], undefined)).resolves.toMatchObject(<
     WorkflowResult
   >{
-    commands: [createStartTimerCommand(Schedule.time(now.toISOString()), 0)],
+    calls: [awaitTimerCall(Schedule.time(now.toISOString()), 0)],
   });
 });
 
@@ -757,7 +743,7 @@ test("should not re-schedule time", async () => {
   await expect(
     execute(wf, [timerScheduled(0)], undefined)
   ).resolves.toMatchObject(<WorkflowResult>{
-    commands: [],
+    calls: [],
   });
 });
 
@@ -773,7 +759,7 @@ test("should complete time", async () => {
     execute(wf, [timerScheduled(0), timerCompleted(0)], undefined)
   ).resolves.toMatchObject(<WorkflowResult>{
     result: Result.resolved("done"),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -831,10 +817,10 @@ describe("temple of doom", () => {
     await expect(execute(doomWf, [], undefined)).resolves.toMatchObject(<
       WorkflowResult
     >{
-      commands: [
-        createStartTimerCommand(0),
-        createScheduledActivityCommand("jump", [], 1),
-        createScheduledActivityCommand("run", [], 2),
+      calls: [
+        awaitTimerCall(0),
+        activityCall("jump", [], 1),
+        activityCall("run", [], 2),
       ],
     });
   });
@@ -851,7 +837,7 @@ describe("temple of doom", () => {
         undefined
       )
     ).resolves.toMatchObject(<WorkflowResult>{
-      commands: [],
+      calls: [],
     });
   });
 
@@ -869,7 +855,7 @@ describe("temple of doom", () => {
         undefined
       )
     ).resolves.toMatchObject(<WorkflowResult>{
-      commands: [],
+      calls: [],
     });
   });
 
@@ -889,7 +875,7 @@ describe("temple of doom", () => {
       )
     ).resolves.toMatchObject(<WorkflowResult>{
       result: Result.resolved("dead: lost your feet"),
-      commands: [],
+      calls: [],
     });
   });
 
@@ -909,7 +895,7 @@ describe("temple of doom", () => {
       )
     ).resolves.toMatchObject(<WorkflowResult>{
       result: Result.resolved("dead: lost your feet"),
-      commands: [],
+      calls: [],
     });
   });
 
@@ -928,7 +914,7 @@ describe("temple of doom", () => {
       )
     ).resolves.toMatchObject(<WorkflowResult>{
       result: Result.resolved("alive"),
-      commands: [],
+      calls: [],
     });
   });
 
@@ -947,7 +933,7 @@ describe("temple of doom", () => {
       )
     ).resolves.toMatchObject(<WorkflowResult>{
       result: Result.resolved("alive"),
-      commands: [],
+      calls: [],
     });
   });
 
@@ -966,7 +952,7 @@ describe("temple of doom", () => {
       )
     ).resolves.toMatchObject(<WorkflowResult>{
       result: Result.resolved("alive"),
-      commands: [],
+      calls: [],
     });
   });
 
@@ -985,7 +971,7 @@ describe("temple of doom", () => {
       )
     ).resolves.toMatchObject(<WorkflowResult>{
       result: Result.resolved("alive"),
-      commands: [],
+      calls: [],
     });
   });
 });
@@ -1002,7 +988,7 @@ test("should await an un-awaited returned Activity", async () => {
     WorkflowResult
   >{
     result: Result.resolved("foo"),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -1020,7 +1006,7 @@ describe("AwaitAll", () => {
       WorkflowResult
     >{
       result: Result.resolved(["foo-0", "foo-1"]),
-      commands: [],
+      calls: [],
     });
   });
 
@@ -1033,7 +1019,7 @@ describe("AwaitAll", () => {
       WorkflowResult
     >{
       result: Result.resolved([1, 1]),
-      commands: [],
+      calls: [],
     });
   });
 
@@ -1058,7 +1044,7 @@ describe("AwaitAll", () => {
       )
     ).resolves.toMatchObject(<WorkflowResult>{
       result: Result.resolved([1, 1]),
-      commands: [],
+      calls: [],
     });
   });
 
@@ -1074,9 +1060,9 @@ describe("AwaitAll", () => {
     await expect(execute(wf, [], ["a", "b"])).resolves.toMatchObject(<
       WorkflowResult
     >{
-      commands: [
-        createScheduledActivityCommand("process-item", ["a"], 0),
-        createScheduledActivityCommand("process-item", ["b"], 1),
+      calls: [
+        activityCall("process-item", ["a"], 0),
+        activityCall("process-item", ["b"], 1),
       ],
     });
 
@@ -1110,11 +1096,11 @@ describe("AwaitAll", () => {
     await expect(execute(wf, [], ["a", "b"])).resolves.toMatchObject(<
       WorkflowResult
     >{
-      commands: [
-        createScheduledActivityCommand("before", ["before"], 0),
-        createScheduledActivityCommand("inside", ["a"], 1),
-        createScheduledActivityCommand("inside", ["b"], 2),
-        createScheduledActivityCommand("after", ["after"], 3),
+      calls: [
+        activityCall("before", ["before"], 0),
+        activityCall("inside", ["a"], 1),
+        activityCall("inside", ["b"], 2),
+        activityCall("after", ["after"], 3),
       ],
     });
   });
@@ -1134,7 +1120,7 @@ describe("AwaitAny", () => {
       WorkflowResult
     >{
       result: Result.resolved("foo-0"),
-      commands: [],
+      calls: [],
     });
   });
 
@@ -1150,9 +1136,9 @@ describe("AwaitAny", () => {
     await expect(execute(wf, [], ["a", "b"])).resolves.toMatchObject(<
       WorkflowResult
     >{
-      commands: [
-        createScheduledActivityCommand("process-item", ["a"], 0),
-        createScheduledActivityCommand("process-item", ["b"], 1),
+      calls: [
+        activityCall("process-item", ["a"], 0),
+        activityCall("process-item", ["b"], 1),
       ],
     });
 
@@ -1312,7 +1298,7 @@ describe("Race", () => {
       WorkflowResult
     >{
       result: Result.resolved("foo-0"),
-      commands: [],
+      calls: [],
     });
   });
 
@@ -1328,9 +1314,9 @@ describe("Race", () => {
     await expect(execute(wf, [], ["a", "b"])).resolves.toMatchObject(<
       WorkflowResult
     >{
-      commands: [
-        createScheduledActivityCommand("process-item", ["a"], 0),
-        createScheduledActivityCommand("process-item", ["b"], 1),
+      calls: [
+        activityCall("process-item", ["a"], 0),
+        activityCall("process-item", ["b"], 1),
       ],
     });
 
@@ -1435,7 +1421,7 @@ describe("AwaitAllSettled", () => {
         { status: "fulfilled", value: "foo-0" },
         { status: "fulfilled", value: "foo-1" },
       ]),
-      commands: [],
+      calls: [],
     });
   });
 
@@ -1451,9 +1437,9 @@ describe("AwaitAllSettled", () => {
     await expect(execute(wf, [], ["a", "b"])).resolves.toMatchObject<
       WorkflowResult<PromiseSettledResult<string>[]>
     >({
-      commands: [
-        createScheduledActivityCommand("process-item", ["a"], 0),
-        createScheduledActivityCommand("process-item", ["b"], 1),
+      calls: [
+        activityCall("process-item", ["a"], 0),
+        activityCall("process-item", ["b"], 1),
       ],
     });
 
@@ -1473,7 +1459,7 @@ describe("AwaitAllSettled", () => {
         { status: "fulfilled", value: "A" },
         { status: "fulfilled", value: "B" },
       ]),
-      commands: [],
+      calls: [],
     });
 
     await expect(
@@ -1492,7 +1478,7 @@ describe("AwaitAllSettled", () => {
         { status: "rejected", reason: new EventualError("A").toJSON() },
         { status: "rejected", reason: new EventualError("B").toJSON() },
       ]),
-      commands: [],
+      calls: [],
     });
 
     await expect(
@@ -1511,7 +1497,7 @@ describe("AwaitAllSettled", () => {
         { status: "rejected", reason: new EventualError("A").toJSON() },
         { status: "fulfilled", value: "B" },
       ]),
-      commands: [],
+      calls: [],
     });
   });
 });
@@ -1529,7 +1515,7 @@ test("try-catch-finally with await in catch", async () => {
   await expect(execute(wf, [], undefined)).resolves.toMatchObject(<
     WorkflowResult
   >{
-    commands: [createScheduledActivityCommand("catch", [], 0)],
+    calls: [activityCall("catch", [], 0)],
   });
   await expect(
     execute(
@@ -1538,7 +1524,7 @@ test("try-catch-finally with await in catch", async () => {
       undefined
     )
   ).resolves.toMatchObject(<WorkflowResult>{
-    commands: [createScheduledActivityCommand("finally", [], 1)],
+    calls: [activityCall("finally", [], 1)],
   });
 });
 
@@ -1558,10 +1544,7 @@ test("try-catch-finally with dangling promise in catch", async () => {
       undefined
     )
   ).resolves.toMatchObject(<WorkflowResult>{
-    commands: [
-      createScheduledActivityCommand("catch", [], 0),
-      createScheduledActivityCommand("finally", [], 1),
-    ],
+    calls: [activityCall("catch", [], 0), activityCall("finally", [], 1)],
   });
 });
 
@@ -1589,9 +1572,9 @@ test("throw error within nested function", async () => {
   await expect(execute(wf, [], ["good", "bad"])).resolves.toMatchObject(<
     WorkflowResult
   >{
-    commands: [
-      createScheduledActivityCommand("inside", ["good"], 0),
-      createScheduledActivityCommand("inside", ["bad"], 1),
+    calls: [
+      activityCall("inside", ["good"], 0),
+      activityCall("inside", ["bad"], 1),
     ],
   });
   await expect(
@@ -1606,7 +1589,7 @@ test("throw error within nested function", async () => {
       ["good", "bad"]
     )
   ).resolves.toMatchObject(<WorkflowResult>{
-    commands: [createScheduledActivityCommand("catch", [], 2)],
+    calls: [activityCall("catch", [], 2)],
   });
   await expect(
     execute(
@@ -1622,7 +1605,7 @@ test("throw error within nested function", async () => {
       ["good", "bad"]
     )
   ).resolves.toMatchObject(<WorkflowResult>{
-    commands: [createScheduledActivityCommand("finally", [], 3)],
+    calls: [activityCall("finally", [], 3)],
   });
   await expect(
     execute(
@@ -1641,7 +1624,7 @@ test("throw error within nested function", async () => {
     )
   ).resolves.toMatchObject(<WorkflowResult>{
     result: Result.resolved("returned in finally"),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -1659,11 +1642,13 @@ test("properly evaluate await of sub-programs", async () => {
     return await sub();
   });
 
-  await expect(execute(wf, [], undefined)).resolves.toMatchObject({
-    commands: [
+  await expect(
+    execute(wf, [], undefined)
+  ).resolves.toMatchObject<WorkflowResult>({
+    calls: [
       //
-      createScheduledActivityCommand("a", [], 0),
-      createScheduledActivityCommand("b", [], 1),
+      activityCall("a", [], 0),
+      activityCall("b", [], 1),
     ],
   });
 
@@ -1678,9 +1663,9 @@ test("properly evaluate await of sub-programs", async () => {
       ],
       undefined
     )
-  ).resolves.toMatchObject({
+  ).resolves.toMatchObject<WorkflowResult>({
     result: Result.resolved(["a", "b"]),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -1694,11 +1679,13 @@ test("properly evaluate await of Promise.all", async () => {
     return item;
   });
 
-  await expect(execute(wf, [], undefined)).resolves.toMatchObject({
-    commands: [
+  await expect(
+    execute(wf, [], undefined)
+  ).resolves.toMatchObject<WorkflowResult>({
+    calls: [
       //
-      createScheduledActivityCommand("a", [], 0),
-      createScheduledActivityCommand("b", [], 1),
+      activityCall("a", [], 0),
+      activityCall("b", [], 1),
     ],
   });
 
@@ -1713,9 +1700,9 @@ test("properly evaluate await of Promise.all", async () => {
       ],
       undefined
     )
-  ).resolves.toMatchObject({
+  ).resolves.toMatchObject<WorkflowResult>({
     result: Result.resolved(["a", "b"]),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -1728,8 +1715,10 @@ test("generator function returns an ActivityCall", async () => {
     return createActivityCall("call-a", []);
   }
 
-  await expect(execute(wf, [], undefined)).resolves.toMatchObject({
-    commands: [createScheduledActivityCommand("call-a", [], 0)],
+  await expect(
+    execute(wf, [], undefined)
+  ).resolves.toMatchObject<WorkflowResult>({
+    calls: [activityCall("call-a", [], 0)],
   });
   await expect(
     execute(
@@ -1737,9 +1726,9 @@ test("generator function returns an ActivityCall", async () => {
       [activityScheduled("call-a", 0), activitySucceeded("result", 0)],
       undefined
     )
-  ).resolves.toMatchObject({
+  ).resolves.toMatchObject<WorkflowResult>({
     result: Result.resolved("result"),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -1748,19 +1737,21 @@ test("workflow calling other workflow", async () => {
     await createActivityCall("call-a", []);
   });
   const wf2 = workflow(async () => {
-    const result = (await createWorkflowCall(wf1.name)) as any;
+    const result = (await createChildWorkflowCall(wf1.name)) as any;
     await createActivityCall("call-b", []);
     return result;
   });
 
-  await expect(execute(wf2, [], undefined)).resolves.toMatchObject({
-    commands: [createScheduledWorkflowCommand(wf1.name, undefined, 0)],
+  await expect(
+    execute(wf2, [], undefined)
+  ).resolves.toMatchObject<WorkflowResult>({
+    calls: [childWorkflowCall(wf1.name, undefined, 0)],
   });
 
   await expect(
     execute(wf2, [workflowScheduled(wf1.name, 0)], undefined)
-  ).resolves.toMatchObject({
-    commands: [],
+  ).resolves.toMatchObject<WorkflowResult>({
+    calls: [],
   });
 
   await expect(
@@ -1769,8 +1760,8 @@ test("workflow calling other workflow", async () => {
       [workflowScheduled(wf1.name, 0), workflowSucceeded("result", 0)],
       undefined
     )
-  ).resolves.toMatchObject({
-    commands: [createScheduledActivityCommand("call-b", [], 1)],
+  ).resolves.toMatchObject<WorkflowResult>({
+    calls: [activityCall("call-b", [], 1)],
   });
 
   await expect(
@@ -1783,8 +1774,8 @@ test("workflow calling other workflow", async () => {
       ],
       undefined
     )
-  ).resolves.toMatchObject({
-    commands: [],
+  ).resolves.toMatchObject<WorkflowResult>({
+    calls: [],
   });
 
   await expect(
@@ -1798,9 +1789,9 @@ test("workflow calling other workflow", async () => {
       ],
       undefined
     )
-  ).resolves.toMatchObject({
+  ).resolves.toMatchObject<WorkflowResult>({
     result: Result.resolved("result"),
-    commands: [],
+    calls: [],
   });
 
   await expect(
@@ -1809,9 +1800,9 @@ test("workflow calling other workflow", async () => {
       [workflowScheduled(wf1.name, 0), workflowFailed("error", 0)],
       undefined
     )
-  ).resolves.toMatchObject({
+  ).resolves.toMatchObject<WorkflowResult>({
     result: Result.failed(new EventualError("error").toJSON()),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -1827,10 +1818,10 @@ describe("signals", () => {
     });
 
     test("start expect signal", async () => {
-      await expect(execute(wf, [], undefined)).resolves.toMatchObject(<
-        WorkflowResult
-      >{
-        commands: [createStartTimerCommand(Schedule.duration(100 * 1000), 0)],
+      await expect(
+        execute(wf, [], undefined)
+      ).resolves.toMatchObject<WorkflowResult>({
+        calls: [awaitTimerCall(Schedule.duration(100 * 1000), 0)],
       });
     });
 
@@ -1838,7 +1829,7 @@ describe("signals", () => {
       await expect(
         execute(wf, [timerScheduled(0)], undefined)
       ).resolves.toMatchObject(<WorkflowResult>{
-        commands: [],
+        calls: [],
       });
     });
 
@@ -1847,7 +1838,7 @@ describe("signals", () => {
         execute(wf, [timerScheduled(0), signalReceived("MySignal")], undefined)
       ).resolves.toMatchObject(<WorkflowResult>{
         result: Result.resolved("done"),
-        commands: [],
+        calls: [],
       });
     });
 
@@ -1860,7 +1851,7 @@ describe("signals", () => {
         )
       ).resolves.toMatchObject(<WorkflowResult>{
         result: Result.resolved({ done: true }),
-        commands: [],
+        calls: [],
       });
     });
 
@@ -1869,7 +1860,7 @@ describe("signals", () => {
         execute(wf, [timerScheduled(0), timerCompleted(0)], undefined)
       ).resolves.toMatchObject(<WorkflowResult>{
         result: Result.failed(new Timeout("Expect Signal Timed Out")),
-        commands: [],
+        calls: [],
       });
     });
 
@@ -1886,7 +1877,7 @@ describe("signals", () => {
         )
       ).resolves.toMatchObject(<WorkflowResult>{
         result: Result.failed(new Timeout("Expect Signal Timed Out")),
-        commands: [],
+        calls: [],
       });
     });
 
@@ -1899,7 +1890,7 @@ describe("signals", () => {
         )
       ).resolves.toMatchObject(<WorkflowResult>{
         result: Result.resolved("done"),
-        commands: [],
+        calls: [],
       });
     });
 
@@ -1916,7 +1907,7 @@ describe("signals", () => {
         )
       ).resolves.toMatchObject(<WorkflowResult>{
         result: Result.resolved("done"),
-        commands: [],
+        calls: [],
       });
     });
 
@@ -1946,7 +1937,7 @@ describe("signals", () => {
         )
       ).resolves.toMatchObject(<WorkflowResult>{
         result: Result.resolved(["done!!!", "done!!!"]),
-        commands: [],
+        calls: [],
       });
     });
 
@@ -1966,7 +1957,7 @@ describe("signals", () => {
         execute(wf, [timerScheduled(0), timerCompleted(0)], undefined)
       ).resolves.toMatchObject(<WorkflowResult>{
         result: Result.failed({ name: "Timeout" }),
-        commands: [],
+        calls: [],
       });
     });
 
@@ -1994,7 +1985,7 @@ describe("signals", () => {
         )
       ).resolves.toMatchObject(<WorkflowResult>{
         result: Result.failed({ name: "Timeout" }),
-        commands: [],
+        calls: [],
       });
     });
   });
@@ -2038,7 +2029,7 @@ describe("signals", () => {
       await expect(execute(wf, [], undefined)).resolves.toMatchObject(<
         WorkflowResult
       >{
-        commands: [createStartTimerCommand(2)],
+        calls: [awaitTimerCall(2)],
       });
     });
 
@@ -2046,7 +2037,7 @@ describe("signals", () => {
       await expect(
         execute(wf, [signalReceived("MySignal")], undefined)
       ).resolves.toMatchObject(<WorkflowResult>{
-        commands: [createStartTimerCommand(2)],
+        calls: [awaitTimerCall(2)],
       });
     });
 
@@ -2069,7 +2060,7 @@ describe("signals", () => {
           myOtherSignalHappened: 0,
           myOtherSignalCompleted: 0,
         }),
-        commands: [],
+        calls: [],
       });
     });
 
@@ -2094,7 +2085,7 @@ describe("signals", () => {
           myOtherSignalHappened: 0,
           myOtherSignalCompleted: 0,
         }),
-        commands: [],
+        calls: [],
       });
     });
 
@@ -2119,7 +2110,7 @@ describe("signals", () => {
           myOtherSignalHappened: 0,
           myOtherSignalCompleted: 0,
         }),
-        commands: [],
+        calls: [],
       });
     });
 
@@ -2127,10 +2118,7 @@ describe("signals", () => {
       await expect(
         execute(wf, [signalReceived("MyOtherSignal", "hi")], undefined)
       ).resolves.toMatchObject(<WorkflowResult>{
-        commands: [
-          createStartTimerCommand(2),
-          createScheduledActivityCommand("act1", ["hi"], 3),
-        ],
+        calls: [awaitTimerCall(2), activityCall("act1", ["hi"], 3)],
       });
     });
 
@@ -2145,10 +2133,10 @@ describe("signals", () => {
           undefined
         )
       ).resolves.toMatchObject(<WorkflowResult>{
-        commands: [
-          createStartTimerCommand(2),
-          createScheduledActivityCommand("act1", ["hi"], 3),
-          createScheduledActivityCommand("act1", ["hi2"], 4),
+        calls: [
+          awaitTimerCall(2),
+          activityCall("act1", ["hi"], 3),
+          activityCall("act1", ["hi2"], 4),
         ],
       });
     });
@@ -2173,7 +2161,7 @@ describe("signals", () => {
           myOtherSignalHappened: 1,
           myOtherSignalCompleted: 0,
         }),
-        commands: [],
+        calls: [],
       });
     });
 
@@ -2198,7 +2186,7 @@ describe("signals", () => {
           myOtherSignalHappened: 1,
           myOtherSignalCompleted: 1,
         }),
-        commands: [],
+        calls: [],
       });
     });
 
@@ -2223,7 +2211,7 @@ describe("signals", () => {
           myOtherSignalHappened: 1,
           myOtherSignalCompleted: 1,
         }),
-        commands: [],
+        calls: [],
       });
     });
 
@@ -2246,7 +2234,7 @@ describe("signals", () => {
           myOtherSignalHappened: 0,
           myOtherSignalCompleted: 0,
         }),
-        commands: [],
+        calls: [],
       });
     });
   });
@@ -2259,7 +2247,7 @@ describe("signals", () => {
         mySignal.id
       );
 
-      const childWorkflow = createWorkflowCall("childWorkflow");
+      const childWorkflow = createChildWorkflowCall("childWorkflow");
 
       childWorkflow.sendSignal(mySignal);
 
@@ -2270,8 +2258,8 @@ describe("signals", () => {
       await expect(execute(wf, [], undefined)).resolves.toMatchObject(<
         WorkflowResult
       >{
-        commands: [
-          createSendSignalCommand(
+        calls: [
+          sendSignalCall(
             {
               type: SignalTargetType.Execution,
               executionId: "someExecution/",
@@ -2279,8 +2267,8 @@ describe("signals", () => {
             "MySignal",
             0
           ),
-          createScheduledWorkflowCommand("childWorkflow", undefined, 1),
-          createSendSignalCommand(
+          childWorkflowCall("childWorkflow", undefined, 1),
+          sendSignalCall(
             {
               type: SignalTargetType.ChildExecution,
               workflowName: "childWorkflow",
@@ -2297,9 +2285,9 @@ describe("signals", () => {
       await expect(
         execute(wf, [signalSent("someExec", "MySignal", 0)], undefined)
       ).resolves.toMatchObject(<WorkflowResult>{
-        commands: [
-          createScheduledWorkflowCommand("childWorkflow", undefined, 1),
-          createSendSignalCommand(
+        calls: [
+          childWorkflowCall("childWorkflow", undefined, 1),
+          sendSignalCall(
             {
               type: SignalTargetType.ChildExecution,
               workflowName: "childWorkflow",
@@ -2324,7 +2312,7 @@ describe("signals", () => {
           undefined
         )
       ).resolves.toMatchObject(<WorkflowResult>{
-        commands: [],
+        calls: [],
       });
     });
 
@@ -2342,7 +2330,7 @@ describe("signals", () => {
         )
       ).resolves.toMatchObject(<WorkflowResult>{
         result: Result.resolved("done"),
-        commands: [],
+        calls: [],
       });
     });
 
@@ -2355,7 +2343,7 @@ describe("signals", () => {
         ).then(async () => {
           console.log("after signal");
 
-          const childWorkflow = createWorkflowCall("childWorkflow");
+          const childWorkflow = createChildWorkflowCall("childWorkflow");
 
           await childWorkflow.sendSignal(mySignal);
 
@@ -2376,7 +2364,7 @@ describe("signals", () => {
         )
       ).resolves.toEqual(<WorkflowResult>{
         result: Result.resolved("done"),
-        commands: [],
+        calls: [],
       });
     });
 
@@ -2390,7 +2378,7 @@ describe("signals", () => {
 
         console.log("after signal");
 
-        const childWorkflow = createWorkflowCall("childWorkflow");
+        const childWorkflow = createChildWorkflowCall("childWorkflow");
 
         await childWorkflow.sendSignal(mySignal);
 
@@ -2410,7 +2398,7 @@ describe("signals", () => {
         )
       ).resolves.toEqual(<WorkflowResult>{
         result: Result.resolved("done"),
-        commands: [],
+        calls: [],
       });
     });
   });
@@ -2425,7 +2413,7 @@ describe("condition", () => {
     await expect(
       execute(wf, [], undefined)
     ).resolves.toMatchObject<WorkflowResult>({
-      commands: [],
+      calls: [],
     });
   });
 
@@ -2437,7 +2425,7 @@ describe("condition", () => {
     await expect(
       execute(wf, [], undefined)
     ).resolves.toMatchObject<WorkflowResult>({
-      commands: [],
+      calls: [],
     });
   });
 
@@ -2452,7 +2440,7 @@ describe("condition", () => {
     await expect(
       execute(wf, [], undefined)
     ).resolves.toMatchObject<WorkflowResult>({
-      commands: [createStartTimerCommand(Schedule.duration(100), 0)],
+      calls: [awaitTimerCall(Schedule.duration(100), 0)],
     });
   });
 
@@ -2467,7 +2455,7 @@ describe("condition", () => {
     await expect(
       execute(wf, [timerScheduled(0)], undefined)
     ).resolves.toMatchObject<WorkflowResult>({
-      commands: [],
+      calls: [],
     });
   });
 
@@ -2496,7 +2484,7 @@ describe("condition", () => {
       )
     ).resolves.toMatchObject<WorkflowResult>({
       result: Result.resolved("done"),
-      commands: [],
+      calls: [],
     });
   });
 
@@ -2516,7 +2504,7 @@ describe("condition", () => {
       )
     ).resolves.toMatchObject<WorkflowResult>({
       result: Result.resolved("done"),
-      commands: [],
+      calls: [],
     });
   });
 
@@ -2536,7 +2524,7 @@ describe("condition", () => {
     await expect(
       execute(signalConditionOnAndOffFlow, [signalReceived("Yes")], undefined)
     ).resolves.toMatchObject<WorkflowResult>({
-      commands: [],
+      calls: [],
     });
   });
 
@@ -2549,7 +2537,7 @@ describe("condition", () => {
       )
     ).resolves.toMatchObject<WorkflowResult>({
       result: Result.resolved("timed out"),
-      commands: [],
+      calls: [],
     });
   });
 
@@ -2562,7 +2550,7 @@ describe("condition", () => {
       )
     ).resolves.toMatchObject<WorkflowResult>({
       result: Result.resolved("done"),
-      commands: [],
+      calls: [],
     });
   });
 
@@ -2575,7 +2563,7 @@ describe("condition", () => {
       )
     ).resolves.toMatchObject<WorkflowResult>({
       result: Result.resolved("timed out"),
-      commands: [],
+      calls: [],
     });
   });
 
@@ -2588,7 +2576,7 @@ describe("condition", () => {
     await expect(
       execute(wf, [], undefined)
     ).resolves.toMatchObject<WorkflowResult>({
-      commands: [],
+      calls: [],
     });
   });
 });
@@ -2613,7 +2601,7 @@ test("nestedChains", async () => {
   await expect(
     execute(wf, [], undefined)
   ).resolves.toMatchObject<WorkflowResult>({
-    commands: [createStartTimerCommand(0)],
+    calls: [awaitTimerCall(0)],
   });
 });
 
@@ -2639,16 +2627,16 @@ test("mixing closure types", async () => {
   await expect(
     execute(workflow4, [], undefined)
   ).resolves.toEqual<WorkflowResult>({
-    commands: [
-      createScheduledActivityCommand("hello", ["sam"], 0),
-      createScheduledActivityCommand("hello", ["chris"], 1),
-      createScheduledActivityCommand("hello", ["sam"], 2),
-      createScheduledActivityCommand("hello", ["sam"], 3),
-      createScheduledActivityCommand("hello", ["chris"], 4),
-      createScheduledActivityCommand("hello", ["sam"], 5),
-      createScheduledActivityCommand("hello", ["sam"], 6),
-      createScheduledActivityCommand("hello", ["chris"], 7),
-      createScheduledActivityCommand("hello", ["sam"], 8),
+    calls: [
+      activityCall("hello", ["sam"], 0),
+      activityCall("hello", ["chris"], 1),
+      activityCall("hello", ["sam"], 2),
+      activityCall("hello", ["sam"], 3),
+      activityCall("hello", ["chris"], 4),
+      activityCall("hello", ["sam"], 5),
+      activityCall("hello", ["sam"], 6),
+      activityCall("hello", ["chris"], 7),
+      activityCall("hello", ["sam"], 8),
     ],
   });
 
@@ -2669,7 +2657,7 @@ test("mixing closure types", async () => {
       undefined
     )
   ).resolves.toEqual<WorkflowResult>({
-    commands: [],
+    calls: [],
   });
 
   await expect(
@@ -2703,7 +2691,7 @@ test("mixing closure types", async () => {
       [8, 10, 12],
       [7, 8, 9],
     ]),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -2715,7 +2703,7 @@ test("workflow with synchronous function", async () => {
   await expect(
     execute(workflow4, [], undefined)
   ).resolves.toEqual<WorkflowResult>({
-    commands: [createScheduledActivityCommand("hi", [], 0)],
+    calls: [activityCall("hi", [], 0)],
   });
 
   await expect(
@@ -2726,7 +2714,7 @@ test("workflow with synchronous function", async () => {
     )
   ).resolves.toEqual<WorkflowResult>({
     result: Result.resolved("result"),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -2756,7 +2744,7 @@ test("publish event", async () => {
   await expect(execute(wf, [], undefined)).resolves.toEqual<WorkflowResult>({
     // promise should be instantly resolved
     result: Result.resolved("done!"),
-    commands: [createPublishEventCommand(events, 0)],
+    calls: [publishEventCall(events, 0)],
   });
 
   await expect(
@@ -2764,7 +2752,7 @@ test("publish event", async () => {
   ).resolves.toEqual<WorkflowResult>({
     // promise should be instantly resolved
     result: Result.resolved("done!"),
-    commands: [],
+    calls: [],
   });
 });
 
@@ -2788,7 +2776,7 @@ test("many events at once", async () => {
   await expect(
     executor.start(undefined, context)
   ).resolves.toEqual<WorkflowResult>({
-    commands: [],
+    calls: [],
     result: Result.resolved("done"),
   });
 });
@@ -2799,17 +2787,17 @@ describe("continue", () => {
     await expect(
       executor.start(event, context)
     ).resolves.toEqual<WorkflowResult>({
-      commands: [createScheduledActivityCommand("my-activity", [event], 0)],
+      calls: [activityCall("my-activity", [event], 0)],
       result: undefined,
     });
 
     await expect(
       executor.continue(activitySucceeded("result", 0))
     ).resolves.toEqual<WorkflowResult>({
-      commands: [
-        createScheduledActivityCommand("my-activity-0", [event], 1),
-        createStartTimerCommand(2),
-        createScheduledActivityCommand("my-activity-2", [event], 3),
+      calls: [
+        activityCall("my-activity-0", [event], 1),
+        awaitTimerCall(2),
+        activityCall("my-activity-2", [event], 3),
       ],
       result: undefined,
     });
@@ -2823,10 +2811,10 @@ describe("continue", () => {
     await expect(
       executor.start(event, context)
     ).resolves.toEqual<WorkflowResult>({
-      commands: [
-        createScheduledActivityCommand("my-activity-0", [event], 1),
-        createStartTimerCommand(2),
-        createScheduledActivityCommand("my-activity-2", [event], 3),
+      calls: [
+        activityCall("my-activity-0", [event], 1),
+        awaitTimerCall(2),
+        activityCall("my-activity-2", [event], 3),
       ],
       result: undefined,
     });
@@ -2834,7 +2822,7 @@ describe("continue", () => {
     await expect(
       executor.continue([timerCompleted(2), activitySucceeded("result-2", 3)])
     ).resolves.toEqual<WorkflowResult>({
-      commands: [],
+      calls: [],
       result: Result.resolved(["result", [undefined, "result-2"]]),
     });
   });
@@ -2859,7 +2847,7 @@ describe("continue", () => {
     await expect(
       executor.continue(activitySucceeded(undefined, 99))
     ).resolves.toEqual<WorkflowResult>({
-      commands: [],
+      calls: [],
       result: Result.resolved("done"),
     });
   });
@@ -2882,10 +2870,10 @@ describe("continue", () => {
         [...Array(100).keys()].map((i) => activitySucceeded(undefined, i))
       )
     ).resolves.toEqual<WorkflowResult>({
-      commands: [...Array(99).keys()].map((i) =>
+      calls: [...Array(99).keys()].map((i) =>
         // commands are still emitted because normally the command would precede the events.
         // the first command is emitted during start
-        createScheduledActivityCommand("myAct", i + 1, i + 1)
+        activityCall("myAct", i + 1, i + 1)
       ),
       result: Result.resolved("done"),
     });
@@ -2916,7 +2904,7 @@ describe("continue", () => {
         [...Array(100).keys()].map((i) => activitySucceeded(undefined, i))
       )
     ).resolves.toEqual<WorkflowResult>({
-      commands: [],
+      calls: [],
       result: Result.resolved("done"),
     });
   });
@@ -2930,7 +2918,7 @@ describe("continue", () => {
       "Workflow is already running, await the promise returned by the last start or complete call."
     );
     await expect(startPromise).resolves.toEqual<WorkflowResult>({
-      commands: [createScheduledActivityCommand("my-activity", [event], 0)],
+      calls: [activityCall("my-activity", [event], 0)],
       result: undefined,
     });
     const continuePromise = executor.continue(activitySucceeded("result", 0));
@@ -2940,10 +2928,10 @@ describe("continue", () => {
       "Workflow is already running, await the promise returned by the last start or complete call."
     );
     await expect(continuePromise).resolves.toEqual<WorkflowResult>({
-      commands: [
-        createScheduledActivityCommand("my-activity-0", [event], 1),
-        createStartTimerCommand(2),
-        createScheduledActivityCommand("my-activity-2", [event], 3),
+      calls: [
+        activityCall("my-activity-0", [event], 1),
+        awaitTimerCall(2),
+        activityCall("my-activity-2", [event], 3),
       ],
       result: undefined,
     });
@@ -2958,7 +2946,7 @@ describe("continue", () => {
     await expect(
       executor.continue(activitySucceeded("result", 0))
     ).resolves.toEqual<WorkflowResult>({
-      commands: [],
+      calls: [],
       result: undefined,
     });
   });
@@ -2978,14 +2966,14 @@ describe("running after result", () => {
     await expect(
       executor.start(undefined, context)
     ).resolves.toEqual<WorkflowResult>({
-      commands: [],
+      calls: [],
       result: Result.resolved("hello?"),
     });
 
     await expect(
       executor.continue(signalReceived("signal1"))
     ).resolves.toEqual<WorkflowResult>({
-      commands: [createScheduledActivityCommand("on signal", 1, 1)],
+      calls: [activityCall("on signal", 1, 1)],
       result: Result.resolved("hello?"),
     });
   });
@@ -3003,14 +2991,14 @@ describe("running after result", () => {
     await expect(
       executor.start(undefined, context)
     ).resolves.toEqual<WorkflowResult>({
-      commands: [],
+      calls: [],
       result: Result.failed(new Error("AHHH")),
     });
 
     await expect(
       executor.continue(signalReceived("signal1"))
     ).resolves.toEqual<WorkflowResult>({
-      commands: [createScheduledActivityCommand("on signal", 1, 1)],
+      calls: [activityCall("on signal", 1, 1)],
       result: Result.failed(new Error("AHHH")),
     });
   });
@@ -3036,15 +3024,15 @@ describe("running after result", () => {
     await expect(
       executor.start(undefined, context)
     ).resolves.toEqual<WorkflowResult>({
-      commands: [createScheduledActivityCommand("in the async", undefined, 1)],
+      calls: [activityCall("in the async", undefined, 1)],
       result: Result.resolved("hello?"),
     });
 
     await expect(
       executor.continue(signalReceived("signal1"))
     ).resolves.toEqual<WorkflowResult>({
-      commands: [...Array(10).keys()].map((i) =>
-        createScheduledActivityCommand("on signal", 1, 2 + i)
+      calls: [...Array(10).keys()].map((i) =>
+        activityCall("on signal", 1, 2 + i)
       ),
       result: Result.resolved("hello?"),
     });
@@ -3092,7 +3080,7 @@ describe("failures", () => {
         undefined
       )
     ).resolves.toEqual<WorkflowResult>({
-      commands: [createScheduledActivityCommand("hello", undefined, 4)],
+      calls: [activityCall("hello", undefined, 4)],
       result: Result.failed(Error("AHH")),
     });
   });
@@ -3105,7 +3093,7 @@ describe("failures", () => {
         undefined
       )
     ).resolves.toEqual<WorkflowResult>({
-      commands: [createScheduledActivityCommand("hello", undefined, 1)],
+      calls: [activityCall("hello", undefined, 1)],
       result: Result.failed(Error("AHH")),
     });
   });
@@ -3122,7 +3110,7 @@ describe("failures", () => {
         undefined
       )
     ).resolves.toEqual<WorkflowResult>({
-      commands: [createScheduledActivityCommand("signalAct", undefined, 2)],
+      calls: [activityCall("signalAct", undefined, 2)],
       result: Result.failed(Error("AHH")),
     });
   });
@@ -3151,7 +3139,7 @@ describe("failures", () => {
         undefined
       )
     ).resolves.toEqual<WorkflowResult>({
-      commands: [createScheduledActivityCommand("signalAct", undefined, 3)],
+      calls: [activityCall("signalAct", undefined, 3)],
       result: Result.failed(Error("AHH")),
     });
   });
@@ -3180,9 +3168,9 @@ describe("failures", () => {
         undefined
       )
     ).resolves.toMatchObject<WorkflowResult>({
-      commands: [
-        createScheduledActivityCommand("signalAct", undefined, 3),
-        createScheduledActivityCommand("signalAct", undefined, 4),
+      calls: [
+        activityCall("signalAct", undefined, 3),
+        activityCall("signalAct", undefined, 4),
       ],
       result: Result.resolved(undefined),
     });
@@ -3213,7 +3201,7 @@ describe("failures", () => {
         undefined
       )
     ).resolves.toEqual<WorkflowResult>({
-      commands: [],
+      calls: [],
       result: Result.failed(Error("AHH")),
     });
   });
@@ -3228,14 +3216,14 @@ describe("failures", () => {
     await expect(
       executor.start(undefined, context)
     ).resolves.toEqual<WorkflowResult>({
-      commands: [createScheduledActivityCommand("signalAct", undefined, 2)],
+      calls: [activityCall("signalAct", undefined, 2)],
       result: Result.failed(Error("AHH")),
     });
 
     await expect(
       executor.continue(signalReceived("signal"))
     ).resolves.toEqual<WorkflowResult>({
-      commands: [createScheduledActivityCommand("signalAct", undefined, 3)],
+      calls: [activityCall("signalAct", undefined, 3)],
       result: Result.failed(Error("AHH")),
     });
   });
@@ -3255,7 +3243,7 @@ describe("using then, catch, finally", () => {
           undefined
         )
       ).resolves.toEqual<WorkflowResult>({
-        commands: [],
+        calls: [],
         result: Result.resolved(2),
       });
     });
@@ -3272,7 +3260,7 @@ describe("using then, catch, finally", () => {
           undefined
         )
       ).resolves.toEqual<WorkflowResult>({
-        commands: [],
+        calls: [],
         result: undefined,
       });
     });
@@ -3293,7 +3281,7 @@ describe("using then, catch, finally", () => {
           undefined
         )
       ).resolves.toEqual<WorkflowResult>({
-        commands: [],
+        calls: [],
         result: Result.resolved("hi"),
       });
     });
@@ -3317,7 +3305,7 @@ describe("using then, catch, finally", () => {
           undefined
         )
       ).resolves.toEqual<WorkflowResult>({
-        commands: [createScheduledActivityCommand("act1", undefined, 1)],
+        calls: [activityCall("act1", undefined, 1)],
         result: Result.resolved("hi"),
       });
     });
@@ -3342,7 +3330,7 @@ describe("using then, catch, finally", () => {
           undefined
         )
       ).resolves.toEqual<WorkflowResult>({
-        commands: [],
+        calls: [],
         result: Result.resolved("hi"),
       });
     });
@@ -3375,7 +3363,7 @@ describe("using then, catch, finally", () => {
                   x++;
                   return createActivityCall("boom", undefined);
                 }),
-                createWorkflowCall("workflow1", undefined).then(() => {
+                createChildWorkflowCall("workflow1", undefined).then(() => {
                   x++;
                   return createActivityCall("boom", undefined);
                 }),
@@ -3417,7 +3405,7 @@ describe("using then, catch, finally", () => {
           undefined
         )
       ).resolves.toEqual<WorkflowResult>({
-        commands: [],
+        calls: [],
         result: Result.resolved(["a", "b", "c", "d", "e", "f"]),
       });
     });
@@ -3436,7 +3424,7 @@ describe("using then, catch, finally", () => {
           undefined
         )
       ).resolves.toEqual<WorkflowResult>({
-        commands: [],
+        calls: [],
         result: Result.resolved("Error1"),
       });
     });
@@ -3453,7 +3441,7 @@ describe("using then, catch, finally", () => {
           undefined
         )
       ).resolves.toEqual<WorkflowResult>({
-        commands: [],
+        calls: [],
         result: undefined,
       });
     });
@@ -3478,7 +3466,7 @@ describe("using then, catch, finally", () => {
           undefined
         )
       ).resolves.toEqual<WorkflowResult>({
-        commands: [],
+        calls: [],
         result: Result.resolved("hi"),
       });
     });
@@ -3506,7 +3494,7 @@ describe("using then, catch, finally", () => {
           undefined
         )
       ).resolves.toEqual<WorkflowResult>({
-        commands: [createScheduledActivityCommand("act1", undefined, 1)],
+        calls: [activityCall("act1", undefined, 1)],
         result: Result.resolved("hi"),
       });
     });
@@ -3535,7 +3523,7 @@ describe("using then, catch, finally", () => {
           undefined
         )
       ).resolves.toEqual<WorkflowResult>({
-        commands: [],
+        calls: [],
         result: Result.resolved("hi"),
       });
     });
@@ -3576,7 +3564,7 @@ describe("using then, catch, finally", () => {
                       x++;
                       return createActivityCall("boom", undefined);
                     }),
-                  createWorkflowCall("workflow1", undefined).catch(() => {
+                  createChildWorkflowCall("workflow1", undefined).catch(() => {
                     x++;
                     return createActivityCall("boom", undefined);
                   }),
@@ -3638,7 +3626,7 @@ describe("using then, catch, finally", () => {
           undefined
         )
       ).resolves.toEqual<WorkflowResult>({
-        commands: [],
+        calls: [],
         result: Result.resolved(["a", "b", "c", "d", "e", "f"]),
       });
     });
@@ -3671,7 +3659,7 @@ describe("using then, catch, finally", () => {
           undefined
         )
       ).resolves.toEqual<WorkflowResult>({
-        commands: [],
+        calls: [],
         result: Result.resolved(["something", undefined]),
       });
     });
