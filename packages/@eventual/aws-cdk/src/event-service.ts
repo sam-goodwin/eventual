@@ -1,6 +1,6 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { Schemas } from "@eventual/core/internal";
-import { aws_eventschemas, Lazy, Resource } from "aws-cdk-lib";
+import { aws_eventschemas, Lazy, Resource, Stack } from "aws-cdk-lib";
 import { EventBus, IEventBus } from "aws-cdk-lib/aws-events";
 import { IGrantable } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
@@ -37,7 +37,12 @@ export class EventService {
   }
 
   private readonly ENV_MAPPINGS = {
-    [ENV_NAMES.EVENT_BUS_ARN]: () => this.bus.eventBusArn,
+    [ENV_NAMES.EVENT_BUS_ARN]: () =>
+      Stack.of(this.props.serviceScope).formatArn({
+        service: "events",
+        resource: "event-bus",
+        resourceName: this.props.serviceName,
+      }),
     [ENV_NAMES.SERVICE_NAME]: () => this.props.serviceName,
   } as const;
 
