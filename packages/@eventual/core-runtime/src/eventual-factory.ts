@@ -8,6 +8,8 @@ import {
   isChildWorkflowCall,
   isChildWorkflowScheduled,
   isConditionCall,
+  isDictionaryCall,
+  isDictionaryRequest,
   isEventsPublished,
   isExpectSignalCall,
   isPublishEventsCall,
@@ -130,6 +132,27 @@ export function createEventualFromCall(
       triggers: Trigger.onSignal(call.signalId, (event) => {
         call.handler(event.payload);
       }),
+    };
+  } else if (isDictionaryCall(call)) {
+    return {
+      triggers: [
+        Trigger.onWorkflowEvent(
+          WorkflowEventType.DictionaryRequestSucceeded,
+          (event) => Result.resolved(event.result)
+        ),
+        Trigger.onWorkflowEvent(
+          WorkflowEventType.DictionaryRequestFailed,
+          (event) =>
+            Result.failed(new EventualError(event.error, event.message))
+        ),
+      ],
+      isCorresponding(event) {
+        return (
+          isDictionaryRequest(event) &&
+          call.operation.operation === event.operation.operation &&
+          call.name === event.name
+        );
+      },
     };
   }
   return assertNever(call);

@@ -1,21 +1,24 @@
 import {
+  commandRpcPath,
   EventualServiceClient,
-  isHttpError,
   HttpRequest,
   HttpResponse,
+  isHttpError,
   RestParamSpec,
-  commandRpcPath,
 } from "@eventual/core";
 import {
-  registerServiceClient,
-  serviceTypeScope,
-  ServiceType,
   commands,
+  registerDictionaryHook,
+  registerServiceClient,
+  ServiceType,
+  serviceTypeScope,
 } from "@eventual/core/internal";
 import itty from "itty-router";
+import { DictionaryClient } from "../clients/dictionary-client.js";
 
 export interface ApiHandlerDependencies {
   serviceClient?: EventualServiceClient;
+  dictionaryClient?: DictionaryClient;
 }
 
 export interface CommandWorker {
@@ -30,10 +33,15 @@ export interface CommandWorker {
  */
 export function createCommandWorker({
   serviceClient,
+  dictionaryClient,
 }: ApiHandlerDependencies): CommandWorker {
   // make the service client available to web hooks
   if (serviceClient) {
     registerServiceClient(serviceClient);
+  }
+  // the system commands do not currently use the dictionary client so it will be optional for now.
+  if (dictionaryClient) {
+    registerDictionaryHook(dictionaryClient);
   }
 
   const router = initRouter();

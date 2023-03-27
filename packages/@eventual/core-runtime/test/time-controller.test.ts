@@ -1,4 +1,4 @@
-import { TimeController, TimeEvent } from "../src/time-controller.js";
+import { TimeController, TimeEvent } from "../src/local/time-controller.js";
 
 test("empty", () => {
   const controller = new TimeController([]);

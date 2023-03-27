@@ -11,6 +11,7 @@ import { AWSMetricsClient } from "../clients/metrics-client.js";
 import {
   createActivityClient,
   createActivityStore,
+  createDictionaryClient,
   createEventClient,
   createExecutionQueueClient,
   createExecutionStore,
@@ -37,6 +38,7 @@ const worker = createActivityWorker({
   logAgent: createLogAgent(),
   activityStore: createActivityStore(),
   serviceName: serviceName(),
+  dictionaryClient: createDictionaryClient(),
 });
 
 export default async (request: ActivityWorkerRequest) => {

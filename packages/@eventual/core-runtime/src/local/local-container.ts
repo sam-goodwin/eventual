@@ -3,9 +3,13 @@ import {
   ActivityClient,
   ActivityWorkerRequest,
 } from "../clients/activity-client.js";
-import { TimerClient, TimerRequest } from "../clients/timer-client.js";
+import { DictionaryClient } from "../clients/dictionary-client.js";
+import { EventClient } from "../clients/event-client.js";
+import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
+import { LogsClient } from "../clients/logs-client.js";
+import { MetricsClient } from "../clients/metrics-client.js";
+import type { TimerClient, TimerRequest } from "../clients/timer-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
-import { WorkflowCallExecutor } from "../workflow-call-executor.js";
 import {
   ActivityWorker,
   createActivityWorker,
@@ -20,16 +24,6 @@ import {
   SubscriptionWorker,
 } from "../handlers/subscription-worker.js";
 import { createTimerHandler, TimerHandler } from "../handlers/timer-handler.js";
-import {
-  ActivityStore,
-  EventClient,
-  ExecutionHistoryStateStore,
-  ExecutionHistoryStore,
-  ExecutionQueueClient,
-  ExecutionStore,
-  LogsClient,
-  MetricsClient,
-} from "../index.js";
 import { LogAgent } from "../log-agent.js";
 import {
   ActivityProvider,
@@ -44,6 +38,10 @@ import {
   GlobalWorkflowProvider,
   WorkflowProvider,
 } from "../providers/workflow-provider.js";
+import { ActivityStore } from "../stores/activity-store.js";
+import { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
+import { ExecutionHistoryStore } from "../stores/execution-history-store.js";
+import { ExecutionStore } from "../stores/execution-store.js";
 import {
   createGetExecutionCommand,
   createListExecutionHistoryCommand,
@@ -56,6 +54,7 @@ import {
   createUpdateActivityCommand,
 } from "../system-commands.js";
 import { WorkflowTask } from "../tasks.js";
+import { WorkflowCallExecutor } from "../workflow-call-executor.js";
 import { LocalActivityClient } from "./clients/activity-client.js";
 import { LocalEventClient } from "./clients/event-client.js";
 import { LocalExecutionQueueClient } from "./clients/execution-queue-client.js";
@@ -63,6 +62,7 @@ import { LocalLogsClient } from "./clients/logs-client.js";
 import { LocalMetricsClient } from "./clients/metrics-client.js";
 import { LocalTimerClient } from "./clients/timer-client.js";
 import { LocalActivityStore } from "./stores/activity-store.js";
+import { LocalDictionaryStore } from "./stores/dictionary-store.js";
 import { LocalExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
 import { LocalExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { LocalExecutionStore } from "./stores/execution-store.js";
@@ -123,8 +123,10 @@ export class LocalContainer {
     this.activityStore = new LocalActivityStore();
     this.subscriptionProvider =
       props.subscriptionProvider ?? new GlobalSubscriptionProvider();
+    const dictionaryClient = new DictionaryClient(new LocalDictionaryStore());
     this.subscriptionWorker = createSubscriptionWorker({
       subscriptionProvider: this.subscriptionProvider,
+      dictionaryClient,
     });
     this.eventClient = new LocalEventClient(this.subscriptionWorker);
     this.metricsClient = new LocalMetricsClient();
@@ -143,6 +145,7 @@ export class LocalContainer {
       metricsClient: this.metricsClient,
       serviceName: props.serviceName,
       timerClient: this.timerClient,
+      dictionaryClient,
     });
     this.activityClient = new LocalActivityClient(this.localConnector, {
       activityStore: this.activityStore,
@@ -157,6 +160,7 @@ export class LocalContainer {
         executionQueueClient: this.executionQueueClient,
         timerClient: this.timerClient,
         workflowClient: this.workflowClient,
+        dictionaryClient,
       }),
       workflowClient: this.workflowClient,
       timerClient: this.timerClient,
@@ -197,7 +201,7 @@ export class LocalContainer {
     });
 
     // must register commands before the command worker is loaded!
-    this.commandWorker = createCommandWorker({});
+    this.commandWorker = createCommandWorker({ dictionaryClient });
 
     this.timerHandler = createTimerHandler({
       activityStore: this.activityStore,

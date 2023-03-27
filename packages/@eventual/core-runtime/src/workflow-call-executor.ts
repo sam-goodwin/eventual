@@ -1,4 +1,4 @@
-import { ExecutionID, Workflow } from "@eventual/core";
+import { Dictionary, ExecutionID, Workflow } from "@eventual/core";
 import {
   ActivityCall,
   ActivityScheduled,
@@ -6,6 +6,11 @@ import {
   AwaitTimerCall,
   ChildWorkflowCall,
   ChildWorkflowScheduled,
+  DictionaryCall,
+  DictionaryOperation,
+  DictionaryRequest,
+  DictionaryRequestFailed,
+  DictionaryRequestSucceeded,
   EventsPublished,
   HistoryStateEvent,
   isActivityCall,
@@ -13,6 +18,7 @@ import {
   isChildExecutionTarget,
   isChildWorkflowCall,
   isConditionCall,
+  isDictionaryCall,
   isExpectSignalCall,
   isPublishEventsCall,
   isRegisterSignalHandlerCall,
@@ -28,11 +34,13 @@ import {
   ActivityClient,
   ActivityWorkerRequest,
 } from "./clients/activity-client.js";
+import { DictionaryClient } from "./clients/dictionary-client.js";
 import { EventClient } from "./clients/event-client.js";
 import { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { TimerClient } from "./clients/timer-client.js";
 import { WorkflowClient } from "./clients/workflow-client.js";
 import { formatChildExecutionName, formatExecutionId } from "./execution.js";
+import { normalizeError } from "./result.js";
 import { computeScheduleDate } from "./schedule.js";
 import { createEvent } from "./workflow-events.js";
 import { WorkflowCall } from "./workflow-executor.js";
@@ -43,6 +51,7 @@ interface WorkflowCallExecutorProps {
   executionQueueClient: ExecutionQueueClient;
   eventClient: EventClient;
   activityClient: ActivityClient;
+  dictionaryClient: DictionaryClient;
 }
 
 /**
@@ -86,6 +95,13 @@ export class WorkflowCallExecutor {
     ) {
       // do nothing
       return undefined;
+    } else if (isDictionaryCall(call.call)) {
+      return this.executeDictionaryRequest(
+        executionId,
+        call.call,
+        call.seq,
+        baseTime
+      );
     } else {
       return assertNever(call.call, `unknown call type`);
     }
@@ -219,5 +235,79 @@ export class WorkflowCallExecutor {
       },
       baseTime
     );
+  }
+
+  private async executeDictionaryRequest(
+    executionId: string,
+    call: DictionaryCall,
+    seq: number,
+    baseTime: Date
+  ) {
+    try {
+      const dictionary = await this.props.dictionaryClient.getDictionary(
+        call.name
+      );
+      if (!dictionary) {
+        throw new Error(`Dictionary ${call.name} does not exist`);
+      }
+      const result = await invokeDictionaryOperation(
+        call.operation,
+        dictionary
+      );
+      await this.props.executionQueueClient.submitExecutionEvents(
+        executionId,
+        createEvent<DictionaryRequestSucceeded>(
+          {
+            type: WorkflowEventType.DictionaryRequestSucceeded,
+            name: call.name,
+            operation: call.operation.operation,
+            result,
+            seq,
+          },
+          baseTime
+        )
+      );
+    } catch (err) {
+      await this.props.executionQueueClient.submitExecutionEvents(
+        executionId,
+        createEvent<DictionaryRequestFailed>(
+          {
+            type: WorkflowEventType.DictionaryRequestFailed,
+            seq,
+            name: call.name,
+            operation: call.operation.operation,
+            ...normalizeError(err),
+          },
+          baseTime
+        )
+      );
+    }
+
+    return createEvent<DictionaryRequest>(
+      {
+        type: WorkflowEventType.DictionaryRequest,
+        name: call.name,
+        operation: call.operation,
+        seq,
+      },
+      baseTime
+    );
+
+    async function invokeDictionaryOperation(
+      operation: DictionaryOperation,
+      dictionary: Dictionary<any>
+    ) {
+      if (operation.operation === "get") {
+        return dictionary.get(operation.key);
+      } else if (operation.operation === "set") {
+        return dictionary.set(operation.key, operation.value);
+      } else if (operation.operation === "delete") {
+        return dictionary.delete(operation.key);
+      } else if (operation.operation === "list") {
+        return dictionary.list(operation.request);
+      } else if (operation.operation === "listKeys") {
+        return dictionary.listKeys(operation.request);
+      }
+    }
   }
 }

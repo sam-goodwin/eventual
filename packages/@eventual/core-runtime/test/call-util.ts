@@ -11,6 +11,8 @@ import {
   ChildWorkflowScheduled,
   ChildWorkflowSucceeded,
   createEventualCall,
+  DictionaryCall,
+  DictionaryOperation,
   EventsPublished,
   EventualCallKind,
   PublishEventsCall,
@@ -24,7 +26,7 @@ import {
   WorkflowTimedOut,
 } from "@eventual/core/internal";
 import { ulid } from "ulidx";
-import { WorkflowCall } from "../src/workflow-executor.js";
+import type { WorkflowCall } from "../src/workflow-executor.js";
 
 export function awaitTimerCall(
   schedule: Schedule,
@@ -104,6 +106,20 @@ export function activitySucceeded(result: any, seq: number): ActivitySucceeded {
     result,
     seq,
     timestamp: new Date(0).toISOString(),
+  };
+}
+
+export function dictionaryRequestCall(
+  name: string,
+  operation: DictionaryOperation,
+  seq: number
+): WorkflowCall<DictionaryCall> {
+  return {
+    seq,
+    call: createEventualCall(EventualCallKind.DictionaryCall, {
+      name,
+      operation,
+    }),
   };
 }
 

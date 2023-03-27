@@ -13,6 +13,7 @@ import {
   allCommands,
   asyncWorkflow,
   createAndDestroyWorkflow,
+  dictionaryWorkflow,
   eventDrivenWorkflow,
   failedWorkflow,
   heartbeatWorkflow,
@@ -114,6 +115,8 @@ eventualRuntimeTestHarness(
     });
 
     testCompletion("awsSdkCalls", createAndDestroyWorkflow, "done");
+
+    testCompletion("dict", dictionaryWorkflow, { n: 3 });
   },
   {
     name: "s3 persist failures",

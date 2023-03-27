@@ -17,6 +17,7 @@ import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
 import { CommandService } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal";
+import { EntityService } from "./entity-service";
 import { grant } from "./grant";
 import { LazyInterface } from "./proxy-construct";
 import { SchedulerService } from "./scheduler-service";
@@ -46,11 +47,12 @@ export type ActivityOverrides<Service> = {
 } & Partial<ServiceEntityProps<Service, "Activity", ActivityHandlerProps>>;
 
 export interface ActivitiesProps<Service> extends ServiceConstructProps {
-  readonly workflowService: LazyInterface<WorkflowService>;
-  readonly schedulerService: LazyInterface<SchedulerService>;
   readonly commandsService: LazyInterface<CommandService<Service>>;
-  readonly overrides?: ActivityOverrides<Service>;
+  readonly entityService: EntityService;
   readonly local: ServiceLocal | undefined;
+  readonly overrides?: ActivityOverrides<Service>;
+  readonly schedulerService: LazyInterface<SchedulerService>;
+  readonly workflowService: LazyInterface<WorkflowService>;
 }
 
 /**
@@ -242,6 +244,10 @@ export class ActivityService<Service = any> {
      * Access to service name in the activity worker for metrics logging
      */
     this.props.service.configureServiceName(func);
+    /**
+     * Dictionary operations
+     */
+    this.props.entityService.configureReadWriteEntityTable(func); 
   }
 
   private configureActivityFallbackHandler() {

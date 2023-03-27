@@ -9,7 +9,8 @@ import {
   Statistic,
   Unit,
 } from "aws-cdk-lib/aws-cloudwatch";
-import { IEventBus } from "aws-cdk-lib/aws-events/index.js";
+import { ITable } from "aws-cdk-lib/aws-dynamodb";
+import { IEventBus } from "aws-cdk-lib/aws-events";
 import {
   AccountRootPrincipal,
   Effect,
@@ -20,7 +21,7 @@ import {
   UnknownPrincipal,
 } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
-import { LogGroup } from "aws-cdk-lib/aws-logs/index.js";
+import { LogGroup } from "aws-cdk-lib/aws-logs";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
 import openapi from "openapi3-ts";
@@ -39,6 +40,7 @@ import {
   CorsOptions,
 } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal.js";
+import { EntityService } from "./entity-service.js";
 import { EventService } from "./event-service";
 import { grant } from "./grant";
 import { LazyInterface, lazyInterface } from "./proxy-construct";
@@ -116,6 +118,7 @@ export interface ServiceSystem<S> {
    * The subsystem for schedules and timers.
    */
   readonly schedulerService: SchedulerService;
+  readonly entityService: EntityService;
   /**
    * The {@link AppSec} inferred from the application code.
    */
@@ -148,6 +151,10 @@ export class Service<S = any> extends Construct {
    * Commands defined by the service.
    */
   public readonly commands: Commands<S>;
+  /**
+   *
+   */
+  public readonly entityTable: ITable;
   /**
    * API Gateway which serves the service commands and the system commands.
    */
@@ -228,6 +235,9 @@ export class Service<S = any> extends Construct {
       eventualServiceScope,
     };
 
+    const entityService = new EntityService(serviceConstructProps);
+    this.entityTable = entityService.table;
+
     this.eventService = new EventService(serviceConstructProps);
     this.bus = this.eventService.bus;
 
@@ -238,6 +248,7 @@ export class Service<S = any> extends Construct {
       commandsService: proxyCommandService,
       overrides: props.activities,
       local: this.local,
+      entityService,
     });
     proxyActivityService._bind(activityService);
     this.activities = activityService.activities;
@@ -247,6 +258,7 @@ export class Service<S = any> extends Construct {
       eventService: this.eventService,
       schedulerService: proxySchedulerService,
       overrides: props.system?.workflowService,
+      entityService,
       ...serviceConstructProps,
     });
     proxyWorkflowService._bind(workflowService);
@@ -266,6 +278,7 @@ export class Service<S = any> extends Construct {
       workflowService: workflowService,
       cors: props.cors,
       local: this.local,
+      entityService,
       ...serviceConstructProps,
     });
     proxyCommandService._bind(this.commandService);
@@ -278,6 +291,7 @@ export class Service<S = any> extends Construct {
       eventService: this.eventService,
       subscriptions: props.subscriptions,
       local: this.local,
+      entityService,
       ...serviceConstructProps,
     });
 
@@ -328,9 +342,10 @@ export class Service<S = any> extends Construct {
 
     serviceDataSSM.grantRead(accessRole);
     this.system = {
+      accessRole: accessRole,
       activityService,
       build,
-      accessRole: accessRole,
+      entityService,
       schedulerService: scheduler,
       systemCommandsHandler: this.commandService.systemCommandsHandler,
       serviceMetadataSSM: serviceDataSSM,

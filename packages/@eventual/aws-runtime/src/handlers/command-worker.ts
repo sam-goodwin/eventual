@@ -1,7 +1,11 @@
 import "@eventual/injected/entry";
 
 import { createCommandWorker } from "@eventual/core-runtime";
-import { createEventClient, createServiceClient } from "../create.js";
+import {
+  createDictionaryClient,
+  createEventClient,
+  createServiceClient,
+} from "../create.js";
 import { createApiGCommandAdaptor } from "./apig-command-adapter.js";
 
 /**
@@ -11,7 +15,9 @@ import { createApiGCommandAdaptor } from "./apig-command-adapter.js";
  * then handles the request.
  */
 export default createApiGCommandAdaptor({
-  commandWorker: createCommandWorker({}),
+  commandWorker: createCommandWorker({
+    dictionaryClient: createDictionaryClient(),
+  }),
   // pulls the service url from the request instead of env variables to reduce the circular dependency between commands and the gateway.
   serviceClientBuilder: (serviceUrl) =>
     createServiceClient({ serviceUrl, eventClient: createEventClient() }),

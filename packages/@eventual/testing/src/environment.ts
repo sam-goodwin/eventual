@@ -25,6 +25,7 @@ import {
   LocalEnvConnector,
   LocalEvent,
   RuntimeServiceClient,
+  TimeController,
   TimerRequest,
   WorkflowTask,
 } from "@eventual/core-runtime";
@@ -38,7 +39,6 @@ import {
   MockActivity,
 } from "./providers/activity-provider.js";
 import { TestSubscriptionProvider } from "./providers/subscription-provider.js";
-import { TimeController } from "./time-controller.js";
 
 export interface TestEnvironmentProps {
   /**

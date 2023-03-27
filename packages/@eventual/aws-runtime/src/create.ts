@@ -9,6 +9,7 @@ import { Client, Pluggable } from "@aws-sdk/types";
 import { LogLevel } from "@eventual/core";
 import {
   ActivityStore,
+  DictionaryClient,
   ExecutionQueueClient,
   ExecutionStore,
   GlobalActivityProvider,
@@ -31,6 +32,7 @@ import { AWSExecutionHistoryStateStore } from "./stores/execution-history-state-
 import { AWSExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { AWSExecutionStore } from "./stores/execution-store.js";
 import { AWSHttpEventualClient } from "@eventual/aws-client";
+import { AWSDictionaryStore } from "./stores/dictionary-store.js";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -210,6 +212,18 @@ export const createExecutionHistoryStateStore = /* @__PURE__ */ memoize(
       s3: s3(),
       executionHistoryBucket:
         executionHistoryBucket ?? env.executionHistoryBucket,
+    })
+);
+
+export const createDictionaryClient = memoize(
+  () => new DictionaryClient(createDictionaryStore())
+);
+
+export const createDictionaryStore = memoize(
+  () =>
+    new AWSDictionaryStore({
+      dynamo: dynamo(),
+      entityTableName: env.entityTableName,
     })
 );
 
