@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.29.0 (2023-03-27)
+
+### Features
+
+- entity service with dictionary api ([#322](https://github.com/functionless/eventual/issues/322)) ([d6ebffc](https://github.com/functionless/eventual/commit/d6ebffc4e97b539a73a1dd0041ada3391fda3b7e))
+
 ## 0.28.3 (2023-03-25)
 
 **Note:** Version bump only for package @eventual/aws-runtime
