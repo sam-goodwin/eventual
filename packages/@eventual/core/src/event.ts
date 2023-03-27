@@ -2,7 +2,7 @@ import type { z } from "zod";
 import { createPublishEventsCall } from "./internal/calls/publish-events-call.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
 import { events, getServiceClient, subscriptions } from "./internal/global.js";
-import { isSourceLocation } from "./internal/service-spec.js";
+import { EventSpec, isSourceLocation } from "./internal/service-spec.js";
 import type { Subscription, SubscriptionRuntimeProps } from "./subscription.js";
 
 /**
@@ -43,15 +43,9 @@ export interface EventEnvelope<E extends EventPayload = EventPayload> {
  * that belongs within the service. An {@link Event} has a unique {@link name},
  * may be {@link publishEvents}ed and {@link onEvent}d to.
  */
-export interface Event<E extends EventPayload = EventPayload> {
+export interface Event<E extends EventPayload = EventPayload>
+  extends Omit<EventSpec, "schema"> {
   kind: "Event";
-  /**
-   * The Event's globally unique name.
-   */
-  readonly name: string;
-  /**
-   * An optional Schema of the Event.
-   */
   schema?: z.Schema<E>;
   /**
    * Subscribe to this event. The {@link handler} will be invoked every

@@ -159,7 +159,7 @@ export class AWSDictionaryStore implements DictionaryStore {
       entries: result.records.map((r) => ({
         entity: JSON.parse(r.value.S),
         version: Number(r.version.N),
-        key: DictionaryEntityRecord.praseKeyFromSortKey(r.sk.S),
+        key: DictionaryEntityRecord.parseKeyFromSortKey(r.sk.S),
       })),
     };
   }
@@ -173,7 +173,7 @@ export class AWSDictionaryStore implements DictionaryStore {
     return {
       nextToken: result.nextToken,
       keys: result.records.map((r) =>
-        DictionaryEntityRecord.praseKeyFromSortKey(r.sk.S)
+        DictionaryEntityRecord.parseKeyFromSortKey(r.sk.S)
       ),
     };
   }
@@ -225,7 +225,10 @@ export const DictionaryEntityRecord = {
   sortKey(key: string) {
     return `${this.SORT_KEY_PREFIX}${key}`;
   },
-  praseKeyFromSortKey(sortKey: string) {
+  parseKeyFromSortKey(sortKey: string) {
     return sortKey.slice(1);
+  },
+  parseNameFromPartitionKey(sortKey: string) {
+    return sortKey.slice(this.PARTITION_KEY_PREFIX.length);
   },
 };

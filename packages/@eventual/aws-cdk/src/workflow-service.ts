@@ -1,7 +1,7 @@
 import { ENV_NAMES, ExecutionRecord } from "@eventual/aws-runtime";
 import { LogLevel } from "@eventual/core";
 import { ExecutionQueueEventEnvelope } from "@eventual/core-runtime";
-import { CfnResource, RemovalPolicy } from "aws-cdk-lib";
+import { RemovalPolicy } from "aws-cdk-lib";
 import {
   AttributeType,
   BillingMode,
@@ -10,7 +10,7 @@ import {
   StreamViewType,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
-import { IGrantable, IRole, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
+import { IGrantable } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
@@ -23,6 +23,7 @@ import {
 } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import { ActivityService } from "./activity-service";
+import { EventBridgePipe, PipeSourceParameters } from "./constructs/event-bridge-pipe";
 import { EntityService } from "./entity-service";
 import { EventService } from "./event-service";
 import { grant } from "./grant";
@@ -68,7 +69,7 @@ export interface WorkflowServiceOverrides {
 }
 
 interface PipeToWorkflowQueueProps {
-  grant: (grantable: IRole) => void;
+  grant: (grantable: IGrantable) => void;
   /**
    * path to the execution id $.path.to.id ex: $.dynamodb.NewImage.id.S
    */
@@ -84,10 +85,7 @@ interface PipeToWorkflowQueueProps {
   /**
    * Source Properties given to the pipe
    */
-  sourceProps: {
-    FilterCriteria?: { Filters: { Pattern: string }[] };
-    [key: string]: any;
-  };
+  sourceProps: PipeSourceParameters;
 }
 
 /**
@@ -241,30 +239,20 @@ export class WorkflowService {
     id: string,
     props: PipeToWorkflowQueueProps
   ) {
-    const container = new Construct(scope, id);
-
-    const pipeRole = new Role(container, `Role`, {
-      assumedBy: new ServicePrincipal("pipes"),
-    });
-
-    this.queue.grantSendMessages(pipeRole);
-    props.grant(pipeRole);
-
-    new CfnResource(container, "Pipe", {
-      type: "AWS::Pipes::Pipe",
-      properties: {
-        RoleArn: pipeRole.roleArn,
-        Source: props.source,
-        SourceParameters: props.sourceProps,
-        Target: this.queue.queueArn,
-        TargetParameters: {
-          SqsQueueParameters: {
-            MessageGroupId: props.executionIdPath,
-          },
-          InputTemplate: `{"task": { "events": [${props.event}], "executionId": <${props.executionIdPath}> } }`,
+    const pipe = new EventBridgePipe(scope, id, {
+      source: props.source,
+      sourceParameters: props.sourceProps,
+      target: this.queue.queueArn,
+      targetParameters: {
+        SqsQueueParameters: {
+          MessageGroupId: props.executionIdPath,
         },
+        InputTemplate: `{"task": { "events": [${props.event}], "executionId": <${props.executionIdPath}> } }`,
       },
     });
+
+    this.queue.grantSendMessages(pipe);
+    props.grant(pipe);
   }
 
   /**

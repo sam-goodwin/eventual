@@ -1,8 +1,14 @@
 import { z } from "zod";
+import { createDictionaryCall } from "./internal/calls/dictionary-call.js";
 import { getDictionaryHook } from "./internal/dictionary-hook.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
 import { dictionaries } from "./internal/global.js";
-import { createDictionaryCall } from "./internal/index.js";
+import {
+  DictionarySpec,
+  DictionaryStreamOperation,
+  DictionaryStreamOptions,
+  DictionaryStreamSpec,
+} from "./internal/service-spec.js";
 
 export interface CompositeKey {
   namespace: string;
@@ -68,9 +74,29 @@ export interface DictionarySetOptions extends DictionaryConsistencyOptions {
   incrementVersion?: boolean;
 }
 
-export interface Dictionary<Entity> {
+export interface DictionaryStreamHandler<Entity> {
+  /**
+   * Provides the keys, new value\
+   */
+  (
+    namespace: string | undefined,
+    key: string,
+    newValue: Entity,
+    operation: DictionaryStreamOperation,
+    oldValue?: Entity
+  ): Promise<void | false> | void | false;
+}
+
+export interface DictionaryStream<Entity> extends DictionaryStreamSpec {
+  kind: "DictionaryStream";
+  handler: DictionaryStreamHandler<Entity>;
+}
+
+export interface Dictionary<Entity>   extends Omit<DictionarySpec, "schema" | "streams"> {
+  kind: "Dictionary";
   name: string;
   schema?: z.Schema<Entity>;
+  streams: DictionaryStream<Entity>[];
   /**
    * Get a value.
    * If your values use composite keys, the namespace must be provided.
@@ -117,6 +143,15 @@ export interface Dictionary<Entity> {
    * If namespace is not provided, only values which do not use composite keys will be returned.
    */
   listKeys(request: DictionaryListRequest): Promise<DictionaryListKeysResult>;
+  stream(
+    name: string,
+    options: DictionaryStreamOptions,
+    handler: DictionaryStreamHandler<Entity>
+  ): DictionaryStream<Entity>;
+  stream(
+    name: string,
+    handler: DictionaryStreamHandler<Entity>
+  ): DictionaryStream<Entity>;
 }
 
 export function dictionary<Entity>(
@@ -127,9 +162,13 @@ export function dictionary<Entity>(
     throw new Error(`Dictionary ${name} already exists`);
   }
 
+  const streams: DictionaryStream<Entity>[] = [];
+
   const dictionary: Dictionary<Entity> = {
+    kind: "Dictionary",
     name,
     schema,
+    streams,
     get: async (key: string | CompositeKey) => {
       if (isOrchestratorWorker()) {
         return createDictionaryCall(name, { operation: "get", key });
@@ -189,6 +228,27 @@ export function dictionary<Entity>(
         return (await getDictionary()).listKeys(request);
       }
     },
+    stream: (
+      ...args:
+        | [name: string, handler: DictionaryStreamHandler<Entity>]
+        | [
+            name: string,
+            options: DictionaryStreamOptions,
+            handler: DictionaryStreamHandler<Entity>
+          ]
+    ) => {
+      const [streamName, options, handler] =
+        args.length === 2 ? [args[0], , args[1]] : args;
+      const dictionaryStream: DictionaryStream<Entity> = {
+        kind: "DictionaryStream",
+        handler,
+        name: streamName,
+        dictionaryName: name,
+        options,
+      };
+      streams.push(dictionaryStream);
+      return dictionaryStream;
+    },
   };
 
   dictionaries().set(name, dictionary);
@@ -203,4 +263,26 @@ export function dictionary<Entity>(
     }
     return dictionary;
   }
+}
+
+export function dictionaryStream<Entity>(
+  ...args:
+    | [
+        name: string,
+        dictionary: Dictionary<Entity>,
+        handler: DictionaryStreamHandler<Entity>
+      ]
+    | [
+        name: string,
+        dictionary: Dictionary<Entity>,
+        options: DictionaryStreamOptions,
+        handler: DictionaryStreamHandler<Entity>
+      ]
+) {
+  const [name, dictionary, options, handler] =
+    args.length === 3 ? [args[0], args[1], , args[2]] : args;
+
+  return options
+    ? dictionary.stream(name, options, handler)
+    : dictionary.stream(name, handler);
 }

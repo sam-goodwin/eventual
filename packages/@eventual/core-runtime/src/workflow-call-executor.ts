@@ -1,4 +1,4 @@
-import { Dictionary, ExecutionID, Workflow } from "@eventual/core";
+import { ExecutionID, Workflow } from "@eventual/core";
 import {
   ActivityCall,
   ActivityScheduled,
@@ -7,6 +7,7 @@ import {
   ChildWorkflowCall,
   ChildWorkflowScheduled,
   DictionaryCall,
+  DictionaryMethods,
   DictionaryOperation,
   DictionaryRequest,
   DictionaryRequestFailed,
@@ -28,11 +29,11 @@ import {
   SignalSent,
   TimerCompleted,
   TimerScheduled,
-  WorkflowEventType,
+  WorkflowEventType
 } from "@eventual/core/internal";
 import {
   ActivityClient,
-  ActivityWorkerRequest,
+  ActivityWorkerRequest
 } from "./clients/activity-client.js";
 import { DictionaryClient } from "./clients/dictionary-client.js";
 import { EventClient } from "./clients/event-client.js";
@@ -295,7 +296,7 @@ export class WorkflowCallExecutor {
 
     async function invokeDictionaryOperation(
       operation: DictionaryOperation,
-      dictionary: Dictionary<any>
+      dictionary: DictionaryMethods<any>
     ) {
       if (operation.operation === "get") {
         return dictionary.get(operation.key);

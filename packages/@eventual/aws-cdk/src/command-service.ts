@@ -256,7 +256,7 @@ export class CommandService<Service = any> {
     }
 
     function createAPIPaths(
-      command: CommandSpec,
+      command: CommandSpec<any, any, any, any>,
       iamAuth?: boolean,
       systemCommand?: boolean
     ): openapi.PathsObject {
@@ -524,7 +524,7 @@ interface XAmazonApigatewayAnyMethod {
   [XAmazonApiGatewayIntegration]: XAmazonApiGatewayIntegration;
 }
 
-function commandNamespaceName(command: CommandSpec) {
+function commandNamespaceName(command: CommandSpec<any, any, any, any>) {
   let sanitizedName = sanitizeFunctionName(command.name);
   if (sanitizedName !== command.name) {
     // in this case, we're working with the low-level http api

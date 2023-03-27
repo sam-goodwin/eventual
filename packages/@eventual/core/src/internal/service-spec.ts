@@ -1,13 +1,13 @@
 import type openapi from "openapi3-ts";
-import type { z } from "zod";
-import { ActivitySpec } from "../activity.js";
-import type { Event } from "../event.js";
-import { AnyCommand } from "../http/command.js";
+import type { FunctionRuntimeProps } from "../function-props.js";
+import type { HttpMethod } from "../http-method.js";
+import type { RestParams } from "../http/command.js";
 import type { DurationSchedule } from "../schedule.js";
 import type {
   SubscriptionFilter,
   SubscriptionRuntimeProps,
 } from "../subscription.js";
+import type { ActivitySpec } from "./activity.js";
 
 /**
  * Specification for an Eventual application
@@ -18,7 +18,7 @@ export interface ServiceSpec {
    */
   workflows: WorkflowSpec[];
   activities: ActivitySpec[];
-  commands: CommandSpec[];
+  commands: CommandSpec<any, any, any, any>[];
   /**
    * Open API 3 schema definitions for all known Events in this Service.
    */
@@ -27,6 +27,9 @@ export interface ServiceSpec {
    * Individually bundled {@link EventFunction}s containing a single `subscription` event handler.
    */
   subscriptions: SubscriptionSpec[];
+  entities: {
+    dictionaries: DictionarySpec[];
+  };
 }
 
 export interface FunctionSpec {
@@ -55,29 +58,42 @@ export interface SubscriptionSpec<Name extends string = string> {
   sourceLocation?: SourceLocation;
 }
 
-export type EventSpec = Omit<ToSpec<Event>, "kind">;
+export interface EventSpec {
+  /**
+   * The Event's globally unique name.
+   */
+  readonly name: string;
+  /**
+   * An optional Schema of the Event.
+   */
+  schema?: openapi.SchemaObject;
+}
 
-export type CommandSpec = Omit<ToSpec<AnyCommand>, "kind">;
-
-type ToSpec<T> = T extends z.ZodType
-  ? openapi.SchemaObject
-  : T extends (infer I)[]
-  ? ToSpec<I>[]
-  : T extends Record<string, any>
-  ? {
-      [prop in keyof DropFunctions<T>]: ToSpec<T[prop]>;
-    }
-  : T extends Event
-  ? {
-      name: T["name"];
-    }
-  : T;
-
-type DropFunctions<T> = Pick<T, KeysNotOfType<T, (...args: any[]) => any>>;
-
-type KeysNotOfType<T, U> = {
-  [k in keyof T]: T[k] extends U ? never : k;
-}[keyof T];
+export interface CommandSpec<
+  Name extends string = string,
+  Input = undefined,
+  Path extends string | undefined = undefined,
+  Method extends HttpMethod | undefined = undefined
+> extends FunctionRuntimeProps {
+  name: Name;
+  input?: openapi.SchemaObject;
+  output?: openapi.SchemaObject;
+  path?: Path;
+  method?: Method;
+  params?: RestParams<Input, Path, Method>;
+  sourceLocation?: SourceLocation;
+  passThrough?: boolean;
+  /**
+   * Used to isolate rpc paths.
+   *
+   * /rpc[/namespace]/command
+   */
+  namespace?: string;
+  /**
+   * @default true
+   */
+  validate?: boolean;
+}
 
 export function isSourceLocation(a: any): a is SourceLocation {
   return (
@@ -99,4 +115,38 @@ export interface Schemas {
 
 export interface WorkflowSpec {
   name: string;
+}
+
+export interface DictionarySpec {
+  name: string;
+  /**
+   * An Optional schema for the entity within a dictionary.
+   */
+  schema?: openapi.SchemaObject;
+  /**
+   * Streams
+   */
+  streams: DictionaryStreamSpec[];
+}
+
+export type DictionaryStreamOperation = "INSERT" | "MODIFY" | "REMOVE";
+
+export interface DictionaryStreamOptions extends FunctionRuntimeProps {
+  /**
+   * A list of operations to be send to the stream.
+   *
+   * @default All Operations
+   */
+  operations?: DictionaryStreamOperation[];
+  /**
+   * When true, the old value will be sent with the new value.
+   */
+  includeOld?: boolean;
+}
+
+export interface DictionaryStreamSpec {
+  name: string;
+  dictionaryName: string;
+  options?: DictionaryStreamOptions;
+  sourceLocation?: SourceLocation;
 }
