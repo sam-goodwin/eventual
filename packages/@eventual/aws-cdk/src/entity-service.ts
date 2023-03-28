@@ -1,4 +1,4 @@
-import { ENV_NAMES } from "@eventual/aws-runtime";
+import { ENV_NAMES, DictionaryEntityRecord } from "@eventual/aws-runtime";
 import { DictionaryStreamFunction } from "@eventual/core-runtime";
 import { Duration, RemovalPolicy } from "aws-cdk-lib";
 import {
@@ -24,7 +24,7 @@ export class EntityService {
   constructor(props: EntityServiceProps) {
     const entitiesConstruct = new Construct(props.serviceScope, "Entities");
 
-    const streams = props.build.entities.dictionaries.flatMap((d) => d.streams);
+    const streams = props.build.entities.dictionaryStreams;
 
     this.table = new Table(entitiesConstruct, "Table", {
       partitionKey: {
@@ -139,21 +139,28 @@ export class DictionaryStream extends Construct implements EventualResource {
                           ? // if no namespaces are given, match the name only, aka, the prefix of the pk
                             [
                               {
-                                prefix: `DictEntry$${props.stream.spec.dictionaryName}$`,
+                                prefix: DictionaryEntityRecord.key(
+                                  props.stream.spec.dictionaryName
+                                ),
                               },
                             ]
                           : [
                               // for each namespace given, match the complete name.
                               ...(namespaces
-                                ? namespaces.map(
-                                    (n) =>
-                                      `DictEntry$${props.stream.spec.dictionaryName}$${n}`
+                                ? namespaces.map((n) =>
+                                    DictionaryEntityRecord.key(
+                                      props.stream.spec.dictionaryName,
+                                      n
+                                    )
                                   )
                                 : []),
                               // for each namespace prefix given, build a prefix statement for each one.
                               ...(namespacePrefixes
                                 ? namespacePrefixes.map((n) => ({
-                                    prefix: `DictEntry$${props.stream.spec.dictionaryName}$${n}`,
+                                    prefix: DictionaryEntityRecord.key(
+                                      props.stream.spec.dictionaryName,
+                                      n
+                                    ),
                                   }))
                                 : []),
                             ],
@@ -170,6 +177,17 @@ export class DictionaryStream extends Construct implements EventualResource {
         LambdaFunctionParameters: {
           InvocationType: "REQUEST_RESPONSE",
         },
+        InputTemplate: `{
+          "streamName": "${props.stream.spec.name}",
+          "pk": <$.dynamodb.Keys.pk.S>,
+          "sk": <$.dynamodb.Keys.sk.S>,
+          "newValue": <$.dynamodb.NewImage.value.S>,
+          "newVersion": <$.dynamodb.NewImage.version.N>,
+          "oldValue": <$.dynamodb.OldImage.value.S>,
+          "oldVersion": <$.dynamodb.OldImage.version.N>,
+          "operation": <$.eventName>,
+          "eventID": <$.eventID>
+        }`,
       },
     });
     this.handler.grantInvoke(pipe);

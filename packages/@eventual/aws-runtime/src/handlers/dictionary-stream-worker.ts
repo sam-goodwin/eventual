@@ -3,68 +3,64 @@ import "@eventual/injected/entry";
 
 import { promiseAllSettledPartitioned } from "@eventual/core-runtime";
 import {
-  dictionaries,
+  DictionaryStreamOperation,
+  dictionaryStreams,
   registerDictionaryHook,
   registerServiceClient,
 } from "@eventual/core/internal";
 import { DynamoDBBatchResponse, DynamoDBRecord } from "aws-lambda";
-import { DictionaryEntityRecord } from "../stores/dictionary-store.js";
 import { createDictionaryClient, createServiceClient } from "../create.js";
+import { DictionaryEntityRecord } from "../stores/dictionary-store.js";
 
 const eventualClient = createServiceClient({});
 const dictionaryClient = createDictionaryClient();
 
-export default async (
-  records: DynamoDBRecord[]
-): Promise<DynamoDBBatchResponse> => {
-  const dicts = dictionaries();
+export interface AWSDictionaryStreamItem {
+  streamName: string;
+  pk: string;
+  sk: string;
+  newValue: string;
+  oldValue?: string;
+  newVersion: number;
+  oldVersion?: number;
+  operation: DynamoDBRecord["eventName"];
+  eventID: string;
+}
 
+export default async (
+  records: AWSDictionaryStreamItem[]
+): Promise<DynamoDBBatchResponse> => {
   registerServiceClient(eventualClient);
   registerDictionaryHook(dictionaryClient);
+
+  console.log("records", JSON.stringify(records, undefined, 4));
 
   const results = await promiseAllSettledPartitioned(
     records,
     async (record) => {
-      const item = record.dynamodb!.NewImage! as DictionaryEntityRecord;
-      const oldItem = record.dynamodb!.OldImage as DictionaryEntityRecord;
-
       const { name, namespace } =
-        DictionaryEntityRecord.parseNameAndNamespaceFromPartitionKey(
-          item["pk"]!.S!
-        );
-      const key = DictionaryEntityRecord.parseKeyFromSortKey(item["sk"]!.S!);
+        DictionaryEntityRecord.parseNameAndNamespaceFromPartitionKey(record.pk);
+      const key = DictionaryEntityRecord.parseKeyFromSortKey(record.sk);
 
-      const dictionary = dicts.get(name);
+      const operation = record.operation;
+      const streamHandler = dictionaryStreams().get(record.streamName);
 
-      if (dictionary && record.eventName) {
-        const operation = record.eventName;
-        const streams = dictionary?.streams.filter(
-          (s) =>
-            !s.options?.operations || s.options.operations.includes(operation)
-        );
+      if (operation) {
+        if (!streamHandler) {
+          throw new Error(`Stream handler ${record.streamName} does not exist`);
+        }
 
-        const dictionaryResults = await Promise.allSettled(
-          streams.map(async (s) => {
-            const newValue = JSON.parse(item["value"].S);
-            const oldValue =
-              s.options?.includeOld && oldItem
-                ? JSON.parse(oldItem["value"].S)
-                : undefined;
-
-            return await s.handler(
-              namespace,
-              key,
-              newValue,
-              operation,
-              oldValue
-            );
-          })
-        );
-
-        // consider a result of false or an error to be a retry-able failure.
-        return dictionaryResults.every(
-          (r) => r.status === "fulfilled" && r.value !== false
-        );
+        return await streamHandler.handler({
+          dictionaryName: name,
+          namespace,
+          key,
+          newValue: JSON.parse(record.newValue),
+          newVersion: Number(record.newVersion),
+          operation: operation.toLocaleLowerCase() as DictionaryStreamOperation,
+          streamName: record.streamName,
+          oldValue: record.oldValue ? JSON.parse(record.oldValue) : undefined,
+          oldVersion: record.oldVersion ? Number(record.oldVersion) : undefined,
+        });
       } else {
         return true;
       }
@@ -74,11 +70,11 @@ export default async (
   return {
     batchItemFailures: [
       // consider any errors to be failure
-      ...results.rejected.map((r) => ({ itemIdentifier: r[0].eventID! })),
+      ...results.rejected.map((r) => ({ itemIdentifier: r[0].eventID })),
       // if a record returns false, consider it a failure
       ...results.fulfilled
         .filter((f) => f[1] === false)
-        .map((f) => ({ itemIdentifier: f[0].eventID! })),
+        .map((f) => ({ itemIdentifier: f[0].eventID })),
     ],
   };
 };

@@ -314,6 +314,10 @@ export function activity<Name extends string, Input = any, Output = any>(
     }
   }) as Activity<Name, Input, Output>;
 
+  if (activities()[name]) {
+    throw new Error(`activity with name '${name}' already exists`);
+  }
+
   Object.defineProperty(func, "name", { value: name, writable: false });
   func.sendActivitySuccess = async function (request) {
     return getServiceClient().sendActivitySuccess(request);

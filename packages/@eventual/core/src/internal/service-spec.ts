@@ -29,6 +29,7 @@ export interface ServiceSpec {
   subscriptions: SubscriptionSpec[];
   entities: {
     dictionaries: DictionarySpec[];
+    dictionaryStreams: DictionaryStreamSpec[];
   };
 }
 
@@ -123,13 +124,9 @@ export interface DictionarySpec {
    * An Optional schema for the entity within a dictionary.
    */
   schema?: openapi.SchemaObject;
-  /**
-   * Streams
-   */
-  streams: DictionaryStreamSpec[];
 }
 
-export type DictionaryStreamOperation = "INSERT" | "MODIFY" | "REMOVE";
+export type DictionaryStreamOperation = "insert" | "modify" | "remove";
 
 export interface DictionaryStreamOptions extends FunctionRuntimeProps {
   /**

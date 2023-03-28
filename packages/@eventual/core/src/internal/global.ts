@@ -1,6 +1,6 @@
 import type { AsyncLocalStorage } from "async_hooks";
 import type { Activity } from "../activity.js";
-import { Dictionary } from "../dictionary.js";
+import { Dictionary, DictionaryStream } from "../dictionary.js";
 import type { Event } from "../event.js";
 import type { AnyCommand } from "../http/command.js";
 import type { EventualServiceClient } from "../service-client.js";
@@ -27,9 +27,13 @@ declare global {
      */
     workflows?: Map<string, Workflow>;
     /**
-     *
+     * A simple key value store that work efficiently within eventual.
      */
     dictionaries?: Map<string, Dictionary<any>>;
+    /**
+     * Streams changes from a dictionary.
+     */
+    dictionaryStreams?: Map<string, DictionaryStream<any>>;
     /**
      * A global variable for storing the WorkflowClient
      * this is initialized by Eventual's harness lambda functions
@@ -67,6 +71,12 @@ export const subscriptions = (): Subscription[] =>
 
 export const dictionaries = (): Map<string, Dictionary<any>> =>
   (globalThis._eventual.dictionaries ??= new Map<string, Dictionary<any>>());
+
+export const dictionaryStreams = (): Map<string, DictionaryStream<any>> =>
+  (globalThis._eventual.dictionaryStreams ??= new Map<
+    string,
+    DictionaryStream<any>
+  >());
 
 export function clearEventHandlers() {
   globalThis._eventual.subscriptions = [];

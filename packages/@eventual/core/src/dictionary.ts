@@ -2,12 +2,11 @@ import { z } from "zod";
 import { createDictionaryCall } from "./internal/calls/dictionary-call.js";
 import { getDictionaryHook } from "./internal/dictionary-hook.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
-import { dictionaries } from "./internal/global.js";
+import { dictionaries, dictionaryStreams } from "./internal/global.js";
 import {
   DictionarySpec,
-  DictionaryStreamOperation,
   DictionaryStreamOptions,
-  DictionaryStreamSpec,
+  DictionaryStreamSpec
 } from "./internal/service-spec.js";
 
 export interface CompositeKey {
@@ -78,13 +77,38 @@ export interface DictionaryStreamHandler<Entity> {
   /**
    * Provides the keys, new value\
    */
-  (
-    namespace: string | undefined,
-    key: string,
-    newValue: Entity,
-    operation: DictionaryStreamOperation,
-    oldValue?: Entity
-  ): Promise<void | false> | void | false;
+  (item: DictionaryStreamItem<Entity>): Promise<void | false> | void | false;
+}
+
+export type DictionaryStreamItem<Entity> = (
+  | DictionaryStreamInsertItem<Entity>
+  | DictionaryStreamModifyItem<Entity>
+  | DictionaryStreamRemoveItem<Entity>
+) & {
+  streamName: string;
+  dictionaryName: string;
+  namespace?: string;
+  key: string;
+};
+
+export interface DictionaryStreamInsertItem<Entity> {
+  newValue: Entity;
+  newVersion: number;
+  operation: "insert";
+}
+
+export interface DictionaryStreamModifyItem<Entity> {
+  operation: "modify";
+  newValue: Entity;
+  newVersion: number;
+  oldValue?: Entity;
+  oldVersion?: number;
+}
+
+export interface DictionaryStreamRemoveItem<Entity> {
+  operation: "remove";
+  oldValue?: Entity;
+  oldVersion?: number;
 }
 
 export interface DictionaryStream<Entity> extends DictionaryStreamSpec {
@@ -97,7 +121,6 @@ export interface Dictionary<Entity>
   kind: "Dictionary";
   name: string;
   schema?: z.Schema<Entity>;
-  streams: DictionaryStream<Entity>[];
   /**
    * Get a value.
    * If your values use composite keys, the namespace must be provided.
@@ -160,7 +183,7 @@ export function dictionary<Entity>(
   schema?: z.Schema<Entity>
 ): Dictionary<Entity> {
   if (dictionaries().has(name)) {
-    throw new Error(`Dictionary ${name} already exists`);
+    throw new Error(`dictionary with name '${name}' already exists`);
   }
 
   const streams: DictionaryStream<Entity>[] = [];
@@ -169,7 +192,6 @@ export function dictionary<Entity>(
     kind: "Dictionary",
     name,
     schema,
-    streams,
     get: async (key: string | CompositeKey) => {
       if (isOrchestratorWorker()) {
         return createDictionaryCall(name, { operation: "get", key });
@@ -283,7 +305,19 @@ export function dictionaryStream<Entity>(
   const [name, dictionary, options, handler] =
     args.length === 3 ? [args[0], args[1], , args[2]] : args;
 
-  return options
-    ? dictionary.stream(name, options, handler)
-    : dictionary.stream(name, handler);
+  if (dictionaryStreams().has(name)) {
+    throw new Error(`dictionary stream with name '${name}' already exists`);
+  }
+
+  const dictionaryStream: DictionaryStream<Entity> = {
+    kind: "DictionaryStream",
+    handler,
+    name,
+    dictionaryName: dictionary.name,
+    options,
+  };
+
+  dictionaryStreams().set(name, dictionaryStream);
+
+  return dictionaryStream;
 }

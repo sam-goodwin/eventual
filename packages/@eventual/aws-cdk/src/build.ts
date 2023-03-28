@@ -95,11 +95,13 @@ export async function buildService(request: BuildAWSRuntimeProps) {
   ]);
 
   // then, bundle each of the commands and subscriptions
-  const [commands, subscriptions, activities] = await Promise.all([
-    bundleCommands(serviceSpec.commands),
-    bundleSubscriptions(serviceSpec.subscriptions),
-    bundleActivities(serviceSpec.activities),
-  ] as const);
+  const [commands, subscriptions, activities, dictionaryStreams] =
+    await Promise.all([
+      bundleCommands(serviceSpec.commands),
+      bundleSubscriptions(serviceSpec.subscriptions),
+      bundleActivities(serviceSpec.activities),
+      bundleDictionaryStreams(serviceSpec.entities.dictionaryStreams),
+    ] as const);
 
   const manifest: BuildManifest = {
     serviceName: request.serviceName,
@@ -115,12 +117,8 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       },
     },
     entities: {
-      dictionaries: await Promise.all(
-        serviceSpec.entities.dictionaries.map(async (d) => ({
-          ...d,
-          streams: await bundleDictionaryStreams(d.streams),
-        }))
-      ),
+      dictionaries: serviceSpec.entities.dictionaries,
+      dictionaryStreams,
     },
     system: {
       activityService: {

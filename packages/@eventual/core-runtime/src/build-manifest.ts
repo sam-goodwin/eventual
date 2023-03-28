@@ -45,9 +45,8 @@ export interface BuildManifest {
 }
 
 interface Entities {
-  dictionaries: (Omit<DictionarySpec, "streams"> & {
-    streams: DictionaryStreamFunction[];
-  })[];
+  dictionaries: DictionarySpec[];
+  dictionaryStreams: DictionaryStreamFunction[];
 }
 
 export interface ApiRoutes {

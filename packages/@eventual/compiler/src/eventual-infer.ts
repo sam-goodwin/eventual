@@ -9,7 +9,7 @@ import {
   activities,
   commands,
   dictionaries,
-  DictionarySpec,
+  dictionaryStreams,
   events,
   ServiceSpec,
   subscriptions,
@@ -100,19 +100,16 @@ export async function infer(
       namespace: command.namespace,
     })),
     entities: {
-      dictionaries: [...dictionaries().values()].map(
-        (d) =>
-          ({
-            name: d.name,
-            schema: d.schema ? generateSchema(d.schema) : undefined,
-            streams: d.streams.map((s) => ({
-              name: s.name,
-              dictionaryName: s.dictionaryName,
-              options: s.options,
-              sourceLocation: s.sourceLocation,
-            })),
-          } satisfies DictionarySpec)
-      ),
+      dictionaries: [...dictionaries().values()].map((d) => ({
+        name: d.name,
+        schema: d.schema ? generateSchema(d.schema) : undefined,
+      })),
+      dictionaryStreams: [...dictionaryStreams().values()].map((s) => ({
+        name: s.name,
+        dictionaryName: s.dictionaryName,
+        options: s.options,
+        sourceLocation: s.sourceLocation,
+      })),
     },
   };
 
