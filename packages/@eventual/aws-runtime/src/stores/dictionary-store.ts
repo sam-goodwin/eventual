@@ -228,7 +228,13 @@ export const DictionaryEntityRecord = {
   parseKeyFromSortKey(sortKey: string) {
     return sortKey.slice(1);
   },
-  parseNameFromPartitionKey(sortKey: string) {
-    return sortKey.slice(this.PARTITION_KEY_PREFIX.length);
+  parseNameAndNamespaceFromPartitionKey(sortKey: string) {
+    const [name, namespace] = sortKey
+      .slice(this.PARTITION_KEY_PREFIX.length)
+      .split("$");
+    return {
+      name: name!,
+      namespace: namespace && namespace.length > 0 ? namespace : undefined,
+    };
   },
 };

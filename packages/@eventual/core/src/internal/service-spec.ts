@@ -142,6 +142,18 @@ export interface DictionaryStreamOptions extends FunctionRuntimeProps {
    * When true, the old value will be sent with the new value.
    */
   includeOld?: boolean;
+  /**
+   * A subset of namespaces to include in the stream.
+   *
+   * If neither `namespaces` or `namespacePrefixes` are provided, all namespaces will be sent.
+   */
+  namespaces?: string[];
+  /**
+   * One or more namespace prefixes to match.
+   *
+   * If neither `namespaces` or `namespacePrefixes` are provided, all namespaces will be sent.
+   */
+  namespacePrefixes?: string[];
 }
 
 export interface DictionaryStreamSpec {

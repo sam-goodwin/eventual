@@ -92,7 +92,8 @@ export interface DictionaryStream<Entity> extends DictionaryStreamSpec {
   handler: DictionaryStreamHandler<Entity>;
 }
 
-export interface Dictionary<Entity>   extends Omit<DictionarySpec, "schema" | "streams"> {
+export interface Dictionary<Entity>
+  extends Omit<DictionarySpec, "schema" | "streams"> {
   kind: "Dictionary";
   name: string;
   schema?: z.Schema<Entity>;

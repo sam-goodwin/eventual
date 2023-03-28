@@ -2,7 +2,11 @@
 import "@eventual/injected/entry";
 
 import { promiseAllSettledPartitioned } from "@eventual/core-runtime";
-import { dictionaries } from "@eventual/core/internal";
+import {
+  dictionaries,
+  registerDictionaryHook,
+  registerServiceClient,
+} from "@eventual/core/internal";
 import { DynamoDBBatchResponse, DynamoDBRecord } from "aws-lambda";
 import { DictionaryEntityRecord } from "../stores/dictionary-store.js";
 import { createDictionaryClient, createServiceClient } from "../create.js";
@@ -15,15 +19,19 @@ export default async (
 ): Promise<DynamoDBBatchResponse> => {
   const dicts = dictionaries();
 
+  registerServiceClient(eventualClient);
+  registerDictionaryHook(dictionaryClient);
+
   const results = await promiseAllSettledPartitioned(
     records,
     async (record) => {
       const item = record.dynamodb!.NewImage! as DictionaryEntityRecord;
       const oldItem = record.dynamodb!.OldImage as DictionaryEntityRecord;
 
-      const name = DictionaryEntityRecord.parseNameFromPartitionKey(
-        item["pk"]!.S!
-      );
+      const { name, namespace } =
+        DictionaryEntityRecord.parseNameAndNamespaceFromPartitionKey(
+          item["pk"]!.S!
+        );
       const key = DictionaryEntityRecord.parseKeyFromSortKey(item["sk"]!.S!);
 
       const dictionary = dicts.get(name);
@@ -43,7 +51,13 @@ export default async (
                 ? JSON.parse(oldItem["value"].S)
                 : undefined;
 
-            return await s.handler(key, newValue, operation, oldValue);
+            return await s.handler(
+              namespace,
+              key,
+              newValue,
+              operation,
+              oldValue
+            );
           })
         );
 
