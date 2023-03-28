@@ -299,15 +299,22 @@ export class WorkflowCallExecutor {
     ) {
       if (operation.operation === "get") {
         return dictionary.get(operation.key);
+      } else if (operation.operation === "getWithMetadata") {
+        return dictionary.getWithMetadata(operation.key);
       } else if (operation.operation === "set") {
-        return dictionary.set(operation.key, operation.value);
+        return dictionary.set(
+          operation.key,
+          operation.value,
+          operation.options
+        );
       } else if (operation.operation === "delete") {
-        return dictionary.delete(operation.key);
+        return dictionary.delete(operation.key, operation.options);
       } else if (operation.operation === "list") {
         return dictionary.list(operation.request);
       } else if (operation.operation === "listKeys") {
         return dictionary.listKeys(operation.request);
       }
+      return assertNever(operation.operation);
     }
   }
 }

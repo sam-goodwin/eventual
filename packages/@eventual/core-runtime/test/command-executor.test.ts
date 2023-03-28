@@ -61,6 +61,7 @@ const mockExecutionQueueClient = {
 const mockDictionary = {
   name: "mockDict",
   get: jest.fn() as Dictionary<any>["get"],
+  getWithMetadata: jest.fn() as Dictionary<any>["getWithMetadata"],
   set: jest.fn() as Dictionary<any>["set"],
   delete: jest.fn() as Dictionary<any>["delete"],
   list: jest.fn() as Dictionary<any>["list"],

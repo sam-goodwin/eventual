@@ -1,31 +1,71 @@
 import {
+  CompositeKey,
+  DictionaryConsistencyOptions,
   DictionaryListKeysResult,
   DictionaryListRequest,
   DictionaryListResult,
+  DictionarySetOptions,
 } from "@eventual/core";
-import { DictionaryStore } from "../../stores/dictionary-store.js";
+import {
+  DictionaryStore,
+  EntityWithMetadata,
+  UnexpectedVersionResult,
+  normalizeCompositeKey,
+} from "../../stores/dictionary-store.js";
 import { paginateItems } from "./pagination.js";
 
 export class LocalDictionaryStore implements DictionaryStore {
-  private dictionaries: Record<string, Map<string, any>> = {};
+  private dictionaries: Record<
+    string,
+    Record<string, Map<string, EntityWithMetadata<any>>>
+  > = {};
 
   public async getDictionaryValue<Entity>(
     name: string,
-    key: string
-  ): Promise<Entity | undefined> {
-    return this.dictionaries[name]?.get(key);
+    _key: string | CompositeKey
+  ): Promise<EntityWithMetadata<Entity> | undefined> {
+    const { key, namespace } = normalizeCompositeKey(_key);
+    return this.getNamespaceMap(name, namespace).get(key);
   }
 
   public async setDictionaryValue<Entity>(
     name: string,
-    key: string,
-    entity: Entity
-  ): Promise<void> {
-    (this.dictionaries[name] ??= new Map()).set(key, entity);
+    _key: string | CompositeKey,
+    entity: Entity,
+    options?: DictionarySetOptions
+  ): Promise<{ version: number }> {
+    const { key, namespace } = normalizeCompositeKey(_key);
+    const { version = 0 } = (await this.getDictionaryValue(name, _key)) ?? {};
+    if (
+      options?.expectedVersion !== undefined &&
+      options.expectedVersion !== version
+    ) {
+      throw new Error(
+        `Expected entity to be of version ${options.expectedVersion} but found ${version}`
+      );
+    }
+    const newVersion =
+      options?.incrementVersion === false ? version : version + 1;
+    this.getNamespaceMap(name, namespace).set(key, {
+      entity,
+      version: newVersion,
+    });
+    return { version: newVersion };
   }
 
-  public async deleteDictionaryValue(name: string, key: string): Promise<void> {
-    this.dictionaries[name]?.delete(key);
+  public async deleteDictionaryValue(
+    name: string,
+    _key: string,
+    options?: DictionaryConsistencyOptions
+  ): Promise<void | UnexpectedVersionResult> {
+    const { key, namespace } = normalizeCompositeKey(_key);
+    if (options?.expectedVersion !== undefined) {
+      const value = await this.getDictionaryValue(name, _key);
+      if (options.expectedVersion !== value?.version) {
+        return { unexpectedVersion: true };
+      }
+    }
+    this.getNamespaceMap(name, namespace).delete(key);
   }
 
   public async listDictionaryEntries<Entity>(
@@ -36,7 +76,11 @@ export class LocalDictionaryStore implements DictionaryStore {
 
     // values should be sorted
     return {
-      entries: items?.map(([key, value]) => ({ key, entity: value })),
+      entries: items?.map(([key, value]) => ({
+        key,
+        entity: value.entity,
+        version: value.version,
+      })),
       nextToken,
     };
   }
@@ -53,8 +97,8 @@ export class LocalDictionaryStore implements DictionaryStore {
   }
 
   private orderedEntries(name: string, listRequest: DictionaryListRequest) {
-    const dictionary = this.dictionaries[name];
-    const entries = dictionary ? [...dictionary.entries()] : [];
+    const namespace = this.getNamespaceMap(name, listRequest.namespace);
+    const entries = namespace ? [...namespace.entries()] : [];
 
     const result = paginateItems(
       entries,
@@ -68,5 +112,13 @@ export class LocalDictionaryStore implements DictionaryStore {
     );
 
     return result;
+  }
+
+  private getNamespaceMap(name: string, namespace?: string) {
+    const dictionary = this.dictionaries[name] ?? {};
+    const namespaceMap =
+      dictionary?.[namespace ?? "default"] ??
+      new Map<string, EntityWithMetadata<any>>();
+    return namespaceMap;
   }
 }

@@ -574,11 +574,20 @@ export const dictionaryWorkflow = workflow(
   "dictionaryWorkflow",
   async (_, { execution: { id } }) => {
     await counter.set(id, { n: 1 });
+    await counter.set({ key: id, namespace: "different!" }, { n: 0 });
     await dictionaryActivity();
     await Promise.all([
       dictEvent.publishEvents({ id }),
       dictSignal.expectSignal(),
     ]);
+    try {
+      // will fail
+      await counter.set(id, { n: 0 }, { expectedVersion: 1 });
+    } catch (err) {
+      console.error("expected the dictionary set to fail", err);
+    }
+    const { entity, version } = await counter.getWithMetadata(id) ?? {};
+    await counter.set(id, { n: entity!.n + 1 }, { expectedVersion: version });
     const result = await counter.get(id);
     counter.delete(id);
     return result;
