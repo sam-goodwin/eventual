@@ -11,11 +11,13 @@ import {
   Timeout,
   workflow as _workflow,
   WorkflowHandler,
+  CompositeKey,
 } from "@eventual/core";
 import { jest } from "@jest/globals";
 import z from "zod";
 import { TestEnvironment } from "../src/environment.js";
 import { MockActivity } from "../src/providers/activity-provider.js";
+import { activities, workflows } from "@eventual/core/internal";
 
 const fakeSqsClientSend = jest.fn<SQSClient["send"]>();
 jest.unstable_mockModule("@aws-sdk/client-sqs", () => {
@@ -60,7 +62,8 @@ const activity = (() => {
   return <Input = any, Output = any>(
     handler: ActivityHandler<Input, Output>
   ) => {
-    return _activity<string, Input, Output>(`act${n++}`, handler);
+    while (activities()?.has?.(`act${++n}`)) {}
+    return _activity<string, Input, Output>(`act${n}`, handler);
   };
 })();
 
@@ -69,7 +72,8 @@ const workflow = (() => {
   return <Input = any, Output = any>(
     handler: WorkflowHandler<Input, Output>
   ) => {
-    return _workflow<Input, Output>(`wf${n++}`, handler);
+    while (workflows().has(`wf${++n}`)) {}
+    return _workflow<Input, Output>(`wf${n}`, handler);
   };
 })();
 
@@ -1304,6 +1308,91 @@ describe("dictionary", () => {
       Partial<Execution<any>>
     >({
       result: { n: 2 },
+      status: ExecutionStatus.SUCCEEDED,
+    });
+  });
+
+  test("workflow and activity uses get and set with namespaces", async () => {
+    const dictAct = activity(
+      async (namespace: string, { execution: { id } }) => {
+        const key = { namespace, key: id };
+        await myDict.set(key, { n: ((await myDict.get(key))?.n ?? 0) + 1 });
+      }
+    );
+    const wf = workflow(async (_, { execution: { id } }) => {
+      await myDict.set({ namespace: "1", key: id }, { n: 1 });
+      await myDict.set({ namespace: "2", key: id }, { n: 100 });
+      await dictAct("1");
+      await dictAct("2");
+      const value = await myDict.get({ namespace: "1", key: id });
+      const value2 = await myDict.get({ namespace: "2", key: id });
+      await myDict.delete({ namespace: "1", key: id });
+      await myDict.delete({ namespace: "2", key: id });
+      return value!.n + value2!.n;
+    });
+
+    const execution = await env.startExecution({
+      workflow: wf,
+      input: undefined,
+    });
+
+    await env.tick(20);
+
+    await expect(execution.getStatus()).resolves.toMatchObject<
+      Partial<Execution<any>>
+    >({
+      result: 103,
+      status: ExecutionStatus.SUCCEEDED,
+    });
+  });
+
+  test("version", async () => {
+    const wf = workflow(async (_, { execution: { id } }) => {
+      const key: CompositeKey = { namespace: "versionTest", key: id };
+      // set - version 1 - value 1
+      const { version } = await myDict.set(key, { n: 1 });
+      // set - version 2 - value 2
+      const { version: version2 } = await myDict.set(
+        key,
+        { n: 2 },
+        { expectedVersion: version }
+      );
+      try {
+        // try set to 3, fail
+        await myDict.set(key, { n: 3 }, { expectedVersion: version });
+      } catch {
+        // set - version 2 (unchanged) - value 3
+        await myDict.set(
+          key,
+          { n: 4 },
+          { expectedVersion: version2, incrementVersion: false }
+        );
+      }
+      try {
+        // try delete and fail
+        await myDict.delete(key, { expectedVersion: version });
+      } catch {
+        // set - version 3 - value 5
+        await myDict.set(key, { n: 5 }, { expectedVersion: version2 });
+      }
+
+      const value = await myDict.getWithMetadata(key);
+      // delete at version 3
+      myDict.delete(key, { expectedVersion: value!.version });
+      return value;
+    });
+
+    const execution = await env.startExecution({
+      workflow: wf,
+      input: undefined,
+    });
+
+    await env.tick(20);
+
+    await expect(execution.getStatus()).resolves.toMatchObject<
+      Partial<Execution<any>>
+    >({
+      result: { entity: { n: 5 }, version: 3 },
       status: ExecutionStatus.SUCCEEDED,
     });
   });

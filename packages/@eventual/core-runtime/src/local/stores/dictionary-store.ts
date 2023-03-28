@@ -115,10 +115,11 @@ export class LocalDictionaryStore implements DictionaryStore {
   }
 
   private getNamespaceMap(name: string, namespace?: string) {
-    const dictionary = this.dictionaries[name] ?? {};
-    const namespaceMap =
-      dictionary?.[namespace ?? "default"] ??
-      new Map<string, EntityWithMetadata<any>>();
+    const dictionary = (this.dictionaries[name] ??= {});
+    const namespaceMap = (dictionary[namespace ?? "default"] ??= new Map<
+      string,
+      EntityWithMetadata<any>
+    >());
     return namespaceMap;
   }
 }

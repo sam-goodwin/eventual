@@ -303,7 +303,7 @@ describe("dictionary request", () => {
     );
 
     expect(mockDictionaryClient.getDictionary).toHaveBeenCalledWith("dict");
-    expect(mockDictionary.set).toHaveBeenCalledWith("key", "some value");
+    expect(mockDictionary.set).toHaveBeenCalledWith("key", "some value", undefined);
 
     expect(event).toMatchObject<DictionaryRequest>({
       seq: 0,
@@ -327,7 +327,7 @@ describe("dictionary request", () => {
     );
 
     expect(mockDictionaryClient.getDictionary).toHaveBeenCalledWith("dict");
-    expect(mockDictionary.delete).toHaveBeenCalledWith("key");
+    expect(mockDictionary.delete).toHaveBeenCalledWith("key", undefined);
 
     expect(event).toMatchObject<DictionaryRequest>({
       seq: 0,
