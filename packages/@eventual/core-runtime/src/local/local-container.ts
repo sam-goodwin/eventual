@@ -1,4 +1,9 @@
-import { LogLevel } from "@eventual/core";
+import {
+  DictionaryStreamInsertItem,
+  DictionaryStreamModifyItem,
+  DictionaryStreamRemoveItem,
+  LogLevel,
+} from "@eventual/core";
 import {
   ActivityClient,
   ActivityWorkerRequest,
@@ -18,12 +23,16 @@ import {
   CommandWorker,
   createCommandWorker,
 } from "../handlers/command-worker.js";
-import { createOrchestrator, Orchestrator } from "../handlers/orchestrator.js";
+import { Orchestrator, createOrchestrator } from "../handlers/orchestrator.js";
 import {
-  createSubscriptionWorker,
   SubscriptionWorker,
+  createSubscriptionWorker,
 } from "../handlers/subscription-worker.js";
-import { createTimerHandler, TimerHandler } from "../handlers/timer-handler.js";
+import { TimerHandler, createTimerHandler } from "../handlers/timer-handler.js";
+import {
+  DictionaryStreamWorker,
+  createDictionaryStreamWorker,
+} from "../index.js";
 import { LogAgent } from "../log-agent.js";
 import {
   ActivityProvider,
@@ -67,7 +76,13 @@ import { LocalExecutionHistoryStateStore } from "./stores/execution-history-stat
 import { LocalExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { LocalExecutionStore } from "./stores/execution-store.js";
 
-export type LocalEvent = WorkflowTask | TimerRequest | ActivityWorkerRequest;
+export type LocalEvent =
+  | WorkflowTask
+  | TimerRequest
+  | ActivityWorkerRequest
+  | Omit<DictionaryStreamInsertItem<any>, "streamName">
+  | Omit<DictionaryStreamRemoveItem<any>, "streamName">
+  | Omit<DictionaryStreamModifyItem<any>, "streamName">;
 
 export interface LocalContainerProps {
   activityProvider?: ActivityProvider;
@@ -81,6 +96,7 @@ export class LocalContainer {
   public timerHandler: TimerHandler;
   public activityWorker: ActivityWorker;
   public subscriptionWorker: SubscriptionWorker;
+  public dictionaryStreamWorker: DictionaryStreamWorker;
 
   public activityClient: ActivityClient;
   public eventClient: EventClient;
@@ -123,7 +139,9 @@ export class LocalContainer {
     this.activityStore = new LocalActivityStore();
     this.subscriptionProvider =
       props.subscriptionProvider ?? new GlobalSubscriptionProvider();
-    const dictionaryClient = new DictionaryClient(new LocalDictionaryStore());
+    const dictionaryClient = new DictionaryClient(
+      new LocalDictionaryStore({ localConnector: this.localConnector })
+    );
     this.subscriptionWorker = createSubscriptionWorker({
       subscriptionProvider: this.subscriptionProvider,
       dictionaryClient,
@@ -151,6 +169,10 @@ export class LocalContainer {
       activityStore: this.activityStore,
       executionQueueClient: this.executionQueueClient,
       executionStore: this.executionStore,
+    });
+
+    this.dictionaryStreamWorker = createDictionaryStreamWorker({
+      dictionaryClient,
     });
 
     this.orchestrator = createOrchestrator({

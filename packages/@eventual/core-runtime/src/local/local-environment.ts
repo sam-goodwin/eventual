@@ -1,20 +1,29 @@
-import { HttpRequest, HttpResponse } from "@eventual/core";
-import { registerServiceClient } from "@eventual/core/internal";
-import { isTimerRequest, TimerRequest } from "../clients/timer-client.js";
 import {
-  ActivityWorkerRequest,
+  dictionaryStreamMatchesItem,
+  HttpRequest,
+  HttpResponse,
+  isDictionaryStreamItem,
+} from "@eventual/core";
+import {
+  dictionaryStreams,
+  registerServiceClient,
+} from "@eventual/core/internal";
+import { isTimerRequest } from "../clients/timer-client.js";
+import {
   isActivitySendEventRequest,
   isActivityWorkerRequest,
   RuntimeServiceClient,
 } from "../index.js";
-import { isWorkflowTask, WorkflowTask } from "../tasks.js";
-import { LocalContainer, LocalEnvConnector } from "./local-container.js";
+import { isWorkflowTask } from "../tasks.js";
+import {
+  LocalContainer,
+  LocalEnvConnector,
+  LocalEvent,
+} from "./local-container.js";
 import { TimeController } from "./time-controller.js";
 
 export class LocalEnvironment {
-  private timeController: TimeController<
-    WorkflowTask | TimerRequest | ActivityWorkerRequest
-  >;
+  private timeController: TimeController<LocalEvent>;
   private localConnector: LocalEnvConnector;
   private running: boolean = false;
   private localContainer: LocalContainer;
@@ -106,7 +115,7 @@ export class LocalEnvironment {
   }
 
   private async processEvents() {
-    let events: (WorkflowTask | TimerRequest | ActivityWorkerRequest)[] = [];
+    let events: LocalEvent[] = [];
     // run until there are no new events up until the current time
     // it is possible that new events have been added in the past
     // since starting processing.
@@ -116,6 +125,7 @@ export class LocalEnvironment {
       const timerRequests = events.filter(isTimerRequest);
       const workflowTasks = events.filter(isWorkflowTask);
       const activityWorkerRequests = events.filter(isActivityWorkerRequest);
+      const dictionaryStreamItems = events.filter(isDictionaryStreamItem);
 
       // run all activity requests, don't wait for a result
       activityWorkerRequests.forEach(async (request) => {
@@ -131,6 +141,18 @@ export class LocalEnvironment {
       timerRequests.forEach((request) =>
         this.localContainer.timerHandler(request)
       );
+      // for each dictionary stream item, find the streams that match it, and run the worker with the item
+      dictionaryStreamItems.forEach((i) => {
+        const streamNames = [...dictionaryStreams().values()]
+          .filter((s) => dictionaryStreamMatchesItem(i, s))
+          .map((s) => s.name);
+        streamNames.forEach((streamName) => {
+          this.localContainer.dictionaryStreamWorker({
+            ...i,
+            streamName,
+          });
+        });
+      });
 
       // run the orchestrator, but wait for a result.
       await this.localContainer.orchestrator(workflowTasks);

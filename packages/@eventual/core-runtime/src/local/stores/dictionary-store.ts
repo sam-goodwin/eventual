@@ -12,13 +12,20 @@ import {
   UnexpectedVersionResult,
   normalizeCompositeKey,
 } from "../../stores/dictionary-store.js";
+import { LocalEnvConnector } from "../local-container.js";
 import { paginateItems } from "./pagination.js";
+
+export interface LocalDictionaryStoreProps {
+  localConnector: LocalEnvConnector;
+}
 
 export class LocalDictionaryStore implements DictionaryStore {
   private dictionaries: Record<
     string,
     Record<string, Map<string, EntityWithMetadata<any>>>
   > = {};
+
+  constructor(private props: LocalDictionaryStoreProps) {}
 
   public async getDictionaryValue<Entity>(
     name: string,
@@ -35,7 +42,8 @@ export class LocalDictionaryStore implements DictionaryStore {
     options?: DictionarySetOptions
   ): Promise<{ version: number }> {
     const { key, namespace } = normalizeCompositeKey(_key);
-    const { version = 0 } = (await this.getDictionaryValue(name, _key)) ?? {};
+    const { version = 0, entity: oldValue } =
+      (await this.getDictionaryValue(name, _key)) ?? {};
     if (
       options?.expectedVersion !== undefined &&
       options.expectedVersion !== version
@@ -50,6 +58,18 @@ export class LocalDictionaryStore implements DictionaryStore {
       entity,
       version: newVersion,
     });
+
+    this.props.localConnector.pushWorkflowTask({
+      dictionaryName: name,
+      key,
+      namespace,
+      operation: version === 0 ? ("insert" as const) : ("modify" as const),
+      newValue: entity,
+      newVersion,
+      oldValue,
+      oldVersion: version,
+    });
+
     return { version: newVersion };
   }
 
@@ -59,13 +79,25 @@ export class LocalDictionaryStore implements DictionaryStore {
     options?: DictionaryConsistencyOptions
   ): Promise<void | UnexpectedVersionResult> {
     const { key, namespace } = normalizeCompositeKey(_key);
-    if (options?.expectedVersion !== undefined) {
-      const value = await this.getDictionaryValue(name, _key);
-      if (options.expectedVersion !== value?.version) {
-        return { unexpectedVersion: true };
+    const item = await this.getDictionaryValue(name, _key);
+
+    if (item) {
+      if (options?.expectedVersion !== undefined) {
+        if (options.expectedVersion !== item.version) {
+          return { unexpectedVersion: true };
+        }
       }
+      this.getNamespaceMap(name, namespace).delete(key);
+
+      this.props.localConnector.pushWorkflowTask({
+        dictionaryName: name,
+        key,
+        namespace,
+        operation: "remove" as const,
+        oldValue: item.entity,
+        oldVersion: item.version,
+      });
     }
-    this.getNamespaceMap(name, namespace).delete(key);
   }
 
   public async listDictionaryEntries<Entity>(

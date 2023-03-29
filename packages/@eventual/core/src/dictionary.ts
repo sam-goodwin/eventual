@@ -80,24 +80,27 @@ export interface DictionaryStreamHandler<Entity> {
   (item: DictionaryStreamItem<Entity>): Promise<void | false> | void | false;
 }
 
-export type DictionaryStreamItem<Entity> = (
-  | DictionaryStreamInsertItem<Entity>
-  | DictionaryStreamModifyItem<Entity>
-  | DictionaryStreamRemoveItem<Entity>
-) & {
+export interface DictionaryStreamItemBase {
   streamName: string;
   dictionaryName: string;
   namespace?: string;
   key: string;
-};
+}
 
-export interface DictionaryStreamInsertItem<Entity> {
+export type DictionaryStreamItem<Entity> =
+  | DictionaryStreamInsertItem<Entity>
+  | DictionaryStreamModifyItem<Entity>
+  | DictionaryStreamRemoveItem<Entity>;
+
+export interface DictionaryStreamInsertItem<Entity>
+  extends DictionaryStreamItemBase {
   newValue: Entity;
   newVersion: number;
   operation: "insert";
 }
 
-export interface DictionaryStreamModifyItem<Entity> {
+export interface DictionaryStreamModifyItem<Entity>
+  extends DictionaryStreamItemBase {
   operation: "modify";
   newValue: Entity;
   newVersion: number;
@@ -105,10 +108,36 @@ export interface DictionaryStreamModifyItem<Entity> {
   oldVersion?: number;
 }
 
-export interface DictionaryStreamRemoveItem<Entity> {
+export interface DictionaryStreamRemoveItem<Entity>
+  extends DictionaryStreamItemBase {
   operation: "remove";
   oldValue?: Entity;
   oldVersion?: number;
+}
+
+export function isDictionaryStreamItem(
+  value: any
+): value is DictionaryStreamItem<any> {
+  return "dictionaryName" in value && "operation" in value;
+}
+
+export function dictionaryStreamMatchesItem(
+  item: DictionaryStreamItem<any>,
+  streamSpec: DictionaryStreamSpec
+) {
+  return (
+    streamSpec.dictionaryName === item.dictionaryName &&
+    (!streamSpec.options?.operations ||
+      streamSpec.options.operations.includes(item.operation)) &&
+    (!streamSpec.options?.namespaces ||
+      (item.namespace &&
+        streamSpec.options.namespaces.includes(item.namespace))) &&
+    (!streamSpec.options?.namespacePrefixes ||
+      (item.namespace &&
+        streamSpec.options.namespacePrefixes.some((p) =>
+          item.namespace?.startsWith(p)
+        )))
+  );
 }
 
 export interface DictionaryStream<Entity> extends DictionaryStreamSpec {
