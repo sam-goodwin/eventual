@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.30.0 (2023-03-29)
+
+### Features
+
+- namespace and version in dictionary ([#324](https://github.com/functionless/eventual/issues/324)) ([5535d61](https://github.com/functionless/eventual/commit/5535d619fbfaf5eea3f20277e8217c465efd07cf))
+
 # 0.29.0 (2023-03-27)
 
 ### Features
