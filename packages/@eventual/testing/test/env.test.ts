@@ -62,7 +62,7 @@ const activity = (() => {
   return <Input = any, Output = any>(
     handler: ActivityHandler<Input, Output>
   ) => {
-    while (activities()?.has?.(`act${++n}`)) {}
+    while (activities()[`act${++n}`]) {}
     return _activity<string, Input, Output>(`act${n}`, handler);
   };
 })();
