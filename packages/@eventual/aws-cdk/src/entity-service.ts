@@ -14,8 +14,12 @@ import { Construct } from "constructs";
 import { EventBridgePipe } from "./constructs/event-bridge-pipe";
 import { EventualResource, ServiceConstructProps } from "./service";
 import { ServiceFunction } from "./service-function";
+import { LazyInterface } from "./proxy-construct";
+import { CommandService } from "./command-service";
 
-export interface EntityServiceProps extends ServiceConstructProps {}
+export interface EntityServiceProps extends ServiceConstructProps {
+  commandService: LazyInterface<CommandService>;
+}
 
 export class EntityService {
   public table: ITable;
@@ -59,6 +63,7 @@ export class EntityService {
             serviceProps: props,
             stream: s,
             table: this.table,
+            entityService: this,
           }),
         ];
       })
@@ -85,7 +90,8 @@ export class EntityService {
 
 interface DictionaryStreamProps {
   table: ITable;
-  serviceProps: ServiceConstructProps;
+  serviceProps: EntityServiceProps;
+  entityService: EntityService;
   stream: DictionaryStreamFunction;
 }
 
@@ -97,7 +103,7 @@ export class DictionaryStream extends Construct implements EventualResource {
     this.handler = new ServiceFunction(this, "Handler", {
       build: props.serviceProps.build,
       bundledFunction: props.stream,
-      functionNameSuffix: `${props.stream.spec.name}-dictionary-stream`,
+      functionNameSuffix: `dictionary-stream-${props.stream.spec.name}`,
       serviceName: props.serviceProps.serviceName,
       defaults: {
         timeout: Duration.minutes(1),
@@ -110,7 +116,10 @@ export class DictionaryStream extends Construct implements EventualResource {
     });
 
     // let the handler worker use the service client.
-    props.serviceProps.service.configureForServiceClient(this.handler);
+    props.serviceProps.commandService.configureInvokeHttpServiceApi(
+      this.handler
+    );
+    props.entityService.configureReadWriteEntityTable(this.handler);
 
     const namespaces = props.stream.spec.options?.namespaces;
     const namespacePrefixes = props.stream.spec.options?.namespacePrefixes;
@@ -128,10 +137,14 @@ export class DictionaryStream extends Construct implements EventualResource {
             {
               Pattern: JSON.stringify({
                 ...(props.stream.spec.options?.operations
-                  ? { eventName: props.stream.spec.options?.operations }
+                  ? {
+                      eventName: props.stream.spec.options?.operations.map(
+                        (op) => op.toUpperCase()
+                      ),
+                    }
                   : undefined),
                 dynamodb: {
-                  NewImage: {
+                  Keys: {
                     pk: {
                       S:
                         (!namespaces || namespaces.length === 0) &&

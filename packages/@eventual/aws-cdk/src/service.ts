@@ -235,7 +235,10 @@ export class Service<S = any> extends Construct {
       eventualServiceScope,
     };
 
-    const entityService = new EntityService(serviceConstructProps);
+    const entityService = new EntityService({
+      commandService: proxyCommandService,
+      ...serviceConstructProps,
+    });
     this.entityTable = entityService.table;
 
     this.eventService = new EventService(serviceConstructProps);

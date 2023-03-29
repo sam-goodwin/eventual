@@ -82,6 +82,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       monoActivityFunction,
       monoCommandFunction,
       monoSubscriptionFunction,
+      monoDictionaryStreamWorkerFunction,
     ],
     [
       // also bundle each of the internal eventual API Functions as they have no dependencies
@@ -235,7 +236,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
             "dictionary-streams",
             "dictionary-stream-worker",
             spec.name,
-            monoActivityFunction!
+            monoDictionaryStreamWorkerFunction!
           ),
           spec,
         };
@@ -287,6 +288,10 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         {
           name: ServiceType.Subscription,
           entry: runtimeHandlersEntrypoint("subscription-worker"),
+        },
+        {
+          name: ServiceType.DictionaryStreamWorker,
+          entry: runtimeHandlersEntrypoint("dictionary-stream-worker"),
         },
       ]
         .map((s) => ({

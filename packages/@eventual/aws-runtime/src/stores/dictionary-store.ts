@@ -219,7 +219,7 @@ export interface DictionaryEntityRecord
 export const DictionaryEntityRecord = {
   PARTITION_KEY_PREFIX: `DictEntry$`,
   key(name: string, namespace?: string) {
-    return `${this.PARTITION_KEY_PREFIX}${name}$${namespace}`;
+    return `${this.PARTITION_KEY_PREFIX}${name}$${namespace ?? ""}`;
   },
   SORT_KEY_PREFIX: `#`,
   sortKey(key: string) {

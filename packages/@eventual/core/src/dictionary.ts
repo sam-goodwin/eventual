@@ -6,7 +6,7 @@ import { dictionaries, dictionaryStreams } from "./internal/global.js";
 import {
   DictionarySpec,
   DictionaryStreamOptions,
-  DictionaryStreamSpec
+  DictionaryStreamSpec,
 } from "./internal/service-spec.js";
 
 export interface CompositeKey {
@@ -186,8 +186,6 @@ export function dictionary<Entity>(
     throw new Error(`dictionary with name '${name}' already exists`);
   }
 
-  const streams: DictionaryStream<Entity>[] = [];
-
   const dictionary: Dictionary<Entity> = {
     kind: "Dictionary",
     name,
@@ -262,15 +260,9 @@ export function dictionary<Entity>(
     ) => {
       const [streamName, options, handler] =
         args.length === 2 ? [args[0], , args[1]] : args;
-      const dictionaryStream: DictionaryStream<Entity> = {
-        kind: "DictionaryStream",
-        handler,
-        name: streamName,
-        dictionaryName: name,
-        options,
-      };
-      streams.push(dictionaryStream);
-      return dictionaryStream;
+      return options
+        ? dictionaryStream(streamName, dictionary, options, handler)
+        : dictionaryStream(streamName, dictionary, handler);
     },
   };
 

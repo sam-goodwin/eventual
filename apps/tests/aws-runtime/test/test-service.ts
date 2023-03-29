@@ -528,7 +528,7 @@ export const createActivity = activity(
 );
 
 export const destroyActivity = activity(
-  "createActivity",
+  "destroyActivity",
   async (request: { id: string }) => {
     await dynamo.send(
       new DeleteItemCommand({
@@ -557,6 +557,7 @@ export const counterWatcher = counter.stream(
   "counterWatcher",
   { operations: ["remove"], includeOld: true },
   async (item) => {
+    console.log(item);
     // TODO: compute the possible operations union from the operations array
     if (item.operation === "remove") {
       const { n } = item.oldValue!;
