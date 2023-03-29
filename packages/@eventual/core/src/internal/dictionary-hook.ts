@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Dictionary } from "../dictionary.js";
+import type { Dictionary, DictionaryTransactItem } from "../dictionary.js";
 
 declare global {
   var eventualDictionaryHook: DictionaryHook | undefined;
@@ -24,6 +24,7 @@ export interface DictionaryHook {
   getDictionary<Entity>(
     name: string
   ): Promise<DictionaryMethods<Entity> | undefined>;
+  transactWrite(items: DictionaryTransactItem<any>[]): Promise<void>;
 }
 
 export function tryGetDictionaryHook() {

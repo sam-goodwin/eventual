@@ -4,6 +4,10 @@ import { getDictionaryHook } from "./internal/dictionary-hook.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
 import { dictionaries } from "./internal/global.js";
 import {
+  DictionaryDeleteOperation,
+  DictionarySetOperation,
+} from "./internal/index.js";
+import {
   DictionarySpec,
   DictionaryStreamOptions,
   DictionaryStreamSpec,
@@ -210,6 +214,21 @@ export interface Dictionary<Entity>
     handler: DictionaryStreamHandler<Entity>
   ): DictionaryStream<Entity>;
 }
+
+export interface DictionaryTransactItem<Entity> {
+  dictionaryName: string;
+  operation: DictionarySetOperation<Entity> | DictionaryDeleteOperation;
+}
+
+export const Dictionary = {
+  transactWrite: (items: DictionaryTransactItem<any>[]): Promise<void> => {
+    if (isOrchestratorWorker()) {
+      throw new Error("Implement Me");
+    } else {
+      return getDictionaryHook().transactWrite(items);
+    }
+  },
+};
 
 export function dictionary<Entity>(
   name: string,

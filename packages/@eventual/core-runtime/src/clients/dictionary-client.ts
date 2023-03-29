@@ -1,4 +1,4 @@
-import { UnexpectedVersion } from "@eventual/core";
+import { DictionaryTransactItem, UnexpectedVersion } from "@eventual/core";
 import { DictionaryHook, DictionaryMethods } from "@eventual/core/internal";
 import {
   DictionaryStore,
@@ -48,5 +48,12 @@ export class DictionaryClient implements DictionaryHook {
       listKeys: (request) =>
         this.dictionaryStore.listDictionaryKeys(name, request),
     };
+  }
+
+  public transactWrite(items: DictionaryTransactItem<any>[]): Promise<void> {
+    const result = this.dictionaryStore.transactWrite(items);
+    if (isUnexpectedVersionResult(result)) {
+      throw new UnexpectedVersion("Unexpected Version");
+    }
   }
 }

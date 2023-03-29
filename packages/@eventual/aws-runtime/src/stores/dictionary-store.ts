@@ -1,10 +1,15 @@
 import {
   AttributeValue,
   ConditionalCheckFailedException,
+  Delete,
   DeleteItemCommand,
   DynamoDBClient,
   GetItemCommand,
   ReturnValue,
+  TransactionCanceledException,
+  TransactWriteItem,
+  TransactWriteItemsCommand,
+  Update,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import {
@@ -14,6 +19,7 @@ import {
   DictionaryListRequest,
   DictionaryListResult,
   DictionarySetOptions,
+  DictionaryTransactItem,
 } from "@eventual/core";
 import {
   DictionaryStore,
@@ -21,8 +27,10 @@ import {
   getLazy,
   LazyValue,
   normalizeCompositeKey,
+  TransactionCancelledResult,
   UnexpectedVersionResult,
 } from "@eventual/core-runtime";
+import { assertNever } from "@eventual/core/internal";
 import { entityServiceTableName, queryPageWithToken } from "../utils.js";
 
 export interface AWSDictionaryStoreProps {
@@ -71,43 +79,10 @@ export class AWSDictionaryStore implements DictionaryStore {
     entity: Entity,
     options?: DictionarySetOptions
   ): Promise<{ version: number } | UnexpectedVersionResult> {
-    const { key, namespace } = normalizeCompositeKey(_key);
-    const value = JSON.stringify(entity);
     try {
       const result = await this.props.dynamo.send(
         new UpdateItemCommand({
-          Key: {
-            pk: { S: DictionaryEntityRecord.key(namespace) },
-            sk: { S: DictionaryEntityRecord.sortKey(key) },
-          } satisfies Pick<DictionaryEntityRecord, "pk" | "sk">,
-          UpdateExpression:
-            "SET #value=:value, #version=if_not_exists(#version, :startingVersion) + :versionIncrement",
-          ExpressionAttributeNames: {
-            "#value": "value",
-            "#version": "version",
-          },
-          ExpressionAttributeValues: {
-            ...(options?.expectedVersion
-              ? {
-                  ":expectedVersion": { N: options.expectedVersion.toString() },
-                }
-              : undefined),
-            ":value": { S: value },
-            ":startingVersion": { N: "0" },
-            ":versionIncrement": {
-              N: options?.incrementVersion === false ? "0" : "1",
-            },
-          },
-          ConditionExpression:
-            options?.expectedVersion !== undefined
-              ? options?.expectedVersion === 0
-                ? "attribute_not_exists(#version)"
-                : "#version=:expectedVersion"
-              : undefined,
-          TableName: entityServiceTableName(
-            getLazy(this.props.serviceName),
-            name
-          ),
+          ...this.setRequest(name, _key, entity, options),
           ReturnValues: ReturnValue.ALL_NEW,
         })
       );
@@ -123,38 +98,84 @@ export class AWSDictionaryStore implements DictionaryStore {
     }
   }
 
+  private setRequest<Entity>(
+    name: string,
+    _key: string | CompositeKey,
+    entity: Entity,
+    options?: DictionarySetOptions
+  ): Update {
+    const { key, namespace } = normalizeCompositeKey(_key);
+    const value = JSON.stringify(entity);
+    return {
+      Key: {
+        pk: { S: DictionaryEntityRecord.key(namespace) },
+        sk: { S: DictionaryEntityRecord.sortKey(key) },
+      } satisfies Pick<DictionaryEntityRecord, "pk" | "sk">,
+      UpdateExpression:
+        "SET #value=:value, #version=if_not_exists(#version, :startingVersion) + :versionIncrement",
+      ExpressionAttributeNames: {
+        "#value": "value",
+        "#version": "version",
+      },
+      ExpressionAttributeValues: {
+        ...(options?.expectedVersion
+          ? {
+              ":expectedVersion": { N: options.expectedVersion.toString() },
+            }
+          : undefined),
+        ":value": { S: value },
+        ":startingVersion": { N: "0" },
+        ":versionIncrement": {
+          N: options?.incrementVersion === false ? "0" : "1",
+        },
+      },
+      ConditionExpression:
+        options?.expectedVersion !== undefined
+          ? options?.expectedVersion === 0
+            ? "attribute_not_exists(#version)"
+            : "#version=:expectedVersion"
+          : undefined,
+      TableName: entityServiceTableName(getLazy(this.props.serviceName), name),
+    };
+  }
+
   public async deleteDictionaryValue(
     name: string,
     _key: string | CompositeKey,
     options?: DictionaryConsistencyOptions
   ): Promise<void | UnexpectedVersionResult> {
-    const { key, namespace } = normalizeCompositeKey(_key);
     await this.props.dynamo.send(
-      new DeleteItemCommand({
-        Key: {
-          pk: { S: DictionaryEntityRecord.key(namespace) },
-          sk: { S: DictionaryEntityRecord.sortKey(key) },
-        } satisfies Partial<DictionaryEntityRecord>,
-        ConditionalOperator:
-          options?.expectedVersion !== undefined
-            ? "#version=:expectedVersion"
-            : undefined,
-        ExpressionAttributeNames:
-          options?.expectedVersion !== undefined
-            ? {
-                "#version": "version",
-              }
-            : undefined,
-        ExpressionAttributeValues:
-          options?.expectedVersion !== undefined
-            ? { ":expectedVersion": { N: options.expectedVersion.toString() } }
-            : undefined,
-        TableName: entityServiceTableName(
-          getLazy(this.props.serviceName),
-          name
-        ),
-      })
+      new DeleteItemCommand(this.deleteRequest(name, _key, options))
     );
+  }
+
+  private deleteRequest(
+    name: string,
+    _key: string | CompositeKey,
+    options?: DictionaryConsistencyOptions
+  ): Delete {
+    const { key, namespace } = normalizeCompositeKey(_key);
+    return {
+      Key: {
+        pk: { S: DictionaryEntityRecord.key(namespace) },
+        sk: { S: DictionaryEntityRecord.sortKey(key) },
+      } satisfies Partial<DictionaryEntityRecord>,
+      ConditionExpression:
+        options?.expectedVersion !== undefined
+          ? "#version=:expectedVersion"
+          : undefined,
+      ExpressionAttributeNames:
+        options?.expectedVersion !== undefined
+          ? {
+              "#version": "version",
+            }
+          : undefined,
+      ExpressionAttributeValues:
+        options?.expectedVersion !== undefined
+          ? { ":expectedVersion": { N: options.expectedVersion.toString() } }
+          : undefined,
+      TableName: entityServiceTableName(getLazy(this.props.serviceName), name),
+    };
   }
 
   public async listDictionaryEntries<Entity>(
@@ -185,6 +206,53 @@ export class AWSDictionaryStore implements DictionaryStore {
         DictionaryEntityRecord.parseKeyFromSortKey(r.sk.S)
       ),
     };
+  }
+
+  public async transactWrite(
+    items: DictionaryTransactItem<any>[]
+  ): Promise<TransactionCancelledResult | void> {
+    try {
+      await this.props.dynamo.send(
+        new TransactWriteItemsCommand({
+          TransactItems: items.map((i): TransactWriteItem => {
+            if (i.operation.operation === "set") {
+              return {
+                Update: this.setRequest(
+                  i.dictionaryName,
+                  i.operation.key,
+                  i.operation.value,
+                  i.operation.options
+                ),
+              };
+            } else if (i.operation.operation === "delete") {
+              return {
+                Delete: this.deleteRequest(
+                  i.dictionaryName,
+                  i.operation.key,
+                  i.operation.options
+                ),
+              };
+            }
+
+            return assertNever(i.operation);
+          }),
+        })
+      );
+    } catch (err) {
+      if (err instanceof TransactionCanceledException) {
+        return {
+          reasons:
+            err.CancellationReasons?.map((c) => {
+              // TODO: handle other failure reasons
+              if (c.Code === "NONE") {
+                return undefined;
+              }
+              return { unexpectedVersion: true };
+            }) ?? [],
+        };
+      }
+      throw err;
+    }
   }
 
   private list(

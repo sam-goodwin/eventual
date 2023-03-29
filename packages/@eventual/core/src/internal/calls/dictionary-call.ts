@@ -51,10 +51,10 @@ export interface DictionaryDeleteOperation {
   options?: DictionaryConsistencyOptions;
 }
 
-export interface DictionarySetOperation {
+export interface DictionarySetOperation<Entity = any> {
   operation: "set";
   key: string | CompositeKey;
-  value: any;
+  value: Entity;
   options?: DictionarySetOptions;
 }
 

@@ -5,6 +5,7 @@ import type {
   DictionaryListRequest,
   DictionaryListResult,
   DictionarySetOptions,
+  DictionaryTransactItem,
 } from "@eventual/core";
 
 export interface DictionaryStore {
@@ -31,6 +32,9 @@ export interface DictionaryStore {
     name: string,
     request: DictionaryListRequest
   ): Promise<DictionaryListKeysResult>;
+  transactWrite(
+    items: DictionaryTransactItem<any>[]
+  ): Promise<TransactionCancelledResult | void>;
 }
 
 export interface EntityWithMetadata<Entity> {
@@ -42,10 +46,20 @@ export interface UnexpectedVersionResult {
   unexpectedVersion: true;
 }
 
+export interface TransactionCancelledResult {
+  reasons: (UnexpectedVersionResult | undefined)[];
+}
+
 export function isUnexpectedVersionResult(
   value: any
 ): value is UnexpectedVersionResult {
   return value && "unexpectedVersion" in value;
+}
+
+export function isTransactionCancelledResult(
+  value: any
+): value is TransactionCancelledResult {
+  return value && "failedItems" in value;
 }
 
 export function normalizeCompositeKey(key: string | CompositeKey) {
