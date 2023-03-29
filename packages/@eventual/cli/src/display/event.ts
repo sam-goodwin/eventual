@@ -1,7 +1,10 @@
+import { normalizeCompositeKey } from "@eventual/core-runtime";
 import {
+  DictionaryRequest,
   WorkflowEvent,
-  isChildWorkflowScheduled,
   isActivityScheduled,
+  isChildWorkflowScheduled,
+  isDictionaryRequest,
   isSignalReceived,
   isSignalSent,
 } from "@eventual/core/internal";
@@ -23,10 +26,44 @@ export function displayEvent(event: WorkflowEvent) {
     ...((isSignalReceived(event) || isSignalSent(event)) && event.payload
       ? [`Payload:\t${JSON.stringify(event.payload)}`]
       : []),
+    ...(isDictionaryRequest(event) ? [displayDictionaryCommand(event)] : []),
     ...("result" in event ? [`Result:\t${JSON.stringify(event.result)}`] : []),
     ...("output" in event ? [`Output:\t${JSON.stringify(event.output)}`] : []),
-    ...("error" in event ? [`${event.error}: ${event.message}`] : []),
+    ...("error" in event
+      ? [`${chalk.red(event.error)}: ${event.message}`]
+      : []),
   ];
 
   return lines.join("\n");
+}
+
+function displayDictionaryCommand(request: DictionaryRequest) {
+  const output: string[] = [
+    `Dict: ${request.name}`,
+    `Operation: ${request.operation.operation}`,
+  ];
+  const operation = request.operation;
+
+  if ("key" in operation) {
+    const { key, namespace } = normalizeCompositeKey(operation.key);
+    if (namespace) {
+      output.push(`Namespace: ${namespace}`);
+    }
+    output.push(`Key: ${key}`);
+    if (operation.operation === "set") {
+      output.push(`Entity: ${JSON.stringify(operation.value)}`);
+      if (operation.options?.expectedVersion) {
+        output.push(`Expected Version: ${operation.options.expectedVersion}`);
+      }
+    }
+  } else {
+    if (operation.request.namespace) {
+      output.push(`Namespace: ${operation.request.prefix}`);
+    }
+    if (operation.request.prefix) {
+      output.push(`Prefix: ${operation.request.prefix}`);
+    }
+  }
+
+  return output.join("\n");
 }

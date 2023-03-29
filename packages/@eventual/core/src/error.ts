@@ -108,3 +108,12 @@ export class ExecutionAlreadyExists extends Error {
     );
   }
 }
+
+/**
+ * Thrown from the {@link Dictionary} set or delete when the expected version is incorrect.
+ */
+export class UnexpectedVersion extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}

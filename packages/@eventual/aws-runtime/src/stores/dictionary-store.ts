@@ -1,16 +1,28 @@
 import {
   AttributeValue,
+  ConditionalCheckFailedException,
   DeleteItemCommand,
   DynamoDBClient,
   GetItemCommand,
-  PutItemCommand,
+  ReturnValue,
+  UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import {
+  CompositeKey,
+  DictionaryConsistencyOptions,
   DictionaryListKeysResult,
   DictionaryListRequest,
   DictionaryListResult,
+  DictionarySetOptions,
 } from "@eventual/core";
-import { DictionaryStore, getLazy, LazyValue } from "@eventual/core-runtime";
+import {
+  DictionaryStore,
+  EntityWithMetadata,
+  LazyValue,
+  UnexpectedVersionResult,
+  getLazy,
+  normalizeCompositeKey,
+} from "@eventual/core-runtime";
 import { queryPageWithToken } from "../utils.js";
 
 export interface AWSDictionaryStoreProps {
@@ -23,48 +35,114 @@ export class AWSDictionaryStore implements DictionaryStore {
 
   public async getDictionaryValue<Entity>(
     name: string,
-    key: string
-  ): Promise<Entity | undefined> {
+    _key: string | CompositeKey
+  ): Promise<EntityWithMetadata<Entity> | undefined> {
+    const { key, namespace } = normalizeCompositeKey(_key);
     const item = await this.props.dynamo.send(
       new GetItemCommand({
         Key: {
-          pk: { S: DictionaryEntityRecord.key(name) },
+          pk: { S: DictionaryEntityRecord.key(name, namespace) },
           sk: { S: DictionaryEntityRecord.sortKey(key) },
         } satisfies Partial<DictionaryEntityRecord>,
         TableName: getLazy(this.props.entityTableName),
-        AttributesToGet: ["value"],
+        AttributesToGet: ["value", "version"],
+        ConsistentRead: true,
       })
     );
 
-    return item.Item?.["value"]?.S
-      ? JSON.parse(item.Item["value"].S)
-      : undefined;
+    if (!item.Item) {
+      return undefined;
+    }
+
+    const record = item.Item as DictionaryEntityRecord;
+
+    return {
+      entity: JSON.parse(record.value.S),
+      version: Number(record.version.N),
+    };
   }
 
   public async setDictionaryValue<Entity>(
     name: string,
-    key: string,
-    entity: Entity
-  ): Promise<void> {
-    await this.props.dynamo.send(
-      new PutItemCommand({
-        Item: {
-          pk: { S: DictionaryEntityRecord.key(name) },
-          sk: { S: DictionaryEntityRecord.sortKey(key) },
-          value: { S: JSON.stringify(entity) },
-        } satisfies DictionaryEntityRecord,
-        TableName: getLazy(this.props.entityTableName),
-      })
-    );
+    _key: string | CompositeKey,
+    entity: Entity,
+    options?: DictionarySetOptions
+  ): Promise<{ version: number } | UnexpectedVersionResult> {
+    const { key, namespace } = normalizeCompositeKey(_key);
+    const value = JSON.stringify(entity);
+    try {
+      const result = await this.props.dynamo.send(
+        new UpdateItemCommand({
+          Key: {
+            pk: { S: DictionaryEntityRecord.key(name, namespace) },
+            sk: { S: DictionaryEntityRecord.sortKey(key) },
+          } satisfies Pick<DictionaryEntityRecord, "pk" | "sk">,
+          UpdateExpression:
+            "SET #value=:value, #version=if_not_exists(#version, :startingVersion) + :versionIncrement",
+          ExpressionAttributeNames: {
+            "#value": "value",
+            "#version": "version",
+          },
+          ExpressionAttributeValues: {
+            ...(options?.expectedVersion
+              ? {
+                  ":expectedVersion": { N: options.expectedVersion.toString() },
+                }
+              : undefined),
+            ":value": { S: value },
+            ":startingVersion": { N: "0" },
+            ":versionIncrement": {
+              N: options?.incrementVersion === false ? "0" : "1",
+            },
+          },
+          ConditionExpression:
+            options?.expectedVersion !== undefined
+              ? options?.expectedVersion === 0
+                ? "attribute_not_exists(#version)"
+                : "#version=:expectedVersion"
+              : undefined,
+          TableName: getLazy(this.props.entityTableName),
+          ReturnValues: ReturnValue.ALL_NEW,
+        })
+      );
+
+      const record = result.Attributes as DictionaryEntityRecord;
+
+      return { version: Number(record.version.N) };
+    } catch (err) {
+      if (err instanceof ConditionalCheckFailedException) {
+        return { unexpectedVersion: true };
+      }
+      throw err;
+    }
   }
 
-  public async deleteDictionaryValue(name: string, key: string): Promise<void> {
+  public async deleteDictionaryValue(
+    name: string,
+    _key: string | CompositeKey,
+    options?: DictionaryConsistencyOptions
+  ): Promise<void | UnexpectedVersionResult> {
+    const { key, namespace } = normalizeCompositeKey(_key);
     await this.props.dynamo.send(
       new DeleteItemCommand({
         Key: {
-          pk: { S: DictionaryEntityRecord.key(name) },
+          pk: { S: DictionaryEntityRecord.key(name, namespace) },
           sk: { S: DictionaryEntityRecord.sortKey(key) },
         } satisfies Partial<DictionaryEntityRecord>,
+        ConditionalOperator:
+          options?.expectedVersion !== undefined
+            ? "#version=:expectedVersion"
+            : undefined,
+        ExpressionAttributeNames:
+          options?.expectedVersion !== undefined
+            ? {
+                "#version": "version",
+              }
+            : undefined,
+        ExpressionAttributeValues:
+          options?.expectedVersion !== undefined
+            ? { ":expectedVersion": { N: options.expectedVersion.toString() } }
+            : undefined,
         TableName: getLazy(this.props.entityTableName),
       })
     );
@@ -74,12 +152,13 @@ export class AWSDictionaryStore implements DictionaryStore {
     name: string,
     request: DictionaryListRequest
   ): Promise<DictionaryListResult<Entity>> {
-    const result = await this.list(name, request, ["value", "sk"]);
+    const result = await this.list(name, request, ["value", "sk", "version"]);
 
     return {
       nextToken: result.nextToken,
       entries: result.records.map((r) => ({
         entity: JSON.parse(r.value.S),
+        version: Number(r.version.N),
         key: DictionaryEntityRecord.praseKeyFromSortKey(r.sk.S),
       })),
     };
@@ -89,7 +168,7 @@ export class AWSDictionaryStore implements DictionaryStore {
     name: string,
     request: DictionaryListRequest
   ): Promise<DictionaryListKeysResult> {
-    const result = await this.list(name, request, ["value", "sk"]);
+    const result = await this.list(name, request, ["sk"]);
 
     return {
       nextToken: result.nextToken,
@@ -115,7 +194,7 @@ export class AWSDictionaryStore implements DictionaryStore {
         TableName: getLazy(this.props.entityTableName),
         KeyConditionExpression: "pk=:pk AND begins_with(sk, :sk)",
         ExpressionAttributeValues: {
-          ":pk": { S: DictionaryEntityRecord.key(name) },
+          ":pk": { S: DictionaryEntityRecord.key(name, request.namespace) },
           ":sk": { S: DictionaryEntityRecord.sortKey(request.prefix ?? "") },
         },
         AttributesToGet: fields,
@@ -134,12 +213,13 @@ export interface DictionaryEntityRecord
    * https://dynamodbplace.com/c/questions/map-or-json-dump-string-which-is-better-to-optimize-space
    */
   value: AttributeValue.SMember;
+  version: AttributeValue.NMember;
 }
 
 export const DictionaryEntityRecord = {
   PARTITION_KEY_PREFIX: `DictEntry$`,
-  key(name: string) {
-    return `${this.PARTITION_KEY_PREFIX}${name}`;
+  key(name: string, namespace?: string) {
+    return `${this.PARTITION_KEY_PREFIX}${name}$${namespace}`;
   },
   SORT_KEY_PREFIX: `#`,
   sortKey(key: string) {

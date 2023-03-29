@@ -61,6 +61,7 @@ const mockExecutionQueueClient = {
 const mockDictionary = {
   name: "mockDict",
   get: jest.fn() as Dictionary<any>["get"],
+  getWithMetadata: jest.fn() as Dictionary<any>["getWithMetadata"],
   set: jest.fn() as Dictionary<any>["set"],
   delete: jest.fn() as Dictionary<any>["delete"],
   list: jest.fn() as Dictionary<any>["list"],
@@ -302,7 +303,7 @@ describe("dictionary request", () => {
     );
 
     expect(mockDictionaryClient.getDictionary).toHaveBeenCalledWith("dict");
-    expect(mockDictionary.set).toHaveBeenCalledWith("key", "some value");
+    expect(mockDictionary.set).toHaveBeenCalledWith("key", "some value", undefined);
 
     expect(event).toMatchObject<DictionaryRequest>({
       seq: 0,
@@ -326,7 +327,7 @@ describe("dictionary request", () => {
     );
 
     expect(mockDictionaryClient.getDictionary).toHaveBeenCalledWith("dict");
-    expect(mockDictionary.delete).toHaveBeenCalledWith("key");
+    expect(mockDictionary.delete).toHaveBeenCalledWith("key", undefined);
 
     expect(event).toMatchObject<DictionaryRequest>({
       seq: 0,

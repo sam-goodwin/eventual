@@ -1,4 +1,9 @@
-import type { DictionaryListRequest } from "../../dictionary.js";
+import type {
+  CompositeKey,
+  DictionaryConsistencyOptions,
+  DictionaryListRequest,
+  DictionarySetOptions,
+} from "../../dictionary.js";
 import { getWorkflowHook } from "../eventual-hook.js";
 import {
   createEventualCall,
@@ -30,19 +35,27 @@ export function createDictionaryCall(
 }
 
 export type DictionaryOperation =
+  | DictionaryDeleteOperation
   | DictionaryGetDeleteOperation
   | DictionarySetOperation
   | DictionaryListOperation;
 
 export interface DictionaryGetDeleteOperation {
-  operation: "get" | "delete";
-  key: string;
+  operation: "get" | "getWithMetadata";
+  key: string | CompositeKey;
+}
+
+export interface DictionaryDeleteOperation {
+  operation: "delete";
+  key: string | CompositeKey;
+  options?: DictionaryConsistencyOptions;
 }
 
 export interface DictionarySetOperation {
   operation: "set";
-  key: string;
+  key: string | CompositeKey;
   value: any;
+  options?: DictionarySetOptions;
 }
 
 export interface DictionaryListOperation {
