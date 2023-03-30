@@ -31,7 +31,7 @@ import {
 } from "@eventual/core-runtime";
 import {
   ActivityInput,
-  dictionaryStreams,
+  dictionaries,
   PublishEventsRequest,
   registerServiceClient,
 } from "@eventual/core/internal";
@@ -393,7 +393,8 @@ export class TestEnvironment extends RuntimeServiceClient {
           }
         }),
         dictionaryStreamItems.flatMap((i) => {
-          const streamNames = [...dictionaryStreams().values()]
+          const streamNames = [...dictionaries().values()]
+            .flatMap((d) => d.streams)
             .filter((s) => dictionaryStreamMatchesItem(i, s))
             .map((s) => s.name);
           return streamNames.map((streamName) => {

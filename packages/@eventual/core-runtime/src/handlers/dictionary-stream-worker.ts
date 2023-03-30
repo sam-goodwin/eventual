@@ -1,7 +1,7 @@
 import { DictionaryStreamItem, EventualServiceClient } from "@eventual/core";
 import {
   ServiceType,
-  dictionaryStreams,
+  dictionaries,
   registerDictionaryHook,
   registerServiceClient,
   serviceTypeScope,
@@ -29,7 +29,9 @@ export function createDictionaryStreamWorker(
 
   return async (item) =>
     serviceTypeScope(ServiceType.DictionaryStreamWorker, async () => {
-      const streamHandler = dictionaryStreams().get(item.streamName);
+      const streamHandler = dictionaries()
+        .get(item.dictionaryName)
+        ?.streams.find((s) => s.name === item.streamName);
       if (!streamHandler) {
         throw new Error(`Stream handler ${item.streamName} does not exist`);
       }

@@ -9,7 +9,6 @@ import {
   Statistic,
   Unit,
 } from "aws-cdk-lib/aws-cloudwatch";
-import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { IEventBus } from "aws-cdk-lib/aws-events";
 import {
   AccountRootPrincipal,
@@ -40,7 +39,7 @@ import {
   CorsOptions,
 } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal.js";
-import { EntityService } from "./entity-service.js";
+import { Dictionary, EntityService } from "./entity-service.js";
 import { EventService } from "./event-service";
 import { grant } from "./grant";
 import { LazyInterface, lazyInterface } from "./proxy-construct";
@@ -152,9 +151,9 @@ export class Service<S = any> extends Construct {
    */
   public readonly commands: Commands<S>;
   /**
-   *
+   * TODO
    */
-  public readonly entityTable: ITable;
+  public readonly dictionaries: Record<string, Dictionary>;
   /**
    * API Gateway which serves the service commands and the system commands.
    */
@@ -239,7 +238,7 @@ export class Service<S = any> extends Construct {
       commandService: proxyCommandService,
       ...serviceConstructProps,
     });
-    this.entityTable = entityService.table;
+    this.dictionaries = entityService.dictionaries;
 
     this.eventService = new EventService(serviceConstructProps);
     this.bus = this.eventService.bus;

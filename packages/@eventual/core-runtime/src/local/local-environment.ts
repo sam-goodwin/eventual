@@ -4,10 +4,7 @@ import {
   HttpResponse,
   isDictionaryStreamItem,
 } from "@eventual/core";
-import {
-  dictionaryStreams,
-  registerServiceClient,
-} from "@eventual/core/internal";
+import { dictionaries, registerServiceClient } from "@eventual/core/internal";
 import { isTimerRequest } from "../clients/timer-client.js";
 import {
   isActivitySendEventRequest,
@@ -143,7 +140,8 @@ export class LocalEnvironment {
       );
       // for each dictionary stream item, find the streams that match it, and run the worker with the item
       dictionaryStreamItems.forEach((i) => {
-        const streamNames = [...dictionaryStreams().values()]
+        const streamNames = [...dictionaries().values()]
+          .flatMap((d) => d.streams)
           .filter((s) => dictionaryStreamMatchesItem(i, s))
           .map((s) => s.name);
         streamNames.forEach((streamName) => {

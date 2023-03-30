@@ -44,9 +44,12 @@ export interface BuildManifest {
   };
 }
 
+export interface DictionaryRuntime extends Omit<DictionarySpec, "streams"> {
+  streams: DictionaryStreamFunction[];
+}
+
 interface Entities {
-  dictionaries: DictionarySpec[];
-  dictionaryStreams: DictionaryStreamFunction[];
+  dictionaries: DictionaryRuntime[];
 }
 
 export interface ApiRoutes {

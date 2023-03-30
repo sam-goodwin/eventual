@@ -223,7 +223,7 @@ export const createDictionaryStore = memoize(
   () =>
     new AWSDictionaryStore({
       dynamo: dynamo(),
-      entityTableName: env.entityTableName,
+      serviceName: env.serviceName,
     })
 );
 
@@ -246,7 +246,7 @@ export const createServiceClient = /* @__PURE__ */ memoize(
     executionStore,
     workflowClient,
     workflowProvider,
-    serviceUrl
+    serviceUrl,
   }: Partial<RuntimeServiceClientProps> & { serviceUrl?: string }) =>
     new RuntimeFallbackServiceClient(
       {
@@ -259,7 +259,7 @@ export const createServiceClient = /* @__PURE__ */ memoize(
         activityClient: activityClient,
         workflowProvider: workflowProvider,
       },
-      createHttpServiceClient({ serviceUrl})
+      createHttpServiceClient({ serviceUrl })
     )
 );
 

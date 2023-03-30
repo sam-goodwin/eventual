@@ -2,7 +2,7 @@ import { z } from "zod";
 import { createDictionaryCall } from "./internal/calls/dictionary-call.js";
 import { getDictionaryHook } from "./internal/dictionary-hook.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
-import { dictionaries, dictionaryStreams } from "./internal/global.js";
+import { dictionaries } from "./internal/global.js";
 import {
   DictionarySpec,
   DictionaryStreamOptions,
@@ -150,6 +150,7 @@ export interface Dictionary<Entity>
   kind: "Dictionary";
   name: string;
   schema?: z.Schema<Entity>;
+  streams: DictionaryStream<Entity>[];
   /**
    * Get a value.
    * If your values use composite keys, the namespace must be provided.
@@ -215,10 +216,16 @@ export function dictionary<Entity>(
     throw new Error(`dictionary with name '${name}' already exists`);
   }
 
+  /**
+   * Used to maintain a limited number of streams on the dictionary.
+   */
+  const streams: DictionaryStream<Entity>[] = [];
+
   const dictionary: Dictionary<Entity> = {
     kind: "Dictionary",
     name,
     schema,
+    streams,
     get: async (key: string | CompositeKey) => {
       if (isOrchestratorWorker()) {
         return createDictionaryCall(name, { operation: "get", key });
@@ -289,9 +296,22 @@ export function dictionary<Entity>(
     ) => {
       const [streamName, options, handler] =
         args.length === 2 ? [args[0], , args[1]] : args;
-      return options
-        ? dictionaryStream(streamName, dictionary, options, handler)
-        : dictionaryStream(streamName, dictionary, handler);
+
+      if (streams.length > 0) {
+        throw new Error("Only one stream is allowed per dictionary.");
+      }
+
+      const dictionaryStream: DictionaryStream<Entity> = {
+        kind: "DictionaryStream",
+        handler,
+        name: streamName,
+        dictionaryName: name,
+        options,
+      };
+
+      streams.push(dictionaryStream);
+
+      return dictionaryStream;
     },
   };
 
@@ -326,19 +346,7 @@ export function dictionaryStream<Entity>(
   const [name, dictionary, options, handler] =
     args.length === 3 ? [args[0], args[1], , args[2]] : args;
 
-  if (dictionaryStreams().has(name)) {
-    throw new Error(`dictionary stream with name '${name}' already exists`);
-  }
-
-  const dictionaryStream: DictionaryStream<Entity> = {
-    kind: "DictionaryStream",
-    handler,
-    name,
-    dictionaryName: dictionary.name,
-    options,
-  };
-
-  dictionaryStreams().set(name, dictionaryStream);
-
-  return dictionaryStream;
+  return options
+    ? dictionary.stream(name, options, handler)
+    : dictionary.stream(name, handler);
 }

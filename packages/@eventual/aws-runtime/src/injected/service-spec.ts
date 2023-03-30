@@ -11,5 +11,5 @@ export default {
   commands: [],
   activities: [],
   subscriptions: [],
-  entities: { dictionaries: [], dictionaryStreams: [] },
+  entities: { dictionaries: [] },
 } satisfies ServiceSpec;

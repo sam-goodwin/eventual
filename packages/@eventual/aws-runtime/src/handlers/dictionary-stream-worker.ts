@@ -4,60 +4,63 @@ import "@eventual/injected/entry";
 import { DictionaryStreamItem } from "@eventual/core";
 import {
   createDictionaryStreamWorker,
+  getLazy,
   promiseAllSettledPartitioned,
 } from "@eventual/core-runtime";
 import { DictionaryStreamOperation } from "@eventual/core/internal";
-import { DynamoDBBatchResponse, DynamoDBRecord } from "aws-lambda";
+import { DynamoDBStreamHandler } from "aws-lambda";
 import { createDictionaryClient, createServiceClient } from "../create.js";
+import { dictionaryName, dictionaryStreamName } from "../env.js";
 import { DictionaryEntityRecord } from "../stores/dictionary-store.js";
-
-export interface AWSDictionaryStreamItem {
-  streamName: string;
-  pk: string;
-  sk: string;
-  newValue?: string;
-  oldValue?: string;
-  newVersion?: number;
-  oldVersion?: number;
-  operation: DynamoDBRecord["eventName"];
-  eventID: string;
-}
 
 const worker = createDictionaryStreamWorker({
   eventualClient: createServiceClient({}),
   dictionaryClient: createDictionaryClient(),
 });
 
-export default async (
-  records: AWSDictionaryStreamItem[]
-): Promise<DynamoDBBatchResponse> => {
+export default (async (event) => {
+  const records = event.Records;
   console.log("records", JSON.stringify(records, undefined, 4));
 
   const results = await promiseAllSettledPartitioned(
     records,
     async (record) => {
       try {
-        const { name, namespace } =
-          DictionaryEntityRecord.parseNameAndNamespaceFromPartitionKey(
-            record.pk
-          );
-        const key = DictionaryEntityRecord.parseKeyFromSortKey(record.sk);
+        const keys = record.dynamodb?.Keys as Partial<DictionaryEntityRecord>;
+        const pk = keys?.pk?.S;
+        const sk = keys?.sk?.S;
+        const operation = record.eventName?.toLowerCase() as
+          | DictionaryStreamOperation
+          | undefined;
+        const oldItem = record.dynamodb?.OldImage as
+          | Partial<DictionaryEntityRecord>
+          | undefined;
+        const newItem = record.dynamodb?.NewImage as
+          | Partial<DictionaryEntityRecord>
+          | undefined;
 
-        if (record.operation) {
+        if (pk && sk && operation) {
+          const namespace =
+            DictionaryEntityRecord.parseNamespaceFromPartitionKey(pk);
+          const key = DictionaryEntityRecord.parseKeyFromSortKey(sk);
+
           const item: DictionaryStreamItem<any> = {
-            dictionaryName: name,
+            dictionaryName: getLazy(dictionaryName),
+            streamName: getLazy(dictionaryStreamName),
             namespace,
             key,
-            newValue: record.newValue ? JSON.parse(record.newValue) : undefined,
-            newVersion: record.newVersion
-              ? Number(record.newVersion)
+            newValue: newItem?.value?.S
+              ? JSON.parse(newItem?.value?.S)
+              : undefined,
+            newVersion: newItem?.version?.N
+              ? Number(newItem?.version?.N)
               : (undefined as any),
-            operation:
-              record.operation.toLowerCase() as DictionaryStreamOperation,
-            streamName: record.streamName,
-            oldValue: record.oldValue ? JSON.parse(record.oldValue) : undefined,
-            oldVersion: record.oldVersion
-              ? Number(record.oldVersion)
+            operation,
+            oldValue: oldItem?.value?.S
+              ? JSON.parse(oldItem?.value?.S)
+              : undefined,
+            oldVersion: oldItem?.version?.N
+              ? Number(oldItem?.version?.N)
               : undefined,
           };
 
@@ -75,11 +78,11 @@ export default async (
   return {
     batchItemFailures: [
       // consider any errors to be failure
-      ...results.rejected.map((r) => ({ itemIdentifier: r[0].eventID })),
+      ...results.rejected.map((r) => ({ itemIdentifier: r[0].eventID! })),
       // if a record returns false, consider it a failure
       ...results.fulfilled
         .filter((f) => f[1] === false)
-        .map((f) => ({ itemIdentifier: f[0].eventID })),
+        .map((f) => ({ itemIdentifier: f[0].eventID! })),
     ],
   };
-};
+}) satisfies DynamoDBStreamHandler;

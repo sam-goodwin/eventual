@@ -9,7 +9,6 @@ import {
   activities,
   commands,
   dictionaries,
-  dictionaryStreams,
   events,
   ServiceSpec,
   subscriptions,
@@ -103,12 +102,12 @@ export async function infer(
       dictionaries: [...dictionaries().values()].map((d) => ({
         name: d.name,
         schema: d.schema ? generateSchema(d.schema) : undefined,
-      })),
-      dictionaryStreams: [...dictionaryStreams().values()].map((s) => ({
-        name: s.name,
-        dictionaryName: s.dictionaryName,
-        options: s.options,
-        sourceLocation: s.sourceLocation,
+        streams: d.streams.map((s) => ({
+          name: s.name,
+          dictionaryName: s.dictionaryName,
+          options: s.options,
+          sourceLocation: s.sourceLocation,
+        })),
       })),
     },
   };
