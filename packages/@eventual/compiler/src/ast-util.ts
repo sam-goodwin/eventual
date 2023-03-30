@@ -44,6 +44,41 @@ export function isOnEventCall(call: CallExpression): boolean {
 }
 
 /**
+ * A heuristic for identifying a {@link CallExpression} that is a call to an `stream` handler.
+ *
+ * 1. must be a call to a MemberExpression matching to `<expression>.stream(name, impl | props, impl)`.
+ * 2. must have 2 or 3 arguments.
+ */
+export function isDictionaryStreamMemberCall(call: CallExpression): boolean {
+  const c = call.callee;
+  if (c.type === "MemberExpression") {
+    if (isId(c.property, "stream")) {
+      // dictionary.stream("streamName", async () => { })
+      // dictionary.stream("streamName", options, async () => { })
+      return call.arguments.length === 2 || call.arguments.length === 3;
+    }
+  }
+  return false;
+}
+
+/**
+ * A heuristic for identifying a {@link CallExpression} that is a call to an `subscription` handler.
+ *
+ * 1. must be a call to an `dictionaryStream(name, dictionary, props, impl)` or a MemberExpression matching to `<expression>.dictionaryStream(name, dictionary, props, impl)`.
+ * 2. must have exactly 3 arguments.
+ */
+export function isDictionaryStreamCall(call: CallExpression): boolean {
+  const c = call.callee;
+  if (
+    (c.type == "Identifier" && c.value === "dictionaryStream") ||
+    (c.type === "MemberExpression" && isId(c.property, "dictionaryStream"))
+  ) {
+    return call.arguments.length === 3 || call.arguments.length === 4;
+  }
+  return false;
+}
+
+/**
  * A heuristic for identifying a {@link CallExpression} that is a call to an `subscription` handler.
  *
  * 1. must be a call to an `subscription(name, props, impl)` or a MemberExpression matching to `<expression>.subscription(name,  props, impl)`.

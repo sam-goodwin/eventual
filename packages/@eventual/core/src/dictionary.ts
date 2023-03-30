@@ -7,6 +7,8 @@ import {
   DictionarySpec,
   DictionaryStreamOptions,
   DictionaryStreamSpec,
+  isSourceLocation,
+  SourceLocation,
 } from "./internal/service-spec.js";
 
 export interface CompositeKey {
@@ -143,6 +145,7 @@ export function dictionaryStreamMatchesItem(
 export interface DictionaryStream<Entity> extends DictionaryStreamSpec {
   kind: "DictionaryStream";
   handler: DictionaryStreamHandler<Entity>;
+  sourceLocation?: SourceLocation;
 }
 
 export interface Dictionary<Entity>
@@ -293,9 +296,26 @@ export function dictionary<Entity>(
             options: DictionaryStreamOptions,
             handler: DictionaryStreamHandler<Entity>
           ]
+        | [
+            sourceLocation: SourceLocation,
+            name: string,
+            handler: DictionaryStreamHandler<Entity>
+          ]
+        | [
+            sourceLocation: SourceLocation,
+            name: string,
+            options: DictionaryStreamOptions,
+            handler: DictionaryStreamHandler<Entity>
+          ]
     ) => {
-      const [streamName, options, handler] =
-        args.length === 2 ? [args[0], , args[1]] : args;
+      const [sourceLocation, streamName, options, handler] =
+        args.length === 2
+          ? [, args[0], , args[1]]
+          : args.length === 4
+          ? args
+          : isSourceLocation(args[0]) && typeof args[1] === "string"
+          ? [args[0], args[1] as string, , args[2]]
+          : [, args[0] as string, args[1] as DictionaryStreamOptions, args[2]];
 
       if (streams.length > 1) {
         throw new Error("Only two streams are allowed per dictionary.");
@@ -307,6 +327,7 @@ export function dictionary<Entity>(
         name: streamName,
         dictionaryName: name,
         options,
+        sourceLocation,
       };
 
       streams.push(dictionaryStream);
@@ -342,11 +363,42 @@ export function dictionaryStream<Entity>(
         options: DictionaryStreamOptions,
         handler: DictionaryStreamHandler<Entity>
       ]
+    | [
+        sourceLocation: SourceLocation,
+        name: string,
+        dictionary: Dictionary<Entity>,
+        handler: DictionaryStreamHandler<Entity>
+      ]
+    | [
+        sourceLocation: SourceLocation,
+        name: string,
+        dictionary: Dictionary<Entity>,
+        options: DictionaryStreamOptions,
+        handler: DictionaryStreamHandler<Entity>
+      ]
 ) {
-  const [name, dictionary, options, handler] =
-    args.length === 3 ? [args[0], args[1], , args[2]] : args;
+  const [sourceLocation, name, dictionary, options, handler] =
+    args.length === 3
+      ? [, args[0], args[1], , args[2]]
+      : args.length === 5
+      ? args
+      : isSourceLocation(args[0])
+      ? [args[0], args[1] as string, args[2] as Dictionary<Entity>, , args[3]]
+      : [
+          ,
+          args[0] as string,
+          args[1] as Dictionary<Entity>,
+          args[2] as DictionaryStreamOptions,
+          args[3],
+        ];
 
-  return options
+  return sourceLocation
+    ? options
+      ? // @ts-ignore
+        dictionary.stream(sourceLocation, name, options, handler)
+      : // @ts-ignore
+        dictionary.stream(sourceLocation, name, handler)
+    : options
     ? dictionary.stream(name, options, handler)
     : dictionary.stream(name, handler);
 }

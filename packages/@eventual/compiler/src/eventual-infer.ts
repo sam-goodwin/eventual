@@ -32,6 +32,8 @@ import {
   getSpan,
   isActivityCall,
   isCommandCall,
+  isDictionaryStreamCall,
+  isDictionaryStreamMemberCall,
   isOnEventCall,
   isSubscriptionCall,
 } from "./ast-util.js";
@@ -195,7 +197,9 @@ export class InferVisitor extends Visitor {
       (isCommandCall(call) ||
         isOnEventCall(call) ||
         isSubscriptionCall(call) ||
-        isActivityCall(call))
+        isActivityCall(call) ||
+        isDictionaryStreamMemberCall(call) ||
+        isDictionaryStreamCall(call))
     ) {
       this.didMutate = true;
 
