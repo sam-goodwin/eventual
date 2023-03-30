@@ -297,8 +297,8 @@ export function dictionary<Entity>(
       const [streamName, options, handler] =
         args.length === 2 ? [args[0], , args[1]] : args;
 
-      if (streams.length > 0) {
-        throw new Error("Only one stream is allowed per dictionary.");
+      if (streams.length > 1) {
+        throw new Error("Only two streams are allowed per dictionary.");
       }
 
       const dictionaryStream: DictionaryStream<Entity> = {

@@ -566,6 +566,18 @@ export const counterWatcher = counter.stream(
   }
 );
 
+export const counterNamespaceWatcher = counter.stream(
+  "counterNamespaceWatch",
+  { namespacePrefixes: ["different"] },
+  async (item) => {
+    if (item.operation === "insert") {
+      const value = await counter.get(item.key);
+      await counter.set(item.key, { n: (value?.n ?? 0) + 1 });
+      await dictSignal.sendSignal(item.key);
+    }
+  }
+);
+
 export const onDictEvent = subscription(
   "onDictEvent",
   { events: [dictEvent] },
@@ -588,7 +600,8 @@ export const dictionaryWorkflow = workflow(
   "dictionaryWorkflow",
   async (_, { execution: { id } }) => {
     await counter.set(id, { n: 1 });
-    await counter.set({ key: id, namespace: "different!" }, { n: 0 });
+    counter.set({ key: id, namespace: "different!" }, { n: 0 });
+    await dictSignal.expectSignal();
     await dictionaryActivity();
     await Promise.all([
       dictEvent.publishEvents({ id }),

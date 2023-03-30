@@ -188,17 +188,15 @@ export class DictionaryStream extends Construct implements EventualResource {
                   S: FilterRule.or(
                     // for each namespace given, match the complete name.
                     ...(namespaces
-                      ? namespaces.map((n) =>
-                          FilterRule.isEqual(DictionaryEntityRecord.key(n))
-                        )
+                      ? namespaces.map((n) => DictionaryEntityRecord.key(n))
                       : []),
                     // for each namespace prefix given, build a prefix statement for each one.
                     ...(namespacePrefixes
-                      ? namespacePrefixes.map(
+                      ? namespacePrefixes.flatMap(
                           (n) =>
                             FilterRule.beginsWith(
                               DictionaryEntityRecord.key(n)
-                            ) as unknown as string
+                            ) as unknown as string[]
                         )
                       : [])
                   ),
