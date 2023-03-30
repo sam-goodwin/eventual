@@ -39,7 +39,13 @@ import {
   CorsOptions,
 } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal.js";
-import { Dictionary, EntityService } from "./entity-service.js";
+import {
+  DictionaryStream,
+  DictionaryStreamOverrides,
+  EntityService,
+  ServiceDictionaries,
+  ServiceDictionaryStreams,
+} from "./entity-service.js";
 import { EventService } from "./event-service";
 import { grant } from "./grant";
 import { LazyInterface, lazyInterface } from "./proxy-construct";
@@ -96,6 +102,7 @@ export interface ServiceProps<Service = any> {
    * Override properties of Subscription Functions within the Service.
    */
   subscriptions?: SubscriptionOverrides<Service>;
+  dictionaryStreamOverrides?: DictionaryStreamOverrides<Service>;
   cors?: CorsOptions;
   system?: {
     /**
@@ -117,7 +124,7 @@ export interface ServiceSystem<S> {
    * The subsystem for schedules and timers.
    */
   readonly schedulerService: SchedulerService;
-  readonly entityService: EntityService;
+  readonly entityService: EntityService<S>;
   /**
    * The {@link AppSec} inferred from the application code.
    */
@@ -153,7 +160,8 @@ export class Service<S = any> extends Construct {
   /**
    * TODO
    */
-  public readonly dictionaries: Record<string, Dictionary>;
+  public readonly dictionaries: ServiceDictionaries<S>;
+  public readonly dictionaryStreams: ServiceDictionaryStreams<S>;
   /**
    * API Gateway which serves the service commands and the system commands.
    */
@@ -182,6 +190,7 @@ export class Service<S = any> extends Construct {
   public commandsPrincipal: IPrincipal;
   public activitiesPrincipal: IPrincipal;
   public subscriptionsPrincipal: IPrincipal;
+  public dictionaryStreamPrincipal: IPrincipal;
 
   public readonly system: ServiceSystem<S>;
 
@@ -234,11 +243,13 @@ export class Service<S = any> extends Construct {
       eventualServiceScope,
     };
 
-    const entityService = new EntityService({
+    const entityService = new EntityService<S>({
       commandService: proxyCommandService,
+      dictionaryStreamOverrides: props.dictionaryStreamOverrides,
       ...serviceConstructProps,
     });
     this.dictionaries = entityService.dictionaries;
+    this.dictionaryStreams = entityService.dictionaryStreams;
 
     this.eventService = new EventService(serviceConstructProps);
     this.bus = this.eventService.bus;
@@ -336,10 +347,18 @@ export class Service<S = any> extends Construct {
             ...this.subscriptionsList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });
+    this.dictionaryStreamPrincipal =
+      this.dictionaryStreamList.length > 0 || this.local
+        ? new DeepCompositePrincipal(
+            ...(this.local ? [this.local.environmentRole] : []),
+            ...this.dictionaryStreamList.map((f) => f.grantPrincipal)
+          )
+        : new UnknownPrincipal({ resource: this });
     this.grantPrincipal = new DeepCompositePrincipal(
       this.commandsPrincipal,
       this.activitiesPrincipal,
-      this.subscriptionsPrincipal
+      this.subscriptionsPrincipal,
+      this.dictionaryStreamPrincipal
     );
 
     serviceDataSSM.grantRead(accessRole);
@@ -366,6 +385,10 @@ export class Service<S = any> extends Construct {
 
   public get subscriptionsList(): Subscription[] {
     return Object.values(this.subscriptions);
+  }
+
+  public get dictionaryStreamList(): DictionaryStream[] {
+    return Object.values(this.dictionaryStreams);
   }
 
   public subscribe(

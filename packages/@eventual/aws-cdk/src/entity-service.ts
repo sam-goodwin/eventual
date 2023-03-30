@@ -21,6 +21,7 @@ import {
   FilterCriteria,
   FilterRule,
   Function,
+  FunctionProps,
   StartingPosition,
 } from "aws-cdk-lib/aws-lambda";
 import { DynamoEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
@@ -29,16 +30,40 @@ import { CommandService } from "./command-service";
 import { LazyInterface } from "./proxy-construct";
 import { EventualResource, ServiceConstructProps } from "./service";
 import { ServiceFunction } from "./service-function";
-import { serviceTableArn } from "./utils";
+import { ServiceEntityProps, serviceTableArn } from "./utils";
 
-export interface EntityServiceProps extends ServiceConstructProps {
-  commandService: LazyInterface<CommandService>;
+export type ServiceDictionaries<Service> = ServiceEntityProps<
+  Service,
+  "Dictionary",
+  Dictionary
+>;
+
+export type ServiceDictionaryStreams<Service> = ServiceEntityProps<
+  Service,
+  "DictionaryStream",
+  DictionaryStream
+>;
+
+export type DictionaryStreamOverrides<Service> = Partial<
+  ServiceEntityProps<Service, "DictionaryStream", DictionaryStreamHandlerProps>
+>;
+
+export interface DictionaryStreamHandlerProps
+  extends Omit<
+    Partial<FunctionProps>,
+    "code" | "handler" | "functionName" | "events"
+  > {}
+
+export interface EntityServiceProps<Service> extends ServiceConstructProps {
+  commandService: LazyInterface<CommandService<Service>>;
+  dictionaryStreamOverrides?: DictionaryStreamOverrides<Service>;
 }
 
-export class EntityService {
-  public dictionaries: Record<string, Dictionary>;
+export class EntityService<Service> {
+  public dictionaries: ServiceDictionaries<Service>;
+  public dictionaryStreams: ServiceDictionaryStreams<Service>;
 
-  constructor(private props: EntityServiceProps) {
+  constructor(private props: EntityServiceProps<Service>) {
     const entitiesConstruct = new Construct(props.serviceScope, "Entities");
 
     this.dictionaries = Object.fromEntries(
@@ -50,7 +75,16 @@ export class EntityService {
           serviceProps: props,
         }),
       ])
-    );
+    ) as ServiceDictionaries<Service>;
+
+    this.dictionaryStreams = Object.values(
+      this.dictionaries as Record<string, Dictionary>
+    ).reduce((streams: Record<string, DictionaryStream>, dict) => {
+      return {
+        ...streams,
+        ...dict.streams,
+      };
+    }, {}) as ServiceDictionaryStreams<Service>;
   }
 
   public configureReadWriteEntityTable(func: Function) {
@@ -101,15 +135,15 @@ export class EntityService {
 }
 
 interface DictionaryProps {
-  serviceProps: EntityServiceProps;
-  entityService: EntityService;
+  serviceProps: EntityServiceProps<any>;
+  entityService: EntityService<any>;
   dictionary: DictionaryRuntime;
 }
 
 interface DictionaryStreamProps {
   table: ITable;
-  serviceProps: EntityServiceProps;
-  entityService: EntityService;
+  serviceProps: EntityServiceProps<any>;
+  entityService: EntityService<any>;
   stream: DictionaryStreamFunction;
 }
 
@@ -168,6 +202,8 @@ export class DictionaryStream extends Construct implements EventualResource {
 
     const namespaces = props.stream.spec.options?.namespaces;
     const namespacePrefixes = props.stream.spec.options?.namespacePrefixes;
+    const streamName = props.stream.spec.name;
+    const dictionaryName = props.stream.spec.dictionaryName;
 
     const filters = {
       ...(props.stream.spec.options?.operations
@@ -210,13 +246,13 @@ export class DictionaryStream extends Construct implements EventualResource {
     this.handler = new ServiceFunction(this, "Handler", {
       build: props.serviceProps.build,
       bundledFunction: props.stream,
-      functionNameSuffix: `dictionary-stream-${props.stream.spec.dictionaryName}-${props.stream.spec.name}`,
+      functionNameSuffix: `dictionary-stream-${dictionaryName}-${streamName}`,
       serviceName: props.serviceProps.serviceName,
       defaults: {
         timeout: Duration.minutes(1),
         environment: {
-          [ENV_NAMES.DICTIONARY_NAME]: props.stream.spec.dictionaryName,
-          [ENV_NAMES.DICTIONARY_STREAM_NAME]: props.stream.spec.name,
+          [ENV_NAMES.DICTIONARY_NAME]: dictionaryName,
+          [ENV_NAMES.DICTIONARY_STREAM_NAME]: streamName,
           ...props.serviceProps.environment,
         },
         events: [
@@ -230,9 +266,7 @@ export class DictionaryStream extends Construct implements EventualResource {
         ],
       },
       runtimeProps: props.stream.spec.options,
-      overrides: {
-        environment: props.serviceProps.environment,
-      },
+      overrides: props.serviceProps.dictionaryStreamOverrides?.[streamName],
     });
 
     // let the handler worker use the service client.

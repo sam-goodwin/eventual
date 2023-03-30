@@ -82,7 +82,7 @@ export interface CorsOptions {
 export interface CommandsProps<Service = any> extends ServiceConstructProps {
   activityService: ActivityService<Service>;
   cors?: CorsOptions;
-  entityService: EntityService;
+  entityService: EntityService<Service>;
   eventService: EventService;
   local: ServiceLocal | undefined;
   overrides?: CommandProps<Service>;

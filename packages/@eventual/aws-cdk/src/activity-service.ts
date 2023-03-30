@@ -27,14 +27,8 @@ import {
   ServiceLocal,
 } from "./service";
 import { ServiceFunction } from "./service-function";
-import {
-  GetServiceEntityNames,
-  ServiceEntityProps,
-  serviceFunctionArn,
-} from "./utils";
+import { ServiceEntityProps, serviceFunctionArn } from "./utils";
 import { WorkflowService } from "./workflow-service";
-
-export type ActivityNames<Service> = GetServiceEntityNames<Service, "Activity">;
 
 export type ServiceActivities<Service> = ServiceEntityProps<
   Service,
@@ -48,7 +42,7 @@ export type ActivityOverrides<Service> = {
 
 export interface ActivitiesProps<Service> extends ServiceConstructProps {
   readonly commandsService: LazyInterface<CommandService<Service>>;
-  readonly entityService: EntityService;
+  readonly entityService: EntityService<Service>;
   readonly local: ServiceLocal | undefined;
   readonly overrides?: ActivityOverrides<Service>;
   readonly schedulerService: LazyInterface<SchedulerService>;
@@ -247,7 +241,7 @@ export class ActivityService<Service = any> {
     /**
      * Dictionary operations
      */
-    this.props.entityService.configureReadWriteEntityTable(func); 
+    this.props.entityService.configureReadWriteEntityTable(func);
   }
 
   private configureActivityFallbackHandler() {

@@ -38,7 +38,7 @@ export interface SubscriptionsProps<S = any> extends ServiceConstructProps {
   /**
    * The Service's {@link EventService} repository.
    */
-  readonly entityService: EntityService;
+  readonly entityService: EntityService<S>;
   readonly eventService: EventService;
   readonly local: ServiceLocal | undefined;
   /**

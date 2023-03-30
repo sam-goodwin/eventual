@@ -548,7 +548,7 @@ export const createAndDestroyWorkflow = workflow(
   }
 );
 
-const counter = dictionary<{ n: number }>("counter", z.any());
+export const counter = dictionary<{ n: number }>("counter", z.any());
 const dictEvent = event<{ id: string }>("dictEvent");
 const dictSignal = signal("dictSignal");
 const dictSignal2 = signal<{ n: number }>("dictSignal2");

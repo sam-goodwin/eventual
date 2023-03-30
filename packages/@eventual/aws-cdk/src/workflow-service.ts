@@ -34,7 +34,7 @@ import { ServiceFunction } from "./service-function";
 
 export interface WorkflowsProps extends ServiceConstructProps {
   activityService: LazyInterface<ActivityService>;
-  entityService: EntityService;
+  entityService: EntityService<any>;
   eventService: EventService;
   schedulerService: LazyInterface<SchedulerService>;
   overrides?: WorkflowServiceOverrides;
