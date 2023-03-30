@@ -2,7 +2,9 @@ import type { SQSClient } from "@aws-sdk/client-sqs";
 import {
   activity as _activity,
   ActivityHandler,
+  CompositeKey,
   dictionary,
+  Dictionary,
   EventPayloadType,
   EventualError,
   Execution,
@@ -11,13 +13,12 @@ import {
   Timeout,
   workflow as _workflow,
   WorkflowHandler,
-  CompositeKey,
 } from "@eventual/core";
+import { activities, workflows } from "@eventual/core/internal";
 import { jest } from "@jest/globals";
 import z from "zod";
 import { TestEnvironment } from "../src/environment.js";
 import { MockActivity } from "../src/providers/activity-provider.js";
-import { activities, workflows } from "@eventual/core/internal";
 
 const fakeSqsClientSend = jest.fn<SQSClient["send"]>();
 jest.unstable_mockModule("@aws-sdk/client-sqs", () => {
@@ -1393,6 +1394,74 @@ describe("dictionary", () => {
       Partial<Execution<any>>
     >({
       result: { entity: { n: 5 }, version: 3 },
+      status: ExecutionStatus.SUCCEEDED,
+    });
+  });
+
+  test("transact", async () => {
+    const act = activity(
+      async (
+        {
+          version,
+          namespace,
+          value,
+        }: { version: number; namespace?: string; value: number },
+        { execution: { id } }
+      ) => {
+        return Dictionary.transactWrite([
+          {
+            operation: {
+              operation: "set",
+              key: namespace ? { key: id, namespace } : id,
+              value: { n: value },
+              options: { expectedVersion: version },
+            },
+            dictionary: myDict,
+          },
+          {
+            operation: {
+              operation: "set",
+              key: { key: id, namespace: "3" },
+              value: { n: value },
+              options: { expectedVersion: version },
+            },
+            dictionary: myDict,
+          },
+        ]);
+      }
+    );
+
+    const wf = workflow(async (_, { execution: { id } }) => {
+      const { version: version1 } = await myDict.set(id, { n: 1 });
+      const { version: version2 } = await myDict.set(
+        { key: id, namespace: "2" },
+        { n: 1 }
+      );
+      await myDict.set({ key: id, namespace: "3" }, { n: 1 });
+
+      await act({ version: version1, value: 2 });
+      try {
+        await act({ version: version2 + 1, namespace: "2", value: 3 });
+      } catch {}
+
+      return Promise.all([
+        myDict.get(id),
+        myDict.get({ key: id, namespace: "2" }),
+        myDict.get({ key: id, namespace: "3" }),
+      ]);
+    });
+
+    const execution = await env.startExecution({
+      workflow: wf,
+      input: undefined,
+    });
+
+    await env.tick(20);
+
+    await expect(execution.getStatus()).resolves.toMatchObject<
+      Partial<Execution<any>>
+    >({
+      result: [{ n: 2 }, { n: 1 }, { n: 2 }],
       status: ExecutionStatus.SUCCEEDED,
     });
   });

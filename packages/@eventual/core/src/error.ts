@@ -117,3 +117,15 @@ export class UnexpectedVersion extends Error {
     super(message);
   }
 }
+
+/**
+ * Thrown from {@link Dictionary.transactWrite} when an error is encountered
+ * that cancels the transaction.
+ *
+ * Returns reasons in the same order as the input items.
+ */
+export class TransactionCancelled extends Error {
+  constructor(public reasons: (UnexpectedVersion | undefined)[]) {
+    super("Transactions Cancelled, see reasons");
+  }
+}

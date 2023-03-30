@@ -33,7 +33,7 @@ export interface DictionaryStore {
     request: DictionaryListRequest
   ): Promise<DictionaryListKeysResult>;
   transactWrite(
-    items: DictionaryTransactItem<any>[]
+    items: DictionaryTransactItem<any, string>[]
   ): Promise<TransactionCancelledResult | void>;
 }
 

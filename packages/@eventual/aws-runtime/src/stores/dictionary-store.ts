@@ -52,10 +52,7 @@ export class AWSDictionaryStore implements DictionaryStore {
           pk: { S: DictionaryEntityRecord.key(namespace) },
           sk: { S: DictionaryEntityRecord.sortKey(key) },
         } satisfies Partial<DictionaryEntityRecord>,
-        TableName: entityServiceTableName(
-          getLazy(this.props.serviceName),
-          name
-        ),
+        TableName: this.tableName(name),
         AttributesToGet: ["value", "version"],
         ConsistentRead: true,
       })
@@ -135,7 +132,7 @@ export class AWSDictionaryStore implements DictionaryStore {
             ? "attribute_not_exists(#version)"
             : "#version=:expectedVersion"
           : undefined,
-      TableName: entityServiceTableName(getLazy(this.props.serviceName), name),
+      TableName: this.tableName(name),
     };
   }
 
@@ -174,7 +171,7 @@ export class AWSDictionaryStore implements DictionaryStore {
         options?.expectedVersion !== undefined
           ? { ":expectedVersion": { N: options.expectedVersion.toString() } }
           : undefined,
-      TableName: entityServiceTableName(getLazy(this.props.serviceName), name),
+      TableName: this.tableName(name),
     };
   }
 
@@ -209,7 +206,7 @@ export class AWSDictionaryStore implements DictionaryStore {
   }
 
   public async transactWrite(
-    items: DictionaryTransactItem<any>[]
+    items: DictionaryTransactItem<any, string>[]
   ): Promise<TransactionCancelledResult | void> {
     try {
       await this.props.dynamo.send(
@@ -218,7 +215,7 @@ export class AWSDictionaryStore implements DictionaryStore {
             if (i.operation.operation === "set") {
               return {
                 Update: this.setRequest(
-                  i.dictionaryName,
+                  i.dictionary,
                   i.operation.key,
                   i.operation.value,
                   i.operation.options
@@ -227,7 +224,7 @@ export class AWSDictionaryStore implements DictionaryStore {
             } else if (i.operation.operation === "delete") {
               return {
                 Delete: this.deleteRequest(
-                  i.dictionaryName,
+                  i.dictionary,
                   i.operation.key,
                   i.operation.options
                 ),
@@ -268,10 +265,7 @@ export class AWSDictionaryStore implements DictionaryStore {
         nextToken: request.nextToken,
       },
       {
-        TableName: entityServiceTableName(
-          getLazy(this.props.serviceName),
-          name
-        ),
+        TableName: this.tableName(name),
         KeyConditionExpression: "pk=:pk AND begins_with(sk, :sk)",
         ExpressionAttributeValues: {
           ":pk": { S: DictionaryEntityRecord.key(request.namespace) },
@@ -279,6 +273,13 @@ export class AWSDictionaryStore implements DictionaryStore {
         },
         AttributesToGet: fields,
       }
+    );
+  }
+
+  private tableName(dictionaryName: string) {
+    return entityServiceTableName(
+      getLazy(this.props.serviceName),
+      dictionaryName
     );
   }
 }

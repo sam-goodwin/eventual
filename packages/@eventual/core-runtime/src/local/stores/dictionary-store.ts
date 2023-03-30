@@ -5,12 +5,15 @@ import {
   DictionaryListRequest,
   DictionaryListResult,
   DictionarySetOptions,
+  DictionaryTransactItem,
 } from "@eventual/core";
+import { assertNever } from "@eventual/core/internal";
 import {
   DictionaryStore,
   EntityWithMetadata,
   UnexpectedVersionResult,
   normalizeCompositeKey,
+  TransactionCancelledResult,
 } from "../../stores/dictionary-store.js";
 import { LocalEnvConnector } from "../local-container.js";
 import { paginateItems } from "./pagination.js";
@@ -75,7 +78,7 @@ export class LocalDictionaryStore implements DictionaryStore {
 
   public async deleteDictionaryValue(
     name: string,
-    _key: string,
+    _key: string | CompositeKey,
     options?: DictionaryConsistencyOptions
   ): Promise<void | UnexpectedVersionResult> {
     const { key, namespace } = normalizeCompositeKey(_key);
@@ -128,6 +131,61 @@ export class LocalDictionaryStore implements DictionaryStore {
     };
   }
 
+  public async transactWrite(
+    items: DictionaryTransactItem<any, string>[]
+  ): Promise<void | TransactionCancelledResult> {
+    const keysAndVersions = Object.fromEntries(
+      items.map(
+        (i) =>
+          [
+            serializeCompositeKey(i.dictionary, i.operation.key),
+            i.operation.options?.expectedVersion,
+          ] as const
+      )
+    );
+
+    const consistencyResults = await Promise.all(
+      Object.entries(keysAndVersions).map(async ([sKey, expectedVersion]) => {
+        if (expectedVersion === undefined) {
+          return true;
+        }
+        const [name, key] = deserializeCompositeKey(sKey);
+        const { version } = (await this.getDictionaryValue(name, key)) ?? {
+          version: 0,
+        };
+        return version === expectedVersion;
+      })
+    );
+
+    if (consistencyResults.some((r) => !r)) {
+      return {
+        reasons: consistencyResults.map((r) =>
+          r ? undefined : { unexpectedVersion: true }
+        ),
+      };
+    }
+
+    await Promise.all(
+      items.map(async (i) => {
+        if (i.operation.operation === "set") {
+          return await this.setDictionaryValue(
+            i.dictionary,
+            i.operation.key,
+            i.operation.value,
+            i.operation.options
+          );
+        } else if (i.operation.operation === "delete") {
+          return await this.deleteDictionaryValue(
+            i.dictionary,
+            i.operation.key,
+            i.operation.options
+          );
+        }
+        return assertNever(i.operation);
+      })
+    );
+  }
+
   private orderedEntries(name: string, listRequest: DictionaryListRequest) {
     const namespace = this.getNamespaceMap(name, listRequest.namespace);
     const entries = namespace ? [...namespace.entries()] : [];
@@ -154,4 +212,19 @@ export class LocalDictionaryStore implements DictionaryStore {
     >());
     return namespaceMap;
   }
+}
+
+function serializeCompositeKey(
+  dictionaryName: string,
+  _key: string | CompositeKey
+) {
+  const { key, namespace } = normalizeCompositeKey(_key);
+  return `${dictionaryName}|${namespace ?? ""}|${key}`;
+}
+
+function deserializeCompositeKey(
+  sKey: string
+): [string, string | CompositeKey] {
+  const [name, namespace, key] = sKey.split("|") as [string, string, string];
+  return [name, namespace ? { key, namespace } : key];
 }

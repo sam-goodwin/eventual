@@ -215,13 +215,18 @@ export interface Dictionary<Entity>
   ): DictionaryStream<Entity>;
 }
 
-export interface DictionaryTransactItem<Entity> {
-  dictionaryName: string;
+export interface DictionaryTransactItem<
+  Entity,
+  D extends string | Dictionary<Entity> = string | Dictionary<Entity>
+> {
+  dictionary: D;
   operation: DictionarySetOperation<Entity> | DictionaryDeleteOperation;
 }
 
 export const Dictionary = {
-  transactWrite: (items: DictionaryTransactItem<any>[]): Promise<void> => {
+  transactWrite: <Items extends DictionaryTransactItem<any>[]>(
+    items: Items
+  ): Promise<void> => {
     if (isOrchestratorWorker()) {
       throw new Error("Implement Me");
     } else {
