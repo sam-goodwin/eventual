@@ -163,6 +163,7 @@ export function activityScheduled(
     type: WorkflowEventType.ActivityScheduled,
     name,
     seq,
+    
     timestamp: new Date(0).toISOString(),
   };
 }

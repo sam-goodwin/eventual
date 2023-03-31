@@ -23,16 +23,16 @@ import {
   CommandWorker,
   createCommandWorker,
 } from "../handlers/command-worker.js";
+import {
+  createDictionaryStreamWorker,
+  DictionaryStreamWorker,
+} from "../handlers/dictionary-stream-worker.js";
 import { Orchestrator, createOrchestrator } from "../handlers/orchestrator.js";
 import {
   SubscriptionWorker,
   createSubscriptionWorker,
 } from "../handlers/subscription-worker.js";
 import { TimerHandler, createTimerHandler } from "../handlers/timer-handler.js";
-import {
-  DictionaryStreamWorker,
-  createDictionaryStreamWorker,
-} from "../index.js";
 import { LogAgent } from "../log-agent.js";
 import {
   ActivityProvider,
@@ -241,3 +241,10 @@ export interface LocalEnvConnector {
   pushWorkflowTask: (envEvent: LocalEvent) => void;
   scheduleEvent(time: Date, envEvent: LocalEvent): void;
 }
+
+export const NoOpLocalEnvConnector: LocalEnvConnector = {
+  getTime: () => new Date(),
+  pushWorkflowTask: () => {},
+  pushWorkflowTaskNextTick: () => {},
+  scheduleEvent: () => {},
+};

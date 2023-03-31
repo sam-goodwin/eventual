@@ -1,12 +1,16 @@
 import { z } from "zod";
-import { createDictionaryCall } from "./internal/calls/dictionary-call.js";
-import { getDictionaryHook } from "./internal/dictionary-hook.js";
-import { isOrchestratorWorker } from "./internal/flags.js";
-import { dictionaries } from "./internal/global.js";
 import {
+  createEventualCall,
+  EventualCallKind,
+} from "./internal/calls/calls.js";
+import {
+  DictionaryCall,
   DictionaryDeleteOperation,
   DictionarySetOperation,
-} from "./internal/index.js";
+} from "./internal/calls/dictionary-call.js";
+import { getDictionaryHook } from "./internal/dictionary-hook.js";
+import { getEventualCallHook } from "./internal/eventual-hook.js";
+import { dictionaries } from "./internal/global.js";
 import {
   DictionarySpec,
   DictionaryStreamOptions,
@@ -239,11 +243,9 @@ export const Dictionary = {
   transactWrite: <Items extends DictionaryTransactItem<any>[]>(
     items: Items
   ): Promise<void> => {
-    if (isOrchestratorWorker()) {
-      throw new Error("Implement Me");
-    } else {
+    return getEventualCallHook().registerEventualCall(undefined, async () => {
       return getDictionaryHook().transactWrite(items);
-    }
+    });
   },
 };
 
@@ -265,64 +267,75 @@ export function dictionary<Entity>(
     name,
     schema,
     streams,
-    get: async (key: string | CompositeKey) => {
-      if (isOrchestratorWorker()) {
-        return createDictionaryCall(name, { operation: "get", key });
-      } else {
-        return (await getDictionary()).get(key);
-      }
+    get: (key: string | CompositeKey) => {
+      return getEventualCallHook().registerEventualCall(
+        createEventualCall<DictionaryCall>(EventualCallKind.DictionaryCall, {
+          name,
+          operation: { operation: "get", key },
+        }),
+        async () => {
+          return (await getDictionary()).get(key);
+        }
+      );
     },
     getWithMetadata: async (key: string | CompositeKey) => {
-      if (isOrchestratorWorker()) {
-        return createDictionaryCall(name, {
-          operation: "getWithMetadata",
-          key,
-        });
-      } else {
-        const dictionary = await getDictionary();
-        return dictionary.getWithMetadata(key);
-      }
+      return getEventualCallHook().registerEventualCall(
+        createEventualCall<DictionaryCall>(EventualCallKind.DictionaryCall, {
+          name,
+          operation: { operation: "getWithMetadata", key },
+        }),
+        async () => {
+          return (await getDictionary()).getWithMetadata(key);
+        }
+      );
     },
     set: async (
       key: string | CompositeKey,
       entity: Entity,
       options?: DictionarySetOptions
     ) => {
-      if (isOrchestratorWorker()) {
-        return createDictionaryCall(name, {
-          operation: "set",
-          key,
-          value: entity,
-          options,
-        });
-      } else {
-        return (await getDictionary()).set(key, entity, options);
-      }
+      return getEventualCallHook().registerEventualCall(
+        createEventualCall<DictionaryCall>(EventualCallKind.DictionaryCall, {
+          name,
+          operation: { operation: "set", key, options, value: entity },
+        }),
+        async () => {
+          return (await getDictionary()).set(key, entity, options);
+        }
+      );
     },
     delete: async (key, options) => {
-      if (isOrchestratorWorker()) {
-        return createDictionaryCall(name, {
-          operation: "delete",
-          key,
-          options,
-        });
-      } else {
-        return (await getDictionary()).delete(key);
-      }
+      return getEventualCallHook().registerEventualCall(
+        createEventualCall<DictionaryCall>(EventualCallKind.DictionaryCall, {
+          name,
+          operation: { operation: "delete", key, options },
+        }),
+        async () => {
+          return (await getDictionary()).delete(key, options);
+        }
+      );
     },
     list: async (request) => {
-      if (isOrchestratorWorker()) {
-        return createDictionaryCall(name, { operation: "list", request });
-      } else {
-        return (await getDictionary()).list(request);
-      }
+      return getEventualCallHook().registerEventualCall(
+        createEventualCall<DictionaryCall>(EventualCallKind.DictionaryCall, {
+          name,
+          operation: { operation: "list", request },
+        }),
+        async () => {
+          return (await getDictionary()).list(request);
+        }
+      );
     },
     listKeys: async (request) => {
-      if (isOrchestratorWorker()) {
-        return createDictionaryCall(name, { operation: "listKeys", request });
-      } else {
-        return (await getDictionary()).listKeys(request);
-      }
+      return getEventualCallHook().registerEventualCall(
+        createEventualCall<DictionaryCall>(EventualCallKind.DictionaryCall, {
+          name,
+          operation: { operation: "listKeys", request },
+        }),
+        async () => {
+          return (await getDictionary()).listKeys(request);
+        }
+      );
     },
     stream: (
       ...args:

@@ -36,7 +36,6 @@ import { isPromise } from "util/types";
 import { createEventualFromCall } from "./eventual-factory.js";
 import { formatExecutionId } from "./execution.js";
 import { isFailed, isResolved, isResult } from "./result.js";
-// import type { WorkflowCommand } from "./workflow-command.js";
 import { filterEvents } from "./workflow-events.js";
 
 /**
@@ -436,7 +435,11 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
   ): Promise<Awaited<Res>> {
     const self = this;
     const workflowHook: EventualCallHook = {
-      registerEventualCall<E extends EventualPromise<any>>(call: EventualCall) {
+      registerEventualCall(call?: EventualCall) {
+        if (!call) {
+          throw new Error("Operation is not supported within a workflow.");
+        }
+
         try {
           const eventual = createEventualFromCall(call);
           const seq = self.nextSeq++;
@@ -455,13 +458,10 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
            * If the eventual comes with a result, do not active it, it is already resolved!
            */
           if (isResolvedEventualDefinition(eventual)) {
-            return createEventualPromise<any>(
-              seq,
-              eventual.result
-            ) as unknown as E;
+            return createEventualPromise<any>(seq, eventual.result);
           }
 
-          return self.activateEventual(seq, eventual) as E;
+          return self.activateEventual(seq, eventual);
         } catch (err) {
           self.resolveWorkflow(Result.failed(err));
           throw err;

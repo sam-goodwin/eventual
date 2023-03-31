@@ -13,7 +13,7 @@
     "lib"
   ],
   "scripts": {
-    "test": "jest"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "dependencies": {
     "@eventual/core": "workspace:^",
@@ -34,6 +34,10 @@
   "jest": {
     "extensionsToTreatAsEsm": [
       ".ts"
+    ],
+    "moduleDirectories": [
+      "node_modules",
+      "src"
     ],
     "moduleNameMapper": {
       "^(\\.{1,2}/.*)\\.js$": "$1"

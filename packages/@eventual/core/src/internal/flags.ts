@@ -19,6 +19,12 @@ export function isOrchestratorWorker() {
   );
 }
 
+export function isTransactionWorker() {
+  return (
+    globalThis.serviceTypeStore?.getStore() === ServiceType.TransactionWorker
+  );
+}
+
 export function isEventHandler() {
   return globalThis.serviceTypeStore?.getStore() === ServiceType.Subscription;
 }

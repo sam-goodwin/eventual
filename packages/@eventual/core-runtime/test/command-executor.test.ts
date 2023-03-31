@@ -19,6 +19,7 @@ import {
 } from "@eventual/core/internal";
 import { jest } from "@jest/globals";
 import { ActivityClient } from "../src/clients/activity-client.js";
+import { DictionaryClient } from "../src/clients/dictionary-client.js";
 import { EventClient } from "../src/clients/event-client.js";
 import { ExecutionQueueClient } from "../src/clients/execution-queue-client.js";
 import {
@@ -31,7 +32,6 @@ import {
   formatExecutionId,
   INTERNAL_EXECUTION_ID_PREFIX,
 } from "../src/execution.js";
-import { DictionaryClient } from "../src/index.js";
 import { WorkflowCallExecutor } from "../src/workflow-call-executor.js";
 import {
   activityCall,
@@ -303,7 +303,11 @@ describe("dictionary request", () => {
     );
 
     expect(mockDictionaryClient.getDictionary).toHaveBeenCalledWith("dict");
-    expect(mockDictionary.set).toHaveBeenCalledWith("key", "some value", undefined);
+    expect(mockDictionary.set).toHaveBeenCalledWith(
+      "key",
+      "some value",
+      undefined
+    );
 
     expect(event).toMatchObject<DictionaryRequest>({
       seq: 0,

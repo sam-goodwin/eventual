@@ -1,6 +1,9 @@
 import type { z } from "zod";
-import { createPublishEventsCall } from "./internal/calls/publish-events-call.js";
-import { isOrchestratorWorker } from "./internal/flags.js";
+import {
+  createEventualCall,
+  EventualCallKind,
+} from "./internal/calls/calls.js";
+import { getEventualCallHook } from "./internal/eventual-hook.js";
 import { events, getServiceClient, subscriptions } from "./internal/global.js";
 import { EventSpec, isSourceLocation } from "./internal/service-spec.js";
 import type { Subscription, SubscriptionRuntimeProps } from "./subscription.js";
@@ -154,11 +157,14 @@ export function event<E extends EventPayload>(
         name,
         event,
       }));
-      if (isOrchestratorWorker()) {
-        return createPublishEventsCall(envelopes) as any;
-      } else {
-        return getServiceClient().publishEvents({ events: envelopes });
-      }
+      return getEventualCallHook().registerEventualCall(
+        createEventualCall(EventualCallKind.PublishEventsCall, {
+          events: envelopes,
+        }),
+        () => {
+          return getServiceClient().publishEvents({ events: envelopes });
+        }
+      );
     },
   };
   events().set(name, event as Event<any>);

@@ -1,14 +1,18 @@
+import { duration, time } from "./await-time.js";
 import { ExecutionID } from "./execution.js";
 import { FunctionRuntimeProps } from "./function-props.js";
 import { ActivitySpec, AsyncTokenSymbol } from "./internal/activity.js";
-import { createActivityCall } from "./internal/calls/activity-call.js";
-import { createAwaitTimerCall } from "./internal/calls/await-time-call.js";
+import {
+  createEventualCall,
+  EventualCallKind,
+} from "./internal/calls/calls.js";
+import { getEventualCallHook } from "./internal/eventual-hook.js";
 import type {
   SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
   SendActivitySuccessRequest,
 } from "./internal/eventual-service.js";
-import { isActivityWorker, isOrchestratorWorker } from "./internal/flags.js";
+import { isActivityWorker } from "./internal/flags.js";
 import {
   activities,
   getActivityContext,
@@ -286,32 +290,35 @@ export function activity<Name extends string, Input = any, Output = any>(
         [undefined, args[0] as Name, args[1] as ActivityOptions, args[2]];
   // register the handler to be looked up during execution.
   const func = (async (input, options) => {
-    if (isOrchestratorWorker()) {
-      const timeout = options?.timeout ?? opts?.timeout;
+    const timeout = options?.timeout ?? opts?.timeout;
+    const hook = getEventualCallHook();
 
-      // if we're in the orchestrator, return a command to invoke the activity in the worker function
-      return createActivityCall(
+    return hook.registerEventualCall(
+      createEventualCall(EventualCallKind.ActivityCall, {
         name,
         input,
-        timeout
-          ? isDurationSchedule(timeout) || isTimeSchedule(timeout)
-            ? createAwaitTimerCall(timeout)
+        timeout: timeout
+          ? isDurationSchedule(timeout)
+            ? duration(timeout.dur, timeout.unit)
+            : isTimeSchedule(timeout)
+            ? time(timeout.isoDate)
             : timeout
           : undefined,
-        options?.heartbeatTimeout ?? opts?.heartbeatTimeout
-      ) as any;
-    } else {
-      const runtimeContext = await getActivityContext();
-      const context: ActivityContext = {
-        activity: {
-          name,
-        },
-        execution: runtimeContext.execution,
-        invocation: runtimeContext.invocation,
-      };
-      // calling the activity from outside the orchestrator just calls the handler
-      return handler(input as Input, context);
-    }
+        heartbeat: options?.heartbeatTimeout ?? opts?.heartbeatTimeout,
+      }),
+      async () => {
+        const runtimeContext = await getActivityContext();
+        const context: ActivityContext = {
+          activity: {
+            name,
+          },
+          execution: runtimeContext.execution,
+          invocation: runtimeContext.invocation,
+        };
+        // calling the activity from outside the orchestrator just calls the handler
+        return handler(input as Input, context);
+      }
+    );
   }) as Activity<Name, Input, Output>;
 
   if (activities()[name]) {

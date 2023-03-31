@@ -5,12 +5,10 @@ import {
   isDictionaryStreamItem,
 } from "@eventual/core";
 import { dictionaries, registerServiceClient } from "@eventual/core/internal";
+import { isActivityWorkerRequest } from "../clients/activity-client.js";
+import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
 import { isTimerRequest } from "../clients/timer-client.js";
-import {
-  isActivitySendEventRequest,
-  isActivityWorkerRequest,
-  RuntimeServiceClient,
-} from "../index.js";
+import { isActivitySendEventRequest } from "../handlers/activity-fallback-handler.js";
 import { isWorkflowTask } from "../tasks.js";
 import {
   LocalContainer,

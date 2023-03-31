@@ -4,9 +4,7 @@ import type {
   DictionaryListRequest,
   DictionarySetOptions,
 } from "../../dictionary.js";
-import { getWorkflowHook } from "../eventual-hook.js";
 import {
-  createEventualCall,
   EventualCallBase,
   EventualCallKind,
   isEventualCallOfKind,
@@ -21,18 +19,6 @@ export interface DictionaryCall<
 > extends EventualCallBase<EventualCallKind.DictionaryCall> {
   name: string;
   operation: Operation;
-}
-
-export function createDictionaryCall(
-  name: string,
-  operation: DictionaryOperation
-) {
-  return getWorkflowHook().registerEventualCall(
-    createEventualCall<DictionaryCall>(EventualCallKind.DictionaryCall, {
-      name,
-      operation,
-    })
-  );
 }
 
 export function isDictionaryCallOfType<

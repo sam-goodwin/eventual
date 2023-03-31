@@ -1,4 +1,5 @@
-import { isActivityWorker, isOrchestratorWorker } from "./internal/flags.js";
+import { getEventualCallHook } from "./internal/eventual-hook.js";
+import { isActivityWorker } from "./internal/flags.js";
 import { getActivityContext, getServiceClient } from "./internal/global.js";
 import type { SendActivityHeartbeatResponse } from "./service-client.js";
 
@@ -15,22 +16,20 @@ import type { SendActivityHeartbeatResponse } from "./service-client.js";
 export async function sendActivityHeartbeat(
   activityToken?: string
 ): Promise<SendActivityHeartbeatResponse> {
-  if (isOrchestratorWorker()) {
-    throw new Error(
-      "Heartbeat is not currently supported from within a workflow. Use an activity with `heartbeat()`."
-    );
-  } else if (activityToken) {
-    return await getServiceClient().sendActivityHeartbeat({
-      activityToken,
-    });
-  } else if (isActivityWorker()) {
-    const token = (await getActivityContext()).invocation.token;
-    return await getServiceClient().sendActivityHeartbeat({
-      activityToken: token,
-    });
-  } else {
-    throw new Error(
-      "Activity token must be provided when not within an Activity."
-    );
-  }
+  return getEventualCallHook().registerEventualCall(undefined, async () => {
+    if (activityToken) {
+      return await getServiceClient().sendActivityHeartbeat({
+        activityToken,
+      });
+    } else if (isActivityWorker()) {
+      const token = (await getActivityContext()).invocation.token;
+      return await getServiceClient().sendActivityHeartbeat({
+        activityToken: token,
+      });
+    } else {
+      throw new Error(
+        "Activity token must be provided when not within an Activity."
+      );
+    }
+  });
 }
