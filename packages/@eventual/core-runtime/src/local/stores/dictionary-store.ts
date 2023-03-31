@@ -11,10 +11,11 @@ import { assertNever } from "@eventual/core/internal";
 import {
   DictionaryStore,
   EntityWithMetadata,
-  UnexpectedVersionResult,
   normalizeCompositeKey,
   TransactionCancelledResult,
+  UnexpectedVersionResult,
 } from "../../stores/dictionary-store.js";
+import { deserializeCompositeKey, serializeCompositeKey } from "../../utils.js";
 import { LocalEnvConnector } from "../local-container.js";
 import { paginateItems } from "./pagination.js";
 
@@ -139,7 +140,9 @@ export class LocalDictionaryStore implements DictionaryStore {
         (i) =>
           [
             serializeCompositeKey(i.dictionary, i.operation.key),
-            i.operation.options?.expectedVersion,
+            i.operation.operation === "condition"
+              ? i.operation.version
+              : i.operation.options?.expectedVersion,
           ] as const
       )
     );
@@ -180,6 +183,9 @@ export class LocalDictionaryStore implements DictionaryStore {
             i.operation.key,
             i.operation.options
           );
+        } else if (i.operation.operation === "condition") {
+          // no op
+          return;
         }
         return assertNever(i.operation);
       })
@@ -212,19 +218,4 @@ export class LocalDictionaryStore implements DictionaryStore {
     >());
     return namespaceMap;
   }
-}
-
-function serializeCompositeKey(
-  dictionaryName: string,
-  _key: string | CompositeKey
-) {
-  const { key, namespace } = normalizeCompositeKey(_key);
-  return `${dictionaryName}|${namespace ?? ""}|${key}`;
-}
-
-function deserializeCompositeKey(
-  sKey: string
-): [string, string | CompositeKey] {
-  const [name, namespace, key] = sKey.split("|") as [string, string, string];
-  return [name, namespace ? { key, namespace } : key];
 }

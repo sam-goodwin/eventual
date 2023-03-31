@@ -8,11 +8,11 @@ import {
 } from "@eventual/core";
 import {
   CompletionEvent,
-  enterWorkflowHookScope,
+  enterEventualCallHookScope,
   EventualCall,
   EventualPromise,
   EventualPromiseSymbol,
-  ExecutionWorkflowHook,
+  EventualCallHook,
   extendsSystemError,
   HistoryEvent,
   HistoryStateEvent,
@@ -72,7 +72,7 @@ interface ActiveEventual<R = any> {
  * Exposes a resolve method which accepts a {@link Result} object. Adds the seq ID to
  * allow future identification of EventualPromises.
  */
-export function createEventualPromise<R>(
+function createEventualPromise<R>(
   seq: number,
   result?: Result<R>,
   beforeResolve?: () => void
@@ -325,7 +325,7 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
   }
 
   private startWorkflowRun(beforeCommitEvents?: () => void) {
-    return this.enterWorkflowHookScope(
+    return this.enterEventualCallHookScope(
       () =>
         new Promise<WorkflowResult<Output>>(async (resolve) => {
           // start context with execution hook
@@ -429,13 +429,13 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
   }
 
   /**
-   * Provides a scope where the {@link ExecutionWorkflowHook} is available to the {@link Call}s.
+   * Provides a scope where the {@link EventualCallHook} is available to the {@link Call}s.
    */
-  private async enterWorkflowHookScope<Res>(
+  private async enterEventualCallHookScope<Res>(
     callback: (...args: any) => Res
   ): Promise<Awaited<Res>> {
     const self = this;
-    const workflowHook: ExecutionWorkflowHook = {
+    const workflowHook: EventualCallHook = {
       registerEventualCall<E extends EventualPromise<any>>(call: EventualCall) {
         try {
           const eventual = createEventualFromCall(call);
@@ -471,7 +471,7 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
         self.tryResolveEventual(seq, result);
       },
     };
-    return await enterWorkflowHookScope(workflowHook, callback);
+    return await enterEventualCallHookScope(workflowHook, callback);
 
     /**
      * Checks the call against the expected events.

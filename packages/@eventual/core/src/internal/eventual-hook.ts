@@ -7,7 +7,7 @@ import { Result } from "./result.js";
  */
 declare global {
   // eslint-disable-next-line no-var
-  var eventualWorkflowHookStore: ExecutionWorkflowHook | undefined;
+  var eventualCallHookStore: EventualCallHook | undefined;
 }
 
 export const EventualPromiseSymbol =
@@ -20,15 +20,15 @@ export interface EventualPromise<R> extends Promise<R> {
   [EventualPromiseSymbol]: number;
 }
 
-export interface ExecutionWorkflowHook {
-  registerEventualCall<E extends EventualPromise<any>>(
-    eventual: EventualCall
-  ): E;
+export interface EventualCallHook<
+  E extends EventualPromise<any> = EventualPromise<any>
+> {
+  registerEventualCall(eventual: EventualCall): E;
   resolveEventual(seq: number, result: Result<any>): void;
 }
 
 export function tryGetWorkflowHook() {
-  return globalThis.eventualWorkflowHookStore;
+  return globalThis.eventualCallHookStore;
 }
 
 export function getWorkflowHook() {
@@ -43,17 +43,17 @@ export function getWorkflowHook() {
   return hook;
 }
 
-export async function enterWorkflowHookScope<R>(
-  eventualHook: ExecutionWorkflowHook,
+export async function enterEventualCallHookScope<R>(
+  eventualHook: EventualCallHook,
   callback: () => R
 ): Promise<Awaited<R>> {
-  if (globalThis.eventualWorkflowHookStore !== undefined) {
+  if (globalThis.eventualCallHookStore !== undefined) {
     throw new Error("Must clear eventual hook before registering a new one.");
   }
   try {
-    globalThis.eventualWorkflowHookStore = eventualHook;
+    globalThis.eventualCallHookStore = eventualHook;
     return await callback();
   } finally {
-    globalThis.eventualWorkflowHookStore = undefined;
+    globalThis.eventualCallHookStore = undefined;
   }
 }

@@ -220,7 +220,19 @@ export interface DictionaryTransactItem<
   D extends string | Dictionary<Entity> = string | Dictionary<Entity>
 > {
   dictionary: D;
-  operation: DictionarySetOperation<Entity> | DictionaryDeleteOperation;
+  operation:
+    | DictionarySetOperation<Entity>
+    | DictionaryDeleteOperation
+    | DictionaryConditionalOperation;
+}
+
+/**
+ * Used in transactions, cancels the transaction if the key's version does not match.
+ */
+export interface DictionaryConditionalOperation {
+  operation: "condition";
+  key: string | CompositeKey;
+  version?: number;
 }
 
 export const Dictionary = {

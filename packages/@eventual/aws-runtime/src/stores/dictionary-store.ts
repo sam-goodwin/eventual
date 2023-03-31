@@ -45,13 +45,9 @@ export class AWSDictionaryStore implements DictionaryStore {
     name: string,
     _key: string | CompositeKey
   ): Promise<EntityWithMetadata<Entity> | undefined> {
-    const { key, namespace } = normalizeCompositeKey(_key);
     const item = await this.props.dynamo.send(
       new GetItemCommand({
-        Key: {
-          pk: { S: DictionaryEntityRecord.key(namespace) },
-          sk: { S: DictionaryEntityRecord.sortKey(key) },
-        } satisfies Partial<DictionaryEntityRecord>,
+        Key: this.entityKey(_key),
         TableName: this.tableName(name),
         AttributesToGet: ["value", "version"],
         ConsistentRead: true,
@@ -101,13 +97,9 @@ export class AWSDictionaryStore implements DictionaryStore {
     entity: Entity,
     options?: DictionarySetOptions
   ): Update {
-    const { key, namespace } = normalizeCompositeKey(_key);
     const value = JSON.stringify(entity);
     return {
-      Key: {
-        pk: { S: DictionaryEntityRecord.key(namespace) },
-        sk: { S: DictionaryEntityRecord.sortKey(key) },
-      } satisfies Pick<DictionaryEntityRecord, "pk" | "sk">,
+      Key: this.entityKey(_key),
       UpdateExpression:
         "SET #value=:value, #version=if_not_exists(#version, :startingVersion) + :versionIncrement",
       ExpressionAttributeNames: {
@@ -151,12 +143,8 @@ export class AWSDictionaryStore implements DictionaryStore {
     _key: string | CompositeKey,
     options?: DictionaryConsistencyOptions
   ): Delete {
-    const { key, namespace } = normalizeCompositeKey(_key);
     return {
-      Key: {
-        pk: { S: DictionaryEntityRecord.key(namespace) },
-        sk: { S: DictionaryEntityRecord.sortKey(key) },
-      } satisfies Partial<DictionaryEntityRecord>,
+      Key: this.entityKey(_key),
       ConditionExpression:
         options?.expectedVersion !== undefined
           ? "#version=:expectedVersion"
@@ -173,6 +161,14 @@ export class AWSDictionaryStore implements DictionaryStore {
           : undefined,
       TableName: this.tableName(name),
     };
+  }
+
+  private entityKey(_key: string | CompositeKey) {
+    const { key, namespace } = normalizeCompositeKey(_key);
+    return {
+      pk: { S: DictionaryEntityRecord.key(namespace) },
+      sk: { S: DictionaryEntityRecord.sortKey(key) },
+    } satisfies Partial<DictionaryEntityRecord>;
   }
 
   public async listDictionaryEntries<Entity>(
@@ -228,6 +224,30 @@ export class AWSDictionaryStore implements DictionaryStore {
                   i.operation.key,
                   i.operation.options
                 ),
+              };
+            } else if (i.operation.operation === "condition") {
+              return {
+                ConditionCheck: {
+                  ConditionExpression:
+                    i.operation.version !== undefined
+                      ? i.operation.version === 0
+                        ? "attribute_not_exists(#version)"
+                        : "#version=:expectedVersion"
+                      : undefined,
+                  TableName: this.tableName(i.dictionary),
+                  Key: this.entityKey(i.operation.key),
+                  ExpressionAttributeNames: {
+                    "#version": "version",
+                  },
+                  ExpressionAttributeValues:
+                    i.operation.version !== undefined
+                      ? {
+                          ":expectedVersion": {
+                            N: i.operation.version.toString(),
+                          },
+                        }
+                      : undefined,
+                },
               };
             }
 

@@ -16,10 +16,11 @@ export function isDictionaryCall(a: any): a is DictionaryCall {
   return isEventualCallOfKind(EventualCallKind.DictionaryCall, a);
 }
 
-export interface DictionaryCall
-  extends EventualCallBase<EventualCallKind.DictionaryCall> {
+export interface DictionaryCall<
+  Operation extends DictionaryOperation = DictionaryOperation
+> extends EventualCallBase<EventualCallKind.DictionaryCall> {
   name: string;
-  operation: DictionaryOperation;
+  operation: Operation;
 }
 
 export function createDictionaryCall(
@@ -34,13 +35,22 @@ export function createDictionaryCall(
   );
 }
 
+export function isDictionaryCallOfType<
+  OpType extends DictionaryOperation["operation"]
+>(
+  operation: OpType,
+  call: DictionaryCall
+): call is DictionaryCall<DictionaryOperation & { operation: OpType }> {
+  return call.operation.operation === operation;
+}
+
 export type DictionaryOperation =
   | DictionaryDeleteOperation
-  | DictionaryGetDeleteOperation
+  | DictionaryGetOperation
   | DictionarySetOperation
   | DictionaryListOperation;
 
-export interface DictionaryGetDeleteOperation {
+export interface DictionaryGetOperation {
   operation: "get" | "getWithMetadata";
   key: string | CompositeKey;
 }
