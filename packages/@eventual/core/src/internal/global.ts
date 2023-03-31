@@ -27,7 +27,7 @@ declare global {
      */
     workflows?: Map<string, Workflow>;
     /**
-     *
+     * A simple key value store that work efficiently within eventual.
      */
     dictionaries?: Map<string, Dictionary<any>>;
     /**

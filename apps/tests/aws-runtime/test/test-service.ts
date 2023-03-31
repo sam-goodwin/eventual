@@ -3,8 +3,11 @@ import {
   DynamoDBClient,
   PutItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import {
+  EventualError,
+  HeartbeatTimeout,
+  HttpResponse,
   activity,
   api,
   asyncResult,
@@ -13,10 +16,7 @@ import {
   dictionary,
   duration,
   event,
-  EventualError,
   expectSignal,
-  HeartbeatTimeout,
-  HttpResponse,
   sendActivityHeartbeat,
   sendSignal,
   signal,
@@ -528,7 +528,7 @@ export const createActivity = activity(
 );
 
 export const destroyActivity = activity(
-  "createActivity",
+  "destroyActivity",
   async (request: { id: string }) => {
     await dynamo.send(
       new DeleteItemCommand({
@@ -548,9 +548,35 @@ export const createAndDestroyWorkflow = workflow(
   }
 );
 
-const counter = dictionary<{ n: number }>("counter", z.any());
+export const counter = dictionary<{ n: number }>("counter", z.any());
 const dictEvent = event<{ id: string }>("dictEvent");
 const dictSignal = signal("dictSignal");
+const dictSignal2 = signal<{ n: number }>("dictSignal2");
+
+export const counterWatcher = counter.stream(
+  "counterWatcher",
+  { operations: ["remove"], includeOld: true },
+  async (item) => {
+    console.log(item);
+    // TODO: compute the possible operations union from the operations array
+    if (item.operation === "remove") {
+      const { n } = item.oldValue!;
+      await dictSignal2.sendSignal(item.key, { n: n + 1 });
+    }
+  }
+);
+
+export const counterNamespaceWatcher = counter.stream(
+  "counterNamespaceWatch",
+  { namespacePrefixes: ["different"] },
+  async (item) => {
+    if (item.operation === "insert") {
+      const value = await counter.get(item.key);
+      await counter.set(item.key, { n: (value?.n ?? 0) + 1 });
+      await dictSignal.sendSignal(item.key);
+    }
+  }
+);
 
 export const onDictEvent = subscription(
   "onDictEvent",
@@ -574,7 +600,8 @@ export const dictionaryWorkflow = workflow(
   "dictionaryWorkflow",
   async (_, { execution: { id } }) => {
     await counter.set(id, { n: 1 });
-    await counter.set({ key: id, namespace: "different!" }, { n: 0 });
+    counter.set({ key: id, namespace: "different!" }, { n: 0 });
+    await dictSignal.expectSignal();
     await dictionaryActivity();
     await Promise.all([
       dictEvent.publishEvents({ id }),
@@ -586,11 +613,12 @@ export const dictionaryWorkflow = workflow(
     } catch (err) {
       console.error("expected the dictionary set to fail", err);
     }
-    const { entity, version } = await counter.getWithMetadata(id) ?? {};
+    const { entity, version } = (await counter.getWithMetadata(id)) ?? {};
     await counter.set(id, { n: entity!.n + 1 }, { expectedVersion: version });
-    const result = await counter.get(id);
+    // send deletion, to be picked up by the stream
     counter.delete(id);
-    return result;
+    // this signal will contain the final value after deletion
+    return await dictSignal2.expectSignal();
   }
 );
 

@@ -1,6 +1,6 @@
 import { ExecutionID } from "./execution.js";
 import { FunctionRuntimeProps } from "./function-props.js";
-import { AsyncTokenSymbol } from "./internal/activity.js";
+import { ActivitySpec, AsyncTokenSymbol } from "./internal/activity.js";
 import { createActivityCall } from "./internal/calls/activity-call.js";
 import { createAwaitTimerCall } from "./internal/calls/await-time-call.js";
 import type {
@@ -73,18 +73,6 @@ export interface ActivityOptions
    * @default - workflow will wait forever.
    */
   timeout?: DurationSchedule;
-}
-
-export interface ActivitySpec<Name extends string = string> {
-  /**
-   * Unique name of this Activity.
-   */
-  name: Name;
-  /**
-   * Optional runtime properties.
-   */
-  options?: ActivityOptions;
-  sourceLocation?: SourceLocation;
 }
 
 export type ActivityArguments<Input = any> = [Input] extends [undefined]
@@ -325,6 +313,10 @@ export function activity<Name extends string, Input = any, Output = any>(
       return handler(input as Input, context);
     }
   }) as Activity<Name, Input, Output>;
+
+  if (activities()[name]) {
+    throw new Error(`activity with name '${name}' already exists`);
+  }
 
   Object.defineProperty(func, "name", { value: name, writable: false });
   func.sendActivitySuccess = async function (request) {

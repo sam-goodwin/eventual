@@ -8,6 +8,7 @@ import { generateSchema } from "@anatine/zod-openapi";
 import {
   activities,
   commands,
+  dictionaries,
   events,
   ServiceSpec,
   subscriptions,
@@ -31,6 +32,8 @@ import {
   getSpan,
   isActivityCall,
   isCommandCall,
+  isDictionaryStreamCall,
+  isDictionaryStreamMemberCall,
   isOnEventCall,
   isSubscriptionCall,
 } from "./ast-util.js";
@@ -97,6 +100,18 @@ export async function infer(
       validate: command.validate,
       namespace: command.namespace,
     })),
+    entities: {
+      dictionaries: [...dictionaries().values()].map((d) => ({
+        name: d.name,
+        schema: d.schema ? generateSchema(d.schema) : undefined,
+        streams: d.streams.map((s) => ({
+          name: s.name,
+          dictionaryName: s.dictionaryName,
+          options: s.options,
+          sourceLocation: s.sourceLocation,
+        })),
+      })),
+    },
   };
 
   console.log(JSON.stringify(serviceSpec));
@@ -182,7 +197,9 @@ export class InferVisitor extends Visitor {
       (isCommandCall(call) ||
         isOnEventCall(call) ||
         isSubscriptionCall(call) ||
-        isActivityCall(call))
+        isActivityCall(call) ||
+        isDictionaryStreamMemberCall(call) ||
+        isDictionaryStreamCall(call))
     ) {
       this.didMutate = true;
 

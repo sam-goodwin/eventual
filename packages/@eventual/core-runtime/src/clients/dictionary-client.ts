@@ -1,5 +1,5 @@
-import { Dictionary, UnexpectedVersion } from "@eventual/core";
-import { DictionaryHook } from "@eventual/core/internal";
+import { UnexpectedVersion } from "@eventual/core";
+import { DictionaryHook, DictionaryMethods } from "@eventual/core/internal";
 import {
   DictionaryStore,
   isUnexpectedVersionResult,
@@ -9,10 +9,8 @@ export class DictionaryClient implements DictionaryHook {
   constructor(private dictionaryStore: DictionaryStore) {}
   public async getDictionary<Entity>(
     name: string
-  ): Promise<Dictionary<Entity> | undefined> {
+  ): Promise<DictionaryMethods<Entity> | undefined> {
     return {
-      name,
-      schema: undefined,
       get: async (key) => {
         const entry = await this.dictionaryStore.getDictionaryValue<Entity>(
           name,

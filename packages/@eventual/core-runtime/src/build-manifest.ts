@@ -1,6 +1,8 @@
-import type { ActivitySpec } from "@eventual/core";
 import type {
+  ActivitySpec,
   CommandSpec,
+  DictionarySpec,
+  DictionaryStreamSpec,
   EventSpec,
   EventualService,
   SubscriptionSpec,
@@ -23,6 +25,7 @@ export interface BuildManifest {
   subscriptions: SubscriptionFunction[];
   commands: CommandFunction[];
   commandDefault: CommandFunction;
+  entities: Entities;
   system: {
     activityService: {
       fallbackHandler: BundledFunction<undefined>;
@@ -39,6 +42,14 @@ export interface BuildManifest {
       orchestrator: BundledFunction;
     };
   };
+}
+
+export interface DictionaryRuntime extends Omit<DictionarySpec, "streams"> {
+  streams: DictionaryStreamFunction[];
+}
+
+interface Entities {
+  dictionaries: DictionaryRuntime[];
 }
 
 export interface ApiRoutes {
@@ -74,3 +85,6 @@ export interface ActivityFunction extends BundledFunction<ActivitySpec> {}
 export interface InternalCommandFunction extends CommandFunction {}
 
 export interface CommandFunction extends BundledFunction<CommandSpec> {}
+
+export interface DictionaryStreamFunction
+  extends BundledFunction<DictionaryStreamSpec> {}

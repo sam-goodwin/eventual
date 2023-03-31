@@ -1,8 +1,9 @@
 import { build, BuildSource, infer } from "@eventual/compiler";
-import { ActivitySpec } from "@eventual/core";
-import { BuildManifest, BundledFunction } from "@eventual/core-runtime";
+import { BuildManifest } from "@eventual/core-runtime";
 import {
+  ActivitySpec,
   CommandSpec,
+  DictionaryStreamSpec,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
   ServiceType,
   SubscriptionSpec,
@@ -81,6 +82,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       monoActivityFunction,
       monoCommandFunction,
       monoSubscriptionFunction,
+      monoDictionaryStreamWorkerFunction,
     ],
     [
       // also bundle each of the internal eventual API Functions as they have no dependencies
@@ -95,9 +97,9 @@ export async function buildService(request: BuildAWSRuntimeProps) {
 
   // then, bundle each of the commands and subscriptions
   const [commands, subscriptions, activities] = await Promise.all([
-    bundle(specPath, "commands"),
-    bundle(specPath, "subscriptions"),
-    bundle(specPath, "activities"),
+    bundleCommands(serviceSpec.commands),
+    bundleSubscriptions(serviceSpec.subscriptions),
+    bundleActivities(serviceSpec.activities),
   ] as const);
 
   const manifest: BuildManifest = {
@@ -112,6 +114,14 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       spec: {
         name: "default",
       },
+    },
+    entities: {
+      dictionaries: await Promise.all(
+        serviceSpec.entities.dictionaries.map(async (d) => ({
+          ...d,
+          streams: await bundleDictionaryStreams(d.streams),
+        }))
+      ),
     },
     system: {
       activityService: {
@@ -163,48 +173,72 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     path.join(outDir, "manifest.json"),
     JSON.stringify(manifest, null, 2)
   );
-  type SpecFor<Type extends "subscriptions" | "commands" | "activities"> =
-    Type extends "commands"
-      ? CommandSpec
-      : Type extends "subscriptions"
-      ? SubscriptionSpec
-      : ActivitySpec;
 
-  async function bundle<
-    Type extends "subscriptions" | "commands" | "activities"
-  >(specPath: string, type: Type): Promise<BundledFunction<SpecFor<Type>>[]> {
+  async function bundleCommands(commandSpecs: CommandSpec[]) {
     return await Promise.all(
-      (serviceSpec[type] as SpecFor<Type>[]).map(async (spec) => {
-        const [pathPrefix, entry, name, monoFunction] =
-          type === "commands"
-            ? ([
-                "command",
-                "command-worker",
-                spec.name,
-                monoCommandFunction!,
-              ] as const)
-            : type === "subscriptions"
-            ? ([
-                "subscription",
-                "subscription-worker",
-                spec.name,
-                monoSubscriptionFunction!,
-              ] as const)
-            : ([
-                "activity",
-                "activity-worker",
-                spec.name,
-                monoActivityFunction!,
-              ] as const);
-
+      commandSpecs.map(async (spec) => {
         return {
           entry: await bundleFile(
             specPath,
             spec,
-            pathPrefix,
-            entry,
-            name,
-            monoFunction
+            "command",
+            "command-worker",
+            spec.name,
+            monoCommandFunction!
+          ),
+          spec,
+        };
+      })
+    );
+  }
+
+  async function bundleSubscriptions(specs: SubscriptionSpec[]) {
+    return await Promise.all(
+      specs.map(async (spec) => {
+        return {
+          entry: await bundleFile(
+            specPath,
+            spec,
+            "subscription",
+            "subscription-worker",
+            spec.name,
+            monoSubscriptionFunction!
+          ),
+          spec,
+        };
+      })
+    );
+  }
+
+  async function bundleActivities(specs: ActivitySpec[]) {
+    return await Promise.all(
+      specs.map(async (spec) => {
+        return {
+          entry: await bundleFile(
+            specPath,
+            spec,
+            "activity",
+            "activity-worker",
+            spec.name,
+            monoActivityFunction!
+          ),
+          spec,
+        };
+      })
+    );
+  }
+
+  async function bundleDictionaryStreams(specs: DictionaryStreamSpec[]) {
+    return await Promise.all(
+      specs.map(async (spec) => {
+        return {
+          entry: await bundleFile(
+            specPath,
+            spec,
+            "dictionary-streams",
+            "dictionary-stream-worker",
+            spec.name,
+            monoDictionaryStreamWorkerFunction!
           ),
           spec,
         };
@@ -256,6 +290,10 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         {
           name: ServiceType.Subscription,
           entry: runtimeHandlersEntrypoint("subscription-worker"),
+        },
+        {
+          name: ServiceType.DictionaryStreamWorker,
+          entry: runtimeHandlersEntrypoint("dictionary-stream-worker"),
         },
       ]
         .map((s) => ({

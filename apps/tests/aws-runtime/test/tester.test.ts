@@ -116,7 +116,7 @@ eventualRuntimeTestHarness(
 
     testCompletion("awsSdkCalls", createAndDestroyWorkflow, "done");
 
-    testCompletion("dict", dictionaryWorkflow, { n: 4 });
+    testCompletion("dict", dictionaryWorkflow, { n: 6 });
   },
   {
     name: "s3 persist failures",

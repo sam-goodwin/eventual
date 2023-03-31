@@ -1,8 +1,15 @@
 import { z } from "zod";
+import { createDictionaryCall } from "./internal/calls/dictionary-call.js";
 import { getDictionaryHook } from "./internal/dictionary-hook.js";
 import { isOrchestratorWorker } from "./internal/flags.js";
 import { dictionaries } from "./internal/global.js";
-import { createDictionaryCall } from "./internal/index.js";
+import {
+  DictionarySpec,
+  DictionaryStreamOptions,
+  DictionaryStreamSpec,
+  isSourceLocation,
+  SourceLocation,
+} from "./internal/service-spec.js";
 
 export interface CompositeKey {
   namespace: string;
@@ -68,9 +75,85 @@ export interface DictionarySetOptions extends DictionaryConsistencyOptions {
   incrementVersion?: boolean;
 }
 
-export interface Dictionary<Entity> {
+export interface DictionaryStreamHandler<Entity> {
+  /**
+   * Provides the keys, new value\
+   */
+  (item: DictionaryStreamItem<Entity>): Promise<void | false> | void | false;
+}
+
+export interface DictionaryStreamItemBase {
+  streamName: string;
+  dictionaryName: string;
+  namespace?: string;
+  key: string;
+}
+
+export type DictionaryStreamItem<Entity> =
+  | DictionaryStreamInsertItem<Entity>
+  | DictionaryStreamModifyItem<Entity>
+  | DictionaryStreamRemoveItem<Entity>;
+
+export interface DictionaryStreamInsertItem<Entity>
+  extends DictionaryStreamItemBase {
+  newValue: Entity;
+  newVersion: number;
+  operation: "insert";
+}
+
+export interface DictionaryStreamModifyItem<Entity>
+  extends DictionaryStreamItemBase {
+  operation: "modify";
+  newValue: Entity;
+  newVersion: number;
+  oldValue?: Entity;
+  oldVersion?: number;
+}
+
+export interface DictionaryStreamRemoveItem<Entity>
+  extends DictionaryStreamItemBase {
+  operation: "remove";
+  oldValue?: Entity;
+  oldVersion?: number;
+}
+
+export function isDictionaryStreamItem(
+  value: any
+): value is DictionaryStreamItem<any> {
+  return "dictionaryName" in value && "operation" in value;
+}
+
+export function dictionaryStreamMatchesItem(
+  item: DictionaryStreamItem<any>,
+  streamSpec: DictionaryStreamSpec
+) {
+  return (
+    streamSpec.dictionaryName === item.dictionaryName &&
+    (!streamSpec.options?.operations ||
+      streamSpec.options.operations.includes(item.operation)) &&
+    (!streamSpec.options?.namespaces ||
+      (item.namespace &&
+        streamSpec.options.namespaces.includes(item.namespace))) &&
+    (!streamSpec.options?.namespacePrefixes ||
+      (item.namespace &&
+        streamSpec.options.namespacePrefixes.some((p) =>
+          item.namespace?.startsWith(p)
+        )))
+  );
+}
+
+export interface DictionaryStream<Entity> extends DictionaryStreamSpec {
+  kind: "DictionaryStream";
+  handler: DictionaryStreamHandler<Entity>;
+  sourceLocation?: SourceLocation;
+}
+
+export interface Dictionary<Entity>
+  extends Omit<DictionarySpec, "schema" | "streams"> {
+  kind: "Dictionary";
   name: string;
   schema?: z.Schema<Entity>;
+  streams: DictionaryStream<Entity>[];
   /**
    * Get a value.
    * If your values use composite keys, the namespace must be provided.
@@ -117,6 +200,15 @@ export interface Dictionary<Entity> {
    * If namespace is not provided, only values which do not use composite keys will be returned.
    */
   listKeys(request: DictionaryListRequest): Promise<DictionaryListKeysResult>;
+  stream(
+    name: string,
+    options: DictionaryStreamOptions,
+    handler: DictionaryStreamHandler<Entity>
+  ): DictionaryStream<Entity>;
+  stream(
+    name: string,
+    handler: DictionaryStreamHandler<Entity>
+  ): DictionaryStream<Entity>;
 }
 
 export function dictionary<Entity>(
@@ -124,12 +216,19 @@ export function dictionary<Entity>(
   schema?: z.Schema<Entity>
 ): Dictionary<Entity> {
   if (dictionaries().has(name)) {
-    throw new Error(`Dictionary ${name} already exists`);
+    throw new Error(`dictionary with name '${name}' already exists`);
   }
 
+  /**
+   * Used to maintain a limited number of streams on the dictionary.
+   */
+  const streams: DictionaryStream<Entity>[] = [];
+
   const dictionary: Dictionary<Entity> = {
+    kind: "Dictionary",
     name,
     schema,
+    streams,
     get: async (key: string | CompositeKey) => {
       if (isOrchestratorWorker()) {
         return createDictionaryCall(name, { operation: "get", key });
@@ -189,6 +288,52 @@ export function dictionary<Entity>(
         return (await getDictionary()).listKeys(request);
       }
     },
+    stream: (
+      ...args:
+        | [name: string, handler: DictionaryStreamHandler<Entity>]
+        | [
+            name: string,
+            options: DictionaryStreamOptions,
+            handler: DictionaryStreamHandler<Entity>
+          ]
+        | [
+            sourceLocation: SourceLocation,
+            name: string,
+            handler: DictionaryStreamHandler<Entity>
+          ]
+        | [
+            sourceLocation: SourceLocation,
+            name: string,
+            options: DictionaryStreamOptions,
+            handler: DictionaryStreamHandler<Entity>
+          ]
+    ) => {
+      const [sourceLocation, streamName, options, handler] =
+        args.length === 2
+          ? [, args[0], , args[1]]
+          : args.length === 4
+          ? args
+          : isSourceLocation(args[0]) && typeof args[1] === "string"
+          ? [args[0], args[1] as string, , args[2]]
+          : [, args[0] as string, args[1] as DictionaryStreamOptions, args[2]];
+
+      if (streams.length > 1) {
+        throw new Error("Only two streams are allowed per dictionary.");
+      }
+
+      const dictionaryStream: DictionaryStream<Entity> = {
+        kind: "DictionaryStream",
+        handler,
+        name: streamName,
+        dictionaryName: name,
+        options,
+        sourceLocation,
+      };
+
+      streams.push(dictionaryStream);
+
+      return dictionaryStream;
+    },
   };
 
   dictionaries().set(name, dictionary);
@@ -203,4 +348,57 @@ export function dictionary<Entity>(
     }
     return dictionary;
   }
+}
+
+export function dictionaryStream<Entity>(
+  ...args:
+    | [
+        name: string,
+        dictionary: Dictionary<Entity>,
+        handler: DictionaryStreamHandler<Entity>
+      ]
+    | [
+        name: string,
+        dictionary: Dictionary<Entity>,
+        options: DictionaryStreamOptions,
+        handler: DictionaryStreamHandler<Entity>
+      ]
+    | [
+        sourceLocation: SourceLocation,
+        name: string,
+        dictionary: Dictionary<Entity>,
+        handler: DictionaryStreamHandler<Entity>
+      ]
+    | [
+        sourceLocation: SourceLocation,
+        name: string,
+        dictionary: Dictionary<Entity>,
+        options: DictionaryStreamOptions,
+        handler: DictionaryStreamHandler<Entity>
+      ]
+) {
+  const [sourceLocation, name, dictionary, options, handler] =
+    args.length === 3
+      ? [, args[0], args[1], , args[2]]
+      : args.length === 5
+      ? args
+      : isSourceLocation(args[0])
+      ? [args[0], args[1] as string, args[2] as Dictionary<Entity>, , args[3]]
+      : [
+          ,
+          args[0] as string,
+          args[1] as Dictionary<Entity>,
+          args[2] as DictionaryStreamOptions,
+          args[3],
+        ];
+
+  return sourceLocation
+    ? options
+      ? // @ts-ignore
+        dictionary.stream(sourceLocation, name, options, handler)
+      : // @ts-ignore
+        dictionary.stream(sourceLocation, name, handler)
+    : options
+    ? dictionary.stream(name, options, handler)
+    : dictionary.stream(name, handler);
 }

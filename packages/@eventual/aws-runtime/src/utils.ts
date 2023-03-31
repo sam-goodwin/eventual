@@ -195,6 +195,10 @@ export function subscriptionServiceFunctionSuffix(subscriptionName: string) {
   return `subscription-${subscriptionName}`;
 }
 
+export function entityServiceTableSuffix(entityName: string) {
+  return `dictionary-${entityName}`;
+}
+
 export function activityServiceFunctionName(
   serviceName: string,
   activityId: string
@@ -203,6 +207,13 @@ export function activityServiceFunctionName(
     serviceName,
     activityServiceFunctionSuffix(activityId)
   );
+}
+
+export function entityServiceTableName(
+  serviceName: string,
+  entityName: string
+): string {
+  return serviceFunctionName(serviceName, entityServiceTableSuffix(entityName));
 }
 
 /**

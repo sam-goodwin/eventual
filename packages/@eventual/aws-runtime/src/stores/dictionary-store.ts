@@ -18,16 +18,16 @@ import {
 import {
   DictionaryStore,
   EntityWithMetadata,
-  LazyValue,
-  UnexpectedVersionResult,
   getLazy,
+  LazyValue,
   normalizeCompositeKey,
+  UnexpectedVersionResult,
 } from "@eventual/core-runtime";
-import { queryPageWithToken } from "../utils.js";
+import { entityServiceTableName, queryPageWithToken } from "../utils.js";
 
 export interface AWSDictionaryStoreProps {
   dynamo: DynamoDBClient;
-  entityTableName: LazyValue<string>;
+  serviceName: LazyValue<string>;
 }
 
 export class AWSDictionaryStore implements DictionaryStore {
@@ -41,10 +41,13 @@ export class AWSDictionaryStore implements DictionaryStore {
     const item = await this.props.dynamo.send(
       new GetItemCommand({
         Key: {
-          pk: { S: DictionaryEntityRecord.key(name, namespace) },
+          pk: { S: DictionaryEntityRecord.key(namespace) },
           sk: { S: DictionaryEntityRecord.sortKey(key) },
         } satisfies Partial<DictionaryEntityRecord>,
-        TableName: getLazy(this.props.entityTableName),
+        TableName: entityServiceTableName(
+          getLazy(this.props.serviceName),
+          name
+        ),
         AttributesToGet: ["value", "version"],
         ConsistentRead: true,
       })
@@ -74,7 +77,7 @@ export class AWSDictionaryStore implements DictionaryStore {
       const result = await this.props.dynamo.send(
         new UpdateItemCommand({
           Key: {
-            pk: { S: DictionaryEntityRecord.key(name, namespace) },
+            pk: { S: DictionaryEntityRecord.key(namespace) },
             sk: { S: DictionaryEntityRecord.sortKey(key) },
           } satisfies Pick<DictionaryEntityRecord, "pk" | "sk">,
           UpdateExpression:
@@ -101,7 +104,10 @@ export class AWSDictionaryStore implements DictionaryStore {
                 ? "attribute_not_exists(#version)"
                 : "#version=:expectedVersion"
               : undefined,
-          TableName: getLazy(this.props.entityTableName),
+          TableName: entityServiceTableName(
+            getLazy(this.props.serviceName),
+            name
+          ),
           ReturnValues: ReturnValue.ALL_NEW,
         })
       );
@@ -126,7 +132,7 @@ export class AWSDictionaryStore implements DictionaryStore {
     await this.props.dynamo.send(
       new DeleteItemCommand({
         Key: {
-          pk: { S: DictionaryEntityRecord.key(name, namespace) },
+          pk: { S: DictionaryEntityRecord.key(namespace) },
           sk: { S: DictionaryEntityRecord.sortKey(key) },
         } satisfies Partial<DictionaryEntityRecord>,
         ConditionalOperator:
@@ -143,7 +149,10 @@ export class AWSDictionaryStore implements DictionaryStore {
           options?.expectedVersion !== undefined
             ? { ":expectedVersion": { N: options.expectedVersion.toString() } }
             : undefined,
-        TableName: getLazy(this.props.entityTableName),
+        TableName: entityServiceTableName(
+          getLazy(this.props.serviceName),
+          name
+        ),
       })
     );
   }
@@ -159,7 +168,7 @@ export class AWSDictionaryStore implements DictionaryStore {
       entries: result.records.map((r) => ({
         entity: JSON.parse(r.value.S),
         version: Number(r.version.N),
-        key: DictionaryEntityRecord.praseKeyFromSortKey(r.sk.S),
+        key: DictionaryEntityRecord.parseKeyFromSortKey(r.sk.S),
       })),
     };
   }
@@ -173,7 +182,7 @@ export class AWSDictionaryStore implements DictionaryStore {
     return {
       nextToken: result.nextToken,
       keys: result.records.map((r) =>
-        DictionaryEntityRecord.praseKeyFromSortKey(r.sk.S)
+        DictionaryEntityRecord.parseKeyFromSortKey(r.sk.S)
       ),
     };
   }
@@ -191,10 +200,13 @@ export class AWSDictionaryStore implements DictionaryStore {
         nextToken: request.nextToken,
       },
       {
-        TableName: getLazy(this.props.entityTableName),
+        TableName: entityServiceTableName(
+          getLazy(this.props.serviceName),
+          name
+        ),
         KeyConditionExpression: "pk=:pk AND begins_with(sk, :sk)",
         ExpressionAttributeValues: {
-          ":pk": { S: DictionaryEntityRecord.key(name, request.namespace) },
+          ":pk": { S: DictionaryEntityRecord.key(request.namespace) },
           ":sk": { S: DictionaryEntityRecord.sortKey(request.prefix ?? "") },
         },
         AttributesToGet: fields,
@@ -218,14 +230,18 @@ export interface DictionaryEntityRecord
 
 export const DictionaryEntityRecord = {
   PARTITION_KEY_PREFIX: `DictEntry$`,
-  key(name: string, namespace?: string) {
-    return `${this.PARTITION_KEY_PREFIX}${name}$${namespace}`;
+  key(namespace?: string) {
+    return `${this.PARTITION_KEY_PREFIX}${namespace ?? ""}`;
   },
   SORT_KEY_PREFIX: `#`,
   sortKey(key: string) {
     return `${this.SORT_KEY_PREFIX}${key}`;
   },
-  praseKeyFromSortKey(sortKey: string) {
+  parseKeyFromSortKey(sortKey: string) {
     return sortKey.slice(1);
+  },
+  parseNamespaceFromPartitionKey(sortKey: string): string | undefined {
+    const namespace = sortKey.slice(this.PARTITION_KEY_PREFIX.length);
+    return namespace ? namespace : undefined;
   },
 };

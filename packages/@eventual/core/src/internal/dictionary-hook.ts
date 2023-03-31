@@ -10,6 +10,11 @@ export interface DictionaryDefinition<Entity> {
   schema: z.Schema<Entity>;
 }
 
+export type DictionaryMethods<Entity> = Pick<
+  Dictionary<Entity>,
+  "get" | "getWithMetadata" | "delete" | "set" | "list" | "listKeys"
+>;
+
 /**
  * Registers and returns functioning {@link Dictionary}s.
  *
@@ -18,7 +23,7 @@ export interface DictionaryDefinition<Entity> {
 export interface DictionaryHook {
   getDictionary<Entity>(
     name: string
-  ): Promise<Omit<Dictionary<Entity>, "schema" | "name"> | undefined>;
+  ): Promise<DictionaryMethods<Entity> | undefined>;
 }
 
 export function tryGetDictionaryHook() {

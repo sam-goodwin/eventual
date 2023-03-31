@@ -1,11 +1,13 @@
 import {
   Activity,
   ActivityOutput,
+  dictionaryStreamMatchesItem,
   Event,
   EventEnvelope,
   EventPayload,
   EventPayloadType,
   ExecutionHandle,
+  isDictionaryStreamItem,
   SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
@@ -16,7 +18,6 @@ import {
   Workflow,
 } from "@eventual/core";
 import {
-  ActivityWorkerRequest,
   isActivitySendEventRequest,
   isActivityWorkerRequest,
   isTimerRequest,
@@ -26,11 +27,11 @@ import {
   LocalEvent,
   RuntimeServiceClient,
   TimeController,
-  TimerRequest,
   WorkflowTask,
 } from "@eventual/core-runtime";
 import {
   ActivityInput,
+  dictionaries,
   PublishEventsRequest,
   registerServiceClient,
 } from "@eventual/core/internal";
@@ -85,9 +86,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       ? new Date(props.start.getTime() - props.start.getMilliseconds())
       : new Date(0);
 
-    const timeController = new TimeController<
-      WorkflowTask | TimerRequest | ActivityWorkerRequest
-    >([], {
+    const timeController = new TimeController<LocalEvent>([], {
       // start the time controller at the given start time or Date(0)
       start: start.getTime(),
       // increment by seconds
@@ -371,12 +370,11 @@ export class TestEnvironment extends RuntimeServiceClient {
   /**
    * Process the events from a single tick/second.
    */
-  private async processTickEvents(
-    events: (WorkflowTask | TimerRequest | ActivityWorkerRequest)[]
-  ) {
+  private async processTickEvents(events: LocalEvent[]) {
     const timerRequests = events.filter(isTimerRequest);
     const workflowTasks = events.filter(isWorkflowTask);
     const activityWorkerRequests = events.filter(isActivityWorkerRequest);
+    const dictionaryStreamItems = events.filter(isDictionaryStreamItem);
 
     await Promise.all(
       // run all activity requests, don't wait for a result
@@ -393,6 +391,18 @@ export class TestEnvironment extends RuntimeServiceClient {
               executionId: result.executionId,
             });
           }
+        }),
+        dictionaryStreamItems.flatMap((i) => {
+          const streamNames = [...dictionaries().values()]
+            .flatMap((d) => d.streams)
+            .filter((s) => dictionaryStreamMatchesItem(i, s))
+            .map((s) => s.name);
+          return streamNames.map((streamName) => {
+            return this.localContainer.dictionaryStreamWorker({
+              ...i,
+              streamName,
+            });
+          });
         }),
         // run all timer requests, don't wait for a result
         ...timerRequests.map((request) =>

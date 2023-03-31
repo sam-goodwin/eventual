@@ -18,7 +18,8 @@ export const ENV_NAMES = {
   WORKFLOW_EXECUTION_LOG_GROUP_NAME:
     "EVENTUAL_WORKFLOW_EXECUTION_LOG_GROUP_NAME",
   DEFAULT_LOG_LEVEL: "EVENTUAL_LOG_LEVEL",
-  ENTITY_TABLE_NAME: "EVENTUAL_ENTITY_TABLE_NAME",
+  DICTIONARY_NAME: "EVENTUAL_DICTIONARY_NAME",
+  DICTIONARY_STREAM_NAME: "EVENTUAL_DICTIONARY_STREAM_NAME",
 } as const;
 
 export function tryGetEnv<T extends string = string>(name: string) {
@@ -50,4 +51,5 @@ export const serviceLogGroupName = () =>
 export const serviceUrl = () => tryGetEnv<LogLevel>(ENV_NAMES.SERVICE_URL);
 export const defaultLogLevel = () =>
   tryGetEnv<LogLevel>(ENV_NAMES.DEFAULT_LOG_LEVEL) ?? LogLevel.INFO;
-export const entityTableName = () => tryGetEnv(ENV_NAMES.ENTITY_TABLE_NAME);
+export const dictionaryName = () => tryGetEnv(ENV_NAMES.DICTIONARY_NAME);
+export const dictionaryStreamName = () => tryGetEnv(ENV_NAMES.DICTIONARY_STREAM_NAME);

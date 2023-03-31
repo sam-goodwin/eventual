@@ -81,3 +81,19 @@ export function serviceFunctionArn(
     arnFormat: ArnFormat.COLON_RESOURCE_NAME,
   });
 }
+
+export function serviceTableArn(
+  serviceName: string,
+  stack: Stack,
+  nameSuffix: string,
+  sanitized: boolean = true
+) {
+  return stack.formatArn({
+    service: "dynamodb",
+    resourceName: sanitized
+      ? serviceFunctionName(serviceName, nameSuffix)
+      : `${serviceName}-${nameSuffix}`,
+    resource: "table",
+    arnFormat: ArnFormat.SLASH_RESOURCE_NAME,
+  });
+}
