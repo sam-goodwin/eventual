@@ -7,6 +7,7 @@ import { ServiceSpec } from "@eventual/core/internal";
 
 export default {
   workflows: [],
+  transactions: [],
   events: [],
   commands: [],
   activities: [],

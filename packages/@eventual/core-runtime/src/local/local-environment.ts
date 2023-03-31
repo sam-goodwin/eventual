@@ -58,6 +58,7 @@ export class LocalEnvironment {
       executionStore: this.localContainer.executionStore,
       workflowClient: this.localContainer.workflowClient,
       workflowProvider: this.localContainer.workflowProvider,
+      transactionClient: this.localContainer.transactionClient,
     });
 
     registerServiceClient(serviceClient);

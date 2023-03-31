@@ -6,3 +6,4 @@ export * from "./orchestrator.js";
 export * from "./schedule-forwarder.js";
 export * from "./subscription-worker.js";
 export * from "./timer-handler.js";
+export * from "./transaction-worker.js";

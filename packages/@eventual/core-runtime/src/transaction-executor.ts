@@ -2,6 +2,7 @@ import {
   CompositeKey,
   Dictionary,
   DictionaryTransactItem,
+  TransactionFunction,
 } from "@eventual/core";
 import {
   assertNever,
@@ -35,17 +36,13 @@ import {
 } from "./stores/dictionary-store.js";
 import { deserializeCompositeKey, serializeCompositeKey } from "./utils.js";
 
-export interface TransactionFunction<Input, Output> {
-  (input: Input, context: any): Promise<Output> | Output;
-}
-
 /**
  * Provide a hooked and labelled promise for all of the {@link Eventual}s.
  *
  * Exposes a resolve method which accepts a {@link Result} object. Adds the seq ID to
  * allow future identification of EventualPromises.
  */
-export function createResolvedEventualPromise<R>(
+function createResolvedEventualPromise<R>(
   result: Result<R>
 ): EventualPromise<R> {
   const promise = (
@@ -58,7 +55,7 @@ export function createResolvedEventualPromise<R>(
   return promise;
 }
 
-export function createEventualPromise<R>(
+function createEventualPromise<R>(
   executor: () => Promise<R> | R
 ): EventualPromise<R> {
   const promise = new Promise(async (resolve, reject) => {

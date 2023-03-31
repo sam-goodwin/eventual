@@ -33,6 +33,7 @@ import { AWSExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { AWSExecutionStore } from "./stores/execution-store.js";
 import { AWSHttpEventualClient } from "@eventual/aws-client";
 import { AWSDictionaryStore } from "./stores/dictionary-store.js";
+import { AWSTransactionClient } from "./clients/transaction-client.js";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -262,6 +263,13 @@ export const createServiceClient = /* @__PURE__ */ memoize(
       createHttpServiceClient({ serviceUrl })
     )
 );
+
+export const createTransactionClient = memoize(() => {
+  return new AWSTransactionClient({
+    lambda: lambda(),
+    transactionWorkerFunctionArn: env.transactionWorkerArn,
+  });
+});
 
 export const createHttpServiceClient = /* @__PURE__ */ memoize(
   ({ serviceUrl }: { serviceUrl?: string } = {}) =>

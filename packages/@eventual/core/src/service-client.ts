@@ -12,6 +12,11 @@ import type {
   SendActivitySuccessRequest,
 } from "./internal/eventual-service.js";
 import type { Signal } from "./signals.js";
+import {
+  Transaction,
+  TransactionInput,
+  TransactionOutput,
+} from "./transaction.js";
 import type { Workflow, WorkflowInput } from "./workflow.js";
 import { WorkflowExecutionOptions } from "./workflow.js";
 
@@ -84,6 +89,10 @@ export interface EventualServiceClient {
    */
   sendActivityFailure(request: SendActivityFailureRequest): Promise<void>;
 
+  executeTransaction<T extends Transaction>(
+    request: ExecuteTransactionRequest<T>
+  ): Promise<ExecuteTransactionResponse<T>>;
+
   /**
    * Submits a "heartbeat" for the given activityToken.
    *
@@ -151,6 +160,20 @@ export interface InvokeCommandRequest<Payload = any, Output = any> {
   command: Command<string, Payload, Output> | string;
   payload?: Payload;
 }
+
+export interface ExecuteTransactionRequest<
+  T extends Transaction = Transaction
+> {
+  input: TransactionInput<T>;
+  transaction: T | string;
+}
+
+export type ExecuteTransactionResponse<T extends Transaction = Transaction> =
+  | { succeeded: false }
+  | {
+      output: TransactionOutput<T>;
+      succeeded: true;
+    };
 
 // re-exports types used by the client, the types are in the internal path otherwise.
 export {

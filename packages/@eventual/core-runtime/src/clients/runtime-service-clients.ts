@@ -1,5 +1,7 @@
 import {
   EventualServiceClient,
+  ExecuteTransactionRequest,
+  ExecuteTransactionResponse,
   Execution,
   ExecutionHandle,
   ExecutionHistoryResponse,
@@ -15,6 +17,7 @@ import {
   SendActivitySuccessRequest,
   SendSignalRequest,
   StartExecutionRequest,
+  Transaction,
   Workflow,
 } from "@eventual/core";
 import { WorkflowProvider } from "../providers/workflow-provider.js";
@@ -24,6 +27,7 @@ import { ExecutionStore } from "../stores/execution-store.js";
 import { ActivityClient } from "./activity-client.js";
 import { EventClient } from "./event-client.js";
 import { ExecutionQueueClient } from "./execution-queue-client.js";
+import { TransactionClient } from "./transaction-client.js";
 import { WorkflowClient } from "./workflow-client.js";
 
 export interface RuntimeServiceClientProps {
@@ -33,6 +37,7 @@ export interface RuntimeServiceClientProps {
   executionHistoryStore: ExecutionHistoryStore;
   executionQueueClient: ExecutionQueueClient;
   executionStore: ExecutionStore;
+  transactionClient: TransactionClient;
   workflowClient: WorkflowClient;
   workflowProvider: WorkflowProvider;
 }
@@ -49,7 +54,6 @@ export class RuntimeFallbackServiceClient implements EventualServiceClient {
     private props: Partial<RuntimeServiceClientProps>,
     private fallbackServiceClient: EventualServiceClient
   ) {}
-
   public async listWorkflows(): Promise<ListWorkflowsResponse> {
     if (!this.props.workflowProvider) {
       return this.fallbackServiceClient.listWorkflows();
@@ -155,6 +159,15 @@ export class RuntimeFallbackServiceClient implements EventualServiceClient {
       return this.fallbackServiceClient.sendActivityHeartbeat(request);
     }
     return this.props.activityClient.sendHeartbeat(request);
+  }
+
+  async executeTransaction<T extends Transaction<any, any>>(
+    request: ExecuteTransactionRequest<T>
+  ): Promise<ExecuteTransactionResponse<T>> {
+    if (!this.props.transactionClient) {
+      return this.fallbackServiceClient.executeTransaction(request);
+    }
+    return this.props.transactionClient.executeTransaction(request);
   }
 }
 

@@ -3,6 +3,7 @@ import serviceSpec from "@eventual/injected/spec";
 import type { AnyCommand } from "@eventual/core";
 import {
   createCommandWorker,
+  createExecuteTransactionCommand,
   createGetExecutionCommand,
   createListExecutionHistoryCommand,
   createListExecutionsCommand,
@@ -22,6 +23,7 @@ import {
   createExecutionHistoryStore,
   createExecutionQueueClient,
   createExecutionStore,
+  createTransactionClient,
   createWorkflowClient,
 } from "../create.js";
 import { createApiGCommandAdaptor } from "./apig-command-adapter.js";
@@ -63,5 +65,8 @@ export default systemCommandWorker(
   createStartExecutionCommand({
     workflowClient,
   }),
-  createUpdateActivityCommand({ activityClient: createActivityClient() })
+  createUpdateActivityCommand({ activityClient: createActivityClient() }),
+  createExecuteTransactionCommand({
+    transactionClient: createTransactionClient(),
+  })
 );

@@ -5,6 +5,7 @@ import {
   createDictionaryClient,
   createEventClient,
   createServiceClient,
+  createTransactionClient,
 } from "../create.js";
 import { createApiGCommandAdaptor } from "./apig-command-adapter.js";
 
@@ -20,5 +21,9 @@ export default createApiGCommandAdaptor({
   }),
   // pulls the service url from the request instead of env variables to reduce the circular dependency between commands and the gateway.
   serviceClientBuilder: (serviceUrl) =>
-    createServiceClient({ serviceUrl, eventClient: createEventClient() }),
+    createServiceClient({
+      serviceUrl,
+      eventClient: createEventClient(),
+      transactionClient: createTransactionClient(),
+    }),
 });
