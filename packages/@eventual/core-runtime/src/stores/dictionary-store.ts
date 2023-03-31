@@ -59,7 +59,7 @@ export function isUnexpectedVersionResult(
 export function isTransactionCancelledResult(
   value: any
 ): value is TransactionCancelledResult {
-  return value && "failedItems" in value;
+  return value && "reasons" in value;
 }
 
 export function normalizeCompositeKey(key: string | CompositeKey) {

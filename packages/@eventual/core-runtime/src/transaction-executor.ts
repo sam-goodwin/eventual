@@ -1,4 +1,8 @@
-import { CompositeKey, DictionaryTransactItem } from "@eventual/core";
+import {
+  CompositeKey,
+  Dictionary,
+  DictionaryTransactItem,
+} from "@eventual/core";
 import {
   assertNever,
   DictionaryCall,
@@ -143,7 +147,11 @@ export function createTransactionExecutor(
               isDictionaryCallOfType("set", eventual) ||
               isDictionaryCallOfType("delete", eventual)
             ) {
-              return createEventualPromise<{ version: number }>(async () => {
+              return createEventualPromise<
+                Awaited<
+                  ReturnType<Dictionary<any>["delete"] | Dictionary<any>["set"]>
+                >
+              >(async () => {
                 const entity = await resolveEntity(
                   eventual.name,
                   eventual.operation.key
@@ -155,7 +163,9 @@ export function createTransactionExecutor(
 
                 // TODO
                 dictionaryCalls.set(normalizedKey, eventual);
-                return { version: (entity?.version ?? 0) + 1 };
+                return isDictionaryCallOfType("set", eventual)
+                  ? { version: (entity?.version ?? 0) + 1 }
+                  : undefined;
               });
             } else if (
               isDictionaryCallOfType("get", eventual) ||
@@ -225,7 +235,10 @@ export function createTransactionExecutor(
           // for example, if a entity is set with an expected version of 1,
           //              but the current version at set time is 2, this condition
           ///             will never be true.
-          if (call.operation.options?.expectedVersion !== retrievedVersion) {
+          if (
+            call.operation.options?.expectedVersion !== undefined &&
+            call.operation.options?.expectedVersion !== retrievedVersion
+          ) {
             versionOverridesIndices.add(i);
             return { dictionary, operation: call.operation };
           }
