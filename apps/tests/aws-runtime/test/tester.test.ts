@@ -20,6 +20,7 @@ import {
   parentWorkflow,
   timedOutWorkflow,
   timedWorkflow,
+  transactionWorkflow,
   workflow1,
   workflow2,
   workflow3,
@@ -117,6 +118,11 @@ eventualRuntimeTestHarness(
     testCompletion("awsSdkCalls", createAndDestroyWorkflow, "done");
 
     testCompletion("dict", dictionaryWorkflow, { n: 6 });
+
+    testCompletion("transaction", transactionWorkflow, ([one, two]) => {
+      expect(one?.store).not.toBeUndefined();
+      expect(two?.store).not.toBeUndefined();
+    });
   },
   {
     name: "s3 persist failures",

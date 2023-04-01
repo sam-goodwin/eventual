@@ -23,6 +23,7 @@ import {
   subscription,
   time,
   workflow,
+  transaction,
 } from "@eventual/core";
 import z from "zod";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -563,6 +564,40 @@ export const counterWatcher = counter.stream(
       const { n } = item.oldValue!;
       await dictSignal2.sendSignal(item.key, { n: n + 1 });
     }
+  }
+);
+
+export const check = dictionary<{ n: number; store: number }>("check");
+
+const gitErDone = transaction("gitErDone", async ({ id }: { id: string }) => {
+  const val = await check.get(id);
+  await check.set(id, { n: val?.n ?? 0, store: val?.n ?? 0 });
+});
+
+const noise = activity(
+  "noiseActivity",
+  async ({ x }: { x: number }, { execution: { id } }) => {
+    let n = 100;
+    let transact: Promise<any> | undefined = undefined;
+    while (n-- > 0) {
+      await counter.set(id, { n });
+      if (n === x) {
+        transact = gitErDone({ id });
+      }
+    }
+    await transact;
+  }
+);
+
+export const transactionWorkflow = workflow(
+  "transactionWorkflow",
+  async (_, { execution: { id } }) => {
+    await noise({ x: 40 });
+    const one = await check.get(id);
+    await noise({ x: 60 });
+    const two = await check.get(id);
+    await check.delete(id);
+    return [one, two];
   }
 );
 
