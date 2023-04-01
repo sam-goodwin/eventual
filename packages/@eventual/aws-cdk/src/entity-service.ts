@@ -229,7 +229,7 @@ export class Dictionary extends Construct {
           : undefined,
     });
 
-    const dictionaryStreamScope = new Construct(scope, "DictionaryStreams");
+    const dictionaryStreamScope = new Construct(this, "DictionaryStreams");
 
     this.streams = Object.fromEntries(
       props.dictionary.streams.map((s) => [
