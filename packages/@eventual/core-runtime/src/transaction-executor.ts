@@ -5,26 +5,27 @@ import {
   TransactionFunction,
 } from "@eventual/core";
 import {
-  assertNever,
   DictionaryCall,
   DictionaryDeleteOperation,
   DictionarySetOperation,
   EventualCallHook,
   EventualPromise,
   EventualPromiseSymbol,
-  isDictionaryCall,
-  isDictionaryCallOfType,
-  isPublishEventsCall,
-  isSendSignalCall,
   PublishEventsCall,
   Result,
   SendSignalCall,
   ServiceType,
-  serviceTypeScope,
   SignalTargetType,
+  assertNever,
+  isDictionaryCall,
+  isDictionaryCallOfType,
+  isPublishEventsCall,
+  isSendSignalCall,
+  serviceTypeScope,
 } from "@eventual/core/internal";
 import { EventClient } from "./clients/event-client.js";
 import { ExecutionQueueClient } from "./clients/execution-queue-client.js";
+import { enterEventualCallHookScope } from "./eventual-hook.js";
 import { isResolved } from "./result.js";
 import {
   DictionaryStore,
@@ -34,8 +35,7 @@ import {
   isUnexpectedVersionResult,
   normalizeCompositeKey,
 } from "./stores/dictionary-store.js";
-import { deserializeCompositeKey, serializeCompositeKey } from "./utils.js";
-import { enterEventualCallHookScope } from "./eventual-hook.js";
+import { serializeCompositeKey } from "./utils.js";
 
 /**
  * Provide a hooked and labelled promise for all of the {@link Eventual}s.
@@ -135,7 +135,11 @@ export function createTransactionExecutor(
       // also serves as a get cache when get is called multiple times on the same keys
       const retrievedEntities = new Map<
         string,
-        EntityWithMetadata<any> | undefined
+        {
+          dictionary: string;
+          key: string | CompositeKey;
+          entity: EntityWithMetadata<any> | undefined;
+        }
       >();
 
       const eventualCallHook: EventualCallHook = {
@@ -240,14 +244,11 @@ export function createTransactionExecutor(
        * Build the transaction items that contain mutations with assertions or just assertions.
        */
       const transactionItems: DictionaryTransactItem<any, string>[] = [
-        ...new Set([...dictionaryCalls.keys(), ...retrievedEntities.keys()]),
-      ].map((normalizedKey, i) => {
-        const retrieved = retrievedEntities.get(normalizedKey);
+        ...retrievedEntities.entries(),
+      ].map(([normalizedKey, { dictionary, key, entity }], i) => {
         const call = dictionaryCalls.get(normalizedKey);
 
-        const [dictionary, key] = deserializeCompositeKey(normalizedKey);
-
-        const retrievedVersion = retrieved?.version ?? 0;
+        const retrievedVersion = entity?.version ?? 0;
         if (call) {
           // if the user provided a version that was not the same that was retrieved
           // we will consider the transaction not retry-able on failure.
@@ -353,7 +354,7 @@ export function createTransactionExecutor(
         const normalizedKey = serializeCompositeKey(dictionaryName, key);
         if (retrievedEntities.has(normalizedKey)) {
           return createResolvedEventualPromise(
-            Result.resolved(retrievedEntities.get(normalizedKey))
+            Result.resolved(retrievedEntities.get(normalizedKey)?.entity)
           );
         } else {
           return createEventualPromise(async () => {
@@ -361,7 +362,11 @@ export function createTransactionExecutor(
               dictionaryName,
               key
             );
-            retrievedEntities.set(normalizedKey, value);
+            retrievedEntities.set(normalizedKey, {
+              dictionary: dictionaryName,
+              key,
+              entity: value,
+            });
             return value;
           });
         }
