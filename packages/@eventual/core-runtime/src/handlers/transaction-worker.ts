@@ -32,10 +32,14 @@ export function createTransactionWorker(
 
   return async (request) => {
     console.log(request);
-    const transaction = transactions().get(request.transaction as string);
+    const transactionName =
+      typeof request.transaction === "string"
+        ? request.transaction
+        : request.transaction.name;
+    const transaction = transactions().get(transactionName);
 
     if (!transaction) {
-      throw new Error("");
+      throw new Error(`Transaction ${transactionName} not found.`);
     }
 
     const output = await transactionExecutor(
