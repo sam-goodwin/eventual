@@ -77,7 +77,7 @@ export class AWSDictionaryStore implements DictionaryStore {
     try {
       const result = await this.props.dynamo.send(
         new UpdateItemCommand({
-          ...this.setRequest(name, _key, entity, options),
+          ...this.createSetRequest(name, _key, entity, options),
           ReturnValues: ReturnValue.ALL_NEW,
         })
       );
@@ -93,7 +93,7 @@ export class AWSDictionaryStore implements DictionaryStore {
     }
   }
 
-  private setRequest<Entity>(
+  private createSetRequest<Entity>(
     name: string,
     _key: string | CompositeKey,
     entity: Entity,
@@ -136,11 +136,11 @@ export class AWSDictionaryStore implements DictionaryStore {
     options?: DictionaryConsistencyOptions
   ): Promise<void | UnexpectedVersionResult> {
     await this.props.dynamo.send(
-      new DeleteItemCommand(this.deleteRequest(name, _key, options))
+      new DeleteItemCommand(this.createDeleteRequest(name, _key, options))
     );
   }
 
-  private deleteRequest(
+  private createDeleteRequest(
     name: string,
     _key: string | CompositeKey,
     options?: DictionaryConsistencyOptions
@@ -212,7 +212,7 @@ export class AWSDictionaryStore implements DictionaryStore {
           TransactItems: items.map((i): TransactWriteItem => {
             if (i.operation.operation === "set") {
               return {
-                Update: this.setRequest(
+                Update: this.createSetRequest(
                   i.dictionary,
                   i.operation.key,
                   i.operation.value,
@@ -221,7 +221,7 @@ export class AWSDictionaryStore implements DictionaryStore {
               };
             } else if (i.operation.operation === "delete") {
               return {
-                Delete: this.deleteRequest(
+                Delete: this.createDeleteRequest(
                   i.dictionary,
                   i.operation.key,
                   i.operation.options

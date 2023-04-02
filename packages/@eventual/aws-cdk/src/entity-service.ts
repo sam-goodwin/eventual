@@ -8,7 +8,7 @@ import {
   DictionaryRuntime,
   DictionaryStreamFunction,
 } from "@eventual/core-runtime";
-import { Transaction } from "@eventual/core/src/transaction";
+import { TransactionSpec } from "@eventual/core/internal";
 import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
 import {
   AttributeType,
@@ -44,7 +44,7 @@ export type ServiceDictionaries<Service> = ServiceEntityProps<
 export type ServiceTransactions<Service> = ServiceEntityProps<
   Service,
   "Transaction",
-  Transaction
+  TransactionSpec
 >;
 
 export type ServiceDictionaryStreams<Service> = ServiceEntityProps<

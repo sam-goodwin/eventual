@@ -159,7 +159,6 @@ export function createTransactionExecutor(
                   eventual.operation.key
                 );
 
-                // TODO
                 dictionaryCalls.set(normalizedKey, eventual);
                 return isDictionaryCallOfType("set", eventual)
                   ? { version: (entity?.version ?? 0) + 1 }
@@ -213,6 +212,28 @@ export function createTransactionExecutor(
           )
       );
 
+      /**
+       * Collect the index of any items that provide their own expectedVersion that is
+       * not the same as the retrieved version.
+       *
+       * This is used to determine the meaning of a UnexpectedVersion when the transaction is cancelled.
+       *
+       * If the version is overridden by the user, the transaction cannot be retried.
+       *
+       * An example of an override:
+       *
+       * ```ts
+       * const { version } = await dict.set(id, "value");
+       *
+       * transaction(..., async () => {
+       *    // no override - this mutation can succeed on any future transaction retry, no matter the version of the item
+       *    await dict.set(id, "value");
+       *
+       *    // override - the transaction will only succeed while the version of "id" is still the version from before.
+       *    await dict.set(id, "value", {expectedVersion: version});
+       * });
+       * ```
+       */
       const versionOverridesIndices: Set<number> = new Set();
 
       /**
@@ -316,6 +337,7 @@ export function createTransactionExecutor(
                 execution: call.target.executionId,
                 signal: call.signalId,
                 payload: call.payload,
+                id: call.id,
               });
             }
           })
