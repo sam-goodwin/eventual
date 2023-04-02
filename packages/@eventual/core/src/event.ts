@@ -3,7 +3,6 @@ import {
   createEventualCall,
   EventualCallKind,
 } from "./internal/calls/calls.js";
-import { getEventualCallHook } from "./internal/eventual-hook.js";
 import { events, getServiceClient, subscriptions } from "./internal/global.js";
 import { EventSpec, isSourceLocation } from "./internal/service-spec.js";
 import type { Subscription, SubscriptionRuntimeProps } from "./subscription.js";

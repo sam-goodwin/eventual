@@ -28,10 +28,12 @@ import {
 import { DynamoEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { Construct } from "constructs";
 import { CommandService } from "./command-service";
+import { EventService } from "./event-service.js";
 import { LazyInterface } from "./proxy-construct";
 import { EventualResource, ServiceConstructProps } from "./service";
 import { ServiceFunction } from "./service-function";
 import { ServiceEntityProps, serviceTableArn } from "./utils";
+import { WorkflowService } from "./workflow-service.js";
 
 export type ServiceDictionaries<Service> = ServiceEntityProps<
   Service,
@@ -63,6 +65,8 @@ export interface DictionaryStreamHandlerProps
 
 export interface EntityServiceProps<Service> extends ServiceConstructProps {
   commandService: LazyInterface<CommandService<Service>>;
+  eventService: LazyInterface<EventService>;
+  workflowService: LazyInterface<WorkflowService>;
   dictionaryStreamOverrides?: DictionaryStreamOverrides<Service>;
   entityServiceOverrides?: {
     transactionWorkerOverrides?: Omit<
@@ -124,6 +128,9 @@ export class EntityService<Service> {
           overrides: props.entityServiceOverrides?.transactionWorkerOverrides,
         }
       );
+      this.configureReadWriteEntityTable(this.transactionWorker);
+      props.workflowService.configureSendSignal(this.transactionWorker);
+      props.eventService.configurePublish(this.transactionWorker);
     }
   }
 

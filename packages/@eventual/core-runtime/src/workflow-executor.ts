@@ -8,7 +8,6 @@ import {
 } from "@eventual/core";
 import {
   CompletionEvent,
-  enterEventualCallHookScope,
   EventualCall,
   EventualPromise,
   EventualPromiseSymbol,
@@ -37,6 +36,7 @@ import { createEventualFromCall } from "./eventual-factory.js";
 import { formatExecutionId } from "./execution.js";
 import { isFailed, isResolved, isResult } from "./result.js";
 import { filterEvents } from "./workflow-events.js";
+import { enterEventualCallHookScope } from "./eventual-hook.js";
 
 /**
  * Put the resolve method on the promise, but don't expose it.

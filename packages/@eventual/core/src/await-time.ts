@@ -4,7 +4,6 @@ import {
 } from "./internal/calls/calls.js";
 import {
   EventualPromise,
-  getEventualCallHook,
 } from "./internal/eventual-hook.js";
 import {
   DurationSchedule,

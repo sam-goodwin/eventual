@@ -1,5 +1,4 @@
 import { TransactionCancelled } from "./error.js";
-import { getEventualCallHook } from "./internal/eventual-hook.js";
 import { getServiceClient, transactions } from "./internal/global.js";
 import { TransactionSpec } from "./internal/service-spec.js";
 

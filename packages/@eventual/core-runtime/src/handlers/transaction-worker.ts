@@ -31,6 +31,7 @@ export function createTransactionWorker(
   );
 
   return async (request) => {
+    console.log(request);
     const transaction = transactions().get(request.transaction as string);
 
     if (!transaction) {
@@ -40,7 +41,7 @@ export function createTransactionWorker(
     const output = await transactionExecutor(
       transaction?.handler,
       request.input,
-      10
+      100
     );
 
     if (isResolved(output.result)) {

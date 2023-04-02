@@ -2,6 +2,7 @@ import {
   DeleteItemCommand,
   DynamoDBClient,
   PutItemCommand,
+  TransactionConflictException,
 } from "@aws-sdk/client-dynamodb";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import {
@@ -549,7 +550,7 @@ export const createAndDestroyWorkflow = workflow(
   }
 );
 
-export const counter = dictionary<{ n: number }>("counter", z.any());
+export const counter = dictionary<{ n: number }>("counter2", z.any());
 const dictEvent = event<{ id: string }>("dictEvent");
 const dictSignal = signal("dictSignal");
 const dictSignal2 = signal<{ n: number }>("dictSignal2");
@@ -567,7 +568,7 @@ export const counterWatcher = counter.stream(
   }
 );
 
-export const check = dictionary<{ n: number; store: number }>("check");
+export const check = dictionary<{ n: number; store?: number }>("check");
 
 const gitErDone = transaction("gitErDone", async ({ id }: { id: string }) => {
   const val = await check.get(id);
@@ -580,7 +581,13 @@ const noise = activity(
     let n = 100;
     let transact: Promise<any> | undefined = undefined;
     while (n-- > 0) {
-      await counter.set(id, { n });
+      try {
+        await check.set(id, { n });
+      } catch (err) {
+        if (!(err instanceof TransactionConflictException)) {
+          throw err;
+        }
+      }
       if (n === x) {
         transact = gitErDone({ id });
       }

@@ -94,6 +94,8 @@ export const Subscriptions: {
        * Dictionary operations
        */
       props.entityService.configureReadWriteEntityTable(handler);
+      // transactions
+      props.entityService.configureInvokeTransactions(handler);
     });
   }
 } as any;

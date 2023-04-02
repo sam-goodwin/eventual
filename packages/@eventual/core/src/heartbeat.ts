@@ -1,4 +1,3 @@
-import { getEventualCallHook } from "./internal/eventual-hook.js";
 import { isActivityWorker } from "./internal/flags.js";
 import { getActivityContext, getServiceClient } from "./internal/global.js";
 import type { SendActivityHeartbeatResponse } from "./service-client.js";

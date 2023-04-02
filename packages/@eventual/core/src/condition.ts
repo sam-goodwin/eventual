@@ -2,7 +2,6 @@ import {
   createEventualCall,
   EventualCallKind,
 } from "./internal/calls/calls.js";
-import { getEventualCallHook } from "./internal/eventual-hook.js";
 
 export type ConditionPredicate = () => boolean;
 

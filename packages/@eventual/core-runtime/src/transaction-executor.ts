@@ -9,7 +9,6 @@ import {
   DictionaryCall,
   DictionaryDeleteOperation,
   DictionarySetOperation,
-  enterEventualCallHookScope,
   EventualCallHook,
   EventualPromise,
   EventualPromiseSymbol,
@@ -31,10 +30,12 @@ import {
   DictionaryStore,
   EntityWithMetadata,
   isTransactionCancelledResult,
+  isTransactionConflictResult,
   isUnexpectedVersionResult,
   normalizeCompositeKey,
 } from "./stores/dictionary-store.js";
 import { deserializeCompositeKey, serializeCompositeKey } from "./utils.js";
+import { enterEventualCallHookScope } from "./eventual-hook.js";
 
 /**
  * Provide a hooked and labelled promise for all of the {@link Eventual}s.
@@ -262,6 +263,8 @@ export function createTransactionExecutor(
         }
       });
 
+      console.log(JSON.stringify(transactionItems, undefined, 4));
+
       /**
        * Run the transaction
        */
@@ -269,6 +272,8 @@ export function createTransactionExecutor(
         transactionItems.length > 0
           ? await dictionaryStore.transactWrite(transactionItems)
           : undefined;
+
+      console.log(JSON.stringify(result, undefined, 4));
 
       /**
        * If the transaction failed, check if it is retryable or not.
@@ -292,6 +297,8 @@ export function createTransactionExecutor(
             })
             .filter((i): i is Exclude<typeof i, undefined> => !!i),
         };
+      } else if (isTransactionConflictResult(result)) {
+        return { canRetry: true, failedItems: [] };
       } else {
         /**
          * If the transaction succeeded, publish events and send signals.

@@ -7,6 +7,7 @@ import {
   GetItemCommand,
   ReturnValue,
   TransactionCanceledException,
+  TransactionConflictException,
   TransactWriteItem,
   TransactWriteItemsCommand,
   Update,
@@ -28,6 +29,7 @@ import {
   LazyValue,
   normalizeCompositeKey,
   TransactionCancelledResult,
+  TransactionConflictResult,
   UnexpectedVersionResult,
 } from "@eventual/core-runtime";
 import { assertNever } from "@eventual/core/internal";
@@ -203,7 +205,7 @@ export class AWSDictionaryStore implements DictionaryStore {
 
   public async transactWrite(
     items: DictionaryTransactItem<any, string>[]
-  ): Promise<TransactionCancelledResult | void> {
+  ): Promise<TransactionCancelledResult | TransactionConflictResult | void> {
     try {
       await this.props.dynamo.send(
         new TransactWriteItemsCommand({
@@ -267,6 +269,8 @@ export class AWSDictionaryStore implements DictionaryStore {
               return { unexpectedVersion: true };
             }) ?? [],
         };
+      } else if (err instanceof TransactionConflictException) {
+        return { transactionConflict: true };
       }
       throw err;
     }

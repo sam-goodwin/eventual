@@ -7,6 +7,7 @@ import { DictionaryHook, DictionaryMethods } from "@eventual/core/internal";
 import {
   DictionaryStore,
   isTransactionCancelledResult,
+  isTransactionConflictResult,
   isUnexpectedVersionResult,
 } from "../stores/dictionary-store.js";
 
@@ -74,6 +75,8 @@ export class DictionaryClient implements DictionaryHook {
             : undefined
         )
       );
+    } else if (isTransactionConflictResult(result)) {
+      throw new TransactionCancelled([]);
     }
     return result;
   }

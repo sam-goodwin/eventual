@@ -151,6 +151,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           "getExecutionWorkflowHistory",
           "publishEvents",
           "updateActivity",
+          "executeTransaction",
         ].map((name) => ({
           name,
           namespace: EVENTUAL_SYSTEM_COMMAND_NAMESPACE,

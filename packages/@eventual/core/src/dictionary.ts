@@ -9,7 +9,6 @@ import {
   DictionarySetOperation,
 } from "./internal/calls/dictionary-call.js";
 import { getDictionaryHook } from "./internal/dictionary-hook.js";
-import { getEventualCallHook } from "./internal/eventual-hook.js";
 import { dictionaries } from "./internal/global.js";
 import {
   DictionarySpec,

@@ -10,7 +10,6 @@ import {
 import {
   EventualPromise,
   EventualPromiseSymbol,
-  getEventualCallHook,
 } from "./internal/eventual-hook.js";
 import { getServiceClient, workflows } from "./internal/global.js";
 import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";

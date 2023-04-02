@@ -3,10 +3,7 @@ import {
   createEventualCall,
   EventualCallKind,
 } from "./internal/calls/calls.js";
-import {
-  EventualPromiseSymbol,
-  getEventualCallHook,
-} from "./internal/eventual-hook.js";
+import { EventualPromiseSymbol } from "./internal/eventual-hook.js";
 import { getServiceClient } from "./internal/global.js";
 import { Result } from "./internal/result.js";
 import { SignalTargetType } from "./internal/signal.js";

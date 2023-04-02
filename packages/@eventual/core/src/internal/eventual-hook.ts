@@ -1,17 +1,17 @@
-import { EventualCall } from "./calls/calls.js";
-import { Result } from "./result.js";
+import type { EventualCall } from "./calls/calls.js";
+import type { Result } from "./result.js";
 
 /**
- * In the case that the workflow is bundled with a different instance of eventual/core,
- * put the store in globals.
+ * Globals that may be overridden by the core-runtime. See matching core-runtime file to understand
+ * the specific behavior.
+ * 
+ * In this case, we'll provide a default no-op hook function.
+ * When someone uses the enterEventualCallHookScope in runtime, the getEventualCallHook function
+ * will be overridden to return that hook (based on async scope.)
  */
 declare global {
-  // eslint-disable-next-line no-var
-  var eventualCallHookStore: EventualCallHook | undefined;
+  export function getEventualCallHook(): EventualCallHook;
 }
-
-export const EventualPromiseSymbol =
-  /* @__PURE__ */ Symbol.for("Eventual:Promise");
 
 export class PassThroughEventualHook implements EventualCallHook {
   registerEventualCall<
@@ -26,7 +26,14 @@ export class PassThroughEventualHook implements EventualCallHook {
   }
 }
 
-const DEFAULT_HOOK = new PassThroughEventualHook();
+export const DEFAULT_HOOK = new PassThroughEventualHook();
+
+// default implementation of getEventualCallHook that does nothing.
+// to be overridden by the core-runtime as needed.
+globalThis.getEventualCallHook = () => DEFAULT_HOOK;
+
+export const EventualPromiseSymbol =
+  /* @__PURE__ */ Symbol.for("Eventual:Promise");
 
 export interface EventualPromise<R> extends Promise<R> {
   /**
@@ -44,23 +51,4 @@ export interface EventualCallHook {
     passThrough: (eventualCall: E) => Promise<R>
   ): EventualPromise<R>;
   resolveEventual(seq: number, result: Result<any>): void;
-}
-
-export function getEventualCallHook() {
-  return globalThis.eventualCallHookStore ?? DEFAULT_HOOK;
-}
-
-export async function enterEventualCallHookScope<R>(
-  eventualHook: EventualCallHook,
-  callback: () => R
-): Promise<Awaited<R>> {
-  if (globalThis.eventualCallHookStore !== undefined) {
-    throw new Error("Must clear eventual hook before registering a new one.");
-  }
-  try {
-    globalThis.eventualCallHookStore = eventualHook;
-    return await callback();
-  } finally {
-    globalThis.eventualCallHookStore = undefined;
-  }
 }

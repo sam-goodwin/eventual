@@ -34,7 +34,7 @@ export interface DictionaryStore {
   ): Promise<DictionaryListKeysResult>;
   transactWrite(
     items: DictionaryTransactItem<any, string>[]
-  ): Promise<TransactionCancelledResult | void>;
+  ): Promise<TransactionCancelledResult | TransactionConflictResult | void>;
 }
 
 export interface EntityWithMetadata<Entity> {
@@ -50,6 +50,10 @@ export interface TransactionCancelledResult {
   reasons: (UnexpectedVersionResult | undefined)[];
 }
 
+export interface TransactionConflictResult {
+  transactionConflict: true;
+}
+
 export function isUnexpectedVersionResult(
   value: any
 ): value is UnexpectedVersionResult {
@@ -60,6 +64,12 @@ export function isTransactionCancelledResult(
   value: any
 ): value is TransactionCancelledResult {
   return value && "reasons" in value;
+}
+
+export function isTransactionConflictResult(
+  value: any
+): value is TransactionConflictResult {
+  return value && "transactionConflict" in value;
 }
 
 export function normalizeCompositeKey(key: string | CompositeKey) {

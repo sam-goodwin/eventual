@@ -6,7 +6,6 @@ import {
   createEventualCall,
   EventualCallKind,
 } from "./internal/calls/calls.js";
-import { getEventualCallHook } from "./internal/eventual-hook.js";
 import type {
   SendActivityFailureRequest,
   SendActivityHeartbeatRequest,

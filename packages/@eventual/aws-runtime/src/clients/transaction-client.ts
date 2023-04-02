@@ -21,7 +21,7 @@ export class AWSTransactionClient implements TransactionClient {
         FunctionName: getLazy(this.props.transactionWorkerFunctionArn),
         Payload:
           request.input !== undefined
-            ? Buffer.from(JSON.stringify(request.input))
+            ? Buffer.from(JSON.stringify(request))
             : undefined,
       })
     );

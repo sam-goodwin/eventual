@@ -242,6 +242,8 @@ export class ActivityService<Service = any> {
      * Dictionary operations
      */
     this.props.entityService.configureReadWriteEntityTable(func);
+    // transactions
+    this.props.entityService.configureInvokeTransactions(func);
   }
 
   private configureActivityFallbackHandler() {
