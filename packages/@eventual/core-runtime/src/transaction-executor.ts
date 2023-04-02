@@ -324,6 +324,7 @@ export function createTransactionExecutor(
       } else {
         /**
          * If the transaction succeeded, publish events and send signals.
+         * TODO: move the side effects to a transactional dynamo update.
          */
         await Promise.allSettled(
           eventCalls.map(async (call) => {
