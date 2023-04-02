@@ -456,16 +456,6 @@ var EventualCallKind;
   EventualCallKind2[EventualCallKind2["WorkflowCall"] = 7] = "WorkflowCall";
 })(EventualCallKind || (EventualCallKind = {}));
 
-var PassThroughEventualHook = class {
-  registerEventualCall(eventual, passThrough) {
-    return passThrough(eventual);
-  }
-  resolveEventual(_seq, _result) {
-    throw new Error("Cannot resolve an eventual in passthrough mode");
-  }
-};
-var DEFAULT_HOOK = new PassThroughEventualHook();
-
 var ServiceType;
 (function(ServiceType2) {
   ServiceType2["ActivityWorker"] = "ActivityWorker";
@@ -662,6 +652,17 @@ var _BaseCachingSecret_value;
 _BaseCachingSecret_value = /* @__PURE__ */ new WeakMap();
 
 var import_ulidx2 = __toESM(require_dist2(), 1);
+
+var PassThroughEventualHook = class {
+  registerEventualCall(eventual, passThrough) {
+    return passThrough(eventual);
+  }
+  resolveEventual(_seq, _result) {
+    throw new Error("Cannot resolve an eventual in passthrough mode");
+  }
+};
+var DEFAULT_HOOK = new PassThroughEventualHook();
+globalThis.getEventualCallHook = () => DEFAULT_HOOK;
 
 var ResultKind;
 (function(ResultKind2) {
