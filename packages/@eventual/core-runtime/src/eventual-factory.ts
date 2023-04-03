@@ -152,8 +152,9 @@ export function createEventualFromCall(
         return (
           isDictionaryRequest(event) &&
           call.operation === event.operation.operation &&
-          "name" in call === "name" in event &&
-          (!("name" in call && "name" in event) || call.name === event.name)
+          "name" in call === "name" in event.operation &&
+          (!("name" in call && "name" in event.operation) ||
+            call.name === event.operation.name)
         );
       },
     };

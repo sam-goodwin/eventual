@@ -290,7 +290,7 @@ export function dictionary<Entity>(
         }
       );
     },
-    getWithMetadata: async (key: string | CompositeKey) => {
+    getWithMetadata: (key: string | CompositeKey) => {
       return getEventualCallHook().registerEventualCall(
         createEventualCall<DictionaryCall<"getWithMetadata">>(
           EventualCallKind.DictionaryCall,
@@ -305,7 +305,7 @@ export function dictionary<Entity>(
         }
       );
     },
-    set: async (
+    set: (
       key: string | CompositeKey,
       entity: Entity,
       options?: DictionarySetOptions
@@ -326,7 +326,7 @@ export function dictionary<Entity>(
         }
       );
     },
-    delete: async (key, options) => {
+    delete: (key, options) => {
       return getEventualCallHook().registerEventualCall(
         createEventualCall<DictionaryCall<"delete">>(
           EventualCallKind.DictionaryCall,
@@ -342,7 +342,7 @@ export function dictionary<Entity>(
         }
       );
     },
-    list: async (request) => {
+    list: (request) => {
       return getEventualCallHook().registerEventualCall(
         createEventualCall<DictionaryCall<"list">>(
           EventualCallKind.DictionaryCall,
@@ -357,7 +357,7 @@ export function dictionary<Entity>(
         }
       );
     },
-    listKeys: async (request) => {
+    listKeys: (request) => {
       return getEventualCallHook().registerEventualCall(
         createEventualCall<DictionaryCall<"listKeys">>(
           EventualCallKind.DictionaryCall,

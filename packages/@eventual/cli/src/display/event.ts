@@ -42,7 +42,7 @@ function displayDictionaryCommand(request: DictionaryRequest) {
     return "TODO";
   } else {
     const output: string[] = [
-      `Dict: ${request.operation}`,
+      `Dict: ${request.operation.name}`,
       `Operation: ${request.operation.operation}`,
     ];
     const operation = request.operation;

@@ -312,17 +312,17 @@ export class WorkflowCallExecutor {
         return dictionary.get(operation.key);
       } else if (isDictionaryOperationOfType("getWithMetadata", operation)) {
         return dictionary.getWithMetadata(operation.key);
-      } else if (operation.operation === "set") {
+      } else if (isDictionaryOperationOfType("set", operation)) {
         return dictionary.set(
           operation.key,
           operation.value,
           operation.options
         );
-      } else if (operation.operation === "delete") {
+      } else if (isDictionaryOperationOfType("delete", operation)) {
         return dictionary.delete(operation.key, operation.options);
-      } else if (operation.operation === "list") {
+      } else if (isDictionaryOperationOfType("list", operation)) {
         return dictionary.list(operation.request);
-      } else if (operation.operation === "listKeys") {
+      } else if (isDictionaryOperationOfType("listKeys", operation)) {
         return dictionary.listKeys(operation.request);
       }
       return assertNever(operation);

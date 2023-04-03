@@ -71,7 +71,8 @@ export const isScheduledEvent = /* @__PURE__ */ or(
   isEventsPublished,
   isDictionaryRequest,
   isSignalSent,
-  isTimerScheduled
+  isTimerScheduled,
+  isTransactionRequest
 );
 
 /**
@@ -107,6 +108,8 @@ export const isCompletionEvent = /* @__PURE__ */ or(
   isDictionaryRequestSucceeded,
   isSignalReceived,
   isTimerCompleted,
+  isTransactionRequestFailed,
+  isTransactionRequestSucceeded,
   isWorkflowTimedOut,
   isWorkflowRunStarted
 );
