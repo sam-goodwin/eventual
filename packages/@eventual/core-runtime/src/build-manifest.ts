@@ -53,7 +53,7 @@ export interface EntityRuntime extends Omit<EntitySpec, "streams"> {
 }
 
 interface Entities {
-  dictionaries: EntityRuntime[];
+  entities: EntityRuntime[];
   transactions: TransactionSpec[];
 }
 

@@ -8,7 +8,7 @@ import { generateSchema } from "@anatine/zod-openapi";
 import {
   activities,
   commands,
-  dictionaries,
+  entities,
   events,
   ServiceSpec,
   subscriptions,
@@ -102,7 +102,7 @@ export async function infer(
       namespace: command.namespace,
     })),
     entities: {
-      dictionaries: [...dictionaries().values()].map((d) => ({
+      entities: [...entities().values()].map((d) => ({
         name: d.name,
         schema: d.schema ? generateSchema(d.schema) : undefined,
         streams: d.streams.map((s) => ({

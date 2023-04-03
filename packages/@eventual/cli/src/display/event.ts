@@ -60,7 +60,7 @@ function displayEntityCommand(
       ])
     );
   } else {
-    output.push(`Dict: ${operation.name}`);
+    output.push(`Ent: ${operation.name}`);
     if ("key" in operation) {
       const { key, namespace } = normalizeCompositeKey(operation.key);
       if (namespace) {

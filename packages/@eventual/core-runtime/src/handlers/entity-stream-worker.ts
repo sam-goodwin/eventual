@@ -1,7 +1,7 @@
 import { EntityStreamItem, EventualServiceClient } from "@eventual/core";
 import {
   ServiceType,
-  dictionaries,
+  entities,
   registerEntityHook,
   registerServiceClient,
   serviceTypeScope,
@@ -29,7 +29,7 @@ export function createEntityStreamWorker(
 
   return async (item) =>
     serviceTypeScope(ServiceType.EntityStreamWorker, async () => {
-      const streamHandler = dictionaries()
+      const streamHandler = entities()
         .get(item.entityName)
         ?.streams.find((s) => s.name === item.streamName);
       if (!streamHandler) {

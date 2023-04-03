@@ -117,7 +117,7 @@ eventualRuntimeTestHarness(
 
     testCompletion("awsSdkCalls", createAndDestroyWorkflow, "done");
 
-    testCompletion("dict", entityWorkflow, { n: 7 });
+    testCompletion("ent", entityWorkflow, { n: 7 });
 
     testCompletion("transaction", transactionWorkflow, ([one, two, three]) => {
       expect(one).not.toBeUndefined();

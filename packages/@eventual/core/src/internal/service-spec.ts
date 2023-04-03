@@ -29,7 +29,7 @@ export interface ServiceSpec {
    */
   subscriptions: SubscriptionSpec[];
   entities: {
-    dictionaries: EntitySpec[];
+    entities: EntitySpec[];
   };
 }
 

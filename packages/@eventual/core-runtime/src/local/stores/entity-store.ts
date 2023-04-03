@@ -24,7 +24,7 @@ export interface LocalEntityStoreProps {
 }
 
 export class LocalEntityStore implements EntityStore {
-  private dictionaries: Record<
+  private entities: Record<
     string,
     Record<string, Map<string, EntityWithMetadata<any>>>
   > = {};
@@ -222,7 +222,7 @@ export class LocalEntityStore implements EntityStore {
   }
 
   private getNamespaceMap(name: string, namespace?: string) {
-    const entity = (this.dictionaries[name] ??= {});
+    const entity = (this.entities[name] ??= {});
     const namespaceMap = (entity[namespace ?? "default"] ??= new Map<
       string,
       EntityWithMetadata<any>

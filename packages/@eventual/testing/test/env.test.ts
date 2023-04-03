@@ -1283,18 +1283,18 @@ describe("time", () => {
   });
 });
 
-const myDict = entity<{ n: number }>("testDict1", z.any());
+const myEntity = entity<{ n: number }>("testEntity1", z.any());
 
 describe("entity", () => {
   test("workflow and activity uses get and set", async () => {
-    const dictAct = activity(async (_, { execution: { id } }) => {
-      await myDict.set(id, { n: ((await myDict.get(id))?.n ?? 0) + 1 });
+    const entityAct = activity(async (_, { execution: { id } }) => {
+      await myEntity.set(id, { n: ((await myEntity.get(id))?.n ?? 0) + 1 });
     });
     const wf = workflow(async (_, { execution: { id } }) => {
-      await myDict.set(id, { n: 1 });
-      await dictAct();
-      const value = await myDict.get(id);
-      myDict.delete(id);
+      await myEntity.set(id, { n: 1 });
+      await entityAct();
+      const value = await myEntity.get(id);
+      myEntity.delete(id);
       return value;
     });
 
@@ -1314,21 +1314,21 @@ describe("entity", () => {
   });
 
   test("workflow and activity uses get and set with namespaces", async () => {
-    const dictAct = activity(
+    const entityAct = activity(
       async (namespace: string, { execution: { id } }) => {
         const key = { namespace, key: id };
-        await myDict.set(key, { n: ((await myDict.get(key))?.n ?? 0) + 1 });
+        await myEntity.set(key, { n: ((await myEntity.get(key))?.n ?? 0) + 1 });
       }
     );
     const wf = workflow(async (_, { execution: { id } }) => {
-      await myDict.set({ namespace: "1", key: id }, { n: 1 });
-      await myDict.set({ namespace: "2", key: id }, { n: 100 });
-      await dictAct("1");
-      await dictAct("2");
-      const value = await myDict.get({ namespace: "1", key: id });
-      const value2 = await myDict.get({ namespace: "2", key: id });
-      await myDict.delete({ namespace: "1", key: id });
-      await myDict.delete({ namespace: "2", key: id });
+      await myEntity.set({ namespace: "1", key: id }, { n: 1 });
+      await myEntity.set({ namespace: "2", key: id }, { n: 100 });
+      await entityAct("1");
+      await entityAct("2");
+      const value = await myEntity.get({ namespace: "1", key: id });
+      const value2 = await myEntity.get({ namespace: "2", key: id });
+      await myEntity.delete({ namespace: "1", key: id });
+      await myEntity.delete({ namespace: "2", key: id });
       return value!.n + value2!.n;
     });
 
@@ -1351,19 +1351,19 @@ describe("entity", () => {
     const wf = workflow(async (_, { execution: { id } }) => {
       const key: CompositeKey = { namespace: "versionTest", key: id };
       // set - version 1 - value 1
-      const { version } = await myDict.set(key, { n: 1 });
+      const { version } = await myEntity.set(key, { n: 1 });
       // set - version 2 - value 2
-      const { version: version2 } = await myDict.set(
+      const { version: version2 } = await myEntity.set(
         key,
         { n: 2 },
         { expectedVersion: version }
       );
       try {
         // try set to 3, fail
-        await myDict.set(key, { n: 3 }, { expectedVersion: version });
+        await myEntity.set(key, { n: 3 }, { expectedVersion: version });
       } catch {
         // set - version 2 (unchanged) - value 3
-        await myDict.set(
+        await myEntity.set(
           key,
           { n: 4 },
           { expectedVersion: version2, incrementVersion: false }
@@ -1371,15 +1371,15 @@ describe("entity", () => {
       }
       try {
         // try delete and fail
-        await myDict.delete(key, { expectedVersion: version });
+        await myEntity.delete(key, { expectedVersion: version });
       } catch {
         // set - version 3 - value 5
-        await myDict.set(key, { n: 5 }, { expectedVersion: version2 });
+        await myEntity.set(key, { n: 5 }, { expectedVersion: version2 });
       }
 
-      const value = await myDict.getWithMetadata(key);
+      const value = await myEntity.getWithMetadata(key);
       // delete at version 3
-      myDict.delete(key, { expectedVersion: value!.version });
+      myEntity.delete(key, { expectedVersion: value!.version });
       return value;
     });
 
@@ -1416,7 +1416,7 @@ describe("entity", () => {
               value: { n: value },
               options: { expectedVersion: version },
             },
-            entity: myDict,
+            entity: myEntity,
           },
           {
             operation: {
@@ -1425,19 +1425,19 @@ describe("entity", () => {
               value: { n: value },
               options: { expectedVersion: version },
             },
-            entity: myDict,
+            entity: myEntity,
           },
         ]);
       }
     );
 
     const wf = workflow(async (_, { execution: { id } }) => {
-      const { version: version1 } = await myDict.set(id, { n: 1 });
-      const { version: version2 } = await myDict.set(
+      const { version: version1 } = await myEntity.set(id, { n: 1 });
+      const { version: version2 } = await myEntity.set(
         { key: id, namespace: "2" },
         { n: 1 }
       );
-      await myDict.set({ key: id, namespace: "3" }, { n: 1 });
+      await myEntity.set({ key: id, namespace: "3" }, { n: 1 });
 
       await act({ version: version1, value: 2 });
       try {
@@ -1445,9 +1445,9 @@ describe("entity", () => {
       } catch {}
 
       return Promise.all([
-        myDict.get(id),
-        myDict.get({ key: id, namespace: "2" }),
-        myDict.get({ key: id, namespace: "3" }),
+        myEntity.get(id),
+        myEntity.get({ key: id, namespace: "2" }),
+        myEntity.get({ key: id, namespace: "3" }),
       ]);
     });
 

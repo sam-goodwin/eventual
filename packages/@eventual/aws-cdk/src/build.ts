@@ -117,8 +117,8 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       },
     },
     entities: {
-      dictionaries: await Promise.all(
-        serviceSpec.entities.dictionaries.map(async (d) => ({
+      entities: await Promise.all(
+        serviceSpec.entities.entities.map(async (d) => ({
           ...d,
           streams: await bundleEntityStreams(d.streams),
         }))

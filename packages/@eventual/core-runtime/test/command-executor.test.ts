@@ -277,17 +277,17 @@ describe("entity request", () => {
     const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      entityRequestCall({ name: "dict", operation: "get", key: "key" }, 0),
+      entityRequestCall({ name: "ent", operation: "get", key: "key" }, 0),
       baseTime
     );
 
-    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("dict");
+    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("ent");
     expect(mockEntity.get).toHaveBeenCalledWith("key");
 
     expect(event).toMatchObject<EntityRequest>({
       seq: 0,
       type: WorkflowEventType.EntityRequest,
-      operation: { name: "dict", operation: "get", key: "key" },
+      operation: { name: "ent", operation: "get", key: "key" },
       timestamp: expect.stringContaining("Z"),
     });
   });
@@ -297,20 +297,20 @@ describe("entity request", () => {
       workflow,
       executionId,
       entityRequestCall(
-        { name: "dict", operation: "set", key: "key", value: "some value" },
+        { name: "ent", operation: "set", key: "key", value: "some value" },
         0
       ),
       baseTime
     );
 
-    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("dict");
+    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("ent");
     expect(mockEntity.set).toHaveBeenCalledWith("key", "some value", undefined);
 
     expect(event).toMatchObject<EntityRequest>({
       seq: 0,
       type: WorkflowEventType.EntityRequest,
       operation: {
-        name: "dict",
+        name: "ent",
         operation: "set",
         key: "key",
         value: "some value",
@@ -323,17 +323,17 @@ describe("entity request", () => {
     const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      entityRequestCall({ name: "dict", operation: "delete", key: "key" }, 0),
+      entityRequestCall({ name: "ent", operation: "delete", key: "key" }, 0),
       baseTime
     );
 
-    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("dict");
+    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("ent");
     expect(mockEntity.delete).toHaveBeenCalledWith("key", undefined);
 
     expect(event).toMatchObject<EntityRequest>({
       seq: 0,
       type: WorkflowEventType.EntityRequest,
-      operation: { name: "dict", operation: "delete", key: "key" },
+      operation: { name: "ent", operation: "delete", key: "key" },
       timestamp: expect.stringContaining("Z"),
     });
   });
@@ -342,17 +342,17 @@ describe("entity request", () => {
     const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      entityRequestCall({ name: "dict", operation: "list", request: {} }, 0),
+      entityRequestCall({ name: "ent", operation: "list", request: {} }, 0),
       baseTime
     );
 
-    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("dict");
+    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("ent");
     expect(mockEntity.list).toHaveBeenCalledWith({});
 
     expect(event).toMatchObject<EntityRequest>({
       seq: 0,
       type: WorkflowEventType.EntityRequest,
-      operation: { name: "dict", operation: "list", request: {} },
+      operation: { name: "ent", operation: "list", request: {} },
       timestamp: expect.stringContaining("Z"),
     });
   });
@@ -361,20 +361,17 @@ describe("entity request", () => {
     const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      entityRequestCall(
-        { name: "dict", operation: "listKeys", request: {} },
-        0
-      ),
+      entityRequestCall({ name: "ent", operation: "listKeys", request: {} }, 0),
       baseTime
     );
 
-    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("dict");
+    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("ent");
     expect(mockEntity.listKeys).toHaveBeenCalledWith({});
 
     expect(event).toMatchObject<EntityRequest>({
       seq: 0,
       type: WorkflowEventType.EntityRequest,
-      operation: { name: "dict", operation: "listKeys", request: {} },
+      operation: { name: "ent", operation: "listKeys", request: {} },
       timestamp: expect.stringContaining("Z"),
     });
   });

@@ -218,14 +218,14 @@ export function createTransactionExecutor(
        * An example of an override:
        *
        * ```ts
-       * const { version } = await dict.set(id, "value");
+       * const { version } = await ent.set(id, "value");
        *
        * transaction(..., async () => {
        *    // no override - this mutation can succeed on any future transaction retry, no matter the version of the item
-       *    await dict.set(id, "value");
+       *    await ent.set(id, "value");
        *
        *    // override - the transaction will only succeed while the version of "id" is still the version from before.
-       *    await dict.set(id, "value", {expectedVersion: version});
+       *    await ent.set(id, "value", {expectedVersion: version});
        * });
        * ```
        */

@@ -315,7 +315,7 @@ export interface EntityEntityRecord
 }
 
 export const EntityEntityRecord = {
-  PARTITION_KEY_PREFIX: `DictEntry$`,
+  PARTITION_KEY_PREFIX: `EntityEntry$`,
   key(namespace?: string) {
     return `${this.PARTITION_KEY_PREFIX}${namespace ?? ""}`;
   },

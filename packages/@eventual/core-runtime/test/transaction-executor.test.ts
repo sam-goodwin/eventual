@@ -1,9 +1,5 @@
 import { entity as _entity, event } from "@eventual/core";
-import {
-  Result,
-  dictionaries,
-  registerEntityHook,
-} from "@eventual/core/internal";
+import { Result, entities, registerEntityHook } from "@eventual/core/internal";
 import { jest } from "@jest/globals";
 import { EntityClient } from "../src/clients/entity-client.js";
 import { EventClient } from "../src/clients/event-client.js";
@@ -20,8 +16,8 @@ import {
 const entity = (() => {
   let n = 0;
   return <E>() => {
-    while (dictionaries().has(`dict${++n}`)) {}
-    return _entity<E>(`dict${n}`);
+    while (entities().has(`ent${++n}`)) {}
+    return _entity<E>(`ent${n}`);
   };
 })();
 

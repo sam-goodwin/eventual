@@ -552,9 +552,9 @@ export const createAndDestroyWorkflow = workflow(
 );
 
 export const counter = entity<{ n: number }>("counter2", z.any());
-const dictEvent = event<{ id: string }>("dictEvent");
-const dictSignal = signal("dictSignal");
-const dictSignal2 = signal<{ n: number }>("dictSignal2");
+const entityEvent = event<{ id: string }>("entityEvent");
+const entitySignal = signal("entitySignal");
+const entitySignal2 = signal<{ n: number }>("entitySignal2");
 
 export const counterWatcher = counter.stream(
   "counterWatcher",
@@ -564,7 +564,7 @@ export const counterWatcher = counter.stream(
     // TODO: compute the possible operations union from the operations array
     if (item.operation === "remove") {
       const { n } = item.oldValue!;
-      await dictSignal2.sendSignal(item.key, { n: n + 1 });
+      await entitySignal2.sendSignal(item.key, { n: n + 1 });
     }
   }
 );
@@ -576,23 +576,23 @@ export const counterNamespaceWatcher = counter.stream(
     if (item.operation === "insert") {
       const value = await counter.get(item.key);
       await counter.set(item.key, { n: (value?.n ?? 0) + 1 });
-      await dictSignal.sendSignal(item.key);
+      await entitySignal.sendSignal(item.key);
     }
   }
 );
 
-export const onDictEvent = subscription(
-  "onDictEvent",
-  { events: [dictEvent] },
+export const onEntityEvent = subscription(
+  "onEntityEvent",
+  { events: [entityEvent] },
   async ({ id }) => {
     const value = await counter.get(id);
     await counter.set(id, { n: (value?.n ?? 0) + 1 });
-    await dictSignal.sendSignal(id);
+    await entitySignal.sendSignal(id);
   }
 );
 
 export const entityActivity = activity(
-  "dictAct",
+  "entityAct",
   async (_, { execution: { id } }) => {
     const value = await counter.get(id);
     await counter.set(id, { n: (value?.n ?? 0) + 1 });
@@ -604,11 +604,11 @@ export const entityWorkflow = workflow(
   async (_, { execution: { id } }) => {
     await counter.set(id, { n: 1 });
     counter.set({ key: id, namespace: "different!" }, { n: 0 });
-    await dictSignal.expectSignal();
+    await entitySignal.expectSignal();
     await entityActivity();
     await Promise.all([
-      dictEvent.publishEvents({ id }),
-      dictSignal.expectSignal(),
+      entityEvent.publishEvents({ id }),
+      entitySignal.expectSignal(),
     ]);
     try {
       // will fail
@@ -632,7 +632,7 @@ export const entityWorkflow = workflow(
     // send deletion, to be picked up by the stream
     counter.delete(id);
     // this signal will contain the final value after deletion
-    return await dictSignal2.expectSignal();
+    return await entitySignal2.expectSignal();
   }
 );
 

@@ -4,7 +4,7 @@ import {
   HttpResponse,
   isEntityStreamItem,
 } from "@eventual/core";
-import { dictionaries, registerServiceClient } from "@eventual/core/internal";
+import { entities, registerServiceClient } from "@eventual/core/internal";
 import { isActivityWorkerRequest } from "../clients/activity-client.js";
 import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
 import { isTimerRequest } from "../clients/timer-client.js";
@@ -139,7 +139,7 @@ export class LocalEnvironment {
       );
       // for each entity stream item, find the streams that match it, and run the worker with the item
       entityStreamItems.forEach((i) => {
-        const streamNames = [...dictionaries().values()]
+        const streamNames = [...entities().values()]
           .flatMap((d) => d.streams)
           .filter((s) => entityStreamMatchesItem(i, s))
           .map((s) => s.name);

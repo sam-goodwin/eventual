@@ -9,7 +9,7 @@ import {
   EntitySetOperation,
 } from "./internal/calls/entity-call.js";
 import { getEntityHook } from "./internal/entity-hook.js";
-import { dictionaries } from "./internal/global.js";
+import { entities } from "./internal/global.js";
 import {
   EntitySpec,
   EntityStreamOptions,
@@ -247,7 +247,7 @@ export const Entity = {
 };
 
 export function entity<E>(name: string, schema?: z.Schema<E>): Entity<E> {
-  if (dictionaries().has(name)) {
+  if (entities().has(name)) {
     throw new Error(`entity with name '${name}' already exists`);
   }
 
@@ -394,7 +394,7 @@ export function entity<E>(name: string, schema?: z.Schema<E>): Entity<E> {
     },
   };
 
-  dictionaries().set(name, entity);
+  entities().set(name, entity);
 
   return entity;
 

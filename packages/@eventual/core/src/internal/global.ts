@@ -31,7 +31,7 @@ declare global {
     /**
      * A simple key value store that work efficiently within eventual.
      */
-    dictionaries?: Map<string, Entity<any>>;
+    entities?: Map<string, Entity<any>>;
     /**
      * A global variable for storing the WorkflowClient
      * this is initialized by Eventual's harness lambda functions
@@ -70,8 +70,8 @@ export const events = (): Map<string, Event> =>
 export const subscriptions = (): Subscription[] =>
   (globalThis._eventual.subscriptions ??= []);
 
-export const dictionaries = (): Map<string, Entity<any>> =>
-  (globalThis._eventual.dictionaries ??= new Map<string, Entity<any>>());
+export const entities = (): Map<string, Entity<any>> =>
+  (globalThis._eventual.entities ??= new Map<string, Entity<any>>());
 
 export function clearEventHandlers() {
   globalThis._eventual.subscriptions = [];

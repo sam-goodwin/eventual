@@ -44,7 +44,7 @@ import {
   EntityStreamOverrides,
   EntityService,
   EntityServiceProps,
-  ServiceDictionaries,
+  ServiceEntities,
   ServiceEntityStreams,
 } from "./entity-service.js";
 import { EventService } from "./event-service";
@@ -162,7 +162,7 @@ export class Service<S = any> extends Construct {
   /**
    * TODO
    */
-  public readonly dictionaries: ServiceDictionaries<S>;
+  public readonly entities: ServiceEntities<S>;
   public readonly entityStreams: ServiceEntityStreams<S>;
   /**
    * API Gateway which serves the service commands and the system commands.
@@ -256,7 +256,7 @@ export class Service<S = any> extends Construct {
       workflowService: proxyWorkflowService,
       ...serviceConstructProps,
     });
-    this.dictionaries = entityService.dictionaries;
+    this.entities = entityService.entities;
     this.entityStreams = entityService.entityStreams;
 
     const activityService = new ActivityService<S>({

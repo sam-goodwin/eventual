@@ -32,7 +32,7 @@ import { ServiceFunction } from "./service-function";
 import { ServiceEntityProps, serviceTableArn } from "./utils";
 import { WorkflowService } from "./workflow-service.js";
 
-export type ServiceDictionaries<Service> = ServiceEntityProps<
+export type ServiceEntities<Service> = ServiceEntityProps<
   Service,
   "Entity",
   Entity
@@ -74,7 +74,7 @@ export interface EntityServiceProps<Service> extends ServiceConstructProps {
 }
 
 export class EntityService<Service> {
-  public dictionaries: ServiceDictionaries<Service>;
+  public entities: ServiceEntities<Service>;
   public entityStreams: ServiceEntityStreams<Service>;
   public transactions: ServiceTransactions<Service>;
   public transactionWorker?: Function;
@@ -86,8 +86,8 @@ export class EntityService<Service> {
       "EntityService"
     );
 
-    this.dictionaries = Object.fromEntries(
-      props.build.entities.dictionaries.map((d) => [
+    this.entities = Object.fromEntries(
+      props.build.entities.entities.map((d) => [
         d.name,
         new Entity(entitiesConstruct, {
           entity: d,
@@ -95,14 +95,14 @@ export class EntityService<Service> {
           serviceProps: props,
         }),
       ])
-    ) as ServiceDictionaries<Service>;
+    ) as ServiceEntities<Service>;
 
     this.entityStreams = Object.values(
-      this.dictionaries as Record<string, Entity>
-    ).reduce((streams: Record<string, EntityStream>, dict) => {
+      this.entities as Record<string, Entity>
+    ).reduce((streams: Record<string, EntityStream>, ent) => {
       return {
         ...streams,
-        ...dict.streams,
+        ...ent.streams,
       };
     }, {}) as ServiceEntityStreams<Service>;
 
