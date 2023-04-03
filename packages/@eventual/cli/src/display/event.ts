@@ -38,32 +38,36 @@ export function displayEvent(event: WorkflowEvent) {
 }
 
 function displayDictionaryCommand(request: DictionaryRequest) {
-  const output: string[] = [
-    `Dict: ${request.name}`,
-    `Operation: ${request.operation.operation}`,
-  ];
-  const operation = request.operation;
+  if (request.operation.operation === "transact") {
+    return "TODO";
+  } else {
+    const output: string[] = [
+      `Dict: ${request.operation}`,
+      `Operation: ${request.operation.operation}`,
+    ];
+    const operation = request.operation;
 
-  if ("key" in operation) {
-    const { key, namespace } = normalizeCompositeKey(operation.key);
-    if (namespace) {
-      output.push(`Namespace: ${namespace}`);
-    }
-    output.push(`Key: ${key}`);
-    if (operation.operation === "set") {
-      output.push(`Entity: ${JSON.stringify(operation.value)}`);
-      if (operation.options?.expectedVersion) {
-        output.push(`Expected Version: ${operation.options.expectedVersion}`);
+    if ("key" in operation) {
+      const { key, namespace } = normalizeCompositeKey(operation.key);
+      if (namespace) {
+        output.push(`Namespace: ${namespace}`);
+      }
+      output.push(`Key: ${key}`);
+      if (operation.operation === "set") {
+        output.push(`Entity: ${JSON.stringify(operation.value)}`);
+        if (operation.options?.expectedVersion) {
+          output.push(`Expected Version: ${operation.options.expectedVersion}`);
+        }
+      }
+    } else {
+      if (operation.request.namespace) {
+        output.push(`Namespace: ${operation.request.prefix}`);
+      }
+      if (operation.request.prefix) {
+        output.push(`Prefix: ${operation.request.prefix}`);
       }
     }
-  } else {
-    if (operation.request.namespace) {
-      output.push(`Namespace: ${operation.request.prefix}`);
-    }
-    if (operation.request.prefix) {
-      output.push(`Prefix: ${operation.request.prefix}`);
-    }
-  }
 
-  return output.join("\n");
+    return output.join("\n");
+  }
 }

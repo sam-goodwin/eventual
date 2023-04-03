@@ -119,9 +119,10 @@ eventualRuntimeTestHarness(
 
     testCompletion("dict", dictionaryWorkflow, { n: 6 });
 
-    testCompletion("transaction", transactionWorkflow, ([one, two]) => {
-      expect(one?.store).not.toBeUndefined();
-      expect(two?.store).not.toBeUndefined();
+    testCompletion("transaction", transactionWorkflow, ([one, two, three]) => {
+      expect(one).not.toBeUndefined();
+      expect(two).not.toBeUndefined();
+      expect(three).not.toBeUndefined();
     });
   },
   {

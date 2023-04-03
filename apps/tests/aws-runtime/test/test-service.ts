@@ -568,46 +568,6 @@ export const counterWatcher = counter.stream(
   }
 );
 
-export const check = dictionary<{ n: number; store?: number }>("check");
-
-const gitErDone = transaction("gitErDone", async ({ id }: { id: string }) => {
-  const val = await check.get(id);
-  await check.set(id, { n: val?.n ?? 0, store: val?.n ?? 0 });
-});
-
-const noise = activity(
-  "noiseActivity",
-  async ({ x }: { x: number }, { execution: { id } }) => {
-    let n = 100;
-    let transact: Promise<any> | undefined = undefined;
-    while (n-- > 0) {
-      try {
-        await check.set(id, { n });
-      } catch (err) {
-        if (!(err instanceof TransactionConflictException)) {
-          throw err;
-        }
-      }
-      if (n === x) {
-        transact = gitErDone({ id });
-      }
-    }
-    await transact;
-  }
-);
-
-export const transactionWorkflow = workflow(
-  "transactionWorkflow",
-  async (_, { execution: { id } }) => {
-    await noise({ x: 40 });
-    const one = await check.get(id);
-    await noise({ x: 60 });
-    const two = await check.get(id);
-    await check.delete(id);
-    return [one, two];
-  }
-);
-
 export const counterNamespaceWatcher = counter.stream(
   "counterNamespaceWatch",
   { namespacePrefixes: ["different"] },
@@ -661,6 +621,50 @@ export const dictionaryWorkflow = workflow(
     counter.delete(id);
     // this signal will contain the final value after deletion
     return await dictSignal2.expectSignal();
+  }
+);
+
+export const check = dictionary<{ n: number }>("check");
+
+const gitErDone = transaction("gitErDone", async ({ id }: { id: string }) => {
+  const val = await check.get(id);
+  await check.set(id, { n: val?.n ?? 0 + 1 });
+  return val?.n ?? 0 + 1;
+});
+
+const noise = activity(
+  "noiseActivity",
+  async ({ x }: { x: number }, { execution: { id } }) => {
+    let n = 100;
+    let transact: Promise<number> | undefined = undefined;
+    while (n-- > 0) {
+      try {
+        await check.set(id, { n });
+      } catch (err) {
+        if (!(err instanceof TransactionConflictException)) {
+          throw err;
+        }
+      }
+      if (n === x) {
+        transact = gitErDone({ id });
+      }
+    }
+    return await transact;
+  }
+);
+
+export const transactionWorkflow = workflow(
+  "transactionWorkflow",
+  async (_, { execution: { id } }) => {
+    const one = await noise({ x: 40 });
+    const two = await noise({ x: 60 });
+    const [, three] = await Promise.allSettled([
+      check.set(id, { n: two ?? 0 + 1 }),
+      gitErDone({ id }),
+      check.set(id, { n: two ?? 0 + 1 }),
+    ]);
+    await check.delete(id);
+    return [one, two, three.status === "fulfilled" ? three.value : "AHHH"];
   }
 );
 
