@@ -234,6 +234,7 @@ export interface DictionaryTransactItem<
  */
 export interface DictionaryConditionalOperation {
   operation: "condition";
+  name: string;
   key: string | CompositeKey;
   version?: number;
 }

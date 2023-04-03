@@ -25,6 +25,7 @@ import {
   time,
   workflow,
   transaction,
+  Dictionary,
 } from "@eventual/core";
 import z from "zod";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -617,6 +618,13 @@ export const dictionaryWorkflow = workflow(
     }
     const { entity, version } = (await counter.getWithMetadata(id)) ?? {};
     await counter.set(id, { n: entity!.n + 1 }, { expectedVersion: version });
+    const value = await counter.get(id);
+    await Dictionary.transactWrite([
+      {
+        dictionary: counter,
+        operation: { operation: "set", key: id, value: value?.n ?? 0 + 1 },
+      },
+    ]);
     // send deletion, to be picked up by the stream
     counter.delete(id);
     // this signal will contain the final value after deletion

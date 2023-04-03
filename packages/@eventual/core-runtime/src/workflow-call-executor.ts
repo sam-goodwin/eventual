@@ -1,4 +1,4 @@
-import { Dictionary, ExecutionID, Workflow } from "@eventual/core";
+import { ExecutionID, Workflow } from "@eventual/core";
 import {
   ActivityCall,
   ActivityScheduled,
@@ -300,7 +300,7 @@ export class WorkflowCallExecutor {
 
     async function invokeDictionaryOperation(operation: DictionaryOperation) {
       if (isDictionaryOperationOfType("transact", operation)) {
-        return Dictionary.transactWrite(operation.items);
+        return self.props.dictionaryClient.transactWrite(operation.items);
       }
       const dictionary = await self.props.dictionaryClient.getDictionary(
         operation.name

@@ -1,12 +1,14 @@
+import { DictionaryConditionalOperation } from "@eventual/core";
 import { normalizeCompositeKey } from "@eventual/core-runtime";
 import {
-  DictionaryRequest,
+  DictionaryOperation,
   WorkflowEvent,
   isActivityScheduled,
   isChildWorkflowScheduled,
   isDictionaryRequest,
   isSignalReceived,
   isSignalSent,
+  isTransactionRequest,
 } from "@eventual/core/internal";
 import chalk from "chalk";
 import { formatTime } from "./time.js";
@@ -17,18 +19,24 @@ export function displayEvent(event: WorkflowEvent) {
       "seq" in event ? `(${event.seq})` : ""
     }`,
     ...(isChildWorkflowScheduled(event) || isActivityScheduled(event)
-      ? [`Activity Name:\t${JSON.stringify(event.name)}`]
+      ? [`Activity Name: ${JSON.stringify(event.name)}`]
       : []),
-    ...("signalId" in event ? [`Signal Id:\t${event.signalId}`] : []),
-    ...(isChildWorkflowScheduled(event) && event.input
-      ? [`Payload:\t${JSON.stringify(event.input)}`]
+    ...(isTransactionRequest(event)
+      ? [`Transaction Name: ${event.transactionName}`]
+      : []),
+    ...("signalId" in event ? [`Signal Id: ${event.signalId}`] : []),
+    ...((isChildWorkflowScheduled(event) || isTransactionRequest(event)) &&
+    event.input
+      ? [`Payload: ${JSON.stringify(event.input)}`]
       : []),
     ...((isSignalReceived(event) || isSignalSent(event)) && event.payload
-      ? [`Payload:\t${JSON.stringify(event.payload)}`]
+      ? [`Payload: ${JSON.stringify(event.payload)}`]
       : []),
-    ...(isDictionaryRequest(event) ? [displayDictionaryCommand(event)] : []),
-    ...("result" in event ? [`Result:\t${JSON.stringify(event.result)}`] : []),
-    ...("output" in event ? [`Output:\t${JSON.stringify(event.output)}`] : []),
+    ...(isDictionaryRequest(event)
+      ? displayDictionaryCommand(event.operation)
+      : []),
+    ...("result" in event ? [`Result: ${JSON.stringify(event.result)}`] : []),
+    ...("output" in event ? [`Output: ${JSON.stringify(event.output)}`] : []),
     ...("error" in event
       ? [`${chalk.red(event.error)}: ${event.message}`]
       : []),
@@ -37,16 +45,26 @@ export function displayEvent(event: WorkflowEvent) {
   return lines.join("\n");
 }
 
-function displayDictionaryCommand(request: DictionaryRequest) {
-  if (request.operation.operation === "transact") {
-    return "TODO";
+function displayDictionaryCommand(
+  operation: DictionaryOperation | DictionaryConditionalOperation
+) {
+  const output: string[] = [`Operation: ${operation.operation}`];
+  if (operation.operation === "transact") {
+    output.push(`Transaction Items:`);
+    output.push(
+      ...operation.items.flatMap((item, i) => [
+        `${i}:`,
+        ...displayDictionaryCommand({
+          ...item.operation,
+          name:
+            typeof item.dictionary === "string"
+              ? item.dictionary
+              : item.dictionary.name,
+        }).map((v) => `\t${v}`),
+      ])
+    );
   } else {
-    const output: string[] = [
-      `Dict: ${request.operation.name}`,
-      `Operation: ${request.operation.operation}`,
-    ];
-    const operation = request.operation;
-
+    output.push(`Dict: ${operation.name}`);
     if ("key" in operation) {
       const { key, namespace } = normalizeCompositeKey(operation.key);
       if (namespace) {
@@ -67,7 +85,6 @@ function displayDictionaryCommand(request: DictionaryRequest) {
         output.push(`Prefix: ${operation.request.prefix}`);
       }
     }
-
-    return output.join("\n");
   }
+  return output;
 }
