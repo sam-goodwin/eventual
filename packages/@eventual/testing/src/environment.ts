@@ -121,6 +121,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       executionStore: localContainer.executionStore,
       workflowClient: localContainer.workflowClient,
       workflowProvider: localContainer.workflowProvider,
+      transactionClient: localContainer.transactionClient,
     });
 
     this.timeController = timeController;

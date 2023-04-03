@@ -20,6 +20,7 @@ export const ENV_NAMES = {
   DEFAULT_LOG_LEVEL: "EVENTUAL_LOG_LEVEL",
   DICTIONARY_NAME: "EVENTUAL_DICTIONARY_NAME",
   DICTIONARY_STREAM_NAME: "EVENTUAL_DICTIONARY_STREAM_NAME",
+  TRANSACTION_WORKER_ARN: "EVENTUAL_TRANSACTION_WORKER_ARN",
 } as const;
 
 export function tryGetEnv<T extends string = string>(name: string) {
@@ -52,4 +53,7 @@ export const serviceUrl = () => tryGetEnv<LogLevel>(ENV_NAMES.SERVICE_URL);
 export const defaultLogLevel = () =>
   tryGetEnv<LogLevel>(ENV_NAMES.DEFAULT_LOG_LEVEL) ?? LogLevel.INFO;
 export const dictionaryName = () => tryGetEnv(ENV_NAMES.DICTIONARY_NAME);
-export const dictionaryStreamName = () => tryGetEnv(ENV_NAMES.DICTIONARY_STREAM_NAME);
+export const dictionaryStreamName = () =>
+  tryGetEnv(ENV_NAMES.DICTIONARY_STREAM_NAME);
+export const transactionWorkerArn = () =>
+  tryGetEnv(ENV_NAMES.TRANSACTION_WORKER_ARN);

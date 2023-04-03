@@ -17,6 +17,7 @@ export interface ServiceSpec {
    * List of workflows
    */
   workflows: WorkflowSpec[];
+  transactions: TransactionSpec[];
   activities: ActivitySpec[];
   commands: CommandSpec<any, any, any, any>[];
   /**
@@ -158,4 +159,8 @@ export interface DictionaryStreamSpec {
   dictionaryName: string;
   options?: DictionaryStreamOptions;
   sourceLocation?: SourceLocation;
+}
+
+export interface TransactionSpec {
+  name: string;
 }

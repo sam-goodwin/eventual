@@ -237,7 +237,7 @@ var require_ulid = __commonJS({
           info: __assign({ code: "DEC_TIME_MALFORMED" }, ERROR_INFO)
         }, "Malformed ULID");
       }
-      var time = id.substr(0, TIME_LEN).split("").reverse().reduce(function(carry, char, index) {
+      var time2 = id.substr(0, TIME_LEN).split("").reverse().reduce(function(carry, char, index) {
         var encodingIndex = ENCODING.indexOf(char);
         if (encodingIndex === -1) {
           throw new layerr_1.Layerr({
@@ -246,12 +246,12 @@ var require_ulid = __commonJS({
         }
         return carry += encodingIndex * Math.pow(ENCODING_LEN, index);
       }, 0);
-      if (time > TIME_MAX) {
+      if (time2 > TIME_MAX) {
         throw new layerr_1.Layerr({
           info: __assign({ code: "DEC_TIME_CHAR" }, ERROR_INFO)
-        }, "Malformed ULID: timestamp too large: " + time);
+        }, "Malformed ULID: timestamp too large: " + time2);
       }
-      return time;
+      return time2;
     }
     exports.decodeTime = decodeTime;
     function detectPRNG(root) {
@@ -450,6 +450,7 @@ var EventualCallKind;
   EventualCallKind2[EventualCallKind2["ConditionCall"] = 2] = "ConditionCall";
   EventualCallKind2[EventualCallKind2["DictionaryCall"] = 8] = "DictionaryCall";
   EventualCallKind2[EventualCallKind2["ExpectSignalCall"] = 3] = "ExpectSignalCall";
+  EventualCallKind2[EventualCallKind2["InvokeTransactionCall"] = 9] = "InvokeTransactionCall";
   EventualCallKind2[EventualCallKind2["PublishEventsCall"] = 4] = "PublishEventsCall";
   EventualCallKind2[EventualCallKind2["RegisterSignalHandlerCall"] = 5] = "RegisterSignalHandlerCall";
   EventualCallKind2[EventualCallKind2["SendSignalCall"] = 6] = "SendSignalCall";
@@ -463,6 +464,7 @@ var ServiceType;
   ServiceType2["Subscription"] = "Subscription";
   ServiceType2["OrchestratorWorker"] = "OrchestratorWorker";
   ServiceType2["DictionaryStreamWorker"] = "DictionaryStreamWorker";
+  ServiceType2["TransactionWorker"] = "TransactionWorker";
 })(ServiceType || (ServiceType = {}));
 
 globalThis._eventual ??= {};
@@ -652,6 +654,17 @@ _BaseCachingSecret_value = /* @__PURE__ */ new WeakMap();
 
 var import_ulidx2 = __toESM(require_dist2(), 1);
 
+var PassThroughEventualHook = class {
+  registerEventualCall(eventual, passThrough) {
+    return passThrough(eventual);
+  }
+  resolveEventual(_seq, _result) {
+    throw new Error("Cannot resolve an eventual in passthrough mode");
+  }
+};
+var DEFAULT_HOOK = new PassThroughEventualHook();
+globalThis.getEventualCallHook = () => DEFAULT_HOOK;
+
 var ResultKind;
 (function(ResultKind2) {
   ResultKind2[ResultKind2["Resolved"] = 0] = "Resolved";
@@ -681,6 +694,9 @@ var WorkflowEventType;
   WorkflowEventType2["DictionaryRequestFailed"] = "DictionaryRequestFailed";
   WorkflowEventType2["DictionaryRequestSucceeded"] = "DictionaryRequestSucceeded";
   WorkflowEventType2["EventsPublished"] = "EventsPublished";
+  WorkflowEventType2["TransactionRequest"] = "InvokeTransactionRequest";
+  WorkflowEventType2["TransactionRequestFailed"] = "InvokeTransactionRequestFailed";
+  WorkflowEventType2["TransactionRequestSucceeded"] = "InvokeTransactionRequestSucceeded";
   WorkflowEventType2["SignalReceived"] = "SignalReceived";
   WorkflowEventType2["SignalSent"] = "SignalSent";
   WorkflowEventType2["TimerCompleted"] = "TimerCompleted";

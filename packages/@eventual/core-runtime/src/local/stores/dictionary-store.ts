@@ -5,13 +5,17 @@ import {
   DictionaryListRequest,
   DictionaryListResult,
   DictionarySetOptions,
+  DictionaryTransactItem,
 } from "@eventual/core";
+import { assertNever } from "@eventual/core/internal";
 import {
   DictionaryStore,
   EntityWithMetadata,
+  TransactionCancelledResult,
   UnexpectedVersionResult,
   normalizeCompositeKey,
 } from "../../stores/dictionary-store.js";
+import { deserializeCompositeKey, serializeCompositeKey } from "../../utils.js";
 import { LocalEnvConnector } from "../local-container.js";
 import { paginateItems } from "./pagination.js";
 
@@ -75,7 +79,7 @@ export class LocalDictionaryStore implements DictionaryStore {
 
   public async deleteDictionaryValue(
     name: string,
-    _key: string,
+    _key: string | CompositeKey,
     options?: DictionaryConsistencyOptions
   ): Promise<void | UnexpectedVersionResult> {
     const { key, namespace } = normalizeCompositeKey(_key);
@@ -126,6 +130,77 @@ export class LocalDictionaryStore implements DictionaryStore {
       keys: items?.map(([key]) => key),
       nextToken,
     };
+  }
+
+  public async transactWrite(
+    items: DictionaryTransactItem<any, string>[]
+  ): Promise<void | TransactionCancelledResult> {
+    const keysAndVersions = Object.fromEntries(
+      items.map(
+        (i) =>
+          [
+            serializeCompositeKey(i.dictionary, i.operation.key),
+            i.operation.operation === "condition"
+              ? i.operation.version
+              : i.operation.options?.expectedVersion,
+          ] as const
+      )
+    );
+
+    /**
+     * Evaluate the expected versions against the current state and return the results.
+     *
+     * This is similar to calling TransactWriteItem in dynamo with only ConditionChecks and then
+     * handling the errors.
+     */
+    const consistencyResults = await Promise.all(
+      Object.entries(keysAndVersions).map(async ([sKey, expectedVersion]) => {
+        if (expectedVersion === undefined) {
+          return true;
+        }
+        const [name, key] = deserializeCompositeKey(sKey);
+        const { version } = (await this.getDictionaryValue(name, key)) ?? {
+          version: 0,
+        };
+        return version === expectedVersion;
+      })
+    );
+
+    if (consistencyResults.some((r) => !r)) {
+      return {
+        reasons: consistencyResults.map((r) =>
+          r ? undefined : { unexpectedVersion: true }
+        ),
+      };
+    }
+
+    /**
+     * After ensuring that all of the expected versions are accurate, actually perform the writes.
+     * Here we assume that the write operations are synchronous and that
+     * the state of the condition checks will not be invalided.
+     */
+    await Promise.all(
+      items.map(async (i) => {
+        if (i.operation.operation === "set") {
+          return await this.setDictionaryValue(
+            i.dictionary,
+            i.operation.key,
+            i.operation.value,
+            i.operation.options
+          );
+        } else if (i.operation.operation === "delete") {
+          return await this.deleteDictionaryValue(
+            i.dictionary,
+            i.operation.key,
+            i.operation.options
+          );
+        } else if (i.operation.operation === "condition") {
+          // no op
+          return;
+        }
+        return assertNever(i.operation);
+      })
+    );
   }
 
   private orderedEntries(name: string, listRequest: DictionaryListRequest) {

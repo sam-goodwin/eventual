@@ -3,6 +3,7 @@ import {
   assertNever,
   EventualService,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
+  executeTransactionRequestSchema,
   extendsError,
   isSendActivityFailureRequest,
   isSendActivityHeartbeatRequest,
@@ -20,6 +21,7 @@ import type { ActivityClient } from "./clients/activity-client.js";
 import type { EventClient } from "./clients/event-client.js";
 import type { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import type { WorkflowClient } from "./clients/workflow-client.js";
+import { TransactionClient } from "./index.js";
 import type { WorkflowSpecProvider } from "./providers/workflow-provider.js";
 import type { ExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
 import type { ExecutionHistoryStore } from "./stores/execution-history-store.js";
@@ -195,6 +197,24 @@ export function createSendSignalCommand({
           payload: request.payload,
           execution: request.executionId,
           signal: request.signalId,
+        })
+    )
+  );
+}
+
+export function createExecuteTransactionCommand({
+  transactionClient,
+}: {
+  transactionClient: TransactionClient;
+}): EventualService["executeTransaction"] {
+  return systemCommand(
+    withErrorHandling.command(
+      "executeTransaction",
+      { input: executeTransactionRequestSchema },
+      (request) =>
+        transactionClient.executeTransaction({
+          input: request.input,
+          transaction: request.transactionName,
         })
     )
   );

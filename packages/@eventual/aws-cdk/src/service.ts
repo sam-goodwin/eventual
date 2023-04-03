@@ -43,6 +43,7 @@ import {
   DictionaryStream,
   DictionaryStreamOverrides,
   EntityService,
+  EntityServiceProps,
   ServiceDictionaries,
   ServiceDictionaryStreams,
 } from "./entity-service.js";
@@ -109,6 +110,7 @@ export interface ServiceProps<Service = any> {
      * Configuration properties for the workflow orchestrator
      */
     workflowService?: WorkflowServiceOverrides;
+    entityService?: EntityServiceProps<Service>["entityServiceOverrides"];
   };
 }
 
@@ -243,16 +245,19 @@ export class Service<S = any> extends Construct {
       eventualServiceScope,
     };
 
+    this.eventService = new EventService(serviceConstructProps);
+    this.bus = this.eventService.bus;
+
     const entityService = new EntityService<S>({
       commandService: proxyCommandService,
       dictionaryStreamOverrides: props.dictionaryStreamOverrides,
+      entityServiceOverrides: props.system?.entityService,
+      eventService: this.eventService,
+      workflowService: proxyWorkflowService,
       ...serviceConstructProps,
     });
     this.dictionaries = entityService.dictionaries;
     this.dictionaryStreams = entityService.dictionaryStreams;
-
-    this.eventService = new EventService(serviceConstructProps);
-    this.bus = this.eventService.bus;
 
     const activityService = new ActivityService<S>({
       ...serviceConstructProps,

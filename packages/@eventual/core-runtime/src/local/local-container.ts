@@ -23,6 +23,10 @@ import {
   CommandWorker,
   createCommandWorker,
 } from "../handlers/command-worker.js";
+import {
+  createDictionaryStreamWorker,
+  DictionaryStreamWorker,
+} from "../handlers/dictionary-stream-worker.js";
 import { Orchestrator, createOrchestrator } from "../handlers/orchestrator.js";
 import {
   SubscriptionWorker,
@@ -30,8 +34,9 @@ import {
 } from "../handlers/subscription-worker.js";
 import { TimerHandler, createTimerHandler } from "../handlers/timer-handler.js";
 import {
-  DictionaryStreamWorker,
-  createDictionaryStreamWorker,
+  createTransactionWorker,
+  TransactionClient,
+  TransactionWorker,
 } from "../index.js";
 import { LogAgent } from "../log-agent.js";
 import {
@@ -52,6 +57,7 @@ import { ExecutionHistoryStateStore } from "../stores/execution-history-state-st
 import { ExecutionHistoryStore } from "../stores/execution-history-store.js";
 import { ExecutionStore } from "../stores/execution-store.js";
 import {
+  createExecuteTransactionCommand,
   createGetExecutionCommand,
   createListExecutionHistoryCommand,
   createListExecutionsCommand,
@@ -70,6 +76,7 @@ import { LocalExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { LocalLogsClient } from "./clients/logs-client.js";
 import { LocalMetricsClient } from "./clients/metrics-client.js";
 import { LocalTimerClient } from "./clients/timer-client.js";
+import { LocalTransactionClient } from "./clients/transaction-client.js";
 import { LocalActivityStore } from "./stores/activity-store.js";
 import { LocalDictionaryStore } from "./stores/dictionary-store.js";
 import { LocalExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
@@ -97,6 +104,7 @@ export class LocalContainer {
   public activityWorker: ActivityWorker;
   public subscriptionWorker: SubscriptionWorker;
   public dictionaryStreamWorker: DictionaryStreamWorker;
+  public transactionWorker: TransactionWorker;
 
   public activityClient: ActivityClient;
   public eventClient: EventClient;
@@ -105,6 +113,7 @@ export class LocalContainer {
   public logsClient: LogsClient;
   public timerClient: TimerClient;
   public metricsClient: MetricsClient;
+  public transactionClient: TransactionClient;
 
   public executionHistoryStateStore: ExecutionHistoryStateStore;
   public executionHistoryStore: ExecutionHistoryStore;
@@ -139,9 +148,10 @@ export class LocalContainer {
     this.activityStore = new LocalActivityStore();
     this.subscriptionProvider =
       props.subscriptionProvider ?? new GlobalSubscriptionProvider();
-    const dictionaryClient = new DictionaryClient(
-      new LocalDictionaryStore({ localConnector: this.localConnector })
-    );
+    const dictionaryStore = new LocalDictionaryStore({
+      localConnector: this.localConnector,
+    });
+    const dictionaryClient = new DictionaryClient(dictionaryStore);
     this.subscriptionWorker = createSubscriptionWorker({
       subscriptionProvider: this.subscriptionProvider,
       dictionaryClient,
@@ -175,12 +185,21 @@ export class LocalContainer {
       dictionaryClient,
     });
 
+    this.transactionWorker = createTransactionWorker({
+      dictionaryStore,
+      eventClient: this.eventClient,
+      executionQueueClient: this.executionQueueClient,
+    });
+
+    this.transactionClient = new LocalTransactionClient(this.transactionWorker);
+
     this.orchestrator = createOrchestrator({
       callExecutor: new WorkflowCallExecutor({
         activityClient: this.activityClient,
         eventClient: this.eventClient,
         executionQueueClient: this.executionQueueClient,
         timerClient: this.timerClient,
+        transactionClient: this.transactionClient,
         workflowClient: this.workflowClient,
         dictionaryClient,
       }),
@@ -221,6 +240,9 @@ export class LocalContainer {
     createListExecutionHistoryCommand({
       executionHistoryStore: this.executionHistoryStore,
     });
+    createExecuteTransactionCommand({
+      transactionClient: this.transactionClient,
+    });
 
     // must register commands before the command worker is loaded!
     this.commandWorker = createCommandWorker({ dictionaryClient });
@@ -241,3 +263,10 @@ export interface LocalEnvConnector {
   pushWorkflowTask: (envEvent: LocalEvent) => void;
   scheduleEvent(time: Date, envEvent: LocalEvent): void;
 }
+
+export const NoOpLocalEnvConnector: LocalEnvConnector = {
+  getTime: () => new Date(),
+  pushWorkflowTask: () => {},
+  pushWorkflowTaskNextTick: () => {},
+  scheduleEvent: () => {},
+};

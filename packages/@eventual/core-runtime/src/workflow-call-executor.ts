@@ -2,43 +2,49 @@ import { ExecutionID, Workflow } from "@eventual/core";
 import {
   ActivityCall,
   ActivityScheduled,
-  assertNever,
   AwaitTimerCall,
   ChildWorkflowCall,
   ChildWorkflowScheduled,
   DictionaryCall,
-  DictionaryMethods,
   DictionaryOperation,
   DictionaryRequest,
   DictionaryRequestFailed,
   DictionaryRequestSucceeded,
   EventsPublished,
   HistoryStateEvent,
+  InvokeTransactionCall,
+  PublishEventsCall,
+  SendSignalCall,
+  SignalSent,
+  TimerCompleted,
+  TimerScheduled,
+  TransactionRequest,
+  TransactionRequestFailed,
+  TransactionRequestSucceeded,
+  WorkflowEventType,
+  assertNever,
   isActivityCall,
   isAwaitTimerCall,
   isChildExecutionTarget,
   isChildWorkflowCall,
   isConditionCall,
   isDictionaryCall,
+  isDictionaryOperationOfType,
   isExpectSignalCall,
+  isInvokeTransactionCall,
   isPublishEventsCall,
   isRegisterSignalHandlerCall,
   isSendSignalCall,
-  PublishEventsCall,
-  SendSignalCall,
-  SignalSent,
-  TimerCompleted,
-  TimerScheduled,
-  WorkflowEventType
 } from "@eventual/core/internal";
 import {
   ActivityClient,
-  ActivityWorkerRequest
+  ActivityWorkerRequest,
 } from "./clients/activity-client.js";
 import { DictionaryClient } from "./clients/dictionary-client.js";
 import { EventClient } from "./clients/event-client.js";
 import { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { TimerClient } from "./clients/timer-client.js";
+import { TransactionClient } from "./clients/transaction-client.js";
 import { WorkflowClient } from "./clients/workflow-client.js";
 import { formatChildExecutionName, formatExecutionId } from "./execution.js";
 import { normalizeError } from "./result.js";
@@ -47,12 +53,13 @@ import { createEvent } from "./workflow-events.js";
 import { WorkflowCall } from "./workflow-executor.js";
 
 interface WorkflowCallExecutorProps {
-  timerClient: TimerClient;
-  workflowClient: WorkflowClient;
-  executionQueueClient: ExecutionQueueClient;
-  eventClient: EventClient;
   activityClient: ActivityClient;
   dictionaryClient: DictionaryClient;
+  eventClient: EventClient;
+  executionQueueClient: ExecutionQueueClient;
+  timerClient: TimerClient;
+  transactionClient: TransactionClient;
+  workflowClient: WorkflowClient;
 }
 
 /**
@@ -103,6 +110,8 @@ export class WorkflowCallExecutor {
         call.seq,
         baseTime
       );
+    } else if (isInvokeTransactionCall(call.call)) {
+      return this.invokeTransaction(executionId, call.call, call.seq, baseTime);
     } else {
       return assertNever(call.call, `unknown call type`);
     }
@@ -244,24 +253,18 @@ export class WorkflowCallExecutor {
     seq: number,
     baseTime: Date
   ) {
+    const self = this;
     try {
-      const dictionary = await this.props.dictionaryClient.getDictionary(
-        call.name
-      );
-      if (!dictionary) {
-        throw new Error(`Dictionary ${call.name} does not exist`);
-      }
-      const result = await invokeDictionaryOperation(
-        call.operation,
-        dictionary
-      );
+      const result = await invokeDictionaryOperation(call);
       await this.props.executionQueueClient.submitExecutionEvents(
         executionId,
         createEvent<DictionaryRequestSucceeded>(
           {
             type: WorkflowEventType.DictionaryRequestSucceeded,
-            name: call.name,
-            operation: call.operation.operation,
+            operation: call.operation,
+            name: isDictionaryOperationOfType("transact", call)
+              ? undefined
+              : call.name,
             result,
             seq,
           },
@@ -275,8 +278,10 @@ export class WorkflowCallExecutor {
           {
             type: WorkflowEventType.DictionaryRequestFailed,
             seq,
-            name: call.name,
-            operation: call.operation.operation,
+            name: isDictionaryOperationOfType("transact", call)
+              ? undefined
+              : call.name,
+            operation: call.operation,
             ...normalizeError(err),
           },
           baseTime
@@ -287,35 +292,102 @@ export class WorkflowCallExecutor {
     return createEvent<DictionaryRequest>(
       {
         type: WorkflowEventType.DictionaryRequest,
-        name: call.name,
-        operation: call.operation,
+        operation: call,
         seq,
       },
       baseTime
     );
 
-    async function invokeDictionaryOperation(
-      operation: DictionaryOperation,
-      dictionary: DictionaryMethods<any>
-    ) {
-      if (operation.operation === "get") {
+    async function invokeDictionaryOperation(operation: DictionaryOperation) {
+      if (isDictionaryOperationOfType("transact", operation)) {
+        return self.props.dictionaryClient.transactWrite(operation.items);
+      }
+      const dictionary = await self.props.dictionaryClient.getDictionary(
+        operation.name
+      );
+      if (!dictionary) {
+        throw new Error(`Dictionary ${operation.name} does not exist`);
+      }
+      if (isDictionaryOperationOfType("get", operation)) {
         return dictionary.get(operation.key);
-      } else if (operation.operation === "getWithMetadata") {
+      } else if (isDictionaryOperationOfType("getWithMetadata", operation)) {
         return dictionary.getWithMetadata(operation.key);
-      } else if (operation.operation === "set") {
+      } else if (isDictionaryOperationOfType("set", operation)) {
         return dictionary.set(
           operation.key,
           operation.value,
           operation.options
         );
-      } else if (operation.operation === "delete") {
+      } else if (isDictionaryOperationOfType("delete", operation)) {
         return dictionary.delete(operation.key, operation.options);
-      } else if (operation.operation === "list") {
+      } else if (isDictionaryOperationOfType("list", operation)) {
         return dictionary.list(operation.request);
-      } else if (operation.operation === "listKeys") {
+      } else if (isDictionaryOperationOfType("listKeys", operation)) {
         return dictionary.listKeys(operation.request);
       }
-      return assertNever(operation.operation);
+      return assertNever(operation);
     }
+  }
+
+  private async invokeTransaction(
+    executionId: string,
+    call: InvokeTransactionCall,
+    seq: number,
+    baseTime: Date
+  ) {
+    try {
+      const result = await this.props.transactionClient.executeTransaction({
+        input: call.input,
+        transaction: call.transactionName,
+      });
+      if (result.succeeded) {
+        await this.props.executionQueueClient.submitExecutionEvents(
+          executionId,
+          createEvent<TransactionRequestSucceeded>(
+            {
+              type: WorkflowEventType.TransactionRequestSucceeded,
+              result: result.output,
+              seq,
+            },
+            baseTime
+          )
+        );
+      } else {
+        await this.props.executionQueueClient.submitExecutionEvents(
+          executionId,
+          createEvent<TransactionRequestFailed>(
+            {
+              type: WorkflowEventType.TransactionRequestFailed,
+              error: "Transaction Failed",
+              message: "",
+              seq,
+            },
+            baseTime
+          )
+        );
+      }
+    } catch (err) {
+      await this.props.executionQueueClient.submitExecutionEvents(
+        executionId,
+        createEvent<TransactionRequestFailed>(
+          {
+            type: WorkflowEventType.TransactionRequestFailed,
+            ...normalizeError(err),
+            seq,
+          },
+          baseTime
+        )
+      );
+    }
+
+    return createEvent<TransactionRequest>(
+      {
+        type: WorkflowEventType.TransactionRequest,
+        input: call.input,
+        transactionName: call.transactionName,
+        seq,
+      },
+      baseTime
+    );
   }
 }

@@ -12,11 +12,13 @@ import {
   isDictionaryRequest,
   isEventsPublished,
   isExpectSignalCall,
+  isInvokeTransactionCall,
   isPublishEventsCall,
   isRegisterSignalHandlerCall,
   isSendSignalCall,
   isSignalSent,
   isTimerScheduled,
+  isTransactionRequest,
   Result,
   WorkflowEventType,
 } from "@eventual/core/internal";
@@ -149,9 +151,28 @@ export function createEventualFromCall(
       isCorresponding(event) {
         return (
           isDictionaryRequest(event) &&
-          call.operation.operation === event.operation.operation &&
-          call.name === event.name
+          call.operation === event.operation.operation &&
+          "name" in call === "name" in event.operation &&
+          (!("name" in call && "name" in event.operation) ||
+            call.name === event.operation.name)
         );
+      },
+    };
+  } else if (isInvokeTransactionCall(call)) {
+    return {
+      triggers: [
+        Trigger.onWorkflowEvent(
+          WorkflowEventType.TransactionRequestSucceeded,
+          (event) => Result.resolved(event.result)
+        ),
+        Trigger.onWorkflowEvent(
+          WorkflowEventType.TransactionRequestFailed,
+          (event) =>
+            Result.failed(new EventualError(event.error, event.message))
+        ),
+      ],
+      isCorresponding(event) {
+        return isTransactionRequest(event);
       },
     };
   }

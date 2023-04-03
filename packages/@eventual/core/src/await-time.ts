@@ -1,5 +1,10 @@
-import { createAwaitTimerCall } from "./internal/calls/await-time-call.js";
-import { isOrchestratorWorker } from "./internal/flags.js";
+import {
+  createEventualCall,
+  EventualCallKind,
+} from "./internal/calls/calls.js";
+import {
+  EventualPromise,
+} from "./internal/eventual-hook.js";
 import {
   DurationSchedule,
   DurationUnit,
@@ -55,12 +60,18 @@ export function duration(
   dur: number,
   unit: DurationUnit = "seconds"
 ): Promise<void> & DurationSchedule {
-  if (!isOrchestratorWorker()) {
-    return { type: "Duration", dur, unit } as Promise<void> & DurationSchedule;
-  }
-
-  // register an await duration command and return it (to be yielded)
-  return createAwaitTimerCall(Schedule.duration(dur, unit)) as any;
+  return getEventualCallHook().registerEventualCall(
+    createEventualCall(EventualCallKind.AwaitTimerCall, {
+      schedule: Schedule.duration(dur, unit),
+    }),
+    () => {
+      return {
+        type: "Duration",
+        dur,
+        unit,
+      } as unknown as Promise<void>;
+    }
+  ) as EventualPromise<void> & DurationSchedule;
 }
 
 /**
@@ -92,10 +103,12 @@ export function time(date: Date | string): Promise<void> & TimeSchedule {
   const d = new Date(date);
   const iso = d.toISOString();
 
-  if (!isOrchestratorWorker()) {
-    return { isoDate: iso } as Promise<void> & TimeSchedule;
-  }
-
-  // register an await time command and return it (to be yielded)
-  return createAwaitTimerCall(Schedule.time(iso)) as any;
+  return getEventualCallHook().registerEventualCall(
+    createEventualCall(EventualCallKind.AwaitTimerCall, {
+      schedule: Schedule.time(iso),
+    }),
+    () => {
+      return { isoDate: iso } as unknown as Promise<void>;
+    }
+  ) as unknown as EventualPromise<void> & TimeSchedule;
 }

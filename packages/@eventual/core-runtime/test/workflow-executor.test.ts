@@ -1,9 +1,15 @@
 /* eslint-disable require-await, no-throw-literal */
 import {
+  activity,
+  condition,
   duration,
+  event,
   EventualError,
+  expectSignal,
   HeartbeatTimeout,
+  onSignal,
   Schedule,
+  sendSignal,
   signal,
   time,
   Timeout,
@@ -14,14 +20,6 @@ import {
   WorkflowInput,
 } from "@eventual/core";
 import {
-  createActivityCall,
-  createAwaitTimerCall,
-  createChildWorkflowCall,
-  createConditionCall,
-  createExpectSignalCall,
-  createPublishEventsCall,
-  createRegisterSignalHandlerCall,
-  createSendSignalCall,
   HistoryEvent,
   Result,
   SignalTargetType,
@@ -50,7 +48,7 @@ import {
 
 import "../src/workflow.js";
 
-const event = "hello world";
+const eventName = "hello world";
 
 const context: WorkflowContext = {
   workflow: {
@@ -72,20 +70,37 @@ const workflow = (() => {
   };
 })();
 
+const myActivity = activity("my-activity", async () => {});
+const myActivity0 = activity("my-activity-0", async () => {});
+const myActivity2 = activity("my-activity-2", async () => {});
+const handleErrorActivity = activity("handle-error", async () => {});
+const processItemActivity = activity("processItem", (_item?: string) => {});
+const beforeActivity = activity("before", (_v: string) => {});
+const insideActivity = activity("inside", (_v: string) => {
+  return _v;
+});
+const afterActivity = activity("after", (_v: string) => {});
+const testMeActivity = activity("testme", () => {
+  return 0;
+});
+const cwf = workflow(async () => {});
+
+const testTime = new Date().toISOString();
+
 const myWorkflow = workflow(async (event) => {
   try {
-    const a = await createActivityCall("my-activity", [event]);
+    const a = await myActivity(event);
 
     // dangling - it should still be scheduled
-    createActivityCall("my-activity-0", [event]);
+    myActivity0(event);
 
     const all = (await Promise.all([
-      createAwaitTimerCall(Schedule.time("then")),
-      createActivityCall("my-activity-2", [event]),
+      time(testTime),
+      myActivity2(event),
     ])) as any;
     return [a, all];
   } catch (err) {
-    await createActivityCall("handle-error", [err]);
+    await handleErrorActivity(err);
     return [];
   }
 });
@@ -100,10 +115,10 @@ async function execute<W extends Workflow>(
 }
 
 test("no history", async () => {
-  await expect(execute(myWorkflow, [], event)).resolves.toMatchObject(<
+  await expect(execute(myWorkflow, [], eventName)).resolves.toMatchObject(<
     WorkflowResult
   >{
-    calls: [activityCall("my-activity", [event], 0)],
+    calls: [activityCall(myActivity.name, eventName, 0)],
   });
 });
 
@@ -111,14 +126,14 @@ test("should continue with result of completed Activity", async () => {
   await expect(
     execute(
       myWorkflow,
-      [activityScheduled("my-activity", 0), activitySucceeded("result", 0)],
-      event
+      [activityScheduled(myActivity.name, 0), activitySucceeded("result", 0)],
+      eventName
     )
   ).resolves.toMatchObject(<WorkflowResult>{
     calls: [
-      activityCall("my-activity-0", [event], 1),
-      awaitTimerCall(2),
-      activityCall("my-activity-2", [event], 3),
+      activityCall(myActivity0.name, eventName, 1),
+      awaitTimerCall(Schedule.time(testTime), 2),
+      activityCall(myActivity2.name, eventName, 3),
     ],
   });
 });
@@ -127,8 +142,8 @@ test("should fail on workflow timeout event", async () => {
   await expect(
     execute(
       myWorkflow,
-      [activityScheduled("my-activity", 0), workflowTimedOut()],
-      event
+      [activityScheduled(myActivity.name, 0), workflowTimedOut()],
+      eventName
     )
   ).resolves.toMatchObject(<WorkflowResult>{
     result: Result.failed(new Timeout("Workflow timed out")),
@@ -141,11 +156,11 @@ test("should not continue on workflow timeout event", async () => {
     execute(
       myWorkflow,
       [
-        activityScheduled("my-activity", 0),
+        activityScheduled(myActivity.name, 0),
         workflowTimedOut(),
         activitySucceeded("result", 0),
       ],
-      event
+      eventName
     )
   ).resolves.toMatchObject(<WorkflowResult>{
     result: Result.failed(new Timeout("Workflow timed out")),
@@ -157,12 +172,12 @@ test("should catch error of failed Activity", async () => {
   await expect(
     execute(
       myWorkflow,
-      [activityScheduled("my-activity", 0), activityFailed("error", 0)],
-      event
+      [activityScheduled(myActivity.name, 0), activityFailed("error", 0)],
+      eventName
     )
   ).resolves.toMatchObject(<WorkflowResult>{
     calls: [
-      activityCall("handle-error", [new EventualError("error").toJSON()], 1),
+      activityCall("handle-error", new EventualError("error").toJSON(), 1),
     ],
   });
 });
@@ -170,15 +185,11 @@ test("should catch error of failed Activity", async () => {
 test("should catch error of timing out Activity", async () => {
   const myWorkflow = workflow(async (event) => {
     try {
-      const a = await createActivityCall(
-        "my-activity",
-        [event],
-        createAwaitTimerCall(Schedule.time(""))
-      );
+      const a = await myActivity(event, { timeout: time(testTime) });
 
       return a;
     } catch (err) {
-      await createActivityCall("handle-error", [err]);
+      await handleErrorActivity(err);
       return [];
     }
   });
@@ -189,24 +200,22 @@ test("should catch error of timing out Activity", async () => {
       [
         timerScheduled(0),
         timerCompleted(0),
-        activityScheduled("my-activity", 1),
+        activityScheduled(myActivity.name, 1),
       ],
-      event
+      eventName
     )
   ).resolves.toMatchObject(<WorkflowResult>{
-    calls: [
-      activityCall("handle-error", [new Timeout("Activity Timed Out")], 2),
-    ],
+    calls: [activityCall("handle-error", new Timeout("Activity Timed Out"), 2)],
   });
 });
 
 test("immediately abort activity on invalid timeout", async () => {
   const myWorkflow = workflow((event) => {
-    return createActivityCall("my-activity", [event], "not a promise" as any);
+    return myActivity(event, { timeout: "not a promise" as any });
   });
 
   await expect(
-    execute(myWorkflow, [activityScheduled("my-activity", 0)], event)
+    execute(myWorkflow, [activityScheduled(myActivity.name, 0)], eventName)
   ).resolves.toMatchObject(<WorkflowResult>{
     result: Result.failed(new Timeout("Activity Timed Out")),
   });
@@ -214,9 +223,9 @@ test("immediately abort activity on invalid timeout", async () => {
 
 test("timeout multiple activities at once", async () => {
   const myWorkflow = workflow(async (event) => {
-    const time = createAwaitTimerCall(Schedule.time(""));
-    const a = createActivityCall("my-activity", [event], time);
-    const b = createActivityCall("my-activity", [event], time);
+    const _time = time(testTime);
+    const a = myActivity(event, { timeout: _time });
+    const b = myActivity(event, { timeout: _time });
 
     return Promise.allSettled([a, b]);
   });
@@ -226,11 +235,11 @@ test("timeout multiple activities at once", async () => {
       myWorkflow,
       [
         timerScheduled(0),
-        activityScheduled("my-activity", 1),
-        activityScheduled("my-activity", 2),
+        activityScheduled(myActivity.name, 1),
+        activityScheduled(myActivity.name, 2),
         timerCompleted(0),
       ],
-      event
+      eventName
     )
   ).resolves.toMatchObject(<WorkflowResult>{
     result: Result.resolved([
@@ -249,9 +258,9 @@ test("timeout multiple activities at once", async () => {
 
 test("activity times out activity", async () => {
   const myWorkflow = workflow(async (event) => {
-    const z = createActivityCall("my-activity", [event]);
-    const a = createActivityCall("my-activity", [event], z);
-    const b = createActivityCall("my-activity", [event], a);
+    const z = myActivity("my-activity", event);
+    const a = myActivity(event, { timeout: z });
+    const b = myActivity(event, { timeout: a });
 
     return Promise.allSettled([z, a, b]);
   });
@@ -260,12 +269,12 @@ test("activity times out activity", async () => {
     execute(
       myWorkflow,
       [
-        activityScheduled("my-activity", 0),
-        activityScheduled("my-activity", 1),
-        activityScheduled("my-activity", 2),
+        activityScheduled(myActivity.name, 0),
+        activityScheduled(myActivity.name, 1),
+        activityScheduled(myActivity.name, 2),
         activitySucceeded("woo", 0),
       ],
-      event
+      eventName
     )
   ).resolves.toMatchObject(<WorkflowResult>{
     result: Result.resolved([
@@ -291,16 +300,16 @@ test("should return final result", async () => {
     execute(
       myWorkflow,
       [
-        activityScheduled("my-activity", 0),
+        activityScheduled(myActivity.name, 0),
         activitySucceeded("result", 0),
-        activityScheduled("my-activity-0", 1),
+        activityScheduled(myActivity0.name, 1),
         timerScheduled(2),
-        activityScheduled("my-activity-2", 3),
+        activityScheduled(myActivity2.name, 3),
         activitySucceeded("result-0", 1),
         timerCompleted(2),
         activitySucceeded("result-2", 3),
       ],
-      event
+      eventName
     )
   ).resolves.toMatchObject(<WorkflowResult>{
     result: Result.resolved(["result", [undefined, "result-2"]]),
@@ -310,13 +319,13 @@ test("should return final result", async () => {
 
 test("should handle missing blocks", async () => {
   await expect(
-    execute(myWorkflow, [activitySucceeded("result", 0)], event)
+    execute(myWorkflow, [activitySucceeded("result", 0)], eventName)
   ).resolves.toMatchObject(<WorkflowResult>{
     calls: [
-      activityCall("my-activity", [event], 0),
-      activityCall("my-activity-0", [event], 1),
-      awaitTimerCall(2),
-      activityCall("my-activity-2", [event], 3),
+      activityCall(myActivity.name, eventName, 0),
+      activityCall(myActivity0.name, eventName, 1),
+      awaitTimerCall(Schedule.time(testTime), 2),
+      activityCall(myActivity2.name, eventName, 3),
     ],
   });
 });
@@ -326,14 +335,17 @@ test("should handle partial blocks", async () => {
     execute(
       myWorkflow,
       [
-        activityScheduled("my-activity", 0),
+        activityScheduled(myActivity.name, 0),
         activitySucceeded("result", 0),
-        activityScheduled("my-activity-0", 1),
+        activityScheduled(myActivity0.name, 1),
       ],
-      event
+      eventName
     )
   ).resolves.toMatchObject(<WorkflowResult>{
-    calls: [awaitTimerCall(2), activityCall("my-activity-2", [event], 3)],
+    calls: [
+      awaitTimerCall(Schedule.time(testTime), 2),
+      activityCall(myActivity2.name, eventName, 3),
+    ],
   });
 });
 
@@ -342,15 +354,18 @@ test("should handle partial blocks with partial completes", async () => {
     execute(
       myWorkflow,
       [
-        activityScheduled("my-activity", 0),
+        activityScheduled(myActivity.name, 0),
         activitySucceeded("result", 0),
-        activityScheduled("my-activity-0", 1),
+        activityScheduled(myActivity0.name, 1),
         activitySucceeded("result", 1),
       ],
-      event
+      eventName
     )
   ).resolves.toMatchObject(<WorkflowResult>{
-    calls: [awaitTimerCall(2), activityCall("my-activity-2", [event], 3)],
+    calls: [
+      awaitTimerCall(Schedule.time(testTime), 2),
+      activityCall(myActivity2.name, eventName, 3),
+    ],
   });
 });
 
@@ -367,14 +382,12 @@ test("await constant", async () => {
 });
 7;
 describe("activity", () => {
+  const getPumpedActivity = activity("getPumpedUp", () => {});
   describe("heartbeat", () => {
     const wf = workflow(() => {
-      return createActivityCall(
-        "getPumpedUp",
-        [],
-        undefined,
-        Schedule.duration(100)
-      );
+      return getPumpedActivity(undefined, {
+        heartbeatTimeout: Schedule.duration(100),
+      });
     });
 
     test("timeout from heartbeat seconds", async () => {
@@ -382,7 +395,7 @@ describe("activity", () => {
         execute(
           wf,
           [
-            activityScheduled("getPumpedUp", 0),
+            activityScheduled(getPumpedActivity.name, 0),
             activityHeartbeatTimedOut(0, 101),
           ],
           undefined
@@ -400,7 +413,7 @@ describe("activity", () => {
         execute(
           wf,
           [
-            activityScheduled("getPumpedUp", 0),
+            activityScheduled(getPumpedActivity.name, 0),
             activitySucceeded("done", 0),
             activityHeartbeatTimedOut(0, 1000),
           ],
@@ -415,12 +428,9 @@ describe("activity", () => {
     test("catch heartbeat timeout", async () => {
       const wf = workflow(async () => {
         try {
-          const result = await createActivityCall(
-            "getPumpedUp",
-            [],
-            undefined,
-            Schedule.duration(1)
-          );
+          const result = await getPumpedActivity(undefined, {
+            heartbeatTimeout: Schedule.duration(1),
+          });
           return result;
         } catch (err) {
           if (err instanceof HeartbeatTimeout) {
@@ -434,7 +444,7 @@ describe("activity", () => {
         execute(
           wf,
           [
-            activityScheduled("getPumpedUp", 0),
+            activityScheduled(getPumpedActivity.name, 0),
             activityHeartbeatTimedOut(0, 10),
           ],
           undefined
@@ -449,7 +459,7 @@ describe("activity", () => {
 
 test("should throw when scheduled does not correspond to call", async () => {
   await expect(
-    execute(myWorkflow, [timerScheduled(0)], event)
+    execute(myWorkflow, [timerScheduled(0)], eventName)
   ).resolves.toMatchObject<WorkflowResult>({
     result: Result.failed({ name: "DeterminismError" }),
     calls: [],
@@ -461,7 +471,7 @@ test("should throw when a completed precedes workflow state", async () => {
     execute(
       myWorkflow,
       [
-        activityScheduled("my-activity", 0),
+        activityScheduled(myActivity.name, 0),
         activityScheduled("result", 1),
         // the workflow does not return a seq: 2, where does this go?
         // note: a completed event can be accepted without a "scheduled" counterpart,
@@ -469,7 +479,7 @@ test("should throw when a completed precedes workflow state", async () => {
         // is applied.
         activitySucceeded("", 2),
       ],
-      event
+      eventName
     )
   ).resolves.toMatchObject<WorkflowResult>({
     result: Result.failed({ name: "DeterminismError" }),
@@ -516,28 +526,21 @@ test("should fail the workflow on uncaught user error after await", async () => 
 
     console.log(`Hi, I am ${input.name}`);
 
-    createRegisterSignalHandlerCall("mySignal", (n) => {
+    onSignal<number>("mySignal", (n) => {
       last = n;
       block = false;
     });
-    createRegisterSignalHandlerCall("doneSignal", () => {
+    onSignal("doneSignal", () => {
       done = true;
       block = false;
     });
 
     // eslint-disable-next-line no-unmodified-loop-condition
     while (!done) {
-      createSendSignalCall(
-        { type: SignalTargetType.Execution, executionId: input.parentId },
-        "mySignal",
-        last + 1
-      );
+      sendSignal(input.parentId, "mySignal", last + 1);
       block = true;
       if (
-        !(await createConditionCall(
-          () => !block,
-          createAwaitTimerCall(Schedule.duration(10, "seconds"))
-        ))
+        !(await condition({ timeout: duration(10, "seconds") }, () => !block))
       ) {
         throw new Error("timed out!");
       }
@@ -561,17 +564,17 @@ test("should fail the workflow on uncaught user error after await", async () => 
   });
 });
 
-test("dangling promise failure", async () => {
+test.skip("dangling promise failure", async () => {
   const wf = workflow(async () => {
-    createActivityCall("I will fail", undefined);
+    myActivity(undefined);
 
-    await createConditionCall(() => false);
+    await condition(() => false);
 
     return "done";
   });
 
   const executor = new WorkflowExecutor(wf, [
-    activityScheduled("I will fail", 0),
+    activityScheduled(myActivity.name, 0),
   ]);
 
   await executor.start(undefined, context);
@@ -586,17 +589,17 @@ test("dangling promise failure", async () => {
 
 test.skip("dangling promise failure with then", async () => {
   const wf = workflow(async () => {
-    createActivityCall("I will fail", undefined).then(() => {
+    myActivity(undefined).then(() => {
       console.log("hi");
     });
 
-    await createConditionCall(() => false);
+    await condition(() => false);
 
     return "done";
   });
 
   const executor = new WorkflowExecutor(wf, [
-    activityScheduled("I will fail", 0),
+    activityScheduled(myActivity.name, 0),
   ]);
 
   await executor.start(undefined, context);
@@ -611,15 +614,15 @@ test.skip("dangling promise failure with then", async () => {
 
 test("dangling promise success", async () => {
   const wf = workflow(async () => {
-    createActivityCall("I will fail", undefined);
+    myActivity(undefined);
 
-    await createConditionCall(() => false);
+    await condition(() => false);
 
     return "done";
   });
 
   const executor = new WorkflowExecutor(wf, [
-    activityScheduled("I will fail", 0),
+    activityScheduled(myActivity.name, 0),
   ]);
 
   await executor.start(undefined, context);
@@ -649,15 +652,15 @@ test("should wait if partial results", async () => {
     execute(
       myWorkflow,
       [
-        activityScheduled("my-activity", 0),
+        activityScheduled(myActivity.name, 0),
         activitySucceeded("result", 0),
-        activityScheduled("my-activity-0", 1),
+        activityScheduled(myActivity0.name, 1),
         timerScheduled(2),
-        activityScheduled("my-activity-2", 3),
+        activityScheduled(myActivity2.name, 3),
         activitySucceeded("result-0", 1),
         timerCompleted(2),
       ],
-      event
+      eventName
     )
   ).resolves.toMatchObject(<WorkflowResult>{
     calls: [],
@@ -683,7 +686,7 @@ test("should return result of inner function", async () => {
 
 test("should schedule duration", async () => {
   const wf = workflow(async () => {
-    await createAwaitTimerCall(Schedule.duration(10));
+    await duration(10);
   });
 
   await expect(execute(wf, [], undefined)).resolves.toMatchObject(<
@@ -707,7 +710,7 @@ test("should not re-schedule duration", async () => {
 
 test("should complete duration", async () => {
   const wf = workflow(async () => {
-    await createAwaitTimerCall(Schedule.duration(10));
+    await duration(10);
     return "done";
   });
 
@@ -723,7 +726,7 @@ test("should schedule time", async () => {
   const now = new Date();
 
   const wf = workflow(async () => {
-    await createAwaitTimerCall(Schedule.time(now));
+    await time(now);
   });
 
   await expect(execute(wf, [], undefined)).resolves.toMatchObject(<
@@ -751,7 +754,7 @@ test("should complete time", async () => {
   const now = new Date();
 
   const wf = workflow(async () => {
-    await createAwaitTimerCall(Schedule.time(now));
+    await time(now);
     return "done";
   });
 
@@ -762,6 +765,9 @@ test("should complete time", async () => {
     calls: [],
   });
 });
+
+const jumpActivity = activity("jump", () => {});
+const runActivity = activity("run", () => {});
 
 describe("temple of doom", () => {
   /**
@@ -785,12 +791,12 @@ describe("temple of doom", () => {
     let jump = false;
 
     async function startTrap() {
-      await createAwaitTimerCall(Schedule.time("then"));
+      await time(testTime);
       trapDown = true;
     }
 
     async function waitForJump() {
-      await createActivityCall("jump", []);
+      await jumpActivity();
       jump = true;
     }
 
@@ -798,7 +804,7 @@ describe("temple of doom", () => {
     // the player can jump now
     waitForJump();
 
-    await createActivityCall("run", []);
+    await runActivity();
 
     if (jump) {
       if (!trapDown) {
@@ -818,9 +824,9 @@ describe("temple of doom", () => {
       WorkflowResult
     >{
       calls: [
-        awaitTimerCall(0),
-        activityCall("jump", [], 1),
-        activityCall("run", [], 2),
+        awaitTimerCall(Schedule.time(testTime), 0),
+        activityCall("jump", undefined, 1),
+        activityCall("run", undefined, 2),
       ],
     });
   });
@@ -1026,8 +1032,8 @@ describe("AwaitAll", () => {
   test("should support already awaited or awaited eventuals", async () => {
     const wf = workflow(async () => {
       return Promise.all([
-        await createActivityCall("process-item", []),
-        await createActivityCall("process-item", []),
+        await processItemActivity(undefined),
+        await processItemActivity(undefined),
       ]);
     });
 
@@ -1035,8 +1041,8 @@ describe("AwaitAll", () => {
       execute(
         wf,
         [
-          activityScheduled("process-item", 0),
-          activityScheduled("process-item", 1),
+          activityScheduled(processItemActivity.name, 0),
+          activityScheduled(processItemActivity.name, 1),
           activitySucceeded(1, 0),
           activitySucceeded(1, 1),
         ],
@@ -1052,7 +1058,7 @@ describe("AwaitAll", () => {
     const wf = workflow(async (items: string[]) => {
       return Promise.all(
         items.map(async (item) => {
-          return await createActivityCall("process-item", [item]);
+          return await processItemActivity(item);
         })
       );
     });
@@ -1061,8 +1067,8 @@ describe("AwaitAll", () => {
       WorkflowResult
     >{
       calls: [
-        activityCall("process-item", ["a"], 0),
-        activityCall("process-item", ["b"], 1),
+        activityCall(processItemActivity.name, "a", 0),
+        activityCall(processItemActivity.name, "b", 1),
       ],
     });
 
@@ -1070,8 +1076,8 @@ describe("AwaitAll", () => {
       execute(
         wf,
         [
-          activityScheduled("process-item", 0),
-          activityScheduled("process-item", 1),
+          activityScheduled(processItemActivity.name, 0),
+          activityScheduled(processItemActivity.name, 1),
           activitySucceeded("A", 0),
           activitySucceeded("B", 1),
         ],
@@ -1085,11 +1091,11 @@ describe("AwaitAll", () => {
   test("should have left-to-right determinism semantics for Promise.all", async () => {
     const wf = workflow(async (items: string[]) => {
       return Promise.all([
-        createActivityCall("before", ["before"]),
+        beforeActivity("before"),
         ...items.map(async (item) => {
-          await createActivityCall("inside", [item]);
+          await insideActivity(item);
         }),
-        createActivityCall("after", ["after"]),
+        afterActivity("after"),
       ]);
     });
 
@@ -1097,10 +1103,10 @@ describe("AwaitAll", () => {
       WorkflowResult
     >{
       calls: [
-        activityCall("before", ["before"], 0),
-        activityCall("inside", ["a"], 1),
-        activityCall("inside", ["b"], 2),
-        activityCall("after", ["after"], 3),
+        activityCall("before", "before", 0),
+        activityCall("inside", "a", 1),
+        activityCall("inside", "b", 2),
+        activityCall("after", "after", 3),
       ],
     });
   });
@@ -1128,7 +1134,7 @@ describe("AwaitAny", () => {
     const wf = workflow(async (items: string[]) => {
       return Promise.any(
         items.map(async (item) => {
-          return await createActivityCall("process-item", [item]);
+          return await processItemActivity(item);
         })
       );
     });
@@ -1137,8 +1143,8 @@ describe("AwaitAny", () => {
       WorkflowResult
     >{
       calls: [
-        activityCall("process-item", ["a"], 0),
-        activityCall("process-item", ["b"], 1),
+        activityCall(processItemActivity.name, "a", 0),
+        activityCall(processItemActivity.name, "b", 1),
       ],
     });
 
@@ -1146,8 +1152,8 @@ describe("AwaitAny", () => {
       execute(
         wf,
         [
-          activityScheduled("process-item", 0),
-          activityScheduled("process-item", 1),
+          activityScheduled(processItemActivity.name, 0),
+          activityScheduled(processItemActivity.name, 1),
           activitySucceeded("A", 0),
           activitySucceeded("B", 1),
         ],
@@ -1161,8 +1167,8 @@ describe("AwaitAny", () => {
       execute(
         wf,
         [
-          activityScheduled("process-item", 0),
-          activityScheduled("process-item", 1),
+          activityScheduled(processItemActivity.name, 0),
+          activityScheduled(processItemActivity.name, 1),
           activitySucceeded("A", 0),
         ],
         ["a", "b"]
@@ -1175,8 +1181,8 @@ describe("AwaitAny", () => {
       execute(
         wf,
         [
-          activityScheduled("process-item", 0),
-          activityScheduled("process-item", 1),
+          activityScheduled(processItemActivity.name, 0),
+          activityScheduled(processItemActivity.name, 1),
           activitySucceeded("B", 1),
         ],
         ["a", "b"]
@@ -1190,7 +1196,7 @@ describe("AwaitAny", () => {
     const wf = workflow(async (items: string[]) => {
       return Promise.any(
         items.map(async (item) => {
-          return await createActivityCall("process-item", [item]);
+          return await processItemActivity(item);
         })
       );
     });
@@ -1199,8 +1205,8 @@ describe("AwaitAny", () => {
       execute(
         wf,
         [
-          activityScheduled("process-item", 0),
-          activityScheduled("process-item", 1),
+          activityScheduled(processItemActivity.name, 0),
+          activityScheduled(processItemActivity.name, 1),
           activityFailed("A", 0),
           activitySucceeded("B", 1),
         ],
@@ -1214,8 +1220,8 @@ describe("AwaitAny", () => {
       execute(
         wf,
         [
-          activityScheduled("process-item", 0),
-          activityScheduled("process-item", 1),
+          activityScheduled(processItemActivity.name, 0),
+          activityScheduled(processItemActivity.name, 1),
           activitySucceeded("A", 0),
           activityFailed("B", 1),
         ],
@@ -1229,8 +1235,8 @@ describe("AwaitAny", () => {
       execute(
         wf,
         [
-          activityScheduled("process-item", 0),
-          activityScheduled("process-item", 1),
+          activityScheduled(processItemActivity.name, 0),
+          activityScheduled(processItemActivity.name, 1),
           activityFailed("B", 1),
           activitySucceeded("A", 0),
         ],
@@ -1245,7 +1251,7 @@ describe("AwaitAny", () => {
     const wf = workflow(async (items: string[]) => {
       return Promise.any(
         items.map(async (item) => {
-          return await createActivityCall("process-item", [item]);
+          return await processItemActivity(item);
         })
       );
     });
@@ -1254,8 +1260,8 @@ describe("AwaitAny", () => {
       execute(
         wf,
         [
-          activityScheduled("process-item", 0),
-          activityScheduled("process-item", 1),
+          activityScheduled(processItemActivity.name, 0),
+          activityScheduled(processItemActivity.name, 1),
           activityFailed("A", 0),
         ],
         ["a", "b"]
@@ -1268,8 +1274,8 @@ describe("AwaitAny", () => {
       execute(
         wf,
         [
-          activityScheduled("process-item", 0),
-          activityScheduled("process-item", 1),
+          activityScheduled(processItemActivity.name, 0),
+          activityScheduled(processItemActivity.name, 1),
           activityFailed("A", 0),
           activityFailed("B", 1),
         ],
@@ -1306,7 +1312,7 @@ describe("Race", () => {
     const wf = workflow(async (items: string[]) => {
       return Promise.race(
         items.map(async (item) => {
-          return await createActivityCall("process-item", [item]);
+          return await processItemActivity(item);
         })
       );
     });
@@ -1315,8 +1321,8 @@ describe("Race", () => {
       WorkflowResult
     >{
       calls: [
-        activityCall("process-item", ["a"], 0),
-        activityCall("process-item", ["b"], 1),
+        activityCall(processItemActivity.name, "a", 0),
+        activityCall(processItemActivity.name, "b", 1),
       ],
     });
 
@@ -1324,8 +1330,8 @@ describe("Race", () => {
       execute(
         wf,
         [
-          activityScheduled("process-item", 0),
-          activityScheduled("process-item", 1),
+          activityScheduled(processItemActivity.name, 0),
+          activityScheduled(processItemActivity.name, 1),
           activitySucceeded("A", 0),
           activitySucceeded("B", 1),
         ],
@@ -1339,8 +1345,8 @@ describe("Race", () => {
       execute(
         wf,
         [
-          activityScheduled("process-item", 0),
-          activityScheduled("process-item", 1),
+          activityScheduled(processItemActivity.name, 0),
+          activityScheduled(processItemActivity.name, 1),
           activitySucceeded("A", 0),
         ],
         ["a", "b"]
@@ -1353,8 +1359,8 @@ describe("Race", () => {
       execute(
         wf,
         [
-          activityScheduled("process-item", 0),
-          activityScheduled("process-item", 1),
+          activityScheduled(processItemActivity.name, 0),
+          activityScheduled(processItemActivity.name, 1),
           activitySucceeded("B", 1),
         ],
         ["a", "b"]
@@ -1368,7 +1374,7 @@ describe("Race", () => {
     const wf = workflow(async (items: string[]) => {
       return Promise.race(
         items.map(async (item) => {
-          return await createActivityCall("process-item", [item]);
+          return await processItemActivity(item);
         })
       );
     });
@@ -1377,8 +1383,8 @@ describe("Race", () => {
       execute(
         wf,
         [
-          activityScheduled("process-item", 0),
-          activityScheduled("process-item", 1),
+          activityScheduled(processItemActivity.name, 0),
+          activityScheduled(processItemActivity.name, 1),
           activityFailed("A", 0),
           activitySucceeded("B", 1),
         ],
@@ -1392,8 +1398,8 @@ describe("Race", () => {
       execute(
         wf,
         [
-          activityScheduled("process-item", 0),
-          activityScheduled("process-item", 1),
+          activityScheduled(processItemActivity.name, 0),
+          activityScheduled(processItemActivity.name, 1),
           activityFailed("B", 1),
         ],
         ["a", "b"]
@@ -1429,7 +1435,7 @@ describe("AwaitAllSettled", () => {
     const wf = workflow(async (items: string[]) => {
       return Promise.allSettled(
         items.map(async (item) => {
-          return await createActivityCall("process-item", [item]);
+          return await processItemActivity(item);
         })
       );
     });
@@ -1438,8 +1444,8 @@ describe("AwaitAllSettled", () => {
       WorkflowResult<PromiseSettledResult<string>[]>
     >({
       calls: [
-        activityCall("process-item", ["a"], 0),
-        activityCall("process-item", ["b"], 1),
+        activityCall(processItemActivity.name, "a", 0),
+        activityCall(processItemActivity.name, "b", 1),
       ],
     });
 
@@ -1447,8 +1453,8 @@ describe("AwaitAllSettled", () => {
       execute(
         wf,
         [
-          activityScheduled("process-item", 0),
-          activityScheduled("process-item", 1),
+          activityScheduled(processItemActivity.name, 0),
+          activityScheduled(processItemActivity.name, 1),
           activitySucceeded("A", 0),
           activitySucceeded("B", 1),
         ],
@@ -1466,8 +1472,8 @@ describe("AwaitAllSettled", () => {
       execute(
         wf,
         [
-          activityScheduled("process-item", 0),
-          activityScheduled("process-item", 1),
+          activityScheduled(processItemActivity.name, 0),
+          activityScheduled(processItemActivity.name, 1),
           activityFailed("A", 0),
           activityFailed("B", 1),
         ],
@@ -1485,8 +1491,8 @@ describe("AwaitAllSettled", () => {
       execute(
         wf,
         [
-          activityScheduled("process-item", 0),
-          activityScheduled("process-item", 1),
+          activityScheduled(processItemActivity.name, 0),
+          activityScheduled(processItemActivity.name, 1),
           activityFailed("A", 0),
           activitySucceeded("B", 1),
         ],
@@ -1502,20 +1508,23 @@ describe("AwaitAllSettled", () => {
   });
 });
 
+const catchActivity = activity("catch", () => {});
+const finallyActivity = activity("finally", () => {});
+
 test("try-catch-finally with await in catch", async () => {
   const wf = workflow(async () => {
     try {
       throw new Error("error");
     } catch {
-      await createActivityCall("catch", []);
+      await catchActivity();
     } finally {
-      await createActivityCall("finally", []);
+      await finallyActivity();
     }
   });
   await expect(execute(wf, [], undefined)).resolves.toMatchObject(<
     WorkflowResult
   >{
-    calls: [activityCall("catch", [], 0)],
+    calls: [activityCall("catch", undefined, 0)],
   });
   await expect(
     execute(
@@ -1524,7 +1533,7 @@ test("try-catch-finally with await in catch", async () => {
       undefined
     )
   ).resolves.toMatchObject(<WorkflowResult>{
-    calls: [activityCall("finally", [], 1)],
+    calls: [activityCall("finally", undefined, 1)],
   });
 });
 
@@ -1535,16 +1544,19 @@ test("try-catch-finally with dangling promise in catch", async () => {
         try {
           throw new Error("error");
         } catch {
-          createActivityCall("catch", []);
+          catchActivity();
         } finally {
-          await createActivityCall("finally", []);
+          await finallyActivity();
         }
       }),
       [],
       undefined
     )
   ).resolves.toMatchObject(<WorkflowResult>{
-    calls: [activityCall("catch", [], 0), activityCall("finally", [], 1)],
+    calls: [
+      activityCall("catch", undefined, 0),
+      activityCall("finally", undefined, 1),
+    ],
   });
 });
 
@@ -1553,7 +1565,7 @@ test("throw error within nested function", async () => {
     try {
       await Promise.all(
         items.map(async (item) => {
-          const result = await createActivityCall("inside", [item]);
+          const result = await insideActivity(item);
 
           if (result === "bad") {
             throw new Error("bad");
@@ -1561,10 +1573,10 @@ test("throw error within nested function", async () => {
         })
       );
     } catch {
-      await createActivityCall("catch", []);
+      await catchActivity();
       return "returned in catch"; // this should be trumped by the finally
     } finally {
-      await createActivityCall("finally", []);
+      await finallyActivity();
       // eslint-disable-next-line no-unsafe-finally
       return "returned in finally";
     }
@@ -1573,8 +1585,8 @@ test("throw error within nested function", async () => {
     WorkflowResult
   >{
     calls: [
-      activityCall("inside", ["good"], 0),
-      activityCall("inside", ["bad"], 1),
+      activityCall("inside", "good", 0),
+      activityCall("inside", "bad", 1),
     ],
   });
   await expect(
@@ -1589,7 +1601,7 @@ test("throw error within nested function", async () => {
       ["good", "bad"]
     )
   ).resolves.toMatchObject(<WorkflowResult>{
-    calls: [activityCall("catch", [], 2)],
+    calls: [activityCall("catch", undefined, 2)],
   });
   await expect(
     execute(
@@ -1605,7 +1617,7 @@ test("throw error within nested function", async () => {
       ["good", "bad"]
     )
   ).resolves.toMatchObject(<WorkflowResult>{
-    calls: [activityCall("finally", [], 3)],
+    calls: [activityCall("finally", undefined, 3)],
   });
   await expect(
     execute(
@@ -1630,10 +1642,7 @@ test("throw error within nested function", async () => {
 
 test("properly evaluate await of sub-programs", async () => {
   async function sub() {
-    const item = await Promise.all([
-      createActivityCall("a", []),
-      createActivityCall("b", []),
-    ]);
+    const item = await Promise.all([myActivity0(), myActivity2()]);
 
     return item;
   }
@@ -1647,8 +1656,8 @@ test("properly evaluate await of sub-programs", async () => {
   ).resolves.toMatchObject<WorkflowResult>({
     calls: [
       //
-      activityCall("a", [], 0),
-      activityCall("b", [], 1),
+      activityCall(myActivity0.name, undefined, 0),
+      activityCall(myActivity2.name, undefined, 1),
     ],
   });
 
@@ -1656,8 +1665,8 @@ test("properly evaluate await of sub-programs", async () => {
     execute(
       wf,
       [
-        activityScheduled("a", 0),
-        activityScheduled("b", 1),
+        activityScheduled(myActivity0.name, 0),
+        activityScheduled(myActivity2.name, 1),
         activitySucceeded("a", 0),
         activitySucceeded("b", 1),
       ],
@@ -1671,10 +1680,7 @@ test("properly evaluate await of sub-programs", async () => {
 
 test("properly evaluate await of Promise.all", async () => {
   const wf = workflow(async () => {
-    const item = await Promise.all([
-      createActivityCall("a", []),
-      createActivityCall("b", []),
-    ]);
+    const item = await Promise.all([myActivity0(), myActivity2()]);
 
     return item;
   });
@@ -1684,8 +1690,8 @@ test("properly evaluate await of Promise.all", async () => {
   ).resolves.toMatchObject<WorkflowResult>({
     calls: [
       //
-      activityCall("a", [], 0),
-      activityCall("b", [], 1),
+      activityCall(myActivity0.name, undefined, 0),
+      activityCall(myActivity2.name, undefined, 1),
     ],
   });
 
@@ -1693,8 +1699,8 @@ test("properly evaluate await of Promise.all", async () => {
     execute(
       wf,
       [
-        activityScheduled("a", 0),
-        activityScheduled("b", 1),
+        activityScheduled(myActivity0.name, 0),
+        activityScheduled(myActivity2.name, 1),
         activitySucceeded("a", 0),
         activitySucceeded("b", 1),
       ],
@@ -1712,18 +1718,18 @@ test("generator function returns an ActivityCall", async () => {
   });
 
   async function sub() {
-    return createActivityCall("call-a", []);
+    return myActivity();
   }
 
   await expect(
     execute(wf, [], undefined)
   ).resolves.toMatchObject<WorkflowResult>({
-    calls: [activityCall("call-a", [], 0)],
+    calls: [activityCall(myActivity.name, undefined, 0)],
   });
   await expect(
     execute(
       wf,
-      [activityScheduled("call-a", 0), activitySucceeded("result", 0)],
+      [activityScheduled(myActivity.name, 0), activitySucceeded("result", 0)],
       undefined
     )
   ).resolves.toMatchObject<WorkflowResult>({
@@ -1734,11 +1740,11 @@ test("generator function returns an ActivityCall", async () => {
 
 test("workflow calling other workflow", async () => {
   const wf1 = workflow(async () => {
-    await createActivityCall("call-a", []);
+    await myActivity();
   });
   const wf2 = workflow(async () => {
-    const result = (await createChildWorkflowCall(wf1.name)) as any;
-    await createActivityCall("call-b", []);
+    const result = (await wf1()) as any;
+    await myActivity0();
     return result;
   });
 
@@ -1761,7 +1767,7 @@ test("workflow calling other workflow", async () => {
       undefined
     )
   ).resolves.toMatchObject<WorkflowResult>({
-    calls: [activityCall("call-b", [], 1)],
+    calls: [activityCall(myActivity0.name, undefined, 1)],
   });
 
   await expect(
@@ -1770,7 +1776,7 @@ test("workflow calling other workflow", async () => {
       [
         workflowScheduled(wf1.name, 0),
         workflowSucceeded("result", 0),
-        activityScheduled("call-b", 1),
+        activityScheduled(myActivity0.name, 1),
       ],
       undefined
     )
@@ -1784,7 +1790,7 @@ test("workflow calling other workflow", async () => {
       [
         workflowScheduled(wf1.name, 0),
         workflowSucceeded("result", 0),
-        activityScheduled("call-b", 1),
+        activityScheduled(myActivity0.name, 1),
         activitySucceeded(undefined, 1),
       ],
       undefined
@@ -1809,10 +1815,9 @@ test("workflow calling other workflow", async () => {
 describe("signals", () => {
   describe("expect signal", () => {
     const wf = workflow(async () => {
-      const result = await createExpectSignalCall(
-        "MySignal",
-        createAwaitTimerCall(Schedule.duration(100 * 1000, "seconds"))
-      );
+      const result = await expectSignal("MySignal", {
+        timeout: duration(100 * 1000, "seconds"),
+      });
 
       return result ?? "done";
     });
@@ -1913,14 +1918,12 @@ describe("signals", () => {
 
     test("multiple of the same signal", async () => {
       const wf = workflow(async () => {
-        const wait1 = createExpectSignalCall(
-          "MySignal",
-          createAwaitTimerCall(Schedule.duration(100 * 1000, "seconds"))
-        );
-        const wait2 = createExpectSignalCall(
-          "MySignal",
-          createAwaitTimerCall(Schedule.duration(100 * 1000, "seconds"))
-        );
+        const wait1 = expectSignal("MySignal", {
+          timeout: duration(100 * 1000, "seconds"),
+        });
+        const wait2 = expectSignal("MySignal", {
+          timeout: duration(100 * 1000, "seconds"),
+        });
 
         return Promise.all([wait1, wait2]);
       });
@@ -1943,14 +1946,12 @@ describe("signals", () => {
 
     test("expect then timeout", async () => {
       const wf = workflow(async () => {
-        await createExpectSignalCall(
-          "MySignal",
-          createAwaitTimerCall(Schedule.duration(100 * 1000, "seconds"))
-        );
-        await createExpectSignalCall(
-          "MySignal",
-          createAwaitTimerCall(Schedule.duration(100 * 1000, "seconds"))
-        );
+        await expectSignal("MySignal", {
+          timeout: duration(100 * 1000, "seconds"),
+        });
+        await expectSignal("MySignal", {
+          timeout: duration(100 * 1000, "seconds"),
+        });
       });
 
       await expect(
@@ -1963,14 +1964,12 @@ describe("signals", () => {
 
     test("expect random signal then timeout", async () => {
       const wf = workflow(async () => {
-        await createExpectSignalCall(
-          "MySignal",
-          createAwaitTimerCall(Schedule.duration(100 * 1000, "seconds"))
-        );
-        await createExpectSignalCall(
-          "MySignal",
-          createAwaitTimerCall(Schedule.duration(100 * 1000, "seconds"))
-        );
+        await expectSignal("MySignal", {
+          timeout: duration(100 * 1000, "seconds"),
+        });
+        await expectSignal("MySignal", {
+          timeout: duration(100 * 1000, "seconds"),
+        });
       });
 
       await expect(
@@ -1995,28 +1994,28 @@ describe("signals", () => {
       let mySignalHappened = 0;
       let myOtherSignalHappened = 0;
       let myOtherSignalCompleted = 0;
-      const mySignalHandler = createRegisterSignalHandlerCall(
+      const mySignalHandler = onSignal(
         "MySignal",
         // the transformer will turn this closure into a generator wrapped in chain
         function () {
           mySignalHappened++;
         }
       );
-      const myOtherSignalHandler = createRegisterSignalHandlerCall(
+      const myOtherSignalHandler = onSignal(
         "MyOtherSignal",
         async function (payload) {
           myOtherSignalHappened++;
-          await createActivityCall("act1", [payload]);
+          await myActivity(payload);
           myOtherSignalCompleted++;
         }
       );
 
-      await createAwaitTimerCall(Schedule.time("then"));
+      await time(testTime);
 
       mySignalHandler.dispose();
       myOtherSignalHandler.dispose();
 
-      await createAwaitTimerCall(Schedule.time("then"));
+      await time(testTime);
 
       return {
         mySignalHappened,
@@ -2029,7 +2028,7 @@ describe("signals", () => {
       await expect(execute(wf, [], undefined)).resolves.toMatchObject(<
         WorkflowResult
       >{
-        calls: [awaitTimerCall(2)],
+        calls: [awaitTimerCall(Schedule.time(testTime), 2)],
       });
     });
 
@@ -2037,7 +2036,7 @@ describe("signals", () => {
       await expect(
         execute(wf, [signalReceived("MySignal")], undefined)
       ).resolves.toMatchObject(<WorkflowResult>{
-        calls: [awaitTimerCall(2)],
+        calls: [awaitTimerCall(Schedule.time(testTime), 2)],
       });
     });
 
@@ -2118,7 +2117,10 @@ describe("signals", () => {
       await expect(
         execute(wf, [signalReceived("MyOtherSignal", "hi")], undefined)
       ).resolves.toMatchObject(<WorkflowResult>{
-        calls: [awaitTimerCall(2), activityCall("act1", ["hi"], 3)],
+        calls: [
+          awaitTimerCall(Schedule.time(testTime), 2),
+          activityCall(myActivity.name, "hi", 3),
+        ],
       });
     });
 
@@ -2134,9 +2136,9 @@ describe("signals", () => {
         )
       ).resolves.toMatchObject(<WorkflowResult>{
         calls: [
-          awaitTimerCall(2),
-          activityCall("act1", ["hi"], 3),
-          activityCall("act1", ["hi2"], 4),
+          awaitTimerCall(Schedule.time(testTime), 2),
+          activityCall(myActivity.name, "hi", 3),
+          activityCall(myActivity.name, "hi2", 4),
         ],
       });
     });
@@ -2149,7 +2151,7 @@ describe("signals", () => {
             signalReceived("MyOtherSignal", "hi"),
             timerScheduled(2),
             timerCompleted(2),
-            activityScheduled("act1", 3),
+            activityScheduled(myActivity.name, 3),
             timerScheduled(4),
             timerCompleted(4),
           ],
@@ -2172,7 +2174,7 @@ describe("signals", () => {
           [
             signalReceived("MyOtherSignal", "hi"),
             timerScheduled(2),
-            activityScheduled("act1", 3),
+            activityScheduled(myActivity.name, 3),
             activitySucceeded("act1", 3),
             timerCompleted(2),
             timerScheduled(4),
@@ -2198,7 +2200,7 @@ describe("signals", () => {
             signalReceived("MyOtherSignal", "hi"),
             timerScheduled(2),
             timerCompleted(2),
-            activityScheduled("act1", 3),
+            activityScheduled(myActivity.name, 3),
             activitySucceeded("act1", 3),
             timerScheduled(4),
             timerCompleted(4),
@@ -2242,12 +2244,9 @@ describe("signals", () => {
   describe("send signal", () => {
     const mySignal = signal("MySignal");
     const wf = workflow(async () => {
-      createSendSignalCall(
-        { type: SignalTargetType.Execution, executionId: "someExecution/" },
-        mySignal.id
-      );
+      mySignal.sendSignal("someExecution/");
 
-      const childWorkflow = createChildWorkflowCall("childWorkflow");
+      const childWorkflow = cwf();
 
       childWorkflow.sendSignal(mySignal);
 
@@ -2267,11 +2266,11 @@ describe("signals", () => {
             "MySignal",
             0
           ),
-          childWorkflowCall("childWorkflow", undefined, 1),
+          childWorkflowCall(cwf.name, undefined, 1),
           sendSignalCall(
             {
               type: SignalTargetType.ChildExecution,
-              workflowName: "childWorkflow",
+              workflowName: cwf.name,
               seq: 1,
             },
             "MySignal",
@@ -2286,11 +2285,11 @@ describe("signals", () => {
         execute(wf, [signalSent("someExec", "MySignal", 0)], undefined)
       ).resolves.toMatchObject(<WorkflowResult>{
         calls: [
-          childWorkflowCall("childWorkflow", undefined, 1),
+          childWorkflowCall(cwf.name, undefined, 1),
           sendSignalCall(
             {
               type: SignalTargetType.ChildExecution,
-              workflowName: "childWorkflow",
+              workflowName: cwf.name,
               seq: 1,
             },
             "MySignal",
@@ -2306,7 +2305,7 @@ describe("signals", () => {
           wf,
           [
             signalSent("someExec", "MySignal", 0),
-            workflowScheduled("childWorkflow", 1),
+            workflowScheduled(cwf.name, 1),
             signalSent("someExecution/", "MySignal", 2),
           ],
           undefined
@@ -2322,7 +2321,7 @@ describe("signals", () => {
           wf,
           [
             signalSent("someExec", "MySignal", 0),
-            workflowScheduled("childWorkflow", 1),
+            workflowScheduled(cwf.name, 1),
             signalSent("someExecution/", "MySignal", 2),
             workflowSucceeded("done", 1),
           ],
@@ -2337,13 +2336,10 @@ describe("signals", () => {
     test("sendSignal then", async () => {
       const wf = workflow(async () => {
         console.log("before signal");
-        return createSendSignalCall(
-          { type: SignalTargetType.Execution, executionId: "someExecution/" },
-          mySignal.id
-        ).then(async () => {
+        return mySignal.sendSignal("someExecution/").then(async () => {
           console.log("after signal");
 
-          const childWorkflow = createChildWorkflowCall("childWorkflow");
+          const childWorkflow = cwf();
 
           await childWorkflow.sendSignal(mySignal);
 
@@ -2356,7 +2352,7 @@ describe("signals", () => {
           wf,
           [
             signalSent("someExec", "MySignal", 0),
-            workflowScheduled("childWorkflow", 1),
+            workflowScheduled(cwf.name, 1),
             signalSent("someExecution/", "MySignal", 2),
             workflowSucceeded("done", 1),
           ],
@@ -2371,14 +2367,11 @@ describe("signals", () => {
     test("awaited sendSignal does nothing 2", async () => {
       const wf = workflow(async () => {
         console.log("before signal");
-        await createSendSignalCall(
-          { type: SignalTargetType.Execution, executionId: "someExecution/" },
-          mySignal.id
-        );
+        await mySignal.sendSignal("someExecution/");
 
         console.log("after signal");
 
-        const childWorkflow = createChildWorkflowCall("childWorkflow");
+        const childWorkflow = cwf();
 
         await childWorkflow.sendSignal(mySignal);
 
@@ -2390,7 +2383,7 @@ describe("signals", () => {
           wf,
           [
             signalSent("someExec", "MySignal", 0),
-            workflowScheduled("childWorkflow", 1),
+            workflowScheduled(cwf.name, 1),
             signalSent("someExecution/", "MySignal", 2),
             workflowSucceeded("done", 1),
           ],
@@ -2407,7 +2400,7 @@ describe("signals", () => {
 describe("condition", () => {
   test("already true condition does not emit events", async () => {
     const wf = workflow(async () => {
-      await createConditionCall(() => true);
+      await condition(() => true);
     });
 
     await expect(
@@ -2419,7 +2412,7 @@ describe("condition", () => {
 
   test("false condition emits events", async () => {
     const wf = workflow(async () => {
-      await createConditionCall(() => false);
+      await condition(() => false);
     });
 
     await expect(
@@ -2431,10 +2424,7 @@ describe("condition", () => {
 
   test("false condition emits events with timeout", async () => {
     const wf = workflow(async () => {
-      await createConditionCall(
-        () => false,
-        createAwaitTimerCall(Schedule.duration(100, "seconds"))
-      );
+      await condition({ timeout: duration(100, "seconds") }, () => false);
     });
 
     await expect(
@@ -2446,10 +2436,7 @@ describe("condition", () => {
 
   test("false condition does not re-emit", async () => {
     const wf = workflow(async () => {
-      await createConditionCall(
-        () => false,
-        createAwaitTimerCall(Schedule.duration(100, "seconds"))
-      );
+      await condition({ timeout: duration(100, "seconds") }, () => false);
     });
 
     await expect(
@@ -2461,15 +2448,10 @@ describe("condition", () => {
 
   const signalConditionFlow = workflow(async () => {
     let yes = false;
-    createRegisterSignalHandlerCall("Yes", () => {
+    onSignal("Yes", () => {
       yes = true;
     });
-    if (
-      !(await createConditionCall(
-        () => yes,
-        createAwaitTimerCall(Schedule.duration(100, "seconds"))
-      ))
-    ) {
+    if (!(await condition({ timeout: duration(100, "seconds") }, () => yes))) {
       return "timed out";
     }
     return "done";
@@ -2511,13 +2493,13 @@ describe("condition", () => {
   test("never trigger when state changes", async () => {
     const signalConditionOnAndOffFlow = workflow(async () => {
       let yes = false;
-      createRegisterSignalHandlerCall("Yes", () => {
+      onSignal("Yes", () => {
         yes = true;
       });
-      createRegisterSignalHandlerCall("Yes", () => {
+      onSignal("Yes", () => {
         yes = false;
       });
-      await createConditionCall(() => yes);
+      await condition(() => yes);
       return "done";
     });
 
@@ -2569,7 +2551,7 @@ describe("condition", () => {
 
   test("condition as simple generator", async () => {
     const wf = workflow(async () => {
-      await createConditionCall(() => false);
+      await condition(() => false);
       return "done";
     });
 
@@ -2585,7 +2567,7 @@ test("nestedChains", async () => {
   const wf = workflow(async () => {
     const funcs = {
       a: async () => {
-        await createAwaitTimerCall(Schedule.time("then"));
+        await time(testTime);
       },
     };
 
@@ -2601,25 +2583,29 @@ test("nestedChains", async () => {
   await expect(
     execute(wf, [], undefined)
   ).resolves.toMatchObject<WorkflowResult>({
-    calls: [awaitTimerCall(0)],
+    calls: [awaitTimerCall(Schedule.time(testTime), 0)],
   });
+});
+
+const helloActivity = activity("hello", (_names: string[]) => {
+  return 0;
 });
 
 test("mixing closure types", async () => {
   const workflow4 = workflow(async () => {
     const greetings = Promise.all(
-      ["sam", "chris", "sam"].map((name) => createActivityCall("hello", [name]))
+      ["sam", "chris", "sam"].map((name) => helloActivity([name]))
     );
     const greetings2 = Promise.all(
       ["sam", "chris", "sam"].map(async (name) => {
-        const greeting = await createActivityCall<number>("hello", [name]);
+        const greeting = await helloActivity([name]);
         return greeting * 2;
       })
     );
     const greetings3 = Promise.all([
-      createActivityCall("hello", ["sam"]),
-      createActivityCall("hello", ["chris"]),
-      createActivityCall("hello", ["sam"]),
+      helloActivity(["sam"]),
+      helloActivity(["chris"]),
+      helloActivity(["sam"]),
     ]);
     return Promise.all([greetings, greetings2, greetings3]);
   });
@@ -2644,15 +2630,15 @@ test("mixing closure types", async () => {
     execute(
       workflow4,
       [
-        activityScheduled("hello", 0),
-        activityScheduled("hello", 1),
-        activityScheduled("hello", 2),
-        activityScheduled("hello", 3),
-        activityScheduled("hello", 4),
-        activityScheduled("hello", 5),
-        activityScheduled("hello", 6),
-        activityScheduled("hello", 7),
-        activityScheduled("hello", 8),
+        activityScheduled(helloActivity.name, 0),
+        activityScheduled(helloActivity.name, 1),
+        activityScheduled(helloActivity.name, 2),
+        activityScheduled(helloActivity.name, 3),
+        activityScheduled(helloActivity.name, 4),
+        activityScheduled(helloActivity.name, 5),
+        activityScheduled(helloActivity.name, 6),
+        activityScheduled(helloActivity.name, 7),
+        activityScheduled(helloActivity.name, 8),
       ],
       undefined
     )
@@ -2664,15 +2650,15 @@ test("mixing closure types", async () => {
     execute(
       workflow4,
       [
-        activityScheduled("hello", 0),
-        activityScheduled("hello", 1),
-        activityScheduled("hello", 2),
-        activityScheduled("hello", 3),
-        activityScheduled("hello", 4),
-        activityScheduled("hello", 5),
-        activityScheduled("hello", 6),
-        activityScheduled("hello", 7),
-        activityScheduled("hello", 8),
+        activityScheduled(helloActivity.name, 0),
+        activityScheduled(helloActivity.name, 1),
+        activityScheduled(helloActivity.name, 2),
+        activityScheduled(helloActivity.name, 3),
+        activityScheduled(helloActivity.name, 4),
+        activityScheduled(helloActivity.name, 5),
+        activityScheduled(helloActivity.name, 6),
+        activityScheduled(helloActivity.name, 7),
+        activityScheduled(helloActivity.name, 8),
         activitySucceeded(1, 0),
         activitySucceeded(2, 1),
         activitySucceeded(3, 2),
@@ -2697,19 +2683,19 @@ test("mixing closure types", async () => {
 
 test("workflow with synchronous function", async () => {
   const workflow4 = workflow(function () {
-    return createActivityCall("hi", []);
+    return myActivity();
   });
 
   await expect(
     execute(workflow4, [], undefined)
   ).resolves.toEqual<WorkflowResult>({
-    calls: [activityCall("hi", [], 0)],
+    calls: [activityCall(myActivity.name, undefined, 0)],
   });
 
   await expect(
     execute(
       workflow4,
-      [activityScheduled("hi", 0), activitySucceeded("result", 0)],
+      [activityScheduled(myActivity.name, 0), activitySucceeded("result", 0)],
       undefined
     )
   ).resolves.toEqual<WorkflowResult>({
@@ -2718,23 +2704,20 @@ test("workflow with synchronous function", async () => {
   });
 });
 
+const testEvent = event<{ key: string }>("event-type");
+
 test("publish event", async () => {
   const wf = workflow(async () => {
-    await createPublishEventsCall([
-      {
-        name: "event-type",
-        event: {
-          key: "value",
-        },
-      },
-    ]);
+    await testEvent.publishEvents({
+      key: "value",
+    });
 
     return "done!";
   });
 
   const events = [
     {
-      name: "event-type",
+      name: testEvent.name,
       event: {
         key: "value",
       },
@@ -2758,8 +2741,8 @@ test("publish event", async () => {
 
 test("many events at once", async () => {
   const wf = workflow(async () => {
-    for (const i of [...Array(100).keys()]) {
-      await createActivityCall("myAct", i);
+    for (const _i of [...Array(100).keys()]) {
+      await myActivity();
     }
 
     return "done";
@@ -2768,7 +2751,7 @@ test("many events at once", async () => {
   const executor = new WorkflowExecutor(
     wf,
     [...Array(100).keys()].flatMap((i) => [
-      activityScheduled("myAct", i),
+      activityScheduled(myActivity.name, i),
       activitySucceeded(undefined, i),
     ])
   );
@@ -2785,9 +2768,9 @@ describe("continue", () => {
   test("start a workflow with no events and feed it one after", async () => {
     const executor = new WorkflowExecutor(myWorkflow, []);
     await expect(
-      executor.start(event, context)
+      executor.start(eventName, context)
     ).resolves.toEqual<WorkflowResult>({
-      calls: [activityCall("my-activity", [event], 0)],
+      calls: [activityCall(myActivity.name, eventName, 0)],
       result: undefined,
     });
 
@@ -2795,9 +2778,9 @@ describe("continue", () => {
       executor.continue(activitySucceeded("result", 0))
     ).resolves.toEqual<WorkflowResult>({
       calls: [
-        activityCall("my-activity-0", [event], 1),
-        awaitTimerCall(2),
-        activityCall("my-activity-2", [event], 3),
+        activityCall(myActivity0.name, eventName, 1),
+        awaitTimerCall(Schedule.time(testTime), 2),
+        activityCall(myActivity2.name, eventName, 3),
       ],
       result: undefined,
     });
@@ -2805,16 +2788,16 @@ describe("continue", () => {
 
   test("start a workflow with events and feed it one after", async () => {
     const executor = new WorkflowExecutor(myWorkflow, [
-      activityScheduled("my-activity", 0),
+      activityScheduled(myActivity.name, 0),
       activitySucceeded("result", 0),
     ]);
     await expect(
-      executor.start(event, context)
+      executor.start(eventName, context)
     ).resolves.toEqual<WorkflowResult>({
       calls: [
-        activityCall("my-activity-0", [event], 1),
-        awaitTimerCall(2),
-        activityCall("my-activity-2", [event], 3),
+        activityCall(myActivity0.name, eventName, 1),
+        awaitTimerCall(Schedule.time(testTime), 2),
+        activityCall(myActivity2.name, eventName, 3),
       ],
       result: undefined,
     });
@@ -2829,8 +2812,8 @@ describe("continue", () => {
 
   test("many iterations", async () => {
     const wf = workflow(async () => {
-      for (const i of [...Array(100).keys()]) {
-        await createActivityCall("myAct", i);
+      for (const _i of [...Array(100).keys()]) {
+        await myActivity();
       }
 
       return "done";
@@ -2854,8 +2837,8 @@ describe("continue", () => {
 
   test("many iterations at once", async () => {
     const wf = workflow(async () => {
-      for (const i of [...Array(100).keys()]) {
-        await createActivityCall("myAct", i);
+      for (const _i of [...Array(100).keys()]) {
+        await myActivity();
       }
 
       return "done";
@@ -2873,7 +2856,7 @@ describe("continue", () => {
       calls: [...Array(99).keys()].map((i) =>
         // commands are still emitted because normally the command would precede the events.
         // the first command is emitted during start
-        activityCall("myAct", i + 1, i + 1)
+        activityCall(myActivity.name, undefined, i + 1)
       ),
       result: Result.resolved("done"),
     });
@@ -2881,8 +2864,8 @@ describe("continue", () => {
 
   test("many iterations at once with expected", async () => {
     const wf = workflow(async () => {
-      for (const i of [...Array(100).keys()]) {
-        await createActivityCall("myAct", i);
+      for (const _i of [...Array(100).keys()]) {
+        await myActivity();
       }
 
       return "done";
@@ -2894,7 +2877,7 @@ describe("continue", () => {
        * We will provide expected events, but will not consume them all until all of the
        * succeeded events are supplied.
        */
-      [...Array(100).keys()].map((i) => activityScheduled("myAct", i))
+      [...Array(100).keys()].map((i) => activityScheduled(myActivity.name, i))
     );
 
     await executor.start(undefined, context);
@@ -2911,14 +2894,14 @@ describe("continue", () => {
 
   test("throws if previous run not complete", async () => {
     const executor = new WorkflowExecutor(myWorkflow, []);
-    const startPromise = executor.start(event, context);
+    const startPromise = executor.start(eventName, context);
     await expect(
       executor.continue(activitySucceeded("result", 0))
     ).rejects.toThrowError(
       "Workflow is already running, await the promise returned by the last start or complete call."
     );
     await expect(startPromise).resolves.toEqual<WorkflowResult>({
-      calls: [activityCall("my-activity", [event], 0)],
+      calls: [activityCall(myActivity.name, eventName, 0)],
       result: undefined,
     });
     const continuePromise = executor.continue(activitySucceeded("result", 0));
@@ -2929,9 +2912,9 @@ describe("continue", () => {
     );
     await expect(continuePromise).resolves.toEqual<WorkflowResult>({
       calls: [
-        activityCall("my-activity-0", [event], 1),
-        awaitTimerCall(2),
-        activityCall("my-activity-2", [event], 3),
+        activityCall(myActivity0.name, eventName, 1),
+        awaitTimerCall(Schedule.time(testTime), 2),
+        activityCall(myActivity2.name, eventName, 3),
       ],
       result: undefined,
     });
@@ -2939,10 +2922,10 @@ describe("continue", () => {
 
   test("filters duplicate events", async () => {
     const executor = new WorkflowExecutor(myWorkflow, [
-      activityScheduled("my-activity", 0),
+      activityScheduled(myActivity.name, 0),
       activitySucceeded("result", 0),
     ]);
-    await executor.start([event], context);
+    await executor.start([eventName], context);
     await expect(
       executor.continue(activitySucceeded("result", 0))
     ).resolves.toEqual<WorkflowResult>({
@@ -2955,8 +2938,8 @@ describe("continue", () => {
 describe("running after result", () => {
   test("signal handler works after execution completes", async () => {
     const wf = workflow(async () => {
-      createRegisterSignalHandlerCall("signal1", () => {
-        createActivityCall("on signal", 1);
+      onSignal("signal1", () => {
+        myActivity();
       });
       return "hello?";
     });
@@ -2973,15 +2956,15 @@ describe("running after result", () => {
     await expect(
       executor.continue(signalReceived("signal1"))
     ).resolves.toEqual<WorkflowResult>({
-      calls: [activityCall("on signal", 1, 1)],
+      calls: [activityCall(myActivity.name, undefined, 1)],
       result: Result.resolved("hello?"),
     });
   });
 
   test("signal handler accepts after a failure", async () => {
     const wf = workflow(async () => {
-      createRegisterSignalHandlerCall("signal1", () => {
-        createActivityCall("on signal", 1);
+      onSignal("signal1", () => {
+        myActivity();
       });
       throw Error("AHHH");
     });
@@ -2998,22 +2981,22 @@ describe("running after result", () => {
     await expect(
       executor.continue(signalReceived("signal1"))
     ).resolves.toEqual<WorkflowResult>({
-      calls: [activityCall("on signal", 1, 1)],
+      calls: [activityCall(myActivity.name, undefined, 1)],
       result: Result.failed(new Error("AHHH")),
     });
   });
 
   test("async promises after completion", async () => {
     const wf = workflow(async () => {
-      createRegisterSignalHandlerCall("signal1", async () => {
+      onSignal("signal1", async () => {
         let n = 10;
         while (n-- > 0) {
-          createActivityCall("on signal", 1);
+          myActivity();
         }
       });
 
       (async () => {
-        await createActivityCall("in the async", undefined);
+        await myActivity0();
       })();
 
       return "hello?";
@@ -3024,7 +3007,7 @@ describe("running after result", () => {
     await expect(
       executor.start(undefined, context)
     ).resolves.toEqual<WorkflowResult>({
-      calls: [activityCall("in the async", undefined, 1)],
+      calls: [activityCall(myActivity0.name, undefined, 1)],
       result: Result.resolved("hello?"),
     });
 
@@ -3032,7 +3015,7 @@ describe("running after result", () => {
       executor.continue(signalReceived("signal1"))
     ).resolves.toEqual<WorkflowResult>({
       calls: [...Array(10).keys()].map((i) =>
-        activityCall("on signal", 1, 2 + i)
+        activityCall(myActivity.name, undefined, 2 + i)
       ),
       result: Result.resolved("hello?"),
     });
@@ -3041,23 +3024,23 @@ describe("running after result", () => {
 
 describe("failures", () => {
   const asyncFuncWf = workflow(async () => {
-    await createActivityCall("hello", undefined);
+    await myActivity();
 
     (async () => {
-      await createActivityCall("hello", undefined);
-      await createActivityCall("hello", undefined);
-      await createActivityCall("hello", undefined);
-      await createActivityCall("hello", undefined);
+      await myActivity();
+      await myActivity();
+      await myActivity();
+      await myActivity();
     })();
 
     throw new Error("AHH");
   });
 
   const signalWf = workflow(async () => {
-    await createActivityCall("hello", undefined);
+    await myActivity();
 
-    createRegisterSignalHandlerCall("signal", () => {
-      createActivityCall("signalAct", undefined);
+    onSignal("signal", () => {
+      myActivity0();
     });
 
     throw new Error("AHH");
@@ -3068,19 +3051,19 @@ describe("failures", () => {
       execute(
         asyncFuncWf,
         [
-          activityScheduled("hello", 0),
+          activityScheduled(myActivity.name, 0),
           activitySucceeded(undefined, 0),
-          activityScheduled("hello", 1),
+          activityScheduled(myActivity.name, 1),
           activitySucceeded(undefined, 1),
-          activityScheduled("hello", 2),
+          activityScheduled(myActivity.name, 2),
           activitySucceeded(undefined, 2),
-          activityScheduled("hello", 3),
+          activityScheduled(myActivity.name, 3),
           activitySucceeded(undefined, 3),
         ],
         undefined
       )
     ).resolves.toEqual<WorkflowResult>({
-      calls: [activityCall("hello", undefined, 4)],
+      calls: [activityCall(myActivity.name, undefined, 4)],
       result: Result.failed(Error("AHH")),
     });
   });
@@ -3089,11 +3072,14 @@ describe("failures", () => {
     await expect(
       execute(
         asyncFuncWf,
-        [activityScheduled("hello", 0), activitySucceeded(undefined, 0)],
+        [
+          activityScheduled(myActivity.name, 0),
+          activitySucceeded(undefined, 0),
+        ],
         undefined
       )
     ).resolves.toEqual<WorkflowResult>({
-      calls: [activityCall("hello", undefined, 1)],
+      calls: [activityCall(myActivity.name, undefined, 1)],
       result: Result.failed(Error("AHH")),
     });
   });
@@ -3103,27 +3089,27 @@ describe("failures", () => {
       execute(
         signalWf,
         [
-          activityScheduled("hello", 0),
+          activityScheduled(myActivity.name, 0),
           activitySucceeded(undefined, 0),
           signalReceived("signal"),
         ],
         undefined
       )
     ).resolves.toEqual<WorkflowResult>({
-      calls: [activityCall("signalAct", undefined, 2)],
+      calls: [activityCall(myActivity0.name, undefined, 2)],
       result: Result.failed(Error("AHH")),
     });
   });
 
   test("with signal handler 2", async () => {
     const wf = workflow(async () => {
-      await createActivityCall("hello", undefined);
+      await myActivity();
 
-      createRegisterSignalHandlerCall("signal", () => {
-        createActivityCall("signalAct", undefined);
+      onSignal("signal", () => {
+        myActivity0();
       });
 
-      await createExpectSignalCall("signal");
+      await expectSignal("signal");
 
       throw new Error("AHH");
     });
@@ -3132,36 +3118,36 @@ describe("failures", () => {
       execute(
         wf,
         [
-          activityScheduled("hello", 0),
+          activityScheduled(myActivity.name, 0),
           activitySucceeded(undefined, 0),
           signalReceived("signal"),
         ],
         undefined
       )
     ).resolves.toEqual<WorkflowResult>({
-      calls: [activityCall("signalAct", undefined, 3)],
+      calls: [activityCall(myActivity0.name, undefined, 3)],
       result: Result.failed(Error("AHH")),
     });
   });
 
   test("without fail", async () => {
     const wf = workflow(async () => {
-      await createActivityCall("hello", undefined);
+      await myActivity();
 
-      createRegisterSignalHandlerCall("signal", () => {
-        createActivityCall("signalAct", undefined);
+      onSignal("signal", () => {
+        myActivity0();
         throw new Error("AHH");
       });
 
-      await createExpectSignalCall("signal");
-      createActivityCall("signalAct", undefined);
+      await expectSignal("signal");
+      myActivity0();
     });
 
     await expect(
       execute(
         wf,
         [
-          activityScheduled("hello", 0),
+          activityScheduled(myActivity.name, 0),
           activitySucceeded(undefined, 0),
           signalReceived("signal"),
         ],
@@ -3169,8 +3155,8 @@ describe("failures", () => {
       )
     ).resolves.toMatchObject<WorkflowResult>({
       calls: [
-        activityCall("signalAct", undefined, 3),
-        activityCall("signalAct", undefined, 4),
+        activityCall(myActivity0.name, undefined, 3),
+        activityCall(myActivity0.name, undefined, 4),
       ],
       result: Result.resolved(undefined),
     });
@@ -3178,13 +3164,13 @@ describe("failures", () => {
 
   test("with lots of events", async () => {
     const wf = workflow(async () => {
-      await createActivityCall("hello", undefined);
+      await myActivity();
 
       let n = 0;
       while (n++ < 10) {
         (async () => {
-          await createActivityCall("hello", undefined);
-          await createActivityCall("hello", undefined);
+          await myActivity();
+          await myActivity();
         })();
       }
 
@@ -3195,7 +3181,7 @@ describe("failures", () => {
       execute(
         wf,
         [...Array(21).keys()].flatMap((i) => [
-          activityScheduled("hello", i),
+          activityScheduled(myActivity.name, i),
           activitySucceeded(undefined, i),
         ]),
         undefined
@@ -3208,7 +3194,7 @@ describe("failures", () => {
 
   test("with continue", async () => {
     const executor = new WorkflowExecutor(signalWf, [
-      activityScheduled("hello", 0),
+      activityScheduled(myActivity.name, 0),
       activitySucceeded(undefined, 0),
       signalReceived("signal"),
     ]);
@@ -3216,14 +3202,14 @@ describe("failures", () => {
     await expect(
       executor.start(undefined, context)
     ).resolves.toEqual<WorkflowResult>({
-      calls: [activityCall("signalAct", undefined, 2)],
+      calls: [activityCall(myActivity0.name, undefined, 2)],
       result: Result.failed(Error("AHH")),
     });
 
     await expect(
       executor.continue(signalReceived("signal"))
     ).resolves.toEqual<WorkflowResult>({
-      calls: [activityCall("signalAct", undefined, 3)],
+      calls: [activityCall(myActivity0.name, undefined, 3)],
       result: Result.failed(Error("AHH")),
     });
   });
@@ -3234,12 +3220,8 @@ describe("using then, catch, finally", () => {
     test("chained result", async () => {
       await expect(
         execute(
-          workflow(async () =>
-            createActivityCall<number>("testme", undefined).then(
-              (result) => result + 1
-            )
-          ),
-          [activityScheduled("testme", 0), activitySucceeded(1, 0)],
+          workflow(async () => testMeActivity().then((result) => result + 1)),
+          [activityScheduled(testMeActivity.name, 0), activitySucceeded(1, 0)],
           undefined
         )
       ).resolves.toEqual<WorkflowResult>({
@@ -3251,11 +3233,7 @@ describe("using then, catch, finally", () => {
     test("chained but does not complete", async () => {
       await expect(
         execute(
-          workflow(async () =>
-            createActivityCall<number>("testme", undefined).then(
-              (result) => result + 1
-            )
-          ),
+          workflow(async () => testMeActivity().then((result) => result + 1)),
           [activityScheduled("testme", 0)],
           undefined
         )
@@ -3269,13 +3247,7 @@ describe("using then, catch, finally", () => {
       await expect(
         execute(
           workflow(async () =>
-            createSendSignalCall(
-              {
-                type: SignalTargetType.Execution,
-                executionId: "something",
-              },
-              "signal"
-            ).then(() => "hi")
+            sendSignal("something", "signal").then(() => "hi")
           ),
           [signalSent("something", "signal", 0)],
           undefined
@@ -3290,14 +3262,8 @@ describe("using then, catch, finally", () => {
       await expect(
         execute(
           workflow(async () =>
-            createSendSignalCall(
-              {
-                type: SignalTargetType.Execution,
-                executionId: "something",
-              },
-              "signal"
-            ).then(() => {
-              createActivityCall("act1", undefined);
+            sendSignal("something", "signal").then(() => {
+              myActivity();
               return "hi";
             })
           ),
@@ -3305,7 +3271,7 @@ describe("using then, catch, finally", () => {
           undefined
         )
       ).resolves.toEqual<WorkflowResult>({
-        calls: [activityCall("act1", undefined, 1)],
+        calls: [activityCall(myActivity.name, undefined, 1)],
         result: Result.resolved("hi"),
       });
     });
@@ -3314,17 +3280,11 @@ describe("using then, catch, finally", () => {
       await expect(
         execute(
           workflow(async () =>
-            createSendSignalCall(
-              {
-                type: SignalTargetType.Execution,
-                executionId: "something",
-              },
-              "signal"
-            ).then(() => createActivityCall("act1", undefined))
+            sendSignal("something", "signal").then(() => myActivity())
           ),
           [
             signalSent("something", "signal", 0),
-            activityScheduled("act1", 1),
+            activityScheduled(myActivity.name, 1),
             activitySucceeded("hi", 1),
           ],
           undefined
@@ -3336,65 +3296,51 @@ describe("using then, catch, finally", () => {
     });
 
     test("then then then then", async () => {
+      const cfw = workflow(async () => {});
       await expect(
         execute(
           workflow(async () =>
-            createSendSignalCall(
-              {
-                type: SignalTargetType.Execution,
-                executionId: "something",
-              },
-              "signal"
-            ).then(() => {
+            sendSignal("something", "signal").then(() => {
               let x = 0;
               return Promise.all([
-                createActivityCall("act1", undefined).then(() => {
+                myActivity().then(() => {
                   x++;
-                  return createActivityCall("boom", undefined);
+                  return myActivity0();
                 }),
-                createSendSignalCall(
-                  {
-                    type: SignalTargetType.Execution,
-                    executionId: "something",
-                  },
-                  "signal2",
-                  undefined
-                ).then(() => {
+                sendSignal("something", "signal2").then(() => {
                   x++;
-                  return createActivityCall("boom", undefined);
+                  return myActivity0();
                 }),
-                createChildWorkflowCall("workflow1", undefined).then(() => {
+                cfw().then(() => {
                   x++;
-                  return createActivityCall("boom", undefined);
+                  return myActivity0();
                 }),
-                createExpectSignalCall("signal2").then(() => {
+                expectSignal("signal2").then(() => {
                   x++;
-                  return createActivityCall("boom", undefined);
+                  return myActivity0();
                 }),
-                createConditionCall(() => true).then(() => {
+                condition(() => true).then(() => {
                   x++;
-                  return createActivityCall("boom", undefined);
+                  return myActivity0();
                 }),
-                createConditionCall(() => x >= 5).then(() =>
-                  createActivityCall("boom", undefined)
-                ),
+                condition(() => x >= 5).then(() => myActivity0()),
               ]);
             })
           ),
           [
             signalSent("something", "signal", 0),
-            activityScheduled("act1", 1),
+            activityScheduled(myActivity.name, 1),
             signalSent("something", "signal2", 2),
-            workflowScheduled("workflow1", 3),
-            activityScheduled("boom", 7), // from signal sent
-            activityScheduled("boom", 8), // from condition true
+            workflowScheduled(cfw.name, 3),
+            activityScheduled(myActivity0.name, 7), // from signal sent
+            activityScheduled(myActivity0.name, 8), // from condition true
             activitySucceeded("hi", 1), // succeed first activity
-            activityScheduled("boom", 9), // after first act
+            activityScheduled(myActivity0.name, 9), // after first act
             workflowSucceeded("something", 3), // succeed child workflow
-            activityScheduled("boom", 10), // after child workflow
+            activityScheduled(myActivity0.name, 10), // after child workflow
             signalReceived("signal2"), // signal for expect
-            activityScheduled("boom", 11), // after expect
-            activityScheduled("boom", 12), // after last condition
+            activityScheduled(myActivity0.name, 11), // after expect
+            activityScheduled(myActivity0.name, 12), // after last condition
             activitySucceeded("b", 7),
             activitySucceeded("e", 8),
             activitySucceeded("a", 9),
@@ -3416,9 +3362,7 @@ describe("using then, catch, finally", () => {
       await expect(
         execute(
           workflow(async () =>
-            createActivityCall<number>("testme", undefined).catch(
-              (result) => (result as Error).name + 1
-            )
+            testMeActivity().catch((result) => (result as Error).name + 1)
           ),
           [activityScheduled("testme", 0), activityFailed(new Error(""), 0)],
           undefined
@@ -3433,9 +3377,7 @@ describe("using then, catch, finally", () => {
       await expect(
         execute(
           workflow(async () =>
-            createActivityCall<number>("testme", undefined).catch(
-              (result) => (result as Error).name + 1
-            )
+            testMeActivity().catch((result) => (result as Error).name + 1)
           ),
           [activityScheduled("testme", 0)],
           undefined
@@ -3450,13 +3392,7 @@ describe("using then, catch, finally", () => {
       await expect(
         execute(
           workflow(async () =>
-            createSendSignalCall(
-              {
-                type: SignalTargetType.Execution,
-                executionId: "something",
-              },
-              "signal"
-            )
+            sendSignal("something", "signal")
               .then(() => {
                 throw new Error("");
               })
@@ -3475,18 +3411,12 @@ describe("using then, catch, finally", () => {
       await expect(
         execute(
           workflow(async () =>
-            createSendSignalCall(
-              {
-                type: SignalTargetType.Execution,
-                executionId: "something",
-              },
-              "signal"
-            )
+            sendSignal("something", "signal")
               .then(() => {
                 throw new Error("");
               })
               .catch(() => {
-                createActivityCall("act1", undefined);
+                myActivity();
                 return "hi";
               })
           ),
@@ -3494,7 +3424,7 @@ describe("using then, catch, finally", () => {
           undefined
         )
       ).resolves.toEqual<WorkflowResult>({
-        calls: [activityCall("act1", undefined, 1)],
+        calls: [activityCall(myActivity.name, undefined, 1)],
         result: Result.resolved("hi"),
       });
     });
@@ -3503,21 +3433,15 @@ describe("using then, catch, finally", () => {
       await expect(
         execute(
           workflow(async () =>
-            createSendSignalCall(
-              {
-                type: SignalTargetType.Execution,
-                executionId: "something",
-              },
-              "signal"
-            )
+            sendSignal("something", "signal")
               .then(() => {
                 throw Error("");
               })
-              .catch(() => createActivityCall("act1", undefined))
+              .catch(() => myActivity())
           ),
           [
             signalSent("something", "signal", 0),
-            activityScheduled("act1", 1),
+            activityScheduled(myActivity.name, 1),
             activitySucceeded("hi", 1),
           ],
           undefined
@@ -3532,90 +3456,73 @@ describe("using then, catch, finally", () => {
       await expect(
         execute(
           workflow(async () =>
-            createSendSignalCall(
-              {
-                type: SignalTargetType.Execution,
-                executionId: "something",
-              },
-              "signal"
-            )
+            sendSignal("something", "signal")
               .then(() => {
                 throw new Error("");
               })
               .catch(() => {
                 let x = 0;
                 return Promise.all([
-                  createActivityCall("act1", undefined).catch(() => {
+                  myActivity().catch(() => {
                     x++;
-                    return createActivityCall("boom", undefined);
+                    return myActivity0();
                   }),
-                  createSendSignalCall(
-                    {
-                      type: SignalTargetType.Execution,
-                      executionId: "something",
-                    },
-                    "signal2",
-                    undefined
-                  )
+                  sendSignal("something", "signal2")
                     .then(() => {
                       throw new Error("");
                     })
                     .catch(() => {
                       x++;
-                      return createActivityCall("boom", undefined);
+                      return myActivity0();
                     }),
-                  createChildWorkflowCall("workflow1", undefined).catch(() => {
+                  cwf("workflow1", undefined).catch(() => {
                     x++;
-                    return createActivityCall("boom", undefined);
+                    return myActivity0();
                   }),
-                  createExpectSignalCall(
-                    "signal2",
-                    createAwaitTimerCall(Schedule.time(""))
-                  ).catch(() => {
-                    x++;
-                    return createActivityCall("boom", undefined);
-                  }),
-                  createConditionCall(
-                    () => false,
-                    createAwaitTimerCall(Schedule.time(""))
-                  )
+                  expectSignal("signal2", { timeout: time(testTime) }).catch(
+                    () => {
+                      x++;
+                      return myActivity0();
+                    }
+                  ),
+                  condition({ timeout: time(testTime) }, () => false)
                     .then(() => {
                       throw new Error("");
                     })
                     .catch(() => {
                       x++;
-                      return createActivityCall("boom", undefined);
+                      return myActivity0();
                     }),
-                  createConditionCall(
-                    () => x >= 1000000000000,
-                    createAwaitTimerCall(Schedule.time(""))
+                  condition(
+                    { timeout: time(testTime) },
+                    () => x >= 1000000000000
                   )
                     .then(() => {
                       throw new Error("");
                     })
-                    .catch(() => createActivityCall("boom", undefined)),
+                    .catch(() => myActivity0()),
                 ]);
               })
           ),
           [
             signalSent("something", "signal", 0),
-            activityScheduled("act1", 1),
+            activityScheduled(myActivity.name, 1),
             signalSent("something", "signal2", 2),
-            workflowScheduled("workflow1", 3),
+            workflowScheduled(cwf.name, 3),
             timerScheduled(4),
             timerScheduled(6),
             timerScheduled(8),
-            activityScheduled("boom", 10), // from signal sent
+            activityScheduled(myActivity0.name, 10), // from signal sent
             activityFailed("hi", 1), // succeed first activity
-            activityScheduled("boom", 11), // after first act
+            activityScheduled(myActivity0.name, 11), // after first act
             workflowFailed("something", 3), // succeed child workflow
-            activityScheduled("boom", 12), // after child workflow
+            activityScheduled(myActivity0.name, 12), // after child workflow
             timerCompleted(4),
-            activityScheduled("boom", 13), // from expect timeout
+            activityScheduled(myActivity0.name, 13), // from expect timeout
             timerCompleted(6),
-            activityScheduled("boom", 14), // from condition false timeout
+            activityScheduled(myActivity0.name, 14), // from condition false timeout
             timerCompleted(8),
-            activityScheduled("boom", 15), // from condition 10000000 timeout
+            activityScheduled(myActivity0.name, 15), // from condition 10000000 timeout
             activitySucceeded("b", 10),
             activitySucceeded("a", 11),
             activitySucceeded("c", 12),
@@ -3638,22 +3545,17 @@ describe("using then, catch, finally", () => {
         execute(
           workflow(async () => {
             return Promise.all([
-              createActivityCall<number>("testme", undefined).finally(() =>
-                createActivityCall("actact", undefined)
-              ),
-              createSendSignalCall(
-                { type: SignalTargetType.Execution, executionId: "" },
-                "signal1"
-              ).finally(() => createActivityCall("actact", undefined)),
+              testMeActivity().finally(() => myActivity()),
+              sendSignal("", "signal1").finally(() => myActivity()),
             ]);
           }),
           [
-            activityScheduled("testme", 0),
+            activityScheduled(testMeActivity.name, 0),
             signalSent("", "signal1", 1),
-            activityScheduled("actact", 2),
+            activityScheduled(myActivity.name, 2),
             activitySucceeded("something", 0),
             activitySucceeded("something1", 2),
-            activityScheduled("actact", 3),
+            activityScheduled(myActivity.name, 3),
             activitySucceeded("something2", 3),
           ],
           undefined

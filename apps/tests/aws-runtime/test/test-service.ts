@@ -2,6 +2,7 @@ import {
   DeleteItemCommand,
   DynamoDBClient,
   PutItemCommand,
+  TransactionConflictException,
 } from "@aws-sdk/client-dynamodb";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import {
@@ -23,6 +24,8 @@ import {
   subscription,
   time,
   workflow,
+  transaction,
+  Dictionary,
 } from "@eventual/core";
 import z from "zod";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -548,7 +551,7 @@ export const createAndDestroyWorkflow = workflow(
   }
 );
 
-export const counter = dictionary<{ n: number }>("counter", z.any());
+export const counter = dictionary<{ n: number }>("counter2", z.any());
 const dictEvent = event<{ id: string }>("dictEvent");
 const dictSignal = signal("dictSignal");
 const dictSignal2 = signal<{ n: number }>("dictSignal2");
@@ -615,10 +618,65 @@ export const dictionaryWorkflow = workflow(
     }
     const { entity, version } = (await counter.getWithMetadata(id)) ?? {};
     await counter.set(id, { n: entity!.n + 1 }, { expectedVersion: version });
+    const value = await counter.get(id);
+    await Dictionary.transactWrite([
+      {
+        dictionary: counter,
+        operation: {
+          operation: "set",
+          key: id,
+          value: { n: (value?.n ?? 0) + 1 },
+        },
+      },
+    ]);
     // send deletion, to be picked up by the stream
     counter.delete(id);
     // this signal will contain the final value after deletion
     return await dictSignal2.expectSignal();
+  }
+);
+
+export const check = dictionary<{ n: number }>("check");
+
+const gitErDone = transaction("gitErDone", async ({ id }: { id: string }) => {
+  const val = await check.get(id);
+  await check.set(id, { n: val?.n ?? 0 + 1 });
+  return val?.n ?? 0 + 1;
+});
+
+const noise = activity(
+  "noiseActivity",
+  async ({ x }: { x: number }, { execution: { id } }) => {
+    let n = 100;
+    let transact: Promise<number> | undefined = undefined;
+    while (n-- > 0) {
+      try {
+        await check.set(id, { n });
+      } catch (err) {
+        if (!(err instanceof TransactionConflictException)) {
+          throw err;
+        }
+      }
+      if (n === x) {
+        transact = gitErDone({ id });
+      }
+    }
+    return await transact;
+  }
+);
+
+export const transactionWorkflow = workflow(
+  "transactionWorkflow",
+  async (_, { execution: { id } }) => {
+    const one = await noise({ x: 40 });
+    const two = await noise({ x: 60 });
+    const [, three] = await Promise.allSettled([
+      check.set(id, { n: two ?? 0 + 1 }),
+      gitErDone({ id }),
+      check.set(id, { n: two ?? 0 + 1 }),
+    ]);
+    await check.delete(id);
+    return [one, two, three.status === "fulfilled" ? three.value : "AHHH"];
   }
 );
 

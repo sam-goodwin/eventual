@@ -83,6 +83,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       monoCommandFunction,
       monoSubscriptionFunction,
       monoDictionaryStreamWorkerFunction,
+      transactionWorkerFunction,
     ],
     [
       // also bundle each of the internal eventual API Functions as they have no dependencies
@@ -122,8 +123,12 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           streams: await bundleDictionaryStreams(d.streams),
         }))
       ),
+      transactions: serviceSpec.transactions,
     },
     system: {
+      entityService: {
+        transactionWorker: { entry: transactionWorkerFunction! },
+      },
       activityService: {
         fallbackHandler: { entry: activityFallbackHandler! },
       },
@@ -146,6 +151,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           "getExecutionWorkflowHistory",
           "publishEvents",
           "updateActivity",
+          "executeTransaction",
         ].map((name) => ({
           name,
           namespace: EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
@@ -277,7 +283,6 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         {
           name: ServiceType.OrchestratorWorker,
           entry: runtimeHandlersEntrypoint("orchestrator"),
-          eventualTransform: true,
         },
         {
           name: ServiceType.ActivityWorker,
@@ -294,6 +299,10 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         {
           name: ServiceType.DictionaryStreamWorker,
           entry: runtimeHandlersEntrypoint("dictionary-stream-worker"),
+        },
+        {
+          name: ServiceType.TransactionWorker,
+          entry: runtimeHandlersEntrypoint("transaction-worker"),
         },
       ]
         .map((s) => ({

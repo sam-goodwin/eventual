@@ -1,5 +1,7 @@
 import {
   EventualServiceClient,
+  ExecuteTransactionRequest,
+  ExecuteTransactionResponse,
   Execution,
   ExecutionHandle,
   ExecutionHistoryResponse,
@@ -14,6 +16,7 @@ import {
   SendActivitySuccessRequest,
   SendSignalRequest,
   StartExecutionRequest,
+  Transaction,
   Workflow,
 } from "@eventual/core";
 import {
@@ -131,5 +134,17 @@ export class HttpEventualClient implements EventualServiceClient {
       ...request,
       type: "Heartbeat",
     })) as SendActivityHeartbeatResponse;
+  }
+
+  public async executeTransaction<T extends Transaction<any, any>>(
+    request: ExecuteTransactionRequest<T>
+  ): Promise<ExecuteTransactionResponse<T>> {
+    return await this.serviceClient.executeTransaction({
+      transactionName:
+        typeof request.transaction === "string"
+          ? request.transaction
+          : request.transaction.name,
+      input: request.input,
+    });
   }
 }

@@ -5,6 +5,7 @@ import type { Event } from "../event.js";
 import type { AnyCommand } from "../http/command.js";
 import type { EventualServiceClient } from "../service-client.js";
 import type { Subscription } from "../subscription.js";
+import type { Transaction } from "../transaction.js";
 import type { Workflow } from "../workflow.js";
 import type { ActivityRuntimeContext } from "./activity.js";
 
@@ -26,6 +27,7 @@ declare global {
      * a service.
      */
     workflows?: Map<string, Workflow>;
+    transactions?: Map<string, Transaction>;
     /**
      * A simple key value store that work efficiently within eventual.
      */
@@ -58,6 +60,9 @@ export const commands = (globalThis._eventual.commands ??= []);
 
 export const workflows = (): Map<string, Workflow> =>
   (globalThis._eventual.workflows ??= new Map<string, Workflow>());
+
+export const transactions = (): Map<string, Transaction> =>
+  (globalThis._eventual.transactions ??= new Map<string, Transaction>());
 
 export const events = (): Map<string, Event> =>
   (globalThis._eventual.events ??= new Map<string, Event>());

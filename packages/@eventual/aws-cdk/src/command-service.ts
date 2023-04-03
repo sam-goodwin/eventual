@@ -438,6 +438,12 @@ export class CommandService<Service = any> {
      * Dictionary operations
      */
     this.props.entityService.configureReadWriteEntityTable(handler);
+    /**
+     *  
+     */
+    this.props.entityService.configureInvokeTransactions(
+      this.systemCommandsHandler
+    );
   }
 
   private configureSystemCommandHandler() {
@@ -466,6 +472,10 @@ export class CommandService<Service = any> {
     );
     // start execution
     this.props.workflowService.configureStartExecution(
+      this.systemCommandsHandler
+    );
+    // transactions
+    this.props.entityService.configureInvokeTransactions(
       this.systemCommandsHandler
     );
   }

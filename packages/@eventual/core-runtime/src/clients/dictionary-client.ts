@@ -1,7 +1,13 @@
-import { UnexpectedVersion } from "@eventual/core";
+import {
+  DictionaryTransactItem,
+  TransactionCancelled,
+  UnexpectedVersion,
+} from "@eventual/core";
 import { DictionaryHook, DictionaryMethods } from "@eventual/core/internal";
 import {
   DictionaryStore,
+  isTransactionCancelledResult,
+  isTransactionConflictResult,
   isUnexpectedVersionResult,
 } from "../stores/dictionary-store.js";
 
@@ -48,5 +54,30 @@ export class DictionaryClient implements DictionaryHook {
       listKeys: (request) =>
         this.dictionaryStore.listDictionaryKeys(name, request),
     };
+  }
+
+  public async transactWrite(
+    items: DictionaryTransactItem<any>[]
+  ): Promise<void> {
+    const normalizedItems: DictionaryTransactItem<any, string>[] = items.map(
+      (i) => ({
+        ...i,
+        dictionary:
+          typeof i.dictionary === "string" ? i.dictionary : i.dictionary.name,
+      })
+    );
+    const result = await this.dictionaryStore.transactWrite(normalizedItems);
+    if (isTransactionCancelledResult(result)) {
+      throw new TransactionCancelled(
+        result.reasons.map((r) =>
+          isUnexpectedVersionResult(r)
+            ? new UnexpectedVersion("Unexpected Version")
+            : undefined
+        )
+      );
+    } else if (isTransactionConflictResult(result)) {
+      throw new TransactionCancelled([]);
+    }
+    return result;
   }
 }

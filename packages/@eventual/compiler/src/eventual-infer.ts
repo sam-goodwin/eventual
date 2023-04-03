@@ -12,6 +12,7 @@ import {
   events,
   ServiceSpec,
   subscriptions,
+  transactions,
   workflows,
 } from "@eventual/core/internal";
 import {
@@ -112,6 +113,9 @@ export async function infer(
         })),
       })),
     },
+    transactions: [...transactions().values()].map((t) => ({
+      name: t.name,
+    })),
   };
 
   console.log(JSON.stringify(serviceSpec));

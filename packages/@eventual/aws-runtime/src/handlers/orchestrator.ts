@@ -17,6 +17,7 @@ import {
   createExecutionQueueClient,
   createLogAgent,
   createTimerClient,
+  createTransactionClient,
   createWorkflowClient,
   createWorkflowProvider,
 } from "../create.js";
@@ -39,6 +40,7 @@ const orchestrate = createOrchestrator({
     timerClient: createTimerClient(),
     workflowClient: createWorkflowClient(),
     dictionaryClient: createDictionaryClient(),
+    transactionClient: createTransactionClient(),
   }),
   workflowProvider: createWorkflowProvider(),
   executorProvider: new RemoteExecutorProvider({

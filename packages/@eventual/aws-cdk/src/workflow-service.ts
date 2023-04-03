@@ -470,6 +470,8 @@ export class WorkflowService {
      * Dictionary Commands
      */
     this.props.entityService.configureReadWriteEntityTable(this.orchestrator);
+    // transactions
+    this.props.entityService.configureInvokeTransactions(this.orchestrator);
   }
 
   private readonly ENV_MAPPINGS = {

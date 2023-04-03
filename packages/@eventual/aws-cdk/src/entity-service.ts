@@ -8,6 +8,7 @@ import {
   DictionaryRuntime,
   DictionaryStreamFunction,
 } from "@eventual/core-runtime";
+import { TransactionSpec } from "@eventual/core/internal";
 import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
 import {
   AttributeType,
@@ -27,15 +28,23 @@ import {
 import { DynamoEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { Construct } from "constructs";
 import { CommandService } from "./command-service";
+import { EventService } from "./event-service.js";
 import { LazyInterface } from "./proxy-construct";
 import { EventualResource, ServiceConstructProps } from "./service";
 import { ServiceFunction } from "./service-function";
 import { ServiceEntityProps, serviceTableArn } from "./utils";
+import { WorkflowService } from "./workflow-service.js";
 
 export type ServiceDictionaries<Service> = ServiceEntityProps<
   Service,
   "Dictionary",
   Dictionary
+>;
+
+export type ServiceTransactions<Service> = ServiceEntityProps<
+  Service,
+  "Transaction",
+  TransactionSpec
 >;
 
 export type ServiceDictionaryStreams<Service> = ServiceEntityProps<
@@ -56,15 +65,29 @@ export interface DictionaryStreamHandlerProps
 
 export interface EntityServiceProps<Service> extends ServiceConstructProps {
   commandService: LazyInterface<CommandService<Service>>;
+  eventService: LazyInterface<EventService>;
+  workflowService: LazyInterface<WorkflowService>;
   dictionaryStreamOverrides?: DictionaryStreamOverrides<Service>;
+  entityServiceOverrides?: {
+    transactionWorkerOverrides?: Omit<
+      Partial<FunctionProps>,
+      "code" | "handler" | "functionName"
+    >;
+  };
 }
 
 export class EntityService<Service> {
   public dictionaries: ServiceDictionaries<Service>;
   public dictionaryStreams: ServiceDictionaryStreams<Service>;
+  public transactions: ServiceTransactions<Service>;
+  public transactionWorker?: Function;
 
   constructor(private props: EntityServiceProps<Service>) {
     const entitiesConstruct = new Construct(props.serviceScope, "Entities");
+    const entityServiceConstruct = new Construct(
+      props.systemScope,
+      "EntityService"
+    );
 
     this.dictionaries = Object.fromEntries(
       props.build.entities.dictionaries.map((d) => [
@@ -85,6 +108,30 @@ export class EntityService<Service> {
         ...dict.streams,
       };
     }, {}) as ServiceDictionaryStreams<Service>;
+
+    this.transactions = Object.fromEntries(
+      props.build.entities.transactions.map((t) => [t.name, t])
+    ) as ServiceTransactions<Service>;
+
+    if (props.build.entities.transactions.length > 0) {
+      this.transactionWorker = new ServiceFunction(
+        entityServiceConstruct,
+        "TransactionWorker",
+        {
+          build: props.build,
+          bundledFunction: props.build.system.entityService.transactionWorker,
+          functionNameSuffix: "transaction-worker",
+          serviceName: props.serviceName,
+          defaults: {
+            timeout: Duration.seconds(30),
+          },
+          overrides: props.entityServiceOverrides?.transactionWorkerOverrides,
+        }
+      );
+      this.configureReadWriteEntityTable(this.transactionWorker);
+      props.workflowService.configureSendSignal(this.transactionWorker);
+      props.eventService.configurePublish(this.transactionWorker);
+    }
   }
 
   public configureReadWriteEntityTable(func: Function) {
@@ -125,8 +172,19 @@ export class EntityService<Service> {
     );
   }
 
+  public configureInvokeTransactions(func: Function) {
+    this.addEnvs(func, ENV_NAMES.TRANSACTION_WORKER_ARN);
+    this.grantInvokeTransactions(func);
+  }
+
+  public grantInvokeTransactions(grantee: IGrantable) {
+    this.transactionWorker?.grantInvoke(grantee);
+  }
+
   private readonly ENV_MAPPINGS = {
     [ENV_NAMES.SERVICE_NAME]: () => this.props.serviceName,
+    [ENV_NAMES.TRANSACTION_WORKER_ARN]: () =>
+      this.transactionWorker?.functionArn ?? "",
   } as const;
 
   private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {
@@ -178,7 +236,7 @@ export class Dictionary extends Construct {
           : undefined,
     });
 
-    const dictionaryStreamScope = new Construct(scope, "DictionaryStreams");
+    const dictionaryStreamScope = new Construct(this, "DictionaryStreams");
 
     this.streams = Object.fromEntries(
       props.dictionary.streams.map((s) => [

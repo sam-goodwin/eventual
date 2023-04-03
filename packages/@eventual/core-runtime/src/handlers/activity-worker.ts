@@ -81,7 +81,7 @@ export function createActivityWorker({
   serviceClient,
   serviceName,
   timerClient,
-  dictionaryClient
+  dictionaryClient,
 }: CreateActivityWorkerProps): ActivityWorker {
   // make the service client available to all activity code
   if (serviceClient) {

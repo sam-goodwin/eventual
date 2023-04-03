@@ -28,6 +28,9 @@ export enum WorkflowEventType {
   DictionaryRequestFailed = "DictionaryRequestFailed",
   DictionaryRequestSucceeded = "DictionaryRequestSucceeded",
   EventsPublished = "EventsPublished",
+  TransactionRequest = "InvokeTransactionRequest",
+  TransactionRequestFailed = "InvokeTransactionRequestFailed",
+  TransactionRequestSucceeded = "InvokeTransactionRequestSucceeded",
   SignalReceived = "SignalReceived",
   SignalSent = "SignalSent",
   TimerCompleted = "TimerCompleted",
@@ -59,7 +62,8 @@ export type ScheduledEvent =
   | DictionaryRequest
   | EventsPublished
   | SignalSent
-  | TimerScheduled;
+  | TimerScheduled
+  | TransactionRequest;
 
 export const isScheduledEvent = /* @__PURE__ */ or(
   isActivityScheduled,
@@ -67,7 +71,8 @@ export const isScheduledEvent = /* @__PURE__ */ or(
   isEventsPublished,
   isDictionaryRequest,
   isSignalSent,
-  isTimerScheduled
+  isTimerScheduled,
+  isTransactionRequest
 );
 
 /**
@@ -83,6 +88,8 @@ export type CompletionEvent =
   | DictionaryRequestSucceeded
   | SignalReceived
   | TimerCompleted
+  | TransactionRequestSucceeded
+  | TransactionRequestFailed
   | WorkflowTimedOut
   | WorkflowRunStarted;
 
@@ -101,6 +108,8 @@ export const isCompletionEvent = /* @__PURE__ */ or(
   isDictionaryRequestSucceeded,
   isSignalReceived,
   isTimerCompleted,
+  isTransactionRequestFailed,
+  isTransactionRequestSucceeded,
   isWorkflowTimedOut,
   isWorkflowRunStarted
 );
@@ -244,13 +253,12 @@ export function isActivityHeartbeatTimedOut(
 
 export interface DictionaryRequest extends HistoryEventBase {
   type: WorkflowEventType.DictionaryRequest;
-  name: string;
   operation: DictionaryOperation;
 }
 
 export interface DictionaryRequestSucceeded extends HistoryEventBase {
   type: WorkflowEventType.DictionaryRequestSucceeded;
-  name: string;
+  name?: string;
   operation: DictionaryOperation["operation"];
   result: any;
 }
@@ -258,7 +266,7 @@ export interface DictionaryRequestSucceeded extends HistoryEventBase {
 export interface DictionaryRequestFailed extends HistoryEventBase {
   type: WorkflowEventType.DictionaryRequestFailed;
   operation: DictionaryOperation["operation"];
-  name: string;
+  name?: string;
   error: string;
   message: string;
 }
@@ -279,6 +287,41 @@ export function isDictionaryRequestFailed(
   event: WorkflowEvent
 ): event is DictionaryRequestFailed {
   return event.type === WorkflowEventType.DictionaryRequestFailed;
+}
+
+export interface TransactionRequest extends HistoryEventBase {
+  type: WorkflowEventType.TransactionRequest;
+  input: any;
+  transactionName: string;
+}
+
+export interface TransactionRequestSucceeded extends HistoryEventBase {
+  type: WorkflowEventType.TransactionRequestSucceeded;
+  result: any;
+}
+
+export interface TransactionRequestFailed extends HistoryEventBase {
+  type: WorkflowEventType.TransactionRequestFailed;
+  error: string;
+  message: string;
+}
+
+export function isTransactionRequest(
+  event: WorkflowEvent
+): event is TransactionRequest {
+  return event.type === WorkflowEventType.TransactionRequest;
+}
+
+export function isTransactionRequestSucceeded(
+  event: WorkflowEvent
+): event is TransactionRequestSucceeded {
+  return event.type === WorkflowEventType.TransactionRequestSucceeded;
+}
+
+export function isTransactionRequestFailed(
+  event: WorkflowEvent
+): event is TransactionRequestFailed {
+  return event.type === WorkflowEventType.TransactionRequestFailed;
 }
 
 export interface TimerScheduled extends HistoryEventBase {

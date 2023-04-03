@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { Execution, ExecutionID, ExecutionStatus } from "../execution.js";
 import { Command } from "../http/command.js";
+import { ExecuteTransactionResponse } from "../service-client.js";
+import { Transaction } from "../transaction.js";
 import { eventEnvelopeSchema } from "./event.js";
 import type { HistoryStateEvent, WorkflowEvent } from "./workflow-events.js";
 import { workflowOptionsSchema } from "./workflow.js";
@@ -164,6 +166,14 @@ export function isSendActivityHeartbeatRequest(
   return request.type === "Heartbeat";
 }
 
+export const executeTransactionRequestSchema = /* @__PURE__ */ z.object({
+  transactionName: /* @__PURE__ */ z.string(),
+  input: /* @__PURE__ */ z.any().optional(),
+});
+
+export interface ExecuteTransactionRequest
+  extends z.infer<typeof executeTransactionRequestSchema> {}
+
 export interface SendActivityHeartbeatResponse {
   /**
    * True when the activity has been cancelled.
@@ -202,5 +212,10 @@ export interface EventualService {
     "updateActivity",
     SendActivityUpdate,
     void | SendActivityHeartbeatResponse
+  >;
+  executeTransaction: Command<
+    "executeTransaction",
+    ExecuteTransactionRequest,
+    ExecuteTransactionResponse<Transaction>
   >;
 }

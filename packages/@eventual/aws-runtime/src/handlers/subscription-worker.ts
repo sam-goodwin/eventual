@@ -9,12 +9,14 @@ import {
   createDictionaryClient,
   createEventClient,
   createServiceClient,
+  createTransactionClient,
 } from "../create.js";
 
 export const processEvent = createSubscriptionWorker({
   // partially uses the runtime clients and partially uses the http client
   serviceClient: createServiceClient({
     eventClient: createEventClient(),
+    transactionClient: createTransactionClient(),
   }),
   subscriptionProvider: new GlobalSubscriptionProvider(),
   dictionaryClient: createDictionaryClient(),

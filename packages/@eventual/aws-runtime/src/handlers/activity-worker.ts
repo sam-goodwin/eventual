@@ -18,6 +18,7 @@ import {
   createLogAgent,
   createServiceClient,
   createTimerClient,
+  createTransactionClient,
 } from "../create.js";
 import { serviceName } from "../env.js";
 
@@ -34,6 +35,7 @@ const worker = createActivityWorker({
     executionQueueClient: createExecutionQueueClient(),
     // already used by the activity client
     executionStore: createExecutionStore(),
+    transactionClient: createTransactionClient(),
   }),
   logAgent: createLogAgent(),
   activityStore: createActivityStore(),

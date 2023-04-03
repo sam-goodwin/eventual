@@ -1,9 +1,11 @@
 import { ulid } from "ulidx";
-import { createExpectSignalCall } from "./internal/calls/expect-signal-call.js";
-import { createSendSignalCall } from "./internal/calls/send-signal-call.js";
-import { createRegisterSignalHandlerCall } from "./internal/calls/signal-handler-call.js";
-import { isOrchestratorWorker } from "./internal/flags.js";
+import {
+  createEventualCall,
+  EventualCallKind,
+} from "./internal/calls/calls.js";
+import { EventualPromiseSymbol } from "./internal/eventual-hook.js";
 import { getServiceClient } from "./internal/global.js";
+import { Result } from "./internal/result.js";
 import { SignalTargetType } from "./internal/signal.js";
 
 /**
@@ -172,14 +174,15 @@ export function expectSignal<SignalPayload = any>(
   signal: Signal<SignalPayload> | string,
   opts?: ExpectSignalOptions
 ): Promise<SignalPayload> {
-  if (!isOrchestratorWorker()) {
-    throw new Error("expectSignal is only valid in a workflow");
-  }
-
-  return createExpectSignalCall(
-    typeof signal === "string" ? signal : signal.id,
-    opts?.timeout
-  ) as any;
+  return getEventualCallHook().registerEventualCall(
+    createEventualCall(EventualCallKind.ExpectSignalCall, {
+      timeout: opts?.timeout,
+      signalId: typeof signal === "string" ? signal : signal.id,
+    }),
+    () => {
+      throw new Error("expectSignal is only valid in a workflow");
+    }
+  );
 }
 
 /**
@@ -215,14 +218,27 @@ export function onSignal<Payload>(
   signal: Signal<Payload> | string,
   handler: SignalHandlerFunction<Payload>
 ): SignalsHandler {
-  if (!isOrchestratorWorker()) {
-    throw new Error("onSignal is only valid in a workflow");
-  }
-
-  return createRegisterSignalHandlerCall(
-    typeof signal === "string" ? signal : signal.id,
-    handler as any
+  const hook = getEventualCallHook();
+  const eventualPromise = hook.registerEventualCall(
+    createEventualCall(EventualCallKind.RegisterSignalHandlerCall, {
+      signalId: typeof signal === "string" ? signal : signal.id,
+      handler,
+    }),
+    () => {
+      throw new Error("onSignal is only valid in a workflow");
+    }
   );
+
+  // the signal handler call should not block
+  return {
+    dispose: function () {
+      // resolving the signal handler eventual makes it unable to accept new events.
+      hook.resolveEventual(
+        eventualPromise[EventualPromiseSymbol],
+        Result.resolved(undefined)
+      );
+    },
+  };
 }
 
 export type SendSignalProps<SignalPayload> = [SignalPayload] extends
@@ -250,18 +266,19 @@ export function sendSignal<Payload = any>(
   ...args: SendSignalProps<Payload>
 ): Promise<void> {
   const [payload] = args;
-  if (isOrchestratorWorker()) {
-    return createSendSignalCall(
-      { type: SignalTargetType.Execution, executionId },
-      typeof signal === "string" ? signal : signal.id,
-      payload
-    ) as unknown as any;
-  } else {
-    return getServiceClient().sendSignal({
-      execution: executionId,
-      signal,
-      id: ulid(),
+  return getEventualCallHook().registerEventualCall(
+    createEventualCall(EventualCallKind.SendSignalCall, {
       payload,
-    });
-  }
+      signalId: typeof signal === "string" ? signal : signal.id,
+      target: { type: SignalTargetType.Execution, executionId },
+    }),
+    () => {
+      return getServiceClient().sendSignal({
+        execution: executionId,
+        signal,
+        id: ulid(),
+        payload,
+      });
+    }
+  );
 }

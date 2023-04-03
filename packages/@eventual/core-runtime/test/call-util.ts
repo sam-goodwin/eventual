@@ -110,16 +110,12 @@ export function activitySucceeded(result: any, seq: number): ActivitySucceeded {
 }
 
 export function dictionaryRequestCall(
-  name: string,
   operation: DictionaryOperation,
   seq: number
 ): WorkflowCall<DictionaryCall> {
   return {
     seq,
-    call: createEventualCall(EventualCallKind.DictionaryCall, {
-      name,
-      operation,
-    }),
+    call: createEventualCall(EventualCallKind.DictionaryCall, operation),
   };
 }
 
@@ -163,6 +159,7 @@ export function activityScheduled(
     type: WorkflowEventType.ActivityScheduled,
     name,
     seq,
+
     timestamp: new Date(0).toISOString(),
   };
 }

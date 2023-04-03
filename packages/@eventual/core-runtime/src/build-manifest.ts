@@ -6,6 +6,7 @@ import type {
   EventSpec,
   EventualService,
   SubscriptionSpec,
+  TransactionSpec,
 } from "@eventual/core/internal";
 
 export interface BuildManifest {
@@ -27,6 +28,9 @@ export interface BuildManifest {
   commandDefault: CommandFunction;
   entities: Entities;
   system: {
+    entityService: {
+      transactionWorker: BundledFunction<undefined>;
+    };
     activityService: {
       fallbackHandler: BundledFunction<undefined>;
     };
@@ -50,6 +54,7 @@ export interface DictionaryRuntime extends Omit<DictionarySpec, "streams"> {
 
 interface Entities {
   dictionaries: DictionaryRuntime[];
+  transactions: TransactionSpec[];
 }
 
 export interface ApiRoutes {

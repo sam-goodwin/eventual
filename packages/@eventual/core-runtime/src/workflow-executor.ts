@@ -8,11 +8,10 @@ import {
 } from "@eventual/core";
 import {
   CompletionEvent,
-  enterWorkflowHookScope,
   EventualCall,
   EventualPromise,
   EventualPromiseSymbol,
-  ExecutionWorkflowHook,
+  EventualCallHook,
   extendsSystemError,
   HistoryEvent,
   HistoryStateEvent,
@@ -36,8 +35,8 @@ import { isPromise } from "util/types";
 import { createEventualFromCall } from "./eventual-factory.js";
 import { formatExecutionId } from "./execution.js";
 import { isFailed, isResolved, isResult } from "./result.js";
-// import type { WorkflowCommand } from "./workflow-command.js";
 import { filterEvents } from "./workflow-events.js";
+import { enterEventualCallHookScope } from "./eventual-hook.js";
 
 /**
  * Put the resolve method on the promise, but don't expose it.
@@ -72,7 +71,7 @@ interface ActiveEventual<R = any> {
  * Exposes a resolve method which accepts a {@link Result} object. Adds the seq ID to
  * allow future identification of EventualPromises.
  */
-export function createEventualPromise<R>(
+function createEventualPromise<R>(
   seq: number,
   result?: Result<R>,
   beforeResolve?: () => void
@@ -325,7 +324,7 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
   }
 
   private startWorkflowRun(beforeCommitEvents?: () => void) {
-    return this.enterWorkflowHookScope(
+    return this.enterEventualCallHookScope(
       () =>
         new Promise<WorkflowResult<Output>>(async (resolve) => {
           // start context with execution hook
@@ -429,14 +428,18 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
   }
 
   /**
-   * Provides a scope where the {@link ExecutionWorkflowHook} is available to the {@link Call}s.
+   * Provides a scope where the {@link EventualCallHook} is available to the {@link Call}s.
    */
-  private async enterWorkflowHookScope<Res>(
+  private async enterEventualCallHookScope<Res>(
     callback: (...args: any) => Res
   ): Promise<Awaited<Res>> {
     const self = this;
-    const workflowHook: ExecutionWorkflowHook = {
-      registerEventualCall<E extends EventualPromise<any>>(call: EventualCall) {
+    const workflowHook: EventualCallHook = {
+      registerEventualCall(call?: EventualCall) {
+        if (!call) {
+          throw new Error("Operation is not supported within a workflow.");
+        }
+
         try {
           const eventual = createEventualFromCall(call);
           const seq = self.nextSeq++;
@@ -455,13 +458,10 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
            * If the eventual comes with a result, do not active it, it is already resolved!
            */
           if (isResolvedEventualDefinition(eventual)) {
-            return createEventualPromise<any>(
-              seq,
-              eventual.result
-            ) as unknown as E;
+            return createEventualPromise<any>(seq, eventual.result);
           }
 
-          return self.activateEventual(seq, eventual) as E;
+          return self.activateEventual(seq, eventual);
         } catch (err) {
           self.resolveWorkflow(Result.failed(err));
           throw err;
@@ -471,7 +471,7 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
         self.tryResolveEventual(seq, result);
       },
     };
-    return await enterWorkflowHookScope(workflowHook, callback);
+    return await enterEventualCallHookScope(workflowHook, callback);
 
     /**
      * Checks the call against the expected events.

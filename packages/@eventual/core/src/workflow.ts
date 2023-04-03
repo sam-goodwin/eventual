@@ -3,10 +3,17 @@ import type {
   ExecutionHandle,
   ExecutionID,
 } from "./execution.js";
-import { createChildWorkflowCall } from "./internal/calls/workflow-call.js";
-import { isOrchestratorWorker } from "./internal/flags.js";
+import {
+  createEventualCall,
+  EventualCallKind,
+} from "./internal/calls/calls.js";
+import {
+  EventualPromise,
+  EventualPromiseSymbol,
+} from "./internal/eventual-hook.js";
 import { getServiceClient, workflows } from "./internal/global.js";
 import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
+import { SignalTargetType } from "./internal/signal.js";
 import {
   HistoryStateEvent,
   isTimerCompleted,
@@ -160,32 +167,55 @@ export function workflow<Input = any, Output = any>(
     input?: any,
     options?: ChildWorkflowOptions
   ) => {
-    if (!isOrchestratorWorker()) {
-      throw new Error(
-        "Direct workflow invocation is only valid in a workflow, use workflow.startExecution instead."
-      );
-    }
-
-    // a timeout can either by from definition or a eventual/promise or both.
-    // take the invocation time configuration first.
+    const hook = getEventualCallHook();
     const timeout = options?.timeout ?? opts?.timeout;
+    const eventual = hook.registerEventualCall(
+      createEventualCall(EventualCallKind.WorkflowCall, {
+        input,
+        name,
+        // if the timeout is a time or a duration, from any source, send the timeout to the child execution
+        // to time itself out.
+        opts: {
+          timeout:
+            isDurationSchedule(timeout) || isTimeSchedule(timeout)
+              ? timeout
+              : undefined,
+        },
+        // if an eventual/promise is given, even if it is a duration or a time, timeout based on the
+        // promise resolution.
+        // TODO: support reporting cancellation to children when the parent times out?
+        timeout: timeout && "then" in timeout ? timeout : undefined,
+      }),
+      () => {
+        throw new Error(
+          "Direct workflow invocation is only valid in a workflow, use workflow.startExecution instead."
+        );
+      }
+    ) as EventualPromise<Output> & ChildExecution;
 
-    return createChildWorkflowCall(
-      name,
-      input,
-      // if the timeout is a time or a duration, from any source, send the timeout to the child execution
-      // to time itself out.
-      {
-        timeout:
-          isDurationSchedule(timeout) || isTimeSchedule(timeout)
-            ? timeout
-            : undefined,
-      },
-      // if an eventual/promise is given, even if it is a duration or a time, timeout based on the
-      // promise resolution.
-      // TODO: support reporting cancellation to children when the parent times out?
-      timeout && "then" in timeout ? timeout : undefined
-    );
+    // create a reference to the child workflow started at a sequence in this execution.
+    // this reference will be resolved by the runtime.
+    eventual.sendSignal = function (signal, payload?) {
+      const signalId = typeof signal === "string" ? signal : signal.id;
+      return getEventualCallHook().registerEventualCall(
+        createEventualCall(EventualCallKind.SendSignalCall, {
+          payload,
+          signalId,
+          target: {
+            type: SignalTargetType.ChildExecution,
+            seq: eventual[EventualPromiseSymbol]!,
+            workflowName: name,
+          },
+        }),
+        () => {
+          throw new Error(
+            "Send Signal on a child workflow is only supported in a workflow."
+          );
+        }
+      );
+    };
+
+    return eventual;
   }) as any;
 
   Object.defineProperty(workflow, "name", { value: name, writable: false });
