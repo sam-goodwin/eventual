@@ -78,8 +78,8 @@ const pipeRole = new Role(stack, "pipeRole", {
 });
 
 testQueue.grantConsumeMessages(pipeRole);
-testQueue.grantSendMessages(testService.activities.asyncActivity);
-testTable.grantReadWriteData(testService.activitiesPrincipal);
+testQueue.grantSendMessages(testService.tasks.asyncTask);
+testTable.grantReadWriteData(testService.tasksPrincipal);
 
 /**
  * Chaos Testing
@@ -87,7 +87,7 @@ testTable.grantReadWriteData(testService.activitiesPrincipal);
 
 const chaosExtension = new ChaosExtension(stack, "chaos");
 
-testService.activitiesList.map((a) => chaosExtension.addToFunction(a.handler));
+testService.tasksList.map((a) => chaosExtension.addToFunction(a.handler));
 chaosExtension.addToFunction(testService.system.workflowService.orchestrator);
 
 chaosExtension.grantReadWrite(role);

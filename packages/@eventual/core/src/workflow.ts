@@ -3,10 +3,7 @@ import type {
   ExecutionHandle,
   ExecutionID,
 } from "./execution.js";
-import {
-  createEventualCall,
-  EventualCallKind,
-} from "./internal/calls/calls.js";
+import { EventualCallKind, createEventualCall } from "./internal/calls.js";
 import {
   EventualPromise,
   EventualPromiseSymbol,
@@ -16,14 +13,13 @@ import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
 import { SignalTargetType } from "./internal/signal.js";
 import {
   HistoryStateEvent,
-  isTimerCompleted,
-  isTimerScheduled,
   TimerCompleted,
   TimerScheduled,
   WorkflowEventType,
+  isTimerCompleted,
+  isTimerScheduled,
 } from "./internal/workflow-events.js";
-import type { DurationSchedule } from "./schedule.js";
-import { Schedule } from "./schedule.js";
+import type { DurationSchedule, Schedule } from "./schedule.js";
 import type { StartExecutionRequest } from "./service-client.js";
 
 export interface WorkflowHandler<Input = any, Output = any> {
@@ -119,7 +115,7 @@ export interface Workflow<in Input = any, Output = any> {
  *
  * Example:
  * ```ts
- * import { activity, workflow } from "@eventual/core";
+ * import { task, workflow } from "@eventual/core";
  *
  * export default workflow("my-workflow", async ({ name }: { name: string }) => {
  *   const result = await hello(name);
@@ -127,7 +123,7 @@ export interface Workflow<in Input = any, Output = any> {
  *   return `you said ${result}`;
  * });
  *
- * const hello = activity("hello", async (name: string) => {
+ * const hello = task("hello", async (name: string) => {
  *   return `hello ${name}`;
  * });
  *

@@ -49,12 +49,12 @@ export function isOnEventCall(call: CallExpression): boolean {
  * 1. must be a call to a MemberExpression matching to `<expression>.stream(name, impl | props, impl)`.
  * 2. must have 2 or 3 arguments.
  */
-export function isDictionaryStreamMemberCall(call: CallExpression): boolean {
+export function isEntityStreamMemberCall(call: CallExpression): boolean {
   const c = call.callee;
   if (c.type === "MemberExpression") {
     if (isId(c.property, "stream")) {
-      // dictionary.stream("streamName", async () => { })
-      // dictionary.stream("streamName", options, async () => { })
+      // entity.stream("streamName", async () => { })
+      // entity.stream("streamName", options, async () => { })
       return call.arguments.length === 2 || call.arguments.length === 3;
     }
   }
@@ -64,14 +64,14 @@ export function isDictionaryStreamMemberCall(call: CallExpression): boolean {
 /**
  * A heuristic for identifying a {@link CallExpression} that is a call to an `subscription` handler.
  *
- * 1. must be a call to an `dictionaryStream(name, dictionary, props, impl)` or a MemberExpression matching to `<expression>.dictionaryStream(name, dictionary, props, impl)`.
+ * 1. must be a call to an `entityStream(name, entity, props, impl)` or a MemberExpression matching to `<expression>.entityStream(name, entity, props, impl)`.
  * 2. must have exactly 3 arguments.
  */
-export function isDictionaryStreamCall(call: CallExpression): boolean {
+export function isEntityStreamCall(call: CallExpression): boolean {
   const c = call.callee;
   if (
-    (c.type == "Identifier" && c.value === "dictionaryStream") ||
-    (c.type === "MemberExpression" && isId(c.property, "dictionaryStream"))
+    (c.type == "Identifier" && c.value === "entityStream") ||
+    (c.type === "MemberExpression" && isId(c.property, "entityStream"))
   ) {
     return call.arguments.length === 3 || call.arguments.length === 4;
   }
@@ -96,16 +96,16 @@ export function isSubscriptionCall(call: CallExpression): boolean {
 }
 
 /**
- * A heuristic for identifying a {@link CallExpression} that is a call to an `activity` handler.
+ * A heuristic for identifying a {@link CallExpression} that is a call to an `task` handler.
  *
- * 1. must be a call to an `activity(name, [props, impl] | [impl])` or a MemberExpression matching to `<expression>.activity(name,  [props, impl] | [impl])`.
+ * 1. must be a call to an `task(name, [props, impl] | [impl])` or a MemberExpression matching to `<expression>.task(name,  [props, impl] | [impl])`.
  * 2. must have exactly 2 to 3 arguments.
  */
-export function isActivityCall(call: CallExpression): boolean {
+export function isTaskCall(call: CallExpression): boolean {
   const c = call.callee;
   if (
-    (c.type == "Identifier" && c.value === "activity") ||
-    (c.type === "MemberExpression" && isId(c.property, "activity"))
+    (c.type == "Identifier" && c.value === "task") ||
+    (c.type === "MemberExpression" && isId(c.property, "task"))
   ) {
     return call.arguments.length === 2 || call.arguments.length === 3;
   }

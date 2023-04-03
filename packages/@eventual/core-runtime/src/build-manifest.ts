@@ -1,11 +1,11 @@
 import type {
-  ActivitySpec,
   CommandSpec,
-  DictionarySpec,
-  DictionaryStreamSpec,
+  EntitySpec,
+  EntityStreamSpec,
   EventSpec,
   EventualService,
   SubscriptionSpec,
+  TaskSpec,
   TransactionSpec,
 } from "@eventual/core/internal";
 
@@ -13,9 +13,9 @@ export interface BuildManifest {
   serviceName: string;
   entry: string;
   /**
-   * Activities declared within the Service.
+   * Tasks declared within the Service.
    */
-  activities: ActivityFunction[];
+  tasks: TaskFunction[];
   /**
    * The events and their schema.
    */
@@ -31,7 +31,7 @@ export interface BuildManifest {
     entityService: {
       transactionWorker: BundledFunction<undefined>;
     };
-    activityService: {
+    taskService: {
       fallbackHandler: BundledFunction<undefined>;
     };
     eventualService: {
@@ -48,12 +48,12 @@ export interface BuildManifest {
   };
 }
 
-export interface DictionaryRuntime extends Omit<DictionarySpec, "streams"> {
-  streams: DictionaryStreamFunction[];
+export interface EntityRuntime extends Omit<EntitySpec, "streams"> {
+  streams: EntityStreamFunction[];
 }
 
 interface Entities {
-  dictionaries: DictionaryRuntime[];
+  entities: EntityRuntime[];
   transactions: TransactionSpec[];
 }
 
@@ -85,11 +85,11 @@ export interface ExportedEventHandlerFunction extends SubscriptionFunction {
 export interface SubscriptionFunction
   extends BundledFunction<SubscriptionSpec> {}
 
-export interface ActivityFunction extends BundledFunction<ActivitySpec> {}
+export interface TaskFunction extends BundledFunction<TaskSpec> {}
 
 export interface InternalCommandFunction extends CommandFunction {}
 
 export interface CommandFunction extends BundledFunction<CommandSpec> {}
 
-export interface DictionaryStreamFunction
-  extends BundledFunction<DictionaryStreamSpec> {}
+export interface EntityStreamFunction
+  extends BundledFunction<EntityStreamSpec> {}

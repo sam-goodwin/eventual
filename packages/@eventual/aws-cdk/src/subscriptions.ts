@@ -83,7 +83,7 @@ export const Subscriptions: {
     Object.assign(this, subscriptions);
 
     handlers.forEach((handler) => {
-      props.eventService.configurePublish(handler);
+      props.eventService.configureEmit(handler);
 
       // allows the access to all of the operations on the injected service client
       props.service.configureForServiceClient(handler);
@@ -91,7 +91,7 @@ export const Subscriptions: {
       // allow http access to the service client
       props.commandService.configureInvokeHttpServiceApi(handler);
       /**
-       * Dictionary operations
+       * Entity operations
        */
       props.entityService.configureReadWriteEntityTable(handler);
       // transactions

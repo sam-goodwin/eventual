@@ -6,11 +6,11 @@ import { transactions } from "@eventual/core/internal";
 import { EventClient } from "../clients/event-client.js";
 import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import { isResolved } from "../result.js";
-import { DictionaryStore } from "../stores/dictionary-store.js";
+import { EntityStore } from "../stores/entity-store.js";
 import { createTransactionExecutor } from "../transaction-executor.js";
 
 export interface TransactionWorkerProps {
-  dictionaryStore: DictionaryStore;
+  entityStore: EntityStore;
   executionQueueClient: ExecutionQueueClient;
   eventClient: EventClient;
 }
@@ -25,7 +25,7 @@ export function createTransactionWorker(
   props: TransactionWorkerProps
 ): TransactionWorker {
   const transactionExecutor = createTransactionExecutor(
-    props.dictionaryStore,
+    props.entityStore,
     props.executionQueueClient,
     props.eventClient
   );

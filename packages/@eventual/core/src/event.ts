@@ -1,8 +1,5 @@
 import type { z } from "zod";
-import {
-  createEventualCall,
-  EventualCallKind,
-} from "./internal/calls/calls.js";
+import { createEventualCall, EventualCallKind } from "./internal/calls.js";
 import { events, getServiceClient, subscriptions } from "./internal/global.js";
 import { EventSpec, isSourceLocation } from "./internal/service-spec.js";
 import type { Subscription, SubscriptionRuntimeProps } from "./subscription.js";
@@ -43,7 +40,7 @@ export interface EventEnvelope<E extends EventPayload = EventPayload> {
 /**
  * An {@link Event} is an object representing the declaration of an event
  * that belongs within the service. An {@link Event} has a unique {@link name},
- * may be {@link publishEvents}ed and {@link onEvent}d to.
+ * may be {@link emit}ed and {@link onEvent}d to.
  */
 export interface Event<E extends EventPayload = EventPayload>
   extends Omit<EventSpec, "schema"> {
@@ -51,7 +48,7 @@ export interface Event<E extends EventPayload = EventPayload>
   schema?: z.Schema<E>;
   /**
    * Subscribe to this event. The {@link handler} will be invoked every
-   * time an event with this name is published within the service boundary.
+   * time an event with this name is emitted within the service boundary.
    *
    * @param handler the handler function that will process the event.
    */
@@ -65,11 +62,11 @@ export interface Event<E extends EventPayload = EventPayload>
     handlers: EventHandlerFunction<E>
   ): Subscription<Name, E>;
   /**
-   * Publish events of this type within the service boundary.
+   * Emit events of this type within the service boundary.
    *
-   * @param events a list of events to publish.
+   * @param events a list of events to emit.
    */
-  publishEvents(...events: E[]): Promise<void>;
+  emit(...events: E[]): Promise<void>;
 }
 
 /**
@@ -80,7 +77,7 @@ export type EventHandlerFunction<E extends EventPayload> = (
 ) => Promise<void>;
 
 /**
- * Declares an event that can be published and subscribed to.
+ * Declares an event that can be emitted and subscribed to.
  *
  * To declare an {@link Event}, define an interface describing the type
  * of the payload and then declare an event object giving it a unique name.
@@ -94,10 +91,10 @@ export type EventHandlerFunction<E extends EventPayload> = (
  * const checkoutEvent = event<CheckoutEvent>("Checkout");
  * ```
  *
- * To publish events, call the `publish` method:
+ * To emit events, call the `emit` method:
  * ```ts
  * const checkoutWorkflow = workflow("checkoutWorkflow", async (request) => {
- *   await checkoutEvent.publishEvents({
+ *   await checkoutEvent.emit({
  *     customerId: request.customerId,
  *     cartId: request.cartId,
  *     timestamp: new Date().toTimeString()
@@ -151,17 +148,17 @@ export function event<E extends EventPayload>(
 
       return eventHandler;
     },
-    async publishEvents(...events) {
+    async emit(...events) {
       const envelopes = events.map((event) => ({
         name,
         event,
       }));
       return getEventualCallHook().registerEventualCall(
-        createEventualCall(EventualCallKind.PublishEventsCall, {
+        createEventualCall(EventualCallKind.EmitEventsCall, {
           events: envelopes,
         }),
         () => {
-          return getServiceClient().publishEvents({ events: envelopes });
+          return getServiceClient().emitEvents({ events: envelopes });
         }
       );
     },

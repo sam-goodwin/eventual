@@ -6,34 +6,34 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { SchedulerClient } from "@aws-sdk/client-scheduler";
 import { SQSClient } from "@aws-sdk/client-sqs";
 import { Client, Pluggable } from "@aws-sdk/types";
+import { AWSHttpEventualClient } from "@eventual/aws-client";
 import { LogLevel } from "@eventual/core";
 import {
-  ActivityStore,
-  DictionaryClient,
+  EntityClient,
   ExecutionQueueClient,
   ExecutionStore,
-  GlobalActivityProvider,
+  GlobalTaskProvider,
   GlobalWorkflowProvider,
   LogAgent,
   LogsClient,
   RuntimeFallbackServiceClient,
   RuntimeServiceClientProps,
+  TaskStore,
   WorkflowClient,
   WorkflowSpecProvider,
 } from "@eventual/core-runtime";
-import { AWSActivityClient } from "./clients/activity-client.js";
 import { AWSEventClient } from "./clients/event-client.js";
 import { AWSExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { AWSLogsClient } from "./clients/log-client.js";
+import { AWSTaskClient } from "./clients/task-client.js";
 import { AWSTimerClient, AWSTimerClientProps } from "./clients/timer-client.js";
+import { AWSTransactionClient } from "./clients/transaction-client.js";
 import * as env from "./env.js";
-import { AWSActivityStore } from "./stores/activity-store.js";
+import { AWSEntityStore } from "./stores/entity-store.js";
 import { AWSExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
 import { AWSExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { AWSExecutionStore } from "./stores/execution-store.js";
-import { AWSHttpEventualClient } from "@eventual/aws-client";
-import { AWSDictionaryStore } from "./stores/dictionary-store.js";
-import { AWSTransactionClient } from "./clients/transaction-client.js";
+import { AWSTaskStore } from "./stores/task-store.js";
 
 /**
  * Client creators to be used by the lambda functions.
@@ -163,10 +163,10 @@ export const createLogAgent = /* @__PURE__ */ memoize(
   }
 );
 
-export const createActivityStore = /* @__PURE__ */ memoize(
-  ({ activityTableName }: { activityTableName?: string } = {}) =>
-    new AWSActivityStore({
-      activityTableName: activityTableName ?? env.activityTableName,
+export const createTaskStore = /* @__PURE__ */ memoize(
+  ({ taskTableName }: { taskTableName?: string } = {}) =>
+    new AWSTaskStore({
+      taskTableName: taskTableName ?? env.taskTableName,
       dynamo: dynamo(),
     })
 );
@@ -186,19 +186,19 @@ export const createTimerClient = /* @__PURE__ */ memoize(
     })
 );
 
-export const createActivityClient = /* @__PURE__ */ memoize(
+export const createTaskClient = /* @__PURE__ */ memoize(
   ({
     executionQueueClient,
     executionStore,
-    activityStore,
+    taskStore,
   }: {
-    activityStore?: ActivityStore;
+    taskStore?: TaskStore;
     executionQueueClient?: ExecutionQueueClient;
     executionStore?: ExecutionStore;
   } = {}) =>
-    new AWSActivityClient({
-      activityProvider: new GlobalActivityProvider(),
-      activityStore: activityStore ?? createActivityStore(),
+    new AWSTaskClient({
+      taskProvider: new GlobalTaskProvider(),
+      taskStore: taskStore ?? createTaskStore(),
       executionQueueClient:
         executionQueueClient ?? createExecutionQueueClient(),
       executionStore: executionStore ?? createExecutionStore(),
@@ -216,13 +216,13 @@ export const createExecutionHistoryStateStore = /* @__PURE__ */ memoize(
     })
 );
 
-export const createDictionaryClient = memoize(
-  () => new DictionaryClient(createDictionaryStore())
+export const createEntityClient = memoize(
+  () => new EntityClient(createEntityStore())
 );
 
-export const createDictionaryStore = memoize(
+export const createEntityStore = memoize(
   () =>
-    new AWSDictionaryStore({
+    new AWSEntityStore({
       dynamo: dynamo(),
       serviceName: env.serviceName,
     })
@@ -239,7 +239,7 @@ export const createEventClient = /* @__PURE__ */ memoize(
 
 export const createServiceClient = /* @__PURE__ */ memoize(
   ({
-    activityClient,
+    taskClient,
     eventClient,
     executionHistoryStateStore,
     executionHistoryStore,
@@ -257,7 +257,7 @@ export const createServiceClient = /* @__PURE__ */ memoize(
         executionQueueClient: executionQueueClient,
         executionStore: executionStore,
         executionHistoryStateStore: executionHistoryStateStore,
-        activityClient: activityClient,
+        taskClient: taskClient,
         workflowProvider: workflowProvider,
       },
       createHttpServiceClient({ serviceUrl })

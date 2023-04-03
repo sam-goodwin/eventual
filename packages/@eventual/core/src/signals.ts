@@ -1,8 +1,5 @@
 import { ulid } from "ulidx";
-import {
-  createEventualCall,
-  EventualCallKind,
-} from "./internal/calls/calls.js";
+import { createEventualCall, EventualCallKind } from "./internal/calls.js";
 import { EventualPromiseSymbol } from "./internal/eventual-hook.js";
 import { getServiceClient } from "./internal/global.js";
 import { Result } from "./internal/result.js";

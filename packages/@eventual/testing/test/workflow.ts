@@ -1,15 +1,15 @@
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import {
-  activity,
   asyncResult,
   condition,
   duration,
   event,
   sendSignal,
   signal,
+  task,
   time,
   workflow,
 } from "@eventual/core";
-import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 
 const sqs = new SQSClient({});
 
@@ -33,15 +33,15 @@ export const sleepWorkflow = workflow(
   }
 );
 
-export const activity1 = activity("act1", async () => "hi");
+export const task1 = task("task1", async () => "hi");
 
 /**
- * Runs activities in parallel and in series based on the parameters.
+ * Runs tasks in parallel and in series based on the parameters.
  *
- * ex: p: 1, s: 1 => [["activity result"]]
- * ex: p: 2, s: 1 => [["activity result","activity result"]]
- * ex: p: 1, s: 2 => [["activity result"],["activity result"]]
- * ex: p: 2, s: 2 => [["activity result","activity result"],["activity result","activity result"]]
+ * ex: p: 1, s: 1 => [["task result"]]
+ * ex: p: 2, s: 1 => [["task result","task result"]]
+ * ex: p: 1, s: 2 => [["task result"],["task result"]]
+ * ex: p: 2, s: 2 => [["task result","task result"],["task result","task result"]]
  */
 export const workflow3 = workflow(
   "workflow3",
@@ -55,7 +55,7 @@ export const workflow3 = workflow(
     const result: PromiseSettledResult<string>[][] = [];
     do {
       const r = await Promise.allSettled(
-        [...Array(parallel).keys()].map(() => activity1())
+        [...Array(parallel).keys()].map(() => task1())
       );
       result.push(r);
     } while (--series > 0);
@@ -107,12 +107,12 @@ export const orchestrate = workflow(
     } else {
       // the events parameter sends events instead of signals
       // event handlers turn them into signals.
-      await dataEvent.publishEvents({
+      await dataEvent.emit({
         data: "hello from the orchestrator workflow!",
         executionId: targetExecutionId,
       });
-      await dataDoneEvent.publishEvents({ executionId: targetExecutionId });
-      await continueEvent.publishEvents({ executionId: targetExecutionId });
+      await dataDoneEvent.emit({ executionId: targetExecutionId });
+      await continueEvent.emit({ executionId: targetExecutionId });
     }
     return "nothing to see here";
   }
@@ -150,7 +150,7 @@ export const orchestrateWorkflow = workflow(
   }
 );
 
-export const actWithTimeout = activity(
+export const actWithTimeout = task(
   "actWithTimeout",
   { timeout: duration(30, "seconds") },
   async () => {
@@ -175,7 +175,7 @@ export const workflowWithTimeouts = workflow(
   }
 );
 
-export const longRunningAct = activity("longRunningAct", async () => {
+export const longRunningTask = task("longRunningAct", async () => {
   return asyncResult<{ value: string }>(async (token) => {
     await sqs.send(
       new SendMessageCommand({
@@ -187,14 +187,14 @@ export const longRunningAct = activity("longRunningAct", async () => {
 });
 
 /**
- * Start a "long running activity", return the first to return,
- * a hour sleep or the activity.
+ * Start a "long running task", return the first to return,
+ * a hour sleep or the task.
  */
 export const longRunningWorkflow = workflow("longRunningWf", async () => {
-  const act = longRunningAct();
+  const t = longRunningTask();
 
   const result = Promise.race([
-    act,
+    t,
     (async () => {
       await duration(60 * 60);
       return "sleep";

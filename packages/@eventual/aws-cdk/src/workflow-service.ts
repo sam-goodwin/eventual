@@ -22,8 +22,10 @@ import {
   Queue,
 } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
-import { ActivityService } from "./activity-service";
-import { EventBridgePipe, PipeSourceParameters } from "./constructs/event-bridge-pipe";
+import {
+  EventBridgePipe,
+  PipeSourceParameters,
+} from "./constructs/event-bridge-pipe";
 import { EntityService } from "./entity-service";
 import { EventService } from "./event-service";
 import { grant } from "./grant";
@@ -31,9 +33,10 @@ import { LazyInterface } from "./proxy-construct";
 import { SchedulerService } from "./scheduler-service";
 import { ServiceConstructProps } from "./service";
 import { ServiceFunction } from "./service-function";
+import type { TaskService } from "./task-service.js";
 
 export interface WorkflowsProps extends ServiceConstructProps {
-  activityService: LazyInterface<ActivityService>;
+  taskService: LazyInterface<TaskService>;
   entityService: EntityService<any>;
   eventService: EventService;
   schedulerService: LazyInterface<SchedulerService>;
@@ -411,7 +414,7 @@ export class WorkflowService {
   }
 
   /**
-   * Allows starting workflows, finishing activities, reading workflow status
+   * Allows starting workflows, finishing tasks, reading workflow status
    * and sending signals to workflows.
    */
   public configureFullControl(func: Function) {
@@ -452,10 +455,10 @@ export class WorkflowService {
     this.configureStartExecution(this.orchestrator);
     // send signals to other executions (or itself, don't judge)
     this.configureSendSignal(this.orchestrator);
-    // publish events to the service
-    this.props.eventService.configurePublish(this.orchestrator);
-    // start activities
-    this.props.activityService.configureStartActivity(this.orchestrator);
+    // emit events to the service
+    this.props.eventService.configureEmit(this.orchestrator);
+    // start tasks
+    this.props.taskService.configureStartTask(this.orchestrator);
     /**
      * Both
      */
@@ -467,7 +470,7 @@ export class WorkflowService {
      */
     this.props.service.configureServiceName(this.orchestrator);
     /**
-     * Dictionary Commands
+     * Entity Commands
      */
     this.props.entityService.configureReadWriteEntityTable(this.orchestrator);
     // transactions

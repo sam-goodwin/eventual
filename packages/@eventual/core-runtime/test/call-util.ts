@@ -1,29 +1,29 @@
 import { EventEnvelope, Schedule } from "@eventual/core";
 import {
-  ActivityCall,
-  ActivityFailed,
-  ActivityHeartbeatTimedOut,
-  ActivityScheduled,
-  ActivitySucceeded,
   AwaitTimerCall,
   ChildWorkflowCall,
   ChildWorkflowFailed,
   ChildWorkflowScheduled,
   ChildWorkflowSucceeded,
-  createEventualCall,
-  DictionaryCall,
-  DictionaryOperation,
-  EventsPublished,
+  EntityCall,
+  EntityOperation,
+  EventsEmitted,
   EventualCallKind,
-  PublishEventsCall,
+  EmitEventsCall,
   SendSignalCall,
   SignalReceived,
   SignalSent,
   SignalTarget,
+  TaskCall,
+  TaskFailed,
+  TaskHeartbeatTimedOut,
+  TaskScheduled,
+  TaskSucceeded,
   TimerCompleted,
   TimerScheduled,
   WorkflowEventType,
   WorkflowTimedOut,
+  createEventualCall,
 } from "@eventual/core/internal";
 import { ulid } from "ulidx";
 import type { WorkflowCall } from "../src/workflow-executor.js";
@@ -46,13 +46,13 @@ export function awaitTimerCall(
   };
 }
 
-export function activityCall(
+export function taskCall(
   name: string,
   input: any,
   seq: number
-): WorkflowCall<ActivityCall> {
+): WorkflowCall<TaskCall> {
   return {
-    call: createEventualCall(EventualCallKind.ActivityCall, {
+    call: createEventualCall(EventualCallKind.TaskCall, {
       name,
       input,
     }),
@@ -88,34 +88,34 @@ export function sendSignalCall(
   };
 }
 
-export function publishEventCall(
+export function emitEventCall(
   events: EventEnvelope[],
   seq: number
-): WorkflowCall<PublishEventsCall> {
+): WorkflowCall<EmitEventsCall> {
   return {
     seq,
-    call: createEventualCall(EventualCallKind.PublishEventsCall, {
+    call: createEventualCall(EventualCallKind.EmitEventsCall, {
       events,
     }),
   };
 }
 
-export function activitySucceeded(result: any, seq: number): ActivitySucceeded {
+export function taskSucceeded(result: any, seq: number): TaskSucceeded {
   return {
-    type: WorkflowEventType.ActivitySucceeded,
+    type: WorkflowEventType.TaskSucceeded,
     result,
     seq,
     timestamp: new Date(0).toISOString(),
   };
 }
 
-export function dictionaryRequestCall(
-  operation: DictionaryOperation,
+export function entityRequestCall(
+  operation: EntityOperation,
   seq: number
-): WorkflowCall<DictionaryCall> {
+): WorkflowCall<EntityCall> {
   return {
     seq,
-    call: createEventualCall(EventualCallKind.DictionaryCall, operation),
+    call: createEventualCall(EventualCallKind.EntityCall, operation),
   };
 }
 
@@ -131,9 +131,9 @@ export function workflowSucceeded(
   };
 }
 
-export function activityFailed(error: any, seq: number): ActivityFailed {
+export function taskFailed(error: any, seq: number): TaskFailed {
   return {
-    type: WorkflowEventType.ActivityFailed,
+    type: WorkflowEventType.TaskFailed,
     error,
     message: "message",
     seq,
@@ -151,12 +151,9 @@ export function workflowFailed(error: any, seq: number): ChildWorkflowFailed {
   };
 }
 
-export function activityScheduled(
-  name: string,
-  seq: number
-): ActivityScheduled {
+export function taskScheduled(name: string, seq: number): TaskScheduled {
   return {
-    type: WorkflowEventType.ActivityScheduled,
+    type: WorkflowEventType.TaskScheduled,
     name,
     seq,
 
@@ -164,13 +161,13 @@ export function activityScheduled(
   };
 }
 
-export function activityHeartbeatTimedOut(
+export function taskHeartbeatTimedOut(
   seq: number,
   /** Relative seconds from 0 */
   seconds: number
-): ActivityHeartbeatTimedOut {
+): TaskHeartbeatTimedOut {
   return {
-    type: WorkflowEventType.ActivityHeartbeatTimedOut,
+    type: WorkflowEventType.TaskHeartbeatTimedOut,
     seq,
     timestamp: new Date(seconds * 1000).toISOString(),
   };
@@ -243,12 +240,12 @@ export function signalSent(
   };
 }
 
-export function eventsPublished(
+export function eventsEmitted(
   events: EventEnvelope[],
   seq: number
-): EventsPublished {
+): EventsEmitted {
   return {
-    type: WorkflowEventType.EventsPublished,
+    type: WorkflowEventType.EventsEmitted,
     seq,
     timestamp: new Date().toISOString(),
     events,

@@ -1,4 +1,3 @@
-export * from "./activity-token.js";
 export * from "./build-manifest.js";
 export * from "./clients/index.js";
 export * from "./console-hook.js";
@@ -12,6 +11,7 @@ export * from "./result.js";
 export * from "./schedule.js";
 export * from "./stores/index.js";
 export * from "./system-commands.js";
+export * from "./task-token.js";
 export * from "./tasks.js";
 export * from "./transaction-executor.js";
 export * from "./utils.js";

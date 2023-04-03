@@ -10,7 +10,7 @@ import {
   CommandSpec,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
 } from "@eventual/core/internal";
-import { Arn, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
+import { Arn, Duration, Lazy, Stack, aws_iam } from "aws-cdk-lib";
 import {
   Effect,
   IGrantable,
@@ -21,7 +21,6 @@ import {
 import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import openapi from "openapi3-ts";
-import type { ActivityService } from "./activity-service";
 import { ApiDefinition } from "./constructs/http-api-definition.js";
 import { SpecHttpApi } from "./constructs/spec-http-api";
 import { EntityService } from "./entity-service";
@@ -33,6 +32,7 @@ import {
   ServiceLocal,
 } from "./service";
 import { ServiceFunction } from "./service-function.js";
+import type { TaskService } from "./task-service";
 import { ServiceEntityProps, serviceFunctionArn } from "./utils";
 import type { WorkflowService } from "./workflow-service";
 
@@ -80,7 +80,7 @@ export interface CorsOptions {
 }
 
 export interface CommandsProps<Service = any> extends ServiceConstructProps {
-  activityService: ActivityService<Service>;
+  taskService: TaskService<Service>;
   cors?: CorsOptions;
   entityService: EntityService<Service>;
   eventService: EventService;
@@ -435,11 +435,11 @@ export class CommandService<Service = any> {
     this.props.service.configureForServiceClient(handler);
     this.grantInvokeHttpServiceApi(handler);
     /**
-     * Dictionary operations
+     * Entity operations
      */
     this.props.entityService.configureReadWriteEntityTable(handler);
     /**
-     *  
+     *
      */
     this.props.entityService.configureInvokeTransactions(
       this.systemCommandsHandler
@@ -447,15 +447,11 @@ export class CommandService<Service = any> {
   }
 
   private configureSystemCommandHandler() {
-    // for update activity
-    this.props.activityService.configureWriteActivities(
-      this.systemCommandsHandler
-    );
-    this.props.activityService.configureCompleteActivity(
-      this.systemCommandsHandler
-    );
-    // publish events
-    this.props.eventService.configurePublish(this.systemCommandsHandler);
+    // for update task
+    this.props.taskService.configureWriteTasks(this.systemCommandsHandler);
+    this.props.taskService.configureCompleteTask(this.systemCommandsHandler);
+    // emit events
+    this.props.eventService.configureEmit(this.systemCommandsHandler);
     // get and list executions
     this.props.workflowService.configureReadExecutions(
       this.systemCommandsHandler

@@ -9,23 +9,23 @@ import {
   EventualError,
   HeartbeatTimeout,
   HttpResponse,
-  activity,
+  task,
   api,
   asyncResult,
   command,
   condition,
-  dictionary,
+  entity,
   duration,
   event,
   expectSignal,
-  sendActivityHeartbeat,
+  sendTaskHeartbeat,
   sendSignal,
   signal,
   subscription,
   time,
   workflow,
   transaction,
-  Dictionary,
+  Entity,
 } from "@eventual/core";
 import z from "zod";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -35,16 +35,13 @@ const dynamo = new DynamoDBClient({});
 
 const testQueueUrl = process.env.TEST_QUEUE_URL ?? "";
 
-const hello = activity("hello", async (name: string) => {
+const hello = task("hello", async (name: string) => {
   return `hello ${name}`;
 });
 
-const hello2 = activity(
-  "hello2",
-  async (name: string, { activity, execution }) => {
-    return `hello ${name} I am ${activity.name} and you were invoked by ${execution.workflowName}`;
-  }
-);
+const hello2 = task("hello2", async (name: string, { task, execution }) => {
+  return `hello ${name} I am ${task.name} and you were invoked by ${execution.workflowName}`;
+});
 
 const localEvent = event<AsyncWriterTestEvent>("LocalAsyncEvent");
 
@@ -53,22 +50,22 @@ export const onAsyncEvent = subscription(
   { events: [localEvent] },
   async (event) => {
     if (event.type === "complete") {
-      await asyncActivity.sendActivitySuccess({
-        activityToken: event.token,
+      await asyncTask.sendTaskSuccess({
+        taskToken: event.token,
         result: "hello from the async writer!",
       });
     } else {
-      await asyncActivity.sendActivityFailure({
-        activityToken: event.token,
+      await asyncTask.sendTaskFailure({
+        taskToken: event.token,
         error: "AsyncWriterError",
-        message: "I was told to fail this activity, sorry.",
+        message: "I was told to fail this task, sorry.",
       });
     }
   }
 );
 
-export const asyncActivity = activity(
-  "asyncActivity",
+export const asyncTask = task(
+  "asyncTask",
   async (type: AsyncWriterTestEvent["type"]) => {
     return asyncResult<string>(async (token) => {
       console.log(testQueueUrl);
@@ -85,7 +82,7 @@ export const asyncActivity = activity(
       } else {
         // when running locally, use an event instead of SQS
         // we do not currently support incoming requests, so the SQS => Lambda could not reach the service without a tunnel/proxy.
-        await localEvent.publishEvents({
+        await localEvent.emit({
           type,
           token,
         });
@@ -94,7 +91,7 @@ export const asyncActivity = activity(
   }
 );
 
-const fail = activity("fail", async (value: string) => {
+const fail = task("fail", async (value: string) => {
   throw new Error(value);
 });
 
@@ -208,13 +205,13 @@ export const childWorkflow = workflow(
   }
 );
 
-const slowActivity = activity(
+const slowTask = task(
   "slowAct",
   { timeout: duration(5, "seconds") },
   () => new Promise((resolve) => setTimeout(resolve, 10 * 1000))
 );
 
-const slowActivityWithLongTimeout = activity(
+const slowTaskWithLongTimeout = task(
   "slowAct2",
   { timeout: duration(110, "seconds") },
   () => new Promise((resolve) => setTimeout(resolve, 10 * 1000))
@@ -248,16 +245,16 @@ export const timedOutWorkflow = workflow(
       signal: async () => {
         await mySignal.expectSignal({ timeout: duration(2, "seconds") });
       },
-      activity: slowActivity,
+      task: slowTask,
       workflow: () => slowWf(undefined),
-      activityOnInvoke: () =>
-        slowActivityWithLongTimeout(undefined, {
+      taskOnInvoke: () =>
+        slowTaskWithLongTimeout(undefined, {
           timeout: duration(2, "second"),
         }),
       workflowOnInvoke: () =>
         slowWfWithLongTimeout(undefined, { timeout: duration(2, "seconds") }),
-      activityFailImmediately: () =>
-        slowActivityWithLongTimeout(undefined, {
+      taskFailImmediately: () =>
+        slowTaskWithLongTimeout(undefined, {
           timeout: condition(() => true),
         }),
     };
@@ -281,10 +278,10 @@ export const asyncWorkflow = workflow(
   "asyncWorkflow",
   { timeout: duration(100, "seconds") }, // timeout eventually
   async () => {
-    const result = await asyncActivity("complete");
+    const result = await asyncTask("complete");
 
     try {
-      await asyncActivity("fail");
+      await asyncTask("fail");
     } catch (err) {
       return [result, err];
     }
@@ -292,8 +289,8 @@ export const asyncWorkflow = workflow(
   }
 );
 
-const activityWithHeartbeat = activity(
-  "activityWithHeartbeat",
+const taskWithHeartbeat = task(
+  "taskWithHeartbeat",
   { heartbeatTimeout: duration(2, "seconds") },
   async ({
     n,
@@ -311,9 +308,9 @@ const activityWithHeartbeat = activity(
     while (_n++ < n) {
       await delay(0.5);
       if (type === "success") {
-        await sendActivityHeartbeat();
+        await sendTaskHeartbeat();
       } else if (type === "some-heartbeat" && _n < n * 0.33) {
-        await sendActivityHeartbeat();
+        await sendTaskHeartbeat();
       }
       // no-heartbeat never sends one... woops.
     }
@@ -326,19 +323,19 @@ export const heartbeatWorkflow = workflow(
   { timeout: duration(100, "seconds") }, // timeout eventually
   async (n: number) => {
     return await Promise.allSettled([
-      activityWithHeartbeat({ n, type: "success" }),
-      activityWithHeartbeat({ n, type: "some-heartbeat" }),
+      taskWithHeartbeat({ n, type: "success" }),
+      taskWithHeartbeat({ n, type: "some-heartbeat" }),
       (async () => {
         try {
-          return await activityWithHeartbeat({ n, type: "some-heartbeat" });
+          return await taskWithHeartbeat({ n, type: "some-heartbeat" });
         } catch (err) {
           if (err instanceof HeartbeatTimeout) {
-            return "activity did not respond";
+            return "task did not respond";
           }
           throw new Error("I should not get here");
         }
       })(),
-      activityWithHeartbeat({ n, type: "no-heartbeat" }),
+      taskWithHeartbeat({ n, type: "no-heartbeat" }),
     ]);
   }
 );
@@ -349,11 +346,11 @@ export const heartbeatWorkflow = workflow(
  * A subscription to {@link signalEvent} is set up to forward events
  * as signals to the workflow execution.
  *
- * First, this workflow publishes an event to the {@link signalEvent}
+ * First, this workflow emits an event to the {@link signalEvent}
  * with a signalId of "start" and then waits for that signal to wake
  * this workflow.
  *
- * Then, the {@link sendFinishEvent} activity is invoked which sends
+ * Then, the {@link sendFinishEvent} task is invoked which sends
  * an event to {@link signalEvent} with signalId of "finish". The workflow
  * waits for this signal to wake it before returning "done!".
  *
@@ -362,9 +359,9 @@ export const heartbeatWorkflow = workflow(
  * back through the {@link signalEvent} handler before sending the signal
  * to the execution.
  *
- * This tests the publishes of events from:
+ * This tests the emits of events from:
  * 1. workflows
- * 2. activities.
+ * 2. tasks.
  * 3. event handlers
  *
  * TODO: add a test for api handlers.
@@ -372,8 +369,8 @@ export const heartbeatWorkflow = workflow(
 export const eventDrivenWorkflow = workflow(
   "eventDrivenWorkflow",
   async (_, ctx) => {
-    // publish an event from a workflow (the orchestrator)
-    await signalEvent.publishEvents({
+    // emit an event from a workflow (the orchestrator)
+    await signalEvent.emit({
       executionId: ctx.execution.id,
       signalId: "start",
     });
@@ -410,8 +407,8 @@ export const onSignalEvent = subscription(
     console.debug("received signal event", { executionId, signalId, proxy });
     if (proxy) {
       // if configured to proxy, re-route this event through the signalEvent
-      // reason: to test that we can publish events from within an event handler
-      await signalEvent.publishEvents({
+      // reason: to test that we can emit events from within an event handler
+      await signalEvent.emit({
         executionId,
         signalId,
       });
@@ -422,13 +419,13 @@ export const onSignalEvent = subscription(
   }
 );
 
-const sendFinishEvent = activity("sendFinish", async (executionId: string) => {
-  // publish an event from an activity
-  await signalEvent.publishEvents({
+const sendFinishEvent = task("sendFinish", async (executionId: string) => {
+  // emit an event from a task
+  await signalEvent.emit({
     executionId,
     signalId: "finish",
     // set proxy to true so that this event will route through event bridge again
-    // to test that we can publish events from event handlers
+    // to test that we can emit events from event handlers
     proxy: true,
   });
 });
@@ -492,10 +489,10 @@ export const onNotifyEvent = notifyEvent.onEvent(
  * They should not fail a second time or apply a second time.
  */
 export const allCommands = workflow("allCommands", async (_, context) => {
-  const sendEvent = notifyEvent.publishEvents({
+  const sendEvent = notifyEvent.emit({
     executionId: context.execution.id,
   });
-  const activity = hello("sam");
+  const task = hello("sam");
   const timer = duration(1);
   const childWorkflow = workflow1({ name: "amanda" });
   let n = 0;
@@ -505,18 +502,12 @@ export const allCommands = workflow("allCommands", async (_, context) => {
   // prove that only one signal is sent.
   const signalResponse = mySignal.sendSignal(context.execution.id, 1);
   await resumeSignal.expectSignal();
-  await Promise.all([
-    activity,
-    timer,
-    childWorkflow,
-    signalResponse,
-    sendEvent,
-  ]);
+  await Promise.all([task, timer, childWorkflow, signalResponse, sendEvent]);
   return { signalCount: n };
 });
 
-export const createActivity = activity(
-  "createActivity",
+export const createTask = task(
+  "createTask",
   async (request: { id: string }) => {
     await dynamo.send(
       new PutItemCommand({
@@ -530,8 +521,8 @@ export const createActivity = activity(
   }
 );
 
-export const destroyActivity = activity(
-  "destroyActivity",
+export const destroyTask = task(
+  "destroyTask",
   async (request: { id: string }) => {
     await dynamo.send(
       new DeleteItemCommand({
@@ -545,16 +536,16 @@ export const destroyActivity = activity(
 export const createAndDestroyWorkflow = workflow(
   "createAndDestroy",
   async (_, { execution }) => {
-    await createActivity({ id: execution.id });
-    await destroyActivity({ id: execution.id });
+    await createTask({ id: execution.id });
+    await destroyTask({ id: execution.id });
     return "done" as const;
   }
 );
 
-export const counter = dictionary<{ n: number }>("counter2", z.any());
-const dictEvent = event<{ id: string }>("dictEvent");
-const dictSignal = signal("dictSignal");
-const dictSignal2 = signal<{ n: number }>("dictSignal2");
+export const counter = entity<{ n: number }>("counter2", z.any());
+const entityEvent = event<{ id: string }>("entityEvent");
+const entitySignal = signal("entitySignal");
+const entitySignal2 = signal<{ n: number }>("entitySignal2");
 
 export const counterWatcher = counter.stream(
   "counterWatcher",
@@ -564,7 +555,7 @@ export const counterWatcher = counter.stream(
     // TODO: compute the possible operations union from the operations array
     if (item.operation === "remove") {
       const { n } = item.oldValue!;
-      await dictSignal2.sendSignal(item.key, { n: n + 1 });
+      await entitySignal2.sendSignal(item.key, { n: n + 1 });
     }
   }
 );
@@ -576,52 +567,49 @@ export const counterNamespaceWatcher = counter.stream(
     if (item.operation === "insert") {
       const value = await counter.get(item.key);
       await counter.set(item.key, { n: (value?.n ?? 0) + 1 });
-      await dictSignal.sendSignal(item.key);
+      await entitySignal.sendSignal(item.key);
     }
   }
 );
 
-export const onDictEvent = subscription(
-  "onDictEvent",
-  { events: [dictEvent] },
+export const onEntityEvent = subscription(
+  "onEntityEvent",
+  { events: [entityEvent] },
   async ({ id }) => {
     const value = await counter.get(id);
     await counter.set(id, { n: (value?.n ?? 0) + 1 });
-    await dictSignal.sendSignal(id);
+    await entitySignal.sendSignal(id);
   }
 );
 
-export const dictionaryActivity = activity(
-  "dictAct",
+export const entityTask = task(
+  "entityAct",
   async (_, { execution: { id } }) => {
     const value = await counter.get(id);
     await counter.set(id, { n: (value?.n ?? 0) + 1 });
   }
 );
 
-export const dictionaryWorkflow = workflow(
-  "dictionaryWorkflow",
+export const entityWorkflow = workflow(
+  "entityWorkflow",
   async (_, { execution: { id } }) => {
     await counter.set(id, { n: 1 });
     counter.set({ key: id, namespace: "different!" }, { n: 0 });
-    await dictSignal.expectSignal();
-    await dictionaryActivity();
-    await Promise.all([
-      dictEvent.publishEvents({ id }),
-      dictSignal.expectSignal(),
-    ]);
+    await entitySignal.expectSignal();
+    await entityTask();
+    await Promise.all([entityEvent.emit({ id }), entitySignal.expectSignal()]);
     try {
       // will fail
       await counter.set(id, { n: 0 }, { expectedVersion: 1 });
     } catch (err) {
-      console.error("expected the dictionary set to fail", err);
+      console.error("expected the entity set to fail", err);
     }
     const { entity, version } = (await counter.getWithMetadata(id)) ?? {};
     await counter.set(id, { n: entity!.n + 1 }, { expectedVersion: version });
     const value = await counter.get(id);
-    await Dictionary.transactWrite([
+    await Entity.transactWrite([
       {
-        dictionary: counter,
+        entity: counter,
         operation: {
           operation: "set",
           key: id,
@@ -632,11 +620,11 @@ export const dictionaryWorkflow = workflow(
     // send deletion, to be picked up by the stream
     counter.delete(id);
     // this signal will contain the final value after deletion
-    return await dictSignal2.expectSignal();
+    return await entitySignal2.expectSignal();
   }
 );
 
-export const check = dictionary<{ n: number }>("check");
+export const check = entity<{ n: number }>("check");
 
 const gitErDone = transaction("gitErDone", async ({ id }: { id: string }) => {
   const val = await check.get(id);
@@ -644,8 +632,8 @@ const gitErDone = transaction("gitErDone", async ({ id }: { id: string }) => {
   return val?.n ?? 0 + 1;
 });
 
-const noise = activity(
-  "noiseActivity",
+const noise = task(
+  "noiseTask",
   async ({ x }: { x: number }, { execution: { id } }) => {
     let n = 100;
     let transact: Promise<number> | undefined = undefined;

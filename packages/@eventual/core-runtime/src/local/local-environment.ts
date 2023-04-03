@@ -1,14 +1,14 @@
 import {
-  dictionaryStreamMatchesItem,
+  entityStreamMatchesItem,
   HttpRequest,
   HttpResponse,
-  isDictionaryStreamItem,
+  isEntityStreamItem,
 } from "@eventual/core";
-import { dictionaries, registerServiceClient } from "@eventual/core/internal";
-import { isActivityWorkerRequest } from "../clients/activity-client.js";
+import { entities, registerServiceClient } from "@eventual/core/internal";
 import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
+import { isTaskWorkerRequest } from "../clients/task-client.js";
 import { isTimerRequest } from "../clients/timer-client.js";
-import { isActivitySendEventRequest } from "../handlers/activity-fallback-handler.js";
+import { isTaskSendEventRequest } from "../handlers/task-fallback-handler.js";
 import { isWorkflowTask } from "../tasks.js";
 import {
   LocalContainer,
@@ -49,7 +49,7 @@ export class LocalEnvironment {
     });
 
     const serviceClient = new RuntimeServiceClient({
-      activityClient: this.localContainer.activityClient,
+      taskClient: this.localContainer.taskClient,
       eventClient: this.localContainer.eventClient,
       executionHistoryStateStore:
         this.localContainer.executionHistoryStateStore,
@@ -120,13 +120,13 @@ export class LocalEnvironment {
     ) {
       const timerRequests = events.filter(isTimerRequest);
       const workflowTasks = events.filter(isWorkflowTask);
-      const activityWorkerRequests = events.filter(isActivityWorkerRequest);
-      const dictionaryStreamItems = events.filter(isDictionaryStreamItem);
+      const taskWorkerRequests = events.filter(isTaskWorkerRequest);
+      const entityStreamItems = events.filter(isEntityStreamItem);
 
-      // run all activity requests, don't wait for a result
-      activityWorkerRequests.forEach(async (request) => {
-        const result = await this.localContainer.activityWorker(request);
-        if (!!result && isActivitySendEventRequest(result)) {
+      // run all task requests, don't wait for a result
+      taskWorkerRequests.forEach(async (request) => {
+        const result = await this.localContainer.taskWorker(request);
+        if (!!result && isTaskSendEventRequest(result)) {
           this.localConnector.pushWorkflowTaskNextTick({
             events: [result.event],
             executionId: result.executionId,
@@ -137,14 +137,14 @@ export class LocalEnvironment {
       timerRequests.forEach((request) =>
         this.localContainer.timerHandler(request)
       );
-      // for each dictionary stream item, find the streams that match it, and run the worker with the item
-      dictionaryStreamItems.forEach((i) => {
-        const streamNames = [...dictionaries().values()]
+      // for each entity stream item, find the streams that match it, and run the worker with the item
+      entityStreamItems.forEach((i) => {
+        const streamNames = [...entities().values()]
           .flatMap((d) => d.streams)
-          .filter((s) => dictionaryStreamMatchesItem(i, s))
+          .filter((s) => entityStreamMatchesItem(i, s))
           .map((s) => s.name);
         streamNames.forEach((streamName) => {
-          this.localContainer.dictionaryStreamWorker({
+          this.localContainer.entityStreamWorker({
             ...i,
             streamName,
           });

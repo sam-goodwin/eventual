@@ -5,8 +5,8 @@ declare global {
   var serviceTypeStore: AsyncLocalStorage<ServiceType> | undefined;
 }
 
-export function isActivityWorker() {
-  return globalThis.serviceTypeStore?.getStore() === ServiceType.ActivityWorker;
+export function isTaskWorker() {
+  return globalThis.serviceTypeStore?.getStore() === ServiceType.TaskWorker;
 }
 
 export function isApiHandler() {

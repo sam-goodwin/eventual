@@ -10,7 +10,7 @@ export default {
   transactions: [],
   events: [],
   commands: [],
-  activities: [],
+  tasks: [],
   subscriptions: [],
-  entities: { dictionaries: [] },
+  entities: { entities: [] },
 } satisfies ServiceSpec;

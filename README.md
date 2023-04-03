@@ -80,13 +80,13 @@ npm run deploy
 
 ## How it works
 
-Eventual offers "core abstractions" for distributed systems that are mapped to AWS Serverless Resources. These primitives include Commands, Events, Subscriptions, Workflows, Activities, Signals and Actors (coming soon). They provide a simple, consistent and type-safe programming model for micro-services.
+Eventual offers "core abstractions" for distributed systems that are mapped to AWS Serverless Resources. These primitives include Commands, Events, Subscriptions, Workflows, Tasks, Signals and Actors (coming soon). They provide a simple, consistent and type-safe programming model for micro-services.
 
 The top-level concept of Eventual is a Service that be deployed to AWS with a CDK Construct. Each Service gets its own API Gateway, Event Bus, and Workflow Engine that you customize and build on using the core abstractions.
 
 Eventual ships with its own Workflow Engine that deploys into your AWS account. It consists of purely serverless AWS Resources, such as an AWS SQS FIFO Queue, S3 Bucket, DynamoDB Table and Event Bridge Scheduler Group. This provides an abstraction for orchestrating long running, durable workflows using plain TypeScript - such as if-else, loops, functions, async/await, Promise.all, etc. This gives you an expressive, Turing complete way to implement business logic, however complex, distributed or time-dependent it may be.
 
-The business logic of your Service (including APIs, Subscriptions, Activities, etc.) are discovered by analyzing your code and then optimally configuring AWS Resources for them. This includes optimal tree-shaking, bundling into individual Lambda Functions and providing supporting infrastructure such as Event Bus Rules, Dead Letter Queues, IAM Roles, etc.
+The business logic of your Service (including APIs, Subscriptions, Tasks, etc.) are discovered by analyzing your code and then optimally configuring AWS Resources for them. This includes optimal tree-shaking, bundling into individual Lambda Functions and providing supporting infrastructure such as Event Bus Rules, Dead Letter Queues, IAM Roles, etc.
 
 ## Why Eventual?
 

@@ -3,13 +3,13 @@ import "@eventual/injected/entry";
 
 import { createTransactionWorker } from "@eventual/core-runtime";
 import {
-  createDictionaryStore,
+  createEntityStore,
   createEventClient,
   createExecutionQueueClient,
 } from "../create.js";
 
 export default createTransactionWorker({
-  dictionaryStore: createDictionaryStore(),
+  entityStore: createEntityStore(),
   eventClient: createEventClient(),
   executionQueueClient: createExecutionQueueClient(),
 });

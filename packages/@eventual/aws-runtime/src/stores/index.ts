@@ -1,2 +1,2 @@
-export * from "./dictionary-store.js";
+export * from "./entity-store.js";
 export * from "./execution-store.js";

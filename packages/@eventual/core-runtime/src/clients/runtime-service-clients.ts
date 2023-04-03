@@ -10,28 +10,28 @@ import {
   ListExecutionsRequest,
   ListExecutionsResponse,
   ListWorkflowsResponse,
-  PublishEventsRequest,
-  SendActivityFailureRequest,
-  SendActivityHeartbeatRequest,
-  SendActivityHeartbeatResponse,
-  SendActivitySuccessRequest,
+  EmitEventsRequest,
   SendSignalRequest,
+  SendTaskFailureRequest,
+  SendTaskHeartbeatRequest,
+  SendTaskHeartbeatResponse,
+  SendTaskSuccessRequest,
   StartExecutionRequest,
   Transaction,
   Workflow,
 } from "@eventual/core";
-import { WorkflowProvider } from "../providers/workflow-provider.js";
-import { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
-import { ExecutionHistoryStore } from "../stores/execution-history-store.js";
-import { ExecutionStore } from "../stores/execution-store.js";
-import { ActivityClient } from "./activity-client.js";
-import { EventClient } from "./event-client.js";
-import { ExecutionQueueClient } from "./execution-queue-client.js";
-import { TransactionClient } from "./transaction-client.js";
-import { WorkflowClient } from "./workflow-client.js";
+import type { WorkflowProvider } from "../providers/workflow-provider.js";
+import type { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
+import type { ExecutionHistoryStore } from "../stores/execution-history-store.js";
+import type { ExecutionStore } from "../stores/execution-store.js";
+import type { EventClient } from "./event-client.js";
+import type { ExecutionQueueClient } from "./execution-queue-client.js";
+import type { TaskClient } from "./task-client.js";
+import type { TransactionClient } from "./transaction-client.js";
+import type { WorkflowClient } from "./workflow-client.js";
 
 export interface RuntimeServiceClientProps {
-  activityClient: ActivityClient;
+  taskClient: TaskClient;
   eventClient: EventClient;
   executionHistoryStateStore: ExecutionHistoryStateStore;
   executionHistoryStore: ExecutionHistoryStore;
@@ -127,38 +127,38 @@ export class RuntimeFallbackServiceClient implements EventualServiceClient {
     return this.props.executionQueueClient.sendSignal(request);
   }
 
-  public publishEvents(request: PublishEventsRequest): Promise<void> {
+  public emitEvents(request: EmitEventsRequest): Promise<void> {
     if (!this.props.eventClient) {
-      return this.fallbackServiceClient.publishEvents(request);
+      return this.fallbackServiceClient.emitEvents(request);
     }
-    return this.props.eventClient.publishEvents(...request.events);
+    return this.props.eventClient.emitEvents(...request.events);
   }
 
-  public sendActivitySuccess(
-    request: Omit<SendActivitySuccessRequest<any>, "type">
+  public sendTaskSuccess(
+    request: Omit<SendTaskSuccessRequest<any>, "type">
   ): Promise<void> {
-    if (!this.props.activityClient) {
-      return this.fallbackServiceClient.sendActivitySuccess(request);
+    if (!this.props.taskClient) {
+      return this.fallbackServiceClient.sendTaskSuccess(request);
     }
-    return this.props.activityClient.sendSuccess(request);
+    return this.props.taskClient.sendSuccess(request);
   }
 
-  public sendActivityFailure(
-    request: Omit<SendActivityFailureRequest, "type">
+  public sendTaskFailure(
+    request: Omit<SendTaskFailureRequest, "type">
   ): Promise<void> {
-    if (!this.props.activityClient) {
-      return this.fallbackServiceClient.sendActivityFailure(request);
+    if (!this.props.taskClient) {
+      return this.fallbackServiceClient.sendTaskFailure(request);
     }
-    return this.props.activityClient.sendFailure(request);
+    return this.props.taskClient.sendFailure(request);
   }
 
-  public sendActivityHeartbeat(
-    request: Omit<SendActivityHeartbeatRequest, "type">
-  ): Promise<SendActivityHeartbeatResponse> {
-    if (!this.props.activityClient) {
-      return this.fallbackServiceClient.sendActivityHeartbeat(request);
+  public sendTaskHeartbeat(
+    request: Omit<SendTaskHeartbeatRequest, "type">
+  ): Promise<SendTaskHeartbeatResponse> {
+    if (!this.props.taskClient) {
+      return this.fallbackServiceClient.sendTaskHeartbeat(request);
     }
-    return this.props.activityClient.sendHeartbeat(request);
+    return this.props.taskClient.sendHeartbeat(request);
   }
 
   async executeTransaction<T extends Transaction<any, any>>(

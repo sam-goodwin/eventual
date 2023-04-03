@@ -42,13 +42,13 @@ describe("formatter", () => {
     ).toEqual(`${LogLevel.DEBUG}\t${format(...vals)}`);
   });
 
-  test("activity", () => {
+  test("task", () => {
     const obj = { obj: {} };
     console.log(obj);
     expect(
       new DefaultLogFormatter().format({
         context: {
-          activityName: "act",
+          taskName: "task",
           seq: 1,
           executionId: "",
         },
@@ -56,6 +56,6 @@ describe("formatter", () => {
         data: [obj],
         time: 1000,
       })
-    ).toEqual(`${LogLevel.DEBUG}\tact:1\t${format(obj)}`);
+    ).toEqual(`${LogLevel.DEBUG}\ttask:1\t${format(obj)}`);
   });
 });

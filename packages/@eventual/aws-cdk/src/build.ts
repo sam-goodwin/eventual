@@ -1,12 +1,12 @@
 import { build, BuildSource, infer } from "@eventual/compiler";
 import { BuildManifest } from "@eventual/core-runtime";
 import {
-  ActivitySpec,
   CommandSpec,
-  DictionaryStreamSpec,
+  EntityStreamSpec,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
   ServiceType,
   SubscriptionSpec,
+  TaskSpec,
 } from "@eventual/core/internal";
 import { Code } from "aws-cdk-lib/aws-lambda";
 import { execSync } from "child_process";
@@ -79,15 +79,15 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     [
       // bundle the default handlers first as we refer to them when bundling all of the individual handlers
       orchestrator,
-      monoActivityFunction,
+      monoTaskFunction,
       monoCommandFunction,
       monoSubscriptionFunction,
-      monoDictionaryStreamWorkerFunction,
+      monoEntityStreamWorkerFunction,
       transactionWorkerFunction,
     ],
     [
       // also bundle each of the internal eventual API Functions as they have no dependencies
-      activityFallbackHandler,
+      taskFallbackHandler,
       scheduleForwarder,
       timerHandler,
     ],
@@ -97,16 +97,16 @@ export async function buildService(request: BuildAWSRuntimeProps) {
   ]);
 
   // then, bundle each of the commands and subscriptions
-  const [commands, subscriptions, activities] = await Promise.all([
+  const [commands, subscriptions, tasks] = await Promise.all([
     bundleCommands(serviceSpec.commands),
     bundleSubscriptions(serviceSpec.subscriptions),
-    bundleActivities(serviceSpec.activities),
+    bundleTasks(serviceSpec.tasks),
   ] as const);
 
   const manifest: BuildManifest = {
     serviceName: request.serviceName,
     entry: request.entry,
-    activities: activities,
+    tasks: tasks,
     events: serviceSpec.events,
     subscriptions,
     commands: commands,
@@ -117,10 +117,10 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       },
     },
     entities: {
-      dictionaries: await Promise.all(
-        serviceSpec.entities.dictionaries.map(async (d) => ({
+      entities: await Promise.all(
+        serviceSpec.entities.entities.map(async (d) => ({
           ...d,
-          streams: await bundleDictionaryStreams(d.streams),
+          streams: await bundleEntityStreams(d.streams),
         }))
       ),
       transactions: serviceSpec.transactions,
@@ -129,8 +129,8 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       entityService: {
         transactionWorker: { entry: transactionWorkerFunction! },
       },
-      activityService: {
-        fallbackHandler: { entry: activityFallbackHandler! },
+      taskService: {
+        fallbackHandler: { entry: taskFallbackHandler! },
       },
       eventualService: {
         systemCommandHandler: {
@@ -149,8 +149,8 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           "getExecutionHistory",
           "sendSignal",
           "getExecutionWorkflowHistory",
-          "publishEvents",
-          "updateActivity",
+          "emitEvents",
+          "updateTask",
           "executeTransaction",
         ].map((name) => ({
           name,
@@ -216,17 +216,17 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     );
   }
 
-  async function bundleActivities(specs: ActivitySpec[]) {
+  async function bundleTasks(specs: TaskSpec[]) {
     return await Promise.all(
       specs.map(async (spec) => {
         return {
           entry: await bundleFile(
             specPath,
             spec,
-            "activity",
-            "activity-worker",
+            "task",
+            "task-worker",
             spec.name,
-            monoActivityFunction!
+            monoTaskFunction!
           ),
           spec,
         };
@@ -234,17 +234,17 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     );
   }
 
-  async function bundleDictionaryStreams(specs: DictionaryStreamSpec[]) {
+  async function bundleEntityStreams(specs: EntityStreamSpec[]) {
     return await Promise.all(
       specs.map(async (spec) => {
         return {
           entry: await bundleFile(
             specPath,
             spec,
-            "dictionary-streams",
-            "dictionary-stream-worker",
+            "entity-streams",
+            "entity-stream-worker",
             spec.name,
-            monoDictionaryStreamWorkerFunction!
+            monoEntityStreamWorkerFunction!
           ),
           spec,
         };
@@ -253,7 +253,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
   }
 
   async function bundleFile<
-    Spec extends CommandSpec | SubscriptionSpec | ActivitySpec
+    Spec extends CommandSpec | SubscriptionSpec | TaskSpec
   >(
     specPath: string,
     spec: Spec,
@@ -285,8 +285,8 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           entry: runtimeHandlersEntrypoint("orchestrator"),
         },
         {
-          name: ServiceType.ActivityWorker,
-          entry: runtimeHandlersEntrypoint("activity-worker"),
+          name: ServiceType.TaskWorker,
+          entry: runtimeHandlersEntrypoint("task-worker"),
         },
         {
           name: ServiceType.CommandWorker,
@@ -297,8 +297,8 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           entry: runtimeHandlersEntrypoint("subscription-worker"),
         },
         {
-          name: ServiceType.DictionaryStreamWorker,
-          entry: runtimeHandlersEntrypoint("dictionary-stream-worker"),
+          name: ServiceType.EntityStreamWorker,
+          entry: runtimeHandlersEntrypoint("entity-stream-worker"),
         },
         {
           name: ServiceType.TransactionWorker,
@@ -319,8 +319,8 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       (
         [
           {
-            name: "ActivityFallbackHandler",
-            entry: runtimeHandlersEntrypoint("activity-fallback-handler"),
+            name: "TaskFallbackHandler",
+            entry: runtimeHandlersEntrypoint("task-fallback-handler"),
           },
           {
             name: "SchedulerForwarder",

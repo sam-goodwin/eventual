@@ -6,19 +6,22 @@ import type {
   ListExecutionEventsResponse,
   ListExecutionsResponse,
   ListWorkflowsResponse,
-  SendActivityFailureRequest,
-  SendActivityHeartbeatRequest,
-  SendActivityHeartbeatResponse,
-  SendActivitySuccessRequest,
+  SendTaskFailureRequest,
+  SendTaskHeartbeatRequest,
+  SendTaskHeartbeatResponse,
+  SendTaskSuccessRequest,
 } from "./internal/eventual-service.js";
 import type { Signal } from "./signals.js";
-import {
+import type {
   Transaction,
   TransactionInput,
   TransactionOutput,
 } from "./transaction.js";
-import type { Workflow, WorkflowInput } from "./workflow.js";
-import { WorkflowExecutionOptions } from "./workflow.js";
+import type {
+  Workflow,
+  WorkflowExecutionOptions,
+  WorkflowInput,
+} from "./workflow.js";
 
 /**
  * Top level Eventual Client used by systems outside of an Eventual Service to interact with it.
@@ -75,36 +78,36 @@ export interface EventualServiceClient {
   sendSignal(request: SendSignalRequest): Promise<void>;
 
   /**
-   * Publishes one or more events to the service.
+   * Emits one or more events to the service.
    */
-  publishEvents(request: PublishEventsRequest): Promise<void>;
+  emitEvents(request: EmitEventsRequest): Promise<void>;
 
   /**
-   * Succeeds an async activity with the given value.
+   * Succeeds an async task with the given value.
    */
-  sendActivitySuccess(request: SendActivitySuccessRequest): Promise<void>;
+  sendTaskSuccess(request: SendTaskSuccessRequest): Promise<void>;
 
   /**
-   * Fails an async activity causing it to throw the given error.
+   * Fails an async task causing it to throw the given error.
    */
-  sendActivityFailure(request: SendActivityFailureRequest): Promise<void>;
+  sendTaskFailure(request: SendTaskFailureRequest): Promise<void>;
 
   executeTransaction<T extends Transaction>(
     request: ExecuteTransactionRequest<T>
   ): Promise<ExecuteTransactionResponse<T>>;
 
   /**
-   * Submits a "heartbeat" for the given activityToken.
+   * Submits a "heartbeat" for the given taskToken.
    *
-   * @returns whether the activity has been cancelled by the calling workflow.
+   * @returns whether the task has been cancelled by the calling workflow.
    */
-  sendActivityHeartbeat(
-    request: SendActivityHeartbeatRequest
-  ): Promise<SendActivityHeartbeatResponse>;
+  sendTaskHeartbeat(
+    request: SendTaskHeartbeatRequest
+  ): Promise<SendTaskHeartbeatResponse>;
 }
 
-export interface PublishEventsRequest
-  extends CommandInput<EventualService["publishEvents"]> {}
+export interface EmitEventsRequest
+  extends CommandInput<EventualService["emitEvents"]> {}
 
 export interface StartExecutionRequest<W extends Workflow = Workflow>
   extends WorkflowExecutionOptions {
@@ -178,11 +181,11 @@ export type ExecuteTransactionResponse<T extends Transaction = Transaction> =
 // re-exports types used by the client, the types are in the internal path otherwise.
 export {
   ExecutionHistoryResponse,
-  ListExecutionsResponse,
   ListExecutionEventsResponse,
+  ListExecutionsResponse,
   ListWorkflowsResponse,
-  SendActivityFailureRequest,
-  SendActivityHeartbeatRequest,
-  SendActivityHeartbeatResponse,
-  SendActivitySuccessRequest,
+  SendTaskFailureRequest,
+  SendTaskHeartbeatRequest,
+  SendTaskHeartbeatResponse,
+  SendTaskSuccessRequest,
 };

@@ -1,7 +1,4 @@
-import {
-  createEventualCall,
-  EventualCallKind,
-} from "./internal/calls/calls.js";
+import { createEventualCall, EventualCallKind } from "./internal/calls.js";
 
 export type ConditionPredicate = () => boolean;
 
@@ -12,7 +9,7 @@ export interface ConditionOptions {
 /**
  * A condition which will resolve when the predicate resolves to true.
  *
- * The contents of the condition should be deterministic and contain no activity calls.
+ * The contents of the condition should be deterministic and contain no task calls.
  * Should only be called from within a workflow.
  *
  * ```ts

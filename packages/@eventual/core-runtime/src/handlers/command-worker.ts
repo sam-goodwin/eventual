@@ -8,17 +8,17 @@ import {
 } from "@eventual/core";
 import {
   commands,
-  registerDictionaryHook,
+  registerEntityHook,
   registerServiceClient,
   ServiceType,
   serviceTypeScope,
 } from "@eventual/core/internal";
 import itty from "itty-router";
-import { DictionaryClient } from "../clients/dictionary-client.js";
+import { EntityClient } from "../clients/entity-client.js";
 
 export interface ApiHandlerDependencies {
   serviceClient?: EventualServiceClient;
-  dictionaryClient?: DictionaryClient;
+  entityClient?: EntityClient;
 }
 
 export interface CommandWorker {
@@ -33,15 +33,15 @@ export interface CommandWorker {
  */
 export function createCommandWorker({
   serviceClient,
-  dictionaryClient,
+  entityClient,
 }: ApiHandlerDependencies): CommandWorker {
   // make the service client available to web hooks
   if (serviceClient) {
     registerServiceClient(serviceClient);
   }
-  // the system commands do not currently use the dictionary client so it will be optional for now.
-  if (dictionaryClient) {
-    registerDictionaryHook(dictionaryClient);
+  // the system commands do not currently use the entity client so it will be optional for now.
+  if (entityClient) {
+    registerEntityHook(entityClient);
   }
 
   const router = initRouter();

@@ -1,27 +1,27 @@
 import { AnyCommand, api, command, HttpResponse } from "@eventual/core";
 import {
   assertNever,
-  EventualService,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
+  EventualService,
   executeTransactionRequestSchema,
   extendsError,
-  isSendActivityFailureRequest,
-  isSendActivityHeartbeatRequest,
-  isSendActivitySuccessRequest,
+  isSendTaskFailureRequest,
+  isSendTaskHeartbeatRequest,
+  isSendTaskSuccessRequest,
   listExecutionEventsRequestSchema,
   listExecutionsRequestSchema,
-  publishEventsRequestSchema,
-  sendActivityUpdateSchema,
+  emitEventsRequestSchema,
   sendSignalRequestSchema,
+  sendTaskUpdateSchema,
   startExecutionRequestSchema,
 } from "@eventual/core/internal";
 import util from "util";
 import { z } from "zod";
-import type { ActivityClient } from "./clients/activity-client.js";
 import type { EventClient } from "./clients/event-client.js";
 import type { ExecutionQueueClient } from "./clients/execution-queue-client.js";
+import type { TaskClient } from "./clients/task-client.js";
 import type { WorkflowClient } from "./clients/workflow-client.js";
-import { TransactionClient } from "./index.js";
+import type { TransactionClient } from "./index.js";
 import type { WorkflowSpecProvider } from "./providers/workflow-provider.js";
 import type { ExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
 import type { ExecutionHistoryStore } from "./stores/execution-history-store.js";
@@ -71,40 +71,40 @@ export function createStartExecutionCommand({
   );
 }
 
-export function createPublishEventsCommand({
+export function createEmitEventsCommand({
   eventClient,
 }: {
   eventClient: EventClient;
-}): EventualService["publishEvents"] {
+}): EventualService["emitEvents"] {
   return systemCommand(
     withErrorHandling.command(
-      "publishEvents",
-      { input: publishEventsRequestSchema },
+      "emitEvents",
+      { input: emitEventsRequestSchema },
       (request) => {
-        return eventClient.publishEvents(...request.events);
+        return eventClient.emitEvents(...request.events);
       }
     )
   );
 }
 
-export function createUpdateActivityCommand({
-  activityClient,
+export function createUpdateTaskCommand({
+  taskClient,
 }: {
-  activityClient: ActivityClient;
-}): EventualService["updateActivity"] {
+  taskClient: TaskClient;
+}): EventualService["updateTask"] {
   return systemCommand(
     withErrorHandling.command(
-      "updateActivity",
-      { input: sendActivityUpdateSchema },
+      "updateTask",
+      { input: sendTaskUpdateSchema },
       async (request) => {
-        if (isSendActivitySuccessRequest(request)) {
-          return activityClient.sendSuccess(request);
-        } else if (isSendActivityFailureRequest(request)) {
-          return activityClient.sendFailure(request);
-        } else if (isSendActivityHeartbeatRequest(request)) {
-          return activityClient.sendHeartbeat(request);
+        if (isSendTaskSuccessRequest(request)) {
+          return taskClient.sendSuccess(request);
+        } else if (isSendTaskFailureRequest(request)) {
+          return taskClient.sendFailure(request);
+        } else if (isSendTaskHeartbeatRequest(request)) {
+          return taskClient.sendHeartbeat(request);
         }
-        return assertNever(request, "Invalid activity update request");
+        return assertNever(request, "Invalid task update request");
       }
     )
   );

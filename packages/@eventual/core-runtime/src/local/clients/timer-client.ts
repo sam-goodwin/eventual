@@ -1,6 +1,6 @@
 import { assertNever } from "@eventual/core/internal";
 import {
-  isActivityHeartbeatMonitorRequest,
+  isTaskHeartbeatMonitorRequest,
   isTimerScheduleEventRequest,
   TimerClient,
   TimerRequest,
@@ -24,7 +24,7 @@ export class LocalTimerClient extends TimerClient {
         executionId: timerRequest.executionId,
         events: [timerRequest.event],
       });
-    } else if (isActivityHeartbeatMonitorRequest(timerRequest)) {
+    } else if (isTaskHeartbeatMonitorRequest(timerRequest)) {
       this.timeConnector.scheduleEvent(time, timerRequest);
     } else {
       return assertNever(timerRequest);

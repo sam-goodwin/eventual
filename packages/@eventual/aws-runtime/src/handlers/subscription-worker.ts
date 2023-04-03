@@ -6,7 +6,7 @@ import {
 } from "@eventual/core-runtime";
 import type { EventBridgeEvent } from "aws-lambda";
 import {
-  createDictionaryClient,
+  createEntityClient,
   createEventClient,
   createServiceClient,
   createTransactionClient,
@@ -19,7 +19,7 @@ export const processEvent = createSubscriptionWorker({
     transactionClient: createTransactionClient(),
   }),
   subscriptionProvider: new GlobalSubscriptionProvider(),
-  dictionaryClient: createDictionaryClient(),
+  entityClient: createEntityClient(),
 });
 
 export default async function (event: EventBridgeEvent<string, any>) {

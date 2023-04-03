@@ -1,21 +1,21 @@
 import { ExecutionID, Workflow } from "@eventual/core";
 import {
-  ActivityCall,
-  ActivityScheduled,
   AwaitTimerCall,
   ChildWorkflowCall,
   ChildWorkflowScheduled,
-  DictionaryCall,
-  DictionaryOperation,
-  DictionaryRequest,
-  DictionaryRequestFailed,
-  DictionaryRequestSucceeded,
-  EventsPublished,
+  EntityCall,
+  EntityOperation,
+  EntityRequest,
+  EntityRequestFailed,
+  EntityRequestSucceeded,
+  EventsEmitted,
   HistoryStateEvent,
   InvokeTransactionCall,
-  PublishEventsCall,
+  EmitEventsCall,
   SendSignalCall,
   SignalSent,
+  TaskCall,
+  TaskScheduled,
   TimerCompleted,
   TimerScheduled,
   TransactionRequest,
@@ -23,26 +23,23 @@ import {
   TransactionRequestSucceeded,
   WorkflowEventType,
   assertNever,
-  isActivityCall,
   isAwaitTimerCall,
   isChildExecutionTarget,
   isChildWorkflowCall,
   isConditionCall,
-  isDictionaryCall,
-  isDictionaryOperationOfType,
+  isEntityCall,
+  isEntityOperationOfType,
   isExpectSignalCall,
   isInvokeTransactionCall,
-  isPublishEventsCall,
+  isEmitEventsCall,
   isRegisterSignalHandlerCall,
   isSendSignalCall,
+  isTaskCall,
 } from "@eventual/core/internal";
-import {
-  ActivityClient,
-  ActivityWorkerRequest,
-} from "./clients/activity-client.js";
-import { DictionaryClient } from "./clients/dictionary-client.js";
+import { EntityClient } from "./clients/entity-client.js";
 import { EventClient } from "./clients/event-client.js";
 import { ExecutionQueueClient } from "./clients/execution-queue-client.js";
+import { TaskClient, TaskWorkerRequest } from "./clients/task-client.js";
 import { TimerClient } from "./clients/timer-client.js";
 import { TransactionClient } from "./clients/transaction-client.js";
 import { WorkflowClient } from "./clients/workflow-client.js";
@@ -53,8 +50,8 @@ import { createEvent } from "./workflow-events.js";
 import { WorkflowCall } from "./workflow-executor.js";
 
 interface WorkflowCallExecutorProps {
-  activityClient: ActivityClient;
-  dictionaryClient: DictionaryClient;
+  taskClient: TaskClient;
+  entityClient: EntityClient;
   eventClient: EventClient;
   executionQueueClient: ExecutionQueueClient;
   timerClient: TimerClient;
@@ -74,8 +71,8 @@ export class WorkflowCallExecutor {
     call: WorkflowCall,
     baseTime: Date
   ): Promise<HistoryStateEvent | undefined> {
-    if (isActivityCall(call.call)) {
-      return await this.scheduleActivity(
+    if (isTaskCall(call.call)) {
+      return await this.scheduleTask(
         workflow,
         executionId,
         call.call,
@@ -94,8 +91,8 @@ export class WorkflowCallExecutor {
       return this.startTimer(executionId, call.call, call.seq, baseTime);
     } else if (isSendSignalCall(call.call)) {
       return this.sendSignal(executionId, call.call, call.seq, baseTime);
-    } else if (isPublishEventsCall(call.call)) {
-      return this.publishEvents(call.call, call.seq, baseTime);
+    } else if (isEmitEventsCall(call.call)) {
+      return this.emitEvents(call.call, call.seq, baseTime);
     } else if (
       isConditionCall(call.call) ||
       isExpectSignalCall(call.call) ||
@@ -103,8 +100,8 @@ export class WorkflowCallExecutor {
     ) {
       // do nothing
       return undefined;
-    } else if (isDictionaryCall(call.call)) {
-      return this.executeDictionaryRequest(
+    } else if (isEntityCall(call.call)) {
+      return this.executeEntityRequest(
         executionId,
         call.call,
         call.seq,
@@ -117,29 +114,29 @@ export class WorkflowCallExecutor {
     }
   }
 
-  private async scheduleActivity(
+  private async scheduleTask(
     workflow: Workflow,
     executionId: string,
-    call: ActivityCall,
+    call: TaskCall,
     seq: number,
     baseTime: Date
   ) {
-    const request: ActivityWorkerRequest = {
+    const request: TaskWorkerRequest = {
       scheduledTime: baseTime.toISOString(),
       workflowName: workflow.name,
       executionId,
       input: call.input,
-      activityName: call.name,
+      taskName: call.name,
       seq,
       heartbeat: call.heartbeat,
       retry: 0,
     };
 
-    await this.props.activityClient.startActivity(request);
+    await this.props.taskClient.startTask(request);
 
-    return createEvent<ActivityScheduled>(
+    return createEvent<TaskScheduled>(
       {
-        type: WorkflowEventType.ActivityScheduled,
+        type: WorkflowEventType.TaskScheduled,
         seq,
         name: call.name,
       },
@@ -231,15 +228,11 @@ export class WorkflowCallExecutor {
     );
   }
 
-  private async publishEvents(
-    call: PublishEventsCall,
-    seq: number,
-    baseTime: Date
-  ) {
-    await this.props.eventClient.publishEvents(...call.events);
-    return createEvent<EventsPublished>(
+  private async emitEvents(call: EmitEventsCall, seq: number, baseTime: Date) {
+    await this.props.eventClient.emitEvents(...call.events);
+    return createEvent<EventsEmitted>(
       {
-        type: WorkflowEventType.EventsPublished,
+        type: WorkflowEventType.EventsEmitted,
         events: call.events,
         seq,
       },
@@ -247,22 +240,22 @@ export class WorkflowCallExecutor {
     );
   }
 
-  private async executeDictionaryRequest(
+  private async executeEntityRequest(
     executionId: string,
-    call: DictionaryCall,
+    call: EntityCall,
     seq: number,
     baseTime: Date
   ) {
     const self = this;
     try {
-      const result = await invokeDictionaryOperation(call);
+      const result = await invokeEntityOperation(call);
       await this.props.executionQueueClient.submitExecutionEvents(
         executionId,
-        createEvent<DictionaryRequestSucceeded>(
+        createEvent<EntityRequestSucceeded>(
           {
-            type: WorkflowEventType.DictionaryRequestSucceeded,
+            type: WorkflowEventType.EntityRequestSucceeded,
             operation: call.operation,
-            name: isDictionaryOperationOfType("transact", call)
+            name: isEntityOperationOfType("transact", call)
               ? undefined
               : call.name,
             result,
@@ -274,11 +267,11 @@ export class WorkflowCallExecutor {
     } catch (err) {
       await this.props.executionQueueClient.submitExecutionEvents(
         executionId,
-        createEvent<DictionaryRequestFailed>(
+        createEvent<EntityRequestFailed>(
           {
-            type: WorkflowEventType.DictionaryRequestFailed,
+            type: WorkflowEventType.EntityRequestFailed,
             seq,
-            name: isDictionaryOperationOfType("transact", call)
+            name: isEntityOperationOfType("transact", call)
               ? undefined
               : call.name,
             operation: call.operation,
@@ -289,41 +282,35 @@ export class WorkflowCallExecutor {
       );
     }
 
-    return createEvent<DictionaryRequest>(
+    return createEvent<EntityRequest>(
       {
-        type: WorkflowEventType.DictionaryRequest,
+        type: WorkflowEventType.EntityRequest,
         operation: call,
         seq,
       },
       baseTime
     );
 
-    async function invokeDictionaryOperation(operation: DictionaryOperation) {
-      if (isDictionaryOperationOfType("transact", operation)) {
-        return self.props.dictionaryClient.transactWrite(operation.items);
+    async function invokeEntityOperation(operation: EntityOperation) {
+      if (isEntityOperationOfType("transact", operation)) {
+        return self.props.entityClient.transactWrite(operation.items);
       }
-      const dictionary = await self.props.dictionaryClient.getDictionary(
-        operation.name
-      );
-      if (!dictionary) {
-        throw new Error(`Dictionary ${operation.name} does not exist`);
+      const entity = await self.props.entityClient.getEntity(operation.name);
+      if (!entity) {
+        throw new Error(`Entity ${operation.name} does not exist`);
       }
-      if (isDictionaryOperationOfType("get", operation)) {
-        return dictionary.get(operation.key);
-      } else if (isDictionaryOperationOfType("getWithMetadata", operation)) {
-        return dictionary.getWithMetadata(operation.key);
-      } else if (isDictionaryOperationOfType("set", operation)) {
-        return dictionary.set(
-          operation.key,
-          operation.value,
-          operation.options
-        );
-      } else if (isDictionaryOperationOfType("delete", operation)) {
-        return dictionary.delete(operation.key, operation.options);
-      } else if (isDictionaryOperationOfType("list", operation)) {
-        return dictionary.list(operation.request);
-      } else if (isDictionaryOperationOfType("listKeys", operation)) {
-        return dictionary.listKeys(operation.request);
+      if (isEntityOperationOfType("get", operation)) {
+        return entity.get(operation.key);
+      } else if (isEntityOperationOfType("getWithMetadata", operation)) {
+        return entity.getWithMetadata(operation.key);
+      } else if (isEntityOperationOfType("set", operation)) {
+        return entity.set(operation.key, operation.value, operation.options);
+      } else if (isEntityOperationOfType("delete", operation)) {
+        return entity.delete(operation.key, operation.options);
+      } else if (isEntityOperationOfType("list", operation)) {
+        return entity.list(operation.request);
+      } else if (isEntityOperationOfType("listKeys", operation)) {
+        return entity.listKeys(operation.request);
       }
       return assertNever(operation);
     }

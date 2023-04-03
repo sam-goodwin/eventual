@@ -1,13 +1,13 @@
-import { DictionaryConditionalOperation } from "@eventual/core";
+import { EntityConditionalOperation } from "@eventual/core";
 import { normalizeCompositeKey } from "@eventual/core-runtime";
 import {
-  DictionaryOperation,
+  EntityOperation,
   WorkflowEvent,
-  isActivityScheduled,
   isChildWorkflowScheduled,
-  isDictionaryRequest,
+  isEntityRequest,
   isSignalReceived,
   isSignalSent,
+  isTaskScheduled,
   isTransactionRequest,
 } from "@eventual/core/internal";
 import chalk from "chalk";
@@ -18,8 +18,8 @@ export function displayEvent(event: WorkflowEvent) {
     `${chalk.green(formatTime(event.timestamp))}\t${chalk.blue(event.type)}${
       "seq" in event ? `(${event.seq})` : ""
     }`,
-    ...(isChildWorkflowScheduled(event) || isActivityScheduled(event)
-      ? [`Activity Name: ${JSON.stringify(event.name)}`]
+    ...(isChildWorkflowScheduled(event) || isTaskScheduled(event)
+      ? [`Task Name: ${JSON.stringify(event.name)}`]
       : []),
     ...(isTransactionRequest(event)
       ? [`Transaction Name: ${event.transactionName}`]
@@ -32,9 +32,7 @@ export function displayEvent(event: WorkflowEvent) {
     ...((isSignalReceived(event) || isSignalSent(event)) && event.payload
       ? [`Payload: ${JSON.stringify(event.payload)}`]
       : []),
-    ...(isDictionaryRequest(event)
-      ? displayDictionaryCommand(event.operation)
-      : []),
+    ...(isEntityRequest(event) ? displayEntityCommand(event.operation) : []),
     ...("result" in event ? [`Result: ${JSON.stringify(event.result)}`] : []),
     ...("output" in event ? [`Output: ${JSON.stringify(event.output)}`] : []),
     ...("error" in event
@@ -45,8 +43,8 @@ export function displayEvent(event: WorkflowEvent) {
   return lines.join("\n");
 }
 
-function displayDictionaryCommand(
-  operation: DictionaryOperation | DictionaryConditionalOperation
+function displayEntityCommand(
+  operation: EntityOperation | EntityConditionalOperation
 ) {
   const output: string[] = [`Operation: ${operation.operation}`];
   if (operation.operation === "transact") {
@@ -54,17 +52,15 @@ function displayDictionaryCommand(
     output.push(
       ...operation.items.flatMap((item, i) => [
         `${i}:`,
-        ...displayDictionaryCommand({
+        ...displayEntityCommand({
           ...item.operation,
           name:
-            typeof item.dictionary === "string"
-              ? item.dictionary
-              : item.dictionary.name,
+            typeof item.entity === "string" ? item.entity : item.entity.name,
         }).map((v) => `\t${v}`),
       ])
     );
   } else {
-    output.push(`Dict: ${operation.name}`);
+    output.push(`Ent: ${operation.name}`);
     if ("key" in operation) {
       const { key, namespace } = normalizeCompositeKey(operation.key);
       if (namespace) {

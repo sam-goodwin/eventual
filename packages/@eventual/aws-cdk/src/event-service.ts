@@ -23,16 +23,16 @@ export class EventService {
     });
   }
 
-  public configurePublish(func: Function) {
-    this.grantPublish(func);
+  public configureEmit(func: Function) {
+    this.grantEmit(func);
     this.addEnvs(func, ENV_NAMES.EVENT_BUS_ARN, ENV_NAMES.SERVICE_NAME);
   }
 
   /**
-   * Grants permission to publish to this {@link Service}'s {@link eventBus}.
+   * Grants permission to emit to this {@link Service}'s {@link eventBus}.
    */
   @grant()
-  public grantPublish(grantable: IGrantable) {
+  public grantEmit(grantable: IGrantable) {
     this.bus.grantPutEventsTo(grantable);
   }
 

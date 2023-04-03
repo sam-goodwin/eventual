@@ -1,45 +1,42 @@
 import {
-  Activity,
-  ActivityOutput,
-  dictionaryStreamMatchesItem,
   Event,
   EventEnvelope,
   EventPayload,
   EventPayloadType,
   ExecutionHandle,
-  isDictionaryStreamItem,
-  SendActivityFailureRequest,
-  SendActivityHeartbeatRequest,
-  SendActivityHeartbeatResponse,
-  SendActivitySuccessRequest,
   SendSignalRequest,
+  SendTaskFailureRequest,
+  SendTaskHeartbeatRequest,
+  SendTaskHeartbeatResponse,
+  SendTaskSuccessRequest,
   StartExecutionRequest,
   SubscriptionHandler,
+  Task,
+  TaskOutput,
   Workflow,
+  entityStreamMatchesItem,
+  isEntityStreamItem,
 } from "@eventual/core";
 import {
-  isActivitySendEventRequest,
-  isActivityWorkerRequest,
-  isTimerRequest,
-  isWorkflowTask,
   LocalContainer,
   LocalEnvConnector,
   LocalEvent,
   RuntimeServiceClient,
   TimeController,
   WorkflowTask,
+  isTaskSendEventRequest,
+  isTaskWorkerRequest,
+  isTimerRequest,
+  isWorkflowTask,
 } from "@eventual/core-runtime";
 import {
-  ActivityInput,
-  dictionaries,
-  PublishEventsRequest,
+  EmitEventsRequest,
+  TaskInput,
+  entities,
   registerServiceClient,
 } from "@eventual/core/internal";
-import {
-  MockableActivityProvider,
-  MockActivity,
-} from "./providers/activity-provider.js";
 import { TestSubscriptionProvider } from "./providers/subscription-provider.js";
+import { MockTask, MockableTaskProvider } from "./providers/task-provider.js";
 
 export interface TestEnvironmentProps {
   /**
@@ -58,7 +55,7 @@ export interface TestEnvironmentProps {
 
 /**
  * A locally simulated workflow environment designed for unit testing.
- * Supports providing mock implementations of activities and workflow,
+ * Supports providing mock implementations of tasks and workflow,
  * manually progressing time, and more.
  *
  * ```ts
@@ -78,7 +75,7 @@ export class TestEnvironment extends RuntimeServiceClient {
   private localEnvConnector: LocalEnvConnector;
   private timeController: TimeController<LocalEvent>;
 
-  private activityProvider: MockableActivityProvider;
+  private taskProvider: MockableTaskProvider;
   private subscriptionProvider: TestSubscriptionProvider;
 
   constructor(props?: TestEnvironmentProps) {
@@ -93,7 +90,7 @@ export class TestEnvironment extends RuntimeServiceClient {
       increment: 1000,
     });
 
-    const activityProvider = new MockableActivityProvider();
+    const taskProvider = new MockableTaskProvider();
     const subscriptionProvider = new TestSubscriptionProvider();
 
     const localEnvConnector: LocalEnvConnector = {
@@ -108,12 +105,12 @@ export class TestEnvironment extends RuntimeServiceClient {
 
     const localContainer = new LocalContainer(localEnvConnector, {
       serviceName: props?.serviceName ?? "testing",
-      activityProvider: activityProvider,
+      taskProvider: taskProvider,
       subscriptionProvider: subscriptionProvider,
     });
 
     super({
-      activityClient: localContainer.activityClient,
+      taskClient: localContainer.taskClient,
       eventClient: localContainer.eventClient,
       executionHistoryStateStore: localContainer.executionHistoryStateStore,
       executionHistoryStore: localContainer.executionHistoryStore,
@@ -128,16 +125,16 @@ export class TestEnvironment extends RuntimeServiceClient {
     this.localEnvConnector = localEnvConnector;
     this.localContainer = localContainer;
 
-    this.activityProvider = activityProvider;
+    this.taskProvider = taskProvider;
     this.subscriptionProvider = subscriptionProvider;
 
     registerServiceClient(this);
   }
 
-  public override async sendActivityHeartbeat(
-    request: SendActivityHeartbeatRequest
-  ): Promise<SendActivityHeartbeatResponse> {
-    const resp = await super.sendActivityHeartbeat(request);
+  public override async sendTaskHeartbeat(
+    request: SendTaskHeartbeatRequest
+  ): Promise<SendTaskHeartbeatResponse> {
+    const resp = await super.sendTaskHeartbeat(request);
     await this.tick();
     return resp;
   }
@@ -165,7 +162,7 @@ export class TestEnvironment extends RuntimeServiceClient {
    * Removes all mocks, reverting to their default behavior.
    */
   public resetMocks() {
-    this.activityProvider.clearMocks();
+    this.taskProvider.clearMocks();
   }
 
   /**
@@ -176,20 +173,18 @@ export class TestEnvironment extends RuntimeServiceClient {
   }
 
   /**
-   * Overrides the implementation of an activity with a mock.
+   * Overrides the implementation of a task with a mock.
    *
    * ```ts
-   * const mockActivity = env.mockActivity(myActivity);
-   * mockActivity.succeed("hello"); // myActivity will return "hello" when invoked until the mock is reset or a new resolution is given.
+   * const mockTask = env.mockTask(myTask);
+   * mockTask.succeed("hello"); // myTask will return "hello" when invoked until the mock is reset or a new resolution is given.
    * ```
    */
-  public mockActivity<A extends Activity<any, any>>(
-    activity: A | string,
-    resolution?:
-      | ActivityOutput<A>
-      | ((input: ActivityInput<A>) => ActivityOutput<A>)
-  ): MockActivity<A> {
-    return this.activityProvider.mockActivity(activity, resolution);
+  public mockTask<A extends Task<any, any>>(
+    task: A | string,
+    resolution?: TaskOutput<A> | ((input: TaskInput<A>) => TaskOutput<A>)
+  ): MockTask<A> {
+    return this.taskProvider.mockTask(task, resolution);
   }
 
   /**
@@ -233,14 +228,14 @@ export class TestEnvironment extends RuntimeServiceClient {
   }
 
   /**
-   * Publishes one or more events of a type into the {@link TestEnvironment}.
+   * Emits one or more events of a type into the {@link TestEnvironment}.
    * and progresses time by one second ({@link tick})
    */
-  public async publishEvent<Payload extends EventPayload = EventPayload>(
+  public async emitEvent<Payload extends EventPayload = EventPayload>(
     event: string | Event<Payload>,
     ...payloads: Payload[]
   ) {
-    await this.publishEvents({
+    await this.emitEvents({
       events: payloads.map(
         (p): EventEnvelope<Payload> => ({
           name: typeof event === "string" ? event : event.name,
@@ -252,11 +247,11 @@ export class TestEnvironment extends RuntimeServiceClient {
   }
 
   /**
-   * Publishes one or more events into the {@link TestEnvironment}
+   * Emits one or more events into the {@link TestEnvironment}
    * and progresses time by one second ({@link tick})
    */
-  public override async publishEvents(request: PublishEventsRequest) {
-    await super.publishEvents(request);
+  public override async emitEvents(request: EmitEventsRequest) {
+    await super.emitEvents(request);
     return this.tick();
   }
 
@@ -275,42 +270,42 @@ export class TestEnvironment extends RuntimeServiceClient {
   }
 
   /**
-   * Succeeds an activity with a result value
+   * Succeeds a task with a result value
    * and progressed time by one second ({@link tick}).
    *
-   * Get the activity token by intercepting the token from {@link asyncResult}.
+   * Get the task token by intercepting the token from {@link asyncResult}.
    *
    * ```ts
-   * let activityToken;
-   * mockActivity.asyncResult(token => activityToken);
+   * let taskToken;
+   * mockTask.asyncResult(token => taskToken);
    * // start workflow
-   * env.sendActivitySuccess(activityToken, "value");
+   * env.sendTaskSuccess(taskToken, "value");
    * ```
    */
-  public override async sendActivitySuccess<A extends Activity<any, any> = any>(
-    request: Omit<SendActivitySuccessRequest<ActivityOutput<A>>, "type">
+  public override async sendTaskSuccess<A extends Task<any, any> = any>(
+    request: Omit<SendTaskSuccessRequest<TaskOutput<A>>, "type">
   ) {
-    await super.sendActivitySuccess(request);
+    await super.sendTaskSuccess(request);
     return this.tick();
   }
 
   /**
-   * Fails an activity with a result value
+   * Fails a task with a result value
    * and progressed time by one second ({@link tick}).
    *
-   * Get the activity token by intercepting the token from {@link asyncResult}.
+   * Get the task token by intercepting the token from {@link asyncResult}.
    *
    * ```ts
-   * let activityToken;
-   * mockActivity.asyncResult(token => activityToken);
+   * let taskToken;
+   * mockTask.asyncResult(token => taskToken);
    * // start workflow
-   * env.sendActivityFailure(activityToken, "value");
+   * env.sendTaskFailure(taskToken, "value");
    * ```
    */
-  public override async sendActivityFailure(
-    request: Omit<SendActivityFailureRequest, "type">
+  public override async sendTaskFailure(
+    request: Omit<SendTaskFailureRequest, "type">
   ) {
-    await super.sendActivityFailure(request);
+    await super.sendTaskFailure(request);
     return this.tick();
   }
 
@@ -374,32 +369,32 @@ export class TestEnvironment extends RuntimeServiceClient {
   private async processTickEvents(events: LocalEvent[]) {
     const timerRequests = events.filter(isTimerRequest);
     const workflowTasks = events.filter(isWorkflowTask);
-    const activityWorkerRequests = events.filter(isActivityWorkerRequest);
-    const dictionaryStreamItems = events.filter(isDictionaryStreamItem);
+    const taskWorkerRequests = events.filter(isTaskWorkerRequest);
+    const entityStreamItems = events.filter(isEntityStreamItem);
 
     await Promise.all(
-      // run all activity requests, don't wait for a result
+      // run all task requests, don't wait for a result
       [
-        ...activityWorkerRequests.map(async (request) => {
-          const result = await this.localContainer.activityWorker(
+        ...taskWorkerRequests.map(async (request) => {
+          const result = await this.localContainer.taskWorker(
             request,
             this.localEnvConnector.getTime(),
             () => this.localEnvConnector.getTime()
           );
-          if (!!result && isActivitySendEventRequest(result)) {
+          if (!!result && isTaskSendEventRequest(result)) {
             this.localEnvConnector.pushWorkflowTaskNextTick({
               events: [result.event],
               executionId: result.executionId,
             });
           }
         }),
-        dictionaryStreamItems.flatMap((i) => {
-          const streamNames = [...dictionaries().values()]
+        entityStreamItems.flatMap((i) => {
+          const streamNames = [...entities().values()]
             .flatMap((d) => d.streams)
-            .filter((s) => dictionaryStreamMatchesItem(i, s))
+            .filter((s) => entityStreamMatchesItem(i, s))
             .map((s) => s.name);
           return streamNames.map((streamName) => {
-            return this.localContainer.dictionaryStreamWorker({
+            return this.localContainer.entityStreamWorker({
               ...i,
               streamName,
             });

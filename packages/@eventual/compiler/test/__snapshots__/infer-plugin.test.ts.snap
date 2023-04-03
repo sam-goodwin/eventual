@@ -445,27 +445,17 @@ module.exports = __toCommonJS(command_worker_exports);
 
 var EventualCallKind;
 (function(EventualCallKind2) {
-  EventualCallKind2[EventualCallKind2["ActivityCall"] = 0] = "ActivityCall";
   EventualCallKind2[EventualCallKind2["AwaitTimerCall"] = 1] = "AwaitTimerCall";
   EventualCallKind2[EventualCallKind2["ConditionCall"] = 2] = "ConditionCall";
-  EventualCallKind2[EventualCallKind2["DictionaryCall"] = 8] = "DictionaryCall";
+  EventualCallKind2[EventualCallKind2["EntityCall"] = 8] = "EntityCall";
   EventualCallKind2[EventualCallKind2["ExpectSignalCall"] = 3] = "ExpectSignalCall";
   EventualCallKind2[EventualCallKind2["InvokeTransactionCall"] = 9] = "InvokeTransactionCall";
-  EventualCallKind2[EventualCallKind2["PublishEventsCall"] = 4] = "PublishEventsCall";
+  EventualCallKind2[EventualCallKind2["EmitEventsCall"] = 4] = "EmitEventsCall";
   EventualCallKind2[EventualCallKind2["RegisterSignalHandlerCall"] = 5] = "RegisterSignalHandlerCall";
   EventualCallKind2[EventualCallKind2["SendSignalCall"] = 6] = "SendSignalCall";
+  EventualCallKind2[EventualCallKind2["TaskCall"] = 0] = "TaskCall";
   EventualCallKind2[EventualCallKind2["WorkflowCall"] = 7] = "WorkflowCall";
 })(EventualCallKind || (EventualCallKind = {}));
-
-var ServiceType;
-(function(ServiceType2) {
-  ServiceType2["ActivityWorker"] = "ActivityWorker";
-  ServiceType2["CommandWorker"] = "CommandWorker";
-  ServiceType2["Subscription"] = "Subscription";
-  ServiceType2["OrchestratorWorker"] = "OrchestratorWorker";
-  ServiceType2["DictionaryStreamWorker"] = "DictionaryStreamWorker";
-  ServiceType2["TransactionWorker"] = "TransactionWorker";
-})(ServiceType || (ServiceType = {}));
 
 globalThis._eventual ??= {};
 var commands = globalThis._eventual.commands ??= [];
@@ -482,6 +472,16 @@ var ExecutionStatus;
   ExecutionStatus2["FAILED"] = "FAILED";
 })(ExecutionStatus || (ExecutionStatus = {}));
 var ExecutionStatuses = new Set(Object.values(ExecutionStatus));
+
+var ServiceType;
+(function(ServiceType2) {
+  ServiceType2["CommandWorker"] = "CommandWorker";
+  ServiceType2["Subscription"] = "Subscription";
+  ServiceType2["OrchestratorWorker"] = "OrchestratorWorker";
+  ServiceType2["EntityStreamWorker"] = "EntityStreamWorker";
+  ServiceType2["TaskWorker"] = "TaskWorker";
+  ServiceType2["TransactionWorker"] = "TransactionWorker";
+})(ServiceType || (ServiceType = {}));
 
 function e({ base: t = "", routes: n = [] } = {}) {
   return { __proto__: new Proxy({}, { get: (e2, a, o) => (e3, ...r) => n.push([a.toUpperCase(), RegExp(\`^\${(t + e3).replace(/(\\/?)\\*/g, "($1.*)?").replace(/(\\/$)|((?<=\\/)\\/)/, "").replace(/:(\\w+)(\\?)?(\\.)?/g, "$2(?<$1>[^/]+)$2$3").replace(/\\.(?=[\\w(])/, "\\\\.").replace(/\\)\\.\\?\\(([^\\[]+)\\[\\^/g, "?)\\\\.?($1(?<=\\\\.)[^\\\\.")}/*$\`), r]) && o }), routes: n, async handle(e2, ...r) {
@@ -683,22 +683,22 @@ function or(...conditions) {
 
 var WorkflowEventType;
 (function(WorkflowEventType2) {
-  WorkflowEventType2["ActivitySucceeded"] = "ActivitySucceeded";
-  WorkflowEventType2["ActivityFailed"] = "ActivityFailed";
-  WorkflowEventType2["ActivityHeartbeatTimedOut"] = "ActivityHeartbeatTimedOut";
-  WorkflowEventType2["ActivityScheduled"] = "ActivityScheduled";
   WorkflowEventType2["ChildWorkflowSucceeded"] = "ChildWorkflowSucceeded";
   WorkflowEventType2["ChildWorkflowFailed"] = "ChildWorkflowFailed";
   WorkflowEventType2["ChildWorkflowScheduled"] = "ChildWorkflowScheduled";
-  WorkflowEventType2["DictionaryRequest"] = "DictionaryRequest";
-  WorkflowEventType2["DictionaryRequestFailed"] = "DictionaryRequestFailed";
-  WorkflowEventType2["DictionaryRequestSucceeded"] = "DictionaryRequestSucceeded";
-  WorkflowEventType2["EventsPublished"] = "EventsPublished";
+  WorkflowEventType2["EntityRequest"] = "EntityRequest";
+  WorkflowEventType2["EntityRequestFailed"] = "EntityRequestFailed";
+  WorkflowEventType2["EntityRequestSucceeded"] = "EntityRequestSucceeded";
+  WorkflowEventType2["EventsEmitted"] = "EventsEmitted";
   WorkflowEventType2["TransactionRequest"] = "InvokeTransactionRequest";
   WorkflowEventType2["TransactionRequestFailed"] = "InvokeTransactionRequestFailed";
   WorkflowEventType2["TransactionRequestSucceeded"] = "InvokeTransactionRequestSucceeded";
   WorkflowEventType2["SignalReceived"] = "SignalReceived";
   WorkflowEventType2["SignalSent"] = "SignalSent";
+  WorkflowEventType2["TaskSucceeded"] = "TaskSucceeded";
+  WorkflowEventType2["TaskFailed"] = "TaskFailed";
+  WorkflowEventType2["TaskHeartbeatTimedOut"] = "TaskHeartbeatTimedOut";
+  WorkflowEventType2["TaskScheduled"] = "TaskScheduled";
   WorkflowEventType2["TimerCompleted"] = "TimerCompleted";
   WorkflowEventType2["TimerScheduled"] = "TimerScheduled";
   WorkflowEventType2["WorkflowSucceeded"] = "WorkflowSucceeded";

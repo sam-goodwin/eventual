@@ -1,24 +1,24 @@
 import {
   CompositeKey,
-  Dictionary,
-  DictionaryTransactItem,
+  Entity,
+  EntityTransactItem,
   TransactionFunction,
 } from "@eventual/core";
 import {
-  DictionaryDeleteOperation,
-  DictionarySetOperation,
+  EntityDeleteOperation,
+  EntitySetOperation,
   EventualCallHook,
   EventualPromise,
   EventualPromiseSymbol,
-  PublishEventsCall,
+  EmitEventsCall,
   Result,
   SendSignalCall,
   ServiceType,
   SignalTargetType,
   assertNever,
-  isDictionaryCall,
-  isDictionaryOperationOfType,
-  isPublishEventsCall,
+  isEntityCall,
+  isEntityOperationOfType,
+  isEmitEventsCall,
   isSendSignalCall,
   serviceTypeScope,
 } from "@eventual/core/internal";
@@ -27,13 +27,13 @@ import { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { enterEventualCallHookScope } from "./eventual-hook.js";
 import { isResolved } from "./result.js";
 import {
-  DictionaryStore,
+  EntityStore,
   EntityWithMetadata,
   isTransactionCancelledResult,
   isTransactionConflictResult,
   isUnexpectedVersionResult,
   normalizeCompositeKey,
-} from "./stores/dictionary-store.js";
+} from "./stores/entity-store.js";
 import { serializeCompositeKey } from "./utils.js";
 
 /**
@@ -83,7 +83,7 @@ export interface TransactionExecutor {
 }
 
 export function createTransactionExecutor(
-  dictionaryStore: DictionaryStore,
+  entityStore: EntityStore,
   executionQueueClient: ExecutionQueueClient,
   eventClient: EventClient
 ): TransactionExecutor {
@@ -117,41 +117,39 @@ export function createTransactionExecutor(
       | {
           canRetry: boolean;
           failedItems: {
-            dictionaryName: string;
+            entityName: string;
             key: string;
             namespace?: string;
           }[];
         }
     > {
-      // a map of the keys of all mutable dictionary calls that have been made to the request
-      const dictionaryCalls = new Map<
+      // a map of the keys of all mutable entity calls that have been made to the request
+      const entityCalls = new Map<
         string,
-        DictionarySetOperation | DictionaryDeleteOperation
+        EntitySetOperation | EntityDeleteOperation
       >();
       // store all of the event and signal calls to execute after the transaction completes
-      const eventCalls: (PublishEventsCall | SendSignalCall)[] = [];
+      const eventCalls: (EmitEventsCall | SendSignalCall)[] = [];
       // a map of the keys of all get operations or mutation operations to check during the transaction.
       // also serves as a get cache when get is called multiple times on the same keys
       const retrievedEntities = new Map<
         string,
         {
-          dictionary: string;
+          entityName: string;
           key: string | CompositeKey;
-          entity: EntityWithMetadata<any> | undefined;
+          value: EntityWithMetadata<any> | undefined;
         }
       >();
 
       const eventualCallHook: EventualCallHook = {
         registerEventualCall: (eventual) => {
-          if (isDictionaryCall(eventual)) {
+          if (isEntityCall(eventual)) {
             if (
-              isDictionaryOperationOfType("set", eventual) ||
-              isDictionaryOperationOfType("delete", eventual)
+              isEntityOperationOfType("set", eventual) ||
+              isEntityOperationOfType("delete", eventual)
             ) {
               return createEventualPromise<
-                Awaited<
-                  ReturnType<Dictionary<any>["delete"] | Dictionary<any>["set"]>
-                >
+                Awaited<ReturnType<Entity<any>["delete"] | Entity<any>["set"]>>
               >(async () => {
                 const entity = await resolveEntity(eventual.name, eventual.key);
                 const normalizedKey = serializeCompositeKey(
@@ -159,29 +157,29 @@ export function createTransactionExecutor(
                   eventual.key
                 );
 
-                dictionaryCalls.set(normalizedKey, eventual);
-                return isDictionaryOperationOfType("set", eventual)
+                entityCalls.set(normalizedKey, eventual);
+                return isEntityOperationOfType("set", eventual)
                   ? { version: (entity?.version ?? 0) + 1 }
                   : undefined;
               });
             } else if (
-              isDictionaryOperationOfType("get", eventual) ||
-              isDictionaryOperationOfType("getWithMetadata", eventual)
+              isEntityOperationOfType("get", eventual) ||
+              isEntityOperationOfType("getWithMetadata", eventual)
             ) {
               return createEventualPromise(async () => {
                 const value = await resolveEntity(eventual.name, eventual.key);
 
-                if (isDictionaryOperationOfType("get", eventual)) {
+                if (isEntityOperationOfType("get", eventual)) {
                   return value?.entity;
                 } else if (
-                  isDictionaryOperationOfType("getWithMetadata", eventual)
+                  isEntityOperationOfType("getWithMetadata", eventual)
                 ) {
                   return value;
                 }
                 return assertNever(eventual);
               });
             }
-          } else if (isPublishEventsCall(eventual)) {
+          } else if (isEmitEventsCall(eventual)) {
             eventCalls.push(eventual);
             return createResolvedEventualPromise(Result.resolved(undefined));
           } else if (isSendSignalCall(eventual)) {
@@ -189,7 +187,7 @@ export function createTransactionExecutor(
             return createResolvedEventualPromise(Result.resolved(undefined));
           }
           throw new Error(
-            `Unsupported eventual call type. Only Dictionary requests, publish events, and send signals are supported.`
+            `Unsupported eventual call type. Only Entity requests, emit events, and send signals are supported.`
           );
         },
         /**
@@ -220,14 +218,14 @@ export function createTransactionExecutor(
        * An example of an override:
        *
        * ```ts
-       * const { version } = await dict.set(id, "value");
+       * const { version } = await ent.set(id, "value");
        *
        * transaction(..., async () => {
        *    // no override - this mutation can succeed on any future transaction retry, no matter the version of the item
-       *    await dict.set(id, "value");
+       *    await ent.set(id, "value");
        *
        *    // override - the transaction will only succeed while the version of "id" is still the version from before.
-       *    await dict.set(id, "value", {expectedVersion: version});
+       *    await ent.set(id, "value", {expectedVersion: version});
        * });
        * ```
        */
@@ -236,16 +234,16 @@ export function createTransactionExecutor(
       /**
        * Build the transaction items that contain mutations with assertions or just assertions.
        */
-      const transactionItems: DictionaryTransactItem<any, string>[] = [
+      const transactionItems: EntityTransactItem<any, string>[] = [
         ...retrievedEntities.entries(),
-      ].map(([normalizedKey, { dictionary, key, entity }], i) => {
-        const call = dictionaryCalls.get(normalizedKey);
+      ].map(([normalizedKey, { entityName, key, value }], i) => {
+        const call = entityCalls.get(normalizedKey);
 
-        const retrievedVersion = entity?.version ?? 0;
+        const retrievedVersion = value?.version ?? 0;
         if (call) {
           // if the user provided a version that was not the same that was retrieved
           // we will consider the transaction not retry-able on failure.
-          // for example, if a entity is set with an expected version of 1,
+          // for example, if an entity is set with an expected version of 1,
           //              but the current version at set time is 2, this condition
           ///             will never be true.
           if (
@@ -253,10 +251,10 @@ export function createTransactionExecutor(
             call.options?.expectedVersion !== retrievedVersion
           ) {
             versionOverridesIndices.add(i);
-            return { dictionary, operation: call };
+            return { entity: entityName, operation: call };
           }
           return {
-            dictionary,
+            entity: entityName,
             operation: {
               ...call,
               options: {
@@ -268,7 +266,7 @@ export function createTransactionExecutor(
         } else {
           // values that are retrieved only, will be checked using a condition
           return {
-            dictionary,
+            entity: entityName,
             operation: {
               operation: "condition",
               key,
@@ -285,7 +283,7 @@ export function createTransactionExecutor(
        */
       const result =
         transactionItems.length > 0
-          ? await dictionaryStore.transactWrite(transactionItems)
+          ? await entityStore.transactWrite(transactionItems)
           : undefined;
 
       console.log(JSON.stringify(result, undefined, 4));
@@ -306,7 +304,7 @@ export function createTransactionExecutor(
                 const { key, namespace } = normalizeCompositeKey(
                   x.operation.key
                 );
-                return { dictionaryName: x.dictionary, key, namespace };
+                return { entityName: x.entity, key, namespace };
               }
               return undefined;
             })
@@ -316,13 +314,13 @@ export function createTransactionExecutor(
         return { canRetry: true, failedItems: [] };
       } else {
         /**
-         * If the transaction succeeded, publish events and send signals.
+         * If the transaction succeeded, emit events and send signals.
          * TODO: move the side effects to a transactional dynamo update.
          */
         await Promise.allSettled(
           eventCalls.map(async (call) => {
-            if (isPublishEventsCall(call)) {
-              await eventClient.publishEvents(...call.events);
+            if (isEmitEventsCall(call)) {
+              await eventClient.emitEvents(...call.events);
             } else if (call) {
               // shouldn't happen
               if (call.target.type === SignalTargetType.ChildExecution) {
@@ -342,24 +340,21 @@ export function createTransactionExecutor(
       return { output };
 
       function resolveEntity(
-        dictionaryName: string,
+        entityName: string,
         key: string | CompositeKey
       ): EventualPromise<EntityWithMetadata<any> | undefined> {
-        const normalizedKey = serializeCompositeKey(dictionaryName, key);
+        const normalizedKey = serializeCompositeKey(entityName, key);
         if (retrievedEntities.has(normalizedKey)) {
           return createResolvedEventualPromise(
-            Result.resolved(retrievedEntities.get(normalizedKey)?.entity)
+            Result.resolved(retrievedEntities.get(normalizedKey)?.value)
           );
         } else {
           return createEventualPromise(async () => {
-            const value = await dictionaryStore.getDictionaryValue(
-              dictionaryName,
-              key
-            );
+            const value = await entityStore.getEntityValue(entityName, key);
             retrievedEntities.set(normalizedKey, {
-              dictionary: dictionaryName,
+              entityName,
               key,
-              entity: value,
+              value,
             });
             return value;
           });
