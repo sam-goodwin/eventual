@@ -622,7 +622,11 @@ export const dictionaryWorkflow = workflow(
     await Dictionary.transactWrite([
       {
         dictionary: counter,
-        operation: { operation: "set", key: id, value: value?.n ?? 0 + 1 },
+        operation: {
+          operation: "set",
+          key: id,
+          value: { n: value?.n ?? 0 + 1 },
+        },
       },
     ]);
     // send deletion, to be picked up by the stream
