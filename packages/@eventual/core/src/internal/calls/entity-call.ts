@@ -58,10 +58,10 @@ export interface EntityDeleteOperation extends EntityOperationBase {
   options?: EntityConsistencyOptions;
 }
 
-export interface EntitySetOperation<Entity = any> extends EntityOperationBase {
+export interface EntitySetOperation<E = any> extends EntityOperationBase {
   operation: "set";
   key: string | CompositeKey;
-  value: Entity;
+  value: E;
   options?: EntitySetOptions;
 }
 
