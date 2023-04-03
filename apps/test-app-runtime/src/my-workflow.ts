@@ -1,4 +1,4 @@
-import { activity, workflow } from "@eventual/core";
+import { task, workflow } from "@eventual/core";
 
 export default workflow("my-workflow", async ({ name }: { name: string }) => {
   const result = await Promise.all([hello(name), hello2(name)]);
@@ -7,10 +7,10 @@ export default workflow("my-workflow", async ({ name }: { name: string }) => {
   return `you said ${result2} ${result}`;
 });
 
-const hello = activity("hello", async (name: string) => {
+const hello = task("hello", async (name: string) => {
   return `hello ${name}`;
 });
 
-const hello2 = activity("hello2", async (name: string) => {
+const hello2 = task("hello2", async (name: string) => {
   return `hello2 ${name}`;
 });

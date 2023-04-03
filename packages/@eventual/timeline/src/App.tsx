@@ -3,9 +3,9 @@ import type { ExecutionID } from "@eventual/core";
 import type { WorkflowStarted } from "@eventual/core/internal";
 import { useQuery } from "@tanstack/react-query";
 import { ReactNode } from "react";
-import { aggregateEvents } from "./activity.js";
+import { aggregateEvents } from "./task.js";
 import styles from "./App.module.css";
-import { ActivityList } from "./components/activity-list/activity-list.js";
+import { TaskList } from "./components/task-list/task-list.js";
 import { Timeline } from "./components/timeline/timeline.js";
 
 const serviceClient = new HttpEventualClient({
@@ -73,9 +73,9 @@ function App() {
       const history = await serviceClient.getExecutionWorkflowHistory(
         decodeExecutionId(executionId!)
       );
-      const { activities, start } = aggregateEvents(history.events);
+      const { tasks, start } = aggregateEvents(history.events);
       return {
-        activities,
+        tasks,
         start,
       };
     },
@@ -88,24 +88,21 @@ function App() {
   if (isLoading) {
     return (
       <Layout>
-        <div>Loading activities...</div>
+        <div>Loading tasks...</div>
       </Layout>
     );
-  } else if (!timeline?.activities.length) {
+  } else if (!timeline?.tasks.length) {
     return (
       <Layout start={timeline?.start}>
-        <div>No activities</div>
+        <div>No tasks</div>
       </Layout>
     );
   } else {
     return (
       <Layout start={timeline.start}>
-        <Timeline start={timeline.start} activities={timeline.activities} />
-        <div className={styles["activity-list-float"]}>
-          <ActivityList
-            start={timeline.start}
-            activities={timeline.activities}
-          />
+        <Timeline start={timeline.start} tasks={timeline.tasks} />
+        <div className={styles["task-list-float"]}>
+          <TaskList start={timeline.start} tasks={timeline.tasks} />
         </div>
       </Layout>
     );

@@ -75,11 +75,11 @@ export abstract class TimerClient {
 
 export type TimerRequest =
   | TimerScheduleEventRequest
-  | ActivityHeartbeatMonitorRequest;
+  | TaskHeartbeatMonitorRequest;
 
 export enum TimerRequestType {
   ScheduleEvent = "ScheduleEvent",
-  ActivityHeartbeatMonitor = "CheckHeartbeat",
+  TaskHeartbeatMonitor = "CheckHeartbeat",
 }
 
 export type TimerRequestBase<T extends TimerRequestType> = {
@@ -102,20 +102,23 @@ export function isTimerScheduleEventRequest(
   return timerRequest && timerRequest.type === TimerRequestType.ScheduleEvent;
 }
 
-export type ActivityHeartbeatMonitorRequest =
-  TimerRequestBase<TimerRequestType.ActivityHeartbeatMonitor> & {
+export type TaskHeartbeatMonitorRequest =
+  TimerRequestBase<TimerRequestType.TaskHeartbeatMonitor> & {
     executionId: string;
-    activitySeq: number;
+    taskSeq: number;
     heartbeatSeconds: number;
   };
 
-export function isActivityHeartbeatMonitorRequest(
+export function isTaskHeartbeatMonitorRequest(
   timerRequest: TimerRequest
-): timerRequest is ActivityHeartbeatMonitorRequest {
+): timerRequest is TaskHeartbeatMonitorRequest {
   return (
-    timerRequest &&
-    timerRequest.type === TimerRequestType.ActivityHeartbeatMonitor
+    timerRequest && timerRequest.type === TimerRequestType.TaskHeartbeatMonitor
   );
+}
+
+export function isTimerRequest(req: any): req is TimerRequest {
+  return isTaskHeartbeatMonitorRequest(req) || isTimerScheduleEventRequest(req);
 }
 
 export interface ScheduleForwarderRequest {

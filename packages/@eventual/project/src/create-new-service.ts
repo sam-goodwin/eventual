@@ -4,14 +4,14 @@ import inquirer from "inquirer";
 import { validateServiceName } from "./validate.js";
 import { addTsReferences } from "./tsconfig-file.js";
 import { updateJsonFile, writeJsonFile } from "./json-file.js";
-import { discoverEventualManifest } from "./eventual-manifest.js";
+import { discoverEventualConfig } from "./eventual-manifest.js";
 import { discoverEventualVersion } from "./version.js";
 
 /**
  * Creates a new Service in an Eventual-managed project.
  */
 export async function createNewService(serviceName?: string) {
-  const eventualJsonFile = await discoverEventualManifest(process.cwd());
+  const eventualJsonFile = await discoverEventualConfig(process.cwd());
   if (eventualJsonFile === undefined) {
     console.error(
       "This is not a valid eventual project. You can only add a new service into an existing eventual project."

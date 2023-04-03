@@ -31,6 +31,8 @@ jobs:
           role-to-assume: arn:aws:iam::593491530938:role/githubActionStack-githubactionroleA106E4DC-14SHKLVA61IN4
           aws-region: us-east-1
           role-duration-seconds: 3600
+      - name: Run Local Tests
+        run: pnpm -r --filter tests-runtime run test:local-starti
       - name: Deploy Runtime Tests
         run: pnpm -r --filter tests-runtime run deploy:runtime
       - run: |
@@ -49,5 +51,16 @@ jobs:
         run: pnpm -r --filter tests-runtime run test:runtime
       - name: Run CLI Tests
         run: pnpm -r --filter tests-runtime run test:cli
+  test-create:
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/build
       - name: Run Create Tests
         run: pnpm -r --filter tests-runtime run test:create

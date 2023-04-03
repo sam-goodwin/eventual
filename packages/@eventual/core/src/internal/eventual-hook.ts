@@ -1,14 +1,36 @@
-import { EventualCall } from "./calls/calls.js";
-import { Result } from "./result.js";
+import type { EventualCall } from "./calls.js";
+import type { Result } from "./result.js";
 
 /**
- * In the case that the workflow is bundled with a different instance of eventual/core,
- * put the store in globals.
+ * Globals that may be overridden by the core-runtime. See matching core-runtime file to understand
+ * the specific behavior.
+ *
+ * In this case, we'll provide a default no-op hook function.
+ * When someone uses the enterEventualCallHookScope in runtime, the getEventualCallHook function
+ * will be overridden to return that hook (based on async scope.)
  */
 declare global {
-  // eslint-disable-next-line no-var
-  var eventualWorkflowHookStore: ExecutionWorkflowHook | undefined;
+  export function getEventualCallHook(): EventualCallHook;
 }
+
+export class PassThroughEventualHook implements EventualCallHook {
+  registerEventualCall<
+    R,
+    E extends EventualCall | undefined = EventualCall | undefined
+  >(eventual: E, passThrough: (eventualCall: E) => Promise<R>) {
+    return passThrough(eventual) as unknown as EventualPromise<R>;
+  }
+
+  resolveEventual(_seq: number, _result: Result<any>): void {
+    throw new Error("Cannot resolve an eventual in passthrough mode");
+  }
+}
+
+export const DEFAULT_HOOK = new PassThroughEventualHook();
+
+// default implementation of getEventualCallHook that does nothing.
+// to be overridden by the core-runtime as needed.
+globalThis.getEventualCallHook = () => DEFAULT_HOOK;
 
 export const EventualPromiseSymbol =
   /* @__PURE__ */ Symbol.for("Eventual:Promise");
@@ -20,40 +42,13 @@ export interface EventualPromise<R> extends Promise<R> {
   [EventualPromiseSymbol]: number;
 }
 
-export interface ExecutionWorkflowHook {
-  registerEventualCall<E extends EventualPromise<any>>(
-    eventual: EventualCall
-  ): E;
+export interface EventualCallHook {
+  registerEventualCall<
+    R,
+    E extends EventualCall | undefined = EventualCall | undefined
+  >(
+    eventual: E,
+    passThrough: (eventualCall: E) => Promise<R>
+  ): EventualPromise<R>;
   resolveEventual(seq: number, result: Result<any>): void;
-}
-
-export function tryGetWorkflowHook() {
-  return globalThis.eventualWorkflowHookStore;
-}
-
-export function getWorkflowHook() {
-  const hook = tryGetWorkflowHook();
-
-  if (!hook) {
-    throw new Error(
-      "EventualHook cannot be retrieved outside of a Workflow Executor."
-    );
-  }
-
-  return hook;
-}
-
-export async function enterWorkflowHookScope<R>(
-  eventualHook: ExecutionWorkflowHook,
-  callback: () => R
-): Promise<Awaited<R>> {
-  if (globalThis.eventualWorkflowHookStore !== undefined) {
-    throw new Error("Must clear eventual hook before registering a new one.");
-  }
-  try {
-    globalThis.eventualWorkflowHookStore = eventualHook;
-    return await callback();
-  } finally {
-    globalThis.eventualWorkflowHookStore = undefined;
-  }
 }

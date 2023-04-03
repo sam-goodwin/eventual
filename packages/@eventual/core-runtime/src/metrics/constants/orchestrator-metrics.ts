@@ -38,20 +38,20 @@ export const AdvanceExecutionDuration = "AdvanceExecutionDuration";
  */
 export const AdvanceExecutionEvents = "AdvanceExecutionEvents";
 /**
- * The amount of time it takes to start all of the commands returned by the workflow code.
+ * The amount of time it takes to start all of the calls returned by the workflow code.
  */
-export const InvokeCommandsDuration = "InvokeCommandsDuration";
+export const InvokeCallsDuration = "InvokeCallsDuration";
 /**
- * The number of commands returned by the workflow.
+ * The number of calls returned by the workflow.
  */
-export const CommandsInvoked = "CommandsInvoked";
+export const CallsInvoked = "CallsInvoked";
 /**
- * Tracks the time it takes for a workflow task to be scheduled until new commands could be emitted.
+ * Tracks the time it takes for a workflow task to be scheduled until new calls could be emitted.
  * This represent the workflow orchestration time of User Perceived Latency
- * Average expected time for an activity to be invoked until it is considered complete by the workflow should follow:
- * AvgActivityDuration(N) = Avg(TimeToCommandsInvoked) + Avg(ActivityDuration(N))
+ * Average expected time for a task to be invoked until it is considered complete by the workflow should follow:
+ * AvgTaskDuration(N) = Avg(TimeToCallsInvoked) + Avg(TaskDuration(N))
  */
-export const TimeToCommandsInvoked = "TimeToCommandsInvoked";
+export const TimeToCallsInvoked = "TimeToCallsInvoked";
 /**
  * Amount of time it takes to write history back to s3.
  */

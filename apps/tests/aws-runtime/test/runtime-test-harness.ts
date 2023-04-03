@@ -1,23 +1,32 @@
+// import { SSMClient } from "@aws-sdk/client-ssm";
+import { SSMClient } from "@aws-sdk/client-ssm";
+import { AWSHttpEventualClient } from "@eventual/aws-client";
+import { HttpEventualClient } from "@eventual/client";
 import {
-  SucceededExecution,
   Execution,
+  ExecutionHandle,
   ExecutionStatus,
   FailedExecution,
+  SucceededExecution,
   Workflow,
   WorkflowInput,
   WorkflowOutput,
-  ExecutionHandle,
 } from "@eventual/core";
-import { AWSHttpEventualClient } from "@eventual/aws-client";
-import { chaosSSMParamName, serviceUrl } from "./env.js";
-import { ChaosRule } from "./chaos-extension/chaos-engine.js";
 import { SSMChaosClient } from "./chaos-extension/chaos-client.js";
-import { SSMClient } from "@aws-sdk/client-ssm";
+import { ChaosRule } from "./chaos-extension/chaos-engine.js";
+import { serviceUrl } from "./env.js";
+import { chaosSSMParamName } from "./env.js";
 
-const serviceClient = new AWSHttpEventualClient({
-  serviceUrl: serviceUrl(),
-  region: "us-east-1",
-});
+const testLocal = process.env.TEST_LOCAL;
+
+const serviceClient = testLocal
+  ? new HttpEventualClient({
+      serviceUrl: "http://localhost:3111",
+    })
+  : new AWSHttpEventualClient({
+      serviceUrl: serviceUrl(),
+      region: "us-east-1",
+    });
 
 const ssm = new SSMClient({});
 const chaosClient = new SSMChaosClient(chaosSSMParamName(), ssm);
@@ -200,14 +209,16 @@ export function eventualRuntimeTestHarness(
     describe(registerConfig.name ?? `test set ${i}`, () => {
       let executions: Promise<ExecutionHandle<any>>[];
       beforeAll(async () => {
-        if (chaos) {
-          // break something!! muahahaha
-          await chaosClient.setConfiguration({
-            disabled: false,
-            rules: chaos.rules,
-          });
-        } else {
-          await chaosClient.disable();
+        if (!testLocal) {
+          if (chaos) {
+            // break something!! muahahaha
+            await chaosClient.setConfiguration({
+              disabled: false,
+              rules: chaos.rules,
+            });
+          } else {
+            await chaosClient.disable();
+          }
         }
 
         // start all of the workflow immediately, the tests can wait for them.
@@ -218,7 +229,7 @@ export function eventualRuntimeTestHarness(
           })
         );
 
-        if (chaos) {
+        if (!testLocal && chaos) {
           // let the workflows run with the chaos rules for a while
           await delay(chaos.durationMillis);
           await chaosClient.disable();
@@ -260,11 +271,15 @@ export async function waitForWorkflowCompletion<W extends Workflow = Workflow>(
       throw new Error("Cannot find execution id: " + executionId);
     }
     console.log(JSON.stringify(execution, null, 4));
-    await delay(1000);
-  } while (
-    execution.status === ExecutionStatus.IN_PROGRESS &&
-    !(cancelCallback?.() ?? false)
-  );
+    if (
+      execution.status === ExecutionStatus.IN_PROGRESS &&
+      !(cancelCallback?.() ?? false)
+    ) {
+      await delay(1000);
+    } else {
+      break;
+    }
+  } while (true);
 
   return execution;
 }

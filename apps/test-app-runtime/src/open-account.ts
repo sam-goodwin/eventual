@@ -1,4 +1,4 @@
-import { activity, api, event, HttpResponse, workflow } from "@eventual/core";
+import { task, api, event, HttpResponse, workflow } from "@eventual/core";
 
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
@@ -99,7 +99,7 @@ const dynamo = memoize(() =>
   DynamoDBDocumentClient.from(new DynamoDBClient({}))
 );
 
-const createAccount = activity("createAccount", async (accountId: string) => {
+const createAccount = task("createAccount", async (accountId: string) => {
   await dynamo().send(
     new PutCommand({
       TableName,
@@ -111,7 +111,7 @@ const createAccount = activity("createAccount", async (accountId: string) => {
   );
 });
 
-const addAddress = activity(
+const addAddress = task(
   "addAddress",
   async ({
     accountId,
@@ -138,7 +138,7 @@ const addAddress = activity(
     );
   }
 );
-const removeAddress = activity("removeAddress", async (accountId: string) => {
+const removeAddress = task("removeAddress", async (accountId: string) => {
   await dynamo().send(
     new UpdateCommand({
       TableName,
@@ -154,7 +154,7 @@ const removeAddress = activity("removeAddress", async (accountId: string) => {
   );
 });
 
-const addEmail = activity(
+const addEmail = task(
   "addEmail",
   async ({ accountId, email }: { accountId: string; email: string }) => {
     await dynamo().send(
@@ -176,7 +176,7 @@ const addEmail = activity(
   }
 );
 
-const removeEmail = activity("removeEmail", async (accountId: string) => {
+const removeEmail = task("removeEmail", async (accountId: string) => {
   await dynamo().send(
     new UpdateCommand({
       TableName,
@@ -192,7 +192,7 @@ const removeEmail = activity("removeEmail", async (accountId: string) => {
   );
 });
 
-const addBankAccount = activity(
+const addBankAccount = task(
   "addBankAccount",
   async ({
     accountId,
@@ -220,7 +220,7 @@ const addBankAccount = activity(
   }
 );
 
-const removeBankAccount = activity(
+const removeBankAccount = task(
   "removeBankAccount",
   async (accountId: string) => {
     await dynamo().send(

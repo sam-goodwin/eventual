@@ -1,15 +1,15 @@
-import { HttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
+import { IHttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { Event } from "@eventual/core";
 import { MetricsCommon, OrchestratorMetrics } from "@eventual/core-runtime";
-import { Arn, aws_events, aws_events_targets, Names, Stack } from "aws-cdk-lib";
+import { Arn, Names, Stack, aws_events, aws_events_targets } from "aws-cdk-lib";
 import {
   Metric,
   MetricOptions,
   Statistic,
   Unit,
 } from "aws-cdk-lib/aws-cloudwatch";
-import { IEventBus } from "aws-cdk-lib/aws-events/index.js";
+import { IEventBus } from "aws-cdk-lib/aws-events";
 import {
   AccountRootPrincipal,
   Effect,
@@ -20,25 +20,27 @@ import {
   UnknownPrincipal,
 } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
-import { LogGroup } from "aws-cdk-lib/aws-logs/index.js";
+import { LogGroup } from "aws-cdk-lib/aws-logs";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
 import openapi from "openapi3-ts";
 import path from "path";
-import {
-  ActivityOverrides,
-  ActivityService,
-  ServiceActivities,
-} from "./activity-service.js";
 import { BuildOutput, buildServiceSync } from "./build";
 import {
   CommandProps,
   CommandService,
   Commands,
-  SystemCommands,
   CorsOptions,
 } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal.js";
+import {
+  EntityService,
+  EntityServiceProps,
+  EntityStream,
+  EntityStreamOverrides,
+  ServiceEntities,
+  ServiceEntityStreams,
+} from "./entity-service.js";
 import { EventService } from "./event-service";
 import { grant } from "./grant";
 import { LazyInterface, lazyInterface } from "./proxy-construct";
@@ -48,6 +50,12 @@ import {
   SubscriptionOverrides,
   Subscriptions,
 } from "./subscriptions";
+import {
+  ServiceTasks,
+  Task,
+  TaskOverrides,
+  TaskService,
+} from "./task-service.js";
 import { WorkflowService, WorkflowServiceOverrides } from "./workflow-service";
 
 /**
@@ -78,15 +86,15 @@ export interface ServiceProps<Service = any> {
    */
   name?: string;
   /**
-   * Environment variables to include in all API, Event and Activity handler Functions.
+   * Environment variables to include in all API, Event and Task handler Functions.
    */
   environment?: {
     [key: string]: string;
   };
   /**
-   * Override Properties of the Activity handlers within the service.
+   * Override Properties of the Task handlers within the service.
    */
-  activities?: ActivityOverrides<Service>;
+  tasks?: TaskOverrides<Service>;
   /**
    * Override properties of Command Functions within the Service.
    */
@@ -95,12 +103,14 @@ export interface ServiceProps<Service = any> {
    * Override properties of Subscription Functions within the Service.
    */
   subscriptions?: SubscriptionOverrides<Service>;
+  entityStreamOverrides?: EntityStreamOverrides<Service>;
   cors?: CorsOptions;
   system?: {
     /**
      * Configuration properties for the workflow orchestrator
      */
     workflowService?: WorkflowServiceOverrides;
+    entityService?: EntityServiceProps<Service>["entityServiceOverrides"];
   };
 }
 
@@ -111,31 +121,36 @@ export interface ServiceSystem<S> {
    * The subsystem that controls workflows.
    */
   readonly workflowService: WorkflowService;
-  readonly activityService: ActivityService<S>;
+  readonly taskService: TaskService<S>;
   /**`
    * The subsystem for schedules and timers.
    */
   readonly schedulerService: SchedulerService;
+  readonly entityService: EntityService<S>;
   /**
    * The {@link AppSec} inferred from the application code.
    */
   readonly build: BuildOutput;
-  readonly systemCommands: SystemCommands;
+  readonly systemCommandsHandler: Function;
   /**
    * A SSM parameter containing data about this service.
    */
   readonly serviceMetadataSSM: StringParameter;
   /**
-   * The Resources for schedules and timers.
+   * Role used by the CLI and Local Environment.
    */
   readonly accessRole: Role;
 }
 
+export interface ServiceLocal {
+  readonly environmentRole: Role;
+}
+
 export class Service<S = any> extends Construct {
   /**
-   * The subsystem that controls activities.
+   * The subsystem that controls tasks.
    */
-  public readonly activities: ServiceActivities<S>;
+  public readonly tasks: ServiceTasks<S>;
   /**
    * Bus which transports events in and out of the service.
    */
@@ -145,9 +160,14 @@ export class Service<S = any> extends Construct {
    */
   public readonly commands: Commands<S>;
   /**
+   * TODO
+   */
+  public readonly entities: ServiceEntities<S>;
+  public readonly entityStreams: ServiceEntityStreams<S>;
+  /**
    * API Gateway which serves the service commands and the system commands.
    */
-  public readonly gateway: HttpApi;
+  public readonly gateway: IHttpApi;
   /**
    * Name of this Service.
    */
@@ -170,10 +190,18 @@ export class Service<S = any> extends Construct {
 
   public grantPrincipal: IPrincipal;
   public commandsPrincipal: IPrincipal;
-  public activitiesPrincipal: IPrincipal;
+  public tasksPrincipal: IPrincipal;
   public subscriptionsPrincipal: IPrincipal;
+  public entityStreamPrincipal: IPrincipal;
 
   public readonly system: ServiceSystem<S>;
+
+  /**
+   * When present, local mode is enabled.
+   *
+   * Enable local mode by setting environment variable EVENTUAL_LOCAL=1 in deployment environment.
+   */
+  public readonly local?: ServiceLocal;
 
   constructor(scope: Construct, id: string, props: ServiceProps<S>) {
     super(scope, id);
@@ -184,15 +212,26 @@ export class Service<S = any> extends Construct {
     const systemScope = new Construct(this, "System");
     const eventualServiceScope = new Construct(systemScope, "EventualService");
 
+    const accessRole = new Role(eventualServiceScope, "AccessRole", {
+      roleName: `eventual-cli-${this.serviceName}`,
+      assumedBy: new AccountRootPrincipal(),
+    });
+
+    this.local = !!process.env.EVENTUAL_LOCAL
+      ? {
+          environmentRole: accessRole,
+        }
+      : undefined;
+
     const build = buildServiceSync({
       serviceName: this.serviceName,
       entry: props.entry,
-      outDir: path.join(".eventual", this.node.addr),
+      outDir: path.join(".eventual", this.serviceName),
     });
 
     const proxySchedulerService = lazyInterface<SchedulerService>();
     const proxyWorkflowService = lazyInterface<WorkflowService>();
-    const proxyActivityService = lazyInterface<ActivityService<S>>();
+    const proxyTaskService = lazyInterface<TaskService<S>>();
     const proxyService = lazyInterface<Service<S>>();
     const proxyCommandService = lazyInterface<CommandService<S>>();
 
@@ -209,39 +248,55 @@ export class Service<S = any> extends Construct {
     this.eventService = new EventService(serviceConstructProps);
     this.bus = this.eventService.bus;
 
-    const activityService = new ActivityService<S>({
+    const entityService = new EntityService<S>({
+      commandService: proxyCommandService,
+      entityStreamOverrides: props.entityStreamOverrides,
+      entityServiceOverrides: props.system?.entityService,
+      eventService: this.eventService,
+      workflowService: proxyWorkflowService,
+      ...serviceConstructProps,
+    });
+    this.entities = entityService.entities;
+    this.entityStreams = entityService.entityStreams;
+
+    const taskService = new TaskService<S>({
       ...serviceConstructProps,
       schedulerService: proxySchedulerService,
       workflowService: proxyWorkflowService,
       commandsService: proxyCommandService,
-      overrides: props.activities,
+      overrides: props.tasks,
+      local: this.local,
+      entityService,
     });
-    proxyActivityService._bind(activityService);
-    this.activities = activityService.activities;
+    proxyTaskService._bind(taskService);
+    this.tasks = taskService.tasks;
 
     const workflowService = new WorkflowService({
-      activityService: activityService,
+      taskService: taskService,
       eventService: this.eventService,
       schedulerService: proxySchedulerService,
       overrides: props.system?.workflowService,
+      entityService,
       ...serviceConstructProps,
     });
     proxyWorkflowService._bind(workflowService);
     this.workflowLogGroup = workflowService.logGroup;
 
     const scheduler = new SchedulerService({
-      activityService: activityService,
+      taskService: taskService,
       workflowService: workflowService,
       ...serviceConstructProps,
     });
     proxySchedulerService._bind(scheduler);
 
     this.commandService = new CommandService({
-      activityService: activityService,
+      taskService: taskService,
       overrides: props.commands,
       eventService: this.eventService,
       workflowService: workflowService,
       cors: props.cors,
+      local: this.local,
+      entityService,
       ...serviceConstructProps,
     });
     proxyCommandService._bind(this.commandService);
@@ -253,13 +308,11 @@ export class Service<S = any> extends Construct {
       commandService: this.commandService,
       eventService: this.eventService,
       subscriptions: props.subscriptions,
+      local: this.local,
+      entityService,
       ...serviceConstructProps,
     });
 
-    const accessRole = new Role(eventualServiceScope, "AccessRole", {
-      roleName: `eventual-cli-${this.serviceName}`,
-      assumedBy: new AccountRootPrincipal(),
-    });
     this.commandService.grantInvokeHttpServiceApi(accessRole);
     workflowService.grantFilterLogEvents(accessRole);
 
@@ -273,57 +326,74 @@ export class Service<S = any> extends Construct {
           apiEndpoint: this.commandService.gateway.apiEndpoint,
           eventBusArn: this.bus.eventBusArn,
           workflowExecutionLogGroupName: workflowService.logGroup.logGroupName,
+          environmentVariables: props.environment,
         }),
       }
     );
 
     this.commandsPrincipal =
-      this.commandsList.length > 0
+      this.commandsList.length > 0 || this.local
         ? new DeepCompositePrincipal(
+            ...(this.local ? [this.local.environmentRole] : []),
             ...this.commandsList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });
-    this.activitiesPrincipal =
-      this.activitiesList.length > 0
+    this.tasksPrincipal =
+      this.tasksList.length > 0 || this.local
         ? new DeepCompositePrincipal(
-            ...this.activitiesList.map((f) => f.grantPrincipal)
+            ...(this.local ? [this.local.environmentRole] : []),
+            ...this.tasksList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });
     this.subscriptionsPrincipal =
-      this.subscriptionsList.length > 0
+      this.subscriptionsList.length > 0 || this.local
         ? new DeepCompositePrincipal(
+            ...(this.local ? [this.local.environmentRole] : []),
             ...this.subscriptionsList.map((f) => f.grantPrincipal)
+          )
+        : new UnknownPrincipal({ resource: this });
+    this.entityStreamPrincipal =
+      this.entityStreamList.length > 0 || this.local
+        ? new DeepCompositePrincipal(
+            ...(this.local ? [this.local.environmentRole] : []),
+            ...this.entityStreamList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });
     this.grantPrincipal = new DeepCompositePrincipal(
       this.commandsPrincipal,
-      this.activitiesPrincipal,
-      this.subscriptionsPrincipal
+      this.tasksPrincipal,
+      this.subscriptionsPrincipal,
+      this.entityStreamPrincipal
     );
 
     serviceDataSSM.grantRead(accessRole);
     this.system = {
-      activityService,
-      build,
       accessRole: accessRole,
+      taskService,
+      build,
+      entityService,
       schedulerService: scheduler,
-      systemCommands: this.commandService.systemCommands,
+      systemCommandsHandler: this.commandService.systemCommandsHandler,
       serviceMetadataSSM: serviceDataSSM,
       workflowService,
     };
     proxyService._bind(this);
   }
 
-  public get activitiesList(): Subscription[] {
-    return Object.values(this.activities);
+  public get tasksList(): Task[] {
+    return Object.values(this.tasks);
   }
 
-  public get commandsList(): Function[] {
+  public get commandsList(): EventualResource[] {
     return Object.values(this.commands);
   }
 
   public get subscriptionsList(): Subscription[] {
     return Object.values(this.subscriptions);
+  }
+
+  public get entityStreamList(): EntityStream[] {
+    return Object.values(this.entityStreams);
   }
 
   public subscribe(
@@ -343,16 +413,16 @@ export class Service<S = any> extends Construct {
   }
 
   /**
-   * Add an environment variable to the Activity, API, Event and Workflow handler Functions.
+   * Add an environment variable to the Task, API, Event and Workflow handler Functions.
    *
    * @param key The environment variable key.
    * @param value The environment variable's value.
    */
   public addEnvironment(key: string, value: string): void {
-    this.activitiesList.forEach(({ handler }) =>
+    this.tasksList.forEach(({ handler }) => handler.addEnvironment(key, value));
+    this.commandsList.forEach(({ handler }) =>
       handler.addEnvironment(key, value)
     );
-    this.commandsList.forEach((handler) => handler.addEnvironment(key, value));
     this.subscriptionsList.forEach(({ handler }) =>
       handler.addEnvironment(key, value)
     );
@@ -391,13 +461,13 @@ export class Service<S = any> extends Construct {
     this.system.workflowService.grantSendSignal(grantable);
   }
 
-  public configurePublishEvents(func: Function) {
-    this.eventService.configurePublish(func);
+  public configureEmitEvents(func: Function) {
+    this.eventService.configureEmit(func);
   }
 
   @grant()
-  public grantPublishEvents(grantable: IGrantable) {
-    this.eventService.grantPublish(grantable);
+  public grantEmitEvents(grantable: IGrantable) {
+    this.eventService.grantEmit(grantable);
   }
 
   @grant()
@@ -405,18 +475,18 @@ export class Service<S = any> extends Construct {
     this.commandService.grantInvokeHttpServiceApi(grantable);
   }
 
-  public configureUpdateActivity(func: Function) {
-    // complete activities
-    this.system.activityService.configureCompleteActivity(func);
+  public configureUpdateTask(func: Function) {
+    // complete tasks
+    this.system.taskService.configureCompleteTask(func);
     // cancel
-    this.system.activityService.configureWriteActivities(func);
+    this.system.taskService.configureWriteTasks(func);
     // heartbeat
-    this.system.activityService.configureSendHeartbeat(func);
+    this.system.taskService.configureSendHeartbeat(func);
   }
 
   public configureForServiceClient(func: Function) {
-    this.configureUpdateActivity(func);
-    this.configurePublishEvents(func);
+    this.configureUpdateTask(func);
+    this.configureEmitEvents(func);
     this.configureReadExecutions(func);
     this.configureSendSignal(func);
     this.configureStartExecution(func);
@@ -468,7 +538,7 @@ export class Service<S = any> extends Construct {
   public metricCommandsInvoked(options?: MetricOptions): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
-      metricName: OrchestratorMetrics.CommandsInvoked,
+      metricName: OrchestratorMetrics.CallsInvoked,
       unit: Unit.COUNT,
       ...options,
     });
@@ -477,7 +547,7 @@ export class Service<S = any> extends Construct {
   public metricInvokeCommandsDuration(options?: MetricOptions): Metric {
     return this.metric({
       statistic: Statistic.AVERAGE,
-      metricName: OrchestratorMetrics.InvokeCommandsDuration,
+      metricName: OrchestratorMetrics.InvokeCallsDuration,
       unit: Unit.MILLISECONDS,
       ...options,
     });
@@ -568,4 +638,16 @@ export interface ServiceConstructProps {
   readonly serviceScope: Construct;
   readonly systemScope: Construct;
   readonly eventualServiceScope: Construct;
+}
+
+export class EventualResource implements IGrantable {
+  public grantPrincipal: IPrincipal;
+  constructor(public handler: Function, local?: ServiceLocal) {
+    this.grantPrincipal = local
+      ? new DeepCompositePrincipal(
+          handler.grantPrincipal,
+          local.environmentRole
+        )
+      : handler.grantPrincipal;
+  }
 }

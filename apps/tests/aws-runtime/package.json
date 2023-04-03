@@ -6,17 +6,20 @@
   "main": "lib/test-service.js",
   "scripts": {
     "test:runtime": "NODE_OPTIONS=--experimental-vm-modules OUTPUTS_FILE=cdk.out/outputs.json jest --passWithNoTests",
+    "test:local": "NODE_OPTIONS=--experimental-vm-modules TEST_LOCAL=1 jest --passWithNoTests",
     "test:cli": "./scripts/test-cli",
     "test:create": "./scripts/test-create",
     "deploy:runtime": "OUTPUTS_FILE=cdk.out/outputs.json ./scripts/deploy",
+    "test:local-start": "./scripts/start-local",
     "test:runtime-deploy": "pnpm -r --filter tests-runtime run deploy:runtime && pnpm -r --filter tests-runtime run test:runtime"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.254.0",
     "@aws-sdk/client-sqs": "^3.254.0",
     "@aws-sdk/client-ssm": "^3.254.0",
     "@eventual/aws-client": "workspace:^",
-    "@eventual/client": "workspace:^",
     "@eventual/cli": "workspace:^",
+    "@eventual/client": "workspace:^",
     "@eventual/core": "workspace:^",
     "zod": "^3"
   },

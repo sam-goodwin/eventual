@@ -1,4 +1,4 @@
-.activity {
+.task {
   display: flex;
   flex-direction: column;
   text-align: center;
@@ -8,15 +8,15 @@
   border-radius: 4px;
 }
 
-.activity div {
+.task div {
   color: #333;
 }
 
-.activity-name {
+.task-name {
   font-weight: 600;
 }
 
-.activity-duration {
+.task-duration {
   font-size: 0.9em;
 }
 

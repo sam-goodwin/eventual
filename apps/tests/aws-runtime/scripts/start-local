@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+set -ex
+
+export EVENTUAL_DEFAULT_SERVICE=eventual-tests
+export OUTPUTS_FILE=cdk.out/outputs.json
+
+## start local as a daemon
+{
+  npx pm2 start --wait-ready --listen-timeout 100000 --interpreter pnpm --name Local eventual -- local &&
+  ## run the tests
+  pnpm run test:local
+} || {
+  npx pm2 logs --nostream &&
+  npx pm2 delete Local &&
+  exit 1
+}
+
+## stop the server
+npx pm2 delete Local

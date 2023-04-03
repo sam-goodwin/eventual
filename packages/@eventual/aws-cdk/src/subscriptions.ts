@@ -1,17 +1,22 @@
 import { subscriptionServiceFunctionSuffix } from "@eventual/aws-runtime";
+import type { SubscriptionFunction } from "@eventual/core-runtime";
 import { aws_iam } from "aws-cdk-lib";
 import { IEventBus, Rule } from "aws-cdk-lib/aws-events";
 import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";
-import type { IGrantable } from "aws-cdk-lib/aws-iam";
 import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import type { BuildOutput } from "./build";
-import type { SubscriptionFunction } from "./build-manifest";
 import { CommandService } from "./command-service";
+import { DeepCompositePrincipal } from "./deep-composite-principal";
+import { EntityService } from "./entity-service";
 import type { EventService } from "./event-service";
-import { LazyInterface } from "./proxy-construct";
-import type { ServiceConstructProps } from "./service";
+import type { LazyInterface } from "./proxy-construct";
+import type {
+  EventualResource,
+  ServiceConstructProps,
+  ServiceLocal,
+} from "./service";
 import { ServiceFunction } from "./service-function";
 import type { ServiceEntityProps } from "./utils";
 
@@ -29,15 +34,17 @@ export interface SubscriptionHandlerProps
   extends Omit<Partial<FunctionProps>, "code" | "handler" | "functionName"> {}
 
 export interface SubscriptionsProps<S = any> extends ServiceConstructProps {
+  readonly commandService: LazyInterface<CommandService>;
+  /**
+   * The Service's {@link EventService} repository.
+   */
+  readonly entityService: EntityService<S>;
+  readonly eventService: EventService;
+  readonly local: ServiceLocal | undefined;
   /**
    * Configuration for individual Event Handlers created with `onEvent`.
    */
   readonly subscriptions?: SubscriptionOverrides<S>;
-  /**
-   * The Service's {@link EventService} repository.
-   */
-  readonly eventService: EventService;
-  readonly commandService: LazyInterface<CommandService>;
 }
 
 export const Subscriptions: {
@@ -64,6 +71,7 @@ export const Subscriptions: {
               props.subscriptions?.[
                 sub.spec.name as keyof SubscriptionOverrides<Service>
               ],
+            local: props.local,
           }),
         ];
       })
@@ -75,13 +83,19 @@ export const Subscriptions: {
     Object.assign(this, subscriptions);
 
     handlers.forEach((handler) => {
-      props.eventService.configurePublish(handler);
+      props.eventService.configureEmit(handler);
 
       // allows the access to all of the operations on the injected service client
       props.service.configureForServiceClient(handler);
 
       // allow http access to the service client
       props.commandService.configureInvokeHttpServiceApi(handler);
+      /**
+       * Entity operations
+       */
+      props.entityService.configureReadWriteEntityTable(handler);
+      // transactions
+      props.entityService.configureInvokeTransactions(handler);
     });
   }
 } as any;
@@ -93,9 +107,10 @@ export interface SubscriptionProps {
   overrides?: SubscriptionHandlerProps;
   environment?: Record<string, string>;
   bus: IEventBus;
+  local: ServiceLocal | undefined;
 }
 
-export class Subscription extends Construct implements IGrantable {
+export class Subscription extends Construct implements EventualResource {
   /**
    * The Lambda Function processing the events matched by this Subscription.
    */
@@ -131,7 +146,12 @@ export class Subscription extends Construct implements IGrantable {
       bundledFunction: props.subscription,
     });
 
-    this.grantPrincipal = this.handler.role!;
+    this.grantPrincipal = props.local
+      ? new DeepCompositePrincipal(
+          props.local.environmentRole,
+          this.handler.grantPrincipal
+        )
+      : this.handler.grantPrincipal;
 
     if (subscription.filters.length > 0) {
       // configure a Rule to route all subscribed events to the eventHandler

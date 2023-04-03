@@ -1,6 +1,7 @@
 {
   "name": "tests-cdk",
   "private": true,
+  "type": "module",
   "version": "0.0.0",
   "main": "lib/index.js",
   "scripts": {
@@ -11,6 +12,7 @@
     "constructs": "10.1.154"
   },
   "devDependencies": {
+    "@aws-sdk/client-sts": "3.294.0",
     "@eventual/aws-cdk": "workspace:^",
     "@eventual/cli": "workspace:^",
     "@eventual/core": "workspace:^",

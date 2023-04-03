@@ -1,47 +1,44 @@
+import type { AsyncLocalStorage } from "async_hooks";
 import { ServiceType } from "./service-type.js";
 
-export const SERVICE_TYPE_FLAG = "EVENTUAL_SERVICE_TYPE";
+declare global {
+  var serviceTypeStore: AsyncLocalStorage<ServiceType> | undefined;
+}
 
-export function isActivityWorker() {
-  return process.env[SERVICE_TYPE_FLAG] === ServiceType.ActivityWorker;
+export function isTaskWorker() {
+  return globalThis.serviceTypeStore?.getStore() === ServiceType.TaskWorker;
 }
 
 export function isApiHandler() {
-  return process.env[SERVICE_TYPE_FLAG] === ServiceType.CommandWorker;
+  return globalThis.serviceTypeStore?.getStore() === ServiceType.CommandWorker;
 }
 
 export function isOrchestratorWorker() {
-  return process.env[SERVICE_TYPE_FLAG] === ServiceType.OrchestratorWorker;
+  return (
+    globalThis.serviceTypeStore?.getStore() === ServiceType.OrchestratorWorker
+  );
+}
+
+export function isTransactionWorker() {
+  return (
+    globalThis.serviceTypeStore?.getStore() === ServiceType.TransactionWorker
+  );
 }
 
 export function isEventHandler() {
-  return process.env[SERVICE_TYPE_FLAG] === ServiceType.Subscription;
+  return globalThis.serviceTypeStore?.getStore() === ServiceType.Subscription;
 }
 
 export async function serviceTypeScope<Output>(
   serviceType: ServiceType,
   handler: () => Output
 ): Promise<Awaited<Output>> {
-  const back = process.env[SERVICE_TYPE_FLAG];
-  try {
-    process.env[SERVICE_TYPE_FLAG] = serviceType;
-    // await before return so that the promise is completed before the finally call.
+  if (!globalThis.serviceTypeStore) {
+    globalThis.serviceTypeStore = new (
+      await import("async_hooks")
+    ).AsyncLocalStorage();
+  }
+  return await globalThis.serviceTypeStore!.run(serviceType, async () => {
     return await handler();
-  } finally {
-    process.env[SERVICE_TYPE_FLAG] = back;
-  }
-}
-
-export function serviceTypeScopeSync<Output>(
-  serviceType: ServiceType,
-  handler: () => Output
-): Output {
-  const back = process.env[SERVICE_TYPE_FLAG];
-  try {
-    process.env[SERVICE_TYPE_FLAG] = serviceType;
-    // await before return so that the promise is completed before the finally call.
-    return handler();
-  } finally {
-    process.env[SERVICE_TYPE_FLAG] = back;
-  }
+  });
 }

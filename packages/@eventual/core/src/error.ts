@@ -31,14 +31,14 @@ export class DeterminismError extends SystemError {
  * Thrown from within a workflow when any set timeout expires.
  *
  * ```ts
- * const myAct = new activity("myAct", {timeout: duration(100, "seconds") }, async () => { ... });
+ * const myTask = new task("myTask", {timeout: duration(100, "seconds") }, async () => { ... });
  * workflow("myWorkflow", async () => {
  *    try {
- *       await myAct();
- *       return "activity did not time out!";
+ *       await myTask();
+ *       return "task did not time out!";
  *    } catch (err) {
  *       if(err instanceof Timeout) {
- *          return "activity timed out!";
+ *          return "task timed out!";
  *       }
  *       throw err;
  *    }
@@ -52,17 +52,17 @@ export class Timeout extends EventualError {
 }
 
 /**
- * Thrown when an activity fails to send heartbeats.
+ * Thrown when a task fails to send heartbeats.
  *
  * ```ts
- * const myAct = new activity("myAct", {heartbeatSeconds: 10}, async () => { ... });
+ * const myTask = new task("myTask", {heartbeatSeconds: 10}, async () => { ... });
  * workflow("myWorkflow", async () => {
  *    try {
- *       await myAct();
- *       return "activity completed successfully!";
+ *       await myTask();
+ *       return "task completed successfully!";
  *    } catch (err) {
  *       if(err instanceof HeartbeatTimeout) {
- *          return "activity did not send heartbeats!";
+ *          return "task did not send heartbeats!";
  *       }
  *       throw err;
  *    }
@@ -89,12 +89,12 @@ export class WorkflowTimeout extends SystemError {
 }
 
 /**
- * Thrown when an activity id is not found in the service.
+ * Thrown when a task id is not found in the service.
  */
-export class ActivityNotFoundError extends Error {
-  constructor(activityName: string, availableNames: string[]) {
+export class TaskNotFoundError extends Error {
+  constructor(taskName: string, availableNames: string[]) {
     super(
-      `Could not find an activity with the name ${activityName}, found: ${availableNames.join(
+      `Could not find a task with the name ${taskName}, found: ${availableNames.join(
         ","
       )}`
     );
@@ -106,5 +106,26 @@ export class ExecutionAlreadyExists extends Error {
     super(
       `Execution name ${name} already exists for workflow ${workflowName} with different inputs.`
     );
+  }
+}
+
+/**
+ * Thrown from the {@link Entity} set or delete when the expected version is incorrect.
+ */
+export class UnexpectedVersion extends Error {
+  constructor(message: string) {
+    super(message);
+  }
+}
+
+/**
+ * Thrown from {@link Entity.transactWrite} when an error is encountered
+ * that cancels the transaction.
+ *
+ * Returns reasons in the same order as the input items.
+ */
+export class TransactionCancelled extends Error {
+  constructor(public reasons: (UnexpectedVersion | undefined)[]) {
+    super("Transactions Cancelled, see reasons");
   }
 }

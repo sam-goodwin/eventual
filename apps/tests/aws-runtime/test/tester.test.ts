@@ -8,28 +8,31 @@ import { jest } from "@jest/globals";
 import { ChaosEffects, ChaosTargets } from "./chaos-extension/chaos-engine.js";
 import { serviceUrl } from "./env.js";
 import { eventualRuntimeTestHarness } from "./runtime-test-harness.js";
+import type * as TestService from "./test-service.js";
 import {
   allCommands,
   asyncWorkflow,
+  createAndDestroyWorkflow,
+  entityWorkflow,
   eventDrivenWorkflow,
   failedWorkflow,
   heartbeatWorkflow,
   parentWorkflow,
   timedOutWorkflow,
   timedWorkflow,
+  transactionWorkflow,
   workflow1,
   workflow2,
   workflow3,
   workflow4,
 } from "./test-service.js";
-import type * as TestService from "./test-service.js";
 
 jest.setTimeout(100 * 1000);
 
 eventualRuntimeTestHarness(
   ({ testCompletion, testFailed }) => {
     testCompletion(
-      "call activity",
+      "call task",
       workflow1,
       { name: "sam" },
       `you said hello sam I am hello2 and you were invoked by my-workflow`
@@ -59,31 +62,34 @@ eventualRuntimeTestHarness(
     testCompletion("timeouts", timedOutWorkflow, {
       condition: true,
       signal: true,
-      activity: true,
+      task: true,
       workflow: true,
-      activityFailImmediately: true,
-      activityOnInvoke: true,
+      taskFailImmediately: true,
+      taskOnInvoke: true,
       workflowOnInvoke: true,
     });
 
-    testCompletion("asyncActivities", asyncWorkflow, [
-      "hello from the async writer!",
-      new EventualError(
-        "AsyncWriterError",
-        "I was told to fail this activity, sorry."
-      ).toJSON(),
-    ]);
+    // TODO: support remote calls on local
+    if (!process.env.TEST_LOCAL) {
+      testCompletion("asyncTasks", asyncWorkflow, [
+        "hello from the async writer!",
+        new EventualError(
+          "AsyncWriterError",
+          "I was told to fail this task, sorry."
+        ).toJSON(),
+      ]);
+    }
 
     testCompletion("heartbeat", heartbeatWorkflow, 20, [
       { status: "fulfilled", value: 20 },
       {
         status: "rejected",
-        reason: new HeartbeatTimeout("Activity Heartbeat TimedOut").toJSON(),
+        reason: new HeartbeatTimeout("Task Heartbeat TimedOut").toJSON(),
       },
-      { status: "fulfilled", value: "activity did not respond" },
+      { status: "fulfilled", value: "task did not respond" },
       {
         status: "rejected",
-        reason: new HeartbeatTimeout("Activity Heartbeat TimedOut").toJSON(),
+        reason: new HeartbeatTimeout("Task Heartbeat TimedOut").toJSON(),
       },
     ]);
 
@@ -108,6 +114,16 @@ eventualRuntimeTestHarness(
       expect(r.dates).toHaveLength(6);
       expect([...new Set(r.dates)]).toHaveLength(6);
     });
+
+    testCompletion("awsSdkCalls", createAndDestroyWorkflow, "done");
+
+    testCompletion("ent", entityWorkflow, { n: 7 });
+
+    testCompletion("transaction", transactionWorkflow, ([one, two, three]) => {
+      expect(one).not.toBeUndefined();
+      expect(two).not.toBeUndefined();
+      expect(three).not.toBeUndefined();
+    });
   },
   {
     name: "s3 persist failures",
@@ -122,7 +138,7 @@ eventualRuntimeTestHarness(
     },
     register: ({ testCompletion }) => {
       testCompletion(
-        "call activity",
+        "call task",
         workflow1,
         { name: "sam" },
         "you said hello sam I am hello2 and you were invoked by my-workflow"

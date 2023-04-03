@@ -1,22 +1,17 @@
 import { build, BuildSource, infer } from "@eventual/compiler";
-import { ActivitySpec } from "@eventual/core";
+import { BuildManifest } from "@eventual/core-runtime";
 import {
   CommandSpec,
+  EntityStreamSpec,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
   ServiceType,
   SubscriptionSpec,
+  TaskSpec,
 } from "@eventual/core/internal";
 import { Code } from "aws-cdk-lib/aws-lambda";
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
-import {
-  BuildManifest,
-  BundledFunction,
-  InternalCommandFunction,
-  InternalCommandName,
-  InternalCommands,
-} from "./build-manifest";
 
 export interface BuildOutput extends BuildManifest {}
 
@@ -84,13 +79,15 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     [
       // bundle the default handlers first as we refer to them when bundling all of the individual handlers
       orchestrator,
-      monoActivityFunction,
+      monoTaskFunction,
       monoCommandFunction,
       monoSubscriptionFunction,
+      monoEntityStreamWorkerFunction,
+      transactionWorkerFunction,
     ],
     [
       // also bundle each of the internal eventual API Functions as they have no dependencies
-      activityFallbackHandler,
+      taskFallbackHandler,
       scheduleForwarder,
       timerHandler,
     ],
@@ -100,38 +97,74 @@ export async function buildService(request: BuildAWSRuntimeProps) {
   ]);
 
   // then, bundle each of the commands and subscriptions
-  const [commands, subscriptions, activities] = await Promise.all([
-    bundle(specPath, "commands"),
-    bundle(specPath, "subscriptions"),
-    bundle(specPath, "activities"),
+  const [commands, subscriptions, tasks] = await Promise.all([
+    bundleCommands(serviceSpec.commands),
+    bundleSubscriptions(serviceSpec.subscriptions),
+    bundleTasks(serviceSpec.tasks),
   ] as const);
 
   const manifest: BuildManifest = {
-    activities: activities,
+    serviceName: request.serviceName,
+    entry: request.entry,
+    tasks: tasks,
     events: serviceSpec.events,
     subscriptions,
-    commands: [
-      ...commands,
-      {
-        entry: monoCommandFunction!,
-        spec: {
-          name: "default",
-        },
+    commands: commands,
+    commandDefault: {
+      entry: monoCommandFunction!,
+      spec: {
+        name: "default",
       },
-    ],
+    },
+    entities: {
+      entities: await Promise.all(
+        serviceSpec.entities.entities.map(async (d) => ({
+          ...d,
+          streams: await bundleEntityStreams(d.streams),
+        }))
+      ),
+      transactions: serviceSpec.transactions,
+    },
     system: {
-      activityService: {
-        fallbackHandler: { entry: activityFallbackHandler! },
+      entityService: {
+        transactionWorker: { entry: transactionWorkerFunction! },
+      },
+      taskService: {
+        fallbackHandler: { entry: taskFallbackHandler! },
       },
       eventualService: {
-        commands: await bundleSystemCommandFunctions(specPath),
+        systemCommandHandler: {
+          entry: await buildFunction({
+            entry: runtimeHandlersEntrypoint("system-command-handler"),
+            name: "systemDefault",
+            injectedEntry: request.entry,
+            injectedServiceSpec: specPath,
+          }),
+        },
+        commands: [
+          "listWorkflows",
+          "startExecution",
+          "listExecutions",
+          "getExecution",
+          "getExecutionHistory",
+          "sendSignal",
+          "getExecutionWorkflowHistory",
+          "emitEvents",
+          "updateTask",
+          "executeTransaction",
+        ].map((name) => ({
+          name,
+          namespace: EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
+        })),
       },
       schedulerService: {
         forwarder: {
           entry: scheduleForwarder!,
+          handler: "index.handle",
         },
         timerHandler: {
           entry: timerHandler!,
+          handler: "index.handle",
         },
       },
       workflowService: {
@@ -146,52 +179,72 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     path.join(outDir, "manifest.json"),
     JSON.stringify(manifest, null, 2)
   );
-  type SpecFor<Type extends "subscriptions" | "commands" | "activities"> =
-    Type extends "commands"
-      ? CommandSpec
-      : Type extends "subscriptions"
-      ? SubscriptionSpec
-      : ActivitySpec;
 
-  async function bundle<
-    Type extends "subscriptions" | "commands" | "activities"
-  >(specPath: string, type: Type): Promise<BundledFunction<SpecFor<Type>>[]> {
+  async function bundleCommands(commandSpecs: CommandSpec[]) {
     return await Promise.all(
-      (serviceSpec[type] as SpecFor<Type>[]).map(async (spec) => {
-        const [pathPrefix, entry, serviceType, name, monoFunction] =
-          type === "commands"
-            ? ([
-                "command",
-                "command-worker",
-                ServiceType.CommandWorker,
-                spec.name,
-                monoCommandFunction!,
-              ] as const)
-            : type === "subscriptions"
-            ? ([
-                "subscription",
-                "event-handler",
-                ServiceType.Subscription,
-                spec.name,
-                monoSubscriptionFunction!,
-              ] as const)
-            : ([
-                "activity",
-                "activity-worker",
-                ServiceType.ActivityWorker,
-                spec.name,
-                monoActivityFunction!,
-              ] as const);
-
+      commandSpecs.map(async (spec) => {
         return {
           entry: await bundleFile(
             specPath,
             spec,
-            pathPrefix,
-            entry,
-            serviceType,
-            name,
-            monoFunction
+            "command",
+            "command-worker",
+            spec.name,
+            monoCommandFunction!
+          ),
+          spec,
+        };
+      })
+    );
+  }
+
+  async function bundleSubscriptions(specs: SubscriptionSpec[]) {
+    return await Promise.all(
+      specs.map(async (spec) => {
+        return {
+          entry: await bundleFile(
+            specPath,
+            spec,
+            "subscription",
+            "subscription-worker",
+            spec.name,
+            monoSubscriptionFunction!
+          ),
+          spec,
+        };
+      })
+    );
+  }
+
+  async function bundleTasks(specs: TaskSpec[]) {
+    return await Promise.all(
+      specs.map(async (spec) => {
+        return {
+          entry: await bundleFile(
+            specPath,
+            spec,
+            "task",
+            "task-worker",
+            spec.name,
+            monoTaskFunction!
+          ),
+          spec,
+        };
+      })
+    );
+  }
+
+  async function bundleEntityStreams(specs: EntityStreamSpec[]) {
+    return await Promise.all(
+      specs.map(async (spec) => {
+        return {
+          entry: await bundleFile(
+            specPath,
+            spec,
+            "entity-streams",
+            "entity-stream-worker",
+            spec.name,
+            monoEntityStreamWorkerFunction!
           ),
           spec,
         };
@@ -200,13 +253,12 @@ export async function buildService(request: BuildAWSRuntimeProps) {
   }
 
   async function bundleFile<
-    Spec extends CommandSpec | SubscriptionSpec | ActivitySpec
+    Spec extends CommandSpec | SubscriptionSpec | TaskSpec
   >(
     specPath: string,
     spec: Spec,
     pathPrefix: string,
     entryPoint: string,
-    serviceType: ServiceType,
     name: string,
     monoFunction: string
   ): Promise<string> {
@@ -219,7 +271,6 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           name: path.join(pathPrefix, name),
           entry: runtimeHandlersEntrypoint(entryPoint),
           exportName: spec.sourceLocation.exportName,
-          serviceType: serviceType,
           injectedEntry: spec.sourceLocation.fileName,
           injectedServiceSpec: specPath,
         })
@@ -232,23 +283,26 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         {
           name: ServiceType.OrchestratorWorker,
           entry: runtimeHandlersEntrypoint("orchestrator"),
-          eventualTransform: true,
-          serviceType: ServiceType.OrchestratorWorker,
         },
         {
-          name: ServiceType.ActivityWorker,
-          entry: runtimeHandlersEntrypoint("activity-worker"),
-          serviceType: ServiceType.ActivityWorker,
+          name: ServiceType.TaskWorker,
+          entry: runtimeHandlersEntrypoint("task-worker"),
         },
         {
           name: ServiceType.CommandWorker,
           entry: runtimeHandlersEntrypoint("command-worker"),
-          serviceType: ServiceType.CommandWorker,
         },
         {
           name: ServiceType.Subscription,
-          entry: runtimeHandlersEntrypoint("event-handler"),
-          serviceType: ServiceType.Subscription,
+          entry: runtimeHandlersEntrypoint("subscription-worker"),
+        },
+        {
+          name: ServiceType.EntityStreamWorker,
+          entry: runtimeHandlersEntrypoint("entity-stream-worker"),
+        },
+        {
+          name: ServiceType.TransactionWorker,
+          entry: runtimeHandlersEntrypoint("transaction-worker"),
         },
       ]
         .map((s) => ({
@@ -260,75 +314,13 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     );
   }
 
-  /**
-   * The system command entry files currently come with their own instance of the
-   * {@link CommandWorker}. Just bundle each file with a synthetic command spec.
-   */
-  async function bundleSystemCommandFunctions(
-    specPath: string
-  ): Promise<InternalCommands> {
-    const commands: Record<InternalCommandName, { entry: string }> = {
-      listWorkflows: {
-        entry: runtimeHandlersEntrypoint("system-commands/list-workflows"),
-      },
-      startExecution: {
-        entry: runtimeHandlersEntrypoint("system-commands/start-execution"),
-      },
-      listExecutions: {
-        entry: runtimeHandlersEntrypoint("system-commands/list-executions"),
-      },
-      getExecution: {
-        entry: runtimeHandlersEntrypoint("system-commands/get-execution"),
-      },
-      getExecutionHistory: {
-        entry: runtimeHandlersEntrypoint(
-          "system-commands/get-execution-history"
-        ),
-      },
-      sendSignal: {
-        entry: runtimeHandlersEntrypoint("system-commands/send-signal"),
-      },
-      getExecutionWorkflowHistory: {
-        entry: runtimeHandlersEntrypoint(
-          "system-commands/get-execution-workflow-history"
-        ),
-      },
-      publishEvents: {
-        entry: runtimeHandlersEntrypoint("system-commands/publish-events"),
-      },
-      updateActivity: {
-        entry: runtimeHandlersEntrypoint("system-commands/update-activity"),
-      },
-    };
-
-    return Object.fromEntries(
-      await Promise.all(
-        Object.entries(commands).map(async ([name, { entry }]) => {
-          const file = await buildFunction({
-            name,
-            entry,
-            injectedEntry: request.entry,
-            injectedServiceSpec: specPath,
-          });
-          return [
-            name,
-            {
-              entry: file,
-              spec: { name, namespace: EVENTUAL_SYSTEM_COMMAND_NAMESPACE },
-            } satisfies InternalCommandFunction,
-          ];
-        })
-      )
-    );
-  }
-
   function bundleEventualSystemFunctions(specPath: string) {
     return Promise.all(
       (
         [
           {
-            name: "ActivityFallbackHandler",
-            entry: runtimeHandlersEntrypoint("activity-fallback-handler"),
+            name: "TaskFallbackHandler",
+            entry: runtimeHandlersEntrypoint("task-fallback-handler"),
           },
           {
             name: "SchedulerForwarder",

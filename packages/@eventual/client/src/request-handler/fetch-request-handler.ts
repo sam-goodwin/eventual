@@ -19,7 +19,12 @@ export class FetchRequestHandler extends RequestHandler {
     const resp = await fetch(request);
 
     if (resp.ok) {
-      return resp.json() as Resp;
+      const respText = await resp.text();
+      try {
+        return JSON.parse(respText) as Resp;
+      } catch {
+        return respText as Resp;
+      }
     } else {
       throw new HttpError(
         resp.status,

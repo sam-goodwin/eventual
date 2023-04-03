@@ -1,6 +1,6 @@
 {
   "name": "@eventual/core-runtime",
-  "version": "0.26.0",
+  "version": "0.31.0",
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",
@@ -13,10 +13,11 @@
     "lib"
   ],
   "scripts": {
-    "test": "jest"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "dependencies": {
     "@eventual/core": "workspace:^",
+    "heap-js": "2.2.0",
     "itty-router": "^2.6.6",
     "ulidx": "^0.3.0",
     "zod": "^3"
@@ -33,6 +34,10 @@
   "jest": {
     "extensionsToTreatAsEsm": [
       ".ts"
+    ],
+    "moduleDirectories": [
+      "node_modules",
+      "src"
     ],
     "moduleNameMapper": {
       "^(\\.{1,2}/.*)\\.js$": "$1"

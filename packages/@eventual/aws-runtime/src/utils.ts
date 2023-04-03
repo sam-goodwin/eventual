@@ -191,22 +191,30 @@ export function commandServiceFunctionSuffix(commandId: string) {
   return `command-${commandId}`;
 }
 
-export function activityServiceFunctionSuffix(activityId: string) {
-  return `activity-${activityId}`;
+export function taskServiceFunctionSuffix(taskId: string) {
+  return `task-${taskId}`;
 }
 
 export function subscriptionServiceFunctionSuffix(subscriptionName: string) {
   return `subscription-${subscriptionName}`;
 }
 
-export function activityServiceFunctionName(
+export function entityServiceTableSuffix(entityName: string) {
+  return `entity-${entityName}`;
+}
+
+export function taskServiceFunctionName(
   serviceName: string,
-  activityId: string
+  taskId: string
 ): string {
-  return serviceFunctionName(
-    serviceName,
-    activityServiceFunctionSuffix(activityId)
-  );
+  return serviceFunctionName(serviceName, taskServiceFunctionSuffix(taskId));
+}
+
+export function entityServiceTableName(
+  serviceName: string,
+  entityName: string
+): string {
+  return serviceFunctionName(serviceName, entityServiceTableSuffix(entityName));
 }
 
 /**

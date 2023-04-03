@@ -6,11 +6,13 @@
  */
 import { generateSchema } from "@anatine/zod-openapi";
 import {
-  activities,
-  commands,
-  events,
   ServiceSpec,
+  commands,
+  entities,
+  events,
   subscriptions,
+  tasks,
+  transactions,
   workflows,
 } from "@eventual/core/internal";
 import {
@@ -18,8 +20,8 @@ import {
   ExportDeclaration,
   Expression,
   ModuleDeclaration,
-  parseFile,
   TsType,
+  parseFile,
 } from "@swc/core";
 import { Visitor } from "@swc/core/Visitor.js";
 import crypto from "crypto";
@@ -29,10 +31,12 @@ import os from "os";
 import path from "path";
 import {
   getSpan,
-  isActivityCall,
   isCommandCall,
+  isEntityStreamCall,
+  isEntityStreamMemberCall,
   isOnEventCall,
   isSubscriptionCall,
+  isTaskCall,
 } from "./ast-util.js";
 import { printModule } from "./print-module.js";
 
@@ -64,10 +68,10 @@ export async function infer(
 
   const serviceSpec: ServiceSpec = {
     workflows: [...workflows().keys()].map((n) => ({ name: n })),
-    activities: Object.values(activities()).map((activity) => ({
-      name: activity.name,
-      sourceLocation: activity.sourceLocation,
-      options: activity.options,
+    tasks: Object.values(tasks()).map((task) => ({
+      name: task.name,
+      sourceLocation: task.sourceLocation,
+      options: task.options,
     })),
     events: Array.from(events().values()).map((event) => ({
       name: event.name,
@@ -96,6 +100,21 @@ export async function infer(
       params: command.params,
       validate: command.validate,
       namespace: command.namespace,
+    })),
+    entities: {
+      entities: [...entities().values()].map((d) => ({
+        name: d.name,
+        schema: d.schema ? generateSchema(d.schema) : undefined,
+        streams: d.streams.map((s) => ({
+          name: s.name,
+          entityName: s.entityName,
+          options: s.options,
+          sourceLocation: s.sourceLocation,
+        })),
+      })),
+    },
+    transactions: [...transactions().values()].map((t) => ({
+      name: t.name,
     })),
   };
 
@@ -182,7 +201,9 @@ export class InferVisitor extends Visitor {
       (isCommandCall(call) ||
         isOnEventCall(call) ||
         isSubscriptionCall(call) ||
-        isActivityCall(call))
+        isTaskCall(call) ||
+        isEntityStreamMemberCall(call) ||
+        isEntityStreamCall(call))
     ) {
       this.didMutate = true;
 

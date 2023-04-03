@@ -11,11 +11,12 @@ import { Function } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
-import { ActivityService } from "./activity-service";
 import { grant } from "./grant";
 import { LazyInterface } from "./proxy-construct";
 import { ServiceConstructProps } from "./service";
-import { baseFnProps } from "./utils";
+import { ServiceFunction } from "./service-function";
+import type { TaskService } from "./task-service.js";
+import { serviceFunctionArn } from "./utils";
 import { WorkflowService } from "./workflow-service";
 
 export interface SchedulerProps extends ServiceConstructProps {
@@ -25,9 +26,9 @@ export interface SchedulerProps extends ServiceConstructProps {
    */
   workflowService: LazyInterface<WorkflowService>;
   /**
-   * Used by the activity heartbeat monitor to retrieve heartbeat data.
+   * Used by the task heartbeat monitor to retrieve heartbeat data.
    */
-  activityService: LazyInterface<ActivityService>;
+  taskService: LazyInterface<TaskService>;
 }
 
 /**
@@ -94,28 +95,28 @@ export class SchedulerService {
     this.queue = new Queue(schedulerServiceScope, "Queue");
 
     // TODO: handle failures to a DLQ - https://github.com/functionless/eventual/issues/40
-    this.forwarder = new Function(schedulerServiceScope, "Forwarder", {
-      code: props.build.getCode(
-        props.build.system.schedulerService.forwarder.entry
-      ),
-      ...baseFnProps,
-      handler: "index.handle",
+    this.forwarder = new ServiceFunction(schedulerServiceScope, "Forwarder", {
+      build: props.build,
+      bundledFunction: props.build.system.schedulerService.forwarder,
+      functionNameSuffix: "scheduler-forwarder",
+      serviceName: this.props.serviceName,
     });
 
     // Allow the scheduler to create workflow tasks.
     this.forwarder.grantInvoke(this.schedulerRole);
 
-    this.handler = new Function(schedulerServiceScope, "handler", {
-      code: props.build.getCode(
-        props.build.system.schedulerService.timerHandler.entry
-      ),
-      ...baseFnProps,
-      handler: "index.handle",
-      events: [
-        new SqsEventSource(this.queue, {
-          reportBatchItemFailures: true,
-        }),
-      ],
+    this.handler = new ServiceFunction(schedulerServiceScope, "handler", {
+      build: props.build,
+      bundledFunction: props.build.system.schedulerService.timerHandler,
+      functionNameSuffix: "scheduler-handler",
+      serviceName: props.serviceName,
+      overrides: {
+        events: [
+          new SqsEventSource(this.queue, {
+            reportBatchItemFailures: true,
+          }),
+        ],
+      },
     });
 
     this.configureScheduleForwarder();
@@ -191,8 +192,8 @@ export class SchedulerService {
   private configureHandler() {
     // to support the ScheduleEventRequest
     this.props.workflowService.configureSubmitExecutionEvents(this.handler);
-    // to lookup activity heartbeat time
-    this.props.activityService.configureReadActivities(this.handler);
+    // to lookup task heartbeat time
+    this.props.taskService.configureReadTasks(this.handler);
     // to re-schedule a new timer on heartbeat check success
     this.configureScheduleTimer(this.handler);
     // logs to the execution
@@ -209,7 +210,12 @@ export class SchedulerService {
   }
 
   private readonly ENV_MAPPINGS = {
-    [ENV_NAMES.SCHEDULE_FORWARDER_ARN]: () => this.forwarder.functionArn,
+    [ENV_NAMES.SCHEDULE_FORWARDER_ARN]: () =>
+      serviceFunctionArn(
+        this.props.serviceName,
+        Stack.of(this.props.systemScope),
+        "scheduler-forwarder"
+      ),
     [ENV_NAMES.SCHEDULER_DLQ_ROLE_ARN]: () => this.dlq.queueArn,
     [ENV_NAMES.SCHEDULER_GROUP]: () => this.schedulerGroup.ref,
     [ENV_NAMES.SCHEDULER_ROLE_ARN]: () => this.schedulerRole.roleArn,

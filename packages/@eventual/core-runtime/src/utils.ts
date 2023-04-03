@@ -1,3 +1,6 @@
+import { CompositeKey } from "@eventual/core";
+import { normalizeCompositeKey } from "./stores/entity-store.js";
+
 export async function promiseAllSettledPartitioned<T, R>(
   items: T[],
   op: (item: T) => Promise<R>
@@ -45,4 +48,19 @@ export function getLazy<T extends string | number | object | boolean>(
   lazy: LazyValue<T>
 ): T {
   return typeof lazy !== "function" ? lazy : lazy();
+}
+
+export function serializeCompositeKey(
+  entityName: string,
+  _key: string | CompositeKey
+) {
+  const { key, namespace } = normalizeCompositeKey(_key);
+  return `${entityName}|${namespace ?? ""}|${key}`;
+}
+
+export function deserializeCompositeKey(
+  sKey: string
+): [string, string | CompositeKey] {
+  const [name, namespace, key] = sKey.split("|") as [string, string, string];
+  return [name, namespace ? { key, namespace } : key];
 }

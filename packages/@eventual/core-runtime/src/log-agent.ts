@@ -1,10 +1,10 @@
 import { LogLevel, LOG_LEVELS } from "@eventual/core";
 import { assertNever } from "@eventual/core/internal";
 import { format } from "util";
-import { LogsClient } from "./clients/logs-client.js";
+import type { LogsClient } from "./clients/logs-client.js";
 import { getLazy, groupBy, LazyValue } from "./utils.js";
 
-export type LogContext = ExecutionLogContext | ActivityLogContext;
+export type LogContext = ExecutionLogContext | TaskLogContext;
 
 export interface ExecutionLogContext {
   executionId: string;
@@ -13,19 +13,19 @@ export interface ExecutionLogContext {
 export function isExecutionLogContext(
   context: LogContext
 ): context is ExecutionLogContext {
-  return context && !("activityName" in context);
+  return context && !("taskName" in context);
 }
 
-export interface ActivityLogContext {
+export interface TaskLogContext {
   executionId: string;
   seq: number;
-  activityName: string;
+  taskName: string;
 }
 
-export function isActivityLogContext(
+export function isTaskLogContext(
   context: LogContext
-): context is ActivityLogContext {
-  return context && "activityName" in context;
+): context is TaskLogContext {
+  return context && "taskName" in context;
 }
 
 export interface LogAgentProps {
@@ -126,8 +126,8 @@ export interface LogFormatter {
 
 export class DefaultLogFormatter implements LogFormatter {
   public format(entry: LogEntry): string {
-    if (isActivityLogContext(entry.context)) {
-      return `${entry.level}\t${entry.context.activityName}:${
+    if (isTaskLogContext(entry.context)) {
+      return `${entry.level}\t${entry.context.taskName}:${
         entry.context.seq
       }\t${format(...entry.data)}`;
     } else if (isExecutionLogContext(entry.context)) {

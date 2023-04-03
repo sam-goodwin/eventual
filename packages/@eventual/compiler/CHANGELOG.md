@@ -3,6 +3,56 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.31.0 (2023-03-31)
+
+### Features
+
+- dictionary streams ([#325](https://github.com/functionless/eventual/issues/325)) ([10dbe50](https://github.com/functionless/eventual/commit/10dbe50d936257205a1c54d8ef515f1fe39801db))
+
+# 0.30.0 (2023-03-29)
+
+### Features
+
+- namespace and version in dictionary ([#324](https://github.com/functionless/eventual/issues/324)) ([5535d61](https://github.com/functionless/eventual/commit/5535d619fbfaf5eea3f20277e8217c465efd07cf))
+
+# 0.29.0 (2023-03-27)
+
+### Features
+
+- entity service with dictionary api ([#322](https://github.com/functionless/eventual/issues/322)) ([d6ebffc](https://github.com/functionless/eventual/commit/d6ebffc4e97b539a73a1dd0041ada3391fda3b7e))
+
+## 0.28.3 (2023-03-25)
+
+**Note:** Version bump only for package @eventual/compiler
+
+## 0.28.2 (2023-03-25)
+
+**Note:** Version bump only for package @eventual/compiler
+
+## 0.28.1 (2023-03-22)
+
+### Bug Fixes
+
+- cli is broken ([#319](https://github.com/functionless/eventual/issues/319)) ([eb78606](https://github.com/functionless/eventual/commit/eb7860613ac861da496c9834f2e63f37e2a6599b))
+
+# 0.28.0 (2023-03-21)
+
+### Features
+
+- eventual local stage 2 ([#316](https://github.com/functionless/eventual/issues/316)) ([5f35905](https://github.com/functionless/eventual/commit/5f35905b6f3b5bab493e92c60b4875267f4de458))
+
+## 0.27.1 (2023-03-21)
+
+### Bug Fixes
+
+- replace ts-node-esm with ts-node ([#318](https://github.com/functionless/eventual/issues/318)) ([bead0a1](https://github.com/functionless/eventual/commit/bead0a11bb182a27d9fffb4641f27bf6354c0801))
+
+# 0.27.0 (2023-03-21)
+
+### Features
+
+- eventual dev server (local) ([#313](https://github.com/functionless/eventual/issues/313)) ([7236267](https://github.com/functionless/eventual/commit/72362676000e51c690e578d9beffb52595942c16))
+
 # 0.26.0 (2023-03-16)
 
 ### Features

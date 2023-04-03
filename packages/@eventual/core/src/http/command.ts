@@ -2,7 +2,7 @@ import type z from "zod";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
 import { commands } from "../internal/global.js";
-import { isSourceLocation, SourceLocation } from "../internal/service-spec.js";
+import { CommandSpec, isSourceLocation } from "../internal/service-spec.js";
 import type { Middleware } from "./middleware.js";
 import type { ParsePath } from "./path.js";
 
@@ -22,10 +22,10 @@ export function commandRpcPath(
 ) {
   return `rpc${
     isDefaultNamespaceCommand(command) ? "" : `/${command.namespace}`
-  }/${command.name}`;
+  }${command.name.startsWith("/") ? "" : "/"}${command.name}`;
 }
 
-export type AnyCommand = Command<any, any, any, any, any, any>;
+export type AnyCommand = Command<string, any, any, any, any, any>;
 
 export interface Command<
   Name extends string = string,
@@ -34,28 +34,12 @@ export interface Command<
   Context = any,
   Path extends string | undefined = undefined,
   Method extends HttpMethod | undefined = undefined
-> extends FunctionRuntimeProps {
+> extends Omit<CommandSpec<Name, Input, Path, Method>, "input" | "output"> {
   kind: "Command";
-  name: Name;
   input?: z.ZodType<Input>;
   output?: z.ZodType<Awaited<Output>>;
   handler: CommandHandler<Input, Output, Context>;
-  path?: Path;
-  method?: Method;
-  params?: RestParams<Input, Path, Method>;
-  sourceLocation?: SourceLocation;
-  passThrough?: boolean;
-  /**
-   * Used to isolate rpc paths.
-   *
-   * /rpc[/namespace]/command
-   */
-  namespace?: string;
   middlewares?: Middleware<any, any>[];
-  /**
-   * @default true
-   */
-  validate?: boolean;
 }
 
 export type RestOptions<
@@ -166,7 +150,7 @@ export function command<
   Context = any
 >(...args: any[]): Command<Name, Input, Output, Context, any, any> {
   const [sourceLocation, name, options, handler] = parseCommandArgs(args);
-  const command: AnyCommand = {
+  const command: Command<Name, Input, Output, Context, any, any> = {
     kind: "Command",
     name,
     handler,

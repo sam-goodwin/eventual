@@ -6,8 +6,9 @@ import { execution } from "./commands/execution.js";
 import { listExecutions } from "./commands/executions.js";
 import { history } from "./commands/history.js";
 import { invokeCommand } from "./commands/invoke.js";
+import { local } from "./commands/local.js";
 import { logs } from "./commands/logs.js";
-import { publishEvents } from "./commands/publish-events.js";
+import { emitEvents } from "./commands/emit-events.js";
 import { replay } from "./commands/replay.js";
 import { sendSignal } from "./commands/send-signal.js";
 import { serviceInfo } from "./commands/service-info.js";
@@ -47,19 +48,15 @@ export const getOperation = (yargs: Argv) =>
     }
   );
 
-export const publishOperation = (yargs: Argv) =>
+export const emitOperation = (yargs: Argv) =>
   yargs.command(
-    "publish",
-    "Publish events",
-    addSubCommands(publishEvents, sendSignal)
+    ["publish", "emit"],
+    "Emit events",
+    addSubCommands(emitEvents, sendSignal)
   );
 
 export const sendOperation = (yargs: Argv) =>
-  yargs.command(
-    "send",
-    "Send signals",
-    addSubCommands(publishEvents, sendSignal)
-  );
+  yargs.command("send", "Send signals", addSubCommands(emitEvents, sendSignal));
 
 export const replayOperation = (yargs: Argv) =>
   yargs.command("replay", "Replay executions", addSubCommands(replay));
@@ -76,11 +73,12 @@ addSubCommands(
   listOperation,
   getOperation,
   sendOperation,
-  publishOperation,
+  emitOperation,
   replayOperation,
   startOperation,
   createOperation,
-  invokeCommand
+  invokeCommand,
+  local
 )(cli);
 
 if (argv.length === 0) {

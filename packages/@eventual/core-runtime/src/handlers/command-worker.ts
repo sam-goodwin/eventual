@@ -1,21 +1,24 @@
 import {
+  commandRpcPath,
   EventualServiceClient,
-  isHttpError,
   HttpRequest,
   HttpResponse,
+  isHttpError,
   RestParamSpec,
-  commandRpcPath,
 } from "@eventual/core";
 import {
-  registerServiceClient,
-  serviceTypeScope,
-  ServiceType,
   commands,
+  registerEntityHook,
+  registerServiceClient,
+  ServiceType,
+  serviceTypeScope,
 } from "@eventual/core/internal";
 import itty from "itty-router";
+import { EntityClient } from "../clients/entity-client.js";
 
 export interface ApiHandlerDependencies {
   serviceClient?: EventualServiceClient;
+  entityClient?: EntityClient;
 }
 
 export interface CommandWorker {
@@ -30,10 +33,15 @@ export interface CommandWorker {
  */
 export function createCommandWorker({
   serviceClient,
+  entityClient,
 }: ApiHandlerDependencies): CommandWorker {
   // make the service client available to web hooks
   if (serviceClient) {
     registerServiceClient(serviceClient);
+  }
+  // the system commands do not currently use the entity client so it will be optional for now.
+  if (entityClient) {
+    registerEntityHook(entityClient);
   }
 
   const router = initRouter();
@@ -45,7 +53,7 @@ export function createCommandWorker({
    * then handles the request.
    */
   return function (request) {
-    console.log("request", request);
+    console.debug("request", request);
     return serviceTypeScope(ServiceType.CommandWorker, async () => {
       try {
         const response = await router.handle(request);

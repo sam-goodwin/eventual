@@ -1,5 +1,5 @@
-import { createAwaitTimerCall } from "./internal/calls/await-time-call.js";
-import { isOrchestratorWorker } from "./internal/flags.js";
+import { createEventualCall, EventualCallKind } from "./internal/calls.js";
+import type { EventualPromise } from "./internal/eventual-hook.js";
 import {
   DurationSchedule,
   DurationUnit,
@@ -24,8 +24,8 @@ import {
  * ```ts
  * workflow("myWorkflow", async () => {
  *   const minTime = duration(10, "minutes");
- *   // wait for 10 minutes OR the duration of myActivity, whichever is longer.
- *   await Promise.all([minTime, myActivity()]);
+ *   // wait for 10 minutes OR the duration of myTask, whichever is longer.
+ *   await Promise.all([minTime, myTask()]);
  *   return "DONE";
  * })
  * ```
@@ -55,12 +55,18 @@ export function duration(
   dur: number,
   unit: DurationUnit = "seconds"
 ): Promise<void> & DurationSchedule {
-  if (!isOrchestratorWorker()) {
-    return { type: "Duration", dur, unit } as Promise<void> & DurationSchedule;
-  }
-
-  // register an await duration command and return it (to be yielded)
-  return createAwaitTimerCall(Schedule.duration(dur, unit)) as any;
+  return getEventualCallHook().registerEventualCall(
+    createEventualCall(EventualCallKind.AwaitTimerCall, {
+      schedule: Schedule.duration(dur, unit),
+    }),
+    () => {
+      return {
+        type: "Duration",
+        dur,
+        unit,
+      } as unknown as Promise<void>;
+    }
+  ) as EventualPromise<void> & DurationSchedule;
 }
 
 /**
@@ -80,8 +86,8 @@ export function duration(
  * ```ts
  * workflow("myWorkflow", async ({ endTime }) => {
  *   const goalTime = time(endTime); // sleep for 10 minutes
- *   // wait until the given time or until the activity is completed.
- *   await Promise.race([goalTime, await myActivity()]);
+ *   // wait until the given time or until the task is completed.
+ *   await Promise.race([goalTime, await myTask()]);
  *   return "DONE";
  * })
  * ```
@@ -92,10 +98,12 @@ export function time(date: Date | string): Promise<void> & TimeSchedule {
   const d = new Date(date);
   const iso = d.toISOString();
 
-  if (!isOrchestratorWorker()) {
-    return { isoDate: iso } as Promise<void> & TimeSchedule;
-  }
-
-  // register an await time command and return it (to be yielded)
-  return createAwaitTimerCall(Schedule.time(iso)) as any;
+  return getEventualCallHook().registerEventualCall(
+    createEventualCall(EventualCallKind.AwaitTimerCall, {
+      schedule: Schedule.time(iso),
+    }),
+    () => {
+      return { isoDate: iso } as unknown as Promise<void>;
+    }
+  ) as unknown as EventualPromise<void> & TimeSchedule;
 }

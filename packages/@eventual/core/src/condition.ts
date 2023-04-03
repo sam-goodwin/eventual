@@ -1,5 +1,4 @@
-import { createConditionCall } from "./internal/calls/condition-call.js";
-import { isOrchestratorWorker } from "./internal/flags.js";
+import { createEventualCall, EventualCallKind } from "./internal/calls.js";
 
 export type ConditionPredicate = () => boolean;
 
@@ -10,7 +9,7 @@ export interface ConditionOptions {
 /**
  * A condition which will resolve when the predicate resolves to true.
  *
- * The contents of the condition should be deterministic and contain no activity calls.
+ * The contents of the condition should be deterministic and contain no task calls.
  * Should only be called from within a workflow.
  *
  * ```ts
@@ -50,10 +49,15 @@ export function condition(
     | [opts: ConditionOptions, predicate: ConditionPredicate]
     | [predicate: ConditionPredicate]
 ): Promise<boolean> {
-  if (!isOrchestratorWorker()) {
-    throw new Error("condition is only valid in a workflow");
-  }
   const [opts, predicate] = args.length === 1 ? [undefined, args[0]] : args;
 
-  return createConditionCall(predicate, opts?.timeout) as any;
+  return getEventualCallHook().registerEventualCall(
+    createEventualCall(EventualCallKind.ConditionCall, {
+      predicate,
+      timeout: opts?.timeout,
+    }),
+    () => {
+      throw new Error("condition is only valid in a workflow");
+    }
+  );
 }

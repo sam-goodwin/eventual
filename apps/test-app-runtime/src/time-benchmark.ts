@@ -1,4 +1,4 @@
-import { activity, workflow } from "@eventual/core";
+import { task, workflow } from "@eventual/core";
 import { metricScope, Unit } from "aws-embedded-metrics";
 
 export const bench = workflow("bench", async () => {
@@ -7,11 +7,11 @@ export const bench = workflow("bench", async () => {
   }
 });
 
-const getTime = activity("getTime", async () => {
+const getTime = task("getTime", async () => {
   return new Date().getTime();
 });
 
-const trackTime = activity(
+const trackTime = task(
   "trackTime",
   metricScope((logger) => async (timestamp: number) => {
     logger.setNamespace("EventualBenchmark");

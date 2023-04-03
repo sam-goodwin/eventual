@@ -1,7 +1,7 @@
 import { ENV_NAMES, ExecutionRecord } from "@eventual/aws-runtime";
 import { LogLevel } from "@eventual/core";
 import { ExecutionQueueEventEnvelope } from "@eventual/core-runtime";
-import { CfnResource, RemovalPolicy } from "aws-cdk-lib";
+import { RemovalPolicy } from "aws-cdk-lib";
 import {
   AttributeType,
   BillingMode,
@@ -10,7 +10,7 @@ import {
   StreamViewType,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
-import { IGrantable, IRole, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
+import { IGrantable } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
@@ -22,16 +22,22 @@ import {
   Queue,
 } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
-import { ActivityService } from "./activity-service";
+import {
+  EventBridgePipe,
+  PipeSourceParameters,
+} from "./constructs/event-bridge-pipe";
+import { EntityService } from "./entity-service";
 import { EventService } from "./event-service";
 import { grant } from "./grant";
 import { LazyInterface } from "./proxy-construct";
 import { SchedulerService } from "./scheduler-service";
 import { ServiceConstructProps } from "./service";
 import { ServiceFunction } from "./service-function";
+import type { TaskService } from "./task-service.js";
 
 export interface WorkflowsProps extends ServiceConstructProps {
-  activityService: LazyInterface<ActivityService>;
+  taskService: LazyInterface<TaskService>;
+  entityService: EntityService<any>;
   eventService: EventService;
   schedulerService: LazyInterface<SchedulerService>;
   overrides?: WorkflowServiceOverrides;
@@ -66,7 +72,7 @@ export interface WorkflowServiceOverrides {
 }
 
 interface PipeToWorkflowQueueProps {
-  grant: (grantable: IRole) => void;
+  grant: (grantable: IGrantable) => void;
   /**
    * path to the execution id $.path.to.id ex: $.dynamodb.NewImage.id.S
    */
@@ -82,10 +88,7 @@ interface PipeToWorkflowQueueProps {
   /**
    * Source Properties given to the pipe
    */
-  sourceProps: {
-    FilterCriteria?: { Filters: { Pattern: string }[] };
-    [key: string]: any;
-  };
+  sourceProps: PipeSourceParameters;
 }
 
 /**
@@ -239,30 +242,20 @@ export class WorkflowService {
     id: string,
     props: PipeToWorkflowQueueProps
   ) {
-    const container = new Construct(scope, id);
-
-    const pipeRole = new Role(container, `Role`, {
-      assumedBy: new ServicePrincipal("pipes"),
-    });
-
-    this.queue.grantSendMessages(pipeRole);
-    props.grant(pipeRole);
-
-    new CfnResource(container, "Pipe", {
-      type: "AWS::Pipes::Pipe",
-      properties: {
-        RoleArn: pipeRole.roleArn,
-        Source: props.source,
-        SourceParameters: props.sourceProps,
-        Target: this.queue.queueArn,
-        TargetParameters: {
-          SqsQueueParameters: {
-            MessageGroupId: props.executionIdPath,
-          },
-          InputTemplate: `{"task": { "events": [${props.event}], "executionId": <${props.executionIdPath}> } }`,
+    const pipe = new EventBridgePipe(scope, id, {
+      source: props.source,
+      sourceParameters: props.sourceProps,
+      target: this.queue.queueArn,
+      targetParameters: {
+        SqsQueueParameters: {
+          MessageGroupId: props.executionIdPath,
         },
+        InputTemplate: `{"task": { "events": [${props.event}], "executionId": <${props.executionIdPath}> } }`,
       },
     });
+
+    this.queue.grantSendMessages(pipe);
+    props.grant(pipe);
   }
 
   /**
@@ -421,7 +414,7 @@ export class WorkflowService {
   }
 
   /**
-   * Allows starting workflows, finishing activities, reading workflow status
+   * Allows starting workflows, finishing tasks, reading workflow status
    * and sending signals to workflows.
    */
   public configureFullControl(func: Function) {
@@ -462,10 +455,10 @@ export class WorkflowService {
     this.configureStartExecution(this.orchestrator);
     // send signals to other executions (or itself, don't judge)
     this.configureSendSignal(this.orchestrator);
-    // publish events to the service
-    this.props.eventService.configurePublish(this.orchestrator);
-    // start activities
-    this.props.activityService.configureStartActivity(this.orchestrator);
+    // emit events to the service
+    this.props.eventService.configureEmit(this.orchestrator);
+    // start tasks
+    this.props.taskService.configureStartTask(this.orchestrator);
     /**
      * Both
      */
@@ -476,6 +469,12 @@ export class WorkflowService {
      * Access to service name in the orchestrator for metric logging
      */
     this.props.service.configureServiceName(this.orchestrator);
+    /**
+     * Entity Commands
+     */
+    this.props.entityService.configureReadWriteEntityTable(this.orchestrator);
+    // transactions
+    this.props.entityService.configureInvokeTransactions(this.orchestrator);
   }
 
   private readonly ENV_MAPPINGS = {

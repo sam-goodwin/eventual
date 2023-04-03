@@ -1,7 +1,7 @@
 import {
-  ActivityMetrics,
   MetricsCommon,
   OrchestratorMetrics,
+  TaskMetrics,
 } from "@eventual/core-runtime";
 import { Dashboard, LogQueryWidget } from "aws-cdk-lib/aws-cloudwatch";
 import { Construct } from "constructs";
@@ -27,15 +27,13 @@ export class DebugDashboard extends Construct {
       service.workflowLogGroup.logGroupName,
       // workflow orchestrator
       service.system.workflowService.orchestrator.logGroup.logGroupName,
-      // activities worker
-      ...service.activitiesList.map((a) => a.handler.logGroup.logGroupName),
-      // activities fallback
-      service.system.activityService.fallbackHandler.logGroup.logGroupName,
+      // tasks worker
+      ...service.tasksList.map((a) => a.handler.logGroup.logGroupName),
+      // tasks fallback
+      service.system.taskService.fallbackHandler.logGroup.logGroupName,
       // user APIS - default and bundled
-      ...service.commandsList.map((api) => api.logGroup.logGroupName),
-      ...Object.values(service.system.systemCommands).map(
-        (c) => c.logGroup.logGroupName
-      ),
+      ...service.commandsList.map((api) => api.handler.logGroup.logGroupName),
+      service.system.systemCommandsHandler.logGroup.logGroupName,
       // event handlers - default and bundled
       ...service.subscriptionsList.map(
         ({ handler }) => handler.logGroup.logGroupName
@@ -95,14 +93,14 @@ export class DebugDashboard extends Construct {
             height: 6,
           }),
           new LogQueryWidget({
-            title: "Activity Worker Summary",
-            logGroupNames: service.activitiesList.map(
+            title: "Task Worker Summary",
+            logGroupNames: service.tasksList.map(
               (a) => a.handler.logGroup.logGroupName
             ),
             queryLines: [
-              `filter @type="REPORT" OR ${ActivityMetrics.OperationDuration} > 0`,
+              `filter @type="REPORT" OR ${TaskMetrics.OperationDuration} > 0`,
               `sort @timestamp desc`,
-              `stats avg(@duration) as duration, avg(@initDuration) as coldDuration, avg(@maxMemoryUsed) / 1024 as memKB, avg(${ActivityMetrics.OperationDuration}) as operationDuration by bin(${logSummaryBucketDuration})`,
+              `stats avg(@duration) as duration, avg(@initDuration) as coldDuration, avg(@maxMemoryUsed) / 1024 as memKB, avg(${TaskMetrics.OperationDuration}) as operationDuration by bin(${logSummaryBucketDuration})`,
             ],
             width: 12,
             height: 6,
@@ -110,7 +108,7 @@ export class DebugDashboard extends Construct {
           new LogQueryWidget({
             title: "User Command Handlers Summary",
             logGroupNames: service.commandsList.map(
-              (api) => api.logGroup.logGroupName
+              (api) => api.handler.logGroup.logGroupName
             ),
             queryLines: [
               `filter @type="REPORT"`,
@@ -123,9 +121,9 @@ export class DebugDashboard extends Construct {
           }),
           new LogQueryWidget({
             title: "System Command Handlers Summary",
-            logGroupNames: Object.values(service.system.systemCommands).map(
-              (api) => api.logGroup.logGroupName
-            ),
+            logGroupNames: [
+              service.system.systemCommandsHandler.logGroup.logGroupName,
+            ],
             queryLines: [
               `filter @type="REPORT"`,
               `sort @timestamp desc`,

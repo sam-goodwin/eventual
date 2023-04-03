@@ -1,61 +1,57 @@
 import { EventualError, HeartbeatTimeout, Timeout } from "@eventual/core";
 import {
-  assertNever,
   EventualCall,
-  isActivityCall,
-  isActivityScheduled,
+  Result,
+  WorkflowEventType,
+  assertNever,
   isAwaitTimerCall,
+  isChildWorkflowCall,
   isChildWorkflowScheduled,
   isConditionCall,
-  isEventsPublished,
+  isEntityCall,
+  isEntityRequest,
+  isEventsEmitted,
   isExpectSignalCall,
-  isPublishEventsCall,
+  isInvokeTransactionCall,
+  isEmitEventsCall,
   isRegisterSignalHandlerCall,
   isSendSignalCall,
   isSignalSent,
+  isTaskCall,
+  isTaskScheduled,
   isTimerScheduled,
-  isWorkflowCall,
-  Result,
-  ScheduledEvent,
-  WorkflowEventType,
+  isTransactionRequest,
 } from "@eventual/core/internal";
-import { CommandType } from "./workflow-command.js";
 import { EventualDefinition, Trigger } from "./workflow-executor.js";
 
 export function createEventualFromCall(
   call: EventualCall
 ): EventualDefinition<any> {
-  if (isActivityCall(call)) {
+  if (isTaskCall(call)) {
     return {
       triggers: [
-        Trigger.onWorkflowEvent(WorkflowEventType.ActivitySucceeded, (event) =>
+        Trigger.onWorkflowEvent(WorkflowEventType.TaskSucceeded, (event) =>
           Result.resolved(event.result)
         ),
-        Trigger.onWorkflowEvent(WorkflowEventType.ActivityFailed, (event) =>
+        Trigger.onWorkflowEvent(WorkflowEventType.TaskFailed, (event) =>
           Result.failed(new EventualError(event.error, event.message))
         ),
         Trigger.onWorkflowEvent(
-          WorkflowEventType.ActivityHeartbeatTimedOut,
-          Result.failed(new HeartbeatTimeout("Activity Heartbeat TimedOut"))
+          WorkflowEventType.TaskHeartbeatTimedOut,
+          Result.failed(new HeartbeatTimeout("Task Heartbeat TimedOut"))
         ),
         call.timeout
           ? Trigger.onPromiseResolution(
               call.timeout,
-              Result.failed(new Timeout("Activity Timed Out"))
+              Result.failed(new Timeout("Task Timed Out"))
             )
           : undefined,
       ],
-      generateCommands(seq) {
-        return {
-          kind: CommandType.StartActivity,
-          seq,
-          input: call.input,
-          name: call.name,
-          heartbeat: call.heartbeat,
-        };
+      isCorresponding(event) {
+        return isTaskScheduled(event) && call.name === event.name;
       },
     };
-  } else if (isWorkflowCall(call)) {
+  } else if (isChildWorkflowCall(call)) {
     return {
       triggers: [
         Trigger.onWorkflowEvent(
@@ -74,14 +70,8 @@ export function createEventualFromCall(
             )
           : undefined,
       ],
-      generateCommands(seq) {
-        return {
-          kind: CommandType.StartWorkflow,
-          seq,
-          name: call.name,
-          input: call.input,
-          opts: call.opts,
-        };
+      isCorresponding(event) {
+        return isChildWorkflowScheduled(event) && event.name === call.name;
       },
     };
   } else if (isAwaitTimerCall(call)) {
@@ -90,24 +80,12 @@ export function createEventualFromCall(
         WorkflowEventType.TimerCompleted,
         Result.resolved(undefined)
       ),
-      generateCommands(seq) {
-        return {
-          kind: CommandType.StartTimer,
-          seq,
-          schedule: call.schedule,
-        };
-      },
+      isCorresponding: isTimerScheduled,
     };
   } else if (isSendSignalCall(call)) {
     return {
-      generateCommands(seq) {
-        return {
-          kind: CommandType.SendSignal,
-          seq,
-          signalId: call.signalId,
-          target: call.target,
-          payload: call.payload,
-        };
+      isCorresponding(event) {
+        return isSignalSent(event) && event.signalId === call.signalId;
       },
       result: Result.resolved(undefined),
     };
@@ -125,11 +103,9 @@ export function createEventualFromCall(
           : undefined,
       ],
     };
-  } else if (isPublishEventsCall(call)) {
+  } else if (isEmitEventsCall(call)) {
     return {
-      generateCommands(seq) {
-        return { kind: CommandType.PublishEvents, seq, events: call.events };
-      },
+      isCorresponding: isEventsEmitted,
       result: Result.resolved(undefined),
     };
   } else if (isConditionCall(call)) {
@@ -159,27 +135,46 @@ export function createEventualFromCall(
         call.handler(event.payload);
       }),
     };
+  } else if (isEntityCall(call)) {
+    return {
+      triggers: [
+        Trigger.onWorkflowEvent(
+          WorkflowEventType.EntityRequestSucceeded,
+          (event) => Result.resolved(event.result)
+        ),
+        Trigger.onWorkflowEvent(
+          WorkflowEventType.EntityRequestFailed,
+          (event) =>
+            Result.failed(new EventualError(event.error, event.message))
+        ),
+      ],
+      isCorresponding(event) {
+        return (
+          isEntityRequest(event) &&
+          call.operation === event.operation.operation &&
+          "name" in call === "name" in event.operation &&
+          (!("name" in call && "name" in event.operation) ||
+            call.name === event.operation.name)
+        );
+      },
+    };
+  } else if (isInvokeTransactionCall(call)) {
+    return {
+      triggers: [
+        Trigger.onWorkflowEvent(
+          WorkflowEventType.TransactionRequestSucceeded,
+          (event) => Result.resolved(event.result)
+        ),
+        Trigger.onWorkflowEvent(
+          WorkflowEventType.TransactionRequestFailed,
+          (event) =>
+            Result.failed(new EventualError(event.error, event.message))
+        ),
+      ],
+      isCorresponding(event) {
+        return isTransactionRequest(event);
+      },
+    };
   }
   return assertNever(call);
-}
-
-export function isCorresponding(
-  event: ScheduledEvent,
-  seq: number,
-  call: EventualCall
-) {
-  if (event.seq !== seq) {
-    return false;
-  } else if (isActivityScheduled(event)) {
-    return isActivityCall(call) && call.name === event.name;
-  } else if (isChildWorkflowScheduled(event)) {
-    return isWorkflowCall(call) && call.name === event.name;
-  } else if (isTimerScheduled(event)) {
-    return isAwaitTimerCall(call);
-  } else if (isSignalSent(event)) {
-    return isSendSignalCall(call) && event.signalId === call.signalId;
-  } else if (isEventsPublished(event)) {
-    return isPublishEventsCall(call);
-  }
-  return assertNever(event);
 }

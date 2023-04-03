@@ -1,29 +1,37 @@
-import type { Activity } from "../activity.js";
+import type { AsyncLocalStorage } from "async_hooks";
+import type { Entity } from "../entity.js";
 import type { Event } from "../event.js";
 import type { AnyCommand } from "../http/command.js";
 import type { EventualServiceClient } from "../service-client.js";
 import type { Subscription } from "../subscription.js";
+import type { Task } from "../task.js";
+import type { Transaction } from "../transaction.js";
 import type { Workflow } from "../workflow.js";
-import type { ActivityRuntimeContext } from "./activity.js";
+import type { TaskRuntimeContext } from "./task.js";
 
 declare global {
   // eslint-disable-next-line no-var
   var _eventual: {
     /**
-     * Data about the current activity assigned before running an activity on an the activity worker.
+     * Data about the current task assigned before running a task on an the task worker.
      */
-    activityContext?: ActivityRuntimeContext;
+    taskContextStore?: Promise<AsyncLocalStorage<TaskRuntimeContext>>;
     /**
-     * Callable activities which register themselves in an activity worker.
+     * Callable tasks which register themselves in a task worker.
      */
-    activities?: Record<string, Activity>;
+    tasks?: Record<string, Task>;
     /**
      * Available workflows which have registered themselves.
      *
-     * Used by the orchestrator, activity worker, and other scopes to interact with workflows in
+     * Used by the orchestrator, task worker, and other scopes to interact with workflows in
      * a service.
      */
     workflows?: Map<string, Workflow>;
+    transactions?: Map<string, Transaction>;
+    /**
+     * A simple key value store that work efficiently within eventual.
+     */
+    entities?: Map<string, Entity<any>>;
     /**
      * A global variable for storing the WorkflowClient
      * this is initialized by Eventual's harness lambda functions
@@ -53,18 +61,24 @@ export const commands = (globalThis._eventual.commands ??= []);
 export const workflows = (): Map<string, Workflow> =>
   (globalThis._eventual.workflows ??= new Map<string, Workflow>());
 
+export const transactions = (): Map<string, Transaction> =>
+  (globalThis._eventual.transactions ??= new Map<string, Transaction>());
+
 export const events = (): Map<string, Event> =>
   (globalThis._eventual.events ??= new Map<string, Event>());
 
 export const subscriptions = (): Subscription[] =>
   (globalThis._eventual.subscriptions ??= []);
 
+export const entities = (): Map<string, Entity<any>> =>
+  (globalThis._eventual.entities ??= new Map<string, Entity<any>>());
+
 export function clearEventHandlers() {
   globalThis._eventual.subscriptions = [];
 }
 
-export const activities = (): Record<string, Activity<any, any, any>> =>
-  (globalThis._eventual.activities ??= {});
+export const tasks = (): Record<string, Task<any, any, any>> =>
+  (globalThis._eventual.tasks ??= {});
 
 /**
  * Register the global service client used by workflow functions
@@ -84,20 +98,28 @@ export function getServiceClient(): EventualServiceClient {
   return globalThis._eventual.serviceClient;
 }
 
-export function setActivityContext(context: ActivityRuntimeContext) {
-  globalThis._eventual.activityContext = context;
+export async function taskContextScope<Output>(
+  context: TaskRuntimeContext,
+  handler: () => Output
+): Promise<Awaited<Output>> {
+  if (!globalThis._eventual.taskContextStore) {
+    globalThis._eventual.taskContextStore = import("async_hooks").then(
+      (imp) => new imp.AsyncLocalStorage<TaskRuntimeContext>()
+    );
+  }
+  return await (
+    await globalThis._eventual.taskContextStore
+  ).run(context, async () => {
+    return await handler();
+  });
 }
 
-export function clearActivityContext() {
-  globalThis._eventual.activityContext = undefined;
-}
-
-export function getActivityContext(): ActivityRuntimeContext {
-  const context = globalThis._eventual.activityContext;
+export async function getTaskContext(): Promise<TaskRuntimeContext> {
+  const context = (await globalThis._eventual.taskContextStore)?.getStore();
 
   if (!context) {
     throw new Error(
-      "Activity Context has not been registered yet or this is not the activity worker."
+      "Task Context has not been registered yet or this is not the task worker."
     );
   }
   return context;

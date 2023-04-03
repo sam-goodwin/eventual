@@ -16,6 +16,7 @@ export interface CreateAwsCdkProps {
   pkgManager: PackageManager;
   serviceName: string | undefined;
   git: boolean;
+  skipInstall: boolean;
 }
 
 export async function createAwsCdkProject({
@@ -23,6 +24,7 @@ export async function createAwsCdkProject({
   pkgManager,
   serviceName = projectName,
   git,
+  skipInstall,
 }: CreateAwsCdkProps) {
   await fs.mkdir(projectName);
   process.chdir(projectName);
@@ -69,7 +71,7 @@ This is where you control what infrastructure is deployed with your Service, for
 
 ### \`packages/service\`
 
-This is where you add business logic such as APIs, Event handlers, Workflows and Activities.
+This is where you add business logic such as APIs, Event handlers, Workflows and Tasks.
 
 ## Deployed Infrastructure
 
@@ -128,6 +130,8 @@ ${npm("deploy")}
       ),
       writeJsonFile("eventual.json", {
         projectType: "aws-cdk",
+        synth: "pnpm synth",
+        deploy: "pnpm deploy",
       }),
       writeJsonFile("package.json", {
         name: projectName,
@@ -323,12 +327,12 @@ packages:
       eventualVersion: version,
       src: {
         "index.ts": `/*
-The index.ts of your app should export all of the commands, activities and subscriptions
+The index.ts of your app should export all of the commands, tasks and subscriptions
 defined within your service package.
 */
 export * from "./hello.js";
 `,
-        "hello.ts": `import { activity, command, event, subscription, workflow } from "@eventual/core";
+        "hello.ts": `import { task, command, event, subscription, workflow } from "@eventual/core";
 
 // create a REST API for: POST /hello <name>
 export const hello = command("hello", async (name: string) => {
@@ -340,11 +344,11 @@ export const hello = command("hello", async (name: string) => {
 })
 
 export const helloWorkflow = workflow("helloWorkflow", async (name: string) => {
-  // call an activity to format the message
+  // call a task to format the message
   const message = await formatMessage(name);
 
-  // publish the message to the helloEvent
-  await helloEvent.publishEvents({
+  // emit the message to the helloEvent
+  await helloEvent.emit({
     message,
   });
 
@@ -352,8 +356,8 @@ export const helloWorkflow = workflow("helloWorkflow", async (name: string) => {
   return message;
 });
 
-// an activity that does the work of formatting the message
-export const formatMessage = activity("formatName", async (name: string) => {
+// a task that does the work of formatting the message
+export const formatMessage = task("formatName", async (name: string) => {
   return \`hello \${name}\`;
 });
 
@@ -389,7 +393,7 @@ beforeAll(async () => {
   env = new TestEnvironment();
 });
 
-test("hello workflow should publish helloEvent and return message", async () => {
+test("hello workflow should emit helloEvent and return message", async () => {
   const execution = await env.startExecution({
     workflow: helloWorkflow,
     input: "name",
@@ -413,5 +417,7 @@ test("hello workflow should publish helloEvent and return message", async () => 
     });
   }
 
-  await install(pkgManager);
+  if (!skipInstall) {
+    await install(pkgManager);
+  }
 }
