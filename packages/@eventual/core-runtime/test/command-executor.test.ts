@@ -1,5 +1,5 @@
 import {
-  Dictionary,
+  Entity,
   EventEnvelope,
   Schedule,
   SendSignalRequest,
@@ -8,8 +8,8 @@ import {
 import {
   ActivityScheduled,
   ChildWorkflowScheduled,
-  DictionaryMethods,
-  DictionaryRequest,
+  EntityMethods,
+  EntityRequest,
   EventsPublished,
   SignalSent,
   SignalTargetType,
@@ -19,7 +19,7 @@ import {
 } from "@eventual/core/internal";
 import { jest } from "@jest/globals";
 import { ActivityClient } from "../src/clients/activity-client.js";
-import { DictionaryClient } from "../src/clients/dictionary-client.js";
+import { EntityClient } from "../src/clients/entity-client.js";
 import { EventClient } from "../src/clients/event-client.js";
 import { ExecutionQueueClient } from "../src/clients/execution-queue-client.js";
 import {
@@ -37,7 +37,7 @@ import {
   activityCall,
   awaitTimerCall,
   childWorkflowCall,
-  dictionaryRequestCall,
+  entityRequestCall,
   publishEventCall,
   sendSignalCall,
 } from "./call-util.js";
@@ -60,17 +60,17 @@ const mockExecutionQueueClient = {
     jest.fn() as ExecutionQueueClient["submitExecutionEvents"],
   sendSignal: jest.fn() as ExecutionQueueClient["sendSignal"],
 } satisfies Partial<ExecutionQueueClient> as ExecutionQueueClient;
-const mockDictionary = {
-  get: jest.fn() as Dictionary<any>["get"],
-  getWithMetadata: jest.fn() as Dictionary<any>["getWithMetadata"],
-  set: jest.fn() as Dictionary<any>["set"],
-  delete: jest.fn() as Dictionary<any>["delete"],
-  list: jest.fn() as Dictionary<any>["list"],
-  listKeys: jest.fn() as Dictionary<any>["listKeys"],
-} satisfies DictionaryMethods<any>;
-const mockDictionaryClient = {
-  getDictionary: jest.fn() as DictionaryClient["getDictionary"],
-} satisfies Partial<DictionaryClient> as DictionaryClient;
+const mockEntity = {
+  get: jest.fn() as Entity<any>["get"],
+  getWithMetadata: jest.fn() as Entity<any>["getWithMetadata"],
+  set: jest.fn() as Entity<any>["set"],
+  delete: jest.fn() as Entity<any>["delete"],
+  list: jest.fn() as Entity<any>["list"],
+  listKeys: jest.fn() as Entity<any>["listKeys"],
+} satisfies EntityMethods<any>;
+const mockEntityClient = {
+  getEntity: jest.fn() as EntityClient["getEntity"],
+} satisfies Partial<EntityClient> as EntityClient;
 const mockTransactionClient = {
   executeTransaction: jest.fn() as TransactionClient["executeTransaction"],
 } satisfies Partial<TransactionClient> as TransactionClient;
@@ -81,7 +81,7 @@ const testExecutor = new WorkflowCallExecutor({
   activityClient: mockActivityClient,
   eventClient: mockEventClient,
   executionQueueClient: mockExecutionQueueClient,
-  dictionaryClient: mockDictionaryClient,
+  entityClient: mockEntityClient,
   transactionClient: mockTransactionClient,
 });
 
@@ -93,9 +93,7 @@ const executionId = "execId/123";
 const baseTime = new Date();
 
 beforeEach(() => {
-  (mockDictionaryClient.getDictionary as jest.Mock<any>).mockResolvedValue(
-    mockDictionary
-  );
+  (mockEntityClient.getEntity as jest.Mock<any>).mockResolvedValue(mockEntity);
 });
 
 afterEach(() => {
@@ -274,21 +272,21 @@ describe("publish events", () => {
   });
 });
 
-describe("dictionary request", () => {
+describe("entity request", () => {
   test("get", async () => {
     const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      dictionaryRequestCall({ name: "dict", operation: "get", key: "key" }, 0),
+      entityRequestCall({ name: "dict", operation: "get", key: "key" }, 0),
       baseTime
     );
 
-    expect(mockDictionaryClient.getDictionary).toHaveBeenCalledWith("dict");
-    expect(mockDictionary.get).toHaveBeenCalledWith("key");
+    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("dict");
+    expect(mockEntity.get).toHaveBeenCalledWith("key");
 
-    expect(event).toMatchObject<DictionaryRequest>({
+    expect(event).toMatchObject<EntityRequest>({
       seq: 0,
-      type: WorkflowEventType.DictionaryRequest,
+      type: WorkflowEventType.EntityRequest,
       operation: { name: "dict", operation: "get", key: "key" },
       timestamp: expect.stringContaining("Z"),
     });
@@ -298,23 +296,19 @@ describe("dictionary request", () => {
     const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      dictionaryRequestCall(
+      entityRequestCall(
         { name: "dict", operation: "set", key: "key", value: "some value" },
         0
       ),
       baseTime
     );
 
-    expect(mockDictionaryClient.getDictionary).toHaveBeenCalledWith("dict");
-    expect(mockDictionary.set).toHaveBeenCalledWith(
-      "key",
-      "some value",
-      undefined
-    );
+    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("dict");
+    expect(mockEntity.set).toHaveBeenCalledWith("key", "some value", undefined);
 
-    expect(event).toMatchObject<DictionaryRequest>({
+    expect(event).toMatchObject<EntityRequest>({
       seq: 0,
-      type: WorkflowEventType.DictionaryRequest,
+      type: WorkflowEventType.EntityRequest,
       operation: {
         name: "dict",
         operation: "set",
@@ -329,19 +323,16 @@ describe("dictionary request", () => {
     const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      dictionaryRequestCall(
-        { name: "dict", operation: "delete", key: "key" },
-        0
-      ),
+      entityRequestCall({ name: "dict", operation: "delete", key: "key" }, 0),
       baseTime
     );
 
-    expect(mockDictionaryClient.getDictionary).toHaveBeenCalledWith("dict");
-    expect(mockDictionary.delete).toHaveBeenCalledWith("key", undefined);
+    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("dict");
+    expect(mockEntity.delete).toHaveBeenCalledWith("key", undefined);
 
-    expect(event).toMatchObject<DictionaryRequest>({
+    expect(event).toMatchObject<EntityRequest>({
       seq: 0,
-      type: WorkflowEventType.DictionaryRequest,
+      type: WorkflowEventType.EntityRequest,
       operation: { name: "dict", operation: "delete", key: "key" },
       timestamp: expect.stringContaining("Z"),
     });
@@ -351,19 +342,16 @@ describe("dictionary request", () => {
     const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      dictionaryRequestCall(
-        { name: "dict", operation: "list", request: {} },
-        0
-      ),
+      entityRequestCall({ name: "dict", operation: "list", request: {} }, 0),
       baseTime
     );
 
-    expect(mockDictionaryClient.getDictionary).toHaveBeenCalledWith("dict");
-    expect(mockDictionary.list).toHaveBeenCalledWith({});
+    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("dict");
+    expect(mockEntity.list).toHaveBeenCalledWith({});
 
-    expect(event).toMatchObject<DictionaryRequest>({
+    expect(event).toMatchObject<EntityRequest>({
       seq: 0,
-      type: WorkflowEventType.DictionaryRequest,
+      type: WorkflowEventType.EntityRequest,
       operation: { name: "dict", operation: "list", request: {} },
       timestamp: expect.stringContaining("Z"),
     });
@@ -373,19 +361,19 @@ describe("dictionary request", () => {
     const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      dictionaryRequestCall(
+      entityRequestCall(
         { name: "dict", operation: "listKeys", request: {} },
         0
       ),
       baseTime
     );
 
-    expect(mockDictionaryClient.getDictionary).toHaveBeenCalledWith("dict");
-    expect(mockDictionary.listKeys).toHaveBeenCalledWith({});
+    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("dict");
+    expect(mockEntity.listKeys).toHaveBeenCalledWith({});
 
-    expect(event).toMatchObject<DictionaryRequest>({
+    expect(event).toMatchObject<EntityRequest>({
       seq: 0,
-      type: WorkflowEventType.DictionaryRequest,
+      type: WorkflowEventType.EntityRequest,
       operation: { name: "dict", operation: "listKeys", request: {} },
       timestamp: expect.stringContaining("Z"),
     });

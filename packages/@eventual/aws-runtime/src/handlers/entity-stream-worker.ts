@@ -1,21 +1,21 @@
 // the user's entry point will register streams as a side effect.
 import "@eventual/injected/entry";
 
-import { DictionaryStreamItem } from "@eventual/core";
+import { EntityStreamItem } from "@eventual/core";
 import {
-  createDictionaryStreamWorker,
+  createEntityStreamWorker,
   getLazy,
   promiseAllSettledPartitioned,
 } from "@eventual/core-runtime";
-import { DictionaryStreamOperation } from "@eventual/core/internal";
+import { EntityStreamOperation } from "@eventual/core/internal";
 import { DynamoDBStreamHandler } from "aws-lambda";
-import { createDictionaryClient, createServiceClient } from "../create.js";
-import { dictionaryName, dictionaryStreamName } from "../env.js";
-import { DictionaryEntityRecord } from "../stores/dictionary-store.js";
+import { createEntityClient, createServiceClient } from "../create.js";
+import { entityName, entityStreamName } from "../env.js";
+import { EntityEntityRecord } from "../stores/entity-store.js";
 
-const worker = createDictionaryStreamWorker({
+const worker = createEntityStreamWorker({
   eventualClient: createServiceClient({}),
-  dictionaryClient: createDictionaryClient(),
+  entityClient: createEntityClient(),
 });
 
 export default (async (event) => {
@@ -26,27 +26,27 @@ export default (async (event) => {
     records,
     async (record) => {
       try {
-        const keys = record.dynamodb?.Keys as Partial<DictionaryEntityRecord>;
+        const keys = record.dynamodb?.Keys as Partial<EntityEntityRecord>;
         const pk = keys?.pk?.S;
         const sk = keys?.sk?.S;
         const operation = record.eventName?.toLowerCase() as
-          | DictionaryStreamOperation
+          | EntityStreamOperation
           | undefined;
         const oldItem = record.dynamodb?.OldImage as
-          | Partial<DictionaryEntityRecord>
+          | Partial<EntityEntityRecord>
           | undefined;
         const newItem = record.dynamodb?.NewImage as
-          | Partial<DictionaryEntityRecord>
+          | Partial<EntityEntityRecord>
           | undefined;
 
         if (pk && sk && operation) {
           const namespace =
-            DictionaryEntityRecord.parseNamespaceFromPartitionKey(pk);
-          const key = DictionaryEntityRecord.parseKeyFromSortKey(sk);
+            EntityEntityRecord.parseNamespaceFromPartitionKey(pk);
+          const key = EntityEntityRecord.parseKeyFromSortKey(sk);
 
-          const item: DictionaryStreamItem<any> = {
-            dictionaryName: getLazy(dictionaryName),
-            streamName: getLazy(dictionaryStreamName),
+          const item: EntityStreamItem<any> = {
+            entityName: getLazy(entityName),
+            streamName: getLazy(entityStreamName),
             namespace,
             key,
             newValue: newItem?.value?.S

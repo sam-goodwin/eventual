@@ -1,11 +1,11 @@
 import { EventEnvelope, EventualServiceClient } from "@eventual/core";
 import {
-  registerDictionaryHook,
+  registerEntityHook,
   registerServiceClient,
   ServiceType,
   serviceTypeScope,
 } from "@eventual/core/internal";
-import { DictionaryClient } from "../clients/dictionary-client.js";
+import { EntityClient } from "../clients/entity-client.js";
 import { SubscriptionProvider } from "../providers/subscription-provider.js";
 
 /**
@@ -21,7 +21,7 @@ export interface EventHandlerDependencies {
    * Returns event handlers
    */
   subscriptionProvider: SubscriptionProvider;
-  dictionaryClient: DictionaryClient;
+  entityClient: EntityClient;
 }
 
 export interface SubscriptionWorker {
@@ -37,13 +37,13 @@ export interface SubscriptionWorker {
 export function createSubscriptionWorker({
   serviceClient,
   subscriptionProvider: eventHandlerProvider,
-  dictionaryClient,
+  entityClient,
 }: EventHandlerDependencies): SubscriptionWorker {
   // make the workflow client available to web hooks
   if (serviceClient) {
     registerServiceClient(serviceClient);
   }
-  registerDictionaryHook(dictionaryClient);
+  registerEntityHook(entityClient);
 
   return async function (events) {
     return await serviceTypeScope(ServiceType.Subscription, async () => {

@@ -14,7 +14,7 @@ import {
   asyncResult,
   command,
   condition,
-  dictionary,
+  entity,
   duration,
   event,
   expectSignal,
@@ -25,7 +25,7 @@ import {
   time,
   workflow,
   transaction,
-  Dictionary,
+  Entity,
 } from "@eventual/core";
 import z from "zod";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -551,7 +551,7 @@ export const createAndDestroyWorkflow = workflow(
   }
 );
 
-export const counter = dictionary<{ n: number }>("counter2", z.any());
+export const counter = entity<{ n: number }>("counter2", z.any());
 const dictEvent = event<{ id: string }>("dictEvent");
 const dictSignal = signal("dictSignal");
 const dictSignal2 = signal<{ n: number }>("dictSignal2");
@@ -591,7 +591,7 @@ export const onDictEvent = subscription(
   }
 );
 
-export const dictionaryActivity = activity(
+export const entityActivity = activity(
   "dictAct",
   async (_, { execution: { id } }) => {
     const value = await counter.get(id);
@@ -599,13 +599,13 @@ export const dictionaryActivity = activity(
   }
 );
 
-export const dictionaryWorkflow = workflow(
-  "dictionaryWorkflow",
+export const entityWorkflow = workflow(
+  "entityWorkflow",
   async (_, { execution: { id } }) => {
     await counter.set(id, { n: 1 });
     counter.set({ key: id, namespace: "different!" }, { n: 0 });
     await dictSignal.expectSignal();
-    await dictionaryActivity();
+    await entityActivity();
     await Promise.all([
       dictEvent.publishEvents({ id }),
       dictSignal.expectSignal(),
@@ -614,14 +614,14 @@ export const dictionaryWorkflow = workflow(
       // will fail
       await counter.set(id, { n: 0 }, { expectedVersion: 1 });
     } catch (err) {
-      console.error("expected the dictionary set to fail", err);
+      console.error("expected the entity set to fail", err);
     }
     const { entity, version } = (await counter.getWithMetadata(id)) ?? {};
     await counter.set(id, { n: entity!.n + 1 }, { expectedVersion: version });
     const value = await counter.get(id);
-    await Dictionary.transactWrite([
+    await Entity.transactWrite([
       {
-        dictionary: counter,
+        entity: counter,
         operation: {
           operation: "set",
           key: id,
@@ -636,7 +636,7 @@ export const dictionaryWorkflow = workflow(
   }
 );
 
-export const check = dictionary<{ n: number }>("check");
+export const check = entity<{ n: number }>("check");
 
 const gitErDone = transaction("gitErDone", async ({ id }: { id: string }) => {
   const val = await check.get(id);

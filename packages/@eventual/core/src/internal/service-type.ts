@@ -3,6 +3,6 @@ export enum ServiceType {
   CommandWorker = "CommandWorker",
   Subscription = "Subscription",
   OrchestratorWorker = "OrchestratorWorker",
-  DictionaryStreamWorker = "DictionaryStreamWorker",
+  EntityStreamWorker = "EntityStreamWorker",
   TransactionWorker = "TransactionWorker",
 }

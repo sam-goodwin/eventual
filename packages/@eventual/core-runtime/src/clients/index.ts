@@ -1,5 +1,5 @@
 export * from "./activity-client.js";
-export * from "./dictionary-client.js";
+export * from "./entity-client.js";
 export * from "./event-client.js";
 export * from "./execution-queue-client.js";
 export * from "./logs-client.js";

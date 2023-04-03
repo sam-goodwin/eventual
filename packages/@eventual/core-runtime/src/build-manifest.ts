@@ -1,8 +1,8 @@
 import type {
   ActivitySpec,
   CommandSpec,
-  DictionarySpec,
-  DictionaryStreamSpec,
+  EntitySpec,
+  EntityStreamSpec,
   EventSpec,
   EventualService,
   SubscriptionSpec,
@@ -48,12 +48,12 @@ export interface BuildManifest {
   };
 }
 
-export interface DictionaryRuntime extends Omit<DictionarySpec, "streams"> {
-  streams: DictionaryStreamFunction[];
+export interface EntityRuntime extends Omit<EntitySpec, "streams"> {
+  streams: EntityStreamFunction[];
 }
 
 interface Entities {
-  dictionaries: DictionaryRuntime[];
+  dictionaries: EntityRuntime[];
   transactions: TransactionSpec[];
 }
 
@@ -91,5 +91,5 @@ export interface InternalCommandFunction extends CommandFunction {}
 
 export interface CommandFunction extends BundledFunction<CommandSpec> {}
 
-export interface DictionaryStreamFunction
-  extends BundledFunction<DictionaryStreamSpec> {}
+export interface EntityStreamFunction
+  extends BundledFunction<EntityStreamSpec> {}

@@ -18,8 +18,8 @@ export const ENV_NAMES = {
   WORKFLOW_EXECUTION_LOG_GROUP_NAME:
     "EVENTUAL_WORKFLOW_EXECUTION_LOG_GROUP_NAME",
   DEFAULT_LOG_LEVEL: "EVENTUAL_LOG_LEVEL",
-  DICTIONARY_NAME: "EVENTUAL_DICTIONARY_NAME",
-  DICTIONARY_STREAM_NAME: "EVENTUAL_DICTIONARY_STREAM_NAME",
+  ENTITY_NAME: "EVENTUAL_ENTITY_NAME",
+  ENTITY_STREAM_NAME: "EVENTUAL_ENTITY_STREAM_NAME",
   TRANSACTION_WORKER_ARN: "EVENTUAL_TRANSACTION_WORKER_ARN",
 } as const;
 
@@ -52,8 +52,7 @@ export const serviceLogGroupName = () =>
 export const serviceUrl = () => tryGetEnv<LogLevel>(ENV_NAMES.SERVICE_URL);
 export const defaultLogLevel = () =>
   tryGetEnv<LogLevel>(ENV_NAMES.DEFAULT_LOG_LEVEL) ?? LogLevel.INFO;
-export const dictionaryName = () => tryGetEnv(ENV_NAMES.DICTIONARY_NAME);
-export const dictionaryStreamName = () =>
-  tryGetEnv(ENV_NAMES.DICTIONARY_STREAM_NAME);
+export const entityName = () => tryGetEnv(ENV_NAMES.ENTITY_NAME);
+export const entityStreamName = () => tryGetEnv(ENV_NAMES.ENTITY_STREAM_NAME);
 export const transactionWorkerArn = () =>
   tryGetEnv(ENV_NAMES.TRANSACTION_WORKER_ARN);

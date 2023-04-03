@@ -196,7 +196,7 @@ export function subscriptionServiceFunctionSuffix(subscriptionName: string) {
 }
 
 export function entityServiceTableSuffix(entityName: string) {
-  return `dictionary-${entityName}`;
+  return `entity-${entityName}`;
 }
 
 export function activityServiceFunctionName(

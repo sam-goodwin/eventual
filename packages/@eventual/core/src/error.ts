@@ -110,7 +110,7 @@ export class ExecutionAlreadyExists extends Error {
 }
 
 /**
- * Thrown from the {@link Dictionary} set or delete when the expected version is incorrect.
+ * Thrown from the {@link Entity} set or delete when the expected version is incorrect.
  */
 export class UnexpectedVersion extends Error {
   constructor(message: string) {
@@ -119,7 +119,7 @@ export class UnexpectedVersion extends Error {
 }
 
 /**
- * Thrown from {@link Dictionary.transactWrite} when an error is encountered
+ * Thrown from {@link Entity.transactWrite} when an error is encountered
  * that cancels the transaction.
  *
  * Returns reasons in the same order as the input items.

@@ -1,15 +1,17 @@
 import { EventualError, HeartbeatTimeout, Timeout } from "@eventual/core";
 import {
-  assertNever,
   EventualCall,
+  Result,
+  WorkflowEventType,
+  assertNever,
   isActivityCall,
   isActivityScheduled,
   isAwaitTimerCall,
   isChildWorkflowCall,
   isChildWorkflowScheduled,
   isConditionCall,
-  isDictionaryCall,
-  isDictionaryRequest,
+  isEntityCall,
+  isEntityRequest,
   isEventsPublished,
   isExpectSignalCall,
   isInvokeTransactionCall,
@@ -19,8 +21,6 @@ import {
   isSignalSent,
   isTimerScheduled,
   isTransactionRequest,
-  Result,
-  WorkflowEventType,
 } from "@eventual/core/internal";
 import { EventualDefinition, Trigger } from "./workflow-executor.js";
 
@@ -135,22 +135,22 @@ export function createEventualFromCall(
         call.handler(event.payload);
       }),
     };
-  } else if (isDictionaryCall(call)) {
+  } else if (isEntityCall(call)) {
     return {
       triggers: [
         Trigger.onWorkflowEvent(
-          WorkflowEventType.DictionaryRequestSucceeded,
+          WorkflowEventType.EntityRequestSucceeded,
           (event) => Result.resolved(event.result)
         ),
         Trigger.onWorkflowEvent(
-          WorkflowEventType.DictionaryRequestFailed,
+          WorkflowEventType.EntityRequestFailed,
           (event) =>
             Result.failed(new EventualError(event.error, event.message))
         ),
       ],
       isCorresponding(event) {
         return (
-          isDictionaryRequest(event) &&
+          isEntityRequest(event) &&
           call.operation === event.operation.operation &&
           "name" in call === "name" in event.operation &&
           (!("name" in call && "name" in event.operation) ||

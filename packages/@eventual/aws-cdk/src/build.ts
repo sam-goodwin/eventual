@@ -3,7 +3,7 @@ import { BuildManifest } from "@eventual/core-runtime";
 import {
   ActivitySpec,
   CommandSpec,
-  DictionaryStreamSpec,
+  EntityStreamSpec,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
   ServiceType,
   SubscriptionSpec,
@@ -82,7 +82,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       monoActivityFunction,
       monoCommandFunction,
       monoSubscriptionFunction,
-      monoDictionaryStreamWorkerFunction,
+      monoEntityStreamWorkerFunction,
       transactionWorkerFunction,
     ],
     [
@@ -120,7 +120,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       dictionaries: await Promise.all(
         serviceSpec.entities.dictionaries.map(async (d) => ({
           ...d,
-          streams: await bundleDictionaryStreams(d.streams),
+          streams: await bundleEntityStreams(d.streams),
         }))
       ),
       transactions: serviceSpec.transactions,
@@ -234,17 +234,17 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     );
   }
 
-  async function bundleDictionaryStreams(specs: DictionaryStreamSpec[]) {
+  async function bundleEntityStreams(specs: EntityStreamSpec[]) {
     return await Promise.all(
       specs.map(async (spec) => {
         return {
           entry: await bundleFile(
             specPath,
             spec,
-            "dictionary-streams",
-            "dictionary-stream-worker",
+            "entity-streams",
+            "entity-stream-worker",
             spec.name,
-            monoDictionaryStreamWorkerFunction!
+            monoEntityStreamWorkerFunction!
           ),
           spec,
         };
@@ -297,8 +297,8 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           entry: runtimeHandlersEntrypoint("subscription-worker"),
         },
         {
-          name: ServiceType.DictionaryStreamWorker,
-          entry: runtimeHandlersEntrypoint("dictionary-stream-worker"),
+          name: ServiceType.EntityStreamWorker,
+          entry: runtimeHandlersEntrypoint("entity-stream-worker"),
         },
         {
           name: ServiceType.TransactionWorker,

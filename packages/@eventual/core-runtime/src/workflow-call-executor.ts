@@ -5,11 +5,11 @@ import {
   AwaitTimerCall,
   ChildWorkflowCall,
   ChildWorkflowScheduled,
-  DictionaryCall,
-  DictionaryOperation,
-  DictionaryRequest,
-  DictionaryRequestFailed,
-  DictionaryRequestSucceeded,
+  EntityCall,
+  EntityOperation,
+  EntityRequest,
+  EntityRequestFailed,
+  EntityRequestSucceeded,
   EventsPublished,
   HistoryStateEvent,
   InvokeTransactionCall,
@@ -28,8 +28,8 @@ import {
   isChildExecutionTarget,
   isChildWorkflowCall,
   isConditionCall,
-  isDictionaryCall,
-  isDictionaryOperationOfType,
+  isEntityCall,
+  isEntityOperationOfType,
   isExpectSignalCall,
   isInvokeTransactionCall,
   isPublishEventsCall,
@@ -40,7 +40,7 @@ import {
   ActivityClient,
   ActivityWorkerRequest,
 } from "./clients/activity-client.js";
-import { DictionaryClient } from "./clients/dictionary-client.js";
+import { EntityClient } from "./clients/entity-client.js";
 import { EventClient } from "./clients/event-client.js";
 import { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { TimerClient } from "./clients/timer-client.js";
@@ -54,7 +54,7 @@ import { WorkflowCall } from "./workflow-executor.js";
 
 interface WorkflowCallExecutorProps {
   activityClient: ActivityClient;
-  dictionaryClient: DictionaryClient;
+  entityClient: EntityClient;
   eventClient: EventClient;
   executionQueueClient: ExecutionQueueClient;
   timerClient: TimerClient;
@@ -103,8 +103,8 @@ export class WorkflowCallExecutor {
     ) {
       // do nothing
       return undefined;
-    } else if (isDictionaryCall(call.call)) {
-      return this.executeDictionaryRequest(
+    } else if (isEntityCall(call.call)) {
+      return this.executeEntityRequest(
         executionId,
         call.call,
         call.seq,
@@ -247,22 +247,22 @@ export class WorkflowCallExecutor {
     );
   }
 
-  private async executeDictionaryRequest(
+  private async executeEntityRequest(
     executionId: string,
-    call: DictionaryCall,
+    call: EntityCall,
     seq: number,
     baseTime: Date
   ) {
     const self = this;
     try {
-      const result = await invokeDictionaryOperation(call);
+      const result = await invokeEntityOperation(call);
       await this.props.executionQueueClient.submitExecutionEvents(
         executionId,
-        createEvent<DictionaryRequestSucceeded>(
+        createEvent<EntityRequestSucceeded>(
           {
-            type: WorkflowEventType.DictionaryRequestSucceeded,
+            type: WorkflowEventType.EntityRequestSucceeded,
             operation: call.operation,
-            name: isDictionaryOperationOfType("transact", call)
+            name: isEntityOperationOfType("transact", call)
               ? undefined
               : call.name,
             result,
@@ -274,11 +274,11 @@ export class WorkflowCallExecutor {
     } catch (err) {
       await this.props.executionQueueClient.submitExecutionEvents(
         executionId,
-        createEvent<DictionaryRequestFailed>(
+        createEvent<EntityRequestFailed>(
           {
-            type: WorkflowEventType.DictionaryRequestFailed,
+            type: WorkflowEventType.EntityRequestFailed,
             seq,
-            name: isDictionaryOperationOfType("transact", call)
+            name: isEntityOperationOfType("transact", call)
               ? undefined
               : call.name,
             operation: call.operation,
@@ -289,41 +289,35 @@ export class WorkflowCallExecutor {
       );
     }
 
-    return createEvent<DictionaryRequest>(
+    return createEvent<EntityRequest>(
       {
-        type: WorkflowEventType.DictionaryRequest,
+        type: WorkflowEventType.EntityRequest,
         operation: call,
         seq,
       },
       baseTime
     );
 
-    async function invokeDictionaryOperation(operation: DictionaryOperation) {
-      if (isDictionaryOperationOfType("transact", operation)) {
-        return self.props.dictionaryClient.transactWrite(operation.items);
+    async function invokeEntityOperation(operation: EntityOperation) {
+      if (isEntityOperationOfType("transact", operation)) {
+        return self.props.entityClient.transactWrite(operation.items);
       }
-      const dictionary = await self.props.dictionaryClient.getDictionary(
-        operation.name
-      );
-      if (!dictionary) {
-        throw new Error(`Dictionary ${operation.name} does not exist`);
+      const entity = await self.props.entityClient.getEntity(operation.name);
+      if (!entity) {
+        throw new Error(`Entity ${operation.name} does not exist`);
       }
-      if (isDictionaryOperationOfType("get", operation)) {
-        return dictionary.get(operation.key);
-      } else if (isDictionaryOperationOfType("getWithMetadata", operation)) {
-        return dictionary.getWithMetadata(operation.key);
-      } else if (isDictionaryOperationOfType("set", operation)) {
-        return dictionary.set(
-          operation.key,
-          operation.value,
-          operation.options
-        );
-      } else if (isDictionaryOperationOfType("delete", operation)) {
-        return dictionary.delete(operation.key, operation.options);
-      } else if (isDictionaryOperationOfType("list", operation)) {
-        return dictionary.list(operation.request);
-      } else if (isDictionaryOperationOfType("listKeys", operation)) {
-        return dictionary.listKeys(operation.request);
+      if (isEntityOperationOfType("get", operation)) {
+        return entity.get(operation.key);
+      } else if (isEntityOperationOfType("getWithMetadata", operation)) {
+        return entity.getWithMetadata(operation.key);
+      } else if (isEntityOperationOfType("set", operation)) {
+        return entity.set(operation.key, operation.value, operation.options);
+      } else if (isEntityOperationOfType("delete", operation)) {
+        return entity.delete(operation.key, operation.options);
+      } else if (isEntityOperationOfType("list", operation)) {
+        return entity.list(operation.request);
+      } else if (isEntityOperationOfType("listKeys", operation)) {
+        return entity.listKeys(operation.request);
       }
       return assertNever(operation);
     }

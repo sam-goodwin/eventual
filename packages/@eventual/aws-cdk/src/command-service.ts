@@ -435,11 +435,11 @@ export class CommandService<Service = any> {
     this.props.service.configureForServiceClient(handler);
     this.grantInvokeHttpServiceApi(handler);
     /**
-     * Dictionary operations
+     * Entity operations
      */
     this.props.entityService.configureReadWriteEntityTable(handler);
     /**
-     *  
+     *
      */
     this.props.entityService.configureInvokeTransactions(
       this.systemCommandsHandler

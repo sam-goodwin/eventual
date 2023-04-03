@@ -1,39 +1,39 @@
 import type {
   CompositeKey,
-  DictionaryConsistencyOptions,
-  DictionaryListKeysResult,
-  DictionaryListRequest,
-  DictionaryListResult,
-  DictionarySetOptions,
-  DictionaryTransactItem,
+  EntityConsistencyOptions,
+  EntityListKeysResult,
+  EntityListRequest,
+  EntityListResult,
+  EntitySetOptions,
+  EntityTransactItem,
 } from "@eventual/core";
 
-export interface DictionaryStore {
-  getDictionaryValue<Entity>(
+export interface EntityStore {
+  getEntityValue<Entity>(
     name: string,
     key: string | CompositeKey
   ): Promise<EntityWithMetadata<Entity> | undefined>;
-  setDictionaryValue<Entity>(
+  setEntityValue<Entity>(
     name: string,
     key: string | CompositeKey,
     entity: Entity,
-    options?: DictionarySetOptions
+    options?: EntitySetOptions
   ): Promise<{ version: number } | UnexpectedVersionResult>;
-  deleteDictionaryValue(
+  deleteEntityValue(
     name: string,
     key: string | CompositeKey,
-    options?: DictionaryConsistencyOptions
+    options?: EntityConsistencyOptions
   ): Promise<void | UnexpectedVersionResult>;
-  listDictionaryEntries<Entity>(
+  listEntityEntries<Entity>(
     name: string,
-    request: DictionaryListRequest
-  ): Promise<DictionaryListResult<Entity>>;
-  listDictionaryKeys(
+    request: EntityListRequest
+  ): Promise<EntityListResult<Entity>>;
+  listEntityKeys(
     name: string,
-    request: DictionaryListRequest
-  ): Promise<DictionaryListKeysResult>;
+    request: EntityListRequest
+  ): Promise<EntityListKeysResult>;
   transactWrite(
-    items: DictionaryTransactItem<any, string>[]
+    items: EntityTransactItem<any, string>[]
   ): Promise<TransactionCancelledResult | TransactionConflictResult | void>;
 }
 

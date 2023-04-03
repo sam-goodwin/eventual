@@ -29,7 +29,7 @@ export interface ServiceSpec {
    */
   subscriptions: SubscriptionSpec[];
   entities: {
-    dictionaries: DictionarySpec[];
+    dictionaries: EntitySpec[];
   };
 }
 
@@ -118,24 +118,24 @@ export interface WorkflowSpec {
   name: string;
 }
 
-export interface DictionarySpec {
+export interface EntitySpec {
   name: string;
   /**
-   * An Optional schema for the entity within a dictionary.
+   * An Optional schema for the entity within a entity.
    */
   schema?: openapi.SchemaObject;
-  streams: DictionaryStreamSpec[];
+  streams: EntityStreamSpec[];
 }
 
-export type DictionaryStreamOperation = "insert" | "modify" | "remove";
+export type EntityStreamOperation = "insert" | "modify" | "remove";
 
-export interface DictionaryStreamOptions extends FunctionRuntimeProps {
+export interface EntityStreamOptions extends FunctionRuntimeProps {
   /**
    * A list of operations to be send to the stream.
    *
    * @default All Operations
    */
-  operations?: DictionaryStreamOperation[];
+  operations?: EntityStreamOperation[];
   /**
    * When true, the old value will be sent with the new value.
    */
@@ -154,10 +154,10 @@ export interface DictionaryStreamOptions extends FunctionRuntimeProps {
   namespacePrefixes?: string[];
 }
 
-export interface DictionaryStreamSpec {
+export interface EntityStreamSpec {
   name: string;
-  dictionaryName: string;
-  options?: DictionaryStreamOptions;
+  entityName: string;
+  options?: EntityStreamOptions;
   sourceLocation?: SourceLocation;
 }
 

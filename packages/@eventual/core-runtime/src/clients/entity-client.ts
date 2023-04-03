@@ -1,33 +1,30 @@
 import {
-  DictionaryTransactItem,
+  EntityTransactItem,
   TransactionCancelled,
   UnexpectedVersion,
 } from "@eventual/core";
-import { DictionaryHook, DictionaryMethods } from "@eventual/core/internal";
+import { EntityHook, EntityMethods } from "@eventual/core/internal";
 import {
-  DictionaryStore,
+  EntityStore,
   isTransactionCancelledResult,
   isTransactionConflictResult,
   isUnexpectedVersionResult,
-} from "../stores/dictionary-store.js";
+} from "../stores/entity-store.js";
 
-export class DictionaryClient implements DictionaryHook {
-  constructor(private dictionaryStore: DictionaryStore) {}
-  public async getDictionary<Entity>(
+export class EntityClient implements EntityHook {
+  constructor(private entityStore: EntityStore) {}
+  public async getEntity<Entity>(
     name: string
-  ): Promise<DictionaryMethods<Entity> | undefined> {
+  ): Promise<EntityMethods<Entity> | undefined> {
     return {
       get: async (key) => {
-        const entry = await this.dictionaryStore.getDictionaryValue<Entity>(
-          name,
-          key
-        );
+        const entry = await this.entityStore.getEntityValue<Entity>(name, key);
         return entry?.entity;
       },
       getWithMetadata: (key) =>
-        this.dictionaryStore.getDictionaryValue<Entity>(name, key),
+        this.entityStore.getEntityValue<Entity>(name, key),
       set: async (key, entity, options) => {
-        const result = await this.dictionaryStore.setDictionaryValue(
+        const result = await this.entityStore.setEntityValue(
           name,
           key,
           entity,
@@ -39,7 +36,7 @@ export class DictionaryClient implements DictionaryHook {
         return result;
       },
       delete: async (key, options) => {
-        const result = await this.dictionaryStore.deleteDictionaryValue(
+        const result = await this.entityStore.deleteEntityValue(
           name,
           key,
           options
@@ -49,24 +46,19 @@ export class DictionaryClient implements DictionaryHook {
         }
         return result;
       },
-      list: (request) =>
-        this.dictionaryStore.listDictionaryEntries(name, request),
-      listKeys: (request) =>
-        this.dictionaryStore.listDictionaryKeys(name, request),
+      list: (request) => this.entityStore.listEntityEntries(name, request),
+      listKeys: (request) => this.entityStore.listEntityKeys(name, request),
     };
   }
 
-  public async transactWrite(
-    items: DictionaryTransactItem<any>[]
-  ): Promise<void> {
-    const normalizedItems: DictionaryTransactItem<any, string>[] = items.map(
+  public async transactWrite(items: EntityTransactItem<any>[]): Promise<void> {
+    const normalizedItems: EntityTransactItem<any, string>[] = items.map(
       (i) => ({
         ...i,
-        dictionary:
-          typeof i.dictionary === "string" ? i.dictionary : i.dictionary.name,
+        entity: typeof i.entity === "string" ? i.entity : i.entity.name,
       })
     );
-    const result = await this.dictionaryStore.transactWrite(normalizedItems);
+    const result = await this.entityStore.transactWrite(normalizedItems);
     if (isTransactionCancelledResult(result)) {
       throw new TransactionCancelled(
         result.reasons.map((r) =>

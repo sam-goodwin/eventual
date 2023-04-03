@@ -23,7 +23,10 @@ import {
 } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
 import { ActivityService } from "./activity-service";
-import { EventBridgePipe, PipeSourceParameters } from "./constructs/event-bridge-pipe";
+import {
+  EventBridgePipe,
+  PipeSourceParameters,
+} from "./constructs/event-bridge-pipe";
 import { EntityService } from "./entity-service";
 import { EventService } from "./event-service";
 import { grant } from "./grant";
@@ -467,7 +470,7 @@ export class WorkflowService {
      */
     this.props.service.configureServiceName(this.orchestrator);
     /**
-     * Dictionary Commands
+     * Entity Commands
      */
     this.props.entityService.configureReadWriteEntityTable(this.orchestrator);
     // transactions

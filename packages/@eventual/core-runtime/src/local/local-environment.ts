@@ -1,8 +1,8 @@
 import {
-  dictionaryStreamMatchesItem,
+  entityStreamMatchesItem,
   HttpRequest,
   HttpResponse,
-  isDictionaryStreamItem,
+  isEntityStreamItem,
 } from "@eventual/core";
 import { dictionaries, registerServiceClient } from "@eventual/core/internal";
 import { isActivityWorkerRequest } from "../clients/activity-client.js";
@@ -121,7 +121,7 @@ export class LocalEnvironment {
       const timerRequests = events.filter(isTimerRequest);
       const workflowTasks = events.filter(isWorkflowTask);
       const activityWorkerRequests = events.filter(isActivityWorkerRequest);
-      const dictionaryStreamItems = events.filter(isDictionaryStreamItem);
+      const entityStreamItems = events.filter(isEntityStreamItem);
 
       // run all activity requests, don't wait for a result
       activityWorkerRequests.forEach(async (request) => {
@@ -137,14 +137,14 @@ export class LocalEnvironment {
       timerRequests.forEach((request) =>
         this.localContainer.timerHandler(request)
       );
-      // for each dictionary stream item, find the streams that match it, and run the worker with the item
-      dictionaryStreamItems.forEach((i) => {
+      // for each entity stream item, find the streams that match it, and run the worker with the item
+      entityStreamItems.forEach((i) => {
         const streamNames = [...dictionaries().values()]
           .flatMap((d) => d.streams)
-          .filter((s) => dictionaryStreamMatchesItem(i, s))
+          .filter((s) => entityStreamMatchesItem(i, s))
           .map((s) => s.name);
         streamNames.forEach((streamName) => {
-          this.localContainer.dictionaryStreamWorker({
+          this.localContainer.entityStreamWorker({
             ...i,
             streamName,
           });

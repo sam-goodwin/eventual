@@ -11,8 +11,8 @@ import {
   ChildWorkflowScheduled,
   ChildWorkflowSucceeded,
   createEventualCall,
-  DictionaryCall,
-  DictionaryOperation,
+  EntityCall,
+  EntityOperation,
   EventsPublished,
   EventualCallKind,
   PublishEventsCall,
@@ -109,13 +109,13 @@ export function activitySucceeded(result: any, seq: number): ActivitySucceeded {
   };
 }
 
-export function dictionaryRequestCall(
-  operation: DictionaryOperation,
+export function entityRequestCall(
+  operation: EntityOperation,
   seq: number
-): WorkflowCall<DictionaryCall> {
+): WorkflowCall<EntityCall> {
   return {
     seq,
-    call: createEventualCall(EventualCallKind.DictionaryCall, operation),
+    call: createEventualCall(EventualCallKind.EntityCall, operation),
   };
 }
 

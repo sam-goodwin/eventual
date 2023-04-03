@@ -10,7 +10,7 @@ import type { SQSEvent, SQSRecord } from "aws-lambda";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 import {
   createActivityClient,
-  createDictionaryClient,
+  createEntityClient,
   createEventClient,
   createExecutionHistoryStateStore,
   createExecutionHistoryStore,
@@ -39,7 +39,7 @@ const orchestrate = createOrchestrator({
     executionQueueClient: createExecutionQueueClient(),
     timerClient: createTimerClient(),
     workflowClient: createWorkflowClient(),
-    dictionaryClient: createDictionaryClient(),
+    entityClient: createEntityClient(),
     transactionClient: createTransactionClient(),
   }),
   workflowProvider: createWorkflowProvider(),

@@ -9,7 +9,7 @@ import { Client, Pluggable } from "@aws-sdk/types";
 import { LogLevel } from "@eventual/core";
 import {
   ActivityStore,
-  DictionaryClient,
+  EntityClient,
   ExecutionQueueClient,
   ExecutionStore,
   GlobalActivityProvider,
@@ -32,7 +32,7 @@ import { AWSExecutionHistoryStateStore } from "./stores/execution-history-state-
 import { AWSExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { AWSExecutionStore } from "./stores/execution-store.js";
 import { AWSHttpEventualClient } from "@eventual/aws-client";
-import { AWSDictionaryStore } from "./stores/dictionary-store.js";
+import { AWSEntityStore } from "./stores/entity-store.js";
 import { AWSTransactionClient } from "./clients/transaction-client.js";
 
 /**
@@ -216,13 +216,13 @@ export const createExecutionHistoryStateStore = /* @__PURE__ */ memoize(
     })
 );
 
-export const createDictionaryClient = memoize(
-  () => new DictionaryClient(createDictionaryStore())
+export const createEntityClient = memoize(
+  () => new EntityClient(createEntityStore())
 );
 
-export const createDictionaryStore = memoize(
+export const createEntityStore = memoize(
   () =>
-    new AWSDictionaryStore({
+    new AWSEntityStore({
       dynamo: dynamo(),
       serviceName: env.serviceName,
     })

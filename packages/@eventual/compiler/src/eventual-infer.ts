@@ -33,8 +33,8 @@ import {
   getSpan,
   isActivityCall,
   isCommandCall,
-  isDictionaryStreamCall,
-  isDictionaryStreamMemberCall,
+  isEntityStreamCall,
+  isEntityStreamMemberCall,
   isOnEventCall,
   isSubscriptionCall,
 } from "./ast-util.js";
@@ -107,7 +107,7 @@ export async function infer(
         schema: d.schema ? generateSchema(d.schema) : undefined,
         streams: d.streams.map((s) => ({
           name: s.name,
-          dictionaryName: s.dictionaryName,
+          entityName: s.entityName,
           options: s.options,
           sourceLocation: s.sourceLocation,
         })),
@@ -202,8 +202,8 @@ export class InferVisitor extends Visitor {
         isOnEventCall(call) ||
         isSubscriptionCall(call) ||
         isActivityCall(call) ||
-        isDictionaryStreamMemberCall(call) ||
-        isDictionaryStreamCall(call))
+        isEntityStreamMemberCall(call) ||
+        isEntityStreamCall(call))
     ) {
       this.didMutate = true;
 

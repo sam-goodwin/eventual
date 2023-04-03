@@ -239,7 +239,7 @@ export class ActivityService<Service = any> {
      */
     this.props.service.configureServiceName(func);
     /**
-     * Dictionary operations
+     * Entity operations
      */
     this.props.entityService.configureReadWriteEntityTable(func);
     // transactions

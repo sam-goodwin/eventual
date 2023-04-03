@@ -1,6 +1,6 @@
 import type { EventEnvelope } from "../event.js";
 import type { WorkflowExecutionContext } from "../workflow.js";
-import type { DictionaryOperation } from "./calls/dictionary-call.js";
+import type { EntityOperation } from "./calls/entity-call.js";
 import { or } from "./util.js";
 
 export interface BaseEvent {
@@ -24,9 +24,9 @@ export enum WorkflowEventType {
   ChildWorkflowSucceeded = "ChildWorkflowSucceeded",
   ChildWorkflowFailed = "ChildWorkflowFailed",
   ChildWorkflowScheduled = "ChildWorkflowScheduled",
-  DictionaryRequest = "DictionaryRequest",
-  DictionaryRequestFailed = "DictionaryRequestFailed",
-  DictionaryRequestSucceeded = "DictionaryRequestSucceeded",
+  EntityRequest = "EntityRequest",
+  EntityRequestFailed = "EntityRequestFailed",
+  EntityRequestSucceeded = "EntityRequestSucceeded",
   EventsPublished = "EventsPublished",
   TransactionRequest = "InvokeTransactionRequest",
   TransactionRequestFailed = "InvokeTransactionRequestFailed",
@@ -59,7 +59,7 @@ export type WorkflowEvent =
 export type ScheduledEvent =
   | ActivityScheduled
   | ChildWorkflowScheduled
-  | DictionaryRequest
+  | EntityRequest
   | EventsPublished
   | SignalSent
   | TimerScheduled
@@ -69,7 +69,7 @@ export const isScheduledEvent = /* @__PURE__ */ or(
   isActivityScheduled,
   isChildWorkflowScheduled,
   isEventsPublished,
-  isDictionaryRequest,
+  isEntityRequest,
   isSignalSent,
   isTimerScheduled,
   isTransactionRequest
@@ -84,8 +84,8 @@ export type CompletionEvent =
   | ActivitySucceeded
   | ChildWorkflowFailed
   | ChildWorkflowSucceeded
-  | DictionaryRequestFailed
-  | DictionaryRequestSucceeded
+  | EntityRequestFailed
+  | EntityRequestSucceeded
   | SignalReceived
   | TimerCompleted
   | TransactionRequestSucceeded
@@ -104,8 +104,8 @@ export const isCompletionEvent = /* @__PURE__ */ or(
   isActivityHeartbeatTimedOut,
   isChildWorkflowFailed,
   isChildWorkflowSucceeded,
-  isDictionaryRequestFailed,
-  isDictionaryRequestSucceeded,
+  isEntityRequestFailed,
+  isEntityRequestSucceeded,
   isSignalReceived,
   isTimerCompleted,
   isTransactionRequestFailed,
@@ -251,42 +251,40 @@ export function isActivityHeartbeatTimedOut(
   return event.type === WorkflowEventType.ActivityHeartbeatTimedOut;
 }
 
-export interface DictionaryRequest extends HistoryEventBase {
-  type: WorkflowEventType.DictionaryRequest;
-  operation: DictionaryOperation;
+export interface EntityRequest extends HistoryEventBase {
+  type: WorkflowEventType.EntityRequest;
+  operation: EntityOperation;
 }
 
-export interface DictionaryRequestSucceeded extends HistoryEventBase {
-  type: WorkflowEventType.DictionaryRequestSucceeded;
+export interface EntityRequestSucceeded extends HistoryEventBase {
+  type: WorkflowEventType.EntityRequestSucceeded;
   name?: string;
-  operation: DictionaryOperation["operation"];
+  operation: EntityOperation["operation"];
   result: any;
 }
 
-export interface DictionaryRequestFailed extends HistoryEventBase {
-  type: WorkflowEventType.DictionaryRequestFailed;
-  operation: DictionaryOperation["operation"];
+export interface EntityRequestFailed extends HistoryEventBase {
+  type: WorkflowEventType.EntityRequestFailed;
+  operation: EntityOperation["operation"];
   name?: string;
   error: string;
   message: string;
 }
 
-export function isDictionaryRequest(
-  event: WorkflowEvent
-): event is DictionaryRequest {
-  return event.type === WorkflowEventType.DictionaryRequest;
+export function isEntityRequest(event: WorkflowEvent): event is EntityRequest {
+  return event.type === WorkflowEventType.EntityRequest;
 }
 
-export function isDictionaryRequestSucceeded(
+export function isEntityRequestSucceeded(
   event: WorkflowEvent
-): event is DictionaryRequestSucceeded {
-  return event.type === WorkflowEventType.DictionaryRequestSucceeded;
+): event is EntityRequestSucceeded {
+  return event.type === WorkflowEventType.EntityRequestSucceeded;
 }
 
-export function isDictionaryRequestFailed(
+export function isEntityRequestFailed(
   event: WorkflowEvent
-): event is DictionaryRequestFailed {
-  return event.type === WorkflowEventType.DictionaryRequestFailed;
+): event is EntityRequestFailed {
+  return event.type === WorkflowEventType.EntityRequestFailed;
 }
 
 export interface TransactionRequest extends HistoryEventBase {

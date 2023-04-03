@@ -91,7 +91,7 @@ export const Subscriptions: {
       // allow http access to the service client
       props.commandService.configureInvokeHttpServiceApi(handler);
       /**
-       * Dictionary operations
+       * Entity operations
        */
       props.entityService.configureReadWriteEntityTable(handler);
       // transactions

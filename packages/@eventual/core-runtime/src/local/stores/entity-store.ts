@@ -1,37 +1,37 @@
 import {
   CompositeKey,
-  DictionaryConsistencyOptions,
-  DictionaryListKeysResult,
-  DictionaryListRequest,
-  DictionaryListResult,
-  DictionarySetOptions,
-  DictionaryTransactItem,
+  EntityConsistencyOptions,
+  EntityListKeysResult,
+  EntityListRequest,
+  EntityListResult,
+  EntitySetOptions,
+  EntityTransactItem,
 } from "@eventual/core";
 import { assertNever } from "@eventual/core/internal";
 import {
-  DictionaryStore,
+  EntityStore,
   EntityWithMetadata,
   TransactionCancelledResult,
   UnexpectedVersionResult,
   normalizeCompositeKey,
-} from "../../stores/dictionary-store.js";
+} from "../../stores/entity-store.js";
 import { deserializeCompositeKey, serializeCompositeKey } from "../../utils.js";
 import { LocalEnvConnector } from "../local-container.js";
 import { paginateItems } from "./pagination.js";
 
-export interface LocalDictionaryStoreProps {
+export interface LocalEntityStoreProps {
   localConnector: LocalEnvConnector;
 }
 
-export class LocalDictionaryStore implements DictionaryStore {
+export class LocalEntityStore implements EntityStore {
   private dictionaries: Record<
     string,
     Record<string, Map<string, EntityWithMetadata<any>>>
   > = {};
 
-  constructor(private props: LocalDictionaryStoreProps) {}
+  constructor(private props: LocalEntityStoreProps) {}
 
-  public async getDictionaryValue<Entity>(
+  public async getEntityValue<Entity>(
     name: string,
     _key: string | CompositeKey
   ): Promise<EntityWithMetadata<Entity> | undefined> {
@@ -39,15 +39,15 @@ export class LocalDictionaryStore implements DictionaryStore {
     return this.getNamespaceMap(name, namespace).get(key);
   }
 
-  public async setDictionaryValue<Entity>(
+  public async setEntityValue<Entity>(
     name: string,
     _key: string | CompositeKey,
     entity: Entity,
-    options?: DictionarySetOptions
+    options?: EntitySetOptions
   ): Promise<{ version: number }> {
     const { key, namespace } = normalizeCompositeKey(_key);
     const { version = 0, entity: oldValue } =
-      (await this.getDictionaryValue(name, _key)) ?? {};
+      (await this.getEntityValue(name, _key)) ?? {};
     if (
       options?.expectedVersion !== undefined &&
       options.expectedVersion !== version
@@ -64,7 +64,7 @@ export class LocalDictionaryStore implements DictionaryStore {
     });
 
     this.props.localConnector.pushWorkflowTask({
-      dictionaryName: name,
+      entityName: name,
       key,
       namespace,
       operation: version === 0 ? ("insert" as const) : ("modify" as const),
@@ -77,13 +77,13 @@ export class LocalDictionaryStore implements DictionaryStore {
     return { version: newVersion };
   }
 
-  public async deleteDictionaryValue(
+  public async deleteEntityValue(
     name: string,
     _key: string | CompositeKey,
-    options?: DictionaryConsistencyOptions
+    options?: EntityConsistencyOptions
   ): Promise<void | UnexpectedVersionResult> {
     const { key, namespace } = normalizeCompositeKey(_key);
-    const item = await this.getDictionaryValue(name, _key);
+    const item = await this.getEntityValue(name, _key);
 
     if (item) {
       if (options?.expectedVersion !== undefined) {
@@ -94,7 +94,7 @@ export class LocalDictionaryStore implements DictionaryStore {
       this.getNamespaceMap(name, namespace).delete(key);
 
       this.props.localConnector.pushWorkflowTask({
-        dictionaryName: name,
+        entityName: name,
         key,
         namespace,
         operation: "remove" as const,
@@ -104,10 +104,10 @@ export class LocalDictionaryStore implements DictionaryStore {
     }
   }
 
-  public async listDictionaryEntries<Entity>(
+  public async listEntityEntries<Entity>(
     name: string,
-    request: DictionaryListRequest
-  ): Promise<DictionaryListResult<Entity>> {
+    request: EntityListRequest
+  ): Promise<EntityListResult<Entity>> {
     const { items, nextToken } = this.orderedEntries(name, request);
 
     // values should be sorted
@@ -121,10 +121,10 @@ export class LocalDictionaryStore implements DictionaryStore {
     };
   }
 
-  public async listDictionaryKeys(
+  public async listEntityKeys(
     name: string,
-    request: DictionaryListRequest
-  ): Promise<DictionaryListKeysResult> {
+    request: EntityListRequest
+  ): Promise<EntityListKeysResult> {
     const { items, nextToken } = this.orderedEntries(name, request);
     return {
       keys: items?.map(([key]) => key),
@@ -133,13 +133,13 @@ export class LocalDictionaryStore implements DictionaryStore {
   }
 
   public async transactWrite(
-    items: DictionaryTransactItem<any, string>[]
+    items: EntityTransactItem<any, string>[]
   ): Promise<void | TransactionCancelledResult> {
     const keysAndVersions = Object.fromEntries(
       items.map(
         (i) =>
           [
-            serializeCompositeKey(i.dictionary, i.operation.key),
+            serializeCompositeKey(i.entity, i.operation.key),
             i.operation.operation === "condition"
               ? i.operation.version
               : i.operation.options?.expectedVersion,
@@ -159,7 +159,7 @@ export class LocalDictionaryStore implements DictionaryStore {
           return true;
         }
         const [name, key] = deserializeCompositeKey(sKey);
-        const { version } = (await this.getDictionaryValue(name, key)) ?? {
+        const { version } = (await this.getEntityValue(name, key)) ?? {
           version: 0,
         };
         return version === expectedVersion;
@@ -182,15 +182,15 @@ export class LocalDictionaryStore implements DictionaryStore {
     await Promise.all(
       items.map(async (i) => {
         if (i.operation.operation === "set") {
-          return await this.setDictionaryValue(
-            i.dictionary,
+          return await this.setEntityValue(
+            i.entity,
             i.operation.key,
             i.operation.value,
             i.operation.options
           );
         } else if (i.operation.operation === "delete") {
-          return await this.deleteDictionaryValue(
-            i.dictionary,
+          return await this.deleteEntityValue(
+            i.entity,
             i.operation.key,
             i.operation.options
           );
@@ -203,7 +203,7 @@ export class LocalDictionaryStore implements DictionaryStore {
     );
   }
 
-  private orderedEntries(name: string, listRequest: DictionaryListRequest) {
+  private orderedEntries(name: string, listRequest: EntityListRequest) {
     const namespace = this.getNamespaceMap(name, listRequest.namespace);
     const entries = namespace ? [...namespace.entries()] : [];
 
@@ -222,8 +222,8 @@ export class LocalDictionaryStore implements DictionaryStore {
   }
 
   private getNamespaceMap(name: string, namespace?: string) {
-    const dictionary = (this.dictionaries[name] ??= {});
-    const namespaceMap = (dictionary[namespace ?? "default"] ??= new Map<
+    const entity = (this.dictionaries[name] ??= {});
+    const namespaceMap = (entity[namespace ?? "default"] ??= new Map<
       string,
       EntityWithMetadata<any>
     >());

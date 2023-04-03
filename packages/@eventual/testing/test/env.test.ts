@@ -3,8 +3,8 @@ import {
   activity as _activity,
   ActivityHandler,
   CompositeKey,
-  dictionary,
-  Dictionary,
+  entity,
+  Entity,
   EventPayloadType,
   EventualError,
   Execution,
@@ -1283,9 +1283,9 @@ describe("time", () => {
   });
 });
 
-const myDict = dictionary<{ n: number }>("testDict1", z.any());
+const myDict = entity<{ n: number }>("testDict1", z.any());
 
-describe("dictionary", () => {
+describe("entity", () => {
   test("workflow and activity uses get and set", async () => {
     const dictAct = activity(async (_, { execution: { id } }) => {
       await myDict.set(id, { n: ((await myDict.get(id))?.n ?? 0) + 1 });
@@ -1408,7 +1408,7 @@ describe("dictionary", () => {
         }: { version: number; namespace?: string; value: number },
         { execution: { id } }
       ) => {
-        return Dictionary.transactWrite([
+        return Entity.transactWrite([
           {
             operation: {
               operation: "set",
@@ -1416,7 +1416,7 @@ describe("dictionary", () => {
               value: { n: value },
               options: { expectedVersion: version },
             },
-            dictionary: myDict,
+            entity: myDict,
           },
           {
             operation: {
@@ -1425,7 +1425,7 @@ describe("dictionary", () => {
               value: { n: value },
               options: { expectedVersion: version },
             },
-            dictionary: myDict,
+            entity: myDict,
           },
         ]);
       }

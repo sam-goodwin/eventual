@@ -2,7 +2,7 @@ export * from "./activity-call.js";
 export * from "./await-time-call.js";
 export * from "./calls.js";
 export * from "./condition-call.js";
-export * from "./dictionary-call.js";
+export * from "./entity-call.js";
 export * from "./expect-signal-call.js";
 export * from "./publish-events-call.js";
 export * from "./send-signal-call.js";

@@ -1,13 +1,13 @@
 import {
   Activity,
   ActivityOutput,
-  dictionaryStreamMatchesItem,
+  entityStreamMatchesItem,
   Event,
   EventEnvelope,
   EventPayload,
   EventPayloadType,
   ExecutionHandle,
-  isDictionaryStreamItem,
+  isEntityStreamItem,
   SendActivityFailureRequest,
   SendActivityHeartbeatRequest,
   SendActivityHeartbeatResponse,
@@ -375,7 +375,7 @@ export class TestEnvironment extends RuntimeServiceClient {
     const timerRequests = events.filter(isTimerRequest);
     const workflowTasks = events.filter(isWorkflowTask);
     const activityWorkerRequests = events.filter(isActivityWorkerRequest);
-    const dictionaryStreamItems = events.filter(isDictionaryStreamItem);
+    const entityStreamItems = events.filter(isEntityStreamItem);
 
     await Promise.all(
       // run all activity requests, don't wait for a result
@@ -393,13 +393,13 @@ export class TestEnvironment extends RuntimeServiceClient {
             });
           }
         }),
-        dictionaryStreamItems.flatMap((i) => {
+        entityStreamItems.flatMap((i) => {
           const streamNames = [...dictionaries().values()]
             .flatMap((d) => d.streams)
-            .filter((s) => dictionaryStreamMatchesItem(i, s))
+            .filter((s) => entityStreamMatchesItem(i, s))
             .map((s) => s.name);
           return streamNames.map((streamName) => {
-            return this.localContainer.dictionaryStreamWorker({
+            return this.localContainer.entityStreamWorker({
               ...i,
               streamName,
             });

@@ -1,14 +1,14 @@
 import {
-  DictionaryStreamInsertItem,
-  DictionaryStreamModifyItem,
-  DictionaryStreamRemoveItem,
+  EntityStreamInsertItem,
+  EntityStreamModifyItem,
+  EntityStreamRemoveItem,
   LogLevel,
 } from "@eventual/core";
 import {
   ActivityClient,
   ActivityWorkerRequest,
 } from "../clients/activity-client.js";
-import { DictionaryClient } from "../clients/dictionary-client.js";
+import { EntityClient } from "../clients/entity-client.js";
 import { EventClient } from "../clients/event-client.js";
 import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import { LogsClient } from "../clients/logs-client.js";
@@ -24,9 +24,9 @@ import {
   createCommandWorker,
 } from "../handlers/command-worker.js";
 import {
-  createDictionaryStreamWorker,
-  DictionaryStreamWorker,
-} from "../handlers/dictionary-stream-worker.js";
+  createEntityStreamWorker,
+  EntityStreamWorker,
+} from "../handlers/entity-stream-worker.js";
 import { Orchestrator, createOrchestrator } from "../handlers/orchestrator.js";
 import {
   SubscriptionWorker,
@@ -78,7 +78,7 @@ import { LocalMetricsClient } from "./clients/metrics-client.js";
 import { LocalTimerClient } from "./clients/timer-client.js";
 import { LocalTransactionClient } from "./clients/transaction-client.js";
 import { LocalActivityStore } from "./stores/activity-store.js";
-import { LocalDictionaryStore } from "./stores/dictionary-store.js";
+import { LocalEntityStore } from "./stores/entity-store.js";
 import { LocalExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
 import { LocalExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { LocalExecutionStore } from "./stores/execution-store.js";
@@ -87,9 +87,9 @@ export type LocalEvent =
   | WorkflowTask
   | TimerRequest
   | ActivityWorkerRequest
-  | Omit<DictionaryStreamInsertItem<any>, "streamName">
-  | Omit<DictionaryStreamRemoveItem<any>, "streamName">
-  | Omit<DictionaryStreamModifyItem<any>, "streamName">;
+  | Omit<EntityStreamInsertItem<any>, "streamName">
+  | Omit<EntityStreamRemoveItem<any>, "streamName">
+  | Omit<EntityStreamModifyItem<any>, "streamName">;
 
 export interface LocalContainerProps {
   activityProvider?: ActivityProvider;
@@ -103,7 +103,7 @@ export class LocalContainer {
   public timerHandler: TimerHandler;
   public activityWorker: ActivityWorker;
   public subscriptionWorker: SubscriptionWorker;
-  public dictionaryStreamWorker: DictionaryStreamWorker;
+  public entityStreamWorker: EntityStreamWorker;
   public transactionWorker: TransactionWorker;
 
   public activityClient: ActivityClient;
@@ -148,13 +148,13 @@ export class LocalContainer {
     this.activityStore = new LocalActivityStore();
     this.subscriptionProvider =
       props.subscriptionProvider ?? new GlobalSubscriptionProvider();
-    const dictionaryStore = new LocalDictionaryStore({
+    const entityStore = new LocalEntityStore({
       localConnector: this.localConnector,
     });
-    const dictionaryClient = new DictionaryClient(dictionaryStore);
+    const entityClient = new EntityClient(entityStore);
     this.subscriptionWorker = createSubscriptionWorker({
       subscriptionProvider: this.subscriptionProvider,
-      dictionaryClient,
+      entityClient,
     });
     this.eventClient = new LocalEventClient(this.subscriptionWorker);
     this.metricsClient = new LocalMetricsClient();
@@ -173,7 +173,7 @@ export class LocalContainer {
       metricsClient: this.metricsClient,
       serviceName: props.serviceName,
       timerClient: this.timerClient,
-      dictionaryClient,
+      entityClient,
     });
     this.activityClient = new LocalActivityClient(this.localConnector, {
       activityStore: this.activityStore,
@@ -181,12 +181,12 @@ export class LocalContainer {
       executionStore: this.executionStore,
     });
 
-    this.dictionaryStreamWorker = createDictionaryStreamWorker({
-      dictionaryClient,
+    this.entityStreamWorker = createEntityStreamWorker({
+      entityClient,
     });
 
     this.transactionWorker = createTransactionWorker({
-      dictionaryStore,
+      entityStore,
       eventClient: this.eventClient,
       executionQueueClient: this.executionQueueClient,
     });
@@ -201,7 +201,7 @@ export class LocalContainer {
         timerClient: this.timerClient,
         transactionClient: this.transactionClient,
         workflowClient: this.workflowClient,
-        dictionaryClient,
+        entityClient,
       }),
       workflowClient: this.workflowClient,
       timerClient: this.timerClient,
@@ -245,7 +245,7 @@ export class LocalContainer {
     });
 
     // must register commands before the command worker is loaded!
-    this.commandWorker = createCommandWorker({ dictionaryClient });
+    this.commandWorker = createCommandWorker({ entityClient });
 
     this.timerHandler = createTimerHandler({
       activityStore: this.activityStore,

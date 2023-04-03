@@ -13,7 +13,7 @@ import {
   allCommands,
   asyncWorkflow,
   createAndDestroyWorkflow,
-  dictionaryWorkflow,
+  entityWorkflow,
   eventDrivenWorkflow,
   failedWorkflow,
   heartbeatWorkflow,
@@ -117,7 +117,7 @@ eventualRuntimeTestHarness(
 
     testCompletion("awsSdkCalls", createAndDestroyWorkflow, "done");
 
-    testCompletion("dict", dictionaryWorkflow, { n: 7 });
+    testCompletion("dict", entityWorkflow, { n: 7 });
 
     testCompletion("transaction", transactionWorkflow, ([one, two, three]) => {
       expect(one).not.toBeUndefined();
