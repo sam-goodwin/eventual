@@ -10,7 +10,7 @@ import {
   ListExecutionsRequest,
   ListExecutionsResponse,
   ListWorkflowsResponse,
-  PublishEventsRequest,
+  EmitEventsRequest,
   SendTaskFailureRequest,
   SendTaskHeartbeatResponse,
   SendTaskSuccessRequest,
@@ -105,8 +105,8 @@ export class HttpEventualClient implements EventualServiceClient {
     });
   }
 
-  public publishEvents(request: PublishEventsRequest): Promise<void> {
-    return this.serviceClient.publishEvents(request);
+  public emitEvents(request: EmitEventsRequest): Promise<void> {
+    return this.serviceClient.emitEvents(request);
   }
 
   public async sendTaskSuccess(

@@ -1,13 +1,11 @@
 import type { z } from "zod";
 import {
   createEventualCall,
-  EventualCallKind,
-} from "./internal/calls/calls.js";
-import {
   EntityCall,
   EntityDeleteOperation,
   EntitySetOperation,
-} from "./internal/calls/entity-call.js";
+  EventualCallKind,
+} from "./internal/calls.js";
 import { getEntityHook } from "./internal/entity-hook.js";
 import { entities } from "./internal/global.js";
 import {

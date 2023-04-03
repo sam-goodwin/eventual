@@ -7,9 +7,9 @@ import {
   ChildWorkflowSucceeded,
   EntityCall,
   EntityOperation,
-  EventsPublished,
+  EventsEmitted,
   EventualCallKind,
-  PublishEventsCall,
+  EmitEventsCall,
   SendSignalCall,
   SignalReceived,
   SignalSent,
@@ -88,13 +88,13 @@ export function sendSignalCall(
   };
 }
 
-export function publishEventCall(
+export function emitEventCall(
   events: EventEnvelope[],
   seq: number
-): WorkflowCall<PublishEventsCall> {
+): WorkflowCall<EmitEventsCall> {
   return {
     seq,
-    call: createEventualCall(EventualCallKind.PublishEventsCall, {
+    call: createEventualCall(EventualCallKind.EmitEventsCall, {
       events,
     }),
   };
@@ -240,12 +240,12 @@ export function signalSent(
   };
 }
 
-export function eventsPublished(
+export function eventsEmitted(
   events: EventEnvelope[],
   seq: number
-): EventsPublished {
+): EventsEmitted {
   return {
-    type: WorkflowEventType.EventsPublished,
+    type: WorkflowEventType.EventsEmitted,
     seq,
     timestamp: new Date().toISOString(),
     events,

@@ -1,10 +1,7 @@
 import { duration, time } from "./await-time.js";
 import type { ExecutionID } from "./execution.js";
 import type { FunctionRuntimeProps } from "./function-props.js";
-import {
-  EventualCallKind,
-  createEventualCall,
-} from "./internal/calls/calls.js";
+import { EventualCallKind, createEventualCall } from "./internal/calls.js";
 import type {
   SendTaskFailureRequest,
   SendTaskHeartbeatRequest,
@@ -97,7 +94,7 @@ export interface Task<Name extends string = string, Input = any, Output = any>
    * const tokenEvent = event("token");
    *
    * const asyncTask = task("async", () => {
-   *   return asyncResult<string>(token => tokenEvent.publishEvents({ token }));
+   *   return asyncResult<string>(token => tokenEvent.emit({ token }));
    * });
    *
    * tokenEvent.onEvent("onTokenEvent", async ({token}) => {
@@ -122,7 +119,7 @@ export interface Task<Name extends string = string, Input = any, Output = any>
    * const tokenEvent = event("token");
    *
    * const asyncTask = task("async", () => {
-   *   return asyncResult<string>(token => tokenEvent.publishEvents({ token }));
+   *   return asyncResult<string>(token => tokenEvent.emit({ token }));
    * });
    *
    * tokenEvent.onEvent("onTokenEvent", async ({token}) => {
@@ -146,7 +143,7 @@ export interface Task<Name extends string = string, Input = any, Output = any>
    * const tokenEvent = event("token");
    *
    * const asyncTask = task("async", () => {
-   *   return asyncResult<string>(token => tokenEvent.publishEvents({ token }));
+   *   return asyncResult<string>(token => tokenEvent.emit({ token }));
    * });
    *
    * tokenEvent.onEvent("onTokenEvent", async ({token}) => {

@@ -1,6 +1,6 @@
 import type { EventEnvelope } from "../event.js";
 import type { WorkflowExecutionContext } from "../workflow.js";
-import type { EntityOperation } from "./calls/entity-call.js";
+import type { EntityOperation } from "./calls.js";
 import { or } from "./util.js";
 
 export interface BaseEvent {
@@ -23,7 +23,7 @@ export enum WorkflowEventType {
   EntityRequest = "EntityRequest",
   EntityRequestFailed = "EntityRequestFailed",
   EntityRequestSucceeded = "EntityRequestSucceeded",
-  EventsPublished = "EventsPublished",
+  EventsEmitted = "EventsEmitted",
   TransactionRequest = "InvokeTransactionRequest",
   TransactionRequestFailed = "InvokeTransactionRequestFailed",
   TransactionRequestSucceeded = "InvokeTransactionRequestSucceeded",
@@ -59,7 +59,7 @@ export type WorkflowEvent =
 export type ScheduledEvent =
   | ChildWorkflowScheduled
   | EntityRequest
-  | EventsPublished
+  | EventsEmitted
   | SignalSent
   | TaskScheduled
   | TimerScheduled
@@ -67,7 +67,7 @@ export type ScheduledEvent =
 
 export const isScheduledEvent = /* @__PURE__ */ or(
   isChildWorkflowScheduled,
-  isEventsPublished,
+  isEventsEmitted,
   isEntityRequest,
   isSignalSent,
   isTaskScheduled,
@@ -400,15 +400,13 @@ export function isSignalSent(event: WorkflowEvent): event is SignalSent {
   return event.type === WorkflowEventType.SignalSent;
 }
 
-export interface EventsPublished extends HistoryEventBase {
-  type: WorkflowEventType.EventsPublished;
+export interface EventsEmitted extends HistoryEventBase {
+  type: WorkflowEventType.EventsEmitted;
   events: EventEnvelope[];
 }
 
-export function isEventsPublished(
-  event: WorkflowEvent
-): event is EventsPublished {
-  return event.type === WorkflowEventType.EventsPublished;
+export function isEventsEmitted(event: WorkflowEvent): event is EventsEmitted {
+  return event.type === WorkflowEventType.EventsEmitted;
 }
 
 export interface WorkflowTimedOut extends BaseEvent {

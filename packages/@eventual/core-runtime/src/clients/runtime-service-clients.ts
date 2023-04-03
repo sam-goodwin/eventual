@@ -10,7 +10,7 @@ import {
   ListExecutionsRequest,
   ListExecutionsResponse,
   ListWorkflowsResponse,
-  PublishEventsRequest,
+  EmitEventsRequest,
   SendSignalRequest,
   SendTaskFailureRequest,
   SendTaskHeartbeatRequest,
@@ -127,11 +127,11 @@ export class RuntimeFallbackServiceClient implements EventualServiceClient {
     return this.props.executionQueueClient.sendSignal(request);
   }
 
-  public publishEvents(request: PublishEventsRequest): Promise<void> {
+  public emitEvents(request: EmitEventsRequest): Promise<void> {
     if (!this.props.eventClient) {
-      return this.fallbackServiceClient.publishEvents(request);
+      return this.fallbackServiceClient.emitEvents(request);
     }
-    return this.props.eventClient.publishEvents(...request.events);
+    return this.props.eventClient.emitEvents(...request.events);
   }
 
   public sendTaskSuccess(

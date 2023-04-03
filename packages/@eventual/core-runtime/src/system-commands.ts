@@ -10,7 +10,7 @@ import {
   isSendTaskSuccessRequest,
   listExecutionEventsRequestSchema,
   listExecutionsRequestSchema,
-  publishEventsRequestSchema,
+  emitEventsRequestSchema,
   sendSignalRequestSchema,
   sendTaskUpdateSchema,
   startExecutionRequestSchema,
@@ -71,17 +71,17 @@ export function createStartExecutionCommand({
   );
 }
 
-export function createPublishEventsCommand({
+export function createEmitEventsCommand({
   eventClient,
 }: {
   eventClient: EventClient;
-}): EventualService["publishEvents"] {
+}): EventualService["emitEvents"] {
   return systemCommand(
     withErrorHandling.command(
-      "publishEvents",
-      { input: publishEventsRequestSchema },
+      "emitEvents",
+      { input: emitEventsRequestSchema },
       (request) => {
-        return eventClient.publishEvents(...request.events);
+        return eventClient.emitEvents(...request.events);
       }
     )
   );

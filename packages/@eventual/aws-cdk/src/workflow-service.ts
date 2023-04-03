@@ -455,8 +455,8 @@ export class WorkflowService {
     this.configureStartExecution(this.orchestrator);
     // send signals to other executions (or itself, don't judge)
     this.configureSendSignal(this.orchestrator);
-    // publish events to the service
-    this.props.eventService.configurePublish(this.orchestrator);
+    // emit events to the service
+    this.props.eventService.configureEmit(this.orchestrator);
     // start tasks
     this.props.taskService.configureStartTask(this.orchestrator);
     /**

@@ -25,7 +25,7 @@ const mockExecutionQueueClient = {
   sendSignal: jest.fn() as ExecutionQueueClient["sendSignal"],
 } satisfies Partial<ExecutionQueueClient> as unknown as ExecutionQueueClient;
 const mockEventClient = {
-  publishEvents: jest.fn() as EventClient["publishEvents"],
+  emitEvents: jest.fn() as EventClient["emitEvents"],
 } satisfies Partial<EventClient> as unknown as EventClient;
 
 let store: EntityStore;
@@ -191,16 +191,16 @@ test("emit events on success", async () => {
   const d1 = entity<number>();
 
   const result = await executor(async () => {
-    event1.publishEvents({ n: 1 });
+    event1.emit({ n: 1 });
     await d1.set("1", 1);
-    event1.publishEvents({ n: 1 });
+    event1.emit({ n: 1 });
   }, undefined);
 
   expect(result).toMatchObject<TransactionResult<any>>({
     result: Result.resolved(undefined),
   });
 
-  expect(mockEventClient.publishEvents).toHaveBeenCalledTimes(2);
+  expect(mockEventClient.emitEvents).toHaveBeenCalledTimes(2);
 });
 
 test("emit events after retry", async () => {
@@ -209,22 +209,22 @@ test("emit events after retry", async () => {
   await store.setEntityValue(d1.name, "1", 0);
 
   const result = await executor(async () => {
-    event1.publishEvents({ n: 1 });
+    event1.emit({ n: 1 });
     const v = await d1.get("1");
-    event1.publishEvents({ n: v });
+    event1.emit({ n: v });
     // this isn't kosher... normally
     if (v === 0) {
       await store.setEntityValue(d1.name, "1", v! + 1);
     }
     await d1.set("1", v! + 1);
-    event1.publishEvents({ n: 1 });
+    event1.emit({ n: 1 });
   }, undefined);
 
   expect(result).toMatchObject<TransactionResult<any>>({
     result: Result.resolved(undefined),
   });
 
-  expect(mockEventClient.publishEvents).toHaveBeenCalledTimes(3);
+  expect(mockEventClient.emitEvents).toHaveBeenCalledTimes(3);
 });
 
 test("events not emitted on failure", async () => {
@@ -233,14 +233,14 @@ test("events not emitted on failure", async () => {
   await store.setEntityValue(d1.name, "1", 0);
 
   const result = await executor(async () => {
-    event1.publishEvents({ n: 1 });
+    event1.emit({ n: 1 });
     await d1.set("1", 1, { expectedVersion: 1000 });
-    event1.publishEvents({ n: 1 });
+    event1.emit({ n: 1 });
   }, undefined);
 
   expect(result).toMatchObject<TransactionResult<any>>({
     result: Result.failed(Error("Failed after an explicit conflict.")),
   });
 
-  expect(mockEventClient.publishEvents).not.toHaveBeenCalled();
+  expect(mockEventClient.emitEvents).not.toHaveBeenCalled();
 });

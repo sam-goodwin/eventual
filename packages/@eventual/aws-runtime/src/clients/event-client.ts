@@ -19,12 +19,12 @@ type EventTuple = readonly [eventName: string, eventJson: string];
 export class AWSEventClient implements EventClient {
   constructor(private props: AWSEventClientProps) {}
 
-  public async publishEvents(
+  public async emitEvents(
     ...events: EventEnvelope<EventPayload>[]
   ): Promise<void> {
     const self = this;
 
-    console.debug("publish", events);
+    console.debug("emit", events);
 
     const eventBatches = chunkArray(
       10,
@@ -51,7 +51,7 @@ export class AWSEventClient implements EventClient {
 
     await Promise.all(
       eventBatches.map((batch) =>
-        publishEvents(batch, {
+        emitEvents(batch, {
           delayMs: 100,
           delayCoefficient: 2,
           remainingAttempts: 3,
@@ -60,14 +60,14 @@ export class AWSEventClient implements EventClient {
       )
     );
 
-    async function publishEvents(
+    async function emitEvents(
       events: Array<EventTuple> | ReadonlyArray<EventTuple>,
       retryConfig: RetryConfig
     ) {
       if (events.length > 0) {
         if (retryConfig.remainingAttempts === 0) {
           throw new Error(
-            `failed to publish events to Event Bridge after exhausting all retries`
+            `failed to emit events to Event Bridge after exhausting all retries`
           );
         }
         try {
@@ -85,7 +85,7 @@ export class AWSEventClient implements EventClient {
             console.error(
               `${
                 response.FailedEntryCount
-              } entries in PutEvents failed to publish to Event Bridge:\n${response.Entries?.flatMap(
+              } entries in PutEvents failed to emit to Event Bridge:\n${response.Entries?.flatMap(
                 (entry) =>
                   entry.ErrorCode
                     ? [`${entry.ErrorCode}: ${entry.ErrorMessage}`]
@@ -110,7 +110,7 @@ export class AWSEventClient implements EventClient {
 
         await new Promise((resolve) => setTimeout(resolve, delayTime));
 
-        return publishEvents(events, {
+        return emitEvents(events, {
           ...retryConfig,
           remainingAttempts: retryConfig.remainingAttempts - 1,
           delayMs: retryConfig.delayMs & retryConfig.delayCoefficient,

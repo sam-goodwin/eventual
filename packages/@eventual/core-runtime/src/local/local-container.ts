@@ -57,7 +57,7 @@ import {
   createListExecutionsCommand,
   createListWorkflowHistoryCommand,
   createListWorkflowsCommand,
-  createPublishEventsCommand,
+  createEmitEventsCommand,
   createSendSignalCommand,
   createStartExecutionCommand,
   createUpdateTaskCommand,
@@ -214,7 +214,7 @@ export class LocalContainer {
     createListWorkflowsCommand({
       workflowProvider: this.workflowProvider,
     });
-    createPublishEventsCommand({
+    createEmitEventsCommand({
       eventClient: this.eventClient,
     });
     createStartExecutionCommand({

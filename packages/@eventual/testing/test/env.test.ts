@@ -622,7 +622,7 @@ describe("signal", () => {
 });
 
 describe("events", () => {
-  describe("publishEvent", () => {
+  describe("emitEvent", () => {
     test("using service handlers", async () => {
       const dataEventMock =
         jest.fn<SubscriptionHandler<EventPayloadType<typeof dataEvent>>>();
@@ -631,14 +631,14 @@ describe("events", () => {
         workflow: signalWorkflow,
         input: undefined,
       });
-      await env.publishEvent(dataEvent, {
+      await env.emitEvent(dataEvent, {
         executionId: execution.executionId,
         data: "event data",
       });
-      await env.publishEvent(dataDoneEvent, {
+      await env.emitEvent(dataDoneEvent, {
         executionId: execution.executionId,
       });
-      await env.publishEvent(continueEvent, {
+      await env.emitEvent(continueEvent, {
         executionId: execution.executionId,
       });
       expect(dataEventMock).toBeCalledWith({
@@ -694,14 +694,14 @@ describe("events", () => {
         workflow: signalWorkflow,
         input: undefined,
       });
-      await env.publishEvent(dataEvent, {
+      await env.emitEvent(dataEvent, {
         executionId: execution.executionId,
         data: "event data",
       });
-      await env.publishEvent(dataDoneEvent, {
+      await env.emitEvent(dataDoneEvent, {
         executionId: execution.executionId,
       });
-      await env.publishEvent(continueEvent, {
+      await env.emitEvent(continueEvent, {
         executionId: execution.executionId,
       });
       expect(dataEventMock).toBeCalledWith({
@@ -726,14 +726,14 @@ describe("events", () => {
         workflow: signalWorkflow,
         input: undefined,
       });
-      await env.publishEvent(dataEvent, {
+      await env.emitEvent(dataEvent, {
         executionId: execution.executionId,
         data: "event data",
       });
-      await env.publishEvent(dataDoneEvent, {
+      await env.emitEvent(dataDoneEvent, {
         executionId: execution.executionId,
       });
-      await env.publishEvent(continueEvent, {
+      await env.emitEvent(continueEvent, {
         executionId: execution.executionId,
       });
       // the test env handler was called
@@ -749,14 +749,14 @@ describe("events", () => {
 
       // enable and try again, the subscriptions should be working now.
       env.enableServiceSubscriptions();
-      await env.publishEvent(dataEvent, {
+      await env.emitEvent(dataEvent, {
         executionId: execution.executionId,
         data: "event data",
       });
-      await env.publishEvent(dataDoneEvent, {
+      await env.emitEvent(dataDoneEvent, {
         executionId: execution.executionId,
       });
-      await env.publishEvent(continueEvent, {
+      await env.emitEvent(continueEvent, {
         executionId: execution.executionId,
       });
       expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
@@ -771,12 +771,12 @@ describe("events", () => {
       const dataEventMock =
         jest.fn<SubscriptionHandler<EventPayloadType<typeof dataEvent>>>();
       env.subscribeEvents([dataEvent], dataEventMock);
-      await env.publishEvent(dataEvent, {
+      await env.emitEvent(dataEvent, {
         executionId: "dummy",
         data: "event data",
       });
       env.resetTestSubscriptions();
-      await env.publishEvent(dataEvent, {
+      await env.emitEvent(dataEvent, {
         executionId: "dummy",
         data: "event data",
       });

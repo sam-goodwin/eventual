@@ -461,13 +461,13 @@ export class Service<S = any> extends Construct {
     this.system.workflowService.grantSendSignal(grantable);
   }
 
-  public configurePublishEvents(func: Function) {
-    this.eventService.configurePublish(func);
+  public configureEmitEvents(func: Function) {
+    this.eventService.configureEmit(func);
   }
 
   @grant()
-  public grantPublishEvents(grantable: IGrantable) {
-    this.eventService.grantPublish(grantable);
+  public grantEmitEvents(grantable: IGrantable) {
+    this.eventService.grantEmit(grantable);
   }
 
   @grant()
@@ -486,7 +486,7 @@ export class Service<S = any> extends Construct {
 
   public configureForServiceClient(func: Function) {
     this.configureUpdateTask(func);
-    this.configurePublishEvents(func);
+    this.configureEmitEvents(func);
     this.configureReadExecutions(func);
     this.configureSendSignal(func);
     this.configureStartExecution(func);

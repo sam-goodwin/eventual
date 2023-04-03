@@ -1,7 +1,4 @@
-import {
-  createEventualCall,
-  EventualCallKind,
-} from "./internal/calls/calls.js";
+import { createEventualCall, EventualCallKind } from "./internal/calls.js";
 import type { EventualPromise } from "./internal/eventual-hook.js";
 import {
   DurationSchedule,

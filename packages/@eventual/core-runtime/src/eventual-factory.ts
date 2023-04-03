@@ -10,10 +10,10 @@ import {
   isConditionCall,
   isEntityCall,
   isEntityRequest,
-  isEventsPublished,
+  isEventsEmitted,
   isExpectSignalCall,
   isInvokeTransactionCall,
-  isPublishEventsCall,
+  isEmitEventsCall,
   isRegisterSignalHandlerCall,
   isSendSignalCall,
   isSignalSent,
@@ -103,9 +103,9 @@ export function createEventualFromCall(
           : undefined,
       ],
     };
-  } else if (isPublishEventsCall(call)) {
+  } else if (isEmitEventsCall(call)) {
     return {
-      isCorresponding: isEventsPublished,
+      isCorresponding: isEventsEmitted,
       result: Result.resolved(undefined),
     };
   } else if (isConditionCall(call)) {

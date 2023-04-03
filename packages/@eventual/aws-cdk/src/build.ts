@@ -149,7 +149,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           "getExecutionHistory",
           "sendSignal",
           "getExecutionWorkflowHistory",
-          "publishEvents",
+          "emitEvents",
           "updateTask",
           "executeTransaction",
         ].map((name) => ({

@@ -9,7 +9,7 @@ import {
   createListExecutionsCommand,
   createListWorkflowHistoryCommand,
   createListWorkflowsCommand,
-  createPublishEventsCommand,
+  createEmitEventsCommand,
   createSendSignalCommand,
   createStartExecutionCommand,
   createUpdateTaskCommand,
@@ -56,7 +56,7 @@ export default systemCommandWorker(
   createListWorkflowsCommand({
     workflowProvider,
   }),
-  createPublishEventsCommand({
+  createEmitEventsCommand({
     eventClient: createEventClient(),
   }),
   createSendSignalCommand({

@@ -2,7 +2,7 @@ import { Argv } from "yargs";
 import { serviceAction, setServiceOptions } from "../service-action.js";
 import { getInputJsonArray } from "./utils.js";
 
-export const publishEvents = (yargs: Argv) =>
+export const emitEvents = (yargs: Argv) =>
   yargs.command(
     "events <event> [input]",
     "Send one or more events to the service",
@@ -25,7 +25,7 @@ export const publishEvents = (yargs: Argv) =>
           array: true,
         }),
     serviceAction(async (spinner, service, { event, input, inputFile }) => {
-      spinner.start("Publish Event");
+      spinner.start("Emit Event");
       const inputPayloads = await getInputJsonArray(
         inputFile,
         input,
@@ -33,7 +33,7 @@ export const publishEvents = (yargs: Argv) =>
         "payload"
       );
 
-      await service.publishEvents({
+      await service.emitEvents({
         events: inputPayloads.map((payload) => ({
           event: payload,
           name: event,

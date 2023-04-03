@@ -9,7 +9,7 @@ import {
   ChildWorkflowScheduled,
   EntityMethods,
   EntityRequest,
-  EventsPublished,
+  EventsEmitted,
   SignalSent,
   SignalTargetType,
   TaskScheduled,
@@ -38,7 +38,7 @@ import {
   awaitTimerCall,
   childWorkflowCall,
   entityRequestCall,
-  publishEventCall,
+  emitEventCall,
   sendSignalCall,
   taskCall,
 } from "./call-util.js";
@@ -53,7 +53,7 @@ const mockTaskClient = {
   startTask: jest.fn() as TaskClient["startTask"],
 } satisfies Partial<TaskClient> as TaskClient;
 const mockEventClient = {
-  publishEvents: jest.fn() as EventClient["publishEvents"],
+  emitEvents: jest.fn() as EventClient["emitEvents"],
 } satisfies Partial<EventClient> as EventClient;
 const mockExecutionQueueClient = {
   submitExecutionEvents:
@@ -247,25 +247,23 @@ describe("send signal", () => {
   });
 });
 
-describe("publish events", () => {
+describe("emit events", () => {
   test("send", async () => {
     const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      publishEventCall([{ event: {}, name: "myEvent" }], 0),
+      emitEventCall([{ event: {}, name: "myEvent" }], 0),
       baseTime
     );
 
-    expect(mockEventClient.publishEvents).toHaveBeenCalledWith<[EventEnvelope]>(
-      {
-        event: {},
-        name: "myEvent",
-      }
-    );
+    expect(mockEventClient.emitEvents).toHaveBeenCalledWith<[EventEnvelope]>({
+      event: {},
+      name: "myEvent",
+    });
 
-    expect(event).toMatchObject<EventsPublished>({
+    expect(event).toMatchObject<EventsEmitted>({
       seq: 0,
-      type: WorkflowEventType.EventsPublished,
+      type: WorkflowEventType.EventsEmitted,
       timestamp: expect.stringContaining("Z"),
       events: [{ event: {}, name: "myEvent" }],
     });

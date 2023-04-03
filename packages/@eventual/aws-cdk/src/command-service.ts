@@ -450,8 +450,8 @@ export class CommandService<Service = any> {
     // for update task
     this.props.taskService.configureWriteTasks(this.systemCommandsHandler);
     this.props.taskService.configureCompleteTask(this.systemCommandsHandler);
-    // publish events
-    this.props.eventService.configurePublish(this.systemCommandsHandler);
+    // emit events
+    this.props.eventService.configureEmit(this.systemCommandsHandler);
     // get and list executions
     this.props.workflowService.configureReadExecutions(
       this.systemCommandsHandler

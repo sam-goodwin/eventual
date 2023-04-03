@@ -1,10 +1,10 @@
-import type { EventualCall } from "./calls/calls.js";
+import type { EventualCall } from "./calls.js";
 import type { Result } from "./result.js";
 
 /**
  * Globals that may be overridden by the core-runtime. See matching core-runtime file to understand
  * the specific behavior.
- * 
+ *
  * In this case, we'll provide a default no-op hook function.
  * When someone uses the enterEventualCallHookScope in runtime, the getEventualCallHook function
  * will be overridden to return that hook (based on async scope.)

@@ -347,8 +347,8 @@ export const helloWorkflow = workflow("helloWorkflow", async (name: string) => {
   // call a task to format the message
   const message = await formatMessage(name);
 
-  // publish the message to the helloEvent
-  await helloEvent.publishEvents({
+  // emit the message to the helloEvent
+  await helloEvent.emit({
     message,
   });
 
@@ -393,7 +393,7 @@ beforeAll(async () => {
   env = new TestEnvironment();
 });
 
-test("hello workflow should publish helloEvent and return message", async () => {
+test("hello workflow should emit helloEvent and return message", async () => {
   const execution = await env.startExecution({
     workflow: helloWorkflow,
     input: "name",

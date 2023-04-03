@@ -28,8 +28,8 @@ import { WorkflowExecutor, WorkflowResult } from "../src/workflow-executor.js";
 import {
   awaitTimerCall,
   childWorkflowCall,
-  eventsPublished,
-  publishEventCall,
+  eventsEmitted,
+  emitEventCall,
   sendSignalCall,
   signalReceived,
   signalSent,
@@ -2673,9 +2673,9 @@ test("workflow with synchronous function", async () => {
 
 const testEvent = event<{ key: string }>("event-type");
 
-test("publish event", async () => {
+test("emit event", async () => {
   const wf = workflow(async () => {
-    await testEvent.publishEvents({
+    await testEvent.emit({
       key: "value",
     });
 
@@ -2694,11 +2694,11 @@ test("publish event", async () => {
   await expect(execute(wf, [], undefined)).resolves.toEqual<WorkflowResult>({
     // promise should be instantly resolved
     result: Result.resolved("done!"),
-    calls: [publishEventCall(events, 0)],
+    calls: [emitEventCall(events, 0)],
   });
 
   await expect(
-    execute(wf, [eventsPublished(events, 0)], undefined)
+    execute(wf, [eventsEmitted(events, 0)], undefined)
   ).resolves.toEqual<WorkflowResult>({
     // promise should be instantly resolved
     result: Result.resolved("done!"),

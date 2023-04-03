@@ -79,7 +79,7 @@ export interface SubscriptionFilter {
 
 /**
  * Subscribe to this event. The {@link handler} will be invoked every
- * time an event with this name is published within the service boundary.
+ * time an event with this name is emitted within the service boundary.
  *
  * @param handler the handler function that will process the event.
  */

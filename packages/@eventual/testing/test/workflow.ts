@@ -107,12 +107,12 @@ export const orchestrate = workflow(
     } else {
       // the events parameter sends events instead of signals
       // event handlers turn them into signals.
-      await dataEvent.publishEvents({
+      await dataEvent.emit({
         data: "hello from the orchestrator workflow!",
         executionId: targetExecutionId,
       });
-      await dataDoneEvent.publishEvents({ executionId: targetExecutionId });
-      await continueEvent.publishEvents({ executionId: targetExecutionId });
+      await dataDoneEvent.emit({ executionId: targetExecutionId });
+      await continueEvent.emit({ executionId: targetExecutionId });
     }
     return "nothing to see here";
   }

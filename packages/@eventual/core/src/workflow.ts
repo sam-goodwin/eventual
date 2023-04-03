@@ -3,10 +3,7 @@ import type {
   ExecutionHandle,
   ExecutionID,
 } from "./execution.js";
-import {
-  EventualCallKind,
-  createEventualCall,
-} from "./internal/calls/calls.js";
+import { EventualCallKind, createEventualCall } from "./internal/calls.js";
 import {
   EventualPromise,
   EventualPromiseSymbol,
@@ -22,8 +19,7 @@ import {
   isTimerCompleted,
   isTimerScheduled,
 } from "./internal/workflow-events.js";
-import type { DurationSchedule } from "./schedule.js";
-import type { Schedule } from "./schedule.js";
+import type { DurationSchedule, Schedule } from "./schedule.js";
 import type { StartExecutionRequest } from "./service-client.js";
 
 export interface WorkflowHandler<Input = any, Output = any> {

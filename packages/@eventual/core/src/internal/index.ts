@@ -1,4 +1,4 @@
-export * from "./calls/index.js";
+export * from "./calls.js";
 export * from "./entity-hook.js";
 export * from "./eventual-hook.js";
 export * from "./eventual-service.js";

@@ -78,9 +78,9 @@ export interface EventualServiceClient {
   sendSignal(request: SendSignalRequest): Promise<void>;
 
   /**
-   * Publishes one or more events to the service.
+   * Emits one or more events to the service.
    */
-  publishEvents(request: PublishEventsRequest): Promise<void>;
+  emitEvents(request: EmitEventsRequest): Promise<void>;
 
   /**
    * Succeeds an async task with the given value.
@@ -106,8 +106,8 @@ export interface EventualServiceClient {
   ): Promise<SendTaskHeartbeatResponse>;
 }
 
-export interface PublishEventsRequest
-  extends CommandInput<EventualService["publishEvents"]> {}
+export interface EmitEventsRequest
+  extends CommandInput<EventualService["emitEvents"]> {}
 
 export interface StartExecutionRequest<W extends Workflow = Workflow>
   extends WorkflowExecutionOptions {

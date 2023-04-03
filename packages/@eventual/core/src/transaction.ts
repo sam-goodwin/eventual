@@ -1,9 +1,9 @@
 import { TransactionCancelled } from "./error.js";
 import {
   EventualCallKind,
+  InvokeTransactionCall,
   createEventualCall,
-} from "./internal/calls/calls.js";
-import { InvokeTransactionCall } from "./internal/calls/transaction-call.js";
+} from "./internal/calls.js";
 import { getServiceClient, transactions } from "./internal/global.js";
 import { TransactionSpec } from "./internal/service-spec.js";
 

@@ -30,7 +30,7 @@ import {
   isWorkflowTask,
 } from "@eventual/core-runtime";
 import {
-  PublishEventsRequest,
+  EmitEventsRequest,
   TaskInput,
   entities,
   registerServiceClient,
@@ -228,14 +228,14 @@ export class TestEnvironment extends RuntimeServiceClient {
   }
 
   /**
-   * Publishes one or more events of a type into the {@link TestEnvironment}.
+   * Emits one or more events of a type into the {@link TestEnvironment}.
    * and progresses time by one second ({@link tick})
    */
-  public async publishEvent<Payload extends EventPayload = EventPayload>(
+  public async emitEvent<Payload extends EventPayload = EventPayload>(
     event: string | Event<Payload>,
     ...payloads: Payload[]
   ) {
-    await this.publishEvents({
+    await this.emitEvents({
       events: payloads.map(
         (p): EventEnvelope<Payload> => ({
           name: typeof event === "string" ? event : event.name,
@@ -247,11 +247,11 @@ export class TestEnvironment extends RuntimeServiceClient {
   }
 
   /**
-   * Publishes one or more events into the {@link TestEnvironment}
+   * Emits one or more events into the {@link TestEnvironment}
    * and progresses time by one second ({@link tick})
    */
-  public override async publishEvents(request: PublishEventsRequest) {
-    await super.publishEvents(request);
+  public override async emitEvents(request: EmitEventsRequest) {
+    await super.emitEvents(request);
     return this.tick();
   }
 

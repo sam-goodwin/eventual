@@ -8,10 +8,10 @@ import {
   EntityRequest,
   EntityRequestFailed,
   EntityRequestSucceeded,
-  EventsPublished,
+  EventsEmitted,
   HistoryStateEvent,
   InvokeTransactionCall,
-  PublishEventsCall,
+  EmitEventsCall,
   SendSignalCall,
   SignalSent,
   TaskCall,
@@ -31,7 +31,7 @@ import {
   isEntityOperationOfType,
   isExpectSignalCall,
   isInvokeTransactionCall,
-  isPublishEventsCall,
+  isEmitEventsCall,
   isRegisterSignalHandlerCall,
   isSendSignalCall,
   isTaskCall,
@@ -91,8 +91,8 @@ export class WorkflowCallExecutor {
       return this.startTimer(executionId, call.call, call.seq, baseTime);
     } else if (isSendSignalCall(call.call)) {
       return this.sendSignal(executionId, call.call, call.seq, baseTime);
-    } else if (isPublishEventsCall(call.call)) {
-      return this.publishEvents(call.call, call.seq, baseTime);
+    } else if (isEmitEventsCall(call.call)) {
+      return this.emitEvents(call.call, call.seq, baseTime);
     } else if (
       isConditionCall(call.call) ||
       isExpectSignalCall(call.call) ||
@@ -228,15 +228,11 @@ export class WorkflowCallExecutor {
     );
   }
 
-  private async publishEvents(
-    call: PublishEventsCall,
-    seq: number,
-    baseTime: Date
-  ) {
-    await this.props.eventClient.publishEvents(...call.events);
-    return createEvent<EventsPublished>(
+  private async emitEvents(call: EmitEventsCall, seq: number, baseTime: Date) {
+    await this.props.eventClient.emitEvents(...call.events);
+    return createEvent<EventsEmitted>(
       {
-        type: WorkflowEventType.EventsPublished,
+        type: WorkflowEventType.EventsEmitted,
         events: call.events,
         seq,
       },

@@ -5,7 +5,7 @@ import { SubscriptionWorker } from "../../handlers/subscription-worker.js";
 export class LocalEventClient implements EventClient {
   constructor(private eventHandlerWorker: SubscriptionWorker) {}
 
-  public async publishEvents(...event: EventEnvelope[]): Promise<void> {
+  public async emitEvents(...event: EventEnvelope[]): Promise<void> {
     return await this.eventHandlerWorker(event);
   }
 }

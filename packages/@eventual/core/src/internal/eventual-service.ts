@@ -13,12 +13,12 @@ export const sortOrderSchema = z.enum(["ASC", "DESC"]);
 
 // Note: all top level zod builder functions should be labelled with pure
 // to avoid them being considered side effects and bundled
-export const publishEventsRequestSchema = /* @__PURE__ */ z.object({
+export const emitEventsRequestSchema = /* @__PURE__ */ z.object({
   events: /* @__PURE__ */ z.array(eventEnvelopeSchema),
 });
 
-export interface PublishEventsRequest
-  extends z.infer<typeof publishEventsRequestSchema> {}
+export interface EmitEventsRequest
+  extends z.infer<typeof emitEventsRequestSchema> {}
 
 export interface WorkflowReference {
   name: string;
@@ -185,7 +185,7 @@ export interface SendTaskHeartbeatResponse {
 
 export interface EventualService {
   listWorkflows: Command<"listWorkflows", void, ListWorkflowsResponse>;
-  publishEvents: Command<"publishEvents", PublishEventsRequest, void>;
+  emitEvents: Command<"emitEvents", EmitEventsRequest, void>;
   getExecution: Command<"getExecution", string, Execution<any> | undefined>;
   startExecution: Command<
     "startExecution",

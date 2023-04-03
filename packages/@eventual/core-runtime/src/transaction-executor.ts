@@ -10,7 +10,7 @@ import {
   EventualCallHook,
   EventualPromise,
   EventualPromiseSymbol,
-  PublishEventsCall,
+  EmitEventsCall,
   Result,
   SendSignalCall,
   ServiceType,
@@ -18,7 +18,7 @@ import {
   assertNever,
   isEntityCall,
   isEntityOperationOfType,
-  isPublishEventsCall,
+  isEmitEventsCall,
   isSendSignalCall,
   serviceTypeScope,
 } from "@eventual/core/internal";
@@ -129,7 +129,7 @@ export function createTransactionExecutor(
         EntitySetOperation | EntityDeleteOperation
       >();
       // store all of the event and signal calls to execute after the transaction completes
-      const eventCalls: (PublishEventsCall | SendSignalCall)[] = [];
+      const eventCalls: (EmitEventsCall | SendSignalCall)[] = [];
       // a map of the keys of all get operations or mutation operations to check during the transaction.
       // also serves as a get cache when get is called multiple times on the same keys
       const retrievedEntities = new Map<
@@ -179,7 +179,7 @@ export function createTransactionExecutor(
                 return assertNever(eventual);
               });
             }
-          } else if (isPublishEventsCall(eventual)) {
+          } else if (isEmitEventsCall(eventual)) {
             eventCalls.push(eventual);
             return createResolvedEventualPromise(Result.resolved(undefined));
           } else if (isSendSignalCall(eventual)) {
@@ -187,7 +187,7 @@ export function createTransactionExecutor(
             return createResolvedEventualPromise(Result.resolved(undefined));
           }
           throw new Error(
-            `Unsupported eventual call type. Only Entity requests, publish events, and send signals are supported.`
+            `Unsupported eventual call type. Only Entity requests, emit events, and send signals are supported.`
           );
         },
         /**
@@ -314,13 +314,13 @@ export function createTransactionExecutor(
         return { canRetry: true, failedItems: [] };
       } else {
         /**
-         * If the transaction succeeded, publish events and send signals.
+         * If the transaction succeeded, emit events and send signals.
          * TODO: move the side effects to a transactional dynamo update.
          */
         await Promise.allSettled(
           eventCalls.map(async (call) => {
-            if (isPublishEventsCall(call)) {
-              await eventClient.publishEvents(...call.events);
+            if (isEmitEventsCall(call)) {
+              await eventClient.emitEvents(...call.events);
             } else if (call) {
               // shouldn't happen
               if (call.target.type === SignalTargetType.ChildExecution) {

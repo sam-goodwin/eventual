@@ -82,7 +82,7 @@ export const asyncTask = task(
       } else {
         // when running locally, use an event instead of SQS
         // we do not currently support incoming requests, so the SQS => Lambda could not reach the service without a tunnel/proxy.
-        await localEvent.publishEvents({
+        await localEvent.emit({
           type,
           token,
         });
@@ -346,7 +346,7 @@ export const heartbeatWorkflow = workflow(
  * A subscription to {@link signalEvent} is set up to forward events
  * as signals to the workflow execution.
  *
- * First, this workflow publishes an event to the {@link signalEvent}
+ * First, this workflow emits an event to the {@link signalEvent}
  * with a signalId of "start" and then waits for that signal to wake
  * this workflow.
  *
@@ -359,7 +359,7 @@ export const heartbeatWorkflow = workflow(
  * back through the {@link signalEvent} handler before sending the signal
  * to the execution.
  *
- * This tests the publishes of events from:
+ * This tests the emits of events from:
  * 1. workflows
  * 2. tasks.
  * 3. event handlers
@@ -369,8 +369,8 @@ export const heartbeatWorkflow = workflow(
 export const eventDrivenWorkflow = workflow(
   "eventDrivenWorkflow",
   async (_, ctx) => {
-    // publish an event from a workflow (the orchestrator)
-    await signalEvent.publishEvents({
+    // emit an event from a workflow (the orchestrator)
+    await signalEvent.emit({
       executionId: ctx.execution.id,
       signalId: "start",
     });
@@ -407,8 +407,8 @@ export const onSignalEvent = subscription(
     console.debug("received signal event", { executionId, signalId, proxy });
     if (proxy) {
       // if configured to proxy, re-route this event through the signalEvent
-      // reason: to test that we can publish events from within an event handler
-      await signalEvent.publishEvents({
+      // reason: to test that we can emit events from within an event handler
+      await signalEvent.emit({
         executionId,
         signalId,
       });
@@ -420,12 +420,12 @@ export const onSignalEvent = subscription(
 );
 
 const sendFinishEvent = task("sendFinish", async (executionId: string) => {
-  // publish an event from a task
-  await signalEvent.publishEvents({
+  // emit an event from a task
+  await signalEvent.emit({
     executionId,
     signalId: "finish",
     // set proxy to true so that this event will route through event bridge again
-    // to test that we can publish events from event handlers
+    // to test that we can emit events from event handlers
     proxy: true,
   });
 });
@@ -489,7 +489,7 @@ export const onNotifyEvent = notifyEvent.onEvent(
  * They should not fail a second time or apply a second time.
  */
 export const allCommands = workflow("allCommands", async (_, context) => {
-  const sendEvent = notifyEvent.publishEvents({
+  const sendEvent = notifyEvent.emit({
     executionId: context.execution.id,
   });
   const task = hello("sam");
@@ -597,10 +597,7 @@ export const entityWorkflow = workflow(
     counter.set({ key: id, namespace: "different!" }, { n: 0 });
     await entitySignal.expectSignal();
     await entityTask();
-    await Promise.all([
-      entityEvent.publishEvents({ id }),
-      entitySignal.expectSignal(),
-    ]);
+    await Promise.all([entityEvent.emit({ id }), entitySignal.expectSignal()]);
     try {
       // will fail
       await counter.set(id, { n: 0 }, { expectedVersion: 1 });
