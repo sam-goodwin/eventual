@@ -13,13 +13,13 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 ### Features
 
-- namespace and version in entityionary ([#324](https://github.com/functionless/eventual/issues/324)) ([5535d61](https://github.com/functionless/eventual/commit/5535d619fbfaf5eea3f20277e8217c465efd07cf))
+- namespace and version in dictionary ([#324](https://github.com/functionless/eventual/issues/324)) ([5535d61](https://github.com/functionless/eventual/commit/5535d619fbfaf5eea3f20277e8217c465efd07cf))
 
 # 0.29.0 (2023-03-27)
 
 ### Features
 
-- entity service with entityionary api ([#322](https://github.com/functionless/eventual/issues/322)) ([d6ebffc](https://github.com/functionless/eventual/commit/d6ebffc4e97b539a73a1dd0041ada3391fda3b7e))
+- entity service with dictionary api ([#322](https://github.com/functionless/eventual/issues/322)) ([d6ebffc](https://github.com/functionless/eventual/commit/d6ebffc4e97b539a73a1dd0041ada3391fda3b7e))
 
 ## 0.28.3 (2023-03-25)
 
