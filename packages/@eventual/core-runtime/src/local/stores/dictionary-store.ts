@@ -11,9 +11,9 @@ import { assertNever } from "@eventual/core/internal";
 import {
   DictionaryStore,
   EntityWithMetadata,
-  normalizeCompositeKey,
   TransactionCancelledResult,
   UnexpectedVersionResult,
+  normalizeCompositeKey,
 } from "../../stores/dictionary-store.js";
 import { deserializeCompositeKey, serializeCompositeKey } from "../../utils.js";
 import { LocalEnvConnector } from "../local-container.js";
@@ -149,7 +149,7 @@ export class LocalDictionaryStore implements DictionaryStore {
 
     /**
      * Evaluate the expected versions against the current state and return the results.
-     * 
+     *
      * This is similar to calling TransactWriteItem in dynamo with only ConditionChecks and then
      * handling the errors.
      */
@@ -177,7 +177,7 @@ export class LocalDictionaryStore implements DictionaryStore {
     /**
      * After ensuring that all of the expected versions are accurate, actually perform the writes.
      * Here we assume that the write operations are synchronous and that
-     * the state of the condition checks will not be invalided. 
+     * the state of the condition checks will not be invalided.
      */
     await Promise.all(
       items.map(async (i) => {

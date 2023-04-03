@@ -219,14 +219,14 @@ export interface Dictionary<Entity>
 }
 
 export interface DictionaryTransactItem<
-  Entity,
+  Entity = any,
   D extends string | Dictionary<Entity> = string | Dictionary<Entity>
 > {
   dictionary: D;
   operation:
-    | DictionarySetOperation<Entity>
-    | DictionaryDeleteOperation
-    | DictionaryConditionalOperation;
+    | Omit<DictionarySetOperation<Entity>, "name">
+    | Omit<DictionaryDeleteOperation, "name">
+    | Omit<DictionaryConditionalOperation, "name">;
 }
 
 /**
@@ -242,9 +242,18 @@ export const Dictionary = {
   transactWrite: <Items extends DictionaryTransactItem<any>[]>(
     items: Items
   ): Promise<void> => {
-    return getEventualCallHook().registerEventualCall(undefined, async () => {
-      return getDictionaryHook().transactWrite(items);
-    });
+    return getEventualCallHook().registerEventualCall(
+      createEventualCall<DictionaryCall<"transact">>(
+        EventualCallKind.DictionaryCall,
+        {
+          operation: "transact",
+          items,
+        }
+      ),
+      async () => {
+        return getDictionaryHook().transactWrite(items);
+      }
+    );
   },
 };
 
@@ -268,10 +277,14 @@ export function dictionary<Entity>(
     streams,
     get: (key: string | CompositeKey) => {
       return getEventualCallHook().registerEventualCall(
-        createEventualCall<DictionaryCall>(EventualCallKind.DictionaryCall, {
-          name,
-          operation: { operation: "get", key },
-        }),
+        createEventualCall<DictionaryCall<"get">>(
+          EventualCallKind.DictionaryCall,
+          {
+            name,
+            operation: "get",
+            key,
+          }
+        ),
         async () => {
           return (await getDictionary()).get(key);
         }
@@ -279,10 +292,14 @@ export function dictionary<Entity>(
     },
     getWithMetadata: async (key: string | CompositeKey) => {
       return getEventualCallHook().registerEventualCall(
-        createEventualCall<DictionaryCall>(EventualCallKind.DictionaryCall, {
-          name,
-          operation: { operation: "getWithMetadata", key },
-        }),
+        createEventualCall<DictionaryCall<"getWithMetadata">>(
+          EventualCallKind.DictionaryCall,
+          {
+            name,
+            operation: "getWithMetadata",
+            key,
+          }
+        ),
         async () => {
           return (await getDictionary()).getWithMetadata(key);
         }
@@ -294,10 +311,16 @@ export function dictionary<Entity>(
       options?: DictionarySetOptions
     ) => {
       return getEventualCallHook().registerEventualCall(
-        createEventualCall<DictionaryCall>(EventualCallKind.DictionaryCall, {
-          name,
-          operation: { operation: "set", key, options, value: entity },
-        }),
+        createEventualCall<DictionaryCall<"set">>(
+          EventualCallKind.DictionaryCall,
+          {
+            name,
+            operation: "set",
+            key,
+            options,
+            value: entity,
+          }
+        ),
         async () => {
           return (await getDictionary()).set(key, entity, options);
         }
@@ -305,10 +328,15 @@ export function dictionary<Entity>(
     },
     delete: async (key, options) => {
       return getEventualCallHook().registerEventualCall(
-        createEventualCall<DictionaryCall>(EventualCallKind.DictionaryCall, {
-          name,
-          operation: { operation: "delete", key, options },
-        }),
+        createEventualCall<DictionaryCall<"delete">>(
+          EventualCallKind.DictionaryCall,
+          {
+            name,
+            operation: "delete",
+            key,
+            options,
+          }
+        ),
         async () => {
           return (await getDictionary()).delete(key, options);
         }
@@ -316,10 +344,14 @@ export function dictionary<Entity>(
     },
     list: async (request) => {
       return getEventualCallHook().registerEventualCall(
-        createEventualCall<DictionaryCall>(EventualCallKind.DictionaryCall, {
-          name,
-          operation: { operation: "list", request },
-        }),
+        createEventualCall<DictionaryCall<"list">>(
+          EventualCallKind.DictionaryCall,
+          {
+            name,
+            operation: "list",
+            request,
+          }
+        ),
         async () => {
           return (await getDictionary()).list(request);
         }
@@ -327,10 +359,14 @@ export function dictionary<Entity>(
     },
     listKeys: async (request) => {
       return getEventualCallHook().registerEventualCall(
-        createEventualCall<DictionaryCall>(EventualCallKind.DictionaryCall, {
-          name,
-          operation: { operation: "listKeys", request },
-        }),
+        createEventualCall<DictionaryCall<"listKeys">>(
+          EventualCallKind.DictionaryCall,
+          {
+            name,
+            operation: "listKeys",
+            request,
+          }
+        ),
         async () => {
           return (await getDictionary()).listKeys(request);
         }

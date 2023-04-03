@@ -199,6 +199,7 @@ export class LocalContainer {
         eventClient: this.eventClient,
         executionQueueClient: this.executionQueueClient,
         timerClient: this.timerClient,
+        transactionClient: this.transactionClient,
         workflowClient: this.workflowClient,
         dictionaryClient,
       }),

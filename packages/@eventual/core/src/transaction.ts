@@ -1,4 +1,9 @@
 import { TransactionCancelled } from "./error.js";
+import {
+  EventualCallKind,
+  createEventualCall,
+} from "./internal/calls/calls.js";
+import { InvokeTransactionCall } from "./internal/calls/transaction-call.js";
 import { getServiceClient, transactions } from "./internal/global.js";
 import { TransactionSpec } from "./internal/service-spec.js";
 
@@ -37,19 +42,25 @@ export function transaction<Input, Output>(
   const transact: Transaction<Input, Output> = ((
     input: Input
   ): Promise<Output> => {
-    return getEventualCallHook().registerEventualCall(undefined, async () => {
-      const response = await getServiceClient().executeTransaction({
-        input,
-        transaction: transact,
-      });
+    return getEventualCallHook().registerEventualCall(
+      createEventualCall<InvokeTransactionCall>(
+        EventualCallKind.InvokeTransactionCall,
+        { input, transactionName: name }
+      ),
+      async () => {
+        const response = await getServiceClient().executeTransaction({
+          input,
+          transaction: transact,
+        });
 
-      if (response.succeeded) {
-        return response.output;
+        if (response.succeeded) {
+          return response.output;
+        }
+
+        // todo: return reason?
+        throw new TransactionCancelled([]);
       }
-
-      // todo: return reason?
-      throw new TransactionCancelled([]);
-    });
+    );
   }) as any;
 
   transact.kind = "Transaction";

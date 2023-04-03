@@ -5,7 +5,6 @@ import {
   TransactionFunction,
 } from "@eventual/core";
 import {
-  DictionaryCall,
   DictionaryDeleteOperation,
   DictionarySetOperation,
   EventualCallHook,
@@ -18,7 +17,7 @@ import {
   SignalTargetType,
   assertNever,
   isDictionaryCall,
-  isDictionaryCallOfType,
+  isDictionaryOperationOfType,
   isPublishEventsCall,
   isSendSignalCall,
   serviceTypeScope,
@@ -127,7 +126,7 @@ export function createTransactionExecutor(
       // a map of the keys of all mutable dictionary calls that have been made to the request
       const dictionaryCalls = new Map<
         string,
-        DictionaryCall<DictionarySetOperation | DictionaryDeleteOperation>
+        DictionarySetOperation | DictionaryDeleteOperation
       >();
       // store all of the event and signal calls to execute after the transaction completes
       const eventCalls: (PublishEventsCall | SendSignalCall)[] = [];
@@ -146,42 +145,36 @@ export function createTransactionExecutor(
         registerEventualCall: (eventual) => {
           if (isDictionaryCall(eventual)) {
             if (
-              isDictionaryCallOfType("set", eventual) ||
-              isDictionaryCallOfType("delete", eventual)
+              isDictionaryOperationOfType("set", eventual) ||
+              isDictionaryOperationOfType("delete", eventual)
             ) {
               return createEventualPromise<
                 Awaited<
                   ReturnType<Dictionary<any>["delete"] | Dictionary<any>["set"]>
                 >
               >(async () => {
-                const entity = await resolveEntity(
-                  eventual.name,
-                  eventual.operation.key
-                );
+                const entity = await resolveEntity(eventual.name, eventual.key);
                 const normalizedKey = serializeCompositeKey(
                   eventual.name,
-                  eventual.operation.key
+                  eventual.key
                 );
 
                 dictionaryCalls.set(normalizedKey, eventual);
-                return isDictionaryCallOfType("set", eventual)
+                return isDictionaryOperationOfType("set", eventual)
                   ? { version: (entity?.version ?? 0) + 1 }
                   : undefined;
               });
             } else if (
-              isDictionaryCallOfType("get", eventual) ||
-              isDictionaryCallOfType("getWithMetadata", eventual)
+              isDictionaryOperationOfType("get", eventual) ||
+              isDictionaryOperationOfType("getWithMetadata", eventual)
             ) {
               return createEventualPromise(async () => {
-                const value = await resolveEntity(
-                  eventual.name,
-                  eventual.operation.key
-                );
+                const value = await resolveEntity(eventual.name, eventual.key);
 
-                if (isDictionaryCallOfType("get", eventual)) {
+                if (isDictionaryOperationOfType("get", eventual)) {
                   return value?.entity;
                 } else if (
-                  isDictionaryCallOfType("getWithMetadata", eventual)
+                  isDictionaryOperationOfType("getWithMetadata", eventual)
                 ) {
                   return value;
                 }
@@ -256,18 +249,18 @@ export function createTransactionExecutor(
           //              but the current version at set time is 2, this condition
           ///             will never be true.
           if (
-            call.operation.options?.expectedVersion !== undefined &&
-            call.operation.options?.expectedVersion !== retrievedVersion
+            call.options?.expectedVersion !== undefined &&
+            call.options?.expectedVersion !== retrievedVersion
           ) {
             versionOverridesIndices.add(i);
-            return { dictionary, operation: call.operation };
+            return { dictionary, operation: call };
           }
           return {
             dictionary,
             operation: {
-              ...call.operation,
+              ...call,
               options: {
-                ...call.operation.options,
+                ...call.options,
                 expectedVersion: retrievedVersion,
               },
             },

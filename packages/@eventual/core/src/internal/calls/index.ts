@@ -7,4 +7,5 @@ export * from "./expect-signal-call.js";
 export * from "./publish-events-call.js";
 export * from "./send-signal-call.js";
 export * from "./signal-handler-call.js";
+export * from "./transaction-call.js";
 export * from "./workflow-call.js";

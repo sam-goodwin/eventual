@@ -6,6 +6,7 @@ import type { ExpectSignalCall } from "./expect-signal-call.js";
 import type { PublishEventsCall } from "./publish-events-call.js";
 import type { SendSignalCall } from "./send-signal-call.js";
 import type { RegisterSignalHandlerCall } from "./signal-handler-call.js";
+import type { InvokeTransactionCall } from "./transaction-call.js";
 import type { ChildWorkflowCall } from "./workflow-call.js";
 
 export type EventualCall =
@@ -15,6 +16,7 @@ export type EventualCall =
   | DictionaryCall
   | ChildWorkflowCall
   | ExpectSignalCall
+  | InvokeTransactionCall
   | PublishEventsCall
   | RegisterSignalHandlerCall
   | SendSignalCall;
@@ -25,6 +27,7 @@ export enum EventualCallKind {
   ConditionCall = 2,
   DictionaryCall = 8,
   ExpectSignalCall = 3,
+  InvokeTransactionCall = 9,
   PublishEventsCall = 4,
   RegisterSignalHandlerCall = 5,
   SendSignalCall = 6,
