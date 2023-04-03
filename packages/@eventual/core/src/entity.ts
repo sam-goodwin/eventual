@@ -172,7 +172,7 @@ export interface Entity<E> extends Omit<EntitySpec, "schema" | "streams"> {
     key: string | CompositeKey
   ): Promise<{ entity: E; version: number } | undefined>;
   /**
-   * Sets or updates a value within a entity and optionally a namespace.
+   * Sets or updates a value within an entity and optionally a namespace.
    *
    * Values with namespaces are considered distinct from value without a namespace or within different namespaces.
    * Values and keys can only be listed within a single namespace.
@@ -183,20 +183,20 @@ export interface Entity<E> extends Omit<EntitySpec, "schema" | "streams"> {
     options?: EntitySetOptions
   ): Promise<{ version: number }>;
   /**
-   * Deletes a single entry within a entity and namespace.
+   * Deletes a single entry within an entity and namespace.
    */
   delete(
     key: string | CompositeKey,
     options?: EntityConsistencyOptions
   ): Promise<void>;
   /**
-   * List entries that match a prefix within a entity and namespace.
+   * List entries that match a prefix within an entity and namespace.
    *
    * If namespace is not provided, only values which do not use composite keys will be returned.
    */
   list(request: EntityListRequest): Promise<EntityListResult<E>>;
   /**
-   * List keys that match a prefix within a entity and namespace.
+   * List keys that match a prefix within an entity and namespace.
    *
    * If namespace is not provided, only values which do not use composite keys will be returned.
    */

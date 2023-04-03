@@ -420,7 +420,7 @@ export const onSignalEvent = subscription(
 );
 
 const sendFinishEvent = task("sendFinish", async (executionId: string) => {
-  // publish an event from an task
+  // publish an event from a task
   await signalEvent.publishEvents({
     executionId,
     signalId: "finish",

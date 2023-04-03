@@ -52,7 +52,7 @@ export class Timeout extends EventualError {
 }
 
 /**
- * Thrown when an task fails to send heartbeats.
+ * Thrown when a task fails to send heartbeats.
  *
  * ```ts
  * const myTask = new task("myTask", {heartbeatSeconds: 10}, async () => { ... });
@@ -89,12 +89,12 @@ export class WorkflowTimeout extends SystemError {
 }
 
 /**
- * Thrown when an task id is not found in the service.
+ * Thrown when a task id is not found in the service.
  */
 export class TaskNotFoundError extends Error {
   constructor(taskName: string, availableNames: string[]) {
     super(
-      `Could not find an task with the name ${taskName}, found: ${availableNames.join(
+      `Could not find a task with the name ${taskName}, found: ${availableNames.join(
         ","
       )}`
     );

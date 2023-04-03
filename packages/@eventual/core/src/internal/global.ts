@@ -13,11 +13,11 @@ declare global {
   // eslint-disable-next-line no-var
   var _eventual: {
     /**
-     * Data about the current task assigned before running an task on an the task worker.
+     * Data about the current task assigned before running a task on an the task worker.
      */
     taskContextStore?: Promise<AsyncLocalStorage<TaskRuntimeContext>>;
     /**
-     * Callable tasks which register themselves in an task worker.
+     * Callable tasks which register themselves in a task worker.
      */
     tasks?: Record<string, Task>;
     /**

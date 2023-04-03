@@ -173,7 +173,7 @@ export class TestEnvironment extends RuntimeServiceClient {
   }
 
   /**
-   * Overrides the implementation of an task with a mock.
+   * Overrides the implementation of a task with a mock.
    *
    * ```ts
    * const mockTask = env.mockTask(myTask);
@@ -270,7 +270,7 @@ export class TestEnvironment extends RuntimeServiceClient {
   }
 
   /**
-   * Succeeds an task with a result value
+   * Succeeds a task with a result value
    * and progressed time by one second ({@link tick}).
    *
    * Get the task token by intercepting the token from {@link asyncResult}.
@@ -290,7 +290,7 @@ export class TestEnvironment extends RuntimeServiceClient {
   }
 
   /**
-   * Fails an task with a result value
+   * Fails a task with a result value
    * and progressed time by one second ({@link tick}).
    *
    * Get the task token by intercepting the token from {@link asyncResult}.

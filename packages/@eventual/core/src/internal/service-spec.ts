@@ -121,7 +121,7 @@ export interface WorkflowSpec {
 export interface EntitySpec {
   name: string;
   /**
-   * An Optional schema for the entity within a entity.
+   * An Optional schema for the entity within an entity.
    */
   schema?: openapi.SchemaObject;
   streams: EntityStreamSpec[];

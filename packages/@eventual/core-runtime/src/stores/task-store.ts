@@ -6,7 +6,7 @@
  * Later attempts for the same {@link TaskExecution} will return false to signify the
  * {@link TaskExecution} is already being handled.
  *
- * While running, an task may be heartbeated or cancelled by any actor with access.
+ * While running, a task may be heartbeated or cancelled by any actor with access.
  * The {@link TimerClient} may `get` the task record to check if it is has been heartbeated recently.
  */
 export interface TaskStore {
@@ -26,10 +26,10 @@ export interface TaskStore {
   ): Promise<boolean>;
 
   /**
-   * Mark the last heartbeat time of an task.
+   * Mark the last heartbeat time of a task.
    *
    * Note: This client does not handle all heartbeat logic, for example, checking if the workflow is cancelled.
-   *       Use {@link TaskClient.sendHeartbeat} to heartbeat an task.
+   *       Use {@link TaskClient.sendHeartbeat} to heartbeat a task.
    */
   heartbeat(
     executionId: string,
@@ -38,7 +38,7 @@ export interface TaskStore {
   ): Promise<TaskExecution>;
 
   /**
-   * Marks an task as cancelled. An task can use the {@link heartbeat} call
+   * Marks a task as cancelled. A task can use the {@link heartbeat} call
    * to retrieve this value.
    */
   cancel(executionId: string, seq: number): Promise<void>;

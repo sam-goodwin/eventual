@@ -278,7 +278,7 @@ export async function orchestrateExecution(
     if (maxTaskAge) {
       // tracks the time it takes for a workflow task to be scheduled until new calls could be emitted.
       // This represent the workflow orchestration time of User Perceived Latency
-      // Average expected time for an task to be invoked until it is considered complete by the workflow should follow:
+      // Average expected time for a task to be invoked until it is considered complete by the workflow should follow:
       // AvgTaskDuration(N) = Avg(TimeToCallsInvoked) + Avg(TaskDuration(N))
       metrics?.putMetric(
         OrchestratorMetrics.TimeToCallsInvoked,

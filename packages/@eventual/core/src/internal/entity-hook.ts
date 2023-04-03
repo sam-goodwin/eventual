@@ -28,7 +28,7 @@ export interface EntityHook {
 export function getEntityHook() {
   const hook = globalThis.eventualEntityHook;
   if (!hook) {
-    throw new Error("A Entity hook has not been registered.");
+    throw new Error("An entity hook has not been registered.");
   }
   return hook;
 }

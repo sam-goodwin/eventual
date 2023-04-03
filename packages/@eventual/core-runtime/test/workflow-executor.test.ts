@@ -1679,7 +1679,7 @@ test("properly evaluate await of Promise.all", async () => {
   });
 });
 
-test("generator function returns an TaskCall", async () => {
+test("generator function returns a taskCall", async () => {
   const wf = workflow(async () => {
     return await sub();
   });

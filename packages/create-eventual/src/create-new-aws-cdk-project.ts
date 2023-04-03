@@ -344,7 +344,7 @@ export const hello = command("hello", async (name: string) => {
 })
 
 export const helloWorkflow = workflow("helloWorkflow", async (name: string) => {
-  // call an task to format the message
+  // call a task to format the message
   const message = await formatMessage(name);
 
   // publish the message to the helloEvent
@@ -356,7 +356,7 @@ export const helloWorkflow = workflow("helloWorkflow", async (name: string) => {
   return message;
 });
 
-// an task that does the work of formatting the message
+// a task that does the work of formatting the message
 export const formatMessage = task("formatName", async (name: string) => {
   return \`hello \${name}\`;
 });

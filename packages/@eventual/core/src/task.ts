@@ -28,7 +28,7 @@ export interface TaskRuntimeProps extends FunctionRuntimeProps {}
  */
 export interface TaskInvocationOptions {
   /**
-   * A promise whose resolution (fulfillment or rejection) determines the timeout for an task.
+   * A promise whose resolution (fulfillment or rejection) determines the timeout for a task.
    *
    *
    * Overrides any timeout configured on the task definition.
@@ -88,9 +88,9 @@ export interface Task<Name extends string = string, Input = any, Output = any>
   name: Name;
   handler: TaskHandler<Input, Output>;
   /**
-   * Complete an task request by its {@link SendTaskSuccessRequest.taskToken}.
+   * Complete a task request by its {@link SendTaskSuccessRequest.taskToken}.
    *
-   * This method is used in conjunction with {@link asyncResult} in an task
+   * This method is used in conjunction with {@link asyncResult} in a task
    * to perform asynchronous, long-running computations. For example:
    *
    * ```ts
@@ -113,9 +113,9 @@ export interface Task<Name extends string = string, Input = any, Output = any>
   ): Promise<void>;
 
   /**
-   * Fail an task request by its {@link SendTaskFailureRequest.taskToken}.
+   * Fail a task request by its {@link SendTaskFailureRequest.taskToken}.
    *
-   * This method is used in conjunction with {@link asyncResult} in an task
+   * This method is used in conjunction with {@link asyncResult} in a task
    * to perform asynchronous, long-running computations. For example:
    *
    * ```ts
@@ -137,9 +137,9 @@ export interface Task<Name extends string = string, Input = any, Output = any>
   sendTaskFailure(request: Omit<SendTaskFailureRequest, "type">): Promise<void>;
 
   /**
-   * Heartbeat an task request by its {@link SendTaskHeartbeatRequest.taskToken}.
+   * Heartbeat a task request by its {@link SendTaskHeartbeatRequest.taskToken}.
    *
-   * This method is used in conjunction with {@link asyncResult} in an task
+   * This method is used in conjunction with {@link asyncResult} in a task
    * to perform asynchronous, long-running computations. For example:
    *
    * ```ts
@@ -182,7 +182,7 @@ export type TaskOutput<A extends Task<any, any>> = A extends Task<
   : never;
 
 /**
- * When returned from an task, the task will become async,
+ * When returned from a task, the task will become async,
  * allowing it to run "forever". The
  */
 export interface AsyncResult<Output = any> {
@@ -214,12 +214,12 @@ export async function asyncResult<Output = any>(
   tokenContext: (token: string) => Promise<void> | void
 ): Promise<AsyncResult<Output>> {
   if (!isTaskWorker()) {
-    throw new Error("asyncResult can only be called from within an task.");
+    throw new Error("asyncResult can only be called from within a task.");
   }
   const taskContext = await getTaskContext();
   if (!taskContext) {
     throw new Error(
-      "Task context has not been set yet, asyncResult can only be used from within an task."
+      "Task context has not been set yet, asyncResult can only be used from within a task."
     );
   }
   await tokenContext(taskContext.invocation.token);
@@ -229,7 +229,7 @@ export async function asyncResult<Output = any>(
 }
 
 /**
- * Registers a function as an Task.
+ * Registers a function as a task.
  *
  * @param taskID a string that uniquely identifies the Task within a single workflow context.
  * @param handler the function that handles the task
@@ -337,7 +337,7 @@ export interface TaskDefinitionContext {
 
 export interface TaskInvocationContext {
   /**
-   * A token used to complete or heartbeat an task when running async.
+   * A token used to complete or heartbeat a task when running async.
    */
   token: string;
   /**

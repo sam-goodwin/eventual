@@ -243,7 +243,7 @@ export function createTransactionExecutor(
         if (call) {
           // if the user provided a version that was not the same that was retrieved
           // we will consider the transaction not retry-able on failure.
-          // for example, if a entity is set with an expected version of 1,
+          // for example, if an entity is set with an expected version of 1,
           //              but the current version at set time is 2, this condition
           ///             will never be true.
           if (

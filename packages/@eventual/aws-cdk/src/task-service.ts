@@ -57,7 +57,7 @@ export class TaskService<Service = any> {
    */
   public tasks: ServiceTasks<Service>;
   /**
-   * Function which is executed when an task worker returns a failure.
+   * Function which is executed when a task worker returns a failure.
    */
   public fallbackHandler: Function;
 

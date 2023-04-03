@@ -87,7 +87,7 @@ export type AsyncResultTokenCallback = (token: string) => void;
  */
 export interface IMockTask<Input = any, Output = any> {
   /**
-   * Imitates the {@link asyncResult} behavior of an task.
+   * Imitates the {@link asyncResult} behavior of a task.
    *
    * A token is generated and the task must be succeeded or failed using the token.
    *
@@ -107,7 +107,7 @@ export interface IMockTask<Input = any, Output = any> {
     tokenCallback?: AsyncResultTokenCallback
   ): IMockTask<Input, Output>;
   /**
-   * Imitates the {@link asyncResult} behavior of an task for one invocation.
+   * Imitates the {@link asyncResult} behavior of a task for one invocation.
    *
    * A token is generated and the task must be succeeded or failed using the token.
    *

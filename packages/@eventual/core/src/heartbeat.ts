@@ -26,7 +26,7 @@ export async function sendTaskHeartbeat(
         taskToken: token,
       });
     } else {
-      throw new Error("Task token must be provided when not within an Task.");
+      throw new Error("Task token must be provided when not within a task.");
     }
   });
 }
