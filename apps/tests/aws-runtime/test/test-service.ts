@@ -625,7 +625,7 @@ export const dictionaryWorkflow = workflow(
         operation: {
           operation: "set",
           key: id,
-          value: { n: value?.n ?? 0 + 1 },
+          value: { n: (value?.n ?? 0) + 1 },
         },
       },
     ]);
