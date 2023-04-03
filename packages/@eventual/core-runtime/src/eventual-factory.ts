@@ -4,8 +4,6 @@ import {
   Result,
   WorkflowEventType,
   assertNever,
-  isActivityCall,
-  isActivityScheduled,
   isAwaitTimerCall,
   isChildWorkflowCall,
   isChildWorkflowScheduled,
@@ -19,6 +17,8 @@ import {
   isRegisterSignalHandlerCall,
   isSendSignalCall,
   isSignalSent,
+  isTaskCall,
+  isTaskScheduled,
   isTimerScheduled,
   isTransactionRequest,
 } from "@eventual/core/internal";
@@ -27,28 +27,28 @@ import { EventualDefinition, Trigger } from "./workflow-executor.js";
 export function createEventualFromCall(
   call: EventualCall
 ): EventualDefinition<any> {
-  if (isActivityCall(call)) {
+  if (isTaskCall(call)) {
     return {
       triggers: [
-        Trigger.onWorkflowEvent(WorkflowEventType.ActivitySucceeded, (event) =>
+        Trigger.onWorkflowEvent(WorkflowEventType.TaskSucceeded, (event) =>
           Result.resolved(event.result)
         ),
-        Trigger.onWorkflowEvent(WorkflowEventType.ActivityFailed, (event) =>
+        Trigger.onWorkflowEvent(WorkflowEventType.TaskFailed, (event) =>
           Result.failed(new EventualError(event.error, event.message))
         ),
         Trigger.onWorkflowEvent(
-          WorkflowEventType.ActivityHeartbeatTimedOut,
-          Result.failed(new HeartbeatTimeout("Activity Heartbeat TimedOut"))
+          WorkflowEventType.TaskHeartbeatTimedOut,
+          Result.failed(new HeartbeatTimeout("Task Heartbeat TimedOut"))
         ),
         call.timeout
           ? Trigger.onPromiseResolution(
               call.timeout,
-              Result.failed(new Timeout("Activity Timed Out"))
+              Result.failed(new Timeout("Task Timed Out"))
             )
           : undefined,
       ],
       isCorresponding(event) {
-        return isActivityScheduled(event) && call.name === event.name;
+        return isTaskScheduled(event) && call.name === event.name;
       },
     };
   } else if (isChildWorkflowCall(call)) {

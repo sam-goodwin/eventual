@@ -16,15 +16,15 @@ export const handle: Handler<AsyncWriterTestEvent[], void> = async (event) => {
     await Promise.allSettled(
       event.map(async (e) => {
         if (e.type === "complete") {
-          await serviceClient.sendActivitySuccess({
-            activityToken: e.token,
+          await serviceClient.sendTaskSuccess({
+            taskToken: e.token,
             result: "hello from the async writer!",
           });
         } else {
-          await serviceClient.sendActivityFailure({
-            activityToken: e.token,
+          await serviceClient.sendTaskFailure({
+            taskToken: e.token,
             error: "AsyncWriterError",
-            message: "I was told to fail this activity, sorry.",
+            message: "I was told to fail this task, sorry.",
           });
         }
       })

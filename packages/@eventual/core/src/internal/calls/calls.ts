@@ -1,4 +1,3 @@
-import type { ActivityCall } from "./activity-call.js";
 import type { AwaitTimerCall } from "./await-time-call.js";
 import type { ConditionCall } from "./condition-call.js";
 import type { EntityCall } from "./entity-call.js";
@@ -6,11 +5,11 @@ import type { ExpectSignalCall } from "./expect-signal-call.js";
 import type { PublishEventsCall } from "./publish-events-call.js";
 import type { SendSignalCall } from "./send-signal-call.js";
 import type { RegisterSignalHandlerCall } from "./signal-handler-call.js";
+import type { TaskCall } from "./task-call.js";
 import type { InvokeTransactionCall } from "./transaction-call.js";
 import type { ChildWorkflowCall } from "./workflow-call.js";
 
 export type EventualCall =
-  | ActivityCall
   | AwaitTimerCall
   | ConditionCall
   | EntityCall
@@ -19,10 +18,10 @@ export type EventualCall =
   | InvokeTransactionCall
   | PublishEventsCall
   | RegisterSignalHandlerCall
-  | SendSignalCall;
+  | SendSignalCall
+  | TaskCall;
 
 export enum EventualCallKind {
-  ActivityCall = 0,
   AwaitTimerCall = 1,
   ConditionCall = 2,
   EntityCall = 8,
@@ -31,6 +30,7 @@ export enum EventualCallKind {
   PublishEventsCall = 4,
   RegisterSignalHandlerCall = 5,
   SendSignalCall = 6,
+  TaskCall = 0,
   WorkflowCall = 7,
 }
 

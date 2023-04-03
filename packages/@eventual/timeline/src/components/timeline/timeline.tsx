@@ -3,9 +3,9 @@ import {
   endTime,
   getDuration,
   isCompleted,
-  TimelineActivity,
+  TimelineTask,
   Timespan,
-} from "../../activity.js";
+} from "../../task.js";
 import styles from "./timeline.module.css";
 
 const palette = [
@@ -20,12 +20,12 @@ const palette = [
 
 export function Timeline({
   start,
-  activities,
+  tasks,
 }: {
   start: WorkflowStarted;
-  activities: TimelineActivity[];
+  tasks: TimelineTask[];
 }) {
-  const workflowSpan = getWorkflowSpan(start, activities);
+  const workflowSpan = getWorkflowSpan(start, tasks);
   return (
     <div className={styles["timeline-wrapper"]}>
       <div className={styles["timeline-container"]}>
@@ -46,15 +46,15 @@ export function Timeline({
             </div>
           ))}
         </div>
-        {activities.map((activity) => {
-          const start = percentOffset(activity.start, workflowSpan);
+        {tasks.map((task) => {
+          const start = percentOffset(task.start, workflowSpan);
           const width =
-            percentOffset(endTime(activity) ?? workflowSpan.end, workflowSpan) -
+            percentOffset(endTime(task) ?? workflowSpan.end, workflowSpan) -
             start;
           return (
             <div
-              key={activity.seq}
-              className={styles.activity}
+              key={task.seq}
+              className={styles.task}
               style={{
                 left: `${start}%`,
                 width: `${width.toFixed(2)}%`,
@@ -63,10 +63,10 @@ export function Timeline({
                 })`,
               }}
             >
-              <div className={styles["activity-name"]}>{activity.name}</div>
-              <div className={styles["activity-duration"]}>
-                {isCompleted(activity.state)
-                  ? `${activity.state.end - activity.start}ms`
+              <div className={styles["task-name"]}>{task.name}</div>
+              <div className={styles["task-duration"]}>
+                {isCompleted(task.state)
+                  ? `${task.state.end - task.start}ms`
                   : "-"}
               </div>
             </div>
@@ -83,12 +83,12 @@ function percentOffset(timestamp: number, inSpan: Timespan) {
 
 function getWorkflowSpan(
   start: WorkflowStarted,
-  activities: TimelineActivity[]
+  tasks: TimelineTask[]
 ): Timespan {
   const startTime = new Date(start.timestamp).getTime();
 
-  const latestEnd = activities.reduce(
-    (latest, activity) => Math.max(latest, endTime(activity) ?? 0),
+  const latestEnd = tasks.reduce(
+    (latest, task) => Math.max(latest, endTime(task) ?? 0),
     0
   );
   return {

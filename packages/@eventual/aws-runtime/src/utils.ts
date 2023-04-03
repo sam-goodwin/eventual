@@ -187,8 +187,8 @@ export function serviceFunctionName(serviceName: string, suffix: string) {
   );
 }
 
-export function activityServiceFunctionSuffix(activityId: string) {
-  return `activity-${activityId}`;
+export function taskServiceFunctionSuffix(taskId: string) {
+  return `task-${taskId}`;
 }
 
 export function subscriptionServiceFunctionSuffix(subscriptionName: string) {
@@ -199,14 +199,11 @@ export function entityServiceTableSuffix(entityName: string) {
   return `entity-${entityName}`;
 }
 
-export function activityServiceFunctionName(
+export function taskServiceFunctionName(
   serviceName: string,
-  activityId: string
+  taskId: string
 ): string {
-  return serviceFunctionName(
-    serviceName,
-    activityServiceFunctionSuffix(activityId)
-  );
+  return serviceFunctionName(serviceName, taskServiceFunctionSuffix(taskId));
 }
 
 export function entityServiceTableName(

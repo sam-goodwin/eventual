@@ -1,6 +1,6 @@
 import {
-  ActivityScheduled,
-  ActivitySucceeded,
+  TaskScheduled,
+  TaskSucceeded,
   WorkflowEvent,
   WorkflowEventType,
   WorkflowStarted,
@@ -18,29 +18,29 @@ const started1: WorkflowStarted = {
   context: { name: "" },
 };
 
-const scheduled2: ActivityScheduled = {
-  type: WorkflowEventType.ActivityScheduled,
-  name: "my-activity",
+const scheduled2: TaskScheduled = {
+  type: WorkflowEventType.TaskScheduled,
+  name: "my-task",
   seq: 0,
   timestamp: "",
 };
 
-const scheduled4: ActivityScheduled = {
-  type: WorkflowEventType.ActivityScheduled,
-  name: "my-activity",
+const scheduled4: TaskScheduled = {
+  type: WorkflowEventType.TaskScheduled,
+  name: "my-task",
   seq: 1,
   timestamp: "",
 };
 
-const completed3: ActivitySucceeded = {
-  type: WorkflowEventType.ActivitySucceeded,
+const completed3: TaskSucceeded = {
+  type: WorkflowEventType.TaskSucceeded,
   seq: 0,
   result: 10,
   timestamp: "",
 };
 
-const completed5: ActivitySucceeded = {
-  type: WorkflowEventType.ActivitySucceeded,
+const completed5: TaskSucceeded = {
+  type: WorkflowEventType.TaskSucceeded,
   seq: 1,
   result: 10,
   timestamp: "",

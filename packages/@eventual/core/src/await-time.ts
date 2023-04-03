@@ -2,9 +2,7 @@ import {
   createEventualCall,
   EventualCallKind,
 } from "./internal/calls/calls.js";
-import {
-  EventualPromise,
-} from "./internal/eventual-hook.js";
+import type { EventualPromise } from "./internal/eventual-hook.js";
 import {
   DurationSchedule,
   DurationUnit,
@@ -29,8 +27,8 @@ import {
  * ```ts
  * workflow("myWorkflow", async () => {
  *   const minTime = duration(10, "minutes");
- *   // wait for 10 minutes OR the duration of myActivity, whichever is longer.
- *   await Promise.all([minTime, myActivity()]);
+ *   // wait for 10 minutes OR the duration of myTask, whichever is longer.
+ *   await Promise.all([minTime, myTask()]);
  *   return "DONE";
  * })
  * ```
@@ -91,8 +89,8 @@ export function duration(
  * ```ts
  * workflow("myWorkflow", async ({ endTime }) => {
  *   const goalTime = time(endTime); // sleep for 10 minutes
- *   // wait until the given time or until the activity is completed.
- *   await Promise.race([goalTime, await myActivity()]);
+ *   // wait until the given time or until the task is completed.
+ *   await Promise.race([goalTime, await myTask()]);
  *   return "DONE";
  * })
  * ```

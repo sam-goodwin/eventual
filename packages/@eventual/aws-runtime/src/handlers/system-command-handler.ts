@@ -12,17 +12,17 @@ import {
   createPublishEventsCommand,
   createSendSignalCommand,
   createStartExecutionCommand,
-  createUpdateActivityCommand,
+  createUpdateTaskCommand,
   ServiceSpecWorkflowProvider,
 } from "@eventual/core-runtime";
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import {
-  createActivityClient,
   createEventClient,
   createExecutionHistoryStateStore,
   createExecutionHistoryStore,
   createExecutionQueueClient,
   createExecutionStore,
+  createTaskClient,
   createTransactionClient,
   createWorkflowClient,
 } from "../create.js";
@@ -65,7 +65,7 @@ export default systemCommandWorker(
   createStartExecutionCommand({
     workflowClient,
   }),
-  createUpdateActivityCommand({ activityClient: createActivityClient() }),
+  createUpdateTaskCommand({ taskClient: createTaskClient() }),
   createExecuteTransactionCommand({
     transactionClient: createTransactionClient(),
   })

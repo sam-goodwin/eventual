@@ -4,58 +4,52 @@ import {
   EntityStreamRemoveItem,
   LogLevel,
 } from "@eventual/core";
-import {
-  ActivityClient,
-  ActivityWorkerRequest,
-} from "../clients/activity-client.js";
 import { EntityClient } from "../clients/entity-client.js";
 import { EventClient } from "../clients/event-client.js";
 import { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import { LogsClient } from "../clients/logs-client.js";
 import { MetricsClient } from "../clients/metrics-client.js";
+import { TaskClient, TaskWorkerRequest } from "../clients/task-client.js";
 import type { TimerClient, TimerRequest } from "../clients/timer-client.js";
+import { TransactionClient } from "../clients/transaction-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
-import {
-  ActivityWorker,
-  createActivityWorker,
-} from "../handlers/activity-worker.js";
 import {
   CommandWorker,
   createCommandWorker,
 } from "../handlers/command-worker.js";
 import {
-  createEntityStreamWorker,
   EntityStreamWorker,
+  createEntityStreamWorker,
 } from "../handlers/entity-stream-worker.js";
 import { Orchestrator, createOrchestrator } from "../handlers/orchestrator.js";
 import {
   SubscriptionWorker,
   createSubscriptionWorker,
 } from "../handlers/subscription-worker.js";
+import { TaskWorker, createTaskWorker } from "../handlers/task-worker.js";
 import { TimerHandler, createTimerHandler } from "../handlers/timer-handler.js";
 import {
-  createTransactionWorker,
-  TransactionClient,
   TransactionWorker,
-} from "../index.js";
+  createTransactionWorker,
+} from "../handlers/transaction-worker.js";
 import { LogAgent } from "../log-agent.js";
-import {
-  ActivityProvider,
-  GlobalActivityProvider,
-} from "../providers/activity-provider.js";
 import { InMemoryExecutorProvider } from "../providers/executor-provider.js";
 import {
   GlobalSubscriptionProvider,
   SubscriptionProvider,
 } from "../providers/subscription-provider.js";
 import {
+  GlobalTaskProvider,
+  TaskProvider,
+} from "../providers/task-provider.js";
+import {
   GlobalWorkflowProvider,
   WorkflowProvider,
 } from "../providers/workflow-provider.js";
-import { ActivityStore } from "../stores/activity-store.js";
-import { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
-import { ExecutionHistoryStore } from "../stores/execution-history-store.js";
-import { ExecutionStore } from "../stores/execution-store.js";
+import type { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
+import type { ExecutionHistoryStore } from "../stores/execution-history-store.js";
+import type { ExecutionStore } from "../stores/execution-store.js";
+import type { TaskStore } from "../stores/task-store.js";
 import {
   createExecuteTransactionCommand,
   createGetExecutionCommand,
@@ -66,33 +60,33 @@ import {
   createPublishEventsCommand,
   createSendSignalCommand,
   createStartExecutionCommand,
-  createUpdateActivityCommand,
+  createUpdateTaskCommand,
 } from "../system-commands.js";
-import { WorkflowTask } from "../tasks.js";
+import type { WorkflowTask } from "../tasks.js";
 import { WorkflowCallExecutor } from "../workflow-call-executor.js";
-import { LocalActivityClient } from "./clients/activity-client.js";
 import { LocalEventClient } from "./clients/event-client.js";
 import { LocalExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { LocalLogsClient } from "./clients/logs-client.js";
 import { LocalMetricsClient } from "./clients/metrics-client.js";
+import { LocalTaskClient } from "./clients/task-client.js";
 import { LocalTimerClient } from "./clients/timer-client.js";
 import { LocalTransactionClient } from "./clients/transaction-client.js";
-import { LocalActivityStore } from "./stores/activity-store.js";
 import { LocalEntityStore } from "./stores/entity-store.js";
 import { LocalExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
 import { LocalExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { LocalExecutionStore } from "./stores/execution-store.js";
+import { LocalTaskStore } from "./stores/task-store.js";
 
 export type LocalEvent =
   | WorkflowTask
   | TimerRequest
-  | ActivityWorkerRequest
+  | TaskWorkerRequest
   | Omit<EntityStreamInsertItem<any>, "streamName">
   | Omit<EntityStreamRemoveItem<any>, "streamName">
   | Omit<EntityStreamModifyItem<any>, "streamName">;
 
 export interface LocalContainerProps {
-  activityProvider?: ActivityProvider;
+  taskProvider?: TaskProvider;
   serviceName: string;
   subscriptionProvider?: SubscriptionProvider;
 }
@@ -101,12 +95,12 @@ export class LocalContainer {
   public orchestrator: Orchestrator;
   public commandWorker: CommandWorker;
   public timerHandler: TimerHandler;
-  public activityWorker: ActivityWorker;
+  public taskWorker: TaskWorker;
   public subscriptionWorker: SubscriptionWorker;
   public entityStreamWorker: EntityStreamWorker;
   public transactionWorker: TransactionWorker;
 
-  public activityClient: ActivityClient;
+  public taskClient: TaskClient;
   public eventClient: EventClient;
   public executionQueueClient: ExecutionQueueClient;
   public workflowClient: WorkflowClient;
@@ -118,10 +112,10 @@ export class LocalContainer {
   public executionHistoryStateStore: ExecutionHistoryStateStore;
   public executionHistoryStore: ExecutionHistoryStore;
   public executionStore: ExecutionStore;
-  public activityStore: ActivityStore;
+  public taskStore: TaskStore;
 
   public workflowProvider: WorkflowProvider;
-  public activityProvider: ActivityProvider;
+  public taskProvider: TaskProvider;
   public subscriptionProvider: SubscriptionProvider;
 
   constructor(
@@ -143,9 +137,8 @@ export class LocalContainer {
     );
     this.timerClient = new LocalTimerClient(this.localConnector);
     this.executionHistoryStore = new LocalExecutionHistoryStore();
-    this.activityProvider =
-      props.activityProvider ?? new GlobalActivityProvider();
-    this.activityStore = new LocalActivityStore();
+    this.taskProvider = props.taskProvider ?? new GlobalTaskProvider();
+    this.taskStore = new LocalTaskStore();
     this.subscriptionProvider =
       props.subscriptionProvider ?? new GlobalSubscriptionProvider();
     const entityStore = new LocalEntityStore({
@@ -164,9 +157,9 @@ export class LocalContainer {
       getTime: () => this.localConnector.getTime(),
     });
 
-    this.activityWorker = createActivityWorker({
-      activityProvider: this.activityProvider,
-      activityStore: this.activityStore,
+    this.taskWorker = createTaskWorker({
+      taskProvider: this.taskProvider,
+      taskStore: this.taskStore,
       eventClient: this.eventClient,
       executionQueueClient: this.executionQueueClient,
       logAgent,
@@ -175,8 +168,8 @@ export class LocalContainer {
       timerClient: this.timerClient,
       entityClient,
     });
-    this.activityClient = new LocalActivityClient(this.localConnector, {
-      activityStore: this.activityStore,
+    this.taskClient = new LocalTaskClient(this.localConnector, {
+      taskStore: this.taskStore,
       executionQueueClient: this.executionQueueClient,
       executionStore: this.executionStore,
     });
@@ -195,7 +188,7 @@ export class LocalContainer {
 
     this.orchestrator = createOrchestrator({
       callExecutor: new WorkflowCallExecutor({
-        activityClient: this.activityClient,
+        taskClient: this.taskClient,
         eventClient: this.eventClient,
         executionQueueClient: this.executionQueueClient,
         timerClient: this.timerClient,
@@ -229,7 +222,7 @@ export class LocalContainer {
     });
     createListExecutionsCommand({ executionStore: this.executionStore });
     createGetExecutionCommand({ executionStore: this.executionStore });
-    createUpdateActivityCommand({ activityClient: this.activityClient });
+    createUpdateTaskCommand({ taskClient: this.taskClient });
     createSendSignalCommand({
       executionQueueClient: this.executionQueueClient,
     });
@@ -248,7 +241,7 @@ export class LocalContainer {
     this.commandWorker = createCommandWorker({ entityClient });
 
     this.timerHandler = createTimerHandler({
-      activityStore: this.activityStore,
+      taskStore: this.taskStore,
       executionQueueClient: this.executionQueueClient,
       logAgent,
       timerClient: this.timerClient,

@@ -1,4 +1,4 @@
-import { event, activity, workflow, api, HttpResponse } from "@eventual/core";
+import { event, task, workflow, api, HttpResponse } from "@eventual/core";
 
 api.post("/work", async (request) => {
   const items: string[] = await request.json();
@@ -22,7 +22,7 @@ export const myWorkflow = workflow("myWorkflow", async (items: string[]) => {
   return results;
 });
 
-export const doWork = activity("work", async (work: string) => {
+export const doWork = task("work", async (work: string) => {
   console.log("Doing Work", work);
 
   return work.length;

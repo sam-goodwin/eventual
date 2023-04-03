@@ -1,10 +1,7 @@
-import type {
-  ActivityExecution,
-  ActivityStore,
-} from "../../stores/activity-store.js";
+import type { TaskExecution, TaskStore } from "../../stores/task-store.js";
 
-export class LocalActivityStore implements ActivityStore {
-  private activities: Record<string, ActivityExecution> = {};
+export class LocalTaskStore implements TaskStore {
+  private tasks: Record<string, TaskExecution> = {};
   public async claim(
     _executionId: string,
     _seq: number,
@@ -19,19 +16,19 @@ export class LocalActivityStore implements ActivityStore {
     executionId: string,
     seq: number,
     heartbeatTime: string
-  ): Promise<ActivityExecution> {
-    const activity = (this.activities[`${executionId}${seq}`] ??= {
+  ): Promise<TaskExecution> {
+    const task = (this.tasks[`${executionId}${seq}`] ??= {
       executionId,
       seq,
       cancelled: false,
     });
-    activity.heartbeatTime = heartbeatTime;
+    task.heartbeatTime = heartbeatTime;
 
-    return activity;
+    return task;
   }
 
   public async cancel(executionId: string, seq: number): Promise<void> {
-    (this.activities[`${executionId}${seq}`] ??= {
+    (this.tasks[`${executionId}${seq}`] ??= {
       executionId,
       seq,
       cancelled: true,
@@ -43,7 +40,7 @@ export class LocalActivityStore implements ActivityStore {
   public async get(
     executionId: string,
     seq: number
-  ): Promise<ActivityExecution | undefined> {
-    return this.activities[`${executionId}${seq}`];
+  ): Promise<TaskExecution | undefined> {
+    return this.tasks[`${executionId}${seq}`];
   }
 }

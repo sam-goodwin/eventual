@@ -6,42 +6,42 @@ import {
   Workflow,
 } from "@eventual/core";
 import {
-  ActivityScheduled,
   ChildWorkflowScheduled,
   EntityMethods,
   EntityRequest,
   EventsPublished,
   SignalSent,
   SignalTargetType,
+  TaskScheduled,
   TimerCompleted,
   TimerScheduled,
   WorkflowEventType,
 } from "@eventual/core/internal";
 import { jest } from "@jest/globals";
-import { ActivityClient } from "../src/clients/activity-client.js";
 import { EntityClient } from "../src/clients/entity-client.js";
 import { EventClient } from "../src/clients/event-client.js";
 import { ExecutionQueueClient } from "../src/clients/execution-queue-client.js";
+import { TaskClient } from "../src/clients/task-client.js";
 import {
   ScheduleEventRequest,
   TimerClient,
 } from "../src/clients/timer-client.js";
+import { TransactionClient } from "../src/clients/transaction-client.js";
 import { WorkflowClient } from "../src/clients/workflow-client.js";
 import {
+  INTERNAL_EXECUTION_ID_PREFIX,
   formatChildExecutionName,
   formatExecutionId,
-  INTERNAL_EXECUTION_ID_PREFIX,
 } from "../src/execution.js";
 import { WorkflowCallExecutor } from "../src/workflow-call-executor.js";
 import {
-  activityCall,
   awaitTimerCall,
   childWorkflowCall,
   entityRequestCall,
   publishEventCall,
   sendSignalCall,
+  taskCall,
 } from "./call-util.js";
-import { TransactionClient } from "../src/clients/transaction-client.js";
 
 const mockTimerClient = {
   scheduleEvent: jest.fn() as TimerClient["scheduleEvent"],
@@ -49,9 +49,9 @@ const mockTimerClient = {
 const mockWorkflowClient = {
   startExecution: jest.fn() as WorkflowClient["startExecution"],
 } satisfies Partial<WorkflowClient> as WorkflowClient;
-const mockActivityClient = {
-  startActivity: jest.fn() as ActivityClient["startActivity"],
-} satisfies Partial<ActivityClient> as ActivityClient;
+const mockTaskClient = {
+  startTask: jest.fn() as TaskClient["startTask"],
+} satisfies Partial<TaskClient> as TaskClient;
 const mockEventClient = {
   publishEvents: jest.fn() as EventClient["publishEvents"],
 } satisfies Partial<EventClient> as EventClient;
@@ -78,7 +78,7 @@ const mockTransactionClient = {
 const testExecutor = new WorkflowCallExecutor({
   timerClient: mockTimerClient,
   workflowClient: mockWorkflowClient,
-  activityClient: mockActivityClient,
+  taskClient: mockTaskClient,
   eventClient: mockEventClient,
   executionQueueClient: mockExecutionQueueClient,
   entityClient: mockEntityClient,
@@ -129,24 +129,24 @@ describe("await times", () => {
   });
 });
 
-describe("activity", () => {
+describe("task", () => {
   test("start", async () => {
     const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      activityCall("activity", undefined, 0),
+      taskCall("task", undefined, 0),
       baseTime
     );
 
     expect(mockTimerClient.scheduleEvent).not.toHaveBeenCalled();
 
-    expect(mockActivityClient.startActivity).toHaveBeenCalledTimes(1);
+    expect(mockTaskClient.startTask).toHaveBeenCalledTimes(1);
 
-    expect(event).toMatchObject<ActivityScheduled>({
+    expect(event).toMatchObject<TaskScheduled>({
       seq: 0,
       timestamp: expect.stringContaining("Z"),
-      type: WorkflowEventType.ActivityScheduled,
-      name: "activity",
+      type: WorkflowEventType.TaskScheduled,
+      name: "task",
     });
   });
 });

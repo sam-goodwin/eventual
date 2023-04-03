@@ -1,4 +1,3 @@
-export * from "./activity.js";
 export * from "./await-time.js";
 export * from "./condition.js";
 export * from "./entity.js";
@@ -15,5 +14,6 @@ export * from "./secret.js";
 export * from "./service-client.js";
 export * from "./signals.js";
 export * from "./subscription.js";
+export * from "./task.js";
 export * from "./transaction.js";
 export * from "./workflow.js";

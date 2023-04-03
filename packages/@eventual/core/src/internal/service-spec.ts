@@ -7,7 +7,7 @@ import type {
   SubscriptionFilter,
   SubscriptionRuntimeProps,
 } from "../subscription.js";
-import type { ActivitySpec } from "./activity.js";
+import type { TaskSpec } from "./task.js";
 
 /**
  * Specification for an Eventual application
@@ -18,7 +18,7 @@ export interface ServiceSpec {
    */
   workflows: WorkflowSpec[];
   transactions: TransactionSpec[];
-  activities: ActivitySpec[];
+  tasks: TaskSpec[];
   commands: CommandSpec<any, any, any, any>[];
   /**
    * Open API 3 schema definitions for all known Events in this Service.

@@ -7,19 +7,19 @@ import {
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import {
-  ActivityExecution,
-  ActivityStore,
-  getLazy,
   LazyValue,
+  TaskExecution,
+  TaskStore,
+  getLazy,
 } from "@eventual/core-runtime";
 
-export interface AWSActivityStoreProps {
-  activityTableName: LazyValue<string>;
+export interface AWSTaskStoreProps {
+  taskTableName: LazyValue<string>;
   dynamo: DynamoDBClient;
 }
 
-export class AWSActivityStore implements ActivityStore {
-  constructor(private props: AWSActivityStoreProps) {}
+export class AWSTaskStore implements TaskStore {
+  constructor(private props: AWSTaskStoreProps) {}
 
   public async claim(
     executionId: string,
@@ -31,7 +31,7 @@ export class AWSActivityStore implements ActivityStore {
       await this.props.dynamo.send(
         new UpdateItemCommand({
           Key: {
-            pk: { S: ActivityExecutionRecord.key(executionId, seq) },
+            pk: { S: TaskExecutionRecord.key(executionId, seq) },
           },
           UpdateExpression: `SET #claims = :claim, executionId = :executionId, seq = :seq`,
           // Update a new property for each retry.
@@ -43,7 +43,7 @@ export class AWSActivityStore implements ActivityStore {
             ":executionId": { S: executionId },
             ":seq": { N: `${seq}` },
           },
-          TableName: getLazy(this.props.activityTableName),
+          TableName: getLazy(this.props.taskTableName),
           ConditionExpression: `attribute_not_exists(#claims)`,
         })
       );
@@ -61,11 +61,11 @@ export class AWSActivityStore implements ActivityStore {
     executionId: string,
     seq: number,
     heartbeatTime: string
-  ): Promise<ActivityExecution> {
+  ): Promise<TaskExecution> {
     const item = await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
-          pk: { S: ActivityExecutionRecord.key(executionId, seq) },
+          pk: { S: TaskExecutionRecord.key(executionId, seq) },
         },
         UpdateExpression:
           "SET heartbeatTime=:heartbeat, executionId = :executionId, seq = :seq",
@@ -74,19 +74,19 @@ export class AWSActivityStore implements ActivityStore {
           ":executionId": { S: executionId },
           ":seq": { N: `${seq}` },
         },
-        TableName: getLazy(this.props.activityTableName),
+        TableName: getLazy(this.props.taskTableName),
         ReturnValues: ReturnValue.ALL_NEW,
       })
     );
 
-    return createActivityFromRecord(item.Attributes as ActivityExecutionRecord);
+    return createTaskFromRecord(item.Attributes as TaskExecutionRecord);
   }
 
   public async cancel(executionId: string, seq: number): Promise<void> {
     await this.props.dynamo.send(
       new UpdateItemCommand({
         Key: {
-          pk: { S: ActivityExecutionRecord.key(executionId, seq) },
+          pk: { S: TaskExecutionRecord.key(executionId, seq) },
         },
         UpdateExpression:
           "SET cancelled=:cancelled, executionId = :executionId, seq = :seq",
@@ -95,7 +95,7 @@ export class AWSActivityStore implements ActivityStore {
           ":executionId": { S: executionId },
           ":seq": { N: `${seq}` },
         },
-        TableName: getLazy(this.props.activityTableName),
+        TableName: getLazy(this.props.taskTableName),
       })
     );
   }
@@ -103,44 +103,42 @@ export class AWSActivityStore implements ActivityStore {
   public async get(
     executionId: string,
     seq: number
-  ): Promise<ActivityExecution | undefined> {
+  ): Promise<TaskExecution | undefined> {
     const item = await this.props.dynamo.send(
       new GetItemCommand({
         Key: {
-          pk: { S: ActivityExecutionRecord.key(executionId, seq) },
+          pk: { S: TaskExecutionRecord.key(executionId, seq) },
         },
-        TableName: getLazy(this.props.activityTableName),
+        TableName: getLazy(this.props.taskTableName),
         ConsistentRead: true,
       })
     );
 
-    return createActivityFromRecord(item.Item as ActivityExecutionRecord);
+    return createTaskFromRecord(item.Item as TaskExecutionRecord);
   }
 }
 
-export interface ActivityExecutionRecord
+export interface TaskExecutionRecord
   extends Record<string, AttributeValue | undefined> {
-  pk: { S: `${typeof ActivityExecutionRecord.PARTITION_KEY_PREFIX}$${string}` };
+  pk: { S: `${typeof TaskExecutionRecord.PARTITION_KEY_PREFIX}$${string}` };
   executionId: AttributeValue.SMember;
   seq: AttributeValue.NMember;
   heartbeatTime?: AttributeValue.SMember;
   cancelled?: AttributeValue.BOOLMember;
 }
 
-export const ActivityExecutionRecord = {
-  PARTITION_KEY_PREFIX: `Activity$`,
+export const TaskExecutionRecord = {
+  PARTITION_KEY_PREFIX: `Task$`,
   key(executionId: string, seq: number) {
     return `${this.PARTITION_KEY_PREFIX}$${executionId}$${seq}`;
   },
 };
 
-function createActivityFromRecord(
-  activityRecord: ActivityExecutionRecord
-): ActivityExecution {
+function createTaskFromRecord(taskRecord: TaskExecutionRecord): TaskExecution {
   return {
-    executionId: activityRecord.executionId.S,
-    seq: Number(activityRecord.seq.N),
-    cancelled: Boolean(activityRecord.cancelled?.BOOL ?? false),
-    heartbeatTime: activityRecord?.heartbeatTime?.S,
+    executionId: taskRecord.executionId.S,
+    seq: Number(taskRecord.seq.N),
+    cancelled: Boolean(taskRecord.cancelled?.BOOL ?? false),
+    heartbeatTime: taskRecord?.heartbeatTime?.S,
   };
 }

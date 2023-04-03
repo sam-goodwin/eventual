@@ -3,11 +3,11 @@ import { normalizeCompositeKey } from "@eventual/core-runtime";
 import {
   EntityOperation,
   WorkflowEvent,
-  isActivityScheduled,
   isChildWorkflowScheduled,
   isEntityRequest,
   isSignalReceived,
   isSignalSent,
+  isTaskScheduled,
   isTransactionRequest,
 } from "@eventual/core/internal";
 import chalk from "chalk";
@@ -18,8 +18,8 @@ export function displayEvent(event: WorkflowEvent) {
     `${chalk.green(formatTime(event.timestamp))}\t${chalk.blue(event.type)}${
       "seq" in event ? `(${event.seq})` : ""
     }`,
-    ...(isChildWorkflowScheduled(event) || isActivityScheduled(event)
-      ? [`Activity Name: ${JSON.stringify(event.name)}`]
+    ...(isChildWorkflowScheduled(event) || isTaskScheduled(event)
+      ? [`Task Name: ${JSON.stringify(event.name)}`]
       : []),
     ...(isTransactionRequest(event)
       ? [`Transaction Name: ${event.transactionName}`]

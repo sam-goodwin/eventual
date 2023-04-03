@@ -1,7 +1,7 @@
 import {
-  ActivityMetrics,
   MetricsCommon,
   OrchestratorMetrics,
+  TaskMetrics,
 } from "@eventual/core-runtime";
 import { Dashboard, LogQueryWidget } from "aws-cdk-lib/aws-cloudwatch";
 import { Construct } from "constructs";
@@ -27,10 +27,10 @@ export class DebugDashboard extends Construct {
       service.workflowLogGroup.logGroupName,
       // workflow orchestrator
       service.system.workflowService.orchestrator.logGroup.logGroupName,
-      // activities worker
-      ...service.activitiesList.map((a) => a.handler.logGroup.logGroupName),
-      // activities fallback
-      service.system.activityService.fallbackHandler.logGroup.logGroupName,
+      // tasks worker
+      ...service.tasksList.map((a) => a.handler.logGroup.logGroupName),
+      // tasks fallback
+      service.system.taskService.fallbackHandler.logGroup.logGroupName,
       // user APIS - default and bundled
       ...service.commandsList.map((api) => api.handler.logGroup.logGroupName),
       service.system.systemCommandsHandler.logGroup.logGroupName,
@@ -93,14 +93,14 @@ export class DebugDashboard extends Construct {
             height: 6,
           }),
           new LogQueryWidget({
-            title: "Activity Worker Summary",
-            logGroupNames: service.activitiesList.map(
+            title: "Task Worker Summary",
+            logGroupNames: service.tasksList.map(
               (a) => a.handler.logGroup.logGroupName
             ),
             queryLines: [
-              `filter @type="REPORT" OR ${ActivityMetrics.OperationDuration} > 0`,
+              `filter @type="REPORT" OR ${TaskMetrics.OperationDuration} > 0`,
               `sort @timestamp desc`,
-              `stats avg(@duration) as duration, avg(@initDuration) as coldDuration, avg(@maxMemoryUsed) / 1024 as memKB, avg(${ActivityMetrics.OperationDuration}) as operationDuration by bin(${logSummaryBucketDuration})`,
+              `stats avg(@duration) as duration, avg(@initDuration) as coldDuration, avg(@maxMemoryUsed) / 1024 as memKB, avg(${TaskMetrics.OperationDuration}) as operationDuration by bin(${logSummaryBucketDuration})`,
             ],
             width: 12,
             height: 6,

@@ -1,7 +1,5 @@
 import { ExecutionID, Workflow } from "@eventual/core";
 import {
-  ActivityCall,
-  ActivityScheduled,
   AwaitTimerCall,
   ChildWorkflowCall,
   ChildWorkflowScheduled,
@@ -16,6 +14,8 @@ import {
   PublishEventsCall,
   SendSignalCall,
   SignalSent,
+  TaskCall,
+  TaskScheduled,
   TimerCompleted,
   TimerScheduled,
   TransactionRequest,
@@ -23,7 +23,6 @@ import {
   TransactionRequestSucceeded,
   WorkflowEventType,
   assertNever,
-  isActivityCall,
   isAwaitTimerCall,
   isChildExecutionTarget,
   isChildWorkflowCall,
@@ -35,14 +34,12 @@ import {
   isPublishEventsCall,
   isRegisterSignalHandlerCall,
   isSendSignalCall,
+  isTaskCall,
 } from "@eventual/core/internal";
-import {
-  ActivityClient,
-  ActivityWorkerRequest,
-} from "./clients/activity-client.js";
 import { EntityClient } from "./clients/entity-client.js";
 import { EventClient } from "./clients/event-client.js";
 import { ExecutionQueueClient } from "./clients/execution-queue-client.js";
+import { TaskClient, TaskWorkerRequest } from "./clients/task-client.js";
 import { TimerClient } from "./clients/timer-client.js";
 import { TransactionClient } from "./clients/transaction-client.js";
 import { WorkflowClient } from "./clients/workflow-client.js";
@@ -53,7 +50,7 @@ import { createEvent } from "./workflow-events.js";
 import { WorkflowCall } from "./workflow-executor.js";
 
 interface WorkflowCallExecutorProps {
-  activityClient: ActivityClient;
+  taskClient: TaskClient;
   entityClient: EntityClient;
   eventClient: EventClient;
   executionQueueClient: ExecutionQueueClient;
@@ -74,8 +71,8 @@ export class WorkflowCallExecutor {
     call: WorkflowCall,
     baseTime: Date
   ): Promise<HistoryStateEvent | undefined> {
-    if (isActivityCall(call.call)) {
-      return await this.scheduleActivity(
+    if (isTaskCall(call.call)) {
+      return await this.scheduleTask(
         workflow,
         executionId,
         call.call,
@@ -117,29 +114,29 @@ export class WorkflowCallExecutor {
     }
   }
 
-  private async scheduleActivity(
+  private async scheduleTask(
     workflow: Workflow,
     executionId: string,
-    call: ActivityCall,
+    call: TaskCall,
     seq: number,
     baseTime: Date
   ) {
-    const request: ActivityWorkerRequest = {
+    const request: TaskWorkerRequest = {
       scheduledTime: baseTime.toISOString(),
       workflowName: workflow.name,
       executionId,
       input: call.input,
-      activityName: call.name,
+      taskName: call.name,
       seq,
       heartbeat: call.heartbeat,
       retry: 0,
     };
 
-    await this.props.activityClient.startActivity(request);
+    await this.props.taskClient.startTask(request);
 
-    return createEvent<ActivityScheduled>(
+    return createEvent<TaskScheduled>(
       {
-        type: WorkflowEventType.ActivityScheduled,
+        type: WorkflowEventType.TaskScheduled,
         seq,
         name: call.name,
       },

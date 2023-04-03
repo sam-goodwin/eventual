@@ -1,17 +1,17 @@
 import {
-  ActivityFallbackRequest,
-  ActivityFallbackRequestType,
-  ActivityWorkerRequest,
-  createActivityFallbackHandler,
+  TaskFallbackRequest,
+  TaskFallbackRequestType,
+  TaskWorkerRequest,
+  createTaskFallbackHandler,
 } from "@eventual/core-runtime";
 import { createExecutionQueueClient } from "../create.js";
 
-const handler = createActivityFallbackHandler({
+const handler = createTaskFallbackHandler({
   executionQueueClient: createExecutionQueueClient(),
 });
 
 interface ErrorHandlerRequest {
-  requestPayload: ActivityWorkerRequest;
+  requestPayload: TaskWorkerRequest;
   responsePayload: {
     errorMessage: string;
   };
@@ -22,12 +22,12 @@ export default async (lambdaRequest: ErrorHandlerRequest) => {
   try {
     const parsed = JSON.parse(
       lambdaRequest.responsePayload.errorMessage
-    ) as ActivityFallbackRequest;
+    ) as TaskFallbackRequest;
     return handler(parsed, lambdaRequest.requestPayload);
   } catch (err) {
     return handler(
       {
-        type: ActivityFallbackRequestType.ActivitySystemFailure,
+        type: TaskFallbackRequestType.TaskSystemFailure,
         errorMessage: lambdaRequest.responsePayload.errorMessage,
       },
       lambdaRequest.requestPayload

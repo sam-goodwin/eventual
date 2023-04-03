@@ -11,11 +11,11 @@ import { Function } from "aws-cdk-lib/aws-lambda";
 import { SqsEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { IQueue, Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
-import { ActivityService } from "./activity-service";
 import { grant } from "./grant";
 import { LazyInterface } from "./proxy-construct";
 import { ServiceConstructProps } from "./service";
 import { ServiceFunction } from "./service-function";
+import type { TaskService } from "./task-service.js";
 import { serviceFunctionArn } from "./utils";
 import { WorkflowService } from "./workflow-service";
 
@@ -26,9 +26,9 @@ export interface SchedulerProps extends ServiceConstructProps {
    */
   workflowService: LazyInterface<WorkflowService>;
   /**
-   * Used by the activity heartbeat monitor to retrieve heartbeat data.
+   * Used by the task heartbeat monitor to retrieve heartbeat data.
    */
-  activityService: LazyInterface<ActivityService>;
+  taskService: LazyInterface<TaskService>;
 }
 
 /**
@@ -192,8 +192,8 @@ export class SchedulerService {
   private configureHandler() {
     // to support the ScheduleEventRequest
     this.props.workflowService.configureSubmitExecutionEvents(this.handler);
-    // to lookup activity heartbeat time
-    this.props.activityService.configureReadActivities(this.handler);
+    // to lookup task heartbeat time
+    this.props.taskService.configureReadTasks(this.handler);
     // to re-schedule a new timer on heartbeat check success
     this.configureScheduleTimer(this.handler);
     // logs to the execution

@@ -33,7 +33,6 @@ import { inspect } from "util";
 import { MetricsClient } from "../clients/metrics-client.js";
 import type { TimerClient } from "../clients/timer-client.js";
 import type { WorkflowClient } from "../clients/workflow-client.js";
-import type { WorkflowCallExecutor } from "../workflow-call-executor.js";
 import { hookConsole, restoreConsole } from "../console-hook.js";
 import { hookDate, restoreDate } from "../date-hook.js";
 import { isExecutionId, parseWorkflowName } from "../execution.js";
@@ -51,6 +50,7 @@ import { isFailed, normalizeError, normalizeFailedResult } from "../result.js";
 import type { ExecutionHistoryStore } from "../stores/execution-history-store.js";
 import type { WorkflowTask } from "../tasks.js";
 import { groupBy } from "../utils.js";
+import type { WorkflowCallExecutor } from "../workflow-call-executor.js";
 import { createEvent } from "../workflow-events.js";
 import { WorkflowExecutor } from "../workflow-executor.js";
 
@@ -278,8 +278,8 @@ export async function orchestrateExecution(
     if (maxTaskAge) {
       // tracks the time it takes for a workflow task to be scheduled until new calls could be emitted.
       // This represent the workflow orchestration time of User Perceived Latency
-      // Average expected time for an activity to be invoked until it is considered complete by the workflow should follow:
-      // AvgActivityDuration(N) = Avg(TimeToCallsInvoked) + Avg(ActivityDuration(N))
+      // Average expected time for an task to be invoked until it is considered complete by the workflow should follow:
+      // AvgTaskDuration(N) = Avg(TimeToCallsInvoked) + Avg(TaskDuration(N))
       metrics?.putMetric(
         OrchestratorMetrics.TimeToCallsInvoked,
         maxTaskAge + (new Date().getTime() - executionTime.getTime())

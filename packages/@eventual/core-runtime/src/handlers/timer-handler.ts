@@ -1,26 +1,26 @@
 import { LogLevel, Schedule } from "@eventual/core";
 import {
-  ActivityHeartbeatTimedOut,
-  assertNever,
+  TaskHeartbeatTimedOut,
   WorkflowEventType,
+  assertNever,
 } from "@eventual/core/internal";
 import type { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import {
-  isActivityHeartbeatMonitorRequest,
-  isTimerScheduleEventRequest,
   TimerClient,
   TimerRequest,
   TimerRequestType,
+  isTaskHeartbeatMonitorRequest,
+  isTimerScheduleEventRequest,
 } from "../clients/timer-client.js";
 import type { LogAgent } from "../log-agent.js";
-import type { ActivityStore } from "../stores/activity-store.js";
+import type { TaskStore } from "../stores/task-store.js";
 import { createEvent } from "../workflow-events.js";
 
 interface TimerHandlerProps {
   timerClient: TimerClient;
   logAgent: LogAgent;
   executionQueueClient: ExecutionQueueClient;
-  activityStore: ActivityStore;
+  taskStore: TaskStore;
   baseTime?: () => Date;
 }
 
@@ -35,7 +35,7 @@ export interface TimerHandler {
  * inject its own client implementations designed for that platform.
  */
 export function createTimerHandler({
-  activityStore,
+  taskStore,
   executionQueueClient,
   logAgent,
   timerClient,
@@ -54,47 +54,40 @@ export function createTimerHandler({
           request.executionId,
           request.event
         );
-      } else if (isActivityHeartbeatMonitorRequest(request)) {
-        const activity = await activityStore.get(
-          request.executionId,
-          request.activitySeq
-        );
+      } else if (isTaskHeartbeatMonitorRequest(request)) {
+        const task = await taskStore.get(request.executionId, request.taskSeq);
 
         logAgent.logWithContext(
           { executionId: request.executionId },
           LogLevel.DEBUG,
-          () => [
-            `Checking activity for heartbeat timeout: ${JSON.stringify(
-              activity
-            )}`,
-          ]
+          () => [`Checking task for heartbeat timeout: ${JSON.stringify(task)}`]
         );
 
-        // the activity has not sent a heartbeat or the last time was too long ago.
+        // the task has not sent a heartbeat or the last time was too long ago.
         // Send the timeout event to the workflow.
         if (
-          !activity?.heartbeatTime ||
+          !task?.heartbeatTime ||
           isHeartbeatTimeElapsed(
-            activity.heartbeatTime,
+            task.heartbeatTime,
             request.heartbeatSeconds,
             baseTime()
           )
         ) {
           return executionQueueClient.submitExecutionEvents(
             request.executionId,
-            createEvent<ActivityHeartbeatTimedOut>(
+            createEvent<TaskHeartbeatTimedOut>(
               {
-                type: WorkflowEventType.ActivityHeartbeatTimedOut,
-                seq: request.activitySeq,
+                type: WorkflowEventType.TaskHeartbeatTimedOut,
+                seq: request.taskSeq,
               },
               baseTime()
             )
           );
         } else {
-          // activity heartbeat has not timed out, start a new monitor instance
+          // task heartbeat has not timed out, start a new monitor instance
           await timerClient.startTimer({
-            type: TimerRequestType.ActivityHeartbeatMonitor,
-            activitySeq: request.activitySeq,
+            type: TimerRequestType.TaskHeartbeatMonitor,
+            taskSeq: request.taskSeq,
             executionId: request.executionId,
             heartbeatSeconds: request.heartbeatSeconds,
             schedule: Schedule.duration(request.heartbeatSeconds),

@@ -11,9 +11,9 @@ import {
   ListExecutionsResponse,
   ListWorkflowsResponse,
   PublishEventsRequest,
-  SendActivityFailureRequest,
-  SendActivityHeartbeatResponse,
-  SendActivitySuccessRequest,
+  SendTaskFailureRequest,
+  SendTaskHeartbeatResponse,
+  SendTaskSuccessRequest,
   SendSignalRequest,
   StartExecutionRequest,
   Transaction,
@@ -22,7 +22,7 @@ import {
 import {
   EventualService,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
-  SendActivityHeartbeatRequest,
+  SendTaskHeartbeatRequest,
 } from "@eventual/core/internal";
 import { HttpServiceClientProps } from "./base-http-client.js";
 import { ServiceClient } from "./service-client.js";
@@ -109,31 +109,29 @@ export class HttpEventualClient implements EventualServiceClient {
     return this.serviceClient.publishEvents(request);
   }
 
-  public async sendActivitySuccess(
-    request: SendActivitySuccessRequest<any>
+  public async sendTaskSuccess(
+    request: SendTaskSuccessRequest<any>
   ): Promise<void> {
-    return (await this.serviceClient.updateActivity({
+    return (await this.serviceClient.updateTask({
       ...request,
       type: "Success",
     })) as void;
   }
 
-  public async sendActivityFailure(
-    request: SendActivityFailureRequest
-  ): Promise<void> {
-    return (await this.serviceClient.updateActivity({
+  public async sendTaskFailure(request: SendTaskFailureRequest): Promise<void> {
+    return (await this.serviceClient.updateTask({
       ...request,
       type: "Failure",
     })) as void;
   }
 
-  public async sendActivityHeartbeat(
-    request: SendActivityHeartbeatRequest
-  ): Promise<SendActivityHeartbeatResponse> {
-    return (await this.serviceClient.updateActivity({
+  public async sendTaskHeartbeat(
+    request: SendTaskHeartbeatRequest
+  ): Promise<SendTaskHeartbeatResponse> {
+    return (await this.serviceClient.updateTask({
       ...request,
       type: "Heartbeat",
-    })) as SendActivityHeartbeatResponse;
+    })) as SendTaskHeartbeatResponse;
   }
 
   public async executeTransaction<T extends Transaction<any, any>>(

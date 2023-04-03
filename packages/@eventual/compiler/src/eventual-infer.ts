@@ -6,12 +6,12 @@
  */
 import { generateSchema } from "@anatine/zod-openapi";
 import {
-  activities,
+  ServiceSpec,
   commands,
   entities,
   events,
-  ServiceSpec,
   subscriptions,
+  tasks,
   transactions,
   workflows,
 } from "@eventual/core/internal";
@@ -20,8 +20,8 @@ import {
   ExportDeclaration,
   Expression,
   ModuleDeclaration,
-  parseFile,
   TsType,
+  parseFile,
 } from "@swc/core";
 import { Visitor } from "@swc/core/Visitor.js";
 import crypto from "crypto";
@@ -31,12 +31,12 @@ import os from "os";
 import path from "path";
 import {
   getSpan,
-  isActivityCall,
   isCommandCall,
   isEntityStreamCall,
   isEntityStreamMemberCall,
   isOnEventCall,
   isSubscriptionCall,
+  isTaskCall,
 } from "./ast-util.js";
 import { printModule } from "./print-module.js";
 
@@ -68,10 +68,10 @@ export async function infer(
 
   const serviceSpec: ServiceSpec = {
     workflows: [...workflows().keys()].map((n) => ({ name: n })),
-    activities: Object.values(activities()).map((activity) => ({
-      name: activity.name,
-      sourceLocation: activity.sourceLocation,
-      options: activity.options,
+    tasks: Object.values(tasks()).map((task) => ({
+      name: task.name,
+      sourceLocation: task.sourceLocation,
+      options: task.options,
     })),
     events: Array.from(events().values()).map((event) => ({
       name: event.name,
@@ -201,7 +201,7 @@ export class InferVisitor extends Visitor {
       (isCommandCall(call) ||
         isOnEventCall(call) ||
         isSubscriptionCall(call) ||
-        isActivityCall(call) ||
+        isTaskCall(call) ||
         isEntityStreamMemberCall(call) ||
         isEntityStreamCall(call))
     ) {

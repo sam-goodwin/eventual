@@ -1,4 +1,4 @@
-export const sampleServiceCode = `import { event, activity, workflow, command, HttpResponse } from "@eventual/core";
+export const sampleServiceCode = `import { event, task, workflow, command, HttpResponse } from "@eventual/core";
 
 export const work = command("work", async (items: string[]) => {
   const { executionId } = await myWorkflow.startExecution({
@@ -18,7 +18,7 @@ export const myWorkflow = workflow("myWorkflow", async (items: string[]) => {
   return results;
 });
 
-export const doWork = activity("work", async (work: string) => {
+export const doWork = task("work", async (work: string) => {
   console.log("Doing Work", work);
 
   return work.length;

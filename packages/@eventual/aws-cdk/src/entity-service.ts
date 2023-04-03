@@ -140,7 +140,7 @@ export class EntityService<Service> {
   }
 
   public grantReadWriteEntityTables(grantee: IGrantable) {
-    // grants the permission to start any activity
+    // grants the permission to start any task
     grantee.grantPrincipal.addToPrincipalPolicy(
       new PolicyStatement({
         actions: [

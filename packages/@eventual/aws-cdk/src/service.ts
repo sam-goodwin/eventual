@@ -2,7 +2,7 @@ import { IHttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { Event } from "@eventual/core";
 import { MetricsCommon, OrchestratorMetrics } from "@eventual/core-runtime";
-import { Arn, aws_events, aws_events_targets, Names, Stack } from "aws-cdk-lib";
+import { Arn, Names, Stack, aws_events, aws_events_targets } from "aws-cdk-lib";
 import {
   Metric,
   MetricOptions,
@@ -25,25 +25,19 @@ import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
 import openapi from "openapi3-ts";
 import path from "path";
-import {
-  Activity,
-  ActivityOverrides,
-  ActivityService,
-  ServiceActivities,
-} from "./activity-service.js";
 import { BuildOutput, buildServiceSync } from "./build";
 import {
   CommandProps,
-  Commands,
   CommandService,
+  Commands,
   CorsOptions,
 } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal.js";
 import {
-  EntityStream,
-  EntityStreamOverrides,
   EntityService,
   EntityServiceProps,
+  EntityStream,
+  EntityStreamOverrides,
   ServiceEntities,
   ServiceEntityStreams,
 } from "./entity-service.js";
@@ -56,6 +50,12 @@ import {
   SubscriptionOverrides,
   Subscriptions,
 } from "./subscriptions";
+import {
+  ServiceTasks,
+  Task,
+  TaskOverrides,
+  TaskService,
+} from "./task-service.js";
 import { WorkflowService, WorkflowServiceOverrides } from "./workflow-service";
 
 /**
@@ -86,15 +86,15 @@ export interface ServiceProps<Service = any> {
    */
   name?: string;
   /**
-   * Environment variables to include in all API, Event and Activity handler Functions.
+   * Environment variables to include in all API, Event and Task handler Functions.
    */
   environment?: {
     [key: string]: string;
   };
   /**
-   * Override Properties of the Activity handlers within the service.
+   * Override Properties of the Task handlers within the service.
    */
-  activities?: ActivityOverrides<Service>;
+  tasks?: TaskOverrides<Service>;
   /**
    * Override properties of Command Functions within the Service.
    */
@@ -121,7 +121,7 @@ export interface ServiceSystem<S> {
    * The subsystem that controls workflows.
    */
   readonly workflowService: WorkflowService;
-  readonly activityService: ActivityService<S>;
+  readonly taskService: TaskService<S>;
   /**`
    * The subsystem for schedules and timers.
    */
@@ -148,9 +148,9 @@ export interface ServiceLocal {
 
 export class Service<S = any> extends Construct {
   /**
-   * The subsystem that controls activities.
+   * The subsystem that controls tasks.
    */
-  public readonly activities: ServiceActivities<S>;
+  public readonly tasks: ServiceTasks<S>;
   /**
    * Bus which transports events in and out of the service.
    */
@@ -190,7 +190,7 @@ export class Service<S = any> extends Construct {
 
   public grantPrincipal: IPrincipal;
   public commandsPrincipal: IPrincipal;
-  public activitiesPrincipal: IPrincipal;
+  public tasksPrincipal: IPrincipal;
   public subscriptionsPrincipal: IPrincipal;
   public entityStreamPrincipal: IPrincipal;
 
@@ -231,7 +231,7 @@ export class Service<S = any> extends Construct {
 
     const proxySchedulerService = lazyInterface<SchedulerService>();
     const proxyWorkflowService = lazyInterface<WorkflowService>();
-    const proxyActivityService = lazyInterface<ActivityService<S>>();
+    const proxyTaskService = lazyInterface<TaskService<S>>();
     const proxyService = lazyInterface<Service<S>>();
     const proxyCommandService = lazyInterface<CommandService<S>>();
 
@@ -259,20 +259,20 @@ export class Service<S = any> extends Construct {
     this.entities = entityService.entities;
     this.entityStreams = entityService.entityStreams;
 
-    const activityService = new ActivityService<S>({
+    const taskService = new TaskService<S>({
       ...serviceConstructProps,
       schedulerService: proxySchedulerService,
       workflowService: proxyWorkflowService,
       commandsService: proxyCommandService,
-      overrides: props.activities,
+      overrides: props.tasks,
       local: this.local,
       entityService,
     });
-    proxyActivityService._bind(activityService);
-    this.activities = activityService.activities;
+    proxyTaskService._bind(taskService);
+    this.tasks = taskService.tasks;
 
     const workflowService = new WorkflowService({
-      activityService: activityService,
+      taskService: taskService,
       eventService: this.eventService,
       schedulerService: proxySchedulerService,
       overrides: props.system?.workflowService,
@@ -283,14 +283,14 @@ export class Service<S = any> extends Construct {
     this.workflowLogGroup = workflowService.logGroup;
 
     const scheduler = new SchedulerService({
-      activityService: activityService,
+      taskService: taskService,
       workflowService: workflowService,
       ...serviceConstructProps,
     });
     proxySchedulerService._bind(scheduler);
 
     this.commandService = new CommandService({
-      activityService: activityService,
+      taskService: taskService,
       overrides: props.commands,
       eventService: this.eventService,
       workflowService: workflowService,
@@ -338,11 +338,11 @@ export class Service<S = any> extends Construct {
             ...this.commandsList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });
-    this.activitiesPrincipal =
-      this.activitiesList.length > 0 || this.local
+    this.tasksPrincipal =
+      this.tasksList.length > 0 || this.local
         ? new DeepCompositePrincipal(
             ...(this.local ? [this.local.environmentRole] : []),
-            ...this.activitiesList.map((f) => f.grantPrincipal)
+            ...this.tasksList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });
     this.subscriptionsPrincipal =
@@ -361,7 +361,7 @@ export class Service<S = any> extends Construct {
         : new UnknownPrincipal({ resource: this });
     this.grantPrincipal = new DeepCompositePrincipal(
       this.commandsPrincipal,
-      this.activitiesPrincipal,
+      this.tasksPrincipal,
       this.subscriptionsPrincipal,
       this.entityStreamPrincipal
     );
@@ -369,7 +369,7 @@ export class Service<S = any> extends Construct {
     serviceDataSSM.grantRead(accessRole);
     this.system = {
       accessRole: accessRole,
-      activityService,
+      taskService,
       build,
       entityService,
       schedulerService: scheduler,
@@ -380,8 +380,8 @@ export class Service<S = any> extends Construct {
     proxyService._bind(this);
   }
 
-  public get activitiesList(): Activity[] {
-    return Object.values(this.activities);
+  public get tasksList(): Task[] {
+    return Object.values(this.tasks);
   }
 
   public get commandsList(): EventualResource[] {
@@ -413,15 +413,13 @@ export class Service<S = any> extends Construct {
   }
 
   /**
-   * Add an environment variable to the Activity, API, Event and Workflow handler Functions.
+   * Add an environment variable to the Task, API, Event and Workflow handler Functions.
    *
    * @param key The environment variable key.
    * @param value The environment variable's value.
    */
   public addEnvironment(key: string, value: string): void {
-    this.activitiesList.forEach(({ handler }) =>
-      handler.addEnvironment(key, value)
-    );
+    this.tasksList.forEach(({ handler }) => handler.addEnvironment(key, value));
     this.commandsList.forEach(({ handler }) =>
       handler.addEnvironment(key, value)
     );
@@ -477,17 +475,17 @@ export class Service<S = any> extends Construct {
     this.commandService.grantInvokeHttpServiceApi(grantable);
   }
 
-  public configureUpdateActivity(func: Function) {
-    // complete activities
-    this.system.activityService.configureCompleteActivity(func);
+  public configureUpdateTask(func: Function) {
+    // complete tasks
+    this.system.taskService.configureCompleteTask(func);
     // cancel
-    this.system.activityService.configureWriteActivities(func);
+    this.system.taskService.configureWriteTasks(func);
     // heartbeat
-    this.system.activityService.configureSendHeartbeat(func);
+    this.system.taskService.configureSendHeartbeat(func);
   }
 
   public configureForServiceClient(func: Function) {
-    this.configureUpdateActivity(func);
+    this.configureUpdateTask(func);
     this.configurePublishEvents(func);
     this.configureReadExecutions(func);
     this.configureSendSignal(func);

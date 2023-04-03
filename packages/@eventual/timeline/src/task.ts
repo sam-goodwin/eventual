@@ -1,10 +1,10 @@
 import {
   HistoryStateEvent,
   WorkflowStarted,
+  isTaskFailed,
+  isTaskScheduled,
+  isTaskSucceeded,
   isWorkflowStarted,
-  isActivityScheduled,
-  isActivitySucceeded,
-  isActivityFailed,
 } from "@eventual/core/internal";
 
 export interface Succeeded {
@@ -21,7 +21,7 @@ export interface InProgress {
   status: "inprogress";
 }
 
-export type ActivityState = Succeeded | Failed | InProgress;
+export type TaskState = Succeeded | Failed | InProgress;
 
 /**
  * Start and end are expected to be in ms
@@ -40,48 +40,48 @@ export function getDuration({ start, end }: Timespan): number {
   return end - start;
 }
 
-export function isCompleted(state: ActivityState): state is Succeeded {
+export function isCompleted(state: TaskState): state is Succeeded {
   return state.status === "succeeded";
 }
 
-export function isFailed(state: ActivityState): state is Failed {
+export function isFailed(state: TaskState): state is Failed {
   return state.status === "failed";
 }
 
-export interface TimelineActivity {
-  type: "activity";
+export interface TimelineTask {
+  type: "task";
   seq: number;
   name: string;
   start: number;
-  state: ActivityState;
+  state: TaskState;
 }
 
-export function endTime(activity: TimelineActivity): number | undefined {
-  const { state } = activity;
+export function endTime(task: TimelineTask): number | undefined {
+  const { state } = task;
   return isCompleted(state) || isFailed(state) ? state.end : undefined;
 }
 
 export function aggregateEvents(events: HistoryStateEvent[]): {
   start: WorkflowStarted;
-  activities: TimelineActivity[];
+  tasks: TimelineTask[];
 } {
   let start: WorkflowStarted | undefined;
-  const activities: Record<number, TimelineActivity> = [];
+  const tasks: Record<number, TimelineTask> = [];
   events.forEach((event) => {
     if (isWorkflowStarted(event)) {
       start = event;
-    } else if (isActivityScheduled(event)) {
-      activities[event.seq] = {
-        type: "activity",
+    } else if (isTaskScheduled(event)) {
+      tasks[event.seq] = {
+        type: "task",
         name: event.name,
         seq: event.seq,
         start: new Date(event.timestamp).getTime(),
         state: { status: "inprogress" },
       };
-    } else if (isActivitySucceeded(event)) {
-      const existingActivity = activities[event.seq];
-      if (existingActivity) {
-        existingActivity.state = {
+    } else if (isTaskSucceeded(event)) {
+      const existingTask = tasks[event.seq];
+      if (existingTask) {
+        existingTask.state = {
           status: "succeeded",
           end: new Date(event.timestamp).getTime(),
         };
@@ -90,10 +90,10 @@ export function aggregateEvents(events: HistoryStateEvent[]): {
           `Warning: Found completion event without matching scheduled event: ${event}`
         );
       }
-    } else if (isActivityFailed(event)) {
-      const existingActivity = activities[event.seq];
-      if (existingActivity) {
-        existingActivity.state = {
+    } else if (isTaskFailed(event)) {
+      const existingTask = tasks[event.seq];
+      if (existingTask) {
+        existingTask.state = {
           status: "failed",
           end: new Date(event.timestamp).getTime(),
         };
@@ -107,5 +107,5 @@ export function aggregateEvents(events: HistoryStateEvent[]): {
   if (!start) {
     throw new Error("Failed to find WorkflowStarted event!");
   }
-  return { start, activities: Object.values(activities) };
+  return { start, tasks: Object.values(tasks) };
 }

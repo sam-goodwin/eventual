@@ -1,9 +1,6 @@
-import {
-  activityServiceFunctionSuffix,
-  ENV_NAMES,
-} from "@eventual/aws-runtime";
-import type { ActivityFunction } from "@eventual/core-runtime";
-import { aws_iam, Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
+import { ENV_NAMES, taskServiceFunctionSuffix } from "@eventual/aws-runtime";
+import type { TaskFunction } from "@eventual/core-runtime";
+import { Duration, RemovalPolicy, Stack, aws_iam } from "aws-cdk-lib";
 import {
   AttributeType,
   BillingMode,
@@ -30,51 +27,44 @@ import { ServiceFunction } from "./service-function";
 import { ServiceEntityProps, serviceFunctionArn } from "./utils";
 import { WorkflowService } from "./workflow-service";
 
-export type ServiceActivities<Service> = ServiceEntityProps<
-  Service,
-  "Activity",
-  Activity
->;
+export type ServiceTasks<Service> = ServiceEntityProps<Service, "Task", Task>;
 
-export type ActivityOverrides<Service> = {
-  default?: ActivityHandlerProps;
-} & Partial<ServiceEntityProps<Service, "Activity", ActivityHandlerProps>>;
+export type TaskOverrides<Service> = {
+  default?: TaskHandlerProps;
+} & Partial<ServiceEntityProps<Service, "Task", TaskHandlerProps>>;
 
-export interface ActivitiesProps<Service> extends ServiceConstructProps {
+export interface TasksProps<Service> extends ServiceConstructProps {
   readonly commandsService: LazyInterface<CommandService<Service>>;
   readonly entityService: EntityService<Service>;
   readonly local: ServiceLocal | undefined;
-  readonly overrides?: ActivityOverrides<Service>;
+  readonly overrides?: TaskOverrides<Service>;
   readonly schedulerService: LazyInterface<SchedulerService>;
   readonly workflowService: LazyInterface<WorkflowService>;
 }
 
 /**
- * Subsystem which supports durable activities.
+ * Subsystem which supports durable tasks.
  *
- * Activities are started by the {@link Workflow.orchestrator} and send back {@link WorkflowEvent}s on completion.
+ * Tasks are started by the {@link Workflow.orchestrator} and send back {@link WorkflowEvent}s on completion.
  */
-export class ActivityService<Service = any> {
+export class TaskService<Service = any> {
   /**
-   * Table which contains activity information for claiming, heartbeat, and cancellation.
+   * Table which contains task information for claiming, heartbeat, and cancellation.
    */
   public table: ITable;
   /**
-   * Function which executes all activities. The worker is invoked by the {@link WorkflowService.orchestrator}.
+   * Function which executes all tasks. The worker is invoked by the {@link WorkflowService.orchestrator}.
    */
-  public activities: ServiceActivities<Service>;
+  public tasks: ServiceTasks<Service>;
   /**
-   * Function which is executed when an activity worker returns a failure.
+   * Function which is executed when an task worker returns a failure.
    */
   public fallbackHandler: Function;
 
-  constructor(private props: ActivitiesProps<Service>) {
-    const activityServiceScope = new Construct(
-      props.systemScope,
-      "ActivityService"
-    );
+  constructor(private props: TasksProps<Service>) {
+    const taskServiceScope = new Construct(props.systemScope, "TaskService");
 
-    this.table = new Table(activityServiceScope, "Table", {
+    this.table = new Table(taskServiceScope, "Table", {
       billingMode: BillingMode.PAY_PER_REQUEST,
       partitionKey: {
         name: "pk",
@@ -85,59 +75,59 @@ export class ActivityService<Service = any> {
     });
 
     this.fallbackHandler = new ServiceFunction(
-      activityServiceScope,
+      taskServiceScope,
       "FallbackHandler",
       {
-        bundledFunction: props.build.system.activityService.fallbackHandler,
+        bundledFunction: props.build.system.taskService.fallbackHandler,
         build: props.build,
-        functionNameSuffix: activityServiceFunctionSuffix(
+        functionNameSuffix: taskServiceFunctionSuffix(
           `internal-fallback-handler`
         ),
         serviceName: props.serviceName,
       }
     );
 
-    const activityScope = new Construct(props.serviceScope, "Activities");
-    this.activities = Object.fromEntries(
-      props.build.activities.map((act) => {
-        const activity = new Activity(activityScope, act.spec.name, {
-          activity: act,
+    const taskScope = new Construct(props.serviceScope, "Tasks");
+    this.tasks = Object.fromEntries(
+      props.build.tasks.map((t) => {
+        const task = new Task(taskScope, t.spec.name, {
+          task: t,
           build: props.build,
-          codeFile: act.entry,
+          codeFile: t.entry,
           fallbackHandler: this.fallbackHandler,
           serviceName: this.props.serviceName,
           environment: this.props.environment,
           overrides:
             props.overrides?.[
-              act.spec.name as keyof ServiceEntityProps<
+              t.spec.name as keyof ServiceEntityProps<
                 Service,
-                "Activity",
-                ActivityHandlerProps
+                "Task",
+                TaskHandlerProps
               >
             ],
           local: this.props.local,
         });
 
-        this.configureActivityWorker(activity.handler);
+        this.configureTaskWorker(task.handler);
 
-        return [act.spec.name, activity] as const;
+        return [t.spec.name, task] as const;
       })
-    ) as ServiceActivities<Service>;
+    ) as ServiceTasks<Service>;
 
-    this.configureActivityFallbackHandler();
+    this.configureTaskFallbackHandler();
   }
 
   /**
-   * Activity Client
+   * Task Client
    */
 
-  public configureStartActivity(func: Function) {
-    this.grantStartActivity(func);
+  public configureStartTask(func: Function) {
+    this.grantStartTask(func);
   }
 
   @grant()
-  public grantStartActivity(grantable: IGrantable) {
-    // grants the permission to start any activity
+  public grantStartTask(grantable: IGrantable) {
+    // grants the permission to start any task
     grantable.grantPrincipal.addToPrincipalPolicy(
       new PolicyStatement({
         actions: ["lambda:InvokeFunction"],
@@ -145,13 +135,13 @@ export class ActivityService<Service = any> {
           serviceFunctionArn(
             this.props.serviceName,
             Stack.of(this.props.systemScope),
-            "activity-*",
+            "task-*",
             false
           ),
           serviceFunctionArn(
             this.props.serviceName,
             Stack.of(this.props.systemScope),
-            "activity-*:*",
+            "task-*:*",
             false
           ),
         ],
@@ -161,69 +151,69 @@ export class ActivityService<Service = any> {
 
   public configureSendHeartbeat(func: Function) {
     this.props.workflowService.configureReadExecutions(func);
-    this.configureWriteActivities(func);
+    this.configureWriteTasks(func);
   }
 
   @grant()
   public grantSendHeartbeat(grantable: IGrantable) {
     this.props.workflowService.grantReadExecutions(grantable);
-    this.grantWriteActivities(grantable);
+    this.grantWriteTasks(grantable);
   }
 
-  public configureCompleteActivity(func: Function) {
+  public configureCompleteTask(func: Function) {
     this.props.workflowService.configureSubmitExecutionEvents(func);
-    this.grantCompleteActivity(func);
+    this.grantCompleteTask(func);
   }
 
   @grant()
-  public grantCompleteActivity(grantable: IGrantable) {
+  public grantCompleteTask(grantable: IGrantable) {
     this.props.workflowService.grantSubmitExecutionEvents(grantable);
   }
 
   /**
-   * Activity Store Configuration
+   * Task Store Configuration
    */
 
-  public configureReadActivities(func: Function) {
-    this.grantReadActivities(func);
-    this.addEnvs(func, ENV_NAMES.ACTIVITY_TABLE_NAME);
+  public configureReadTasks(func: Function) {
+    this.grantReadTasks(func);
+    this.addEnvs(func, ENV_NAMES.TASK_TABLE_NAME);
   }
 
   @grant()
-  public grantReadActivities(grantable: IGrantable) {
+  public grantReadTasks(grantable: IGrantable) {
     this.table.grantReadData(grantable);
   }
 
-  public configureWriteActivities(func: Function) {
-    this.grantWriteActivities(func);
-    this.addEnvs(func, ENV_NAMES.ACTIVITY_TABLE_NAME);
+  public configureWriteTasks(func: Function) {
+    this.grantWriteTasks(func);
+    this.addEnvs(func, ENV_NAMES.TASK_TABLE_NAME);
   }
 
   @grant()
-  public grantWriteActivities(grantable: IGrantable) {
+  public grantWriteTasks(grantable: IGrantable) {
     this.table.grantWriteData(grantable);
   }
 
   public configureFullControl(func: Function): void {
-    this.configureStartActivity(func);
+    this.configureStartTask(func);
     this.configureSendHeartbeat(func);
-    this.configureCompleteActivity(func);
-    this.configureReadActivities(func);
-    this.configureWriteActivities(func);
+    this.configureCompleteTask(func);
+    this.configureReadTasks(func);
+    this.configureWriteTasks(func);
   }
 
   @grant()
   public grantFullControl(grantable: IGrantable): void {
-    this.grantStartActivity(grantable);
+    this.grantStartTask(grantable);
     this.grantSendHeartbeat(grantable);
-    this.grantCompleteActivity(grantable);
-    this.grantReadActivities(grantable);
-    this.grantWriteActivities(grantable);
+    this.grantCompleteTask(grantable);
+    this.grantReadTasks(grantable);
+    this.grantWriteTasks(grantable);
   }
 
-  private configureActivityWorker(func: Function) {
-    // claim activities
-    this.configureWriteActivities(func);
+  private configureTaskWorker(func: Function) {
+    // claim tasks
+    this.configureWriteTasks(func);
     // report result back to the execution
     this.props.workflowService.configureSubmitExecutionEvents(func);
     // send logs to the execution log stream
@@ -235,7 +225,7 @@ export class ActivityService<Service = any> {
     this.props.service.configureForServiceClient(func);
     this.props.commandsService.configureInvokeHttpServiceApi(func);
     /**
-     * Access to service name in the activity worker for metrics logging
+     * Access to service name in the task worker for metrics logging
      */
     this.props.service.configureServiceName(func);
     /**
@@ -246,7 +236,7 @@ export class ActivityService<Service = any> {
     this.props.entityService.configureInvokeTransactions(func);
   }
 
-  private configureActivityFallbackHandler() {
+  private configureTaskFallbackHandler() {
     // report result back to the execution
     this.props.workflowService.configureSubmitExecutionEvents(
       this.fallbackHandler
@@ -254,7 +244,7 @@ export class ActivityService<Service = any> {
   }
 
   private readonly ENV_MAPPINGS = {
-    [ENV_NAMES.ACTIVITY_TABLE_NAME]: () => this.table.tableName,
+    [ENV_NAMES.TASK_TABLE_NAME]: () => this.table.tableName,
   } as const;
 
   private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {
@@ -262,37 +252,35 @@ export class ActivityService<Service = any> {
   }
 }
 
-export interface ActivityHandlerProps
+export interface TaskHandlerProps
   extends Omit<
     Partial<FunctionProps>,
     "code" | "handler" | "functionName" | "onFailure" | "retryAttempts"
   > {}
 
-export interface ActivityProps {
+export interface TaskProps {
   build: BuildOutput;
-  activity: ActivityFunction;
+  task: TaskFunction;
   codeFile: string;
   environment?: Record<string, string>;
   serviceName: string;
   fallbackHandler: Function;
-  overrides?: ActivityHandlerProps;
+  overrides?: TaskHandlerProps;
   local?: ServiceLocal;
 }
 
-export class Activity extends Construct implements EventualResource {
+export class Task extends Construct implements EventualResource {
   public handler: Function;
   public grantPrincipal: aws_iam.IPrincipal;
 
-  constructor(scope: Construct, id: string, props: ActivityProps) {
+  constructor(scope: Construct, id: string, props: TaskProps) {
     super(scope, id);
 
     this.handler = new ServiceFunction(this, "Worker", {
       build: props.build,
       serviceName: props.serviceName,
-      bundledFunction: props.activity,
-      functionNameSuffix: activityServiceFunctionSuffix(
-        props.activity.spec.name
-      ),
+      bundledFunction: props.task,
+      functionNameSuffix: taskServiceFunctionSuffix(props.task.spec.name),
       defaults: {
         timeout: Duration.minutes(1),
         // retry attempts should be handled with a new request and a new retry count in accordance with the user's retry policy.
@@ -301,7 +289,7 @@ export class Activity extends Construct implements EventualResource {
         onFailure: new LambdaDestination(props.fallbackHandler),
         environment: props.environment,
       },
-      runtimeProps: props.activity.spec.options,
+      runtimeProps: props.task.spec.options,
       overrides: props.overrides,
     });
 

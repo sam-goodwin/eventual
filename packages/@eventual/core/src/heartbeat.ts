@@ -1,34 +1,32 @@
-import { isActivityWorker } from "./internal/flags.js";
-import { getActivityContext, getServiceClient } from "./internal/global.js";
-import type { SendActivityHeartbeatResponse } from "./service-client.js";
+import { isTaskWorker } from "./internal/flags.js";
+import { getServiceClient, getTaskContext } from "./internal/global.js";
+import type { SendTaskHeartbeatResponse } from "./service-client.js";
 
 /**
- * Sends a heartbeat for the current activity or to the provided activity token.
+ * Sends a heartbeat for the current task or to the provided task token.
  *
- * If called from outside of an {@link activity}, the activity token must be provided.
+ * If called from outside of an {@link task}, the task token must be provided.
  *
- * If the activity has a heartbeatTimeout set and the workflow has not received a heartbeat within the set duration,
- * the workflow will throw a {@link HeartbeatTimeout} and cancel the activity.
+ * If the task has a heartbeatTimeout set and the workflow has not received a heartbeat within the set duration,
+ * the workflow will throw a {@link HeartbeatTimeout} and cancel the task.
  *
- * @returns {@link HeartbeatResponse} which has response.cancelled if the activity was cancelled for any reason (ex: workflow succeeded, failed, or the activity timed out).
+ * @returns {@link HeartbeatResponse} which has response.cancelled if the task was cancelled for any reason (ex: workflow succeeded, failed, or the task timed out).
  */
-export async function sendActivityHeartbeat(
-  activityToken?: string
-): Promise<SendActivityHeartbeatResponse> {
+export async function sendTaskHeartbeat(
+  taskToken?: string
+): Promise<SendTaskHeartbeatResponse> {
   return getEventualCallHook().registerEventualCall(undefined, async () => {
-    if (activityToken) {
-      return await getServiceClient().sendActivityHeartbeat({
-        activityToken,
+    if (taskToken) {
+      return await getServiceClient().sendTaskHeartbeat({
+        taskToken,
       });
-    } else if (isActivityWorker()) {
-      const token = (await getActivityContext()).invocation.token;
-      return await getServiceClient().sendActivityHeartbeat({
-        activityToken: token,
+    } else if (isTaskWorker()) {
+      const token = (await getTaskContext()).invocation.token;
+      return await getServiceClient().sendTaskHeartbeat({
+        taskToken: token,
       });
     } else {
-      throw new Error(
-        "Activity token must be provided when not within an Activity."
-      );
+      throw new Error("Task token must be provided when not within an Task.");
     }
   });
 }

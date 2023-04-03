@@ -1,10 +1,5 @@
+import { HttpHandler, Secret, api, task } from "@eventual/core";
 import { isOrchestratorWorker } from "@eventual/core/internal";
-import {
-  activity,
-  Secret,
-  api,
-  HttpHandler,
-} from "@eventual/core";
 import slack from "@slack/bolt";
 import { WebClient } from "@slack/web-api";
 import FetchReceiver from "./receiver.js";
@@ -36,7 +31,7 @@ export interface Slack extends slack.App {}
  * The {@link Slack} class provides an integration into the Slack service.
  *
  * It can be used to subscribe to events from a Slack workspace or to
- * call Slack APIs from within an API, event, workflow or activity.
+ * call Slack APIs from within an API, event, workflow or task.
  *
  * ```ts
  * // ex. subscribe to message events from slack
@@ -69,7 +64,7 @@ export class Slack<Name extends string = string> {
   private deferred: [name: string, args: any[]][] = [];
 
   constructor(readonly name: Name, readonly props: SlackProps) {
-    const slackActivity = activity(
+    const slackTask = task(
       `slack.client.${name}`,
       async ({
         propertyChain,
@@ -119,7 +114,7 @@ export class Slack<Name extends string = string> {
         } else if (prop === "client") {
           if (this.client === undefined || isOrchestratorWorker()) {
             // if we're in the orchestrator, then we need to proxy all client
-            // operations through a durable activity worker request
+            // operations through a durable task worker request
             // eslint-disable-next-line @typescript-eslint/no-empty-function
             return (proxyClient ??= proxy(function () {}, []));
           } else {
@@ -144,15 +139,15 @@ export class Slack<Name extends string = string> {
          * ```
          *
          * When the method is finally called, these properties are passed
-         * as request parameters to the {@link slackActivity}.
+         * as request parameters to the {@link slackTask}.
          *
-         * That activity then de-references the properties and makes the
-         * call from within the durable activity request.
+         * That task then de-references the properties and makes the
+         * call from within the durable task request.
          */
         function proxy(instance: any, propertyChain: string[]): any {
           return new Proxy(instance, {
             apply: (_target, _this, args) =>
-              slackActivity({
+              slackTask({
                 propertyChain,
                 args,
               }),

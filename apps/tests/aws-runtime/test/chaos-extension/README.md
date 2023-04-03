@@ -57,7 +57,7 @@ const testRole = new Role(...);
 
 // wire in the layer/extension to the service lambdas
 chaos.addToFunction(testService.workflows.orchestrator);
-chaos.addToFunction(testService.activities.worker);
+chaos.addToFunction(testService.tasks.worker);
 chaos.grantReadWrite(testRole);
 ```
 

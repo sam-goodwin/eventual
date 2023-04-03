@@ -5,10 +5,10 @@ import {
   isEntityStreamItem,
 } from "@eventual/core";
 import { entities, registerServiceClient } from "@eventual/core/internal";
-import { isActivityWorkerRequest } from "../clients/activity-client.js";
 import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
+import { isTaskWorkerRequest } from "../clients/task-client.js";
 import { isTimerRequest } from "../clients/timer-client.js";
-import { isActivitySendEventRequest } from "../handlers/activity-fallback-handler.js";
+import { isTaskSendEventRequest } from "../handlers/task-fallback-handler.js";
 import { isWorkflowTask } from "../tasks.js";
 import {
   LocalContainer,
@@ -49,7 +49,7 @@ export class LocalEnvironment {
     });
 
     const serviceClient = new RuntimeServiceClient({
-      activityClient: this.localContainer.activityClient,
+      taskClient: this.localContainer.taskClient,
       eventClient: this.localContainer.eventClient,
       executionHistoryStateStore:
         this.localContainer.executionHistoryStateStore,
@@ -120,13 +120,13 @@ export class LocalEnvironment {
     ) {
       const timerRequests = events.filter(isTimerRequest);
       const workflowTasks = events.filter(isWorkflowTask);
-      const activityWorkerRequests = events.filter(isActivityWorkerRequest);
+      const taskWorkerRequests = events.filter(isTaskWorkerRequest);
       const entityStreamItems = events.filter(isEntityStreamItem);
 
-      // run all activity requests, don't wait for a result
-      activityWorkerRequests.forEach(async (request) => {
-        const result = await this.localContainer.activityWorker(request);
-        if (!!result && isActivitySendEventRequest(result)) {
+      // run all task requests, don't wait for a result
+      taskWorkerRequests.forEach(async (request) => {
+        const result = await this.localContainer.taskWorker(request);
+        if (!!result && isTaskSendEventRequest(result)) {
           this.localConnector.pushWorkflowTaskNextTick({
             events: [result.event],
             executionId: result.executionId,

@@ -1,16 +1,10 @@
 import { EventEnvelope, Schedule } from "@eventual/core";
 import {
-  ActivityCall,
-  ActivityFailed,
-  ActivityHeartbeatTimedOut,
-  ActivityScheduled,
-  ActivitySucceeded,
   AwaitTimerCall,
   ChildWorkflowCall,
   ChildWorkflowFailed,
   ChildWorkflowScheduled,
   ChildWorkflowSucceeded,
-  createEventualCall,
   EntityCall,
   EntityOperation,
   EventsPublished,
@@ -20,10 +14,16 @@ import {
   SignalReceived,
   SignalSent,
   SignalTarget,
+  TaskCall,
+  TaskFailed,
+  TaskHeartbeatTimedOut,
+  TaskScheduled,
+  TaskSucceeded,
   TimerCompleted,
   TimerScheduled,
   WorkflowEventType,
   WorkflowTimedOut,
+  createEventualCall,
 } from "@eventual/core/internal";
 import { ulid } from "ulidx";
 import type { WorkflowCall } from "../src/workflow-executor.js";
@@ -46,13 +46,13 @@ export function awaitTimerCall(
   };
 }
 
-export function activityCall(
+export function taskCall(
   name: string,
   input: any,
   seq: number
-): WorkflowCall<ActivityCall> {
+): WorkflowCall<TaskCall> {
   return {
-    call: createEventualCall(EventualCallKind.ActivityCall, {
+    call: createEventualCall(EventualCallKind.TaskCall, {
       name,
       input,
     }),
@@ -100,9 +100,9 @@ export function publishEventCall(
   };
 }
 
-export function activitySucceeded(result: any, seq: number): ActivitySucceeded {
+export function taskSucceeded(result: any, seq: number): TaskSucceeded {
   return {
-    type: WorkflowEventType.ActivitySucceeded,
+    type: WorkflowEventType.TaskSucceeded,
     result,
     seq,
     timestamp: new Date(0).toISOString(),
@@ -131,9 +131,9 @@ export function workflowSucceeded(
   };
 }
 
-export function activityFailed(error: any, seq: number): ActivityFailed {
+export function taskFailed(error: any, seq: number): TaskFailed {
   return {
-    type: WorkflowEventType.ActivityFailed,
+    type: WorkflowEventType.TaskFailed,
     error,
     message: "message",
     seq,
@@ -151,12 +151,9 @@ export function workflowFailed(error: any, seq: number): ChildWorkflowFailed {
   };
 }
 
-export function activityScheduled(
-  name: string,
-  seq: number
-): ActivityScheduled {
+export function taskScheduled(name: string, seq: number): TaskScheduled {
   return {
-    type: WorkflowEventType.ActivityScheduled,
+    type: WorkflowEventType.TaskScheduled,
     name,
     seq,
 
@@ -164,13 +161,13 @@ export function activityScheduled(
   };
 }
 
-export function activityHeartbeatTimedOut(
+export function taskHeartbeatTimedOut(
   seq: number,
   /** Relative seconds from 0 */
   seconds: number
-): ActivityHeartbeatTimedOut {
+): TaskHeartbeatTimedOut {
   return {
-    type: WorkflowEventType.ActivityHeartbeatTimedOut,
+    type: WorkflowEventType.TaskHeartbeatTimedOut,
     seq,
     timestamp: new Date(seconds * 1000).toISOString(),
   };

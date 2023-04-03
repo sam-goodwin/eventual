@@ -6,18 +6,18 @@ import {
   ResourceNotFoundException,
   SchedulerClient,
 } from "@aws-sdk/client-scheduler";
-import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import { Schedule } from "@eventual/core";
 import {
-  computeDurationSeconds,
-  computeScheduleDate,
-  getLazy,
-  isActivityHeartbeatMonitorRequest,
-  isTimerScheduleEventRequest,
   LazyValue,
   ScheduleForwarderRequest,
   TimerClient,
   TimerRequest,
+  computeDurationSeconds,
+  computeScheduleDate,
+  getLazy,
+  isTaskHeartbeatMonitorRequest,
+  isTimerScheduleEventRequest,
 } from "@eventual/core-runtime";
 import {
   assertNever,
@@ -207,7 +207,7 @@ function getScheduleName(timerRequest: TimerRequest) {
     return safeScheduleName(
       `${timerRequest.executionId}_${getEventId(timerRequest.event)}`
     );
-  } else if (isActivityHeartbeatMonitorRequest(timerRequest)) {
+  } else if (isTaskHeartbeatMonitorRequest(timerRequest)) {
     // heart beat timers will always be unique. We maybe create any number of them.
     return safeScheduleName(`heartbeat_${timerRequest.executionId}_${ulid()}`);
   }
