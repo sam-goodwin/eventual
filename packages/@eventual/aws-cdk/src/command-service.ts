@@ -3,7 +3,11 @@ import {
   HttpMethod,
   IHttpApi,
 } from "@aws-cdk/aws-apigatewayv2-alpha";
-import { ENV_NAMES, sanitizeFunctionName } from "@eventual/aws-runtime";
+import {
+  ENV_NAMES,
+  commandServiceFunctionSuffix,
+  sanitizeFunctionName,
+} from "@eventual/aws-runtime";
 import { commandRpcPath, isDefaultNamespaceCommand } from "@eventual/core";
 import type { CommandFunction } from "@eventual/core-runtime";
 import {
@@ -547,5 +551,5 @@ function commandNamespaceName(command: CommandSpec<any, any, any, any>) {
 }
 
 function commandFunctionNameSuffix(command: CommandSpec) {
-  return `${commandNamespaceName(command)}-command`;
+  return commandServiceFunctionSuffix(commandNamespaceName(command));
 }

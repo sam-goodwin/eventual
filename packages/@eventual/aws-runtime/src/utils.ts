@@ -187,6 +187,10 @@ export function serviceFunctionName(serviceName: string, suffix: string) {
   );
 }
 
+export function commandServiceFunctionSuffix(commandId: string) {
+  return `command-${commandId}`;
+}
+
 export function taskServiceFunctionSuffix(taskId: string) {
   return `task-${taskId}`;
 }
