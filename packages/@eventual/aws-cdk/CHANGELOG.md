@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.31.2 (2023-04-04)
+
+### Bug Fixes
+
+- support discovery of eventual config and output directory. ([#329](https://github.com/functionless/eventual/issues/329)) ([b3dbd2a](https://github.com/functionless/eventual/commit/b3dbd2a01a6264daa018b4b310b648e70a31c400))
+
 ## 0.31.1 (2023-04-03)
 
 **Note:** Version bump only for package @eventual/aws-cdk
