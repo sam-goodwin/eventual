@@ -663,7 +663,7 @@ var PassThroughEventualHook = class {
   }
 };
 var DEFAULT_HOOK = new PassThroughEventualHook();
-globalThis.getEventualCallHook = () => DEFAULT_HOOK;
+globalThis.getEventualCallHook ??= () => DEFAULT_HOOK;
 
 var ResultKind;
 (function(ResultKind2) {
