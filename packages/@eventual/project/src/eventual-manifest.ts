@@ -7,7 +7,7 @@ export interface EventualConfig {
   deploy: string;
   /**
    * The directory where the .eventual directory will be created and looked for.
-   * 
+   *
    * If this is a relative path, the system will resolve it based on the
    * directory that contains the eventual config file.
    */
@@ -53,7 +53,6 @@ export function discoverEventualConfigSync(
   dir = process.cwd(),
   depth: number = 2
 ): EventualConfig | undefined {
-  console.log("looking in " + dir);
   try {
     const filePath = path.join(dir, EventualManifestFileName);
     const file = readJsonFileSync(filePath);
