@@ -3,13 +3,12 @@
   "version": "0.31.1",
   "exports": {
     ".": {
-      "import": "./lib/esm/src/index.js",
-      "require": "./lib/cjs/src/index.js"
+      "import": "./lib/esm/index.js",
+      "require": "./lib/cjs/index.js"
     }
   },
-  "main": "lib/cjs/src/index.js",
-  "types": "lib/esm/src/index.d.ts",
-  "module": "lib/esm/src/index.js",
+  "main": "lib/cjs/index.js",
+  "module": "lib/esm/index.js",
   "dependencies": {
     "inquirer": "^8"
   },
