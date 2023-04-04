@@ -1,4 +1,5 @@
-import fs from "fs/promises";
+import fsp from "fs/promises";
+import fs from "fs";
 
 export async function overrideTsCompilerOptions(
   tsConfig: any,
@@ -8,11 +9,15 @@ export async function overrideTsCompilerOptions(
 }
 
 export async function writeJsonFile(file: string, obj: any) {
-  await fs.writeFile(file, JSON.stringify(obj, null, 2));
+  await fsp.writeFile(file, JSON.stringify(obj, null, 2));
 }
 
 export async function readJsonFile(file: string) {
-  return JSON.parse((await fs.readFile(file)).toString("utf-8"));
+  return JSON.parse((await fsp.readFile(file)).toString("utf-8"));
+}
+
+export function readJsonFileSync(file: string) {
+  return JSON.parse(fs.readFileSync(file).toString("utf-8"));
 }
 
 export async function updateJsonFile(

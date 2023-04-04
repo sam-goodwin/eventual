@@ -1,6 +1,6 @@
 import { HttpMethod, HttpRequest } from "@eventual/core";
 import { LocalEnvironment } from "@eventual/core-runtime";
-import { discoverEventualConfig, exec } from "@eventual/project";
+import { discoverEventualConfig } from "@eventual/project";
 import { exec as _exec } from "child_process";
 import express from "express";
 import ora from "ora";
@@ -40,22 +40,29 @@ export const local = (yargs: Argv) =>
       spinner.start("Starting Local Eventual Dev Server");
       process.env.EVENTUAL_LOCAL = "1";
 
-      const serviceNameFirst = await tryResolveDefaultService(service);
-
       const config = await discoverEventualConfig();
+
+      if (!config) {
+        spinner.fail("No eventual config (eventual.json) found...");
+        process.exit(1);
+      }
+
+      const serviceNameFirst = await tryResolveDefaultService(
+        config.outDir,
+        service
+      );
 
       // if the service name is not found, try to generate one
       if (!serviceNameFirst) {
         spinner.text =
           "No service name found, running synth to try to generate one.";
-        if (!config) {
-          spinner.fail("No eventual config (eventual.json) found...");
-          process.exit(1);
-        }
         await execPromise(config.synth);
       }
 
-      const serviceName = await tryResolveDefaultService(serviceNameFirst);
+      const serviceName = await tryResolveDefaultService(
+        config.outDir,
+        serviceNameFirst
+      );
 
       if (!serviceName) {
         throw new Error("Service name was not found after synth.");
@@ -65,14 +72,10 @@ export const local = (yargs: Argv) =>
 
       if ((!isDeployed && update === "first") || update === "always") {
         spinner.text = "Deploying CDK";
-        if (!config) {
-          spinner.fail("No eventual config (eventual.json) found...");
-          process.exit(1);
-        }
-        await exec(config.deploy);
+        await execPromise(config.deploy);
       }
 
-      const buildManifest = await getBuildManifest(serviceName);
+      const buildManifest = await getBuildManifest(config.outDir, serviceName);
 
       const credentials = await assumeCliRole(serviceName, region);
       const serviceData = await getServiceData(

@@ -10,7 +10,8 @@
     "@eventual/aws-runtime": "workspace:^",
     "@eventual/compiler": "workspace:^",
     "@eventual/core": "workspace:^",
-    "@eventual/core-runtime": "workspace:^"
+    "@eventual/core-runtime": "workspace:^",
+    "@eventual/project": "workspace:^"
   },
   "peerDependencies": {
     "@aws-cdk/aws-apigatewayv2-alpha": "^2.50.0-alpha.0",

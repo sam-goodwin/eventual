@@ -63,7 +63,10 @@ export async function resolveRegion() {
  * 3. List all service names, if there is one service name in the account, use it
  * 4. Fail
  */
-export async function tryResolveDefaultService(_serviceName?: string) {
+export async function tryResolveDefaultService(
+  outDir: string,
+  _serviceName?: string
+) {
   // explicit
   if (_serviceName) {
     return _serviceName;
@@ -74,7 +77,7 @@ export async function tryResolveDefaultService(_serviceName?: string) {
     return envServiceName;
   }
   // check if there are zero, one, or more than one service names.
-  const serviceNames = await getLocalServices();
+  const serviceNames = await getLocalServices(outDir);
   const [serviceName, otherServiceName] = serviceNames;
   if (!serviceName) {
     return undefined;
@@ -86,14 +89,18 @@ export async function tryResolveDefaultService(_serviceName?: string) {
   return serviceName;
 }
 
-export async function getLocalServices(): Promise<string[]> {
+export async function getLocalServices(outDir: string): Promise<string[]> {
   try {
-    const paths = await fs.readdir(".eventual");
+    const paths = await fs.readdir(path.resolve(outDir, ".eventual"));
 
     const manifestResults = await Promise.allSettled(
       paths.map(async (serviceName) => {
         return fs
-          .access(path.resolve(".eventual", serviceName, "manifest.json"))
+          .access(
+            path.resolve(
+              path.resolve(outDir, ".eventual", serviceName, "manifest.json")
+            )
+          )
           .then(() => serviceName);
       })
     );
@@ -177,8 +184,8 @@ export async function isServiceDeployed(serviceName: string, region?: string) {
   );
 }
 
-export async function getBuildManifest(serviceName: string) {
+export async function getBuildManifest(outDir: string, serviceName: string) {
   return (await readJsonFile(
-    path.resolve(".eventual", serviceName, "manifest.json")
+    path.resolve(outDir, ".eventual", serviceName, "manifest.json")
   )) as BuildManifest;
 }
