@@ -2,6 +2,7 @@ import { IHttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { Event } from "@eventual/core";
 import { MetricsCommon, OrchestratorMetrics } from "@eventual/core-runtime";
+import { EventualConfig, discoverEventualConfigSync } from "@eventual/project";
 import { Arn, Names, Stack, aws_events, aws_events_targets } from "aws-cdk-lib";
 import {
   Metric,
@@ -75,6 +76,14 @@ export interface SubscribeProps extends aws_events_targets.EventBusProps {
 }
 
 export interface ServiceProps<Service = any> {
+  /**
+   * Provide an explicit {@link EventualConfig} file or a path to the directory containing the eventual.json file.
+   *
+   * When not provided eventual will look for eventual.json file at the current working directory or up to two directories above.
+   *
+   * If the config file is not found or invalid, the synthesis will fail.
+   */
+  eventualConfig?: string | EventualConfig;
   /**
    * The path of the `.ts` or `.js` file that is the entrypoint to the Service's logic.
    */
@@ -206,6 +215,18 @@ export class Service<S = any> extends Construct {
   constructor(scope: Construct, id: string, props: ServiceProps<S>) {
     super(scope, id);
 
+    const eventualConfig = props.eventualConfig
+      ? typeof props.eventualConfig === "string"
+        ? discoverEventualConfigSync(props.eventualConfig, 0)
+        : props.eventualConfig
+      : discoverEventualConfigSync();
+
+    if (!eventualConfig) {
+      throw new Error(
+        "Could not find an eventual config file (eventual.json)."
+      );
+    }
+
     this.serviceName = props.name ?? Names.uniqueResourceName(this, {});
 
     const serviceScope = this;
@@ -226,7 +247,7 @@ export class Service<S = any> extends Construct {
     const build = buildServiceSync({
       serviceName: this.serviceName,
       entry: props.entry,
-      outDir: path.join(".eventual", this.serviceName),
+      outDir: path.join(eventualConfig.outDir, ".eventual", this.serviceName),
     });
 
     const proxySchedulerService = lazyInterface<SchedulerService>();

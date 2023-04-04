@@ -11,6 +11,7 @@
     { "path": "../aws-runtime/tsconfig.cjs.json" },
     { "path": "../core/tsconfig.cjs.json" },
     { "path": "../compiler/tsconfig.cjs.json" },
-    { "path": "../core-runtime/tsconfig.cjs.json" }
+    { "path": "../core-runtime/tsconfig.cjs.json" },
+    { "path": "../project/tsconfig.cjs.json" }
   ]
 }
