@@ -1,6 +1,6 @@
 # Eventual cli
 
-For the complete documentation, see: https://docs.eventual.net/guide/cli
+For the complete documentation, see: https://docs.eventual.ai/guide/cli
 
 ## List workflows
 

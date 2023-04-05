@@ -77,7 +77,7 @@ This is where you add business logic such as APIs, Event handlers, Workflows and
 
 After deploying to AWS, you'll have a single stack named \`${serviceName}\` containing your Service. Take a look at the structure using the Resources view in CloudFormation. Here, you can find a list of all the Lambda Functions and other Resources that come with a Service.
 
-See the [Service documentation](https://docs.eventual.net/reference/service) for more information.
+See the [Service documentation](https://docs.eventual.ai/reference/service) for more information.
 
 ## Scripts
 

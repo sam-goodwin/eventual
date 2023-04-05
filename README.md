@@ -1,11 +1,11 @@
 <div align="center">
-  <a href="https://eventual.net">
-    <img src="assets/eventual-logo-white-bg-128px.svg" />
+  <a href="https://eventual.ai">
+    <img src="assets/eventual-logo-128px.png" />
   </a>
   <br />
   <h1>eventual</h1>
   <h3>
-  Build scalable and durable micro-services with APIs, Messaging and Workflows.
+  Develop massively-distributed systems using APIs, Messaging and Workflows. Test locally, then deploy to your own cloud infrastructure.
   </h3>
   
   
@@ -25,13 +25,13 @@
 
 ---
 
-> 🛠&nbsp; Eventual is in pre-release - come chat to us on [Discord](https://discord.gg/8hfnTn3QDT)!
+> 🛠&nbsp; Join the waitlist for [eventualAi](https://eventual.ai) - a companion autonomous software development team of smart agents who know how to use the [eventualCloud](https://eventual.ai/cloud) framework and apply Domain Driven Design (DDD) principles to translate business requirements into functioning services!
 
 ---
 
 ## Overview
 
-**[Website](https://eventual.net/) • [API Docs](https://docs.eventual.net) • [Quick Start](https://docs.eventual.net/getting-started)**
+**[Website](https://eventual.ai/) • [API Docs](https://docs.eventual.ai) • [Quick Start](https://docs.eventual.ai/getting-started)**
 
 Eventual is an open source TypeScript framework that offers "core abstractions" — including APIs, Messaging and long-running, durable Workflows — to shield you from the complexities of distributed systems and ensure a consistent, best-practice serverless architecture.
 
@@ -60,7 +60,7 @@ Eventual is an open source TypeScript framework that offers "core abstractions" 
 
 ## Quick Start
 
-Start a new project with Eventual or drop-in to an existing AWS CDK or SST application by visiting the [Quick Start](https://docs.eventual.net/getting-started).
+Start a new project with Eventual or drop-in to an existing AWS CDK or SST application by visiting the [Quick Start](https://docs.eventual.ai/getting-started).
 
 ```sh
 # create a new project
@@ -106,7 +106,7 @@ All of your data remains within your own AWS account and security boundaries. Wi
 
 ## Contact us
 
-- [Eventual Home](https://eventual.net)
+- [Eventual Home](https://eventual.ai)
 - [Twitter](https://twitter.com/EventualCloud)
 - [Discord](https://discord.gg/8hfnTn3QDT)
 
