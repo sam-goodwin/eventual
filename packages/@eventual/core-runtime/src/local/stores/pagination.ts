@@ -8,7 +8,7 @@ export function paginateItems<Item>(
 ) {
   const tokenPayload = nextToken ? deserializeToken(nextToken) : undefined;
   const sortedItems = items.sort((a, b) =>
-    direction === "DESC" ? sort(a, b) : -sort(a, b)
+    direction === "DESC" ? -sort(a, b) : sort(a, b)
   );
   const filtered = filter ? sortedItems.filter(filter) : sortedItems;
   const start = tokenPayload?.index ?? 0;

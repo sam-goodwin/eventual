@@ -16,31 +16,48 @@ export interface HistoryEventBase extends Omit<BaseEvent, "id"> {
   seq: number;
 }
 
+/**
+ * Workflow Event Types
+ * 
+ * The numeric ID is also used to determine display order.
+ * 
+ * 0-9 reserved
+ * 10 - Workflow started
+ * 15 - Workflow run stated
+ * 16 > 19 - Padding
+ * 20 > 39 - Scheduled Events
+ * 50 > 79 - Completed Events
+ * 80 - Workflow Run Completed
+ * 81 > 89 - Padding
+ * 90 - Workflow Timed Out
+ * 91 - Workflow Succeeded
+ * 92 - Workflow Failed
+ */
 export enum WorkflowEventType {
-  ChildWorkflowSucceeded = "ChildWorkflowSucceeded",
-  ChildWorkflowFailed = "ChildWorkflowFailed",
-  ChildWorkflowScheduled = "ChildWorkflowScheduled",
-  EntityRequest = "EntityRequest",
-  EntityRequestFailed = "EntityRequestFailed",
-  EntityRequestSucceeded = "EntityRequestSucceeded",
-  EventsEmitted = "EventsEmitted",
-  TransactionRequest = "InvokeTransactionRequest",
-  TransactionRequestFailed = "InvokeTransactionRequestFailed",
-  TransactionRequestSucceeded = "InvokeTransactionRequestSucceeded",
-  SignalReceived = "SignalReceived",
-  SignalSent = "SignalSent",
-  TaskSucceeded = "TaskSucceeded",
-  TaskFailed = "TaskFailed",
-  TaskHeartbeatTimedOut = "TaskHeartbeatTimedOut",
-  TaskScheduled = "TaskScheduled",
-  TimerCompleted = "TimerCompleted",
-  TimerScheduled = "TimerScheduled",
-  WorkflowSucceeded = "WorkflowSucceeded",
-  WorkflowFailed = "WorkflowFailed",
-  WorkflowStarted = "WorkflowStarted",
-  WorkflowRunCompleted = "WorkflowRunCompleted",
-  WorkflowRunStarted = "WorkflowRunStarted",
-  WorkflowTimedOut = "WorkflowTimedOut",
+  ChildWorkflowSucceeded = 50,
+  ChildWorkflowFailed = 51,
+  ChildWorkflowScheduled = 20,
+  EntityRequest = 21,
+  EntityRequestFailed = 52,
+  EntityRequestSucceeded = 53,
+  EventsEmitted = 22,
+  TransactionRequest = 23,
+  TransactionRequestFailed = 54,
+  TransactionRequestSucceeded = 55,
+  SignalReceived = 24,
+  SignalSent = 25,
+  TaskSucceeded = 46,
+  TaskFailed = 57,
+  TaskHeartbeatTimedOut = 58,
+  TaskScheduled = 26,
+  TimerCompleted = 59,
+  TimerScheduled = 27,
+  WorkflowSucceeded = 95,
+  WorkflowFailed = 96,
+  WorkflowStarted = 10,
+  WorkflowRunCompleted = 80,
+  WorkflowRunStarted = 15,
+  WorkflowTimedOut = 90,
 }
 
 /**

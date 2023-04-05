@@ -25,8 +25,12 @@ export class LocalExecutionHistoryStore extends ExecutionHistoryStore {
       : undefined;
     const result = paginateItems(
       this.eventStore[request.executionId] ?? [],
-      (a, b) =>
-        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+      (a, b) => {
+        const diff =
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+        // if an event happens at the same time, use it's type.
+        return diff === 0 ? a.type - b.type : diff;
+      },
       afterDate
         ? (event) => new Date(event.timestamp).getTime() > afterDate
         : undefined,
