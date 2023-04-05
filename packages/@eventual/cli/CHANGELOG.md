@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.31.3 (2023-04-05)
+
+### Bug Fixes
+
+- unique global hook store ([#330](https://github.com/functionless/eventual/issues/330)) ([cde0296](https://github.com/functionless/eventual/commit/cde0296869e4e1dc4f2f87d2c3d98ec132a92ccf))
+
 ## 0.31.2 (2023-04-04)
 
 ### Bug Fixes
