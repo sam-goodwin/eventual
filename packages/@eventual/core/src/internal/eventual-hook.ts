@@ -30,7 +30,8 @@ export const DEFAULT_HOOK = new PassThroughEventualHook();
 
 // default implementation of getEventualCallHook that does nothing.
 // to be overridden by the core-runtime as needed.
-globalThis.getEventualCallHook = () => DEFAULT_HOOK;
+// only set if it was not set before.
+globalThis.getEventualCallHook ??= () => DEFAULT_HOOK;
 
 export const EventualPromiseSymbol =
   /* @__PURE__ */ Symbol.for("Eventual:Promise");

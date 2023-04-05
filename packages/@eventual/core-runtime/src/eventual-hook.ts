@@ -1,16 +1,25 @@
 import { DEFAULT_HOOK, EventualCallHook } from "@eventual/core/internal";
 import { AsyncLocalStorage } from "async_hooks";
 
-const eventualCallHookStore = new AsyncLocalStorage<EventualCallHook>();
+declare global {
+  var eventualCallHookStore: AsyncLocalStorage<EventualCallHook>;
+}
 
-// override the getEventualCallHook to return from the AsyncLocalStore.
-globalThis.getEventualCallHook = () => {
-  return eventualCallHookStore.getStore() ?? DEFAULT_HOOK;
-};
+/**
+ * If eventualCallHook is already defined, then this override was already done.
+ */
+if (!globalThis.eventualCallHookStore) {
+  // override the getEventualCallHook to return from the AsyncLocalStore.
+  globalThis.getEventualCallHook = () => {
+    return globalThis.eventualCallHookStore.getStore() ?? DEFAULT_HOOK;
+  };
+
+  globalThis.eventualCallHookStore = new AsyncLocalStorage<EventualCallHook>();
+}
 
 export async function enterEventualCallHookScope<R>(
   eventualHook: EventualCallHook,
   callback: () => R
 ): Promise<R> {
-  return eventualCallHookStore.run(eventualHook, callback);
+  return globalThis.eventualCallHookStore.run(eventualHook, callback);
 }
