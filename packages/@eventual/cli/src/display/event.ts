@@ -3,6 +3,7 @@ import { normalizeCompositeKey } from "@eventual/core-runtime";
 import {
   EntityOperation,
   WorkflowEvent,
+  WorkflowEventType,
   isChildWorkflowScheduled,
   isEntityRequest,
   isSignalReceived,
@@ -15,7 +16,7 @@ import { formatTime } from "./time.js";
 
 export function displayEvent(event: WorkflowEvent) {
   const lines: string[] = [
-    `${chalk.green(formatTime(event.timestamp))}\t${chalk.blue(event.type)}${
+    `${chalk.green(formatTime(event.timestamp))}\t${chalk.blue(WorkflowEventType[event.type])}${
       "seq" in event ? `(${event.seq})` : ""
     }`,
     ...(isChildWorkflowScheduled(event) || isTaskScheduled(event)

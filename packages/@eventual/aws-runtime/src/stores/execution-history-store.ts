@@ -115,8 +115,8 @@ interface EventRecord {
 const EventRecord = {
   partitionKey: (executionId: ExecutionID) => executionId,
   SORT_KEY_PREFIX: `$` as const,
-  sortKey(timestamp: string, id: string): `$${string}` {
-    return `${EventRecord.SORT_KEY_PREFIX}${timestamp}${id}`;
+  sortKey(timestamp: string, id: string, ordinal: number): `$${string}` {
+    return `${EventRecord.SORT_KEY_PREFIX}${timestamp}${ordinal}${id}`;
   },
 };
 
@@ -131,7 +131,8 @@ function createEventRecord(
     sk: {
       S: EventRecord.sortKey(
         workflowEvent.timestamp,
-        getEventId(workflowEvent)
+        getEventId(workflowEvent),
+        workflowEvent.type
       ),
     },
     // do not create an id property if it doesn't exist on the event.
