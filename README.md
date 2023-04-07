@@ -31,7 +31,7 @@
 
 ## Overview
 
-**[Website](https://eventual.ai/) • [API Docs](https://docs.eventual.ai) • [Quick Start](https://docs.eventual.ai/getting-started)**
+**[Website](https://eventual.ai/) • [API Docs](https://docs.eventual.ai) • [Quick Start](https://docs.eventual.ai/quick-start)**
 
 Eventual is an open source TypeScript framework that offers "core abstractions" — including APIs, Messaging and long-running, durable Workflows — to shield you from the complexities of distributed systems and ensure a consistent, best-practice serverless architecture.
 
