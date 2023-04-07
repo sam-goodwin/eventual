@@ -1,7 +1,7 @@
 {
   "name": "@eventual/cli",
   "type": "module",
-  "version": "0.31.4",
+  "version": "0.31.5",
   "bin": {
     "eventual": "bin/eventual.mjs"
   },

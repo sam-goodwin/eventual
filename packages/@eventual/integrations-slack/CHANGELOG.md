@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.31.5 (2023-04-07)
+
+### Bug Fixes
+
+- workflow event ordering ([#331](https://github.com/functionless/eventual/issues/331)) ([631ec42](https://github.com/functionless/eventual/commit/631ec420b6ff353be3501bbdd90baaebb9b1b42c))
+
 ## 0.31.4 (2023-04-05)
 
 **Note:** Version bump only for package @eventual/integrations-slack

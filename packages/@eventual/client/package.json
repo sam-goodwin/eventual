@@ -8,7 +8,7 @@
   },
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
-  "version": "0.31.4",
+  "version": "0.31.5",
   "scripts": {
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --passWithNoTests"
   },
