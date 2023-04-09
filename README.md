@@ -18,8 +18,8 @@
   <a href="https://discord.gg/8hfnTn3QDT">
     <img alt="Discord" src="https://img.shields.io/discord/985291961885949973?color=7389D8&label&logo=discord&logoColor=ffffff" />
   </a>
-  <a href="https://twitter.com/EventualCloud">
-    <img alt="Twitter" src="https://img.shields.io/twitter/url.svg?label=%40EventualCloud&style=social&url=https%3A%2F%2Ftwitter.com%2FEventualCloud" />
+  <a href="https://twitter.com/EventualAI">
+    <img alt="Twitter" src="https://img.shields.io/twitter/url.svg?label=%40EventualAI&style=social&url=https%3A%2F%2Ftwitter.com%2FEventualAI" />
   </a>
 </div>
 
@@ -107,7 +107,7 @@ All of your data remains within your own AWS account and security boundaries. Wi
 ## Contact us
 
 - [Eventual Home](https://eventual.ai)
-- [Twitter](https://twitter.com/EventualCloud)
+- [Twitter](https://twitter.com/EventualAI)
 - [Discord](https://discord.gg/8hfnTn3QDT)
 
 ### Project Leads
