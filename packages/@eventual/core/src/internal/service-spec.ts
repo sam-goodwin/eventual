@@ -77,6 +77,14 @@ export interface CommandSpec<
   Method extends HttpMethod | undefined = undefined
 > extends FunctionRuntimeProps {
   name: Name;
+  /**
+   * Long description of the API, written to the description field of the generated open API spec.
+   */
+  description?: string;
+  /**
+   * Short description of the API, written to the summary field of the generated open API spec.
+   */
+  summary?: string;
   input?: openapi.SchemaObject;
   output?: openapi.SchemaObject;
   path?: Path;
@@ -91,6 +99,8 @@ export interface CommandSpec<
    */
   namespace?: string;
   /**
+   * Enable or disable schema validation.
+   *
    * @default true
    */
   validate?: boolean;

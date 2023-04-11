@@ -89,6 +89,9 @@ export interface CommandsProps<Service = any> extends ServiceConstructProps {
   entityService: EntityService<Service>;
   eventService: EventService;
   local: ServiceLocal | undefined;
+  openApi?: {
+    info?: openapi.InfoObject;
+  };
   overrides?: CommandProps<Service>;
   workflowService: WorkflowService;
 }
@@ -271,66 +274,158 @@ export class CommandService<Service = any> {
         systemCommand ? "system-command" : commandFunctionNameSuffix(command)
       );
 
+      const commandPath = commandRpcPath(command);
+
       return {
-        [`/${commandRpcPath(command)}`]: {
-          post: {
-            [XAmazonApiGatewayAuth]: {
-              type: iamAuth ? "AWS_IAM" : "NONE",
-            } satisfies XAmazonApiGatewayAuth,
-            [XAmazonApiGatewayIntegration]: {
-              connectionType: "INTERNET",
-              httpMethod: HttpMethod.POST,
-              payloadFormatVersion: "2.0",
-              type: "AWS_PROXY",
-              credentials: self.integrationRole.roleArn,
-              uri: handlerArn,
-            } satisfies XAmazonApiGatewayIntegration,
-            requestBody: {
-              content: {
-                "application/json": {
-                  schema: command.input,
+        ...createRpcOperation(),
+        ...createRestOperation(),
+      };
+
+      function createRpcOperation(): openapi.PathItemObject {
+        return {
+          [`/${commandPath}`]: {
+            post: {
+              operationId: `${command.name}-rpc`,
+              description: command.description,
+              summary: command.summary,
+              [XAmazonApiGatewayAuth]: {
+                type: iamAuth ? "AWS_IAM" : "NONE",
+              } satisfies XAmazonApiGatewayAuth,
+              [XAmazonApiGatewayIntegration]: {
+                connectionType: "INTERNET",
+                httpMethod: HttpMethod.POST,
+                payloadFormatVersion: "2.0",
+                type: "AWS_PROXY",
+                credentials: self.integrationRole.roleArn,
+                uri: handlerArn,
+              } satisfies XAmazonApiGatewayIntegration,
+              requestBody: {
+                content: {
+                  "application/json": {
+                    schema: command.input,
+                  },
                 },
               },
-            },
-            responses: {
-              default: {
-                description: `Default response for ${command.method} ${command.path}`,
-              } satisfies openapi.ResponseObject,
+              responses: {
+                default: {
+                  content: { "application/json": { schema: command.output } },
+                  description: `Default response for POST ${commandPath}`,
+                } satisfies openapi.ResponseObject,
+              },
             },
           },
-        } satisfies openapi.PathItemObject,
-        ...(command.path
-          ? {
-              [ittyRouteToApigatewayRoute(command.path)]: {
-                [command.method?.toLocaleLowerCase() ?? "get"]: {
-                  [XAmazonApiGatewayIntegration]: {
-                    connectionType: "INTERNET",
-                    httpMethod: HttpMethod.POST,
-                    payloadFormatVersion: "2.0",
-                    type: "AWS_PROXY",
-                    credentials: self.integrationRole.roleArn,
-                    uri: handlerArn,
-                  } satisfies XAmazonApiGatewayIntegration,
-                  parameters: Object.entries(command.params ?? {}).flatMap(
-                    ([name, spec]) =>
-                      spec === "body" ||
-                      (typeof spec === "object" && spec.in === "body")
-                        ? []
-                        : [
-                            {
-                              in:
-                                typeof spec === "string"
-                                  ? spec
-                                  : (spec?.in as "query" | "header") ?? "query",
-                              name,
-                            } satisfies openapi.ParameterObject,
-                          ]
-                  ),
+        };
+      }
+
+      function createRestOperation(): openapi.PathItemObject {
+        if (!command.path) {
+          return {};
+        }
+
+        const pathParameters = new Set(parameterNamesFromPath(command.path));
+
+        const knownProperties = new Set([
+          ...Object.keys(command.params ?? {}),
+          ...Object.keys(command.input?.properties ?? {}),
+          ...pathParameters,
+        ]);
+
+        // default to query when the method should not have a body
+        const defaultSpec =
+          !command.method ||
+          ["GET", "DELETE", "OPTIONS", "HEAD"].includes(command.method)
+            ? "query"
+            : "body";
+
+        /**
+         * 1. resolves the schema name for the parameter which may be different from the name in the input schema
+         * 2. resolves the spec/in type based on the source of the parameter name, current method, and explicit input
+         * 3. resolve the schema from the input schema to use in the output schema
+         */
+        const resolvedParameters = Object.fromEntries(
+          [...knownProperties].map((prop) => {
+            const param = command.params?.[prop];
+            const [name, spec] =
+              typeof param === "string"
+                ? [prop, param]
+                : [param?.name ?? prop, param?.in];
+            return [
+              name,
+              {
+                // if there is no explicit override and the param is in the path, the spec is path, else the computed default
+                spec: spec ?? (pathParameters.has(name) ? "path" : defaultSpec),
+                schema: command.input?.properties?.[prop],
+              },
+            ] as const;
+          })
+        );
+
+        const bodyProperties = Object.fromEntries(
+          Object.entries(resolvedParameters)
+            .filter(([, { spec, schema }]) => spec === "body" && !!schema)
+            .map(([name, { schema }]) => [name, schema!])
+        );
+
+        const bodySchema: openapi.SchemaObject | undefined =
+          command.input?.properties && Object.keys(bodyProperties).length > 0
+            ? {
+                ...command.input,
+                properties: bodyProperties,
+                required: command.input.required?.filter(
+                  (p) => p in bodyProperties
+                ),
+              }
+            : undefined;
+
+        return {
+          [ittyRouteToApigatewayRoute(command.path)]: {
+            [command.method?.toLocaleLowerCase() ?? "get"]: {
+              operationId: `${command.name}-${command.method ?? "get"}`,
+              description: command.description,
+              summary: command.summary,
+              [XAmazonApiGatewayIntegration]: {
+                connectionType: "INTERNET",
+                httpMethod: HttpMethod.POST,
+                payloadFormatVersion: "2.0",
+                type: "AWS_PROXY",
+                credentials: self.integrationRole.roleArn,
+                uri: handlerArn,
+              } satisfies XAmazonApiGatewayIntegration,
+              parameters: Object.entries(resolvedParameters).flatMap(
+                ([name, { spec, schema }]) =>
+                  spec === "body"
+                    ? []
+                    : [
+                        {
+                          in: spec,
+                          name,
+                          schema,
+                        } satisfies openapi.ParameterObject,
+                      ]
+              ),
+              requestBody: {
+                content: {
+                  ...(bodySchema
+                    ? {
+                        "application/json": {
+                          schema: bodySchema,
+                        },
+                      }
+                    : {}),
                 },
-              } satisfies openapi.PathItemObject,
-            }
-          : {}),
-      };
+              },
+              responses: {
+                default: {
+                  description: `Default response for ${command.method} ${command.path}`,
+                  content: {
+                    "application/json": { schema: command.output },
+                  },
+                },
+              },
+            } satisfies openapi.OperationObject,
+          } satisfies openapi.PathItemObject,
+        };
+      }
     }
 
     function createSpecification(commandPaths: openapi.PathsObject[]) {
@@ -345,6 +440,7 @@ export class CommandService<Service = any> {
           title: `eventual-api-${self.props.build.serviceName}`,
           // TODO: use the package.json?
           version: "1",
+          ...props.openApi?.info,
         },
         paths: {
           "/$default": {
@@ -552,4 +648,10 @@ function commandNamespaceName(command: CommandSpec<any, any, any, any>) {
 
 function commandFunctionNameSuffix(command: CommandSpec) {
   return commandServiceFunctionSuffix(commandNamespaceName(command));
+}
+
+function parameterNamesFromPath(path: string): string[] {
+  return Array.from(path.matchAll(/\/:([^\/\?\#]*)/g))
+    .map(([, g]) => g)
+    .filter((x): x is string => !!x);
 }
