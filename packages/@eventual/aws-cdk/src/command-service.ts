@@ -8,8 +8,11 @@ import {
   commandServiceFunctionSuffix,
   sanitizeFunctionName,
 } from "@eventual/aws-runtime";
-import { commandRpcPath, isDefaultNamespaceCommand } from "@eventual/core";
-import type { CommandFunction } from "@eventual/core-runtime";
+import { isDefaultNamespaceCommand } from "@eventual/core";
+import {
+  generateOpenAPISpec,
+  type CommandFunction,
+} from "@eventual/core-runtime";
 import {
   CommandSpec,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
@@ -195,14 +198,7 @@ export class CommandService<Service = any> {
       })
     );
 
-    this.specification = createSpecification([
-      ...this.props.build.commands.map((command) => {
-        return createAPIPaths(command.spec, false);
-      }),
-      ...this.props.build.system.eventualService.commands.map((command) =>
-        createAPIPaths(command, true, true)
-      ),
-    ]);
+    this.specification = createSpecification();
 
     // Service => Gateway
     this.gateway = new SpecHttpApi(props.serviceScope, "Gateway", {
@@ -262,34 +258,38 @@ export class CommandService<Service = any> {
       );
     }
 
-    function createAPIPaths(
-      command: CommandSpec<any, any, any, any>,
-      iamAuth?: boolean,
-      systemCommand?: boolean
-    ): openapi.PathsObject {
-      // compute the url to reduce circular dependencies.
-      const handlerArn = serviceFunctionArn(
-        self.props.serviceName,
-        Stack.of(self.props.systemScope),
-        systemCommand ? "system-command" : commandFunctionNameSuffix(command)
-      );
+    function createSpecification() {
+      const spec = generateOpenAPISpec(
+        [
+          ...props.build.commands.map((command) => command.spec),
+          ...props.build.system.eventualService.commands.map(
+            (command) => command
+          ),
+        ],
+        {
+          info: props.openApi?.info ?? {
+            title: `eventual-api-${self.props.build.serviceName}`,
+            // TODO: use the package.json?
+            version: "1",
+          },
+          createRestPaths: true,
+          createRpcPaths: true,
+          onRpcPath: (command, pathObj) => {
+            const isSystemCommand =
+              command.namespace === EVENTUAL_SYSTEM_COMMAND_NAMESPACE;
+            // compute the url to reduce circular dependencies.
+            const handlerArn = serviceFunctionArn(
+              self.props.serviceName,
+              Stack.of(self.props.systemScope),
+              isSystemCommand
+                ? "system-command"
+                : commandFunctionNameSuffix(command)
+            );
 
-      const commandPath = commandRpcPath(command);
-
-      return {
-        ...createRpcOperation(),
-        ...createRestOperation(),
-      };
-
-      function createRpcOperation(): openapi.PathItemObject {
-        return {
-          [`/${commandPath}`]: {
-            post: {
-              operationId: `${command.name}-rpc`,
-              description: command.description,
-              summary: command.summary,
+            return {
+              ...pathObj,
               [XAmazonApiGatewayAuth]: {
-                type: iamAuth ? "AWS_IAM" : "NONE",
+                type: isSystemCommand ? "AWS_IAM" : "NONE",
               } satisfies XAmazonApiGatewayAuth,
               [XAmazonApiGatewayIntegration]: {
                 connectionType: "INTERNET",
@@ -299,90 +299,22 @@ export class CommandService<Service = any> {
                 credentials: self.integrationRole.roleArn,
                 uri: handlerArn,
               } satisfies XAmazonApiGatewayIntegration,
-              requestBody: {
-                content: {
-                  "application/json": {
-                    schema: command.input,
-                  },
-                },
-              },
-              responses: {
-                default: {
-                  content: { "application/json": { schema: command.output } },
-                  description: `Default response for POST ${commandPath}`,
-                } satisfies openapi.ResponseObject,
-              },
-            },
+            };
           },
-        };
-      }
+          onRestPath: (command, pathObj) => {
+            const isSystemCommand =
+              command.namespace === EVENTUAL_SYSTEM_COMMAND_NAMESPACE;
+            // compute the url to reduce circular dependencies.
+            const handlerArn = serviceFunctionArn(
+              self.props.serviceName,
+              Stack.of(self.props.systemScope),
+              isSystemCommand
+                ? "system-command"
+                : commandFunctionNameSuffix(command)
+            );
 
-      function createRestOperation(): openapi.PathItemObject {
-        if (!command.path) {
-          return {};
-        }
-
-        const pathParameters = new Set(parameterNamesFromPath(command.path));
-
-        const knownProperties = new Set([
-          ...Object.keys(command.params ?? {}),
-          ...Object.keys(command.input?.properties ?? {}),
-          ...pathParameters,
-        ]);
-
-        // default to query when the method should not have a body
-        const defaultSpec =
-          !command.method ||
-          ["GET", "DELETE", "OPTIONS", "HEAD"].includes(command.method)
-            ? "query"
-            : "body";
-
-        /**
-         * 1. resolves the schema name for the parameter which may be different from the name in the input schema
-         * 2. resolves the spec/in type based on the source of the parameter name, current method, and explicit input
-         * 3. resolve the schema from the input schema to use in the output schema
-         */
-        const resolvedParameters = Object.fromEntries(
-          [...knownProperties].map((prop) => {
-            const param = command.params?.[prop];
-            const [name, spec] =
-              typeof param === "string"
-                ? [prop, param]
-                : [param?.name ?? prop, param?.in];
-            return [
-              name,
-              {
-                // if there is no explicit override and the param is in the path, the spec is path, else the computed default
-                spec: spec ?? (pathParameters.has(name) ? "path" : defaultSpec),
-                schema: command.input?.properties?.[prop],
-              },
-            ] as const;
-          })
-        );
-
-        const bodyProperties = Object.fromEntries(
-          Object.entries(resolvedParameters)
-            .filter(([, { spec, schema }]) => spec === "body" && !!schema)
-            .map(([name, { schema }]) => [name, schema!])
-        );
-
-        const bodySchema: openapi.SchemaObject | undefined =
-          command.input?.properties && Object.keys(bodyProperties).length > 0
-            ? {
-                ...command.input,
-                properties: bodyProperties,
-                required: command.input.required?.filter(
-                  (p) => p in bodyProperties
-                ),
-              }
-            : undefined;
-
-        return {
-          [ittyRouteToApigatewayRoute(command.path)]: {
-            [command.method?.toLocaleLowerCase() ?? "get"]: {
-              operationId: `${command.name}-${command.method ?? "get"}`,
-              description: command.description,
-              summary: command.summary,
+            return {
+              ...pathObj,
               [XAmazonApiGatewayIntegration]: {
                 connectionType: "INTERNET",
                 httpMethod: HttpMethod.POST,
@@ -391,58 +323,15 @@ export class CommandService<Service = any> {
                 credentials: self.integrationRole.roleArn,
                 uri: handlerArn,
               } satisfies XAmazonApiGatewayIntegration,
-              parameters: Object.entries(resolvedParameters).flatMap(
-                ([name, { spec, schema }]) =>
-                  spec === "body"
-                    ? []
-                    : [
-                        {
-                          in: spec,
-                          name,
-                          schema,
-                        } satisfies openapi.ParameterObject,
-                      ]
-              ),
-              requestBody: {
-                content: {
-                  ...(bodySchema
-                    ? {
-                        "application/json": {
-                          schema: bodySchema,
-                        },
-                      }
-                    : {}),
-                },
-              },
-              responses: {
-                default: {
-                  description: `Default response for ${command.method} ${command.path}`,
-                  content: {
-                    "application/json": { schema: command.output },
-                  },
-                },
-              },
-            } satisfies openapi.OperationObject,
-          } satisfies openapi.PathItemObject,
-        };
-      }
-    }
-
-    function createSpecification(commandPaths: openapi.PathsObject[]) {
-      const paths = Object.values(commandPaths).reduce<openapi.PathsObject>(
-        (allPaths, paths) => mergeAPIPaths(allPaths, paths),
-        {}
+            };
+          },
+        }
       );
 
       return {
-        openapi: "3.0.1",
-        info: {
-          title: `eventual-api-${self.props.build.serviceName}`,
-          // TODO: use the package.json?
-          version: "1",
-          ...props.openApi?.info,
-        },
+        ...spec,
         paths: {
+          ...spec.paths,
           "/$default": {
             [XAmazonApigatewayAnyMethod]: {
               isDefaultRoute: true,
@@ -462,28 +351,8 @@ export class CommandService<Service = any> {
               } satisfies XAmazonApiGatewayIntegration,
             } satisfies XAmazonApigatewayAnyMethod,
           },
-          ...paths,
         },
-      } satisfies openapi.OpenAPIObject;
-
-      function mergeAPIPaths(
-        a: openapi.PathsObject,
-        b: openapi.PathsObject
-      ): openapi.PathsObject {
-        for (const [path, route] of Object.entries(b)) {
-          if (path in a) {
-            // spread collisions into one
-            // assumes no duplicate METHODs
-            a[path] = {
-              ...a[path],
-              [path]: route,
-            };
-          } else {
-            a[path] = route;
-          }
-        }
-        return a;
-      }
+      };
     }
   }
 
@@ -588,12 +457,6 @@ export class CommandService<Service = any> {
   }
 }
 
-function ittyRouteToApigatewayRoute(route: string) {
-  return route === "*"
-    ? "/{proxy+}"
-    : route.replace(/\*/g, "{proxy+}").replaceAll(/\:([^\/]*)/g, "{$1}");
-}
-
 interface CommandMapping {
   manifest: CommandFunction;
   overrides?: CommandHandlerProps;
@@ -648,10 +511,4 @@ function commandNamespaceName(command: CommandSpec<any, any, any, any>) {
 
 function commandFunctionNameSuffix(command: CommandSpec) {
   return commandServiceFunctionSuffix(commandNamespaceName(command));
-}
-
-function parameterNamesFromPath(path: string): string[] {
-  return Array.from(path.matchAll(/\/:([^\/\?\#]*)/g))
-    .map(([, g]) => g)
-    .filter((x): x is string => !!x);
 }

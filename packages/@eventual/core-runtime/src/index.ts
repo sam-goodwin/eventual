@@ -6,6 +6,7 @@ export * from "./handlers/index.js";
 export * from "./local/index.js";
 export * from "./log-agent.js";
 export * from "./metrics/index.js";
+export * from "./open-api-spec.js";
 export * from "./providers/index.js";
 export * from "./result.js";
 export * from "./schedule.js";
