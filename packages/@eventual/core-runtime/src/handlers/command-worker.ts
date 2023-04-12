@@ -4,7 +4,7 @@ import {
   HttpRequest,
   HttpResponse,
   isHttpError,
-  RestParamSpec,
+  RestParam,
 } from "@eventual/core";
 import {
   commands,
@@ -176,11 +176,9 @@ function initRouter() {
 
           // parse headers/params/queries/body into the RPC interface
           if (command.params) {
-            Object.entries(command.params as Record<string, RestParamSpec>).map(
-              ([name, spec]) => {
-                input[name] = resolveInput(name, spec);
-              }
-            );
+            Object.entries(command.params).map(([name, spec]) => {
+              input[name] = resolveInput(name, spec);
+            });
           }
 
           if (command.input && shouldValidate) {
@@ -206,7 +204,7 @@ function initRouter() {
             },
           });
 
-          function resolveInput(name: string, spec: RestParamSpec): any {
+          function resolveInput(name: string, spec: RestParam): any {
             if (spec === "body") {
               return body?.[name];
             } else if (spec === "query") {

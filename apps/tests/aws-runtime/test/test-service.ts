@@ -1,3 +1,4 @@
+import { extendApi } from "@anatine/zod-openapi";
 import {
   DeleteItemCommand,
   DynamoDBClient,
@@ -6,26 +7,26 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import {
+  Entity,
   EventualError,
   HeartbeatTimeout,
   HttpResponse,
-  task,
   api,
   asyncResult,
   command,
   condition,
-  entity,
   duration,
+  entity,
   event,
   expectSignal,
-  sendTaskHeartbeat,
   sendSignal,
+  sendTaskHeartbeat,
   signal,
   subscription,
+  task,
   time,
-  workflow,
   transaction,
-  Entity,
+  workflow,
 } from "@eventual/core";
 import z from "zod";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -688,7 +689,7 @@ export const typed1 = command(
   {
     path: "/user/typed1/:userId",
     input: z.object({
-      userId: z.string(),
+      userId: extendApi(z.string(), { description: "The user ID to retrieve" }),
     }),
   },
   async ({ userId }) => {
@@ -701,7 +702,9 @@ export const typed1 = command(
 
 const User = z.object({
   userId: z.string(),
-  createdTime: z.date(),
+  createdTime: extendApi(z.date(), {
+    description: "Time the user was created",
+  }),
 });
 
 // provide a schema for the output body
@@ -710,8 +713,10 @@ export const typed2 = command(
   {
     path: "/user/typed2/:userId",
     method: "GET",
+    params: { detailed: "query" },
     input: z.object({
       userId: z.string(),
+      detailed: z.boolean().optional(),
     }),
     output: User,
   },
@@ -719,6 +724,31 @@ export const typed2 = command(
     return {
       userId: request.userId,
       createdTime: new Date(0),
+    };
+  }
+);
+
+export const typedPut = command(
+  "typedPut",
+  {
+    path: "/user/typedPut/:userId",
+    method: "PUT",
+    description:
+      "Update a user's info. Will write over whatever was set before.",
+    summary: "Update a user's info",
+    params: { expectedVersion: { in: "query", name: "ExpectedVersion" } },
+    input: z.object({
+      // from path
+      userId: z.string(),
+      // from query string
+      expectedVersion: z.number().optional(),
+      // from body
+      age: z.number(),
+    }),
+  },
+  async (request) => {
+    return {
+      userId: request.userId,
     };
   }
 );

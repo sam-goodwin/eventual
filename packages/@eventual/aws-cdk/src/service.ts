@@ -31,6 +31,7 @@ import {
   CommandProps,
   CommandService,
   Commands,
+  CommandsProps,
   CorsOptions,
 } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal.js";
@@ -114,6 +115,12 @@ export interface ServiceProps<Service = any> {
   subscriptions?: SubscriptionOverrides<Service>;
   entityStreamOverrides?: EntityStreamOverrides<Service>;
   cors?: CorsOptions;
+  /**
+   * Customize the open API output for the gateway.
+   *
+   * Keep in mind that the output must be valid for APIGateway.
+   */
+  openApi?: CommandsProps<Service>["openApi"];
   system?: {
     /**
      * Configuration properties for the workflow orchestrator
@@ -318,6 +325,7 @@ export class Service<S = any> extends Construct {
       cors: props.cors,
       local: this.local,
       entityService,
+      openApi: props.openApi,
       ...serviceConstructProps,
     });
     proxyCommandService._bind(this.commandService);

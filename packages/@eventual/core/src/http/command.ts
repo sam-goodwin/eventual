@@ -25,7 +25,7 @@ export function commandRpcPath(
   }${command.name.startsWith("/") ? "" : "/"}${command.name}`;
 }
 
-export type AnyCommand = Command<string, any, any, any, any, any>;
+export type AnyCommand = Command<string, any, any, any, any, HttpMethod | undefined>;
 
 export interface Command<
   Name extends string = string,
@@ -49,35 +49,76 @@ export type RestOptions<
 > = {
   path?: Path;
   method?: Method;
+  /**
+   * Maps parameters from different sources to a single input object.
+   *
+   * ```ts
+   * // POST /properties/:userId?expectedVersion=1
+   * // { age: 35 }
+   * command("/properties/:userId", {
+   *    params: {
+   *       expectedVersion: "query",
+   *       contentType: { in: "headers", name: "content-type" },
+   *    },
+   *    input: z.object({
+   *       userId: z.string(),
+   *       expectedVersion: z.number().optional(),
+   *       contentType: z.string(),
+   *       age: z.number()
+   *    }),
+   * }, ({userId}) => { console.log(userId); });
+   * ```
+   *
+   * userId - assumed to come from the path
+   * expectedVersion - explicitly mapped from the query string
+   * contentType - explicitly mapped from the headers and renamed
+   * age - assumed to come from the body
+   *
+   * Default location:
+   *    GET/DELETE/HEAD/OPTIONS - query
+   *    POST/PUT/PATCH - body
+   */
   params?: RestParams<Input, Path, Method>;
 };
-
-export type RestParamSpec =
-  | "body"
-  | "path"
-  | "query"
-  | "header"
-  | {
-      in: "query" | "header" | "body";
-      name?: string;
-    };
 
 export type RestParams<
   Input,
   Path extends string | undefined,
   Method extends HttpMethod | undefined
 > = {
-  [k in keyof Input]?: k extends ParsePath<Exclude<Path, undefined>>
+  [k in keyof Partial<Input>]: k extends ParsePath<Exclude<Path, undefined>>
     ? "path"
-    : Method extends "GET"
-    ? RestParam<"query" | "header">
-    : RestParam<"query" | "header" | "body">;
+    : Method extends "GET" | "DELETE" | "HEAD" | "OPTIONS"
+    ? RestParam<"query" | "header" | "path">
+    : RestParam;
 };
 
-export type RestParam<In extends "query" | "body" | "header"> =
+export type RestParamLocation = "query" | "body" | "header" | "path";
+
+export type RestParam<In extends RestParamLocation = RestParamLocation> =
   | In
   | {
-      in: In;
+      in: Exclude<In, "path">;
+      /**
+       * The name of the parameter in the source location.
+       *
+       * For example, if the query string parameter is `UserID`, but the input schema uses `userId`.
+       *
+       * ```ts
+       * // /properties?UserID=...
+       * command("/properties", {
+       *    params: {
+       *       userId: {
+       *          in: "query",
+       *          name: "UserID"
+       *       },
+       *    },
+       *    input: z.object({
+       *       userId: z.string().optional()
+       *    }),
+       * }, ({userId}) => { console.log(userId); });
+       * ```
+       */
       name?: string;
     };
 
@@ -106,18 +147,13 @@ export interface CommandOptions<
   Output,
   Path extends string | undefined,
   Method extends HttpMethod | undefined
-> extends FunctionRuntimeProps {
-  path?: Path;
-  method?: Method;
-  params?: RestParams<Input, Path, Method>;
+> extends FunctionRuntimeProps,
+    Pick<
+      CommandSpec<string, Input, Path, Method>,
+      "path" | "method" | "summary" | "description" | "params" | "validate"
+    > {
   input?: z.ZodType<Input>;
   output?: z.ZodType<Output>;
-  /**
-   * Enable or disable schema validation.
-   *
-   * @default true
-   */
-  validate?: boolean;
 }
 
 export function command<
