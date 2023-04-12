@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.32.0 (2023-04-12)
+
+### Features
+
+- improve schema output and allow providing additional fields ([#335](https://github.com/functionless/eventual/issues/335)) ([f9da39a](https://github.com/functionless/eventual/commit/f9da39ac7eae882b403fbcb5b3f30043d2afe2e1))
+
 ## 0.31.7 (2023-04-09)
 
 **Note:** Version bump only for package @eventual/project
