@@ -59,6 +59,9 @@ const testService = new eventual.Service<typeof testServiceRuntime>(
         logLevel: LogLevel.DEBUG,
       },
     },
+    cors: {
+      allowOrigins: ["http://some-url.com"],
+    },
   }
 );
 

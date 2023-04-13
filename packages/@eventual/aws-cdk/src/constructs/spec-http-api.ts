@@ -95,44 +95,12 @@ export class SpecHttpApi extends HttpApiBase {
 
     props.apiDefinition.bindAfterCreate(this, this);
 
-    let corsConfiguration: CfnApi.CorsProperty | undefined;
-    if (props?.corsPreflight) {
-      const cors = props.corsPreflight;
-      if (
-        cors.allowOrigins &&
-        cors.allowOrigins.includes("*") &&
-        cors.allowCredentials
-      ) {
-        throw new Error(
-          "CORS preflight - allowCredentials is not supported when allowOrigin is '*'"
-        );
-      }
-      const {
-        allowCredentials,
-        allowHeaders,
-        allowMethods,
-        allowOrigins,
-        exposeHeaders,
-        maxAge,
-      } = props.corsPreflight;
-      corsConfiguration = {
-        allowCredentials,
-        allowHeaders,
-        allowMethods,
-        allowOrigins,
-        exposeHeaders,
-        maxAge: maxAge?.toSeconds(),
-      };
-    }
-
     const resource = new CfnApi(this, "Resource", {
       name: props.apiName,
       body: apiDefConfig.inlineDefinition ?? undefined,
       bodyS3Location: apiDefConfig.inlineDefinition
         ? undefined
         : apiDefConfig.s3Location,
-      corsConfiguration,
-      description: props?.description,
     });
 
     this.apiId = resource.ref;
@@ -165,10 +133,5 @@ export class SpecHttpApi extends HttpApiBase {
   }
 }
 
-export interface SpecHttpApiProps extends HttpApiProps {
-  /**
-   * Name for the HTTP API resource
-   * @default - id of the HttpApi construct.
-   */
-  readonly apiName?: string;
-}
+export interface SpecHttpApiProps
+  extends Omit<HttpApiProps, "corsPreflight" | "description"> {}

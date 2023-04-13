@@ -4,8 +4,8 @@ import {
   IHttpApi,
 } from "@aws-cdk/aws-apigatewayv2-alpha";
 import {
-  ENV_NAMES,
   commandServiceFunctionSuffix,
+  ENV_NAMES,
   sanitizeFunctionName,
 } from "@eventual/aws-runtime";
 import { commandRpcPath, isDefaultNamespaceCommand } from "@eventual/core";
@@ -14,7 +14,7 @@ import {
   CommandSpec,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
 } from "@eventual/core/internal";
-import { Arn, Duration, Lazy, Stack, aws_iam } from "aws-cdk-lib";
+import { Arn, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
 import {
   Effect,
   IGrantable,
@@ -206,19 +206,7 @@ export class CommandService<Service = any> {
 
     // Service => Gateway
     this.gateway = new SpecHttpApi(props.serviceScope, "Gateway", {
-      // apiName: `eventual-api-${props.serviceName}`,
       apiDefinition: ApiDefinition.fromInline(this.specification),
-      corsPreflight: props.cors
-        ? {
-            ...props.cors,
-            allowMethods: Array.from(
-              new Set([
-                ...(props.cors.allowMethods ?? []),
-                CorsHttpMethod.OPTIONS,
-              ])
-            ),
-          }
-        : undefined,
     });
 
     this.gateway.node.addDependency(this.integrationRole);
@@ -464,6 +452,18 @@ export class CommandService<Service = any> {
           },
           ...paths,
         },
+        ...(props.cors
+          ? {
+              [XAmazonApigatewayCors]: {
+                allowCredentials: props.cors.allowCredentials,
+                allowHeaders: props.cors.allowHeaders,
+                allowMethods: props.cors.allowMethods,
+                allowOrigins: props.cors.allowOrigins,
+                exposeHeaders: props.cors.exposeHeaders,
+                maxAge: props.cors.maxAge?.toSeconds(),
+              } satisfies XAmazonApigatewayCors,
+            }
+          : {}),
       } satisfies openapi.OpenAPIObject;
 
       function mergeAPIPaths(
@@ -628,6 +628,17 @@ const XAmazonApigatewayAnyMethod = "x-amazon-apigateway-any-method";
 interface XAmazonApigatewayAnyMethod {
   isDefaultRoute: boolean;
   [XAmazonApiGatewayIntegration]: XAmazonApiGatewayIntegration;
+}
+
+const XAmazonApigatewayCors = "x-amazon-apigateway-cors";
+
+interface XAmazonApigatewayCors {
+  allowOrigins?: string[];
+  allowCredentials?: boolean;
+  exposeHeaders?: string[];
+  maxAge?: number;
+  allowMethods?: CorsHttpMethod[];
+  allowHeaders?: string[];
 }
 
 function commandNamespaceName(command: CommandSpec<any, any, any, any>) {
