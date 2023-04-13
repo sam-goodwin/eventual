@@ -29,9 +29,9 @@ import {
   transaction,
   workflow,
 } from "@eventual/core";
+import type openapi from "openapi3-ts";
 import z from "zod";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
-import type openapi from "openapi3-ts";
 
 const sqs = new SQSClient({});
 const dynamo = new DynamoDBClient({});

@@ -538,6 +538,9 @@ importers:
       '@eventual/client':
         specifier: workspace:^
         version: link:../client
+      '@eventual/compiler':
+        specifier: workspace:^
+        version: link:../compiler
       '@eventual/core':
         specifier: workspace:^
         version: link:../core

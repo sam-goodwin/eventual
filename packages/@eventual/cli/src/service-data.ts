@@ -1,18 +1,18 @@
 import * as ssm from "@aws-sdk/client-ssm";
 import { SSMClient } from "@aws-sdk/client-ssm";
 import {
-  NODE_REGION_CONFIG_OPTIONS,
   NODE_REGION_CONFIG_FILE_OPTIONS,
+  NODE_REGION_CONFIG_OPTIONS,
 } from "@aws-sdk/config-resolver";
 import { loadConfig } from "@aws-sdk/node-config-provider";
-import { AwsCredentialIdentity } from "@aws-sdk/types";
-import { defaultService } from "./env.js";
-import { styledConsole } from "./styled-console.js";
+import type { AwsCredentialIdentity } from "@aws-sdk/types";
+import type { BuildManifest } from "@eventual/core-runtime";
+import type { ServiceSpec } from "@eventual/core/internal";
+import { readJsonFile } from "@eventual/project";
 import fs from "fs/promises";
 import path from "path";
-import { readJsonFile } from "@eventual/project";
-import { BuildManifest } from "@eventual/core-runtime";
-import { ServiceSpec } from "@eventual/core/internal";
+import { defaultService } from "./env.js";
+import { styledConsole } from "./styled-console.js";
 
 /**
  * The data which is encoded in SSM for a given service under /eventual/services/{name}

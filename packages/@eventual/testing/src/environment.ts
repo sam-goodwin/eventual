@@ -1,3 +1,4 @@
+import { inferFromMemory } from "@eventual/compiler";
 import {
   Event,
   EventEnvelope,
@@ -38,7 +39,6 @@ import {
 } from "@eventual/core/internal";
 import { TestSubscriptionProvider } from "./providers/subscription-provider.js";
 import { MockTask, MockableTaskProvider } from "./providers/task-provider.js";
-import { inferFromMemory } from "@eventual/compiler";
 
 export interface TestEnvironmentProps {
   /**
