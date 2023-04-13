@@ -13,4 +13,10 @@ export default {
   tasks: [],
   subscriptions: [],
   entities: { entities: [] },
+  openApi: {
+    info: {
+      title: "dummy title",
+      version: "1",
+    },
+  },
 } satisfies ServiceSpec;

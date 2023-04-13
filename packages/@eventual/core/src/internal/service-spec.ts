@@ -31,6 +31,9 @@ export interface ServiceSpec {
   entities: {
     entities: EntitySpec[];
   };
+  openApi: {
+    info: openapi.InfoObject;
+  };
 }
 
 export interface FunctionSpec {
@@ -173,4 +176,9 @@ export interface EntityStreamSpec {
 
 export interface TransactionSpec {
   name: string;
+}
+
+export interface EnvironmentManifest {
+  serviceSpec: ServiceSpec;
+  serviceUrls: string[];
 }

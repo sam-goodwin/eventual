@@ -1,12 +1,14 @@
 import itty from "itty-router";
+import type openapi from "openapi3-ts";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
-import { commands } from "../internal/global.js";
+import { commands, getEnvironmentManifest } from "../internal/global.js";
+import { generateOpenAPISpec } from "../internal/open-api-spec.js";
 import type { SourceLocation } from "../internal/service-spec.js";
 import {
   AnyCommand,
-  command,
   Command,
+  command,
   CommandHandler,
   CommandOptions,
   parseCommandArgs,
@@ -178,3 +180,22 @@ export interface HttpRouter<Context> {
 }
 
 export type HttpRouteEntry = [string, RegExp, HttpHandler];
+
+export interface ApiSpecification {
+  generate: (options?: { includeRpcPaths?: boolean }) => openapi.OpenAPIObject;
+}
+
+export const ApiSpecification: ApiSpecification = {
+  generate: (options) => {
+    const envManifest = getEnvironmentManifest();
+    if (!envManifest) {
+      throw new Error("EnvironmentManifest has not been registered.");
+    }
+    return generateOpenAPISpec(envManifest.serviceSpec.commands, {
+      createRestPaths: true,
+      createRpcPaths: options?.includeRpcPaths ?? false,
+      info: envManifest.serviceSpec.openApi.info,
+      servers: envManifest.serviceUrls.map((s) => ({ url: s })),
+    });
+  },
+};

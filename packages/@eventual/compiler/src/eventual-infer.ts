@@ -41,7 +41,8 @@ import {
 import { printModule } from "./print-module.js";
 
 export async function infer(
-  scriptName = process.argv[2]
+  scriptName = process.argv[2],
+  openApi: ServiceSpec["openApi"]
 ): Promise<ServiceSpec> {
   if (scriptName === undefined) {
     throw new Error(`scriptName undefined`);
@@ -66,7 +67,15 @@ export async function infer(
 
   await import(path.resolve(scriptName));
 
-  const serviceSpec: ServiceSpec = {
+  const serviceSpec: ServiceSpec = inferFromMemory(openApi);
+
+  console.log(JSON.stringify(serviceSpec));
+
+  return serviceSpec;
+}
+
+export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
+  return {
     workflows: [...workflows().keys()].map((n) => ({ name: n })),
     tasks: Object.values(tasks()).map((task) => ({
       name: task.name,
@@ -116,11 +125,8 @@ export async function infer(
     transactions: [...transactions().values()].map((t) => ({
       name: t.name,
     })),
+    openApi,
   };
-
-  console.log(JSON.stringify(serviceSpec));
-
-  return serviceSpec;
 }
 
 export const inferPlugin: esbuild.Plugin = {

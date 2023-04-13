@@ -1,3 +1,4 @@
+import { inferFromMemory } from "@eventual/compiler";
 import {
   Event,
   EventEnvelope,
@@ -34,6 +35,7 @@ import {
   TaskInput,
   entities,
   registerServiceClient,
+  registerEnvironmentManifest,
 } from "@eventual/core/internal";
 import { TestSubscriptionProvider } from "./providers/subscription-provider.js";
 import { MockTask, MockableTaskProvider } from "./providers/task-provider.js";
@@ -129,6 +131,12 @@ export class TestEnvironment extends RuntimeServiceClient {
     this.subscriptionProvider = subscriptionProvider;
 
     registerServiceClient(this);
+    registerEnvironmentManifest({
+      serviceSpec: inferFromMemory({
+        info: { title: "test-service", version: "1" },
+      }),
+      serviceUrls: [],
+    });
   }
 
   public override async sendTaskHeartbeat(

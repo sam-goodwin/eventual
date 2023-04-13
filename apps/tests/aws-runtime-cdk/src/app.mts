@@ -1,7 +1,9 @@
+import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
 import * as eventual from "@eventual/aws-cdk";
 import { DebugDashboard, ServiceDashboard } from "@eventual/aws-cdk";
 import { LogLevel } from "@eventual/core";
 import { App, CfnOutput, CfnResource, Stack } from "aws-cdk-lib";
+import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
 import {
   ArnPrincipal,
   PolicyStatement,
@@ -10,11 +12,9 @@ import {
 } from "aws-cdk-lib/aws-iam";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Queue } from "aws-cdk-lib/aws-sqs";
+import { createRequire as topLevelCreateRequire } from "module";
 import path from "path";
 import { ChaosExtension } from "./chaos-extension.js";
-import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
-import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
-import { createRequire as topLevelCreateRequire } from "module";
 
 import type * as testServiceRuntime from "tests-runtime";
 

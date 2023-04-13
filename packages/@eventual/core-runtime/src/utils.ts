@@ -45,7 +45,7 @@ export type LazyValue<T extends string | number | object | boolean> =
   | (() => T);
 
 export function getLazy<T extends string | number | object | boolean>(
-  lazy: LazyValue<T>
+  lazy: LazyValue<T> | T
 ): T {
   return typeof lazy !== "function" ? lazy : lazy();
 }

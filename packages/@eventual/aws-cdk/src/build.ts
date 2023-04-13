@@ -11,6 +11,7 @@ import {
 import { Code } from "aws-cdk-lib/aws-lambda";
 import { execSync } from "child_process";
 import fs from "fs";
+import type openapi from "openapi3-ts";
 import path from "path";
 
 export interface BuildOutput extends BuildManifest {}
@@ -62,11 +63,14 @@ export interface BuildAWSRuntimeProps {
   serviceName: string;
   entry: string;
   outDir: string;
+  openApi: {
+    info: openapi.InfoObject;
+  };
 }
 
 export async function buildService(request: BuildAWSRuntimeProps) {
   const outDir = request.outDir;
-  const serviceSpec = await infer(request.entry);
+  const serviceSpec = await infer(request.entry, request.openApi);
 
   const specPath = path.join(outDir, "spec.json");
   await fs.promises.mkdir(path.dirname(specPath), { recursive: true });
