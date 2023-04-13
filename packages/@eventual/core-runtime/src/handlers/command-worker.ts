@@ -1,6 +1,5 @@
 import {
   commandRpcPath,
-  EventualServiceClient,
   HttpRequest,
   HttpResponse,
   isHttpError,
@@ -8,21 +7,13 @@ import {
 } from "@eventual/core";
 import {
   commands,
-  registerEntityHook,
-  registerServiceClient,
-  registerServiceSpecification,
-  ServiceSpec,
   ServiceType,
   serviceTypeScope,
 } from "@eventual/core/internal";
 import itty from "itty-router";
-import { EntityClient } from "../clients/entity-client.js";
+import { registerWorkerIntrinsics, WorkerIntrinsicDeps } from "./utils.js";
 
-export interface ApiHandlerDependencies {
-  serviceClient?: EventualServiceClient;
-  entityClient?: EntityClient;
-  serviceSpec?: ServiceSpec;
-}
+export interface ApiHandlerDependencies extends WorkerIntrinsicDeps {}
 
 export interface CommandWorker {
   (request: HttpRequest): Promise<HttpResponse>;
@@ -34,23 +25,10 @@ export interface CommandWorker {
  * decoupled from a runtime's specifics by the clients. A runtime must
  * inject its own client implementations designed for that platform.
  */
-export function createCommandWorker({
-  serviceClient,
-  entityClient,
-  serviceSpec,
-}: ApiHandlerDependencies): CommandWorker {
-  // make the service client available to web hooks
-  if (serviceClient) {
-    registerServiceClient(serviceClient);
-  }
-  // the system commands do not currently use the entity client so it will be optional for now.
-  if (entityClient) {
-    registerEntityHook(entityClient);
-  }
-  // make the service spec available when needed
-  if (serviceSpec) {
-    registerServiceSpecification(serviceSpec);
-  }
+export function createCommandWorker(
+  deps: ApiHandlerDependencies
+): CommandWorker {
+  registerWorkerIntrinsics(deps);
 
   const router = initRouter();
 

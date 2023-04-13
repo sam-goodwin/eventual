@@ -177,3 +177,8 @@ export interface EntityStreamSpec {
 export interface TransactionSpec {
   name: string;
 }
+
+export interface EnvironmentManifest {
+  serviceSpec: ServiceSpec;
+  serviceUrls: string[];
+}

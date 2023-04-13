@@ -1,4 +1,4 @@
-import type openapi from "openapi3-ts";
+import openapi from "openapi3-ts";
 import { commandRpcPath } from "../http/command.js";
 import { CommandSpec } from "./service-spec.js";
 
@@ -19,11 +19,11 @@ export interface OpenAPISpecOptions {
   servers?: openapi.ServerObject[];
   onRpcPath?: (
     command: CommandSpec,
-    path: openapi.PathObject
+    pathItem: openapi.OperationObject
   ) => openapi.PathObject;
   onRestPath?: (
     command: CommandSpec,
-    path: openapi.PathObject
+    pathItem: openapi.OperationObject
   ) => openapi.PathObject;
 }
 
@@ -72,8 +72,8 @@ export function generateOpenAPISpec(
     const commandPath = commandRpcPath(command);
 
     return {
-      ...(options.createRpcPaths ? createRpcOperation() : {}),
-      ...(options.createRestPaths ? createRestOperation() : {}),
+      ...(options.createRpcPaths ?? true ? createRpcOperation() : {}),
+      ...(options.createRestPaths ?? true ? createRestOperation() : {}),
     };
 
     function createRpcOperation(): openapi.PathItemObject {
@@ -95,12 +95,12 @@ export function generateOpenAPISpec(
               description: `Default response for POST ${commandPath}`,
             } satisfies openapi.ResponseObject,
           },
-        },
+        } satisfies openapi.OperationObject,
       };
 
       return {
         [`/${commandPath}`]: options?.onRpcPath
-          ? options.onRpcPath(command, obj)
+          ? { post: options.onRpcPath(command, obj.post) }
           : obj,
       };
     }
@@ -165,49 +165,49 @@ export function generateOpenAPISpec(
             }
           : undefined;
 
-      const obj = {
-        [command.method?.toLocaleLowerCase() ?? "get"]: {
-          operationId: `${command.name}-${command.method ?? "get"}`,
-          description: command.description,
-          summary: command.summary,
-          parameters: Object.entries(resolvedParameters).flatMap(
-            ([name, { spec, schema }]) =>
-              spec === "body"
-                ? []
-                : [
-                    {
-                      in: spec,
-                      name,
-                      schema,
-                    } satisfies openapi.ParameterObject,
-                  ]
-          ),
-          requestBody: {
+      const operationItem: openapi.OperationObject = {
+        operationId: `${command.name}-${command.method ?? "get"}`,
+        description: command.description,
+        summary: command.summary,
+        parameters: Object.entries(resolvedParameters).flatMap(
+          ([name, { spec, schema }]) =>
+            spec === "body"
+              ? []
+              : [
+                  {
+                    in: spec,
+                    name,
+                    schema,
+                  } satisfies openapi.ParameterObject,
+                ]
+        ),
+        requestBody: {
+          content: {
+            ...(bodySchema
+              ? {
+                  "application/json": {
+                    schema: bodySchema,
+                  },
+                }
+              : {}),
+          },
+        },
+        responses: {
+          default: {
+            description: `Default response for ${command.method} ${command.path}`,
             content: {
-              ...(bodySchema
-                ? {
-                    "application/json": {
-                      schema: bodySchema,
-                    },
-                  }
-                : {}),
+              "application/json": { schema: command.output },
             },
           },
-          responses: {
-            default: {
-              description: `Default response for ${command.method} ${command.path}`,
-              content: {
-                "application/json": { schema: command.output },
-              },
-            },
-          },
-        } satisfies openapi.OperationObject,
-      } satisfies openapi.PathItemObject;
+        },
+      };
 
       return {
-        [ittyRouteToOpenApiRoute(command.path)]: options?.onRestPath
-          ? options.onRestPath(command, obj)
-          : obj,
+        [ittyRouteToOpenApiRoute(command.path)]: {
+          [command.method?.toLocaleLowerCase() ?? "get"]: options?.onRestPath
+            ? options.onRestPath(command, operationItem)
+            : operationItem,
+        },
       };
     }
   }

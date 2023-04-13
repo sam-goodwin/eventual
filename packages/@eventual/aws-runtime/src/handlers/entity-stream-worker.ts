@@ -11,13 +11,14 @@ import {
 import { EntityStreamOperation } from "@eventual/core/internal";
 import { DynamoDBStreamHandler } from "aws-lambda";
 import { createEntityClient, createServiceClient } from "../create.js";
-import { entityName, entityStreamName } from "../env.js";
+import { entityName, entityStreamName, serviceUrl } from "../env.js";
 import { EntityEntityRecord } from "../stores/entity-store.js";
 
 const worker = createEntityStreamWorker({
-  eventualClient: createServiceClient({}),
+  serviceClient: createServiceClient({}),
   entityClient: createEntityClient(),
   serviceSpec,
+  serviceUrls: [serviceUrl],
 });
 
 export default (async (event) => {

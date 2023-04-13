@@ -101,7 +101,7 @@ export const local = (yargs: Argv) =>
       app.listen(port);
       const url = `http://localhost:${port}`;
 
-      // get the stored spec file to load values from synth 
+      // get the stored spec file to load values from synth
       const storedServiceSpec = await getServiceSpec(
         config.outDir,
         serviceName
@@ -112,7 +112,10 @@ export const local = (yargs: Argv) =>
       );
 
       // TODO: should the loading be done by the local env?
-      const localEnv = new LocalEnvironment(serviceSpec);
+      const localEnv = new LocalEnvironment({
+        serviceSpec,
+        serviceUrls: [url],
+      });
 
       app.use(express.json({ strict: false }));
 

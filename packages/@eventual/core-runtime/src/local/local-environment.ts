@@ -6,9 +6,9 @@ import {
 } from "@eventual/core";
 import {
   entities,
+  EnvironmentManifest,
+  registerEnvironmentManifest,
   registerServiceClient,
-  registerServiceSpecification,
-  ServiceSpec,
 } from "@eventual/core/internal";
 import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
 import { isTaskWorkerRequest } from "../clients/task-client.js";
@@ -28,7 +28,7 @@ export class LocalEnvironment {
   private running: boolean = false;
   private localContainer: LocalContainer;
 
-  constructor(serviceSpec: ServiceSpec) {
+  constructor(environmentManifest: EnvironmentManifest) {
     this.timeController = new TimeController([], {
       increment: 1,
       start: new Date().getTime(),
@@ -67,7 +67,7 @@ export class LocalEnvironment {
     });
 
     registerServiceClient(serviceClient);
-    registerServiceSpecification(serviceSpec);
+    registerEnvironmentManifest(environmentManifest);
 
     this.start();
   }

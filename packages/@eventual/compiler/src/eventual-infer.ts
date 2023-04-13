@@ -69,6 +69,8 @@ export async function infer(
 
   const serviceSpec: ServiceSpec = inferFromMemory(openApi);
 
+  console.log(JSON.stringify(serviceSpec));
+
   return serviceSpec;
 }
 

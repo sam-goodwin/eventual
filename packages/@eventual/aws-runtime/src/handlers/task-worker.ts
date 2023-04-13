@@ -21,7 +21,7 @@ import {
   createTimerClient,
   createTransactionClient,
 } from "../create.js";
-import { serviceName } from "../env.js";
+import { serviceName, serviceUrl } from "../env.js";
 
 const worker = createTaskWorker({
   executionQueueClient: createExecutionQueueClient(),
@@ -43,6 +43,7 @@ const worker = createTaskWorker({
   serviceName: serviceName(),
   entityClient: createEntityClient(),
   serviceSpec,
+  serviceUrls: [serviceUrl],
 });
 
 export default async (request: TaskWorkerRequest) => {

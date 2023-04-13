@@ -1,30 +1,16 @@
-import { EventEnvelope, EventualServiceClient } from "@eventual/core";
-import {
-  registerEntityHook,
-  registerServiceClient,
-  registerServiceSpecification,
-  ServiceSpec,
-  ServiceType,
-  serviceTypeScope,
-} from "@eventual/core/internal";
-import { EntityClient } from "../clients/entity-client.js";
+import { EventEnvelope } from "@eventual/core";
+import { ServiceType, serviceTypeScope } from "@eventual/core/internal";
 import { SubscriptionProvider } from "../providers/subscription-provider.js";
+import { WorkerIntrinsicDeps, registerWorkerIntrinsics } from "./utils.js";
 
 /**
  * The dependencies of {@link createSubscriptionWorker}.
  */
-export interface EventHandlerDependencies {
-  /**
-   * The {@link EventualServiceClient} for interacting with workflows contained
-   * within the service boundary.
-   */
-  serviceClient?: EventualServiceClient;
+export interface EventHandlerDependencies extends WorkerIntrinsicDeps {
   /**
    * Returns event handlers
    */
   subscriptionProvider: SubscriptionProvider;
-  entityClient: EntityClient;
-  serviceSpec?: ServiceSpec;
 }
 
 export interface SubscriptionWorker {
@@ -37,27 +23,17 @@ export interface SubscriptionWorker {
  * decoupled from a runtime's specifics by the clients. A runtime must
  * inject its own client implementations designed for that platform.
  */
-export function createSubscriptionWorker({
-  serviceClient,
-  subscriptionProvider: eventHandlerProvider,
-  entityClient,
-  serviceSpec,
-}: EventHandlerDependencies): SubscriptionWorker {
-  // make the workflow client available to web hooks
-  if (serviceClient) {
-    registerServiceClient(serviceClient);
-  }
-  registerEntityHook(entityClient);
-  if (serviceSpec) {
-    registerServiceSpecification(serviceSpec);
-  }
+export function createSubscriptionWorker(
+  deps: EventHandlerDependencies
+): SubscriptionWorker {
+  registerWorkerIntrinsics(deps);
 
   return async function (events) {
     return await serviceTypeScope(ServiceType.Subscription, async () => {
       await Promise.allSettled(
         events.map((event) =>
           Promise.allSettled(
-            eventHandlerProvider
+            deps.subscriptionProvider
               .getSubscriptionsForEvent(event.name)
               .map((handler) => handler(event.event))
           )

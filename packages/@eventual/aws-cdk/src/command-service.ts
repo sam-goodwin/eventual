@@ -325,7 +325,6 @@ export class CommandService<Service = any> {
       return {
         ...spec,
         paths: {
-          ...spec.paths,
           "/$default": {
             [XAmazonApigatewayAnyMethod]: {
               isDefaultRoute: true,
@@ -345,6 +344,7 @@ export class CommandService<Service = any> {
               } satisfies XAmazonApiGatewayIntegration,
             } satisfies XAmazonApigatewayAnyMethod,
           },
+          ...spec.paths,
         },
       };
     }

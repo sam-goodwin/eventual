@@ -1,5 +1,5 @@
-import serviceSpec from "@eventual/injected/spec";
 import "@eventual/injected/entry";
+import serviceSpec from "@eventual/injected/spec";
 
 import {
   createSubscriptionWorker,
@@ -12,6 +12,7 @@ import {
   createServiceClient,
   createTransactionClient,
 } from "../create.js";
+import { serviceUrl } from "../env.js";
 
 export const processEvent = createSubscriptionWorker({
   // partially uses the runtime clients and partially uses the http client
@@ -22,6 +23,7 @@ export const processEvent = createSubscriptionWorker({
   subscriptionProvider: new GlobalSubscriptionProvider(),
   entityClient: createEntityClient(),
   serviceSpec,
+  serviceUrls: [serviceUrl],
 });
 
 export default async function (event: EventBridgeEvent<string, any>) {
