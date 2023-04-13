@@ -251,10 +251,20 @@ export class Service<S = any> extends Construct {
         }
       : undefined;
 
+    const openApi = {
+      info: {
+        title: this.serviceName,
+        // TODO: use the package.json?
+        version: "1",
+        ...props.openApi?.info,
+      },
+    };
+
     const build = buildServiceSync({
       serviceName: this.serviceName,
       entry: props.entry,
       outDir: path.join(eventualConfig.outDir, ".eventual", this.serviceName),
+      openApi,
     });
 
     const proxySchedulerService = lazyInterface<SchedulerService>();
@@ -325,7 +335,7 @@ export class Service<S = any> extends Construct {
       cors: props.cors,
       local: this.local,
       entityService,
-      openApi: props.openApi,
+      openApi,
       ...serviceConstructProps,
     });
     proxyCommandService._bind(this.commandService);

@@ -1,6 +1,9 @@
 import { EventualServiceClient, HttpMethod, HttpRequest } from "@eventual/core";
-import type { CommandWorker } from "@eventual/core-runtime";
-import { registerServiceClient } from "@eventual/core/internal";
+import {
+  registerWorkerIntrinsics,
+  type CommandWorker,
+} from "@eventual/core-runtime";
+import { ServiceSpec } from "@eventual/core/internal";
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyHandlerV2,
@@ -17,8 +20,10 @@ import { Buffer } from "buffer";
 export function createApiGCommandAdaptor({
   commandWorker,
   serviceClientBuilder,
+  serviceSpec,
 }: {
   commandWorker: CommandWorker;
+  serviceSpec?: ServiceSpec;
   serviceClientBuilder?: (serviceUrl: string) => EventualServiceClient;
 }): APIGatewayProxyHandlerV2 {
   return async function (
@@ -26,11 +31,15 @@ export function createApiGCommandAdaptor({
   ): Promise<APIGatewayProxyResultV2> {
     console.debug("event", event);
     //
-    if (serviceClientBuilder) {
-      registerServiceClient(
-        serviceClientBuilder(`https://${event.requestContext.domainName}`)
-      );
-    }
+    const serviceUrl = `https://${event.requestContext.domainName}`;
+    const serviceClient = serviceClientBuilder
+      ? serviceClientBuilder(serviceUrl)
+      : undefined;
+    registerWorkerIntrinsics({
+      serviceClient,
+      serviceSpec,
+      serviceUrls: [serviceUrl],
+    });
     const requestBody = event.body
       ? event.isBase64Encoded
         ? Buffer.from(event.body, "base64")

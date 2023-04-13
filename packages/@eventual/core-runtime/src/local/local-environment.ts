@@ -4,7 +4,12 @@ import {
   HttpResponse,
   isEntityStreamItem,
 } from "@eventual/core";
-import { entities, registerServiceClient } from "@eventual/core/internal";
+import {
+  entities,
+  EnvironmentManifest,
+  registerEnvironmentManifest,
+  registerServiceClient,
+} from "@eventual/core/internal";
 import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
 import { isTaskWorkerRequest } from "../clients/task-client.js";
 import { isTimerRequest } from "../clients/timer-client.js";
@@ -23,7 +28,7 @@ export class LocalEnvironment {
   private running: boolean = false;
   private localContainer: LocalContainer;
 
-  constructor() {
+  constructor(environmentManifest: EnvironmentManifest) {
     this.timeController = new TimeController([], {
       increment: 1,
       start: new Date().getTime(),
@@ -62,6 +67,7 @@ export class LocalEnvironment {
     });
 
     registerServiceClient(serviceClient);
+    registerEnvironmentManifest(environmentManifest);
 
     this.start();
   }

@@ -7,6 +7,7 @@ import type { Subscription } from "../subscription.js";
 import type { Task } from "../task.js";
 import type { Transaction } from "../transaction.js";
 import type { Workflow } from "../workflow.js";
+import type { EnvironmentManifest, ServiceSpec } from "./service-spec.js";
 import type { TaskRuntimeContext } from "./task.js";
 
 declare global {
@@ -51,6 +52,10 @@ declare global {
      * API routes registered within the application.
      */
     commands?: AnyCommand[];
+    /**
+     * A collection of information about the environment, including the {@link ServiceSpec}.
+     */
+    environmentManifest?: EnvironmentManifest;
   };
 }
 
@@ -123,4 +128,12 @@ export async function getTaskContext(): Promise<TaskRuntimeContext> {
     );
   }
   return context;
+}
+
+export function getEnvironmentManifest() {
+  return globalThis._eventual.environmentManifest;
+}
+
+export function registerEnvironmentManifest(envManifest: EnvironmentManifest) {
+  return (globalThis._eventual.environmentManifest = envManifest);
 }

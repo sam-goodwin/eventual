@@ -1,31 +1,21 @@
-import { EntityStreamItem, EventualServiceClient } from "@eventual/core";
+import { EntityStreamItem } from "@eventual/core";
 import {
   ServiceType,
   entities,
-  registerEntityHook,
-  registerServiceClient,
-  serviceTypeScope,
+  serviceTypeScope
 } from "@eventual/core/internal";
-import { EntityClient } from "../clients/entity-client.js";
+import { WorkerIntrinsicDeps, registerWorkerIntrinsics } from "./utils.js";
 
 export interface EntityStreamWorker {
   (item: EntityStreamItem<any>): false | void | Promise<false | void>;
 }
 
-interface EntityStreamWorkerDependencies {
-  eventualClient?: EventualServiceClient;
-  entityClient?: EntityClient;
-}
+interface EntityStreamWorkerDependencies extends WorkerIntrinsicDeps {}
 
 export function createEntityStreamWorker(
   dependencies: EntityStreamWorkerDependencies
 ): EntityStreamWorker {
-  if (dependencies.eventualClient) {
-    registerServiceClient(dependencies.eventualClient);
-  }
-  if (dependencies.entityClient) {
-    registerEntityHook(dependencies.entityClient);
-  }
+  registerWorkerIntrinsics(dependencies)
 
   return async (item) =>
     serviceTypeScope(ServiceType.EntityStreamWorker, async () => {

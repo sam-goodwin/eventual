@@ -1,3 +1,4 @@
+import serviceSpec from "@eventual/injected/spec";
 // the user's entry point will register tasks as a side effect.
 import "@eventual/injected/entry";
 
@@ -20,7 +21,7 @@ import {
   createTimerClient,
   createTransactionClient,
 } from "../create.js";
-import { serviceName } from "../env.js";
+import { serviceName, serviceUrl } from "../env.js";
 
 const worker = createTaskWorker({
   executionQueueClient: createExecutionQueueClient(),
@@ -41,6 +42,8 @@ const worker = createTaskWorker({
   taskStore: createTaskStore(),
   serviceName: serviceName(),
   entityClient: createEntityClient(),
+  serviceSpec,
+  serviceUrls: [serviceUrl],
 });
 
 export default async (request: TaskWorkerRequest) => {

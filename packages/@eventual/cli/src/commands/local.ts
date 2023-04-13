@@ -12,9 +12,12 @@ import { setServiceOptions } from "../service-action.js";
 import {
   getBuildManifest,
   getServiceData,
+  getServiceSpec,
   isServiceDeployed,
   tryResolveDefaultService,
 } from "../service-data.js";
+import { ServiceSpec } from "@eventual/core/internal";
+import { inferFromMemory } from "@eventual/compiler";
 const execPromise = promisify(_exec);
 
 export const local = (yargs: Argv) =>
@@ -98,8 +101,21 @@ export const local = (yargs: Argv) =>
       app.listen(port);
       const url = `http://localhost:${port}`;
 
+      // get the stored spec file to load values from synth
+      const storedServiceSpec = await getServiceSpec(
+        config.outDir,
+        serviceName
+      );
+      // infer from memory instead of from file to ensure the spec is up to date without synth.
+      const serviceSpec: ServiceSpec = inferFromMemory(
+        storedServiceSpec.openApi
+      );
+
       // TODO: should the loading be done by the local env?
-      const localEnv = new LocalEnvironment();
+      const localEnv = new LocalEnvironment({
+        serviceSpec,
+        serviceUrls: [url],
+      });
 
       app.use(express.json({ strict: false }));
 

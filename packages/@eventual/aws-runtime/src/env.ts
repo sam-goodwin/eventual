@@ -49,7 +49,7 @@ export const schedulerForwarderArn = () =>
   tryGetEnv(ENV_NAMES.SCHEDULE_FORWARDER_ARN);
 export const serviceLogGroupName = () =>
   tryGetEnv(ENV_NAMES.WORKFLOW_EXECUTION_LOG_GROUP_NAME);
-export const serviceUrl = () => tryGetEnv<LogLevel>(ENV_NAMES.SERVICE_URL);
+export const serviceUrl = () => tryGetEnv<string>(ENV_NAMES.SERVICE_URL);
 export const defaultLogLevel = () =>
   tryGetEnv<LogLevel>(ENV_NAMES.DEFAULT_LOG_LEVEL) ?? LogLevel.INFO;
 export const entityName = () => tryGetEnv(ENV_NAMES.ENTITY_NAME);

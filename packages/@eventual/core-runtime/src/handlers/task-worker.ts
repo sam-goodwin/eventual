@@ -1,5 +1,4 @@
 import {
-  EventualServiceClient,
   ExecutionID,
   LogLevel,
   TaskContext,
@@ -14,12 +13,9 @@ import {
   extendsError,
   isAsyncResult,
   isWorkflowFailed,
-  registerEntityHook,
-  registerServiceClient,
   serviceTypeScope,
   taskContextScope,
 } from "@eventual/core/internal";
-import { EntityClient } from "../clients/entity-client.js";
 import type { EventClient } from "../clients/event-client.js";
 import type { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import type { MetricsClient } from "../clients/metrics-client.js";
@@ -41,18 +37,17 @@ import {
   TaskFallbackRequest,
   TaskFallbackRequestType,
 } from "./task-fallback-handler.js";
+import { WorkerIntrinsicDeps, registerWorkerIntrinsics } from "./utils.js";
 
-export interface CreateTaskWorkerProps {
-  taskProvider: TaskProvider;
-  taskStore: TaskStore;
+export interface CreateTaskWorkerProps extends WorkerIntrinsicDeps {
   eventClient: EventClient;
   executionQueueClient: ExecutionQueueClient;
   logAgent: LogAgent;
   metricsClient: MetricsClient;
-  serviceClient?: EventualServiceClient;
   serviceName: string;
+  taskProvider: TaskProvider;
+  taskStore: TaskStore;
   timerClient: TimerClient;
-  entityClient: EntityClient;
 }
 
 export interface TaskWorker {
@@ -78,16 +73,11 @@ export function createTaskWorker({
   executionQueueClient,
   metricsClient,
   logAgent,
-  serviceClient,
   serviceName,
   timerClient,
-  entityClient,
+  ...deps
 }: CreateTaskWorkerProps): TaskWorker {
-  // make the service client available to all task code
-  if (serviceClient) {
-    registerServiceClient(serviceClient);
-  }
-  registerEntityHook(entityClient);
+  registerWorkerIntrinsics(deps);
 
   return metricsClient.metricScope(
     (metrics) =>
