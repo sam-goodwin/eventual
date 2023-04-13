@@ -10,6 +10,8 @@ import {
   commands,
   registerEntityHook,
   registerServiceClient,
+  registerServiceSpecification,
+  ServiceSpec,
   ServiceType,
   serviceTypeScope,
 } from "@eventual/core/internal";
@@ -19,6 +21,7 @@ import { EntityClient } from "../clients/entity-client.js";
 export interface ApiHandlerDependencies {
   serviceClient?: EventualServiceClient;
   entityClient?: EntityClient;
+  serviceSpec?: ServiceSpec;
 }
 
 export interface CommandWorker {
@@ -34,6 +37,7 @@ export interface CommandWorker {
 export function createCommandWorker({
   serviceClient,
   entityClient,
+  serviceSpec,
 }: ApiHandlerDependencies): CommandWorker {
   // make the service client available to web hooks
   if (serviceClient) {
@@ -42,6 +46,10 @@ export function createCommandWorker({
   // the system commands do not currently use the entity client so it will be optional for now.
   if (entityClient) {
     registerEntityHook(entityClient);
+  }
+  // make the service spec available when needed
+  if (serviceSpec) {
+    registerServiceSpecification(serviceSpec);
   }
 
   const router = initRouter();

@@ -31,6 +31,9 @@ export interface ServiceSpec {
   entities: {
     entities: EntitySpec[];
   };
+  openApi: {
+    info: openapi.InfoObject;
+  };
 }
 
 export interface FunctionSpec {

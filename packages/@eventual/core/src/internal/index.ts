@@ -5,6 +5,7 @@ export * from "./eventual-service.js";
 export * from "./flags.js";
 export * from "./global.js";
 export * from "./guards.js";
+export * from "./open-api-spec.js";
 export * from "./result.js";
 export * from "./schedule.js";
 export * from "./service-spec.js";

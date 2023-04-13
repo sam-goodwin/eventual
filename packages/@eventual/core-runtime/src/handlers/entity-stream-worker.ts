@@ -1,9 +1,11 @@
 import { EntityStreamItem, EventualServiceClient } from "@eventual/core";
 import {
+  ServiceSpec,
   ServiceType,
   entities,
   registerEntityHook,
   registerServiceClient,
+  registerServiceSpecification,
   serviceTypeScope,
 } from "@eventual/core/internal";
 import { EntityClient } from "../clients/entity-client.js";
@@ -15,6 +17,7 @@ export interface EntityStreamWorker {
 interface EntityStreamWorkerDependencies {
   eventualClient?: EventualServiceClient;
   entityClient?: EntityClient;
+  serviceSpec?: ServiceSpec;
 }
 
 export function createEntityStreamWorker(
@@ -25,6 +28,10 @@ export function createEntityStreamWorker(
   }
   if (dependencies.entityClient) {
     registerEntityHook(dependencies.entityClient);
+  }
+  // make the service spec available when needed
+  if (dependencies.serviceSpec) {
+    registerServiceSpecification(dependencies.serviceSpec);
   }
 
   return async (item) =>

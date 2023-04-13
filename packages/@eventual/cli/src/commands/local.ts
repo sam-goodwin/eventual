@@ -12,6 +12,7 @@ import { setServiceOptions } from "../service-action.js";
 import {
   getBuildManifest,
   getServiceData,
+  getServiceSpec,
   isServiceDeployed,
   tryResolveDefaultService,
 } from "../service-data.js";
@@ -98,8 +99,10 @@ export const local = (yargs: Argv) =>
       app.listen(port);
       const url = `http://localhost:${port}`;
 
+      const serviceSpec = await getServiceSpec(config.outDir, serviceName);
+
       // TODO: should the loading be done by the local env?
-      const localEnv = new LocalEnvironment();
+      const localEnv = new LocalEnvironment(serviceSpec);
 
       app.use(express.json({ strict: false }));
 

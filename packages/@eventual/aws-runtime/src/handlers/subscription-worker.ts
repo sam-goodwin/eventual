@@ -1,3 +1,4 @@
+import serviceSpec from "@eventual/injected/spec";
 import "@eventual/injected/entry";
 
 import {
@@ -20,6 +21,7 @@ export const processEvent = createSubscriptionWorker({
   }),
   subscriptionProvider: new GlobalSubscriptionProvider(),
   entityClient: createEntityClient(),
+  serviceSpec,
 });
 
 export default async function (event: EventBridgeEvent<string, any>) {

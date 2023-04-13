@@ -12,6 +12,7 @@ import fs from "fs/promises";
 import path from "path";
 import { readJsonFile } from "@eventual/project";
 import { BuildManifest } from "@eventual/core-runtime";
+import { ServiceSpec } from "@eventual/core/internal";
 
 /**
  * The data which is encoded in SSM for a given service under /eventual/services/{name}
@@ -188,4 +189,10 @@ export async function getBuildManifest(outDir: string, serviceName: string) {
   return (await readJsonFile(
     path.resolve(outDir, ".eventual", serviceName, "manifest.json")
   )) as BuildManifest;
+}
+
+export async function getServiceSpec(outDir: string, serviceName: string) {
+  return (await readJsonFile(
+    path.resolve(outDir, ".eventual", serviceName, "spec.json")
+  )) as ServiceSpec;
 }

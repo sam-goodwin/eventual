@@ -32,7 +32,7 @@ function systemCommandWorker(
   ..._commands: AnyCommand[]
 ): APIGatewayProxyHandlerV2<Response> {
   return createApiGCommandAdaptor({
-    commandWorker: createCommandWorker({}),
+    commandWorker: createCommandWorker({ serviceSpec }),
   });
 }
 

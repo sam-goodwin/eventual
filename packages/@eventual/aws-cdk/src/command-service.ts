@@ -9,13 +9,11 @@ import {
   sanitizeFunctionName,
 } from "@eventual/aws-runtime";
 import { isDefaultNamespaceCommand } from "@eventual/core";
-import {
-  generateOpenAPISpec,
-  type CommandFunction,
-} from "@eventual/core-runtime";
+import { type CommandFunction } from "@eventual/core-runtime";
 import {
   CommandSpec,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
+  generateOpenAPISpec,
 } from "@eventual/core/internal";
 import { Arn, Duration, Lazy, Stack, aws_iam } from "aws-cdk-lib";
 import {
@@ -92,8 +90,8 @@ export interface CommandsProps<Service = any> extends ServiceConstructProps {
   entityService: EntityService<Service>;
   eventService: EventService;
   local: ServiceLocal | undefined;
-  openApi?: {
-    info?: openapi.InfoObject;
+  openApi: {
+    info: openapi.InfoObject;
   };
   overrides?: CommandProps<Service>;
   workflowService: WorkflowService;
@@ -267,11 +265,7 @@ export class CommandService<Service = any> {
           ),
         ],
         {
-          info: props.openApi?.info ?? {
-            title: `eventual-api-${self.props.build.serviceName}`,
-            // TODO: use the package.json?
-            version: "1",
-          },
+          info: props.openApi.info,
           createRestPaths: true,
           createRpcPaths: true,
           onRpcPath: (command, pathObj) => {

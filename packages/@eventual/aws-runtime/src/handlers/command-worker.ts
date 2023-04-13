@@ -1,3 +1,4 @@
+import serviceSpec from "@eventual/injected/spec";
 import "@eventual/injected/entry";
 
 import { createCommandWorker } from "@eventual/core-runtime";
@@ -18,6 +19,7 @@ import { createApiGCommandAdaptor } from "./apig-command-adapter.js";
 export default createApiGCommandAdaptor({
   commandWorker: createCommandWorker({
     entityClient: createEntityClient(),
+    serviceSpec,
   }),
   // pulls the service url from the request instead of env variables to reduce the circular dependency between commands and the gateway.
   serviceClientBuilder: (serviceUrl) =>

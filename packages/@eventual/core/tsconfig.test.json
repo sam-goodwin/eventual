@@ -1,6 +1,7 @@
 {
   "extends": "../../../tsconfig-base",
   "compilerOptions": {
+    "baseUrl": ".",
     "rootDir": ".",
     "noEmit": true
   },

@@ -6,6 +6,7 @@ import {
   TaskNotFoundError,
 } from "@eventual/core";
 import {
+  ServiceSpec,
   ServiceType,
   TaskFailed,
   TaskRuntimeContext,
@@ -16,6 +17,7 @@ import {
   isWorkflowFailed,
   registerEntityHook,
   registerServiceClient,
+  registerServiceSpecification,
   serviceTypeScope,
   taskContextScope,
 } from "@eventual/core/internal";
@@ -43,16 +45,17 @@ import {
 } from "./task-fallback-handler.js";
 
 export interface CreateTaskWorkerProps {
-  taskProvider: TaskProvider;
-  taskStore: TaskStore;
+  entityClient: EntityClient;
   eventClient: EventClient;
   executionQueueClient: ExecutionQueueClient;
   logAgent: LogAgent;
   metricsClient: MetricsClient;
   serviceClient?: EventualServiceClient;
   serviceName: string;
+  serviceSpec?: ServiceSpec;
+  taskProvider: TaskProvider;
+  taskStore: TaskStore;
   timerClient: TimerClient;
-  entityClient: EntityClient;
 }
 
 export interface TaskWorker {
@@ -80,6 +83,7 @@ export function createTaskWorker({
   logAgent,
   serviceClient,
   serviceName,
+  serviceSpec,
   timerClient,
   entityClient,
 }: CreateTaskWorkerProps): TaskWorker {
@@ -88,6 +92,9 @@ export function createTaskWorker({
     registerServiceClient(serviceClient);
   }
   registerEntityHook(entityClient);
+  if (serviceSpec) {
+    registerServiceSpecification(serviceSpec);
+  }
 
   return metricsClient.metricScope(
     (metrics) =>

@@ -1,3 +1,4 @@
+import serviceSpec from "@eventual/injected/spec";
 // the user's entry point will register streams as a side effect.
 import "@eventual/injected/entry";
 
@@ -16,6 +17,7 @@ import { EntityEntityRecord } from "../stores/entity-store.js";
 const worker = createEntityStreamWorker({
   eventualClient: createServiceClient({}),
   entityClient: createEntityClient(),
+  serviceSpec,
 });
 
 export default (async (event) => {

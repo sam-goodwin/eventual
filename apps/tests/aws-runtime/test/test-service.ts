@@ -7,6 +7,7 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import {
+  ApiSpecification,
   Entity,
   EventualError,
   HeartbeatTimeout,
@@ -30,6 +31,7 @@ import {
 } from "@eventual/core";
 import z from "zod";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
+import type openapi from "openapi3-ts";
 
 const sqs = new SQSClient({});
 const dynamo = new DynamoDBClient({});
@@ -750,6 +752,13 @@ export const typedPut = command(
     return {
       userId: request.userId,
     };
+  }
+);
+
+export const specCommand = command(
+  "specCommand",
+  async (): Promise<openapi.OpenAPIObject> => {
+    return ApiSpecification.generate();
   }
 );
 

@@ -8,6 +8,7 @@ import type { Task } from "../task.js";
 import type { Transaction } from "../transaction.js";
 import type { Workflow } from "../workflow.js";
 import type { TaskRuntimeContext } from "./task.js";
+import { ServiceSpec } from "./service-spec.js";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -51,6 +52,10 @@ declare global {
      * API routes registered within the application.
      */
     commands?: AnyCommand[];
+    /**
+     *
+     */
+    serviceSpecification?: ServiceSpec;
   };
 }
 
@@ -123,4 +128,12 @@ export async function getTaskContext(): Promise<TaskRuntimeContext> {
     );
   }
   return context;
+}
+
+export function getServiceSpec() {
+  return globalThis._eventual.serviceSpecification;
+}
+
+export function registerServiceSpecification(serviceSpec: ServiceSpec) {
+  return globalThis._eventual.serviceSpecification = serviceSpec;
 }

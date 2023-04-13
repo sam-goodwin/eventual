@@ -1,6 +1,6 @@
-import { commandRpcPath } from "@eventual/core";
-import { CommandSpec } from "@eventual/core/internal";
 import type openapi from "openapi3-ts";
+import { commandRpcPath } from "../http/command.js";
+import { CommandSpec } from "./service-spec.js";
 
 export interface OpenAPISpecOptions {
   /**
@@ -72,8 +72,8 @@ export function generateOpenAPISpec(
     const commandPath = commandRpcPath(command);
 
     return {
-      ...createRpcOperation(),
-      ...createRestOperation(),
+      ...(options.createRpcPaths ? createRpcOperation() : {}),
+      ...(options.createRestPaths ? createRestOperation() : {}),
     };
 
     function createRpcOperation(): openapi.PathItemObject {
