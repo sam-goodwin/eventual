@@ -622,6 +622,7 @@ export const entityWorkflow = workflow(
     ]);
     // send deletion, to be picked up by the stream
     counter.delete(id);
+    await counter.list({});
     // this signal will contain the final value after deletion
     return await entitySignal2.expectSignal();
   }
