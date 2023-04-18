@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.33.2 (2023-04-18)
+
+### Bug Fixes
+
+- entity list throws dynamo error ([#339](https://github.com/functionless/eventual/issues/339)) ([20eeebe](https://github.com/functionless/eventual/commit/20eeebe47685c8dafa17d3969c86829bfc317272))
+
 ## 0.33.1 (2023-04-13)
 
 ### Bug Fixes
