@@ -51,7 +51,11 @@ export class AWSEntityStore implements EntityStore {
       new GetItemCommand({
         Key: this.entityKey(_key),
         TableName: this.tableName(name),
-        AttributesToGet: ["value", "version"],
+        ProjectionExpression: "#value,#version",
+        ExpressionAttributeNames: {
+          "#version": "version",
+          "#value": "value",
+        },
         ConsistentRead: true,
       })
     );
@@ -291,7 +295,10 @@ export class AWSEntityStore implements EntityStore {
           ":pk": { S: EntityEntityRecord.key(request.namespace) },
           ":sk": { S: EntityEntityRecord.sortKey(request.prefix ?? "") },
         },
-        AttributesToGet: fields,
+        ExpressionAttributeNames: fields
+          ? Object.fromEntries(fields?.map((f) => [`#${f}`, f]))
+          : undefined,
+        ProjectionExpression: fields?.map((f) => `#${f}`).join(","),
       }
     );
   }
