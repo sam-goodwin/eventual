@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.33.1 (2023-04-13)
+
+### Bug Fixes
+
+- move cors to open api ([#338](https://github.com/functionless/eventual/issues/338)) ([c840fce](https://github.com/functionless/eventual/commit/c840fcec2829a52a811b7199cabaf872fe7f077d))
+
+# 0.33.0 (2023-04-13)
+
+### Features
+
+- api spec intrinsic ([#337](https://github.com/functionless/eventual/issues/337)) ([1f8e3eb](https://github.com/functionless/eventual/commit/1f8e3ebeb29ceca0e413db9a54933a499531ffa5))
+
 # 0.32.0 (2023-04-12)
 
 ### Features
