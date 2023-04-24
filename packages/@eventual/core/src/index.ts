@@ -1,4 +1,5 @@
 export * from "./await-time.js";
+export * from "./bucket.js";
 export * from "./condition.js";
 export * from "./entity.js";
 export * from "./error.js";

@@ -150,7 +150,6 @@ export interface EntityStream<Entity> extends EntityStreamSpec {
 
 export interface Entity<E> extends Omit<EntitySpec, "schema" | "streams"> {
   kind: "Entity";
-  name: string;
   schema?: z.Schema<E>;
   streams: EntityStream<E>[];
   /**

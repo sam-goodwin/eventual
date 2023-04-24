@@ -131,6 +131,33 @@ export interface WorkflowSpec {
   name: string;
 }
 
+export interface BucketSpec {
+  name: string;
+  streams: BucketStreamSpec[];
+}
+
+export type BucketStreamOperation = "put" | "copy" | "delete";
+
+export interface BucketStreamOptions extends FunctionRuntimeProps {
+  /**
+   * A list of operations to be send to the stream.
+   *
+   * @default All Operations
+   */
+  operations?: BucketStreamOperation[];
+  /**
+   * Filter objects in the stream by prefix or suffix.
+   */
+  filters: { prefix?: string; suffix?: string }[];
+}
+
+export interface BucketStreamSpec {
+  name: string;
+  bucketName: string;
+  options?: BucketStreamOptions;
+  sourceLocation?: SourceLocation;
+}
+
 export interface EntitySpec {
   name: string;
   /**
