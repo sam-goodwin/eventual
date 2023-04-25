@@ -37,7 +37,7 @@ export class LocalBucketStore implements BucketStore {
   async get(
     bucketName: string,
     key: string,
-    options: GetBucketObjectOptions
+    options?: GetBucketObjectOptions
   ): Promise<GetBucketObjectResponse | undefined> {
     const bucket = this.objects[bucketName];
 
@@ -51,7 +51,7 @@ export class LocalBucketStore implements BucketStore {
       return object;
     }
 
-    if (options.etag !== object.etag) {
+    if (options?.etag && options?.etag !== object.etag) {
       return undefined;
     }
 

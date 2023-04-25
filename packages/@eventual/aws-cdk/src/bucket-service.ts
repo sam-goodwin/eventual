@@ -8,7 +8,7 @@ import { Duration, RemovalPolicy } from "aws-cdk-lib";
 import { IGrantable, IPrincipal, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { S3EventSource } from "aws-cdk-lib/aws-lambda-event-sources";
-import s3, { EventType } from "aws-cdk-lib/aws-s3";
+import * as s3 from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 import { CommandService, CorsOptions } from "./command-service";
 import { EntityService, EntityStreamOverrides } from "./entity-service";
@@ -134,6 +134,7 @@ export class Bucket extends Construct {
 
   constructor(scope: Construct, props: BucketProps) {
     super(scope, props.bucket.name);
+    console.log(s3);
     this.bucket = new s3.Bucket(this, "Bucket", {
       cors:
         props.serviceProps.cors &&
@@ -199,7 +200,7 @@ export class BucketStream extends Construct implements EventualResource {
     this.handler = new ServiceFunction(this, "Handler", {
       build: props.serviceProps.build,
       bundledFunction: props.stream,
-      functionNameSuffix: `entity-stream-${bucketName}-${streamName}`,
+      functionNameSuffix: `bucket-stream-${bucketName}-${streamName}`,
       serviceName: props.serviceProps.serviceName,
       defaults: {
         timeout: Duration.minutes(1),
@@ -212,16 +213,16 @@ export class BucketStream extends Construct implements EventualResource {
           new S3EventSource(props.bucket, {
             events: !props.stream.spec.options?.operations
               ? [
-                  EventType.OBJECT_CREATED_PUT,
-                  EventType.OBJECT_CREATED_COPY,
-                  EventType.OBJECT_REMOVED,
+                  s3.EventType.OBJECT_CREATED_PUT,
+                  s3.EventType.OBJECT_CREATED_COPY,
+                  s3.EventType.OBJECT_REMOVED,
                 ]
               : props.stream.spec.options.operations.map((o) => {
                   return o === "put"
-                    ? EventType.OBJECT_CREATED_PUT
+                    ? s3.EventType.OBJECT_CREATED_PUT
                     : o === "copy"
-                    ? EventType.OBJECT_CREATED_COPY
-                    : EventType.OBJECT_REMOVED;
+                    ? s3.EventType.OBJECT_CREATED_COPY
+                    : s3.EventType.OBJECT_REMOVED;
                 }),
             filters: props.stream.spec.options?.filters,
           }),

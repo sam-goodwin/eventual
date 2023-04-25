@@ -1,5 +1,6 @@
 import { Readable } from "node:stream";
 import { getBucketHook } from "./internal/bucket-hook.js";
+import { buckets } from "./internal/global.js";
 import {
   BucketSpec,
   BucketStreamOptions,
@@ -89,7 +90,7 @@ export interface Bucket extends Omit<BucketSpec, "streams"> {
   streams: BucketStream[];
   get(
     key: string,
-    options: GetBucketObjectOptions
+    options?: GetBucketObjectOptions
   ): Promise<GetBucketObjectResponse | undefined>;
   put(
     key: string,
@@ -128,8 +129,12 @@ export interface Bucket extends Omit<BucketSpec, "streams"> {
 }
 
 export function bucket(name: string): Bucket {
+  if (buckets().has(name)) {
+    throw new Error(`bucket with name '${name}' already exists`);
+  }
+
   const streams: BucketStream[] = [];
-  return {
+  const bucket: Bucket = {
     name,
     streams,
     kind: "Bucket",
@@ -192,7 +197,7 @@ export function bucket(name: string): Bucket {
           ? [args[0], args[1] as string, , args[2]]
           : [, args[0] as string, args[1] as BucketStreamOptions, args[2]];
 
-      const entityStream: BucketStream = {
+      const bucketStream: BucketStream = {
         kind: "BucketStream",
         handler,
         name: streamName,
@@ -201,9 +206,13 @@ export function bucket(name: string): Bucket {
         sourceLocation,
       };
 
-      streams.push(entityStream);
+      streams.push(bucketStream);
 
-      return entityStream;
+      return bucketStream;
     },
   };
+
+  buckets().set(name, bucket);
+
+  return bucket;
 }

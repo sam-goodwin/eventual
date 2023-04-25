@@ -1,8 +1,8 @@
 import {
   EntityEntityRecord,
+  entityServiceTableName,
   entityServiceTableSuffix,
   ENV_NAMES,
-  serviceFunctionName,
 } from "@eventual/aws-runtime";
 import { EntityRuntime, EntityStreamFunction } from "@eventual/core-runtime";
 import { TransactionSpec } from "@eventual/core/internal";
@@ -212,9 +212,9 @@ export class Entity extends Construct {
     super(scope, props.entity.name);
 
     this.table = new Table(this, "Table", {
-      tableName: serviceFunctionName(
+      tableName: entityServiceTableName(
         props.serviceProps.serviceName,
-        entityServiceTableSuffix(props.entity.name)
+        props.entity.name
       ),
       partitionKey: {
         name: "pk",

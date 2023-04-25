@@ -5,21 +5,22 @@ import {
   PutItemCommand,
   TransactionConflictException,
 } from "@aws-sdk/client-dynamodb";
-import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import {
-  ApiSpecification,
-  Entity,
-  EventualError,
-  HeartbeatTimeout,
-  HttpResponse,
   api,
+  ApiSpecification,
   asyncResult,
+  bucket,
   command,
   condition,
   duration,
+  Entity,
   entity,
   event,
+  EventualError,
   expectSignal,
+  HeartbeatTimeout,
+  HttpResponse,
   sendSignal,
   sendTaskHeartbeat,
   signal,
@@ -30,6 +31,7 @@ import {
   workflow,
 } from "@eventual/core";
 import type openapi from "openapi3-ts";
+import stream from "stream";
 import z from "zod";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
 
@@ -669,6 +671,87 @@ export const transactionWorkflow = workflow(
     ]);
     await check.delete(id);
     return [one, two, three.status === "fulfilled" ? three.value : "AHHH"];
+  }
+);
+
+export const myBucket = bucket("myBucket");
+export const bucketSignal = signal<{ data: string }>("bucketSignal");
+
+export const myBucketStream = myBucket.stream(
+  "myBucketStream",
+  { filters: [{ prefix: "key/" }], operations: ["put"] },
+  async (item) => {
+    const executionId = item.key.slice(4);
+    const obj = await myBucket.get(item.key);
+
+    if (obj?.body) {
+      await bucketSignal.sendSignal(executionId, {
+        data: await streamToString(obj.body),
+      });
+    }
+  }
+);
+
+async function streamToString(stream: stream.Readable) {
+  // lets have a ReadableStream as a stream variable
+  const chunks = [];
+
+  for await (const chunk of stream) {
+    chunks.push(Buffer.from(chunk));
+  }
+
+  return Buffer.concat(chunks).toString("utf-8");
+}
+
+export const bucketTask = task(
+  "bucketTask",
+  async (request: { key: string; prefix: string; data: string }) => {
+    await myBucket.put(request.key, request.data);
+
+    const result = await myBucket.get(request.key);
+
+    const keys = await myBucket.list({ prefix: request.key });
+
+    return {
+      data: await streamToString(result!.body),
+      keys: keys.objects.map((s) => s.key),
+    };
+  }
+);
+
+export const bucketDeleteTask = task(
+  "bucketDeleteTask",
+  async (request: { key: string }) => {
+    await myBucket.delete(request.key);
+  }
+);
+
+/**
+ * 1. use {@link bucketTask} to create an object, then return the data and listed keys
+ * 2. pickup the write from a stream, emitting a signal to the workflow with the data
+ * 3. delete the object
+ * 4. return
+ */
+export const bucketWorkflow = workflow(
+  "bucketWorkflow",
+  async (_, { execution: { id } }) => {
+    const data = "hello!";
+    const key = `key/${id}`;
+
+    try {
+      const [result, signalResult] = await Promise.all([
+        bucketTask({ key, data, prefix: "key/" }),
+        bucketSignal.expectSignal({ timeout: duration(5, "minutes") }),
+      ]);
+
+      return {
+        result,
+        signalResult,
+      };
+    } finally {
+      // TODO: do this from within the workflow
+      await bucketDeleteTask({ key });
+    }
   }
 );
 

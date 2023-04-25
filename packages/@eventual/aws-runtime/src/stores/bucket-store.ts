@@ -38,13 +38,13 @@ export class AWSBucketStore implements BucketStore {
   async get(
     bucketName: string,
     key: string,
-    options: GetBucketObjectOptions
+    options?: GetBucketObjectOptions
   ): Promise<GetBucketObjectResponse | undefined> {
     const result = await this.props.s3.send(
       new GetObjectCommand({
         Bucket: this.bucketName(bucketName),
         Key: key,
-        IfMatch: options.etag,
+        IfMatch: options?.etag,
       })
     );
 
