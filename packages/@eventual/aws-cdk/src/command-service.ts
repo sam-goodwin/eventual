@@ -26,11 +26,13 @@ import {
 import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import openapi from "openapi3-ts";
+import { BucketService } from "./bucket-service.js";
 import { ApiDefinition } from "./constructs/http-api-definition.js";
 import { SpecHttpApi } from "./constructs/spec-http-api";
 import { EntityService } from "./entity-service";
 import type { EventService } from "./event-service";
 import { grant } from "./grant";
+import { LazyInterface } from "./proxy-construct.js";
 import {
   EventualResource,
   ServiceConstructProps,
@@ -85,7 +87,7 @@ export interface CorsOptions {
 }
 
 export interface CommandsProps<Service = any> extends ServiceConstructProps {
-  taskService: TaskService<Service>;
+  bucketService: LazyInterface<BucketService<Service>>;
   cors?: CorsOptions;
   entityService: EntityService<Service>;
   eventService: EventService;
@@ -94,6 +96,7 @@ export interface CommandsProps<Service = any> extends ServiceConstructProps {
     info: openapi.InfoObject;
   };
   overrides?: CommandProps<Service>;
+  taskService: TaskService<Service>;
   workflowService: WorkflowService;
 }
 
@@ -401,12 +404,13 @@ export class CommandService<Service = any> {
      * Entity operations
      */
     this.props.entityService.configureReadWriteEntityTable(handler);
-    /**
-     *
-     */
     this.props.entityService.configureInvokeTransactions(
       this.systemCommandsHandler
     );
+    /**
+     * Bucket Operations
+     */
+    this.props.bucketService.configureReadWriteBuckets(handler);
   }
 
   private configureSystemCommandHandler() {

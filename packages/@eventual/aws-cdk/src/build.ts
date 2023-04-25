@@ -1,6 +1,7 @@
 import { build, BuildSource, infer } from "@eventual/compiler";
 import { BuildManifest } from "@eventual/core-runtime";
 import {
+  BucketStreamSpec,
   CommandSpec,
   EntityStreamSpec,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
@@ -87,6 +88,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       monoCommandFunction,
       monoSubscriptionFunction,
       monoEntityStreamWorkerFunction,
+      monoBucketStreamWorkerFunction,
       transactionWorkerFunction,
     ],
     [
@@ -128,6 +130,14 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         }))
       ),
       transactions: serviceSpec.transactions,
+    },
+    buckets: {
+      buckets: await Promise.all(
+        serviceSpec.buckets.buckets.map(async (b) => ({
+          ...b,
+          streams: await bundleBucketStreams(b.streams),
+        }))
+      ),
     },
     system: {
       entityService: {
@@ -256,6 +266,24 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     );
   }
 
+  async function bundleBucketStreams(specs: BucketStreamSpec[]) {
+    return await Promise.all(
+      specs.map(async (spec) => {
+        return {
+          entry: await bundleFile(
+            specPath,
+            spec,
+            "bucket-streams",
+            "bucket-stream-worker",
+            spec.name,
+            monoBucketStreamWorkerFunction!
+          ),
+          spec,
+        };
+      })
+    );
+  }
+
   async function bundleFile<
     Spec extends CommandSpec | SubscriptionSpec | TaskSpec
   >(
@@ -303,6 +331,10 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         {
           name: ServiceType.EntityStreamWorker,
           entry: runtimeHandlersEntrypoint("entity-stream-worker"),
+        },
+        {
+          name: ServiceType.BucketStreamWorker,
+          entry: runtimeHandlersEntrypoint("bucket-stream-worker"),
         },
         {
           name: ServiceType.TransactionWorker,

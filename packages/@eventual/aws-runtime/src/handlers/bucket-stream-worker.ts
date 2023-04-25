@@ -1,0 +1,47 @@
+import serviceSpec from "@eventual/injected/spec";
+// the user's entry point will register streams as a side effect.
+import "@eventual/injected/entry";
+
+import {
+  createBucketStreamWorker,
+  getLazy,
+  promiseAllSettledPartitioned,
+} from "@eventual/core-runtime";
+import { S3Handler } from "aws-lambda";
+import {
+  createBucketStore,
+  createEntityClient,
+  createServiceClient,
+} from "../create.js";
+import { bucketName, bucketStreamName, serviceUrl } from "../env.js";
+
+const worker = createBucketStreamWorker({
+  serviceClient: createServiceClient({}),
+  entityClient: createEntityClient(),
+  bucketStore: createBucketStore(),
+  serviceSpec,
+  serviceUrls: [serviceUrl],
+});
+
+export default (async (event) => {
+  const records = event.Records;
+  console.log("records", JSON.stringify(records, undefined, 4));
+
+  await promiseAllSettledPartitioned(records, async (record) => {
+    await worker({
+      bucketName: getLazy(bucketName),
+      streamName: getLazy(bucketStreamName),
+      etag: record.s3.object.eTag,
+      key: record.s3.object.key,
+      operation:
+        record.eventName === "ObjectCreated:Put"
+          ? "put"
+          : record.eventName === "ObjectCreated:Copy"
+          ? "copy"
+          : "delete",
+      size: record.s3.object.size,
+    });
+  });
+
+  return;
+}) satisfies S3Handler;

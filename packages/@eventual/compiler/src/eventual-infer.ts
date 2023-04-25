@@ -14,6 +14,8 @@ import {
   tasks,
   transactions,
   workflows,
+  buckets,
+  BucketStreamSpec,
 } from "@eventual/core/internal";
 import {
   CallExpression,
@@ -110,6 +112,20 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
       validate: command.validate,
       namespace: command.namespace,
     })),
+    buckets: {
+      buckets: [...buckets().values()].map((b) => ({
+        name: b.name,
+        streams: b.streams.map(
+          (s) =>
+            ({
+              name: s.name,
+              bucketName: s.bucketName,
+              options: s.options,
+              sourceLocation: s.sourceLocation,
+            } satisfies BucketStreamSpec)
+        ),
+      })),
+    },
     entities: {
       entities: [...entities().values()].map((d) => ({
         name: d.name,

@@ -1,4 +1,6 @@
 import type {
+  BucketSpec,
+  BucketStreamSpec,
   CommandSpec,
   EntitySpec,
   EntityStreamSpec,
@@ -27,6 +29,7 @@ export interface BuildManifest {
   commands: CommandFunction[];
   commandDefault: CommandFunction;
   entities: Entities;
+  buckets: Buckets;
   system: {
     entityService: {
       transactionWorker: BundledFunction<undefined>;
@@ -52,9 +55,17 @@ export interface EntityRuntime extends Omit<EntitySpec, "streams"> {
   streams: EntityStreamFunction[];
 }
 
-interface Entities {
+export interface BucketRuntime extends Omit<BucketSpec, "streams"> {
+  streams: BucketStreamFunction[];
+}
+
+export interface Entities {
   entities: EntityRuntime[];
   transactions: TransactionSpec[];
+}
+
+export interface Buckets {
+  buckets: BucketRuntime[];
 }
 
 export interface ApiRoutes {
@@ -93,3 +104,6 @@ export interface CommandFunction extends BundledFunction<CommandSpec> {}
 
 export interface EntityStreamFunction
   extends BundledFunction<EntityStreamSpec> {}
+
+export interface BucketStreamFunction
+  extends BundledFunction<BucketStreamSpec> {}

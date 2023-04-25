@@ -12,6 +12,7 @@ export default {
   commands: [],
   tasks: [],
   subscriptions: [],
+  buckets: { buckets: [] },
   entities: { entities: [] },
   openApi: {
     info: {

@@ -203,6 +203,10 @@ export function entityServiceTableSuffix(entityName: string) {
   return `entity-${entityName}`;
 }
 
+export function bucketServiceBucketSuffix(bucketName: string) {
+  return `bucket-${bucketName}`;
+}
+
 export function taskServiceFunctionName(
   serviceName: string,
   taskId: string
@@ -215,6 +219,16 @@ export function entityServiceTableName(
   entityName: string
 ): string {
   return serviceFunctionName(serviceName, entityServiceTableSuffix(entityName));
+}
+
+export function bucketServiceBucketName(
+  serviceName: string,
+  bucketName: string
+): string {
+  return serviceFunctionName(
+    serviceName,
+    bucketServiceBucketSuffix(bucketName)
+  );
 }
 
 /**

@@ -29,6 +29,7 @@ import { AWSTaskClient } from "./clients/task-client.js";
 import { AWSTimerClient, AWSTimerClientProps } from "./clients/timer-client.js";
 import { AWSTransactionClient } from "./clients/transaction-client.js";
 import * as env from "./env.js";
+import { AWSBucketStore } from "./stores/bucket-store.js";
 import { AWSEntityStore } from "./stores/entity-store.js";
 import { AWSExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";
 import { AWSExecutionHistoryStore } from "./stores/execution-history-store.js";
@@ -224,6 +225,14 @@ export const createEntityStore = memoize(
   () =>
     new AWSEntityStore({
       dynamo: dynamo(),
+      serviceName: env.serviceName,
+    })
+);
+
+export const createBucketStore = memoize(
+  () =>
+    new AWSBucketStore({
+      s3: s3(),
       serviceName: env.serviceName,
     })
 );

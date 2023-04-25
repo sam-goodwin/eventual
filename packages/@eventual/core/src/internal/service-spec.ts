@@ -28,6 +28,9 @@ export interface ServiceSpec {
    * Individually bundled {@link EventFunction}s containing a single `subscription` event handler.
    */
   subscriptions: SubscriptionSpec[];
+  buckets: {
+    buckets: BucketSpec[];
+  };
   entities: {
     entities: EntitySpec[];
   };

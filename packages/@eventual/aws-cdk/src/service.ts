@@ -2,8 +2,8 @@ import { IHttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { Event } from "@eventual/core";
 import { MetricsCommon, OrchestratorMetrics } from "@eventual/core-runtime";
-import { EventualConfig, discoverEventualConfigSync } from "@eventual/project";
-import { Arn, Names, Stack, aws_events, aws_events_targets } from "aws-cdk-lib";
+import { discoverEventualConfigSync, EventualConfig } from "@eventual/project";
+import { Arn, aws_events, aws_events_targets, Names, Stack } from "aws-cdk-lib";
 import {
   Metric,
   MetricOptions,
@@ -26,11 +26,17 @@ import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
 import openapi from "openapi3-ts";
 import path from "path";
+import {
+  BucketService,
+  BucketStreamOverrides,
+  ServiceBuckets,
+  ServiceBucketStreams,
+} from "./bucket-service";
 import { BuildOutput, buildServiceSync } from "./build";
 import {
   CommandProps,
-  CommandService,
   Commands,
+  CommandService,
   CommandsProps,
   CorsOptions,
 } from "./command-service";
@@ -114,6 +120,7 @@ export interface ServiceProps<Service = any> {
    */
   subscriptions?: SubscriptionOverrides<Service>;
   entityStreamOverrides?: EntityStreamOverrides<Service>;
+  bucketStreamOverrides?: BucketStreamOverrides<Service>;
   cors?: CorsOptions;
   /**
    * Customize the open API output for the gateway.
@@ -176,10 +183,21 @@ export class Service<S = any> extends Construct {
    */
   public readonly commands: Commands<S>;
   /**
-   * TODO
+   * Entities defined by the service;
    */
   public readonly entities: ServiceEntities<S>;
+  /**
+   * Streams of entity changes defined by the service.
+   */
   public readonly entityStreams: ServiceEntityStreams<S>;
+  /**
+   * Buckets defined by the service.
+   */
+  public readonly buckets: ServiceBuckets<S>;
+  /**
+   * Streams of bucket events defined by the service.
+   */
+  public readonly bucketSteams: ServiceBucketStreams<S>;
   /**
    * API Gateway which serves the service commands and the system commands.
    */
@@ -201,6 +219,7 @@ export class Service<S = any> extends Construct {
    */
   public readonly workflowLogGroup: LogGroup;
 
+  private readonly bucketService: BucketService<S>;
   private readonly eventService: EventService;
   private readonly commandService: CommandService<S>;
 
@@ -272,6 +291,7 @@ export class Service<S = any> extends Construct {
     const proxyTaskService = lazyInterface<TaskService<S>>();
     const proxyService = lazyInterface<Service<S>>();
     const proxyCommandService = lazyInterface<CommandService<S>>();
+    const proxyBucketService = lazyInterface<BucketService<S>>();
 
     const serviceConstructProps: ServiceConstructProps = {
       build,
@@ -287,6 +307,7 @@ export class Service<S = any> extends Construct {
     this.bus = this.eventService.bus;
 
     const entityService = new EntityService<S>({
+      bucketService: proxyBucketService,
       commandService: proxyCommandService,
       entityStreamOverrides: props.entityStreamOverrides,
       entityServiceOverrides: props.system?.entityService,
@@ -297,8 +318,19 @@ export class Service<S = any> extends Construct {
     this.entities = entityService.entities;
     this.entityStreams = entityService.entityStreams;
 
+    this.bucketService = new BucketService({
+      ...serviceConstructProps,
+      cors: props.cors,
+      commandService: proxyCommandService,
+      entityService: entityService,
+    });
+    proxyBucketService._bind(this.bucketService);
+    this.buckets = this.bucketService.buckets;
+    this.bucketSteams = this.bucketService.bucketStreams;
+
     const taskService = new TaskService<S>({
       ...serviceConstructProps,
+      bucketService: proxyBucketService,
       schedulerService: proxySchedulerService,
       workflowService: proxyWorkflowService,
       commandsService: proxyCommandService,
@@ -311,6 +343,7 @@ export class Service<S = any> extends Construct {
 
     const workflowService = new WorkflowService({
       taskService: taskService,
+      bucketService: proxyBucketService,
       eventService: this.eventService,
       schedulerService: proxySchedulerService,
       overrides: props.system?.workflowService,
@@ -328,6 +361,7 @@ export class Service<S = any> extends Construct {
     proxySchedulerService._bind(scheduler);
 
     this.commandService = new CommandService({
+      bucketService: proxyBucketService,
       taskService: taskService,
       overrides: props.commands,
       eventService: this.eventService,
@@ -344,6 +378,7 @@ export class Service<S = any> extends Construct {
     this.specification = this.commandService.specification;
 
     this.subscriptions = new Subscriptions({
+      bucketService: proxyBucketService,
       commandService: this.commandService,
       eventService: this.eventService,
       subscriptions: props.subscriptions,

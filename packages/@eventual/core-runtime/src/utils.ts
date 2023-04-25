@@ -1,4 +1,9 @@
-import { CompositeKey } from "@eventual/core";
+import {
+  BucketStreamItem,
+  CompositeKey,
+  EntityStreamItem,
+} from "@eventual/core";
+import { BucketStreamSpec, EntityStreamSpec } from "@eventual/core/internal";
 import { normalizeCompositeKey } from "./stores/entity-store.js";
 
 export async function promiseAllSettledPartitioned<T, R>(
@@ -63,4 +68,49 @@ export function deserializeCompositeKey(
 ): [string, string | CompositeKey] {
   const [name, namespace, key] = sKey.split("|") as [string, string, string];
   return [name, namespace ? { key, namespace } : key];
+}
+
+export function isEntityStreamItem(value: any): value is EntityStreamItem<any> {
+  return "entityName" in value && "operation" in value;
+}
+
+export function isBucketStreamItem(value: any): value is BucketStreamItem {
+  return "bucketName" in value && "operation" in value;
+}
+
+export function entityStreamMatchesItem(
+  item: EntityStreamItem<any>,
+  streamSpec: EntityStreamSpec
+) {
+  return (
+    streamSpec.entityName === item.entityName &&
+    (!streamSpec.options?.operations ||
+      streamSpec.options.operations.includes(item.operation)) &&
+    (!streamSpec.options?.namespaces ||
+      (item.namespace &&
+        streamSpec.options.namespaces.includes(item.namespace))) &&
+    (!streamSpec.options?.namespacePrefixes ||
+      (item.namespace &&
+        streamSpec.options.namespacePrefixes.some((p) =>
+          item.namespace?.startsWith(p)
+        )))
+  );
+}
+
+export function bucketStreamMatchesItem(
+  item: BucketStreamItem,
+  streamSpec: BucketStreamSpec
+) {
+  return (
+    streamSpec.bucketName === item.bucketName &&
+    (!streamSpec.options?.operations ||
+      streamSpec.options?.operations.includes(item.operation)) &&
+    (!streamSpec.options?.filters ||
+      streamSpec.options?.filters.some((f) => {
+        return (
+          (!f.prefix || item.key.startsWith(f.prefix)) &&
+          (!f.suffix || item.key.endsWith(f.suffix))
+        );
+      }))
+  );
 }

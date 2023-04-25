@@ -119,29 +119,6 @@ export interface EntityStreamRemoveItem<Entity> extends EntityStreamItemBase {
   oldVersion?: number;
 }
 
-export function isEntityStreamItem(value: any): value is EntityStreamItem<any> {
-  return "entityName" in value && "operation" in value;
-}
-
-export function entityStreamMatchesItem(
-  item: EntityStreamItem<any>,
-  streamSpec: EntityStreamSpec
-) {
-  return (
-    streamSpec.entityName === item.entityName &&
-    (!streamSpec.options?.operations ||
-      streamSpec.options.operations.includes(item.operation)) &&
-    (!streamSpec.options?.namespaces ||
-      (item.namespace &&
-        streamSpec.options.namespaces.includes(item.namespace))) &&
-    (!streamSpec.options?.namespacePrefixes ||
-      (item.namespace &&
-        streamSpec.options.namespacePrefixes.some((p) =>
-          item.namespace?.startsWith(p)
-        )))
-  );
-}
-
 export interface EntityStream<Entity> extends EntityStreamSpec {
   kind: "EntityStream";
   handler: EntityStreamHandler<Entity>;

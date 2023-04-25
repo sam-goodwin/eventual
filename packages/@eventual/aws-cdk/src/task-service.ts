@@ -11,6 +11,7 @@ import { IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { LambdaDestination } from "aws-cdk-lib/aws-lambda-destinations";
 import { Construct } from "constructs";
+import { BucketService } from "./bucket-service";
 import type { BuildOutput } from "./build";
 import { CommandService } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal";
@@ -34,6 +35,7 @@ export type TaskOverrides<Service> = {
 } & Partial<ServiceEntityProps<Service, "Task", TaskHandlerProps>>;
 
 export interface TasksProps<Service> extends ServiceConstructProps {
+  readonly bucketService: LazyInterface<BucketService<Service>>;
   readonly commandsService: LazyInterface<CommandService<Service>>;
   readonly entityService: EntityService<Service>;
   readonly local: ServiceLocal | undefined;
@@ -234,6 +236,10 @@ export class TaskService<Service = any> {
     this.props.entityService.configureReadWriteEntityTable(func);
     // transactions
     this.props.entityService.configureInvokeTransactions(func);
+    /**
+     * Bucket operations
+     */
+    this.props.bucketService.configureReadWriteBuckets(func);
   }
 
   private configureTaskFallbackHandler() {

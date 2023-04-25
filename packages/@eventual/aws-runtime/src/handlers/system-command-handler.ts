@@ -17,6 +17,7 @@ import {
 } from "@eventual/core-runtime";
 import type { APIGatewayProxyHandlerV2 } from "aws-lambda";
 import {
+  createBucketStore,
   createEventClient,
   createExecutionHistoryStateStore,
   createExecutionHistoryStore,
@@ -32,7 +33,12 @@ function systemCommandWorker(
   ..._commands: AnyCommand[]
 ): APIGatewayProxyHandlerV2<Response> {
   return createApiGCommandAdaptor({
-    commandWorker: createCommandWorker({ serviceSpec }),
+    commandWorker: createCommandWorker({
+      bucketStore: createBucketStore(),
+      entityClient: undefined,
+      serviceClient: undefined,
+      serviceSpec,
+    }),
   });
 }
 

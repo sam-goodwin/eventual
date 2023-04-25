@@ -20,6 +20,8 @@ export const ENV_NAMES = {
   DEFAULT_LOG_LEVEL: "EVENTUAL_LOG_LEVEL",
   ENTITY_NAME: "EVENTUAL_ENTITY_NAME",
   ENTITY_STREAM_NAME: "EVENTUAL_ENTITY_STREAM_NAME",
+  BUCKET_NAME: "EVENTUAL_BUCKET_NAME",
+  BUCKET_STREAM_NAME: "EVENTUAL_BUCKET_STREAM_NAME",
   TRANSACTION_WORKER_ARN: "EVENTUAL_TRANSACTION_WORKER_ARN",
 } as const;
 
@@ -54,5 +56,7 @@ export const defaultLogLevel = () =>
   tryGetEnv<LogLevel>(ENV_NAMES.DEFAULT_LOG_LEVEL) ?? LogLevel.INFO;
 export const entityName = () => tryGetEnv(ENV_NAMES.ENTITY_NAME);
 export const entityStreamName = () => tryGetEnv(ENV_NAMES.ENTITY_STREAM_NAME);
+export const bucketName = () => tryGetEnv(ENV_NAMES.BUCKET_NAME);
+export const bucketStreamName = () => tryGetEnv(ENV_NAMES.BUCKET_STREAM_NAME);
 export const transactionWorkerArn = () =>
   tryGetEnv(ENV_NAMES.TRANSACTION_WORKER_ARN);
