@@ -28,21 +28,29 @@ import { assertNever } from "@eventual/core/internal";
 import { Readable } from "stream";
 import { bucketServiceBucketName } from "../utils.js";
 
+export interface BucketRuntimeOverrides {
+  /**
+   * Override the s3 bucket name of the bucket.
+   */
+  bucketName?: string;
+}
+
 export interface AWSBucketStoreProps {
   s3: S3Client;
   serviceName: LazyValue<string>;
+  bucketOverrides: LazyValue<Record<string, BucketRuntimeOverrides>>;
 }
 
 export class AWSBucketStore implements BucketStore {
   constructor(private props: AWSBucketStoreProps) {}
-  async get(
+  public async get(
     bucketName: string,
     key: string,
     options?: GetBucketObjectOptions
   ): Promise<GetBucketObjectResponse | undefined> {
     const result = await this.props.s3.send(
       new GetObjectCommand({
-        Bucket: this.bucketName(bucketName),
+        Bucket: this.physicalName(bucketName),
         Key: key,
         IfMatch: options?.etag,
       })
@@ -57,14 +65,14 @@ export class AWSBucketStore implements BucketStore {
       : undefined;
   }
 
-  async put(
+  public async put(
     bucketName: string,
     key: string,
     data: string | Readable | Buffer
   ): Promise<PutBucketObjectResponse> {
     const result = await this.props.s3.send(
       new PutObjectCommand({
-        Bucket: this.bucketName(bucketName),
+        Bucket: this.physicalName(bucketName),
         Key: key,
         Body: data,
       })
@@ -75,16 +83,16 @@ export class AWSBucketStore implements BucketStore {
     };
   }
 
-  async delete(bucketName: string, key: string): Promise<void> {
+  public async delete(bucketName: string, key: string): Promise<void> {
     await this.props.s3.send(
       new DeleteObjectCommand({
-        Bucket: this.bucketName(bucketName),
+        Bucket: this.physicalName(bucketName),
         Key: key,
       })
     );
   }
 
-  async copyTo(
+  public async copyTo(
     bucketName: string,
     key: string,
     destKey: string,
@@ -93,12 +101,12 @@ export class AWSBucketStore implements BucketStore {
   ): Promise<CopyBucketObjectResponse> {
     const result = await this.props.s3.send(
       new CopyObjectCommand({
-        Bucket: this.bucketName(bucketName),
+        Bucket: this.physicalName(bucketName),
         Key: destKey,
         CopySource: `${
           destBucket
-            ? this.bucketName(destBucket.name)
-            : this.bucketName(bucketName)
+            ? this.physicalName(destBucket.name)
+            : this.physicalName(bucketName)
         }/${key}`,
         CopySourceIfMatch: options?.sourceEtag,
       })
@@ -109,7 +117,7 @@ export class AWSBucketStore implements BucketStore {
     };
   }
 
-  async presignedUrl(
+  public async presignedUrl(
     bucketName: string,
     key: string,
     operation: "get" | "put" | "delete",
@@ -118,17 +126,17 @@ export class AWSBucketStore implements BucketStore {
     const request =
       operation === "get"
         ? new GetObjectCommand({
-            Bucket: this.bucketName(bucketName),
+            Bucket: this.physicalName(bucketName),
             Key: key,
           })
         : operation === "put"
         ? new PutObjectCommand({
-            Bucket: this.bucketName(bucketName),
+            Bucket: this.physicalName(bucketName),
             Key: key,
           })
         : operation === "delete"
         ? new DeleteObjectCommand({
-            Bucket: this.bucketName(bucketName),
+            Bucket: this.physicalName(bucketName),
             Key: key,
           })
         : assertNever(operation);
@@ -143,13 +151,13 @@ export class AWSBucketStore implements BucketStore {
     };
   }
 
-  async list(
+  public async list(
     bucketName: string,
     request: ListBucketRequest
   ): Promise<ListBucketResult> {
     const result = await this.props.s3.send(
       new ListObjectsV2Command({
-        Bucket: this.bucketName(bucketName),
+        Bucket: this.physicalName(bucketName),
         Prefix: request.prefix,
         ContinuationToken: request.nextToken,
         StartAfter: request.startAfter,
@@ -169,7 +177,12 @@ export class AWSBucketStore implements BucketStore {
     };
   }
 
-  private bucketName(bucketName: string) {
-    return bucketServiceBucketName(getLazy(this.props.serviceName), bucketName);
+  public physicalName(bucketName: string) {
+    const overrides = getLazy(this.props.bucketOverrides);
+    const nameOverride = overrides[bucketName]?.bucketName;
+    return (
+      nameOverride ??
+      bucketServiceBucketName(getLazy(this.props.serviceName), bucketName)
+    );
   }
 }

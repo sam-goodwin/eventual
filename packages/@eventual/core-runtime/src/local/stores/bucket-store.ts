@@ -34,7 +34,7 @@ export class LocalBucketStore implements BucketStore {
 
   // TODO: publish events for the stream
   constructor(private props: LocalBucketStoreProps) {}
-  async get(
+  public async get(
     bucketName: string,
     key: string,
     options?: GetBucketObjectOptions
@@ -64,7 +64,7 @@ export class LocalBucketStore implements BucketStore {
     };
   }
 
-  async put(
+  public async put(
     bucketName: string,
     key: string,
     data: string | Buffer | Readable
@@ -99,7 +99,7 @@ export class LocalBucketStore implements BucketStore {
     };
   }
 
-  async delete(bucketName: string, key: string): Promise<void> {
+  public async delete(bucketName: string, key: string): Promise<void> {
     const bucket = this.objects[bucketName];
 
     if (!bucket) {
@@ -115,7 +115,7 @@ export class LocalBucketStore implements BucketStore {
     });
   }
 
-  async copyTo(
+  public async copyTo(
     bucketName: string,
     key: string,
     sourceKey: string,
@@ -154,16 +154,17 @@ export class LocalBucketStore implements BucketStore {
     };
   }
 
-  presignedUrl(
+  public presignedUrl(
     _bucketName: string,
     _key: string,
     _operation: "get" | "put" | "delete",
     _expires?: DurationSchedule | undefined
   ): Promise<{ url: string; expires: string }> {
+    // https://github.com/functionless/eventual/issues/341
     throw new Error("Presigned urls are not supported in Eventual Local");
   }
 
-  async list(
+  public async list(
     bucketName: string,
     request: ListBucketRequest
   ): Promise<ListBucketResult> {
@@ -196,6 +197,10 @@ export class LocalBucketStore implements BucketStore {
       })),
       nextToken: paged.nextToken,
     };
+  }
+
+  public physicalName(bucketName: string) {
+    return bucketName;
   }
 }
 

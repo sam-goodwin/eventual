@@ -234,6 +234,7 @@ export const createBucketStore = memoize(
     new AWSBucketStore({
       s3: s3(),
       serviceName: env.serviceName,
+      bucketOverrides: env.bucketOverrides
     })
 );
 

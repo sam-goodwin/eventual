@@ -1,5 +1,6 @@
 import { LogLevel } from "@eventual/core";
 import { assertNonNull } from "@eventual/core/internal";
+import { BucketRuntimeOverrides } from "./stores/bucket-store.js";
 
 export const ENV_NAMES = {
   SERVICE_NAME: "EVENTUAL_SERVICE_NAME",
@@ -23,6 +24,7 @@ export const ENV_NAMES = {
   BUCKET_NAME: "EVENTUAL_BUCKET_NAME",
   BUCKET_STREAM_NAME: "EVENTUAL_BUCKET_STREAM_NAME",
   TRANSACTION_WORKER_ARN: "EVENTUAL_TRANSACTION_WORKER_ARN",
+  BUCKET_OVERRIDES: "EVENTUAL_BUCKET_OVERRIDES"
 } as const;
 
 export function tryGetEnv<T extends string = string>(name: string) {
@@ -60,3 +62,7 @@ export const bucketName = () => tryGetEnv(ENV_NAMES.BUCKET_NAME);
 export const bucketStreamName = () => tryGetEnv(ENV_NAMES.BUCKET_STREAM_NAME);
 export const transactionWorkerArn = () =>
   tryGetEnv(ENV_NAMES.TRANSACTION_WORKER_ARN);
+export const bucketOverrides = () => {
+  const bucketOverridesString = tryGetEnv(ENV_NAMES.BUCKET_OVERRIDES) ?? "{}";
+  return JSON.parse(bucketOverridesString) as Record<string, BucketRuntimeOverrides>;
+}

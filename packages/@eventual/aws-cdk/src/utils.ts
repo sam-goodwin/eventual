@@ -103,9 +103,13 @@ export function serviceBucketArn(
   nameSuffix: string,
   sanitized: boolean = true
 ) {
-  return `arn:aws:s3:::${
+  return formatBucketArn(
     sanitized
       ? serviceFunctionName(serviceName, nameSuffix)
       : `${serviceName}-${nameSuffix}`
-  }`;
+  );
+}
+
+export function formatBucketArn(bucketName: string) {
+  return `arn:aws:s3:::${bucketName}`;
 }

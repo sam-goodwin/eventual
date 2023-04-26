@@ -237,6 +237,9 @@ export function entityServiceTableName(
   return serviceFunctionName(serviceName, entityServiceTableSuffix(entityName));
 }
 
+/**
+ * Note: a bucket's name can be overridden by the user.
+ */
 export function bucketServiceBucketName(
   serviceName: string,
   bucketName: string

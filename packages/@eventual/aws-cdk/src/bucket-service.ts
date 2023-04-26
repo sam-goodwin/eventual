@@ -1,21 +1,29 @@
+import type { BucketRuntimeOverrides } from "@eventual/aws-runtime";
 import {
   bucketServiceBucketName,
   bucketServiceBucketSuffix,
   ENV_NAMES,
 } from "@eventual/aws-runtime";
-import { BucketRuntime, BucketStreamFunction } from "@eventual/core-runtime";
-import { Duration, RemovalPolicy } from "aws-cdk-lib";
+import type {
+  BucketRuntime,
+  BucketStreamFunction,
+} from "@eventual/core-runtime";
+import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
 import { IGrantable, IPrincipal, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { S3EventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
-import { CommandService, CorsOptions } from "./command-service";
-import { EntityService, EntityStreamOverrides } from "./entity-service";
-import { LazyInterface } from "./proxy-construct";
-import { EventualResource, ServiceConstructProps } from "./service";
+import type { CommandService, CorsOptions } from "./command-service";
+import type { EntityService } from "./entity-service";
+import type { LazyInterface } from "./proxy-construct";
+import type { EventualResource, ServiceConstructProps } from "./service";
 import { ServiceFunction } from "./service-function";
-import { serviceBucketArn, ServiceEntityProps } from "./utils";
+import { formatBucketArn, serviceBucketArn, ServiceEntityProps } from "./utils";
+
+export type BucketOverrides<Service> = Partial<
+  ServiceEntityProps<Service, "Bucket", BucketRuntimeOverrides>
+>;
 
 export type BucketStreamOverrides<Service> = Partial<
   ServiceEntityProps<Service, "BucketStream", BucketStreamHandlerProps>
@@ -40,10 +48,11 @@ export interface BucketStreamHandlerProps
   > {}
 
 export interface BucketServiceProps<Service> extends ServiceConstructProps {
+  bucketOverrides?: BucketOverrides<Service>;
+  bucketStreamOverrides?: BucketStreamOverrides<Service>;
   commandService: LazyInterface<CommandService<Service>>;
-  entityService: LazyInterface<EntityService<Service>>;
-  bucketStreamOverrides?: EntityStreamOverrides<Service>;
   cors?: CorsOptions;
+  entityService: LazyInterface<EntityService<Service>>;
 }
 
 export class BucketService<Service> {
@@ -75,11 +84,18 @@ export class BucketService<Service> {
   }
 
   public configureReadWriteBuckets(func: Function) {
-    this.addEnvs(func, ENV_NAMES.SERVICE_NAME);
+    this.addEnvs(func, ENV_NAMES.SERVICE_NAME, ENV_NAMES.BUCKET_OVERRIDES);
     this.grantReadWriteBuckets(func);
   }
 
   public grantReadWriteBuckets(grantee: IGrantable) {
+    // find any bucket names that were provided by the service and not computed
+    const bucketNameOverrides = Object.values(
+      this.props.bucketOverrides as Record<string, BucketRuntimeOverrides>
+    )
+      .map((s) => s.bucketName)
+      .filter((s): s is string => !!s);
+
     // grants the permission to start any task
     grantee.grantPrincipal.addToPrincipalPolicy(
       new PolicyStatement({
@@ -90,6 +106,7 @@ export class BucketService<Service> {
             bucketServiceBucketSuffix("*"),
             false
           ),
+          ...bucketNameOverrides.map(formatBucketArn),
         ],
       })
     );
@@ -108,6 +125,7 @@ export class BucketService<Service> {
             bucketServiceBucketSuffix("*"),
             false
           )}/*`,
+          ...bucketNameOverrides.map((s) => formatBucketArn(`${s}/*`)),
         ],
       })
     );
@@ -115,6 +133,10 @@ export class BucketService<Service> {
 
   private readonly ENV_MAPPINGS = {
     [ENV_NAMES.SERVICE_NAME]: () => this.props.serviceName,
+    [ENV_NAMES.BUCKET_OVERRIDES]: () =>
+      Stack.of(this.props.serviceScope).toJsonString(
+        this.props.bucketOverrides
+      ),
   } as const;
 
   private addEnvs(func: Function, ...envs: (keyof typeof this.ENV_MAPPINGS)[]) {
@@ -134,7 +156,10 @@ export class Bucket extends Construct {
 
   constructor(scope: Construct, props: BucketProps) {
     super(scope, props.bucket.name);
-    console.log(s3);
+
+    const bucketOverrides =
+      props.serviceProps.bucketOverrides?.[props.bucket.name];
+
     this.bucket = new s3.Bucket(this, "Bucket", {
       cors:
         props.serviceProps.cors &&
@@ -155,10 +180,12 @@ export class Bucket extends Construct {
               },
             ]
           : undefined,
-      bucketName: bucketServiceBucketName(
-        props.serviceProps.serviceName,
-        props.bucket.name
-      ),
+      bucketName: bucketOverrides?.bucketName
+        ? bucketOverrides?.bucketName
+        : bucketServiceBucketName(
+            props.serviceProps.serviceName,
+            props.bucket.name
+          ),
       autoDeleteObjects: true,
       removalPolicy: RemovalPolicy.DESTROY,
     });

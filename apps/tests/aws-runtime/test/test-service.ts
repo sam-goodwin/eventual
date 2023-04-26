@@ -21,6 +21,7 @@ import {
   expectSignal,
   HeartbeatTimeout,
   HttpResponse,
+  Schedule,
   sendSignal,
   sendTaskHeartbeat,
   signal,
@@ -805,6 +806,7 @@ export const typed2 = command(
       detailed: z.boolean().optional(),
     }),
     output: User,
+    handlerTimeout: Schedule.duration(10, "minutes"),
   },
   async (request) => {
     return {

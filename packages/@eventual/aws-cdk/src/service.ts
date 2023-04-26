@@ -27,6 +27,7 @@ import { Construct } from "constructs";
 import openapi from "openapi3-ts";
 import path from "path";
 import {
+  BucketOverrides,
   BucketService,
   BucketStreamOverrides,
   ServiceBuckets,
@@ -119,8 +120,18 @@ export interface ServiceProps<Service = any> {
    * Override properties of Subscription Functions within the Service.
    */
   subscriptions?: SubscriptionOverrides<Service>;
-  entityStreamOverrides?: EntityStreamOverrides<Service>;
-  bucketStreamOverrides?: BucketStreamOverrides<Service>;
+  /**
+   * Override the properties of an entity streams within the service.
+   */
+  entityStreams?: EntityStreamOverrides<Service>;
+  /**
+   * Override the properties of the buckets within the service.
+   */
+  buckets?: BucketOverrides<Service>;
+  /**
+   * Override the properties of an bucket streams within the service.
+   */
+  bucketStreams?: BucketStreamOverrides<Service>;
   cors?: CorsOptions;
   /**
    * Customize the open API output for the gateway.
@@ -309,7 +320,7 @@ export class Service<S = any> extends Construct {
     const entityService = new EntityService<S>({
       bucketService: proxyBucketService,
       commandService: proxyCommandService,
-      entityStreamOverrides: props.entityStreamOverrides,
+      entityStreamOverrides: props.entityStreams,
       entityServiceOverrides: props.system?.entityService,
       eventService: this.eventService,
       workflowService: proxyWorkflowService,
@@ -323,6 +334,8 @@ export class Service<S = any> extends Construct {
       cors: props.cors,
       commandService: proxyCommandService,
       entityService: entityService,
+      bucketOverrides: props.buckets,
+      bucketStreamOverrides: props.bucketStreams,
     });
     proxyBucketService._bind(this.bucketService);
     this.buckets = this.bucketService.buckets;

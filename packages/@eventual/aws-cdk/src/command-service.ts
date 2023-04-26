@@ -231,6 +231,7 @@ export class CommandService<Service = any> {
               build: self.props.build,
               bundledFunction: manifest,
               functionNameSuffix: commandFunctionNameSuffix(command),
+              runtimeProps: manifest.spec,
               serviceName: props.serviceName,
               overrides,
               defaults: {

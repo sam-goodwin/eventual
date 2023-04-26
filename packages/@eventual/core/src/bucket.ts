@@ -120,6 +120,14 @@ export interface Bucket extends Omit<BucketSpec, "streams"> {
     expires?: DurationSchedule
   ): Promise<{ url: string; expires: string }>;
   list(request: ListBucketRequest): Promise<ListBucketResult>;
+  /**
+   * The name of the bucket in the cloud environment.
+   *
+   * For example, in AWS this is the s3 bucket name.
+   *
+   * In a local environment, this will just be the bucket name;
+   */
+  physicalName: string;
   stream(
     name: string,
     options: BucketStreamOptions,
@@ -167,6 +175,10 @@ export function bucket(name: string): Bucket {
       return getEventualCallHook().registerEventualCall(undefined, () => {
         return getBucketHook().presignedUrl(name, key, operation, expires);
       });
+    },
+    get physicalName() {
+      // should be constant, can be used directly in a workflow.
+      return getBucketHook().physicalName(name);
     },
     stream: (
       ...args:

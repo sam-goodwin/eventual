@@ -110,7 +110,6 @@ export class Signal<Payload = void> {
     executionId: string,
     ...args: SendSignalProps<Payload>
   ): Promise<void> {
-    console.log("send signal", executionId, typeof getEventualCallHook());
     return sendSignal(executionId, this, ...args);
   }
 }
@@ -264,12 +263,6 @@ export function sendSignal<Payload = any>(
   ...args: SendSignalProps<Payload>
 ): Promise<void> {
   const [payload] = args;
-  console.log(
-    "send signal",
-    executionId,
-    payload,
-    typeof getEventualCallHook()
-  );
   return getEventualCallHook().registerEventualCall(
     createEventualCall(EventualCallKind.SendSignalCall, {
       payload,
@@ -277,7 +270,6 @@ export function sendSignal<Payload = any>(
       target: { type: SignalTargetType.Execution, executionId },
     }),
     () => {
-      console.log("send signal", executionId, payload);
       return getServiceClient().sendSignal({
         execution: executionId,
         signal,

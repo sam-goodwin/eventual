@@ -20,6 +20,8 @@ export type BucketHook = {
     bucketName: string,
     ...args: Parameters<Bucket[K]>
   ) => ReturnType<Bucket[K]>;
+} & {
+  physicalName: (bucketName: string) => string;
 };
 
 export function getBucketHook() {
