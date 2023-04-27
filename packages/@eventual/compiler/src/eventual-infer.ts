@@ -100,6 +100,8 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
       name: command.name,
       sourceLocation: command.sourceLocation,
       path: command.path,
+      description: command.description,
+      summary: command.summary,
       memorySize: command.memorySize,
       handlerTimeout: command.handlerTimeout,
       method: command.method,
