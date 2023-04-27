@@ -1,4 +1,4 @@
-import { serviceFunctionName } from "@eventual/aws-runtime";
+import { ENV_NAMES, serviceFunctionName } from "@eventual/aws-runtime";
 import type { FunctionRuntimeProps } from "@eventual/core";
 import {
   BundledFunction,
@@ -55,6 +55,7 @@ export class ServiceFunction extends Function {
           : props.defaults?.timeout ?? Duration.seconds(3)),
       environment: {
         NODE_OPTIONS: "--enable-source-maps",
+        [ENV_NAMES.SERVICE_NAME]: props.build.serviceName,
         ...baseFnProps.environment,
         ...props.defaults?.environment,
         ...props.overrides?.environment,

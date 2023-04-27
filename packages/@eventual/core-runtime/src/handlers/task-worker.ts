@@ -32,19 +32,23 @@ import { normalizeError } from "../result.js";
 import { computeDurationSeconds } from "../schedule.js";
 import type { TaskStore } from "../stores/task-store.js";
 import { createTaskToken } from "../task-token.js";
+import { getLazy } from "../utils.js";
 import { createEvent } from "../workflow-events.js";
 import {
   TaskFallbackRequest,
   TaskFallbackRequestType,
 } from "./task-fallback-handler.js";
-import { WorkerIntrinsicDeps, registerWorkerIntrinsics } from "./utils.js";
+import {
+  WorkerIntrinsicDeps,
+  registerWorkerIntrinsics,
+  getServiceContext,
+} from "./utils.js";
 
 export interface CreateTaskWorkerProps extends WorkerIntrinsicDeps {
   eventClient: EventClient;
   executionQueueClient: ExecutionQueueClient;
   logAgent: LogAgent;
   metricsClient: MetricsClient;
-  serviceName: string;
   taskProvider: TaskProvider;
   taskStore: TaskStore;
   timerClient: TimerClient;
@@ -73,7 +77,6 @@ export function createTaskWorker({
   executionQueueClient,
   metricsClient,
   logAgent,
-  serviceName,
   timerClient,
   ...deps
 }: CreateTaskWorkerProps): TaskWorker {
@@ -95,7 +98,7 @@ export function createTaskWorker({
             metrics.setNamespace(MetricsCommon.EventualNamespace);
             metrics.putDimensions({
               [TaskMetrics.TaskNameDimension]: request.taskName,
-              [MetricsCommon.ServiceNameDimension]: serviceName,
+              [MetricsCommon.ServiceNameDimension]: getLazy(deps.serviceName),
             });
             metrics.setProperty(
               MetricsCommon.WorkflowName,
@@ -144,6 +147,7 @@ export function createTaskWorker({
                 scheduledTime: request.scheduledTime,
                 retry: request.retry,
               },
+              service: getServiceContext(deps),
             };
             metrics.putMetric(TaskMetrics.ClaimRejected, 0, Unit.Count);
 
@@ -197,6 +201,7 @@ export function createTaskWorker({
                   },
                   execution: runtimeContext.execution,
                   invocation: runtimeContext.invocation,
+                  service: runtimeContext.service,
                 };
 
                 hookConsole((level, data) => {

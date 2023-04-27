@@ -1,3 +1,4 @@
+import type { ServiceContext } from "../service.js";
 import type {
   AsyncResult,
   Task,
@@ -14,6 +15,7 @@ export const AsyncTokenSymbol = /* @__PURE__ */ Symbol.for(
 export interface TaskRuntimeContext {
   execution: TaskExecutionContext;
   invocation: TaskInvocationContext;
+  service: ServiceContext;
 }
 
 export type TaskInput<A extends Task<any, any>> = A extends Task<

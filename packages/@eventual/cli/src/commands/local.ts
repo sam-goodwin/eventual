@@ -114,7 +114,8 @@ export const local = (yargs: Argv) =>
       // TODO: should the loading be done by the local env?
       const localEnv = new LocalEnvironment({
         serviceSpec,
-        serviceUrls: [url],
+        serviceUrl: url,
+        serviceName: serviceName,
       });
 
       app.use(express.json({ strict: false }));
