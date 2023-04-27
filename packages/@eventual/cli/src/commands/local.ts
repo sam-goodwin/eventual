@@ -1,5 +1,7 @@
+import { inferFromMemory } from "@eventual/compiler";
 import { HttpMethod, HttpRequest } from "@eventual/core";
 import { LocalEnvironment } from "@eventual/core-runtime";
+import { ServiceSpec } from "@eventual/core/internal";
 import { discoverEventualConfig } from "@eventual/project";
 import { exec as _exec } from "child_process";
 import express from "express";
@@ -16,8 +18,6 @@ import {
   isServiceDeployed,
   tryResolveDefaultService,
 } from "../service-data.js";
-import { ServiceSpec } from "@eventual/core/internal";
-import { inferFromMemory } from "@eventual/compiler";
 const execPromise = promisify(_exec);
 
 export const local = (yargs: Argv) =>
