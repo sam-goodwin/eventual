@@ -57,7 +57,7 @@ export function generateOpenAPISpec(
         // assumes no duplicate METHODs
         a[path] = {
           ...a[path],
-          [path]: route,
+          ...route,
         };
       } else {
         a[path] = route;
