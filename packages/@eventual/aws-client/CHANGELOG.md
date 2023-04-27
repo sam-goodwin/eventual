@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.33.3 (2023-04-27)
+
+### Bug Fixes
+
+- open api merge bug ([#342](https://github.com/functionless/eventual/issues/342)) ([8a86f28](https://github.com/functionless/eventual/commit/8a86f28775c9c7155e6867dbd73d7a70ef31feba))
+
 ## 0.33.2 (2023-04-18)
 
 ### Bug Fixes
