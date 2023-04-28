@@ -678,9 +678,10 @@ export const transactionWorkflow = workflow(
 export const myBucket = bucket("myBucket");
 export const bucketSignal = signal<{ data: string }>("bucketSignal");
 
-export const myBucketHandler = myBucket.stream(
+export const myBucketHandler = myBucket.on(
+  "put",
   "myBucketHandler",
-  { filters: [{ prefix: "key/" }], eventTypes: ["put"] },
+  { filters: [{ prefix: "key/" }] },
   async (item) => {
     const executionId = item.key.slice(4);
     const obj = await myBucket.get(item.key);

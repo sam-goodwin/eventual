@@ -2,6 +2,7 @@ import { Readable } from "node:stream";
 import { getBucketHook } from "./internal/bucket-hook.js";
 import { buckets } from "./internal/global.js";
 import {
+  BucketNotificationEventType,
   BucketNotificationHandlerOptions,
   BucketNotificationHandlerSpec,
   BucketSpec,
@@ -90,6 +91,11 @@ export type BucketNotificationEvent =
   | BucketNotificationPutEvent
   | BucketNotificationDeleteEvent;
 
+export type BucketNotificationHandlerEventInput =
+  | BucketNotificationEventType[]
+  | BucketNotificationEventType
+  | "all";
+
 export interface Bucket extends Omit<BucketSpec, "handlers"> {
   kind: "Bucket";
   handlers: BucketNotificationHandler[];
@@ -133,12 +139,14 @@ export interface Bucket extends Omit<BucketSpec, "handlers"> {
    * In a local environment, this will just be the bucket name;
    */
   physicalName: string;
-  stream(
+  on(
+    events: BucketNotificationHandlerEventInput,
     name: string,
-    options: BucketNotificationHandlerOptions,
+    options: Omit<BucketNotificationHandlerOptions, "eventTypes">,
     handler: BucketNotificationHandlerFunction
   ): BucketNotificationHandler;
-  stream(
+  on(
+    events: BucketNotificationHandlerEventInput,
     name: string,
     handler: BucketNotificationHandlerFunction
   ): BucketNotificationHandler;
@@ -188,38 +196,52 @@ export function bucket(name: string): Bucket {
       // should be constant, can be used directly in a workflow.
       return getBucketHook().physicalName(name);
     },
-    stream: (
+    on: (
       ...args:
-        | [name: string, handler: BucketNotificationHandlerFunction]
         | [
-            name: string,
-            options: BucketNotificationHandlerOptions,
-            handler: BucketNotificationHandlerFunction
-          ]
-        | [
-            sourceLocation: SourceLocation,
+            events: BucketNotificationHandlerEventInput,
             name: string,
             handler: BucketNotificationHandlerFunction
           ]
         | [
-            sourceLocation: SourceLocation,
+            events: BucketNotificationHandlerEventInput,
             name: string,
-            options: BucketNotificationHandlerOptions,
+            options: Omit<BucketNotificationHandlerOptions, "eventTypes">,
+            handler: BucketNotificationHandlerFunction
+          ]
+        | [
+            sourceLocation: SourceLocation,
+            events: BucketNotificationHandlerEventInput,
+            name: string,
+            handler: BucketNotificationHandlerFunction
+          ]
+        | [
+            sourceLocation: SourceLocation,
+            events: BucketNotificationHandlerEventInput,
+            name: string,
+            options: Omit<BucketNotificationHandlerOptions, "eventTypes">,
             handler: BucketNotificationHandlerFunction
           ]
     ) => {
-      const [sourceLocation, streamName, options, handler] =
-        args.length === 2
-          ? [, args[0], , args[1]]
-          : args.length === 4
+      const [sourceLocation, events, streamName, options, handler] =
+        args.length === 3
+          ? [, args[0], args[1], , args[2]]
+          : args.length === 5
           ? args
-          : isSourceLocation(args[0]) && typeof args[1] === "string"
-          ? [args[0], args[1] as string, , args[2]]
+          : isSourceLocation(args[0]) && typeof args[2] === "string"
+          ? [
+              args[0],
+              args[1] as BucketNotificationHandlerEventInput,
+              args[2] as string,
+              ,
+              args[3],
+            ]
           : [
               ,
-              args[0] as string,
-              args[1] as BucketNotificationHandlerOptions,
-              args[2],
+              args[0] as BucketNotificationHandlerEventInput,
+              args[1] as string,
+              args[2] as Omit<BucketNotificationHandlerOptions, "eventTypes">,
+              args[3],
             ];
 
       const bucketHandler: BucketNotificationHandler = {
@@ -227,7 +249,15 @@ export function bucket(name: string): Bucket {
         handler,
         name: streamName,
         bucketName: name,
-        options,
+        options: {
+          ...options,
+          eventTypes:
+            events === "all"
+              ? undefined
+              : Array.isArray(events)
+              ? events
+              : [events],
+        },
         sourceLocation,
       };
 

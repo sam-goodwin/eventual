@@ -12,7 +12,7 @@ export type BucketMethods = Exclude<
   {
     [k in keyof Bucket]: Bucket[k] extends Function ? k : never;
   }[keyof Bucket],
-  "stream"
+  "on"
 >;
 
 export type BucketHook = {

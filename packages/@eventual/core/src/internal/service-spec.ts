@@ -139,7 +139,7 @@ export interface BucketSpec {
   handlers: BucketNotificationHandlerSpec[];
 }
 
-export type BucketNotificationEventTypes = "put" | "copy" | "delete";
+export type BucketNotificationEventType = "put" | "copy" | "delete";
 
 export interface BucketNotificationHandlerOptions extends FunctionRuntimeProps {
   /**
@@ -147,11 +147,11 @@ export interface BucketNotificationHandlerOptions extends FunctionRuntimeProps {
    *
    * @default All Operations
    */
-  eventTypes?: BucketNotificationEventTypes[];
+  eventTypes?: BucketNotificationEventType[];
   /**
    * Filter objects in the stream by prefix or suffix.
    */
-  filters: { prefix?: string; suffix?: string }[];
+  filters?: { prefix?: string; suffix?: string }[];
 }
 
 export interface BucketNotificationHandlerSpec {
