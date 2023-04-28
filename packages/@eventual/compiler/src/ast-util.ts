@@ -62,6 +62,24 @@ export function isEntityStreamMemberCall(call: CallExpression): boolean {
 }
 
 /**
+ * A heuristic for identifying a {@link CallExpression} that is a call to an `on` handler.
+ *
+ * 1. must be a call to a MemberExpression matching to `<expression>.on(events, name, impl | props, impl)`.
+ * 2. must have 3 or 4 arguments.
+ */
+export function iBucketHandlerMemberCall(call: CallExpression): boolean {
+  const c = call.callee;
+  if (c.type === "MemberExpression") {
+    if (isId(c.property, "on")) {
+      // bucket.stream(events, "handlerName", async () => { })
+      // bucket.stream(events, ""handlerName", options, async () => { })
+      return call.arguments.length === 3 || call.arguments.length === 4;
+    }
+  }
+  return false;
+}
+
+/**
  * A heuristic for identifying a {@link CallExpression} that is a call to an `subscription` handler.
  *
  * 1. must be a call to an `entityStream(name, entity, props, impl)` or a MemberExpression matching to `<expression>.entityStream(name, entity, props, impl)`.
