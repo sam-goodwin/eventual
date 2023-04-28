@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.34.0 (2023-04-28)
+
+### Features
+
+- service content in handlers ([#343](https://github.com/functionless/eventual/issues/343)) ([82860fd](https://github.com/functionless/eventual/commit/82860fd4c5aad4abfa7bac110d24f4713a91692b))
+
 ## 0.33.3 (2023-04-27)
 
 ### Bug Fixes
