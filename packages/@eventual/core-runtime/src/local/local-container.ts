@@ -1,10 +1,10 @@
 import {
-  BucketStreamDeleteItem,
-  BucketStreamPutItem,
+  BucketNotificationDeleteEvent,
+  BucketNotificationPutEvent,
   EntityStreamInsertItem,
   EntityStreamModifyItem,
   EntityStreamRemoveItem,
-  LogLevel
+  LogLevel,
 } from "@eventual/core";
 import { EntityClient } from "../clients/entity-client.js";
 import { EventClient } from "../clients/event-client.js";
@@ -16,41 +16,41 @@ import type { TimerClient, TimerRequest } from "../clients/timer-client.js";
 import { TransactionClient } from "../clients/transaction-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
 import {
-  BucketStreamWorker,
-  createBucketStreamWorker
-} from "../handlers/bucket-stream-worker.js";
+  BucketNotificationHandlerWorker,
+  createBucketNotificationHandlerWorker,
+} from "../handlers/bucket-handler-worker.js";
 import {
   CommandWorker,
-  createCommandWorker
+  createCommandWorker,
 } from "../handlers/command-worker.js";
 import {
   createEntityStreamWorker,
-  EntityStreamWorker
+  EntityStreamWorker,
 } from "../handlers/entity-stream-worker.js";
 import { createOrchestrator, Orchestrator } from "../handlers/orchestrator.js";
 import {
   createSubscriptionWorker,
-  SubscriptionWorker
+  SubscriptionWorker,
 } from "../handlers/subscription-worker.js";
 import { createTaskWorker, TaskWorker } from "../handlers/task-worker.js";
 import { createTimerHandler, TimerHandler } from "../handlers/timer-handler.js";
 import {
   createTransactionWorker,
-  TransactionWorker
+  TransactionWorker,
 } from "../handlers/transaction-worker.js";
 import { LogAgent } from "../log-agent.js";
 import { InMemoryExecutorProvider } from "../providers/executor-provider.js";
 import {
   GlobalSubscriptionProvider,
-  SubscriptionProvider
+  SubscriptionProvider,
 } from "../providers/subscription-provider.js";
 import {
   GlobalTaskProvider,
-  TaskProvider
+  TaskProvider,
 } from "../providers/task-provider.js";
 import {
   GlobalWorkflowProvider,
-  WorkflowProvider
+  WorkflowProvider,
 } from "../providers/workflow-provider.js";
 import type { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
 import type { ExecutionHistoryStore } from "../stores/execution-history-store.js";
@@ -66,7 +66,7 @@ import {
   createListWorkflowsCommand,
   createSendSignalCommand,
   createStartExecutionCommand,
-  createUpdateTaskCommand
+  createUpdateTaskCommand,
 } from "../system-commands.js";
 import type { WorkflowTask } from "../tasks.js";
 import { WorkflowCallExecutor } from "../workflow-call-executor.js";
@@ -91,8 +91,8 @@ export type LocalEvent =
   | Omit<EntityStreamInsertItem<any>, "streamName">
   | Omit<EntityStreamRemoveItem<any>, "streamName">
   | Omit<EntityStreamModifyItem<any>, "streamName">
-  | Omit<BucketStreamPutItem, "streamName">
-  | Omit<BucketStreamDeleteItem, "streamName">;
+  | Omit<BucketNotificationPutEvent, "handlerName">
+  | Omit<BucketNotificationDeleteEvent, "handlerName">;
 
 export interface LocalContainerProps {
   taskProvider?: TaskProvider;
@@ -106,7 +106,7 @@ export class LocalContainer {
   public commandWorker: CommandWorker;
   public timerHandler: TimerHandler;
   public taskWorker: TaskWorker;
-  public bucketStreamWorker: BucketStreamWorker;
+  public bucketHandlerWorker: BucketNotificationHandlerWorker;
   public entityStreamWorker: EntityStreamWorker;
   public subscriptionWorker: SubscriptionWorker;
   public transactionWorker: TransactionWorker;
@@ -159,7 +159,7 @@ export class LocalContainer {
     const bucketStore = new LocalBucketStore({
       localConnector: this.localConnector,
     });
-    this.bucketStreamWorker = createBucketStreamWorker({
+    this.bucketHandlerWorker = createBucketNotificationHandlerWorker({
       bucketStore,
       entityClient,
       serviceClient: undefined,

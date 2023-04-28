@@ -17,9 +17,9 @@ import {
   Workflow,
 } from "@eventual/core";
 import {
-  bucketStreamMatchesItem,
+  bucketHandlerMatchesEvent,
   entityStreamMatchesItem,
-  isBucketStreamItem,
+  isBucketNotificationEvent,
   isEntityStreamItem,
   isTaskSendEventRequest,
   isTaskWorkerRequest,
@@ -388,7 +388,7 @@ export class TestEnvironment extends RuntimeServiceClient {
     const workflowTasks = events.filter(isWorkflowTask);
     const taskWorkerRequests = events.filter(isTaskWorkerRequest);
     const entityStreamItems = events.filter(isEntityStreamItem);
-    const bucketStreamItems = events.filter(isBucketStreamItem);
+    const bucketNotificationEvents = events.filter(isBucketNotificationEvent);
 
     await Promise.all(
       // run all task requests, don't wait for a result
@@ -418,15 +418,15 @@ export class TestEnvironment extends RuntimeServiceClient {
             });
           });
         }),
-        bucketStreamItems.flatMap((i) => {
+        bucketNotificationEvents.flatMap((i) => {
           const streamNames = [...buckets().values()]
-            .flatMap((d) => d.streams)
-            .filter((s) => bucketStreamMatchesItem(i, s))
+            .flatMap((d) => d.handlers)
+            .filter((s) => bucketHandlerMatchesEvent(i, s))
             .map((s) => s.name);
           return streamNames.map((streamName) => {
-            return this.localContainer.bucketStreamWorker({
+            return this.localContainer.bucketHandlerWorker({
               ...i,
-              streamName,
+              handlerName: streamName,
             });
           });
         }),

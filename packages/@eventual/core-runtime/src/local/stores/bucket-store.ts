@@ -89,7 +89,7 @@ export class LocalBucketStore implements BucketStore {
     this.props.localConnector.pushWorkflowTask({
       bucketName,
       key,
-      operation: "put",
+      event: "put",
       size: body.length,
       etag,
     });
@@ -111,7 +111,7 @@ export class LocalBucketStore implements BucketStore {
     this.props.localConnector.pushWorkflowTask({
       bucketName,
       key,
-      operation: "delete",
+      event: "delete",
     });
   }
 
@@ -144,7 +144,7 @@ export class LocalBucketStore implements BucketStore {
     this.props.localConnector.pushWorkflowTask({
       bucketName,
       key,
-      operation: "copy",
+      event: "copy",
       size: sourceObject.contentLength,
       etag: sourceObject.etag,
     });

@@ -136,28 +136,28 @@ export interface WorkflowSpec {
 
 export interface BucketSpec {
   name: string;
-  streams: BucketStreamSpec[];
+  handlers: BucketNotificationHandlerSpec[];
 }
 
-export type BucketStreamOperation = "put" | "copy" | "delete";
+export type BucketNotificationEventTypes = "put" | "copy" | "delete";
 
-export interface BucketStreamOptions extends FunctionRuntimeProps {
+export interface BucketNotificationHandlerOptions extends FunctionRuntimeProps {
   /**
    * A list of operations to be send to the stream.
    *
    * @default All Operations
    */
-  operations?: BucketStreamOperation[];
+  eventTypes?: BucketNotificationEventTypes[];
   /**
    * Filter objects in the stream by prefix or suffix.
    */
   filters: { prefix?: string; suffix?: string }[];
 }
 
-export interface BucketStreamSpec {
+export interface BucketNotificationHandlerSpec {
   name: string;
   bucketName: string;
-  options?: BucketStreamOptions;
+  options?: BucketNotificationHandlerOptions;
   sourceLocation?: SourceLocation;
 }
 

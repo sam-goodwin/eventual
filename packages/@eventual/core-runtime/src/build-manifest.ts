@@ -1,6 +1,6 @@
 import type {
   BucketSpec,
-  BucketStreamSpec,
+  BucketNotificationHandlerSpec as BucketNotificationHandlerSpec,
   CommandSpec,
   EntitySpec,
   EntityStreamSpec,
@@ -55,8 +55,8 @@ export interface EntityRuntime extends Omit<EntitySpec, "streams"> {
   streams: EntityStreamFunction[];
 }
 
-export interface BucketRuntime extends Omit<BucketSpec, "streams"> {
-  streams: BucketStreamFunction[];
+export interface BucketRuntime extends Omit<BucketSpec, "handlers"> {
+  handlers: BucketNotificationHandlerFunction[];
 }
 
 export interface Entities {
@@ -105,5 +105,5 @@ export interface CommandFunction extends BundledFunction<CommandSpec> {}
 export interface EntityStreamFunction
   extends BundledFunction<EntityStreamSpec> {}
 
-export interface BucketStreamFunction
-  extends BundledFunction<BucketStreamSpec> {}
+export interface BucketNotificationHandlerFunction
+  extends BundledFunction<BucketNotificationHandlerSpec> {}

@@ -15,7 +15,7 @@ import {
   transactions,
   workflows,
   buckets,
-  BucketStreamSpec,
+  BucketNotificationHandlerSpec,
 } from "@eventual/core/internal";
 import {
   CallExpression,
@@ -117,14 +117,14 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
     buckets: {
       buckets: [...buckets().values()].map((b) => ({
         name: b.name,
-        streams: b.streams.map(
+        handlers: b.handlers.map(
           (s) =>
             ({
               name: s.name,
               bucketName: s.bucketName,
               options: s.options,
               sourceLocation: s.sourceLocation,
-            } satisfies BucketStreamSpec)
+            } satisfies BucketNotificationHandlerSpec)
         ),
       })),
     },

@@ -1,9 +1,12 @@
 import {
-  BucketStreamItem,
+  BucketNotificationEvent,
   CompositeKey,
   EntityStreamItem,
 } from "@eventual/core";
-import { BucketStreamSpec, EntityStreamSpec } from "@eventual/core/internal";
+import {
+  BucketNotificationHandlerSpec,
+  EntityStreamSpec,
+} from "@eventual/core/internal";
 import { normalizeCompositeKey } from "./stores/entity-store.js";
 
 export async function promiseAllSettledPartitioned<T, R>(
@@ -74,8 +77,10 @@ export function isEntityStreamItem(value: any): value is EntityStreamItem<any> {
   return "entityName" in value && "operation" in value;
 }
 
-export function isBucketStreamItem(value: any): value is BucketStreamItem {
-  return "bucketName" in value && "operation" in value;
+export function isBucketNotificationEvent(
+  value: any
+): value is BucketNotificationEvent {
+  return "bucketName" in value && "event" in value;
 }
 
 export function entityStreamMatchesItem(
@@ -97,14 +102,14 @@ export function entityStreamMatchesItem(
   );
 }
 
-export function bucketStreamMatchesItem(
-  item: BucketStreamItem,
-  streamSpec: BucketStreamSpec
+export function bucketHandlerMatchesEvent(
+  item: BucketNotificationEvent,
+  streamSpec: BucketNotificationHandlerSpec
 ) {
   return (
     streamSpec.bucketName === item.bucketName &&
-    (!streamSpec.options?.operations ||
-      streamSpec.options?.operations.includes(item.operation)) &&
+    (!streamSpec.options?.eventTypes ||
+      streamSpec.options?.eventTypes.includes(item.event)) &&
     (!streamSpec.options?.filters ||
       streamSpec.options?.filters.some((f) => {
         return (

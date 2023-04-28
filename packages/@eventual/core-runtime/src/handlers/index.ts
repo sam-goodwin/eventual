@@ -1,4 +1,4 @@
-export * from "./bucket-stream-worker.js";
+export * from "./bucket-handler-worker.js";
 export * from "./command-worker.js";
 export * from "./entity-stream-worker.js";
 export * from "./orchestrator.js";

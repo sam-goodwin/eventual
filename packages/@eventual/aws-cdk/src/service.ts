@@ -27,11 +27,12 @@ import { Construct } from "constructs";
 import openapi from "openapi3-ts";
 import path from "path";
 import {
+  BucketNotificationHandler,
+  BucketNotificationHandlerOverrides,
   BucketOverrides,
   BucketService,
-  BucketStreamOverrides,
+  ServiceBucketNotificationHandlers,
   ServiceBuckets,
-  ServiceBucketStreams,
 } from "./bucket-service";
 import { BuildOutput, buildServiceSync } from "./build";
 import {
@@ -131,7 +132,7 @@ export interface ServiceProps<Service = any> {
   /**
    * Override the properties of an bucket streams within the service.
    */
-  bucketStreams?: BucketStreamOverrides<Service>;
+  bucketNotificationHandlers?: BucketNotificationHandlerOverrides<Service>;
   cors?: CorsOptions;
   /**
    * Customize the open API output for the gateway.
@@ -206,9 +207,9 @@ export class Service<S = any> extends Construct {
    */
   public readonly buckets: ServiceBuckets<S>;
   /**
-   * Streams of bucket events defined by the service.
+   * Handlers of bucket notification events defined by the service.
    */
-  public readonly bucketSteams: ServiceBucketStreams<S>;
+  public readonly bucketNotificationHandlers: ServiceBucketNotificationHandlers<S>;
   /**
    * API Gateway which serves the service commands and the system commands.
    */
@@ -238,7 +239,8 @@ export class Service<S = any> extends Construct {
   public commandsPrincipal: IPrincipal;
   public tasksPrincipal: IPrincipal;
   public subscriptionsPrincipal: IPrincipal;
-  public entityStreamPrincipal: IPrincipal;
+  public entityStreamsPrincipal: IPrincipal;
+  public bucketNotificationHandlersPrincipal: IPrincipal;
 
   public readonly system: ServiceSystem<S>;
 
@@ -335,11 +337,11 @@ export class Service<S = any> extends Construct {
       commandService: proxyCommandService,
       entityService: entityService,
       bucketOverrides: props.buckets,
-      bucketStreamOverrides: props.bucketStreams,
+      bucketHandlerOverrides: props.bucketNotificationHandlers,
     });
     proxyBucketService._bind(this.bucketService);
     this.buckets = this.bucketService.buckets;
-    this.bucketSteams = this.bucketService.bucketStreams;
+    this.bucketNotificationHandlers = this.bucketService.bucketHandlers;
 
     const taskService = new TaskService<S>({
       ...serviceConstructProps,
@@ -439,18 +441,26 @@ export class Service<S = any> extends Construct {
             ...this.subscriptionsList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });
-    this.entityStreamPrincipal =
+    this.entityStreamsPrincipal =
       this.entityStreamList.length > 0 || this.local
         ? new DeepCompositePrincipal(
             ...(this.local ? [this.local.environmentRole] : []),
             ...this.entityStreamList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });
+    this.bucketNotificationHandlersPrincipal =
+      this.bucketNotificationHandlersList.length > 0 || this.local
+        ? new DeepCompositePrincipal(
+            ...(this.local ? [this.local.environmentRole] : []),
+            ...this.bucketNotificationHandlersList.map((f) => f.grantPrincipal)
+          )
+        : new UnknownPrincipal({ resource: this });
     this.grantPrincipal = new DeepCompositePrincipal(
       this.commandsPrincipal,
       this.tasksPrincipal,
       this.subscriptionsPrincipal,
-      this.entityStreamPrincipal
+      this.entityStreamsPrincipal,
+      this.bucketNotificationHandlersPrincipal
     );
 
     serviceDataSSM.grantRead(accessRole);
@@ -481,6 +491,10 @@ export class Service<S = any> extends Construct {
 
   public get entityStreamList(): EntityStream[] {
     return Object.values(this.entityStreams);
+  }
+
+  public get bucketNotificationHandlersList(): BucketNotificationHandler[] {
+    return Object.values(this.bucketNotificationHandlers);
   }
 
   public subscribe(

@@ -2,9 +2,9 @@ import { Readable } from "node:stream";
 import { getBucketHook } from "./internal/bucket-hook.js";
 import { buckets } from "./internal/global.js";
 import {
+  BucketNotificationHandlerOptions,
+  BucketNotificationHandlerSpec,
   BucketSpec,
-  BucketStreamOptions,
-  BucketStreamSpec,
   isSourceLocation,
   SourceLocation,
 } from "./internal/service-spec.js";
@@ -57,37 +57,42 @@ export interface CopyBucketObjectResponse {
   etag?: string;
 }
 
-export interface BucketStream extends BucketStreamSpec {
-  kind: "BucketStream";
-  handler: BucketStreamHandler;
+export interface BucketNotificationHandler
+  extends BucketNotificationHandlerSpec {
+  kind: "BucketNotificationHandler";
+  handler: BucketNotificationHandlerFunction;
   sourceLocation?: SourceLocation;
 }
 
-export interface BucketStreamHandler {
-  (item: BucketStreamItem): Promise<void> | void;
+export interface BucketNotificationHandlerFunction {
+  (item: BucketNotificationEvent): Promise<void> | void;
 }
 
-export interface BucketStreamItemBase {
-  streamName: string;
+export interface BucketNotificationEventBase {
+  handlerName: string;
   bucketName: string;
   key: string;
 }
 
-export interface BucketStreamPutItem extends BucketStreamItemBase {
-  operation: "put" | "copy";
+export interface BucketNotificationPutEvent
+  extends BucketNotificationEventBase {
+  event: "put" | "copy";
   etag: string;
   size: number;
 }
 
-export interface BucketStreamDeleteItem extends BucketStreamItemBase {
-  operation: "delete";
+export interface BucketNotificationDeleteEvent
+  extends BucketNotificationEventBase {
+  event: "delete";
 }
 
-export type BucketStreamItem = BucketStreamPutItem | BucketStreamDeleteItem;
+export type BucketNotificationEvent =
+  | BucketNotificationPutEvent
+  | BucketNotificationDeleteEvent;
 
-export interface Bucket extends Omit<BucketSpec, "streams"> {
+export interface Bucket extends Omit<BucketSpec, "handlers"> {
   kind: "Bucket";
-  streams: BucketStream[];
+  handlers: BucketNotificationHandler[];
   get(
     key: string,
     options?: GetBucketObjectOptions
@@ -130,10 +135,13 @@ export interface Bucket extends Omit<BucketSpec, "streams"> {
   physicalName: string;
   stream(
     name: string,
-    options: BucketStreamOptions,
-    handler: BucketStreamHandler
-  ): BucketStream;
-  stream(name: string, handler: BucketStreamHandler): BucketStream;
+    options: BucketNotificationHandlerOptions,
+    handler: BucketNotificationHandlerFunction
+  ): BucketNotificationHandler;
+  stream(
+    name: string,
+    handler: BucketNotificationHandlerFunction
+  ): BucketNotificationHandler;
 }
 
 export function bucket(name: string): Bucket {
@@ -141,10 +149,10 @@ export function bucket(name: string): Bucket {
     throw new Error(`bucket with name '${name}' already exists`);
   }
 
-  const streams: BucketStream[] = [];
+  const handlers: BucketNotificationHandler[] = [];
   const bucket: Bucket = {
     name,
-    streams,
+    handlers,
     kind: "Bucket",
     get(key, options) {
       return getEventualCallHook().registerEventualCall(undefined, () => {
@@ -182,22 +190,22 @@ export function bucket(name: string): Bucket {
     },
     stream: (
       ...args:
-        | [name: string, handler: BucketStreamHandler]
+        | [name: string, handler: BucketNotificationHandlerFunction]
         | [
             name: string,
-            options: BucketStreamOptions,
-            handler: BucketStreamHandler
+            options: BucketNotificationHandlerOptions,
+            handler: BucketNotificationHandlerFunction
           ]
         | [
             sourceLocation: SourceLocation,
             name: string,
-            handler: BucketStreamHandler
+            handler: BucketNotificationHandlerFunction
           ]
         | [
             sourceLocation: SourceLocation,
             name: string,
-            options: BucketStreamOptions,
-            handler: BucketStreamHandler
+            options: BucketNotificationHandlerOptions,
+            handler: BucketNotificationHandlerFunction
           ]
     ) => {
       const [sourceLocation, streamName, options, handler] =
@@ -207,10 +215,15 @@ export function bucket(name: string): Bucket {
           ? args
           : isSourceLocation(args[0]) && typeof args[1] === "string"
           ? [args[0], args[1] as string, , args[2]]
-          : [, args[0] as string, args[1] as BucketStreamOptions, args[2]];
+          : [
+              ,
+              args[0] as string,
+              args[1] as BucketNotificationHandlerOptions,
+              args[2],
+            ];
 
-      const bucketStream: BucketStream = {
-        kind: "BucketStream",
+      const bucketHandler: BucketNotificationHandler = {
+        kind: "BucketNotificationHandler",
         handler,
         name: streamName,
         bucketName: name,
@@ -218,9 +231,9 @@ export function bucket(name: string): Bucket {
         sourceLocation,
       };
 
-      streams.push(bucketStream);
+      handlers.push(bucketHandler);
 
-      return bucketStream;
+      return bucketHandler;
     },
   };
 

@@ -5,8 +5,8 @@ import {
   ENV_NAMES,
 } from "@eventual/aws-runtime";
 import type {
+  BucketNotificationHandlerFunction,
   BucketRuntime,
-  BucketStreamFunction,
 } from "@eventual/core-runtime";
 import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
 import { IGrantable, IPrincipal, PolicyStatement } from "aws-cdk-lib/aws-iam";
@@ -25,8 +25,12 @@ export type BucketOverrides<Service> = Partial<
   ServiceEntityProps<Service, "Bucket", BucketRuntimeOverrides>
 >;
 
-export type BucketStreamOverrides<Service> = Partial<
-  ServiceEntityProps<Service, "BucketStream", BucketStreamHandlerProps>
+export type BucketNotificationHandlerOverrides<Service> = Partial<
+  ServiceEntityProps<
+    Service,
+    "BucketNotificationHandler",
+    BucketNotificationHandlerFunctionProps
+  >
 >;
 
 export type ServiceBuckets<Service> = ServiceEntityProps<
@@ -35,13 +39,13 @@ export type ServiceBuckets<Service> = ServiceEntityProps<
   Bucket
 >;
 
-export type ServiceBucketStreams<Service> = ServiceEntityProps<
+export type ServiceBucketNotificationHandlers<Service> = ServiceEntityProps<
   Service,
-  "BucketStream",
-  BucketStream
+  "BucketNotificationHandler",
+  BucketNotificationHandler
 >;
 
-export interface BucketStreamHandlerProps
+export interface BucketNotificationHandlerFunctionProps
   extends Omit<
     Partial<FunctionProps>,
     "code" | "handler" | "functionName" | "events"
@@ -49,7 +53,7 @@ export interface BucketStreamHandlerProps
 
 export interface BucketServiceProps<Service> extends ServiceConstructProps {
   bucketOverrides?: BucketOverrides<Service>;
-  bucketStreamOverrides?: BucketStreamOverrides<Service>;
+  bucketHandlerOverrides?: BucketNotificationHandlerOverrides<Service>;
   commandService: LazyInterface<CommandService<Service>>;
   cors?: CorsOptions;
   entityService: LazyInterface<EntityService<Service>>;
@@ -57,7 +61,7 @@ export interface BucketServiceProps<Service> extends ServiceConstructProps {
 
 export class BucketService<Service> {
   public buckets: ServiceBuckets<Service>;
-  public bucketStreams: ServiceBucketStreams<Service>;
+  public bucketHandlers: ServiceBucketNotificationHandlers<Service>;
 
   constructor(private props: BucketServiceProps<Service>) {
     const bucketsScope = new Construct(props.serviceScope, "Buckets");
@@ -73,14 +77,14 @@ export class BucketService<Service> {
       ])
     ) as ServiceBuckets<Service>;
 
-    this.bucketStreams = Object.values(
+    this.bucketHandlers = Object.values(
       this.buckets as Record<string, Bucket>
-    ).reduce((streams: Record<string, BucketStream>, ent) => {
+    ).reduce((handlers: Record<string, BucketNotificationHandler>, ent) => {
       return {
-        ...streams,
-        ...ent.streams,
+        ...handlers,
+        ...ent.handlers,
       };
-    }, {}) as ServiceBucketStreams<Service>;
+    }, {}) as ServiceBucketNotificationHandlers<Service>;
   }
 
   public configureReadWriteBuckets(func: Function) {
@@ -152,7 +156,7 @@ interface BucketProps {
 
 export class Bucket extends Construct {
   public bucket: s3.Bucket;
-  public streams: Record<string, BucketStream>;
+  public handlers: Record<string, BucketNotificationHandler>;
 
   constructor(scope: Construct, props: BucketProps) {
     super(scope, props.bucket.name);
@@ -192,71 +196,78 @@ export class Bucket extends Construct {
 
     this.bucket.grantReadWrite;
 
-    const bucketStreamScope = new Construct(this, "BucketStreams");
+    const bucketHandlerScope = new Construct(this, "BucketHandlers");
 
-    this.streams = Object.fromEntries(
-      props.bucket.streams.map((s) => [
+    this.handlers = Object.fromEntries(
+      props.bucket.handlers.map((s) => [
         s.spec.name,
-        new BucketStream(bucketStreamScope, s.spec.name, {
+        new BucketNotificationHandler(bucketHandlerScope, s.spec.name, {
           bucket: this.bucket,
           bucketService: props.bucketService,
           serviceProps: props.serviceProps,
-          stream: s,
+          handler: s,
         }),
       ])
     );
   }
 }
 
-interface BucketStreamProps {
+interface BucketNotificationHandlerProps {
   bucket: s3.Bucket;
   serviceProps: BucketServiceProps<any>;
   bucketService: BucketService<any>;
-  stream: BucketStreamFunction;
+  handler: BucketNotificationHandlerFunction;
 }
 
-export class BucketStream extends Construct implements EventualResource {
+export class BucketNotificationHandler
+  extends Construct
+  implements EventualResource
+{
   public grantPrincipal: IPrincipal;
   public handler: Function;
-  constructor(scope: Construct, id: string, props: BucketStreamProps) {
+  constructor(
+    scope: Construct,
+    id: string,
+    props: BucketNotificationHandlerProps
+  ) {
     super(scope, id);
 
-    const streamName = props.stream.spec.name;
-    const bucketName = props.stream.spec.bucketName;
+    const handlerName = props.handler.spec.name;
+    const bucketName = props.handler.spec.bucketName;
 
     this.handler = new ServiceFunction(this, "Handler", {
       build: props.serviceProps.build,
-      bundledFunction: props.stream,
-      functionNameSuffix: `bucket-stream-${bucketName}-${streamName}`,
+      bundledFunction: props.handler,
+      functionNameSuffix: `bucket-handler-${bucketName}-${handlerName}`,
       serviceName: props.serviceProps.serviceName,
       defaults: {
         timeout: Duration.minutes(1),
         environment: {
           [ENV_NAMES.BUCKET_NAME]: bucketName,
-          [ENV_NAMES.BUCKET_STREAM_NAME]: streamName,
+          [ENV_NAMES.BUCKET_HANDLER_NAME]: handlerName,
           ...props.serviceProps.environment,
         },
         events: [
           new S3EventSource(props.bucket, {
-            events: !props.stream.spec.options?.operations
+            events: !props.handler.spec.options?.eventTypes
               ? [
                   s3.EventType.OBJECT_CREATED_PUT,
                   s3.EventType.OBJECT_CREATED_COPY,
                   s3.EventType.OBJECT_REMOVED,
                 ]
-              : props.stream.spec.options.operations.map((o) => {
+              : props.handler.spec.options.eventTypes.map((o) => {
                   return o === "put"
                     ? s3.EventType.OBJECT_CREATED_PUT
                     : o === "copy"
                     ? s3.EventType.OBJECT_CREATED_COPY
                     : s3.EventType.OBJECT_REMOVED;
                 }),
-            filters: props.stream.spec.options?.filters,
+            filters: props.handler.spec.options?.filters,
           }),
         ],
       },
-      runtimeProps: props.stream.spec.options,
-      overrides: props.serviceProps.bucketStreamOverrides?.[streamName],
+      runtimeProps: props.handler.spec.options,
+      overrides: props.serviceProps.bucketHandlerOverrides?.[handlerName],
     });
 
     // let the handler worker use the service client.

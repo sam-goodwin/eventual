@@ -1,7 +1,7 @@
 import { build, BuildSource, infer } from "@eventual/compiler";
 import { BuildManifest } from "@eventual/core-runtime";
 import {
-  BucketStreamSpec,
+  BucketNotificationHandlerSpec,
   CommandSpec,
   EntityStreamSpec,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
@@ -88,7 +88,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       monoCommandFunction,
       monoSubscriptionFunction,
       monoEntityStreamWorkerFunction,
-      monoBucketStreamWorkerFunction,
+      monoBucketHandlerWorkerFunction,
       transactionWorkerFunction,
     ],
     [
@@ -135,7 +135,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       buckets: await Promise.all(
         serviceSpec.buckets.buckets.map(async (b) => ({
           ...b,
-          streams: await bundleBucketStreams(b.streams),
+          handlers: await bundleBucketHandlers(b.handlers),
         }))
       ),
     },
@@ -266,17 +266,17 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     );
   }
 
-  async function bundleBucketStreams(specs: BucketStreamSpec[]) {
+  async function bundleBucketHandlers(specs: BucketNotificationHandlerSpec[]) {
     return await Promise.all(
       specs.map(async (spec) => {
         return {
           entry: await bundleFile(
             specPath,
             spec,
-            "bucket-streams",
-            "bucket-stream-worker",
+            "bucket-handlers",
+            "bucket-handler-worker",
             spec.name,
-            monoBucketStreamWorkerFunction!
+            monoBucketHandlerWorkerFunction!
           ),
           spec,
         };
@@ -333,8 +333,8 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           entry: runtimeHandlersEntrypoint("entity-stream-worker"),
         },
         {
-          name: ServiceType.BucketStreamWorker,
-          entry: runtimeHandlersEntrypoint("bucket-stream-worker"),
+          name: ServiceType.BucketNotificationHandlerWorker,
+          entry: runtimeHandlersEntrypoint("bucket-handler-worker"),
         },
         {
           name: ServiceType.TransactionWorker,

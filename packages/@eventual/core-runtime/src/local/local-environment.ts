@@ -12,9 +12,9 @@ import { isTimerRequest } from "../clients/timer-client.js";
 import { isTaskSendEventRequest } from "../handlers/task-fallback-handler.js";
 import { isWorkflowTask } from "../tasks.js";
 import {
-  bucketStreamMatchesItem,
+  bucketHandlerMatchesEvent,
   entityStreamMatchesItem,
-  isBucketStreamItem,
+  isBucketNotificationEvent,
   isEntityStreamItem,
 } from "../utils.js";
 import {
@@ -131,7 +131,7 @@ export class LocalEnvironment {
       const workflowTasks = events.filter(isWorkflowTask);
       const taskWorkerRequests = events.filter(isTaskWorkerRequest);
       const entityStreamItems = events.filter(isEntityStreamItem);
-      const bucketStreamItems = events.filter(isBucketStreamItem);
+      const bucketNotificationEvents = events.filter(isBucketNotificationEvent);
 
       // run all task requests, don't wait for a result
       taskWorkerRequests.forEach(async (request) => {
@@ -162,15 +162,15 @@ export class LocalEnvironment {
       });
 
       // for each bucket stream item, find the streams that match it, and run the worker with the item
-      bucketStreamItems.forEach((i) => {
+      bucketNotificationEvents.forEach((i) => {
         const streamNames = [...buckets().values()]
-          .flatMap((d) => d.streams)
-          .filter((s) => bucketStreamMatchesItem(i, s))
+          .flatMap((d) => d.handlers)
+          .filter((s) => bucketHandlerMatchesEvent(i, s))
           .map((s) => s.name);
         streamNames.forEach((streamName) => {
-          this.localContainer.bucketStreamWorker({
+          this.localContainer.bucketHandlerWorker({
             ...i,
-            streamName,
+            handlerName: streamName,
           });
         });
       });

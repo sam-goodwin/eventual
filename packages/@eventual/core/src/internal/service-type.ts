@@ -3,7 +3,7 @@ export enum ServiceType {
   Subscription = "Subscription",
   OrchestratorWorker = "OrchestratorWorker",
   EntityStreamWorker = "EntityStreamWorker",
-  BucketStreamWorker = "BucketStreamWorker",
+  BucketNotificationHandlerWorker = "BucketNotificationHandlerWorker",
   TaskWorker = "TaskWorker",
   TransactionWorker = "TransactionWorker",
 }
