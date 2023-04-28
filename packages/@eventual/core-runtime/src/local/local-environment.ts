@@ -28,7 +28,7 @@ export class LocalEnvironment {
   private running: boolean = false;
   private localContainer: LocalContainer;
 
-  constructor(environmentManifest: EnvironmentManifest) {
+  constructor(private environmentManifest: EnvironmentManifest) {
     this.timeController = new TimeController([], {
       increment: 1,
       start: new Date().getTime(),
@@ -50,7 +50,8 @@ export class LocalEnvironment {
       },
     };
     this.localContainer = new LocalContainer(this.localConnector, {
-      serviceName: "fixme",
+      serviceName: environmentManifest.serviceName,
+      serviceUrl: environmentManifest.serviceUrl,
     });
 
     const serviceClient = new RuntimeServiceClient({
@@ -169,6 +170,11 @@ export class LocalEnvironment {
   public async invokeCommandOrApi(
     httpRequest: HttpRequest
   ): Promise<HttpResponse> {
-    return this.localContainer.commandWorker(httpRequest);
+    return this.localContainer.commandWorker(httpRequest, {
+      service: {
+        serviceUrl: this.environmentManifest.serviceUrl,
+        serviceName: this.environmentManifest.serviceName,
+      },
+    });
   }
 }

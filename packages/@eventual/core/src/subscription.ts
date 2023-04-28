@@ -2,12 +2,21 @@ import type { Event, EventPayload } from "./event.js";
 import type { FunctionRuntimeProps } from "./function-props.js";
 import { subscriptions } from "./internal/global.js";
 import { isSourceLocation, SourceLocation } from "./internal/service-spec.js";
+import { ServiceContext } from "./service.js";
+
+export interface SubscriptionContext {
+  /**
+   *Information about the containing service.
+   */
+  service: ServiceContext;
+}
 
 /**
  * A Function that processes an {@link event} of type {@link E}.
  */
 export type SubscriptionHandler<E extends EventPayload> = (
-  event: E
+  event: E,
+  context: SubscriptionContext
 ) => Promise<void> | void;
 
 /**

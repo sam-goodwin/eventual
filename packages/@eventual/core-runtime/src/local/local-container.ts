@@ -88,6 +88,7 @@ export type LocalEvent =
 export interface LocalContainerProps {
   taskProvider?: TaskProvider;
   serviceName: string;
+  serviceUrl: string;
   subscriptionProvider?: SubscriptionProvider;
 }
 
@@ -148,6 +149,8 @@ export class LocalContainer {
     this.subscriptionWorker = createSubscriptionWorker({
       subscriptionProvider: this.subscriptionProvider,
       entityClient,
+      serviceName: props.serviceName,
+      serviceUrl: props.serviceUrl,
     });
     this.eventClient = new LocalEventClient(this.subscriptionWorker);
     this.metricsClient = new LocalMetricsClient();
@@ -165,6 +168,7 @@ export class LocalContainer {
       logAgent,
       metricsClient: this.metricsClient,
       serviceName: props.serviceName,
+      serviceUrl: props.serviceUrl,
       timerClient: this.timerClient,
       entityClient,
     });
@@ -176,12 +180,15 @@ export class LocalContainer {
 
     this.entityStreamWorker = createEntityStreamWorker({
       entityClient,
+      serviceName: props.serviceName,
+      serviceUrl: props.serviceUrl,
     });
 
     this.transactionWorker = createTransactionWorker({
       entityStore,
       eventClient: this.eventClient,
       executionQueueClient: this.executionQueueClient,
+      serviceName: props.serviceName,
     });
 
     this.transactionClient = new LocalTransactionClient(this.transactionWorker);
@@ -238,7 +245,11 @@ export class LocalContainer {
     });
 
     // must register commands before the command worker is loaded!
-    this.commandWorker = createCommandWorker({ entityClient });
+    this.commandWorker = createCommandWorker({
+      entityClient,
+      serviceName: props.serviceName,
+      serviceUrl: props.serviceUrl,
+    });
 
     this.timerHandler = createTimerHandler({
       taskStore: this.taskStore,

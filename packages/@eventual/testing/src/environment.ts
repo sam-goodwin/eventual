@@ -105,8 +105,12 @@ export class TestEnvironment extends RuntimeServiceClient {
       getTime: () => this.time,
     };
 
+    const serviceName = props?.serviceName ?? "testing";
+    const serviceUrl = "unknown";
+
     const localContainer = new LocalContainer(localEnvConnector, {
-      serviceName: props?.serviceName ?? "testing",
+      serviceName,
+      serviceUrl,
       taskProvider: taskProvider,
       subscriptionProvider: subscriptionProvider,
     });
@@ -135,7 +139,9 @@ export class TestEnvironment extends RuntimeServiceClient {
       serviceSpec: inferFromMemory({
         info: { title: "test-service", version: "1" },
       }),
-      serviceUrls: [],
+      // TODO: support a local endpoint for local testing
+      serviceUrl,
+      serviceName,
     });
   }
 

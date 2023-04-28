@@ -764,8 +764,9 @@ export const specCommand = command(
 );
 
 export const extractHeaderCommand = api
-  .use(({ request, next }) =>
+  .use(({ request, context, next }) =>
     next({
+      ...context,
       MyHeader: request.headers.get("MyHeader"),
     })
   )
@@ -802,6 +803,10 @@ export const modifyResponseMiddlewareHttp = api
   .get("/modify-response-http", async () => {
     return new HttpResponse("My Response");
   });
+
+export const contextTest = command("contextText", (_, { service }) => {
+  return service;
+});
 
 const simpleEvent = event<{ value: string }>("simpleEvent");
 

@@ -12,7 +12,7 @@ import {
   createServiceClient,
   createTransactionClient,
 } from "../create.js";
-import { serviceUrl } from "../env.js";
+import { serviceName, serviceUrl } from "../env.js";
 
 export const processEvent = createSubscriptionWorker({
   // partially uses the runtime clients and partially uses the http client
@@ -23,7 +23,8 @@ export const processEvent = createSubscriptionWorker({
   subscriptionProvider: new GlobalSubscriptionProvider(),
   entityClient: createEntityClient(),
   serviceSpec,
-  serviceUrls: [serviceUrl],
+  serviceName,
+  serviceUrl: serviceUrl,
 });
 
 export default async function (event: EventBridgeEvent<string, any>) {

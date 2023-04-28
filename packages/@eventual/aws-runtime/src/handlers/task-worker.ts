@@ -3,10 +3,10 @@ import serviceSpec from "@eventual/injected/spec";
 import "@eventual/injected/entry";
 
 import {
+  createTaskWorker,
   GlobalTaskProvider,
   TaskFallbackRequest,
   TaskWorkerRequest,
-  createTaskWorker,
 } from "@eventual/core-runtime";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 import {
@@ -24,11 +24,11 @@ import {
 import { serviceName, serviceUrl } from "../env.js";
 
 const worker = createTaskWorker({
-  executionQueueClient: createExecutionQueueClient(),
+  entityClient: createEntityClient(),
   eventClient: createEventClient(),
-  timerClient: createTimerClient(),
+  executionQueueClient: createExecutionQueueClient(),
+  logAgent: createLogAgent(),
   metricsClient: AWSMetricsClient,
-  taskProvider: new GlobalTaskProvider(),
   // partially uses the runtime clients and partially uses the http client
   serviceClient: createServiceClient({
     taskClient: createTaskClient(),
@@ -38,12 +38,12 @@ const worker = createTaskWorker({
     executionStore: createExecutionStore(),
     transactionClient: createTransactionClient(),
   }),
-  logAgent: createLogAgent(),
-  taskStore: createTaskStore(),
-  serviceName: serviceName(),
-  entityClient: createEntityClient(),
+  serviceName,
   serviceSpec,
-  serviceUrls: [serviceUrl],
+  serviceUrl,
+  taskProvider: new GlobalTaskProvider(),
+  taskStore: createTaskStore(),
+  timerClient: createTimerClient(),
 });
 
 export default async (request: TaskWorkerRequest) => {

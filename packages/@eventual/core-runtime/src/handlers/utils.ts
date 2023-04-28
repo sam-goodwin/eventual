@@ -1,18 +1,19 @@
-import { EventualServiceClient } from "@eventual/core";
+import type { EventualServiceClient, ServiceContext } from "@eventual/core";
 import {
-  ServiceSpec,
   registerEntityHook,
   registerEnvironmentManifest,
   registerServiceClient,
+  ServiceSpec,
 } from "@eventual/core/internal";
 import { EntityClient } from "../clients/entity-client.js";
-import { LazyValue, getLazy } from "../utils.js";
+import { getLazy, LazyValue } from "../utils.js";
 
 export interface WorkerIntrinsicDeps {
   entityClient?: EntityClient;
   serviceClient?: EventualServiceClient;
-  serviceUrls?: (string | LazyValue<string>)[];
+  serviceName: string | LazyValue<string>;
   serviceSpec?: ServiceSpec;
+  serviceUrl: string | LazyValue<string>;
 }
 
 export function registerWorkerIntrinsics(deps: WorkerIntrinsicDeps) {
@@ -25,7 +26,15 @@ export function registerWorkerIntrinsics(deps: WorkerIntrinsicDeps) {
   if (deps.serviceSpec) {
     registerEnvironmentManifest({
       serviceSpec: deps.serviceSpec,
-      serviceUrls: (deps.serviceUrls ?? []).map(getLazy),
+      serviceUrl: getLazy(deps.serviceUrl),
+      serviceName: getLazy(deps.serviceName),
     });
   }
+}
+
+export function getServiceContext(deps: WorkerIntrinsicDeps): ServiceContext {
+  return {
+    serviceName: getLazy(deps.serviceName),
+    serviceUrl: getLazy(deps.serviceUrl),
+  };
 }

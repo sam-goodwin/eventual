@@ -179,6 +179,7 @@ export interface TransactionSpec {
 }
 
 export interface EnvironmentManifest {
+  serviceName: string;
   serviceSpec: ServiceSpec;
-  serviceUrls: string[];
+  serviceUrl: string;
 }

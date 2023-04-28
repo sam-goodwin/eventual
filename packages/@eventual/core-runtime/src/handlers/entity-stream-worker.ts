@@ -2,8 +2,9 @@ import { EntityStreamItem } from "@eventual/core";
 import {
   ServiceType,
   entities,
-  serviceTypeScope
+  serviceTypeScope,
 } from "@eventual/core/internal";
+import { getLazy } from "../utils.js";
 import { WorkerIntrinsicDeps, registerWorkerIntrinsics } from "./utils.js";
 
 export interface EntityStreamWorker {
@@ -15,7 +16,7 @@ interface EntityStreamWorkerDependencies extends WorkerIntrinsicDeps {}
 export function createEntityStreamWorker(
   dependencies: EntityStreamWorkerDependencies
 ): EntityStreamWorker {
-  registerWorkerIntrinsics(dependencies)
+  registerWorkerIntrinsics(dependencies);
 
   return async (item) =>
     serviceTypeScope(ServiceType.EntityStreamWorker, async () => {
@@ -25,6 +26,11 @@ export function createEntityStreamWorker(
       if (!streamHandler) {
         throw new Error(`Stream handler ${item.streamName} does not exist`);
       }
-      return await streamHandler.handler(item);
+      return await streamHandler.handler(item, {
+        service: {
+          serviceName: getLazy(dependencies.serviceName),
+          serviceUrl: getLazy(dependencies.serviceUrl),
+        },
+      });
     });
 }

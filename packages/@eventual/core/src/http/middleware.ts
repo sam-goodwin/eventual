@@ -1,9 +1,12 @@
+import { CommandContext } from "./command.js";
 import { HttpRequest, HttpResponse } from "./request-response.js";
 
 export interface MiddlewareInput<In> {
   request: HttpRequest;
   context: In;
-  next: <O>(context: O) => Promise<MiddlewareOutput<O>>;
+  // Middleware should maintain the base context form in the next context.
+  // The base context values can be modified/used.
+  next: <O extends CommandContext>(context: O) => Promise<MiddlewareOutput<O>>;
 }
 
 export interface MiddlewareOutput<Context> extends HttpResponse {
@@ -36,9 +39,10 @@ export type Middleware<In, Out> = (
  * @param fn
  * @returns
  */
-export function middleware<PrevContext = any, OutContext = any>(
-  fn: (input: MiddlewareInput<any>) => MiddlewareOutput<OutContext>
-) {
+export function middleware<
+  PrevContext extends CommandContext = CommandContext,
+  OutContext extends CommandContext = CommandContext
+>(fn: (input: MiddlewareInput<any>) => MiddlewareOutput<OutContext>) {
   return async <In extends PrevContext>(input: MiddlewareInput<In>) =>
     fn({
       ...input,
