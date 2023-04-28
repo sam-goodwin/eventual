@@ -479,6 +479,7 @@ var ServiceType;
   ServiceType2["Subscription"] = "Subscription";
   ServiceType2["OrchestratorWorker"] = "OrchestratorWorker";
   ServiceType2["EntityStreamWorker"] = "EntityStreamWorker";
+  ServiceType2["BucketNotificationHandlerWorker"] = "BucketNotificationHandlerWorker";
   ServiceType2["TaskWorker"] = "TaskWorker";
   ServiceType2["TransactionWorker"] = "TransactionWorker";
 })(ServiceType || (ServiceType = {}));
