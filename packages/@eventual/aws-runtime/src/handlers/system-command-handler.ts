@@ -3,13 +3,13 @@ import serviceSpec from "@eventual/injected/spec";
 import type { AnyCommand } from "@eventual/core";
 import {
   createCommandWorker,
+  createEmitEventsCommand,
   createExecuteTransactionCommand,
   createGetExecutionCommand,
   createListExecutionHistoryCommand,
   createListExecutionsCommand,
   createListWorkflowHistoryCommand,
   createListWorkflowsCommand,
-  createEmitEventsCommand,
   createSendSignalCommand,
   createStartExecutionCommand,
   createUpdateTaskCommand,
@@ -27,6 +27,7 @@ import {
   createTransactionClient,
   createWorkflowClient,
 } from "../create.js";
+import { serviceName } from "../env.js";
 import { createApiGCommandAdaptor } from "./apig-command-adapter.js";
 
 function systemCommandWorker(
@@ -37,8 +38,10 @@ function systemCommandWorker(
       bucketStore: createBucketStore(),
       entityClient: undefined,
       serviceClient: undefined,
-      serviceSpec,
+      serviceSpec: undefined,
     }),
+    serviceSpec,
+    serviceName,
   });
 }
 

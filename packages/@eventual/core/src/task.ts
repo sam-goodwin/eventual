@@ -17,6 +17,7 @@ import type {
   EventualServiceClient,
   SendTaskHeartbeatResponse,
 } from "./service-client.js";
+import { ServiceContext } from "./service.js";
 
 export interface TaskRuntimeProps extends FunctionRuntimeProps {}
 
@@ -294,6 +295,7 @@ export function task<Name extends string, Input = any, Output = any>(
           },
           execution: runtimeContext.execution,
           invocation: runtimeContext.invocation,
+          service: runtimeContext.service,
         };
         // calling the task from outside the orchestrator just calls the handler
         return handler(input as Input, context);
@@ -360,4 +362,8 @@ export interface TaskContext {
    * Information about this specific invocation of the execution.
    */
   invocation: TaskInvocationContext;
+  /**
+   *Information about the containing service.
+   */
+  service: ServiceContext;
 }

@@ -5,22 +5,26 @@ import "@eventual/injected/entry";
 import {
   createBucketStreamWorker,
   getLazy,
-  promiseAllSettledPartitioned,
+  promiseAllSettledPartitioned
 } from "@eventual/core-runtime";
 import { S3Handler } from "aws-lambda";
 import {
   createBucketStore,
   createEntityClient,
-  createServiceClient,
+  createServiceClient
 } from "../create.js";
-import { bucketName, bucketStreamName, serviceUrl } from "../env.js";
+import {
+  bucketName,
+  bucketStreamName, serviceName, serviceUrl
+} from "../env.js";
 
 const worker = createBucketStreamWorker({
-  serviceClient: createServiceClient({}),
-  entityClient: createEntityClient(),
   bucketStore: createBucketStore(),
+  entityClient: createEntityClient(),
+  serviceClient: createServiceClient({}),
+  serviceName,
   serviceSpec,
-  serviceUrls: [serviceUrl],
+  serviceUrl,
 });
 
 export default (async (event) => {

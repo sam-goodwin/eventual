@@ -1,7 +1,11 @@
 import { EventEnvelope } from "@eventual/core";
 import { ServiceType, serviceTypeScope } from "@eventual/core/internal";
 import { SubscriptionProvider } from "../providers/subscription-provider.js";
-import { WorkerIntrinsicDeps, registerWorkerIntrinsics } from "./utils.js";
+import {
+  WorkerIntrinsicDeps,
+  registerWorkerIntrinsics,
+  getServiceContext,
+} from "./utils.js";
 
 /**
  * The dependencies of {@link createSubscriptionWorker}.
@@ -35,7 +39,9 @@ export function createSubscriptionWorker(
           Promise.allSettled(
             deps.subscriptionProvider
               .getSubscriptionsForEvent(event.name)
-              .map((handler) => handler(event.event))
+              .map((handler) =>
+                handler(event.event, { service: getServiceContext(deps) })
+              )
           )
         )
       );

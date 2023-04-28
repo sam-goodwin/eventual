@@ -1,29 +1,30 @@
-import {
+import type {
   CompositeKey,
   Entity,
   EntityTransactItem,
+  TransactionContext,
   TransactionFunction,
 } from "@eventual/core";
 import {
+  assertNever,
+  EmitEventsCall,
   EntityDeleteOperation,
   EntitySetOperation,
   EventualCallHook,
   EventualPromise,
   EventualPromiseSymbol,
-  EmitEventsCall,
+  isEmitEventsCall,
+  isEntityCall,
+  isEntityOperationOfType,
+  isSendSignalCall,
   Result,
   SendSignalCall,
   ServiceType,
-  SignalTargetType,
-  assertNever,
-  isEntityCall,
-  isEntityOperationOfType,
-  isEmitEventsCall,
-  isSendSignalCall,
   serviceTypeScope,
+  SignalTargetType,
 } from "@eventual/core/internal";
-import { EventClient } from "./clients/event-client.js";
-import { ExecutionQueueClient } from "./clients/execution-queue-client.js";
+import type { EventClient } from "./clients/event-client.js";
+import type { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { enterEventualCallHookScope } from "./eventual-hook.js";
 import { isResolved } from "./result.js";
 import {
@@ -78,6 +79,7 @@ export interface TransactionExecutor {
   <Input, Output>(
     transactionFunction: TransactionFunction<Input, Output>,
     input: Input,
+    transactionContext: TransactionContext,
     retries?: number
   ): Promise<TransactionResult<Output>>;
 }
@@ -90,6 +92,7 @@ export function createTransactionExecutor(
   return async function <Input, Output>(
     transactionFunction: TransactionFunction<Input, Output>,
     input: Input,
+    transactionContext: TransactionContext,
     retries = 3
   ) {
     // retry the transaction until it completes, there is an explicit conflict, or we run out of retries.
@@ -201,9 +204,7 @@ export function createTransactionExecutor(
         async () =>
           await enterEventualCallHookScope(
             eventualCallHook,
-            async () =>
-              // TODO context
-              await transactionFunction(input, {})
+            async () => await transactionFunction(input, transactionContext)
           )
       );
 

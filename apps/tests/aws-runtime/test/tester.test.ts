@@ -3,6 +3,7 @@ import {
   commandRpcPath,
   EventualError,
   HeartbeatTimeout,
+  ServiceContext,
 } from "@eventual/core";
 import { jest } from "@jest/globals";
 import { ChaosEffects, ChaosTargets } from "./chaos-extension/chaos-engine.js";
@@ -248,7 +249,7 @@ test("middleware context is properly piped to command", async () => {
     })
   ).json();
 
-  expect(rpcResponse).toEqual({
+  expect(rpcResponse).toMatchObject({
     MyHeader: "value",
   });
 });
@@ -291,4 +292,17 @@ test("middleware can edit response", async () => {
   );
 
   expect(rpcResponse.headers.get("ModifiedHeader")).toEqual("Injected Header");
+});
+
+test("test service context", async () => {
+  const serviceClient = new ServiceClient<typeof TestService>({
+    serviceUrl: url,
+  });
+
+  await expect(
+    serviceClient.contextText()
+  ).resolves.toMatchObject<ServiceContext>({
+    serviceName: "eventual-tests",
+    serviceUrl: url,
+  });
 });

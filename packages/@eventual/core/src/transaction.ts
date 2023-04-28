@@ -6,9 +6,17 @@ import {
 } from "./internal/calls.js";
 import { getServiceClient, transactions } from "./internal/global.js";
 import { TransactionSpec } from "./internal/service-spec.js";
+import { ServiceContext } from "./service.js";
+
+export interface TransactionContext {
+  /**
+   *Information about the containing service.
+   */
+  service: Omit<ServiceContext, "serviceUrl">;
+}
 
 export interface TransactionFunction<Input, Output> {
-  (input: Input, context: any): Promise<Output> | Output;
+  (input: Input, context: TransactionContext): Promise<Output> | Output;
 }
 
 export interface Transaction<Input = any, Output = any>

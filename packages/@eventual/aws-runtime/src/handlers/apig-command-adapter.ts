@@ -1,9 +1,11 @@
 import { EventualServiceClient, HttpMethod, HttpRequest } from "@eventual/core";
 import {
+  getLazy,
+  LazyValue,
   registerWorkerIntrinsics,
   type CommandWorker,
 } from "@eventual/core-runtime";
-import { ServiceSpec } from "@eventual/core/internal";
+import type { ServiceSpec } from "@eventual/core/internal";
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyHandlerV2,
@@ -21,16 +23,19 @@ export function createApiGCommandAdaptor({
   commandWorker,
   serviceClientBuilder,
   serviceSpec,
+  serviceName: _serviceName,
 }: {
   commandWorker: CommandWorker;
+  serviceName: LazyValue<string>;
   serviceSpec?: ServiceSpec;
   serviceClientBuilder?: (serviceUrl: string) => EventualServiceClient;
 }): APIGatewayProxyHandlerV2 {
+  const serviceName = getLazy(_serviceName);
   return async function (
     event: APIGatewayProxyEventV2
   ): Promise<APIGatewayProxyResultV2> {
     console.debug("event", event);
-    //
+
     const serviceUrl = `https://${event.requestContext.domainName}`;
     const serviceClient = serviceClientBuilder
       ? serviceClientBuilder(serviceUrl)
@@ -40,7 +45,8 @@ export function createApiGCommandAdaptor({
       entityClient: undefined,
       serviceClient,
       serviceSpec,
-      serviceUrls: [serviceUrl],
+      serviceUrl,
+      serviceName: getLazy(serviceName),
     });
     const requestBody = event.body
       ? event.isBase64Encoded
@@ -58,7 +64,9 @@ export function createApiGCommandAdaptor({
       }
     );
 
-    const response = await commandWorker(request);
+    const response = await commandWorker(request, {
+      service: { serviceUrl, serviceName },
+    });
     const headers: Record<string, string> = {};
 
     response.headers.forEach((value, key) => (headers[key] = value));

@@ -1,4 +1,5 @@
 import {
+  CommandContext,
   commandRpcPath,
   HttpRequest,
   HttpResponse,
@@ -13,10 +14,10 @@ import {
 import itty from "itty-router";
 import { registerWorkerIntrinsics, WorkerIntrinsicDeps } from "./utils.js";
 
-export interface ApiHandlerDependencies extends WorkerIntrinsicDeps {}
+export interface ApiHandlerDependencies extends Partial<WorkerIntrinsicDeps> {}
 
 export interface CommandWorker {
-  (request: HttpRequest): Promise<HttpResponse>;
+  (request: HttpRequest, commandContext: CommandContext): Promise<HttpResponse>;
 }
 
 /**
@@ -28,7 +29,7 @@ export interface CommandWorker {
 export function createCommandWorker(
   deps: ApiHandlerDependencies
 ): CommandWorker {
-  registerWorkerIntrinsics(deps);
+  registerWorkerIntrinsics(deps as WorkerIntrinsicDeps);
 
   const router = initRouter();
 
@@ -38,11 +39,11 @@ export function createCommandWorker(
    * Each webhook registers routes on the central {@link router} which
    * then handles the request.
    */
-  return function (request) {
+  return function (request, context) {
     console.debug("request", request);
     return serviceTypeScope(ServiceType.CommandWorker, async () => {
       try {
-        const response = await router.handle(request);
+        const response = await router.handle(request, context);
         if (response === undefined) {
           if (request.method === "OPTIONS") {
             return new HttpResponse(undefined, {
@@ -219,16 +220,22 @@ function initRouter() {
      * @returns
      */
     function withMiddleware(
-      handler: (request: HttpRequest, context: any) => Promise<HttpResponse>
+      handler: (
+        request: HttpRequest,
+        context: CommandContext
+      ) => Promise<HttpResponse>
     ) {
-      return async (request: HttpRequest): Promise<HttpResponse> => {
+      return async (
+        request: HttpRequest,
+        context: CommandContext
+      ): Promise<HttpResponse> => {
         const chain = (command.middlewares ?? []).values();
 
-        return next(request, {});
+        return next(request, context);
 
         async function next(
           request: HttpRequest,
-          context: any
+          context: CommandContext
         ): Promise<HttpResponse> {
           let consumed = false;
           const middleware = chain.next();

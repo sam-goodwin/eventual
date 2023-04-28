@@ -3,6 +3,7 @@ import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
 import { commands } from "../internal/global.js";
 import { CommandSpec, isSourceLocation } from "../internal/service-spec.js";
+import type { ServiceContext } from "../service.js";
 import type { Middleware } from "./middleware.js";
 import type { ParsePath } from "./path.js";
 
@@ -25,13 +26,24 @@ export function commandRpcPath(
   }${command.name.startsWith("/") ? "" : "/"}${command.name}`;
 }
 
-export type AnyCommand = Command<string, any, any, any, any, HttpMethod | undefined>;
+export interface CommandContext {
+  service: ServiceContext;
+}
+
+export type AnyCommand = Command<
+  string,
+  any,
+  any,
+  any,
+  any,
+  HttpMethod | undefined
+>;
 
 export interface Command<
   Name extends string = string,
   Input = undefined,
   Output = void,
-  Context = any,
+  Context extends CommandContext = CommandContext,
   Path extends string | undefined = undefined,
   Method extends HttpMethod | undefined = undefined
 > extends Omit<CommandSpec<Name, Input, Path, Method>, "input" | "output"> {
@@ -126,10 +138,11 @@ export interface Headers {
   [headerName: string]: string;
 }
 
-export type CommandHandler<T = undefined, U = void, Context = any> = (
-  input: T,
-  context: Context
-) => Promise<U> | Awaited<U>;
+export type CommandHandler<
+  T = undefined,
+  U = void,
+  Context extends CommandContext = CommandContext
+> = (input: T, context: Context) => Promise<U> | Awaited<U>;
 
 export type CommandInput<C extends AnyCommand> = C extends Command<
   any,
@@ -160,7 +173,7 @@ export function command<
   Name extends string,
   Input = undefined,
   Output = void,
-  Context = any
+  Context extends CommandContext = CommandContext
 >(
   name: Name,
   handler: CommandHandler<Input, Output, Context>
@@ -170,7 +183,7 @@ export function command<
   Name extends string,
   Input = undefined,
   Output = void,
-  Context = any,
+  Context extends CommandContext = CommandContext,
   Path extends string | undefined = undefined,
   Method extends HttpMethod | undefined = undefined
 >(
@@ -183,7 +196,7 @@ export function command<
   Name extends string,
   Input = undefined,
   Output = void,
-  Context = any
+  Context extends CommandContext = CommandContext
 >(...args: any[]): Command<Name, Input, Output, Context, any, any> {
   const [sourceLocation, name, options, handler] = parseCommandArgs(args);
   const command: Command<Name, Input, Output, Context, any, any> = {
@@ -197,13 +210,19 @@ export function command<
   return command;
 }
 
-export function parseCommandArgs(args: any[]) {
+export function parseCommandArgs<
+  Input = undefined,
+  Output = void,
+  Context extends CommandContext = CommandContext
+>(args: any[]) {
   return [
     // TODO: is this 4x scan too inefficient, or is the trade-off between simplicity and performance worth it here?
     // i think it would be marginal looping over a small array multiple times but i could be wrong
     args.find(isSourceLocation),
     args.find((a) => typeof a === "string"),
     args.find((a) => typeof a === "object" && !isSourceLocation(a)),
-    args.find((a) => typeof a === "function"),
+    args.find((a) => typeof a === "function") as
+      | CommandHandler<Input, Output, Context>
+      | undefined,
   ] as const;
 }

@@ -4,7 +4,7 @@ import {
   EntityStreamInsertItem,
   EntityStreamModifyItem,
   EntityStreamRemoveItem,
-  LogLevel,
+  LogLevel
 } from "@eventual/core";
 import { EntityClient } from "../clients/entity-client.js";
 import { EventClient } from "../clients/event-client.js";
@@ -17,40 +17,40 @@ import { TransactionClient } from "../clients/transaction-client.js";
 import { WorkflowClient } from "../clients/workflow-client.js";
 import {
   BucketStreamWorker,
-  createBucketStreamWorker,
+  createBucketStreamWorker
 } from "../handlers/bucket-stream-worker.js";
 import {
   CommandWorker,
-  createCommandWorker,
+  createCommandWorker
 } from "../handlers/command-worker.js";
 import {
   createEntityStreamWorker,
-  EntityStreamWorker,
+  EntityStreamWorker
 } from "../handlers/entity-stream-worker.js";
 import { createOrchestrator, Orchestrator } from "../handlers/orchestrator.js";
 import {
   createSubscriptionWorker,
-  SubscriptionWorker,
+  SubscriptionWorker
 } from "../handlers/subscription-worker.js";
 import { createTaskWorker, TaskWorker } from "../handlers/task-worker.js";
 import { createTimerHandler, TimerHandler } from "../handlers/timer-handler.js";
 import {
   createTransactionWorker,
-  TransactionWorker,
+  TransactionWorker
 } from "../handlers/transaction-worker.js";
 import { LogAgent } from "../log-agent.js";
 import { InMemoryExecutorProvider } from "../providers/executor-provider.js";
 import {
   GlobalSubscriptionProvider,
-  SubscriptionProvider,
+  SubscriptionProvider
 } from "../providers/subscription-provider.js";
 import {
   GlobalTaskProvider,
-  TaskProvider,
+  TaskProvider
 } from "../providers/task-provider.js";
 import {
   GlobalWorkflowProvider,
-  WorkflowProvider,
+  WorkflowProvider
 } from "../providers/workflow-provider.js";
 import type { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
 import type { ExecutionHistoryStore } from "../stores/execution-history-store.js";
@@ -66,7 +66,7 @@ import {
   createListWorkflowsCommand,
   createSendSignalCommand,
   createStartExecutionCommand,
-  createUpdateTaskCommand,
+  createUpdateTaskCommand
 } from "../system-commands.js";
 import type { WorkflowTask } from "../tasks.js";
 import { WorkflowCallExecutor } from "../workflow-call-executor.js";
@@ -97,6 +97,7 @@ export type LocalEvent =
 export interface LocalContainerProps {
   taskProvider?: TaskProvider;
   serviceName: string;
+  serviceUrl: string;
   subscriptionProvider?: SubscriptionProvider;
 }
 
@@ -162,12 +163,18 @@ export class LocalContainer {
       bucketStore,
       entityClient,
       serviceClient: undefined,
+      serviceSpec: undefined,
+      serviceName: props.serviceName,
+      serviceUrl: props.serviceUrl,
     });
     this.subscriptionWorker = createSubscriptionWorker({
       subscriptionProvider: this.subscriptionProvider,
       serviceClient: undefined,
       bucketStore,
       entityClient,
+      serviceName: props.serviceName,
+      serviceSpec: undefined,
+      serviceUrl: props.serviceUrl,
     });
     this.eventClient = new LocalEventClient(this.subscriptionWorker);
     this.metricsClient = new LocalMetricsClient();
@@ -186,6 +193,8 @@ export class LocalContainer {
       metricsClient: this.metricsClient,
       serviceName: props.serviceName,
       serviceClient: undefined,
+      serviceSpec: undefined,
+      serviceUrl: props.serviceUrl,
       taskProvider: this.taskProvider,
       taskStore: this.taskStore,
       timerClient: this.timerClient,
@@ -200,12 +209,16 @@ export class LocalContainer {
       bucketStore,
       entityClient,
       serviceClient: undefined,
+      serviceName: props.serviceName,
+      serviceSpec: undefined,
+      serviceUrl: props.serviceUrl,
     });
 
     this.transactionWorker = createTransactionWorker({
       entityStore,
       eventClient: this.eventClient,
       executionQueueClient: this.executionQueueClient,
+      serviceName: props.serviceName,
     });
 
     this.transactionClient = new LocalTransactionClient(this.transactionWorker);
@@ -264,8 +277,10 @@ export class LocalContainer {
     // must register commands before the command worker is loaded!
     this.commandWorker = createCommandWorker({
       entityClient,
-      serviceClient: undefined,
       bucketStore,
+      serviceClient: undefined,
+      serviceName: props.serviceName,
+      serviceUrl: props.serviceUrl,
     });
 
     this.timerHandler = createTimerHandler({

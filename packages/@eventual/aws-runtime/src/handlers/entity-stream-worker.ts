@@ -15,7 +15,12 @@ import {
   createEntityClient,
   createServiceClient,
 } from "../create.js";
-import { entityName, entityStreamName, serviceUrl } from "../env.js";
+import {
+  entityName,
+  entityStreamName,
+  serviceName,
+  serviceUrl,
+} from "../env.js";
 import { EntityEntityRecord } from "../stores/entity-store.js";
 
 const worker = createEntityStreamWorker({
@@ -23,7 +28,8 @@ const worker = createEntityStreamWorker({
   entityClient: createEntityClient(),
   serviceClient: createServiceClient({}),
   serviceSpec,
-  serviceUrls: [serviceUrl],
+  serviceName,
+  serviceUrl,
 });
 
 export default (async (event) => {

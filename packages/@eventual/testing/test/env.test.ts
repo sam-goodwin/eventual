@@ -641,10 +641,13 @@ describe("events", () => {
       await env.emitEvent(continueEvent, {
         executionId: execution.executionId,
       });
-      expect(dataEventMock).toBeCalledWith({
-        executionId: execution.executionId,
-        data: "event data",
-      });
+      expect(dataEventMock).toBeCalledWith(
+        {
+          executionId: execution.executionId,
+          data: "event data",
+        },
+        expect.anything()
+      );
       expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
         status: ExecutionStatus.SUCCEEDED,
         result: "event data",
@@ -704,10 +707,13 @@ describe("events", () => {
       await env.emitEvent(continueEvent, {
         executionId: execution.executionId,
       });
-      expect(dataEventMock).toBeCalledWith({
-        executionId: execution.executionId,
-        data: "event data",
-      });
+      expect(dataEventMock).toBeCalledWith(
+        {
+          executionId: execution.executionId,
+          data: "event data",
+        },
+        expect.anything()
+      );
       expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({
         status: ExecutionStatus.SUCCEEDED,
         result: "event data",
@@ -737,10 +743,13 @@ describe("events", () => {
         executionId: execution.executionId,
       });
       // the test env handler was called
-      expect(dataEventMock).toBeCalledWith({
-        executionId: execution.executionId,
-        data: "event data",
-      });
+      expect(dataEventMock).toBeCalledWith(
+        {
+          executionId: execution.executionId,
+          data: "event data",
+        },
+        expect.anything()
+      );
 
       // but the workflow was not progressed by the default subscriptions.
       expect(await execution.getStatus()).toMatchObject<Partial<Execution>>({

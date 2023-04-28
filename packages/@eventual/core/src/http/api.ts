@@ -9,6 +9,7 @@ import {
   AnyCommand,
   Command,
   command,
+  CommandContext,
   CommandHandler,
   CommandOptions,
   parseCommandArgs,
@@ -20,7 +21,7 @@ import type {
 } from "./middleware.js";
 import type { HttpRequest, HttpResponse } from "./request-response.js";
 
-const router = itty.Router() as any as HttpRouter<{}>;
+const router = itty.Router() as any as HttpRouter<CommandContext>;
 
 /**
  * This Proxy intercepts the method  being called, e.g. `get`, `post`, etc.
@@ -33,9 +34,9 @@ const router = itty.Router() as any as HttpRouter<{}>;
  *
  * @see HttpRoute for all the metadata associated with each route
  */
-export const api: HttpRouter<{}> = createRouter([]);
+export const api: HttpRouter<CommandContext> = createRouter([]);
 
-function createRouter<Context>(
+function createRouter<Context extends CommandContext>(
   middlewares?: Middleware<any, any>[]
 ): HttpRouter<Context> {
   return new Proxy(
@@ -117,7 +118,7 @@ function createRouter<Context>(
 
 export interface RouteRuntimeProps extends FunctionRuntimeProps {}
 
-export type HttpHandler<Context = any> = (
+export type HttpHandler<Context extends CommandContext = CommandContext> = (
   request: HttpRequest,
   context: Context
 ) => HttpResponse | Promise<HttpResponse>;
@@ -133,7 +134,7 @@ export interface HttpRoute {
   sourceLocation?: SourceLocation;
 }
 
-export interface HttpRouteFactory<Context> {
+export interface HttpRouteFactory<Context extends CommandContext> {
   (
     path: string,
     props: RouteRuntimeProps,
@@ -142,7 +143,7 @@ export interface HttpRouteFactory<Context> {
   (path: string, handlers: HttpHandler<Context>): HttpRouter<Context>;
 }
 
-export interface HttpRouter<Context> {
+export interface HttpRouter<Context extends CommandContext> {
   handle: (request: HttpRequest, ...extra: any) => Promise<HttpResponse>;
   routes: HttpRouteEntry[];
   all: HttpRouteFactory<Context>;
@@ -155,7 +156,7 @@ export interface HttpRouter<Context> {
   options: HttpRouteFactory<Context>;
   trace: HttpRouteFactory<Context>;
   patch: HttpRouteFactory<Context>;
-  use<NextContext>(
+  use<NextContext extends CommandContext>(
     middleware: (
       input: MiddlewareInput<Context>
     ) => Promise<MiddlewareOutput<NextContext>> | MiddlewareOutput<NextContext>
@@ -195,7 +196,7 @@ export const ApiSpecification: ApiSpecification = {
       createRestPaths: true,
       createRpcPaths: options?.includeRpcPaths ?? false,
       info: envManifest.serviceSpec.openApi.info,
-      servers: envManifest.serviceUrls.map((s) => ({ url: s })),
+      servers: [{ url: envManifest.serviceUrl }],
     });
   },
 };

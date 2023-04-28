@@ -13,6 +13,7 @@ export * from "./logging.js";
 export * from "./schedule.js";
 export * from "./secret.js";
 export * from "./service-client.js";
+export * from "./service.js";
 export * from "./signals.js";
 export * from "./subscription.js";
 export * from "./task.js";

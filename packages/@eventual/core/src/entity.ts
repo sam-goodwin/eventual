@@ -15,6 +15,7 @@ import {
   isSourceLocation,
   SourceLocation,
 } from "./internal/service-spec.js";
+import type { ServiceContext } from "./service.js";
 
 export interface CompositeKey {
   namespace: string;
@@ -80,11 +81,21 @@ export interface EntitySetOptions extends EntityConsistencyOptions {
   incrementVersion?: boolean;
 }
 
+export interface EntityStreamContext {
+  /**
+   * Information about the containing service.
+   */
+  service: ServiceContext;
+}
+
 export interface EntityStreamHandler<Entity> {
   /**
-   * Provides the keys, new value\
+   * Provides the keys, new value
    */
-  (item: EntityStreamItem<Entity>): Promise<void | false> | void | false;
+  (item: EntityStreamItem<Entity>, context: EntityStreamContext):
+    | Promise<void | false>
+    | void
+    | false;
 }
 
 export interface EntityStreamItemBase {

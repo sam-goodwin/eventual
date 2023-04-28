@@ -13,7 +13,7 @@ import {
   createServiceClient,
   createTransactionClient,
 } from "../create.js";
-import { serviceUrl } from "../env.js";
+import { serviceName, serviceUrl } from "../env.js";
 
 export const processEvent = createSubscriptionWorker({
   bucketStore: createBucketStore(),
@@ -24,8 +24,9 @@ export const processEvent = createSubscriptionWorker({
     transactionClient: createTransactionClient(),
   }),
   serviceSpec,
-  serviceUrls: [serviceUrl],
   subscriptionProvider: new GlobalSubscriptionProvider(),
+  serviceName,
+  serviceUrl: serviceUrl,
 });
 
 export default async function (event: EventBridgeEvent<string, any>) {

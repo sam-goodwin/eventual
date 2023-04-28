@@ -5,11 +5,13 @@ import { createTransactionWorker } from "@eventual/core-runtime";
 import {
   createEntityStore,
   createEventClient,
-  createExecutionQueueClient,
+  createExecutionQueueClient
 } from "../create.js";
+import { serviceName } from "../env.js";
 
 export default createTransactionWorker({
   entityStore: createEntityStore(),
   eventClient: createEventClient(),
   executionQueueClient: createExecutionQueueClient(),
+  serviceName,
 });
