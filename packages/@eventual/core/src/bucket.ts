@@ -37,13 +37,16 @@ export interface GetBucketObjectOptions {
   etag?: string;
 }
 
-export interface GetBucketObjectResponse {
-  body: Readable;
+export interface GetBucketMetadataResponse {
   /**
    * Content length in bytes
    */
   contentLength: number;
   etag?: string;
+}
+
+export interface GetBucketObjectResponse extends GetBucketMetadataResponse {
+  body: Readable;
 }
 
 export interface PutBucketObjectResponse {
@@ -96,24 +99,55 @@ export type BucketNotificationHandlerEventInput =
   | BucketNotificationEventType
   | "all";
 
+export type PresignedUrlOperation = "put" | "get" | "head" | "delete";
+
 export interface Bucket extends Omit<BucketSpec, "handlers"> {
   kind: "Bucket";
   handlers: BucketNotificationHandler[];
+  /**
+   * Gets an object from the gets, returns undefined if the object key doesn't exist.
+   */
   get(
     key: string,
     options?: GetBucketObjectOptions
   ): Promise<GetBucketObjectResponse | undefined>;
+  /**
+   * Gets the object metadata from the bucket, returns undefined if the object key doesn't exist.
+   */
+  head(
+    key: string,
+    options?: GetBucketObjectOptions
+  ): Promise<GetBucketMetadataResponse | undefined>;
+  /**
+   * Creates or updates an object in a bucket.
+   */
   put(
     key: string,
     data: string | Buffer | Readable
   ): Promise<PutBucketObjectResponse>;
+  /**
+   * Deletes an object from a bucket.
+   */
   delete(key: string): Promise<void>;
+  /**
+   * Copies an object at a key to another key in the same bucket or a key in another bucket.
+   */
   copyTo(
     key: string,
     sourceKey: string,
     sourceBucket?: Bucket,
     options?: CopyBucketObjectOptions
   ): Promise<CopyBucketObjectResponse>;
+  /**
+   * Generates an expiring url that can be used to interact with an object
+   * without needing read permission to the bucket.
+   *
+   * For AWS, this url will be an S3 presigned url. See the s3 documentation for how to use it.
+   *
+   * https://docs.aws.amazon.com/AmazonS3/latest/userguide/ShareObjectPreSignedURL.html
+   *
+   * Presigned urls are not currently supported in Eventual Local dev server.
+   */
   presignedUrl(
     /**
      * The key that the url can act on
@@ -122,7 +156,7 @@ export interface Bucket extends Omit<BucketSpec, "handlers"> {
     /**
      * The operation the user can perform
      */
-    operation: "put" | "get" | "delete",
+    operation: PresignedUrlOperation,
     /**
      * Expiration Duration
      *
@@ -130,6 +164,9 @@ export interface Bucket extends Omit<BucketSpec, "handlers"> {
      */
     expires?: DurationSchedule
   ): Promise<{ url: string; expires: string }>;
+  /**
+   * List keys and their metadata within a bucket.
+   */
   list(request: ListBucketRequest): Promise<ListBucketResult>;
   /**
    * The name of the bucket in the cloud environment.
@@ -139,6 +176,19 @@ export interface Bucket extends Omit<BucketSpec, "handlers"> {
    * In a local environment, this will just be the bucket name;
    */
   physicalName: string;
+  /**
+   * Provide a handler that is called when one of the supported events (put, delete, copy)
+   * happens within a bucket.
+   *
+   * Support filters on key prefix and suffix.
+   *
+   * ```ts
+   * myBucket.on("put", "putHandler", async (event) => {
+   *  // start a workflow when a new object is added to the bucket.
+   *  await myWorkflow.startExecution({ key: event.key });
+   * });
+   * ```
+   */
   on(
     events: BucketNotificationHandlerEventInput,
     name: string,
@@ -165,6 +215,11 @@ export function bucket(name: string): Bucket {
     get(key, options) {
       return getEventualCallHook().registerEventualCall(undefined, () => {
         return getBucketHook().get(name, key, options);
+      });
+    },
+    head(key, options) {
+      return getEventualCallHook().registerEventualCall(undefined, () => {
+        return getBucketHook().head(name, key, options);
       });
     },
     put(key, data) {

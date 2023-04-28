@@ -2,9 +2,10 @@ import {
   CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
-  S3Client,
+  S3Client
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
@@ -12,17 +13,19 @@ import {
   CopyBucketObjectOptions,
   CopyBucketObjectResponse,
   DurationSchedule,
+  GetBucketMetadataResponse,
   GetBucketObjectOptions,
   GetBucketObjectResponse,
   ListBucketRequest,
   ListBucketResult,
-  PutBucketObjectResponse,
+  PresignedUrlOperation,
+  PutBucketObjectResponse
 } from "@eventual/core";
 import {
   BucketStore,
   computeDurationSeconds,
   getLazy,
-  LazyValue,
+  LazyValue
 } from "@eventual/core-runtime";
 import { assertNever } from "@eventual/core/internal";
 import { Readable } from "stream";
@@ -60,6 +63,27 @@ export class AWSBucketStore implements BucketStore {
       ? {
           body: result.Body as Readable,
           contentLength: result.ContentLength!,
+          etag: result.ETag,
+        }
+      : undefined;
+  }
+
+  public async head(
+    bucketName: string,
+    key: string,
+    options?: GetBucketObjectOptions
+  ): Promise<GetBucketMetadataResponse | undefined> {
+    const result = await this.props.s3.send(
+      new HeadObjectCommand({
+        Bucket: this.physicalName(bucketName),
+        Key: key,
+        IfMatch: options?.etag,
+      })
+    );
+
+    return result.ContentLength !== undefined
+      ? {
+          contentLength: result.ContentLength,
           etag: result.ETag,
         }
       : undefined;
@@ -120,7 +144,7 @@ export class AWSBucketStore implements BucketStore {
   public async presignedUrl(
     bucketName: string,
     key: string,
-    operation: "get" | "put" | "delete",
+    operation: PresignedUrlOperation,
     expires?: DurationSchedule | undefined
   ): Promise<{ url: string; expires: string }> {
     const request =
@@ -136,6 +160,11 @@ export class AWSBucketStore implements BucketStore {
           })
         : operation === "delete"
         ? new DeleteObjectCommand({
+            Bucket: this.physicalName(bucketName),
+            Key: key,
+          })
+        : operation === "head"
+        ? new HeadObjectCommand({
             Bucket: this.physicalName(bucketName),
             Key: key,
           })

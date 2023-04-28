@@ -3,10 +3,12 @@ import {
   CopyBucketObjectOptions,
   CopyBucketObjectResponse,
   DurationSchedule,
+  GetBucketMetadataResponse,
   GetBucketObjectOptions,
   GetBucketObjectResponse,
   ListBucketRequest,
   ListBucketResult,
+  PresignedUrlOperation,
   PutBucketObjectResponse,
 } from "@eventual/core";
 import crypto from "crypto";
@@ -39,6 +41,37 @@ export class LocalBucketStore implements BucketStore {
     key: string,
     options?: GetBucketObjectOptions
   ): Promise<GetBucketObjectResponse | undefined> {
+    const obj = this.getObjectFromMap(bucketName, key, options);
+
+    if (!obj) {
+      return undefined;
+    }
+
+    const stream = new Stream.Readable();
+    stream.push(obj.body);
+
+    return {
+      ...obj.objectMetadata,
+      body: stream,
+    };
+  }
+
+  public async head(
+    bucketName: string,
+    key: string,
+    options?: GetBucketObjectOptions
+  ): Promise<GetBucketMetadataResponse | undefined> {
+    const { objectMetadata } =
+      this.getObjectFromMap(bucketName, key, options) ?? {};
+
+    return objectMetadata;
+  }
+
+  private getObjectFromMap(
+    bucketName: string,
+    key: string,
+    options?: GetBucketObjectOptions
+  ) {
     const bucket = this.objects[bucketName];
 
     if (!bucket) {
@@ -51,16 +84,15 @@ export class LocalBucketStore implements BucketStore {
       return object;
     }
 
+    const { body, ...objectMetadata } = object;
+
     if (options?.etag && options?.etag !== object.etag) {
       return undefined;
     }
 
-    const stream = new Stream.Readable();
-    stream.push(object.body);
-
     return {
-      ...object,
-      body: stream,
+      body,
+      objectMetadata,
     };
   }
 
@@ -157,7 +189,7 @@ export class LocalBucketStore implements BucketStore {
   public presignedUrl(
     _bucketName: string,
     _key: string,
-    _operation: "get" | "put" | "delete",
+    _operation: PresignedUrlOperation,
     _expires?: DurationSchedule | undefined
   ): Promise<{ url: string; expires: string }> {
     // https://github.com/functionless/eventual/issues/341
