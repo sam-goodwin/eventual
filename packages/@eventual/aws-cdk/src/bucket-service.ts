@@ -94,11 +94,13 @@ export class BucketService<Service> {
 
   public grantReadWriteBuckets(grantee: IGrantable) {
     // find any bucket names that were provided by the service and not computed
-    const bucketNameOverrides = Object.values(
-      this.props.bucketOverrides as Record<string, BucketRuntimeOverrides>
-    )
-      .map((s) => s.bucketName)
-      .filter((s): s is string => !!s);
+    const bucketNameOverrides = this.props.bucketOverrides
+      ? Object.values(
+          this.props.bucketOverrides as Record<string, BucketRuntimeOverrides>
+        )
+          .map((s) => s.bucketName)
+          .filter((s): s is string => !!s)
+      : [];
 
     // grants the permission to start any task
     grantee.grantPrincipal.addToPrincipalPolicy(
