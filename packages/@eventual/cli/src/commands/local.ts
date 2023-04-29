@@ -2,10 +2,10 @@ import { inferFromMemory } from "@eventual/compiler";
 import { HttpMethod, HttpRequest } from "@eventual/core";
 import { LocalEnvironment } from "@eventual/core-runtime";
 import { ServiceSpec } from "@eventual/core/internal";
-import { discoverEventualConfig } from "@eventual/project";
+import { discoverEventualConfig, EventualConfig } from "@eventual/project";
 import { exec as _exec } from "child_process";
 import express from "express";
-import ora from "ora";
+import ora, { Ora } from "ora";
 import path from "path";
 import { promisify } from "util";
 import { Argv } from "yargs";
@@ -50,40 +50,29 @@ export const local = (yargs: Argv) =>
         process.exit(1);
       }
 
-      const serviceNameFirst = await tryResolveDefaultService(
-        config.outDir,
+      const buildManifest = await resolveManifestLocal(
+        spinner,
+        config,
         service
       );
 
-      // if the service name is not found, try to generate one
-      if (!serviceNameFirst) {
-        spinner.text =
-          "No service name found, running synth to try to generate one.";
-        await execPromise(config.synth);
-      }
-
-      const serviceName = await tryResolveDefaultService(
-        config.outDir,
-        serviceNameFirst
+      const isDeployed = await isServiceDeployed(
+        buildManifest.serviceName,
+        region
       );
-
-      if (!serviceName) {
-        throw new Error("Service name was not found after synth.");
-      }
-
-      const isDeployed = await isServiceDeployed(serviceName, region);
 
       if ((!isDeployed && update === "first") || update === "always") {
         spinner.text = "Deploying CDK";
         await execPromise(config.deploy);
       }
 
-      const buildManifest = await getBuildManifest(config.outDir, serviceName);
-
-      const credentials = await assumeCliRole(serviceName, region);
+      const credentials = await assumeCliRole(
+        buildManifest.serviceName,
+        region
+      );
       const serviceData = await getServiceData(
         credentials,
-        serviceName,
+        buildManifest.serviceName,
         region
       );
 
@@ -104,7 +93,7 @@ export const local = (yargs: Argv) =>
       // get the stored spec file to load values from synth
       const storedServiceSpec = await getServiceSpec(
         config.outDir,
-        serviceName
+        buildManifest.serviceName
       );
       // infer from memory instead of from file to ensure the spec is up to date without synth.
       const serviceSpec: ServiceSpec = inferFromMemory(
@@ -115,7 +104,7 @@ export const local = (yargs: Argv) =>
       const localEnv = new LocalEnvironment({
         serviceSpec,
         serviceUrl: url,
-        serviceName: serviceName,
+        serviceName: buildManifest.serviceName,
       });
 
       app.use(express.json({ strict: false }));
@@ -139,3 +128,37 @@ export const local = (yargs: Argv) =>
       spinner.succeed(`Eventual Dev Server running on ${url}`);
     }
   );
+
+/**
+ * Retrieve the build manifest in a local environment.
+ *
+ * Does a synth if needed.
+ */
+export async function resolveManifestLocal(
+  spinner: Ora,
+  config: EventualConfig,
+  service?: string
+) {
+  const serviceNameFirst = await tryResolveDefaultService(
+    config.outDir,
+    service
+  );
+
+  // if the service name is not found, try to generate one
+  if (!serviceNameFirst) {
+    spinner.text =
+      "No service name found, running synth to try to generate one.";
+    await execPromise(config.synth);
+  }
+
+  const serviceName = await tryResolveDefaultService(
+    config.outDir,
+    serviceNameFirst
+  );
+
+  if (!serviceName) {
+    throw new Error("Service name was not found after synth.");
+  }
+
+  return await getBuildManifest(config.outDir, serviceName);
+}

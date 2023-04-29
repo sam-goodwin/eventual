@@ -26,4 +26,4 @@ npx eventual get logs --workflow sleepy
 
 npx eventual get logs --execution ${execution_id}
 
-npx eventual replay execution ${execution_id} --entry 'test/test-service.ts'
+npx eventual replay execution ${execution_id}'
