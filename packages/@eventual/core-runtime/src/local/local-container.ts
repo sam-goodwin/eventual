@@ -225,13 +225,14 @@ export class LocalContainer {
 
     this.orchestrator = createOrchestrator({
       callExecutor: new WorkflowCallExecutor({
-        taskClient: this.taskClient,
+        bucketStore: bucketStore,
+        entityClient,
         eventClient: this.eventClient,
         executionQueueClient: this.executionQueueClient,
+        taskClient: this.taskClient,
         timerClient: this.timerClient,
         transactionClient: this.transactionClient,
         workflowClient: this.workflowClient,
-        entityClient,
       }),
       workflowClient: this.workflowClient,
       timerClient: this.timerClient,

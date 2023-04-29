@@ -5,7 +5,7 @@ import {
   HeadObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
-  S3Client
+  S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
@@ -19,13 +19,13 @@ import {
   ListBucketRequest,
   ListBucketResult,
   PresignedUrlOperation,
-  PutBucketObjectResponse
+  PutBucketObjectResponse,
 } from "@eventual/core";
 import {
   BucketStore,
   computeDurationSeconds,
   getLazy,
-  LazyValue
+  LazyValue,
 } from "@eventual/core-runtime";
 import { assertNever } from "@eventual/core/internal";
 import { Readable } from "stream";
@@ -119,19 +119,19 @@ export class AWSBucketStore implements BucketStore {
   public async copyTo(
     bucketName: string,
     key: string,
-    destKey: string,
-    destBucket?: Bucket | undefined,
+    sourceKey: string,
+    sourceBucket?: Bucket | undefined,
     options?: CopyBucketObjectOptions | undefined
   ): Promise<CopyBucketObjectResponse> {
     const result = await this.props.s3.send(
       new CopyObjectCommand({
         Bucket: this.physicalName(bucketName),
-        Key: destKey,
+        Key: key,
         CopySource: `${
-          destBucket
-            ? this.physicalName(destBucket.name)
+          sourceBucket
+            ? this.physicalName(sourceBucket.name)
             : this.physicalName(bucketName)
-        }/${key}`,
+        }/${sourceKey}`,
         CopySourceIfMatch: options?.sourceEtag,
       })
     );

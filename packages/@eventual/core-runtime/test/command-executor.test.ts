@@ -33,6 +33,7 @@ import {
   formatChildExecutionName,
   formatExecutionId,
 } from "../src/execution.js";
+import { BucketStore } from "../src/stores/bucket-store.js";
 import { WorkflowCallExecutor } from "../src/workflow-call-executor.js";
 import {
   awaitTimerCall,
@@ -74,15 +75,17 @@ const mockEntityClient = {
 const mockTransactionClient = {
   executeTransaction: jest.fn() as TransactionClient["executeTransaction"],
 } satisfies Partial<TransactionClient> as TransactionClient;
+const mockBucketStore = {} satisfies Partial<BucketStore> as BucketStore;
 
 const testExecutor = new WorkflowCallExecutor({
-  timerClient: mockTimerClient,
-  workflowClient: mockWorkflowClient,
-  taskClient: mockTaskClient,
+  bucketStore: mockBucketStore,
+  entityClient: mockEntityClient,
   eventClient: mockEventClient,
   executionQueueClient: mockExecutionQueueClient,
-  entityClient: mockEntityClient,
+  taskClient: mockTaskClient,
   transactionClient: mockTransactionClient,
+  timerClient: mockTimerClient,
+  workflowClient: mockWorkflowClient,
 });
 
 const workflow = {

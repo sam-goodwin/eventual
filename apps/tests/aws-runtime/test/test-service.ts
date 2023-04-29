@@ -32,7 +32,7 @@ import {
   workflow,
 } from "@eventual/core";
 import type openapi from "openapi3-ts";
-import stream from "stream";
+import stream, { Readable } from "stream";
 import z from "zod";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
 
@@ -721,13 +721,6 @@ export const bucketTask = task(
   }
 );
 
-export const bucketDeleteTask = task(
-  "bucketDeleteTask",
-  async (request: { key: string }) => {
-    await myBucket.delete(request.key);
-  }
-);
-
 /**
  * 1. use {@link bucketTask} to create an object, then return the data and listed keys
  * 2. pickup the write from a stream, emitting a signal to the workflow with the data
@@ -746,13 +739,41 @@ export const bucketWorkflow = workflow(
         bucketSignal.expectSignal({ timeout: duration(5, "minutes") }),
       ]);
 
+      const data2 = "hello again!";
+
+      const [, signalResult2] = await Promise.all([
+        myBucket.put(key, data2),
+        bucketSignal.expectSignal({ timeout: duration(5, "minutes") }),
+      ]);
+
+      const data3 = "hello again again!";
+
+      const [, signalResult3] = await Promise.all([
+        myBucket.put(key, Buffer.from(data3)),
+        bucketSignal.expectSignal({ timeout: duration(5, "minutes") }),
+      ]);
+
+      const data4 = "hello again again again!";
+
+      const [, signalResult4] = await Promise.all([
+        myBucket.put(key, Readable.from(Buffer.from(data4))),
+        bucketSignal.expectSignal({ timeout: duration(5, "minutes") }),
+      ]);
+
+      await myBucket.copyTo(key + "2", key);
+
+      const copiedData = await myBucket.get(key + "2");
+
       return {
         result,
         signalResult,
+        signalResult2,
+        signalResult3,
+        signalResult4,
+        copied: (copiedData!.body.read() as Buffer).toString("utf-8"),
       };
     } finally {
-      // TODO: do this from within the workflow
-      await bucketDeleteTask({ key });
+      await Promise.all([myBucket.delete(key), myBucket.delete(key + "2")]);
     }
   }
 );

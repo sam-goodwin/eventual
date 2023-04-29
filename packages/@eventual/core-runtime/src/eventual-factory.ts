@@ -1,19 +1,25 @@
-import { EventualError, HeartbeatTimeout, Timeout } from "@eventual/core";
 import {
-  EventualCall,
-  Result,
-  WorkflowEventType,
+  EventualError,
+  GetBucketObjectResponse,
+  HeartbeatTimeout,
+  Timeout,
+} from "@eventual/core";
+import {
   assertNever,
+  EventualCall,
   isAwaitTimerCall,
+  isBucketCall,
+  isBucketRequest,
+  isBucketRequestSucceededOperationType,
   isChildWorkflowCall,
   isChildWorkflowScheduled,
   isConditionCall,
+  isEmitEventsCall,
   isEntityCall,
   isEntityRequest,
   isEventsEmitted,
   isExpectSignalCall,
   isInvokeTransactionCall,
-  isEmitEventsCall,
   isRegisterSignalHandlerCall,
   isSendSignalCall,
   isSignalSent,
@@ -21,7 +27,10 @@ import {
   isTaskScheduled,
   isTimerScheduled,
   isTransactionRequest,
+  Result,
+  WorkflowEventType,
 } from "@eventual/core/internal";
+import { Readable } from "stream";
 import { EventualDefinition, Trigger } from "./workflow-executor.js";
 
 export function createEventualFromCall(
@@ -173,6 +182,45 @@ export function createEventualFromCall(
       ],
       isCorresponding(event) {
         return isTransactionRequest(event);
+      },
+    };
+  } else if (isBucketCall(call)) {
+    return {
+      triggers: [
+        Trigger.onWorkflowEvent(
+          WorkflowEventType.BucketRequestSucceeded,
+          (event) => {
+            // deserialize the body to a readable stream
+            if (isBucketRequestSucceededOperationType("get", event)) {
+              if (event.result === undefined) {
+                return Result.resolved(undefined);
+              }
+
+              const buffer = Buffer.from(
+                event.result.body,
+                event.result.base64Encoded ? "base64" : "utf-8"
+              );
+
+              return Result.resolved({
+                contentLength: event.result.contentLength,
+                etag: event.result.etag,
+                body: Readable.from(buffer),
+              } as GetBucketObjectResponse);
+            } else {
+              return Result.resolved(event.result);
+            }
+          }
+        ),
+        Trigger.onWorkflowEvent(
+          WorkflowEventType.BucketRequestFailed,
+          (event) =>
+            Result.failed(new EventualError(event.error, event.message))
+        ),
+      ],
+      isCorresponding(event) {
+        return (
+          isBucketRequest(event) && event.operation.operation === call.operation
+        );
       },
     };
   }

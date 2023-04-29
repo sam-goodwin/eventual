@@ -130,6 +130,10 @@ eventualRuntimeTestHarness(
     testCompletion("buckets", bucketWorkflow, {
       result: { data: "hello!", keys: [expect.stringContaining("key/")] },
       signalResult: { data: "hello!" },
+      signalResult2: { data: "hello again!" },
+      signalResult3: { data: "hello again again!" },
+      signalResult4: { data: "hello again again again!" },
+      copied: "hello again again again!"
     });
   },
   {

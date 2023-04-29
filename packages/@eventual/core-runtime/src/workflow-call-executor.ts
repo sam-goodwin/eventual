@@ -1,8 +1,15 @@
 import { ExecutionID, Workflow } from "@eventual/core";
 import {
+  assertNever,
   AwaitTimerCall,
+  BucketCall,
+  BucketGetObjectSerializedResult,
+  BucketRequest,
+  BucketRequestFailed,
+  BucketRequestSucceeded,
   ChildWorkflowCall,
   ChildWorkflowScheduled,
+  EmitEventsCall,
   EntityCall,
   EntityOperation,
   EntityRequest,
@@ -11,7 +18,20 @@ import {
   EventsEmitted,
   HistoryStateEvent,
   InvokeTransactionCall,
-  EmitEventsCall,
+  isAwaitTimerCall,
+  isBucketCall,
+  isBucketCallType,
+  isChildExecutionTarget,
+  isChildWorkflowCall,
+  isConditionCall,
+  isEmitEventsCall,
+  isEntityCall,
+  isEntityOperationOfType,
+  isExpectSignalCall,
+  isInvokeTransactionCall,
+  isRegisterSignalHandlerCall,
+  isSendSignalCall,
+  isTaskCall,
   SendSignalCall,
   SignalSent,
   TaskCall,
@@ -22,20 +42,8 @@ import {
   TransactionRequestFailed,
   TransactionRequestSucceeded,
   WorkflowEventType,
-  assertNever,
-  isAwaitTimerCall,
-  isChildExecutionTarget,
-  isChildWorkflowCall,
-  isConditionCall,
-  isEntityCall,
-  isEntityOperationOfType,
-  isExpectSignalCall,
-  isInvokeTransactionCall,
-  isEmitEventsCall,
-  isRegisterSignalHandlerCall,
-  isSendSignalCall,
-  isTaskCall,
 } from "@eventual/core/internal";
+import stream from "stream";
 import { EntityClient } from "./clients/entity-client.js";
 import { EventClient } from "./clients/event-client.js";
 import { ExecutionQueueClient } from "./clients/execution-queue-client.js";
@@ -44,16 +52,18 @@ import { TimerClient } from "./clients/timer-client.js";
 import { TransactionClient } from "./clients/transaction-client.js";
 import { WorkflowClient } from "./clients/workflow-client.js";
 import { formatChildExecutionName, formatExecutionId } from "./execution.js";
+import { BucketStore } from "./index.js";
 import { normalizeError } from "./result.js";
 import { computeScheduleDate } from "./schedule.js";
 import { createEvent } from "./workflow-events.js";
 import { WorkflowCall } from "./workflow-executor.js";
 
 interface WorkflowCallExecutorProps {
-  taskClient: TaskClient;
+  bucketStore: BucketStore;
   entityClient: EntityClient;
   eventClient: EventClient;
   executionQueueClient: ExecutionQueueClient;
+  taskClient: TaskClient;
   timerClient: TimerClient;
   transactionClient: TransactionClient;
   workflowClient: WorkflowClient;
@@ -109,6 +119,13 @@ export class WorkflowCallExecutor {
       );
     } else if (isInvokeTransactionCall(call.call)) {
       return this.invokeTransaction(executionId, call.call, call.seq, baseTime);
+    } else if (isBucketCall(call.call)) {
+      return this.invokeBucketRequest(
+        call.call,
+        executionId,
+        call.seq,
+        baseTime
+      );
     } else {
       return assertNever(call.call, `unknown call type`);
     }
@@ -377,4 +394,164 @@ export class WorkflowCallExecutor {
       baseTime
     );
   }
+
+  private async invokeBucketRequest(
+    call: BucketCall,
+    executionId: string,
+    seq: number,
+    baseTime: Date
+  ) {
+    if (isBucketCallType("put", call)) {
+      // handle put separately to serialize the input
+      const [key, data] = call.params;
+
+      const buffer =
+        typeof data === "string" || data instanceof Buffer
+          ? data
+          : await streamToBuffer(data);
+
+      try {
+        const result = await this.props.bucketStore.put(
+          call.bucketName,
+          key,
+          buffer
+        );
+
+        await this.props.executionQueueClient.submitExecutionEvents(
+          executionId,
+          createEvent<BucketRequestSucceeded>(
+            {
+              type: WorkflowEventType.BucketRequestSucceeded,
+              operation: "put",
+              result: {
+                etag: result.etag,
+              },
+              seq,
+            },
+            baseTime
+          )
+        );
+      } catch (err) {
+        await this.props.executionQueueClient.submitExecutionEvents(
+          executionId,
+          createEvent<BucketRequestFailed>(
+            {
+              type: WorkflowEventType.BucketRequestFailed,
+              operation: "put",
+              seq,
+              ...normalizeError(err),
+            },
+            baseTime
+          )
+        );
+      }
+
+      return createEvent<BucketRequest>(
+        {
+          type: WorkflowEventType.BucketRequest,
+          operation: {
+            operation: "put",
+            bucketName: call.bucketName,
+            key,
+            // serialize the data put into a string to be stored
+            data:
+              typeof buffer === "string" ? buffer : buffer.toString("base64"),
+            isBase64Encoded: typeof buffer === "string" ? false : true,
+          },
+          seq,
+        },
+        baseTime
+      );
+    }
+
+    try {
+      // handle get separately to serialize the result
+      if (isBucketCallType("get", call)) {
+        const result = await this.props.bucketStore.get(
+          call.bucketName,
+          ...call.params
+        );
+
+        await this.props.executionQueueClient.submitExecutionEvents(
+          executionId,
+          createEvent<BucketRequestSucceeded>(
+            {
+              type: WorkflowEventType.BucketRequestSucceeded,
+              operation: call.operation,
+              result: result
+                ? ({
+                    // serialize the data retrieved data to be stored
+                    body: (
+                      await streamToBuffer(result.body)
+                    ).toString("base64"),
+                    base64Encoded: true,
+                    contentLength: result.contentLength,
+                    etag: result.etag,
+                  } satisfies BucketGetObjectSerializedResult)
+                : undefined,
+              seq,
+            },
+            baseTime
+          )
+        );
+      } else {
+        const result = await this.props.bucketStore[call.operation](
+          call.bucketName,
+          // @ts-ignore
+          ...call.params
+        );
+
+        await this.props.executionQueueClient.submitExecutionEvents(
+          executionId,
+          createEvent<BucketRequestSucceeded>(
+            {
+              type: WorkflowEventType.BucketRequestSucceeded,
+              operation: call.operation,
+              result: result,
+              seq,
+            },
+            baseTime
+          )
+        );
+      }
+    } catch (err) {
+      await this.props.executionQueueClient.submitExecutionEvents(
+        executionId,
+        createEvent<BucketRequestFailed>(
+          {
+            type: WorkflowEventType.BucketRequestFailed,
+            operation: call.operation,
+            seq,
+            ...normalizeError(err),
+          },
+          baseTime
+        )
+      );
+    }
+
+    return createEvent<BucketRequest>(
+      {
+        type: WorkflowEventType.BucketRequest,
+        operation: {
+          operation: call.operation,
+          bucketName: call.bucketName,
+          // @ts-ignore
+          params: call.params,
+        },
+        seq,
+      },
+      baseTime
+    );
+  }
+}
+
+async function streamToBuffer(stream: stream.Readable) {
+  // lets have a ReadableStream as a stream variable
+  const chunks = [];
+
+  for await (const chunk of stream) {
+    chunks.push(Buffer.from(chunk));
+  }
+
+  return Buffer.concat(chunks);
 }

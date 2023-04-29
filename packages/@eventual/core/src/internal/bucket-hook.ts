@@ -8,7 +8,7 @@ export interface BucketDefinition {
   name: string;
 }
 
-export type BucketMethods = Exclude<
+export type BucketMethod = Exclude<
   {
     [k in keyof Bucket]: Bucket[k] extends Function ? k : never;
   }[keyof Bucket],
@@ -16,7 +16,7 @@ export type BucketMethods = Exclude<
 >;
 
 export type BucketHook = {
-  [K in BucketMethods]: (
+  [K in BucketMethod]: (
     bucketName: string,
     ...args: Parameters<Bucket[K]>
   ) => ReturnType<Bucket[K]>;
