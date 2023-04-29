@@ -446,6 +446,7 @@ module.exports = __toCommonJS(command_worker_exports);
 var EventualCallKind;
 (function(EventualCallKind2) {
   EventualCallKind2[EventualCallKind2["AwaitTimerCall"] = 1] = "AwaitTimerCall";
+  EventualCallKind2[EventualCallKind2["BucketCall"] = 10] = "BucketCall";
   EventualCallKind2[EventualCallKind2["ConditionCall"] = 2] = "ConditionCall";
   EventualCallKind2[EventualCallKind2["EntityCall"] = 8] = "EntityCall";
   EventualCallKind2[EventualCallKind2["ExpectSignalCall"] = 3] = "ExpectSignalCall";
@@ -684,6 +685,9 @@ function or(...conditions) {
 
 var WorkflowEventType;
 (function(WorkflowEventType2) {
+  WorkflowEventType2[WorkflowEventType2["BucketRequest"] = 28] = "BucketRequest";
+  WorkflowEventType2[WorkflowEventType2["BucketRequestFailed"] = 60] = "BucketRequestFailed";
+  WorkflowEventType2[WorkflowEventType2["BucketRequestSucceeded"] = 61] = "BucketRequestSucceeded";
   WorkflowEventType2[WorkflowEventType2["ChildWorkflowSucceeded"] = 50] = "ChildWorkflowSucceeded";
   WorkflowEventType2[WorkflowEventType2["ChildWorkflowFailed"] = 51] = "ChildWorkflowFailed";
   WorkflowEventType2[WorkflowEventType2["ChildWorkflowScheduled"] = 20] = "ChildWorkflowScheduled";
