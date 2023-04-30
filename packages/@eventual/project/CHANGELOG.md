@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.35.0 (2023-04-30)
+
+### Features
+
+- remove the entry input requirement from replay ([#344](https://github.com/functionless/eventual/issues/344)) ([e2440f2](https://github.com/functionless/eventual/commit/e2440f28bb2877e716a6aae7e7e0a3ed0fd54516))
+
 # 0.34.0 (2023-04-28)
 
 ### Features
