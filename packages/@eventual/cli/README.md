@@ -57,10 +57,10 @@ Default shows all logs for a service. Provide workflow or execution to filter re
 ## Replay event history
 
 ````sh
-$ eventual replay execution <executionId> --entry <entryFile>
+$ eventual replay execution <executionId>
 
 eg.
 
 ```shell
-$ pnpm eventual replay execution my-workflow/01GJQ1WH741VB5ZYZ079RRJF4X --entry ../test-app-runtime/src/my-workflow.ts
+$ pnpm eventual replay execution my-workflow/01GJQ1WH741VB5ZYZ079RRJF4X
 ````
