@@ -32,7 +32,7 @@ import {
   workflow,
 } from "@eventual/core";
 import type openapi from "openapi3-ts";
-import stream, { Readable } from "stream";
+import { Readable } from "stream";
 import z from "zod";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
 
@@ -703,8 +703,12 @@ export const bucketTask = task(
 
     const keys = await myBucket.list({ prefix: request.key });
 
+    if (!result) {
+      throw new Error("");
+    }
+
     return {
-      data: result?.getBodyString()!,
+      data: await result.getBodyString(),
       keys: keys.objects.map((s) => s.key),
     };
   }
