@@ -159,7 +159,7 @@ export interface Bucket extends Omit<BucketSpec, "handlers"> {
    *
    * Presigned urls are not currently supported in Eventual Local dev server.
    */
-  presignedUrl(
+  generatePresignedUrl(
     /**
      * The key that the url can act on
      */
@@ -295,15 +295,15 @@ export function bucket(name: string): Bucket {
         }
       );
     },
-    presignedUrl(...args) {
+    generatePresignedUrl(...args) {
       return getEventualCallHook().registerEventualCall(
         createEventualCall<BucketCall>(EventualCallKind.BucketCall, {
           bucketName: name,
-          operation: "presignedUrl",
+          operation: "generatePresignedUrl",
           params: args,
         }),
         () => {
-          return getBucketHook().presignedUrl(name, ...args);
+          return getBucketHook().generatePresignedUrl(name, ...args);
         }
       );
     },

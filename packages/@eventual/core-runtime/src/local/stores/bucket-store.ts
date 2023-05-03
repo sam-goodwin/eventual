@@ -189,7 +189,7 @@ export class LocalBucketStore implements BucketStore {
     };
   }
 
-  public presignedUrl(
+  public generatePresignedUrl(
     _bucketName: string,
     _key: string,
     _operation: PresignedUrlOperation,

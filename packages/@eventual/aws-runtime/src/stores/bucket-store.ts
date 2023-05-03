@@ -151,7 +151,7 @@ export class AWSBucketStore implements BucketStore {
     };
   }
 
-  public async presignedUrl(
+  public async generatePresignedUrl(
     bucketName: string,
     key: string,
     operation: PresignedUrlOperation,
