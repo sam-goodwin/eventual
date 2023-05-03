@@ -31,7 +31,7 @@ const worker = createBucketNotificationHandlerWorker({
 
 export default (async (event) => {
   const records = event.Records;
-  console.log("records", JSON.stringify(records, undefined, 4));
+  console.debug("records", JSON.stringify(records, undefined, 4));
 
   const results = await promiseAllSettledPartitioned(
     records,

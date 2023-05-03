@@ -67,7 +67,7 @@ export function isEntityStreamMemberCall(call: CallExpression): boolean {
  * 1. must be a call to a MemberExpression matching to `<expression>.on(events, name, impl | props, impl)`.
  * 2. must have 3 or 4 arguments.
  */
-export function iBucketHandlerMemberCall(call: CallExpression): boolean {
+export function isBucketHandlerMemberCall(call: CallExpression): boolean {
   const c = call.callee;
   if (c.type === "MemberExpression") {
     if (isId(c.property, "on")) {

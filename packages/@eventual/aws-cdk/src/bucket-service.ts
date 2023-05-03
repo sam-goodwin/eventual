@@ -36,7 +36,7 @@ export type BucketNotificationHandlerOverrides<Service> = Partial<
 export type ServiceBuckets<Service> = ServiceEntityProps<
   Service,
   "Bucket",
-  Bucket
+  IBucket
 >;
 
 export type ServiceBucketNotificationHandlers<Service> = ServiceEntityProps<
@@ -156,7 +156,12 @@ interface BucketProps {
   bucket: BucketRuntime;
 }
 
-export class Bucket extends Construct {
+export interface IBucket {
+  bucket: s3.Bucket;
+  handlers: Record<string, BucketNotificationHandler>;
+}
+
+class Bucket extends Construct {
   public bucket: s3.Bucket;
   public handlers: Record<string, BucketNotificationHandler>;
 

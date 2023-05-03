@@ -33,7 +33,7 @@ import os from "os";
 import path from "path";
 import {
   getSpan,
-  iBucketHandlerMemberCall,
+  isBucketHandlerMemberCall,
   isCommandCall,
   isEntityStreamCall,
   isEntityStreamMemberCall,
@@ -230,7 +230,7 @@ export class InferVisitor extends Visitor {
         isTaskCall,
         isEntityStreamMemberCall,
         isEntityStreamCall,
-        iBucketHandlerMemberCall,
+        isBucketHandlerMemberCall,
       ].some((op) => op(call))
     ) {
       this.didMutate = true;
