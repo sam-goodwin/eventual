@@ -358,7 +358,7 @@ export interface BucketRequest extends HistoryEventBase {
 }
 
 export interface BucketGetObjectSerializedResult
-  extends Omit<GetBucketObjectResponse, "body"> {
+  extends Omit<GetBucketObjectResponse, "body" | "getBodyString"> {
   body: string;
   base64Encoded: boolean;
 }

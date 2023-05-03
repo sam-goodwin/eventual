@@ -52,6 +52,12 @@ export interface GetBucketMetadataResponse {
 
 export interface GetBucketObjectResponse extends GetBucketMetadataResponse {
   body: Readable;
+  /**
+   * Attempts to convert the body stream into a string.
+   *
+   * A value is only computed once. The same value will be returned each call.
+   */
+  getBodyString(encoding?: BufferEncoding): Promise<string>;
 }
 
 export interface PutBucketObjectResponse {

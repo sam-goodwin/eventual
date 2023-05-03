@@ -205,7 +205,10 @@ export function createEventualFromCall(
                 contentLength: event.result.contentLength,
                 etag: event.result.etag,
                 body: Readable.from(buffer),
-              } as GetBucketObjectResponse);
+                async getBodyString(encoding) {
+                  return buffer.toString(encoding);
+                },
+              } satisfies GetBucketObjectResponse);
             } else {
               return Result.resolved(event.result);
             }

@@ -59,11 +59,21 @@ export class AWSBucketStore implements BucketStore {
       })
     );
 
+    let bodyString: undefined | string = undefined;
+
     return result.Body
       ? {
           body: result.Body as Readable,
           contentLength: result.ContentLength!,
           etag: result.ETag,
+          async getBodyString(encoding) {
+            if (bodyString !== undefined) {
+              return bodyString;
+            }
+            return (bodyString = await result.Body!.transformToString(
+              encoding
+            ));
+          },
         }
       : undefined;
   }

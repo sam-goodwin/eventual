@@ -688,22 +688,11 @@ export const myBucketHandler = myBucket.on(
 
     if (obj?.body) {
       await bucketSignal.sendSignal(executionId, {
-        data: await streamToString(obj.body),
+        data: await obj.getBodyString(),
       });
     }
   }
 );
-
-async function streamToString(stream: stream.Readable) {
-  // lets have a ReadableStream as a stream variable
-  const chunks = [];
-
-  for await (const chunk of stream) {
-    chunks.push(Buffer.from(chunk));
-  }
-
-  return Buffer.concat(chunks).toString("utf-8");
-}
 
 export const bucketTask = task(
   "bucketTask",
@@ -715,7 +704,7 @@ export const bucketTask = task(
     const keys = await myBucket.list({ prefix: request.key });
 
     return {
-      data: await streamToString(result!.body),
+      data: result?.getBodyString()!,
       keys: keys.objects.map((s) => s.key),
     };
   }
@@ -770,7 +759,7 @@ export const bucketWorkflow = workflow(
         signalResult2,
         signalResult3,
         signalResult4,
-        copied: (copiedData!.body.read() as Buffer).toString("utf-8"),
+        copied: await copiedData?.getBodyString(),
       };
     } finally {
       await Promise.all([myBucket.delete(key), myBucket.delete(key + "2")]);

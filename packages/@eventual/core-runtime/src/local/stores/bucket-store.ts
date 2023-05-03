@@ -53,6 +53,9 @@ export class LocalBucketStore implements BucketStore {
     return {
       ...obj.objectMetadata,
       body: stream,
+      async getBodyString() {
+        return Buffer.from(obj.body).toString();
+      },
     };
   }
 
