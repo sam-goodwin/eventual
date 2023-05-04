@@ -15,30 +15,33 @@ import {
   Task,
   TaskOutput,
   Workflow,
-  entityStreamMatchesItem,
-  isEntityStreamItem,
 } from "@eventual/core";
 import {
+  bucketHandlerMatchesEvent,
+  entityStreamMatchesItem,
+  isBucketNotificationEvent,
+  isEntityStreamItem,
+  isTaskSendEventRequest,
+  isTaskWorkerRequest,
+  isTimerRequest,
+  isWorkflowTask,
   LocalContainer,
   LocalEnvConnector,
   LocalEvent,
   RuntimeServiceClient,
   TimeController,
   WorkflowTask,
-  isTaskSendEventRequest,
-  isTaskWorkerRequest,
-  isTimerRequest,
-  isWorkflowTask,
 } from "@eventual/core-runtime";
 import {
+  buckets,
   EmitEventsRequest,
-  TaskInput,
   entities,
-  registerServiceClient,
   registerEnvironmentManifest,
+  registerServiceClient,
+  TaskInput,
 } from "@eventual/core/internal";
 import { TestSubscriptionProvider } from "./providers/subscription-provider.js";
-import { MockTask, MockableTaskProvider } from "./providers/task-provider.js";
+import { MockableTaskProvider, MockTask } from "./providers/task-provider.js";
 
 export interface TestEnvironmentProps {
   /**
@@ -385,6 +388,7 @@ export class TestEnvironment extends RuntimeServiceClient {
     const workflowTasks = events.filter(isWorkflowTask);
     const taskWorkerRequests = events.filter(isTaskWorkerRequest);
     const entityStreamItems = events.filter(isEntityStreamItem);
+    const bucketNotificationEvents = events.filter(isBucketNotificationEvent);
 
     await Promise.all(
       // run all task requests, don't wait for a result
@@ -411,6 +415,18 @@ export class TestEnvironment extends RuntimeServiceClient {
             return this.localContainer.entityStreamWorker({
               ...i,
               streamName,
+            });
+          });
+        }),
+        bucketNotificationEvents.flatMap((i) => {
+          const streamNames = [...buckets().values()]
+            .flatMap((d) => d.handlers)
+            .filter((s) => bucketHandlerMatchesEvent(i, s))
+            .map((s) => s.name);
+          return streamNames.map((streamName) => {
+            return this.localContainer.bucketHandlerWorker({
+              ...i,
+              handlerName: streamName,
             });
           });
         }),

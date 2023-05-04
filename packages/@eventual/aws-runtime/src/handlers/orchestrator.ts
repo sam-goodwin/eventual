@@ -9,6 +9,7 @@ import {
 import type { SQSEvent, SQSRecord } from "aws-lambda";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 import {
+  createBucketStore,
   createEntityClient,
   createEventClient,
   createExecutionHistoryStateStore,
@@ -29,24 +30,25 @@ import { serviceName } from "../env.js";
  */
 const orchestrate = createOrchestrator({
   executionHistoryStore: createExecutionHistoryStore(),
-  timerClient: createTimerClient(),
-  workflowClient: createWorkflowClient(),
-  metricsClient: AWSMetricsClient,
-  logAgent: createLogAgent(),
-  callExecutor: new WorkflowCallExecutor({
-    taskClient: createTaskClient(),
-    eventClient: createEventClient(),
-    executionQueueClient: createExecutionQueueClient(),
-    timerClient: createTimerClient(),
-    workflowClient: createWorkflowClient(),
-    entityClient: createEntityClient(),
-    transactionClient: createTransactionClient(),
-  }),
-  workflowProvider: createWorkflowProvider(),
   executorProvider: new RemoteExecutorProvider({
     executionHistoryStateStore: createExecutionHistoryStateStore(),
   }),
+  logAgent: createLogAgent(),
+  metricsClient: AWSMetricsClient,
+  callExecutor: new WorkflowCallExecutor({
+    bucketStore: createBucketStore(),
+    entityClient: createEntityClient(),
+    eventClient: createEventClient(),
+    executionQueueClient: createExecutionQueueClient(),
+    taskClient: createTaskClient(),
+    timerClient: createTimerClient(),
+    transactionClient: createTransactionClient(),
+    workflowClient: createWorkflowClient(),
+  }),
   serviceName: serviceName(),
+  timerClient: createTimerClient(),
+  workflowClient: createWorkflowClient(),
+  workflowProvider: createWorkflowProvider(),
 });
 
 export default async (event: SQSEvent) => {

@@ -28,6 +28,9 @@ export interface ServiceSpec {
    * Individually bundled {@link EventFunction}s containing a single `subscription` event handler.
    */
   subscriptions: SubscriptionSpec[];
+  buckets: {
+    buckets: BucketSpec[];
+  };
   entities: {
     entities: EntitySpec[];
   };
@@ -129,6 +132,33 @@ export interface Schemas {
 
 export interface WorkflowSpec {
   name: string;
+}
+
+export interface BucketSpec {
+  name: string;
+  handlers: BucketNotificationHandlerSpec[];
+}
+
+export type BucketNotificationEventType = "put" | "copy" | "delete";
+
+export interface BucketNotificationHandlerOptions extends FunctionRuntimeProps {
+  /**
+   * A list of operations to be send to the stream.
+   *
+   * @default All Operations
+   */
+  eventTypes?: BucketNotificationEventType[];
+  /**
+   * Filter objects in the stream by prefix or suffix.
+   */
+  filters?: { prefix?: string; suffix?: string }[];
+}
+
+export interface BucketNotificationHandlerSpec {
+  name: string;
+  bucketName: string;
+  options?: BucketNotificationHandlerOptions;
+  sourceLocation?: SourceLocation;
 }
 
 export interface EntitySpec {

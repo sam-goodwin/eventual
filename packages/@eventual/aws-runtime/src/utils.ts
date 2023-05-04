@@ -187,6 +187,22 @@ export function serviceFunctionName(serviceName: string, suffix: string) {
   );
 }
 
+/**
+ * Bucket names must:
+ * * be between 3 and 63 characters long (inc)
+ * * contain only lower case characters or number, dots, and dashes.
+ * * Must not contain duplicate dots
+ * * must start and end with a number or letter
+ * * must be unique with an AWS region
+ *
+ * https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html
+ */
+export function serviceBucketName(serviceName: string, suffix: string) {
+  const serviceNameAndSeparatorLength = serviceName.length + 1;
+  const remaining = 63 - serviceNameAndSeparatorLength;
+  return sanitizeBucketName(`${serviceName}-${suffix.substring(0, remaining)}`);
+}
+
 export function commandServiceFunctionSuffix(commandId: string) {
   return `command-${commandId}`;
 }
@@ -201,6 +217,10 @@ export function subscriptionServiceFunctionSuffix(subscriptionName: string) {
 
 export function entityServiceTableSuffix(entityName: string) {
   return `entity-${entityName}`;
+}
+
+export function bucketServiceBucketSuffix(bucketName: string) {
+  return `bucket-${bucketName}`;
 }
 
 export function taskServiceFunctionName(
@@ -218,8 +238,33 @@ export function entityServiceTableName(
 }
 
 /**
+ * Note: a bucket's name can be overridden by the user.
+ */
+export function bucketServiceBucketName(
+  serviceName: string,
+  bucketName: string
+): string {
+  return serviceBucketName(serviceName, bucketServiceBucketSuffix(bucketName));
+}
+
+/**
  * Valid lambda function names contains letters, numbers, dash, or underscore and no spaces.
  */
 export function sanitizeFunctionName(name: string) {
-  return name.replaceAll(/[^a-zA-Z0-9-_]/g, "-");
+  return (
+    name
+      .replaceAll(/[^a-zA-Z0-9-_]/g, "-")
+      // remove leading, trailing, and duplicate dashes
+      .replaceAll(/(^-*)|(-(?=-))|(-$)/g, "")
+  );
+}
+
+export function sanitizeBucketName(name: string) {
+  return (
+    name
+      .toLowerCase()
+      .replaceAll(/[^a-zA-Z0-9-.]/g, "-")
+      // remove leading, trailing, and duplicate dashes
+      .replaceAll(/(^-*)|(-(?=-))|(-$)/g, "")
+  );
 }

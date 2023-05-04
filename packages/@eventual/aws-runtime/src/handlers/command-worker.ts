@@ -3,6 +3,7 @@ import serviceSpec from "@eventual/injected/spec";
 
 import { createCommandWorker } from "@eventual/core-runtime";
 import {
+  createBucketStore,
   createEntityClient,
   createEventClient,
   createServiceClient,
@@ -19,8 +20,11 @@ import { serviceName } from "../env.js";
  */
 export default createApiGCommandAdaptor({
   commandWorker: createCommandWorker({
-    // the service client, spec, and service url will be created at runtime, using a computed uri from the apigateway request
+    bucketStore: createBucketStore(),
     entityClient: createEntityClient(),
+    // the service client, spec, and service url will be created at runtime, using a computed uri from the apigateway request
+    serviceClient: undefined,
+    serviceSpec: undefined,
     serviceName,
   }),
   serviceName,

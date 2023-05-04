@@ -1,6 +1,7 @@
 import { build, BuildSource, infer } from "@eventual/compiler";
 import { BuildManifest } from "@eventual/core-runtime";
 import {
+  BucketNotificationHandlerSpec,
   CommandSpec,
   EntityStreamSpec,
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
@@ -87,6 +88,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       monoCommandFunction,
       monoSubscriptionFunction,
       monoEntityStreamWorkerFunction,
+      monoBucketHandlerWorkerFunction,
       transactionWorkerFunction,
     ],
     [
@@ -128,6 +130,14 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         }))
       ),
       transactions: serviceSpec.transactions,
+    },
+    buckets: {
+      buckets: await Promise.all(
+        serviceSpec.buckets.buckets.map(async (b) => ({
+          ...b,
+          handlers: await bundleBucketHandlers(b.handlers),
+        }))
+      ),
     },
     system: {
       entityService: {
@@ -256,6 +266,24 @@ export async function buildService(request: BuildAWSRuntimeProps) {
     );
   }
 
+  async function bundleBucketHandlers(specs: BucketNotificationHandlerSpec[]) {
+    return await Promise.all(
+      specs.map(async (spec) => {
+        return {
+          entry: await bundleFile(
+            specPath,
+            spec,
+            "bucket-handlers",
+            "bucket-handler-worker",
+            spec.name,
+            monoBucketHandlerWorkerFunction!
+          ),
+          spec,
+        };
+      })
+    );
+  }
+
   async function bundleFile<
     Spec extends CommandSpec | SubscriptionSpec | TaskSpec
   >(
@@ -303,6 +331,10 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         {
           name: ServiceType.EntityStreamWorker,
           entry: runtimeHandlersEntrypoint("entity-stream-worker"),
+        },
+        {
+          name: ServiceType.BucketNotificationHandlerWorker,
+          entry: runtimeHandlersEntrypoint("bucket-handler-worker"),
         },
         {
           name: ServiceType.TransactionWorker,

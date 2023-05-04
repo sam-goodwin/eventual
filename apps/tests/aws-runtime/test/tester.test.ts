@@ -13,6 +13,7 @@ import type * as TestService from "./test-service.js";
 import {
   allCommands,
   asyncWorkflow,
+  bucketWorkflow,
   createAndDestroyWorkflow,
   entityWorkflow,
   eventDrivenWorkflow,
@@ -124,6 +125,15 @@ eventualRuntimeTestHarness(
       expect(one).not.toBeUndefined();
       expect(two).not.toBeUndefined();
       expect(three).not.toBeUndefined();
+    });
+
+    testCompletion("buckets", bucketWorkflow, {
+      result: { data: "hello!", keys: [expect.stringContaining("key/")] },
+      signalResult: { data: "hello!" },
+      signalResult2: { data: "hello again!" },
+      signalResult3: { data: "hello again again!" },
+      signalResult4: { data: "hello again again again!" },
+      copied: "hello again again again!"
     });
   },
   {

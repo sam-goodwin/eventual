@@ -97,3 +97,19 @@ export function serviceTableArn(
     arnFormat: ArnFormat.SLASH_RESOURCE_NAME,
   });
 }
+
+export function serviceBucketArn(
+  serviceName: string,
+  nameSuffix: string,
+  sanitized: boolean = true
+) {
+  return formatBucketArn(
+    sanitized
+      ? serviceFunctionName(serviceName, nameSuffix)
+      : `${serviceName}-${nameSuffix}`
+  );
+}
+
+export function formatBucketArn(bucketName: string) {
+  return `arn:aws:s3:::${bucketName}`;
+}

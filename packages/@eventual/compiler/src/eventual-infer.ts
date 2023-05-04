@@ -14,6 +14,8 @@ import {
   tasks,
   transactions,
   workflows,
+  buckets,
+  BucketNotificationHandlerSpec,
 } from "@eventual/core/internal";
 import {
   CallExpression,
@@ -31,6 +33,7 @@ import os from "os";
 import path from "path";
 import {
   getSpan,
+  isBucketHandlerMemberCall,
   isCommandCall,
   isEntityStreamCall,
   isEntityStreamMemberCall,
@@ -112,6 +115,20 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
       validate: command.validate,
       namespace: command.namespace,
     })),
+    buckets: {
+      buckets: [...buckets().values()].map((b) => ({
+        name: b.name,
+        handlers: b.handlers.map(
+          (s) =>
+            ({
+              name: s.name,
+              bucketName: s.bucketName,
+              options: s.options,
+              sourceLocation: s.sourceLocation,
+            } satisfies BucketNotificationHandlerSpec)
+        ),
+      })),
+    },
     entities: {
       entities: [...entities().values()].map((d) => ({
         name: d.name,
@@ -206,12 +223,15 @@ export class InferVisitor extends Visitor {
   visitCallExpression(call: CallExpression): Expression {
     if (
       this.exportName &&
-      (isCommandCall(call) ||
-        isOnEventCall(call) ||
-        isSubscriptionCall(call) ||
-        isTaskCall(call) ||
-        isEntityStreamMemberCall(call) ||
-        isEntityStreamCall(call))
+      [
+        isCommandCall,
+        isOnEventCall,
+        isSubscriptionCall,
+        isTaskCall,
+        isEntityStreamMemberCall,
+        isEntityStreamCall,
+        isBucketHandlerMemberCall,
+      ].some((op) => op(call))
     ) {
       this.didMutate = true;
 

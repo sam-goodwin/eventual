@@ -1,3 +1,4 @@
+export * from "./bucket-hook.js";
 export * from "./calls.js";
 export * from "./entity-hook.js";
 export * from "./eventual-hook.js";

@@ -1,8 +1,8 @@
 import {
   EntityEntityRecord,
+  entityServiceTableName,
   entityServiceTableSuffix,
   ENV_NAMES,
-  serviceFunctionName,
 } from "@eventual/aws-runtime";
 import { EntityRuntime, EntityStreamFunction } from "@eventual/core-runtime";
 import { TransactionSpec } from "@eventual/core/internal";
@@ -24,6 +24,7 @@ import {
 } from "aws-cdk-lib/aws-lambda";
 import { DynamoEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { Construct } from "constructs";
+import { BucketService } from "./bucket-service";
 import { CommandService } from "./command-service";
 import { EventService } from "./event-service.js";
 import { LazyInterface } from "./proxy-construct";
@@ -61,6 +62,7 @@ export interface EntityStreamHandlerProps
   > {}
 
 export interface EntityServiceProps<Service> extends ServiceConstructProps {
+  bucketService: LazyInterface<BucketService<Service>>;
   commandService: LazyInterface<CommandService<Service>>;
   eventService: LazyInterface<EventService>;
   workflowService: LazyInterface<WorkflowService>;
@@ -210,9 +212,9 @@ export class Entity extends Construct {
     super(scope, props.entity.name);
 
     this.table = new Table(this, "Table", {
-      tableName: serviceFunctionName(
+      tableName: entityServiceTableName(
         props.serviceProps.serviceName,
-        entityServiceTableSuffix(props.entity.name)
+        props.entity.name
       ),
       partitionKey: {
         name: "pk",
@@ -328,6 +330,8 @@ export class EntityStream extends Construct implements EventualResource {
     props.serviceProps.commandService.configureInvokeHttpServiceApi(
       this.handler
     );
+
+    props.serviceProps.bucketService.configureReadWriteBuckets(this.handler);
     props.entityService.configureReadWriteEntityTable(this.handler);
 
     this.grantPrincipal = this.handler.grantPrincipal;

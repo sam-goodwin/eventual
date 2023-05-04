@@ -22,6 +22,7 @@ import {
   Queue,
 } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
+import { BucketService } from "./bucket-service";
 import {
   EventBridgePipe,
   PipeSourceParameters,
@@ -36,11 +37,12 @@ import { ServiceFunction } from "./service-function";
 import type { TaskService } from "./task-service.js";
 
 export interface WorkflowsProps extends ServiceConstructProps {
-  taskService: LazyInterface<TaskService>;
+  bucketService: LazyInterface<BucketService<any>>;
   entityService: EntityService<any>;
   eventService: EventService;
-  schedulerService: LazyInterface<SchedulerService>;
   overrides?: WorkflowServiceOverrides;
+  schedulerService: LazyInterface<SchedulerService>;
+  taskService: LazyInterface<TaskService>;
 }
 
 export interface WorkflowServiceOverrides {
@@ -475,6 +477,10 @@ export class WorkflowService {
     this.props.entityService.configureReadWriteEntityTable(this.orchestrator);
     // transactions
     this.props.entityService.configureInvokeTransactions(this.orchestrator);
+    /**
+     * Bucket Commands
+     */
+    this.props.bucketService.configureReadWriteBuckets(this.orchestrator);
   }
 
   private readonly ENV_MAPPINGS = {

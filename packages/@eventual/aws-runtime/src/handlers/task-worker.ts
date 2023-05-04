@@ -10,6 +10,7 @@ import {
 } from "@eventual/core-runtime";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 import {
+  createBucketStore,
   createEntityClient,
   createEventClient,
   createExecutionQueueClient,
@@ -24,6 +25,7 @@ import {
 import { serviceName, serviceUrl } from "../env.js";
 
 const worker = createTaskWorker({
+  bucketStore: createBucketStore(),
   entityClient: createEntityClient(),
   eventClient: createEventClient(),
   executionQueueClient: createExecutionQueueClient(),
@@ -31,11 +33,11 @@ const worker = createTaskWorker({
   metricsClient: AWSMetricsClient,
   // partially uses the runtime clients and partially uses the http client
   serviceClient: createServiceClient({
-    taskClient: createTaskClient(),
     eventClient: createEventClient(),
     executionQueueClient: createExecutionQueueClient(),
     // already used by the task client
     executionStore: createExecutionStore(),
+    taskClient: createTaskClient(),
     transactionClient: createTransactionClient(),
   }),
   serviceName,

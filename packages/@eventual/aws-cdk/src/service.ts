@@ -2,8 +2,8 @@ import { IHttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { Event } from "@eventual/core";
 import { MetricsCommon, OrchestratorMetrics } from "@eventual/core-runtime";
-import { EventualConfig, discoverEventualConfigSync } from "@eventual/project";
-import { Arn, Names, Stack, aws_events, aws_events_targets } from "aws-cdk-lib";
+import { discoverEventualConfigSync, EventualConfig } from "@eventual/project";
+import { Arn, aws_events, aws_events_targets, Names, Stack } from "aws-cdk-lib";
 import {
   Metric,
   MetricOptions,
@@ -26,11 +26,19 @@ import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
 import openapi from "openapi3-ts";
 import path from "path";
+import {
+  BucketNotificationHandler,
+  BucketNotificationHandlerOverrides,
+  BucketOverrides,
+  BucketService,
+  ServiceBucketNotificationHandlers,
+  ServiceBuckets,
+} from "./bucket-service";
 import { BuildOutput, buildServiceSync } from "./build";
 import {
   CommandProps,
-  CommandService,
   Commands,
+  CommandService,
   CommandsProps,
   CorsOptions,
 } from "./command-service";
@@ -113,7 +121,18 @@ export interface ServiceProps<Service = any> {
    * Override properties of Subscription Functions within the Service.
    */
   subscriptions?: SubscriptionOverrides<Service>;
-  entityStreamOverrides?: EntityStreamOverrides<Service>;
+  /**
+   * Override the properties of an entity streams within the service.
+   */
+  entityStreams?: EntityStreamOverrides<Service>;
+  /**
+   * Override the properties of the buckets within the service.
+   */
+  buckets?: BucketOverrides<Service>;
+  /**
+   * Override the properties of an bucket streams within the service.
+   */
+  bucketNotificationHandlers?: BucketNotificationHandlerOverrides<Service>;
   cors?: CorsOptions;
   /**
    * Customize the open API output for the gateway.
@@ -176,10 +195,21 @@ export class Service<S = any> extends Construct {
    */
   public readonly commands: Commands<S>;
   /**
-   * TODO
+   * Entities defined by the service;
    */
   public readonly entities: ServiceEntities<S>;
+  /**
+   * Streams of entity changes defined by the service.
+   */
   public readonly entityStreams: ServiceEntityStreams<S>;
+  /**
+   * Buckets defined by the service.
+   */
+  public readonly buckets: ServiceBuckets<S>;
+  /**
+   * Handlers of bucket notification events defined by the service.
+   */
+  public readonly bucketNotificationHandlers: ServiceBucketNotificationHandlers<S>;
   /**
    * API Gateway which serves the service commands and the system commands.
    */
@@ -201,6 +231,7 @@ export class Service<S = any> extends Construct {
    */
   public readonly workflowLogGroup: LogGroup;
 
+  private readonly bucketService: BucketService<S>;
   private readonly eventService: EventService;
   private readonly commandService: CommandService<S>;
 
@@ -208,7 +239,8 @@ export class Service<S = any> extends Construct {
   public commandsPrincipal: IPrincipal;
   public tasksPrincipal: IPrincipal;
   public subscriptionsPrincipal: IPrincipal;
-  public entityStreamPrincipal: IPrincipal;
+  public entityStreamsPrincipal: IPrincipal;
+  public bucketNotificationHandlersPrincipal: IPrincipal;
 
   public readonly system: ServiceSystem<S>;
 
@@ -272,6 +304,7 @@ export class Service<S = any> extends Construct {
     const proxyTaskService = lazyInterface<TaskService<S>>();
     const proxyService = lazyInterface<Service<S>>();
     const proxyCommandService = lazyInterface<CommandService<S>>();
+    const proxyBucketService = lazyInterface<BucketService<S>>();
 
     const serviceConstructProps: ServiceConstructProps = {
       build,
@@ -287,8 +320,9 @@ export class Service<S = any> extends Construct {
     this.bus = this.eventService.bus;
 
     const entityService = new EntityService<S>({
+      bucketService: proxyBucketService,
       commandService: proxyCommandService,
-      entityStreamOverrides: props.entityStreamOverrides,
+      entityStreamOverrides: props.entityStreams,
       entityServiceOverrides: props.system?.entityService,
       eventService: this.eventService,
       workflowService: proxyWorkflowService,
@@ -297,8 +331,21 @@ export class Service<S = any> extends Construct {
     this.entities = entityService.entities;
     this.entityStreams = entityService.entityStreams;
 
+    this.bucketService = new BucketService({
+      ...serviceConstructProps,
+      cors: props.cors,
+      commandService: proxyCommandService,
+      entityService: entityService,
+      bucketOverrides: props.buckets,
+      bucketHandlerOverrides: props.bucketNotificationHandlers,
+    });
+    proxyBucketService._bind(this.bucketService);
+    this.buckets = this.bucketService.buckets;
+    this.bucketNotificationHandlers = this.bucketService.bucketHandlers;
+
     const taskService = new TaskService<S>({
       ...serviceConstructProps,
+      bucketService: proxyBucketService,
       schedulerService: proxySchedulerService,
       workflowService: proxyWorkflowService,
       commandsService: proxyCommandService,
@@ -311,6 +358,7 @@ export class Service<S = any> extends Construct {
 
     const workflowService = new WorkflowService({
       taskService: taskService,
+      bucketService: proxyBucketService,
       eventService: this.eventService,
       schedulerService: proxySchedulerService,
       overrides: props.system?.workflowService,
@@ -328,6 +376,7 @@ export class Service<S = any> extends Construct {
     proxySchedulerService._bind(scheduler);
 
     this.commandService = new CommandService({
+      bucketService: proxyBucketService,
       taskService: taskService,
       overrides: props.commands,
       eventService: this.eventService,
@@ -344,6 +393,7 @@ export class Service<S = any> extends Construct {
     this.specification = this.commandService.specification;
 
     this.subscriptions = new Subscriptions({
+      bucketService: proxyBucketService,
       commandService: this.commandService,
       eventService: this.eventService,
       subscriptions: props.subscriptions,
@@ -391,18 +441,26 @@ export class Service<S = any> extends Construct {
             ...this.subscriptionsList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });
-    this.entityStreamPrincipal =
+    this.entityStreamsPrincipal =
       this.entityStreamList.length > 0 || this.local
         ? new DeepCompositePrincipal(
             ...(this.local ? [this.local.environmentRole] : []),
             ...this.entityStreamList.map((f) => f.grantPrincipal)
           )
         : new UnknownPrincipal({ resource: this });
+    this.bucketNotificationHandlersPrincipal =
+      this.bucketNotificationHandlersList.length > 0 || this.local
+        ? new DeepCompositePrincipal(
+            ...(this.local ? [this.local.environmentRole] : []),
+            ...this.bucketNotificationHandlersList.map((f) => f.grantPrincipal)
+          )
+        : new UnknownPrincipal({ resource: this });
     this.grantPrincipal = new DeepCompositePrincipal(
       this.commandsPrincipal,
       this.tasksPrincipal,
       this.subscriptionsPrincipal,
-      this.entityStreamPrincipal
+      this.entityStreamsPrincipal,
+      this.bucketNotificationHandlersPrincipal
     );
 
     serviceDataSSM.grantRead(accessRole);
@@ -433,6 +491,10 @@ export class Service<S = any> extends Construct {
 
   public get entityStreamList(): EntityStream[] {
     return Object.values(this.entityStreams);
+  }
+
+  public get bucketNotificationHandlersList(): BucketNotificationHandler[] {
+    return Object.values(this.bucketNotificationHandlers);
   }
 
   public subscribe(

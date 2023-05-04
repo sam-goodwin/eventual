@@ -1,18 +1,21 @@
-import { ConditionPredicate } from "../condition.js";
-import {
+import type { Bucket } from "../bucket.js";
+import type { ConditionPredicate } from "../condition.js";
+import type {
   CompositeKey,
   EntityConsistencyOptions,
   EntityListRequest,
   EntitySetOptions,
   EntityTransactItem,
 } from "../entity.js";
-import { EventEnvelope } from "../event.js";
-import { DurationSchedule, Schedule } from "../schedule.js";
-import { WorkflowExecutionOptions } from "../workflow.js";
-import { SignalTarget } from "./signal.js";
+import type { EventEnvelope } from "../event.js";
+import type { DurationSchedule, Schedule } from "../schedule.js";
+import type { WorkflowExecutionOptions } from "../workflow.js";
+import type { BucketMethod } from "./bucket-hook.js";
+import type { SignalTarget } from "./signal.js";
 
 export type EventualCall =
   | AwaitTimerCall
+  | BucketCall
   | ConditionCall
   | EntityCall
   | ChildWorkflowCall
@@ -25,6 +28,7 @@ export type EventualCall =
 
 export enum EventualCallKind {
   AwaitTimerCall = 1,
+  BucketCall = 10,
   ConditionCall = 2,
   EntityCall = 8,
   ExpectSignalCall = 3,
@@ -159,6 +163,26 @@ export interface EntityListKeysOperation extends EntityOperationBase {
 export interface EntityTransactOperation {
   operation: "transact";
   items: EntityTransactItem<any>[];
+}
+
+export function isBucketCall(a: any): a is BucketCall {
+  return isEventualCallOfKind(EventualCallKind.BucketCall, a);
+}
+
+export type BucketCall<Op extends BucketMethod = BucketMethod> =
+  EventualCallBase<EventualCallKind.BucketCall> & BucketOperation<Op>;
+
+export type BucketOperation<Op extends BucketMethod = BucketMethod> = {
+  operation: Op;
+  bucketName: string;
+  params: Parameters<Bucket[Op]>;
+};
+
+export function isBucketCallType<Op extends BucketMethod>(
+  op: Op,
+  operation: BucketCall<any>
+): operation is BucketCall<Op> {
+  return operation.operation === op;
 }
 
 export function isExpectSignalCall(a: any): a is ExpectSignalCall {

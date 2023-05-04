@@ -59,6 +59,11 @@ const testService = new eventual.Service<typeof testServiceRuntime>(
         logLevel: LogLevel.DEBUG,
       },
     },
+    buckets: {
+      myBucket: {
+        bucketName: `super-random-test-bucket-${stack.account}`,
+      },
+    },
     cors: {
       allowOrigins: ["http://some-url.com"],
     },

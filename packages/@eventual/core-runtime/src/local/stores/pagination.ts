@@ -16,6 +16,7 @@ export function paginateItems<Item>(
 
   return {
     items: rangeItems,
+    filteredCount: filtered.length,
     nextToken:
       start + rangeItems.length < filtered.length
         ? serializeToken({ index: start + rangeItems.length })

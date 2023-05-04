@@ -6,6 +6,7 @@ import { LambdaFunction } from "aws-cdk-lib/aws-events-targets";
 import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Queue } from "aws-cdk-lib/aws-sqs";
 import { Construct } from "constructs";
+import { BucketService } from "./bucket-service";
 import type { BuildOutput } from "./build";
 import { CommandService } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal";
@@ -34,6 +35,7 @@ export interface SubscriptionHandlerProps
   extends Omit<Partial<FunctionProps>, "code" | "handler" | "functionName"> {}
 
 export interface SubscriptionsProps<S = any> extends ServiceConstructProps {
+  readonly bucketService: LazyInterface<BucketService<S>>;
   readonly commandService: LazyInterface<CommandService>;
   /**
    * The Service's {@link EventService} repository.
@@ -96,6 +98,10 @@ export const Subscriptions: {
       props.entityService.configureReadWriteEntityTable(handler);
       // transactions
       props.entityService.configureInvokeTransactions(handler);
+      /**
+       * Bucket Operations
+       */
+      props.bucketService.configureReadWriteBuckets(handler);
     });
   }
 } as any;
