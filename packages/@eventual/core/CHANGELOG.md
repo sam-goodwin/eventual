@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.36.0 (2023-05-04)
+
+### Features
+
+- bucket ([#340](https://github.com/functionless/eventual/issues/340)) ([a311d73](https://github.com/functionless/eventual/commit/a311d73396e6d272b7aabaaf82effc48f7143fa2))
+
 # 0.35.0 (2023-04-30)
 
 ### Features
