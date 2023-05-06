@@ -7,6 +7,9 @@ import {
 import { getEntityHook } from "./internal/entity-hook.js";
 import { entities } from "./internal/global.js";
 import {
+  EntityKeyBinary,
+  EntityKeyNumber,
+  EntityKeyString,
   EntitySpec,
   EntityStreamOptions,
   EntityStreamSpec,
@@ -128,13 +131,35 @@ export interface EntityStream<E extends AnyEntity> extends EntityStreamSpec {
   sourceLocation?: SourceLocation;
 }
 
-export type AnyEntity = Entity<any, any, any>;
+export type AnyEntity = Entity<any, string, string | undefined>;
+
+export type EntityKeyType = string | number | EntityBinaryMember;
+
+export type EntityBinaryMember =
+  | ArrayBuffer
+  | Blob
+  | Buffer
+  | DataView
+  | File
+  | Int8Array
+  | Uint8Array
+  | Uint8ClampedArray
+  | Int16Array
+  | Uint16Array
+  | Int32Array
+  | Uint32Array
+  | Float32Array
+  | Float64Array
+  | BigInt64Array
+  | BigUint64Array;
 
 export type EntityValueMember =
   | EntityValue
   | string
   | number
   | boolean
+  | EntityBinaryMember
+  | Set<string | number | boolean | EntityBinaryMember>
   | EntityValueMember[];
 
 export type EntityValue = {
@@ -143,16 +168,11 @@ export type EntityValue = {
 
 export type EntityKeyField<E extends EntityValue> = {
   [K in keyof E]: K extends string
-    ? E[K] extends string | number
+    ? E[K] extends EntityKeyType
       ? K
       : never
     : never;
 }[keyof E];
-
-// export type EntitySortKeyField<E, Partition extends keyof E> = Exclude<
-//   EntityKeyField<E>,
-//   Partition
-// >;
 
 export type EntityCompositeKeyFromEntity<E extends AnyEntity> =
   E extends Entity<infer Schema, infer Partition, infer Sort>
@@ -190,6 +210,7 @@ export type EntityPartitionKey<E extends AnyEntity> = E extends Entity<
 >
   ? Partition
   : never;
+
 export type EntitySortKey<E extends AnyEntity> = E extends Entity<
   EntitySchema<E>,
   EntityPartitionKey<E>,
@@ -197,12 +218,26 @@ export type EntitySortKey<E extends AnyEntity> = E extends Entity<
 >
   ? Sort
   : never;
+
 export type EntitySchema<E extends AnyEntity> = E extends Entity<
   infer Schema,
   any,
   any
 >
   ? Schema
+  : never;
+
+export type EntityKeyReference<
+  E extends EntityValue,
+  F extends EntityKeyField<E> | undefined
+> = F extends undefined
+  ? undefined
+  : E[Exclude<F, undefined>] extends string
+  ? F | EntityKeyString<Exclude<F, undefined>>
+  : E[Exclude<F, undefined>] extends number
+  ? EntityKeyNumber<Exclude<F, undefined>>
+  : E[Exclude<F, undefined>] extends EntityBinaryMember
+  ? EntityKeyBinary<Exclude<F, undefined>>
   : never;
 
 export interface Entity<
@@ -212,8 +247,8 @@ export interface Entity<
 > extends Omit<EntitySpec, "schema" | "streams" | "partitionKey" | "sortKey"> {
   __entityBrand: E;
   kind: "Entity";
-  partitionKey: P;
-  sortKey?: S;
+  partitionKey: EntityKeyReference<E, P>;
+  sortKey?: EntityKeyReference<E, S>;
   schema?: z.Schema<E>;
   streams: EntityStream<Entity<E, P, S>>[];
   /**
@@ -322,11 +357,11 @@ export const Entity = {
 
 export interface EntityOptions<
   E extends EntityValue,
-  P extends string,
-  S extends string | undefined
+  P extends EntityKeyField<E>,
+  S extends EntityKeyField<E> | undefined
 > {
-  partitionKey: P;
-  sortKey?: S;
+  partitionKey: EntityKeyReference<E, P>;
+  sortKey?: EntityKeyReference<E, S>;
   schema: z.Schema<E>;
 }
 

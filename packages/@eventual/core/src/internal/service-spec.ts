@@ -161,10 +161,31 @@ export interface BucketNotificationHandlerSpec {
   sourceLocation?: SourceLocation;
 }
 
+export interface EntityKeyString<Name extends string> {
+  key: Name;
+  type: "string";
+}
+
+export interface EntityKeyNumber<Name extends string> {
+  key: Name;
+  type: "number";
+}
+
+export interface EntityKeyBinary<Name extends string> {
+  key: Name;
+  type: "binary";
+}
+
+export type EntityKeySpec<Name extends string = string> =
+  | Name
+  | EntityKeyBinary<Name>
+  | EntityKeyNumber<Name>
+  | EntityKeyString<Name>;
+
 export interface EntitySpec {
   name: string;
-  partitionKey: string;
-  sortKey?: string;
+  partitionKey: EntityKeySpec;
+  sortKey?: EntityKeySpec;
   /**
    * An Optional schema for the entity within an entity.
    */

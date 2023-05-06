@@ -3,8 +3,9 @@ import {
   AnyEntityKey,
   EntityCompositeKey,
   EntityKeyTuple,
+  EntityKeyType,
 } from "@eventual/core";
-import { EntityHook } from "@eventual/core/internal";
+import { EntityHook, EntityKeySpec } from "@eventual/core/internal";
 
 export interface EntityStore extends EntityHook {}
 
@@ -43,39 +44,65 @@ export function isTransactionConflictResult(
   return value && "transactionConflict" in value;
 }
 
+export interface NormalizeEntityKeyPart {
+  field: string;
+  type: "number" | "string" | "binary";
+  value: EntityKeyType;
+}
+
 export interface NormalizeEntityKey {
-  partition: { field: string; value: string };
-  sort?: { field: string; value: string };
+  partition: NormalizeEntityKeyPart;
+  sort?: NormalizeEntityKeyPart;
 }
 
 export function normalizeCompositeKey(
   entity: AnyEntity,
   key: AnyEntityKey
 ): NormalizeEntityKey {
+  const { key: partitionField, type: partitionType } = normalizeKeySpec(
+    entity.partitionKey
+  );
+  const { key: sortField = undefined, type: sortType = undefined } =
+    entity.sortKey ? normalizeKeySpec(entity.sortKey) : {};
+
   if (Array.isArray(key)) {
     const [partition, sort] = key;
 
-    return entity.sortKey
+    return sortField && sortType
       ? {
-          partition: { field: entity.partitionKey, value: partition },
-          sort: { field: entity.sortKey, value: sort },
+          partition: {
+            field: partitionField,
+            type: partitionType,
+            value: partition,
+          },
+          sort: { field: sortField, type: sortType, value: sort },
         }
       : {
-          partition: { field: entity.partitionKey, value: partition },
+          partition: {
+            field: partitionField,
+            type: partitionType,
+            value: partition,
+          },
         };
   } else {
-    return entity.sortKey
+    return sortField && sortType
       ? {
           partition: {
-            field: entity.partitionKey,
-            value: key[entity.partitionKey],
+            field: partitionField,
+            type: partitionType,
+            value: key[partitionField],
           },
-          sort: { field: entity.sortKey, value: key[entity.sortKey] },
+          sort: {
+            field: sortField,
+            type: sortType,
+            value: key[sortField],
+          },
         }
       : {
           partition: {
-            field: entity.partitionKey,
-            value: key[entity.partitionKey],
+            field: partitionField,
+            type: partitionType,
+            value: key[partitionField],
           },
         };
   }
@@ -100,4 +127,10 @@ export function convertNormalizedEntityKeyToTuple(
   return key.sort
     ? [key.partition.value, key.sort.value]
     : [key.partition.value];
+}
+
+export function normalizeKeySpec(
+  keyRef: EntityKeySpec
+): Exclude<EntityKeySpec, string> {
+  return typeof keyRef === "string" ? { key: keyRef, type: "string" } : keyRef;
 }

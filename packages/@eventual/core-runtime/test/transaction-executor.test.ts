@@ -136,7 +136,10 @@ test("just delete", async () => {
 
 test("multiple operations", async () => {
   const d1 = entity({ schema: simpleSchema, partitionKey: "key" });
-  const d2 = entity({ schema: simpleSchema, partitionKey: "value" });
+  const d2 = entity({
+    schema: simpleSchema,
+    partitionKey: { key: "value", type: "number" },
+  });
 
   const result = await executor(
     async () => {
@@ -164,7 +167,10 @@ test("multiple operations", async () => {
 
 test("multiple operations fail", async () => {
   const d1 = entity({ schema: simpleSchema, partitionKey: "key" });
-  const d2 = entity({ schema: simpleSchema, partitionKey: "value" });
+  const d2 = entity({
+    schema: simpleSchema,
+    partitionKey: { key: "value", type: "number" },
+  });
 
   await store.set(d1.name, { key: "1", value: 0 });
 

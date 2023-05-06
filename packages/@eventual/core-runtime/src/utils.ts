@@ -8,7 +8,10 @@ import {
   BucketNotificationHandlerSpec,
   EntityStreamSpec,
 } from "@eventual/core/internal";
-import { NormalizeEntityKey } from "./stores/entity-store.js";
+import {
+  normalizeCompositeKey,
+  NormalizeEntityKey,
+} from "./stores/entity-store.js";
 
 export async function promiseAllSettledPartitioned<T, R>(
   items: T[],
@@ -88,15 +91,19 @@ export function entityStreamMatchesItem<E extends AnyEntity = AnyEntity>(
   item: EntityStreamItem<E>,
   streamSpec: EntityStreamSpec
 ) {
-  const partition = item.key[entity.partitionKey];
+  const { partition } = normalizeCompositeKey(entity, item);
   return (
     streamSpec.entityName === item.entityName &&
     (!streamSpec.options?.operations ||
       streamSpec.options.operations.includes(item.operation)) &&
     (!streamSpec.options?.partitions ||
-      streamSpec.options.partitions.includes(partition)) &&
+      (typeof partition.value === "string" &&
+        streamSpec.options.partitions.includes(partition.value))) &&
     (!streamSpec.options?.partitionPrefixes ||
-      streamSpec.options.partitionPrefixes.some((p) => partition.startsWith(p)))
+      streamSpec.options.partitionPrefixes.some(
+        (p) =>
+          typeof partition.value === "string" && partition.value.startsWith(p)
+      ))
   );
 }
 

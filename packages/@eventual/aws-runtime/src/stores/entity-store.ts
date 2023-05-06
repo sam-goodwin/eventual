@@ -28,11 +28,13 @@ import {
   UnexpectedVersion,
 } from "@eventual/core";
 import {
+  convertNormalizedEntityKeyToMap,
   EntityProvider,
   EntityStore,
   getLazy,
   LazyValue,
   normalizeCompositeKey,
+  normalizeKeySpec,
 } from "@eventual/core-runtime";
 import { assertNever } from "@eventual/core/internal";
 import { entityServiceTableName, queryPageWithToken } from "../utils.js";
@@ -250,9 +252,10 @@ export class AWSEntityStore implements EntityStore {
     const entity =
       typeof _entity === "string" ? this.getEntity(_entity) : _entity;
     const valueRecord = marshall(value);
-    delete valueRecord[entity.partitionKey];
-    if (entity.sortKey) {
-      delete valueRecord[entity.sortKey];
+    const normalizedKey = normalizeCompositeKey(entity, valueRecord);
+    delete valueRecord[normalizedKey.partition.field];
+    if (normalizedKey.sort) {
+      delete valueRecord[normalizedKey.sort.field];
     }
     return {
       Key: this.entityKey(value, entity),
@@ -300,14 +303,8 @@ export class AWSEntityStore implements EntityStore {
 
   private entityKey(key: AnyEntityKey, entity: AnyEntity) {
     const compositeKey = normalizeCompositeKey(entity, key);
-    return compositeKey.sort
-      ? {
-          [compositeKey.partition.field]: { S: compositeKey.partition.value },
-          [compositeKey.sort.field]: { S: compositeKey.sort.value },
-        }
-      : {
-          [compositeKey.partition.field]: { S: compositeKey.partition.value },
-        };
+    const keyMap = convertNormalizedEntityKeyToMap(compositeKey);
+    return marshall(keyMap);
   }
 
   private listEntries(
@@ -316,33 +313,41 @@ export class AWSEntityStore implements EntityStore {
     fields?: string[]
   ) {
     const entity = this.getEntity(entityName);
+    const partitionKeyRef = normalizeKeySpec(entity.partitionKey);
+    const sortKeyRef = entity.sortKey
+      ? normalizeKeySpec(entity.sortKey)
+      : undefined;
     const allFields = new Set([
       ...(fields ?? []),
-      entity.partitionKey,
-      ...(entity.sortKey ? [entity.sortKey] : []),
+      partitionKeyRef.key,
+      ...(sortKeyRef ? [sortKeyRef.key] : []),
     ]);
-    if (!entity.sortKey && request.prefix) {
-      throw new Error(
-        "Cannot use `prefix` when the entity does not have a sortKey."
-      );
+    if (request.prefix) {
+      if (!sortKeyRef?.key) {
+        throw new Error(
+          "Cannot use `prefix` when the entity does not have a sortKey."
+        );
+      } else if (sortKeyRef.type !== "string") {
+        throw new Error("Sort field must be a string to use the prefix field");
+      }
     }
     return queryPageWithToken<MarshalledEntitySchemaWithVersion<any>>(
       {
         dynamoClient: this.props.dynamo,
         pageSize: request.limit ?? 1000,
-        keys: entity.sortKey
-          ? [entity.partitionKey, entity.sortKey]
-          : [entity.partitionKey],
+        keys: sortKeyRef
+          ? [partitionKeyRef.key, sortKeyRef.key]
+          : [partitionKeyRef.key],
         nextToken: request.nextToken,
       },
       {
         TableName: this.tableName(name),
-        KeyConditionExpression: entity.sortKey
-          ? `#${entity.partitionKey}=:pk AND begins_with(#${entity.sortKey}, :sk)`
-          : `#${entity.partitionKey}=:pk`,
+        KeyConditionExpression: sortKeyRef
+          ? `#${partitionKeyRef.key}=:pk AND begins_with(#${sortKeyRef.key}, :sk)`
+          : `#${partitionKeyRef.key}=:pk`,
         ExpressionAttributeValues: {
           ":pk": { S: request.partition },
-          ...(entity.sortKey ? { ":sk": { S: request.prefix ?? "" } } : {}),
+          ...(sortKeyRef ? { ":sk": { S: request.prefix ?? "" } } : {}),
         },
         ExpressionAttributeNames: Object.fromEntries(
           [...allFields]?.map((f) => [`#${f}`, f])

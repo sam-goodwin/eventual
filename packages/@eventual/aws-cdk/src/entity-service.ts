@@ -3,10 +3,19 @@ import {
   entityServiceTableSuffix,
   ENV_NAMES,
 } from "@eventual/aws-runtime";
-import { EntityRuntime, EntityStreamFunction } from "@eventual/core-runtime";
-import { TransactionSpec } from "@eventual/core/internal";
+import {
+  EntityRuntime,
+  EntityStreamFunction,
+  normalizeKeySpec,
+} from "@eventual/core-runtime";
+import {
+  assertNever,
+  EntityKeySpec,
+  TransactionSpec,
+} from "@eventual/core/internal";
 import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
 import {
+  Attribute,
   AttributeType,
   BillingMode,
   ITable,
@@ -215,16 +224,9 @@ export class Entity extends Construct {
         props.serviceProps.serviceName,
         props.entity.name
       ),
-      partitionKey: {
-        name: props.entity.partitionKey,
-        // TODO: need to determine type...
-        type: AttributeType.STRING,
-      },
+      partitionKey: entityKeyReferenceToAttribute(props.entity.partitionKey),
       sortKey: props.entity.sortKey
-        ? {
-            name: props.entity.sortKey,
-            type: AttributeType.STRING,
-          }
+        ? entityKeyReferenceToAttribute(props.entity.sortKey)
         : undefined,
       billingMode: BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY,
@@ -333,4 +335,19 @@ export class EntityStream extends Construct implements EventualResource {
 
     this.grantPrincipal = this.handler.grantPrincipal;
   }
+}
+
+export function entityKeyReferenceToAttribute(ref: EntityKeySpec): Attribute {
+  const { key, type } = normalizeKeySpec(ref);
+  return {
+    name: key,
+    type:
+      type === "string"
+        ? AttributeType.STRING
+        : type === "number"
+        ? AttributeType.NUMBER
+        : type === "binary"
+        ? AttributeType.BINARY
+        : assertNever(type),
+  };
 }

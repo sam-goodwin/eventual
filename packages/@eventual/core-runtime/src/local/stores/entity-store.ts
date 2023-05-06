@@ -1,10 +1,14 @@
 import {
   AnyEntityKey,
-  EntityConsistencyOptions, EntityQueryRequest,
-  EntityQueryResult, EntityQueryResultEntry, EntitySetOptions,
+  EntityConsistencyOptions,
+  EntityKeyType,
+  EntityQueryRequest,
+  EntityQueryResult,
+  EntityQueryResultEntry,
+  EntitySetOptions,
   EntityTransactItem,
   TransactionCancelled,
-  UnexpectedVersion
+  UnexpectedVersion,
 } from "@eventual/core";
 import { assertNever } from "@eventual/core/internal";
 import { EntityProvider } from "../../providers/entity-provider.js";
@@ -12,7 +16,7 @@ import {
   convertNormalizedEntityKeyToMap,
   EntityStore,
   EntityWithMetadata,
-  normalizeCompositeKey
+  normalizeCompositeKey,
 } from "../../stores/entity-store.js";
 import { deserializeCompositeKey, serializeCompositeKey } from "../../utils.js";
 import { LocalEnvConnector } from "../local-container.js";
@@ -26,7 +30,7 @@ export interface LocalEntityStoreProps {
 export class LocalEntityStore implements EntityStore {
   private entities: Record<
     string,
-    Record<string, Map<string, EntityWithMetadata<any>>>
+    Map<EntityKeyType, Map<EntityKeyType, EntityWithMetadata<any>>>
   > = {};
 
   constructor(private props: LocalEntityStoreProps) {}
@@ -223,9 +227,15 @@ export class LocalEntityStore implements EntityStore {
 
     const result = paginateItems(
       entries,
-      (a, b) => a[0].localeCompare(b[0]),
+      (a, b) =>
+        typeof a[0] === "string"
+          ? a[0].localeCompare(b[0] as string)
+          : typeof a[0] === "number"
+          ? a[0] - (b[0] as number)
+          : 0,
       listRequest.prefix
-        ? ([key]) => key.startsWith(listRequest.prefix!)
+        ? ([key]) =>
+            typeof key === "string" && key.startsWith(listRequest.prefix!)
         : undefined,
       undefined,
       listRequest.limit,
@@ -235,12 +245,16 @@ export class LocalEntityStore implements EntityStore {
     return result;
   }
 
-  private getPartitionMap(entityName: string, partition: string) {
-    const entity = (this.entities[entityName] ??= {});
-    const namespaceMap = (entity[partition] ??= new Map<
-      string,
-      EntityWithMetadata<any>
+  private getPartitionMap(entityName: string, partition: EntityKeyType) {
+    const entity = (this.entities[entityName] ??= new Map<
+      EntityKeyType,
+      Map<EntityKeyType, EntityWithMetadata<any>>
     >());
-    return namespaceMap;
+    let partitionMap = entity.get(partition);
+    if (!partitionMap) {
+      partitionMap = new Map<EntityKeyType, EntityWithMetadata<any>>();
+      entity.set(partition, partitionMap);
+    }
+    return partitionMap;
   }
 }
