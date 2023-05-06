@@ -44,7 +44,6 @@ import {
   WorkflowEventType,
 } from "@eventual/core/internal";
 import stream from "stream";
-import { EntityClient } from "./clients/entity-client.js";
 import { EventClient } from "./clients/event-client.js";
 import { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { TaskClient, TaskWorkerRequest } from "./clients/task-client.js";
@@ -52,15 +51,16 @@ import { TimerClient } from "./clients/timer-client.js";
 import { TransactionClient } from "./clients/transaction-client.js";
 import { WorkflowClient } from "./clients/workflow-client.js";
 import { formatChildExecutionName, formatExecutionId } from "./execution.js";
-import { BucketStore } from "./index.js";
 import { normalizeError } from "./result.js";
 import { computeScheduleDate } from "./schedule.js";
+import { BucketStore } from "./stores/bucket-store.js";
+import { EntityStore } from "./stores/entity-store.js";
 import { createEvent } from "./workflow-events.js";
 import { WorkflowCall } from "./workflow-executor.js";
 
 interface WorkflowCallExecutorProps {
   bucketStore: BucketStore;
-  entityClient: EntityClient;
+  entityStore: EntityStore;
   eventClient: EventClient;
   executionQueueClient: ExecutionQueueClient;
   taskClient: TaskClient;
@@ -274,7 +274,7 @@ export class WorkflowCallExecutor {
             operation: call.operation,
             name: isEntityOperationOfType("transact", call)
               ? undefined
-              : call.name,
+              : call.entityName,
             result,
             seq,
           },
@@ -290,7 +290,7 @@ export class WorkflowCallExecutor {
             seq,
             name: isEntityOperationOfType("transact", call)
               ? undefined
-              : call.name,
+              : call.entityName,
             operation: call.operation,
             ...normalizeError(err),
           },
@@ -310,26 +310,13 @@ export class WorkflowCallExecutor {
 
     async function invokeEntityOperation(operation: EntityOperation) {
       if (isEntityOperationOfType("transact", operation)) {
-        return self.props.entityClient.transactWrite(operation.items);
+        return self.props.entityStore.transactWrite(operation.items);
       }
-      const entity = await self.props.entityClient.getEntity(operation.name);
-      if (!entity) {
-        throw new Error(`Entity ${operation.name} does not exist`);
-      }
-      if (isEntityOperationOfType("get", operation)) {
-        return entity.get(operation.key);
-      } else if (isEntityOperationOfType("getWithMetadata", operation)) {
-        return entity.getWithMetadata(operation.key);
-      } else if (isEntityOperationOfType("set", operation)) {
-        return entity.set(operation.key, operation.value, operation.options);
-      } else if (isEntityOperationOfType("delete", operation)) {
-        return entity.delete(operation.key, operation.options);
-      } else if (isEntityOperationOfType("list", operation)) {
-        return entity.list(operation.request);
-      } else if (isEntityOperationOfType("listKeys", operation)) {
-        return entity.listKeys(operation.request);
-      }
-      return assertNever(operation);
+      return self.props.entityStore[operation.operation](
+        operation.entityName,
+        // @ts-ignore
+        ...operation.params
+      );
     }
   }
 

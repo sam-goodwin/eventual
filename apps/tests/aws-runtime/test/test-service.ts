@@ -548,7 +548,10 @@ export const createAndDestroyWorkflow = workflow(
   }
 );
 
-export const counter = entity<{ n: number }>("counter2", z.any());
+export const counter = entity("counter2", {
+  schema: z.object({ n: z.number(), id: z.string() }),
+  partitionKey: "id",
+});
 const entityEvent = event<{ id: string }>("entityEvent");
 const entitySignal = signal("entitySignal");
 const entitySignal2 = signal<{ n: number }>("entitySignal2");
@@ -561,19 +564,19 @@ export const counterWatcher = counter.stream(
     // TODO: compute the possible operations union from the operations array
     if (item.operation === "remove") {
       const { n } = item.oldValue!;
-      await entitySignal2.sendSignal(item.key, { n: n + 1 });
+      await entitySignal2.sendSignal(item.key.id, { n: n + 1 });
     }
   }
 );
 
 export const counterNamespaceWatcher = counter.stream(
   "counterNamespaceWatch",
-  { namespacePrefixes: ["different"] },
+  { partitionPrefixes: ["different"] },
   async (item) => {
     if (item.operation === "insert") {
       const value = await counter.get(item.key);
-      await counter.set(item.key, { n: (value?.n ?? 0) + 1 });
-      await entitySignal.sendSignal(item.key);
+      await counter.set({ ...item.key, n: (value?.n ?? 0) + 1 });
+      await entitySignal.sendSignal(item.key.id);
     }
   }
 );
@@ -582,8 +585,8 @@ export const onEntityEvent = subscription(
   "onEntityEvent",
   { events: [entityEvent] },
   async ({ id }) => {
-    const value = await counter.get(id);
-    await counter.set(id, { n: (value?.n ?? 0) + 1 });
+    const value = await counter.get([id]);
+    await counter.set({ id, n: (value?.n ?? 0) + 1 });
     await entitySignal.sendSignal(id);
   }
 );
@@ -591,28 +594,27 @@ export const onEntityEvent = subscription(
 export const entityTask = task(
   "entityAct",
   async (_, { execution: { id } }) => {
-    const value = await counter.get(id);
-    await counter.set(id, { n: (value?.n ?? 0) + 1 });
+    const value = await counter.get([id]);
+    await counter.set({ id, n: (value?.n ?? 0) + 1 });
   }
 );
 
 export const entityWorkflow = workflow(
   "entityWorkflow",
   async (_, { execution: { id } }) => {
-    await counter.set(id, { n: 1 });
-    counter.set({ key: id, namespace: "different!" }, { n: 0 });
+    await counter.set({ id, n: 1 });
     await entitySignal.expectSignal();
     await entityTask();
     await Promise.all([entityEvent.emit({ id }), entitySignal.expectSignal()]);
     try {
       // will fail
-      await counter.set(id, { n: 0 }, { expectedVersion: 1 });
+      await counter.set({ id, n: 0 }, { expectedVersion: 1 });
     } catch (err) {
       console.error("expected the entity set to fail", err);
     }
-    const { entity, version } = (await counter.getWithMetadata(id)) ?? {};
-    await counter.set(id, { n: entity!.n + 1 }, { expectedVersion: version });
-    const value = await counter.get(id);
+    const { entity, version } = (await counter.getWithMetadata([id])) ?? {};
+    await counter.set({ id, n: entity!.n + 1 }, { expectedVersion: version });
+    const value = await counter.get([id]);
     await Entity.transactWrite([
       {
         entity: counter,
@@ -624,18 +626,21 @@ export const entityWorkflow = workflow(
       },
     ]);
     // send deletion, to be picked up by the stream
-    counter.delete(id);
-    await counter.list({});
+    counter.delete([id]);
+    await counter.query({ partition: id });
     // this signal will contain the final value after deletion
     return await entitySignal2.expectSignal();
   }
 );
 
-export const check = entity<{ n: number }>("check");
+export const check = entity("check", {
+  schema: z.object({ n: z.number(), id: z.string() }),
+  partitionKey: "id",
+});
 
 const gitErDone = transaction("gitErDone", async ({ id }: { id: string }) => {
-  const val = await check.get(id);
-  await check.set(id, { n: val?.n ?? 0 + 1 });
+  const val = await check.get([id]);
+  await check.set({ id, n: val?.n ?? 0 + 1 });
   return val?.n ?? 0 + 1;
 });
 
@@ -646,7 +651,7 @@ const noise = task(
     let transact: Promise<number> | undefined = undefined;
     while (n-- > 0) {
       try {
-        await check.set(id, { n });
+        await check.set({ id, n });
       } catch (err) {
         if (!(err instanceof TransactionConflictException)) {
           throw err;
@@ -666,11 +671,11 @@ export const transactionWorkflow = workflow(
     const one = await noise({ x: 40 });
     const two = await noise({ x: 60 });
     const [, three] = await Promise.allSettled([
-      check.set(id, { n: two ?? 0 + 1 }),
+      check.set({ id, n: two ?? 0 + 1 }),
       gitErDone({ id }),
-      check.set(id, { n: two ?? 0 + 1 }),
+      check.set({ id, n: two ?? 0 + 1 }),
     ]);
-    await check.delete(id);
+    await check.delete([id]);
     return [one, two, three.status === "fulfilled" ? three.value : "AHHH"];
   }
 );

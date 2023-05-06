@@ -8,7 +8,7 @@ import {
 import type { EventBridgeEvent } from "aws-lambda";
 import {
   createBucketStore,
-  createEntityClient,
+  createEntityStore,
   createEventClient,
   createServiceClient,
   createTransactionClient,
@@ -17,7 +17,7 @@ import { serviceName, serviceUrl } from "../env.js";
 
 export const processEvent = createSubscriptionWorker({
   bucketStore: createBucketStore(),
-  entityClient: createEntityClient(),
+  entityStore: createEntityStore(),
   // partially uses the runtime clients and partially uses the http client
   serviceClient: createServiceClient({
     eventClient: createEventClient(),

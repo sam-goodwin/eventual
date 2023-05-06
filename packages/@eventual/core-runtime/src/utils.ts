@@ -1,13 +1,14 @@
 import {
+  AnyEntity,
   BucketNotificationEvent,
-  CompositeKey,
+  EntityKeyTuple,
   EntityStreamItem,
 } from "@eventual/core";
 import {
   BucketNotificationHandlerSpec,
   EntityStreamSpec,
 } from "@eventual/core/internal";
-import { normalizeCompositeKey } from "./stores/entity-store.js";
+import { NormalizeEntityKey } from "./stores/entity-store.js";
 
 export async function promiseAllSettledPartitioned<T, R>(
   items: T[],
@@ -60,17 +61,16 @@ export function getLazy<T extends string | number | object | boolean>(
 
 export function serializeCompositeKey(
   entityName: string,
-  _key: string | CompositeKey
+  key: NormalizeEntityKey
 ) {
-  const { key, namespace } = normalizeCompositeKey(_key);
-  return `${entityName}|${namespace ?? ""}|${key}`;
+  return `${entityName}|${key.partition.value}|${key.sort?.value ?? ""}`;
 }
 
 export function deserializeCompositeKey(
   sKey: string
-): [string, string | CompositeKey] {
-  const [name, namespace, key] = sKey.split("|") as [string, string, string];
-  return [name, namespace ? { key, namespace } : key];
+): [string, EntityKeyTuple<any, any, any>] {
+  const [name, partition, sort] = sKey.split("|") as [string, string, string];
+  return [name, sort ? [partition, sort] : [partition]];
 }
 
 export function isEntityStreamItem(value: any): value is EntityStreamItem<any> {
@@ -83,22 +83,20 @@ export function isBucketNotificationEvent(
   return "bucketName" in value && "event" in value;
 }
 
-export function entityStreamMatchesItem(
-  item: EntityStreamItem<any>,
+export function entityStreamMatchesItem<E extends AnyEntity = AnyEntity>(
+  entity: E,
+  item: EntityStreamItem<E>,
   streamSpec: EntityStreamSpec
 ) {
+  const partition = item.key[entity.partitionKey];
   return (
     streamSpec.entityName === item.entityName &&
     (!streamSpec.options?.operations ||
       streamSpec.options.operations.includes(item.operation)) &&
-    (!streamSpec.options?.namespaces ||
-      (item.namespace &&
-        streamSpec.options.namespaces.includes(item.namespace))) &&
-    (!streamSpec.options?.namespacePrefixes ||
-      (item.namespace &&
-        streamSpec.options.namespacePrefixes.some((p) =>
-          item.namespace?.startsWith(p)
-        )))
+    (!streamSpec.options?.partitions ||
+      streamSpec.options.partitions.includes(partition)) &&
+    (!streamSpec.options?.partitionPrefixes ||
+      streamSpec.options.partitionPrefixes.some((p) => partition.startsWith(p)))
   );
 }
 

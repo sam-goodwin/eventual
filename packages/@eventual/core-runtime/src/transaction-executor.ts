@@ -1,6 +1,9 @@
 import type {
-  CompositeKey,
-  Entity,
+  AnyEntity,
+  EntityCompositeKey,
+  EntityConditionalOperation,
+  EntityDeleteOperation,
+  EntitySetOperation,
   EntityTransactItem,
   TransactionContext,
   TransactionFunction,
@@ -8,8 +11,7 @@ import type {
 import {
   assertNever,
   EmitEventsCall,
-  EntityDeleteOperation,
-  EntitySetOperation,
+  EntityOperation,
   EventualCallHook,
   EventualPromise,
   EventualPromiseSymbol,
@@ -26,14 +28,17 @@ import {
 import type { EventClient } from "./clients/event-client.js";
 import type { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { enterEventualCallHookScope } from "./eventual-hook.js";
+import { EntityProvider } from "./index.js";
 import { isResolved } from "./result.js";
 import {
+  convertNormalizedEntityKeyToMap,
   EntityStore,
   EntityWithMetadata,
   isTransactionCancelledResult,
   isTransactionConflictResult,
   isUnexpectedVersionResult,
   normalizeCompositeKey,
+  NormalizeEntityKey,
 } from "./stores/entity-store.js";
 import { serializeCompositeKey } from "./utils.js";
 
@@ -84,8 +89,14 @@ export interface TransactionExecutor {
   ): Promise<TransactionResult<Output>>;
 }
 
+interface TransactionFailedItem {
+  entityName: string;
+  key: EntityCompositeKey<any, any, any>;
+}
+
 export function createTransactionExecutor(
   entityStore: EntityStore,
+  entityProvider: EntityProvider,
   executionQueueClient: ExecutionQueueClient,
   eventClient: EventClient
 ): TransactionExecutor {
@@ -119,18 +130,11 @@ export function createTransactionExecutor(
       | { output: Output }
       | {
           canRetry: boolean;
-          failedItems: {
-            entityName: string;
-            key: string;
-            namespace?: string;
-          }[];
+          failedItems: TransactionFailedItem[];
         }
     > {
       // a map of the keys of all mutable entity calls that have been made to the request
-      const entityCalls = new Map<
-        string,
-        EntitySetOperation | EntityDeleteOperation
-      >();
+      const entityCalls = new Map<string, EntityOperation<"set" | "delete">>();
       // store all of the event and signal calls to execute after the transaction completes
       const eventCalls: (EmitEventsCall | SendSignalCall)[] = [];
       // a map of the keys of all get operations or mutation operations to check during the transaction.
@@ -139,7 +143,7 @@ export function createTransactionExecutor(
         string,
         {
           entityName: string;
-          key: string | CompositeKey;
+          key: NormalizeEntityKey;
           value: EntityWithMetadata<any> | undefined;
         }
       >();
@@ -152,17 +156,23 @@ export function createTransactionExecutor(
               isEntityOperationOfType("delete", eventual)
             ) {
               return createEventualPromise<
-                Awaited<ReturnType<Entity<any>["delete"] | Entity<any>["set"]>>
+                Awaited<ReturnType<AnyEntity["delete"] | AnyEntity["set"]>>
               >(async () => {
-                const entity = await resolveEntity(eventual.name, eventual.key);
+                const entity = getEntity(eventual.entityName);
+                // should either by the key or the value object, which can be used as the key
+                const key = eventual.params[0];
+                const entityValue = await resolveEntity(
+                  eventual.entityName,
+                  key
+                );
                 const normalizedKey = serializeCompositeKey(
-                  eventual.name,
-                  eventual.key
+                  entity.name,
+                  normalizeCompositeKey(entity, key)
                 );
 
                 entityCalls.set(normalizedKey, eventual);
                 return isEntityOperationOfType("set", eventual)
-                  ? { version: (entity?.version ?? 0) + 1 }
+                  ? { version: (entityValue?.version ?? 0) + 1 }
                   : undefined;
               });
             } else if (
@@ -170,7 +180,12 @@ export function createTransactionExecutor(
               isEntityOperationOfType("getWithMetadata", eventual)
             ) {
               return createEventualPromise(async () => {
-                const value = await resolveEntity(eventual.name, eventual.key);
+                const entity = getEntity(eventual.entityName);
+                const key = eventual.params[0];
+                const value = await resolveEntity(
+                  eventual.entityName,
+                  normalizeCompositeKey(entity, key)
+                );
 
                 if (isEntityOperationOfType("get", eventual)) {
                   return value?.entity;
@@ -242,27 +257,41 @@ export function createTransactionExecutor(
 
         const retrievedVersion = value?.version ?? 0;
         if (call) {
+          const [, options] = call.params;
           // if the user provided a version that was not the same that was retrieved
           // we will consider the transaction not retry-able on failure.
           // for example, if an entity is set with an expected version of 1,
           //              but the current version at set time is 2, this condition
           ///             will never be true.
           if (
-            call.options?.expectedVersion !== undefined &&
-            call.options?.expectedVersion !== retrievedVersion
+            options?.expectedVersion !== undefined &&
+            options?.expectedVersion !== retrievedVersion
           ) {
             versionOverridesIndices.add(i);
-            return { entity: entityName, operation: call };
           }
+
           return {
             entity: entityName,
-            operation: {
-              ...call,
-              options: {
-                ...call.options,
-                expectedVersion: retrievedVersion,
-              },
-            },
+            operation:
+              call.operation === "set"
+                ? ({
+                    operation: "set",
+                    value: call.params[0],
+                    options: {
+                      ...options,
+                      expectedVersion:
+                        options?.expectedVersion ?? retrievedVersion,
+                    },
+                  } satisfies EntitySetOperation<any>)
+                : ({
+                    operation: "delete",
+                    key: call.params[0],
+                    options: {
+                      ...options,
+                      expectedVersion:
+                        options?.expectedVersion ?? retrievedVersion,
+                    },
+                  } satisfies EntityDeleteOperation<any, any, any>),
           };
         } else {
           // values that are retrieved only, will be checked using a condition
@@ -270,9 +299,9 @@ export function createTransactionExecutor(
             entity: entityName,
             operation: {
               operation: "condition",
-              key,
+              key: convertNormalizedEntityKeyToMap(key),
               version: retrievedVersion,
-            },
+            } satisfies EntityConditionalOperation<any, any, any>,
           };
         }
       });
@@ -301,11 +330,18 @@ export function createTransactionExecutor(
           failedItems: result.reasons
             .map((r, i) => {
               if (isUnexpectedVersionResult(r)) {
-                const x = transactionItems[i]!;
-                const { key, namespace } = normalizeCompositeKey(
-                  x.operation.key
-                );
-                return { entityName: x.entity, key, namespace };
+                const x: EntityTransactItem<any, any, any> =
+                  transactionItems[i]!;
+                const entity =
+                  typeof x.entity === "string" ? getEntity(x.entity) : x.entity;
+                const key =
+                  x.operation.operation === "set"
+                    ? x.operation.value
+                    : x.operation.key;
+                return {
+                  entityName: entity.name,
+                  key,
+                } satisfies TransactionFailedItem;
               }
               return undefined;
             })
@@ -340,9 +376,17 @@ export function createTransactionExecutor(
 
       return { output };
 
+      function getEntity(entityName: string) {
+        const entity = entityProvider.getEntity(entityName);
+        if (!entity) {
+          throw new Error(`Entity ${entityName} was not found.`);
+        }
+        return entity;
+      }
+
       function resolveEntity(
         entityName: string,
-        key: string | CompositeKey
+        key: NormalizeEntityKey
       ): EventualPromise<EntityWithMetadata<any> | undefined> {
         const normalizedKey = serializeCompositeKey(entityName, key);
         if (retrievedEntities.has(normalizedKey)) {
@@ -351,7 +395,7 @@ export function createTransactionExecutor(
           );
         } else {
           return createEventualPromise(async () => {
-            const value = await entityStore.getEntityValue(entityName, key);
+            const value = await entityStore.get(entityName, key);
             retrievedEntities.set(normalizedKey, {
               entityName,
               key,

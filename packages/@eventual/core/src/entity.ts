@@ -1,9 +1,7 @@
-import type { z } from "zod";
+import { z } from "zod";
 import {
   createEventualCall,
   EntityCall,
-  EntityDeleteOperation,
-  EntitySetOperation,
   EventualCallKind,
 } from "./internal/calls.js";
 import { getEntityHook } from "./internal/entity-hook.js";
@@ -17,40 +15,32 @@ import {
 } from "./internal/service-spec.js";
 import type { ServiceContext } from "./service.js";
 
-export interface CompositeKey {
-  namespace: string;
-  key: string;
+export interface EntityQueryResultEntry<E extends EntityValue> {
+  entity: E;
+  version: number;
 }
 
-export interface EntityListResult<Entity> {
-  entries?: { key: string; entity: Entity; version: number }[];
+export interface EntityQueryResult<E extends EntityValue> {
+  entries?: EntityQueryResultEntry<E>[];
   /**
    * Returned when there are more values than the limit allowed to return.
    */
   nextToken?: string;
 }
 
-export interface EntityListKeysResult {
+export interface EntityQueryRequest<
+  E extends EntityValue,
+  Partition extends EntityKeyField<E>
+> {
   /**
-   * Keys that match the provided prefix. If using composite keys, this will only be the key part (not the namespace).
-   */
-  keys?: string[];
-  /**
-   * Returned when there are more values than the limit allowed to return.
-   */
-  nextToken?: string;
-}
-
-export interface EntityListRequest {
-  /**
-   * Namespace to retrieve values for.
+   * Partition key to retrieve values for.
    *
    * @default - retrieve values with no namespace.
    */
-  namespace?: string;
+  partition: E[Partition];
   /**
-   * Key prefix to retrieve values or keys for.
-   * Values are only retrieved for a single name + namespace pair (including no namespace).
+   * Sort key prefix to retrieve values or keys for.
+   * Values are only retrieved for a single name + partition pair.
    */
   prefix?: string;
   /**
@@ -88,65 +78,151 @@ export interface EntityStreamContext {
   service: ServiceContext;
 }
 
-export interface EntityStreamHandler<Entity> {
+export interface EntityStreamHandler<E extends AnyEntity> {
   /**
    * Provides the keys, new value
    */
-  (item: EntityStreamItem<Entity>, context: EntityStreamContext):
+  (item: EntityStreamItem<E>, context: EntityStreamContext):
     | Promise<void | false>
     | void
     | false;
 }
 
-export interface EntityStreamItemBase {
+export interface EntityStreamItemBase<E extends AnyEntity> {
   streamName: string;
   entityName: string;
-  namespace?: string;
-  key: string;
+  key: EntityCompositeKeyFromEntity<E>;
 }
 
-export type EntityStreamItem<Entity> =
-  | EntityStreamInsertItem<Entity>
-  | EntityStreamModifyItem<Entity>
-  | EntityStreamRemoveItem<Entity>;
+export type EntityStreamItem<E extends AnyEntity = AnyEntity> =
+  | EntityStreamInsertItem<E>
+  | EntityStreamModifyItem<E>
+  | EntityStreamRemoveItem<E>;
 
-export interface EntityStreamInsertItem<Entity> extends EntityStreamItemBase {
-  newValue: Entity;
+export interface EntityStreamInsertItem<E extends AnyEntity>
+  extends EntityStreamItemBase<E> {
+  newValue: EntitySchema<E>;
   newVersion: number;
   operation: "insert";
 }
 
-export interface EntityStreamModifyItem<Entity> extends EntityStreamItemBase {
+export interface EntityStreamModifyItem<E extends AnyEntity>
+  extends EntityStreamItemBase<E> {
   operation: "modify";
-  newValue: Entity;
+  newValue: EntitySchema<E>;
   newVersion: number;
-  oldValue?: Entity;
+  oldValue?: EntitySchema<E>;
   oldVersion?: number;
 }
 
-export interface EntityStreamRemoveItem<Entity> extends EntityStreamItemBase {
+export interface EntityStreamRemoveItem<E extends AnyEntity>
+  extends EntityStreamItemBase<E> {
   operation: "remove";
-  oldValue?: Entity;
+  oldValue?: EntitySchema<E>;
   oldVersion?: number;
 }
 
-export interface EntityStream<Entity> extends EntityStreamSpec {
+export interface EntityStream<E extends AnyEntity> extends EntityStreamSpec {
   kind: "EntityStream";
-  handler: EntityStreamHandler<Entity>;
+  handler: EntityStreamHandler<E>;
   sourceLocation?: SourceLocation;
 }
 
-export interface Entity<E> extends Omit<EntitySpec, "schema" | "streams"> {
+export type AnyEntity = Entity<any, any, any>;
+
+export type EntityValueMember =
+  | EntityValue
+  | string
+  | number
+  | boolean
+  | EntityValueMember[];
+
+export type EntityValue = {
+  [key: string]: EntityValueMember;
+};
+
+export type EntityKeyField<E extends EntityValue> = {
+  [K in keyof E]: K extends string
+    ? E[K] extends string | number
+      ? K
+      : never
+    : never;
+}[keyof E];
+
+// export type EntitySortKeyField<E, Partition extends keyof E> = Exclude<
+//   EntityKeyField<E>,
+//   Partition
+// >;
+
+export type EntityCompositeKeyFromEntity<E extends AnyEntity> =
+  E extends Entity<infer Schema, infer Partition, infer Sort>
+    ? EntityCompositeKey<Schema, Partition, Sort>
+    : never;
+
+export type EntityCompositeKey<
+  E extends EntityValue,
+  Partition extends EntityKeyField<E>,
+  Sort extends EntityKeyField<E> | undefined
+> = Sort extends undefined
+  ? Pick<E, Partition>
+  : Pick<E, Partition | Exclude<Sort, undefined>>;
+
+export type EntityKeyTuple<
+  E extends EntityValue,
+  Partition extends EntityKeyField<E>,
+  Sort extends EntityKeyField<E> | undefined
+> = Sort extends undefined
+  ? [p: E[Partition]]
+  : [p: E[Partition], s: E[Exclude<Sort, undefined>]];
+
+export type EntityKey<
+  E extends EntityValue,
+  Partition extends EntityKeyField<E>,
+  Sort extends EntityKeyField<E> | undefined
+> = EntityCompositeKey<E, Partition, Sort> | EntityKeyTuple<E, Partition, Sort>;
+
+export type AnyEntityKey = EntityKey<any, string, string | undefined>;
+
+export type EntityPartitionKey<E extends AnyEntity> = E extends Entity<
+  EntitySchema<E>,
+  infer Partition,
+  any
+>
+  ? Partition
+  : never;
+export type EntitySortKey<E extends AnyEntity> = E extends Entity<
+  EntitySchema<E>,
+  EntityPartitionKey<E>,
+  infer Sort
+>
+  ? Sort
+  : never;
+export type EntitySchema<E extends AnyEntity> = E extends Entity<
+  infer Schema,
+  any,
+  any
+>
+  ? Schema
+  : never;
+
+export interface Entity<
+  E extends EntityValue,
+  P extends EntityKeyField<E>,
+  S extends EntityKeyField<E> | undefined
+> extends Omit<EntitySpec, "schema" | "streams" | "partitionKey" | "sortKey"> {
+  __entityBrand: E;
   kind: "Entity";
+  partitionKey: P;
+  sortKey?: S;
   schema?: z.Schema<E>;
-  streams: EntityStream<E>[];
+  streams: EntityStream<Entity<E, P, S>>[];
   /**
    * Get a value.
    * If your values use composite keys, the namespace must be provided.
    *
    * @param key - key or {@link CompositeKey} of the value to retrieve.
    */
-  get(key: string | CompositeKey): Promise<E | undefined>;
+  get(key: EntityKey<E, P, S>): Promise<E | undefined>;
   /**
    * Get a value and metadata like version.
    * If your values use composite keys, the namespace must be provided.
@@ -154,7 +230,7 @@ export interface Entity<E> extends Omit<EntitySpec, "schema" | "streams"> {
    * @param key - key or {@link CompositeKey} of the value to retrieve.
    */
   getWithMetadata(
-    key: string | CompositeKey
+    key: EntityKey<E, P, S>
   ): Promise<{ entity: E; version: number } | undefined>;
   /**
    * Sets or updates a value within an entity and optionally a namespace.
@@ -162,16 +238,12 @@ export interface Entity<E> extends Omit<EntitySpec, "schema" | "streams"> {
    * Values with namespaces are considered distinct from value without a namespace or within different namespaces.
    * Values and keys can only be listed within a single namespace.
    */
-  set(
-    key: string | CompositeKey,
-    entity: E,
-    options?: EntitySetOptions
-  ): Promise<{ version: number }>;
+  set(entity: E, options?: EntitySetOptions): Promise<{ version: number }>;
   /**
    * Deletes a single entry within an entity and namespace.
    */
   delete(
-    key: string | CompositeKey,
+    key: EntityKey<E, P, S>,
     options?: EntityConsistencyOptions
   ): Promise<void>;
   /**
@@ -179,39 +251,56 @@ export interface Entity<E> extends Omit<EntitySpec, "schema" | "streams"> {
    *
    * If namespace is not provided, only values which do not use composite keys will be returned.
    */
-  list(request: EntityListRequest): Promise<EntityListResult<E>>;
-  /**
-   * List keys that match a prefix within an entity and namespace.
-   *
-   * If namespace is not provided, only values which do not use composite keys will be returned.
-   */
-  listKeys(request: EntityListRequest): Promise<EntityListKeysResult>;
+  query(request: EntityQueryRequest<E, P>): Promise<EntityQueryResult<E>>;
   stream(
     name: string,
     options: EntityStreamOptions,
-    handler: EntityStreamHandler<E>
-  ): EntityStream<E>;
-  stream(name: string, handler: EntityStreamHandler<E>): EntityStream<E>;
+    handler: EntityStreamHandler<Entity<E, P, S>>
+  ): EntityStream<Entity<E, P, S>>;
+  stream(
+    name: string,
+    handler: EntityStreamHandler<Entity<E, P, S>>
+  ): EntityStream<Entity<E, P, S>>;
 }
 
 export interface EntityTransactItem<
-  E = any,
-  D extends string | Entity<E> = string | Entity<E>
+  E extends EntityValue,
+  P extends EntityKeyField<E> = EntityKeyField<E>,
+  S extends EntityKeyField<E> | undefined = EntityKeyField<E> | undefined
 > {
-  entity: D;
+  entity: Entity<E, P, S> | string;
   operation:
-    | Omit<EntitySetOperation<E>, "name">
-    | Omit<EntityDeleteOperation, "name">
-    | Omit<EntityConditionalOperation, "name">;
+    | EntitySetOperation<E>
+    | EntityDeleteOperation<E, P, S>
+    | EntityConditionalOperation<E, P, S>;
+}
+
+export interface EntitySetOperation<E extends EntityValue> {
+  operation: "set";
+  value: E;
+  options?: EntitySetOptions;
+}
+
+export interface EntityDeleteOperation<
+  E extends EntityValue,
+  P extends EntityKeyField<E>,
+  S extends EntityKeyField<E> | undefined
+> {
+  operation: "delete";
+  key: EntityKey<E, P, S>;
+  options?: EntitySetOptions;
 }
 
 /**
  * Used in transactions, cancels the transaction if the key's version does not match.
  */
-export interface EntityConditionalOperation {
+export interface EntityConditionalOperation<
+  E extends EntityValue = EntityValue,
+  P extends EntityKeyField<E> = EntityKeyField<E>,
+  S extends EntityKeyField<E> | undefined = EntityKeyField<E> | undefined
+> {
   operation: "condition";
-  name: string;
-  key: string | CompositeKey;
+  key: EntityKey<E, P, S>;
   version?: number;
 }
 
@@ -231,7 +320,21 @@ export const Entity = {
   },
 };
 
-export function entity<E>(name: string, schema?: z.Schema<E>): Entity<E> {
+export interface EntityOptions<
+  E extends EntityValue,
+  P extends string,
+  S extends string | undefined
+> {
+  partitionKey: P;
+  sortKey?: S;
+  schema: z.Schema<E>;
+}
+
+export function entity<
+  E extends EntityValue,
+  P extends EntityKeyField<E>,
+  S extends EntityKeyField<E> | undefined
+>(name: string, options: EntityOptions<E, P, S>): Entity<E, P, S> {
   if (entities().has(name)) {
     throw new Error(`entity with name '${name}' already exists`);
   }
@@ -239,116 +342,98 @@ export function entity<E>(name: string, schema?: z.Schema<E>): Entity<E> {
   /**
    * Used to maintain a limited number of streams on the entity.
    */
-  const streams: EntityStream<E>[] = [];
+  const streams: EntityStream<Entity<E, P, S>>[] = [];
 
-  const entity: Entity<E> = {
+  const entity: Entity<E, P, S> = {
+    // @ts-ignore
+    __entityBrand: undefined,
     kind: "Entity",
     name,
-    schema,
+    partitionKey: options.partitionKey,
+    sortKey: options.sortKey,
+    schema: options.schema,
     streams,
-    get: (key: string | CompositeKey) => {
+    get: (...args) => {
       return getEventualCallHook().registerEventualCall(
         createEventualCall<EntityCall<"get">>(EventualCallKind.EntityCall, {
-          name,
           operation: "get",
-          key,
+          entityName: name,
+          params: args,
         }),
         async () => {
-          return (await getEntity()).get(key);
+          return getEntityHook().get(name, ...args);
         }
       );
     },
-    getWithMetadata: (key: string | CompositeKey) => {
+    getWithMetadata: (...args) => {
       return getEventualCallHook().registerEventualCall(
         createEventualCall<EntityCall<"getWithMetadata">>(
           EventualCallKind.EntityCall,
           {
-            name,
             operation: "getWithMetadata",
-            key,
+            entityName: name,
+            params: args,
           }
         ),
         async () => {
-          return (await getEntity()).getWithMetadata(key);
+          return getEntityHook().getWithMetadata(name, ...args);
         }
       );
     },
-    set: (
-      key: string | CompositeKey,
-      entity: E,
-      options?: EntitySetOptions
-    ) => {
+    set: (...args) => {
       return getEventualCallHook().registerEventualCall(
         createEventualCall<EntityCall<"set">>(EventualCallKind.EntityCall, {
-          name,
+          entityName: name,
           operation: "set",
-          key,
-          options,
-          value: entity,
+          params: args,
         }),
         async () => {
-          return (await getEntity()).set(key, entity, options);
+          return getEntityHook().set(name, ...args);
         }
       );
     },
-    delete: (key, options) => {
+    delete: (...args) => {
       return getEventualCallHook().registerEventualCall(
         createEventualCall<EntityCall<"delete">>(EventualCallKind.EntityCall, {
-          name,
+          entityName: name,
           operation: "delete",
-          key,
-          options,
+          params: args,
         }),
         async () => {
-          return (await getEntity()).delete(key, options);
+          return getEntityHook().delete(name, ...args);
         }
       );
     },
-    list: (request) => {
+    query: (...args) => {
       return getEventualCallHook().registerEventualCall(
-        createEventualCall<EntityCall<"list">>(EventualCallKind.EntityCall, {
-          name,
-          operation: "list",
-          request,
+        createEventualCall<EntityCall<"query">>(EventualCallKind.EntityCall, {
+          entityName: name,
+          operation: "query",
+          params: args,
         }),
         async () => {
-          return (await getEntity()).list(request);
-        }
-      );
-    },
-    listKeys: (request) => {
-      return getEventualCallHook().registerEventualCall(
-        createEventualCall<EntityCall<"listKeys">>(
-          EventualCallKind.EntityCall,
-          {
-            name,
-            operation: "listKeys",
-            request,
-          }
-        ),
-        async () => {
-          return (await getEntity()).listKeys(request);
+          return getEntityHook().query(name, ...args);
         }
       );
     },
     stream: (
       ...args:
-        | [name: string, handler: EntityStreamHandler<E>]
+        | [name: string, handler: EntityStreamHandler<Entity<E, P, S>>]
         | [
             name: string,
             options: EntityStreamOptions,
-            handler: EntityStreamHandler<E>
+            handler: EntityStreamHandler<Entity<E, P, S>>
           ]
         | [
             sourceLocation: SourceLocation,
             name: string,
-            handler: EntityStreamHandler<E>
+            handler: EntityStreamHandler<Entity<E, P, S>>
           ]
         | [
             sourceLocation: SourceLocation,
             name: string,
             options: EntityStreamOptions,
-            handler: EntityStreamHandler<E>
+            handler: EntityStreamHandler<Entity<E, P, S>>
           ]
     ) => {
       const [sourceLocation, streamName, options, handler] =
@@ -364,7 +449,7 @@ export function entity<E>(name: string, schema?: z.Schema<E>): Entity<E> {
         throw new Error("Only two streams are allowed per entity.");
       }
 
-      const entityStream: EntityStream<E> = {
+      const entityStream: EntityStream<Entity<E, P, S>> = {
         kind: "EntityStream",
         handler,
         name: streamName,
@@ -382,36 +467,27 @@ export function entity<E>(name: string, schema?: z.Schema<E>): Entity<E> {
   entities().set(name, entity);
 
   return entity;
-
-  async function getEntity() {
-    const entityHook = getEntityHook();
-    const entity = await entityHook.getEntity<E>(name);
-    if (!entity) {
-      throw new Error(`Entity ${name} does not exist.`);
-    }
-    return entity;
-  }
 }
 
-export function entityStream<E>(
+export function entityStream<E extends AnyEntity>(
   ...args:
-    | [name: string, entity: Entity<E>, handler: EntityStreamHandler<E>]
+    | [name: string, entity: E, handler: EntityStreamHandler<E>]
     | [
         name: string,
-        entity: Entity<E>,
+        entity: E,
         options: EntityStreamOptions,
         handler: EntityStreamHandler<E>
       ]
     | [
         sourceLocation: SourceLocation,
         name: string,
-        entity: Entity<E>,
+        entity: E,
         handler: EntityStreamHandler<E>
       ]
     | [
         sourceLocation: SourceLocation,
         name: string,
-        entity: Entity<E>,
+        entity: E,
         options: EntityStreamOptions,
         handler: EntityStreamHandler<E>
       ]
@@ -422,11 +498,11 @@ export function entityStream<E>(
       : args.length === 5
       ? args
       : isSourceLocation(args[0])
-      ? [args[0], args[1] as string, args[2] as Entity<E>, , args[3]]
+      ? [args[0], args[1] as string, args[2] as E, , args[3]]
       : [
           ,
           args[0] as string,
-          args[1] as Entity<E>,
+          args[1] as E,
           args[2] as EntityStreamOptions,
           args[3],
         ];

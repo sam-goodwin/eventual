@@ -1,41 +1,12 @@
-import type {
-  CompositeKey,
-  EntityConsistencyOptions,
-  EntityListKeysResult,
-  EntityListRequest,
-  EntityListResult,
-  EntitySetOptions,
-  EntityTransactItem,
+import {
+  AnyEntity,
+  AnyEntityKey,
+  EntityCompositeKey,
+  EntityKeyTuple,
 } from "@eventual/core";
+import { EntityHook } from "@eventual/core/internal";
 
-export interface EntityStore {
-  getEntityValue<Entity>(
-    name: string,
-    key: string | CompositeKey
-  ): Promise<EntityWithMetadata<Entity> | undefined>;
-  setEntityValue<Entity>(
-    name: string,
-    key: string | CompositeKey,
-    entity: Entity,
-    options?: EntitySetOptions
-  ): Promise<{ version: number } | UnexpectedVersionResult>;
-  deleteEntityValue(
-    name: string,
-    key: string | CompositeKey,
-    options?: EntityConsistencyOptions
-  ): Promise<void | UnexpectedVersionResult>;
-  listEntityEntries<Entity>(
-    name: string,
-    request: EntityListRequest
-  ): Promise<EntityListResult<Entity>>;
-  listEntityKeys(
-    name: string,
-    request: EntityListRequest
-  ): Promise<EntityListKeysResult>;
-  transactWrite(
-    items: EntityTransactItem<any, string>[]
-  ): Promise<TransactionCancelledResult | TransactionConflictResult | void>;
-}
+export interface EntityStore extends EntityHook {}
 
 export interface EntityWithMetadata<Entity> {
   entity: Entity;
@@ -72,6 +43,61 @@ export function isTransactionConflictResult(
   return value && "transactionConflict" in value;
 }
 
-export function normalizeCompositeKey(key: string | CompositeKey) {
-  return typeof key === "string" ? { key, namespace: undefined } : key;
+export interface NormalizeEntityKey {
+  partition: { field: string; value: string };
+  sort?: { field: string; value: string };
+}
+
+export function normalizeCompositeKey(
+  entity: AnyEntity,
+  key: AnyEntityKey
+): NormalizeEntityKey {
+  if (Array.isArray(key)) {
+    const [partition, sort] = key;
+
+    return entity.sortKey
+      ? {
+          partition: { field: entity.partitionKey, value: partition },
+          sort: { field: entity.sortKey, value: sort },
+        }
+      : {
+          partition: { field: entity.partitionKey, value: partition },
+        };
+  } else {
+    return entity.sortKey
+      ? {
+          partition: {
+            field: entity.partitionKey,
+            value: key[entity.partitionKey],
+          },
+          sort: { field: entity.sortKey, value: key[entity.sortKey] },
+        }
+      : {
+          partition: {
+            field: entity.partitionKey,
+            value: key[entity.partitionKey],
+          },
+        };
+  }
+}
+
+export function convertNormalizedEntityKeyToMap(
+  key: NormalizeEntityKey
+): EntityCompositeKey<any, any, any> {
+  return key.sort
+    ? {
+        [key.partition.field]: key.partition.value,
+        [key.sort.field]: key.sort.value,
+      }
+    : {
+        [key.partition.field]: key.partition.value,
+      };
+}
+
+export function convertNormalizedEntityKeyToTuple(
+  key: NormalizeEntityKey
+): EntityKeyTuple<any, any, any> {
+  return key.sort
+    ? [key.partition.value, key.sort.value]
+    : [key.partition.value];
 }

@@ -1,16 +1,11 @@
 import type { Bucket } from "../bucket.js";
 import type { ConditionPredicate } from "../condition.js";
-import type {
-  CompositeKey,
-  EntityConsistencyOptions,
-  EntityListRequest,
-  EntitySetOptions,
-  EntityTransactItem,
-} from "../entity.js";
+import type { AnyEntity, EntityTransactItem } from "../entity.js";
 import type { EventEnvelope } from "../event.js";
 import type { DurationSchedule, Schedule } from "../schedule.js";
 import type { WorkflowExecutionOptions } from "../workflow.js";
 import type { BucketMethod } from "./bucket-hook.js";
+import { EntityMethod } from "./entity-hook.js";
 import type { SignalTarget } from "./signal.js";
 
 export type EventualCall =
@@ -107,58 +102,21 @@ export type EntityCall<
 
 export function isEntityOperationOfType<
   OpType extends EntityOperation["operation"]
->(
-  operation: OpType,
-  call: EntityOperation
-): call is EntityOperation & { operation: OpType } {
+>(operation: OpType, call: EntityOperation): call is EntityOperation<OpType> {
   return call.operation === operation;
 }
 
-export interface EntityOperationBase {
-  name: string;
-}
-
-export type EntityOperation =
-  | EntityDeleteOperation
-  | EntityGetOperation
-  | EntityGetWithMetadataOperation
-  | EntityListOperation
-  | EntityListKeysOperation
-  | EntitySetOperation
-  | EntityTransactOperation;
-
-export interface EntityGetOperation extends EntityOperationBase {
-  operation: "get";
-  key: string | CompositeKey;
-}
-
-export interface EntityGetWithMetadataOperation extends EntityOperationBase {
-  operation: "getWithMetadata";
-  key: string | CompositeKey;
-}
-
-export interface EntityDeleteOperation extends EntityOperationBase {
-  operation: "delete";
-  key: string | CompositeKey;
-  options?: EntityConsistencyOptions;
-}
-
-export interface EntitySetOperation<E = any> extends EntityOperationBase {
-  operation: "set";
-  key: string | CompositeKey;
-  value: E;
-  options?: EntitySetOptions;
-}
-
-export interface EntityListOperation extends EntityOperationBase {
-  operation: "list";
-  request: EntityListRequest;
-}
-
-export interface EntityListKeysOperation extends EntityOperationBase {
-  operation: "listKeys";
-  request: EntityListRequest;
-}
+export type EntityOperation<
+  Op extends EntityMethod | EntityTransactOperation["operation"] =
+    | EntityMethod
+    | EntityTransactOperation["operation"]
+> = Op extends EntityMethod
+  ? {
+      operation: Op;
+      entityName: string;
+      params: Parameters<AnyEntity[Op]>;
+    }
+  : EntityTransactOperation;
 
 export interface EntityTransactOperation {
   operation: "transact";

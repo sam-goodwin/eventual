@@ -12,7 +12,7 @@ import { EntityStreamOperation } from "@eventual/core/internal";
 import { DynamoDBStreamHandler } from "aws-lambda";
 import {
   createBucketStore,
-  createEntityClient,
+  createEntityStore,
   createServiceClient,
 } from "../create.js";
 import {
@@ -22,10 +22,12 @@ import {
   serviceUrl,
 } from "../env.js";
 import { EntityEntityRecord } from "../stores/entity-store.js";
+import { unmarshall } from "@aws-sdk/util-dynamodb";
+import { AttributeValue } from "@aws-sdk/client-dynamodb";
 
 const worker = createEntityStreamWorker({
   bucketStore: createBucketStore(),
-  entityClient: createEntityClient(),
+  entityStore: createEntityStore(),
   serviceClient: createServiceClient({}),
   serviceSpec,
   serviceName,
@@ -40,9 +42,7 @@ export default (async (event) => {
     records,
     async (record) => {
       try {
-        const keys = record.dynamodb?.Keys as Partial<EntityEntityRecord>;
-        const pk = keys?.pk?.S;
-        const sk = keys?.sk?.S;
+        const keys = record.dynamodb?.Keys;
         const operation = record.eventName?.toLowerCase() as
           | EntityStreamOperation
           | undefined;
@@ -53,29 +53,24 @@ export default (async (event) => {
           | Partial<EntityEntityRecord>
           | undefined;
 
-        if (pk && sk && operation) {
-          const namespace =
-            EntityEntityRecord.parseNamespaceFromPartitionKey(pk);
-          const key = EntityEntityRecord.parseKeyFromSortKey(sk);
+        const { __version: newVersion = undefined, ...newValue } = newItem
+          ? unmarshall(newItem as Record<string, AttributeValue>)
+          : {};
 
-          const item: EntityStreamItem<any> = {
+        const { __version: oldVersion = undefined, ...oldValue } = oldItem
+          ? unmarshall(newItem as Record<string, AttributeValue>)
+          : {};
+
+        if (keys && operation) {
+          const item: EntityStreamItem = {
             entityName: getLazy(entityName),
             streamName: getLazy(entityStreamName),
-            namespace,
-            key,
-            newValue: newItem?.value?.S
-              ? JSON.parse(newItem?.value?.S)
-              : undefined,
-            newVersion: newItem?.version?.N
-              ? Number(newItem?.version?.N)
-              : (undefined as any),
+            key: unmarshall(keys as Record<string, AttributeValue>),
+            newValue,
+            newVersion,
             operation,
-            oldValue: oldItem?.value?.S
-              ? JSON.parse(oldItem?.value?.S)
-              : undefined,
-            oldVersion: oldItem?.version?.N
-              ? Number(oldItem?.version?.N)
-              : undefined,
+            oldValue,
+            oldVersion,
           };
 
           return worker(item);

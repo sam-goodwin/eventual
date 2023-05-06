@@ -1,5 +1,4 @@
 import {
-  EntityEntityRecord,
   entityServiceTableName,
   entityServiceTableSuffix,
   ENV_NAMES,
@@ -217,13 +216,16 @@ export class Entity extends Construct {
         props.entity.name
       ),
       partitionKey: {
-        name: "pk",
+        name: props.entity.partitionKey,
+        // TODO: need to determine type...
         type: AttributeType.STRING,
       },
-      sortKey: {
-        name: "sk",
-        type: AttributeType.STRING,
-      },
+      sortKey: props.entity.sortKey
+        ? {
+            name: props.entity.sortKey,
+            type: AttributeType.STRING,
+          }
+        : undefined,
       billingMode: BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY,
       // only include the stream if there are listeners
@@ -257,8 +259,8 @@ export class EntityStream extends Construct implements EventualResource {
   constructor(scope: Construct, id: string, props: EntityStreamProps) {
     super(scope, id);
 
-    const namespaces = props.stream.spec.options?.namespaces;
-    const namespacePrefixes = props.stream.spec.options?.namespacePrefixes;
+    const partitions = props.stream.spec.options?.partitions;
+    const partitionPrefixes = props.stream.spec.options?.partitionPrefixes;
     const streamName = props.stream.spec.name;
     const entityName = props.stream.spec.entityName;
 
@@ -272,24 +274,19 @@ export class EntityStream extends Construct implements EventualResource {
             ),
           }
         : undefined),
-      ...((namespaces && namespaces.length > 0) ||
-      (namespacePrefixes && namespacePrefixes.length > 0)
+      ...((partitions && partitions.length > 0) ||
+      (partitionPrefixes && partitionPrefixes.length > 0)
         ? {
             dynamodb: {
               Keys: {
                 pk: {
                   S: FilterRule.or(
                     // for each namespace given, match the complete name.
-                    ...(namespaces
-                      ? namespaces.map((n) => EntityEntityRecord.key(n))
-                      : []),
+                    ...(partitions ? partitions : []),
                     // for each namespace prefix given, build a prefix statement for each one.
-                    ...(namespacePrefixes
-                      ? namespacePrefixes.flatMap(
-                          (n) =>
-                            FilterRule.beginsWith(
-                              EntityEntityRecord.key(n)
-                            ) as unknown as string[]
+                    ...(partitionPrefixes
+                      ? partitionPrefixes.flatMap(
+                          (n) => FilterRule.beginsWith(n) as unknown as string[]
                         )
                       : [])
                   ),

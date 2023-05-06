@@ -151,7 +151,12 @@ export class LocalEnvironment {
       entityStreamItems.forEach((i) => {
         const streamNames = [...entities().values()]
           .flatMap((d) => d.streams)
-          .filter((s) => entityStreamMatchesItem(i, s))
+          .filter((s) => {
+            const entity = this.localContainer.entityProvider.getEntity(
+              i.entityName
+            );
+            return entityStreamMatchesItem(entity, i, s);
+          })
           .map((s) => s.name);
         streamNames.forEach((streamName) => {
           this.localContainer.entityStreamWorker({

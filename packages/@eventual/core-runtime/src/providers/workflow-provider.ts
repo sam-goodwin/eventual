@@ -3,12 +3,6 @@ import { workflows, ServiceSpec } from "@eventual/core/internal";
 
 export interface WorkflowProvider extends WorkflowSpecProvider {
   lookupWorkflow(workflowName: string): Workflow | undefined;
-  getWorkflowNames(): string[];
-}
-
-export interface WorkflowSpecProvider {
-  workflowExists(workflowName: string): boolean;
-  getWorkflowNames(): string[];
 }
 
 export interface WorkflowSpecProvider {

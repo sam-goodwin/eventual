@@ -163,6 +163,8 @@ export interface BucketNotificationHandlerSpec {
 
 export interface EntitySpec {
   name: string;
+  partitionKey: string;
+  sortKey?: string;
   /**
    * An Optional schema for the entity within an entity.
    */
@@ -188,13 +190,13 @@ export interface EntityStreamOptions extends FunctionRuntimeProps {
    *
    * If neither `namespaces` or `namespacePrefixes` are provided, all namespaces will be sent.
    */
-  namespaces?: string[];
+  partitions?: string[];
   /**
    * One or more namespace prefixes to match.
    *
    * If neither `namespaces` or `namespacePrefixes` are provided, all namespaces will be sent.
    */
-  namespacePrefixes?: string[];
+  partitionPrefixes?: string[];
 }
 
 export interface EntityStreamSpec {

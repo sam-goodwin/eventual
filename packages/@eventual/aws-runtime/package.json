@@ -21,6 +21,7 @@
     "@aws-sdk/client-scheduler": "^3.254.0",
     "@aws-sdk/client-sqs": "^3.254.0",
     "@aws-sdk/s3-request-presigner": "^3.254.0",
+    "@aws-sdk/util-dynamodb": "^3.254.0",
     "@eventual/aws-client": "workspace:^",
     "@eventual/core": "workspace:^",
     "@eventual/core-runtime": "workspace:^",

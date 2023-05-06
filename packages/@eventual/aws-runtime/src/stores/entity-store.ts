@@ -13,24 +13,26 @@ import {
   Update,
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
-  CompositeKey,
+  AnyEntity,
+  AnyEntityKey,
   EntityConsistencyOptions,
-  EntityListKeysResult,
-  EntityListRequest,
-  EntityListResult,
+  EntityQueryRequest,
+  EntityQueryResult,
+  EntitySchema,
   EntitySetOptions,
   EntityTransactItem,
+  EntityValue,
+  TransactionCancelled,
+  UnexpectedVersion,
 } from "@eventual/core";
 import {
+  EntityProvider,
   EntityStore,
-  EntityWithMetadata,
   getLazy,
   LazyValue,
   normalizeCompositeKey,
-  TransactionCancelledResult,
-  TransactionConflictResult,
-  UnexpectedVersionResult,
 } from "@eventual/core-runtime";
 import { assertNever } from "@eventual/core/internal";
 import { entityServiceTableName, queryPageWithToken } from "../utils.js";
@@ -38,24 +40,35 @@ import { entityServiceTableName, queryPageWithToken } from "../utils.js";
 export interface AWSEntityStoreProps {
   dynamo: DynamoDBClient;
   serviceName: LazyValue<string>;
+  entityProvider: EntityProvider;
 }
+
+export type EntitySchemaWithVersion<E extends AnyEntity> = EntitySchema<E> & {
+  __version: number;
+};
+
+export type MarshalledEntitySchemaWithVersion<E extends AnyEntity> = {
+  [k in keyof EntitySchema<E>]: AttributeValue;
+} & {
+  __version: AttributeValue.NMember;
+};
 
 export class AWSEntityStore implements EntityStore {
   constructor(private props: AWSEntityStoreProps) {}
 
-  public async getEntityValue<Entity>(
-    name: string,
-    _key: string | CompositeKey
-  ): Promise<EntityWithMetadata<Entity> | undefined> {
+  async get(entityName: string, key: AnyEntityKey): Promise<any> {
+    return (await this.getWithMetadata(entityName, key))?.entity;
+  }
+
+  async getWithMetadata(
+    entityName: string,
+    key: Pick<any, string> | [p: string, s: string]
+  ): Promise<{ entity: any; version: number } | undefined> {
+    const entity = this.getEntity(entityName);
     const item = await this.props.dynamo.send(
       new GetItemCommand({
-        Key: this.entityKey(_key),
+        Key: this.entityKey(key, entity),
         TableName: this.tableName(name),
-        ProjectionExpression: "#value,#version",
-        ExpressionAttributeNames: {
-          "#version": "version",
-          "#value": "value",
-        },
         ConsistentRead: true,
       })
     );
@@ -64,101 +77,75 @@ export class AWSEntityStore implements EntityStore {
       return undefined;
     }
 
-    const record = item.Item as EntityEntityRecord;
+    const { __version, ...record } = unmarshall(
+      item.Item
+    ) as EntitySchemaWithVersion<any>;
 
     return {
-      entity: JSON.parse(record.value.S),
-      version: Number(record.version.N),
+      entity: record,
+      version: __version,
     };
   }
 
-  public async setEntityValue<Entity>(
-    name: string,
-    _key: string | CompositeKey,
-    entity: Entity,
-    options?: EntitySetOptions
-  ): Promise<{ version: number } | UnexpectedVersionResult> {
+  async set(
+    entityName: string,
+    entity: any,
+    options?: EntitySetOptions | undefined
+  ): Promise<{ version: number }> {
     try {
       const result = await this.props.dynamo.send(
         new UpdateItemCommand({
-          ...this.createSetRequest(name, _key, entity, options),
+          ...this.createSetRequest(entityName, entity, options),
           ReturnValues: ReturnValue.ALL_NEW,
         })
       );
 
       const record = result.Attributes as EntityEntityRecord;
 
-      return { version: Number(record.version.N) };
+      return { version: Number(record.__version.N) };
     } catch (err) {
       if (err instanceof ConditionalCheckFailedException) {
-        return { unexpectedVersion: true };
+        throw new UnexpectedVersion("Unexpected Version");
       }
       throw err;
     }
   }
 
-  private createSetRequest<Entity>(
-    name: string,
-    _key: string | CompositeKey,
-    entity: Entity,
-    options?: EntitySetOptions
-  ): Update {
-    const value = JSON.stringify(entity);
-    return {
-      Key: this.entityKey(_key),
-      UpdateExpression:
-        "SET #value=:value, #version=if_not_exists(#version, :startingVersion) + :versionIncrement",
-      ExpressionAttributeNames: {
-        "#value": "value",
-        "#version": "version",
-      },
-      ExpressionAttributeValues: {
-        ...(options?.expectedVersion
-          ? {
-              ":expectedVersion": { N: options.expectedVersion.toString() },
-            }
-          : undefined),
-        ":value": { S: value },
-        ":startingVersion": { N: "0" },
-        ":versionIncrement": {
-          N: options?.incrementVersion === false ? "0" : "1",
-        },
-      },
-      ConditionExpression:
-        options?.expectedVersion !== undefined
-          ? options?.expectedVersion === 0
-            ? "attribute_not_exists(#version)"
-            : "#version=:expectedVersion"
-          : undefined,
-      TableName: this.tableName(name),
-    };
-  }
-
-  public async deleteEntityValue(
-    name: string,
-    _key: string | CompositeKey,
-    options?: EntityConsistencyOptions
-  ): Promise<void | UnexpectedVersionResult> {
-    await this.props.dynamo.send(
-      new DeleteItemCommand(this.createDeleteRequest(name, _key, options))
-    );
+  async delete(
+    entityName: string,
+    key: Pick<any, string> | [p: string, s: string],
+    options?: EntityConsistencyOptions | undefined
+  ): Promise<void> {
+    try {
+      await this.props.dynamo.send(
+        new DeleteItemCommand(
+          this.createDeleteRequest(entityName, key, options)
+        )
+      );
+    } catch (err) {
+      if (err instanceof ConditionalCheckFailedException) {
+        throw new UnexpectedVersion("Unexpected Version");
+      }
+    }
   }
 
   private createDeleteRequest(
-    name: string,
-    _key: string | CompositeKey,
+    _entity: string | AnyEntity,
+    key: AnyEntityKey,
     options?: EntityConsistencyOptions
   ): Delete {
+    const entity =
+      typeof _entity === "string" ? this.getEntity(_entity) : _entity;
     return {
-      Key: this.entityKey(_key),
+      Key: this.entityKey(key, entity),
       ConditionExpression:
         options?.expectedVersion !== undefined
-          ? "#version=:expectedVersion"
+          ? "#__version=:expectedVersion"
           : undefined,
       ExpressionAttributeNames:
         options?.expectedVersion !== undefined
           ? {
-              "#version": "version",
+              "#__version": "__version",
             }
           : undefined,
       ExpressionAttributeValues:
@@ -169,47 +156,23 @@ export class AWSEntityStore implements EntityStore {
     };
   }
 
-  private entityKey(_key: string | CompositeKey) {
-    const { key, namespace } = normalizeCompositeKey(_key);
-    return {
-      pk: { S: EntityEntityRecord.key(namespace) },
-      sk: { S: EntityEntityRecord.sortKey(key) },
-    } satisfies Partial<EntityEntityRecord>;
-  }
-
-  public async listEntityEntries<Entity>(
-    name: string,
-    request: EntityListRequest
-  ): Promise<EntityListResult<Entity>> {
-    const result = await this.list(name, request, ["value", "sk", "version"]);
-
+  async query(
+    entityName: string,
+    request: EntityQueryRequest<any, string>
+  ): Promise<EntityQueryResult<any>> {
+    const result = await this.listEntries(entityName, request);
     return {
       nextToken: result.nextToken,
-      entries: result.records.map((r) => ({
-        entity: JSON.parse(r.value.S),
-        version: Number(r.version.N),
-        key: EntityEntityRecord.parseKeyFromSortKey(r.sk.S),
+      entries: result.records.map(({ __version, ...r }) => ({
+        entity: unmarshall(r),
+        version: Number(__version.N),
       })),
     };
   }
 
-  public async listEntityKeys(
-    name: string,
-    request: EntityListRequest
-  ): Promise<EntityListKeysResult> {
-    const result = await this.list(name, request, ["sk"]);
-
-    return {
-      nextToken: result.nextToken,
-      keys: result.records.map((r) =>
-        EntityEntityRecord.parseKeyFromSortKey(r.sk.S)
-      ),
-    };
-  }
-
-  public async transactWrite(
-    items: EntityTransactItem<any, string>[]
-  ): Promise<TransactionCancelledResult | TransactionConflictResult | void> {
+  async transactWrite(
+    items: EntityTransactItem<any, string, string | undefined>[]
+  ): Promise<void> {
     try {
       await this.props.dynamo.send(
         new TransactWriteItemsCommand({
@@ -218,7 +181,6 @@ export class AWSEntityStore implements EntityStore {
               return {
                 Update: this.createSetRequest(
                   i.entity,
-                  i.operation.key,
                   i.operation.value,
                   i.operation.options
                 ),
@@ -232,6 +194,10 @@ export class AWSEntityStore implements EntityStore {
                 ),
               };
             } else if (i.operation.operation === "condition") {
+              const entity =
+                typeof i.entity === "string"
+                  ? this.getEntity(i.entity)
+                  : i.entity;
               return {
                 ConditionCheck: {
                   ConditionExpression:
@@ -240,8 +206,8 @@ export class AWSEntityStore implements EntityStore {
                         ? "attribute_not_exists(#version)"
                         : "#version=:expectedVersion"
                       : undefined,
-                  TableName: this.tableName(i.entity),
-                  Key: this.entityKey(i.operation.key),
+                  TableName: this.tableName(entity.name),
+                  Key: this.entityKey(i.operation.key, entity),
                   ExpressionAttributeNames: {
                     "#version": "version",
                   },
@@ -256,48 +222,131 @@ export class AWSEntityStore implements EntityStore {
                 },
               };
             }
-
             return assertNever(i.operation);
           }),
         })
       );
     } catch (err) {
       if (err instanceof TransactionCanceledException) {
-        return {
-          reasons:
-            err.CancellationReasons?.map((c) => {
-              // TODO: handle other failure reasons
-              if (c.Code === "NONE") {
-                return undefined;
-              }
-              return { unexpectedVersion: true };
-            }) ?? [],
-        };
+        throw new TransactionCancelled(
+          err.CancellationReasons?.map((r) =>
+            r.Code === "NONE"
+              ? undefined
+              : new UnexpectedVersion("Unexpected Version")
+          ) ?? []
+        );
       } else if (err instanceof TransactionConflictException) {
-        return { transactionConflict: true };
+        throw new TransactionCancelled([]);
       }
       throw err;
     }
   }
 
-  private list(name: string, request: EntityListRequest, fields?: string[]) {
-    return queryPageWithToken<EntityEntityRecord>(
+  private createSetRequest<E extends EntityValue>(
+    _entity: string | AnyEntity,
+    value: E,
+    options?: EntitySetOptions
+  ): Update {
+    const entity =
+      typeof _entity === "string" ? this.getEntity(_entity) : _entity;
+    const valueRecord = marshall(value);
+    delete valueRecord[entity.partitionKey];
+    if (entity.sortKey) {
+      delete valueRecord[entity.sortKey];
+    }
+    return {
+      Key: this.entityKey(value, entity),
+      UpdateExpression: [
+        "SET #__version=if_not_exists(#__version, :__startingVersion) + :__versionIncrement",
+        ...Object.keys(valueRecord).map((key) => `#${key}=:${key}`),
+      ].join(","),
+      ExpressionAttributeNames: {
+        "#__version": "__version",
+        ...Object.fromEntries(
+          Object.keys(valueRecord).map((key) => [`#${key}`, key])
+        ),
+      },
+      ExpressionAttributeValues: {
+        ...(options?.expectedVersion
+          ? {
+              ":__expectedVersion": { N: options.expectedVersion.toString() },
+            }
+          : undefined),
+        ":__startingVersion": { N: "0" },
+        ":__versionIncrement": {
+          N: options?.incrementVersion === false ? "0" : "1",
+        },
+        ...Object.fromEntries(
+          Object.entries(valueRecord).map(([key, value]) => [`:${key}`, value])
+        ),
+      },
+      ConditionExpression:
+        options?.expectedVersion !== undefined
+          ? options?.expectedVersion === 0
+            ? "attribute_not_exists(#__version)"
+            : "#__version=:__expectedVersion"
+          : undefined,
+      TableName: this.tableName(name),
+    };
+  }
+
+  private getEntity(entityName: string) {
+    const entity = this.props.entityProvider.getEntity(entityName);
+    if (!entity) {
+      throw new Error(`Entity ${entityName} was not found.`);
+    }
+    return entity;
+  }
+
+  private entityKey(key: AnyEntityKey, entity: AnyEntity) {
+    const compositeKey = normalizeCompositeKey(entity, key);
+    return compositeKey.sort
+      ? {
+          [compositeKey.partition.field]: { S: compositeKey.partition.value },
+          [compositeKey.sort.field]: { S: compositeKey.sort.value },
+        }
+      : {
+          [compositeKey.partition.field]: { S: compositeKey.partition.value },
+        };
+  }
+
+  private listEntries(
+    entityName: string,
+    request: EntityQueryRequest<any, any>,
+    fields?: string[]
+  ) {
+    const entity = this.getEntity(entityName);
+    const allFields = new Set([
+      ...(fields ?? []),
+      entity.partitionKey,
+      ...(entity.sortKey ? [entity.sortKey] : []),
+    ]);
+    if (!entity.sortKey && request.prefix) {
+      throw new Error(
+        "Cannot use `prefix` when the entity does not have a sortKey."
+      );
+    }
+    return queryPageWithToken<MarshalledEntitySchemaWithVersion<any>>(
       {
         dynamoClient: this.props.dynamo,
         pageSize: request.limit ?? 1000,
-        keys: ["pk", "sk"],
+        keys: entity.sortKey
+          ? [entity.partitionKey, entity.sortKey]
+          : [entity.partitionKey],
         nextToken: request.nextToken,
       },
       {
         TableName: this.tableName(name),
-        KeyConditionExpression: "pk=:pk AND begins_with(sk, :sk)",
+        KeyConditionExpression: entity.sortKey
+          ? `#${entity.partitionKey}=:pk AND begins_with(#${entity.sortKey}, :sk)`
+          : `#${entity.partitionKey}=:pk`,
         ExpressionAttributeValues: {
-          ":pk": { S: EntityEntityRecord.key(request.namespace) },
-          ":sk": { S: EntityEntityRecord.sortKey(request.prefix ?? "") },
+          ":pk": { S: request.partition },
+          ...(entity.sortKey ? { ":sk": { S: request.prefix ?? "" } } : {}),
         },
-        ExpressionAttributeNames: fields
-          ? Object.fromEntries(fields?.map((f) => [`#${f}`, f]))
-          : undefined,
+        ExpressionAttributeNames: Object.fromEntries(
+          [...allFields]?.map((f) => [`#${f}`, f])
+        ),
         ProjectionExpression: fields?.map((f) => `#${f}`).join(","),
       }
     );
@@ -310,31 +359,9 @@ export class AWSEntityStore implements EntityStore {
 
 export interface EntityEntityRecord
   extends Record<string, AttributeValue | undefined> {
-  pk: { S: `${typeof EntityEntityRecord.PARTITION_KEY_PREFIX}${string}` };
-  sk: { S: `${typeof EntityEntityRecord.SORT_KEY_PREFIX}${string}` };
-  /**
-   * A stringified value.
-   *
-   * https://dynamodbplace.com/c/questions/map-or-json-dump-string-which-is-better-to-optimize-space
-   */
-  value: AttributeValue.SMember;
-  version: AttributeValue.NMember;
+  __version: AttributeValue.NMember;
 }
 
 export const EntityEntityRecord = {
-  PARTITION_KEY_PREFIX: `EntityEntry$`,
-  key(namespace?: string) {
-    return `${this.PARTITION_KEY_PREFIX}${namespace ?? ""}`;
-  },
-  SORT_KEY_PREFIX: `#`,
-  sortKey(key: string) {
-    return `${this.SORT_KEY_PREFIX}${key}`;
-  },
-  parseKeyFromSortKey(sortKey: string) {
-    return sortKey.slice(1);
-  },
-  parseNamespaceFromPartitionKey(sortKey: string): string | undefined {
-    const namespace = sortKey.slice(this.PARTITION_KEY_PREFIX.length);
-    return namespace ? namespace : undefined;
-  },
+  VERSION_FIELD: "__version",
 };

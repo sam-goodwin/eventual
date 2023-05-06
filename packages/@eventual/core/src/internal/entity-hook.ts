@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Entity, EntityTransactItem } from "../entity.js";
+import type { AnyEntity, Entity, EntityTransactItem } from "../entity.js";
 
 declare global {
   var eventualEntityHook: EntityHook | undefined;
@@ -10,9 +10,11 @@ export interface EntityDefinition<E> {
   schema: z.Schema<E>;
 }
 
-export type EntityMethods<E> = Pick<
-  Entity<E>,
-  "get" | "getWithMetadata" | "delete" | "set" | "list" | "listKeys"
+export type EntityMethod = Exclude<
+  {
+    [k in keyof AnyEntity]: [AnyEntity[k]] extends [Function] ? k : never;
+  }[keyof AnyEntity],
+  "partitionKey" | "sortKey" | "stream" | "__entityBrand" | undefined
 >;
 
 /**
@@ -20,10 +22,14 @@ export type EntityMethods<E> = Pick<
  *
  * Does not handle the workflow case. That is handled by the {@link entity} function in core.
  */
-export interface EntityHook {
-  getEntity<Entity>(name: string): Promise<EntityMethods<Entity> | undefined>;
+export type EntityHook = {
+  [K in EntityMethod]: (
+    entityName: string,
+    ...args: Parameters<AnyEntity[K]>
+  ) => ReturnType<AnyEntity[K]>;
+} & {
   transactWrite(items: EntityTransactItem<any>[]): Promise<void>;
-}
+};
 
 export function getEntityHook() {
   const hook = globalThis.eventualEntityHook;
