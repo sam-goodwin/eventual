@@ -17,23 +17,6 @@ import { ApiDefinition } from "./http-api-definition";
  * https://github.com/aws/aws-cdk/pull/20815
  */
 
-/**
- * Properties to initialize an instance of `SpecHttpApi`
- */
-export interface SpecHttpApiProps {
-  /**
-   * An OpenAPI definition compatible with API Gateway.
-   * @see https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-import-api.html
-   */
-  readonly apiDefinition: ApiDefinition;
-
-  /**
-   * Name for the HTTP API resource
-   * @default - id of the HttpApi construct.
-   */
-  readonly apiName?: string;
-}
-
 abstract class HttpApiBase extends ApiBase implements IHttpApi {
   // note that this is not exported
   public abstract readonly apiId: string;
@@ -43,21 +26,27 @@ abstract class HttpApiBase extends ApiBase implements IHttpApi {
   public metricClientError(props?: MetricOptions): Metric {
     return this.metric("4xx", { statistic: "Sum", ...props });
   }
+
   public metricServerError(props?: MetricOptions): Metric {
     return this.metric("5xx", { statistic: "Sum", ...props });
   }
+
   public metricDataProcessed(props?: MetricOptions): Metric {
     return this.metric("DataProcessed", { statistic: "Sum", ...props });
   }
+
   public metricCount(props?: MetricOptions): Metric {
     return this.metric("Count", { statistic: "SampleCount", ...props });
   }
+
   public metricIntegrationLatency(props?: MetricOptions): Metric {
     return this.metric("IntegrationLatency", props);
   }
+
   public metricLatency(props?: MetricOptions): Metric {
     return this.metric("Latency", props);
   }
+
   public addVpcLink(options: VpcLinkProps): VpcLink {
     const { vpcId } = options.vpc;
     if (vpcId in this.vpcLinks) {
@@ -75,13 +64,9 @@ abstract class HttpApiBase extends ApiBase implements IHttpApi {
  * @resource AWS::ApiGatewayV2::Api
  */
 export class SpecHttpApi extends HttpApiBase {
-  /**
-   * A human friendly name for this HTTP API. Note that this is different from `httpApiId`.
-   */
-  // readonly httpApiName: string;
-  readonly apiId: string;
-  readonly httpApiId: string;
-  readonly apiEndpoint: string;
+  public readonly apiId: string;
+  public readonly httpApiId: string;
+  public readonly apiEndpoint: string;
 
   /**
    * The default stage of this API
@@ -133,5 +118,13 @@ export class SpecHttpApi extends HttpApiBase {
   }
 }
 
-export interface SpecHttpApiProps
-  extends Omit<HttpApiProps, "corsPreflight" | "description"> {}
+export type SpecHttpApiProps = Omit<
+  HttpApiProps,
+  "corsPreflight" | "description"
+> & {
+  /**
+   * An OpenAPI definition compatible with API Gateway.
+   * @see https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-import-api.html
+   */
+  readonly apiDefinition: ApiDefinition;
+};

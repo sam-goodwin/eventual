@@ -9,7 +9,7 @@ import type { OpenAPIObject, SchemaObject } from "openapi3-ts";
 import { grant } from "./grant";
 import { ServiceConstructProps } from "./service";
 
-export interface EventsProps extends ServiceConstructProps {}
+export type EventsProps = ServiceConstructProps;
 
 export class EventService {
   /**

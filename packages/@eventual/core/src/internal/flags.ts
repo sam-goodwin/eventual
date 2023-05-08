@@ -2,6 +2,7 @@ import type { AsyncLocalStorage } from "async_hooks";
 import { ServiceType } from "./service-type.js";
 
 declare global {
+  // eslint-disable-next-line no-var
   var serviceTypeStore: AsyncLocalStorage<ServiceType> | undefined;
 }
 

@@ -55,11 +55,10 @@ export type EntityStreamOverrides<Service> = Partial<
   ServiceEntityProps<Service, "EntityStream", EntityStreamHandlerProps>
 >;
 
-export interface EntityStreamHandlerProps
-  extends Omit<
-    Partial<FunctionProps>,
-    "code" | "handler" | "functionName" | "events"
-  > {}
+export type EntityStreamHandlerProps = Omit<
+  Partial<FunctionProps>,
+  "code" | "handler" | "functionName" | "events"
+>;
 
 export interface EntityServiceProps<Service> extends ServiceConstructProps {
   bucketService: LazyInterface<BucketService<Service>>;
@@ -266,9 +265,9 @@ export class EntityStream extends Construct implements EventualResource {
       ...(props.stream.spec.options?.operations
         ? {
             eventName: FilterRule.or(
-              ...props.stream.spec.options?.operations.map((op) =>
+              ...(props.stream.spec.options?.operations?.map((op) =>
                 op.toUpperCase()
-              )
+              ) ?? [])
             ),
           }
         : undefined),

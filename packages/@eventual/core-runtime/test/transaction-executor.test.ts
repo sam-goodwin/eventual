@@ -16,6 +16,7 @@ import {
 const entity = (() => {
   let n = 0;
   return <E>() => {
+    // eslint-disable-next-line no-empty
     while (entities().has(`ent${++n}`)) {}
     return _entity<E>(`ent${n}`);
   };

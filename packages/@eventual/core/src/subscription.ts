@@ -123,7 +123,7 @@ export function subscription<Name extends string, E extends EventPayload>(
     filters: props.events.map((event) => ({
       name: event.name,
     })),
-    props: props,
+    props,
     sourceLocation,
   };
 

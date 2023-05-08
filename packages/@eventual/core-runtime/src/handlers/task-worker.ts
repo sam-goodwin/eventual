@@ -183,7 +183,7 @@ export function createTaskWorker({
               }
             }
 
-            return;
+            return undefined;
 
             async function runTask() {
               try {

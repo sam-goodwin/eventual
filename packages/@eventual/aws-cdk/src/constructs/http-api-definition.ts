@@ -61,8 +61,8 @@ export abstract class ApiDefinition {
    * Definition to bind to it. Specifically it's required to allow assets to add
    * metadata for tooling like SAM CLI to be able to find their origins.
    */
-  public bindAfterCreate(_scope: Construct, _httpApi: IHttpApi) {
-    return;
+  public bindAfterCreate(_scope: Construct, _httpApi: IHttpApi): void {
+    return undefined;
   }
 }
 

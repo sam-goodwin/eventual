@@ -19,7 +19,7 @@ import type {
 } from "./service-client.js";
 import { ServiceContext } from "./service.js";
 
-export interface TaskRuntimeProps extends FunctionRuntimeProps {}
+export type TaskRuntimeProps = FunctionRuntimeProps;
 
 /**
  * Task options available when invoked by a workflow.

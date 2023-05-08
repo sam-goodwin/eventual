@@ -27,7 +27,7 @@ import { TimeController } from "./time-controller.js";
 export class LocalEnvironment {
   private timeController: TimeController<LocalEvent>;
   private localConnector: LocalEnvConnector;
-  private running: boolean = false;
+  private running = false;
   private localContainer: LocalContainer;
 
   constructor(private environmentManifest: EnvironmentManifest) {

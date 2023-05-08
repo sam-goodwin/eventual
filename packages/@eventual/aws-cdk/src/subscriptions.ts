@@ -31,8 +31,10 @@ export type SubscriptionOverrides<Service> = Partial<
   ServiceEntityProps<Service, "Subscription", SubscriptionHandlerProps>
 >;
 
-export interface SubscriptionHandlerProps
-  extends Omit<Partial<FunctionProps>, "code" | "handler" | "functionName"> {}
+export type SubscriptionHandlerProps = Omit<
+  Partial<FunctionProps>,
+  "code" | "handler" | "functionName"
+>;
 
 export interface SubscriptionsProps<S = any> extends ServiceConstructProps {
   readonly bucketService: LazyInterface<BucketService<S>>;

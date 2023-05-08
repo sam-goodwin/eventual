@@ -61,6 +61,7 @@ const {
 const task = (() => {
   let n = 0;
   return <Input = any, Output = any>(handler: TaskHandler<Input, Output>) => {
+    // eslint-disable-next-line no-empty
     while (tasks()[`task${++n}`]) {}
     return _task<string, Input, Output>(`task${n}`, handler);
   };
@@ -71,6 +72,7 @@ const workflow = (() => {
   return <Input = any, Output = any>(
     handler: WorkflowHandler<Input, Output>
   ) => {
+    // eslint-disable-next-line no-empty
     while (workflows().has(`wf${++n}`)) {}
     return _workflow<Input, Output>(`wf${n}`, handler);
   };

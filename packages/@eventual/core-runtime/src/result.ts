@@ -1,4 +1,11 @@
-import { extendsError, Failed, Resolved, Result, ResultKind, ResultSymbol } from "@eventual/core/internal";
+import {
+  extendsError,
+  Failed,
+  Resolved,
+  Result,
+  ResultKind,
+  ResultSymbol,
+} from "@eventual/core/internal";
 
 export function isResult(a: any): a is Result {
   return a && typeof a === "object" && ResultSymbol in a;

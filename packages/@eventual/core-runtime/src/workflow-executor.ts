@@ -91,6 +91,7 @@ function createEventualPromise<R>(
   // HACK: unhandled promise rejects cause node to fail, this will allow this promise to remain
   //       "unhandled". However, adding one or more .then chains to a promise that rejects can still
   //       fail.
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   promise.catch(() => {});
   promise[EventualPromiseSymbol] = seq;
   promise.resolve = (result) => {
@@ -104,7 +105,7 @@ function createEventualPromise<R>(
   return promise;
 }
 
-export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
+export class WorkflowExecutor<Input, Output, Context = undefined> {
   /**
    * The sequence number to assign to the next eventual registered.
    */
@@ -125,6 +126,7 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
     events: {},
     afterEveryEvent: {},
   };
+
   /**
    * Iterator containing the in order events we expected to see in a deterministic workflow.
    */
@@ -153,17 +155,18 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
      */
     callsToEmit: WorkflowCall[];
   };
+
   /**
    * Has the executor ever been started?
    *
    * When false, can call start and not continue.
    * When true, can call continue and not start.
    */
-  private started: boolean = false;
+  private started = false;
   /**
    * True when the executor reached a terminal state, generally a {@link SystemError}.
    */
-  private stopped: boolean = false;
+  private stopped = false;
   /**
    * The current result of the workflow, also returned by start and continue on completion.
    */
@@ -199,7 +202,7 @@ export class WorkflowExecutor<Input, Output, Context extends any = undefined> {
     this.events = iterator(history, isCompletionEvent);
   }
 
-  get hasActiveEventuals() {
+  public get hasActiveEventuals() {
     return Object.keys(this.activeEventuals).length > 0;
   }
 
@@ -912,12 +915,12 @@ interface TriggerHandlerRef<Args extends any[]> {
   args: Args;
 }
 
-interface EventTriggerLookup
-  extends Record<number, Record<string, EventTrigger<any, any>>> {}
-interface SignalTriggerLookup
-  extends Record<string, Record<number, SignalTrigger<any>>> {}
-interface AfterEveryEventTriggerLookup
-  extends Record<number, AfterEveryEventTrigger<any>> {}
+type EventTriggerLookup = Record<
+  number,
+  Record<string, EventTrigger<any, any>>
+>;
+type SignalTriggerLookup = Record<string, Record<number, SignalTrigger<any>>>;
+type AfterEveryEventTriggerLookup = Record<number, AfterEveryEventTrigger<any>>;
 
 export interface WorkflowCall<E extends EventualCall = EventualCall> {
   seq: number;

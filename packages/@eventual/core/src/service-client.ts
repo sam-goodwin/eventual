@@ -106,8 +106,7 @@ export interface EventualServiceClient {
   ): Promise<SendTaskHeartbeatResponse>;
 }
 
-export interface EmitEventsRequest
-  extends CommandInput<EventualService["emitEvents"]> {}
+export type EmitEventsRequest = CommandInput<EventualService["emitEvents"]>;
 
 export interface StartExecutionRequest<W extends Workflow = Workflow>
   extends WorkflowExecutionOptions {
@@ -143,11 +142,13 @@ export interface FailExecutionRequest {
   endTime: string;
 }
 
-export interface ListExecutionsRequest
-  extends CommandInput<EventualService["listExecutions"]> {}
+export type ListExecutionsRequest = CommandInput<
+  EventualService["listExecutions"]
+>;
 
-export interface ListExecutionEventsRequest
-  extends CommandInput<EventualService["getExecutionHistory"]> {}
+export type ListExecutionEventsRequest = CommandInput<
+  EventualService["getExecutionHistory"]
+>;
 
 export interface SendSignalRequest<Payload = any> {
   signal: Signal<Payload> | string;

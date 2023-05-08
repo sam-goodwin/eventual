@@ -9,7 +9,7 @@ export async function addTsReferences(
     const refs = new Set((tsconfig.references ??= []));
     for (const path of references) {
       if (!refs.has(path)) {
-        tsconfig.references.push({ path: path });
+        tsconfig.references.push({ path });
       }
     }
     (tsconfig.references as { path: string }[]).sort((a, b) =>

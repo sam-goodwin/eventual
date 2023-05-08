@@ -2,6 +2,7 @@ import { DEFAULT_HOOK, EventualCallHook } from "@eventual/core/internal";
 import { AsyncLocalStorage } from "async_hooks";
 
 declare global {
+  // eslint-disable-next-line no-var
   var eventualCallHookStore: AsyncLocalStorage<EventualCallHook>;
 }
 

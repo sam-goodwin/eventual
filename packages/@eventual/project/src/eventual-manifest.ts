@@ -18,7 +18,7 @@ export const EventualManifestFileName = "eventual.json";
 
 export async function discoverEventualConfig(
   dir = process.cwd(),
-  depth: number = 2
+  depth = 2
 ): Promise<EventualConfig | undefined> {
   try {
     const filePath = path.join(dir, EventualManifestFileName);
@@ -51,7 +51,7 @@ export async function discoverEventualConfig(
 
 export function discoverEventualConfigSync(
   dir = process.cwd(),
-  depth: number = 2
+  depth = 2
 ): EventualConfig | undefined {
   try {
     const filePath = path.join(dir, EventualManifestFileName);

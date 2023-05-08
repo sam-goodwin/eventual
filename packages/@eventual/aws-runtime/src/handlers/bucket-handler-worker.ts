@@ -14,8 +14,8 @@ import {
   createServiceClient,
 } from "../create.js";
 import {
-  bucketName,
   bucketHandlerName,
+  bucketName,
   serviceName,
   serviceUrl,
 } from "../env.js";
@@ -60,6 +60,4 @@ export default (async (event) => {
         .join("\n")
     );
   }
-
-  return;
 }) satisfies S3Handler;

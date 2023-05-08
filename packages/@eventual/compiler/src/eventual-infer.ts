@@ -6,7 +6,9 @@
  */
 import { generateSchema } from "@anatine/zod-openapi";
 import {
+  BucketNotificationHandlerSpec,
   ServiceSpec,
+  buckets,
   commands,
   entities,
   events,
@@ -14,8 +16,6 @@ import {
   tasks,
   transactions,
   workflows,
-  buckets,
-  BucketNotificationHandlerSpec,
 } from "@eventual/core/internal";
 import {
   CallExpression,
@@ -174,7 +174,7 @@ export const inferPlugin: esbuild.Plugin = {
 };
 
 export class InferVisitor extends Visitor {
-  public didMutate: boolean = false;
+  public didMutate = false;
 
   private exportName: string | undefined;
 
@@ -186,7 +186,7 @@ export class InferVisitor extends Visitor {
     return n;
   }
 
-  visitExportDeclaration(decl: ExportDeclaration): ModuleDeclaration {
+  public visitExportDeclaration(decl: ExportDeclaration): ModuleDeclaration {
     if (decl.declaration.type === "VariableDeclaration") {
       if (
         !decl.declaration.declare &&
@@ -220,7 +220,7 @@ export class InferVisitor extends Visitor {
     return super.visitExportDeclaration(decl);
   }
 
-  visitCallExpression(call: CallExpression): Expression {
+  public visitCallExpression(call: CallExpression): Expression {
     if (
       this.exportName &&
       [

@@ -45,11 +45,10 @@ export type ServiceBucketNotificationHandlers<Service> = ServiceEntityProps<
   BucketNotificationHandler
 >;
 
-export interface BucketNotificationHandlerFunctionProps
-  extends Omit<
-    Partial<FunctionProps>,
-    "code" | "handler" | "functionName" | "events"
-  > {}
+export type BucketNotificationHandlerFunctionProps = Omit<
+  Partial<FunctionProps>,
+  "code" | "handler" | "functionName" | "events"
+>;
 
 export interface BucketServiceProps<Service> extends ServiceConstructProps {
   bucketOverrides?: BucketOverrides<Service>;
@@ -200,8 +199,6 @@ class Bucket extends Construct {
       autoDeleteObjects: true,
       removalPolicy: RemovalPolicy.DESTROY,
     });
-
-    this.bucket.grantReadWrite;
 
     const bucketHandlerScope = new Construct(this, "BucketHandlers");
 

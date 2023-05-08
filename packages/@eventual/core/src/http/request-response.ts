@@ -4,9 +4,9 @@ import type { HttpMethod } from "../http-method.js";
 type Body = string | Buffer | Readable | null;
 
 abstract class BaseHttpPayload {
-  abstract readonly body: string | Buffer | Readable | null;
+  public abstract readonly body: string | Buffer | Readable | null;
 
-  async tryJson(): Promise<any> {
+  public async tryJson(): Promise<any> {
     try {
       return await this.json();
     } catch {
@@ -14,11 +14,11 @@ abstract class BaseHttpPayload {
     }
   }
 
-  async json() {
+  public async json() {
     return JSON.parse((await this.text?.()) ?? "");
   }
 
-  async text(): Promise<string> {
+  public async text(): Promise<string> {
     if (this.body === undefined) {
       return "";
     } else if (typeof this.body === "string") {
@@ -34,7 +34,7 @@ abstract class BaseHttpPayload {
     }
   }
 
-  async arrayBuffer(): Promise<ArrayBuffer> {
+  public async arrayBuffer(): Promise<ArrayBuffer> {
     if (this.body === undefined) {
       return new ArrayBuffer(0);
     } else if (typeof this.body === "string") {
@@ -56,12 +56,12 @@ export interface HttpRequestInit {
 }
 
 export class HttpRequest extends BaseHttpPayload {
-  readonly url: string;
-  readonly method: HttpMethod;
-  readonly headers: Headers;
-  readonly body: string | Buffer | null;
-  readonly params: Record<string, string>;
-  readonly query?: Record<string, string | string[]>;
+  public readonly url: string;
+  public readonly method: HttpMethod;
+  public readonly headers: Headers;
+  public readonly body: string | Buffer | null;
+  public readonly params: Record<string, string>;
+  public readonly query?: Record<string, string | string[]>;
 
   constructor(url: string, props: HttpRequestInit) {
     super();
@@ -90,10 +90,10 @@ export interface RawHttpResponseInit {
 }
 
 export class HttpResponse extends BaseHttpPayload {
-  readonly body: Body;
-  readonly status: number;
-  readonly statusText?: string;
-  readonly headers: Headers;
+  public readonly body: Body;
+  public readonly status: number;
+  public readonly statusText?: string;
+  public readonly headers: Headers;
   constructor(body?: Body, init?: RawHttpResponseInit) {
     super();
     this.body = body === undefined ? null : body;

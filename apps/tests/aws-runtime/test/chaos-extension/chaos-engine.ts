@@ -9,7 +9,7 @@ export class ChaosEngine {
   /**
    * Determine if a client + command pair should reject/error a request instead of making the call.
    */
-  rejectOperation(clientName: string, commandName: string): boolean {
+  public rejectOperation(clientName: string, commandName: string): boolean {
     const { disabled, rules } = this.configProvider() ?? {};
 
     if (!disabled && rules) {

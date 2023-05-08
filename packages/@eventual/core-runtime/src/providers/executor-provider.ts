@@ -36,7 +36,7 @@ export class RemoteExecutorProvider<Context = undefined>
 {
   constructor(private props: RemoteExecutorProviderProps) {}
 
-  async getExecutor(
+  public async getExecutor(
     executionId: string,
     initExecutor: (
       history: HistoryStateEvent[]
@@ -48,7 +48,7 @@ export class RemoteExecutorProvider<Context = undefined>
     return initExecutor(history);
   }
 
-  async persistExecution(
+  public async persistExecution(
     executionId: string,
     newHistoryEvents: HistoryStateEvent[],
     executor: WorkflowExecutor<any, any, any>
@@ -71,7 +71,7 @@ export class InMemoryExecutorProvider<Context = undefined>
 {
   private executions: Record<string, WorkflowExecutor<any, any, Context>> = {};
 
-  getExecutor(
+  public getExecutor(
     executionId: string,
     initializeNewExecutor: (
       history: HistoryStateEvent[]
@@ -82,7 +82,7 @@ export class InMemoryExecutorProvider<Context = undefined>
     );
   }
 
-  async persistExecution(
+  public async persistExecution(
     executionId: string,
     _newEvents: HistoryStateEvent[],
     executor: WorkflowExecutor<any, any, any>

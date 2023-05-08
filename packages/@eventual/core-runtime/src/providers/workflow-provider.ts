@@ -11,11 +11,6 @@ export interface WorkflowSpecProvider {
   getWorkflowNames(): string[];
 }
 
-export interface WorkflowSpecProvider {
-  workflowExists(workflowName: string): boolean;
-  getWorkflowNames(): string[];
-}
-
 /**
  * Returns workflows from the global {@link workflows()}.
  *
@@ -25,9 +20,11 @@ export class GlobalWorkflowProvider implements WorkflowProvider {
   public lookupWorkflow(workflowName: string): Workflow | undefined {
     return workflows().get(workflowName);
   }
+
   public getWorkflowNames(): string[] {
     return [...workflows().keys()];
   }
+
   public workflowExists(workflowName: string): boolean {
     return !!this.lookupWorkflow(workflowName);
   }

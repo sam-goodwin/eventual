@@ -9,7 +9,8 @@ import { BeforeRequest, RequestHandler } from "./request-handler.js";
 export function getRequestHandler(
   beforeRequest?: BeforeRequest
 ): RequestHandler {
-  if (!!globalThis.fetch) {
+  // @ts-ignore
+  if (globalThis.fetch) {
     return new FetchRequestHandler(beforeRequest);
   }
   return new NodeRequestHandler(beforeRequest);

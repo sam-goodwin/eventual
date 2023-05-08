@@ -4,8 +4,8 @@ import {
   IHttpApi,
 } from "@aws-cdk/aws-apigatewayv2-alpha";
 import {
-  commandServiceFunctionSuffix,
   ENV_NAMES,
+  commandServiceFunctionSuffix,
   sanitizeFunctionName,
 } from "@eventual/aws-runtime";
 import { isDefaultNamespaceCommand } from "@eventual/core";
@@ -15,7 +15,7 @@ import {
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
   generateOpenAPISpec,
 } from "@eventual/core/internal";
-import { Arn, aws_iam, Duration, Lazy, Stack } from "aws-cdk-lib";
+import { Arn, Duration, Lazy, Stack, aws_iam } from "aws-cdk-lib";
 import {
   Effect,
   IGrantable,
@@ -25,7 +25,7 @@ import {
 } from "aws-cdk-lib/aws-iam";
 import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
-import openapi from "openapi3-ts";
+import type openapi from "openapi3-ts";
 import { BucketService } from "./bucket-service.js";
 import { ApiDefinition } from "./constructs/http-api-definition.js";
 import { SpecHttpApi } from "./constructs/spec-http-api";
@@ -119,12 +119,12 @@ export class CommandService<Service = any> {
   /**
    * The OpenAPI specification for this Service.
    */
-  readonly specification: openapi.OpenAPIObject;
+  public readonly specification: openapi.OpenAPIObject;
   /**
    * A map of Command Name to the Lambda Function handling its logic.
    */
-  readonly serviceCommands: Commands<Service>;
-  readonly systemCommandsHandler: Function;
+  public readonly serviceCommands: Commands<Service>;
+  public readonly systemCommandsHandler: Function;
   private integrationRole: Role;
 
   /**

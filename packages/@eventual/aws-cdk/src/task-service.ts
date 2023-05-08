@@ -258,11 +258,10 @@ export class TaskService<Service = any> {
   }
 }
 
-export interface TaskHandlerProps
-  extends Omit<
-    Partial<FunctionProps>,
-    "code" | "handler" | "functionName" | "onFailure" | "retryAttempts"
-  > {}
+export type TaskHandlerProps = Omit<
+  Partial<FunctionProps>,
+  "code" | "handler" | "functionName" | "onFailure" | "retryAttempts"
+>;
 
 export interface TaskProps {
   build: BuildOutput;

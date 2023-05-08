@@ -7,11 +7,11 @@ export function isHttpError(err: any): err is HttpError {
 }
 
 export class HttpError<Data = any> {
-  readonly kind = "HttpError";
+  public readonly kind = "HttpError";
 
-  readonly code;
-  readonly message;
-  readonly data;
+  public readonly code;
+  public readonly message;
+  public readonly data;
   constructor(props: { code: HttpStatusCode; message: string; data?: Data }) {
     this.code = props.code;
     this.message = props.message;

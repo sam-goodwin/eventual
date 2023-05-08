@@ -54,7 +54,7 @@ export default async (request: TaskWorkerRequest) => {
   /**
    * Throw fallback requests so that only lambda "failures" trigger the "on failure".
    */
-  if (!!result) {
+  if (result) {
     throw new TaskFallbackRequestError(result);
   }
 };
