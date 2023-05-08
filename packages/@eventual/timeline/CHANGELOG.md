@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.36.1 (2023-05-08)
+
+**Note:** Version bump only for package @eventual/timeline
+
 # 0.36.0 (2023-05-04)
 
 ### Features
