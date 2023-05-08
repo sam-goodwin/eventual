@@ -26,7 +26,7 @@ export class DeepCompositePrincipal extends CompositePrincipal {
   /**
    * The base copies the principals out, do the same for our local array.
    */
-  override addPrincipals(...principals: IPrincipal[]): this {
+  public override addPrincipals(...principals: IPrincipal[]): this {
     super.addPrincipals(...principals);
     // this may be called before we _principals is initialized
     if (!this._principals) {
@@ -39,7 +39,7 @@ export class DeepCompositePrincipal extends CompositePrincipal {
   /**
    * Try to add the policy statement to the policy of each principal.
    */
-  override addToPrincipalPolicy(
+  public override addToPrincipalPolicy(
     statement: PolicyStatement
   ): AddToPrincipalPolicyResult {
     const res = this._principals.map((p) => p.addToPrincipalPolicy(statement));

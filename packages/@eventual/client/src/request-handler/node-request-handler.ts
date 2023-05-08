@@ -1,8 +1,8 @@
 // type imports can stay in the lexical imports
 import type { ClientRequest, IncomingMessage } from "http";
 import type { RequestOptions } from "https";
-import { BeforeRequest, HttpError, RequestHandler } from "./request-handler.js";
 import type { HttpRequest } from "../http-request.js";
+import { BeforeRequest, HttpError, RequestHandler } from "./request-handler.js";
 
 /**
  * A request handler that uses node's https module.
@@ -55,7 +55,7 @@ function writeBody(httpRequest: ClientRequest, body?: any) {
 }
 
 function collectBody(body: IncomingMessage) {
-  let dArray: string[] | undefined = undefined;
+  let dArray: string[] | undefined;
   return new Promise<string | undefined>((resolve) => {
     body.on("data", (d) => {
       if (!dArray) {

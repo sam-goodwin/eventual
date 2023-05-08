@@ -1,6 +1,7 @@
 import { Bucket } from "../bucket.js";
 
 declare global {
+  // eslint-disable-next-line no-var
   var eventualBucketHook: BucketHook | undefined;
 }
 

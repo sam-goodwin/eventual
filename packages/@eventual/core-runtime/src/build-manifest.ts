@@ -1,6 +1,6 @@
 import type {
   BucketSpec,
-  BucketNotificationHandlerSpec as BucketNotificationHandlerSpec,
+  BucketNotificationHandlerSpec,
   CommandSpec,
   EntitySpec,
   EntityStreamSpec,
@@ -93,17 +93,15 @@ export interface ExportedEventHandlerFunction extends SubscriptionFunction {
   exportName: string;
 }
 
-export interface SubscriptionFunction
-  extends BundledFunction<SubscriptionSpec> {}
+export type SubscriptionFunction = BundledFunction<SubscriptionSpec>;
 
-export interface TaskFunction extends BundledFunction<TaskSpec> {}
+export type TaskFunction = BundledFunction<TaskSpec>;
 
-export interface InternalCommandFunction extends CommandFunction {}
+export type InternalCommandFunction = CommandFunction;
 
-export interface CommandFunction extends BundledFunction<CommandSpec> {}
+export type CommandFunction = BundledFunction<CommandSpec>;
 
-export interface EntityStreamFunction
-  extends BundledFunction<EntityStreamSpec> {}
+export type EntityStreamFunction = BundledFunction<EntityStreamSpec>;
 
-export interface BucketNotificationHandlerFunction
-  extends BundledFunction<BucketNotificationHandlerSpec> {}
+export type BucketNotificationHandlerFunction =
+  BundledFunction<BucketNotificationHandlerSpec>;

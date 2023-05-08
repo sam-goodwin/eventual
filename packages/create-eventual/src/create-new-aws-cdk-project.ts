@@ -9,6 +9,7 @@ import fs from "fs/promises";
 import path from "path";
 import { sampleCDKApp } from "./sample-code";
 
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const version: string = require("../package.json").version;
 
 export interface CreateAwsCdkProps {
@@ -160,7 +161,7 @@ ${npm("deploy")}
           "@types/jest": "^29",
           "@types/node": "^18",
           esbuild: "^0.16.14",
-          typescript: "^4.9.4",
+          typescript: "^5",
         },
         ...(pkgManager !== "pnpm"
           ? {

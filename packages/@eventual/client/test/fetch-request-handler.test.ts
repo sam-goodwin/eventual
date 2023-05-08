@@ -1,10 +1,10 @@
-const fetchMock = jest.fn<typeof fetch>();
-globalThis.fetch = fetchMock;
-
 import { jest } from "@jest/globals";
 
 import { FetchRequestHandler } from "../src/request-handler/fetch-request-handler.js";
 import { HttpError } from "../src/request-handler/request-handler.js";
+
+const fetchMock = jest.fn<typeof fetch>();
+globalThis.fetch = fetchMock;
 
 const handler = new FetchRequestHandler();
 
@@ -35,8 +35,8 @@ test("throws on error", async () => {
 
 function createRequest(
   data: any,
-  statusCode: number = 200,
-  statusMessage: string = "API Success"
+  statusCode = 200,
+  statusMessage = "API Success"
 ): typeof fetch {
   return async () => {
     return new Response(JSON.stringify(data), {

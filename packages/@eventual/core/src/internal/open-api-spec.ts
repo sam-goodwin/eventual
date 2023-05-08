@@ -1,6 +1,6 @@
-import openapi from "openapi3-ts";
+import type openapi from "openapi3-ts";
 import { commandRpcPath } from "../http/command.js";
-import { CommandSpec } from "./service-spec.js";
+import type { CommandSpec } from "./service-spec.js";
 
 export interface OpenAPISpecOptions {
   /**
@@ -214,7 +214,7 @@ export function generateOpenAPISpec(
 }
 
 function parameterNamesFromPath(path: string): string[] {
-  return Array.from(path.matchAll(/\/:([^\/\?\#]*)/g))
+  return Array.from(path.matchAll(/\/:([^/?#]*)/g))
     .map(([, g]) => g)
     .filter((x): x is string => !!x);
 }
@@ -224,5 +224,5 @@ function parameterNamesFromPath(path: string): string[] {
 function ittyRouteToOpenApiRoute(route: string) {
   return route === "*"
     ? "/{proxy+}"
-    : route.replace(/\*/g, "{proxy+}").replaceAll(/\:([^\/]*)/g, "{$1}");
+    : route.replace(/\*/g, "{proxy+}").replaceAll(/:([^/]*)/g, "{$1}");
 }

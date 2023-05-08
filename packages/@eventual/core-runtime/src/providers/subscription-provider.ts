@@ -14,6 +14,7 @@ export class GlobalSubscriptionProvider implements SubscriptionProvider {
     string,
     SubscriptionHandler<EventPayload>[]
   >;
+
   constructor() {
     this.subscriptions = indexSubscriptions(subscriptions());
   }

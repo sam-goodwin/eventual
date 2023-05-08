@@ -32,6 +32,7 @@ const entity = (() => {
   ) => {
     // @ts-ignore
     const e: E = undefined as any;
+    // eslint-disable-next-line no-empty
     while (entities().has(`ent${++n}`)) {}
     return _entity<E, P, S>(`ent${n}`, options);
   };

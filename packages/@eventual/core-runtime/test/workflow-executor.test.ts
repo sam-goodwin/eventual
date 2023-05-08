@@ -1,4 +1,4 @@
-/* eslint-disable require-await, no-throw-literal */
+/* eslint-disable require-await, no-throw-literal, @typescript-eslint/no-empty-function, @typescript-eslint/no-unused-vars */
 import {
   EventualError,
   HeartbeatTimeout,
@@ -371,7 +371,7 @@ test("await constant", async () => {
     result: Result.resolved(1),
   });
 });
-7;
+
 describe("task", () => {
   const getPumpedTask = task("getPumpedUp", () => {});
   describe("heartbeat", () => {

@@ -258,14 +258,14 @@ export const createServiceClient = /* @__PURE__ */ memoize(
   }: Partial<RuntimeServiceClientProps> & { serviceUrl?: string }) =>
     new RuntimeFallbackServiceClient(
       {
-        eventClient: eventClient,
-        executionHistoryStore: executionHistoryStore,
-        workflowClient: workflowClient,
-        executionQueueClient: executionQueueClient,
-        executionStore: executionStore,
-        executionHistoryStateStore: executionHistoryStateStore,
-        taskClient: taskClient,
-        workflowProvider: workflowProvider,
+        eventClient,
+        executionHistoryStore,
+        workflowClient,
+        executionQueueClient,
+        executionStore,
+        executionHistoryStateStore,
+        taskClient,
+        workflowProvider,
       },
       createHttpServiceClient({ serviceUrl })
     )

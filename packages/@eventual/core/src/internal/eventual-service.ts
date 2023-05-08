@@ -17,8 +17,7 @@ export const emitEventsRequestSchema = /* @__PURE__ */ z.object({
   events: /* @__PURE__ */ z.array(eventEnvelopeSchema),
 });
 
-export interface EmitEventsRequest
-  extends z.infer<typeof emitEventsRequestSchema> {}
+export type EmitEventsRequest = z.infer<typeof emitEventsRequestSchema>;
 
 export interface WorkflowReference {
   name: string;
@@ -35,8 +34,7 @@ export const sendSignalRequestSchema = /* @__PURE__ */ z.object({
   id: /* @__PURE__ */ z.string().optional(),
 });
 
-export interface SendSignalRequestSchema
-  extends z.infer<typeof sendSignalRequestSchema> {}
+export type SendSignalRequestSchema = z.infer<typeof sendSignalRequestSchema>;
 
 export const startExecutionRequestSchema =
   /* @__PURE__ */ workflowOptionsSchema.extend({
@@ -45,8 +43,7 @@ export const startExecutionRequestSchema =
     input: /* @__PURE__ */ z.any().optional(),
   });
 
-export interface StartExecutionRequest
-  extends z.infer<typeof startExecutionRequestSchema> {}
+export type StartExecutionRequest = z.infer<typeof startExecutionRequestSchema>;
 
 export interface StartExecutionResponse {
   /**
@@ -68,8 +65,7 @@ export const listExecutionsRequestSchema = /* @__PURE__ */ z.object({
   maxResults: /* @__PURE__ */ z.number().default(100).optional(),
 });
 
-export interface ListExecutionsRequest
-  extends z.infer<typeof listExecutionsRequestSchema> {}
+export type ListExecutionsRequest = z.infer<typeof listExecutionsRequestSchema>;
 
 export interface ListExecutionsResponse {
   executions: Execution[];
@@ -90,8 +86,9 @@ export const listExecutionEventsRequestSchema = /* @__PURE__ */ z.object({
     .describe("Start returning after a data"),
 });
 
-export interface ListExecutionEventsRequest
-  extends z.infer<typeof listExecutionEventsRequestSchema> {}
+export type ListExecutionEventsRequest = z.infer<
+  typeof listExecutionEventsRequestSchema
+>;
 
 export interface ListExecutionEventsResponse {
   events: WorkflowEvent[];
@@ -136,11 +133,15 @@ export interface SendTaskSuccessRequest<T = any>
   result?: T;
 }
 
-export interface SendTaskFailureRequest
-  extends Omit<z.infer<typeof sendTaskFailureRequestSchema>, "type"> {}
+export type SendTaskFailureRequest = Omit<
+  z.infer<typeof sendTaskFailureRequestSchema>,
+  "type"
+>;
 
-export interface SendTaskHeartbeatRequest
-  extends Omit<z.infer<typeof sendTaskHeartbeatRequestSchema>, "type"> {}
+export type SendTaskHeartbeatRequest = Omit<
+  z.infer<typeof sendTaskHeartbeatRequestSchema>,
+  "type"
+>;
 
 export function isSendTaskSuccessRequest<T = any>(
   request: SendTaskUpdate
@@ -171,8 +172,9 @@ export const executeTransactionRequestSchema = /* @__PURE__ */ z.object({
   input: /* @__PURE__ */ z.any().optional(),
 });
 
-export interface ExecuteTransactionRequest
-  extends z.infer<typeof executeTransactionRequestSchema> {}
+export type ExecuteTransactionRequest = z.infer<
+  typeof executeTransactionRequestSchema
+>;
 
 export interface SendTaskHeartbeatResponse {
   /**

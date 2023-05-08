@@ -14,7 +14,7 @@ import {
 import itty from "itty-router";
 import { registerWorkerIntrinsics, WorkerIntrinsicDeps } from "./utils.js";
 
-export interface ApiHandlerDependencies extends Partial<WorkerIntrinsicDeps> {}
+export type ApiHandlerDependencies = Partial<WorkerIntrinsicDeps>;
 
 export interface CommandWorker {
   (request: HttpRequest, commandContext: CommandContext): Promise<HttpResponse>;
@@ -163,7 +163,7 @@ function initRouter() {
 
           // parse headers/params/queries/body into the RPC interface
           if (command.params) {
-            Object.entries(command.params).map(([name, spec]) => {
+            Object.entries(command.params).forEach(([name, spec]) => {
               input[name] = resolveInput(name, spec);
             });
           }

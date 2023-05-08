@@ -23,19 +23,19 @@ import {
   createCommandWorker,
 } from "../handlers/command-worker.js";
 import {
-  createEntityStreamWorker,
   EntityStreamWorker,
+  createEntityStreamWorker,
 } from "../handlers/entity-stream-worker.js";
-import { createOrchestrator, Orchestrator } from "../handlers/orchestrator.js";
+import { Orchestrator, createOrchestrator } from "../handlers/orchestrator.js";
 import {
-  createSubscriptionWorker,
   SubscriptionWorker,
+  createSubscriptionWorker,
 } from "../handlers/subscription-worker.js";
-import { createTaskWorker, TaskWorker } from "../handlers/task-worker.js";
-import { createTimerHandler, TimerHandler } from "../handlers/timer-handler.js";
+import { TaskWorker, createTaskWorker } from "../handlers/task-worker.js";
+import { TimerHandler, createTimerHandler } from "../handlers/timer-handler.js";
 import {
-  createTransactionWorker,
   TransactionWorker,
+  createTransactionWorker,
 } from "../handlers/transaction-worker.js";
 import { LogAgent } from "../log-agent.js";
 import {
@@ -231,7 +231,7 @@ export class LocalContainer {
 
     this.orchestrator = createOrchestrator({
       callExecutor: new WorkflowCallExecutor({
-        bucketStore: bucketStore,
+        bucketStore,
         entityStore,
         eventClient: this.eventClient,
         executionQueueClient: this.executionQueueClient,
@@ -309,7 +309,7 @@ export interface LocalEnvConnector {
 
 export const NoOpLocalEnvConnector: LocalEnvConnector = {
   getTime: () => new Date(),
-  pushWorkflowTask: () => {},
-  pushWorkflowTaskNextTick: () => {},
-  scheduleEvent: () => {},
+  pushWorkflowTask: () => undefined,
+  pushWorkflowTaskNextTick: () => undefined,
+  scheduleEvent: () => undefined,
 };

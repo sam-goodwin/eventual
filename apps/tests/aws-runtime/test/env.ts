@@ -8,4 +8,5 @@ const outputs = fs.existsSync(path.resolve(outputsFile))
   : undefined;
 
 export const serviceUrl = () => outputs?.["eventual-tests"]?.serviceUrl;
-export const chaosSSMParamName = () => outputs?.["eventual-tests"]?.chaosParamName;
+export const chaosSSMParamName = () =>
+  outputs?.["eventual-tests"]?.chaosParamName;

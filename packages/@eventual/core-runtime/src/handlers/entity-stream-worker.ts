@@ -11,7 +11,7 @@ export interface EntityStreamWorker {
   (item: EntityStreamItem<any>): false | void | Promise<false | void>;
 }
 
-interface EntityStreamWorkerDependencies extends WorkerIntrinsicDeps {}
+type EntityStreamWorkerDependencies = WorkerIntrinsicDeps;
 
 export function createEntityStreamWorker(
   dependencies: EntityStreamWorkerDependencies

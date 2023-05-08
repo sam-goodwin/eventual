@@ -15,6 +15,7 @@ import fs from "fs";
 import type openapi from "openapi3-ts";
 import path from "path";
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface BuildOutput extends BuildManifest {}
 
 export class BuildOutput {
@@ -112,10 +113,10 @@ export async function buildService(request: BuildAWSRuntimeProps) {
   const manifest: BuildManifest = {
     serviceName: request.serviceName,
     entry: request.entry,
-    tasks: tasks,
+    tasks,
     events: serviceSpec.events,
     subscriptions,
-    commands: commands,
+    commands,
     commandDefault: {
       entry: monoCommandFunction!,
       spec: {

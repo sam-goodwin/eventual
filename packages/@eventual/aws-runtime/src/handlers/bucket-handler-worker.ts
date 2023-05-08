@@ -60,6 +60,4 @@ export default (async (event) => {
         .join("\n")
     );
   }
-
-  return;
 }) satisfies S3Handler;

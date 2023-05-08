@@ -13,7 +13,7 @@ export interface AWSTransactionClientProps {
 export class AWSTransactionClient implements TransactionClient {
   constructor(private props: AWSTransactionClientProps) {}
 
-  async executeTransaction(
+  public async executeTransaction(
     request: ExecuteTransactionRequest
   ): Promise<ExecuteTransactionResponse> {
     console.debug("Invoking Transaction: ", request.transaction);

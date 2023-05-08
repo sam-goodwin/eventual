@@ -4,8 +4,6 @@ import {
   HttpServiceClientProps,
 } from "./base-http-client.js";
 
-export interface ServiceClientProps {}
-
 /**
  * A generic client for any Service created with Eventual.
  *
