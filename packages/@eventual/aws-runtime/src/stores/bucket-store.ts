@@ -59,7 +59,7 @@ export class AWSBucketStore implements BucketStore {
       })
     );
 
-    let bodyString: undefined | string = undefined;
+    let bodyString: undefined | string;
 
     return result.Body
       ? {

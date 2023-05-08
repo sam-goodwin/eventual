@@ -129,7 +129,6 @@ export const workflow4 = workflow("parallel", async () => {
   const greetings2 = Promise.all(
     ["sam", "chris", "sam"].map(async (name) => {
       const greeting = await hello(name);
-      ``;
       return greeting.toUpperCase();
     })
   );
@@ -643,7 +642,7 @@ const noise = task(
   "noiseTask",
   async ({ x }: { x: number }, { execution: { id } }) => {
     let n = 100;
-    let transact: Promise<number> | undefined = undefined;
+    let transact: Promise<number> | undefined;
     while (n-- > 0) {
       try {
         await check.set(id, { n });
@@ -796,7 +795,7 @@ export const typed1 = command(
   },
   async ({ userId }) => {
     return {
-      userId: userId,
+      userId,
       createdTime: new Date(0).toISOString(),
     };
   }
@@ -876,7 +875,7 @@ export const earlyMiddlewareResponse = api
   .use(() => {
     return new HttpResponse(JSON.stringify("Early Response"));
   })
-  .command("earlyMiddlewareResponse", async () => {});
+  .command("earlyMiddlewareResponse", async () => undefined);
 
 export const earlyMiddlewareResponseHttp = api
   .use(() => {
@@ -892,7 +891,7 @@ export const modifyResponseMiddleware = api
     response.headers.set("ModifiedHeader", "Injected Header");
     return response;
   })
-  .command("modifyResponseMiddleware", async () => {});
+  .command("modifyResponseMiddleware", async () => undefined);
 
 export const modifyResponseMiddlewareHttp = api
   .use(async ({ next, context }) => {

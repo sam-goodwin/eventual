@@ -1,14 +1,14 @@
-const requestFn = jest.fn();
-jest.unstable_mockModule("https", () => ({
-  request: requestFn,
-}));
-
 import { jest } from "@jest/globals";
 import { ClientRequest, IncomingMessage } from "http";
 import { Stream } from "stream";
 
 import { NodeRequestHandler } from "../src/request-handler/node-request-handler.js";
 import { HttpError } from "../src/request-handler/request-handler.js";
+
+const requestFn = jest.fn();
+jest.unstable_mockModule("https", () => ({
+  request: requestFn,
+}));
 
 const handler = new NodeRequestHandler();
 
@@ -49,8 +49,8 @@ test("throws on error", async () => {
 
 function createRequest(
   data: any,
-  statusCode: number = 200,
-  statusMessage: string = "API Success"
+  statusCode = 200,
+  statusMessage = "API Success"
 ) {
   return (...args: any[]) => {
     const [, , cb] =

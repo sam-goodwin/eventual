@@ -116,7 +116,7 @@ function createRouter<Context extends CommandContext>(
   ) as any;
 }
 
-export interface RouteRuntimeProps extends FunctionRuntimeProps {}
+export type RouteRuntimeProps = FunctionRuntimeProps;
 
 export type HttpHandler<Context extends CommandContext = CommandContext> = (
   request: HttpRequest,

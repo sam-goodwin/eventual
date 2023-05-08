@@ -2,8 +2,8 @@ import { IHttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { Event } from "@eventual/core";
 import { MetricsCommon, OrchestratorMetrics } from "@eventual/core-runtime";
-import { discoverEventualConfigSync, EventualConfig } from "@eventual/project";
-import { Arn, aws_events, aws_events_targets, Names, Stack } from "aws-cdk-lib";
+import { EventualConfig, discoverEventualConfigSync } from "@eventual/project";
+import { Arn, Names, Stack, aws_events, aws_events_targets } from "aws-cdk-lib";
 import {
   Metric,
   MetricOptions,
@@ -24,7 +24,7 @@ import { Function } from "aws-cdk-lib/aws-lambda";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
-import openapi from "openapi3-ts";
+import type openapi from "openapi3-ts";
 import path from "path";
 import {
   BucketNotificationHandler,
@@ -37,8 +37,8 @@ import {
 import { BuildOutput, buildServiceSync } from "./build";
 import {
   CommandProps,
-  Commands,
   CommandService,
+  Commands,
   CommandsProps,
   CorsOptions,
 } from "./command-service";
@@ -149,15 +149,13 @@ export interface ServiceProps<Service = any> {
   };
 }
 
-export interface LoggingProps {}
-
 export interface ServiceSystem<S> {
   /**
    * The subsystem that controls workflows.
    */
   readonly workflowService: WorkflowService;
   readonly taskService: TaskService<S>;
-  /**`
+  /** `
    * The subsystem for schedules and timers.
    */
   readonly schedulerService: SchedulerService;
@@ -277,7 +275,7 @@ export class Service<S = any> extends Construct {
       assumedBy: new AccountRootPrincipal(),
     });
 
-    this.local = !!process.env.EVENTUAL_LOCAL
+    this.local = process.env.EVENTUAL_LOCAL
       ? {
           environmentRole: accessRole,
         }
@@ -335,7 +333,7 @@ export class Service<S = any> extends Construct {
       ...serviceConstructProps,
       cors: props.cors,
       commandService: proxyCommandService,
-      entityService: entityService,
+      entityService,
       bucketOverrides: props.buckets,
       bucketHandlerOverrides: props.bucketNotificationHandlers,
     });
@@ -357,7 +355,7 @@ export class Service<S = any> extends Construct {
     this.tasks = taskService.tasks;
 
     const workflowService = new WorkflowService({
-      taskService: taskService,
+      taskService,
       bucketService: proxyBucketService,
       eventService: this.eventService,
       schedulerService: proxySchedulerService,
@@ -369,18 +367,18 @@ export class Service<S = any> extends Construct {
     this.workflowLogGroup = workflowService.logGroup;
 
     const scheduler = new SchedulerService({
-      taskService: taskService,
-      workflowService: workflowService,
+      taskService,
+      workflowService,
       ...serviceConstructProps,
     });
     proxySchedulerService._bind(scheduler);
 
     this.commandService = new CommandService({
       bucketService: proxyBucketService,
-      taskService: taskService,
+      taskService,
       overrides: props.commands,
       eventService: this.eventService,
-      workflowService: workflowService,
+      workflowService,
       cors: props.cors,
       local: this.local,
       entityService,
@@ -465,7 +463,7 @@ export class Service<S = any> extends Construct {
 
     serviceDataSSM.grantRead(accessRole);
     this.system = {
-      accessRole: accessRole,
+      accessRole,
       taskService,
       build,
       entityService,
@@ -548,6 +546,7 @@ export class Service<S = any> extends Construct {
     this.system.workflowService.configureReadExecutionHistory(func);
     this.system.workflowService.configureReadHistoryState(func);
   }
+
   @grant()
   public grantReadExecutions(grantable: IGrantable) {
     this.system.workflowService.grantReadExecutions(grantable);

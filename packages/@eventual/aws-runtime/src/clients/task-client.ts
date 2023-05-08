@@ -41,7 +41,6 @@ export class AWSTaskClient extends TaskClient {
           InvocationType: InvocationType.Event,
         })
       );
-      return;
     }
   }
 }

@@ -13,7 +13,7 @@ export interface AWSTransactionClientProps {
 export class AWSTransactionClient implements TransactionClient {
   constructor(private props: AWSTransactionClientProps) {}
 
-  async executeTransaction(
+  public async executeTransaction(
     request: ExecuteTransactionRequest
   ): Promise<ExecuteTransactionResponse> {
     const response = await this.props.lambda.send(

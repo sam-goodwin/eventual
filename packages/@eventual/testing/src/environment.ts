@@ -114,8 +114,8 @@ export class TestEnvironment extends RuntimeServiceClient {
     const localContainer = new LocalContainer(localEnvConnector, {
       serviceName,
       serviceUrl,
-      taskProvider: taskProvider,
-      subscriptionProvider: subscriptionProvider,
+      taskProvider,
+      subscriptionProvider,
     });
 
     super({

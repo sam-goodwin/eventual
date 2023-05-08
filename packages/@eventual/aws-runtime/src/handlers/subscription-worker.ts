@@ -26,7 +26,7 @@ export const processEvent = createSubscriptionWorker({
   serviceSpec,
   subscriptionProvider: new GlobalSubscriptionProvider(),
   serviceName,
-  serviceUrl: serviceUrl,
+  serviceUrl,
 });
 
 export default async function (event: EventBridgeEvent<string, any>) {

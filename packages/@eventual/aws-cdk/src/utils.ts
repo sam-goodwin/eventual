@@ -70,7 +70,7 @@ export function serviceFunctionArn(
   serviceName: string,
   stack: Stack,
   nameSuffix: string,
-  sanitized: boolean = true
+  sanitized = true
 ) {
   return stack.formatArn({
     service: "lambda",
@@ -86,7 +86,7 @@ export function serviceTableArn(
   serviceName: string,
   stack: Stack,
   nameSuffix: string,
-  sanitized: boolean = true
+  sanitized = true
 ) {
   return stack.formatArn({
     service: "dynamodb",
@@ -101,7 +101,7 @@ export function serviceTableArn(
 export function serviceBucketArn(
   serviceName: string,
   nameSuffix: string,
-  sanitized: boolean = true
+  sanitized = true
 ) {
   return formatBucketArn(
     sanitized

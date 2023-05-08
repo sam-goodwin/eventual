@@ -23,7 +23,7 @@ export interface ChaosClient {
 export class SSMChaosClient implements ChaosClient {
   constructor(private paramName: string, private ssm: SSMClient) {}
 
-  async getConfiguration() {
+  public async getConfiguration() {
     const param = await this.ssm.send(
       new GetParameterCommand({
         Name: this.paramName,
@@ -39,7 +39,7 @@ export class SSMChaosClient implements ChaosClient {
     return JSON.parse(rawValue) as ChaosTestConfig;
   }
 
-  async setConfiguration(config: ChaosTestConfig): Promise<void> {
+  public async setConfiguration(config: ChaosTestConfig): Promise<void> {
     await this.ssm.send(
       new PutParameterCommand({
         Name: this.paramName,
@@ -49,7 +49,7 @@ export class SSMChaosClient implements ChaosClient {
     );
   }
 
-  async setRule(rule: ChaosRule): Promise<void> {
+  public async setRule(rule: ChaosRule): Promise<void> {
     const config = await this.getConfiguration();
     await this.setConfiguration({
       ...config,
@@ -57,7 +57,7 @@ export class SSMChaosClient implements ChaosClient {
     });
   }
 
-  async removeRule(name: string): Promise<void> {
+  public async removeRule(name: string): Promise<void> {
     const config = await this.getConfiguration();
     const rules = config.rules?.filter((r) => r.name !== name);
     await this.setConfiguration({
@@ -66,7 +66,7 @@ export class SSMChaosClient implements ChaosClient {
     });
   }
 
-  async disable(): Promise<void> {
+  public async disable(): Promise<void> {
     const config = await this.getConfiguration();
     await this.setConfiguration({
       ...config,
@@ -74,7 +74,7 @@ export class SSMChaosClient implements ChaosClient {
     });
   }
 
-  async enable(): Promise<void> {
+  public async enable(): Promise<void> {
     const config = await this.getConfiguration();
     await this.setConfiguration({
       ...config,

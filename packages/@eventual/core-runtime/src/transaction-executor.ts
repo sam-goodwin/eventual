@@ -196,7 +196,7 @@ export function createTransactionExecutor(
         /**
          * Not used
          */
-        resolveEventual: () => {},
+        resolveEventual: () => undefined,
       };
 
       const output = await serviceTypeScope(

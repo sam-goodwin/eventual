@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { Entity, EntityTransactItem } from "../entity.js";
 
 declare global {
+  // eslint-disable-next-line no-var
   var eventualEntityHook: EntityHook | undefined;
 }
 

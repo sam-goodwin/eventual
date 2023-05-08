@@ -10,8 +10,7 @@ export interface BucketNotificationHandlerWorker {
   (item: BucketNotificationEvent): void | Promise<void>;
 }
 
-interface BucketNotificationHandlerWorkerDependencies
-  extends WorkerIntrinsicDeps {}
+type BucketNotificationHandlerWorkerDependencies = WorkerIntrinsicDeps;
 
 export function createBucketNotificationHandlerWorker(
   dependencies: BucketNotificationHandlerWorkerDependencies

@@ -18,7 +18,7 @@ import {
 export function isCommandCall(call: CallExpression): boolean {
   const c = call.callee;
   if (
-    (c.type == "Identifier" && c.value === "command") ||
+    (c.type === "Identifier" && c.value === "command") ||
     (c.type === "MemberExpression" && isId(c.property, "command"))
   ) {
     return call.arguments.length === 2 || call.arguments.length === 3;
@@ -88,7 +88,7 @@ export function isBucketHandlerMemberCall(call: CallExpression): boolean {
 export function isEntityStreamCall(call: CallExpression): boolean {
   const c = call.callee;
   if (
-    (c.type == "Identifier" && c.value === "entityStream") ||
+    (c.type === "Identifier" && c.value === "entityStream") ||
     (c.type === "MemberExpression" && isId(c.property, "entityStream"))
   ) {
     return call.arguments.length === 3 || call.arguments.length === 4;
@@ -105,7 +105,7 @@ export function isEntityStreamCall(call: CallExpression): boolean {
 export function isSubscriptionCall(call: CallExpression): boolean {
   const c = call.callee;
   if (
-    (c.type == "Identifier" && c.value === "subscription") ||
+    (c.type === "Identifier" && c.value === "subscription") ||
     (c.type === "MemberExpression" && isId(c.property, "subscription"))
   ) {
     return call.arguments.length === 3;
@@ -122,7 +122,7 @@ export function isSubscriptionCall(call: CallExpression): boolean {
 export function isTaskCall(call: CallExpression): boolean {
   const c = call.callee;
   if (
-    (c.type == "Identifier" && c.value === "task") ||
+    (c.type === "Identifier" && c.value === "task") ||
     (c.type === "MemberExpression" && isId(c.property, "task"))
   ) {
     return call.arguments.length === 2 || call.arguments.length === 3;

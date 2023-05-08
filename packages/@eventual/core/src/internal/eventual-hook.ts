@@ -14,14 +14,14 @@ declare global {
 }
 
 export class PassThroughEventualHook implements EventualCallHook {
-  registerEventualCall<
+  public registerEventualCall<
     R,
     E extends EventualCall | undefined = EventualCall | undefined
   >(eventual: E, passThrough: (eventualCall: E) => Promise<R>) {
     return passThrough(eventual) as unknown as EventualPromise<R>;
   }
 
-  resolveEventual(_seq: number, _result: Result<any>): void {
+  public resolveEventual(_seq: number, _result: Result<any>): void {
     throw new Error("Cannot resolve an eventual in passthrough mode");
   }
 }

@@ -54,6 +54,7 @@ export class RuntimeFallbackServiceClient implements EventualServiceClient {
     private props: Partial<RuntimeServiceClientProps>,
     private fallbackServiceClient: EventualServiceClient
   ) {}
+
   public async listWorkflows(): Promise<ListWorkflowsResponse> {
     if (!this.props.workflowProvider) {
       return this.fallbackServiceClient.listWorkflows();
@@ -161,7 +162,7 @@ export class RuntimeFallbackServiceClient implements EventualServiceClient {
     return this.props.taskClient.sendHeartbeat(request);
   }
 
-  async executeTransaction<T extends Transaction<any, any>>(
+  public async executeTransaction<T extends Transaction<any, any>>(
     request: ExecuteTransactionRequest<T>
   ): Promise<ExecuteTransactionResponse<T>> {
     if (!this.props.transactionClient) {

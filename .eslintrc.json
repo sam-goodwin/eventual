@@ -34,6 +34,8 @@
     "cdk.out"
   ],
   "rules": {
+    "no-sparse-arrays": "off",
+    "no-async-promise-executor": "off",
     "no-useless-constructor": "off",
     "no-use-before-define": "off",
     "@typescript-eslint/ban-types": [
@@ -44,6 +46,8 @@
         }
       }
     ],
+    "@typescript-eslint/ban-ts-comment": "warn",
+    "@typescript-eslint/no-this-alias": "warn",
     "@typescript-eslint/explicit-member-accessibility": [
       "error",
       {

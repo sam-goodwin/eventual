@@ -335,6 +335,6 @@ export const EntityEntityRecord = {
   },
   parseNamespaceFromPartitionKey(sortKey: string): string | undefined {
     const namespace = sortKey.slice(this.PARTITION_KEY_PREFIX.length);
-    return namespace ? namespace : undefined;
+    return namespace || undefined;
   },
 };

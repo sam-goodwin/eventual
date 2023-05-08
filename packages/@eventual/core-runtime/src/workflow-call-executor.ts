@@ -456,7 +456,7 @@ export class WorkflowCallExecutor {
             // serialize the data put into a string to be stored
             data:
               typeof buffer === "string" ? buffer : buffer.toString("base64"),
-            isBase64Encoded: typeof buffer === "string" ? false : true,
+            isBase64Encoded: typeof buffer !== "string",
           },
           seq,
         },
@@ -507,7 +507,7 @@ export class WorkflowCallExecutor {
             {
               type: WorkflowEventType.BucketRequestSucceeded,
               operation: call.operation,
-              result: result,
+              result,
               seq,
             },
             baseTime

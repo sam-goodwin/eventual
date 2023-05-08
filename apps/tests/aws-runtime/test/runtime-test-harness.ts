@@ -14,8 +14,7 @@ import {
 } from "@eventual/core";
 import { SSMChaosClient } from "./chaos-extension/chaos-client.js";
 import { ChaosRule } from "./chaos-extension/chaos-engine.js";
-import { serviceUrl } from "./env.js";
-import { chaosSSMParamName } from "./env.js";
+import { serviceUrl, chaosSSMParamName } from "./env.js";
 
 const testLocal = process.env.TEST_LOCAL;
 
