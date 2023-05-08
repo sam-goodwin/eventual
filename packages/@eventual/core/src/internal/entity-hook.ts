@@ -1,4 +1,4 @@
-import { z } from "zod";
+import type { z } from "zod";
 import type { AnyEntity, Entity, EntityTransactItem } from "../entity.js";
 
 declare global {

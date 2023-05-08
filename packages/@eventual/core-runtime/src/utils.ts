@@ -1,10 +1,10 @@
-import {
+import type {
   AnyEntity,
   BucketNotificationEvent,
   EntityKeyTuple,
   EntityStreamItem,
 } from "@eventual/core";
-import {
+import type {
   BucketNotificationHandlerSpec,
   EntityStreamSpec,
 } from "@eventual/core/internal";

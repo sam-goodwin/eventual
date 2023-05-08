@@ -1,8 +1,9 @@
 import { AnyCommand, api, command, HttpResponse } from "@eventual/core";
 import {
   assertNever,
-  EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
+  emitEventsRequestSchema,
   EventualService,
+  EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
   executeTransactionRequestSchema,
   extendsError,
   isSendTaskFailureRequest,
@@ -10,7 +11,6 @@ import {
   isSendTaskSuccessRequest,
   listExecutionEventsRequestSchema,
   listExecutionsRequestSchema,
-  emitEventsRequestSchema,
   sendSignalRequestSchema,
   sendTaskUpdateSchema,
   startExecutionRequestSchema,
@@ -20,7 +20,7 @@ import { z } from "zod";
 import type { EventClient } from "./clients/event-client.js";
 import type { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import type { TaskClient } from "./clients/task-client.js";
-import { TransactionClient } from "./clients/transaction-client.js";
+import type { TransactionClient } from "./clients/transaction-client.js";
 import type { WorkflowClient } from "./clients/workflow-client.js";
 import type { WorkflowSpecProvider } from "./providers/workflow-provider.js";
 import type { ExecutionHistoryStateStore } from "./stores/execution-history-state-store.js";

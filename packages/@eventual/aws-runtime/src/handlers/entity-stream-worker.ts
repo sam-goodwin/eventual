@@ -2,14 +2,16 @@ import serviceSpec from "@eventual/injected/spec";
 // the user's entry point will register streams as a side effect.
 import "@eventual/injected/entry";
 
-import { EntityStreamItem } from "@eventual/core";
+import type { AttributeValue } from "@aws-sdk/client-dynamodb";
+import { unmarshall } from "@aws-sdk/util-dynamodb";
+import type { EntityStreamItem } from "@eventual/core";
 import {
   createEntityStreamWorker,
   getLazy,
   promiseAllSettledPartitioned,
 } from "@eventual/core-runtime";
-import { EntityStreamOperation } from "@eventual/core/internal";
-import { DynamoDBStreamHandler } from "aws-lambda";
+import type { EntityStreamOperation } from "@eventual/core/internal";
+import type { DynamoDBStreamHandler } from "aws-lambda";
 import {
   createBucketStore,
   createEntityStore,
@@ -21,9 +23,7 @@ import {
   serviceName,
   serviceUrl,
 } from "../env.js";
-import { EntityEntityRecord } from "../stores/entity-store.js";
-import { unmarshall } from "@aws-sdk/util-dynamodb";
-import { AttributeValue } from "@aws-sdk/client-dynamodb";
+import type { EntityEntityRecord } from "../stores/entity-store.js";
 
 const worker = createEntityStreamWorker({
   bucketStore: createBucketStore(),

@@ -5,17 +5,19 @@ import "@eventual/injected/entry";
 import {
   createBucketNotificationHandlerWorker,
   getLazy,
-  promiseAllSettledPartitioned
+  promiseAllSettledPartitioned,
 } from "@eventual/core-runtime";
 import { S3Handler } from "aws-lambda";
 import {
   createBucketStore,
   createEntityStore,
-  createServiceClient
+  createServiceClient,
 } from "../create.js";
 import {
-  bucketHandlerName, bucketName, serviceName,
-  serviceUrl
+  bucketHandlerName,
+  bucketName,
+  serviceName,
+  serviceUrl,
 } from "../env.js";
 
 const worker = createBucketNotificationHandlerWorker({

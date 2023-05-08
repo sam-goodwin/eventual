@@ -1,4 +1,4 @@
-import { ExecutionID, Workflow } from "@eventual/core";
+import type { ExecutionID, Workflow } from "@eventual/core";
 import {
   assertNever,
   AwaitTimerCall,
@@ -44,19 +44,19 @@ import {
   WorkflowEventType,
 } from "@eventual/core/internal";
 import stream from "stream";
-import { EventClient } from "./clients/event-client.js";
-import { ExecutionQueueClient } from "./clients/execution-queue-client.js";
-import { TaskClient, TaskWorkerRequest } from "./clients/task-client.js";
-import { TimerClient } from "./clients/timer-client.js";
-import { TransactionClient } from "./clients/transaction-client.js";
-import { WorkflowClient } from "./clients/workflow-client.js";
+import type { EventClient } from "./clients/event-client.js";
+import type { ExecutionQueueClient } from "./clients/execution-queue-client.js";
+import type { TaskClient, TaskWorkerRequest } from "./clients/task-client.js";
+import type { TimerClient } from "./clients/timer-client.js";
+import type { TransactionClient } from "./clients/transaction-client.js";
+import type { WorkflowClient } from "./clients/workflow-client.js";
 import { formatChildExecutionName, formatExecutionId } from "./execution.js";
 import { normalizeError } from "./result.js";
 import { computeScheduleDate } from "./schedule.js";
-import { BucketStore } from "./stores/bucket-store.js";
-import { EntityStore } from "./stores/entity-store.js";
+import type { BucketStore } from "./stores/bucket-store.js";
+import type { EntityStore } from "./stores/entity-store.js";
 import { createEvent } from "./workflow-events.js";
-import { WorkflowCall } from "./workflow-executor.js";
+import type { WorkflowCall } from "./workflow-executor.js";
 
 interface WorkflowCallExecutorProps {
   bucketStore: BucketStore;

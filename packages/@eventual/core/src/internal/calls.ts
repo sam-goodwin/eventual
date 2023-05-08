@@ -5,7 +5,7 @@ import type { EventEnvelope } from "../event.js";
 import type { DurationSchedule, Schedule } from "../schedule.js";
 import type { WorkflowExecutionOptions } from "../workflow.js";
 import type { BucketMethod } from "./bucket-hook.js";
-import { EntityMethod } from "./entity-hook.js";
+import type { EntityMethod } from "./entity-hook.js";
 import type { SignalTarget } from "./signal.js";
 
 export type EventualCall =

@@ -131,7 +131,7 @@ export class TransactionCancelled extends Error {
 }
 
 /**
- *
+ * Thrown when a transaction conflict with another conflict or write operation.
  */
 export class TransactionConflict extends Error {
   constructor() {
