@@ -6,7 +6,7 @@ import { transactions } from "@eventual/core/internal";
 import type { EventClient } from "../clients/event-client.js";
 import type { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import { EntityProvider } from "../index.js";
-import { isResolved } from "../result.js";
+import { isResolved, normalizeFailedResult } from "../result.js";
 import type { EntityStore } from "../stores/entity-store.js";
 import { createTransactionExecutor } from "../transaction-executor.js";
 import { getLazy, LazyValue } from "../utils.js";
@@ -63,7 +63,7 @@ export function createTransactionWorker(
       return { output: output.result.value, succeeded: true };
     } else {
       // todo: add reasons
-      return { succeeded: false };
+      return { succeeded: false, ...normalizeFailedResult(output.result) };
     }
   };
 }

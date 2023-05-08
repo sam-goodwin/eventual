@@ -1437,8 +1437,7 @@ describe("entity", () => {
           {
             operation: {
               operation: "set",
-              key: namespace ? { key: id, namespace } : id,
-              value: { n: value },
+              value: { id: namespace + id, n: value },
               options: { expectedVersion: version },
             },
             entity: myEntity,
@@ -1446,8 +1445,7 @@ describe("entity", () => {
           {
             operation: {
               operation: "set",
-              key: { key: id, namespace: "3" },
-              value: { n: value },
+              value: { id: namespace + id, n: value },
               options: { expectedVersion: version },
             },
             entity: myEntity,

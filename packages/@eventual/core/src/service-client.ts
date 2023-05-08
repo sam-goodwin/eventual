@@ -172,7 +172,7 @@ export interface ExecuteTransactionRequest<
 }
 
 export type ExecuteTransactionResponse<T extends Transaction = Transaction> =
-  | { succeeded: false }
+  | { succeeded: false; error: string; message: string }
   | {
       output: TransactionOutput<T>;
       succeeded: true;

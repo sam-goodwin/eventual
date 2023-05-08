@@ -18,30 +18,10 @@ export interface UnexpectedVersionResult {
   unexpectedVersion: true;
 }
 
-export interface TransactionCancelledResult {
-  reasons: (UnexpectedVersionResult | undefined)[];
-}
-
-export interface TransactionConflictResult {
-  transactionConflict: true;
-}
-
 export function isUnexpectedVersionResult(
   value: any
 ): value is UnexpectedVersionResult {
   return value && "unexpectedVersion" in value;
-}
-
-export function isTransactionCancelledResult(
-  value: any
-): value is TransactionCancelledResult {
-  return value && "reasons" in value;
-}
-
-export function isTransactionConflictResult(
-  value: any
-): value is TransactionConflictResult {
-  return value && "transactionConflict" in value;
 }
 
 export interface NormalizeEntityKeyPart {

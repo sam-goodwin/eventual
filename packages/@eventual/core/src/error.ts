@@ -129,3 +129,12 @@ export class TransactionCancelled extends Error {
     super("Transactions Cancelled, see reasons");
   }
 }
+
+/**
+ *
+ */
+export class TransactionConflict extends Error {
+  constructor() {
+    super("Transactions Conflicted with another operation");
+  }
+}

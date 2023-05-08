@@ -179,6 +179,14 @@ export type EntityCompositeKeyFromEntity<E extends AnyEntity> =
     ? EntityCompositeKey<Schema, Partition, Sort>
     : never;
 
+export type EntityKeyFromEntity<E extends AnyEntity> = E extends Entity<
+  infer Schema,
+  infer Partition,
+  infer Sort
+>
+  ? EntityKey<Schema, Partition, Sort>
+  : never;
+
 export type EntityCompositeKey<
   E extends EntityValue,
   Partition extends EntityKeyField<E>,
@@ -204,7 +212,7 @@ export type EntityKey<
 export type AnyEntityKey = EntityKey<any, string, string | undefined>;
 
 export type EntityPartitionKey<E extends AnyEntity> = E extends Entity<
-  EntitySchema<E>,
+  any,
   infer Partition,
   any
 >
@@ -212,8 +220,8 @@ export type EntityPartitionKey<E extends AnyEntity> = E extends Entity<
   : never;
 
 export type EntitySortKey<E extends AnyEntity> = E extends Entity<
-  EntitySchema<E>,
-  EntityPartitionKey<E>,
+  any,
+  any,
   infer Sort
 >
   ? Sort
@@ -298,51 +306,37 @@ export interface Entity<
   ): EntityStream<Entity<E, P, S>>;
 }
 
-export interface EntityTransactItem<
-  E extends EntityValue,
-  P extends EntityKeyField<E> = EntityKeyField<E>,
-  S extends EntityKeyField<E> | undefined = EntityKeyField<E> | undefined
-> {
-  entity: Entity<E, P, S> | string;
+export interface EntityTransactItem<E extends AnyEntity = AnyEntity> {
+  entity: E | string;
   operation:
     | EntitySetOperation<E>
-    | EntityDeleteOperation<E, P, S>
-    | EntityConditionalOperation<E, P, S>;
+    | EntityDeleteOperation<E>
+    | EntityConditionalOperation<E>;
 }
 
-export interface EntitySetOperation<E extends EntityValue> {
+export interface EntitySetOperation<E extends AnyEntity> {
   operation: "set";
-  value: E;
+  value: EntitySchema<E>;
   options?: EntitySetOptions;
 }
 
-export interface EntityDeleteOperation<
-  E extends EntityValue,
-  P extends EntityKeyField<E>,
-  S extends EntityKeyField<E> | undefined
-> {
+export interface EntityDeleteOperation<E extends AnyEntity> {
   operation: "delete";
-  key: EntityKey<E, P, S>;
+  key: EntityKeyFromEntity<E>;
   options?: EntitySetOptions;
 }
 
 /**
  * Used in transactions, cancels the transaction if the key's version does not match.
  */
-export interface EntityConditionalOperation<
-  E extends EntityValue = EntityValue,
-  P extends EntityKeyField<E> = EntityKeyField<E>,
-  S extends EntityKeyField<E> | undefined = EntityKeyField<E> | undefined
-> {
+export interface EntityConditionalOperation<E extends AnyEntity> {
   operation: "condition";
-  key: EntityKey<E, P, S>;
+  key: EntityKeyFromEntity<E>;
   version?: number;
 }
 
 export const Entity = {
-  transactWrite: <Items extends EntityTransactItem<any>[]>(
-    items: Items
-  ): Promise<void> => {
+  transactWrite: (items: EntityTransactItem[]): Promise<void> => {
     return getEventualCallHook().registerEventualCall(
       createEventualCall<EntityCall<"transact">>(EventualCallKind.EntityCall, {
         operation: "transact",

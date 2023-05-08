@@ -134,9 +134,7 @@ export class LocalEntityStore implements EntityStore {
     };
   }
 
-  async transactWrite(
-    items: EntityTransactItem<any, any, any>[]
-  ): Promise<void> {
+  async transactWrite(items: EntityTransactItem[]): Promise<void> {
     const keysAndVersions = Object.fromEntries(
       items.map(
         (i) =>

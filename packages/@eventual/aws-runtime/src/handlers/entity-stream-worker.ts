@@ -58,7 +58,7 @@ export default (async (event) => {
           : {};
 
         const { __version: oldVersion = undefined, ...oldValue } = oldItem
-          ? unmarshall(newItem as Record<string, AttributeValue>)
+          ? unmarshall(oldItem as Record<string, AttributeValue>)
           : {};
 
         if (keys && operation) {

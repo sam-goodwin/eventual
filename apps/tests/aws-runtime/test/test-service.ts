@@ -548,7 +548,7 @@ export const createAndDestroyWorkflow = workflow(
   }
 );
 
-export const counter = entity("counter2", {
+export const counter = entity("counter3", {
   schema: z.object({ n: z.number(), id: z.string() }),
   partitionKey: "id",
 });
@@ -575,8 +575,9 @@ export const counterNamespaceWatcher = counter.stream(
   async (item) => {
     if (item.operation === "insert") {
       const value = await counter.get(item.key);
-      await counter.set({ ...item.key, n: (value?.n ?? 0) + 1 });
-      await entitySignal.sendSignal(item.key.id);
+      const id = item.key.id.substring("different".length);
+      await counter.set({ id, n: (value?.n ?? 0) + 1 });
+      await entitySignal.sendSignal(id);
     }
   }
 );
@@ -603,6 +604,7 @@ export const entityWorkflow = workflow(
   "entityWorkflow",
   async (_, { execution: { id } }) => {
     await counter.set({ id, n: 1 });
+    await counter.set({ id: "different" + id, n: 1 });
     await entitySignal.expectSignal();
     await entityTask();
     await Promise.all([entityEvent.emit({ id }), entitySignal.expectSignal()]);
@@ -620,20 +622,19 @@ export const entityWorkflow = workflow(
         entity: counter,
         operation: {
           operation: "set",
-          key: id,
-          value: { n: (value?.n ?? 0) + 1 },
+          value: { id, n: (value?.n ?? 0) + 1 },
         },
       },
     ]);
     // send deletion, to be picked up by the stream
-    counter.delete([id]);
+    await counter.delete([id]);
     await counter.query({ partition: id });
     // this signal will contain the final value after deletion
     return await entitySignal2.expectSignal();
   }
 );
 
-export const check = entity("check", {
+export const check = entity("check2", {
   schema: z.object({ n: z.number(), id: z.string() }),
   partitionKey: "id",
 });
@@ -653,15 +654,23 @@ const noise = task(
       try {
         await check.set({ id, n });
       } catch (err) {
+        console.error(err);
         if (!(err instanceof TransactionConflictException)) {
           throw err;
         }
       }
+      console.log(n);
       if (n === x) {
         transact = gitErDone({ id });
       }
     }
-    return await transact;
+    console.log("waiting...");
+    try {
+      return await transact;
+    } catch (err) {
+      console.error("Transaction Errored", err);
+      throw err;
+    }
   }
 );
 

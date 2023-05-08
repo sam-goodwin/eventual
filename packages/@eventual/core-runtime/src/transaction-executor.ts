@@ -1,10 +1,12 @@
-import type {
+import {
   AnyEntity,
   EntityCompositeKey,
   EntityConditionalOperation,
   EntityDeleteOperation,
   EntitySetOperation,
   EntityTransactItem,
+  TransactionCancelled,
+  TransactionConflict,
   TransactionContext,
   TransactionFunction,
 } from "@eventual/core";
@@ -28,14 +30,12 @@ import {
 import type { EventClient } from "./clients/event-client.js";
 import type { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { enterEventualCallHookScope } from "./eventual-hook.js";
-import { EntityProvider } from "./index.js";
+import type { EntityProvider } from "./providers/entity-provider.js";
 import { isResolved } from "./result.js";
 import {
   convertNormalizedEntityKeyToMap,
   EntityStore,
   EntityWithMetadata,
-  isTransactionCancelledResult,
-  isTransactionConflictResult,
   isUnexpectedVersionResult,
   normalizeCompositeKey,
   NormalizeEntityKey,
@@ -106,25 +106,31 @@ export function createTransactionExecutor(
     transactionContext: TransactionContext,
     retries = 3
   ) {
-    // retry the transaction until it completes, there is an explicit conflict, or we run out of retries.
-    do {
-      const result = await executeTransactionOnce();
-      if ("output" in result) {
-        return { result: Result.resolved(result.output) };
-      } else if (result.canRetry) {
-        continue;
-      } else {
-        return {
-          result: Result.failed(
-            new Error("Failed after an explicit conflict.")
-          ),
-        };
-      }
-    } while (retries--);
+    try {
+      // retry the transaction until it completes, there is an explicit conflict, or we run out of retries.
+      do {
+        const result = await executeTransactionOnce();
+        if ("output" in result) {
+          return { result: Result.resolved(result.output) };
+        } else if (result.canRetry) {
+          continue;
+        } else {
+          return {
+            result: Result.failed(
+              new Error("Failed after an explicit conflict.")
+            ),
+          };
+        }
+      } while (retries--);
 
-    return {
-      result: Result.failed(new Error("Failed after too many retires.")),
-    };
+      return {
+        result: Result.failed(new Error("Failed after too many retires.")),
+      };
+    } catch (err) {
+      return {
+        result: Result.failed(err),
+      };
+    }
 
     async function executeTransactionOnce(): Promise<
       | { output: Output }
@@ -161,16 +167,17 @@ export function createTransactionExecutor(
                 const entity = getEntity(eventual.entityName);
                 // should either by the key or the value object, which can be used as the key
                 const key = eventual.params[0];
+                const normalizedKey = normalizeCompositeKey(entity, key);
                 const entityValue = await resolveEntity(
-                  eventual.entityName,
-                  key
-                );
-                const normalizedKey = serializeCompositeKey(
                   entity.name,
-                  normalizeCompositeKey(entity, key)
+                  normalizedKey
+                );
+                const serializedKey = serializeCompositeKey(
+                  entity.name,
+                  normalizedKey
                 );
 
-                entityCalls.set(normalizedKey, eventual);
+                entityCalls.set(serializedKey, eventual);
                 return isEntityOperationOfType("set", eventual)
                   ? { version: (entityValue?.version ?? 0) + 1 }
                   : undefined;
@@ -183,7 +190,7 @@ export function createTransactionExecutor(
                 const entity = getEntity(eventual.entityName);
                 const key = eventual.params[0];
                 const value = await resolveEntity(
-                  eventual.entityName,
+                  entity.name,
                   normalizeCompositeKey(entity, key)
                 );
 
@@ -250,10 +257,10 @@ export function createTransactionExecutor(
       /**
        * Build the transaction items that contain mutations with assertions or just assertions.
        */
-      const transactionItems: EntityTransactItem<any, string>[] = [
+      const transactionItems: EntityTransactItem[] = [
         ...retrievedEntities.entries(),
-      ].map(([normalizedKey, { entityName, key, value }], i) => {
-        const call = entityCalls.get(normalizedKey);
+      ].map(([serializedKey, { entityName, key, value }], i) => {
+        const call = entityCalls.get(serializedKey);
 
         const retrievedVersion = value?.version ?? 0;
         if (call) {
@@ -291,7 +298,7 @@ export function createTransactionExecutor(
                       expectedVersion:
                         options?.expectedVersion ?? retrievedVersion,
                     },
-                  } satisfies EntityDeleteOperation<any, any, any>),
+                  } satisfies EntityDeleteOperation<any>),
           };
         } else {
           // values that are retrieved only, will be checked using a condition
@@ -301,78 +308,88 @@ export function createTransactionExecutor(
               operation: "condition",
               key: convertNormalizedEntityKeyToMap(key),
               version: retrievedVersion,
-            } satisfies EntityConditionalOperation<any, any, any>,
+            } satisfies EntityConditionalOperation<any>,
           };
         }
       });
 
       console.log(JSON.stringify(transactionItems, undefined, 4));
 
-      /**
-       * Run the transaction
-       */
-      const result =
-        transactionItems.length > 0
-          ? await entityStore.transactWrite(transactionItems)
-          : undefined;
-
-      console.log(JSON.stringify(result, undefined, 4));
-
-      /**
-       * If the transaction failed, check if it is retryable or not.
-       */
-      if (isTransactionCancelledResult(result)) {
-        const retry = !result.reasons.some((r, i) =>
-          isUnexpectedVersionResult(r) ? versionOverridesIndices.has(i) : false
-        );
-        return {
-          canRetry: retry,
-          failedItems: result.reasons
-            .map((r, i) => {
-              if (isUnexpectedVersionResult(r)) {
-                const x: EntityTransactItem<any, any, any> =
-                  transactionItems[i]!;
-                const entity =
-                  typeof x.entity === "string" ? getEntity(x.entity) : x.entity;
-                const key =
-                  x.operation.operation === "set"
-                    ? x.operation.value
-                    : x.operation.key;
-                return {
-                  entityName: entity.name,
-                  key,
-                } satisfies TransactionFailedItem;
-              }
-              return undefined;
-            })
-            .filter((i): i is Exclude<typeof i, undefined> => !!i),
-        };
-      } else if (isTransactionConflictResult(result)) {
-        return { canRetry: true, failedItems: [] };
-      } else {
+      try {
         /**
-         * If the transaction succeeded, emit events and send signals.
-         * TODO: move the side effects to a transactional dynamo update.
+         * Run the transaction
          */
-        await Promise.allSettled(
-          eventCalls.map(async (call) => {
-            if (isEmitEventsCall(call)) {
-              await eventClient.emitEvents(...call.events);
-            } else if (call) {
-              // shouldn't happen
-              if (call.target.type === SignalTargetType.ChildExecution) {
-                return;
-              }
-              await executionQueueClient.sendSignal({
-                execution: call.target.executionId,
-                signal: call.signalId,
-                payload: call.payload,
-                id: call.id,
-              });
-            }
-          })
-        );
+        const result =
+          transactionItems.length > 0
+            ? await entityStore.transactWrite(transactionItems)
+            : undefined;
+
+        console.log(JSON.stringify(result, undefined, 4));
+      } catch (err) {
+        /**
+         * If the transaction failed, check if it is retryable or not.
+         */
+
+        if (err instanceof TransactionCancelled) {
+          const retry = !err.reasons.some((r, i) =>
+            isUnexpectedVersionResult(r)
+              ? versionOverridesIndices.has(i)
+              : false
+          );
+          return {
+            canRetry: retry,
+            failedItems: err.reasons
+              .map((r, i) => {
+                if (isUnexpectedVersionResult(r)) {
+                  const x: EntityTransactItem = transactionItems[i]!;
+                  const entity =
+                    typeof x.entity === "string"
+                      ? getEntity(x.entity)
+                      : x.entity;
+                  // normalize the key to extract only the key fields.
+                  const key = normalizeCompositeKey(
+                    entity,
+                    x.operation.operation === "set"
+                      ? x.operation.value
+                      : x.operation.key
+                  );
+                  return {
+                    entityName: entity.name,
+                    // convert back to a map to send to the caller
+                    key: convertNormalizedEntityKeyToMap(key),
+                  } satisfies TransactionFailedItem;
+                }
+                return undefined;
+              })
+              .filter((i): i is Exclude<typeof i, undefined> => !!i),
+          };
+        } else if (err instanceof TransactionConflict) {
+          return { canRetry: true, failedItems: [] };
+        }
       }
+
+      /**
+       * If the transaction succeeded, emit events and send signals.
+       * TODO: move the side effects to a transactional dynamo update.
+       */
+      await Promise.allSettled(
+        eventCalls.map(async (call) => {
+          if (isEmitEventsCall(call)) {
+            await eventClient.emitEvents(...call.events);
+          } else if (call) {
+            // shouldn't happen
+            if (call.target.type === SignalTargetType.ChildExecution) {
+              return;
+            }
+            await executionQueueClient.sendSignal({
+              execution: call.target.executionId,
+              signal: call.signalId,
+              payload: call.payload,
+              id: call.id,
+            });
+          }
+        })
+      );
 
       return { output };
 
@@ -388,15 +405,18 @@ export function createTransactionExecutor(
         entityName: string,
         key: NormalizeEntityKey
       ): EventualPromise<EntityWithMetadata<any> | undefined> {
-        const normalizedKey = serializeCompositeKey(entityName, key);
-        if (retrievedEntities.has(normalizedKey)) {
+        const serializedKey = serializeCompositeKey(entityName, key);
+        if (retrievedEntities.has(serializedKey)) {
           return createResolvedEventualPromise(
-            Result.resolved(retrievedEntities.get(normalizedKey)?.value)
+            Result.resolved(retrievedEntities.get(serializedKey)?.value)
           );
         } else {
           return createEventualPromise(async () => {
-            const value = await entityStore.get(entityName, key);
-            retrievedEntities.set(normalizedKey, {
+            const value = await entityStore.getWithMetadata(
+              entityName,
+              convertNormalizedEntityKeyToMap(key)
+            );
+            retrievedEntities.set(serializedKey, {
               entityName,
               key,
               value,

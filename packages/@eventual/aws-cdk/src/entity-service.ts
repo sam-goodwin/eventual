@@ -209,10 +209,11 @@ interface EntityStreamProps {
   table: ITable;
   serviceProps: EntityServiceProps<any>;
   entityService: EntityService<any>;
+  entity: EntityRuntime;
   stream: EntityStreamFunction;
 }
 
-export class Entity extends Construct {
+class Entity extends Construct {
   public table: ITable;
   public streams: Record<string, EntityStream>;
 
@@ -245,6 +246,7 @@ export class Entity extends Construct {
       props.entity.streams.map((s) => [
         s.spec.name,
         new EntityStream(entityStreamScope, s.spec.name, {
+          entity: props.entity,
           entityService: props.entityService,
           serviceProps: props.serviceProps,
           stream: s,
@@ -281,7 +283,7 @@ export class EntityStream extends Construct implements EventualResource {
         ? {
             dynamodb: {
               Keys: {
-                pk: {
+                [normalizeKeySpec(props.entity.partitionKey).key]: {
                   S: FilterRule.or(
                     // for each namespace given, match the complete name.
                     ...(partitions ? partitions : []),

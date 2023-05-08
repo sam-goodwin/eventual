@@ -25,6 +25,7 @@ import {
   EntityTransactItem,
   EntityValue,
   TransactionCancelled,
+  TransactionConflict,
   UnexpectedVersion,
 } from "@eventual/core";
 import {
@@ -64,13 +65,13 @@ export class AWSEntityStore implements EntityStore {
 
   async getWithMetadata(
     entityName: string,
-    key: Pick<any, string> | [p: string, s: string]
+    key: AnyEntityKey
   ): Promise<{ entity: any; version: number } | undefined> {
     const entity = this.getEntity(entityName);
     const item = await this.props.dynamo.send(
       new GetItemCommand({
         Key: this.entityKey(key, entity),
-        TableName: this.tableName(name),
+        TableName: this.tableName(entityName),
         ConsistentRead: true,
       })
     );
@@ -115,7 +116,7 @@ export class AWSEntityStore implements EntityStore {
 
   async delete(
     entityName: string,
-    key: Pick<any, string> | [p: string, s: string],
+    key: AnyEntityKey,
     options?: EntityConsistencyOptions | undefined
   ): Promise<void> {
     try {
@@ -154,7 +155,7 @@ export class AWSEntityStore implements EntityStore {
         options?.expectedVersion !== undefined
           ? { ":expectedVersion": { N: options.expectedVersion.toString() } }
           : undefined,
-      TableName: this.tableName(name),
+      TableName: this.tableName(entity.name),
     };
   }
 
@@ -172,9 +173,7 @@ export class AWSEntityStore implements EntityStore {
     };
   }
 
-  async transactWrite(
-    items: EntityTransactItem<any, string, string | undefined>[]
-  ): Promise<void> {
+  async transactWrite(items: EntityTransactItem[]): Promise<void> {
     try {
       await this.props.dynamo.send(
         new TransactWriteItemsCommand({
@@ -238,7 +237,7 @@ export class AWSEntityStore implements EntityStore {
           ) ?? []
         );
       } else if (err instanceof TransactionConflictException) {
-        throw new TransactionCancelled([]);
+        throw new TransactionConflict();
       }
       throw err;
     }
@@ -251,7 +250,7 @@ export class AWSEntityStore implements EntityStore {
   ): Update {
     const entity =
       typeof _entity === "string" ? this.getEntity(_entity) : _entity;
-    const valueRecord = marshall(value);
+    const valueRecord = marshall(value, { removeUndefinedValues: true });
     const normalizedKey = normalizeCompositeKey(entity, valueRecord);
     delete valueRecord[normalizedKey.partition.field];
     if (normalizedKey.sort) {
@@ -289,7 +288,7 @@ export class AWSEntityStore implements EntityStore {
             ? "attribute_not_exists(#__version)"
             : "#__version=:__expectedVersion"
           : undefined,
-      TableName: this.tableName(name),
+      TableName: this.tableName(entity.name),
     };
   }
 
@@ -304,7 +303,8 @@ export class AWSEntityStore implements EntityStore {
   private entityKey(key: AnyEntityKey, entity: AnyEntity) {
     const compositeKey = normalizeCompositeKey(entity, key);
     const keyMap = convertNormalizedEntityKeyToMap(compositeKey);
-    return marshall(keyMap);
+    const marshalledKey = marshall(keyMap, { removeUndefinedValues: true });
+    return marshalledKey;
   }
 
   private listEntries(
@@ -341,7 +341,7 @@ export class AWSEntityStore implements EntityStore {
         nextToken: request.nextToken,
       },
       {
-        TableName: this.tableName(name),
+        TableName: this.tableName(entityName),
         KeyConditionExpression: sortKeyRef
           ? `#${partitionKeyRef.key}=:pk AND begins_with(#${sortKeyRef.key}, :sk)`
           : `#${partitionKeyRef.key}=:pk`,

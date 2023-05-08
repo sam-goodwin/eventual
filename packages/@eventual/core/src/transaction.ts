@@ -1,8 +1,8 @@
-import { TransactionCancelled } from "./error.js";
+import { EventualError } from "./error.js";
 import {
+  createEventualCall,
   EventualCallKind,
   InvokeTransactionCall,
-  createEventualCall,
 } from "./internal/calls.js";
 import { getServiceClient, transactions } from "./internal/global.js";
 import { TransactionSpec } from "./internal/service-spec.js";
@@ -63,10 +63,9 @@ export function transaction<Input, Output>(
 
         if (response.succeeded) {
           return response.output;
+        } else {
+          throw new EventualError(response.error, response.message);
         }
-
-        // todo: return reason?
-        throw new TransactionCancelled([]);
       }
     );
   }) as any;
