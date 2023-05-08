@@ -5,10 +5,12 @@ import {
   EntityDeleteOperation,
   EntitySetOperation,
   EntityTransactItem,
+  EntityWithMetadata,
   TransactionCancelled,
   TransactionConflict,
   TransactionContext,
   TransactionFunction,
+  UnexpectedVersion,
 } from "@eventual/core";
 import {
   assertNever,
@@ -35,8 +37,6 @@ import { isResolved } from "./result.js";
 import {
   convertNormalizedEntityKeyToMap,
   EntityStore,
-  EntityWithMetadata,
-  isUnexpectedVersionResult,
   normalizeCompositeKey,
   NormalizeEntityKey,
 } from "./stores/entity-store.js";
@@ -195,7 +195,7 @@ export function createTransactionExecutor(
                 );
 
                 if (isEntityOperationOfType("get", eventual)) {
-                  return value?.entity;
+                  return value?.value;
                 } else if (
                   isEntityOperationOfType("getWithMetadata", eventual)
                 ) {
@@ -332,7 +332,7 @@ export function createTransactionExecutor(
 
         if (err instanceof TransactionCancelled) {
           const retry = !err.reasons.some((r, i) =>
-            isUnexpectedVersionResult(r)
+            r instanceof UnexpectedVersion
               ? versionOverridesIndices.has(i)
               : false
           );
@@ -340,7 +340,7 @@ export function createTransactionExecutor(
             canRetry: retry,
             failedItems: err.reasons
               .map((r, i) => {
-                if (isUnexpectedVersionResult(r)) {
+                if (r instanceof UnexpectedVersion) {
                   const x: EntityTransactItem = transactionItems[i]!;
                   const entity =
                     typeof x.entity === "string"

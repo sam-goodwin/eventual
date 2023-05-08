@@ -248,6 +248,11 @@ export type EntityKeyReference<
   ? EntityKeyBinary<Exclude<F, undefined>>
   : never;
 
+export interface EntityWithMetadata<E extends EntityValue> {
+  value: E;
+  version: number;
+}
+
 export interface Entity<
   E extends EntityValue,
   P extends EntityKeyField<E>,
@@ -274,7 +279,7 @@ export interface Entity<
    */
   getWithMetadata(
     key: EntityKey<E, P, S>
-  ): Promise<{ entity: E; version: number } | undefined>;
+  ): Promise<EntityWithMetadata<E> | undefined>;
   /**
    * Sets or updates a value within an entity and optionally a namespace.
    *

@@ -5,7 +5,7 @@ import type {
 import { transactions } from "@eventual/core/internal";
 import type { EventClient } from "../clients/event-client.js";
 import type { ExecutionQueueClient } from "../clients/execution-queue-client.js";
-import { EntityProvider } from "../index.js";
+import type { EntityProvider } from "../providers/entity-provider.js";
 import { isResolved, normalizeFailedResult } from "../result.js";
 import type { EntityStore } from "../stores/entity-store.js";
 import { createTransactionExecutor } from "../transaction-executor.js";

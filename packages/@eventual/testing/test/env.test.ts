@@ -1328,16 +1328,14 @@ describe("entity", () => {
     });
   });
 
-  test("workflow and task uses get and set with namespaces", async () => {
-    const entityTask = task(
-      async (namespace: string, { execution: { id } }) => {
-        const key = { part: namespace, id };
-        await myEntityWithSort.set({
-          ...key,
-          n: ((await myEntity.get(key))?.n ?? 0) + 1,
-        });
-      }
-    );
+  test("workflow and task uses get and set with partitions and sort keys", async () => {
+    const entityTask = task(async (part: string, { execution: { id } }) => {
+      const key = { part, id };
+      await myEntityWithSort.set({
+        ...key,
+        n: ((await myEntityWithSort.get(key))?.n ?? 0) + 1,
+      });
+    });
     const wf = workflow(async (_, { execution: { id } }) => {
       await myEntityWithSort.set({ part: "1", id, n: 1 });
       await myEntityWithSort.set({ part: "2", id, n: 100 });
@@ -1416,7 +1414,7 @@ describe("entity", () => {
       Partial<Execution<any>>
     >({
       result: {
-        entity: { n: 5, id: execution.executionId, part: "versionTest" },
+        value: { n: 5, id: execution.executionId, part: "versionTest" },
         version: 3,
       },
       status: ExecutionStatus.SUCCEEDED,
@@ -1428,27 +1426,36 @@ describe("entity", () => {
       async (
         {
           version,
-          namespace,
+          partition,
           value,
-        }: { version: number; namespace?: string; value: number },
+        }: { version: number; partition?: string; value: number },
         { execution: { id } }
       ) => {
         return Entity.transactWrite([
+          partition
+            ? {
+                operation: {
+                  operation: "set",
+                  value: { part: partition, id, n: value },
+                  options: { expectedVersion: version },
+                },
+                entity: myEntityWithSort,
+              }
+            : {
+                operation: {
+                  operation: "set",
+                  value: { id, n: value },
+                  options: { expectedVersion: version },
+                },
+                entity: myEntity,
+              },
           {
             operation: {
               operation: "set",
-              value: { id: namespace + id, n: value },
+              value: { part: "3", id, n: value },
               options: { expectedVersion: version },
             },
-            entity: myEntity,
-          },
-          {
-            operation: {
-              operation: "set",
-              value: { id: namespace + id, n: value },
-              options: { expectedVersion: version },
-            },
-            entity: myEntity,
+            entity: myEntityWithSort,
           },
         ]);
       }
@@ -1465,7 +1472,7 @@ describe("entity", () => {
 
       await testTask({ version: version1, value: 2 });
       try {
-        await testTask({ version: version2 + 1, namespace: "2", value: 3 });
+        await testTask({ version: version2 + 1, partition: "2", value: 3 });
       } catch {}
 
       return Promise.all([

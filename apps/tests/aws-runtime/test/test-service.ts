@@ -614,8 +614,8 @@ export const entityWorkflow = workflow(
     } catch (err) {
       console.error("expected the entity set to fail", err);
     }
-    const { entity, version } = (await counter.getWithMetadata([id])) ?? {};
-    await counter.set({ id, n: entity!.n + 1 }, { expectedVersion: version });
+    const { value: entityValue, version } = (await counter.getWithMetadata([id])) ?? {};
+    await counter.set({ id, n: entityValue!.n + 1 }, { expectedVersion: version });
     const value = await counter.get([id]);
     await Entity.transactWrite([
       {

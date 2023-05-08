@@ -37,8 +37,11 @@ import {
   createTransactionWorker,
   TransactionWorker,
 } from "../handlers/transaction-worker.js";
-import { EntityProvider, GlobalEntityProvider } from "../index.js";
 import { LogAgent } from "../log-agent.js";
+import {
+  EntityProvider,
+  GlobalEntityProvider,
+} from "../providers/entity-provider.js";
 import { InMemoryExecutorProvider } from "../providers/executor-provider.js";
 import {
   GlobalSubscriptionProvider,

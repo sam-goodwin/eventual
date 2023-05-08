@@ -6,7 +6,8 @@ import {
   registerServiceClient,
   ServiceSpec,
 } from "@eventual/core/internal";
-import { BucketStore, EntityStore } from "../index.js";
+import type { BucketStore } from "../stores/bucket-store.js";
+import type { EntityStore } from "../stores/entity-store.js";
 import { getLazy, LazyValue } from "../utils.js";
 
 export interface WorkerIntrinsicDeps {

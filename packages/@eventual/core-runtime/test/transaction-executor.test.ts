@@ -11,9 +11,9 @@ import { jest } from "@jest/globals";
 import { z } from "zod";
 import { EventClient } from "../src/clients/event-client.js";
 import { ExecutionQueueClient } from "../src/clients/execution-queue-client.js";
-import { GlobalEntityProvider } from "../src/index.js";
 import { NoOpLocalEnvConnector } from "../src/local/local-container.js";
 import { LocalEntityStore } from "../src/local/stores/entity-store.js";
+import { GlobalEntityProvider } from "../src/providers/entity-provider.js";
 import { EntityStore } from "../src/stores/entity-store.js";
 import {
   createTransactionExecutor,
@@ -89,7 +89,7 @@ test("just get", async () => {
     context
   );
 
-  expect(result).toMatchObject<TransactionResult<any>>({
+  expect(result).toEqual<TransactionResult<any>>({
     result: Result.resolved(undefined),
   });
 });
@@ -108,8 +108,8 @@ test("just set", async () => {
     result: Result.resolved({ version: 1 }),
   });
 
-  await expect(store.get(d1.name, [{ key: "1" }])).resolves.toEqual({
-    entity: 1,
+  await expect(store.getWithMetadata(d1.name, { key: "1" })).resolves.toEqual({
+    value: { key: "1", value: 1 },
     version: 1,
   });
 });
@@ -154,13 +154,13 @@ test("multiple operations", async () => {
     result: Result.resolved(undefined),
   });
 
-  await expect(store.get(d1.name, { key: "1" })).resolves.toEqual({
-    entity: { key: "1", value: 1 },
+  await expect(store.getWithMetadata(d1.name, { key: "1" })).resolves.toEqual({
+    value: { key: "1", value: 1 },
     version: 1,
   });
 
-  await expect(store.get(d2.name, [1])).resolves.toEqual({
-    entity: { key: "1", value: 1 },
+  await expect(store.getWithMetadata(d2.name, [1])).resolves.toEqual({
+    value: { key: "1", value: 1 },
     version: 1,
   });
 });
@@ -187,8 +187,8 @@ test("multiple operations fail", async () => {
     result: Result.failed(Error("Failed after an explicit conflict.")),
   });
 
-  await expect(store.get(d1.name, ["1"])).resolves.toEqual({
-    entity: 0,
+  await expect(store.getWithMetadata(d1.name, ["1"])).resolves.toEqual({
+    value: { key: "1", value: 0 },
     version: 1,
   });
 
@@ -217,8 +217,8 @@ test("retry when retrieved data changes version", async () => {
     result: Result.resolved(undefined),
   });
 
-  await expect(store.get(d1.name, ["1"])).resolves.toEqual({
-    entity: { key: "1", value: 2 },
+  await expect(store.getWithMetadata(d1.name, ["1"])).resolves.toEqual({
+    value: { key: "1", value: 2 },
     version: 3,
   });
 });
@@ -245,8 +245,8 @@ test("retry when retrieved data changes version multiple times", async () => {
     result: Result.resolved(undefined),
   });
 
-  await expect(store.get(d1.name, ["1"])).resolves.toEqual({
-    entity: { key: "1", value: 3 },
+  await expect(store.getWithMetadata(d1.name, ["1"])).resolves.toEqual({
+    value: { key: "1", value: 3 },
     version: 4,
   });
 });
@@ -274,7 +274,7 @@ test("emit events on success", async () => {
 test("emit events after retry", async () => {
   const d1 = entity({ schema: simpleSchema, partitionKey: "key" });
 
-  await store.get(d1.name, { key: "1", value: 0 });
+  await store.set(d1.name, { key: "1", value: 0 });
 
   const result = await executor(
     async () => {
@@ -292,7 +292,7 @@ test("emit events after retry", async () => {
     context
   );
 
-  expect(result).toMatchObject<TransactionResult<any>>({
+  expect(result).toEqual<TransactionResult<any>>({
     result: Result.resolved(undefined),
   });
 

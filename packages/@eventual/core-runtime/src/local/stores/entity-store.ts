@@ -7,6 +7,7 @@ import {
   EntityQueryResultEntry,
   EntitySetOptions,
   EntityTransactItem,
+  EntityWithMetadata,
   TransactionCancelled,
   UnexpectedVersion,
 } from "@eventual/core";
@@ -15,7 +16,6 @@ import { EntityProvider } from "../../providers/entity-provider.js";
 import {
   convertNormalizedEntityKeyToMap,
   EntityStore,
-  EntityWithMetadata,
   normalizeCompositeKey,
 } from "../../stores/entity-store.js";
 import { deserializeCompositeKey, serializeCompositeKey } from "../../utils.js";
@@ -36,16 +36,16 @@ export class LocalEntityStore implements EntityStore {
   constructor(private props: LocalEntityStoreProps) {}
 
   async get(entityName: string, key: AnyEntityKey): Promise<any> {
-    return this.getWithMetadata(entityName, key);
+    return (await this.getWithMetadata(entityName, key))?.value;
   }
 
   async getWithMetadata(
     entityName: string,
     key: AnyEntityKey
-  ): Promise<{ entity: any; version: number } | undefined> {
+  ): Promise<EntityWithMetadata<any> | undefined> {
     const entity = this.getEntity(entityName);
     const { partition, sort } = normalizeCompositeKey(entity, key);
-    return this.getPartitionMap(name, partition.value).get(
+    return this.getPartitionMap(entityName, partition.value).get(
       sort?.value ?? "default"
     );
   }
@@ -57,8 +57,8 @@ export class LocalEntityStore implements EntityStore {
   ): Promise<{ version: number }> {
     const entity = this.getEntity(entityName);
     const normalizedKey = normalizeCompositeKey(entity, value);
-    const { version = 0, entity: oldValue } =
-      (await this.get(name, value)) ?? {};
+    const { version = 0, value: oldValue } =
+      (await this.getWithMetadata(entityName, value)) ?? {};
     if (
       options?.expectedVersion !== undefined &&
       options.expectedVersion !== version
@@ -69,15 +69,15 @@ export class LocalEntityStore implements EntityStore {
     }
     const newVersion =
       options?.incrementVersion === false ? version : version + 1;
-    this.getPartitionMap(name, normalizedKey.partition.value).set(
+    this.getPartitionMap(entityName, normalizedKey.partition.value).set(
       normalizedKey.sort?.value ?? "default",
       {
-        entity,
+        value: value,
         version: newVersion,
       }
     );
     this.props.localConnector.pushWorkflowTask({
-      entityName: name,
+      entityName,
       key: convertNormalizedEntityKeyToMap(normalizedKey),
       operation: version === 0 ? ("insert" as const) : ("modify" as const),
       newValue: value,
@@ -95,21 +95,21 @@ export class LocalEntityStore implements EntityStore {
   ): Promise<void> {
     const entity = this.getEntity(entityName);
     const normalizedKey = normalizeCompositeKey(entity, key);
-    const item = await this.get(name, key);
+    const item = await this.getWithMetadata(entityName, key);
     if (item) {
       if (options?.expectedVersion !== undefined) {
         if (options.expectedVersion !== item.version) {
           throw new UnexpectedVersion("Unexpected Version");
         }
       }
-      this.getPartitionMap(name, normalizedKey.partition.value).delete(
+      this.getPartitionMap(entityName, normalizedKey.partition.value).delete(
         normalizedKey.sort?.value ?? "default"
       );
       this.props.localConnector.pushWorkflowTask({
-        entityName: name,
+        entityName,
         key: convertNormalizedEntityKeyToMap(normalizedKey),
         operation: "remove" as const,
-        oldValue: item.entity,
+        oldValue: item.value,
         oldVersion: item.version,
       });
     }
@@ -126,7 +126,7 @@ export class LocalEntityStore implements EntityStore {
       entries: items?.map(
         ([, value]) =>
           ({
-            entity: value.entity,
+            entity: value.value,
             version: value.version,
           } satisfies EntityQueryResultEntry<any>)
       ),
@@ -136,20 +136,20 @@ export class LocalEntityStore implements EntityStore {
 
   async transactWrite(items: EntityTransactItem[]): Promise<void> {
     const keysAndVersions = Object.fromEntries(
-      items.map(
-        (i) =>
-          [
-            serializeCompositeKey(
-              typeof i.entity === "string" ? i.entity : i.entity.name,
-              i.operation.operation === "set"
-                ? i.operation.value
-                : i.operation.key
-            ),
-            i.operation.operation === "condition"
-              ? i.operation.version
-              : i.operation.options?.expectedVersion,
-          ] as const
-      )
+      items.map((i) => {
+        const entity =
+          typeof i.entity === "string" ? this.getEntity(i.entity) : i.entity;
+        const normalizedKey = normalizeCompositeKey(
+          entity,
+          i.operation.operation === "set" ? i.operation.value : i.operation.key
+        );
+        return [
+          serializeCompositeKey(entity.name, normalizedKey),
+          i.operation.operation === "condition"
+            ? i.operation.version
+            : i.operation.options?.expectedVersion,
+        ] as const;
+      })
     );
     /**
      * Evaluate the expected versions against the current state and return the results.
@@ -157,24 +157,22 @@ export class LocalEntityStore implements EntityStore {
      * This is similar to calling TransactWriteItem in dynamo with only ConditionChecks and then
      * handling the errors.
      */
-    const consistencyResults = await Promise.allSettled(
+    const consistencyResults = await Promise.all(
       Object.entries(keysAndVersions).map(async ([sKey, expectedVersion]) => {
         if (expectedVersion === undefined) {
           return true;
         }
-        const [name, key] = deserializeCompositeKey(sKey);
-        const { version } = (await this.get(name, key)) ?? {
+        const [entityName, key] = deserializeCompositeKey(sKey);
+        const { version } = (await this.getWithMetadata(entityName, key)) ?? {
           version: 0,
         };
         return version === expectedVersion;
       })
     );
-    if (consistencyResults.some((r) => r.status === "rejected")) {
+    if (consistencyResults.some((r) => !r)) {
       throw new TransactionCancelled(
         consistencyResults.map((r) =>
-          r.status === "fulfilled"
-            ? undefined
-            : new UnexpectedVersion("Unexpected Version")
+          r ? undefined : new UnexpectedVersion("Unexpected Version")
         )
       );
     }
@@ -217,10 +215,10 @@ export class LocalEntityStore implements EntityStore {
   }
 
   private orderedEntries(
-    name: string,
+    entityName: string,
     listRequest: EntityQueryRequest<any, any>
   ) {
-    const partition = this.getPartitionMap(name, listRequest.partition);
+    const partition = this.getPartitionMap(entityName, listRequest.partition);
     const entries = partition ? [...partition.entries()] : [];
 
     const result = paginateItems(

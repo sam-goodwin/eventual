@@ -1,28 +1,13 @@
-import {
+import type {
   AnyEntity,
   AnyEntityKey,
   EntityCompositeKey,
   EntityKeyTuple,
   EntityKeyType,
 } from "@eventual/core";
-import { EntityHook, EntityKeySpec } from "@eventual/core/internal";
+import type { EntityHook, EntityKeySpec } from "@eventual/core/internal";
 
 export interface EntityStore extends EntityHook {}
-
-export interface EntityWithMetadata<Entity> {
-  entity: Entity;
-  version: number;
-}
-
-export interface UnexpectedVersionResult {
-  unexpectedVersion: true;
-}
-
-export function isUnexpectedVersionResult(
-  value: any
-): value is UnexpectedVersionResult {
-  return value && "unexpectedVersion" in value;
-}
 
 export interface NormalizeEntityKeyPart {
   field: string;

@@ -24,6 +24,7 @@ import {
   EntitySetOptions,
   EntityTransactItem,
   EntityValue,
+  EntityWithMetadata,
   TransactionCancelled,
   TransactionConflict,
   UnexpectedVersion,
@@ -60,13 +61,13 @@ export class AWSEntityStore implements EntityStore {
   constructor(private props: AWSEntityStoreProps) {}
 
   async get(entityName: string, key: AnyEntityKey): Promise<any> {
-    return (await this.getWithMetadata(entityName, key))?.entity;
+    return (await this.getWithMetadata(entityName, key))?.value;
   }
 
   async getWithMetadata(
     entityName: string,
     key: AnyEntityKey
-  ): Promise<{ entity: any; version: number } | undefined> {
+  ): Promise<EntityWithMetadata<any> | undefined> {
     const entity = this.getEntity(entityName);
     const item = await this.props.dynamo.send(
       new GetItemCommand({
@@ -80,12 +81,12 @@ export class AWSEntityStore implements EntityStore {
       return undefined;
     }
 
-    const { __version, ...record } = unmarshall(
+    const { __version, ...value } = unmarshall(
       item.Item
     ) as EntitySchemaWithVersion<any>;
 
     return {
-      entity: record,
+      value,
       version: __version,
     };
   }

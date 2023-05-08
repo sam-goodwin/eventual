@@ -300,11 +300,10 @@ describe("entity request", () => {
       baseTime
     );
 
-    expect(mockEntityStore.set).toHaveBeenCalledWith(
-      "ent",
-      { key: "key", value: "some value" },
-      undefined
-    );
+    expect(mockEntityStore.set).toHaveBeenCalledWith("ent", {
+      key: "key",
+      value: "some value",
+    });
 
     expect(event).toMatchObject<EntityRequest>({
       seq: 0,
@@ -329,11 +328,7 @@ describe("entity request", () => {
       baseTime
     );
 
-    expect(mockEntityStore.delete).toHaveBeenCalledWith(
-      "ent",
-      ["key"],
-      undefined
-    );
+    expect(mockEntityStore.delete).toHaveBeenCalledWith("ent", ["key"]);
 
     expect(event).toMatchObject<EntityRequest>({
       seq: 0,
