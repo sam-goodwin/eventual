@@ -1290,12 +1290,12 @@ describe("time", () => {
 });
 
 const myEntity = entity("testEntity1", {
-  schema: z.object({ n: z.number(), id: z.string() }),
+  schema: { n: z.number(), id: z.string() },
   partitionKey: "id",
 });
 
 const myEntityWithSort = entity("testEntity2", {
-  schema: z.object({ n: z.number(), id: z.string(), part: z.string() }),
+  schema: { n: z.number(), id: z.string(), part: z.string() },
   partitionKey: "part",
   sortKey: "id",
 });

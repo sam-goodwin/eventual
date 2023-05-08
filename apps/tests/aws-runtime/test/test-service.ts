@@ -549,7 +549,7 @@ export const createAndDestroyWorkflow = workflow(
 );
 
 export const counter = entity("counter3", {
-  schema: z.object({ n: z.number(), id: z.string() }),
+  schema: { n: z.number(), id: z.string() },
   partitionKey: "id",
 });
 const entityEvent = event<{ id: string }>("entityEvent");
@@ -635,7 +635,7 @@ export const entityWorkflow = workflow(
 );
 
 export const check = entity("check2", {
-  schema: z.object({ n: z.number(), id: z.string() }),
+  schema: { n: z.number(), id: z.string() },
   partitionKey: "id",
 });
 

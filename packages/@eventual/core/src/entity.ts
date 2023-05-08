@@ -257,7 +257,7 @@ export interface Entity<
   kind: "Entity";
   partitionKey: EntityKeyReference<E, P>;
   sortKey?: EntityKeyReference<E, S>;
-  schema?: z.Schema<E>;
+  schema?: ZodMappedSchema<E>;
   streams: EntityStream<Entity<E, P, S>>[];
   /**
    * Get a value.
@@ -349,6 +349,10 @@ export const Entity = {
   },
 };
 
+export type ZodMappedSchema<E extends EntityValue> = {
+  [k in keyof E]: z.Schema<E[k]>;
+};
+
 export interface EntityOptions<
   E extends EntityValue,
   P extends EntityKeyField<E>,
@@ -356,7 +360,7 @@ export interface EntityOptions<
 > {
   partitionKey: EntityKeyReference<E, P>;
   sortKey?: EntityKeyReference<E, S>;
-  schema: z.Schema<E>;
+  schema: ZodMappedSchema<E>;
 }
 
 export function entity<

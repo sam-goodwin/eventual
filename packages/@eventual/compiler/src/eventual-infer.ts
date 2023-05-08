@@ -6,24 +6,24 @@
  */
 import { generateSchema } from "@anatine/zod-openapi";
 import {
-  ServiceSpec,
+  BucketNotificationHandlerSpec,
+  buckets,
   commands,
   entities,
   events,
+  ServiceSpec,
   subscriptions,
   tasks,
   transactions,
   workflows,
-  buckets,
-  BucketNotificationHandlerSpec,
 } from "@eventual/core/internal";
 import {
   CallExpression,
   ExportDeclaration,
   Expression,
   ModuleDeclaration,
-  TsType,
   parseFile,
+  TsType,
 } from "@swc/core";
 import { Visitor } from "@swc/core/Visitor.js";
 import crypto from "crypto";
@@ -31,6 +31,7 @@ import esbuild from "esbuild";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
+import z from "zod";
 import {
   getSpan,
   isBucketHandlerMemberCall,
@@ -134,7 +135,7 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
         name: d.name,
         partitionKey: d.partitionKey,
         sortKey: d.sortKey,
-        schema: d.schema ? generateSchema(d.schema) : undefined,
+        schema: d.schema ? generateSchema(z.object(d.schema)) : undefined,
         streams: d.streams.map((s) => ({
           name: s.name,
           entityName: s.entityName,

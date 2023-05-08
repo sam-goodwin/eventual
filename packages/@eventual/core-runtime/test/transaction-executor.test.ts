@@ -74,11 +74,11 @@ const context: TransactionContext = {
   },
 };
 
-const simpleSchema = z.object({ key: z.string(), value: z.number() });
+const simpleSchema = { key: z.string(), value: z.number() };
 
 test("just get", async () => {
   const d1 = entity({
-    schema: z.object({ key: z.string(), value: z.number() }),
+    schema: { key: z.string(), value: z.number() },
     partitionKey: "key",
   });
   const result = await executor(
