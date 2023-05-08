@@ -24,7 +24,7 @@
     "tests-runtime": "workspace:^",
     "ts-jest": "^29",
     "ts-node": "^10.9.1",
-    "typescript": "^4.9.5"
+    "typescript": "^5.0.4"
   },
   "jest": {
     "preset": "ts-jest",
