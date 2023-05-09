@@ -1,12 +1,12 @@
 import {
-  entity as _entity,
-  EntityKeyField,
+  EntityAttributes,
+  EntityCompositeKeyPart,
   EntityOptions,
-  EntityValue,
-  event,
   TransactionContext,
+  entity as _entity,
+  event,
 } from "@eventual/core";
-import { entities, registerEntityHook, Result } from "@eventual/core/internal";
+import { Result, entities, registerEntityHook } from "@eventual/core/internal";
 import { jest } from "@jest/globals";
 import { z } from "zod";
 import { EventClient } from "../src/clients/event-client.js";
@@ -16,17 +16,17 @@ import { LocalEntityStore } from "../src/local/stores/entity-store.js";
 import { GlobalEntityProvider } from "../src/providers/entity-provider.js";
 import { EntityStore } from "../src/stores/entity-store.js";
 import {
-  createTransactionExecutor,
   TransactionExecutor,
   TransactionResult,
+  createTransactionExecutor,
 } from "../src/transaction-executor.js";
 
 const entity = (() => {
   let n = 0;
   return <
-    E extends EntityValue,
-    P extends EntityKeyField<E> = EntityKeyField<E>,
-    S extends EntityKeyField<E> | undefined = EntityKeyField<E> | undefined
+    E extends EntityAttributes,
+    const P extends EntityCompositeKeyPart<E> = EntityCompositeKeyPart<E>,
+    const S extends EntityCompositeKeyPart<E> | undefined = undefined
   >(
     options: EntityOptions<E, P, S>
   ) => {
@@ -79,8 +79,8 @@ const simpleSchema = { key: z.string(), value: z.number() };
 
 test("just get", async () => {
   const d1 = entity({
-    schema: { key: z.string(), value: z.number() },
-    partitionKey: "key",
+    attributes: { key: z.string(), value: z.number() },
+    partition: ["key"],
   });
   const result = await executor(
     () => {
@@ -96,7 +96,7 @@ test("just get", async () => {
 });
 
 test("just set", async () => {
-  const d1 = entity({ partitionKey: "key", schema: simpleSchema });
+  const d1 = entity({ partition: ["key"], attributes: simpleSchema });
   const result = await executor(
     () => {
       return d1.set({ key: "1", value: 1 });
@@ -116,7 +116,7 @@ test("just set", async () => {
 });
 
 test("just delete", async () => {
-  const d1 = entity({ schema: simpleSchema, partitionKey: "key" });
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
 
   await store.set(d1.name, [{ key: "1", value: 0 }]);
 
@@ -136,10 +136,10 @@ test("just delete", async () => {
 });
 
 test("multiple operations", async () => {
-  const d1 = entity({ schema: simpleSchema, partitionKey: "key" });
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
   const d2 = entity({
-    schema: simpleSchema,
-    partitionKey: { key: "value", type: "number" },
+    attributes: simpleSchema,
+    partition: ["value"],
   });
 
   const result = await executor(
@@ -167,10 +167,10 @@ test("multiple operations", async () => {
 });
 
 test("multiple operations fail", async () => {
-  const d1 = entity({ schema: simpleSchema, partitionKey: "key" });
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
   const d2 = entity({
-    schema: simpleSchema,
-    partitionKey: { key: "value", type: "number" },
+    attributes: simpleSchema,
+    partition: ["value"],
   });
 
   await store.set(d1.name, { key: "1", value: 0 });
@@ -197,7 +197,7 @@ test("multiple operations fail", async () => {
 });
 
 test("retry when retrieved data changes version", async () => {
-  const d1 = entity({ schema: simpleSchema, partitionKey: "key" });
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
 
   await store.set(d1.name, { key: "1", value: 0 });
 
@@ -225,7 +225,7 @@ test("retry when retrieved data changes version", async () => {
 });
 
 test("retry when retrieved data changes version multiple times", async () => {
-  const d1 = entity({ schema: simpleSchema, partitionKey: "key" });
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
 
   await store.set(d1.name, { key: "1", value: 0 });
 
@@ -253,7 +253,7 @@ test("retry when retrieved data changes version multiple times", async () => {
 });
 
 test("emit events on success", async () => {
-  const d1 = entity({ schema: simpleSchema, partitionKey: "key" });
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
 
   const result = await executor(
     async () => {
@@ -273,7 +273,10 @@ test("emit events on success", async () => {
 });
 
 test("emit events after retry", async () => {
-  const d1 = entity({ schema: simpleSchema, partitionKey: "key" });
+  const d1 = entity({
+    attributes: simpleSchema,
+    partition: ["key"],
+  });
 
   await store.set(d1.name, { key: "1", value: 0 });
 
@@ -301,7 +304,7 @@ test("emit events after retry", async () => {
 });
 
 test("events not emitted on failure", async () => {
-  const d1 = entity({ schema: simpleSchema, partitionKey: "key" });
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
 
   await store.set(d1.name, { key: "1", value: 0 });
 

@@ -1,4 +1,4 @@
-import type { z } from "zod";
+import { z } from "zod";
 import {
   createEventualCall,
   EntityCall,
@@ -7,9 +7,6 @@ import {
 import { getEntityHook } from "./internal/entity-hook.js";
 import { entities } from "./internal/global.js";
 import {
-  EntityKeyBinary,
-  EntityKeyNumber,
-  EntityKeyString,
   EntitySpec,
   EntityStreamOptions,
   EntityStreamSpec,
@@ -18,12 +15,12 @@ import {
 } from "./internal/service-spec.js";
 import type { ServiceContext } from "./service.js";
 
-export interface EntityQueryResultEntry<E extends EntityValue> {
+export interface EntityQueryResultEntry<E extends EntityAttributes> {
   entity: E;
   version: number;
 }
 
-export interface EntityQueryResult<E extends EntityValue> {
+export interface EntityQueryResult<E extends EntityAttributes> {
   entries?: EntityQueryResultEntry<E>[];
   /**
    * Returned when there are more values than the limit allowed to return.
@@ -31,21 +28,26 @@ export interface EntityQueryResult<E extends EntityValue> {
   nextToken?: string;
 }
 
-export interface EntityQueryRequest<
-  E extends EntityValue,
-  Partition extends EntityKeyField<E>
-> {
-  /**
-   * Partition key to retrieve values for.
-   *
-   * @default - retrieve values with no namespace.
-   */
-  partition: E[Partition];
-  /**
-   * Sort key prefix to retrieve values or keys for.
-   * Values are only retrieved for a single name + partition pair.
-   */
-  prefix?: string;
+export type EntityCompositeKeyPart<E extends EntityAttributes> =
+  readonly EntityKeyField<E>[];
+
+/**
+ * A partial key that can be used to query an entity.
+ *
+ * ```ts
+ * entity.query({ part1: "val", part2: "val2", sort1: "val" });
+ * ```
+ *
+ * TODO: support expressions like between and starts with on sort properties
+ * TODO: support a progressive builder instead of a simple partial.
+ */
+export type EntityQueryKey<
+  E extends EntityAttributes,
+  Partition extends EntityCompositeKeyPart<E>,
+  Sort extends EntityCompositeKeyPart<E> | undefined
+> = Partial<EntityKey<E, Partition, Sort>>;
+
+export interface EntityQueryOptions {
   /**
    * Number of items to retrieve
    * @default 100
@@ -81,135 +83,175 @@ export interface EntityStreamContext {
   service: ServiceContext;
 }
 
-export interface EntityStreamHandler<E extends AnyEntity> {
+export interface EntityStreamHandler<
+  Attr extends EntityAttributes = EntityAttributes,
+  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined =
+    | EntityCompositeKeyPart<Attr>
+    | undefined
+> {
   /**
    * Provides the keys, new value
    */
-  (item: EntityStreamItem<E>, context: EntityStreamContext):
-    | Promise<void | false>
-    | void
-    | false;
+  (
+    item: EntityStreamItem<Attr, Partition, Sort>,
+    context: EntityStreamContext
+  ): Promise<void | false> | void | false;
 }
 
-export interface EntityStreamItemBase<E extends AnyEntity> {
+export interface EntityStreamItemBase<
+  Attr extends EntityAttributes = EntityAttributes,
+  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined =
+    | EntityCompositeKeyPart<Attr>
+    | undefined
+> {
   streamName: string;
   entityName: string;
-  key: EntityCompositeKeyFromEntity<E>;
+  key: EntityCompositeKey<Attr, Partition, Sort>;
 }
 
-export type EntityStreamItem<E extends AnyEntity = AnyEntity> =
-  | EntityStreamInsertItem<E>
-  | EntityStreamModifyItem<E>
-  | EntityStreamRemoveItem<E>;
+export type EntityStreamItem<
+  Attr extends EntityAttributes = EntityAttributes,
+  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined =
+    | EntityCompositeKeyPart<Attr>
+    | undefined
+> =
+  | EntityStreamInsertItem<Attr, Partition, Sort>
+  | EntityStreamModifyItem<Attr, Partition, Sort>
+  | EntityStreamRemoveItem<Attr, Partition, Sort>;
 
-export interface EntityStreamInsertItem<E extends AnyEntity>
-  extends EntityStreamItemBase<E> {
-  newValue: EntitySchema<E>;
+export interface EntityStreamInsertItem<
+  Attr extends EntityAttributes = EntityAttributes,
+  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined =
+    | EntityCompositeKeyPart<Attr>
+    | undefined
+> extends EntityStreamItemBase<Attr, Partition, Sort> {
+  newValue: z.infer<z.ZodObject<Attr>>;
   newVersion: number;
   operation: "insert";
 }
 
-export interface EntityStreamModifyItem<E extends AnyEntity>
-  extends EntityStreamItemBase<E> {
+export interface EntityStreamModifyItem<
+  Attr extends EntityAttributes = EntityAttributes,
+  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined =
+    | EntityCompositeKeyPart<Attr>
+    | undefined
+> extends EntityStreamItemBase<Attr, Partition, Sort> {
   operation: "modify";
-  newValue: EntitySchema<E>;
+  newValue: z.infer<z.ZodObject<Attr>>;
   newVersion: number;
-  oldValue?: EntitySchema<E>;
+  oldValue?: z.infer<z.ZodObject<Attr>>;
   oldVersion?: number;
 }
 
-export interface EntityStreamRemoveItem<E extends AnyEntity>
-  extends EntityStreamItemBase<E> {
+export interface EntityStreamRemoveItem<
+  Attr extends EntityAttributes = EntityAttributes,
+  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined =
+    | EntityCompositeKeyPart<Attr>
+    | undefined
+> extends EntityStreamItemBase<Attr, Partition, Sort> {
   operation: "remove";
-  oldValue?: EntitySchema<E>;
+  oldValue?: z.infer<z.ZodObject<Attr>>;
   oldVersion?: number;
 }
 
-export interface EntityStream<E extends AnyEntity> extends EntityStreamSpec {
+export interface EntityStream<
+  Attr extends EntityAttributes,
+  Partition extends EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined
+> extends EntityStreamSpec<Attr, Partition, Sort> {
   kind: "EntityStream";
-  handler: EntityStreamHandler<E>;
+  handler: EntityStreamHandler<Attr, Partition, Sort>;
   sourceLocation?: SourceLocation;
 }
 
-export type AnyEntity = Entity<any, string, string | undefined>;
+export type AnyEntity = Entity<
+  any,
+  readonly string[],
+  readonly string[] | undefined
+>;
 
-export type EntityKeyType = string | number | EntityBinaryMember;
+export type EntityKeyType = string | number;
+export type EntityKeyZodType = z.ZodString | z.ZodNumber;
 
-export type EntityBinaryMember =
-  | ArrayBuffer
-  | Blob
-  | Buffer
-  | DataView
-  | File
-  | Int8Array
-  | Uint8Array
-  | Uint8ClampedArray
-  | Int16Array
-  | Uint16Array
-  | Int32Array
-  | Uint32Array
-  | Float32Array
-  | Float64Array
-  | BigInt64Array
-  | BigUint64Array;
-
-export type EntityValueMember =
-  | EntityValue
-  | string
-  | number
-  | boolean
-  | EntityBinaryMember
-  | Set<string | number | boolean | EntityBinaryMember>
-  | EntityValueMember[];
-
-export type EntityValue = {
-  [key: string]: EntityValueMember;
-};
-
-export type EntityKeyField<E extends EntityValue> = {
+export type EntityKeyField<E extends EntityAttributes> = {
   [K in keyof E]: K extends string
-    ? E[K] extends EntityKeyType
+    ? // only include fields that extend string or number
+      z.infer<E[K]> extends EntityKeyType
       ? K
       : never
     : never;
 }[keyof E];
 
 export type EntityCompositeKeyFromEntity<E extends AnyEntity> =
-  E extends Entity<infer Schema, infer Partition, infer Sort>
-    ? EntityCompositeKey<Schema, Partition, Sort>
+  E extends Entity<infer Attributes, infer Partition, infer Sort>
+    ? EntityCompositeKey<Attributes, Partition, Sort>
     : never;
 
 export type EntityKeyFromEntity<E extends AnyEntity> = E extends Entity<
-  infer Schema,
+  infer Attributes,
   infer Partition,
   infer Sort
 >
-  ? EntityKey<Schema, Partition, Sort>
+  ? EntityKey<Attributes, Partition, Sort>
   : never;
 
 export type EntityCompositeKey<
-  E extends EntityValue,
-  Partition extends EntityKeyField<E>,
-  Sort extends EntityKeyField<E> | undefined
-> = Sort extends undefined
-  ? Pick<E, Partition>
-  : Pick<E, Partition | Exclude<Sort, undefined>>;
+  Attr extends EntityAttributes,
+  Partition extends EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined
+> = {
+  [k in Partition[number]]: z.infer<Attr[k]>;
+} & (Sort extends readonly (keyof Attr)[]
+  ? {
+      [k in Sort[number]]: z.infer<Attr[k]>;
+    }
+  : // eslint-disable-next-line
+    {});
+
+// const T = { n: z.string(), m: z.string(), x: z.number() };
+// type X = EntityKey<typeof T, ["n"], ["m", "x"]>;
+// const x: X = ["hello", "hello", 1];
+
+export type EntityKeyArray<
+  E extends EntityAttributes,
+  Fields extends readonly (keyof E)[]
+> = Fields extends readonly [
+  infer X extends keyof E,
+  ...infer Rest extends readonly (keyof E)[]
+]
+  ? readonly [z.infer<E[X]>, ...EntityKeyArray<E, Rest>]
+  : Fields extends readonly [infer X extends keyof E]
+  ? readonly [z.infer<E[X]>]
+  : readonly [];
 
 export type EntityKeyTuple<
-  E extends EntityValue,
-  Partition extends EntityKeyField<E>,
-  Sort extends EntityKeyField<E> | undefined
+  E extends EntityAttributes,
+  Partition extends EntityCompositeKeyPart<E>,
+  Sort extends EntityCompositeKeyPart<E> | undefined
 > = Sort extends undefined
-  ? [p: E[Partition]]
-  : [p: E[Partition], s: E[Exclude<Sort, undefined>]];
+  ? EntityKeyArray<E, Partition>
+  : readonly [
+      ...EntityKeyArray<E, Partition>,
+      ...EntityKeyArray<E, Exclude<Sort, undefined>>
+    ];
 
 export type EntityKey<
-  E extends EntityValue,
-  Partition extends EntityKeyField<E>,
-  Sort extends EntityKeyField<E> | undefined
+  E extends EntityAttributes,
+  Partition extends EntityCompositeKeyPart<E>,
+  Sort extends EntityCompositeKeyPart<E> | undefined
 > = EntityCompositeKey<E, Partition, Sort> | EntityKeyTuple<E, Partition, Sort>;
 
-export type AnyEntityKey = EntityKey<any, string, string | undefined>;
+export type AnyEntityKey = EntityKey<
+  any,
+  readonly string[],
+  readonly string[] | undefined
+>;
 
 export type EntityPartitionKey<E extends AnyEntity> = E extends Entity<
   any,
@@ -227,50 +269,56 @@ export type EntitySortKey<E extends AnyEntity> = E extends Entity<
   ? Sort
   : never;
 
-export type EntitySchema<E extends AnyEntity> = E extends Entity<
-  infer Schema,
+export type EntityAttributesFromEntity<E extends AnyEntity> = E extends Entity<
+  infer Attributes,
   any,
   any
 >
-  ? Schema
+  ? Attributes
   : never;
 
-export type EntityKeyReference<
-  E extends EntityValue,
-  F extends EntityKeyField<E> | undefined
-> = F extends undefined
-  ? undefined
-  : E[Exclude<F, undefined>] extends string
-  ? F | EntityKeyString<Exclude<F, undefined>>
-  : E[Exclude<F, undefined>] extends number
-  ? EntityKeyNumber<Exclude<F, undefined>>
-  : E[Exclude<F, undefined>] extends EntityBinaryMember
-  ? EntityKeyBinary<Exclude<F, undefined>>
-  : never;
-
-export interface EntityWithMetadata<E extends EntityValue> {
-  value: E;
+export interface EntityWithMetadata<E extends EntityAttributes> {
+  value: z.infer<z.ZodObject<E>>;
   version: number;
 }
 
+export type AttributeNames<Attr extends EntityZodAttributes> =
+  Attr extends z.ZodObject<infer A> ? keyof A : keyof Attr;
+
+export type AttributeShape<Attr extends EntityZodAttributes> =
+  Attr extends z.ZodObject<infer A>
+    ? {
+        [k in keyof A]: A[k];
+      }
+    : Attr;
+
+export type EntityAttributes = {
+  [attribute in string]: z.ZodType;
+};
+
+export type EntityZodAttributes =
+  | z.ZodObject<EntityAttributes>
+  | EntityAttributes;
+
 export interface Entity<
-  E extends EntityValue,
-  P extends EntityKeyField<E>,
-  S extends EntityKeyField<E> | undefined
-> extends Omit<EntitySpec, "schema" | "streams" | "partitionKey" | "sortKey"> {
-  __entityBrand: E;
+  Attr extends EntityAttributes,
+  P extends EntityCompositeKeyPart<Attr>,
+  S extends EntityCompositeKeyPart<Attr> | undefined
+> extends Omit<EntitySpec, "attributes" | "streams" | "partition" | "sort"> {
   kind: "Entity";
-  partitionKey: EntityKeyReference<E, P>;
-  sortKey?: EntityKeyReference<E, S>;
-  schema?: ZodMappedSchema<E>;
-  streams: EntityStream<Entity<E, P, S>>[];
+  partition: P;
+  sort?: S;
+  attributes: z.ZodObject<Attr>;
+  streams: EntityStream<Attr, P, S>[];
   /**
    * Get a value.
    * If your values use composite keys, the namespace must be provided.
    *
    * @param key - key or {@link CompositeKey} of the value to retrieve.
    */
-  get(key: EntityKey<E, P, S>): Promise<E | undefined>;
+  get(
+    key: EntityKey<Attr, P, S>
+  ): Promise<z.infer<z.ZodObject<Attr>> | undefined>;
   /**
    * Get a value and metadata like version.
    * If your values use composite keys, the namespace must be provided.
@@ -278,20 +326,23 @@ export interface Entity<
    * @param key - key or {@link CompositeKey} of the value to retrieve.
    */
   getWithMetadata(
-    key: EntityKey<E, P, S>
-  ): Promise<EntityWithMetadata<E> | undefined>;
+    key: EntityKey<Attr, P, S>
+  ): Promise<EntityWithMetadata<Attr> | undefined>;
   /**
    * Sets or updates a value within an entity and optionally a namespace.
    *
    * Values with namespaces are considered distinct from value without a namespace or within different namespaces.
    * Values and keys can only be listed within a single namespace.
    */
-  set(entity: E, options?: EntitySetOptions): Promise<{ version: number }>;
+  set(
+    entity: z.infer<z.ZodObject<Attr>>,
+    options?: EntitySetOptions
+  ): Promise<{ version: number }>;
   /**
    * Deletes a single entry within an entity and namespace.
    */
   delete(
-    key: EntityKey<E, P, S>,
+    key: EntityKey<Attr, P, S>,
     options?: EntityConsistencyOptions
   ): Promise<void>;
   /**
@@ -299,16 +350,19 @@ export interface Entity<
    *
    * If namespace is not provided, only values which do not use composite keys will be returned.
    */
-  query(request: EntityQueryRequest<E, P>): Promise<EntityQueryResult<E>>;
+  query(
+    key: EntityQueryKey<Attr, P, S>,
+    request?: EntityQueryOptions
+  ): Promise<EntityQueryResult<Attr>>;
   stream(
     name: string,
-    options: EntityStreamOptions,
-    handler: EntityStreamHandler<Entity<E, P, S>>
-  ): EntityStream<Entity<E, P, S>>;
+    options: EntityStreamOptions<Attr, P, S>,
+    handler: EntityStreamHandler<Attr, P, S>
+  ): EntityStream<Attr, P, S>;
   stream(
     name: string,
-    handler: EntityStreamHandler<Entity<E, P, S>>
-  ): EntityStream<Entity<E, P, S>>;
+    handler: EntityStreamHandler<Attr, P, S>
+  ): EntityStream<Attr, P, S>;
 }
 
 export interface EntityTransactItem<E extends AnyEntity = AnyEntity> {
@@ -321,7 +375,7 @@ export interface EntityTransactItem<E extends AnyEntity = AnyEntity> {
 
 export interface EntitySetOperation<E extends AnyEntity> {
   operation: "set";
-  value: EntitySchema<E>;
+  value: EntityAttributesFromEntity<E>;
   options?: EntitySetOptions;
 }
 
@@ -354,25 +408,21 @@ export const Entity = {
   },
 };
 
-export type ZodMappedSchema<E extends EntityValue> = {
-  [k in keyof E]: z.Schema<E[k]>;
-};
-
 export interface EntityOptions<
-  E extends EntityValue,
-  P extends EntityKeyField<E>,
-  S extends EntityKeyField<E> | undefined
+  Attr extends EntityAttributes,
+  P extends EntityCompositeKeyPart<Attr>,
+  S extends EntityCompositeKeyPart<Attr> | undefined
 > {
-  partitionKey: EntityKeyReference<E, P>;
-  sortKey?: EntityKeyReference<E, S>;
-  schema: ZodMappedSchema<E>;
+  attributes: Attr | z.ZodObject<Attr>;
+  partition: P;
+  sort?: S;
 }
 
 export function entity<
-  E extends EntityValue,
-  P extends EntityKeyField<E>,
-  S extends EntityKeyField<E> | undefined
->(name: string, options: EntityOptions<E, P, S>): Entity<E, P, S> {
+  Attr extends EntityAttributes,
+  const P extends EntityCompositeKeyPart<Attr>,
+  const S extends EntityCompositeKeyPart<Attr> | undefined
+>(name: string, options: EntityOptions<Attr, P, S>): Entity<Attr, P, S> {
   if (entities().has(name)) {
     throw new Error(`entity with name '${name}' already exists`);
   }
@@ -380,16 +430,19 @@ export function entity<
   /**
    * Used to maintain a limited number of streams on the entity.
    */
-  const streams: EntityStream<Entity<E, P, S>>[] = [];
+  const streams: EntityStream<Attr, P, S>[] = [];
 
-  const entity: Entity<E, P, S> = {
+  const entity: Entity<Attr, P, S> = {
     // @ts-ignore
     __entityBrand: undefined,
     kind: "Entity",
     name,
-    partitionKey: options.partitionKey,
-    sortKey: options.sortKey,
-    schema: options.schema,
+    partition: options.partition,
+    sort: options.sort,
+    attributes:
+      options.attributes instanceof z.ZodObject
+        ? options.attributes
+        : z.object(options.attributes),
     streams,
     get: (...args) => {
       return getEventualCallHook().registerEventualCall(
@@ -399,7 +452,9 @@ export function entity<
           params: args,
         }),
         async () => {
-          return getEntityHook().get(name, ...args);
+          return getEntityHook().get(name, ...args) as Promise<
+            z.infer<z.ZodObject<Attr>>
+          >;
         }
       );
     },
@@ -456,22 +511,22 @@ export function entity<
     },
     stream: (
       ...args:
-        | [name: string, handler: EntityStreamHandler<Entity<E, P, S>>]
+        | [name: string, handler: EntityStreamHandler<Attr, P, S>]
         | [
             name: string,
-            options: EntityStreamOptions,
-            handler: EntityStreamHandler<Entity<E, P, S>>
+            options: EntityStreamOptions<Attr, P, S>,
+            handler: EntityStreamHandler<Attr, P, S>
           ]
         | [
             sourceLocation: SourceLocation,
             name: string,
-            handler: EntityStreamHandler<Entity<E, P, S>>
+            handler: EntityStreamHandler<Attr, P, S>
           ]
         | [
             sourceLocation: SourceLocation,
             name: string,
-            options: EntityStreamOptions,
-            handler: EntityStreamHandler<Entity<E, P, S>>
+            options: EntityStreamOptions<Attr, P, S>,
+            handler: EntityStreamHandler<Attr, P, S>
           ]
     ) => {
       const [sourceLocation, streamName, options, handler] =
@@ -481,13 +536,18 @@ export function entity<
           ? args
           : isSourceLocation(args[0]) && typeof args[1] === "string"
           ? [args[0], args[1] as string, , args[2]]
-          : [, args[0] as string, args[1] as EntityStreamOptions, args[2]];
+          : [
+              ,
+              args[0] as string,
+              args[1] as EntityStreamOptions<Attr, P, S>,
+              args[2],
+            ];
 
       if (streams.length > 1) {
         throw new Error("Only two streams are allowed per entity.");
       }
 
-      const entityStream: EntityStream<Entity<E, P, S>> = {
+      const entityStream: EntityStream<Attr, P, S> = {
         kind: "EntityStream",
         handler,
         name: streamName,
@@ -507,27 +567,35 @@ export function entity<
   return entity;
 }
 
-export function entityStream<E extends AnyEntity>(
+export function entityStream<
+  Attr extends EntityAttributes,
+  const P extends EntityCompositeKeyPart<Attr>,
+  const S extends EntityCompositeKeyPart<Attr> | undefined
+>(
   ...args:
-    | [name: string, entity: E, handler: EntityStreamHandler<E>]
     | [
         name: string,
-        entity: E,
-        options: EntityStreamOptions,
-        handler: EntityStreamHandler<E>
+        entity: Entity<Attr, P, S>,
+        handler: EntityStreamHandler<Attr, P, S>
+      ]
+    | [
+        name: string,
+        entity: Entity<Attr, P, S>,
+        options: EntityStreamOptions<Attr, P, S>,
+        handler: EntityStreamHandler<Attr, P, S>
       ]
     | [
         sourceLocation: SourceLocation,
         name: string,
-        entity: E,
-        handler: EntityStreamHandler<E>
+        entity: Entity<Attr, P, S>,
+        handler: EntityStreamHandler<Attr, P, S>
       ]
     | [
         sourceLocation: SourceLocation,
         name: string,
-        entity: E,
-        options: EntityStreamOptions,
-        handler: EntityStreamHandler<E>
+        entity: Entity<Attr, P, S>,
+        options: EntityStreamOptions<Attr, P, S>,
+        handler: EntityStreamHandler<Attr, P, S>
       ]
 ) {
   const [sourceLocation, name, entity, options, handler] =
@@ -536,12 +604,12 @@ export function entityStream<E extends AnyEntity>(
       : args.length === 5
       ? args
       : isSourceLocation(args[0])
-      ? [args[0], args[1] as string, args[2] as E, , args[3]]
+      ? [args[0], args[1] as string, args[2] as Entity<Attr, P, S>, , args[3]]
       : [
           ,
           args[0] as string,
-          args[1] as E,
-          args[2] as EntityStreamOptions,
+          args[1] as Entity<Attr, P, S>,
+          args[2] as EntityStreamOptions<Attr, P, S>,
           args[3],
         ];
 

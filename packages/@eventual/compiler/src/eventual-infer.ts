@@ -31,7 +31,6 @@ import esbuild from "esbuild";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
-import z from "zod";
 import {
   getSpan,
   isBucketHandlerMemberCall,
@@ -133,9 +132,9 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
     entities: {
       entities: [...entities().values()].map((d) => ({
         name: d.name,
-        partitionKey: d.partitionKey,
-        sortKey: d.sortKey,
-        schema: d.schema ? generateSchema(z.object(d.schema)) : undefined,
+        partition: d.partition,
+        sort: d.sort,
+        attributes: generateSchema(d.attributes),
         streams: d.streams.map((s) => ({
           name: s.name,
           entityName: s.entityName,

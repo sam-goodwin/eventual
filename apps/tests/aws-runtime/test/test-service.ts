@@ -547,9 +547,13 @@ export const createAndDestroyWorkflow = workflow(
   }
 );
 
-export const counter = entity("counter3", {
-  schema: { n: z.number(), id: z.string() },
-  partitionKey: "id",
+export const counter = entity("counter4", {
+  attributes: {
+    n: z.number(),
+    namespace: z.union([z.literal("different"), z.literal("default")]),
+    id: z.string(),
+  },
+  partition: ["namespace", "id"],
 });
 const entityEvent = event<{ id: string }>("entityEvent");
 const entitySignal = signal("entitySignal");
@@ -570,13 +574,16 @@ export const counterWatcher = counter.stream(
 
 export const counterNamespaceWatcher = counter.stream(
   "counterNamespaceWatch",
-  { partitionPrefixes: ["different"] },
+  { queryKeys: [{ namespace: "different" }] },
   async (item) => {
     if (item.operation === "insert") {
       const value = await counter.get(item.key);
-      const id = item.key.id.substring("different".length);
-      await counter.set({ id, n: (value?.n ?? 0) + 1 });
-      await entitySignal.sendSignal(id);
+      await counter.set({
+        namespace: "default",
+        id: value!.id,
+        n: (value?.n ?? 0) + 1,
+      });
+      await entitySignal.sendSignal(value!.id);
     }
   }
 );
@@ -585,8 +592,8 @@ export const onEntityEvent = subscription(
   "onEntityEvent",
   { events: [entityEvent] },
   async ({ id }) => {
-    const value = await counter.get([id]);
-    await counter.set({ id, n: (value?.n ?? 0) + 1 });
+    const value = await counter.get(["default", id]);
+    await counter.set({ namespace: "default", id, n: (value?.n ?? 0) + 1 });
     await entitySignal.sendSignal(id);
   }
 );
@@ -594,52 +601,55 @@ export const onEntityEvent = subscription(
 export const entityTask = task(
   "entityAct",
   async (_, { execution: { id } }) => {
-    const value = await counter.get([id]);
-    await counter.set({ id, n: (value?.n ?? 0) + 1 });
+    const value = await counter.get(["default", id]);
+    await counter.set({ namespace: "default", id, n: (value?.n ?? 0) + 1 });
   }
 );
 
 export const entityWorkflow = workflow(
   "entityWorkflow",
   async (_, { execution: { id } }) => {
-    await counter.set({ id, n: 1 });
-    await counter.set({ id: "different" + id, n: 1 });
+    await counter.set({ namespace: "default", id, n: 1 });
+    await counter.set({ namespace: "different", id, n: 1 });
     await entitySignal.expectSignal();
     await entityTask();
     await Promise.all([entityEvent.emit({ id }), entitySignal.expectSignal()]);
     try {
       // will fail
-      await counter.set({ id, n: 0 }, { expectedVersion: 1 });
+      await counter.set(
+        { namespace: "default", id, n: 0 },
+        { expectedVersion: 1 }
+      );
     } catch (err) {
       console.error("expected the entity set to fail", err);
     }
     const { value: entityValue, version } =
-      (await counter.getWithMetadata([id])) ?? {};
+      (await counter.getWithMetadata(["default", id])) ?? {};
     await counter.set(
-      { id, n: entityValue!.n + 1 },
+      { namespace: "default", id, n: entityValue!.n + 1 },
       { expectedVersion: version }
     );
-    const value = await counter.get([id]);
+    const value = await counter.get(["default", id]);
     await Entity.transactWrite([
       {
         entity: counter,
         operation: {
           operation: "set",
-          value: { id, n: (value?.n ?? 0) + 1 },
+          value: { namespace: "default", id, n: (value?.n ?? 0) + 1 },
         },
       },
     ]);
     // send deletion, to be picked up by the stream
-    await counter.delete([id]);
-    await counter.query({ partition: id });
+    await counter.delete(["default", id]);
+    await counter.query(["default", id]);
     // this signal will contain the final value after deletion
     return await entitySignal2.expectSignal();
   }
 );
 
-export const check = entity("check2", {
-  schema: { n: z.number(), id: z.string() },
-  partitionKey: "id",
+export const check = entity("check3", {
+  attributes: { n: z.number(), id: z.string() },
+  partition: ["id"],
 });
 
 const gitErDone = transaction("gitErDone", async ({ id }: { id: string }) => {

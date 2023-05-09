@@ -8,6 +8,11 @@ import type {
   SubscriptionRuntimeProps,
 } from "../subscription.js";
 import type { TaskSpec } from "./task.js";
+import {
+  EntityAttributes,
+  EntityCompositeKeyPart,
+  EntityQueryKey,
+} from "../entity.js";
 
 /**
  * Specification for an Eventual application
@@ -161,41 +166,26 @@ export interface BucketNotificationHandlerSpec {
   sourceLocation?: SourceLocation;
 }
 
-export interface EntityKeyString<Name extends string> {
-  key: Name;
-  type: "string";
-}
-
-export interface EntityKeyNumber<Name extends string> {
-  key: Name;
-  type: "number";
-}
-
-export interface EntityKeyBinary<Name extends string> {
-  key: Name;
-  type: "binary";
-}
-
-export type EntityKeySpec<Name extends string = string> =
-  | Name
-  | EntityKeyBinary<Name>
-  | EntityKeyNumber<Name>
-  | EntityKeyString<Name>;
-
 export interface EntitySpec {
   name: string;
-  partitionKey: EntityKeySpec;
-  sortKey?: EntityKeySpec;
+  partition: readonly string[];
+  sort?: readonly string[];
   /**
    * An Optional schema for the entity within an entity.
    */
-  schema?: openapi.SchemaObject;
+  attributes: openapi.SchemaObject;
   streams: EntityStreamSpec[];
 }
 
 export type EntityStreamOperation = "insert" | "modify" | "remove";
 
-export interface EntityStreamOptions extends FunctionRuntimeProps {
+export interface EntityStreamOptions<
+  Attr extends EntityAttributes = EntityAttributes,
+  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined =
+    | EntityCompositeKeyPart<Attr>
+    | undefined
+> extends FunctionRuntimeProps {
   /**
    * A list of operations to be send to the stream.
    *
@@ -207,23 +197,21 @@ export interface EntityStreamOptions extends FunctionRuntimeProps {
    */
   includeOld?: boolean;
   /**
-   * A subset of namespaces to include in the stream.
-   *
-   * If neither `namespaces` or `namespacePrefixes` are provided, all namespaces will be sent.
+   * One or more key queries that will be included in the stream.
    */
-  partitions?: string[];
-  /**
-   * One or more namespace prefixes to match.
-   *
-   * If neither `namespaces` or `namespacePrefixes` are provided, all namespaces will be sent.
-   */
-  partitionPrefixes?: string[];
+  queryKeys?: EntityQueryKey<Attr, Partition, Sort>[];
 }
 
-export interface EntityStreamSpec {
+export interface EntityStreamSpec<
+  Attr extends EntityAttributes = EntityAttributes,
+  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined =
+    | EntityCompositeKeyPart<Attr>
+    | undefined
+> {
   name: string;
   entityName: string;
-  options?: EntityStreamOptions;
+  options?: EntityStreamOptions<Attr, Partition, Sort>;
   sourceLocation?: SourceLocation;
 }
 

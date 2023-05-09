@@ -1,4 +1,3 @@
-import type { z } from "zod";
 import type { AnyEntity, Entity, EntityTransactItem } from "../entity.js";
 
 declare global {
@@ -6,16 +5,11 @@ declare global {
   var eventualEntityHook: EntityHook | undefined;
 }
 
-export interface EntityDefinition<E> {
-  name: string;
-  schema: z.Schema<E>;
-}
-
 export type EntityMethod = Exclude<
   {
     [k in keyof AnyEntity]: [AnyEntity[k]] extends [Function] ? k : never;
   }[keyof AnyEntity],
-  "partitionKey" | "sortKey" | "stream" | "__entityBrand" | undefined
+  "partition" | "sort" | "stream" | undefined
 >;
 
 /**

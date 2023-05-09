@@ -11,12 +11,12 @@ import type { SignalTarget } from "./signal.js";
 export type EventualCall =
   | AwaitTimerCall
   | BucketCall
-  | ConditionCall
-  | EntityCall
   | ChildWorkflowCall
+  | ConditionCall
+  | EmitEventsCall
+  | EntityCall
   | ExpectSignalCall
   | InvokeTransactionCall
-  | EmitEventsCall
   | RegisterSignalHandlerCall
   | SendSignalCall
   | TaskCall;

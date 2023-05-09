@@ -38,7 +38,7 @@ import {
   convertNormalizedEntityKeyToMap,
   EntityStore,
   normalizeCompositeKey,
-  NormalizeEntityKey,
+  NormalizedEntityKey,
 } from "./stores/entity-store.js";
 import { serializeCompositeKey } from "./utils.js";
 
@@ -149,13 +149,13 @@ export function createTransactionExecutor(
         string,
         {
           entityName: string;
-          key: NormalizeEntityKey;
+          key: NormalizedEntityKey;
           value: EntityWithMetadata<any> | undefined;
         }
       >();
 
       const eventualCallHook: EventualCallHook = {
-        registerEventualCall: (eventual) => {
+        registerEventualCall: (eventual): any => {
           if (isEntityCall(eventual)) {
             if (
               isEntityOperationOfType("set", eventual) ||
@@ -403,7 +403,7 @@ export function createTransactionExecutor(
 
       function resolveEntity(
         entityName: string,
-        key: NormalizeEntityKey
+        key: NormalizedEntityKey
       ): EventualPromise<EntityWithMetadata<any> | undefined> {
         const serializedKey = serializeCompositeKey(entityName, key);
         if (retrievedEntities.has(serializedKey)) {

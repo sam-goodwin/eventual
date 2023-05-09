@@ -2,7 +2,8 @@ import {
   AnyEntityKey,
   EntityConsistencyOptions,
   EntityKeyType,
-  EntityQueryRequest,
+  EntityQueryKey,
+  EntityQueryOptions,
   EntityQueryResult,
   EntityQueryResultEntry,
   EntitySetOptions,
@@ -35,22 +36,32 @@ export class LocalEntityStore implements EntityStore {
 
   constructor(private props: LocalEntityStoreProps) {}
 
-  async get(entityName: string, key: AnyEntityKey): Promise<any> {
+  public async get(entityName: string, key: AnyEntityKey): Promise<any> {
     return (await this.getWithMetadata(entityName, key))?.value;
   }
 
-  async getWithMetadata(
+  public async getWithMetadata(
     entityName: string,
     key: AnyEntityKey
   ): Promise<EntityWithMetadata<any> | undefined> {
     const entity = this.getEntity(entityName);
     const { partition, sort } = normalizeCompositeKey(entity, key);
-    return this.getPartitionMap(entityName, partition.value).get(
-      sort?.value ?? "default"
+    if (partition.partialValue) {
+      throw new Error(
+        "Entity key cannot be partial for get or getWithMetadata"
+      );
+    }
+
+    if (sort && sort.partialValue) {
+      throw new Error("Entity sort key cannot be partial for query");
+    }
+
+    return this.getPartitionMap(entityName, partition.keyValue).get(
+      sort?.keyValue ?? "default"
     );
   }
 
-  async set(
+  public async set(
     entityName: string,
     value: any,
     options?: EntitySetOptions | undefined
@@ -69,10 +80,19 @@ export class LocalEntityStore implements EntityStore {
     }
     const newVersion =
       options?.incrementVersion === false ? version : version + 1;
-    this.getPartitionMap(entityName, normalizedKey.partition.value).set(
-      normalizedKey.sort?.value ?? "default",
+
+    if (normalizedKey.partition.partialValue) {
+      throw new Error("Entity partition key cannot be partial for set");
+    }
+
+    if (normalizedKey.sort && normalizedKey.sort.partialValue) {
+      throw new Error("Entity sort key cannot be partial for query");
+    }
+
+    this.getPartitionMap(entityName, normalizedKey.partition.keyValue).set(
+      normalizedKey.sort?.keyValue ?? "default",
       {
-        value: value,
+        value,
         version: newVersion,
       }
     );
@@ -88,7 +108,7 @@ export class LocalEntityStore implements EntityStore {
     return { version: newVersion };
   }
 
-  async delete(
+  public async delete(
     entityName: string,
     key: AnyEntityKey,
     options?: EntityConsistencyOptions | undefined
@@ -102,8 +122,17 @@ export class LocalEntityStore implements EntityStore {
           throw new UnexpectedVersion("Unexpected Version");
         }
       }
-      this.getPartitionMap(entityName, normalizedKey.partition.value).delete(
-        normalizedKey.sort?.value ?? "default"
+
+      if (normalizedKey.partition.partialValue) {
+        throw new Error("Entity partition key cannot be partial for delete");
+      }
+
+      if (normalizedKey.sort && normalizedKey.sort.partialValue) {
+        throw new Error("Entity sort key cannot be partial for query");
+      }
+
+      this.getPartitionMap(entityName, normalizedKey.partition.keyValue).delete(
+        normalizedKey.sort?.keyValue ?? "default"
       );
       this.props.localConnector.pushWorkflowTask({
         entityName,
@@ -115,11 +144,16 @@ export class LocalEntityStore implements EntityStore {
     }
   }
 
-  async query(
+  public async query(
     entityName: string,
-    request: EntityQueryRequest<any, string>
+    queryKey: EntityQueryKey<any, any, any>,
+    request?: EntityQueryOptions
   ): Promise<EntityQueryResult<any>> {
-    const { items, nextToken } = this.orderedEntries(entityName, request);
+    const { items, nextToken } = this.orderedEntries(
+      entityName,
+      queryKey,
+      request
+    );
 
     // values should be sorted
     return {
@@ -134,7 +168,7 @@ export class LocalEntityStore implements EntityStore {
     };
   }
 
-  async transactWrite(items: EntityTransactItem[]): Promise<void> {
+  public async transactWrite(items: EntityTransactItem[]): Promise<void> {
     const keysAndVersions = Object.fromEntries(
       items.map((i) => {
         const entity =
@@ -216,9 +250,18 @@ export class LocalEntityStore implements EntityStore {
 
   private orderedEntries(
     entityName: string,
-    listRequest: EntityQueryRequest<any, any>
+    queryKey: EntityQueryKey<any, any, any>,
+    queryOptions?: EntityQueryOptions
   ) {
-    const partition = this.getPartitionMap(entityName, listRequest.partition);
+    const entity = this.getEntity(entityName);
+    const normalizedKey = normalizeCompositeKey(entity, queryKey);
+    if (normalizedKey.partition.partialValue) {
+      throw new Error("Partition key part must not be partial.");
+    }
+    const partition = this.getPartitionMap(
+      entityName,
+      normalizedKey.partition.keyValue
+    );
     const entries = partition ? [...partition.entries()] : [];
 
     const result = paginateItems(
@@ -229,13 +272,10 @@ export class LocalEntityStore implements EntityStore {
           : typeof a[0] === "number"
           ? a[0] - (b[0] as number)
           : 0,
-      listRequest.prefix
-        ? ([key]) =>
-            typeof key === "string" && key.startsWith(listRequest.prefix!)
-        : undefined,
       undefined,
-      listRequest.limit,
-      listRequest.nextToken
+      undefined,
+      queryOptions?.limit,
+      queryOptions?.nextToken
     );
 
     return result;

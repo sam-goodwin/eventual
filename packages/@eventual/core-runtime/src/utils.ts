@@ -1,6 +1,8 @@
 import type {
-  AnyEntity,
   BucketNotificationEvent,
+  Entity,
+  EntityAttributes,
+  EntityCompositeKeyPart,
   EntityKeyTuple,
   EntityStreamItem,
 } from "@eventual/core";
@@ -9,8 +11,9 @@ import type {
   EntityStreamSpec,
 } from "@eventual/core/internal";
 import {
+  NormalizedEntityKey,
+  NormalizedEntityKeyPart,
   normalizeCompositeKey,
-  NormalizeEntityKey,
 } from "./stores/entity-store.js";
 
 export async function promiseAllSettledPartitioned<T, R>(
@@ -64,9 +67,9 @@ export function getLazy<T extends string | number | object | boolean>(
 
 export function serializeCompositeKey(
   entityName: string,
-  key: NormalizeEntityKey
+  key: NormalizedEntityKey
 ) {
-  return `${entityName}|${key.partition.value}|${key.sort?.value ?? ""}`;
+  return `${entityName}|${key.partition.keyValue}|${key.sort?.keyValue ?? ""}`;
 }
 
 export function deserializeCompositeKey(
@@ -86,25 +89,46 @@ export function isBucketNotificationEvent(
   return "bucketName" in value && "event" in value;
 }
 
-export function entityStreamMatchesItem<E extends AnyEntity = AnyEntity>(
-  entity: E,
-  item: EntityStreamItem<E>,
-  streamSpec: EntityStreamSpec
+export function entityStreamMatchesItem<
+  Attr extends EntityAttributes,
+  const Partition extends EntityCompositeKeyPart<Attr>,
+  const Sort extends EntityCompositeKeyPart<Attr> | undefined
+>(
+  entity: Entity<Attr, Partition, Sort>,
+  item: EntityStreamItem<Attr, Partition, Sort>,
+  streamSpec: EntityStreamSpec<Attr, Partition, Sort>
 ) {
-  const { partition } = normalizeCompositeKey(entity, item);
+  const { partition, sort } = normalizeCompositeKey(entity, item.key);
+  const normalizedQueryKeys =
+    streamSpec.options?.queryKeys?.map((key) =>
+      normalizeCompositeKey(entity, key)
+    ) ?? [];
   return (
     streamSpec.entityName === item.entityName &&
     (!streamSpec.options?.operations ||
       streamSpec.options.operations.includes(item.operation)) &&
-    (!streamSpec.options?.partitions ||
-      (typeof partition.value === "string" &&
-        streamSpec.options.partitions.includes(partition.value))) &&
-    (!streamSpec.options?.partitionPrefixes ||
-      streamSpec.options.partitionPrefixes.some(
-        (p) =>
-          typeof partition.value === "string" && partition.value.startsWith(p)
+    (normalizedQueryKeys.length === 0 ||
+      normalizedQueryKeys.some(
+        (k) =>
+          // if the query key exists, it will have at least a partial partition key
+          compareNormalizedEntityKeyPart(partition, k.partition) &&
+          // if there is a sort part to the query key, there must be a sort key to the value
+          (!k.sort || (sort && compareNormalizedEntityKeyPart(sort, k.sort)))
       ))
   );
+}
+
+function compareNormalizedEntityKeyPart(
+  value: NormalizedEntityKeyPart,
+  matcher: NormalizedEntityKeyPart
+) {
+  return matcher.partialValue
+    ? // the matcher is a partial value and both matcher and value are string
+      typeof value.keyValue === "string" &&
+        typeof matcher.keyValue === "string" &&
+        value.keyValue.startsWith(matcher.keyValue)
+    : // matcher is not partial, compare the two
+      matcher.keyValue === value.keyValue;
 }
 
 export function bucketHandlerMatchesEvent(

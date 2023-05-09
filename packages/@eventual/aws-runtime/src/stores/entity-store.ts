@@ -17,13 +17,14 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
   AnyEntity,
   AnyEntityKey,
+  EntityAttributes,
+  EntityAttributesFromEntity,
   EntityConsistencyOptions,
-  EntityQueryRequest,
+  EntityQueryKey,
+  EntityQueryOptions,
   EntityQueryResult,
-  EntitySchema,
   EntitySetOptions,
   EntityTransactItem,
-  EntityValue,
   EntityWithMetadata,
   TransactionCancelled,
   TransactionConflict,
@@ -36,7 +37,7 @@ import {
   getLazy,
   LazyValue,
   normalizeCompositeKey,
-  normalizeKeySpec,
+  NormalizedEntityKey,
 } from "@eventual/core-runtime";
 import { assertNever } from "@eventual/core/internal";
 import { entityServiceTableName, queryPageWithToken } from "../utils.js";
@@ -47,12 +48,13 @@ export interface AWSEntityStoreProps {
   entityProvider: EntityProvider;
 }
 
-export type EntitySchemaWithVersion<E extends AnyEntity> = EntitySchema<E> & {
-  __version: number;
-};
+export type EntityAttributesWithVersion<E extends AnyEntity> =
+  EntityAttributesFromEntity<E> & {
+    __version: number;
+  };
 
-export type MarshalledEntitySchemaWithVersion<E extends AnyEntity> = {
-  [k in keyof EntitySchema<E>]: AttributeValue;
+export type MarshalledEntityAttributesWithVersion<E extends AnyEntity> = {
+  [k in keyof EntityAttributesFromEntity<E>]: AttributeValue;
 } & {
   __version: AttributeValue.NMember;
 };
@@ -60,18 +62,19 @@ export type MarshalledEntitySchemaWithVersion<E extends AnyEntity> = {
 export class AWSEntityStore implements EntityStore {
   constructor(private props: AWSEntityStoreProps) {}
 
-  async get(entityName: string, key: AnyEntityKey): Promise<any> {
+  public async get(entityName: string, key: AnyEntityKey): Promise<any> {
     return (await this.getWithMetadata(entityName, key))?.value;
   }
 
-  async getWithMetadata(
+  public async getWithMetadata(
     entityName: string,
     key: AnyEntityKey
   ): Promise<EntityWithMetadata<any> | undefined> {
     const entity = this.getEntity(entityName);
+    const normalizedCompositeKey = normalizeCompositeKey(entity, key);
     const item = await this.props.dynamo.send(
       new GetItemCommand({
-        Key: this.entityKey(key, entity),
+        Key: this.entityKey(normalizedCompositeKey),
         TableName: this.tableName(entityName),
         ConsistentRead: true,
       })
@@ -83,7 +86,22 @@ export class AWSEntityStore implements EntityStore {
 
     const { __version, ...value } = unmarshall(
       item.Item
-    ) as EntitySchemaWithVersion<any>;
+    ) as EntityAttributesWithVersion<any>;
+
+    // if the key attributes are computed, remove them from the return value.
+    if (
+      !(
+        normalizedCompositeKey.partition.keyAttribute in entity.attributes.shape
+      )
+    ) {
+      delete value[normalizedCompositeKey.partition.keyAttribute];
+    }
+    if (
+      normalizedCompositeKey.sort &&
+      !(normalizedCompositeKey.sort.keyAttribute in entity.attributes.shape)
+    ) {
+      delete value[normalizedCompositeKey.sort.keyAttribute];
+    }
 
     return {
       value,
@@ -91,7 +109,7 @@ export class AWSEntityStore implements EntityStore {
     };
   }
 
-  async set(
+  public async set(
     entityName: string,
     entity: any,
     options?: EntitySetOptions | undefined
@@ -115,7 +133,7 @@ export class AWSEntityStore implements EntityStore {
     }
   }
 
-  async delete(
+  public async delete(
     entityName: string,
     key: AnyEntityKey,
     options?: EntityConsistencyOptions | undefined
@@ -141,7 +159,7 @@ export class AWSEntityStore implements EntityStore {
     const entity =
       typeof _entity === "string" ? this.getEntity(_entity) : _entity;
     return {
-      Key: this.entityKey(key, entity),
+      Key: this.entityKey(normalizeCompositeKey(entity, key)),
       ConditionExpression:
         options?.expectedVersion !== undefined
           ? "#__version=:expectedVersion"
@@ -160,11 +178,12 @@ export class AWSEntityStore implements EntityStore {
     };
   }
 
-  async query(
+  public async query(
     entityName: string,
-    request: EntityQueryRequest<any, string>
+    key: EntityQueryKey<any, any, any>,
+    request?: EntityQueryOptions
   ): Promise<EntityQueryResult<any>> {
-    const result = await this.listEntries(entityName, request);
+    const result = await this.queryEntries(entityName, key, request);
     return {
       nextToken: result.nextToken,
       entries: result.records.map(({ __version, ...r }) => ({
@@ -174,7 +193,7 @@ export class AWSEntityStore implements EntityStore {
     };
   }
 
-  async transactWrite(items: EntityTransactItem[]): Promise<void> {
+  public async transactWrite(items: EntityTransactItem[]): Promise<void> {
     try {
       await this.props.dynamo.send(
         new TransactWriteItemsCommand({
@@ -209,7 +228,9 @@ export class AWSEntityStore implements EntityStore {
                         : "#version=:expectedVersion"
                       : undefined,
                   TableName: this.tableName(entity.name),
-                  Key: this.entityKey(i.operation.key, entity),
+                  Key: this.entityKey(
+                    normalizeCompositeKey(entity, i.operation.key)
+                  ),
                   ExpressionAttributeNames: {
                     "#version": "version",
                   },
@@ -244,7 +265,7 @@ export class AWSEntityStore implements EntityStore {
     }
   }
 
-  private createSetRequest<E extends EntityValue>(
+  private createSetRequest<E extends EntityAttributes>(
     _entity: string | AnyEntity,
     value: E,
     options?: EntitySetOptions
@@ -253,12 +274,15 @@ export class AWSEntityStore implements EntityStore {
       typeof _entity === "string" ? this.getEntity(_entity) : _entity;
     const valueRecord = marshall(value, { removeUndefinedValues: true });
     const normalizedKey = normalizeCompositeKey(entity, valueRecord);
-    delete valueRecord[normalizedKey.partition.field];
+
+    // if the key attributes are not computed and are in the original value, remove them from the set expression
+    delete valueRecord[normalizedKey.partition.keyAttribute];
     if (normalizedKey.sort) {
-      delete valueRecord[normalizedKey.sort.field];
+      delete valueRecord[normalizedKey.sort.keyAttribute];
     }
+
     return {
-      Key: this.entityKey(value, entity),
+      Key: this.entityKey(normalizedKey),
       UpdateExpression: [
         "SET #__version=if_not_exists(#__version, :__startingVersion) + :__versionIncrement",
         ...Object.keys(valueRecord).map((key) => `#${key}=:${key}`),
@@ -301,54 +325,65 @@ export class AWSEntityStore implements EntityStore {
     return entity;
   }
 
-  private entityKey(key: AnyEntityKey, entity: AnyEntity) {
-    const compositeKey = normalizeCompositeKey(entity, key);
-    const keyMap = convertNormalizedEntityKeyToMap(compositeKey);
+  private entityKey(key: NormalizedEntityKey) {
+    const keyMap = convertNormalizedEntityKeyToMap(key);
     const marshalledKey = marshall(keyMap, { removeUndefinedValues: true });
     return marshalledKey;
   }
 
-  private listEntries(
+  private queryEntries(
     entityName: string,
-    request: EntityQueryRequest<any, any>,
+    queryKey: EntityQueryKey<any, any, any>,
+    request?: EntityQueryOptions,
     fields?: string[]
-  ) {
+  ): ReturnType<
+    typeof queryPageWithToken<MarshalledEntityAttributesWithVersion<any>>
+  > {
     const entity = this.getEntity(entityName);
-    const partitionKeyRef = normalizeKeySpec(entity.partitionKey);
-    const sortKeyRef = entity.sortKey
-      ? normalizeKeySpec(entity.sortKey)
-      : undefined;
+    const normalizedKey = normalizeCompositeKey(entity, queryKey);
     const allFields = new Set([
       ...(fields ?? []),
-      partitionKeyRef.key,
-      ...(sortKeyRef ? [sortKeyRef.key] : []),
+      normalizedKey.partition.keyAttribute,
+      ...(normalizedKey.sort ? [normalizedKey.sort.keyAttribute] : []),
     ]);
-    if (request.prefix) {
-      if (!sortKeyRef?.key) {
-        throw new Error(
-          "Cannot use `prefix` when the entity does not have a sortKey."
-        );
-      } else if (sortKeyRef.type !== "string") {
-        throw new Error("Sort field must be a string to use the prefix field");
-      }
+
+    if (normalizedKey.partition.partialValue) {
+      throw new Error("Entity partition key cannot be partial for query");
     }
-    return queryPageWithToken<MarshalledEntitySchemaWithVersion<any>>(
+
+    return queryPageWithToken<MarshalledEntityAttributesWithVersion<any>>(
       {
         dynamoClient: this.props.dynamo,
-        pageSize: request.limit ?? 1000,
-        keys: sortKeyRef
-          ? [partitionKeyRef.key, sortKeyRef.key]
-          : [partitionKeyRef.key],
-        nextToken: request.nextToken,
+        pageSize: request?.limit ?? 1000,
+        keys: normalizedKey.sort
+          ? [
+              normalizedKey.partition.keyAttribute,
+              normalizedKey.sort.keyAttribute,
+            ]
+          : [normalizedKey.partition.keyAttribute],
+        nextToken: request?.nextToken,
       },
       {
         TableName: this.tableName(entityName),
-        KeyConditionExpression: sortKeyRef
-          ? `#${partitionKeyRef.key}=:pk AND begins_with(#${sortKeyRef.key}, :sk)`
-          : `#${partitionKeyRef.key}=:pk`,
+        KeyConditionExpression: normalizedKey.sort
+          ? normalizedKey.sort.partialValue
+            ? `#${normalizedKey.partition.keyAttribute}=:pk AND begins_with(#${normalizedKey.sort.keyAttribute}, :sk)`
+            : `#${normalizedKey.partition.keyAttribute}=:pk AND #${normalizedKey.sort.keyAttribute}=:sk`
+          : `#${normalizedKey.partition.keyAttribute}=:pk`,
         ExpressionAttributeValues: {
-          ":pk": { S: request.partition },
-          ...(sortKeyRef ? { ":sk": { S: request.prefix ?? "" } } : {}),
+          ":pk":
+            typeof normalizedKey.partition.keyValue === "number"
+              ? { N: normalizedKey.partition.keyValue.toString() }
+              : { S: normalizedKey.partition.keyValue },
+          ...(normalizedKey.sort
+            ? {
+                ":sk":
+                  normalizedKey.sort.keyValue === undefined ||
+                  typeof normalizedKey.sort.keyValue === "string"
+                    ? { S: normalizedKey.sort.keyValue ?? "" }
+                    : { N: normalizedKey.sort.keyValue.toString() },
+              }
+            : {}),
         },
         ExpressionAttributeNames: Object.fromEntries(
           [...allFields]?.map((f) => [`#${f}`, f])

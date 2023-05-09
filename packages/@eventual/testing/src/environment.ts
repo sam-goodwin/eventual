@@ -410,6 +410,9 @@ export class TestEnvironment extends RuntimeServiceClient {
           const entity = this.localContainer.entityProvider.getEntity(
             i.entityName
           );
+          if (!entity) {
+            return [];
+          }
           const streamNames = [...entities().values()]
             .flatMap((d) => d.streams)
             .filter((s) => entityStreamMatchesItem(entity, i, s))

@@ -81,13 +81,8 @@ function displayEntityCommand(operation: EntityOperation) {
       }
     }
     if (isEntityOperationOfType("query", operation)) {
-      const [request] = operation.params;
-      if (request.partition) {
-        output.push(`Namespace: ${request.prefix}`);
-      }
-      if (request.prefix) {
-        output.push(`Prefix: ${request.prefix}`);
-      }
+      const [key] = operation.params;
+      output.push(`Key: ${key}`);
     }
   }
   return output;

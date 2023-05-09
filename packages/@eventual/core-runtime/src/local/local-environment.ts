@@ -155,6 +155,9 @@ export class LocalEnvironment {
             const entity = this.localContainer.entityProvider.getEntity(
               i.entityName
             );
+            if (!entity) {
+              return false;
+            }
             return entityStreamMatchesItem(entity, i, s);
           })
           .map((s) => s.name);

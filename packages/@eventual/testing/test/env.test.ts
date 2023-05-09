@@ -1292,14 +1292,14 @@ describe("time", () => {
 });
 
 const myEntity = entity("testEntity1", {
-  schema: { n: z.number(), id: z.string() },
-  partitionKey: "id",
+  attributes: { n: z.number(), id: z.string() },
+  partition: ["id"],
 });
 
 const myEntityWithSort = entity("testEntity2", {
-  schema: { n: z.number(), id: z.string(), part: z.string() },
-  partitionKey: "part",
-  sortKey: "id",
+  attributes: { n: z.number(), id: z.string(), part: z.string() },
+  partition: ["part"],
+  sort: ["id"],
 });
 
 describe("entity", () => {

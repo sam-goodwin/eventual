@@ -346,16 +346,14 @@ describe("entity request", () => {
         {
           entityName: "ent",
           operation: "query",
-          params: [{ partition: "part" }],
+          params: [{ id: "part" }],
         },
         0
       ),
       baseTime
     );
 
-    expect(mockEntityStore.query).toHaveBeenCalledWith("ent", {
-      partition: "part",
-    });
+    expect(mockEntityStore.query).toHaveBeenCalledWith("ent", { id: "part" });
 
     expect(event).toMatchObject<EntityRequest>({
       seq: 0,
@@ -363,7 +361,7 @@ describe("entity request", () => {
       operation: {
         entityName: "ent",
         operation: "query",
-        params: [{ partition: "part" }],
+        params: [{ partition: ["part"] }],
       },
       timestamp: expect.stringContaining("Z"),
     });
