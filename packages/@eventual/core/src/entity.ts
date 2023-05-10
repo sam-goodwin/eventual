@@ -15,13 +15,8 @@ import {
 } from "./internal/service-spec.js";
 import type { ServiceContext } from "./service.js";
 
-export interface EntityQueryResultEntry<E extends EntityAttributes> {
-  entity: z.infer<z.ZodObject<E>>;
-  version: number;
-}
-
-export interface EntityQueryResult<E extends EntityAttributes> {
-  entries?: EntityQueryResultEntry<E>[];
+export interface EntityQueryResult<Attr extends EntityAttributes> {
+  entries?: EntityWithMetadata<Attr>[];
   /**
    * Returned when there are more values than the limit allowed to return.
    */
@@ -129,7 +124,7 @@ export interface EntityStreamInsertItem<
     | EntityCompositeKeyPart<Attr>
     | undefined
 > extends EntityStreamItemBase<Attr, Partition, Sort> {
-  newValue: z.infer<z.ZodObject<Attr>>;
+  newValue: Attr;
   newVersion: number;
   operation: "insert";
 }
@@ -142,9 +137,9 @@ export interface EntityStreamModifyItem<
     | undefined
 > extends EntityStreamItemBase<Attr, Partition, Sort> {
   operation: "modify";
-  newValue: z.infer<z.ZodObject<Attr>>;
+  newValue: Attr;
   newVersion: number;
-  oldValue?: z.infer<z.ZodObject<Attr>>;
+  oldValue?: Attr;
   oldVersion?: number;
 }
 
@@ -156,7 +151,7 @@ export interface EntityStreamRemoveItem<
     | undefined
 > extends EntityStreamItemBase<Attr, Partition, Sort> {
   operation: "remove";
-  oldValue?: z.infer<z.ZodObject<Attr>>;
+  oldValue?: Attr;
   oldVersion?: number;
 }
 
@@ -177,12 +172,11 @@ export type AnyEntity = Entity<
 >;
 
 export type EntityKeyType = string | number;
-export type EntityKeyZodType = z.ZodString | z.ZodNumber;
 
 export type EntityKeyField<E extends EntityAttributes> = {
   [K in keyof E]: K extends string
     ? // only include fields that extend string or number
-      z.infer<E[K]> extends EntityKeyType
+      E[K] extends EntityKeyType
       ? K
       : never
     : never;
@@ -206,10 +200,10 @@ export type EntityCompositeKey<
   Partition extends EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined
 > = {
-  [k in Partition[number]]: z.infer<Attr[k]>;
+  [k in Partition[number]]: Attr[k];
 } & (Sort extends readonly (keyof Attr)[]
   ? {
-      [k in Sort[number]]: z.infer<Attr[k]>;
+      [k in Sort[number]]: Attr[k];
     }
   : // eslint-disable-next-line
     {});
@@ -221,9 +215,9 @@ export type EntityKeyArray<
   infer X extends keyof E,
   ...infer Rest extends readonly (keyof E)[]
 ]
-  ? readonly [z.infer<E[X]>, ...EntityKeyArray<E, Rest>]
+  ? readonly [E[X], ...EntityKeyArray<E, Rest>]
   : Fields extends readonly [infer X extends keyof E]
-  ? readonly [z.infer<E[X]>]
+  ? readonly [E[X]]
   : readonly [];
 
 export type EntityKeyTuple<
@@ -274,27 +268,48 @@ export type EntityAttributesFromEntity<E extends AnyEntity> = E extends Entity<
   : never;
 
 export interface EntityWithMetadata<E extends EntityAttributes> {
-  value: z.infer<z.ZodObject<E>>;
+  value: E;
   version: number;
 }
 
-export type AttributeNames<Attr extends EntityZodAttributes> =
-  Attr extends z.ZodObject<infer A> ? keyof A : keyof Attr;
+export type EntityBinaryMember =
+  | ArrayBuffer
+  | Blob
+  | Buffer
+  | DataView
+  | File
+  | Int8Array
+  | Uint8Array
+  | Uint8ClampedArray
+  | Int16Array
+  | Uint16Array
+  | Int32Array
+  | Uint32Array
+  | Float32Array
+  | Float64Array
+  | BigInt64Array
+  | BigUint64Array;
 
-export type AttributeShape<Attr extends EntityZodAttributes> =
-  Attr extends z.ZodObject<infer A>
-    ? {
-        [k in keyof A]: A[k];
-      }
-    : Attr;
+export type EntityValueMember =
+  | EntityAttributes
+  | string
+  | number
+  | boolean
+  | EntityBinaryMember
+  | Set<string | number | boolean | EntityBinaryMember>
+  | EntityValueMember[];
 
 export type EntityAttributes = {
-  [attribute in string]: z.ZodType;
+  [key: string]: EntityValueMember;
 };
 
-export type EntityZodAttributes =
-  | z.ZodObject<EntityAttributes>
-  | EntityAttributes;
+export type EntityZodShape<Attr extends EntityAttributes> = {
+  [key in keyof Attr]: z.ZodType<Attr[key]>;
+};
+
+export type EntityZodAttributes<Attr extends EntityAttributes> =
+  | z.ZodObject<EntityZodShape<Attr>>
+  | EntityZodShape<Attr>;
 
 export interface Entity<
   Attr extends EntityAttributes,
@@ -304,7 +319,7 @@ export interface Entity<
   kind: "Entity";
   partition: P;
   sort?: S;
-  attributes: z.ZodObject<Attr>;
+  attributes: z.ZodObject<EntityZodShape<Attr>>;
   streams: EntityStream<Attr, P, S>[];
   /**
    * Get a value.
@@ -312,9 +327,7 @@ export interface Entity<
    *
    * @param key - key or {@link CompositeKey} of the value to retrieve.
    */
-  get(
-    key: EntityKey<Attr, P, S>
-  ): Promise<z.infer<z.ZodObject<Attr>> | undefined>;
+  get(key: EntityKey<Attr, P, S>): Promise<Attr | undefined>;
   /**
    * Get a value and metadata like version.
    * If your values use composite keys, the namespace must be provided.
@@ -330,10 +343,7 @@ export interface Entity<
    * Values with namespaces are considered distinct from value without a namespace or within different namespaces.
    * Values and keys can only be listed within a single namespace.
    */
-  set(
-    entity: z.infer<z.ZodObject<Attr>>,
-    options?: EntitySetOptions
-  ): Promise<{ version: number }>;
+  set(entity: Attr, options?: EntitySetOptions): Promise<{ version: number }>;
   /**
    * Deletes a single entry within an entity and namespace.
    */
@@ -409,7 +419,7 @@ export interface EntityOptions<
   P extends EntityCompositeKeyPart<Attr>,
   S extends EntityCompositeKeyPart<Attr> | undefined
 > {
-  attributes: Attr | z.ZodObject<Attr>;
+  attributes: EntityZodAttributes<Attr>;
   partition: P;
   sort?: S;
 }
@@ -448,9 +458,7 @@ export function entity<
           params: args,
         }),
         async () => {
-          return getEntityHook().get(name, ...args) as Promise<
-            z.infer<z.ZodObject<Attr>>
-          >;
+          return getEntityHook().get(name, ...args) as Promise<Attr>;
         }
       );
     },

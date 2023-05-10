@@ -5,7 +5,6 @@ import {
   EntityQueryKey,
   EntityQueryOptions,
   EntityQueryResult,
-  EntityQueryResultEntry,
   EntitySetOptions,
   EntityTransactItem,
   EntityWithMetadata,
@@ -155,9 +154,9 @@ export class LocalEntityStore implements EntityStore {
       entries: items?.map(
         ([, value]) =>
           ({
-            entity: value.value,
+            value: value.value,
             version: value.version,
-          } satisfies EntityQueryResultEntry<any>)
+          } satisfies EntityWithMetadata<any>)
       ),
       nextToken,
     };

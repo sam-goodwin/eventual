@@ -199,7 +199,7 @@ export class AWSEntityStore implements EntityStore {
     return {
       nextToken: result.nextToken,
       entries: result.records.map(({ __version, ...r }) => ({
-        entity: unmarshall(r),
+        value: unmarshall(r),
         version: Number(__version.N),
       })),
     };

@@ -679,7 +679,7 @@ export const entityWorkflow = workflow(
 
     return [
       result1,
-      counters.entries?.map((c) => [c.entity.counterNumber, c.entity.n]),
+      counters.entries?.map((c) => [c.value.counterNumber, c.value.n]),
     ];
   }
 );
