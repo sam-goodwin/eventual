@@ -576,6 +576,7 @@ export const counterNamespaceWatcher = counter.stream(
   "counterNamespaceWatch",
   { queryKeys: [{ namespace: "different" }] },
   async (item) => {
+    console.log(item);
     if (item.operation === "insert") {
       const value = await counter.get(item.key);
       await counter.set({
@@ -583,6 +584,7 @@ export const counterNamespaceWatcher = counter.stream(
         id: value!.id,
         n: (value?.n ?? 0) + 1,
       });
+      console.log("send signal to", value!.id);
       await entitySignal.sendSignal(value!.id);
     }
   }
@@ -647,7 +649,7 @@ export const entityWorkflow = workflow(
   }
 );
 
-export const check = entity("check3", {
+export const check = entity("check", {
   attributes: { n: z.number(), id: z.string() },
   partition: ["id"],
 });

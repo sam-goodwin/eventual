@@ -17,6 +17,8 @@ import { EntityProvider } from "../../providers/entity-provider.js";
 import {
   convertNormalizedEntityKeyToMap,
   EntityStore,
+  isCompleteKey,
+  isCompleteKeyPart,
   normalizeCompositeKey,
 } from "../../stores/entity-store.js";
 import { deserializeCompositeKey, serializeCompositeKey } from "../../utils.js";
@@ -45,20 +47,17 @@ export class LocalEntityStore implements EntityStore {
     key: AnyEntityKey
   ): Promise<EntityWithMetadata<any> | undefined> {
     const entity = this.getEntity(entityName);
-    const { partition, sort } = normalizeCompositeKey(entity, key);
-    if (partition.partialValue) {
+    const normalizedKey = normalizeCompositeKey(entity, key);
+    if (!isCompleteKey(normalizedKey)) {
       throw new Error(
         "Entity key cannot be partial for get or getWithMetadata"
       );
     }
 
-    if (sort && sort.partialValue) {
-      throw new Error("Entity sort key cannot be partial for query");
-    }
-
-    return this.getPartitionMap(entityName, partition.keyValue).get(
-      sort?.keyValue ?? "default"
-    );
+    return this.getPartitionMap(
+      entityName,
+      normalizedKey.partition.keyValue
+    ).get(normalizedKey.sort?.keyValue ?? "default");
   }
 
   public async set(
@@ -123,12 +122,8 @@ export class LocalEntityStore implements EntityStore {
         }
       }
 
-      if (normalizedKey.partition.partialValue) {
-        throw new Error("Entity partition key cannot be partial for delete");
-      }
-
-      if (normalizedKey.sort && normalizedKey.sort.partialValue) {
-        throw new Error("Entity sort key cannot be partial for query");
+      if (!isCompleteKey(normalizedKey)) {
+        throw new Error("Entity key cannot be partial for delete");
       }
 
       this.getPartitionMap(entityName, normalizedKey.partition.keyValue).delete(
@@ -255,9 +250,11 @@ export class LocalEntityStore implements EntityStore {
   ) {
     const entity = this.getEntity(entityName);
     const normalizedKey = normalizeCompositeKey(entity, queryKey);
-    if (normalizedKey.partition.partialValue) {
-      throw new Error("Partition key part must not be partial.");
+
+    if (!isCompleteKeyPart(normalizedKey.partition)) {
+      throw new Error("Entity partition key cannot be partial for query");
     }
+
     const partition = this.getPartitionMap(
       entityName,
       normalizedKey.partition.keyValue

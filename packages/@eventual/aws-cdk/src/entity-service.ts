@@ -299,27 +299,32 @@ export class EntityStream extends Construct implements EventualResource {
       };
     });
 
-    const filters = {
-      ...(props.stream.spec.options?.operations
-        ? {
-            eventName: FilterRule.or(
-              ...(props.stream.spec.options?.operations?.map((op) =>
-                op.toUpperCase()
-              ) ?? [])
-            ),
-          }
-        : undefined),
-      ...(queryPatterns.length > 0
-        ? {
-            dynamodb: {
-              Keys: {
-                // https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns-content-based-filtering.html#eb-filtering-complex-example-or
-                $or: queryPatterns.map(keyMatcher),
+    const eventNameFilter = props.stream.spec.options?.operations
+      ? {
+          eventName: FilterRule.or(
+            ...(props.stream.spec.options?.operations?.map((op) =>
+              op.toUpperCase()
+            ) ?? [])
+          ),
+        }
+      : undefined;
+
+    // create a filter expression for each combination of key filter when present
+    // Would prefer to use $or within a single expression, but it seems it doesn't work with event source maps (yet?)
+    // TODO: can reduce the number of unique expressions by merging single field key queries togethers (all partition or all sort)
+    const filters =
+      !eventNameFilter && queryPatterns.length === 0
+        ? []
+        : eventNameFilter && queryPatterns.length === 0
+        ? [FilterCriteria.filter(eventNameFilter)]
+        : queryPatterns.map((q) =>
+            FilterCriteria.filter({
+              ...eventNameFilter,
+              dynamodb: {
+                Keys: keyMatcher(q),
               },
-            },
-          }
-        : undefined),
-    };
+            })
+          );
 
     this.handler = new ServiceFunction(this, "Handler", {
       build: props.serviceProps.build,
@@ -337,9 +342,7 @@ export class EntityStream extends Construct implements EventualResource {
           new DynamoEventSource(props.table, {
             startingPosition: StartingPosition.TRIM_HORIZON,
             maxBatchingWindow: Duration.seconds(0),
-            ...(Object.keys(filters).length > 0
-              ? { filters: [FilterCriteria.filter(filters)] }
-              : {}),
+            ...(filters.length > 0 ? { filters } : {}),
           }),
         ],
       },

@@ -23,22 +23,51 @@ export interface NormalizedEntityKeyDefinition {
   sort?: NormalizedEntityKeyDefinitionPart;
 }
 
-export type NormalizedEntityKeyPart = NormalizedEntityKeyDefinitionPart & {
+export interface NormalizedEntityKeyPartBase
+  extends NormalizedEntityKeyDefinitionPart {
   parts: { field: string; value: EntityKeyType }[];
-} & (
-    | {
-        keyValue?: string | number;
-        partialValue: true;
-      }
-    | {
-        keyValue: string | number;
-        partialValue: false;
-      }
-  );
+}
 
-export interface NormalizedEntityKey {
-  partition: NormalizedEntityKeyPart;
-  sort?: NormalizedEntityKeyPart;
+export type NormalizedEntityKeyPart =
+  | NormalizedEntityKeyPartialPart
+  | NormalizedEntityKeyCompletePart;
+
+export interface NormalizedEntityKeyCompletePart
+  extends NormalizedEntityKeyPartBase {
+  keyValue: string | number;
+  partialValue: false;
+}
+
+export interface NormalizedEntityKeyPartialPart
+  extends NormalizedEntityKeyPartBase {
+  keyValue?: string | number;
+  partialValue: true;
+}
+
+export function isCompleteKeyPart(
+  key: NormalizedEntityKeyPart
+): key is NormalizedEntityKeyCompletePart {
+  return !key.partialValue;
+}
+
+export function isCompleteKey(
+  key: NormalizedEntityKey
+): key is NormalizedEntityKey<
+  NormalizedEntityKeyCompletePart,
+  NormalizedEntityKeyCompletePart
+> {
+  return (
+    isCompleteKeyPart(key.partition) &&
+    (!key.sort || isCompleteKeyPart(key.sort))
+  );
+}
+
+export interface NormalizedEntityKey<
+  Partition extends NormalizedEntityKeyPart = NormalizedEntityKeyPart,
+  Sort extends NormalizedEntityKeyPart = NormalizedEntityKeyPart
+> {
+  partition: Partition;
+  sort?: Sort;
 }
 
 /**
@@ -99,8 +128,7 @@ function formatNormalizedPart(
     keyAttribute: keyPart.keyAttribute,
     keyValue: (keyPart.type === "number"
       ? parts[0]?.value
-      : parts
-          .slice(0, missingValueIndex)
+      : (missingValueIndex === -1 ? parts : parts.slice(0, missingValueIndex))
           .map((p) => p.value)
           .join("#")) as any,
     partialValue: missingValueIndex !== -1,
@@ -172,7 +200,7 @@ export function normalizeEntitySpecKeyDefinition(
     // the value will be a number if there is a single part to the composite key part and the value is already a number.
     // else a string will be formatted
     const type =
-      tail.length === 0 ||
+      tail.length === 0 &&
       (entityZodShape.properties?.[head] as openapi.SchemaObject).type ===
         "number"
         ? "number"
@@ -191,10 +219,13 @@ export function normalizeEntitySpecKeyDefinition(
 export function convertNormalizedEntityKeyToMap(
   key: NormalizedEntityKey
 ): EntityCompositeKey<any, any, any> {
-  return Object.fromEntries([
+  console.log("input key", JSON.stringify(key));
+  const generatedKey = Object.fromEntries([
     ...key.partition.parts.map(({ field, value }) => [field, value]),
     ...(key.sort
       ? key.sort.parts.map(({ field, value }) => [field, value])
       : []),
   ]);
+  console.log("generated key", JSON.stringify(generatedKey));
+  return generatedKey;
 }

@@ -6,8 +6,11 @@ import type { AttributeValue } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import type { EntityStreamItem } from "@eventual/core";
 import {
+  GlobalEntityProvider,
+  convertNormalizedEntityKeyToMap,
   createEntityStreamWorker,
   getLazy,
+  normalizeCompositeKey,
   promiseAllSettledPartitioned,
 } from "@eventual/core-runtime";
 import type { EntityStreamOperation } from "@eventual/core/internal";
@@ -23,7 +26,9 @@ import {
   serviceName,
   serviceUrl,
 } from "../env.js";
-import type { EntityEntityRecord } from "../stores/entity-store.js";
+import { EntityEntityRecord } from "../stores/entity-store.js";
+
+const entityProvider = new GlobalEntityProvider();
 
 const worker = createEntityStreamWorker({
   bucketStore: createBucketStore(),
@@ -42,7 +47,6 @@ export default (async (event) => {
     records,
     async (record) => {
       try {
-        const keys = record.dynamodb?.Keys;
         const operation = record.eventName?.toLowerCase() as
           | EntityStreamOperation
           | undefined;
@@ -53,20 +57,54 @@ export default (async (event) => {
           | Partial<EntityEntityRecord>
           | undefined;
 
-        const { __version: newVersion = undefined, ...newValue } = newItem
+        const _entityName = getLazy(entityName);
+        const entity = entityProvider.getEntity(_entityName);
+
+        if (!entity) {
+          throw new Error(`Entity ${_entityName} was not found`);
+        }
+
+        const newValue = newItem
           ? unmarshall(newItem as Record<string, AttributeValue>)
-          : {};
+          : undefined;
+        const newVersion = newValue?.__version;
 
-        const { __version: oldVersion = undefined, ...oldValue } = oldItem
+        const oldValue = oldItem
           ? unmarshall(oldItem as Record<string, AttributeValue>)
-          : {};
+          : undefined;
+        const oldVersion = oldValue?.__version;
 
-        if (keys && operation) {
+        const bestValue = newValue ?? oldValue;
+        if (!bestValue) {
+          throw new Error(
+            "Expected at least one of old value or new value in the stream event."
+          );
+        }
+
+        const normalizedKey = normalizeCompositeKey(entity, bestValue);
+        const keyMap = convertNormalizedEntityKeyToMap(normalizedKey);
+
+        if (newValue) {
+          delete newValue[EntityEntityRecord.VERSION_FIELD];
+          delete newValue[normalizedKey.partition.keyAttribute];
+          if (normalizedKey.sort) {
+            delete newValue[normalizedKey.sort.keyAttribute];
+          }
+        }
+        if (oldValue) {
+          delete oldValue[EntityEntityRecord.VERSION_FIELD];
+          delete oldValue[normalizedKey.partition.keyAttribute];
+          if (normalizedKey.sort) {
+            delete oldValue[normalizedKey.sort.keyAttribute];
+          }
+        }
+
+        if (operation) {
           const item: EntityStreamItem = {
             entityName: getLazy(entityName),
             streamName: getLazy(entityStreamName),
-            key: unmarshall(keys as Record<string, AttributeValue>),
-            newValue,
+            key: keyMap,
+            newValue: newValue as any,
             newVersion,
             operation,
             oldValue,

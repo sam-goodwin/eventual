@@ -31,10 +31,11 @@ import {
   UnexpectedVersion,
 } from "@eventual/core";
 import {
-  convertNormalizedEntityKeyToMap,
   EntityProvider,
   EntityStore,
   getLazy,
+  isCompleteKey,
+  isCompleteKeyPart,
   LazyValue,
   normalizeCompositeKey,
   NormalizedEntityKey,
@@ -72,6 +73,11 @@ export class AWSEntityStore implements EntityStore {
   ): Promise<EntityWithMetadata<any> | undefined> {
     const entity = this.getEntity(entityName);
     const normalizedCompositeKey = normalizeCompositeKey(entity, key);
+
+    if (!isCompleteKey(normalizedCompositeKey)) {
+      throw new Error("Key cannot be partial for get or getWithMetadata.");
+    }
+
     const item = await this.props.dynamo.send(
       new GetItemCommand({
         Key: this.entityKey(normalizedCompositeKey),
@@ -158,8 +164,14 @@ export class AWSEntityStore implements EntityStore {
   ): Delete {
     const entity =
       typeof _entity === "string" ? this.getEntity(_entity) : _entity;
+    const normalizedKey = normalizeCompositeKey(entity, key);
+
+    if (!isCompleteKey(normalizedKey)) {
+      throw new Error("Key cannot be partial for delete.");
+    }
+
     return {
-      Key: this.entityKey(normalizeCompositeKey(entity, key)),
+      Key: this.entityKey(normalizedKey),
       ConditionExpression:
         options?.expectedVersion !== undefined
           ? "#__version=:expectedVersion"
@@ -232,7 +244,7 @@ export class AWSEntityStore implements EntityStore {
                     normalizeCompositeKey(entity, i.operation.key)
                   ),
                   ExpressionAttributeNames: {
-                    "#version": "version",
+                    "#version": EntityEntityRecord.VERSION_FIELD,
                   },
                   ExpressionAttributeValues:
                     i.operation.version !== undefined
@@ -272,8 +284,13 @@ export class AWSEntityStore implements EntityStore {
   ): Update {
     const entity =
       typeof _entity === "string" ? this.getEntity(_entity) : _entity;
+    const normalizedKey = normalizeCompositeKey(entity, value);
+
+    if (!isCompleteKey(normalizedKey)) {
+      throw new Error("Key cannot be partial for set.");
+    }
+
     const valueRecord = marshall(value, { removeUndefinedValues: true });
-    const normalizedKey = normalizeCompositeKey(entity, valueRecord);
 
     // if the key attributes are not computed and are in the original value, remove them from the set expression
     delete valueRecord[normalizedKey.partition.keyAttribute];
@@ -285,12 +302,20 @@ export class AWSEntityStore implements EntityStore {
       Key: this.entityKey(normalizedKey),
       UpdateExpression: [
         "SET #__version=if_not_exists(#__version, :__startingVersion) + :__versionIncrement",
-        ...Object.keys(valueRecord).map((key) => `#${key}=:${key}`),
+        ...Object.keys(valueRecord).map(
+          (key) =>
+            `${formatAttributeNameMapKey(key)}=${formatAttributeValueMapKey(
+              key
+            )}`
+        ),
       ].join(","),
       ExpressionAttributeNames: {
         "#__version": "__version",
         ...Object.fromEntries(
-          Object.keys(valueRecord).map((key) => [`#${key}`, key])
+          Object.keys(valueRecord).map((key) => [
+            formatAttributeNameMapKey(key),
+            key,
+          ])
         ),
       },
       ExpressionAttributeValues: {
@@ -304,7 +329,10 @@ export class AWSEntityStore implements EntityStore {
           N: options?.incrementVersion === false ? "0" : "1",
         },
         ...Object.fromEntries(
-          Object.entries(valueRecord).map(([key, value]) => [`:${key}`, value])
+          Object.entries(valueRecord).map(([key, value]) => [
+            formatAttributeValueMapKey(key),
+            value,
+          ])
         ),
       },
       ConditionExpression:
@@ -326,8 +354,13 @@ export class AWSEntityStore implements EntityStore {
   }
 
   private entityKey(key: NormalizedEntityKey) {
-    const keyMap = convertNormalizedEntityKeyToMap(key);
-    const marshalledKey = marshall(keyMap, { removeUndefinedValues: true });
+    const marshalledKey = marshall(
+      {
+        [key.partition.keyAttribute]: key.partition.keyValue,
+        ...(key.sort ? { [key.sort.keyAttribute]: key.sort.keyValue } : {}),
+      },
+      { removeUndefinedValues: true }
+    );
     return marshalledKey;
   }
 
@@ -347,7 +380,7 @@ export class AWSEntityStore implements EntityStore {
       ...(normalizedKey.sort ? [normalizedKey.sort.keyAttribute] : []),
     ]);
 
-    if (normalizedKey.partition.partialValue) {
+    if (!isCompleteKeyPart(normalizedKey.partition)) {
       throw new Error("Entity partition key cannot be partial for query");
     }
 
@@ -367,9 +400,19 @@ export class AWSEntityStore implements EntityStore {
         TableName: this.tableName(entityName),
         KeyConditionExpression: normalizedKey.sort
           ? normalizedKey.sort.partialValue
-            ? `#${normalizedKey.partition.keyAttribute}=:pk AND begins_with(#${normalizedKey.sort.keyAttribute}, :sk)`
-            : `#${normalizedKey.partition.keyAttribute}=:pk AND #${normalizedKey.sort.keyAttribute}=:sk`
-          : `#${normalizedKey.partition.keyAttribute}=:pk`,
+            ? `${formatAttributeNameMapKey(
+                normalizedKey.partition.keyAttribute
+              )}=:pk AND begins_with(${formatAttributeNameMapKey(
+                normalizedKey.sort.keyAttribute
+              )}, :sk)`
+            : `${formatAttributeNameMapKey(
+                normalizedKey.partition.keyAttribute
+              )}=:pk AND ${formatAttributeNameMapKey(
+                normalizedKey.sort.keyAttribute
+              )}=:sk`
+          : `${formatAttributeNameMapKey(
+              normalizedKey.partition.keyAttribute
+            )}=:pk`,
         ExpressionAttributeValues: {
           ":pk":
             typeof normalizedKey.partition.keyValue === "number"
@@ -386,9 +429,11 @@ export class AWSEntityStore implements EntityStore {
             : {}),
         },
         ExpressionAttributeNames: Object.fromEntries(
-          [...allFields]?.map((f) => [`#${f}`, f])
+          [...allFields]?.map((f) => [formatAttributeNameMapKey(f), f])
         ),
-        ProjectionExpression: fields?.map((f) => `#${f}`).join(","),
+        ProjectionExpression: fields
+          ?.map((f) => formatAttributeNameMapKey(f))
+          .join(","),
       }
     );
   }
@@ -406,3 +451,15 @@ export interface EntityEntityRecord
 export const EntityEntityRecord = {
   VERSION_FIELD: "__version",
 };
+
+function formatAttributeNameMapKey(key: string) {
+  return formatAttributeMapKey(key, "#");
+}
+
+function formatAttributeValueMapKey(key: string) {
+  return formatAttributeMapKey(key, ":");
+}
+
+function formatAttributeMapKey(key: string, prefix: string) {
+  return `${prefix}${key.replaceAll(/[|.\- ]/g, "_")}`;
+}

@@ -214,10 +214,6 @@ export type EntityCompositeKey<
   : // eslint-disable-next-line
     {});
 
-// const T = { n: z.string(), m: z.string(), x: z.number() };
-// type X = EntityKey<typeof T, ["n"], ["m", "x"]>;
-// const x: X = ["hello", "hello", 1];
-
 export type EntityKeyArray<
   E extends EntityAttributes,
   Fields extends readonly (keyof E)[]
