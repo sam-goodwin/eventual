@@ -377,7 +377,9 @@ export class AWSEntityStore implements EntityStore {
     const allFields = new Set([
       ...(fields ?? []),
       normalizedKey.partition.keyAttribute,
-      ...(normalizedKey.sort ? [normalizedKey.sort.keyAttribute] : []),
+      ...(normalizedKey.sort && normalizedKey.sort.keyValue !== undefined
+        ? [normalizedKey.sort.keyAttribute]
+        : []),
     ]);
 
     if (!isCompleteKeyPart(normalizedKey.partition)) {
@@ -398,32 +400,32 @@ export class AWSEntityStore implements EntityStore {
       },
       {
         TableName: this.tableName(entityName),
-        KeyConditionExpression: normalizedKey.sort
-          ? normalizedKey.sort.partialValue
-            ? `${formatAttributeNameMapKey(
-                normalizedKey.partition.keyAttribute
-              )}=:pk AND begins_with(${formatAttributeNameMapKey(
-                normalizedKey.sort.keyAttribute
-              )}, :sk)`
+        KeyConditionExpression:
+          normalizedKey.sort && normalizedKey.sort.keyValue !== undefined
+            ? normalizedKey.sort.partialValue
+              ? `${formatAttributeNameMapKey(
+                  normalizedKey.partition.keyAttribute
+                )}=:pk AND begins_with(${formatAttributeNameMapKey(
+                  normalizedKey.sort.keyAttribute
+                )}, :sk)`
+              : `${formatAttributeNameMapKey(
+                  normalizedKey.partition.keyAttribute
+                )}=:pk AND ${formatAttributeNameMapKey(
+                  normalizedKey.sort.keyAttribute
+                )}=:sk`
             : `${formatAttributeNameMapKey(
                 normalizedKey.partition.keyAttribute
-              )}=:pk AND ${formatAttributeNameMapKey(
-                normalizedKey.sort.keyAttribute
-              )}=:sk`
-          : `${formatAttributeNameMapKey(
-              normalizedKey.partition.keyAttribute
-            )}=:pk`,
+              )}=:pk`,
         ExpressionAttributeValues: {
           ":pk":
             typeof normalizedKey.partition.keyValue === "number"
               ? { N: normalizedKey.partition.keyValue.toString() }
               : { S: normalizedKey.partition.keyValue },
-          ...(normalizedKey.sort
+          ...(normalizedKey.sort && normalizedKey.sort.keyValue !== undefined
             ? {
                 ":sk":
-                  normalizedKey.sort.keyValue === undefined ||
                   typeof normalizedKey.sort.keyValue === "string"
-                    ? { S: normalizedKey.sort.keyValue ?? "" }
+                    ? { S: normalizedKey.sort.keyValue }
                     : { N: normalizedKey.sort.keyValue.toString() },
               }
             : {}),

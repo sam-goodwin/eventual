@@ -555,6 +555,17 @@ export const counter = entity("counter4", {
   },
   partition: ["namespace", "id"],
 });
+
+export const counterCollection = entity("counter-collection", {
+  attributes: {
+    id: z.string(),
+    counterNumber: z.number(),
+    n: z.number(),
+  },
+  partition: ["id"],
+  sort: ["counterNumber"],
+});
+
 const entityEvent = event<{ id: string }>("entityEvent");
 const entitySignal = signal("entitySignal");
 const entitySignal2 = signal<{ n: number }>("entitySignal2");
@@ -645,7 +656,31 @@ export const entityWorkflow = workflow(
     await counter.delete(["default", id]);
     await counter.query(["default", id]);
     // this signal will contain the final value after deletion
-    return await entitySignal2.expectSignal();
+    const result1 = await entitySignal2.expectSignal();
+
+    /**
+     * Testing sort keys and query
+     */
+
+    await Promise.all([
+      counterCollection.set({ id, counterNumber: 1, n: 1 }),
+      counterCollection.set({ id, counterNumber: 2, n: 1 }),
+      counterCollection.set({ id, counterNumber: 3, n: 1 }),
+    ]);
+
+    const counter1 = await counterCollection.get({ id, counterNumber: 1 });
+    await counterCollection.set({
+      id,
+      counterNumber: 2,
+      n: (counter1?.n ?? 0) + 1,
+    });
+
+    const counters = await counterCollection.query({ id });
+
+    return [
+      result1,
+      counters.entries?.map((c) => [c.entity.counterNumber, c.entity.n]),
+    ];
   }
 );
 

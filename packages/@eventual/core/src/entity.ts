@@ -16,7 +16,7 @@ import {
 import type { ServiceContext } from "./service.js";
 
 export interface EntityQueryResultEntry<E extends EntityAttributes> {
-  entity: E;
+  entity: z.infer<z.ZodObject<E>>;
   version: number;
 }
 
