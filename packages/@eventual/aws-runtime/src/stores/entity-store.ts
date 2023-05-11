@@ -370,15 +370,13 @@ export class AWSEntityStore implements EntityStore {
   private queryEntries(
     entityName: string,
     queryKey: EntityQueryKey<any, any, any>,
-    request?: EntityQueryOptions,
-    fields?: string[]
+    request?: EntityQueryOptions
   ): ReturnType<
     typeof queryPageWithToken<MarshalledEntityAttributesWithVersion<any>>
   > {
     const entity = this.getEntity(entityName);
     const normalizedKey = normalizeCompositeKey(entity, queryKey);
-    const allFields = new Set([
-      ...(fields ?? []),
+    const allAttributes = new Set([
       normalizedKey.partition.keyAttribute,
       ...(normalizedKey.sort && normalizedKey.sort.keyValue !== undefined
         ? [normalizedKey.sort.keyAttribute]
@@ -434,11 +432,8 @@ export class AWSEntityStore implements EntityStore {
             : {}),
         },
         ExpressionAttributeNames: Object.fromEntries(
-          [...allFields]?.map((f) => [formatAttributeNameMapKey(f), f])
+          [...allAttributes]?.map((f) => [formatAttributeNameMapKey(f), f])
         ),
-        ProjectionExpression: fields
-          ?.map((f) => formatAttributeNameMapKey(f))
-          .join(","),
       }
     );
   }

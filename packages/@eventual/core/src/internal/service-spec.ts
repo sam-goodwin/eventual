@@ -12,6 +12,7 @@ import {
   EntityAttributes,
   EntityCompositeKeyPart,
   EntityQueryKey,
+  EntityKeyDefinition,
 } from "../entity.js";
 
 /**
@@ -168,8 +169,7 @@ export interface BucketNotificationHandlerSpec {
 
 export interface EntitySpec {
   name: string;
-  partition: readonly string[];
-  sort?: readonly string[];
+  key: EntityKeyDefinition;
   /**
    * An Optional schema for the entity within an entity.
    */

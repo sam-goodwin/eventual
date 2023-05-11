@@ -3,18 +3,13 @@ import {
   entityServiceTableSuffix,
   ENV_NAMES,
 } from "@eventual/aws-runtime";
+import { EntityKeyDefinitionPart } from "@eventual/core";
 import {
   EntityRuntime,
   EntityStreamFunction,
-  normalizeCompositeKeyFromKeyDefinition,
-  NormalizedEntityKeyDefinitionPart,
-  normalizeEntitySpecKeyDefinition,
+  normalizeCompositeKey,
 } from "@eventual/core-runtime";
-import {
-  assertNever,
-  EntitySpec,
-  TransactionSpec,
-} from "@eventual/core/internal";
+import { assertNever, TransactionSpec } from "@eventual/core/internal";
 import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
 import {
   Attribute,
@@ -221,20 +216,16 @@ class Entity extends Construct {
   constructor(scope: Construct, props: EntityProps) {
     super(scope, props.entity.name);
 
-    const normalizedKeyDefinition = normalizeEntitySpecKeyDefinition(
-      props.entity as unknown as EntitySpec
-    );
+    const keyDefinition = props.entity.key;
 
     this.table = new Table(this, "Table", {
       tableName: entityServiceTableName(
         props.serviceProps.serviceName,
         props.entity.name
       ),
-      partitionKey: entityKeyDefinitionToAttribute(
-        normalizedKeyDefinition.partition
-      ),
-      sortKey: normalizedKeyDefinition.sort
-        ? entityKeyDefinitionToAttribute(normalizedKeyDefinition.sort)
+      partitionKey: entityKeyDefinitionToAttribute(keyDefinition.partition),
+      sortKey: keyDefinition.sort
+        ? entityKeyDefinitionToAttribute(keyDefinition.sort)
         : undefined,
       billingMode: BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY,
@@ -273,12 +264,11 @@ export class EntityStream extends Construct implements EventualResource {
     const streamName = props.stream.spec.name;
     const entityName = props.stream.spec.entityName;
 
-    const normalizedKeyDefinition = normalizeEntitySpecKeyDefinition(
-      props.entity as unknown as EntitySpec
-    );
+    const keyDefinition = props.entity.key;
+
     const normalizedQueryKeys =
       props.stream.spec.options?.queryKeys?.map((q) =>
-        normalizeCompositeKeyFromKeyDefinition(normalizedKeyDefinition, q)
+        normalizeCompositeKey(keyDefinition, q)
       ) ?? [];
 
     const queryPatterns = normalizedQueryKeys.map((k) => {
@@ -364,17 +354,17 @@ export class EntityStream extends Construct implements EventualResource {
       return {
         ...(item.partition
           ? {
-              [normalizedKeyDefinition.partition.keyAttribute]: {
-                [keyTypeToAttributeType(normalizedKeyDefinition.partition)]: [
+              [keyDefinition.partition.keyAttribute]: {
+                [keyTypeToAttributeType(keyDefinition.partition)]: [
                   item.partition,
                 ].flat(),
               },
             }
           : {}),
-        ...(normalizedKeyDefinition.sort && item.sort
+        ...(keyDefinition.sort && item.sort
           ? {
-              [normalizedKeyDefinition.sort.keyAttribute]: {
-                [keyTypeToAttributeType(normalizedKeyDefinition.sort)]: [
+              [keyDefinition.sort.keyAttribute]: {
+                [keyTypeToAttributeType(keyDefinition.sort)]: [
                   item.sort,
                 ].flat(),
               },
@@ -382,9 +372,7 @@ export class EntityStream extends Construct implements EventualResource {
           : {}),
       };
 
-      function keyTypeToAttributeType(
-        keyDef: NormalizedEntityKeyDefinitionPart
-      ) {
+      function keyTypeToAttributeType(keyDef: EntityKeyDefinitionPart) {
         return keyDef.type === "number"
           ? "N"
           : keyDef.type === "string"
@@ -396,7 +384,7 @@ export class EntityStream extends Construct implements EventualResource {
 }
 
 export function entityKeyDefinitionToAttribute(
-  part: NormalizedEntityKeyDefinitionPart
+  part: EntityKeyDefinitionPart
 ): Attribute {
   return {
     name: part.keyAttribute,

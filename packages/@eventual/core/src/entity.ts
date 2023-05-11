@@ -181,7 +181,7 @@ export type EntityCompositeKeyPart<Attr extends EntityAttributes> =
  */
 export type EntityKeyAttribute<Attr extends EntityAttributes> = {
   [K in keyof Attr]: K extends string
-    ? // only include fields that extend string or number
+    ? // only include attributes that extend string or number
       Attr[K] extends EntityKeyType
       ? K
       : never
@@ -234,13 +234,13 @@ export type EntityKeyMap<
 
 export type EntityKeyPartialTuple<
   Attr extends EntityAttributes,
-  Fields extends readonly (keyof Attr)[]
-> = Fields extends readonly [
+  Attrs extends readonly (keyof Attr)[]
+> = Attrs extends readonly [
   infer Head extends keyof Attr,
   ...infer Rest extends readonly (keyof Attr)[]
 ]
   ? readonly [Attr[Head], ...EntityKeyPartialTuple<Attr, Rest>]
-  : Fields extends readonly [infer Head extends keyof Attr]
+  : Attrs extends readonly [infer Head extends keyof Attr]
   ? readonly [Attr[Head]]
   : readonly [];
 
@@ -340,7 +340,7 @@ export type EntityAttributes = {
 /**
  * Turns a {@link EntityAttributes} type into a Zod {@link z.ZodRawShape}.
  */
-export type EntityZodShape<Attr extends EntityAttributes> = {
+type EntityZodShape<Attr extends EntityAttributes> = {
   [key in keyof Attr]: z.ZodType<Attr[key]>;
 };
 
@@ -362,8 +362,7 @@ export interface Entity<
   Sort extends EntityCompositeKeyPart<Attr> | undefined
 > extends Omit<EntitySpec, "attributes" | "streams" | "partition" | "sort"> {
   kind: "Entity";
-  partition: Partition;
-  sort?: Sort;
+  key: EntityKeyDefinition;
   attributes: z.ZodObject<EntityZodShape<Attr>>;
   streams: EntityStream<Attr, Partition, Sort>[];
   /**
@@ -549,17 +548,22 @@ export function entity<
    */
   const streams: EntityStream<Attr, Partition, Sort>[] = [];
 
+  const attributes =
+    options.attributes instanceof z.ZodObject
+      ? options.attributes
+      : z.object(options.attributes);
+
   const entity: Entity<Attr, Partition, Sort> = {
     // @ts-ignore
     __entityBrand: undefined,
     kind: "Entity",
     name,
-    partition: options.partition,
-    sort: options.sort,
-    attributes:
-      options.attributes instanceof z.ZodObject
-        ? options.attributes
-        : z.object(options.attributes),
+    key: computeEntityKeyDefinition(
+      attributes,
+      options.partition,
+      options.sort
+    ),
+    attributes,
     streams,
     get: (...args) => {
       return getEventualCallHook().registerEventualCall(
@@ -743,4 +747,55 @@ export function entityStream<
     : options
     ? entity.stream(name, options, handler)
     : entity.stream(name, handler);
+}
+
+export interface EntityKeyDefinitionPart {
+  type: "number" | "string";
+  keyAttribute: string;
+  attributes: readonly string[];
+}
+
+export interface EntityKeyDefinition {
+  partition: EntityKeyDefinitionPart;
+  sort?: EntityKeyDefinitionPart;
+}
+
+function computeEntityKeyDefinition<Attr extends EntityAttributes>(
+  attributes: z.ZodObject<EntityZodShape<Attr>>,
+  partition: EntityCompositeKeyPart<Attr>,
+  sort?: EntityCompositeKeyPart<Attr>
+): EntityKeyDefinition {
+  const entityZodShape = attributes.shape;
+
+  return {
+    partition: formatKeyDefinitionPart(partition),
+    sort: sort ? formatKeyDefinitionPart(sort) : undefined,
+  };
+
+  function formatKeyDefinitionPart(
+    keyAttributes: EntityCompositeKeyPart<Attr>
+  ): EntityKeyDefinitionPart {
+    const [head, ...tail] = keyAttributes;
+
+    if (!head) {
+      throw new Error(
+        "Entity Key Part must contain at least one segment. Sort Key may be undefined."
+      );
+    }
+
+    // the value will be a number if there is a single part to the composite key part and the value is already a number.
+    // else a string will be formatted
+    const type =
+      tail.length === 0 && entityZodShape[head] instanceof z.ZodNumber
+        ? "number"
+        : "string";
+
+    const attribute = keyAttributes.join("|");
+
+    return {
+      type,
+      keyAttribute: attribute,
+      attributes: keyAttributes,
+    };
+  }
 }
