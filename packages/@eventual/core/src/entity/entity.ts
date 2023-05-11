@@ -120,53 +120,6 @@ export interface Entity<
   ): EntityStream<Attr, Partition, Sort>;
 }
 
-export interface EntityTransactItem<
-  Attr extends Attributes = any,
-  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
-  Sort extends CompositeKeyPart<Attr> | undefined =
-    | CompositeKeyPart<Attr>
-    | undefined
-> {
-  entity: Entity<Attr, Partition, Sort> | string;
-  operation:
-    | EntitySetOperation<Attr>
-    | EntityDeleteOperation<Attr, Partition, Sort>
-    | EntityConditionalOperation<Attr, Partition, Sort>;
-}
-
-export interface EntitySetOperation<Attr extends Attributes = any> {
-  operation: "set";
-  value: Attr;
-  options?: EntitySetOptions;
-}
-
-export interface EntityDeleteOperation<
-  Attr extends Attributes = any,
-  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
-  Sort extends CompositeKeyPart<Attr> | undefined =
-    | CompositeKeyPart<Attr>
-    | undefined
-> {
-  operation: "delete";
-  key: CompositeKey<Attr, Partition, Sort>;
-  options?: EntitySetOptions;
-}
-
-/**
- * Used in transactions, cancels the transaction if the key's version does not match.
- */
-export interface EntityConditionalOperation<
-  Attr extends Attributes = any,
-  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
-  Sort extends CompositeKeyPart<Attr> | undefined =
-    | CompositeKeyPart<Attr>
-    | undefined
-> {
-  operation: "condition";
-  key: CompositeKey<Attr, Partition, Sort>;
-  version?: number;
-}
-
 export const Entity = {
   transactWrite: (items: EntityTransactItem[]): Promise<void> => {
     return getEventualCallHook().registerEventualCall(
@@ -443,4 +396,62 @@ export interface EntitySetOptions extends EntityConsistencyOptions {
 export interface EntityWithMetadata<Attr extends Attributes = Attributes> {
   value: Attr;
   version: number;
+}
+
+interface EntityTransactItemBase<
+  Attr extends Attributes,
+  Partition extends CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined
+> {
+  entity: Entity<Attr, Partition, Sort> | string;
+}
+
+export type EntityTransactItem<
+  Attr extends Attributes = any,
+  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined =
+    | CompositeKeyPart<Attr>
+    | undefined
+> =
+  | EntityTransactSetOperation<Attr, Partition, Sort>
+  | EntityTransactDeleteOperation<Attr, Partition, Sort>
+  | EntityTransactConditionalOperation<Attr, Partition, Sort>;
+
+export interface EntityTransactSetOperation<
+  Attr extends Attributes = any,
+  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined =
+    | CompositeKeyPart<Attr>
+    | undefined
+> extends EntityTransactItemBase<Attr, Partition, Sort> {
+  operation: "set";
+  value: Attr;
+  options?: EntitySetOptions;
+}
+
+export interface EntityTransactDeleteOperation<
+  Attr extends Attributes = any,
+  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined =
+    | CompositeKeyPart<Attr>
+    | undefined
+> extends EntityTransactItemBase<Attr, Partition, Sort> {
+  operation: "delete";
+  key: CompositeKey<Attr, Partition, Sort>;
+  options?: EntitySetOptions;
+}
+
+/**
+ * Used in transactions, cancels the transaction if the key's version does not match.
+ */
+export interface EntityTransactConditionalOperation<
+  Attr extends Attributes = any,
+  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined =
+    | CompositeKeyPart<Attr>
+    | undefined
+> extends EntityTransactItemBase<Attr, Partition, Sort> {
+  operation: "condition";
+  key: CompositeKey<Attr, Partition, Sort>;
+  version?: number;
 }

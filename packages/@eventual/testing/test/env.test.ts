@@ -1436,27 +1436,21 @@ describe("entity", () => {
         return Entity.transactWrite([
           partition
             ? {
-                operation: {
-                  operation: "set",
-                  value: { part: partition, id, n: value },
-                  options: { expectedVersion: version },
-                },
+                operation: "set",
+                value: { part: partition, id, n: value },
+                options: { expectedVersion: version },
                 entity: myEntityWithSort,
               }
             : {
-                operation: {
-                  operation: "set",
-                  value: { id, n: value },
-                  options: { expectedVersion: version },
-                },
+                operation: "set",
+                value: { id, n: value },
+                options: { expectedVersion: version },
                 entity: myEntity,
               },
           {
-            operation: {
-              operation: "set",
-              value: { part: "3", id, n: value },
-              options: { expectedVersion: version },
-            },
+            operation: "set",
+            value: { part: "3", id, n: value },
+            options: { expectedVersion: version },
             entity: myEntityWithSort,
           },
         ]);

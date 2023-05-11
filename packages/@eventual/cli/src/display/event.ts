@@ -65,7 +65,7 @@ function displayEntityCommand(operation: EntityOperation) {
       isEntityOperationOfType("getWithMetadata", operation)
     ) {
       const [key] = operation.params;
-      output.push(`Key: ${key}`);
+      output.push(`Key: ${JSON.stringify(key)}`);
     }
     if (isEntityOperationOfType("set", operation)) {
       const [value] = operation.params;
@@ -82,7 +82,7 @@ function displayEntityCommand(operation: EntityOperation) {
     }
     if (isEntityOperationOfType("query", operation)) {
       const [key] = operation.params;
-      output.push(`Key: ${key}`);
+      output.push(`Key: ${JSON.stringify(key)}`);
     }
   }
   return output;
@@ -91,25 +91,25 @@ function displayEntityCommand(operation: EntityOperation) {
 function displayEntityTransactItem(item: EntityTransactItem): string[] {
   const entityName =
     typeof item.entity === "string" ? item.entity : item.entity.name;
-  if (item.operation.operation === "set") {
+  if (item.operation === "set") {
     return displayEntityCommand({
       operation: "set",
       entityName,
-      params: [item.operation.value, item.operation.options],
+      params: [item.value, item.options],
     });
-  } else if (item.operation.operation === "delete") {
+  } else if (item.operation === "delete") {
     return displayEntityCommand({
       operation: "delete",
       entityName,
-      params: [item.operation.key, item.operation.options],
+      params: [item.key, item.options],
     });
   } else {
     const output = [
-      `Operation: ${item.operation.operation}`,
-      `Key: ${item.operation.key}`,
+      `Operation: ${item.operation}`,
+      `Key: ${JSON.stringify(item.key)}`,
     ];
-    if (item.operation.version !== undefined) {
-      output.push(`Version: ${item.operation.version}`);
+    if (item.version !== undefined) {
+      output.push(`Version: ${item.version}`);
     }
     return output;
   }

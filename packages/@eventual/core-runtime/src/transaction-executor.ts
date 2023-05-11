@@ -1,9 +1,9 @@
 import {
   Entity,
   KeyMap,
-  EntityConditionalOperation,
-  EntityDeleteOperation,
-  EntitySetOperation,
+  EntityTransactConditionalOperation,
+  EntityTransactDeleteOperation,
+  EntityTransactSetOperation,
   EntityTransactItem,
   EntityWithMetadata,
   TransactionCancelled,
@@ -277,39 +277,33 @@ export function createTransactionExecutor(
             versionOverridesIndices.add(i);
           }
 
-          return {
-            entity: entityName,
-            operation:
-              call.operation === "set"
-                ? ({
-                    operation: "set",
-                    value: call.params[0],
-                    options: {
-                      ...options,
-                      expectedVersion:
-                        options?.expectedVersion ?? retrievedVersion,
-                    },
-                  } satisfies EntitySetOperation)
-                : ({
-                    operation: "delete",
-                    key: call.params[0],
-                    options: {
-                      ...options,
-                      expectedVersion:
-                        options?.expectedVersion ?? retrievedVersion,
-                    },
-                  } satisfies EntityDeleteOperation),
-          };
+          return call.operation === "set"
+            ? ({
+                entity: entityName,
+                operation: "set",
+                value: call.params[0],
+                options: {
+                  ...options,
+                  expectedVersion: options?.expectedVersion ?? retrievedVersion,
+                },
+              } satisfies EntityTransactSetOperation)
+            : ({
+                entity: entityName,
+                operation: "delete",
+                key: call.params[0],
+                options: {
+                  ...options,
+                  expectedVersion: options?.expectedVersion ?? retrievedVersion,
+                },
+              } satisfies EntityTransactDeleteOperation);
         } else {
           // values that are retrieved only, will be checked using a condition
           return {
             entity: entityName,
-            operation: {
-              operation: "condition",
-              key: convertNormalizedEntityKeyToMap(key),
-              version: retrievedVersion,
-            } satisfies EntityConditionalOperation<any>,
-          };
+            operation: "condition",
+            key: convertNormalizedEntityKeyToMap(key),
+            version: retrievedVersion,
+          } satisfies EntityTransactConditionalOperation<any>;
         }
       });
 
@@ -349,9 +343,7 @@ export function createTransactionExecutor(
                   // normalize the key to extract only the key fields.
                   const key = normalizeCompositeKey(
                     entity,
-                    x.operation.operation === "set"
-                      ? x.operation.value
-                      : x.operation.key
+                    x.operation === "set" ? x.value : x.key
                   );
                   return {
                     entityName: entity.name,

@@ -120,10 +120,7 @@ export abstract class EntityStore implements EntityHook {
           typeof item.entity === "string"
             ? this.getEntity(item.entity)
             : item.entity;
-        const keyValue =
-          item.operation.operation === "set"
-            ? item.operation.value
-            : item.operation.key;
+        const keyValue = item.operation === "set" ? item.value : item.key;
         const key = normalizeCompositeKey(entity, keyValue);
         if (!isCompleteKey(key)) {
           throw new Error(
@@ -131,26 +128,26 @@ export abstract class EntityStore implements EntityHook {
           );
         }
 
-        return item.operation.operation === "set"
+        return item.operation === "set"
           ? {
               operation: "set",
               entity,
               key,
-              value: item.operation.value,
-              options: item.operation.options,
+              value: item.value,
+              options: item.options,
             }
-          : item.operation.operation === "delete"
+          : item.operation === "delete"
           ? {
               operation: "delete",
               entity,
               key,
-              options: item.operation.options,
+              options: item.options,
             }
           : {
               operation: "condition",
               entity,
               key,
-              version: item.operation.version,
+              version: item.version,
             };
       })
     );

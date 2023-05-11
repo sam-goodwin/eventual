@@ -646,10 +646,8 @@ export const entityWorkflow = workflow(
     await Entity.transactWrite([
       {
         entity: counter,
-        operation: {
-          operation: "set",
-          value: { namespace: "default", id, n: (value?.n ?? 0) + 1 },
-        },
+        operation: "set",
+        value: { namespace: "default", id, n: (value?.n ?? 0) + 1 },
       },
     ]);
     // send deletion, to be picked up by the stream
