@@ -684,7 +684,7 @@ export const entityWorkflow = workflow(
   }
 );
 
-export const check = entity("check", {
+export const check = entity("check4", {
   attributes: { n: z.number(), id: z.string() },
   partition: ["id"],
 });
