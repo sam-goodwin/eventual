@@ -605,7 +605,7 @@ export const onEntityEvent = subscription(
   "onEntityEvent",
   { events: [entityEvent] },
   async ({ id }) => {
-    const value = await counter.get(["default", id]);
+    const value = await counter.get({ namespace: "default", id });
     await counter.set({ namespace: "default", id, n: (value?.n ?? 0) + 1 });
     await entitySignal.sendSignal(id);
   }

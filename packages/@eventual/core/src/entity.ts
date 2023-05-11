@@ -361,7 +361,7 @@ export type EntityZodAttributes<Attr extends EntityAttributes> =
 export interface Entity<
   Attr extends EntityAttributes,
   Partition extends EntityCompositeKeyPart<Attr>,
-  Sort extends EntityCompositeKeyPart<Attr> | undefined
+  Sort extends EntityCompositeKeyPart<Attr> | undefined = undefined
 > extends Omit<EntitySpec, "attributes" | "streams" | "partition" | "sort"> {
   kind: "Entity";
   key: EntityKeyDefinition;
@@ -465,7 +465,7 @@ export const Entity = {
 export interface EntityOptions<
   Attr extends EntityAttributes,
   Partition extends EntityCompositeKeyPart<Attr>,
-  Sort extends EntityCompositeKeyPart<Attr> | undefined
+  Sort extends EntityCompositeKeyPart<Attr> | undefined = undefined
 > {
   attributes: EntityZodAttributes<Attr>;
   partition: Partition;
@@ -536,7 +536,7 @@ export interface EntityOptions<
 export function entity<
   Attr extends EntityAttributes,
   const Partition extends EntityCompositeKeyPart<Attr>,
-  const Sort extends EntityCompositeKeyPart<Attr> | undefined
+  const Sort extends EntityCompositeKeyPart<Attr> | undefined = undefined
 >(
   name: string,
   options: EntityOptions<Attr, Partition, Sort>
