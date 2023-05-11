@@ -361,7 +361,7 @@ describe("entity request", () => {
       operation: {
         entityName: "ent",
         operation: "query",
-        params: [{ partition: ["part"] }],
+        params: [{ id: "part" }],
       },
       timestamp: expect.stringContaining("Z"),
     });

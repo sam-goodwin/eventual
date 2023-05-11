@@ -255,7 +255,9 @@ export function normalizeCompositeKey<E extends Entity>(
 
   const sortCompositeKey = keyDef.sort
     ? formatNormalizedPart(keyDef.sort, (p, i) =>
-        Array.isArray(key) ? key[i] : (key as KeyMap)[p]
+        Array.isArray(key)
+          ? key[keyDef.partition.attributes.length + i]
+          : (key as KeyMap)[p]
       )
     : undefined;
 
