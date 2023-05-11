@@ -1,10 +1,10 @@
 import type {
   AnyEntity,
-  EntityCompositeKey,
-  EntityCompositeKeyFromEntity,
+  EntityKeyMap,
   EntityCompositeKeyPart,
   EntityKeyFromEntity,
   EntityKeyType,
+  EntityCompositeKeyMapFromEntity,
 } from "@eventual/core";
 import type { EntityHook, EntitySpec } from "@eventual/core/internal";
 import type openapi from "openapi3-ts";
@@ -51,8 +51,8 @@ export function isCompleteKeyPart(
 }
 
 export function isCompleteKey(
-  key: NormalizedEntityKey
-): key is NormalizedEntityKey<
+  key: NormalizedEntityCompositeKey
+): key is NormalizedEntityCompositeKey<
   NormalizedEntityKeyCompletePart,
   NormalizedEntityKeyCompletePart
 > {
@@ -62,7 +62,7 @@ export function isCompleteKey(
   );
 }
 
-export interface NormalizedEntityKey<
+export interface NormalizedEntityCompositeKey<
   Partition extends NormalizedEntityKeyPart = NormalizedEntityKeyPart,
   Sort extends NormalizedEntityKeyPart = NormalizedEntityKeyPart
 > {
@@ -76,7 +76,7 @@ export interface NormalizedEntityKey<
 export function normalizeCompositeKey<E extends AnyEntity>(
   entity: E,
   key: Partial<EntityKeyFromEntity<E>>
-): NormalizedEntityKey {
+): NormalizedEntityCompositeKey {
   const normalizeKey = normalizeEntityKeyDefinition(entity);
 
   return normalizeCompositeKeyFromKeyDefinition(normalizeKey, key);
@@ -85,18 +85,20 @@ export function normalizeCompositeKey<E extends AnyEntity>(
 export function normalizeCompositeKeyFromKeyDefinition<E extends AnyEntity>(
   keyDefinition: NormalizedEntityKeyDefinition,
   key: Partial<EntityKeyFromEntity<E>>
-): NormalizedEntityKey {
+): NormalizedEntityCompositeKey {
   const partitionCompositeKey = formatNormalizedPart(
     keyDefinition.partition,
     (p, i) =>
-      Array.isArray(key) ? key[i] : (key as EntityCompositeKeyFromEntity<E>)[p]
+      Array.isArray(key)
+        ? key[i]
+        : (key as EntityCompositeKeyMapFromEntity<E>)[p]
   );
 
   const sortCompositeKey = keyDefinition.sort
     ? formatNormalizedPart(keyDefinition.sort, (p, i) =>
         Array.isArray(key)
           ? key[i]
-          : (key as EntityCompositeKeyFromEntity<E>)[p]
+          : (key as EntityCompositeKeyMapFromEntity<E>)[p]
       )
     : undefined;
 
@@ -217,8 +219,8 @@ export function normalizeEntitySpecKeyDefinition(
 }
 
 export function convertNormalizedEntityKeyToMap(
-  key: NormalizedEntityKey
-): EntityCompositeKey<any, any, any> {
+  key: NormalizedEntityCompositeKey
+): EntityKeyMap<any, any, any> {
   console.log("input key", JSON.stringify(key));
   const generatedKey = Object.fromEntries([
     ...key.partition.parts.map(({ field, value }) => [field, value]),

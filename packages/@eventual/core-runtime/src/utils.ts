@@ -11,7 +11,7 @@ import type {
   EntityStreamSpec,
 } from "@eventual/core/internal";
 import {
-  NormalizedEntityKey,
+  NormalizedEntityCompositeKey,
   NormalizedEntityKeyPart,
   normalizeCompositeKey,
 } from "./stores/entity-store.js";
@@ -67,7 +67,7 @@ export function getLazy<T extends string | number | object | boolean>(
 
 export function serializeCompositeKey(
   entityName: string,
-  key: NormalizedEntityKey
+  key: NormalizedEntityCompositeKey
 ) {
   return `${entityName}|${key.partition.keyValue}|${key.sort?.keyValue ?? ""}`;
 }

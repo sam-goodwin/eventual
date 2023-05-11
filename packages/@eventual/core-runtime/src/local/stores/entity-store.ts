@@ -1,5 +1,5 @@
 import {
-  AnyEntityKey,
+  AnyEntityCompositeKey,
   EntityConsistencyOptions,
   EntityKeyType,
   EntityQueryKey,
@@ -37,13 +37,16 @@ export class LocalEntityStore implements EntityStore {
 
   constructor(private props: LocalEntityStoreProps) {}
 
-  public async get(entityName: string, key: AnyEntityKey): Promise<any> {
+  public async get(
+    entityName: string,
+    key: AnyEntityCompositeKey
+  ): Promise<any> {
     return (await this.getWithMetadata(entityName, key))?.value;
   }
 
   public async getWithMetadata(
     entityName: string,
-    key: AnyEntityKey
+    key: AnyEntityCompositeKey
   ): Promise<EntityWithMetadata<any> | undefined> {
     const entity = this.getEntity(entityName);
     const normalizedKey = normalizeCompositeKey(entity, key);
@@ -108,7 +111,7 @@ export class LocalEntityStore implements EntityStore {
 
   public async delete(
     entityName: string,
-    key: AnyEntityKey,
+    key: AnyEntityCompositeKey,
     options?: EntityConsistencyOptions | undefined
   ): Promise<void> {
     const entity = this.getEntity(entityName);

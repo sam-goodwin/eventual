@@ -24,17 +24,15 @@ import {
 const entity = (() => {
   let n = 0;
   return <
-    E extends EntityAttributes,
-    const P extends EntityCompositeKeyPart<E> = EntityCompositeKeyPart<E>,
-    const S extends EntityCompositeKeyPart<E> | undefined = undefined
+    Attr extends EntityAttributes,
+    const Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+    const Sort extends EntityCompositeKeyPart<Attr> | undefined = undefined
   >(
-    options: EntityOptions<E, P, S>
+    options: EntityOptions<Attr, Partition, Sort>
   ) => {
-    // @ts-ignore
-    const e: E = undefined as any;
     // eslint-disable-next-line no-empty
     while (entities().has(`ent${++n}`)) {}
-    return _entity<E, P, S>(`ent${n}`, options);
+    return _entity<Attr, Partition, Sort>(`ent${n}`, options);
   };
 })();
 

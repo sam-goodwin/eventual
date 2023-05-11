@@ -23,9 +23,6 @@ export interface EntityQueryResult<Attr extends EntityAttributes> {
   nextToken?: string;
 }
 
-export type EntityCompositeKeyPart<E extends EntityAttributes> =
-  readonly EntityKeyField<E>[];
-
 /**
  * A partial key that can be used to query an entity.
  *
@@ -37,10 +34,10 @@ export type EntityCompositeKeyPart<E extends EntityAttributes> =
  * TODO: support a progressive builder instead of a simple partial.
  */
 export type EntityQueryKey<
-  E extends EntityAttributes,
-  Partition extends EntityCompositeKeyPart<E>,
-  Sort extends EntityCompositeKeyPart<E> | undefined
-> = Partial<EntityKey<E, Partition, Sort>>;
+  Attr extends EntityAttributes,
+  Partition extends EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined
+> = Partial<EntityCompositeKey<Attr, Partition, Sort>>;
 
 export interface EntityQueryOptions {
   /**
@@ -103,7 +100,7 @@ export interface EntityStreamItemBase<
 > {
   streamName: string;
   entityName: string;
-  key: EntityCompositeKey<Attr, Partition, Sort>;
+  key: EntityKeyMap<Attr, Partition, Sort>;
 }
 
 export type EntityStreamItem<
@@ -173,29 +170,56 @@ export type AnyEntity = Entity<
 
 export type EntityKeyType = string | number;
 
-export type EntityKeyField<E extends EntityAttributes> = {
-  [K in keyof E]: K extends string
+/**
+ * A part of the composite key, either the partition or sort key.
+ */
+export type EntityCompositeKeyPart<Attr extends EntityAttributes> =
+  readonly EntityKeyAttribute<Attr>[];
+
+/**
+ * Any attribute name considered to be a valid key attribute.
+ */
+export type EntityKeyAttribute<Attr extends EntityAttributes> = {
+  [K in keyof Attr]: K extends string
     ? // only include fields that extend string or number
-      E[K] extends EntityKeyType
+      Attr[K] extends EntityKeyType
       ? K
       : never
     : never;
-}[keyof E];
+}[keyof Attr];
 
-export type EntityCompositeKeyFromEntity<E extends AnyEntity> =
+/**
+ * Extracts an {@link EntityKeyMap} from an {@link Entity} type.
+ */
+export type EntityCompositeKeyMapFromEntity<E extends AnyEntity> =
   E extends Entity<infer Attributes, infer Partition, infer Sort>
-    ? EntityCompositeKey<Attributes, Partition, Sort>
+    ? EntityKeyMap<Attributes, Partition, Sort>
     : never;
 
+/**
+ * Extracts an {@link EntityCompositeKey} from an {@link Entity} type.
+ */
 export type EntityKeyFromEntity<E extends AnyEntity> = E extends Entity<
   infer Attributes,
   infer Partition,
   infer Sort
 >
-  ? EntityKey<Attributes, Partition, Sort>
+  ? EntityCompositeKey<Attributes, Partition, Sort>
   : never;
 
-export type EntityCompositeKey<
+/**
+ * All attributes of the composite key as an object.
+ *
+ * ```ts
+ * {
+ *   partitionAttribute1: "",
+ *   partitionAttribute2: "",
+ *   sortAttribute1: "",
+ *   sortAttribute2: ""
+ * }
+ * ```
+ */
+export type EntityKeyMap<
   Attr extends EntityAttributes,
   Partition extends EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined
@@ -208,36 +232,46 @@ export type EntityCompositeKey<
   : // eslint-disable-next-line
     {});
 
-export type EntityKeyArray<
-  E extends EntityAttributes,
-  Fields extends readonly (keyof E)[]
+export type EntityKeyPartialTuple<
+  Attr extends EntityAttributes,
+  Fields extends readonly (keyof Attr)[]
 > = Fields extends readonly [
-  infer X extends keyof E,
-  ...infer Rest extends readonly (keyof E)[]
+  infer Head extends keyof Attr,
+  ...infer Rest extends readonly (keyof Attr)[]
 ]
-  ? readonly [E[X], ...EntityKeyArray<E, Rest>]
-  : Fields extends readonly [infer X extends keyof E]
-  ? readonly [E[X]]
+  ? readonly [Attr[Head], ...EntityKeyPartialTuple<Attr, Rest>]
+  : Fields extends readonly [infer Head extends keyof Attr]
+  ? readonly [Attr[Head]]
   : readonly [];
 
+/**
+ * All attributes of the composite key as a in order tuple.
+ *
+ * ```ts
+ * [partitionAttribute1, partitionAttribute2, sortAttribute1, sortAttribute2]
+ * ```
+ */
 export type EntityKeyTuple<
-  E extends EntityAttributes,
-  Partition extends EntityCompositeKeyPart<E>,
-  Sort extends EntityCompositeKeyPart<E> | undefined
+  Attr extends EntityAttributes,
+  Partition extends EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined
 > = Sort extends undefined
-  ? EntityKeyArray<E, Partition>
+  ? EntityKeyPartialTuple<Attr, Partition>
   : readonly [
-      ...EntityKeyArray<E, Partition>,
-      ...EntityKeyArray<E, Exclude<Sort, undefined>>
+      ...EntityKeyPartialTuple<Attr, Partition>,
+      ...EntityKeyPartialTuple<Attr, Exclude<Sort, undefined>>
     ];
 
-export type EntityKey<
-  E extends EntityAttributes,
-  Partition extends EntityCompositeKeyPart<E>,
-  Sort extends EntityCompositeKeyPart<E> | undefined
-> = EntityCompositeKey<E, Partition, Sort> | EntityKeyTuple<E, Partition, Sort>;
+/**
+ * All attributes in either the partition key and the sort key (when present).
+ */
+export type EntityCompositeKey<
+  Attr extends EntityAttributes,
+  Partition extends EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined
+> = EntityKeyMap<Attr, Partition, Sort> | EntityKeyTuple<Attr, Partition, Sort>;
 
-export type AnyEntityKey = EntityKey<
+export type AnyEntityCompositeKey = EntityCompositeKey<
   any,
   readonly string[],
   readonly string[] | undefined
@@ -267,8 +301,8 @@ export type EntityAttributesFromEntity<E extends AnyEntity> = E extends Entity<
   ? Attributes
   : never;
 
-export interface EntityWithMetadata<E extends EntityAttributes> {
-  value: E;
+export interface EntityWithMetadata<Attr extends EntityAttributes> {
+  value: Attr;
   version: number;
 }
 
@@ -303,31 +337,44 @@ export type EntityAttributes = {
   [key: string]: EntityValueMember;
 };
 
+/**
+ * Turns a {@link EntityAttributes} type into a Zod {@link z.ZodRawShape}.
+ */
 export type EntityZodShape<Attr extends EntityAttributes> = {
   [key in keyof Attr]: z.ZodType<Attr[key]>;
 };
 
+/**
+ * A map of zod types or a {@link z.ZodObject}.
+ */
 export type EntityZodAttributes<Attr extends EntityAttributes> =
   | z.ZodObject<EntityZodShape<Attr>>
   | EntityZodShape<Attr>;
 
+/**
+ * An eventual entity.
+ *
+ * @see entity
+ */
 export interface Entity<
   Attr extends EntityAttributes,
-  P extends EntityCompositeKeyPart<Attr>,
-  S extends EntityCompositeKeyPart<Attr> | undefined
+  Partition extends EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined
 > extends Omit<EntitySpec, "attributes" | "streams" | "partition" | "sort"> {
   kind: "Entity";
-  partition: P;
-  sort?: S;
+  partition: Partition;
+  sort?: Sort;
   attributes: z.ZodObject<EntityZodShape<Attr>>;
-  streams: EntityStream<Attr, P, S>[];
+  streams: EntityStream<Attr, Partition, Sort>[];
   /**
    * Get a value.
    * If your values use composite keys, the namespace must be provided.
    *
    * @param key - key or {@link CompositeKey} of the value to retrieve.
    */
-  get(key: EntityKey<Attr, P, S>): Promise<Attr | undefined>;
+  get(
+    key: EntityCompositeKey<Attr, Partition, Sort>
+  ): Promise<Attr | undefined>;
   /**
    * Get a value and metadata like version.
    * If your values use composite keys, the namespace must be provided.
@@ -335,7 +382,7 @@ export interface Entity<
    * @param key - key or {@link CompositeKey} of the value to retrieve.
    */
   getWithMetadata(
-    key: EntityKey<Attr, P, S>
+    key: EntityCompositeKey<Attr, Partition, Sort>
   ): Promise<EntityWithMetadata<Attr> | undefined>;
   /**
    * Sets or updates a value within an entity and optionally a namespace.
@@ -348,7 +395,7 @@ export interface Entity<
    * Deletes a single entry within an entity and namespace.
    */
   delete(
-    key: EntityKey<Attr, P, S>,
+    key: EntityCompositeKey<Attr, Partition, Sort>,
     options?: EntityConsistencyOptions
   ): Promise<void>;
   /**
@@ -357,18 +404,18 @@ export interface Entity<
    * If namespace is not provided, only values which do not use composite keys will be returned.
    */
   query(
-    key: EntityQueryKey<Attr, P, S>,
+    key: EntityQueryKey<Attr, Partition, Sort>,
     request?: EntityQueryOptions
   ): Promise<EntityQueryResult<Attr>>;
   stream(
     name: string,
-    options: EntityStreamOptions<Attr, P, S>,
-    handler: EntityStreamHandler<Attr, P, S>
-  ): EntityStream<Attr, P, S>;
+    options: EntityStreamOptions<Attr, Partition, Sort>,
+    handler: EntityStreamHandler<Attr, Partition, Sort>
+  ): EntityStream<Attr, Partition, Sort>;
   stream(
     name: string,
-    handler: EntityStreamHandler<Attr, P, S>
-  ): EntityStream<Attr, P, S>;
+    handler: EntityStreamHandler<Attr, Partition, Sort>
+  ): EntityStream<Attr, Partition, Sort>;
 }
 
 export interface EntityTransactItem<E extends AnyEntity = AnyEntity> {
@@ -416,19 +463,83 @@ export const Entity = {
 
 export interface EntityOptions<
   Attr extends EntityAttributes,
-  P extends EntityCompositeKeyPart<Attr>,
-  S extends EntityCompositeKeyPart<Attr> | undefined
+  Partition extends EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined
 > {
   attributes: EntityZodAttributes<Attr>;
-  partition: P;
-  sort?: S;
+  partition: Partition;
+  sort?: Sort;
 }
 
+/**
+ * Creates an entity which holds data.
+ *
+ * An entity's keys are made up of one or more attributes in the entity.
+ * When an entity's key is made up of more than one attribute, it is considered to be a composite key.
+ *
+ * Each attribute of the composite key is considered to be either a partition key or a sort key, which we consider a composite key part.
+ * Each entity is required to at least have one partition key attribute, but may have may partition and or sort key attributes.
+ * To retrieve a single value with an entity, the entire composite key must be used, until the query operation is used to return multiple entities (within a partition).
+ *
+ * A partition key separates data within an entity. When using the Query operation, data can only be queried within
+ * a single partition.
+ *
+ * A sort key determines the order of the values when running a query. It also allows for ranges of values to be queried
+ * using only some of the sort key attributes (in order).
+ *
+ * ```ts
+ * // lets take an example where we have posts for a user, separated by forum.
+ * const userComments = entity("userComments", {
+ *    attributes: {
+ *       forum: z.string(),
+ *       userId: z.string(),
+ *       postId: z.string(),
+ *       commentId: z.string(),
+ *       message: z.string()
+ *    },
+ *    partition: ["forum", "userId"],
+ *    sort: ["postId", "id"],
+ * });
+ *
+ * // add a new post comment
+ * await userComments.set({
+ *    forum: "games",
+ *    userId: "1",
+ *    postId: "100",
+ *    commentId: "abc",
+ *    message: "I love games"
+ * });
+ *
+ * // get all comments for a user in a forum
+ * await userComments.query({
+ *    forum: "games", // required in the query
+ *    userId: "1", // required in the query
+ * });
+ *
+ * // get all comments for a user in a forum and a post
+ * await userComments.query({
+ *    forum: "games", // required in the query
+ *    userId: "1", // required in the query
+ *    post: "100", // optional in the query
+ * });
+ *
+ * // get a single post
+ * await userComments.get({
+ *    forum: "games",
+ *    userId: "1",
+ *    postId: "100",
+ *    commentId: "abc"
+ * });
+ * ```
+ */
 export function entity<
   Attr extends EntityAttributes,
-  const P extends EntityCompositeKeyPart<Attr>,
-  const S extends EntityCompositeKeyPart<Attr> | undefined
->(name: string, options: EntityOptions<Attr, P, S>): Entity<Attr, P, S> {
+  const Partition extends EntityCompositeKeyPart<Attr>,
+  const Sort extends EntityCompositeKeyPart<Attr> | undefined
+>(
+  name: string,
+  options: EntityOptions<Attr, Partition, Sort>
+): Entity<Attr, Partition, Sort> {
   if (entities().has(name)) {
     throw new Error(`entity with name '${name}' already exists`);
   }
@@ -436,9 +547,9 @@ export function entity<
   /**
    * Used to maintain a limited number of streams on the entity.
    */
-  const streams: EntityStream<Attr, P, S>[] = [];
+  const streams: EntityStream<Attr, Partition, Sort>[] = [];
 
-  const entity: Entity<Attr, P, S> = {
+  const entity: Entity<Attr, Partition, Sort> = {
     // @ts-ignore
     __entityBrand: undefined,
     kind: "Entity",
@@ -515,22 +626,22 @@ export function entity<
     },
     stream: (
       ...args:
-        | [name: string, handler: EntityStreamHandler<Attr, P, S>]
+        | [name: string, handler: EntityStreamHandler<Attr, Partition, Sort>]
         | [
             name: string,
-            options: EntityStreamOptions<Attr, P, S>,
-            handler: EntityStreamHandler<Attr, P, S>
+            options: EntityStreamOptions<Attr, Partition, Sort>,
+            handler: EntityStreamHandler<Attr, Partition, Sort>
           ]
         | [
             sourceLocation: SourceLocation,
             name: string,
-            handler: EntityStreamHandler<Attr, P, S>
+            handler: EntityStreamHandler<Attr, Partition, Sort>
           ]
         | [
             sourceLocation: SourceLocation,
             name: string,
-            options: EntityStreamOptions<Attr, P, S>,
-            handler: EntityStreamHandler<Attr, P, S>
+            options: EntityStreamOptions<Attr, Partition, Sort>,
+            handler: EntityStreamHandler<Attr, Partition, Sort>
           ]
     ) => {
       const [sourceLocation, streamName, options, handler] =
@@ -543,7 +654,7 @@ export function entity<
           : [
               ,
               args[0] as string,
-              args[1] as EntityStreamOptions<Attr, P, S>,
+              args[1] as EntityStreamOptions<Attr, Partition, Sort>,
               args[2],
             ];
 
@@ -551,7 +662,7 @@ export function entity<
         throw new Error("Only two streams are allowed per entity.");
       }
 
-      const entityStream: EntityStream<Attr, P, S> = {
+      const entityStream: EntityStream<Attr, Partition, Sort> = {
         kind: "EntityStream",
         handler,
         name: streamName,
@@ -573,33 +684,33 @@ export function entity<
 
 export function entityStream<
   Attr extends EntityAttributes,
-  const P extends EntityCompositeKeyPart<Attr>,
-  const S extends EntityCompositeKeyPart<Attr> | undefined
+  const Partition extends EntityCompositeKeyPart<Attr>,
+  const Sort extends EntityCompositeKeyPart<Attr> | undefined
 >(
   ...args:
     | [
         name: string,
-        entity: Entity<Attr, P, S>,
-        handler: EntityStreamHandler<Attr, P, S>
+        entity: Entity<Attr, Partition, Sort>,
+        handler: EntityStreamHandler<Attr, Partition, Sort>
       ]
     | [
         name: string,
-        entity: Entity<Attr, P, S>,
-        options: EntityStreamOptions<Attr, P, S>,
-        handler: EntityStreamHandler<Attr, P, S>
-      ]
-    | [
-        sourceLocation: SourceLocation,
-        name: string,
-        entity: Entity<Attr, P, S>,
-        handler: EntityStreamHandler<Attr, P, S>
+        entity: Entity<Attr, Partition, Sort>,
+        options: EntityStreamOptions<Attr, Partition, Sort>,
+        handler: EntityStreamHandler<Attr, Partition, Sort>
       ]
     | [
         sourceLocation: SourceLocation,
         name: string,
-        entity: Entity<Attr, P, S>,
-        options: EntityStreamOptions<Attr, P, S>,
-        handler: EntityStreamHandler<Attr, P, S>
+        entity: Entity<Attr, Partition, Sort>,
+        handler: EntityStreamHandler<Attr, Partition, Sort>
+      ]
+    | [
+        sourceLocation: SourceLocation,
+        name: string,
+        entity: Entity<Attr, Partition, Sort>,
+        options: EntityStreamOptions<Attr, Partition, Sort>,
+        handler: EntityStreamHandler<Attr, Partition, Sort>
       ]
 ) {
   const [sourceLocation, name, entity, options, handler] =
@@ -608,12 +719,18 @@ export function entityStream<
       : args.length === 5
       ? args
       : isSourceLocation(args[0])
-      ? [args[0], args[1] as string, args[2] as Entity<Attr, P, S>, , args[3]]
+      ? [
+          args[0],
+          args[1] as string,
+          args[2] as Entity<Attr, Partition, Sort>,
+          ,
+          args[3],
+        ]
       : [
           ,
           args[0] as string,
-          args[1] as Entity<Attr, P, S>,
-          args[2] as EntityStreamOptions<Attr, P, S>,
+          args[1] as Entity<Attr, Partition, Sort>,
+          args[2] as EntityStreamOptions<Attr, Partition, Sort>,
           args[3],
         ];
 

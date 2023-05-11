@@ -16,7 +16,7 @@ import {
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
   AnyEntity,
-  AnyEntityKey,
+  AnyEntityCompositeKey,
   EntityAttributes,
   EntityAttributesFromEntity,
   EntityConsistencyOptions,
@@ -38,7 +38,7 @@ import {
   isCompleteKeyPart,
   LazyValue,
   normalizeCompositeKey,
-  NormalizedEntityKey,
+  NormalizedEntityCompositeKey,
 } from "@eventual/core-runtime";
 import { assertNever } from "@eventual/core/internal";
 import { entityServiceTableName, queryPageWithToken } from "../utils.js";
@@ -63,13 +63,16 @@ export type MarshalledEntityAttributesWithVersion<E extends AnyEntity> = {
 export class AWSEntityStore implements EntityStore {
   constructor(private props: AWSEntityStoreProps) {}
 
-  public async get(entityName: string, key: AnyEntityKey): Promise<any> {
+  public async get(
+    entityName: string,
+    key: AnyEntityCompositeKey
+  ): Promise<any> {
     return (await this.getWithMetadata(entityName, key))?.value;
   }
 
   public async getWithMetadata(
     entityName: string,
-    key: AnyEntityKey
+    key: AnyEntityCompositeKey
   ): Promise<EntityWithMetadata<any> | undefined> {
     const entity = this.getEntity(entityName);
     const normalizedCompositeKey = normalizeCompositeKey(entity, key);
@@ -141,7 +144,7 @@ export class AWSEntityStore implements EntityStore {
 
   public async delete(
     entityName: string,
-    key: AnyEntityKey,
+    key: AnyEntityCompositeKey,
     options?: EntityConsistencyOptions | undefined
   ): Promise<void> {
     try {
@@ -159,7 +162,7 @@ export class AWSEntityStore implements EntityStore {
 
   private createDeleteRequest(
     _entity: string | AnyEntity,
-    key: AnyEntityKey,
+    key: AnyEntityCompositeKey,
     options?: EntityConsistencyOptions
   ): Delete {
     const entity =
@@ -277,9 +280,9 @@ export class AWSEntityStore implements EntityStore {
     }
   }
 
-  private createSetRequest<E extends EntityAttributes>(
+  private createSetRequest<Attr extends EntityAttributes>(
     _entity: string | AnyEntity,
-    value: E,
+    value: Attr,
     options?: EntitySetOptions
   ): Update {
     const entity =
@@ -353,7 +356,7 @@ export class AWSEntityStore implements EntityStore {
     return entity;
   }
 
-  private entityKey(key: NormalizedEntityKey) {
+  private entityKey(key: NormalizedEntityCompositeKey) {
     const marshalledKey = marshall(
       {
         [key.partition.keyAttribute]: key.partition.keyValue,

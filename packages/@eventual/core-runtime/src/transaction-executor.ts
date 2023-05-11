@@ -1,6 +1,6 @@
 import {
   AnyEntity,
-  EntityCompositeKey,
+  EntityKeyMap,
   EntityConditionalOperation,
   EntityDeleteOperation,
   EntitySetOperation,
@@ -38,7 +38,7 @@ import {
   convertNormalizedEntityKeyToMap,
   EntityStore,
   normalizeCompositeKey,
-  NormalizedEntityKey,
+  NormalizedEntityCompositeKey,
 } from "./stores/entity-store.js";
 import { serializeCompositeKey } from "./utils.js";
 
@@ -91,7 +91,7 @@ export interface TransactionExecutor {
 
 interface TransactionFailedItem {
   entityName: string;
-  key: EntityCompositeKey<any, any, any>;
+  key: EntityKeyMap<any, any, any>;
 }
 
 export function createTransactionExecutor(
@@ -149,7 +149,7 @@ export function createTransactionExecutor(
         string,
         {
           entityName: string;
-          key: NormalizedEntityKey;
+          key: NormalizedEntityCompositeKey;
           value: EntityWithMetadata<any> | undefined;
         }
       >();
@@ -403,7 +403,7 @@ export function createTransactionExecutor(
 
       function resolveEntity(
         entityName: string,
-        key: NormalizedEntityKey
+        key: NormalizedEntityCompositeKey
       ): EventualPromise<EntityWithMetadata<any> | undefined> {
         const serializedKey = serializeCompositeKey(entityName, key);
         if (retrievedEntities.has(serializedKey)) {
