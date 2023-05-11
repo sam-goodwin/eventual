@@ -1,4 +1,4 @@
-import { AnyEntity } from "@eventual/core";
+import type { AnyEntity } from "@eventual/core";
 import { entities } from "@eventual/core/internal";
 import type { WorkflowExecutor } from "../workflow-executor.js";
 
@@ -15,7 +15,7 @@ export interface EntityProvider {
  * An executor provider that works with an out of memory store.
  */
 export class GlobalEntityProvider implements EntityProvider {
-  getEntity(entityName: string): AnyEntity | undefined {
+  public getEntity(entityName: string): AnyEntity | undefined {
     return entities().get(entityName);
   }
 }

@@ -88,7 +88,7 @@ function displayEntityCommand(operation: EntityOperation) {
   return output;
 }
 
-function displayEntityTransactItem(item: EntityTransactItem<any>): string[] {
+function displayEntityTransactItem(item: EntityTransactItem): string[] {
   const entityName =
     typeof item.entity === "string" ? item.entity : item.entity.name;
   if (item.operation.operation === "set") {

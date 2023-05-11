@@ -15,7 +15,9 @@ import {
 } from "./internal/service-spec.js";
 import type { ServiceContext } from "./service.js";
 
-export interface EntityQueryResult<Attr extends EntityAttributes> {
+export interface EntityQueryResult<
+  Attr extends EntityAttributes = EntityAttributes
+> {
   entries?: EntityWithMetadata<Attr>[];
   /**
    * Returned when there are more values than the limit allowed to return.
@@ -34,9 +36,11 @@ export interface EntityQueryResult<Attr extends EntityAttributes> {
  * TODO: support a progressive builder instead of a simple partial.
  */
 export type EntityQueryKey<
-  Attr extends EntityAttributes,
-  Partition extends EntityCompositeKeyPart<Attr>,
-  Sort extends EntityCompositeKeyPart<Attr> | undefined
+  Attr extends EntityAttributes = EntityAttributes,
+  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined =
+    | EntityCompositeKeyPart<Attr>
+    | undefined
 > = Partial<EntityCompositeKey<Attr, Partition, Sort>>;
 
 export interface EntityQueryOptions {
@@ -266,16 +270,12 @@ export type EntityKeyTuple<
  * All attributes in either the partition key and the sort key (when present).
  */
 export type EntityCompositeKey<
-  Attr extends EntityAttributes,
-  Partition extends EntityCompositeKeyPart<Attr>,
-  Sort extends EntityCompositeKeyPart<Attr> | undefined
+  Attr extends EntityAttributes = EntityAttributes,
+  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined =
+    | EntityCompositeKeyPart<Attr>
+    | undefined
 > = EntityKeyMap<Attr, Partition, Sort> | EntityKeyTuple<Attr, Partition, Sort>;
-
-export type AnyEntityCompositeKey = EntityCompositeKey<
-  any,
-  readonly string[],
-  readonly string[] | undefined
->;
 
 export type EntityPartitionKey<E extends AnyEntity> = E extends Entity<
   any,
@@ -301,7 +301,9 @@ export type EntityAttributesFromEntity<E extends AnyEntity> = E extends Entity<
   ? Attributes
   : never;
 
-export interface EntityWithMetadata<Attr extends EntityAttributes> {
+export interface EntityWithMetadata<
+  Attr extends EntityAttributes = EntityAttributes
+> {
   value: Attr;
   version: number;
 }
@@ -333,9 +335,9 @@ export type EntityValueMember =
   | Set<string | number | boolean | EntityBinaryMember>
   | EntityValueMember[];
 
-export type EntityAttributes = {
+export interface EntityAttributes {
   [key: string]: EntityValueMember;
-};
+}
 
 /**
  * Turns a {@link EntityAttributes} type into a Zod {@link z.ZodRawShape}.

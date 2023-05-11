@@ -150,7 +150,7 @@ export function createTransactionExecutor(
         {
           entityName: string;
           key: NormalizedEntityCompositeKey;
-          value: EntityWithMetadata<any> | undefined;
+          value: EntityWithMetadata | undefined;
         }
       >();
 
@@ -404,7 +404,7 @@ export function createTransactionExecutor(
       function resolveEntity(
         entityName: string,
         key: NormalizedEntityCompositeKey
-      ): EventualPromise<EntityWithMetadata<any> | undefined> {
+      ): EventualPromise<EntityWithMetadata | undefined> {
         const serializedKey = serializeCompositeKey(entityName, key);
         if (retrievedEntities.has(serializedKey)) {
           return createResolvedEventualPromise(

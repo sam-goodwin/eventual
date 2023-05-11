@@ -116,7 +116,7 @@ test("just set", async () => {
 test("just delete", async () => {
   const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
 
-  await store.set(d1.name, [{ key: "1", value: 0 }]);
+  await store.set(d1.name, { key: "1", value: 0 });
 
   const result = await executor(
     () => {

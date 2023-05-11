@@ -1,4 +1,4 @@
-import type { AnyEntity, Entity, EntityTransactItem } from "../entity.js";
+import type { AnyEntity, EntityTransactItem } from "../entity.js";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -23,7 +23,7 @@ export type EntityHook = {
     ...args: Parameters<AnyEntity[K]>
   ) => ReturnType<AnyEntity[K]>;
 } & {
-  transactWrite(items: EntityTransactItem<any>[]): Promise<void>;
+  transactWrite(items: EntityTransactItem[]): Promise<void>;
 };
 
 export function getEntityHook() {

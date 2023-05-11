@@ -1,15 +1,193 @@
 import type {
   AnyEntity,
+  EntityAttributes,
+  EntityCompositeKey,
   EntityCompositeKeyMapFromEntity,
+  EntityConsistencyOptions,
+  EntityKeyDefinition,
+  EntityKeyDefinitionPart,
   EntityKeyFromEntity,
   EntityKeyMap,
   EntityKeyType,
-  EntityKeyDefinition,
-  EntityKeyDefinitionPart,
+  EntityQueryKey,
+  EntityQueryOptions,
+  EntityQueryResult,
+  EntitySetOptions,
+  EntityTransactItem,
+  EntityWithMetadata,
 } from "@eventual/core";
 import type { EntityHook } from "@eventual/core/internal";
+import { EntityProvider } from "../providers/entity-provider.js";
 
-export type EntityStore = EntityHook;
+export abstract class EntityStore implements EntityHook {
+  constructor(private entityProvider: EntityProvider) {}
+
+  public async get(entityName: string, key: EntityCompositeKey): Promise<any> {
+    return (await this.getWithMetadata(entityName, key))?.value;
+  }
+
+  public async getWithMetadata(
+    entityName: string,
+    key: EntityCompositeKey
+  ): Promise<EntityWithMetadata | undefined> {
+    const entity = this.getEntity(entityName);
+    const normalizedCompositeKey = normalizeCompositeKey(entity, key);
+
+    if (!isCompleteKey(normalizedCompositeKey)) {
+      throw new Error("Key cannot be partial for get or getWithMetadata.");
+    }
+
+    return this._getWithMetadata(entity, normalizedCompositeKey);
+  }
+
+  protected abstract _getWithMetadata(
+    entity: AnyEntity,
+    key: NormalizedEntityCompositeKeyComplete
+  ): Promise<EntityWithMetadata | undefined>;
+
+  public set(
+    entityName: string,
+    value: EntityAttributes,
+    options?: EntitySetOptions
+  ): Promise<{ version: number }> {
+    const entity = this.getEntity(entityName);
+    const normalizedKey = normalizeCompositeKey(entity, value);
+
+    if (!isCompleteKey(normalizedKey)) {
+      throw new Error("Key cannot be partial for set.");
+    }
+
+    return this._set(entity, value, normalizedKey, options);
+  }
+
+  protected abstract _set(
+    entity: AnyEntity,
+    value: EntityAttributes,
+    key: NormalizedEntityCompositeKeyComplete,
+    options?: EntitySetOptions
+  ): Promise<{ version: number }>;
+
+  public delete(
+    entityName: string,
+    key: EntityCompositeKey,
+    options?: EntityConsistencyOptions | undefined
+  ): Promise<void> {
+    const entity = this.getEntity(entityName);
+    const normalizedKey = normalizeCompositeKey(entity, key);
+
+    if (!isCompleteKey(normalizedKey)) {
+      throw new Error("Key cannot be partial for delete.");
+    }
+
+    return this._delete(entity, normalizedKey, options);
+  }
+
+  protected abstract _delete(
+    entity: AnyEntity,
+    key: NormalizedEntityCompositeKeyComplete,
+    options?: EntityConsistencyOptions | undefined
+  ): Promise<void>;
+
+  public query(
+    entityName: string,
+    queryKey: EntityQueryKey,
+    options?: EntityQueryOptions | undefined
+  ): Promise<EntityQueryResult> {
+    const entity = this.getEntity(entityName);
+    const normalizedKey = normalizeCompositeKey(entity, queryKey);
+
+    if (!isCompleteKeyPart(normalizedKey.partition)) {
+      throw new Error("Entity partition key cannot be partial for query");
+    }
+
+    return this._query(
+      entity,
+      normalizedKey as NormalizedEntityCompositeKey<NormalizedEntityKeyCompletePart>,
+      options
+    );
+  }
+
+  protected abstract _query(
+    entity: AnyEntity,
+    queryKey: NormalizedEntityCompositeKey<NormalizedEntityKeyCompletePart>,
+    options: EntityQueryOptions | undefined
+  ): Promise<EntityQueryResult>;
+
+  public async transactWrite(items: EntityTransactItem[]): Promise<void> {
+    return this._transactWrite(
+      items.map((item): NormalizedEntityTransactItem => {
+        const entity =
+          typeof item.entity === "string"
+            ? this.getEntity(item.entity)
+            : item.entity;
+        const keyValue =
+          item.operation.operation === "set"
+            ? item.operation.value
+            : item.operation.key;
+        const key = normalizeCompositeKey(entity, keyValue);
+        if (!isCompleteKey(key)) {
+          throw new Error(
+            "Entity key cannot be partial for set, delete, or condition operations."
+          );
+        }
+
+        return item.operation.operation === "set"
+          ? {
+              operation: "set",
+              entity,
+              key,
+              value: item.operation.value,
+              options: item.operation.options,
+            }
+          : item.operation.operation === "delete"
+          ? {
+              operation: "delete",
+              entity,
+              key,
+              options: item.operation.options,
+            }
+          : {
+              operation: "condition",
+              entity,
+              key,
+              version: item.operation.version,
+            };
+      })
+    );
+  }
+
+  protected abstract _transactWrite(
+    items: NormalizedEntityTransactItem[]
+  ): Promise<void>;
+
+  protected getEntity(entityName: string) {
+    const entity = this.entityProvider.getEntity(entityName);
+
+    if (!entity) {
+      throw new Error(`Entity ${entityName} was not found.`);
+    }
+    return entity;
+  }
+}
+
+export type NormalizedEntityTransactItem = {
+  entity: AnyEntity;
+  key: NormalizedEntityCompositeKeyComplete;
+} & (
+  | {
+      operation: "set";
+      value: EntityAttributes;
+      options?: EntitySetOptions;
+    }
+  | {
+      operation: "delete";
+      options?: EntityConsistencyOptions;
+    }
+  | {
+      operation: "condition";
+      version?: number;
+    }
+);
 
 export interface NormalizedEntityKeyPartBase extends EntityKeyDefinitionPart {
   parts: { field: string; value: EntityKeyType }[];
@@ -56,6 +234,11 @@ export interface NormalizedEntityCompositeKey<
   partition: Partition;
   sort?: Sort;
 }
+
+export type NormalizedEntityCompositeKeyComplete = NormalizedEntityCompositeKey<
+  NormalizedEntityKeyCompletePart,
+  NormalizedEntityKeyCompletePart
+>;
 
 /**
  * Generate properties for an entity key given the key definition and key values.

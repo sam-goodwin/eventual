@@ -120,7 +120,7 @@ export type EntityOperation<
 
 export interface EntityTransactOperation {
   operation: "transact";
-  items: EntityTransactItem<any>[];
+  items: EntityTransactItem[];
 }
 
 export function isBucketCall(a: any): a is BucketCall {
