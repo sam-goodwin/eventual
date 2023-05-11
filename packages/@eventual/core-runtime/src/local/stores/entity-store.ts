@@ -2,7 +2,7 @@ import {
   Entity,
   EntityAttributes,
   EntityConsistencyOptions,
-  EntityKeyValue,
+  KeyValue,
   EntityQueryOptions,
   EntityQueryResult,
   EntitySetOptions,
@@ -33,7 +33,7 @@ export interface LocalEntityStoreProps {
 export class LocalEntityStore extends EntityStore {
   private entities: Record<
     string,
-    Map<EntityKeyValue, Map<EntityKeyValue, EntityWithMetadata>>
+    Map<KeyValue, Map<KeyValue, EntityWithMetadata>>
   > = {};
 
   constructor(private props: LocalEntityStoreProps) {
@@ -220,12 +220,12 @@ export class LocalEntityStore extends EntityStore {
     partitionKey: NormalizedEntityKeyCompletePart
   ) {
     const _entity = (this.entities[entity.name] ??= new Map<
-      EntityKeyValue,
-      Map<EntityKeyValue, EntityWithMetadata>
+      KeyValue,
+      Map<KeyValue, EntityWithMetadata>
     >());
     let partitionMap = _entity.get(partitionKey.keyValue);
     if (!partitionMap) {
-      partitionMap = new Map<EntityKeyValue, EntityWithMetadata>();
+      partitionMap = new Map<KeyValue, EntityWithMetadata>();
       _entity.set(partitionKey.keyValue, partitionMap);
     }
     return partitionMap;

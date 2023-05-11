@@ -1,43 +1,30 @@
-import type { Entity, EntityAttributes } from "./entity.js";
+import type { EntityAttributes } from "./entity.js";
 
-export type EntityKeyValue = string | number;
+export type KeyValue = string | number;
 
 /**
- * A part of the composite key, either the partition or sort key.
+ * Composite Key - Whole key used to get and set an entity, made up of partition and sort key parts containing one or more attribute.
+ * Key Part - partition or sort key of the composite key, each made up of one or more key attribute.
+ * Key Attribute - A single attribute used as a segment of a key part.
  */
-export type EntityCompositeKeyPart<Attr extends EntityAttributes> =
-  readonly EntityKeyAttribute<Attr>[];
 
 /**
  * Any attribute name considered to be a valid key attribute.
  */
-export type EntityKeyAttribute<Attr extends EntityAttributes> = {
+export type KeyAttribute<Attr extends EntityAttributes> = {
   [K in keyof Attr]: K extends string
     ? // only include attributes that extend string or number
-      Attr[K] extends EntityKeyValue
+      Attr[K] extends KeyValue
       ? K
       : never
     : never;
 }[keyof Attr];
 
 /**
- * Extracts an {@link EntityKeyMap} from an {@link Entity} type.
+ * A part of the composite key, either the partition or sort key.
  */
-export type EntityCompositeKeyMapFromEntity<E extends Entity = Entity> =
-  E extends Entity<infer Attributes, infer Partition, infer Sort>
-    ? EntityKeyMap<Attributes, Partition, Sort>
-    : never;
-
-/**
- * Extracts an {@link EntityCompositeKey} from an {@link Entity} type.
- */
-export type EntityKeyFromEntity<E extends Entity = Entity> = E extends Entity<
-  infer Attributes,
-  infer Partition,
-  infer Sort
->
-  ? EntityCompositeKey<Attributes, Partition, Sort>
-  : never;
+export type CompositeKeyPart<Attr extends EntityAttributes> =
+  readonly KeyAttribute<Attr>[];
 
 /**
  * All attributes of the composite key as an object.
@@ -51,29 +38,31 @@ export type EntityKeyFromEntity<E extends Entity = Entity> = E extends Entity<
  * }
  * ```
  */
-export type EntityKeyMap<
-  Attr extends EntityAttributes,
-  Partition extends EntityCompositeKeyPart<Attr>,
-  Sort extends EntityCompositeKeyPart<Attr> | undefined
+export type KeyMap<
+  Attr extends EntityAttributes = any,
+  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined =
+    | CompositeKeyPart<Attr>
+    | undefined
 > = {
   [k in Partition[number]]: Attr[k];
-} & (Sort extends readonly (keyof Attr)[]
+} & (Sort extends CompositeKeyPart<Attr>
   ? {
       [k in Sort[number]]: Attr[k];
     }
   : // eslint-disable-next-line
     {});
 
-export type EntityKeyPartialTuple<
+export type KeyPartialTuple<
   Attr extends EntityAttributes,
   Attrs extends readonly (keyof Attr)[]
-> = Attrs extends readonly [
-  infer Head extends keyof Attr,
-  ...infer Rest extends readonly (keyof Attr)[]
-]
-  ? readonly [Attr[Head], ...EntityKeyPartialTuple<Attr, Rest>]
-  : Attrs extends readonly [infer Head extends keyof Attr]
-  ? readonly [Attr[Head]]
+> = Attrs extends []
+  ? readonly []
+  : Attrs extends readonly [
+      infer Head extends keyof Attr,
+      ...infer Rest extends readonly (keyof Attr)[]
+    ]
+  ? readonly [Attr[Head], ...KeyPartialTuple<Attr, Rest>]
   : readonly [];
 
 /**
@@ -83,27 +72,27 @@ export type EntityKeyPartialTuple<
  * [partitionAttribute1, partitionAttribute2, sortAttribute1, sortAttribute2]
  * ```
  */
-export type EntityKeyTuple<
+export type KeyTuple<
   Attr extends EntityAttributes,
-  Partition extends EntityCompositeKeyPart<Attr>,
-  Sort extends EntityCompositeKeyPart<Attr> | undefined
+  Partition extends CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined
 > = Sort extends undefined
-  ? EntityKeyPartialTuple<Attr, Partition>
+  ? KeyPartialTuple<Attr, Partition>
   : readonly [
-      ...EntityKeyPartialTuple<Attr, Partition>,
-      ...EntityKeyPartialTuple<Attr, Exclude<Sort, undefined>>
+      ...KeyPartialTuple<Attr, Partition>,
+      ...KeyPartialTuple<Attr, Exclude<Sort, undefined>>
     ];
 
 /**
  * All attributes in either the partition key and the sort key (when present).
  */
-export type EntityCompositeKey<
+export type CompositeKey<
   Attr extends EntityAttributes = EntityAttributes,
-  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
-  Sort extends EntityCompositeKeyPart<Attr> | undefined =
-    | EntityCompositeKeyPart<Attr>
+  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined =
+    | CompositeKeyPart<Attr>
     | undefined
-> = EntityKeyMap<Attr, Partition, Sort> | EntityKeyTuple<Attr, Partition, Sort>;
+> = KeyMap<Attr, Partition, Sort> | KeyTuple<Attr, Partition, Sort>;
 
 /**
  * A partial key that can be used to query an entity.
@@ -115,10 +104,10 @@ export type EntityCompositeKey<
  * TODO: support expressions like between and starts with on sort properties
  * TODO: support a progressive builder instead of a simple partial.
  */
-export type EntityQueryKey<
+export type QueryKey<
   Attr extends EntityAttributes = EntityAttributes,
-  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
-  Sort extends EntityCompositeKeyPart<Attr> | undefined =
-    | EntityCompositeKeyPart<Attr>
+  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined =
+    | CompositeKeyPart<Attr>
     | undefined
-> = Partial<EntityCompositeKey<Attr, Partition, Sort>>;
+> = Partial<CompositeKey<Attr, Partition, Sort>>;

@@ -1,6 +1,6 @@
 import {
   EntityAttributes,
-  EntityCompositeKeyPart,
+  CompositeKeyPart,
   EntityOptions,
   TransactionContext,
   entity as _entity,
@@ -25,8 +25,8 @@ const entity = (() => {
   let n = 0;
   return <
     Attr extends EntityAttributes,
-    const Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
-    const Sort extends EntityCompositeKeyPart<Attr> | undefined = undefined
+    const Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+    const Sort extends CompositeKeyPart<Attr> | undefined = undefined
   >(
     options: EntityOptions<Attr, Partition, Sort>
   ) => {

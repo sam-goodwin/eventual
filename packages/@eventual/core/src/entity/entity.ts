@@ -16,12 +16,8 @@ import {
   isSourceLocation,
   SourceLocation,
 } from "../internal/service-spec.js";
-import {
-  EntityCompositeKey,
-  EntityCompositeKeyPart,
-  EntityQueryKey,
-} from "./key.js";
-import { EntityStream, EntityStreamHandler } from "./stream.js";
+import type { CompositeKey, CompositeKeyPart, QueryKey } from "./key.js";
+import type { EntityStream, EntityStreamHandler } from "./stream.js";
 
 export type EntityBinaryMember =
   | ArrayBuffer
@@ -62,22 +58,15 @@ export type EntityZodShape<Attr extends EntityAttributes> = {
 };
 
 /**
- * A map of zod types or a {@link z.ZodObject}.
- */
-export type EntityZodAttributes<Attr extends EntityAttributes> =
-  | z.ZodObject<EntityZodShape<Attr>>
-  | EntityZodShape<Attr>;
-
-/**
  * An eventual entity.
  *
  * @see entity
  */
 export interface Entity<
   Attr extends EntityAttributes = any,
-  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
-  Sort extends EntityCompositeKeyPart<Attr> | undefined =
-    | EntityCompositeKeyPart<Attr>
+  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined =
+    | CompositeKeyPart<Attr>
     | undefined
 > extends Omit<EntitySpec, "attributes" | "streams" | "partition" | "sort"> {
   kind: "Entity";
@@ -90,9 +79,7 @@ export interface Entity<
    *
    * @param key - key or {@link CompositeKey} of the value to retrieve.
    */
-  get(
-    key: EntityCompositeKey<Attr, Partition, Sort>
-  ): Promise<Attr | undefined>;
+  get(key: CompositeKey<Attr, Partition, Sort>): Promise<Attr | undefined>;
   /**
    * Get a value and metadata like version.
    * If your values use composite keys, the namespace must be provided.
@@ -100,7 +87,7 @@ export interface Entity<
    * @param key - key or {@link CompositeKey} of the value to retrieve.
    */
   getWithMetadata(
-    key: EntityCompositeKey<Attr, Partition, Sort>
+    key: CompositeKey<Attr, Partition, Sort>
   ): Promise<EntityWithMetadata<Attr> | undefined>;
   /**
    * Sets or updates a value within an entity and optionally a namespace.
@@ -113,7 +100,7 @@ export interface Entity<
    * Deletes a single entry within an entity and namespace.
    */
   delete(
-    key: EntityCompositeKey<Attr, Partition, Sort>,
+    key: CompositeKey<Attr, Partition, Sort>,
     options?: EntityConsistencyOptions
   ): Promise<void>;
   /**
@@ -122,7 +109,7 @@ export interface Entity<
    * If namespace is not provided, only values which do not use composite keys will be returned.
    */
   query(
-    key: EntityQueryKey<Attr, Partition, Sort>,
+    key: QueryKey<Attr, Partition, Sort>,
     request?: EntityQueryOptions
   ): Promise<EntityQueryResult<Attr>>;
   stream(
@@ -138,9 +125,9 @@ export interface Entity<
 
 export interface EntityTransactItem<
   Attr extends EntityAttributes = any,
-  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
-  Sort extends EntityCompositeKeyPart<Attr> | undefined =
-    | EntityCompositeKeyPart<Attr>
+  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined =
+    | CompositeKeyPart<Attr>
     | undefined
 > {
   entity: Entity<Attr, Partition, Sort> | string;
@@ -158,13 +145,13 @@ export interface EntitySetOperation<Attr extends EntityAttributes = any> {
 
 export interface EntityDeleteOperation<
   Attr extends EntityAttributes = any,
-  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
-  Sort extends EntityCompositeKeyPart<Attr> | undefined =
-    | EntityCompositeKeyPart<Attr>
+  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined =
+    | CompositeKeyPart<Attr>
     | undefined
 > {
   operation: "delete";
-  key: EntityCompositeKey<Attr, Partition, Sort>;
+  key: CompositeKey<Attr, Partition, Sort>;
   options?: EntitySetOptions;
 }
 
@@ -173,13 +160,13 @@ export interface EntityDeleteOperation<
  */
 export interface EntityConditionalOperation<
   Attr extends EntityAttributes = any,
-  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
-  Sort extends EntityCompositeKeyPart<Attr> | undefined =
-    | EntityCompositeKeyPart<Attr>
+  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined =
+    | CompositeKeyPart<Attr>
     | undefined
 > {
   operation: "condition";
-  key: EntityCompositeKey<Attr, Partition, Sort>;
+  key: CompositeKey<Attr, Partition, Sort>;
   version?: number;
 }
 
@@ -199,10 +186,10 @@ export const Entity = {
 
 export interface EntityOptions<
   Attr extends EntityAttributes,
-  Partition extends EntityCompositeKeyPart<Attr>,
-  Sort extends EntityCompositeKeyPart<Attr> | undefined = undefined
+  Partition extends CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined = undefined
 > {
-  attributes: EntityZodAttributes<Attr>;
+  attributes: z.ZodObject<EntityZodShape<Attr>> | EntityZodShape<Attr>;
   partition: Partition;
   sort?: Sort;
 }
@@ -270,8 +257,8 @@ export interface EntityOptions<
  */
 export function entity<
   Attr extends EntityAttributes,
-  const Partition extends EntityCompositeKeyPart<Attr>,
-  const Sort extends EntityCompositeKeyPart<Attr> | undefined = undefined
+  const Partition extends CompositeKeyPart<Attr>,
+  const Sort extends CompositeKeyPart<Attr> | undefined = undefined
 >(
   name: string,
   options: EntityOptions<Attr, Partition, Sort>

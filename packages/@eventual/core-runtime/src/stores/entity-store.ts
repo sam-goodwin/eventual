@@ -1,13 +1,11 @@
 import type {
   Entity,
   EntityAttributes,
-  EntityCompositeKey,
-  EntityCompositeKeyMapFromEntity,
+  CompositeKey,
   EntityConsistencyOptions,
-  EntityKeyFromEntity,
-  EntityKeyMap,
-  EntityKeyValue,
-  EntityQueryKey,
+  KeyMap,
+  KeyValue,
+  QueryKey,
   EntityQueryOptions,
   EntityQueryResult,
   EntitySetOptions,
@@ -24,13 +22,13 @@ import { EntityProvider } from "../providers/entity-provider.js";
 export abstract class EntityStore implements EntityHook {
   constructor(private entityProvider: EntityProvider) {}
 
-  public async get(entityName: string, key: EntityCompositeKey): Promise<any> {
+  public async get(entityName: string, key: CompositeKey): Promise<any> {
     return (await this.getWithMetadata(entityName, key))?.value;
   }
 
   public async getWithMetadata(
     entityName: string,
-    key: EntityCompositeKey
+    key: CompositeKey
   ): Promise<EntityWithMetadata | undefined> {
     const entity = this.getEntity(entityName);
     const normalizedCompositeKey = normalizeCompositeKey(entity, key);
@@ -71,7 +69,7 @@ export abstract class EntityStore implements EntityHook {
 
   public delete(
     entityName: string,
-    key: EntityCompositeKey,
+    key: CompositeKey,
     options?: EntityConsistencyOptions | undefined
   ): Promise<void> {
     const entity = this.getEntity(entityName);
@@ -92,7 +90,7 @@ export abstract class EntityStore implements EntityHook {
 
   public query(
     entityName: string,
-    queryKey: EntityQueryKey,
+    queryKey: QueryKey,
     options?: EntityQueryOptions | undefined
   ): Promise<EntityQueryResult> {
     const entity = this.getEntity(entityName);
@@ -192,7 +190,7 @@ export type NormalizedEntityTransactItem = {
 );
 
 export interface NormalizedEntityKeyPartBase extends EntityKeyDefinitionPart {
-  parts: { field: string; value: EntityKeyValue }[];
+  parts: { field: string; value: KeyValue }[];
 }
 
 export type NormalizedEntityKeyPart =
@@ -247,19 +245,17 @@ export type NormalizedEntityCompositeKeyComplete = NormalizedEntityCompositeKey<
  */
 export function normalizeCompositeKey<E extends Entity>(
   entity: E | EntityKeyDefinition,
-  key: Partial<EntityKeyFromEntity<E>>
+  key: Partial<CompositeKey>
 ): NormalizedEntityCompositeKey {
   const keyDef = "partition" in entity ? entity : entity.key;
 
   const partitionCompositeKey = formatNormalizedPart(keyDef.partition, (p, i) =>
-    Array.isArray(key) ? key[i] : (key as EntityCompositeKeyMapFromEntity<E>)[p]
+    Array.isArray(key) ? key[i] : (key as KeyMap)[p]
   );
 
   const sortCompositeKey = keyDef.sort
     ? formatNormalizedPart(keyDef.sort, (p, i) =>
-        Array.isArray(key)
-          ? key[i]
-          : (key as EntityCompositeKeyMapFromEntity<E>)[p]
+        Array.isArray(key) ? key[i] : (key as KeyMap)[p]
       )
     : undefined;
 
@@ -300,7 +296,7 @@ function formatNormalizedPart(
 
 export function convertNormalizedEntityKeyToMap(
   key: NormalizedEntityCompositeKey
-): EntityKeyMap<any, any, any> {
+): KeyMap<any, any, any> {
   console.log("input key", JSON.stringify(key));
   const generatedKey = Object.fromEntries([
     ...key.partition.parts.map(({ field, value }) => [field, value]),

@@ -1,6 +1,6 @@
 import {
   Entity,
-  EntityKeyMap,
+  KeyMap,
   EntityConditionalOperation,
   EntityDeleteOperation,
   EntitySetOperation,
@@ -91,7 +91,7 @@ export interface TransactionExecutor {
 
 interface TransactionFailedItem {
   entityName: string;
-  key: EntityKeyMap<any, any, any>;
+  key: KeyMap<any, any, any>;
 }
 
 export function createTransactionExecutor(
