@@ -3,13 +3,16 @@ import {
   entityServiceTableSuffix,
   ENV_NAMES,
 } from "@eventual/aws-runtime";
-import { EntityKeyDefinitionPart } from "@eventual/core";
 import {
   EntityRuntime,
   EntityStreamFunction,
   normalizeCompositeKey,
 } from "@eventual/core-runtime";
-import { assertNever, TransactionSpec } from "@eventual/core/internal";
+import {
+  assertNever,
+  KeyDefinitionPart,
+  TransactionSpec,
+} from "@eventual/core/internal";
 import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
 import {
   Attribute,
@@ -372,7 +375,7 @@ export class EntityStream extends Construct implements EventualResource {
           : {}),
       };
 
-      function keyTypeToAttributeType(keyDef: EntityKeyDefinitionPart) {
+      function keyTypeToAttributeType(keyDef: KeyDefinitionPart) {
         return keyDef.type === "number"
           ? "N"
           : keyDef.type === "string"
@@ -384,7 +387,7 @@ export class EntityStream extends Construct implements EventualResource {
 }
 
 export function entityKeyDefinitionToAttribute(
-  part: EntityKeyDefinitionPart
+  part: KeyDefinitionPart
 ): Attribute {
   return {
     name: part.keyAttribute,

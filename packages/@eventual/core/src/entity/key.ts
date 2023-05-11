@@ -23,8 +23,10 @@ export type KeyAttribute<Attr extends Attributes> = {
 /**
  * A part of the composite key, either the partition or sort key.
  */
-export type CompositeKeyPart<Attr extends Attributes> =
-  readonly KeyAttribute<Attr>[];
+export type CompositeKeyPart<Attr extends Attributes> = readonly [
+  KeyAttribute<Attr>,
+  ...KeyAttribute<Attr>[]
+];
 
 /**
  * All attributes of the composite key as an object.
@@ -94,6 +96,27 @@ export type CompositeKey<
     | undefined
 > = KeyMap<Attr, Partition, Sort> | KeyTuple<Attr, Partition, Sort>;
 
+export type ProgressiveQueryKey<
+  Attr extends Attributes,
+  Sort extends readonly (keyof Attr)[],
+  Accum extends object = object
+> = Sort extends readonly []
+  ? Accum
+  : Sort extends readonly [
+      infer k extends keyof Attr,
+      ...infer ks extends readonly (keyof Attr)[]
+    ]
+  ?
+      | Accum
+      | ProgressiveQueryKey<
+          Attr,
+          ks,
+          Accum & {
+            [sk in k]: Attr[sk];
+          }
+        >
+  : never;
+
 /**
  * A partial key that can be used to query an entity.
  *
@@ -102,7 +125,6 @@ export type CompositeKey<
  * ```
  *
  * TODO: support expressions like between and starts with on sort properties
- * TODO: support a progressive builder instead of a simple partial.
  */
 export type QueryKey<
   Attr extends Attributes = Attributes,
@@ -110,4 +132,26 @@ export type QueryKey<
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
     | undefined
-> = Partial<CompositeKey<Attr, Partition, Sort>>;
+> =
+  | ({
+      [pk in Partition[number]]: Attr[pk];
+    } & (Sort extends undefined
+      ? // eslint-disable-next-line
+        {}
+      : ProgressiveQueryKey<Attr, Exclude<Sort, undefined>>))
+  | Partial<KeyTuple<Attr, Partition, Sort>>;
+
+/**
+ * A stream query can contain partial sort keys and partial partition keys.
+ */
+export type StreamQueryKey<
+  Attr extends Attributes = Attributes,
+  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined =
+    | CompositeKeyPart<Attr>
+    | undefined
+> = ProgressiveQueryKey<Attr, Partition> &
+  (Sort extends undefined
+    ? // eslint-disable-next-line
+      {}
+    : ProgressiveQueryKey<Attr, Exclude<Sort, undefined>>);

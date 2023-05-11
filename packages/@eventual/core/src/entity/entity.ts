@@ -5,10 +5,7 @@ import {
   EventualCallKind,
 } from "../internal/calls.js";
 import { getEntityHook } from "../internal/entity-hook.js";
-import {
-  computeEntityKeyDefinition,
-  EntityKeyDefinition,
-} from "../internal/entity.js";
+import { computeKeyDefinition, KeyDefinition } from "../internal/entity.js";
 import { entities } from "../internal/global.js";
 import {
   EntitySpec,
@@ -70,7 +67,7 @@ export interface Entity<
     | undefined
 > extends Omit<EntitySpec, "attributes" | "streams" | "partition" | "sort"> {
   kind: "Entity";
-  key: EntityKeyDefinition;
+  key: KeyDefinition;
   attributes: z.ZodObject<EntityZodShape<Attr>>;
   streams: EntityStream<Attr, Partition, Sort>[];
   /**
@@ -282,11 +279,7 @@ export function entity<
     __entityBrand: undefined,
     kind: "Entity",
     name,
-    key: computeEntityKeyDefinition(
-      attributes,
-      options.partition,
-      options.sort
-    ),
+    key: computeKeyDefinition(attributes, options.partition, options.sort),
     attributes,
     streams,
     get: (...args) => {
@@ -405,7 +398,7 @@ export function entity<
     },
   };
 
-  entities().set(name, entity);
+  entities().set(name, entity as any);
 
   return entity;
 }

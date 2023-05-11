@@ -1,6 +1,6 @@
 import type openapi from "openapi3-ts";
 import { Attributes } from "../entity/entity.js";
-import { CompositeKeyPart, QueryKey } from "../entity/key.js";
+import { CompositeKeyPart, StreamQueryKey } from "../entity/key.js";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
 import type { RestParams } from "../http/command.js";
@@ -9,7 +9,7 @@ import type {
   SubscriptionFilter,
   SubscriptionRuntimeProps,
 } from "../subscription.js";
-import { EntityKeyDefinition } from "./entity.js";
+import { KeyDefinition } from "./entity.js";
 import type { TaskSpec } from "./task.js";
 
 /**
@@ -166,7 +166,7 @@ export interface BucketNotificationHandlerSpec {
 
 export interface EntitySpec {
   name: string;
-  key: EntityKeyDefinition;
+  key: KeyDefinition;
   /**
    * An Optional schema for the entity within an entity.
    */
@@ -196,7 +196,7 @@ export interface EntityStreamOptions<
   /**
    * One or more key queries that will be included in the stream.
    */
-  queryKeys?: QueryKey<Attr, Partition, Sort>[];
+  queryKeys?: StreamQueryKey<Attr, Partition, Sort>[];
 }
 
 export interface EntityStreamSpec<

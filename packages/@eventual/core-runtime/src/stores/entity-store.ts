@@ -14,8 +14,8 @@ import type {
 } from "@eventual/core";
 import type {
   EntityHook,
-  EntityKeyDefinition,
-  EntityKeyDefinitionPart,
+  KeyDefinition,
+  KeyDefinitionPart,
 } from "@eventual/core/internal";
 import { EntityProvider } from "../providers/entity-provider.js";
 
@@ -189,7 +189,7 @@ export type NormalizedEntityTransactItem = {
     }
 );
 
-export interface NormalizedEntityKeyPartBase extends EntityKeyDefinitionPart {
+export interface NormalizedEntityKeyPartBase extends KeyDefinitionPart {
   parts: { field: string; value: KeyValue }[];
 }
 
@@ -244,7 +244,7 @@ export type NormalizedEntityCompositeKeyComplete = NormalizedEntityCompositeKey<
  * Generate properties for an entity key given the key definition and key values.
  */
 export function normalizeCompositeKey<E extends Entity>(
-  entity: E | EntityKeyDefinition,
+  entity: E | KeyDefinition,
   key: Partial<CompositeKey>
 ): NormalizedEntityCompositeKey {
   const keyDef = "partition" in entity ? entity : entity.key;
@@ -272,7 +272,7 @@ export function normalizeCompositeKey<E extends Entity>(
 }
 
 function formatNormalizedPart(
-  keyPart: EntityKeyDefinitionPart,
+  keyPart: KeyDefinitionPart,
   valueRetriever: (field: string, index: number) => string | number
 ): NormalizedEntityKeyPart {
   const parts = keyPart.attributes.map((p, i) => ({
