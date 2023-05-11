@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { EntityAttributes, EntityZodShape } from "../entity/entity.js";
+import { Attributes, EntityZodShape } from "../entity/entity.js";
 import { CompositeKeyPart } from "../entity/key.js";
 
 export interface EntityKeyDefinitionPart {
@@ -13,7 +13,7 @@ export interface EntityKeyDefinition {
   sort?: EntityKeyDefinitionPart;
 }
 
-export function computeEntityKeyDefinition<Attr extends EntityAttributes>(
+export function computeEntityKeyDefinition<Attr extends Attributes>(
   attributes: z.ZodObject<EntityZodShape<Attr>>,
   partition: CompositeKeyPart<Attr>,
   sort?: CompositeKeyPart<Attr>

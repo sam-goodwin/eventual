@@ -16,7 +16,7 @@ import {
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
   Entity,
-  EntityAttributes,
+  Attributes,
   EntityConsistencyOptions,
   EntityQueryOptions,
   EntityQueryResult,
@@ -105,7 +105,7 @@ export class AWSEntityStore extends EntityStore {
 
   public override async _set(
     entity: Entity,
-    value: EntityAttributes,
+    value: Attributes,
     key: NormalizedEntityCompositeKeyComplete,
     options?: EntitySetOptions
   ): Promise<{ version: number }> {
@@ -307,7 +307,7 @@ export class AWSEntityStore extends EntityStore {
     }
   }
 
-  private createSetRequest<Attr extends EntityAttributes>(
+  private createSetRequest<Attr extends Attributes>(
     entity: Entity,
     value: Attr,
     key: NormalizedEntityCompositeKey,

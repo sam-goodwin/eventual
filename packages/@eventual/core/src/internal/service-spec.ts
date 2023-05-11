@@ -1,5 +1,5 @@
 import type openapi from "openapi3-ts";
-import { EntityAttributes } from "../entity/entity.js";
+import { Attributes } from "../entity/entity.js";
 import { CompositeKeyPart, QueryKey } from "../entity/key.js";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
@@ -177,7 +177,7 @@ export interface EntitySpec {
 export type EntityStreamOperation = "insert" | "modify" | "remove";
 
 export interface EntityStreamOptions<
-  Attr extends EntityAttributes = EntityAttributes,
+  Attr extends Attributes = Attributes,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
@@ -200,7 +200,7 @@ export interface EntityStreamOptions<
 }
 
 export interface EntityStreamSpec<
-  Attr extends EntityAttributes = EntityAttributes,
+  Attr extends Attributes = Attributes,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>

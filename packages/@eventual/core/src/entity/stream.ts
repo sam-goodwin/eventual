@@ -5,7 +5,7 @@ import {
   isSourceLocation,
 } from "../internal/service-spec.js";
 import type { ServiceContext } from "../service.js";
-import type { Entity, EntityAttributes } from "./entity.js";
+import type { Entity, Attributes } from "./entity.js";
 import type { CompositeKeyPart, KeyMap } from "./key.js";
 
 export interface EntityStreamContext {
@@ -16,7 +16,7 @@ export interface EntityStreamContext {
 }
 
 export interface EntityStreamHandler<
-  Attr extends EntityAttributes = EntityAttributes,
+  Attr extends Attributes = Attributes,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
@@ -32,7 +32,7 @@ export interface EntityStreamHandler<
 }
 
 export interface EntityStreamItemBase<
-  Attr extends EntityAttributes = EntityAttributes,
+  Attr extends Attributes = Attributes,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
@@ -44,7 +44,7 @@ export interface EntityStreamItemBase<
 }
 
 export type EntityStreamItem<
-  Attr extends EntityAttributes = EntityAttributes,
+  Attr extends Attributes = Attributes,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
@@ -55,7 +55,7 @@ export type EntityStreamItem<
   | EntityStreamRemoveItem<Attr, Partition, Sort>;
 
 export interface EntityStreamInsertItem<
-  Attr extends EntityAttributes = EntityAttributes,
+  Attr extends Attributes = Attributes,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
@@ -67,7 +67,7 @@ export interface EntityStreamInsertItem<
 }
 
 export interface EntityStreamModifyItem<
-  Attr extends EntityAttributes = EntityAttributes,
+  Attr extends Attributes = Attributes,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
@@ -81,7 +81,7 @@ export interface EntityStreamModifyItem<
 }
 
 export interface EntityStreamRemoveItem<
-  Attr extends EntityAttributes = EntityAttributes,
+  Attr extends Attributes = Attributes,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
@@ -93,7 +93,7 @@ export interface EntityStreamRemoveItem<
 }
 
 export interface EntityStream<
-  Attr extends EntityAttributes,
+  Attr extends Attributes,
   Partition extends CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined
 > extends EntityStreamSpec<Attr, Partition, Sort> {
@@ -103,7 +103,7 @@ export interface EntityStream<
 }
 
 export function entityStream<
-  Attr extends EntityAttributes,
+  Attr extends Attributes,
   const Partition extends CompositeKeyPart<Attr>,
   const Sort extends CompositeKeyPart<Attr> | undefined
 >(

@@ -1,6 +1,6 @@
 import type {
   Entity,
-  EntityAttributes,
+  Attributes,
   CompositeKey,
   EntityConsistencyOptions,
   KeyMap,
@@ -47,7 +47,7 @@ export abstract class EntityStore implements EntityHook {
 
   public set(
     entityName: string,
-    value: EntityAttributes,
+    value: Attributes,
     options?: EntitySetOptions
   ): Promise<{ version: number }> {
     const entity = this.getEntity(entityName);
@@ -62,7 +62,7 @@ export abstract class EntityStore implements EntityHook {
 
   protected abstract _set(
     entity: Entity,
-    value: EntityAttributes,
+    value: Attributes,
     key: NormalizedEntityCompositeKeyComplete,
     options?: EntitySetOptions
   ): Promise<{ version: number }>;
@@ -176,7 +176,7 @@ export type NormalizedEntityTransactItem = {
 } & (
   | {
       operation: "set";
-      value: EntityAttributes;
+      value: Attributes;
       options?: EntitySetOptions;
     }
   | {

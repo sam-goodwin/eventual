@@ -1,4 +1,4 @@
-import type { EntityAttributes } from "./entity.js";
+import type { Attributes } from "./entity.js";
 
 export type KeyValue = string | number;
 
@@ -11,7 +11,7 @@ export type KeyValue = string | number;
 /**
  * Any attribute name considered to be a valid key attribute.
  */
-export type KeyAttribute<Attr extends EntityAttributes> = {
+export type KeyAttribute<Attr extends Attributes> = {
   [K in keyof Attr]: K extends string
     ? // only include attributes that extend string or number
       Attr[K] extends KeyValue
@@ -23,7 +23,7 @@ export type KeyAttribute<Attr extends EntityAttributes> = {
 /**
  * A part of the composite key, either the partition or sort key.
  */
-export type CompositeKeyPart<Attr extends EntityAttributes> =
+export type CompositeKeyPart<Attr extends Attributes> =
   readonly KeyAttribute<Attr>[];
 
 /**
@@ -39,7 +39,7 @@ export type CompositeKeyPart<Attr extends EntityAttributes> =
  * ```
  */
 export type KeyMap<
-  Attr extends EntityAttributes = any,
+  Attr extends Attributes = any,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
@@ -54,7 +54,7 @@ export type KeyMap<
     {});
 
 export type KeyPartialTuple<
-  Attr extends EntityAttributes,
+  Attr extends Attributes,
   Attrs extends readonly (keyof Attr)[]
 > = Attrs extends []
   ? readonly []
@@ -73,7 +73,7 @@ export type KeyPartialTuple<
  * ```
  */
 export type KeyTuple<
-  Attr extends EntityAttributes,
+  Attr extends Attributes,
   Partition extends CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined
 > = Sort extends undefined
@@ -87,7 +87,7 @@ export type KeyTuple<
  * All attributes in either the partition key and the sort key (when present).
  */
 export type CompositeKey<
-  Attr extends EntityAttributes = EntityAttributes,
+  Attr extends Attributes = Attributes,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
@@ -105,7 +105,7 @@ export type CompositeKey<
  * TODO: support a progressive builder instead of a simple partial.
  */
 export type QueryKey<
-  Attr extends EntityAttributes = EntityAttributes,
+  Attr extends Attributes = Attributes,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>

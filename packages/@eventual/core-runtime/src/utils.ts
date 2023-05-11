@@ -1,7 +1,7 @@
 import type {
   BucketNotificationEvent,
   Entity,
-  EntityAttributes,
+  Attributes,
   CompositeKeyPart,
   KeyTuple,
   EntityStreamItem,
@@ -90,7 +90,7 @@ export function isBucketNotificationEvent(
 }
 
 export function entityStreamMatchesItem<
-  Attr extends EntityAttributes,
+  Attr extends Attributes,
   const Partition extends CompositeKeyPart<Attr>,
   const Sort extends CompositeKeyPart<Attr> | undefined
 >(

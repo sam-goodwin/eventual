@@ -1,6 +1,6 @@
 import {
   Entity,
-  EntityAttributes,
+  Attributes,
   EntityConsistencyOptions,
   KeyValue,
   EntityQueryOptions,
@@ -51,7 +51,7 @@ export class LocalEntityStore extends EntityStore {
 
   protected override async _set(
     entity: Entity,
-    value: EntityAttributes,
+    value: Attributes,
     key: NormalizedEntityCompositeKeyComplete,
     options?: EntitySetOptions
   ): Promise<{ version: number }> {

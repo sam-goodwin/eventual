@@ -19,7 +19,7 @@ import {
 import type { CompositeKey, CompositeKeyPart, QueryKey } from "./key.js";
 import type { EntityStream, EntityStreamHandler } from "./stream.js";
 
-export type EntityBinaryMember =
+export type AttributeBinaryValue =
   | ArrayBuffer
   | Blob
   | Buffer
@@ -37,23 +37,23 @@ export type EntityBinaryMember =
   | BigInt64Array
   | BigUint64Array;
 
-export type EntityValueMember =
-  | EntityAttributes
+export type AttributeValue =
+  | Attributes
   | string
   | number
   | boolean
-  | EntityBinaryMember
-  | Set<string | number | boolean | EntityBinaryMember>
-  | EntityValueMember[];
+  | AttributeBinaryValue
+  | Set<string | number | boolean | AttributeBinaryValue>
+  | AttributeValue[];
 
-export interface EntityAttributes {
-  [key: string]: EntityValueMember;
+export interface Attributes {
+  [key: string]: AttributeValue;
 }
 
 /**
- * Turns a {@link EntityAttributes} type into a Zod {@link z.ZodRawShape}.
+ * Turns a {@link Attributes} type into a Zod {@link z.ZodRawShape}.
  */
-export type EntityZodShape<Attr extends EntityAttributes> = {
+export type EntityZodShape<Attr extends Attributes> = {
   [key in keyof Attr]: z.ZodType<Attr[key]>;
 };
 
@@ -63,7 +63,7 @@ export type EntityZodShape<Attr extends EntityAttributes> = {
  * @see entity
  */
 export interface Entity<
-  Attr extends EntityAttributes = any,
+  Attr extends Attributes = any,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
@@ -124,7 +124,7 @@ export interface Entity<
 }
 
 export interface EntityTransactItem<
-  Attr extends EntityAttributes = any,
+  Attr extends Attributes = any,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
@@ -137,14 +137,14 @@ export interface EntityTransactItem<
     | EntityConditionalOperation<Attr, Partition, Sort>;
 }
 
-export interface EntitySetOperation<Attr extends EntityAttributes = any> {
+export interface EntitySetOperation<Attr extends Attributes = any> {
   operation: "set";
   value: Attr;
   options?: EntitySetOptions;
 }
 
 export interface EntityDeleteOperation<
-  Attr extends EntityAttributes = any,
+  Attr extends Attributes = any,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
@@ -159,7 +159,7 @@ export interface EntityDeleteOperation<
  * Used in transactions, cancels the transaction if the key's version does not match.
  */
 export interface EntityConditionalOperation<
-  Attr extends EntityAttributes = any,
+  Attr extends Attributes = any,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
@@ -185,7 +185,7 @@ export const Entity = {
 };
 
 export interface EntityOptions<
-  Attr extends EntityAttributes,
+  Attr extends Attributes,
   Partition extends CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined = undefined
 > {
@@ -256,7 +256,7 @@ export interface EntityOptions<
  * ```
  */
 export function entity<
-  Attr extends EntityAttributes,
+  Attr extends Attributes,
   const Partition extends CompositeKeyPart<Attr>,
   const Sort extends CompositeKeyPart<Attr> | undefined = undefined
 >(
@@ -410,9 +410,7 @@ export function entity<
   return entity;
 }
 
-export interface EntityQueryResult<
-  Attr extends EntityAttributes = EntityAttributes
-> {
+export interface EntityQueryResult<Attr extends Attributes = Attributes> {
   entries?: EntityWithMetadata<Attr>[];
   /**
    * Returned when there are more values than the limit allowed to return.
@@ -449,9 +447,7 @@ export interface EntitySetOptions extends EntityConsistencyOptions {
   incrementVersion?: boolean;
 }
 
-export interface EntityWithMetadata<
-  Attr extends EntityAttributes = EntityAttributes
-> {
+export interface EntityWithMetadata<Attr extends Attributes = Attributes> {
   value: Attr;
   version: number;
 }
