@@ -1,14 +1,12 @@
 import type {
-  AnyEntity,
+  Entity,
   EntityAttributes,
   EntityCompositeKey,
   EntityCompositeKeyMapFromEntity,
   EntityConsistencyOptions,
-  EntityKeyDefinition,
-  EntityKeyDefinitionPart,
   EntityKeyFromEntity,
   EntityKeyMap,
-  EntityKeyType,
+  EntityKeyValue,
   EntityQueryKey,
   EntityQueryOptions,
   EntityQueryResult,
@@ -16,7 +14,11 @@ import type {
   EntityTransactItem,
   EntityWithMetadata,
 } from "@eventual/core";
-import type { EntityHook } from "@eventual/core/internal";
+import type {
+  EntityHook,
+  EntityKeyDefinition,
+  EntityKeyDefinitionPart,
+} from "@eventual/core/internal";
 import { EntityProvider } from "../providers/entity-provider.js";
 
 export abstract class EntityStore implements EntityHook {
@@ -41,7 +43,7 @@ export abstract class EntityStore implements EntityHook {
   }
 
   protected abstract _getWithMetadata(
-    entity: AnyEntity,
+    entity: Entity,
     key: NormalizedEntityCompositeKeyComplete
   ): Promise<EntityWithMetadata | undefined>;
 
@@ -61,7 +63,7 @@ export abstract class EntityStore implements EntityHook {
   }
 
   protected abstract _set(
-    entity: AnyEntity,
+    entity: Entity,
     value: EntityAttributes,
     key: NormalizedEntityCompositeKeyComplete,
     options?: EntitySetOptions
@@ -83,7 +85,7 @@ export abstract class EntityStore implements EntityHook {
   }
 
   protected abstract _delete(
-    entity: AnyEntity,
+    entity: Entity,
     key: NormalizedEntityCompositeKeyComplete,
     options?: EntityConsistencyOptions | undefined
   ): Promise<void>;
@@ -108,7 +110,7 @@ export abstract class EntityStore implements EntityHook {
   }
 
   protected abstract _query(
-    entity: AnyEntity,
+    entity: Entity,
     queryKey: NormalizedEntityCompositeKey<NormalizedEntityKeyCompletePart>,
     options: EntityQueryOptions | undefined
   ): Promise<EntityQueryResult>;
@@ -171,7 +173,7 @@ export abstract class EntityStore implements EntityHook {
 }
 
 export type NormalizedEntityTransactItem = {
-  entity: AnyEntity;
+  entity: Entity;
   key: NormalizedEntityCompositeKeyComplete;
 } & (
   | {
@@ -190,7 +192,7 @@ export type NormalizedEntityTransactItem = {
 );
 
 export interface NormalizedEntityKeyPartBase extends EntityKeyDefinitionPart {
-  parts: { field: string; value: EntityKeyType }[];
+  parts: { field: string; value: EntityKeyValue }[];
 }
 
 export type NormalizedEntityKeyPart =
@@ -243,7 +245,7 @@ export type NormalizedEntityCompositeKeyComplete = NormalizedEntityCompositeKey<
 /**
  * Generate properties for an entity key given the key definition and key values.
  */
-export function normalizeCompositeKey<E extends AnyEntity>(
+export function normalizeCompositeKey<E extends Entity>(
   entity: E | EntityKeyDefinition,
   key: Partial<EntityKeyFromEntity<E>>
 ): NormalizedEntityCompositeKey {

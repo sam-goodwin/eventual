@@ -1,0 +1,54 @@
+import { z } from "zod";
+import { EntityAttributes, EntityZodShape } from "../entity/entity.js";
+import { EntityCompositeKeyPart } from "../entity/key.js";
+
+export interface EntityKeyDefinitionPart {
+  type: "number" | "string";
+  keyAttribute: string;
+  attributes: readonly string[];
+}
+
+export interface EntityKeyDefinition {
+  partition: EntityKeyDefinitionPart;
+  sort?: EntityKeyDefinitionPart;
+}
+
+export function computeEntityKeyDefinition<Attr extends EntityAttributes>(
+  attributes: z.ZodObject<EntityZodShape<Attr>>,
+  partition: EntityCompositeKeyPart<Attr>,
+  sort?: EntityCompositeKeyPart<Attr>
+): EntityKeyDefinition {
+  const entityZodShape = attributes.shape;
+
+  return {
+    partition: formatKeyDefinitionPart(partition),
+    sort: sort ? formatKeyDefinitionPart(sort) : undefined,
+  };
+
+  function formatKeyDefinitionPart(
+    keyAttributes: EntityCompositeKeyPart<Attr>
+  ): EntityKeyDefinitionPart {
+    const [head, ...tail] = keyAttributes;
+
+    if (!head) {
+      throw new Error(
+        "Entity Key Part must contain at least one segment. Sort Key may be undefined."
+      );
+    }
+
+    // the value will be a number if there is a single part to the composite key part and the value is already a number.
+    // else a string will be formatted
+    const type =
+      tail.length === 0 && entityZodShape[head] instanceof z.ZodNumber
+        ? "number"
+        : "string";
+
+    const attribute = keyAttributes.join("|");
+
+    return {
+      type,
+      keyAttribute: attribute,
+      attributes: keyAttributes,
+    };
+  }
+}

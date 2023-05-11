@@ -15,9 +15,8 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
-  AnyEntity,
+  Entity,
   EntityAttributes,
-  EntityAttributesFromEntity,
   EntityConsistencyOptions,
   EntityQueryOptions,
   EntityQueryResult,
@@ -46,12 +45,20 @@ export interface AWSEntityStoreProps {
   entityProvider: EntityProvider;
 }
 
-export type EntityAttributesWithVersion<E extends AnyEntity> =
+export type EntityAttributesFromEntity<E extends Entity> = E extends Entity<
+  infer Attributes,
+  any,
+  any
+>
+  ? Attributes
+  : never;
+
+export type EntityAttributesWithVersion<E extends Entity> =
   EntityAttributesFromEntity<E> & {
     __version: number;
   };
 
-export type MarshalledEntityAttributesWithVersion<E extends AnyEntity> = {
+export type MarshalledEntityAttributesWithVersion<E extends Entity> = {
   [k in keyof EntityAttributesFromEntity<E>]: AttributeValue;
 } & {
   __version: AttributeValue.NMember;
@@ -63,7 +70,7 @@ export class AWSEntityStore extends EntityStore {
   }
 
   protected override async _getWithMetadata(
-    entity: AnyEntity,
+    entity: Entity,
     key: NormalizedEntityCompositeKeyComplete
   ): Promise<EntityWithMetadata | undefined> {
     const item = await this.props.dynamo.send(
@@ -97,7 +104,7 @@ export class AWSEntityStore extends EntityStore {
   }
 
   public override async _set(
-    entity: AnyEntity,
+    entity: Entity,
     value: EntityAttributes,
     key: NormalizedEntityCompositeKeyComplete,
     options?: EntitySetOptions
@@ -122,7 +129,7 @@ export class AWSEntityStore extends EntityStore {
   }
 
   protected override async _delete(
-    entity: AnyEntity,
+    entity: Entity,
     key: NormalizedEntityCompositeKeyComplete,
     options?: EntityConsistencyOptions | undefined
   ): Promise<void> {
@@ -138,7 +145,7 @@ export class AWSEntityStore extends EntityStore {
   }
 
   private createDeleteRequest(
-    entity: AnyEntity,
+    entity: Entity,
     key: NormalizedEntityCompositeKeyComplete,
     options?: EntityConsistencyOptions
   ): Delete {
@@ -163,7 +170,7 @@ export class AWSEntityStore extends EntityStore {
   }
 
   protected override async _query(
-    entity: AnyEntity,
+    entity: Entity,
     queryKey: NormalizedEntityCompositeKey<NormalizedEntityKeyCompletePart>,
     options?: EntityQueryOptions
   ): Promise<EntityQueryResult> {
@@ -301,7 +308,7 @@ export class AWSEntityStore extends EntityStore {
   }
 
   private createSetRequest<Attr extends EntityAttributes>(
-    entity: AnyEntity,
+    entity: Entity,
     value: Attr,
     key: NormalizedEntityCompositeKey,
     options?: EntitySetOptions
@@ -372,7 +379,7 @@ export class AWSEntityStore extends EntityStore {
     return marshalledKey;
   }
 
-  private tableName(entity: AnyEntity) {
+  private tableName(entity: Entity) {
     return entityServiceTableName(getLazy(this.props.serviceName), entity.name);
   }
 }

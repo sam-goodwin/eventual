@@ -1,8 +1,8 @@
 import {
-  AnyEntity,
+  Entity,
   EntityAttributes,
   EntityConsistencyOptions,
-  EntityKeyType,
+  EntityKeyValue,
   EntityQueryOptions,
   EntityQueryResult,
   EntitySetOptions,
@@ -33,7 +33,7 @@ export interface LocalEntityStoreProps {
 export class LocalEntityStore extends EntityStore {
   private entities: Record<
     string,
-    Map<EntityKeyType, Map<EntityKeyType, EntityWithMetadata>>
+    Map<EntityKeyValue, Map<EntityKeyValue, EntityWithMetadata>>
   > = {};
 
   constructor(private props: LocalEntityStoreProps) {
@@ -41,7 +41,7 @@ export class LocalEntityStore extends EntityStore {
   }
 
   protected override async _getWithMetadata(
-    entity: AnyEntity,
+    entity: Entity,
     key: NormalizedEntityCompositeKeyComplete
   ): Promise<EntityWithMetadata | undefined> {
     return this.getPartitionMap(entity, key.partition).get(
@@ -50,7 +50,7 @@ export class LocalEntityStore extends EntityStore {
   }
 
   protected override async _set(
-    entity: AnyEntity,
+    entity: Entity,
     value: EntityAttributes,
     key: NormalizedEntityCompositeKeyComplete,
     options?: EntitySetOptions
@@ -88,7 +88,7 @@ export class LocalEntityStore extends EntityStore {
   }
 
   protected override async _delete(
-    entity: AnyEntity,
+    entity: Entity,
     key: NormalizedEntityCompositeKeyComplete,
     options?: EntityConsistencyOptions | undefined
   ): Promise<void> {
@@ -118,7 +118,7 @@ export class LocalEntityStore extends EntityStore {
   }
 
   protected override async _query(
-    entity: AnyEntity,
+    entity: Entity,
     queryKey: NormalizedEntityCompositeKey<NormalizedEntityKeyCompletePart>,
     options?: EntityQueryOptions
   ): Promise<EntityQueryResult> {
@@ -216,16 +216,16 @@ export class LocalEntityStore extends EntityStore {
   }
 
   private getPartitionMap(
-    entity: AnyEntity,
+    entity: Entity,
     partitionKey: NormalizedEntityKeyCompletePart
   ) {
     const _entity = (this.entities[entity.name] ??= new Map<
-      EntityKeyType,
-      Map<EntityKeyType, EntityWithMetadata>
+      EntityKeyValue,
+      Map<EntityKeyValue, EntityWithMetadata>
     >());
     let partitionMap = _entity.get(partitionKey.keyValue);
     if (!partitionMap) {
-      partitionMap = new Map<EntityKeyType, EntityWithMetadata>();
+      partitionMap = new Map<EntityKeyValue, EntityWithMetadata>();
       _entity.set(partitionKey.keyValue, partitionMap);
     }
     return partitionMap;

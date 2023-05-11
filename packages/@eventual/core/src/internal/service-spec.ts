@@ -1,4 +1,6 @@
 import type openapi from "openapi3-ts";
+import { EntityAttributes } from "../entity/entity.js";
+import { EntityCompositeKeyPart, EntityQueryKey } from "../entity/key.js";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
 import type { RestParams } from "../http/command.js";
@@ -7,13 +9,8 @@ import type {
   SubscriptionFilter,
   SubscriptionRuntimeProps,
 } from "../subscription.js";
+import { EntityKeyDefinition } from "./entity.js";
 import type { TaskSpec } from "./task.js";
-import {
-  EntityAttributes,
-  EntityCompositeKeyPart,
-  EntityQueryKey,
-  EntityKeyDefinition,
-} from "../entity.js";
 
 /**
  * Specification for an Eventual application

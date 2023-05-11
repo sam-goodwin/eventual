@@ -1,6 +1,6 @@
 import type { Bucket } from "../bucket.js";
 import type { ConditionPredicate } from "../condition.js";
-import type { AnyEntity, EntityTransactItem } from "../entity.js";
+import type { Entity, EntityTransactItem } from "../entity/entity.js";
 import type { EventEnvelope } from "../event.js";
 import type { DurationSchedule, Schedule } from "../schedule.js";
 import type { WorkflowExecutionOptions } from "../workflow.js";
@@ -114,7 +114,7 @@ export type EntityOperation<
   ? {
       operation: Op;
       entityName: string;
-      params: Parameters<AnyEntity[Op]>;
+      params: Parameters<Entity[Op]>;
     }
   : EntityTransactOperation;
 

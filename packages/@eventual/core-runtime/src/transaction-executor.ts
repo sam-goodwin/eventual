@@ -1,5 +1,5 @@
 import {
-  AnyEntity,
+  Entity,
   EntityKeyMap,
   EntityConditionalOperation,
   EntityDeleteOperation,
@@ -162,7 +162,7 @@ export function createTransactionExecutor(
               isEntityOperationOfType("delete", eventual)
             ) {
               return createEventualPromise<
-                Awaited<ReturnType<AnyEntity["delete"] | AnyEntity["set"]>>
+                Awaited<ReturnType<Entity["delete"] | Entity["set"]>>
               >(async () => {
                 const entity = getEntity(eventual.entityName);
                 // should either by the key or the value object, which can be used as the key
@@ -289,7 +289,7 @@ export function createTransactionExecutor(
                       expectedVersion:
                         options?.expectedVersion ?? retrievedVersion,
                     },
-                  } satisfies EntitySetOperation<any>)
+                  } satisfies EntitySetOperation)
                 : ({
                     operation: "delete",
                     key: call.params[0],
@@ -298,7 +298,7 @@ export function createTransactionExecutor(
                       expectedVersion:
                         options?.expectedVersion ?? retrievedVersion,
                     },
-                  } satisfies EntityDeleteOperation<any>),
+                  } satisfies EntityDeleteOperation),
           };
         } else {
           // values that are retrieved only, will be checked using a condition
