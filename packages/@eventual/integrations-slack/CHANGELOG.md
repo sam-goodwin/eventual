@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.37.0 (2023-05-12)
+
+### Features
+
+- refactor entities ([#345](https://github.com/functionless/eventual/issues/345)) ([b1c39b1](https://github.com/functionless/eventual/commit/b1c39b1cb62b58bc387c8d9274ee81e794897825))
+
 ## 0.36.1 (2023-05-08)
 
 **Note:** Version bump only for package @eventual/integrations-slack
