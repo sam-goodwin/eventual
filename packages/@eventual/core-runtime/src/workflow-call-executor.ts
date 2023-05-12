@@ -311,6 +311,12 @@ export class WorkflowCallExecutor {
     async function invokeEntityOperation(operation: EntityOperation) {
       if (isEntityOperationOfType("transact", operation)) {
         return self.props.entityStore.transactWrite(operation.items);
+      } else if (isEntityOperationOfType("queryIndex", operation)) {
+        return self.props.entityStore.queryIndex(
+          operation.entityName,
+          operation.indexName,
+          ...operation.params
+        );
       }
       return self.props.entityStore[operation.operation](
         operation.entityName,

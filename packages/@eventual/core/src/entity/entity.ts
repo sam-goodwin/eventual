@@ -333,8 +333,17 @@ export function entity<
         sort: indexOptions.sort,
         entityName: name,
         query: (...args) => {
-          return getEventualCallHook().registerEventualCall(undefined, () =>
-            getEntityHook().queryIndex(name, indexName, ...args)
+          return getEventualCallHook().registerEventualCall(
+            createEventualCall<EntityCall<"queryIndex">>(
+              EventualCallKind.EntityCall,
+              {
+                entityName: name,
+                indexName,
+                operation: "queryIndex",
+                params: args,
+              }
+            ),
+            () => getEntityHook().queryIndex(name, indexName, ...args)
           );
         },
       };

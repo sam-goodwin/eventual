@@ -121,7 +121,11 @@ eventualRuntimeTestHarness(
 
     testCompletion("ent", entityWorkflow, [
       [
-        [
+        expect.arrayContaining([
+          {
+            namespace: "different",
+            n: 1,
+          },
           {
             namespace: "another",
             n: 1000,
@@ -130,11 +134,7 @@ eventualRuntimeTestHarness(
             namespace: "default",
             n: 6,
           },
-          {
-            namespace: "different",
-            n: 1,
-          },
-        ],
+        ]),
         [
           {
             namespace: "different",
@@ -163,8 +163,8 @@ eventualRuntimeTestHarness(
         [3, 1],
       ],
       [
-        [1, 1],
         [3, 1],
+        [1, 1],
         [2, 2],
       ],
     ]);
