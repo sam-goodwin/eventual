@@ -11,6 +11,7 @@ import type {
   EntitySetOptions,
   EntityTransactItem,
   EntityWithMetadata,
+  EntityIndex,
 } from "@eventual/core";
 import type {
   EntityHook,
@@ -107,8 +108,39 @@ export abstract class EntityStore implements EntityHook {
     );
   }
 
+  public queryIndex(
+    entityName: string,
+    indexName: string,
+    queryKey: QueryKey,
+    options?: EntityQueryOptions | undefined
+  ): Promise<EntityQueryOptions> {
+    const index = this.getEntity(entityName).indices.find(
+      (i) => i.name === indexName
+    );
+
+    if (!index) {
+      throw new Error(
+        `Index ${indexName} was not found on entity ${entityName}`
+      );
+    }
+
+    const normalizedKey = normalizeCompositeKey(index.key, queryKey);
+
+    if (!isCompleteKeyPart(normalizedKey.partition)) {
+      throw new Error(
+        "Entity Index partition key cannot be partial for query."
+      );
+    }
+
+    return this._query(
+      index,
+      normalizedKey as NormalizedEntityCompositeKey<NormalizedEntityKeyCompletePart>,
+      options
+    );
+  }
+
   protected abstract _query(
-    entity: Entity,
+    entity: Entity | EntityIndex,
     queryKey: NormalizedEntityCompositeKey<NormalizedEntityKeyCompletePart>,
     options: EntityQueryOptions | undefined
   ): Promise<EntityQueryResult>;

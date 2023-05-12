@@ -1,4 +1,10 @@
-import type { Entity, EntityTransactItem } from "../entity/entity.js";
+import type {
+  Entity,
+  EntityQueryOptions,
+  EntityQueryResult,
+  EntityTransactItem,
+} from "../entity/entity.js";
+import { QueryKey } from "../entity/key.js";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -9,7 +15,7 @@ export type EntityMethod = Exclude<
   {
     [k in keyof Entity]: [Entity[k]] extends [Function] ? k : never;
   }[keyof Entity],
-  "partition" | "sort" | "stream" | undefined
+  "partition" | "sort" | "stream" | "index" | undefined
 >;
 
 /**
@@ -23,6 +29,12 @@ export type EntityHook = {
     ...args: Parameters<Entity[K]>
   ) => ReturnType<Entity[K]>;
 } & {
+  queryIndex(
+    entityName: string,
+    indexName: string,
+    queryKey: QueryKey,
+    options?: EntityQueryOptions
+  ): Promise<EntityQueryResult>;
   transactWrite(items: EntityTransactItem[]): Promise<void>;
 };
 

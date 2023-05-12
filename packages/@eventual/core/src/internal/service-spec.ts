@@ -172,6 +172,7 @@ export interface EntitySpec {
    */
   attributes: openapi.SchemaObject;
   streams: EntityStreamSpec[];
+  indices: EntityIndexSpec[];
 }
 
 export type EntityStreamOperation = "insert" | "modify" | "remove";
@@ -210,6 +211,14 @@ export interface EntityStreamSpec<
   entityName: string;
   options?: EntityStreamOptions<Attr, Partition, Sort>;
   sourceLocation?: SourceLocation;
+}
+
+export interface EntityIndexSpec {
+  name: string;
+  entityName: string;
+  key: KeyDefinition;
+  partition?: CompositeKeyPart<any>;
+  sort?: CompositeKeyPart<any>;
 }
 
 export interface TransactionSpec {
