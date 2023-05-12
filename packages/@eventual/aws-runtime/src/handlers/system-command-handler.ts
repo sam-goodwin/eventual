@@ -36,7 +36,7 @@ function systemCommandWorker(
   return createApiGCommandAdaptor({
     commandWorker: createCommandWorker({
       bucketStore: createBucketStore(),
-      entityClient: undefined,
+      entityStore: undefined,
       serviceClient: undefined,
       serviceSpec: undefined,
     }),

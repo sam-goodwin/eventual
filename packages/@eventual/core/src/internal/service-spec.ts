@@ -1,4 +1,6 @@
 import type openapi from "openapi3-ts";
+import { Attributes } from "../entity/entity.js";
+import { CompositeKeyPart, StreamQueryKey } from "../entity/key.js";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
 import type { RestParams } from "../http/command.js";
@@ -7,6 +9,7 @@ import type {
   SubscriptionFilter,
   SubscriptionRuntimeProps,
 } from "../subscription.js";
+import { KeyDefinition } from "./entity.js";
 import type { TaskSpec } from "./task.js";
 
 /**
@@ -163,16 +166,23 @@ export interface BucketNotificationHandlerSpec {
 
 export interface EntitySpec {
   name: string;
+  key: KeyDefinition;
   /**
    * An Optional schema for the entity within an entity.
    */
-  schema?: openapi.SchemaObject;
+  attributes: openapi.SchemaObject;
   streams: EntityStreamSpec[];
 }
 
 export type EntityStreamOperation = "insert" | "modify" | "remove";
 
-export interface EntityStreamOptions extends FunctionRuntimeProps {
+export interface EntityStreamOptions<
+  Attr extends Attributes = Attributes,
+  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined =
+    | CompositeKeyPart<Attr>
+    | undefined
+> extends FunctionRuntimeProps {
   /**
    * A list of operations to be send to the stream.
    *
@@ -184,23 +194,21 @@ export interface EntityStreamOptions extends FunctionRuntimeProps {
    */
   includeOld?: boolean;
   /**
-   * A subset of namespaces to include in the stream.
-   *
-   * If neither `namespaces` or `namespacePrefixes` are provided, all namespaces will be sent.
+   * One or more key queries that will be included in the stream.
    */
-  namespaces?: string[];
-  /**
-   * One or more namespace prefixes to match.
-   *
-   * If neither `namespaces` or `namespacePrefixes` are provided, all namespaces will be sent.
-   */
-  namespacePrefixes?: string[];
+  queryKeys?: StreamQueryKey<Attr, Partition, Sort>[];
 }
 
-export interface EntityStreamSpec {
+export interface EntityStreamSpec<
+  Attr extends Attributes = Attributes,
+  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined =
+    | CompositeKeyPart<Attr>
+    | undefined
+> {
   name: string;
   entityName: string;
-  options?: EntityStreamOptions;
+  options?: EntityStreamOptions<Attr, Partition, Sort>;
   sourceLocation?: SourceLocation;
 }
 

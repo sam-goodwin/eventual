@@ -11,7 +11,7 @@ import {
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 import {
   createBucketStore,
-  createEntityClient,
+  createEntityStore,
   createEventClient,
   createExecutionQueueClient,
   createExecutionStore,
@@ -26,7 +26,7 @@ import { serviceName, serviceUrl } from "../env.js";
 
 const worker = createTaskWorker({
   bucketStore: createBucketStore(),
-  entityClient: createEntityClient(),
+  entityStore: createEntityStore(),
   eventClient: createEventClient(),
   executionQueueClient: createExecutionQueueClient(),
   logAgent: createLogAgent(),

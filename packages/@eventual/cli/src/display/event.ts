@@ -1,10 +1,10 @@
-import type { EntityConditionalOperation } from "@eventual/core";
-import { normalizeCompositeKey } from "@eventual/core-runtime";
+import type { EntityTransactItem } from "@eventual/core";
 import {
   BucketRequest,
   EntityOperation,
   isBucketRequest,
   isChildWorkflowScheduled,
+  isEntityOperationOfType,
   isEntityRequest,
   isSignalReceived,
   isSignalSent,
@@ -47,46 +47,72 @@ export function displayEvent(event: WorkflowEvent) {
   return lines.join("\n");
 }
 
-function displayEntityCommand(
-  operation: EntityOperation | EntityConditionalOperation
-) {
+function displayEntityCommand(operation: EntityOperation) {
   const output: string[] = [`Operation: ${operation.operation}`];
   if (operation.operation === "transact") {
     output.push(`Transaction Items:`);
     output.push(
       ...operation.items.flatMap((item, i) => [
         `${i}:`,
-        ...displayEntityCommand({
-          ...item.operation,
-          name:
-            typeof item.entity === "string" ? item.entity : item.entity.name,
-        }).map((v) => `\t${v}`),
+        ...displayEntityTransactItem(item).map((v) => `\t${v}`),
       ])
     );
   } else {
-    output.push(`Ent: ${operation.name}`);
-    if ("key" in operation) {
-      const { key, namespace } = normalizeCompositeKey(operation.key);
-      if (namespace) {
-        output.push(`Namespace: ${namespace}`);
+    output.push(`Ent: ${operation.entityName}`);
+    if (
+      isEntityOperationOfType("delete", operation) ||
+      isEntityOperationOfType("get", operation) ||
+      isEntityOperationOfType("getWithMetadata", operation)
+    ) {
+      const [key] = operation.params;
+      output.push(`Key: ${JSON.stringify(key)}`);
+    }
+    if (isEntityOperationOfType("set", operation)) {
+      const [value] = operation.params;
+      output.push(`Entity: ${JSON.stringify(value)}`);
+    }
+    if (
+      isEntityOperationOfType("set", operation) ||
+      isEntityOperationOfType("delete", operation)
+    ) {
+      const [, options] = operation.params;
+      if (options?.expectedVersion) {
+        output.push(`Expected Version: ${options.expectedVersion}`);
       }
-      output.push(`Key: ${key}`);
-      if (operation.operation === "set") {
-        output.push(`Entity: ${JSON.stringify(operation.value)}`);
-        if (operation.options?.expectedVersion) {
-          output.push(`Expected Version: ${operation.options.expectedVersion}`);
-        }
-      }
-    } else {
-      if (operation.request.namespace) {
-        output.push(`Namespace: ${operation.request.prefix}`);
-      }
-      if (operation.request.prefix) {
-        output.push(`Prefix: ${operation.request.prefix}`);
-      }
+    }
+    if (isEntityOperationOfType("query", operation)) {
+      const [key] = operation.params;
+      output.push(`Key: ${JSON.stringify(key)}`);
     }
   }
   return output;
+}
+
+function displayEntityTransactItem(item: EntityTransactItem): string[] {
+  const entityName =
+    typeof item.entity === "string" ? item.entity : item.entity.name;
+  if (item.operation === "set") {
+    return displayEntityCommand({
+      operation: "set",
+      entityName,
+      params: [item.value, item.options],
+    });
+  } else if (item.operation === "delete") {
+    return displayEntityCommand({
+      operation: "delete",
+      entityName,
+      params: [item.key, item.options],
+    });
+  } else {
+    const output = [
+      `Operation: ${item.operation}`,
+      `Key: ${JSON.stringify(item.key)}`,
+    ];
+    if (item.version !== undefined) {
+      output.push(`Version: ${item.version}`);
+    }
+    return output;
+  }
 }
 
 function displayBucketRequest(request: BucketRequest) {

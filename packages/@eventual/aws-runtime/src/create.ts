@@ -9,9 +9,9 @@ import { Client, Pluggable } from "@aws-sdk/types";
 import { AWSHttpEventualClient } from "@eventual/aws-client";
 import { LogLevel } from "@eventual/core";
 import {
-  EntityClient,
   ExecutionQueueClient,
   ExecutionStore,
+  GlobalEntityProvider,
   GlobalTaskProvider,
   GlobalWorkflowProvider,
   LogAgent,
@@ -217,15 +217,12 @@ export const createExecutionHistoryStateStore = /* @__PURE__ */ memoize(
     })
 );
 
-export const createEntityClient = memoize(
-  () => new EntityClient(createEntityStore())
-);
-
 export const createEntityStore = memoize(
   () =>
     new AWSEntityStore({
       dynamo: dynamo(),
       serviceName: env.serviceName,
+      entityProvider: new GlobalEntityProvider(),
     })
 );
 

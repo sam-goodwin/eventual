@@ -2,17 +2,22 @@ import serviceSpec from "@eventual/injected/spec";
 // the user's entry point will register streams as a side effect.
 import "@eventual/injected/entry";
 
-import { EntityStreamItem } from "@eventual/core";
+import type { AttributeValue } from "@aws-sdk/client-dynamodb";
+import { unmarshall } from "@aws-sdk/util-dynamodb";
+import type { EntityStreamItem } from "@eventual/core";
 import {
+  GlobalEntityProvider,
+  convertNormalizedEntityKeyToMap,
   createEntityStreamWorker,
   getLazy,
+  normalizeCompositeKey,
   promiseAllSettledPartitioned,
 } from "@eventual/core-runtime";
-import { EntityStreamOperation } from "@eventual/core/internal";
-import { DynamoDBStreamHandler } from "aws-lambda";
+import type { EntityStreamOperation } from "@eventual/core/internal";
+import type { DynamoDBStreamHandler } from "aws-lambda";
 import {
   createBucketStore,
-  createEntityClient,
+  createEntityStore,
   createServiceClient,
 } from "../create.js";
 import {
@@ -23,9 +28,11 @@ import {
 } from "../env.js";
 import { EntityEntityRecord } from "../stores/entity-store.js";
 
+const entityProvider = new GlobalEntityProvider();
+
 const worker = createEntityStreamWorker({
   bucketStore: createBucketStore(),
-  entityClient: createEntityClient(),
+  entityStore: createEntityStore(),
   serviceClient: createServiceClient({}),
   serviceSpec,
   serviceName,
@@ -40,9 +47,6 @@ export default (async (event) => {
     records,
     async (record) => {
       try {
-        const keys = record.dynamodb?.Keys as Partial<EntityEntityRecord>;
-        const pk = keys?.pk?.S;
-        const sk = keys?.sk?.S;
         const operation = record.eventName?.toLowerCase() as
           | EntityStreamOperation
           | undefined;
@@ -53,29 +57,58 @@ export default (async (event) => {
           | Partial<EntityEntityRecord>
           | undefined;
 
-        if (pk && sk && operation) {
-          const namespace =
-            EntityEntityRecord.parseNamespaceFromPartitionKey(pk);
-          const key = EntityEntityRecord.parseKeyFromSortKey(sk);
+        const _entityName = getLazy(entityName);
+        const entity = entityProvider.getEntity(_entityName);
 
-          const item: EntityStreamItem<any> = {
+        if (!entity) {
+          throw new Error(`Entity ${_entityName} was not found`);
+        }
+
+        const newValue = newItem
+          ? unmarshall(newItem as Record<string, AttributeValue>)
+          : undefined;
+        const newVersion = newValue?.__version;
+
+        const oldValue = oldItem
+          ? unmarshall(oldItem as Record<string, AttributeValue>)
+          : undefined;
+        const oldVersion = oldValue?.__version;
+
+        const bestValue = newValue ?? oldValue;
+        if (!bestValue) {
+          throw new Error(
+            "Expected at least one of old value or new value in the stream event."
+          );
+        }
+
+        const normalizedKey = normalizeCompositeKey(entity, bestValue);
+        const keyMap = convertNormalizedEntityKeyToMap(normalizedKey);
+
+        if (newValue) {
+          delete newValue[EntityEntityRecord.VERSION_FIELD];
+          delete newValue[normalizedKey.partition.keyAttribute];
+          if (normalizedKey.sort) {
+            delete newValue[normalizedKey.sort.keyAttribute];
+          }
+        }
+        if (oldValue) {
+          delete oldValue[EntityEntityRecord.VERSION_FIELD];
+          delete oldValue[normalizedKey.partition.keyAttribute];
+          if (normalizedKey.sort) {
+            delete oldValue[normalizedKey.sort.keyAttribute];
+          }
+        }
+
+        if (operation) {
+          const item: EntityStreamItem = {
             entityName: getLazy(entityName),
             streamName: getLazy(entityStreamName),
-            namespace,
-            key,
-            newValue: newItem?.value?.S
-              ? JSON.parse(newItem?.value?.S)
-              : undefined,
-            newVersion: newItem?.version?.N
-              ? Number(newItem?.version?.N)
-              : (undefined as any),
+            key: keyMap,
+            newValue: newValue as any,
+            newVersion,
             operation,
-            oldValue: oldItem?.value?.S
-              ? JSON.parse(oldItem?.value?.S)
-              : undefined,
-            oldVersion: oldItem?.version?.N
-              ? Number(oldItem?.version?.N)
-              : undefined,
+            oldValue,
+            oldVersion,
           };
 
           return worker(item);

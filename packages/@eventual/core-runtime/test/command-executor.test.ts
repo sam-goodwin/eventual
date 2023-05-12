@@ -1,5 +1,4 @@
 import {
-  Entity,
   EventEnvelope,
   Schedule,
   SendSignalRequest,
@@ -7,7 +6,6 @@ import {
 } from "@eventual/core";
 import {
   ChildWorkflowScheduled,
-  EntityMethods,
   EntityRequest,
   EventsEmitted,
   SignalSent,
@@ -18,7 +16,6 @@ import {
   WorkflowEventType,
 } from "@eventual/core/internal";
 import { jest } from "@jest/globals";
-import { EntityClient } from "../src/clients/entity-client.js";
 import { EventClient } from "../src/clients/event-client.js";
 import { ExecutionQueueClient } from "../src/clients/execution-queue-client.js";
 import { TaskClient } from "../src/clients/task-client.js";
@@ -29,17 +26,18 @@ import {
 import { TransactionClient } from "../src/clients/transaction-client.js";
 import { WorkflowClient } from "../src/clients/workflow-client.js";
 import {
-  INTERNAL_EXECUTION_ID_PREFIX,
   formatChildExecutionName,
   formatExecutionId,
+  INTERNAL_EXECUTION_ID_PREFIX,
 } from "../src/execution.js";
 import { BucketStore } from "../src/stores/bucket-store.js";
+import { EntityStore } from "../src/stores/entity-store.js";
 import { WorkflowCallExecutor } from "../src/workflow-call-executor.js";
 import {
   awaitTimerCall,
   childWorkflowCall,
-  entityRequestCall,
   emitEventCall,
+  entityRequestCall,
   sendSignalCall,
   taskCall,
 } from "./call-util.js";
@@ -61,17 +59,13 @@ const mockExecutionQueueClient = {
     jest.fn() as ExecutionQueueClient["submitExecutionEvents"],
   sendSignal: jest.fn() as ExecutionQueueClient["sendSignal"],
 } satisfies Partial<ExecutionQueueClient> as ExecutionQueueClient;
-const mockEntity = {
-  get: jest.fn() as Entity<any>["get"],
-  getWithMetadata: jest.fn() as Entity<any>["getWithMetadata"],
-  set: jest.fn() as Entity<any>["set"],
-  delete: jest.fn() as Entity<any>["delete"],
-  list: jest.fn() as Entity<any>["list"],
-  listKeys: jest.fn() as Entity<any>["listKeys"],
-} satisfies EntityMethods<any>;
-const mockEntityClient = {
-  getEntity: jest.fn() as EntityClient["getEntity"],
-} satisfies Partial<EntityClient> as EntityClient;
+const mockEntityStore = {
+  get: jest.fn() as EntityStore["get"],
+  getWithMetadata: jest.fn() as EntityStore["getWithMetadata"],
+  set: jest.fn() as EntityStore["set"],
+  delete: jest.fn() as EntityStore["delete"],
+  query: jest.fn() as EntityStore["query"],
+} satisfies Partial<EntityStore> as EntityStore;
 const mockTransactionClient = {
   executeTransaction: jest.fn() as TransactionClient["executeTransaction"],
 } satisfies Partial<TransactionClient> as TransactionClient;
@@ -79,7 +73,7 @@ const mockBucketStore = {} satisfies Partial<BucketStore> as BucketStore;
 
 const testExecutor = new WorkflowCallExecutor({
   bucketStore: mockBucketStore,
-  entityClient: mockEntityClient,
+  entityStore: mockEntityStore,
   eventClient: mockEventClient,
   executionQueueClient: mockExecutionQueueClient,
   taskClient: mockTaskClient,
@@ -94,10 +88,6 @@ const workflow = {
 const executionId = "execId/123";
 
 const baseTime = new Date();
-
-beforeEach(() => {
-  (mockEntityClient.getEntity as jest.Mock<any>).mockResolvedValue(mockEntity);
-});
 
 afterEach(() => {
   jest.resetAllMocks();
@@ -278,17 +268,19 @@ describe("entity request", () => {
     const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      entityRequestCall({ name: "ent", operation: "get", key: "key" }, 0),
+      entityRequestCall(
+        { entityName: "ent", operation: "get", params: [["key"]] },
+        0
+      ),
       baseTime
     );
 
-    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("ent");
-    expect(mockEntity.get).toHaveBeenCalledWith("key");
+    expect(mockEntityStore.get).toHaveBeenCalledWith("ent", ["key"]);
 
     expect(event).toMatchObject<EntityRequest>({
       seq: 0,
       type: WorkflowEventType.EntityRequest,
-      operation: { name: "ent", operation: "get", key: "key" },
+      operation: { entityName: "ent", operation: "get", params: [["key"]] },
       timestamp: expect.stringContaining("Z"),
     });
   });
@@ -298,23 +290,28 @@ describe("entity request", () => {
       workflow,
       executionId,
       entityRequestCall(
-        { name: "ent", operation: "set", key: "key", value: "some value" },
+        {
+          entityName: "ent",
+          operation: "set",
+          params: [{ key: "key", value: "some value" }],
+        },
         0
       ),
       baseTime
     );
 
-    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("ent");
-    expect(mockEntity.set).toHaveBeenCalledWith("key", "some value", undefined);
+    expect(mockEntityStore.set).toHaveBeenCalledWith("ent", {
+      key: "key",
+      value: "some value",
+    });
 
     expect(event).toMatchObject<EntityRequest>({
       seq: 0,
       type: WorkflowEventType.EntityRequest,
       operation: {
-        name: "ent",
+        entityName: "ent",
         operation: "set",
-        key: "key",
-        value: "some value",
+        params: [{ key: "key", value: "some value" }],
       },
       timestamp: expect.stringContaining("Z"),
     });
@@ -324,55 +321,48 @@ describe("entity request", () => {
     const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      entityRequestCall({ name: "ent", operation: "delete", key: "key" }, 0),
+      entityRequestCall(
+        { entityName: "ent", operation: "delete", params: [["key"]] },
+        0
+      ),
       baseTime
     );
 
-    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("ent");
-    expect(mockEntity.delete).toHaveBeenCalledWith("key", undefined);
+    expect(mockEntityStore.delete).toHaveBeenCalledWith("ent", ["key"]);
 
     expect(event).toMatchObject<EntityRequest>({
       seq: 0,
       type: WorkflowEventType.EntityRequest,
-      operation: { name: "ent", operation: "delete", key: "key" },
+      operation: { entityName: "ent", operation: "delete", params: [["key"]] },
       timestamp: expect.stringContaining("Z"),
     });
   });
 
-  test("list", async () => {
+  test("query", async () => {
     const event = await testExecutor.executeCall(
       workflow,
       executionId,
-      entityRequestCall({ name: "ent", operation: "list", request: {} }, 0),
+      entityRequestCall(
+        {
+          entityName: "ent",
+          operation: "query",
+          params: [{ id: "part" }],
+        },
+        0
+      ),
       baseTime
     );
 
-    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("ent");
-    expect(mockEntity.list).toHaveBeenCalledWith({});
+    expect(mockEntityStore.query).toHaveBeenCalledWith("ent", { id: "part" });
 
     expect(event).toMatchObject<EntityRequest>({
       seq: 0,
       type: WorkflowEventType.EntityRequest,
-      operation: { name: "ent", operation: "list", request: {} },
-      timestamp: expect.stringContaining("Z"),
-    });
-  });
-
-  test("listKeys", async () => {
-    const event = await testExecutor.executeCall(
-      workflow,
-      executionId,
-      entityRequestCall({ name: "ent", operation: "listKeys", request: {} }, 0),
-      baseTime
-    );
-
-    expect(mockEntityClient.getEntity).toHaveBeenCalledWith("ent");
-    expect(mockEntity.listKeys).toHaveBeenCalledWith({});
-
-    expect(event).toMatchObject<EntityRequest>({
-      seq: 0,
-      type: WorkflowEventType.EntityRequest,
-      operation: { name: "ent", operation: "listKeys", request: {} },
+      operation: {
+        entityName: "ent",
+        operation: "query",
+        params: [{ id: "part" }],
+      },
       timestamp: expect.stringContaining("Z"),
     });
   });

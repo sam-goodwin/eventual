@@ -1,6 +1,7 @@
 export * from "./bucket-hook.js";
 export * from "./calls.js";
 export * from "./entity-hook.js";
+export * from "./entity.js";
 export * from "./eventual-hook.js";
 export * from "./eventual-service.js";
 export * from "./flags.js";

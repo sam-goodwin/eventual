@@ -1,16 +1,16 @@
 import "@eventual/injected/entry";
 
 import {
+  createOrchestrator,
   ExecutionQueueEventEnvelope,
   RemoteExecutorProvider,
   WorkflowCallExecutor,
-  createOrchestrator,
 } from "@eventual/core-runtime";
 import type { SQSEvent, SQSRecord } from "aws-lambda";
 import { AWSMetricsClient } from "../clients/metrics-client.js";
 import {
   createBucketStore,
-  createEntityClient,
+  createEntityStore,
   createEventClient,
   createExecutionHistoryStateStore,
   createExecutionHistoryStore,
@@ -37,7 +37,7 @@ const orchestrate = createOrchestrator({
   metricsClient: AWSMetricsClient,
   callExecutor: new WorkflowCallExecutor({
     bucketStore: createBucketStore(),
-    entityClient: createEntityClient(),
+    entityStore: createEntityStore(),
     eventClient: createEventClient(),
     executionQueueClient: createExecutionQueueClient(),
     taskClient: createTaskClient(),

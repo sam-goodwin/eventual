@@ -10,7 +10,7 @@ import {
 import { S3Handler } from "aws-lambda";
 import {
   createBucketStore,
-  createEntityClient,
+  createEntityStore,
   createServiceClient,
 } from "../create.js";
 import {
@@ -22,7 +22,7 @@ import {
 
 const worker = createBucketNotificationHandlerWorker({
   bucketStore: createBucketStore(),
-  entityClient: createEntityClient(),
+  entityStore: createEntityStore(),
   serviceClient: createServiceClient({}),
   serviceName,
   serviceSpec,

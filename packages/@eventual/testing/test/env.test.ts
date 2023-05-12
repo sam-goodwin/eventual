@@ -1,18 +1,17 @@
 import type { SQSClient } from "@aws-sdk/client-sqs";
 import {
-  CompositeKey,
   Entity,
+  entity,
   EventPayloadType,
   EventualError,
   Execution,
   ExecutionStatus,
   SubscriptionHandler,
+  task as _task,
   TaskHandler,
   Timeout,
-  WorkflowHandler,
-  task as _task,
   workflow as _workflow,
-  entity,
+  WorkflowHandler,
 } from "@eventual/core";
 import { tasks, workflows } from "@eventual/core/internal";
 import { jest } from "@jest/globals";
@@ -1292,18 +1291,27 @@ describe("time", () => {
   });
 });
 
-const myEntity = entity<{ n: number }>("testEntity1", z.any());
+const myEntity = entity("testEntity1", {
+  attributes: { n: z.number(), id: z.string() },
+  partition: ["id"],
+});
+
+const myEntityWithSort = entity("testEntity2", {
+  attributes: { n: z.number(), id: z.string(), part: z.string() },
+  partition: ["part"],
+  sort: ["id"],
+});
 
 describe("entity", () => {
   test("workflow and task uses get and set", async () => {
     const entityTask = task(async (_, { execution: { id } }) => {
-      await myEntity.set(id, { n: ((await myEntity.get(id))?.n ?? 0) + 1 });
+      await myEntity.set({ id, n: ((await myEntity.get([id]))?.n ?? 0) + 1 });
     });
     const wf = workflow(async (_, { execution: { id } }) => {
-      await myEntity.set(id, { n: 1 });
+      await myEntity.set({ id, n: 1 });
       await entityTask();
-      const value = await myEntity.get(id);
-      myEntity.delete(id);
+      const value = await myEntity.get([id]);
+      myEntity.delete({ id });
       return value;
     });
 
@@ -1317,27 +1325,28 @@ describe("entity", () => {
     await expect(execution.getStatus()).resolves.toMatchObject<
       Partial<Execution<any>>
     >({
-      result: { n: 2 },
+      result: { n: 2, id: execution.executionId },
       status: ExecutionStatus.SUCCEEDED,
     });
   });
 
-  test("workflow and task uses get and set with namespaces", async () => {
-    const entityTask = task(
-      async (namespace: string, { execution: { id } }) => {
-        const key = { namespace, key: id };
-        await myEntity.set(key, { n: ((await myEntity.get(key))?.n ?? 0) + 1 });
-      }
-    );
+  test("workflow and task uses get and set with partitions and sort keys", async () => {
+    const entityTask = task(async (part: string, { execution: { id } }) => {
+      const key = { part, id };
+      await myEntityWithSort.set({
+        ...key,
+        n: ((await myEntityWithSort.get(key))?.n ?? 0) + 1,
+      });
+    });
     const wf = workflow(async (_, { execution: { id } }) => {
-      await myEntity.set({ namespace: "1", key: id }, { n: 1 });
-      await myEntity.set({ namespace: "2", key: id }, { n: 100 });
+      await myEntityWithSort.set({ part: "1", id, n: 1 });
+      await myEntityWithSort.set({ part: "2", id, n: 100 });
       await entityTask("1");
       await entityTask("2");
-      const value = await myEntity.get({ namespace: "1", key: id });
-      const value2 = await myEntity.get({ namespace: "2", key: id });
-      await myEntity.delete({ namespace: "1", key: id });
-      await myEntity.delete({ namespace: "2", key: id });
+      const value = await myEntityWithSort.get({ part: "1", id });
+      const value2 = await myEntityWithSort.get({ part: "2", id });
+      await myEntityWithSort.delete({ part: "1", id });
+      await myEntityWithSort.delete({ part: "2", id });
       return value!.n + value2!.n;
     });
 
@@ -1358,37 +1367,41 @@ describe("entity", () => {
 
   test("version", async () => {
     const wf = workflow(async (_, { execution: { id } }) => {
-      const key: CompositeKey = { namespace: "versionTest", key: id };
+      const key = { part: "versionTest", id };
       // set - version 1 - value 1
-      const { version } = await myEntity.set(key, { n: 1 });
+      const { version } = await myEntityWithSort.set({ ...key, n: 1 });
       // set - version 2 - value 2
-      const { version: version2 } = await myEntity.set(
-        key,
-        { n: 2 },
+      const { version: version2 } = await myEntityWithSort.set(
+        { ...key, n: 2 },
         { expectedVersion: version }
       );
       try {
         // try set to 3, fail
-        await myEntity.set(key, { n: 3 }, { expectedVersion: version });
+        await myEntityWithSort.set(
+          { ...key, n: 3 },
+          { expectedVersion: version }
+        );
       } catch {
         // set - version 2 (unchanged) - value 3
-        await myEntity.set(
-          key,
-          { n: 4 },
+        await myEntityWithSort.set(
+          { ...key, n: 4 },
           { expectedVersion: version2, incrementVersion: false }
         );
       }
       try {
         // try delete and fail
-        await myEntity.delete(key, { expectedVersion: version });
+        await myEntityWithSort.delete(key, { expectedVersion: version });
       } catch {
         // set - version 3 - value 5
-        await myEntity.set(key, { n: 5 }, { expectedVersion: version2 });
+        await myEntityWithSort.set(
+          { ...key, n: 5 },
+          { expectedVersion: version2 }
+        );
       }
 
-      const value = await myEntity.getWithMetadata(key);
+      const value = await myEntityWithSort.getWithMetadata(key);
       // delete at version 3
-      myEntity.delete(key, { expectedVersion: value!.version });
+      myEntityWithSort.delete(key, { expectedVersion: value!.version });
       return value;
     });
 
@@ -1402,7 +1415,10 @@ describe("entity", () => {
     await expect(execution.getStatus()).resolves.toMatchObject<
       Partial<Execution<any>>
     >({
-      result: { entity: { n: 5 }, version: 3 },
+      result: {
+        value: { n: 5, id: execution.executionId, part: "versionTest" },
+        version: 3,
+      },
       status: ExecutionStatus.SUCCEEDED,
     });
   });
@@ -1412,51 +1428,53 @@ describe("entity", () => {
       async (
         {
           version,
-          namespace,
+          partition,
           value,
-        }: { version: number; namespace?: string; value: number },
+        }: { version: number; partition?: string; value: number },
         { execution: { id } }
       ) => {
         return Entity.transactWrite([
+          partition
+            ? {
+                operation: "set",
+                value: { part: partition, id, n: value },
+                options: { expectedVersion: version },
+                entity: myEntityWithSort,
+              }
+            : {
+                operation: "set",
+                value: { id, n: value },
+                options: { expectedVersion: version },
+                entity: myEntity,
+              },
           {
-            operation: {
-              operation: "set",
-              key: namespace ? { key: id, namespace } : id,
-              value: { n: value },
-              options: { expectedVersion: version },
-            },
-            entity: myEntity,
-          },
-          {
-            operation: {
-              operation: "set",
-              key: { key: id, namespace: "3" },
-              value: { n: value },
-              options: { expectedVersion: version },
-            },
-            entity: myEntity,
+            operation: "set",
+            value: { part: "3", id, n: value },
+            options: { expectedVersion: version },
+            entity: myEntityWithSort,
           },
         ]);
       }
     );
 
     const wf = workflow(async (_, { execution: { id } }) => {
-      const { version: version1 } = await myEntity.set(id, { n: 1 });
-      const { version: version2 } = await myEntity.set(
-        { key: id, namespace: "2" },
-        { n: 1 }
-      );
-      await myEntity.set({ key: id, namespace: "3" }, { n: 1 });
+      const { version: version1 } = await myEntity.set({ id, n: 1 });
+      const { version: version2 } = await myEntityWithSort.set({
+        id,
+        part: "2",
+        n: 1,
+      });
+      await myEntityWithSort.set({ id, part: "3", n: 1 });
 
       await testTask({ version: version1, value: 2 });
       try {
-        await testTask({ version: version2 + 1, namespace: "2", value: 3 });
+        await testTask({ version: version2 + 1, partition: "2", value: 3 });
       } catch {}
 
       return Promise.all([
-        myEntity.get(id),
-        myEntity.get({ key: id, namespace: "2" }),
-        myEntity.get({ key: id, namespace: "3" }),
+        myEntity.get([id]),
+        myEntityWithSort.get({ id, part: "2" }),
+        myEntityWithSort.get({ id, part: "3" }),
       ]);
     });
 
@@ -1470,7 +1488,11 @@ describe("entity", () => {
     await expect(execution.getStatus()).resolves.toMatchObject<
       Partial<Execution<any>>
     >({
-      result: [{ n: 2 }, { n: 1 }, { n: 2 }],
+      result: [
+        { n: 2, id: execution.executionId },
+        { part: "2", n: 1, id: execution.executionId },
+        { part: "3", n: 2, id: execution.executionId },
+      ],
       status: ExecutionStatus.SUCCEEDED,
     });
   });

@@ -124,8 +124,20 @@ export class UnexpectedVersion extends Error {
  *
  * Returns reasons in the same order as the input items.
  */
-export class TransactionCancelled extends Error {
+export class TransactionCancelled extends EventualError {
   constructor(public reasons: (UnexpectedVersion | undefined)[]) {
-    super("Transactions Cancelled, see reasons");
+    super("TransactionCancelled", "Transaction cancelled, see reasons");
+  }
+}
+
+/**
+ * Thrown when a transaction conflict with another conflict or write operation.
+ */
+export class TransactionConflict extends EventualError {
+  constructor() {
+    super(
+      "TransactionConflict",
+      "Transaction conflicted with another operation"
+    );
   }
 }

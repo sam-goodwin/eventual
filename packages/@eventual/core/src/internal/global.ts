@@ -1,6 +1,6 @@
 import type { AsyncLocalStorage } from "async_hooks";
 import type { Bucket } from "../bucket.js";
-import type { Entity } from "../entity.js";
+import type { Entity } from "../entity/entity.js";
 import type { Event } from "../event.js";
 import type { AnyCommand } from "../http/command.js";
 import type { EventualServiceClient } from "../service-client.js";
@@ -33,7 +33,7 @@ declare global {
     /**
      * A simple key value store that work efficiently within eventual.
      */
-    entities?: Map<string, Entity<any>>;
+    entities?: Map<string, Entity>;
     /**
      * A data bucket within eventual.
      */
@@ -80,8 +80,8 @@ export const events = (): Map<string, Event> =>
 export const subscriptions = (): Subscription[] =>
   (globalThis._eventual.subscriptions ??= []);
 
-export const entities = (): Map<string, Entity<any>> =>
-  (globalThis._eventual.entities ??= new Map<string, Entity<any>>());
+export const entities = (): Map<string, Entity> =>
+  (globalThis._eventual.entities ??= new Map<string, Entity>());
 
 export const buckets = (): Map<string, Bucket> =>
   (globalThis._eventual.buckets ??= new Map<string, Bucket>());

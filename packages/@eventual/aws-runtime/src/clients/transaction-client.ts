@@ -16,6 +16,7 @@ export class AWSTransactionClient implements TransactionClient {
   public async executeTransaction(
     request: ExecuteTransactionRequest
   ): Promise<ExecuteTransactionResponse> {
+    console.debug("Invoking Transaction: ", request.transaction);
     const response = await this.props.lambda.send(
       new InvokeCommand({
         FunctionName: getLazy(this.props.transactionWorkerFunctionArn),
@@ -27,8 +28,15 @@ export class AWSTransactionClient implements TransactionClient {
     );
 
     if (!response.Payload) {
+      console.error(
+        "Transaction Returned Invalid Response: ",
+        request.transaction,
+        response.FunctionError
+      );
       throw new Error("Invalid response from the transaction worker");
     }
+
+    console.debug("Transaction Complete: ", request.transaction);
 
     return JSON.parse(
       Buffer.from(response.Payload).toString("utf-8")

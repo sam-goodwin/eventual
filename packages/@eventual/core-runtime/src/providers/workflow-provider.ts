@@ -3,7 +3,6 @@ import { workflows, ServiceSpec } from "@eventual/core/internal";
 
 export interface WorkflowProvider extends WorkflowSpecProvider {
   lookupWorkflow(workflowName: string): Workflow | undefined;
-  getWorkflowNames(): string[];
 }
 
 export interface WorkflowSpecProvider {
@@ -20,11 +19,9 @@ export class GlobalWorkflowProvider implements WorkflowProvider {
   public lookupWorkflow(workflowName: string): Workflow | undefined {
     return workflows().get(workflowName);
   }
-
   public getWorkflowNames(): string[] {
     return [...workflows().keys()];
   }
-
   public workflowExists(workflowName: string): boolean {
     return !!this.lookupWorkflow(workflowName);
   }

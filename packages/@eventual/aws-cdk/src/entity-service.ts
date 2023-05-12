@@ -1,13 +1,21 @@
 import {
-  EntityEntityRecord,
   entityServiceTableName,
   entityServiceTableSuffix,
   ENV_NAMES,
 } from "@eventual/aws-runtime";
-import { EntityRuntime, EntityStreamFunction } from "@eventual/core-runtime";
-import { TransactionSpec } from "@eventual/core/internal";
+import {
+  EntityRuntime,
+  EntityStreamFunction,
+  normalizeCompositeKey,
+} from "@eventual/core-runtime";
+import {
+  assertNever,
+  KeyDefinitionPart,
+  TransactionSpec,
+} from "@eventual/core/internal";
 import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
 import {
+  Attribute,
   AttributeType,
   BillingMode,
   ITable,
@@ -200,29 +208,28 @@ interface EntityStreamProps {
   table: ITable;
   serviceProps: EntityServiceProps<any>;
   entityService: EntityService<any>;
+  entity: EntityRuntime;
   stream: EntityStreamFunction;
 }
 
-export class Entity extends Construct {
+class Entity extends Construct {
   public table: ITable;
   public streams: Record<string, EntityStream>;
 
   constructor(scope: Construct, props: EntityProps) {
     super(scope, props.entity.name);
 
+    const keyDefinition = props.entity.key;
+
     this.table = new Table(this, "Table", {
       tableName: entityServiceTableName(
         props.serviceProps.serviceName,
         props.entity.name
       ),
-      partitionKey: {
-        name: "pk",
-        type: AttributeType.STRING,
-      },
-      sortKey: {
-        name: "sk",
-        type: AttributeType.STRING,
-      },
+      partitionKey: entityKeyDefinitionToAttribute(keyDefinition.partition),
+      sortKey: keyDefinition.sort
+        ? entityKeyDefinitionToAttribute(keyDefinition.sort)
+        : undefined,
       billingMode: BillingMode.PAY_PER_REQUEST,
       removalPolicy: RemovalPolicy.DESTROY,
       // only include the stream if there are listeners
@@ -240,6 +247,7 @@ export class Entity extends Construct {
       props.entity.streams.map((s) => [
         s.spec.name,
         new EntityStream(entityStreamScope, s.spec.name, {
+          entity: props.entity,
           entityService: props.entityService,
           serviceProps: props.serviceProps,
           stream: s,
@@ -256,48 +264,60 @@ export class EntityStream extends Construct implements EventualResource {
   constructor(scope: Construct, id: string, props: EntityStreamProps) {
     super(scope, id);
 
-    const namespaces = props.stream.spec.options?.namespaces;
-    const namespacePrefixes = props.stream.spec.options?.namespacePrefixes;
     const streamName = props.stream.spec.name;
     const entityName = props.stream.spec.entityName;
 
-    const filters = {
-      ...(props.stream.spec.options?.operations
-        ? {
-            eventName: FilterRule.or(
-              ...(props.stream.spec.options?.operations?.map((op) =>
-                op.toUpperCase()
-              ) ?? [])
-            ),
-          }
-        : undefined),
-      ...((namespaces && namespaces.length > 0) ||
-      (namespacePrefixes && namespacePrefixes.length > 0)
-        ? {
-            dynamodb: {
-              Keys: {
-                pk: {
-                  S: FilterRule.or(
-                    // for each namespace given, match the complete name.
-                    ...(namespaces
-                      ? namespaces.map((n) => EntityEntityRecord.key(n))
-                      : []),
-                    // for each namespace prefix given, build a prefix statement for each one.
-                    ...(namespacePrefixes
-                      ? namespacePrefixes.flatMap(
-                          (n) =>
-                            FilterRule.beginsWith(
-                              EntityEntityRecord.key(n)
-                            ) as unknown as string[]
-                        )
-                      : [])
-                  ),
-                },
+    const keyDefinition = props.entity.key;
+
+    const normalizedQueryKeys =
+      props.stream.spec.options?.queryKeys?.map((q) =>
+        normalizeCompositeKey(keyDefinition, q)
+      ) ?? [];
+
+    const queryPatterns = normalizedQueryKeys.map((k) => {
+      return {
+        // if no part of the partition key is provided, do not include it
+        partition:
+          k.partition.keyValue !== undefined
+            ? k.partition.partialValue
+              ? FilterRule.beginsWith(k.partition.keyValue.toString())
+              : k.partition.keyValue
+            : undefined,
+        sort:
+          k.sort && k.sort.keyValue !== undefined
+            ? k.sort?.partialValue
+              ? FilterRule.beginsWith(k.sort.keyValue.toString())
+              : k.sort.keyValue
+            : undefined,
+      };
+    });
+
+    const eventNameFilter = props.stream.spec.options?.operations
+      ? {
+          eventName: FilterRule.or(
+            ...(props.stream.spec.options?.operations?.map((op) =>
+              op.toUpperCase()
+            ) ?? [])
+          ),
+        }
+      : undefined;
+
+    // create a filter expression for each combination of key filter when present
+    // Would prefer to use $or within a single expression, but it seems it doesn't work with event source maps (yet?)
+    // TODO: can reduce the number of unique expressions by merging single field key queries togethers (all partition or all sort)
+    const filters =
+      !eventNameFilter && queryPatterns.length === 0
+        ? []
+        : eventNameFilter && queryPatterns.length === 0
+        ? [FilterCriteria.filter(eventNameFilter)]
+        : queryPatterns.map((q) =>
+            FilterCriteria.filter({
+              ...eventNameFilter,
+              dynamodb: {
+                Keys: keyMatcher(q),
               },
-            },
-          }
-        : undefined),
-    };
+            })
+          );
 
     this.handler = new ServiceFunction(this, "Handler", {
       build: props.serviceProps.build,
@@ -315,9 +335,7 @@ export class EntityStream extends Construct implements EventualResource {
           new DynamoEventSource(props.table, {
             startingPosition: StartingPosition.TRIM_HORIZON,
             maxBatchingWindow: Duration.seconds(0),
-            ...(Object.keys(filters).length > 0
-              ? { filters: [FilterCriteria.filter(filters)] }
-              : {}),
+            ...(filters.length > 0 ? { filters } : {}),
           }),
         ],
       },
@@ -334,5 +352,50 @@ export class EntityStream extends Construct implements EventualResource {
     props.entityService.configureReadWriteEntityTable(this.handler);
 
     this.grantPrincipal = this.handler.grantPrincipal;
+
+    function keyMatcher(item: (typeof queryPatterns)[number]) {
+      return {
+        ...(item.partition
+          ? {
+              [keyDefinition.partition.keyAttribute]: {
+                [keyTypeToAttributeType(keyDefinition.partition)]: [
+                  item.partition,
+                ].flat(),
+              },
+            }
+          : {}),
+        ...(keyDefinition.sort && item.sort
+          ? {
+              [keyDefinition.sort.keyAttribute]: {
+                [keyTypeToAttributeType(keyDefinition.sort)]: [
+                  item.sort,
+                ].flat(),
+              },
+            }
+          : {}),
+      };
+
+      function keyTypeToAttributeType(keyDef: KeyDefinitionPart) {
+        return keyDef.type === "number"
+          ? "N"
+          : keyDef.type === "string"
+          ? "S"
+          : assertNever(keyDef.type);
+      }
+    }
   }
+}
+
+export function entityKeyDefinitionToAttribute(
+  part: KeyDefinitionPart
+): Attribute {
+  return {
+    name: part.keyAttribute,
+    type:
+      part.type === "string"
+        ? AttributeType.STRING
+        : part.type === "number"
+        ? AttributeType.NUMBER
+        : assertNever(part.type),
+  };
 }

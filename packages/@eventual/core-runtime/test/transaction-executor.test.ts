@@ -1,24 +1,38 @@
-import { entity as _entity, event, TransactionContext } from "@eventual/core";
-import { entities, registerEntityHook, Result } from "@eventual/core/internal";
+import {
+  Attributes,
+  CompositeKeyPart,
+  EntityOptions,
+  TransactionContext,
+  entity as _entity,
+  event,
+} from "@eventual/core";
+import { Result, entities, registerEntityHook } from "@eventual/core/internal";
 import { jest } from "@jest/globals";
-import { EntityClient } from "../src/clients/entity-client.js";
+import { z } from "zod";
 import { EventClient } from "../src/clients/event-client.js";
 import { ExecutionQueueClient } from "../src/clients/execution-queue-client.js";
 import { NoOpLocalEnvConnector } from "../src/local/local-container.js";
 import { LocalEntityStore } from "../src/local/stores/entity-store.js";
+import { GlobalEntityProvider } from "../src/providers/entity-provider.js";
 import { EntityStore } from "../src/stores/entity-store.js";
 import {
-  createTransactionExecutor,
   TransactionExecutor,
   TransactionResult,
+  createTransactionExecutor,
 } from "../src/transaction-executor.js";
 
 const entity = (() => {
   let n = 0;
-  return <E>() => {
+  return <
+    Attr extends Attributes,
+    const Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+    const Sort extends CompositeKeyPart<Attr> | undefined = undefined
+  >(
+    options: EntityOptions<Attr, Partition, Sort>
+  ) => {
     // eslint-disable-next-line no-empty
     while (entities().has(`ent${++n}`)) {}
-    return _entity<E>(`ent${n}`);
+    return _entity<Attr, Partition, Sort>(`ent${n}`, options);
   };
 })();
 
@@ -32,6 +46,7 @@ const mockEventClient = {
 let store: EntityStore;
 let executor: TransactionExecutor;
 
+const entityProvider = new GlobalEntityProvider();
 const event1 = event("event1");
 
 beforeEach(() => {
@@ -39,12 +54,14 @@ beforeEach(() => {
 
   store = new LocalEntityStore({
     localConnector: NoOpLocalEnvConnector,
+    entityProvider,
   });
 
-  registerEntityHook(new EntityClient(store));
+  registerEntityHook(store);
 
   executor = createTransactionExecutor(
     store,
+    entityProvider,
     mockExecutionQueueClient,
     mockEventClient
   );
@@ -56,26 +73,31 @@ const context: TransactionContext = {
   },
 };
 
+const simpleSchema = { key: z.string(), value: z.number() };
+
 test("just get", async () => {
-  const d1 = entity<number>();
+  const d1 = entity({
+    attributes: { key: z.string(), value: z.number() },
+    partition: ["key"],
+  });
   const result = await executor(
     () => {
-      return d1.get("1");
+      return d1.get({ key: "1" });
     },
     undefined,
     context
   );
 
-  expect(result).toMatchObject<TransactionResult<any>>({
+  expect(result).toEqual<TransactionResult<any>>({
     result: Result.resolved(undefined),
   });
 });
 
 test("just set", async () => {
-  const d1 = entity<number>();
+  const d1 = entity({ partition: ["key"], attributes: simpleSchema });
   const result = await executor(
     () => {
-      return d1.set("1", 1);
+      return d1.set({ key: "1", value: 1 });
     },
     undefined,
     context
@@ -85,20 +107,20 @@ test("just set", async () => {
     result: Result.resolved({ version: 1 }),
   });
 
-  await expect(store.getEntityValue(d1.name, "1")).resolves.toEqual({
-    entity: 1,
+  await expect(store.getWithMetadata(d1.name, { key: "1" })).resolves.toEqual({
+    value: { key: "1", value: 1 },
     version: 1,
   });
 });
 
 test("just delete", async () => {
-  const d1 = entity<number>();
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
 
-  await store.setEntityValue(d1.name, "1", 0);
+  await store.set(d1.name, { key: "1", value: 0 });
 
   const result = await executor(
     () => {
-      return d1.delete("1");
+      return d1.delete(["1"]);
     },
     undefined,
     context
@@ -108,17 +130,20 @@ test("just delete", async () => {
     result: Result.resolved(undefined),
   });
 
-  await expect(store.getEntityValue(d1.name, "1")).resolves.toBeUndefined();
+  await expect(store.get(d1.name, { key: "1" })).resolves.toBeUndefined();
 });
 
 test("multiple operations", async () => {
-  const d1 = entity<number>();
-  const d2 = entity<string>();
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
+  const d2 = entity({
+    attributes: simpleSchema,
+    partition: ["value"],
+  });
 
   const result = await executor(
     async () => {
-      await d1.set("1", 1);
-      await d2.set("1", "a");
+      await d1.set({ key: "1", value: 1 });
+      await d2.set({ key: "1", value: 1 });
     },
     undefined,
     context
@@ -128,27 +153,30 @@ test("multiple operations", async () => {
     result: Result.resolved(undefined),
   });
 
-  await expect(store.getEntityValue(d1.name, "1")).resolves.toEqual({
-    entity: 1,
+  await expect(store.getWithMetadata(d1.name, { key: "1" })).resolves.toEqual({
+    value: { key: "1", value: 1 },
     version: 1,
   });
 
-  await expect(store.getEntityValue(d2.name, "1")).resolves.toEqual({
-    entity: "a",
+  await expect(store.getWithMetadata(d2.name, [1])).resolves.toEqual({
+    value: { key: "1", value: 1 },
     version: 1,
   });
 });
 
 test("multiple operations fail", async () => {
-  const d1 = entity<number>();
-  const d2 = entity<string>();
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
+  const d2 = entity({
+    attributes: simpleSchema,
+    partition: ["value"],
+  });
 
-  await store.setEntityValue(d1.name, "1", 0);
+  await store.set(d1.name, { key: "1", value: 0 });
 
   const result = await executor(
     async () => {
-      await d1.set("1", 1, { expectedVersion: 3 });
-      await d2.set("1", "a");
+      await d1.set({ key: "1", value: 1 }, { expectedVersion: 3 });
+      await d2.set({ key: "1", value: 1 });
     },
     undefined,
     context
@@ -158,27 +186,27 @@ test("multiple operations fail", async () => {
     result: Result.failed(Error("Failed after an explicit conflict.")),
   });
 
-  await expect(store.getEntityValue(d1.name, "1")).resolves.toEqual({
-    entity: 0,
+  await expect(store.getWithMetadata(d1.name, ["1"])).resolves.toEqual({
+    value: { key: "1", value: 0 },
     version: 1,
   });
 
-  await expect(store.getEntityValue(d2.name, "1")).resolves.toBeUndefined();
+  await expect(store.get(d2.name, [1])).resolves.toBeUndefined();
 });
 
 test("retry when retrieved data changes version", async () => {
-  const d1 = entity<number>();
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
 
-  await store.setEntityValue(d1.name, "1", 0);
+  await store.set(d1.name, { key: "1", value: 0 });
 
   const result = await executor(
     async () => {
-      const v = await d1.get("1");
+      const v = await d1.get(["1"]);
       // this isn't kosher... normally
-      if (v === 0) {
-        await store.setEntityValue(d1.name, "1", v! + 1);
+      if (v?.value === 0) {
+        await store.set(d1.name, { key: "1", value: v.value + 1 });
       }
-      await d1.set("1", v! + 1);
+      await d1.set({ key: "1", value: v!.value + 1 });
     },
     undefined,
     context
@@ -188,25 +216,25 @@ test("retry when retrieved data changes version", async () => {
     result: Result.resolved(undefined),
   });
 
-  await expect(store.getEntityValue(d1.name, "1")).resolves.toEqual({
-    entity: 2,
+  await expect(store.getWithMetadata(d1.name, ["1"])).resolves.toEqual({
+    value: { key: "1", value: 2 },
     version: 3,
   });
 });
 
 test("retry when retrieved data changes version multiple times", async () => {
-  const d1 = entity<number>();
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
 
-  await store.setEntityValue(d1.name, "1", 0);
+  await store.set(d1.name, { key: "1", value: 0 });
 
   const result = await executor(
     async () => {
-      const v = (await d1.get("1")) ?? 0;
+      const { value } = (await d1.get(["1"])) ?? { value: 0 };
       // this isn't kosher... normally
-      if (v < 2) {
-        await store.setEntityValue(d1.name, "1", v + 1);
+      if (value < 2) {
+        await store.set(d1.name, { key: "1", value: value + 1 });
       }
-      await d1.set("1", v + 1);
+      await d1.set({ key: "1", value: value + 1 });
     },
     undefined,
     context
@@ -216,19 +244,19 @@ test("retry when retrieved data changes version multiple times", async () => {
     result: Result.resolved(undefined),
   });
 
-  await expect(store.getEntityValue(d1.name, "1")).resolves.toEqual({
-    entity: 3,
+  await expect(store.getWithMetadata(d1.name, ["1"])).resolves.toEqual({
+    value: { key: "1", value: 3 },
     version: 4,
   });
 });
 
 test("emit events on success", async () => {
-  const d1 = entity<number>();
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
 
   const result = await executor(
     async () => {
       event1.emit({ n: 1 });
-      await d1.set("1", 1);
+      await d1.set({ key: "1", value: 1 });
       event1.emit({ n: 1 });
     },
     undefined,
@@ -243,27 +271,30 @@ test("emit events on success", async () => {
 });
 
 test("emit events after retry", async () => {
-  const d1 = entity<number>();
+  const d1 = entity({
+    attributes: simpleSchema,
+    partition: ["key"],
+  });
 
-  await store.setEntityValue(d1.name, "1", 0);
+  await store.set(d1.name, { key: "1", value: 0 });
 
   const result = await executor(
     async () => {
       event1.emit({ n: 1 });
-      const v = await d1.get("1");
+      const v = await d1.get(["1"]);
       event1.emit({ n: v });
       // this isn't kosher... normally
-      if (v === 0) {
-        await store.setEntityValue(d1.name, "1", v! + 1);
+      if (v?.value === 0) {
+        await store.set(d1.name, { key: "1", value: v!.value + 1 });
       }
-      await d1.set("1", v! + 1);
+      await d1.set({ key: "1", value: v!.value + 1 });
       event1.emit({ n: 1 });
     },
     undefined,
     context
   );
 
-  expect(result).toMatchObject<TransactionResult<any>>({
+  expect(result).toEqual<TransactionResult<any>>({
     result: Result.resolved(undefined),
   });
 
@@ -271,14 +302,14 @@ test("emit events after retry", async () => {
 });
 
 test("events not emitted on failure", async () => {
-  const d1 = entity<number>();
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
 
-  await store.setEntityValue(d1.name, "1", 0);
+  await store.set(d1.name, { key: "1", value: 0 });
 
   const result = await executor(
     async () => {
       event1.emit({ n: 1 });
-      await d1.set("1", 1, { expectedVersion: 1000 });
+      await d1.set({ key: "1", value: 1 }, { expectedVersion: 1000 });
       event1.emit({ n: 1 });
     },
     undefined,

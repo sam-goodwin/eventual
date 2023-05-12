@@ -407,9 +407,15 @@ export class TestEnvironment extends RuntimeServiceClient {
           }
         }),
         entityStreamItems.flatMap((i) => {
+          const entity = this.localContainer.entityProvider.getEntity(
+            i.entityName
+          );
+          if (!entity) {
+            return [];
+          }
           const streamNames = [...entities().values()]
             .flatMap((d) => d.streams)
-            .filter((s) => entityStreamMatchesItem(i, s))
+            .filter((s) => entityStreamMatchesItem(entity, i, s))
             .map((s) => s.name);
           return streamNames.map((streamName) => {
             return this.localContainer.entityStreamWorker({
