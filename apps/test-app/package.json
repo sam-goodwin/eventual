@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@eventual/cli": "workspace:^",
-    "@types/jest": "^29",
+    "@types/jest": "^29.5.1",
     "@types/node": "^18",
     "aws-cdk": "2.50.0",
     "esbuild": "^0.17.4",

@@ -80,8 +80,8 @@ export const events = (): Map<string, Event> =>
 export const subscriptions = (): Subscription[] =>
   (globalThis._eventual.subscriptions ??= []);
 
-export const entities = (): Map<string, Entity> =>
-  (globalThis._eventual.entities ??= new Map<string, Entity>());
+export const entities = (): Map<string, Entity<any, any, any>> =>
+  (globalThis._eventual.entities ??= new Map<string, Entity<any, any, any>>());
 
 export const buckets = (): Map<string, Bucket> =>
   (globalThis._eventual.buckets ??= new Map<string, Bucket>());

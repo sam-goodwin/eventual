@@ -12,11 +12,11 @@
     "constructs": "10.1.154"
   },
   "devDependencies": {
-    "@aws-sdk/client-sts": "3.294.0",
+    "@aws-sdk/client-sts": "3.332.0",
     "@eventual/aws-cdk": "workspace:^",
     "@eventual/cli": "workspace:^",
     "@eventual/core": "workspace:^",
-    "@types/jest": "^29",
+    "@types/jest": "^29.5.1",
     "@types/node": "^18",
     "aws-cdk": "^2.50.0",
     "esbuild": "^0.17.4",

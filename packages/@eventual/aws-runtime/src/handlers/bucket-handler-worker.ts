@@ -7,7 +7,7 @@ import {
   getLazy,
   promiseAllSettledPartitioned,
 } from "@eventual/core-runtime";
-import { S3Handler } from "aws-lambda";
+import type { S3Handler } from "aws-lambda";
 import {
   createBucketStore,
   createEntityStore,

@@ -131,7 +131,9 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
     },
     entities: {
       entities: [...entities().values()].map((d) => ({
-        ...d,
+        key: d.key,
+        name: d.name,
+        streams: d.streams,
         attributes: generateSchema(d.attributes),
       })),
     },

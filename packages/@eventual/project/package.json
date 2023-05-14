@@ -13,7 +13,7 @@
     "inquirer": "^8"
   },
   "devDependencies": {
-    "@types/inquirer": "^8"
+    "@types/inquirer": "^8.2.6"
   },
   "publishConfig": {
     "access": "public"

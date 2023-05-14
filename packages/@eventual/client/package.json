@@ -16,7 +16,7 @@
     "@eventual/core": "workspace:^"
   },
   "devDependencies": {
-    "@jest/globals": "^29.3.1",
+    "@jest/globals": "^29.5.0",
     "@types/node": "^18",
     "ts-node": "^10.9.1",
     "typescript": "^5"
