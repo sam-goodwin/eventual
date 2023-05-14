@@ -43,7 +43,7 @@
     "lerna": "^6.6.2",
     "lint-staged": "^13.0.3",
     "prettier": "^2.8.8",
-    "ts-jest": "^29.0.3",
+    "ts-jest": "^29.1.0",
     "turbo": "^1.6.3",
     "typescript": "^5"
   },

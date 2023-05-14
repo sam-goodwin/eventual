@@ -120,11 +120,52 @@ eventualRuntimeTestHarness(
     testCompletion("awsSdkCalls", createAndDestroyWorkflow, "done");
 
     testCompletion("ent", entityWorkflow, [
+      [
+        expect.arrayContaining([
+          {
+            namespace: "different",
+            n: 1,
+          },
+          {
+            namespace: "another",
+            n: 1000,
+          },
+          {
+            namespace: "default",
+            n: 6,
+          },
+        ]),
+        [
+          {
+            namespace: "different",
+            n: 1,
+          },
+          {
+            namespace: "default",
+            n: 6,
+          },
+          {
+            namespace: "another",
+            n: 1000,
+          },
+        ],
+        [
+          {
+            namespace: "another",
+            n: 1000,
+          },
+        ],
+      ],
       { n: 7 },
       [
         [1, 1],
         [2, 2],
         [3, 1],
+      ],
+      [
+        [3, 1],
+        [1, 1],
+        [2, 2],
       ],
     ]);
 

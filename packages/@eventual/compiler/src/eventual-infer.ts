@@ -134,6 +134,7 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
         key: d.key,
         name: d.name,
         streams: d.streams,
+        indices: d.indices,
         attributes: generateSchema(d.attributes),
       })),
     },

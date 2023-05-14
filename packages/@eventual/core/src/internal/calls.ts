@@ -1,6 +1,10 @@
 import type { Bucket } from "../bucket.js";
 import type { ConditionPredicate } from "../condition.js";
-import type { Entity, EntityTransactItem } from "../entity/entity.js";
+import type {
+  Entity,
+  EntityIndex,
+  EntityTransactItem,
+} from "../entity/entity.js";
 import type { EventEnvelope } from "../event.js";
 import type { DurationSchedule, Schedule } from "../schedule.js";
 import type { WorkflowExecutionOptions } from "../workflow.js";
@@ -107,16 +111,29 @@ export function isEntityOperationOfType<
 }
 
 export type EntityOperation<
-  Op extends EntityMethod | EntityTransactOperation["operation"] =
+  Op extends
     | EntityMethod
     | EntityTransactOperation["operation"]
+    | EntityQueryIndexOperation["operation"] =
+    | EntityMethod
+    | EntityTransactOperation["operation"]
+    | EntityQueryIndexOperation["operation"]
 > = Op extends EntityMethod
   ? {
       operation: Op;
       entityName: string;
       params: Parameters<Entity[Op]>;
     }
-  : EntityTransactOperation;
+  : Op extends "transact"
+  ? EntityTransactOperation
+  : EntityQueryIndexOperation;
+
+export interface EntityQueryIndexOperation {
+  operation: "queryIndex";
+  entityName: string;
+  indexName: string;
+  params: Parameters<EntityIndex["query"]>;
+}
 
 export interface EntityTransactOperation {
   operation: "transact";

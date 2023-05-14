@@ -8,6 +8,7 @@ import { getEntityHook } from "../internal/entity-hook.js";
 import { computeKeyDefinition, KeyDefinition } from "../internal/entity.js";
 import { entities } from "../internal/global.js";
 import {
+  EntityIndexSpec,
   EntitySpec,
   EntityStreamOptions,
   isSourceLocation,
@@ -71,10 +72,14 @@ export interface Entity<
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
     | undefined
-> extends Omit<EntitySpec, "attributes" | "streams" | "partition" | "sort"> {
+> extends Omit<
+    EntitySpec,
+    "attributes" | "streams" | "partition" | "sort" | "indices"
+  > {
   kind: "Entity";
   key: KeyDefinition;
   attributes: ZodAttributesObject<Attr>;
+  indices: EntityIndex[];
   streams: EntityStream<Attr, Partition, Sort>[];
   /**
    * Get a value.
@@ -115,6 +120,13 @@ export interface Entity<
     key: QueryKey<Attr, Partition, Sort>,
     request?: EntityQueryOptions
   ): Promise<EntityQueryResult<Attr>>;
+  index<
+    const IndexPartition extends CompositeKeyPart<Attr> | undefined = undefined,
+    const IndexSort extends CompositeKeyPart<Attr> | undefined = undefined
+  >(
+    name: string,
+    options: EntityIndexOptions<Attr, IndexPartition, IndexSort>
+  ): EntityIndexMapper<Attr, Partition, IndexPartition, IndexSort>;
   stream(
     name: string,
     options: EntityStreamOptions<Attr, Partition, Sort>,
@@ -235,6 +247,8 @@ export function entity<
     throw new Error(`entity with name '${name}' already exists`);
   }
 
+  const indices: EntityIndex[] = [];
+
   /**
    * Used to maintain a limited number of streams on the entity.
    */
@@ -252,6 +266,7 @@ export function entity<
     name,
     key: computeKeyDefinition(attributes, options.partition, options.sort),
     attributes,
+    indices,
     streams,
     get: (...args) => {
       return getEventualCallHook().registerEventualCall(
@@ -316,6 +331,46 @@ export function entity<
         }
       );
     },
+    index: (...args) => {
+      const [indexName, indexOptions] = args;
+
+      if (indices.some((i) => i.name === indexName)) {
+        throw new Error(`Index of name ${indexName} already exists on ${name}`);
+      }
+
+      const index: EntityIndex = {
+        kind: "EntityIndex",
+        key: computeKeyDefinition(
+          attributes,
+          ("partition" in indexOptions ? indexOptions.partition : undefined) ??
+            options.partition,
+          indexOptions.sort ?? options.sort
+        ),
+        name: indexName,
+        partition:
+          "partition" in indexOptions ? indexOptions.partition : undefined,
+        sort: indexOptions.sort,
+        entityName: name,
+        query: (...args) => {
+          return getEventualCallHook().registerEventualCall(
+            createEventualCall<EntityCall<"queryIndex">>(
+              EventualCallKind.EntityCall,
+              {
+                entityName: name,
+                indexName,
+                operation: "queryIndex",
+                params: args,
+              }
+            ),
+            () => getEntityHook().queryIndex(name, indexName, ...args)
+          );
+        },
+      };
+
+      indices.push(index);
+
+      return index as any;
+    },
     stream: (
       ...args:
         | [name: string, handler: EntityStreamHandler<Attr, Partition, Sort>]
@@ -372,6 +427,42 @@ export function entity<
   entities().set(name, entity as any);
 
   return entity;
+}
+
+export type EntityIndexOptions<
+  Attr extends Attributes,
+  Partition extends CompositeKeyPart<Attr> | undefined = undefined,
+  Sort extends CompositeKeyPart<Attr> | undefined = undefined
+> =
+  | {
+      partition: Partition;
+      sort?: Sort;
+    }
+  | {
+      sort: Sort;
+    };
+
+export type EntityIndexMapper<
+  Attr extends Attributes,
+  EntityPartition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+  IndexPartition extends CompositeKeyPart<Attr> | undefined = undefined,
+  Sort extends CompositeKeyPart<Attr> | undefined = undefined
+> = IndexPartition extends undefined
+  ? EntityIndex<Attr, EntityPartition, Sort>
+  : EntityIndex<Attr, Exclude<IndexPartition, undefined>, Sort>;
+
+export interface EntityIndex<
+  Attr extends Attributes = any,
+  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined =
+    | CompositeKeyPart<Attr>
+    | undefined
+> extends EntityIndexSpec {
+  kind: "EntityIndex";
+  query(
+    queryKey: QueryKey<Attr, Partition, Sort>,
+    options?: EntityQueryOptions
+  ): Promise<EntityQueryResult>;
 }
 
 export interface EntityQueryResult<Attr extends Attributes = Attributes> {

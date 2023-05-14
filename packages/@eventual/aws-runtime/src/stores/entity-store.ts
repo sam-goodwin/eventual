@@ -25,6 +25,7 @@ import {
   TransactionCancelled,
   TransactionConflict,
   UnexpectedVersion,
+  EntityIndex,
 } from "@eventual/core";
 import {
   EntityProvider,
@@ -170,7 +171,7 @@ export class AWSEntityStore extends EntityStore {
   }
 
   protected override async _query(
-    entity: Entity,
+    entity: Entity | EntityIndex,
     queryKey: NormalizedEntityCompositeKey<NormalizedEntityKeyCompletePart>,
     options?: EntityQueryOptions
   ): Promise<EntityQueryResult> {
@@ -194,6 +195,7 @@ export class AWSEntityStore extends EntityStore {
       },
       {
         TableName: this.tableName(entity),
+        IndexName: entity.kind === "EntityIndex" ? entity.name : undefined,
         KeyConditionExpression:
           queryKey.sort && queryKey.sort.keyValue !== undefined
             ? queryKey.sort.partialValue
@@ -379,8 +381,11 @@ export class AWSEntityStore extends EntityStore {
     return marshalledKey;
   }
 
-  private tableName(entity: Entity) {
-    return entityServiceTableName(getLazy(this.props.serviceName), entity.name);
+  private tableName(entity: Entity | EntityIndex) {
+    return entityServiceTableName(
+      getLazy(this.props.serviceName),
+      entity.kind === "EntityIndex" ? entity.entityName : entity.name
+    );
   }
 }
 

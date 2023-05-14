@@ -221,7 +221,7 @@ class Entity extends Construct {
 
     const keyDefinition = props.entity.key;
 
-    this.table = new Table(this, "Table", {
+    const table = (this.table = new Table(this, "Table", {
       tableName: entityServiceTableName(
         props.serviceProps.serviceName,
         props.entity.name
@@ -239,6 +239,24 @@ class Entity extends Construct {
             ? StreamViewType.NEW_AND_OLD_IMAGES
             : StreamViewType.NEW_IMAGE
           : undefined,
+    }));
+
+    props.entity.indices.forEach((i) => {
+      // LSI may not be used with a table that doesn't already have a sort key, but GSI can
+      if (i.partition || !keyDefinition.sort) {
+        table.addGlobalSecondaryIndex({
+          indexName: i.name,
+          partitionKey: entityKeyDefinitionToAttribute(i.key.partition),
+          sortKey: i.key.sort
+            ? entityKeyDefinitionToAttribute(i.key.sort)
+            : undefined,
+        });
+      } else if (i.key.sort) {
+        table.addLocalSecondaryIndex({
+          indexName: i.name,
+          sortKey: entityKeyDefinitionToAttribute(i.key.sort),
+        });
+      }
     });
 
     const entityStreamScope = new Construct(this, "EntityStreams");

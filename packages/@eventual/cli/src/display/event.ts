@@ -80,7 +80,13 @@ function displayEntityCommand(operation: EntityOperation) {
         output.push(`Expected Version: ${options.expectedVersion}`);
       }
     }
-    if (isEntityOperationOfType("query", operation)) {
+    if (
+      isEntityOperationOfType("query", operation) ||
+      isEntityOperationOfType("queryIndex", operation)
+    ) {
+      if (isEntityOperationOfType("queryIndex", operation)) {
+        output.push(`Index: ${operation.indexName}`);
+      }
       const [key] = operation.params;
       output.push(`Key: ${JSON.stringify(key)}`);
     }

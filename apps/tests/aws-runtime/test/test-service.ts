@@ -547,16 +547,33 @@ export const createAndDestroyWorkflow = workflow(
   }
 );
 
-export const counter = entity("counter4", {
+export const counter = entity("counter5", {
   attributes: {
     n: z.number(),
-    namespace: z.union([z.literal("different"), z.literal("default")]),
+    namespace: z.union([
+      z.literal("different"),
+      z.literal("default"),
+      z.literal("another"),
+    ]),
     id: z.string(),
   },
   partition: ["namespace", "id"],
 });
 
-export const counterCollection = entity("counter-collection", {
+export const allCounters = counter.index("allCounters", {
+  partition: ["id"],
+});
+
+export const allCountersByN = counter.index("allCountersByN", {
+  partition: ["id"],
+  sort: ["n"],
+});
+
+export const countersByN = counter.index("countersByN", {
+  sort: ["n"],
+});
+
+export const counterCollection = entity("counter-collection2", {
   attributes: {
     id: z.string(),
     counterNumber: z.number(),
@@ -565,6 +582,13 @@ export const counterCollection = entity("counter-collection", {
   partition: ["id"],
   sort: ["counterNumber"],
 });
+
+export const counterCollectionOrderByN = counterCollection.index(
+  "counterCollectionOrderByN",
+  {
+    sort: ["n"],
+  }
+);
 
 const entityEvent = event<{ id: string }>("entityEvent");
 const entitySignal = signal("entitySignal");
@@ -612,10 +636,37 @@ export const onEntityEvent = subscription(
 );
 
 export const entityTask = task(
-  "entityAct",
+  "entityTask",
   async (_, { execution: { id } }) => {
     const value = await counter.get(["default", id]);
     await counter.set({ namespace: "default", id, n: (value?.n ?? 0) + 1 });
+  }
+);
+
+export const entityIndexTask = task(
+  "entityIndexTask",
+  async (_, { execution: { id } }) => {
+    await counter.set({ namespace: "another", id, n: 1000 });
+    return await Promise.all([
+      allCounters.query({ id }).then((q) =>
+        q.entries?.map((e) => ({
+          n: e.value.n,
+          namespace: e.value.namespace,
+        }))
+      ),
+      allCountersByN.query({ id }).then((q) =>
+        q.entries?.map((e) => ({
+          n: e.value.n,
+          namespace: e.value.namespace,
+        }))
+      ),
+      countersByN.query({ namespace: "another", id }).then((q) =>
+        q.entries?.map((e) => ({
+          n: e.value.n,
+          namespace: e.value.namespace,
+        }))
+      ),
+    ]);
   }
 );
 
@@ -650,6 +701,9 @@ export const entityWorkflow = workflow(
         value: { namespace: "default", id, n: (value?.n ?? 0) + 1 },
       },
     ]);
+
+    const result0 = await entityIndexTask();
+
     // send deletion, to be picked up by the stream
     await counter.delete(["default", id]);
     await counter.query(["default", id]);
@@ -674,10 +728,13 @@ export const entityWorkflow = workflow(
     });
 
     const counters = await counterCollection.query({ id });
+    const countersInOrder = await counterCollectionOrderByN.query({ id });
 
     return [
+      result0,
       result1,
       counters.entries?.map((c) => [c.value.counterNumber, c.value.n]),
+      countersInOrder.entries?.map((c) => [c.value.counterNumber, c.value.n]),
     ];
   }
 );
