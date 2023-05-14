@@ -1,6 +1,6 @@
 {
   "name": "@eventual/project",
-  "version": "0.37.0",
+  "version": "0.37.2",
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",
@@ -13,7 +13,7 @@
     "inquirer": "^8"
   },
   "devDependencies": {
-    "@types/inquirer": "^8"
+    "@types/inquirer": "^8.2.6"
   },
   "publishConfig": {
     "access": "public"

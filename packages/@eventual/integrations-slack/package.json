@@ -1,6 +1,6 @@
 {
   "name": "@eventual/integrations-slack",
-  "version": "0.37.0",
+  "version": "0.37.2",
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",
@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@eventual/core": "workspace:^",
-    "@types/jest": "^29",
+    "@types/jest": "^29.5.1",
     "@types/node": "^18",
     "@types/tsscmp": "^1.0.0",
     "itty-router": "2.6.6",

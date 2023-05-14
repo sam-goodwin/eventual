@@ -1,6 +1,6 @@
 {
   "name": "create-eventual",
-  "version": "0.37.0",
+  "version": "0.37.2",
   "type": "commonjs",
   "files": [
     "bin",
@@ -19,9 +19,9 @@
   },
   "devDependencies": {
     "@eventual/project": "workspace:^",
-    "@types/inquirer": "^8",
+    "@types/inquirer": "^8.2.6",
     "@types/node": "^18",
-    "@types/yargs": "^17.0.17",
+    "@types/yargs": "^17.0.24",
     "esbuild": "^0.17.4",
     "inquirer": "^8",
     "yargs": "^17.6.2"

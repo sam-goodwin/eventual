@@ -1,6 +1,6 @@
 {
   "name": "@eventual/compiler",
-  "version": "0.37.0",
+  "version": "0.37.2",
   "bin": {
     "eventual-bundle": "./bin/eventual-bundle.mjs",
     "eventual-infer": "./bin/eventual-infer.mjs"
@@ -36,10 +36,10 @@
     "@swc/core": "^1.2.245",
     "esbuild-plugin-alias-path": "^2.0.2",
     "openapi3-ts": "^3.1.2",
-    "zod": "^3"
+    "zod": "^3.21.4"
   },
   "devDependencies": {
-    "@types/jest": "^29",
+    "@types/jest": "^29.5.1",
     "@types/minimatch": "5.1.2",
     "@types/node": "^18",
     "esbuild": "^0.17.4",
