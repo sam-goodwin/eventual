@@ -1,4 +1,4 @@
-import { Handler } from "aws-lambda";
+import type { Handler } from "aws-lambda";
 import { AWSHttpEventualClient } from "@eventual/aws-client";
 
 const serviceClient = new AWSHttpEventualClient({
