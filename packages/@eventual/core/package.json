@@ -24,7 +24,7 @@
     "itty-router": "^2.6.6",
     "openapi3-ts": "^3",
     "ulidx": "^0.3.0",
-    "zod": "^3"
+    "zod": "^3.21.4"
   },
   "devDependencies": {
     "@jest/globals": "^29.5.0",

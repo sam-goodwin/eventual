@@ -20,7 +20,7 @@
     "heap-js": "2.2.0",
     "itty-router": "^2.6.6",
     "ulidx": "^0.3.0",
-    "zod": "^3"
+    "zod": "^3.21.4"
   },
   "devDependencies": {
     "@jest/globals": "^29.5.0",
