@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { Attributes, EntityZodShape } from "../entity/entity.js";
-import { CompositeKeyPart } from "../entity/key.js";
+import type { CompositeKeyPart } from "../entity/key.js";
 
 export interface KeyDefinitionPart {
   type: "number" | "string";
@@ -13,10 +12,10 @@ export interface KeyDefinition {
   sort?: KeyDefinitionPart;
 }
 
-export function computeKeyDefinition<Attr extends Attributes>(
-  attributes: z.ZodObject<EntityZodShape<Attr>>,
-  partition: CompositeKeyPart<Attr>,
-  sort?: CompositeKeyPart<Attr>
+export function computeKeyDefinition(
+  attributes: z.ZodObject<any>,
+  partition: CompositeKeyPart<any>,
+  sort?: CompositeKeyPart<any>
 ): KeyDefinition {
   const entityZodShape = attributes.shape;
 
@@ -26,7 +25,7 @@ export function computeKeyDefinition<Attr extends Attributes>(
   };
 
   function formatKeyDefinitionPart(
-    keyAttributes: CompositeKeyPart<Attr>
+    keyAttributes: CompositeKeyPart<any>
   ): KeyDefinitionPart {
     const [head, ...tail] = keyAttributes;
 

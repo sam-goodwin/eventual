@@ -1,6 +1,6 @@
 import type { Attributes } from "./entity.js";
 
-export type KeyValue = string | number;
+export type KeyValue = string | number | bigint;
 
 /**
  * Composite Key - Whole key used to get and set an entity, made up of partition and sort key parts containing one or more attribute.
