@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.37.3 (2023-05-14)
+
+### Bug Fixes
+
+- support additional attribute types and fix zod object as attributes ([#351](https://github.com/functionless/eventual/issues/351)) ([14a7584](https://github.com/functionless/eventual/commit/14a7584a6342b639cc1fddf583fc2a7eaf47cca7))
+
 ## 0.37.2 (2023-05-14)
 
 **Note:** Version bump only for package create-eventual
