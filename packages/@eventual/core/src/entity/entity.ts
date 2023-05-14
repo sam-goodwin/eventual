@@ -34,13 +34,19 @@ export type AttributeBinaryValue =
   | BigInt64Array
   | BigUint64Array;
 
-export type AttributeValue =
-  | Attributes
+type AttributeScalarValue =
+  | null
+  | undefined
+  | bigint
   | string
   | number
   | boolean
-  | AttributeBinaryValue
-  | Set<string | number | boolean | AttributeBinaryValue>
+  | AttributeBinaryValue;
+
+export type AttributeValue =
+  | Attributes
+  | AttributeScalarValue
+  | Set<AttributeScalarValue>
   | AttributeValue[];
 
 export interface Attributes {
@@ -68,7 +74,7 @@ export interface Entity<
 > extends Omit<EntitySpec, "attributes" | "streams" | "partition" | "sort"> {
   kind: "Entity";
   key: KeyDefinition;
-  attributes: z.ZodObject<EntityZodShape<Attr>>;
+  attributes: ZodAttributesObject<Attr>;
   streams: EntityStream<Attr, Partition, Sort>[];
   /**
    * Get a value.
@@ -134,12 +140,24 @@ export const Entity = {
   },
 };
 
+/**
+ * Tries the {@link Attributes} type to the computed output of the object.
+ *
+ * TODO: extend this type to support intersection and union.
+ */
+export type ZodAttributesObject<T extends Attributes> = z.ZodObject<
+  any,
+  any,
+  any,
+  T
+>;
+
 export interface EntityOptions<
   Attr extends Attributes,
   Partition extends CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined = undefined
 > {
-  attributes: z.ZodObject<EntityZodShape<Attr>> | EntityZodShape<Attr>;
+  attributes: ZodAttributesObject<Attr> | EntityZodShape<Attr>;
   partition: Partition;
   sort?: Sort;
 }
@@ -225,7 +243,7 @@ export function entity<
   const attributes =
     options.attributes instanceof z.ZodObject
       ? options.attributes
-      : z.object(options.attributes);
+      : (z.object(options.attributes) as unknown as ZodAttributesObject<Attr>);
 
   const entity: Entity<Attr, Partition, Sort> = {
     // @ts-ignore
