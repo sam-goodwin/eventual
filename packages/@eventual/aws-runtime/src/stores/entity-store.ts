@@ -15,18 +15,18 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
-  Entity,
   Attributes,
+  Entity,
   EntityConsistencyOptions,
+  EntityIndex,
   EntityQueryOptions,
   EntityQueryResult,
+  EntityReadOptions,
   EntitySetOptions,
   EntityWithMetadata,
   TransactionCancelled,
   TransactionConflict,
   UnexpectedVersion,
-  EntityIndex,
-  EntityReadOptions,
 } from "@eventual/core";
 import {
   EntityProvider,
@@ -204,7 +204,9 @@ export class AWSEntityStore extends EntityStore {
         IndexName: entity.kind === "EntityIndex" ? entity.name : undefined,
         ConsistentRead: options?.consistentRead,
         KeyConditionExpression:
-          queryKey.sort && queryKey.sort.keyValue !== undefined
+          queryKey.sort &&
+          (queryKey.sort.keyValue !== undefined ||
+            queryKey.sort.keyValue === "")
             ? queryKey.sort.partialValue
               ? `${formatAttributeNameMapKey(
                   queryKey.partition.keyAttribute
@@ -224,7 +226,9 @@ export class AWSEntityStore extends EntityStore {
             typeof queryKey.partition.keyValue === "number"
               ? { N: queryKey.partition.keyValue.toString() }
               : { S: queryKey.partition.keyValue },
-          ...(queryKey.sort && queryKey.sort.keyValue !== undefined
+          ...(queryKey.sort &&
+          (queryKey.sort.keyValue !== undefined ||
+            queryKey.sort.keyValue === "")
             ? {
                 ":sk":
                   typeof queryKey.sort.keyValue === "string"
