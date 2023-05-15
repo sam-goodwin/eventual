@@ -63,7 +63,7 @@ export const bucketHandlerName = () => tryGetEnv(ENV_NAMES.BUCKET_HANDLER_NAME);
 export const transactionWorkerArn = () =>
   tryGetEnv(ENV_NAMES.TRANSACTION_WORKER_ARN);
 export const bucketOverrides = () => {
-  const bucketOverridesString = tryGetEnv(ENV_NAMES.BUCKET_OVERRIDES) ?? "{}";
+  const bucketOverridesString = process.env[ENV_NAMES.BUCKET_OVERRIDES] ?? "{}";
   return JSON.parse(bucketOverridesString) as Record<
     string,
     BucketRuntimeOverrides
