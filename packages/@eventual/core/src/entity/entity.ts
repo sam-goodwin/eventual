@@ -497,7 +497,7 @@ export interface EntityIndex<
   query(
     queryKey: QueryKey<Attr, Partition, Sort>,
     options?: EntityQueryOptions
-  ): Promise<EntityQueryResult>;
+  ): Promise<EntityQueryResult<Attr>>;
   /**
    * Returns all items in the table, up to the limit given or 1MB (on AWS).
    *
