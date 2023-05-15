@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.39.0 (2023-05-15)
+
+### Features
+
+- entity scan ([#352](https://github.com/functionless/eventual/issues/352)) ([8a0c17b](https://github.com/functionless/eventual/commit/8a0c17b110df9c439265a49ae78d8374dfe2e47b))
+
 # 0.38.0 (2023-05-14)
 
 ### Features
