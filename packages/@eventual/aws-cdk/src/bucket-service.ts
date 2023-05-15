@@ -20,6 +20,7 @@ import type { LazyInterface } from "./proxy-construct";
 import type { EventualResource, ServiceConstructProps } from "./service";
 import { ServiceFunction } from "./service-function";
 import { formatBucketArn, serviceBucketArn, ServiceEntityProps } from "./utils";
+import { CorsHttpMethod } from "@aws-cdk/aws-apigatewayv2-alpha";
 
 export type BucketOverrides<Service> = Partial<
   ServiceEntityProps<Service, "Bucket", BucketRuntimeOverrides>
@@ -177,12 +178,23 @@ class Bucket extends Construct {
         props.serviceProps.cors.allowOrigins
           ? [
               {
-                allowedMethods: props.serviceProps.cors.allowMethods.flatMap(
-                  (s) =>
-                    Object.values(s3.HttpMethods).find(
-                      (v) => s.toString() === v.toString()
-                    ) ?? []
-                ),
+                allowedMethods: [
+                  ...new Set(
+                    props.serviceProps.cors.allowMethods.flatMap((s) =>
+                      s === CorsHttpMethod.ANY
+                        ? [
+                            s3.HttpMethods.DELETE,
+                            s3.HttpMethods.PUT,
+                            s3.HttpMethods.POST,
+                            s3.HttpMethods.HEAD,
+                            s3.HttpMethods.GET,
+                          ]
+                        : Object.values(s3.HttpMethods).find(
+                            (v) => s.toString() === v.toString()
+                          ) ?? []
+                    )
+                  ),
+                ],
                 allowedOrigins: props.serviceProps.cors.allowOrigins,
                 allowedHeaders: props.serviceProps.cors.allowHeaders,
                 exposedHeaders: props.serviceProps.cors.exposeHeaders,

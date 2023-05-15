@@ -10,6 +10,7 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
   Bucket,
+  BucketGeneratePresignedResult,
   CopyBucketObjectOptions,
   CopyBucketObjectResponse,
   DurationSchedule,
@@ -156,7 +157,7 @@ export class AWSBucketStore implements BucketStore {
     key: string,
     operation: PresignedUrlOperation,
     expires?: DurationSchedule | undefined
-  ): Promise<{ url: string; expires: string }> {
+  ): Promise<BucketGeneratePresignedResult> {
     const request =
       operation === "get"
         ? new GetObjectCommand({
