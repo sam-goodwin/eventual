@@ -569,6 +569,11 @@ export const allCountersByN = counter.index("allCountersByN", {
   sort: ["n"],
 });
 
+export const countersByNamespace = counter.index("countersOrderedByNamespace", {
+  partition: ["id"],
+  sort: ["namespace"],
+});
+
 export const countersByN = counter.index("countersByN", {
   sort: ["n"],
 });
@@ -655,6 +660,12 @@ export const entityIndexTask = task(
         }))
       ),
       allCountersByN.query({ id }).then((q) =>
+        q.entries?.map((e) => ({
+          n: e.value.n,
+          namespace: e.value.namespace,
+        }))
+      ),
+      countersByNamespace.query({ id }).then((q) =>
         q.entries?.map((e) => ({
           n: e.value.n,
           namespace: e.value.namespace,

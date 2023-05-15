@@ -351,12 +351,17 @@ function formatNormalizedPart(
     attributes: keyPart.attributes,
     parts,
     keyAttribute: keyPart.keyAttribute,
-    keyValue: (keyPart.type === "number"
-      ? parts[0]?.value
-      : (missingValueIndex === -1 ? parts : parts.slice(0, missingValueIndex))
-          .map((p) => p.value)
-          .join("#")) as any,
-    partialValue: missingValueIndex !== -1,
+    keyValue:
+      // if there are no present values, return undefined
+      missingValueIndex === 0
+        ? undefined
+        : keyPart.type === "number"
+        ? parts[0]!.value
+        : (missingValueIndex === -1 ? parts : parts.slice(0, missingValueIndex))
+            .map((p) => p.value)
+            .join("#"),
+    // since true is more permissive (allows undefined), hack the types here to allow any value
+    partialValue: (missingValueIndex !== -1) as true,
   };
 }
 
