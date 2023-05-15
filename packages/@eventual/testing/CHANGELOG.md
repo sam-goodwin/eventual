@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.39.1 (2023-05-15)
+
+### Bug Fixes
+
+- missing attribute in entity index query result ([#354](https://github.com/functionless/eventual/issues/354)) ([d4023f3](https://github.com/functionless/eventual/commit/d4023f36d2949b2428a13904984ca57d9b938259))
+
 # 0.39.0 (2023-05-15)
 
 ### Features
