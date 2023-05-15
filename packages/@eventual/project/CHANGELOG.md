@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.39.2 (2023-05-15)
+
+### Bug Fixes
+
+- entity with sort fails to query without sort ([#355](https://github.com/functionless/eventual/issues/355)) ([bf6672b](https://github.com/functionless/eventual/commit/bf6672ba53f390bc2f13581aecc6d99df2cd7e48))
+
 ## 0.39.1 (2023-05-15)
 
 ### Bug Fixes
