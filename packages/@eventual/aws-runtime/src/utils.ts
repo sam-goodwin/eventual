@@ -1,7 +1,10 @@
 import {
+  AttributeValue,
   DynamoDBClient,
   QueryCommand,
   QueryCommandInput,
+  ScanCommand,
+  ScanCommandInput,
 } from "@aws-sdk/client-dynamodb";
 import { Buffer } from "buffer";
 
@@ -69,16 +72,49 @@ export async function queryPageWithToken<Item>(
   options: QueryPageWithTokenOptions,
   query: Omit<QueryCommandInput, "Limit" | "ExclusiveStartKey">
 ) {
+  return scanOrQueryPageWithToken<Item>(
+    options,
+    (limit, lastEvaluatedKey) =>
+      new QueryCommand({
+        ...query,
+        Limit: limit,
+        ExclusiveStartKey: lastEvaluatedKey,
+      })
+  );
+}
+
+export async function scanPageWithToken<Item>(
+  options: QueryPageWithTokenOptions,
+  query: Omit<ScanCommandInput, "Limit" | "ExclusiveStartKey">
+) {
+  return scanOrQueryPageWithToken<Item>(
+    options,
+    (limit, lastEvaluatedKey) =>
+      new ScanCommand({
+        ...query,
+        Limit: limit,
+        ExclusiveStartKey: lastEvaluatedKey,
+      })
+  );
+}
+
+async function scanOrQueryPageWithToken<Item>(
+  options: QueryPageWithTokenOptions,
+  scanOrQuery: (
+    limit: number,
+    exclusiveStartKey?: Record<string, AttributeValue>
+  ) => QueryCommand | ScanCommand
+) {
   const [, , payload] = options.nextToken
     ? await deserializeToken<DynamoPageNextTokenV1>(options.nextToken)
     : [];
 
-  const result = await queryPage<Item>(
+  const result = await scanOrQueryPage<Item>(
     {
       ...options,
       exclusiveStartKey: payload,
     },
-    query
+    scanOrQuery
   );
 
   const nextTokenObj: DynamoPageNextTokenV1 | undefined =
@@ -93,9 +129,12 @@ export async function queryPageWithToken<Item>(
   return { records: result.items, nextToken: newNextToken };
 }
 
-export async function queryPage<Item>(
+async function scanOrQueryPage<Item>(
   options: QueryPageOptions,
-  query: Omit<QueryCommandInput, "Limit" | "ExclusiveStartKey">
+  scanOrQuery: (
+    limit: number,
+    exclusiveStartKey?: Record<string, AttributeValue>
+  ) => QueryCommand | ScanCommand
 ): Promise<{
   items: Item[];
   lastEvaluatedKey?: Record<string, any> | undefined;
@@ -107,11 +146,7 @@ export async function queryPage<Item>(
 
   do {
     const result = await options.dynamoClient.send(
-      new QueryCommand({
-        ...query,
-        Limit: options.pageSize * 2,
-        ExclusiveStartKey: lastEvaluatedKey,
-      })
+      scanOrQuery(options.pageSize * 2, lastEvaluatedKey)
     );
 
     if (!result.Items) {

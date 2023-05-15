@@ -26,6 +26,7 @@ import {
   TransactionConflict,
   UnexpectedVersion,
   EntityIndex,
+  EntityReadOptions,
 } from "@eventual/core";
 import {
   EntityProvider,
@@ -38,7 +39,11 @@ import {
   NormalizedEntityTransactItem,
 } from "@eventual/core-runtime";
 import { assertNever } from "@eventual/core/internal";
-import { entityServiceTableName, queryPageWithToken } from "../utils.js";
+import {
+  entityServiceTableName,
+  queryPageWithToken,
+  scanPageWithToken,
+} from "../utils.js";
 
 export interface AWSEntityStoreProps {
   dynamo: DynamoDBClient;
@@ -72,13 +77,14 @@ export class AWSEntityStore extends EntityStore {
 
   protected override async _getWithMetadata(
     entity: Entity,
-    key: NormalizedEntityCompositeKeyComplete
+    key: NormalizedEntityCompositeKeyComplete,
+    options?: EntityReadOptions
   ): Promise<EntityWithMetadata | undefined> {
     const item = await this.props.dynamo.send(
       new GetItemCommand({
         Key: this.entityKey(key),
         TableName: this.tableName(entity),
-        ConsistentRead: true,
+        ConsistentRead: options?.consistentRead,
       })
     );
 
@@ -196,6 +202,7 @@ export class AWSEntityStore extends EntityStore {
       {
         TableName: this.tableName(entity),
         IndexName: entity.kind === "EntityIndex" ? entity.name : undefined,
+        ConsistentRead: options?.consistentRead,
         KeyConditionExpression:
           queryKey.sort && queryKey.sort.keyValue !== undefined
             ? queryKey.sort.partialValue
@@ -229,6 +236,37 @@ export class AWSEntityStore extends EntityStore {
         ExpressionAttributeNames: Object.fromEntries(
           [...allAttributes]?.map((f) => [formatAttributeNameMapKey(f), f])
         ),
+      }
+    );
+
+    return {
+      nextToken: result.nextToken,
+      entries: result.records.map(({ __version, ...r }) => ({
+        value: unmarshall(r),
+        version: Number(__version.N),
+      })),
+    };
+  }
+
+  protected override async _scan(
+    entity: Entity | EntityIndex,
+    options?: EntityQueryOptions
+  ): Promise<EntityQueryResult> {
+    const result = await scanPageWithToken<
+      MarshalledEntityAttributesWithVersion<any>
+    >(
+      {
+        dynamoClient: this.props.dynamo,
+        pageSize: options?.limit ?? 1000,
+        keys: entity.key.sort
+          ? [entity.key.partition.keyAttribute, entity.key.sort.keyAttribute]
+          : [entity.key.partition.keyAttribute],
+        nextToken: options?.nextToken,
+      },
+      {
+        TableName: this.tableName(entity),
+        IndexName: entity.kind === "EntityIndex" ? entity.name : undefined,
+        ConsistentRead: options?.consistentRead,
       }
     );
 

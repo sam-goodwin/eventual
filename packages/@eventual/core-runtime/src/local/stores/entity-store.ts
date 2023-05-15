@@ -151,6 +151,34 @@ export class LocalEntityStore extends EntityStore {
     };
   }
 
+  /**
+   * Attempts to match dynamo's scan behavior. Scan is "unordered".
+   */
+  protected override async _scan(
+    entity: Entity | EntityIndex,
+    options?: EntityQueryOptions
+  ): Promise<EntityQueryResult> {
+    const store = this.getLocalEntityStore(entity);
+    const entries = [...(store?.values() ?? [])].flatMap((val) => [
+      ...val.values(),
+    ]);
+
+    const { items, nextToken } = paginateItems(
+      entries,
+      undefined,
+      undefined,
+      undefined,
+      options?.limit,
+      options?.nextToken
+    );
+
+    // values should be sorted
+    return {
+      entries: items,
+      nextToken,
+    };
+  }
+
   protected override async _transactWrite(
     items: NormalizedEntityTransactItem[]
   ): Promise<void> {
@@ -224,16 +252,20 @@ export class LocalEntityStore extends EntityStore {
     return _entity;
   }
 
+  private getLocalEntityStore(entityOrIndex: Entity | EntityIndex) {
+    const localEntity = this.getLocalEntity(entityOrIndex);
+    return entityOrIndex.kind === "EntityIndex"
+      ? localEntity.indices[entityOrIndex.name]
+      : localEntity.data;
+  }
+
   private getPartitionMap(
     entityOrIndex: Entity | EntityIndex,
     partitionKey: NormalizedEntityKeyCompletePart
   ) {
-    const index =
-      entityOrIndex.kind === "EntityIndex" ? entityOrIndex : undefined;
-    const _entity = this.getLocalEntity(entityOrIndex);
-    const table = index ? _entity.indices[index.name] : _entity.data;
+    const table = this.getLocalEntityStore(entityOrIndex);
     if (!table) {
-      throw new Error(`Index ${index?.name} not found`);
+      throw new Error(`Table or Index ${entityOrIndex?.name} not found`);
     }
     let partitionMap = table.get(partitionKey.keyValue);
     if (!partitionMap) {

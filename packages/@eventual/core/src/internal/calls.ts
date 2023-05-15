@@ -114,10 +114,12 @@ export type EntityOperation<
   Op extends
     | EntityMethod
     | EntityTransactOperation["operation"]
-    | EntityQueryIndexOperation["operation"] =
+    | EntityQueryIndexOperation["operation"]
+    | EntityScanIndexOperation["operation"] =
     | EntityMethod
     | EntityTransactOperation["operation"]
     | EntityQueryIndexOperation["operation"]
+    | EntityScanIndexOperation["operation"]
 > = Op extends EntityMethod
   ? {
       operation: Op;
@@ -126,13 +128,22 @@ export type EntityOperation<
     }
   : Op extends "transact"
   ? EntityTransactOperation
-  : EntityQueryIndexOperation;
+  : Op extends "queryIndex"
+  ? EntityQueryIndexOperation
+  : EntityScanIndexOperation;
 
 export interface EntityQueryIndexOperation {
   operation: "queryIndex";
   entityName: string;
   indexName: string;
   params: Parameters<EntityIndex["query"]>;
+}
+
+export interface EntityScanIndexOperation {
+  operation: "scanIndex";
+  entityName: string;
+  indexName: string;
+  params: Parameters<EntityIndex["scan"]>;
 }
 
 export interface EntityTransactOperation {

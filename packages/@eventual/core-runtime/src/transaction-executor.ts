@@ -11,6 +11,7 @@ import {
   TransactionContext,
   TransactionFunction,
   UnexpectedVersion,
+  EntityReadOptions,
 } from "@eventual/core";
 import {
   assertNever,
@@ -170,7 +171,8 @@ export function createTransactionExecutor(
                 const normalizedKey = normalizeCompositeKey(entity, key);
                 const entityValue = await resolveEntity(
                   entity.name,
-                  normalizedKey
+                  normalizedKey,
+                  { consistentRead: true }
                 );
                 const serializedKey = serializeCompositeKey(
                   entity.name,
@@ -188,10 +190,11 @@ export function createTransactionExecutor(
             ) {
               return createEventualPromise(async () => {
                 const entity = getEntity(eventual.entityName);
-                const key = eventual.params[0];
+                const [key, options] = eventual.params;
                 const value = await resolveEntity(
                   entity.name,
-                  normalizeCompositeKey(entity, key)
+                  normalizeCompositeKey(entity, key),
+                  options
                 );
 
                 if (isEntityOperationOfType("get", eventual)) {
@@ -395,7 +398,8 @@ export function createTransactionExecutor(
 
       function resolveEntity(
         entityName: string,
-        key: NormalizedEntityCompositeKey
+        key: NormalizedEntityCompositeKey,
+        options?: EntityReadOptions
       ): EventualPromise<EntityWithMetadata | undefined> {
         const serializedKey = serializeCompositeKey(entityName, key);
         if (retrievedEntities.has(serializedKey)) {
@@ -406,7 +410,8 @@ export function createTransactionExecutor(
           return createEventualPromise(async () => {
             const value = await entityStore.getWithMetadata(
               entityName,
-              convertNormalizedEntityKeyToMap(key)
+              convertNormalizedEntityKeyToMap(key),
+              options
             );
             retrievedEntities.set(serializedKey, {
               entityName,

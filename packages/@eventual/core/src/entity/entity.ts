@@ -87,7 +87,10 @@ export interface Entity<
    *
    * @param key - key or {@link CompositeKey} of the value to retrieve.
    */
-  get(key: CompositeKey<Attr, Partition, Sort>): Promise<Attr | undefined>;
+  get(
+    key: CompositeKey<Attr, Partition, Sort>,
+    options?: EntityReadOptions
+  ): Promise<Attr | undefined>;
   /**
    * Get a value and metadata like version.
    * If your values use composite keys, the namespace must be provided.
@@ -95,7 +98,8 @@ export interface Entity<
    * @param key - key or {@link CompositeKey} of the value to retrieve.
    */
   getWithMetadata(
-    key: CompositeKey<Attr, Partition, Sort>
+    key: CompositeKey<Attr, Partition, Sort>,
+    options?: EntityReadOptions
   ): Promise<EntityWithMetadata<Attr> | undefined>;
   /**
    * Sets or updates a value within an entity and optionally a namespace.
@@ -112,14 +116,19 @@ export interface Entity<
     options?: EntityConsistencyOptions
   ): Promise<void>;
   /**
-   * List entries that match a prefix within an entity and namespace.
-   *
-   * If namespace is not provided, only values which do not use composite keys will be returned.
+   * Query the entity using the partition key and optionally part of the sort key.
    */
   query(
     key: QueryKey<Attr, Partition, Sort>,
     request?: EntityQueryOptions
   ): Promise<EntityQueryResult<Attr>>;
+  /**
+   * Returns all items in the table, up to the limit given or 1MB (on AWS).
+   *
+   * In general, scan is an expensive operation and should be avoided in favor of query
+   * unless it is necessary to get all items in a table across all or most partitions.
+   */
+  scan(request?: EntityQueryOptions): Promise<EntityQueryResult<Attr>>;
   index<
     const IndexPartition extends CompositeKeyPart<Attr> | undefined = undefined,
     const IndexSort extends CompositeKeyPart<Attr> | undefined = undefined
@@ -331,6 +340,18 @@ export function entity<
         }
       );
     },
+    scan: (...args) => {
+      return getEventualCallHook().registerEventualCall(
+        createEventualCall<EntityCall<"scan">>(EventualCallKind.EntityCall, {
+          entityName: name,
+          operation: "scan",
+          params: args,
+        }),
+        async () => {
+          return getEntityHook().scan(name, ...args);
+        }
+      );
+    },
     index: (...args) => {
       const [indexName, indexOptions] = args;
 
@@ -363,6 +384,20 @@ export function entity<
               }
             ),
             () => getEntityHook().queryIndex(name, indexName, ...args)
+          );
+        },
+        scan: (...args) => {
+          return getEventualCallHook().registerEventualCall(
+            createEventualCall<EntityCall<"scanIndex">>(
+              EventualCallKind.EntityCall,
+              {
+                entityName: name,
+                indexName,
+                operation: "scanIndex",
+                params: args,
+              }
+            ),
+            () => getEntityHook().scanIndex(name, indexName, ...args)
           );
         },
       };
@@ -463,6 +498,13 @@ export interface EntityIndex<
     queryKey: QueryKey<Attr, Partition, Sort>,
     options?: EntityQueryOptions
   ): Promise<EntityQueryResult>;
+  /**
+   * Returns all items in the table, up to the limit given or 1MB (on AWS).
+   *
+   * In general, scan is an expensive operation and should be avoided in favor of query
+   * unless it is necessary to get all items in a table across all or most partitions.
+   */
+  scan(request?: EntityQueryOptions): Promise<EntityQueryResult<Attr>>;
 }
 
 export interface EntityQueryResult<Attr extends Attributes = Attributes> {
@@ -473,7 +515,15 @@ export interface EntityQueryResult<Attr extends Attributes = Attributes> {
   nextToken?: string;
 }
 
-export interface EntityQueryOptions {
+export interface EntityReadOptions {
+  /**
+   * when consistent read is false or undefined, a query or scan may not include the latest changes to the entity values.
+   * Setting consistent read to true will increase the cost of the read and may take longer to return.
+   */
+  consistentRead?: boolean;
+}
+
+export interface EntityQueryOptions extends EntityReadOptions {
   /**
    * Number of items to retrieve
    * @default 100
