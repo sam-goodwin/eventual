@@ -1,5 +1,6 @@
 import {
   Bucket,
+  BucketGeneratePresignedResult,
   CopyBucketObjectOptions,
   CopyBucketObjectResponse,
   DurationSchedule,
@@ -194,7 +195,7 @@ export class LocalBucketStore implements BucketStore {
     _key: string,
     _operation: PresignedUrlOperation,
     _expires?: DurationSchedule | undefined
-  ): Promise<{ url: string; expires: string }> {
+  ): Promise<BucketGeneratePresignedResult> {
     // https://github.com/functionless/eventual/issues/341
     throw new Error("Presigned urls are not supported in Eventual Local");
   }

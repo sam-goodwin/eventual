@@ -16,100 +16,6 @@ import {
 } from "./internal/service-spec.js";
 import { DurationSchedule } from "./schedule.js";
 
-export interface BucketObjectReference {
-  key: string;
-  eTag: string;
-  size: number;
-}
-
-export interface ListBucketResult {
-  objects: BucketObjectReference[];
-  keyCount: number;
-  nextToken?: string;
-}
-
-export interface ListBucketRequest {
-  nextToken?: string;
-  startAfter?: string;
-  prefix?: string;
-  /**
-   * @default 1000
-   */
-  maxKeys?: number;
-}
-
-export interface GetBucketObjectOptions {
-  etag?: string;
-}
-
-export interface GetBucketMetadataResponse {
-  /**
-   * Content length in bytes
-   */
-  contentLength: number;
-  etag?: string;
-}
-
-export interface GetBucketObjectResponse extends GetBucketMetadataResponse {
-  body: Readable;
-  /**
-   * Attempts to convert the body stream into a string.
-   *
-   * A value is only computed once. The same value will be returned each call.
-   */
-  getBodyString(encoding?: BufferEncoding): Promise<string>;
-}
-
-export interface PutBucketObjectResponse {
-  etag?: string;
-}
-
-export interface CopyBucketObjectOptions {
-  sourceEtag?: string;
-}
-
-export interface CopyBucketObjectResponse {
-  etag?: string;
-}
-
-export interface BucketNotificationHandler
-  extends BucketNotificationHandlerSpec {
-  kind: "BucketNotificationHandler";
-  handler: BucketNotificationHandlerFunction;
-  sourceLocation?: SourceLocation;
-}
-
-export interface BucketNotificationHandlerFunction {
-  (item: BucketNotificationEvent): Promise<void> | void;
-}
-
-export interface BucketNotificationEventBase {
-  handlerName: string;
-  bucketName: string;
-  key: string;
-}
-
-export interface BucketNotificationPutEvent
-  extends BucketNotificationEventBase {
-  event: "put" | "copy";
-  etag: string;
-  size: number;
-}
-
-export interface BucketNotificationDeleteEvent
-  extends BucketNotificationEventBase {
-  event: "delete";
-}
-
-export type BucketNotificationEvent =
-  | BucketNotificationPutEvent
-  | BucketNotificationDeleteEvent;
-
-export type BucketNotificationHandlerEventInput =
-  | BucketNotificationEventType[]
-  | BucketNotificationEventType
-  | "all";
-
 export type PresignedUrlOperation = "put" | "get" | "head" | "delete";
 
 export interface Bucket extends Omit<BucketSpec, "handlers"> {
@@ -174,7 +80,7 @@ export interface Bucket extends Omit<BucketSpec, "handlers"> {
      * @default - 1 hour
      */
     expires?: DurationSchedule
-  ): Promise<{ url: string; expires: string }>;
+  ): Promise<BucketGeneratePresignedResult>;
   /**
    * List keys and their metadata within a bucket.
    */
@@ -385,4 +291,109 @@ export function bucket(name: string): Bucket {
   buckets().set(name, bucket);
 
   return bucket;
+}
+
+export interface BucketObjectReference {
+  key: string;
+  eTag: string;
+  size: number;
+}
+
+export interface ListBucketResult {
+  objects: BucketObjectReference[];
+  keyCount: number;
+  nextToken?: string;
+}
+
+export interface ListBucketRequest {
+  nextToken?: string;
+  startAfter?: string;
+  prefix?: string;
+  /**
+   * @default 1000
+   */
+  maxKeys?: number;
+}
+
+export interface GetBucketObjectOptions {
+  etag?: string;
+}
+
+export interface GetBucketMetadataResponse {
+  /**
+   * Content length in bytes
+   */
+  contentLength: number;
+  etag?: string;
+}
+
+export interface GetBucketObjectResponse extends GetBucketMetadataResponse {
+  body: Readable;
+  /**
+   * Attempts to convert the body stream into a string.
+   *
+   * A value is only computed once. The same value will be returned each call.
+   */
+  getBodyString(encoding?: BufferEncoding): Promise<string>;
+}
+
+export interface PutBucketObjectResponse {
+  etag?: string;
+}
+
+export interface CopyBucketObjectOptions {
+  sourceEtag?: string;
+}
+
+export interface CopyBucketObjectResponse {
+  etag?: string;
+}
+
+export interface BucketNotificationHandler
+  extends BucketNotificationHandlerSpec {
+  kind: "BucketNotificationHandler";
+  handler: BucketNotificationHandlerFunction;
+  sourceLocation?: SourceLocation;
+}
+
+export interface BucketNotificationHandlerFunction {
+  (item: BucketNotificationEvent): Promise<void> | void;
+}
+
+export interface BucketNotificationEventBase {
+  handlerName: string;
+  bucketName: string;
+  key: string;
+}
+
+export interface BucketNotificationPutEvent
+  extends BucketNotificationEventBase {
+  event: "put" | "copy";
+  etag: string;
+  size: number;
+}
+
+export interface BucketNotificationDeleteEvent
+  extends BucketNotificationEventBase {
+  event: "delete";
+}
+
+export type BucketNotificationEvent =
+  | BucketNotificationPutEvent
+  | BucketNotificationDeleteEvent;
+
+export type BucketNotificationHandlerEventInput =
+  | BucketNotificationEventType[]
+  | BucketNotificationEventType
+  | "all";
+
+export interface BucketGeneratePresignedResult {
+  /**
+   * S3 Presigned supporting the given operation.
+   */
+  url: string;
+  /**
+   * ISO 8601 timestamp representing when the url will expire.
+   */
+  expires: string;
 }
