@@ -35,6 +35,11 @@ export type EntityHook = {
     queryKey: QueryKey,
     options?: EntityQueryOptions
   ): Promise<EntityQueryResult>;
+  scanIndex(
+    entityName: string,
+    indexName: string,
+    options?: EntityQueryOptions
+  ): Promise<EntityQueryResult>;
   transactWrite(items: EntityTransactItem[]): Promise<void>;
 };
 

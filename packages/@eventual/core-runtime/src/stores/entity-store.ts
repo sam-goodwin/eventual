@@ -12,6 +12,7 @@ import type {
   EntityTransactItem,
   EntityWithMetadata,
   EntityIndex,
+  EntityReadOptions,
 } from "@eventual/core";
 import type {
   EntityHook,
@@ -29,7 +30,8 @@ export abstract class EntityStore implements EntityHook {
 
   public async getWithMetadata(
     entityName: string,
-    key: CompositeKey
+    key: CompositeKey,
+    options?: EntityReadOptions
   ): Promise<EntityWithMetadata | undefined> {
     const entity = this.getEntity(entityName);
     const normalizedCompositeKey = normalizeCompositeKey(entity, key);
@@ -38,12 +40,13 @@ export abstract class EntityStore implements EntityHook {
       throw new Error("Key cannot be partial for get or getWithMetadata.");
     }
 
-    return this._getWithMetadata(entity, normalizedCompositeKey);
+    return this._getWithMetadata(entity, normalizedCompositeKey, options);
   }
 
   protected abstract _getWithMetadata(
     entity: Entity,
-    key: NormalizedEntityCompositeKeyComplete
+    key: NormalizedEntityCompositeKeyComplete,
+    options?: EntityReadOptions
   ): Promise<EntityWithMetadata | undefined>;
 
   public set(
@@ -142,6 +145,38 @@ export abstract class EntityStore implements EntityHook {
   protected abstract _query(
     entity: Entity | EntityIndex,
     queryKey: NormalizedEntityCompositeKey<NormalizedEntityKeyCompletePart>,
+    options: EntityQueryOptions | undefined
+  ): Promise<EntityQueryResult>;
+
+  public scan(
+    entityName: string,
+    options?: EntityQueryOptions | undefined
+  ): Promise<EntityQueryResult> {
+    const entity = this.getEntity(entityName);
+
+    return this._scan(entity, options);
+  }
+
+  public scanIndex(
+    entityName: string,
+    indexName: string,
+    options?: EntityQueryOptions | undefined
+  ): Promise<EntityQueryOptions> {
+    const index = this.getEntity(entityName).indices.find(
+      (i) => i.name === indexName
+    );
+
+    if (!index) {
+      throw new Error(
+        `Index ${indexName} was not found on entity ${entityName}`
+      );
+    }
+
+    return this._scan(index, options);
+  }
+
+  protected abstract _scan(
+    entity: Entity | EntityIndex,
     options: EntityQueryOptions | undefined
   ): Promise<EntityQueryResult>;
 
