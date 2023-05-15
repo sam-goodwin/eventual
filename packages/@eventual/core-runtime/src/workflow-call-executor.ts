@@ -1,6 +1,5 @@
 import type { ExecutionID, Workflow } from "@eventual/core";
 import {
-  assertNever,
   AwaitTimerCall,
   BucketCall,
   BucketGetObjectSerializedResult,
@@ -18,6 +17,17 @@ import {
   EventsEmitted,
   HistoryStateEvent,
   InvokeTransactionCall,
+  SendSignalCall,
+  SignalSent,
+  TaskCall,
+  TaskScheduled,
+  TimerCompleted,
+  TimerScheduled,
+  TransactionRequest,
+  TransactionRequestFailed,
+  TransactionRequestSucceeded,
+  WorkflowEventType,
+  assertNever,
   isAwaitTimerCall,
   isBucketCall,
   isBucketCallType,
@@ -32,16 +42,6 @@ import {
   isRegisterSignalHandlerCall,
   isSendSignalCall,
   isTaskCall,
-  SendSignalCall,
-  SignalSent,
-  TaskCall,
-  TaskScheduled,
-  TimerCompleted,
-  TimerScheduled,
-  TransactionRequest,
-  TransactionRequestFailed,
-  TransactionRequestSucceeded,
-  WorkflowEventType,
 } from "@eventual/core/internal";
 import stream from "stream";
 import type { EventClient } from "./clients/event-client.js";
@@ -313,6 +313,12 @@ export class WorkflowCallExecutor {
         return self.props.entityStore.transactWrite(operation.items);
       } else if (isEntityOperationOfType("queryIndex", operation)) {
         return self.props.entityStore.queryIndex(
+          operation.entityName,
+          operation.indexName,
+          ...operation.params
+        );
+      } else if (isEntityOperationOfType("scanIndex", operation)) {
+        return self.props.entityStore.scanIndex(
           operation.entityName,
           operation.indexName,
           ...operation.params
