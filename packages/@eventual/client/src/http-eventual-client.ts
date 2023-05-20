@@ -50,7 +50,7 @@ export class HttpEventualClient implements EventualServiceClient {
     return this.serviceClient.listWorkflows();
   }
 
-  public async startExecution<W extends Workflow<any, any>>(
+  public async startExecution<W extends Workflow>(
     request: StartExecutionRequest<W>
   ): Promise<ExecutionHandle<W>> {
     // serialize the workflow object to a string

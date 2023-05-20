@@ -73,7 +73,7 @@ const workflow = (() => {
   ) => {
     // eslint-disable-next-line no-empty
     while (workflows().has(`wf${++n}`)) {}
-    return _workflow<Input, Output>(`wf${n}`, handler);
+    return _workflow<any, Input, Output>(`wf${n}`, handler);
   };
 })();
 

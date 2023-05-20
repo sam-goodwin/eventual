@@ -133,12 +133,15 @@ export interface Schemas {
   [schemaName: string]: openapi.SchemaObject;
 }
 
-export interface WorkflowSpec {
-  name: string;
+export interface WorkflowSpec<Name extends string = string> {
+  /**
+   * Globally unique ID of this {@link Workflow}.
+   */
+  name: Name;
 }
 
-export interface BucketSpec {
-  name: string;
+export interface BucketSpec<Name extends string = string> {
+  name: Name;
   handlers: BucketNotificationHandlerSpec[];
 }
 
@@ -157,15 +160,15 @@ export interface BucketNotificationHandlerOptions extends FunctionRuntimeProps {
   filters?: { prefix?: string; suffix?: string }[];
 }
 
-export interface BucketNotificationHandlerSpec {
-  name: string;
+export interface BucketNotificationHandlerSpec<Name extends string = string> {
+  name: Name;
   bucketName: string;
   options?: BucketNotificationHandlerOptions;
   sourceLocation?: SourceLocation;
 }
 
-export interface EntitySpec {
-  name: string;
+export interface EntitySpec<Name extends string = string> {
+  name: Name;
   key: KeyDefinition;
   /**
    * An Optional schema for the entity within an entity.
@@ -201,28 +204,29 @@ export interface EntityStreamOptions<
 }
 
 export interface EntityStreamSpec<
+  Name extends string = string,
   Attr extends Attributes = Attributes,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
     | undefined
 > {
-  name: string;
+  name: Name;
   entityName: string;
   options?: EntityStreamOptions<Attr, Partition, Sort>;
   sourceLocation?: SourceLocation;
 }
 
-export interface EntityIndexSpec {
-  name: string;
+export interface EntityIndexSpec<Name extends string = string> {
+  name: Name;
   entityName: string;
   key: KeyDefinition;
   partition?: CompositeKeyPart<any>;
   sort?: CompositeKeyPart<any>;
 }
 
-export interface TransactionSpec {
-  name: string;
+export interface TransactionSpec<Name extends string = string> {
+  name: Name;
 }
 
 export interface EnvironmentManifest {

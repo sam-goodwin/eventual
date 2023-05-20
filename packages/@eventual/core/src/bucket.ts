@@ -18,7 +18,8 @@ import { DurationSchedule } from "./schedule.js";
 
 export type PresignedUrlOperation = "put" | "get" | "head" | "delete";
 
-export interface Bucket extends Omit<BucketSpec, "handlers"> {
+export interface Bucket<Name extends string = string>
+  extends Omit<BucketSpec<Name>, "handlers"> {
   kind: "Bucket";
   handlers: BucketNotificationHandler[];
   /**
@@ -106,26 +107,26 @@ export interface Bucket extends Omit<BucketSpec, "handlers"> {
    * });
    * ```
    */
-  on(
+  on<Name extends string = string>(
     events: BucketNotificationHandlerEventInput,
-    name: string,
+    name: Name,
     options: Omit<BucketNotificationHandlerOptions, "eventTypes">,
     handler: BucketNotificationHandlerFunction
-  ): BucketNotificationHandler;
-  on(
+  ): BucketNotificationHandler<Name>;
+  on<Name extends string = string>(
     events: BucketNotificationHandlerEventInput,
-    name: string,
+    name: Name,
     handler: BucketNotificationHandlerFunction
-  ): BucketNotificationHandler;
+  ): BucketNotificationHandler<Name>;
 }
 
-export function bucket(name: string): Bucket {
+export function bucket<Name extends string = string>(name: Name): Bucket<Name> {
   if (buckets().has(name)) {
     throw new Error(`bucket with name '${name}' already exists`);
   }
 
   const handlers: BucketNotificationHandler[] = [];
-  const bucket: Bucket = {
+  const bucket: Bucket<Name> = {
     name,
     handlers,
     kind: "Bucket",
@@ -217,29 +218,29 @@ export function bucket(name: string): Bucket {
       // should be constant, can be used directly in a workflow.
       return getBucketHook().physicalName(name);
     },
-    on: (
+    on: <Name extends string = string>(
       ...args:
         | [
             events: BucketNotificationHandlerEventInput,
-            name: string,
+            name: Name,
             handler: BucketNotificationHandlerFunction
           ]
         | [
             events: BucketNotificationHandlerEventInput,
-            name: string,
+            name: Name,
             options: Omit<BucketNotificationHandlerOptions, "eventTypes">,
             handler: BucketNotificationHandlerFunction
           ]
         | [
             sourceLocation: SourceLocation,
             events: BucketNotificationHandlerEventInput,
-            name: string,
+            name: Name,
             handler: BucketNotificationHandlerFunction
           ]
         | [
             sourceLocation: SourceLocation,
             events: BucketNotificationHandlerEventInput,
-            name: string,
+            name: Name,
             options: Omit<BucketNotificationHandlerOptions, "eventTypes">,
             handler: BucketNotificationHandlerFunction
           ]
@@ -253,19 +254,19 @@ export function bucket(name: string): Bucket {
           ? [
               args[0],
               args[1] as BucketNotificationHandlerEventInput,
-              args[2] as string,
+              args[2] as Name,
               ,
               args[3],
             ]
           : [
               ,
               args[0] as BucketNotificationHandlerEventInput,
-              args[1] as string,
+              args[1] as Name,
               args[2] as Omit<BucketNotificationHandlerOptions, "eventTypes">,
               args[3],
             ];
 
-      const bucketHandler: BucketNotificationHandler = {
+      const bucketHandler: BucketNotificationHandler<Name> = {
         kind: "BucketNotificationHandler",
         handler,
         name: streamName,
@@ -349,8 +350,8 @@ export interface CopyBucketObjectResponse {
   etag?: string;
 }
 
-export interface BucketNotificationHandler
-  extends BucketNotificationHandlerSpec {
+export interface BucketNotificationHandler<Name extends string = string>
+  extends BucketNotificationHandlerSpec<Name> {
   kind: "BucketNotificationHandler";
   handler: BucketNotificationHandlerFunction;
   sourceLocation?: SourceLocation;

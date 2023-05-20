@@ -308,7 +308,7 @@ export async function orchestrateExecution(
    * Retrieves the previously started executor or creates a new one and starts it.
    */
   async function getExecutor(
-    workflow: Workflow<any, any>,
+    workflow: Workflow,
     executionId: string,
     logAgent?: LogAgent
   ): Promise<WorkflowExecutor<any, any, ExecutorRunContext>> {
