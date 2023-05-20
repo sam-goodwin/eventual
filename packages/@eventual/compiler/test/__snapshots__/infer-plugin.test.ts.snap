@@ -507,7 +507,8 @@ function command(...args) {
     name,
     handler,
     sourceLocation,
-    ...options
+    ...options,
+    output: options?.output ? "restStatusCode" in options.output ? options.output : { schema: options.output, description: "OK", restStatusCode: 200 } : { schema: void 0, description: "OK", restStatusCode: 200 }
   };
   commands.push(command2);
   return command2;
@@ -552,6 +553,7 @@ function createRouter(middlewares) {
             args[2]
           ] : [void 0, args[0], void 0, args[1]];
           const command2 = {
+            description: routeProps?.description,
             kind: "Command",
             handler,
             memorySize: routeProps?.memorySize,
@@ -561,6 +563,7 @@ function createRouter(middlewares) {
             sourceLocation,
             handlerTimeout: routeProps?.handlerTimeout,
             middlewares,
+            otherOutputs: routeProps?.outputs,
             passThrough: true
           };
           commands.push(command2);

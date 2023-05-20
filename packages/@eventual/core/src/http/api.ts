@@ -8,10 +8,11 @@ import type { SourceLocation } from "../internal/service-spec.js";
 import {
   AnyCommand,
   Command,
-  command,
   CommandContext,
   CommandHandler,
   CommandOptions,
+  CommandOutputOptions,
+  command,
   parseCommandArgs,
 } from "./command.js";
 import type {
@@ -66,9 +67,9 @@ function createRouter<Context extends CommandContext>(
           return (
             ...args:
               | [SourceLocation, string, HttpHandler[]]
-              | [SourceLocation, string, RouteRuntimeProps, HttpHandler[]]
+              | [SourceLocation, string, ApiRouteProps, HttpHandler[]]
               | [string, HttpHandler[]]
-              | [string, RouteRuntimeProps, HttpHandler[]]
+              | [string, ApiRouteProps, HttpHandler[]]
           ) => {
             const [sourceLocation, path, routeProps, handler] =
               typeof args[0] === "object"
@@ -76,7 +77,7 @@ function createRouter<Context extends CommandContext>(
                   ? (args as any as [
                       SourceLocation,
                       string,
-                      RouteRuntimeProps,
+                      ApiRouteProps,
                       HttpHandler
                     ])
                   : [
@@ -89,11 +90,12 @@ function createRouter<Context extends CommandContext>(
                 ? [
                     undefined,
                     args[0],
-                    args[1] as RouteRuntimeProps,
+                    args[1] as ApiRouteProps,
                     args[2] as HttpHandler,
                   ]
                 : [undefined, args[0], undefined, args[1] as HttpHandler];
             const command: AnyCommand = {
+              description: routeProps?.description,
               kind: "Command",
               handler,
               memorySize: routeProps?.memorySize,
@@ -103,6 +105,7 @@ function createRouter<Context extends CommandContext>(
               sourceLocation,
               handlerTimeout: routeProps?.handlerTimeout,
               middlewares,
+              otherOutputs: routeProps?.outputs,
               // we want the base HTTP request, not the transformed one
               passThrough: true,
             };
@@ -118,6 +121,21 @@ function createRouter<Context extends CommandContext>(
 
 export type RouteRuntimeProps = FunctionRuntimeProps;
 
+export interface ApiRouteProps extends RouteRuntimeProps {
+  /**
+   * Description of the route.
+   *
+   * Used to generate the {@link ApiSpecification}.
+   */
+  description?: string;
+  /**
+   * Outputs of the route.
+   *
+   * Used to generate the {@link ApiSpecification}.
+   */
+  outputs?: CommandOutputOptions<any>[];
+}
+
 export type HttpHandler<Context extends CommandContext = CommandContext> = (
   request: HttpRequest,
   context: Context
@@ -127,7 +145,7 @@ export interface HttpRoute {
   path: string;
   handlers: HttpHandler<any>[];
   method: HttpMethod;
-  runtimeProps?: RouteRuntimeProps;
+  props?: ApiRouteProps;
   /**
    * Only available during eventual-infer
    */
@@ -137,7 +155,7 @@ export interface HttpRoute {
 export interface HttpRouteFactory<Context extends CommandContext> {
   (
     path: string,
-    props: RouteRuntimeProps,
+    props: ApiRouteProps,
     handlers: HttpHandler<Context>
   ): HttpRouter<Context>;
   (path: string, handlers: HttpHandler<Context>): HttpRouter<Context>;

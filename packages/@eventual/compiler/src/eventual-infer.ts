@@ -7,6 +7,7 @@
 import { generateSchema } from "@anatine/zod-openapi";
 import {
   BucketNotificationHandlerSpec,
+  CommandSpec,
   ServiceSpec,
   buckets,
   commands,
@@ -99,22 +100,38 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
       sourceLocation: e.sourceLocation,
       filters: e.filters,
     })),
-    commands: commands.map((command) => ({
-      name: command.name,
-      sourceLocation: command.sourceLocation,
-      path: command.path,
-      description: command.description,
-      summary: command.summary,
-      memorySize: command.memorySize,
-      handlerTimeout: command.handlerTimeout,
-      method: command.method,
-      input: command.input ? generateSchema(command.input) : undefined,
-      output: command.output ? generateSchema(command.output) : undefined,
-      passThrough: command.passThrough,
-      params: command.params,
-      validate: command.validate,
-      namespace: command.namespace,
-    })),
+    commands: commands.map(
+      (command) =>
+        ({
+          name: command.name,
+          sourceLocation: command.sourceLocation,
+          path: command.path,
+          description: command.description,
+          summary: command.summary,
+          memorySize: command.memorySize,
+          handlerTimeout: command.handlerTimeout,
+          method: command.method as any,
+          input: command.input ? generateSchema(command.input) : undefined,
+          output: command.output
+            ? {
+                restStatusCode: command.output.restStatusCode,
+                description: command.output.description,
+                schema: command.output.schema
+                  ? generateSchema(command.output.schema)
+                  : { nullable: true },
+              }
+            : undefined,
+          outputs: command.otherOutputs?.map((o) => ({
+            restStatusCode: o.restStatusCode,
+            description: o.description,
+            schema: o.schema ? generateSchema(o.schema) : undefined,
+          })),
+          passThrough: command.passThrough,
+          params: command.params as any,
+          validate: command.validate,
+          namespace: command.namespace,
+        } satisfies CommandSpec)
+    ),
     buckets: {
       buckets: [...buckets().values()].map((b) => ({
         name: b.name,
