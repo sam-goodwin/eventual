@@ -79,6 +79,12 @@ export interface EventSpec {
   schema?: openapi.SchemaObject;
 }
 
+export interface CommandOutput {
+  schema?: openapi.SchemaObject;
+  description: string;
+  statusCode: number;
+}
+
 export interface CommandSpec<
   Name extends string = string,
   Input = undefined,
@@ -95,7 +101,7 @@ export interface CommandSpec<
    */
   summary?: string;
   input?: openapi.SchemaObject;
-  output?: openapi.SchemaObject;
+  outputs?: CommandOutput[];
   path?: Path;
   method?: Method;
   params?: RestParams<Input, Path, Method>;

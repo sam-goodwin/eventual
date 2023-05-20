@@ -121,9 +121,9 @@ function initRouter() {
           }
 
           let output: any = await command.handler(input, context);
-          if (command.output && shouldValidate) {
+          if (command.output?.schema && shouldValidate) {
             try {
-              output = command.output.parse(output);
+              output = command.output.schema.parse(output);
             } catch (err) {
               console.error("RPC output did not match schema", output, err);
               return new HttpResponse(JSON.stringify(err), {
@@ -133,7 +133,7 @@ function initRouter() {
             }
           }
           return new HttpResponse(JSON.stringify(output, jsonReplacer), {
-            status: 200,
+            status: command.output?.statusCode ?? 200,
           });
         })
       );
@@ -176,16 +176,16 @@ function initRouter() {
           // call the command RPC handler
           let output: any = await command.handler(input, context);
 
-          if (command.output && shouldValidate) {
+          if (command.output?.schema && shouldValidate) {
             // validate the output of the command handler against the schema if it's defined
-            output = command.output.parse(output);
+            output = command.output.schema.parse(output);
           }
 
           // TODO: support mapping RPC output back to HTTP properties such as Headers
           // TODO: support alternative status code https://github.com/functionless/eventual/issues/276
 
           return new HttpResponse(JSON.stringify(output, jsonReplacer), {
-            status: 200,
+            status: command.output?.statusCode ?? 200,
             headers: {
               "Content-Type": "application/json",
             },

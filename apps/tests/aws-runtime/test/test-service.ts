@@ -909,6 +909,11 @@ export const helloApi = command(
   "helloApi",
   {
     path: "/hello",
+    output: {
+      schema: z.string(),
+      description: "201 output",
+      statusCode: 201,
+    },
   },
   async () => {
     return "hello world";
@@ -1030,9 +1035,13 @@ export const modifyResponseMiddlewareHttp = api
     response.headers.set("ModifiedHeader", "Injected Header");
     return response;
   })
-  .get("/modify-response-http", async () => {
-    return new HttpResponse("My Response");
-  });
+  .get(
+    "/modify-response-http",
+    { description: "modify response middleware" },
+    async () => {
+      return new HttpResponse("My Response");
+    }
+  );
 
 export const contextTest = command("contextText", (_, { service }) => {
   return service;
