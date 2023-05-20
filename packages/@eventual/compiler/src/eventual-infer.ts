@@ -118,7 +118,7 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
                 description: command.output.description,
                 schema: command.output.schema
                   ? generateSchema(command.output.schema)
-                  : undefined,
+                  : { nullable: true },
               }
             : undefined,
           outputs: command.otherOutputs?.map((o) => ({

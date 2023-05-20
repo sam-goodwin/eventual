@@ -1,4 +1,4 @@
-import z from "zod";
+import type { z } from "zod";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
 import { commands } from "../internal/global.js";
@@ -163,7 +163,10 @@ export type CommandInput<C extends AnyCommand> = C extends Command<
   : never;
 
 export interface CommandOutputOptions<Output> {
-  schema: z.ZodType<Output>;
+  /**
+   * @default - {@link z.any}
+   */
+  schema?: z.ZodType<Output>;
   description: string;
   restStatusCode: number;
 }
@@ -236,10 +239,10 @@ export function command<
     sourceLocation,
     ...options,
     output: options?.output
-      ? options.output instanceof z.ZodType
-        ? { schema: options.output, description: "OK", restStatusCode: 200 }
-        : options.output
-      : { schema: z.any(), description: "OK", restStatusCode: 200 },
+      ? "restStatusCode" in options.output
+        ? options.output
+        : { schema: options.output, description: "OK", restStatusCode: 200 }
+      : { schema: undefined, description: "OK", restStatusCode: 200 },
   };
   commands.push(command);
   return command;
