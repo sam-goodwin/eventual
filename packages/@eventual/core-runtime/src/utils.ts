@@ -2,7 +2,7 @@ import type {
   BucketNotificationEvent,
   Entity,
   Attributes,
-  CompositeKeyPart,
+  EntityCompositeKeyPart,
   KeyTuple,
   EntityStreamItem,
 } from "@eventual/core";
@@ -72,9 +72,7 @@ export function serializeCompositeKey(
   return `${entityName}|${key.partition.keyValue}|${key.sort?.keyValue ?? ""}`;
 }
 
-export function deserializeCompositeKey(
-  sKey: string
-): [string, KeyTuple<any, any, any>] {
+export function deserializeCompositeKey(sKey: string): [string, KeyTuple] {
   const [name, partition, sort] = sKey.split("|") as [string, string, string];
   return [name, sort ? [partition, sort] : [partition]];
 }
@@ -91,8 +89,8 @@ export function isBucketNotificationEvent(
 
 export function entityStreamMatchesItem<
   Attr extends Attributes,
-  const Partition extends CompositeKeyPart<Attr>,
-  const Sort extends CompositeKeyPart<Attr> | undefined
+  const Partition extends EntityCompositeKeyPart<Attr>,
+  const Sort extends EntityCompositeKeyPart<Attr> | undefined
 >(
   entity: Entity<Attr, Partition, Sort>,
   item: EntityStreamItem<Attr, Partition, Sort>,

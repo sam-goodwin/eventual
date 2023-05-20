@@ -14,7 +14,12 @@ import {
   isSourceLocation,
   SourceLocation,
 } from "../internal/service-spec.js";
-import type { CompositeKey, CompositeKeyPart, QueryKey } from "./key.js";
+import type {
+  CompositeKey,
+  EntityCompositeKeyPart,
+  IndexCompositeKeyPart,
+  QueryKey,
+} from "./key.js";
 import type { EntityStream, EntityStreamHandler } from "./stream.js";
 
 export type AttributeBinaryValue =
@@ -68,9 +73,9 @@ export type EntityZodShape<Attr extends Attributes> = {
  */
 export interface Entity<
   Attr extends Attributes = any,
-  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
-  Sort extends CompositeKeyPart<Attr> | undefined =
-    | CompositeKeyPart<Attr>
+  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined =
+    | EntityCompositeKeyPart<Attr>
     | undefined
 > extends Omit<
     EntitySpec,
@@ -130,8 +135,10 @@ export interface Entity<
    */
   scan(request?: EntityQueryOptions): Promise<EntityQueryResult<Attr>>;
   index<
-    const IndexPartition extends CompositeKeyPart<Attr> | undefined = undefined,
-    const IndexSort extends CompositeKeyPart<Attr> | undefined = undefined
+    const IndexPartition extends
+      | IndexCompositeKeyPart<Attr>
+      | undefined = undefined,
+    const IndexSort extends IndexCompositeKeyPart<Attr> | undefined = undefined
   >(
     name: string,
     options: EntityIndexOptions<Attr, IndexPartition, IndexSort>
@@ -175,8 +182,8 @@ export type ZodAttributesObject<T extends Attributes> = z.ZodObject<
 
 export interface EntityOptions<
   Attr extends Attributes,
-  Partition extends CompositeKeyPart<Attr>,
-  Sort extends CompositeKeyPart<Attr> | undefined = undefined
+  Partition extends EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined = undefined
 > {
   attributes: ZodAttributesObject<Attr> | EntityZodShape<Attr>;
   partition: Partition;
@@ -246,8 +253,8 @@ export interface EntityOptions<
  */
 export function entity<
   Attr extends Attributes,
-  const Partition extends CompositeKeyPart<Attr>,
-  const Sort extends CompositeKeyPart<Attr> | undefined = undefined
+  const Partition extends EntityCompositeKeyPart<Attr>,
+  const Sort extends EntityCompositeKeyPart<Attr> | undefined = undefined
 >(
   name: string,
   options: EntityOptions<Attr, Partition, Sort>
@@ -466,8 +473,8 @@ export function entity<
 
 export type EntityIndexOptions<
   Attr extends Attributes,
-  Partition extends CompositeKeyPart<Attr> | undefined = undefined,
-  Sort extends CompositeKeyPart<Attr> | undefined = undefined
+  Partition extends IndexCompositeKeyPart<Attr> | undefined = undefined,
+  Sort extends IndexCompositeKeyPart<Attr> | undefined = undefined
 > =
   | {
       partition: Partition;
@@ -479,18 +486,18 @@ export type EntityIndexOptions<
 
 export type EntityIndexMapper<
   Attr extends Attributes,
-  EntityPartition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
-  IndexPartition extends CompositeKeyPart<Attr> | undefined = undefined,
-  Sort extends CompositeKeyPart<Attr> | undefined = undefined
+  EntityPartition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  IndexPartition extends IndexCompositeKeyPart<Attr> | undefined = undefined,
+  Sort extends IndexCompositeKeyPart<Attr> | undefined = undefined
 > = IndexPartition extends undefined
   ? EntityIndex<Attr, EntityPartition, Sort>
   : EntityIndex<Attr, Exclude<IndexPartition, undefined>, Sort>;
 
 export interface EntityIndex<
   Attr extends Attributes = any,
-  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
-  Sort extends CompositeKeyPart<Attr> | undefined =
-    | CompositeKeyPart<Attr>
+  Partition extends IndexCompositeKeyPart<Attr> = IndexCompositeKeyPart<Attr>,
+  Sort extends IndexCompositeKeyPart<Attr> | undefined =
+    | IndexCompositeKeyPart<Attr>
     | undefined
 > extends EntityIndexSpec {
   kind: "EntityIndex";
@@ -559,17 +566,17 @@ export interface EntityWithMetadata<Attr extends Attributes = Attributes> {
 
 interface EntityTransactItemBase<
   Attr extends Attributes,
-  Partition extends CompositeKeyPart<Attr>,
-  Sort extends CompositeKeyPart<Attr> | undefined
+  Partition extends EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined
 > {
   entity: Entity<Attr, Partition, Sort> | string;
 }
 
 export type EntityTransactItem<
   Attr extends Attributes = any,
-  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
-  Sort extends CompositeKeyPart<Attr> | undefined =
-    | CompositeKeyPart<Attr>
+  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined =
+    | EntityCompositeKeyPart<Attr>
     | undefined
 > =
   | EntityTransactSetOperation<Attr, Partition, Sort>
@@ -578,9 +585,9 @@ export type EntityTransactItem<
 
 export interface EntityTransactSetOperation<
   Attr extends Attributes = any,
-  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
-  Sort extends CompositeKeyPart<Attr> | undefined =
-    | CompositeKeyPart<Attr>
+  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined =
+    | EntityCompositeKeyPart<Attr>
     | undefined
 > extends EntityTransactItemBase<Attr, Partition, Sort> {
   operation: "set";
@@ -590,9 +597,9 @@ export interface EntityTransactSetOperation<
 
 export interface EntityTransactDeleteOperation<
   Attr extends Attributes = any,
-  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
-  Sort extends CompositeKeyPart<Attr> | undefined =
-    | CompositeKeyPart<Attr>
+  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined =
+    | EntityCompositeKeyPart<Attr>
     | undefined
 > extends EntityTransactItemBase<Attr, Partition, Sort> {
   operation: "delete";
@@ -605,9 +612,9 @@ export interface EntityTransactDeleteOperation<
  */
 export interface EntityTransactConditionalOperation<
   Attr extends Attributes = any,
-  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
-  Sort extends CompositeKeyPart<Attr> | undefined =
-    | CompositeKeyPart<Attr>
+  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined =
+    | EntityCompositeKeyPart<Attr>
     | undefined
 > extends EntityTransactItemBase<Attr, Partition, Sort> {
   operation: "condition";
