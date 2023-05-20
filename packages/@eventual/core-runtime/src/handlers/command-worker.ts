@@ -133,7 +133,7 @@ function initRouter() {
             }
           }
           return new HttpResponse(JSON.stringify(output, jsonReplacer), {
-            status: command.output?.statusCode ?? 200,
+            status: 200,
           });
         })
       );
@@ -185,7 +185,7 @@ function initRouter() {
           // TODO: support alternative status code https://github.com/functionless/eventual/issues/276
 
           return new HttpResponse(JSON.stringify(output, jsonReplacer), {
-            status: command.output?.statusCode ?? 200,
+            status: command.output?.restStatusCode ?? 200,
             headers: {
               "Content-Type": "application/json",
             },

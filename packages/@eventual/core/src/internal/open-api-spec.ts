@@ -89,17 +89,14 @@ export function generateOpenAPISpec(
               },
             },
           },
-          responses: command.outputs
-            ? Object.fromEntries(
-                command.outputs.map((o) => [
-                  o.statusCode,
-                  {
-                    content: { "application/json": { schema: o.schema } },
-                    description: o.description,
-                  } satisfies openapi.ResponseObject,
-                ])
-              )
-            : {},
+          responses: {
+            200: {
+              content: {
+                "application/json": { schema: command.output?.schema },
+              },
+              description: command.output?.description ?? "OK",
+            } satisfies openapi.ResponseObject,
+          },
         } satisfies openapi.OperationObject,
       };
 
@@ -197,17 +194,18 @@ export function generateOpenAPISpec(
               : {}),
           },
         },
-        responses: command.outputs
-          ? Object.fromEntries(
-              command.outputs.map((o) => [
-                o.statusCode,
-                {
-                  content: { "application/json": { schema: o.schema } },
-                  description: o.description,
-                } satisfies openapi.ResponseObject,
-              ])
-            )
-          : {},
+        responses: Object.fromEntries(
+          [
+            ...(command.output ? [command.output] : []),
+            ...(command.outputs ?? []),
+          ].map((o) => [
+            o.restStatusCode,
+            {
+              content: { "application/json": { schema: o.schema } },
+              description: o.description,
+            } satisfies openapi.ResponseObject,
+          ])
+        ),
       };
 
       return {

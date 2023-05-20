@@ -112,24 +112,20 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
           handlerTimeout: command.handlerTimeout,
           method: command.method as any,
           input: command.input ? generateSchema(command.input) : undefined,
-          outputs: [
-            ...(command.output
-              ? [
-                  {
-                    statusCode: command.output.statusCode,
-                    description: command.output.description,
-                    schema: command.output.schema
-                      ? generateSchema(command.output.schema)
-                      : undefined,
-                  },
-                ]
-              : []),
-            ...(command.otherOutputs?.map((o) => ({
-              statusCode: o.statusCode,
-              description: o.description,
-              schema: o.schema ? generateSchema(o.schema) : undefined,
-            })) ?? []),
-          ],
+          output: command.output
+            ? {
+                restStatusCode: command.output.restStatusCode,
+                description: command.output.description,
+                schema: command.output.schema
+                  ? generateSchema(command.output.schema)
+                  : undefined,
+              }
+            : undefined,
+          outputs: command.otherOutputs?.map((o) => ({
+            restStatusCode: o.restStatusCode,
+            description: o.description,
+            schema: o.schema ? generateSchema(o.schema) : undefined,
+          })),
           passThrough: command.passThrough,
           params: command.params as any,
           validate: command.validate,

@@ -911,8 +911,8 @@ export const helloApi = command(
     path: "/hello",
     output: {
       schema: z.string(),
-      description: "201 output",
-      statusCode: 201,
+      description: "default output of hello command",
+      restStatusCode: 201,
     },
   },
   async () => {

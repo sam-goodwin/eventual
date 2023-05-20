@@ -82,7 +82,12 @@ export interface EventSpec {
 export interface CommandOutput {
   schema?: openapi.SchemaObject;
   description: string;
-  statusCode: number;
+  /**
+   * Status code of the output used in commands with a rest path.
+   *
+   * RPC commands always return a single 200 response.
+   */
+  restStatusCode: number;
 }
 
 export interface CommandSpec<
@@ -101,6 +106,21 @@ export interface CommandSpec<
    */
   summary?: string;
   input?: openapi.SchemaObject;
+  /**
+   * Output used by RPC commands and Rest commands to define the output of the handler.
+   *
+   * RPC will always have a status code of 200, but can override the default description of "OK".
+   *
+   * The REST command will return a 200 response unless an alternative is provided.
+   */
+  output?: CommandOutput;
+  /**
+   * Optional outputs provided by an http API command using passthrough mode.
+   *
+   * These commands return a {@link HttpResponse} which can define any number of outputs with custom status codes.
+   *
+   * The outputs are used to generate the {@link ApiSpecification}.
+   */
   outputs?: CommandOutput[];
   path?: Path;
   method?: Method;

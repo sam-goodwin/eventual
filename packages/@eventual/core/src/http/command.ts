@@ -46,7 +46,10 @@ export interface Command<
   Context extends CommandContext = CommandContext,
   Path extends string | undefined = undefined,
   Method extends HttpMethod | undefined = undefined
-> extends Omit<CommandSpec<Name, Input, Path, Method>, "input" | "outputs"> {
+> extends Omit<
+    CommandSpec<Name, Input, Path, Method>,
+    "input" | "outputs" | "output"
+  > {
   kind: "Command";
   input?: z.ZodType<Input>;
   output?: CommandOutputOptions<Output>;
@@ -162,7 +165,7 @@ export type CommandInput<C extends AnyCommand> = C extends Command<
 export interface CommandOutputOptions<Output> {
   schema: z.ZodType<Output>;
   description: string;
-  statusCode: number;
+  restStatusCode: number;
 }
 
 export type CommandOutput<Output> =
@@ -180,6 +183,16 @@ export interface CommandOptions<
       "path" | "method" | "summary" | "description" | "params" | "validate"
     > {
   input?: z.ZodType<Input>;
+  /**
+   * The output schema of the command.
+   *
+   * When a description of the output can is provided, it will be used the {@link ApiSpecification}.
+   *
+   * When a rest status is provided and the command supports a rest path, that status will be used to return a successful result.
+   * Note: RPC commands will always return 200.
+   *
+   * @default 200 {@link z.any} OK
+   */
   output?: CommandOutput<Output>;
 }
 
@@ -224,9 +237,9 @@ export function command<
     ...options,
     output: options?.output
       ? options.output instanceof z.ZodType
-        ? { schema: options.output, description: "OK", statusCode: 200 }
+        ? { schema: options.output, description: "OK", restStatusCode: 200 }
         : options.output
-      : undefined,
+      : { schema: z.any(), description: "OK", restStatusCode: 200 },
   };
   commands.push(command);
   return command;
