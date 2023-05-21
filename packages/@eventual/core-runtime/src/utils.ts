@@ -94,9 +94,9 @@ export function entityStreamMatchesItem<
   const Partition extends CompositeKeyPart<Attr>,
   const Sort extends CompositeKeyPart<Attr> | undefined
 >(
-  entity: Entity<Attr, Partition, Sort>,
+  entity: Entity<any, Attr, Partition, Sort>,
   item: EntityStreamItem<Attr, Partition, Sort>,
-  streamSpec: EntityStreamSpec<Attr, Partition, Sort>
+  streamSpec: EntityStreamSpec<any, Attr, Partition, Sort>
 ) {
   const { partition, sort } = normalizeCompositeKey(entity, item.key);
   const normalizedQueryKeys =

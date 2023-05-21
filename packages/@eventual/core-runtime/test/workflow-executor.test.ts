@@ -66,7 +66,7 @@ const workflow = (() => {
   return <Input = any, Output = any>(
     handler: WorkflowHandler<Input, Output>
   ) => {
-    return _workflow<Input, Output>(`wf${n++}`, handler);
+    return _workflow<any, Input, Output>(`wf${n++}`, handler);
   };
 })();
 
