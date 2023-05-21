@@ -32,7 +32,7 @@ const entity = (() => {
   ) => {
     // eslint-disable-next-line no-empty
     while (entities().has(`ent${++n}`)) {}
-    return _entity<Attr, Partition, Sort>(`ent${n}`, options);
+    return _entity<string, Attr, Partition, Sort>(`ent${n}`, options);
   };
 })();
 

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.39.4 (2023-05-21)
+
+### Bug Fixes
+
+- all resources have name type param ([#357](https://github.com/functionless/eventual/issues/357)) ([97bcdb9](https://github.com/functionless/eventual/commit/97bcdb9dc50487964548d8f3519b54d61e527d41))
+
 ## 0.39.3 (2023-05-20)
 
 **Note:** Version bump only for package eventual-monorepo

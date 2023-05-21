@@ -72,20 +72,21 @@ export type EntityZodShape<Attr extends Attributes> = {
  * @see entity
  */
 export interface Entity<
+  Name extends string = string,
   Attr extends Attributes = any,
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
     | undefined
 > extends Omit<
-    EntitySpec,
+    EntitySpec<Name>,
     "attributes" | "streams" | "partition" | "sort" | "indices"
   > {
   kind: "Entity";
   key: KeyDefinition;
   attributes: ZodAttributesObject<Attr>;
   indices: EntityIndex[];
-  streams: EntityStream<Attr, Partition, Sort>[];
+  streams: EntityStream<any, Attr, Partition, Sort>[];
   /**
    * Get a value.
    * If your values use composite keys, the namespace must be provided.
@@ -135,23 +136,24 @@ export interface Entity<
    */
   scan(request?: EntityQueryOptions): Promise<EntityQueryResult<Attr>>;
   index<
+    Name extends string = string,
     const IndexPartition extends
       | IndexCompositeKeyPart<Attr>
       | undefined = undefined,
     const IndexSort extends IndexCompositeKeyPart<Attr> | undefined = undefined
   >(
-    name: string,
+    name: Name,
     options: EntityIndexOptions<Attr, IndexPartition, IndexSort>
-  ): EntityIndexMapper<Attr, Partition, IndexPartition, IndexSort>;
-  stream(
-    name: string,
+  ): EntityIndexMapper<Name, Attr, Partition, IndexPartition, IndexSort>;
+  stream<Name extends string = string>(
+    name: Name,
     options: EntityStreamOptions<Attr, Partition, Sort>,
     handler: EntityStreamHandler<Attr, Partition, Sort>
-  ): EntityStream<Attr, Partition, Sort>;
-  stream(
+  ): EntityStream<Name, Attr, Partition, Sort>;
+  stream<Name extends string = string>(
     name: string,
     handler: EntityStreamHandler<Attr, Partition, Sort>
-  ): EntityStream<Attr, Partition, Sort>;
+  ): EntityStream<Name, Attr, Partition, Sort>;
 }
 
 export const Entity = {
@@ -252,13 +254,14 @@ export interface EntityOptions<
  * ```
  */
 export function entity<
+  Name extends string,
   Attr extends Attributes,
   const Partition extends EntityCompositeKeyPart<Attr>,
   const Sort extends EntityCompositeKeyPart<Attr> | undefined = undefined
 >(
-  name: string,
+  name: Name,
   options: EntityOptions<Attr, Partition, Sort>
-): Entity<Attr, Partition, Sort> {
+): Entity<Name, Attr, Partition, Sort> {
   if (entities().has(name)) {
     throw new Error(`entity with name '${name}' already exists`);
   }
@@ -268,14 +271,14 @@ export function entity<
   /**
    * Used to maintain a limited number of streams on the entity.
    */
-  const streams: EntityStream<Attr, Partition, Sort>[] = [];
+  const streams: EntityStream<any, Attr, Partition, Sort>[] = [];
 
   const attributes =
     options.attributes instanceof z.ZodObject
       ? options.attributes
       : (z.object(options.attributes) as unknown as ZodAttributesObject<Attr>);
 
-  const entity: Entity<Attr, Partition, Sort> = {
+  const entity: Entity<Name, Attr, Partition, Sort> = {
     // @ts-ignore
     __entityBrand: undefined,
     kind: "Entity",
@@ -451,7 +454,7 @@ export function entity<
         throw new Error("Only two streams are allowed per entity.");
       }
 
-      const entityStream: EntityStream<Attr, Partition, Sort> = {
+      const entityStream: EntityStream<any, Attr, Partition, Sort> = {
         kind: "EntityStream",
         handler,
         name: streamName,
@@ -485,21 +488,23 @@ export type EntityIndexOptions<
     };
 
 export type EntityIndexMapper<
+  Name extends string,
   Attr extends Attributes,
   EntityPartition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   IndexPartition extends IndexCompositeKeyPart<Attr> | undefined = undefined,
   Sort extends IndexCompositeKeyPart<Attr> | undefined = undefined
 > = IndexPartition extends undefined
-  ? EntityIndex<Attr, EntityPartition, Sort>
-  : EntityIndex<Attr, Exclude<IndexPartition, undefined>, Sort>;
+  ? EntityIndex<Name, Attr, EntityPartition, Sort>
+  : EntityIndex<Name, Attr, Exclude<IndexPartition, undefined>, Sort>;
 
 export interface EntityIndex<
+  Name extends string = string,
   Attr extends Attributes = any,
   Partition extends IndexCompositeKeyPart<Attr> = IndexCompositeKeyPart<Attr>,
   Sort extends IndexCompositeKeyPart<Attr> | undefined =
     | IndexCompositeKeyPart<Attr>
     | undefined
-> extends EntityIndexSpec {
+> extends EntityIndexSpec<Name> {
   kind: "EntityIndex";
   query(
     queryKey: QueryKey<Attr, Partition, Sort>,
@@ -569,7 +574,7 @@ interface EntityTransactItemBase<
   Partition extends EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined
 > {
-  entity: Entity<Attr, Partition, Sort> | string;
+  entity: Entity<any, Attr, Partition, Sort> | string;
 }
 
 export type EntityTransactItem<

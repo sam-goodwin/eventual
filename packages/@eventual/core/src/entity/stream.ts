@@ -93,10 +93,11 @@ export interface EntityStreamRemoveItem<
 }
 
 export interface EntityStream<
+  Name extends string,
   Attr extends Attributes,
   Partition extends EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined
-> extends EntityStreamSpec<Attr, Partition, Sort> {
+> extends EntityStreamSpec<Name, Attr, Partition, Sort> {
   kind: "EntityStream";
   handler: EntityStreamHandler<Attr, Partition, Sort>;
   sourceLocation?: SourceLocation;
@@ -110,25 +111,25 @@ export function entityStream<
   ...args:
     | [
         name: string,
-        entity: Entity<Attr, Partition, Sort>,
+        entity: Entity<any, Attr, Partition, Sort>,
         handler: EntityStreamHandler<Attr, Partition, Sort>
       ]
     | [
         name: string,
-        entity: Entity<Attr, Partition, Sort>,
+        entity: Entity<any, Attr, Partition, Sort>,
         options: EntityStreamOptions<Attr, Partition, Sort>,
         handler: EntityStreamHandler<Attr, Partition, Sort>
       ]
     | [
         sourceLocation: SourceLocation,
         name: string,
-        entity: Entity<Attr, Partition, Sort>,
+        entity: Entity<any, Attr, Partition, Sort>,
         handler: EntityStreamHandler<Attr, Partition, Sort>
       ]
     | [
         sourceLocation: SourceLocation,
         name: string,
-        entity: Entity<Attr, Partition, Sort>,
+        entity: Entity<any, Attr, Partition, Sort>,
         options: EntityStreamOptions<Attr, Partition, Sort>,
         handler: EntityStreamHandler<Attr, Partition, Sort>
       ]
@@ -142,14 +143,14 @@ export function entityStream<
       ? [
           args[0],
           args[1] as string,
-          args[2] as Entity<Attr, Partition, Sort>,
+          args[2] as Entity<any, Attr, Partition, Sort>,
           ,
           args[3],
         ]
       : [
           ,
           args[0] as string,
-          args[1] as Entity<Attr, Partition, Sort>,
+          args[1] as Entity<any, Attr, Partition, Sort>,
           args[2] as EntityStreamOptions<Attr, Partition, Sort>,
           args[3],
         ];

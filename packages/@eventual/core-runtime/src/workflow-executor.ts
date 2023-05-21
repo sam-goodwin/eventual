@@ -194,7 +194,7 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
   } = {};
 
   constructor(
-    private workflow: Workflow<Input, Output>,
+    private workflow: Workflow<any, Input, Output>,
     public history: HistoryStateEvent[]
   ) {
     this.nextSeq = 0;

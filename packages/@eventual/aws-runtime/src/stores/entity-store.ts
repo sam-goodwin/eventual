@@ -55,6 +55,7 @@ export interface AWSEntityStoreProps {
 }
 
 export type EntityAttributesFromEntity<E extends Entity> = E extends Entity<
+  any,
   infer Attributes,
   any,
   any
