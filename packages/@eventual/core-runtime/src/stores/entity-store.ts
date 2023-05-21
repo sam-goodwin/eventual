@@ -424,36 +424,19 @@ export function removeGeneratedKeyAttributes(
 }
 
 /**
- * Removes any original key attributes found in the entity key or index keys.
- *
- * Original attributes may be re-used for single-attribute keys.
+ * Removes any key attributes found in the entity key or index keys.
  */
-export function removeOriginalKeyAttributes(
+export function removeKeyAttributes(
   entity: Entity,
   value: Attributes,
-  excludeIndices = false,
-  mutate = false
-): Attributes {
-  return removeKeyAttributes(
-    entity,
-    value,
-    (k) => k.attributes.length === 1,
-    excludeIndices,
-    mutate
-  );
-}
-
-function removeKeyAttributes(
-  entity: Entity,
-  value: Attributes,
-  filter: (part: KeyDefinitionPart) => boolean,
+  filter?: (part: KeyDefinitionPart) => boolean,
   excludeIndices = false,
   mutate = false
 ): Attributes {
   const keysToDelete = new Set(
     [entity.key, ...(excludeIndices ? [] : entity.indices.map((k) => k.key))]
       .flatMap((k) => (k.sort ? [k.partition, k.sort] : [k.partition]))
-      .filter(filter)
+      .filter((k) => (filter ? filter(k) : true))
       .map((k) => k.keyAttribute)
   );
 

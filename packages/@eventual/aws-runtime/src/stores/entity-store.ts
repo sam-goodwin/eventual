@@ -39,7 +39,7 @@ import {
   NormalizedEntityKeyCompletePart,
   NormalizedEntityTransactItem,
   removeGeneratedKeyAttributes,
-  removeOriginalKeyAttributes,
+  removeKeyAttributes,
 } from "@eventual/core-runtime";
 import { assertNever } from "@eventual/core/internal";
 import {
@@ -382,9 +382,10 @@ export class AWSEntityStore extends EntityStore {
     );
 
     // remove the entity keys if they are not generated
-    const valueToSave = removeOriginalKeyAttributes(
+    const valueToSave = removeKeyAttributes(
       entity,
       { ...value, ...indexGeneratedAttributes },
+      undefined,
       true,
       true
     );
