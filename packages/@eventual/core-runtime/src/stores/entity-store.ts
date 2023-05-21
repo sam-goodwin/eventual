@@ -1,18 +1,18 @@
 import type {
-  Entity,
   Attributes,
   CompositeKey,
+  Entity,
   EntityConsistencyOptions,
-  KeyMap,
-  KeyValue,
-  QueryKey,
+  EntityIndex,
   EntityQueryOptions,
   EntityQueryResult,
+  EntityReadOptions,
   EntitySetOptions,
   EntityTransactItem,
   EntityWithMetadata,
-  EntityIndex,
-  EntityReadOptions,
+  KeyMap,
+  KeyValue,
+  QueryKey,
 } from "@eventual/core";
 import type {
   EntityHook,
@@ -377,4 +377,96 @@ export function convertNormalizedEntityKeyToMap(
   ]);
   console.log("generated key", JSON.stringify(generatedKey));
   return generatedKey;
+}
+
+/**
+ * Returns the generated key attributes.
+ *
+ * If a generated key attribute contains any undefined values, they key value is considered partial and not generated.
+ * In this case, the item will not appear in the applicable indices.
+ */
+export function computeGeneratedIndexKeyAttributes(
+  entity: Entity,
+  value: Attributes
+): Attributes {
+  return Object.fromEntries(
+    entity.indices
+      .flatMap((i) => {
+        const { partition, sort } = normalizeCompositeKey(i.key, value);
+        return sort ? [partition, sort] : [partition];
+      })
+      // only take attributes that need to be computed
+      .filter((k) => k.attributes.length > 1)
+      // only support complete keys
+      .filter(isCompleteKeyPart)
+      .map((k) => [k.keyAttribute, k.keyValue] as const)
+  );
+}
+
+/**
+ * Removes any generated key attributes found in the entity key or index keys.
+ *
+ * Attributes are generated for multi-attribute keys.
+ */
+export function removeGeneratedKeyAttributes(
+  entity: Entity,
+  value: Attributes,
+  excludeIndices = false,
+  mutate = false
+): Attributes {
+  return removeKeyAttributes(
+    entity,
+    value,
+    (k) => k.attributes.length > 1,
+    excludeIndices,
+    mutate
+  );
+}
+
+/**
+ * Removes any original key attributes found in the entity key or index keys.
+ *
+ * Original attributes may be re-used for single-attribute keys.
+ */
+export function removeOriginalKeyAttributes(
+  entity: Entity,
+  value: Attributes,
+  excludeIndices = false,
+  mutate = false
+): Attributes {
+  return removeKeyAttributes(
+    entity,
+    value,
+    (k) => k.attributes.length === 1,
+    excludeIndices,
+    mutate
+  );
+}
+
+function removeKeyAttributes(
+  entity: Entity,
+  value: Attributes,
+  filter: (part: KeyDefinitionPart) => boolean,
+  excludeIndices = false,
+  mutate = false
+): Attributes {
+  const keysToDelete = new Set(
+    [entity.key, ...(excludeIndices ? [] : entity.indices.map((k) => k.key))]
+      .flatMap((k) => (k.sort ? [k.partition, k.sort] : [k.partition]))
+      .filter(filter)
+      .map((k) => k.keyAttribute)
+  );
+
+  if (mutate) {
+    // If we can mutate, delete any of the selected attributes.
+    keysToDelete.forEach((a) => delete value[a]);
+    return value;
+  } else {
+    // If we can mutate, delete any of the selected attributes.
+    return Object.fromEntries(
+      Object.entries(value).filter(
+        ([attribute]) => !keysToDelete.has(attribute)
+      )
+    );
+  }
 }

@@ -577,7 +577,7 @@ export const countersByNamespace = counter.index("countersOrderedByNamespace", {
 
 export const countersByOptional = counter.index("countersByOptional", {
   partition: ["id"],
-  sort: ["optional"],
+  sort: ["optional", "n"],
 });
 
 export const countersByN = counter.index("countersByN", {
