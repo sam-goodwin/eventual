@@ -575,11 +575,6 @@ export const countersByNamespace = counter.index("countersOrderedByNamespace", {
   sort: ["namespace"],
 });
 
-export const countersByOptional = counter.index("countersByOptional", {
-  partition: ["id"],
-  sort: ["optional"],
-});
-
 export const countersByOptional2 = counter.index("countersByOptional2", {
   partition: ["id"],
   sort: ["optional", "n"],
@@ -705,7 +700,7 @@ export const entityIndexTask = task(
         }))
       ),
       // sparse indices only include records with the given field
-      countersByOptional.query({ id }).then((q) =>
+      countersByOptional2.query({ id }).then((q) =>
         q.entries?.map((e) => ({
           n: e.value.n,
           namespace: e.value.namespace,
