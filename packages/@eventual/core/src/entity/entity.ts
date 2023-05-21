@@ -18,6 +18,7 @@ import type {
   CompositeKey,
   EntityCompositeKeyPart,
   IndexCompositeKeyPart,
+  KeyAttributes,
   QueryKey,
 } from "./key.js";
 import type { EntityStream, EntityStreamHandler } from "./stream.js";
@@ -497,26 +498,46 @@ export type EntityIndexMapper<
   ? EntityIndex<Name, Attr, EntityPartition, Sort>
   : EntityIndex<Name, Attr, Exclude<IndexPartition, undefined>, Sort>;
 
-export interface EntityIndex<
-  Name extends string = string,
-  Attr extends Attributes = any,
+/**
+ * An index's key attributes are never undefined.
+ */
+export type EntityIndexAttributes<
+  Attr extends Attributes,
   Partition extends IndexCompositeKeyPart<Attr> = IndexCompositeKeyPart<Attr>,
   Sort extends IndexCompositeKeyPart<Attr> | undefined =
     | IndexCompositeKeyPart<Attr>
     | undefined
+> = {
+  [k in keyof Attr]: k extends KeyAttributes<Attr, Partition, Sort>
+    ? Exclude<Attr[k], undefined>
+    : Attr[k];
+};
+
+export interface EntityIndex<
+  Name extends string = string,
+  EntityAttr extends Attributes = Attributes,
+  Partition extends IndexCompositeKeyPart<EntityAttr> = IndexCompositeKeyPart<EntityAttr>,
+  Sort extends IndexCompositeKeyPart<EntityAttr> | undefined =
+    | IndexCompositeKeyPart<EntityAttr>
+    | undefined,
+  IndexAttr extends EntityIndexAttributes<
+    EntityAttr,
+    Partition,
+    Sort
+  > = EntityIndexAttributes<EntityAttr, Partition, Sort>
 > extends EntityIndexSpec<Name> {
   kind: "EntityIndex";
   query(
-    queryKey: QueryKey<Attr, Partition, Sort>,
+    queryKey: QueryKey<IndexAttr, Partition, Sort>,
     options?: EntityQueryOptions
-  ): Promise<EntityQueryResult<Attr>>;
+  ): Promise<EntityQueryResult<IndexAttr>>;
   /**
    * Returns all items in the table, up to the limit given or 1MB (on AWS).
    *
    * In general, scan is an expensive operation and should be avoided in favor of query
    * unless it is necessary to get all items in a table across all or most partitions.
    */
-  scan(request?: EntityQueryOptions): Promise<EntityQueryResult<Attr>>;
+  scan(request?: EntityQueryOptions): Promise<EntityQueryResult<IndexAttr>>;
 }
 
 export interface EntityQueryResult<Attr extends Attributes = Attributes> {

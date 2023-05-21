@@ -201,3 +201,13 @@ export type StreamQueryKey<
     ? // eslint-disable-next-line
       {}
     : ProgressiveQueryKey<Attr, Exclude<Sort, undefined>>);
+
+export type KeyAttributes<
+  Attr extends Attributes = any,
+  Partition extends IndexCompositeKeyPart<Attr> = IndexCompositeKeyPart<Attr>,
+  Sort extends IndexCompositeKeyPart<Attr> | undefined =
+    | IndexCompositeKeyPart<Attr>
+    | undefined
+> = Sort extends undefined
+  ? Partition[number]
+  : [...Partition, ...Exclude<Sort, undefined>][number];
