@@ -337,6 +337,9 @@ importers:
 
   packages/@eventual/aws-cdk:
     dependencies:
+      '@aws-sdk/credential-provider-node':
+        specifier: ^3.335.0
+        version: 3.335.0
       '@eventual/aws-runtime':
         specifier: workspace:^
         version: link:../aws-runtime
@@ -352,6 +355,12 @@ importers:
       '@eventual/project':
         specifier: workspace:^
         version: link:../project
+      '@opensearch-project/opensearch':
+        specifier: ^2.2.1
+        version: 2.2.1
+      aws4:
+        specifier: ^1.12.0
+        version: 1.12.0
     devDependencies:
       '@aws-cdk/aws-apigatewayv2-alpha':
         specifier: 2.50.0-alpha.0
@@ -365,6 +374,9 @@ importers:
       '@types/aws-lambda':
         specifier: 8.10.115
         version: 8.10.115
+      '@types/aws4':
+        specifier: ^1.11.2
+        version: 1.11.2
       '@types/jest':
         specifier: ^29.5.1
         version: 29.5.1

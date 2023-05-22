@@ -10,8 +10,8 @@ export interface ServerfulSearchServiceProps
     Partial<aws_opensearchservice.DomainProps> {}
 
 export class ServerfulSearchService extends BaseSearchService {
-  readonly endpoint;
-  readonly domain;
+  public readonly endpoint;
+  public readonly domain;
 
   constructor(props: ServerfulSearchServiceProps) {
     super(props.serviceScope, "Search");
@@ -27,6 +27,11 @@ export class ServerfulSearchService extends BaseSearchService {
         props.version ?? aws_opensearchservice.EngineVersion.OPENSEARCH_2_5,
     });
     this.endpoint = this.domain.domainEndpoint;
+    this.domain.grantWrite(this.customResourceHandler);
+  }
+
+  public grantControl(principal: SearchPrincipal): void {
+    this.domain.grantReadWrite(principal);
   }
 
   public grantReadWrite(principal: SearchPrincipal): void {

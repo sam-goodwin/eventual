@@ -1,11 +1,7 @@
-import {
-  Resource,
-  aws_iam,
-  aws_kms,
-  aws_opensearchserverless,
-} from "aws-cdk-lib";
+import { Resource, aws_kms, aws_opensearchserverless } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { Access, AccessPolicy } from "./access-policy";
+import { SearchPrincipal } from "./search-service";
 
 export interface ICollection {
   readonly collectionName: string;
@@ -59,14 +55,14 @@ export interface CollectionProps {
 }
 
 export class Collection extends Resource implements ICollection {
-  readonly resource;
-  readonly collectionName;
-  readonly collectionId;
-  readonly collectionArn;
-  readonly collectionEndpoint;
-  readonly collectionDashboardEndpoint;
-  readonly encryptionKey;
-  readonly accessPolicy: AccessPolicy;
+  public readonly resource;
+  public readonly collectionName;
+  public readonly collectionId;
+  public readonly collectionArn;
+  public readonly collectionEndpoint;
+  public readonly collectionDashboardEndpoint;
+  public readonly encryptionKey;
+  public readonly accessPolicy: AccessPolicy;
 
   constructor(scope: Construct, id: string, props: CollectionProps) {
     super(scope, id, {
@@ -91,6 +87,7 @@ export class Collection extends Resource implements ICollection {
 
     this.encryptionKey = props.encryptionKey;
 
+    // encryption policy
     new aws_opensearchserverless.CfnSecurityPolicy(this, "EncryptionPolicy", {
       name: props.collectionName,
       type: "encryption",
@@ -106,6 +103,8 @@ export class Collection extends Resource implements ICollection {
       } satisfies SecurityPolicy),
     });
 
+    // network access policy - for now we just grant public access to avoid VPC nonsense
+    // TODO: we should really consider looking into VPCs soon
     new aws_opensearchserverless.CfnSecurityPolicy(this, "NetworkPolicy", {
       name: props.collectionName,
       type: "network",
@@ -126,8 +125,14 @@ export class Collection extends Resource implements ICollection {
     });
   }
 
+  public grantControl(principal: SearchPrincipal) {
+    this.grant(principal, {
+      access: Access.Control,
+    });
+  }
+
   public grantReadWrite(
-    principal: aws_iam.IRole,
+    principal: SearchPrincipal,
     options?: {
       indexPrefix?: string;
     }
@@ -137,7 +142,7 @@ export class Collection extends Resource implements ICollection {
   }
 
   public grantRead(
-    principal: aws_iam.IRole,
+    principal: SearchPrincipal,
     options?: {
       indexPrefix?: string;
     }
@@ -149,7 +154,7 @@ export class Collection extends Resource implements ICollection {
   }
 
   public grantWrite(
-    principal: aws_iam.IRole | string,
+    principal: SearchPrincipal,
     options?: {
       indexPrefix?: string;
     }
@@ -161,7 +166,7 @@ export class Collection extends Resource implements ICollection {
   }
 
   private grant(
-    principal: aws_iam.IRole | string,
+    principal: SearchPrincipal,
     options: {
       access: Access;
       indexPrefix?: string;
@@ -170,7 +175,7 @@ export class Collection extends Resource implements ICollection {
     this.accessPolicy.grantAccess({
       ...options,
       principals: [
-        typeof principal === "string" ? principal : principal.roleArn,
+        "roleArn" in principal ? principal.roleArn : principal.federated,
       ],
     });
   }

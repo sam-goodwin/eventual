@@ -19,6 +19,7 @@ export interface SearchService {
   readonly endpoint: string;
   readonly customResourceHandler: aws_lambda.IFunction;
   addIndex(props: SearchIndexProps): SearchIndex;
+  grantControl(principal: SearchPrincipal): void;
   grantReadWrite(principal: SearchPrincipal, options?: AccessOptions): void;
   grantRead(principal: SearchPrincipal, options?: AccessOptions): void;
   grantWrite(principal: SearchPrincipal, options?: AccessOptions): void;

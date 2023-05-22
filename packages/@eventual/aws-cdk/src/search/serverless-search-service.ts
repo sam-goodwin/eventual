@@ -5,14 +5,15 @@ import {
 } from "./base-search-service";
 import { CollectionProps, Collection, CollectionType } from "./collection";
 import { IRole } from "aws-cdk-lib/aws-iam";
+import { SearchPrincipal } from "./search-service";
 
 export interface ServerlessSearchServiceProps
   extends BaseSearchServiceProps,
     CollectionProps {}
 
 export class ServerlessSearchService extends BaseSearchService {
-  readonly endpoint;
-  readonly collection;
+  public readonly endpoint;
+  public readonly collection;
 
   constructor(props: ServerlessSearchServiceProps) {
     super(props.serviceScope, "Search");
@@ -22,6 +23,11 @@ export class ServerlessSearchService extends BaseSearchService {
       type: CollectionType.SEARCH,
     });
     this.endpoint = this.collection.collectionEndpoint;
+    this.collection.grantControl(this.customResourceHandler.role!);
+  }
+
+  public grantControl(principal: SearchPrincipal): void {
+    this.collection.grantControl(principal);
   }
 
   public grantReadWrite(principal: IRole): void {

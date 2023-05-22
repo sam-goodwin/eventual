@@ -1,6 +1,6 @@
 import { Resource, aws_opensearchserverless, Lazy } from "aws-cdk-lib";
 import { Construct } from "constructs";
-import type { Collection } from "./collection";
+import { Collection } from "./collection";
 
 export enum Access {
   /**
@@ -34,8 +34,8 @@ export interface AccessRule {
 }
 
 export class AccessPolicy extends Resource {
-  readonly rules;
-  readonly resource;
+  public readonly rules;
+  public readonly resource;
 
   constructor(scope: Construct, id: string, props: AccessPolicyProps) {
     super(scope, id, {
@@ -64,10 +64,29 @@ export class AccessPolicy extends Resource {
               (scope[indexPrefix] ??= []).push(...rule.principals);
             }
 
-            return JSON.stringify(
-              Object.entries(scopes).flatMap(([access, scope]) =>
+            // collapse all Access.Control policies into a single one and grant all
+            const collectionPolicies = scopes.Control
+              ? [
+                  createPolicy(
+                    "collection",
+                    "*",
+                    Array.from(new Set(Object.values(scopes.Control).flat())),
+                    [
+                      CollectionPermission.CreateCollectionItems,
+                      CollectionPermission.DeleteCollectionItems,
+                      CollectionPermission.DescribeCollectionItems,
+                      CollectionPermission.UpdateCollectionItems,
+                    ]
+                  ),
+                ]
+              : [];
+
+            // create a read and write entry for each index prefix
+            const indexPolicies = Object.entries(scopes).flatMap(
+              ([access, scope]) =>
                 Object.entries(scope).map(([indexPrefix, principals]) => {
-                  return createIndexPolicy(
+                  return createPolicy(
+                    "index",
                     indexPrefix,
                     // de-dupe the principals
                     Array.from(new Set(principals)),
@@ -86,20 +105,24 @@ export class AccessPolicy extends Resource {
                         ]
                   );
                 })
-              ) satisfies DataAccessPolicy[]
-            );
+            ) satisfies DataAccessPolicy[];
 
-            function createIndexPolicy(
-              indexPrefix: string,
+            return JSON.stringify([...collectionPolicies, ...indexPolicies]);
+
+            function createPolicy<ResourceType extends "index" | "collection">(
+              resourceType: ResourceType,
+              prefix: string,
               principals: string[],
-              permissions: IndexPermission[]
+              permissions: (ResourceType extends "index"
+                ? IndexPermission
+                : CollectionPermission)[]
             ): DataAccessPolicy {
               return {
                 Rules: [
                   {
-                    ResourceType: "index",
+                    ResourceType: resourceType,
                     Resource: [
-                      `index/${props.collection.collectionName}/${indexPrefix}`,
+                      `${resourceType}/${props.collection.collectionName}/${prefix}`,
                     ],
                     Permission: permissions,
                   },
