@@ -86,6 +86,7 @@ import { LocalExecutionHistoryStateStore } from "./stores/execution-history-stat
 import { LocalExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { LocalExecutionStore } from "./stores/execution-store.js";
 import { LocalTaskStore } from "./stores/task-store.js";
+import { LocalOpenSearchClient } from "./clients/open-search-client.js";
 
 export type LocalEvent =
   | WorkflowTask
@@ -164,9 +165,11 @@ export class LocalContainer {
     const bucketStore = new LocalBucketStore({
       localConnector: this.localConnector,
     });
+    const openSearchClient = new LocalOpenSearchClient();
     this.bucketHandlerWorker = createBucketNotificationHandlerWorker({
       bucketStore,
       entityStore,
+      openSearchClient,
       serviceClient: undefined,
       serviceSpec: undefined,
       serviceName: props.serviceName,
@@ -177,6 +180,7 @@ export class LocalContainer {
       serviceClient: undefined,
       bucketStore,
       entityStore,
+      openSearchClient,
       serviceName: props.serviceName,
       serviceSpec: undefined,
       serviceUrl: props.serviceUrl,
@@ -196,6 +200,7 @@ export class LocalContainer {
       executionQueueClient: this.executionQueueClient,
       logAgent,
       metricsClient: this.metricsClient,
+      openSearchClient,
       serviceName: props.serviceName,
       serviceClient: undefined,
       serviceSpec: undefined,
@@ -211,6 +216,7 @@ export class LocalContainer {
     });
 
     this.entityStreamWorker = createEntityStreamWorker({
+      openSearchClient,
       bucketStore,
       entityStore,
       serviceClient: undefined,
@@ -235,6 +241,7 @@ export class LocalContainer {
         entityStore,
         eventClient: this.eventClient,
         executionQueueClient: this.executionQueueClient,
+        openSearchClient,
         taskClient: this.taskClient,
         timerClient: this.timerClient,
         transactionClient: this.transactionClient,

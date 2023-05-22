@@ -67,6 +67,11 @@ import {
   TaskService,
 } from "./task-service.js";
 import { WorkflowService, WorkflowServiceOverrides } from "./workflow-service";
+import { SearchServiceOverrides } from "./search/search-service";
+import { ServerlessSearchService } from "./search/serverless-search-service";
+import { ServerfulSearchService } from "./search/serverful-search-service";
+import { SearchService } from "./search/search-service";
+import { EngineVersion } from "aws-cdk-lib/aws-opensearchservice";
 
 /**
  * The properties for subscribing a Service to another Service's events.
@@ -146,6 +151,7 @@ export interface ServiceProps<Service = any> {
      */
     workflowService?: WorkflowServiceOverrides;
     entityService?: EntityServiceProps<Service>["entityServiceOverrides"];
+    searchService?: SearchServiceOverrides;
   };
 }
 
@@ -249,6 +255,8 @@ export class Service<S = any> extends Construct {
    */
   public readonly local?: ServiceLocal;
 
+  public readonly searchService: SearchService;
+
   constructor(scope: Construct, id: string, props: ServiceProps<S>) {
     super(scope, id);
 
@@ -316,6 +324,30 @@ export class Service<S = any> extends Construct {
 
     this.eventService = new EventService(serviceConstructProps);
     this.bus = this.eventService.bus;
+
+    if (props.system?.searchService) {
+      const searchProps = props.system?.searchService;
+      searchProps.serverless;
+      if (searchProps.serverless) {
+        this.searchService = new ServerlessSearchService({
+          collectionName: this.serviceName,
+          ...serviceConstructProps,
+          ...searchProps,
+        });
+      } else {
+        this.searchService = new ServerfulSearchService({
+          version: EngineVersion.OPENSEARCH_2_5,
+          domainName: this.serviceName,
+          ...serviceConstructProps,
+          ...searchProps,
+        });
+      }
+    } else {
+      this.searchService = new ServerlessSearchService({
+        collectionName: this.serviceName,
+        ...serviceConstructProps,
+      });
+    }
 
     const entityService = new EntityService<S>({
       bucketService: proxyBucketService,

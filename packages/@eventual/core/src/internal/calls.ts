@@ -7,6 +7,7 @@ import type {
 } from "../entity/entity.js";
 import type { EventEnvelope } from "../event.js";
 import type { DurationSchedule, Schedule } from "../schedule.js";
+import { SearchIndex } from "../search-index.js";
 import type { WorkflowExecutionOptions } from "../workflow.js";
 import type { BucketMethod } from "./bucket-hook.js";
 import type { EntityMethod } from "./entity-hook.js";
@@ -22,6 +23,7 @@ export type EventualCall =
   | ExpectSignalCall
   | InvokeTransactionCall
   | RegisterSignalHandlerCall
+  | SearchCall
   | SendSignalCall
   | TaskCall;
 
@@ -37,6 +39,7 @@ export enum EventualCallKind {
   SendSignalCall = 6,
   TaskCall = 0,
   WorkflowCall = 7,
+  SearchCall = 11,
 }
 
 const EventualCallSymbol = /* @__PURE__ */ Symbol.for("eventual:EventualCall");
@@ -204,6 +207,22 @@ export interface RegisterSignalHandlerCall<T = any>
   signalId: string;
   handler: (input: T) => void;
 }
+
+export function isSearchCall(a: any): a is SearchCall {
+  return isEventualCallOfKind(EventualCallKind.SearchCall, a);
+}
+
+export type SearchCallRequest<Op extends SearchOperation> = Parameters<
+  Extract<SearchIndex[Op], (...args: any[]) => any>
+>[0];
+
+export type SearchOperation = keyof SearchIndex;
+
+export type SearchCall<Op extends SearchOperation = SearchOperation> =
+  EventualCallBase<EventualCallKind.SearchCall> & {
+    operation: Op;
+    request: SearchCallRequest<Op>;
+  };
 
 export function isTaskCall(a: any): a is TaskCall {
   return isEventualCallOfKind(EventualCallKind.TaskCall, a);

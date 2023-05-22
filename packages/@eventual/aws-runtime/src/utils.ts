@@ -303,3 +303,26 @@ export function sanitizeBucketName(name: string) {
       .replaceAll(/(^-*)|(-(?=-))|(-$)/g, "")
   );
 }
+
+/**
+ * Sanitizes the name of an OpenSearch Serverless Collection.
+ *
+ * - Starts with a lowercase letter
+ * - Unique to your account and AWS Region
+ * - Contains between 3 and 28 characters
+ * - Contains only lowercase letters a-z, the numbers 0-9, and the hyphen (-)
+ *
+ * @see https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-opensearchserverless-collection.html#cfn-opensearchserverless-collection-name
+ */
+export function sanitizeCollectionName(name: string) {
+  if (name.length < 3) {
+    throw new Error(`collection name ${name} must be >=3 and <= 28 characters`);
+  }
+  return (
+    name
+      .replaceAll(/[^a-zA-Z0-9-_]/g, "-")
+      // remove leading, trailing, and duplicate dashes
+      .replaceAll(/(^-*)|(-(?=-))|(-$)/g, "")
+      .slice(0, 28)
+  );
+}

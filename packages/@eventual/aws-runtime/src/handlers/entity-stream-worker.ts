@@ -18,6 +18,7 @@ import type { DynamoDBStreamHandler } from "aws-lambda";
 import {
   createBucketStore,
   createEntityStore,
+  createOpenSearchClient,
   createServiceClient,
 } from "../create.js";
 import {
@@ -33,6 +34,7 @@ const entityProvider = new GlobalEntityProvider();
 const worker = createEntityStreamWorker({
   bucketStore: createBucketStore(),
   entityStore: createEntityStore(),
+  openSearchClient: await createOpenSearchClient(),
   serviceClient: createServiceClient({}),
   serviceSpec,
   serviceName,

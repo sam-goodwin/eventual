@@ -17,7 +17,7 @@ export type BucketMethod = Exclude<
 >;
 
 export type BucketHook = {
-  [K in BucketMethod]: (
+  [K in keyof Pick<Bucket, BucketMethod>]: (
     bucketName: string,
     ...args: Parameters<Bucket[K]>
   ) => ReturnType<Bucket[K]>;

@@ -12,6 +12,8 @@ import type {
 import { KeyDefinition } from "./entity.js";
 import type { TaskSpec } from "./task.js";
 
+import type { estypes } from "@elastic/elasticsearch";
+
 /**
  * Specification for an Eventual application
  */
@@ -39,6 +41,9 @@ export interface ServiceSpec {
   };
   openApi: {
     info: openapi.InfoObject;
+  };
+  search: {
+    indexes: SearchIndexSpec[];
   };
 }
 
@@ -141,6 +146,8 @@ export interface BucketSpec {
   name: string;
   handlers: BucketNotificationHandlerSpec[];
 }
+
+export interface SearchIndexSpec extends estypes.IndicesCreateRequest {}
 
 export type BucketNotificationEventType = "put" | "copy" | "delete";
 

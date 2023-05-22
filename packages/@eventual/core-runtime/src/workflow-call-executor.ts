@@ -1,4 +1,9 @@
-import type { ExecutionID, Workflow } from "@eventual/core";
+import {
+  ExecutionID,
+  OpenSearchClient,
+  Workflow,
+  assertApiResponseOK,
+} from "@eventual/core";
 import {
   AwaitTimerCall,
   BucketCall,
@@ -17,6 +22,10 @@ import {
   EventsEmitted,
   HistoryStateEvent,
   InvokeTransactionCall,
+  SearchCall,
+  SearchRequest,
+  SearchRequestFailed,
+  SearchRequestSucceeded,
   SendSignalCall,
   SignalSent,
   TaskCall,
@@ -40,6 +49,7 @@ import {
   isExpectSignalCall,
   isInvokeTransactionCall,
   isRegisterSignalHandlerCall,
+  isSearchCall,
   isSendSignalCall,
   isTaskCall,
 } from "@eventual/core/internal";
@@ -57,11 +67,13 @@ import type { BucketStore } from "./stores/bucket-store.js";
 import type { EntityStore } from "./stores/entity-store.js";
 import { createEvent } from "./workflow-events.js";
 import type { WorkflowCall } from "./workflow-executor.js";
+import type { ApiResponse } from "@opensearch-project/opensearch";
 
 interface WorkflowCallExecutorProps {
   bucketStore: BucketStore;
   entityStore: EntityStore;
   eventClient: EventClient;
+  openSearchClient: OpenSearchClient;
   executionQueueClient: ExecutionQueueClient;
   taskClient: TaskClient;
   timerClient: TimerClient;
@@ -123,6 +135,13 @@ export class WorkflowCallExecutor {
       return this.invokeBucketRequest(
         call.call,
         executionId,
+        call.seq,
+        baseTime
+      );
+    } else if (isSearchCall(call.call)) {
+      return this.invokeSearchRequest(
+        executionId,
+        call.call,
         call.seq,
         baseTime
       );
@@ -537,6 +556,55 @@ export class WorkflowCallExecutor {
           // @ts-ignore
           params: call.params,
         },
+        seq,
+      },
+      baseTime
+    );
+  }
+
+  private async invokeSearchRequest(
+    executionId: string,
+    call: SearchCall,
+    seq: number,
+    baseTime: Date
+  ) {
+    try {
+      const result: ApiResponse = await (
+        this.props.openSearchClient.client as any
+      )[call.operation](call.request);
+      assertApiResponseOK(result);
+      await this.props.executionQueueClient.submitExecutionEvents(
+        executionId,
+        createEvent<SearchRequestSucceeded>(
+          {
+            type: WorkflowEventType.SearchRequestSucceeded,
+            operation: call.operation,
+            body: result.body,
+            seq,
+          },
+          baseTime
+        )
+      );
+    } catch (err) {
+      await this.props.executionQueueClient.submitExecutionEvents(
+        executionId,
+        createEvent<SearchRequestFailed>(
+          {
+            type: WorkflowEventType.SearchRequestFailed,
+            operation: call.operation,
+            seq,
+            ...normalizeError(err),
+          },
+          baseTime
+        )
+      );
+    }
+
+    return createEvent<SearchRequest>(
+      {
+        type: WorkflowEventType.SearchRequest,
+        request: call.request,
+        operation: call.operation,
         seq,
       },
       baseTime

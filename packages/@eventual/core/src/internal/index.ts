@@ -10,6 +10,7 @@ export * from "./guards.js";
 export * from "./open-api-spec.js";
 export * from "./result.js";
 export * from "./schedule.js";
+export * from "./search-hook.js";
 export * from "./service-spec.js";
 export * from "./service-type.js";
 export * from "./signal.js";

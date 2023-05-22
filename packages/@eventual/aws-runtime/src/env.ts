@@ -34,6 +34,7 @@ export function tryGetEnv<T extends string = string>(name: string) {
   ) as T;
 }
 
+export const awsRegion = () => tryGetEnv("AWS_REGION");
 export const serviceName = () => tryGetEnv(ENV_NAMES.SERVICE_NAME);
 export const executionTableName = () =>
   tryGetEnv(ENV_NAMES.EXECUTION_TABLE_NAME);

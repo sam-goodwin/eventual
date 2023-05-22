@@ -2,7 +2,11 @@ import { Bucket, GetBucketObjectResponse } from "../bucket.js";
 import type { EventEnvelope } from "../event.js";
 import type { WorkflowExecutionContext } from "../workflow.js";
 import type { BucketMethod } from "./bucket-hook.js";
-import type { BucketOperation, EntityOperation } from "./calls.js";
+import type {
+  BucketOperation,
+  EntityOperation,
+  SearchOperation,
+} from "./calls.js";
 import { or } from "./util.js";
 
 export interface BaseEvent {
@@ -63,6 +67,9 @@ export enum WorkflowEventType {
   WorkflowRunCompleted = 80,
   WorkflowRunStarted = 15,
   WorkflowTimedOut = 90,
+  SearchRequestSucceeded = 62,
+  SearchRequestFailed = 63,
+  SearchRequest = 29,
 }
 
 /**
@@ -81,6 +88,7 @@ export type WorkflowEvent =
 export type ScheduledEvent =
   | BucketRequest
   | ChildWorkflowScheduled
+  | SearchRequest
   | EntityRequest
   | EventsEmitted
   | SignalSent
@@ -110,6 +118,8 @@ export type CompletionEvent =
   | EntityRequestFailed
   | EntityRequestSucceeded
   | SignalReceived
+  | SearchRequestSucceeded
+  | SearchRequestFailed
   | TaskFailed
   | TaskHeartbeatTimedOut
   | TaskSucceeded
@@ -498,6 +508,43 @@ export interface EventsEmitted extends HistoryEventBase {
 
 export function isEventsEmitted(event: WorkflowEvent): event is EventsEmitted {
   return event.type === WorkflowEventType.EventsEmitted;
+}
+
+export interface SearchRequest extends HistoryEventBase {
+  type: WorkflowEventType.SearchRequest;
+  operation: SearchOperation;
+  request: any;
+}
+
+export interface SearchRequestSucceeded extends HistoryEventBase {
+  type: WorkflowEventType.SearchRequestSucceeded;
+  operation: SearchOperation;
+  body: any;
+}
+
+export interface SearchRequestFailed extends HistoryEventBase {
+  type: WorkflowEventType.SearchRequestFailed;
+  operation: SearchOperation;
+  error: string;
+  message: string;
+}
+
+export function isSearchRequestStarted(
+  event: WorkflowEvent
+): event is SearchRequest {
+  return event.type === WorkflowEventType.SearchRequest;
+}
+
+export function isSearchRequestSucceeded(
+  event: WorkflowEvent
+): event is SearchRequestSucceeded {
+  return event.type === WorkflowEventType.SearchRequestSucceeded;
+}
+
+export function isSearchRequestFailed(
+  event: WorkflowEvent
+): event is SearchRequestFailed {
+  return event.type === WorkflowEventType.SearchRequestFailed;
 }
 
 export interface WorkflowTimedOut extends BaseEvent {

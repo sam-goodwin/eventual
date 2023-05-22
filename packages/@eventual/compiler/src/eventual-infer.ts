@@ -12,6 +12,7 @@ import {
   commands,
   entities,
   events,
+  searchIndices,
   subscriptions,
   tasks,
   transactions,
@@ -142,6 +143,12 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
       name: t.name,
     })),
     openApi,
+    search: {
+      indexes: Array.from(searchIndices().values()).map((i) => ({
+        index: i.name,
+        ...i.options,
+      })),
+    },
   };
 }
 
