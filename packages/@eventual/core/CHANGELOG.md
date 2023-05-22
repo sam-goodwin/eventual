@@ -3,6 +3,10 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.39.5 (2023-05-22)
+
+**Note:** Version bump only for package @eventual/core
+
 ## 0.39.4 (2023-05-21)
 
 ### Bug Fixes
