@@ -11,21 +11,45 @@ export type KeyValue = string | number | bigint;
 /**
  * Any attribute name considered to be a valid key attribute.
  */
-export type KeyAttribute<Attr extends Attributes> = {
+export type KeyAttribute<Attr extends Attributes, Values = KeyValue> = {
   [K in keyof Attr]: K extends string
     ? // only include attributes that extend string or number
-      Attr[K] extends KeyValue
+      Attr[K] extends Values
       ? K
       : never
     : never;
 }[keyof Attr];
 
 /**
- * A part of the composite key, either the partition or sort key.
+ * An at least one tuple of attribute keys. Attributes can refer to any {@link KeyValue}.
+ *
+ * Used to define a key in an Entity, where all key attributes must not be optional.
+ */
+export type EntityCompositeKeyPart<Attr extends Attributes> = readonly [
+  KeyAttribute<Attr, KeyValue>,
+  ...KeyAttribute<Attr, KeyValue>[]
+];
+
+/**
+ * An at least one tuple of attribute keys. Attributes can refer to any {@link KeyValue} and may be optional.
+ *
+ * Used to define a key in an {@link EntityIndex}, where key attributes may refer to optional fields. This is called a sparse index.
+ */
+export type IndexCompositeKeyPart<Attr extends Attributes> =
+  | readonly [
+      KeyAttribute<Attr, KeyValue | undefined>,
+      ...KeyAttribute<Attr, KeyValue | undefined>[]
+    ]
+  | EntityCompositeKeyPart<Attr>;
+
+/**
+ * An at least one tuple of attribute keys. Does not include attribute type constraints, but the keys must be string.
+ *
+ * Should match either {@link IndexCompositeKeyPart} or {@link EntityCompositeKeyPart}.
  */
 export type CompositeKeyPart<Attr extends Attributes> = readonly [
-  KeyAttribute<Attr>,
-  ...KeyAttribute<Attr>[]
+  KeyAttribute<Attr, any>,
+  ...KeyAttribute<Attr, any>[]
 ];
 
 /**
@@ -47,10 +71,10 @@ export type KeyMap<
     | CompositeKeyPart<Attr>
     | undefined
 > = {
-  [k in Partition[number]]: Attr[k];
+  [k in Partition[number]]: Exclude<Attr[k], undefined>;
 } & (Sort extends CompositeKeyPart<Attr>
   ? {
-      [k in Sort[number]]: Attr[k];
+      [k in Sort[number]]: Exclude<Attr[k], undefined>;
     }
   : // eslint-disable-next-line
     {});
@@ -64,7 +88,7 @@ export type KeyPartialTuple<
       infer Head extends keyof Attr,
       ...infer Rest extends readonly (keyof Attr)[]
     ]
-  ? readonly [Attr[Head], ...KeyPartialTuple<Attr, Rest>]
+  ? readonly [Extract<Attr[Head], KeyValue>, ...KeyPartialTuple<Attr, Rest>]
   : readonly [];
 
 /**
@@ -75,9 +99,11 @@ export type KeyPartialTuple<
  * ```
  */
 export type KeyTuple<
-  Attr extends Attributes,
-  Partition extends CompositeKeyPart<Attr>,
-  Sort extends CompositeKeyPart<Attr> | undefined
+  Attr extends Attributes = Attributes,
+  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined =
+    | CompositeKeyPart<Attr>
+    | undefined
 > = Sort extends undefined
   ? KeyPartialTuple<Attr, Partition>
   : readonly [
@@ -96,6 +122,21 @@ export type CompositeKey<
     | undefined
 > = KeyMap<Attr, Partition, Sort> | KeyTuple<Attr, Partition, Sort>;
 
+export type ProgressiveTupleQueryKey<
+  Attr extends Attributes,
+  Sort extends readonly (keyof Attr)[],
+  Accum extends [] = []
+> = Sort extends readonly []
+  ? Accum
+  : Sort extends readonly [
+      infer k extends keyof Attr,
+      ...infer ks extends readonly (keyof Attr)[]
+    ]
+  ?
+      | Accum
+      | ProgressiveQueryKey<Attr, ks, [...Accum, Extract<Attr[k], KeyValue>]>
+  : never;
+
 export type ProgressiveQueryKey<
   Attr extends Attributes,
   Sort extends readonly (keyof Attr)[],
@@ -112,7 +153,7 @@ export type ProgressiveQueryKey<
           Attr,
           ks,
           Accum & {
-            [sk in k]: Attr[sk];
+            [sk in k]: Extract<Attr[sk], KeyValue>;
           }
         >
   : never;
@@ -134,12 +175,17 @@ export type QueryKey<
     | undefined
 > =
   | ({
-      [pk in Partition[number]]: Attr[pk];
+      [pk in Partition[number]]: Extract<Attr[pk], KeyValue>;
     } & (Sort extends undefined
       ? // eslint-disable-next-line
         {}
       : ProgressiveQueryKey<Attr, Exclude<Sort, undefined>>))
-  | Partial<KeyTuple<Attr, Partition, Sort>>;
+  | [
+      ...KeyTuple<Attr, Partition>,
+      ...(Sort extends undefined
+        ? []
+        : ProgressiveTupleQueryKey<Attr, Exclude<Sort, undefined>>)
+    ];
 
 /**
  * A stream query can contain partial sort keys and partial partition keys.
@@ -155,3 +201,13 @@ export type StreamQueryKey<
     ? // eslint-disable-next-line
       {}
     : ProgressiveQueryKey<Attr, Exclude<Sort, undefined>>);
+
+export type KeyAttributes<
+  Attr extends Attributes = any,
+  Partition extends IndexCompositeKeyPart<Attr> = IndexCompositeKeyPart<Attr>,
+  Sort extends IndexCompositeKeyPart<Attr> | undefined =
+    | IndexCompositeKeyPart<Attr>
+    | undefined
+> = Sort extends undefined
+  ? Partition[number]
+  : [...Partition, ...Exclude<Sort, undefined>][number];

@@ -294,6 +294,7 @@ function setLocalEntity(
   key: NormalizedEntityCompositeKeyComplete,
   entity: Entity
 ) {
+  const oldValue = getPartitionEntry(localEntity.data, key);
   updatePartitionEntry(localEntity.data, key, value);
 
   entity.indices.forEach((i) => {
@@ -306,21 +307,14 @@ function setLocalEntity(
     // if the key isn't complete (missing parts of the index composite key), ignore this item
     if (isCompleteKey(normalizedKey)) {
       updatePartitionEntry(localIndex, normalizedKey, value);
+    } else if (oldValue) {
+      // if the value existed before, try to delete it from the index.
+      const oldKey = normalizeCompositeKey(i.key, oldValue.value);
+      if (isCompleteKey(oldKey)) {
+        deletePartitionEntry(localIndex, oldKey);
+      }
     }
   });
-
-  function updatePartitionEntry(
-    store: Map<KeyValue, Map<KeyValue, EntityWithMetadata>>,
-    key: NormalizedEntityCompositeKeyComplete,
-    value: EntityWithMetadata
-  ) {
-    let partitionMap = store.get(key.partition.keyValue);
-    if (!partitionMap) {
-      partitionMap = new Map<KeyValue, EntityWithMetadata>();
-      store.set(key.partition.keyValue, partitionMap);
-    }
-    partitionMap.set(key.sort?.keyValue ?? "default", value);
-  }
 }
 
 function deleteLocalEntity(
@@ -352,15 +346,39 @@ function deleteLocalEntity(
   });
 
   return deleted;
+}
 
-  function deletePartitionEntry(
-    store: Map<KeyValue, Map<KeyValue, EntityWithMetadata>>,
-    key: NormalizedEntityCompositeKeyComplete
-  ) {
-    const partitionMap = store.get(key.partition.keyValue);
-    if (partitionMap) {
-      return partitionMap.delete(key.sort?.keyValue ?? "default");
-    }
-    return false;
+function updatePartitionEntry(
+  store: Map<KeyValue, Map<KeyValue, EntityWithMetadata>>,
+  key: NormalizedEntityCompositeKeyComplete,
+  value: EntityWithMetadata
+) {
+  let partitionMap = store.get(key.partition.keyValue);
+  if (!partitionMap) {
+    partitionMap = new Map<KeyValue, EntityWithMetadata>();
+    store.set(key.partition.keyValue, partitionMap);
   }
+  partitionMap.set(key.sort?.keyValue ?? "default", value);
+}
+
+function getPartitionEntry(
+  store: Map<KeyValue, Map<KeyValue, EntityWithMetadata>>,
+  key: NormalizedEntityCompositeKeyComplete
+) {
+  const partitionMap = store.get(key.partition.keyValue);
+  if (partitionMap) {
+    return partitionMap.get(key.sort?.keyValue ?? "default");
+  }
+  return undefined;
+}
+
+function deletePartitionEntry(
+  store: Map<KeyValue, Map<KeyValue, EntityWithMetadata>>,
+  key: NormalizedEntityCompositeKeyComplete
+) {
+  const partitionMap = store.get(key.partition.keyValue);
+  if (partitionMap) {
+    return partitionMap.delete(key.sort?.keyValue ?? "default");
+  }
+  return false;
 }

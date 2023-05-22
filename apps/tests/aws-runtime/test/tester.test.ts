@@ -169,6 +169,12 @@ eventualRuntimeTestHarness(
             n: 1000,
           },
         ],
+        [
+          {
+            namespace: "another",
+            n: 1000,
+          },
+        ],
       ],
       { n: 7 },
       [

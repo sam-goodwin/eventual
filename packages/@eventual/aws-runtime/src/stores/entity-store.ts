@@ -29,6 +29,7 @@ import {
   UnexpectedVersion,
 } from "@eventual/core";
 import {
+  computeGeneratedIndexKeyAttributes,
   EntityProvider,
   EntityStore,
   getLazy,
@@ -37,6 +38,8 @@ import {
   NormalizedEntityCompositeKeyComplete,
   NormalizedEntityKeyCompletePart,
   NormalizedEntityTransactItem,
+  removeGeneratedKeyAttributes,
+  removeKeyAttributes,
 } from "@eventual/core-runtime";
 import { assertNever } from "@eventual/core/internal";
 import {
@@ -97,16 +100,9 @@ export class AWSEntityStore extends EntityStore {
       item.Item
     ) as EntityAttributesWithVersion<any>;
 
-    // if the key attributes are computed, remove them from the return value.
-    if (!(key.partition.keyAttribute in entity.attributes.shape)) {
-      delete value[key.partition.keyAttribute];
-    }
-    if (key.sort && !(key.sort.keyAttribute in entity.attributes.shape)) {
-      delete value[key.sort.keyAttribute];
-    }
-
     return {
-      value,
+      // the value should not contain the computed attributes, remove them before returning
+      value: removeGeneratedKeyAttributes(entity, value, false, true),
       version: __version,
     };
   }
@@ -182,6 +178,11 @@ export class AWSEntityStore extends EntityStore {
     queryKey: NormalizedEntityCompositeKey<NormalizedEntityKeyCompletePart>,
     options?: EntityQueryOptions
   ): Promise<EntityQueryResult> {
+    const [_entity, _index] =
+      entity.kind === "Entity"
+        ? [entity, undefined]
+        : [this.getEntity(entity.entityName), entity];
+
     const allAttributes = new Set([
       queryKey.partition.keyAttribute,
       ...(queryKey.sort && queryKey.sort.keyValue !== undefined
@@ -202,7 +203,7 @@ export class AWSEntityStore extends EntityStore {
       },
       {
         TableName: this.tableName(entity),
-        IndexName: entity.kind === "EntityIndex" ? entity.name : undefined,
+        IndexName: _index?.name,
         ConsistentRead: options?.consistentRead,
         KeyConditionExpression:
           queryKey.sort &&
@@ -247,7 +248,13 @@ export class AWSEntityStore extends EntityStore {
     return {
       nextToken: result.nextToken,
       entries: result.records.map(({ __version, ...r }) => ({
-        value: unmarshall(r),
+        // the values should not contain the computed attributes, remove them before returning
+        value: removeGeneratedKeyAttributes(
+          _entity,
+          unmarshall(r),
+          false,
+          true
+        ),
         version: Number(__version.N),
       })),
     };
@@ -257,6 +264,11 @@ export class AWSEntityStore extends EntityStore {
     entity: Entity | EntityIndex,
     options?: EntityQueryOptions
   ): Promise<EntityQueryResult> {
+    const [_entity, _index] =
+      entity.kind === "Entity"
+        ? [entity, undefined]
+        : [this.getEntity(entity.entityName), entity];
+
     const result = await scanPageWithToken<
       MarshalledEntityAttributesWithVersion<any>
     >(
@@ -270,7 +282,7 @@ export class AWSEntityStore extends EntityStore {
       },
       {
         TableName: this.tableName(entity),
-        IndexName: entity.kind === "EntityIndex" ? entity.name : undefined,
+        IndexName: _index?.name,
         ConsistentRead: options?.consistentRead,
       }
     );
@@ -278,7 +290,13 @@ export class AWSEntityStore extends EntityStore {
     return {
       nextToken: result.nextToken,
       entries: result.records.map(({ __version, ...r }) => ({
-        value: unmarshall(r),
+        // the values should not contain the computed attributes, remove them before returning
+        value: removeGeneratedKeyAttributes(
+          _entity,
+          unmarshall(r),
+          false,
+          true
+        ),
         version: Number(__version.N),
       })),
     };
@@ -358,13 +376,22 @@ export class AWSEntityStore extends EntityStore {
     key: NormalizedEntityCompositeKey,
     options?: EntitySetOptions
   ): Update {
-    const valueRecord = marshall(value, { removeUndefinedValues: true });
+    const indexGeneratedAttributes = computeGeneratedIndexKeyAttributes(
+      entity,
+      value
+    );
 
-    // if the key attributes are not computed and are in the original value, remove them from the set expression
-    delete valueRecord[key.partition.keyAttribute];
-    if (key.sort) {
-      delete valueRecord[key.sort.keyAttribute];
-    }
+    // remove the entity keys if they are not generated
+    const valueToSave = removeKeyAttributes(
+      entity,
+      { ...value, ...indexGeneratedAttributes },
+      undefined,
+      true,
+      true
+    );
+
+    // add any attributes we need for the indices to the value before marshalling
+    const valueRecord = marshall(valueToSave, { removeUndefinedValues: true });
 
     return {
       Key: this.entityKey(key),

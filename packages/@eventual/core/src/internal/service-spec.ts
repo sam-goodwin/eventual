@@ -1,6 +1,10 @@
 import type openapi from "openapi3-ts";
 import { Attributes } from "../entity/entity.js";
-import { CompositeKeyPart, StreamQueryKey } from "../entity/key.js";
+import {
+  CompositeKeyPart,
+  EntityCompositeKeyPart,
+  StreamQueryKey,
+} from "../entity/key.js";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
 import type { RestParams } from "../http/command.js";
@@ -208,9 +212,9 @@ export type EntityStreamOperation = "insert" | "modify" | "remove";
 
 export interface EntityStreamOptions<
   Attr extends Attributes = Attributes,
-  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
-  Sort extends CompositeKeyPart<Attr> | undefined =
-    | CompositeKeyPart<Attr>
+  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined =
+    | EntityCompositeKeyPart<Attr>
     | undefined
 > extends FunctionRuntimeProps {
   /**
@@ -232,9 +236,9 @@ export interface EntityStreamOptions<
 export interface EntityStreamSpec<
   Name extends string = string,
   Attr extends Attributes = Attributes,
-  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
-  Sort extends CompositeKeyPart<Attr> | undefined =
-    | CompositeKeyPart<Attr>
+  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined =
+    | EntityCompositeKeyPart<Attr>
     | undefined
 > {
   name: Name;
