@@ -1,5 +1,4 @@
-import type { OpenSearchClient } from "../search-index.js";
-
+import type { OpenSearchClient } from "../search/open-search-client.js";
 declare global {
   // eslint-disable-next-line no-var
   var eventualOpenSearchHook: OpenSearchHook | undefined;

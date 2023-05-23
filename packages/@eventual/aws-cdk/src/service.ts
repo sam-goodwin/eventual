@@ -67,10 +67,9 @@ import {
   TaskService,
 } from "./task-service.js";
 import { WorkflowService, WorkflowServiceOverrides } from "./workflow-service";
-import { SearchServiceOverrides } from "./search/search-service";
+import { SearchServiceOverrides, SearchService } from "./search/search-service";
 import { ServerlessSearchService } from "./search/serverless-search-service";
 import { ServerfulSearchService } from "./search/serverful-search-service";
-import { SearchService } from "./search/search-service";
 import { EngineVersion } from "aws-cdk-lib/aws-opensearchservice";
 
 /**
@@ -327,7 +326,6 @@ export class Service<S = any> extends Construct {
 
     if (props.system?.searchService) {
       const searchProps = props.system?.searchService;
-      searchProps.serverless;
       if (searchProps.serverless) {
         this.searchService = new ServerlessSearchService({
           collectionName: this.serviceName,
@@ -343,8 +341,10 @@ export class Service<S = any> extends Construct {
         });
       }
     } else {
-      this.searchService = new ServerlessSearchService({
-        collectionName: this.serviceName,
+      // default to cheap free tier Domain
+      this.searchService = new ServerfulSearchService({
+        version: EngineVersion.OPENSEARCH_2_5,
+        domainName: this.serviceName,
         ...serviceConstructProps,
       });
     }

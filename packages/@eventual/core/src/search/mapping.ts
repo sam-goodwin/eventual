@@ -1,165 +1,6 @@
-// we're still using estypes for its better representation of mappings
-// this means we may have a mismatch where our types support something
-// the opensearch service does not
-// but, opensearch's types are mostly covered by a generic type
-// where-as elastic's types are specific to each mapping type
-import type { estypes } from "@elastic/elasticsearch";
-import type {
-  ApiResponse,
-  Client,
-  RequestParams,
-  opensearchtypes,
-} from "@opensearch-project/opensearch";
-import {
-  EventualCallKind,
-  SearchCall,
-  SearchCallRequest,
-  SearchOperation,
-  createEventualCall,
-} from "./internal/calls.js";
-import { searchIndices } from "./internal/global.js";
-import { getOpenSearchHook } from "./internal/search-hook.js";
+import { estypes } from "@elastic/elasticsearch";
 
-export interface SearchIndexProperties {
-  [propertyName: string]: estypes.MappingProperty;
-}
-
-export interface IndexRequest<Document>
-  extends Omit<RequestParams.Index<Document>, "index"> {}
-
-export interface UpdateRequest<Document>
-  extends Omit<RequestParams.Update<Document>, "index"> {}
-
-export interface DeleteRequest extends Omit<RequestParams.Delete, "index"> {}
-
-export type BulkOperation<Document> =
-  | {
-      index: IndexRequest<Document>;
-    }
-  | {
-      upsert: IndexRequest<Document>;
-    }
-  | {
-      doc: Document;
-    }
-  | {
-      delete: DeleteRequest;
-    };
-
-export interface BulkRequest<Document>
-  extends Omit<RequestParams.Bulk<BulkOperation<Document>[]>, "body"> {
-  operations: BulkOperation<Document>[];
-}
-
-export interface SearchIndex<
-  Name extends string = string,
-  Document = any,
-  Properties extends SearchIndexProperties = SearchIndexProperties
-> {
-  kind: "SearchIndex";
-  name: Name;
-  options: SearchIndexOptions<Properties>;
-  client: Client;
-  index(
-    request: IndexRequest<Document>
-  ): Promise<opensearchtypes.IndexResponse>;
-  delete(request: DeleteRequest): Promise<opensearchtypes.DeleteResponse>;
-  update(
-    request: UpdateRequest<Document>
-  ): Promise<opensearchtypes.IndexResponse>;
-  bulk(request: BulkRequest<Document>): Promise<opensearchtypes.BulkResponse>;
-}
-
-export interface SearchIndexOptions<Properties extends SearchIndexProperties>
-  extends Omit<
-    estypes.IndicesCreateRequest,
-    "properties" | "settings" | "index"
-  > {
-  properties: Properties;
-  settings?: estypes.IndicesIndexSettings;
-}
-
-export function searchIndex<
-  const Name extends string,
-  const Properties extends SearchIndexProperties
->(
-  name: Name,
-  options: SearchIndexOptions<Properties>
-): SearchIndex<
-  Name,
-  {
-    [property in keyof Properties]: MappingPropertyToJS<Properties[property]>;
-  },
-  Properties
-> {
-  if (searchIndices().has(name)) {
-    throw new Error(`SearchIndex with name ${name} already defined`);
-  }
-  type Document = {
-    [property in keyof Properties]: MappingPropertyToJS<Properties[property]>;
-  };
-
-  const index: SearchIndex<Name, Document, Properties> = {
-    kind: "SearchIndex",
-    name,
-    options,
-    // defined as a getter below
-    client: undefined as any,
-    index: (request) => search("index", request),
-    bulk: ({ operations, ...request }) =>
-      search("bulk", {
-        index: name,
-        // @ts-ignore - quality of life mapping, users pass operations: [index, upsert, etc.] instead of body - this matches ES8+ and is more aesthetic
-        body: operations,
-        ...request,
-      }),
-    delete: (request) => search("delete", request),
-    update: (request) => search("update", request),
-  };
-  Object.defineProperty(index, "client", {
-    get: () => getOpenSearchHook().client,
-  });
-  searchIndices().set(name, index);
-  return index;
-
-  function search<Op extends SearchOperation, Response = any>(
-    operation: Op,
-    request: SearchCallRequest<Op>
-  ): Promise<Response> {
-    return getEventualCallHook().registerEventualCall(
-      createEventualCall<SearchCall>(EventualCallKind.SearchCall, {
-        operation,
-        request,
-      }),
-      async (): Promise<Response> => {
-        const response = await (index.client as any)[operation]({
-          ...request,
-          index: name,
-        });
-        assertApiResponseOK(response);
-        return response.body as Response;
-      }
-    );
-  }
-}
-
-export interface OpenSearchClient {
-  client: Client;
-}
-
-export function assertApiResponseOK(response: ApiResponse) {
-  if (
-    response.statusCode !== 200 &&
-    response.statusCode !== 201 &&
-    response.statusCode !== 202
-  ) {
-    throw new Error(
-      `Request failed with ${response.statusCode} and warnings ${response.warnings}`
-    );
-  }
-}
-
-type MappingPropertyToJS<Property extends estypes.MappingProperty> =
+export type MappingToDocument<Property extends estypes.MappingProperty> =
   // https://www.elastic.co/guide/en/elasticsearch/reference/current/aggregate-metric-double.html
   Property extends estypes.MappingAggregateMetricDoubleProperty
     ? {
@@ -268,7 +109,7 @@ type RangeProperty<T> = {
   lte?: T;
 };
 
-type DenseVectorElement = number | BigInt;
+type DenseVectorElement = number | bigint;
 type DenseVector = DenseVectorElement[];
 
 interface MappingProperties {
@@ -279,14 +120,14 @@ type MappingPropertiesToJS<Properties extends MappingProperties | undefined> =
   Properties extends undefined
     ? any
     : {
-        [property in keyof Properties]: MappingPropertyToJS<
+        [property in keyof Properties]: MappingToDocument<
           Exclude<Properties, undefined>[property]
         >;
       };
 
 type PointTupleValue = [x: number, y: number];
 
-type PointValue =
+export type PointValue =
   | PointTupleValue
   | GeoJson.Point
   | {
@@ -302,7 +143,7 @@ type PointValue =
   | `POINT (${number} ${number})`
   | `${number},${number}`;
 
-type GeoPointValue =
+export type GeoPointValue =
   | {
       lat: number;
       lon: number;
@@ -311,6 +152,7 @@ type GeoPointValue =
   // geohash
   | string;
 
+// eslint-disable-next-line @typescript-eslint/no-namespace
 declare namespace GeoJson {
   interface Point {
     // GeoJSON format
@@ -354,7 +196,7 @@ declare namespace GeoJson {
   }
 }
 
-type GeoShapeValue =
+export type GeoShapeValue =
   | GeoJson.GeometryCollection
   | GeoJson.LineString
   | GeoJson.MultiLineString

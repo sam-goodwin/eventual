@@ -10,7 +10,7 @@ import type { Transaction } from "../transaction.js";
 import type { Workflow } from "../workflow.js";
 import type { EnvironmentManifest, ServiceSpec } from "./service-spec.js";
 import type { TaskRuntimeContext } from "./task.js";
-import { SearchIndex } from "../search-index.js";
+import { SearchIndex } from "../search/search-index.js";
 
 declare global {
   // eslint-disable-next-line no-var

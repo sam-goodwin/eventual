@@ -22,6 +22,7 @@ import {
   HeartbeatTimeout,
   HttpResponse,
   Schedule,
+  searchIndex,
   sendSignal,
   sendTaskHeartbeat,
   signal,
@@ -1045,5 +1046,53 @@ export const simpleEventHandler = subscription(
   { events: [simpleEvent] },
   (payload) => {
     console.log("hi", payload);
+  }
+);
+
+export const blogIndex = searchIndex("blogIndex", {
+  properties: {
+    title: {
+      type: "text",
+    },
+    content: {
+      type: "text",
+    },
+  },
+});
+
+export const indexBlog = command(
+  "blogCommand",
+  async ({
+    blogId,
+    title,
+    content,
+  }: {
+    blogId: string;
+    title: string;
+    content: string;
+  }) => {
+    await blogIndex.index({
+      id: blogId,
+      body: {
+        title,
+        content,
+      },
+    });
+  }
+);
+
+export const searchBlog = command(
+  "blogCommand",
+  async ({ query }: { query: string }) => {
+    const docs = await blogIndex.search({
+      query: {
+        match: {
+          content: {
+            query,
+          },
+        },
+      },
+    });
+    return docs.hits.hits[0]?._source;
   }
 );
