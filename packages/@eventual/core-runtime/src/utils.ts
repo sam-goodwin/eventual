@@ -10,7 +10,7 @@ import type {
   BucketNotificationHandlerSpec,
   EntityStreamSpec,
 } from "@eventual/core/internal";
-import { Readable } from "stream";
+import type { Readable } from "stream";
 import {
   NormalizedEntityCompositeKey,
   NormalizedEntityKeyPart,
