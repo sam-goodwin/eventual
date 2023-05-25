@@ -1,15 +1,16 @@
 import type {
+  Attributes,
   BucketNotificationEvent,
   Entity,
-  Attributes,
   EntityCompositeKeyPart,
-  KeyTuple,
   EntityStreamItem,
+  KeyTuple,
 } from "@eventual/core";
 import type {
   BucketNotificationHandlerSpec,
   EntityStreamSpec,
 } from "@eventual/core/internal";
+import { Readable } from "stream";
 import {
   NormalizedEntityCompositeKey,
   NormalizedEntityKeyPart,
@@ -145,4 +146,15 @@ export function bucketHandlerMatchesEvent(
         );
       }))
   );
+}
+
+export async function streamToBuffer(stream: Readable) {
+  // lets have a ReadableStream as a stream variable
+  const chunks = [];
+
+  for await (const chunk of stream) {
+    chunks.push(Buffer.from(chunk));
+  }
+
+  return Buffer.concat(chunks);
 }
