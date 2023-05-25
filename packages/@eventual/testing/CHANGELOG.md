@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.39.6 (2023-05-25)
+
+### Bug Fixes
+
+- local bucket stream did not complete correctly ([#368](https://github.com/functionless/eventual/issues/368)) ([253b8bb](https://github.com/functionless/eventual/commit/253b8bb1e82190dd3e2f525ee5d76327636e402e))
+
 ## 0.39.5 (2023-05-22)
 
 **Note:** Version bump only for package @eventual/testing

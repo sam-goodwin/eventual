@@ -1,6 +1,6 @@
 {
   "name": "@eventual/core",
-  "version": "0.39.5",
+  "version": "0.39.6",
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",
