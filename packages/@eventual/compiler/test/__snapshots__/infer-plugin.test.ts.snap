@@ -456,6 +456,7 @@ var EventualCallKind;
   EventualCallKind2[EventualCallKind2["SendSignalCall"] = 6] = "SendSignalCall";
   EventualCallKind2[EventualCallKind2["TaskCall"] = 0] = "TaskCall";
   EventualCallKind2[EventualCallKind2["WorkflowCall"] = 7] = "WorkflowCall";
+  EventualCallKind2[EventualCallKind2["SearchCall"] = 11] = "SearchCall";
 })(EventualCallKind || (EventualCallKind = {}));
 
 globalThis._eventual ??= {};
@@ -715,6 +716,9 @@ var WorkflowEventType;
   WorkflowEventType2[WorkflowEventType2["WorkflowRunCompleted"] = 80] = "WorkflowRunCompleted";
   WorkflowEventType2[WorkflowEventType2["WorkflowRunStarted"] = 15] = "WorkflowRunStarted";
   WorkflowEventType2[WorkflowEventType2["WorkflowTimedOut"] = 90] = "WorkflowTimedOut";
+  WorkflowEventType2[WorkflowEventType2["SearchRequestSucceeded"] = 62] = "SearchRequestSucceeded";
+  WorkflowEventType2[WorkflowEventType2["SearchRequestFailed"] = 63] = "SearchRequestFailed";
+  WorkflowEventType2[WorkflowEventType2["SearchRequest"] = 29] = "SearchRequest";
 })(WorkflowEventType || (WorkflowEventType = {}));
 function isWorkflowSucceeded(event) {
   return event.type === WorkflowEventType.WorkflowSucceeded;
