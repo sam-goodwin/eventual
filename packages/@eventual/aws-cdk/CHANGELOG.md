@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.39.7 (2023-05-25)
+
+### Bug Fixes
+
+- make eventual-cli role region-specific ([#365](https://github.com/functionless/eventual/issues/365)) ([aa407c0](https://github.com/functionless/eventual/commit/aa407c02e899c3a8fd3c4f56f1832c9b8e50ca5f))
+
 ## 0.39.6 (2023-05-25)
 
 ### Bug Fixes
