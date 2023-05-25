@@ -32,13 +32,18 @@ export const local = (yargs: Argv) =>
           default: 3111,
           type: "number",
         })
+        .option("maxBodySize", {
+          describe: "Replace the default body size limit of 100kb.",
+          default: "100kb",
+          type: "string",
+        })
         .option("update", {
           describe: "The update mode: first, never, always",
           choices: ["first", "never", "always"],
           default: "first",
           type: "string",
         }),
-    async ({ port: userPort, update, service, region }) => {
+    async ({ port: userPort, update, service, region, maxBodySize }) => {
       const spinner = ora();
       spinner.start("Starting Local Eventual Dev Server");
       process.env.EVENTUAL_LOCAL = "1";
@@ -107,7 +112,7 @@ export const local = (yargs: Argv) =>
         serviceName: buildManifest.serviceName,
       });
 
-      app.use(express.json({ strict: false }));
+      app.use(express.json({ strict: false, limit: maxBodySize }));
 
       // open up all of the user and service commands to the service.
       app.all("/*", async (req, res) => {
