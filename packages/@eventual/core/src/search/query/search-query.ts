@@ -14,14 +14,15 @@ export type MappingObject = estypes.MappingProperty & {
   properties?: Record<string, estypes.MappingProperty>;
 };
 
-export interface SearchQueryOrAggs<Mapping extends estypes.MappingProperty> {
-  query?: SearchQuery<Mapping>;
+export interface SearchRequest<Mapping extends estypes.MappingProperty> {
+  size?: number;
+  query?: Query<Mapping>;
   aggs?: {
-    [aggregationName: string]: SearchAggregation<Mapping>;
+    [aggregationName: string]: Aggregation<Mapping>;
   };
 }
 
-export type SearchQuery<Mapping extends estypes.MappingProperty> =
+export type Query<Mapping extends estypes.MappingProperty> =
   | FullTextQuery<Mapping>
   | GeoQuery<Mapping>
   | JoiningQuery<Mapping>
@@ -31,11 +32,11 @@ export type SearchQuery<Mapping extends estypes.MappingProperty> =
   | SpecializedQuery<Mapping>
   | TermLevelQuery<Mapping>;
 
-export type SearchAggregation<Mapping extends estypes.MappingProperty> =
+export type Aggregation<Mapping extends estypes.MappingProperty> =
   | ({
-      filter?: SearchQuery<Mapping>[];
+      filter?: Query<Mapping>[];
       aggs?: {
-        [aggregationName: string]: SearchAggregation<Mapping>;
+        [aggregationName: string]: Aggregation<Mapping>;
       };
     } & BucketAggregation<Mapping>)
   | MetricsAggregation<Mapping>

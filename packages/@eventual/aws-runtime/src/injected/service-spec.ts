@@ -21,6 +21,6 @@ export default {
     },
   },
   search: {
-    indexes: [],
+    indices: [],
   },
 } satisfies ServiceSpec;

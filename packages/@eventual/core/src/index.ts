@@ -9,6 +9,7 @@ export * from "./function-props.js";
 export * from "./heartbeat.js";
 export * from "./http-method.js";
 export * from "./http/index.js";
+export * from "./infer.js";
 export * from "./logging.js";
 export * from "./schedule.js";
 export * from "./search/index.js";

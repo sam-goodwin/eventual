@@ -9,6 +9,7 @@ import type {
   SubscriptionSpec,
   TaskSpec,
   TransactionSpec,
+  IndexSpec,
 } from "@eventual/core/internal";
 
 export interface BuildManifest {
@@ -30,6 +31,7 @@ export interface BuildManifest {
   commandDefault: CommandFunction;
   entities: Entities;
   buckets: Buckets;
+  search: Search;
   system: {
     entityService: {
       transactionWorker: BundledFunction<undefined>;
@@ -66,6 +68,10 @@ export interface Entities {
 
 export interface Buckets {
   buckets: BucketRuntime[];
+}
+
+export interface Search {
+  indices: IndexSpec[];
 }
 
 export interface ApiRoutes {

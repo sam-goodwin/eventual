@@ -3,7 +3,7 @@
 // the opensearch service does not
 // but, opensearch's types are mostly covered by a generic type
 // where-as elastic's types are specific to each mapping type
-import { estypes } from "@elastic/elasticsearch";
+import type { estypes } from "@elastic/elasticsearch";
 import type {
   Client,
   RequestParams,
@@ -18,9 +18,12 @@ import {
 } from "../internal/calls.js";
 import { searchIndices } from "../internal/global.js";
 import { getOpenSearchHook } from "../internal/search-hook.js";
-import { SearchQueryOrAggs } from "./query/search-query.js";
-import { MappingToDocument } from "./mapping.js";
+import type { SearchRequest } from "./query/search-query.js";
+import type { MappingToDocument } from "./mapping.js";
 import { assertApiResponseOK } from "./assert-api-response.js";
+import type { SearchResponse } from "./search-response.js";
+
+import t from "type-fest";
 
 export type SearchIndexProperties = {
   [propertyName: string]: estypes.MappingProperty;
@@ -75,6 +78,10 @@ export interface SearchIndex<
 > {
   kind: "SearchIndex";
   name: Name;
+  /**
+   * Name of the index stored in the cluster. It must be in snake case form
+   */
+  indexName: t.SnakeCase<Name>;
   options: SearchIndexOptions<Properties>;
   client: Client;
   index(
@@ -85,24 +92,30 @@ export interface SearchIndex<
     request: UpdateRequest<Document>
   ): Promise<opensearchtypes.IndexResponse>;
   bulk(request: BulkRequest<Document>): Promise<opensearchtypes.BulkResponse>;
-  search(
-    request: SearchQueryOrAggs<{
+  count(
+    request: SearchRequest<{
       properties: Properties;
-    }>,
+    }>
+  ): Promise<opensearchtypes.CountResponse>;
+  search<
+    Q extends SearchRequest<{
+      properties: Properties;
+    }>
+  >(
+    request: Q,
     options?: Omit<opensearchtypes.SearchRequest, "table" | "body">
-  ): Promise<opensearchtypes.SearchResponse<Document>>;
+  ): Promise<SearchResponse<Q, Properties, Document>>;
 }
 
 export interface SearchIndexOptions<Properties extends SearchIndexProperties>
-  extends Omit<
-    estypes.IndicesCreateRequest,
-    "properties" | "settings" | "index"
-  > {
-  properties: Properties;
-  settings?: estypes.IndicesIndexSettings;
+  extends Partial<opensearchtypes.IndicesIndexState> {
+  mappings: opensearchtypes.MappingTypeMapping & {
+    properties: Properties;
+  };
+  settings?: opensearchtypes.IndicesIndexSettings;
 }
 
-export function searchIndex<
+export function index<
   const Name extends string,
   const Properties extends SearchIndexProperties
 >(
@@ -122,22 +135,26 @@ export function searchIndex<
     [property in keyof Properties]: MappingToDocument<Properties[property]>;
   };
 
+  const indexName = toSnakeCase(name);
+
   const index: SearchIndex<Name, Document, Properties> = {
     kind: "SearchIndex",
     name,
+    indexName,
     options,
     // defined as a getter below
     client: undefined as any,
     index: (request) => search("index", request),
     bulk: ({ operations, ...request }) =>
       search("bulk", {
-        index: name,
+        index: indexName,
         // @ts-ignore - quality of life mapping, users pass operations: [index, upsert, etc.] instead of body - this matches ES8+ and is more aesthetic
         body: operations,
         ...request,
       }),
     delete: (request) => search("delete", request),
     update: (request) => search("update", request),
+    count: (request) => search("count", request as any),
     search: (request) => search("search", request as any),
   };
   Object.defineProperty(index, "client", {
@@ -167,35 +184,11 @@ export function searchIndex<
   }
 }
 
-const i = searchIndex("myIndex", {
-  properties: {
-    key: {
-      type: "text",
-    },
-    obj: {
-      type: "nested",
-      properties: {
-        location: {
-          type: "geo_point",
-        },
-        a: {
-          type: "text",
-        },
-      },
-    },
-  },
-});
-
-i.search({
-  query: {
-    term: {
-      key: {
-        value: "",
-      },
-    },
-  },
-});
-
-i.client.search<estypes.SearchRequest>({
-  body: {},
-});
+// OpenSearch mandates that indexes are lowercase (fucking stupid)
+function toSnakeCase<S extends string>(str: S) {
+  return str
+    .replace(/\W+/g, " ")
+    .split(/ |\B(?=[A-Z])/)
+    .map((word) => word.toLowerCase())
+    .join("_") as t.SnakeCase<S>;
+}

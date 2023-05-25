@@ -3,14 +3,15 @@ import { ENV_NAMES } from "@eventual/aws-runtime";
 import { Event } from "@eventual/core";
 import { MetricsCommon, OrchestratorMetrics } from "@eventual/core-runtime";
 import { EventualConfig, discoverEventualConfigSync } from "@eventual/project";
-import { Arn, Names, Stack, aws_events, aws_events_targets } from "aws-cdk-lib";
+import { Arn, Names, Stack } from "aws-cdk-lib/core";
+import aws_events, { IEventBus } from "aws-cdk-lib/aws-events";
+import aws_events_targets from "aws-cdk-lib/aws-events-targets";
 import {
   Metric,
   MetricOptions,
   Statistic,
   Unit,
 } from "aws-cdk-lib/aws-cloudwatch";
-import { IEventBus } from "aws-cdk-lib/aws-events";
 import {
   AccountRootPrincipal,
   Effect,
@@ -144,13 +145,16 @@ export interface ServiceProps<Service = any> {
    * Keep in mind that the output must be valid for APIGateway.
    */
   openApi?: CommandsProps<Service>["openApi"];
+  /**
+   * Customize the configuration of the OpenSearch clusters and each of the OpenSearch Indices.
+   */
+  search?: SearchServiceOverrides<Service>;
   system?: {
     /**
      * Configuration properties for the workflow orchestrator
      */
     workflowService?: WorkflowServiceOverrides;
     entityService?: EntityServiceProps<Service>["entityServiceOverrides"];
-    searchService?: SearchServiceOverrides;
   };
 }
 
@@ -254,7 +258,7 @@ export class Service<S = any> extends Construct {
    */
   public readonly local?: ServiceLocal;
 
-  public readonly searchService: SearchService;
+  public readonly searchService: SearchService<S> | undefined;
 
   constructor(scope: Construct, id: string, props: ServiceProps<S>) {
     super(scope, id);
@@ -278,7 +282,7 @@ export class Service<S = any> extends Construct {
     const eventualServiceScope = new Construct(systemScope, "EventualService");
 
     const accessRole = new Role(eventualServiceScope, "AccessRole", {
-      roleName: `eventual-cli-${this.serviceName}`,
+      roleName: `eventual-cli-${this.serviceName}-${Stack.of(this).region}`,
       assumedBy: new AccountRootPrincipal(),
     });
 
@@ -324,29 +328,31 @@ export class Service<S = any> extends Construct {
     this.eventService = new EventService(serviceConstructProps);
     this.bus = this.eventService.bus;
 
-    if (props.system?.searchService) {
-      const searchProps = props.system?.searchService;
-      if (searchProps.serverless) {
-        this.searchService = new ServerlessSearchService({
-          collectionName: this.serviceName,
-          ...serviceConstructProps,
-          ...searchProps,
-        });
+    if (build.search.indices.length > 0) {
+      if (props.search?.serverless) {
+        const searchProps = props.search;
+        if (searchProps.serverless) {
+          this.searchService = new ServerlessSearchService({
+            collectionName: this.serviceName,
+            ...serviceConstructProps,
+            ...searchProps,
+          });
+        } else {
+          this.searchService = new ServerfulSearchService({
+            version: EngineVersion.OPENSEARCH_2_5,
+            domainName: this.serviceName,
+            ...serviceConstructProps,
+            ...searchProps,
+          });
+        }
       } else {
+        // default to cheap free tier Domain
         this.searchService = new ServerfulSearchService({
           version: EngineVersion.OPENSEARCH_2_5,
           domainName: this.serviceName,
           ...serviceConstructProps,
-          ...searchProps,
         });
       }
-    } else {
-      // default to cheap free tier Domain
-      this.searchService = new ServerfulSearchService({
-        version: EngineVersion.OPENSEARCH_2_5,
-        domainName: this.serviceName,
-        ...serviceConstructProps,
-      });
     }
 
     const entityService = new EntityService<S>({
@@ -415,6 +421,7 @@ export class Service<S = any> extends Construct {
       local: this.local,
       entityService,
       openApi,
+      searchService: this.searchService,
       ...serviceConstructProps,
     });
     proxyCommandService._bind(this.commandService);

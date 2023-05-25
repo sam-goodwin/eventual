@@ -292,6 +292,7 @@ export const createOpenSearchClient = /* @__PURE__ */ memoize(async () => {
   return new AWSOpenSearchClient({
     credentials,
     region,
+    node: env.openSearchEndpoint(),
   });
 });
 

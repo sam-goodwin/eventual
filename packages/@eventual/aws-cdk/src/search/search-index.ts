@@ -1,14 +1,25 @@
-import { Resource, CustomResource } from "aws-cdk-lib";
+import { IndexSpec } from "@eventual/core/internal";
+import type { opensearchtypes } from "@opensearch-project/opensearch";
+import { CustomResource, Resource } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import type { SearchPrincipal, SearchService } from "./search-service";
-import type { opensearchtypes } from "@opensearch-project/opensearch";
+
+/**
+ * Attributes exposed by the {@link SearchIndex} Resource.
+ */
+export interface SearchIndexResourceAttributes {
+  IndexName: string;
+}
 
 export interface SearchIndexProps
   extends Exclude<opensearchtypes.IndicesCreateRequest["body"], undefined> {
   searchService: SearchService;
-  indexName: string;
+  spec: IndexSpec;
 }
 
+/**
+ * Creates an OpenSearch Index in an OpenSearch Domain or Collection.
+ */
 export class SearchIndex extends Resource {
   public readonly searchService: SearchService;
   public readonly indexName: string;
@@ -16,20 +27,15 @@ export class SearchIndex extends Resource {
 
   constructor(scope: Construct, id: string, props: SearchIndexProps) {
     super(scope, id, {
-      physicalName: props.indexName,
+      physicalName: props.spec.index,
     });
     this.searchService = props.searchService;
-    const indexName = props.indexName;
-
     this.resource = new CustomResource(this, "Resource", {
       serviceToken: this.searchService.customResourceHandler.functionArn,
       resourceType: "Custom::OpenSearchIndex",
-      properties: {
-        index: indexName,
-        body: {},
-      } satisfies SearchIndexResourceProperties,
+      properties: props.spec,
     });
-    this.indexName = this.resource.getAttString("indexName");
+    this.indexName = this.resource.getAttString("IndexName");
   }
 
   public grantReadWrite(principal: SearchPrincipal) {
@@ -49,11 +55,4 @@ export class SearchIndex extends Resource {
       indexPrefix: this.indexName,
     });
   }
-}
-
-export type SearchIndexResourceProperties =
-  opensearchtypes.IndicesCreateRequest;
-
-export interface SearchIndexResourceAttributes {
-  IndexName: string;
 }

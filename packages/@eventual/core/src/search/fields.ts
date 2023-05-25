@@ -70,7 +70,9 @@ export type FieldsOfType<
   PropertyType extends estypes.MappingProperty,
   Paths extends string = ""
 > = Property extends PropertyType
-  ? Paths
+  ? Property extends estypes.MappingTextProperty
+    ? Paths | `${Paths}.keyword`
+    : Paths
   : Property extends
       | estypes.MappingNestedProperty
       | estypes.MappingObjectProperty
@@ -81,4 +83,20 @@ export type FieldsOfType<
         `${Paths extends "" ? "" : `${Paths}.`}${Extract<prop, string>}`
       >;
     }[keyof Property["properties"]]
+  : never;
+
+// resolve the value of a field in dot notation to its value type
+// e.g. a.b.c in { a: { b: { c: string; }}} will return string.
+export type FieldValue<
+  FieldDotNotation extends string | undefined,
+  Document
+> = FieldDotNotation extends undefined
+  ? any
+  : Document extends string | number | boolean | undefined | null
+  ? Document
+  : FieldDotNotation extends `${infer field extends Extract<
+      keyof Document,
+      string
+    >}.${infer rest}`
+  ? FieldValue<rest, Document[field]>
   : never;

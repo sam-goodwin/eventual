@@ -1,6 +1,6 @@
 import type { estypes } from "@elastic/elasticsearch";
 import type { FieldsOfType } from "../fields.js";
-import type { MappingObject, SearchQuery } from "./search-query.js";
+import type { MappingObject, Query } from "./search-query.js";
 
 export type JoiningQuery<Mapping extends MappingObject> =
   | Nested<Mapping>
@@ -14,7 +14,7 @@ export type JoiningQuery<Mapping extends MappingObject> =
 export interface Nested<Mapping extends MappingObject> {
   nested: {
     path: FieldsOfType<Mapping, estypes.MappingNestedProperty>;
-    query: SearchQuery<Mapping>;
+    query: Query<Mapping>;
   } & Omit<estypes.QueryDslNestedQuery, "path" | "query">;
 }
 

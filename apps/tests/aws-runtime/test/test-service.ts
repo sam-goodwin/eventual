@@ -22,7 +22,7 @@ import {
   HeartbeatTimeout,
   HttpResponse,
   Schedule,
-  searchIndex,
+  index,
   sendSignal,
   sendTaskHeartbeat,
   signal,
@@ -1049,19 +1049,21 @@ export const simpleEventHandler = subscription(
   }
 );
 
-export const blogIndex = searchIndex("blogIndex", {
-  properties: {
-    title: {
-      type: "text",
-    },
-    content: {
-      type: "text",
+export const blogIndex = index("blogIndex", {
+  mappings: {
+    properties: {
+      title: {
+        type: "text",
+      },
+      content: {
+        type: "text",
+      },
     },
   },
 });
 
 export const indexBlog = command(
-  "blogCommand",
+  "indexBlog",
   async ({
     blogId,
     title,
@@ -1082,17 +1084,44 @@ export const indexBlog = command(
 );
 
 export const searchBlog = command(
-  "blogCommand",
-  async ({ query }: { query: string }) => {
-    const docs = await blogIndex.search({
-      query: {
-        match: {
-          content: {
-            query,
+  "searchBlog",
+  async ({ query: queryString }: { query: string }) => {
+    const query = {
+      match: {
+        content: {
+          query: queryString,
+        },
+      },
+    } as const;
+
+    const { count } = await blogIndex.count({
+      query,
+      aggs: {
+        numDocs: {
+          terms: {
+            field: "content",
+            include: queryString,
           },
         },
       },
     });
-    return docs.hits.hits[0]?._source;
+
+    const result = await blogIndex.search({
+      query,
+      aggs: {
+        numDocs: {
+          terms: {
+            field: "title.keyword",
+            include: queryString,
+          },
+        },
+      },
+    });
+
+    return {
+      item: result.hits.hits[0]?._source,
+      countAggs: result.aggregations.numDocs.buckets,
+      count,
+    };
   }
 );

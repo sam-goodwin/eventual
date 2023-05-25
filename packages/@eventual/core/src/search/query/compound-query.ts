@@ -1,5 +1,5 @@
 import type { estypes } from "@elastic/elasticsearch";
-import { SearchQuery } from "./search-query.js";
+import { Query } from "./search-query.js";
 
 export type CompoundQuery<Mapping extends estypes.MappingProperty> =
   | Bool<Mapping>
@@ -12,10 +12,10 @@ export type CompoundQuery<Mapping extends estypes.MappingProperty> =
  */
 export interface Bool<Mapping extends estypes.MappingProperty> {
   bool: {
-    filter?: SearchQuery<Mapping> | SearchQuery<Mapping>[];
-    must?: SearchQuery<Mapping> | SearchQuery<Mapping>[];
-    must_not?: SearchQuery<Mapping> | SearchQuery<Mapping>[];
-    should?: SearchQuery<Mapping> | SearchQuery<Mapping>[];
+    filter?: Query<Mapping> | Query<Mapping>[];
+    must?: Query<Mapping> | Query<Mapping>[];
+    must_not?: Query<Mapping> | Query<Mapping>[];
+    should?: Query<Mapping> | Query<Mapping>[];
     minimum_should_match?: estypes.MinimumShouldMatch;
   };
 }
@@ -25,8 +25,8 @@ export interface Bool<Mapping extends estypes.MappingProperty> {
  */
 export interface Boosting<Mapping extends estypes.MappingProperty> {
   boosting: {
-    positive: SearchQuery<Mapping>;
-    negative: SearchQuery<Mapping>;
+    positive: Query<Mapping>;
+    negative: Query<Mapping>;
     negative_boost?: number;
   };
 }
@@ -36,7 +36,7 @@ export interface Boosting<Mapping extends estypes.MappingProperty> {
  */
 export interface ConstantScore<Mapping extends estypes.MappingProperty> {
   constant_score: {
-    filter: SearchQuery<Mapping>;
+    filter: Query<Mapping>;
     boost?: number;
   };
 }
@@ -46,7 +46,7 @@ export interface ConstantScore<Mapping extends estypes.MappingProperty> {
  */
 export interface DisjunctionMax<Mapping extends estypes.MappingProperty> {
   dis_max: {
-    queries: SearchQuery<Mapping>[];
+    queries: Query<Mapping>[];
     tie_breaker?: number;
   };
 }
@@ -60,12 +60,12 @@ export interface FunctionScore<Mapping extends estypes.MappingProperty> {
     functions?: FunctionScoreFunction<Mapping>[];
     max_boost?: estypes.double;
     min_score?: estypes.double;
-    query?: SearchQuery<Mapping>;
+    query?: Query<Mapping>;
     score_mode?: estypes.QueryDslFunctionScoreMode;
   };
 }
 
 export interface FunctionScoreFunction<Mapping extends estypes.MappingProperty>
   extends Omit<estypes.QueryDslFunctionScoreContainer, "filter"> {
-  filter?: SearchQuery<Mapping>;
+  filter?: Query<Mapping>;
 }

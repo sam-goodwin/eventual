@@ -22,7 +22,7 @@ pnpm link ${EVENTUAL_PACKAGES[@]/"@"/"../../../../../packages/@"}
 
 # CDK doesn't like mis-matched versions...
 cd ./infra
-pnpm install aws-cdk@2.50 aws-cdk-lib@2.50 constructs@10.1.154
+pnpm install aws-cdk@2.79.1 aws-cdk-lib@2.79.1 constructs@10.1.154
 cd ..
 
 cd ./packages/service

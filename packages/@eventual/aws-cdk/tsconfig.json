@@ -5,7 +5,8 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "lib",
-    "declaration": true
+    "declaration": true,
+    "inlineSourceMap": true
   },
   "references": [
     { "path": "../aws-runtime/tsconfig.cjs.json" },

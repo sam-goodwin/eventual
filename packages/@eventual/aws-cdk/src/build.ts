@@ -123,6 +123,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         name: "default",
       },
     },
+    search: serviceSpec.search,
     entities: {
       entities: await Promise.all(
         serviceSpec.entities.entities.map(async (d) => ({

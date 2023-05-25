@@ -1,4 +1,4 @@
-import { Resource, aws_opensearchserverless, Lazy } from "aws-cdk-lib";
+import { Lazy, Resource, aws_opensearchserverless } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import { Collection } from "./collection";
 
@@ -33,7 +33,12 @@ export interface AccessRule {
   indexPrefix?: string;
 }
 
-export class AccessPolicy extends Resource {
+/**
+ * Convenience utility for constructing a Data Access Policy for AWS OpenSearch Serverless
+ *
+ * @see https://docs.aws.amazon.com/opensearch-service/latest/developerguide/serverless-data-access.html
+ */
+export class DataAccessPolicy extends Resource {
   public readonly rules;
   public readonly resource;
 
@@ -105,7 +110,7 @@ export class AccessPolicy extends Resource {
                         ]
                   );
                 })
-            ) satisfies DataAccessPolicy[];
+            ) satisfies DataAccessPolicyDocument[];
 
             return JSON.stringify([...collectionPolicies, ...indexPolicies]);
 
@@ -116,7 +121,7 @@ export class AccessPolicy extends Resource {
               permissions: (ResourceType extends "index"
                 ? IndexPermission
                 : CollectionPermission)[]
-            ): DataAccessPolicy {
+            ): DataAccessPolicyDocument {
               return {
                 Rules: [
                   {
@@ -141,7 +146,7 @@ export class AccessPolicy extends Resource {
   }
 }
 
-interface DataAccessPolicy {
+interface DataAccessPolicyDocument {
   Rules: DataAccessRule[];
   Principal: string[];
   Description?: string;

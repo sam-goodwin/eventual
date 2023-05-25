@@ -6,6 +6,7 @@ import {
 import { Dashboard, LogQueryWidget } from "aws-cdk-lib/aws-cloudwatch";
 import { Construct } from "constructs";
 import { Service } from "./service";
+import { Stack } from "aws-cdk-lib/core";
 
 export interface DebugDashboardProps {
   service: Service;
@@ -47,7 +48,7 @@ export class DebugDashboard extends Construct {
       dashboardName: `Service-${service.serviceName.replace(
         /[^A-Za-z0-9_-]/g,
         ""
-      )}-debug`,
+      )}-debug-${Stack.of(this).region}`,
       widgets: [
         [
           new LogQueryWidget({

@@ -1,6 +1,6 @@
 import type { estypes } from "@elastic/elasticsearch";
 import type { NumericFields, TextualFields } from "../fields.js";
-import type { MappingObject, SearchQuery } from "./search-query.js";
+import type { MappingObject, Query } from "./search-query.js";
 
 export type SpecializedQuery<Mapping extends MappingObject> =
   | DistanceFeature
@@ -56,7 +56,7 @@ export interface Script {
  */
 export interface ScriptScore<Mapping extends MappingObject> {
   script_score: estypes.QueryDslScriptScoreQuery & {
-    query: SearchQuery<Mapping>;
+    query: Query<Mapping>;
   };
 }
 

@@ -1,17 +1,21 @@
 import { defaultProvider } from "@aws-sdk/credential-provider-node";
-import { Client, Connection } from "@opensearch-project/opensearch";
-import { CloudFormationCustomResourceHandler } from "aws-lambda";
-import aws4 from "aws4";
+import type { IndexSpec } from "@eventual/core/internal";
 import {
-  SearchIndexResourceAttributes,
-  SearchIndexResourceProperties,
-} from "../search-index";
+  Client,
+  Connection,
+  opensearchtypes,
+} from "@opensearch-project/opensearch";
+import type { CloudFormationCustomResourceHandler } from "aws-lambda";
+import aws4 from "aws4";
+import type { SearchIndexResourceAttributes } from "../search-index";
 
 const endpoint = process.env.OS_ENDPOINT;
 
 let client: Client;
 
 export const handle: CloudFormationCustomResourceHandler = async (event) => {
+  console.log(event);
+  console.log(JSON.stringify(event));
   client ??= await (async () => {
     const credentials = await defaultProvider()();
     return new Client({
@@ -37,57 +41,64 @@ export const handle: CloudFormationCustomResourceHandler = async (event) => {
       physicalId: data.IndexName,
     });
   } catch (err: any) {
+    console.error(err);
     await sendResult({
       status: "FAILED",
       reason: err.message,
     });
-    console.error(err);
   }
 
   async function createUpdateOrDelete(): Promise<SearchIndexResourceAttributes> {
     if (event.RequestType === "Create") {
-      const props =
-        event.ResourceProperties as any as SearchIndexResourceProperties;
+      const props = event.ResourceProperties as any as IndexSpec;
+      console.log(`Creating index ${props.index}`, props);
       await client.indices.create({
         index: props.index,
-        body: props.body,
-        cluster_manager_timeout: props.cluster_manager_timeout?.toString(10),
-        error_trace: props.error_trace,
-        filter_path: props.filter_path,
-        human: props.human,
-        pretty: props.pretty,
-        wait_for_active_shards: props.wait_for_active_shards?.toString(10),
+        body: {
+          aliases: props.aliases,
+          mappings: props.mappings,
+          settings: props.settings,
+        },
       });
+      console.log(`Created index ${props.index}`);
       return {
         IndexName: props.index,
       };
     } else if (event.RequestType === "Update") {
-      const oldProps =
-        event.OldResourceProperties as any as SearchIndexResourceProperties;
-      const newProps =
-        event.ResourceProperties as any as SearchIndexResourceProperties;
+      const oldProps = event.OldResourceProperties as any as IndexSpec;
+      const newProps = event.ResourceProperties as any as IndexSpec;
 
       if (oldProps.index !== newProps.index) {
         // name of index changed
         // TODO: should we use an alias, or create a new index and re-index?
-        throw new Error(`changing the name of an index is not supported`);
+        throw new Error(
+          `changing the name of an index is not supported: ${oldProps.index} => ${newProps.index}`
+        );
       }
-      if (newProps.body?.settings) {
+      console.log(`Updating index ${newProps.index}`);
+      if (newProps.settings) {
         await Promise.all([
-          ifDiff(oldProps.body?.settings, newProps.body.settings, () =>
-            client.indices.putSettings({
+          ifDiff(oldProps.settings, newProps.settings, async () => {
+            console.log(`Updating settings ${newProps.index}`);
+            await client.indices.putSettings<
+              any,
+              opensearchtypes.IndicesPutSettingsIndexSettingsBody
+            >({
               index: newProps.index,
               body: {
-                index: newProps.body!.settings,
+                settings: newProps.settings,
               },
-            })
-          ),
-          ifDiff(newProps.body.mappings, newProps.body.mappings, () =>
-            client.indices.putMapping({
+            });
+            console.log(`Updated settings ${newProps.index}`);
+          }),
+          ifDiff(newProps.mappings, newProps.mappings, async () => {
+            console.log(`Updating mappings ${newProps.index}`);
+            await client.indices.putMapping({
               index: newProps.index,
-              body: newProps.body!.mappings!,
-            })
-          ),
+              body: newProps.mappings!,
+            });
+            console.log(`Updated mappings ${newProps.index}`);
+          }),
         ]);
       }
       return {
@@ -117,18 +128,27 @@ export const handle: CloudFormationCustomResourceHandler = async (event) => {
         }
   ) {
     await retry({
-      execute: () =>
-        fetch(event.ResponseURL, {
-          body: JSON.stringify({
-            LogicalResourceId: event.LogicalResourceId,
-            PhysicalResourceId: result.physicalId ?? "NONE",
-            Reason: result.status === "FAILED" ? result.reason : undefined,
-            RequestId: event.RequestId,
-            StackId: event.StackId,
-            Status: result.status,
-            Data: result.status === "SUCCESS" ? result.data : undefined,
-          }),
-        }),
+      execute: async () => {
+        const body = {
+          LogicalResourceId: event.LogicalResourceId,
+          PhysicalResourceId: result.physicalId ?? "NONE",
+          Reason: result.status === "FAILED" ? result.reason : undefined,
+          RequestId: event.RequestId,
+          StackId: event.StackId,
+          Status: result.status,
+          Data: result.status === "SUCCESS" ? result.data : undefined,
+        };
+        console.log("Sending CFN Result", body);
+        const response = await fetch(event.ResponseURL, {
+          method: "PUT",
+          body: JSON.stringify(body),
+        });
+        console.log("Sent CFN Result", response);
+        if (response.status !== 200) {
+          console.log(`Failed to send CFN response`, response);
+          throw new Error(`Failed to send CFN response`);
+        }
+      },
     });
   }
 };

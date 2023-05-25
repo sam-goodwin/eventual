@@ -32,13 +32,15 @@ import { EventService } from "./event-service";
 import { grant } from "./grant";
 import { LazyInterface } from "./proxy-construct";
 import { SchedulerService } from "./scheduler-service";
-import { ServiceConstructProps } from "./service";
+import type { ServiceConstructProps } from "./service";
 import { ServiceFunction } from "./service-function";
 import type { TaskService } from "./task-service.js";
+import type { SearchService } from "./search/search-service";
 
 export interface WorkflowsProps extends ServiceConstructProps {
   bucketService: LazyInterface<BucketService<any>>;
   entityService: EntityService<any>;
+  searchService?: SearchService<any>;
   eventService: EventService;
   overrides?: WorkflowServiceOverrides;
   schedulerService: LazyInterface<SchedulerService>;
@@ -457,6 +459,7 @@ export class WorkflowService {
     this.configureStartExecution(this.orchestrator);
     // send signals to other executions (or itself, don't judge)
     this.configureSendSignal(this.orchestrator);
+    this.props.searchService?.configureSearch(this.orchestrator);
     // emit events to the service
     this.props.eventService.configureEmit(this.orchestrator);
     // start tasks

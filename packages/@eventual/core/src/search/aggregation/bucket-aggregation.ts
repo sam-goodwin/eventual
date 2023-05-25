@@ -9,7 +9,7 @@ import type {
   TextFields,
   TextualFields,
 } from "../fields.js";
-import type { MappingObject, SearchQuery } from "../query/search-query.js";
+import type { MappingObject, Query } from "../query/search-query.js";
 
 export type BucketAggregation<Mapping extends MappingObject> =
   | AdjacencyMatrix<Mapping>
@@ -45,7 +45,7 @@ export type BucketAggregation<Mapping extends MappingObject> =
  */
 export interface AdjacencyMatrix<Mapping extends MappingObject> {
   adjacency_matrix: estypes.AggregationsAdjacencyMatrixAggregation & {
-    filters: Record<string, SearchQuery<Mapping>>;
+    filters: Record<string, Query<Mapping>>;
   };
 }
 
@@ -287,7 +287,7 @@ export interface SignificantTextAggregation<Mapping extends MappingObject> {
 export interface TermsAggregation<Mapping extends MappingObject> {
   terms: estypes.AggregationsTermsAggregation & {
     // The field can be Keyword, Numeric, ip, boolean, or binary.
-    field?: TermFields<Mapping>;
+    field: TermFields<Mapping>;
   };
 }
 

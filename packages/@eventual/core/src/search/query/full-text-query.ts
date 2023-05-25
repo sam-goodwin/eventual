@@ -2,12 +2,14 @@ import type { estypes } from "@elastic/elasticsearch";
 import type { MappingObject } from "./search-query.js";
 
 export type FullTextQuery<Mapping extends estypes.MappingProperty> =
+  | CombinedFields<Mapping>
   | Intervals
   | Match<Mapping>
+  | MatchAll
   | MatchBoolPrefix
+  | MatchNone
   | MatchPhrase
   | MatchPhrasePrefix
-  | CombinedFields<Mapping>
   | MultiMatch<Mapping>
   | QueryString<Mapping>
   | SimpleQueryString<Mapping>;
@@ -15,7 +17,9 @@ export type FullTextQuery<Mapping extends estypes.MappingProperty> =
 /**
  * @see https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-intervals-query.html
  */
-export type Intervals = estypes.QueryDslIntervalsQuery;
+export interface Intervals {
+  intervals: estypes.QueryDslIntervalsQuery;
+}
 
 /**
  * @see https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-match-query.html

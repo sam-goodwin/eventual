@@ -144,9 +144,11 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
     })),
     openApi,
     search: {
-      indexes: Array.from(searchIndices().values()).map((i) => ({
-        index: i.name,
-        ...i.options,
+      indices: Array.from(searchIndices().values()).map((i) => ({
+        index: i.indexName,
+        aliases: i.options.aliases,
+        mappings: i.options.mappings,
+        settings: i.options.settings ?? {},
       })),
     },
   };

@@ -1,6 +1,8 @@
-import { Resource, aws_kms, aws_opensearchserverless } from "aws-cdk-lib";
+import * as aws_kms from "aws-cdk-lib/aws-kms";
+import * as aws_opensearchserverless from "aws-cdk-lib/aws-opensearchserverless";
+import { RemovalPolicy, Resource } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
-import { Access, AccessPolicy } from "./access-policy";
+import { Access, DataAccessPolicy } from "./data-access-policy";
 import { SearchPrincipal } from "./search-service";
 
 export interface ICollection {
@@ -52,8 +54,13 @@ export interface CollectionProps {
    * List of VPCEs, e.g. `vpce-050f79086ee71ac05`, that have access to this Collection.
    */
   sourceVPCEs?: string[];
+
+  removalPolicy?: RemovalPolicy;
 }
 
+/**
+ *
+ */
 export class Collection extends Resource implements ICollection {
   public readonly resource;
   public readonly collectionName;
@@ -62,7 +69,7 @@ export class Collection extends Resource implements ICollection {
   public readonly collectionEndpoint;
   public readonly collectionDashboardEndpoint;
   public readonly encryptionKey;
-  public readonly accessPolicy: AccessPolicy;
+  public readonly accessPolicy: DataAccessPolicy;
 
   constructor(scope: Construct, id: string, props: CollectionProps) {
     super(scope, id, {
@@ -119,7 +126,7 @@ export class Collection extends Resource implements ICollection {
       } satisfies NetworkPolicy),
     });
 
-    this.accessPolicy = new AccessPolicy(this, "AccessPolicy", {
+    this.accessPolicy = new DataAccessPolicy(this, "AccessPolicy", {
       collection: this,
       accessPolicyName: this.collectionName,
     });

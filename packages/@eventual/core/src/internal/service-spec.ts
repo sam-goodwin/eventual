@@ -1,6 +1,7 @@
+import type { opensearchtypes } from "@opensearch-project/opensearch";
 import type openapi from "openapi3-ts";
-import { Attributes } from "../entity/entity.js";
-import { CompositeKeyPart, StreamQueryKey } from "../entity/key.js";
+import type { Attributes } from "../entity/entity.js";
+import type { CompositeKeyPart, StreamQueryKey } from "../entity/key.js";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
 import type { RestParams } from "../http/command.js";
@@ -11,8 +12,6 @@ import type {
 } from "../subscription.js";
 import { KeyDefinition } from "./entity.js";
 import type { TaskSpec } from "./task.js";
-
-import type { estypes } from "@elastic/elasticsearch";
 
 /**
  * Specification for an Eventual application
@@ -43,7 +42,7 @@ export interface ServiceSpec {
     info: openapi.InfoObject;
   };
   search: {
-    indexes: SearchIndexSpec[];
+    indices: IndexSpec[];
   };
 }
 
@@ -147,7 +146,10 @@ export interface BucketSpec {
   handlers: BucketNotificationHandlerSpec[];
 }
 
-export interface SearchIndexSpec extends estypes.IndicesCreateRequest {}
+export interface IndexSpec extends opensearchtypes.IndicesIndexState {
+  index: string;
+  settings: opensearchtypes.IndicesIndexSettings;
+}
 
 export type BucketNotificationEventType = "put" | "copy" | "delete";
 

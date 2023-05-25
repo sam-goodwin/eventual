@@ -372,3 +372,32 @@ test("test service context", async () => {
     serviceUrl: url,
   });
 });
+
+test("index.search", async () => {
+  const serviceClient = new ServiceClient<typeof TestService>({
+    serviceUrl: url,
+  });
+
+  await serviceClient.indexBlog({
+    blogId: "blog-id-1",
+    title: "fluffy pillows",
+    content: "i like fluffy pillows, they are super comfy",
+  });
+  await expect(
+    await serviceClient.searchBlog({
+      query: "super",
+    })
+  ).resolves.toEqual<Awaited<ReturnType<typeof serviceClient.searchBlog>>>({
+    item: {
+      title: "fluffy pillows",
+      content: "i like fluffy pillows, they are super comfy",
+    },
+    count: 1,
+    countAggs: [
+      {
+        key: "fluffy pillows",
+        doc_count: 1,
+      },
+    ],
+  });
+});

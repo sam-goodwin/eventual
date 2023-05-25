@@ -40,6 +40,7 @@ import { EventualResource, ServiceConstructProps } from "./service";
 import { ServiceFunction } from "./service-function";
 import { ServiceEntityProps, serviceTableArn } from "./utils";
 import { WorkflowService } from "./workflow-service.js";
+import { SearchService } from "./search/search-service";
 
 export type ServiceEntities<Service> = ServiceEntityProps<
   Service,
@@ -71,6 +72,7 @@ export type EntityStreamHandlerProps = Omit<
 export interface EntityServiceProps<Service> extends ServiceConstructProps {
   bucketService: LazyInterface<BucketService<Service>>;
   commandService: LazyInterface<CommandService<Service>>;
+  searchService?: LazyInterface<SearchService<Service>>;
   eventService: LazyInterface<EventService>;
   workflowService: LazyInterface<WorkflowService>;
   entityStreamOverrides?: EntityStreamOverrides<Service>;
@@ -136,6 +138,7 @@ export class EntityService<Service> {
       );
       this.configureReadWriteEntityTable(this.transactionWorker);
       props.workflowService.configureSendSignal(this.transactionWorker);
+      props.searchService?.configureSearch(this.transactionWorker);
       props.eventService.configureEmit(this.transactionWorker);
     }
   }
