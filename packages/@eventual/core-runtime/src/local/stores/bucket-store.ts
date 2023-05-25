@@ -13,10 +13,11 @@ import {
   PutBucketObjectResponse,
 } from "@eventual/core";
 import crypto from "crypto";
-import { Readable, Stream } from "stream";
+import { Readable } from "stream";
 import { BucketStore } from "../../stores/bucket-store.js";
 import { LocalEnvConnector } from "../local-container.js";
 import { paginateItems } from "./pagination.js";
+import { streamToBuffer } from "../../utils.js";
 
 export interface LocalBucketStoreProps {
   localConnector: LocalEnvConnector;
@@ -48,8 +49,9 @@ export class LocalBucketStore implements BucketStore {
       return undefined;
     }
 
-    const stream = new Stream.Readable();
+    const stream = new Readable();
     stream.push(obj.body);
+    stream.push(null);
 
     return {
       ...obj.objectMetadata,
@@ -112,7 +114,7 @@ export class LocalBucketStore implements BucketStore {
         ? data
         : data instanceof Buffer
         ? data
-        : (data.read() as Buffer);
+        : await streamToBuffer(data);
 
     const etag = getEtag(body);
 

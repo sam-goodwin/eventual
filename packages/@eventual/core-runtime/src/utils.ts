@@ -1,15 +1,16 @@
 import type {
+  Attributes,
   BucketNotificationEvent,
   Entity,
-  Attributes,
-  CompositeKeyPart,
-  KeyTuple,
+  EntityCompositeKeyPart,
   EntityStreamItem,
+  KeyTuple,
 } from "@eventual/core";
 import type {
   BucketNotificationHandlerSpec,
   EntityStreamSpec,
 } from "@eventual/core/internal";
+import type { Readable } from "stream";
 import {
   NormalizedEntityCompositeKey,
   NormalizedEntityKeyPart,
@@ -72,9 +73,7 @@ export function serializeCompositeKey(
   return `${entityName}|${key.partition.keyValue}|${key.sort?.keyValue ?? ""}`;
 }
 
-export function deserializeCompositeKey(
-  sKey: string
-): [string, KeyTuple<any, any, any>] {
+export function deserializeCompositeKey(sKey: string): [string, KeyTuple] {
   const [name, partition, sort] = sKey.split("|") as [string, string, string];
   return [name, sort ? [partition, sort] : [partition]];
 }
@@ -91,12 +90,12 @@ export function isBucketNotificationEvent(
 
 export function entityStreamMatchesItem<
   Attr extends Attributes,
-  const Partition extends CompositeKeyPart<Attr>,
-  const Sort extends CompositeKeyPart<Attr> | undefined
+  const Partition extends EntityCompositeKeyPart<Attr>,
+  const Sort extends EntityCompositeKeyPart<Attr> | undefined
 >(
-  entity: Entity<Attr, Partition, Sort>,
+  entity: Entity<any, Attr, Partition, Sort>,
   item: EntityStreamItem<Attr, Partition, Sort>,
-  streamSpec: EntityStreamSpec<Attr, Partition, Sort>
+  streamSpec: EntityStreamSpec<any, Attr, Partition, Sort>
 ) {
   const { partition, sort } = normalizeCompositeKey(entity, item.key);
   const normalizedQueryKeys =
@@ -147,4 +146,15 @@ export function bucketHandlerMatchesEvent(
         );
       }))
   );
+}
+
+export async function streamToBuffer(stream: Readable) {
+  // lets have a ReadableStream as a stream variable
+  const chunks = [];
+
+  for await (const chunk of stream) {
+    chunks.push(Buffer.from(chunk));
+  }
+
+  return Buffer.concat(chunks);
 }

@@ -557,6 +557,7 @@ export const counter = entity("counter5", {
       z.literal("another"),
     ]),
     id: z.string(),
+    optional: z.string().optional(),
   },
   partition: ["namespace", "id"],
 });
@@ -573,6 +574,11 @@ export const allCountersByN = counter.index("allCountersByN", {
 export const countersByNamespace = counter.index("countersOrderedByNamespace", {
   partition: ["id"],
   sort: ["namespace"],
+});
+
+export const countersByOptional2 = counter.index("countersByOptional2", {
+  partition: ["id"],
+  sort: ["optional", "n"],
 });
 
 export const countersByN = counter.index("countersByN", {
@@ -624,6 +630,7 @@ export const counterNamespaceWatcher = counter.stream(
         namespace: "default",
         id: value!.id,
         n: (value?.n ?? 0) + 1,
+        optional: undefined,
       });
       console.log("send signal to", value!.id);
       await entitySignal.sendSignal(value!.id);
@@ -636,7 +643,12 @@ export const onEntityEvent = subscription(
   { events: [entityEvent] },
   async ({ id }) => {
     const value = await counter.get({ namespace: "default", id });
-    await counter.set({ namespace: "default", id, n: (value?.n ?? 0) + 1 });
+    await counter.set({
+      namespace: "default",
+      id,
+      n: (value?.n ?? 0) + 1,
+      optional: undefined,
+    });
     await entitySignal.sendSignal(id);
   }
 );
@@ -645,14 +657,24 @@ export const entityTask = task(
   "entityTask",
   async (_, { execution: { id } }) => {
     const value = await counter.get(["default", id]);
-    await counter.set({ namespace: "default", id, n: (value?.n ?? 0) + 1 });
+    await counter.set({
+      namespace: "default",
+      id,
+      n: (value?.n ?? 0) + 1,
+      optional: undefined,
+    });
   }
 );
 
 export const entityIndexTask = task(
   "entityIndexTask",
   async (_, { execution: { id } }) => {
-    await counter.set({ namespace: "another", id, n: 1000 });
+    await counter.set({
+      namespace: "another",
+      id,
+      n: 1000,
+      optional: "hello",
+    });
     return await Promise.all([
       allCounters.query({ id }).then((q) =>
         q.entries?.map((e) => ({
@@ -678,6 +700,13 @@ export const entityIndexTask = task(
           namespace: e.value.namespace,
         }))
       ),
+      // sparse indices only include records with the given field
+      countersByOptional2.query({ id }).then((q) =>
+        q.entries?.map((e) => ({
+          n: e.value.n,
+          namespace: e.value.namespace,
+        }))
+      ),
     ]);
   }
 );
@@ -685,15 +714,20 @@ export const entityIndexTask = task(
 export const entityWorkflow = workflow(
   "entityWorkflow",
   async (_, { execution: { id } }) => {
-    await counter.set({ namespace: "default", id, n: 1 });
-    await counter.set({ namespace: "different", id, n: 1 });
+    await counter.set({ namespace: "default", id, n: 1, optional: undefined });
+    await counter.set({
+      namespace: "different",
+      id,
+      n: 1,
+      optional: undefined,
+    });
     await entitySignal.expectSignal();
     await entityTask();
     await Promise.all([entityEvent.emit({ id }), entitySignal.expectSignal()]);
     try {
       // will fail
       await counter.set(
-        { namespace: "default", id, n: 0 },
+        { namespace: "default", id, n: 0, optional: undefined },
         { expectedVersion: 1 }
       );
     } catch (err) {
@@ -702,7 +736,7 @@ export const entityWorkflow = workflow(
     const { value: entityValue, version } =
       (await counter.getWithMetadata(["default", id])) ?? {};
     await counter.set(
-      { namespace: "default", id, n: entityValue!.n + 1 },
+      { namespace: "default", id, n: entityValue!.n + 1, optional: undefined },
       { expectedVersion: version }
     );
     const value = await counter.get(["default", id]);
@@ -910,6 +944,11 @@ export const helloApi = command(
   "helloApi",
   {
     path: "/hello",
+    output: {
+      schema: z.string(),
+      description: "default output of hello command",
+      restStatusCode: 201,
+    },
   },
   async () => {
     return "hello world";
@@ -1031,9 +1070,13 @@ export const modifyResponseMiddlewareHttp = api
     response.headers.set("ModifiedHeader", "Injected Header");
     return response;
   })
-  .get("/modify-response-http", async () => {
-    return new HttpResponse("My Response");
-  });
+  .get(
+    "/modify-response-http",
+    { description: "modify response middleware" },
+    async () => {
+      return new HttpResponse("My Response");
+    }
+  );
 
 export const contextTest = command("contextText", (_, { service }) => {
   return service;

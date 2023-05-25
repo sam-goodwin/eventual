@@ -3,6 +3,32 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.39.7 (2023-05-25)
+
+### Bug Fixes
+
+- make eventual-cli role region-specific ([#365](https://github.com/functionless/eventual/issues/365)) ([aa407c0](https://github.com/functionless/eventual/commit/aa407c02e899c3a8fd3c4f56f1832c9b8e50ca5f))
+
+## 0.39.6 (2023-05-25)
+
+### Bug Fixes
+
+- local bucket stream did not complete correctly ([#368](https://github.com/functionless/eventual/issues/368)) ([253b8bb](https://github.com/functionless/eventual/commit/253b8bb1e82190dd3e2f525ee5d76327636e402e))
+
+## 0.39.5 (2023-05-22)
+
+**Note:** Version bump only for package @eventual/core-runtime
+
+## 0.39.4 (2023-05-21)
+
+### Bug Fixes
+
+- all resources have name type param ([#357](https://github.com/functionless/eventual/issues/357)) ([97bcdb9](https://github.com/functionless/eventual/commit/97bcdb9dc50487964548d8f3519b54d61e527d41))
+
+## 0.39.3 (2023-05-20)
+
+**Note:** Version bump only for package @eventual/core-runtime
+
 ## 0.39.2 (2023-05-15)
 
 ### Bug Fixes

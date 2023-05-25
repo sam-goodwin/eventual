@@ -19,14 +19,18 @@ export interface TransactionFunction<Input, Output> {
   (input: Input, context: TransactionContext): Promise<Output> | Output;
 }
 
-export interface Transaction<Input = any, Output = any>
-  extends TransactionSpec {
+export interface Transaction<
+  Name extends string = string,
+  Input = any,
+  Output = any
+> extends TransactionSpec<Name> {
   kind: "Transaction";
   handler: TransactionFunction<Input, Output>;
   (input: Input): Promise<Awaited<Output>>;
 }
 
 export type TransactionInput<T extends Transaction> = T extends Transaction<
+  any,
   infer Input
 >
   ? Input
@@ -34,20 +38,21 @@ export type TransactionInput<T extends Transaction> = T extends Transaction<
 
 export type TransactionOutput<T extends Transaction> = T extends Transaction<
   any,
+  any,
   infer Output
 >
   ? Output
   : never;
 
-export function transaction<Input, Output>(
-  name: string,
+export function transaction<Name extends string, Input, Output>(
+  name: Name,
   handler: TransactionFunction<Input, Output>
-): Transaction<Input, Output> {
+): Transaction<Name, Input, Output> {
   if (transactions().has(name)) {
     throw new Error(`workflow with name '${name}' already exists`);
   }
 
-  const transact: Transaction<Input, Output> = ((
+  const transact: Transaction<Name, Input, Output> = ((
     input: Input
   ): Promise<Output> => {
     return getEventualCallHook().registerEventualCall(

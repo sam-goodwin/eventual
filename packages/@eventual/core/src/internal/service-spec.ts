@@ -1,7 +1,11 @@
 import type { opensearchtypes } from "@opensearch-project/opensearch";
 import type openapi from "openapi3-ts";
-import type { Attributes } from "../entity/entity.js";
-import type { CompositeKeyPart, StreamQueryKey } from "../entity/key.js";
+import { Attributes } from "../entity/entity.js";
+import type {
+  CompositeKeyPart,
+  EntityCompositeKeyPart,
+  StreamQueryKey,
+} from "../entity/key.js";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
 import type { RestParams } from "../http/command.js";
@@ -83,6 +87,17 @@ export interface EventSpec {
   schema?: openapi.SchemaObject;
 }
 
+export interface CommandOutput {
+  schema?: openapi.SchemaObject;
+  description: string;
+  /**
+   * Status code of the output used in commands with a rest path.
+   *
+   * RPC commands always return a single 200 response.
+   */
+  restStatusCode: number;
+}
+
 export interface CommandSpec<
   Name extends string = string,
   Input = undefined,
@@ -99,7 +114,22 @@ export interface CommandSpec<
    */
   summary?: string;
   input?: openapi.SchemaObject;
-  output?: openapi.SchemaObject;
+  /**
+   * Output used by RPC commands and Rest commands to define the output of the handler.
+   *
+   * RPC will always have a status code of 200, but can override the default description of "OK".
+   *
+   * The REST command will return a 200 response unless an alternative is provided.
+   */
+  output?: CommandOutput;
+  /**
+   * Optional outputs provided by an http API command using passthrough mode.
+   *
+   * These commands return a {@link HttpResponse} which can define any number of outputs with custom status codes.
+   *
+   * The outputs are used to generate the {@link ApiSpecification}.
+   */
+  outputs?: CommandOutput[];
   path?: Path;
   method?: Method;
   params?: RestParams<Input, Path, Method>;
@@ -137,12 +167,15 @@ export interface Schemas {
   [schemaName: string]: openapi.SchemaObject;
 }
 
-export interface WorkflowSpec {
-  name: string;
+export interface WorkflowSpec<Name extends string = string> {
+  /**
+   * Globally unique ID of this {@link Workflow}.
+   */
+  name: Name;
 }
 
-export interface BucketSpec {
-  name: string;
+export interface BucketSpec<Name extends string = string> {
+  name: Name;
   handlers: BucketNotificationHandlerSpec[];
 }
 
@@ -166,15 +199,15 @@ export interface BucketNotificationHandlerOptions extends FunctionRuntimeProps {
   filters?: { prefix?: string; suffix?: string }[];
 }
 
-export interface BucketNotificationHandlerSpec {
-  name: string;
+export interface BucketNotificationHandlerSpec<Name extends string = string> {
+  name: Name;
   bucketName: string;
   options?: BucketNotificationHandlerOptions;
   sourceLocation?: SourceLocation;
 }
 
-export interface EntitySpec {
-  name: string;
+export interface EntitySpec<Name extends string = string> {
+  name: Name;
   key: KeyDefinition;
   /**
    * An Optional schema for the entity within an entity.
@@ -188,9 +221,9 @@ export type EntityStreamOperation = "insert" | "modify" | "remove";
 
 export interface EntityStreamOptions<
   Attr extends Attributes = Attributes,
-  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
-  Sort extends CompositeKeyPart<Attr> | undefined =
-    | CompositeKeyPart<Attr>
+  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined =
+    | EntityCompositeKeyPart<Attr>
     | undefined
 > extends FunctionRuntimeProps {
   /**
@@ -210,28 +243,29 @@ export interface EntityStreamOptions<
 }
 
 export interface EntityStreamSpec<
+  Name extends string = string,
   Attr extends Attributes = Attributes,
-  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
-  Sort extends CompositeKeyPart<Attr> | undefined =
-    | CompositeKeyPart<Attr>
+  Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+  Sort extends EntityCompositeKeyPart<Attr> | undefined =
+    | EntityCompositeKeyPart<Attr>
     | undefined
 > {
-  name: string;
+  name: Name;
   entityName: string;
   options?: EntityStreamOptions<Attr, Partition, Sort>;
   sourceLocation?: SourceLocation;
 }
 
-export interface EntityIndexSpec {
-  name: string;
+export interface EntityIndexSpec<Name extends string = string> {
+  name: Name;
   entityName: string;
   key: KeyDefinition;
   partition?: CompositeKeyPart<any>;
   sort?: CompositeKeyPart<any>;
 }
 
-export interface TransactionSpec {
-  name: string;
+export interface TransactionSpec<Name extends string = string> {
+  name: Name;
 }
 
 export interface EnvironmentManifest {

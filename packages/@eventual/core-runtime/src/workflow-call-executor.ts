@@ -53,7 +53,6 @@ import {
   isSendSignalCall,
   isTaskCall,
 } from "@eventual/core/internal";
-import stream from "stream";
 import type { EventClient } from "./clients/event-client.js";
 import type { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import type { TaskClient, TaskWorkerRequest } from "./clients/task-client.js";
@@ -65,6 +64,7 @@ import { normalizeError } from "./result.js";
 import { computeScheduleDate } from "./schedule.js";
 import type { BucketStore } from "./stores/bucket-store.js";
 import type { EntityStore } from "./stores/entity-store.js";
+import { streamToBuffer } from "./utils.js";
 import { createEvent } from "./workflow-events.js";
 import type { WorkflowCall } from "./workflow-executor.js";
 import type { ApiResponse } from "@opensearch-project/opensearch";
@@ -610,15 +610,4 @@ export class WorkflowCallExecutor {
       baseTime
     );
   }
-}
-
-async function streamToBuffer(stream: stream.Readable) {
-  // lets have a ReadableStream as a stream variable
-  const chunks = [];
-
-  for await (const chunk of stream) {
-    chunks.push(Buffer.from(chunk));
-  }
-
-  return Buffer.concat(chunks);
 }

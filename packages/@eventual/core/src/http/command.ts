@@ -1,4 +1,4 @@
-import type z from "zod";
+import type { z } from "zod";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
 import { commands } from "../internal/global.js";
@@ -46,10 +46,17 @@ export interface Command<
   Context extends CommandContext = CommandContext,
   Path extends string | undefined = undefined,
   Method extends HttpMethod | undefined = undefined
-> extends Omit<CommandSpec<Name, Input, Path, Method>, "input" | "output"> {
+> extends Omit<
+    CommandSpec<Name, Input, Path, Method>,
+    "input" | "outputs" | "output"
+  > {
   kind: "Command";
   input?: z.ZodType<Input>;
-  output?: z.ZodType<Awaited<Output>>;
+  output?: CommandOutputOptions<Output>;
+  /**
+   * Other possible outputs of the command, for example, errors.
+   */
+  otherOutputs?: CommandOutputOptions<any>[];
   handler: CommandHandler<Input, Output, Context>;
   middlewares?: Middleware<any, any>[];
 }
@@ -142,7 +149,7 @@ export type CommandHandler<
   T = undefined,
   U = void,
   Context extends CommandContext = CommandContext
-> = (input: T, context: Context) => Promise<U> | Awaited<U>;
+> = (input: T, context: Context) => Promise<U> | U;
 
 export type CommandInput<C extends AnyCommand> = C extends Command<
   any,
@@ -155,6 +162,19 @@ export type CommandInput<C extends AnyCommand> = C extends Command<
   ? Input
   : never;
 
+export interface CommandOutputOptions<Output> {
+  /**
+   * @default - {@link z.any}
+   */
+  schema?: z.ZodType<Output>;
+  description: string;
+  restStatusCode: number;
+}
+
+export type CommandOutput<Output> =
+  | z.ZodType<Output>
+  | CommandOutputOptions<Output>;
+
 export interface CommandOptions<
   Input,
   Output,
@@ -166,7 +186,17 @@ export interface CommandOptions<
       "path" | "method" | "summary" | "description" | "params" | "validate"
     > {
   input?: z.ZodType<Input>;
-  output?: z.ZodType<Output>;
+  /**
+   * The output schema of the command.
+   *
+   * When a description of the output can is provided, it will be used the {@link ApiSpecification}.
+   *
+   * When a rest status is provided and the command supports a rest path, that status will be used to return a successful result.
+   * Note: RPC commands will always return 200.
+   *
+   * @default 200 {@link z.any} OK
+   */
+  output?: CommandOutput<Output>;
 }
 
 export function command<
@@ -198,13 +228,21 @@ export function command<
   Output = void,
   Context extends CommandContext = CommandContext
 >(...args: any[]): Command<Name, Input, Output, Context, any, any> {
-  const [sourceLocation, name, options, handler] = parseCommandArgs(args);
+  const [sourceLocation, name, options, handler] = parseCommandArgs<
+    Input,
+    Output
+  >(args);
   const command: Command<Name, Input, Output, Context, any, any> = {
     kind: "Command",
     name,
     handler,
     sourceLocation,
     ...options,
+    output: options?.output
+      ? "restStatusCode" in options.output
+        ? options.output
+        : { schema: options.output, description: "OK", restStatusCode: 200 }
+      : { schema: undefined, description: "OK", restStatusCode: 200 },
   };
   commands.push(command);
   return command;
@@ -220,9 +258,13 @@ export function parseCommandArgs<
     // i think it would be marginal looping over a small array multiple times but i could be wrong
     args.find(isSourceLocation),
     args.find((a) => typeof a === "string"),
-    args.find((a) => typeof a === "object" && !isSourceLocation(a)),
-    args.find((a) => typeof a === "function") as
-      | CommandHandler<Input, Output, Context>
+    args.find((a) => typeof a === "object" && !isSourceLocation(a)) as
+      | CommandOptions<Input, Output, any, any>
       | undefined,
+    args.find((a) => typeof a === "function") as CommandHandler<
+      Input,
+      Output,
+      Context
+    >,
   ] as const;
 }

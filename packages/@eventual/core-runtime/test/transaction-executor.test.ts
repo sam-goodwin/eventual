@@ -1,6 +1,6 @@
 import {
   Attributes,
-  CompositeKeyPart,
+  EntityCompositeKeyPart,
   EntityOptions,
   TransactionContext,
   entity as _entity,
@@ -25,14 +25,14 @@ const entity = (() => {
   let n = 0;
   return <
     Attr extends Attributes,
-    const Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
-    const Sort extends CompositeKeyPart<Attr> | undefined = undefined
+    const Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
+    const Sort extends EntityCompositeKeyPart<Attr> | undefined = undefined
   >(
     options: EntityOptions<Attr, Partition, Sort>
   ) => {
     // eslint-disable-next-line no-empty
     while (entities().has(`ent${++n}`)) {}
-    return _entity<Attr, Partition, Sort>(`ent${n}`, options);
+    return _entity<string, Attr, Partition, Sort>(`ent${n}`, options);
   };
 })();
 

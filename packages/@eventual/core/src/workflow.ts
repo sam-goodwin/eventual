@@ -10,6 +10,7 @@ import {
 } from "./internal/eventual-hook.js";
 import { getServiceClient, workflows } from "./internal/global.js";
 import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
+import { WorkflowSpec } from "./internal/service-spec.js";
 import { SignalTargetType } from "./internal/signal.js";
 import {
   HistoryStateEvent,
@@ -63,12 +64,14 @@ export interface WorkflowDefinitionOptions {
 
 export type WorkflowOutput<W extends Workflow> = W extends Workflow<
   any,
+  any,
   infer Out
 >
   ? Out
   : never;
 
 export type WorkflowInput<W extends Workflow> = W extends Workflow<
+  any,
   infer In,
   any
 >
@@ -83,12 +86,11 @@ export type WorkflowArguments<Input = any> = [Input] extends [undefined]
  * A {@link Workflow} is a long-running process that orchestrates calls
  * to other services in a durable and observable way.
  */
-export interface Workflow<in Input = any, Output = any> {
-  /**
-   * Globally unique ID of this {@link Workflow}.
-   */
-  name: string;
-
+export interface Workflow<
+  Name extends string = string,
+  in Input = any,
+  Output = any
+> extends WorkflowSpec<Name> {
   options?: WorkflowDefinitionOptions;
 
   /**
@@ -106,8 +108,11 @@ export interface Workflow<in Input = any, Output = any> {
    * Starts a workflow execution
    */
   startExecution(
-    request: Omit<StartExecutionRequest<Workflow<Input, Output>>, "workflow">
-  ): Promise<ExecutionHandle<Workflow<Input, Output>>>;
+    request: Omit<
+      StartExecutionRequest<Workflow<Name, Input, Output>>,
+      "workflow"
+    >
+  ): Promise<ExecutionHandle<Workflow<Name, Input, Output>>>;
 }
 
 /**
@@ -136,16 +141,28 @@ export interface Workflow<in Input = any, Output = any> {
  * @param name a globally unique ID for this workflow.
  * @param definition the workflow definition.
  */
-export function workflow<Input = any, Output = any>(
-  name: string,
+export function workflow<
+  Name extends string = string,
+  Input = any,
+  Output = any
+>(
+  name: Name,
   definition: WorkflowHandler<Input, Output>
-): Workflow<Input, Output>;
-export function workflow<Input = any, Output = any>(
-  name: string,
+): Workflow<Name, Input, Output>;
+export function workflow<
+  Name extends string = string,
+  Input = any,
+  Output = any
+>(
+  name: Name,
   opts: WorkflowDefinitionOptions,
   definition: WorkflowHandler<Input, Output>
-): Workflow<Input, Output>;
-export function workflow<Input = any, Output = any>(
+): Workflow<Name, Input, Output>;
+export function workflow<
+  Name extends string = string,
+  Input = any,
+  Output = any
+>(
   name: string,
   ...args:
     | [
@@ -153,13 +170,13 @@ export function workflow<Input = any, Output = any>(
         definition: WorkflowHandler<Input, Output>
       ]
     | [definition: WorkflowHandler<Input, Output>]
-): Workflow<Input, Output> {
+): Workflow<Name, Input, Output> {
   const [opts, definition] = args.length === 1 ? [undefined, args[0]] : args;
   if (workflows().has(name)) {
     throw new Error(`workflow with name '${name}' already exists`);
   }
 
-  const workflow: Workflow<Input, Output> = ((
+  const workflow: Workflow<Name, Input, Output> = ((
     input?: any,
     options?: ChildWorkflowOptions
   ) => {
@@ -218,7 +235,7 @@ export function workflow<Input = any, Output = any>(
 
   workflow.startExecution = async function (input) {
     const serviceClient = getServiceClient();
-    return await serviceClient.startExecution<Workflow<Input, Output>>({
+    return await serviceClient.startExecution<Workflow<Name, Input, Output>>({
       workflow: name,
       executionName: input.executionName,
       input: input.input,
