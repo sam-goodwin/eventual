@@ -40,7 +40,7 @@ import type { SearchService } from "./search/search-service";
 export interface WorkflowsProps extends ServiceConstructProps {
   bucketService: LazyInterface<BucketService<any>>;
   entityService: EntityService<any>;
-  searchService?: SearchService<any>;
+  searchService: SearchService<any> | undefined;
   eventService: EventService;
   overrides?: WorkflowServiceOverrides;
   schedulerService: LazyInterface<SchedulerService>;

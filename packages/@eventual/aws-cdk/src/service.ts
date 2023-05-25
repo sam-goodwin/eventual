@@ -394,6 +394,7 @@ export class Service<S = any> extends Construct {
 
     const workflowService = new WorkflowService({
       taskService,
+      searchService: this.searchService,
       bucketService: proxyBucketService,
       eventService: this.eventService,
       schedulerService: proxySchedulerService,
