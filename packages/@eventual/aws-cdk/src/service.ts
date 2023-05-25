@@ -271,7 +271,7 @@ export class Service<S = any> extends Construct {
     const eventualServiceScope = new Construct(systemScope, "EventualService");
 
     const accessRole = new Role(eventualServiceScope, "AccessRole", {
-      roleName: `eventual-cli-${this.serviceName}`,
+      roleName: `eventual-cli-${this.serviceName}-${Stack.of(this).region}`,
       assumedBy: new AccountRootPrincipal(),
     });
 

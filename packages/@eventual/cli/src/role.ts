@@ -7,7 +7,7 @@ export async function assumeCliRole(
 ): Promise<AwsCredentialIdentity> {
   const stsClient = new sts.STSClient({ region });
   const identity = await stsClient.send(new sts.GetCallerIdentityCommand({}));
-  const roleArn = `arn:aws:iam::${identity.Account}:role/eventual-cli-${service}`;
+  const roleArn = `arn:aws:iam::${identity.Account}:role/eventual-cli-${service}-${region}`;
   const { Credentials } = await stsClient.send(
     new sts.AssumeRoleCommand({
       RoleArn: roleArn,
