@@ -1,6 +1,6 @@
 {
   "name": "@eventual/timeline",
-  "version": "0.39.7",
+  "version": "0.39.8",
   "type": "module",
   "exports": {
     "./dev": "./",

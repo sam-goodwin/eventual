@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.39.8 (2023-05-26)
+
+### Bug Fixes
+
+- allow overriding the body size on local ([#369](https://github.com/functionless/eventual/issues/369)) ([09ae7fc](https://github.com/functionless/eventual/commit/09ae7fcb98d6e0e3767dec6a034069f241c44b4e))
+
 ## 0.39.7 (2023-05-25)
 
 ### Bug Fixes
