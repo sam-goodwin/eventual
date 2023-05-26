@@ -18,9 +18,9 @@ import {
 } from "../internal/calls.js";
 import { searchIndices } from "../internal/global.js";
 import { getOpenSearchHook } from "../internal/search-hook.js";
-import type { SearchRequest } from "./query/search-query.js";
-import type { MappingToDocument } from "./mapping.js";
 import { assertApiResponseOK } from "./assert-api-response.js";
+import type { MappingToDocument } from "./mapping.js";
+import type { SearchRequest } from "./query/search-query.js";
 import type { SearchResponse } from "./search-response.js";
 
 import t from "type-fest";
@@ -158,7 +158,7 @@ export function index<
     search: (request) => search("search", request as any),
   };
   Object.defineProperty(index, "client", {
-    get: () => getOpenSearchHook().client,
+    get: () => getOpenSearchHook().client.client satisfies Client,
   });
   searchIndices().set(name, index as any);
   return index;
