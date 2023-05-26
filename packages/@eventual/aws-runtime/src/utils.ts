@@ -326,3 +326,12 @@ export function sanitizeCollectionName(name: string) {
       .slice(0, 28)
   );
 }
+
+export function isAwsErrorOfType<Ex extends { name: string }>(
+  err: unknown,
+  errName: Ex["name"]
+): err is Ex {
+  return (
+    !!err && typeof err === "object" && "name" in err && err.name === errName
+  );
+}

@@ -576,7 +576,7 @@ export const countersByNamespace = counter.index("countersOrderedByNamespace", {
   sort: ["namespace"],
 });
 
-export const countersByOptional2 = counter.index("countersByOptional2", {
+export const countersByOptional = counter.index("countersByOptional", {
   partition: ["id"],
   sort: ["optional", "n"],
 });
@@ -701,7 +701,7 @@ export const entityIndexTask = task(
         }))
       ),
       // sparse indices only include records with the given field
-      countersByOptional2.query({ id }).then((q) =>
+      countersByOptional.query({ id }).then((q) =>
         q.entries?.map((e) => ({
           n: e.value.n,
           namespace: e.value.namespace,
@@ -806,7 +806,15 @@ const noise = task(
         await check.set({ id, n });
       } catch (err) {
         console.error(err);
-        if (!(err instanceof TransactionConflictException)) {
+        if (
+          !(
+            err instanceof TransactionConflictException ||
+            (!!err &&
+              typeof err === "object" &&
+              "name" in err &&
+              err.name === "TransactionConflictException")
+          )
+        ) {
           throw err;
         }
       }

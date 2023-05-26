@@ -44,6 +44,7 @@ import {
 import { assertNever } from "@eventual/core/internal";
 import {
   entityServiceTableName,
+  isAwsErrorOfType,
   queryPageWithToken,
   scanPageWithToken,
 } from "../utils.js";
@@ -125,7 +126,12 @@ export class AWSEntityStore extends EntityStore {
 
       return { version: Number(record.__version.N) };
     } catch (err) {
-      if (err instanceof ConditionalCheckFailedException) {
+      if (
+        isAwsErrorOfType<ConditionalCheckFailedException>(
+          err,
+          "ConditionalCheckFailedException"
+        )
+      ) {
         throw new UnexpectedVersion("Unexpected Version");
       }
       throw err;
@@ -142,7 +148,12 @@ export class AWSEntityStore extends EntityStore {
         new DeleteItemCommand(this.createDeleteRequest(entity, key, options))
       );
     } catch (err) {
-      if (err instanceof ConditionalCheckFailedException) {
+      if (
+        isAwsErrorOfType<ConditionalCheckFailedException>(
+          err,
+          "ConditionalCheckFailedException"
+        )
+      ) {
         throw new UnexpectedVersion("Unexpected Version");
       }
     }
@@ -355,7 +366,12 @@ export class AWSEntityStore extends EntityStore {
         })
       );
     } catch (err) {
-      if (err instanceof TransactionCanceledException) {
+      if (
+        isAwsErrorOfType<TransactionCanceledException>(
+          err,
+          "TransactionCanceledException"
+        )
+      ) {
         throw new TransactionCancelled(
           err.CancellationReasons?.map((r) =>
             r.Code === "NONE"
@@ -363,7 +379,12 @@ export class AWSEntityStore extends EntityStore {
               : new UnexpectedVersion("Unexpected Version")
           ) ?? []
         );
-      } else if (err instanceof TransactionConflictException) {
+      } else if (
+        isAwsErrorOfType<TransactionConflictException>(
+          err,
+          "TransactionConflictException"
+        )
+      ) {
         throw new TransactionConflict();
       }
       throw err;

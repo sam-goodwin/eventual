@@ -25,6 +25,7 @@ import {
   isTimeSchedule,
 } from "@eventual/core/internal";
 import { ulid } from "ulidx";
+import { isAwsErrorOfType } from "../utils.js";
 
 export interface AWSTimerClientProps {
   readonly scheduler: SchedulerClient;
@@ -154,7 +155,7 @@ export class AWSTimerClient extends TimerClient {
         );
       } catch (err) {
         // if the schedule already exists, assume it because we created it already.
-        if (!(err instanceof ConflictException)) {
+        if (!isAwsErrorOfType<ConflictException>(err, "ConflictException")) {
           throw err;
         }
       }
@@ -188,7 +189,12 @@ export class AWSTimerClient extends TimerClient {
       );
     } catch (err) {
       // if resource is already deleted, ignore
-      if (!(err instanceof ResourceNotFoundException)) {
+      if (
+        !isAwsErrorOfType<ResourceNotFoundException>(
+          err,
+          "ResourceNotFoundException"
+        )
+      ) {
         throw err;
       }
     }

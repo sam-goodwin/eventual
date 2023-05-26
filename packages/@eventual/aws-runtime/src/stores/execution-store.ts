@@ -32,7 +32,7 @@ import {
   isFailedExecutionRequest,
   WorkflowStarted,
 } from "@eventual/core/internal";
-import { queryPageWithToken } from "../utils.js";
+import { isAwsErrorOfType, queryPageWithToken } from "../utils.js";
 
 export interface AWSExecutionStoreProps {
   executionTableName: LazyValue<string>;
@@ -89,7 +89,12 @@ export class AWSExecutionStore implements ExecutionStore {
         })
       );
     } catch (err) {
-      if (err instanceof ConditionalCheckFailedException) {
+      if (
+        isAwsErrorOfType<ConditionalCheckFailedException>(
+          err,
+          "ConditionalCheckFailedException"
+        )
+      ) {
         throw new ExecutionAlreadyExists(
           parseExecutionId(execution.id).executionName,
           execution.workflowName
