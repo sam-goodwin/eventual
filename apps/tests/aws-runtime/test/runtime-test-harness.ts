@@ -27,7 +27,9 @@ const serviceClient = testLocal
       region: awsRegion(),
     });
 
-const ssm = new SSMClient({});
+const ssm = new SSMClient({
+  region: awsRegion(),
+});
 const chaosClient = new SSMChaosClient(chaosSSMParamName(), ssm);
 
 export interface Test<W extends Workflow = Workflow> {

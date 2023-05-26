@@ -56,15 +56,11 @@ export abstract class BaseSearchService<Service>
   private readonly indexRoot: Construct;
 
   constructor(props: BaseSearchServiceProps<Service>) {
-    super(props.systemScope, "Search");
-    const searchServiceScope = new Construct(
-      props.systemScope,
-      "SearchService"
-    );
+    super(props.systemScope, "SearchService");
 
-    this.indexRoot = new Construct(this, "Indices");
+    this.indexRoot = new Construct(props.serviceScope, "Indices");
     this.customResourceHandler = new aws_lambda_nodejs.NodejsFunction(
-      searchServiceScope,
+      this,
       "CustomResourceHandler",
       {
         entry: path.join(__dirname, "custom-resource", "index.js"),

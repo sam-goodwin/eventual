@@ -45,7 +45,7 @@ export interface SubscriptionsProps<S = any> extends ServiceConstructProps {
    */
   readonly entityService: EntityService<S>;
   readonly eventService: EventService;
-  readonly searchService?: SearchService<S>;
+  readonly searchService: SearchService<S> | undefined;
   readonly local: ServiceLocal | undefined;
   /**
    * Configuration for individual Event Handlers created with `onEvent`.

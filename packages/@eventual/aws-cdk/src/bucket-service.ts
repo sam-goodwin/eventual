@@ -21,6 +21,7 @@ import type { EventualResource, ServiceConstructProps } from "./service";
 import { ServiceFunction } from "./service-function";
 import { formatBucketArn, serviceBucketArn, ServiceEntityProps } from "./utils";
 import { CorsHttpMethod } from "@aws-cdk/aws-apigatewayv2-alpha";
+import type { SearchService } from "./search/search-service";
 
 export type BucketOverrides<Service> = Partial<
   ServiceEntityProps<Service, "Bucket", BucketRuntimeOverrides>
@@ -57,6 +58,7 @@ export interface BucketServiceProps<Service> extends ServiceConstructProps {
   commandService: LazyInterface<CommandService<Service>>;
   cors?: CorsOptions;
   entityService: LazyInterface<EntityService<Service>>;
+  searchService: LazyInterface<SearchService<Service>> | undefined;
 }
 
 export class BucketService<Service> {
@@ -290,6 +292,7 @@ export class BucketNotificationHandler
     props.serviceProps.commandService.configureInvokeHttpServiceApi(
       this.handler
     );
+    props.serviceProps.searchService?.configureSearch(this.handler);
 
     props.bucketService.configureReadWriteBuckets(this.handler);
     props.serviceProps.entityService.configureReadWriteEntityTable(

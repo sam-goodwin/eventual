@@ -362,6 +362,7 @@ export class Service<S = any> extends Construct {
       entityServiceOverrides: props.system?.entityService,
       eventService: this.eventService,
       workflowService: proxyWorkflowService,
+      searchService: this.searchService,
       ...serviceConstructProps,
     });
     this.entities = entityService.entities;
@@ -374,6 +375,7 @@ export class Service<S = any> extends Construct {
       entityService,
       bucketOverrides: props.buckets,
       bucketHandlerOverrides: props.bucketNotificationHandlers,
+      searchService: this.searchService,
     });
     proxyBucketService._bind(this.bucketService);
     this.buckets = this.bucketService.buckets;
@@ -388,6 +390,7 @@ export class Service<S = any> extends Construct {
       overrides: props.tasks,
       local: this.local,
       entityService,
+      searchService: this.searchService,
     });
     proxyTaskService._bind(taskService);
     this.tasks = taskService.tasks;
@@ -435,6 +438,7 @@ export class Service<S = any> extends Construct {
       commandService: this.commandService,
       eventService: this.eventService,
       subscriptions: props.subscriptions,
+      searchService: this.searchService,
       local: this.local,
       entityService,
       ...serviceConstructProps,
