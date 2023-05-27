@@ -103,7 +103,7 @@ test("just set", async () => {
     context
   );
 
-  expect(result).toMatchObject<TransactionResult<any>>({
+  expect(result).toEqual<TransactionResult<any>>({
     result: Result.resolved({ version: 1 }),
   });
 
@@ -164,6 +164,176 @@ test("multiple operations", async () => {
   });
 });
 
+test("multiple operations on same key", async () => {
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
+
+  const result = await executor(
+    async () => {
+      await d1.set({ key: "1", value: 1 });
+      await d1.set({ key: "1", value: 2 });
+    },
+    undefined,
+    context
+  );
+
+  expect(result).toMatchObject<TransactionResult<any>>({
+    result: Result.resolved(undefined),
+  });
+
+  await expect(store.getWithMetadata(d1.name, { key: "1" })).resolves.toEqual({
+    value: { key: "1", value: 2 },
+    version: 1,
+  });
+});
+
+test("multiple operations on same key with delete first", async () => {
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
+
+  const result = await executor(
+    async () => {
+      await d1.delete({ key: "1" });
+      await d1.set({ key: "1", value: 1 });
+    },
+    undefined,
+    context
+  );
+
+  expect(result).toMatchObject<TransactionResult<any>>({
+    result: Result.resolved(undefined),
+  });
+
+  await expect(store.getWithMetadata(d1.name, { key: "1" })).resolves.toEqual({
+    value: { key: "1", value: 1 },
+    version: 1,
+  });
+});
+
+test("multiple operations on same key with delete second", async () => {
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
+
+  const result = await executor(
+    async () => {
+      await d1.set({ key: "1", value: 1 });
+      await d1.delete({ key: "1" });
+    },
+    undefined,
+    context
+  );
+
+  expect(result).toMatchObject<TransactionResult<any>>({
+    result: Result.resolved(undefined),
+  });
+
+  await expect(store.getWithMetadata(d1.name, { key: "1" })).resolves.toEqual(
+    undefined
+  );
+});
+
+test("set and then get", async () => {
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
+
+  const result = await executor(
+    async () => {
+      await d1.set({ key: "1", value: 1 });
+      return d1.getWithMetadata({ key: "1" });
+    },
+    undefined,
+    context
+  );
+
+  expect(result).toMatchObject<TransactionResult<any>>({
+    result: Result.resolved({ value: { key: "1" }, version: 1 }),
+  });
+
+  await expect(store.getWithMetadata(d1.name, { key: "1" })).resolves.toEqual({
+    value: { key: "1", value: 1 },
+    version: 1,
+  });
+});
+
+test("expected version succeeds when correct", async () => {
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
+
+  await store.set(d1.name, { key: "1", value: 0 });
+
+  const result = await executor(
+    async () => {
+      try {
+        await d1.set({ key: "1", value: 1 }, { expectedVersion: 1 });
+        return "woop";
+      } catch {
+        await d1.set({ key: "1", value: 2 });
+        return "womp";
+      }
+    },
+    undefined,
+    context
+  );
+
+  expect(result).toEqual<TransactionResult<any>>({
+    result: Result.resolved("woop"),
+  });
+
+  await expect(store.getWithMetadata(d1.name, ["1"])).resolves.toEqual({
+    value: { key: "1", value: 1 },
+    version: 2,
+  });
+});
+
+test("multiple sets of the same key will only update the version once", async () => {
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
+
+  await store.set(d1.name, { key: "1", value: 0 });
+
+  const result = await executor(
+    async () => {
+      await d1.set({ key: "1", value: 1 });
+      await d1.set({ key: "1", value: 2 });
+      return (await d1.getWithMetadata({ key: "1" }))?.version;
+    },
+    undefined,
+    context
+  );
+
+  expect(result).toEqual<TransactionResult<any>>({
+    result: Result.resolved(2),
+  });
+
+  await expect(store.getWithMetadata(d1.name, ["1"])).resolves.toEqual({
+    value: { key: "1", value: 2 },
+    version: 2,
+  });
+});
+
+test("expected version failure throws a local, recoverable error", async () => {
+  const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
+
+  await store.set(d1.name, { key: "1", value: 0 });
+
+  const result = await executor(
+    async () => {
+      try {
+        await d1.set({ key: "1", value: 1 }, { expectedVersion: 3 });
+        return "woop";
+      } catch {
+        await d1.set({ key: "1", value: 2 });
+        return "womp";
+      }
+    },
+    undefined,
+    context
+  );
+
+  expect(result).toEqual<TransactionResult<any>>({
+    result: Result.resolved("womp"),
+  });
+
+  await expect(store.getWithMetadata(d1.name, ["1"])).resolves.toEqual({
+    value: { key: "1", value: 2 },
+    version: 2,
+  });
+});
+
 test("multiple operations fail", async () => {
   const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
   const d2 = entity({
@@ -183,7 +353,7 @@ test("multiple operations fail", async () => {
   );
 
   expect(result).toEqual<TransactionResult<any>>({
-    result: Result.failed(Error("Failed after an explicit conflict.")),
+    result: Result.failed(Error("Operation expected version 3 but found 1.")),
   });
 
   await expect(store.getWithMetadata(d1.name, ["1"])).resolves.toEqual({
@@ -229,7 +399,7 @@ test("retry when retrieved data changes version multiple times", async () => {
 
   const result = await executor(
     async () => {
-      const { value } = (await d1.get(["1"])) ?? { value: 0 };
+      const { value } = (await d1.get(["1"]))!;
       // this isn't kosher... normally
       if (value < 2) {
         await store.set(d1.name, { key: "1", value: value + 1 });
@@ -317,7 +487,9 @@ test("events not emitted on failure", async () => {
   );
 
   expect(result).toMatchObject<TransactionResult<any>>({
-    result: Result.failed(Error("Failed after an explicit conflict.")),
+    result: Result.failed(
+      Error("Operation expected version 1000 but found 1.")
+    ),
   });
 
   expect(mockEventClient.emitEvents).not.toHaveBeenCalled();
