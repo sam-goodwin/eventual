@@ -345,9 +345,11 @@ export interface PutBucketObjectResponse {
 }
 
 export interface PutBucketOptions {
-  contentType?: string;
+  cacheControl?: string;
   contentEncoding?: string;
   contentMD5?: string;
+  contentType?: string;
+  expires?: Date;
   metadata?: Record<string, string>;
 }
 

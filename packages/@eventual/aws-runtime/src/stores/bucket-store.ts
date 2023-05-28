@@ -68,8 +68,10 @@ export class AWSBucketStore implements BucketStore {
           body: result.Body as Readable,
           contentLength: result.ContentLength!,
           etag: result.ETag,
+          cacheControl: result.CacheControl,
           contentEncoding: result.ContentEncoding,
           contentType: result.ContentType,
+          expires: result.Expires,
           metadata: result.Metadata,
           async getBodyString(encoding) {
             if (bodyString !== undefined) {
@@ -116,9 +118,11 @@ export class AWSBucketStore implements BucketStore {
         Bucket: this.physicalName(bucketName),
         Key: key,
         Body: data,
-        ContentType: options?.contentType,
+        CacheControl: options?.cacheControl,
         ContentEncoding: options?.contentEncoding,
         ContentMD5: options?.contentMD5,
+        ContentType: options?.contentType,
+        Expires: options?.expires,
         Metadata: options?.metadata,
       })
     );
@@ -154,8 +158,10 @@ export class AWSBucketStore implements BucketStore {
             : this.physicalName(bucketName)
         }/${sourceKey}`,
         CopySourceIfMatch: options?.sourceEtag,
-        ContentType: options?.contentType,
+        CacheControl: options?.cacheControl,
         ContentEncoding: options?.contentEncoding,
+        ContentType: options?.contentType,
+        Expires: options?.expires,
         Metadata: options?.metadata,
       })
     );

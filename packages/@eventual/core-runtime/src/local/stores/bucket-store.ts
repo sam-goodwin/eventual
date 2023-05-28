@@ -182,8 +182,10 @@ export class LocalBucketStore implements BucketStore {
 
     destBucket[key] = {
       ...sourceObject,
+      cacheControl: options?.cacheControl ?? sourceObject.cacheControl,
       contentEncoding: options?.contentEncoding ?? sourceObject.contentEncoding,
       contentType: options?.contentType ?? sourceObject.contentType,
+      expires: options?.expires ?? sourceObject.expires,
       metadata: options?.metadata ?? sourceObject.metadata,
     };
 
