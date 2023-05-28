@@ -41,7 +41,8 @@ export interface Bucket<Name extends string = string>
    */
   put(
     key: string,
-    data: string | Buffer | Readable
+    data: string | Buffer | Readable,
+    options?: PutBucketOptions
   ): Promise<PutBucketObjectResponse>;
   /**
    * Deletes an object from a bucket.
@@ -320,7 +321,8 @@ export interface GetBucketObjectOptions {
   etag?: string;
 }
 
-export interface GetBucketMetadataResponse {
+export interface GetBucketMetadataResponse
+  extends Omit<PutBucketOptions, "contentMD5"> {
   /**
    * Content length in bytes
    */
@@ -342,7 +344,15 @@ export interface PutBucketObjectResponse {
   etag?: string;
 }
 
-export interface CopyBucketObjectOptions {
+export interface PutBucketOptions {
+  contentType?: string;
+  contentEncoding?: string;
+  contentMD5?: string;
+  metadata?: Record<string, string>;
+}
+
+export interface CopyBucketObjectOptions
+  extends Omit<PutBucketOptions, "contentMD5"> {
   sourceEtag?: string;
 }
 

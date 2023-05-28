@@ -21,12 +21,13 @@ import {
   ListBucketResult,
   PresignedUrlOperation,
   PutBucketObjectResponse,
+  PutBucketOptions,
 } from "@eventual/core";
 import {
   BucketStore,
+  LazyValue,
   computeDurationSeconds,
   getLazy,
-  LazyValue,
 } from "@eventual/core-runtime";
 import { assertNever } from "@eventual/core/internal";
 import { Readable } from "stream";
@@ -67,6 +68,9 @@ export class AWSBucketStore implements BucketStore {
           body: result.Body as Readable,
           contentLength: result.ContentLength!,
           etag: result.ETag,
+          contentEncoding: result.ContentEncoding,
+          contentType: result.ContentType,
+          metadata: result.Metadata,
           async getBodyString(encoding) {
             if (bodyString !== undefined) {
               return bodyString;
@@ -96,6 +100,7 @@ export class AWSBucketStore implements BucketStore {
       ? {
           contentLength: result.ContentLength,
           etag: result.ETag,
+          metadata: result.Metadata,
         }
       : undefined;
   }
@@ -103,13 +108,18 @@ export class AWSBucketStore implements BucketStore {
   public async put(
     bucketName: string,
     key: string,
-    data: string | Readable | Buffer
+    data: string | Readable | Buffer,
+    options?: PutBucketOptions
   ): Promise<PutBucketObjectResponse> {
     const result = await this.props.s3.send(
       new PutObjectCommand({
         Bucket: this.physicalName(bucketName),
         Key: key,
         Body: data,
+        ContentType: options?.contentType,
+        ContentEncoding: options?.contentEncoding,
+        ContentMD5: options?.contentMD5,
+        Metadata: options?.metadata,
       })
     );
 
@@ -144,6 +154,9 @@ export class AWSBucketStore implements BucketStore {
             : this.physicalName(bucketName)
         }/${sourceKey}`,
         CopySourceIfMatch: options?.sourceEtag,
+        ContentType: options?.contentType,
+        ContentEncoding: options?.contentEncoding,
+        Metadata: options?.metadata,
       })
     );
 
