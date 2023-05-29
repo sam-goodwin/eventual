@@ -1,4 +1,8 @@
-lockfileVersion: '6.0'
+lockfileVersion: '6.1'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
 
 importers:
 
@@ -966,7 +970,7 @@ importers:
         version: 2.80.0
       create-sst:
         specifier: latest
-        version: 2.8.20
+        version: 2.11.0
     devDependencies:
       '@eventual/project':
         specifier: workspace:^
@@ -9293,8 +9297,8 @@ packages:
   /create-require@1.1.1:
     resolution: {integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==}
 
-  /create-sst@2.8.20:
-    resolution: {integrity: sha512-MPUZKJ1L5hiCBxNPsjf3T+e2u1Ek6tA7bath/Y0Xkju0tKj4bEVPDJaHOkYxnCY2/K/rvy15ZS7m6jWbAFexNg==}
+  /create-sst@2.11.0:
+    resolution: {integrity: sha512-c9w13hUEIHBangcQP6ZsZ52PqCUzxHbssHyKkGf6SbcXGz3FWlCi1EN3gpnhhdAJ8Prcsw6PRuscIoSvv+/cEQ==}
     hasBin: true
     dependencies:
       cli-spinners: 2.9.0
