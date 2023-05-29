@@ -183,9 +183,8 @@ export function createTransactionExecutor(
                  */
                 const expectedVersion = eventual.params[1]?.expectedVersion;
                 if (
-                  eventual.params[1]?.expectedVersion &&
-                  entityValue.originalVersion !==
-                    eventual.params[1]?.expectedVersion
+                  expectedVersion &&
+                  entityValue.originalVersion !== expectedVersion
                 ) {
                   throw new UnexpectedVersion(
                     `Operation expected version ${expectedVersion} but found ${entityValue.originalVersion}.`
