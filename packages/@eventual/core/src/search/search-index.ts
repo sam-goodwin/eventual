@@ -175,7 +175,7 @@ export function index<
       async (): Promise<Response> => {
         const response = await (index.client as any)[operation]({
           ...request,
-          index: name,
+          index: indexName,
         });
         assertApiResponseOK(response);
         return response.body as Response;
