@@ -21,12 +21,13 @@ import {
   ListBucketResult,
   PresignedUrlOperation,
   PutBucketObjectResponse,
+  PutBucketOptions,
 } from "@eventual/core";
 import {
   BucketStore,
+  LazyValue,
   computeDurationSeconds,
   getLazy,
-  LazyValue,
 } from "@eventual/core-runtime";
 import { assertNever } from "@eventual/core/internal";
 import { Readable } from "stream";
@@ -67,6 +68,11 @@ export class AWSBucketStore implements BucketStore {
           body: result.Body as Readable,
           contentLength: result.ContentLength!,
           etag: result.ETag,
+          cacheControl: result.CacheControl,
+          contentEncoding: result.ContentEncoding,
+          contentType: result.ContentType,
+          expires: result.Expires,
+          metadata: result.Metadata,
           async getBodyString(encoding) {
             if (bodyString !== undefined) {
               return bodyString;
@@ -96,6 +102,7 @@ export class AWSBucketStore implements BucketStore {
       ? {
           contentLength: result.ContentLength,
           etag: result.ETag,
+          metadata: result.Metadata,
         }
       : undefined;
   }
@@ -103,13 +110,20 @@ export class AWSBucketStore implements BucketStore {
   public async put(
     bucketName: string,
     key: string,
-    data: string | Readable | Buffer
+    data: string | Readable | Buffer,
+    options?: PutBucketOptions
   ): Promise<PutBucketObjectResponse> {
     const result = await this.props.s3.send(
       new PutObjectCommand({
         Bucket: this.physicalName(bucketName),
         Key: key,
         Body: data,
+        CacheControl: options?.cacheControl,
+        ContentEncoding: options?.contentEncoding,
+        ContentMD5: options?.contentMD5,
+        ContentType: options?.contentType,
+        Expires: options?.expires,
+        Metadata: options?.metadata,
       })
     );
 
@@ -144,6 +158,11 @@ export class AWSBucketStore implements BucketStore {
             : this.physicalName(bucketName)
         }/${sourceKey}`,
         CopySourceIfMatch: options?.sourceEtag,
+        CacheControl: options?.cacheControl,
+        ContentEncoding: options?.contentEncoding,
+        ContentType: options?.contentType,
+        Expires: options?.expires,
+        Metadata: options?.metadata,
       })
     );
 

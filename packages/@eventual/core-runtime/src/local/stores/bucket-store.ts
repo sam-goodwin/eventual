@@ -11,13 +11,14 @@ import {
   ListBucketResult,
   PresignedUrlOperation,
   PutBucketObjectResponse,
+  PutBucketOptions,
 } from "@eventual/core";
 import crypto from "crypto";
 import { Readable } from "stream";
 import { BucketStore } from "../../stores/bucket-store.js";
+import { streamToBuffer } from "../../utils.js";
 import { LocalEnvConnector } from "../local-container.js";
 import { paginateItems } from "./pagination.js";
-import { streamToBuffer } from "../../utils.js";
 
 export interface LocalBucketStoreProps {
   localConnector: LocalEnvConnector;
@@ -32,7 +33,7 @@ export class LocalBucketStore implements BucketStore {
         body: Uint8Array | string | Buffer;
         contentLength: number;
         etag: string;
-      }
+      } & PutBucketOptions
     >
   > = {};
 
@@ -105,7 +106,8 @@ export class LocalBucketStore implements BucketStore {
   public async put(
     bucketName: string,
     key: string,
-    data: string | Buffer | Readable
+    data: string | Buffer | Readable,
+    options?: PutBucketOptions
   ): Promise<PutBucketObjectResponse> {
     const bucket = (this.objects[bucketName] ??= {});
 
@@ -122,6 +124,7 @@ export class LocalBucketStore implements BucketStore {
       body,
       contentLength: body.length,
       etag,
+      ...options,
     };
 
     this.props.localConnector.pushWorkflowTask({
@@ -177,7 +180,14 @@ export class LocalBucketStore implements BucketStore {
 
     const destBucket = (this.objects[bucketName] ??= {});
 
-    destBucket[key] = sourceObject;
+    destBucket[key] = {
+      ...sourceObject,
+      cacheControl: options?.cacheControl ?? sourceObject.cacheControl,
+      contentEncoding: options?.contentEncoding ?? sourceObject.contentEncoding,
+      contentType: options?.contentType ?? sourceObject.contentType,
+      expires: options?.expires ?? sourceObject.expires,
+      metadata: options?.metadata ?? sourceObject.metadata,
+    };
 
     this.props.localConnector.pushWorkflowTask({
       bucketName,
