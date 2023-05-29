@@ -135,7 +135,7 @@ export interface Entity<
    * In general, scan is an expensive operation and should be avoided in favor of query
    * unless it is necessary to get all items in a table across all or most partitions.
    */
-  scan(request?: EntityQueryOptions): Promise<EntityQueryResult<Attr>>;
+  scan(request?: EntityScanOptions): Promise<EntityQueryResult<Attr>>;
   index<
     Name extends string = string,
     const IndexPartition extends
@@ -537,7 +537,7 @@ export interface EntityIndex<
    * In general, scan is an expensive operation and should be avoided in favor of query
    * unless it is necessary to get all items in a table across all or most partitions.
    */
-  scan(request?: EntityQueryOptions): Promise<EntityQueryResult<IndexAttr>>;
+  scan(request?: EntityScanOptions): Promise<EntityQueryResult<IndexAttr>>;
 }
 
 export interface EntityQueryResult<Attr extends Attributes = Attributes> {
@@ -556,13 +556,22 @@ export interface EntityReadOptions {
   consistentRead?: boolean;
 }
 
-export interface EntityQueryOptions extends EntityReadOptions {
+export interface EntityScanOptions extends EntityReadOptions {
   /**
    * Number of items to retrieve
    * @default 100
    */
   limit?: number;
   nextToken?: string;
+}
+
+export interface EntityQueryOptions extends EntityScanOptions {
+  /**
+   * Determines the direction of the items returned in the query based on the sort key.
+   *
+   * @default ASC - ascending order
+   */
+  direction?: "ASC" | "DESC";
 }
 
 export interface EntityConsistencyOptions {

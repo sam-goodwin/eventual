@@ -7,6 +7,7 @@ import type {
   EntityQueryOptions,
   EntityQueryResult,
   EntityReadOptions,
+  EntityScanOptions,
   EntitySetOptions,
   EntityTransactItem,
   EntityWithMetadata,
@@ -150,7 +151,7 @@ export abstract class EntityStore implements EntityHook {
 
   public scan(
     entityName: string,
-    options?: EntityQueryOptions | undefined
+    options?: EntityScanOptions | undefined
   ): Promise<EntityQueryResult> {
     const entity = this.getEntity(entityName);
 
@@ -160,7 +161,7 @@ export abstract class EntityStore implements EntityHook {
   public scanIndex(
     entityName: string,
     indexName: string,
-    options?: EntityQueryOptions | undefined
+    options?: EntityScanOptions | undefined
   ): Promise<EntityQueryOptions> {
     const index = this.getEntity(entityName).indices.find(
       (i) => i.name === indexName
@@ -177,7 +178,7 @@ export abstract class EntityStore implements EntityHook {
 
   protected abstract _scan(
     entity: Entity | EntityIndex,
-    options: EntityQueryOptions | undefined
+    options: EntityScanOptions | undefined
   ): Promise<EntityQueryResult>;
 
   public async transactWrite(items: EntityTransactItem[]): Promise<void> {
