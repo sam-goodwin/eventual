@@ -134,7 +134,7 @@ export class LocalEntityStore extends EntityStore {
           ? a[0] - (b[0] as number)
           : 0,
       undefined,
-      options?.sortDescending ? "DESC" : "ASC",
+      options?.direction,
       options?.limit,
       options?.nextToken
     );

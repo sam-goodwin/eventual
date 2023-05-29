@@ -567,11 +567,11 @@ export interface EntityScanOptions extends EntityReadOptions {
 
 export interface EntityQueryOptions extends EntityScanOptions {
   /**
-   * When true, returns the items in the descending sort order.
+   * Determines the direction of the items returned in the query based on the sort key.
    *
-   * @default false - ascending order
+   * @default ASC - ascending order
    */
-  sortDescending?: boolean;
+  direction?: "ASC" | "DESC";
 }
 
 export interface EntityConsistencyOptions {

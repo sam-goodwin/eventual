@@ -206,7 +206,7 @@ export class AWSEntityStore extends EntityStore {
         TableName: this.tableName(entity),
         IndexName: _index?.name,
         ConsistentRead: options?.consistentRead,
-        ScanIndexForward: !options?.sortDescending, // default is false, ascending
+        ScanIndexForward: !options?.direction || options?.direction === "ASC", // default is ASC, ascending
         KeyConditionExpression:
           queryKey.sort &&
           (queryKey.sort.keyValue !== undefined ||
