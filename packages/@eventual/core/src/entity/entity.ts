@@ -10,6 +10,7 @@ import { entities } from "../internal/global.js";
 import {
   EntityIndexSpec,
   EntitySpec,
+  EntityStreamOperation,
   EntityStreamOptions,
   isSourceLocation,
   SourceLocation,
@@ -146,10 +147,13 @@ export interface Entity<
     name: Name,
     options: EntityIndexOptions<Attr, IndexPartition, IndexSort>
   ): EntityIndexMapper<Name, Attr, Partition, IndexPartition, IndexSort>;
-  stream<Name extends string = string>(
+  stream<
+    Name extends string = string,
+    Operations extends EntityStreamOperation[] = EntityStreamOperation[]
+  >(
     name: Name,
-    options: EntityStreamOptions<Attr, Partition, Sort>,
-    handler: EntityStreamHandler<Attr, Partition, Sort>
+    options: EntityStreamOptions<Attr, Partition, Sort, Operations>,
+    handler: EntityStreamHandler<Attr, Partition, Sort, Operations>
   ): EntityStream<Name, Attr, Partition, Sort>;
   stream<Name extends string = string>(
     name: string,

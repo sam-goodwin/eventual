@@ -610,30 +610,25 @@ export const counterWatcher = counter.stream(
   { operations: ["remove"], includeOld: true },
   async (item) => {
     console.log(item);
-    // TODO: compute the possible operations union from the operations array
-    if (item.operation === "remove") {
-      const { n } = item.oldValue!;
-      await entitySignal2.sendSignal(item.key.id, { n: n + 1 });
-    }
+    const { n } = item.oldValue!;
+    await entitySignal2.sendSignal(item.key.id, { n: n + 1 });
   }
 );
 
 export const counterNamespaceWatcher = counter.stream(
   "counterNamespaceWatch",
-  { queryKeys: [{ namespace: "different" }] },
+  { queryKeys: [{ namespace: "different" }], operations: ["insert"] },
   async (item) => {
     console.log(item);
-    if (item.operation === "insert") {
-      const value = await counter.get(item.key);
-      await counter.set({
-        namespace: "default",
-        id: value!.id,
-        n: (value?.n ?? 0) + 1,
-        optional: undefined,
-      });
-      console.log("send signal to", value!.id);
-      await entitySignal.sendSignal(value!.id);
-    }
+    const value = await counter.get(item.key);
+    await counter.set({
+      namespace: "default",
+      id: value!.id,
+      n: (value?.n ?? 0) + 1,
+      optional: undefined,
+    });
+    console.log("send signal to", value!.id);
+    await entitySignal.sendSignal(value!.id);
   }
 );
 
