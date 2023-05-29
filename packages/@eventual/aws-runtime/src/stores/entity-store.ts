@@ -22,6 +22,7 @@ import {
   EntityQueryOptions,
   EntityQueryResult,
   EntityReadOptions,
+  EntityScanOptions,
   EntitySetOptions,
   EntityWithMetadata,
   TransactionCancelled,
@@ -216,6 +217,7 @@ export class AWSEntityStore extends EntityStore {
         TableName: this.tableName(entity),
         IndexName: _index?.name,
         ConsistentRead: options?.consistentRead,
+        ScanIndexForward: !options?.direction || options?.direction === "ASC", // default is ASC, ascending
         KeyConditionExpression:
           queryKey.sort &&
           (queryKey.sort.keyValue !== undefined ||
@@ -273,7 +275,7 @@ export class AWSEntityStore extends EntityStore {
 
   protected override async _scan(
     entity: Entity | EntityIndex,
-    options?: EntityQueryOptions
+    options?: EntityScanOptions
   ): Promise<EntityQueryResult> {
     const [_entity, _index] =
       entity.kind === "Entity"

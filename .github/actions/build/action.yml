@@ -7,7 +7,7 @@ runs:
 
     - uses: pnpm/action-setup@v2.2.4
       with:
-        version: 8
+        version: 8.5 # pin version to avoid regression - https://github.com/pnpm/pnpm/issues/6603
 
     - uses: actions/setup-node@v3
       with:

@@ -5,6 +5,7 @@ import {
   EntityIndex,
   EntityQueryOptions,
   EntityQueryResult,
+  EntityScanOptions,
   EntitySetOptions,
   EntityWithMetadata,
   KeyValue,
@@ -133,7 +134,7 @@ export class LocalEntityStore extends EntityStore {
           ? a[0] - (b[0] as number)
           : 0,
       undefined,
-      undefined,
+      options?.direction,
       options?.limit,
       options?.nextToken
     );
@@ -156,7 +157,7 @@ export class LocalEntityStore extends EntityStore {
    */
   protected override async _scan(
     entity: Entity | EntityIndex,
-    options?: EntityQueryOptions
+    options?: EntityScanOptions
   ): Promise<EntityQueryResult> {
     const store = this.getLocalEntityStore(entity);
     const entries = [...(store?.values() ?? [])].flatMap((val) => [
