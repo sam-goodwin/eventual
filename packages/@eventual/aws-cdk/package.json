@@ -7,11 +7,11 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
-    "@aws-sdk/credential-provider-node": "^3.335.0",
+    "@aws-sdk/credential-provider-node": "^3.341.0",
     "@eventual/aws-runtime": "workspace:^",
     "@eventual/compiler": "workspace:^",
-    "@eventual/core-runtime": "workspace:^",
     "@eventual/core": "workspace:^",
+    "@eventual/core-runtime": "workspace:^",
     "@eventual/project": "workspace:^",
     "@opensearch-project/opensearch": "^2.2.1",
     "aws4": "^1.12.0"

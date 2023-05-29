@@ -12,7 +12,7 @@
     "constructs": "10.1.154"
   },
   "devDependencies": {
-    "@aws-sdk/client-sts": "3.332.0",
+    "@aws-sdk/client-sts": "3.341.0",
     "@eventual/aws-cdk": "workspace:^",
     "@eventual/cli": "workspace:^",
     "@eventual/core": "workspace:^",
