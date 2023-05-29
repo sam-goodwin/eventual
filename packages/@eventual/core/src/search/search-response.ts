@@ -36,7 +36,7 @@ type AggregationResults<
     };
 
 type AggregationResult<Agg, Document> = Agg extends {
-  terms: estypes.AggregationsTermsAggregation;
+  terms: opensearchtypes.AggregationsTermsAggregation;
 }
   ? {
       doc_count_error_upper_bound?: number;
@@ -45,9 +45,5 @@ type AggregationResult<Agg, Document> = Agg extends {
         key: FieldValue<Agg["terms"]["field"], Document>;
         doc_count: number;
       }[];
-    }
-  : Agg extends estypes.AggregationsAdjacencyMatrixAggregation
-  ? {
-      buckets: estypes.AggregationsTermsBucketBase[];
     }
   : opensearchtypes.AggregationsAggregate;
