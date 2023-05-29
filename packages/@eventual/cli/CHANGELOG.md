@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.40.0 (2023-05-29)
+
+### Features
+
+- support put/get content type and metadata on bucket ([#378](https://github.com/functionless/eventual/issues/378)) ([26b8773](https://github.com/functionless/eventual/commit/26b87732ff220c8d75265870a0d54f1f93c8f70a))
+
 ## 0.39.8 (2023-05-26)
 
 ### Bug Fixes
