@@ -5,7 +5,7 @@
   "repository": "git@github.com:functionless/eventual",
   "author": "Functionless Corp.",
   "license": "Apache-2.0",
-  "packageManager": "pnpm@7.13.5",
+  "packageManager": "pnpm@8.5.0",
   "scripts": {
     "build": "tsc -b && turbo run build",
     "build:clean": "git clean -fqdx . && pnpm i && pnpm build",
