@@ -1,4 +1,5 @@
 import {
+  EntityStreamOperation,
   EntityStreamOptions,
   EntityStreamSpec,
   SourceLocation,
@@ -20,13 +21,14 @@ export interface EntityStreamHandler<
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
-    | undefined
+    | undefined,
+  Operations extends EntityStreamOperation[] = EntityStreamOperation[]
 > {
   /**
    * Provides the keys, new value
    */
   (
-    item: EntityStreamItem<Attr, Partition, Sort>,
+    item: EntityStreamItem<Attr, Partition, Sort, Operations>,
     context: EntityStreamContext
   ): Promise<void | false> | void | false;
 }
@@ -48,11 +50,13 @@ export type EntityStreamItem<
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
-    | undefined
-> =
+    | undefined,
+  Operations extends EntityStreamOperation[] = EntityStreamOperation[]
+> = (
   | EntityStreamInsertItem<Attr, Partition, Sort>
   | EntityStreamModifyItem<Attr, Partition, Sort>
-  | EntityStreamRemoveItem<Attr, Partition, Sort>;
+  | EntityStreamRemoveItem<Attr, Partition, Sort>
+) & { operation: Operations[number] };
 
 export interface EntityStreamInsertItem<
   Attr extends Attributes = Attributes,
