@@ -139,7 +139,6 @@ export class EntityService<Service> {
       );
       this.configureReadWriteEntityTable(this.transactionWorker);
       props.workflowService.configureSendSignal(this.transactionWorker);
-      props.searchService?.configureSearch(this.transactionWorker);
       props.eventService.configureEmit(this.transactionWorker);
     }
   }

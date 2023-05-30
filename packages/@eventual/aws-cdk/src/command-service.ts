@@ -418,7 +418,6 @@ export class CommandService<Service = any> {
     // for update task
     this.props.taskService.configureWriteTasks(this.systemCommandsHandler);
     this.props.taskService.configureCompleteTask(this.systemCommandsHandler);
-    this.props.searchService?.configureSearch(this.systemCommandsHandler);
     // emit events
     this.props.eventService.configureEmit(this.systemCommandsHandler);
     // get and list executions

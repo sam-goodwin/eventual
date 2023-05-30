@@ -80,8 +80,8 @@ export abstract class BaseSearchService<Service>
         const overrides =
           props.indices?.[index.index as keyof typeof props.indices];
         const spec: IndexSpec = {
-          ...(overrides ?? {}),
           ...index,
+          ...(overrides ?? {}),
           settings: {
             ...index.settings,
             ...(overrides?.settings ?? {}),

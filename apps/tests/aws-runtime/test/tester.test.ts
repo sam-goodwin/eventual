@@ -403,6 +403,5 @@ test("index.search", async () => {
       content: "i like fluffy pillows, they are super comfy",
     },
     count: 1,
-    count2: 1,
   });
 });

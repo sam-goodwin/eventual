@@ -101,6 +101,7 @@ export const isScheduledEvent = /* @__PURE__ */ or(
   isChildWorkflowScheduled,
   isEventsEmitted,
   isEntityRequest,
+  isSearchRequest,
   isSignalSent,
   isTaskScheduled,
   isTimerScheduled,
@@ -149,7 +150,9 @@ export const isCompletionEvent = /* @__PURE__ */ or(
   isTransactionRequestFailed,
   isTransactionRequestSucceeded,
   isWorkflowTimedOut,
-  isWorkflowRunStarted
+  isWorkflowRunStarted,
+  isSearchRequestFailed,
+  isSearchRequestSucceeded
 );
 
 /**
@@ -529,9 +532,7 @@ export interface SearchRequestFailed extends HistoryEventBase {
   message: string;
 }
 
-export function isSearchRequestStarted(
-  event: WorkflowEvent
-): event is SearchRequest {
+export function isSearchRequest(event: WorkflowEvent): event is SearchRequest {
   return event.type === WorkflowEventType.SearchRequest;
 }
 
