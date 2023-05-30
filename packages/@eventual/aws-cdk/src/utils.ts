@@ -1,5 +1,5 @@
 import { serviceFunctionName } from "@eventual/aws-runtime";
-import { ArnFormat, Stack } from "aws-cdk-lib";
+import { ArnFormat, Stack } from "aws-cdk-lib/core";
 import {
   Architecture,
   FunctionProps,

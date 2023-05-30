@@ -15,8 +15,7 @@ import {
   EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
   generateOpenAPISpec,
 } from "@eventual/core/internal";
-import { Arn, Duration, Lazy, Stack, aws_iam } from "aws-cdk-lib";
-import {
+import aws_iam, {
   Effect,
   IGrantable,
   PolicyStatement,
@@ -24,6 +23,7 @@ import {
   ServicePrincipal,
 } from "aws-cdk-lib/aws-iam";
 import type { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
+import { Arn, Duration, Lazy, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import type openapi from "openapi3-ts";
 import { BucketService } from "./bucket-service.js";

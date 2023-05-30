@@ -1,7 +1,7 @@
 import { ENV_NAMES, ExecutionRecord } from "@eventual/aws-runtime";
 import { LogLevel } from "@eventual/core";
 import { ExecutionQueueEventEnvelope } from "@eventual/core-runtime";
-import { RemovalPolicy } from "aws-cdk-lib";
+import { RemovalPolicy } from "aws-cdk-lib/core";
 import {
   AttributeType,
   BillingMode,

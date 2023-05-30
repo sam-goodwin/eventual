@@ -3,14 +3,14 @@ import { ENV_NAMES } from "@eventual/aws-runtime";
 import { Event } from "@eventual/core";
 import { MetricsCommon, OrchestratorMetrics } from "@eventual/core-runtime";
 import { EventualConfig, discoverEventualConfigSync } from "@eventual/project";
-import { Arn, Names, Stack, aws_events, aws_events_targets } from "aws-cdk-lib";
 import {
   Metric,
   MetricOptions,
   Statistic,
   Unit,
 } from "aws-cdk-lib/aws-cloudwatch";
-import { IEventBus } from "aws-cdk-lib/aws-events";
+import aws_events, { IEventBus } from "aws-cdk-lib/aws-events";
+import aws_events_targets from "aws-cdk-lib/aws-events-targets";
 import {
   AccountRootPrincipal,
   Effect,
@@ -23,6 +23,7 @@ import {
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
+import { Arn, Names, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import type openapi from "openapi3-ts";
 import path from "path";

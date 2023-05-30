@@ -1,12 +1,8 @@
-import {
-  App,
-  aws_dynamodb,
-  aws_lambda,
-  aws_lambda_nodejs,
-  CfnOutput,
-  Duration,
-  Stack,
-} from "aws-cdk-lib";
+import aws_dynamodb from "aws-cdk-lib/aws-dynamodb";
+import aws_lambda from "aws-cdk-lib/aws-lambda";
+import aws_lambda_nodejs from "aws-cdk-lib/aws-lambda-nodejs";
+import { App, CfnOutput, Duration, Stack } from "aws-cdk-lib/core";
+
 import * as eventual from "@eventual/aws-cdk";
 import { ServiceDashboard } from "@eventual/aws-cdk";
 

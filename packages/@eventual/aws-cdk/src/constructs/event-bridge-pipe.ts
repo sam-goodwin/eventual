@@ -1,4 +1,4 @@
-import { CfnResource } from "aws-cdk-lib";
+import { CfnResource } from "aws-cdk-lib/core";
 import {
   IGrantable,
   IPrincipal,

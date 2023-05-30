@@ -4,7 +4,7 @@ import {
   BundledFunction,
   computeDurationSeconds,
 } from "@eventual/core-runtime";
-import { Duration } from "aws-cdk-lib";
+import { Duration } from "aws-cdk-lib/core";
 import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import type { BuildOutput } from "./build";

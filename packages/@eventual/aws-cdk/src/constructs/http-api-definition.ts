@@ -1,5 +1,5 @@
 import { IHttpApi } from "@aws-cdk/aws-apigatewayv2-alpha";
-import { AssetOptions } from "aws-cdk-lib";
+import { AssetOptions } from "aws-cdk-lib/core";
 import { CfnApi } from "aws-cdk-lib/aws-apigatewayv2";
 import { IBucket } from "aws-cdk-lib/aws-s3";
 import { Asset } from "aws-cdk-lib/aws-s3-assets";

@@ -1,9 +1,10 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import { Schemas } from "@eventual/core/internal";
-import { aws_eventschemas, Lazy, Resource, Stack } from "aws-cdk-lib";
 import { EventBus, IEventBus } from "aws-cdk-lib/aws-events";
+import aws_eventschemas from "aws-cdk-lib/aws-eventschemas";
 import { IGrantable } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
+import { Lazy, Resource, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import type { OpenAPIObject, SchemaObject } from "openapi3-ts";
 import { grant } from "./grant";
