@@ -70,8 +70,16 @@ export type FieldsOfType<
   PropertyType extends estypes.MappingProperty,
   Paths extends string = ""
 > = Property extends PropertyType
-  ? Property extends estypes.MappingTextProperty
-    ? Paths | `${Paths}.keyword`
+  ? Property["fields"] extends Record<string, estypes.MappingProperty>
+    ?
+        | Paths
+        | {
+            [field in keyof Property["fields"]]: FieldsOfType<
+              Property["fields"][field],
+              PropertyType,
+              `${Paths}.${Extract<field, string>}`
+            >;
+          }[keyof Property["fields"]]
     : Paths
   : Property extends
       | estypes.MappingNestedProperty
@@ -99,4 +107,6 @@ export type FieldValue<
       string
     >}.${infer rest}`
   ? FieldValue<rest, Document[field]>
+  : FieldDotNotation extends keyof Document
+  ? Document[FieldDotNotation]
   : never;

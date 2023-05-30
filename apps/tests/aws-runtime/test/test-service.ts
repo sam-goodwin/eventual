@@ -1100,6 +1100,11 @@ export const blogIndex = index("blogIndex", {
     properties: {
       title: {
         type: "text",
+        fields: {
+          keyword: {
+            type: "keyword",
+          },
+        },
       },
       content: {
         type: "text",

@@ -395,7 +395,7 @@ test("index.search", async () => {
 
   await expect(
     serviceClient.searchBlog({
-      query: "super",
+      query: "fluffy pillows",
     })
   ).resolves.toEqual<Awaited<ReturnType<typeof serviceClient.searchBlog>>>({
     item: {
