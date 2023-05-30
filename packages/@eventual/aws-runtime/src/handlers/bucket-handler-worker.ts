@@ -11,6 +11,7 @@ import type { S3Handler } from "aws-lambda";
 import {
   createBucketStore,
   createEntityStore,
+  createOpenSearchClient,
   createServiceClient,
 } from "../create.js";
 import {
@@ -23,6 +24,7 @@ import {
 const worker = createBucketNotificationHandlerWorker({
   bucketStore: createBucketStore(),
   entityStore: createEntityStore(),
+  openSearchClient: await createOpenSearchClient(),
   serviceClient: createServiceClient({}),
   serviceName,
   serviceSpec,

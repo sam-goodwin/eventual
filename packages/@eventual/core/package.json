@@ -22,9 +22,11 @@
   },
   "dependencies": {
     "itty-router": "^2.6.6",
-    "openapi3-ts": "^3",
+    "openapi3-ts": "^3.1.2",
     "ulidx": "^0.3.0",
-    "zod": "^3.21.4"
+    "zod": "^3.21.4",
+    "@opensearch-project/opensearch": "^2.2.1",
+    "@elastic/elasticsearch": "^8.7.0"
   },
   "devDependencies": {
     "@jest/globals": "^29.5.0",
@@ -34,6 +36,7 @@
     "jest": "^29",
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.1",
+    "type-fest": "^3.11.0",
     "typescript": "^5",
     "ulidx": "^0.3.0"
   },

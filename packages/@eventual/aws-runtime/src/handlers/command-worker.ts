@@ -6,6 +6,7 @@ import {
   createBucketStore,
   createEntityStore,
   createEventClient,
+  createOpenSearchClient,
   createServiceClient,
   createTransactionClient,
 } from "../create.js";
@@ -22,6 +23,7 @@ export default createApiGCommandAdaptor({
   commandWorker: createCommandWorker({
     bucketStore: createBucketStore(),
     entityStore: createEntityStore(),
+    openSearchClient: await createOpenSearchClient(),
     // the service client, spec, and service url will be created at runtime, using a computed uri from the apigateway request
     serviceClient: undefined,
     serviceSpec: undefined,

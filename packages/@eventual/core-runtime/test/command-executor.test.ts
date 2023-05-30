@@ -1,5 +1,6 @@
 import {
   EventEnvelope,
+  OpenSearchClient,
   Schedule,
   SendSignalRequest,
   Workflow,
@@ -70,12 +71,15 @@ const mockTransactionClient = {
   executeTransaction: jest.fn() as TransactionClient["executeTransaction"],
 } satisfies Partial<TransactionClient> as TransactionClient;
 const mockBucketStore = {} satisfies Partial<BucketStore> as BucketStore;
+const mockOpenSearchClient =
+  {} satisfies Partial<OpenSearchClient> as OpenSearchClient;
 
 const testExecutor = new WorkflowCallExecutor({
   bucketStore: mockBucketStore,
   entityStore: mockEntityStore,
   eventClient: mockEventClient,
   executionQueueClient: mockExecutionQueueClient,
+  openSearchClient: mockOpenSearchClient,
   taskClient: mockTaskClient,
   transactionClient: mockTransactionClient,
   timerClient: mockTimerClient,

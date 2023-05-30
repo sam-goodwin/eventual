@@ -14,9 +14,9 @@
     "test:runtime-deploy": "pnpm -r --filter tests-runtime run deploy:runtime && pnpm -r --filter tests-runtime run test:runtime"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.332.0",
-    "@aws-sdk/client-sqs": "^3.332.0",
-    "@aws-sdk/client-ssm": "^3.332.0",
+    "@aws-sdk/client-dynamodb": "^3.341.0",
+    "@aws-sdk/client-sqs": "^3.341.0",
+    "@aws-sdk/client-ssm": "^3.341.0",
     "@eventual/aws-client": "workspace:^",
     "@eventual/cli": "workspace:^",
     "@eventual/client": "workspace:^",
@@ -25,15 +25,16 @@
   },
   "devDependencies": {
     "@anatine/zod-openapi": "^1.12.0",
-    "@aws-sdk/types": "^3.329.0",
+    "@aws-sdk/types": "^3.341.0",
     "@jest/globals": "^29.5.0",
     "@types/aws-lambda": "^8.10.115",
     "@types/jest": "^29.5.1",
     "@types/node": "^18",
+    "aws-cdk": "^2.80.0",
     "esbuild": "^0.17.4",
     "jest": "^29",
     "node-fetch": "^3.3.0",
-    "openapi3-ts": "^3",
+    "openapi3-ts": "^3.1.2",
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.1",
     "typescript": "^5.0.4"

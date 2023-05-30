@@ -41,6 +41,7 @@ export function createApiGCommandAdaptor({
       ? serviceClientBuilder(serviceUrl)
       : undefined;
     registerWorkerIntrinsics({
+      openSearchClient: undefined,
       bucketStore: undefined,
       entityStore: undefined,
       serviceClient,

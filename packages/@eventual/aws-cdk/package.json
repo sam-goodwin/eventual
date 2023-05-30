@@ -7,29 +7,33 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
+    "@aws-sdk/credential-provider-node": "^3.341.0",
     "@eventual/aws-runtime": "workspace:^",
     "@eventual/compiler": "workspace:^",
     "@eventual/core": "workspace:^",
     "@eventual/core-runtime": "workspace:^",
-    "@eventual/project": "workspace:^"
+    "@eventual/project": "workspace:^",
+    "@opensearch-project/opensearch": "^2.2.1",
+    "aws4": "^1.12.0"
   },
   "peerDependencies": {
-    "@aws-cdk/aws-apigatewayv2-alpha": "^2.50.0-alpha.0",
-    "@aws-cdk/aws-apigatewayv2-authorizers-alpha": "^2.50.0-alpha.0",
-    "@aws-cdk/aws-apigatewayv2-integrations-alpha": "^2.50.0-alpha.0",
-    "aws-cdk-lib": "^2.50.0",
+    "@aws-cdk/aws-apigatewayv2-alpha": "^2.80.0-alpha.0",
+    "@aws-cdk/aws-apigatewayv2-authorizers-alpha": "^2.80.0-alpha.0",
+    "@aws-cdk/aws-apigatewayv2-integrations-alpha": "^2.80.0-alpha.0",
+    "aws-cdk-lib": "^2.80.0",
     "constructs": "^10.0.0",
     "esbuild": ">=0.16.x <1.0.0"
   },
   "devDependencies": {
-    "@aws-cdk/aws-apigatewayv2-alpha": "2.50.0-alpha.0",
-    "@aws-cdk/aws-apigatewayv2-authorizers-alpha": "2.50.0-alpha.0",
-    "@aws-cdk/aws-apigatewayv2-integrations-alpha": "2.50.0-alpha.0",
+    "@aws-cdk/aws-apigatewayv2-alpha": "2.80.0-alpha.0",
+    "@aws-cdk/aws-apigatewayv2-authorizers-alpha": "2.80.0-alpha.0",
+    "@aws-cdk/aws-apigatewayv2-integrations-alpha": "2.80.0-alpha.0",
     "@types/aws-lambda": "8.10.115",
+    "@types/aws4": "^1.11.2",
     "@types/jest": "^29.5.1",
     "@types/node": "^18",
-    "aws-cdk": "2.50.0",
-    "aws-cdk-lib": "2.50.0",
+    "aws-cdk": "2.80.0",
+    "aws-cdk-lib": "2.80.0",
     "constructs": "10.1.154",
     "esbuild": "^0.17.4",
     "jest": "^29",

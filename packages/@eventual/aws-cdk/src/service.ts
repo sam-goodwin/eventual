@@ -3,14 +3,15 @@ import { ENV_NAMES } from "@eventual/aws-runtime";
 import { Event } from "@eventual/core";
 import { MetricsCommon, OrchestratorMetrics } from "@eventual/core-runtime";
 import { EventualConfig, discoverEventualConfigSync } from "@eventual/project";
-import { Arn, Names, Stack, aws_events, aws_events_targets } from "aws-cdk-lib";
+import { Arn, Names, Stack } from "aws-cdk-lib/core";
+import aws_events, { IEventBus } from "aws-cdk-lib/aws-events";
+import aws_events_targets from "aws-cdk-lib/aws-events-targets";
 import {
   Metric,
   MetricOptions,
   Statistic,
   Unit,
 } from "aws-cdk-lib/aws-cloudwatch";
-import { IEventBus } from "aws-cdk-lib/aws-events";
 import {
   AccountRootPrincipal,
   Effect,
@@ -67,6 +68,10 @@ import {
   TaskService,
 } from "./task-service.js";
 import { WorkflowService, WorkflowServiceOverrides } from "./workflow-service";
+import { SearchServiceOverrides, SearchService } from "./search/search-service";
+import { ServerlessSearchService } from "./search/serverless-search-service";
+import { ServerfulSearchService } from "./search/serverful-search-service";
+import { EngineVersion } from "aws-cdk-lib/aws-opensearchservice";
 
 /**
  * The properties for subscribing a Service to another Service's events.
@@ -140,6 +145,10 @@ export interface ServiceProps<Service = any> {
    * Keep in mind that the output must be valid for APIGateway.
    */
   openApi?: CommandsProps<Service>["openApi"];
+  /**
+   * Customize the configuration of the OpenSearch clusters and each of the OpenSearch Indices.
+   */
+  search?: SearchServiceOverrides<Service>;
   system?: {
     /**
      * Configuration properties for the workflow orchestrator
@@ -249,6 +258,8 @@ export class Service<S = any> extends Construct {
    */
   public readonly local?: ServiceLocal;
 
+  public readonly searchService: SearchService<S> | undefined;
+
   constructor(scope: Construct, id: string, props: ServiceProps<S>) {
     super(scope, id);
 
@@ -317,6 +328,33 @@ export class Service<S = any> extends Construct {
     this.eventService = new EventService(serviceConstructProps);
     this.bus = this.eventService.bus;
 
+    if (build.search.indices.length > 0) {
+      if (props.search?.serverless) {
+        const searchProps = props.search;
+        if (searchProps.serverless) {
+          this.searchService = new ServerlessSearchService({
+            collectionName: this.serviceName,
+            ...serviceConstructProps,
+            ...searchProps,
+          });
+        } else {
+          this.searchService = new ServerfulSearchService({
+            version: EngineVersion.OPENSEARCH_2_5,
+            domainName: this.serviceName,
+            ...serviceConstructProps,
+            ...searchProps,
+          });
+        }
+      } else {
+        // default to cheap free tier Domain
+        this.searchService = new ServerfulSearchService({
+          version: EngineVersion.OPENSEARCH_2_5,
+          domainName: this.serviceName,
+          ...serviceConstructProps,
+        });
+      }
+    }
+
     const entityService = new EntityService<S>({
       bucketService: proxyBucketService,
       commandService: proxyCommandService,
@@ -324,6 +362,7 @@ export class Service<S = any> extends Construct {
       entityServiceOverrides: props.system?.entityService,
       eventService: this.eventService,
       workflowService: proxyWorkflowService,
+      searchService: this.searchService,
       ...serviceConstructProps,
     });
     this.entities = entityService.entities;
@@ -336,6 +375,7 @@ export class Service<S = any> extends Construct {
       entityService,
       bucketOverrides: props.buckets,
       bucketHandlerOverrides: props.bucketNotificationHandlers,
+      searchService: this.searchService,
     });
     proxyBucketService._bind(this.bucketService);
     this.buckets = this.bucketService.buckets;
@@ -350,12 +390,14 @@ export class Service<S = any> extends Construct {
       overrides: props.tasks,
       local: this.local,
       entityService,
+      searchService: this.searchService,
     });
     proxyTaskService._bind(taskService);
     this.tasks = taskService.tasks;
 
     const workflowService = new WorkflowService({
       taskService,
+      searchService: this.searchService,
       bucketService: proxyBucketService,
       eventService: this.eventService,
       schedulerService: proxySchedulerService,
@@ -383,6 +425,7 @@ export class Service<S = any> extends Construct {
       local: this.local,
       entityService,
       openApi,
+      searchService: this.searchService,
       ...serviceConstructProps,
     });
     proxyCommandService._bind(this.commandService);
@@ -395,6 +438,7 @@ export class Service<S = any> extends Construct {
       commandService: this.commandService,
       eventService: this.eventService,
       subscriptions: props.subscriptions,
+      searchService: this.searchService,
       local: this.local,
       entityService,
       ...serviceConstructProps,

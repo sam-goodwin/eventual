@@ -21,6 +21,7 @@ import {
   isExpectSignalCall,
   isInvokeTransactionCall,
   isRegisterSignalHandlerCall,
+  isSearchCall,
   isSendSignalCall,
   isSignalSent,
   isTaskCall,
@@ -225,6 +226,20 @@ export function createEventualFromCall(
           isBucketRequest(event) && event.operation.operation === call.operation
         );
       },
+    };
+  } else if (isSearchCall(call)) {
+    return {
+      triggers: [
+        Trigger.onWorkflowEvent(
+          WorkflowEventType.SearchRequestSucceeded,
+          (event) => Result.resolved(event.body)
+        ),
+        Trigger.onWorkflowEvent(
+          WorkflowEventType.SearchRequestFailed,
+          (event) =>
+            Result.failed(new EventualError(event.error, event.message))
+        ),
+      ],
     };
   }
   return assertNever(call);

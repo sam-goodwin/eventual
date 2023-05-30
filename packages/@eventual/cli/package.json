@@ -51,12 +51,12 @@
     "access": "public"
   },
   "dependencies": {
-    "@aws-sdk/client-cloudwatch-logs": "^3.332.0",
-    "@aws-sdk/client-ssm": "^3.332.0",
-    "@aws-sdk/client-sts": "^3.332.0",
-    "@aws-sdk/config-resolver": "^3.329.0",
-    "@aws-sdk/node-config-provider": "^3.329.0",
-    "@aws-sdk/types": "^3.329.0",
+    "@aws-sdk/client-cloudwatch-logs": "^3.341.0",
+    "@aws-sdk/client-ssm": "^3.341.0",
+    "@aws-sdk/client-sts": "^3.341.0",
+    "@aws-sdk/config-resolver": "^3.341.0",
+    "@aws-sdk/node-config-provider": "^3.341.0",
+    "@aws-sdk/types": "^3.341.0",
     "@eventual/aws-client": "workspace:^",
     "@eventual/client": "workspace:^",
     "@eventual/compiler": "workspace:^",

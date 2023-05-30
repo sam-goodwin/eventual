@@ -1,6 +1,7 @@
+import type { opensearchtypes } from "@opensearch-project/opensearch";
 import type openapi from "openapi3-ts";
 import { Attributes } from "../entity/entity.js";
-import {
+import type {
   CompositeKeyPart,
   EntityCompositeKeyPart,
   StreamQueryKey,
@@ -43,6 +44,9 @@ export interface ServiceSpec {
   };
   openApi: {
     info: openapi.InfoObject;
+  };
+  search: {
+    indices: IndexSpec[];
   };
 }
 
@@ -173,6 +177,11 @@ export interface WorkflowSpec<Name extends string = string> {
 export interface BucketSpec<Name extends string = string> {
   name: Name;
   handlers: BucketNotificationHandlerSpec[];
+}
+
+export interface IndexSpec extends opensearchtypes.IndicesIndexState {
+  index: string;
+  settings: opensearchtypes.IndicesIndexSettings;
 }
 
 export type BucketNotificationEventType = "put" | "copy" | "delete";

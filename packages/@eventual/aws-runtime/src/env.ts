@@ -11,6 +11,7 @@ export const ENV_NAMES = {
   EVENT_BUS_ARN: "EVENTUAL_EVENT_BUS_ARN",
   WORKFLOW_QUEUE_URL: "EVENTUAL_WORKFLOW_QUEUE_URL",
   TASK_TABLE_NAME: "EVENTUAL_TASK_TABLE_NAME",
+  OPENSEARCH_ENDPOINT: "EVENTUAL_OPENSEARCH_ENDPOINT",
   SCHEDULER_ROLE_ARN: "EVENTUAL_SCHEDULER_ROLE_ARN",
   SCHEDULER_DLQ_ROLE_ARN: "EVENTUAL_SCHEDULER_DLQ_ROLE_ARN",
   SCHEDULER_GROUP: "EVENTUAL_SCHEDULER_GROUP",
@@ -34,7 +35,10 @@ export function tryGetEnv<T extends string = string>(name: string) {
   ) as T;
 }
 
+export const awsRegion = () => tryGetEnv("AWS_REGION");
 export const serviceName = () => tryGetEnv(ENV_NAMES.SERVICE_NAME);
+export const openSearchEndpoint = () =>
+  tryGetEnv(ENV_NAMES.OPENSEARCH_ENDPOINT);
 export const executionTableName = () =>
   tryGetEnv(ENV_NAMES.EXECUTION_TABLE_NAME);
 export const executionHistoryTableName = () =>

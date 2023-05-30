@@ -22,6 +22,7 @@ import {
   HeartbeatTimeout,
   HttpResponse,
   Schedule,
+  index,
   sendSignal,
   sendTaskHeartbeat,
   signal,
@@ -800,7 +801,15 @@ const noise = task(
         await check.set({ id, n });
       } catch (err) {
         console.error(err);
-        if (!(err instanceof TransactionConflictException)) {
+        if (
+          !(
+            err instanceof TransactionConflictException ||
+            (!!err &&
+              typeof err === "object" &&
+              "name" in err &&
+              err.name === "TransactionConflictException")
+          )
+        ) {
           throw err;
         }
       }
@@ -1083,5 +1092,70 @@ export const simpleEventHandler = subscription(
   { events: [simpleEvent] },
   (payload) => {
     console.log("hi", payload);
+  }
+);
+
+export const blogIndex = index("blogIndex", {
+  mappings: {
+    properties: {
+      title: {
+        type: "text",
+        fields: {
+          keyword: {
+            type: "keyword",
+          },
+        },
+      },
+      content: {
+        type: "text",
+      },
+    },
+  },
+});
+
+export const indexBlog = command(
+  "indexBlog",
+  async ({
+    blogId,
+    title,
+    content,
+  }: {
+    blogId: string;
+    title: string;
+    content: string;
+  }) => {
+    await blogIndex.index({
+      id: blogId,
+      body: {
+        title,
+        content,
+      },
+    });
+  }
+);
+
+export const searchBlog = command(
+  "searchBlog",
+  async ({ query: queryString }: { query: string }) => {
+    const query = {
+      match: {
+        content: {
+          query: queryString,
+        },
+      },
+    } as const;
+
+    const { count } = await blogIndex.count({
+      query,
+    });
+
+    const result = await blogIndex.search({
+      query,
+    });
+
+    return {
+      item: result.hits.hits[0]?._source,
+      count,
+    };
   }
 );

@@ -12,6 +12,7 @@ import {
   TaskStore,
   getLazy,
 } from "@eventual/core-runtime";
+import { isAwsErrorOfType } from "../utils.js";
 
 export interface AWSTaskStoreProps {
   taskTableName: LazyValue<string>;
@@ -50,7 +51,12 @@ export class AWSTaskStore implements TaskStore {
 
       return true;
     } catch (err) {
-      if (err instanceof ConditionalCheckFailedException) {
+      if (
+        isAwsErrorOfType<ConditionalCheckFailedException>(
+          err,
+          "ConditionalCheckFailedException"
+        )
+      ) {
         return false;
       }
       throw err;

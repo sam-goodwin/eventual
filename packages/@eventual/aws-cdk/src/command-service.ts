@@ -42,6 +42,7 @@ import { ServiceFunction } from "./service-function.js";
 import type { TaskService } from "./task-service";
 import { ServiceEntityProps, serviceFunctionArn } from "./utils";
 import type { WorkflowService } from "./workflow-service";
+import type { SearchService } from "./search/search-service.js";
 
 export type Commands<Service> = {
   default: EventualResource;
@@ -96,6 +97,7 @@ export interface CommandsProps<Service = any> extends ServiceConstructProps {
     info: openapi.InfoObject;
   };
   overrides?: CommandProps<Service>;
+  searchService?: SearchService<Service>;
   taskService: TaskService<Service>;
   workflowService: WorkflowService;
 }
@@ -401,17 +403,15 @@ export class CommandService<Service = any> {
     // Allow them to access any of the methods on the service client by default.
     this.props.service.configureForServiceClient(handler);
     this.grantInvokeHttpServiceApi(handler);
-    /**
-     * Entity operations
-     */
+    // Entity operations
     this.props.entityService.configureReadWriteEntityTable(handler);
     this.props.entityService.configureInvokeTransactions(
       this.systemCommandsHandler
     );
-    /**
-     * Bucket Operations
-     */
+    // Bucket Operations
     this.props.bucketService.configureReadWriteBuckets(handler);
+    // Search operations
+    this.props.searchService?.configureSearch(handler);
   }
 
   private configureSystemCommandHandler() {

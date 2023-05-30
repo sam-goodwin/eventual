@@ -11,7 +11,10 @@ import {
   LogEntry,
   LogsClient,
 } from "@eventual/core-runtime";
-import { formatWorkflowExecutionStreamName } from "../utils.js";
+import {
+  formatWorkflowExecutionStreamName,
+  isAwsErrorOfType,
+} from "../utils.js";
 
 export interface AWSLogsClientProps {
   cloudwatchLogsClient: CloudWatchLogsClient;
@@ -38,7 +41,12 @@ export class AWSLogsClient implements LogsClient {
       );
     } catch (err) {
       console.error("Log Client Put Execution Logs Error: ", err);
-      if (err instanceof InvalidParameterException) {
+      if (
+        isAwsErrorOfType<InvalidParameterException>(
+          err,
+          "InvalidParameterException"
+        )
+      ) {
         throw new Error(`${err.name}: ${err.message}`);
       }
       throw err;
@@ -56,7 +64,12 @@ export class AWSLogsClient implements LogsClient {
       );
     } catch (err) {
       // if the resource already exists, then there is no work to do.
-      if (err instanceof ResourceAlreadyExistsException) {
+      if (
+        isAwsErrorOfType<ResourceAlreadyExistsException>(
+          err,
+          "ResourceAlreadyExistsException"
+        )
+      ) {
         return;
       }
       throw err;
