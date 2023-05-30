@@ -1,7 +1,7 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import type { IndexSpec } from "@eventual/core/internal";
 import type { Function } from "aws-cdk-lib/aws-lambda";
-import aws_lambda from "aws-cdk-lib/aws-lambda";
+import * as aws_lambda from "aws-cdk-lib/aws-lambda";
 import { Duration, Lazy } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import type { ServiceConstructProps } from "../service";
