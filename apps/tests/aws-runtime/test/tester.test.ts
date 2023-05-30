@@ -389,8 +389,12 @@ test("index.search", async () => {
     title: "fluffy pillows",
     content: "i like fluffy pillows, they are super comfy",
   });
+
+  // wait 10s to ensure indexing has completed
+  await new Promise((resolve) => setTimeout(resolve, 10 * 1000));
+
   await expect(
-    await serviceClient.searchBlog({
+    serviceClient.searchBlog({
       query: "super",
     })
   ).resolves.toEqual<Awaited<ReturnType<typeof serviceClient.searchBlog>>>({
