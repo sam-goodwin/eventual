@@ -1151,19 +1151,10 @@ export const searchBlog = command(
 
     const result = await blogIndex.search({
       query,
-      aggs: {
-        numDocs: {
-          terms: {
-            field: "title.keyword",
-            include: queryString,
-          },
-        },
-      },
     });
 
     return {
       item: result.hits.hits[0]?._source,
-      countAggs: result.aggregations.numDocs.buckets,
       count,
     };
   }

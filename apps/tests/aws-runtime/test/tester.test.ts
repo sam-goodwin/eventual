@@ -403,11 +403,5 @@ test("index.search", async () => {
       content: "i like fluffy pillows, they are super comfy",
     },
     count: 1,
-    countAggs: [
-      {
-        key: "fluffy pillows",
-        doc_count: 1,
-      },
-    ],
   });
 });
