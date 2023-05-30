@@ -1,10 +1,10 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import type { IndexSpec } from "@eventual/core/internal";
 import type { Function } from "aws-cdk-lib/aws-lambda";
-import { Lazy } from "aws-cdk-lib/core";
+import aws_lambda from "aws-cdk-lib/aws-lambda";
+import { Duration, Lazy } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import type { ServiceConstructProps } from "../service";
-import { ServiceFunction } from "../service-function";
 import type { ServiceEntityProps } from "../utils";
 import { SearchIndex } from "./search-index";
 import type {
@@ -57,21 +57,24 @@ export abstract class BaseSearchService<Service>
     super(props.systemScope, "SearchService");
 
     this.indexRoot = new Construct(props.serviceScope, "Indices");
-    this.customResourceHandler = new ServiceFunction(
+    this.customResourceHandler = new aws_lambda.Function(
       this,
       "CustomResourceHandler",
       {
-        build: props.build,
-        bundledFunction: props.build.system.searchService.customResourceHandler,
-        functionNameSuffix: "search-custom-resource-handler",
-        serviceName: props.serviceName,
-        overrides: {
-          environment: {
-            OS_ENDPOINT: Lazy.string({
-              produce: () => this.endpoint,
-            }),
-          },
+        runtime: aws_lambda.Runtime.NODEJS_18_X,
+        handler:
+          props.build.system.searchService.customResourceHandler.handler ??
+          "index.default",
+        code: props.build.getCode(
+          props.build.system.searchService.customResourceHandler.entry
+        ),
+        environment: {
+          OS_ENDPOINT: Lazy.string({
+            produce: () => this.endpoint,
+          }),
         },
+        memorySize: 512,
+        timeout: Duration.minutes(1),
       }
     );
 
