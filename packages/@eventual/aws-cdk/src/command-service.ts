@@ -42,7 +42,7 @@ import { ServiceFunction } from "./service-function.js";
 import type { TaskService } from "./task-service";
 import { ServiceEntityProps, serviceFunctionArn } from "./utils";
 import type { WorkflowService } from "./workflow-service";
-import { SearchService } from "./search/search-service.js";
+import type { SearchService } from "./search/search-service.js";
 
 export type Commands<Service> = {
   default: EventualResource;

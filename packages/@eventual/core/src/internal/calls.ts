@@ -7,7 +7,7 @@ import type {
 } from "../entity/entity.js";
 import type { EventEnvelope } from "../event.js";
 import type { DurationSchedule, Schedule } from "../schedule.js";
-import { SearchIndex } from "../search/search-index.js";
+import type { SearchIndex } from "../search/search-index.js";
 import type { WorkflowExecutionOptions } from "../workflow.js";
 import type { BucketMethod } from "./bucket-hook.js";
 import type { EntityMethod } from "./entity-hook.js";
