@@ -46,4 +46,8 @@ type AggregationResult<Agg, Document> = Agg extends {
         doc_count: number;
       }[];
     }
+  : Agg extends {
+      value_count: opensearchtypes.AggregationsValueCountAggregation;
+    }
+  ? opensearchtypes.AggregationsValueAggregate
   : opensearchtypes.AggregationsAggregate;
