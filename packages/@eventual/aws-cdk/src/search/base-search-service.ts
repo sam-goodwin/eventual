@@ -1,12 +1,10 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
 import type { IndexSpec } from "@eventual/core/internal";
 import type { Function } from "aws-cdk-lib/aws-lambda";
-import { Runtime } from "aws-cdk-lib/aws-lambda";
-import * as aws_lambda_nodejs from "aws-cdk-lib/aws-lambda-nodejs";
 import { Lazy } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
-import path from "path";
 import type { ServiceConstructProps } from "../service";
+import { ServiceFunction } from "../service-function";
 import type { ServiceEntityProps } from "../utils";
 import { SearchIndex } from "./search-index";
 import type {
@@ -59,22 +57,24 @@ export abstract class BaseSearchService<Service>
     super(props.systemScope, "SearchService");
 
     this.indexRoot = new Construct(props.serviceScope, "Indices");
-    this.customResourceHandler = new aws_lambda_nodejs.NodejsFunction(
+    this.customResourceHandler = new ServiceFunction(
       this,
       "CustomResourceHandler",
       {
-        entry: path.join(__dirname, "custom-resource", "index.js"),
-        handler: "index.handle",
-        memorySize: 512,
-        runtime: Runtime.NODEJS_18_X,
-        environment: {
-          OS_ENDPOINT: Lazy.string({
-            produce: () => this.endpoint,
-          }),
-          NODE_OPTIONS: "--enable-source-maps",
+        build: props.build,
+        bundledFunction: props.build.system.searchService.customResourceHandler,
+        functionNameSuffix: "search-custom-resource-handler",
+        serviceName: props.serviceName,
+        overrides: {
+          environment: {
+            OS_ENDPOINT: Lazy.string({
+              produce: () => this.endpoint,
+            }),
+          },
         },
       }
     );
+
     this.indices = Object.fromEntries(
       props.build.search.indices.map((index) => {
         const overrides =

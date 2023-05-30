@@ -50,6 +50,9 @@ export interface BuildManifest {
     workflowService: {
       orchestrator: BundledFunction;
     };
+    searchService: {
+      customResourceHandler: BundledFunction;
+    };
   };
 }
 

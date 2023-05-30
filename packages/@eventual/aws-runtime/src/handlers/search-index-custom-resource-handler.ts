@@ -7,7 +7,6 @@ import {
 } from "@opensearch-project/opensearch";
 import type { CloudFormationCustomResourceHandler } from "aws-lambda";
 import aws4 from "aws4";
-import type { SearchIndexResourceAttributes } from "../search-index";
 
 const endpoint = process.env.OS_ENDPOINT;
 
@@ -48,7 +47,9 @@ export const handle: CloudFormationCustomResourceHandler = async (event) => {
     });
   }
 
-  async function createUpdateOrDelete(): Promise<SearchIndexResourceAttributes> {
+  async function createUpdateOrDelete(): Promise<{
+    IndexName: string;
+  }> {
     if (event.RequestType === "Create") {
       const props = event.ResourceProperties as any as IndexSpec;
       console.log(`Creating index ${props.index}`, props);
