@@ -22,6 +22,10 @@ export interface SearchRequest<Mapping extends estypes.MappingProperty> {
   };
 }
 
+export interface CountRequest<Mapping extends estypes.MappingProperty> {
+  query?: Query<Mapping>;
+}
+
 export type Query<Mapping extends estypes.MappingProperty> =
   | FullTextQuery<Mapping>
   | GeoQuery<Mapping>

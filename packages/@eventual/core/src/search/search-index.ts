@@ -20,7 +20,7 @@ import { searchIndices } from "../internal/global.js";
 import { getOpenSearchHook } from "../internal/search-hook.js";
 import { assertApiResponseOK } from "./assert-api-response.js";
 import type { MappingToDocument } from "./mapping.js";
-import type { SearchRequest } from "./query/search-query.js";
+import type { CountRequest, SearchRequest } from "./query/search-query.js";
 import type { SearchResponse } from "./search-response.js";
 
 import t from "type-fest";
@@ -93,7 +93,7 @@ export interface SearchIndex<
   ): Promise<opensearchtypes.IndexResponse>;
   bulk(request: BulkRequest<Document>): Promise<opensearchtypes.BulkResponse>;
   count(
-    request: SearchRequest<{
+    request: CountRequest<{
       properties: Properties;
     }>
   ): Promise<opensearchtypes.CountResponse>;

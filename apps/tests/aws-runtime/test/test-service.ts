@@ -1142,14 +1142,6 @@ export const searchBlog = command(
 
     const { count } = await blogIndex.count({
       query,
-      aggs: {
-        numDocs: {
-          terms: {
-            field: "content",
-            include: queryString,
-          },
-        },
-      },
     });
 
     const result = await blogIndex.search({
