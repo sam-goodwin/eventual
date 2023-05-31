@@ -160,6 +160,7 @@ ${npm("deploy")}
           "@tsconfig/node18": "^1",
           "@types/jest": "^29",
           "@types/node": "^18",
+          "aws-cdk": "^2.80.0",
           esbuild: "^0.16.14",
           typescript: "^5",
         },
