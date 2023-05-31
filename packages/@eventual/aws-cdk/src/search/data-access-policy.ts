@@ -1,4 +1,5 @@
-import { Lazy, Resource, aws_opensearchserverless } from "aws-cdk-lib";
+import aws_opensearchserverless from "aws-cdk-lib/aws-opensearchserverless";
+import { Lazy, Resource } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import { Collection } from "./collection";
 

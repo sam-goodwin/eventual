@@ -1,7 +1,7 @@
-import { AssetHashType, DockerImage } from "aws-cdk-lib";
 import { IGrantable } from "aws-cdk-lib/aws-iam";
 import { Code, Function, LayerVersion } from "aws-cdk-lib/aws-lambda";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
+import { AssetHashType, DockerImage } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import esbuild from "esbuild";
 import fs from "fs";
