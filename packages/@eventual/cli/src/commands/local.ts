@@ -2,7 +2,7 @@ import { inferFromMemory } from "@eventual/compiler";
 import { HttpMethod, HttpRequest } from "@eventual/core";
 import { LocalEnvironment } from "@eventual/core-runtime";
 import { ServiceSpec } from "@eventual/core/internal";
-import { discoverEventualConfig, EventualConfig } from "@eventual/project";
+import { EventualConfig, discoverEventualConfig } from "@eventual/project";
 import { exec as _exec } from "child_process";
 import express from "express";
 import ora, { Ora } from "ora";
@@ -16,6 +16,7 @@ import {
   getServiceData,
   getServiceSpec,
   isServiceDeployed,
+  resolveRegion,
   tryResolveDefaultService,
 } from "../service-data.js";
 const execPromise = promisify(_exec);
@@ -47,6 +48,8 @@ export const local = (yargs: Argv) =>
       const spinner = ora();
       spinner.start("Starting Local Eventual Dev Server");
       process.env.EVENTUAL_LOCAL = "1";
+
+      region = region ?? (await resolveRegion());
 
       const config = await discoverEventualConfig();
 
