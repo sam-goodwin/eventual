@@ -9,6 +9,6 @@
   "references": [
     { "path": "../../packages/@eventual/aws-client" },
     { "path": "../../packages/@eventual/core" },
-    { "path": "../../packages/@eventual/integrations-slack" }
+    { "path": "../../packages/@eventual/integrations/slack" }
   ]
 }

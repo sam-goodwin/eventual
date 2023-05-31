@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@anatine/zod-openapi": "^1.12.0",
+    "aws-cdk-lib": "^2.81.0",
     "@aws-sdk/types": "^3.341.0",
     "@jest/globals": "^29.5.0",
     "@types/aws-lambda": "^8.10.115",
