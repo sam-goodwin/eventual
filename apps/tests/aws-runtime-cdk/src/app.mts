@@ -20,9 +20,9 @@ import type * as testServiceRuntime from "tests-runtime";
 
 const require = topLevelCreateRequire(import.meta.url);
 
-const currentIdent = await new STSClient({}).send(
-  new GetCallerIdentityCommand({})
-);
+const currentIdent = await new STSClient({
+  region: process.env.AWS_REGION ?? "us-east-1",
+}).send(new GetCallerIdentityCommand({}));
 const assumeRoleArn = currentIdent.Arn;
 
 if (!assumeRoleArn) {
@@ -61,8 +61,12 @@ const testService = new eventual.Service<typeof testServiceRuntime>(
     },
     buckets: {
       myBucket: {
-        bucketName: `super-random-test-bucket-${stack.account}`,
+        bucketName: `super-random-test-bucket-${stack.account}-${stack.region}`,
       },
+    },
+    search: {
+      serverless: false,
+      domainName: "eventual-tests-2",
     },
     cors: {
       allowOrigins: ["http://some-url.com"],

@@ -12,6 +12,7 @@ import {
   LazyValue,
   UpdateHistoryRequest,
 } from "@eventual/core-runtime";
+import { isAwsErrorOfType } from "../utils.js";
 
 export interface AWSExecutionHistoryStateStoreProps {
   s3: S3Client;
@@ -35,7 +36,7 @@ export class AWSExecutionHistoryStateStore
 
       return historyEntryToEvents(historyObject);
     } catch (err) {
-      if (err instanceof NoSuchKey) {
+      if (isAwsErrorOfType<NoSuchKey>(err, "NoSuchKey")) {
         return [];
       }
       throw err;

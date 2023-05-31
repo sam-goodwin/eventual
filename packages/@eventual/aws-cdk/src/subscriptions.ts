@@ -20,6 +20,7 @@ import type {
 } from "./service";
 import { ServiceFunction } from "./service-function";
 import type { ServiceEntityProps } from "./utils";
+import { SearchService } from "./search/search-service";
 
 export type Subscriptions<Service> = ServiceEntityProps<
   Service,
@@ -44,6 +45,7 @@ export interface SubscriptionsProps<S = any> extends ServiceConstructProps {
    */
   readonly entityService: EntityService<S>;
   readonly eventService: EventService;
+  readonly searchService: SearchService<S> | undefined;
   readonly local: ServiceLocal | undefined;
   /**
    * Configuration for individual Event Handlers created with `onEvent`.
@@ -87,6 +89,8 @@ export const Subscriptions: {
     Object.assign(this, subscriptions);
 
     handlers.forEach((handler) => {
+      props.searchService?.configureSearch(handler);
+
       props.eventService.configureEmit(handler);
 
       // allows the access to all of the operations on the injected service client

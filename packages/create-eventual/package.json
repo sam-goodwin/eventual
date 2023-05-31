@@ -1,6 +1,6 @@
 {
   "name": "create-eventual",
-  "version": "0.40.0",
+  "version": "0.41.0",
   "type": "commonjs",
   "files": [
     "bin",
@@ -14,7 +14,7 @@
     "watch": "esbuild src/index.ts --bundle --outfile=lib/cli.js --platform=node --watch --sourcemap=inline"
   },
   "dependencies": {
-    "aws-cdk": "^2.81.0",
+    "aws-cdk": "^2.80.0",
     "create-sst": "latest"
   },
   "devDependencies": {

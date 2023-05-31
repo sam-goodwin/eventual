@@ -378,3 +378,30 @@ test("test service context", async () => {
     serviceUrl: url,
   });
 });
+
+test("index.search", async () => {
+  const serviceClient = new ServiceClient<typeof TestService>({
+    serviceUrl: url,
+  });
+
+  await serviceClient.indexBlog({
+    blogId: "blog-id-1",
+    title: "fluffy pillows",
+    content: "i like fluffy pillows, they are super comfy",
+  });
+
+  // wait 10s to ensure indexing has completed
+  await new Promise((resolve) => setTimeout(resolve, 10 * 1000));
+
+  await expect(
+    serviceClient.searchBlog({
+      query: "fluffy pillows",
+    })
+  ).resolves.toEqual<Awaited<ReturnType<typeof serviceClient.searchBlog>>>({
+    item: {
+      title: "fluffy pillows",
+      content: "i like fluffy pillows, they are super comfy",
+    },
+    count: 1,
+  });
+});

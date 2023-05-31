@@ -20,4 +20,7 @@ export default {
       version: "1",
     },
   },
+  search: {
+    indices: [],
+  },
 } satisfies ServiceSpec;

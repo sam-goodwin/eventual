@@ -40,6 +40,7 @@ import { EventualResource, ServiceConstructProps } from "./service";
 import { ServiceFunction } from "./service-function";
 import { ServiceEntityProps, serviceTableArn } from "./utils";
 import { WorkflowService } from "./workflow-service.js";
+import { SearchService } from "./search/search-service";
 
 export type ServiceEntities<Service> = ServiceEntityProps<
   Service,
@@ -71,6 +72,7 @@ export type EntityStreamHandlerProps = Omit<
 export interface EntityServiceProps<Service> extends ServiceConstructProps {
   bucketService: LazyInterface<BucketService<Service>>;
   commandService: LazyInterface<CommandService<Service>>;
+  searchService: SearchService<Service> | undefined;
   eventService: LazyInterface<EventService>;
   workflowService: LazyInterface<WorkflowService>;
   entityStreamOverrides?: EntityStreamOverrides<Service>;
@@ -102,6 +104,7 @@ export class EntityService<Service> {
           entity: d,
           entityService: this,
           serviceProps: props,
+          searchService: props.searchService,
         }),
       ])
     ) as ServiceEntities<Service>;
@@ -199,6 +202,7 @@ export class EntityService<Service> {
 }
 
 interface EntityProps {
+  searchService: SearchService<any> | undefined;
   serviceProps: EntityServiceProps<any>;
   entityService: EntityService<any>;
   entity: EntityRuntime;
@@ -368,6 +372,7 @@ export class EntityStream extends Construct implements EventualResource {
 
     props.serviceProps.bucketService.configureReadWriteBuckets(this.handler);
     props.entityService.configureReadWriteEntityTable(this.handler);
+    props.serviceProps.searchService?.configureSearch(this.handler);
 
     this.grantPrincipal = this.handler.grantPrincipal;
 

@@ -21,7 +21,7 @@ export function grant() {
   return function <Target>(
     _target: Target,
     _key: string,
-    descriptor: TypedPropertyDescriptor<(grantable: aws_iam.IGrantable) => any>
+    descriptor: TypedPropertyDescriptor<(grantable: any) => any>
   ) {
     const original = descriptor.value!;
     descriptor.value = function (

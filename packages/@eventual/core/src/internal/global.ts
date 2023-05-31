@@ -10,6 +10,7 @@ import type { Transaction } from "../transaction.js";
 import type { Workflow } from "../workflow.js";
 import type { EnvironmentManifest, ServiceSpec } from "./service-spec.js";
 import type { TaskRuntimeContext } from "./task.js";
+import type { SearchIndex } from "../search/search-index.js";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -38,6 +39,10 @@ declare global {
      * A data bucket within eventual.
      */
     buckets?: Map<string, Bucket>;
+    /**
+     * The search indexes within this eventual service.
+     */
+    searchIndices?: Map<string, SearchIndex>;
     /**
      * A global variable for storing the WorkflowClient
      * this is initialized by Eventual's harness lambda functions
@@ -85,6 +90,9 @@ export const entities = (): Map<string, Entity<any, any, any>> =>
 
 export const buckets = (): Map<string, Bucket> =>
   (globalThis._eventual.buckets ??= new Map<string, Bucket>());
+
+export const searchIndices = (): Map<string, SearchIndex> =>
+  (globalThis._eventual.searchIndices ??= new Map<string, SearchIndex>());
 
 export function clearEventHandlers() {
   globalThis._eventual.subscriptions = [];

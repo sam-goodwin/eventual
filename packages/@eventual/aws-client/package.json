@@ -8,19 +8,19 @@
   },
   "main": "./lib/cjs/index.js",
   "module": "./lib/esm/index.js",
-  "version": "0.40.0",
+  "version": "0.41.0",
   "scripts": {
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
     "@aws-crypto/sha256-js": "^2.0.2",
-    "@aws-sdk/client-secrets-manager": "^3.254.0",
-    "@aws-sdk/config-resolver": "^3.254.0",
-    "@aws-sdk/credential-provider-node": "^3.254.0",
-    "@aws-sdk/node-config-provider": "^3.254.0",
-    "@aws-sdk/protocol-http": "^3.254.0",
-    "@aws-sdk/querystring-parser": "^3.254.0",
-    "@aws-sdk/signature-v4": "^3.254.0",
+    "@aws-sdk/client-secrets-manager": "^3.341.0",
+    "@aws-sdk/config-resolver": "^3.341.0",
+    "@aws-sdk/credential-provider-node": "^3.341.0",
+    "@aws-sdk/node-config-provider": "^3.341.0",
+    "@aws-sdk/protocol-http": "^3.341.0",
+    "@aws-sdk/querystring-parser": "^3.341.0",
+    "@aws-sdk/signature-v4": "^3.341.0",
     "@eventual/client": "workspace:^",
     "@eventual/core": "workspace:^"
   },

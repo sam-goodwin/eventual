@@ -97,6 +97,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
       taskFallbackHandler,
       scheduleForwarder,
       timerHandler,
+      searchIndexCustomResourceHandler,
     ],
   ] = await Promise.all([
     bundleMonolithDefaultHandlers(specPath),
@@ -123,6 +124,7 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         name: "default",
       },
     },
+    search: serviceSpec.search,
     entities: {
       entities: await Promise.all(
         serviceSpec.entities.entities.map(async (d) => ({
@@ -179,6 +181,12 @@ export async function buildService(request: BuildAWSRuntimeProps) {
         },
         timerHandler: {
           entry: timerHandler!,
+          handler: "index.handle",
+        },
+      },
+      searchService: {
+        customResourceHandler: {
+          entry: searchIndexCustomResourceHandler!,
           handler: "index.handle",
         },
       },
@@ -366,6 +374,12 @@ export async function buildService(request: BuildAWSRuntimeProps) {
           {
             name: "SchedulerHandler",
             entry: runtimeHandlersEntrypoint("timer-handler"),
+          },
+          {
+            name: "SearchIndexCustomResourceHandler",
+            entry: runtimeHandlersEntrypoint(
+              "search-index-custom-resource-handler"
+            ),
           },
         ] satisfies Omit<
           BuildSource,

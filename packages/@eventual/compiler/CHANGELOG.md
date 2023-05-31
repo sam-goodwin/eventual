@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.41.0 (2023-05-30)
+
+### Features
+
+- add searchIndex and supporting infrastructure ([#360](https://github.com/functionless/eventual/issues/360)) ([ee0f228](https://github.com/functionless/eventual/commit/ee0f2284b2759fd08a02f260227e82b7dfd783b3))
+
+## 0.40.1 (2023-05-29)
+
+**Note:** Version bump only for package @eventual/compiler
+
 # 0.40.0 (2023-05-29)
 
 ### Features

@@ -1,6 +1,7 @@
+import type { opensearchtypes } from "@opensearch-project/opensearch";
 import type openapi from "openapi3-ts";
 import { Attributes } from "../entity/entity.js";
-import {
+import type {
   CompositeKeyPart,
   EntityCompositeKeyPart,
   StreamQueryKey,
@@ -43,6 +44,9 @@ export interface ServiceSpec {
   };
   openApi: {
     info: openapi.InfoObject;
+  };
+  search: {
+    indices: IndexSpec[];
   };
 }
 
@@ -175,6 +179,11 @@ export interface BucketSpec<Name extends string = string> {
   handlers: BucketNotificationHandlerSpec[];
 }
 
+export interface IndexSpec extends opensearchtypes.IndicesIndexState {
+  index: string;
+  settings: opensearchtypes.IndicesIndexSettings;
+}
+
 export type BucketNotificationEventType = "put" | "copy" | "delete";
 
 export interface BucketNotificationHandlerOptions extends FunctionRuntimeProps {
@@ -215,14 +224,15 @@ export interface EntityStreamOptions<
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
-    | undefined
+    | undefined,
+  Operations extends EntityStreamOperation[] = EntityStreamOperation[]
 > extends FunctionRuntimeProps {
   /**
    * A list of operations to be send to the stream.
    *
    * @default All Operations
    */
-  operations?: EntityStreamOperation[];
+  operations?: Operations;
   /**
    * When true, the old value will be sent with the new value.
    */

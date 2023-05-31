@@ -1,6 +1,6 @@
 {
   "name": "@eventual/core-runtime",
-  "version": "0.40.0",
+  "version": "0.41.0",
   "exports": {
     ".": {
       "import": "./lib/esm/index.js",
@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@eventual/core": "workspace:^",
+    "@opensearch-project/opensearch": "^2.2.1",
     "heap-js": "2.2.0",
     "itty-router": "^2.6.6",
     "ulidx": "^0.3.0",

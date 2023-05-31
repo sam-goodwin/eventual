@@ -13,20 +13,21 @@ import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import { BucketService } from "./bucket-service";
 import type { BuildOutput } from "./build";
-import { CommandService } from "./command-service";
+import type { CommandService } from "./command-service";
 import { DeepCompositePrincipal } from "./deep-composite-principal";
-import { EntityService } from "./entity-service";
+import type { EntityService } from "./entity-service";
 import { grant } from "./grant";
-import { LazyInterface } from "./proxy-construct";
-import { SchedulerService } from "./scheduler-service";
-import {
+import type { LazyInterface } from "./proxy-construct";
+import type { SchedulerService } from "./scheduler-service";
+import type {
   EventualResource,
   ServiceConstructProps,
   ServiceLocal,
 } from "./service";
 import { ServiceFunction } from "./service-function";
 import { ServiceEntityProps, serviceFunctionArn } from "./utils";
-import { WorkflowService } from "./workflow-service";
+import type { WorkflowService } from "./workflow-service";
+import type { SearchService } from "./search/search-service";
 
 export type ServiceTasks<Service> = ServiceEntityProps<Service, "Task", Task>;
 
@@ -37,6 +38,7 @@ export type TaskOverrides<Service> = {
 export interface TasksProps<Service> extends ServiceConstructProps {
   readonly bucketService: LazyInterface<BucketService<Service>>;
   readonly commandsService: LazyInterface<CommandService<Service>>;
+  readonly searchService: LazyInterface<SearchService<Service>> | undefined;
   readonly entityService: EntityService<Service>;
   readonly local: ServiceLocal | undefined;
   readonly overrides?: TaskOverrides<Service>;
@@ -240,6 +242,7 @@ export class TaskService<Service = any> {
      * Bucket operations
      */
     this.props.bucketService.configureReadWriteBuckets(func);
+    this.props.searchService?.configureSearch(func);
   }
 
   private configureTaskFallbackHandler() {
