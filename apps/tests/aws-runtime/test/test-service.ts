@@ -695,6 +695,36 @@ export const entityIndexTask = task(
           namespace: e.value.namespace,
         }))
       ),
+      allCountersByN
+        .query({
+          id,
+          n: { betweenStart: 2, betweenEnd: 100 },
+        })
+        .then((q) =>
+          q.entries?.map((e) => ({
+            n: e.value.n,
+            namespace: e.value.namespace,
+          }))
+        ),
+      allCountersByN
+        .query({
+          id,
+          n: { greaterThan: 100 },
+        })
+        .then((q) =>
+          q.entries?.map((e) => ({
+            n: e.value.n,
+            namespace: e.value.namespace,
+          }))
+        ),
+      countersByNamespace
+        .query({ id, namespace: { beginsWith: "d" } }, { direction: "DESC" })
+        .then((q) =>
+          q.entries?.map((e) => ({
+            n: e.value.n,
+            namespace: e.value.namespace,
+          }))
+        ),
       // sparse indices only include records with the given field
       countersByOptional2.query({ id }).then((q) =>
         q.entries?.map((e) => ({

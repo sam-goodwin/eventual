@@ -25,6 +25,7 @@ import {
   EntityScanOptions,
   EntitySetOptions,
   EntityWithMetadata,
+  KeyValue,
   TransactionCancelled,
   TransactionConflict,
   UnexpectedVersion,
@@ -37,12 +38,22 @@ import {
   LazyValue,
   NormalizedEntityCompositeKey,
   NormalizedEntityCompositeKeyComplete,
-  NormalizedEntityKeyCompletePart,
+  NormalizedEntityCompositeQueryKey,
+  NormalizedEntityQueryKeyPart,
   NormalizedEntityTransactItem,
   removeGeneratedKeyAttributes,
   removeKeyAttributes,
 } from "@eventual/core-runtime";
-import { assertNever } from "@eventual/core/internal";
+import {
+  assertNever,
+  isBeginsWithQueryKeyCondition,
+  isBetweenQueryKeyCondition,
+  isGreaterThanEqualsQueryKeyCondition,
+  isGreaterThanQueryKeyCondition,
+  isLessThanEqualsQueryKeyCondition,
+  isLessThanQueryKeyCondition,
+  KeyDefinitionPart,
+} from "@eventual/core/internal";
 import {
   entityServiceTableName,
   isAwsErrorOfType,
@@ -187,7 +198,7 @@ export class AWSEntityStore extends EntityStore {
 
   protected override async _query(
     entity: Entity | EntityIndex,
-    queryKey: NormalizedEntityCompositeKey<NormalizedEntityKeyCompletePart>,
+    queryKey: NormalizedEntityCompositeQueryKey,
     options?: EntityQueryOptions
   ): Promise<EntityQueryResult> {
     const [_entity, _index] =
@@ -195,11 +206,19 @@ export class AWSEntityStore extends EntityStore {
         ? [entity, undefined]
         : [this.getEntity(entity.entityName), entity];
 
+    const partitionCondition = `${formatAttributeNameMapKey(
+      queryKey.partition.keyAttribute
+    )}=:pk`;
+
+    const {
+      expression: sortExpression,
+      attribute: sortAttribute,
+      attributeValueMap: sortAttributeValueMap,
+    } = getSortKeyExpressionAndAttribute(queryKey.sort) ?? {};
+
     const allAttributes = new Set([
       queryKey.partition.keyAttribute,
-      ...(queryKey.sort && queryKey.sort.keyValue !== undefined
-        ? [queryKey.sort.keyAttribute]
-        : []),
+      ...(sortAttribute ? [sortAttribute] : []),
     ]);
 
     const result = await queryPageWithToken<
@@ -218,39 +237,15 @@ export class AWSEntityStore extends EntityStore {
         IndexName: _index?.name,
         ConsistentRead: options?.consistentRead,
         ScanIndexForward: !options?.direction || options?.direction === "ASC", // default is ASC, ascending
-        KeyConditionExpression:
-          queryKey.sort &&
-          (queryKey.sort.keyValue !== undefined ||
-            queryKey.sort.keyValue === "")
-            ? queryKey.sort.partialValue
-              ? `${formatAttributeNameMapKey(
-                  queryKey.partition.keyAttribute
-                )}=:pk AND begins_with(${formatAttributeNameMapKey(
-                  queryKey.sort.keyAttribute
-                )}, :sk)`
-              : `${formatAttributeNameMapKey(
-                  queryKey.partition.keyAttribute
-                )}=:pk AND ${formatAttributeNameMapKey(
-                  queryKey.sort.keyAttribute
-                )}=:sk`
-            : `${formatAttributeNameMapKey(
-                queryKey.partition.keyAttribute
-              )}=:pk`,
+        KeyConditionExpression: sortExpression
+          ? [partitionCondition, sortExpression].join(" AND ")
+          : partitionCondition,
         ExpressionAttributeValues: {
-          ":pk":
-            typeof queryKey.partition.keyValue === "number"
-              ? { N: queryKey.partition.keyValue.toString() }
-              : { S: queryKey.partition.keyValue },
-          ...(queryKey.sort &&
-          (queryKey.sort.keyValue !== undefined ||
-            queryKey.sort.keyValue === "")
-            ? {
-                ":sk":
-                  typeof queryKey.sort.keyValue === "string"
-                    ? { S: queryKey.sort.keyValue }
-                    : { N: queryKey.sort.keyValue.toString() },
-              }
-            : {}),
+          ":pk": keyPartAttributeValue(
+            queryKey.partition,
+            queryKey.partition.keyValue
+          ),
+          ...sortAttributeValueMap,
         },
         ExpressionAttributeNames: Object.fromEntries(
           [...allAttributes]?.map((f) => [formatAttributeNameMapKey(f), f])
@@ -501,4 +496,91 @@ function formatAttributeValueMapKey(key: string) {
 
 function formatAttributeMapKey(key: string, prefix: string) {
   return `${prefix}${key.replaceAll(/[|.\- ]/g, "_")}`;
+}
+
+function getSortKeyExpressionAndAttribute(
+  keyPart?: NormalizedEntityQueryKeyPart
+):
+  | undefined
+  | {
+      expression: string;
+      attribute: string;
+      attributeValueMap: Record<string, AttributeValue>;
+    } {
+  // sort key is undefined, return undefined
+  if (!keyPart) {
+    return undefined;
+  }
+
+  const attributeNameKey = formatAttributeNameMapKey(keyPart.keyAttribute);
+
+  // if the key part is a condition key part
+  if ("condition" in keyPart) {
+    if (isBetweenQueryKeyCondition(keyPart.condition)) {
+      return {
+        attribute: keyPart.keyAttribute,
+        expression: `${attributeNameKey} BETWEEN :skLeft AND :skRight`,
+        attributeValueMap: {
+          ":skLeft": keyPartAttributeValue(
+            keyPart,
+            keyPart.condition.betweenStart
+          ),
+          ":skRight": keyPartAttributeValue(
+            keyPart,
+            keyPart.condition.betweenEnd
+          ),
+        },
+      };
+    } else {
+      const [value, expression] = isBeginsWithQueryKeyCondition(
+        keyPart.condition
+      )
+        ? [
+            keyPart.condition.beginsWith,
+            `begins_with(${attributeNameKey}, :sk)`,
+          ]
+        : isLessThanQueryKeyCondition(keyPart.condition)
+        ? [keyPart.condition.lessThan, `${attributeNameKey} < :sk`]
+        : isLessThanEqualsQueryKeyCondition(keyPart.condition)
+        ? [keyPart.condition.lessThanEquals, `${attributeNameKey} <= :sk`]
+        : isGreaterThanQueryKeyCondition(keyPart.condition)
+        ? [keyPart.condition.greaterThan, `${attributeNameKey} > :sk`]
+        : isGreaterThanEqualsQueryKeyCondition(keyPart.condition)
+        ? [keyPart.condition.greaterThanEquals, `${attributeNameKey} >= :sk`]
+        : assertNever(keyPart.condition);
+
+      return {
+        expression,
+        attribute: keyPart.keyAttribute,
+        attributeValueMap: {
+          ":sk": keyPartAttributeValue(keyPart, value),
+        },
+      };
+    }
+  } else if (keyPart.keyValue === undefined) {
+    // if the key value is undefined (no key part attributes given), return undefined.
+    return undefined;
+  }
+  // finally, format the prefix or exact match use cases based on if the key part attributes are partial or not.
+  return {
+    expression: keyPart.partialValue
+      ? `begins_with(${attributeNameKey}, :sk)`
+      : `${attributeNameKey}=:sk`,
+    attribute: keyPart.keyAttribute,
+    attributeValueMap: {
+      ":sk": keyPartAttributeValue(keyPart, keyPart.keyValue),
+    },
+  };
+}
+
+/**
+ * Given a key part, format the value based on the key part's type.
+ */
+function keyPartAttributeValue(
+  part: KeyDefinitionPart,
+  value: KeyValue
+): AttributeValue {
+  return part.type === "string"
+    ? { S: value.toString() }
+    : { N: value.toString() };
 }

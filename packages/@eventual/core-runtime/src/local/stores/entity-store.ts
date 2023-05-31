@@ -12,13 +12,23 @@ import {
   TransactionCancelled,
   UnexpectedVersion,
 } from "@eventual/core";
-import { assertNever } from "@eventual/core/internal";
+import {
+  KeyDefinition,
+  assertNever,
+  isBeginsWithQueryKeyCondition,
+  isBetweenQueryKeyCondition,
+  isGreaterThanEqualsQueryKeyCondition,
+  isGreaterThanQueryKeyCondition,
+  isLessThanEqualsQueryKeyCondition,
+  isLessThanQueryKeyCondition,
+} from "@eventual/core/internal";
 import { EntityProvider } from "../../providers/entity-provider.js";
 import {
   EntityStore,
-  NormalizedEntityCompositeKey,
   NormalizedEntityCompositeKeyComplete,
+  NormalizedEntityCompositeQueryKey,
   NormalizedEntityKeyCompletePart,
+  NormalizedEntityQueryKeyPart,
   NormalizedEntityTransactItem,
   convertNormalizedEntityKeyToMap,
   isCompleteKey,
@@ -119,14 +129,20 @@ export class LocalEntityStore extends EntityStore {
 
   protected override async _query(
     entity: Entity | EntityIndex,
-    queryKey: NormalizedEntityCompositeKey<NormalizedEntityKeyCompletePart>,
+    queryKey: NormalizedEntityCompositeQueryKey,
     options?: EntityQueryOptions
   ): Promise<EntityQueryResult> {
     const partition = this.getPartitionMap(entity, queryKey.partition);
     const entries = partition ? [...partition.entries()] : [];
+    const sortKeyPart = queryKey.sort;
+    const sortFilteredEntries = sortKeyPart
+      ? entries.filter((e) =>
+          filterEntryBySortKey(entity.key, sortKeyPart, e[1].value)
+        )
+      : entries;
 
     const { items, nextToken } = paginateItems(
-      entries,
+      sortFilteredEntries,
       (a, b) =>
         typeof a[0] === "string"
           ? a[0].localeCompare(b[0] as string)
@@ -382,4 +398,52 @@ function deletePartitionEntry(
     return partitionMap.delete(key.sort?.keyValue ?? "default");
   }
   return false;
+}
+
+function filterEntryBySortKey(
+  keyDef: KeyDefinition,
+  querySortKey: NormalizedEntityQueryKeyPart,
+  entry: Attributes
+) {
+  const entryKey = normalizeCompositeKey(keyDef, entry);
+  const entrySortKeyValue = entryKey.sort?.keyValue;
+
+  // neither of these should happen, but discard any incomplete values.
+  // the item should contain the complete key, including a defined value
+  // unless the item is in a sparse index (items don't include the index key attributes),
+  // in which case it should not be placed in the index at all
+  if (!isCompleteKey(entryKey) || entrySortKeyValue === undefined) {
+    return false;
+  } else if ("condition" in querySortKey) {
+    if (isBetweenQueryKeyCondition(querySortKey.condition)) {
+      return (
+        entrySortKeyValue >= querySortKey.condition.betweenStart &&
+        entrySortKeyValue <= querySortKey.condition.betweenEnd
+      );
+    } else if (isBeginsWithQueryKeyCondition(querySortKey.condition)) {
+      return typeof entrySortKeyValue === "string"
+        ? entrySortKeyValue.startsWith(querySortKey.condition.beginsWith)
+        : false;
+    } else if (isLessThanQueryKeyCondition(querySortKey.condition)) {
+      return entrySortKeyValue < querySortKey.condition.lessThan;
+    } else if (isLessThanEqualsQueryKeyCondition(querySortKey.condition)) {
+      return entrySortKeyValue <= querySortKey.condition.lessThanEquals;
+    } else if (isGreaterThanQueryKeyCondition(querySortKey.condition)) {
+      return entrySortKeyValue > querySortKey.condition.greaterThan;
+    } else if (isGreaterThanEqualsQueryKeyCondition(querySortKey.condition)) {
+      return entrySortKeyValue >= querySortKey.condition.greaterThanEquals;
+    }
+
+    assertNever(querySortKey.condition);
+  } else if (querySortKey.keyValue === undefined) {
+    return true;
+  } else if (
+    querySortKey.partialValue &&
+    typeof entrySortKeyValue === "string" &&
+    typeof querySortKey.keyValue === "string"
+  ) {
+    return entrySortKeyValue.startsWith(querySortKey.keyValue);
+  } else {
+    return entrySortKeyValue === querySortKey.keyValue;
+  }
 }

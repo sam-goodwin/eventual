@@ -14,11 +14,20 @@ import type {
   KeyMap,
   KeyValue,
   QueryKey,
+  QueryKeyCondition,
+  QueryKeyMap,
 } from "@eventual/core";
-import type {
+import {
   EntityHook,
   KeyDefinition,
   KeyDefinitionPart,
+  assertNever,
+  isBeginsWithQueryKeyCondition,
+  isBetweenQueryKeyCondition,
+  isGreaterThanEqualsQueryKeyCondition,
+  isGreaterThanQueryKeyCondition,
+  isLessThanEqualsQueryKeyCondition,
+  isLessThanQueryKeyCondition,
 } from "@eventual/core/internal";
 import { EntityProvider } from "../providers/entity-provider.js";
 
@@ -99,7 +108,7 @@ export abstract class EntityStore implements EntityHook {
     options?: EntityQueryOptions | undefined
   ): Promise<EntityQueryResult> {
     const entity = this.getEntity(entityName);
-    const normalizedKey = normalizeCompositeKey(entity, queryKey);
+    const normalizedKey = normalizeCompositeQueryKey(entity, queryKey);
 
     if (!isCompleteKeyPart(normalizedKey.partition)) {
       throw new Error("Entity partition key cannot be partial for query");
@@ -128,7 +137,7 @@ export abstract class EntityStore implements EntityHook {
       );
     }
 
-    const normalizedKey = normalizeCompositeKey(index.key, queryKey);
+    const normalizedKey = normalizeCompositeQueryKey(index.key, queryKey);
 
     if (!isCompleteKeyPart(normalizedKey.partition)) {
       throw new Error(
@@ -136,16 +145,12 @@ export abstract class EntityStore implements EntityHook {
       );
     }
 
-    return this._query(
-      index,
-      normalizedKey as NormalizedEntityCompositeKey<NormalizedEntityKeyCompletePart>,
-      options
-    );
+    return this._query(index, normalizedKey, options);
   }
 
   protected abstract _query(
     entity: Entity | EntityIndex,
-    queryKey: NormalizedEntityCompositeKey<NormalizedEntityKeyCompletePart>,
+    queryKey: NormalizedEntityCompositeQueryKey,
     options: EntityQueryOptions | undefined
   ): Promise<EntityQueryResult>;
 
@@ -254,23 +259,55 @@ export type NormalizedEntityTransactItem = {
     }
 );
 
-export interface NormalizedEntityKeyPartBase extends KeyDefinitionPart {
-  parts: { field: string; value: KeyValue }[];
+export interface NormalizedEntityKeyPartBase<Value> extends KeyDefinitionPart {
+  parts: { field: string; value?: Value }[];
 }
 
 export type NormalizedEntityKeyPart =
   | NormalizedEntityKeyPartialPart
   | NormalizedEntityKeyCompletePart;
 
-export interface NormalizedEntityKeyCompletePart
-  extends NormalizedEntityKeyPartBase {
-  keyValue: string | number;
+export type NormalizedEntityQueryKeyPart =
+  | NormalizedEntityKeyPartialPart<KeyValue | QueryKeyCondition>
+  | NormalizedEntityKeyCompletePart<KeyValue | QueryKeyCondition>
+  | NormalizedEntityQueryKeyConditionPart;
+
+export interface NormalizedEntityKeyCompletePart<Value = KeyValue>
+  extends NormalizedEntityKeyPartBase<Value> {
+  keyValue: KeyValue;
   partialValue: false;
 }
 
-export interface NormalizedEntityKeyPartialPart
-  extends NormalizedEntityKeyPartBase {
-  keyValue?: string | number;
+export interface NormalizedEntityKeyPartialPart<Value = KeyValue>
+  extends NormalizedEntityKeyPartBase<Value> {
+  keyValue?: KeyValue;
+  partialValue: true;
+}
+
+/**
+ * A query key that has been normalized.
+ */
+export interface NormalizedEntityQueryKeyConditionPart
+  extends NormalizedEntityKeyPartBase<KeyValue | QueryKeyCondition> {
+  /**
+   * The condition given by the user, but updated with the given key prefix if present.
+   *
+   * ```ts
+   * {
+   *   "sortA": "A",
+   *   "sortB": { betweenStart: "B", betweenEnd: "C", }
+   * }
+   * ```
+   *
+   * Outputs as:
+   *
+   * ```ts
+   * {
+   *   condition: { betweenStart: "A#B", betweenEnd: "A#C" }
+   * }
+   * ```
+   */
+  condition: QueryKeyCondition;
   partialValue: true;
 }
 
@@ -294,15 +331,28 @@ export function isCompleteKey(
 
 export interface NormalizedEntityCompositeKey<
   Partition extends NormalizedEntityKeyPart = NormalizedEntityKeyPart,
-  Sort extends NormalizedEntityKeyPart = NormalizedEntityKeyPart
+  Sort extends
+    | NormalizedEntityKeyPart
+    | NormalizedEntityQueryKeyPart = NormalizedEntityKeyPart
 > {
   partition: Partition;
   sort?: Sort;
 }
 
+/**
+ * A composite key that is complete. Both the partition and sort keys have all attributes present.
+ */
 export type NormalizedEntityCompositeKeyComplete = NormalizedEntityCompositeKey<
   NormalizedEntityKeyCompletePart,
   NormalizedEntityKeyCompletePart
+>;
+
+/**
+ * A composite key that can be used for queries. The partition key must be complete, but the sort key can be partial or a condition.
+ */
+export type NormalizedEntityCompositeQueryKey = NormalizedEntityCompositeKey<
+  NormalizedEntityKeyCompletePart,
+  NormalizedEntityQueryKeyPart
 >;
 
 /**
@@ -336,9 +386,53 @@ export function normalizeCompositeKey<E extends Entity>(
       };
 }
 
+/**
+ * Generate properties for an entity key given the key definition and key values.
+ */
+export function normalizeCompositeQueryKey<E extends Entity>(
+  entity: E | KeyDefinition,
+  key: Partial<QueryKey>
+): NormalizedEntityCompositeQueryKey {
+  const keyDef = "partition" in entity ? entity : entity.key;
+
+  const partitionCompositeKey = formatNormalizedPart(
+    keyDef.partition,
+    (p, i) => {
+      const keyValue = Array.isArray(key) ? key[i] : (key as QueryKeyMap)[p];
+      if (typeof keyValue === "object") {
+        throw new Error(
+          `Partition Query Key value must be a string or number: ${p}`
+        );
+      }
+      return keyValue;
+    }
+  );
+
+  if (partitionCompositeKey.partialValue) {
+    throw new Error("Query key partition part cannot be partial");
+  }
+
+  const sortCompositeKey = keyDef.sort
+    ? formatNormalizedQueryPart(keyDef.sort, (p, i) =>
+        Array.isArray(key)
+          ? key[keyDef.partition.attributes.length + i]
+          : (key as QueryKeyMap)[p]
+      )
+    : undefined;
+
+  return sortCompositeKey
+    ? {
+        partition: partitionCompositeKey,
+        sort: sortCompositeKey,
+      }
+    : {
+        partition: partitionCompositeKey,
+      };
+}
+
 function formatNormalizedPart(
   keyPart: KeyDefinitionPart,
-  valueRetriever: (field: string, index: number) => string | number
+  valueRetriever: (field: string, index: number) => KeyValue | undefined
 ): NormalizedEntityKeyPart {
   const parts = keyPart.attributes.map((p, i) => ({
     field: p,
@@ -361,6 +455,136 @@ function formatNormalizedPart(
         : (missingValueIndex === -1 ? parts : parts.slice(0, missingValueIndex))
             .map((p) => p.value)
             .join("#"),
+    // since true is more permissive (allows undefined), hack the types here to allow any value
+    partialValue: (missingValueIndex !== -1) as true,
+  };
+}
+
+function formatNormalizedQueryPart(
+  keyPart: KeyDefinitionPart,
+  valueRetriever: (
+    field: string,
+    index: number
+  ) => KeyValue | QueryKeyCondition | undefined
+): NormalizedEntityQueryKeyPart {
+  const parts = keyPart.attributes.map((p, i) => ({
+    field: p,
+    value: valueRetriever(p, i),
+  }));
+
+  const queryConditionIndex = parts.findIndex(
+    (p) => typeof p.value === "object"
+  );
+  const missingValueIndex = parts.findIndex((p) => p.value === undefined);
+
+  const isPartial = missingValueIndex > -1;
+  const hasCondition = queryConditionIndex > -1;
+
+  /**
+   * The key condition must be the last given value and there be at most one condition.
+   *
+   * [condition] - valid
+   * [value] - valid
+   * [value, missing] - valid
+   * [value, condition] - valid
+   * [value, condition, missing] - valid
+   * [value, condition, value | condition] - invalid
+   * [missing, value | condition] - invalid
+   */
+  if (
+    hasCondition &&
+    ((isPartial && queryConditionIndex > missingValueIndex) ||
+      queryConditionIndex !== keyPart.attributes.length)
+  ) {
+    throw new Error(
+      "Query Key condition must be the final value provided key attribute."
+    );
+  }
+
+  const lastIndex =
+    isPartial && hasCondition
+      ? Math.min(missingValueIndex, queryConditionIndex)
+      : isPartial
+      ? missingValueIndex
+      : hasCondition
+      ? queryConditionIndex
+      : parts.length;
+
+  const keyValuePrefix =
+    lastIndex === 0 // if there are no present values, return undefined
+      ? undefined
+      : keyPart.type === "number"
+      ? (parts[0]!.value as KeyValue)
+      : parts
+          .slice(0, lastIndex)
+          .map((p) => p.value)
+          .join("#");
+
+  if (hasCondition) {
+    const condition = parts[queryConditionIndex]?.value as QueryKeyCondition;
+    return {
+      type: keyPart.type,
+      attributes: keyPart.attributes,
+      parts,
+      // this can never be a number, either there is a condition on a > 0 index attribute or the number is the first
+      keyAttribute: keyPart.keyAttribute,
+      condition: isBetweenQueryKeyCondition(condition)
+        ? {
+            betweenStart: formatKeyPrefixConditionValue(
+              condition.betweenStart,
+              keyValuePrefix
+            ),
+            betweenEnd: formatKeyPrefixConditionValue(
+              condition.betweenStart,
+              keyValuePrefix
+            ),
+          }
+        : isBeginsWithQueryKeyCondition(condition)
+        ? {
+            beginsWith: formatKeyPrefixConditionValue(
+              condition.beginsWith,
+              keyValuePrefix
+            ) as string,
+          }
+        : isLessThanQueryKeyCondition(condition)
+        ? {
+            lessThan: formatKeyPrefixConditionValue(
+              condition.lessThan,
+              keyValuePrefix
+            ),
+          }
+        : isLessThanEqualsQueryKeyCondition(condition)
+        ? {
+            lessThanEquals: formatKeyPrefixConditionValue(
+              condition.lessThanEquals,
+              keyValuePrefix
+            ),
+          }
+        : isGreaterThanQueryKeyCondition(condition)
+        ? {
+            greaterThan: formatKeyPrefixConditionValue(
+              condition.greaterThan,
+              keyValuePrefix
+            ),
+          }
+        : isGreaterThanEqualsQueryKeyCondition(condition)
+        ? {
+            greaterThanEquals: formatKeyPrefixConditionValue(
+              condition.greaterThanEquals,
+              keyValuePrefix
+            ),
+          }
+        : assertNever(condition),
+      partialValue: true,
+    };
+  }
+
+  return {
+    type: keyPart.type,
+    attributes: keyPart.attributes,
+    parts,
+    keyAttribute: keyPart.keyAttribute,
+    keyValue: keyValuePrefix,
     // since true is more permissive (allows undefined), hack the types here to allow any value
     partialValue: (missingValueIndex !== -1) as true,
   };
@@ -453,4 +677,13 @@ export function removeKeyAttributes(
       )
     );
   }
+}
+
+function formatKeyPrefixConditionValue(
+  conditionValue: KeyValue,
+  prefixValue?: KeyValue
+) {
+  return prefixValue !== undefined
+    ? `${prefixValue.toString()}#${conditionValue.toString()}`
+    : conditionValue;
 }

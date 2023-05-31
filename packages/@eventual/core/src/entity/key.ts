@@ -1,4 +1,5 @@
 import type { Attributes } from "./entity.js";
+import type t from "type-fest";
 
 export type KeyValue = string | number | bigint;
 
@@ -122,6 +123,88 @@ export type CompositeKey<
     | undefined
 > = KeyMap<Attr, Partition, Sort> | KeyTuple<Attr, Partition, Sort>;
 
+/**
+ * Matches if the key attribute is between the start and end value, inclusive.
+ *
+ * start <= value <= end
+ *
+ * Note: numeric multi-attribute key parts are treated as strings.
+ */
+export type QueryKeyCondition<Value extends KeyValue = KeyValue> =
+  | BetweenQueryKeyCondition<Value>
+  | LessThanQueryKeyCondition<Value>
+  | LessThanEqualsQueryKeyCondition<Value>
+  | GreaterThanQueryKeyCondition<Value>
+  | GreaterThanEqualsQueryKeyCondition<Value>
+  | BeginsWithQueryKeyCondition<Value>;
+
+/**
+ * Matches if the key attribute is between the start and end value, inclusive.
+ *
+ * start <= value <= end
+ *
+ * Note: numeric multi-attribute key parts are treated as strings.
+ */
+export interface BetweenQueryKeyCondition<Value extends KeyValue = KeyValue> {
+  betweenStart: t.LiteralToPrimitive<Value>;
+  betweenEnd: t.LiteralToPrimitive<Value>;
+}
+
+/**
+ * Matches if the key attribute starts with the given value.
+ *
+ * Can only be used with string fields.
+ *
+ * Note: numeric multi-attribute key parts are treated as strings.
+ */
+export interface BeginsWithQueryKeyCondition<
+  Value extends KeyValue = KeyValue
+> {
+  beginsWith: Extract<t.LiteralToPrimitive<Value>, string>;
+}
+
+/**
+ * Matches if the key attribute is less than the given value.
+ *
+ * Note: numeric multi-attribute key parts are treated as strings.
+ */
+export interface LessThanQueryKeyCondition<Value extends KeyValue = KeyValue> {
+  lessThan: t.LiteralToPrimitive<Value>;
+}
+
+/**
+ * Matches if the key attribute is less than or equal to the given value.
+ *
+ * Note: numeric multi-attribute key parts are treated as strings.
+ */
+export interface LessThanEqualsQueryKeyCondition<
+  Value extends KeyValue = KeyValue
+> {
+  lessThanEquals: t.LiteralToPrimitive<Value>;
+}
+
+/**
+ * Matches if the key attribute is greater than the given value.
+ *
+ * Note: numeric multi-attribute key parts are treated as strings.
+ */
+export interface GreaterThanQueryKeyCondition<
+  Value extends KeyValue = KeyValue
+> {
+  greaterThan: t.LiteralToPrimitive<Value>;
+}
+
+/**
+ * Matches if the key attribute is greater than or equal to the given value.
+ *
+ * Note: numeric multi-attribute key parts are treated as strings.
+ */
+export interface GreaterThanEqualsQueryKeyCondition<
+  Value extends KeyValue = KeyValue
+> {
+  greaterThanEquals: t.LiteralToPrimitive<Value>;
+}
+
 export type ProgressiveTupleQueryKey<
   Attr extends Attributes,
   Sort extends readonly (keyof Attr)[],
@@ -134,6 +217,7 @@ export type ProgressiveTupleQueryKey<
     ]
   ?
       | Accum
+      | [...Accum, QueryKeyCondition<Extract<Attr[k], KeyValue>>]
       | ProgressiveQueryKey<Attr, ks, [...Accum, Extract<Attr[k], KeyValue>]>
   : never;
 
@@ -149,6 +233,9 @@ export type ProgressiveQueryKey<
     ]
   ?
       | Accum
+      | (Accum & {
+          [sk in k]: QueryKeyCondition<Extract<Attr[sk], KeyValue>>;
+        })
       | ProgressiveQueryKey<
           Attr,
           ks,
@@ -158,14 +245,25 @@ export type ProgressiveQueryKey<
         >
   : never;
 
+export type QueryKeyMap<
+  Attr extends Attributes = Attributes,
+  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined =
+    | CompositeKeyPart<Attr>
+    | undefined
+> = {
+  [pk in Partition[number]]: Extract<Attr[pk], KeyValue>;
+} & (Sort extends undefined
+  ? // eslint-disable-next-line
+    {}
+  : ProgressiveQueryKey<Attr, Exclude<Sort, undefined>>);
+
 /**
  * A partial key that can be used to query an entity.
  *
  * ```ts
  * entity.query({ part1: "val", part2: "val2", sort1: "val" });
  * ```
- *
- * TODO: support expressions like between and starts with on sort properties
  */
 export type QueryKey<
   Attr extends Attributes = Attributes,
@@ -174,12 +272,7 @@ export type QueryKey<
     | CompositeKeyPart<Attr>
     | undefined
 > =
-  | ({
-      [pk in Partition[number]]: Extract<Attr[pk], KeyValue>;
-    } & (Sort extends undefined
-      ? // eslint-disable-next-line
-        {}
-      : ProgressiveQueryKey<Attr, Exclude<Sort, undefined>>))
+  | QueryKeyMap<Attr, Partition, Sort>
   | [
       ...KeyTuple<Attr, Partition>,
       ...(Sort extends undefined
