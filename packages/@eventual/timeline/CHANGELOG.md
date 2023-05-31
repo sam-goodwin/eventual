@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.42.0 (2023-05-31)
+
+### Features
+
+- support advanced transaction behavior ([#377](https://github.com/functionless/eventual/issues/377)) ([721aa45](https://github.com/functionless/eventual/commit/721aa453c00addbb77b4899a8b9d4a68bc9828ad))
+
 # 0.41.0 (2023-05-30)
 
 ### Features
