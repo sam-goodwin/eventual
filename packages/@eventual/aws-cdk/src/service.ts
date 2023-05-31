@@ -3,15 +3,14 @@ import { ENV_NAMES } from "@eventual/aws-runtime";
 import { Event } from "@eventual/core";
 import { MetricsCommon, OrchestratorMetrics } from "@eventual/core-runtime";
 import { EventualConfig, discoverEventualConfigSync } from "@eventual/project";
-import { Arn, Names, Stack } from "aws-cdk-lib/core";
-import aws_events, { IEventBus } from "aws-cdk-lib/aws-events";
-import aws_events_targets from "aws-cdk-lib/aws-events-targets";
 import {
   Metric,
   MetricOptions,
   Statistic,
   Unit,
 } from "aws-cdk-lib/aws-cloudwatch";
+import aws_events from "aws-cdk-lib/aws-events";
+import aws_events_targets from "aws-cdk-lib/aws-events-targets";
 import {
   AccountRootPrincipal,
   Effect,
@@ -23,7 +22,9 @@ import {
 } from "aws-cdk-lib/aws-iam";
 import { Function } from "aws-cdk-lib/aws-lambda";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
+import { EngineVersion } from "aws-cdk-lib/aws-opensearchservice";
 import { StringParameter } from "aws-cdk-lib/aws-ssm";
+import { Arn, Names, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import type openapi from "openapi3-ts";
 import path from "path";
@@ -56,6 +57,9 @@ import { EventService } from "./event-service";
 import { grant } from "./grant";
 import { LazyInterface, lazyInterface } from "./proxy-construct";
 import { SchedulerService } from "./scheduler-service";
+import { SearchService, SearchServiceOverrides } from "./search/search-service";
+import { ServerfulSearchService } from "./search/serverful-search-service";
+import { ServerlessSearchService } from "./search/serverless-search-service";
 import {
   Subscription,
   SubscriptionOverrides,
@@ -68,10 +72,6 @@ import {
   TaskService,
 } from "./task-service.js";
 import { WorkflowService, WorkflowServiceOverrides } from "./workflow-service";
-import { SearchServiceOverrides, SearchService } from "./search/search-service";
-import { ServerlessSearchService } from "./search/serverless-search-service";
-import { ServerfulSearchService } from "./search/serverful-search-service";
-import { EngineVersion } from "aws-cdk-lib/aws-opensearchservice";
 
 /**
  * The properties for subscribing a Service to another Service's events.
@@ -196,7 +196,7 @@ export class Service<S = any> extends Construct {
   /**
    * Bus which transports events in and out of the service.
    */
-  public readonly bus: IEventBus;
+  public readonly bus: aws_events.IEventBus;
   /**
    * Commands defined by the service.
    */

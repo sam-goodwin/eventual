@@ -1,9 +1,9 @@
-import { RemovalPolicy } from "aws-cdk-lib";
 import {
   Domain,
   DomainProps,
   EngineVersion,
 } from "aws-cdk-lib/aws-opensearchservice";
+import { RemovalPolicy } from "aws-cdk-lib/core";
 import { grant } from "../grant";
 import {
   BaseSearchService,

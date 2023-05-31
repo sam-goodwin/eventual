@@ -1,15 +1,15 @@
 import { ENV_NAMES, taskServiceFunctionSuffix } from "@eventual/aws-runtime";
 import type { TaskFunction } from "@eventual/core-runtime";
-import { Duration, RemovalPolicy, Stack, aws_iam } from "aws-cdk-lib";
 import {
   AttributeType,
   BillingMode,
   ITable,
   Table,
 } from "aws-cdk-lib/aws-dynamodb";
-import { IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
+import aws_iam, { IGrantable, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { LambdaDestination } from "aws-cdk-lib/aws-lambda-destinations";
+import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import { BucketService } from "./bucket-service";
 import type { BuildOutput } from "./build";

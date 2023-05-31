@@ -1,4 +1,5 @@
-import type { aws_iam, aws_lambda } from "aws-cdk-lib";
+import type aws_iam from "aws-cdk-lib/aws-iam";
+import type aws_lambda from "aws-cdk-lib/aws-lambda";
 import type { Function } from "aws-cdk-lib/aws-lambda";
 import type { ServiceConstructProps } from "../service";
 import type { ServiceEntityProps } from "../utils";

@@ -1,5 +1,5 @@
 import { ENV_NAMES } from "@eventual/aws-runtime";
-import { ArnFormat, CfnResource, Resource, Stack } from "aws-cdk-lib";
+import { ArnFormat, CfnResource, Resource, Stack } from "aws-cdk-lib/core";
 import {
   IGrantable,
   IRole,

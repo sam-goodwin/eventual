@@ -1,5 +1,6 @@
-import { App, CfnOutput, Stack, aws_secretsmanager } from "aws-cdk-lib";
 import * as eventual from "@eventual/aws-cdk";
+import aws_secretsmanager from "aws-cdk-lib/aws-secretsmanager";
+import { App, CfnOutput, Stack } from "aws-cdk-lib/core";
 
 import type * as slackbot from "test-app-runtime/lib/slack-bot.js";
 

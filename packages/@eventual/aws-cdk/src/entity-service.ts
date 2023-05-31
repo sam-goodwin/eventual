@@ -13,7 +13,7 @@ import {
   KeyDefinitionPart,
   TransactionSpec,
 } from "@eventual/core/internal";
-import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
+import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib/core";
 import {
   Attribute,
   AttributeType,

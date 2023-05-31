@@ -1,12 +1,8 @@
-import {
-  App,
-  aws_dynamodb,
-  aws_lambda,
-  aws_lambda_nodejs,
-  CfnOutput,
-  Duration,
-  Stack,
-} from "aws-cdk-lib";
+import { AttributeType, BillingMode, Table } from "aws-cdk-lib/aws-dynamodb";
+import { Architecture, Runtime } from "aws-cdk-lib/aws-lambda";
+import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
+import { App, CfnOutput, Duration, Stack } from "aws-cdk-lib/core";
+
 import * as eventual from "@eventual/aws-cdk";
 import { ServiceDashboard } from "@eventual/aws-cdk";
 
@@ -27,11 +23,11 @@ new ServiceDashboard(stack, "BenchmarkDashboard", {
   service: benchService,
 });
 
-const bench = new aws_lambda_nodejs.NodejsFunction(stack, "BenchmarkFunc", {
+const bench = new NodejsFunction(stack, "BenchmarkFunc", {
   entry: require.resolve("test-app-runtime/lib/bench.js"),
   handler: "handle",
-  runtime: aws_lambda.Runtime.NODEJS_16_X,
-  architecture: aws_lambda.Architecture.ARM_64,
+  runtime: Runtime.NODEJS_16_X,
+  architecture: Architecture.ARM_64,
   bundling: {
     // https://github.com/aws/aws-cdk/issues/21329#issuecomment-1212336356
     // cannot output as .mjs file as ulid does not support it.
@@ -49,12 +45,12 @@ const bench = new aws_lambda_nodejs.NodejsFunction(stack, "BenchmarkFunc", {
 
 benchService.grantInvokeHttpServiceApi(bench);
 
-const accountTable = new aws_dynamodb.Table(stack, "Accounts", {
+const accountTable = new Table(stack, "Accounts", {
   partitionKey: {
     name: "pk",
-    type: aws_dynamodb.AttributeType.STRING,
+    type: AttributeType.STRING,
   },
-  billingMode: aws_dynamodb.BillingMode.PAY_PER_REQUEST,
+  billingMode: BillingMode.PAY_PER_REQUEST,
 });
 
 const openAccount = new eventual.Service(stack, "OpenAccount", {

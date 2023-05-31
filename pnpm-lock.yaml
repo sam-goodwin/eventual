@@ -180,7 +180,7 @@ importers:
         version: link:../../packages/@eventual/aws-cdk
       '@serverless-stack/cli':
         specifier: ^1.18.4
-        version: 1.18.4(constructs@10.2.36)
+        version: 1.18.4(constructs@10.1.154)
       '@serverless-stack/core':
         specifier: ^1.18.4
         version: 1.18.4
@@ -192,7 +192,7 @@ importers:
         version: 1.0.1
       aws-cdk-lib:
         specifier: 2.80.0
-        version: 2.80.0(constructs@10.2.36)
+        version: 2.80.0(constructs@10.1.154)
       chalk:
         specifier: ^5.2.0
         version: 5.2.0
@@ -1028,17 +1028,6 @@ packages:
     dependencies:
       aws-cdk-lib: 2.50.0(constructs@10.1.154)
       constructs: 10.1.154
-    dev: true
-
-  /@aws-cdk/aws-apigatewayv2-alpha@2.50.0-alpha.0(aws-cdk-lib@2.50.0)(constructs@10.2.36):
-    resolution: {integrity: sha512-dttWDqy+nTg/fD9y0egvj7/zdnOVEo0qyGsep1RV+p16R3F4ObMKyPVIg15fz57tK//Gp/i1QgXsZaSqbcWHOg==}
-    engines: {node: '>= 14.15.0'}
-    peerDependencies:
-      aws-cdk-lib: ^2.50.0
-      constructs: ^10.0.0
-    dependencies:
-      aws-cdk-lib: 2.50.0(constructs@10.2.36)
-      constructs: 10.2.36
     dev: true
 
   /@aws-cdk/aws-apigatewayv2-alpha@2.80.0-alpha.0(aws-cdk-lib@2.80.0)(constructs@10.1.154):
@@ -4518,7 +4507,7 @@ packages:
     resolution: {integrity: sha512-QyKIWEnKQFnYu2ey+SAAm1A5xjzJLJJj3bhIZd3QKyXKKjaJ0hlxam/OsWSltxTNbcyH1jRJjC6Cxv31usv0Ag==}
     engines: {node: ^14.17.0 || >=16.0.0}
     dependencies:
-      chalk: 4.1.0
+      chalk: 4.1.2
       execa: 5.0.0
       strong-log-transformer: 2.1.0
     dev: true
@@ -5149,15 +5138,15 @@ packages:
       - supports-color
     dev: true
 
-  /@serverless-stack/cli@1.18.4(constructs@10.2.36):
+  /@serverless-stack/cli@1.18.4(constructs@10.1.154):
     resolution: {integrity: sha512-eEG3brlbF/ptIo/s69Hcrn185CVkLWHpmtOmere7+lMPkmy1vxNhWIUuic+LNG0yweK+sg4uMVipREyvwblNDQ==}
     hasBin: true
     dependencies:
-      '@aws-cdk/aws-apigatewayv2-alpha': 2.50.0-alpha.0(aws-cdk-lib@2.50.0)(constructs@10.2.36)
+      '@aws-cdk/aws-apigatewayv2-alpha': 2.50.0-alpha.0(aws-cdk-lib@2.50.0)(constructs@10.1.154)
       '@serverless-stack/core': 1.18.4
       '@serverless-stack/resources': 1.18.4
       aws-cdk: 2.50.0
-      aws-cdk-lib: 2.50.0(constructs@10.2.36)
+      aws-cdk-lib: 2.50.0(constructs@10.1.154)
       aws-sdk: 2.1280.0
       body-parser: 1.20.2
       chalk: 4.1.2
@@ -6429,34 +6418,6 @@ packages:
       - semver
       - yaml
 
-  /aws-cdk-lib@2.50.0(constructs@10.2.36):
-    resolution: {integrity: sha512-deDbZTI7oyu3rqUyqjwhP6tnUO8MD70lE98yR65xiYty4yXBpsWKbeH3s1wNLpLAWS3hWJYyMtjZ4ZfC35NtVg==}
-    engines: {node: '>= 14.15.0'}
-    peerDependencies:
-      constructs: ^10.0.0
-    dependencies:
-      '@balena/dockerignore': 1.0.2
-      case: 1.6.3
-      constructs: 10.2.36
-      fs-extra: 9.1.0
-      ignore: 5.2.4
-      jsonschema: 1.4.1
-      minimatch: 3.1.2
-      punycode: 2.3.0
-      semver: 7.5.1
-      yaml: 1.10.2
-    dev: true
-    bundledDependencies:
-      - '@balena/dockerignore'
-      - case
-      - fs-extra
-      - ignore
-      - jsonschema
-      - minimatch
-      - punycode
-      - semver
-      - yaml
-
   /aws-cdk-lib@2.80.0(constructs@10.1.154):
     resolution: {integrity: sha512-PoqD3Yms5I0ajuTi071nTW/hpkH3XsdyZzn5gYsPv0qD7mqP3h6Qr+6RiGx+yQ1KcVFyxWdX15uK+DsC0KwvcQ==}
     engines: {node: '>= 14.15.0'}
@@ -6477,39 +6438,6 @@ packages:
       semver: 7.5.1
       table: 6.8.1
       yaml: 1.10.2
-    bundledDependencies:
-      - '@balena/dockerignore'
-      - case
-      - fs-extra
-      - ignore
-      - jsonschema
-      - minimatch
-      - punycode
-      - semver
-      - table
-      - yaml
-
-  /aws-cdk-lib@2.80.0(constructs@10.2.36):
-    resolution: {integrity: sha512-PoqD3Yms5I0ajuTi071nTW/hpkH3XsdyZzn5gYsPv0qD7mqP3h6Qr+6RiGx+yQ1KcVFyxWdX15uK+DsC0KwvcQ==}
-    engines: {node: '>= 14.15.0'}
-    peerDependencies:
-      constructs: ^10.0.0
-    dependencies:
-      '@aws-cdk/asset-awscli-v1': 2.2.185
-      '@aws-cdk/asset-kubectl-v20': 2.1.1
-      '@aws-cdk/asset-node-proxy-agent-v5': 2.0.155
-      '@balena/dockerignore': 1.0.2
-      case: 1.6.3
-      constructs: 10.2.36
-      fs-extra: 11.1.1
-      ignore: 5.2.4
-      jsonschema: 1.4.1
-      minimatch: 3.1.2
-      punycode: 2.3.0
-      semver: 7.5.1
-      table: 6.8.1
-      yaml: 1.10.2
-    dev: true
     bundledDependencies:
       - '@balena/dockerignore'
       - case
@@ -6810,7 +6738,7 @@ packages:
     resolution: {integrity: sha512-xq+q3SRMOxGivLhBNaUdC64hDTQwejJ+H0T/NB1XMtTVEwNTrfFF3gAxiyW0Bu/xWEGhjVKgUcMhCrUy2+uCWg==}
     dependencies:
       base64-js: 1.5.1
-      ieee754: 1.1.13
+      ieee754: 1.2.1
       isarray: 1.0.0
 
   /buffer@5.7.1:
@@ -7274,11 +7202,6 @@ packages:
     resolution: {integrity: sha512-JStQT84+NhsfamESRExZoGzpq/f/gpq9xpzgtQNOzungs42Gy8kxjfU378MnVoRqwCHwk0vLN37HZjgH5tJo2A==}
     engines: {node: '>= 14.17.0'}
 
-  /constructs@10.2.36:
-    resolution: {integrity: sha512-7zFxt2ngpm76eqNqvnD5X1RC7/nlZ7NhpRHNJIzNj1MNZH3NSGe6iwHgIZSoK4pjdZktnZELdBZsVo/yqAvv2Q==}
-    engines: {node: '>= 16.14.0'}
-    dev: true
-
   /content-disposition@0.5.4:
     resolution: {integrity: sha512-FveZTNuGw04cxlAiWbzi6zTAL/lhehaWbTtgluJh4/E95DqMwTmha3KZN1aAWA8cFIhHzMZUvLevkw5Rqk+tSQ==}
     engines: {node: '>= 0.6'}
@@ -7582,7 +7505,7 @@ packages:
     engines: {node: '>=10'}
     dependencies:
       globby: 11.1.0
-      graceful-fs: 4.2.10
+      graceful-fs: 4.2.11
       is-glob: 4.0.3
       is-path-cwd: 2.2.0
       is-path-inside: 3.0.3
@@ -9400,7 +9323,7 @@ packages:
       fs.realpath: 1.0.0
       inflight: 1.0.6
       inherits: 2.0.4
-      minimatch: 3.0.5
+      minimatch: 3.1.2
       once: 1.4.0
       path-is-absolute: 1.0.1
     dev: true
@@ -11045,7 +10968,7 @@ packages:
     resolution: {integrity: sha512-Kx8hMakjX03tiGTLAIdJ+lL0htKnXjEZN6hk/tozf/WOuYGdZBJrZ+rCJRbVCugsjB3jMLn9746NsQIf5VjBMw==}
     engines: {node: '>=4'}
     dependencies:
-      graceful-fs: 4.2.10
+      graceful-fs: 4.2.11
       parse-json: 4.0.0
       pify: 3.0.0
       strip-bom: 3.0.0
@@ -11055,7 +10978,7 @@ packages:
     resolution: {integrity: sha512-gUD/epcRms75Cw8RT1pUdHugZYM5ce64ucs2GEISABwkRsOQr0q2wm/MV2TKThycIe5e0ytRweW2RZxclogCdQ==}
     engines: {node: '>=8'}
     dependencies:
-      graceful-fs: 4.2.10
+      graceful-fs: 4.2.11
       parse-json: 5.2.0
       strip-bom: 4.0.0
       type-fest: 0.6.0
@@ -11625,7 +11548,7 @@ packages:
       array-differ: 3.0.0
       array-union: 2.1.0
       arrify: 2.0.1
-      minimatch: 3.0.5
+      minimatch: 3.1.2
     dev: true
 
   /mute-stream@0.0.8:
@@ -11726,7 +11649,7 @@ packages:
     dependencies:
       env-paths: 2.2.1
       glob: 7.2.3
-      graceful-fs: 4.2.10
+      graceful-fs: 4.2.11
       make-fetch-happen: 10.2.1
       nopt: 6.0.0
       npmlog: 6.0.2
@@ -12015,7 +11938,7 @@ packages:
       '@yarnpkg/parsers': 3.0.0-rc.44
       '@zkochan/js-yaml': 0.0.6
       axios: 1.4.0
-      chalk: 4.1.0
+      chalk: 4.1.2
       cli-cursor: 3.1.0
       cli-spinners: 2.6.1
       cliui: 7.0.4
@@ -14642,7 +14565,7 @@ packages:
   /write-file-atomic@2.4.3:
     resolution: {integrity: sha512-GaETH5wwsX+GcnzhPgKcKjJ6M2Cq3/iZp1WyY/X1CSqrW+jVNM9Y7D8EC2sM4ZG/V8wZlSniJnCKWPmBYAucRQ==}
     dependencies:
-      graceful-fs: 4.2.10
+      graceful-fs: 4.2.11
       imurmurhash: 0.1.4
       signal-exit: 3.0.7
     dev: true
@@ -14676,7 +14599,7 @@ packages:
     engines: {node: '>=6'}
     dependencies:
       detect-indent: 5.0.0
-      graceful-fs: 4.2.10
+      graceful-fs: 4.2.11
       make-dir: 2.1.0
       pify: 4.0.1
       sort-keys: 2.0.0

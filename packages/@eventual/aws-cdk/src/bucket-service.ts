@@ -8,7 +8,7 @@ import type {
   BucketNotificationHandlerFunction,
   BucketRuntime,
 } from "@eventual/core-runtime";
-import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
+import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib/core";
 import { IGrantable, IPrincipal, PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { Function, FunctionProps } from "aws-cdk-lib/aws-lambda";
 import { S3EventSource } from "aws-cdk-lib/aws-lambda-event-sources";
