@@ -1,34 +1,34 @@
 import {
   Entity,
-  KeyMap,
+  EntityReadOptions,
   EntityTransactConditionalOperation,
   EntityTransactDeleteOperation,
-  EntityTransactSetOperation,
   EntityTransactItem,
+  EntityTransactSetOperation,
   EntityWithMetadata,
+  KeyMap,
   TransactionCancelled,
   TransactionConflict,
   TransactionContext,
   TransactionFunction,
   UnexpectedVersion,
-  EntityReadOptions,
 } from "@eventual/core";
 import {
-  assertNever,
   EmitEventsCall,
   EntityOperation,
   EventualCallHook,
   EventualPromise,
   EventualPromiseSymbol,
+  Result,
+  SendSignalCall,
+  ServiceType,
+  SignalTargetType,
+  assertNever,
   isEmitEventsCall,
   isEntityCall,
   isEntityOperationOfType,
   isSendSignalCall,
-  Result,
-  SendSignalCall,
-  ServiceType,
   serviceTypeScope,
-  SignalTargetType,
 } from "@eventual/core/internal";
 import type { EventClient } from "./clients/event-client.js";
 import type { ExecutionQueueClient } from "./clients/execution-queue-client.js";
@@ -36,10 +36,10 @@ import { enterEventualCallHookScope } from "./eventual-hook.js";
 import type { EntityProvider } from "./providers/entity-provider.js";
 import { isResolved } from "./result.js";
 import {
-  convertNormalizedEntityKeyToMap,
   EntityStore,
-  normalizeCompositeKey,
   NormalizedEntityCompositeKey,
+  convertNormalizedEntityKeyToMap,
+  normalizeCompositeKey,
 } from "./stores/entity-store.js";
 import { serializeCompositeKey } from "./utils.js";
 
@@ -95,6 +95,14 @@ interface TransactionFailedItem {
   key: KeyMap<any, any, any>;
 }
 
+interface TransactionEntityState {
+  entityName: string;
+  key: NormalizedEntityCompositeKey;
+  originalVersion: number;
+  currentVersion: number;
+  currentValue: any | undefined;
+}
+
 export function createTransactionExecutor(
   entityStore: EntityStore,
   entityProvider: EntityProvider,
@@ -113,14 +121,8 @@ export function createTransactionExecutor(
         const result = await executeTransactionOnce();
         if ("output" in result) {
           return { result: Result.resolved(result.output) };
-        } else if (result.canRetry) {
-          continue;
-        } else {
-          return {
-            result: Result.failed(
-              new Error("Failed after an explicit conflict.")
-            ),
-          };
+        } else if (!result.canRetry) {
+          break;
         }
       } while (retries--);
 
@@ -146,14 +148,7 @@ export function createTransactionExecutor(
       const eventCalls: (EmitEventsCall | SendSignalCall)[] = [];
       // a map of the keys of all get operations or mutation operations to check during the transaction.
       // also serves as a get cache when get is called multiple times on the same keys
-      const retrievedEntities = new Map<
-        string,
-        {
-          entityName: string;
-          key: NormalizedEntityCompositeKey;
-          value: EntityWithMetadata | undefined;
-        }
-      >();
+      const retrievedEntities = new Map<string, TransactionEntityState>();
 
       const eventualCallHook: EventualCallHook = {
         registerEventualCall: (eventual): any => {
@@ -179,10 +174,45 @@ export function createTransactionExecutor(
                   normalizedKey
                 );
 
+                /**
+                 * When a set or delete is performed with an explicit expected version, immediately validate that the
+                 * entity resolved has that expected version.
+                 *
+                 * If a set or delete has already been performed, we'll replace that operation with this one
+                 * so we always use the original version.
+                 */
+                const expectedVersion = eventual.params[1]?.expectedVersion;
+                if (
+                  expectedVersion &&
+                  entityValue.originalVersion !== expectedVersion
+                ) {
+                  throw new UnexpectedVersion(
+                    `Operation expected version ${expectedVersion} but found ${entityValue.originalVersion}.`
+                  );
+                }
+
                 entityCalls.set(serializedKey, eventual);
-                return isEntityOperationOfType("set", eventual)
-                  ? { version: (entityValue?.version ?? 0) + 1 }
-                  : undefined;
+                if (isEntityOperationOfType("set", eventual)) {
+                  const newVersion = entityValue.originalVersion + 1;
+                  retrievedEntities.set(serializedKey, {
+                    entityName: eventual.entityName,
+                    key: normalizedKey,
+                    currentValue: eventual.params[0],
+                    currentVersion: newVersion,
+                    originalVersion: entityValue.originalVersion,
+                  });
+                  return { version: newVersion };
+                } else {
+                  // delete - current value is undefined and current version is 0
+                  retrievedEntities.set(serializedKey, {
+                    entityName: eventual.entityName,
+                    key: normalizedKey,
+                    currentValue: undefined,
+                    currentVersion: 0,
+                    originalVersion: entityValue.originalVersion,
+                  });
+                  return undefined;
+                }
               });
             } else if (
               isEntityOperationOfType("get", eventual) ||
@@ -198,11 +228,16 @@ export function createTransactionExecutor(
                 );
 
                 if (isEntityOperationOfType("get", eventual)) {
-                  return value?.value;
+                  return value.currentValue;
                 } else if (
                   isEntityOperationOfType("getWithMetadata", eventual)
                 ) {
-                  return value;
+                  return value.currentValue !== undefined
+                    ? ({
+                        value: value.currentValue,
+                        version: value.currentVersion,
+                      } satisfies EntityWithMetadata)
+                    : undefined;
                 }
                 return assertNever(eventual);
               });
@@ -234,51 +269,15 @@ export function createTransactionExecutor(
       );
 
       /**
-       * Collect the index of any items that provide their own expectedVersion that is
-       * not the same as the retrieved version.
-       *
-       * This is used to determine the meaning of a UnexpectedVersion when the transaction is cancelled.
-       *
-       * If the version is overridden by the user, the transaction cannot be retried.
-       *
-       * An example of an override:
-       *
-       * ```ts
-       * const { version } = await ent.set(id, "value");
-       *
-       * transaction(..., async () => {
-       *    // no override - this mutation can succeed on any future transaction retry, no matter the version of the item
-       *    await ent.set(id, "value");
-       *
-       *    // override - the transaction will only succeed while the version of "id" is still the version from before.
-       *    await ent.set(id, "value", {expectedVersion: version});
-       * });
-       * ```
-       */
-      const versionOverridesIndices: Set<number> = new Set();
-
-      /**
        * Build the transaction items that contain mutations with assertions or just assertions.
        */
       const transactionItems: EntityTransactItem[] = [
         ...retrievedEntities.entries(),
-      ].map(([serializedKey, { entityName, key, value }], i) => {
+      ].map(([serializedKey, { entityName, key, originalVersion }]) => {
         const call = entityCalls.get(serializedKey);
 
-        const retrievedVersion = value?.version ?? 0;
         if (call) {
           const [, options] = call.params;
-          // if the user provided a version that was not the same that was retrieved
-          // we will consider the transaction not retry-able on failure.
-          // for example, if an entity is set with an expected version of 1,
-          //              but the current version at set time is 2, this condition
-          ///             will never be true.
-          if (
-            options?.expectedVersion !== undefined &&
-            options?.expectedVersion !== retrievedVersion
-          ) {
-            versionOverridesIndices.add(i);
-          }
 
           return call.operation === "set"
             ? ({
@@ -287,7 +286,7 @@ export function createTransactionExecutor(
                 value: call.params[0],
                 options: {
                   ...options,
-                  expectedVersion: options?.expectedVersion ?? retrievedVersion,
+                  expectedVersion: originalVersion,
                 },
               } satisfies EntityTransactSetOperation)
             : ({
@@ -296,7 +295,7 @@ export function createTransactionExecutor(
                 key: call.params[0],
                 options: {
                   ...options,
-                  expectedVersion: options?.expectedVersion ?? retrievedVersion,
+                  expectedVersion: originalVersion,
                 },
               } satisfies EntityTransactDeleteOperation);
         } else {
@@ -305,7 +304,7 @@ export function createTransactionExecutor(
             entity: entityName,
             operation: "condition",
             key: convertNormalizedEntityKeyToMap(key),
-            version: retrievedVersion,
+            version: originalVersion,
           } satisfies EntityTransactConditionalOperation<any>;
         }
       });
@@ -328,13 +327,8 @@ export function createTransactionExecutor(
          */
 
         if (err instanceof TransactionCancelled) {
-          const retry = !err.reasons.some((r, i) =>
-            r instanceof UnexpectedVersion
-              ? versionOverridesIndices.has(i)
-              : false
-          );
           return {
-            canRetry: retry,
+            canRetry: true,
             failedItems: err.reasons
               .map((r, i) => {
                 if (r instanceof UnexpectedVersion) {
@@ -360,6 +354,9 @@ export function createTransactionExecutor(
           };
         } else if (err instanceof TransactionConflict) {
           return { canRetry: true, failedItems: [] };
+        } else {
+          console.error(err);
+          return { canRetry: false, failedItems: [] };
         }
       }
 
@@ -400,11 +397,11 @@ export function createTransactionExecutor(
         entityName: string,
         key: NormalizedEntityCompositeKey,
         options?: EntityReadOptions
-      ): EventualPromise<EntityWithMetadata | undefined> {
+      ): EventualPromise<TransactionEntityState> {
         const serializedKey = serializeCompositeKey(entityName, key);
         if (retrievedEntities.has(serializedKey)) {
           return createResolvedEventualPromise(
-            Result.resolved(retrievedEntities.get(serializedKey)?.value)
+            Result.resolved(retrievedEntities.get(serializedKey)!)
           );
         } else {
           return createEventualPromise(async () => {
@@ -413,12 +410,15 @@ export function createTransactionExecutor(
               convertNormalizedEntityKeyToMap(key),
               options
             );
-            retrievedEntities.set(serializedKey, {
+            const entityState = {
               entityName,
               key,
-              value,
-            });
-            return value;
+              currentValue: value?.value,
+              currentVersion: value?.version ?? 0,
+              originalVersion: value?.version ?? 0,
+            };
+            retrievedEntities.set(serializedKey, entityState);
+            return entityState;
           });
         }
       }
