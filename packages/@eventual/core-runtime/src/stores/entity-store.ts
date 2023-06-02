@@ -310,6 +310,12 @@ export interface NormalizedEntityQueryKeyConditionPart
   condition: QueryKeyCondition;
 }
 
+export function isNormalizedEntityQueryKeyConditionPart(
+  key: NormalizedEntityQueryKeyPart
+): key is NormalizedEntityQueryKeyConditionPart {
+  return !!(key as NormalizedEntityQueryKeyConditionPart).condition;
+}
+
 export function isCompleteKeyPart(
   key: NormalizedEntityKeyPart
 ): key is NormalizedEntityKeyCompletePart {

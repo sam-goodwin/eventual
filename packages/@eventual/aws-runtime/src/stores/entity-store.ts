@@ -35,6 +35,7 @@ import {
   EntityProvider,
   EntityStore,
   getLazy,
+  isNormalizedEntityQueryKeyConditionPart,
   LazyValue,
   NormalizedEntityCompositeKey,
   NormalizedEntityCompositeKeyComplete,
@@ -515,7 +516,7 @@ function getSortKeyExpressionAndAttribute(
   const attributeNameKey = formatAttributeNameMapKey(keyPart.keyAttribute);
 
   // if the key part is a condition key part
-  if ("condition" in keyPart) {
+  if (isNormalizedEntityQueryKeyConditionPart(keyPart)) {
     if (isBetweenQueryKeyCondition(keyPart.condition)) {
       return {
         attribute: keyPart.keyAttribute,

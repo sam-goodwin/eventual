@@ -32,6 +32,7 @@ import {
   NormalizedEntityTransactItem,
   convertNormalizedEntityKeyToMap,
   isCompleteKey,
+  isNormalizedEntityQueryKeyConditionPart,
   normalizeCompositeKey,
 } from "../../stores/entity-store.js";
 import { deserializeCompositeKey, serializeCompositeKey } from "../../utils.js";
@@ -414,7 +415,7 @@ function filterEntryBySortKey(
   // in which case it should not be placed in the index at all
   if (!isCompleteKey(entryKey) || entrySortKeyValue === undefined) {
     return false;
-  } else if ("condition" in querySortKey) {
+  } else if (isNormalizedEntityQueryKeyConditionPart(querySortKey)) {
     if (isBetweenQueryKeyCondition(querySortKey.condition)) {
       return (
         entrySortKeyValue >= querySortKey.condition.betweenStart &&
