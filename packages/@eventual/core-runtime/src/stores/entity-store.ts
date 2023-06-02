@@ -308,7 +308,6 @@ export interface NormalizedEntityQueryKeyConditionPart
    * ```
    */
   condition: QueryKeyCondition;
-  partialValue: true;
 }
 
 export function isCompleteKeyPart(
@@ -387,11 +386,11 @@ export function normalizeCompositeKey<E extends Entity>(
 }
 
 /**
- * Generate properties for an entity key given the key definition and key values.
+ * Generate properties for an entity query key given the key definition and key values or conditions.
  */
 export function normalizeCompositeQueryKey<E extends Entity>(
   entity: E | KeyDefinition,
-  key: Partial<QueryKey>
+  key: QueryKey
 ): NormalizedEntityCompositeQueryKey {
   const keyDef = "partition" in entity ? entity : entity.key;
 
@@ -494,7 +493,7 @@ function formatNormalizedQueryPart(
   if (
     hasCondition &&
     ((isPartial && queryConditionIndex > missingValueIndex) ||
-      queryConditionIndex !== keyPart.attributes.length)
+      queryConditionIndex !== keyPart.attributes.length - 1)
   ) {
     throw new Error(
       "Query Key condition must be the final value provided key attribute."
@@ -575,7 +574,6 @@ function formatNormalizedQueryPart(
             ),
           }
         : assertNever(condition),
-      partialValue: true,
     };
   }
 
