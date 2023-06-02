@@ -535,7 +535,7 @@ function formatNormalizedQueryPart(
               keyValuePrefix
             ),
             betweenEnd: formatKeyPrefixConditionValue(
-              condition.betweenStart,
+              condition.betweenEnd,
               keyValuePrefix
             ),
           }
