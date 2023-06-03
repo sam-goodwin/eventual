@@ -524,11 +524,11 @@ function getSortKeyExpressionAndAttribute(
         attributeValueMap: {
           ":skLeft": keyPartAttributeValue(
             keyPart,
-            keyPart.condition.betweenStart
+            keyPart.condition.between[0]
           ),
           ":skRight": keyPartAttributeValue(
             keyPart,
-            keyPart.condition.betweenEnd
+            keyPart.condition.between[1]
           ),
         },
       };

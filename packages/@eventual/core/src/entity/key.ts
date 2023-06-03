@@ -146,8 +146,7 @@ export type QueryKeyCondition<Value extends KeyValue = KeyValue> =
  * Note: numeric multi-attribute key parts are treated as strings.
  */
 export interface BetweenQueryKeyCondition<Value extends KeyValue = KeyValue> {
-  betweenStart: t.LiteralToPrimitive<Value>;
-  betweenEnd: t.LiteralToPrimitive<Value>;
+  between: [t.LiteralToPrimitive<Value>, t.LiteralToPrimitive<Value>];
 }
 
 /**

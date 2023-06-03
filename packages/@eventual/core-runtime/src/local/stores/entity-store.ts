@@ -418,8 +418,8 @@ function filterEntryBySortKey(
   } else if (isNormalizedEntityQueryKeyConditionPart(querySortKey)) {
     if (isBetweenQueryKeyCondition(querySortKey.condition)) {
       return (
-        entrySortKeyValue >= querySortKey.condition.betweenStart &&
-        entrySortKeyValue <= querySortKey.condition.betweenEnd
+        entrySortKeyValue >= querySortKey.condition.between[0] &&
+        entrySortKeyValue <= querySortKey.condition.between[1]
       );
     } else if (isBeginsWithQueryKeyCondition(querySortKey.condition)) {
       return typeof entrySortKeyValue === "string"

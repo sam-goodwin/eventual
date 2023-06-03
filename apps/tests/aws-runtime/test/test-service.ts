@@ -698,7 +698,7 @@ export const entityIndexTask = task(
       allCountersByN
         .query({
           id,
-          n: { betweenStart: 2, betweenEnd: 100 },
+          n: { between: [2, 100] },
         })
         .then((q) =>
           q.entries?.map((e) => ({

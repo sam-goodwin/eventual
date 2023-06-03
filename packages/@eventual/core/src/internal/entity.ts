@@ -64,7 +64,7 @@ export function computeKeyDefinition(
 export function isBetweenQueryKeyCondition(
   condition: QueryKeyCondition
 ): condition is BetweenQueryKeyCondition {
-  return "betweenStart" in condition;
+  return "between" in condition;
 }
 
 export function isBeginsWithQueryKeyCondition(

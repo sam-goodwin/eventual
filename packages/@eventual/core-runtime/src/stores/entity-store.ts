@@ -295,7 +295,7 @@ export interface NormalizedEntityQueryKeyConditionPart
    * ```ts
    * {
    *   "sortA": "A",
-   *   "sortB": { betweenStart: "B", betweenEnd: "C", }
+   *   "sortB": { between: ["B", "C"] }
    * }
    * ```
    *
@@ -303,7 +303,7 @@ export interface NormalizedEntityQueryKeyConditionPart
    *
    * ```ts
    * {
-   *   condition: { betweenStart: "A#B", betweenEnd: "A#C" }
+   *   condition: { between: ["A#B", "A#C"] }
    * }
    * ```
    */
@@ -535,14 +535,16 @@ function formatNormalizedQueryPart(
       keyAttribute: keyPart.keyAttribute,
       condition: isBetweenQueryKeyCondition(condition)
         ? {
-            betweenStart: formatKeyPrefixConditionValue(
-              condition.betweenStart,
-              keyValuePrefix
-            ),
-            betweenEnd: formatKeyPrefixConditionValue(
-              condition.betweenEnd,
-              keyValuePrefix
-            ),
+            between: [
+              formatKeyPrefixConditionValue(
+                condition.between[0],
+                keyValuePrefix
+              ),
+              formatKeyPrefixConditionValue(
+                condition.between[1],
+                keyValuePrefix
+              ),
+            ],
           }
         : isBeginsWithQueryKeyCondition(condition)
         ? {
