@@ -146,7 +146,7 @@ export type QueryKeyCondition<Value extends KeyValue = KeyValue> =
  * Note: numeric multi-attribute key parts are treated as strings.
  */
 export interface BetweenQueryKeyCondition<Value extends KeyValue = KeyValue> {
-  between: [t.LiteralToPrimitive<Value>, t.LiteralToPrimitive<Value>];
+  $between: [t.LiteralToPrimitive<Value>, t.LiteralToPrimitive<Value>];
 }
 
 /**
@@ -159,7 +159,7 @@ export interface BetweenQueryKeyCondition<Value extends KeyValue = KeyValue> {
 export interface BeginsWithQueryKeyCondition<
   Value extends KeyValue = KeyValue
 > {
-  beginsWith: Extract<t.LiteralToPrimitive<Value>, string>;
+  $beginsWith: Extract<t.LiteralToPrimitive<Value>, string>;
 }
 
 /**
@@ -168,7 +168,7 @@ export interface BeginsWithQueryKeyCondition<
  * Note: numeric multi-attribute key parts are treated as strings.
  */
 export interface LessThanQueryKeyCondition<Value extends KeyValue = KeyValue> {
-  lessThan: t.LiteralToPrimitive<Value>;
+  $lt: t.LiteralToPrimitive<Value>;
 }
 
 /**
@@ -179,7 +179,7 @@ export interface LessThanQueryKeyCondition<Value extends KeyValue = KeyValue> {
 export interface LessThanEqualsQueryKeyCondition<
   Value extends KeyValue = KeyValue
 > {
-  lessThanEquals: t.LiteralToPrimitive<Value>;
+  $lte: t.LiteralToPrimitive<Value>;
 }
 
 /**
@@ -190,7 +190,7 @@ export interface LessThanEqualsQueryKeyCondition<
 export interface GreaterThanQueryKeyCondition<
   Value extends KeyValue = KeyValue
 > {
-  greaterThan: t.LiteralToPrimitive<Value>;
+  $gt: t.LiteralToPrimitive<Value>;
 }
 
 /**
@@ -201,7 +201,7 @@ export interface GreaterThanQueryKeyCondition<
 export interface GreaterThanEqualsQueryKeyCondition<
   Value extends KeyValue = KeyValue
 > {
-  greaterThanEquals: t.LiteralToPrimitive<Value>;
+  $gte: t.LiteralToPrimitive<Value>;
 }
 
 export type ProgressiveTupleQueryKey<

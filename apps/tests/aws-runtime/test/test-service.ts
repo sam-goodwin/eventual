@@ -698,7 +698,7 @@ export const entityIndexTask = task(
       allCountersByN
         .query({
           id,
-          n: { between: [2, 100] },
+          n: { $between: [2, 100] },
         })
         .then((q) =>
           q.entries?.map((e) => ({
@@ -709,7 +709,7 @@ export const entityIndexTask = task(
       allCountersByN
         .query({
           id,
-          n: { greaterThan: 100 },
+          n: { $gt: 100 },
         })
         .then((q) =>
           q.entries?.map((e) => ({
@@ -718,7 +718,7 @@ export const entityIndexTask = task(
           }))
         ),
       countersByNamespace
-        .query({ id, namespace: { beginsWith: "d" } }, { direction: "DESC" })
+        .query({ id, namespace: { $beginsWith: "d" } }, { direction: "DESC" })
         .then((q) =>
           q.entries?.map((e) => ({
             n: e.value.n,

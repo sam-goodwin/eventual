@@ -133,7 +133,7 @@ describe("normalizeCompositeQueryKey", () => {
         },
         {
           part: "a",
-          sort: { beginsWith: "b" } as any,
+          sort: { $beginsWith: "b" } as any,
         }
       )
     ).toEqual<NormalizedEntityCompositeQueryKey>({
@@ -148,8 +148,8 @@ describe("normalizeCompositeQueryKey", () => {
       sort: {
         attributes: ["sort"],
         keyAttribute: "sort",
-        condition: { beginsWith: "b" },
-        parts: [{ field: "sort", value: { beginsWith: "b" } }],
+        condition: { $beginsWith: "b" },
+        parts: [{ field: "sort", value: { $beginsWith: "b" } }],
         type: "string",
       },
     });
@@ -173,7 +173,7 @@ describe("normalizeCompositeQueryKey", () => {
         {
           part: "a",
           sort: "b",
-          sort2: { beginsWith: "c" } as any,
+          sort2: { $beginsWith: "c" } as any,
         }
       )
     ).toEqual<NormalizedEntityCompositeQueryKey>({
@@ -188,10 +188,10 @@ describe("normalizeCompositeQueryKey", () => {
       sort: {
         attributes: ["sort", "sort2"],
         keyAttribute: "sort|sort2",
-        condition: { beginsWith: "b#c" },
+        condition: { $beginsWith: "b#c" },
         parts: [
           { field: "sort", value: "b" },
-          { field: "sort2", value: { beginsWith: "c" } },
+          { field: "sort2", value: { $beginsWith: "c" } },
         ],
         type: "string",
       },

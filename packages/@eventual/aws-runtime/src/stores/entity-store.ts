@@ -524,11 +524,11 @@ function getSortKeyExpressionAndAttribute(
         attributeValueMap: {
           ":skLeft": keyPartAttributeValue(
             keyPart,
-            keyPart.condition.between[0]
+            keyPart.condition.$between[0]
           ),
           ":skRight": keyPartAttributeValue(
             keyPart,
-            keyPart.condition.between[1]
+            keyPart.condition.$between[1]
           ),
         },
       };
@@ -537,17 +537,17 @@ function getSortKeyExpressionAndAttribute(
         keyPart.condition
       )
         ? [
-            keyPart.condition.beginsWith,
+            keyPart.condition.$beginsWith,
             `begins_with(${attributeNameKey}, :sk)`,
           ]
         : isLessThanQueryKeyCondition(keyPart.condition)
-        ? [keyPart.condition.lessThan, `${attributeNameKey} < :sk`]
+        ? [keyPart.condition.$lt, `${attributeNameKey} < :sk`]
         : isLessThanEqualsQueryKeyCondition(keyPart.condition)
-        ? [keyPart.condition.lessThanEquals, `${attributeNameKey} <= :sk`]
+        ? [keyPart.condition.$lte, `${attributeNameKey} <= :sk`]
         : isGreaterThanQueryKeyCondition(keyPart.condition)
-        ? [keyPart.condition.greaterThan, `${attributeNameKey} > :sk`]
+        ? [keyPart.condition.$gt, `${attributeNameKey} > :sk`]
         : isGreaterThanEqualsQueryKeyCondition(keyPart.condition)
-        ? [keyPart.condition.greaterThanEquals, `${attributeNameKey} >= :sk`]
+        ? [keyPart.condition.$gte, `${attributeNameKey} >= :sk`]
         : assertNever(keyPart.condition);
 
       return {

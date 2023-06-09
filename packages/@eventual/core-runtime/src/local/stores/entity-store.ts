@@ -418,21 +418,21 @@ function filterEntryBySortKey(
   } else if (isNormalizedEntityQueryKeyConditionPart(querySortKey)) {
     if (isBetweenQueryKeyCondition(querySortKey.condition)) {
       return (
-        entrySortKeyValue >= querySortKey.condition.between[0] &&
-        entrySortKeyValue <= querySortKey.condition.between[1]
+        entrySortKeyValue >= querySortKey.condition.$between[0] &&
+        entrySortKeyValue <= querySortKey.condition.$between[1]
       );
     } else if (isBeginsWithQueryKeyCondition(querySortKey.condition)) {
       return typeof entrySortKeyValue === "string"
-        ? entrySortKeyValue.startsWith(querySortKey.condition.beginsWith)
+        ? entrySortKeyValue.startsWith(querySortKey.condition.$beginsWith)
         : false;
     } else if (isLessThanQueryKeyCondition(querySortKey.condition)) {
-      return entrySortKeyValue < querySortKey.condition.lessThan;
+      return entrySortKeyValue < querySortKey.condition.$lt;
     } else if (isLessThanEqualsQueryKeyCondition(querySortKey.condition)) {
-      return entrySortKeyValue <= querySortKey.condition.lessThanEquals;
+      return entrySortKeyValue <= querySortKey.condition.$lte;
     } else if (isGreaterThanQueryKeyCondition(querySortKey.condition)) {
-      return entrySortKeyValue > querySortKey.condition.greaterThan;
+      return entrySortKeyValue > querySortKey.condition.$gt;
     } else if (isGreaterThanEqualsQueryKeyCondition(querySortKey.condition)) {
-      return entrySortKeyValue >= querySortKey.condition.greaterThanEquals;
+      return entrySortKeyValue >= querySortKey.condition.$gte;
     }
 
     assertNever(querySortKey.condition);

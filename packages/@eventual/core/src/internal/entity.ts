@@ -64,35 +64,35 @@ export function computeKeyDefinition(
 export function isBetweenQueryKeyCondition(
   condition: QueryKeyCondition
 ): condition is BetweenQueryKeyCondition {
-  return "between" in condition;
+  return "$between" in condition;
 }
 
 export function isBeginsWithQueryKeyCondition(
   condition: QueryKeyCondition
 ): condition is BeginsWithQueryKeyCondition {
-  return "beginsWith" in condition;
+  return "$beginsWith" in condition;
 }
 
 export function isLessThanQueryKeyCondition(
   condition: QueryKeyCondition
 ): condition is LessThanQueryKeyCondition {
-  return "lessThan" in condition;
+  return "$lt" in condition;
 }
 
 export function isLessThanEqualsQueryKeyCondition(
   condition: QueryKeyCondition
 ): condition is LessThanEqualsQueryKeyCondition {
-  return "lessThanEquals" in condition;
+  return "$lte" in condition;
 }
 
 export function isGreaterThanQueryKeyCondition(
   condition: QueryKeyCondition
 ): condition is GreaterThanQueryKeyCondition {
-  return "greaterThan" in condition;
+  return "$gt" in condition;
 }
 
 export function isGreaterThanEqualsQueryKeyCondition(
   condition: QueryKeyCondition
 ): condition is GreaterThanEqualsQueryKeyCondition {
-  return "greaterThanEquals" in condition;
+  return "$gte" in condition;
 }

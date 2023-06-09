@@ -535,51 +535,39 @@ function formatNormalizedQueryPart(
       keyAttribute: keyPart.keyAttribute,
       condition: isBetweenQueryKeyCondition(condition)
         ? {
-            between: [
+            $between: [
               formatKeyPrefixConditionValue(
-                condition.between[0],
+                condition.$between[0],
                 keyValuePrefix
               ),
               formatKeyPrefixConditionValue(
-                condition.between[1],
+                condition.$between[1],
                 keyValuePrefix
               ),
             ],
           }
         : isBeginsWithQueryKeyCondition(condition)
         ? {
-            beginsWith: formatKeyPrefixConditionValue(
-              condition.beginsWith,
+            $beginsWith: formatKeyPrefixConditionValue(
+              condition.$beginsWith,
               keyValuePrefix
             ) as string,
           }
         : isLessThanQueryKeyCondition(condition)
         ? {
-            lessThan: formatKeyPrefixConditionValue(
-              condition.lessThan,
-              keyValuePrefix
-            ),
+            $lt: formatKeyPrefixConditionValue(condition.$lt, keyValuePrefix),
           }
         : isLessThanEqualsQueryKeyCondition(condition)
         ? {
-            lessThanEquals: formatKeyPrefixConditionValue(
-              condition.lessThanEquals,
-              keyValuePrefix
-            ),
+            $lte: formatKeyPrefixConditionValue(condition.$lte, keyValuePrefix),
           }
         : isGreaterThanQueryKeyCondition(condition)
         ? {
-            greaterThan: formatKeyPrefixConditionValue(
-              condition.greaterThan,
-              keyValuePrefix
-            ),
+            $gt: formatKeyPrefixConditionValue(condition.$gt, keyValuePrefix),
           }
         : isGreaterThanEqualsQueryKeyCondition(condition)
         ? {
-            greaterThanEquals: formatKeyPrefixConditionValue(
-              condition.greaterThanEquals,
-              keyValuePrefix
-            ),
+            $gte: formatKeyPrefixConditionValue(condition.$gte, keyValuePrefix),
           }
         : assertNever(condition),
     };
