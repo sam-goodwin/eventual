@@ -50,7 +50,7 @@ export type IndexCompositeKeyPart<Attr extends Attributes> =
  */
 export type CompositeKeyPart<Attr extends Attributes> = readonly [
   KeyAttribute<Attr, any>,
-  ...KeyAttribute<Attr, any>[]
+  ...(readonly KeyAttribute<Attr, any>[])
 ];
 
 /**
@@ -207,7 +207,7 @@ export interface GreaterThanEqualsQueryKeyCondition<
 export type ProgressiveTupleQueryKey<
   Attr extends Attributes,
   Sort extends readonly (keyof Attr)[],
-  Accum extends [] = []
+  Accum extends KeyValue[] = []
 > = Sort extends readonly []
   ? Accum
   : Sort extends readonly [
@@ -217,32 +217,43 @@ export type ProgressiveTupleQueryKey<
   ?
       | Accum
       | [...Accum, QueryKeyCondition<Extract<Attr[k], KeyValue>>]
-      | ProgressiveQueryKey<Attr, ks, [...Accum, Extract<Attr[k], KeyValue>]>
+      | ProgressiveTupleQueryKey<
+          Attr,
+          ks,
+          [...Accum, Extract<Attr[k], KeyValue>]
+        >
   : never;
 
 export type ProgressiveQueryKey<
   Attr extends Attributes,
-  Sort extends readonly (keyof Attr)[],
-  Accum extends object = object
-> = Sort extends readonly []
-  ? Accum
-  : Sort extends readonly [
-      infer k extends keyof Attr,
-      ...infer ks extends readonly (keyof Attr)[]
-    ]
+  Sort extends readonly (keyof Attr)[]
+> = Sort extends readonly [
+  infer k extends keyof Attr,
+  ...infer ks extends readonly (keyof Attr)[]
+]
   ?
-      | Accum
-      | (Accum & {
+      | { [sk in Sort[number]]?: undefined }
+      | {
           [sk in k]: QueryKeyCondition<Extract<Attr[sk], KeyValue>>;
-        })
-      | ProgressiveQueryKey<
-          Attr,
-          ks,
-          Accum & {
-            [sk in k]: Extract<Attr[sk], KeyValue>;
-          }
-        >
-  : never;
+        }
+      | ({
+          [sk in k]: Extract<Attr[sk], KeyValue>;
+        } & ProgressiveQueryKey<Attr, ks>)
+  : { [sk in Sort[number]]?: undefined };
+
+export type ProgressiveKey<
+  Attr extends Attributes,
+  Sort extends readonly (keyof Attr)[]
+> = Sort extends readonly [
+  infer k extends keyof Attr,
+  ...infer ks extends readonly (keyof Attr)[]
+]
+  ?
+      | { [sk in Sort[number]]?: undefined }
+      | ({
+          [sk in k]: Extract<Attr[sk], KeyValue>;
+        } & ProgressiveKey<Attr, ks>)
+  : { [sk in Sort[number]]?: undefined };
 
 export type QueryKeyMap<
   Attr extends Attributes = Attributes,
@@ -255,7 +266,7 @@ export type QueryKeyMap<
 } & (Sort extends undefined
   ? // eslint-disable-next-line
     {}
-  : ProgressiveQueryKey<Attr, Exclude<Sort, undefined>>);
+  : ProgressiveQueryKey<Attr, [...Exclude<Sort, undefined>]>);
 
 /**
  * A partial key that can be used to query an entity.
@@ -288,11 +299,11 @@ export type StreamQueryKey<
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
     | undefined
-> = ProgressiveQueryKey<Attr, Partition> &
+> = ProgressiveKey<Attr, Partition> &
   (Sort extends undefined
     ? // eslint-disable-next-line
       {}
-    : ProgressiveQueryKey<Attr, Exclude<Sort, undefined>>);
+    : ProgressiveKey<Attr, Exclude<Sort, undefined>>);
 
 export type KeyAttributes<
   Attr extends Attributes = any,
