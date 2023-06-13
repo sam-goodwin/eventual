@@ -1,24 +1,18 @@
-import type { AsyncLocalStorage } from "async_hooks";
 import type { Bucket } from "../bucket.js";
 import type { Entity } from "../entity/entity.js";
 import type { Event } from "../event.js";
 import type { AnyCommand } from "../http/command.js";
+import type { SearchIndex } from "../search/search-index.js";
 import type { EventualServiceClient } from "../service-client.js";
 import type { Subscription } from "../subscription.js";
 import type { Task } from "../task.js";
 import type { Transaction } from "../transaction.js";
 import type { Workflow } from "../workflow.js";
 import type { EnvironmentManifest, ServiceSpec } from "./service-spec.js";
-import type { TaskRuntimeContext } from "./task.js";
-import type { SearchIndex } from "../search/search-index.js";
 
 declare global {
   // eslint-disable-next-line no-var
   var _eventual: {
-    /**
-     * Data about the current task assigned before running a task on an the task worker.
-     */
-    taskContextStore?: Promise<AsyncLocalStorage<TaskRuntimeContext>>;
     /**
      * Callable tasks which register themselves in a task worker.
      */
@@ -94,10 +88,6 @@ export const buckets = (): Map<string, Bucket> =>
 export const searchIndices = (): Map<string, SearchIndex> =>
   (globalThis._eventual.searchIndices ??= new Map<string, SearchIndex>());
 
-export function clearEventHandlers() {
-  globalThis._eventual.subscriptions = [];
-}
-
 export const tasks = (): Record<string, Task<any, any, any>> =>
   (globalThis._eventual.tasks ??= {});
 
@@ -117,33 +107,6 @@ export function getServiceClient(): EventualServiceClient {
     throw new Error(`WorkflowClient is not registered`);
   }
   return globalThis._eventual.serviceClient;
-}
-
-export async function taskContextScope<Output>(
-  context: TaskRuntimeContext,
-  handler: () => Output
-): Promise<Awaited<Output>> {
-  if (!globalThis._eventual.taskContextStore) {
-    globalThis._eventual.taskContextStore = import("async_hooks").then(
-      (imp) => new imp.AsyncLocalStorage<TaskRuntimeContext>()
-    );
-  }
-  return await (
-    await globalThis._eventual.taskContextStore
-  ).run(context, async () => {
-    return await handler();
-  });
-}
-
-export async function getTaskContext(): Promise<TaskRuntimeContext> {
-  const context = (await globalThis._eventual.taskContextStore)?.getStore();
-
-  if (!context) {
-    throw new Error(
-      "Task Context has not been registered yet or this is not the task worker."
-    );
-  }
-  return context;
 }
 
 export function getEnvironmentManifest() {

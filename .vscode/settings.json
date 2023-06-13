@@ -40,6 +40,7 @@
   "editor.insertSpaces": true,
   "editor.formatOnSave": true,
   "eslint.format.enable": false,
+  "prettier.prettierPath": "./node_modules/prettier",
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.preferences.importModuleSpecifier": "relative"
 }
