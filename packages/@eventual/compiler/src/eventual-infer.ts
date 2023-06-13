@@ -37,7 +37,6 @@ import {
   getSpan,
   isBucketHandlerMemberCall,
   isCommandCall,
-  isEntityStreamCall,
   isEntityStreamMemberCall,
   isOnEventCall,
   isSubscriptionCall,
@@ -252,7 +251,6 @@ export class InferVisitor extends Visitor {
         isSubscriptionCall,
         isTaskCall,
         isEntityStreamMemberCall,
-        isEntityStreamCall,
         isBucketHandlerMemberCall,
       ].some((op) => op(call))
     ) {

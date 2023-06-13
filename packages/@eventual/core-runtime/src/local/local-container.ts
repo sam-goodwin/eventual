@@ -1,9 +1,7 @@
 import {
   BucketNotificationDeleteEvent,
   BucketNotificationPutEvent,
-  EntityStreamInsertItem,
-  EntityStreamModifyItem,
-  EntityStreamRemoveItem,
+  EntityStreamItem,
   LogLevel,
 } from "@eventual/core";
 import { EventClient } from "../clients/event-client.js";
@@ -77,6 +75,7 @@ import { LocalEventClient } from "./clients/event-client.js";
 import { LocalExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { LocalLogsClient } from "./clients/logs-client.js";
 import { LocalMetricsClient } from "./clients/metrics-client.js";
+import { LocalOpenSearchClient } from "./clients/open-search-client.js";
 import { LocalTaskClient } from "./clients/task-client.js";
 import { LocalTimerClient } from "./clients/timer-client.js";
 import { LocalTransactionClient } from "./clients/transaction-client.js";
@@ -86,17 +85,26 @@ import { LocalExecutionHistoryStateStore } from "./stores/execution-history-stat
 import { LocalExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { LocalExecutionStore } from "./stores/execution-store.js";
 import { LocalTaskStore } from "./stores/task-store.js";
-import { LocalOpenSearchClient } from "./clients/open-search-client.js";
 
 export type LocalEvent =
   | WorkflowTask
   | TimerRequest
   | TaskWorkerRequest
-  | Omit<EntityStreamInsertItem<any>, "streamName">
-  | Omit<EntityStreamRemoveItem<any>, "streamName">
-  | Omit<EntityStreamModifyItem<any>, "streamName">
+  | LocalEntityStreamEvent
   | Omit<BucketNotificationPutEvent, "handlerName">
   | Omit<BucketNotificationDeleteEvent, "handlerName">;
+
+interface LocalEntityStreamEvent {
+  kind: "EntityStreamEvent";
+  item: Omit<EntityStreamItem, "id">;
+  entityName: string;
+}
+
+export function isLocalEntityStreamEvent(
+  event: LocalEvent
+): event is LocalEntityStreamEvent {
+  return "kind" in event && event.kind === "EntityStreamEvent";
+}
 
 export interface LocalContainerProps {
   taskProvider?: TaskProvider;

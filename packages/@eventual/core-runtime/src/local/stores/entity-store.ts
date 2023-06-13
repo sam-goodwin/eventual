@@ -7,6 +7,7 @@ import {
   EntityQueryResult,
   EntityScanOptions,
   EntitySetOptions,
+  EntityStreamItem,
   EntityWithMetadata,
   KeyValue,
   TransactionCancelled,
@@ -92,13 +93,16 @@ export class LocalEntityStore extends EntityStore {
     setLocalEntity(this.getLocalEntity(entity), newValue, key, entity);
 
     this.props.localConnector.pushWorkflowTask({
+      kind: "EntityStreamEvent",
       entityName: entity.name,
-      key: convertNormalizedEntityKeyToMap(key),
-      operation: version === 0 ? ("insert" as const) : ("modify" as const),
-      newValue: value,
-      newVersion,
-      oldValue,
-      oldVersion: version,
+      item: {
+        key: convertNormalizedEntityKeyToMap(key),
+        operation: version === 0 ? ("insert" as const) : ("modify" as const),
+        newValue: value,
+        newVersion,
+        oldValue,
+        oldVersion: version,
+      } as EntityStreamItem,
     });
     return { version: newVersion };
   }
@@ -118,11 +122,14 @@ export class LocalEntityStore extends EntityStore {
 
       if (deleteLocalEntity(this.getLocalEntity(entity), key, entity)) {
         this.props.localConnector.pushWorkflowTask({
+          kind: "EntityStreamEvent",
           entityName: entity.name,
-          key: convertNormalizedEntityKeyToMap(key),
-          operation: "remove" as const,
-          oldValue: item.value,
-          oldVersion: item.version,
+          item: {
+            key: convertNormalizedEntityKeyToMap(key),
+            operation: "remove" as const,
+            oldValue: item.value,
+            oldVersion: item.version,
+          } as EntityStreamItem,
         });
       }
     }

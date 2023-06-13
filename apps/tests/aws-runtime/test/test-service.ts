@@ -617,20 +617,24 @@ export const counterWatcher = counter.stream(
   }
 );
 
-export const counterNamespaceWatcher = counter.stream(
+export const counterNamespaceWatcher = counter.batchStream(
   "counterNamespaceWatch",
   { queryKeys: [{ namespace: "different" }], operations: ["insert"] },
-  async (item) => {
-    console.log(item);
-    const value = await counter.get(item.key);
-    await counter.set({
-      namespace: "default",
-      id: value!.id,
-      n: (value?.n ?? 0) + 1,
-      optional: undefined,
-    });
-    console.log("send signal to", value!.id);
-    await entitySignal.sendSignal(value!.id);
+  async (items) => {
+    await Promise.all(
+      items.map(async (item) => {
+        console.log(item);
+        const value = await counter.get(item.key);
+        await counter.set({
+          namespace: "default",
+          id: value!.id,
+          n: (value?.n ?? 0) + 1,
+          optional: undefined,
+        });
+        console.log("send signal to", value!.id);
+        await entitySignal.sendSignal(value!.id);
+      })
+    );
   }
 );
 

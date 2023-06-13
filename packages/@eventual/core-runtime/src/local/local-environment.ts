@@ -1,8 +1,8 @@
-import { HttpRequest, HttpResponse } from "@eventual/core";
+import { EntityStreamItem, HttpRequest, HttpResponse } from "@eventual/core";
 import {
+  EnvironmentManifest,
   buckets,
   entities,
-  EnvironmentManifest,
   registerEnvironmentManifest,
   registerServiceClient,
 } from "@eventual/core/internal";
@@ -15,14 +15,15 @@ import {
   bucketHandlerMatchesEvent,
   entityStreamMatchesItem,
   isBucketNotificationEvent,
-  isEntityStreamItem,
 } from "../utils.js";
 import {
   LocalContainer,
   LocalEnvConnector,
   LocalEvent,
+  isLocalEntityStreamEvent,
 } from "./local-container.js";
 import { TimeController } from "./time-controller.js";
+import { ulid } from "ulidx";
 
 export class LocalEnvironment {
   private timeController: TimeController<LocalEvent>;
@@ -130,7 +131,7 @@ export class LocalEnvironment {
       const timerRequests = events.filter(isTimerRequest);
       const workflowTasks = events.filter(isWorkflowTask);
       const taskWorkerRequests = events.filter(isTaskWorkerRequest);
-      const entityStreamItems = events.filter(isEntityStreamItem);
+      const entityStreamItems = events.filter(isLocalEntityStreamEvent);
       const bucketNotificationEvents = events.filter(isBucketNotificationEvent);
 
       // run all task requests, don't wait for a result
@@ -149,6 +150,10 @@ export class LocalEnvironment {
       );
       // for each entity stream item, find the streams that match it, and run the worker with the item
       entityStreamItems.forEach((i) => {
+        const item = {
+          id: ulid(),
+          ...i.item,
+        } as EntityStreamItem;
         const streamNames = [...entities().values()]
           .flatMap((d) => d.streams)
           .filter((s) => {
@@ -158,14 +163,13 @@ export class LocalEnvironment {
             if (!entity) {
               return false;
             }
-            return entityStreamMatchesItem(entity, i, s);
+            return entityStreamMatchesItem(entity, item, s);
           })
           .map((s) => s.name);
         streamNames.forEach((streamName) => {
-          this.localContainer.entityStreamWorker({
-            ...i,
-            streamName,
-          });
+          this.localContainer.entityStreamWorker(i.entityName, streamName, [
+            item,
+          ]);
         });
       });
 
