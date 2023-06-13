@@ -246,6 +246,8 @@ export type ProgressiveQueryKey<
 /**
  * Supports betweens condition using multiple sort attribute parts.
  *
+ * At least one attribute must be present in the left and right side.
+ *
  * BETWEEN "a" and "c#b"
  * {
  *    $between: [{sort1: "a"}, {sort1: "c", sort2: "b"}]
@@ -260,7 +262,19 @@ export type BetweenProgressiveKeyCondition<
   Attr extends Attributes,
   Sort extends readonly (keyof Attr)[]
 > = {
-  $between: [ProgressiveKey<Attr, Sort>, ProgressiveKey<Attr, Sort>];
+  $between: Sort extends readonly [
+    infer k extends keyof Attr,
+    ...infer ks extends readonly (keyof Attr)[]
+  ]
+    ? [
+        ProgressiveKey<Attr, ks> & {
+          [sk in k]: Extract<Attr[sk], KeyValue>;
+        },
+        ProgressiveKey<Attr, ks> & {
+          [sk in k]: Extract<Attr[sk], KeyValue>;
+        }
+      ]
+    : never;
 };
 
 export type ProgressiveKey<

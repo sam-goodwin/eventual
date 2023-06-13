@@ -468,7 +468,7 @@ function formatNormalizeSortKeyPart(
   if (!keyDef.sort) {
     return undefined;
   }
-  return formatNormalizedPart(keyDef.partition, (p, i) =>
+  return formatNormalizedPart(keyDef.sort, (p, i) =>
     Array.isArray(key)
       ? key[keyDef.partition.attributes.length + i]
       : (key as KeyMap)[p]
@@ -730,7 +730,7 @@ function generateBetweenConditionFromInlineBetween(
     (left.keyValue === undefined || right.keyValue === undefined)
   ) {
     throw new Error(
-      "Between conditions cannot be empty when the field type is number"
+      "Between conditions cannot be empty when the field type is number."
     );
   }
   return { $between: [left.keyValue ?? "", right.keyValue ?? ""] };

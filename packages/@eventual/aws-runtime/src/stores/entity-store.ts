@@ -460,6 +460,7 @@ export class AWSEntityStore extends EntityStore {
   }
 
   private entityKey(key: NormalizedEntityCompositeKey) {
+    console.debug("Key", JSON.stringify(key));
     const marshalledKey = marshall(
       {
         [key.partition.keyAttribute]: key.partition.keyValue,
@@ -467,6 +468,7 @@ export class AWSEntityStore extends EntityStore {
       },
       { removeUndefinedValues: true }
     );
+    console.debug("Marshalled Key", JSON.stringify(marshalledKey));
     return marshalledKey;
   }
 
