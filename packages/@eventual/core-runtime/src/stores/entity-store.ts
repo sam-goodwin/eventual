@@ -1,5 +1,7 @@
-import type {
+import {
   Attributes,
+  BetweenProgressiveKeyCondition,
+  BetweenQueryKeyCondition,
   CompositeKey,
   Entity,
   EntityConsistencyOptions,
@@ -28,6 +30,7 @@ import {
   isGreaterThanQueryKeyCondition,
   isLessThanEqualsQueryKeyCondition,
   isLessThanQueryKeyCondition,
+  keyHasInlineBetween,
 } from "@eventual/core/internal";
 import { EntityProvider } from "../providers/entity-provider.js";
 
@@ -104,7 +107,7 @@ export abstract class EntityStore implements EntityHook {
 
   public query(
     entityName: string,
-    queryKey: QueryKey,
+    queryKey: QueryKey<any, any, any>,
     options?: EntityQueryOptions | undefined
   ): Promise<EntityQueryResult> {
     const entity = this.getEntity(entityName);
@@ -124,7 +127,7 @@ export abstract class EntityStore implements EntityHook {
   public queryIndex(
     entityName: string,
     indexName: string,
-    queryKey: QueryKey,
+    queryKey: QueryKey<any, any, any>,
     options?: EntityQueryOptions | undefined
   ): Promise<EntityQueryOptions> {
     const index = this.getEntity(entityName).indices.find(
@@ -369,17 +372,9 @@ export function normalizeCompositeKey<E extends Entity>(
 ): NormalizedEntityCompositeKey {
   const keyDef = "partition" in entity ? entity : entity.key;
 
-  const partitionCompositeKey = formatNormalizedPart(keyDef.partition, (p, i) =>
-    Array.isArray(key) ? key[i] : (key as KeyMap)[p]
-  );
+  const partitionCompositeKey = formatNormalizePartitionKeyPart(keyDef, key);
 
-  const sortCompositeKey = keyDef.sort
-    ? formatNormalizedPart(keyDef.sort, (p, i) =>
-        Array.isArray(key)
-          ? key[keyDef.partition.attributes.length + i]
-          : (key as KeyMap)[p]
-      )
-    : undefined;
+  const sortCompositeKey = formatNormalizeSortKeyPart(keyDef, key);
 
   return sortCompositeKey
     ? {
@@ -396,32 +391,20 @@ export function normalizeCompositeKey<E extends Entity>(
  */
 export function normalizeCompositeQueryKey<E extends Entity>(
   entity: E | KeyDefinition,
-  key: QueryKey
+  key: QueryKey<any, any, any>
 ): NormalizedEntityCompositeQueryKey {
   const keyDef = "partition" in entity ? entity : entity.key;
 
-  const partitionCompositeKey = formatNormalizedPart(
-    keyDef.partition,
-    (p, i) => {
-      const keyValue = Array.isArray(key) ? key[i] : (key as QueryKeyMap)[p];
-      if (typeof keyValue === "object") {
-        throw new Error(
-          `Partition Query Key value must be a string or number: ${p}`
-        );
-      }
-      return keyValue;
-    }
-  );
+  const partitionCompositeKey = formatNormalizePartitionKeyPart(keyDef, key);
 
   if (partitionCompositeKey.partialValue) {
     throw new Error("Query key partition part cannot be partial");
   }
 
   const sortCompositeKey = keyDef.sort
-    ? formatNormalizedQueryPart(keyDef.sort, (p, i) =>
-        Array.isArray(key)
-          ? key[keyDef.partition.attributes.length + i]
-          : (key as QueryKeyMap)[p]
+    ? formatNormalizedQueryPart(
+        keyDef as KeyDefinition & { sort: KeyDefinitionPart },
+        key
       )
     : undefined;
 
@@ -465,16 +448,43 @@ function formatNormalizedPart(
   };
 }
 
+function formatNormalizePartitionKeyPart(
+  keyDef: KeyDefinition,
+  key: Partial<CompositeKey> | QueryKey<any, any, any>
+) {
+  return formatNormalizedPart(keyDef.partition, (p, i) => {
+    const value = Array.isArray(key) ? key[i] : (key as KeyMap)[p];
+    if (typeof value === "object") {
+      throw new Error(`Partition Key value must be a string or number: ${p}`);
+    }
+    return value;
+  });
+}
+
+function formatNormalizeSortKeyPart(
+  keyDef: KeyDefinition,
+  key: Partial<CompositeKey> | QueryKey<any, any, any>
+) {
+  if (!keyDef.sort) {
+    return undefined;
+  }
+  return formatNormalizedPart(keyDef.partition, (p, i) =>
+    Array.isArray(key)
+      ? key[keyDef.partition.attributes.length + i]
+      : (key as KeyMap)[p]
+  );
+}
+
 function formatNormalizedQueryPart(
-  keyPart: KeyDefinitionPart,
-  valueRetriever: (
-    field: string,
-    index: number
-  ) => KeyValue | QueryKeyCondition | undefined
+  keyDef: KeyDefinition & { sort: KeyDefinitionPart },
+  key: QueryKey<any, any, any>
 ): NormalizedEntityQueryKeyPart {
+  const keyPart = keyDef.sort;
   const parts = keyPart.attributes.map((p, i) => ({
     field: p,
-    value: valueRetriever(p, i),
+    value: Array.isArray(key)
+      ? key[keyDef.partition.attributes.length + i]
+      : (key as QueryKeyMap)[p],
   }));
 
   const queryConditionIndex = parts.findIndex(
@@ -483,7 +493,8 @@ function formatNormalizedQueryPart(
   const missingValueIndex = parts.findIndex((p) => p.value === undefined);
 
   const isPartial = missingValueIndex > -1;
-  const hasCondition = queryConditionIndex > -1;
+  const hasInlineBetweenCondition = keyHasInlineBetween(key);
+  const hasFieldCondition = queryConditionIndex > -1;
 
   /**
    * The key condition must be the last given value and there be at most one condition.
@@ -497,7 +508,7 @@ function formatNormalizedQueryPart(
    * [missing, value | condition] - invalid
    */
   if (
-    hasCondition &&
+    hasFieldCondition &&
     ((isPartial && queryConditionIndex > missingValueIndex) ||
       queryConditionIndex !== keyPart.attributes.length - 1)
   ) {
@@ -506,14 +517,21 @@ function formatNormalizedQueryPart(
     );
   }
 
-  const lastIndex =
-    isPartial && hasCondition
+  if (hasInlineBetweenCondition && hasFieldCondition) {
+    throw new Error(
+      "Query key cannot contain a key condition and an inline $between condition."
+    );
+  }
+
+  const hasCondition = hasFieldCondition || hasInlineBetweenCondition;
+
+  const lastIndex = isPartial
+    ? hasFieldCondition
       ? Math.min(missingValueIndex, queryConditionIndex)
-      : isPartial
-      ? missingValueIndex
-      : hasCondition
-      ? queryConditionIndex
-      : parts.length;
+      : missingValueIndex
+    : hasFieldCondition
+    ? queryConditionIndex
+    : parts.length;
 
   const keyValuePrefix =
     lastIndex === 0 // if there are no present values, return undefined
@@ -526,7 +544,16 @@ function formatNormalizedQueryPart(
           .join("#");
 
   if (hasCondition) {
-    const condition = parts[queryConditionIndex]?.value as QueryKeyCondition;
+    const condition = hasInlineBetweenCondition
+      ? // turns the inline between into a normal between condition. We'll append the key value prefix next.
+        generateBetweenConditionFromInlineBetween(
+          key,
+          keyDef,
+          // there should not be both a condition key and the inline $between condition
+          isPartial ? missingValueIndex : 0
+        )
+      : (parts[queryConditionIndex]?.value as QueryKeyCondition);
+
     return {
       type: keyPart.type,
       attributes: keyPart.attributes,
@@ -680,4 +707,31 @@ function formatKeyPrefixConditionValue(
   return prefixValue !== undefined
     ? `${prefixValue.toString()}#${conditionValue.toString()}`
     : conditionValue;
+}
+
+function generateBetweenConditionFromInlineBetween(
+  condition: BetweenProgressiveKeyCondition<any, any>,
+  keyDefinition: KeyDefinition & { sort: KeyDefinitionPart },
+  sortKeyOffset: number
+): BetweenQueryKeyCondition {
+  const betweenKeyPart: KeyDefinitionPart = {
+    attributes: keyDefinition.sort.attributes.slice(sortKeyOffset),
+    keyAttribute: keyDefinition.sort.keyAttribute,
+    type: keyDefinition.sort.type,
+  };
+  const left = formatNormalizedPart(betweenKeyPart, (p) => {
+    return (condition.$between[0] as KeyMap)[p];
+  });
+  const right = formatNormalizedPart(betweenKeyPart, (p) => {
+    return (condition.$between[1] as KeyMap)[p];
+  });
+  if (
+    keyDefinition.sort.type === "number" &&
+    (left.keyValue === undefined || right.keyValue === undefined)
+  ) {
+    throw new Error(
+      "Between conditions cannot be empty when the field type is number"
+    );
+  }
+  return { $between: [left.keyValue ?? "", right.keyValue ?? ""] };
 }

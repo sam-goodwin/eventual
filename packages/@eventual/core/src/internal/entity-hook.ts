@@ -32,7 +32,7 @@ export type EntityHook = {
   queryIndex(
     entityName: string,
     indexName: string,
-    queryKey: QueryKey,
+    queryKey: QueryKey<any, any, any>,
     options?: EntityQueryOptions
   ): Promise<EntityQueryResult>;
   scanIndex(

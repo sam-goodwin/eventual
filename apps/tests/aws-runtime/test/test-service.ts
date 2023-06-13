@@ -555,6 +555,7 @@ export const counter = entity("counter5", {
       z.literal("different"),
       z.literal("default"),
       z.literal("another"),
+      z.literal("another2"),
     ]),
     id: z.string(),
     optional: z.string().optional(),
@@ -670,6 +671,12 @@ export const entityIndexTask = task(
       n: 1000,
       optional: "hello",
     });
+    await counter.set({
+      namespace: "another2",
+      id,
+      n: 9,
+      optional: "hello",
+    });
     return await Promise.all([
       allCounters.query({ id }).then((q) =>
         q.entries?.map((e) => ({
@@ -709,7 +716,7 @@ export const entityIndexTask = task(
       allCountersByN
         .query({
           id,
-          n: { $gt: 100 },
+          n: { $gt: 1 },
         })
         .then((q) =>
           q.entries?.map((e) => ({
@@ -732,6 +739,15 @@ export const entityIndexTask = task(
           namespace: e.value.namespace,
         }))
       ),
+      // between using a multi-attribute key
+      countersByOptional2
+        .query({ id, $between: [{}, { optional: "hello", n: 10 }] })
+        .then((q) =>
+          q.entries?.map((e) => ({
+            n: e.value.n,
+            namespace: e.value.namespace,
+          }))
+        ),
     ]);
   }
 );

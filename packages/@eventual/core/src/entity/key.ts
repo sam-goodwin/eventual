@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/ban-types */
+
 import type { Attributes } from "./entity.js";
 import type t from "type-fest";
 
@@ -77,8 +79,7 @@ export type KeyMap<
   ? {
       [k in Sort[number]]: Exclude<Attr[k], undefined>;
     }
-  : // eslint-disable-next-line
-    {});
+  : {});
 
 export type KeyPartialTuple<
   Attr extends Attributes,
@@ -232,14 +233,35 @@ export type ProgressiveQueryKey<
   ...infer ks extends readonly (keyof Attr)[]
 ]
   ?
-      | { [sk in Sort[number]]?: undefined }
+      | { [sk in Sort[number]]?: never }
       | {
           [sk in k]: QueryKeyCondition<Extract<Attr[sk], KeyValue>>;
         }
+      | BetweenProgressiveKeyCondition<Attr, Sort>
       | ({
           [sk in k]: Extract<Attr[sk], KeyValue>;
         } & ProgressiveQueryKey<Attr, ks>)
-  : { [sk in Sort[number]]?: undefined };
+  : {};
+
+/**
+ * Supports betweens condition using multiple sort attribute parts.
+ *
+ * BETWEEN "a" and "c#b"
+ * {
+ *    $between: [{sort1: "a"}, {sort1: "c", sort2: "b"}]
+ * }
+ *
+ * BETWEEN "a" and "c"
+ * {
+ *    sort1: { $between: ["a", "c"] }
+ * }
+ */
+export type BetweenProgressiveKeyCondition<
+  Attr extends Attributes,
+  Sort extends readonly (keyof Attr)[]
+> = {
+  $between: [ProgressiveKey<Attr, Sort>, ProgressiveKey<Attr, Sort>];
+};
 
 export type ProgressiveKey<
   Attr extends Attributes,
@@ -249,11 +271,11 @@ export type ProgressiveKey<
   ...infer ks extends readonly (keyof Attr)[]
 ]
   ?
-      | { [sk in Sort[number]]?: undefined }
+      | { [sk in Sort[number]]?: never }
       | ({
           [sk in k]: Extract<Attr[sk], KeyValue>;
         } & ProgressiveKey<Attr, ks>)
-  : { [sk in Sort[number]]?: undefined };
+  : {};
 
 export type QueryKeyMap<
   Attr extends Attributes = Attributes,
@@ -264,8 +286,7 @@ export type QueryKeyMap<
 > = {
   [pk in Partition[number]]: Extract<Attr[pk], KeyValue>;
 } & (Sort extends undefined
-  ? // eslint-disable-next-line
-    {}
+  ? {}
   : ProgressiveQueryKey<Attr, [...Exclude<Sort, undefined>]>);
 
 /**
@@ -276,11 +297,9 @@ export type QueryKeyMap<
  * ```
  */
 export type QueryKey<
-  Attr extends Attributes = Attributes,
-  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
-  Sort extends CompositeKeyPart<Attr> | undefined =
-    | CompositeKeyPart<Attr>
-    | undefined
+  Attr extends Attributes,
+  Partition extends CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined
 > =
   | QueryKeyMap<Attr, Partition, Sort>
   | [

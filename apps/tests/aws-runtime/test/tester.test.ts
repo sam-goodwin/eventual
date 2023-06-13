@@ -134,6 +134,10 @@ eventualRuntimeTestHarness(
             namespace: "default",
             n: 6,
           },
+          {
+            namespace: "another2",
+            n: 9,
+          },
         ]),
         [
           {
@@ -145,6 +149,10 @@ eventualRuntimeTestHarness(
             n: 6,
           },
           {
+            namespace: "another2",
+            n: 9,
+          },
+          {
             namespace: "another",
             n: 1000,
           },
@@ -153,6 +161,10 @@ eventualRuntimeTestHarness(
           {
             namespace: "another",
             n: 1000,
+          },
+          {
+            namespace: "another2",
+            n: 9,
           },
           {
             namespace: "default",
@@ -174,8 +186,16 @@ eventualRuntimeTestHarness(
             namespace: "default",
             n: 6,
           },
+          {
+            namespace: "another2",
+            n: 9,
+          },
         ],
         [
+          {
+            namespace: "another",
+            n: 9,
+          },
           {
             namespace: "another",
             n: 1000,
@@ -193,8 +213,18 @@ eventualRuntimeTestHarness(
         ],
         [
           {
+            namespace: "another2",
+            n: 9,
+          },
+          {
             namespace: "another",
             n: 1000,
+          },
+        ],
+        [
+          {
+            namespace: "another2",
+            n: 9,
           },
         ],
       ],

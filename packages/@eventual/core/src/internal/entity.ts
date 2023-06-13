@@ -1,12 +1,14 @@
 import { z } from "zod";
 import type {
   BeginsWithQueryKeyCondition,
+  BetweenProgressiveKeyCondition,
   BetweenQueryKeyCondition,
   CompositeKeyPart,
   GreaterThanEqualsQueryKeyCondition,
   GreaterThanQueryKeyCondition,
   LessThanEqualsQueryKeyCondition,
   LessThanQueryKeyCondition,
+  QueryKey,
   QueryKeyCondition,
 } from "../entity/key.js";
 
@@ -59,6 +61,12 @@ export function computeKeyDefinition(
       attributes: keyAttributes,
     };
   }
+}
+
+export function keyHasInlineBetween<Q extends QueryKey<any, any, any>>(
+  key: Q
+): key is Q & BetweenProgressiveKeyCondition<any, any> {
+  return "$between" in key;
 }
 
 export function isBetweenQueryKeyCondition(
