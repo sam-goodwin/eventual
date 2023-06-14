@@ -70,7 +70,7 @@ export const replay = (yargs: Argv) =>
 
         spinner.succeed();
         const workflowName = parseWorkflowName(execution as ExecutionID);
-        const workflow = getEventualResource("workflows", workflowName);
+        const workflow = getEventualResource("Workflow", workflowName);
         if (!workflow) {
           throw new Error(`Workflow ${workflowName} not found!`);
         }

@@ -20,7 +20,7 @@ export function createBucketNotificationHandlerWorker(
   return async (item) =>
     serviceTypeScope(ServiceType.BucketNotificationHandlerWorker, async () => {
       const streamHandler = getEventualResource(
-        "buckets",
+        "Bucket",
         item.bucketName
       )?.handlers.find((s) => s.name === item.handlerName);
       if (!streamHandler) {

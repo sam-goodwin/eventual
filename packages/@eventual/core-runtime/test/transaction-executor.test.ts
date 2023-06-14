@@ -35,7 +35,7 @@ const entity = (() => {
     options: EntityOptions<Attr, Partition, Sort>
   ) => {
     // eslint-disable-next-line no-empty
-    while (getEventualResource("entities", `ent${++n}`)) {}
+    while (getEventualResource("Entity", `ent${++n}`)) {}
     return _entity<string, Attr, Partition, Sort>(`ent${n}`, options);
   };
 })();

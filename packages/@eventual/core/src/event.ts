@@ -122,7 +122,7 @@ export function event<E extends EventPayload>(
   name: string,
   schema?: z.Schema<E>
 ): Event<E> {
-  return registerEventualResource("events", {
+  return registerEventualResource("Event", {
     kind: "Event",
     name,
     schema,
@@ -135,7 +135,7 @@ export function event<E extends EventPayload>(
         args.find((a) => typeof a === "function"),
       ];
 
-      return registerEventualResource("subscriptions", {
+      return registerEventualResource("Subscription", {
         kind: "Subscription" as const,
         name: subName,
         handler,

@@ -11,10 +11,10 @@ export interface TaskProvider {
 
 export class GlobalTaskProvider implements TaskProvider {
   public getTask(taskId: string): Task | undefined {
-    return getEventualResource("tasks", taskId);
+    return getEventualResource("Task", taskId);
   }
 
   public getTaskIds(): string[] {
-    return Array.from(getEventualResources("tasks").keys());
+    return Array.from(getEventualResources("Task").keys());
   }
 }

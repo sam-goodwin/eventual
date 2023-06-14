@@ -16,6 +16,6 @@ export interface EntityProvider {
  */
 export class GlobalEntityProvider implements EntityProvider {
   public getEntity(entityName: string): Entity | undefined {
-    return getEventualResource("entities", entityName);
+    return getEventualResource("Entity", entityName);
   }
 }

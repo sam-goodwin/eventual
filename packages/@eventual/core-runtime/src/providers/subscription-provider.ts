@@ -17,7 +17,7 @@ export class GlobalSubscriptionProvider implements SubscriptionProvider {
 
   constructor() {
     this.subscriptions = indexSubscriptions(
-      Array.from(getEventualResources("subscriptions").values())
+      Array.from(getEventualResources("Subscription").values())
     );
   }
 

@@ -95,6 +95,7 @@ export interface Workflow<
   Output = any
 > extends WorkflowSpec<Name> {
   options?: WorkflowDefinitionOptions;
+  kind: "Workflow";
 
   /**
    * Invokes the {@link Workflow} from within another workflow.
@@ -245,8 +246,9 @@ export function workflow<
 
   // @ts-ignore
   workflow.definition = definition;
+  workflow.kind = "Workflow";
 
-  return registerEventualResource("workflows", workflow);
+  return registerEventualResource("Workflow", workflow);
 }
 
 /**

@@ -412,7 +412,7 @@ export class TestEnvironment extends RuntimeServiceClient {
           if (!entity) {
             return [];
           }
-          const streamNames = [...getEventualResources("entities").values()]
+          const streamNames = [...getEventualResources("Entity").values()]
             .flatMap((d) => d.streams)
             .filter((s) => entityStreamMatchesItem(entity, i, s))
             .map((s) => s.name);
@@ -424,7 +424,7 @@ export class TestEnvironment extends RuntimeServiceClient {
           });
         }),
         bucketNotificationEvents.flatMap((i) => {
-          const streamNames = [...getEventualResources("buckets").values()]
+          const streamNames = [...getEventualResources("Bucket").values()]
             .flatMap((d) => d.handlers)
             .filter((s) => bucketHandlerMatchesEvent(i, s))
             .map((s) => s.name);

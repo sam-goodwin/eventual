@@ -112,7 +112,7 @@ function createRouter<Context extends CommandContext>(
               // we want the base HTTP request, not the transformed one
               passThrough: true,
             };
-            registerEventualResource("commands", command);
+            registerEventualResource("Command", command);
 
             return router[method](path, command.handler);
           };

@@ -77,5 +77,5 @@ export function transaction<Name extends string, Input, Output>(
   transact.kind = "Transaction";
   transact.handler = handler;
   Object.defineProperty(transact, "name", { value: name, writable: false });
-  return registerEventualResource("transactions", transact);
+  return registerEventualResource("Transaction", transact);
 }

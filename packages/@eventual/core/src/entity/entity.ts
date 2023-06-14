@@ -470,7 +470,7 @@ export function entity<
     },
   };
 
-  return registerEventualResource("entities", entity);
+  return registerEventualResource("Entity", entity);
 }
 
 export type EntityIndexOptions<

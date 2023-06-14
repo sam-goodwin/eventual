@@ -29,7 +29,7 @@ export class AWSEventClient implements EventClient {
     const eventBatches = chunkArray(
       10,
       events.map((event, i) => {
-        const schema = getEventualResource("events", event.name)?.schema;
+        const schema = getEventualResource("Event", event.name)?.schema;
         if (schema) {
           const result = schema.safeParse(event.event);
           if (!result.success) {

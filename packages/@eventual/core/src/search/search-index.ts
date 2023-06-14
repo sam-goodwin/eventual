@@ -157,7 +157,7 @@ export function index<
   Object.defineProperty(index, "client", {
     get: () => getOpenSearchHook().client.client satisfies Client,
   });
-  return registerEventualResource("searchIndices", index as any);
+  return registerEventualResource("SearchIndex", index as any);
 
   function search<Op extends SearchOperation, Response = any>(
     operation: Op,

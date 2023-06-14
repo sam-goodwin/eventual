@@ -21,7 +21,7 @@ export function createEntityStreamWorker(
   return async (item) =>
     serviceTypeScope(ServiceType.EntityStreamWorker, async () => {
       const streamHandler = getEventualResource(
-        "entities",
+        "Entity",
         item.entityName
       )?.streams.find((s) => s.name === item.streamName);
       if (!streamHandler) {

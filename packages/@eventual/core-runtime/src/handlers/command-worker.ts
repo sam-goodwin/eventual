@@ -94,7 +94,7 @@ function initRouter() {
     base: "/",
   });
 
-  for (const command of getEventualResources("commands").values()) {
+  for (const command of getEventualResources("Command").values()) {
     const shouldValidate = command.validate !== false;
 
     if (!command.passThrough) {

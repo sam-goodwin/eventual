@@ -1,4 +1,3 @@
-import type { MapValue } from "type-fest/source/entry.js";
 import type { Bucket } from "../bucket.js";
 import type { Entity } from "../entity/entity.js";
 import type { Event } from "../event.js";
@@ -11,50 +10,29 @@ import type { Transaction } from "../transaction.js";
 import type { Workflow } from "../workflow.js";
 import type { EnvironmentManifest, ServiceSpec } from "./service-spec.js";
 
-interface EventualResources {
-  /**
-   * Callable tasks which register themselves in a task worker.
-   */
-  tasks?: Map<string, Task>;
-  /**
-   * Available workflows which have registered themselves.
-   *
-   * Used by the orchestrator, task worker, and other scopes to interact with workflows in
-   * a service.
-   */
-  workflows?: Map<string, Workflow>;
-  transactions?: Map<string, Transaction>;
-  /**
-   * A simple key value store that work efficiently within eventual.
-   */
-  entities?: Map<string, Entity>;
-  /**
-   * A data bucket within eventual.
-   */
-  buckets?: Map<string, Bucket>;
-  /**
-   * The search indexes within this eventual service.
-   */
-  searchIndices?: Map<string, SearchIndex>;
-  /**
-   * A global variable storing a map of event name (which is globally unique)
-   * to the {@link Event} declaration instance.
-   */
-  events?: Map<string, Event>;
-  /**
-   * A global variable storing a list of all {@link Subscription}s declared
-   * within this application.
-   */
-  subscriptions?: Map<string, Subscription>;
-  /**
-   * API routes registered within the application.
-   */
-  commands?: Map<string, AnyCommand>;
-}
+type Resource =
+  | Task
+  | Workflow
+  | Transaction
+  | Entity
+  | Bucket
+  | SearchIndex
+  | AnyCommand
+  | Event
+  | Subscription;
+
+type ResourceKind = Resource["kind"];
+
+type ResourceOfKind<Kind extends ResourceKind> = Resource & { kind: Kind };
+
+type ResourceCollection = {
+  [kind in ResourceKind]?: Map<string, ResourceOfKind<kind>>;
+};
 
 declare global {
   // eslint-disable-next-line no-var
-  var _eventual: EventualResources & {
+  var _eventual: {
+    resources: ResourceCollection;
     /**
      * A global variable for storing the WorkflowClient
      * this is initialized by Eventual's harness lambda functions
@@ -68,40 +46,35 @@ declare global {
   };
 }
 
-globalThis._eventual ??= {};
+globalThis._eventual ??= { resources: {} };
 
 export function registerEventualResource<
-  Kind extends keyof EventualResources,
-  T extends MapValue<Exclude<EventualResources[Kind], undefined>>
+  Kind extends ResourceKind,
+  T extends ResourceOfKind<Kind>
 >(resourceKind: Kind, resource: T): T {
-  if (globalThis._eventual[resourceKind]?.has(resource.name)) {
+  if (globalThis._eventual.resources[resourceKind]?.has(resource.name)) {
     throw new Error(
       `${resourceKind} with name '${resource.name}' already exists`
     );
   }
-  (globalThis._eventual[resourceKind] ??= new Map()).set(
+  (globalThis._eventual.resources[resourceKind] ??= new Map()).set(
     resource.name,
     resource
   );
   return resource;
 }
 
-export function getEventualResource<Kind extends keyof EventualResources>(
+export function getEventualResource<Kind extends ResourceKind>(
   resourceKind: Kind,
   name: string
-): MapValue<Exclude<EventualResources[Kind], undefined>> | undefined {
-  return globalThis._eventual[resourceKind]?.get(name) as
-    | MapValue<Exclude<EventualResources[Kind], undefined>>
-    | undefined;
+): ResourceOfKind<Kind> | undefined {
+  return globalThis._eventual.resources[resourceKind]?.get(name);
 }
 
-export function getEventualResources<Kind extends keyof EventualResources>(
+export function getEventualResources<Kind extends ResourceKind>(
   resourceKind: Kind
-): Exclude<EventualResources[Kind], undefined> {
-  return (globalThis._eventual[resourceKind] ?? new Map()) as Exclude<
-    EventualResources[Kind],
-    undefined
-  >;
+): Map<string, ResourceOfKind<Kind>> {
+  return globalThis._eventual.resources[resourceKind] ?? new Map();
 }
 
 /**

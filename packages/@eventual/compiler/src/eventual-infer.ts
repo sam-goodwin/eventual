@@ -73,22 +73,20 @@ export async function infer(
 
 export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
   return {
-    workflows: [...getEventualResources("workflows").keys()].map((n) => ({
+    workflows: [...getEventualResources("Workflow").keys()].map((n) => ({
       name: n,
     })),
-    tasks: Array.from(getEventualResources("tasks").values()).map((task) => ({
+    tasks: Array.from(getEventualResources("Task").values()).map((task) => ({
       name: task.name,
       sourceLocation: task.sourceLocation,
       options: task.options,
     })),
-    events: Array.from(getEventualResources("events").values()).map(
-      (event) => ({
-        name: event.name,
-        schema: event.schema ? generateSchema(event.schema) : undefined,
-      })
-    ),
+    events: Array.from(getEventualResources("Event").values()).map((event) => ({
+      name: event.name,
+      schema: event.schema ? generateSchema(event.schema) : undefined,
+    })),
     subscriptions: Array.from(
-      getEventualResources("subscriptions").values()
+      getEventualResources("Subscription").values()
     ).map((e) => ({
       name: e.name,
       props: {
@@ -99,7 +97,7 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
       sourceLocation: e.sourceLocation,
       filters: e.filters,
     })),
-    commands: Array.from(getEventualResources("commands").values()).map(
+    commands: Array.from(getEventualResources("Command").values()).map(
       (command) =>
         ({
           name: command.name,
@@ -132,7 +130,7 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
         } satisfies CommandSpec)
     ),
     buckets: {
-      buckets: [...getEventualResources("buckets").values()].map((b) => ({
+      buckets: [...getEventualResources("Bucket").values()].map((b) => ({
         name: b.name,
         handlers: b.handlers.map(
           (s) =>
@@ -146,7 +144,7 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
       })),
     },
     entities: {
-      entities: [...getEventualResources("entities").values()].map((d) => ({
+      entities: [...getEventualResources("Entity").values()].map((d) => ({
         key: d.key,
         name: d.name,
         streams: d.streams,
@@ -154,14 +152,14 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
         attributes: generateSchema(d.attributes),
       })),
     },
-    transactions: [...getEventualResources("transactions").values()].map(
+    transactions: [...getEventualResources("Transaction").values()].map(
       (t) => ({
         name: t.name,
       })
     ),
     openApi,
     search: {
-      indices: Array.from(getEventualResources("searchIndices").values()).map(
+      indices: Array.from(getEventualResources("SearchIndex").values()).map(
         (i) => ({
           index: i.indexName,
           aliases: i.options.aliases,

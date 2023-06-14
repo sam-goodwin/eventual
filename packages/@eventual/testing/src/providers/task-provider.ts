@@ -71,7 +71,7 @@ export class MockableTaskProvider extends GlobalTaskProvider {
         handler: (input, context) => mock.call(input, context),
       } as Task;
     }
-    const task = getEventualResource("tasks", taskId);
+    const task = getEventualResource("Task", taskId);
     if (!task) {
       throw new Error("Task not found: " + taskId);
     }

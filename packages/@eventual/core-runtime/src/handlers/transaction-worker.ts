@@ -41,7 +41,7 @@ export function createTransactionWorker(
       typeof request.transaction === "string"
         ? request.transaction
         : request.transaction.name;
-    const transaction = getEventualResource("transactions", transactionName);
+    const transaction = getEventualResource("Transaction", transactionName);
 
     if (!transaction) {
       throw new Error(`Transaction ${transactionName} not found.`);
