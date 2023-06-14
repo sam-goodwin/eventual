@@ -321,7 +321,7 @@ export function task<Name extends string, Input = any, Output = any>(
   // @ts-ignore
   func.handler = handler;
 
-  return registerEventualResource("tasks", name, func);
+  return registerEventualResource("tasks", func);
 }
 
 export interface TaskExecutionContext {

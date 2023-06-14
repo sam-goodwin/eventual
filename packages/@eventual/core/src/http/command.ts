@@ -246,7 +246,7 @@ export function command<
       : { schema: undefined, description: "OK", restStatusCode: 200 },
   };
 
-  return registerEventualResource("commands", name, command);
+  return registerEventualResource("commands", command);
 }
 
 export function parseCommandArgs<

@@ -73,11 +73,16 @@ globalThis._eventual ??= {};
 export function registerEventualResource<
   Kind extends keyof EventualResources,
   T extends MapValue<Exclude<EventualResources[Kind], undefined>>
->(resourceKind: Kind, name: string, resource: T): T {
-  if (globalThis._eventual[resourceKind]?.has(name)) {
-    throw new Error(`${resourceKind} with name '${name}' already exists`);
+>(resourceKind: Kind, resource: T): T {
+  if (globalThis._eventual[resourceKind]?.has(resource.name)) {
+    throw new Error(
+      `${resourceKind} with name '${resource.name}' already exists`
+    );
   }
-  (globalThis._eventual[resourceKind] ??= new Map()).set(name, resource);
+  (globalThis._eventual[resourceKind] ??= new Map()).set(
+    resource.name,
+    resource
+  );
   return resource;
 }
 

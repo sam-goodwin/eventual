@@ -123,7 +123,7 @@ export interface Bucket<Name extends string = string>
 
 export function bucket<Name extends string = string>(name: Name): Bucket<Name> {
   const handlers: BucketNotificationHandler[] = [];
-  return registerEventualResource("buckets", name, {
+  return registerEventualResource("buckets", {
     name,
     handlers,
     kind: "Bucket",

@@ -460,7 +460,13 @@ var EventualCallKind;
 })(EventualCallKind || (EventualCallKind = {}));
 
 globalThis._eventual ??= {};
-var commands = globalThis._eventual.commands ??= [];
+function registerEventualResource(resourceKind, resource) {
+  if (globalThis._eventual[resourceKind]?.has(resource.name)) {
+    throw new Error(\`\${resourceKind} with name '\${resource.name}' already exists\`);
+  }
+  (globalThis._eventual[resourceKind] ??= /* @__PURE__ */ new Map()).set(resource.name, resource);
+  return resource;
+}
 
 function isSourceLocation(a) {
   return a && typeof a === "object" && typeof a.fileName === "string" && typeof a.exportName === "string";
@@ -511,8 +517,7 @@ function command(...args) {
     ...options,
     output: options?.output ? "restStatusCode" in options.output ? options.output : { schema: options.output, description: "OK", restStatusCode: 200 } : { schema: void 0, description: "OK", restStatusCode: 200 }
   };
-  commands.push(command2);
-  return command2;
+  return registerEventualResource("commands", command2);
 }
 function parseCommandArgs(args) {
   return [
@@ -567,7 +572,7 @@ function createRouter(middlewares) {
             otherOutputs: routeProps?.outputs,
             passThrough: true
           };
-          commands.push(command2);
+          registerEventualResource("commands", command2);
           return router[method](path, command2.handler);
         };
       }
@@ -682,6 +687,10 @@ var SignalTargetType;
   SignalTargetType2[SignalTargetType2["Execution"] = 0] = "Execution";
   SignalTargetType2[SignalTargetType2["ChildExecution"] = 1] = "ChildExecution";
 })(SignalTargetType || (SignalTargetType = {}));
+
+globalThis.getEventualTaskRuntimeContext ??= () => {
+  throw new Error("Eventual task context has not been registered yet.");
+};
 
 function or(...conditions) {
   return (a) => conditions.some((cond) => cond(a));

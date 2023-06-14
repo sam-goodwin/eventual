@@ -116,7 +116,7 @@ export function subscription<Name extends string, E extends EventPayload>(
     throw new Error(`subscription must provide at least event to match`);
   }
 
-  return registerEventualResource("subscriptions", name, {
+  return registerEventualResource("subscriptions", {
     kind: "Subscription",
     name,
     handler,

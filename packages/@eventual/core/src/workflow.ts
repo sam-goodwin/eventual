@@ -246,7 +246,7 @@ export function workflow<
   // @ts-ignore
   workflow.definition = definition;
 
-  return registerEventualResource("workflows", name, workflow);
+  return registerEventualResource("workflows", workflow);
 }
 
 /**

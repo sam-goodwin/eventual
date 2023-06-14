@@ -122,24 +122,24 @@ export function event<E extends EventPayload>(
   name: string,
   schema?: z.Schema<E>
 ): Event<E> {
-  return registerEventualResource("events", name, {
+  return registerEventualResource("events", {
     kind: "Event",
     name,
     schema,
     onEvent<Name extends string>(...args: any[]) {
       // we have an implicit contract where the SourceLocation may be passed in as the first argument
-      const [sourceLocation, name, eventHandlerProps, handler] = [
+      const [sourceLocation, subName, eventHandlerProps, handler] = [
         args.find(isSourceLocation)!,
         args.find((a) => typeof a === "string") as Name,
         args.find((a) => typeof a === "object" && !isSourceLocation(a))!,
         args.find((a) => typeof a === "function"),
       ];
 
-      return registerEventualResource("subscriptions", name, {
+      return registerEventualResource("subscriptions", {
         kind: "Subscription" as const,
-        name,
+        name: subName,
         handler,
-        filters: [{ name: event.name }],
+        filters: [{ name }],
         props: eventHandlerProps,
         sourceLocation,
       });
