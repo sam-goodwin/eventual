@@ -1,5 +1,16 @@
 import { z } from "zod";
-import type { CompositeKeyPart } from "../entity/key.js";
+import type {
+  BeginsWithQueryKeyCondition,
+  BetweenProgressiveKeyCondition,
+  BetweenQueryKeyCondition,
+  CompositeKeyPart,
+  GreaterThanEqualsQueryKeyCondition,
+  GreaterThanQueryKeyCondition,
+  LessThanEqualsQueryKeyCondition,
+  LessThanQueryKeyCondition,
+  QueryKey,
+  QueryKeyCondition,
+} from "../entity/key.js";
 
 export interface KeyDefinitionPart {
   type: "number" | "string";
@@ -50,4 +61,46 @@ export function computeKeyDefinition(
       attributes: keyAttributes,
     };
   }
+}
+
+export function keyHasInlineBetween<Q extends QueryKey<any, any, any>>(
+  key: Q
+): key is Q & BetweenProgressiveKeyCondition<any, any> {
+  return "$between" in key;
+}
+
+export function isBetweenQueryKeyCondition(
+  condition: QueryKeyCondition
+): condition is BetweenQueryKeyCondition {
+  return "$between" in condition;
+}
+
+export function isBeginsWithQueryKeyCondition(
+  condition: QueryKeyCondition
+): condition is BeginsWithQueryKeyCondition {
+  return "$beginsWith" in condition;
+}
+
+export function isLessThanQueryKeyCondition(
+  condition: QueryKeyCondition
+): condition is LessThanQueryKeyCondition {
+  return "$lt" in condition;
+}
+
+export function isLessThanEqualsQueryKeyCondition(
+  condition: QueryKeyCondition
+): condition is LessThanEqualsQueryKeyCondition {
+  return "$lte" in condition;
+}
+
+export function isGreaterThanQueryKeyCondition(
+  condition: QueryKeyCondition
+): condition is GreaterThanQueryKeyCondition {
+  return "$gt" in condition;
+}
+
+export function isGreaterThanEqualsQueryKeyCondition(
+  condition: QueryKeyCondition
+): condition is GreaterThanEqualsQueryKeyCondition {
+  return "$gte" in condition;
 }

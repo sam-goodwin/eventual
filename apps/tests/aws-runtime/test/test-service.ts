@@ -32,7 +32,7 @@ import {
   transaction,
   workflow,
 } from "@eventual/core";
-import type openapi from "openapi3-ts";
+import openapi from "openapi3-ts";
 import { Readable } from "stream";
 import z from "zod";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -555,6 +555,7 @@ export const counter = entity("counter5", {
       z.literal("different"),
       z.literal("default"),
       z.literal("another"),
+      z.literal("another2"),
     ]),
     id: z.string(),
     optional: z.string().optional(),
@@ -670,39 +671,54 @@ export const entityIndexTask = task(
       n: 1000,
       optional: "hello",
     });
-    return await Promise.all([
-      allCounters.query({ id }).then((q) =>
-        q.entries?.map((e) => ({
-          n: e.value.n,
-          namespace: e.value.namespace,
-        }))
-      ),
-      allCountersByN.query({ id }).then((q) =>
-        q.entries?.map((e) => ({
-          n: e.value.n,
-          namespace: e.value.namespace,
-        }))
-      ),
-      countersByNamespace.query({ id }).then((q) =>
-        q.entries?.map((e) => ({
-          n: e.value.n,
-          namespace: e.value.namespace,
-        }))
-      ),
-      countersByN.query({ namespace: "another", id }).then((q) =>
-        q.entries?.map((e) => ({
-          n: e.value.n,
-          namespace: e.value.namespace,
-        }))
+    await counter.set({
+      namespace: "another2",
+      id,
+      n: 0,
+      optional: "hello",
+    });
+    const queries = {
+      all: allCounters.query({ id }),
+      byN: allCountersByN.query({ id }),
+      byNamespace: countersByNamespace.query({ id }),
+      filterByNamespace: countersByN.query({ namespace: "another", id }),
+      betweenN: allCountersByN.query({
+        id,
+        n: { $between: [2, 100] },
+      }),
+      greaterThanN: allCountersByN.query({
+        id,
+        n: { $gt: 1 },
+      }),
+      reverse: countersByNamespace.query(
+        { id, namespace: { $beginsWith: "d" } },
+        { direction: "DESC" }
       ),
       // sparse indices only include records with the given field
-      countersByOptional2.query({ id }).then((q) =>
-        q.entries?.map((e) => ({
-          n: e.value.n,
-          namespace: e.value.namespace,
-        }))
-      ),
-    ]);
+      sparse: countersByOptional2.query({ id }),
+      // between using a multi-attribute key
+      inlineBetween: countersByOptional2.query({
+        id,
+        $between: [{ optional: "h" }, { optional: "hello", n: 0 }],
+      }),
+    };
+
+    return Object.fromEntries(
+      await Promise.all(
+        Object.entries(queries).map(
+          async ([name, q]) =>
+            [
+              name,
+              (
+                await q
+              ).entries?.map((e) => ({
+                n: e.value.n,
+                namespace: e.value.namespace,
+              })),
+            ] as const
+        )
+      )
+    ) as Record<keyof typeof queries, { n: number; namespace: string }[]>;
   }
 );
 

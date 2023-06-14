@@ -1,6 +1,6 @@
 {
   "name": "@eventual/compiler",
-  "version": "0.42.2",
+  "version": "0.43.0",
   "bin": {
     "eventual-bundle": "./bin/eventual-bundle.mjs",
     "eventual-infer": "./bin/eventual-infer.mjs"

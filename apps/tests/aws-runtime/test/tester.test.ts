@@ -120,8 +120,8 @@ eventualRuntimeTestHarness(
     testCompletion("awsSdkCalls", createAndDestroyWorkflow, "done");
 
     testCompletion("ent", entityWorkflow, [
-      [
-        expect.arrayContaining([
+      {
+        all: expect.arrayContaining([
           {
             namespace: "different",
             n: 1,
@@ -133,9 +133,17 @@ eventualRuntimeTestHarness(
           {
             namespace: "default",
             n: 6,
+          },
+          {
+            namespace: "another2",
+            n: 0,
           },
         ]),
-        [
+        byN: [
+          {
+            namespace: "another2",
+            n: 0,
+          },
           {
             namespace: "different",
             n: 1,
@@ -149,10 +157,14 @@ eventualRuntimeTestHarness(
             n: 1000,
           },
         ],
-        [
+        byNamespace: [
           {
             namespace: "another",
             n: 1000,
+          },
+          {
+            namespace: "another2",
+            n: 0,
           },
           {
             namespace: "default",
@@ -163,19 +175,55 @@ eventualRuntimeTestHarness(
             n: 1,
           },
         ],
-        [
+        filterByNamespace: [
           {
             namespace: "another",
             n: 1000,
           },
         ],
-        [
+        betweenN: [
+          {
+            namespace: "default",
+            n: 6,
+          },
+        ],
+        greaterThanN: [
+          {
+            namespace: "default",
+            n: 6,
+          },
           {
             namespace: "another",
             n: 1000,
           },
         ],
-      ],
+        reverse: [
+          {
+            namespace: "different",
+            n: 1,
+          },
+          {
+            namespace: "default",
+            n: 6,
+          },
+        ],
+        sparse: [
+          {
+            namespace: "another2",
+            n: 0,
+          },
+          {
+            namespace: "another",
+            n: 1000,
+          },
+        ],
+        inlineBetween: [
+          {
+            namespace: "another2",
+            n: 0,
+          },
+        ],
+      },
       { n: 7 },
       [
         [1, 1],

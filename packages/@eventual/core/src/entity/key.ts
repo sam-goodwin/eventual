@@ -1,4 +1,7 @@
+/* eslint-disable @typescript-eslint/ban-types */
+
 import type { Attributes } from "./entity.js";
+import type t from "type-fest";
 
 export type KeyValue = string | number | bigint;
 
@@ -49,7 +52,7 @@ export type IndexCompositeKeyPart<Attr extends Attributes> =
  */
 export type CompositeKeyPart<Attr extends Attributes> = readonly [
   KeyAttribute<Attr, any>,
-  ...KeyAttribute<Attr, any>[]
+  ...(readonly KeyAttribute<Attr, any>[])
 ];
 
 /**
@@ -76,8 +79,7 @@ export type KeyMap<
   ? {
       [k in Sort[number]]: Exclude<Attr[k], undefined>;
     }
-  : // eslint-disable-next-line
-    {});
+  : {});
 
 export type KeyPartialTuple<
   Attr extends Attributes,
@@ -122,10 +124,91 @@ export type CompositeKey<
     | undefined
 > = KeyMap<Attr, Partition, Sort> | KeyTuple<Attr, Partition, Sort>;
 
+/**
+ * Matches if the key attribute is between the start and end value, inclusive.
+ *
+ * start <= value <= end
+ *
+ * Note: numeric multi-attribute key parts are treated as strings.
+ */
+export type QueryKeyCondition<Value extends KeyValue = KeyValue> =
+  | BetweenQueryKeyCondition<Value>
+  | LessThanQueryKeyCondition<Value>
+  | LessThanEqualsQueryKeyCondition<Value>
+  | GreaterThanQueryKeyCondition<Value>
+  | GreaterThanEqualsQueryKeyCondition<Value>
+  | BeginsWithQueryKeyCondition<Value>;
+
+/**
+ * Matches if the key attribute is between the start and end value, inclusive.
+ *
+ * start <= value <= end
+ *
+ * Note: numeric multi-attribute key parts are treated as strings.
+ */
+export interface BetweenQueryKeyCondition<Value extends KeyValue = KeyValue> {
+  $between: [t.LiteralToPrimitive<Value>, t.LiteralToPrimitive<Value>];
+}
+
+/**
+ * Matches if the key attribute starts with the given value.
+ *
+ * Can only be used with string fields.
+ *
+ * Note: numeric multi-attribute key parts are treated as strings.
+ */
+export interface BeginsWithQueryKeyCondition<
+  Value extends KeyValue = KeyValue
+> {
+  $beginsWith: Extract<t.LiteralToPrimitive<Value>, string>;
+}
+
+/**
+ * Matches if the key attribute is less than the given value.
+ *
+ * Note: numeric multi-attribute key parts are treated as strings.
+ */
+export interface LessThanQueryKeyCondition<Value extends KeyValue = KeyValue> {
+  $lt: t.LiteralToPrimitive<Value>;
+}
+
+/**
+ * Matches if the key attribute is less than or equal to the given value.
+ *
+ * Note: numeric multi-attribute key parts are treated as strings.
+ */
+export interface LessThanEqualsQueryKeyCondition<
+  Value extends KeyValue = KeyValue
+> {
+  $lte: t.LiteralToPrimitive<Value>;
+}
+
+/**
+ * Matches if the key attribute is greater than the given value.
+ *
+ * Note: numeric multi-attribute key parts are treated as strings.
+ */
+export interface GreaterThanQueryKeyCondition<
+  Value extends KeyValue = KeyValue
+> {
+  $gt: t.LiteralToPrimitive<Value>;
+}
+
+/**
+ * Matches if the key attribute is greater than or equal to the given value.
+ *
+ * Note: numeric multi-attribute key parts are treated as strings.
+ */
+export interface GreaterThanEqualsQueryKeyCondition<
+  Value extends KeyValue = KeyValue
+> {
+  $gte: t.LiteralToPrimitive<Value>;
+}
+
 export type ProgressiveTupleQueryKey<
   Attr extends Attributes,
   Sort extends readonly (keyof Attr)[],
-  Accum extends [] = []
+  Accum extends KeyValue[] = []
 > = Sort extends readonly []
   ? Accum
   : Sort extends readonly [
@@ -134,29 +217,91 @@ export type ProgressiveTupleQueryKey<
     ]
   ?
       | Accum
-      | ProgressiveQueryKey<Attr, ks, [...Accum, Extract<Attr[k], KeyValue>]>
+      | [...Accum, QueryKeyCondition<Extract<Attr[k], KeyValue>>]
+      | ProgressiveTupleQueryKey<
+          Attr,
+          ks,
+          [...Accum, Extract<Attr[k], KeyValue>]
+        >
   : never;
 
 export type ProgressiveQueryKey<
   Attr extends Attributes,
-  Sort extends readonly (keyof Attr)[],
-  Accum extends object = object
-> = Sort extends readonly []
-  ? Accum
-  : Sort extends readonly [
-      infer k extends keyof Attr,
-      ...infer ks extends readonly (keyof Attr)[]
-    ]
+  Sort extends readonly (keyof Attr)[]
+> = Sort extends readonly [
+  infer k extends keyof Attr,
+  ...infer ks extends readonly (keyof Attr)[]
+]
   ?
-      | Accum
-      | ProgressiveQueryKey<
-          Attr,
-          ks,
-          Accum & {
-            [sk in k]: Extract<Attr[sk], KeyValue>;
-          }
-        >
-  : never;
+      | { [sk in Sort[number]]?: never }
+      | {
+          [sk in k]: QueryKeyCondition<Extract<Attr[sk], KeyValue>>;
+        }
+      | BetweenProgressiveKeyCondition<Attr, Sort>
+      | ({
+          [sk in k]: Extract<Attr[sk], KeyValue>;
+        } & ProgressiveQueryKey<Attr, ks>)
+  : {};
+
+/**
+ * Supports betweens condition using multiple sort attribute parts.
+ *
+ * At least one attribute must be present in the left and right side.
+ *
+ * BETWEEN "a" and "c#b"
+ * {
+ *    $between: [{sort1: "a"}, {sort1: "c", sort2: "b"}]
+ * }
+ *
+ * BETWEEN "a" and "c"
+ * {
+ *    sort1: { $between: ["a", "c"] }
+ * }
+ */
+export type BetweenProgressiveKeyCondition<
+  Attr extends Attributes,
+  Sort extends readonly (keyof Attr)[]
+> = {
+  $between: Sort extends readonly [
+    infer k extends keyof Attr,
+    ...infer ks extends readonly (keyof Attr)[]
+  ]
+    ? [
+        ProgressiveKey<Attr, ks> & {
+          [sk in k]: Extract<Attr[sk], KeyValue>;
+        },
+        ProgressiveKey<Attr, ks> & {
+          [sk in k]: Extract<Attr[sk], KeyValue>;
+        }
+      ]
+    : never;
+};
+
+export type ProgressiveKey<
+  Attr extends Attributes,
+  Sort extends readonly (keyof Attr)[]
+> = Sort extends readonly [
+  infer k extends keyof Attr,
+  ...infer ks extends readonly (keyof Attr)[]
+]
+  ?
+      | { [sk in Sort[number]]?: never }
+      | ({
+          [sk in k]: Extract<Attr[sk], KeyValue>;
+        } & ProgressiveKey<Attr, ks>)
+  : {};
+
+export type QueryKeyMap<
+  Attr extends Attributes = Attributes,
+  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined =
+    | CompositeKeyPart<Attr>
+    | undefined
+> = {
+  [pk in Partition[number]]: Extract<Attr[pk], KeyValue>;
+} & (Sort extends undefined
+  ? {}
+  : ProgressiveQueryKey<Attr, [...Exclude<Sort, undefined>]>);
 
 /**
  * A partial key that can be used to query an entity.
@@ -164,22 +309,13 @@ export type ProgressiveQueryKey<
  * ```ts
  * entity.query({ part1: "val", part2: "val2", sort1: "val" });
  * ```
- *
- * TODO: support expressions like between and starts with on sort properties
  */
 export type QueryKey<
-  Attr extends Attributes = Attributes,
-  Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
-  Sort extends CompositeKeyPart<Attr> | undefined =
-    | CompositeKeyPart<Attr>
-    | undefined
+  Attr extends Attributes,
+  Partition extends CompositeKeyPart<Attr>,
+  Sort extends CompositeKeyPart<Attr> | undefined
 > =
-  | ({
-      [pk in Partition[number]]: Extract<Attr[pk], KeyValue>;
-    } & (Sort extends undefined
-      ? // eslint-disable-next-line
-        {}
-      : ProgressiveQueryKey<Attr, Exclude<Sort, undefined>>))
+  | QueryKeyMap<Attr, Partition, Sort>
   | [
       ...KeyTuple<Attr, Partition>,
       ...(Sort extends undefined
@@ -196,11 +332,11 @@ export type StreamQueryKey<
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
     | undefined
-> = ProgressiveQueryKey<Attr, Partition> &
+> = ProgressiveKey<Attr, Partition> &
   (Sort extends undefined
     ? // eslint-disable-next-line
       {}
-    : ProgressiveQueryKey<Attr, Exclude<Sort, undefined>>);
+    : ProgressiveKey<Attr, Exclude<Sort, undefined>>);
 
 export type KeyAttributes<
   Attr extends Attributes = any,
