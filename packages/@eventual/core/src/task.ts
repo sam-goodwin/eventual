@@ -8,7 +8,10 @@ import type {
   SendTaskSuccessRequest,
 } from "./internal/eventual-service.js";
 import { isTaskWorker } from "./internal/flags.js";
-import { getServiceClient, tasks } from "./internal/global.js";
+import {
+  getServiceClient,
+  registerEventualResource,
+} from "./internal/global.js";
 import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
 import { SourceLocation, isSourceLocation } from "./internal/service-spec.js";
 import { AsyncTokenSymbol, TaskSpec } from "./internal/task.js";
@@ -303,10 +306,6 @@ export function task<Name extends string, Input = any, Output = any>(
     );
   }) as Task<Name, Input, Output>;
 
-  if (tasks()[name]) {
-    throw new Error(`task with name '${name}' already exists`);
-  }
-
   Object.defineProperty(func, "name", { value: name, writable: false });
   func.sendTaskSuccess = async function (request) {
     return getServiceClient().sendTaskSuccess(request);
@@ -321,8 +320,8 @@ export function task<Name extends string, Input = any, Output = any>(
 
   // @ts-ignore
   func.handler = handler;
-  tasks()[name] = func;
-  return func;
+
+  return registerEventualResource("tasks", name, func);
 }
 
 export interface TaskExecutionContext {

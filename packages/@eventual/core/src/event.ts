@@ -1,6 +1,9 @@
 import type { z } from "zod";
 import { createEventualCall, EventualCallKind } from "./internal/calls.js";
-import { events, getServiceClient, subscriptions } from "./internal/global.js";
+import {
+  getServiceClient,
+  registerEventualResource,
+} from "./internal/global.js";
 import { EventSpec, isSourceLocation } from "./internal/service-spec.js";
 import type { Subscription, SubscriptionRuntimeProps } from "./subscription.js";
 
@@ -119,10 +122,7 @@ export function event<E extends EventPayload>(
   name: string,
   schema?: z.Schema<E>
 ): Event<E> {
-  if (events().has(name)) {
-    throw new Error(`event with name '${name}' already exists`);
-  }
-  const event: Event<E> = {
+  return registerEventualResource("events", name, {
     kind: "Event",
     name,
     schema,
@@ -135,18 +135,14 @@ export function event<E extends EventPayload>(
         args.find((a) => typeof a === "function"),
       ];
 
-      const eventHandler: Subscription<Name, E> = {
-        kind: "Subscription",
+      return registerEventualResource("subscriptions", name, {
+        kind: "Subscription" as const,
         name,
         handler,
         filters: [{ name: event.name }],
         props: eventHandlerProps,
         sourceLocation,
-      };
-
-      subscriptions().push(eventHandler as Subscription<any, any>);
-
-      return eventHandler;
+      });
     },
     async emit(...events) {
       const envelopes = events.map((event) => ({
@@ -162,7 +158,5 @@ export function event<E extends EventPayload>(
         }
       );
     },
-  };
-  events().set(name, event as Event<any>);
-  return event;
+  });
 }

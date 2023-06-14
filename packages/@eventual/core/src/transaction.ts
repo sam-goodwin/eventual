@@ -4,7 +4,10 @@ import {
   EventualCallKind,
   InvokeTransactionCall,
 } from "./internal/calls.js";
-import { getServiceClient, transactions } from "./internal/global.js";
+import {
+  getServiceClient,
+  registerEventualResource,
+} from "./internal/global.js";
 import { TransactionSpec } from "./internal/service-spec.js";
 import { ServiceContext } from "./service.js";
 
@@ -48,10 +51,6 @@ export function transaction<Name extends string, Input, Output>(
   name: Name,
   handler: TransactionFunction<Input, Output>
 ): Transaction<Name, Input, Output> {
-  if (transactions().has(name)) {
-    throw new Error(`workflow with name '${name}' already exists`);
-  }
-
   const transact: Transaction<Name, Input, Output> = ((
     input: Input
   ): Promise<Output> => {
@@ -78,6 +77,5 @@ export function transaction<Name extends string, Input, Output>(
   transact.kind = "Transaction";
   transact.handler = handler;
   Object.defineProperty(transact, "name", { value: name, writable: false });
-  transactions().set(name, transact);
-  return transact;
+  return registerEventualResource("transactions", name, transact);
 }

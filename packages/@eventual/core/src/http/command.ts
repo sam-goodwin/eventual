@@ -1,7 +1,7 @@
 import type { z } from "zod";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
-import { commands } from "../internal/global.js";
+import { registerEventualResource } from "../internal/global.js";
 import { CommandSpec, isSourceLocation } from "../internal/service-spec.js";
 import type { ServiceContext } from "../service.js";
 import type { Middleware } from "./middleware.js";
@@ -223,12 +223,13 @@ export function command<
 ): Command<Name, Input, Output, Context, Path, Method>;
 
 export function command<
-  Name extends string,
+  const Name extends string,
   Input = undefined,
   Output = void,
   Context extends CommandContext = CommandContext
 >(...args: any[]): Command<Name, Input, Output, Context, any, any> {
   const [sourceLocation, name, options, handler] = parseCommandArgs<
+    Name,
     Input,
     Output
   >(args);
@@ -244,11 +245,12 @@ export function command<
         : { schema: options.output, description: "OK", restStatusCode: 200 }
       : { schema: undefined, description: "OK", restStatusCode: 200 },
   };
-  commands.push(command);
-  return command;
+
+  return registerEventualResource("commands", name, command);
 }
 
 export function parseCommandArgs<
+  Name extends string,
   Input = undefined,
   Output = void,
   Context extends CommandContext = CommandContext
@@ -257,7 +259,7 @@ export function parseCommandArgs<
     // TODO: is this 4x scan too inefficient, or is the trade-off between simplicity and performance worth it here?
     // i think it would be marginal looping over a small array multiple times but i could be wrong
     args.find(isSourceLocation),
-    args.find((a) => typeof a === "string"),
+    args.find((a): a is Name => typeof a === "string")!,
     args.find((a) => typeof a === "object" && !isSourceLocation(a)) as
       | CommandOptions<Input, Output, any, any>
       | undefined,

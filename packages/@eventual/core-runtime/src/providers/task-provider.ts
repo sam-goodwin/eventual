@@ -1,5 +1,8 @@
 import type { Task } from "@eventual/core";
-import { tasks } from "@eventual/core/internal";
+import {
+  getEventualResource,
+  getEventualResources,
+} from "@eventual/core/internal";
 
 export interface TaskProvider {
   getTask(taskId: string): Task | undefined;
@@ -8,10 +11,10 @@ export interface TaskProvider {
 
 export class GlobalTaskProvider implements TaskProvider {
   public getTask(taskId: string): Task | undefined {
-    return tasks()[taskId];
+    return getEventualResource("tasks", taskId);
   }
 
   public getTaskIds(): string[] {
-    return Object.keys(tasks());
+    return Array.from(getEventualResources("tasks").keys());
   }
 }

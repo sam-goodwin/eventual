@@ -10,7 +10,7 @@ import {
 } from "@eventual/core";
 import {
   CompletionEvent,
-  events,
+  getEventualResources,
   HistoryStateEvent,
   isTimerCompleted,
   isTimerScheduled,
@@ -505,9 +505,15 @@ function initializeMetrics(
     });
     metrics.setProperty(MetricsCommon.WorkflowName, workflowName);
     // number of events that came from the workflow task
-    metrics.setProperty(OrchestratorMetrics.TaskEvents, events.length);
+    metrics.setProperty(
+      OrchestratorMetrics.TaskEvents,
+      getEventualResources("events").size
+    );
     // number of workflow tasks that are being processed in the batch (max: 10)
-    metrics.setProperty(OrchestratorMetrics.AggregatedTasks, events.length);
+    metrics.setProperty(
+      OrchestratorMetrics.AggregatedTasks,
+      getEventualResources("events").size
+    );
 
     metrics.setProperty(OrchestratorMetrics.ExecutionId, executionId);
     metrics.setProperty(

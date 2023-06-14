@@ -6,7 +6,11 @@ import {
   entity as _entity,
   event,
 } from "@eventual/core";
-import { Result, entities, registerEntityHook } from "@eventual/core/internal";
+import {
+  Result,
+  getEventualResource,
+  registerEntityHook,
+} from "@eventual/core/internal";
 import { jest } from "@jest/globals";
 import { z } from "zod";
 import { EventClient } from "../src/clients/event-client.js";
@@ -31,7 +35,7 @@ const entity = (() => {
     options: EntityOptions<Attr, Partition, Sort>
   ) => {
     // eslint-disable-next-line no-empty
-    while (entities().has(`ent${++n}`)) {}
+    while (getEventualResource("entities", `ent${++n}`)) {}
     return _entity<string, Attr, Partition, Sort>(`ent${n}`, options);
   };
 })();

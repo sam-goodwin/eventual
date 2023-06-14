@@ -17,6 +17,12 @@ import {
   Workflow,
 } from "@eventual/core";
 import {
+  LocalContainer,
+  LocalEnvConnector,
+  LocalEvent,
+  RuntimeServiceClient,
+  TimeController,
+  WorkflowTask,
   bucketHandlerMatchesEvent,
   entityStreamMatchesItem,
   isBucketNotificationEvent,
@@ -25,23 +31,16 @@ import {
   isTaskWorkerRequest,
   isTimerRequest,
   isWorkflowTask,
-  LocalContainer,
-  LocalEnvConnector,
-  LocalEvent,
-  RuntimeServiceClient,
-  TimeController,
-  WorkflowTask,
 } from "@eventual/core-runtime";
 import {
-  buckets,
   EmitEventsRequest,
-  entities,
+  TaskInput,
+  getEventualResources,
   registerEnvironmentManifest,
   registerServiceClient,
-  TaskInput,
 } from "@eventual/core/internal";
 import { TestSubscriptionProvider } from "./providers/subscription-provider.js";
-import { MockableTaskProvider, MockTask } from "./providers/task-provider.js";
+import { MockTask, MockableTaskProvider } from "./providers/task-provider.js";
 
 export interface TestEnvironmentProps {
   /**
@@ -413,7 +412,7 @@ export class TestEnvironment extends RuntimeServiceClient {
           if (!entity) {
             return [];
           }
-          const streamNames = [...entities().values()]
+          const streamNames = [...getEventualResources("entities").values()]
             .flatMap((d) => d.streams)
             .filter((s) => entityStreamMatchesItem(entity, i, s))
             .map((s) => s.name);
@@ -425,7 +424,7 @@ export class TestEnvironment extends RuntimeServiceClient {
           });
         }),
         bucketNotificationEvents.flatMap((i) => {
-          const streamNames = [...buckets().values()]
+          const streamNames = [...getEventualResources("buckets").values()]
             .flatMap((d) => d.handlers)
             .filter((s) => bucketHandlerMatchesEvent(i, s))
             .map((s) => s.name);

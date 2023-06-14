@@ -20,7 +20,7 @@ import {
   Result,
   TaskInput,
   assertNever,
-  tasks,
+  getEventualResource,
 } from "@eventual/core/internal";
 
 export class MockableTaskProvider extends GlobalTaskProvider {
@@ -71,7 +71,7 @@ export class MockableTaskProvider extends GlobalTaskProvider {
         handler: (input, context) => mock.call(input, context),
       } as Task;
     }
-    const task = tasks()[taskId];
+    const task = getEventualResource("tasks", taskId);
     if (!task) {
       throw new Error("Task not found: " + taskId);
     }

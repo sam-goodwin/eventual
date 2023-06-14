@@ -2,7 +2,10 @@ import itty from "itty-router";
 import type openapi from "openapi3-ts";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
-import { commands, getEnvironmentManifest } from "../internal/global.js";
+import {
+  getEnvironmentManifest,
+  registerEventualResource,
+} from "../internal/global.js";
 import { generateOpenAPISpec } from "../internal/open-api-spec.js";
 import type { SourceLocation } from "../internal/service-spec.js";
 import {
@@ -109,7 +112,7 @@ function createRouter<Context extends CommandContext>(
               // we want the base HTTP request, not the transformed one
               passThrough: true,
             };
-            commands.push(command as any);
+            registerEventualResource("commands", name, command);
 
             return router[method](path, command.handler);
           };

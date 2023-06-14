@@ -1,7 +1,7 @@
 import { BucketNotificationEvent } from "@eventual/core";
 import {
-  buckets,
   ServiceType,
+  getEventualResource,
   serviceTypeScope,
 } from "@eventual/core/internal";
 import { registerWorkerIntrinsics, WorkerIntrinsicDeps } from "./utils.js";
@@ -19,9 +19,10 @@ export function createBucketNotificationHandlerWorker(
 
   return async (item) =>
     serviceTypeScope(ServiceType.BucketNotificationHandlerWorker, async () => {
-      const streamHandler = buckets()
-        .get(item.bucketName)
-        ?.handlers.find((s) => s.name === item.handlerName);
+      const streamHandler = getEventualResource(
+        "buckets",
+        item.bucketName
+      )?.handlers.find((s) => s.name === item.handlerName);
       if (!streamHandler) {
         throw new Error(`Stream handler ${item.handlerName} does not exist`);
       }

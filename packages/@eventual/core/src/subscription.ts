@@ -1,6 +1,6 @@
 import type { Event, EventPayload } from "./event.js";
 import type { FunctionRuntimeProps } from "./function-props.js";
-import { subscriptions } from "./internal/global.js";
+import { registerEventualResource } from "./internal/global.js";
 import { isSourceLocation, SourceLocation } from "./internal/service-spec.js";
 import { ServiceContext } from "./service.js";
 
@@ -116,7 +116,7 @@ export function subscription<Name extends string, E extends EventPayload>(
     throw new Error(`subscription must provide at least event to match`);
   }
 
-  const eventHandler: Subscription<Name, E> = {
+  return registerEventualResource("subscriptions", name, {
     kind: "Subscription",
     name,
     handler,
@@ -125,9 +125,5 @@ export function subscription<Name extends string, E extends EventPayload>(
     })),
     props,
     sourceLocation,
-  };
-
-  subscriptions().push(eventHandler as Subscription<any, any>);
-
-  return eventHandler;
+  });
 }

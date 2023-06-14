@@ -1,6 +1,6 @@
 import type { Entity } from "@eventual/core";
-import { entities } from "@eventual/core/internal";
 import type { WorkflowExecutor } from "../workflow-executor.js";
+import { getEventualResource } from "@eventual/core/internal";
 
 export interface EntityProvider {
   /**
@@ -16,6 +16,6 @@ export interface EntityProvider {
  */
 export class GlobalEntityProvider implements EntityProvider {
   public getEntity(entityName: string): Entity | undefined {
-    return entities().get(entityName);
+    return getEventualResource("entities", entityName);
   }
 }
