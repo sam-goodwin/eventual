@@ -10,7 +10,6 @@ import {
 } from "@eventual/core";
 import {
   CompletionEvent,
-  events,
   HistoryStateEvent,
   isTimerCompleted,
   isTimerScheduled,
@@ -504,11 +503,6 @@ function initializeMetrics(
       [MetricsCommon.ServiceNameDimension]: serviceName,
     });
     metrics.setProperty(MetricsCommon.WorkflowName, workflowName);
-    // number of events that came from the workflow task
-    metrics.setProperty(OrchestratorMetrics.TaskEvents, events.length);
-    // number of workflow tasks that are being processed in the batch (max: 10)
-    metrics.setProperty(OrchestratorMetrics.AggregatedTasks, events.length);
-
     metrics.setProperty(OrchestratorMetrics.ExecutionId, executionId);
     metrics.setProperty(
       OrchestratorMetrics.Version,

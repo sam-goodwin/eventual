@@ -1,5 +1,5 @@
 import { isTaskWorker } from "./internal/flags.js";
-import { getServiceClient, getTaskContext } from "./internal/global.js";
+import { getServiceClient } from "./internal/global.js";
 import type { SendTaskHeartbeatResponse } from "./service-client.js";
 
 /**
@@ -21,7 +21,7 @@ export async function sendTaskHeartbeat(
         taskToken,
       });
     } else if (isTaskWorker()) {
-      const token = (await getTaskContext()).invocation.token;
+      const token = (await getEventualTaskRuntimeContext()).invocation.token;
       return await getServiceClient().sendTaskHeartbeat({
         taskToken: token,
       });

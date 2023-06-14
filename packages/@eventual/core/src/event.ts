@@ -1,6 +1,9 @@
 import type { z } from "zod";
 import { createEventualCall, EventualCallKind } from "./internal/calls.js";
-import { events, getServiceClient, subscriptions } from "./internal/global.js";
+import {
+  getServiceClient,
+  registerEventualResource,
+} from "./internal/global.js";
 import { EventSpec, isSourceLocation } from "./internal/service-spec.js";
 import type { Subscription, SubscriptionRuntimeProps } from "./subscription.js";
 
@@ -119,34 +122,27 @@ export function event<E extends EventPayload>(
   name: string,
   schema?: z.Schema<E>
 ): Event<E> {
-  if (events().has(name)) {
-    throw new Error(`event with name '${name}' already exists`);
-  }
-  const event: Event<E> = {
+  return registerEventualResource("Event", {
     kind: "Event",
     name,
     schema,
     onEvent<Name extends string>(...args: any[]) {
       // we have an implicit contract where the SourceLocation may be passed in as the first argument
-      const [sourceLocation, name, eventHandlerProps, handler] = [
+      const [sourceLocation, subName, eventHandlerProps, handler] = [
         args.find(isSourceLocation)!,
         args.find((a) => typeof a === "string") as Name,
         args.find((a) => typeof a === "object" && !isSourceLocation(a))!,
         args.find((a) => typeof a === "function"),
       ];
 
-      const eventHandler: Subscription<Name, E> = {
-        kind: "Subscription",
-        name,
+      return registerEventualResource("Subscription", {
+        kind: "Subscription" as const,
+        name: subName,
         handler,
-        filters: [{ name: event.name }],
+        filters: [{ name }],
         props: eventHandlerProps,
         sourceLocation,
-      };
-
-      subscriptions().push(eventHandler as Subscription<any, any>);
-
-      return eventHandler;
+      });
     },
     async emit(...events) {
       const envelopes = events.map((event) => ({
@@ -162,7 +158,5 @@ export function event<E extends EventPayload>(
         }
       );
     },
-  };
-  events().set(name, event as Event<any>);
-  return event;
+  });
 }

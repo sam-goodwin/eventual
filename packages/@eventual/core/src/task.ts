@@ -8,7 +8,10 @@ import type {
   SendTaskSuccessRequest,
 } from "./internal/eventual-service.js";
 import { isTaskWorker } from "./internal/flags.js";
-import { getServiceClient, getTaskContext, tasks } from "./internal/global.js";
+import {
+  getServiceClient,
+  registerEventualResource,
+} from "./internal/global.js";
 import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
 import { SourceLocation, isSourceLocation } from "./internal/service-spec.js";
 import { AsyncTokenSymbol, TaskSpec } from "./internal/task.js";
@@ -214,7 +217,7 @@ export async function asyncResult<Output = any>(
   if (!isTaskWorker()) {
     throw new Error("asyncResult can only be called from within a task.");
   }
-  const taskContext = await getTaskContext();
+  const taskContext = getEventualTaskRuntimeContext();
   if (!taskContext) {
     throw new Error(
       "Task context has not been set yet, asyncResult can only be used from within a task."
@@ -288,7 +291,7 @@ export function task<Name extends string, Input = any, Output = any>(
         heartbeat: options?.heartbeatTimeout ?? opts?.heartbeatTimeout,
       }),
       async () => {
-        const runtimeContext = await getTaskContext();
+        const runtimeContext = getEventualTaskRuntimeContext();
         const context: TaskContext = {
           task: {
             name,
@@ -302,10 +305,6 @@ export function task<Name extends string, Input = any, Output = any>(
       }
     );
   }) as Task<Name, Input, Output>;
-
-  if (tasks()[name]) {
-    throw new Error(`task with name '${name}' already exists`);
-  }
 
   Object.defineProperty(func, "name", { value: name, writable: false });
   func.sendTaskSuccess = async function (request) {
@@ -321,8 +320,8 @@ export function task<Name extends string, Input = any, Output = any>(
 
   // @ts-ignore
   func.handler = handler;
-  tasks()[name] = func;
-  return func;
+
+  return registerEventualResource("Task", func);
 }
 
 export interface TaskExecutionContext {

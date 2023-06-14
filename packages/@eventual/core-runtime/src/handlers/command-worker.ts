@@ -7,7 +7,7 @@ import {
   RestParam,
 } from "@eventual/core";
 import {
-  commands,
+  getEventualResources,
   ServiceType,
   serviceTypeScope,
 } from "@eventual/core/internal";
@@ -94,7 +94,7 @@ function initRouter() {
     base: "/",
   });
 
-  for (const command of commands) {
+  for (const command of getEventualResources("Command").values()) {
     const shouldValidate = command.validate !== false;
 
     if (!command.passThrough) {

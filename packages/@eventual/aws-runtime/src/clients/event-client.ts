@@ -4,8 +4,8 @@ import {
   PutEventsCommand,
 } from "@aws-sdk/client-eventbridge";
 import { EventEnvelope, EventPayload } from "@eventual/core";
-import { EventClient, getLazy, LazyValue } from "@eventual/core-runtime";
-import { events as GlobalEvents } from "@eventual/core/internal";
+import { EventClient, LazyValue, getLazy } from "@eventual/core-runtime";
+import { getEventualResource } from "@eventual/core/internal";
 import { chunkArray } from "../utils.js";
 
 export interface AWSEventClientProps {
@@ -29,7 +29,7 @@ export class AWSEventClient implements EventClient {
     const eventBatches = chunkArray(
       10,
       events.map((event, i) => {
-        const schema = GlobalEvents().get(event.name)?.schema;
+        const schema = getEventualResource("Event", event.name)?.schema;
         if (schema) {
           const result = schema.safeParse(event.event);
           if (!result.success) {

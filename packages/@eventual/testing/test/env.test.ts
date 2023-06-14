@@ -13,7 +13,7 @@ import {
   workflow as _workflow,
   WorkflowHandler,
 } from "@eventual/core";
-import { tasks, workflows } from "@eventual/core/internal";
+import { getEventualResource } from "@eventual/core/internal";
 import { jest } from "@jest/globals";
 import z from "zod";
 import { TestEnvironment } from "../src/environment.js";
@@ -61,7 +61,7 @@ const task = (() => {
   let n = 0;
   return <Input = any, Output = any>(handler: TaskHandler<Input, Output>) => {
     // eslint-disable-next-line no-empty
-    while (tasks()[`task${++n}`]) {}
+    while (getEventualResource("Task", `task${++n}`)) {}
     return _task<string, Input, Output>(`task${n}`, handler);
   };
 })();
@@ -72,7 +72,7 @@ const workflow = (() => {
     handler: WorkflowHandler<Input, Output>
   ) => {
     // eslint-disable-next-line no-empty
-    while (workflows().has(`wf${++n}`)) {}
+    while (getEventualResource("Workflow", `wf${++n}`)) {}
     return _workflow<any, Input, Output>(`wf${n}`, handler);
   };
 })();

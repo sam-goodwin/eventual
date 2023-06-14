@@ -1,7 +1,7 @@
 import { EntityStreamItem } from "@eventual/core";
 import {
   ServiceType,
-  entities,
+  getEventualResource,
   serviceTypeScope,
 } from "@eventual/core/internal";
 import { getLazy } from "../utils.js";
@@ -20,9 +20,10 @@ export function createEntityStreamWorker(
 
   return async (item) =>
     serviceTypeScope(ServiceType.EntityStreamWorker, async () => {
-      const streamHandler = entities()
-        .get(item.entityName)
-        ?.streams.find((s) => s.name === item.streamName);
+      const streamHandler = getEventualResource(
+        "Entity",
+        item.entityName
+      )?.streams.find((s) => s.name === item.streamName);
       if (!streamHandler) {
         throw new Error(`Stream handler ${item.streamName} does not exist`);
       }

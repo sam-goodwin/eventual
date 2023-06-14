@@ -14,7 +14,6 @@ import {
   isAsyncResult,
   isWorkflowFailed,
   serviceTypeScope,
-  taskContextScope,
 } from "@eventual/core/internal";
 import type { EventClient } from "../clients/event-client.js";
 import type { ExecutionQueueClient } from "../clients/execution-queue-client.js";
@@ -32,6 +31,7 @@ import { normalizeError } from "../result.js";
 import { computeDurationSeconds } from "../schedule.js";
 import type { TaskStore } from "../stores/task-store.js";
 import { createTaskToken } from "../task-token.js";
+import { taskContextScope } from "../task.js";
 import { getLazy } from "../utils.js";
 import { createEvent } from "../workflow-events.js";
 import {
@@ -40,8 +40,8 @@ import {
 } from "./task-fallback-handler.js";
 import {
   WorkerIntrinsicDeps,
-  registerWorkerIntrinsics,
   getServiceContext,
+  registerWorkerIntrinsics,
 } from "./utils.js";
 
 export interface CreateTaskWorkerProps extends WorkerIntrinsicDeps {

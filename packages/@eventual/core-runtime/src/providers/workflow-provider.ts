@@ -1,5 +1,9 @@
-import { Workflow } from "@eventual/core";
-import { workflows, ServiceSpec } from "@eventual/core/internal";
+import type { Workflow } from "@eventual/core";
+import {
+  ServiceSpec,
+  getEventualResource,
+  getEventualResources,
+} from "@eventual/core/internal";
 
 export interface WorkflowProvider extends WorkflowSpecProvider {
   lookupWorkflow(workflowName: string): Workflow | undefined;
@@ -17,11 +21,13 @@ export interface WorkflowSpecProvider {
  */
 export class GlobalWorkflowProvider implements WorkflowProvider {
   public lookupWorkflow(workflowName: string): Workflow | undefined {
-    return workflows().get(workflowName);
+    return getEventualResource("Workflow", workflowName);
   }
+
   public getWorkflowNames(): string[] {
-    return [...workflows().keys()];
+    return [...getEventualResources("Workflow").keys()];
   }
+
   public workflowExists(workflowName: string): boolean {
     return !!this.lookupWorkflow(workflowName);
   }

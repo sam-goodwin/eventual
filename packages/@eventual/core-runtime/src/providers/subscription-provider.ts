@@ -3,7 +3,7 @@ import {
   Subscription,
   SubscriptionHandler,
 } from "@eventual/core";
-import { subscriptions } from "@eventual/core/internal";
+import { getEventualResources } from "@eventual/core/internal";
 
 export interface SubscriptionProvider {
   getSubscriptionsForEvent(eventId: string): SubscriptionHandler<any>[];
@@ -16,7 +16,9 @@ export class GlobalSubscriptionProvider implements SubscriptionProvider {
   >;
 
   constructor() {
-    this.subscriptions = indexSubscriptions(subscriptions());
+    this.subscriptions = indexSubscriptions(
+      Array.from(getEventualResources("Subscription").values())
+    );
   }
 
   public getSubscriptionsForEvent(eventId: string): SubscriptionHandler<any>[] {

@@ -1,8 +1,7 @@
 import { HttpRequest, HttpResponse } from "@eventual/core";
 import {
-  buckets,
-  entities,
   EnvironmentManifest,
+  getEventualResources,
   registerEnvironmentManifest,
   registerServiceClient,
 } from "@eventual/core/internal";
@@ -149,7 +148,7 @@ export class LocalEnvironment {
       );
       // for each entity stream item, find the streams that match it, and run the worker with the item
       entityStreamItems.forEach((i) => {
-        const streamNames = [...entities().values()]
+        const streamNames = [...getEventualResources("Entity").values()]
           .flatMap((d) => d.streams)
           .filter((s) => {
             const entity = this.localContainer.entityProvider.getEntity(
@@ -171,7 +170,7 @@ export class LocalEnvironment {
 
       // for each bucket stream item, find the streams that match it, and run the worker with the item
       bucketNotificationEvents.forEach((i) => {
-        const streamNames = [...buckets().values()]
+        const streamNames = [...getEventualResources("Bucket").values()]
           .flatMap((d) => d.handlers)
           .filter((s) => bucketHandlerMatchesEvent(i, s))
           .map((s) => s.name);
