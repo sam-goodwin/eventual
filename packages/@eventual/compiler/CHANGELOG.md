@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.43.0 (2023-06-14)
+
+### Features
+
+- entity query conditions ([#385](https://github.com/functionless/eventual/issues/385)) ([3a9e1e7](https://github.com/functionless/eventual/commit/3a9e1e7ce52c87b60d9d30f91abf350158bc4dff))
+
 ## 0.42.2 (2023-05-31)
 
 **Note:** Version bump only for package @eventual/compiler
