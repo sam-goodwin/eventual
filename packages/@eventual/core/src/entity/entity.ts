@@ -6,7 +6,7 @@ import {
 } from "../internal/calls.js";
 import { getEntityHook } from "../internal/entity-hook.js";
 import { computeKeyDefinition, KeyDefinition } from "../internal/entity.js";
-import { entities } from "../internal/global.js";
+import { registerEventualResource } from "../internal/global.js";
 import {
   EntityIndexSpec,
   EntitySpec,
@@ -287,10 +287,6 @@ export function entity<
   name: Name,
   options: EntityOptions<Attr, Partition, Sort>
 ): Entity<Name, Attr, Partition, Sort> {
-  if (entities().has(name)) {
-    throw new Error(`entity with name '${name}' already exists`);
-  }
-
   const indices: EntityIndex[] = [];
 
   /**
@@ -458,9 +454,7 @@ export function entity<
     },
   };
 
-  entities().set(name, entity as any);
-
-  return entity;
+  return registerEventualResource("Entity", entity);
 
   function addStream<
     E extends

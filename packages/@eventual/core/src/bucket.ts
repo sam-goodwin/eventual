@@ -5,7 +5,7 @@ import {
   createEventualCall,
   EventualCallKind,
 } from "./internal/calls.js";
-import { buckets } from "./internal/global.js";
+import { registerEventualResource } from "./internal/global.js";
 import {
   BucketNotificationEventType,
   BucketNotificationHandlerOptions,
@@ -122,12 +122,8 @@ export interface Bucket<Name extends string = string>
 }
 
 export function bucket<Name extends string = string>(name: Name): Bucket<Name> {
-  if (buckets().has(name)) {
-    throw new Error(`bucket with name '${name}' already exists`);
-  }
-
   const handlers: BucketNotificationHandler[] = [];
-  const bucket: Bucket<Name> = {
+  return registerEventualResource("Bucket", {
     name,
     handlers,
     kind: "Bucket",
@@ -288,11 +284,7 @@ export function bucket<Name extends string = string>(name: Name): Bucket<Name> {
 
       return bucketHandler;
     },
-  };
-
-  buckets().set(name, bucket);
-
-  return bucket;
+  });
 }
 
 export interface BucketObjectReference {

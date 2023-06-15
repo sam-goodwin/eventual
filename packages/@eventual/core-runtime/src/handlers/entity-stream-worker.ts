@@ -1,7 +1,7 @@
 import { EntityStreamContext, EntityStreamItem } from "@eventual/core";
 import {
   ServiceType,
-  entities,
+  getEventualResource,
   serviceTypeScope,
 } from "@eventual/core/internal";
 import { getLazy, promiseAllSettledPartitioned } from "../utils.js";
@@ -26,9 +26,10 @@ export function createEntityStreamWorker(
 
   return async (entityName, streamName, items) =>
     serviceTypeScope(ServiceType.EntityStreamWorker, async () => {
-      const streamHandler = entities()
-        .get(entityName)
-        ?.streams.find((s) => s.name === streamName);
+      const streamHandler = getEventualResource(
+        "Entity",
+        entityName
+      )?.streams.find((s) => s.name === streamName);
 
       if (!streamHandler) {
         throw new Error(`Stream handler ${streamName} does not exist`);

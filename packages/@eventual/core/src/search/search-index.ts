@@ -16,7 +16,6 @@ import {
   SearchOperation,
   createEventualCall,
 } from "../internal/calls.js";
-import { searchIndices } from "../internal/global.js";
 import { getOpenSearchHook } from "../internal/search-hook.js";
 import { assertApiResponseOK } from "./assert-api-response.js";
 import type { MappingToDocument } from "./mapping.js";
@@ -24,6 +23,7 @@ import type { CountRequest, SearchRequest } from "./query/search-query.js";
 import type { SearchResponse } from "./search-response.js";
 
 import t from "type-fest";
+import { registerEventualResource } from "../internal/global.js";
 
 export type SearchIndexProperties = {
   [propertyName: string]: estypes.MappingProperty;
@@ -128,9 +128,6 @@ export function index<
   },
   Properties
 > {
-  if (searchIndices().has(name)) {
-    throw new Error(`SearchIndex with name ${name} already defined`);
-  }
   type Document = {
     [property in keyof Properties]: MappingToDocument<Properties[property]>;
   };
@@ -160,8 +157,7 @@ export function index<
   Object.defineProperty(index, "client", {
     get: () => getOpenSearchHook().client.client satisfies Client,
   });
-  searchIndices().set(name, index as any);
-  return index;
+  return registerEventualResource("SearchIndex", index as any);
 
   function search<Op extends SearchOperation, Response = any>(
     operation: Op,

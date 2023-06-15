@@ -8,7 +8,10 @@ import {
   EventualPromise,
   EventualPromiseSymbol,
 } from "./internal/eventual-hook.js";
-import { getServiceClient, workflows } from "./internal/global.js";
+import {
+  getServiceClient,
+  registerEventualResource,
+} from "./internal/global.js";
 import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
 import { WorkflowSpec } from "./internal/service-spec.js";
 import { SignalTargetType } from "./internal/signal.js";
@@ -92,6 +95,7 @@ export interface Workflow<
   Output = any
 > extends WorkflowSpec<Name> {
   options?: WorkflowDefinitionOptions;
+  kind: "Workflow";
 
   /**
    * Invokes the {@link Workflow} from within another workflow.
@@ -172,10 +176,6 @@ export function workflow<
     | [definition: WorkflowHandler<Input, Output>]
 ): Workflow<Name, Input, Output> {
   const [opts, definition] = args.length === 1 ? [undefined, args[0]] : args;
-  if (workflows().has(name)) {
-    throw new Error(`workflow with name '${name}' already exists`);
-  }
-
   const workflow: Workflow<Name, Input, Output> = ((
     input?: any,
     options?: ChildWorkflowOptions
@@ -246,9 +246,9 @@ export function workflow<
 
   // @ts-ignore
   workflow.definition = definition;
+  workflow.kind = "Workflow";
 
-  workflows().set(name, workflow);
-  return workflow;
+  return registerEventualResource("Workflow", workflow);
 }
 
 /**

@@ -1,11 +1,11 @@
 import { EntityStreamItem, HttpRequest, HttpResponse } from "@eventual/core";
 import {
   EnvironmentManifest,
-  buckets,
-  entities,
+  getEventualResources,
   registerEnvironmentManifest,
   registerServiceClient,
 } from "@eventual/core/internal";
+import { ulid } from "ulidx";
 import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
 import { isTaskWorkerRequest } from "../clients/task-client.js";
 import { isTimerRequest } from "../clients/timer-client.js";
@@ -23,7 +23,6 @@ import {
   isLocalEntityStreamEvent,
 } from "./local-container.js";
 import { TimeController } from "./time-controller.js";
-import { ulid } from "ulidx";
 
 export class LocalEnvironment {
   private timeController: TimeController<LocalEvent>;
@@ -154,7 +153,7 @@ export class LocalEnvironment {
           id: ulid(),
           ...i.item,
         } as EntityStreamItem;
-        const streamNames = [...entities().values()]
+        const streamNames = [...getEventualResources("Entity").values()]
           .flatMap((d) => d.streams)
           .filter((s) => {
             const entity = this.localContainer.entityProvider.getEntity(
@@ -175,7 +174,7 @@ export class LocalEnvironment {
 
       // for each bucket stream item, find the streams that match it, and run the worker with the item
       bucketNotificationEvents.forEach((i) => {
-        const streamNames = [...buckets().values()]
+        const streamNames = [...getEventualResources("Bucket").values()]
           .flatMap((d) => d.handlers)
           .filter((s) => bucketHandlerMatchesEvent(i, s))
           .map((s) => s.name);

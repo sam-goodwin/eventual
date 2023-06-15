@@ -36,8 +36,7 @@ import {
 import {
   EmitEventsRequest,
   TaskInput,
-  buckets,
-  entities,
+  getEventualResources,
   registerEnvironmentManifest,
   registerServiceClient,
 } from "@eventual/core/internal";
@@ -419,7 +418,7 @@ export class TestEnvironment extends RuntimeServiceClient {
             id: ulid(),
             ...i.item,
           } as EntityStreamItem;
-          const streamNames = [...entities().values()]
+          const streamNames = [...getEventualResources("Entity").values()]
             .flatMap((d) => d.streams)
             .filter((s) => entityStreamMatchesItem(entity, item, s))
             .map((s) => s.name);
@@ -432,7 +431,7 @@ export class TestEnvironment extends RuntimeServiceClient {
           });
         }),
         bucketNotificationEvents.flatMap((i) => {
-          const streamNames = [...buckets().values()]
+          const streamNames = [...getEventualResources("Bucket").values()]
             .flatMap((d) => d.handlers)
             .filter((s) => bucketHandlerMatchesEvent(i, s))
             .map((s) => s.name);

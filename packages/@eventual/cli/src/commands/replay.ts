@@ -17,8 +17,8 @@ import {
 import {
   Result,
   ServiceType,
+  getEventualResource,
   serviceTypeScope,
-  workflows,
 } from "@eventual/core/internal";
 import { discoverEventualConfig } from "@eventual/project";
 import path from "path";
@@ -70,7 +70,7 @@ export const replay = (yargs: Argv) =>
 
         spinner.succeed();
         const workflowName = parseWorkflowName(execution as ExecutionID);
-        const workflow = workflows().get(workflowName);
+        const workflow = getEventualResource("Workflow", workflowName);
         if (!workflow) {
           throw new Error(`Workflow ${workflowName} not found!`);
         }
