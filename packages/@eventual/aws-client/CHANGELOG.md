@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.44.0 (2023-06-15)
+
+### Features
+
+- entity batch stream ([#386](https://github.com/functionless/eventual/issues/386)) ([38407a7](https://github.com/functionless/eventual/commit/38407a7c0e207b0359d2fef4958a20266582f4d1))
+
 ## 0.43.1 (2023-06-14)
 
 **Note:** Version bump only for package @eventual/aws-client
