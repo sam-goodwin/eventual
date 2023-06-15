@@ -5,23 +5,23 @@ import {
   PutItemCommand,
   TransactionConflictException,
 } from "@aws-sdk/client-dynamodb";
-import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import {
-  api,
   ApiSpecification,
+  Entity,
+  EventualError,
+  HeartbeatTimeout,
+  HttpResponse,
+  Schedule,
+  api,
   asyncResult,
   bucket,
   command,
   condition,
   duration,
-  Entity,
   entity,
   event,
-  EventualError,
   expectSignal,
-  HeartbeatTimeout,
-  HttpResponse,
-  Schedule,
   index,
   sendSignal,
   sendTaskHeartbeat,
@@ -32,7 +32,7 @@ import {
   transaction,
   workflow,
 } from "@eventual/core";
-import openapi from "openapi3-ts";
+import type openapi from "openapi3-ts";
 import { Readable } from "stream";
 import z from "zod";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
