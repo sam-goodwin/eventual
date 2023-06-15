@@ -1,14 +1,20 @@
-import { EntityStreamItem } from "@eventual/core";
+import { EntityStreamContext, EntityStreamItem } from "@eventual/core";
 import {
   ServiceType,
   getEventualResource,
   serviceTypeScope,
 } from "@eventual/core/internal";
-import { getLazy } from "../utils.js";
+import { getLazy, promiseAllSettledPartitioned } from "../utils.js";
 import { WorkerIntrinsicDeps, registerWorkerIntrinsics } from "./utils.js";
 
 export interface EntityStreamWorker {
-  (item: EntityStreamItem<any>): false | void | Promise<false | void>;
+  (
+    entityName: string,
+    streamName: string,
+    items: EntityStreamItem<any>[]
+  ): Promise<{
+    failedItemIds: string[];
+  }>;
 }
 
 type EntityStreamWorkerDependencies = WorkerIntrinsicDeps;
@@ -18,20 +24,45 @@ export function createEntityStreamWorker(
 ): EntityStreamWorker {
   registerWorkerIntrinsics(dependencies);
 
-  return async (item) =>
+  return async (entityName, streamName, items) =>
     serviceTypeScope(ServiceType.EntityStreamWorker, async () => {
       const streamHandler = getEventualResource(
         "Entity",
-        item.entityName
-      )?.streams.find((s) => s.name === item.streamName);
+        entityName
+      )?.streams.find((s) => s.name === streamName);
+
       if (!streamHandler) {
-        throw new Error(`Stream handler ${item.streamName} does not exist`);
+        throw new Error(`Stream handler ${streamName} does not exist`);
       }
-      return await streamHandler.handler(item, {
+
+      const context: EntityStreamContext = {
+        stream: { entityName, streamName },
         service: {
           serviceName: getLazy(dependencies.serviceName),
           serviceUrl: getLazy(dependencies.serviceUrl),
         },
-      });
+      };
+
+      if (streamHandler.kind === "EntityBatchStream") {
+        const result = await streamHandler.handler(items, context);
+
+        return { failedItemIds: result?.failedItemIds ?? [] };
+      } else {
+        const results = await promiseAllSettledPartitioned(
+          items,
+          async (item) => {
+            return await streamHandler.handler(item, context);
+          }
+        );
+
+        return {
+          failedItemIds: [
+            ...results.rejected.map(([e]) => e.id),
+            ...results.fulfilled
+              .filter(([, r]) => r === false)
+              .map(([e]) => e.id),
+          ],
+        };
+      }
     });
 }

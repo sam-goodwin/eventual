@@ -103,7 +103,6 @@ export function entityStreamMatchesItem<
       normalizeCompositeKey(entity, key)
     ) ?? [];
   return (
-    streamSpec.entityName === item.entityName &&
     (!streamSpec.options?.operations ||
       streamSpec.options.operations.includes(item.operation)) &&
     (normalizedQueryKeys.length === 0 ||

@@ -15,7 +15,7 @@ export type EntityMethod = Exclude<
   {
     [k in keyof Entity]: [Entity[k]] extends [Function] ? k : never;
   }[keyof Entity],
-  "partition" | "sort" | "stream" | "index" | undefined
+  "partition" | "sort" | "stream" | "batchStream" | "index" | undefined
 >;
 
 /**

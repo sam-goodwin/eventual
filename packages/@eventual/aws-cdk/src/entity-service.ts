@@ -4,6 +4,7 @@ import {
   ENV_NAMES,
 } from "@eventual/aws-runtime";
 import {
+  computeDurationSeconds,
   EntityRuntime,
   EntityStreamFunction,
   normalizeCompositeKey,
@@ -13,7 +14,6 @@ import {
   KeyDefinitionPart,
   TransactionSpec,
 } from "@eventual/core/internal";
-import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib/core";
 import {
   Attribute,
   AttributeType,
@@ -31,16 +31,17 @@ import {
   StartingPosition,
 } from "aws-cdk-lib/aws-lambda";
 import { DynamoEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
+import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib/core";
 import { Construct } from "constructs";
 import { BucketService } from "./bucket-service";
 import { CommandService } from "./command-service";
 import { EventService } from "./event-service.js";
 import { LazyInterface } from "./proxy-construct";
+import { SearchService } from "./search/search-service";
 import { EventualResource, ServiceConstructProps } from "./service";
 import { ServiceFunction } from "./service-function";
 import { ServiceEntityProps, serviceTableArn } from "./utils";
 import { WorkflowService } from "./workflow-service.js";
-import { SearchService } from "./search/search-service";
 
 export type ServiceEntities<Service> = ServiceEntityProps<
   Service,
@@ -56,7 +57,7 @@ export type ServiceTransactions<Service> = ServiceEntityProps<
 
 export type ServiceEntityStreams<Service> = ServiceEntityProps<
   Service,
-  "EntityStream",
+  "EntityStream" | "EntityBatchStream",
   EntityStream
 >;
 
@@ -355,8 +356,21 @@ export class EntityStream extends Construct implements EventualResource {
         },
         events: [
           new DynamoEventSource(props.table, {
+            batchSize: props.stream.spec.options?.batchSize,
+            maxRecordAge: props.stream.spec.options?.maxAge
+              ? Duration.seconds(
+                  computeDurationSeconds(props.stream.spec.options.maxAge)
+                )
+              : undefined,
+            maxBatchingWindow: props.stream.spec.options?.batchingWindow
+              ? Duration.seconds(
+                  computeDurationSeconds(
+                    props.stream.spec.options.batchingWindow
+                  )
+                )
+              : Duration.seconds(0),
+            reportBatchItemFailures: true,
             startingPosition: StartingPosition.TRIM_HORIZON,
-            maxBatchingWindow: Duration.seconds(0),
             ...(filters.length > 0 ? { filters } : {}),
           }),
         ],

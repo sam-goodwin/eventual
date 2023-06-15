@@ -1,5 +1,6 @@
 import { inferFromMemory } from "@eventual/compiler";
 import {
+  EntityStreamItem,
   Event,
   EventEnvelope,
   EventPayload,
@@ -26,7 +27,7 @@ import {
   bucketHandlerMatchesEvent,
   entityStreamMatchesItem,
   isBucketNotificationEvent,
-  isEntityStreamItem,
+  isLocalEntityStreamEvent,
   isTaskSendEventRequest,
   isTaskWorkerRequest,
   isTimerRequest,
@@ -39,6 +40,7 @@ import {
   registerEnvironmentManifest,
   registerServiceClient,
 } from "@eventual/core/internal";
+import { ulid } from "ulidx";
 import { TestSubscriptionProvider } from "./providers/subscription-provider.js";
 import { MockTask, MockableTaskProvider } from "./providers/task-provider.js";
 
@@ -386,7 +388,7 @@ export class TestEnvironment extends RuntimeServiceClient {
     const timerRequests = events.filter(isTimerRequest);
     const workflowTasks = events.filter(isWorkflowTask);
     const taskWorkerRequests = events.filter(isTaskWorkerRequest);
-    const entityStreamItems = events.filter(isEntityStreamItem);
+    const entityStreamItems = events.filter(isLocalEntityStreamEvent);
     const bucketNotificationEvents = events.filter(isBucketNotificationEvent);
 
     await Promise.all(
@@ -412,15 +414,20 @@ export class TestEnvironment extends RuntimeServiceClient {
           if (!entity) {
             return [];
           }
+          const item = {
+            id: ulid(),
+            ...i.item,
+          } as EntityStreamItem;
           const streamNames = [...getEventualResources("Entity").values()]
             .flatMap((d) => d.streams)
-            .filter((s) => entityStreamMatchesItem(entity, i, s))
+            .filter((s) => entityStreamMatchesItem(entity, item, s))
             .map((s) => s.name);
           return streamNames.map((streamName) => {
-            return this.localContainer.entityStreamWorker({
-              ...i,
+            return this.localContainer.entityStreamWorker(
+              i.entityName,
               streamName,
-            });
+              [item]
+            );
           });
         }),
         bucketNotificationEvents.flatMap((i) => {

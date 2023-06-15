@@ -22,7 +22,12 @@ import type {
   KeyAttributes,
   QueryKey,
 } from "./key.js";
-import type { EntityStream, EntityStreamHandler } from "./stream.js";
+import type {
+  EntityBatchStream,
+  EntityBatchStreamHandler,
+  EntityStream,
+  EntityStreamHandler,
+} from "./stream.js";
 
 export type AttributeBinaryValue =
   | ArrayBuffer
@@ -88,7 +93,10 @@ export interface Entity<
   key: KeyDefinition;
   attributes: ZodAttributesObject<Attr>;
   indices: EntityIndex[];
-  streams: EntityStream<any, Attr, Partition, Sort>[];
+  streams: (
+    | EntityBatchStream<any, Attr, Partition, Sort>
+    | EntityStream<any, Attr, Partition, Sort>
+  )[];
   /**
    * Get a value.
    * If your values use composite keys, the namespace must be provided.
@@ -159,6 +167,18 @@ export interface Entity<
     name: string,
     handler: EntityStreamHandler<Attr, Partition, Sort>
   ): EntityStream<Name, Attr, Partition, Sort>;
+  batchStream<
+    Name extends string = string,
+    Operations extends EntityStreamOperation[] = EntityStreamOperation[]
+  >(
+    name: Name,
+    options: EntityStreamOptions<Attr, Partition, Sort, Operations>,
+    handler: EntityBatchStreamHandler<Attr, Partition, Sort, Operations>
+  ): EntityBatchStream<Name, Attr, Partition, Sort>;
+  batchStream<Name extends string = string>(
+    name: string,
+    handler: EntityBatchStreamHandler<Attr, Partition, Sort>
+  ): EntityBatchStream<Name, Attr, Partition, Sort>;
 }
 
 export const Entity = {
@@ -272,7 +292,10 @@ export function entity<
   /**
    * Used to maintain a limited number of streams on the entity.
    */
-  const streams: EntityStream<any, Attr, Partition, Sort>[] = [];
+  const streams: (
+    | EntityStream<any, Attr, Partition, Sort>
+    | EntityBatchStream<any, Attr, Partition, Sort>
+  )[] = [];
 
   const attributes =
     options.attributes instanceof z.ZodObject
@@ -417,60 +440,89 @@ export function entity<
 
       return index as any;
     },
-    stream: (
-      ...args:
-        | [name: string, handler: EntityStreamHandler<Attr, Partition, Sort>]
-        | [
-            name: string,
-            options: EntityStreamOptions<Attr, Partition, Sort>,
-            handler: EntityStreamHandler<Attr, Partition, Sort>
-          ]
-        | [
-            sourceLocation: SourceLocation,
-            name: string,
-            handler: EntityStreamHandler<Attr, Partition, Sort>
-          ]
-        | [
-            sourceLocation: SourceLocation,
-            name: string,
-            options: EntityStreamOptions<Attr, Partition, Sort>,
-            handler: EntityStreamHandler<Attr, Partition, Sort>
-          ]
-    ) => {
-      const [sourceLocation, streamName, options, handler] =
-        args.length === 2
-          ? [, args[0], , args[1]]
-          : args.length === 4
-          ? args
-          : isSourceLocation(args[0]) && typeof args[1] === "string"
-          ? [args[0], args[1] as string, , args[2]]
-          : [
-              ,
-              args[0] as string,
-              args[1] as EntityStreamOptions<Attr, Partition, Sort>,
-              args[2],
-            ];
-
-      if (streams.length > 1) {
-        throw new Error("Only two streams are allowed per entity.");
-      }
-
-      const entityStream: EntityStream<any, Attr, Partition, Sort> = {
-        kind: "EntityStream",
-        handler,
-        name: streamName,
-        entityName: name,
-        options,
-        sourceLocation,
-      };
-
-      streams.push(entityStream);
-
-      return entityStream;
+    stream: (...args: any[]) => {
+      return addStream<EntityStream<any, Attr, Partition, Sort>>(
+        "EntityStream",
+        ...(args as any)
+      );
+    },
+    batchStream: (...args: any[]) => {
+      return addStream<EntityBatchStream<any, Attr, Partition, Sort>>(
+        "EntityBatchStream",
+        ...(args as any)
+      );
     },
   };
 
   return registerEventualResource("Entity", entity);
+
+  function addStream<
+    E extends
+      | EntityStream<any, Attr, Partition, Sort>
+      | EntityBatchStream<any, Attr, Partition, Sort>
+  >(
+    kind: E["kind"],
+    ...args:
+      | [
+          name: string,
+          handler:
+            | EntityStreamHandler<Attr, Partition, Sort>
+            | EntityBatchStreamHandler<Attr, Partition, Sort>
+        ]
+      | [
+          name: string,
+          options: EntityStreamOptions<Attr, Partition, Sort>,
+          handler:
+            | EntityStreamHandler<Attr, Partition, Sort>
+            | EntityBatchStreamHandler<Attr, Partition, Sort>
+        ]
+      | [
+          sourceLocation: SourceLocation,
+          name: string,
+          handler:
+            | EntityStreamHandler<Attr, Partition, Sort>
+            | EntityBatchStreamHandler<Attr, Partition, Sort>
+        ]
+      | [
+          sourceLocation: SourceLocation,
+          name: string,
+          options: EntityStreamOptions<Attr, Partition, Sort>,
+          handler:
+            | EntityStreamHandler<Attr, Partition, Sort>
+            | EntityBatchStreamHandler<Attr, Partition, Sort>
+        ]
+  ): E {
+    const [sourceLocation, streamName, options, handler] =
+      args.length === 2
+        ? [, args[0], , args[1]]
+        : args.length === 4
+        ? args
+        : isSourceLocation(args[0]) && typeof args[1] === "string"
+        ? [args[0], args[1] as string, , args[2]]
+        : [
+            ,
+            args[0] as string,
+            args[1] as EntityStreamOptions<Attr, Partition, Sort>,
+            args[2],
+          ];
+
+    if (streams.length > 1) {
+      throw new Error("Only two streams are allowed per entity.");
+    }
+
+    const entityStream = {
+      kind,
+      handler,
+      name: streamName,
+      entityName: name,
+      options,
+      sourceLocation,
+    } as unknown as E;
+
+    streams.push(entityStream);
+
+    return entityStream;
+  }
 }
 
 export type EntityIndexOptions<

@@ -241,6 +241,24 @@ export interface EntityStreamOptions<
    * One or more key queries that will be included in the stream.
    */
   queryKeys?: StreamQueryKey<Attr, Partition, Sort>[];
+  /**
+   * Max batch size. Between 1 and 1000.
+   *
+   * @default: 100
+   */
+  batchSize?: number;
+  /**
+   * Amount of time to wait for the batch size before sending a batch.
+   *
+   * @default: 0 seconds.
+   */
+  batchingWindow?: DurationSchedule;
+  /**
+   * Max age of an item before it is dropped. Duration between 1 hour and 24 hours.
+   *
+   * @default: 24 hours
+   */
+  maxAge?: DurationSchedule;
 }
 
 export interface EntityStreamSpec<

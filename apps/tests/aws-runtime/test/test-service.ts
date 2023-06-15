@@ -5,23 +5,23 @@ import {
   PutItemCommand,
   TransactionConflictException,
 } from "@aws-sdk/client-dynamodb";
-import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import {
-  api,
   ApiSpecification,
+  Entity,
+  EventualError,
+  HeartbeatTimeout,
+  HttpResponse,
+  Schedule,
+  api,
   asyncResult,
   bucket,
   command,
   condition,
   duration,
-  Entity,
   entity,
   event,
-  EventualError,
   expectSignal,
-  HeartbeatTimeout,
-  HttpResponse,
-  Schedule,
   index,
   sendSignal,
   sendTaskHeartbeat,
@@ -32,7 +32,7 @@ import {
   transaction,
   workflow,
 } from "@eventual/core";
-import openapi from "openapi3-ts";
+import type openapi from "openapi3-ts";
 import { Readable } from "stream";
 import z from "zod";
 import { AsyncWriterTestEvent } from "./async-writer-handler.js";
@@ -617,20 +617,24 @@ export const counterWatcher = counter.stream(
   }
 );
 
-export const counterNamespaceWatcher = counter.stream(
+export const counterNamespaceWatcher = counter.batchStream(
   "counterNamespaceWatch",
   { queryKeys: [{ namespace: "different" }], operations: ["insert"] },
-  async (item) => {
-    console.log(item);
-    const value = await counter.get(item.key);
-    await counter.set({
-      namespace: "default",
-      id: value!.id,
-      n: (value?.n ?? 0) + 1,
-      optional: undefined,
-    });
-    console.log("send signal to", value!.id);
-    await entitySignal.sendSignal(value!.id);
+  async (items) => {
+    await Promise.all(
+      items.map(async (item) => {
+        console.log(item);
+        const value = await counter.get(item.key);
+        await counter.set({
+          namespace: "default",
+          id: value!.id,
+          n: (value?.n ?? 0) + 1,
+          optional: undefined,
+        });
+        console.log("send signal to", value!.id);
+        await entitySignal.sendSignal(value!.id);
+      })
+    );
   }
 );
 
