@@ -28,6 +28,7 @@ import type {
   EntityStream,
   EntityStreamHandler,
 } from "./stream.js";
+import { SetOptionalFields } from "../type-utilts.js";
 
 export type AttributeBinaryValue =
   | ArrayBuffer
@@ -123,7 +124,10 @@ export interface Entity<
    * Values with namespaces are considered distinct from value without a namespace or within different namespaces.
    * Values and keys can only be listed within a single namespace.
    */
-  set(entity: Attr, options?: EntitySetOptions): Promise<{ version: number }>;
+  set(
+    entity: SetOptionalFields<Attr>,
+    options?: EntitySetOptions
+  ): Promise<{ version: number }>;
   /**
    * Deletes a single entry within an entity and namespace.
    */

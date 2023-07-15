@@ -11,7 +11,15 @@ test("Person", () => {
     },
   });
   type Person = Infer<typeof Person>;
+  // 'optional' should maintain '?' modifier
   const person: Person = {
     name: "John",
   };
+
+  function noop() {
+    // 'optional' should maintain '?' modifier
+    Person.set({
+      name: "John",
+    });
+  }
 });
