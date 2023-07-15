@@ -7,6 +7,7 @@ test("Person", () => {
     partition: ["name"],
     attributes: {
       name: z.string(),
+      optional: z.string().optional(),
     },
   });
   type Person = Infer<typeof Person>;
