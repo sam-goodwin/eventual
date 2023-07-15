@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.44.1 (2023-07-15)
+
+### Bug Fixes
+
+- capitalize infer->Infer & infer attributes instead of name from entity ([#389](https://github.com/functionless/eventual/issues/389)) ([3e58b8e](https://github.com/functionless/eventual/commit/3e58b8e445de20ff702a173a6d9a8008c7ece059))
+
 # 0.44.0 (2023-06-15)
 
 ### Features
