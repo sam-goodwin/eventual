@@ -28,7 +28,7 @@ import type {
   EntityStream,
   EntityStreamHandler,
 } from "./stream.js";
-import { SetOptionalFields } from "../type-utilts.js";
+import { SetOptionalFields } from "../type-utils.js";
 
 export type AttributeBinaryValue =
   | ArrayBuffer
