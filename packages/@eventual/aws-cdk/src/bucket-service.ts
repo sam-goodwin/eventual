@@ -217,6 +217,7 @@ class Bucket extends Construct {
         ),
       autoDeleteObjects: bucketOverrides?.autoDeleteObjects ?? true,
       removalPolicy: bucketOverrides?.removalPolicy ?? RemovalPolicy.DESTROY,
+      versioned: bucketOverrides?.versioned ?? props.bucket.options?.versioned,
     });
 
     const bucketHandlerScope = new Construct(this, "BucketHandlers");
