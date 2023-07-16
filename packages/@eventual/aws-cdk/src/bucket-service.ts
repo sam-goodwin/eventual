@@ -24,7 +24,11 @@ import { CorsHttpMethod } from "@aws-cdk/aws-apigatewayv2-alpha";
 import type { SearchService } from "./search/search-service";
 
 export type BucketOverrides<Service> = Partial<
-  ServiceEntityProps<Service, "Bucket", BucketRuntimeOverrides>
+  ServiceEntityProps<
+    Service,
+    "Bucket",
+    BucketRuntimeOverrides & Partial<s3.BucketProps>
+  >
 >;
 
 export type BucketNotificationHandlerOverrides<Service> = Partial<
@@ -174,6 +178,7 @@ class Bucket extends Construct {
       props.serviceProps.bucketOverrides?.[props.bucket.name];
 
     this.bucket = new s3.Bucket(this, "Bucket", {
+      ...bucketOverrides,
       cors:
         props.serviceProps.cors &&
         props.serviceProps.cors.allowMethods &&
@@ -204,14 +209,14 @@ class Bucket extends Construct {
               },
             ]
           : undefined,
-      bucketName: bucketOverrides?.bucketName
-        ? bucketOverrides?.bucketName
-        : bucketServiceBucketName(
-            props.serviceProps.serviceName,
-            props.bucket.name
-          ),
-      autoDeleteObjects: true,
-      removalPolicy: RemovalPolicy.DESTROY,
+      bucketName:
+        bucketOverrides?.bucketName ??
+        bucketServiceBucketName(
+          props.serviceProps.serviceName,
+          props.bucket.name
+        ),
+      autoDeleteObjects: bucketOverrides?.autoDeleteObjects ?? true,
+      removalPolicy: bucketOverrides?.removalPolicy ?? RemovalPolicy.DESTROY,
     });
 
     const bucketHandlerScope = new Construct(this, "BucketHandlers");
