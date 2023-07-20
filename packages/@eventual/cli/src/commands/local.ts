@@ -17,6 +17,7 @@ import {
   getServiceSpec,
   isServiceDeployed,
   resolveRegion,
+  tryGetBuildManifest,
   tryResolveDefaultService,
 } from "../service-data.js";
 const execPromise = promisify(_exec);
@@ -168,5 +169,13 @@ export async function resolveManifestLocal(
     throw new Error("Service name was not found after synth.");
   }
 
-  return await getBuildManifest(config.outDir, serviceName);
+  const manifest = await tryGetBuildManifest(config.outDir, serviceName);
+  if (manifest === undefined) {
+    spinner.text =
+      "Service manifest not found, running synth to try to generate one.";
+    await execPromise(config.synth);
+    return getBuildManifest(config.outDir, serviceName);
+  } else {
+    return manifest;
+  }
 }
