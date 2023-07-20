@@ -32,7 +32,7 @@ jobs:
           aws-region: us-east-1
           role-duration-seconds: 3600
       - name: Run Local Tests
-        run: pnpm -r --filter tests-runtime run test:local-starti
+        run: pnpm -r --filter tests-runtime run test:local-start
       - name: Deploy Runtime Tests
         run: pnpm -r --filter tests-runtime run deploy:runtime
       - run: |

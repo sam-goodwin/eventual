@@ -163,6 +163,7 @@ ${npm("deploy")}
           "aws-cdk": "^2.80.0",
           esbuild: "^0.16.14",
           typescript: "^5",
+          "ts-node": "^10.9.1",
         },
         ...(pkgManager !== "pnpm"
           ? {
