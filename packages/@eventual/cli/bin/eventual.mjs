@@ -1,4 +1,11 @@
-#!/usr/bin/env ts-node-esm
+#!/usr/bin/env node
+
+import tsNode from "ts-node";
+
+tsNode.register({
+  esm: true,
+});
+
 import { cli } from "../lib/esm/cli.js";
 
 //Get rid of experimental fetch warning
