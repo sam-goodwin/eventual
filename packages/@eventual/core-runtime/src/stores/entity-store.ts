@@ -1,5 +1,6 @@
 import {
-  Attributes,
+  AttributesRuntime,
+  AttributesSchema,
   BetweenProgressiveKeyCondition,
   BetweenQueryKeyCondition,
   CompositeKey,
@@ -64,7 +65,7 @@ export abstract class EntityStore implements EntityHook {
 
   public set(
     entityName: string,
-    value: Attributes,
+    value: AttributesRuntime,
     options?: EntitySetOptions
   ): Promise<{ version: number }> {
     const entity = this.getEntity(entityName);
@@ -79,7 +80,7 @@ export abstract class EntityStore implements EntityHook {
 
   protected abstract _set(
     entity: Entity,
-    value: Attributes,
+    value: AttributesSchema,
     key: NormalizedEntityCompositeKeyComplete,
     options?: EntitySetOptions
   ): Promise<{ version: number }>;
@@ -249,7 +250,7 @@ export type NormalizedEntityTransactItem = {
 } & (
   | {
       operation: "set";
-      value: Attributes;
+      value: AttributesSchema;
       options?: EntitySetOptions;
     }
   | {
@@ -366,8 +367,8 @@ export type NormalizedEntityCompositeQueryKey = NormalizedEntityCompositeKey<
 /**
  * Generate properties for an entity key given the key definition and key values.
  */
-export function normalizeCompositeKey<E extends Entity>(
-  entity: E | KeyDefinition,
+export function normalizeCompositeKey(
+  entity: Entity | KeyDefinition,
   key: Partial<CompositeKey>
 ): NormalizedEntityCompositeKey {
   const keyDef = "partition" in entity ? entity : entity.key;
@@ -633,8 +634,8 @@ export function convertNormalizedEntityKeyToMap(
  */
 export function computeGeneratedIndexKeyAttributes(
   entity: Entity,
-  value: Attributes
-): Attributes {
+  value: AttributesRuntime
+): AttributesRuntime {
   return Object.fromEntries(
     entity.indices
       .flatMap((i) => {
@@ -656,10 +657,10 @@ export function computeGeneratedIndexKeyAttributes(
  */
 export function removeGeneratedKeyAttributes(
   entity: Entity,
-  value: Attributes,
+  value: AttributesSchema,
   excludeIndices = false,
   mutate = false
-): Attributes {
+): AttributesSchema {
   return removeKeyAttributes(
     entity,
     value,
@@ -674,11 +675,11 @@ export function removeGeneratedKeyAttributes(
  */
 export function removeKeyAttributes(
   entity: Entity,
-  value: Attributes,
+  value: AttributesSchema,
   filter?: (part: KeyDefinitionPart) => boolean,
   excludeIndices = false,
   mutate = false
-): Attributes {
+): AttributesSchema {
   const keysToDelete = new Set(
     [entity.key, ...(excludeIndices ? [] : entity.indices.map((k) => k.key))]
       .flatMap((k) => (k.sort ? [k.partition, k.sort] : [k.partition]))

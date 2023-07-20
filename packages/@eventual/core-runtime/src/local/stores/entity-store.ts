@@ -1,5 +1,5 @@
 import {
-  Attributes,
+  AttributesSchema,
   Entity,
   EntityConsistencyOptions,
   EntityIndex,
@@ -68,7 +68,7 @@ export class LocalEntityStore extends EntityStore {
 
   protected override async _set(
     entity: Entity,
-    value: Attributes,
+    value: AttributesSchema,
     key: NormalizedEntityCompositeKeyComplete,
     options?: EntitySetOptions
   ): Promise<{ version: number }> {
@@ -411,7 +411,7 @@ function deletePartitionEntry(
 function filterEntryBySortKey(
   keyDef: KeyDefinition,
   querySortKey: NormalizedEntityQueryKeyPart,
-  entry: Attributes
+  entry: AttributesSchema
 ) {
   const entryKey = normalizeCompositeKey(keyDef, entry);
   const entrySortKeyValue = entryKey.sort?.keyValue;

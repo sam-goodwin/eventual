@@ -1,9 +1,13 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
-import type { Attributes } from "./entity.js";
+import { z } from "zod";
+import type { AttributesSchema } from "./entity.js";
 import type t from "type-fest";
+import { Simplify } from "../type-utils.js";
 
 export type KeyValue = string | number | bigint;
+
+export type KeySchema = z.ZodType<KeyValue> | z.ZodEffects<any, any, KeyValue>;
 
 /**
  * Composite Key - Whole key used to get and set an entity, made up of partition and sort key parts containing one or more attribute.
@@ -14,10 +18,10 @@ export type KeyValue = string | number | bigint;
 /**
  * Any attribute name considered to be a valid key attribute.
  */
-export type KeyAttribute<Attr extends Attributes, Values = KeyValue> = {
+export type KeyAttribute<Attr extends AttributesSchema, Value = KeyValue> = {
   [K in keyof Attr]: K extends string
     ? // only include attributes that extend string or number
-      Attr[K] extends Values
+      z.input<Attr[K]> extends Value
       ? K
       : never
     : never;
@@ -28,7 +32,7 @@ export type KeyAttribute<Attr extends Attributes, Values = KeyValue> = {
  *
  * Used to define a key in an Entity, where all key attributes must not be optional.
  */
-export type EntityCompositeKeyPart<Attr extends Attributes> = readonly [
+export type EntityCompositeKeyPart<Attr extends AttributesSchema> = readonly [
   KeyAttribute<Attr, KeyValue>,
   ...KeyAttribute<Attr, KeyValue>[]
 ];
@@ -38,7 +42,7 @@ export type EntityCompositeKeyPart<Attr extends Attributes> = readonly [
  *
  * Used to define a key in an {@link EntityIndex}, where key attributes may refer to optional fields. This is called a sparse index.
  */
-export type IndexCompositeKeyPart<Attr extends Attributes> =
+export type IndexCompositeKeyPart<Attr extends AttributesSchema> =
   | readonly [
       KeyAttribute<Attr, KeyValue | undefined>,
       ...KeyAttribute<Attr, KeyValue | undefined>[]
@@ -50,7 +54,7 @@ export type IndexCompositeKeyPart<Attr extends Attributes> =
  *
  * Should match either {@link IndexCompositeKeyPart} or {@link EntityCompositeKeyPart}.
  */
-export type CompositeKeyPart<Attr extends Attributes> = readonly [
+export type CompositeKeyPart<Attr extends AttributesSchema> = readonly [
   KeyAttribute<Attr, any>,
   ...(readonly KeyAttribute<Attr, any>[])
 ];
@@ -68,21 +72,21 @@ export type CompositeKeyPart<Attr extends Attributes> = readonly [
  * ```
  */
 export type KeyMap<
-  Attr extends Attributes = any,
+  Attr extends AttributesSchema = any,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
     | undefined
 > = {
-  [k in Partition[number]]: Exclude<Attr[k], undefined>;
+  [k in Partition[number]]: Exclude<z.infer<Attr[k]>, undefined>;
 } & (Sort extends CompositeKeyPart<Attr>
   ? {
-      [k in Sort[number]]: Exclude<Attr[k], undefined>;
+      [k in Sort[number]]: Exclude<z.infer<Attr[k]>, undefined>;
     }
   : {});
 
 export type KeyPartialTuple<
-  Attr extends Attributes,
+  Attr extends AttributesSchema,
   Attrs extends readonly (keyof Attr)[]
 > = Attrs extends []
   ? readonly []
@@ -90,7 +94,10 @@ export type KeyPartialTuple<
       infer Head extends keyof Attr,
       ...infer Rest extends readonly (keyof Attr)[]
     ]
-  ? readonly [Extract<Attr[Head], KeyValue>, ...KeyPartialTuple<Attr, Rest>]
+  ? readonly [
+      Extract<z.infer<Attr[Head]>, KeyValue>,
+      ...KeyPartialTuple<Attr, Rest>
+    ]
   : readonly [];
 
 /**
@@ -101,7 +108,7 @@ export type KeyPartialTuple<
  * ```
  */
 export type KeyTuple<
-  Attr extends Attributes = Attributes,
+  Attr extends AttributesSchema = AttributesSchema,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
@@ -117,7 +124,7 @@ export type KeyTuple<
  * All attributes in either the partition key and the sort key (when present).
  */
 export type CompositeKey<
-  Attr extends Attributes = Attributes,
+  Attr extends AttributesSchema = AttributesSchema,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
@@ -131,13 +138,14 @@ export type CompositeKey<
  *
  * Note: numeric multi-attribute key parts are treated as strings.
  */
-export type QueryKeyCondition<Value extends KeyValue = KeyValue> =
-  | BetweenQueryKeyCondition<Value>
-  | LessThanQueryKeyCondition<Value>
-  | LessThanEqualsQueryKeyCondition<Value>
-  | GreaterThanQueryKeyCondition<Value>
-  | GreaterThanEqualsQueryKeyCondition<Value>
-  | BeginsWithQueryKeyCondition<Value>;
+export type QueryKeyCondition<K extends KeySchema = KeySchema> = Simplify<
+  | BetweenQueryKeyCondition<K>
+  | LessThanQueryKeyCondition<K>
+  | LessThanEqualsQueryKeyCondition<K>
+  | GreaterThanQueryKeyCondition<K>
+  | GreaterThanEqualsQueryKeyCondition<K>
+  | BeginsWithQueryKeyCondition<K>
+>;
 
 /**
  * Matches if the key attribute is between the start and end value, inclusive.
@@ -146,8 +154,11 @@ export type QueryKeyCondition<Value extends KeyValue = KeyValue> =
  *
  * Note: numeric multi-attribute key parts are treated as strings.
  */
-export interface BetweenQueryKeyCondition<Value extends KeyValue = KeyValue> {
-  $between: [t.LiteralToPrimitive<Value>, t.LiteralToPrimitive<Value>];
+export interface BetweenQueryKeyCondition<K extends KeySchema = KeySchema> {
+  $between: [
+    z.infer<K> | t.LiteralToPrimitive<z.input<K>>,
+    z.infer<K> | t.LiteralToPrimitive<z.input<K>>
+  ];
 }
 
 /**
@@ -157,10 +168,8 @@ export interface BetweenQueryKeyCondition<Value extends KeyValue = KeyValue> {
  *
  * Note: numeric multi-attribute key parts are treated as strings.
  */
-export interface BeginsWithQueryKeyCondition<
-  Value extends KeyValue = KeyValue
-> {
-  $beginsWith: Extract<t.LiteralToPrimitive<Value>, string>;
+export interface BeginsWithQueryKeyCondition<K extends KeySchema = KeySchema> {
+  $beginsWith: z.infer<K> | t.LiteralToPrimitive<z.input<K>>;
 }
 
 /**
@@ -168,8 +177,8 @@ export interface BeginsWithQueryKeyCondition<
  *
  * Note: numeric multi-attribute key parts are treated as strings.
  */
-export interface LessThanQueryKeyCondition<Value extends KeyValue = KeyValue> {
-  $lt: t.LiteralToPrimitive<Value>;
+export interface LessThanQueryKeyCondition<K extends KeySchema = KeySchema> {
+  $lt: z.infer<K> | t.LiteralToPrimitive<z.input<K>>;
 }
 
 /**
@@ -178,9 +187,9 @@ export interface LessThanQueryKeyCondition<Value extends KeyValue = KeyValue> {
  * Note: numeric multi-attribute key parts are treated as strings.
  */
 export interface LessThanEqualsQueryKeyCondition<
-  Value extends KeyValue = KeyValue
+  K extends KeySchema = KeySchema
 > {
-  $lte: t.LiteralToPrimitive<Value>;
+  $lte: z.infer<K> | t.LiteralToPrimitive<z.input<K>>;
 }
 
 /**
@@ -188,10 +197,8 @@ export interface LessThanEqualsQueryKeyCondition<
  *
  * Note: numeric multi-attribute key parts are treated as strings.
  */
-export interface GreaterThanQueryKeyCondition<
-  Value extends KeyValue = KeyValue
-> {
-  $gt: t.LiteralToPrimitive<Value>;
+export interface GreaterThanQueryKeyCondition<K extends KeySchema = KeySchema> {
+  $gt: z.infer<K> | t.LiteralToPrimitive<z.input<K>>;
 }
 
 /**
@@ -200,15 +207,15 @@ export interface GreaterThanQueryKeyCondition<
  * Note: numeric multi-attribute key parts are treated as strings.
  */
 export interface GreaterThanEqualsQueryKeyCondition<
-  Value extends KeyValue = KeyValue
+  K extends KeySchema = KeySchema
 > {
-  $gte: t.LiteralToPrimitive<Value>;
+  $gte: z.infer<K> | t.LiteralToPrimitive<z.input<K>>;
 }
 
 export type ProgressiveTupleQueryKey<
-  Attr extends Attributes,
+  Attr extends AttributesSchema,
   Sort extends readonly (keyof Attr)[],
-  Accum extends KeyValue[] = []
+  Accum extends any[] = []
 > = Sort extends readonly []
   ? Accum
   : Sort extends readonly [
@@ -217,16 +224,12 @@ export type ProgressiveTupleQueryKey<
     ]
   ?
       | Accum
-      | [...Accum, QueryKeyCondition<Extract<Attr[k], KeyValue>>]
-      | ProgressiveTupleQueryKey<
-          Attr,
-          ks,
-          [...Accum, Extract<Attr[k], KeyValue>]
-        >
+      | [...Accum, QueryKeyCondition<Extract<Attr[k], KeySchema>>]
+      | ProgressiveTupleQueryKey<Attr, ks, [...Accum, z.infer<Attr[k]>]>
   : never;
 
 export type ProgressiveQueryKey<
-  Attr extends Attributes,
+  Attr extends AttributesSchema,
   Sort extends readonly (keyof Attr)[]
 > = Sort extends readonly [
   infer k extends keyof Attr,
@@ -235,11 +238,11 @@ export type ProgressiveQueryKey<
   ?
       | { [sk in Sort[number]]?: never }
       | {
-          [sk in k]: QueryKeyCondition<Extract<Attr[sk], KeyValue>>;
+          [sk in k]: QueryKeyCondition<Extract<Attr[k], KeySchema>>;
         }
       | BetweenProgressiveKeyCondition<Attr, Sort>
       | ({
-          [sk in k]: Extract<Attr[sk], KeyValue>;
+          [sk in k]: z.infer<Attr[sk]>;
         } & ProgressiveQueryKey<Attr, ks>)
   : {};
 
@@ -259,7 +262,7 @@ export type ProgressiveQueryKey<
  * }
  */
 export type BetweenProgressiveKeyCondition<
-  Attr extends Attributes,
+  Attr extends AttributesSchema,
   Sort extends readonly (keyof Attr)[]
 > = {
   $between: Sort extends readonly [
@@ -268,17 +271,17 @@ export type BetweenProgressiveKeyCondition<
   ]
     ? [
         ProgressiveKey<Attr, ks> & {
-          [sk in k]: Extract<Attr[sk], KeyValue>;
+          [sk in k]: z.infer<Attr[sk]>;
         },
         ProgressiveKey<Attr, ks> & {
-          [sk in k]: Extract<Attr[sk], KeyValue>;
+          [sk in k]: z.infer<Attr[sk]>;
         }
       ]
     : never;
 };
 
 export type ProgressiveKey<
-  Attr extends Attributes,
+  Attr extends AttributesSchema,
   Sort extends readonly (keyof Attr)[]
 > = Sort extends readonly [
   infer k extends keyof Attr,
@@ -287,18 +290,18 @@ export type ProgressiveKey<
   ?
       | { [sk in Sort[number]]?: never }
       | ({
-          [sk in k]: Extract<Attr[sk], KeyValue>;
+          [sk in k]: z.infer<Attr[sk]>;
         } & ProgressiveKey<Attr, ks>)
   : {};
 
 export type QueryKeyMap<
-  Attr extends Attributes = Attributes,
+  Attr extends AttributesSchema = AttributesSchema,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
     | undefined
 > = {
-  [pk in Partition[number]]: Extract<Attr[pk], KeyValue>;
+  [pk in Partition[number]]: z.infer<Attr[pk]>;
 } & (Sort extends undefined
   ? {}
   : ProgressiveQueryKey<Attr, [...Exclude<Sort, undefined>]>);
@@ -311,7 +314,7 @@ export type QueryKeyMap<
  * ```
  */
 export type QueryKey<
-  Attr extends Attributes,
+  Attr extends AttributesSchema,
   Partition extends CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined
 > =
@@ -327,7 +330,7 @@ export type QueryKey<
  * A stream query can contain partial sort keys and partial partition keys.
  */
 export type StreamQueryKey<
-  Attr extends Attributes = Attributes,
+  Attr extends AttributesSchema = AttributesSchema,
   Partition extends CompositeKeyPart<Attr> = CompositeKeyPart<Attr>,
   Sort extends CompositeKeyPart<Attr> | undefined =
     | CompositeKeyPart<Attr>
@@ -339,7 +342,7 @@ export type StreamQueryKey<
     : ProgressiveKey<Attr, Exclude<Sort, undefined>>);
 
 export type KeyAttributes<
-  Attr extends Attributes = any,
+  Attr extends AttributesSchema = any,
   Partition extends IndexCompositeKeyPart<Attr> = IndexCompositeKeyPart<Attr>,
   Sort extends IndexCompositeKeyPart<Attr> | undefined =
     | IndexCompositeKeyPart<Attr>

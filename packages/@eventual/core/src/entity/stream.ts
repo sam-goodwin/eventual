@@ -4,7 +4,7 @@ import type {
   SourceLocation,
 } from "../internal/service-spec.js";
 import type { ServiceContext } from "../service.js";
-import type { Attributes } from "./entity.js";
+import type { AttributesRuntime, AttributesSchema } from "./entity.js";
 import type { EntityCompositeKeyPart, KeyMap } from "./key.js";
 
 export interface EntityStreamStreamContext {
@@ -24,7 +24,7 @@ export interface EntityStreamContext {
 }
 
 export interface EntityStreamHandler<
-  Attr extends Attributes = Attributes,
+  Attr extends AttributesSchema = AttributesSchema,
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
@@ -41,7 +41,7 @@ export interface EntityStreamHandler<
 }
 
 export interface EntityBatchStreamHandler<
-  Attr extends Attributes = Attributes,
+  Attr extends AttributesSchema = AttributesSchema,
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
@@ -61,7 +61,7 @@ export interface EntityBatchStreamHandler<
 }
 
 export interface EntityStreamItemBase<
-  Attr extends Attributes = Attributes,
+  Attr extends AttributesSchema = AttributesSchema,
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
@@ -71,7 +71,7 @@ export interface EntityStreamItemBase<
 }
 
 export type EntityStreamItem<
-  Attr extends Attributes = Attributes,
+  Attr extends AttributesSchema = AttributesSchema,
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
@@ -84,46 +84,46 @@ export type EntityStreamItem<
 ) & { id: string; operation: Operations[number] };
 
 export interface EntityStreamInsertItem<
-  Attr extends Attributes = Attributes,
+  Attr extends AttributesSchema = AttributesSchema,
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
     | undefined
 > extends EntityStreamItemBase<Attr, Partition, Sort> {
-  newValue: Attr;
+  newValue: AttributesRuntime<Attr>;
   newVersion: number;
   operation: "insert";
 }
 
 export interface EntityStreamModifyItem<
-  Attr extends Attributes = Attributes,
+  Attr extends AttributesSchema = AttributesSchema,
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
     | undefined
 > extends EntityStreamItemBase<Attr, Partition, Sort> {
   operation: "modify";
-  newValue: Attr;
+  newValue: AttributesRuntime<Attr>;
   newVersion: number;
-  oldValue?: Attr;
+  oldValue?: AttributesRuntime<Attr>;
   oldVersion?: number;
 }
 
 export interface EntityStreamRemoveItem<
-  Attr extends Attributes = Attributes,
+  Attr extends AttributesSchema = AttributesSchema,
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
     | undefined
 > extends EntityStreamItemBase<Attr, Partition, Sort> {
   operation: "remove";
-  oldValue?: Attr;
+  oldValue?: AttributesRuntime<Attr>;
   oldVersion?: number;
 }
 
 export interface EntityStream<
   Name extends string,
-  Attr extends Attributes,
+  Attr extends AttributesSchema,
   Partition extends EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined
 > extends EntityStreamSpec<Name, Attr, Partition, Sort> {
@@ -134,7 +134,7 @@ export interface EntityStream<
 
 export interface EntityBatchStream<
   Name extends string,
-  Attr extends Attributes,
+  Attr extends AttributesSchema,
   Partition extends EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined
 > extends EntityStreamSpec<Name, Attr, Partition, Sort> {

@@ -1,5 +1,5 @@
 import {
-  Attributes,
+  AttributesSchema,
   EntityCompositeKeyPart,
   EntityOptions,
   TransactionContext,
@@ -28,7 +28,7 @@ import {
 const entity = (() => {
   let n = 0;
   return <
-    Attr extends Attributes,
+    Attr extends AttributesSchema,
     const Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
     const Sort extends EntityCompositeKeyPart<Attr> | undefined = undefined
   >(

@@ -1,6 +1,6 @@
 import type { opensearchtypes } from "@opensearch-project/opensearch";
 import type openapi from "openapi3-ts";
-import { Attributes } from "../entity/entity.js";
+import { AttributesSchema } from "../entity/entity.js";
 import type {
   CompositeKeyPart,
   EntityCompositeKeyPart,
@@ -220,7 +220,7 @@ export interface EntitySpec<Name extends string = string> {
 export type EntityStreamOperation = "insert" | "modify" | "remove";
 
 export interface EntityStreamOptions<
-  Attr extends Attributes = Attributes,
+  Attr extends AttributesSchema = AttributesSchema,
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
@@ -263,7 +263,7 @@ export interface EntityStreamOptions<
 
 export interface EntityStreamSpec<
   Name extends string = string,
-  Attr extends Attributes = Attributes,
+  Attr extends AttributesSchema = AttributesSchema,
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>

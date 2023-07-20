@@ -28,7 +28,8 @@ import type {
   EntityStream,
   EntityStreamHandler,
 } from "./stream.js";
-import { SetOptionalFields } from "../type-utils.js";
+import { IfAny } from "type-fest";
+import { Simplify } from "../type-utils.js";
 
 export type AttributeBinaryValue =
   | ArrayBuffer
@@ -68,11 +69,64 @@ export interface Attributes {
 }
 
 /**
- * Turns a {@link Attributes} type into a Zod {@link z.ZodRawShape}.
+ * Turns a {@link AttributesSchema} type into a Zod {@link z.ZodRawShape}.
  */
-export type EntityZodShape<Attr extends Attributes> = {
+export type EntityZodShape<Attr extends AttributesSchema> = {
   [key in keyof Attr]: z.ZodType<Attr[key]>;
 };
+
+/**
+ * Tries the {@link AttributesSchema} type to the computed output of the object.
+ *
+ * TODO: extend this type to support intersection and union.
+ */
+export type ZodAttributesObject<T extends AttributesSchema> = z.ZodObject<
+  any,
+  any,
+  any,
+  {
+    [attributeName in keyof T]: z.infer<T[attributeName]>;
+  }
+>;
+
+export interface AttributesSchema {
+  [attributeName: string]:
+    | z.ZodType<AttributeValue>
+    | z.ZodEffects<any, any, AttributeValue>;
+}
+
+export type AttributesRuntime<T extends AttributesSchema = AttributesSchema> =
+  IfAny<
+    T,
+    any,
+    Simplify<
+      {
+        // first, set all fields in T to optional
+        [attributeName in keyof T]+?: z.infer<T[attributeName]>;
+      } & {
+        // then, set remove the ? modifier from all fields in T that are not optional
+        [attributeName in RequiredKeys<T>]-?: z.infer<T[attributeName]>;
+      }
+    >
+  >;
+
+export type AttributesSerialized<
+  T extends AttributesSchema = AttributesSchema
+> = Simplify<
+  {
+    // first, set all fields in T to optional
+    [attributeName in keyof T]+?: z.input<T[attributeName]>;
+  } & {
+    // then, set remove the ? modifier from all fields in T that are not optional
+    [attributeName in keyof Pick<T, RequiredKeys<T>>]-?: z.input<
+      T[attributeName]
+    >;
+  }
+>;
+
+type RequiredKeys<T extends AttributesSchema> = {
+  [K in keyof T]: T[K] extends z.ZodOptional<any> ? never : K;
+}[keyof T];
 
 /**
  * An eventual entity.
@@ -81,7 +135,7 @@ export type EntityZodShape<Attr extends Attributes> = {
  */
 export interface Entity<
   Name extends string = string,
-  Attr extends Attributes = any,
+  Attr extends AttributesSchema = any,
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
@@ -98,6 +152,7 @@ export interface Entity<
     | EntityBatchStream<any, Attr, Partition, Sort>
     | EntityStream<any, Attr, Partition, Sort>
   )[];
+
   /**
    * Get a value.
    * If your values use composite keys, the namespace must be provided.
@@ -107,7 +162,7 @@ export interface Entity<
   get(
     key: CompositeKey<Attr, Partition, Sort>,
     options?: EntityReadOptions
-  ): Promise<Attr | undefined>;
+  ): Promise<AttributesRuntime<Attr> | undefined>;
   /**
    * Get a value and metadata like version.
    * If your values use composite keys, the namespace must be provided.
@@ -125,7 +180,7 @@ export interface Entity<
    * Values and keys can only be listed within a single namespace.
    */
   set(
-    entity: SetOptionalFields<Attr>,
+    entity: AttributesRuntime<Attr>,
     options?: EntitySetOptions
   ): Promise<{ version: number }>;
   /**
@@ -199,24 +254,12 @@ export const Entity = {
   },
 };
 
-/**
- * Tries the {@link Attributes} type to the computed output of the object.
- *
- * TODO: extend this type to support intersection and union.
- */
-export type ZodAttributesObject<T extends Attributes> = z.ZodObject<
-  any,
-  any,
-  any,
-  T
->;
-
 export interface EntityOptions<
-  Attr extends Attributes,
+  Attr extends AttributesSchema,
   Partition extends EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined = undefined
 > {
-  attributes: ZodAttributesObject<Attr> | EntityZodShape<Attr>;
+  attributes: ZodAttributesObject<Attr> | Attr;
   partition: Partition;
   sort?: Sort;
 }
@@ -284,7 +327,7 @@ export interface EntityOptions<
  */
 export function entity<
   Name extends string,
-  Attr extends Attributes,
+  Attr extends AttributesSchema,
   const Partition extends EntityCompositeKeyPart<Attr>,
   const Sort extends EntityCompositeKeyPart<Attr> | undefined = undefined
 >(
@@ -315,6 +358,7 @@ export function entity<
     attributes,
     indices,
     streams,
+    // @ts-ignore
     get: (...args) => {
       return getEventualCallHook().registerEventualCall(
         createEventualCall<EntityCall<"get">>(EventualCallKind.EntityCall, {
@@ -327,6 +371,7 @@ export function entity<
         }
       );
     },
+    // @ts-ignore
     getWithMetadata: (...args) => {
       return getEventualCallHook().registerEventualCall(
         createEventualCall<EntityCall<"getWithMetadata">>(
@@ -366,6 +411,7 @@ export function entity<
         }
       );
     },
+    // @ts-ignore
     query: (...args) => {
       return getEventualCallHook().registerEventualCall(
         createEventualCall<EntityCall<"query">>(EventualCallKind.EntityCall, {
@@ -378,6 +424,7 @@ export function entity<
         }
       );
     },
+    // @ts-ignore
     scan: (...args) => {
       return getEventualCallHook().registerEventualCall(
         createEventualCall<EntityCall<"scan">>(EventualCallKind.EntityCall, {
@@ -458,6 +505,7 @@ export function entity<
     },
   };
 
+  // @ts-ignore
   return registerEventualResource("Entity", entity);
 
   function addStream<
@@ -530,7 +578,7 @@ export function entity<
 }
 
 export type EntityIndexOptions<
-  Attr extends Attributes,
+  Attr extends AttributesSchema,
   Partition extends IndexCompositeKeyPart<Attr> | undefined = undefined,
   Sort extends IndexCompositeKeyPart<Attr> | undefined = undefined
 > =
@@ -544,7 +592,7 @@ export type EntityIndexOptions<
 
 export type EntityIndexMapper<
   Name extends string,
-  Attr extends Attributes,
+  Attr extends AttributesSchema,
   EntityPartition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   IndexPartition extends IndexCompositeKeyPart<Attr> | undefined = undefined,
   Sort extends IndexCompositeKeyPart<Attr> | undefined = undefined
@@ -556,7 +604,7 @@ export type EntityIndexMapper<
  * An index's key attributes are never undefined.
  */
 export type EntityIndexAttributes<
-  Attr extends Attributes,
+  Attr extends AttributesSchema,
   Partition extends IndexCompositeKeyPart<Attr> = IndexCompositeKeyPart<Attr>,
   Sort extends IndexCompositeKeyPart<Attr> | undefined =
     | IndexCompositeKeyPart<Attr>
@@ -569,7 +617,7 @@ export type EntityIndexAttributes<
 
 export interface EntityIndex<
   Name extends string = string,
-  EntityAttr extends Attributes = Attributes,
+  EntityAttr extends AttributesSchema = AttributesSchema,
   Partition extends IndexCompositeKeyPart<EntityAttr> = IndexCompositeKeyPart<EntityAttr>,
   Sort extends IndexCompositeKeyPart<EntityAttr> | undefined =
     | IndexCompositeKeyPart<EntityAttr>
@@ -594,7 +642,9 @@ export interface EntityIndex<
   scan(request?: EntityScanOptions): Promise<EntityQueryResult<IndexAttr>>;
 }
 
-export interface EntityQueryResult<Attr extends Attributes = Attributes> {
+export interface EntityQueryResult<
+  Attr extends AttributesSchema = AttributesSchema
+> {
   entries?: EntityWithMetadata<Attr>[];
   /**
    * Returned when there are more values than the limit allowed to return.
@@ -648,13 +698,15 @@ export interface EntitySetOptions extends EntityConsistencyOptions {
   incrementVersion?: boolean;
 }
 
-export interface EntityWithMetadata<Attr extends Attributes = Attributes> {
-  value: Attr;
+export interface EntityWithMetadata<
+  Attr extends AttributesSchema = AttributesSchema
+> {
+  value: AttributesRuntime<Attr>;
   version: number;
 }
 
 interface EntityTransactItemBase<
-  Attr extends Attributes,
+  Attr extends AttributesSchema,
   Partition extends EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined
 > {
@@ -662,7 +714,7 @@ interface EntityTransactItemBase<
 }
 
 export type EntityTransactItem<
-  Attr extends Attributes = any,
+  Attr extends AttributesSchema = any,
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
@@ -673,7 +725,7 @@ export type EntityTransactItem<
   | EntityTransactConditionalOperation<Attr, Partition, Sort>;
 
 export interface EntityTransactSetOperation<
-  Attr extends Attributes = any,
+  Attr extends AttributesSchema = any,
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
@@ -685,7 +737,7 @@ export interface EntityTransactSetOperation<
 }
 
 export interface EntityTransactDeleteOperation<
-  Attr extends Attributes = any,
+  Attr extends AttributesSchema = any,
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
@@ -700,7 +752,7 @@ export interface EntityTransactDeleteOperation<
  * Used in transactions, cancels the transaction if the key's version does not match.
  */
 export interface EntityTransactConditionalOperation<
-  Attr extends Attributes = any,
+  Attr extends AttributesSchema = any,
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
