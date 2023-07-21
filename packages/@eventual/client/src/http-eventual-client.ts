@@ -19,9 +19,8 @@ import {
   Transaction,
   Workflow,
 } from "@eventual/core";
-import {
+import type {
   EventualService,
-  EVENTUAL_SYSTEM_COMMAND_NAMESPACE,
   SendTaskHeartbeatRequest,
 } from "@eventual/core/internal";
 import { HttpServiceClientProps } from "./base-http-client.js";
@@ -40,10 +39,7 @@ export class HttpEventualClient implements EventualServiceClient {
   protected readonly serviceClient: ServiceClient<EventualService>;
 
   constructor(props: HttpServiceClientProps) {
-    this.serviceClient = new ServiceClient<EventualService>(
-      props,
-      EVENTUAL_SYSTEM_COMMAND_NAMESPACE
-    );
+    this.serviceClient = new ServiceClient<EventualService>(props, "_system");
   }
 
   public async listWorkflows(): Promise<ListWorkflowsResponse> {
