@@ -306,7 +306,7 @@ packages:
           "@types/node": "^18",
           "aws-cdk": "^2.80.0",
           "ts-node": "^10.9.1",
-          typescript: "^4.9.4",
+          typescript: "^5",
         },
       }),
       writeJsonFile("cdk.json", {

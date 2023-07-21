@@ -106,7 +106,7 @@ export async function createServicePackage(
           jest: "^29",
           "ts-jest": "^29",
           "ts-node": "^10.9.1",
-          typescript: "^4.9.4",
+          typescript: "^5",
         },
         jest: {
           extensionsToTreatAsEsm: [".ts"],

@@ -67,13 +67,7 @@ export class LocalEntityStore extends EntityStore {
     entity: Entity,
     key: NormalizedEntityCompositeKeyComplete
   ): Promise<EntityWithMetadata | undefined> {
-    const item = this.getPartitionMap(entity, key.partition).get(
-      skOrDefault(key)
-    );
-    if (item instanceof Map) {
-      throw new Error(`Cannot call 'getWithMetadata' on an index`);
-    }
-    return item;
+    return this.getPartitionMap(entity, key.partition).get(skOrDefault(key));
   }
 
   protected override async _set(
@@ -221,14 +215,8 @@ export class LocalEntityStore extends EntityStore {
     options?: EntityScanOptions
   ): Promise<EntityQueryResult> {
     const store = this.getLocalEntityStore(entity);
-    if (!store) {
-      return {
-        entries: [],
-        nextToken: undefined,
-      };
-    }
 
-    const entries = [...((store as TableMap).values() ?? [])].flatMap((val) => [
+    const entries = [...(store?.values() ?? [])].flatMap((val) => [
       ...val.values(),
     ]);
 
@@ -336,12 +324,10 @@ export class LocalEntityStore extends EntityStore {
     if (!table) {
       throw new Error(`Table or Index ${entityOrIndex?.name} not found`);
     }
-    let partitionMap: TablePartition | undefined = table.get(
-      partitionKey.keyValue
-    );
+    let partitionMap = table.get(partitionKey.keyValue);
     if (!partitionMap) {
-      partitionMap = new Map();
-      table.set(partitionKey.keyValue, partitionMap as any);
+      partitionMap = new Map<SK, EntityWithMetadata>();
+      table.set(partitionKey.keyValue, partitionMap);
     }
     return partitionMap;
   }
