@@ -22,6 +22,7 @@
     "test:runtime": "pnpm --filter tests-runtime test:runtime-deploy",
     "test:cli": "pnpm --filter tests-runtime test:cli",
     "test:smoke": "./scripts/smoke-test",
+    "test:local": "pnpm -r --filter tests-runtime run test:local-start",
     "typecheck": "tsc -b",
     "watch": "tsc -b -w",
     "export": "turbo run export"

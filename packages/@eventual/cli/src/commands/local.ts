@@ -17,6 +17,7 @@ import {
   getServiceSpec,
   isServiceDeployed,
   resolveRegion,
+  tryGetBuildManifest,
   tryResolveDefaultService,
 } from "../service-data.js";
 const execPromise = promisify(_exec);
@@ -78,6 +79,9 @@ export const local = (yargs: Argv) =>
         buildManifest.serviceName,
         region
       );
+      process.env.AWS_ACCESS_KEY_ID = credentials.accessKeyId;
+      process.env.AWS_SECRET_ACCESS_KEY = credentials.secretAccessKey;
+      process.env.AWS_SESSION_TOKEN = credentials.sessionToken;
       const serviceData = await getServiceData(
         credentials,
         buildManifest.serviceName,
@@ -95,7 +99,7 @@ export const local = (yargs: Argv) =>
 
       const port = userPort;
       const app = express();
-      app.listen(port);
+
       const url = `http://localhost:${port}`;
 
       // get the stored spec file to load values from synth
@@ -133,6 +137,10 @@ export const local = (yargs: Argv) =>
         res.send(resp.body);
       });
 
+      app.listen(port, () => {
+        process.send?.("ready");
+      });
+
       spinner.succeed(`Eventual Dev Server running on ${url}`);
     }
   );
@@ -168,5 +176,13 @@ export async function resolveManifestLocal(
     throw new Error("Service name was not found after synth.");
   }
 
-  return await getBuildManifest(config.outDir, serviceName);
+  const manifest = await tryGetBuildManifest(config.outDir, serviceName);
+  if (manifest === undefined) {
+    spinner.text =
+      "Service manifest not found, running synth to try to generate one.";
+    await execPromise(config.synth);
+    return getBuildManifest(config.outDir, serviceName);
+  } else {
+    return manifest;
+  }
 }

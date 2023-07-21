@@ -186,13 +186,36 @@ export async function isServiceDeployed(serviceName: string, region?: string) {
 }
 
 export async function getBuildManifest(outDir: string, serviceName: string) {
-  return (await readJsonFile(
-    path.resolve(outDir, ".eventual", serviceName, "manifest.json")
-  )) as BuildManifest;
+  const manifest = await tryGetBuildManifest(outDir, serviceName);
+  if (manifest === undefined) {
+    throw new Error(`File not found: ${manifestPath(outDir, serviceName)}`);
+  }
+  return manifest;
+}
+
+export async function tryGetBuildManifest(
+  outDir: string,
+  serviceName: string
+): Promise<BuildManifest | undefined> {
+  try {
+    return await readJsonFile(manifestPath(outDir, serviceName));
+  } catch {
+    return undefined;
+  }
+}
+
+function manifestPath(outDir: string, serviceName: string) {
+  return resolveFile(outDir, serviceName, "manifest.json");
+}
+
+function specPath(outDir: string, serviceName: string) {
+  return resolveFile(outDir, serviceName, "spec.json");
+}
+
+function resolveFile(outDir: string, serviceName: string, file: string) {
+  return path.resolve(outDir, ".eventual", serviceName, file);
 }
 
 export async function getServiceSpec(outDir: string, serviceName: string) {
-  return (await readJsonFile(
-    path.resolve(outDir, ".eventual", serviceName, "spec.json")
-  )) as ServiceSpec;
+  return (await readJsonFile(specPath(outDir, serviceName))) as ServiceSpec;
 }

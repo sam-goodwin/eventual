@@ -163,6 +163,7 @@ ${npm("deploy")}
           "aws-cdk": "^2.80.0",
           esbuild: "^0.16.14",
           typescript: "^5",
+          "ts-node": "^10.9.1",
         },
         ...(pkgManager !== "pnpm"
           ? {
@@ -305,7 +306,7 @@ packages:
           "@types/node": "^18",
           "aws-cdk": "^2.80.0",
           "ts-node": "^10.9.1",
-          typescript: "^4.9.4",
+          typescript: "^5",
         },
       }),
       writeJsonFile("cdk.json", {
@@ -421,5 +422,10 @@ test("hello workflow should emit helloEvent and return message", async () => {
 
   if (!skipInstall) {
     await install(pkgManager);
+  }
+
+  if (git) {
+    await exec("git", "add", ".");
+    await exec("git", "commit", "-m", `"initial commit"`);
   }
 }
