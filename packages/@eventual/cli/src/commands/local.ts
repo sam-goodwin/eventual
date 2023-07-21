@@ -96,7 +96,7 @@ export const local = (yargs: Argv) =>
 
       const port = userPort;
       const app = express();
-      app.listen(port);
+
       const url = `http://localhost:${port}`;
 
       // get the stored spec file to load values from synth
@@ -134,7 +134,9 @@ export const local = (yargs: Argv) =>
         res.send(resp.body);
       });
 
-      process.send?.("ready");
+      app.listen(port, () => {
+        process.send?.("ready");
+      });
 
       spinner.succeed(`Eventual Dev Server running on ${url}`);
     }
