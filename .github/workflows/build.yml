@@ -8,7 +8,6 @@ jobs:
     env:
       CI: "true"
       CLEAN_UP_STACK: "1"
-      EVENTUAL_LOCAL: "1"
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/build
@@ -34,6 +33,8 @@ jobs:
           role-duration-seconds: 3600
       - name: Deploy Runtime Tests
         run: pnpm -r --filter tests-runtime run deploy:runtime
+        env:
+          EVENTUAL_LOCAL: "1"
       - run: |
           echo "TEST_ROLE_ARN=$(node -p 'JSON.parse(require("fs").readFileSync("./apps/tests/aws-runtime/cdk.out/outputs.json"))["eventual-tests"].roleArn')" >> $GITHUB_ENV
       - name: Configure Test Role Credentials
