@@ -21,6 +21,7 @@ export type PresignedUrlOperation = "put" | "get" | "head" | "delete";
 export interface Bucket<Name extends string = string>
   extends Omit<BucketSpec<Name>, "handlers"> {
   kind: "Bucket";
+  options: BucketOptions | undefined;
   handlers: BucketNotificationHandler[];
   /**
    * Gets an object from the gets, returns undefined if the object key doesn't exist.
@@ -121,12 +122,20 @@ export interface Bucket<Name extends string = string>
   ): BucketNotificationHandler<Name>;
 }
 
-export function bucket<Name extends string = string>(name: Name): Bucket<Name> {
+export interface BucketOptions {
+  versioned?: boolean;
+}
+
+export function bucket<Name extends string = string>(
+  name: Name,
+  options?: BucketOptions
+): Bucket<Name> {
   const handlers: BucketNotificationHandler[] = [];
   return registerEventualResource("Bucket", {
     name,
     handlers,
     kind: "Bucket",
+    options,
     get(...args) {
       return getEventualCallHook().registerEventualCall(
         createEventualCall<BucketCall>(EventualCallKind.BucketCall, {

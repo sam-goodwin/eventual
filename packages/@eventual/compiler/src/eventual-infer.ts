@@ -140,6 +140,7 @@ export function inferFromMemory(openApi: ServiceSpec["openApi"]): ServiceSpec {
               sourceLocation: s.sourceLocation,
             } satisfies BucketNotificationHandlerSpec)
         ),
+        options: b.options,
       })),
     },
     entities: {

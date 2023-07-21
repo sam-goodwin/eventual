@@ -16,6 +16,7 @@ import type {
 } from "../subscription.js";
 import { KeyDefinition } from "./entity.js";
 import type { TaskSpec } from "./task.js";
+import { BucketOptions } from "../bucket.js";
 
 /**
  * Specification for an Eventual application
@@ -177,6 +178,7 @@ export interface WorkflowSpec<Name extends string = string> {
 export interface BucketSpec<Name extends string = string> {
   name: Name;
   handlers: BucketNotificationHandlerSpec[];
+  options: BucketOptions | undefined;
 }
 
 export interface IndexSpec extends opensearchtypes.IndicesIndexState {
