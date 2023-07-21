@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.45.0 (2023-07-21)
+
+### Features
+
+- allow for all BucketProps as overrides ([#390](https://github.com/functionless/eventual/issues/390)) ([76030e5](https://github.com/functionless/eventual/commit/76030e5409efba270458a2091586673536e1c1e9))
+
 ## 0.44.1 (2023-07-15)
 
 ### Bug Fixes
