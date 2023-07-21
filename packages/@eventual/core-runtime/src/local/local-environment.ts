@@ -153,23 +153,21 @@ export class LocalEnvironment {
           id: ulid(),
           ...i.item,
         } as EntityStreamItem;
-        const streamNames = [...getEventualResources("Entity").values()]
-          .flatMap((d) => d.streams)
-          .filter((s) => {
-            const entity = this.localContainer.entityProvider.getEntity(
-              i.entityName
-            );
-            if (!entity) {
-              return false;
-            }
-            return entityStreamMatchesItem(entity, item, s);
-          })
-          .map((s) => s.name);
-        streamNames.forEach((streamName) => {
-          this.localContainer.entityStreamWorker(i.entityName, streamName, [
-            item,
-          ]);
-        });
+        const entity = this.localContainer.entityProvider.getEntity(
+          i.entityName
+        );
+
+        if (entity) {
+          entity.streams
+            .filter((s) => entityStreamMatchesItem(entity, item, s))
+            .forEach((stream) => {
+              this.localContainer.entityStreamWorker(
+                i.entityName,
+                stream.name,
+                [item]
+              );
+            });
+        }
       });
 
       // for each bucket stream item, find the streams that match it, and run the worker with the item

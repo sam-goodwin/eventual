@@ -707,7 +707,7 @@ export const entityIndexTask = task(
       }),
     };
 
-    return Object.fromEntries(
+    const result = Object.fromEntries(
       await Promise.all(
         Object.entries(queries).map(
           async ([name, q]) =>
@@ -723,6 +723,7 @@ export const entityIndexTask = task(
         )
       )
     ) as Record<keyof typeof queries, { n: number; namespace: string }[]>;
+    return result;
   }
 );
 
@@ -766,10 +767,13 @@ export const entityWorkflow = workflow(
     const result0 = await entityIndexTask();
 
     // send deletion, to be picked up by the stream
-    await counter.delete(["default", id]);
-    await counter.query(["default", id]);
-    // this signal will contain the final value after deletion
-    const result1 = await entitySignal2.expectSignal();
+    const [, result1] = await Promise.all([
+      counter
+        .delete(["default", id])
+        .then(() => counter.query(["default", id])),
+      // this must be expected prior to sending the delete request or else there is a race condition
+      entitySignal2.expectSignal(),
+    ]);
 
     /**
      * Testing sort keys and query

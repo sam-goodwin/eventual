@@ -40,14 +40,20 @@ import { deserializeCompositeKey, serializeCompositeKey } from "../../utils.js";
 import { LocalEnvConnector } from "../local-container.js";
 import { paginateItems } from "./pagination.js";
 
+type PK = KeyValue;
+type SK = KeyValue;
+
+export type TableMap = Map<PK, TablePartition>;
+export type TablePartition = Map<SK, EntityWithMetadata>;
+
 export interface LocalEntityStoreProps {
   localConnector: LocalEnvConnector;
   entityProvider: EntityProvider;
 }
 
 export interface LocalEntity {
-  data: Map<KeyValue, Map<KeyValue, EntityWithMetadata>>;
-  indices: Record<string, Map<KeyValue, Map<KeyValue, EntityWithMetadata>>>;
+  data: TableMap;
+  indices: Record<string, TableMap>;
 }
 
 export class LocalEntityStore extends EntityStore {
@@ -61,9 +67,13 @@ export class LocalEntityStore extends EntityStore {
     entity: Entity,
     key: NormalizedEntityCompositeKeyComplete
   ): Promise<EntityWithMetadata | undefined> {
-    return this.getPartitionMap(entity, key.partition).get(
-      key.sort?.keyValue ?? "default"
+    const item = this.getPartitionMap(entity, key.partition).get(
+      skOrDefault(key)
     );
+    if (item instanceof Map) {
+      throw new Error(`Cannot call 'getWithMetadata' on an index`);
+    }
+    return item;
   }
 
   protected override async _set(
@@ -141,7 +151,11 @@ export class LocalEntityStore extends EntityStore {
     options?: EntityQueryOptions
   ): Promise<EntityQueryResult> {
     const partition = this.getPartitionMap(entity, queryKey.partition);
-    const entries = partition ? [...partition.entries()] : [];
+
+    const entries = partition
+      ? [...(partition as TablePartition).entries()]
+      : [];
+
     const sortKeyPart = queryKey.sort;
     const sortFilteredEntries = sortKeyPart
       ? entries.filter((e) =>
@@ -151,12 +165,7 @@ export class LocalEntityStore extends EntityStore {
 
     const { items, nextToken } = paginateItems(
       sortFilteredEntries,
-      (a, b) =>
-        typeof a[0] === "string"
-          ? a[0].localeCompare(b[0] as string)
-          : typeof a[0] === "number"
-          ? a[0] - (b[0] as number)
-          : 0,
+      (a, b) => sortEntriesBySortKey(entity.key, a[1].value, b[1].value),
       undefined,
       options?.direction,
       options?.limit,
@@ -184,7 +193,14 @@ export class LocalEntityStore extends EntityStore {
     options?: EntityScanOptions
   ): Promise<EntityQueryResult> {
     const store = this.getLocalEntityStore(entity);
-    const entries = [...(store?.values() ?? [])].flatMap((val) => [
+    if (!store) {
+      return {
+        entries: [],
+        nextToken: undefined,
+      };
+    }
+
+    const entries = [...((store as TableMap).values() ?? [])].flatMap((val) => [
       ...val.values(),
     ]);
 
@@ -287,15 +303,17 @@ export class LocalEntityStore extends EntityStore {
   private getPartitionMap(
     entityOrIndex: Entity | EntityIndex,
     partitionKey: NormalizedEntityKeyCompletePart
-  ) {
+  ): TablePartition {
     const table = this.getLocalEntityStore(entityOrIndex);
     if (!table) {
       throw new Error(`Table or Index ${entityOrIndex?.name} not found`);
     }
-    let partitionMap = table.get(partitionKey.keyValue);
+    let partitionMap: TablePartition | undefined = table.get(
+      partitionKey.keyValue
+    );
     if (!partitionMap) {
-      partitionMap = new Map<KeyValue, EntityWithMetadata>();
-      table.set(partitionKey.keyValue, partitionMap);
+      partitionMap = new Map();
+      table.set(partitionKey.keyValue, partitionMap as any);
     }
     return partitionMap;
   }
@@ -303,13 +321,8 @@ export class LocalEntityStore extends EntityStore {
 
 function initializeLocalEntity(entity: Entity): LocalEntity {
   return {
-    data: new Map<KeyValue, Map<KeyValue, EntityWithMetadata>>(),
-    indices: Object.fromEntries(
-      entity.indices.map((i) => [
-        i.name,
-        new Map<KeyValue, Map<KeyValue, EntityWithMetadata>>(),
-      ])
-    ),
+    data: new Map(),
+    indices: Object.fromEntries(entity.indices.map((i) => [i.name, new Map()])),
   };
 }
 
@@ -329,15 +342,17 @@ function setLocalEntity(
     }
     const normalizedKey = normalizeCompositeKey(i.key, value.value);
 
-    // if the key isn't complete (missing parts of the index composite key), ignore this item
-    if (isCompleteKey(normalizedKey)) {
-      updatePartitionEntry(localIndex, normalizedKey, value);
-    } else if (oldValue) {
+    if (oldValue) {
       // if the value existed before, try to delete it from the index.
       const oldKey = normalizeCompositeKey(i.key, oldValue.value);
       if (isCompleteKey(oldKey)) {
-        deletePartitionEntry(localIndex, oldKey);
+        deleteIndexPartitionEntry(localIndex, key, oldKey);
       }
+    }
+
+    // if the key isn't complete (missing parts of the index composite key), ignore this item
+    if (isCompleteKey(normalizedKey)) {
+      updateIndexPartitionEntry(localIndex, key, normalizedKey, value);
     }
   });
 }
@@ -349,7 +364,7 @@ function deleteLocalEntity(
 ): boolean {
   const value = localEntity.data
     .get(key.partition.keyValue)
-    ?.get(key.sort?.keyValue ?? "default");
+    ?.get(skOrDefault(key));
 
   if (!value) {
     return false;
@@ -366,7 +381,7 @@ function deleteLocalEntity(
 
     // if the key isn't complete (missing parts of the index composite key), ignore this item
     if (isCompleteKey(normalizedKey)) {
-      deletePartitionEntry(localIndex, normalizedKey);
+      deleteIndexPartitionEntry(localIndex, key, normalizedKey);
     }
   });
 
@@ -374,7 +389,7 @@ function deleteLocalEntity(
 }
 
 function updatePartitionEntry(
-  store: Map<KeyValue, Map<KeyValue, EntityWithMetadata>>,
+  store: TableMap,
   key: NormalizedEntityCompositeKeyComplete,
   value: EntityWithMetadata
 ) {
@@ -383,29 +398,88 @@ function updatePartitionEntry(
     partitionMap = new Map<KeyValue, EntityWithMetadata>();
     store.set(key.partition.keyValue, partitionMap);
   }
-  partitionMap.set(key.sort?.keyValue ?? "default", value);
+  partitionMap.set(skOrDefault(key), value);
+}
+
+function updateIndexPartitionEntry(
+  store: TableMap,
+  tableKey: NormalizedEntityCompositeKeyComplete,
+  indexKey: NormalizedEntityCompositeKeyComplete,
+  value: EntityWithMetadata
+) {
+  let partitionMap = store.get(indexKey.partition.keyValue);
+  if (!partitionMap) {
+    partitionMap = new Map();
+    store.set(indexKey.partition.keyValue, partitionMap);
+  }
+
+  partitionMap.set(computeUniqueTableIdentifier(tableKey), value);
+}
+
+const DEFAULT_SK = "default";
+
+function skOrDefault(key: NormalizedEntityCompositeKeyComplete) {
+  return key.sort?.keyValue ?? DEFAULT_SK;
+}
+
+// computes a string representing the unique value of a table's PK/SK
+// this is used to identify items in an Index that clash with the Index's PK/SK
+// the Table PK/SK is guaranteed to be unique, but the Index's is not
+function computeUniqueTableIdentifier(
+  tableKey: NormalizedEntityCompositeKeyComplete
+) {
+  return `${tableKey.partition.keyValue}#${tableKey.sort?.keyValue ?? ""}`;
 }
 
 function getPartitionEntry(
-  store: Map<KeyValue, Map<KeyValue, EntityWithMetadata>>,
+  store: TableMap,
   key: NormalizedEntityCompositeKeyComplete
 ) {
   const partitionMap = store.get(key.partition.keyValue);
   if (partitionMap) {
-    return partitionMap.get(key.sort?.keyValue ?? "default");
+    return partitionMap.get(skOrDefault(key));
   }
   return undefined;
 }
 
 function deletePartitionEntry(
-  store: Map<KeyValue, Map<KeyValue, EntityWithMetadata>>,
+  store: TableMap,
   key: NormalizedEntityCompositeKeyComplete
 ) {
   const partitionMap = store.get(key.partition.keyValue);
   if (partitionMap) {
-    return partitionMap.delete(key.sort?.keyValue ?? "default");
+    return partitionMap.delete(skOrDefault(key));
   }
   return false;
+}
+
+function deleteIndexPartitionEntry(
+  store: TableMap,
+  tableKey: NormalizedEntityCompositeKeyComplete,
+  oldKey: NormalizedEntityCompositeKeyComplete
+) {
+  const partitionMap = store.get(oldKey.partition.keyValue);
+  if (partitionMap) {
+    return partitionMap.delete(computeUniqueTableIdentifier(tableKey));
+  }
+  return false;
+}
+
+function sortEntriesBySortKey(
+  keyDef: KeyDefinition,
+  a: Attributes,
+  b: Attributes
+) {
+  const aKey = normalizeCompositeKey(keyDef, a);
+  const aSortKeyValue = aKey.sort?.keyValue;
+  const bKey = normalizeCompositeKey(keyDef, b);
+  const bSortKeyValue = bKey.sort?.keyValue;
+
+  if (typeof aSortKeyValue === "string") {
+    return aSortKeyValue.localeCompare(bSortKeyValue as string);
+  } else {
+    return (aSortKeyValue as number) - (bSortKeyValue as number);
+  }
 }
 
 function filterEntryBySortKey(
