@@ -423,4 +423,9 @@ test("hello workflow should emit helloEvent and return message", async () => {
   if (!skipInstall) {
     await install(pkgManager);
   }
+
+  if (git) {
+    await exec("git", "add", ".");
+    await exec("git", "commit", "-m", `"initial commit"`);
+  }
 }
