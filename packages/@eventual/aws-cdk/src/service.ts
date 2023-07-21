@@ -286,8 +286,6 @@ export class Service<S = any> extends Construct {
       assumedBy: new AccountRootPrincipal(),
     });
 
-    console.log("====LOCAL===", process.env.EVENTUAL_LOCAL);
-
     this.local = process.env.EVENTUAL_LOCAL
       ? {
           environmentRole: accessRole,
