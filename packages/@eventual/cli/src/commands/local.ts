@@ -134,6 +134,8 @@ export const local = (yargs: Argv) =>
         res.send(resp.body);
       });
 
+      process.send?.("ready");
+
       spinner.succeed(`Eventual Dev Server running on ${url}`);
     }
   );
