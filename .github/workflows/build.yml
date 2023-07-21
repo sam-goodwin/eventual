@@ -31,8 +31,6 @@ jobs:
           role-to-assume: arn:aws:iam::593491530938:role/githubActionStack-githubactionroleA106E4DC-14SHKLVA61IN4
           aws-region: us-east-1
           role-duration-seconds: 3600
-      - name: Run Local Tests
-        run: pnpm -r --filter tests-runtime run test:local-start
       - name: Deploy Runtime Tests
         run: pnpm -r --filter tests-runtime run deploy:runtime
       - run: |
@@ -47,6 +45,8 @@ jobs:
           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ env.AWS_SESSION_TOKEN  }}
           role-skip-session-tagging: true
+      - name: Run Local Tests
+        run: pnpm -r --filter tests-runtime run test:local-start
       - name: Run Runtime Tests
         run: pnpm -r --filter tests-runtime run test:runtime
       - name: Run CLI Tests
