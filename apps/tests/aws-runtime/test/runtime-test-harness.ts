@@ -192,7 +192,7 @@ export function eventualRuntimeTestHarness(
   testSets.forEach((registerConfig, i) => {
     const tester = new TesterContainer();
 
-    const [register, chaos, timeout = 10000 * 1000] =
+    const [register, chaos, timeout = 100 * 1000] =
       typeof registerConfig === "function"
         ? [registerConfig, undefined]
         : [

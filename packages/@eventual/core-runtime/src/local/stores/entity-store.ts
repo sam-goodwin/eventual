@@ -146,11 +146,11 @@ export class LocalEntityStore extends EntityStore {
   }
 
   protected override async _query(
-    entity: Entity | EntityIndex,
+    entityOrIndex: Entity | EntityIndex,
     queryKey: NormalizedEntityCompositeQueryKey,
     options?: EntityQueryOptions
   ): Promise<EntityQueryResult> {
-    const partition = this.getPartitionMap(entity, queryKey.partition);
+    const partition = this.getPartitionMap(entityOrIndex, queryKey.partition);
 
     const entries = partition
       ? [...(partition as TablePartition).entries()]
@@ -159,18 +159,46 @@ export class LocalEntityStore extends EntityStore {
     const sortKeyPart = queryKey.sort;
     const sortFilteredEntries = sortKeyPart
       ? entries.filter((e) =>
-          filterEntryBySortKey(entity.key, sortKeyPart, e[1].value)
+          filterEntryBySortKey(entityOrIndex.key, sortKeyPart, e[1].value)
         )
       : entries;
 
     const { items, nextToken } = paginateItems(
       sortFilteredEntries,
-      (a, b) => sortEntriesBySortKey(entity.key, a[1].value, b[1].value),
+      (a, b) => {
+        const ord = sortBySortKey(entityOrIndex.key, a[1].value, b[1].value);
+        if (ord === 0 && entityOrIndex.kind === "EntityIndex") {
+          const source = this.getEntity(entityOrIndex.entityName);
+          if (!source) {
+            throw new Error(`Entity ${entityOrIndex.entityName} not found`);
+          }
+          // if they are equal and this is an Index, sort by the table's PK/SK to ensure consistent ordering
+          return sortBySortKey(source.key, a[1].value, b[1].value);
+        }
+        return ord;
+      },
       undefined,
       options?.direction,
       options?.limit,
       options?.nextToken
     );
+
+    function sortBySortKey(
+      keyDef: KeyDefinition,
+      a: Attributes,
+      b: Attributes
+    ) {
+      const aKey = normalizeCompositeKey(keyDef, a);
+      const aSortKeyValue = aKey.sort?.keyValue;
+      const bKey = normalizeCompositeKey(keyDef, b);
+      const bSortKeyValue = bKey.sort?.keyValue;
+
+      if (typeof aSortKeyValue === "string") {
+        return aSortKeyValue.localeCompare(bSortKeyValue as string);
+      } else {
+        return (aSortKeyValue as number) - (bSortKeyValue as number);
+      }
+    }
 
     // values should be sorted
     return {
@@ -463,23 +491,6 @@ function deleteIndexPartitionEntry(
     return partitionMap.delete(computeUniqueTableIdentifier(tableKey));
   }
   return false;
-}
-
-function sortEntriesBySortKey(
-  keyDef: KeyDefinition,
-  a: Attributes,
-  b: Attributes
-) {
-  const aKey = normalizeCompositeKey(keyDef, a);
-  const aSortKeyValue = aKey.sort?.keyValue;
-  const bKey = normalizeCompositeKey(keyDef, b);
-  const bSortKeyValue = bKey.sort?.keyValue;
-
-  if (typeof aSortKeyValue === "string") {
-    return aSortKeyValue.localeCompare(bSortKeyValue as string);
-  } else {
-    return (aSortKeyValue as number) - (bSortKeyValue as number);
-  }
 }
 
 function filterEntryBySortKey(
