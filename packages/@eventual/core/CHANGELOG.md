@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.45.1 (2023-07-22)
+
+### Bug Fixes
+
+- do not import @eventual/core/internal in @eventual/client ([#396](https://github.com/functionless/eventual/issues/396)) ([c5006c3](https://github.com/functionless/eventual/commit/c5006c38b6b099606cfc68efe97eb45e36ba22ab))
+
 # 0.45.0 (2023-07-21)
 
 ### Features
