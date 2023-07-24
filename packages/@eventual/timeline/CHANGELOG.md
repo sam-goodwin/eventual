@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.46.0 (2023-07-24)
+
+### Features
+
+- local cors ([#397](https://github.com/functionless/eventual/issues/397)) ([fd913c2](https://github.com/functionless/eventual/commit/fd913c20e4d17c423fc5784b088cab7b01a76bc7))
+
 ## 0.45.1 (2023-07-22)
 
 ### Bug Fixes
