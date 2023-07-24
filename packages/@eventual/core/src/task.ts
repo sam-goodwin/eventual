@@ -7,13 +7,13 @@ import type {
   SendTaskHeartbeatRequest,
   SendTaskSuccessRequest,
 } from "./internal/eventual-service.js";
-import { isTaskWorker } from "./internal/flags.js";
 import {
   getServiceClient,
   registerEventualResource,
 } from "./internal/global.js";
 import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
 import { SourceLocation, isSourceLocation } from "./internal/service-spec.js";
+import { isTaskWorker } from "./internal/service-type.js";
 import { AsyncTokenSymbol, TaskSpec } from "./internal/task.js";
 import type { DurationSchedule, Schedule } from "./schedule.js";
 import type {

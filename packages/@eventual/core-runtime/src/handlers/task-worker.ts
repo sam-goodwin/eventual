@@ -1,25 +1,24 @@
 import {
-  ExecutionID,
   LogLevel,
-  TaskContext,
   TaskNotFoundError,
+  type ExecutionID,
+  type TaskContext,
 } from "@eventual/core";
 import {
   ServiceType,
-  TaskFailed,
-  TaskRuntimeContext,
-  TaskSucceeded,
   WorkflowEventType,
   extendsError,
   isAsyncResult,
   isWorkflowFailed,
-  serviceTypeScope,
+  type TaskFailed,
+  type TaskRuntimeContext,
+  type TaskSucceeded,
 } from "@eventual/core/internal";
 import type { EventClient } from "../clients/event-client.js";
 import type { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import type { MetricsClient } from "../clients/metrics-client.js";
 import type { TaskWorkerRequest } from "../clients/task-client.js";
-import { TimerClient, TimerRequestType } from "../clients/timer-client.js";
+import { TimerRequestType, type TimerClient } from "../clients/timer-client.js";
 import type { WorkflowClient } from "../clients/workflow-client.js";
 import { hookConsole, restoreConsole } from "../console-hook.js";
 import type { LogAgent, TaskLogContext } from "../log-agent.js";
@@ -29,19 +28,20 @@ import { timed } from "../metrics/utils.js";
 import type { TaskProvider } from "../providers/task-provider.js";
 import { normalizeError } from "../result.js";
 import { computeDurationSeconds } from "../schedule.js";
+import { serviceTypeScope } from "../service-type.js";
 import type { TaskStore } from "../stores/task-store.js";
 import { createTaskToken } from "../task-token.js";
 import { taskContextScope } from "../task.js";
 import { getLazy } from "../utils.js";
 import { createEvent } from "../workflow-events.js";
 import {
-  TaskFallbackRequest,
   TaskFallbackRequestType,
+  type TaskFallbackRequest,
 } from "./task-fallback-handler.js";
 import {
-  WorkerIntrinsicDeps,
   getServiceContext,
   registerWorkerIntrinsics,
+  type WorkerIntrinsicDeps,
 } from "./utils.js";
 
 export interface CreateTaskWorkerProps extends WorkerIntrinsicDeps {
