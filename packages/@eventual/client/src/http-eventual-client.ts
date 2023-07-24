@@ -1,9 +1,8 @@
-import {
+import type {
   EventualServiceClient,
   ExecuteTransactionRequest,
   ExecuteTransactionResponse,
   Execution,
-  ExecutionHandle,
   ExecutionHistoryResponse,
   ListExecutionEventsRequest,
   ListExecutionEventsResponse,
@@ -23,6 +22,7 @@ import type {
   EventualService,
   SendTaskHeartbeatRequest,
 } from "@eventual/core/internal";
+import { ExecutionHandle } from "@eventual/core/client";
 import { HttpServiceClientProps } from "./base-http-client.js";
 import { ServiceClient } from "./service-client.js";
 
