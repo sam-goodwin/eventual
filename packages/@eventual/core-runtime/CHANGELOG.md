@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.46.1 (2023-07-24)
+
+### Bug Fixes
+
+- add ./constants exports to separate client from core backend ([#398](https://github.com/functionless/eventual/issues/398)) ([f743d02](https://github.com/functionless/eventual/commit/f743d022af51dec638c3e1fa8b534b10aef84ead))
+
 # 0.46.0 (2023-07-24)
 
 ### Features
