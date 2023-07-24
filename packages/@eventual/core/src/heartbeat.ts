@@ -1,5 +1,5 @@
-import { isTaskWorker } from "./internal/flags.js";
 import { getServiceClient } from "./internal/global.js";
+import { isTaskWorker } from "./internal/service-type.js";
 import type { SendTaskHeartbeatResponse } from "./service-client.js";
 
 /**

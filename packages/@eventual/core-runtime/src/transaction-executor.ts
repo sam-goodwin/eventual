@@ -1,26 +1,22 @@
 import {
-  Entity,
-  EntityReadOptions,
-  EntityTransactConditionalOperation,
-  EntityTransactDeleteOperation,
-  EntityTransactItem,
-  EntityTransactSetOperation,
-  EntityWithMetadata,
-  KeyMap,
   TransactionCancelled,
   TransactionConflict,
-  TransactionContext,
-  TransactionFunction,
   UnexpectedVersion,
+  type Entity,
+  type EntityReadOptions,
+  type EntityTransactConditionalOperation,
+  type EntityTransactDeleteOperation,
+  type EntityTransactItem,
+  type EntityTransactSetOperation,
+  type EntityWithMetadata,
+  type KeyMap,
+  type TransactionContext,
+  type TransactionFunction,
 } from "@eventual/core";
 import {
-  EmitEventsCall,
-  EntityOperation,
-  EventualCallHook,
   EventualPromise,
   EventualPromiseSymbol,
   Result,
-  SendSignalCall,
   ServiceType,
   SignalTargetType,
   assertNever,
@@ -28,16 +24,20 @@ import {
   isEntityCall,
   isEntityOperationOfType,
   isSendSignalCall,
-  serviceTypeScope,
+  type EmitEventsCall,
+  type EntityOperation,
+  type EventualCallHook,
+  type SendSignalCall,
 } from "@eventual/core/internal";
 import type { EventClient } from "./clients/event-client.js";
 import type { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { enterEventualCallHookScope } from "./eventual-hook.js";
 import type { EntityProvider } from "./providers/entity-provider.js";
 import { isResolved } from "./result.js";
+import { serviceTypeScope } from "./service-type.js";
 import {
-  EntityStore,
-  NormalizedEntityCompositeKey,
+  type EntityStore,
+  type NormalizedEntityCompositeKey,
   convertNormalizedEntityKeyToMap,
   normalizeCompositeKey,
 } from "./stores/entity-store.js";

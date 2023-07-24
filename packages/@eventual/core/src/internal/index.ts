@@ -4,7 +4,6 @@ export * from "./entity-hook.js";
 export * from "./entity.js";
 export * from "./eventual-hook.js";
 export * from "./eventual-service.js";
-export * from "./flags.js";
 export * from "./global.js";
 export * from "./guards.js";
 export * from "./open-api-spec.js";

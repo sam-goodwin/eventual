@@ -1,11 +1,12 @@
 import { EventEnvelope } from "@eventual/core";
-import { ServiceType, serviceTypeScope } from "@eventual/core/internal";
+import { ServiceType } from "@eventual/core/internal";
 import { SubscriptionProvider } from "../providers/subscription-provider.js";
 import {
   WorkerIntrinsicDeps,
   registerWorkerIntrinsics,
   getServiceContext,
 } from "./utils.js";
+import { serviceTypeScope } from "../service-type.js";
 
 /**
  * The dependencies of {@link createSubscriptionWorker}.

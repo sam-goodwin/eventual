@@ -18,9 +18,13 @@
   "devDependencies": {
     "@jest/globals": "^29.5.0",
     "@types/node": "^18",
+    "esbuild": "0.17.4",
     "ts-node": "^10.9.1",
     "typescript": "^5"
   },
+  "sideEffects": [
+    "lib/cjs/request-handler/node-request-handler.js"
+  ],
   "jest": {
     "preset": "ts-jest/presets/default-esm",
     "transform": {

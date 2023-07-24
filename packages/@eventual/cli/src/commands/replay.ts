@@ -6,19 +6,19 @@ import {
   isSucceededExecution,
 } from "@eventual/core";
 import {
+  WorkflowExecutor,
   isFailed,
   isResolved,
   normalizeFailedResult,
   parseWorkflowName,
   resultToString,
   runExecutor,
-  WorkflowExecutor,
+  serviceTypeScope,
 } from "@eventual/core-runtime";
 import {
   Result,
   ServiceType,
   getEventualResource,
-  serviceTypeScope,
 } from "@eventual/core/internal";
 import { discoverEventualConfig } from "@eventual/project";
 import path from "path";

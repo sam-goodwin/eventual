@@ -1,18 +1,15 @@
 import {
-  CommandContext,
-  commandRpcPath,
   HttpRequest,
   HttpResponse,
+  commandRpcPath,
   isHttpError,
-  RestParam,
+  type CommandContext,
+  type RestParam,
 } from "@eventual/core";
-import {
-  getEventualResources,
-  ServiceType,
-  serviceTypeScope,
-} from "@eventual/core/internal";
+import { ServiceType, getEventualResources } from "@eventual/core/internal";
 import itty from "itty-router";
-import { registerWorkerIntrinsics, WorkerIntrinsicDeps } from "./utils.js";
+import { serviceTypeScope } from "../service-type.js";
+import { registerWorkerIntrinsics, type WorkerIntrinsicDeps } from "./utils.js";
 
 export type ApiHandlerDependencies = Partial<WorkerIntrinsicDeps>;
 

@@ -1,11 +1,8 @@
-import { EntityStreamContext, EntityStreamItem } from "@eventual/core";
-import {
-  ServiceType,
-  getEventualResource,
-  serviceTypeScope,
-} from "@eventual/core/internal";
+import type { EntityStreamContext, EntityStreamItem } from "@eventual/core";
+import { ServiceType, getEventualResource } from "@eventual/core/internal";
+import { serviceTypeScope } from "../service-type.js";
 import { getLazy, promiseAllSettledPartitioned } from "../utils.js";
-import { WorkerIntrinsicDeps, registerWorkerIntrinsics } from "./utils.js";
+import { registerWorkerIntrinsics, type WorkerIntrinsicDeps } from "./utils.js";
 
 export interface EntityStreamWorker {
   (

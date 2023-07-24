@@ -1,35 +1,34 @@
 import {
-  ExecutionID,
   ExecutionStatus,
-  FailedExecution,
-  isSucceededExecution,
   LogLevel,
   Schedule,
-  SucceededExecution,
-  Workflow,
+  isSucceededExecution,
+  type ExecutionID,
+  type FailedExecution,
+  type SucceededExecution,
+  type Workflow,
 } from "@eventual/core";
 import {
-  CompletionEvent,
-  HistoryStateEvent,
+  Result,
+  ServiceType,
+  WorkflowEventType,
   isTimerCompleted,
   isTimerScheduled,
   isWorkflowRunStarted,
   isWorkflowStarted,
-  Result,
-  ServiceType,
-  serviceTypeScope,
-  TimerCompleted,
-  TimerScheduled,
-  WorkflowEvent,
-  WorkflowEventType,
-  WorkflowFailed,
-  WorkflowInputEvent,
-  WorkflowRunStarted,
-  WorkflowSucceeded,
-  WorkflowTimedOut,
+  type CompletionEvent,
+  type HistoryStateEvent,
+  type TimerCompleted,
+  type TimerScheduled,
+  type WorkflowEvent,
+  type WorkflowFailed,
+  type WorkflowInputEvent,
+  type WorkflowRunStarted,
+  type WorkflowSucceeded,
+  type WorkflowTimedOut,
 } from "@eventual/core/internal";
 import { inspect } from "util";
-import { MetricsClient } from "../clients/metrics-client.js";
+import type { MetricsClient } from "../clients/metrics-client.js";
 import type { TimerClient } from "../clients/timer-client.js";
 import type { WorkflowClient } from "../clients/workflow-client.js";
 import { hookConsole, restoreConsole } from "../console-hook.js";
@@ -46,6 +45,7 @@ import { timed } from "../metrics/utils.js";
 import type { ExecutorProvider } from "../providers/executor-provider.js";
 import type { WorkflowProvider } from "../providers/workflow-provider.js";
 import { isFailed, normalizeError, normalizeFailedResult } from "../result.js";
+import { serviceTypeScope } from "../service-type.js";
 import type { ExecutionHistoryStore } from "../stores/execution-history-store.js";
 import type { WorkflowTask } from "../tasks.js";
 import { groupBy } from "../utils.js";

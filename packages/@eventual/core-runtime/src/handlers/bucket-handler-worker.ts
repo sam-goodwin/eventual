@@ -1,10 +1,7 @@
-import { BucketNotificationEvent } from "@eventual/core";
-import {
-  ServiceType,
-  getEventualResource,
-  serviceTypeScope,
-} from "@eventual/core/internal";
-import { registerWorkerIntrinsics, WorkerIntrinsicDeps } from "./utils.js";
+import type { BucketNotificationEvent } from "@eventual/core";
+import { getEventualResource, ServiceType } from "@eventual/core/internal";
+import { serviceTypeScope } from "../service-type.js";
+import { registerWorkerIntrinsics, type WorkerIntrinsicDeps } from "./utils.js";
 
 export interface BucketNotificationHandlerWorker {
   (item: BucketNotificationEvent): void | Promise<void>;
