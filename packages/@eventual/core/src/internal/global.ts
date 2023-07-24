@@ -74,7 +74,7 @@ export function getEventualResource<Kind extends ResourceKind>(
 export function getEventualResources<Kind extends ResourceKind>(
   resourceKind: Kind
 ): Map<string, ResourceOfKind<Kind>> {
-  return globalThis._eventual.resources[resourceKind] ?? new Map();
+  return (globalThis._eventual.resources[resourceKind] ??= new Map());
 }
 
 /**

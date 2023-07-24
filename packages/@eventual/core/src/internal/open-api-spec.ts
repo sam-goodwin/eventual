@@ -1,5 +1,5 @@
 import type openapi from "openapi3-ts";
-import { commandRpcPath } from "../http/command.js";
+import { commandRpcPath } from "../http/command-rpc-path.js";
 import type { CommandSpec } from "./service-spec.js";
 
 export interface OpenAPISpecOptions {
