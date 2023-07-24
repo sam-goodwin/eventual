@@ -120,6 +120,24 @@ export const local = (yargs: Argv) =>
       });
 
       app.use(express.json({ strict: false, limit: maxBodySize }));
+      // CORS for local
+      app.use((req, res, next) => {
+        next();
+
+        const headers = res.getHeaders();
+        if (!headers["Access-Control-Allow-Origin"]) {
+          res.header("Access-Control-Allow-Origin", req.headers.origin ?? "*");
+        }
+        if (!headers["Access-Control-Allow-Methods"]) {
+          res.header("Access-Control-Allow-Methods", "*");
+        }
+        if (!headers["Access-Control-Allow-Headers"]) {
+          res.header("Access-Control-Allow-Headers", "*");
+        }
+        if (!headers["Access-Control-Allow-Credentials"]) {
+          res.header("Access-Control-Allow-Credentials", "true");
+        }
+      });
 
       // open up all of the user and service commands to the service.
       app.all("/*", async (req, res) => {
