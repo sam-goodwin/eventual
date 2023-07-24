@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.46.2 (2023-07-24)
+
+### Bug Fixes
+
+- refactored out flags file into core and runtime ([#400](https://github.com/functionless/eventual/issues/400)) ([413cd13](https://github.com/functionless/eventual/commit/413cd135d75c903f269f2a80fb05b837bf16d95c))
+
 ## 0.46.1 (2023-07-24)
 
 ### Bug Fixes
