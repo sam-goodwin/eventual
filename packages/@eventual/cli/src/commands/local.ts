@@ -44,13 +44,24 @@ export const local = (yargs: Argv) =>
           choices: ["first", "never", "always"],
           default: "first",
           type: "string",
+        })
+        .option("offline", {
+          describe:
+            "Offline mode allows for local development without AWS or deployments. Environment variables from the CDK application and AWS credentials will not be set.",
+          default: false,
+          type: "boolean",
         }),
-    async ({ port: userPort, update, service, region, maxBodySize }) => {
+    async ({
+      port: userPort,
+      update,
+      service,
+      region,
+      offline,
+      maxBodySize,
+    }) => {
       const spinner = ora();
       spinner.start("Starting Local Eventual Dev Server");
       process.env.EVENTUAL_LOCAL = "1";
-
-      region = region ?? (await resolveRegion());
 
       const config = await discoverEventualConfig();
 
@@ -65,33 +76,37 @@ export const local = (yargs: Argv) =>
         service
       );
 
-      const isDeployed = await isServiceDeployed(
-        buildManifest.serviceName,
-        region
-      );
+      if (!offline) {
+        region = region ?? (await resolveRegion());
 
-      if ((!isDeployed && update === "first") || update === "always") {
-        spinner.text = "Deploying CDK";
-        await execPromise(config.deploy);
-      }
-
-      const credentials = await assumeCliRole(
-        buildManifest.serviceName,
-        region
-      );
-      process.env.AWS_ACCESS_KEY_ID = credentials.accessKeyId;
-      process.env.AWS_SECRET_ACCESS_KEY = credentials.secretAccessKey;
-      process.env.AWS_SESSION_TOKEN = credentials.sessionToken;
-      const serviceData = await getServiceData(
-        credentials,
-        buildManifest.serviceName,
-        region
-      );
-
-      if (serviceData.environmentVariables) {
-        Object.entries(serviceData.environmentVariables).forEach(
-          ([name, val]) => (process.env[name] = val)
+        const isDeployed = await isServiceDeployed(
+          buildManifest.serviceName,
+          region
         );
+
+        if ((!isDeployed && update === "first") || update === "always") {
+          spinner.text = "Deploying CDK";
+          await execPromise(config.deploy);
+        }
+
+        const credentials = await assumeCliRole(
+          buildManifest.serviceName,
+          region
+        );
+        process.env.AWS_ACCESS_KEY_ID = credentials.accessKeyId;
+        process.env.AWS_SECRET_ACCESS_KEY = credentials.secretAccessKey;
+        process.env.AWS_SESSION_TOKEN = credentials.sessionToken;
+        const serviceData = await getServiceData(
+          credentials,
+          buildManifest.serviceName,
+          region
+        );
+
+        if (serviceData.environmentVariables) {
+          Object.entries(serviceData.environmentVariables).forEach(
+            ([name, val]) => (process.env[name] = val)
+          );
+        }
       }
 
       // get from build manifest
