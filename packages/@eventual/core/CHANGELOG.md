@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.47.0 (2023-07-25)
+
+### Features
+
+- offline mode for local ([#401](https://github.com/functionless/eventual/issues/401)) ([cb16bd7](https://github.com/functionless/eventual/commit/cb16bd7925f314e4c323dd3c649ad5ef77cded7d))
+
 ## 0.46.2 (2023-07-24)
 
 ### Bug Fixes
