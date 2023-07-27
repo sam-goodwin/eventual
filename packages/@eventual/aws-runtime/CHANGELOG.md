@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# 0.48.0 (2023-07-27)
+
+### Features
+
+- create cdk with esm ([#402](https://github.com/functionless/eventual/issues/402)) ([4742bd6](https://github.com/functionless/eventual/commit/4742bd6906c686334d8eded8cfe722528368f1b1))
+
 # 0.47.0 (2023-07-25)
 
 ### Features
