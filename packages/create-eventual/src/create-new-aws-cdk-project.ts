@@ -274,8 +274,9 @@ packages:
         compilerOptions: {
           outDir: "lib",
           rootDir: "src",
-          module: "CommonJS",
-          moduleResolution: "Node",
+          module: "esnext",
+          target: "ESNext",
+          moduleResolution: "NodeNext",
         },
         references: [
           {
@@ -286,6 +287,7 @@ packages:
       writeJsonFile("package.json", {
         name: infraPkgName,
         version: "0.0.0",
+        type: "module",
         scripts: {
           synth: "cdk synth",
           deploy: "cdk deploy",
@@ -310,14 +312,17 @@ packages:
         },
       }),
       writeJsonFile("cdk.json", {
-        app: "ts-node ./src/app.ts",
+        app: "ts-node-esm ./src/app.mts",
       }),
 
       fs
         .mkdir("src")
         .then(() =>
           Promise.all([
-            fs.writeFile(path.join("src", "app.ts"), sampleCDKApp(serviceName)),
+            fs.writeFile(
+              path.join("src", "app.mts"),
+              sampleCDKApp(serviceName)
+            ),
           ])
         ),
     ]);
