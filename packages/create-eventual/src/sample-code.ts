@@ -59,6 +59,9 @@ export function sampleCDKApp(serviceName: string) {
 
   return `import { App, Stack, CfnOutput } from "aws-cdk-lib";
 import { Service } from "@eventual/aws-cdk";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
 
 const app = new App();
 const stack = new Stack(app, "${serviceName}")
