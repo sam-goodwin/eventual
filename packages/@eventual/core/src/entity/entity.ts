@@ -15,6 +15,7 @@ import {
   isSourceLocation,
   SourceLocation,
 } from "../internal/service-spec.js";
+import { SetOptionalFields } from "../type-utils.js";
 import type {
   CompositeKey,
   EntityCompositeKeyPart,
@@ -28,7 +29,6 @@ import type {
   EntityStream,
   EntityStreamHandler,
 } from "./stream.js";
-import { SetOptionalFields } from "../type-utils.js";
 
 export type AttributeBinaryValue =
   | ArrayBuffer
@@ -138,17 +138,19 @@ export interface Entity<
   /**
    * Query the entity using the partition key and optionally part of the sort key.
    */
-  query(
+  query<const Select extends EntityQuerySelect<Attr> | undefined = undefined>(
     key: QueryKey<Attr, Partition, Sort>,
-    request?: EntityQueryOptions
-  ): Promise<EntityQueryResult<Attr>>;
+    request?: EntityQueryOptions<Attr, Select>
+  ): Promise<EntityQueryResult<Attr, Select>>;
   /**
    * Returns all items in the table, up to the limit given or 1MB (on AWS).
    *
    * In general, scan is an expensive operation and should be avoided in favor of query
    * unless it is necessary to get all items in a table across all or most partitions.
    */
-  scan(request?: EntityScanOptions): Promise<EntityQueryResult<Attr>>;
+  scan<const Select extends EntityQuerySelect<Attr> | undefined = undefined>(
+    request?: EntityScanOptions<Attr, Select>
+  ): Promise<EntityQueryResult<Attr, Select>>;
   index<
     Name extends string = string,
     const IndexPartition extends
@@ -421,7 +423,12 @@ export function entity<
                 params: args,
               }
             ),
-            () => getEntityHook().queryIndex(name, indexName, ...args)
+            () =>
+              getEntityHook().queryIndex(
+                name,
+                indexName,
+                ...(args as [any])
+              ) as any
           );
         },
         scan: (...args) => {
@@ -435,7 +442,12 @@ export function entity<
                 params: args,
               }
             ),
-            () => getEntityHook().scanIndex(name, indexName, ...args)
+            () =>
+              getEntityHook().scanIndex(
+                name,
+                indexName,
+                ...(args as [any])
+              ) as any
           );
         },
       };
@@ -581,21 +593,26 @@ export interface EntityIndex<
   > = EntityIndexAttributes<EntityAttr, Partition, Sort>
 > extends EntityIndexSpec<Name> {
   kind: "EntityIndex";
-  query(
+  query<Select extends EntityQuerySelect<IndexAttr> | undefined = undefined>(
     queryKey: QueryKey<IndexAttr, Partition, Sort>,
-    options?: EntityQueryOptions
-  ): Promise<EntityQueryResult<IndexAttr>>;
+    options?: EntityQueryOptions<IndexAttr, Select>
+  ): Promise<EntityQueryResult<IndexAttr, Select>>;
   /**
    * Returns all items in the table, up to the limit given or 1MB (on AWS).
    *
    * In general, scan is an expensive operation and should be avoided in favor of query
    * unless it is necessary to get all items in a table across all or most partitions.
    */
-  scan(request?: EntityScanOptions): Promise<EntityQueryResult<IndexAttr>>;
+  scan<Select extends EntityQuerySelect<IndexAttr> | undefined = undefined>(
+    request?: EntityScanOptions<IndexAttr, Select>
+  ): Promise<EntityQueryResult<IndexAttr, Select>>;
 }
 
-export interface EntityQueryResult<Attr extends Attributes = Attributes> {
-  entries?: EntityWithMetadata<Attr>[];
+export interface EntityQueryResult<
+  Attr extends Attributes = Attributes,
+  Select extends EntityQuerySelect<Attr> | undefined = undefined
+> {
+  entries?: EntityWithMetadata<SelectedAttributes<Attr, Select>>[];
   /**
    * Returned when there are more values than the limit allowed to return.
    */
@@ -610,16 +627,31 @@ export interface EntityReadOptions {
   consistentRead?: boolean;
 }
 
-export interface EntityScanOptions extends EntityReadOptions {
+export type EntityQuerySelect<Attr extends Attributes> =
+  readonly (keyof Attr)[];
+
+export interface EntityScanOptions<
+  EntityAttr extends Attributes = Attributes,
+  Select extends EntityQuerySelect<EntityAttr> | undefined = undefined
+> extends EntityReadOptions {
   /**
    * Number of items to retrieve
    * @default 100
    */
   limit?: number;
   nextToken?: string;
+  /**
+   * Attributes to return in the query or scan.
+   *
+   * @default - all attributes are returned for each item in the query/scan.
+   */
+  select?: Select;
 }
 
-export interface EntityQueryOptions extends EntityScanOptions {
+export interface EntityQueryOptions<
+  EntityAttr extends Attributes = Attributes,
+  Select extends EntityQuerySelect<EntityAttr> | undefined = undefined
+> extends EntityScanOptions<EntityAttr, Select> {
   /**
    * Determines the direction of the items returned in the query based on the sort key.
    *
@@ -652,6 +684,11 @@ export interface EntityWithMetadata<Attr extends Attributes = Attributes> {
   value: Attr;
   version: number;
 }
+
+export type SelectedAttributes<
+  Attr extends Attributes = Attributes,
+  Select = EntityQuerySelect<Attr> | undefined
+> = Select extends EntityQuerySelect<Attr> ? Pick<Attr, Select[number]> : Attr;
 
 interface EntityTransactItemBase<
   Attr extends Attributes,

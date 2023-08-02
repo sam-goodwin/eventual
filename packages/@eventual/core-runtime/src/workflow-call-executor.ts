@@ -334,13 +334,13 @@ export class WorkflowCallExecutor {
         return self.props.entityStore.queryIndex(
           operation.entityName,
           operation.indexName,
-          ...operation.params
+          ...(operation.params as [any])
         );
       } else if (isEntityOperationOfType("scanIndex", operation)) {
         return self.props.entityStore.scanIndex(
           operation.entityName,
           operation.indexName,
-          ...operation.params
+          ...(operation.params as [any])
         );
       }
       return self.props.entityStore[operation.operation](
