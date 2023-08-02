@@ -8,9 +8,11 @@ import {
 import { AwaitTimerCallPassthroughExecutor } from "../call-executors/await-timer-executor.js";
 import { BucketCallExecutor } from "../call-executors/bucket-call-executor.js";
 import { EntityCallExecutor } from "../call-executors/entity-call-executor.js";
+import { QueueCallExecutor } from "../call-executors/queue-call-executor.js";
 import { SearchCallExecutor } from "../call-executors/search-call-executor.js";
 import { ServiceClientExecutor } from "../call-executors/service-client-executor.js";
 import type { OpenSearchClient } from "../clients/open-search-client.js";
+import type { QueueClient } from "../clients/queue-client.js";
 import { enterEventualCallHookScope } from "../eventual-hook.js";
 import {
   AllPropertyRetriever,
@@ -19,6 +21,7 @@ import {
 } from "../property-retriever.js";
 import { BucketPhysicalNamePropertyRetriever } from "../property-retrievers/bucket-name-property-retriever.js";
 import { OpenSearchClientPropertyRetriever } from "../property-retrievers/open-search-client-property-retriever.js";
+import { QueuePhysicalNamePropertyRetriever } from "../property-retrievers/queue-name-property-retriever.js";
 import type { BucketStore } from "../stores/bucket-store.js";
 import type { EntityStore } from "../stores/entity-store.js";
 import type { LazyValue } from "../utils.js";
@@ -27,6 +30,7 @@ export interface WorkerIntrinsicDeps {
   bucketStore: BucketStore | undefined;
   entityStore: EntityStore | undefined;
   openSearchClient: OpenSearchClient | undefined;
+  queueClient: QueueClient | undefined;
   serviceClient: EventualServiceClient | undefined;
   serviceName: string | LazyValue<string>;
   serviceSpec: ServiceSpec | undefined;
@@ -77,6 +81,12 @@ export function createEventualWorker<Input extends any[], Output>(
   const entityCallExecutor = props.entityStore
     ? new EntityCallExecutor(props.entityStore)
     : unsupportedExecutor;
+  const queueCallExecutor = props.queueClient
+    ? new QueueCallExecutor(props.queueClient)
+    : unsupportedExecutor;
+  const queuePhysicalNamePropertyRetriever = props.queueClient
+    ? new QueuePhysicalNamePropertyRetriever(props.queueClient)
+    : unsupportedProperty;
 
   return (...input: Input) => {
     const resolvedExecutorOverrides = props.executorOverrides
@@ -119,6 +129,7 @@ export function createEventualWorker<Input extends any[], Output>(
         ExpectSignalCall: unsupportedExecutor,
         GetExecutionCall: serviceClientExecutor,
         InvokeTransactionCall: serviceClientExecutor,
+        QueueCall: queueCallExecutor,
         // register signal handler does not work outside of a workflow
         SignalHandlerCall: unsupportedExecutor,
         SearchCall: openSearchExecutor,
@@ -132,6 +143,7 @@ export function createEventualWorker<Input extends any[], Output>(
       new AllPropertyRetriever({
         BucketPhysicalName: bucketPhysicalNameRetriever,
         OpenSearchClient: openSearchClientPropertyRetriever,
+        QueuePhysicalName: queuePhysicalNamePropertyRetriever,
         ServiceClient: props.serviceClient ?? unsupportedProperty,
         ServiceName: props.serviceName,
         ServiceSpec: props.serviceSpec ?? unsupportedProperty,

@@ -5,6 +5,7 @@ import type { ServiceType } from "./service-type.js";
 
 export enum PropertyKind {
   BucketPhysicalName,
+  QueuePhysicalName,
   OpenSearchClient,
   ServiceClient,
   ServiceName,
@@ -21,6 +22,7 @@ export const PropertySymbol = /* @__PURE__ */ Symbol.for(
 export type Property =
   | BucketPhysicalName
   | OpenSearchClientProperty
+  | QueuePhysicalName
   | ServiceClientProperty
   | ServiceNameProperty
   | ServiceSpecProperty
@@ -58,6 +60,11 @@ export function isServicePropertyOfKind<K extends PropertyKind>(
 export interface BucketPhysicalName
   extends PropertyBase<PropertyKind.BucketPhysicalName, string> {
   bucketName: string;
+}
+
+export interface QueuePhysicalName
+  extends PropertyBase<PropertyKind.QueuePhysicalName, string> {
+  queueName: string;
 }
 
 export type OpenSearchClientProperty = PropertyBase<

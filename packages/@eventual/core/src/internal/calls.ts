@@ -7,6 +7,7 @@ import type {
 } from "../entity/entity.js";
 import type { EventEnvelope } from "../event.js";
 import type { Execution, ExecutionHandle } from "../execution.js";
+import type { Queue } from "../queue/queue.js";
 import type { DurationSchedule, Schedule } from "../schedule.js";
 import type { SearchIndex } from "../search/search-index.js";
 import type { Task } from "../task.js";
@@ -28,7 +29,8 @@ export type Call =
   | SendSignalCall
   | StartWorkflowCall
   | TaskCall
-  | TaskRequestCall;
+  | TaskRequestCall
+  | QueueCall;
 
 export enum CallKind {
   AwaitTimerCall = 1,
@@ -46,6 +48,7 @@ export enum CallKind {
   TaskRequestCall = 12,
   SearchCall = 11,
   StartWorkflowCall = 13,
+  QueueCall = 15,
 }
 
 export const CallSymbol = /* @__PURE__ */ Symbol.for("eventual:EventualCall");
@@ -219,6 +222,36 @@ export function isBucketCallOperation<Op extends BucketMethod>(
   operation: BucketCall<any>
 ): operation is BucketCall<Op> {
   return operation.operation.operation === op;
+}
+
+export function isQueueCall(a: any): a is QueueCall {
+  return isCallOfKind(CallKind.QueueCall, a);
+}
+
+export type QueueMethod = Exclude<
+  {
+    [k in keyof Queue]: Queue[k] extends Function ? k : never;
+  }[keyof Queue],
+  "forEach" | "forEachBatch" | undefined
+>;
+
+export type QueueCall<Op extends QueueMethod = QueueMethod> = CallBase<
+  CallKind.QueueCall,
+  ReturnType<Queue[Op]>
+> &
+  QueueOperation<Op>;
+
+export type QueueOperation<Op extends QueueMethod = QueueMethod> = {
+  operation: Op;
+  queueName: string;
+  params: Parameters<Queue[Op]>;
+};
+
+export function isQueueCallType<Op extends QueueMethod>(
+  op: Op,
+  operation: QueueCall<any>
+): operation is QueueCall<Op> {
+  return operation.operation === op;
 }
 
 export function isExpectSignalCall(a: any): a is ExpectSignalCall {

@@ -49,6 +49,7 @@ export interface ServiceSpec {
   search: {
     indices: IndexSpec[];
   };
+  queues: QueueSpec[];
 }
 
 export interface FunctionSpec {
@@ -287,4 +288,36 @@ export interface EntityIndexSpec<Name extends string = string> {
 
 export interface TransactionSpec<Name extends string = string> {
   name: Name;
+}
+
+/**
+ * TODO: Support filter criteria.
+ */
+export interface QueueHandlerOptions extends FunctionRuntimeProps {
+  /**
+   * Max batch size. Between 1 and 1000.
+   *
+   * @default: 100
+   */
+  batchSize?: number;
+  /**
+   * Amount of time to wait for the batch size before sending a batch.
+   *
+   * @default: 0 seconds.
+   */
+  batchingWindow?: DurationSchedule;
+}
+
+export interface QueueHandlerSpec<Name extends string = string> {
+  name: Name;
+  queueName: string;
+  options?: EntityStreamOptions;
+  sourceLocation?: SourceLocation;
+}
+
+export interface QueueSpec<Name extends string = string> {
+  name: Name;
+  handlers: QueueHandlerSpec[];
+  message?: openapi.SchemaObject;
+  attributes?: openapi.SchemaObject;
 }

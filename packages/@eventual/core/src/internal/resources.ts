@@ -2,6 +2,7 @@ import type { Bucket } from "../bucket.js";
 import type { Entity } from "../entity/entity.js";
 import type { Event } from "../event.js";
 import type { AnyCommand } from "../http/command.js";
+import type { Queue } from "../queue/queue.js";
 import type { SearchIndex } from "../search/search-index.js";
 import type { Subscription } from "../subscription.js";
 import type { Task } from "../task.js";
@@ -9,15 +10,16 @@ import type { Transaction } from "../transaction.js";
 import type { Workflow } from "../workflow.js";
 
 type Resource =
-  | Task
-  | Workflow
-  | Transaction
-  | Entity
-  | Bucket
-  | SearchIndex
   | AnyCommand
+  | Bucket
+  | Entity
   | Event
-  | Subscription;
+  | SearchIndex
+  | Subscription
+  | Task
+  | Transaction
+  | Queue
+  | Workflow;
 
 type ResourceKind = Resource["kind"];
 
