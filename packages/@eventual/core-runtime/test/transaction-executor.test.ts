@@ -101,7 +101,7 @@ test("just set", async () => {
   const d1 = entity({ partition: ["key"], attributes: simpleSchema });
   const result = await executor(
     () => {
-      return d1.set({ key: "1", value: 1 });
+      return d1.put({ key: "1", value: 1 });
     },
     undefined,
     context
@@ -120,7 +120,7 @@ test("just set", async () => {
 test("just delete", async () => {
   const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
 
-  await store.set(d1.name, { key: "1", value: 0 });
+  await store.put(d1.name, { key: "1", value: 0 });
 
   const result = await executor(
     () => {
@@ -146,8 +146,8 @@ test("multiple operations", async () => {
 
   const result = await executor(
     async () => {
-      await d1.set({ key: "1", value: 1 });
-      await d2.set({ key: "1", value: 1 });
+      await d1.put({ key: "1", value: 1 });
+      await d2.put({ key: "1", value: 1 });
     },
     undefined,
     context
@@ -173,8 +173,8 @@ test("multiple operations on same key", async () => {
 
   const result = await executor(
     async () => {
-      await d1.set({ key: "1", value: 1 });
-      await d1.set({ key: "1", value: 2 });
+      await d1.put({ key: "1", value: 1 });
+      await d1.put({ key: "1", value: 2 });
     },
     undefined,
     context
@@ -196,7 +196,7 @@ test("multiple operations on same key with delete first", async () => {
   const result = await executor(
     async () => {
       await d1.delete({ key: "1" });
-      await d1.set({ key: "1", value: 1 });
+      await d1.put({ key: "1", value: 1 });
     },
     undefined,
     context
@@ -217,7 +217,7 @@ test("multiple operations on same key with delete second", async () => {
 
   const result = await executor(
     async () => {
-      await d1.set({ key: "1", value: 1 });
+      await d1.put({ key: "1", value: 1 });
       await d1.delete({ key: "1" });
     },
     undefined,
@@ -238,7 +238,7 @@ test("set and then get", async () => {
 
   const result = await executor(
     async () => {
-      await d1.set({ key: "1", value: 1 });
+      await d1.put({ key: "1", value: 1 });
       return d1.getWithMetadata({ key: "1" });
     },
     undefined,
@@ -258,15 +258,15 @@ test("set and then get", async () => {
 test("expected version succeeds when correct", async () => {
   const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
 
-  await store.set(d1.name, { key: "1", value: 0 });
+  await store.put(d1.name, { key: "1", value: 0 });
 
   const result = await executor(
     async () => {
       try {
-        await d1.set({ key: "1", value: 1 }, { expectedVersion: 1 });
+        await d1.put({ key: "1", value: 1 }, { expectedVersion: 1 });
         return "woop";
       } catch {
-        await d1.set({ key: "1", value: 2 });
+        await d1.put({ key: "1", value: 2 });
         return "womp";
       }
     },
@@ -287,12 +287,12 @@ test("expected version succeeds when correct", async () => {
 test("multiple sets of the same key will only update the version once", async () => {
   const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
 
-  await store.set(d1.name, { key: "1", value: 0 });
+  await store.put(d1.name, { key: "1", value: 0 });
 
   const result = await executor(
     async () => {
-      await d1.set({ key: "1", value: 1 });
-      await d1.set({ key: "1", value: 2 });
+      await d1.put({ key: "1", value: 1 });
+      await d1.put({ key: "1", value: 2 });
       return (await d1.getWithMetadata({ key: "1" }))?.version;
     },
     undefined,
@@ -312,15 +312,15 @@ test("multiple sets of the same key will only update the version once", async ()
 test("expected version failure throws a local, recoverable error", async () => {
   const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
 
-  await store.set(d1.name, { key: "1", value: 0 });
+  await store.put(d1.name, { key: "1", value: 0 });
 
   const result = await executor(
     async () => {
       try {
-        await d1.set({ key: "1", value: 1 }, { expectedVersion: 3 });
+        await d1.put({ key: "1", value: 1 }, { expectedVersion: 3 });
         return "woop";
       } catch {
-        await d1.set({ key: "1", value: 2 });
+        await d1.put({ key: "1", value: 2 });
         return "womp";
       }
     },
@@ -345,12 +345,12 @@ test("multiple operations fail", async () => {
     partition: ["value"],
   });
 
-  await store.set(d1.name, { key: "1", value: 0 });
+  await store.put(d1.name, { key: "1", value: 0 });
 
   const result = await executor(
     async () => {
-      await d1.set({ key: "1", value: 1 }, { expectedVersion: 3 });
-      await d2.set({ key: "1", value: 1 });
+      await d1.put({ key: "1", value: 1 }, { expectedVersion: 3 });
+      await d2.put({ key: "1", value: 1 });
     },
     undefined,
     context
@@ -371,16 +371,16 @@ test("multiple operations fail", async () => {
 test("retry when retrieved data changes version", async () => {
   const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
 
-  await store.set(d1.name, { key: "1", value: 0 });
+  await store.put(d1.name, { key: "1", value: 0 });
 
   const result = await executor(
     async () => {
       const v = await d1.get(["1"]);
       // this isn't kosher... normally
       if (v?.value === 0) {
-        await store.set(d1.name, { key: "1", value: v.value + 1 });
+        await store.put(d1.name, { key: "1", value: v.value + 1 });
       }
-      await d1.set({ key: "1", value: v!.value + 1 });
+      await d1.put({ key: "1", value: v!.value + 1 });
     },
     undefined,
     context
@@ -399,16 +399,16 @@ test("retry when retrieved data changes version", async () => {
 test("retry when retrieved data changes version multiple times", async () => {
   const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
 
-  await store.set(d1.name, { key: "1", value: 0 });
+  await store.put(d1.name, { key: "1", value: 0 });
 
   const result = await executor(
     async () => {
       const { value } = (await d1.get(["1"]))!;
       // this isn't kosher... normally
       if (value < 2) {
-        await store.set(d1.name, { key: "1", value: value + 1 });
+        await store.put(d1.name, { key: "1", value: value + 1 });
       }
-      await d1.set({ key: "1", value: value + 1 });
+      await d1.put({ key: "1", value: value + 1 });
     },
     undefined,
     context
@@ -430,7 +430,7 @@ test("emit events on success", async () => {
   const result = await executor(
     async () => {
       event1.emit({ n: 1 });
-      await d1.set({ key: "1", value: 1 });
+      await d1.put({ key: "1", value: 1 });
       event1.emit({ n: 1 });
     },
     undefined,
@@ -450,7 +450,7 @@ test("emit events after retry", async () => {
     partition: ["key"],
   });
 
-  await store.set(d1.name, { key: "1", value: 0 });
+  await store.put(d1.name, { key: "1", value: 0 });
 
   const result = await executor(
     async () => {
@@ -459,9 +459,9 @@ test("emit events after retry", async () => {
       event1.emit({ n: v });
       // this isn't kosher... normally
       if (v?.value === 0) {
-        await store.set(d1.name, { key: "1", value: v!.value + 1 });
+        await store.put(d1.name, { key: "1", value: v!.value + 1 });
       }
-      await d1.set({ key: "1", value: v!.value + 1 });
+      await d1.put({ key: "1", value: v!.value + 1 });
       event1.emit({ n: 1 });
     },
     undefined,
@@ -478,12 +478,12 @@ test("emit events after retry", async () => {
 test("events not emitted on failure", async () => {
   const d1 = entity({ attributes: simpleSchema, partition: ["key"] });
 
-  await store.set(d1.name, { key: "1", value: 0 });
+  await store.put(d1.name, { key: "1", value: 0 });
 
   const result = await executor(
     async () => {
       event1.emit({ n: 1 });
-      await d1.set({ key: "1", value: 1 }, { expectedVersion: 1000 });
+      await d1.put({ key: "1", value: 1 }, { expectedVersion: 1000 });
       event1.emit({ n: 1 });
     },
     undefined,

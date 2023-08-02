@@ -100,9 +100,8 @@ export interface Entity<
   )[];
   /**
    * Get a value.
-   * If your values use composite keys, the namespace must be provided.
    *
-   * @param key - key or {@link CompositeKey} of the value to retrieve.
+   * @param key - {@link CompositeKey} of the value to retrieve.
    */
   get(
     key: CompositeKey<Attr, Partition, Sort>,
@@ -110,26 +109,22 @@ export interface Entity<
   ): Promise<Attr | undefined>;
   /**
    * Get a value and metadata like version.
-   * If your values use composite keys, the namespace must be provided.
    *
-   * @param key - key or {@link CompositeKey} of the value to retrieve.
+   * @param key - {@link CompositeKey} of the value to retrieve.
    */
   getWithMetadata(
     key: CompositeKey<Attr, Partition, Sort>,
     options?: EntityReadOptions
   ): Promise<EntityWithMetadata<Attr> | undefined>;
   /**
-   * Sets or updates a value within an entity and optionally a namespace.
-   *
-   * Values with namespaces are considered distinct from value without a namespace or within different namespaces.
-   * Values and keys can only be listed within a single namespace.
+   * Puts a value into an entity at a key.
    */
-  set(
+  put(
     entity: SetOptionalFields<Attr>,
-    options?: EntitySetOptions
+    options?: EntityPutOptions
   ): Promise<{ version: number }>;
   /**
-   * Deletes a single entry within an entity and namespace.
+   * Deletes a single entry within an entity.
    */
   delete(
     key: CompositeKey<Attr, Partition, Sort>,
@@ -252,7 +247,7 @@ export interface EntityOptions<
  * });
  *
  * // add a new post comment
- * await userComments.set({
+ * await userComments.put({
  *    forum: "games",
  *    userId: "1",
  *    postId: "100",
@@ -342,15 +337,15 @@ export function entity<
         }
       );
     },
-    set: (...args) => {
+    put: (...args) => {
       return getEventualCallHook().registerEventualCall(
-        createEventualCall<EntityCall<"set">>(EventualCallKind.EntityCall, {
+        createEventualCall<EntityCall<"put">>(EventualCallKind.EntityCall, {
           entityName: name,
-          operation: "set",
+          operation: "put",
           params: args,
         }),
         async () => {
-          return getEntityHook().set(name, ...args);
+          return getEntityHook().put(name, ...args);
         }
       );
     },
@@ -638,7 +633,7 @@ export interface EntityConsistencyOptions {
   expectedVersion?: number;
 }
 
-export interface EntitySetOptions extends EntityConsistencyOptions {
+export interface EntityPutOptions extends EntityConsistencyOptions {
   /**
    * Whether or not to update the version on change.
    * If this is the first time the value has been set, it will be set to 1.
@@ -668,20 +663,20 @@ export type EntityTransactItem<
     | EntityCompositeKeyPart<Attr>
     | undefined
 > =
-  | EntityTransactSetOperation<Attr, Partition, Sort>
+  | EntityTransactPutOperation<Attr, Partition, Sort>
   | EntityTransactDeleteOperation<Attr, Partition, Sort>
   | EntityTransactConditionalOperation<Attr, Partition, Sort>;
 
-export interface EntityTransactSetOperation<
+export interface EntityTransactPutOperation<
   Attr extends Attributes = any,
   Partition extends EntityCompositeKeyPart<Attr> = EntityCompositeKeyPart<Attr>,
   Sort extends EntityCompositeKeyPart<Attr> | undefined =
     | EntityCompositeKeyPart<Attr>
     | undefined
 > extends EntityTransactItemBase<Attr, Partition, Sort> {
-  operation: "set";
+  operation: "put";
   value: Attr;
-  options?: EntitySetOptions;
+  options?: EntityPutOptions;
 }
 
 export interface EntityTransactDeleteOperation<
@@ -693,7 +688,7 @@ export interface EntityTransactDeleteOperation<
 > extends EntityTransactItemBase<Attr, Partition, Sort> {
   operation: "delete";
   key: CompositeKey<Attr, Partition, Sort>;
-  options?: EntitySetOptions;
+  options?: EntityPutOptions;
 }
 
 /**

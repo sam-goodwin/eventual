@@ -18,7 +18,7 @@ test("Person", () => {
 
   function noop() {
     // 'optional' should maintain '?' modifier
-    Person.set({
+    Person.put({
       name: "John",
     });
   }

@@ -625,7 +625,7 @@ export const counterNamespaceWatcher = counter.batchStream(
       items.map(async (item) => {
         console.log(item);
         const value = await counter.get(item.key);
-        await counter.set({
+        await counter.put({
           namespace: "default",
           id: value!.id,
           n: (value?.n ?? 0) + 1,
@@ -643,7 +643,7 @@ export const onEntityEvent = subscription(
   { events: [entityEvent] },
   async ({ id }) => {
     const value = await counter.get({ namespace: "default", id });
-    await counter.set({
+    await counter.put({
       namespace: "default",
       id,
       n: (value?.n ?? 0) + 1,
@@ -657,7 +657,7 @@ export const entityTask = task(
   "entityTask",
   async (_, { execution: { id } }) => {
     const value = await counter.get(["default", id]);
-    await counter.set({
+    await counter.put({
       namespace: "default",
       id,
       n: (value?.n ?? 0) + 1,
@@ -669,13 +669,13 @@ export const entityTask = task(
 export const entityIndexTask = task(
   "entityIndexTask",
   async (_, { execution: { id } }) => {
-    await counter.set({
+    await counter.put({
       namespace: "another",
       id,
       n: 1000,
       optional: "hello",
     });
-    await counter.set({
+    await counter.put({
       namespace: "another2",
       id,
       n: 0,
@@ -730,8 +730,8 @@ export const entityIndexTask = task(
 export const entityWorkflow = workflow(
   "entityWorkflow",
   async (_, { execution: { id } }) => {
-    await counter.set({ namespace: "default", id, n: 1, optional: undefined });
-    await counter.set({
+    await counter.put({ namespace: "default", id, n: 1, optional: undefined });
+    await counter.put({
       namespace: "different",
       id,
       n: 1,
@@ -742,7 +742,7 @@ export const entityWorkflow = workflow(
     await Promise.all([entityEvent.emit({ id }), entitySignal.expectSignal()]);
     try {
       // will fail
-      await counter.set(
+      await counter.put(
         { namespace: "default", id, n: 0, optional: undefined },
         { expectedVersion: 1 }
       );
@@ -751,7 +751,7 @@ export const entityWorkflow = workflow(
     }
     const { value: entityValue, version } =
       (await counter.getWithMetadata(["default", id])) ?? {};
-    await counter.set(
+    await counter.put(
       { namespace: "default", id, n: entityValue!.n + 1, optional: undefined },
       { expectedVersion: version }
     );
@@ -759,7 +759,7 @@ export const entityWorkflow = workflow(
     await Entity.transactWrite([
       {
         entity: counter,
-        operation: "set",
+        operation: "put",
         value: { namespace: "default", id, n: (value?.n ?? 0) + 1 },
       },
     ]);
@@ -780,13 +780,13 @@ export const entityWorkflow = workflow(
      */
 
     await Promise.all([
-      counterCollection.set({ id, counterNumber: 1, n: 1 }),
-      counterCollection.set({ id, counterNumber: 2, n: 1 }),
-      counterCollection.set({ id, counterNumber: 3, n: 1 }),
+      counterCollection.put({ id, counterNumber: 1, n: 1 }),
+      counterCollection.put({ id, counterNumber: 2, n: 1 }),
+      counterCollection.put({ id, counterNumber: 3, n: 1 }),
     ]);
 
     const counter1 = await counterCollection.get({ id, counterNumber: 1 });
-    await counterCollection.set({
+    await counterCollection.put({
       id,
       counterNumber: 2,
       n: (counter1?.n ?? 0) + 1,
@@ -811,7 +811,7 @@ export const check = entity("check4", {
 
 const gitErDone = transaction("gitErDone", async ({ id }: { id: string }) => {
   const val = await check.get([id]);
-  await check.set({ id, n: val?.n ?? 0 + 1 });
+  await check.put({ id, n: val?.n ?? 0 + 1 });
   return val?.n ?? 0 + 1;
 });
 
@@ -822,7 +822,7 @@ const noise = task(
     let transact: Promise<number> | undefined;
     while (n-- > 0) {
       try {
-        await check.set({ id, n });
+        await check.put({ id, n });
       } catch (err) {
         console.error(err);
         if (
@@ -858,9 +858,9 @@ export const transactionWorkflow = workflow(
     const one = await noise({ x: 40 });
     const two = await noise({ x: 60 });
     const [, three] = await Promise.allSettled([
-      check.set({ id, n: two ?? 0 + 1 }),
+      check.put({ id, n: two ?? 0 + 1 }),
       gitErDone({ id }),
-      check.set({ id, n: two ?? 0 + 1 }),
+      check.put({ id, n: two ?? 0 + 1 }),
     ]);
     await check.delete([id]);
     return [one, two, three.status === "fulfilled" ? three.value : "AHHH"];
