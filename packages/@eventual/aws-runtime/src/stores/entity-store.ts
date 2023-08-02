@@ -6,6 +6,7 @@ import {
   DynamoDBClient,
   GetItemCommand,
   ReturnValue,
+  Select,
   TransactionCanceledException,
   TransactionConflictException,
   TransactWriteItem,
@@ -246,6 +247,7 @@ export class AWSEntityStore extends EntityStore {
         KeyConditionExpression: sortExpression
           ? [partitionCondition, sortExpression].join(" AND ")
           : partitionCondition,
+        Select: select ? Select.SPECIFIC_ATTRIBUTES : undefined,
         ProjectionExpression: select
           ? select.map(formatAttributeNameMapKey).join(", ")
           : undefined,
@@ -305,7 +307,7 @@ export class AWSEntityStore extends EntityStore {
         TableName: this.tableName(entity),
         IndexName: _index?.name,
         ConsistentRead: options?.consistentRead,
-        Select: select ? "SPECIFIC_ATTRIBUTES" : undefined,
+        Select: select ? Select.SPECIFIC_ATTRIBUTES : undefined,
         ProjectionExpression: select
           ? select.map(formatAttributeNameMapKey).join(", ")
           : undefined,
