@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-expressions */
 import { extendApi } from "@anatine/zod-openapi";
 import {
   DeleteItemCommand,
@@ -724,7 +725,19 @@ export const entityIndexTask = task(
       await Promise.all(
         Object.entries(queries).map(
           async ([name, q]) =>
-            [name, (await q).entries?.map((e) => e.value)] as const
+            [
+              name,
+              (
+                await q
+              ).entries?.map((e) => {
+                // @ts-expect-error - the queries should all use query.select to return only namespace and n
+                e.value.id;
+                // @ts-check
+                e.value.n;
+                // @ts-check - should not error
+                return e.value;
+              }),
+            ] as const
         )
       )
     ) as Record<keyof typeof queries, { n: number; namespace: string }[]>;
@@ -802,13 +815,30 @@ export const entityWorkflow = workflow(
       // only return the n and counterNumber attributes
       { select: ["n", "counterNumber"] }
     );
-    const countersInOrder = await counterCollectionOrderByN.query({ id });
+    const countersInOrder = await counterCollectionOrderByN.query(
+      { id },
+      { select: ["n", "counterNumber"] }
+    );
 
     return [
       result0,
       result1,
-      counters.entries?.map((c) => c.value),
-      countersInOrder.entries?.map((c) => c.value),
+      counters.entries?.map((c) => {
+        // @ts-expect-error - the queries should all use query.select to return only namespace and n
+        c.value.id;
+        // @ts-check - should not error
+        c.value.counterNumber;
+        // @ts-check - should not error
+        return c.value;
+      }),
+      countersInOrder.entries?.map((c) => {
+        // @ts-expect-error - the queries should all use query.select to return only namespace and n
+        c.value.id;
+        // @ts-check - should not error
+        c.value.counterNumber;
+        // @ts-check - should not error
+        return c.value;
+      }),
     ];
   }
 );
