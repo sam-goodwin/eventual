@@ -607,14 +607,19 @@ export const counterCollectionOrderByN = counterCollection.index(
 const entityEvent = event<{ id: string }>("entityEvent");
 const entitySignal = signal("entitySignal");
 const entitySignal2 = signal<{ n: number }>("entitySignal2");
+const entityOrderSignal = signal<{ n: number }>("entityOrderSignal");
 
 export const counterWatcher = counter.stream(
   "counterWatcher",
-  { operations: ["remove"], includeOld: true },
+  { operations: ["modify", "remove"], includeOld: true },
   async (item) => {
-    console.log(item);
     const { n } = item.oldValue!;
-    await entitySignal2.sendSignal(item.key.id, { n: n + 1 });
+    if (item.operation === "remove") {
+      console.log(item);
+      await entitySignal2.sendSignal(item.key.id, { n: n + 1 });
+    } else if (item.newValue.namespace === "default") {
+      await entityOrderSignal.sendSignal(item.key.id, { n });
+    }
   }
 );
 
@@ -748,6 +753,21 @@ export const entityIndexTask = task(
 export const entityWorkflow = workflow(
   "entityWorkflow",
   async (_, { execution: { id } }) => {
+    let orderValue = 0;
+    // this signal handler is intended to test that the counter stream is executed in order.
+    // it sends a signal each time the "default" name space counter is updated
+    // and we want to check if the order is always increasing
+    // and then validate the order value against the final value at the end.
+    entityOrderSignal.onSignal(({ n }) => {
+      if (n >= orderValue) {
+        orderValue = n;
+      } else {
+        throw new Error(
+          `order value ${n} is less than previous value ${orderValue}, the stream handler executed out of order!`
+        );
+      }
+    });
+
     await counter.put({ namespace: "default", id, n: 1, optional: undefined });
     await counter.put({
       namespace: "different",
@@ -792,6 +812,18 @@ export const entityWorkflow = workflow(
       // this must be expected prior to sending the delete request or else there is a race condition
       entitySignal2.expectSignal(),
     ]);
+
+    if (
+      // wait 30 seconds for the order value to match the final value.
+      !(await condition(
+        { timeout: duration(30, "seconds") },
+        () => value?.n === orderValue
+      ))
+    ) {
+      throw new Error(
+        `Order handler never received the final value! have: ${orderValue} expected: ${value?.n}`
+      );
+    }
 
     /**
      * Testing sort keys and query
