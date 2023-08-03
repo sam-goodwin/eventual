@@ -6,6 +6,7 @@ import {
   DynamoDBClient,
   GetItemCommand,
   ReturnValue,
+  Select,
   TransactionCanceledException,
   TransactionConflictException,
   TransactWriteItem,
@@ -186,7 +187,7 @@ export class AWSEntityStore extends EntityStore {
       ExpressionAttributeNames:
         options?.expectedVersion !== undefined
           ? {
-              "#__version": "__version",
+              "#__version": EntityEntityRecord.VERSION_FIELD,
             }
           : undefined,
       ExpressionAttributeValues:
@@ -217,9 +218,14 @@ export class AWSEntityStore extends EntityStore {
       attributeValueMap: sortAttributeValueMap,
     } = getSortKeyExpressionAndAttribute(queryKey.sort) ?? {};
 
+    const select = options?.select
+      ? [EntityEntityRecord.VERSION_FIELD, ...options.select]
+      : undefined;
+
     const allAttributes = new Set([
       queryKey.partition.keyAttribute,
       ...(sortAttribute ? [sortAttribute] : []),
+      ...(select ?? []),
     ]);
 
     const result = await queryPageWithToken<
@@ -241,6 +247,10 @@ export class AWSEntityStore extends EntityStore {
         KeyConditionExpression: sortExpression
           ? [partitionCondition, sortExpression].join(" AND ")
           : partitionCondition,
+        Select: select ? Select.SPECIFIC_ATTRIBUTES : undefined,
+        ProjectionExpression: select
+          ? select.map(formatAttributeNameMapKey).join(", ")
+          : undefined,
         ExpressionAttributeValues: {
           ":pk": keyPartAttributeValue(
             queryKey.partition,
@@ -271,12 +281,16 @@ export class AWSEntityStore extends EntityStore {
 
   protected override async _scan(
     entity: Entity | EntityIndex,
-    options?: EntityScanOptions
+    options?: EntityScanOptions<any, any>
   ): Promise<EntityQueryResult> {
     const [_entity, _index] =
       entity.kind === "Entity"
         ? [entity, undefined]
         : [this.getEntity(entity.entityName), entity];
+
+    const select = options?.select
+      ? [EntityEntityRecord.VERSION_FIELD, ...options.select]
+      : undefined;
 
     const result = await scanPageWithToken<
       MarshalledEntityAttributesWithVersion<any>
@@ -293,6 +307,15 @@ export class AWSEntityStore extends EntityStore {
         TableName: this.tableName(entity),
         IndexName: _index?.name,
         ConsistentRead: options?.consistentRead,
+        Select: select ? Select.SPECIFIC_ATTRIBUTES : undefined,
+        ProjectionExpression: select
+          ? select.map(formatAttributeNameMapKey).join(", ")
+          : undefined,
+        ExpressionAttributeNames: select
+          ? Object.fromEntries(
+              select.map((f) => [formatAttributeNameMapKey(f), f])
+            )
+          : undefined,
       }
     );
 
@@ -424,7 +447,7 @@ export class AWSEntityStore extends EntityStore {
         ),
       ].join(","),
       ExpressionAttributeNames: {
-        "#__version": "__version",
+        "#__version": EntityEntityRecord.VERSION_FIELD,
         ...Object.fromEntries(
           Object.keys(valueRecord).map((key) => [
             formatAttributeNameMapKey(key),

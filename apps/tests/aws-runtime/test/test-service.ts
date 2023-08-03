@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-expressions */
 import { extendApi } from "@anatine/zod-openapi";
 import {
   DeleteItemCommand,
@@ -681,30 +682,43 @@ export const entityIndexTask = task(
       n: 0,
       optional: "hello",
     });
+    const queryOptions = { select: ["n", "namespace"] } as const;
     const queries = {
-      all: allCounters.query({ id }),
-      byN: allCountersByN.query({ id }),
-      byNamespace: countersByNamespace.query({ id }),
-      filterByNamespace: countersByN.query({ namespace: "another", id }),
-      betweenN: allCountersByN.query({
-        id,
-        n: { $between: [2, 100] },
-      }),
-      greaterThanN: allCountersByN.query({
-        id,
-        n: { $gt: 1 },
-      }),
+      all: allCounters.query({ id }, queryOptions),
+      byN: allCountersByN.query({ id }, queryOptions),
+      byNamespace: countersByNamespace.query({ id }, queryOptions),
+      filterByNamespace: countersByN.query(
+        { namespace: "another", id },
+        queryOptions
+      ),
+      betweenN: allCountersByN.query(
+        {
+          id,
+          n: { $between: [2, 100] },
+        },
+        queryOptions
+      ),
+      greaterThanN: allCountersByN.query(
+        {
+          id,
+          n: { $gt: 1 },
+        },
+        queryOptions
+      ),
       reverse: countersByNamespace.query(
         { id, namespace: { $beginsWith: "d" } },
-        { direction: "DESC" }
+        { direction: "DESC", ...queryOptions }
       ),
       // sparse indices only include records with the given field
-      sparse: countersByOptional2.query({ id }),
+      sparse: countersByOptional2.query({ id }, queryOptions),
       // between using a multi-attribute key
-      inlineBetween: countersByOptional2.query({
-        id,
-        $between: [{ optional: "h" }, { optional: "hello", n: 0 }],
-      }),
+      inlineBetween: countersByOptional2.query(
+        {
+          id,
+          $between: [{ optional: "h" }, { optional: "hello", n: 0 }],
+        },
+        queryOptions
+      ),
     };
 
     const result = Object.fromEntries(
@@ -715,10 +729,14 @@ export const entityIndexTask = task(
               name,
               (
                 await q
-              ).entries?.map((e) => ({
-                n: e.value.n,
-                namespace: e.value.namespace,
-              })),
+              ).entries?.map((e) => {
+                // @ts-expect-error - the queries should all use query.select to return only namespace and n
+                e.value.id;
+                // @ts-check
+                e.value.n;
+                // @ts-check - should not error
+                return e.value;
+              }),
             ] as const
         )
       )
@@ -792,14 +810,35 @@ export const entityWorkflow = workflow(
       n: (counter1?.n ?? 0) + 1,
     });
 
-    const counters = await counterCollection.query({ id });
-    const countersInOrder = await counterCollectionOrderByN.query({ id });
+    const counters = await counterCollection.query(
+      { id },
+      // only return the n and counterNumber attributes
+      { select: ["n", "counterNumber"] }
+    );
+    const countersInOrder = await counterCollectionOrderByN.query(
+      { id },
+      { select: ["n", "counterNumber"] }
+    );
 
     return [
       result0,
       result1,
-      counters.entries?.map((c) => [c.value.counterNumber, c.value.n]),
-      countersInOrder.entries?.map((c) => [c.value.counterNumber, c.value.n]),
+      counters.entries?.map((c) => {
+        // @ts-expect-error - the queries should all use query.select to return only namespace and n
+        c.value.id;
+        // @ts-check - should not error
+        c.value.counterNumber;
+        // @ts-check - should not error
+        return c.value;
+      }),
+      countersInOrder.entries?.map((c) => {
+        // @ts-expect-error - the queries should all use query.select to return only namespace and n
+        c.value.id;
+        // @ts-check - should not error
+        c.value.counterNumber;
+        // @ts-check - should not error
+        return c.value;
+      }),
     ];
   }
 );

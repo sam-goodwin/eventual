@@ -108,7 +108,7 @@ export abstract class EntityStore implements EntityHook {
   public query(
     entityName: string,
     queryKey: QueryKey<any, any, any>,
-    options?: EntityQueryOptions | undefined
+    options?: EntityQueryOptions<any, any>
   ): Promise<EntityQueryResult> {
     const entity = this.getEntity(entityName);
     const normalizedKey = normalizeCompositeQueryKey(entity, queryKey);
@@ -128,8 +128,8 @@ export abstract class EntityStore implements EntityHook {
     entityName: string,
     indexName: string,
     queryKey: QueryKey<any, any, any>,
-    options?: EntityQueryOptions | undefined
-  ): Promise<EntityQueryOptions> {
+    options?: EntityQueryOptions
+  ): Promise<EntityQueryResult> {
     const index = this.getEntity(entityName).indices.find(
       (i) => i.name === indexName
     );
@@ -159,7 +159,7 @@ export abstract class EntityStore implements EntityHook {
 
   public scan(
     entityName: string,
-    options?: EntityScanOptions | undefined
+    options?: EntityScanOptions<any, any>
   ): Promise<EntityQueryResult> {
     const entity = this.getEntity(entityName);
 
@@ -170,7 +170,7 @@ export abstract class EntityStore implements EntityHook {
     entityName: string,
     indexName: string,
     options?: EntityScanOptions | undefined
-  ): Promise<EntityQueryOptions> {
+  ): Promise<EntityQueryResult> {
     const index = this.getEntity(entityName).indices.find(
       (i) => i.name === indexName
     );

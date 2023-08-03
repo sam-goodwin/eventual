@@ -142,7 +142,7 @@ export class LocalEntityStore extends EntityStore {
   protected override async _query(
     entityOrIndex: Entity | EntityIndex,
     queryKey: NormalizedEntityCompositeQueryKey,
-    options?: EntityQueryOptions
+    options?: EntityQueryOptions<any, any>
   ): Promise<EntityQueryResult> {
     const partition = this.getPartitionMap(entityOrIndex, queryKey.partition);
 
@@ -199,7 +199,13 @@ export class LocalEntityStore extends EntityStore {
       entries: items?.map(
         ([, value]) =>
           ({
-            value: value.value,
+            value: options?.select
+              ? Object.fromEntries(
+                  Object.entries(value.value).filter(([name]) =>
+                    options.select.includes(name)
+                  )
+                )
+              : value.value,
             version: value.version,
           } satisfies EntityWithMetadata)
       ),
@@ -212,7 +218,7 @@ export class LocalEntityStore extends EntityStore {
    */
   protected override async _scan(
     entity: Entity | EntityIndex,
-    options?: EntityScanOptions
+    options?: EntityScanOptions<any, any>
   ): Promise<EntityQueryResult> {
     const store = this.getLocalEntityStore(entity);
 
@@ -231,7 +237,16 @@ export class LocalEntityStore extends EntityStore {
 
     // values should be sorted
     return {
-      entries: items,
+      entries: items.map((value) => ({
+        value: options?.select
+          ? Object.fromEntries(
+              Object.entries(value.value).filter(([name]) =>
+                options.select.includes(name)
+              )
+            )
+          : value.value,
+        version: value.version,
+      })),
       nextToken,
     };
   }

@@ -226,14 +226,14 @@ eventualRuntimeTestHarness(
       },
       { n: 7 },
       [
-        [1, 1],
-        [2, 2],
-        [3, 1],
+        { counterNumber: 1, n: 1 },
+        { counterNumber: 2, n: 2 },
+        { counterNumber: 3, n: 1 },
       ],
       expect.arrayContaining([
-        [3, 1],
-        [1, 1],
-        [2, 2],
+        { counterNumber: 1, n: 1 },
+        { counterNumber: 2, n: 2 },
+        { counterNumber: 3, n: 1 },
       ]),
     ]);
 
