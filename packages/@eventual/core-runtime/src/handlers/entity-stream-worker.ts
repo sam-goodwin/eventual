@@ -1,6 +1,7 @@
 import type { EntityStreamContext, EntityStreamItem } from "@eventual/core";
 import { ServiceType, getEventualResource } from "@eventual/core/internal";
 import { serviceTypeScope } from "../service-type.js";
+import { normalizeCompositeKey } from "../stores/entity-store.js";
 import { getLazy, promiseAllSettledPartitioned } from "../utils.js";
 import { registerWorkerIntrinsics, type WorkerIntrinsicDeps } from "./utils.js";
 
@@ -23,12 +24,10 @@ export function createEntityStreamWorker(
 
   return async (entityName, streamName, items) =>
     serviceTypeScope(ServiceType.EntityStreamWorker, async () => {
-      const streamHandler = getEventualResource(
-        "Entity",
-        entityName
-      )?.streams.find((s) => s.name === streamName);
+      const entity = getEventualResource("Entity", entityName);
+      const streamHandler = entity?.streams.find((s) => s.name === streamName);
 
-      if (!streamHandler) {
+      if (!entity || !streamHandler) {
         throw new Error(`Stream handler ${streamName} does not exist`);
       }
 
@@ -45,20 +44,34 @@ export function createEntityStreamWorker(
 
         return { failedItemIds: result?.failedItemIds ?? [] };
       } else {
+        const itemsByKey: Record<string, EntityStreamItem<any>[]> = {};
+        items.forEach((item) => {
+          const normalizedKey = normalizeCompositeKey(entity, item.key);
+          const serializedKey = JSON.stringify(normalizedKey);
+          (itemsByKey[serializedKey] ??= []).push(item);
+        });
+
         const results = await promiseAllSettledPartitioned(
-          items,
-          async (item) => {
-            return await streamHandler.handler(item, context);
+          Object.entries(itemsByKey),
+          async ([, itemGroup]) => {
+            for (const i in itemGroup) {
+              const item = itemGroup[i]!;
+              try {
+                const result = await streamHandler.handler(item, context);
+                // if the handler doesn't fail and doesn't return false, continue
+                if (result !== false) {
+                  continue;
+                }
+              } catch {}
+              // if the handler fails or returns false, return the rest of the items
+              return itemGroup.slice(Number(i)).map((i) => i.id);
+            }
+            return [];
           }
         );
 
         return {
-          failedItemIds: [
-            ...results.rejected.map(([e]) => e.id),
-            ...results.fulfilled
-              .filter(([, r]) => r === false)
-              .map(([e]) => e.id),
-          ],
+          failedItemIds: results.fulfilled.flatMap((s) => s[1]),
         };
       }
     });
