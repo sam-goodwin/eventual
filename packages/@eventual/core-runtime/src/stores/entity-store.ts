@@ -10,7 +10,7 @@ import {
   EntityQueryResult,
   EntityReadOptions,
   EntityScanOptions,
-  EntitySetOptions,
+  EntityPutOptions,
   EntityTransactItem,
   EntityWithMetadata,
   KeyMap,
@@ -62,10 +62,10 @@ export abstract class EntityStore implements EntityHook {
     options?: EntityReadOptions
   ): Promise<EntityWithMetadata | undefined>;
 
-  public set(
+  public put(
     entityName: string,
     value: Attributes,
-    options?: EntitySetOptions
+    options?: EntityPutOptions
   ): Promise<{ version: number }> {
     const entity = this.getEntity(entityName);
     const normalizedKey = normalizeCompositeKey(entity, value);
@@ -74,14 +74,14 @@ export abstract class EntityStore implements EntityHook {
       throw new Error("Key cannot be partial for set.");
     }
 
-    return this._set(entity, value, normalizedKey, options);
+    return this._put(entity, value, normalizedKey, options);
   }
 
-  protected abstract _set(
+  protected abstract _put(
     entity: Entity,
     value: Attributes,
     key: NormalizedEntityCompositeKeyComplete,
-    options?: EntitySetOptions
+    options?: EntityPutOptions
   ): Promise<{ version: number }>;
 
   public delete(
@@ -196,7 +196,7 @@ export abstract class EntityStore implements EntityHook {
           typeof item.entity === "string"
             ? this.getEntity(item.entity)
             : item.entity;
-        const keyValue = item.operation === "set" ? item.value : item.key;
+        const keyValue = item.operation === "put" ? item.value : item.key;
         const key = normalizeCompositeKey(entity, keyValue);
         if (!isCompleteKey(key)) {
           throw new Error(
@@ -204,9 +204,9 @@ export abstract class EntityStore implements EntityHook {
           );
         }
 
-        return item.operation === "set"
+        return item.operation === "put"
           ? {
-              operation: "set",
+              operation: "put",
               entity,
               key,
               value: item.value,
@@ -248,9 +248,9 @@ export type NormalizedEntityTransactItem = {
   key: NormalizedEntityCompositeKeyComplete;
 } & (
   | {
-      operation: "set";
+      operation: "put";
       value: Attributes;
-      options?: EntitySetOptions;
+      options?: EntityPutOptions;
     }
   | {
       operation: "delete";

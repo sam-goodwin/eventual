@@ -6,7 +6,7 @@ import {
   EntityQueryOptions,
   EntityQueryResult,
   EntityScanOptions,
-  EntitySetOptions,
+  EntityPutOptions,
   EntityStreamItem,
   EntityWithMetadata,
   KeyValue,
@@ -70,11 +70,11 @@ export class LocalEntityStore extends EntityStore {
     return this.getPartitionMap(entity, key.partition).get(skOrDefault(key));
   }
 
-  protected override async _set(
+  protected override async _put(
     entity: Entity,
     value: Attributes,
     key: NormalizedEntityCompositeKeyComplete,
-    options?: EntitySetOptions
+    options?: EntityPutOptions
   ): Promise<{ version: number }> {
     const { version = 0, value: oldValue } =
       (await this._getWithMetadata(entity, key)) ?? {};
@@ -296,8 +296,8 @@ export class LocalEntityStore extends EntityStore {
      */
     await Promise.all(
       items.map(async (item) => {
-        if (item.operation === "set") {
-          return await this._set(
+        if (item.operation === "put") {
+          return await this._put(
             item.entity,
             item.value,
             item.key,

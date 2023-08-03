@@ -24,7 +24,7 @@ import {
   EntityQueryResult,
   EntityReadOptions,
   EntityScanOptions,
-  EntitySetOptions,
+  EntityPutOptions,
   EntityWithMetadata,
   KeyValue,
   TransactionCancelled,
@@ -122,11 +122,11 @@ export class AWSEntityStore extends EntityStore {
     };
   }
 
-  public override async _set(
+  public override async _put(
     entity: Entity,
     value: Attributes,
     key: NormalizedEntityCompositeKeyComplete,
-    options?: EntitySetOptions
+    options?: EntityPutOptions
   ): Promise<{ version: number }> {
     try {
       const result = await this.props.dynamo.send(
@@ -341,7 +341,7 @@ export class AWSEntityStore extends EntityStore {
       await this.props.dynamo.send(
         new TransactWriteItemsCommand({
           TransactItems: items.map((item): TransactWriteItem => {
-            return item.operation === "set"
+            return item.operation === "put"
               ? {
                   Update: this.createSetRequest(
                     item.entity,
@@ -416,7 +416,7 @@ export class AWSEntityStore extends EntityStore {
     entity: Entity,
     value: Attr,
     key: NormalizedEntityCompositeKey,
-    options?: EntitySetOptions
+    options?: EntityPutOptions
   ): Update {
     const indexGeneratedAttributes = computeGeneratedIndexKeyAttributes(
       entity,

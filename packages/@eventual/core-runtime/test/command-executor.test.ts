@@ -63,7 +63,7 @@ const mockExecutionQueueClient = {
 const mockEntityStore = {
   get: jest.fn() as EntityStore["get"],
   getWithMetadata: jest.fn() as EntityStore["getWithMetadata"],
-  set: jest.fn() as EntityStore["set"],
+  put: jest.fn() as EntityStore["put"],
   delete: jest.fn() as EntityStore["delete"],
   query: jest.fn() as EntityStore["query"],
 } satisfies Partial<EntityStore> as EntityStore;
@@ -289,14 +289,14 @@ describe("entity request", () => {
     });
   });
 
-  test("set", async () => {
+  test("put", async () => {
     const event = await testExecutor.executeCall(
       workflow,
       executionId,
       entityRequestCall(
         {
           entityName: "ent",
-          operation: "set",
+          operation: "put",
           params: [{ key: "key", value: "some value" }],
         },
         0
@@ -304,7 +304,7 @@ describe("entity request", () => {
       baseTime
     );
 
-    expect(mockEntityStore.set).toHaveBeenCalledWith("ent", {
+    expect(mockEntityStore.put).toHaveBeenCalledWith("ent", {
       key: "key",
       value: "some value",
     });
@@ -314,7 +314,7 @@ describe("entity request", () => {
       type: WorkflowEventType.EntityRequest,
       operation: {
         entityName: "ent",
-        operation: "set",
+        operation: "put",
         params: [{ key: "key", value: "some value" }],
       },
       timestamp: expect.stringContaining("Z"),

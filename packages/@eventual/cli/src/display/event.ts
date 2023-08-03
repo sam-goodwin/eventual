@@ -67,12 +67,12 @@ function displayEntityCommand(operation: EntityOperation) {
       const [key] = operation.params;
       output.push(`Key: ${JSON.stringify(key)}`);
     }
-    if (isEntityOperationOfType("set", operation)) {
+    if (isEntityOperationOfType("put", operation)) {
       const [value] = operation.params;
       output.push(`Entity: ${JSON.stringify(value)}`);
     }
     if (
-      isEntityOperationOfType("set", operation) ||
+      isEntityOperationOfType("put", operation) ||
       isEntityOperationOfType("delete", operation)
     ) {
       const [, options] = operation.params;
@@ -97,9 +97,9 @@ function displayEntityCommand(operation: EntityOperation) {
 function displayEntityTransactItem(item: EntityTransactItem): string[] {
   const entityName =
     typeof item.entity === "string" ? item.entity : item.entity.name;
-  if (item.operation === "set") {
+  if (item.operation === "put") {
     return displayEntityCommand({
-      operation: "set",
+      operation: "put",
       entityName,
       params: [item.value, item.options],
     });

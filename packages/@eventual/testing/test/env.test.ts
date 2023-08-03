@@ -1305,10 +1305,10 @@ const myEntityWithSort = entity("testEntity2", {
 describe("entity", () => {
   test("workflow and task uses get and set", async () => {
     const entityTask = task(async (_, { execution: { id } }) => {
-      await myEntity.set({ id, n: ((await myEntity.get([id]))?.n ?? 0) + 1 });
+      await myEntity.put({ id, n: ((await myEntity.get([id]))?.n ?? 0) + 1 });
     });
     const wf = workflow(async (_, { execution: { id } }) => {
-      await myEntity.set({ id, n: 1 });
+      await myEntity.put({ id, n: 1 });
       await entityTask();
       const value = await myEntity.get([id]);
       myEntity.delete({ id });
@@ -1333,14 +1333,14 @@ describe("entity", () => {
   test("workflow and task uses get and set with partitions and sort keys", async () => {
     const entityTask = task(async (part: string, { execution: { id } }) => {
       const key = { part, id };
-      await myEntityWithSort.set({
+      await myEntityWithSort.put({
         ...key,
         n: ((await myEntityWithSort.get(key))?.n ?? 0) + 1,
       });
     });
     const wf = workflow(async (_, { execution: { id } }) => {
-      await myEntityWithSort.set({ part: "1", id, n: 1 });
-      await myEntityWithSort.set({ part: "2", id, n: 100 });
+      await myEntityWithSort.put({ part: "1", id, n: 1 });
+      await myEntityWithSort.put({ part: "2", id, n: 100 });
       await entityTask("1");
       await entityTask("2");
       const value = await myEntityWithSort.get({ part: "1", id });
@@ -1369,21 +1369,21 @@ describe("entity", () => {
     const wf = workflow(async (_, { execution: { id } }) => {
       const key = { part: "versionTest", id };
       // set - version 1 - value 1
-      const { version } = await myEntityWithSort.set({ ...key, n: 1 });
+      const { version } = await myEntityWithSort.put({ ...key, n: 1 });
       // set - version 2 - value 2
-      const { version: version2 } = await myEntityWithSort.set(
+      const { version: version2 } = await myEntityWithSort.put(
         { ...key, n: 2 },
         { expectedVersion: version }
       );
       try {
         // try set to 3, fail
-        await myEntityWithSort.set(
+        await myEntityWithSort.put(
           { ...key, n: 3 },
           { expectedVersion: version }
         );
       } catch {
         // set - version 2 (unchanged) - value 3
-        await myEntityWithSort.set(
+        await myEntityWithSort.put(
           { ...key, n: 4 },
           { expectedVersion: version2, incrementVersion: false }
         );
@@ -1393,7 +1393,7 @@ describe("entity", () => {
         await myEntityWithSort.delete(key, { expectedVersion: version });
       } catch {
         // set - version 3 - value 5
-        await myEntityWithSort.set(
+        await myEntityWithSort.put(
           { ...key, n: 5 },
           { expectedVersion: version2 }
         );
@@ -1436,19 +1436,19 @@ describe("entity", () => {
         return Entity.transactWrite([
           partition
             ? {
-                operation: "set",
+                operation: "put",
                 value: { part: partition, id, n: value },
                 options: { expectedVersion: version },
                 entity: myEntityWithSort,
               }
             : {
-                operation: "set",
+                operation: "put",
                 value: { id, n: value },
                 options: { expectedVersion: version },
                 entity: myEntity,
               },
           {
-            operation: "set",
+            operation: "put",
             value: { part: "3", id, n: value },
             options: { expectedVersion: version },
             entity: myEntityWithSort,
@@ -1458,13 +1458,13 @@ describe("entity", () => {
     );
 
     const wf = workflow(async (_, { execution: { id } }) => {
-      const { version: version1 } = await myEntity.set({ id, n: 1 });
-      const { version: version2 } = await myEntityWithSort.set({
+      const { version: version1 } = await myEntity.put({ id, n: 1 });
+      const { version: version2 } = await myEntityWithSort.put({
         id,
         part: "2",
         n: 1,
       });
-      await myEntityWithSort.set({ id, part: "3", n: 1 });
+      await myEntityWithSort.put({ id, part: "3", n: 1 });
 
       await testTask({ version: version1, value: 2 });
       try {

@@ -7,7 +7,7 @@ import {
   type EntityTransactConditionalOperation,
   type EntityTransactDeleteOperation,
   type EntityTransactItem,
-  type EntityTransactSetOperation,
+  type EntityTransactPutOperation,
   type EntityWithMetadata,
   type KeyMap,
   type TransactionContext,
@@ -143,7 +143,7 @@ export function createTransactionExecutor(
         }
     > {
       // a map of the keys of all mutable entity calls that have been made to the request
-      const entityCalls = new Map<string, EntityOperation<"set" | "delete">>();
+      const entityCalls = new Map<string, EntityOperation<"put" | "delete">>();
       // store all of the event and signal calls to execute after the transaction completes
       const eventCalls: (EmitEventsCall | SendSignalCall)[] = [];
       // a map of the keys of all get operations or mutation operations to check during the transaction.
@@ -154,11 +154,11 @@ export function createTransactionExecutor(
         registerEventualCall: (eventual): any => {
           if (isEntityCall(eventual)) {
             if (
-              isEntityOperationOfType("set", eventual) ||
+              isEntityOperationOfType("put", eventual) ||
               isEntityOperationOfType("delete", eventual)
             ) {
               return createEventualPromise<
-                Awaited<ReturnType<Entity["delete"] | Entity["set"]>>
+                Awaited<ReturnType<Entity["delete"] | Entity["put"]>>
               >(async () => {
                 const entity = getEntity(eventual.entityName);
                 // should either by the key or the value object, which can be used as the key
@@ -192,7 +192,7 @@ export function createTransactionExecutor(
                 }
 
                 entityCalls.set(serializedKey, eventual);
-                if (isEntityOperationOfType("set", eventual)) {
+                if (isEntityOperationOfType("put", eventual)) {
                   const newVersion = entityValue.originalVersion + 1;
                   retrievedEntities.set(serializedKey, {
                     entityName: eventual.entityName,
@@ -279,16 +279,16 @@ export function createTransactionExecutor(
         if (call) {
           const [, options] = call.params;
 
-          return call.operation === "set"
+          return call.operation === "put"
             ? ({
                 entity: entityName,
-                operation: "set",
+                operation: "put",
                 value: call.params[0],
                 options: {
                   ...options,
                   expectedVersion: originalVersion,
                 },
-              } satisfies EntityTransactSetOperation)
+              } satisfies EntityTransactPutOperation)
             : ({
                 entity: entityName,
                 operation: "delete",
@@ -340,7 +340,7 @@ export function createTransactionExecutor(
                   // normalize the key to extract only the key fields.
                   const key = normalizeCompositeKey(
                     entity,
-                    x.operation === "set" ? x.value : x.key
+                    x.operation === "put" ? x.value : x.key
                   );
                   return {
                     entityName: entity.name,
