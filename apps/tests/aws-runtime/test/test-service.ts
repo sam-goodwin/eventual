@@ -613,11 +613,12 @@ export const counterWatcher = counter.stream(
   "counterWatcher",
   { operations: ["modify", "remove"], includeOld: true },
   async (item) => {
-    const { n } = item.oldValue!;
+    console.log(item);
     if (item.operation === "remove") {
-      console.log(item);
+      const { n } = item.oldValue!;
       await entitySignal2.sendSignal(item.key.id, { n: n + 1 });
     } else if (item.newValue.namespace === "default") {
+      const { n } = item.newValue;
       await entityOrderSignal.sendSignal(item.key.id, { n });
     }
   }
@@ -663,10 +664,29 @@ export const entityTask = task(
   "entityTask",
   async (_, { execution: { id } }) => {
     const value = await counter.get(["default", id]);
+    // send 4 updates to force multiple update events at the same time and test stream ordering
     await counter.put({
       namespace: "default",
       id,
       n: (value?.n ?? 0) + 1,
+      optional: undefined,
+    });
+    await counter.put({
+      namespace: "default",
+      id,
+      n: (value?.n ?? 0) + 2,
+      optional: undefined,
+    });
+    await counter.put({
+      namespace: "default",
+      id,
+      n: (value?.n ?? 0) + 3,
+      optional: undefined,
+    });
+    await counter.put({
+      namespace: "default",
+      id,
+      n: (value?.n ?? 0) + 4,
       optional: undefined,
     });
   }
@@ -754,20 +774,21 @@ export const entityWorkflow = workflow(
   "entityWorkflow",
   async (_, { execution: { id } }) => {
     let orderValue = 0;
+    let orderError: string | undefined;
     // this signal handler is intended to test that the counter stream is executed in order.
     // it sends a signal each time the "default" name space counter is updated
     // and we want to check if the order is always increasing
     // and then validate the order value against the final value at the end.
     entityOrderSignal.onSignal(({ n }) => {
-      if (n >= orderValue) {
+      if (n > orderValue) {
+        console.log(`Ordered Value: ${orderValue} ${n}`);
         orderValue = n;
       } else {
-        throw new Error(
-          `order value ${n} is less than previous value ${orderValue}, the stream handler executed out of order!`
-        );
+        orderError = `order value ${n} is less than or equal to previous value ${orderValue}, the stream handler executed out of order!`;
       }
     });
 
+    // default: 1
     await counter.put({ namespace: "default", id, n: 1, optional: undefined });
     await counter.put({
       namespace: "different",
@@ -775,8 +796,11 @@ export const entityWorkflow = workflow(
       n: 1,
       optional: undefined,
     });
+    // default: 2 after insert "different"
     await entitySignal.expectSignal();
+    // default: 6 after entity task (adds 4)
     await entityTask();
+    // default: 7 after event subscription
     await Promise.all([entityEvent.emit({ id }), entitySignal.expectSignal()]);
     try {
       // will fail
@@ -789,6 +813,7 @@ export const entityWorkflow = workflow(
     }
     const { value: entityValue, version } =
       (await counter.getWithMetadata(["default", id])) ?? {};
+    // default: 8 after get with metadata and successful assertion
     await counter.put(
       { namespace: "default", id, n: entityValue!.n + 1, optional: undefined },
       { expectedVersion: version }
@@ -802,6 +827,9 @@ export const entityWorkflow = workflow(
       },
     ]);
 
+    // default: 9 after transact write
+    const finalValue = await counter.get(["default", id]);
+
     const result0 = await entityIndexTask();
 
     // send deletion, to be picked up by the stream
@@ -814,14 +842,18 @@ export const entityWorkflow = workflow(
     ]);
 
     if (
+      orderError ||
       // wait 30 seconds for the order value to match the final value.
       !(await condition(
-        { timeout: duration(30, "seconds") },
-        () => value?.n === orderValue
+        { timeout: duration(300, "seconds") },
+        () => finalValue?.n === orderValue
       ))
     ) {
+      if (orderError) {
+        throw new Error(orderError);
+      }
       throw new Error(
-        `Order handler never received the final value! have: ${orderValue} expected: ${value?.n}`
+        `Order handler never received the final value! have: ${orderValue} expected: ${finalValue?.n}`
       );
     }
 

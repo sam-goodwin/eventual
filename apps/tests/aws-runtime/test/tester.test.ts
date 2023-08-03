@@ -132,7 +132,7 @@ eventualRuntimeTestHarness(
           },
           {
             namespace: "default",
-            n: 6,
+            n: 9,
           },
           {
             namespace: "another2",
@@ -150,7 +150,7 @@ eventualRuntimeTestHarness(
           },
           {
             namespace: "default",
-            n: 6,
+            n: 9,
           },
           {
             namespace: "another",
@@ -168,7 +168,7 @@ eventualRuntimeTestHarness(
           },
           {
             namespace: "default",
-            n: 6,
+            n: 9,
           },
           {
             namespace: "different",
@@ -184,13 +184,13 @@ eventualRuntimeTestHarness(
         betweenN: [
           {
             namespace: "default",
-            n: 6,
+            n: 9,
           },
         ],
         greaterThanN: [
           {
             namespace: "default",
-            n: 6,
+            n: 9,
           },
           {
             namespace: "another",
@@ -204,7 +204,7 @@ eventualRuntimeTestHarness(
           },
           {
             namespace: "default",
-            n: 6,
+            n: 9,
           },
         ],
         sparse: [
@@ -224,7 +224,7 @@ eventualRuntimeTestHarness(
           },
         ],
       },
-      { n: 7 },
+      { n: 10 },
       [
         { counterNumber: 1, n: 1 },
         { counterNumber: 2, n: 2 },
