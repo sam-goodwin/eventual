@@ -23,4 +23,5 @@ export default {
   search: {
     indices: [],
   },
+  queues: [],
 } satisfies ServiceSpec;

@@ -30,7 +30,7 @@ import {
   keyHasInlineBetween,
   type EntityMethod,
   type KeyDefinition,
-  type KeyDefinitionPart,
+  type KeyDefinitionPart
 } from "@eventual/core/internal";
 import type { EntityProvider } from "../providers/entity-provider.js";
 

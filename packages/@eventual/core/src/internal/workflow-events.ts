@@ -6,6 +6,7 @@ import type {
   BucketMethod,
   BucketOperation,
   EntityOperation,
+  QueueOperation,
   SearchOperation,
 } from "./calls.js";
 import type { SignalTarget } from "./signal.js";
@@ -43,7 +44,9 @@ export interface CallEventBase<
  * 15 - Workflow run stated
  * 16 > 19 - Padding
  * 20 - Call Event
- * 21-49 - Open
+ * 21-23 - Open
+ * 24 - Signal Received
+ * 25-49 - Open
  * 50 > 79 (current max: 61) - Completed Events
  * 80 - Workflow Run Completed
  * 81 > 89 - Padding
@@ -59,13 +62,15 @@ export enum WorkflowEventType {
   ChildWorkflowFailed = 51,
   EntityRequestFailed = 52,
   EntityRequestSucceeded = 53,
-  TransactionRequestFailed = 54,
-  TransactionRequestSucceeded = 55,
+  QueueRequestSucceeded = 56,
+  QueueRequestFailed = 64,
   SignalReceived = 24,
   TaskSucceeded = 46,
   TaskFailed = 57,
   TaskHeartbeatTimedOut = 58,
   TimerCompleted = 59,
+  TransactionRequestFailed = 54,
+  TransactionRequestSucceeded = 55,
   WorkflowSucceeded = 95,
   WorkflowFailed = 96,
   WorkflowStarted = 10,
@@ -78,6 +83,7 @@ export enum WorkflowEventType {
 
 export enum WorkflowCallHistoryType {
   BucketRequest = 0,
+  QueueRequest = 10,
   ChildWorkflowScheduled = 1,
   EntityRequest = 2,
   EventsEmitted = 3,
@@ -107,6 +113,7 @@ export type WorkflowCallHistoryEvent =
   | SearchRequest
   | EntityRequest
   | EventsEmitted
+  | QueueRequest
   | SignalSent
   | TaskScheduled
   | TimerScheduled
@@ -122,6 +129,8 @@ export type CompletionEvent =
   | ChildWorkflowSucceeded
   | EntityRequestFailed
   | EntityRequestSucceeded
+  | QueueRequestSucceeded
+  | QueueRequestFailed
   | SignalReceived
   | SearchRequestSucceeded
   | SearchRequestFailed
@@ -146,6 +155,8 @@ export const isCompletionEvent = /* @__PURE__ */ or(
   isChildWorkflowSucceeded,
   isEntityRequestFailed,
   isEntityRequestSucceeded,
+  isQueueRequestFailed,
+  isQueueRequestSucceeded,
   isSignalReceived,
   isTaskSucceeded,
   isTaskFailed,
@@ -297,6 +308,45 @@ export function isTaskHeartbeatTimedOut(
   event: WorkflowEvent
 ): event is TaskHeartbeatTimedOut {
   return event.type === WorkflowEventType.TaskHeartbeatTimedOut;
+}
+
+export interface QueueRequest
+  extends CallEventBase<WorkflowCallHistoryType.QueueRequest> {
+  type: WorkflowCallHistoryType.QueueRequest;
+  operation: QueueOperation;
+}
+
+export interface QueueRequestSucceeded
+  extends CallEventResultBase<WorkflowEventType.QueueRequestSucceeded> {
+  name?: string;
+  operation: QueueOperation["operation"];
+  result: any;
+}
+
+export interface QueueRequestFailed
+  extends CallEventResultBase<WorkflowEventType.QueueRequestFailed> {
+  operation: QueueOperation["operation"];
+  name?: string;
+  error: string;
+  message: string;
+}
+
+export function isQueueRequest(
+  event: WorkflowCallHistoryEvent
+): event is QueueRequest {
+  return event.type === WorkflowCallHistoryType.QueueRequest;
+}
+
+export function isQueueRequestSucceeded(
+  event: WorkflowEvent
+): event is QueueRequestSucceeded {
+  return event.type === WorkflowEventType.QueueRequestSucceeded;
+}
+
+export function isQueueRequestFailed(
+  event: WorkflowEvent
+): event is QueueRequestFailed {
+  return event.type === WorkflowEventType.QueueRequestFailed;
 }
 
 export interface EntityRequest
