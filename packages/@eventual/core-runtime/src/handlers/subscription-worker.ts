@@ -1,12 +1,8 @@
-import { EventEnvelope } from "@eventual/core";
+import { EventEnvelope, ServiceContext } from "@eventual/core";
 import { ServiceType } from "@eventual/core/internal";
 import { SubscriptionProvider } from "../providers/subscription-provider.js";
-import {
-  WorkerIntrinsicDeps,
-  registerWorkerIntrinsics,
-  getServiceContext,
-} from "./utils.js";
-import { serviceTypeScope } from "../service-type.js";
+import { getLazy } from "../utils.js";
+import { WorkerIntrinsicDeps, createEventualWorker } from "./worker.js";
 
 /**
  * The dependencies of {@link createSubscriptionWorker}.
@@ -31,21 +27,27 @@ export interface SubscriptionWorker {
 export function createSubscriptionWorker(
   deps: EventHandlerDependencies
 ): SubscriptionWorker {
-  registerWorkerIntrinsics(deps);
-
-  return async function (events) {
-    return await serviceTypeScope(ServiceType.Subscription, async () => {
+  const serviceContext: ServiceContext = {
+    serviceName: getLazy(deps.serviceName),
+    serviceUrl: getLazy(deps.serviceUrl),
+  };
+  return createEventualWorker(
+    ServiceType.Subscription,
+    deps,
+    async (events) => {
       await Promise.allSettled(
         events.map((event) =>
           Promise.allSettled(
             deps.subscriptionProvider
               .getSubscriptionsForEvent(event.name)
               .map((handler) =>
-                handler(event.event, { service: getServiceContext(deps) })
+                handler(event.event, {
+                  service: serviceContext,
+                })
               )
           )
         )
       );
-    });
-  };
+    }
+  );
 }

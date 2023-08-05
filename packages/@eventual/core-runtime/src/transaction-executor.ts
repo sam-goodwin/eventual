@@ -26,7 +26,7 @@ import {
   isSendSignalCall,
   type EmitEventsCall,
   type EntityOperation,
-  type EventualCallHook,
+  type EventualHook,
   type SendSignalCall,
 } from "@eventual/core/internal";
 import type { EventClient } from "./clients/event-client.js";
@@ -150,8 +150,8 @@ export function createTransactionExecutor(
       // also serves as a get cache when get is called multiple times on the same keys
       const retrievedEntities = new Map<string, TransactionEntityState>();
 
-      const eventualCallHook: EventualCallHook = {
-        registerEventualCall: (eventual): any => {
+      const eventualCallHook: EventualHook = {
+        executeEventualCall: (eventual): any => {
           if (isEntityCall(eventual)) {
             if (
               isEntityOperationOfType("put", eventual) ||

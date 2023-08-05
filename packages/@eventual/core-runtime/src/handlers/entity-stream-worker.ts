@@ -1,8 +1,7 @@
 import type { EntityStreamContext, EntityStreamItem } from "@eventual/core";
 import { ServiceType, getEventualResource } from "@eventual/core/internal";
-import { serviceTypeScope } from "../service-type.js";
 import { getLazy, promiseAllSettledPartitioned } from "../utils.js";
-import { registerWorkerIntrinsics, type WorkerIntrinsicDeps } from "./utils.js";
+import { createEventualWorker, type WorkerIntrinsicDeps } from "./worker.js";
 
 export interface EntityStreamWorker {
   (
@@ -19,10 +18,10 @@ type EntityStreamWorkerDependencies = WorkerIntrinsicDeps;
 export function createEntityStreamWorker(
   dependencies: EntityStreamWorkerDependencies
 ): EntityStreamWorker {
-  registerWorkerIntrinsics(dependencies);
-
-  return async (entityName, streamName, items) =>
-    serviceTypeScope(ServiceType.EntityStreamWorker, async () => {
+  return createEventualWorker(
+    ServiceType.EntityStreamWorker,
+    dependencies,
+    async (entityName, streamName, items) => {
       const streamHandler = getEventualResource(
         "Entity",
         entityName
@@ -61,5 +60,6 @@ export function createEntityStreamWorker(
           ],
         };
       }
-    });
+    }
+  );
 }

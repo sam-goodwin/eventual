@@ -1,9 +1,6 @@
 import type { z } from "zod";
 import { createEventualCall, EventualCallKind } from "./internal/calls.js";
-import {
-  getServiceClient,
-  registerEventualResource,
-} from "./internal/global.js";
+import { registerEventualResource } from "./internal/global.js";
 import { EventSpec, isSourceLocation } from "./internal/service-spec.js";
 import type { Subscription, SubscriptionRuntimeProps } from "./subscription.js";
 
@@ -149,13 +146,10 @@ export function event<E extends EventPayload>(
         name,
         event,
       }));
-      return getEventualCallHook().registerEventualCall(
+      return getEventualHook().executeEventualCall(
         createEventualCall(EventualCallKind.EmitEventsCall, {
           events: envelopes,
-        }),
-        () => {
-          return getServiceClient().emitEvents({ events: envelopes });
-        }
+        })
       );
     },
   });

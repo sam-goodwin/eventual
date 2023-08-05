@@ -1,4 +1,4 @@
-import {
+import type {
   Attributes,
   BetweenProgressiveKeyCondition,
   BetweenQueryKeyCondition,
@@ -6,11 +6,11 @@ import {
   Entity,
   EntityConsistencyOptions,
   EntityIndex,
+  EntityPutOptions,
   EntityQueryOptions,
   EntityQueryResult,
   EntityReadOptions,
   EntityScanOptions,
-  EntityPutOptions,
   EntityTransactItem,
   EntityWithMetadata,
   KeyMap,
@@ -20,9 +20,6 @@ import {
   QueryKeyMap,
 } from "@eventual/core";
 import {
-  EntityHook,
-  KeyDefinition,
-  KeyDefinitionPart,
   assertNever,
   isBeginsWithQueryKeyCondition,
   isBetweenQueryKeyCondition,
@@ -31,10 +28,33 @@ import {
   isLessThanEqualsQueryKeyCondition,
   isLessThanQueryKeyCondition,
   keyHasInlineBetween,
+  type EntityMethod,
+  type KeyDefinition,
+  type KeyDefinitionPart,
 } from "@eventual/core/internal";
-import { EntityProvider } from "../providers/entity-provider.js";
+import type { EntityProvider } from "../providers/entity-provider.js";
 
-export abstract class EntityStore implements EntityHook {
+export type EntityStoreBase = {
+  [K in EntityMethod]: (
+    entityName: string,
+    ...args: Parameters<Entity[K]>
+  ) => ReturnType<Entity[K]>;
+} & {
+  queryIndex(
+    entityName: string,
+    indexName: string,
+    queryKey: QueryKey<any, any, any>,
+    options?: EntityQueryOptions
+  ): Promise<EntityQueryResult>;
+  scanIndex(
+    entityName: string,
+    indexName: string,
+    options?: EntityQueryOptions
+  ): Promise<EntityQueryResult>;
+  transactWrite(items: EntityTransactItem[]): Promise<void>;
+};
+
+export abstract class EntityStore implements EntityStoreBase {
   constructor(private entityProvider: EntityProvider) {}
 
   public async get(entityName: string, key: CompositeKey): Promise<any> {

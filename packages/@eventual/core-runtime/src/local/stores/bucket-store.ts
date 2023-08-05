@@ -24,7 +24,7 @@ export interface LocalBucketStoreProps {
   localConnector: LocalEnvConnector;
 }
 
-export class LocalBucketStore implements BucketStore {
+export class LocalBucketStore extends BucketStore {
   private objects: Record<
     string,
     Record<
@@ -37,8 +37,10 @@ export class LocalBucketStore implements BucketStore {
     >
   > = {};
 
-  // TODO: publish events for the stream
-  constructor(private props: LocalBucketStoreProps) {}
+  constructor(private props: LocalBucketStoreProps) {
+    super();
+  }
+
   public async get(
     bucketName: string,
     key: string,
@@ -247,7 +249,7 @@ export class LocalBucketStore implements BucketStore {
     };
   }
 
-  public physicalName(bucketName: string) {
+  public override physicalName(bucketName: string) {
     return bucketName;
   }
 }

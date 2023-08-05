@@ -24,15 +24,3 @@ export type BucketHook = {
 } & {
   physicalName: (bucketName: string) => string;
 };
-
-export function getBucketHook() {
-  const hook = globalThis.eventualBucketHook;
-  if (!hook) {
-    throw new Error("An bucket hook has not been registered.");
-  }
-  return hook;
-}
-
-export function registerBucketHook(bucketHook: BucketHook) {
-  return (globalThis.eventualBucketHook = bucketHook);
-}

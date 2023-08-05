@@ -8,8 +8,7 @@ import {
 } from "@eventual/core";
 import { ServiceType, getEventualResources } from "@eventual/core/internal";
 import itty from "itty-router";
-import { serviceTypeScope } from "../service-type.js";
-import { registerWorkerIntrinsics, type WorkerIntrinsicDeps } from "./utils.js";
+import { WorkerIntrinsicDeps, createEventualWorker } from "./worker.js";
 
 export type ApiHandlerDependencies = Partial<WorkerIntrinsicDeps>;
 
@@ -26,8 +25,6 @@ export interface CommandWorker {
 export function createCommandWorker(
   deps: ApiHandlerDependencies
 ): CommandWorker {
-  registerWorkerIntrinsics(deps as WorkerIntrinsicDeps);
-
   const router = initRouter();
 
   /**
@@ -36,9 +33,11 @@ export function createCommandWorker(
    * Each webhook registers routes on the central {@link router} which
    * then handles the request.
    */
-  return function (request, context) {
-    console.debug("request", request);
-    return serviceTypeScope(ServiceType.CommandWorker, async () => {
+  return createEventualWorker(
+    ServiceType.CommandWorker,
+    deps,
+    async (request, context) => {
+      console.debug("request", request);
       try {
         const response = await router.handle(request, context);
         if (response === undefined) {
@@ -81,8 +80,8 @@ export function createCommandWorker(
           });
         }
       }
-    });
-  };
+    }
+  );
 }
 
 function initRouter() {

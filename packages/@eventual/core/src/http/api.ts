@@ -2,11 +2,14 @@ import itty from "itty-router";
 import type openapi from "openapi3-ts";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
-import {
-  getEnvironmentManifest,
-  registerEventualResource,
-} from "../internal/global.js";
+import { registerEventualResource } from "../internal/global.js";
 import { generateOpenAPISpec } from "../internal/open-api-spec.js";
+import {
+  EventualPropertyKind,
+  ServiceSpecProperty,
+  ServiceUrlProperty,
+  createEventualProperty,
+} from "../internal/properties.js";
 import type { SourceLocation } from "../internal/service-spec.js";
 import {
   AnyCommand,
@@ -209,15 +212,19 @@ export interface ApiSpecification {
 
 export const ApiSpecification: ApiSpecification = {
   generate: (options) => {
-    const envManifest = getEnvironmentManifest();
-    if (!envManifest) {
-      throw new Error("EnvironmentManifest has not been registered.");
-    }
-    return generateOpenAPISpec(envManifest.serviceSpec.commands, {
+    const hook = getEventualHook();
+    const serviceSpec = hook.getEventualProperty<ServiceSpecProperty>(
+      createEventualProperty(EventualPropertyKind.ServiceSpec, {})
+    );
+    const serviceUrl = hook.getEventualProperty<ServiceUrlProperty>(
+      createEventualProperty(EventualPropertyKind.ServiceUrl, {})
+    );
+
+    return generateOpenAPISpec(serviceSpec.commands, {
       createRestPaths: true,
       createRpcPaths: options?.includeRpcPaths ?? false,
-      info: envManifest.serviceSpec.openApi.info,
-      servers: [{ url: envManifest.serviceUrl }],
+      info: serviceSpec.openApi.info,
+      servers: [{ url: serviceUrl }],
     });
   },
 };

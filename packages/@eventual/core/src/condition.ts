@@ -51,13 +51,10 @@ export function condition(
 ): Promise<boolean> {
   const [opts, predicate] = args.length === 1 ? [undefined, args[0]] : args;
 
-  return getEventualCallHook().registerEventualCall(
+  return getEventualHook().executeEventualCall(
     createEventualCall(EventualCallKind.ConditionCall, {
       predicate,
       timeout: opts?.timeout,
-    }),
-    () => {
-      throw new Error("condition is only valid in a workflow");
-    }
+    })
   );
 }

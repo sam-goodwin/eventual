@@ -2,8 +2,6 @@ import { EntityStreamItem, HttpRequest, HttpResponse } from "@eventual/core";
 import {
   EnvironmentManifest,
   getEventualResources,
-  registerEnvironmentManifest,
-  registerServiceClient,
 } from "@eventual/core/internal";
 import { ulid } from "ulidx";
 import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
@@ -68,9 +66,6 @@ export class LocalEnvironment {
       workflowProvider: this.localContainer.workflowProvider,
       transactionClient: this.localContainer.transactionClient,
     });
-
-    registerServiceClient(serviceClient);
-    registerEnvironmentManifest(environmentManifest);
 
     this.start();
   }

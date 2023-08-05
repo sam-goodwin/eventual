@@ -55,17 +55,10 @@ export function duration(
   dur: number,
   unit: DurationUnit = "seconds"
 ): Promise<void> & DurationSchedule {
-  return getEventualCallHook().registerEventualCall(
+  return getEventualHook().executeEventualCall(
     createEventualCall(EventualCallKind.AwaitTimerCall, {
       schedule: Schedule.duration(dur, unit),
-    }),
-    () => {
-      return {
-        type: "Duration",
-        dur,
-        unit,
-      } as unknown as Promise<void>;
-    }
+    })
   ) as EventualPromise<void> & DurationSchedule;
 }
 
@@ -98,12 +91,9 @@ export function time(date: Date | string): Promise<void> & TimeSchedule {
   const d = new Date(date);
   const iso = d.toISOString();
 
-  return getEventualCallHook().registerEventualCall(
+  return getEventualHook().executeEventualCall(
     createEventualCall(EventualCallKind.AwaitTimerCall, {
       schedule: Schedule.time(iso),
-    }),
-    () => {
-      return { isoDate: iso } as unknown as Promise<void>;
-    }
+    })
   ) as unknown as EventualPromise<void> & TimeSchedule;
 }

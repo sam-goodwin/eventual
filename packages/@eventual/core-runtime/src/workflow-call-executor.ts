@@ -1,9 +1,4 @@
-import {
-  ExecutionID,
-  OpenSearchClient,
-  Workflow,
-  assertApiResponseOK,
-} from "@eventual/core";
+import { ExecutionID, Workflow, assertApiResponseOK } from "@eventual/core";
 import {
   AwaitTimerCall,
   BucketCall,
@@ -53,6 +48,7 @@ import {
   isSendSignalCall,
   isTaskCall,
 } from "@eventual/core/internal";
+import type { ApiResponse } from "@opensearch-project/opensearch";
 import type { EventClient } from "./clients/event-client.js";
 import type { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import type { TaskClient, TaskWorkerRequest } from "./clients/task-client.js";
@@ -67,7 +63,7 @@ import type { EntityStore } from "./stores/entity-store.js";
 import { streamToBuffer } from "./utils.js";
 import { createEvent } from "./workflow-events.js";
 import type { WorkflowCall } from "./workflow-executor.js";
-import type { ApiResponse } from "@opensearch-project/opensearch";
+import { OpenSearchClient } from "./clients/open-search-client.js";
 
 interface WorkflowCallExecutorProps {
   bucketStore: BucketStore;

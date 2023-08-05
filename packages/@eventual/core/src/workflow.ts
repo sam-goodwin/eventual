@@ -8,10 +8,12 @@ import {
   EventualPromise,
   EventualPromiseSymbol,
 } from "./internal/eventual-hook.js";
+import { registerEventualResource } from "./internal/global.js";
 import {
-  getServiceClient,
-  registerEventualResource,
-} from "./internal/global.js";
+  EventualPropertyKind,
+  type ServiceClientProperty,
+  createEventualProperty,
+} from "./internal/properties.js";
 import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
 import { WorkflowSpec } from "./internal/service-spec.js";
 import { SignalTargetType } from "./internal/signal.js";
@@ -180,9 +182,9 @@ export function workflow<
     input?: any,
     options?: ChildWorkflowOptions
   ) => {
-    const hook = getEventualCallHook();
+    const hook = getEventualHook();
     const timeout = options?.timeout ?? opts?.timeout;
-    const eventual = hook.registerEventualCall(
+    const eventual = hook.executeEventualCall(
       createEventualCall(EventualCallKind.WorkflowCall, {
         input,
         name,
@@ -198,19 +200,14 @@ export function workflow<
         // promise resolution.
         // TODO: support reporting cancellation to children when the parent times out?
         timeout: timeout && "then" in timeout ? timeout : undefined,
-      }),
-      () => {
-        throw new Error(
-          "Direct workflow invocation is only valid in a workflow, use workflow.startExecution instead."
-        );
-      }
+      })
     ) as EventualPromise<Output> & ChildExecution;
 
     // create a reference to the child workflow started at a sequence in this execution.
     // this reference will be resolved by the runtime.
     eventual.sendSignal = function (signal, payload?) {
       const signalId = typeof signal === "string" ? signal : signal.id;
-      return getEventualCallHook().registerEventualCall(
+      return getEventualHook().executeEventualCall(
         createEventualCall(EventualCallKind.SendSignalCall, {
           payload,
           signalId,
@@ -219,12 +216,7 @@ export function workflow<
             seq: eventual[EventualPromiseSymbol]!,
             workflowName: name,
           },
-        }),
-        () => {
-          throw new Error(
-            "Send Signal on a child workflow is only supported in a workflow."
-          );
-        }
+        })
       );
     };
 
@@ -234,7 +226,10 @@ export function workflow<
   Object.defineProperty(workflow, "name", { value: name, writable: false });
 
   workflow.startExecution = async function (input) {
-    const serviceClient = getServiceClient();
+    const serviceClient =
+      getEventualHook().getEventualProperty<ServiceClientProperty>(
+        createEventualProperty(EventualPropertyKind.ServiceClient, {})
+      );
     return await serviceClient.startExecution<Workflow<Name, Input, Output>>({
       workflow: name,
       executionName: input.executionName,

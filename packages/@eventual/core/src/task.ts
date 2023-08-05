@@ -7,10 +7,7 @@ import type {
   SendTaskHeartbeatRequest,
   SendTaskSuccessRequest,
 } from "./internal/eventual-service.js";
-import {
-  getServiceClient,
-  registerEventualResource,
-} from "./internal/global.js";
+import { registerEventualResource } from "./internal/global.js";
 import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
 import { SourceLocation, isSourceLocation } from "./internal/service-spec.js";
 import { isTaskWorker } from "./internal/service-type.js";
@@ -21,6 +18,13 @@ import type {
   SendTaskHeartbeatResponse,
 } from "./service-client.js";
 import { ServiceContext } from "./service.js";
+
+/**
+ * Heartbeat token request which has an optional task token.
+ */
+export interface SendTaskHeartbeatInternalRequest {
+  taskToken?: string;
+}
 
 export type TaskRuntimeProps = FunctionRuntimeProps;
 
@@ -158,7 +162,7 @@ export interface Task<Name extends string = string, Input = any, Output = any>
    * ```
    */
   sendTaskHeartbeat(
-    request: Omit<SendTaskHeartbeatRequest, "type">
+    request: SendTaskHeartbeatInternalRequest
   ): Promise<SendTaskHeartbeatResponse>;
 }
 
@@ -275,9 +279,9 @@ export function task<Name extends string, Input = any, Output = any>(
   // register the handler to be looked up during execution.
   const func = (async (input, options) => {
     const timeout = options?.timeout ?? opts?.timeout;
-    const hook = getEventualCallHook();
+    const hook = getEventualHook();
 
-    return hook.registerEventualCall(
+    return hook.executeEventualCall(
       createEventualCall(EventualCallKind.TaskCall, {
         name,
         input,
@@ -289,32 +293,34 @@ export function task<Name extends string, Input = any, Output = any>(
             : timeout
           : undefined,
         heartbeat: options?.heartbeatTimeout ?? opts?.heartbeatTimeout,
-      }),
-      async () => {
-        const runtimeContext = getEventualTaskRuntimeContext();
-        const context: TaskContext = {
-          task: {
-            name,
-          },
-          execution: runtimeContext.execution,
-          invocation: runtimeContext.invocation,
-          service: runtimeContext.service,
-        };
-        // calling the task from outside the orchestrator just calls the handler
-        return handler(input as Input, context);
-      }
+      })
     );
   }) as Task<Name, Input, Output>;
 
   Object.defineProperty(func, "name", { value: name, writable: false });
   func.sendTaskSuccess = async function (request) {
-    return getServiceClient().sendTaskSuccess(request);
+    return getEventualHook().executeEventualCall(
+      createEventualCall(EventualCallKind.TaskRequestCall, {
+        operation: "sendTaskSuccess",
+        params: [request],
+      })
+    );
   };
   func.sendTaskFailure = async function (request) {
-    return getServiceClient().sendTaskFailure(request);
+    return getEventualHook().executeEventualCall(
+      createEventualCall(EventualCallKind.TaskRequestCall, {
+        operation: "sendTaskFailure",
+        params: [request],
+      })
+    );
   };
   func.sendTaskHeartbeat = async function (request) {
-    return getServiceClient().sendTaskHeartbeat(request);
+    return getEventualHook().executeEventualCall(
+      createEventualCall(EventualCallKind.TaskRequestCall, {
+        operation: "sendTaskHeartbeat",
+        params: [request],
+      })
+    );
   };
   func.sourceLocation = sourceLocation;
 

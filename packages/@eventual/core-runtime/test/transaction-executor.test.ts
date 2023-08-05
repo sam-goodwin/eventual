@@ -6,11 +6,7 @@ import {
   entity as _entity,
   event,
 } from "@eventual/core";
-import {
-  Result,
-  getEventualResource,
-  registerEntityHook,
-} from "@eventual/core/internal";
+import { Result, getEventualResource } from "@eventual/core/internal";
 import { jest } from "@jest/globals";
 import { z } from "zod";
 import { EventClient } from "../src/clients/event-client.js";
@@ -60,8 +56,6 @@ beforeEach(() => {
     localConnector: NoOpLocalEnvConnector,
     entityProvider,
   });
-
-  registerEntityHook(store);
 
   executor = createTransactionExecutor(
     store,

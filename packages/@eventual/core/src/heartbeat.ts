@@ -1,5 +1,4 @@
-import { getServiceClient } from "./internal/global.js";
-import { isTaskWorker } from "./internal/service-type.js";
+import { EventualCallKind, createEventualCall } from "./internal/calls.js";
 import type { SendTaskHeartbeatResponse } from "./service-client.js";
 
 /**
@@ -15,18 +14,10 @@ import type { SendTaskHeartbeatResponse } from "./service-client.js";
 export async function sendTaskHeartbeat(
   taskToken?: string
 ): Promise<SendTaskHeartbeatResponse> {
-  return getEventualCallHook().registerEventualCall(undefined, async () => {
-    if (taskToken) {
-      return await getServiceClient().sendTaskHeartbeat({
-        taskToken,
-      });
-    } else if (isTaskWorker()) {
-      const token = (await getEventualTaskRuntimeContext()).invocation.token;
-      return await getServiceClient().sendTaskHeartbeat({
-        taskToken: token,
-      });
-    } else {
-      throw new Error("Task token must be provided when not within a task.");
-    }
-  });
+  return getEventualHook().executeEventualCall(
+    createEventualCall(EventualCallKind.TaskRequestCall, {
+      operation: "sendTaskHeartbeat",
+      params: [{ taskToken }],
+    })
+  );
 }

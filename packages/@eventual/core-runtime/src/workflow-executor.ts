@@ -9,7 +9,7 @@ import {
 import {
   CompletionEvent,
   EventualCall,
-  EventualCallHook,
+  EventualHook,
   EventualPromise,
   EventualPromiseSymbol,
   HistoryEvent,
@@ -431,14 +431,14 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
   }
 
   /**
-   * Provides a scope where the {@link EventualCallHook} is available to the {@link Call}s.
+   * Provides a scope where the {@link EventualHook} is available to the {@link Call}s.
    */
   private async enterEventualCallHookScope<Res>(
     callback: (...args: any) => Res
   ): Promise<Awaited<Res>> {
     const self = this;
-    const workflowHook: EventualCallHook = {
-      registerEventualCall(call?: EventualCall) {
+    const workflowHook: EventualHook = {
+      executeEventualCall(call?: EventualCall) {
         if (!call) {
           throw new Error("Operation is not supported within a workflow.");
         }

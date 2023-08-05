@@ -1,13 +1,9 @@
-import { EventualError } from "./error.js";
 import {
   createEventualCall,
   EventualCallKind,
   InvokeTransactionCall,
 } from "./internal/calls.js";
-import {
-  getServiceClient,
-  registerEventualResource,
-} from "./internal/global.js";
+import { registerEventualResource } from "./internal/global.js";
 import { TransactionSpec } from "./internal/service-spec.js";
 import { ServiceContext } from "./service.js";
 
@@ -54,23 +50,11 @@ export function transaction<Name extends string, Input, Output>(
   const transact: Transaction<Name, Input, Output> = ((
     input: Input
   ): Promise<Output> => {
-    return getEventualCallHook().registerEventualCall(
+    return getEventualHook().executeEventualCall(
       createEventualCall<InvokeTransactionCall>(
         EventualCallKind.InvokeTransactionCall,
         { input, transactionName: name }
-      ),
-      async () => {
-        const response = await getServiceClient().executeTransaction({
-          input,
-          transaction: transact,
-        });
-
-        if (response.succeeded) {
-          return response.output;
-        } else {
-          throw new EventualError(response.error, response.message);
-        }
-      }
+      )
     );
   }) as any;
 

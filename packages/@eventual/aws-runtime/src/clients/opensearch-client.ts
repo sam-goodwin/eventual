@@ -1,3 +1,4 @@
+import { OpenSearchClient } from "@eventual/core-runtime";
 import {
   Client,
   Connection,
@@ -5,8 +6,7 @@ import {
 } from "@opensearch-project/opensearch";
 import aws4 from "aws4";
 
-export class AWSOpenSearchClient {
-  public readonly client: Client;
+export class AWSOpenSearchClient extends OpenSearchClient {
   constructor({
     node,
     credentials,
@@ -17,18 +17,20 @@ export class AWSOpenSearchClient {
     region: string;
   }) {
     console.log("Open Search endpoint: ", node);
-    this.client = new Client({
-      node,
-      Connection: class extends Connection {
-        public buildRequestObject(params: any) {
-          const request: any = super.buildRequestObject(params);
-          request.service = "es";
-          request.region = region;
-          request.headers = request.headers || {};
-          request.headers.host = request.hostname;
-          return aws4.sign(request, credentials);
-        }
-      },
-    });
+    super(
+      new Client({
+        node,
+        Connection: class extends Connection {
+          public buildRequestObject(params: any) {
+            const request: any = super.buildRequestObject(params);
+            request.service = "es";
+            request.region = region;
+            request.headers = request.headers || {};
+            request.headers.host = request.hostname;
+            return aws4.sign(request, credentials);
+          }
+        },
+      })
+    );
   }
 }

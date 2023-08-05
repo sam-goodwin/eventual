@@ -46,8 +46,11 @@ export interface AWSBucketStoreProps {
   bucketOverrides: LazyValue<Record<string, BucketRuntimeOverrides>>;
 }
 
-export class AWSBucketStore implements BucketStore {
-  constructor(private props: AWSBucketStoreProps) {}
+export class AWSBucketStore extends BucketStore {
+  constructor(private props: AWSBucketStoreProps) {
+    super();
+  }
+
   public async get(
     bucketName: string,
     key: string,

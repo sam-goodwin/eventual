@@ -8,4 +8,3 @@ export * from "./task-fallback-handler.js";
 export * from "./task-worker.js";
 export * from "./timer-handler.js";
 export * from "./transaction-worker.js";
-export * from "./utils.js";

@@ -1,6 +1,5 @@
 import {
   EventEnvelope,
-  OpenSearchClient,
   Schedule,
   SendSignalRequest,
   Workflow,
@@ -42,6 +41,7 @@ import {
   sendSignalCall,
   taskCall,
 } from "./call-util.js";
+import { OpenSearchClient } from "../src/clients/open-search-client.js";
 
 const mockTimerClient = {
   scheduleEvent: jest.fn() as TimerClient["scheduleEvent"],

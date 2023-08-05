@@ -72,7 +72,7 @@ export interface ExecutorRunContext {
 }
 
 export function createOrchestrator(
-  deps: OrchestrateDependencies
+  deps: OrchestratorDependencies
 ): Orchestrator {
   return (workflowTasks, baseTime = () => new Date()) => {
     return serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
@@ -99,7 +99,7 @@ export function createOrchestrator(
   };
 }
 
-interface OrchestrateDependencies {
+interface OrchestratorDependencies {
   callExecutor: WorkflowCallExecutor;
   executionHistoryStore: ExecutionHistoryStore;
   executorProvider: ExecutorProvider<ExecutorRunContext>;
@@ -120,7 +120,7 @@ export async function orchestrateExecution(
   executionId: ExecutionID,
   events: WorkflowInputEvent[],
   executionTime: Date,
-  deps: OrchestrateDependencies
+  deps: OrchestratorDependencies
 ) {
   const metrics = initializeMetrics(
     deps.serviceName,
