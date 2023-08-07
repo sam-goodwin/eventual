@@ -22,7 +22,7 @@ import { inspect } from "util";
 import {
   formatExecutionId,
   INTERNAL_EXECUTION_ID_PREFIX,
-} from "../execution.js";
+} from "../workflow/execution.js";
 import { WorkflowSpecProvider } from "../providers/workflow-provider.js";
 import { computeScheduleDate } from "../schedule.js";
 import { ExecutionStore } from "../stores/execution-store.js";

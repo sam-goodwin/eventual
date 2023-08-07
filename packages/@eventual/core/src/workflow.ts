@@ -10,7 +10,7 @@ import {
 } from "./internal/eventual-hook.js";
 import { registerEventualResource } from "./internal/global.js";
 import {
-  EventualPropertyKind,
+  PropertyKind,
   createEventualProperty,
   type ServiceClientProperty,
 } from "./internal/properties.js";
@@ -220,7 +220,7 @@ export function workflow<
   workflow.startExecution = async function (input) {
     const serviceClient =
       getEventualHook().getEventualProperty<ServiceClientProperty>(
-        createEventualProperty(EventualPropertyKind.ServiceClient, {})
+        createEventualProperty(PropertyKind.ServiceClient, {})
       );
     return await serviceClient.startExecution<Workflow<Name, Input, Output>>({
       workflow: name,

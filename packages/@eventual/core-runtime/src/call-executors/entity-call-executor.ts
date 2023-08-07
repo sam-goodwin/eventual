@@ -1,6 +1,6 @@
-import { EntityCall } from "@eventual/core/internal";
-import { CallExecutor } from "../eventual-hook.js";
-import { EntityStore } from "../stores/entity-store.js";
+import type { EntityCall } from "@eventual/core/internal";
+import type { CallExecutor } from "../call-executor.js";
+import type { EntityStore } from "../stores/entity-store.js";
 
 export class EntityCallExecutor implements CallExecutor<EntityCall> {
   constructor(private entityStore: EntityStore) {}

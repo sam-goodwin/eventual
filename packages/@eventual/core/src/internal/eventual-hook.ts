@@ -1,5 +1,5 @@
 import type { Call, CallOutput } from "./calls.js";
-import { EventualProperty, EventualPropertyType } from "./properties.js";
+import { Property, PropertyType } from "./properties.js";
 import type { Result } from "./result.js";
 
 /**
@@ -42,8 +42,8 @@ export interface EventualHook {
   /**
    * Retrieve constant properties.
    */
-  getEventualProperty<P extends EventualProperty = EventualProperty>(
+  getEventualProperty<P extends Property = Property>(
     property: P
-  ): EventualPropertyType<P>;
+  ): PropertyType<P>;
   resolveEventual(seq: number, result: Result<any>): void;
 }

@@ -27,24 +27,24 @@ __export(command_worker_exports, {
 });
 module.exports = __toCommonJS(command_worker_exports);
 
-var EventualCallKind;
-(function(EventualCallKind2) {
-  EventualCallKind2[EventualCallKind2["AwaitTimerCall"] = 1] = "AwaitTimerCall";
-  EventualCallKind2[EventualCallKind2["BucketCall"] = 10] = "BucketCall";
-  EventualCallKind2[EventualCallKind2["ChildWorkflowCall"] = 7] = "ChildWorkflowCall";
-  EventualCallKind2[EventualCallKind2["ConditionCall"] = 2] = "ConditionCall";
-  EventualCallKind2[EventualCallKind2["EmitEventsCall"] = 4] = "EmitEventsCall";
-  EventualCallKind2[EventualCallKind2["EntityCall"] = 8] = "EntityCall";
-  EventualCallKind2[EventualCallKind2["ExpectSignalCall"] = 3] = "ExpectSignalCall";
-  EventualCallKind2[EventualCallKind2["GetExecutionCall"] = 14] = "GetExecutionCall";
-  EventualCallKind2[EventualCallKind2["InvokeTransactionCall"] = 9] = "InvokeTransactionCall";
-  EventualCallKind2[EventualCallKind2["RegisterSignalHandlerCall"] = 5] = "RegisterSignalHandlerCall";
-  EventualCallKind2[EventualCallKind2["SendSignalCall"] = 6] = "SendSignalCall";
-  EventualCallKind2[EventualCallKind2["TaskCall"] = 0] = "TaskCall";
-  EventualCallKind2[EventualCallKind2["TaskRequestCall"] = 12] = "TaskRequestCall";
-  EventualCallKind2[EventualCallKind2["SearchCall"] = 11] = "SearchCall";
-  EventualCallKind2[EventualCallKind2["StartWorkflowCall"] = 13] = "StartWorkflowCall";
-})(EventualCallKind || (EventualCallKind = {}));
+var CallKind;
+(function(CallKind2) {
+  CallKind2[CallKind2["AwaitTimerCall"] = 1] = "AwaitTimerCall";
+  CallKind2[CallKind2["BucketCall"] = 10] = "BucketCall";
+  CallKind2[CallKind2["ChildWorkflowCall"] = 7] = "ChildWorkflowCall";
+  CallKind2[CallKind2["ConditionCall"] = 2] = "ConditionCall";
+  CallKind2[CallKind2["EmitEventsCall"] = 4] = "EmitEventsCall";
+  CallKind2[CallKind2["EntityCall"] = 8] = "EntityCall";
+  CallKind2[CallKind2["ExpectSignalCall"] = 3] = "ExpectSignalCall";
+  CallKind2[CallKind2["GetExecutionCall"] = 14] = "GetExecutionCall";
+  CallKind2[CallKind2["InvokeTransactionCall"] = 9] = "InvokeTransactionCall";
+  CallKind2[CallKind2["RegisterSignalHandlerCall"] = 5] = "RegisterSignalHandlerCall";
+  CallKind2[CallKind2["SendSignalCall"] = 6] = "SendSignalCall";
+  CallKind2[CallKind2["TaskCall"] = 0] = "TaskCall";
+  CallKind2[CallKind2["TaskRequestCall"] = 12] = "TaskRequestCall";
+  CallKind2[CallKind2["SearchCall"] = 11] = "SearchCall";
+  CallKind2[CallKind2["StartWorkflowCall"] = 13] = "StartWorkflowCall";
+})(CallKind || (CallKind = {}));
 
 globalThis._eventual ??= { resources: {} };
 function registerEventualResource(resourceKind, resource) {
@@ -55,15 +55,15 @@ function registerEventualResource(resourceKind, resource) {
   return resource;
 }
 
-var EventualPropertyKind;
-(function(EventualPropertyKind2) {
-  EventualPropertyKind2[EventualPropertyKind2["BucketPhysicalName"] = 0] = "BucketPhysicalName";
-  EventualPropertyKind2[EventualPropertyKind2["OpenSearchClient"] = 1] = "OpenSearchClient";
-  EventualPropertyKind2[EventualPropertyKind2["ServiceClient"] = 2] = "ServiceClient";
-  EventualPropertyKind2[EventualPropertyKind2["ServiceName"] = 3] = "ServiceName";
-  EventualPropertyKind2[EventualPropertyKind2["ServiceSpec"] = 4] = "ServiceSpec";
-  EventualPropertyKind2[EventualPropertyKind2["ServiceUrl"] = 5] = "ServiceUrl";
-})(EventualPropertyKind || (EventualPropertyKind = {}));
+var PropertyKind;
+(function(PropertyKind2) {
+  PropertyKind2[PropertyKind2["BucketPhysicalName"] = 0] = "BucketPhysicalName";
+  PropertyKind2[PropertyKind2["OpenSearchClient"] = 1] = "OpenSearchClient";
+  PropertyKind2[PropertyKind2["ServiceClient"] = 2] = "ServiceClient";
+  PropertyKind2[PropertyKind2["ServiceName"] = 3] = "ServiceName";
+  PropertyKind2[PropertyKind2["ServiceSpec"] = 4] = "ServiceSpec";
+  PropertyKind2[PropertyKind2["ServiceUrl"] = 5] = "ServiceUrl";
+})(PropertyKind || (PropertyKind = {}));
 
 function isSourceLocation(a) {
   return a && typeof a === "object" && typeof a.fileName === "string" && typeof a.exportName === "string";

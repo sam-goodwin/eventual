@@ -2,7 +2,7 @@ import type { Client as OpenSearchClient } from "@opensearch-project/opensearch"
 import type { EventualServiceClient } from "../service-client.js";
 import type { ServiceSpec } from "./service-spec.js";
 
-export enum EventualPropertyKind {
+export enum PropertyKind {
   BucketPhysicalName = 0,
   OpenSearchClient = 1,
   ServiceClient = 2,
@@ -11,11 +11,11 @@ export enum EventualPropertyKind {
   ServiceUrl = 5,
 }
 
-export const EventualPropertySymbol = /* @__PURE__ */ Symbol.for(
+export const PropertySymbol = /* @__PURE__ */ Symbol.for(
   "eventual:EventualProperty"
 );
 
-export type EventualProperty =
+export type Property =
   | BucketPhysicalName
   | OpenSearchClientProperty
   | ServiceClientProperty
@@ -23,58 +23,56 @@ export type EventualProperty =
   | ServiceUrlProperty
   | ServiceNameProperty;
 
-export type EventualPropertyType<E extends EventualProperty> =
-  E extends EventualPropertyBase<any, infer Type> ? Type : never;
+export type PropertyType<E extends Property> = E extends PropertyBase<
+  any,
+  infer Type
+>
+  ? Type
+  : never;
 
-export interface EventualPropertyBase<Kind extends EventualPropertyKind, Type> {
-  [EventualPropertySymbol]: Kind;
+export interface PropertyBase<Kind extends PropertyKind, Type> {
+  [PropertySymbol]: Kind;
   __type: Type;
 }
 
-export function createEventualProperty<P extends EventualProperty>(
-  kind: P[typeof EventualPropertySymbol],
-  e: Omit<P, typeof EventualPropertySymbol | "__type">
+export function createEventualProperty<P extends Property>(
+  kind: P[typeof PropertySymbol],
+  e: Omit<P, typeof PropertySymbol | "__type">
 ): P {
-  (e as P)[EventualPropertySymbol] = kind;
+  (e as P)[PropertySymbol] = kind;
   return e as P;
 }
 
-export function isServicePropertyOfKind<K extends EventualPropertyKind>(
+export function isServicePropertyOfKind<K extends PropertyKind>(
   kind: K,
-  property: EventualProperty
-): property is EventualProperty & { [EventualPropertySymbol]: K } {
-  return property[EventualPropertySymbol] === kind;
+  property: Property
+): property is Property & { [PropertySymbol]: K } {
+  return property[PropertySymbol] === kind;
 }
 
 export interface BucketPhysicalName
-  extends EventualPropertyBase<
-    EventualPropertyKind.BucketPhysicalName,
-    string
-  > {
+  extends PropertyBase<PropertyKind.BucketPhysicalName, string> {
   bucketName: string;
 }
 
-export type OpenSearchClientProperty = EventualPropertyBase<
-  EventualPropertyKind.OpenSearchClient,
+export type OpenSearchClientProperty = PropertyBase<
+  PropertyKind.OpenSearchClient,
   OpenSearchClient
 >;
 
-export type ServiceClientProperty = EventualPropertyBase<
-  EventualPropertyKind.ServiceClient,
+export type ServiceClientProperty = PropertyBase<
+  PropertyKind.ServiceClient,
   EventualServiceClient
 >;
 
-export type ServiceUrlProperty = EventualPropertyBase<
-  EventualPropertyKind.ServiceUrl,
+export type ServiceUrlProperty = PropertyBase<PropertyKind.ServiceUrl, string>;
+
+export type ServiceNameProperty = PropertyBase<
+  PropertyKind.ServiceName,
   string
 >;
 
-export type ServiceNameProperty = EventualPropertyBase<
-  EventualPropertyKind.ServiceName,
-  string
->;
-
-export type ServiceSpecProperty = EventualPropertyBase<
-  EventualPropertyKind.ServiceSpec,
+export type ServiceSpecProperty = PropertyBase<
+  PropertyKind.ServiceSpec,
   ServiceSpec
 >;

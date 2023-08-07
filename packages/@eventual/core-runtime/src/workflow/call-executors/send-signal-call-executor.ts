@@ -3,17 +3,14 @@ import {
   isChildExecutionTarget,
 } from "@eventual/core/internal";
 import { ExecutionQueueClient } from "../../clients/execution-queue-client.js";
+import { formatChildExecutionName, formatExecutionId } from "../execution.js";
 import {
-  formatChildExecutionName,
-  formatExecutionId,
-} from "../../execution.js";
-import {
-  EventualWorkflowExecutor,
+  WorkflowCallExecutor,
   WorkflowExecutorInput,
 } from "../call-executor.js";
 
 export class SendSignalWorkflowCallExecutor
-  implements EventualWorkflowExecutor<SendSignalCall>
+  implements WorkflowCallExecutor<SendSignalCall>
 {
   constructor(private executionQueueClient: ExecutionQueueClient) {}
 

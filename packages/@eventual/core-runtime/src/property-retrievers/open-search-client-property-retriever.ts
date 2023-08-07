@@ -1,16 +1,16 @@
-import {
-  EventualPropertyType,
+import type {
   OpenSearchClientProperty,
+  PropertyType,
 } from "@eventual/core/internal";
-import { OpenSearchClient } from "../clients/open-search-client.js";
-import { EventualPropertyResolver } from "../eventual-hook.js";
+import type { OpenSearchClient } from "../clients/open-search-client.js";
+import type { PropertyResolver } from "../property-retriever.js";
 
 export class OpenSearchClientPropertyRetriever
-  implements EventualPropertyResolver<OpenSearchClientProperty>
+  implements PropertyResolver<OpenSearchClientProperty>
 {
   constructor(public openSearchClient: OpenSearchClient) {}
   public getProperty(_property: OpenSearchClientProperty) {
     return this.openSearchClient
-      .client as EventualPropertyType<OpenSearchClientProperty>;
+      .client as PropertyType<OpenSearchClientProperty>;
   }
 }

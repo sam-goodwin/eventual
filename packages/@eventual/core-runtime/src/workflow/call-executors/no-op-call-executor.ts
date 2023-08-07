@@ -1,10 +1,10 @@
 import { Call } from "@eventual/core/internal";
 import {
-  EventualWorkflowExecutor,
+  WorkflowCallExecutor,
   WorkflowExecutorInput,
 } from "../call-executor.js";
 
-export class NoOpWorkflowExecutor implements EventualWorkflowExecutor {
+export class NoOpWorkflowExecutor implements WorkflowCallExecutor {
   public async executeForWorkflow(_call: Call, _props: WorkflowExecutorInput) {
     return undefined;
   }

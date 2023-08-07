@@ -5,12 +5,12 @@ import {
 } from "@eventual/core/internal";
 import type { TimerClient } from "../../clients/timer-client.js";
 import type {
-  EventualWorkflowExecutor,
+  WorkflowCallExecutor,
   WorkflowExecutorInput,
 } from "../call-executor.js";
 
 export class AwaitTimerWorkflowExecutor
-  implements EventualWorkflowExecutor<AwaitTimerCall>
+  implements WorkflowCallExecutor<AwaitTimerCall>
 {
   constructor(private timerClient: TimerClient) {}
 

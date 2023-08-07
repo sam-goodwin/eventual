@@ -27,17 +27,17 @@ import {
   type EmitEventsCall,
   type EntityOperation,
   type EventualHook,
-  type EventualProperty,
-  type EventualPropertyType,
+  type Property,
+  type PropertyType,
   type SendSignalCall,
 } from "@eventual/core/internal";
 import type { EventClient } from "./clients/event-client.js";
 import type { ExecutionQueueClient } from "./clients/execution-queue-client.js";
+import { enterEventualCallHookScope } from "./eventual-hook.js";
 import {
-  EventualPropertyRetriever,
-  enterEventualCallHookScope,
+  type PropertyRetriever,
   getEventualProperty,
-} from "./eventual-hook.js";
+} from "./property-retriever.js";
 import type { EntityProvider } from "./providers/entity-provider.js";
 import { isResolved } from "./result.js";
 import { serviceTypeScope } from "./service-type.js";
@@ -114,7 +114,7 @@ export function createTransactionExecutor(
   entityProvider: EntityProvider,
   executionQueueClient: ExecutionQueueClient,
   eventClient: EventClient,
-  propertyRetriever: EventualPropertyRetriever
+  propertyRetriever: PropertyRetriever
 ): TransactionExecutor {
   return async function <Input, Output>(
     transactionFunction: TransactionFunction<Input, Output>,
@@ -261,11 +261,11 @@ export function createTransactionExecutor(
             `Unsupported eventual call type. Only Entity requests, emit events, and send signals are supported.`
           );
         },
-        getEventualProperty<P extends EventualProperty>(property: P) {
+        getEventualProperty<P extends Property>(property: P) {
           return getEventualProperty(
             property,
             propertyRetriever
-          ) as EventualPropertyType<P>;
+          ) as PropertyType<P>;
         },
         /**
          * Not used

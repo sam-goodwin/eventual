@@ -2,7 +2,7 @@ import { Readable } from "node:stream";
 import { CallKind, createCall, type BucketCall } from "./internal/calls.js";
 import { registerEventualResource } from "./internal/global.js";
 import {
-  EventualPropertyKind,
+  PropertyKind,
   createEventualProperty,
   type BucketPhysicalName,
 } from "./internal/properties.js";
@@ -193,7 +193,7 @@ export function bucket<Name extends string = string>(
       // should be constant, can be used directly in a workflow.
       return getEventualHook().getEventualProperty(
         createEventualProperty<BucketPhysicalName>(
-          EventualPropertyKind.BucketPhysicalName,
+          PropertyKind.BucketPhysicalName,
           { bucketName: name }
         )
       );

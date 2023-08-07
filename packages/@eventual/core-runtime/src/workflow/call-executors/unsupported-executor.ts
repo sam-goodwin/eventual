@@ -1,12 +1,10 @@
 import { CallKind, CallSymbol, type Call } from "@eventual/core/internal";
 import {
-  EventualWorkflowExecutor,
+  WorkflowCallExecutor,
   WorkflowExecutorInput,
 } from "../call-executor.js";
 
-export class UnsupportedWorkflowCallExecutor
-  implements EventualWorkflowExecutor
-{
+export class UnsupportedWorkflowCallExecutor implements WorkflowCallExecutor {
   public async executeForWorkflow(_call: Call, _props: WorkflowExecutorInput) {
     throw new Error(
       `Call type ${

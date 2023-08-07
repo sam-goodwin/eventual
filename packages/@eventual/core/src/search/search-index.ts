@@ -23,7 +23,7 @@ import type { SearchResponse } from "./search-response.js";
 import t from "type-fest";
 import { registerEventualResource } from "../internal/global.js";
 import {
-  EventualPropertyKind,
+  PropertyKind,
   createEventualProperty,
 } from "../internal/properties.js";
 
@@ -159,7 +159,7 @@ export function index<
   Object.defineProperty(index, "client", {
     get: () =>
       getEventualHook().getEventualProperty(
-        createEventualProperty(EventualPropertyKind.OpenSearchClient, {})
+        createEventualProperty(PropertyKind.OpenSearchClient, {})
       ),
   });
   return registerEventualResource("SearchIndex", index as any);

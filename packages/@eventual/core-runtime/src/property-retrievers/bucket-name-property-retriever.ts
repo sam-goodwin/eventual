@@ -1,9 +1,9 @@
-import { BucketPhysicalName } from "@eventual/core/internal";
-import { EventualPropertyResolver } from "../eventual-hook.js";
-import { BucketStore } from "../stores/bucket-store.js";
+import type { BucketPhysicalName } from "@eventual/core/internal";
+import type { PropertyResolver } from "../property-retriever.js";
+import type { BucketStore } from "../stores/bucket-store.js";
 
 export class BucketPhysicalNamePropertyRetriever
-  implements EventualPropertyResolver<BucketPhysicalName>
+  implements PropertyResolver<BucketPhysicalName>
 {
   constructor(private bucketStore: BucketStore) {}
   public getProperty(property: BucketPhysicalName): string {

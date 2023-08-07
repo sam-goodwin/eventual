@@ -5,14 +5,14 @@ import {
   type StartWorkflowCall,
 } from "@eventual/core/internal";
 import type { WorkflowClient } from "../../clients/workflow-client.js";
-import { formatChildExecutionName } from "../../execution.js";
+import { formatChildExecutionName } from "../execution.js";
 import {
-  EventualWorkflowExecutor,
+  WorkflowCallExecutor,
   WorkflowExecutorInput,
 } from "../call-executor.js";
 
 export class WorkflowClientWorkflowCallExecutor
-  implements EventualWorkflowExecutor<ChildWorkflowCall>
+  implements WorkflowCallExecutor<ChildWorkflowCall>
 {
   constructor(private workflowClient: WorkflowClient) {}
 

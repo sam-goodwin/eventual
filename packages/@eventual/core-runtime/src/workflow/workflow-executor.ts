@@ -22,8 +22,8 @@ import {
   type Call,
   type EventualHook,
   type EventualPromise,
-  type EventualProperty,
-  type EventualPropertyType,
+  type Property,
+  type PropertyType,
   type HistoryEvent,
   type HistoryStateEvent,
   type SignalReceived,
@@ -35,14 +35,14 @@ import {
 } from "@eventual/core/internal";
 import { isPromise } from "util/types";
 import { createEventualFromCall } from "../eventual-factory.js";
-import {
-  enterEventualCallHookScope,
-  getEventualProperty,
-  type EventualPropertyRetriever,
-} from "../eventual-hook.js";
-import { formatExecutionId } from "../execution.js";
+import { enterEventualCallHookScope } from "../eventual-hook.js";
+import { formatExecutionId } from "./execution.js";
 import { isFailed, isResolved, isResult } from "../result.js";
 import { filterEvents } from "./events.js";
+import {
+  PropertyRetriever,
+  getEventualProperty,
+} from "../property-retriever.js";
 
 /**
  * Put the resolve method on the promise, but don't expose it.
@@ -203,7 +203,7 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
     private workflow: Workflow<any, Input, Output>,
     public history: HistoryStateEvent[],
     // TODO: properties used in the workflow should be encoded in the history to keep them constant between runs
-    private propertyRetriever: EventualPropertyRetriever
+    private propertyRetriever: PropertyRetriever
   ) {
     this.nextSeq = 0;
     this.expected = iterator(history, isCallEvent);
@@ -484,11 +484,11 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
           throw err;
         }
       },
-      getEventualProperty<P extends EventualProperty>(property: P) {
+      getEventualProperty<P extends Property>(property: P) {
         return getEventualProperty(
           property,
           self.propertyRetriever
-        ) as EventualPropertyType<P>;
+        ) as PropertyType<P>;
       },
       resolveEventual(seq, result) {
         self.tryResolveEventual(seq, result);

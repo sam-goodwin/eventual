@@ -1,23 +1,38 @@
-import { EventualServiceClient } from "@eventual/core";
-import { ServiceSpec, ServiceType } from "@eventual/core/internal";
-import { OpenSearchClient } from "../clients/open-search-client.js";
-import { DefaultEventualHook } from "../default-eventual-hook.js";
+import type { EventualServiceClient } from "@eventual/core";
 import {
+  EventualHook,
+  EventualPromise,
+  Result,
+  ServiceType,
+  type Call,
+  type CallOutput,
+  type Property,
+  type PropertyType,
+  type ServiceSpec,
+} from "@eventual/core/internal";
+import {
+  AllCallExecutor,
+  AllCallExecutors,
   UnsupportedExecutor,
-  UnsupportedPropertyRetriever,
-  enterEventualCallHookScope,
-} from "../eventual-hook.js";
+} from "../call-executor.js";
 import { AwaitTimerCallPassthroughExecutor } from "../call-executors/await-timer-executor.js";
+import { BucketCallExecutor } from "../call-executors/bucket-call-executor.js";
+import { EntityCallExecutor } from "../call-executors/entity-call-executor.js";
+import { SearchCallExecutor } from "../call-executors/search-call-client-executor.js";
 import { ServiceClientExecutor } from "../call-executors/service-client-executor.js";
+import type { OpenSearchClient } from "../clients/open-search-client.js";
+import { enterEventualCallHookScope } from "../eventual-hook.js";
+import {
+  AllPropertyRetriever,
+  AllPropertyRetrievers,
+  UnsupportedPropertyRetriever,
+} from "../property-retriever.js";
+import { BucketPhysicalNamePropertyRetriever } from "../property-retrievers/bucket-name-property-retriever.js";
+import { OpenSearchClientPropertyRetriever } from "../property-retrievers/open-search-client-property-retriever.js";
 import { serviceTypeScope } from "../service-type.js";
 import type { BucketStore } from "../stores/bucket-store.js";
 import type { EntityStore } from "../stores/entity-store.js";
 import type { LazyValue } from "../utils.js";
-import { SearchCallExecutor } from "../call-executors/search-call-client-executor.js";
-import { OpenSearchClientPropertyRetriever } from "../property-retrievers/open-search-client-property-retriever.js";
-import { BucketCallExecutor } from "../call-executors/bucket-call-executor.js";
-import { BucketPhysicalNamePropertyRetriever } from "../property-retrievers/bucket-name-property-retriever.js";
-import { EntityCallExecutor } from "../call-executors/entity-call-executor.js";
 
 export interface WorkerIntrinsicDeps {
   bucketStore: BucketStore | undefined;
@@ -93,4 +108,33 @@ export function createEventualWorker<Input extends any[], Output>(
       ),
       () => serviceTypeScope(serviceType, () => worker(...input))
     );
+}
+
+export class DefaultEventualHook implements EventualHook {
+  constructor(
+    private executors: AllCallExecutors,
+    private propertyRetrievers: AllPropertyRetrievers
+  ) {}
+
+  public executeEventualCall<P extends Call>(
+    eventual: P
+  ): EventualPromise<any> {
+    return new AllCallExecutor(this.executors).execute(
+      eventual
+    ) as CallOutput<P>;
+  }
+
+  public getEventualProperty<P extends Property = Property>(
+    property: P
+  ): PropertyType<P> {
+    return new AllPropertyRetriever(this.propertyRetrievers).getProperty<P>(
+      property
+    ) as PropertyType<P>;
+  }
+
+  public resolveEventual(_seq: number, _result: Result<any>): void {
+    throw new Error(
+      "Resolve Eventual is not supported outside of a workflow or transaction."
+    );
+  }
 }

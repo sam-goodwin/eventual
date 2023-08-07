@@ -1,12 +1,12 @@
 import { TaskCall } from "@eventual/core/internal";
 import {
-  EventualWorkflowExecutor,
+  WorkflowCallExecutor,
   WorkflowExecutorInput,
 } from "../call-executor.js";
 import { TaskClient, TaskWorkerRequest } from "../../clients/task-client.js";
 
 export class ScheduleTaskWorkflowExecutor
-  implements EventualWorkflowExecutor<TaskCall>
+  implements WorkflowCallExecutor<TaskCall>
 {
   constructor(private taskClient: TaskClient) {}
   public async executeForWorkflow(

@@ -1,5 +1,5 @@
 import type { AwaitTimerCall } from "@eventual/core/internal";
-import type { CallExecutor } from "../eventual-hook.js";
+import type { CallExecutor } from "../call-executor.js";
 
 /**
  * Support Await Timer calls outside of a workflow.

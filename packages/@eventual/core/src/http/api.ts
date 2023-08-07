@@ -5,7 +5,7 @@ import type { HttpMethod } from "../http-method.js";
 import { registerEventualResource } from "../internal/global.js";
 import { generateOpenAPISpec } from "../internal/open-api-spec.js";
 import {
-  EventualPropertyKind,
+  PropertyKind,
   ServiceSpecProperty,
   ServiceUrlProperty,
   createEventualProperty,
@@ -214,10 +214,10 @@ export const ApiSpecification: ApiSpecification = {
   generate: (options) => {
     const hook = getEventualHook();
     const serviceSpec = hook.getEventualProperty<ServiceSpecProperty>(
-      createEventualProperty(EventualPropertyKind.ServiceSpec, {})
+      createEventualProperty(PropertyKind.ServiceSpec, {})
     );
     const serviceUrl = hook.getEventualProperty<ServiceUrlProperty>(
-      createEventualProperty(EventualPropertyKind.ServiceUrl, {})
+      createEventualProperty(PropertyKind.ServiceUrl, {})
     );
 
     return generateOpenAPISpec(serviceSpec.commands, {

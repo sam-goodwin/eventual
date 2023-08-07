@@ -35,11 +35,7 @@ import type { TimerClient } from "../clients/timer-client.js";
 import type { WorkflowClient } from "../clients/workflow-client.js";
 import { hookConsole, restoreConsole } from "../console-hook.js";
 import { hookDate, restoreDate } from "../date-hook.js";
-import {
-  AnyPropertyRetriever,
-  UnsupportedPropertyRetriever,
-} from "../eventual-hook.js";
-import { isExecutionId, parseWorkflowName } from "../execution.js";
+import { isExecutionId, parseWorkflowName } from "../workflow/execution.js";
 import type { ExecutionLogContext, LogAgent } from "../log-agent.js";
 import {
   MetricsCommon,
@@ -48,6 +44,10 @@ import {
 import type { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
 import { timed } from "../metrics/utils.js";
+import {
+  AllPropertyRetriever,
+  UnsupportedPropertyRetriever,
+} from "../property-retriever.js";
 import { BucketPhysicalNamePropertyRetriever } from "../property-retrievers/bucket-name-property-retriever.js";
 import type { ExecutorProvider } from "../providers/executor-provider.js";
 import type { WorkflowProvider } from "../providers/workflow-provider.js";
@@ -86,7 +86,7 @@ export function createOrchestrator(
   const unsupportedProperty = new UnsupportedPropertyRetriever(
     "Workflow Orchestrator"
   );
-  const propertyRetriever = new AnyPropertyRetriever({
+  const propertyRetriever = new AllPropertyRetriever({
     BucketPhysicalName: new BucketPhysicalNamePropertyRetriever(
       deps.bucketStore
     ),
@@ -149,7 +149,7 @@ export async function orchestrateExecution(
   events: WorkflowInputEvent[],
   executionTime: Date,
   deps: OrchestratorDependencies,
-  propertyRetriever: AnyPropertyRetriever
+  propertyRetriever: AllPropertyRetriever
 ) {
   const metrics = initializeMetrics(
     deps.serviceName,
@@ -259,12 +259,12 @@ export async function orchestrateExecution(
         await timed(metrics, OrchestratorMetrics.InvokeCallsDuration, () =>
           Promise.all(
             calls.map((call) =>
-              deps.callExecutor.executeCall(
-                workflow,
+              deps.callExecutor.executeForWorkflow(call.call, {
                 executionId,
-                call,
-                executionTime
-              )
+                executionTime,
+                seq: call.seq,
+                workflow,
+              })
             )
           )
         );
@@ -347,7 +347,7 @@ export async function orchestrateExecution(
   async function getExecutor(
     workflow: Workflow,
     executionId: string,
-    propertyRetriever: AnyPropertyRetriever,
+    propertyRetriever: AllPropertyRetriever,
     logAgent?: LogAgent
   ): Promise<WorkflowExecutor<any, any, ExecutorRunContext>> {
     logAgent?.logWithContext({ executionId }, LogLevel.DEBUG, [

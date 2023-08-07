@@ -6,7 +6,7 @@ import {
   isSucceededExecution,
 } from "@eventual/core";
 import {
-  AnyPropertyRetriever,
+  AllPropertyRetriever,
   UnsupportedPropertyRetriever,
   WorkflowExecutor,
   isFailed,
@@ -95,7 +95,7 @@ export const replay = (yargs: Argv) =>
             workflow,
             events,
             // TODO: these properties should come from the history
-            new AnyPropertyRetriever({
+            new AllPropertyRetriever({
               ServiceClient: serviceClient,
               ServiceName: serviceName ?? unsupportedPropertyRetriever,
               OpenSearchClient: unsupportedPropertyRetriever,

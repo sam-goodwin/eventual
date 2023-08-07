@@ -1,4 +1,4 @@
-import { ExecutionID } from "@eventual/core";
+import type { ExecutionID } from "@eventual/core";
 
 export function isExecutionId(a: any): a is ExecutionID {
   return typeof a === "string" && a.split("/").length === 2;

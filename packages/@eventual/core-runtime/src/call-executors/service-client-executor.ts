@@ -16,7 +16,7 @@ import {
   type StartWorkflowCall,
   type TaskRequestCall,
 } from "@eventual/core/internal";
-import type { CallExecutor } from "../eventual-hook.js";
+import type { CallExecutor } from "../call-executor.js";
 
 type SupportEventualCall =
   | EmitEventsCall

@@ -20,7 +20,7 @@ import {
   TransactionResult,
   createTransactionExecutor,
 } from "../src/transaction-executor.js";
-import { UnsupportedPropertyRetriever } from "../src/index.js";
+import { UnsupportedPropertyRetriever } from "../src/property-retriever.js";
 
 const entity = (() => {
   let n = 0;
