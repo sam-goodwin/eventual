@@ -25,6 +25,13 @@ export interface EventualPromise<R> extends Promise<R> {
   [EventualPromiseSymbol]: number;
 }
 
+globalThis.getEventualHook ??= () => {
+  throw new Error("Eventual Hook is not yet registered");
+};
+globalThis.tryGetEventualHook ??= () => {
+  return undefined;
+};
+
 export interface EventualHook {
   /**
    * Execute async operation.
