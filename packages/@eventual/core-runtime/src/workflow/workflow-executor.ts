@@ -19,7 +19,7 @@ import {
   iterator,
   type CallEvent,
   type CompletionEvent,
-  type EventualCall,
+  type Call,
   type EventualHook,
   type EventualPromise,
   type EventualProperty,
@@ -186,7 +186,7 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
      */
     historicalEventMatched?: (
       event: CallEvent,
-      call: EventualCall,
+      call: Call,
       context?: Context
     ) => void;
 
@@ -446,7 +446,7 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
   ): Promise<Awaited<Res>> {
     const self = this;
     const workflowHook: EventualHook = {
-      executeEventualCall(call?: EventualCall) {
+      executeEventualCall(call?: Call) {
         if (!call) {
           throw new Error("Operation is not supported within a workflow.");
         }
@@ -502,7 +502,7 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
      */
     function assertEventIsExpected(
       event: WorkflowCallHistoryEvent,
-      call: EventualCall
+      call: Call
     ): void {
       if (self.expected.hasNext()) {
         const expected = self.expected.next()!;
@@ -934,7 +934,7 @@ type EventTriggerLookup = Record<
 type SignalTriggerLookup = Record<string, Record<number, SignalTrigger<any>>>;
 type AfterEveryEventTriggerLookup = Record<number, AfterEveryEventTrigger<any>>;
 
-export interface WorkflowCall<E extends EventualCall = EventualCall> {
+export interface WorkflowCall<E extends Call = Call> {
   seq: number;
   call: E;
   event?: WorkflowCallHistoryEvent;

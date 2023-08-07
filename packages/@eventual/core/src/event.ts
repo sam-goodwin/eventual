@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import { createEventualCall, EventualCallKind } from "./internal/calls.js";
+import { createCall, CallKind } from "./internal/calls.js";
 import { registerEventualResource } from "./internal/global.js";
 import { EventSpec, isSourceLocation } from "./internal/service-spec.js";
 import type { Subscription, SubscriptionRuntimeProps } from "./subscription.js";
@@ -147,7 +147,7 @@ export function event<E extends EventPayload>(
         event,
       }));
       return getEventualHook().executeEventualCall(
-        createEventualCall(EventualCallKind.EmitEventsCall, {
+        createCall(CallKind.EmitEventsCall, {
           events: envelopes,
         })
       );

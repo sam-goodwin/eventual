@@ -1,8 +1,4 @@
-import {
-  EventualCallKind,
-  EventualCallSymbol,
-  type EventualCall,
-} from "@eventual/core/internal";
+import { CallKind, CallSymbol, type Call } from "@eventual/core/internal";
 import {
   EventualWorkflowExecutor,
   WorkflowExecutorInput,
@@ -11,13 +7,10 @@ import {
 export class UnsupportedWorkflowCallExecutor
   implements EventualWorkflowExecutor
 {
-  public async executeForWorkflow(
-    _call: EventualCall,
-    _props: WorkflowExecutorInput
-  ) {
+  public async executeForWorkflow(_call: Call, _props: WorkflowExecutorInput) {
     throw new Error(
       `Call type ${
-        EventualCallKind[_call[EventualCallSymbol]]
+        CallKind[_call[CallSymbol]]
       } is not supported by the workflow executor.`
     );
   }

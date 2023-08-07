@@ -1,6 +1,6 @@
 import {
-  createEventualCall,
-  EventualCallKind,
+  createCall,
+  CallKind,
   InvokeTransactionCall,
 } from "./internal/calls.js";
 import { registerEventualResource } from "./internal/global.js";
@@ -51,10 +51,10 @@ export function transaction<Name extends string, Input, Output>(
     input: Input
   ): Promise<Output> => {
     return getEventualHook().executeEventualCall(
-      createEventualCall<InvokeTransactionCall>(
-        EventualCallKind.InvokeTransactionCall,
-        { input, transactionName: name }
-      )
+      createCall<InvokeTransactionCall>(CallKind.InvokeTransactionCall, {
+        input,
+        transactionName: name,
+      })
     );
   }) as any;
 

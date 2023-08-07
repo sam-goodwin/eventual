@@ -12,10 +12,12 @@ import {
   Result,
   ServiceType,
   WorkflowEventType,
+  isCallEvent,
   isTimerCompleted,
   isTimerScheduled,
   isWorkflowRunStarted,
   isWorkflowStarted,
+  type CallEvent,
   type CompletionEvent,
   type HistoryStateEvent,
   type TimerCompleted,
@@ -26,8 +28,6 @@ import {
   type WorkflowRunStarted,
   type WorkflowSucceeded,
   type WorkflowTimedOut,
-  CallEvent,
-  isCallEvent,
 } from "@eventual/core/internal";
 import { inspect } from "util";
 import type { MetricsClient } from "../clients/metrics-client.js";
@@ -35,6 +35,10 @@ import type { TimerClient } from "../clients/timer-client.js";
 import type { WorkflowClient } from "../clients/workflow-client.js";
 import { hookConsole, restoreConsole } from "../console-hook.js";
 import { hookDate, restoreDate } from "../date-hook.js";
+import {
+  AnyPropertyRetriever,
+  UnsupportedPropertyRetriever,
+} from "../eventual-hook.js";
 import { isExecutionId, parseWorkflowName } from "../execution.js";
 import type { ExecutionLogContext, LogAgent } from "../log-agent.js";
 import {
@@ -44,22 +48,19 @@ import {
 import type { MetricsLogger } from "../metrics/metrics-logger.js";
 import { Unit } from "../metrics/unit.js";
 import { timed } from "../metrics/utils.js";
+import { BucketPhysicalNamePropertyRetriever } from "../property-retrievers/bucket-name-property-retriever.js";
 import type { ExecutorProvider } from "../providers/executor-provider.js";
 import type { WorkflowProvider } from "../providers/workflow-provider.js";
 import { isFailed, normalizeError, normalizeFailedResult } from "../result.js";
+import { computeScheduleDate } from "../schedule.js";
 import { serviceTypeScope } from "../service-type.js";
+import { BucketStore } from "../stores/bucket-store.js";
 import type { ExecutionHistoryStore } from "../stores/execution-history-store.js";
 import type { WorkflowTask } from "../tasks.js";
 import { groupBy } from "../utils.js";
+import { WorkflowCallExecutor } from "../workflow/call-executor.js";
 import { createEvent } from "../workflow/events.js";
 import { WorkflowExecutor } from "../workflow/workflow-executor.js";
-import { computeScheduleDate } from "../schedule.js";
-import {
-  AnyPropertyRetriever,
-  UnsupportedPropertyRetriever,
-} from "../eventual-hook.js";
-import { BucketStore } from "../stores/bucket-store.js";
-import { WorkflowCallExecutor } from "../workflow/call-executor.js";
 
 export interface OrchestratorResult {
   /**
@@ -86,7 +87,9 @@ export function createOrchestrator(
     "Workflow Orchestrator"
   );
   const propertyRetriever = new AnyPropertyRetriever({
-    BucketPhysicalName: deps.bucketStore,
+    BucketPhysicalName: new BucketPhysicalNamePropertyRetriever(
+      deps.bucketStore
+    ),
     OpenSearchClient: unsupportedProperty,
     ServiceClient: unsupportedProperty,
     ServiceName: deps.serviceName,

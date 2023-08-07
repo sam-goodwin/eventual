@@ -1,4 +1,4 @@
-import { createEventualCall, EventualCallKind } from "./internal/calls.js";
+import { createCall, CallKind } from "./internal/calls.js";
 
 export type ConditionPredicate = () => boolean;
 
@@ -52,7 +52,7 @@ export function condition(
   const [opts, predicate] = args.length === 1 ? [undefined, args[0]] : args;
 
   return getEventualHook().executeEventualCall(
-    createEventualCall(EventualCallKind.ConditionCall, {
+    createCall(CallKind.ConditionCall, {
       predicate,
       timeout: opts?.timeout,
     })

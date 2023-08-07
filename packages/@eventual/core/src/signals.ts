@@ -1,4 +1,4 @@
-import { createEventualCall, EventualCallKind } from "./internal/calls.js";
+import { createCall, CallKind } from "./internal/calls.js";
 import { EventualPromiseSymbol } from "./internal/eventual-hook.js";
 import { Result } from "./internal/result.js";
 import { SignalTargetType } from "./internal/signal.js";
@@ -170,7 +170,7 @@ export function expectSignal<SignalPayload = any>(
   opts?: ExpectSignalOptions
 ): Promise<SignalPayload> {
   return getEventualHook().executeEventualCall(
-    createEventualCall(EventualCallKind.ExpectSignalCall, {
+    createCall(CallKind.ExpectSignalCall, {
       timeout: opts?.timeout,
       signalId: typeof signal === "string" ? signal : signal.id,
     })
@@ -212,7 +212,7 @@ export function onSignal<Payload>(
 ): SignalsHandler {
   const hook = getEventualHook();
   const eventualPromise = hook.executeEventualCall(
-    createEventualCall(EventualCallKind.RegisterSignalHandlerCall, {
+    createCall(CallKind.RegisterSignalHandlerCall, {
       signalId: typeof signal === "string" ? signal : signal.id,
       handler,
     })
@@ -256,7 +256,7 @@ export function sendSignal<Payload = any>(
 ): Promise<void> {
   const [payload] = args;
   return getEventualHook().executeEventualCall(
-    createEventualCall(EventualCallKind.SendSignalCall, {
+    createCall(CallKind.SendSignalCall, {
       payload,
       signalId: typeof signal === "string" ? signal : signal.id,
       target: { type: SignalTargetType.Execution, executionId },

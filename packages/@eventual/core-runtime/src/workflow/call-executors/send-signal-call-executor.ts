@@ -12,7 +12,7 @@ import {
   WorkflowExecutorInput,
 } from "../call-executor.js";
 
-export class SendSignalWorkflowExecutor
+export class SendSignalWorkflowCallExecutor
   implements EventualWorkflowExecutor<SendSignalCall>
 {
   constructor(private executionQueueClient: ExecutionQueueClient) {}

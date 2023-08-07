@@ -10,11 +10,11 @@ import type {
   opensearchtypes,
 } from "@opensearch-project/opensearch";
 import {
-  EventualCallKind,
+  CallKind,
   SearchCall,
   SearchCallRequest,
   SearchOperation,
-  createEventualCall,
+  createCall,
 } from "../internal/calls.js";
 import type { MappingToDocument } from "./mapping.js";
 import type { CountRequest, SearchRequest } from "./query/search-query.js";
@@ -169,7 +169,7 @@ export function index<
     request: SearchCallRequest<Op>
   ): Promise<Response> {
     return getEventualHook().executeEventualCall(
-      createEventualCall<SearchCall>(EventualCallKind.SearchCall, {
+      createCall<SearchCall>(CallKind.SearchCall, {
         operation,
         request,
       })

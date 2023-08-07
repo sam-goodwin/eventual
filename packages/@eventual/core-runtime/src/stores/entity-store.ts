@@ -20,7 +20,6 @@ import type {
   QueryKeyMap,
 } from "@eventual/core";
 import {
-  EntityCall,
   assertNever,
   isBeginsWithQueryKeyCondition,
   isBetweenQueryKeyCondition,
@@ -33,7 +32,6 @@ import {
   type KeyDefinition,
   type KeyDefinitionPart,
 } from "@eventual/core/internal";
-import { EventualExecutor } from "../eventual-hook.js";
 import type { EntityProvider } from "../providers/entity-provider.js";
 
 export type EntityStoreBase = {
@@ -56,9 +54,7 @@ export type EntityStoreBase = {
   transactWrite(items: EntityTransactItem[]): Promise<void>;
 };
 
-export abstract class EntityStore
-  implements EntityStoreBase, EventualExecutor<EntityCall>
-{
+export abstract class EntityStore {
   constructor(private entityProvider: EntityProvider) {}
 
   public async get(entityName: string, key: CompositeKey): Promise<any> {
@@ -264,25 +260,6 @@ export abstract class EntityStore
       throw new Error(`Entity ${entityName} was not found.`);
     }
     return entity;
-  }
-
-  public execute(call: EntityCall): Promise<any> {
-    if (
-      call.operation.operation === "queryIndex" ||
-      call.operation.operation === "scanIndex"
-    ) {
-      return this[call.operation.operation](
-        call.operation.entityName,
-        call.operation.indexName,
-        ...(call.operation.params as [any])
-      );
-    } else if (call.operation.operation === "transact") {
-      return this.transactWrite(call.operation.items);
-    }
-    return this[call.operation.operation](
-      call.operation.entityName,
-      ...(call.operation.params as [any])
-    );
   }
 }
 

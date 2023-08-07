@@ -9,14 +9,14 @@ import {
   isStartWorkflowCall,
   isTaskRequestCall,
   type EmitEventsCall,
-  type EventualCallOutput,
+  type CallOutput,
   type GetExecutionCall,
   type InvokeTransactionCall,
   type SendSignalCall,
   type StartWorkflowCall,
   type TaskRequestCall,
 } from "@eventual/core/internal";
-import type { EventualExecutor } from "../eventual-hook.js";
+import type { CallExecutor } from "../eventual-hook.js";
 
 type SupportEventualCall =
   | EmitEventsCall
@@ -26,14 +26,17 @@ type SupportEventualCall =
   | StartWorkflowCall
   | TaskRequestCall;
 
+/**
+ * An executor which makes use of the common {@link EventualServiceClient} to execute {@link EventualCall}s.
+ */
 export class ServiceClientExecutor
-  implements EventualExecutor<SupportEventualCall>
+  implements CallExecutor<SupportEventualCall>
 {
   constructor(private serviceClient: EventualServiceClient) {}
 
   public async execute<C extends SupportEventualCall>(
     call: C
-  ): Promise<EventualCallOutput<C>> {
+  ): Promise<CallOutput<C>> {
     if (isSendSignalCall(call)) {
       if (call.target.type === SignalTargetType.ChildExecution) {
         throw new Error("Signal Target Child Workflow unsupported");
@@ -43,20 +46,20 @@ export class ServiceClientExecutor
         signal: call.signalId,
         id: call.id,
         payload: call.payload,
-      }) as EventualCallOutput<C>;
+      }) as CallOutput<C>;
     } else if (isTaskRequestCall(call)) {
       if (call.operation === "sendTaskSuccess") {
         return this.serviceClient.sendTaskSuccess(
           ...(call.params as [any])
-        ) as EventualCallOutput<C>;
+        ) as CallOutput<C>;
       } else if (call.operation === "sendTaskFailure") {
         return this.serviceClient.sendTaskFailure(
           ...(call.params as [any])
-        ) as EventualCallOutput<C>;
+        ) as CallOutput<C>;
       } else if (call.operation === "sendTaskHeartbeat") {
         return this.serviceClient.sendTaskHeartbeat(
           ...(call.params as [any])
-        ) as EventualCallOutput<C>;
+        ) as CallOutput<C>;
       }
       assertNever(call.operation);
     } else if (isInvokeTransactionCall(call)) {
@@ -73,16 +76,14 @@ export class ServiceClientExecutor
     } else if (isEmitEventsCall(call)) {
       return this.serviceClient.emitEvents({
         events: call.events,
-      }) as EventualCallOutput<C>;
+      }) as CallOutput<C>;
     } else if (isStartWorkflowCall(call)) {
       return this.serviceClient.startExecution({
         workflow: call.name,
         input: call.input,
-      }) as EventualCallOutput<C>;
+      }) as CallOutput<C>;
     } else if (isGetExecutionCall(call)) {
-      return this.serviceClient.getExecution(
-        call.executionId
-      ) as EventualCallOutput<C>;
+      return this.serviceClient.getExecution(call.executionId) as CallOutput<C>;
     }
 
     return assertNever(call);

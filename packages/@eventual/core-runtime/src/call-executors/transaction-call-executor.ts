@@ -1,10 +1,10 @@
 import { EventualError } from "@eventual/core";
 import type { InvokeTransactionCall } from "@eventual/core/internal";
 import type { TransactionClient } from "../clients/transaction-client.js";
-import type { EventualExecutor } from "../eventual-hook.js";
+import type { CallExecutor } from "../eventual-hook.js";
 
 export class TransactionCallExecutor
-  implements EventualExecutor<InvokeTransactionCall>
+  implements CallExecutor<InvokeTransactionCall>
 {
   constructor(private client: TransactionClient) {}
   public async execute(call: InvokeTransactionCall<any>): Promise<any> {

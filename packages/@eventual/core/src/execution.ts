@@ -1,6 +1,6 @@
 import {
-  EventualCallKind,
-  createEventualCall,
+  CallKind,
+  createCall,
   type GetExecutionCall,
   type SendSignalCall,
 } from "./internal/calls.js";
@@ -99,12 +99,9 @@ export class ExecutionHandle<W extends Workflow> {
     const hook = tryGetEventualHook();
     if (hook) {
       return hook.executeEventualCall(
-        createEventualCall<GetExecutionCall>(
-          EventualCallKind.GetExecutionCall,
-          {
-            executionId: this.executionId,
-          }
-        )
+        createCall<GetExecutionCall>(CallKind.GetExecutionCall, {
+          executionId: this.executionId,
+        })
       );
     } else if (this.serviceClient && !isOrchestratorWorker()) {
       return (await this.serviceClient.getExecution(
@@ -128,7 +125,7 @@ export class ExecutionHandle<W extends Workflow> {
     const hook = tryGetEventualHook();
     if (hook) {
       return hook.executeEventualCall(
-        createEventualCall<SendSignalCall>(EventualCallKind.SendSignalCall, {
+        createCall<SendSignalCall>(CallKind.SendSignalCall, {
           signalId: typeof signal === "string" ? signal : signal.id,
           payload,
           target: {

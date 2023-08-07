@@ -5,10 +5,10 @@ import {
 } from "@eventual/core/internal";
 import { ExecutionQueueClient } from "../../clients/execution-queue-client.js";
 import { TransactionClient } from "../../clients/transaction-client.js";
-import { TransactionCallExecutor } from "../../executors/transaction-call-executor.js";
+import { TransactionCallExecutor } from "../../call-executors/transaction-call-executor.js";
 import { normalizeError } from "../../result.js";
 import { createEvent } from "../events.js";
-import { WorkflowTaskQueueExecutorAdaptor } from "./task-queue-executor-adapator.js";
+import { WorkflowTaskQueueExecutorAdaptor } from "./task-queue-executor-adaptor.js";
 
 export function createTransactionWorkflowQueueExecutor(
   transactionClient: TransactionClient,

@@ -9,7 +9,7 @@ import {
   EmitEventsCall,
   EntityCall,
   EventsEmitted,
-  EventualCallKind,
+  CallKind,
   SendSignalCall,
   SignalReceived,
   SignalSent,
@@ -26,7 +26,7 @@ import {
   WorkflowCallHistoryType,
   WorkflowEventType,
   WorkflowTimedOut,
-  createEventualCall,
+  createCall,
 } from "@eventual/core/internal";
 import { ulid } from "ulidx";
 import type { WorkflowCall } from "../src/workflow/workflow-executor.js";
@@ -42,7 +42,7 @@ export function awaitTimerCall(
   const [schedule, seq] =
     args.length === 1 ? [Schedule.time("then"), args[0]] : args;
   return {
-    call: createEventualCall(EventualCallKind.AwaitTimerCall, {
+    call: createCall(CallKind.AwaitTimerCall, {
       schedule,
     }),
     seq,
@@ -55,7 +55,7 @@ export function taskCall(
   seq: number
 ): WorkflowCall<TaskCall> {
   return {
-    call: createEventualCall(EventualCallKind.TaskCall, {
+    call: createCall(CallKind.TaskCall, {
       name,
       input,
     }),
@@ -70,7 +70,7 @@ export function childWorkflowCall(
 ): WorkflowCall<ChildWorkflowCall> {
   return {
     seq,
-    call: createEventualCall(EventualCallKind.ChildWorkflowCall, {
+    call: createCall(CallKind.ChildWorkflowCall, {
       name,
       input,
     }),
@@ -84,7 +84,7 @@ export function sendSignalCall(
 ): WorkflowCall<SendSignalCall> {
   return {
     seq,
-    call: createEventualCall(EventualCallKind.SendSignalCall, {
+    call: createCall(CallKind.SendSignalCall, {
       target,
       signalId,
     }),
@@ -97,7 +97,7 @@ export function emitEventCall(
 ): WorkflowCall<EmitEventsCall> {
   return {
     seq,
-    call: createEventualCall(EventualCallKind.EmitEventsCall, {
+    call: createCall(CallKind.EmitEventsCall, {
       events,
     }),
   };
@@ -118,7 +118,7 @@ export function entityRequestCall(
 ): WorkflowCall<EntityCall> {
   return {
     seq,
-    call: createEventualCall(EventualCallKind.EntityCall, call),
+    call: createCall(CallKind.EntityCall, call),
   };
 }
 

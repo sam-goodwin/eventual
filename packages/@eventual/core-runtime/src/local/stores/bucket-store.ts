@@ -1,4 +1,4 @@
-import {
+import type {
   Bucket,
   BucketGeneratePresignedResult,
   CopyBucketObjectOptions,
@@ -15,16 +15,16 @@ import {
 } from "@eventual/core";
 import crypto from "crypto";
 import { Readable } from "stream";
-import { BucketStore } from "../../stores/bucket-store.js";
+import type { BucketStore } from "../../stores/bucket-store.js";
 import { streamToBuffer } from "../../utils.js";
-import { LocalEnvConnector } from "../local-container.js";
+import type { LocalEnvConnector } from "../local-container.js";
 import { paginateItems } from "./pagination.js";
 
 export interface LocalBucketStoreProps {
   localConnector: LocalEnvConnector;
 }
 
-export class LocalBucketStore extends BucketStore {
+export class LocalBucketStore implements BucketStore {
   private objects: Record<
     string,
     Record<
@@ -37,9 +37,7 @@ export class LocalBucketStore extends BucketStore {
     >
   > = {};
 
-  constructor(private props: LocalBucketStoreProps) {
-    super();
-  }
+  constructor(private props: LocalBucketStoreProps) {}
 
   public async get(
     bucketName: string,
@@ -249,7 +247,7 @@ export class LocalBucketStore extends BucketStore {
     };
   }
 
-  public override physicalName(bucketName: string) {
+  public physicalName(bucketName: string) {
     return bucketName;
   }
 }

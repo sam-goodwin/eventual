@@ -28,14 +28,12 @@ import {
   isTaskRequestCall,
   type BucketMethod,
   type BucketOperation,
-  type EventualCall,
+  type Call,
 } from "@eventual/core/internal";
 import { Readable } from "stream";
 import { EventualDefinition, Trigger } from "./workflow/workflow-executor.js";
 
-export function createEventualFromCall(
-  call: EventualCall
-): EventualDefinition<any> {
+export function createEventualFromCall(call: Call): EventualDefinition<any> {
   if (isTaskCall(call)) {
     return {
       triggers: [

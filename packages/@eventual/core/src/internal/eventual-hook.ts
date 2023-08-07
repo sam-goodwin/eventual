@@ -1,4 +1,4 @@
-import type { EventualCall, EventualCallOutput } from "./calls.js";
+import type { Call, CallOutput } from "./calls.js";
 import { EventualProperty, EventualPropertyType } from "./properties.js";
 import type { Result } from "./result.js";
 
@@ -36,9 +36,9 @@ export interface EventualHook {
   /**
    * Execute async operation.
    */
-  executeEventualCall<E extends EventualCall = EventualCall>(
+  executeEventualCall<E extends Call = Call>(
     eventual: E
-  ): EventualPromise<EventualCallOutput<E>>;
+  ): EventualPromise<CallOutput<E>>;
   /**
    * Retrieve constant properties.
    */

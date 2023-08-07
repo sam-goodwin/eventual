@@ -8,7 +8,7 @@ import {
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import {
+import type {
   Bucket,
   BucketGeneratePresignedResult,
   CopyBucketObjectOptions,
@@ -24,10 +24,10 @@ import {
   PutBucketOptions,
 } from "@eventual/core";
 import {
-  BucketStore,
-  LazyValue,
   computeDurationSeconds,
   getLazy,
+  type BucketStore,
+  type LazyValue,
 } from "@eventual/core-runtime";
 import { assertNever } from "@eventual/core/internal";
 import { Readable } from "stream";
@@ -46,10 +46,8 @@ export interface AWSBucketStoreProps {
   bucketOverrides: LazyValue<Record<string, BucketRuntimeOverrides>>;
 }
 
-export class AWSBucketStore extends BucketStore {
-  constructor(private props: AWSBucketStoreProps) {
-    super();
-  }
+export class AWSBucketStore implements BucketStore {
+  constructor(private props: AWSBucketStoreProps) {}
 
   public async get(
     bucketName: string,

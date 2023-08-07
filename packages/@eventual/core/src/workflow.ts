@@ -3,7 +3,7 @@ import type {
   ExecutionHandle,
   ExecutionID,
 } from "./execution.js";
-import { EventualCallKind, createEventualCall } from "./internal/calls.js";
+import { CallKind, createCall } from "./internal/calls.js";
 import {
   EventualPromise,
   EventualPromiseSymbol,
@@ -177,7 +177,7 @@ export function workflow<
     const hook = getEventualHook();
     const timeout = options?.timeout ?? opts?.timeout;
     const eventual = hook.executeEventualCall(
-      createEventualCall(EventualCallKind.ChildWorkflowCall, {
+      createCall(CallKind.ChildWorkflowCall, {
         input,
         name,
         // if the timeout is a time or a duration, from any source, send the timeout to the child execution
@@ -200,7 +200,7 @@ export function workflow<
     eventual.sendSignal = function (signal, payload?) {
       const signalId = typeof signal === "string" ? signal : signal.id;
       return getEventualHook().executeEventualCall(
-        createEventualCall(EventualCallKind.SendSignalCall, {
+        createCall(CallKind.SendSignalCall, {
           payload,
           signalId,
           target: {

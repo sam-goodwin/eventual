@@ -1,12 +1,12 @@
 import {
-  EventualCallKind,
-  EventualCallOutput,
-  EventualCallSymbol,
+  CallKind,
+  CallOutput,
+  CallSymbol,
   EventualProperty,
   EventualPropertyKind,
   EventualPropertySymbol,
   EventualPropertyType,
-  type EventualCall,
+  type Call,
   type EventualHook,
   type EventualPromise,
   ServiceSpec,
@@ -48,10 +48,8 @@ export async function enterEventualCallHookScope<R>(
   return await globalThis.eventualCallHookStore.run(eventualHook, callback);
 }
 
-export interface EventualExecutor<E extends EventualCall = EventualCall> {
-  execute(
-    call: E
-  ): EventualPromise<EventualCallOutput<E>> | Promise<EventualCallOutput<E>>;
+export interface CallExecutor<E extends Call = Call> {
+  execute(call: E): EventualPromise<CallOutput<E>> | Promise<CallOutput<E>>;
 }
 
 export type EventualPropertyRetriever<
@@ -81,8 +79,8 @@ export function getEventualProperty(
 }
 
 export type EventualCallExecutorCollection = {
-  [K in keyof typeof EventualCallKind]: EventualExecutor<
-    EventualCall & { [EventualCallSymbol]: (typeof EventualCallKind)[K] }
+  [K in keyof typeof CallKind]: CallExecutor<
+    Call & { [CallSymbol]: (typeof CallKind)[K] }
   >;
 };
 
@@ -94,15 +92,15 @@ export type EventualPropertyRetrieverCollection = {
   >;
 };
 
-export class UnsupportedExecutor<E extends EventualCall = EventualCall>
-  implements EventualExecutor<E>
+export class UnsupportedExecutor<E extends Call = Call>
+  implements CallExecutor<E>
 {
   constructor(private name: string) {}
   public execute(_call: E): EventualPromise<any> {
     throw new Error(
-      `Call type ${
-        EventualCallKind[_call[EventualCallSymbol]]
-      } is not supported by ${this.name}.`
+      `Call type ${CallKind[_call[CallSymbol]]} is not supported by ${
+        this.name
+      }.`
     );
   }
 }
@@ -110,19 +108,19 @@ export class UnsupportedExecutor<E extends EventualCall = EventualCall>
 /**
  * An executor that can execute any eventual executor.
  */
-export class AnyEventualCallExecutor implements EventualExecutor {
+export class AnyEventualCallExecutor implements CallExecutor {
   constructor(private executors: EventualCallExecutorCollection) {}
-  public execute<E extends EventualCall>(call: E) {
-    const kind = call[EventualCallSymbol];
-    const executor = this.executors[
-      EventualCallKind[kind] as keyof typeof EventualCallKind
-    ] as EventualExecutor | undefined;
+  public execute<E extends Call>(call: E) {
+    const kind = call[CallSymbol];
+    const executor = this.executors[CallKind[kind] as keyof typeof CallKind] as
+      | CallExecutor
+      | undefined;
 
     if (executor) {
       return executor.execute(call) as unknown as EventualPromise<any>;
     }
 
-    throw new Error(`Missing Executor for ${EventualCallKind[kind]}`);
+    throw new Error(`Missing Executor for ${CallKind[kind]}`);
   }
 }
 

@@ -1,24 +1,25 @@
-import { GetBucketObjectResponse } from "@eventual/core";
+import type { GetBucketObjectResponse } from "@eventual/core";
 import {
-  BucketCall,
-  BucketGetObjectSerializedResult,
-  BucketRequestFailed,
-  BucketRequestSucceeded,
+  type BucketCall,
+  type BucketGetObjectSerializedResult,
+  type BucketRequestFailed,
+  type BucketRequestSucceeded,
   WorkflowEventType,
 } from "@eventual/core/internal";
-import { ExecutionQueueClient } from "../../clients/execution-queue-client.js";
+import type { ExecutionQueueClient } from "../../clients/execution-queue-client.js";
+import { BucketCallExecutor } from "../../call-executors/bucket-call-executor.js";
 import { normalizeError } from "../../result.js";
-import { BucketStore } from "../../stores/bucket-store.js";
+import type { BucketStore } from "../../stores/bucket-store.js";
 import { streamToBuffer } from "../../utils.js";
 import { createEvent } from "../events.js";
-import { WorkflowTaskQueueExecutorAdaptor } from "./task-queue-executor-adapator.js";
+import { WorkflowTaskQueueExecutorAdaptor } from "./task-queue-executor-adaptor.js";
 
 export function createBucketWorkflowQueueExecutor(
   bucketStore: BucketStore,
   queueClient: ExecutionQueueClient
 ) {
   return new WorkflowTaskQueueExecutorAdaptor(
-    bucketStore,
+    new BucketCallExecutor(bucketStore),
     queueClient,
     async (call: BucketCall, result, { executionTime, seq }) => {
       if (call.operation.operation === "get") {

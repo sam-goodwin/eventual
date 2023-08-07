@@ -1,22 +1,23 @@
 import {
-  EntityCall,
-  EntityRequestSucceeded,
   WorkflowEventType,
   isEntityOperationOfType,
-  EntityRequestFailed,
+  type EntityCall,
+  type EntityRequestFailed,
+  type EntityRequestSucceeded,
 } from "@eventual/core/internal";
-import { ExecutionQueueClient } from "../../clients/execution-queue-client.js";
+import type { ExecutionQueueClient } from "../../clients/execution-queue-client.js";
+import { EntityCallExecutor } from "../../call-executors/entity-call-executor.js";
 import { normalizeError } from "../../result.js";
 import { EntityStore } from "../../stores/entity-store.js";
 import { createEvent } from "../events.js";
-import { WorkflowTaskQueueExecutorAdaptor } from "./task-queue-executor-adapator.js";
+import { WorkflowTaskQueueExecutorAdaptor } from "./task-queue-executor-adaptor.js";
 
 export function createEntityWorkflowQueueExecutor(
   entityStore: EntityStore,
   queueClient: ExecutionQueueClient
 ) {
   return new WorkflowTaskQueueExecutorAdaptor(
-    entityStore,
+    new EntityCallExecutor(entityStore),
     queueClient,
     async (call: EntityCall, result, { executionTime, seq }) => {
       return createEvent<EntityRequestSucceeded>(

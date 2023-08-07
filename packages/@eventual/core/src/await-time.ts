@@ -1,4 +1,4 @@
-import { createEventualCall, EventualCallKind } from "./internal/calls.js";
+import { createCall, CallKind } from "./internal/calls.js";
 import type { EventualPromise } from "./internal/eventual-hook.js";
 import {
   Schedule,
@@ -60,7 +60,7 @@ export function duration(
   // when the hook isn't defined, just return the Duration Schedule object.
   if (hook) {
     return hook.executeEventualCall(
-      createEventualCall(EventualCallKind.AwaitTimerCall, {
+      createCall(CallKind.AwaitTimerCall, {
         schedule: Schedule.duration(dur, unit),
       })
     ) as EventualPromise<void> & DurationSchedule;
@@ -107,7 +107,7 @@ export function time(date: Date | string): Promise<void> & TimeSchedule {
   const hook = tryGetEventualHook();
   if (hook) {
     return hook.executeEventualCall(
-      createEventualCall(EventualCallKind.AwaitTimerCall, {
+      createCall(CallKind.AwaitTimerCall, {
         schedule: Schedule.time(iso),
       })
     ) as unknown as EventualPromise<void> & TimeSchedule;

@@ -15,7 +15,7 @@ import type { BucketMethod } from "./bucket-hook.js";
 import { SendTaskHeartbeatResponse } from "./eventual-service.js";
 import type { SignalTarget } from "./signal.js";
 
-export type EventualCall =
+export type Call =
   | AwaitTimerCall
   | BucketCall
   | ChildWorkflowCall
@@ -32,7 +32,7 @@ export type EventualCall =
   | TaskCall
   | TaskRequestCall;
 
-export enum EventualCallKind {
+export enum CallKind {
   AwaitTimerCall = 1,
   BucketCall = 10,
   ChildWorkflowCall = 7,
@@ -50,77 +50,73 @@ export enum EventualCallKind {
   StartWorkflowCall = 13,
 }
 
-export const EventualCallSymbol = /* @__PURE__ */ Symbol.for(
-  "eventual:EventualCall"
-);
+export const CallSymbol = /* @__PURE__ */ Symbol.for("eventual:EventualCall");
 
-export type EventualCallOutput<E extends EventualCall> =
-  E extends EventualCallBase<any, infer Output> ? Output : never;
+export type CallOutput<E extends Call> = E extends CallBase<any, infer Output>
+  ? Output
+  : never;
 
-export interface EventualCallBase<
-  Kind extends EventualCall[typeof EventualCallSymbol],
-  Output
-> {
+export interface CallBase<Kind extends Call[typeof CallSymbol], Output> {
   __output: Output;
-  [EventualCallSymbol]: Kind;
+  [CallSymbol]: Kind;
 }
 
-export function createEventualCall<E extends EventualCall>(
-  kind: E[typeof EventualCallSymbol],
-  e: Omit<E, typeof EventualCallSymbol | "__output">
+export function createCall<E extends Call>(
+  kind: E[typeof CallSymbol],
+  e: Omit<E, typeof CallSymbol | "__output">
 ): E {
-  (e as E)[EventualCallSymbol] = kind;
+  (e as E)[CallSymbol] = kind;
   return e as E;
 }
 
-export function isEventualCall(a: any): a is EventualCall {
-  return a && typeof a === "object" && EventualCallSymbol in a;
+export function isCall(a: any): a is Call {
+  return a && typeof a === "object" && CallSymbol in a;
 }
 
-export function isEventualCallOfKind<E extends EventualCall>(
-  kind: E[typeof EventualCallSymbol],
+export function isCallOfKind<E extends Call>(
+  kind: E[typeof CallSymbol],
   a: any
 ): a is E {
-  return isEventualCall(a) && a[EventualCallSymbol] === kind;
+  return isCall(a) && a[CallSymbol] === kind;
 }
 
 export function isAwaitTimerCall(a: any): a is AwaitTimerCall {
-  return isEventualCallOfKind(EventualCallKind.AwaitTimerCall, a);
+  return isCallOfKind(CallKind.AwaitTimerCall, a);
 }
 
 export interface AwaitTimerCall
-  extends EventualCallBase<EventualCallKind.AwaitTimerCall, void> {
+  extends CallBase<CallKind.AwaitTimerCall, void> {
   schedule: Schedule;
 }
 
 export function isConditionCall(a: any): a is ConditionCall {
-  return isEventualCallOfKind(EventualCallKind.ConditionCall, a);
+  return isCallOfKind(CallKind.ConditionCall, a);
 }
 
 export interface ConditionCall
-  extends EventualCallBase<EventualCallKind.ConditionCall, boolean> {
+  extends CallBase<CallKind.ConditionCall, boolean> {
   predicate: ConditionPredicate;
   timeout?: Promise<any>;
 }
 
 export function isEmitEventsCall(a: any): a is EmitEventsCall {
-  return isEventualCallOfKind(EventualCallKind.EmitEventsCall, a);
+  return isCallOfKind(CallKind.EmitEventsCall, a);
 }
 
 export interface EmitEventsCall
-  extends EventualCallBase<EventualCallKind.EmitEventsCall, void> {
+  extends CallBase<CallKind.EmitEventsCall, void> {
   events: EventEnvelope[];
   id?: string;
 }
 
 export function isEntityCall(a: any): a is EntityCall {
-  return isEventualCallOfKind(EventualCallKind.EntityCall, a);
+  return isCallOfKind(CallKind.EntityCall, a);
 }
 
 export type EntityCall<
   Op extends EntityOperation["operation"] = EntityOperation["operation"]
   // TODO: not any
-> = EventualCallBase<EventualCallKind.EntityCall, any> & {
+> = CallBase<CallKind.EntityCall, any> & {
   operation: EntityOperation & { operation: Op };
 };
 
@@ -179,12 +175,12 @@ export interface EntityTransactOperation {
 }
 
 export function isBucketCall(a: any): a is BucketCall {
-  return isEventualCallOfKind(EventualCallKind.BucketCall, a);
+  return isCallOfKind(CallKind.BucketCall, a);
 }
 
 export type BucketCall<Op extends BucketMethod = BucketMethod> =
   // todo: not any
-  EventualCallBase<EventualCallKind.BucketCall, any> & {
+  CallBase<CallKind.BucketCall, any> & {
     operation: BucketOperation<Op>;
   };
 
@@ -202,21 +198,21 @@ export function isBucketCallType<Op extends BucketMethod>(
 }
 
 export function isExpectSignalCall(a: any): a is ExpectSignalCall {
-  return isEventualCallOfKind(EventualCallKind.ExpectSignalCall, a);
+  return isCallOfKind(CallKind.ExpectSignalCall, a);
 }
 
 export interface ExpectSignalCall
-  extends EventualCallBase<EventualCallKind.ExpectSignalCall, void> {
+  extends CallBase<CallKind.ExpectSignalCall, void> {
   signalId: string;
   timeout?: Promise<any>;
 }
 
 export function isSendSignalCall(a: any): a is SendSignalCall {
-  return isEventualCallOfKind(EventualCallKind.SendSignalCall, a);
+  return isCallOfKind(CallKind.SendSignalCall, a);
 }
 
 export interface SendSignalCall
-  extends EventualCallBase<EventualCallKind.SendSignalCall, void> {
+  extends CallBase<CallKind.SendSignalCall, void> {
   signalId: string;
   payload?: any;
   target: SignalTarget;
@@ -226,34 +222,41 @@ export interface SendSignalCall
 export function isRegisterSignalHandlerCall(
   a: any
 ): a is RegisterSignalHandlerCall {
-  return isEventualCallOfKind(EventualCallKind.RegisterSignalHandlerCall, a);
+  return isCallOfKind(CallKind.RegisterSignalHandlerCall, a);
 }
 
 export interface RegisterSignalHandlerCall<T = any>
-  extends EventualCallBase<EventualCallKind.RegisterSignalHandlerCall, void> {
+  extends CallBase<CallKind.RegisterSignalHandlerCall, void> {
   signalId: string;
   handler: (input: T) => void;
 }
 
 export function isSearchCall(a: any): a is SearchCall {
-  return isEventualCallOfKind(EventualCallKind.SearchCall, a);
+  return isCallOfKind(CallKind.SearchCall, a);
 }
 
 export type SearchCallRequest<Op extends SearchOperation> = Parameters<
   Extract<SearchIndex[Op], (...args: any[]) => any>
 >[0];
 
-export type SearchOperation = keyof SearchIndex;
+export type SearchOperation = Exclude<
+  {
+    [op in keyof SearchIndex]: [SearchIndex[op]] extends [Function]
+      ? op
+      : never;
+  }[keyof SearchIndex],
+  undefined
+>;
 
 export type SearchCall<Op extends SearchOperation = SearchOperation> =
   // TODO: not any
-  EventualCallBase<EventualCallKind.SearchCall, any> & {
+  CallBase<CallKind.SearchCall, any> & {
     operation: Op;
     request: SearchCallRequest<Op>;
   };
 
 export function isTaskRequestCall(a: any): a is TaskRequestCall {
-  return isEventualCallOfKind(EventualCallKind.TaskCall, a);
+  return isCallOfKind(CallKind.TaskCall, a);
 }
 
 export function isTaskRequestCallOperation<O extends TaskMethods>(
@@ -272,20 +275,16 @@ export type TaskMethods = Exclude<
 
 export interface TaskRequestCall<Op extends TaskMethods = TaskMethods>
   // TODO: make output conditional
-  extends EventualCallBase<
-    EventualCallKind.TaskRequestCall,
-    SendTaskHeartbeatResponse | void
-  > {
+  extends CallBase<CallKind.TaskRequestCall, SendTaskHeartbeatResponse | void> {
   operation: Op;
   params: Parameters<Task[Op]>;
 }
 
 export function isTaskCall(a: any): a is TaskCall {
-  return isEventualCallOfKind(EventualCallKind.TaskCall, a);
+  return isCallOfKind(CallKind.TaskCall, a);
 }
 
-export interface TaskCall
-  extends EventualCallBase<EventualCallKind.TaskCall, any> {
+export interface TaskCall extends CallBase<CallKind.TaskCall, any> {
   name: string;
   input: any;
   heartbeat?: DurationSchedule;
@@ -295,15 +294,15 @@ export interface TaskCall
   timeout?: Promise<any>;
 }
 
-export function isChildWorkflowCall(a: EventualCall): a is ChildWorkflowCall {
-  return isEventualCallOfKind(EventualCallKind.ChildWorkflowCall, a);
+export function isChildWorkflowCall(a: Call): a is ChildWorkflowCall {
+  return isCallOfKind(CallKind.ChildWorkflowCall, a);
 }
 
 /**
- * An {@link Eventual} representing an awaited call to a {@link Workflow}.
+ * A {@link Call} representing an awaited call to a {@link Workflow}.
  */
 export interface ChildWorkflowCall
-  extends EventualCallBase<EventualCallKind.ChildWorkflowCall, any> {
+  extends CallBase<CallKind.ChildWorkflowCall, any> {
   name: string;
   input?: any;
   opts?: WorkflowExecutionOptions;
@@ -317,41 +316,38 @@ export interface ChildWorkflowCall
   timeout?: Promise<any>;
 }
 
-export function isStartWorkflowCall(a: EventualCall): a is StartWorkflowCall {
-  return isEventualCallOfKind(EventualCallKind.StartWorkflowCall, a);
+export function isStartWorkflowCall(a: Call): a is StartWorkflowCall {
+  return isCallOfKind(CallKind.StartWorkflowCall, a);
 }
 
 /**
  * An starts a {@link Workflow}, but does not wait for it.
  */
 export interface StartWorkflowCall<W extends Workflow = any>
-  extends EventualCallBase<
-    EventualCallKind.StartWorkflowCall,
-    ExecutionHandle<W>
-  > {
+  extends CallBase<CallKind.StartWorkflowCall, ExecutionHandle<W>> {
   name: string;
   input?: any;
   opts?: WorkflowExecutionOptions;
 }
 
-export function isGetExecutionCall(a: EventualCall): a is GetExecutionCall {
-  return isEventualCallOfKind(EventualCallKind.GetExecutionCall, a);
+export function isGetExecutionCall(a: Call): a is GetExecutionCall {
+  return isCallOfKind(CallKind.GetExecutionCall, a);
 }
 
 /**
  * An starts a {@link Workflow}, but does not wait for it.
  */
 export interface GetExecutionCall
-  extends EventualCallBase<EventualCallKind.GetExecutionCall, Execution> {
+  extends CallBase<CallKind.GetExecutionCall, Execution> {
   executionId: string;
 }
 
 export function isInvokeTransactionCall(a: any): a is InvokeTransactionCall {
-  return isEventualCallOfKind(EventualCallKind.InvokeTransactionCall, a);
+  return isCallOfKind(CallKind.InvokeTransactionCall, a);
 }
 
 export interface InvokeTransactionCall<Input = any>
-  extends EventualCallBase<EventualCallKind.InvokeTransactionCall, any> {
+  extends CallBase<CallKind.InvokeTransactionCall, any> {
   input: Input;
   transactionName: string;
 }

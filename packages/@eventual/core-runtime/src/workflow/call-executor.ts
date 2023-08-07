@@ -1,8 +1,8 @@
 import type { ExecutionID, Workflow } from "@eventual/core";
 import {
-  EventualCall,
-  EventualCallKind,
-  EventualCallSymbol,
+  Call,
+  CallKind,
+  CallSymbol,
   type EventualPromise,
 } from "@eventual/core/internal";
 import type { EventClient } from "../clients/event-client.js";
@@ -12,16 +12,17 @@ import type { TaskClient } from "../clients/task-client.js";
 import type { TimerClient } from "../clients/timer-client.js";
 import type { TransactionClient } from "../clients/transaction-client.js";
 import type { WorkflowClient } from "../clients/workflow-client.js";
+import { EmitEventsCallExecutor } from "../call-executors/emit-events-call-executor.js";
 import type { BucketStore } from "../stores/bucket-store.js";
 import type { EntityStore } from "../stores/entity-store.js";
 import { AwaitTimerWorkflowExecutor } from "./call-executors/await-timer-call-executor.js";
 import { createBucketWorkflowQueueExecutor } from "./call-executors/bucket-store-call-executor.js";
-import { EmitEventsWorkflowExecutor } from "./call-executors/emit-events-call-executor.js";
 import { createEntityWorkflowQueueExecutor } from "./call-executors/entity-store-call-executor.js";
 import { NoOpWorkflowExecutor } from "./call-executors/no-op-call-executor.js";
 import { createSearchWorkflowQueueExecutor } from "./call-executors/open-search-client-call-executor.js";
 import { ScheduleTaskWorkflowExecutor } from "./call-executors/schedule-task-call-executor.js";
-import { SendSignalWorkflowExecutor } from "./call-executors/send-signal-call-executor.js";
+import { SendSignalWorkflowCallExecutor } from "./call-executors/send-signal-call-executor.js";
+import { SimpleWorkflowExecutorAdaptor } from "./call-executors/simple-workflow-executor-adaptor.js";
 import { createTransactionWorkflowQueueExecutor } from "./call-executors/transaction-client-executor.js";
 import { UnsupportedWorkflowCallExecutor } from "./call-executors/unsupported-executor.js";
 import { WorkflowClientWorkflowCallExecutor } from "./call-executors/workflow-client-executor.js";
@@ -56,7 +57,9 @@ export function createDefaultWorkflowCallExecutor(
       deps.executionQueueClient
     ),
     ConditionCall: noOpExecutor, // conditions do not generate events
-    EmitEventsCall: new EmitEventsWorkflowExecutor(deps.eventClient),
+    EmitEventsCall: new SimpleWorkflowExecutorAdaptor(
+      new EmitEventsCallExecutor(deps.eventClient)
+    ),
     EntityCall: createEntityWorkflowQueueExecutor(
       deps.entityStore,
       deps.executionQueueClient
@@ -71,7 +74,9 @@ export function createDefaultWorkflowCallExecutor(
       deps.openSearchClient,
       deps.executionQueueClient
     ),
-    SendSignalCall: new SendSignalWorkflowExecutor(deps.executionQueueClient),
+    SendSignalCall: new SendSignalWorkflowCallExecutor(
+      deps.executionQueueClient
+    ),
     TaskCall: new ScheduleTaskWorkflowExecutor(deps.taskClient),
     TaskRequestCall: unsupportedExecutor, // TODO: add support for task heartbeat, success, and failure to the workflow
     ChildWorkflowCall: workflowClientExecutor,
@@ -81,14 +86,12 @@ export function createDefaultWorkflowCallExecutor(
 }
 
 export type EventualCallWorkflowExecutorCollection = {
-  [K in keyof typeof EventualCallKind]: EventualWorkflowExecutor<
-    EventualCall & { [EventualCallSymbol]: (typeof EventualCallKind)[K] }
+  [K in keyof typeof CallKind]: EventualWorkflowExecutor<
+    Call & { [CallSymbol]: (typeof CallKind)[K] }
   >;
 };
 
-export interface EventualWorkflowExecutor<
-  C extends EventualCall = EventualCall
-> {
+export interface EventualWorkflowExecutor<C extends Call = Call> {
   executeForWorkflow(
     call: C,
     inputs: WorkflowExecutorInput
@@ -114,10 +117,10 @@ export class WorkflowCallExecutor {
     call: WorkflowCall,
     baseTime: Date
   ): Promise<void> {
-    const kind = call.call[EventualCallSymbol];
-    const executor = this.executors[
-      EventualCallKind[kind] as keyof typeof EventualCallKind
-    ] as EventualWorkflowExecutor | undefined;
+    const kind = call.call[CallSymbol];
+    const executor = this.executors[CallKind[kind] as keyof typeof CallKind] as
+      | EventualWorkflowExecutor
+      | undefined;
 
     if (executor) {
       return executor.executeForWorkflow(call.call, {
@@ -128,6 +131,6 @@ export class WorkflowCallExecutor {
       }) as unknown as EventualPromise<any>;
     }
 
-    throw new Error(`Missing Executor for ${EventualCallKind[kind]}`);
+    throw new Error(`Missing Executor for ${CallKind[kind]}`);
   }
 }

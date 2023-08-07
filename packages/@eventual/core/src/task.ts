@@ -1,7 +1,7 @@
 import { duration, time } from "./await-time.js";
 import type { ExecutionID } from "./execution.js";
 import type { FunctionRuntimeProps } from "./function-props.js";
-import { EventualCallKind, createEventualCall } from "./internal/calls.js";
+import { CallKind, createCall } from "./internal/calls.js";
 import type {
   SendTaskFailureRequest,
   SendTaskHeartbeatRequest,
@@ -282,7 +282,7 @@ export function task<Name extends string, Input = any, Output = any>(
     const hook = getEventualHook();
 
     return hook.executeEventualCall(
-      createEventualCall(EventualCallKind.TaskCall, {
+      createCall(CallKind.TaskCall, {
         name,
         input,
         timeout: timeout
@@ -300,7 +300,7 @@ export function task<Name extends string, Input = any, Output = any>(
   Object.defineProperty(func, "name", { value: name, writable: false });
   func.sendTaskSuccess = async function (request) {
     return getEventualHook().executeEventualCall(
-      createEventualCall(EventualCallKind.TaskRequestCall, {
+      createCall(CallKind.TaskRequestCall, {
         operation: "sendTaskSuccess",
         params: [request],
       })
@@ -308,7 +308,7 @@ export function task<Name extends string, Input = any, Output = any>(
   };
   func.sendTaskFailure = async function (request) {
     return getEventualHook().executeEventualCall(
-      createEventualCall(EventualCallKind.TaskRequestCall, {
+      createCall(CallKind.TaskRequestCall, {
         operation: "sendTaskFailure",
         params: [request],
       })
@@ -316,7 +316,7 @@ export function task<Name extends string, Input = any, Output = any>(
   };
   func.sendTaskHeartbeat = async function (request) {
     return getEventualHook().executeEventualCall(
-      createEventualCall(EventualCallKind.TaskRequestCall, {
+      createCall(CallKind.TaskRequestCall, {
         operation: "sendTaskHeartbeat",
         params: [request],
       })

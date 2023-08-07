@@ -265,6 +265,13 @@ var LOG_LEVELS = Object.values(LogLevel);
 var _BaseCachingSecret_value;
 _BaseCachingSecret_value = /* @__PURE__ */ new WeakMap();
 
+globalThis.getEventualHook ??= () => {
+  throw new Error("Eventual Hook is not yet registered");
+};
+globalThis.tryGetEventualHook ??= () => {
+  return void 0;
+};
+
 var ResultKind;
 (function(ResultKind2) {
   ResultKind2[ResultKind2["Resolved"] = 0] = "Resolved";

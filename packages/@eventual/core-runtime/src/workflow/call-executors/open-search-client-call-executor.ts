@@ -1,21 +1,22 @@
 import {
-  SearchCall,
-  SearchRequestFailed,
-  SearchRequestSucceeded,
   WorkflowEventType,
+  type SearchCall,
+  type SearchRequestFailed,
+  type SearchRequestSucceeded,
 } from "@eventual/core/internal";
-import { ExecutionQueueClient } from "../../clients/execution-queue-client.js";
-import { OpenSearchClient } from "../../clients/open-search-client.js";
+import type { ExecutionQueueClient } from "../../clients/execution-queue-client.js";
+import type { OpenSearchClient } from "../../clients/open-search-client.js";
+import { SearchCallExecutor } from "../../call-executors/search-call-client-executor.js";
 import { normalizeError } from "../../result.js";
 import { createEvent } from "../events.js";
-import { WorkflowTaskQueueExecutorAdaptor } from "./task-queue-executor-adapator.js";
+import { WorkflowTaskQueueExecutorAdaptor } from "./task-queue-executor-adaptor.js";
 
 export function createSearchWorkflowQueueExecutor(
   openSearchClient: OpenSearchClient,
   queueClient: ExecutionQueueClient
 ) {
   return new WorkflowTaskQueueExecutorAdaptor(
-    openSearchClient,
+    new SearchCallExecutor(openSearchClient),
     queueClient,
     async (call: SearchCall, result, { executionTime, seq }) => {
       return createEvent<SearchRequestSucceeded>(

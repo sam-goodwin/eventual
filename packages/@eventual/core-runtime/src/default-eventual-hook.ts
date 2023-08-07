@@ -1,6 +1,6 @@
 import type {
-  EventualCall,
-  EventualCallOutput,
+  Call,
+  CallOutput,
   EventualHook,
   EventualPromise,
   EventualProperty,
@@ -20,12 +20,12 @@ export class DefaultEventualHook implements EventualHook {
     private propertyRetrievers: EventualPropertyRetrieverCollection
   ) {}
 
-  public executeEventualCall<P extends EventualCall>(
+  public executeEventualCall<P extends Call>(
     eventual: P
   ): EventualPromise<any> {
     return new AnyEventualCallExecutor(this.executors).execute(
       eventual
-    ) as EventualCallOutput<P>;
+    ) as CallOutput<P>;
   }
 
   public getEventualProperty<P extends EventualProperty = EventualProperty>(

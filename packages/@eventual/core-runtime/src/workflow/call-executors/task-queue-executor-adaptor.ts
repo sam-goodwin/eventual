@@ -1,25 +1,21 @@
-import {
-  EventualCall,
-  EventualCallOutput,
-  WorkflowInputEvent,
-} from "@eventual/core/internal";
+import { Call, CallOutput, WorkflowInputEvent } from "@eventual/core/internal";
 import {
   EventualWorkflowExecutor,
   WorkflowExecutorInput,
 } from "../call-executor.js";
-import { EventualExecutor } from "../../eventual-hook.js";
+import { CallExecutor } from "../../eventual-hook.js";
 import { ExecutionQueueClient } from "../../clients/execution-queue-client.js";
 
 /**
- * Turn an {@link EventualExecutor} into an {@link EventualWorkflowExecutor}.
+ * Turn an {@link CallExecutor} into an {@link EventualWorkflowExecutor}.
  *
  * Provide onSuccess and onFailure to map the client results to {@link WorkflowInputEvent}s.
  *
  * These events will then be sent to the {@link ExecutionQueueClient} to be consumed by the orchestrator.
  */
 export class WorkflowTaskQueueExecutorAdaptor<
-  E extends EventualCall,
-  Ex extends EventualExecutor<E>
+  E extends Call,
+  Ex extends CallExecutor<E>
 > implements EventualWorkflowExecutor<E>
 {
   constructor(
@@ -27,7 +23,7 @@ export class WorkflowTaskQueueExecutorAdaptor<
     private executionQueueClient: ExecutionQueueClient,
     private onSuccess: (
       call: E,
-      result: EventualCallOutput<E>,
+      result: CallOutput<E>,
       props: WorkflowExecutorInput
     ) => WorkflowInputEvent | Promise<WorkflowInputEvent>,
     private onFailure: (

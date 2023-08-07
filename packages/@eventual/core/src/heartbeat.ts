@@ -1,4 +1,4 @@
-import { EventualCallKind, createEventualCall } from "./internal/calls.js";
+import { CallKind, createCall } from "./internal/calls.js";
 import type { SendTaskHeartbeatResponse } from "./service-client.js";
 
 /**
@@ -15,7 +15,7 @@ export async function sendTaskHeartbeat(
   taskToken?: string
 ): Promise<SendTaskHeartbeatResponse> {
   return getEventualHook().executeEventualCall(
-    createEventualCall(EventualCallKind.TaskRequestCall, {
+    createCall(CallKind.TaskRequestCall, {
       operation: "sendTaskHeartbeat",
       params: [{ taskToken }],
     })
