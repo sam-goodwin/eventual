@@ -1,6 +1,5 @@
 import { EventualError } from "@eventual/core";
 import {
-  Result,
   WorkflowCallHistoryType,
   WorkflowEventType,
   type SearchCall,
@@ -10,7 +9,7 @@ import {
 import { SearchCallExecutor } from "../../call-executors/search-call-client-executor.js";
 import type { ExecutionQueueClient } from "../../clients/execution-queue-client.js";
 import type { OpenSearchClient } from "../../clients/open-search-client.js";
-import { normalizeError } from "../../result.js";
+import { Result, normalizeError } from "../../result.js";
 import type { EventualFactory } from "../call-eventual-factory.js";
 import { createEvent } from "../events.js";
 import { Trigger, type EventualDefinition } from "../eventual-definition.js";
@@ -49,7 +48,7 @@ export function createSearchWorkflowQueueExecutor(
 }
 
 export class SearchCallEventualFactory implements EventualFactory<SearchCall> {
-  public createEventualDefinition(call: SearchCall): EventualDefinition<any> {
+  public initializeEventual(call: SearchCall): EventualDefinition<any> {
     return {
       triggers: [
         Trigger.onWorkflowEvent(

@@ -2,8 +2,8 @@ import type { Bucket, GetBucketObjectResponse } from "../bucket.js";
 import type { EventEnvelope } from "../event.js";
 import type { Schedule } from "../schedule.js";
 import type { WorkflowExecutionContext } from "../workflow.js";
-import type { BucketMethod } from "./bucket-hook.js";
 import type {
+  BucketMethod,
   BucketOperation,
   EntityOperation,
   SearchOperation,

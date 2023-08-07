@@ -1,6 +1,5 @@
 import { EventualError } from "@eventual/core";
 import {
-  Result,
   WorkflowCallHistoryType,
   WorkflowEventType,
   type InvokeTransactionCall,
@@ -10,11 +9,11 @@ import {
 import { TransactionCallExecutor } from "../../call-executors/transaction-call-executor.js";
 import type { ExecutionQueueClient } from "../../clients/execution-queue-client.js";
 import type { TransactionClient } from "../../clients/transaction-client.js";
-import { normalizeError } from "../../result.js";
 import type { EventualFactory } from "../call-eventual-factory.js";
 import { createEvent } from "../events.js";
 import { Trigger, type EventualDefinition } from "../eventual-definition.js";
 import { WorkflowTaskQueueExecutorAdaptor } from "./task-queue-executor-adaptor.js";
+import { Result, normalizeError } from "../../result.js";
 
 export function createTransactionWorkflowQueueExecutor(
   transactionClient: TransactionClient,
@@ -61,7 +60,7 @@ export function createTransactionWorkflowQueueExecutor(
 export class TransactionCallEventualFactory
   implements EventualFactory<InvokeTransactionCall>
 {
-  public createEventualDefinition(
+  public initializeEventual(
     call: InvokeTransactionCall<any>
   ): EventualDefinition<any> {
     return {

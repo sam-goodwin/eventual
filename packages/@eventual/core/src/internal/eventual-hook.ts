@@ -1,6 +1,5 @@
 import type { Call, CallOutput } from "./calls.js";
-import { Property, PropertyType } from "./properties.js";
-import type { Result } from "./result.js";
+import type { Property, PropertyType } from "./properties.js";
 
 /**
  * Globals that may be overridden by the core-runtime. See matching core-runtime file to understand
@@ -45,5 +44,4 @@ export interface EventualHook {
   getEventualProperty<P extends Property = Property>(
     property: P
   ): PropertyType<P>;
-  resolveEventual(seq: number, result: Result<any>): void;
 }

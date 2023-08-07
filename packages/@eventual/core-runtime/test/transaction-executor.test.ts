@@ -6,21 +6,22 @@ import {
   entity as _entity,
   event,
 } from "@eventual/core";
-import { Result, getEventualResource } from "@eventual/core/internal";
+import { getEventualResource } from "@eventual/core/internal";
 import { jest } from "@jest/globals";
 import { z } from "zod";
 import { EventClient } from "../src/clients/event-client.js";
 import { ExecutionQueueClient } from "../src/clients/execution-queue-client.js";
 import { NoOpLocalEnvConnector } from "../src/local/local-container.js";
 import { LocalEntityStore } from "../src/local/stores/entity-store.js";
+import { UnsupportedPropertyRetriever } from "../src/property-retriever.js";
 import { GlobalEntityProvider } from "../src/providers/entity-provider.js";
+import { Result } from "../src/result.js";
 import { EntityStore } from "../src/stores/entity-store.js";
 import {
   TransactionExecutor,
   TransactionResult,
   createTransactionExecutor,
 } from "../src/transaction-executor.js";
-import { UnsupportedPropertyRetriever } from "../src/property-retriever.js";
 
 const entity = (() => {
   let n = 0;

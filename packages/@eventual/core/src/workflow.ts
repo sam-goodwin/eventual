@@ -8,7 +8,7 @@ import {
   EventualPromise,
   EventualPromiseSymbol,
 } from "./internal/eventual-hook.js";
-import { registerEventualResource } from "./internal/global.js";
+import { registerEventualResource } from "./internal/resources.js";
 import {
   PropertyKind,
   createEventualProperty,

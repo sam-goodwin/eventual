@@ -7,6 +7,7 @@ import {
 } from "@eventual/core";
 import {
   AllPropertyRetriever,
+  Result,
   UnsupportedPropertyRetriever,
   WorkflowExecutor,
   isFailed,
@@ -17,11 +18,7 @@ import {
   runExecutor,
   serviceTypeScope,
 } from "@eventual/core-runtime";
-import {
-  Result,
-  ServiceType,
-  getEventualResource,
-} from "@eventual/core/internal";
+import { ServiceType, getEventualResource } from "@eventual/core/internal";
 import { discoverEventualConfig } from "@eventual/project";
 import path from "path";
 import { Argv } from "yargs";

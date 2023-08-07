@@ -1,6 +1,5 @@
 import { EventualError, HeartbeatTimeout, Timeout } from "@eventual/core";
 import {
-  Result,
   WorkflowCallHistoryType,
   WorkflowEventType,
   type CallOutput,
@@ -16,6 +15,7 @@ import type {
   WorkflowCallExecutorProps,
 } from "../call-executor.js";
 import { Trigger, type EventualDefinition } from "../eventual-definition.js";
+import { Result } from "../../result.js";
 
 export class TaskCallWorkflowExecutor
   implements WorkflowCallExecutor<TaskCall>
@@ -41,7 +41,7 @@ export class TaskCallWorkflowExecutor
 }
 
 export class TaskCallEventualFactory implements EventualFactory<TaskCall> {
-  public createEventualDefinition(
+  public initializeEventual(
     call: TaskCall
   ): EventualDefinition<CallOutput<TaskCall>> {
     return {

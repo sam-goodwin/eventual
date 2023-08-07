@@ -1,5 +1,4 @@
 import {
-  Result,
   WorkflowCallHistoryType,
   WorkflowEventType,
   type AwaitTimerCall,
@@ -12,6 +11,7 @@ import type {
   WorkflowCallExecutorProps,
 } from "../call-executor.js";
 import { Trigger, type EventualDefinition } from "../eventual-definition.js";
+import { Result } from "../../result.js";
 
 export class AwaitTimerWorkflowExecutor
   implements WorkflowCallExecutor<AwaitTimerCall>
@@ -36,9 +36,7 @@ export class AwaitTimerWorkflowExecutor
 export class AwaitTimerClassEventualFactory
   implements EventualFactory<AwaitTimerCall>
 {
-  public createEventualDefinition(
-    call: AwaitTimerCall
-  ): EventualDefinition<void> {
+  public initializeEventual(call: AwaitTimerCall): EventualDefinition<void> {
     return {
       triggers: Trigger.onWorkflowEvent(
         WorkflowEventType.TimerCompleted,

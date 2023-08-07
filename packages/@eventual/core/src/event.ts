@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import { createCall, CallKind } from "./internal/calls.js";
-import { registerEventualResource } from "./internal/global.js";
+import { registerEventualResource } from "./internal/resources.js";
 import { EventSpec, isSourceLocation } from "./internal/service-spec.js";
 import type { Subscription, SubscriptionRuntimeProps } from "./subscription.js";
 

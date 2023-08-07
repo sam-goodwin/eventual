@@ -1,6 +1,6 @@
 import { EntityStreamItem, HttpRequest, HttpResponse } from "@eventual/core";
 import {
-  EnvironmentManifest,
+  type ServiceSpec,
   getEventualResources,
 } from "@eventual/core/internal";
 import { ulid } from "ulidx";
@@ -21,6 +21,12 @@ import {
   isLocalEntityStreamEvent,
 } from "./local-container.js";
 import { TimeController } from "./time-controller.js";
+
+export interface EnvironmentManifest {
+  serviceName: string;
+  serviceSpec: ServiceSpec;
+  serviceUrl: string;
+}
 
 export class LocalEnvironment {
   private timeController: TimeController<LocalEvent>;

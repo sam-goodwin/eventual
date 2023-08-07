@@ -1,6 +1,5 @@
 import { EventualError } from "@eventual/core";
 import {
-  Result,
   WorkflowCallHistoryType,
   WorkflowEventType,
   isEntityOperationOfType,
@@ -10,7 +9,7 @@ import {
 } from "@eventual/core/internal";
 import { EntityCallExecutor } from "../../call-executors/entity-call-executor.js";
 import type { ExecutionQueueClient } from "../../clients/execution-queue-client.js";
-import { normalizeError } from "../../result.js";
+import { Result, normalizeError } from "../../result.js";
 import type { EntityStore } from "../../stores/entity-store.js";
 import type { EventualFactory } from "../call-eventual-factory.js";
 import { createEvent } from "../events.js";
@@ -56,7 +55,7 @@ export function createEntityWorkflowQueueExecutor(
 }
 
 export class EntityCallEventualFactory implements EventualFactory<EntityCall> {
-  public createEventualDefinition(call: EntityCall): EventualDefinition<any> {
+  public initializeEventual(call: EntityCall): EventualDefinition<any> {
     return {
       triggers: [
         Trigger.onWorkflowEvent(

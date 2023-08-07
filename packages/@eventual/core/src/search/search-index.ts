@@ -21,7 +21,7 @@ import type { CountRequest, SearchRequest } from "./query/search-query.js";
 import type { SearchResponse } from "./search-response.js";
 
 import t from "type-fest";
-import { registerEventualResource } from "../internal/global.js";
+import { registerEventualResource } from "../internal/resources.js";
 import {
   PropertyKind,
   createEventualProperty,

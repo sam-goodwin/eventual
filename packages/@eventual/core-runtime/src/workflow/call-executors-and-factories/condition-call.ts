@@ -1,4 +1,5 @@
-import { Result, type ConditionCall } from "@eventual/core/internal";
+import type { ConditionCall } from "@eventual/core/internal";
+import { Result } from "../../result.js";
 import type { EventualFactory } from "../call-eventual-factory.js";
 import { Trigger, type EventualDefinition } from "../eventual-definition.js";
 
@@ -8,9 +9,7 @@ import { Trigger, type EventualDefinition } from "../eventual-definition.js";
 export class ConditionCallEventualFactory
   implements EventualFactory<ConditionCall>
 {
-  public createEventualDefinition(
-    call: ConditionCall
-  ): EventualDefinition<boolean> {
+  public initializeEventual(call: ConditionCall): EventualDefinition<boolean> {
     // if the condition resolves immediately, just return a completed eventual
     const result = call.predicate();
     if (result) {

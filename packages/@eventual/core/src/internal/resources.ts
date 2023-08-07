@@ -7,7 +7,6 @@ import type { Subscription } from "../subscription.js";
 import type { Task } from "../task.js";
 import type { Transaction } from "../transaction.js";
 import type { Workflow } from "../workflow.js";
-import type { EnvironmentManifest, ServiceSpec } from "./service-spec.js";
 
 type Resource =
   | Task
@@ -32,10 +31,6 @@ declare global {
   // eslint-disable-next-line no-var
   var _eventual: {
     resources: ResourceCollection;
-    /**
-     * A collection of information about the environment, including the {@link ServiceSpec}.
-     */
-    environmentManifest?: EnvironmentManifest;
   };
 }
 

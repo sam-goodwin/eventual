@@ -1,10 +1,10 @@
 import type { Signal } from "@eventual/core";
-import {
-  Result,
-  type CompletionEvent,
-  type SignalReceived,
-  type WorkflowCallHistoryEvent,
+import type {
+  CompletionEvent,
+  SignalReceived,
+  WorkflowCallHistoryEvent,
 } from "@eventual/core/internal";
+import { Result } from "../result.js";
 
 export type Trigger<Output> =
   | PromiseTrigger<Output>

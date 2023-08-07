@@ -3,7 +3,7 @@ import {
   CallKind,
   InvokeTransactionCall,
 } from "./internal/calls.js";
-import { registerEventualResource } from "./internal/global.js";
+import { registerEventualResource } from "./internal/resources.js";
 import { TransactionSpec } from "./internal/service-spec.js";
 import { ServiceContext } from "./service.js";
 

@@ -1,5 +1,4 @@
 import {
-  Result,
   WorkflowCallHistoryType,
   isChildExecutionTarget,
   type SendSignalCall,
@@ -12,6 +11,7 @@ import type {
 } from "../call-executor.js";
 import type { EventualDefinition } from "../eventual-definition.js";
 import { formatChildExecutionName, formatExecutionId } from "../execution.js";
+import { Result } from "../../result.js";
 
 export class SendSignalWorkflowCallExecutor
   implements WorkflowCallExecutor<SendSignalCall>
@@ -46,9 +46,7 @@ export class SendSignalEventualFactory
    *
    * Just create the event and return undefined.
    */
-  public createEventualDefinition(
-    call: SendSignalCall
-  ): EventualDefinition<void> {
+  public initializeEventual(call: SendSignalCall): EventualDefinition<void> {
     return {
       createCallEvent(seq) {
         return {

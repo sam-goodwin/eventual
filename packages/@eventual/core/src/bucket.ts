@@ -1,6 +1,6 @@
 import { Readable } from "node:stream";
 import { CallKind, createCall, type BucketCall } from "./internal/calls.js";
-import { registerEventualResource } from "./internal/global.js";
+import { registerEventualResource } from "./internal/resources.js";
 import {
   PropertyKind,
   createEventualProperty,

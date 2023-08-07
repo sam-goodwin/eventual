@@ -13,7 +13,7 @@ export class UnsupportedWorkflowCallExecutor implements WorkflowCallExecutor {
 }
 
 export class UnsupportedEventualFactory implements EventualFactory {
-  public createEventualDefinition(call: Call): any {
+  public initializeEventual(call: Call): any {
     throw new Error(
       `Call type ${
         CallKind[call[CallSymbol]]

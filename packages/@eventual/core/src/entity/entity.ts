@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createCall, EntityCall, CallKind } from "../internal/calls.js";
 import { computeKeyDefinition, KeyDefinition } from "../internal/entity.js";
-import { registerEventualResource } from "../internal/global.js";
+import { registerEventualResource } from "../internal/resources.js";
 import {
   EntityIndexSpec,
   EntitySpec,

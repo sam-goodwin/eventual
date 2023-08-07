@@ -2,7 +2,6 @@ import type { EventualServiceClient } from "@eventual/core";
 import {
   EventualHook,
   EventualPromise,
-  Result,
   ServiceType,
   type Call,
   type CallOutput,
@@ -29,6 +28,7 @@ import {
 } from "../property-retriever.js";
 import { BucketPhysicalNamePropertyRetriever } from "../property-retrievers/bucket-name-property-retriever.js";
 import { OpenSearchClientPropertyRetriever } from "../property-retrievers/open-search-client-property-retriever.js";
+import type { Result } from "../result.js";
 import { serviceTypeScope } from "../service-type.js";
 import type { BucketStore } from "../stores/bucket-store.js";
 import type { EntityStore } from "../stores/entity-store.js";
@@ -89,7 +89,7 @@ export function createEventualWorker<Input extends any[], Output>(
           GetExecutionCall: serviceClientExecutor,
           InvokeTransactionCall: serviceClientExecutor,
           // register signal handler does not work outside of a workflow
-          RegisterSignalHandlerCall: unsupportedExecutor,
+          SignalHandlerCall: unsupportedExecutor,
           SearchCall: openSearchExecutor,
           SendSignalCall: serviceClientExecutor,
           StartWorkflowCall: serviceClientExecutor,

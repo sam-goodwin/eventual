@@ -7,7 +7,7 @@ import type {
   SendTaskHeartbeatRequest,
   SendTaskSuccessRequest,
 } from "./internal/eventual-service.js";
-import { registerEventualResource } from "./internal/global.js";
+import { registerEventualResource } from "./internal/resources.js";
 import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
 import { SourceLocation, isSourceLocation } from "./internal/service-spec.js";
 import { isTaskWorker } from "./internal/service-type.js";

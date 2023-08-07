@@ -1,5 +1,6 @@
 import { Timeout } from "@eventual/core";
-import { Result, type ExpectSignalCall } from "@eventual/core/internal";
+import type { ExpectSignalCall } from "@eventual/core/internal";
+import { Result } from "../../result.js";
 import type { EventualFactory } from "../call-eventual-factory.js";
 import { Trigger, type EventualDefinition } from "../eventual-definition.js";
 
@@ -9,9 +10,7 @@ import { Trigger, type EventualDefinition } from "../eventual-definition.js";
  * It uses the {@link NoOpWorkflowExecutor} and then waits for a signal to be received, resolving the payload or timeout promise.
  */
 export class ExpectSignalFactory implements EventualFactory<ExpectSignalCall> {
-  public createEventualDefinition(
-    call: ExpectSignalCall
-  ): EventualDefinition<void> {
+  public initializeEventual(call: ExpectSignalCall): EventualDefinition<void> {
     return {
       triggers: [
         Trigger.onSignal(call.signalId, (event) =>

@@ -7,15 +7,12 @@ import {
 } from "@eventual/core";
 import {
   EventualPromiseSymbol,
-  Result,
-  extendsSystemError,
   isCallEvent,
   isCompletionEvent,
   isSignalReceived,
   isWorkflowRunStarted,
   isWorkflowStarted,
   isWorkflowTimedOut,
-  iterator,
   type Call,
   type CallEvent,
   type CompletionEvent,
@@ -29,15 +26,20 @@ import {
   type WorkflowInputEvent,
   type WorkflowRunStarted,
   type WorkflowTimedOut,
-  type _Iterator,
 } from "@eventual/core/internal";
 import { isPromise } from "util/types";
 import { enterEventualCallHookScope } from "../eventual-hook.js";
+import { _Iterator, iterator } from "../iterator.js";
 import {
   PropertyRetriever,
   getEventualProperty,
 } from "../property-retriever.js";
-import { isFailed, isResolved, isResult } from "../result.js";
+import { Result, isFailed, isResolved, isResult } from "../result.js";
+import { extendsSystemError } from "../utils.js";
+import {
+  EventualFactory,
+  createDefaultEventualFactory,
+} from "./call-eventual-factory.js";
 import { filterEvents } from "./events.js";
 import {
   isAfterEveryEventTrigger,
@@ -52,10 +54,6 @@ import {
   type UnresolvedEventualDefinition,
 } from "./eventual-definition.js";
 import { formatExecutionId } from "./execution.js";
-import {
-  EventualFactory,
-  createDefaultEventualFactory,
-} from "./call-eventual-factory.js";
 
 /**
  * Put the resolve method on the promise, but don't expose it.
@@ -466,7 +464,14 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
         }
 
         try {
-          const eventual = self.eventualFactory.createEventualDefinition(call);
+          const eventual = self.eventualFactory.initializeEventual(
+            call,
+            // resolve eventual call, can be used by call factories to resolve another eventual with a value at any time
+            // currently used signalHandler.dispose to remove the signal handler
+            (seq, result) => {
+              self.tryResolveEventual(seq, result);
+            }
+          );
           const seq = self.nextSeq++;
 
           // not all calls generate events, these calls will not emit calls and thus will not cause determinism errors.
@@ -503,9 +508,6 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
           property,
           self.propertyRetriever
         ) as PropertyType<P>;
-      },
-      resolveEventual(seq, result) {
-        self.tryResolveEventual(seq, result);
       },
     };
     return await enterEventualCallHookScope(workflowHook, callback);

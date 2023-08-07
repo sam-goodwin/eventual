@@ -9,15 +9,15 @@ import {
   asyncResult,
 } from "@eventual/core";
 import {
+  Failed,
   GlobalTaskProvider,
+  Resolved,
+  Result,
   isFailed,
   isResolved,
   isResult,
 } from "@eventual/core-runtime";
 import {
-  Failed,
-  Resolved,
-  Result,
   TaskInput,
   assertNever,
   getEventualResource,

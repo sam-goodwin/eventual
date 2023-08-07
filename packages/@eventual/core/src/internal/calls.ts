@@ -11,7 +11,6 @@ import type { DurationSchedule, Schedule } from "../schedule.js";
 import type { SearchIndex } from "../search/search-index.js";
 import { Task } from "../task.js";
 import type { Workflow, WorkflowExecutionOptions } from "../workflow.js";
-import type { BucketMethod } from "./bucket-hook.js";
 import { SendTaskHeartbeatResponse } from "./eventual-service.js";
 import type { SignalTarget } from "./signal.js";
 
@@ -25,7 +24,7 @@ export type Call =
   | ExpectSignalCall
   | GetExecutionCall
   | InvokeTransactionCall
-  | RegisterSignalHandlerCall
+  | SignalHandlerCall
   | SearchCall
   | SendSignalCall
   | StartWorkflowCall
@@ -42,8 +41,8 @@ export enum CallKind {
   ExpectSignalCall = 3,
   GetExecutionCall = 14,
   InvokeTransactionCall = 9,
-  RegisterSignalHandlerCall = 5,
   SendSignalCall = 6,
+  SignalHandlerCall = 5,
   TaskCall = 0,
   TaskRequestCall = 12,
   SearchCall = 11,
@@ -174,6 +173,17 @@ export interface EntityTransactOperation {
   items: EntityTransactItem[];
 }
 
+export interface BucketDefinition {
+  name: string;
+}
+
+export type BucketMethod = Exclude<
+  {
+    [k in keyof Bucket]: Bucket[k] extends Function ? k : never;
+  }[keyof Bucket],
+  "on"
+>;
+
 export function isBucketCall(a: any): a is BucketCall {
   return isCallOfKind(CallKind.BucketCall, a);
 }
@@ -219,16 +229,22 @@ export interface SendSignalCall
   id?: string;
 }
 
-export function isRegisterSignalHandlerCall(
-  a: any
-): a is RegisterSignalHandlerCall {
-  return isCallOfKind(CallKind.RegisterSignalHandlerCall, a);
+export function isSignalHandlerCall(a: any): a is SignalHandlerCall {
+  return isCallOfKind(CallKind.SignalHandlerCall, a);
 }
 
-export interface RegisterSignalHandlerCall<T = any>
-  extends CallBase<CallKind.RegisterSignalHandlerCall, void> {
-  signalId: string;
-  handler: (input: T) => void;
+export interface SignalHandlerCall<T = any>
+  extends CallBase<CallKind.SignalHandlerCall, void> {
+  operation:
+    | {
+        operation: "register";
+        signalId: string;
+        handler: (input: T) => void;
+      }
+    | {
+        operation: "dispose";
+        seq: number;
+      };
 }
 
 export function isSearchCall(a: any): a is SearchCall {

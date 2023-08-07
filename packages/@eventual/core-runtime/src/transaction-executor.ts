@@ -16,7 +16,6 @@ import {
 import {
   EventualPromise,
   EventualPromiseSymbol,
-  Result,
   ServiceType,
   SignalTargetType,
   assertNever,
@@ -35,11 +34,11 @@ import type { EventClient } from "./clients/event-client.js";
 import type { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { enterEventualCallHookScope } from "./eventual-hook.js";
 import {
-  type PropertyRetriever,
   getEventualProperty,
+  type PropertyRetriever,
 } from "./property-retriever.js";
 import type { EntityProvider } from "./providers/entity-provider.js";
-import { isResolved } from "./result.js";
+import { Result, isResolved } from "./result.js";
 import { serviceTypeScope } from "./service-type.js";
 import {
   convertNormalizedEntityKeyToMap,
@@ -267,10 +266,6 @@ export function createTransactionExecutor(
             propertyRetriever
           ) as PropertyType<P>;
         },
-        /**
-         * Not used
-         */
-        resolveEventual: () => undefined,
       };
 
       const output = await serviceTypeScope(

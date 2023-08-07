@@ -2,7 +2,7 @@ import itty from "itty-router";
 import type openapi from "openapi3-ts";
 import type { FunctionRuntimeProps } from "../function-props.js";
 import type { HttpMethod } from "../http-method.js";
-import { registerEventualResource } from "../internal/global.js";
+import { registerEventualResource } from "../internal/resources.js";
 import { generateOpenAPISpec } from "../internal/open-api-spec.js";
 import {
   PropertyKind,

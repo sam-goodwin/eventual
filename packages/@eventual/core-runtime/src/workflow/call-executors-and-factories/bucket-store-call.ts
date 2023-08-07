@@ -1,6 +1,5 @@
 import { EventualError, type GetBucketObjectResponse } from "@eventual/core";
 import {
-  Result,
   WorkflowCallHistoryType,
   WorkflowEventType,
   isBucketCallType,
@@ -16,7 +15,7 @@ import {
 import { Readable } from "stream";
 import { BucketCallExecutor } from "../../call-executors/bucket-call-executor.js";
 import type { ExecutionQueueClient } from "../../clients/execution-queue-client.js";
-import { normalizeError } from "../../result.js";
+import { Result, normalizeError } from "../../result.js";
 import type { BucketStore } from "../../stores/bucket-store.js";
 import { streamToBuffer } from "../../utils.js";
 import { EventualFactory } from "../call-eventual-factory.js";
@@ -86,7 +85,7 @@ export function createBucketWorkflowQueueExecutor(
  * On success for GET, decode the data and put it into a stream.
  */
 export class BucketCallEventualFactory implements EventualFactory<BucketCall> {
-  public createEventualDefinition(
+  public initializeEventual(
     call: BucketCall
   ): EventualDefinition<CallOutput<BucketCall>> {
     return {

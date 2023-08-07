@@ -8,7 +8,6 @@ import {
 import {
   ServiceType,
   WorkflowEventType,
-  extendsError,
   isAsyncResult,
   isWorkflowFailed,
   type TaskFailed,
@@ -32,7 +31,7 @@ import { computeDurationSeconds } from "../schedule.js";
 import type { TaskStore } from "../stores/task-store.js";
 import { createTaskToken } from "../task-token.js";
 import { taskContextScope } from "../task.js";
-import { getLazy } from "../utils.js";
+import { extendsError, getLazy } from "../utils.js";
 import { createEvent } from "../workflow/events.js";
 import {
   TaskFallbackRequestType,

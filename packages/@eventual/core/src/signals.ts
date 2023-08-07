@@ -1,6 +1,9 @@
-import { createCall, CallKind } from "./internal/calls.js";
+import {
+  CallKind,
+  createCall,
+  type SignalHandlerCall,
+} from "./internal/calls.js";
 import { EventualPromiseSymbol } from "./internal/eventual-hook.js";
-import { Result } from "./internal/result.js";
 import { SignalTargetType } from "./internal/signal.js";
 
 /**
@@ -210,21 +213,27 @@ export function onSignal<Payload>(
   signal: Signal<Payload> | string,
   handler: SignalHandlerFunction<Payload>
 ): SignalsHandler {
-  const hook = getEventualHook();
-  const eventualPromise = hook.executeEventualCall(
-    createCall(CallKind.RegisterSignalHandlerCall, {
-      signalId: typeof signal === "string" ? signal : signal.id,
-      handler,
+  const eventualPromise = getEventualHook().executeEventualCall(
+    createCall<SignalHandlerCall>(CallKind.SignalHandlerCall, {
+      operation: {
+        operation: "register",
+        signalId: typeof signal === "string" ? signal : signal.id,
+        handler,
+      },
     })
   );
 
   // the signal handler call should not block
   return {
     dispose: function () {
-      // resolving the signal handler eventual makes it unable to accept new events.
-      hook.resolveEventual(
-        eventualPromise[EventualPromiseSymbol],
-        Result.resolved(undefined)
+      // disposing the signal handler eventual makes it unable to accept new events.
+      getEventualHook().executeEventualCall(
+        createCall<SignalHandlerCall>(CallKind.SignalHandlerCall, {
+          operation: {
+            operation: "dispose",
+            seq: eventualPromise[EventualPromiseSymbol],
+          },
+        })
       );
     },
   };

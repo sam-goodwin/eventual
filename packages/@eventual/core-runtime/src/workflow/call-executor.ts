@@ -68,7 +68,7 @@ export function createDefaultWorkflowCallExecutor(
       deps.transactionClient,
       deps.executionQueueClient
     ),
-    RegisterSignalHandlerCall: noOpExecutor, // signal handlers do not generate events
+    SignalHandlerCall: noOpExecutor, // signal handlers do not generate events
     SearchCall: createSearchWorkflowQueueExecutor(
       deps.openSearchClient,
       deps.executionQueueClient

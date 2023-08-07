@@ -1,6 +1,5 @@
 import { EventualError } from "@eventual/core";
 import {
-  Result,
   WorkflowCallHistoryType,
   WorkflowEventType,
   isChildWorkflowCall,
@@ -16,6 +15,7 @@ import type {
 } from "../call-executor.js";
 import { Trigger, type EventualDefinition } from "../eventual-definition.js";
 import { formatChildExecutionName } from "../execution.js";
+import { Result } from "../../result.js";
 
 export class ChildWorkflowCallWorkflowExecutor
   implements WorkflowCallExecutor<ChildWorkflowCall>
@@ -45,9 +45,7 @@ export class ChildWorkflowCallWorkflowExecutor
 export class ChildWorkflowCallEventualFactory
   implements EventualFactory<ChildWorkflowCall>
 {
-  public createEventualDefinition(
-    call: ChildWorkflowCall
-  ): EventualDefinition<any> {
+  public initializeEventual(call: ChildWorkflowCall): EventualDefinition<any> {
     return {
       triggers: [
         Trigger.onWorkflowEvent(

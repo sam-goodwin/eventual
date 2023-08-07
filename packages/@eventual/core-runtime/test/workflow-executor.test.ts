@@ -19,11 +19,7 @@ import {
   task,
   time,
 } from "@eventual/core";
-import {
-  HistoryEvent,
-  Result,
-  SignalTargetType,
-} from "@eventual/core/internal";
+import { SignalTargetType, type HistoryEvent } from "@eventual/core/internal";
 import {
   WorkflowExecutor,
   WorkflowResult,
@@ -50,7 +46,7 @@ import {
   workflowTimedOut,
 } from "./call-util.js";
 
-import { UnsupportedPropertyRetriever } from "../src/index.js";
+import { Result, UnsupportedPropertyRetriever } from "../src/index.js";
 import "../src/workflow/workflow.js";
 
 const eventName = "hello world";

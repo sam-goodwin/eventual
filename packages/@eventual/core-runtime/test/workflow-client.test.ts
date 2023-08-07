@@ -5,14 +5,14 @@ import {
   SucceededExecution,
   workflow,
 } from "@eventual/core";
-import { hashCode } from "@eventual/core/internal";
 import { jest } from "@jest/globals";
 import { ExecutionQueueClient } from "../src/clients/execution-queue-client.js";
 import { LogsClient } from "../src/clients/logs-client.js";
 import { WorkflowClient } from "../src/clients/workflow-client.js";
-import { INTERNAL_EXECUTION_ID_PREFIX } from "../src/workflow/execution.js";
 import { WorkflowSpecProvider } from "../src/providers/workflow-provider.js";
 import { ExecutionStore } from "../src/stores/execution-store.js";
+import { hashCode } from "../src/utils.js";
+import { INTERNAL_EXECUTION_ID_PREFIX } from "../src/workflow/execution.js";
 
 const mockExecutionStore = {
   create: jest.fn() as ExecutionStore["create"],
