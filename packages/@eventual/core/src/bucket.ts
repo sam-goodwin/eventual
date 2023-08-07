@@ -1,24 +1,24 @@
 import { Readable } from "node:stream";
 import {
-  BucketCall,
-  createEventualCall,
   EventualCallKind,
+  createEventualCall,
+  type BucketCall,
 } from "./internal/calls.js";
 import { registerEventualResource } from "./internal/global.js";
 import {
-  BucketPhysicalName,
-  createEventualProperty,
   EventualPropertyKind,
+  createEventualProperty,
+  type BucketPhysicalName,
 } from "./internal/properties.js";
 import {
   BucketNotificationEventType,
-  BucketNotificationHandlerOptions,
-  BucketNotificationHandlerSpec,
   BucketSpec,
-  isSourceLocation,
   SourceLocation,
+  isSourceLocation,
+  type BucketNotificationHandlerOptions,
+  type BucketNotificationHandlerSpec,
 } from "./internal/service-spec.js";
-import { DurationSchedule } from "./schedule.js";
+import type { DurationSchedule } from "./schedule.js";
 
 export type PresignedUrlOperation = "put" | "get" | "head" | "delete";
 
@@ -143,63 +143,53 @@ export function bucket<Name extends string = string>(
     get(...args) {
       return getEventualHook().executeEventualCall(
         createEventualCall<BucketCall>(EventualCallKind.BucketCall, {
-          bucketName: name,
-          operation: "get",
-          params: args,
+          operation: { bucketName: name, operation: "get", params: args },
         })
       );
     },
     head(...args) {
       return getEventualHook().executeEventualCall(
         createEventualCall<BucketCall>(EventualCallKind.BucketCall, {
-          bucketName: name,
-          operation: "head",
-          params: args,
+          operation: { bucketName: name, operation: "head", params: args },
         })
       );
     },
     put(...args) {
       return getEventualHook().executeEventualCall(
         createEventualCall<BucketCall>(EventualCallKind.BucketCall, {
-          bucketName: name,
-          operation: "put",
-          params: args,
+          operation: { bucketName: name, operation: "put", params: args },
         })
       );
     },
     copyTo(...args) {
       return getEventualHook().executeEventualCall(
         createEventualCall<BucketCall>(EventualCallKind.BucketCall, {
-          bucketName: name,
-          operation: "copyTo",
-          params: args,
+          operation: { bucketName: name, operation: "copyTo", params: args },
         })
       );
     },
     delete(...args) {
       return getEventualHook().executeEventualCall(
         createEventualCall<BucketCall>(EventualCallKind.BucketCall, {
-          bucketName: name,
-          operation: "delete",
-          params: args,
+          operation: { bucketName: name, operation: "delete", params: args },
         })
       );
     },
     list(...args) {
       return getEventualHook().executeEventualCall(
         createEventualCall<BucketCall>(EventualCallKind.BucketCall, {
-          bucketName: name,
-          operation: "list",
-          params: args,
+          operation: { bucketName: name, operation: "list", params: args },
         })
       );
     },
     generatePresignedUrl(...args) {
       return getEventualHook().executeEventualCall(
         createEventualCall<BucketCall>(EventualCallKind.BucketCall, {
-          bucketName: name,
-          operation: "generatePresignedUrl",
-          params: args,
+          operation: {
+            bucketName: name,
+            operation: "generatePresignedUrl",
+            params: args,
+          },
         })
       );
     },

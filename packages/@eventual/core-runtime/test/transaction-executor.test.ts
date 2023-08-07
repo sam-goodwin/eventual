@@ -20,6 +20,7 @@ import {
   TransactionResult,
   createTransactionExecutor,
 } from "../src/transaction-executor.js";
+import { UnsupportedPropertyRetriever } from "../src/index.js";
 
 const entity = (() => {
   let n = 0;
@@ -49,6 +50,8 @@ let executor: TransactionExecutor;
 const entityProvider = new GlobalEntityProvider();
 const event1 = event("event1");
 
+const propertyRetriever = new UnsupportedPropertyRetriever("Transaction Test");
+
 beforeEach(() => {
   jest.resetAllMocks();
 
@@ -61,7 +64,8 @@ beforeEach(() => {
     store,
     entityProvider,
     mockExecutionQueueClient,
-    mockEventClient
+    mockEventClient,
+    propertyRetriever
   );
 });
 

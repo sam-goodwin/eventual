@@ -1,38 +1,37 @@
 import {
   EventualError,
-  GetBucketObjectResponse,
   HeartbeatTimeout,
   Timeout,
+  type GetBucketObjectResponse,
 } from "@eventual/core";
 import {
+  Result,
+  WorkflowCallHistoryType,
+  WorkflowEventType,
   assertNever,
-  EventualCall,
   isAwaitTimerCall,
   isBucketCall,
-  isBucketRequest,
+  isBucketCallType,
   isBucketRequestSucceededOperationType,
   isChildWorkflowCall,
-  isChildWorkflowScheduled,
   isConditionCall,
   isEmitEventsCall,
   isEntityCall,
-  isEntityRequest,
-  isEventsEmitted,
   isExpectSignalCall,
+  isGetExecutionCall,
   isInvokeTransactionCall,
   isRegisterSignalHandlerCall,
   isSearchCall,
   isSendSignalCall,
-  isSignalSent,
+  isStartWorkflowCall,
   isTaskCall,
-  isTaskScheduled,
-  isTimerScheduled,
-  isTransactionRequest,
-  Result,
-  WorkflowEventType,
+  isTaskRequestCall,
+  type BucketMethod,
+  type BucketOperation,
+  type EventualCall,
 } from "@eventual/core/internal";
 import { Readable } from "stream";
-import { EventualDefinition, Trigger } from "./workflow-executor.js";
+import { EventualDefinition, Trigger } from "./workflow/workflow-executor.js";
 
 export function createEventualFromCall(
   call: EventualCall
@@ -57,8 +56,12 @@ export function createEventualFromCall(
             )
           : undefined,
       ],
-      isCorresponding(event) {
-        return isTaskScheduled(event) && call.name === event.name;
+      createCallEvent(seq) {
+        return {
+          name: call.name,
+          seq,
+          type: WorkflowCallHistoryType.TaskScheduled,
+        };
       },
     };
   } else if (isChildWorkflowCall(call)) {
@@ -80,8 +83,13 @@ export function createEventualFromCall(
             )
           : undefined,
       ],
-      isCorresponding(event) {
-        return isChildWorkflowScheduled(event) && event.name === call.name;
+      createCallEvent(seq) {
+        return {
+          type: WorkflowCallHistoryType.ChildWorkflowScheduled,
+          name: call.name,
+          seq,
+          input: call.input,
+        };
       },
     };
   } else if (isAwaitTimerCall(call)) {
@@ -90,12 +98,22 @@ export function createEventualFromCall(
         WorkflowEventType.TimerCompleted,
         Result.resolved(undefined)
       ),
-      isCorresponding: isTimerScheduled,
+      createCallEvent: (seq) => ({
+        type: WorkflowCallHistoryType.TimerScheduled,
+        seq,
+        schedule: call.schedule,
+      }),
     };
   } else if (isSendSignalCall(call)) {
     return {
-      isCorresponding(event) {
-        return isSignalSent(event) && event.signalId === call.signalId;
+      createCallEvent(seq) {
+        return {
+          type: WorkflowCallHistoryType.SignalSent,
+          target: call.target,
+          signalId: call.signalId,
+          seq,
+          payload: call.payload,
+        };
       },
       result: Result.resolved(undefined),
     };
@@ -115,7 +133,11 @@ export function createEventualFromCall(
     };
   } else if (isEmitEventsCall(call)) {
     return {
-      isCorresponding: isEventsEmitted,
+      createCallEvent: (seq) => ({
+        type: WorkflowCallHistoryType.EventsEmitted,
+        events: call.events,
+        seq,
+      }),
       result: Result.resolved(undefined),
     };
   } else if (isConditionCall(call)) {
@@ -158,14 +180,12 @@ export function createEventualFromCall(
             Result.failed(new EventualError(event.error, event.message))
         ),
       ],
-      isCorresponding(event) {
-        return (
-          isEntityRequest(event) &&
-          call.operation === event.operation.operation &&
-          "name" in call === "name" in event.operation &&
-          (!("name" in call && "name" in event.operation) ||
-            call.name === event.operation.name)
-        );
+      createCallEvent(seq) {
+        return {
+          type: WorkflowCallHistoryType.EntityRequest,
+          operation: call.operation,
+          seq,
+        };
       },
     };
   } else if (isInvokeTransactionCall(call)) {
@@ -181,8 +201,13 @@ export function createEventualFromCall(
             Result.failed(new EventualError(event.error, event.message))
         ),
       ],
-      isCorresponding(event) {
-        return isTransactionRequest(event);
+      createCallEvent(seq) {
+        return {
+          type: WorkflowCallHistoryType.TransactionRequest,
+          input: call.input,
+          seq,
+          transactionName: call.transactionName,
+        };
       },
     };
   } else if (isBucketCall(call)) {
@@ -221,10 +246,28 @@ export function createEventualFromCall(
             Result.failed(new EventualError(event.error, event.message))
         ),
       ],
-      isCorresponding(event) {
-        return (
-          isBucketRequest(event) && event.operation.operation === call.operation
-        );
+      createCallEvent(seq) {
+        if (isBucketCallType("put", call)) {
+          // data isn't saved or compared against for bucket puts
+          const [key] = call.operation.params;
+          return {
+            type: WorkflowCallHistoryType.BucketRequest,
+            operation: {
+              operation: "put",
+              bucketName: call.operation.bucketName,
+              key,
+            },
+            seq,
+          };
+        } else {
+          return {
+            type: WorkflowCallHistoryType.BucketRequest,
+            operation: call.operation as BucketOperation<
+              Exclude<BucketMethod, "put">
+            >,
+            seq,
+          };
+        }
       },
     };
   } else if (isSearchCall(call)) {
@@ -240,6 +283,31 @@ export function createEventualFromCall(
             Result.failed(new EventualError(event.error, event.message))
         ),
       ],
+    };
+  } else if (isTaskRequestCall(call)) {
+    // TODO: implement.
+    return {
+      result: Result.failed(
+        new Error(
+          "Task Heartbeat, Success, and Fail requests are not supported in a workflow currently."
+        )
+      ),
+    };
+  } else if (isStartWorkflowCall(call)) {
+    // TODO: implement.
+    return {
+      result: Result.failed(
+        new Error("Start Workflow is not supported in a workflow currently.")
+      ),
+    };
+  } else if (isGetExecutionCall(call)) {
+    // TODO: implement.
+    return {
+      result: Result.failed(
+        new Error(
+          "Task Heartbeat, Success, and Fail requests are not supported in a workflow currently."
+        )
+      ),
     };
   }
   return assertNever(call);

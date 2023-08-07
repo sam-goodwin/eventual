@@ -1,4 +1,4 @@
-import {
+import type {
   ExecuteTransactionRequest,
   ExecuteTransactionResponse,
 } from "@eventual/core";

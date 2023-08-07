@@ -1,17 +1,18 @@
+import { EventualServiceClient } from "@eventual/core";
 import { ServiceSpec, ServiceType } from "@eventual/core/internal";
+import { OpenSearchClient } from "../clients/open-search-client.js";
 import { DefaultEventualHook } from "../default-eventual-hook.js";
 import {
   UnsupportedExecutor,
   UnsupportedPropertyRetriever,
   enterEventualCallHookScope,
 } from "../eventual-hook.js";
-import { ServiceClientExecutor } from "../executor/service-client-executor.js";
+import { AwaitTimerCallPassthroughExecutor } from "../executors/await-timer-executor.js";
+import { ServiceClientExecutor } from "../executors/service-client-executor.js";
 import { serviceTypeScope } from "../service-type.js";
-import { EventualServiceClient } from "@eventual/core";
-import { LazyValue } from "../utils.js";
-import { EntityStore } from "../stores/entity-store.js";
-import { BucketStore } from "../stores/bucket-store.js";
-import { OpenSearchClient } from "../clients/open-search-client.js";
+import type { BucketStore } from "../stores/bucket-store.js";
+import type { EntityStore } from "../stores/entity-store.js";
+import type { LazyValue } from "../utils.js";
 
 export interface WorkerIntrinsicDeps {
   bucketStore: BucketStore | undefined;
@@ -41,19 +42,24 @@ export function createEventualWorker<Input extends any[], Output>(
     enterEventualCallHookScope(
       new DefaultEventualHook(
         {
-          AwaitTimerCall: unsupportedExecutor,
+          AwaitTimerCall: new AwaitTimerCallPassthroughExecutor(),
+          BucketCall: dep.bucketStore ?? unsupportedExecutor,
+          ChildWorkflowCall: unsupportedExecutor,
+          // conditions do not work outside of a workflow
           ConditionCall: unsupportedExecutor,
-          EmitEventsCall: unsupportedExecutor,
+          EmitEventsCall: serviceClientExecutor,
+          EntityCall: dep.entityStore ?? unsupportedExecutor,
+          // expect signal does not work outside of a workflow
           ExpectSignalCall: unsupportedExecutor,
+          GetExecutionCall: serviceClientExecutor,
+          InvokeTransactionCall: serviceClientExecutor,
+          // register signal handler does not work outside of a workflow
           RegisterSignalHandlerCall: unsupportedExecutor,
-          WorkflowCall: unsupportedExecutor,
+          SearchCall: dep.openSearchClient ?? unsupportedExecutor,
+          SendSignalCall: serviceClientExecutor,
+          StartWorkflowCall: serviceClientExecutor,
           TaskCall: unsupportedExecutor,
           TaskRequestCall: serviceClientExecutor,
-          SendSignalCall: serviceClientExecutor,
-          SearchCall: dep.openSearchClient ?? unsupportedExecutor,
-          BucketCall: unsupportedExecutor,
-          EntityCall: unsupportedExecutor,
-          InvokeTransactionCall: unsupportedExecutor,
         },
         {
           BucketPhysicalName: dep.bucketStore ?? unsupportedProperty,

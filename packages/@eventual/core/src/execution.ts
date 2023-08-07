@@ -1,5 +1,13 @@
-import { ulid } from "ulidx";
-import type { EventualServiceClient } from "./service-client.js";
+import {
+  EventualCallKind,
+  createEventualCall,
+  type GetExecutionCall,
+  type SendSignalCall,
+} from "./internal/calls.js";
+import type { EventualHook } from "./internal/eventual-hook.js";
+import { isOrchestratorWorker } from "./internal/service-type.js";
+import { SignalTargetType } from "./internal/signal.js";
+import { EventualServiceClient } from "./service-client.js";
 import type { SendSignalProps, Signal } from "./signals.js";
 import type { Workflow, WorkflowOutput } from "./workflow.js";
 
@@ -74,20 +82,39 @@ export function isSucceededExecution(
 
 /**
  * A reference to a running execution.
+ *
+ * Note: This object should be usable within a workflow. It should only contain deterministic logic
+ * {@link EventualCall}s or {@link EventualProperty}s via the {@link EventualHook}.
  */
-export class ExecutionHandle<W extends Workflow> implements ChildExecution {
+export class ExecutionHandle<W extends Workflow> {
   constructor(
     public executionId: ExecutionID,
-    private serviceClient: EventualServiceClient
+    private serviceClient?: EventualServiceClient
   ) {}
 
   /**
    * @return the {@link Execution} with the status, result, error, and other data based on the current status.
    */
   public async getStatus(): Promise<Execution<WorkflowOutput<W>>> {
-    return (await this.serviceClient.getExecution(
-      this.executionId
-    )) as Execution<WorkflowOutput<W>>;
+    const hook = tryGetEventualHook();
+    if (hook) {
+      return hook.executeEventualCall(
+        createEventualCall<GetExecutionCall>(
+          EventualCallKind.GetExecutionCall,
+          {
+            executionId: this.executionId,
+          }
+        )
+      );
+    } else if (this.serviceClient && !isOrchestratorWorker()) {
+      return (await this.serviceClient.getExecution(
+        this.executionId
+      )) as Execution<WorkflowOutput<W>>;
+    } else {
+      throw new Error(
+        "No EventualHook or EventualServiceClient available to get execution status."
+      );
+    }
   }
 
   /**
@@ -98,12 +125,29 @@ export class ExecutionHandle<W extends Workflow> implements ChildExecution {
     ...args: SendSignalProps<Payload>
   ): Promise<void> {
     const [payload] = args;
-    return this.serviceClient.sendSignal({
-      execution: this.executionId,
-      signal: typeof signal === "string" ? signal : signal.id,
-      payload,
-      id: ulid(),
-    });
+    const hook = tryGetEventualHook();
+    if (hook) {
+      return hook.executeEventualCall(
+        createEventualCall<SendSignalCall>(EventualCallKind.SendSignalCall, {
+          signalId: typeof signal === "string" ? signal : signal.id,
+          payload,
+          target: {
+            executionId: this.executionId,
+            type: SignalTargetType.Execution,
+          },
+        })
+      );
+    } else if (this.serviceClient && !isOrchestratorWorker()) {
+      return this.serviceClient.sendSignal({
+        execution: this.executionId,
+        signal,
+        payload,
+      });
+    } else {
+      throw new Error(
+        "No EventualHook or EventualServiceClient available to get send signal."
+      );
+    }
   }
 }
 

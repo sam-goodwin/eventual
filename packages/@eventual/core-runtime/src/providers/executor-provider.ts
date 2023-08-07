@@ -1,6 +1,6 @@
 import type { HistoryStateEvent } from "@eventual/core/internal";
 import type { ExecutionHistoryStateStore } from "../stores/execution-history-state-store.js";
-import type { WorkflowExecutor } from "../workflow-executor.js";
+import type { WorkflowExecutor } from "../workflow/workflow-executor.js";
 
 export interface ExecutorProvider<Context = undefined> {
   /**

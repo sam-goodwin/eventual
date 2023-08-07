@@ -5,7 +5,8 @@ import {
   WorkflowInputEvent,
 } from "@eventual/core/internal";
 import { WorkflowTask } from "../tasks.js";
-import { createEvent } from "../workflow-events.js";
+import { createEvent } from "../workflow/events.js";
+
 export abstract class ExecutionQueueClient {
   constructor(private baseTime: () => Date) {}
 

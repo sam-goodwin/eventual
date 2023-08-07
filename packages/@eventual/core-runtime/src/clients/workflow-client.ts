@@ -26,7 +26,7 @@ import {
 import { WorkflowSpecProvider } from "../providers/workflow-provider.js";
 import { computeScheduleDate } from "../schedule.js";
 import { ExecutionStore } from "../stores/execution-store.js";
-import { createEvent } from "../workflow-events.js";
+import { createEvent } from "../workflow/events.js";
 import { ExecutionQueueClient } from "./execution-queue-client.js";
 import { LogsClient } from "./logs-client.js";
 

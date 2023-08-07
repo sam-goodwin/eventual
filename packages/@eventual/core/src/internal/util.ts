@@ -45,7 +45,7 @@ export function extendsSystemError(err: unknown): err is SystemError {
   );
 }
 
-export interface _Iterator<I, T extends I> {
+export interface _Iterator<I, T extends I = I> {
   hasNext(): boolean;
   next(): T | undefined;
   drain(): T[];

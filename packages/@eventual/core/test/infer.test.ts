@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { entity } from "../src/entity/entity.js";
 import { Infer } from "../src/infer.js";
+import { workflow } from "../src/workflow.js";
 
 test("Person", () => {
   const Person = entity("Person", {
@@ -16,10 +17,12 @@ test("Person", () => {
     name: "John",
   };
 
-  function noop() {
+  const wf = workflow("personTest", async () => {
     // 'optional' should maintain '?' modifier
     Person.put({
       name: "John",
     });
-  }
+  });
+
+  console.log(person, wf);
 });

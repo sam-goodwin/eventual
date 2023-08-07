@@ -1,21 +1,17 @@
-import {
-  EventualCallKind,
-  EventualCallSymbol,
+import type {
+  EventualCall,
+  EventualCallOutput,
+  EventualHook,
+  EventualPromise,
   EventualProperty,
-  EventualPropertyKind,
-  EventualPropertySymbol,
-  type EventualCall,
-  type EventualHook,
-  type EventualPromise,
-  type EventualPropertyType,
-  type Result,
+  EventualPropertyType,
+  Result,
 } from "@eventual/core/internal";
 import {
-  EventualCallExecutorCollection,
-  EventualExecutor,
-  EventualPropertyRetriever,
-  EventualPropertyRetrieverCollection,
-  getEventualProperty,
+  AnyEventualCallExecutor,
+  AnyPropertyRetriever,
+  type EventualCallExecutorCollection,
+  type EventualPropertyRetrieverCollection,
 } from "./eventual-hook.js";
 
 export class DefaultEventualHook implements EventualHook {
@@ -24,36 +20,20 @@ export class DefaultEventualHook implements EventualHook {
     private propertyRetrievers: EventualPropertyRetrieverCollection
   ) {}
 
-  public executeEventualCall(eventual: EventualCall): EventualPromise<any> {
-    const kind = eventual[EventualCallSymbol];
-    const executor = this.executors[
-      EventualCallKind[kind] as keyof typeof EventualCallKind
-    ] as EventualExecutor | undefined;
-
-    if (executor) {
-      return executor.execute(eventual) as unknown as EventualPromise<any>;
-    }
-
-    throw new Error(`Missing Executor for ${EventualCallKind[kind]}`);
+  public executeEventualCall<P extends EventualCall>(
+    eventual: P
+  ): EventualPromise<any> {
+    return new AnyEventualCallExecutor(this.executors).execute(
+      eventual
+    ) as EventualCallOutput<P>;
   }
 
   public getEventualProperty<P extends EventualProperty = EventualProperty>(
     property: P
   ): EventualPropertyType<P> {
-    const retriever = this.propertyRetrievers[
-      EventualPropertyKind[
-        property[EventualPropertySymbol]
-      ] as keyof typeof EventualPropertyKind
-    ] as EventualPropertyRetriever | undefined;
-
-    if (retriever) {
-      return getEventualProperty(
-        property,
-        retriever
-      ) as EventualPropertyType<P>;
-    }
-
-    throw new Error(`Missing Property Retriever for ${property}`);
+    return new AnyPropertyRetriever(this.propertyRetrievers).getProperty<P>(
+      property
+    ) as EventualPropertyType<P>;
   }
 
   public resolveEventual(_seq: number, _result: Result<any>): void {

@@ -6,10 +6,11 @@ import type {
   EntityTransactItem,
 } from "../entity/entity.js";
 import type { EventEnvelope } from "../event.js";
+import { Execution, ExecutionHandle } from "../execution.js";
 import type { DurationSchedule, Schedule } from "../schedule.js";
 import type { SearchIndex } from "../search/search-index.js";
 import { Task } from "../task.js";
-import type { WorkflowExecutionOptions } from "../workflow.js";
+import type { Workflow, WorkflowExecutionOptions } from "../workflow.js";
 import type { BucketMethod } from "./bucket-hook.js";
 import { SendTaskHeartbeatResponse } from "./eventual-service.js";
 import type { SignalTarget } from "./signal.js";
@@ -22,27 +23,31 @@ export type EventualCall =
   | EmitEventsCall
   | EntityCall
   | ExpectSignalCall
+  | GetExecutionCall
   | InvokeTransactionCall
   | RegisterSignalHandlerCall
   | SearchCall
   | SendSignalCall
+  | StartWorkflowCall
   | TaskCall
   | TaskRequestCall;
 
 export enum EventualCallKind {
   AwaitTimerCall = 1,
   BucketCall = 10,
+  ChildWorkflowCall = 7,
   ConditionCall = 2,
+  EmitEventsCall = 4,
   EntityCall = 8,
   ExpectSignalCall = 3,
+  GetExecutionCall = 14,
   InvokeTransactionCall = 9,
-  EmitEventsCall = 4,
   RegisterSignalHandlerCall = 5,
   SendSignalCall = 6,
   TaskCall = 0,
   TaskRequestCall = 12,
-  WorkflowCall = 7,
   SearchCall = 11,
+  StartWorkflowCall = 13,
 }
 
 export const EventualCallSymbol = /* @__PURE__ */ Symbol.for(
@@ -115,8 +120,9 @@ export function isEntityCall(a: any): a is EntityCall {
 export type EntityCall<
   Op extends EntityOperation["operation"] = EntityOperation["operation"]
   // TODO: not any
-> = EventualCallBase<EventualCallKind.EntityCall, any> &
-  EntityOperation & { operation: Op };
+> = EventualCallBase<EventualCallKind.EntityCall, any> & {
+  operation: EntityOperation & { operation: Op };
+};
 
 export function isEntityOperationOfType<
   OpType extends EntityOperation["operation"]
@@ -178,7 +184,9 @@ export function isBucketCall(a: any): a is BucketCall {
 
 export type BucketCall<Op extends BucketMethod = BucketMethod> =
   // todo: not any
-  EventualCallBase<EventualCallKind.BucketCall, any> & BucketOperation<Op>;
+  EventualCallBase<EventualCallKind.BucketCall, any> & {
+    operation: BucketOperation<Op>;
+  };
 
 export type BucketOperation<Op extends BucketMethod = BucketMethod> = {
   operation: Op;
@@ -190,7 +198,7 @@ export function isBucketCallType<Op extends BucketMethod>(
   op: Op,
   operation: BucketCall<any>
 ): operation is BucketCall<Op> {
-  return operation.operation === op;
+  return operation.operation.operation === op;
 }
 
 export function isExpectSignalCall(a: any): a is ExpectSignalCall {
@@ -248,6 +256,13 @@ export function isTaskRequestCall(a: any): a is TaskRequestCall {
   return isEventualCallOfKind(EventualCallKind.TaskCall, a);
 }
 
+export function isTaskRequestCallOperation<O extends TaskMethods>(
+  a: any,
+  Op: O
+): a is TaskRequestCall<O> {
+  return isTaskRequestCall(a) && a.operation === Op;
+}
+
 export type TaskMethods = Exclude<
   {
     [op in keyof Task]: [Task[op]] extends [Function] ? op : never;
@@ -262,7 +277,7 @@ export interface TaskRequestCall<Op extends TaskMethods = TaskMethods>
     SendTaskHeartbeatResponse | void
   > {
   operation: Op;
-  params: Parameters<Task[TaskMethods]>;
+  params: Parameters<Task[Op]>;
 }
 
 export function isTaskCall(a: any): a is TaskCall {
@@ -281,14 +296,14 @@ export interface TaskCall
 }
 
 export function isChildWorkflowCall(a: EventualCall): a is ChildWorkflowCall {
-  return isEventualCallOfKind(EventualCallKind.WorkflowCall, a);
+  return isEventualCallOfKind(EventualCallKind.ChildWorkflowCall, a);
 }
 
 /**
  * An {@link Eventual} representing an awaited call to a {@link Workflow}.
  */
 export interface ChildWorkflowCall
-  extends EventualCallBase<EventualCallKind.WorkflowCall, any> {
+  extends EventualCallBase<EventualCallKind.ChildWorkflowCall, any> {
   name: string;
   input?: any;
   opts?: WorkflowExecutionOptions;
@@ -300,6 +315,35 @@ export interface ChildWorkflowCall
    * TODO: support cancellation of child workflow.
    */
   timeout?: Promise<any>;
+}
+
+export function isStartWorkflowCall(a: EventualCall): a is StartWorkflowCall {
+  return isEventualCallOfKind(EventualCallKind.StartWorkflowCall, a);
+}
+
+/**
+ * An starts a {@link Workflow}, but does not wait for it.
+ */
+export interface StartWorkflowCall<W extends Workflow = any>
+  extends EventualCallBase<
+    EventualCallKind.StartWorkflowCall,
+    ExecutionHandle<W>
+  > {
+  name: string;
+  input?: any;
+  opts?: WorkflowExecutionOptions;
+}
+
+export function isGetExecutionCall(a: EventualCall): a is GetExecutionCall {
+  return isEventualCallOfKind(EventualCallKind.GetExecutionCall, a);
+}
+
+/**
+ * An starts a {@link Workflow}, but does not wait for it.
+ */
+export interface GetExecutionCall
+  extends EventualCallBase<EventualCallKind.GetExecutionCall, Execution> {
+  executionId: string;
 }
 
 export function isInvokeTransactionCall(a: any): a is InvokeTransactionCall {

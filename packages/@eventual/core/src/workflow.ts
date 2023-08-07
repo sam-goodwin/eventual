@@ -11,20 +11,12 @@ import {
 import { registerEventualResource } from "./internal/global.js";
 import {
   EventualPropertyKind,
-  type ServiceClientProperty,
   createEventualProperty,
+  type ServiceClientProperty,
 } from "./internal/properties.js";
 import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
 import { WorkflowSpec } from "./internal/service-spec.js";
 import { SignalTargetType } from "./internal/signal.js";
-import {
-  HistoryStateEvent,
-  TimerCompleted,
-  TimerScheduled,
-  WorkflowEventType,
-  isTimerCompleted,
-  isTimerScheduled,
-} from "./internal/workflow-events.js";
 import type { DurationSchedule, Schedule } from "./schedule.js";
 import type { StartExecutionRequest } from "./service-client.js";
 
@@ -185,7 +177,7 @@ export function workflow<
     const hook = getEventualHook();
     const timeout = options?.timeout ?? opts?.timeout;
     const eventual = hook.executeEventualCall(
-      createEventualCall(EventualCallKind.WorkflowCall, {
+      createEventualCall(EventualCallKind.ChildWorkflowCall, {
         input,
         name,
         // if the timeout is a time or a duration, from any source, send the timeout to the child execution
@@ -244,46 +236,6 @@ export function workflow<
   workflow.kind = "Workflow";
 
   return registerEventualResource("Workflow", workflow);
-}
-
-/**
- * Generates synthetic events, for example, {@link TimerCompleted} events when the time has passed, but a real completed event has not come in yet.
- */
-export function generateSyntheticEvents(
-  events: HistoryStateEvent[],
-  baseTime: Date
-): TimerCompleted[] {
-  const unresolvedTimers: Record<number, TimerScheduled> = {};
-
-  const timerEvents = events.filter(
-    (event): event is TimerScheduled | TimerCompleted =>
-      isTimerScheduled(event) || isTimerCompleted(event)
-  );
-
-  for (const event of timerEvents) {
-    if (isTimerScheduled(event)) {
-      unresolvedTimers[event.seq] = event;
-    } else {
-      delete unresolvedTimers[event.seq];
-    }
-  }
-
-  const syntheticTimerComplete: TimerCompleted[] = Object.values(
-    unresolvedTimers
-  )
-    .filter(
-      (event) => new Date(event.untilTime).getTime() <= baseTime.getTime()
-    )
-    .map(
-      (e) =>
-        ({
-          type: WorkflowEventType.TimerCompleted,
-          seq: e.seq,
-          timestamp: baseTime.toISOString(),
-        } satisfies TimerCompleted)
-    );
-
-  return syntheticTimerComplete;
 }
 
 /**

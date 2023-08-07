@@ -2,6 +2,8 @@ import {
   BucketNotificationDeleteEvent,
   BucketNotificationPutEvent,
   EntityStreamItem,
+  EventEnvelope,
+  EventualServiceClient,
   LogLevel,
 } from "@eventual/core";
 import { EventClient } from "../clients/event-client.js";
@@ -35,6 +37,7 @@ import {
   TransactionWorker,
   createTransactionWorker,
 } from "../handlers/transaction-worker.js";
+import { RuntimeServiceClient } from "../index.js";
 import { LogAgent } from "../log-agent.js";
 import {
   EntityProvider,
@@ -70,7 +73,7 @@ import {
   createUpdateTaskCommand,
 } from "../system-commands.js";
 import type { WorkflowTask } from "../tasks.js";
-import { WorkflowCallExecutor } from "../workflow-call-executor.js";
+import { createDefaultWorkflowCallExecutor } from "../workflow/call-executor.js";
 import { LocalEventClient } from "./clients/event-client.js";
 import { LocalExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { LocalLogsClient } from "./clients/logs-client.js";
@@ -91,8 +94,20 @@ export type LocalEvent =
   | TimerRequest
   | TaskWorkerRequest
   | LocalEntityStreamEvent
+  | LocalEmittedEvents
   | Omit<BucketNotificationPutEvent, "handlerName">
   | Omit<BucketNotificationDeleteEvent, "handlerName">;
+
+export interface LocalEmittedEvents {
+  kind: "EmittedEvents";
+  events: EventEnvelope[];
+}
+
+export function isLocalEmittedEvents(
+  event: LocalEvent
+): event is LocalEmittedEvents {
+  return "kind" in event && event.kind === "EmittedEvents";
+}
 
 interface LocalEntityStreamEvent {
   kind: "EntityStreamEvent";
@@ -131,6 +146,7 @@ export class LocalContainer {
   public timerClient: TimerClient;
   public metricsClient: MetricsClient;
   public transactionClient: TransactionClient;
+  public serviceClient: EventualServiceClient;
 
   public executionHistoryStateStore: ExecutionHistoryStateStore;
   public executionHistoryStore: ExecutionHistoryStore;
@@ -174,26 +190,7 @@ export class LocalContainer {
       localConnector: this.localConnector,
     });
     const openSearchClient = new LocalOpenSearchClient();
-    this.bucketHandlerWorker = createBucketNotificationHandlerWorker({
-      bucketStore,
-      entityStore,
-      openSearchClient,
-      serviceClient: undefined,
-      serviceSpec: undefined,
-      serviceName: props.serviceName,
-      serviceUrl: props.serviceUrl,
-    });
-    this.subscriptionWorker = createSubscriptionWorker({
-      subscriptionProvider: this.subscriptionProvider,
-      serviceClient: undefined,
-      bucketStore,
-      entityStore,
-      openSearchClient,
-      serviceName: props.serviceName,
-      serviceSpec: undefined,
-      serviceUrl: props.serviceUrl,
-    });
-    this.eventClient = new LocalEventClient(this.subscriptionWorker);
+    this.eventClient = new LocalEventClient(this.localConnector);
     this.metricsClient = new LocalMetricsClient();
     const logAgent = new LogAgent({
       logsClient: this.logsClient,
@@ -201,37 +198,13 @@ export class LocalContainer {
       getTime: () => this.localConnector.getTime(),
     });
 
-    this.taskWorker = createTaskWorker({
-      bucketStore,
-      entityStore,
-      eventClient: this.eventClient,
-      executionQueueClient: this.executionQueueClient,
-      logAgent,
-      metricsClient: this.metricsClient,
-      openSearchClient,
-      serviceName: props.serviceName,
-      serviceClient: undefined,
-      serviceSpec: undefined,
-      serviceUrl: props.serviceUrl,
-      taskProvider: this.taskProvider,
-      taskStore: this.taskStore,
-      timerClient: this.timerClient,
-    });
     this.taskClient = new LocalTaskClient(this.localConnector, {
       taskStore: this.taskStore,
       executionQueueClient: this.executionQueueClient,
       executionStore: this.executionStore,
     });
 
-    this.entityStreamWorker = createEntityStreamWorker({
-      openSearchClient,
-      bucketStore,
-      entityStore,
-      serviceClient: undefined,
-      serviceName: props.serviceName,
-      serviceSpec: undefined,
-      serviceUrl: props.serviceUrl,
-    });
+    this.executionHistoryStateStore = new LocalExecutionHistoryStateStore();
 
     this.transactionWorker = createTransactionWorker({
       entityStore,
@@ -243,8 +216,68 @@ export class LocalContainer {
 
     this.transactionClient = new LocalTransactionClient(this.transactionWorker);
 
+    this.serviceClient = new RuntimeServiceClient({
+      eventClient: this.eventClient,
+      executionHistoryStateStore: this.executionHistoryStateStore,
+      executionHistoryStore: this.executionHistoryStore,
+      executionQueueClient: this.executionQueueClient,
+      executionStore: this.executionStore,
+      taskClient: this.taskClient,
+      transactionClient: this.transactionClient,
+      workflowClient: this.workflowClient,
+      workflowProvider: this.workflowProvider,
+    });
+
+    this.bucketHandlerWorker = createBucketNotificationHandlerWorker({
+      bucketStore,
+      entityStore,
+      openSearchClient,
+      serviceClient: this.serviceClient,
+      serviceSpec: undefined,
+      serviceName: props.serviceName,
+      serviceUrl: props.serviceUrl,
+    });
+    this.subscriptionWorker = createSubscriptionWorker({
+      subscriptionProvider: this.subscriptionProvider,
+      serviceClient: this.serviceClient,
+      bucketStore,
+      entityStore,
+      openSearchClient,
+      serviceName: props.serviceName,
+      serviceSpec: undefined,
+      serviceUrl: props.serviceUrl,
+    });
+
+    this.taskWorker = createTaskWorker({
+      bucketStore,
+      entityStore,
+      eventClient: this.eventClient,
+      executionQueueClient: this.executionQueueClient,
+      logAgent,
+      metricsClient: this.metricsClient,
+      openSearchClient,
+      serviceName: props.serviceName,
+      serviceClient: this.serviceClient,
+      serviceSpec: undefined,
+      serviceUrl: props.serviceUrl,
+      taskProvider: this.taskProvider,
+      taskStore: this.taskStore,
+      timerClient: this.timerClient,
+    });
+
+    this.entityStreamWorker = createEntityStreamWorker({
+      openSearchClient,
+      bucketStore,
+      entityStore,
+      serviceClient: this.serviceClient,
+      serviceName: props.serviceName,
+      serviceSpec: undefined,
+      serviceUrl: props.serviceUrl,
+    });
+
     this.orchestrator = createOrchestrator({
-      callExecutor: new WorkflowCallExecutor({
+      bucketStore,
+      callExecutor: createDefaultWorkflowCallExecutor({
         bucketStore,
         entityStore,
         eventClient: this.eventClient,
@@ -264,8 +297,6 @@ export class LocalContainer {
       logAgent,
       metricsClient: this.metricsClient,
     });
-
-    this.executionHistoryStateStore = new LocalExecutionHistoryStateStore();
 
     /**
      * Register all of the commands to run.
@@ -300,9 +331,11 @@ export class LocalContainer {
     this.commandWorker = createCommandWorker({
       entityStore,
       bucketStore,
-      serviceClient: undefined,
+      serviceClient: this.serviceClient,
       serviceName: props.serviceName,
       serviceUrl: props.serviceUrl,
+      serviceSpec: undefined,
+      openSearchClient,
     });
 
     this.timerHandler = createTimerHandler({

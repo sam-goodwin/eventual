@@ -1,42 +1,48 @@
 import {
   DeterminismError,
-  Signal,
   SystemError,
-  Workflow,
-  WorkflowContext,
   WorkflowTimeout,
+  type Signal,
+  type Workflow,
+  type WorkflowContext,
 } from "@eventual/core";
 import {
-  CompletionEvent,
-  EventualCall,
-  EventualHook,
-  EventualPromise,
   EventualPromiseSymbol,
-  HistoryEvent,
-  HistoryStateEvent,
   Result,
-  ScheduledEvent,
-  SignalReceived,
-  WorkflowEvent,
-  WorkflowInputEvent,
-  WorkflowRunStarted,
-  WorkflowTimedOut,
-  _Iterator,
   extendsSystemError,
+  isCallEvent,
   isCompletionEvent,
-  isScheduledEvent,
   isSignalReceived,
   isWorkflowRunStarted,
   isWorkflowStarted,
   isWorkflowTimedOut,
   iterator,
+  type CallEvent,
+  type CompletionEvent,
+  type EventualCall,
+  type EventualHook,
+  type EventualPromise,
+  type EventualProperty,
+  type EventualPropertyType,
+  type HistoryEvent,
+  type HistoryStateEvent,
+  type SignalReceived,
+  type WorkflowCallHistoryEvent,
+  type WorkflowInputEvent,
+  type WorkflowRunStarted,
+  type WorkflowTimedOut,
+  type _Iterator,
 } from "@eventual/core/internal";
 import { isPromise } from "util/types";
-import { createEventualFromCall } from "./eventual-factory.js";
-import { enterEventualCallHookScope } from "./eventual-hook.js";
-import { formatExecutionId } from "./execution.js";
-import { isFailed, isResolved, isResult } from "./result.js";
-import { filterEvents } from "./workflow-events.js";
+import { createEventualFromCall } from "../eventual-factory.js";
+import {
+  enterEventualCallHookScope,
+  getEventualProperty,
+  type EventualPropertyRetriever,
+} from "../eventual-hook.js";
+import { formatExecutionId } from "../execution.js";
+import { isFailed, isResolved, isResult } from "../result.js";
+import { filterEvents } from "./events.js";
 
 /**
  * Put the resolve method on the promise, but don't expose it.
@@ -130,7 +136,7 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
   /**
    * Iterator containing the in order events we expected to see in a deterministic workflow.
    */
-  private expected: _Iterator<HistoryEvent, ScheduledEvent>;
+  private expected: _Iterator<HistoryEvent, CallEvent>;
   /**
    * Iterator containing events to apply.
    */
@@ -179,7 +185,7 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
      * This call will be ignored.
      */
     historicalEventMatched?: (
-      event: WorkflowEvent,
+      event: CallEvent,
       call: EventualCall,
       context?: Context
     ) => void;
@@ -195,10 +201,12 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
 
   constructor(
     private workflow: Workflow<any, Input, Output>,
-    public history: HistoryStateEvent[]
+    public history: HistoryStateEvent[],
+    // TODO: properties used in the workflow should be encoded in the history to keep them constant between runs
+    private propertyRetriever: EventualPropertyRetriever
   ) {
     this.nextSeq = 0;
-    this.expected = iterator(history, isScheduledEvent);
+    this.expected = iterator(history, isCallEvent);
     this.events = iterator(history, isCompletionEvent);
   }
 
@@ -447,14 +455,20 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
           const eventual = createEventualFromCall(call);
           const seq = self.nextSeq++;
 
-          /**
-           * Check if there is a matching event for the call.
-           * If the call does not have a corresponding event, bypass this step.
-           */
-          if (checkExpectedCallAndAdvance(seq, call, eventual)) {
-            self.currentRun?.callsToEmit.push(
-              ...normalizeToArray({ call, seq })
-            );
+          // not all calls generate events, these calls will not emit calls and thus will not cause determinism errors.
+          const event = eventual.createCallEvent?.(seq);
+          if (event) {
+            const hasExpectedEvents = self.expected.hasNext();
+            // if there are events to compare against, check if the event matches
+            if (hasExpectedEvents) {
+              /**
+               * Check if there is a matching event for the call.
+               */
+              assertEventIsExpected(event, call);
+            } else {
+              // if there are no more expected events, start to emit the new calls
+              self.currentRun?.callsToEmit.push({ call, seq, event });
+            }
           }
 
           /**
@@ -470,6 +484,12 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
           throw err;
         }
       },
+      getEventualProperty<P extends EventualProperty>(property: P) {
+        return getEventualProperty(
+          property,
+          self.propertyRetriever
+        ) as EventualPropertyType<P>;
+      },
       resolveEventual(seq, result) {
         self.tryResolveEventual(seq, result);
       },
@@ -480,41 +500,33 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
      * Checks the call against the expected events.
      * @throws {@link DeterminismError} when the call is not expected and there are expected events remaining.
      */
-    function checkExpectedCallAndAdvance(
-      seq: number,
-      call: EventualCall,
-      definition: EventualDefinition<any>
-    ) {
-      // if there is no isCorresponding method, we will not take off of the expected queue.
-      if (definition.isCorresponding) {
-        if (self.expected.hasNext()) {
-          const expected = self.expected.next()!;
+    function assertEventIsExpected(
+      event: WorkflowCallHistoryEvent,
+      call: EventualCall
+    ): void {
+      if (self.expected.hasNext()) {
+        const expected = self.expected.next()!;
 
-          self.hooks?.historicalEventMatched?.(
-            expected,
-            call,
-            self._executionContext
-          );
+        self.hooks?.historicalEventMatched?.(
+          expected,
+          call,
+          self._executionContext
+        );
 
-          if (!definition.isCorresponding(expected, seq)) {
-            self.resolveWorkflow(
-              Result.failed(
-                new DeterminismError(
-                  `Workflow returned ${JSON.stringify(
-                    call
-                  )}, but ${JSON.stringify(expected)} was expected at ${seq}`
-                )
+        if (!deepEqual(expected.event, event)) {
+          self.resolveWorkflow(
+            Result.failed(
+              new DeterminismError(
+                `Workflow returned ${JSON.stringify(
+                  event
+                )}, but ${JSON.stringify(expected)} was expected at ${
+                  event.seq
+                }`
               )
-            );
-          }
-          return false;
-        } else {
-          // no more expected events, emit this call
-          return true;
+            )
+          );
         }
       }
-      // don't emit calls that don't have isCorresponding checks
-      return false;
     }
   }
 
@@ -798,9 +810,9 @@ export const Trigger = {
       afterEvery: handler,
     };
   },
-  onWorkflowEvent: <Output = any, T extends CompletionEvent["type"] = any>(
+  onWorkflowEvent: <Output, T extends CompletionEvent["type"]>(
     eventType: T,
-    handler: EventTrigger<Output, CompletionEvent & { type: T }>["handler"]
+    handler: TriggerHandler<[event: CompletionEvent & { type: T }], Output>
   ): EventTrigger<Output, CompletionEvent & { type: T }> => {
     return {
       eventType,
@@ -872,12 +884,12 @@ export function isSignalTrigger<Output, Payload = any>(
 
 interface EventualDefinitionBase {
   /**
-   * Function which determines if an event matches the call when the workflow is re-run with history.
+   * Return the event form of a call.
    *
    * If undefined, the call will not be emitted by the workflow.
-   * If false, the workflow will throw a {@link DeterminismError}
+   * If there was a expected event and these events do not match, the workflow will throw a {@link DeterminismError}
    */
-  isCorresponding?: (event: ScheduledEvent, seq: number) => boolean;
+  createCallEvent?: (seq: number) => WorkflowCallHistoryEvent;
 }
 
 export interface ResolvedEventualDefinition<R> extends EventualDefinitionBase {
@@ -925,4 +937,34 @@ type AfterEveryEventTriggerLookup = Record<number, AfterEveryEventTrigger<any>>;
 export interface WorkflowCall<E extends EventualCall = EventualCall> {
   seq: number;
   call: E;
+  event?: WorkflowCallHistoryEvent;
+}
+
+function deepEqual(a: any, b: any) {
+  if (a === b) return true;
+
+  // Ensure both are objects and are not null
+  if (
+    typeof a !== "object" ||
+    a === null ||
+    typeof b !== "object" ||
+    b === null
+  ) {
+    return false;
+  }
+
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+
+  // Ensure both objects have the same number of properties
+  if (keysA.length !== keysB.length) return false;
+
+  // Check if every key-value pair in 'a' matches that in 'b'
+  for (const key of keysA) {
+    if (!keysB.includes(key) || !deepEqual(a[key], b[key])) {
+      return false;
+    }
+  }
+
+  return true;
 }

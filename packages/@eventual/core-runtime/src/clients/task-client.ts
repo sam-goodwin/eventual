@@ -13,7 +13,7 @@ import {
 import type { ExecutionStore } from "../stores/execution-store.js";
 import type { TaskStore } from "../stores/task-store.js";
 import { decodeTaskToken } from "../task-token.js";
-import { createEvent } from "../workflow-events.js";
+import { createEvent } from "../workflow/events.js";
 import type { ExecutionQueueClient } from "./execution-queue-client.js";
 
 export interface TaskClientProps {

@@ -1,10 +1,10 @@
 import { createEventualCall, EventualCallKind } from "./internal/calls.js";
 import type { EventualPromise } from "./internal/eventual-hook.js";
 import {
-  DurationSchedule,
-  DurationUnit,
   Schedule,
-  TimeSchedule,
+  type DurationSchedule,
+  type DurationUnit,
+  type TimeSchedule,
 } from "./schedule.js";
 
 /**
@@ -55,11 +55,22 @@ export function duration(
   dur: number,
   unit: DurationUnit = "seconds"
 ): Promise<void> & DurationSchedule {
-  return getEventualHook().executeEventualCall(
-    createEventualCall(EventualCallKind.AwaitTimerCall, {
-      schedule: Schedule.duration(dur, unit),
-    })
-  ) as EventualPromise<void> & DurationSchedule;
+  const hook = tryGetEventualHook();
+  // special case where the duration function can be used outside of the workflow.
+  // when the hook isn't defined, just return the Duration Schedule object.
+  if (hook) {
+    return hook.executeEventualCall(
+      createEventualCall(EventualCallKind.AwaitTimerCall, {
+        schedule: Schedule.duration(dur, unit),
+      })
+    ) as EventualPromise<void> & DurationSchedule;
+  } else {
+    return {
+      dur,
+      unit,
+      type: "Duration",
+    } as Promise<void> & DurationSchedule;
+  }
 }
 
 /**
@@ -91,9 +102,18 @@ export function time(date: Date | string): Promise<void> & TimeSchedule {
   const d = new Date(date);
   const iso = d.toISOString();
 
-  return getEventualHook().executeEventualCall(
-    createEventualCall(EventualCallKind.AwaitTimerCall, {
-      schedule: Schedule.time(iso),
-    })
-  ) as unknown as EventualPromise<void> & TimeSchedule;
+  // special case where the duration function can be used outside of the workflow.
+  // when the hook isn't defined, just return the Duration Schedule object.
+  const hook = tryGetEventualHook();
+  if (hook) {
+    return hook.executeEventualCall(
+      createEventualCall(EventualCallKind.AwaitTimerCall, {
+        schedule: Schedule.time(iso),
+      })
+    ) as unknown as EventualPromise<void> & TimeSchedule;
+  }
+  return {
+    isoDate: iso,
+    type: "Time",
+  } as Promise<void> & TimeSchedule;
 }

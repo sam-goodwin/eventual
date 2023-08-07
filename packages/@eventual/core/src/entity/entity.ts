@@ -185,8 +185,7 @@ export const Entity = {
   transactWrite: (items: EntityTransactItem[]): Promise<void> => {
     return getEventualHook().executeEventualCall(
       createEventualCall<EntityCall<"transact">>(EventualCallKind.EntityCall, {
-        operation: "transact",
-        items,
+        operation: { operation: "transact", items },
       })
     );
   },
@@ -311,9 +310,7 @@ export function entity<
     get: (...args) => {
       return getEventualHook().executeEventualCall(
         createEventualCall<EntityCall<"get">>(EventualCallKind.EntityCall, {
-          operation: "get",
-          entityName: name,
-          params: args,
+          operation: { operation: "get", entityName: name, params: args },
         })
       );
     },
@@ -322,9 +319,11 @@ export function entity<
         createEventualCall<EntityCall<"getWithMetadata">>(
           EventualCallKind.EntityCall,
           {
-            operation: "getWithMetadata",
-            entityName: name,
-            params: args,
+            operation: {
+              operation: "getWithMetadata",
+              entityName: name,
+              params: args,
+            },
           }
         )
       );
@@ -332,36 +331,28 @@ export function entity<
     put: (...args) => {
       return getEventualHook().executeEventualCall(
         createEventualCall<EntityCall<"put">>(EventualCallKind.EntityCall, {
-          entityName: name,
-          operation: "put",
-          params: args,
+          operation: { entityName: name, operation: "put", params: args },
         })
       );
     },
     delete: (...args) => {
       return getEventualHook().executeEventualCall(
         createEventualCall<EntityCall<"delete">>(EventualCallKind.EntityCall, {
-          entityName: name,
-          operation: "delete",
-          params: args,
+          operation: { entityName: name, operation: "delete", params: args },
         })
       );
     },
     query: (...args) => {
       return getEventualHook().executeEventualCall(
         createEventualCall<EntityCall<"query">>(EventualCallKind.EntityCall, {
-          entityName: name,
-          operation: "query",
-          params: args,
+          operation: { entityName: name, operation: "query", params: args },
         })
       );
     },
     scan: (...args) => {
       return getEventualHook().executeEventualCall(
         createEventualCall<EntityCall<"scan">>(EventualCallKind.EntityCall, {
-          entityName: name,
-          operation: "scan",
-          params: args,
+          operation: { entityName: name, operation: "scan", params: args },
         })
       );
     },
@@ -390,10 +381,12 @@ export function entity<
             createEventualCall<EntityCall<"queryIndex">>(
               EventualCallKind.EntityCall,
               {
-                entityName: name,
-                indexName,
-                operation: "queryIndex",
-                params: args,
+                operation: {
+                  entityName: name,
+                  indexName,
+                  operation: "queryIndex",
+                  params: args,
+                },
               }
             )
           );
@@ -403,10 +396,12 @@ export function entity<
             createEventualCall<EntityCall<"scanIndex">>(
               EventualCallKind.EntityCall,
               {
-                entityName: name,
-                indexName,
-                operation: "scanIndex",
-                params: args,
+                operation: {
+                  entityName: name,
+                  indexName,
+                  operation: "scanIndex",
+                  params: args,
+                },
               }
             )
           );

@@ -1,4 +1,3 @@
-import { inferFromMemory } from "@eventual/compiler";
 import {
   EntityStreamItem,
   Event,
@@ -27,6 +26,7 @@ import {
   bucketHandlerMatchesEvent,
   entityStreamMatchesItem,
   isBucketNotificationEvent,
+  isLocalEmittedEvents,
   isLocalEntityStreamEvent,
   isTaskSendEventRequest,
   isTaskWorkerRequest,
@@ -37,8 +37,6 @@ import {
   EmitEventsRequest,
   TaskInput,
   getEventualResources,
-  registerEnvironmentManifest,
-  registerServiceClient,
 } from "@eventual/core/internal";
 import { ulid } from "ulidx";
 import { TestSubscriptionProvider } from "./providers/subscription-provider.js";
@@ -137,16 +135,6 @@ export class TestEnvironment extends RuntimeServiceClient {
 
     this.taskProvider = taskProvider;
     this.subscriptionProvider = subscriptionProvider;
-
-    registerServiceClient(this);
-    registerEnvironmentManifest({
-      serviceSpec: inferFromMemory({
-        info: { title: "test-service", version: "1" },
-      }),
-      // TODO: support a local endpoint for local testing
-      serviceUrl,
-      serviceName,
-    });
   }
 
   public override async sendTaskHeartbeat(
@@ -390,6 +378,7 @@ export class TestEnvironment extends RuntimeServiceClient {
     const taskWorkerRequests = events.filter(isTaskWorkerRequest);
     const entityStreamItems = events.filter(isLocalEntityStreamEvent);
     const bucketNotificationEvents = events.filter(isBucketNotificationEvent);
+    const localEmittedEvents = events.filter(isLocalEmittedEvents);
 
     await Promise.all(
       // run all task requests, don't wait for a result
@@ -449,6 +438,9 @@ export class TestEnvironment extends RuntimeServiceClient {
         // run the orchestrator, but wait for a result.
         this.localContainer.orchestrator(workflowTasks, () =>
           this.localEnvConnector.getTime()
+        ),
+        ...localEmittedEvents.map((e) =>
+          this.localContainer.subscriptionWorker(e.events)
         ),
       ]
     );

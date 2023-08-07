@@ -2,7 +2,6 @@ import serviceSpec from "@eventual/injected/spec";
 
 import type { AnyCommand } from "@eventual/core";
 import {
-  createCommandWorker,
   createEmitEventsCommand,
   createExecuteTransactionCommand,
   createGetExecutionCommand,
@@ -28,18 +27,15 @@ import {
   createWorkflowClient,
 } from "../create.js";
 import { serviceName } from "../env.js";
-import { createApiGCommandAdaptor } from "./apig-command-adapter.js";
+import { createApiGCommandWorker } from "./apig-command-worker.js";
 
 function systemCommandWorker(
   ..._commands: AnyCommand[]
 ): APIGatewayProxyHandlerV2<Response> {
-  return createApiGCommandAdaptor({
-    commandWorker: createCommandWorker({
-      bucketStore: createBucketStore(),
-      entityStore: undefined,
-      serviceClient: undefined,
-      serviceSpec: undefined,
-    }),
+  return createApiGCommandWorker({
+    bucketStore: createBucketStore(),
+    entityStore: undefined,
+    openSearchClient: undefined,
     serviceSpec,
     serviceName,
   });

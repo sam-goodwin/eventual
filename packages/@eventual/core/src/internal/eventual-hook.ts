@@ -12,6 +12,7 @@ import type { Result } from "./result.js";
  */
 declare global {
   export function getEventualHook(): EventualHook;
+  export function tryGetEventualHook(): EventualHook | undefined;
 }
 
 export const EventualPromiseSymbol =

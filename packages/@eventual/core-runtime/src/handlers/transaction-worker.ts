@@ -10,6 +10,10 @@ import type { EntityStore } from "../stores/entity-store.js";
 import { createTransactionExecutor } from "../transaction-executor.js";
 import { getLazy, LazyValue } from "../utils.js";
 import { getEventualResource } from "@eventual/core/internal";
+import {
+  AnyPropertyRetriever,
+  UnsupportedPropertyRetriever,
+} from "../index.js";
 
 export interface TransactionWorkerProps {
   entityStore: EntityStore;
@@ -28,11 +32,23 @@ export interface TransactionWorker {
 export function createTransactionWorker(
   props: TransactionWorkerProps
 ): TransactionWorker {
+  const unsupportedPropertyRetriever = new UnsupportedPropertyRetriever(
+    "Transaction Worker"
+  );
+  const propertyRetriever = new AnyPropertyRetriever({
+    BucketPhysicalName: unsupportedPropertyRetriever,
+    OpenSearchClient: unsupportedPropertyRetriever,
+    ServiceName: props.serviceName,
+    ServiceUrl: unsupportedPropertyRetriever,
+    ServiceClient: unsupportedPropertyRetriever,
+    ServiceSpec: unsupportedPropertyRetriever,
+  });
   const transactionExecutor = createTransactionExecutor(
     props.entityStore,
     props.entityProvider,
     props.executionQueueClient,
-    props.eventClient
+    props.eventClient,
+    propertyRetriever
   );
 
   return async (request) => {

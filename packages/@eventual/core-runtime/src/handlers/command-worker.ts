@@ -10,7 +10,7 @@ import { ServiceType, getEventualResources } from "@eventual/core/internal";
 import itty from "itty-router";
 import { WorkerIntrinsicDeps, createEventualWorker } from "./worker.js";
 
-export type ApiHandlerDependencies = Partial<WorkerIntrinsicDeps>;
+export type ApiHandlerDependencies = WorkerIntrinsicDeps;
 
 export interface CommandWorker {
   (request: HttpRequest, commandContext: CommandContext): Promise<HttpResponse>;

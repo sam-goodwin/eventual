@@ -1,5 +1,5 @@
 import type { Entity } from "@eventual/core";
-import type { WorkflowExecutor } from "../workflow-executor.js";
+import type { WorkflowExecutor } from "../workflow/workflow-executor.js";
 import { getEventualResource } from "@eventual/core/internal";
 
 export interface EntityProvider {

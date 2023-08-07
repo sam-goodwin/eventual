@@ -1,4 +1,5 @@
 import {
+  EmitEventsRequest,
   EventualServiceClient,
   ExecuteTransactionRequest,
   ExecuteTransactionResponse,
@@ -10,7 +11,6 @@ import {
   ListExecutionsRequest,
   ListExecutionsResponse,
   ListWorkflowsResponse,
-  EmitEventsRequest,
   SendSignalRequest,
   SendTaskFailureRequest,
   SendTaskHeartbeatRequest,

@@ -6,6 +6,8 @@ import {
   isSucceededExecution,
 } from "@eventual/core";
 import {
+  AnyPropertyRetriever,
+  UnsupportedPropertyRetriever,
   WorkflowExecutor,
   isFailed,
   isResolved,
@@ -43,7 +45,12 @@ export const replay = (yargs: Argv) =>
           type: "string",
         }),
     serviceAction(
-      async (spinner, serviceClient, { entry, execution, service }) => {
+      async (
+        spinner,
+        serviceClient,
+        { entry, execution, service },
+        { serviceName, serviceData }
+      ) => {
         spinner.start("Constructing replay...");
         const config = await discoverEventualConfig();
 
@@ -79,10 +86,24 @@ export const replay = (yargs: Argv) =>
         }
         spinner.start("Running program");
 
+        const unsupportedPropertyRetriever = new UnsupportedPropertyRetriever(
+          "Replay Workflow Executor"
+        );
+
         await serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
           const executor = new WorkflowExecutor<any, any, any>(
             workflow,
-            events
+            events,
+            // TODO: these properties should come from the history
+            new AnyPropertyRetriever({
+              ServiceClient: serviceClient,
+              ServiceName: serviceName ?? unsupportedPropertyRetriever,
+              OpenSearchClient: unsupportedPropertyRetriever,
+              BucketPhysicalName: unsupportedPropertyRetriever,
+              ServiceSpec: unsupportedPropertyRetriever,
+              ServiceUrl:
+                serviceData.apiEndpoint ?? unsupportedPropertyRetriever,
+            })
           );
 
           const res = await runExecutor(executor, [], new Date());
