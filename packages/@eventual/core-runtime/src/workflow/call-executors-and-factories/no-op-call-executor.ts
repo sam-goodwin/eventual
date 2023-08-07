@@ -1,5 +1,5 @@
-import { Call } from "@eventual/core/internal";
-import {
+import type { Call } from "@eventual/core/internal";
+import type {
   WorkflowCallExecutor,
   WorkflowCallExecutorProps,
 } from "../call-executor.js";

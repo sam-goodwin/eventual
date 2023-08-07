@@ -1,13 +1,17 @@
 import {
+  Result,
+  WorkflowCallHistoryType,
   WorkflowEventType,
   type AwaitTimerCall,
   type TimerCompleted,
 } from "@eventual/core/internal";
 import type { TimerClient } from "../../clients/timer-client.js";
+import { EventualFactory } from "../call-eventual-factory.js";
 import type {
   WorkflowCallExecutor,
   WorkflowCallExecutorProps,
 } from "../call-executor.js";
+import { Trigger, type EventualDefinition } from "../eventual-definition.js";
 
 export class AwaitTimerWorkflowExecutor
   implements WorkflowCallExecutor<AwaitTimerCall>
@@ -26,5 +30,25 @@ export class AwaitTimerWorkflowExecutor
       schedule: call.schedule,
       executionId,
     });
+  }
+}
+
+export class AwaitTimerClassEventualFactory
+  implements EventualFactory<AwaitTimerCall>
+{
+  public createEventualDefinition(
+    call: AwaitTimerCall
+  ): EventualDefinition<void> {
+    return {
+      triggers: Trigger.onWorkflowEvent(
+        WorkflowEventType.TimerCompleted,
+        Result.resolved(undefined)
+      ),
+      createCallEvent: (seq) => ({
+        type: WorkflowCallHistoryType.TimerScheduled,
+        seq,
+        schedule: call.schedule,
+      }),
+    };
   }
 }

@@ -31,11 +31,12 @@ import {
 import {
   awaitTimerCall,
   childWorkflowCall,
-  eventsEmitted,
   emitEventCall,
+  eventsEmitted,
   sendSignalCall,
   signalReceived,
   signalSent,
+  signalSentChildTarget,
   taskCall,
   taskFailed,
   taskHeartbeatTimedOut,
@@ -47,11 +48,10 @@ import {
   workflowScheduled,
   workflowSucceeded,
   workflowTimedOut,
-  signalSentChildTarget,
 } from "./call-util.js";
 
-import "../src/workflow/workflow.js";
 import { UnsupportedPropertyRetriever } from "../src/index.js";
+import "../src/workflow/workflow.js";
 
 const eventName = "hello world";
 
