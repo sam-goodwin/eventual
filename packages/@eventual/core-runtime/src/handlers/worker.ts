@@ -28,7 +28,6 @@ import {
 } from "../property-retriever.js";
 import { BucketPhysicalNamePropertyRetriever } from "../property-retrievers/bucket-name-property-retriever.js";
 import { OpenSearchClientPropertyRetriever } from "../property-retrievers/open-search-client-property-retriever.js";
-import type { Result } from "../result.js";
 import { serviceTypeScope } from "../service-type.js";
 import type { BucketStore } from "../stores/bucket-store.js";
 import type { EntityStore } from "../stores/entity-store.js";
@@ -130,11 +129,5 @@ export class DefaultEventualHook implements EventualHook {
     return new AllPropertyRetriever(this.propertyRetrievers).getProperty<P>(
       property
     ) as PropertyType<P>;
-  }
-
-  public resolveEventual(_seq: number, _result: Result<any>): void {
-    throw new Error(
-      "Resolve Eventual is not supported outside of a workflow or transaction."
-    );
   }
 }
