@@ -8,7 +8,7 @@ import type { WorkflowClient } from "../../clients/workflow-client.js";
 import { formatChildExecutionName } from "../execution.js";
 import {
   WorkflowCallExecutor,
-  WorkflowExecutorInput,
+  WorkflowCallExecutorProps,
 } from "../call-executor.js";
 
 export class WorkflowClientWorkflowCallExecutor
@@ -21,7 +21,7 @@ export class WorkflowClientWorkflowCallExecutor
    */
   public async executeForWorkflow(
     call: ChildWorkflowCall,
-    { executionId, seq }: WorkflowExecutorInput
+    { executionId, seq }: WorkflowCallExecutorProps
   ): Promise<void> {
     if (isChildWorkflowCall(call)) {
       await this.workflowClient.startExecution({

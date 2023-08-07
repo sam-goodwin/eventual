@@ -6,7 +6,7 @@ import { ExecutionQueueClient } from "../../clients/execution-queue-client.js";
 import { formatChildExecutionName, formatExecutionId } from "../execution.js";
 import {
   WorkflowCallExecutor,
-  WorkflowExecutorInput,
+  WorkflowCallExecutorProps,
 } from "../call-executor.js";
 
 export class SendSignalWorkflowCallExecutor
@@ -16,7 +16,7 @@ export class SendSignalWorkflowCallExecutor
 
   public async executeForWorkflow(
     call: SendSignalCall,
-    { executionId, seq }: WorkflowExecutorInput
+    { executionId, seq }: WorkflowCallExecutorProps
   ): Promise<void> {
     const childExecutionId = isChildExecutionTarget(call.target)
       ? formatExecutionId(

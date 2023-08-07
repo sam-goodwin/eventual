@@ -1,8 +1,8 @@
 import type { ExecutionID, Workflow } from "@eventual/core";
 import {
-  Call,
   CallKind,
   CallSymbol,
+  type Call,
   type EventualPromise,
 } from "@eventual/core/internal";
 import { EmitEventsCallExecutor } from "../call-executors/emit-events-call-executor.js";
@@ -49,7 +49,7 @@ export function createDefaultWorkflowCallExecutor(
     deps.workflowClient
   );
 
-  return new AnyWorkflowCallExecutor({
+  return new AllWorkflowCallExecutor({
     AwaitTimerCall: new AwaitTimerWorkflowExecutor(deps.timerClient),
     BucketCall: createBucketWorkflowQueueExecutor(
       deps.bucketStore,
@@ -84,7 +84,7 @@ export function createDefaultWorkflowCallExecutor(
   });
 }
 
-export type WorkflowCallExecutorCollection = {
+export type AllWorkflowCallExecutors = {
   [K in keyof typeof CallKind]: WorkflowCallExecutor<
     Call & { [CallSymbol]: (typeof CallKind)[K] }
   >;
@@ -93,11 +93,11 @@ export type WorkflowCallExecutorCollection = {
 export interface WorkflowCallExecutor<C extends Call = Call> {
   executeForWorkflow(
     call: C,
-    inputs: WorkflowExecutorInput
+    inputs: WorkflowCallExecutorProps
   ): Promise<void> | void;
 }
 
-export interface WorkflowExecutorInput {
+export interface WorkflowCallExecutorProps {
   executionId: ExecutionID;
   executionTime: Date;
   seq: number;
@@ -107,12 +107,12 @@ export interface WorkflowExecutorInput {
 /**
  * Uses the clients to execute all supported calls and return events.
  */
-export class AnyWorkflowCallExecutor implements WorkflowCallExecutor {
-  constructor(private executors: WorkflowCallExecutorCollection) {}
+export class AllWorkflowCallExecutor implements WorkflowCallExecutor {
+  constructor(private executors: AllWorkflowCallExecutors) {}
 
   public async executeForWorkflow(
     call: Call,
-    props: WorkflowExecutorInput
+    props: WorkflowCallExecutorProps
   ): Promise<void> {
     const kind = call[CallSymbol];
     const executor = this.executors[CallKind[kind] as keyof typeof CallKind] as

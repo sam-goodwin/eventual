@@ -7,7 +7,7 @@ import type { CallExecutor } from "../../call-executor.js";
 import type { ExecutionQueueClient } from "../../clients/execution-queue-client.js";
 import type {
   WorkflowCallExecutor,
-  WorkflowExecutorInput,
+  WorkflowCallExecutorProps,
 } from "../call-executor.js";
 
 /**
@@ -28,18 +28,18 @@ export class WorkflowTaskQueueExecutorAdaptor<
     private onSuccess: (
       call: E,
       result: CallOutput<E>,
-      props: WorkflowExecutorInput
+      props: WorkflowCallExecutorProps
     ) => WorkflowInputEvent | Promise<WorkflowInputEvent>,
     private onFailure: (
       call: E,
       error: Error,
-      props: WorkflowExecutorInput
+      props: WorkflowCallExecutorProps
     ) => WorkflowInputEvent | Promise<WorkflowInputEvent>
   ) {}
 
   public async executeForWorkflow(
     call: E,
-    props: WorkflowExecutorInput
+    props: WorkflowCallExecutorProps
   ): Promise<void> {
     let event: WorkflowInputEvent;
     try {

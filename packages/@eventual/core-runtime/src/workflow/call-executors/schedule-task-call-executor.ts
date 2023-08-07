@@ -1,7 +1,7 @@
 import { TaskCall } from "@eventual/core/internal";
 import {
   WorkflowCallExecutor,
-  WorkflowExecutorInput,
+  WorkflowCallExecutorProps,
 } from "../call-executor.js";
 import { TaskClient, TaskWorkerRequest } from "../../clients/task-client.js";
 
@@ -11,7 +11,7 @@ export class ScheduleTaskWorkflowExecutor
   constructor(private taskClient: TaskClient) {}
   public async executeForWorkflow(
     call: TaskCall,
-    { executionTime, workflow, executionId, seq }: WorkflowExecutorInput
+    { executionTime, workflow, executionId, seq }: WorkflowCallExecutorProps
   ): Promise<any> {
     const request: TaskWorkerRequest = {
       scheduledTime: executionTime.toISOString(),

@@ -6,7 +6,7 @@ import {
 import type { TimerClient } from "../../clients/timer-client.js";
 import type {
   WorkflowCallExecutor,
-  WorkflowExecutorInput,
+  WorkflowCallExecutorProps,
 } from "../call-executor.js";
 
 export class AwaitTimerWorkflowExecutor
@@ -16,7 +16,7 @@ export class AwaitTimerWorkflowExecutor
 
   public async executeForWorkflow(
     call: AwaitTimerCall,
-    { seq, executionId }: WorkflowExecutorInput
+    { seq, executionId }: WorkflowCallExecutorProps
   ): Promise<void> {
     await this.timerClient.scheduleEvent<TimerCompleted>({
       event: {
