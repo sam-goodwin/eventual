@@ -20,20 +20,16 @@ import {
   type EventualPromise,
   type HistoryEvent,
   type HistoryStateEvent,
-  type Property,
-  type PropertyType,
   type WorkflowCallHistoryEvent,
   type WorkflowInputEvent,
   type WorkflowRunStarted,
   type WorkflowTimedOut,
 } from "@eventual/core/internal";
 import { isPromise } from "util/types";
+import { CallExecutor } from "../call-executor.js";
 import { enterEventualCallHookScope } from "../eventual-hook.js";
 import { _Iterator, iterator } from "../iterator.js";
-import {
-  PropertyRetriever,
-  getEventualProperty,
-} from "../property-retriever.js";
+import { PropertyRetriever } from "../property-retriever.js";
 import { Result, isFailed, isResolved, isResult } from "../result.js";
 import { extendsSystemError } from "../utils.js";
 import {
@@ -457,8 +453,8 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
     callback: (...args: any) => Res
   ): Promise<Awaited<Res>> {
     const self = this;
-    const workflowHook: EventualHook = {
-      executeEventualCall(call?: Call) {
+    const callExecutor: CallExecutor = {
+      execute(call?: Call) {
         if (!call) {
           throw new Error("Operation is not supported within a workflow.");
         }
@@ -503,14 +499,12 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
           throw err;
         }
       },
-      getEventualProperty<P extends Property>(property: P) {
-        return getEventualProperty(
-          property,
-          self.propertyRetriever
-        ) as PropertyType<P>;
-      },
     };
-    return await enterEventualCallHookScope(workflowHook, callback);
+    return await enterEventualCallHookScope(
+      callExecutor,
+      this.propertyRetriever,
+      callback
+    );
 
     /**
      * Checks the call against the expected events.

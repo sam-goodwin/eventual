@@ -1,19 +1,6 @@
 import type { EventualServiceClient } from "@eventual/core";
-import {
-  EventualHook,
-  EventualPromise,
-  ServiceType,
-  type Call,
-  type CallOutput,
-  type Property,
-  type PropertyType,
-  type ServiceSpec,
-} from "@eventual/core/internal";
-import {
-  AllCallExecutor,
-  AllCallExecutors,
-  UnsupportedExecutor,
-} from "../call-executor.js";
+import { ServiceType, type ServiceSpec } from "@eventual/core/internal";
+import { AllCallExecutor, UnsupportedExecutor } from "../call-executor.js";
 import { AwaitTimerCallPassthroughExecutor } from "../call-executors/await-timer-executor.js";
 import { BucketCallExecutor } from "../call-executors/bucket-call-executor.js";
 import { EntityCallExecutor } from "../call-executors/entity-call-executor.js";
@@ -23,7 +10,6 @@ import type { OpenSearchClient } from "../clients/open-search-client.js";
 import { enterEventualCallHookScope } from "../eventual-hook.js";
 import {
   AllPropertyRetriever,
-  AllPropertyRetrievers,
   UnsupportedPropertyRetriever,
 } from "../property-retriever.js";
 import { BucketPhysicalNamePropertyRetriever } from "../property-retrievers/bucket-name-property-retriever.js";
@@ -74,60 +60,35 @@ export function createEventualWorker<Input extends any[], Output>(
 
   return (...input: Input) =>
     enterEventualCallHookScope(
-      new DefaultEventualHook(
-        {
-          AwaitTimerCall: new AwaitTimerCallPassthroughExecutor(),
-          BucketCall: bucketCallExecutor,
-          ChildWorkflowCall: unsupportedExecutor,
-          // conditions do not work outside of a workflow
-          ConditionCall: unsupportedExecutor,
-          EmitEventsCall: serviceClientExecutor,
-          EntityCall: entityCallExecutor,
-          // expect signal does not work outside of a workflow
-          ExpectSignalCall: unsupportedExecutor,
-          GetExecutionCall: serviceClientExecutor,
-          InvokeTransactionCall: serviceClientExecutor,
-          // register signal handler does not work outside of a workflow
-          SignalHandlerCall: unsupportedExecutor,
-          SearchCall: openSearchExecutor,
-          SendSignalCall: serviceClientExecutor,
-          StartWorkflowCall: serviceClientExecutor,
-          // directly calling a task does not work outside of a workflow
-          TaskCall: unsupportedExecutor,
-          TaskRequestCall: serviceClientExecutor,
-        },
-        {
-          BucketPhysicalName: bucketPhysicalNameRetriever,
-          OpenSearchClient: openSearchClientPropertyRetriever,
-          ServiceClient: dep.serviceClient ?? unsupportedProperty,
-          ServiceName: dep.serviceName,
-          ServiceSpec: dep.serviceSpec ?? unsupportedProperty,
-          ServiceUrl: dep.serviceUrl,
-        }
-      ),
+      new AllCallExecutor({
+        AwaitTimerCall: new AwaitTimerCallPassthroughExecutor(),
+        BucketCall: bucketCallExecutor,
+        ChildWorkflowCall: unsupportedExecutor,
+        // conditions do not work outside of a workflow
+        ConditionCall: unsupportedExecutor,
+        EmitEventsCall: serviceClientExecutor,
+        EntityCall: entityCallExecutor,
+        // expect signal does not work outside of a workflow
+        ExpectSignalCall: unsupportedExecutor,
+        GetExecutionCall: serviceClientExecutor,
+        InvokeTransactionCall: serviceClientExecutor,
+        // register signal handler does not work outside of a workflow
+        SignalHandlerCall: unsupportedExecutor,
+        SearchCall: openSearchExecutor,
+        SendSignalCall: serviceClientExecutor,
+        StartWorkflowCall: serviceClientExecutor,
+        // directly calling a task does not work outside of a workflow
+        TaskCall: unsupportedExecutor,
+        TaskRequestCall: serviceClientExecutor,
+      }),
+      new AllPropertyRetriever({
+        BucketPhysicalName: bucketPhysicalNameRetriever,
+        OpenSearchClient: openSearchClientPropertyRetriever,
+        ServiceClient: dep.serviceClient ?? unsupportedProperty,
+        ServiceName: dep.serviceName,
+        ServiceSpec: dep.serviceSpec ?? unsupportedProperty,
+        ServiceUrl: dep.serviceUrl,
+      }),
       () => serviceTypeScope(serviceType, () => worker(...input))
     );
-}
-
-export class DefaultEventualHook implements EventualHook {
-  constructor(
-    private executors: AllCallExecutors,
-    private propertyRetrievers: AllPropertyRetrievers
-  ) {}
-
-  public executeEventualCall<P extends Call>(
-    eventual: P
-  ): EventualPromise<any> {
-    return new AllCallExecutor(this.executors).execute(
-      eventual
-    ) as CallOutput<P>;
-  }
-
-  public getEventualProperty<P extends Property = Property>(
-    property: P
-  ): PropertyType<P> {
-    return new AllPropertyRetriever(this.propertyRetrievers).getProperty<P>(
-      property
-    ) as PropertyType<P>;
-  }
 }

@@ -25,18 +25,13 @@ import {
   isSendSignalCall,
   type EmitEventsCall,
   type EntityOperation,
-  type EventualHook,
-  type Property,
-  type PropertyType,
   type SendSignalCall,
 } from "@eventual/core/internal";
+import { CallExecutor } from "./call-executor.js";
 import type { EventClient } from "./clients/event-client.js";
 import type { ExecutionQueueClient } from "./clients/execution-queue-client.js";
 import { enterEventualCallHookScope } from "./eventual-hook.js";
-import {
-  getEventualProperty,
-  type PropertyRetriever,
-} from "./property-retriever.js";
+import { type PropertyRetriever } from "./property-retriever.js";
 import type { EntityProvider } from "./providers/entity-provider.js";
 import { Result, isResolved } from "./result.js";
 import { serviceTypeScope } from "./service-type.js";
@@ -156,8 +151,8 @@ export function createTransactionExecutor(
       // also serves as a get cache when get is called multiple times on the same keys
       const retrievedEntities = new Map<string, TransactionEntityState>();
 
-      const eventualCallHook: EventualHook = {
-        executeEventualCall: (eventual): any => {
+      const eventualCallExecutor: CallExecutor = {
+        execute: (eventual) => {
           if (isEntityCall(eventual)) {
             const operation = eventual.operation;
             if (
@@ -260,19 +255,14 @@ export function createTransactionExecutor(
             `Unsupported eventual call type. Only Entity requests, emit events, and send signals are supported.`
           );
         },
-        getEventualProperty<P extends Property>(property: P) {
-          return getEventualProperty(
-            property,
-            propertyRetriever
-          ) as PropertyType<P>;
-        },
       };
 
       const output = await serviceTypeScope(
         ServiceType.TransactionWorker,
         async () =>
           await enterEventualCallHookScope(
-            eventualCallHook,
+            eventualCallExecutor,
+            propertyRetriever,
             async () => await transactionFunction(input, transactionContext)
           )
       );
