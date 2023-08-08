@@ -28,6 +28,7 @@ import {
   getLazy,
   type BucketStore,
   type LazyValue,
+  streamToBuffer,
 } from "@eventual/core-runtime";
 import { assertNever } from "@eventual/core/internal";
 import { Readable } from "stream";
@@ -118,7 +119,8 @@ export class AWSBucketStore implements BucketStore {
       new PutObjectCommand({
         Bucket: this.physicalName(bucketName),
         Key: key,
-        Body: data,
+        // S3 requires the content length when given a stream, we'll just give them a buffer instead
+        Body: data instanceof Readable ? await streamToBuffer(data) : data,
         CacheControl: options?.cacheControl,
         ContentEncoding: options?.contentEncoding,
         ContentMD5: options?.contentMD5,

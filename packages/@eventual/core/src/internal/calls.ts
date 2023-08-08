@@ -6,12 +6,12 @@ import type {
   EntityTransactItem,
 } from "../entity/entity.js";
 import type { EventEnvelope } from "../event.js";
-import { Execution, ExecutionHandle } from "../execution.js";
+import type { Execution, ExecutionHandle } from "../execution.js";
 import type { DurationSchedule, Schedule } from "../schedule.js";
 import type { SearchIndex } from "../search/search-index.js";
-import { Task } from "../task.js";
+import type { Task } from "../task.js";
 import type { Workflow, WorkflowExecutionOptions } from "../workflow.js";
-import { SendTaskHeartbeatResponse } from "./eventual-service.js";
+import type { SendTaskHeartbeatResponse } from "./eventual-service.js";
 import type { SignalTarget } from "./signal.js";
 
 export type Call =
@@ -168,9 +168,14 @@ export interface EntityScanIndexOperation {
   params: Parameters<EntityIndex["scan"]>;
 }
 
+export interface EntityTransactEventOperationItem
+  extends Omit<EntityTransactItem, "entity"> {
+  entity: string;
+}
+
 export interface EntityTransactOperation {
   operation: "transact";
-  items: EntityTransactItem[];
+  items: EntityTransactEventOperationItem[];
 }
 
 export interface BucketDefinition {
@@ -200,7 +205,7 @@ export type BucketOperation<Op extends BucketMethod = BucketMethod> = {
   params: Parameters<Bucket[Op]>;
 };
 
-export function isBucketCallType<Op extends BucketMethod>(
+export function isBucketCallOperation<Op extends BucketMethod>(
   op: Op,
   operation: BucketCall<any>
 ): operation is BucketCall<Op> {

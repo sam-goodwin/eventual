@@ -1,5 +1,6 @@
 import type { EntityTransactItem } from "@eventual/core";
 import {
+  WorkflowCallHistoryType,
   WorkflowEventType,
   isBucketRequest,
   isCallEvent,
@@ -13,7 +14,6 @@ import {
   type BucketRequest,
   type EntityOperation,
   type WorkflowEvent,
-  WorkflowCallHistoryType,
 } from "@eventual/core/internal";
 import chalk from "chalk";
 import { formatTime } from "./time.js";
@@ -23,10 +23,16 @@ export function displayEvent(event: WorkflowEvent) {
     `${chalk.green(formatTime(event.timestamp))}\t${chalk.blue(
       `${WorkflowEventType[event.type]}${
         isCallEvent(event)
-          ? `(${WorkflowCallHistoryType[event.event.type]})`
+          ? `-${chalk.blueBright(WorkflowCallHistoryType[event.event.type])}`
           : ""
       }`
-    )}${"seq" in event ? `(${event.seq})` : ""}`,
+    )}${
+      "seq" in event
+        ? `(${event.seq})`
+        : isCallEvent(event)
+        ? `(${event.event.seq})`
+        : ""
+    }`,
     ...(isCallEvent(event)
       ? [
           ...(isChildWorkflowScheduled(event.event) ||
@@ -73,7 +79,9 @@ function displayEntityCommand(operation: EntityOperation) {
     output.push(
       ...operation.items.flatMap((item, i) => [
         `${i}:`,
-        ...displayEntityTransactItem(item).map((v) => `\t${v}`),
+        ...displayEntityTransactItem(item as EntityTransactItem).map(
+          (v) => `\t${v}`
+        ),
       ])
     );
   } else {

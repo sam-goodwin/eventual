@@ -6,11 +6,11 @@ import {
 } from "@eventual/core/internal";
 import { Result } from "../result.js";
 import { AwaitTimerClassEventualFactory } from "./call-executors-and-factories/await-timer-call.js";
-import { BucketCallEventualFactory } from "./call-executors-and-factories/bucket-store-call.js";
+import { BucketCallEventualFactory } from "./call-executors-and-factories/bucket-call.js";
 import { ChildWorkflowCallEventualFactory } from "./call-executors-and-factories/child-workflow-call.js";
 import { ConditionCallEventualFactory } from "./call-executors-and-factories/condition-call.js";
 import { EmitEventsCallEventualFactory } from "./call-executors-and-factories/emit-events-call.js";
-import { EntityCallEventualFactory } from "./call-executors-and-factories/entity-store-call.js";
+import { EntityCallEventualFactory } from "./call-executors-and-factories/entity-call.js";
 import { ExpectSignalFactory } from "./call-executors-and-factories/expect-signal-call.js";
 import { SearchCallEventualFactory } from "./call-executors-and-factories/open-search-client-call.js";
 import { SendSignalEventualFactory } from "./call-executors-and-factories/send-signal-call.js";

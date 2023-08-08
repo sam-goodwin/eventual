@@ -1,6 +1,7 @@
 import type { EntityCall } from "@eventual/core/internal";
 import type { CallExecutor } from "../call-executor.js";
 import type { EntityStore } from "../stores/entity-store.js";
+import { EntityTransactItem } from "@eventual/core";
 
 export class EntityCallExecutor implements CallExecutor<EntityCall> {
   constructor(private entityStore: EntityStore) {}
@@ -15,7 +16,9 @@ export class EntityCallExecutor implements CallExecutor<EntityCall> {
         ...(call.operation.params as [any])
       );
     } else if (call.operation.operation === "transact") {
-      return this.entityStore.transactWrite(call.operation.items);
+      return this.entityStore.transactWrite(
+        call.operation.items as EntityTransactItem[]
+      );
     }
     return this.entityStore[call.operation.operation](
       call.operation.entityName,

@@ -91,3 +91,296 @@ describe("deepEqual function", () => {
     expect(deepEqual([undefined], [])).toBeFalsy();
   });
 });
+
+test("test", () => {
+  expect(
+    deepEqual(
+      {
+        type: 2,
+        operation: {
+          operation: "transact",
+          items: [
+            {
+              entity: {
+                kind: "Entity",
+                name: "counter5",
+                key: {
+                  partition: {
+                    type: "string",
+                    keyAttribute: "namespace|id",
+                    attributes: ["namespace", "id"],
+                  },
+                },
+                attributes: {
+                  _def: {
+                    unknownKeys: "strip",
+                    catchall: { _def: { typeName: "ZodNever" } },
+                    typeName: "ZodObject",
+                  },
+                  _cached: null,
+                },
+                indices: [
+                  {
+                    kind: "EntityIndex",
+                    key: {
+                      partition: {
+                        type: "string",
+                        keyAttribute: "id",
+                        attributes: ["id"],
+                      },
+                    },
+                    name: "allCounters",
+                    partition: ["id"],
+                    entityName: "counter5",
+                  },
+                  {
+                    kind: "EntityIndex",
+                    key: {
+                      partition: {
+                        type: "string",
+                        keyAttribute: "id",
+                        attributes: ["id"],
+                      },
+                      sort: {
+                        type: "number",
+                        keyAttribute: "n",
+                        attributes: ["n"],
+                      },
+                    },
+                    name: "allCountersByN",
+                    partition: ["id"],
+                    sort: ["n"],
+                    entityName: "counter5",
+                  },
+                  {
+                    kind: "EntityIndex",
+                    key: {
+                      partition: {
+                        type: "string",
+                        keyAttribute: "id",
+                        attributes: ["id"],
+                      },
+                      sort: {
+                        type: "string",
+                        keyAttribute: "namespace",
+                        attributes: ["namespace"],
+                      },
+                    },
+                    name: "countersOrderedByNamespace",
+                    partition: ["id"],
+                    sort: ["namespace"],
+                    entityName: "counter5",
+                  },
+                  {
+                    kind: "EntityIndex",
+                    key: {
+                      partition: {
+                        type: "string",
+                        keyAttribute: "id",
+                        attributes: ["id"],
+                      },
+                      sort: {
+                        type: "string",
+                        keyAttribute: "optional|n",
+                        attributes: ["optional", "n"],
+                      },
+                    },
+                    name: "countersByOptional2",
+                    partition: ["id"],
+                    sort: ["optional", "n"],
+                    entityName: "counter5",
+                  },
+                  {
+                    kind: "EntityIndex",
+                    key: {
+                      partition: {
+                        type: "string",
+                        keyAttribute: "namespace|id",
+                        attributes: ["namespace", "id"],
+                      },
+                      sort: {
+                        type: "number",
+                        keyAttribute: "n",
+                        attributes: ["n"],
+                      },
+                    },
+                    name: "countersByN",
+                    sort: ["n"],
+                    entityName: "counter5",
+                  },
+                ],
+                streams: [
+                  {
+                    kind: "EntityStream",
+                    name: "counterWatcher",
+                    entityName: "counter5",
+                    options: { operations: ["remove"], includeOld: true },
+                  },
+                  {
+                    kind: "EntityBatchStream",
+                    name: "counterNamespaceWatch",
+                    entityName: "counter5",
+                    options: {
+                      queryKeys: [{ namespace: "different" }],
+                      operations: ["insert"],
+                    },
+                  },
+                ],
+              },
+              operation: "put",
+              value: {
+                namespace: "default",
+                id: "entityWorkflow/01H7BCVX7529KVSNEEJZ4B8VNQ",
+                n: 6,
+              },
+            },
+          ],
+        },
+        seq: 10,
+      },
+      {
+        type: 2,
+        operation: {
+          operation: "transact",
+          items: [
+            {
+              entity: {
+                kind: "Entity",
+                name: "counter5",
+                key: {
+                  partition: {
+                    type: "string",
+                    keyAttribute: "namespace|id",
+                    attributes: ["namespace", "id"],
+                  },
+                },
+                attributes: {
+                  _def: {
+                    unknownKeys: "strip",
+                    catchall: { _def: { typeName: "ZodNever" } },
+                    typeName: "ZodObject",
+                  },
+                  _cached: null,
+                },
+                indices: [
+                  {
+                    kind: "EntityIndex",
+                    key: {
+                      partition: {
+                        type: "string",
+                        keyAttribute: "id",
+                        attributes: ["id"],
+                      },
+                    },
+                    name: "allCounters",
+                    partition: ["id"],
+                    entityName: "counter5",
+                  },
+                  {
+                    kind: "EntityIndex",
+                    key: {
+                      partition: {
+                        type: "string",
+                        keyAttribute: "id",
+                        attributes: ["id"],
+                      },
+                      sort: {
+                        type: "number",
+                        keyAttribute: "n",
+                        attributes: ["n"],
+                      },
+                    },
+                    name: "allCountersByN",
+                    partition: ["id"],
+                    sort: ["n"],
+                    entityName: "counter5",
+                  },
+                  {
+                    kind: "EntityIndex",
+                    key: {
+                      partition: {
+                        type: "string",
+                        keyAttribute: "id",
+                        attributes: ["id"],
+                      },
+                      sort: {
+                        type: "string",
+                        keyAttribute: "namespace",
+                        attributes: ["namespace"],
+                      },
+                    },
+                    name: "countersOrderedByNamespace",
+                    partition: ["id"],
+                    sort: ["namespace"],
+                    entityName: "counter5",
+                  },
+                  {
+                    kind: "EntityIndex",
+                    key: {
+                      partition: {
+                        type: "string",
+                        keyAttribute: "id",
+                        attributes: ["id"],
+                      },
+                      sort: {
+                        type: "string",
+                        keyAttribute: "optional|n",
+                        attributes: ["optional", "n"],
+                      },
+                    },
+                    name: "countersByOptional2",
+                    partition: ["id"],
+                    sort: ["optional", "n"],
+                    entityName: "counter5",
+                  },
+                  {
+                    kind: "EntityIndex",
+                    key: {
+                      partition: {
+                        type: "string",
+                        keyAttribute: "namespace|id",
+                        attributes: ["namespace", "id"],
+                      },
+                      sort: {
+                        type: "number",
+                        keyAttribute: "n",
+                        attributes: ["n"],
+                      },
+                    },
+                    name: "countersByN",
+                    sort: ["n"],
+                    entityName: "counter5",
+                  },
+                ],
+                streams: [
+                  {
+                    kind: "EntityStream",
+                    name: "counterWatcher",
+                    entityName: "counter5",
+                    options: { operations: ["remove"], includeOld: true },
+                  },
+                  {
+                    kind: "EntityBatchStream",
+                    name: "counterNamespaceWatch",
+                    entityName: "counter5",
+                    options: {
+                      queryKeys: [{ namespace: "different" }],
+                      operations: ["insert"],
+                    },
+                  },
+                ],
+              },
+              operation: "put",
+              value: {
+                namespace: "default",
+                id: "entityWorkflow/01H7BCVX7529KVSNEEJZ4B8VNQ",
+                n: 6,
+              },
+            },
+          ],
+        },
+        seq: 10,
+      }
+    )
+  );
+});

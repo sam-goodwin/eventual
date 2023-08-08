@@ -181,7 +181,15 @@ export const Entity = {
   transactWrite: (items: EntityTransactItem[]): Promise<void> => {
     return getEventualHook().executeEventualCall(
       createCall<EntityCall<"transact">>(CallKind.EntityCall, {
-        operation: { operation: "transact", items },
+        operation: {
+          operation: "transact",
+          items: items.map((i) => {
+            return {
+              ...i,
+              entity: typeof i.entity === "string" ? i.entity : i.entity.name,
+            };
+          }),
+        },
       })
     );
   },
