@@ -199,3 +199,47 @@ export function extendsSystemError(err: unknown): err is SystemError {
         Object.prototype.isPrototypeOf.call(err.prototype, SystemError)))
   );
 }
+
+export function deepEqual(a: any, b: any): boolean {
+  if (a === b) return true;
+
+  // Ensure both are objects and are not null
+  if (
+    typeof a !== "object" ||
+    a === null ||
+    typeof b !== "object" ||
+    b === null
+  ) {
+    return false;
+  }
+
+  if (Array.isArray(a) === Array.isArray(b)) {
+    if (Array.isArray(a)) {
+      if (a.length !== b.length) {
+        return false;
+      }
+      return a.every((v, i) => deepEqual(v, b[i]));
+    }
+  } else {
+    return false;
+  }
+
+  const keysA = Object.entries(a)
+    .filter(([, value]) => value !== undefined)
+    .map(([name]) => name);
+  const keysB = Object.entries(b)
+    .filter(([, value]) => value !== undefined)
+    .map(([name]) => name);
+
+  // Ensure both objects have the same number of properties
+  if (keysA.length !== keysB.length) return false;
+
+  // Check if every key-value pair in 'a' matches that in 'b'
+  for (const key of keysA) {
+    if (!keysB.includes(key) || !deepEqual(a[key], b[key])) {
+      return false;
+    }
+  }
+
+  return true;
+}

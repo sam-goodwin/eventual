@@ -31,7 +31,7 @@ import { enterEventualCallHookScope } from "../eventual-hook.js";
 import { _Iterator, iterator } from "../iterator.js";
 import { PropertyRetriever } from "../property-retriever.js";
 import { Result, isFailed, isResolved, isResult } from "../result.js";
-import { extendsSystemError } from "../utils.js";
+import { deepEqual, extendsSystemError } from "../utils.js";
 import {
   EventualFactory,
   createDefaultEventualFactory,
@@ -529,7 +529,7 @@ export class WorkflowExecutor<Input, Output, Context = undefined> {
               new DeterminismError(
                 `Workflow returned ${JSON.stringify(
                   event
-                )}, but ${JSON.stringify(expected)} was expected at ${
+                )}, but ${JSON.stringify(expected.event)} was expected at ${
                   event.seq
                 }`
               )
@@ -814,44 +814,4 @@ export interface WorkflowCall<E extends Call = Call> {
   seq: number;
   call: E;
   event?: WorkflowCallHistoryEvent;
-}
-
-function deepEqual(a: any, b: any): boolean {
-  if (a === b) return true;
-
-  // Ensure both are objects and are not null
-  if (
-    typeof a !== "object" ||
-    a === null ||
-    typeof b !== "object" ||
-    b === null
-  ) {
-    return false;
-  }
-
-  if (Array.isArray(a) === Array.isArray(b)) {
-    if (Array.isArray(a)) {
-      if (a.length !== b.length) {
-        return false;
-      }
-      return a.every((v, i) => deepEqual(v, b[i]));
-    }
-  } else {
-    return false;
-  }
-
-  const keysA = Object.keys(a);
-  const keysB = Object.keys(b);
-
-  // Ensure both objects have the same number of properties
-  if (keysA.length !== keysB.length) return false;
-
-  // Check if every key-value pair in 'a' matches that in 'b'
-  for (const key of keysA) {
-    if (!keysB.includes(key) || !deepEqual(a[key], b[key])) {
-      return false;
-    }
-  }
-
-  return true;
 }

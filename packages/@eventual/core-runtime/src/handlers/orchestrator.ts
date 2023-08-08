@@ -54,6 +54,7 @@ import {
   isFailed,
   normalizeError,
   normalizeFailedResult,
+  resultToString,
 } from "../result.js";
 import { computeScheduleDate } from "../schedule.js";
 import type { BucketStore } from "../stores/bucket-store.js";
@@ -248,7 +249,7 @@ export async function orchestrateExecution(
           LogLevel.DEBUG,
           () => [
             result
-              ? "Workflow returned a result with: " + JSON.stringify(result)
+              ? "Workflow returned a result with: " + resultToString(result)
               : "Workflow did not return a result.",
           ]
         );
