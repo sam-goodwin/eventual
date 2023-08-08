@@ -56,8 +56,7 @@ import {
   normalizeFailedResult,
 } from "../result.js";
 import { computeScheduleDate } from "../schedule.js";
-import { serviceTypeScope } from "../service-type.js";
-import { BucketStore } from "../stores/bucket-store.js";
+import type { BucketStore } from "../stores/bucket-store.js";
 import type { ExecutionHistoryStore } from "../stores/execution-history-store.js";
 import type { WorkflowTask } from "../tasks.js";
 import { groupBy } from "../utils.js";
@@ -98,33 +97,32 @@ export function createOrchestrator(
     ServiceClient: unsupportedProperty,
     ServiceName: deps.serviceName,
     ServiceSpec: unsupportedProperty,
+    ServiceType: ServiceType.OrchestratorWorker,
     ServiceUrl: unsupportedProperty,
     TaskToken: unsupportedProperty,
   });
 
-  return (workflowTasks, baseTime = () => new Date()) => {
-    return serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
-      const result = await runExecutions(
-        workflowTasks,
-        (workflowName, executionId, events) => {
-          return orchestrateExecution(
-            workflowName,
-            executionId,
-            events,
-            baseTime(),
-            deps,
-            propertyRetriever
-          );
-        }
-      );
+  return async (workflowTasks, baseTime = () => new Date()) => {
+    const result = await runExecutions(
+      workflowTasks,
+      (workflowName, executionId, events) => {
+        return orchestrateExecution(
+          workflowName,
+          executionId,
+          events,
+          baseTime(),
+          deps,
+          propertyRetriever
+        );
+      }
+    );
 
-      // ensure all of the logs have been sent.
-      await deps.logAgent?.flush();
+    // ensure all of the logs have been sent.
+    await deps.logAgent?.flush();
 
-      return {
-        failedExecutionIds: Object.keys(result.failedExecutions),
-      };
-    });
+    return {
+      failedExecutionIds: Object.keys(result.failedExecutions),
+    };
   };
 }
 

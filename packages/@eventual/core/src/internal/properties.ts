@@ -1,15 +1,17 @@
 import type { Client as OpenSearchClient } from "@opensearch-project/opensearch";
 import type { EventualServiceClient } from "../service-client.js";
 import type { ServiceSpec } from "./service-spec.js";
+import type { ServiceType } from "./service-type.js";
 
 export enum PropertyKind {
-  BucketPhysicalName = 0,
-  OpenSearchClient = 1,
-  ServiceClient = 2,
-  ServiceName = 3,
-  ServiceSpec = 4,
-  ServiceUrl = 5,
-  TaskToken = 6,
+  BucketPhysicalName,
+  OpenSearchClient,
+  ServiceClient,
+  ServiceName,
+  ServiceSpec,
+  ServiceType,
+  ServiceUrl,
+  TaskToken,
 }
 
 export const PropertySymbol = /* @__PURE__ */ Symbol.for(
@@ -20,9 +22,10 @@ export type Property =
   | BucketPhysicalName
   | OpenSearchClientProperty
   | ServiceClientProperty
-  | ServiceSpecProperty
-  | ServiceUrlProperty
   | ServiceNameProperty
+  | ServiceSpecProperty
+  | ServiceTypeProperty
+  | ServiceUrlProperty
   | TaskTokenProperty;
 
 export type PropertyType<E extends Property> = E extends PropertyBase<
@@ -77,6 +80,11 @@ export type ServiceNameProperty = PropertyBase<
 export type ServiceSpecProperty = PropertyBase<
   PropertyKind.ServiceSpec,
   ServiceSpec
+>;
+
+export type ServiceTypeProperty = PropertyBase<
+  PropertyKind.ServiceType,
+  ServiceType
 >;
 
 export type TaskTokenProperty = PropertyBase<PropertyKind.TaskToken, string>;

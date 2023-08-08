@@ -2,7 +2,7 @@ import type {
   ExecuteTransactionRequest,
   ExecuteTransactionResponse,
 } from "@eventual/core";
-import { getEventualResource } from "@eventual/core/internal";
+import { ServiceType, getEventualResource } from "@eventual/core/internal";
 import type { EventClient } from "../clients/event-client.js";
 import type { ExecutionQueueClient } from "../clients/execution-queue-client.js";
 import {
@@ -38,10 +38,11 @@ export function createTransactionWorker(
   const propertyRetriever = new AllPropertyRetriever({
     BucketPhysicalName: unsupportedPropertyRetriever,
     OpenSearchClient: unsupportedPropertyRetriever,
-    ServiceName: props.serviceName,
-    ServiceUrl: unsupportedPropertyRetriever,
     ServiceClient: unsupportedPropertyRetriever,
+    ServiceName: props.serviceName,
     ServiceSpec: unsupportedPropertyRetriever,
+    ServiceType: ServiceType.TransactionWorker,
+    ServiceUrl: unsupportedPropertyRetriever,
     TaskToken: unsupportedPropertyRetriever,
   });
   const transactionExecutor = createTransactionExecutor(

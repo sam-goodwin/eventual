@@ -11,7 +11,6 @@ export * from "./property-retriever.js";
 export * from "./providers/index.js";
 export * from "./result.js";
 export * from "./schedule.js";
-export * from "./service-type.js";
 export * from "./stores/index.js";
 export * from "./system-commands.js";
 export * from "./task-token.js";

@@ -16,7 +16,6 @@ import {
 import {
   EventualPromise,
   EventualPromiseSymbol,
-  ServiceType,
   SignalTargetType,
   assertNever,
   isEmitEventsCall,
@@ -34,7 +33,6 @@ import { enterEventualCallHookScope } from "./eventual-hook.js";
 import { type PropertyRetriever } from "./property-retriever.js";
 import type { EntityProvider } from "./providers/entity-provider.js";
 import { Result, isResolved } from "./result.js";
-import { serviceTypeScope } from "./service-type.js";
 import {
   convertNormalizedEntityKeyToMap,
   normalizeCompositeKey,
@@ -257,14 +255,10 @@ export function createTransactionExecutor(
         },
       };
 
-      const output = await serviceTypeScope(
-        ServiceType.TransactionWorker,
-        async () =>
-          await enterEventualCallHookScope(
-            eventualCallExecutor,
-            propertyRetriever,
-            async () => await transactionFunction(input, transactionContext)
-          )
+      const output = await enterEventualCallHookScope(
+        eventualCallExecutor,
+        propertyRetriever,
+        async () => await transactionFunction(input, transactionContext)
       );
 
       /**

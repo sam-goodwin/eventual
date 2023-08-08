@@ -19,7 +19,6 @@ import {
 } from "../property-retriever.js";
 import { BucketPhysicalNamePropertyRetriever } from "../property-retrievers/bucket-name-property-retriever.js";
 import { OpenSearchClientPropertyRetriever } from "../property-retrievers/open-search-client-property-retriever.js";
-import { serviceTypeScope } from "../service-type.js";
 import type { BucketStore } from "../stores/bucket-store.js";
 import type { EntityStore } from "../stores/entity-store.js";
 import type { LazyValue } from "../utils.js";
@@ -136,11 +135,12 @@ export function createEventualWorker<Input extends any[], Output>(
         ServiceClient: props.serviceClient ?? unsupportedProperty,
         ServiceName: props.serviceName,
         ServiceSpec: props.serviceSpec ?? unsupportedProperty,
+        ServiceType: props.serviceType,
         ServiceUrl: props.serviceUrl,
         TaskToken: unsupportedProperty, // the task worker should override this
         ...resolvedPropertyOverrides,
       }),
-      () => serviceTypeScope(props.serviceType, () => worker(...input))
+      () => worker(...input)
     );
   };
 }

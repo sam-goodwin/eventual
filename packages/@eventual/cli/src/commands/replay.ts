@@ -16,7 +16,6 @@ import {
   parseWorkflowName,
   resultToString,
   runExecutor,
-  serviceTypeScope,
 } from "@eventual/core-runtime";
 import { ServiceType, getEventualResource } from "@eventual/core/internal";
 import { discoverEventualConfig } from "@eventual/project";
@@ -87,30 +86,28 @@ export const replay = (yargs: Argv) =>
           "Replay Workflow Executor"
         );
 
-        await serviceTypeScope(ServiceType.OrchestratorWorker, async () => {
-          const executor = new WorkflowExecutor<any, any, any>(
-            workflow,
-            events,
-            // TODO: these properties should come from the history
-            new AllPropertyRetriever({
-              ServiceClient: serviceClient,
-              ServiceName: serviceName ?? unsupportedPropertyRetriever,
-              OpenSearchClient: unsupportedPropertyRetriever,
-              BucketPhysicalName: unsupportedPropertyRetriever,
-              ServiceSpec: unsupportedPropertyRetriever,
-              ServiceUrl:
-                serviceData.apiEndpoint ?? unsupportedPropertyRetriever,
-              TaskToken: unsupportedPropertyRetriever,
-            })
-          );
+        const executor = new WorkflowExecutor<any, any, any>(
+          workflow,
+          events,
+          // TODO: these properties should come from the history
+          new AllPropertyRetriever({
+            ServiceClient: serviceClient,
+            ServiceName: serviceName ?? unsupportedPropertyRetriever,
+            OpenSearchClient: unsupportedPropertyRetriever,
+            BucketPhysicalName: unsupportedPropertyRetriever,
+            ServiceSpec: unsupportedPropertyRetriever,
+            ServiceType: ServiceType.OrchestratorWorker,
+            ServiceUrl: serviceData.apiEndpoint ?? unsupportedPropertyRetriever,
+            TaskToken: unsupportedPropertyRetriever,
+          })
+        );
 
-          const res = await runExecutor(executor, [], new Date());
+        const res = await runExecutor(executor, [], new Date());
 
-          assertExpectedResult(executionObj, res.result);
+        assertExpectedResult(executionObj, res.result);
 
-          spinner.succeed();
-          process.stdout.write(`result: ${resultToString(res.result)}\n`);
-        });
+        spinner.succeed();
+        process.stdout.write(`result: ${resultToString(res.result)}\n`);
       }
     )
   );
