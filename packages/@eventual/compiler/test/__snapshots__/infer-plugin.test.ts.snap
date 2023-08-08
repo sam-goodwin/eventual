@@ -38,8 +38,8 @@ var CallKind;
   CallKind2[CallKind2["ExpectSignalCall"] = 3] = "ExpectSignalCall";
   CallKind2[CallKind2["GetExecutionCall"] = 14] = "GetExecutionCall";
   CallKind2[CallKind2["InvokeTransactionCall"] = 9] = "InvokeTransactionCall";
-  CallKind2[CallKind2["RegisterSignalHandlerCall"] = 5] = "RegisterSignalHandlerCall";
   CallKind2[CallKind2["SendSignalCall"] = 6] = "SendSignalCall";
+  CallKind2[CallKind2["SignalHandlerCall"] = 5] = "SignalHandlerCall";
   CallKind2[CallKind2["TaskCall"] = 0] = "TaskCall";
   CallKind2[CallKind2["TaskRequestCall"] = 12] = "TaskRequestCall";
   CallKind2[CallKind2["SearchCall"] = 11] = "SearchCall";
@@ -271,12 +271,6 @@ globalThis.getEventualHook ??= () => {
 globalThis.tryGetEventualHook ??= () => {
   return void 0;
 };
-
-var ResultKind;
-(function(ResultKind2) {
-  ResultKind2[ResultKind2["Resolved"] = 0] = "Resolved";
-  ResultKind2[ResultKind2["Failed"] = 1] = "Failed";
-})(ResultKind || (ResultKind = {}));
 
 globalThis.getEventualTaskRuntimeContext ??= () => {
   throw new Error("Eventual task context has not been registered yet.");

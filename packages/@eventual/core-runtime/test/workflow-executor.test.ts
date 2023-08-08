@@ -2063,8 +2063,8 @@ describe("signals", () => {
             signalReceived("MySignal"),
             timerScheduled(2, time(testTime)),
             timerCompleted(2),
-            timerScheduled(3, time(testTime)),
-            timerCompleted(3),
+            timerScheduled(5, time(testTime)),
+            timerCompleted(5),
           ],
           undefined
         )
@@ -2088,8 +2088,8 @@ describe("signals", () => {
             signalReceived("MySignal"),
             timerScheduled(2, time(testTime)),
             timerCompleted(2),
-            timerScheduled(3, time(testTime)),
-            timerCompleted(3),
+            timerScheduled(5, time(testTime)),
+            timerCompleted(5),
           ],
           undefined
         )
@@ -2113,8 +2113,8 @@ describe("signals", () => {
             signalReceived("MySignal"),
             signalReceived("MySignal"),
             signalReceived("MySignal"),
-            timerScheduled(3, time(testTime)),
-            timerCompleted(3),
+            timerScheduled(5, time(testTime)),
+            timerCompleted(5),
           ],
           undefined
         )
@@ -2167,8 +2167,8 @@ describe("signals", () => {
             timerScheduled(2, time(testTime)),
             timerCompleted(2),
             taskScheduled(myTask.name, 3),
-            timerScheduled(4, time(testTime)),
-            timerCompleted(4),
+            timerScheduled(6, time(testTime)),
+            timerCompleted(6),
           ],
           undefined
         )
@@ -2192,8 +2192,8 @@ describe("signals", () => {
             taskScheduled(myTask.name, 3),
             taskSucceeded("task1", 3),
             timerCompleted(2),
-            timerScheduled(4, time(testTime)),
-            timerCompleted(4),
+            timerScheduled(6, time(testTime)),
+            timerCompleted(6),
           ],
           undefined
         )
@@ -2217,8 +2217,8 @@ describe("signals", () => {
             timerCompleted(2),
             taskScheduled(myTask.name, 3),
             taskSucceeded("task1", 3),
-            timerScheduled(4, time(testTime)),
-            timerCompleted(4),
+            timerScheduled(6, time(testTime)),
+            timerCompleted(6),
           ],
           undefined
         )
@@ -2240,8 +2240,8 @@ describe("signals", () => {
             timerScheduled(2, time(testTime)),
             timerCompleted(2),
             signalReceived("MyOtherSignal", "hi"),
-            timerScheduled(3, time(testTime)),
-            timerCompleted(3),
+            timerScheduled(5, time(testTime)),
+            timerCompleted(5),
           ],
           undefined
         )
