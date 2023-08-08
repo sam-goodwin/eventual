@@ -62,7 +62,9 @@ var PropertyKind;
   PropertyKind2[PropertyKind2["ServiceClient"] = 2] = "ServiceClient";
   PropertyKind2[PropertyKind2["ServiceName"] = 3] = "ServiceName";
   PropertyKind2[PropertyKind2["ServiceSpec"] = 4] = "ServiceSpec";
-  PropertyKind2[PropertyKind2["ServiceUrl"] = 5] = "ServiceUrl";
+  PropertyKind2[PropertyKind2["ServiceType"] = 5] = "ServiceType";
+  PropertyKind2[PropertyKind2["ServiceUrl"] = 6] = "ServiceUrl";
+  PropertyKind2[PropertyKind2["TaskToken"] = 7] = "TaskToken";
 })(PropertyKind || (PropertyKind = {}));
 
 function isSourceLocation(a) {
@@ -270,10 +272,6 @@ globalThis.getEventualHook ??= () => {
 };
 globalThis.tryGetEventualHook ??= () => {
   return void 0;
-};
-
-globalThis.getEventualTaskRuntimeContext ??= () => {
-  throw new Error("Eventual task context has not been registered yet.");
 };
 
 var myHandler = api.get("/", async () => {

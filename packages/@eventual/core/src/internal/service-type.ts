@@ -12,7 +12,7 @@ export enum ServiceType {
 
 export function isServiceType(serviceType: ServiceType) {
   return (
-    getEventualHook().getEventualProperty(
+    tryGetEventualHook()?.getEventualProperty(
       createEventualProperty(PropertyKind.ServiceType, {})
     ) === serviceType
   );
