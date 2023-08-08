@@ -8,7 +8,7 @@ import type { ExecutionQueueClient } from "../clients/execution-queue-client.js"
 import {
   AllPropertyRetriever,
   UnsupportedPropertyRetriever,
-} from "../index.js";
+} from "../property-retriever.js";
 import type { EntityProvider } from "../providers/entity-provider.js";
 import { isResolved, normalizeFailedResult } from "../result.js";
 import type { EntityStore } from "../stores/entity-store.js";
@@ -42,6 +42,7 @@ export function createTransactionWorker(
     ServiceUrl: unsupportedPropertyRetriever,
     ServiceClient: unsupportedPropertyRetriever,
     ServiceSpec: unsupportedPropertyRetriever,
+    TaskToken: unsupportedPropertyRetriever,
   });
   const transactionExecutor = createTransactionExecutor(
     props.entityStore,

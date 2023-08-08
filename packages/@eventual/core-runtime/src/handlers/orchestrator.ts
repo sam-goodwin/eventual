@@ -99,6 +99,7 @@ export function createOrchestrator(
     ServiceName: deps.serviceName,
     ServiceSpec: unsupportedProperty,
     ServiceUrl: unsupportedProperty,
+    TaskToken: unsupportedProperty,
   });
 
   return (workflowTasks, baseTime = () => new Date()) => {

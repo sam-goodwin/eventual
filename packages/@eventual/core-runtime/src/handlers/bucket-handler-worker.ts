@@ -12,8 +12,10 @@ export function createBucketNotificationHandlerWorker(
   dependencies: BucketNotificationHandlerWorkerDependencies
 ): BucketNotificationHandlerWorker {
   return createEventualWorker(
-    ServiceType.BucketNotificationHandlerWorker,
-    dependencies,
+    {
+      serviceType: ServiceType.BucketNotificationHandlerWorker,
+      ...dependencies,
+    },
     async (item) => {
       const streamHandler = getEventualResource(
         "Bucket",

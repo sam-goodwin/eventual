@@ -1,12 +1,18 @@
 import { duration, time } from "./await-time.js";
 import type { ExecutionID } from "./execution.js";
 import type { FunctionRuntimeProps } from "./function-props.js";
+import { sendTaskHeartbeat } from "./heartbeat.js";
 import { CallKind, createCall } from "./internal/calls.js";
 import type {
   SendTaskFailureRequest,
   SendTaskHeartbeatRequest,
   SendTaskSuccessRequest,
 } from "./internal/eventual-service.js";
+import {
+  PropertyKind,
+  createEventualProperty,
+  type TaskTokenProperty,
+} from "./internal/properties.js";
 import { registerEventualResource } from "./internal/resources.js";
 import { isDurationSchedule, isTimeSchedule } from "./internal/schedule.js";
 import { SourceLocation, isSourceLocation } from "./internal/service-spec.js";
@@ -221,13 +227,10 @@ export async function asyncResult<Output = any>(
   if (!isTaskWorker()) {
     throw new Error("asyncResult can only be called from within a task.");
   }
-  const taskContext = getEventualTaskRuntimeContext();
-  if (!taskContext) {
-    throw new Error(
-      "Task context has not been set yet, asyncResult can only be used from within a task."
-    );
-  }
-  await tokenContext(taskContext.invocation.token);
+  const taskToken = getEventualHook().getEventualProperty(
+    createEventualProperty<TaskTokenProperty>(PropertyKind.TaskToken, {})
+  );
+  await tokenContext(taskToken);
   return {
     [AsyncTokenSymbol]: AsyncTokenSymbol as typeof AsyncTokenSymbol & Output,
   };
@@ -315,12 +318,7 @@ export function task<Name extends string, Input = any, Output = any>(
     );
   };
   func.sendTaskHeartbeat = async function (request) {
-    return getEventualHook().executeEventualCall(
-      createCall(CallKind.TaskRequestCall, {
-        operation: "sendTaskHeartbeat",
-        params: [request],
-      })
-    );
+    return sendTaskHeartbeat(request.taskToken);
   };
   func.sourceLocation = sourceLocation;
 

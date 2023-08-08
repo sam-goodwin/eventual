@@ -37,7 +37,6 @@ import {
   TransactionWorker,
   createTransactionWorker,
 } from "../handlers/transaction-worker.js";
-import { RuntimeServiceClient } from "../index.js";
 import { LogAgent } from "../log-agent.js";
 import {
   EntityProvider,
@@ -88,6 +87,7 @@ import { LocalExecutionHistoryStateStore } from "./stores/execution-history-stat
 import { LocalExecutionHistoryStore } from "./stores/execution-history-store.js";
 import { LocalExecutionStore } from "./stores/execution-store.js";
 import { LocalTaskStore } from "./stores/task-store.js";
+import { RuntimeServiceClient } from "../clients/runtime-service-clients.js";
 
 export type LocalEvent =
   | WorkflowTask

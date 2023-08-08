@@ -1,5 +1,7 @@
 export function assertNever(never: never, msg?: string): never {
-  throw new Error(msg ?? `reached unreachable code with value ${never}`);
+  throw new Error(
+    msg ?? `reached unreachable code with value ${JSON.stringify(never)}`
+  );
 }
 
 export function assertNonNull<T>(value?: T, msg?: string): NonNullable<T> {

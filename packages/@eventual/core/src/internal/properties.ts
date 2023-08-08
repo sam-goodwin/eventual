@@ -9,6 +9,7 @@ export enum PropertyKind {
   ServiceName = 3,
   ServiceSpec = 4,
   ServiceUrl = 5,
+  TaskToken = 6,
 }
 
 export const PropertySymbol = /* @__PURE__ */ Symbol.for(
@@ -21,7 +22,8 @@ export type Property =
   | ServiceClientProperty
   | ServiceSpecProperty
   | ServiceUrlProperty
-  | ServiceNameProperty;
+  | ServiceNameProperty
+  | TaskTokenProperty;
 
 export type PropertyType<E extends Property> = E extends PropertyBase<
   any,
@@ -76,3 +78,5 @@ export type ServiceSpecProperty = PropertyBase<
   PropertyKind.ServiceSpec,
   ServiceSpec
 >;
+
+export type TaskTokenProperty = PropertyBase<PropertyKind.TaskToken, string>;

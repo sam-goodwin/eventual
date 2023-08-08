@@ -19,8 +19,7 @@ export function createEntityStreamWorker(
   dependencies: EntityStreamWorkerDependencies
 ): EntityStreamWorker {
   return createEventualWorker(
-    ServiceType.EntityStreamWorker,
-    dependencies,
+    { serviceType: ServiceType.EntityStreamWorker, ...dependencies },
     async (entityName, streamName, items) => {
       const streamHandler = getEventualResource(
         "Entity",

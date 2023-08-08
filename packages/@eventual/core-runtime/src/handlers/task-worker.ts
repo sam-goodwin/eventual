@@ -8,10 +8,8 @@ import {
 import {
   ServiceType,
   WorkflowEventType,
-  isAsyncResult,
   isWorkflowFailed,
   type TaskFailed,
-  type TaskRuntimeContext,
   type TaskSucceeded,
 } from "@eventual/core/internal";
 import type { EventClient } from "../clients/event-client.js";
@@ -30,7 +28,7 @@ import { normalizeError } from "../result.js";
 import { computeDurationSeconds } from "../schedule.js";
 import type { TaskStore } from "../stores/task-store.js";
 import { createTaskToken } from "../task-token.js";
-import { taskContextScope } from "../task.js";
+import { isAsyncResult } from "../task.js";
 import { extendsError, getLazy } from "../utils.js";
 import { createEvent } from "../workflow/events.js";
 import {
@@ -82,8 +80,18 @@ export function createTaskWorker({
 
   return metricsClient.metricScope((metrics) =>
     createEventualWorker(
-      ServiceType.TaskWorker,
-      deps,
+      {
+        serviceType: ServiceType.TaskWorker,
+        propertyRetrieverOverrides: {
+          // set the task token property
+          TaskToken: {
+            override: (request: TaskWorkerRequest) => {
+              return createTaskToken(request.executionId, request.seq);
+            },
+          },
+        },
+        ...deps,
+      },
       async (
         request: TaskWorkerRequest,
         baseTime: Date = new Date(),
@@ -133,18 +141,6 @@ export function createTaskWorker({
               schedule: request.heartbeat,
             });
           }
-          const runtimeContext: TaskRuntimeContext = {
-            execution: {
-              id: request.executionId as ExecutionID,
-              workflowName: request.workflowName,
-            },
-            invocation: {
-              token: createTaskToken(request.executionId, request.seq),
-              scheduledTime: request.scheduledTime,
-              retry: request.retry,
-            },
-            service: serviceContext,
-          };
           metrics.putMetric(TaskMetrics.ClaimRejected, 0, Unit.Count);
 
           logAgent.logWithContext(taskLogContext, LogLevel.DEBUG, [
@@ -153,10 +149,7 @@ export function createTaskWorker({
 
           const task = taskProvider.getTask(request.taskName);
 
-          const event = await taskContextScope(
-            runtimeContext,
-            async () => await runTask()
-          );
+          const event = await runTask();
 
           if (event) {
             try {
@@ -195,9 +188,16 @@ export function createTaskWorker({
                 task: {
                   name: task.name,
                 },
-                execution: runtimeContext.execution,
-                invocation: runtimeContext.invocation,
-                service: runtimeContext.service,
+                execution: {
+                  id: request.executionId as ExecutionID,
+                  workflowName: request.workflowName,
+                },
+                invocation: {
+                  token: createTaskToken(request.executionId, request.seq),
+                  scheduledTime: request.scheduledTime,
+                  retry: request.retry,
+                },
+                service: serviceContext,
               };
 
               hookConsole((level, data) => {

@@ -272,7 +272,7 @@ export type SearchCall<Op extends SearchOperation = SearchOperation> =
   };
 
 export function isTaskRequestCall(a: any): a is TaskRequestCall {
-  return isCallOfKind(CallKind.TaskCall, a);
+  return isCallOfKind(CallKind.TaskRequestCall, a);
 }
 
 export function isTaskRequestCallOperation<O extends TaskMethods>(

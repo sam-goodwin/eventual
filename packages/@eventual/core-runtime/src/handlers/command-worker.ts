@@ -34,8 +34,7 @@ export function createCommandWorker(
    * then handles the request.
    */
   return createEventualWorker(
-    ServiceType.CommandWorker,
-    deps,
+    { serviceType: ServiceType.CommandWorker, ...deps },
     async (request, context) => {
       console.debug("request", request);
       try {

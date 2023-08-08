@@ -1,4 +1,10 @@
-import { CallKind, createCall } from "./internal/calls.js";
+import { CallKind, TaskRequestCall, createCall } from "./internal/calls.js";
+import {
+  PropertyKind,
+  TaskTokenProperty,
+  createEventualProperty,
+} from "./internal/properties.js";
+import { isTaskWorker } from "./internal/service-type.js";
 import type { SendTaskHeartbeatResponse } from "./service-client.js";
 
 /**
@@ -14,10 +20,27 @@ import type { SendTaskHeartbeatResponse } from "./service-client.js";
 export async function sendTaskHeartbeat(
   taskToken?: string
 ): Promise<SendTaskHeartbeatResponse> {
-  return getEventualHook().executeEventualCall(
-    createCall(CallKind.TaskRequestCall, {
+  const hook = getEventualHook();
+  if (!isTaskWorker() && !taskToken) {
+    throw new Error(
+      "Task Token must be provided to SendTaskHeartbeat when outside of a task."
+    );
+  }
+  return hook.executeEventualCall(
+    createCall<TaskRequestCall<"sendTaskHeartbeat">>(CallKind.TaskRequestCall, {
       operation: "sendTaskHeartbeat",
-      params: [{ taskToken }],
+      params: [
+        {
+          taskToken:
+            taskToken ??
+            hook.getEventualProperty(
+              createEventualProperty<TaskTokenProperty>(
+                PropertyKind.TaskToken,
+                {}
+              )
+            ),
+        },
+      ],
     })
-  );
+  ) as Promise<SendTaskHeartbeatResponse>;
 }

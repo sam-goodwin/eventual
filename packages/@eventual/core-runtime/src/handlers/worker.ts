@@ -1,6 +1,10 @@
 import type { EventualServiceClient } from "@eventual/core";
 import { ServiceType, type ServiceSpec } from "@eventual/core/internal";
-import { AllCallExecutor, UnsupportedExecutor } from "../call-executor.js";
+import {
+  AllCallExecutor,
+  AllCallExecutors,
+  UnsupportedExecutor,
+} from "../call-executor.js";
 import { AwaitTimerCallPassthroughExecutor } from "../call-executors/await-timer-executor.js";
 import { BucketCallExecutor } from "../call-executors/bucket-call-executor.js";
 import { EntityCallExecutor } from "../call-executors/entity-call-executor.js";
@@ -10,6 +14,7 @@ import type { OpenSearchClient } from "../clients/open-search-client.js";
 import { enterEventualCallHookScope } from "../eventual-hook.js";
 import {
   AllPropertyRetriever,
+  AllPropertyRetrievers,
   UnsupportedPropertyRetriever,
 } from "../property-retriever.js";
 import { BucketPhysicalNamePropertyRetriever } from "../property-retrievers/bucket-name-property-retriever.js";
@@ -30,36 +35,79 @@ export interface WorkerIntrinsicDeps {
   serviceUrls?: (string | LazyValue<string>)[];
 }
 
+type AllExecutorOverrides<Input extends any[]> = {
+  [key in keyof AllCallExecutors]?:
+    | AllCallExecutors[key]
+    | ((...input: Input) => AllCallExecutors[key]);
+};
+
+type AllPropertyOverridesOverrides<Input extends any[]> = {
+  [key in keyof AllPropertyRetrievers]?:
+    | AllPropertyRetrievers[key]
+    // a function would be ambiguous with the property retriever
+    | { override: (...input: Input) => AllPropertyRetrievers[key] };
+};
+
 export function createEventualWorker<Input extends any[], Output>(
-  serviceType: ServiceType,
-  dep: WorkerIntrinsicDeps,
+  props: WorkerIntrinsicDeps & {
+    serviceType: ServiceType;
+    executorOverrides?: AllExecutorOverrides<Input>;
+    propertyRetrieverOverrides?: AllPropertyOverridesOverrides<Input>;
+  },
   worker: (...input: Input) => Promise<Output>
 ): (...input: Input) => Promise<Awaited<Output>> {
   const unsupportedExecutor = new UnsupportedExecutor("Eventual Worker");
   const unsupportedProperty = new UnsupportedPropertyRetriever(
     "Eventual Worker"
   );
-  const serviceClientExecutor = dep.serviceClient
-    ? new ServiceClientExecutor(dep.serviceClient)
+  const serviceClientExecutor = props.serviceClient
+    ? new ServiceClientExecutor(props.serviceClient)
     : unsupportedExecutor;
-  const openSearchExecutor = dep.openSearchClient
-    ? new SearchCallExecutor(dep.openSearchClient)
+  const openSearchExecutor = props.openSearchClient
+    ? new SearchCallExecutor(props.openSearchClient)
     : unsupportedExecutor;
-  const openSearchClientPropertyRetriever = dep.openSearchClient
-    ? new OpenSearchClientPropertyRetriever(dep.openSearchClient)
+  const openSearchClientPropertyRetriever = props.openSearchClient
+    ? new OpenSearchClientPropertyRetriever(props.openSearchClient)
     : unsupportedProperty;
-  const bucketCallExecutor = dep.bucketStore
-    ? new BucketCallExecutor(dep.bucketStore)
+  const bucketCallExecutor = props.bucketStore
+    ? new BucketCallExecutor(props.bucketStore)
     : unsupportedExecutor;
-  const bucketPhysicalNameRetriever = dep.bucketStore
-    ? new BucketPhysicalNamePropertyRetriever(dep.bucketStore)
+  const bucketPhysicalNameRetriever = props.bucketStore
+    ? new BucketPhysicalNamePropertyRetriever(props.bucketStore)
     : unsupportedProperty;
-  const entityCallExecutor = dep.entityStore
-    ? new EntityCallExecutor(dep.entityStore)
+  const entityCallExecutor = props.entityStore
+    ? new EntityCallExecutor(props.entityStore)
     : unsupportedExecutor;
 
-  return (...input: Input) =>
-    enterEventualCallHookScope(
+  return (...input: Input) => {
+    const resolvedExecutorOverrides = props.executorOverrides
+      ? Object.fromEntries(
+          Object.entries(props.executorOverrides).map(
+            ([callKey, executorOverride]) => [
+              callKey,
+              typeof executorOverride === "function"
+                ? executorOverride(...input)
+                : executorOverride,
+            ]
+          )
+        )
+      : {};
+
+    const resolvedPropertyOverrides = props.propertyRetrieverOverrides
+      ? Object.fromEntries(
+          Object.entries(props.propertyRetrieverOverrides).map(
+            ([callKey, propertyOverride]) => [
+              callKey,
+              typeof propertyOverride === "object" &&
+              "override" in propertyOverride
+                ? propertyOverride.override(...input)
+                : propertyOverride,
+            ]
+          )
+        )
+      : {};
+
+    return enterEventualCallHookScope(
       new AllCallExecutor({
         AwaitTimerCall: new AwaitTimerCallPassthroughExecutor(),
         BucketCall: bucketCallExecutor,
@@ -80,15 +128,19 @@ export function createEventualWorker<Input extends any[], Output>(
         // directly calling a task does not work outside of a workflow
         TaskCall: unsupportedExecutor,
         TaskRequestCall: serviceClientExecutor,
+        ...resolvedExecutorOverrides,
       }),
       new AllPropertyRetriever({
         BucketPhysicalName: bucketPhysicalNameRetriever,
         OpenSearchClient: openSearchClientPropertyRetriever,
-        ServiceClient: dep.serviceClient ?? unsupportedProperty,
-        ServiceName: dep.serviceName,
-        ServiceSpec: dep.serviceSpec ?? unsupportedProperty,
-        ServiceUrl: dep.serviceUrl,
+        ServiceClient: props.serviceClient ?? unsupportedProperty,
+        ServiceName: props.serviceName,
+        ServiceSpec: props.serviceSpec ?? unsupportedProperty,
+        ServiceUrl: props.serviceUrl,
+        TaskToken: unsupportedProperty, // the task worker should override this
+        ...resolvedPropertyOverrides,
       }),
-      () => serviceTypeScope(serviceType, () => worker(...input))
+      () => serviceTypeScope(props.serviceType, () => worker(...input))
     );
+  };
 }

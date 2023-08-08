@@ -32,8 +32,7 @@ export function createSubscriptionWorker(
     serviceUrl: getLazy(deps.serviceUrl),
   };
   return createEventualWorker(
-    ServiceType.Subscription,
-    deps,
+    { serviceType: ServiceType.Subscription, ...deps },
     async (events) => {
       await Promise.allSettled(
         events.map((event) =>
