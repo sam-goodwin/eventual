@@ -274,6 +274,7 @@ export type SearchCall<Op extends SearchOperation = SearchOperation> =
   CallBase<CallKind.SearchCall, any> & {
     operation: Op;
     request: SearchCallRequest<Op>;
+    indexName: string;
   };
 
 export function isTaskRequestCall(a: any): a is TaskRequestCall {

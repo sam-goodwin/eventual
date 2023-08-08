@@ -8,7 +8,7 @@ import {
 import { AwaitTimerCallPassthroughExecutor } from "../call-executors/await-timer-executor.js";
 import { BucketCallExecutor } from "../call-executors/bucket-call-executor.js";
 import { EntityCallExecutor } from "../call-executors/entity-call-executor.js";
-import { SearchCallExecutor } from "../call-executors/search-call-client-executor.js";
+import { SearchCallExecutor } from "../call-executors/search-call-executor.js";
 import { ServiceClientExecutor } from "../call-executors/service-client-executor.js";
 import type { OpenSearchClient } from "../clients/open-search-client.js";
 import { enterEventualCallHookScope } from "../eventual-hook.js";

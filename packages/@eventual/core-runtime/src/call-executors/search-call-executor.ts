@@ -9,7 +9,10 @@ export class SearchCallExecutor implements CallExecutor<SearchCall> {
   public async execute(call: SearchCall) {
     const response = await (
       this.openSearchClient.client[call.operation] as any
-    )(call.request);
+    )({
+      ...(call.operation === "index" ? call.request : { body: call.request }),
+      index: call.indexName,
+    });
     assertApiResponseOK(response);
     return response.body;
   }

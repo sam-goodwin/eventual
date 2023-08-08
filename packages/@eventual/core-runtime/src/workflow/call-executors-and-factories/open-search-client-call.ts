@@ -6,7 +6,7 @@ import {
   type SearchRequestFailed,
   type SearchRequestSucceeded,
 } from "@eventual/core/internal";
-import { SearchCallExecutor } from "../../call-executors/search-call-client-executor.js";
+import { SearchCallExecutor } from "../../call-executors/search-call-executor.js";
 import type { ExecutionQueueClient } from "../../clients/execution-queue-client.js";
 import type { OpenSearchClient } from "../../clients/open-search-client.js";
 import { Result, normalizeError } from "../../result.js";

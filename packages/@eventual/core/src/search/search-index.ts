@@ -172,6 +172,7 @@ export function index<
       createCall<SearchCall>(CallKind.SearchCall, {
         operation,
         request,
+        indexName,
       })
     );
   }
