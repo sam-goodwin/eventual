@@ -13,6 +13,7 @@ import {
   type BucketRequest,
   type EntityOperation,
   type WorkflowEvent,
+  WorkflowCallHistoryType,
 } from "@eventual/core/internal";
 import chalk from "chalk";
 import { formatTime } from "./time.js";
@@ -20,7 +21,11 @@ import { formatTime } from "./time.js";
 export function displayEvent(event: WorkflowEvent) {
   const lines: string[] = [
     `${chalk.green(formatTime(event.timestamp))}\t${chalk.blue(
-      WorkflowEventType[event.type]
+      `${WorkflowEventType[event.type]}${
+        isCallEvent(event)
+          ? `(${WorkflowCallHistoryType[event.event.type]})`
+          : ""
+      }`
     )}${"seq" in event ? `(${event.seq})` : ""}`,
     ...(isCallEvent(event)
       ? [

@@ -816,7 +816,7 @@ export interface WorkflowCall<E extends Call = Call> {
   event?: WorkflowCallHistoryEvent;
 }
 
-function deepEqual(a: any, b: any) {
+function deepEqual(a: any, b: any): boolean {
   if (a === b) return true;
 
   // Ensure both are objects and are not null
@@ -826,6 +826,17 @@ function deepEqual(a: any, b: any) {
     typeof b !== "object" ||
     b === null
   ) {
+    return false;
+  }
+
+  if (Array.isArray(a) === Array.isArray(b)) {
+    if (Array.isArray(a)) {
+      if (a.length !== b.length) {
+        return false;
+      }
+      return a.every((v, i) => deepEqual(v, b[i]));
+    }
+  } else {
     return false;
   }
 
